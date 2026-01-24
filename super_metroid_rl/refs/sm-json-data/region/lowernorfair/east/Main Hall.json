@@ -1,0 +1,996 @@
+{
+  "$schema": "../../../schema/m3-room.schema.json",
+  "id": 132,
+  "name": "Main Hall",
+  "area": "Norfair",
+  "subarea": "Lower",
+  "subsubarea": "East",
+  "roomAddress": "0x7B236",
+  "roomEnvironments": [{"heated": true}],
+  "mapTileMask": [
+    [0, 0, 0, 0, 1, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1, 1, 1]
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Left Door",
+      "nodeType": "door",
+      "nodeSubType": "blue",
+      "nodeAddress": "0x0019852",
+      "doorOrientation": "left",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [2, 2, 2, 2, 1, 1, 1, 1]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Right Door",
+      "nodeType": "door",
+      "nodeSubType": "blue",
+      "nodeAddress": "0x001985e",
+      "doorOrientation": "right",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [1, 1, 1, 1, 1, 2, 2, 2]
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Elevator",
+      "nodeType": "door",
+      "nodeSubType": "elevator",
+      "nodeAddress": "0x001986a",
+      "doorOrientation": "up",
+      "useImplicitLeaveNormally": false,
+      "useImplicitComeInNormally": false,
+      "useImplicitCarryGModeBackThrough": false,
+      "useImplicitCarryGModeMorphBackThrough": false,
+      "mapTileMask": [
+        [0, 0, 0, 0, 2, 0, 0, 0],
+        [0, 0, 0, 0, 2, 0, 0, 0],
+        [1, 1, 1, 1, 2, 1, 1, 1]
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "id": "e1",
+      "groupName": "Main Hall Dragons",
+      "enemyName": "Dragon",
+      "quantity": 5,
+      "betweenNodes": [1, 4]
+    }
+  ],
+  "strats": [
+    {
+      "id": 1,
+      "link": [1, 1],
+      "name": "Leave With Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 3,
+          "openEnd": 0
+        }
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 2,
+      "link": [1, 1],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_heatedCrystalFlash"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 31,
+      "link": [1, 2],
+      "name": "G-Mode",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "h_heatedGModeOpenDifferentDoor"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 48,
+      "link": [1, 4],
+      "name": "R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        {"or": [
+          {"and": [
+            "canTrickyJump",
+            {"heatFrames": 570}
+          ]},
+          {"and": [
+            "SpaceJump",
+            {"heatFrames": 510}
+          ]},
+          {"and": [
+            "h_heatProof",
+            "Morph",
+            {"enemyKill": {
+              "enemies": [["Dragon"]],
+              "explicitWeapons": ["PowerBombPeriphery"]
+            }},
+            {"enemyKill": {
+              "enemies": [["Dragon", "Dragon"]],
+              "explicitWeapons": ["PowerBomb"]
+            }}
+          ]}
+        ]},
+        {"or": [
+          "h_heatedCrystalFlashForReserveEnergy",
+          {"and": [
+            {"or": [
+              "Grapple",
+              "SpaceJump"
+            ]},
+            "canTrickyJump",
+            "h_heatProof",
+            "h_RModeCanRefillReserves",
+            {"enemyKill": {
+              "enemies": [["Dragon"]],
+              "excludedWeapons": ["Missile", "PowerBomb"]
+            }},
+            {"resourceMissingAtMost": [{"type": "Missile", "count": 0}]},
+            {"or": [
+              {"partialRefill": {"type": "ReserveEnergy", "limit": 5}},
+              {"and": [
+                "canBeLucky",
+                {"partialRefill": {"type": "ReserveEnergy", "limit": 20}}
+              ]}
+            ]}
+          ]}
+        ]},
+        {"heatFrames": 300},
+        {"canShineCharge": {"usedTiles": 24, "openEnd": 1}},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt",
+        {"heatFrames": 80}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Cross to the center platform to get to the shinecharge runway. Any Dragons you kill",
+        "along the way, you can try to collect their drops with Grapple Beam instead of risking",
+        "the acid. Keep one Dragon to the left of the elevator to use their fireball for interrupt.",
+        "Or you can also use a heat interrupt."
+      ]
+    },
+    {
+      "id": 50,
+      "link": [1, 4],
+      "name": "Direct G-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "direct",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "h_CrystalFlashForReserveEnergy",
+        {"canShineCharge": {"usedTiles": 24, "openEnd": 1}},
+        {"or": [
+          {"and": [
+            "canReserveTriggerBufferXRay",
+            {"autoReserveTrigger": {"implicitHeatFrames": "no"}}
+          ]},
+          {"autoReserveTrigger": {}}
+        ]},
+        {"or": [
+          "canRModePauseAbuseSparkInterrupt",
+          {"and": [
+            "canRModeSparkInterrupt",
+            {"acidFrames": 30},
+            {"heatFrames": 70}
+          ]}
+        ]},
+        {"heatFrames": 90}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Cross to the center platform to get to the shinecharge runway. Crystal Flash and then use the acid left of the elevator platform to interrupt.",
+        "Time the entry so that the acid is low to ensure Samus can escape: if not using pause abuse, this must include the time taken for the reserve trigger."
+      ]
+    },
+    {
+      "id": 3,
+      "link": [1, 4],
+      "name": "Normal Jumps",
+      "requires": [
+        "h_navigateHeatRooms",
+        {"or": [
+          {"enemyDamage": {"enemy": "Dragon", "type": "fireball", "hits": 3}},
+          {"and": [
+            "Ice",
+            "Wave"
+          ]},
+          {"enemyKill": {
+            "enemies": [["Dragon", "Dragon"]],
+            "explicitWeapons": ["Wave+Plasma"]
+          }}
+        ]},
+        {"heatFrames": 900}
+      ],
+      "flashSuitChecked": true,
+      "note": "High jumps for more control when landing."
+    },
+    {
+      "id": 4,
+      "link": [1, 4],
+      "name": "Careful Jumps",
+      "requires": [
+        "h_navigateHeatRooms",
+        "canCarefulJump",
+        {"or": [
+          {"enemyDamage": {"enemy": "Dragon", "type": "fireball", "hits": 2}},
+          "Ice",
+          {"enemyKill": {
+            "enemies": [["Dragon", "Dragon"]],
+            "explicitWeapons": ["Super", "Plasma"]
+          }}
+        ]},
+        {"heatFrames": 700}
+      ],
+      "flashSuitChecked": true,
+      "note": "Take the platforms one at a time."
+    },
+    {
+      "id": 5,
+      "link": [1, 4],
+      "name": "Tricky Jumps",
+      "requires": [
+        "h_navigateHeatRooms",
+        "canTrickyJump",
+        {"heatFrames": 570}
+      ],
+      "flashSuitChecked": true,
+      "note": "Take the platforms two at a time by building some run speed for each jump on a one tile runway."
+    },
+    {
+      "id": 43,
+      "link": [1, 4],
+      "name": "Tricky Jumps with Crystal Flash",
+      "requires": [
+        "canTrickyJump",
+        {"or": [
+          {"and": [
+            {"heatFrames": 95},
+            "h_heatedCrystalFlash",
+            "canTrickyDodgeEnemies",
+            {"heatFrames": 475}
+          ]},
+          {"and": [
+            {"heatFrames": 175},
+            "h_heatedCrystalFlash",
+            "canTrickyDodgeEnemies",
+            {"heatFrames": 395}
+          ]},
+          {"and": [
+            {"heatFrames": 240},
+            "h_heatedCrystalFlash",
+            "canTrickyDodgeEnemies",
+            {"heatFrames": 330}
+          ]},
+          {"and": [
+            {"heatFrames": 310},
+            "h_heatedCrystalFlash",
+            {"heatFrames": 260}
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "The Crystal Flash can be done on any of the floating blocks or single-tile-wide pillars that don't have a Hibashi.",
+        "The safest place to do it is on the last single-tile-wide pillar."
+      ]
+    },
+    {
+      "id": 44,
+      "link": [1, 4],
+      "name": "Double Crystal Flash with Space Jump",
+      "requires": [
+        "SpaceJump",
+        "canTrickyDodgeEnemies",
+        {"heatFrames": 205},
+        "h_heatedCrystalFlash",
+        {"heatFrames": 180},
+        "h_heatedCrystalFlash",
+        {"heatFrames": 120}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 45,
+      "link": [1, 4],
+      "name": "Triple Crystal Flash",
+      "requires": [
+        "canTrickyDodgeEnemies",
+        {"heatFrames": 175},
+        "h_heatedCrystalFlash",
+        {"heatFrames": 180},
+        "h_heatedCrystalFlash",
+        {"heatFrames": 175},
+        "h_heatedCrystalFlash",
+        {"heatFrames": 65}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 6,
+      "link": [1, 4],
+      "name": "Power Bomb Clear",
+      "requires": [
+        "h_navigateHeatRooms",
+        "Morph",
+        {"enemyKill": {
+          "enemies": [["Dragon"]],
+          "explicitWeapons": ["PowerBombPeriphery"]
+        }},
+        {"enemyKill": {
+          "enemies": [["Dragon", "Dragon"]],
+          "explicitWeapons": ["PowerBomb"]
+        }},
+        {"heatFrames": 2200}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Wait for the Dragons to stop attacking and kill them with Power Bombs",
+        "It can be faster to control Samus so the Power Bomb does not bounce her, or to avoid Dragon projectiles while Power Bombing them.",
+        "Dragons must be on screen to take damage."
+      ]
+    },
+    {
+      "id": 7,
+      "link": [1, 4],
+      "name": "Space Jump",
+      "requires": [
+        "h_navigateHeatRooms",
+        "SpaceJump",
+        {"heatFrames": 510}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 8,
+      "link": [1, 4],
+      "name": "Shinespark",
+      "entranceCondition": {
+        "comeInShinecharged": {}
+      },
+      "requires": [
+        {"shineChargeFrames": 16},
+        "h_navigateHeatRooms",
+        "canShinechargeMovement",
+        "canMidairShinespark",
+        {"shinespark": {"frames": 75, "excessFrames": 10}},
+        {"heatFrames": 270}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 32,
+      "link": [1, 4],
+      "name": "G-Mode, Up the Elevator",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        {"heatFrames": 0}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 33,
+      "link": [2, 1],
+      "name": "G-Mode",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "h_heatedGModeOpenDifferentDoor"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 9,
+      "link": [2, 1],
+      "name": "Grapple Teleport Door Lock Skip",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[2, 34]]
+        }
+      },
+      "requires": [],
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true
+    },
+    {
+      "id": 10,
+      "link": [2, 1],
+      "name": "Carry Grapple Teleport",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[2, 34]]
+        }
+      },
+      "requires": [],
+      "exitCondition": {
+        "leaveWithGrappleTeleport": {
+          "blockPositions": [[2, 34]]
+        }
+      },
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true
+    },
+    {
+      "id": 11,
+      "link": [2, 2],
+      "name": "Leave With Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 6,
+          "openEnd": 0
+        }
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 12,
+      "link": [2, 2],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_heatedCrystalFlash"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 49,
+      "link": [2, 4],
+      "name": "R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        {"heatFrames": 360},
+        {"or": [
+          "h_heatedCrystalFlashForReserveEnergy",
+          {"and": [
+            {"or": [
+              "Grapple",
+              "SpaceJump"
+            ]},
+            "canTrickyJump",
+            "h_heatProof",
+            {"enemyKill": {
+              "enemies": [["Dragon"]],
+              "excludedWeapons": ["Missile", "PowerBomb"]
+            }},
+            {"resourceMissingAtMost": [{"type": "Missile", "count": 0}]},
+            {"or": [
+              {"partialRefill": {"type": "ReserveEnergy", "limit": 5}},
+              {"and": [
+                "canBeLucky",
+                {"partialRefill": {"type": "ReserveEnergy", "limit": 20}}
+              ]}
+            ]}
+          ]}
+        ]},
+        {"heatFrames": 300},
+        {"canShineCharge": {"usedTiles": 24, "openEnd": 1}},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt",
+        {"heatFrames": 80}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Cross to the center platform to get to the shinecharge runway. Of the two Dragons left",
+        "of the elevator, farm the left one and to use the right one's fireball to interrupt while",
+        "at the leftmost side of the of the center runway. Or you can also use a heat interrupt."
+      ]
+    },
+    {
+      "id": 51,
+      "link": [2, 4],
+      "name": "Direct G-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "direct",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "h_CrystalFlashForReserveEnergy",
+        {"canShineCharge": {"usedTiles": 24, "openEnd": 1}},
+        {"or": [
+          {"and": [
+            "canReserveTriggerBufferXRay",
+            {"autoReserveTrigger": {"implicitHeatFrames": "no"}}
+          ]},
+          {"autoReserveTrigger": {}}
+        ]},
+        {"or": [
+          "canRModePauseAbuseSparkInterrupt",
+          {"and": [
+            "canRModeSparkInterrupt",
+            {"acidFrames": 30},
+            {"heatFrames": 70}
+          ]}
+        ]},
+        {"heatFrames": 90}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Cross to the center platform to get to the shinecharge runway. Crystal Flash and then use the acid left of the elevator platform to interrupt.",
+        "Time the entry so that the acid is low to ensure Samus can escape: if not using pause abuse, this must include the time taken for the reserve trigger."
+      ]
+    },
+    {
+      "id": 13,
+      "link": [2, 4],
+      "name": "Base",
+      "requires": [
+        {"heatFrames": 360}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 38,
+      "link": [2, 4],
+      "name": "Spring Ball Bounce (Come in Running)",
+      "entranceCondition": {
+        "comeInRunning": {
+          "speedBooster": "any",
+          "minTiles": 3
+        }
+      },
+      "requires": [
+        "canSpringBallBounce",
+        {"heatFrames": 260}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 39,
+      "link": [2, 4],
+      "name": "Come in With Spring Ball Bounce",
+      "entranceCondition": {
+        "comeInWithSpringBallBounce": {
+          "speedBooster": "any",
+          "movementType": "controlled",
+          "remoteAndLandingMinTiles": [[6.4725, 0]]
+        }
+      },
+      "requires": [
+        "canSpringBallBounce",
+        {"heatFrames": 265}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 46,
+      "link": [2, 4],
+      "name": "Cross with Crystal Flash",
+      "requires": [
+        {"heatFrames": 180},
+        "h_heatedCrystalFlash",
+        {"heatFrames": 180}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 34,
+      "link": [2, 4],
+      "name": "G-Mode, Up the Elevator",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        {"heatFrames": 0}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 14,
+      "link": [4, 1],
+      "name": "Space Jump",
+      "requires": [
+        "h_navigateHeatRooms",
+        "SpaceJump",
+        {"heatFrames": 450}
+      ],
+      "flashSuitChecked": true,
+      "note": "Use a two tile wide platform to get a good amount of running speed to avoid the room hazards."
+    },
+    {
+      "id": 15,
+      "link": [4, 1],
+      "name": "Invulnerable Space Jump",
+      "requires": [
+        "h_navigateHeatRooms",
+        "SpaceJump",
+        {"or": [
+          "ScrewAttack",
+          {"and": [
+            "canBlueSpaceJump",
+            {"getBlueSpeed": {"usedTiles": 23, "openEnd": 2}}
+          ]}
+        ]},
+        {"heatFrames": 410}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 40,
+      "link": [4, 1],
+      "name": "Spring Ball Bounce (Tank Hibashi Hit)",
+      "requires": [
+        {"disableEquipment": "SpeedBooster"},
+        "canTrickySpringBallBounce",
+        {"hibashiHits": 1},
+        {"or": [
+          "canSpringFling",
+          "canInsaneJump"
+        ]},
+        {"heatFrames": 375}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Gain max run speed, without Speed Booster equipped, and bounce onto the second 2-tile-wide platform.",
+        "Continue uncontrolled bouncing all the way across the room, taking a boost from a Hibashi hit.",
+        "Perform a neutral bounce on the final single-tile platform.",
+        "If Samus is positioned relatively far left, she may miss the last platform and fall into the acid;",
+        "this can be avoided by unequipping Spring Ball (a 'spring fling') to reset Samus' vertical speed,",
+        "bypassing the final platform."
+      ]
+    },
+    {
+      "id": 41,
+      "link": [4, 1],
+      "name": "Spring Ball Bounce (Damageless)",
+      "requires": [
+        {"disableEquipment": "SpeedBooster"},
+        "canTrickySpringBallBounce",
+        "canInsaneJump",
+        {"heatFrames": 375}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Gain max run speed, without Speed Booster equipped, and perform precise, controlled bounces to cross the room.",
+        "Bounce on each of the Hibashi platforms, avoiding damage by going underneath the flames:",
+        "the bottom of the flame disappears before the top."
+      ]
+    },
+    {
+      "id": 16,
+      "link": [4, 1],
+      "name": "Shinespark",
+      "requires": [
+        "h_navigateHeatRooms",
+        "canMidairShinespark",
+        "canShinechargeMovement",
+        {"canShineCharge": {"usedTiles": 24, "openEnd": 1}},
+        {"shinespark": {"frames": 75, "excessFrames": 5}},
+        {"heatFrames": 380}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 17,
+      "link": [4, 1],
+      "name": "Normal Jumps",
+      "requires": [
+        "h_navigateHeatRooms",
+        {"or": [
+          {"enemyDamage": {"enemy": "Dragon", "type": "fireball", "hits": 3}},
+          {"and": [
+            "Ice",
+            "Wave"
+          ]},
+          {"enemyKill": {
+            "enemies": [["Dragon", "Dragon"]],
+            "explicitWeapons": ["Wave+Plasma"]
+          }}
+        ]},
+        {"heatFrames": 1100}
+      ],
+      "flashSuitChecked": true,
+      "note": "High jumps for more control when landing."
+    },
+    {
+      "id": 18,
+      "link": [4, 1],
+      "name": "Careful Jumps",
+      "requires": [
+        "h_navigateHeatRooms",
+        "canCarefulJump",
+        {"or": [
+          {"enemyDamage": {"enemy": "Dragon", "type": "fireball", "hits": 2}},
+          {"enemyKill": {
+            "enemies": [["Dragon", "Dragon"]],
+            "explicitWeapons": ["Super", "Plasma"]
+          }},
+          "Ice"
+        ]},
+        {"heatFrames": 700}
+      ],
+      "flashSuitChecked": true,
+      "note": "Taking the platforms one at a time is not fast enough to avoid the room hazards."
+    },
+    {
+      "id": 19,
+      "link": [4, 1],
+      "name": "Tricky Jumps",
+      "requires": [
+        "h_navigateHeatRooms",
+        "canTrickyJump",
+        {"heatFrames": 500}
+      ],
+      "flashSuitChecked": true,
+      "note": "Take the platforms two at a time by building some run speed for each jump on a one tile runway."
+    },
+    {
+      "id": 47,
+      "link": [4, 1],
+      "name": "Tricky Jumps with Crystal Flash",
+      "requires": [
+        "canTrickyJump",
+        {"heatFrames": 135},
+        "h_heatedCrystalFlash",
+        {"heatFrames": 350}
+      ],
+      "flashSuitChecked": true,
+      "note": "The Crystal Flash can be done safely on the leftmost 2-tile-wide platform."
+    },
+    {
+      "id": 20,
+      "link": [4, 1],
+      "name": "Power Bomb Clear",
+      "requires": [
+        "h_navigateHeatRooms",
+        "Morph",
+        {"enemyKill": {
+          "enemies": [["Dragon"], ["Dragon"]],
+          "explicitWeapons": ["PowerBomb"]
+        }},
+        {"heatFrames": 2200}
+      ],
+      "flashSuitChecked": true,
+      "note": "Dragons must be on screen to take damage."
+    },
+    {
+      "id": 35,
+      "link": [4, 1],
+      "name": "G-Mode, Simple Blind Space Jump",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "canComplexGMode",
+        "SpaceJump",
+        "h_heatedGModeOffCameraDoor"
+      ],
+      "flashSuitChecked": true,
+      "note": "Space Jump across without falling. The Hibashi (fire pillars) can not hit Samus while off camera."
+    },
+    {
+      "id": 36,
+      "link": [4, 1],
+      "name": "G-Mode, Blind Shinespark",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "canOffScreenMovement",
+        "canMidairShinespark",
+        "canShinechargeMovement",
+        {"canShineCharge": {"usedTiles": 24, "openEnd": 1}},
+        {"shinespark": {"frames": 75, "excessFrames": 5}},
+        "h_heatedGModeOffCameraDoor"
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Shinecharge either right to left or left to right before horizontally sparking across the room.",
+        "Use the raised step to the left or the lowered step to the right to be able to find the end of the runway."
+      ]
+    },
+    {
+      "id": 21,
+      "link": [4, 2],
+      "name": "Base",
+      "requires": [
+        {"heatFrames": 330}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 22,
+      "link": [4, 2],
+      "name": "Space Jump",
+      "requires": [
+        "SpaceJump",
+        {"heatFrames": 250}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 42,
+      "link": [4, 2],
+      "name": "Spring Ball Bounce",
+      "requires": [
+        "canSpringBallBounce",
+        {"heatFrames": 280}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 37,
+      "link": [4, 2],
+      "name": "G-Mode, Simple Blind Movement",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "h_heatedGModeOffCameraDoor"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 29,
+      "link": [4, 4],
+      "name": "Base (Come Down)",
+      "entranceCondition": {
+        "comeInNormally": {}
+      },
+      "requires": [
+        "h_MainHallElevatorFrames"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 24,
+      "link": [4, 4],
+      "name": "Base (Go Up)",
+      "requires": [
+        "h_MainHallElevatorFrames"
+      ],
+      "exitCondition": {
+        "leaveNormally": {}
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 30,
+      "link": [4, 4],
+      "name": "Come Down, Reserve Trigger",
+      "entranceCondition": {
+        "comeInNormally": {}
+      },
+      "requires": [
+        "canManageReserves",
+        {"autoReserveTrigger": {}},
+        {"heatFrames": 0}
+      ],
+      "flashSuitChecked": true,
+      "note": "Riding the elevator without enough energy will cause a reserve trigger in the next room, reducing the total heat damage dealt.",
+      "devNote": "FIXME: If the previous room is also heated, the reserve won't trigger until after this elevator ride as well, but it will trigger during heat damage."
+    },
+    {
+      "id": 25,
+      "link": [4, 4],
+      "name": "Go Up, Reserve Trigger",
+      "requires": [
+        "canManageReserves",
+        {"autoReserveTrigger": {}},
+        {"heatFrames": 0}
+      ],
+      "exitCondition": {
+        "leaveNormally": {}
+      },
+      "flashSuitChecked": true,
+      "note": "Riding the elevator without enough energy will cause a reserve trigger in the next room, reducing the total heat damage dealt.",
+      "devNote": "FIXME: If the next room is also heated, the reserve won't trigger until after that elevator ride as well, but then the reserve will trigger during heat damage."
+    },
+    {
+      "id": 23,
+      "link": [4, 4],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_heatedCrystalFlash"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 26,
+      "link": [4, 4],
+      "name": "Leave Shinecharged - Full Runway",
+      "requires": [
+        {"canShineCharge": {"usedTiles": 24, "openEnd": 1}},
+        "canShinechargeMovement",
+        "h_MainHallElevatorFrames",
+        {"heatFrames": 300},
+        {"shineChargeFrames": 90}
+      ],
+      "exitCondition": {
+        "leaveShinecharged": {}
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 27,
+      "link": [4, 4],
+      "name": "Leave Shinecharged - Finish Shortcharge Near Elevator",
+      "requires": [
+        {"canShineCharge": {"usedTiles": 18, "openEnd": 1}},
+        "h_MainHallElevatorFrames",
+        {"heatFrames": 210},
+        {"shineChargeFrames": 40}
+      ],
+      "exitCondition": {
+        "leaveShinecharged": {}
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 28,
+      "link": [4, 4],
+      "name": "Carry G-Mode Back Up the Elevator",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [],
+      "exitCondition": {
+        "leaveWithGMode": {
+          "morphed": false
+        }
+      },
+      "flashSuitChecked": true
+    }
+  ],
+  "notables": [],
+  "nextStratId": 52,
+  "nextNotableId": 1
+}

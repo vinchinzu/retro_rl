@@ -1,0 +1,79 @@
+# workflow name
+name: "Run scripts"
+
+# fire on
+# Only runs when invoked from another workflow or manually from menu
+on: workflow_dispatch
+
+#########
+# actions
+#########
+# actions/checkout@v4.1.7
+# actions/setup-python@v5.2.0
+# peter-evans/create-pull-request@v6.1.0
+
+# Add permissions to included token for this workflow run
+permissions:
+  contents:       write  # can manip files
+  pull-requests:  write  # can manip PRs
+
+jobs:
+  # Run scripts
+  run_standard_scripts:
+    name: "Run standard scripts and open PR"
+    runs-on: ${{ matrix.os-name }}
+
+    strategy:
+      matrix:
+        os-name: [
+          ubuntu-latest
+        ]
+        python-version: [
+          "3.10"
+        ]
+
+    steps:
+      # checkout commit
+      - name: ✔️Checkout commit
+        uses: actions/checkout@v4.1.7
+      # install python
+      - name: 💿Install Python
+        uses: actions/setup-python@v5.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      # python version
+      - name: 🐍Python Version
+        shell: bash
+        run: |
+          python --version
+      # python modules
+      - name: 🐍Python Modules
+        shell: bash
+        run: |
+          python -m pip install -r "./resources/app/manifests/pip_requirements.txt"
+      # Analyze used GitHub Actions
+      - name: Analyze used GitHub Actions
+        shell: bash
+        run: |
+          python ./resources/ci/common/list_actions.py
+      # Run Strat ID validator
+      # Run Autoformatter
+      - name: Run Strat ID Generator
+        working-directory: scripts
+        run: python populate_strat_ids.py
+      - name: Run Tech ID Generator
+        working-directory: scripts
+        run: python populate_tech_ids.py
+      - name: Run Autoformatter
+        working-directory: scripts
+        run: python autoformat.py
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6.1.0
+        with:
+          commit-message: Run Strat ID, Tech ID, and Notable ID Generator & Autoformatter
+          title: Run Scripts
+          body: This PR is auto-generated.
+          base: master
+          labels: Run Scripts
+          branch: auto-run-scripts
+          delete-branch: true
