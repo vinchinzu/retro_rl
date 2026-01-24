@@ -1,0 +1,109 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.11)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+
+============================================================
+HARVEST MOON BOT
+============================================================
+
+Controls:
+  Controller: Xbox 360 Controller
+    D-Pad/Stick: Movement
+    A: Confirm | B: Cancel | X: Menu | Y: Use Item
+    LB/RB: Cycle Items
+    LB+RB+SELECT: Toggle Human/Bot Mode
+  Keyboard:
+    Arrows: D-Pad
+    Z: Cancel (B) | C: Confirm (A) | V: Menu (X) | X: Use Item (Y)
+    A/S: Cycle Items (L/R)
+    A+S+TAB: Toggle Human/Bot Mode
+    P: Mark current tile as no-go (debug)
+  F5: Save | F9: Load | TAB: Fast Forward | ESC: Exit
+  L+R+SELECT: Toggle Human/Bot
+============================================================
+[BOT] Fence clear: start
+[FENCE] lift at (15, 31), direction=down, queueing verification
+[FENCE] lift verified! (state=0x03, dir=0) Transitioning to navigate_pond
+[FENCE] reached pond toss gap at (32, 34). TOSSING!
+[FENCE] step=300 state=toss pos=(32, 34) target=(15, 31) approach=(15, 30)
+--- Map Area Dump (X:25-39, Y:25-39) ---
+Y=25: a0 a0 a0 a0 01 01 02 02 01 01 01 02 02 02 02
+Y=26: a1 a1 a1 a1 01 01 01 02 01 01 01 01 02 02 01
+Y=27: a1 a1 a1 a1 01 01 01 02 01 01 01 01 01 01 01
+Y=28: a1 a1 a1 a1 01 01 02 02 01 01 01 01 01 09 0a
+Y=29: a1 c6 a1 a1 01 02 02 02 01 01 01 0d 0e 0b 0c
+Y=30: a8 ff a8 01 02 02 02 02 01 01 01 0f 10 01 01
+Y=31: 02 02 02 02 02 a6 a6 f0 f0 f0 a6 01 01 01 01
+Y=32: 01 01 01 01 02 a6 f0 f0 f0 f0 a6 01 01 01 02
+Y=33: 01 01 01 02 02 a6 f0 f0 f0 f0 a6 01 02 02 01
+Y=34: 01 01 01 01 02 a6 a6 01 01 a6 a6 01 01 01 01
+Y=35: 01 01 02 01 01 02 01 01 01 01 01 01 01 01 02
+Y=36: 01 09 0a 01 02 01 01 01 01 01 01 01 02 02 01
+Y=37: 01 0b 0c 01 02 02 01 01 02 01 01 01 02 02 01
+Y=38: 02 01 01 01 01 02 01 02 01 01 01 01 01 02 02
+Y=39: 02 02 01 01 01 01 01 01 01 01 01 02 02 02 02
+-----------------------------------------
+[FENCE] toss complete (ram check)
+[FENCE] lift at (32, 17), direction=up, queueing verification
+[FENCE] step=600 state=verify_lift pos=(32, 18) target=(32, 17) approach=(32, 18)
+--- Map Area Dump (X:25-39, Y:25-39) ---
+Y=25: a0 a0 a0 a0 01 01 02 02 01 01 01 02 02 02 02
+Y=26: a1 a1 a1 a1 01 01 01 02 01 01 01 01 02 02 01
+Y=27: a1 a1 a1 a1 01 01 01 02 01 01 01 01 01 01 01
+Y=28: a1 a1 a1 a1 01 01 02 02 01 01 01 01 01 09 0a
+Y=29: a1 c6 a1 a1 01 02 02 02 01 01 01 0d 0e 0b 0c
+Y=30: a8 ff a8 01 02 02 02 02 01 01 01 0f 10 01 01
+Y=31: 02 02 02 02 02 a6 a6 f0 f0 f0 a6 01 01 01 01
+Y=32: 01 01 01 01 02 a6 f0 f0 f0 f0 a6 01 01 01 02
+Y=33: 01 01 01 02 02 a6 f0 f0 f0 f0 a6 01 02 02 01
+Y=34: 01 01 01 01 02 a6 a6 01 01 a6 a6 01 01 01 01
+Y=35: 01 01 02 01 01 02 01 01 01 01 01 01 01 01 02
+Y=36: 01 09 0a 01 02 01 01 01 01 01 01 01 02 02 01
+Y=37: 01 0b 0c 01 02 02 01 01 02 01 01 01 02 02 01
+Y=38: 02 01 01 01 01 02 01 02 01 01 01 01 01 02 02
+Y=39: 02 02 01 01 01 01 01 01 01 01 01 02 02 02 02
+-----------------------------------------
+[FENCE] lift verified! (state=0x03, dir=1) Transitioning to navigate_pond
+[FENCE] reached pond toss gap at (32, 34). TOSSING!
+[FENCE] toss complete (ram check)
+[FENCE] step=900 state=navigate pos=(30, 35) target=(18, 31) approach=(19, 31)
+--- Map Area Dump (X:25-39, Y:25-39) ---
+Y=25: a0 a0 a0 a0 01 01 02 02 01 01 01 02 02 02 02
+Y=26: a1 a1 a1 a1 01 01 01 02 01 01 01 01 02 02 01
+Y=27: a1 a1 a1 a1 01 01 01 02 01 01 01 01 01 01 01
+Y=28: a1 a1 a1 a1 01 01 02 02 01 01 01 01 01 09 0a
+Y=29: a1 c6 a1 a1 01 02 02 02 01 01 01 0d 0e 0b 0c
+Y=30: a8 ff a8 01 02 02 02 02 01 01 01 0f 10 01 01
+Y=31: 02 02 02 02 02 a6 a6 f0 f0 f0 a6 01 01 01 01
+Y=32: 01 01 01 01 02 a6 f0 f0 f0 f0 a6 01 01 01 02
+Y=33: 01 01 01 02 02 a6 f0 f0 f0 f0 a6 01 02 02 01
+Y=34: 01 01 01 01 02 a6 a6 01 01 a6 a6 01 01 01 01
+Y=35: 01 01 02 01 01 02 01 01 01 01 01 01 01 01 02
+Y=36: 01 09 0a 01 02 01 01 01 01 01 01 01 02 02 01
+Y=37: 01 0b 0c 01 02 02 01 01 02 01 01 01 02 02 01
+Y=38: 02 01 01 01 01 02 01 02 01 01 01 01 01 02 02
+Y=39: 02 02 01 01 01 01 01 01 01 01 01 02 02 02 02
+-----------------------------------------
+[FENCE] lift at (18, 31), direction=left, queueing verification
+[FENCE] lift verified! (state=0x03, dir=3) Transitioning to navigate_pond
+[FENCE] step=1200 state=navigate_pond pos=(29, 33) target=(32, 34) approach=None
+--- Map Area Dump (X:25-39, Y:25-39) ---
+Y=25: a0 a0 a0 a0 01 01 02 02 01 01 01 02 02 02 02
+Y=26: a1 a1 a1 a1 01 01 01 02 01 01 01 01 02 02 01
+Y=27: a1 a1 a1 a1 01 01 01 02 01 01 01 01 01 01 01
+Y=28: a1 a1 a1 a1 01 01 02 02 01 01 01 01 01 09 0a
+Y=29: a1 c6 a1 a1 01 02 02 02 01 01 01 0d 0e 0b 0c
+Y=30: a8 ff a8 01 02 02 02 02 01 01 01 0f 10 01 01
+Y=31: 02 02 02 02 02 a6 a6 f0 f0 f0 a6 01 01 01 01
+Y=32: 01 01 01 01 02 a6 f0 f0 f0 f0 a6 01 01 01 02
+Y=33: 01 01 01 02 02 a6 f0 f0 f0 f0 a6 01 02 02 01
+Y=34: 01 01 01 01 02 a6 a6 01 01 a6 a6 01 01 01 01
+Y=35: 01 01 02 01 01 02 01 01 01 01 01 01 01 01 02
+Y=36: 01 09 0a 01 02 01 01 01 01 01 01 01 02 02 01
+Y=37: 01 0b 0c 01 02 02 01 01 02 01 01 01 02 02 01
+Y=38: 02 01 01 01 01 02 01 02 01 01 01 01 01 02 02
+Y=39: 02 02 01 01 01 01 01 01 01 01 01 02 02 02 02
+-----------------------------------------
+[FENCE] pond path len=6 next=(29, 34) target=(32, 34) override=(18, 31)
+[STOP] max_frames=1200
+
+Frames: 1200

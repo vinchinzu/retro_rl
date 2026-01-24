@@ -1,0 +1,467 @@
+{
+  "$schema": "../../../schema/m3-room.schema.json",
+  "id": 19,
+  "name": "Bomb Torizo Room",
+  "area": "Crateria",
+  "subarea": "Central",
+  "roomAddress": "0x79804",
+  "roomEnvironments": [{"heated": false}],
+  "mapTileMask": [
+    [1]
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Left Door",
+      "nodeType": "door",
+      "nodeSubType": "gray",
+      "nodeAddress": "0x0018baa",
+      "doorOrientation": "left",
+      "doorEnvironments": [{"physics": "air"}],
+      "locks": [
+        {
+          "name": "Bomb Torizo Room Gray Lock (to Flyway)",
+          "lockType": "gameFlag",
+          "lock": ["Bombs"],
+          "unlockStrats": [
+            {
+              "name": "Base",
+              "requires": [
+                "f_DefeatedBombTorizo"
+              ],
+              "flashSuitChecked": true,
+              "blueSuitChecked": true
+            }
+          ],
+          "note": "If no Bombs in inventory, door stays open"
+        },
+        {
+          "name": "Animal Escape Gray Lock (to Flyway)",
+          "lockType": "gameFlag",
+          "lock": ["f_ZebesSetAblaze"],
+          "unlockStrats": [
+            {
+              "name": "Base",
+              "requires": [
+                "f_AnimalsSaved"
+              ],
+              "flashSuitChecked": true,
+              "blueSuitChecked": true
+            }
+          ]
+        }
+      ],
+      "mapTileMask": [
+        [2]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Item",
+      "nodeType": "item",
+      "nodeSubType": "chozo",
+      "nodeItem": "Bombs",
+      "nodeAddress": "0x78404",
+      "mapTileMask": [
+        [2]
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "id": "e1",
+      "groupName": "Bomb Torizo",
+      "enemyName": "Bomb Torizo",
+      "quantity": 1,
+      "homeNodes": [1],
+      "spawn": ["Bombs"],
+      "stopSpawn": [
+        {"or": [
+          "f_DefeatedBombTorizo",
+          "f_ZebesSetAblaze"
+        ]}
+      ]
+    }
+  ],
+  "strats": [
+    {
+      "id": 1,
+      "link": [1, 1],
+      "name": "Leave with Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 1,
+          "openEnd": 1
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 23,
+      "link": [1, 1],
+      "name": "Bomb Torizo Alive, R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        {"not": "f_DefeatedBombTorizo"},
+        {"not": "f_ZebesSetAblaze"},
+        "canRiskPermanentLossOfAccess",
+        "h_activateBombTorizo",
+        "canUseIFrames",
+        {"or": [
+          "canDodgeWhileShooting",
+          {"resourceAtMost": [{"type": "Missile", "count": 5}]}
+        ]},
+        {"refill": ["Energy"]},
+        {"canShineCharge": {"usedTiles": 13, "openEnd": 0}},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt"
+      ],
+      "collectsItems": [2],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Activate Bomb Torizo, and farm his eggs for energy. They can be farmed freely. Waste all but 5 Missiles to prevent",
+        "the laser attack. Standing in the correct position will ensure he will be trapped against the wall.",
+        "Quickly use a jump to perform a very narrow shinecharge, then get interrupted by any Bomb Torizo attack."
+      ],
+      "devNote": [
+        "May need an alternative helper in place of h_activateBombTorizo, due to R-Mode entrance condition."
+      ]
+    },
+    {
+      "id": 24,
+      "link": [1, 1],
+      "name": "Zebes Ablaze, R-Mode Pause Abuse Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        "f_ZebesSetAblaze",
+        "h_CrystalFlashForReserveEnergy",
+        "Gravity",
+        {"acidFrames": 90},
+        {"canShineCharge": {"usedTiles": 13, "openEnd": 0}},
+        {"autoReserveTrigger": {}},
+        "canRModePauseAbuseSparkInterrupt",
+        {"acidFrames": 30}
+      ],
+      "setsFlags": ["f_AnimalsSaved"],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Save the animals to unlock the door, and Crystal Flash in the door frame. Stand in the knee-deep",
+        "acid with suits disabled to bleed off energy quickly, then perform a pause abuse spark windup in",
+        "the acid and interrupt it with auto-reserve (re-enable suits in the pause menu)."
+      ],
+      "devNote": "Disable E-Tanks required to avoid a patience requirement due to escape timer."
+    },
+    {
+      "id": 20,
+      "link": [1, 1],
+      "name": "Leave With Side Platform (Bomb Torizo Dead)",
+      "requires": [
+        "f_DefeatedBombTorizo"
+      ],
+      "exitCondition": {
+        "leaveWithSidePlatform": {
+          "height": 3,
+          "runway": {
+            "length": 13,
+            "openEnd": 0
+          },
+          "obstruction": [1, 0]
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "devNote": ["Max extra run speed $2.B with spin, or $2.C with a quick aim-down."]
+    },
+    {
+      "id": 21,
+      "link": [1, 1],
+      "name": "Leave With Side Platform (Bomb Torizo Alive)",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithSidePlatform": {
+          "height": 3,
+          "runway": {
+            "length": 10,
+            "openEnd": 0
+          },
+          "obstruction": [1, 0]
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "devNote": ["Max extra run speed $2.2 with spin, or $2.3 with a quick aim-down."]
+    },
+    {
+      "id": 18,
+      "link": [1, 1],
+      "name": "Fight Bomb Torizo",
+      "requires": [
+        "h_activateBombTorizo",
+        {"or": [
+          "canDodgeWhileShooting",
+          {"ammo": {"type": "Super", "count": 2}},
+          {"enemyDamage": {"enemy": "Bomb Torizo", "type": "contact", "hits": 3}}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedBombTorizo"],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 2,
+      "link": [1, 1],
+      "name": "Leave Shinecharged",
+      "requires": [
+        "f_DefeatedBombTorizo",
+        {"canShineCharge": {"usedTiles": 13, "openEnd": 0}},
+        {"shineChargeFrames": 40}
+      ],
+      "exitCondition": {
+        "leaveShinecharged": {}
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 3,
+      "link": [1, 1],
+      "name": "Leave Spinning (Bomb Torizo Intact)",
+      "requires": [],
+      "exitCondition": {
+        "leaveSpinning": {
+          "remoteRunway": {
+            "length": 7,
+            "openEnd": 1
+          }
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 4,
+      "link": [1, 1],
+      "name": "Leave With Mockball (Bomb Torizo Intact)",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithMockball": {
+          "remoteRunway": {
+            "length": 6,
+            "openEnd": 1
+          },
+          "landingRunway": {
+            "length": 1,
+            "openEnd": 1
+          }
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 5,
+      "link": [1, 1],
+      "name": "Leave With Spring Ball Bounce (Bomb Torizo Intact)",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithSpringBallBounce": {
+          "remoteRunway": {
+            "length": 5,
+            "openEnd": 1
+          },
+          "landingRunway": {
+            "length": 1,
+            "openEnd": 1
+          },
+          "movementType": "uncontrolled"
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 6,
+      "link": [1, 1],
+      "name": "Leave Space Jumping (Bomb Torizo Intact)",
+      "requires": [],
+      "exitCondition": {
+        "leaveSpaceJumping": {
+          "remoteRunway": {
+            "length": 3,
+            "openEnd": 1
+          }
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 7,
+      "link": [1, 1],
+      "name": "Leave Spinning (Bomb Torizo Dead)",
+      "requires": [
+        "f_DefeatedBombTorizo"
+      ],
+      "exitCondition": {
+        "leaveSpinning": {
+          "remoteRunway": {
+            "length": 10,
+            "openEnd": 1
+          }
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 8,
+      "link": [1, 1],
+      "name": "Leave With Mockball (Bomb Torizo Dead)",
+      "requires": [
+        "f_DefeatedBombTorizo"
+      ],
+      "exitCondition": {
+        "leaveWithMockball": {
+          "remoteRunway": {
+            "length": 9,
+            "openEnd": 1
+          },
+          "landingRunway": {
+            "length": 1,
+            "openEnd": 1
+          }
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 9,
+      "link": [1, 1],
+      "name": "Leave With Spring Ball Bounce (Bomb Torizo Dead)",
+      "requires": [
+        "f_DefeatedBombTorizo"
+      ],
+      "exitCondition": {
+        "leaveWithSpringBallBounce": {
+          "remoteRunway": {
+            "length": 8,
+            "openEnd": 1
+          },
+          "landingRunway": {
+            "length": 1,
+            "openEnd": 1
+          },
+          "movementType": "uncontrolled"
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 10,
+      "link": [1, 1],
+      "name": "Leave Space Jumping (Bomb Torizo Dead)",
+      "requires": [
+        "f_DefeatedBombTorizo"
+      ],
+      "exitCondition": {
+        "leaveSpaceJumping": {
+          "remoteRunway": {
+            "length": 5,
+            "openEnd": 1
+          }
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 11,
+      "link": [1, 1],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_CrystalFlash"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 22,
+      "link": [1, 1],
+      "name": "In-Room Crystal Spark",
+      "requires": [
+        "f_DefeatedBombTorizo",
+        {"canShineCharge": {"usedTiles": 13, "openEnd": 0}},
+        "h_CrystalSpark"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 25,
+      "link": [1, 1],
+      "name": "R-Mode Crystal Flash Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        {"not": "f_DefeatedBombTorizo"},
+        {"not": "f_ZebesSetAblaze"},
+        "canRiskPermanentLossOfAccess",
+        "h_activateBombTorizo",
+        "canRModeCrystalFlashInterrupt",
+        {"ammo": {"type": "Missile", "count": 10}}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "As Bomb Torizo is standing, Crystal Flash in front of it in order to get hit and reserve trigger."
+      ],
+      "devNote": [
+        "FIXME: If h_activateBombTorizo is changed to require collecting the item in-room, this strat would need a collectsItems.",
+        "Otherwise, it is possible to avoid picking up the item while doing this.",
+        "FIXME: This could be done with G-mode, but not if h_activateBombTorizo is changed to require collecting the item in-room (unless somehow the item was collected earlier without killing BT).",
+        "FIXME: It is possible to farm during the fight before Crystal Flashing, but it requires Samus to be low on Missiles and it is much more difficult to find a safe time to CF."
+      ]
+    },
+    {
+      "id": 19,
+      "link": [1, 1],
+      "name": "Save the Animals",
+      "requires": [
+        "f_ZebesSetAblaze"
+      ],
+      "setsFlags": ["f_AnimalsSaved"],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "devNote": "Technically this also requires opening the wall."
+    },
+    {
+      "id": 12,
+      "link": [1, 2],
+      "name": "Base",
+      "requires": [],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 15,
+      "link": [2, 1],
+      "name": "Base",
+      "requires": [],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    }
+  ],
+  "notables": [],
+  "nextStratId": 26,
+  "nextNotableId": 1
+}

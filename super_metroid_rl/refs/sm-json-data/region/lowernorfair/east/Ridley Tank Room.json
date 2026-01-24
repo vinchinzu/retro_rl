@@ -1,0 +1,132 @@
+{
+  "$schema": "../../../schema/m3-room.schema.json",
+  "id": 143,
+  "name": "Ridley Tank Room",
+  "area": "Norfair",
+  "subarea": "Lower",
+  "subsubarea": "East",
+  "roomAddress": "0x7B698",
+  "roomEnvironments": [{"heated": true}],
+  "mapTileMask": [
+    [1]
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Right Door",
+      "nodeType": "door",
+      "nodeSubType": "blue",
+      "nodeAddress": "0x0019a62",
+      "doorOrientation": "right",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [2]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Hidden Item",
+      "nodeType": "item",
+      "nodeSubType": "hidden",
+      "nodeItem": "ETank",
+      "nodeAddress": "0x79108",
+      "mapTileMask": [
+        [2]
+      ]
+    }
+  ],
+  "enemies": [],
+  "strats": [
+    {
+      "id": 1,
+      "link": [1, 1],
+      "name": "Leave With Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 1,
+          "openEnd": 1
+        }
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 6,
+      "link": [1, 1],
+      "name": "R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        "h_heatProof",
+        "h_heatedCrystalFlashForReserveEnergy",
+        {"disableEquipment": "Varia"},
+        {"disableEquipment": "Gravity"},
+        {"canShineCharge": {"usedTiles": 12, "openEnd": 0}},
+        "h_heatTriggerRModeSparkInterrupt"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "This room has no enemies, so the only damage source is by turning off (or not having) heat protection",
+        "This is a very short shinecharge runway."
+      ]
+    },
+    {
+      "id": 5,
+      "link": [1, 1],
+      "name": "Leave With Side Platform",
+      "requires": [
+        {"heatFrames": 150}
+      ],
+      "exitCondition": {
+        "leaveWithSidePlatform": {
+          "height": 2,
+          "runway": {
+            "length": 12,
+            "openEnd": 0
+          },
+          "obstruction": [1, 0]
+        }
+      },
+      "flashSuitChecked": true,
+      "note": [
+        "If using the full runway, press against the wall and turn around; do not back into the corner."
+      ],
+      "devNote": "Max extra run speed $2.B, or $2.C with Hi-Jump and a quick aim-down."
+    },
+    {
+      "id": 2,
+      "link": [1, 2],
+      "name": "Base",
+      "requires": [
+        "h_navigateHeatRooms",
+        "Morph",
+        {"heatFrames": 50}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 3,
+      "link": [2, 1],
+      "name": "Base",
+      "requires": [
+        "h_navigateHeatRooms",
+        {"heatFrames": 50}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 4,
+      "link": [2, 2],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_heatedCrystalFlash"
+      ],
+      "flashSuitChecked": true
+    }
+  ],
+  "notables": [],
+  "nextStratId": 7,
+  "nextNotableId": 1
+}

@@ -1,0 +1,1046 @@
+{
+  "$schema": "../../../schema/m3-room.schema.json",
+  "id": 91,
+  "name": "Cathedral",
+  "area": "Norfair",
+  "subarea": "Upper",
+  "subsubarea": "East",
+  "roomAddress": "0x7A788",
+  "roomEnvironments": [{"heated": true}],
+  "mapTileMask": [
+    [1, 1, 1],
+    [1, 1, 1]
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Left Door",
+      "nodeType": "door",
+      "nodeSubType": "blue",
+      "nodeAddress": "0x001928e",
+      "doorOrientation": "left",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [2, 1, 1],
+        [2, 1, 1]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Right Door",
+      "nodeType": "door",
+      "nodeSubType": "green",
+      "nodeAddress": "0x001929a",
+      "doorOrientation": "right",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [1, 1, 2],
+        [1, 1, 2]
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Hidden Item",
+      "nodeType": "item",
+      "nodeSubType": "hidden",
+      "nodeItem": "Missile",
+      "nodeAddress": "0x78AE4",
+      "mapTileMask": [
+        [1, 1, 1],
+        [1, 1, 2]
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Junction Above Item",
+      "nodeType": "junction",
+      "nodeSubType": "junction",
+      "mapTileMask": [
+        [1, 2, 1],
+        [1, 2, 1]
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "id": "e1",
+      "groupName": "Cathedral Left Sovas",
+      "enemyName": "Sova",
+      "quantity": 3,
+      "homeNodes": [1]
+    },
+    {
+      "id": "e2",
+      "groupName": "Cathedral Left Geruta",
+      "enemyName": "Geruta",
+      "quantity": 1,
+      "homeNodes": [1]
+    },
+    {
+      "id": "e3",
+      "groupName": "Cathedral Right Sova",
+      "enemyName": "Sova",
+      "quantity": 1,
+      "homeNodes": [2]
+    },
+    {
+      "id": "e4",
+      "groupName": "Cathedral Right Gerutas",
+      "enemyName": "Geruta",
+      "quantity": 2,
+      "homeNodes": [4]
+    }
+  ],
+  "strats": [
+    {
+      "id": 1,
+      "link": [1, 1],
+      "name": "Leave with Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 4,
+          "openEnd": 1
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 2,
+      "link": [1, 1],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_heatedCrystalFlash"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 30,
+      "link": [1, 1],
+      "name": "G-Mode Setup - Get Hit By Sova",
+      "entranceCondition": {
+        "comeInNormally": {}
+      },
+      "requires": [
+        {"or": [
+          {"heatFrames": 1000},
+          {"and": [
+            {"ammo": {"type": "Super", "count": 1}},
+            {"heatFrames": 650}
+          ]}
+        ]}
+      ],
+      "exitCondition": {
+        "leaveWithGModeSetup": {}
+      },
+      "unlocksDoors": [
+        {"types": ["missiles", "super"], "requires": []},
+        {
+          "types": ["powerbomb"],
+          "requires": [{"heatFrames": 40}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "It is possible to use a Super to speed up the Sova."
+    },
+    {
+      "id": 36,
+      "link": [1, 2],
+      "name": "Cross While Farming",
+      "requires": [
+        "canDash",
+        "canFarmWhileShooting",
+        "canTrickyJump",
+        {"or": [
+          "h_usePowerBomb",
+          "Spazer",
+          "Plasma",
+          "Wave"
+        ]},
+        {"resourceMissingAtMost": [
+          {"type": "Missile", "count": 0},
+          {"type": "Super", "count": 0}
+        ]},
+        {"heatFramesWithEnergyDrops": {
+          "frames": 240,
+          "drops": [
+            {"enemy": "Geruta", "count": 1},
+            {"enemy": "Sova", "count": 1}
+          ]
+        }},
+        {"heatFrames": 160}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Cross the room while killing Sovas and a Geruta and then jumping through their drops.",
+        "Killing a Geruta with a PowerBomb will leave 2 drops."
+      ],
+      "devNote": ["The PowerBomb farm treats a Geruta drop as similar to a Sova drop."]
+    },
+    {
+      "id": 3,
+      "link": [1, 2],
+      "name": "Shinespark",
+      "entranceCondition": {
+        "comeInWithSpark": {
+          "position": "top"
+        }
+      },
+      "requires": [
+        {"heatFrames": 240},
+        {"shinespark": {"frames": 57, "excessFrames": 0}}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 28,
+      "link": [1, 2],
+      "name": "Come in Getting Blue Speed, Leave With Temporary Blue",
+      "entranceCondition": {
+        "comeInGettingBlueSpeed": {
+          "length": 3,
+          "openEnd": 1,
+          "minExtraRunSpeed": "$1.E"
+        }
+      },
+      "requires": [
+        "canLongChainTemporaryBlue",
+        {"heatFrames": 750}
+      ],
+      "exitCondition": {
+        "leaveWithTemporaryBlue": {}
+      },
+      "unlocksDoors": [
+        {"types": ["super", "powerbomb"], "requires": []},
+        {
+          "types": ["missiles"],
+          "requires": [{"heatFrames": 50}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "devNote": [
+        "Lower run speeds can also work but may be more difficult or require more heat damage."
+      ]
+    },
+    {
+      "id": 32,
+      "link": [1, 2],
+      "name": "G-Mode",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        {"or": [
+          "h_heatedGModePauseAbuse",
+          "h_heatedGModeOpenDifferentDoor"
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "It is possible to kill a Sova on the door and pause abuse to grab its Energy drop on G-mode exit."
+    },
+    {
+      "id": 33,
+      "link": [1, 3],
+      "name": "G-Mode, To the Item",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "h_heatedGMode",
+        {"or": [
+          {"and": [
+            "canLateralMidAirMorph",
+            {"heatFrames": 60},
+            {"lavaFrames": 20}
+          ]},
+          {"and": [
+            "Morph",
+            {"lavaFrames": 80},
+            {"heatFrames": 20}
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Exit G-mode then air ball into the lava to take fewer heat frames. Kill the Gerutas beforehand to make it easier to escape.",
+      "devNote": ["The option without canLateralMidAirMorph is for conserving a blue suit."]
+    },
+    {
+      "id": 4,
+      "link": [1, 4],
+      "name": "Base",
+      "requires": [
+        {"heatFrames": 300},
+        {"or": [
+          "canDash",
+          {"heatFrames": 40}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 5,
+      "link": [1, 4],
+      "name": "Space Jump",
+      "requires": [
+        "canDash",
+        "SpaceJump",
+        {"heatFrames": 180}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 6,
+      "link": [1, 4],
+      "name": "Space Jump (Come in Running)",
+      "entranceCondition": {
+        "comeInRunning": {
+          "speedBooster": "any",
+          "minTiles": 3
+        }
+      },
+      "requires": [
+        "SpaceJump",
+        {"heatFrames": 140}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 7,
+      "link": [1, 4],
+      "name": "Tricky Platforming",
+      "requires": [
+        "canDash",
+        "canTrickyJump",
+        {"heatFrames": 200}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 8,
+      "link": [1, 4],
+      "name": "Tricky Platforming (Come In Running)",
+      "entranceCondition": {
+        "comeInRunning": {
+          "speedBooster": true,
+          "minTiles": 5
+        }
+      },
+      "requires": [
+        "canTrickyJump",
+        {"or": [
+          {"heatFrames": 190},
+          {"and": [
+            {"heatFrames": 165},
+            {"or": [
+              "ScrewAttack",
+              "Wave",
+              "Spazer",
+              "Plasma",
+              {"ammo": {"type": "Missile", "count": 1}},
+              {"ammo": {"type": "Super", "count": 1}},
+              {"and": [
+                "Grapple",
+                {"heatFrames": 10}
+              ]}
+            ]}
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "If a suitable weapon is available, jump over the first pillar and kill the Sova before landing on it."
+      ],
+      "devNote": ["FIXME: farming the Sova would also be an option."]
+    },
+    {
+      "id": 9,
+      "link": [1, 4],
+      "name": "Mockball",
+      "entranceCondition": {
+        "comeInRunning": {
+          "speedBooster": "any",
+          "minTiles": 3
+        }
+      },
+      "requires": [
+        "canCarefulJump",
+        "canMockball",
+        {"heatFrames": 180}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Upon room entry, jump and mockball on top of the first pillar."
+    },
+    {
+      "id": 37,
+      "link": [2, 1],
+      "name": "Cross While Farming",
+      "requires": [
+        "canDash",
+        "canFarmWhileShooting",
+        "canTrickyJump",
+        {"or": [
+          {"and": [
+            "h_usePowerBomb",
+            {"heatFrames": 60}
+          ]},
+          "Spazer",
+          "Plasma",
+          "Wave"
+        ]},
+        {"resourceMissingAtMost": [
+          {"type": "Missile", "count": 0},
+          {"type": "Super", "count": 0}
+        ]},
+        {"heatFramesWithEnergyDrops": {
+          "frames": 315,
+          "drops": [
+            {"enemy": "Geruta", "count": 1},
+            {"enemy": "Sova", "count": 1}
+          ]
+        }},
+        {"heatFrames": 85}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Cross the room while killing Sovas and a Geruta and then jumping through their drops.",
+        "Killing a Geruta with a PowerBomb will leave 2 drops and it may be better to detour to the second Geruta for more drops."
+      ],
+      "devNote": [
+        "This is an approximation.  PBs can collect 4 geruta drops with a detour.  Beams may prefer 2 Sovas."
+      ]
+    },
+    {
+      "id": 10,
+      "link": [2, 1],
+      "name": "Shinespark",
+      "entranceCondition": {
+        "comeInShinecharging": {
+          "length": 5,
+          "openEnd": 0,
+          "gentleUpTiles": 2
+        }
+      },
+      "requires": [
+        "canShinechargeMovementTricky",
+        "canHorizontalShinespark",
+        {"heatFrames": 225},
+        {"shinespark": {"frames": 53, "excessFrames": 0}},
+        {"heatFrames": 105}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 29,
+      "link": [2, 1],
+      "name": "Come in Shinecharging, Leave With Temporary Blue",
+      "entranceCondition": {
+        "comeInShinecharging": {
+          "length": 3,
+          "openEnd": 0
+        }
+      },
+      "requires": [
+        "HiJump",
+        "canLongChainTemporaryBlue",
+        {"heatFrames": 955},
+        {"or": [
+          "canXRayCancelShinecharge",
+          {"heatFrames": 150}
+        ]}
+      ],
+      "exitCondition": {
+        "leaveWithTemporaryBlue": {}
+      },
+      "unlocksDoors": [
+        {"types": ["super", "powerbomb"], "requires": []},
+        {
+          "types": ["missiles"],
+          "requires": [{"heatFrames": 50}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Carefully planned movement is needed to avoid damage from the Gerutas, and to avoid bonking on the overhangs."
+      ]
+    },
+    {
+      "id": 34,
+      "link": [2, 1],
+      "name": "G-Mode",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        {"or": [
+          "h_heatedGModePauseAbuse",
+          "h_heatedGModeOpenDifferentDoor"
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "It is possible to kill a Sova on the door and pause abuse to grab its Energy drop on G-mode exit.",
+        "There is a Sova below the door that can be lured over to it."
+      ]
+    },
+    {
+      "id": 11,
+      "link": [2, 1],
+      "name": "Grapple Teleport",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[5, 3], [7, 2]]
+        }
+      },
+      "requires": [
+        {"heatFrames": 45}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 12,
+      "link": [2, 1],
+      "name": "Grapple Teleport X-Ray Climb",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[2, 28], [2, 29]]
+        }
+      },
+      "requires": [
+        "canXRayClimb",
+        {"heatFrames": 1600}
+      ],
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Exit the previous room with Samus in a standing pose (while grappled).",
+        "After teleporting, press right to release Grapple while staying standing (not being forced into a crouch).",
+        "Then X-ray climb 1 screen to get up to the door transition, without needing to open the door."
+      ]
+    },
+    {
+      "id": 13,
+      "link": [2, 2],
+      "name": "Leave with Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 6,
+          "openEnd": 0,
+          "gentleDownTiles": 2,
+          "startingDownTiles": 2
+        }
+      },
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 14,
+      "link": [2, 2],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_heatedCrystalFlash"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 31,
+      "link": [2, 2],
+      "name": "G-Mode Setup - Get Hit By Sova",
+      "entranceCondition": {
+        "comeInNormally": {}
+      },
+      "requires": [
+        {"or": [
+          {"heatFrames": 425},
+          {"and": [
+            {"ammo": {"type": "Super", "count": 1}},
+            {"heatFrames": 160}
+          ]}
+        ]}
+      ],
+      "exitCondition": {
+        "leaveWithGModeSetup": {}
+      },
+      "unlocksDoors": [
+        {"types": ["missiles", "super"], "requires": []},
+        {"types": ["powerbomb"], "requires": ["never"]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Jump on entry, as the Sova is not global and barely off screen. It is possible to use a Super to speed it up.",
+      "devNote": "Generally, coming from the left works, but that would require modeling the room traversal too."
+    },
+    {
+      "id": 35,
+      "link": [2, 3],
+      "name": "G-Mode, To the Item",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": false
+        }
+      },
+      "requires": [
+        "h_heatedGMode",
+        {"or": [
+          {"and": [
+            "canLateralMidAirMorph",
+            {"heatFrames": 60},
+            {"lavaFrames": 20}
+          ]},
+          {"and": [
+            "Morph",
+            {"lavaFrames": 80},
+            {"heatFrames": 20}
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Exit G-mode then air ball into the lava to take fewer heat frames. Kill the Gerutas beforehand to make it easier to escape.",
+      "devNote": ["The option without canLateralMidAirMorph is for conserving a blue suit."]
+    },
+    {
+      "id": 15,
+      "link": [2, 4],
+      "name": "Base",
+      "requires": [
+        {"heatFrames": 300}
+      ],
+      "flashSuitChecked": true,
+      "devNote": ["This number waits for the Geruta an extra cycle."]
+    },
+    {
+      "id": 39,
+      "link": [2, 4],
+      "name": "Blue Suit",
+      "requires": [
+        {"haveBlueSuit": {}},
+        {"heatFrames": 210}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": ["Use a blue suit to kill the Sova and Geruta."]
+    },
+    {
+      "id": 16,
+      "link": [2, 4],
+      "name": "Tricky Platforming",
+      "requires": [
+        "canDash",
+        "canTrickyJump",
+        {"or": [
+          "ScrewAttack",
+          {"and": [
+            "canDodgeWhileShooting",
+            {"or": [
+              "Wave",
+              "Spazer",
+              "Plasma",
+              "canPseudoScrew",
+              {"ammo": {"type": "Missile", "count": 1}},
+              {"ammo": {"type": "Super", "count": 1}}
+            ]}
+          ]},
+          {"heatFrames": 5}
+        ]},
+        {"heatFrames": 190}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 38,
+      "link": [2, 4],
+      "name": "Tricky Platforming while Farming",
+      "requires": [
+        "canDash",
+        "canFarmWhileShooting",
+        "canTrickyJump",
+        "h_usePowerBomb",
+        {"resourceMissingAtMost": [
+          {"type": "Missile", "count": 0},
+          {"type": "Super", "count": 0}
+        ]},
+        {"heatFramesWithEnergyDrops": {
+          "frames": 270,
+          "drops": [{"enemy": "Geruta", "count": 4}]
+        }},
+        {"or": [
+          "canInsaneJump",
+          {"heatFrames": 30}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Place a Power Bomb near below the Sova to kill both Gerutas, resulting in 4 drops."
+      ]
+    },
+    {
+      "id": 17,
+      "link": [3, 4],
+      "name": "Base",
+      "requires": [
+        {"or": [
+          {"and": [
+            {"heatFrames": 150},
+            {"lavaFrames": 40}
+          ]},
+          {"and": [
+            "Gravity",
+            {"heatFrames": 140},
+            {"lavaFrames": 30}
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "devNote": ["This assumes that the Geruta closest to the item has already been killed."]
+    },
+    {
+      "id": 18,
+      "link": [4, 1],
+      "name": "Base",
+      "requires": [
+        "canDash",
+        {"or": [
+          {"and": [
+            {"or": [
+              "Plasma",
+              "ScrewAttack",
+              "canPseudoScrew",
+              {"ammo": {"type": "Super", "count": 1}}
+            ]},
+            {"heatFrames": 270}
+          ]},
+          {"and": [
+            {"or": [
+              "h_usePowerBomb",
+              "Ice",
+              "Wave",
+              "Spazer",
+              {"ammo": {"type": "Missile", "count": 2}}
+            ]},
+            {"heatFrames": 300}
+          ]},
+          {"and": [
+            {"or": [
+              "canDodgeWhileShooting",
+              {"enemyDamage": {"enemy": "Geruta", "type": "contact", "hits": 1}}
+            ]},
+            {"heatFrames": 390}
+          ]}
+        ]}
+      ],
+      "unlocksDoors": [
+        {
+          "types": ["powerbomb"],
+          "requires": [{"heatFrames": 50}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "devNote": ["FIXME: Powerbomb kill would also unlock the door."]
+    },
+    {
+      "id": 40,
+      "link": [4, 1],
+      "name": "Blue Suit",
+      "requires": [
+        {"haveBlueSuit": {}},
+        {"heatFrames": 340}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Use a blue suit to kill the Gerutas."
+    },
+    {
+      "id": 19,
+      "link": [4, 1],
+      "name": "Running Jump",
+      "requires": [
+        "canDash",
+        "canCarefulJump",
+        "canDodgeWhileShooting",
+        {"heatFrames": 200}
+      ],
+      "unlocksDoors": [
+        {
+          "types": ["missiles"],
+          "requires": [{"heatFrames": 25}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Build speed on the central platform and jump to the door."
+    },
+    {
+      "id": 20,
+      "link": [4, 2],
+      "name": "Base",
+      "requires": [
+        "canDash",
+        {"heatFrames": 250}
+      ],
+      "unlocksDoors": [
+        {
+          "types": ["missiles"],
+          "requires": [{"heatFrames": 60}]
+        },
+        {"types": ["super"], "requires": []},
+        {
+          "types": ["powerbomb"],
+          "requires": [{"heatFrames": 60}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 41,
+      "link": [4, 2],
+      "name": "Blue Suit",
+      "requires": [
+        {"haveBlueSuit": {}},
+        {"heatFrames": 215}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Use a blue suit to deal with the Geruta if it is still there."
+    },
+    {
+      "id": 21,
+      "link": [4, 2],
+      "name": "Base Platforming Leave with Runway",
+      "requires": [
+        "canDash",
+        {"heatFrames": 240}
+      ],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 6,
+          "openEnd": 0,
+          "gentleDownTiles": 2,
+          "startingDownTiles": 2
+        }
+      },
+      "unlocksDoors": [
+        {
+          "types": ["missiles"],
+          "requires": [{"heatFrames": 60}]
+        },
+        {"types": ["super"], "requires": []},
+        {
+          "types": ["powerbomb"],
+          "requires": [{"heatFrames": 60}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 22,
+      "link": [4, 2],
+      "name": "Tricky Platforming",
+      "requires": [
+        "canDash",
+        "canTrickyJump",
+        {"heatFrames": 160}
+      ],
+      "unlocksDoors": [
+        {
+          "types": ["missiles"],
+          "requires": [{"heatFrames": 60}]
+        },
+        {"types": ["super"], "requires": []},
+        {
+          "types": ["powerbomb"],
+          "requires": [{"heatFrames": 60}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 23,
+      "link": [4, 2],
+      "name": "Tricky Platforming Leave with Runway",
+      "requires": [
+        "canDash",
+        "canTrickyJump",
+        {"heatFrames": 150}
+      ],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 6,
+          "openEnd": 0,
+          "gentleDownTiles": 2,
+          "startingDownTiles": 2
+        }
+      },
+      "unlocksDoors": [
+        {
+          "types": ["missiles"],
+          "requires": [{"heatFrames": 60}]
+        },
+        {"types": ["super"], "requires": []},
+        {
+          "types": ["powerbomb"],
+          "requires": [{"heatFrames": 60}]
+        }
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 24,
+      "link": [4, 3],
+      "name": "Base",
+      "requires": [
+        "canDash",
+        "Morph",
+        {"heatFrames": 210},
+        {"or": [
+          {"enemyKill": {
+            "enemies": [["Geruta"]],
+            "explicitWeapons": [
+              "Super",
+              "Missile",
+              "PowerBomb",
+              "ScrewAttack",
+              "Plasma",
+              "Spazer",
+              "Wave",
+              "PseudoScrew"
+            ]
+          }},
+          {"and": [
+            "canDodgeWhileShooting",
+            {"heatFrames": 100}
+          ]},
+          {"and": [
+            {"enemyDamage": {"enemy": "Geruta", "type": "contact", "hits": 1}},
+            {"heatFrames": 200}
+          ]}
+        ]},
+        {"or": [
+          {"and": [
+            "canInsaneJump",
+            {"lavaFrames": 20}
+          ]},
+          {"and": [
+            {"lavaFrames": 70},
+            {"heatFrames": 50}
+          ]},
+          {"and": [
+            "Gravity",
+            {"lavaFrames": 40},
+            {"heatFrames": 20}
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 42,
+      "link": [4, 3],
+      "name": "Blue Suit",
+      "requires": [
+        "Morph",
+        {"haveBlueSuit": {}},
+        {"heatFrames": 160},
+        {"lavaFrames": 60}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 26,
+      "link": [4, 4],
+      "name": "Sova and Geruta Farm",
+      "requires": [
+        "h_heatProof",
+        {"or": [
+          {"and": [
+            {"resetRoom": {"nodes": [1]}},
+            {"cycleFrames": 1080}
+          ]},
+          {"and": [
+            {"resetRoom": {"nodes": [2]}},
+            {"cycleFrames": 1230}
+          ]}
+        ]},
+        {"or": [
+          {"and": [
+            "canDash",
+            {"or": [
+              "Plasma",
+              "Wave",
+              {"and": [
+                "ScrewAttack",
+                {"cycleFrames": 150}
+              ]},
+              {"and": [
+                "Spazer",
+                {"cycleFrames": 60}
+              ]},
+              {"cycleFrames": 700}
+            ]}
+          ]},
+          {"and": [
+            {"haveBlueSuit": {}},
+            {"cycleFrames": 540}
+          ]}
+        ]}
+      ],
+      "farmCycleDrops": [
+        {"enemy": "Sova", "count": 4},
+        {"enemy": "Geruta", "count": 3}
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    },
+    {
+      "id": 27,
+      "link": [4, 4],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_heatedCrystalFlash"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true
+    }
+  ],
+  "notables": [],
+  "nextStratId": 43,
+  "nextNotableId": 1
+}

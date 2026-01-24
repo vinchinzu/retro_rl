@@ -1,0 +1,71 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.11)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+
+============================================================
+HARVEST MOON BOT
+============================================================
+
+Controls:
+  Controller: Xbox 360 Controller
+    D-Pad/Stick: Movement
+    A: Confirm | B: Cancel | X: Menu | Y: Use Item
+    LB/RB: Cycle Items
+    LB+RB+SELECT: Toggle Human/Bot Mode
+  Keyboard:
+    Arrows: D-Pad
+    Z: Cancel (B) | C: Confirm (A) | V: Menu (X) | X: Use Item (Y)
+    A/S: Cycle Items (L/R)
+    A+S+TAB: Toggle Human/Bot Mode
+    P: Mark current tile as no-go (debug)
+  F5: Save | F9: Load | TAB: Fast Forward | ESC: Exit
+  L+R+SELECT: Toggle Human/Bot
+============================================================
+[CLEARER] Task: get_hammer
+[BOT] Map locked: 0x00
+[CLEARER] Debug @ 300f pos=Point(x=281, y=466) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 600f pos=Point(x=358, y=582) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 900f pos=Point(x=390, y=665) tool=0x03 map=0x00 state=scanning
+[CLEARER] Task: get_axe
+[CLEARER] Debug @ 1200f pos=Point(x=562, y=647) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 1500f pos=Point(x=747, y=758) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 1800f pos=Point(x=822, y=750) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 2100f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Startup complete
+[CLEARER] Phase: ROCK
+[CLEARER] Target: ROCK at (53, 57) (HAMMER)
+[CLEARER] Debug @ 2400f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 2700f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 3000f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 3300f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 3600f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 3900f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 4200f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 4500f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 4800f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 5100f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 5400f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 5700f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 6000f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 6300f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 6600f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 6900f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 7200f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 7500f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 7800f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 8100f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 8400f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 8700f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 9000f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 9300f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 9600f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 9900f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 10200f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 10500f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 10800f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 11100f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 11400f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 11700f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[CLEARER] Debug @ 12000f pos=Point(x=830, y=965) tool=0x03 map=0x00 state=scanning
+[STOP] max_frames=12000
+
+Frames: 12000

@@ -1,0 +1,7 @@
+flatten_json
+jsonschema
+referencing
+numpy
+opencv-python
+pillow
+pyyaml

@@ -1,0 +1,140 @@
+{
+  "$schema": "../../../schema/m3-room.schema.json",
+  "id": 6,
+  "name": "Ceres Ridley's Room",
+  "area": "Ceres Station",
+  "subarea": "Ceres Station",
+  "roomAddress": "0x7E0B5",
+  "roomEnvironments": [{"heated": false}],
+  "mapTileMask": [
+    [1]
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Left Door",
+      "nodeType": "door",
+      "nodeSubType": "gray",
+      "nodeAddress": "0x001abb8",
+      "doorOrientation": "left",
+      "doorEnvironments": [{"physics": "air"}],
+      "locks": [
+        {
+          "name": "Ceres Ridley Room Gray Lock (to 58 Escape)",
+          "lockType": "gameFlag",
+          "unlockStrats": [
+            {
+              "name": "Base",
+              "requires": [
+                "f_DefeatedCeresRidley"
+              ],
+              "flashSuitChecked": true
+            }
+          ]
+        }
+      ],
+      "mapTileMask": [
+        [2]
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "id": "e1",
+      "groupName": "Ceres Ridley",
+      "enemyName": "Ceres Ridley",
+      "quantity": 1,
+      "homeNodes": [1],
+      "stopSpawn": ["f_DefeatedCeresRidley"]
+    }
+  ],
+  "strats": [
+    {
+      "id": 1,
+      "link": [1, 1],
+      "name": "Leave With Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 2,
+          "openEnd": 1
+        }
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 2,
+      "link": [1, 1],
+      "name": "Power Bomb the Door",
+      "requires": [
+        "h_usePowerBomb"
+      ],
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true
+    },
+    {
+      "id": 3,
+      "link": [1, 1],
+      "name": "Leave With Runway, Power Bomb the Door",
+      "requires": [
+        "h_usePowerBomb"
+      ],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 2,
+          "openEnd": 1
+        }
+      },
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true
+    },
+    {
+      "id": 7,
+      "link": [1, 1],
+      "name": "Ceres Ridley Flyby Spark Interrupt",
+      "requires": [
+        "canRiskPermanentLossOfAccess",
+        {"not": "f_DefeatedCeresRidley"},
+        {"or": [
+          {"resourceAtMost": [{"type": "RegularEnergy", "count": 29}]},
+          {"and": [
+            "canTrickyDodgeEnemies",
+            "canDodgeWhileShooting"
+          ]}
+        ]},
+        {"or": [
+          {"canShineCharge": {"usedTiles": 12, "openEnd": 0}},
+          {"useFlashSuit": {}}
+        ]},
+        {"tech": "canRModeSparkInterrupt"},
+        {"shinespark": {"frames": 0}},
+        {"gainBlueSuit": {}}
+      ],
+      "setsFlags": ["f_DefeatedCeresRidley"],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": "Very tight short charge or bring in a flash suit. Windup the shinespark during Ridley's flyby.",
+      "devNote": [
+        "FIXME: A 100-shot fight would allow preserving more energy for escaping afterward, but needs a more accurate scenario than just a pair of tech."
+      ]
+    },
+    {
+      "id": 6,
+      "link": [1, 1],
+      "name": "Ceres Ridley",
+      "requires": [
+        {"resourceAtMost": [{"type": "RegularEnergy", "count": 29}]}
+      ],
+      "setsFlags": ["f_DefeatedCeresRidley"],
+      "flashSuitChecked": true,
+      "note": "Just taking damage is enough to finish the fight.",
+      "devNote": [
+        "It is possible to finish the fight with more Reserve Energy.",
+        "It's also possible to get through this fight without losing energy, but it is pointless, difficult, and very time-consuming."
+      ]
+    }
+  ],
+  "notables": [],
+  "nextStratId": 8,
+  "nextNotableId": 1
+}
