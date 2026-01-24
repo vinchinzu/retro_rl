@@ -1,0 +1,128 @@
+{
+  "info": {
+    "year": {
+      "address": 73496,
+      "type": "|u1"
+    },
+    "season": {
+      "address": 73497,
+      "type": "|u1"
+    },
+    "day_of_week": {
+      "address": 73498,
+      "type": "|u1"
+    },
+    "day": {
+      "address": 73499,
+      "type": "|u1"
+    },
+    "hour": {
+      "address": 73500,
+      "type": "|u1"
+    },
+    "minute": {
+      "address": 73501,
+      "type": "|u1"
+    },
+    "stamina": {
+      "address": 2328,
+      "type": "|u1"
+    },
+    "item_in_hand": {
+      "address": 2337,
+      "type": "|u1"
+    },
+    "item_in_hand_alt": {
+      "address": 2339,
+      "type": "|u1"
+    },
+    "water_can": {
+      "address": 2342,
+      "type": "|u1"
+    },
+    "grass_seeds": {
+      "address": 2343,
+      "type": "|u1"
+    },
+    "corn_seeds": {
+      "address": 2344,
+      "type": "|u1"
+    },
+    "tomato_seeds": {
+      "address": 2345,
+      "type": "|u1"
+    },
+    "potato_seeds": {
+      "address": 2346,
+      "type": "|u1"
+    },
+    "turnip_seeds": {
+      "address": 2347,
+      "type": "|u1"
+    },
+    "money_lo": {
+      "address": 73476,
+      "type": "|u1"
+    },
+    "money_mid": {
+      "address": 73477,
+      "type": "|u1"
+    },
+    "money_hi": {
+      "address": 73478,
+      "type": "|u1"
+    },
+    "money_bcd_lo": {
+      "address": 209,
+      "type": "|u1"
+    },
+    "money_bcd_hi": {
+      "address": 210,
+      "type": "|u1"
+    },
+    "wood_lo": {
+      "address": 73484,
+      "type": "|u1"
+    },
+    "wood_hi": {
+      "address": 73485,
+      "type": "|u1"
+    },
+    "num_cows": {
+      "address": 73482,
+      "type": "|u1"
+    },
+    "num_chickens": {
+      "address": 73483,
+      "type": "|u1"
+    },
+    "hay_lo": {
+      "address": 73488,
+      "type": "|u1"
+    },
+    "hay_hi": {
+      "address": 73489,
+      "type": "|u1"
+    },
+    "power_berries": {
+      "address": 73526,
+      "type": "|u1"
+    },
+    "house_size": {
+      "address": 2416,
+      "type": "|u1"
+    },
+    "weather": {
+      "address": 2444,
+      "type": "|u1"
+    },
+    "cow_fed_status": {
+      "address": 2352,
+      "type": "|u1"
+    },
+    "chicken_fed_status": {
+      "address": 2353,
+      "type": "|u1"
+    }
+  }
+}

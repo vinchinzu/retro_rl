@@ -1,0 +1,372 @@
+{
+    "Blue Brinstar Elevator Room [from Pit Room]": {
+        "best_frames": 340,
+        "best_seconds": 5.666666666666667,
+        "history": [
+            {
+                "frames": 340,
+                "seconds": 5.666666666666667,
+                "timestamp": 1768923222
+            },
+            {
+                "frames": 368,
+                "seconds": 6.133333333333334,
+                "timestamp": 1768921718
+            }
+        ]
+    },
+    "Blue Brinstar Energy Tank Room [from Blue Brinstar Energy Tank Room]": {
+        "best_frames": 424,
+        "best_seconds": 7.066666666666666,
+        "history": [
+            {
+                "frames": 424,
+                "seconds": 7.066666666666666,
+                "timestamp": 1768923402
+            }
+        ]
+    },
+    "Blue Brinstar Energy Tank Room [from Construction Zone]": {
+        "best_frames": 17,
+        "best_seconds": 0.2833333333333333,
+        "history": [
+            {
+                "frames": 1143,
+                "seconds": 19.05,
+                "timestamp": 1768921723
+            },
+            {
+                "frames": 17,
+                "seconds": 0.2833333333333333,
+                "timestamp": 1768923311
+            }
+        ]
+    },
+    "Bomb Torizo Room [from Flyway]": {
+        "best_frames": 4244,
+        "best_seconds": 70.73333333333333,
+        "history": [
+            {
+                "frames": 4244,
+                "seconds": 70.73333333333333,
+                "timestamp": 1768944682
+            }
+        ]
+    },
+    "Climb [from Climb]": {
+        "best_frames": 3354,
+        "best_seconds": 55.9,
+        "history": [
+            {
+                "frames": 3354,
+                "seconds": 55.9,
+                "timestamp": 1768924976
+            }
+        ]
+    },
+    "Climb [from Parlor and Alcatraz]": {
+        "best_frames": 699,
+        "best_seconds": 11.65,
+        "history": [
+            {
+                "frames": 699,
+                "seconds": 11.65,
+                "timestamp": 1768923220
+            },
+            {
+                "frames": 735,
+                "seconds": 12.25,
+                "timestamp": 1768921716
+            }
+        ]
+    },
+    "Climb [from Pit Room]": {
+        "best_frames": 3508,
+        "best_seconds": 58.46666666666667,
+        "history": [
+            {
+                "frames": 3508,
+                "seconds": 58.46666666666667,
+                "timestamp": 1768944993
+            },
+            {
+                "frames": 4509,
+                "seconds": 75.15,
+                "timestamp": 1768944679
+            }
+        ]
+    },
+    "Construction Zone [from Blue Brinstar Energy Tank Room]": {
+        "best_frames": 193,
+        "best_seconds": 3.216666666666667,
+        "history": [
+            {
+                "frames": 193,
+                "seconds": 3.216666666666667,
+                "timestamp": 1768921724
+            },
+            {
+                "frames": 294,
+                "seconds": 4.9,
+                "timestamp": 1768923403
+            }
+        ]
+    },
+    "Construction Zone [from First Missile Room]": {
+        "best_frames": 757,
+        "best_seconds": 12.616666666666667,
+        "history": [
+            {
+                "frames": 871,
+                "seconds": 14.516666666666667,
+                "timestamp": 1768921722
+            },
+            {
+                "frames": 757,
+                "seconds": 12.616666666666667,
+                "timestamp": 1768923310
+            }
+        ]
+    },
+    "Construction Zone [from Morph Ball Room]": {
+        "best_frames": 565,
+        "best_seconds": 9.416666666666666,
+        "history": [
+            {
+                "frames": 565,
+                "seconds": 9.416666666666666,
+                "timestamp": 1768921720
+            }
+        ]
+    },
+    "First Missile Room [from Construction Zone]": {
+        "best_frames": 789,
+        "best_seconds": 13.15,
+        "history": [
+            {
+                "frames": 789,
+                "seconds": 13.15,
+                "timestamp": 1768921721
+            }
+        ]
+    },
+    "First Missile Room [from First Missile Room]": {
+        "best_frames": 814,
+        "best_seconds": 13.566666666666666,
+        "history": [
+            {
+                "frames": 814,
+                "seconds": 13.566666666666666,
+                "timestamp": 1768923309
+            }
+        ]
+    },
+    "Flyway [from Bomb Torizo Room]": {
+        "best_frames": 387,
+        "best_seconds": 6.45,
+        "history": [
+            {
+                "frames": 387,
+                "seconds": 6.45,
+                "timestamp": 1768944683
+            }
+        ]
+    },
+    "Flyway [from Parlor and Alcatraz]": {
+        "best_frames": 511,
+        "best_seconds": 8.516666666666667,
+        "history": [
+            {
+                "frames": 511,
+                "seconds": 8.516666666666667,
+                "timestamp": 1768924978
+            },
+            {
+                "frames": 515,
+                "seconds": 8.583333333333334,
+                "timestamp": 1768944681
+            }
+        ]
+    },
+    "Green Brinstar Elevator Room [from Lower Mushrooms]": {
+        "best_frames": 209,
+        "best_seconds": 3.4833333333333334,
+        "history": [
+            {
+                "frames": 209,
+                "seconds": 3.4833333333333334,
+                "timestamp": 1768924779
+            }
+        ]
+    },
+    "Landing Site [from Landing Site]": {
+        "best_frames": 201,
+        "best_seconds": 3.35,
+        "history": [
+            {
+                "frames": 497,
+                "seconds": 8.283333333333333,
+                "timestamp": 1768922846
+            },
+            {
+                "frames": 578,
+                "seconds": 9.633333333333333,
+                "timestamp": 1768921714
+            },
+            {
+                "frames": 201,
+                "seconds": 3.35,
+                "timestamp": 1768922401
+            },
+            {
+                "frames": 486,
+                "seconds": 8.1,
+                "timestamp": 1768922759
+            },
+            {
+                "frames": 499,
+                "seconds": 8.316666666666666,
+                "timestamp": 1768922941
+            },
+            {
+                "frames": 551,
+                "seconds": 9.183333333333334,
+                "timestamp": 1768923038
+            }
+        ]
+    },
+    "Lower Mushrooms [from Lower Mushrooms]": {
+        "best_frames": 738,
+        "best_seconds": 12.3,
+        "history": [
+            {
+                "frames": 738,
+                "seconds": 12.3,
+                "timestamp": 1768924778
+            }
+        ]
+    },
+    "Morph Ball Room [from Blue Brinstar Elevator Room]": {
+        "best_frames": 1741,
+        "best_seconds": 29.016666666666666,
+        "history": [
+            {
+                "frames": 1893,
+                "seconds": 31.55,
+                "timestamp": 1768923223
+            },
+            {
+                "frames": 1741,
+                "seconds": 29.016666666666666,
+                "timestamp": 1768921719
+            }
+        ]
+    },
+    "Morph Ball Room [from Construction Zone]": {
+        "best_frames": 229,
+        "best_seconds": 3.816666666666667,
+        "history": [
+            {
+                "frames": 229,
+                "seconds": 3.816666666666667,
+                "timestamp": 1768923404
+            }
+        ]
+    },
+    "Parlor and Alcatraz [from Climb]": {
+        "best_frames": 1986,
+        "best_seconds": 33.1,
+        "history": [
+            {
+                "frames": 1986,
+                "seconds": 33.1,
+                "timestamp": 1768944994
+            },
+            {
+                "frames": 2042,
+                "seconds": 34.03333333333333,
+                "timestamp": 1768924977
+            },
+            {
+                "frames": 2791,
+                "seconds": 46.516666666666666,
+                "timestamp": 1768944680
+            }
+        ]
+    },
+    "Parlor and Alcatraz [from Flyway]": {
+        "best_frames": 59,
+        "best_seconds": 0.9833333333333333,
+        "history": [
+            {
+                "frames": 59,
+                "seconds": 0.9833333333333333,
+                "timestamp": 1768944684
+            }
+        ]
+    },
+    "Parlor and Alcatraz [from Landing Site]": {
+        "best_frames": 29,
+        "best_seconds": 0.48333333333333334,
+        "history": [
+            {
+                "frames": 848,
+                "seconds": 14.133333333333333,
+                "timestamp": 1768921715
+            },
+            {
+                "frames": 29,
+                "seconds": 0.48333333333333334,
+                "timestamp": 1768922942
+            },
+            {
+                "frames": 940,
+                "seconds": 15.666666666666666,
+                "timestamp": 1768923039
+            }
+        ]
+    },
+    "Parlor and Alcatraz [from Parlor and Alcatraz]": {
+        "best_frames": 978,
+        "best_seconds": 16.3,
+        "history": [
+            {
+                "frames": 978,
+                "seconds": 16.3,
+                "timestamp": 1768923219
+            }
+        ]
+    },
+    "Pit Room [from Climb]": {
+        "best_frames": 624,
+        "best_seconds": 10.4,
+        "history": [
+            {
+                "frames": 687,
+                "seconds": 11.45,
+                "timestamp": 1768923221
+            },
+            {
+                "frames": 624,
+                "seconds": 10.4,
+                "timestamp": 1768921717
+            }
+        ]
+    },
+    "Pit Room [from Pit Room]": {
+        "best_frames": 777,
+        "best_seconds": 12.95,
+        "history": [
+            {
+                "frames": 777,
+                "seconds": 12.95,
+                "timestamp": 1768944992
+            },
+            {
+                "frames": 1826,
+                "seconds": 30.433333333333334,
+                "timestamp": 1768944678
+            }
+        ]
+    }
+}

@@ -1,0 +1,356 @@
+{
+    "Blue Brinstar Elevator Room": {
+        "best_frames": 372,
+        "best_seconds": 6.2,
+        "history": [
+            {
+                "frames": 372,
+                "seconds": 6.2,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Blue Brinstar Energy Tank Room": {
+        "best_frames": 1157,
+        "best_seconds": 19.283333333333335,
+        "history": [
+            {
+                "frames": 1157,
+                "seconds": 19.283333333333335,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Climb": {
+        "best_frames": 755,
+        "best_seconds": 12.583333333333334,
+        "history": [
+            {
+                "frames": 755,
+                "seconds": 12.583333333333334,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Construction Zone": {
+        "best_frames": 330,
+        "best_seconds": 5.5,
+        "history": [
+            {
+                "frames": 511,
+                "seconds": 8.516666666666667,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "First Missile Room": {
+        "best_frames": 723,
+        "best_seconds": 12.05,
+        "history": [
+            {
+                "frames": 723,
+                "seconds": 12.05,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Flyway": {
+        "best_frames": 128,
+        "best_seconds": 2.1333333333333333,
+        "history": [
+            {
+                "frames": 128,
+                "seconds": 2.1333333333333333,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Landing Site": {
+        "best_frames": 546,
+        "best_seconds": 9.1,
+        "history": [
+            {
+                "frames": 546,
+                "seconds": 9.1,
+                "timestamp": 1768865652
+            },
+            {
+                "frames": 546,
+                "seconds": 9.1,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Morph Ball Room": {
+        "best_frames": 817,
+        "best_seconds": 13.616666666666667,
+        "history": [
+            {
+                "frames": 1827,
+                "seconds": 30.45,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Parlor and Alcatraz": {
+        "best_frames": 968,
+        "best_seconds": 16.133333333333333,
+        "history": [
+            {
+                "frames": 968,
+                "seconds": 16.133333333333333,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Pit Room": {
+        "best_frames": 583,
+        "best_seconds": 9.716666666666667,
+        "history": [
+            {
+                "frames": 583,
+                "seconds": 9.716666666666667,
+                "timestamp": 1768866706
+            }
+        ]
+    },
+    "Room15": {
+        "best_frames": 975,
+        "best_seconds": 16.25,
+        "history": [
+            {
+                "frames": 975,
+                "seconds": 16.25,
+                "timestamp": 1768865657
+            },
+            {
+                "frames": 3703,
+                "seconds": 61.71666666666667,
+                "timestamp": 1768865684
+            },
+            {
+                "frames": 975,
+                "seconds": 16.25,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room16": {
+        "best_frames": 38,
+        "best_seconds": 0.6333333333333333,
+        "history": [
+            {
+                "frames": 1026,
+                "seconds": 17.1,
+                "timestamp": 1768865654
+            },
+            {
+                "frames": 618,
+                "seconds": 10.3,
+                "timestamp": 1768865658
+            },
+            {
+                "frames": 926,
+                "seconds": 15.433333333333334,
+                "timestamp": 1768865676
+            },
+            {
+                "frames": 1762,
+                "seconds": 29.366666666666667,
+                "timestamp": 1768865688
+            },
+            {
+                "frames": 1663,
+                "seconds": 27.716666666666665,
+                "timestamp": 1768865704
+            },
+            {
+                "frames": 1026,
+                "seconds": 17.1,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room17": {
+        "best_frames": 372,
+        "best_seconds": 6.2,
+        "history": [
+            {
+                "frames": 398,
+                "seconds": 6.633333333333334,
+                "timestamp": 1768865659
+            },
+            {
+                "frames": 372,
+                "seconds": 6.2,
+                "timestamp": 1768865674
+            },
+            {
+                "frames": 530,
+                "seconds": 8.833333333333334,
+                "timestamp": 1768865689
+            },
+            {
+                "frames": 376,
+                "seconds": 6.266666666666667,
+                "timestamp": 1768865699
+            },
+            {
+                "frames": 1092,
+                "seconds": 18.2,
+                "timestamp": 1768865707
+            },
+            {
+                "frames": 398,
+                "seconds": 6.633333333333334,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room18": {
+        "best_frames": 713,
+        "best_seconds": 11.883333333333333,
+        "history": [
+            {
+                "frames": 1885,
+                "seconds": 31.416666666666668,
+                "timestamp": 1768865663
+            },
+            {
+                "frames": 852,
+                "seconds": 14.2,
+                "timestamp": 1768865673
+            },
+            {
+                "frames": 3819,
+                "seconds": 63.65,
+                "timestamp": 1768865698
+            },
+            {
+                "frames": 713,
+                "seconds": 11.883333333333333,
+                "timestamp": 1768865709
+            },
+            {
+                "frames": 1885,
+                "seconds": 31.416666666666668,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room19": {
+        "best_frames": 279,
+        "best_seconds": 4.65,
+        "history": [
+            {
+                "frames": 572,
+                "seconds": 9.533333333333333,
+                "timestamp": 1768865664
+            },
+            {
+                "frames": 719,
+                "seconds": 11.983333333333333,
+                "timestamp": 1768865668
+            },
+            {
+                "frames": 279,
+                "seconds": 4.65,
+                "timestamp": 1768865671
+            },
+            {
+                "frames": 490,
+                "seconds": 8.166666666666666,
+                "timestamp": 1768865710
+            },
+            {
+                "frames": 572,
+                "seconds": 9.533333333333333,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room20": {
+        "best_frames": 506,
+        "best_seconds": 8.433333333333334,
+        "history": [
+            {
+                "frames": 774,
+                "seconds": 12.9,
+                "timestamp": 1768865666
+            },
+            {
+                "frames": 1187,
+                "seconds": 19.783333333333335,
+                "timestamp": 1768865670
+            },
+            {
+                "frames": 506,
+                "seconds": 8.433333333333334,
+                "timestamp": 1768865711
+            },
+            {
+                "frames": 774,
+                "seconds": 12.9,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room21": {
+        "best_frames": 982,
+        "best_seconds": 16.366666666666667,
+        "history": [
+            {
+                "frames": 982,
+                "seconds": 16.366666666666667,
+                "timestamp": 1768865712
+            },
+            {
+                "frames": 2498,
+                "seconds": 41.63333333333333,
+                "timestamp": 1768865723
+            },
+            {
+                "frames": 982,
+                "seconds": 16.366666666666667,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room22": {
+        "best_frames": 788,
+        "best_seconds": 13.133333333333333,
+        "history": [
+            {
+                "frames": 788,
+                "seconds": 13.133333333333333,
+                "timestamp": 1768865714
+            },
+            {
+                "frames": 1721,
+                "seconds": 28.683333333333334,
+                "timestamp": 1768865718
+            },
+            {
+                "frames": 788,
+                "seconds": 13.133333333333333,
+                "timestamp": 1768850505
+            }
+        ]
+    },
+    "Room23": {
+        "best_frames": 794,
+        "best_seconds": 13.233333333333333,
+        "history": [
+            {
+                "frames": 794,
+                "seconds": 13.233333333333333,
+                "timestamp": 1768865715
+            },
+            {
+                "frames": 794,
+                "seconds": 13.233333333333333,
+                "timestamp": 1768850505
+            }
+        ]
+    }
+}

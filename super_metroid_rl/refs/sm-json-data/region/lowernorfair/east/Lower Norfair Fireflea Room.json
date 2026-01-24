@@ -1,0 +1,1817 @@
+{
+  "$schema": "../../../schema/m3-room.schema.json",
+  "id": 145,
+  "name": "Lower Norfair Fireflea Room",
+  "area": "Norfair",
+  "subarea": "Lower",
+  "subsubarea": "East",
+  "roomAddress": "0x7B6EE",
+  "roomEnvironments": [{"heated": false}],
+  "mapTileMask": [
+    [1, 1, 0],
+    [0, 1, 0],
+    [0, 1, 0],
+    [0, 1, 1],
+    [0, 1, 1],
+    [0, 1, 1]
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Top Left Door",
+      "nodeType": "door",
+      "nodeSubType": "blue",
+      "nodeAddress": "0x0019a92",
+      "doorOrientation": "left",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [2, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 1],
+        [0, 1, 1],
+        [0, 1, 1]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Bottom Left Door",
+      "nodeType": "door",
+      "nodeSubType": "blue",
+      "nodeAddress": "0x0019aaa",
+      "doorOrientation": "left",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [1, 1, 0],
+        [0, 1, 0],
+        [0, 2, 0],
+        [0, 2, 1],
+        [0, 1, 1],
+        [0, 1, 1]
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Top Right Door",
+      "nodeType": "door",
+      "nodeSubType": "blue",
+      "nodeAddress": "0x0019a9e",
+      "doorOrientation": "right",
+      "doorEnvironments": [{"physics": "air"}],
+      "mapTileMask": [
+        [1, 2, 0],
+        [0, 2, 0],
+        [0, 1, 0],
+        [0, 1, 1],
+        [0, 1, 1],
+        [0, 1, 1]
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Firefleas Item",
+      "nodeType": "item",
+      "nodeSubType": "visible",
+      "nodeItem": "ETank",
+      "nodeAddress": "0x79184",
+      "mapTileMask": [
+        [1, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 1],
+        [0, 1, 1],
+        [0, 1, 2]
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Firefleas Bottom Left Platform Junction",
+      "nodeType": "junction",
+      "nodeSubType": "junction",
+      "mapTileMask": [
+        [1, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 1],
+        [0, 1, 1],
+        [0, 2, 1]
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Junction Behind Fune",
+      "nodeType": "junction",
+      "nodeSubType": "junction",
+      "mapTileMask": [
+        [1, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 2],
+        [0, 1, 1],
+        [0, 1, 1]
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Fireflea Statue's Claw Junction",
+      "nodeType": "junction",
+      "nodeSubType": "junction",
+      "mapTileMask": [
+        [1, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 1],
+        [0, 2, 2],
+        [0, 1, 1]
+      ]
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "A",
+      "name": "Fune with a secret",
+      "obstacleType": "enemies"
+    }
+  ],
+  "enemies": [
+    {
+      "id": "e1",
+      "groupName": "Lower Norfair Fireflea Room Bottom Fune",
+      "enemyName": "Fune",
+      "quantity": 1,
+      "homeNodes": [2]
+    },
+    {
+      "id": "e2",
+      "groupName": "Lower Norfair Fireflea Room Top Funes",
+      "enemyName": "Fune",
+      "quantity": 3,
+      "betweenNodes": [2, 3]
+    },
+    {
+      "id": "e3",
+      "groupName": "Lower Norfair Fireflea Room Boulders",
+      "enemyName": "Boulder",
+      "quantity": 3,
+      "betweenNodes": [2, 3]
+    },
+    {
+      "id": "e4",
+      "groupName": "Lower Norfair Top Fireflea",
+      "enemyName": "Fireflea",
+      "quantity": 1,
+      "homeNodes": [7]
+    },
+    {
+      "id": "e5",
+      "groupName": "Lower Norfair Bottom Left Fireflea",
+      "enemyName": "Fireflea",
+      "quantity": 1,
+      "homeNodes": [5]
+    },
+    {
+      "id": "e6",
+      "groupName": "Lower Norfair Bottom Mid-Left Fireflea",
+      "enemyName": "Fireflea",
+      "quantity": 1,
+      "homeNodes": [5]
+    },
+    {
+      "id": "e7",
+      "groupName": "Lower Norfair Bottom Mid-Right Fireflea",
+      "enemyName": "Fireflea",
+      "quantity": 1,
+      "homeNodes": [4]
+    },
+    {
+      "id": "e8",
+      "groupName": "Lower Norfair Bottom Right Fireflea",
+      "enemyName": "Fireflea",
+      "quantity": 1,
+      "homeNodes": [4]
+    }
+  ],
+  "strats": [
+    {
+      "id": 1,
+      "link": [1, 1],
+      "name": "Leave With Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 22,
+          "openEnd": 1,
+          "gentleUpTiles": 3,
+          "gentleDownTiles": 3
+        }
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 71,
+      "link": [1, 1],
+      "name": "Gain Flash Suit (Slopespark)",
+      "requires": [
+        {"or": [
+          {"canShineCharge": {
+            "usedTiles": 21,
+            "gentleUpTiles": 3,
+            "gentleDownTiles": 3,
+            "openEnd": 1
+          }},
+          {"and": [
+            {"doorUnlockedAtNode": 1},
+            {"canShineCharge": {
+              "usedTiles": 22,
+              "gentleUpTiles": 3,
+              "gentleDownTiles": 3,
+              "openEnd": 1
+            }}
+          ]}
+        ]},
+        {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 1}},
+        "canSlopeSpark",
+        "h_XModeSpikeHitLeniency",
+        "h_XModeSpikeHitLeniency",
+        {"shinespark": {"frames": 1, "excessFrames": 1}}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 72,
+      "link": [1, 1],
+      "name": "Gain Blue Suit (Slope X-Mode)",
+      "requires": [
+        {"or": [
+          {"canShineCharge": {
+            "usedTiles": 21,
+            "gentleUpTiles": 3,
+            "gentleDownTiles": 3,
+            "openEnd": 1
+          }},
+          {"and": [
+            {"doorUnlockedAtNode": 1},
+            {"canShineCharge": {
+              "usedTiles": 22,
+              "gentleUpTiles": 3,
+              "gentleDownTiles": 3,
+              "openEnd": 1
+            }}
+          ]}
+        ]},
+        {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 1}},
+        "canSlopeXMode",
+        "h_XModeSpikeHitLeniency",
+        "h_XModeSpikeHitLeniency",
+        "canShinechargeMovementTricky",
+        {"shinespark": {"frames": 0}},
+        {"gainBlueSuit": {}}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 2,
+      "link": [1, 2],
+      "name": "G-Mode Morph Blind Top to Bottom - Power Bomb the Bottom Fune (Top Left Door)",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": true
+        }
+      },
+      "requires": [
+        {"notable": "G-Mode Morph Blind Top to Bottom"},
+        "canOffScreenMovement",
+        "canTrickyJump",
+        {"or": [
+          "h_artificialMorphSpringBall",
+          "h_artificialMorphBombHorizontally",
+          {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 1}}
+        ]},
+        "h_artificialMorphPowerBomb"
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true,
+      "note": [
+        "Traversing the room without getting hit requires fairly tricky off-screen movement.",
+        "Note that Samus moves freely through the off-screen Funes, but will take damage from the Boulders.",
+        "The Boulders will behave normally and start to roll as Samus is in front of them, except for the top Boulder.",
+        "Roll off the first ledge and immediately roll to the right all the way to the right wall. Use Spring Ball or a horizontal bomb boost to get over the next Boulder.",
+        "Quickly roll off the left edge and back to the right in order to avoid the third Boulder.",
+        "Roll to the right wall then the left wall and place a Power Bomb, exit G-Mode, and jump repeatedly to fix the camera."
+      ]
+    },
+    {
+      "id": 73,
+      "link": [1, 3],
+      "name": "Crystal Flash, R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        "h_CrystalFlashForReserveEnergy",
+        {"canShineCharge": {
+          "usedTiles": 21,
+          "gentleUpTiles": 3,
+          "gentleDownTiles": 3,
+          "openEnd": 1
+        }},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Crystal Flash, then pick up a shinecharge.",
+        "Drop into the top Fune's fireball path for the interupt."
+      ]
+    },
+    {
+      "id": 74,
+      "link": [1, 3],
+      "name": "Farm For Energy, R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        "canTrickyJump",
+        {"or": [
+          "Morph",
+          {"enemyKill": {
+            "enemies": [["Boulder"]]
+          }},
+          {"and": [
+            {"disableEquipment": "ScrewAttack"},
+            "canPseudoScrew"
+          ]}
+        ]},
+        {"or": [
+          {"and": [
+            {"enemyKill": {
+              "enemies": [["Fune"]]
+            }},
+            "h_RModeCanRefillReserves",
+            {"partialRefill": {"type": "ReserveEnergy", "limit": 20}},
+            {"resourceMissingAtMost": [{"type": "Missile", "count": 0}]}
+          ]},
+          {"and": [
+            "Morph",
+            {"or": [
+              "h_useSpringBall",
+              {"and": [
+                "h_useMorphBombs",
+                "canBombHorizontally"
+              ]}
+            ]},
+            "h_RModeCanRefillReserves",
+            {"partialRefill": {"type": "ReserveEnergy", "limit": 20}},
+            {"resourceMissingAtMost": [{"type": "PowerBomb", "count": 0}]},
+            {"canShineCharge": {
+              "usedTiles": 17,
+              "gentleUpTiles": 6,
+              "steepUpTiles": 1,
+              "openEnd": 1
+            }},
+            {"shinespark": {"frames": 9, "excessFrames": 4}}
+          ]}
+        ]},
+        {"canShineCharge": {
+          "usedTiles": 21,
+          "gentleUpTiles": 3,
+          "gentleDownTiles": 3,
+          "openEnd": 1
+        }},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "With Supers or PBs, kill Funes except for the topmost.",
+        "If you have neither, use Morph and bombs or springball to get over the secret Fune and",
+        "farm a fireflea. Shinespark can get you back out of the fireflea pit if you can't jump out."
+      ],
+      "devNote": [
+        "FIXME: Notable strat 'Morph Over The Fune' for getting over the secret fune (and then R-Jump to get out) isn't included."
+      ]
+    },
+    {
+      "id": 3,
+      "link": [1, 3],
+      "name": "Base",
+      "requires": [],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 4,
+      "link": [1, 6],
+      "name": "G-Mode Morph Blind Top to Bottom - Jump over the Bottom Fune (Top Left Door)",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": true
+        }
+      },
+      "requires": [
+        {"notable": "G-Mode Morph Blind Top to Bottom"},
+        "canOffScreenMovement",
+        "canTrickyJump",
+        "h_artificialMorphSpringBall"
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Traversing the room without getting hit requires fairly tricky off-screen movement.",
+        "Note that Samus moves freely through the off-screen Funes, but will take damage from the Boulders.",
+        "The Boulders will behave normally and start to roll as Samus is in front of them, except for the top Boulder.",
+        "Roll off the first ledge and immediately roll to the right all the way to the right wall. Use Spring Ball or a horizontal bomb boost to get over the next Boulder.",
+        "Quickly roll off the left edge and back to the right in order to avoid the third Boulder.",
+        "Roll to the right wall then the left wall and use Spring Ball to jump over the Fune, exit G-Mode, and jump repeatedly to fix the camera."
+      ],
+      "devNote": "This is only useful if the item is Morph or a way to kill the Fune."
+    },
+    {
+      "id": 5,
+      "link": [2, 2],
+      "name": "Leave With Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 4,
+          "openEnd": 1
+        }
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 6,
+      "link": [2, 2],
+      "name": "Fune Farm",
+      "requires": [
+        {"or": [
+          {"and": [
+            {"resetRoom": {"nodes": [1]}},
+            "canDodgeWhileShooting",
+            {"cycleFrames": 2370}
+          ]},
+          {"and": [
+            {"resetRoom": {"nodes": [2]}},
+            "canMidAirMorph",
+            {"or": [
+              {"and": [
+                "canTrickyJump",
+                {"cycleFrames": 2000}
+              ]},
+              {"and": [
+                {"or": [
+                  "Grapple",
+                  "SpaceJump"
+                ]},
+                {"cycleFrames": 2200}
+              ]}
+            ]}
+          ]},
+          {"and": [
+            {"resetRoom": {"nodes": [3]}},
+            "canDodgeWhileShooting",
+            {"cycleFrames": 2250}
+          ]}
+        ]},
+        "h_usePowerBomb",
+        "h_usePowerBomb",
+        {"or": [
+          "SpaceJump",
+          "canPreciseWalljump",
+          {"and": [
+            "HiJump",
+            "canSpeedyJump"
+          ]}
+        ]}
+      ],
+      "clearsObstacles": ["A"],
+      "farmCycleDrops": [
+        {"enemy": "Fireflea", "count": 2},
+        {"enemy": "Fune", "count": 5}
+      ],
+      "flashSuitChecked": true,
+      "devNote": "An extra Power Bomb can be used but an extra Fireflea farm is included in that case."
+    },
+    {
+      "id": 69,
+      "link": [2, 2],
+      "name": "Full Fireflea Farm",
+      "requires": [
+        {"or": [
+          {"and": [
+            "canTrickyDodgeEnemies",
+            {"resetRoom": {"nodes": [1]}},
+            {"cycleFrames": 2900}
+          ]},
+          {"and": [
+            {"resetRoom": {"nodes": [2]}},
+            {"cycleFrames": 1560}
+          ]},
+          {"and": [
+            "canTrickyDodgeEnemies",
+            {"resetRoom": {"nodes": [3]}},
+            {"cycleFrames": 2780}
+          ]}
+        ]},
+        "Morph",
+        {"or": [
+          {"ammo": {"type": "PowerBomb", "count": 1}},
+          "SpringBall",
+          {"and": [
+            "Bombs",
+            {"cycleFrames": 60},
+            {"or": [
+              "canTrickyJump",
+              {"and": [
+                "Ice",
+                "canDodgeWhileShooting"
+              ]}
+            ]}
+          ]}
+        ]},
+        {"or": [
+          "SpaceJump",
+          {"and": [
+            "canFarmWhileShooting",
+            "canHorizontalDamageBoost",
+            {"enemyDamage": {"enemy": "Fireflea", "type": "contact", "hits": 2}},
+            {"or": [
+              "canPreciseWalljump",
+              {"and": [
+                "HiJump",
+                "canSpeedyJump"
+              ]},
+              {"and": [
+                "canJumpIntoIBJ",
+                {"cycleFrames": 1000}
+              ]}
+            ]}
+          ]}
+        ]},
+        {"or": [
+          "SpaceJump",
+          "canPreciseWalljump",
+          {"and": [
+            "HiJump",
+            "canSpeedyJump"
+          ]}
+        ]}
+      ],
+      "resetsObstacles": ["A"],
+      "farmCycleDrops": [{"enemy": "Fireflea", "count": 5}],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 70,
+      "link": [2, 2],
+      "name": "Small Fireflea Farm",
+      "requires": [
+        {"or": [
+          {"and": [
+            "canTrickyDodgeEnemies",
+            {"resetRoom": {"nodes": [1]}},
+            {"cycleFrames": 2480}
+          ]},
+          {"and": [
+            {"resetRoom": {"nodes": [2]}},
+            {"cycleFrames": 1140}
+          ]},
+          {"and": [
+            "canTrickyDodgeEnemies",
+            {"resetRoom": {"nodes": [3]}},
+            {"cycleFrames": 2360}
+          ]}
+        ]},
+        "Morph",
+        {"or": [
+          {"ammo": {"type": "PowerBomb", "count": 1}},
+          "SpringBall",
+          {"and": [
+            "Bombs",
+            {"cycleFrames": 60},
+            {"or": [
+              "canTrickyJump",
+              {"and": [
+                "Ice",
+                "canDodgeWhileShooting"
+              ]}
+            ]}
+          ]}
+        ]},
+        {"or": [
+          "SpaceJump",
+          "canPreciseWalljump",
+          {"and": [
+            "HiJump",
+            "canSpeedyJump"
+          ]}
+        ]}
+      ],
+      "resetsObstacles": ["A"],
+      "farmCycleDrops": [{"enemy": "Fireflea", "count": 2}],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 7,
+      "link": [2, 2],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_CrystalFlash"
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 8,
+      "link": [2, 2],
+      "name": "Leave Shinecharged",
+      "requires": [
+        {"canShineCharge": {"usedTiles": 20, "gentleDownTiles": 2, "openEnd": 1}},
+        {"or": [
+          {"enemyKill": {
+            "enemies": [["Fune"]]
+          }},
+          {"obstaclesCleared": ["A"]}
+        ]},
+        "canShinechargeMovement",
+        {"shineChargeFrames": 55}
+      ],
+      "exitCondition": {
+        "leaveShinecharged": {}
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 9,
+      "link": [2, 2],
+      "name": "G-Mode Morph Power Bomb the Fune",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": true
+        }
+      },
+      "requires": [
+        "h_artificialMorphPowerBomb"
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true,
+      "note": "Place a Power Bomb then exit G-Mode to kill the Fune."
+    },
+    {
+      "id": 66,
+      "link": [2, 2],
+      "name": "Gain Flash Suit (Fune Dead, Spikesuit)",
+      "requires": [
+        {"obstaclesCleared": ["A"]},
+        {"canShineCharge": {"usedTiles": 20, "gentleDownTiles": 2, "openEnd": 1}},
+        {"spikeHits": 1},
+        {"or": [
+          "h_spikeSuitSpikeHitLeniency",
+          {"and": [
+            {"resourceCapacity": [{"type": "PowerBomb", "count": 1}]},
+            {"resetRoom": {"nodes": [2]}},
+            {"or": [
+              "SpaceJump",
+              "HiJump",
+              "canPreciseWalljump"
+            ]}
+          ]}
+        ]},
+        "canPatientSpikeSuit",
+        {"shinespark": {"frames": 4, "excessFrames": 4}}
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 75,
+      "link": [2, 2],
+      "name": "Come in Shinecharged - Gain Flash Suit (Spikesuit)",
+      "entranceCondition": {
+        "comeInShinecharged": {}
+      },
+      "requires": [
+        {"shineChargeFrames": 75},
+        {"spikeHits": 1},
+        "h_spikeSuitSpikeHitLeniency",
+        "canPatientSpikeSuit",
+        {"shinespark": {"frames": 4}}
+      ],
+      "flashSuitChecked": true,
+      "note": ["Precise timing is required to dodge the fune's fireballs."]
+    },
+    {
+      "id": 76,
+      "link": [2, 2],
+      "name": "Gain Flash Suit (Spikesuit) - Leave with Shinespark",
+      "requires": [
+        "canUseFlashSuitInitialSpark",
+        {"obstaclesCleared": ["A"]},
+        {"canShineCharge": {"usedTiles": 20, "gentleDownTiles": 2, "openEnd": 1}},
+        {"spikeHits": 1},
+        "h_spikeSuitSpikeHitLeniency",
+        "canPatientSpikeSuit",
+        {"shinespark": {"frames": 11}}
+      ],
+      "exitCondition": {
+        "leaveWithSpark": {
+          "position": "bottom"
+        }
+      },
+      "unlocksDoors": [{"types": ["ammo"], "requires": []}],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 77,
+      "link": [2, 2],
+      "name": "Come in Shinecharged - Gain Blue Suit (X-Mode)",
+      "entranceCondition": {
+        "comeInShinecharged": {}
+      },
+      "requires": [
+        {"shineChargeFrames": 155},
+        "h_spikeXModeBlueSuit",
+        {"shinespark": {"frames": 1}}
+      ],
+      "flashSuitChecked": true,
+      "note": ["Precise timing is required to dodge the fune's fireballs."]
+    },
+    {
+      "id": 78,
+      "link": [2, 2],
+      "name": "Gain Blue Suit (X-Mode)",
+      "requires": [
+        {"obstaclesCleared": ["A"]},
+        {"canShineCharge": {"usedTiles": 20, "gentleDownTiles": 2, "openEnd": 1}},
+        "h_spikeXModeBlueSuit",
+        {"shinespark": {"frames": 1}}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 79,
+      "link": [2, 2],
+      "name": "R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        {"enemyKill": {
+          "enemies": [["Fune"]]
+        }},
+        {"or": [
+          "h_CrystalFlashForReserveEnergy",
+          {"and": [
+            "h_RModeCanRefillReserves",
+            {"partialRefill": {"type": "ReserveEnergy", "limit": 20}},
+            {"or": [
+              {"resourceMissingAtMost": [{"type": "PowerBomb", "count": 0}]},
+              {"resourceMissingAtMost": [{"type": "Missile", "count": 0}]}
+            ]}
+          ]}
+        ]},
+        {"canShineCharge": {"usedTiles": 20, "gentleDownTiles": 2, "openEnd": 1}},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt"
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Kill the Fune. Crystal Flash or farm the top fireflea. After the shine charge,",
+        "jump up to the first fune and take a fireball to interrupt.",
+        "Note: farming more than the top fireflea while still in R-Mode will cause Samus to",
+        "become difficult to see."
+      ]
+    },
+    {
+      "id": 10,
+      "link": [2, 3],
+      "name": "Dodge Everything",
+      "requires": [
+        "canTrickyJump"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 11,
+      "link": [2, 3],
+      "name": "Kill One Fune",
+      "requires": [
+        {"enemyKill": {
+          "enemies": [["Fune"]]
+        }},
+        "canCarefulJump"
+      ],
+      "flashSuitChecked": true,
+      "note": "Clear one of the paired Fune heads with a Super Missile or Power Bomb.  Run from or jump over the Boulders."
+    },
+    {
+      "id": 12,
+      "link": [2, 3],
+      "name": "Kill Many Enemies",
+      "requires": [
+        {"enemyKill": {
+          "enemies": [["Fune"], ["Boulder"], ["Fune"]]
+        }}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Boulders can be killed by Super Missiles or by Pseudo Screwing.",
+        "Funes are weak to Super Missiles and Power Bombs."
+      ]
+    },
+    {
+      "id": 13,
+      "link": [2, 3],
+      "name": "Ice",
+      "requires": [
+        "Ice"
+      ],
+      "flashSuitChecked": true,
+      "note": "Freeze the Fune heads and run from the Boulders."
+    },
+    {
+      "id": 14,
+      "link": [2, 3],
+      "name": "Screw Attack",
+      "requires": [
+        "ScrewAttack",
+        {"or": [
+          "canCarefulJump",
+          "HiJump",
+          "SpaceJump",
+          {"enemyKill": {
+            "enemies": [["Fune"]]
+          }}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": "The 2 Funes plus Boulder can be tricky.  Try to activate the Boulder before jumping up to that platform."
+    },
+    {
+      "id": 15,
+      "link": [2, 6],
+      "name": "Fune Already Killed",
+      "requires": [
+        {"obstaclesCleared": ["A"]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 16,
+      "link": [2, 6],
+      "name": "Spring Ball",
+      "requires": [
+        "h_useSpringBall"
+      ],
+      "flashSuitChecked": true,
+      "note": "Use SpringBall to get up and over the Fune."
+    },
+    {
+      "id": 17,
+      "link": [2, 6],
+      "name": "Bombs",
+      "requires": [
+        "h_useMorphBombs",
+        {"or": [
+          {"and": [
+            "canBombHorizontally",
+            {"or": [
+              "Ice",
+              "canCarefulJump"
+            ]}
+          ]},
+          {"and": [
+            "canNeutralDamageBoost",
+            {"enemyDamage": {"enemy": "Fune", "type": "fireball", "hits": 1}}
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Place a bomb just a bit left of the Fune and have it boost Samus horizontally to get over the Fune.",
+        "The bomb can be placed at a similar time to when the Fune shoots a fireball.",
+        "Alternatively, it is possible to land on a fireball to be boosted up."
+      ]
+    },
+    {
+      "id": 18,
+      "link": [2, 6],
+      "name": "Morph Over the Fune",
+      "requires": [
+        {"notable": "Morph Over the Fune"},
+        {"noFlashSuit": {}},
+        "h_fourTileJumpMorph",
+        "canTrickyJump",
+        {"or": [
+          "canInsaneJump",
+          {"enemyDamage": {"enemy": "Fune", "type": "fireball", "hits": 1}}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "A paricularly precise mid-air morph can get up and over the Fune without damage.",
+        "Stand a half tile away from the Fune when jump morphing for a higher ceiling.",
+        "It's a 2.5 tile high mid air morph. It can be performed similar to how a 2 or 3 tile high morph is performed."
+      ],
+      "devNote": "It is possible but very hard to jump morph over the fune with a flash suit.  R jumping helps."
+    },
+    {
+      "id": 19,
+      "link": [2, 6],
+      "name": "Kill the Fune",
+      "requires": [
+        {"enemyKill": {
+          "enemies": [["Fune"]]
+        }}
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 20,
+      "link": [2, 6],
+      "name": "G-Mode Morph Jump over the Fune",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": true
+        }
+      },
+      "requires": [
+        "h_artificialMorphSpringBall"
+      ],
+      "flashSuitChecked": true,
+      "devNote": "This is only useful if the item is Morph or a way to kill the Fune."
+    },
+    {
+      "id": 21,
+      "link": [3, 1],
+      "name": "Base",
+      "requires": [],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 22,
+      "link": [3, 1],
+      "name": "Grapple Teleport Door Lock Skip",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[3, 12], [3, 13]]
+        }
+      },
+      "requires": [],
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true
+    },
+    {
+      "id": 23,
+      "link": [3, 1],
+      "name": "Carry Grapple Teleport (Top Position)",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[3, 12]]
+        }
+      },
+      "requires": [],
+      "exitCondition": {
+        "leaveWithGrappleTeleport": {
+          "blockPositions": [[3, 12]]
+        }
+      },
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true
+    },
+    {
+      "id": 24,
+      "link": [3, 1],
+      "name": "Carry Grapple Teleport (Bottom Position)",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[3, 13]]
+        }
+      },
+      "requires": [],
+      "exitCondition": {
+        "leaveWithGrappleTeleport": {
+          "blockPositions": [[3, 13]]
+        }
+      },
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true
+    },
+    {
+      "id": 25,
+      "link": [3, 1],
+      "name": "Grapple Teleport X-Ray Climb (1 Screen)",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[2, 18], [2, 19], [2, 28], [2, 29]]
+        }
+      },
+      "requires": [
+        "canXRayClimb"
+      ],
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true,
+      "note": [
+        "Exit the previous room with Samus in a standing pose (while grappled).",
+        "After teleporting, press right to release Grapple while staying standing (not being forced into a crouch).",
+        "Then X-ray climb 1 screen to get up to the door transition, without needing to open the door.",
+        "Samus will not be visible during the climb."
+      ]
+    },
+    {
+      "id": 68,
+      "link": [3, 1],
+      "name": "Grapple Teleport X-Ray Climb (2 Screens)",
+      "entranceCondition": {
+        "comeInWithGrappleTeleport": {
+          "blockPositions": [[2, 34]]
+        }
+      },
+      "requires": [
+        "canLongXRayClimb"
+      ],
+      "bypassesDoorShell": true,
+      "flashSuitChecked": true,
+      "note": [
+        "Exit the previous room with Samus in a standing pose (while grappled).",
+        "After teleporting, press right to release Grapple while staying standing (not being forced into a crouch).",
+        "Then X-ray climb 2 screens to get up to the door transition, without needing to open the door.",
+        "Samus will not be visible during the climb."
+      ]
+    },
+    {
+      "id": 26,
+      "link": [3, 2],
+      "name": "Screw Attack",
+      "requires": [
+        "ScrewAttack",
+        {"or": [
+          "canCarefulJump",
+          "h_usePowerBomb",
+          {"ammo": {"type": "Super", "count": 1}},
+          {"and": [
+            "canDisableEquipment",
+            "canPseudoScrew"
+          ]},
+          {"enemyDamage": {"enemy": "Fune", "type": "fireball", "hits": 1}}
+        ]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 27,
+      "link": [3, 2],
+      "name": "Morph",
+      "requires": [
+        "Morph",
+        {"or": [
+          "canTrickyJump",
+          {"ammo": {"type": "PowerBomb", "count": 1}},
+          {"ammo": {"type": "Super", "count": 1}},
+          {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 1}},
+          {"and": [
+            {"enemyDamage": {"enemy": "Fune", "type": "kago", "hits": 1}},
+            "canKago",
+            "canUseIFrames"
+          ]},
+          {"and": [
+            "Ice",
+            "canCarefulJump"
+          ]}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Roll under the top Fune fireball then roll off the edge to avoid the first Boulder.",
+        "Kill a Fune or use the Boulder for i-frames to get through the tricky section.",
+        "It is also possible to Kago the Fune to save health compared to taking a Boulder hit."
+      ]
+    },
+    {
+      "id": 28,
+      "link": [3, 2],
+      "name": "Space Jump",
+      "requires": [
+        "SpaceJump",
+        "canCarefulJump",
+        {"or": [
+          {"ammo": {"type": "Super", "count": 1}},
+          {"and": [
+            "canDisableEquipment",
+            "canPseudoScrew"
+          ]},
+          "Ice",
+          "canTrickyJump",
+          {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 1}}
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": "Use Space Jump to reset Samus' fall speed, by jumping, to avoid the topmost boulder."
+    },
+    {
+      "id": 29,
+      "link": [3, 2],
+      "name": "Rock Breaker",
+      "requires": [
+        {"or": [
+          {"ammo": {"type": "Super", "count": 2}},
+          {"and": [
+            {"ammo": {"type": "Super", "count": 1}},
+            {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 1}}
+          ]},
+          {"and": [
+            "canDisableEquipment",
+            "canPseudoScrew"
+          ]}
+        ]},
+        {"or": [
+          "Ice",
+          "canCarefulJump"
+        ]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 30,
+      "link": [3, 2],
+      "name": "Tank the Damage",
+      "requires": [
+        {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 2}}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 31,
+      "link": [3, 2],
+      "name": "Top to Bottom Itemless Damageless",
+      "requires": [
+        {"or": [
+          "canInsaneWalljump",
+          "canInsaneJump"
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "An extremely precise spinjump or walljump can avoid the top Boulder.",
+        "The spinjump requires dash state and to jump right away.",
+        "Aiming down shortly after helps by reducing Samus' hitbox."
+      ]
+    },
+    {
+      "id": 32,
+      "link": [3, 2],
+      "name": "G-Mode Morph Blind Top to Bottom - Power Bomb the Bottom Fune (Top Right Door)",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": true
+        }
+      },
+      "requires": [
+        {"notable": "G-Mode Morph Blind Top to Bottom"},
+        "canOffScreenMovement",
+        "canTrickyJump",
+        {"or": [
+          "h_artificialMorphSpringBall",
+          "h_artificialMorphBombHorizontally",
+          {"enemyDamage": {"enemy": "Boulder", "type": "contact", "hits": 1}}
+        ]},
+        "h_artificialMorphPowerBomb"
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true,
+      "note": [
+        "Traversing the room without getting hit requires fairly tricky off-screen movement.",
+        "Note that Samus moves freely through the off-screen Funes, but will take damage from the Boulders.",
+        "The Boulders will behave normally and start to roll as Samus is in front of them, except for the top Boulder.",
+        "Roll off the first ledge and immediately roll to the right all the way to the right wall. Use Spring Ball or a horizontal bomb boost to get over the next Boulder.",
+        "Quickly roll off the left edge and back to the right in order to avoid the third Boulder.",
+        "Roll to the right wall then the left wall and place a Power Bomb, exit G-Mode, and jump repeatedly to fix the camera."
+      ]
+    },
+    {
+      "id": 80,
+      "link": [3, 3],
+      "name": "Crystal Flash, R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        "h_CrystalFlashForReserveEnergy",
+        {"canShineCharge": {
+          "usedTiles": 21,
+          "gentleUpTiles": 3,
+          "gentleDownTiles": 3,
+          "openEnd": 1
+        }},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "Crystal Flash, then pick up a shinecharge.",
+        "Drop into the top Fune's fireball path for the interupt."
+      ]
+    },
+    {
+      "id": 81,
+      "link": [3, 3],
+      "name": "Farm For Energy, R-Mode Spark Interrupt",
+      "entranceCondition": {
+        "comeInWithRMode": {}
+      },
+      "requires": [
+        "canTrickyJump",
+        {"or": [
+          "Morph",
+          {"enemyKill": {
+            "enemies": [["Boulder"]]
+          }},
+          {"and": [
+            {"disableEquipment": "ScrewAttack"},
+            "canPseudoScrew"
+          ]}
+        ]},
+        {"or": [
+          {"and": [
+            {"enemyKill": {
+              "enemies": [["Fune"]]
+            }},
+            "h_RModeCanRefillReserves",
+            {"partialRefill": {"type": "ReserveEnergy", "limit": 20}},
+            {"resourceMissingAtMost": [{"type": "Missile", "count": 0}]}
+          ]},
+          {"and": [
+            "Morph",
+            {"or": [
+              "h_useSpringBall",
+              {"and": [
+                "h_useMorphBombs",
+                "canBombHorizontally"
+              ]}
+            ]},
+            "h_RModeCanRefillReserves",
+            {"partialRefill": {"type": "ReserveEnergy", "limit": 20}},
+            {"resourceMissingAtMost": [{"type": "PowerBomb", "count": 0}]},
+            {"canShineCharge": {
+              "usedTiles": 17,
+              "gentleUpTiles": 6,
+              "steepUpTiles": 1,
+              "openEnd": 1
+            }},
+            {"shinespark": {"frames": 9, "excessFrames": 4}}
+          ]}
+        ]},
+        {"canShineCharge": {
+          "usedTiles": 21,
+          "gentleUpTiles": 3,
+          "gentleDownTiles": 3,
+          "openEnd": 1
+        }},
+        {"autoReserveTrigger": {"maxReserveEnergy": 95}},
+        "canRModeSparkInterrupt"
+      ],
+      "flashSuitChecked": true,
+      "blueSuitChecked": true,
+      "note": [
+        "With Supers or PBs, kill Funes except for the topmost.",
+        "If you have neither, use Morph and bombs or springball to get over the secret Fune and",
+        "farm a fireflea. Shinespark can get you back out of the fireflea pit if you can't jump out."
+      ],
+      "devNote": [
+        "FIXME: Notable strat 'Morph Over The Fune' for getting over the secret fune (and then R-Jump to get out) isn't included."
+      ]
+    },
+    {
+      "id": 33,
+      "link": [3, 3],
+      "name": "Leave With Runway",
+      "requires": [],
+      "exitCondition": {
+        "leaveWithRunway": {
+          "length": 6,
+          "openEnd": 1
+        }
+      },
+      "flashSuitChecked": true
+    },
+    {
+      "id": 64,
+      "link": [3, 3],
+      "name": "Leave Shinecharged",
+      "requires": [
+        {"or": [
+          {"canShineCharge": {
+            "usedTiles": 21,
+            "gentleUpTiles": 3,
+            "gentleDownTiles": 3,
+            "openEnd": 1
+          }},
+          {"and": [
+            {"doorUnlockedAtNode": 1},
+            {"canShineCharge": {
+              "usedTiles": 22,
+              "gentleUpTiles": 3,
+              "gentleDownTiles": 3,
+              "openEnd": 1
+            }}
+          ]}
+        ]},
+        "canShinechargeMovement",
+        {"shineChargeFrames": 60}
+      ],
+      "exitCondition": {
+        "leaveShinecharged": {}
+      },
+      "unlocksDoors": [{"nodeId": 1, "types": ["ammo"], "requires": []}],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 34,
+      "link": [3, 3],
+      "name": "Crystal Flash",
+      "requires": [
+        "h_CrystalFlash"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 35,
+      "link": [3, 6],
+      "name": "G-Mode Morph Blind Top to Bottom - Jump over the Bottom Fune (Top Left Door)",
+      "entranceCondition": {
+        "comeInWithGMode": {
+          "mode": "any",
+          "morphed": true
+        }
+      },
+      "requires": [
+        {"notable": "G-Mode Morph Blind Top to Bottom"},
+        "canOffScreenMovement",
+        "canTrickyJump",
+        "h_artificialMorphSpringBall"
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Traversing the room without getting hit requires fairly tricky off-screen movement.",
+        "Note that Samus moves freely through the off-screen Funes, but will take damage from the Boulders.",
+        "The Boulders will behave normally and start to roll as Samus is in front of them, except for the top Boulder.",
+        "Roll off the first ledge and immediately roll to the right all the way to the right wall. Use Spring Ball or a horizontal bomb boost to get over the next Boulder.",
+        "Quickly roll off the left edge and back to the right in order to avoid the third Boulder.",
+        "Roll to the right wall then the left wall and use Spring Ball to jump over the Fune, exit G-Mode, and jump repeatedly to fix the camera."
+      ],
+      "devNote": "This is only useful if the item is Morph or a way to kill the Fune."
+    },
+    {
+      "id": 36,
+      "link": [4, 5],
+      "name": "Base",
+      "requires": [
+        "SpaceJump"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 37,
+      "link": [4, 5],
+      "name": "Ice Bridge",
+      "requires": [
+        "canTrickyUseFrozenEnemies",
+        "canTrickyJump"
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Avoid killing the Firefleas and instead freeze them as a way accross the spikes.",
+        "It helps to freeze them low, closer to the spikes."
+      ]
+    },
+    {
+      "id": 38,
+      "link": [4, 5],
+      "name": "Use I-Frames",
+      "requires": [
+        {"enemyDamage": {"enemy": "Fireflea", "type": "contact", "hits": 1}},
+        "canUseEnemies",
+        "canUseIFrames"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 39,
+      "link": [4, 5],
+      "name": "Tank Spike Damage",
+      "requires": [
+        {"spikeHits": 1}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 82,
+      "link": [4, 7],
+      "name": "X-Mode Shinespark",
+      "requires": [
+        "h_spikeXModeShinecharge",
+        {"shinespark": {"frames": 14, "excessFrames": 9}}
+      ],
+      "wallJumpAvoid": true,
+      "flashSuitChecked": true,
+      "note": [
+        "After armpumping for a while Samus will start to move forwards again, when this happens armpump to move forward one tile"
+      ]
+    },
+    {
+      "id": 83,
+      "link": [4, 7],
+      "name": "Gain Flash Suit (X-Mode Spikesuit) - Shinespark up.",
+      "requires": [
+        "canUseFlashSuitInitialSpark",
+        "h_spikeXModeSpikeSuit",
+        {"shinespark": {"frames": 24, "excessFrames": 8}}
+      ],
+      "wallJumpAvoid": true,
+      "flashSuitChecked": true,
+      "note": [
+        "After armpumping for a while Samus will start to move forwards again, when this happens armpump to move forward one tile"
+      ]
+    },
+    {
+      "id": 40,
+      "link": [5, 4],
+      "name": "Base",
+      "requires": [
+        "SpaceJump"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 41,
+      "link": [5, 4],
+      "name": "Ice Bridge",
+      "requires": [
+        "canTrickyUseFrozenEnemies",
+        "canTrickyJump"
+      ],
+      "flashSuitChecked": true,
+      "note": [
+        "Avoid killing the Firefleas and instead freeze them as a way accross the spikes.",
+        "It helps to freeze them low, closer to the spikes."
+      ]
+    },
+    {
+      "id": 42,
+      "link": [5, 4],
+      "name": "Use I-Frames",
+      "requires": [
+        {"enemyDamage": {"enemy": "Fireflea", "type": "contact", "hits": 1}},
+        "canUseEnemies",
+        "canUseIFrames"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 43,
+      "link": [5, 4],
+      "name": "Tank Spike Damage",
+      "requires": [
+        {"spikeHits": 1}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 44,
+      "link": [5, 7],
+      "name": "Space Jump",
+      "requires": [
+        "SpaceJump"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 45,
+      "link": [5, 7],
+      "name": "Speedy Jump",
+      "requires": [
+        "HiJump",
+        "canSpeedyJump",
+        "canCarefulJump"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 46,
+      "link": [5, 7],
+      "name": "Dual Jump Assist",
+      "requires": [
+        "HiJump",
+        "canSpringBallJumpMidAir"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 47,
+      "link": [5, 7],
+      "name": "HiJump Walljump",
+      "requires": [
+        "HiJump",
+        "canWalljump"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 48,
+      "link": [5, 7],
+      "name": "Frozen Fireflea",
+      "requires": [
+        {"or": [
+          {"and": [
+            "canWalljump",
+            "canUseFrozenEnemies"
+          ]},
+          {"and": [
+            "HiJump",
+            "canUseFrozenEnemies"
+          ]},
+          "canTrickyUseFrozenEnemies"
+        ]}
+      ],
+      "flashSuitChecked": true,
+      "note": "Be careful not to touch the Firefleas or they will die."
+    },
+    {
+      "id": 49,
+      "link": [5, 7],
+      "name": "Bug Boost Escape",
+      "requires": [
+        "HiJump",
+        "canCameraManip",
+        "canHorizontalDamageBoost",
+        "canTrickyDodgeEnemies",
+        {"or": [
+          "canCrouchJump",
+          "canTrickyCarryFlashSuit"
+        ]},
+        {"enemyDamage": {"enemy": "Fireflea", "type": "contact", "hits": 1}}
+      ],
+      "wallJumpAvoid": true,
+      "flashSuitChecked": true,
+      "note": [
+        "Set up to Damage boost off the highest Fireflea at the apex of Samus' jump, right next to the statue's claw.",
+        "The positioning of the Fireflea is very precise, and this can only be attempted once.",
+        "To position the Fireflea, jump to move it on camera and move it off camera while it is at the top of its circle.",
+        "Be careful not to touch the Fireflea while setting up its precise positioning.",
+        "Note that morphing can make the boost a little easier, and a crouch jump can also help, but is not required."
+      ]
+    },
+    {
+      "id": 50,
+      "link": [5, 7],
+      "name": "IBJ",
+      "requires": [
+        "canLongIBJ"
+      ],
+      "flashSuitChecked": true,
+      "note": "IBJ on the right side of the platform."
+    },
+    {
+      "id": 51,
+      "link": [5, 7],
+      "name": "Wall Jump Damage Boost",
+      "requires": [
+        "canTrickyWalljump",
+        "canCarefulJump",
+        "canHorizontalDamageBoost",
+        {"enemyDamage": {"enemy": "Fireflea", "type": "contact", "hits": 1}}
+      ],
+      "flashSuitChecked": true,
+      "note": "This can only be attempted once."
+    },
+    {
+      "id": 52,
+      "link": [5, 7],
+      "name": "HiJumpless Walljump",
+      "requires": [
+        "canConsecutiveWalljump",
+        "canPreciseWalljump",
+        "canCarefulJump",
+        {"or": [
+          "canTrickyJump",
+          "canResetFallSpeed"
+        ]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 65,
+      "link": [5, 7],
+      "name": "X-Mode Shinespark",
+      "requires": [
+        "h_spikeXModeShinecharge",
+        {"shinespark": {"frames": 14, "excessFrames": 9}}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 53,
+      "link": [6, 2],
+      "name": "Fune Already Killed",
+      "requires": [
+        {"obstaclesCleared": ["A"]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 54,
+      "link": [6, 2],
+      "name": "Spring Ball",
+      "requires": [
+        "h_useSpringBall"
+      ],
+      "flashSuitChecked": true,
+      "note": "Use SpringBall to get up and over the Fune.  Jump when slightly away from the Fune."
+    },
+    {
+      "id": 55,
+      "link": [6, 2],
+      "name": "Bombs",
+      "requires": [
+        "h_useMorphBombs"
+      ],
+      "flashSuitChecked": true,
+      "note": "Use a Bomb to get up and over the Fune."
+    },
+    {
+      "id": 56,
+      "link": [6, 2],
+      "name": "Kill the Fune",
+      "requires": [
+        {"enemyKill": {
+          "enemies": [["Fune"]]
+        }}
+      ],
+      "clearsObstacles": ["A"],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 57,
+      "link": [6, 2],
+      "name": "R Jump Over the Fune",
+      "requires": [
+        "canRJump"
+      ],
+      "flashSuitChecked": true,
+      "devNote": "There is a way to walljump morph over the Fune, but a pause buffer is magnitudes easier."
+    },
+    {
+      "id": 58,
+      "link": [6, 7],
+      "name": "Base",
+      "requires": [],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 59,
+      "link": [7, 5],
+      "name": "Base",
+      "requires": [],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 84,
+      "link": [7, 5],
+      "name": "Gain Flash Suit - (Spikesuit)",
+      "requires": [
+        {"canShineCharge": {
+          "usedTiles": 17,
+          "gentleUpTiles": 6,
+          "steepUpTiles": 1,
+          "openEnd": 1
+        }},
+        {"spikeHits": 1},
+        "canPatientSpikeSuit",
+        {"shinespark": {"frames": 24, "excessFrames": 22}}
+      ],
+      "flashSuitChecked": true,
+      "devNote": ["No leniency added becuase can farm the firefleas."]
+    },
+    {
+      "id": 60,
+      "link": [7, 6],
+      "name": "Base",
+      "requires": [
+        {"or": [
+          "canWalljump",
+          "SpaceJump"
+        ]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 61,
+      "link": [7, 6],
+      "name": "IBJ",
+      "requires": [
+        "canLongIBJ"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 62,
+      "link": [7, 6],
+      "name": "Speedy Jump",
+      "requires": [
+        "HiJump",
+        "canSpeedyJump"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 67,
+      "link": [7, 6],
+      "name": "Shinespark",
+      "requires": [
+        {"canShineCharge": {
+          "usedTiles": 17,
+          "gentleUpTiles": 6,
+          "steepUpTiles": 1,
+          "openEnd": 1
+        }},
+        {"or": [
+          {"and": [
+            "canMidairShinespark",
+            "canShinechargeMovement",
+            {"shinespark": {"frames": 9, "excessFrames": 4}}
+          ]},
+          {"shinespark": {"frames": 21, "excessFrames": 4}}
+        ]}
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 63,
+      "link": [7, 6],
+      "name": "Dual Jump Assist",
+      "requires": [
+        "HiJump",
+        "canSpringBallJumpMidAir"
+      ],
+      "flashSuitChecked": true
+    },
+    {
+      "id": 85,
+      "link": [7, 7],
+      "name": "Gain Flash Suit - Shinespark up.",
+      "requires": [
+        "canUseFlashSuitInitialSpark",
+        {"canShineCharge": {
+          "usedTiles": 17,
+          "gentleUpTiles": 6,
+          "steepUpTiles": 1,
+          "openEnd": 1
+        }},
+        {"spikeHits": 1},
+        "canRiskySpikeSuit",
+        {"shinespark": {"frames": 24, "excessFrames": 8}}
+      ],
+      "wallJumpAvoid": true,
+      "flashSuitChecked": true,
+      "note": [
+        "Failing the spikesuit without a way to get back up to the junction results in a softlock."
+      ]
+    }
+  ],
+  "notables": [
+    {
+      "id": 2,
+      "name": "G-Mode Morph Blind Top to Bottom",
+      "note": [
+        "Traversing the room without getting hit requires fairly tricky off-screen movement.",
+        "Note that Samus moves freely through the off-screen Funes, but will take damage from the Boulders.",
+        "The Boulders will behave normally and start to roll as Samus is in front of them, except for the top Boulder.",
+        "Roll off the first ledge and immediately roll to the right all the way to the right wall. Use Spring Ball or a horizontal bomb boost to get over the next Boulder.",
+        "Quickly roll off the left edge and back to the right in order to avoid the third Boulder.",
+        "Roll to the right wall then the left wall and either place a Power Bomb the Fune or use Spring Ball to jump over it.",
+        "Exit G-Mode, and jump repeatedly to fix the camera."
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Morph Over the Fune",
+      "note": [
+        "A paricularly precise mid-air morph can get up and over the Fune without damage.",
+        "Stand a half tile away from the Fune when jump morphing for a higher ceiling.",
+        "It's a 2.5 tile high mid air morph. It can be performed similar to how a 2 or 3 tile high morph is performed."
+      ]
+    }
+  ],
+  "nextStratId": 86,
+  "nextNotableId": 4
+}

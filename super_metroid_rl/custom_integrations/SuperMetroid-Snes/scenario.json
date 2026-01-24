@@ -1,0 +1,14 @@
+{
+    "done": {
+        "variables": {
+            "health": {
+                "op": "equal",
+                "reference": 0
+            }
+        },
+        "condition": "any"
+    },
+    "reward": {
+        "variables": {}
+    }
+}

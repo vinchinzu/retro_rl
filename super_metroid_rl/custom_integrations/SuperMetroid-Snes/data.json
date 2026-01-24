@@ -1,0 +1,192 @@
+{
+    "info": {
+        "samus_x": {
+            "address": 2806,
+            "type": "<u2"
+        },
+        "samus_y": {
+            "address": 2810,
+            "type": "<u2"
+        },
+        "room_x": {
+            "address": 2834,
+            "type": "<u2"
+        },
+        "room_y": {
+            "address": 2838,
+            "type": "<u2"
+        },
+        "room_id": {
+            "address": 1947,
+            "type": "<u2"
+        },
+        "health": {
+            "address": 2498,
+            "type": "<u2"
+        },
+        "max_health": {
+            "address": 2500,
+            "type": "<u2"
+        },
+        "selected_item": {
+            "address": 2514,
+            "type": "<u2"
+        },
+        "missiles": {
+            "address": 2502,
+            "type": "<u2"
+        },
+        "game_state": {
+            "address": 2456,
+            "type": "<u2"
+        },
+        "door_transition": {
+            "address": 1943,
+            "type": "<u2"
+        },
+        "transition_direction": {
+            "address": 1937,
+            "type": "<u2"
+        },
+        "timer_type": {
+            "address": 2371,
+            "type": "|u1"
+        },
+        "escape_timer_frames": {
+            "address": 2373,
+            "type": "|u1"
+        },
+        "escape_timer_seconds": {
+            "address": 2374,
+            "type": "|u1"
+        },
+        "escape_timer_minutes": {
+            "address": 2375,
+            "type": "|u1"
+        },
+        "game_time_frames": {
+            "address": 2522,
+            "type": "<u2"
+        },
+        "game_time_seconds": {
+            "address": 2524,
+            "type": "<u2"
+        },
+        "game_time_minutes": {
+            "address": 2526,
+            "type": "<u2"
+        },
+        "velocity_x": {
+            "address": 2882,
+            "type": "<i2"
+        },
+        "velocity_y": {
+            "address": 2862,
+            "type": "<i2"
+        },
+        "collected_items": {
+            "address": 2468,
+            "type": "<u2"
+        },
+        "equipped_items": {
+            "address": 2466,
+            "type": "<u2"
+        },
+        "collected_beams": {
+            "address": 2472,
+            "type": "<u2"
+        },
+        "equipped_beams": {
+            "address": 2470,
+            "type": "<u2"
+        },
+        "max_missiles": {
+            "address": 2504,
+            "type": "<u2"
+        },
+        "enemy0_hp": {
+            "address": 3980,
+            "type": "<u2"
+        },
+        "enemy0_x": {
+            "address": 3962,
+            "type": "<u2"
+        },
+        "enemy0_y": {
+            "address": 3966,
+            "type": "<u2"
+        },
+        "boss_hp": {
+            "address": 3980,
+            "type": "<u2"
+        },
+        "boss_x": {
+            "address": 3962,
+            "type": "<u2"
+        },
+        "boss_y": {
+            "address": 3966,
+            "type": "<u2"
+        },
+        "enemy1_x": {
+            "address": 4026,
+            "type": "<u2"
+        },
+        "enemy1_y": {
+            "address": 4030,
+            "type": "<u2"
+        },
+        "enemy1_hp": {
+            "address": 4044,
+            "type": "<u2"
+        },
+        "enemy2_x": {
+            "address": 4090,
+            "type": "<u2"
+        },
+        "enemy2_y": {
+            "address": 4094,
+            "type": "<u2"
+        },
+        "enemy2_hp": {
+            "address": 4108,
+            "type": "<u2"
+        },
+        "num_enemies": {
+            "address": 3662,
+            "type": "<u2"
+        },
+        "enemies_killed": {
+            "address": 3664,
+            "type": "<u2"
+        },
+        "samus_pose": {
+            "address": 2588,
+            "type": "<u2"
+        },
+        "shot_cooldown": {
+            "address": 3276,
+            "type": "<u2"
+        },
+        "beam_charge": {
+            "address": 3280,
+            "type": "<u2"
+        },
+        "projectile0_type": {
+            "address": 3096,
+            "type": "<u2"
+        },
+        "projectile1_type": {
+            "address": 3098,
+            "type": "<u2"
+        },
+        "controller_input": {
+            "address": 139,
+            "type": "<u2"
+        },
+        "controller_new_buttons": {
+            "address": 143,
+            "type": "<u2"
+        }
+    }
+}

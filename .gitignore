@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[oc]
+*.pyd
+*.so
+.venv/
+venv/
+.env/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# ROMs (keep local only)
+**/roms/
+**/custom_integrations/**/rom.*
+
+# Super Metroid RL artifacts
+super_metroid_rl/.venv/
+super_metroid_rl/retro_env/
+super_metroid_rl/models/
+super_metroid_rl/logs/
+super_metroid_rl/recordings/
+super_metroid_rl/recording/
+super_metroid_rl/debug_frames/
+super_metroid_rl/debug_screens/
+super_metroid_rl/boss_data/
+super_metroid_rl/*.mp4
+super_metroid_rl/*.bk2
+super_metroid_rl/*.zip
+super_metroid_rl/*.log
+
+# Harvest artifacts
+harvest/.venv/
+harvest/roms/
