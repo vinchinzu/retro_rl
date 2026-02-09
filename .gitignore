@@ -3,34 +3,81 @@ __pycache__/
 *.py[oc]
 *.pyd
 *.so
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Virtual environments
 .venv/
 venv/
 .env/
+retro_env/
 
 # OS/editor
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
 
-# ROMs (keep local only)
+# ROMs (copyright-protected)
+roms/
 **/roms/
 **/custom_integrations/**/rom.*
+*.sfc
+*.smc
 
-# Super Metroid RL artifacts
-super_metroid_rl/.venv/
-super_metroid_rl/retro_env/
-super_metroid_rl/models/
-super_metroid_rl/logs/
-super_metroid_rl/recordings/
-super_metroid_rl/recording/
-super_metroid_rl/debug_frames/
-super_metroid_rl/debug_screens/
-super_metroid_rl/boss_data/
-super_metroid_rl/*.mp4
-super_metroid_rl/*.bk2
-super_metroid_rl/*.zip
-super_metroid_rl/*.log
+# Trained models
+**/models/*.zip
+**/models/*.pth
 
-# Harvest artifacts
-harvest/.venv/
-harvest/roms/
+# Logs and training output
+*.log
+**/logs/
+*.monitor.csv
+**/events.out.tfevents.*
+
+# Recordings, demos, replays
+**/recordings/
+**/demos/
+*.bk2
+*.mp4
+*.npz
+*.replay.jsonl
+
+# Screenshots and montages
+**/screenshots/
+**/montages/
+
+# Archive directories (old experiments)
+**/archive/
+
+# Manual save states
+ManualSave.state
+
+# Personal/session notes
+onotes.md
+TRAINING_IN_PROGRESS.md
+
+# Runtime data
+best_times.json
+split_runs.jsonl
+
+# Save files (SRAM, etc.)
+**/saves/
+*.srm
+*.FRM
+
+# Backup files
+*.bak
+
+# DKC misc
+donkey_kong_country/button
+donkey_kong_country/notes
+donkey_kong_country/QuickSave.state
+
+# Session-specific scripts
+monitor_all_training.sh
+
+# Claude Code local config
+.claude/

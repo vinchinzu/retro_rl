@@ -63,7 +63,8 @@ DEBRIS_TOOL: Dict[DebrisType, Optional[Tool]] = {
 LIFTABLE_TILES: Set[int] = {0x03, 0x04, 0x05}  # weeds, small stones, fence only
 POND_CHARACTERISTIC_TILES: Set[int] = {0xA6, 0xF0}
 WALKABLE_TILES: Set[int] = {
-    0x00, 0x01, 0x02, 0x03, 0x07, 0x08, 
+    0x00, 0x01, 0x02, 0x03, 0x07, 0x08,
+    0x70,  # Planted grass
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85, # Grass variants
     0xA0, 0xA2, 0xA3, 0xA8, # Paths, borders, and some empty tiles
 }
@@ -245,16 +246,19 @@ class Pathfinder:
         self.scanner = scanner
         self.no_go_tiles: Set[Tuple[int, int]] = set()
         self.temp_blocked: Set[Tuple[int, int]] = set()
+        self.extra_walkable: Set[Tuple[int, int]] = set()  # tiles treated as walkable (e.g. crop tiles)
 
     def is_walkable(self, ram: np.ndarray, tx: int, ty: int, walkable_override: Optional[Set[int]] = None, current_pos: Optional[Tuple[int, int]] = None) -> bool:
         # Always allow moving from current tile
         if current_pos and (tx, ty) == current_pos:
             return True
-            
+
         if (tx, ty) in self.no_go_tiles or (tx, ty) in self.temp_blocked:
             return False
         tile_id = get_tile_at(ram, tx, ty)
         if tile_id in WALKABLE_TILES:
+            return True
+        if (tx, ty) in self.extra_walkable:
             return True
         if walkable_override and (tx, ty) in walkable_override:
             return True
@@ -459,7 +463,7 @@ class FarmClearer:
 
         self.failed_tiles: Set[Tuple[int, int]] = set()
         self.cleared_count = 0
-        self.tiles_cleared: Set[Tuple[int, int, int]] = set()  # Track (x, y, tile_id) cleared
+        self.tiles_cleared: Set[Tuple[int, int]] = set()  # Track (x, y) positions cleared
         self.tile_attempts: Dict[Tuple[int, int, int], int] = {}  # Track attempts per tile
         self.frame_count = 0
         self.farm_bounds: Optional[Tuple[int, int, int, int]] = None
@@ -518,11 +522,14 @@ class FarmClearer:
 
     def _emit_action(self, action: np.ndarray, src: str) -> np.ndarray:
         if self.suppress_move_frames > 0:
-            action = action.copy()
-            # Strip directional inputs during sensitive hit sequences.
-            action[4:8] = 0
             self.suppress_move_frames -= 1
-            src = f"{src}+suppress"
+            # Strip directional inputs on tool-swing frames to prevent drift.
+            # Direction-only frames (the initial face tap) pass through so the
+            # character actually turns toward the target before swinging.
+            if action[1] == 1:  # Y button pressed (tool use)
+                action = action.copy()
+                action[4:8] = 0
+                src = f"{src}+suppress"
         if os.getenv("ACTION_DEBUG") == "1":
             buttons = action_to_names(action)
             if buttons != "none" or os.getenv("ACTION_DEBUG_VERBOSE") == "1" and self.frame_count % 30 == 0:
@@ -654,7 +661,7 @@ class FarmClearer:
         player_tile = self.navigator.current_tile
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nx, ny = player_tile[0] + dx, player_tile[1] + dy
-            if 0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH:
+            if 0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH and (nx, ny) not in self.failed_tiles:
                 tile_id = get_tile_at(ram, nx, ny)
                 debris = TILE_TO_DEBRIS.get(tile_id)
                 if debris == DebrisType.ROCK:
@@ -756,70 +763,68 @@ class FarmClearer:
         # Track when we entered clearing state for timeout
         if self.clearing_start_frame == 0:
             self.clearing_start_frame = self.frame_count
-            # CRITICAL: Clear action queue to prevent navigation actions from interfering
             self.action_queue.clear()
-            # Clear any pending scripted actions too (tool tasks, startup moves)
             self.task_queue.clear()
-            # Stop any leftover navigation pathing
             self.navigator.path = []
-            if os.getenv("FENCE_DEBUG") == "1":
-                print(f"[CLEAR] Starting clear of {self.current_target.debris_type.name} at {self.current_target.tile}")
 
-        # Timeout if we've been in clearing too long (need 300+ frames for 6-hit sequence)
-        if self.frame_count - self.clearing_start_frame > 400:
-            if os.getenv("FENCE_DEBUG") == "1":
-                print(f"[CLEAR] Timeout after {self.frame_count - self.clearing_start_frame}f, queue={len(self.action_queue)}, hits={self.target_hits}")
+        # Timeout (600 frames: per-hit clearing with centering between each)
+        if self.frame_count - self.clearing_start_frame > 600:
             print(f"[CLEARER] Clearing timeout at {self.current_target.tile}, moving on")
             self.failed_tiles.add(self.current_target.tile)
             self.current_target = None
             self.clearing_start_frame = 0
             return "scanning"
 
-        # Re-validate target tile each time we enter clearing; it may have changed.
+        # Re-validate target tile.  Rocks change tile ID as they take damage;
+        # keep hitting as long as the debris *type* is unchanged.
         current_tile_id = get_tile_at(ram, *self.current_target.tile)
         if current_tile_id != self.current_target.tile_id:
             new_debris = TILE_TO_DEBRIS.get(current_tile_id)
             if new_debris is None:
-                # Tile cleared or transformed into non-debris.
+                # Tile fully cleared
+                pos_key = self.current_target.tile
+                if pos_key not in self.tiles_cleared:
+                    self.tiles_cleared.add(pos_key)
+                    self.cleared_count += 1
                 self.current_target = None
                 self.clearing_start_frame = 0
                 return "scanning"
-            # Update target to match current tile contents and restart selection.
+            if new_debris != self.current_target.debris_type:
+                # Changed to a different debris type, rescan
+                self.current_target = None
+                self.clearing_start_frame = 0
+                return "scanning"
+            # Same debris type, different visual (rock taking damage) — continue
             self.current_target = Target(
                 tile=self.current_target.tile,
                 pos=self.current_target.pos,
                 debris_type=new_debris,
                 tile_id=current_tile_id,
             )
-            self.clearing_start_frame = 0
-            return "scanning"
 
         player = self.navigator.current_tile
         target = self.current_target.tile
 
         if tile_dist(player, target) > 1:
-            if os.getenv("FENCE_DEBUG") == "1" and self.frame_count % 30 == 0:
-                print(f"[CLEAR] Too far: player={player} target={target} dist={tile_dist(player, target)}")
             return "navigating"
 
-        # Ensure we're centered on the approach tile before beginning hits.
-        # This prevents sliding/micro-movement that breaks multi-hit sequences.
-        if self.approach_tile and not self.navigator.at_tile(self.approach_tile, tolerance=2):
-            # Only try to center briefly; avoid getting stuck micro-adjusting.
-            if self.frame_count - self.clearing_start_frame < 60:
-                action = self.navigator.center_on_tile(self.approach_tile, tolerance=2)
-                if action is not None:
-                    self.action_queue.append(action)
-                    return None
-
-        # Wait until inputs are accepted and the player is fully stationary.
-        # Some frames after transitions are input-locked; movement during hits resets the counter.
-        input_lock = ram[ADDR_INPUT_LOCK] if ADDR_INPUT_LOCK < len(ram) else 1
-        if input_lock != 1 or self.navigator.stasis < 6:
-            if os.getenv("FENCE_DEBUG") == "1" and self.frame_count % 15 == 0:
-                print(f"[CLEAR] Waiting to settle: lock={input_lock} stasis={self.navigator.stasis}")
+        # Wait for any queued actions (current hit animation) to finish
+        if self.action_queue:
             return None
 
+        # Wait until inputs are accepted and player is stationary
+        input_lock = ram[ADDR_INPUT_LOCK] if ADDR_INPUT_LOCK < len(ram) else 1
+        if input_lock != 1 or self.navigator.stasis < 6:
+            return None
+
+        # Re-center on approach tile before every hit to correct animation drift
+        if self.approach_tile:
+            center_action = self.navigator.center_on_tile(self.approach_tile, tolerance=2)
+            if center_action is not None:
+                self.action_queue.append(center_action)
+                return None
+
+        # Lift check
         if self._should_lift(self.current_target):
             print(f"[CLEARER] Lifting {self.current_target.debris_type.name}")
             direction = self._face_dir(player, target)
@@ -831,6 +836,7 @@ class FarmClearer:
             self.clearing_start_frame = 0
             return "scanning"
 
+        # Tool check
         tool = self.current_target.required_tool
         if tool is None:
             self.failed_tiles.add(target)
@@ -845,76 +851,39 @@ class FarmClearer:
             self.tool_search_frames = 0
             return "tool_switch"
 
-        # Skip centering - just make sure we're on the right tile
-        # The bot should already be close enough from navigation
-
-        # Debug: log if we're stuck in clearing
-        if os.getenv("FENCE_DEBUG") == "1" and (self.frame_count - self.clearing_start_frame) % 30 == 0:
-            print(f"[CLEAR] In clearing for {self.frame_count - self.clearing_start_frame}f, target_hits={self.target_hits}, queue={len(self.action_queue)}")
-
-        # Start clearing sequence: face direction and queue all hits at once
+        # First hit: attempt tracking and logging
         if self.target_hits == 0:
-            direction = self._face_dir(player, target)
-
-            # Remember the tile ID before clearing
-            tile_before = self.current_target.tile_id
-            tile_key = (target[0], target[1], tile_before)
-
-            # Check if we already attempted this specific tile
+            tile_key = (target[0], target[1], self.current_target.tile_id)
             attempts = self.tile_attempts.get(tile_key, 0)
-            already_cleared = tile_key in self.tiles_cleared
-
-            # If we've tried this tile 3+ times and it hasn't changed, mark as failed
             if attempts >= 3:
-                print(f"[CLEARER] Giving up on {self.current_target.debris_type.name} at {target} tile=0x{tile_before:02X} (3 failed attempts)")
+                print(f"[CLEARER] Giving up on {self.current_target.debris_type.name} at {target} tile=0x{self.current_target.tile_id:02X} (3 failed attempts)")
                 self.failed_tiles.add(target)
                 self.current_target = None
                 return "scanning"
-
-            if not already_cleared:
-                print(f"[CLEARER] Clearing {self.current_target.debris_type.name} at {target} tile=0x{tile_before:02X} from {player} facing {direction} ({self.current_target.required_hits} hits)")
-            else:
-                print(f"[CLEARER] Re-targeting {self.current_target.debris_type.name} at {target} tile=0x{tile_before:02X} (attempt {attempts + 1}/3)")
-
-            # Track this attempt
             self.tile_attempts[tile_key] = attempts + 1
+            direction = self._face_dir(player, target)
+            if attempts == 0:
+                print(f"[CLEARER] Clearing {self.current_target.debris_type.name} at {target} tile=0x{self.current_target.tile_id:02X} from {player} facing {direction} ({self.current_target.required_hits} hits)")
+            else:
+                print(f"[CLEARER] Re-targeting {self.current_target.debris_type.name} at {target} tile=0x{self.current_target.tile_id:02X} (attempt {attempts + 1}/3)")
 
-            # 1. Face the target with a single tap (blocked by stump/rock so no movement).
-            self.action_queue.append(make_action(**{direction: True}))
-
-            # 2. CRITICAL: Stop ALL input and wait for character to become stationary
-            # Reduced wait time since we're using looser centering tolerance
-            self.action_queue.extend([make_action() for _ in range(20)])
-
-            # 3. Queue all hits with ZERO directional input
-            # Each hit must have NO movement keys pressed at all
-            hit_actions: List[np.ndarray] = []
-            for _ in range(self.current_target.required_hits):
-                if self.current_target.required_hits > 1:
-                    hit_actions.extend(use_tool_facing(direction, frames=20, cooldown=15))
-                else:
-                    hit_actions.extend(use_tool(frames=20, cooldown=15))
-
-            # 4. Cooldown before scanning
-            hit_actions.extend([make_action() for _ in range(20)])
-
-            # Queue and suppress any directional inputs during the full sequence.
-            self.action_queue.extend(hit_actions)
-            self.suppress_move_frames = len(hit_actions)
-            self.sequence_tool = tool
-            self.sequence_frames = len(hit_actions)
-            self.sequence_target = target
-            self.sequence_tile_id = self.current_target.tile_id
-            self.sequence_debris = self.current_target.debris_type
-
-            # Mark this specific tile ID as cleared and increment counter
-            if not already_cleared:
-                self.tiles_cleared.add(tile_key)
+        # All hits delivered — mark cleared
+        if self.target_hits >= self.current_target.required_hits:
+            pos_key = self.current_target.tile
+            if pos_key not in self.tiles_cleared:
+                self.tiles_cleared.add(pos_key)
                 self.cleared_count += 1
-
             self.current_target = None
-            self.clearing_start_frame = 0  # Reset timeout
+            self.clearing_start_frame = 0
             return "scanning"
+
+        # Queue a SINGLE hit: face → settle → swing → cooldown
+        # The state machine re-centers between each hit automatically.
+        direction = self._face_dir(player, target)
+        self.action_queue.append(make_action(**{direction: True}))      # Face target
+        self.action_queue.extend([make_action() for _ in range(8)])     # Let face register
+        self.action_queue.extend(use_tool(frames=20, cooldown=20))      # Swing + cooldown
+        self.target_hits += 1
 
         return None
 
@@ -983,11 +952,13 @@ class FarmClearer:
                 self.sequence_debris = None
                 return self._emit_action(make_action(), "queue_abort")
             if self.sequence_frames > 0 and self.sequence_tool is not None:
-                # Abort if target tile changed mid-sequence (e.g., stump->rock or cleared).
+                # Abort if target tile cleared (debris gone) or changed type.
+                # Don't abort just because tile ID changed - rocks change visually during hits.
                 if self.sequence_target is not None:
                     live_tile_id = get_tile_at(ram, *self.sequence_target)
                     live_debris = TILE_TO_DEBRIS.get(live_tile_id)
-                    if live_tile_id != self.sequence_tile_id or live_debris != self.sequence_debris:
+                    # Only abort if debris is gone (cleared) or changed to different type
+                    if live_debris is None or (live_debris != self.sequence_debris):
                         self.action_queue.clear()
                         self.suppress_move_frames = 0
                         self.sequence_frames = 0
@@ -1050,7 +1021,8 @@ class FarmClearer:
                 if self.sequence_target is not None:
                     live_tile_id = get_tile_at(ram, *self.sequence_target)
                     live_debris = TILE_TO_DEBRIS.get(live_tile_id)
-                    if live_tile_id != self.sequence_tile_id or live_debris != self.sequence_debris:
+                    # Only abort if debris is gone (cleared) or changed to different type
+                    if live_debris is None or (live_debris != self.sequence_debris):
                         self.action_queue.clear()
                         self.suppress_move_frames = 0
                         self.sequence_frames = 0

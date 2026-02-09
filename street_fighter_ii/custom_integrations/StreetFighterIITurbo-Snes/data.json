@@ -1,0 +1,52 @@
+{
+  "info": {
+    "health": {
+      "address": 1590,
+      "type": "|u1"
+    },
+    "enemy_health": {
+      "address": 1840,
+      "type": "|u1"
+    },
+    "matches_won": {
+      "address": 3280,
+      "type": "|u1"
+    },
+    "enemy_matches_won": {
+      "address": 3792,
+      "type": "|u1"
+    },
+    "timer": {
+      "address": 6387,
+      "type": "|u1"
+    },
+    "rounds_won": {
+      "address": 6300,
+      "type": "|u1"
+    },
+    "enemy_rounds_won": {
+      "address": 6299,
+      "type": "|u1"
+    },
+    "match_state": {
+      "address": 6392,
+      "type": "|u1"
+    },
+    "score_1": {
+      "address": 1730,
+      "type": "|u1"
+    },
+    "score_2": {
+      "address": 1731,
+      "type": "|u1"
+    },
+    "score_3": {
+      "address": 1732,
+      "type": "|u1"
+    },
+    "score_4": {
+      "address": 1733,
+      "type": "|u1"
+    }
+  }
+}

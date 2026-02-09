@@ -1,0 +1,64 @@
+{
+  "info": {
+    "health": {
+      "address": 1590,
+      "type": "|u1"
+    },
+    "enemy_health": {
+      "address": 2166,
+      "type": "|u1"
+    },
+    "timer": {
+      "address": 6441,
+      "type": "|d1"
+    },
+    "current_battle": {
+      "address": 6332,
+      "type": "|u1"
+    },
+    "match_ending_p1": {
+      "address": 6347,
+      "type": "|u1"
+    },
+    "match_ending_p2": {
+      "address": 6346,
+      "type": "|u1"
+    },
+    "p1_x": {
+      "address": 1559,
+      "type": "<u2"
+    },
+    "p1_y": {
+      "address": 1562,
+      "type": "<u2"
+    },
+    "p2_x": {
+      "address": 2135,
+      "type": "<u2"
+    },
+    "p2_y": {
+      "address": 2138,
+      "type": "<u2"
+    },
+    "p1_active": {
+      "address": 1513,
+      "type": "|u1"
+    },
+    "p2_active": {
+      "address": 2089,
+      "type": "|u1"
+    },
+    "p1_hit": {
+      "address": 1428,
+      "type": "|u1"
+    },
+    "p2_hit": {
+      "address": 2004,
+      "type": "|u1"
+    },
+    "continues": {
+      "address": 1478,
+      "type": "|u1"
+    }
+  }
+}

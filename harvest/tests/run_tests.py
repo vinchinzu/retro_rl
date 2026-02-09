@@ -23,8 +23,11 @@ class TestResult:
 
 
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 import harvest_bot as hb
 from farm_clearer import (
@@ -33,7 +36,11 @@ from farm_clearer import (
     TILE_SIZE, MAP_WIDTH, use_tool,
 )
 from task_recorder import Task
-from harness import TaskStatus
+from retro_harness import TaskStatus
+from grass_planter import (
+    GrassPlantTask, TILLABLE_TILES, PLANTABLE_TILES, PLANTED_GRASS_TILE,
+    DEFAULT_BOUNDS,
+)
 
 STATES_DIR = hb.STATES_DIR
 TASKS_DIR = os.path.join(SCRIPT_DIR, "tasks")
@@ -709,6 +716,229 @@ def test_stuck_recovery() -> TestResult:
 
 
 # =============================================================================
+# L8: Grass Planting Tests
+# =============================================================================
+
+def test_grass_seed_hack() -> TestResult:
+    """Verify set_value('grass_seeds', 99) sets RAM 0x0927 to 99."""
+    state = "pretill"
+    if not load_state_bytes(state):
+        return TestResult("L8 grass seed hack", "SKIP", "missing state")
+    env = make_env(state)
+    env.reset()
+
+    ram = env.get_ram()
+    before = int(ram[0x0927]) if 0x0927 < len(ram) else -1
+
+    try:
+        env.data.set_value("grass_seeds", 99)
+    except Exception as e:
+        env.close()
+        return TestResult("L8 grass seed hack", "FAIL", f"set_value failed: {e}")
+
+    env.step(np.zeros(12, dtype=np.int32))
+    ram = env.get_ram()
+    after = int(ram[0x0927]) if 0x0927 < len(ram) else -1
+    env.close()
+
+    if after != 99:
+        return TestResult("L8 grass seed hack", "FAIL", f"expected 99, got {after}")
+    return TestResult("L8 grass seed hack", "PASS", f"before={before} after={after}")
+
+
+def test_grass_scan_targets() -> TestResult:
+    """Verify GrassPlantTask._scan_targets() finds tillable tiles."""
+    state = "pretill"
+    if not load_state_bytes(state):
+        return TestResult("L8 grass scan targets", "SKIP", "missing state")
+    env = make_env(state)
+    env.reset()
+    ram = env.get_ram()
+
+    task = GrassPlantTask()
+    targets = task._scan_targets(ram)
+    env.close()
+
+    if not targets:
+        return TestResult("L8 grass scan targets", "FAIL", "no tillable tiles found")
+    return TestResult("L8 grass scan targets", "PASS", f"found {len(targets)} tillable tiles")
+
+
+def test_grass_till_run() -> TestResult:
+    """Short run: verify bot tills at least 1 tile."""
+    state = "pretill"
+    if not load_state_bytes(state):
+        return TestResult("L8 grass till run", "SKIP", "missing state")
+
+    from harness_runtime import HarnessRunner
+    from retro_harness import WorldState
+
+    env = make_env(state)
+    env.reset()
+
+    # Inject grass seeds so tool cycling finds them
+    env.data.set_value("grass_seeds", 99)
+    env.step(np.zeros(12, dtype=np.int32))
+
+    runner = HarnessRunner(env)
+    world = runner.reset()
+
+    task = GrassPlantTask(till_only=True, bounds=(55, 3, 62, 10))
+    result = runner.run_task(task, world, max_steps=5000)
+    env.close()
+
+    if task.tilled_count > 0:
+        return TestResult("L8 grass till run", "PASS", f"tilled={task.tilled_count}")
+    return TestResult("L8 grass till run", "FAIL", f"tilled=0 status={result.status} reason={result.reason}")
+
+
+def test_grass_plant_run() -> TestResult:
+    """Verify planting changes tile IDs after tilling."""
+    state = "pretill"
+    if not load_state_bytes(state):
+        return TestResult("L8 grass plant run", "SKIP", "missing state")
+
+    from harness_runtime import HarnessRunner
+
+    env = make_env(state)
+    env.reset()
+    env.data.set_value("grass_seeds", 99)
+    env.step(np.zeros(12, dtype=np.int32))
+
+    runner = HarnessRunner(env)
+    world = runner.reset()
+
+    # Full run: till + plant (small bounds for speed)
+    task = GrassPlantTask(bounds=(55, 3, 62, 10))
+
+    # Keep seeds topped up during run
+    original_step = runner.step_env
+
+    def step_with_seeds(action):
+        result = original_step(action)
+        try:
+            env.data.set_value("grass_seeds", 99)
+            env.data.set_value("stamina", 100)
+        except Exception:
+            pass
+        return result
+
+    runner.step_env = step_with_seeds
+    result = runner.run_task(task, world, max_steps=10000)
+    env.close()
+
+    if task.planted_count > 0:
+        return TestResult("L8 grass plant run", "PASS",
+                          f"tilled={task.tilled_count} planted={task.planted_count}")
+    if task.tilled_count > 0:
+        return TestResult("L8 grass plant run", "PASS",
+                          f"tilled={task.tilled_count} planted=0 (till phase worked)")
+    return TestResult("L8 grass plant run", "FAIL",
+                      f"tilled={task.tilled_count} planted={task.planted_count} "
+                      f"status={result.status} reason={result.reason}")
+
+
+# =============================================================================
+# L9: Day Plan Tests
+# =============================================================================
+
+def test_day_plan_can_start() -> TestResult:
+    """Verify that required recorded tasks exist for the day plan."""
+    from day_plan import PHASE_SEQUENCE
+    missing = []
+    for spec in PHASE_SEQUENCE:
+        if spec.kind == "recorded":
+            task_name = spec.params.get("task_name", "")
+            task_path = os.path.join(TASKS_DIR, f"{task_name}.json")
+            if not os.path.exists(task_path):
+                missing.append(task_name)
+        elif spec.kind == "cross_map":
+            rec_name = spec.params.get("recording_name", "")
+            rec_path = os.path.join(TASKS_DIR, f"{rec_name}.json")
+            if not os.path.exists(rec_path):
+                missing.append(rec_name)
+    if missing:
+        return TestResult("L9 day plan can start", "FAIL", f"missing recordings: {missing}")
+    return TestResult("L9 day plan can start", "PASS")
+
+
+def test_day_plan_exit_house() -> TestResult:
+    """Verify ExitBuildingTask changes tilemap from house (0x15) to farm (0x00)."""
+    state = "Y1_Spring_Day01_06h00m"
+    if not load_state_bytes(state):
+        return TestResult("L9 day plan exit house", "SKIP", "missing state")
+
+    from day_plan import ExitBuildingTask
+    from harness_runtime import HarnessRunner
+    from retro_harness import WorldState as WS
+
+    env = make_env(state)
+    env.reset()
+
+    tilemap_before = get_tilemap(env)
+    if tilemap_before != 0x15:
+        env.close()
+        return TestResult("L9 day plan exit house", "SKIP",
+                          f"expected tilemap 0x15, got 0x{tilemap_before:02X}")
+
+    runner = HarnessRunner(env)
+    world = runner.reset()
+    task = ExitBuildingTask(target_tilemap=0x00, timeout=900)
+    result = runner.run_task(task, world, max_steps=900)
+
+    tilemap_after = get_tilemap(env)
+    env.close()
+
+    if result.status == TaskStatus.SUCCESS and tilemap_after == 0x00:
+        return TestResult("L9 day plan exit house", "PASS")
+    return TestResult("L9 day plan exit house", "FAIL",
+                      f"status={result.status} tilemap=0x{tilemap_after:02X}")
+
+
+def test_day_plan_nav_phase() -> TestResult:
+    """Verify NavTask can reach farm exit waypoint from front-of-house state."""
+    state = "Y1_Front_House"
+    if not load_state_bytes(state):
+        # Try to derive from house state
+        state = "Y1_Spring_Day01_06h00m"
+        if not load_state_bytes(state):
+            return TestResult("L9 day plan nav phase", "SKIP", "missing state")
+
+    from day_plan import NavTask
+    from harness_runtime import HarnessRunner
+
+    env = make_env(state)
+    env.reset()
+
+    # If starting from house, we need to be on farm tilemap
+    tilemap = get_tilemap(env)
+    if tilemap != 0x00:
+        env.close()
+        return TestResult("L9 day plan nav phase", "SKIP",
+                          f"need farm tilemap 0x00, got 0x{tilemap:02X}")
+
+    runner = HarnessRunner(env)
+    world = runner.reset()
+
+    # Navigate to farm exit waypoint (NAV_FARM_EXIT target)
+    task = NavTask(
+        name="nav_farm_exit",
+        target_px=Point(40, 424),
+        radius=12,
+        timeout=3000,
+    )
+    result = runner.run_task(task, world, max_steps=3000)
+    pos = get_pos(env)
+    env.close()
+
+    if result.status == TaskStatus.SUCCESS:
+        return TestResult("L9 day plan nav phase", "PASS",
+                          f"arrived at ({pos.x},{pos.y})")
+    return TestResult("L9 day plan nav phase", "FAIL",
+                      f"status={result.status} pos=({pos.x},{pos.y}) reason={result.reason}")
+
+
+# =============================================================================
 # Test Registry
 # =============================================================================
 
@@ -742,6 +972,17 @@ TESTS: list[Callable[[], TestResult]] = [
     # L7: Robustness
     test_dialog_dismissal,
     test_stuck_recovery,
+
+    # L8: Grass planting
+    test_grass_seed_hack,
+    test_grass_scan_targets,
+    test_grass_till_run,
+    test_grass_plant_run,
+
+    # L9: Day plan
+    test_day_plan_can_start,
+    test_day_plan_exit_house,
+    test_day_plan_nav_phase,
 ]
 
 

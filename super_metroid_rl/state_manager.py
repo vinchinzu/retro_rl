@@ -38,15 +38,43 @@ import shutil
 import argparse
 from typing import Dict, Optional, List
 
-# Import shared controls (sets SDL_VIDEODRIVER)
-from controls import (
-    init_controller, get_controller_action, get_keyboard_action,
-    sanitize_action, print_controls, KEYBOARD_MAP
-)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 import numpy as np
 import pygame
 import stable_retro as retro
+
+from retro_harness import (
+    init_controller as _init_controller,
+    controller_action,
+    keyboard_action,
+    sanitize_action,
+)
+
+
+# Wrappers for retro_harness (different signatures)
+def init_controller():
+    return _init_controller(pygame)
+
+
+def get_controller_action(joystick, action):
+    controller_action(joystick, action)
+
+
+def get_keyboard_action(keys, action):
+    keyboard_action(keys, action, pygame)
+
+
+def print_controls(joystick=None):
+    """Print Super Metroid state manager controls."""
+    print("\nState Manager Controls:")
+    if joystick:
+        print(f"  Controller: {joystick.get_name()}")
+    print("  Movement: Arrows/D-Pad | Z: Run | C: Jump | V: Shoot")
+    print("  F5: Save State | ESC: Exit")
 
 # =============================================================================
 # PATHS
