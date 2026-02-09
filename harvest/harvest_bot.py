@@ -9,30 +9,95 @@ Usage:
 """
 
 import os
+import sys
 import glob
 import gzip
 import argparse
 from datetime import datetime
 from typing import Optional, Dict, List
 
+# Add parent directory for retro_harness import
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 import numpy as np
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import pygame
 import stable_retro as retro
 
-from controls import (
-    init_controller, get_controller_action, get_keyboard_action,
-    sanitize_action, check_hotswap_chord, print_controls,
+from retro_harness import (
+    init_controller as _init_controller,
+    controller_action,
+    keyboard_action,
+    sanitize_action,
+    TaskStatus,
+    WorldState,
+    SNES_L, SNES_R, SNES_SELECT,
 )
 from farm_clearer import (
     FarmClearer, DebrisType, Tool, Point,
     parse_priority_list, make_action,
-    ADDR_TILEMAP, ADDR_INPUT_LOCK, TILE_SIZE, get_pos_from_ram,
+    ADDR_TOOL, ADDR_TILEMAP, ADDR_INPUT_LOCK, TILE_SIZE, get_pos_from_ram,
 )
 from fence_flow import FenceClearLoopTask
-from harness import TaskStatus, WorldState
+from grass_planter import GrassPlantTask, DEFAULT_BOUNDS as GRASS_DEFAULT_BOUNDS, DEFAULT_NO_GO_RECTS as GRASS_DEFAULT_NO_GO
+from crop_planter import CropWaterTask, SEED_DATA_KEY, SEED_ITEM, DEFAULT_CROP_BOUNDS
+from day_plan import DayPlanTask
 
-# Paths
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Wrapper for init_controller (retro_harness version takes pygame arg)
+def init_controller():
+    return _init_controller(pygame)
+
+
+# Wrapper for controller input (retro_harness uses different name/signature)
+def get_controller_action(joystick, action):
+    controller_action(joystick, action)
+
+
+# Wrapper for keyboard input (retro_harness uses different signature)
+def get_keyboard_action(keys, action):
+    keyboard_action(keys, action, pygame)
+
+
+# Harvest-specific: Hotswap chord detection (L+R+SELECT)
+HOTSWAP_KEYS = {pygame.K_a, pygame.K_s, pygame.K_TAB}
+
+def check_hotswap_chord(joystick, keys):
+    """Check if hotswap chord (L+R+SELECT) is pressed."""
+    if all(keys[k] for k in HOTSWAP_KEYS):
+        return True
+    if joystick is not None:
+        try:
+            l_pressed = joystick.get_button(4) if joystick.get_numbuttons() > 4 else False
+            r_pressed = joystick.get_button(5) if joystick.get_numbuttons() > 5 else False
+            sel_pressed = joystick.get_button(6) if joystick.get_numbuttons() > 6 else False
+            if l_pressed and r_pressed and sel_pressed:
+                return True
+        except:
+            pass
+    return False
+
+
+def print_controls(joystick=None):
+    """Print Harvest Moon control scheme."""
+    print("\nControls:")
+    if joystick:
+        print(f"  Controller: {joystick.get_name()}")
+        print("    D-Pad/Stick: Movement")
+        print("    A: Confirm | B: Cancel | X: Menu | Y: Use Item")
+        print("    LB/RB: Cycle Items")
+        print("    LB+RB+SELECT: Toggle Human/Bot Mode")
+    print("  Keyboard:")
+    print("    Arrows: D-Pad")
+    print("    Z: Cancel (B) | C: Confirm (A) | V: Menu (X) | X: Use Item (Y)")
+    print("    A/S: Cycle Items (L/R)")
+    print("    A+S+TAB: Toggle Human/Bot Mode")
+    print("    P: Mark current tile as no-go (debug)")
+
+# Paths (SCRIPT_DIR defined above for retro_harness import)
 INTEGRATION_PATH = os.path.join(SCRIPT_DIR, "custom_integrations")
 STATES_DIR = os.path.join(INTEGRATION_PATH, "HarvestMoon-Snes")
 SAVES_DIR = os.path.join(SCRIPT_DIR, "saves")
@@ -103,6 +168,14 @@ class AutoClearBot:
         priority: Optional[List[DebrisType]] = None,
         clear_fences_first: Optional[bool] = None,
         clear_fences_only: bool = False,
+        grass_enabled: bool = False,
+        till_only: bool = False,
+        grass_bounds: Optional[tuple] = None,
+        grass_no_go: Optional[List[tuple]] = None,
+        grass_seed_hack: bool = False,
+        crop_enabled: bool = False,
+        crop_seed_type: str = "potato",
+        day_plan_enabled: bool = False,
     ):
         self.clearer = FarmClearer(priority=priority)
         self.clearer.tasks_dir = TASKS_DIR
@@ -126,20 +199,60 @@ class AutoClearBot:
         self.fence_task_enabled = clear_fences_first
         self.fence_task_only = clear_fences_only
 
-        # Add startup tasks
-        if not os.getenv("SKIP_HAMMER", "").lower() in ("1", "true", "yes"):
-            get_hammer_path = os.path.join(TASKS_DIR, "get_hammer.json")
-            shed_grab_path = os.path.join(TASKS_DIR, "shed_grab_hammer_smash_rock.json")
-            if os.path.exists(get_hammer_path):
-                self.clearer.add_startup_task("task", name="get_hammer")
-            elif os.path.exists(shed_grab_path):
-                self.clearer.add_startup_task("nav", name="go_shed", target=Point(342, 489), radius=12, timeout=1800)
-                self.clearer.add_startup_task("task", name="shed_grab_hammer_smash_rock")
-        
-        if not os.getenv("SKIP_AXE", "").lower() in ("1", "true", "yes"):
-            get_axe_path = os.path.join(TASKS_DIR, "get_axe.json")
-            if os.path.exists(get_axe_path):
-                self.clearer.add_startup_task("task", name="get_axe")
+        # Grass planting
+        self.grass_enabled = grass_enabled
+        self.grass_seed_hack = grass_seed_hack or grass_enabled
+        self.grass_task = GrassPlantTask(
+            bounds=grass_bounds or GRASS_DEFAULT_BOUNDS,
+            no_go_rects=grass_no_go if grass_no_go is not None else list(GRASS_DEFAULT_NO_GO),
+            till_only=till_only,
+        )
+        self.grass_task_started = False
+        self.grass_task_done = False
+
+        # Crop planting + watering
+        self.crop_enabled = crop_enabled
+        self.crop_seed_type = crop_seed_type
+        self.crop_seed_hack = crop_enabled
+        self.crop_task = CropWaterTask(
+            seed_type=crop_seed_type,
+            bounds=DEFAULT_CROP_BOUNDS,
+        )
+        self.crop_task_started = False
+        self.crop_task_done = False
+
+        # Day plan mode
+        self.day_plan_enabled = day_plan_enabled
+        self.day_plan_task = DayPlanTask(seed_type=crop_seed_type)
+        self.day_plan_started = False
+        self.day_plan_done = False
+
+        # Skip startup tasks in day plan mode
+        if day_plan_enabled:
+            self.crop_seed_hack = True  # ensure seeds available for CropWaterTask
+            self.grass_seed_hack = False
+            self.fence_task_enabled = False
+            self.fence_task_done = True
+
+        # Skip startup tasks in crop mode (no hammer/axe needed)
+        if crop_enabled:
+            self.fence_task_enabled = False
+            self.fence_task_done = True
+        else:
+            # Add startup tasks
+            if not os.getenv("SKIP_HAMMER", "").lower() in ("1", "true", "yes"):
+                get_hammer_path = os.path.join(TASKS_DIR, "get_hammer.json")
+                shed_grab_path = os.path.join(TASKS_DIR, "shed_grab_hammer_smash_rock.json")
+                if os.path.exists(get_hammer_path):
+                    self.clearer.add_startup_task("task", name="get_hammer")
+                elif os.path.exists(shed_grab_path):
+                    self.clearer.add_startup_task("nav", name="go_shed", target=Point(342, 489), radius=12, timeout=1800)
+                    self.clearer.add_startup_task("task", name="shed_grab_hammer_smash_rock")
+
+            if not os.getenv("SKIP_AXE", "").lower() in ("1", "true", "yes"):
+                get_axe_path = os.path.join(TASKS_DIR, "get_axe.json")
+                if os.path.exists(get_axe_path):
+                    self.clearer.add_startup_task("task", name="get_axe")
 
     def set_env(self, env):
         self.env = env
@@ -150,8 +263,20 @@ class AutoClearBot:
         print(f"[BOT] Disabled: {reason}")
 
     def get_goal_text(self) -> str:
+        if self.day_plan_enabled and not self.day_plan_done:
+            if self.day_plan_started:
+                return f"Goal: day plan {self.day_plan_task.phase_text} ({self.day_plan_task.progress_text})"
+            return "Goal: day plan (waiting)"
         if self.fence_task_enabled and not self.fence_task_done:
             return "Goal: clear fences"
+        if self.crop_enabled and not self.crop_task_done:
+            if self.crop_task_started:
+                return f"Goal: crop {self.crop_task.phase_text} ({self.crop_task.progress_text})"
+            return "Goal: crop (waiting)"
+        if self.grass_enabled and not self.grass_task_done:
+            if self.grass_task_started:
+                return f"Goal: grass {self.grass_task.phase_text} ({self.grass_task.progress_text})"
+            return "Goal: grass (waiting)"
         if not self.clearer.startup_done:
             idx = self.clearer.startup_index
             if idx < len(self.clearer.startup_tasks):
@@ -198,6 +323,32 @@ class AutoClearBot:
             self.disable("Fence-only complete")
             return np.zeros(12, dtype=np.int32)
 
+        # Day plan mode: runs before map lock since it traverses multiple tilemaps
+        if self.day_plan_enabled and not self.day_plan_done:
+            if not self.day_plan_started:
+                if self.day_plan_task.can_start(world):
+                    self.day_plan_task.reset(world)
+                    self.day_plan_started = True
+                    print("[BOT] Day plan: start")
+                else:
+                    self.day_plan_done = True
+                    print("[BOT] Day plan: cannot start")
+
+            if self.day_plan_started and not self.day_plan_done:
+                result = self.day_plan_task.step(world)
+                if result.action is not None:
+                    return result.action.action
+                if result.status == TaskStatus.SUCCESS:
+                    print(f"[BOT] Day plan: complete ({self.day_plan_task.progress_text})")
+                    self.day_plan_done = True
+                elif result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                    reason = result.reason or result.status.value
+                    print(f"[BOT] Day plan: stopped ({reason})")
+                    self.day_plan_done = True
+                if self.day_plan_done:
+                    self.disable(f"Day plan complete ({self.day_plan_task.progress_text})")
+                return np.zeros(12, dtype=np.int32)
+
         # Lock to initial map after warmup
         tilemap = ram[ADDR_TILEMAP] if ADDR_TILEMAP < len(ram) else 0
         if not self.map_locked:
@@ -211,6 +362,58 @@ class AutoClearBot:
         if self.map_locked and tilemap != self.initial_tilemap:
             self.disable(f"Map changed to 0x{tilemap:02X}")
             return np.zeros(12, dtype=np.int32)
+
+        # Crop mode: detect plots, plant + water
+        if self.crop_enabled and not self.crop_task_done:
+            if not self.crop_task_started:
+                if self.crop_task.can_start(world):
+                    self.crop_task.reset(world)
+                    self.crop_task_started = True
+                    print("[BOT] Crop task: start")
+                else:
+                    self.crop_task_done = True
+                    print("[BOT] Crop task: cannot start")
+
+            if self.crop_task_started and not self.crop_task_done:
+                result = self.crop_task.step(world)
+                if result.action is not None:
+                    return result.action.action
+                if result.status == TaskStatus.SUCCESS:
+                    print(f"[BOT] Crop task: complete ({self.crop_task.progress_text})")
+                    self.crop_task_done = True
+                elif result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                    reason = result.reason or result.status.value
+                    print(f"[BOT] Crop task: stopped ({reason})")
+                    self.crop_task_done = True
+                if self.crop_task_done:
+                    self.disable(f"Crop complete ({self.crop_task.progress_text})")
+                return np.zeros(12, dtype=np.int32)
+
+        # If grass mode, run grass task instead of (or after) clearing
+        if self.grass_enabled and not self.grass_task_done:
+            if not self.grass_task_started:
+                if self.grass_task.can_start(world):
+                    self.grass_task.reset(world)
+                    self.grass_task_started = True
+                    print("[BOT] Grass planter: start")
+                else:
+                    self.grass_task_done = True
+                    print("[BOT] Grass planter: cannot start")
+
+            if self.grass_task_started and not self.grass_task_done:
+                result = self.grass_task.step(world)
+                if result.action is not None:
+                    return result.action.action
+                if result.status == TaskStatus.SUCCESS:
+                    print(f"[BOT] Grass planter: complete ({self.grass_task.progress_text})")
+                    self.grass_task_done = True
+                elif result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                    reason = result.reason or result.status.value
+                    print(f"[BOT] Grass planter: stopped ({reason})")
+                    self.grass_task_done = True
+                if self.grass_task_done:
+                    self.disable(f"Grass complete ({self.grass_task.progress_text})")
+                return np.zeros(12, dtype=np.int32)
 
         action = self.clearer.tick(ram)
         if action is None:
@@ -230,6 +433,8 @@ class PlaySession:
         bot: Optional[AutoClearBot] = None,
         autoplay: bool = False,
         max_frames: Optional[int] = None,
+        record_name: Optional[str] = None,
+        save_end: bool = False,
     ):
         self.initial_state = state
         self.scale = scale
@@ -241,6 +446,10 @@ class PlaySession:
         self.hotswap_cooldown = 0
         self.hotswap_cancel_frames = 0
         self.hotswap_cancel_until_clear = False
+        self.record_name = record_name
+        self.recorded_frames: List[list] = []
+        self.save_end = save_end
+        self._end_saved = False
 
     def run(self):
         pygame.init()
@@ -276,13 +485,10 @@ class PlaySession:
         font = pygame.font.SysFont('monospace', 11)
         joystick = init_controller()
 
-        print("\n" + "=" * 60)
-        print("HARVEST MOON BOT")
-        print("=" * 60)
-        print_controls(joystick)
-        print("  F5: Save | F9: Load | TAB: Fast Forward | ESC: Exit")
-        print("  L+R+SELECT: Toggle Human/Bot")
-        print("=" * 60)
+        print(f"\n[HARVEST BOT] mode={self.mode.upper()}", end="")
+        if self.record_name:
+            print(f" record={self.record_name}", end="")
+        print()
 
         running = True
         game_state = GameState(info)
@@ -314,6 +520,9 @@ class PlaySession:
                         elif event.key == pygame.K_RIGHTBRACKET:
                             speed_idx = min(len(speed_levels) - 1, speed_idx + 1)
                             print(f"[SPEED] {speed_levels[speed_idx]}x")
+                        elif event.key == pygame.K_F1 and self.record_name:
+                            self._save_recording(env, game_state)
+                            running = False
                         elif event.key == pygame.K_p:
                             pos = get_pos_from_ram(env.get_ram())
                             tx, ty = pos.x // TILE_SIZE, pos.y // TILE_SIZE
@@ -357,10 +566,25 @@ class PlaySession:
                         pygame.display.set_caption(f"Harvest Moon [{self.mode.upper()}]")
 
             obs, reward, terminated, truncated, info = env.step(action)
+
+            if self.record_name:
+                self.recorded_frames.append(action.tolist())
             
             try:
                 # Direct data set is most reliable in retro
                 env.data.set_value("stamina", 100)
+                if self.bot.grass_seed_hack:
+                    env.data.set_value("grass_seeds", 99)
+                if self.bot.crop_seed_hack:
+                    seed_key = SEED_DATA_KEY.get(self.bot.crop_seed_type, "potato_seeds")
+                    env.data.set_value(seed_key, 99)
+                    # Restore tool slots if recording corrupted them
+                    ram = env.get_ram()
+                    if int(ram[ADDR_TOOL]) == 0x00:
+                        env.data.set_value("item_in_hand", SEED_ITEM.get(self.bot.crop_seed_type, 0x07))
+                    if int(ram[0x0923]) != 0x10:  # item_in_hand_alt not watering can
+                        env.data.set_value("item_in_hand_alt", 0x10)
+                    env.data.set_value("water_can", 20)  # ensure watering can ownership
             except Exception:
                 # Fallbacks
                 try:
@@ -378,9 +602,30 @@ class PlaySession:
                 print(f"[DAY] {game_state.date_str}")
                 last_day = game_state.day
 
-            if self.frame_count % 60 == 0:
-                print(f"[BOT] Frame: {self.frame_count} Stamina: {game_state.stamina} State: {self.bot.clearer.state}")
-                import sys; sys.stdout.flush()
+            if self.frame_count % 300 == 0:
+                if self.bot.day_plan_enabled and not self.bot.day_plan_done:
+                    dp = self.bot.day_plan_task
+                    print(f"[BOT] f={self.frame_count} day_plan {dp.phase_text} {dp.progress_text}")
+                elif self.bot.crop_enabled and not self.bot.crop_task_done:
+                    ct = self.bot.crop_task
+                    print(f"[BOT] f={self.frame_count} {ct.phase_text} {ct.progress_text}")
+                elif self.bot.grass_enabled and not self.bot.grass_task_done:
+                    gt = self.bot.grass_task
+                    print(f"[BOT] f={self.frame_count} {gt.phase_text} {gt.progress_text}")
+                else:
+                    print(f"[BOT] f={self.frame_count} {self.bot.clearer.state}")
+                sys.stdout.flush()
+
+            # Auto-save state when day plan or crop task completes
+            if self.save_end and not self._end_saved and (self.bot.day_plan_done or self.bot.crop_task_done):
+                suffix = "day_plan_end" if self.bot.day_plan_done else "crop_end"
+                save_name = f"{self.initial_state}_{suffix}" if self.initial_state else suffix
+                save_path = os.path.join(STATES_DIR, f"{save_name}.state")
+                state_data = env.em.get_state()
+                with gzip.open(save_path, 'wb') as f:
+                    f.write(state_data)
+                self._end_saved = True
+                print(f"[SAVED] {save_name} -> {save_path}")
 
             fast_forward = keys[pygame.K_TAB] if screen else True
 
@@ -395,12 +640,31 @@ class PlaySession:
                     self.bot.get_goal_text(),
                 ]
                 # Player position + target info for debugging
-                player_tile = self.bot.clearer.navigator.current_tile
-                player_pos = self.bot.clearer.navigator.current_pos
-                lines.append(f"Pos: ({player_tile[0]},{player_tile[1]}) px=({player_pos.x},{player_pos.y})")
-                if self.bot.clearer.current_target:
-                    t = self.bot.clearer.current_target
-                    lines.append(f"Target: {t.debris_type.name} @ ({t.tile[0]},{t.tile[1]}) id=0x{t.tile_id:02X}")
+                if self.bot.day_plan_enabled and self.bot.day_plan_started and not self.bot.day_plan_done:
+                    pos = get_pos_from_ram(env.get_ram())
+                    tx, ty = pos.x // TILE_SIZE, pos.y // TILE_SIZE
+                    lines.append(f"Pos: ({tx},{ty}) px=({pos.x},{pos.y})")
+                elif self.bot.crop_enabled and self.bot.crop_task_started and not self.bot.crop_task_done:
+                    ct = self.bot.crop_task
+                    player_tile = ct._navigator.current_tile
+                    player_pos = ct._navigator.current_pos
+                    lines.append(f"Pos: ({player_tile[0]},{player_tile[1]}) px=({player_pos.x},{player_pos.y})")
+                    if ct._target_tile:
+                        lines.append(f"Target: ({ct._target_tile[0]},{ct._target_tile[1]}) plot={ct._plot_index + 1}/{len(ct._plots)}")
+                elif self.bot.grass_enabled and self.bot.grass_task_started and not self.bot.grass_task_done:
+                    gt = self.bot.grass_task
+                    player_tile = gt._navigator.current_tile
+                    player_pos = gt._navigator.current_pos
+                    lines.append(f"Pos: ({player_tile[0]},{player_tile[1]}) px=({player_pos.x},{player_pos.y})")
+                    if gt._target_tile:
+                        lines.append(f"Target: ({gt._target_tile[0]},{gt._target_tile[1]}) chunk={gt._chunk_origin}")
+                else:
+                    player_tile = self.bot.clearer.navigator.current_tile
+                    player_pos = self.bot.clearer.navigator.current_pos
+                    lines.append(f"Pos: ({player_tile[0]},{player_tile[1]}) px=({player_pos.x},{player_pos.y})")
+                    if self.bot.clearer.current_target:
+                        t = self.bot.clearer.current_target
+                        lines.append(f"Target: {t.debris_type.name} @ ({t.tile[0]},{t.tile[1]}) id=0x{t.tile_id:02X}")
                 # Add active buttons display
                 btn_names = ["B", "Y", "Sel", "St", "Up", "Dn", "Lt", "Rt", "A", "X", "L", "R"]
                 active_btns = [btn_names[i] for i, v in enumerate(action) if v > 0]
@@ -430,6 +694,30 @@ class PlaySession:
         pygame.quit()
         print(f"\nFrames: {self.frame_count}")
 
+    def _save_recording(self, env, game_state: GameState):
+        import json as _json
+
+        os.makedirs(TASKS_DIR, exist_ok=True)
+        task_data = {
+            "name": self.record_name,
+            "frames": self.recorded_frames,
+            "start_state": self.initial_state,
+            "metadata": {
+                "frame_count": len(self.recorded_frames),
+                "duration_seconds": len(self.recorded_frames) / 60.0,
+            },
+        }
+        path = os.path.join(TASKS_DIR, f"{self.record_name}.json")
+        with open(path, "w") as f:
+            _json.dump(task_data, f, indent=2)
+        print(f"[REC] Saved task: {path} ({len(self.recorded_frames)} frames)")
+
+        end_state = env.em.get_state()
+        state_path = os.path.join(STATES_DIR, f"{self.record_name}_end.state")
+        with gzip.open(state_path, "wb") as f:
+            f.write(end_state)
+        print(f"[REC] Saved end state: {state_path}")
+
 
 def list_states():
     states = sorted(glob.glob(os.path.join(STATES_DIR, "*.state")))
@@ -452,7 +740,16 @@ def main():
     play.add_argument('--priority', type=str)
     play.add_argument('--priority-only', action='store_true')
     play.add_argument('--fence-only', action='store_true', help='Only clear fences then stop')
+    play.add_argument('--grass', action='store_true', help='Enable grass planting (till + plant)')
+    play.add_argument('--till-only', action='store_true', help='Only till, skip planting')
+    play.add_argument('--grass-bounds', type=str, default=None, help='Custom bounds x1,y1,x2,y2 (default: right half)')
+    play.add_argument('--grass-no-go', type=str, default=None, help='No-go rects: x1,y1,x2,y2;x1,y1,x2,y2 (areas to skip)')
+    play.add_argument('--crop', action='store_true', help='Crop mode: detect plots, plant + water')
+    play.add_argument('--seed', type=str, default='potato', help='Seed type (potato, turnip, corn, tomato)')
+    play.add_argument('--no-day-plan', action='store_true', help='Disable day plan (default: on unless --crop/--grass/--fence-only)')
+    play.add_argument('--save-end', action='store_true', help='Save state when task completes')
     play.add_argument('--max-frames', type=int, default=None, help='Stop after N frames (testing)')
+    play.add_argument('--record', type=str, default=None, metavar='NAME', help='Record inputs as a task (F1 to save)')
 
     subparsers.add_parser('list')
 
@@ -460,13 +757,40 @@ def main():
 
     if args.command == 'play':
         priority = parse_priority_list(getattr(args, 'priority', None), getattr(args, 'priority_only', False))
-        bot = AutoClearBot(priority=priority, clear_fences_only=bool(args.fence_only))
+        grass_bounds = None
+        if args.grass_bounds:
+            parts = [int(x.strip()) for x in args.grass_bounds.split(",")]
+            if len(parts) == 4:
+                grass_bounds = tuple(parts)
+        grass_no_go = None
+        if args.grass_no_go:
+            grass_no_go = []
+            for rect_str in args.grass_no_go.split(";"):
+                rect_str = rect_str.strip()
+                if not rect_str:
+                    continue
+                parts = [int(x.strip()) for x in rect_str.split(",")]
+                if len(parts) == 4:
+                    grass_no_go.append(tuple(parts))
+        bot = AutoClearBot(
+            priority=priority,
+            clear_fences_only=bool(args.fence_only),
+            grass_enabled=bool(args.grass) or bool(args.till_only),
+            till_only=bool(args.till_only),
+            grass_bounds=grass_bounds,
+            grass_no_go=grass_no_go,
+            crop_enabled=bool(args.crop),
+            crop_seed_type=args.seed,
+            day_plan_enabled=not (args.no_day_plan or args.crop or args.grass or args.till_only or args.fence_only),
+        )
         PlaySession(
             state=args.state,
             scale=args.scale,
             bot=bot,
             autoplay=args.autoplay,
             max_frames=args.max_frames,
+            record_name=args.record,
+            save_end=bool(getattr(args, 'save_end', False)),
         ).run()
     elif args.command == 'list':
         list_states()

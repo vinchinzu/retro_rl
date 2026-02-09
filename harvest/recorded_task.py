@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 from typing import List, Optional
 
+# Add parent directory for retro_harness import
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_ROOT_DIR = os.path.dirname(_SCRIPT_DIR)
+if _ROOT_DIR not in sys.path:
+    sys.path.insert(0, _ROOT_DIR)
+
 import numpy as np
 
-from harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
+from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 
 @dataclass

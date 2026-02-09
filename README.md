@@ -2,52 +2,78 @@
 
 Reinforcement learning and automation projects for classic SNES games using stable-retro.
 
+## Quick Start
+
+```bash
+# Set up shared environment
+./setup.sh
+
+# Run a game
+cd donkey_kong_country && ./run_bot.sh
+cd harvest && ./run_bot.sh play --state Y1_Spring_Day01_06h00m
+```
+
 ## Projects
 
+### [Donkey Kong Country](./donkey_kong_country)
+Interactive player for DKC with keyboard/controller support.
+
 ### [Harvest Moon Bot](./harvest)
-Farm clearing automation for Harvest Moon (SNES). The bot uses BFS pathfinding, tool management, and lift+toss mechanics to automatically clear debris (weeds, stones, rocks, stumps) from your farm.
+Farm clearing automation using BFS pathfinding, tool management, and lift+toss mechanics.
 
 **Features:**
-- Automated farm clearing with priority-based targeting
+- Automated debris clearing (weeds, stones, rocks, stumps)
 - Human/bot hot-swap for interactive play
 - Task recording and replay system
-- Comprehensive test suite
-
-[View Harvest Moon Bot →](./harvest)
 
 ### [Super Metroid RL](./super_metroid_rl)
-Reinforcement learning agents trained to speedrun Super Metroid (SNES) using stable-baselines3 PPO and behavioral cloning.
+RL agents trained to speedrun Super Metroid using PPO and behavioral cloning.
 
 **Current Status:**
-- Phase 1: Ceres Station escape sequence
-- Phase 2: Zebes navigation and item acquisition
-- Behavioral cloning with heuristic-enhanced navigation
-- Custom reward functions for non-standard movement patterns
+- Ceres Station escape sequence
+- Zebes navigation and item acquisition
+- Custom reward functions for non-standard movement
 
-[View Super Metroid RL →](./super_metroid_rl)
+## Shared Harness
+
+The `retro_harness/` package provides common infrastructure:
+
+- **Controls**: Keyboard/controller input handling with SNES button mapping
+- **Env**: Environment setup with custom integrations support
+- **Protocol**: Task/Skill/Plan interfaces for composable bot behaviors
+
+## Adding New Games
+
+See [ADDING_GAMES.md](./ADDING_GAMES.md) for step-by-step instructions.
 
 ## Technology Stack
 
-- **Emulation**: stable-retro (OpenAI Retro fork with SNES support)
-- **RL Framework**: stable-baselines3 (PPO, behavioral cloning)
-- **Automation**: Custom pathfinding, state machines, task recording
-- **Display**: pygame for visual debugging and human interaction
+| Layer | Technology |
+|-------|-----------|
+| Emulation | stable-retro 0.9.8 |
+| RL | stable-baselines3, PyTorch |
+| Automation | Custom pathfinding, state machines |
+| Display | pygame |
+| Env Mgmt | uv |
 
-## Quick Start
+## Directory Structure
 
-Each project has its own dependencies and virtual environment:
-
-```bash
-# Harvest Moon Bot
-cd harvest
-uv sync
-./run_bot.sh play --state Y1_Spring_Day01_06h00m
-
-# Super Metroid RL
-cd super_metroid_rl
-# See project README for setup
+```
+retro_rl/
+├── setup.sh              # Creates shared .venv
+├── pyproject.toml        # Root dependencies
+├── retro_harness/        # Shared Python package
+│   ├── controls.py       # Input handling
+│   ├── env.py            # Environment utilities
+│   └── protocol.py       # Task/Skill/Plan interfaces
+├── roms/                 # Shared ROMs (git-ignored)
+├── donkey_kong_country/  # DKC interactive player
+├── harvest/              # Harvest Moon bot
+└── super_metroid_rl/     # Super Metroid RL
 ```
 
 ## License
 
 Projects are for educational and research purposes. ROMs are not included and must be provided by the user.
+
+Note: `donkey_kong_country/README.md` documents the standardized replay + split recovery flow.
