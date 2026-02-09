@@ -1,0 +1,24 @@
+{
+  "info": {
+    "health": {
+      "address": 1209,
+      "type": "|u1"
+    },
+    "enemy_health": {
+      "address": 1211,
+      "type": "|u1"
+    },
+    "timer": {
+      "address": 290,
+      "type": "|u1"
+    },
+    "continue_timer": {
+      "address": 999,
+      "type": "|u1"
+    },
+    "p1_character": {
+      "address": 6514,
+      "type": "|u1"
+    }
+  }
+}

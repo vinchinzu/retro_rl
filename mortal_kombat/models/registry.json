@@ -1,0 +1,115 @@
+{
+  "models": {
+    "mk1_multichar_ppo_2000000_steps.zip": {
+      "registered": "2026-02-05T15:33:55",
+      "parent": null,
+      "script": "train_multi_character.py",
+      "steps": 2000000,
+      "lr": 0.0003,
+      "training_mix": "100% Fight states (7 chars)",
+      "notes": "Base model, all 7 chars, fresh training",
+      "benchmarks": {
+        "match1": {
+          "timestamp": "2026-02-05T15:37:42",
+          "overall_win_rate": 57.1,
+          "total_wins": 20,
+          "total_matches": 35,
+          "per_character": {
+            "LiuKang": {
+              "wins": 5,
+              "losses": 0,
+              "matches": 5
+            },
+            "Sonya": {
+              "wins": 5,
+              "losses": 0,
+              "matches": 5
+            },
+            "JohnnyCage": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            },
+            "Kano": {
+              "wins": 5,
+              "losses": 0,
+              "matches": 5
+            },
+            "Raiden": {
+              "wins": 5,
+              "losses": 0,
+              "matches": 5
+            },
+            "SubZero": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            },
+            "Scorpion": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            }
+          }
+        },
+        "match2": {
+          "timestamp": "2026-02-05T15:42:30",
+          "overall_win_rate": 14.3,
+          "total_wins": 5,
+          "total_matches": 35,
+          "per_character": {
+            "LiuKang": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            },
+            "Sonya": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            },
+            "JohnnyCage": {
+              "wins": 5,
+              "losses": 0,
+              "matches": 5
+            },
+            "Kano": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            },
+            "Raiden": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            },
+            "SubZero": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            },
+            "Scorpion": {
+              "wins": 0,
+              "losses": 5,
+              "matches": 5
+            }
+          }
+        }
+      },
+      "size_mb": 23.4,
+      "created": "2026-02-04T21:53:06"
+    },
+    "mk1_match4_ppo_final.zip": {
+      "registered": "2026-02-06T05:16:39",
+      "parent": "mk1_match3_ppo_final.zip",
+      "script": "train_match4.py",
+      "steps": 12000000,
+      "lr": 0.0001,
+      "training_mix": "30% M4, 25% M3, 25% M2, 20% M1",
+      "notes": "Overnight 7.1h, 28 states, 12,000,000 steps",
+      "benchmarks": {},
+      "size_mb": 23.4,
+      "created": "2026-02-06T05:16:39"
+    }
+  }
+}

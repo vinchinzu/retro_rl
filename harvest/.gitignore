@@ -19,3 +19,7 @@ roms/
 *.bin
 *.md5
 *.sha
+
+# Log files and dumps
+*.log
+farm_map_*.txt

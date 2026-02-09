@@ -33,23 +33,57 @@ import argparse
 from datetime import datetime
 from typing import Optional, List, Dict
 
-# ... (imports remain the same) ...
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 INTEGRATION_PATH = os.path.join(SCRIPT_DIR, "custom_integrations")
 STATES_DIR = os.path.join(INTEGRATION_PATH, "HarvestMoon-Snes")
 TASKS_DIR = os.path.join(SCRIPT_DIR, "tasks")
 
 os.makedirs(TASKS_DIR, exist_ok=True)
 
-from controls import (
-    init_controller, get_controller_action, get_keyboard_action,
-    sanitize_action, print_controls
-)
-
 import numpy as np
 import pygame
 import stable_retro as retro
+
+from retro_harness import (
+    init_controller as _init_controller,
+    controller_action,
+    keyboard_action,
+    sanitize_action,
+)
+
+
+# Wrappers for retro_harness (different signatures)
+def init_controller():
+    return _init_controller(pygame)
+
+
+def get_controller_action(joystick, action):
+    controller_action(joystick, action)
+
+
+def get_keyboard_action(keys, action):
+    keyboard_action(keys, action, pygame)
+
+
+def print_controls(joystick=None):
+    """Print Harvest Moon control scheme for recording."""
+    print("\nRecording Controls:")
+    if joystick:
+        print(f"  Controller: {joystick.get_name()}")
+        print("    D-Pad/Stick: Movement")
+        print("    A: Confirm | B: Cancel | X: Menu | Y: Use Item")
+        print("    LB/RB: Cycle Items")
+    print("  Keyboard:")
+    print("    Arrows: D-Pad")
+    print("    Z: Cancel (B) | X: Use Item (Y) | C: Confirm (A) | V: Menu (X)")
+    print("    A/S: Cycle Items (L/R)")
+    print("  Recording:")
+    print("    F5: Save | Ctrl+S: Stop Recording")
+
 
 retro.data.Integrations.add_custom_path(INTEGRATION_PATH)
 

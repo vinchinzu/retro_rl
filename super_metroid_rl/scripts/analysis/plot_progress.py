@@ -4,8 +4,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 
-DATA_DIR = "/home/v/01_projects/11_games/speedrun/super_metroid_rl/boss_data"
-OUTPUT_FILE = "/home/v/01_projects/11_games/speedrun/super_metroid_rl/training_progress.png"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+DATA_DIR = os.path.join(PROJECT_DIR, "boss_data")
+OUTPUT_FILE = os.path.join(PROJECT_DIR, "training_progress.png")
 
 def plot_logs():
     # Find all monitor files
