@@ -220,13 +220,15 @@ def find_latest_checkpoint(segment_name: str) -> Optional[str]:
         if fname.startswith(prefix) and fname.endswith("_steps.zip"):
             candidates.append(os.path.join(MODEL_DIR, fname))
 
-    if candidates:
-        candidates.sort(key=os.path.getmtime)
-        return candidates[-1]
-
     final_path = os.path.join(MODEL_DIR, f"segment_{segment_name}.zip")
     if os.path.exists(final_path):
-        return final_path
+        candidates.append(final_path)
+
+    if candidates:
+        # Resume from the newest artifact regardless of whether it is a
+        # numbered checkpoint or final segment model.
+        candidates.sort(key=os.path.getmtime)
+        return candidates[-1]
 
     return None
 
@@ -364,17 +366,29 @@ class SegmentReward(gym.Wrapper):
                 demo_obs = demo_obs[idx]
                 demo_actions = demo_actions[idx]
 
-                demo_gray = (
-                    demo_obs[:, 0].astype(np.float32) * 0.299
-                    + demo_obs[:, 1].astype(np.float32) * 0.587
-                    + demo_obs[:, 2].astype(np.float32) * 0.114
-                )
+                if demo_obs.ndim == 4 and demo_obs.shape[1] == 3:
+                    demo_gray = (
+                        demo_obs[:, 0].astype(np.float32) * 0.299
+                        + demo_obs[:, 1].astype(np.float32) * 0.587
+                        + demo_obs[:, 2].astype(np.float32) * 0.114
+                    )
+                elif demo_obs.ndim == 3:
+                    demo_gray = demo_obs.astype(np.float32)
+                else:
+                    demo_gray = demo_obs.reshape(sample_count, -1).astype(np.float32)
+                    self.demo_feats = demo_gray
+                    self.demo_actions = demo_actions.astype(np.int8)
+                    return
                 demo_small = demo_gray[:, ::8, ::8][:, :14, :16]
                 self.demo_feats = demo_small.reshape(sample_count, -1)
                 self.demo_actions = demo_actions.astype(np.int8)
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
+        # retro env returns empty info on reset; do a no-op step to populate
+        if not info or 'room_id' not in info:
+            noop = np.zeros(self.env.action_space.shape, dtype=self.env.action_space.dtype)
+            obs, _, _, _, info = self.env.step(noop)
         self.prev_x = info.get('samus_x', 0)
         self.prev_y = info.get('samus_y', 0)
         self.prev_hp = info.get('health', 99)
@@ -598,7 +612,8 @@ def make_segment_env(segment: RouteSegment, render_mode: str = "rgb_array") -> g
         game="SuperMetroid-Snes",
         state=segment.start_state,
         use_restricted_actions=retro.Actions.ALL,
-        render_mode=render_mode
+        render_mode=render_mode,
+        inttype=retro.data.Integrations.ALL,
     )
 
     env = SanitizeAction(env)
@@ -618,7 +633,8 @@ def train_segment(
     segment_name: str,
     steps: int = 50000,
     load_path: Optional[str] = None,
-    device: str = "cuda"
+    device: str = "cuda",
+    fresh: bool = False
 ) -> str:
     """Train a single route segment."""
 
@@ -634,6 +650,7 @@ def train_segment(
     print(f"Description: {segment.description}")
     print(f"Start State: {segment.start_state}")
     print(f"Target Room: 0x{segment.target_room_id:04X}")
+    print(f"Fresh start: {fresh}")
     print("="*60)
 
     def env_fn():
@@ -645,7 +662,9 @@ def train_segment(
     device = torch.device(device if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    if not load_path:
+    if fresh:
+        load_path = None
+    elif not load_path:
         load_path = find_latest_checkpoint(segment_name)
 
     if load_path and os.path.exists(load_path):
@@ -754,7 +773,8 @@ def run_full_route(render: bool = True, device: str = "cuda", start_state: str =
         game="SuperMetroid-Snes",
         state=start_state,
         use_restricted_actions=retro.Actions.ALL,
-        render_mode='rgb_array'
+        render_mode='rgb_array',
+        inttype=retro.data.Integrations.ALL,
     )
     env = SanitizeAction(env)
     env = DiscreteAction(env, DISCRETE_ACTIONS)
@@ -885,6 +905,7 @@ def main():
     train.add_argument('--segment', type=str, required=True, help='Segment name')
     train.add_argument('--steps', type=int, default=50000, help='Training steps')
     train.add_argument('--load', type=str, help='Model to resume from')
+    train.add_argument('--fresh', action='store_true', help='Start fresh (ignore existing checkpoints)')
     train.add_argument('--device', type=str, default='cuda', help='Device')
 
     # Train all segments
@@ -904,7 +925,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'train':
-        train_segment(args.segment, steps=args.steps, load_path=args.load, device=args.device)
+        train_segment(args.segment, steps=args.steps, load_path=args.load, device=args.device, fresh=args.fresh)
     elif args.command == 'train-all':
         train_all_segments(steps_per_segment=args.steps_per_segment, device=args.device)
     elif args.command == 'run':
