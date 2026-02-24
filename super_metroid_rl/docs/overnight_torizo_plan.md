@@ -81,7 +81,7 @@ Focus training time on weakest segments with highest difficulty. Total budget: ~
 Run integration eval to identify actual failure points before training.
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 .venv/bin/python scripts/eval_torizo_integration.py \
   --headless \
   --episodes 8 \
@@ -131,7 +131,7 @@ Train segments in priority order. Higher-failure and higher-difficulty segments 
 The script in `scripts/overnight_worker_b_train.sh` handles sequential training with logging, ROM symlinking, and snapshot backups.
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 PYTHON_BIN=.venv/bin/python DEVICE=cuda \
   nohup bash scripts/overnight_worker_b_train.sh "$(date +%Y%m%d_%H%M%S)" \
   > logs/overnight_full.out 2>&1 &
@@ -142,7 +142,7 @@ PYTHON_BIN=.venv/bin/python DEVICE=cuda \
 ### Option B: Full 3-phase pipeline (pre-eval + train + post-eval)
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 PYTHON_BIN=.venv/bin/python
 
 # Phase 1: Pre-eval
@@ -182,7 +182,7 @@ $PYTHON_BIN scripts/eval_torizo_integration.py \
 ### Option C: Individual segment training
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 .venv/bin/python train_curriculum.py train \
   --segment SEGMENT_NAME --steps STEP_COUNT --device cuda \
   --load models/segment_SEGMENT_NAME.zip
@@ -235,7 +235,7 @@ tail -f logs/overnight_train_parlor_descent.out
 ### Quick one-liner morning check:
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl && \
+cd super_metroid_rl && \
   bash scripts/morning_worker_c_check.sh && \
   cat logs/overnight_worker_c_summary.md
 ```
@@ -243,7 +243,7 @@ cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl && \
 ### Step-by-step:
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 
 # 1. Check overnight training finished (look for "Completed successfully")
 tail -20 logs/overnight_worker_b_*.out 2>/dev/null | tail -25
