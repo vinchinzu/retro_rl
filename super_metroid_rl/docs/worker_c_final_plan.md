@@ -63,7 +63,7 @@ The eval env must match the training env wrapper stack. Key differences to resol
 This is the single segment blocking all route progress. It's the hardest room (vertical descent with platforming).
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 .venv/bin/python train_curriculum.py train --segment parlor_descent --steps 800000 --device cuda
 ```
 
@@ -71,7 +71,7 @@ cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
 Full batch (copy-paste ready):
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 for plan in \
   "parlor_descent:800000" \
   "elevator_descent:500000" \

@@ -9,8 +9,8 @@ dist/
 .pytest_cache/
 
 # Virtual environments
-.venv/
-venv/
+**/.venv/
+**/venv/
 .env/
 retro_env/
 
@@ -26,6 +26,7 @@ roms/
 **/custom_integrations/**/rom.*
 *.sfc
 *.smc
+*.undo
 
 # Trained models
 **/models/*.zip
@@ -43,17 +44,24 @@ roms/
 *.bk2
 *.mp4
 *.npz
+*.npy
 *.replay.jsonl
 
 # Screenshots and montages
 **/screenshots/
+**/state_screenshots/
 **/montages/
 
 # Archive directories (old experiments)
 **/archive/
 
-# Manual save states
+# Optimizer run outputs
+**/optimizer/runs/
+
+# Manual/stray save states (custom_integrations states are kept)
 ManualSave.state
+QuickSave.state
+GTOutside.state
 
 # Personal/session notes
 onotes.md
@@ -74,10 +82,25 @@ split_runs.jsonl
 # DKC misc
 donkey_kong_country/button
 donkey_kong_country/notes
-donkey_kong_country/QuickSave.state
 
 # Session-specific scripts
 monitor_all_training.sh
 
-# Claude Code local config
+# Claude Code / agent config
 .claude/
+**/CLAUDE.md
+**/.agents.md
+**/.beads/
+
+# Third-party / external repos (clone separately)
+alttp/
+super_metroid_rl/super_metroid_editor/
+super_metroid_rl/refs/
+harvest/HM-Decomp/
+
+# Build artifacts
+**/.gradle/
+**/boss_data/
+
+# Harvest tasks (action recordings)
+harvest/tasks/
