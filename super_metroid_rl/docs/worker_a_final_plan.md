@@ -69,7 +69,7 @@ All models in `models/` now have significantly more training:
 The Worker C eval used pre-training models. Must re-evaluate:
 
 ```bash
-cd /home/v/01_projects/11_games/speedrun/retro_rl/super_metroid_rl
+cd super_metroid_rl
 bash scripts/morning_worker_c_check.sh && cat logs/overnight_worker_c_summary.md
 ```
 

@@ -89,6 +89,8 @@ class PlaySession:
         # State save/load
         self._working_state: Optional[bytes] = None
         self._last_save_name: Optional[str] = None
+        # Checkpoint slots (F1-F4): memory-only, no disk writes
+        self._checkpoint_slots: dict[int, tuple[bytes, int]] = {}  # slot -> (state, frame)
 
         # Pygame objects (initialized in run())
         self._screen = None
@@ -155,6 +157,27 @@ class PlaySession:
         else:
             print("[LOAD] no saved state available")
 
+    def save_checkpoint(self, slot: int) -> int:
+        """Save emulator state to a memory-only checkpoint slot.
+
+        Returns the current frame count (for recording truncation).
+        """
+        state = self.env.em.get_state()
+        self._checkpoint_slots[slot] = (state, self._frame_count)
+        print(f"[CHECKPOINT {slot}] saved at frame {self._frame_count}")
+        return self._frame_count
+
+    def load_checkpoint(self, slot: int) -> int | None:
+        """Load a checkpoint slot. Returns the frame count at save time, or None."""
+        if slot not in self._checkpoint_slots:
+            print(f"[CHECKPOINT {slot}] empty")
+            return None
+        state, frame = self._checkpoint_slots[slot]
+        self.env.em.set_state(state)
+        self._frame_count = frame
+        print(f"[CHECKPOINT {slot}] loaded (frame {frame})")
+        return frame
+
     def set_bot(self, bot_fn: Optional[Callable]) -> None:
         """Set or change the bot function."""
         self._bot_fn = bot_fn
@@ -175,10 +198,13 @@ class PlaySession:
 
         if not self._headless:
             pygame.init()
-            self._screen = pygame.display.set_mode((w * self.scale, h * self.scale))
+            self._screen = pygame.display.set_mode(
+                (w * self.scale, h * self.scale), pygame.RESIZABLE
+            )
             pygame.display.set_caption(self.title)
             self._font = pygame.font.SysFont("monospace", _HUD_FONT_SIZE)
             self._clock = pygame.time.Clock()
+            self._game_w, self._game_h = w, h
             from retro_harness.controls import init_controller
             self._joystick = init_controller(pygame)
         else:
@@ -218,7 +244,10 @@ class PlaySession:
             action = self._gather_action(pg, keyboard_action, controller_action, sanitize_action)
 
             # --- Step ---
-            step_result = self.env.step(action)
+            # Truncate for NES (9 buttons) when action array is SNES-sized (12)
+            env_size = self.env.action_space.shape[0]
+            step_action = action[:env_size] if len(action) > env_size else action
+            step_result = self.env.step(step_action)
             # Handle both 4-tuple (old gym) and 5-tuple (new gym) APIs
             if len(step_result) == 5:
                 obs, reward, terminated, truncated, info = step_result
@@ -260,8 +289,17 @@ class PlaySession:
         if self._screen is None:
             return
         surf = pg.surfarray.make_surface(obs.swapaxes(0, 1))
-        scaled = pg.transform.scale(surf, self._screen.get_size())
-        self._screen.blit(scaled, (0, 0))
+        win_w, win_h = self._screen.get_size()
+        game_w, game_h = self._game_w, self._game_h
+        # Aspect-ratio-preserving scale with letterbox/pillarbox
+        scale = min(win_w / game_w, win_h / game_h)
+        draw_w = int(game_w * scale)
+        draw_h = int(game_h * scale)
+        x_off = (win_w - draw_w) // 2
+        y_off = (win_h - draw_h) // 2
+        self._screen.fill((0, 0, 0))
+        scaled = pg.transform.scale(surf, (draw_w, draw_h))
+        self._screen.blit(scaled, (x_off, y_off))
 
     def _draw_hud(self, pg, info: dict) -> None:
         if self._screen is None or self._font is None:
@@ -279,9 +317,17 @@ class PlaySession:
         if game_lines:
             lines.extend(game_lines)
 
+        # Position HUD relative to game image area
+        win_w, win_h = self._screen.get_size()
+        game_w = getattr(self, '_game_w', win_w)
+        game_h = getattr(self, '_game_h', win_h)
+        scale = min(win_w / game_w, win_h / game_h)
+        x_off = (win_w - int(game_w * scale)) // 2
+        y_off = (win_h - int(game_h * scale)) // 2
+
         for i, line in enumerate(lines):
             text_surf = self._font.render(line, True, _HUD_COLOR)
-            self._screen.blit(text_surf, (_HUD_MARGIN, _HUD_MARGIN + i * _HUD_LINE_HEIGHT))
+            self._screen.blit(text_surf, (x_off + _HUD_MARGIN, y_off + _HUD_MARGIN + i * _HUD_LINE_HEIGHT))
 
     def _gather_action(self, pg, keyboard_action, controller_action, sanitize_action):
         action = [0] * self.action_size
@@ -319,8 +365,18 @@ class PlaySession:
         if self.on_key_down(key):
             return
 
+        # Checkpoint slot keys: F1-F4 save, Shift+F1-F4 load
+        _SLOT_KEYS = {pg.K_F1: 1, pg.K_F2: 2, pg.K_F3: 3, pg.K_F4: 4}
+
         if key == pg.K_ESCAPE:
             self.running = False
+        elif key in _SLOT_KEYS:
+            slot = _SLOT_KEYS[key]
+            mods = pg.key.get_mods()
+            if mods & pg.KMOD_SHIFT:
+                self.load_checkpoint(slot)
+            else:
+                self.save_checkpoint(slot)
         elif key == pg.K_F5:
             self.save_state()
         elif key in (pg.K_F7, pg.K_F8):

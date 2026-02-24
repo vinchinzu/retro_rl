@@ -242,8 +242,9 @@ class TileScanner:
 # =============================================================================
 
 class Pathfinder:
-    def __init__(self, scanner: TileScanner):
+    def __init__(self, scanner: TileScanner, walkable_tiles: Optional[Set[int]] = None):
         self.scanner = scanner
+        self.walkable_tiles = walkable_tiles if walkable_tiles is not None else WALKABLE_TILES
         self.no_go_tiles: Set[Tuple[int, int]] = set()
         self.temp_blocked: Set[Tuple[int, int]] = set()
         self.extra_walkable: Set[Tuple[int, int]] = set()  # tiles treated as walkable (e.g. crop tiles)
@@ -256,7 +257,7 @@ class Pathfinder:
         if (tx, ty) in self.no_go_tiles or (tx, ty) in self.temp_blocked:
             return False
         tile_id = get_tile_at(ram, tx, ty)
-        if tile_id in WALKABLE_TILES:
+        if tile_id in self.walkable_tiles:
             return True
         if (tx, ty) in self.extra_walkable:
             return True
@@ -404,7 +405,7 @@ class Navigator:
         if not self.pathfinder.is_walkable(ram, *next_tile, current_pos=curr_tile):
             val = get_tile_at(ram, *next_tile)
             # Log more clearly why we are blocked
-            print(f"[NAVIGATOR] Blocked! tile={next_tile} id=0x{val:02X} walkable={val in WALKABLE_TILES} temp_blocked={next_tile in self.pathfinder.temp_blocked} no_go={next_tile in self.pathfinder.no_go_tiles}")
+            print(f"[NAVIGATOR] Blocked! tile={next_tile} id=0x{val:02X} walkable={val in self.pathfinder.walkable_tiles} temp_blocked={next_tile in self.pathfinder.temp_blocked} no_go={next_tile in self.pathfinder.no_go_tiles}")
 
         direction = 'right' if dx_next > 0 else 'left' if dx_next < 0 else 'down' if dy_next > 0 else 'up'
         action = make_action(**{direction: True, 'b': True})

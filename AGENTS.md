@@ -117,3 +117,8 @@ stable-retro only maps the first 8KB (0x0000–0x1FFF) of SNES WRAM in `data.jso
 - TensorBoard logs: `<game>/logs/`
 - Model checkpoints: `<game>/models/` (every 25K steps)
 - Headless mode: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy` or `HEADLESS=1`
+
+## ALTTP Playground Constraints
+
+- For `alttp/asset_editor` play mode, sword visuals must use real extracted Zelda 3 sprite assets only.
+- Do not use procedural, synthetic, or invented sword rendering as a fallback.

@@ -44,7 +44,7 @@ from farm_clearer import (
 from fence_flow import FenceClearLoopTask
 from grass_planter import GrassPlantTask, DEFAULT_BOUNDS as GRASS_DEFAULT_BOUNDS, DEFAULT_NO_GO_RECTS as GRASS_DEFAULT_NO_GO
 from crop_planter import CropWaterTask, SEED_DATA_KEY, SEED_ITEM, DEFAULT_CROP_BOUNDS
-from day_plan import DayPlanTask
+from day_plan import DayPlanTask, PHASE_SEQUENCES
 
 
 # Wrapper for init_controller (retro_harness version takes pygame arg)
@@ -176,6 +176,7 @@ class AutoClearBot:
         crop_enabled: bool = False,
         crop_seed_type: str = "potato",
         day_plan_enabled: bool = False,
+        day_plan_sequence: Optional[str] = None,
     ):
         self.clearer = FarmClearer(priority=priority)
         self.clearer.tasks_dir = TASKS_DIR
@@ -223,7 +224,8 @@ class AutoClearBot:
 
         # Day plan mode
         self.day_plan_enabled = day_plan_enabled
-        self.day_plan_task = DayPlanTask(seed_type=crop_seed_type)
+        phase_seq = PHASE_SEQUENCES.get(day_plan_sequence) if day_plan_sequence else None
+        self.day_plan_task = DayPlanTask(seed_type=crop_seed_type, phase_sequence=phase_seq)
         self.day_plan_started = False
         self.day_plan_done = False
 
@@ -747,6 +749,8 @@ def main():
     play.add_argument('--crop', action='store_true', help='Crop mode: detect plots, plant + water')
     play.add_argument('--seed', type=str, default='potato', help='Seed type (potato, turnip, corn, tomato)')
     play.add_argument('--no-day-plan', action='store_true', help='Disable day plan (default: on unless --crop/--grass/--fence-only)')
+    play.add_argument('--day-plan', type=str, default=None, choices=list(PHASE_SEQUENCES.keys()),
+                       help='Select day plan sequence (default: day1)')
     play.add_argument('--save-end', action='store_true', help='Save state when task completes')
     play.add_argument('--max-frames', type=int, default=None, help='Stop after N frames (testing)')
     play.add_argument('--record', type=str, default=None, metavar='NAME', help='Record inputs as a task (F1 to save)')
@@ -781,7 +785,8 @@ def main():
             grass_no_go=grass_no_go,
             crop_enabled=bool(args.crop),
             crop_seed_type=args.seed,
-            day_plan_enabled=not (args.no_day_plan or args.crop or args.grass or args.till_only or args.fence_only),
+            day_plan_enabled=bool(args.day_plan) or not (args.no_day_plan or args.crop or args.grass or args.till_only or args.fence_only),
+            day_plan_sequence=args.day_plan,
         )
         PlaySession(
             state=args.state,
