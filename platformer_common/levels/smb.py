@@ -30,12 +30,21 @@ SMB_RAM = PlatformerRAM(
         "world": (0x075F, "u8"),        # world number (0-indexed)
         "level": (0x0760, "u8"),        # level number (0-indexed)
         "player_status": (0x000E, "u8"),  # 0x0B = dying
+        "area_pointer": (0x0750, "u8"), # area/venue within a level (8-4 pipe transitions)
+        "game_mode": (0x0770, "u8"),    # 0=demo, 1=playing, 2=end world, 3=game over
     },
 )
 
 SMB_COMPUTED = {
     "player_x": lambda v: v["x_page"] * 256 + v["x_offset"],
     "level_id": lambda v: v["world"] * 4 + v["level"],
+}
+
+# For 8-4 segments: use area_pointer as level_id so pipe transitions
+# are visible to the completion detector.
+SMB_84_COMPUTED = {
+    "player_x": lambda v: v["x_page"] * 256 + v["x_offset"],
+    "level_id": lambda v: v["area_pointer"],
 }
 
 # -- Action table -------------------------------------------------------------
@@ -67,6 +76,7 @@ def _smb_level(
     *aliases: str,
     completion_min_progress: float = 2500.0,
     level_id_aliases: list[int] | None = None,
+    completion_level_ids: list[int] | None = None,
 ) -> None:
     """Register one SMB level. world/level are 1-indexed (human-readable)."""
     target_id = (world - 1) * 4 + (level - 1)
@@ -88,6 +98,7 @@ def _smb_level(
             death_signals=["lives_drop"],
             completion_signal="level_id_change",
             completion_min_progress=completion_min_progress,
+            completion_level_ids=completion_level_ids or [],
             action_table=SMB_ACTIONS,
             max_stall_frames=600,  # generous: underground pipe transitions take time
             computed_values=SMB_COMPUTED,
@@ -104,17 +115,168 @@ def _smb_level(
 
 _smb_level(1, 1, "Level1_1", "smb_1_1", "smb_11",
            completion_min_progress=2500.0)
+
+# 1-1 flagpole segment: from pipe exit to end of level.
+# Used for focused optimization of just the flagpole approach.
+register_level(
+    LevelConfig(
+        level_id="smb_1_1_flagpole",
+        display_name="Super Mario Bros 1-1 (flagpole segment)",
+        game_name="SuperMarioBros-Nes-v0",
+        game_dir_name="super_mario_bros",
+        start_state="Level1_1_PipeExit",
+        ram=SMB_RAM,
+        target_level_id=0,   # world 1-1 = (1-1)*4+(1-1) = 0
+        level_id_aliases=[],
+        progress_axis="player_x",
+        progress_direction=1,
+        death_signals=["lives_drop"],
+        completion_signal="level_id_change",
+        completion_min_progress=500.0,  # must advance from pipe exit (x=2616)
+        completion_level_ids=[],
+        action_table=SMB_ACTIONS,
+        max_stall_frames=750,  # high flagpole grab: slide ~60f + wait ~340f + walk ~200f + level transition ~100f
+        computed_values=SMB_COMPUTED,
+        bk2_to_env=[8 - i for i in range(9)],
+    ),
+    "smb_11_flag",
+)
 _smb_level(1, 2, "Level1_2", "smb_1_2", "smb_12",
            completion_min_progress=0.0,
-           level_id_aliases=[2])  # underground area = world*4+level = 0*4+2
+           level_id_aliases=[2],  # underground area = world*4+level = 0*4+2
+           completion_level_ids=[12])  # warp zone exit must go to world 4 (4-1 = 3*4+0 = 12)
 _smb_level(4, 1, "Level4_1", "smb_4_1", "smb_41",
            completion_min_progress=2500.0)
 _smb_level(4, 2, "Level4_2", "smb_4_2", "smb_42",
            completion_min_progress=0.0,
-           level_id_aliases=[14])  # underground area = 3*4+2 (TBD: verify with --trace)
+           level_id_aliases=[14],  # underground area = 3*4+2
+           completion_level_ids=[28])  # warp zone exit must go to world 8 (8-1 = 7*4+0 = 28)
 _smb_level(8, 1, "Level8_1", "smb_8_1", "smb_81",
            completion_min_progress=2500.0)
 _smb_level(8, 2, "Level8_2", "smb_8_2", "smb_82",
            completion_min_progress=2000.0)
 _smb_level(8, 3, "Level8_3", "smb_8_3", "smb_83",
            completion_min_progress=2000.0)
+# 8-4 uses area_pointer as level_id so pipe/venue transitions are visible.
+# First pass: register the full level for discovery (play + trace to find all areas).
+# Once areas are known, register individual segments below.
+
+def _smb_84_segment(
+    seg: int,
+    state: str,
+    start_area: int,
+    aliases: list[str] | None = None,
+    completion_level_ids: list[int] | None = None,
+    completion_debounce_frames: int = 0,
+    completion_signal: str = "level_id_change",
+    completion_ram_key: str = "",
+    completion_ram_value: int = 0,
+    max_stall_frames: int = 600,
+) -> None:
+    """Register one segment of SMB 8-4."""
+    level_id_str = f"smb_8_4_{seg}"
+    display = f"Super Mario Bros 8-4 seg{seg}"
+
+    register_level(
+        LevelConfig(
+            level_id=level_id_str,
+            display_name=display,
+            game_name="SuperMarioBros-Nes-v0",
+            game_dir_name="super_mario_bros",
+            start_state=state,
+            ram=SMB_RAM,
+            target_level_id=start_area,
+            level_id_aliases=[],
+            progress_axis="player_x",
+            progress_direction=1,
+            death_signals=["lives_drop"],
+            completion_signal=completion_signal,
+            completion_min_progress=0.0,
+            completion_level_ids=completion_level_ids or [],
+            completion_debounce_frames=completion_debounce_frames,
+            completion_ram_key=completion_ram_key,
+            completion_ram_value=completion_ram_value,
+            action_table=SMB_ACTIONS,
+            max_stall_frames=max_stall_frames,
+            computed_values=SMB_84_COMPUTED,
+            bk2_to_env=[8 - i for i in range(9)],
+        ),
+        *(aliases or []),
+    )
+
+# Full 8-4 for chain-live and discovery.
+# Uses area_pointer as level_id (pipe transitions visible).
+# Completion = Bowser defeated (game_mode=2), NOT level_id_change.
+# All sub-areas (pipe=0xE5, underwater=0x02) listed as aliases so
+# progress tracks through the whole level.
+register_level(
+    LevelConfig(
+        level_id="smb_8_4",
+        display_name="Super Mario Bros 8-4 (full)",
+        game_name="SuperMarioBros-Nes-v0",
+        game_dir_name="super_mario_bros",
+        start_state="Level8_4",
+        ram=SMB_RAM,
+        target_level_id=0x65,  # starting area_pointer
+        level_id_aliases=[0xE5, 0x02],  # pipe area, underwater area
+        progress_axis="player_x",
+        progress_direction=1,
+        death_signals=["lives_drop"],
+        completion_signal="ram_flag",
+        completion_ram_key="game_mode",
+        completion_ram_value=2,
+        completion_min_progress=0.0,
+        action_table=SMB_ACTIONS,
+        max_stall_frames=600,
+        computed_values=SMB_84_COMPUTED,
+        bk2_to_env=[8 - i for i in range(9)],
+    ),
+    "smb_84",
+)
+
+# === 8-4 SEGMENTS ===
+# Area sequence: 0x65 → 0xE5 → 0x65 → 0x02 → 0x65 → 0xE5(end)
+# 1-frame glitches at transitions need debounce=5 for 0xE5/0x65 boundaries.
+
+# Seg 1: Castle start → first pipe (0x65 → 0xE5)
+_smb_84_segment(1, "Level8_4", 0x65, ["smb_841"],
+                completion_level_ids=[0xE5], completion_debounce_frames=5)
+# Seg 2: Pipe section → castle (0xE5 → 0x65)
+_smb_84_segment(2, "Level8_4_seg2", 0xE5, ["smb_842"],
+                completion_level_ids=[0x65], completion_debounce_frames=5)
+# Seg 3: Castle maze → underwater (0x65 → 0x02, no glitches to 0x02)
+_smb_84_segment(3, "Level8_4_seg3", 0x65, ["smb_843"],
+                completion_level_ids=[0x02])
+# Seg 4: Underwater → castle (0x02 → 0x65, clean transition)
+_smb_84_segment(4, "Level8_4_seg4", 0x02, ["smb_844"],
+                completion_level_ids=[0x65], max_stall_frames=900)
+# Seg 5: Final castle + Bowser (0x65 → game_mode=2 when Bowser defeated)
+_smb_84_segment(5, "Level8_4_seg5", 0x65, ["smb_845"],
+                completion_signal="ram_flag",
+                completion_ram_key="game_mode", completion_ram_value=2)
+
+
+# -- Any% route (warp zones: 1-2→W4, 4-2→W8) --------------------------------
+
+from platformer_common.route import RouteConfig, RouteSegment, register_route
+
+register_route(
+    RouteConfig(
+        route_id="smb_any_percent",
+        display_name="Super Mario Bros Any% (Warp Zone)",
+        segments=[
+            RouteSegment("smb_1_1",     label="1-1"),
+            RouteSegment("smb_1_2",     label="1-2 (→W4)"),
+            RouteSegment("smb_4_1",     label="4-1"),
+            RouteSegment("smb_4_2",     label="4-2 (→W8)"),
+            RouteSegment("smb_8_1",     label="8-1"),
+            RouteSegment("smb_8_2",     label="8-2"),
+            RouteSegment("smb_8_3",     label="8-3"),
+            # 8-4: human recording segs 1-4 + neuro plays Bowser fight live
+            RouteSegment("smb_8_4",     label="8-4",
+                         neuro_checkpoint="../smb_8_4_5/neuro/neuro_best.json"),
+        ],
+    ),
+    "smb_any",
+    "smb",
+)

@@ -483,3 +483,331 @@ def _save_screenshots(
     prefix = output_dir / f"ga_gen{gen:04d}"
     Image.fromarray(first_frame).save(f"{prefix}_first.png")
     Image.fromarray(last_frame).save(f"{prefix}_last.png")
+
+
+# -- Raw-button GA -----------------------------------------------------------
+
+
+@dataclass
+class RawIndividual:
+    """A candidate solution: sequence of raw 12-element button arrays."""
+
+    actions: list[list[int]]
+    fitness: float = float("-inf")
+    result: Optional[EvalResult] = None
+
+
+def mutate_raw(actions: list[list[int]], rate: float = 0.02) -> list[list[int]]:
+    """Mutate a raw button sequence using strategies from hillclimb_raw."""
+    actions = [list(f) for f in actions]
+    n = len(actions)
+    if n < 10:
+        return actions
+
+    # Apply multiple mutations scaled by rate
+    num_mutations = max(1, int(n * rate * 0.5))
+    for _ in range(num_mutations):
+        strategy = random.choices(
+            ["toggle", "delete", "shift_edge", "copy_run", "insert"],
+            weights=[35, 15, 25, 15, 10],
+            k=1,
+        )[0]
+        n = len(actions)
+        if n < 10:
+            break
+
+        if strategy == "toggle":
+            pos = random.randint(0, n - 1)
+            num_toggles = random.randint(1, 2)
+            for _ in range(num_toggles):
+                btn = random.randint(0, 11)
+                actions[pos][btn] ^= 1
+
+        elif strategy == "delete":
+            del_len = random.randint(1, min(3, n // 4))
+            pos = random.randint(0, n - del_len)
+            del actions[pos:pos + del_len]
+
+        elif strategy == "shift_edge":
+            btn = random.randint(0, 11)
+            edges = [i for i in range(1, n) if actions[i][btn] != actions[i - 1][btn]]
+            if edges:
+                edge = random.choice(edges)
+                shift = random.choice([-2, -1, 1, 2])
+                new_edge = max(1, min(n - 1, edge + shift))
+                val = actions[edge][btn]
+                prev_val = actions[edge - 1][btn]
+                if shift > 0:
+                    for i in range(edge, min(new_edge, n)):
+                        actions[i][btn] = prev_val
+                else:
+                    for i in range(max(0, new_edge), edge):
+                        actions[i][btn] = val
+
+        elif strategy == "copy_run":
+            run_len = random.randint(2, min(6, n // 4))
+            src = random.randint(0, n - run_len)
+            dst = random.randint(0, n - run_len)
+            if src != dst:
+                pattern = [list(f) for f in actions[src:src + run_len]]
+                actions[dst:dst + run_len] = pattern
+
+        elif strategy == "insert":
+            ins_len = random.randint(1, 2)
+            pos = random.randint(0, n - 1)
+            frame = list(actions[pos])
+            for _ in range(ins_len):
+                actions.insert(pos, list(frame))
+
+    return actions
+
+
+def crossover_raw(
+    parent1: list[list[int]], parent2: list[list[int]],
+) -> tuple[list[list[int]], list[list[int]]]:
+    """Proportional crossover for side-scrollers.
+
+    Instead of splicing at the same frame index (which puts Mario in
+    different positions), splice at the same fraction through each
+    recording. If parent1=3000 frames and parent2=2000 frames, splicing
+    at 50% takes frames 0-1500 from p1 + frames 1000+ from p2.
+    Both parents are at roughly the same progress point at the splice.
+    """
+    if len(parent1) < 10 or len(parent2) < 10:
+        return [list(f) for f in parent1], [list(f) for f in parent2]
+    frac = random.uniform(0.15, 0.85)
+    cut1 = int(len(parent1) * frac)
+    cut2 = int(len(parent2) * frac)
+    child1 = [list(f) for f in parent1[:cut1]] + [list(f) for f in parent2[cut2:]]
+    child2 = [list(f) for f in parent2[:cut2]] + [list(f) for f in parent1[cut1:]]
+    return child1, child2
+
+
+def crossover_segment_raw(
+    parent1: list[list[int]], parent2: list[list[int]],
+) -> list[list[int]]:
+    """Proportional segment splice: replace a % section of parent1 with parent2's.
+
+    Uses proportional offsets so the spliced segment comes from the same
+    relative position in the level (same % through the recording).
+    """
+    if len(parent1) < 10 or len(parent2) < 10:
+        return [list(f) for f in parent1]
+    # Pick a proportional segment (10-30% of the recording)
+    seg_frac = random.uniform(0.05, 0.25)
+    start_frac = random.uniform(0.05, 0.95 - seg_frac)
+    end_frac = start_frac + seg_frac
+
+    start1 = int(len(parent1) * start_frac)
+    end1 = int(len(parent1) * end_frac)
+    start2 = int(len(parent2) * start_frac)
+    end2 = int(len(parent2) * end_frac)
+
+    child = [list(f) for f in parent1]
+    child[start1:end1] = [list(f) for f in parent2[start2:end2]]
+    return child
+
+
+def _tournament_select_raw(
+    population: list[RawIndividual], k: int = DEFAULT_TOURNAMENT_SIZE,
+) -> RawIndividual:
+    """Tournament selection for RawIndividual population."""
+    candidates = random.sample(population, min(k, len(population)))
+    return max(candidates, key=lambda ind: ind.fitness)
+
+
+def _ga_fitness(result: EvalResult, config: LevelConfig) -> float:
+    """Smooth GA fitness: pure progress with speed tiebreaker.
+
+    No death penalty, no completion cliff. The GA's job is to maximize
+    progress — crossover can combine different paths toward the goal.
+    Tiny speed tiebreaker so at equal progress, fewer frames wins.
+    """
+    # Pure progress * weight — dying at 3000 > alive at 1000
+    # Speed tiebreaker: 0.01/frame so 100 frames = 1 unit of progress
+    return result.max_progress * config.progress_weight - result.total_frames * 0.01
+
+
+def run_ga_raw(
+    seeds: list[list[list[int]]],
+    evaluator: Evaluator,
+    population_size: int | None = None,
+    num_generations: int | None = None,
+    elite_count: int = DEFAULT_ELITE_COUNT,
+    output_dir: Path | None = None,
+    verbose: bool = True,
+) -> RawIndividual:
+    """GA on raw 12-element button arrays (no lossy action-index conversion).
+
+    Uses smooth progress-based fitness (no death penalty cliff) so the GA
+    can incrementally combine partial runs toward completion.
+
+    Args:
+        seeds: List of raw button sequences (each is list[list[int]]).
+        evaluator: Headless evaluator instance.
+        population_size: Number of individuals.
+        num_generations: Max generations.
+        elite_count: Elites preserved each generation.
+        output_dir: Checkpoint directory.
+        verbose: Print progress.
+
+    Returns:
+        Best RawIndividual found.
+    """
+    config = evaluator.config
+    if population_size is None:
+        population_size = config.population_size
+    if num_generations is None:
+        num_generations = config.num_generations
+    if output_dir is None:
+        output_dir = config.runs_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initialize population from seeds + mutations
+    # If more seeds than population slots, use all seeds (larger initial pop)
+    population: list[RawIndividual] = []
+    for seed in seeds:
+        population.append(RawIndividual(actions=[list(f) for f in seed]))
+
+    # Fill remaining slots with mutations of seeds
+    seed_idx = 0
+    while len(population) < population_size:
+        seed = seeds[seed_idx % len(seeds)]
+        rate = 0.02 * (1 + len(population) / population_size * 3)
+        mutated = mutate_raw(seed, rate=rate)
+        population.append(RawIndividual(actions=mutated))
+        seed_idx += 1
+
+    # Use actual population size (may be larger than population_size if many seeds)
+    actual_pop_size = len(population)
+
+    # Evaluate initial population with smooth GA fitness
+    if verbose:
+        print(f"[GA-RAW] Evaluating initial population ({actual_pop_size} individuals)...")
+        print(f"[GA-RAW] Fitness = progress*{config.progress_weight} - frames*0.01 (no death penalty, no completion cliff)")
+
+    for ind in population:
+        ind.result = evaluator.evaluate(ind.actions, early_terminate=True)
+        ind.fitness = _ga_fitness(ind.result, config)
+
+    best_ever = max(population, key=lambda ind: ind.fitness)
+    best_ever = RawIndividual(
+        actions=[list(f) for f in best_ever.actions],
+        fitness=best_ever.fitness,
+        result=best_ever.result,
+    )
+    stall_gens = 0
+    start_time = time.time()
+
+    for gen in range(num_generations):
+        population.sort(key=lambda ind: ind.fitness, reverse=True)
+
+        gen_best = population[0]
+        if gen_best.fitness > best_ever.fitness:
+            best_ever = RawIndividual(
+                actions=[list(f) for f in gen_best.actions],
+                fitness=gen_best.fitness,
+                result=gen_best.result,
+            )
+            stall_gens = 0
+        else:
+            stall_gens += 1
+
+        if verbose and (gen % 10 == 0 or gen == num_generations - 1):
+            elapsed = time.time() - start_time
+            status = "COMPLETE" if best_ever.result and best_ever.result.completed else "incomplete"
+            frames = best_ever.result.total_frames if best_ever.result else 0
+            progress = best_ever.result.max_progress if best_ever.result else 0
+            print(
+                f"[GA-RAW] gen={gen:4d} best_fitness={best_ever.fitness:10.1f} "
+                f"frames={frames:5d} progress={progress:7.1f} "
+                f"status={status} stall={stall_gens} elapsed={elapsed:.1f}s"
+            )
+
+        # Checkpoint every 10 gens
+        if gen % 10 == 0 and gen > 0:
+            _save_raw_checkpoint(best_ever, gen, output_dir)
+
+        # Diversity injection if stuck
+        if stall_gens > 0 and stall_gens % DEFAULT_DIVERSITY_INJECTION_INTERVAL == 0:
+            if verbose:
+                print(f"[GA-RAW] Injecting diversity (stall={stall_gens})")
+            replace_count = actual_pop_size // 5
+            for i in range(replace_count):
+                rate = 0.02 * random.uniform(2, 8)
+                ind = RawIndividual(actions=mutate_raw(best_ever.actions, rate=rate))
+                ind.result = evaluator.evaluate(ind.actions, early_terminate=True)
+                ind.fitness = _ga_fitness(ind.result, config)
+                population[actual_pop_size - 1 - i] = ind
+
+        # Build next generation
+        next_gen: list[RawIndividual] = []
+
+        # Elitism
+        for i in range(min(elite_count, len(population))):
+            next_gen.append(RawIndividual(
+                actions=[list(f) for f in population[i].actions],
+                fitness=population[i].fitness,
+                result=population[i].result,
+            ))
+
+        # Fill with crossover + mutation (tournament selection from full population)
+        while len(next_gen) < actual_pop_size:
+            p1 = _tournament_select_raw(population)
+            p2 = _tournament_select_raw(population)
+
+            if random.random() < DEFAULT_CROSSOVER_RATE:
+                if random.random() < 0.5:
+                    c1, c2 = crossover_raw(p1.actions, p2.actions)
+                else:
+                    c1 = crossover_segment_raw(p1.actions, p2.actions)
+                    c2 = crossover_segment_raw(p2.actions, p1.actions)
+            else:
+                c1 = [list(f) for f in p1.actions]
+                c2 = [list(f) for f in p2.actions]
+
+            c1 = mutate_raw(c1, rate=0.03)
+            c2 = mutate_raw(c2, rate=0.03)
+
+            ind1 = RawIndividual(actions=c1)
+            ind1.result = evaluator.evaluate(c1, early_terminate=True)
+            ind1.fitness = _ga_fitness(ind1.result, config)
+            next_gen.append(ind1)
+
+            if len(next_gen) < population_size:
+                ind2 = RawIndividual(actions=c2)
+                ind2.result = evaluator.evaluate(c2, early_terminate=True)
+                ind2.fitness = _ga_fitness(ind2.result, config)
+                next_gen.append(ind2)
+
+        population = next_gen
+
+    # Final save
+    _save_raw_checkpoint(best_ever, num_generations, output_dir)
+
+    if verbose:
+        elapsed = time.time() - start_time
+        print(f"\n[GA-RAW] Done! {num_generations} generations in {elapsed:.1f}s")
+        print(f"[GA-RAW] Best fitness: {best_ever.fitness:.1f}")
+        if best_ever.result:
+            print(f"[GA-RAW] Completed: {best_ever.result.completed}")
+            print(f"[GA-RAW] Frames: {best_ever.result.total_frames}")
+            print(f"[GA-RAW] Progress: {best_ever.result.max_progress:.1f}")
+
+    return best_ever
+
+
+def _save_raw_checkpoint(
+    best: RawIndividual, gen: int, output_dir: Path,
+) -> None:
+    path = output_dir / "ga_raw_best.json"
+    data = {
+        "raw_buttons": best.actions,
+        "num_frames": len(best.actions),
+        "fitness": best.fitness,
+        "generation": gen,
+        "completed": best.result.completed if best.result else False,
+        "total_frames": best.result.total_frames if best.result else 0,
+        "max_progress": best.result.max_progress if best.result else 0,
+    }
+    path.write_text(json.dumps(data, indent=2))

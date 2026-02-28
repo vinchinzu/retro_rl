@@ -87,6 +87,10 @@ class LevelConfig:
     completion_min_progress: float = 0.0  # min progress before level_id_change counts as completion
     completion_level_ids: list[int] = field(default_factory=list)  # if set, only these level_ids trigger completion
     completion_exclude_ids: list[int] = field(default_factory=list)  # blacklist: these level_ids never count as completion
+    completion_debounce_frames: int = 0  # require level_id change to persist this many frames (filters 1-frame glitches)
+    # ram_flag completion: fires when a RAM field equals a specific value
+    completion_ram_key: str = ""      # RAM field name (from extras or computed_values)
+    completion_ram_value: int = 0     # value that triggers completion
 
     # Action space (None = use DEFAULT_PLATFORMER_ACTIONS)
     action_table: list[list[int]] | None = None

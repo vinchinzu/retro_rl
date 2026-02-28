@@ -257,6 +257,33 @@ class Evaluator:
                         and level_id not in self.config.completion_exclude_ids
                     )
                     if is_real_completion:
+                        # Debounce: verify level_id change persists
+                        debounce = self.config.completion_debounce_frames
+                        if debounce > 0:
+                            confirmed = True
+                            for _db in range(debounce):
+                                if frame_idx + 1 + _db >= len(actions):
+                                    confirmed = False
+                                    break
+                                a = actions[frame_idx + 1 + _db]
+                                if raw_mode:
+                                    db_btns = list(a)
+                                else:
+                                    db_btns = action_index_to_buttons(a, self._action_table)
+                                if len(db_btns) > action_size:
+                                    db_btns = db_btns[:action_size]
+                                self._env.step(np.array(db_btns, dtype=np.int8))
+                                db_ram = self._env.get_ram()
+                                db_vals = self._read_ram(db_ram)
+                                db_lid = db_vals.get("level_id", 0)
+                                if db_lid in self._main_level_ids or db_lid == 0:
+                                    confirmed = False
+                                    # Reverted -- advance frame_idx past debounce frames consumed
+                                    frame_idx += _db + 1
+                                    break
+                            if not confirmed:
+                                continue  # glitch, keep playing
+
                         result.completed = True
                         result.total_frames = frame_idx + 1
                         if start_timer is not None:
@@ -270,6 +297,24 @@ class Evaluator:
                         result.fitness = self.config.completion_bonus - frame_idx
                         return result
                     # else: bonus room / mid-level transition, continue playing
+
+            elif self.config.completion_signal == "ram_flag":
+                flag_val = values.get(self.config.completion_ram_key, None)
+                if (flag_val is not None
+                        and flag_val == self.config.completion_ram_value
+                        and self._tracker.max_progress >= self.config.completion_min_progress):
+                    result.completed = True
+                    result.total_frames = frame_idx + 1
+                    if start_timer is not None:
+                        result.timer_frames = timer - start_timer
+                    result.max_x = max_x
+                    result.max_progress = self._tracker.max_progress
+                    result.final_x = x
+                    result.final_y = y
+                    result.level_id_at_end = level_id
+                    result.bonus_frames = bonus_frames
+                    result.fitness = self.config.completion_bonus - frame_idx
+                    return result
 
             # === DEATH DETECTION (immediate) ===
             if gameplay_started and self.is_dead(values, in_sub_level=in_sub_level):
