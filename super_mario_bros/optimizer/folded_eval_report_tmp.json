@@ -1,0 +1,108 @@
+{
+  "standalone": {
+    "completed_count": 4,
+    "total_count": 8,
+    "all_completed": false,
+    "total_frames": 8987,
+    "total_seconds": 149.783,
+    "segments": [
+      {
+        "label": "1-1",
+        "config_id": "smb_1_1",
+        "completed": true,
+        "frames": 1840,
+        "died": false,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_1/hillclimb_raw_best.json"
+      },
+      {
+        "label": "1-2 (\u2192W4)",
+        "config_id": "smb_1_2",
+        "completed": true,
+        "frames": 2148,
+        "died": false,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_2/hillclimb_raw_best.json"
+      },
+      {
+        "label": "4-1",
+        "config_id": "smb_4_1",
+        "completed": true,
+        "frames": 2163,
+        "died": false,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_4_1/hillclimb_raw_best.json"
+      },
+      {
+        "label": "4-2 (\u2192W8)",
+        "config_id": "smb_4_2",
+        "completed": true,
+        "frames": 2836,
+        "died": false,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_4_2/hillclimb_raw_best.json"
+      },
+      {
+        "label": "8-1",
+        "config_id": "smb_8_1",
+        "completed": false,
+        "frames": 1186,
+        "died": true,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_1/hillclimb_best_final.json"
+      },
+      {
+        "label": "8-2",
+        "config_id": "smb_8_2",
+        "completed": false,
+        "frames": 832,
+        "died": true,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_2/hillclimb_best_final.json"
+      },
+      {
+        "label": "8-3",
+        "config_id": "smb_8_3",
+        "completed": false,
+        "frames": 832,
+        "died": true,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_3/hillclimb_raw_best.json"
+      },
+      {
+        "label": "8-4",
+        "config_id": "smb_8_4",
+        "completed": false,
+        "frames": 3600,
+        "died": false,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_4/hillclimb_best_final.json"
+      }
+    ]
+  },
+  "chained": {
+    "completed_count": 1,
+    "total_count": 8,
+    "all_completed": false,
+    "total_frames": 3650,
+    "total_seconds": 60.833,
+    "segments": [
+      {
+        "label": "1-1",
+        "config_id": "smb_1_1",
+        "status": "COMPLETED",
+        "frames": 1840,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_1/hillclimb_raw_best.json"
+      },
+      {
+        "label": "1-2 (\u2192W4)",
+        "config_id": "smb_1_2",
+        "status": "DIED",
+        "frames": 1665,
+        "error": "",
+        "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_2/hillclimb_raw_best.json"
+      }
+    ]
+  }
+}

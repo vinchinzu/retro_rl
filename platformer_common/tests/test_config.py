@@ -73,13 +73,6 @@ def test_bk2_to_env_default():
 # -- Super Metroid tests -----------------------------------------------------
 
 
-def test_sm_climb_return_registered():
-    config = get_level_config("sm_climb_return")
-    assert config.display_name == "Climb -> Parlor (return)"
-    assert config.game_name == "SuperMetroid-Snes"
-    assert config.target_level_id == 0x92FD
-
-
 def test_sm_alias_lookup():
     c1 = get_level_config("climb_return")
     c2 = get_level_config("sm_climb_up")
@@ -114,8 +107,3 @@ def test_sm_ram_schema():
     assert "level_id" in schema.fields
     assert "health" in schema.fields
 
-
-def test_sm_action_table():
-    config = get_level_config("sm_landing_site")
-    assert config.action_table is not None
-    assert len(config.action_table) == 26

@@ -1,0 +1,73 @@
+{
+  "completed_count": 8,
+  "total_count": 8,
+  "all_completed": true,
+  "total_frames": 25779,
+  "total_seconds": 429.65,
+  "segments": [
+    {
+      "label": "1-1",
+      "config_id": "smb_1_1",
+      "status": "COMPLETED",
+      "frames": 2239,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_1/recording_000.json",
+      "error": ""
+    },
+    {
+      "label": "1-2 (\u2192W4)",
+      "config_id": "smb_1_2",
+      "status": "COMPLETED",
+      "frames": 2220,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_2/hillclimb_best_final.json",
+      "error": ""
+    },
+    {
+      "label": "4-1",
+      "config_id": "smb_4_1",
+      "status": "COMPLETED",
+      "frames": 2345,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_4_1/recording_000.json",
+      "error": ""
+    },
+    {
+      "label": "4-2 (\u2192W8)",
+      "config_id": "smb_4_2",
+      "status": "COMPLETED",
+      "frames": 3085,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_4_2/recording_000.json",
+      "error": ""
+    },
+    {
+      "label": "8-1",
+      "config_id": "smb_8_1",
+      "status": "COMPLETED",
+      "frames": 5097,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_1/hillclimb_best_final.json",
+      "error": ""
+    },
+    {
+      "label": "8-2",
+      "config_id": "smb_8_2",
+      "status": "COMPLETED",
+      "frames": 3227,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_2/hillclimb_best_final.json",
+      "error": ""
+    },
+    {
+      "label": "8-3",
+      "config_id": "smb_8_3",
+      "status": "COMPLETED",
+      "frames": 2492,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_3/hillclimb_best_final.json",
+      "error": ""
+    },
+    {
+      "label": "8-4",
+      "config_id": "smb_8_4",
+      "status": "COMPLETED",
+      "frames": 3979,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_8_4/hillclimb_best_final.json",
+      "error": ""
+    }
+  ]
+}
