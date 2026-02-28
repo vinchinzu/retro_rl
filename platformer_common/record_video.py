@@ -184,7 +184,9 @@ def record(actions_path: str, level: str, output: str, scale: int = 3) -> None:
         level_id = values.get("level_id", 0)
 
         # Sub-level detection: freeze progress when in bonus room
-        in_sub_level = (level_id != 0 and level_id != config.target_level_id)
+        # level_id_aliases are part of the same level (not sub-levels)
+        _main_ids = {config.target_level_id} | set(config.level_id_aliases)
+        in_sub_level = (level_id != 0 and level_id not in _main_ids)
 
         if not in_sub_level:
             progress = cam_x - initial_cam_x if cam_x > initial_cam_x else 0
@@ -194,12 +196,18 @@ def record(actions_path: str, level: str, output: str, scale: int = 3) -> None:
         # Check completion
         completed = False
         if config.completion_signal == "level_id_change":
-            if level_id != config.target_level_id and level_id != 0:
+            if level_id not in _main_ids and level_id != 0:
                 if (max_progress >= config.completion_min_progress
                         and (not config.completion_level_ids
                              or level_id in config.completion_level_ids)
                         and level_id not in config.completion_exclude_ids):
                     completed = True
+        elif config.completion_signal == "ram_flag":
+            flag_val = values.get(config.completion_ram_key, None)
+            if (flag_val is not None
+                    and flag_val == config.completion_ram_value
+                    and max_progress >= config.completion_min_progress):
+                completed = True
 
         # Check death
         died = False

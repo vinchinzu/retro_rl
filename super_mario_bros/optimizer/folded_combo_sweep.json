@@ -1,0 +1,212 @@
+{
+  "results": [
+    {
+      "bits": "0000",
+      "applied": [],
+      "all_completed": false,
+      "completed_count": 7,
+      "total_frames": 25400,
+      "total_seconds": 423.333,
+      "failed_segment": "smb_8_4",
+      "failed_status": "INCOMPLETE"
+    },
+    {
+      "bits": "0001",
+      "applied": [
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 4,
+      "total_frames": 11484,
+      "total_seconds": 191.4,
+      "failed_segment": "smb_8_1",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "0010",
+      "applied": [
+        "smb_4_1"
+      ],
+      "all_completed": false,
+      "completed_count": 5,
+      "total_frames": 16956,
+      "total_seconds": 282.6,
+      "failed_segment": "smb_8_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "0011",
+      "applied": [
+        "smb_4_1",
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 4,
+      "total_frames": 11463,
+      "total_seconds": 191.05,
+      "failed_segment": "smb_8_1",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "0100",
+      "applied": [
+        "smb_1_2"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 4049,
+      "total_seconds": 67.483,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "0101",
+      "applied": [
+        "smb_1_2",
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 4049,
+      "total_seconds": 67.483,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "0110",
+      "applied": [
+        "smb_1_2",
+        "smb_4_1"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 4049,
+      "total_seconds": 67.483,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "0111",
+      "applied": [
+        "smb_1_2",
+        "smb_4_1",
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 4049,
+      "total_seconds": 67.483,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1000",
+      "applied": [
+        "smb_1_1"
+      ],
+      "all_completed": false,
+      "completed_count": 5,
+      "total_frames": 16225,
+      "total_seconds": 270.417,
+      "failed_segment": "smb_8_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1001",
+      "applied": [
+        "smb_1_1",
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 4,
+      "total_frames": 11085,
+      "total_seconds": 184.75,
+      "failed_segment": "smb_8_1",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1010",
+      "applied": [
+        "smb_1_1",
+        "smb_4_1"
+      ],
+      "all_completed": false,
+      "completed_count": 5,
+      "total_frames": 16434,
+      "total_seconds": 273.9,
+      "failed_segment": "smb_8_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1011",
+      "applied": [
+        "smb_1_1",
+        "smb_4_1",
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 4,
+      "total_frames": 11064,
+      "total_seconds": 184.4,
+      "failed_segment": "smb_8_1",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1100",
+      "applied": [
+        "smb_1_1",
+        "smb_1_2"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 3650,
+      "total_seconds": 60.833,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1101",
+      "applied": [
+        "smb_1_1",
+        "smb_1_2",
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 3650,
+      "total_seconds": 60.833,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1110",
+      "applied": [
+        "smb_1_1",
+        "smb_1_2",
+        "smb_4_1"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 3650,
+      "total_seconds": 60.833,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    },
+    {
+      "bits": "1111",
+      "applied": [
+        "smb_1_1",
+        "smb_1_2",
+        "smb_4_1",
+        "smb_4_2"
+      ],
+      "all_completed": false,
+      "completed_count": 1,
+      "total_frames": 3650,
+      "total_seconds": 60.833,
+      "failed_segment": "smb_1_2",
+      "failed_status": "DIED"
+    }
+  ],
+  "best_complete": null
+}

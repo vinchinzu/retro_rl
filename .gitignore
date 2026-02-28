@@ -62,6 +62,7 @@ roms/
 ManualSave.state
 QuickSave.state
 GTOutside.state
+/*.state
 
 # Personal/session notes
 onotes.md

@@ -42,8 +42,9 @@ Since Ceres goes DOWN-LEFT instead of RIGHT:
 ### Training Modes
 - **Headless training**: No visualization for speed
 - **Visual debugging**: Optional pygame rendering
-- **Recording**: Save .bk2 replays for analysis
-- **Playback videos**: Generate MP4 from recordings
+- **Recording (dataset)**: Save action indices + per-frame raw button arrays
+- **Recording (movie)**: Optional `.bk2` replay capture for emulator playback/video
+- **Playback videos**: Generate MP4 from `.bk2` recordings
 
 ---
 
@@ -112,52 +113,80 @@ The escape goes: RIGHT at first, then DOWN, then LEFT to the ship.
 
 ## Scripts
 
-### Naive Agent
+### Record a Full Run (Recommended for Dataset Collection)
+Run from repo root:
+
 ```bash
-../retro_env/bin/python super_metroid_naive.py
+source .venv/bin/activate
+uv run python -m super_metroid_rl play --state ZebesStart --scale 2
 ```
 
-### Record Demonstrations (for imitation learning)
-```bash
-../retro_env/bin/python record_demo.py              # Start from Ceres
-../retro_env/bin/python record_demo.py --state ZebesStart  # Start from Zebes (after creating state)
-../retro_env/bin/python record_demo.py --list-states       # List available states
-```
+This is the best workflow for collecting training data from a 1-hour human run.
 
-**Controls:**
+- Expected length for a 1-hour run: about `216000` frames at 60 FPS.
+- Stop and save: `ESC`
+- Restart and clear current recording: `R`
+- Save/load in-memory checkpoints: `F1`-`F4` / `Shift+F1`-`Shift+F4`
+- Export current emulator state to disk: `F5`
+
+Keyboard controls:
 - Arrow keys: D-Pad
-- Z: B (Dash/Run)
-- X: A (Jump)
-- A: Y (Shoot)
-- S: X (Item Select)
-- Q/W: L/R (Diagonal Aim)
-- Enter: Start
-- Shift: Select
+- `Z`: B, `X`: A, `A`: Y, `S`: X
+- `Q`: L, `W`: R
+- `Enter`: Start, `Shift`: Select
 
-**Save State Keys:**
-- F1: Save `ZebesStart.state` (press after Zebes landing cutscene finishes)
-- F2: Save `CeresEscape.state`
-- F5: Quick save with timestamp
-- ESC: Quit and save recording
+Output files are written to:
+
+`super_metroid_rl/optimizer/runs/sm_landing_site/`
+
+- `recording_XXX.json`: action-space sequence (discrete action indices)
+- `recording_XXX_raw.json`: per-frame button data + metadata
+
+`recording_XXX_raw.json` now contains:
+- `raw_buttons`: per-frame env-applied buttons (post-sanitize; replay-safe)
+- `raw_buttons_pre_sanitize`: per-frame physical input snapshot before sanitize
+- `actions`: per-frame discrete action indices
+
+### Verify a Recording Quickly
+```bash
+uv run python -m super_metroid_rl verify \
+  --actions super_metroid_rl/optimizer/runs/sm_landing_site/recording_XXX.json
+```
+
+Check frame alignment between raw and action outputs:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+import json
+runs = Path("super_metroid_rl/optimizer/runs/sm_landing_site")
+raw_path = sorted(runs.glob("recording_*_raw.json"))[-1]
+data = json.loads(raw_path.read_text())
+print("file:", raw_path)
+print("raw_buttons:", len(data.get("raw_buttons", [])))
+print("raw_buttons_pre_sanitize:", len(data.get("raw_buttons_pre_sanitize", [])))
+print("actions:", len(data.get("actions", [])))
+PY
+```
+
+### Optional: Also Record `.bk2` Movies
+If you want emulator movie files in addition to JSON datasets:
+
+```bash
+uv run python super_metroid_rl/record_tasker.py record --state ZebesStart
+```
+
+Convert `.bk2` to MP4:
+
+```bash
+uv run python super_metroid_rl/scripts/bk2_to_mp4.py <input.bk2> <output.mp4>
+```
 
 ### PPO Training
 ```bash
-../retro_env/bin/python train_ceres.py --test-ram              # Verify RAM addresses
-../retro_env/bin/python train_ceres.py --train --steps 1000000 --headless  # Train headless
-../retro_env/bin/python train_ceres.py --train --render        # Train with visualization
-../retro_env/bin/python train_ceres.py --play --load models/best_model.zip --render  # Play trained model
-```
-
-### Navigation Bot (Behavioral Cloning)
-Run the bot using a trained Behavior Cloning model with heuristic-enhanced navigation:
-```bash
-../retro_env/bin/python run_bot.py models/bc_nav_model.pth --state ZebesStart
-```
-
-### Record & Convert Recordings
-The bot automatically records `.bk2` files. Convert them to MP4 for viewing:
-```bash
-../retro_env/bin/python convert_bk2.py recordings/SuperMetroid-Snes-v0-ZebesStart-000000.bk2
+uv run python super_metroid_rl/train_curriculum.py list-segments
+uv run python super_metroid_rl/train_curriculum.py train --segment sm_landing_site --steps 50000 --device cuda
+uv run python super_metroid_rl/train_curriculum.py run --render --start-state ZebesStart --device cuda
 ```
 
 ---
@@ -238,9 +267,12 @@ Index: [0:B, 1:Y, 2:Select, 3:Start, 4:Up, 5:Down, 6:Left, 7:Right, 8:A, 9:X, 10
 - Wall jump: A toward wall while spinning
 
 ### Recording Format
-- `.bk2`: BizHawk movie format (used by stable-retro)
-- Contains: Initial state + button presses per frame
-- Can be converted to video with emulator
+- `recording_XXX.json`: Discrete action indices (current action space)
+- `recording_XXX_raw.json`:
+  - `raw_buttons`: 12-button vectors per frame (post-sanitize, replay-safe)
+  - `raw_buttons_pre_sanitize`: 12-button vectors per frame before sanitize
+  - `actions`: action index per frame (same length as raw arrays)
+- Optional `.bk2`: BizHawk movie format (initial state + per-frame buttons)
 
 ---
 

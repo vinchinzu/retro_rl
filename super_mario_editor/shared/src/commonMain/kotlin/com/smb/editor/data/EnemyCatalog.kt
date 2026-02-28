@@ -1,0 +1,81 @@
+package com.smb.editor.data
+
+data class EnemyDef(
+    val id: Int,
+    val name: String,
+    val category: String = "Enemy" // "Enemy", "Hazard", "Platform", "NPC"
+)
+
+object EnemyCatalog {
+    val ENEMIES: Map<Int, EnemyDef> = mapOf(
+        0x00 to EnemyDef(0x00, "Green Koopa (walks)"),
+        0x01 to EnemyDef(0x01, "Red Koopa (walks)"),
+        0x02 to EnemyDef(0x02, "Buzzy Beetle"),
+        0x03 to EnemyDef(0x03, "Red Koopa (special move)"),
+        0x04 to EnemyDef(0x04, "Green Koopa (flies, horizontal)"),
+        0x05 to EnemyDef(0x05, "Hammer Bro"),
+        0x06 to EnemyDef(0x06, "Goomba"),
+        0x07 to EnemyDef(0x07, "Blooper"),
+        0x08 to EnemyDef(0x08, "Bullet Bill (frenzy variant)", "Hazard"),
+        0x09 to EnemyDef(0x09, "Cheep-Cheep (green/grey)"),
+        0x0A to EnemyDef(0x0A, "Cheep-Cheep (red)"),
+        0x0B to EnemyDef(0x0B, "Podoboo", "Hazard"),
+        0x0C to EnemyDef(0x0C, "Piranha Plant"),
+        0x0D to EnemyDef(0x0D, "Green Paratroopa (jumping)"),
+        0x0E to EnemyDef(0x0E, "Red Paratroopa"),
+        0x0F to EnemyDef(0x0F, "Green Paratroopa (flying, horizontal)"),
+        0x10 to EnemyDef(0x10, "Lakitu"),
+        0x11 to EnemyDef(0x11, "Spiny"),
+        0x12 to EnemyDef(0x12, "Frenzy Trigger (Lakitu/Spiny)", "Hazard"),
+        0x13 to EnemyDef(0x13, "Frenzy Trigger (unused)", "Command"),
+        0x14 to EnemyDef(0x14, "Frenzy Trigger (Flying Cheep)", "Hazard"),
+        0x15 to EnemyDef(0x15, "Frenzy Trigger (Bowser Fire)", "Hazard"),
+        0x16 to EnemyDef(0x16, "Frenzy Trigger (Fireworks)", "Special"),
+        0x17 to EnemyDef(0x17, "Frenzy Trigger (Bullet/Cheep)", "Hazard"),
+        0x18 to EnemyDef(0x18, "Frenzy Stop", "Command"),
+        0x19 to EnemyDef(0x19, "Frenzy Slot (reserved)", "Command"),
+        0x1A to EnemyDef(0x1A, "Frenzy Slot (reserved)", "Command"),
+        0x1B to EnemyDef(0x1B, "Fire Bar (clockwise)", "Hazard"),
+        0x1C to EnemyDef(0x1C, "Fire Bar (counter-clockwise)", "Hazard"),
+        0x1D to EnemyDef(0x1D, "Fire Bar (short)", "Hazard"),
+        0x1E to EnemyDef(0x1E, "Fire Bar (short)", "Hazard"),
+        0x1F to EnemyDef(0x1F, "Long Fire Bar (clockwise)", "Hazard"),
+        0x20 to EnemyDef(0x20, "Enemy Command 0x20", "Command"),
+        0x21 to EnemyDef(0x21, "Enemy Command 0x21", "Command"),
+        0x22 to EnemyDef(0x22, "Enemy Command 0x22", "Command"),
+        0x23 to EnemyDef(0x23, "Enemy Command 0x23", "Command"),
+        0x24 to EnemyDef(0x24, "Lift (balance)", "Platform"),
+        0x25 to EnemyDef(0x25, "Lift (vertical)", "Platform"),
+        0x26 to EnemyDef(0x26, "Large Lift (up)", "Platform"),
+        0x27 to EnemyDef(0x27, "Large Lift (down)", "Platform"),
+        0x28 to EnemyDef(0x28, "Lift (horizontal)", "Platform"),
+        0x29 to EnemyDef(0x29, "Lift (drop)", "Platform"),
+        0x2A to EnemyDef(0x2A, "Lift (horizontal alt)", "Platform"),
+        0x2B to EnemyDef(0x2B, "Lift (small up)", "Platform"),
+        0x2C to EnemyDef(0x2C, "Lift (small down)", "Platform"),
+        0x2D to EnemyDef(0x2D, "Bowser"),
+        0x2E to EnemyDef(0x2E, "Power-up Trigger", "Special"),
+        0x2F to EnemyDef(0x2F, "Vine Trigger", "Special"),
+        0x30 to EnemyDef(0x30, "Flagpole Flag", "Special"),
+        0x31 to EnemyDef(0x31, "Castle Flag", "Special"),
+        0x32 to EnemyDef(0x32, "Jumpspring", "Platform"),
+        0x33 to EnemyDef(0x33, "Bullet Bill Cannon", "Hazard"),
+        0x34 to EnemyDef(0x34, "Page Scroll Stop"),
+        0x35 to EnemyDef(0x35, "Toad / Princess", "NPC"),
+        0x36 to EnemyDef(0x36, "Enemy Init Terminator", "Command"),
+        0x37 to EnemyDef(0x37, "Group Spawn (Goomba/Buzzy, low, x2)", "Command"),
+        0x38 to EnemyDef(0x38, "Group Spawn (Goomba/Buzzy, high, x2)", "Command"),
+        0x39 to EnemyDef(0x39, "Group Spawn (Goomba/Buzzy, low, x3)", "Command"),
+        0x3A to EnemyDef(0x3A, "Group Spawn (Goomba/Buzzy, high, x3)", "Command"),
+        0x3B to EnemyDef(0x3B, "Group Spawn (Koopa, low, x2)", "Command"),
+        0x3C to EnemyDef(0x3C, "Group Spawn (Koopa, high, x2)", "Command"),
+        0x3D to EnemyDef(0x3D, "Group Spawn (Koopa, low, x3)", "Command"),
+        0x3E to EnemyDef(0x3E, "Group Spawn (Koopa, high, x3)", "Command"),
+        0x3F to EnemyDef(0x3F, "Raw Enemy ID 0x3F", "Command"),
+    )
+
+    fun getEnemy(type: Int): EnemyDef? = ENEMIES[type]
+
+    fun getEnemyName(type: Int): String =
+        ENEMIES[type]?.name ?: "Unknown Enemy (0x${type.toString(16).uppercase()})"
+}

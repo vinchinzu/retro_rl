@@ -84,6 +84,8 @@ class PlaySession:
         self._frame_count: int = 0
         self._last_obs: Optional[ndarray] = None
         self._last_info: dict = {}
+        self._last_action_pre_sanitize: list[int] = [0] * self.action_size
+        self._last_action_post_sanitize: list[int] = [0] * self.action_size
         self.running: bool = False
 
         # State save/load
@@ -98,6 +100,13 @@ class PlaySession:
         self._clock = None
         self._joystick = None
 
+        # Trigger state for save/load (L2/R2)
+        self._lt_was_pressed: bool = False
+        self._rt_was_pressed: bool = False
+        self._trigger_lt_axis: int = 2   # SDL: LT axis (Xbox-style)
+        self._trigger_rt_axis: int = 5   # SDL: RT axis (Xbox-style)
+        self._trigger_threshold: float = 0.3
+
         # Hooks -- all optional, defaults do nothing
         self.on_hud: Callable[[dict], list[str]] = lambda info: []
         self.on_step: Callable[[ndarray, float, bool, dict], None] = lambda *a: None
@@ -105,6 +114,8 @@ class PlaySession:
         self.on_key_up: Callable[[int], bool] = lambda key: False
         self.on_reset: Callable[[], None] = lambda: None
         self.on_close: Callable[[], None] = lambda: None
+        self.on_trigger_save: Callable[[int], None] = lambda slot: self.save_checkpoint(slot)
+        self.on_trigger_load: Callable[[int], None] = lambda slot: self.load_checkpoint(slot)
 
     @property
     def frame_count(self) -> int:
@@ -240,6 +251,9 @@ class PlaySession:
             if not self.running:
                 break
 
+            # --- Controller triggers (L2=load, R2=save checkpoint 1) ---
+            self._poll_triggers()
+
             # --- Input ---
             action = self._gather_action(pg, keyboard_action, controller_action, sanitize_action)
 
@@ -335,7 +349,17 @@ class PlaySession:
         if self._bot_active and self._bot_fn is not None:
             bot_action = self._bot_fn(self._last_obs, self._last_info)
             if bot_action is not None:
-                return np.asarray(bot_action) if not isinstance(bot_action, np.ndarray) else bot_action
+                out = np.asarray(bot_action) if not isinstance(bot_action, np.ndarray) else bot_action
+                captured = out.tolist() if hasattr(out, "tolist") else list(out)
+                if not isinstance(captured, list):
+                    captured = [0] * self.action_size
+                if len(captured) < self.action_size:
+                    captured.extend([0] * (self.action_size - len(captured)))
+                elif len(captured) > self.action_size:
+                    captured = captured[: self.action_size]
+                self._last_action_pre_sanitize = list(captured)
+                self._last_action_post_sanitize = list(captured)
+                return out
 
         # Human input
         if not self._headless:
@@ -343,7 +367,12 @@ class PlaySession:
             keyboard_action(keys, action, pg)
             if self._joystick:
                 controller_action(self._joystick, action)
+            self._last_action_pre_sanitize = list(action)
             sanitize_action(action)
+            self._last_action_post_sanitize = list(action)
+        else:
+            self._last_action_pre_sanitize = list(action)
+            self._last_action_post_sanitize = list(action)
 
         return action
 
@@ -359,6 +388,29 @@ class PlaySession:
             return bool(l_btn and r_btn and sel_btn)
         except Exception:
             return False
+
+    def _poll_triggers(self) -> None:
+        """Check L2/R2 trigger axes for save/load checkpoint 1."""
+        if self._joystick is None:
+            return
+        num_axes = self._joystick.get_numaxes()
+        th = self._trigger_threshold
+
+        # L2 (load)
+        if self._trigger_lt_axis < num_axes:
+            lt = self._joystick.get_axis(self._trigger_lt_axis)
+            lt_now = lt > th
+            if lt_now and not self._lt_was_pressed:
+                self.on_trigger_load(1)
+            self._lt_was_pressed = lt_now
+
+        # R2 (save)
+        if self._trigger_rt_axis < num_axes:
+            rt = self._joystick.get_axis(self._trigger_rt_axis)
+            rt_now = rt > th
+            if rt_now and not self._rt_was_pressed:
+                self.on_trigger_save(1)
+            self._rt_was_pressed = rt_now
 
     def _handle_keydown(self, pg, key: int) -> None:
         # Let game-specific handler run first

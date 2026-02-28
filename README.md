@@ -34,6 +34,11 @@ RL agents trained to speedrun Super Metroid using PPO and behavioral cloning.
 - Zebes navigation and item acquisition
 - Custom reward functions for non-standard movement
 
+**Recording (recommended workflow):**
+- `uv run python -m super_metroid_rl play --state ZebesStart --scale 2`
+- Outputs both discrete action-space data and per-frame raw button captures in `super_metroid_rl/optimizer/runs/sm_landing_site/`
+- Full friend-ready recording guide: [`super_metroid_rl/README.md`](./super_metroid_rl/README.md)
+
 ## Shared Harness
 
 The `retro_harness/` package provides common infrastructure:

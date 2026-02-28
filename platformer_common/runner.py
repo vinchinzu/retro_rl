@@ -157,49 +157,177 @@ def cmd_verify(args: argparse.Namespace) -> None:
     evaluator.close()
 
 
-def cmd_optimize(args: argparse.Namespace) -> None:
-    """Run GA optimization on a seed action sequence."""
-    from platformer_common.genetic import run_ga
+def _load_seeds_from_dir(
+    seeds_dir: Path,
+    min_frames: int = 60,
+) -> list[list[int]]:
+    """Load all attempt_*.json and recording_*.json from a directory as action-index lists."""
+    seed_files = sorted(
+        list(seeds_dir.glob("attempt_*.json"))
+        + list(seeds_dir.glob("recording_*.json"))
+    )
+    # Exclude raw companion files
+    seed_files = [f for f in seed_files if "_raw" not in f.stem]
 
+    seeds: list[list[int]] = []
+    for f in seed_files:
+        try:
+            actions = load_actions(f)
+            if len(actions) >= min_frames:
+                seeds.append(actions)
+                print(f"  Loaded {f.name}: {len(actions)} frames")
+            else:
+                print(f"  Skipped {f.name}: {len(actions)} frames (< {min_frames} min)")
+        except Exception as e:
+            print(f"  Error loading {f.name}: {e}")
+    return seeds
+
+
+def _load_raw_seeds_from_dir(
+    seeds_dir: Path,
+    min_frames: int = 60,
+) -> list[list[list[int]]]:
+    """Load raw button arrays from attempt/recording files in a directory.
+
+    Prefers companion _raw.json files, falls back to embedded raw_buttons.
+    Skips files with no raw data available.
+    """
+    from platformer_common.bk2_extract import load_raw_buttons
+
+    seed_files = sorted(
+        list(seeds_dir.glob("attempt_*.json"))
+        + list(seeds_dir.glob("recording_*.json"))
+    )
+    seed_files = [f for f in seed_files if "_raw" not in f.stem]
+
+    seeds: list[list[list[int]]] = []
+    for f in seed_files:
+        try:
+            raw = load_raw_buttons(f)
+            if raw is None:
+                continue
+            if len(raw) >= min_frames:
+                seeds.append(raw)
+                print(f"  Loaded {f.name}: {len(raw)} raw frames")
+            else:
+                print(f"  Skipped {f.name}: {len(raw)} raw frames (< {min_frames} min)")
+        except Exception as e:
+            print(f"  Error loading {f.name}: {e}")
+    return seeds
+
+
+def cmd_optimize(args: argparse.Namespace) -> None:
+    """Run GA optimization on seed action sequence(s)."""
     config = _resolve_config(args)
     start_state = getattr(args, "state", None)
-    seed_path = Path(args.seed)
-    if not seed_path.exists():
-        print(f"Error: seed file not found: {seed_path}")
+    use_raw = getattr(args, "raw", False)
+
+    seeds_dir = Path(args.seeds_dir) if args.seeds_dir else None
+    seed_path = Path(args.seed) if args.seed else None
+
+    if seeds_dir and seed_path:
+        print("Error: --seed and --seeds-dir are mutually exclusive.")
+        return
+    if not seeds_dir and not seed_path:
+        print("Error: provide --seed or --seeds-dir.")
         return
 
-    seed_actions = load_actions(seed_path)
-    print(f"Seed: {len(seed_actions)} frames from {seed_path}")
     print(f"Level: {config.display_name}")
+    min_frames = args.min_frames
 
     output_dir = Path(args.output_dir) if args.output_dir else config.runs_dir
     evaluator = Evaluator(config, start_state=start_state)
 
-    resume_from = Path(args.resume) if args.resume else None
+    if use_raw:
+        # Raw-button GA (no lossy action-index conversion)
+        from platformer_common.genetic import run_ga_raw
+        from platformer_common.bk2_extract import load_raw_buttons
 
-    best = run_ga(
-        seed_actions=seed_actions,
-        evaluator=evaluator,
-        population_size=args.population,
-        num_generations=args.generations,
-        output_dir=output_dir,
-        num_workers=args.workers,
-        resume_from=resume_from,
-        render_interval=args.render,
-    )
+        if seeds_dir:
+            if not seeds_dir.exists():
+                print(f"Error: seeds directory not found: {seeds_dir}")
+                return
+            print(f"Loading RAW seeds from {seeds_dir} (min {min_frames} frames)...")
+            raw_seeds = _load_raw_seeds_from_dir(seeds_dir, min_frames=min_frames)
+            if not raw_seeds:
+                print("Error: no valid raw seeds found. Ensure _raw.json companion files exist.")
+                return
+            print(f"Loaded {len(raw_seeds)} raw seeds")
+        else:
+            raw = load_raw_buttons(seed_path)
+            if raw is None:
+                print(f"Error: no raw_buttons in {seed_path}")
+                return
+            raw_seeds = [raw]
+            print(f"Seed: {len(raw)} raw frames from {seed_path}")
 
-    final_path = output_dir / "ga_best_final.json"
-    data = {
-        "actions": best.actions,
-        "num_frames": len(best.actions),
-        "fitness": best.fitness,
-        "completed": best.result.completed if best.result else False,
-        "total_frames": best.result.total_frames if best.result else 0,
-        "max_progress": best.result.max_progress if best.result else 0,
-        "level": config.level_id,
-    }
-    final_path.write_text(json.dumps(data, indent=2))
-    print(f"\nSaved best to {final_path}")
+        best = run_ga_raw(
+            seeds=raw_seeds,
+            evaluator=evaluator,
+            population_size=args.population,
+            num_generations=args.generations,
+            output_dir=output_dir,
+        )
+
+        final_path = output_dir / "ga_raw_best_final.json"
+        data = {
+            "raw_buttons": best.actions,
+            "num_frames": len(best.actions),
+            "fitness": best.fitness,
+            "completed": best.result.completed if best.result else False,
+            "total_frames": best.result.total_frames if best.result else 0,
+            "max_progress": best.result.max_progress if best.result else 0,
+            "level": config.level_id,
+        }
+        final_path.write_text(json.dumps(data, indent=2))
+        print(f"\nSaved best to {final_path}")
+    else:
+        # Standard action-index GA
+        from platformer_common.genetic import run_ga
+
+        if seeds_dir:
+            if not seeds_dir.exists():
+                print(f"Error: seeds directory not found: {seeds_dir}")
+                return
+            print(f"Loading seeds from {seeds_dir} (min {min_frames} frames)...")
+            all_seeds = _load_seeds_from_dir(seeds_dir, min_frames=min_frames)
+            if not all_seeds:
+                print("Error: no valid seeds found.")
+                return
+            print(f"Loaded {len(all_seeds)} seeds")
+            seed_actions: list[int] | list[list[int]] = all_seeds
+        else:
+            if not seed_path.exists():
+                print(f"Error: seed file not found: {seed_path}")
+                return
+            seed_actions = load_actions(seed_path)
+            print(f"Seed: {len(seed_actions)} frames from {seed_path}")
+
+        resume_from = Path(args.resume) if args.resume else None
+
+        best = run_ga(
+            seed_actions=seed_actions,
+            evaluator=evaluator,
+            population_size=args.population,
+            num_generations=args.generations,
+            output_dir=output_dir,
+            num_workers=args.workers,
+            resume_from=resume_from,
+            render_interval=args.render,
+        )
+
+        final_path = output_dir / "ga_best_final.json"
+        data = {
+            "actions": best.actions,
+            "num_frames": len(best.actions),
+            "fitness": best.fitness,
+            "completed": best.result.completed if best.result else False,
+            "total_frames": best.result.total_frames if best.result else 0,
+            "max_progress": best.result.max_progress if best.result else 0,
+            "level": config.level_id,
+        }
+        final_path.write_text(json.dumps(data, indent=2))
+        print(f"\nSaved best to {final_path}")
 
     evaluator.close()
 
@@ -295,6 +423,47 @@ def cmd_hillclimb(args: argparse.Namespace) -> None:
     }
     final_path.write_text(json.dumps(data, indent=2))
     print(f"\nSaved best to {final_path}")
+
+    evaluator.close()
+
+
+def cmd_neuro(args: argparse.Namespace) -> None:
+    """Run neuroevolution optimizer (evolve neural networks to play the level)."""
+    from platformer_common.neuro import run_neuro_ga
+
+    config = _resolve_config(args)
+    start_state = getattr(args, "state", None)
+
+    output_dir = Path(args.output_dir) if args.output_dir else config.runs_dir / "neuro"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"Level: {config.display_name}")
+    print(f"Population: {args.population}, Generations: {args.generations}")
+    print(f"Hidden neurons: {args.hidden}, Max frames: {args.max_frames}")
+    if start_state:
+        print(f"State override: {start_state}")
+    print(f"Output: {output_dir}")
+
+    evaluator = Evaluator(config, start_state=start_state)
+
+    best = run_neuro_ga(
+        evaluator=evaluator,
+        population_size=args.population,
+        num_generations=args.generations,
+        n_hidden=args.hidden,
+        max_frames=args.max_frames,
+        output_dir=output_dir,
+        render=getattr(args, "render", False),
+        render_scale=getattr(args, "scale", 3),
+    )
+
+    print(f"\nBest network: fitness={best.fitness:.1f}")
+    if best.result:
+        print(f"  progress={best.result.max_progress:.1f}, frames={best.result.total_frames}")
+        print(f"  completed={best.result.completed}")
+    print(f"Checkpoints saved in: {output_dir}")
+    print(f"  neuro_best.json        (network weights)")
+    print(f"  neuro_best_buttons.json (button replay for watch/verify)")
 
     evaluator.close()
 
@@ -531,16 +700,29 @@ def _replay_with_hud(
 
         # Collect trace point
         btn_str = _button_names(btns) if btns else "-"
+        px = int(values.get("player_x", 0))
+        py = int(values.get("player_y", 0))
         trace_pt: dict = {
             "frame": current_frame,
             "room_id": level_id,
-            "x": int(values.get("player_x", 0)),
-            "y": int(values.get("player_y", 0)),
+            "x": px,
+            "y": py,
             "buttons": btn_str,
         }
         health_val = values.get("health")
         if health_val is not None:
             trace_pt["health"] = int(health_val)
+        # Speed: x delta from previous frame (pixels/frame)
+        if trace:
+            prev_x = trace[-1].get("x", px)
+            prev_room = trace[-1].get("room_id", level_id)
+            # Only compute speed within same room (avoids door transition spikes)
+            if prev_room == level_id:
+                trace_pt["speed_x"] = px - prev_x
+            else:
+                trace_pt["speed_x"] = 0
+        else:
+            trace_pt["speed_x"] = 0
         trace.append(trace_pt)
 
         # Track room transitions
@@ -562,6 +744,14 @@ def _replay_with_hud(
                     print(f"  COMPLETED at frame {current_frame}: level_id=0x{level_id:04X}, progress={max_progress:.0f}")
                     running = False
                     return True
+        elif config.completion_signal == "ram_flag":
+            flag_val = values.get(config.completion_ram_key, None)
+            if (flag_val is not None
+                    and flag_val == config.completion_ram_value
+                    and max_progress >= config.completion_min_progress):
+                print(f"  COMPLETED at frame {current_frame}: {config.completion_ram_key}={flag_val}, progress={max_progress:.0f}")
+                running = False
+                return True
 
         # Check death
         if gameplay_started:
@@ -1078,6 +1268,276 @@ def cmd_auto_state(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_practice(args: argparse.Namespace) -> None:
+    """Practice a level with auto-reset on death, saving all attempts."""
+    import numpy as np
+
+    config = _resolve_config(args)
+    action_table = _get_action_table(config)
+    start_state = getattr(args, "state", None) or config.start_state
+
+    from retro_harness.env import make_env
+    from retro_harness.play_session import PlaySession
+    from platformer_common.progress import make_progress_tracker
+
+    env = make_env(
+        game=config.game_name,
+        state=start_state,
+        game_dir=config.game_dir,
+        render_mode="rgb_array",
+    )
+
+    schema = config.ram_schema
+
+    # Output directory
+    practice_dir = config.runs_dir / "practice"
+    practice_dir.mkdir(parents=True, exist_ok=True)
+
+    # Auto-number from highest existing attempt
+    existing = sorted(practice_dir.glob("attempt_*.json"))
+    next_attempt = 0
+    for p in existing:
+        try:
+            stem = p.stem
+            if "_raw" in stem:
+                continue
+            n = int(stem.split("_")[1])
+            next_attempt = max(next_attempt, n + 1)
+        except (IndexError, ValueError):
+            pass
+
+    # Per-attempt state
+    tracker = make_progress_tracker(config)
+    tracker.reset()
+    recorded_actions: list[int] = []
+    recorded_raw: list[list[int]] = []
+    best_progress = 0.0
+    tracker_seeded = False
+
+    # Session-wide stats
+    attempt_num = next_attempt
+    all_attempts: list[dict] = []
+    session_best_progress = 0.0
+    died_flash = 0  # frames remaining to show "DIED" overlay
+    discard_current = False
+
+    # Cache emulator state for instant reset
+    env.reset()
+    cached_emu_state = env.em.get_state()
+    ram = env.get_ram()
+    initial_values = schema.read(ram)
+    config.apply_computed(initial_values)
+    initial_lives = initial_values.get("lives")
+
+    # Select toggle workaround
+    _select_state = [0, False]
+
+    last_raw_action = [0] * 12
+
+    def _save_attempt(completed: bool, death_progress: float) -> None:
+        nonlocal attempt_num
+        if not recorded_actions:
+            return
+
+        metadata = {
+            "level": config.level_id,
+            "source": "practice",
+            "attempt": attempt_num,
+            "best_progress": best_progress,
+            "total_frames": len(recorded_actions),
+            "completed": completed,
+            "state": start_state,
+        }
+        # Save action indices
+        out_path = practice_dir / f"attempt_{attempt_num:03d}.json"
+        save_actions(recorded_actions, out_path, metadata=metadata)
+
+        # Save raw buttons
+        raw_path = practice_dir / f"attempt_{attempt_num:03d}_raw.json"
+        import json as _json
+        with open(raw_path, "w") as _f:
+            _json.dump({"raw_buttons": recorded_raw, "metadata": metadata}, _f)
+
+        all_attempts.append({
+            "attempt": attempt_num,
+            "frames": len(recorded_actions),
+            "max_progress": best_progress,
+            "completed": completed,
+        })
+        attempt_num += 1
+
+    def _reset_attempt() -> None:
+        nonlocal best_progress, tracker_seeded, tracker, died_flash, discard_current
+        env.em.set_state(cached_emu_state)
+        tracker = make_progress_tracker(config)
+        tracker.reset()
+        tracker_seeded = False
+        recorded_actions.clear()
+        recorded_raw.clear()
+        best_progress = 0.0
+        died_flash = 0
+        discard_current = False
+
+    def on_step(obs, reward, done, info):
+        nonlocal best_progress, tracker_seeded, died_flash, session_best_progress
+
+        if died_flash > 0:
+            died_flash -= 1
+            if died_flash == 0:
+                _reset_attempt()
+            return
+
+        # Record
+        raw = list(last_raw_action)
+        idx = buttons_to_action_index(raw, action_table=action_table)
+        recorded_actions.append(idx)
+        recorded_raw.append(raw)
+
+        # Select workaround
+        select_pressed = bool(raw[2])
+        if select_pressed and not _select_state[1]:
+            try:
+                _select_state[0] ^= 1
+                env.unwrapped.data.set_value("selected_item", _select_state[0])
+            except Exception:
+                pass
+        _select_state[1] = select_pressed
+
+        # Track progress
+        ram = env.get_ram()
+        values = schema.read(ram)
+        config.apply_computed(values)
+        if not tracker_seeded:
+            tracker.update(values)
+            tracker_seeded = True
+        progress = tracker.update(values)
+        if progress > best_progress:
+            best_progress = progress
+        if best_progress > session_best_progress:
+            session_best_progress = best_progress
+
+        # Death detection
+        lives = values.get("lives")
+        gameplay_started = len(recorded_actions) > 30  # small grace period
+        if gameplay_started:
+            is_dead = False
+            for signal in config.death_signals:
+                if signal == "lives_drop":
+                    if initial_lives is not None and lives is not None and lives < initial_lives:
+                        is_dead = True
+                elif signal == "health_zero":
+                    health = values.get("health", 1)
+                    if health <= 0:
+                        is_dead = True
+
+            if is_dead:
+                print(f"  DIED attempt {attempt_num}: {len(recorded_actions)}f, progress={best_progress:.0f}")
+                _save_attempt(completed=False, death_progress=best_progress)
+                died_flash = 60  # Show DIED for 1 second, then auto-reset
+
+    def on_hud(info):
+        lines = [
+            f"PRACTICE #{attempt_num} | {len(recorded_actions)}f",
+            f"progress={best_progress:.0f} | best={session_best_progress:.0f}",
+            f"saved: {len(all_attempts)} attempts",
+        ]
+        if saved_state_path[0]:
+            lines.append(f"F5 state: {save_name} (progress={best_progress:.0f})")
+        if died_flash > 0:
+            lines.insert(0, ">>> DIED <<<  (auto-resetting...)")
+        return lines
+
+    # Intercept raw actions
+    _orig_gather = PlaySession._gather_action
+
+    def patched_gather(self, pg, keyboard_action, controller_action, sanitize_action):
+        nonlocal last_raw_action
+        action = _orig_gather(self, pg, keyboard_action, controller_action, sanitize_action)
+        last_raw_action = list(action) if hasattr(action, '__iter__') else [0] * 12
+        return action
+
+    PlaySession._gather_action = patched_gather
+
+    # Name for F5 save state (user can override via --save-name)
+    save_name = getattr(args, "save_name", None) or f"Chained_{config.level_id}_practice"
+    saved_state_path = [None]  # mutable ref for HUD
+
+    def on_key_down(key):
+        nonlocal discard_current
+        import pygame as pg
+        if key == pg.K_F5:
+            # Save persistent .state at current position
+            from retro_harness.env import save_state as _save_state
+            path = _save_state(env, str(config.game_dir), config.game_name, save_name)
+            saved_state_path[0] = path
+            print(f"  [STATE SAVED] {save_name} at progress={best_progress:.0f} ({len(recorded_actions)}f)")
+            print(f"  -> {path}")
+            print(f"  Practice from here: uv run python -m platformer_common -l {config.level_id} practice --state {save_name}")
+            return True
+        if key == pg.K_r:
+            # Discard current attempt and restart
+            print(f"  [DISCARD] attempt {attempt_num}")
+            _reset_attempt()
+            discard_current = True
+            return False  # let PlaySession handle env.reset()
+        return False
+
+    # Override PlaySession reset so R key uses our cached state
+    def on_reset():
+        if discard_current:
+            env.em.set_state(cached_emu_state)
+
+    session = PlaySession(
+        env,
+        game_dir=str(config.game_dir),
+        game=config.game_name,
+        scale=args.scale,
+        title=f"PRACTICE: {config.display_name}",
+    )
+    session.on_step = on_step
+    session.on_hud = on_hud
+    session.on_key_down = on_key_down
+    session.on_reset = on_reset
+
+    print(f"Practice mode: {config.display_name}")
+    print(f"State: {start_state}")
+    print(f"Output: {practice_dir}")
+    print(f"\nControls:")
+    print(f"  Arrow keys = D-pad    Z = B    X = A    A = Y    S = X")
+    print(f"  F5 = save .state at current position (for later practice)")
+    print(f"  TAB = turbo    R = discard & restart    ESC = save & quit")
+    print(f"  On death: auto-saves attempt, resets after 1s\n")
+
+    try:
+        session.run()
+    finally:
+        PlaySession._gather_action = _orig_gather
+
+    # Save final attempt if there are unsaved frames
+    if recorded_actions and died_flash == 0:
+        _save_attempt(completed=False, death_progress=best_progress)
+
+    # Write summary
+    summary = {
+        "level": config.level_id,
+        "state": start_state,
+        "total_attempts": len(all_attempts),
+        "best_progress": session_best_progress,
+        "best_attempt": max(all_attempts, key=lambda a: a["max_progress"])["attempt"] if all_attempts else -1,
+        "attempts": all_attempts,
+    }
+    summary_path = practice_dir / "practice_summary.json"
+    summary_path.write_text(json.dumps(summary, indent=2))
+
+    print(f"\n=== Practice Summary ===")
+    print(f"Attempts: {len(all_attempts)}")
+    print(f"Best progress: {session_best_progress:.0f}")
+    if all_attempts:
+        best = max(all_attempts, key=lambda a: a["max_progress"])
+        print(f"Best attempt: #{best['attempt']} ({best['frames']}f)")
+    print(f"Saved to: {practice_dir}")
+
+
 def cmd_play(args: argparse.Namespace) -> None:
     """Play a level manually while recording inputs as action indices."""
     import numpy as np
@@ -1103,6 +1563,7 @@ def cmd_play(args: argparse.Namespace) -> None:
     tracker.reset()
     recorded_actions: list[int] = []
     recorded_raw: list[list[int]] = []
+    recorded_raw_pre_sanitize: list[list[int]] = []
     best_progress = 0.0
     tracker_seeded = False
 
@@ -1114,9 +1575,11 @@ def cmd_play(args: argparse.Namespace) -> None:
         nonlocal best_progress, tracker_seeded
         # Record the action index and raw buttons for this frame
         raw = list(last_raw_action)
+        raw_pre = list(last_raw_action_pre_sanitize)
         idx = buttons_to_action_index(raw, action_table=action_table)
         recorded_actions.append(idx)
         recorded_raw.append(raw)
+        recorded_raw_pre_sanitize.append(raw_pre)
 
         # Workaround: force weapon toggle via RAM on Select press edge
         select_pressed = bool(raw[2])  # SNES_SELECT
@@ -1175,12 +1638,16 @@ def cmd_play(args: argparse.Namespace) -> None:
 
     # Intercept raw actions before they go to the env
     last_raw_action = [0] * 12
+    last_raw_action_pre_sanitize = [0] * 12
     _orig_gather = PlaySession._gather_action
 
     def patched_gather(self, pg, keyboard_action, controller_action, sanitize_action):
-        nonlocal last_raw_action
+        nonlocal last_raw_action, last_raw_action_pre_sanitize
         action = _orig_gather(self, pg, keyboard_action, controller_action, sanitize_action)
-        last_raw_action = list(action) if hasattr(action, '__iter__') else [0] * 12
+        post = getattr(self, "_last_action_post_sanitize", action)
+        pre = getattr(self, "_last_action_pre_sanitize", post)
+        last_raw_action = list(post) if hasattr(post, "__iter__") else [0] * 12
+        last_raw_action_pre_sanitize = list(pre) if hasattr(pre, "__iter__") else [0] * 12
         return action
 
     PlaySession._gather_action = patched_gather
@@ -1204,6 +1671,7 @@ def cmd_play(args: argparse.Namespace) -> None:
                     rec_frame = _checkpoint_frames[slot]
                     del recorded_actions[rec_frame:]
                     del recorded_raw[rec_frame:]
+                    del recorded_raw_pre_sanitize[rec_frame:]
                     # Reset progress tracker from truncated recording
                     tracker.reset()
                     tracker_seeded = False
@@ -1219,6 +1687,7 @@ def cmd_play(args: argparse.Namespace) -> None:
             # Restart: reset env and clear recording
             recorded_actions.clear()
             recorded_raw.clear()
+            recorded_raw_pre_sanitize.clear()
             tracker.reset()
             tracker_seeded = False
             best_progress = 0.0
@@ -1238,6 +1707,27 @@ def cmd_play(args: argparse.Namespace) -> None:
     session.on_hud = on_hud
     session.on_key_down = on_key_down
 
+    # Recording-aware trigger hooks (L2=load, R2=save checkpoint 1)
+    def trigger_save(slot: int) -> None:
+        _checkpoint_frames[slot] = len(recorded_actions)
+        session.save_checkpoint(slot)
+
+    def trigger_load(slot: int) -> None:
+        nonlocal best_progress, tracker_seeded
+        frame = session.load_checkpoint(slot)
+        if frame is not None and slot in _checkpoint_frames:
+            rec_frame = _checkpoint_frames[slot]
+            del recorded_actions[rec_frame:]
+            del recorded_raw[rec_frame:]
+            del recorded_raw_pre_sanitize[rec_frame:]
+            tracker.reset()
+            tracker_seeded = False
+            best_progress = 0.0
+            print(f"  Recording truncated to {rec_frame} frames")
+
+    session.on_trigger_save = trigger_save
+    session.on_trigger_load = trigger_load
+
     print(f"Recording: {config.display_name}")
     print(f"State: {start_state}")
     print(f"Action table: {len(action_table)} actions")
@@ -1247,7 +1737,7 @@ def cmd_play(args: argparse.Namespace) -> None:
     print(f"  F1-F4 = save checkpoint    Shift+F1-F4 = load checkpoint")
     print(f"  F5 = export state to disk  R = restart & clear recording")
     print(f"  TAB = turbo    ESC = stop & save")
-    print(f"  Controller also supported\n")
+    print(f"  Controller: L2 = load checkpoint 1    R2 = save checkpoint 1\n")
 
     try:
         session.run()
@@ -1279,6 +1769,9 @@ def cmd_play(args: argparse.Namespace) -> None:
         "source": "manual_play",
         "best_progress": best_progress,
         "total_frames": len(recorded_actions),
+        "button_order": ["B", "Y", "Select", "Start", "Up", "Down", "Left", "Right", "A", "X", "L", "R"],
+        "raw_buttons_note": "raw_buttons are post-sanitize env inputs (used for replay).",
+        "raw_buttons_pre_sanitize_note": "raw_buttons_pre_sanitize are captured before directional conflict sanitization.",
     }
     save_actions(recorded_actions, output_path, metadata=metadata)
 
@@ -1288,9 +1781,11 @@ def cmd_play(args: argparse.Namespace) -> None:
     with open(raw_path, "w") as _f:
         _json.dump({
             "raw_buttons": recorded_raw,
+            "raw_buttons_pre_sanitize": recorded_raw_pre_sanitize,
+            "actions": recorded_actions,
             "metadata": metadata,
         }, _f)
-    print(f"Raw buttons: {raw_path}")
+    print(f"Raw buttons (post + pre-sanitize): {raw_path}")
 
     print(f"\nRecorded {len(recorded_actions)} frames")
     print(f"Best progress: {best_progress:.0f}")
@@ -1394,13 +1889,6 @@ def cmd_selftest(args: argparse.Namespace) -> None:
 
 def cmd_trace_map(args: argparse.Namespace) -> None:
     """Render a position trace overlaid on an area map PNG."""
-    from super_metroid_rl.navigation.trace_renderer import (
-        render_trace_on_map,
-        detect_area,
-        _load_nodes,
-        DEFAULT_EXPORT_DIR,
-    )
-
     config = _resolve_config(args)
 
     # Resolve trace path
@@ -1420,27 +1908,121 @@ def cmd_trace_map(args: argparse.Namespace) -> None:
         print("Run 'watch' first to generate a trace, or specify --trace path.")
         return
 
-    # Auto-detect or use specified area
-    area = getattr(args, "area", None)
-    if not area:
-        trace_data = json.loads(trace_path.read_text())
-        export_dir = Path(getattr(args, "map_dir", None) or DEFAULT_EXPORT_DIR)
-        nodes = _load_nodes(export_dir)
-        area = detect_area(trace_data, nodes)
-        if not area:
-            print("Error: could not auto-detect area. Specify --area.")
-            return
-        print(f"Auto-detected area: {area}")
-
     output = Path(args.output) if getattr(args, "output", None) else trace_path.with_suffix(".png")
     map_dir = Path(args.map_dir) if getattr(args, "map_dir", None) else None
 
-    render_trace_on_map(
-        trace_path=trace_path,
-        area_name=area,
-        output_path=output,
-        map_dir=map_dir,
+    # Dispatch to game-specific renderer
+    if config.level_id.startswith("smb_"):
+        from super_mario_bros.trace_renderer import render_smb_trace
+
+        render_smb_trace(
+            trace_path=trace_path,
+            level_id=config.level_id,
+            output_path=output,
+            map_dir=map_dir,
+        )
+    else:
+        from super_metroid_rl.navigation.trace_renderer import (
+            render_trace_on_map,
+            detect_area,
+            _load_nodes,
+            DEFAULT_EXPORT_DIR,
+        )
+
+        area = getattr(args, "area", None)
+        if not area:
+            trace_data = json.loads(trace_path.read_text())
+            export_dir = Path(getattr(args, "map_dir", None) or DEFAULT_EXPORT_DIR)
+            nodes = _load_nodes(export_dir)
+            area = detect_area(trace_data, nodes)
+            if not area:
+                print("Error: could not auto-detect area. Specify --area.")
+                return
+            print(f"Auto-detected area: {area}")
+
+        render_trace_on_map(
+            trace_path=trace_path,
+            area_name=area,
+            output_path=output,
+            map_dir=map_dir,
+        )
+
+
+# -- Route commands ----------------------------------------------------------
+
+
+def cmd_list_routes(args: argparse.Namespace) -> None:
+    """List all registered routes."""
+    from platformer_common.route import list_routes
+
+    routes = list_routes()
+    if not routes:
+        print("No routes registered.")
+        return
+
+    print(f"{'ID':<25s} {'Display Name':<40s} {'Segments':>8s}")
+    print("-" * 75)
+    for r in routes:
+        print(f"{r.route_id:<25s} {r.display_name:<40s} {len(r.segments):>8d}")
+
+
+def cmd_chain(args: argparse.Namespace) -> None:
+    """Evaluate a full speedrun route (all segments independently)."""
+    from platformer_common.route import get_route, evaluate_route
+
+    route = get_route(args.route)
+    result = evaluate_route(route, verbose=True)
+
+    if result.all_completed:
+        print(f"\nAll segments completed! Total: {result.total_frames}f "
+              f"({result.total_frames / 60:.1f}s)")
+    else:
+        sys.exit(1)
+
+
+def cmd_chain_live(args: argparse.Namespace) -> None:
+    """Run a true end-to-end chain on a single emulator (no state reloads)."""
+    from platformer_common.route import get_route, chain_live
+
+    route = get_route(args.route)
+    result = chain_live(
+        route,
+        save_states=args.save_states,
+        verbose=True,
+        video_path=args.video,
+        video_scale=args.scale,
     )
+
+    if result.all_completed:
+        print(f"\nFull chain completed! {result.total_frames}f ({result.total_frames / 60:.1f}s)")
+    else:
+        sys.exit(1)
+
+
+def cmd_chain_optimize(args: argparse.Namespace) -> None:
+    """Iteratively hill-climb each segment from chained states."""
+    from platformer_common.route import get_route, chain_optimize
+
+    route = get_route(args.route)
+    result = chain_optimize(
+        route,
+        iterations=args.iterations,
+        verbose=True,
+    )
+
+    if result.all_completed:
+        print(f"\nFull chain optimized! {result.total_frames}f ({result.total_frames / 60:.1f}s)")
+    else:
+        sys.exit(1)
+
+
+def cmd_chain_video(args: argparse.Namespace) -> None:
+    """Render a full speedrun route to a single MP4."""
+    from platformer_common.route import get_route, record_route_video
+
+    route = get_route(args.route)
+    output = args.output or f"{route.route_id}.mp4"
+    record_route_video(route, output, scale=args.scale)
 
 
 # -- Main CLI ----------------------------------------------------------------
@@ -1490,7 +2072,10 @@ def main(default_level: str | None = None) -> None:
 
     # optimize
     p_optimize = sub.add_parser("optimize", help="Run GA optimization")
-    p_optimize.add_argument("--seed", required=True, help="Path to seed actions JSON")
+    p_optimize.add_argument("--seed", help="Path to seed actions JSON")
+    p_optimize.add_argument("--seeds-dir", help="Directory of recordings to use as multi-seed (mutually exclusive with --seed)")
+    p_optimize.add_argument("--min-frames", type=int, default=60, help="Skip seeds shorter than N frames (default: 60)")
+    p_optimize.add_argument("--raw", action="store_true", help="Use raw-button GA (no lossy action-index conversion)")
     p_optimize.add_argument("--generations", type=int, default=None)
     p_optimize.add_argument("--population", type=int, default=None)
     p_optimize.add_argument("--output-dir", help="Output directory")
@@ -1540,6 +2125,12 @@ def main(default_level: str | None = None) -> None:
     p_auto.add_argument("--settle", type=int, default=30, help="Extra NOOP frames after nav (default: 30)")
     p_auto.add_argument("--screenshot", action="store_true", help="Save screenshot for verification")
 
+    # practice (auto-reset on death, saves all attempts)
+    p_practice = sub.add_parser("practice", help="Practice with auto-reset on death, saving all attempts")
+    p_practice.add_argument("--scale", type=int, default=3)
+    p_practice.add_argument("--state", help="Override start state")
+    p_practice.add_argument("--save-name", help="Name for F5 state save (default: Chained_{level}_practice)")
+
     # play (record)
     p_play = sub.add_parser("play", help="Play a level manually and record inputs")
     p_play.add_argument("--scale", type=int, default=3)
@@ -1547,6 +2138,31 @@ def main(default_level: str | None = None) -> None:
 
     # selftest
     sub.add_parser("selftest", help="Run self-tests")
+
+    # list-routes
+    sub.add_parser("list-routes", help="List all registered speedrun routes")
+
+    # chain (evaluate a full route)
+    p_chain = sub.add_parser("chain", help="Evaluate a full speedrun route")
+    p_chain.add_argument("--route", "-r", required=True, help="Route ID or alias")
+
+    # chain-live (true end-to-end on single emulator)
+    p_clive = sub.add_parser("chain-live", help="True end-to-end chain on single emulator (no state reloads)")
+    p_clive.add_argument("--route", "-r", required=True, help="Route ID or alias")
+    p_clive.add_argument("--save-states", action="store_true", help="Save chained states at each segment boundary")
+    p_clive.add_argument("--video", help="Output MP4 path (optional)")
+    p_clive.add_argument("--scale", type=int, default=3, help="Video pixel scale (default 3)")
+
+    # chain-optimize (iterative hill climb from chained states)
+    p_copt = sub.add_parser("chain-optimize", help="Iteratively hill-climb segments from chained states")
+    p_copt.add_argument("--route", "-r", required=True, help="Route ID or alias")
+    p_copt.add_argument("--iterations", type=int, default=2000, help="Hill climb iterations per segment (default 2000)")
+
+    # chain-video (render full route to MP4)
+    p_cvid = sub.add_parser("chain-video", help="Render a full speedrun route to MP4")
+    p_cvid.add_argument("--route", "-r", required=True, help="Route ID or alias")
+    p_cvid.add_argument("--output", "-o", help="Output MP4 path")
+    p_cvid.add_argument("--scale", type=int, default=3, help="Pixel scale (default 3)")
 
     # trace-map
     p_trace = sub.add_parser("trace-map", help="Render position trace on area map")
@@ -1556,6 +2172,17 @@ def main(default_level: str | None = None) -> None:
     p_trace.add_argument("-o", "--output", help="Output PNG path")
     p_trace.add_argument("--map-dir", help="Override map PNG directory")
 
+    # neuro (neuroevolution)
+    p_neuro = sub.add_parser("neuro", help="Neuroevolution optimizer (evolve neural networks)")
+    p_neuro.add_argument("--state", help="Override start state")
+    p_neuro.add_argument("--population", type=int, default=100, help="Population size (default 100)")
+    p_neuro.add_argument("--generations", type=int, default=300, help="Number of generations (default 300)")
+    p_neuro.add_argument("--hidden", type=int, default=20, help="Hidden layer size (default 20)")
+    p_neuro.add_argument("--max-frames", type=int, default=6000, help="Max frames per evaluation (default 6000)")
+    p_neuro.add_argument("--output-dir", help="Output directory (default: runs_dir/neuro)")
+    p_neuro.add_argument("--render", action="store_true", help="Render best network live each generation")
+    p_neuro.add_argument("--scale", type=int, default=3, help="Render pixel scale (default 3)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -1563,7 +2190,7 @@ def main(default_level: str | None = None) -> None:
         return
 
     # Validate --level is provided for commands that need it
-    needs_level = args.command not in ("list-levels",)
+    needs_level = args.command not in ("list-levels", "list-routes", "chain", "chain-live", "chain-optimize", "chain-video")
     if needs_level and not args.level:
         parser.error(f"--level is required for '{args.command}'. Use 'list-levels' to see available levels.")
 
@@ -1579,9 +2206,16 @@ def main(default_level: str | None = None) -> None:
         "watch-bk2": cmd_watch_bk2,
         "prepare-seeds": cmd_prepare_seeds,
         "auto-state": cmd_auto_state,
+        "practice": cmd_practice,
         "play": cmd_play,
         "selftest": cmd_selftest,
         "trace-map": cmd_trace_map,
+        "list-routes": cmd_list_routes,
+        "chain": cmd_chain,
+        "chain-live": cmd_chain_live,
+        "chain-optimize": cmd_chain_optimize,
+        "chain-video": cmd_chain_video,
+        "neuro": cmd_neuro,
     }
 
     commands[args.command](args)

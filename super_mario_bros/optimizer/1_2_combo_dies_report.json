@@ -1,0 +1,26 @@
+{
+  "all_completed": false,
+  "completed_count": 1,
+  "total_count": 2,
+  "total_frames": 4049,
+  "total_seconds": 67.483,
+  "video": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/videos/1_2_combo_dies.mp4",
+  "segments": [
+    {
+      "label": "1-1 base",
+      "config_id": "smb_1_1",
+      "status": "COMPLETED",
+      "frames": 2239,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_1/recording_000.json",
+      "error": ""
+    },
+    {
+      "label": "1-2 combo",
+      "config_id": "smb_1_2",
+      "status": "DIED",
+      "frames": 1665,
+      "recording": "/home/v/01_projects/11_games/speedrun/retro_rl/super_mario_bros/optimizer/runs/smb_1_2/hillclimb_raw_best.json",
+      "error": ""
+    }
+  ]
+}
