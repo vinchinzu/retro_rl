@@ -1821,17 +1821,20 @@ def cmd_selftest(args: argparse.Namespace) -> None:
         print(f"  OK: level_id=0x{level_id:04X}")
 
     # Test 1: sequence that dies must be flagged as died, NOT completed
-    print(f"\n[Test 1] Sprint-jump dies -> detected as death, never completion")
-    death_seq = ([2] * 40 + [3] * 15 + [2] * 5 + [5] * 10) * 28
-    result = evaluator.evaluate(death_seq[:2000], early_terminate=False)
-    if not result.died:
-        print(f"  FAIL: died={result.died}, expected True")
-        failures += 1
-    elif result.completed:
-        print(f"  FAIL: completed={result.completed}, should be False when died")
-        failures += 1
+    print(f"\n[Test 1] Deterministic death probe")
+    death_seq = config.selftest_death_actions or (([2] * 40 + [3] * 15 + [2] * 5 + [5] * 10) * 28)
+    if not config.selftest_expect_death:
+        print("  SKIP: no published deterministic death probe for this start state")
     else:
-        print(f"  OK: died=True, completed=False, frame={result.total_frames}, progress={result.max_progress:.0f}")
+        result = evaluator.evaluate(death_seq[:2000], early_terminate=False)
+        if not result.died:
+            print(f"  FAIL: died={result.died}, expected True")
+            failures += 1
+        elif result.completed:
+            print(f"  FAIL: completed={result.completed}, should be False when died")
+            failures += 1
+        else:
+            print(f"  OK: died=True, completed=False, frame={result.total_frames}, progress={result.max_progress:.0f}")
 
     # Test 2: fitness for dead < alive at same progress
     print(f"\n[Test 2] Death fitness < alive fitness at same progress")

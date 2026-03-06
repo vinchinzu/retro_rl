@@ -81,6 +81,8 @@ class LevelConfig:
     # Death detection
     death_signals: list[str] = field(default_factory=lambda: ["lives_drop", "camera_reset"])
     camera_reset_threshold: float = 100.0
+    selftest_expect_death: bool = True
+    selftest_death_actions: list[int] | None = None
 
     # Completion detection
     completion_signal: Literal["level_id_change", "ram_flag"] = "level_id_change"

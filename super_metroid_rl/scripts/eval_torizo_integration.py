@@ -492,7 +492,7 @@ def _write_summary_markdown(path: str, payload: Dict) -> None:
         "## Morning Check",
         "",
         "```bash",
-        "bash scripts/morning_worker_c_check.sh",
+        "bash scripts/archive/2026-02-overnight_torizo/morning_worker_c_check.sh",
         "```",
         "",
     ])

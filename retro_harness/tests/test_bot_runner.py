@@ -96,6 +96,17 @@ class TestBotRunner:
         runner(obs, info)
         # Task was reset with meta containing health
 
+    def test_mission_status_uses_current_task_name(self):
+        runner = BotRunner(TaskSequencer([FakeTask(2), FakeTask(2)]))
+        obs = np.zeros((1, 1, 3), dtype=np.uint8)
+        info = {"ram": np.zeros(16, dtype=np.uint8)}
+
+        runner(obs, info)
+        status = runner.mission_status()
+
+        assert status.mission_id == "TaskSequencer"
+        assert status.phase == "FakeTask"
+
 
 class TestTaskSequencer:
     def test_runs_tasks_in_order(self):

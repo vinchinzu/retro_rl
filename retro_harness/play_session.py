@@ -79,6 +79,7 @@ class PlaySession:
         self._speed_idx: int = _DEFAULT_SPEED_IDX
         self._speed: float = SPEED_LEVELS[_DEFAULT_SPEED_IDX]
         self._turbo: bool = False
+        self._hotswap_cooldown: int = 0
 
         # Frame state
         self._frame_count: int = 0
@@ -251,6 +252,12 @@ class PlaySession:
             if not self.running:
                 break
 
+            if self._hotswap_cooldown > 0:
+                self._hotswap_cooldown -= 1
+            elif self._check_controller_hotswap():
+                self._set_bot_active(not self._bot_active)
+                self._hotswap_cooldown = 30
+
             # --- Controller triggers (L2=load, R2=save checkpoint 1) ---
             self._poll_triggers()
 
@@ -325,6 +332,7 @@ class PlaySession:
         speed_str = "TURBO" if self._turbo else f"{self._speed:.2g}x"
         mode_str = "BOT" if self._bot_active else "HUMAN"
         lines.append(f"F{self._frame_count} | {speed_str} | {mode_str}")
+        lines.extend(self._mission_lines())
 
         # Game-specific lines from hook
         game_lines = self.on_hud(info)
@@ -375,6 +383,30 @@ class PlaySession:
             self._last_action_post_sanitize = list(action)
 
         return action
+
+    def _mission_lines(self) -> list[str]:
+        if self._bot_fn is None:
+            return []
+        status_fn = getattr(self._bot_fn, "mission_status", None)
+        if not callable(status_fn):
+            return []
+        status = status_fn()
+        if status is None:
+            return []
+        summary = getattr(status, "summary", None)
+        if callable(summary):
+            return [summary()]
+        return [str(status)]
+
+    def _set_bot_active(self, active: bool) -> None:
+        if self._bot_active == active:
+            return
+        self._bot_active = active
+        hook_name = "on_autopilot_resume" if active else "on_human_takeover"
+        hook = getattr(self._bot_fn, hook_name, None)
+        if callable(hook):
+            hook()
+        print(f"[{'BOT' if active else 'HUMAN'}] mode")
 
     def _check_controller_hotswap(self) -> bool:
         """Check L+R+SELECT chord on controller for bot toggle."""
@@ -445,8 +477,7 @@ class PlaySession:
             self._turbo = not self._turbo
             print(f"[{'TURBO ON' if self._turbo else 'TURBO OFF'}]")
         elif key == pg.K_BACKQUOTE:
-            self._bot_active = not self._bot_active
-            print(f"[{'BOT' if self._bot_active else 'HUMAN'}] mode")
+            self._set_bot_active(not self._bot_active)
         elif key == pg.K_r:
             self.on_reset()
             reset_result = self.env.reset()
