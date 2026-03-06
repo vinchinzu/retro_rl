@@ -98,7 +98,7 @@ def get_available_states(game: str, game_dir: str | Path) -> list[str]:
 
 
 def save_state(env: retro.RetroEnv, game_dir: str | Path, game: str, name: str) -> Path:
-    """Save current emulator state to cwd and custom_integrations.
+    """Save current emulator state to the game's custom integrations directory.
 
     Args:
         env: active RetroEnv
@@ -107,15 +107,12 @@ def save_state(env: retro.RetroEnv, game_dir: str | Path, game: str, name: str) 
         name: State base name (without .state)
 
     Returns:
-        Path to saved state in custom_integrations
+        Path to the saved state in custom_integrations
     """
     import gzip
 
     state_data = env.em.get_state()
     filename = f"{name}.state"
-    with gzip.open(filename, "wb") as f:
-        f.write(state_data)
-
     game_dir = Path(game_dir)
     save_path = game_dir / "custom_integrations" / game / filename
     save_path.parent.mkdir(parents=True, exist_ok=True)

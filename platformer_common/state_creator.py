@@ -1,8 +1,8 @@
 """Interactive state creator for making start states for new levels.
 
 Play the game normally until reaching the desired starting point,
-then press F5 to save a state. The state is saved to both the
-current directory and custom_integrations for immediate use.
+then press F5 to save a state. The state is saved to the game's
+custom_integrations directory for immediate use.
 
 Usage::
 

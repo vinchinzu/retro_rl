@@ -1,284 +1,189 @@
-# Super Metroid RL - Ceres Escape & Beyond
+# Super Metroid RL
 
-Train reinforcement learning agents to speedrun Super Metroid (SNES) using `stable-retro` and `stable-baselines3`.
+Super Metroid currently rides on the shared `platformer_common` runtime for
+recording, verification, hill climbing, chaining, and playback, plus a local
+navigation stack for room graphs and waypoint generation.
 
-## Project Goals
+The active Bronze target is pragmatic and explicit:
 
-### Phase 1: Escape from Ceres Station
-The opening sequence where Samus must escape the exploding Ceres Station after the Ridley fight. Key challenges:
-- **Movement direction**: Goes DOWN and LEFT (opposite typical RL reward functions)
-- **Time pressure**: Station explodes after countdown
-- **Room transitions**: Multiple rooms with different layouts
-- **Simple mechanics**: No items to collect, just movement and doors
+1. Publish honest route anchors (`Start`, `ZebesStart`, room-entry states).
+2. Make the `ZebesStart -> Bomb Torizo` route reproducible with room-aware
+   tooling, recordings, and chained action sequences.
+3. Keep publishing earlier stock boot paths from `NONE` as named macros instead
+   of hiding them in ad hoc scripts.
 
-### Phase 2: Arrival on Zebes
-Landing on planet Zebes and navigating to acquire first items (Morphing Ball, Missiles, Bombs).
+## Current Active Stack
 
-### Phase 3: Room-by-room Fine-tuning
-Train specialized models per room/area, then combine for full runs.
+`python -m super_metroid_rl` routes in three directions:
 
----
+- `nav-*` commands use `super_metroid_rl/navigation/` directly.
+- `doctor` and `boot-probe` use `super_metroid_rl/bronze_tools.py`.
+- `play`, `verify`, `hillclimb`, `watch`, `chain`, `trace-map`, `selftest`,
+  and related commands delegate to `platformer_common.runner`.
 
-## Approach
+Core files:
 
-### Model Strategy (Layered)
-1. **Naive baseline**: Hardcoded heuristics for initial testing
-2. **Imitation learning**: Pre-train from recorded human demonstrations
-3. **PPO training**: Full RL training with shaped rewards
-4. **Room-specific models**: Fine-tune per room, use router to select
+- `navigation/`: room graph, collision loader, waypoint generation, trace maps
+- `platformer_common/levels/super_metroid.py`: the published segment configs
+- `record_tasker.py`: manual `.bk2` recording helper
+- `state_manager.py`: state naming / management helper
+- `maps/`: area composites and local reference PNGs
+- `custom_integrations/SuperMetroid-Snes/`: the published states and data.json
 
-### Reward Function Design
-Since Ceres goes DOWN-LEFT instead of RIGHT:
-- **Progress reward**: Track room transitions and position within rooms
-- **Room-specific rewards**: Different reward functions per room ID
-- **Time bonus**: Reward faster completion
-- **Stagnation penalty**: Penalize standing still
+Frozen experiments live under `legacy/`.
+Historical runbooks and one-off orchestration now live under `docs/archive/`
+and `scripts/archive/` instead of the active top level.
 
-### Data Sources
-- **ROM memory**: Position (X/Y), room ID, health, door transitions, game state
-- **Visual input**: Screenshots/video frames (for later CNN-based approaches)
-- **Human demonstrations**: Record manual runs with keypresses for imitation learning
+## Bronze Anchors
 
-### Training Modes
-- **Headless training**: No visualization for speed
-- **Visual debugging**: Optional pygame rendering
-- **Recording (dataset)**: Save action indices + per-frame raw button arrays
-- **Recording (movie)**: Optional `.bk2` replay capture for emulator playback/video
-- **Playback videos**: Generate MP4 from `.bk2` recordings
+The repo currently relies on these published states:
 
----
+- `Start`: Ceres Elevator Room (`0xDF45`)
+- `ZebesStart`: Landing Site (`0x91F8`)
+- `BossTorizo`: Bomb Torizo Room (`0x9804`)
 
-## Directory Structure
+The main active route is the 12-segment `ZebesStart -> Bomb Torizo` path
+defined in `platformer_common/levels/super_metroid.py` and
+`super_metroid_rl/navigation/route.py`.
 
-```
-super_metroid_rl/
-├── README.md                     # This file
-├── super_metroid_naive.py        # Hardcoded naive agent
-├── play_human.py                 # Manual play + recording (in parent dir)
-├── roms/
-│   └── rom.sfc                   # Super Metroid ROM (ignored; copy/symlink into custom_integrations)
-├── custom_integrations/
-│   └── SuperMetroid-Snes/
-│       ├── Start.state           # Save state at Ceres start
-│       ├── data.json             # RAM address definitions
-│       ├── metadata.json         # Default state config
-│       └── scenario.json         # Reward/done conditions
-├── run_bot.py                    # Navigation bot (Model + Heuristics)
-├── metroid_rewards.py             # Custom reward wrapper
-├── convert_bk2.py                 # BK2 to MP4 conversion script
-├── train_bc_nav.py                # BC training script
-├── models/                       # Trained policies (e.g., bc_nav_model.pth)
-├── logs/                         # Training logs
-└── recordings/                   # .bk2 replay files
-```
+Published stock bootstrap:
 
----
+- `none_to_start`: `NONE -> Start` (controllable Ceres Elevator Room)
+- `ceres_start_to_ridley_ground`: `Start -> fresh Ridley ground`
+- `ceres_ridley_ground_to_27hp_wait_state`: fresh Ridley ground -> stable
+  `27 HP` checkpoint
+- `ceres_ridley_ground_27hp_to_elevator_room`: `27 HP` checkpoint -> lower
+  `DF45`
+- `ceres_elevator_countdown_to_lowerledge`: lower `DF45` countdown setup ->
+  stable lower ledge
+- `ceres_lowerledge_to_landing_site`: lower ledge -> elevator handoff ->
+  Landing Site
 
-## Key RAM Addresses (Super Metroid)
+That bootstrap lives in `super_metroid_rl/bronze_tools.py` and can be replayed
+with `boot-probe`.
 
-These need to be added to `data.json` for proper tracking:
+## Bronze Prerequisites
 
-| Variable | Address | Type | Description |
-|----------|---------|------|-------------|
-| room_id | $079B | u2 | Current room ID |
-| samus_x | $0AF6 | u2 | Samus X position |
-| samus_y | $0AFA | u2 | Samus Y position |
-| health | $09C2 | u2 | Current energy |
-| max_health | $09C4 | u2 | Max energy |
-| game_state | $0998 | u1 | Game state machine |
-| door_transition | $0797 | u1 | Door transition flag |
-| timer_minutes | $0945 | u1 | Game timer minutes |
-| timer_seconds | $0947 | u1 | Game timer seconds |
-| timer_frames | $0949 | u1 | Game timer frames |
+The shared root README expects Bronze work to have real states, real maps, and
+honest route tooling. For Super Metroid that means:
 
-*Note: SNES uses LoROM mapping. Addresses are RAM offsets.*
+- key anchor states load and land in the expected rooms
+- all segment start states exist
+- area maps exist for trace rendering
+- nav data exists in SMEDIT export layout (`nav_graph.json` + `rooms/*.json`)
 
----
-
-## Ceres Station Room Layout
-
-```
-[Landing Site] ─> [Hallway 1] ─> [Ridley Room] ─> [Hallway 2]
-                                      │
-                                      v (after fight)
-[Escape Start] <─ [Room 3] <─ [Room 2] <─ [Room 1]
-      │
-      v
-[Ship Escape]
-```
-
-The escape goes: RIGHT at first, then DOWN, then LEFT to the ship.
-
----
-
-## Scripts
-
-### Record a Full Run (Recommended for Dataset Collection)
-Run from repo root:
+Check that with:
 
 ```bash
-source .venv/bin/activate
-uv run python -m super_metroid_rl play --state ZebesStart --scale 2
+uv run python -m super_metroid_rl doctor
 ```
 
-This is the best workflow for collecting training data from a 1-hour human run.
-
-- Expected length for a 1-hour run: about `216000` frames at 60 FPS.
-- Stop and save: `ESC`
-- Restart and clear current recording: `R`
-- Save/load in-memory checkpoints: `F1`-`F4` / `Shift+F1`-`Shift+F4`
-- Export current emulator state to disk: `F5`
-
-Keyboard controls:
-- Arrow keys: D-Pad
-- `Z`: B, `X`: A, `A`: Y, `S`: X
-- `Q`: L, `W`: R
-- `Enter`: Start, `Shift`: Select
-
-Output files are written to:
-
-`super_metroid_rl/optimizer/runs/sm_landing_site/`
-
-- `recording_XXX.json`: action-space sequence (discrete action indices)
-- `recording_XXX_raw.json`: per-frame button data + metadata
-
-`recording_XXX_raw.json` now contains:
-- `raw_buttons`: per-frame env-applied buttons (post-sanitize; replay-safe)
-- `raw_buttons_pre_sanitize`: per-frame physical input snapshot before sanitize
-- `actions`: per-frame discrete action indices
-
-### Verify a Recording Quickly
-```bash
-uv run python -m super_metroid_rl verify \
-  --actions super_metroid_rl/optimizer/runs/sm_landing_site/recording_XXX.json
-```
-
-Check frame alignment between raw and action outputs:
+If the navigation export is missing, build it with the editor CLI:
 
 ```bash
-python - <<'PY'
-from pathlib import Path
-import json
-runs = Path("super_metroid_rl/optimizer/runs/sm_landing_site")
-raw_path = sorted(runs.glob("recording_*_raw.json"))[-1]
-data = json.loads(raw_path.read_text())
-print("file:", raw_path)
-print("raw_buttons:", len(data.get("raw_buttons", [])))
-print("raw_buttons_pre_sanitize:", len(data.get("raw_buttons_pre_sanitize", [])))
-print("actions:", len(data.get("actions", [])))
-PY
+cd super_metroid_rl/super_metroid_editor
+./gradlew -q :cli:runCli -Pargs="--rom ../roms/rom.sfc export -o /tmp/sm_export"
+./gradlew -q :cli:runCli -Pargs="--rom ../roms/rom.sfc render-area crateria -o ../maps/crateria.png --items --enemies --labels"
 ```
 
-### Optional: Also Record `.bk2` Movies
-If you want emulator movie files in addition to JSON datasets:
+Important: `super_metroid_rl/refs/sm-json-data/` is useful reference data, but
+the active nav loader does not consume it directly. The active nav commands
+expect the SMEDIT export layout.
+
+## Working Commands
+
+List levels and routes:
 
 ```bash
-uv run python super_metroid_rl/record_tasker.py record --state ZebesStart
+uv run python -m super_metroid_rl list-levels
+uv run python -m super_metroid_rl list-routes
 ```
 
-Convert `.bk2` to MP4:
+Record / replay / optimize a segment:
 
 ```bash
-uv run python super_metroid_rl/scripts/bk2_to_mp4.py <input.bk2> <output.mp4>
+uv run python -m super_metroid_rl -l sm_landing_site play
+uv run python -m super_metroid_rl -l sm_landing_site verify --actions recording.json
+uv run python -m super_metroid_rl -l sm_landing_site hillclimb --seed recording.json
+uv run python -m super_metroid_rl -l sm_landing_site watch --actions hillclimb_best_final.json
 ```
 
-### PPO Training
+Navigation tooling:
+
 ```bash
-uv run python super_metroid_rl/train_curriculum.py list-segments
-uv run python super_metroid_rl/train_curriculum.py train --segment sm_landing_site --steps 50000 --device cuda
-uv run python super_metroid_rl/train_curriculum.py run --render --start-state ZebesStart --device cuda
+uv run python -m super_metroid_rl nav-path --from 0x91F8 --to 0x9804 --abilities morph_ball missile
+uv run python -m super_metroid_rl nav-room --room 0x92FD --entry left --exit 0x96BA
+uv run python -m super_metroid_rl nav-waypoints --segment parlor_descent
 ```
 
----
+Trace a run on the area maps:
 
-## Navigation Bot Features
-
-The `run_bot.py` script combines a trained model with several heuristic boosters:
-
-### 1. Unified Recovery Cycle
-When Samus is stuck for > 1 second, the bot enters a 5-phase recovery loop:
-- **Phase 0 (Pulse Shoot)**: Clears destructible blocks.
-- **Phase 1 (Walk Left)**: Attempts horizontal movement.
-- **Phase 2 (Walk Right)**: Attempts horizontal movement.
-- **Phase 3 (Jump & Move)**: Attempts to jump over obstacles.
-- **Phase 4 (Wiggle)**: Random movement to break out of complex stalls.
-
-### 2. Elevator Assistance
-Precise logic for handled complex transitions:
-- **Crateria (0x94CC)**: Automatically centers Samus at `X=426` and holds `DOWN` to enter Brinstar.
-- **Y-Guards**: Ensures elevator logic only triggers near actual platforms.
-
-### 3. Focused Movement
-- **Pulsed Firing**: Firing frequency is limited to preserve movement animations.
-- **Clean Recovery**: Fire buttons are cleared during movement-heavy recovery phases.
-
-### 4. Custom Rewards (`metroid_rewards.py`)
-- **Depth Reward**: Incentivizes vertical progress ($+Y$).
-- **Item Bonus**: Huge reward ($+1000$) for acquiring the **Morphing Ball**.
-- **Stagnation Penalty**: Discourages standing still.
-
----
-
-## Implementation Roadmap
-
-### Stage 1: Foundation
-- [ ] Fix data.json with proper RAM addresses
-- [ ] Update scenario.json with position-based rewards
-- [ ] Test RAM reading with naive agent
-- [ ] Record 5-10 human demonstration runs
-
-### Stage 2: Imitation Learning
-- [ ] Create demonstration parser (bk2 → training data)
-- [ ] Implement behavioral cloning baseline
-- [ ] Pre-train model on human demonstrations
-
-### Stage 3: PPO Training
-- [ ] Create CeresReward wrapper with room-aware rewards
-- [ ] Create Discretizer for useful action combinations
-- [ ] Train PPO with shaped rewards
-- [ ] Implement room transition detection
-
-### Stage 4: Room-Specific Models
-- [ ] Create save states for each room
-- [ ] Train room-specific policies
-- [ ] Implement room-based model router
-- [ ] Combine for full escape run
-
-### Stage 5: Zebes
-- [ ] Create save states for Zebes sections
-- [ ] Design exploration-based rewards
-- [ ] Extend to item acquisition
-
----
-
-## Technical Notes
-
-### SNES Button Mapping
-```
-Index: [0:B, 1:Y, 2:Select, 3:Start, 4:Up, 5:Down, 6:Left, 7:Right, 8:A, 9:X, 10:L, 11:R]
+```bash
+uv run python -m super_metroid_rl -l sm_parlor_descent watch --actions best.json
+uv run python -m super_metroid_rl -l sm_parlor_descent trace-map --actions best.json --area crateria -o parlor_trace.png
 ```
 
-### Useful Action Combinations for Super Metroid
-- Run: Hold B + direction
-- Jump: A
-- Shoot: Y (or X for missile select)
-- Aim up: L or R + direction
-- Spin jump: A while moving
-- Wall jump: A toward wall while spinning
+Replay the published stock bootstrap from `NONE`:
 
-### Recording Format
-- `recording_XXX.json`: Discrete action indices (current action space)
-- `recording_XXX_raw.json`:
-  - `raw_buttons`: 12-button vectors per frame (post-sanitize, replay-safe)
-  - `raw_buttons_pre_sanitize`: 12-button vectors per frame before sanitize
-  - `actions`: action index per frame (same length as raw arrays)
-- Optional `.bk2`: BizHawk movie format (initial state + per-frame buttons)
+```bash
+uv run python -m super_metroid_rl boot-probe \
+  --from-state NONE \
+  --macro-name none_to_start
+```
 
----
+The named macro defaults to the expected `Start` room/gameplay check, so a
+successful run finishes at room `0xDF45` with `game_state=8`.
 
-## References
+Replay the solved Ceres countdown escape from the published countdown anchors:
 
-- [Super Metroid RAM Map](https://wiki.supermetroid.run/RAM_Map)
-- [stable-retro documentation](https://stable-retro.farama.org/)
-- [stable-baselines3 PPO](https://stable-baselines3.readthedocs.io/)
-- Mario implementation: `../beat_level_1_1.py`
+```bash
+uv run python -m super_metroid_rl boot-probe \
+  --from-state Start \
+  --macro-name ceres_start_to_ridley_ground
+
+uv run python -m super_metroid_rl boot-probe \
+  --from-state CeresRidleyGround \
+  --macro-name ceres_ridley_ground_to_27hp_wait_state \
+  --save-name CeresRidleyGroundWait2321
+
+uv run python -m super_metroid_rl boot-probe \
+  --from-state CeresRidleyGroundWait2321 \
+  --macro-name ceres_ridley_ground_27hp_to_elevator_room
+
+uv run python -m super_metroid_rl boot-probe \
+  --from-state CeresRidleyPreTrigger \
+  --macro-name ceres_pretrigger_to_elevator_room
+
+uv run python -m super_metroid_rl boot-probe \
+  --from-state CeresRidleyAppeared \
+  --macro-name ceres_ridley_appeared_to_elevator_room
+
+uv run python -m super_metroid_rl boot-probe \
+  --from-state CeresEscapeElevatorCountdown \
+  --macro-name ceres_elevator_countdown_to_lowerledge
+
+uv run python -m super_metroid_rl boot-probe \
+  --from-state CeresEscapeElevatorLowerLedge \
+  --macro-name ceres_lowerledge_to_landing_site
+```
+
+`ceres_pretrigger_to_elevator_room`,
+`ceres_ridley_appeared_to_elevator_room`, and
+`ceres_ridley_ground_27hp_to_elevator_room` all finish in lower `DF45` with
+`game_state=8`. `ceres_lowerledge_to_landing_site` is now the published finish
+for the solved shaft climb and elevator handoff.
+
+## Current Risks
+
+- The published stock bootstrap currently stops at `Start` in Ceres. The
+  follow-on `Start -> ZebesStart` route is still separate work from the active
+  `ZebesStart -> Bomb Torizo` chain.
+- Ceres is now reproducible as a segmented flow, but the uninterrupted
+  `Start -> Landing Site` clear is still not a single published macro.
+  The remaining honest gaps are the fresh Ridley-room wait/handoff and the
+  continuous lower-`DF45` countdown climb without checkpoint reload.
+- The generic platformer selftest death probe is not valid for the published SM
+  route anchors, so SM now skips that check until a real deterministic death
+  probe is published.
+- Nav commands need SMEDIT export data. If `/tmp/sm_export` is missing, nav
+  tests will skip and nav-path/nav-room will fail.

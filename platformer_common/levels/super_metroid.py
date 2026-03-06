@@ -101,6 +101,9 @@ def _sm_config(
         progress_direction=progress_direction,
         waypoints=waypoints or [],
         death_signals=["health_zero"],
+        # The published SM start states are route anchors, not easy death labs.
+        # Skip the generic platformer death probe unless a real sequence is published.
+        selftest_expect_death=False,
         completion_signal="level_id_change",
         completion_min_progress=0.0,
         completion_level_ids=[exit_room_id] if exit_room_id else [],

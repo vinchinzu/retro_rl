@@ -29,7 +29,7 @@ PY
 
 - `1Player.CongoJungle.JungleHijinks.Level1.state`
 - `1Player.CongoJungle.RopeyRampage.Level2.state`
-- `QuickSave.state` (created via `F5`, used as default if present; gzip-compressed)
+- `QuickSave.state` (created via `F5` in `custom_integrations/DonkeyKongCountry-Snes/`, used as default if present; gzip-compressed)
 
 These are sourced from the stable-retro integration set.
 
@@ -48,7 +48,7 @@ These are sourced from the stable-retro integration set.
 - Swap X/Y mapping per controller:
   - Default: controller 2 swaps X/Y (Xbox pad quirk).
   - `RETRO_SWAP_XY="1"` (all controllers) or `RETRO_SWAP_XY="0,1"` (only controller 2).
-- Save states are written to the current directory and to `custom_integrations/<Game>/`.
+- Save states are written to `custom_integrations/<Game>/`.
 - Shared helper: `retro_harness.save_state(...)` is the generic save path for all games.
 
 ## Autosplit + Best Times

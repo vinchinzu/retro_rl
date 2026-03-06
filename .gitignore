@@ -26,6 +26,12 @@ roms/
 **/custom_integrations/**/rom.*
 *.sfc
 *.smc
+*.nes
+*.gba
+*.gb
+*.gbc
+*.gen
+*.gg
 *.undo
 
 # Trained models
@@ -42,15 +48,30 @@ roms/
 **/recordings/
 **/demos/
 *.bk2
-*.mp4
 *.npz
 *.npy
 *.replay.jsonl
 
-# Screenshots and montages
+# Screenshots, montages, debug screens
 **/screenshots/
 **/state_screenshots/
 **/montages/
+**/debug_screens/
+
+# Images (maps already tracked are kept, but no new ones)
+*.png
+*.gif
+*.jpg
+*.jpeg
+*.bmp
+*.webp
+
+# Videos
+*.mp4
+*.mkv
+*.avi
+*.webm
+*.mov
 
 # Archive directories (old experiments)
 **/archive/
@@ -93,9 +114,10 @@ monitor_all_training.sh
 **/.agents.md
 **/.beads/
 
-# Third-party / external repos (clone separately)
+# Third-party / external repos / editor backups (clone separately)
 alttp/
 super_metroid_rl/super_metroid_editor/
+super_metroid_rl/super_metroid_editor_*/
 super_metroid_rl/refs/
 harvest/HM-Decomp/
 

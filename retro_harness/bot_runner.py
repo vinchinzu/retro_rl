@@ -7,6 +7,7 @@ from env output and converting TaskResult actions into numpy arrays.
 from __future__ import annotations
 
 import numpy as np
+from retro_harness.mission_control import MissionSnapshot
 from retro_harness.protocol import Task, TaskStatus, TaskResult, WorldState, ActionResult
 
 
@@ -45,6 +46,23 @@ class BotRunner:
         """Reset the runner for a new episode."""
         self._frame = 0
         self._initialized = False
+
+    def mission_status(self) -> MissionSnapshot:
+        """Expose current task so PlaySession can show mission state."""
+        current = getattr(self.task, "current_task", None) or self.task
+        phase = getattr(current, "name", current.__class__.__name__)
+        objective = f"frame={self._frame}"
+        if hasattr(self.task, "current_task_index"):
+            objective = f"task={self.task.current_task_index} frame={self._frame}"
+        return MissionSnapshot(mission_id=getattr(self.task, "name", "bot"), phase=phase, objective=objective)
+
+    def on_human_takeover(self) -> None:
+        """Mission state stays hot while a human is driving."""
+        return None
+
+    def on_autopilot_resume(self) -> None:
+        """Resume without resetting the task tree."""
+        return None
 
     def _build_world(self, obs, info):
         ram = info.get("ram", np.array([], dtype=np.uint8))

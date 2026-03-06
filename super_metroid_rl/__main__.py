@@ -1,10 +1,12 @@
 """Allow running as: python -m super_metroid_rl
 
-Extends the platformer_common CLI with Super Metroid navigation commands:
+Extends the platformer_common CLI with Super Metroid-specific commands:
   nav-path       Find inter-room path between two rooms
   nav-room       Show intra-room screen path
   nav-waypoints  Generate waypoints for a speedrun segment
   nav-info       Show room information (doors, dimensions, etc.)
+  doctor         Audit Bronze prerequisites (states, maps, nav export)
+  boot-probe     Replay a deterministic macro from NONE/Start/etc.
 """
 
 import sys
@@ -16,6 +18,16 @@ def _is_nav_command() -> bool:
         if arg.startswith("-"):
             continue
         return arg.startswith("nav-")
+    return False
+
+
+def _is_local_sm_command() -> bool:
+    """Check if the first positional arg is handled inside super_metroid_rl."""
+    local_commands = {"doctor", "boot-probe"}
+    for arg in sys.argv[1:]:
+        if arg.startswith("-"):
+            continue
+        return arg in local_commands
     return False
 
 
@@ -94,6 +106,54 @@ def _run_nav() -> None:
         _cmd_nav_waypoints(args, world)
     elif args.command == "nav-info":
         _cmd_nav_info(args, world)
+
+
+def _run_local_sm_command() -> None:
+    """Handle Super Metroid-specific helper commands."""
+    import argparse
+
+    from super_metroid_rl.bronze_tools import boot_probe_cli, doctor_cli, list_boot_macros
+
+    parser = argparse.ArgumentParser(
+        description="Super Metroid Bronze Tooling",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    p_doctor = sub.add_parser("doctor", help="Audit Bronze prerequisites and assets")
+    p_doctor.add_argument(
+        "--export-dir",
+        default="/tmp/sm_export",
+        help="SMEDIT export directory (default: /tmp/sm_export)",
+    )
+    p_doctor.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+
+    boot_macro_names = list(list_boot_macros())
+
+    p_boot = sub.add_parser("boot-probe", help="Replay a macro and log room/game-state transitions")
+    p_boot.add_argument("--from-state", default="NONE", help="Starting state (default: NONE)")
+    p_boot.add_argument("--nav", help="Navigation macro, e.g. 'WAIT:0:2100 A:10:120'")
+    p_boot.add_argument(
+        "--macro-name",
+        choices=boot_macro_names,
+        help="Named published boot macro (e.g. none_to_start)",
+    )
+    p_boot.add_argument("--repeat", type=int, default=1, help="Repeat the nav macro N times")
+    p_boot.add_argument("--settle", type=int, default=0, help="Extra NOOP frames after the macro")
+    p_boot.add_argument("--screenshot-dir", help="Save a PNG whenever game_state/room changes")
+    p_boot.add_argument("--save-name", help="Save the final emulator state under this name")
+    p_boot.add_argument("--expected-room", help="Optional room ID success check (hex or decimal)")
+    p_boot.add_argument("--expected-game-state", type=int, help="Optional game_state success check")
+    p_boot.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+
+    args = parser.parse_args()
+
+    if args.command == "doctor":
+        raise SystemExit(doctor_cli(args))
+    if args.command == "boot-probe":
+        raise SystemExit(boot_probe_cli(args))
+
+    parser.print_help()
 
 
 def _cmd_nav_path(args, world) -> None:
@@ -283,6 +343,8 @@ def _cmd_nav_info(args, world) -> None:
 
 if _is_nav_command():
     _run_nav()
+elif _is_local_sm_command():
+    _run_local_sm_command()
 else:
     import platformer_common.levels.super_metroid  # noqa: F401 - trigger registration
     from platformer_common.runner import main
