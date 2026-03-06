@@ -140,17 +140,9 @@ class RecordingSession:
         state_data = env.em.get_state()
         filename = f"{name}.state"
 
-        # Save to game dir
-        save_path = Path(self.game_dir) / filename
+        save_path = Path(self.game_dir) / "custom_integrations" / self.game / filename
+        save_path.parent.mkdir(parents=True, exist_ok=True)
         with gzip.open(save_path, "wb") as f:
-            f.write(state_data)
-
-        # Also to custom_integrations
-        ci_path = (
-            Path(self.game_dir) / "custom_integrations" / self.game / filename
-        )
-        ci_path.parent.mkdir(parents=True, exist_ok=True)
-        with gzip.open(ci_path, "wb") as f:
             f.write(state_data)
 
         return save_path

@@ -48,6 +48,9 @@ from retro_harness.env import (
     get_available_states,
     save_state,
 )
+from retro_harness.live_play import (
+    play_game,
+)
 from retro_harness.recordings import (
     ensure_gzip_state,
     append_jsonl,
@@ -79,6 +82,20 @@ from retro_harness.bot_runner import (
     TaskSequencer,
     TaskRepeater,
 )
+from retro_harness.benchmark import (
+    BenchmarkTier,
+    BenchmarkCase,
+    BenchmarkAttemptResult,
+    BenchmarkRunResult,
+    IdlePolicy,
+    RandomPolicy,
+    run_benchmark,
+    zero_action_for_env,
+)
+from retro_harness.mission_control import (
+    MissionSnapshot,
+    MissionAware,
+)
 # PlaySession imported lazily (depends on pygame)
 
 __all__ = [
@@ -92,7 +109,7 @@ __all__ = [
     # Protocol
     "TaskStatus", "WorldState", "ActionResult", "TaskResult", "Task",
     # Env
-    "add_custom_integrations", "make_env", "get_available_states", "save_state",
+    "add_custom_integrations", "make_env", "get_available_states", "save_state", "play_game",
     # Recordings/logging
     "ensure_gzip_state", "append_jsonl", "iter_jsonl",
     "find_latest_recording", "find_latest_recording_from_manifest",
@@ -104,4 +121,9 @@ __all__ = [
     "SplitTracker", "SplitResult",
     # Bot runner
     "BotRunner", "TaskSequencer", "TaskRepeater",
+    # Benchmarks
+    "BenchmarkTier", "BenchmarkCase", "BenchmarkAttemptResult", "BenchmarkRunResult",
+    "IdlePolicy", "RandomPolicy", "run_benchmark", "zero_action_for_env",
+    # Mission control
+    "MissionSnapshot", "MissionAware",
 ]

@@ -68,6 +68,7 @@ def test_level_config_runs_dir():
 def test_bk2_to_env_default():
     config = get_level_config("winkys")
     assert config.bk2_to_env == [11 - i for i in range(12)]
+    assert config.selftest_expect_death is True
 
 
 # -- Super Metroid tests -----------------------------------------------------
@@ -85,6 +86,7 @@ def test_sm_landing_site_registered():
     assert config.progress_axis == "waypoints"  # uses auto-generated waypoints
     assert len(config.waypoints) >= 3  # multi-screen room needs waypoints
     assert config.death_signals == ["health_zero"]
+    assert config.selftest_expect_death is False
 
 
 def test_sm_all_12_segments_registered():
@@ -106,4 +108,3 @@ def test_sm_ram_schema():
     assert "player_y" in schema.fields
     assert "level_id" in schema.fields
     assert "health" in schema.fields
-

@@ -5,6 +5,7 @@ using scripted button presses, then saves the resulting state.
 
 Navigation format: list of NavStep(buttons, hold_frames, wait_frames)
 CLI string format: "RIGHT:15:60 B:10:300 RIGHT+Y:15:60"
+Pseudo-buttons `WAIT`, `NOOP`, and `NONE` are also accepted for pure delays.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ BUTTON_MAP: dict[str, int] = {
 }
 
 NUM_BUTTONS = 12
+NOOP_TOKENS = {"WAIT", "NOOP", "NONE"}
 
 
 class NavStep(NamedTuple):
@@ -61,6 +63,7 @@ def parse_nav_string(nav_string: str) -> list[NavStep]:
         "RIGHT:15:60"           - press RIGHT for 15 frames, wait 60
         "RIGHT+Y:15:60"         - press RIGHT+Y for 15 frames, wait 60
         "B:10:300"              - press B for 10 frames, wait 300
+        "WAIT:0:300"            - wait 300 frames with no buttons pressed
     """
     steps: list[NavStep] = []
     for token in nav_string.strip().split():
@@ -72,11 +75,13 @@ def parse_nav_string(nav_string: str) -> list[NavStep]:
 
         # Parse buttons (e.g. "RIGHT+Y" -> [7, 1])
         buttons: list[int] = []
-        for name in button_str.upper().split("+"):
-            if name not in BUTTON_MAP:
-                raise ValueError(f"Unknown button '{name}' in step '{token}'. "
-                                 f"Valid: {', '.join(sorted(BUTTON_MAP))}")
-            buttons.append(BUTTON_MAP[name])
+        if button_str.upper() not in NOOP_TOKENS:
+            for name in button_str.upper().split("+"):
+                if name not in BUTTON_MAP:
+                    valid = sorted(BUTTON_MAP) + sorted(NOOP_TOKENS)
+                    raise ValueError(f"Unknown button '{name}' in step '{token}'. "
+                                     f"Valid: {', '.join(valid)}")
+                buttons.append(BUTTON_MAP[name])
 
         steps.append(NavStep(
             buttons=buttons,
