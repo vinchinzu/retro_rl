@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Lightweight PySide6 tile map editor for Harvest Moon (SNES).
 
-Renders the 64x64 tile grid using pixel-perfect tile extraction from
-the emulator frame. Tiles in the current viewport are captured live;
-tiles outside use color-coded fallback until seen.
+Renders the 64x64 tile grid using a pre-extracted tile atlas. The live emulator
+panel is kept separate by default; an optional viewport overlay can be toggled
+on for debugging camera alignment.
 
 Supports gamepad controller via pygame + keyboard input.
 
@@ -247,6 +247,7 @@ class TileMapCanvas(QGraphicsView):
             self._color_lut[tid] = _tile_color_rgb(tid)
 
         self._initialized = False
+        self._show_live_overlay = False
 
     def _rebuild_base(self):
         """Rebuild the base image from tile grid using tile atlas (fast)."""
@@ -269,7 +270,7 @@ class TileMapCanvas(QGraphicsView):
         )
 
     def update_from_ram(self, ram: np.ndarray, obs: np.ndarray | None = None):
-        """Fast per-frame update: blit emu frame + player marker on pre-built base."""
+        """Fast per-frame update: draw atlas map and optional live viewport overlay."""
         px, py = _get_pos(ram)
 
         # Read tile grid
@@ -285,8 +286,13 @@ class TileMapCanvas(QGraphicsView):
         frame_img = self._base_img.copy()
         painter = QPainter(frame_img)
 
-        # Blit emulator frame at camera position (pixel-perfect viewport)
-        if obs is not None and obs.shape[0] == SCREEN_H and obs.shape[1] == SCREEN_W:
+        # Optional live viewport overlay for camera-debug only.
+        if (
+            self._show_live_overlay
+            and obs is not None
+            and obs.shape[0] == SCREEN_H
+            and obs.shape[1] == SCREEN_W
+        ):
             cam_x, cam_y = _camera_offset(px, py)
             obs_bytes = obs.tobytes()
             emu_img = QImage(obs_bytes, SCREEN_W, SCREEN_H, SCREEN_W * 3,
@@ -330,6 +336,12 @@ class TileMapCanvas(QGraphicsView):
 
     def center_on_tile(self, tx: int, ty: int):
         self.centerOn(tx * TILE_PX + TILE_PX / 2, ty * TILE_PX + TILE_PX / 2)
+
+    def set_live_overlay_enabled(self, enabled: bool):
+        self._show_live_overlay = enabled
+
+    def live_overlay_enabled(self) -> bool:
+        return self._show_live_overlay
 
 
 # ---------------------------------------------------------------------------
@@ -791,6 +803,12 @@ class EditorWindow(QMainWindow):
         fit_action.setShortcut("Ctrl+0")
         fit_action.triggered.connect(self._fit_view)
         view_menu.addAction(fit_action)
+
+        self._overlay_action = QAction("Live Camera Overlay", self)
+        self._overlay_action.setCheckable(True)
+        self._overlay_action.setChecked(False)
+        self._overlay_action.toggled.connect(self._canvas.set_live_overlay_enabled)
+        view_menu.addAction(self._overlay_action)
 
     def _fit_view(self):
         self._canvas.fitInView(
