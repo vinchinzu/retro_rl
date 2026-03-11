@@ -83,6 +83,19 @@ class EditorWindowIntegrationTests(unittest.TestCase):
                 self.app.processEvents()
                 del self._window
 
+    def test_live_camera_overlay_defaults_off_and_can_be_toggled(self) -> None:
+        window = self._make_window(initial_state="Y1_Front_House")
+        self.assertFalse(window._canvas.live_overlay_enabled())
+        self.assertFalse(window._overlay_action.isChecked())
+
+        window._overlay_action.setChecked(True)
+        self.app.processEvents()
+        self.assertTrue(window._canvas.live_overlay_enabled())
+
+        window._overlay_action.setChecked(False)
+        self.app.processEvents()
+        self.assertFalse(window._canvas.live_overlay_enabled())
+
     def test_live_editor_enters_house_and_shed(self) -> None:
         self._drive_until_map("Y1_Front_House", Qt.Key.Key_Up, 120, "House")
         self._window._emu_panel.close_session()

@@ -111,6 +111,27 @@ DEFAULT_CAPTURE_RECIPES = FARM_COVERAGE_RECIPES + (
     CaptureRecipe("current_crop_end", steps=GENERIC_WALK_STEPS),
 )
 
+DEFAULT_VALIDATION_STATES = (
+    "Y1_After_Buy_Potato",
+    "current",
+    "Y1_Tilled_Test",
+    "Y1_Inside_House",
+    "Y1_Inside_Shed",
+    "Y1_Near_Barn",
+    "Y1_Near_Coop",
+)
+
+
+@dataclass(frozen=True)
+class AlignmentReport:
+    state_name: str
+    tilemap_id: int
+    compared_tiles: int
+    missing_tile_ids: tuple[int, ...]
+    mean_rgb_error: float
+    mean_structural_error: float
+    max_structural_error: float
+
 
 def get_pos(ram: np.ndarray) -> tuple[int, int]:
     return int(ram[0xD6]) | (int(ram[0xD7]) << 8), int(ram[0xD8]) | (int(ram[0xD9]) << 8)
@@ -161,6 +182,120 @@ def extract_tiles_from_frame(
             atlas[tid] = obs[sy : sy + TILE, sx : sx + TILE].copy()
             count += 1
     return count
+
+
+def render_viewport_from_atlas(
+    atlas: dict[int, np.ndarray],
+    ram: np.ndarray,
+    cx: int,
+    cy: int,
+) -> tuple[np.ndarray, tuple[int, ...]]:
+    """Render the visible viewport directly from the atlas."""
+    viewport = np.zeros((SH, SW, 3), dtype=np.uint8)
+    missing: set[int] = set()
+    for tid, _tx, _ty, sx, sy in iter_visible_tiles(ram, cx, cy):
+        patch = atlas.get(tid)
+        if patch is None:
+            missing.add(tid)
+            continue
+        viewport[sy : sy + TILE, sx : sx + TILE] = patch
+    return viewport, tuple(sorted(missing))
+
+
+def _gray(img: np.ndarray) -> np.ndarray:
+    img_f = img.astype(np.float32)
+    return 0.299 * img_f[..., 0] + 0.587 * img_f[..., 1] + 0.114 * img_f[..., 2]
+
+
+def structural_tile_error(atlas_patch: np.ndarray, obs_patch: np.ndarray) -> float:
+    """Compare tile structure while ignoring palette/brightness drift."""
+    atlas_gray = _gray(atlas_patch)
+    obs_gray = _gray(obs_patch)
+    atlas_gray = atlas_gray - atlas_gray.mean()
+    obs_gray = obs_gray - obs_gray.mean()
+    atlas_std = float(atlas_gray.std())
+    obs_std = float(obs_gray.std())
+    if atlas_std > 1e-3:
+        atlas_gray /= atlas_std
+    if obs_std > 1e-3:
+        obs_gray /= obs_std
+    return float(np.abs(atlas_gray - obs_gray).mean())
+
+
+def _write_ppm(path: Path, img: np.ndarray) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rgb = np.ascontiguousarray(img.astype(np.uint8))
+    with path.open("wb") as handle:
+        handle.write(f"P6\n{rgb.shape[1]} {rgb.shape[0]}\n255\n".encode("ascii"))
+        handle.write(rgb.tobytes())
+
+
+def validate_state_alignment(
+    state_name: str,
+    atlas: dict[int, np.ndarray],
+    *,
+    debug_dir: Path | None = None,
+) -> AlignmentReport:
+    """Measure atlas-to-emulator viewport agreement for one state."""
+    import stable_retro as retro
+
+    retro.data.Integrations.add_custom_path(str(INTEGRATION_PATH))
+    env = retro.make(
+        GAME,
+        state=state_name,
+        inttype=retro.data.Integrations.ALL,
+        render_mode="rgb_array",
+    )
+
+    try:
+        obs, _ = env.reset()
+        ram = env.get_ram()
+        px, py = get_pos(ram)
+        cam = camera_offset(px, py)
+        rendered, missing = render_viewport_from_atlas(atlas, ram, cam[0], cam[1])
+
+        rgb_errors: list[float] = []
+        structural_errors: list[float] = []
+        heatmap = np.zeros((SH, SW), dtype=np.uint8)
+        for tid, _tx, _ty, sx, sy in iter_visible_tiles(ram, cam[0], cam[1]):
+            atlas_patch = atlas.get(tid)
+            if atlas_patch is None:
+                continue
+            obs_patch = obs[sy : sy + TILE, sx : sx + TILE]
+            rgb_errors.append(float(np.abs(atlas_patch.astype(np.int16) - obs_patch.astype(np.int16)).mean()))
+            structural = structural_tile_error(atlas_patch, obs_patch)
+            structural_errors.append(structural)
+            heatmap[sy : sy + TILE, sx : sx + TILE] = min(255, int(structural * 96))
+
+        if debug_dir is not None:
+            heatmap_rgb = np.repeat(heatmap[:, :, None], 3, axis=2)
+            debug_img = np.concatenate([rendered, obs, heatmap_rgb], axis=1)
+            _write_ppm(debug_dir / f"{state_name}.ppm", debug_img)
+
+        return AlignmentReport(
+            state_name=state_name,
+            tilemap_id=int(ram[0x22]),
+            compared_tiles=len(structural_errors),
+            missing_tile_ids=missing,
+            mean_rgb_error=float(np.mean(rgb_errors)) if rgb_errors else 0.0,
+            mean_structural_error=float(np.mean(structural_errors)) if structural_errors else 0.0,
+            max_structural_error=float(np.max(structural_errors)) if structural_errors else 0.0,
+        )
+    finally:
+        env.close()
+
+
+def validate_alignment(
+    state_names: list[str] | None = None,
+    *,
+    atlas: dict[int, np.ndarray] | None = None,
+    debug_dir: Path | None = None,
+) -> list[AlignmentReport]:
+    if atlas is None:
+        atlas = load_existing_atlas()
+    if state_names is None:
+        state_names = list(DEFAULT_VALIDATION_STATES)
+    return [validate_state_alignment(state_name, atlas, debug_dir=debug_dir) for state_name in state_names]
 
 
 def load_existing_atlas() -> dict[int, np.ndarray]:
@@ -307,6 +442,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Extract Harvest Moon tile atlas")
     parser.add_argument("--states", nargs="+", default=None, help="Run generic capture walk on specific states")
     parser.add_argument("--no-existing-atlas", action="store_true", help="Ignore maps/tile_atlas.npy and rebuild from scratch")
+    parser.add_argument("--validate", action="store_true", help="Run viewport alignment validation after extraction")
+    parser.add_argument("--validate-states", nargs="+", default=None, help="Specific states to validate against the atlas")
+    parser.add_argument("--validation-dir", default=None, help="Optional directory for side-by-side validation PPMs")
     args = parser.parse_args()
 
     atlas = run_extraction(args.states, load_existing=not args.no_existing_atlas)
@@ -320,6 +458,27 @@ def main() -> None:
         )
     else:
         print("Farm atlas coverage: complete across tracked farm states")
+
+    if args.validate or args.validate_states is not None:
+        debug_dir = Path(args.validation_dir) if args.validation_dir else None
+        reports = validate_alignment(args.validate_states, atlas=atlas, debug_dir=debug_dir)
+        print("\nAlignment validation:")
+        for report in reports:
+            missing = (
+                "none"
+                if not report.missing_tile_ids
+                else " ".join(f"0x{tile_id:02X}" for tile_id in report.missing_tile_ids)
+            )
+            print(
+                f"  {report.state_name}: tilemap=0x{report.tilemap_id:02X}"
+                f" tiles={report.compared_tiles}"
+                f" rgb_mean={report.mean_rgb_error:.1f}"
+                f" structural_mean={report.mean_structural_error:.3f}"
+                f" structural_max={report.max_structural_error:.3f}"
+                f" missing={missing}"
+            )
+        if debug_dir is not None:
+            print(f"  wrote validation images to {debug_dir}")
 
     print(f"Tile IDs: {sorted(f'0x{tile_id:02X}' for tile_id in atlas)}")
 
