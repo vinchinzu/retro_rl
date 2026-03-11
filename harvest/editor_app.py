@@ -26,7 +26,6 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 from PySide6.QtCore import (
-    QRectF,
     Qt,
     QTimer,
     Signal,
@@ -35,7 +34,6 @@ from PySide6.QtGui import (
     QAction,
     QBrush,
     QColor,
-    QFont,
     QImage,
     QKeyEvent,
     QPainter,
@@ -128,7 +126,8 @@ TILE_NAMES = {
 
 MAP_NAMES = {
     0x00: "Farm", 0x0C: "Path", 0x04: "Town", 0x1C: "Shop",
-    0x15: "House", 0x19: "Barn", 0x1A: "Coop", 0x18: "Shed",
+    0x15: "House", 0x18: "Shed", 0x19: "Barn", 0x1A: "Coop",
+    0x26: "Shed", 0x27: "Barn", 0x28: "Coop",
 }
 
 TOOL_NAMES = {
@@ -186,6 +185,10 @@ def _camera_offset(px: int, py: int) -> tuple[int, int]:
     cx = max(0, min(px - SCREEN_W // 2, MAP_PX_W - SCREEN_W))
     cy = max(0, min(py - SCREEN_H // 2, MAP_PX_H - SCREEN_H))
     return cx, cy
+
+
+def map_name(tilemap_id: int) -> str:
+    return MAP_NAMES.get(tilemap_id, f"0x{tilemap_id:02X}")
 
 
 # ---------------------------------------------------------------------------
@@ -398,6 +401,8 @@ class EmulatorPanel(QWidget):
         self._keys_pressed: set[int] = set()
         self._initial_state = initial_state
         self._frame_count = 0
+        self._last_ram: np.ndarray | None = None
+        self._last_obs: np.ndarray | None = None
 
         # Controller via pygame
         self._pygame = None
@@ -486,9 +491,27 @@ class EmulatorPanel(QWidget):
                 self._state_combo.setCurrentIndex(idx)
 
     def _on_start(self):
-        state_name = self._state_combo.currentText()
+        self.start_session()
+
+    def selected_state(self) -> str:
+        return self._state_combo.currentText()
+
+    def set_selected_state(self, state_name: str) -> bool:
+        idx = self._state_combo.findText(state_name)
+        if idx < 0:
+            return False
+        self._state_combo.setCurrentIndex(idx)
+        return True
+
+    def start_session(self, state_name: str | None = None) -> bool:
+        if state_name is not None and not self.set_selected_state(state_name):
+            self._info_label.setText(f"Unknown state: {state_name}")
+            return False
+
+        state_name = self.selected_state()
         if not state_name:
-            return
+            return False
+
         try:
             import stable_retro as retro
             retro.data.Integrations.add_custom_path(str(INTEGRATION_PATH))
@@ -507,20 +530,29 @@ class EmulatorPanel(QWidget):
             self._step_timer.start()
             self._start_btn.setEnabled(False)
             self._stop_btn.setEnabled(True)
-            self._info_label.setText(f"Running: {state_name}")
-
             ram = self._env.get_ram()
+            self._last_ram = ram.copy()
+            self._last_obs = obs.copy()
             self.frame_ready.emit(ram, obs)
             self._render_frame(obs)
+            self._update_info(ram)
+            return True
         except Exception as e:
             self._info_label.setText(f"Error: {e}")
+            return False
 
     def _on_stop(self):
+        self.stop_session()
+
+    def stop_session(self):
         self._step_timer.stop()
         self._running = False
+        self._keys_pressed.clear()
         if self._env:
             self._env.close()
             self._env = None
+        self._last_ram = None
+        self._last_obs = None
         self._start_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
         self._info_label.setText("Session closed")
@@ -576,6 +608,8 @@ class EmulatorPanel(QWidget):
             self._frame_count += 1
 
             ram = self._env.get_ram()
+            self._last_ram = ram.copy()
+            self._last_obs = obs.copy()
             # Emit every frame for map update, render video every other frame
             self.frame_ready.emit(ram, obs)
             if self._frame_count % 2 == 0:
@@ -600,12 +634,12 @@ class EmulatorPanel(QWidget):
         px, py = _get_pos(ram)
         tx, ty = px // TILE_PX, py // TILE_PX
         tilemap_id = _get_tilemap_id(ram)
-        map_name = MAP_NAMES.get(tilemap_id, f"0x{tilemap_id:02X}")
         tool_id = int(ram[ADDR_TOOL]) if ADDR_TOOL < len(ram) else 0
         tool_name = TOOL_NAMES.get(tool_id, f"0x{tool_id:02X}")
+        map_name_label = map_name(tilemap_id)
         ctrl = f" | Ctrl: {self._controller_name}" if self._controller_name else ""
         self._info_label.setText(
-            f"{map_name} ({tx},{ty}) | {tool_name} | F:{self._frame_count}{ctrl}"
+            f"{map_name_label} ({tx},{ty}) | {tool_name} | F:{self._frame_count}{ctrl}"
         )
 
     def handle_key_press(self, key: int):
@@ -614,8 +648,22 @@ class EmulatorPanel(QWidget):
     def handle_key_release(self, key: int):
         self._keys_pressed.discard(key)
 
+    def step_once(self):
+        self._step_tick()
+
+    def current_tilemap_id(self) -> int | None:
+        if self._last_ram is None:
+            return None
+        return _get_tilemap_id(self._last_ram)
+
+    def current_map_name(self) -> str | None:
+        tilemap_id = self.current_tilemap_id()
+        if tilemap_id is None:
+            return None
+        return map_name(tilemap_id)
+
     def close_session(self):
-        self._on_stop()
+        self.stop_session()
 
 
 # ---------------------------------------------------------------------------
@@ -761,8 +809,7 @@ class EditorWindow(QMainWindow):
             self._canvas.update_from_ram(ram, obs)
             self._stats.update_from_ram(ram)
             tilemap_id = _get_tilemap_id(ram)
-            map_name = MAP_NAMES.get(tilemap_id, f"0x{tilemap_id:02X}")
-            self._status_map.setText(f"Map: {map_name} (snapshot: {state_name})")
+            self._status_map.setText(f"Map: {map_name(tilemap_id)} (snapshot: {state_name})")
             env.close()
         except Exception as e:
             self._status_map.setText(f"Could not load: {e}")
@@ -770,9 +817,8 @@ class EditorWindow(QMainWindow):
     def _on_frame_ready(self, ram: np.ndarray, obs: np.ndarray):
         self._canvas.update_from_ram(ram, obs)
         tilemap_id = _get_tilemap_id(ram)
-        map_name = MAP_NAMES.get(tilemap_id, f"0x{tilemap_id:02X}")
         px, py = _get_pos(ram)
-        self._status_map.setText(f"Map: {map_name} | Player: ({px // TILE_PX},{py // TILE_PX})")
+        self._status_map.setText(f"Map: {map_name(tilemap_id)} | Player: ({px // TILE_PX},{py // TILE_PX})")
 
         self._stats_counter += 1
         if self._stats_counter % 120 == 0:
