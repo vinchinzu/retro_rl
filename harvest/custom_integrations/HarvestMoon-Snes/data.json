@@ -24,6 +24,22 @@
       "address": 73501,
       "type": "|u1"
     },
+    "player_x_lo": {
+      "address": 214,
+      "type": "|u1"
+    },
+    "player_x_hi": {
+      "address": 215,
+      "type": "|u1"
+    },
+    "player_y_lo": {
+      "address": 216,
+      "type": "|u1"
+    },
+    "player_y_hi": {
+      "address": 217,
+      "type": "|u1"
+    },
     "stamina": {
       "address": 2328,
       "type": "|u1"
