@@ -1,12 +1,12 @@
 game: alttp
 title: "The Legend of Zelda: A Link to the Past"
-directory: null
+directory: alttp
 genre_tracks:
   - top_down_navigation
   - metroidvania_navigation
 capability_phase: 4
-project_state: planned
-maturity: M0
+project_state: active
+maturity: M1
 runtime_class: bronze
 intervention_class: clean
 popularity: very_high
@@ -18,8 +18,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: null
-plan_doc: null
-last_verified: null
-blocker: no alttp/ workspace in this checkout; prior work was external/historical
-notes: Converge with Super Metroid before promoting adventure_common.
+status_doc: alttp/docs/STATUS.md
+plan_doc: alttp/docs/plan.md
+last_verified: 2026-07-25
+blocker: opening route only to castle grounds; sword/uncle segments next
+notes: Ported title→castle from prior snes_editor/alttp work onto retro_harness.snes.

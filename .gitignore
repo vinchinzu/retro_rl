@@ -198,7 +198,6 @@ super_metroid/maps/*
 
 # Third-party/reference source trees are cloned separately.
 harvest/HM-Decomp/
-alttp/
 uwnh/
 super_metroid_rl/
 SMW/refs/*

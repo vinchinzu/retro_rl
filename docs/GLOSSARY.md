@@ -80,7 +80,7 @@ Stale names that must not appear as live workspace paths:
 
 - `super_metroid_rl/` → use `super_metroid/`
 - `super_mario_bros/` → use `SMW/` for Super Mario World work in this repo
-- `alttp/` → not present in this checkout; treat as planned / external until added
+- `alttp/` → A Link to the Past opening-route workspace
 
 ## Package name note
 

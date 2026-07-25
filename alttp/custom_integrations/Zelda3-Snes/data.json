@@ -1,0 +1,19 @@
+{
+  "info": {
+    "health": {"address": 3894, "type": "|u1"},
+    "max_health": {"address": 3895, "type": "|u1"},
+    "game_mode": {"address": 16, "type": "|u1"},
+    "submodule": {"address": 17, "type": "|u1"},
+    "room_id": {"address": 160, "type": "|u2"},
+    "indoors": {"address": 27, "type": "|u1"},
+    "link_y": {"address": 32, "type": "|u2"},
+    "link_x": {"address": 34, "type": "|u2"},
+    "link_direction": {"address": 47, "type": "|u1"},
+    "link_action": {"address": 93, "type": "|u1"},
+    "camera_y": {"address": 224, "type": "|u2"},
+    "camera_x": {"address": 226, "type": "|u2"},
+    "sprite0_state": {"address": 3536, "type": "|u1"},
+    "sprite0_type": {"address": 3616, "type": "|u1"},
+    "sprite0_hp": {"address": 3664, "type": "|u1"}
+  }
+}

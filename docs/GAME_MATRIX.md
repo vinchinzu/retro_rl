@@ -36,6 +36,7 @@ Manifest count: **21**.
 | `joe_and_mac` / Joe & Mac | platforming | P3 | instrumented | M2 | bronze | clean | no | first traversable Stage 1 segment |
 | `magical_quest` / The Magical Quest Starring Mickey Mouse | platforming | P3 | instrumented | M2 | bronze | clean | no | clear first room/checkpoint from Stage 1 |
 | `SMW` / Super Mario World | platforming | P3 | instrumented | M2 | bronze | clean | no | normalize route tooling into maturity gates and continuous clear path |
+| `alttp` / The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | active | M1 | bronze | clean | no | opening route only to castle grounds; sword/uncle segments next |
 | `super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | continue Brinstar progression past Spore Super room toward full clear |
 | `harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M2 | bronze | clean | no | frame farm-clear tasks as long-horizon planner benchmarks |
 
@@ -43,7 +44,6 @@ Manifest count: **21**.
 
 | Game | Genre track | Phase | State | Maturity | Blocker |
 | ---- | ----------- | ----- | ----- | -------- | ------- |
-| The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | planned | M0 | no alttp/ workspace in this checkout; prior work was external/historical |
 
 ## Scoring fields (in manifests)
 
