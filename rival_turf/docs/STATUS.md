@@ -1,9 +1,18 @@
 # Status — Rival Turf!
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 5 |
-| Tier | 1 |
+| Current maturity | M2 |
+| Best verified result | Fight-ready Stage 1 checkpoint |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
+| Field | Value |
+|-------|-------|
 | Status | **boot verified; fight-ready Stage 1 checkpoint** |
 | Integration | `RivalTurf-Snes` |
 | ROM zip | `Rival Turf!.zip` |

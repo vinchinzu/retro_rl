@@ -1,6 +1,6 @@
 # Agent Instructions — magical_quest
 
-Scripted SNES completion agent for **The Magical Quest Starring Mickey Mouse** (oneshot ladder #7, tier 3).
+Scripted SNES completion agent for **The Magical Quest Starring Mickey Mouse** (platforming track; maturity M2).
 
 ## Identity
 

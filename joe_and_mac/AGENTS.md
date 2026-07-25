@@ -1,6 +1,6 @@
 # Agent Instructions — joe_and_mac
 
-Scripted SNES completion agent for **Joe & Mac** (oneshot ladder #10, tier 3).
+Scripted SNES completion agent for **Joe & Mac** (platforming track; maturity M2).
 
 ## Identity
 

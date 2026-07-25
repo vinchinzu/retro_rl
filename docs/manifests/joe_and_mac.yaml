@@ -1,0 +1,24 @@
+game: joe_and_mac
+title: "Joe & Mac"
+directory: joe_and_mac
+genre_tracks:
+  - platforming
+capability_phase: 3
+project_state: instrumented
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: medium
+engineering_effort: medium
+transfer_value: medium
+ending_definition: credits after final stage
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: joe_and_mac/docs/STATUS.md
+plan_doc: joe_and_mac/docs/plan.md
+last_verified: 2026-07-22
+blocker: first traversable Stage 1 segment
+notes: Controllable Stage 1 checkpoint; progress RAM mapped.

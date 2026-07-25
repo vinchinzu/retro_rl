@@ -1,6 +1,6 @@
 # Agent Instructions — pilotwings
 
-Scripted SNES completion agent for **Pilotwings** (oneshot ladder #8, tier 2).
+Scripted SNES completion agent for **Pilotwings** (continuous control track; maturity M2).
 
 ## Identity
 

@@ -1,9 +1,18 @@
 # Status — Super Double Dragon
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 4 |
-| Tier | 1 |
+| Current maturity | M3 |
+| Best verified result | Missions 1–2 complete; M3/M5 partial |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
+| Field | Value |
+|-------|-------|
 | Status | **Missions 1–2 complete; M3/M5 transition work** |
 | Integration | `SuperDoubleDragon-Snes` |
 | ROM | USA ROM installed and boot-verified |

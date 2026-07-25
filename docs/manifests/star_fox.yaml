@@ -1,0 +1,24 @@
+game: star_fox
+title: "Star Fox"
+directory: star_fox
+genre_tracks:
+  - continuous_vehicle_control
+capability_phase: 2
+project_state: segmenting
+maturity: M3
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: high
+transfer_value: medium
+ending_definition: Route 1 campaign clear (contract evolving)
+start_contract: power_on
+completion_contract: route1_clear
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: star_fox/docs/STATUS.md
+plan_doc: null
+last_verified: 2026-07-22
+blocker: destroy Attack Carrier hatches and finish Corneria clear
+notes: Super FX boot verified; Route 1 segment work in progress.

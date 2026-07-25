@@ -1,0 +1,25 @@
+game: hals_golf
+title: "Hal's Hole in One Golf"
+directory: hals_golf
+genre_tracks:
+  - pipeline_and_menus
+  - continuous_vehicle_control
+capability_phase: 0
+project_state: instrumented
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: low
+engineering_effort: medium
+transfer_value: low
+ending_definition: published hole/course clear (contract TBD)
+start_contract: power_on
+completion_contract: course_clear
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: hals_golf/README.md
+plan_doc: null
+last_verified: 2026-07-10
+blocker: publish evaluation contract and first hole clear
+notes: Editor/tooling-heavy workspace.

@@ -1,9 +1,18 @@
 # Status — TMNT IV: Turtles in Time
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 3 |
-| Tier | 1 |
+| Current maturity | M8 |
+| Best verified result | Continuous hard clear + credits |
+| Last verification | 2026-07-24 |
+| Runtime class | Bronze |
+| Intervention class | Resource-assisted + Protection-assisted |
+
+| Field | Value |
+|-------|-------|
 | Status | **Continuous low-assist hard clear + staff/cast credits** |
 | Integration | `TMNTIV-Snes` |
 | ROM zip | `Teenage Mutant Ninja Turtles IV - Turtles in Time.zip` |

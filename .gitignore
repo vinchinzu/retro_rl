@@ -172,6 +172,9 @@ split_runs.jsonl
 
 # Stale experiments and session-specific material
 **/archive/
+# Keep curated research docs under snes_oneshot/docs/archive/.
+!snes_oneshot/docs/archive/
+!snes_oneshot/docs/archive/**
 onotes.md
 TRAINING_IN_PROGRESS.md
 monitor_all_training.sh

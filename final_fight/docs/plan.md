@@ -4,7 +4,7 @@ Ladder #2. Beat-’em-up benchmark: movement, melee, health, screen locks.
 
 ## Working rule
 
-Not a strict one-shot. Prefer:
+Not gated on uninterrupted evaluation early. Prefer:
 
 1. Dev `.state` files under `custom_integrations/FinalFight-Snes/`
 2. Segment policies (menu → Stage1 start; fight nearest; walk-right unlock)

@@ -1,0 +1,24 @@
+game: f_zero
+title: "F-Zero"
+directory: f_zero
+genre_tracks:
+  - continuous_vehicle_control
+capability_phase: 2
+project_state: instrumented
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: high
+ending_definition: published cup/league clear (contract TBD)
+start_contract: power_on
+completion_contract: cup_clear
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: f_zero/docs/STATUS.md
+plan_doc: f_zero/docs/plan.md
+last_verified: 2026-07-22
+blocker: one Mute City lap without crash
+notes: Race-start checkpoint and speed/lateral RAM mapped.
