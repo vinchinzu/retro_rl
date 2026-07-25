@@ -28,12 +28,9 @@ sys.path.insert(0, str(ROOT_DIR))
 import numpy as np
 import torch
 from stable_baselines3 import PPO
-from fighters_common.fighting_env import (
-    DirectRAMReader, DiscreteAction, FightingEnv, FightingGameConfig,
-    FrameSkip, FrameStack, GrayscaleResize
-)
+from fighters_common.fighting_env import FightingGameConfig
 from fighters_common.game_configs import get_game_config
-import stable_retro as retro
+from fighters_common.ram_observation import build_eval_env
 
 # Full tournament stages
 STAGES = [
@@ -54,20 +51,14 @@ STAGES = [
 # Per-stage model overrides. Maps stage prefix -> model filename.
 # Stages not listed here use the general model.
 STAGE_MODELS = {
+    # M1: multichar 2M base (~80% Fight_LiuKang in spot checks vs speedrun/fresh)
+    "Fight":       "mk1_multichar_ppo_2000000_steps.zip",
     "ShangTsung":  "mk1_shangtsung_ppo_final.zip",
     "Goro":        "mk1_goro_ppo_final.zip",
 }
 
 
-def build_env(config, game_dir, state):
-    retro.data.Integrations.add_custom_path(str(game_dir / "custom_integrations"))
-    base_env = retro.make(
-        game=config.game_id,
-        state=state,
-        render_mode="rgb_array",
-        inttype=retro.data.Integrations.CUSTOM_ONLY,
-        use_restricted_actions=retro.Actions.ALL,
-    )
+def build_env(config, game_dir, state, *, ram: bool = False):
     fight_config = FightingGameConfig(
         max_health=config.max_health,
         health_key=config.health_key,
@@ -75,20 +66,18 @@ def build_env(config, game_dir, state):
         ram_overrides=config.ram_overrides,
         actions=config.actions,
     )
-    env = base_env
-    if config.ram_overrides:
-        env = DirectRAMReader(env, config.ram_overrides)
-    env = FrameSkip(env, n_skip=4)
-    env = GrayscaleResize(env, width=84, height=84)
-    env = FightingEnv(env, fight_config)
-    env = DiscreteAction(env, config.actions)
-    env = FrameStack(env, n_frames=4)
-    return env
+    return build_eval_env(
+        game=config.game_id,
+        state=state,
+        game_dir=game_dir,
+        config=fight_config,
+        ram=ram,
+    )
 
 
-def play_match(model, config, game_dir, state_name):
+def play_match(model, config, game_dir, state_name, *, ram: bool = False):
     """Play a single match. Returns (won: bool, frames: int)."""
-    env = build_env(config, game_dir, state_name)
+    env = build_env(config, game_dir, state_name, ram=ram)
     obs, info = env.reset()
     frames = 0
     won = False
@@ -137,7 +126,7 @@ def load_models(stage_model_paths, device):
     return stage_models
 
 
-def test_per_stage(stage_models, stage_model_paths, config, game_dir, char, attempts):
+def test_per_stage(stage_models, stage_model_paths, config, game_dir, char, attempts, *, ram=False):
     """Test each stage independently. Returns list of (prefix, display_name, win_rate, wins, losses, avg_frames)."""
     state_dir = game_dir / "custom_integrations" / config.game_id
     results = []
@@ -159,7 +148,7 @@ def test_per_stage(stage_models, stage_model_paths, config, game_dir, char, atte
         frame_counts = []
 
         for _ in range(attempts):
-            won, frames = play_match(model, config, game_dir, state_name)
+            won, frames = play_match(model, config, game_dir, state_name, ram=ram)
             if won:
                 wins += 1
             else:
@@ -177,7 +166,7 @@ def test_per_stage(stage_models, stage_model_paths, config, game_dir, char, atte
     return results
 
 
-def simulate_tournaments(stage_models, config, game_dir, char, n_tournaments):
+def simulate_tournaments(stage_models, config, game_dir, char, n_tournaments, *, ram=False):
     """Simulate N full tournament runs, chaining through all stages."""
     state_dir = game_dir / "custom_integrations" / config.game_id
     clears = 0
@@ -196,7 +185,7 @@ def simulate_tournaments(stage_models, config, game_dir, char, n_tournaments):
                 break
 
             model = stage_models[prefix]
-            won, frames = play_match(model, config, game_dir, state_name)
+            won, frames = play_match(model, config, game_dir, state_name, ram=ram)
             stage_attempts_total[prefix] += 1
 
             if won:
@@ -243,6 +232,11 @@ def main():
     parser.add_argument("--attempts", type=int, default=10, help="Attempts per stage (for --per-stage mode)")
     parser.add_argument("--tournament", type=int, default=0, help="Number of tournament simulations (0=per-stage only)")
     parser.add_argument("--general", default=None, help="Override general model path")
+    parser.add_argument(
+        "--ram",
+        action="store_true",
+        help="Evaluate RAM-vector MLP models",
+    )
     args = parser.parse_args()
 
     config = get_game_config("mk1")
@@ -256,10 +250,11 @@ def main():
             general_path = model_dir / args.general
     else:
         for candidate in [
+            "mk1_speedrun_ppo_final.zip",
             "mk1_fresh_ppo_final.zip",
+            "mk1_multichar_ppo_2000000_steps.zip",
             "mk1_match7_ppo_16000000_steps.zip",
             "mk1_match4_ppo_final.zip",
-            "mk1_multichar_ppo_2000000_steps.zip",
         ]:
             general_path = model_dir / candidate
             if general_path.exists():
@@ -270,10 +265,13 @@ def main():
         sys.exit(1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args.ram:
+        device = torch.device("cpu")
 
     # Resolve and load models
     print(f"Character: {args.char}")
     print(f"General model: {general_path.name}")
+    print(f"Observation: {'RAM MLP' if args.ram else 'pixel CNN'}")
     print(f"Specialists: {dict(STAGE_MODELS)}")
     print(f"\nLoading models...")
 
@@ -281,7 +279,15 @@ def main():
     stage_models = load_models(stage_model_paths, device)
 
     # Per-stage testing
-    results = test_per_stage(stage_models, stage_model_paths, config, game_dir, args.char, args.attempts)
+    results = test_per_stage(
+        stage_models,
+        stage_model_paths,
+        config,
+        game_dir,
+        args.char,
+        args.attempts,
+        ram=args.ram,
+    )
 
     # Summary
     print("-" * 86)
@@ -303,7 +309,9 @@ def main():
 
     # Tournament simulation
     if args.tournament > 0:
-        simulate_tournaments(stage_models, config, game_dir, args.char, args.tournament)
+        simulate_tournaments(
+            stage_models, config, game_dir, args.char, args.tournament, ram=args.ram
+        )
 
 
 if __name__ == "__main__":

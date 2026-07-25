@@ -1,0 +1,16 @@
+{
+  "info": {
+    "altitude": {
+      "address": 88,
+      "type": "<u2"
+    },
+    "pitch_control": {
+      "address": 93,
+      "type": "|i1"
+    },
+    "heading_raw": {
+      "address": 96,
+      "type": "<u2"
+    }
+  }
+}

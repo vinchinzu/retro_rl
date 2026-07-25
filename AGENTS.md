@@ -6,9 +6,21 @@ corresponding game directory.
 
 ## Shared Layout
 
-- `retro_harness/`: shared emulator/session/input utilities
+- `retro_harness/`: shared emulator/session/input/state utilities;
+  `retro_harness.snes` is the concise new-game facade (`GameSpec`, named
+  actions, `StartupPlan`, menu/input scripts)
+- `retro_harness/editor/`: game-agnostic Qt editor ↔ subprocess
+  bridge (stdio JSON protocol, script segments, map RGBA helpers, recording,
+  `EmbeddedEmulatorPanelBase` for docked emulator UI, `CursorAgentPanel` for
+  embedded Cursor SDK agent sessions)
+- `retro_harness/editor_launcher.py`: shared entry point to launch registered
+  game editors (`uv run python -m retro_harness.editor_launcher --list`)
 - `fighters_common/`: shared fighting-game env/training code
 - `platformer_common/`: shared platformer runtime/optimizer code
+- `snes_oneshot/`: shared scripted one-shot policy helpers (GameState,
+  behavior trees, combat/cursor policy, watchdog, RAM discovery); generic
+  controller primitives live in `retro_harness`. Program
+  notes: `snes_oneshot/docs/EASIEST_SNES_GAMES.md`
 - `<game>/`: game-specific code, integrations, docs, assets, and outputs
 - `roms/`: shared ROM storage (gitignored)
 
@@ -23,6 +35,9 @@ corresponding game directory.
   `<game>/scripts/archive/`.
 - Generated artifacts belong in the owning game folder (`models/`, `logs/`,
   `recordings/`, `debug_*`, `maps/`, and similar), not in the repo root.
+- Game editors can embed the shared Cursor SDK agent dock from
+  `retro_harness/editor/cursor_agent_panel.py` (View → Agent Panel). Install
+  with `uv sync --extra cursor` and set `CURSOR_API_KEY`.
 - Only add or expand top-level docs when the content is genuinely shared across
   multiple games.
 

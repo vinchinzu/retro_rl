@@ -29,15 +29,15 @@ if SCRIPT_DIR not in sys.path:
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-import harvest_bot as hb
-from farm_clearer import (
+from harvest.runtime import harvest_bot as hb
+from harvest.tasks.farm_clearer import (
     Point, Tool, DebrisType, TileScanner,
     ADDR_X, ADDR_Y, ADDR_TOOL, ADDR_TILEMAP, ADDR_MAP, ADDR_INPUT_LOCK,
     TILE_SIZE, MAP_WIDTH, use_tool,
 )
-from task_recorder import Task
+from harvest.runtime.task_recorder import Task
 from retro_harness import TaskStatus
-from grass_planter import (
+from harvest.tasks.grass_planter import (
     GrassPlantTask, TILLABLE_TILES, PLANTABLE_TILES, PLANTED_GRASS_TILE,
     DEFAULT_BOUNDS,
 )
@@ -311,8 +311,8 @@ def test_fence_clear_loop() -> TestResult:
     if not task.start_state or not load_state_bytes(task.start_state):
         return TestResult("L6 fence clear loop", "SKIP", "missing start_state")
 
-    from harness_runtime import HarnessRunner
-    from fence_flow import FenceClearLoopTask
+    from harvest.runtime.harness_runtime import HarnessRunner
+    from harvest.tasks.fence_flow import FenceClearLoopTask
 
     env = make_env(task.start_state)
     env.reset()
@@ -493,7 +493,7 @@ def test_nav_to_shed() -> TestResult:
     ram = env.get_ram()
 
     # Test that pathfinding can find a path from player to shed
-    from farm_clearer import TileScanner, Pathfinder, Navigator, get_pos_from_ram
+    from harvest.tasks.farm_clearer import TileScanner, Pathfinder, Navigator, get_pos_from_ram
     scanner = TileScanner()
     pathfinder = Pathfinder(scanner)
     navigator = Navigator(pathfinder)
@@ -525,7 +525,7 @@ def test_nav_deep_field_to_shed() -> TestResult:
     ram = env.get_ram()
 
     # Test that pathfinding can find a path
-    from farm_clearer import TileScanner, Pathfinder, Navigator, get_pos_from_ram
+    from harvest.tasks.farm_clearer import TileScanner, Pathfinder, Navigator, get_pos_from_ram
     scanner = TileScanner()
     pathfinder = Pathfinder(scanner)
     navigator = Navigator(pathfinder)
@@ -770,7 +770,7 @@ def test_grass_till_run() -> TestResult:
     if not load_state_bytes(state):
         return TestResult("L8 grass till run", "SKIP", "missing state")
 
-    from harness_runtime import HarnessRunner
+    from harvest.runtime.harness_runtime import HarnessRunner
     from retro_harness import WorldState
 
     env = make_env(state)
@@ -798,7 +798,7 @@ def test_grass_plant_run() -> TestResult:
     if not load_state_bytes(state):
         return TestResult("L8 grass plant run", "SKIP", "missing state")
 
-    from harness_runtime import HarnessRunner
+    from harvest.runtime.harness_runtime import HarnessRunner
 
     env = make_env(state)
     env.reset()
@@ -844,7 +844,7 @@ def test_grass_plant_run() -> TestResult:
 
 def test_day_plan_can_start() -> TestResult:
     """Verify that required recorded tasks exist for the day plan."""
-    from day_plan import PHASE_SEQUENCE
+    from harvest.planner.day_plan import PHASE_SEQUENCE
     missing = []
     for spec in PHASE_SEQUENCE:
         if spec.kind == "recorded":
@@ -868,8 +868,8 @@ def test_day_plan_exit_house() -> TestResult:
     if not load_state_bytes(state):
         return TestResult("L9 day plan exit house", "SKIP", "missing state")
 
-    from day_plan import ExitBuildingTask
-    from harness_runtime import HarnessRunner
+    from harvest.planner.day_plan import ExitBuildingTask
+    from harvest.runtime.harness_runtime import HarnessRunner
     from retro_harness import WorldState as WS
 
     env = make_env(state)
@@ -897,7 +897,7 @@ def test_day_plan_exit_house() -> TestResult:
 
 def test_spring4_can_start() -> TestResult:
     """Verify that required recorded tasks exist for the spring4 day plan."""
-    from day_plan import SPRING4_PHASES
+    from harvest.planner.day_plan import SPRING4_PHASES
     missing = []
     for spec in SPRING4_PHASES:
         if spec.kind == "recorded":
@@ -922,8 +922,8 @@ def test_spring4_day_plan() -> TestResult:
     if not load_state_bytes(state):
         return TestResult("L9 spring4 day plan", "SKIP", "missing state")
 
-    from day_plan import DayPlanTask, SPRING4_PHASES
-    from harness_runtime import HarnessRunner
+    from harvest.planner.day_plan import DayPlanTask, SPRING4_PHASES
+    from harvest.runtime.harness_runtime import HarnessRunner
 
     env = make_env(state)
     env.reset()
@@ -973,8 +973,8 @@ def test_day_plan_nav_phase() -> TestResult:
         if not load_state_bytes(state):
             return TestResult("L9 day plan nav phase", "SKIP", "missing state")
 
-    from day_plan import NavTask
-    from harness_runtime import HarnessRunner
+    from harvest.planner.day_plan import NavTask
+    from harvest.runtime.harness_runtime import HarnessRunner
 
     env = make_env(state)
     env.reset()
@@ -1013,8 +1013,8 @@ def test_day_plan_nav_phase() -> TestResult:
 
 def test_map_config_registry() -> TestResult:
     """Verify farm config exists in MAP_REGISTRY, walkable tiles match farm_clearer."""
-    from map_config import MAP_REGISTRY, FARM_WALKABLE, get_walkable_tiles
-    from farm_clearer import WALKABLE_TILES
+    from harvest.maps.map_config import MAP_REGISTRY, FARM_WALKABLE, get_walkable_tiles
+    from harvest.tasks.farm_clearer import WALKABLE_TILES
 
     if 0x00 not in MAP_REGISTRY:
         return TestResult("L10 map config registry", "FAIL", "farm (0x00) missing from MAP_REGISTRY")
@@ -1043,7 +1043,7 @@ def test_map_config_registry() -> TestResult:
 
 def test_pathfinder_walkable_injection() -> TestResult:
     """Verify Pathfinder uses injected walkable_tiles set."""
-    from farm_clearer import Pathfinder, TileScanner, WALKABLE_TILES
+    from harvest.tasks.farm_clearer import Pathfinder, TileScanner, WALKABLE_TILES
 
     scanner = TileScanner()
 
@@ -1065,7 +1065,7 @@ def test_pathfinder_walkable_injection() -> TestResult:
 
 def test_berry_route_waypoints() -> TestResult:
     """Verify berry_ship route is well-formed."""
-    from map_config import ROUTES, MAP_REGISTRY
+    from harvest.maps.map_config import ROUTES, MAP_REGISTRY
 
     route = ROUTES.get("berry_ship")
     if not route:
@@ -1100,9 +1100,9 @@ def test_multi_nav_farm_exit() -> TestResult:
     if not load_state_bytes(state):
         return TestResult("L10 multi_nav farm exit", "SKIP", "missing state")
 
-    from day_plan import MultiMapNavTask
-    from map_config import Waypoint
-    from harness_runtime import HarnessRunner
+    from harvest.planner.day_plan import MultiMapNavTask
+    from harvest.maps.map_config import Waypoint
+    from harvest.runtime.harness_runtime import HarnessRunner
 
     env = make_env(state)
     env.reset()

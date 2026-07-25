@@ -1,0 +1,49 @@
+"""Route table package for deterministic and searchable shot policies."""
+
+from hals_golf.tasks.routes.metal import (
+    METAL_HOLE_CLUB_PLANS,
+    METAL_HOLE_PUTT_PLANS,
+    METAL_HOLE_SHOT_PLANS,
+    METAL_STROKE_BEST_PARTIAL,
+    METAL_STROKE_PARS,
+    METAL_STROKE_WORST_HOLES,
+)
+from hals_golf.tasks.routes.pro import (
+    PRO_HOLE_CLUB_PLANS,
+    PRO_HOLE_PUTT_PLANS,
+    PRO_HOLE_SHOT_PLANS,
+)
+from hals_golf.tasks.routes.tables import (
+    AMATEUR_PARS,
+    HOLE_CLUB_PLANS,
+    HOLE_PUTT_PLANS,
+    HOLE_SHOT_PLANS,
+    VS_HAL_HOLE_CLUB_PLANS,
+    VS_HAL_HOLE_PUTT_PLANS,
+    VS_HAL_HOLE_SHOT_PLANS,
+    VS_HAL_MATCH_HOLES,
+    VS_HAL_METAL_HOLE_CLUB_PLANS,
+    VS_HAL_METAL_HOLE_SHOT_PLANS,
+)
+
+__all__ = [
+    "AMATEUR_PARS",
+    "HOLE_CLUB_PLANS",
+    "HOLE_PUTT_PLANS",
+    "HOLE_SHOT_PLANS",
+    "METAL_HOLE_CLUB_PLANS",
+    "METAL_HOLE_PUTT_PLANS",
+    "METAL_HOLE_SHOT_PLANS",
+    "METAL_STROKE_BEST_PARTIAL",
+    "METAL_STROKE_PARS",
+    "METAL_STROKE_WORST_HOLES",
+    "PRO_HOLE_CLUB_PLANS",
+    "PRO_HOLE_PUTT_PLANS",
+    "PRO_HOLE_SHOT_PLANS",
+    "VS_HAL_HOLE_CLUB_PLANS",
+    "VS_HAL_HOLE_PUTT_PLANS",
+    "VS_HAL_HOLE_SHOT_PLANS",
+    "VS_HAL_MATCH_HOLES",
+    "VS_HAL_METAL_HOLE_CLUB_PLANS",
+    "VS_HAL_METAL_HOLE_SHOT_PLANS",
+]

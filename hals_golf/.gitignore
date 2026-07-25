@@ -1,0 +1,13 @@
+roms/
+*.smc
+*.sfc
+*.srm
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+debug_frames/
+logs/
+recordings/
+*.pyc
+.DS_Store

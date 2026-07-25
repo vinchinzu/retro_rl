@@ -17,7 +17,7 @@ fi
 
 if [[ "${1:-}" == "clear" ]]; then
     shift
-    "$VENV_PYTHON" "$SCRIPT_DIR/harvest_bot.py" play --autoplay "$@"
+    "$VENV_PYTHON" -m harvest.runtime.harvest_bot play --autoplay "$@"
 else
-    "$VENV_PYTHON" "$SCRIPT_DIR/harvest_bot.py" "$@"
+    "$VENV_PYTHON" -m harvest.runtime.harvest_bot "$@"
 fi

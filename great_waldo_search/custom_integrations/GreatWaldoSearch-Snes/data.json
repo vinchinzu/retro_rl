@@ -1,0 +1,24 @@
+{
+  "info": {
+    "cursor_x": {
+      "address": 533,
+      "type": "|u1"
+    },
+    "cursor_y": {
+      "address": 535,
+      "type": "|u1"
+    },
+    "score_lo": {
+      "address": 71,
+      "type": "|u1"
+    },
+    "score_hi": {
+      "address": 72,
+      "type": "|u1"
+    },
+    "found_flag": {
+      "address": 445,
+      "type": "|u1"
+    }
+  }
+}

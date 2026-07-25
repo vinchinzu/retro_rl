@@ -68,6 +68,8 @@ retro_rl/
 Today the root harness already provides:
 
 - stable-retro environment creation plus custom integration discovery
+- a concise `retro_harness.snes` new-game facade with `GameSpec`, canonical
+  named actions, and title/menu startup plans
 - keyboard/controller input handling with SNES button mapping
 - a generic `PlaySession` with save/load, turbo, HUD hooks, and bot/human hot-swap
 - task abstractions via `Task`, `TaskResult`, `WorldState`, and `BotRunner`
@@ -111,7 +113,7 @@ The current Bronze proof path in `alttp/` is now concrete: cold boot `YazeSlot00
 | Directory | Game |
 |-----------|------|
 | `alttp/` | The Legend of Zelda: A Link to the Past -- top-down adventure proving ground |
-| `super_metroid_rl/` | Super Metroid -- RL training (PPO + BC), navigation, recording |
+| `super_metroid_rl/` | Super Metroid -- assisted scripted full-clear plan; integration next |
 | `donkey_kong_country/` | Donkey Kong Country -- route optimization, hill climbing |
 | `mortal_kombat/` | Mortal Kombat (SNES) -- multi-character PPO speedrun |
 | `mortal_kombat_ii/` | Mortal Kombat II (SNES) |
@@ -126,13 +128,14 @@ The current Bronze proof path in `alttp/` is now concrete: cold boot `YazeSlot00
 |-----------|---------|
 | `alttp/yaze/` | Yet Another Zelda Editor -- C++ ALTTP ROM/SRAM tooling |
 | `alttp/asset_editor/` | ALTTP asset editor and interactive play |
-| `super_metroid_rl/super_metroid_editor/` | Super Metroid ROM editor |
 | `super_mario_editor/` | Super Mario level editor |
 
 ## Related Docs
 
 - [`BENCHMARK_STATUS.md`](./BENCHMARK_STATUS.md): benchmark tiers, status board, and ALTTP-first roadmap
 - [`ADDING_GAMES.md`](./ADDING_GAMES.md): add a new stable-retro integration and game runner
+- [`snes_oneshot/docs/FULL_RUN_PROCESS.md`](./snes_oneshot/docs/FULL_RUN_PROCESS.md): promote checkpoints into verified continuous clears
+- [`super_metroid_rl/docs/plan.md`](./super_metroid_rl/docs/plan.md): assisted Super Metroid full-run kickoff plan
 - [`ARCHITECTURE_AND_CLEANUP_PLAN.md`](./ARCHITECTURE_AND_CLEANUP_PLAN.md): lessons learned and cleanup priorities
 - [`retro_harness/docs/EMULATOR_FEATURES.md`](./retro_harness/docs/EMULATOR_FEATURES.md): emulator/runtime features to consolidate into `retro_harness/`
 - [`fighters_common/docs/`](./fighters_common/docs/): fighters training guides, multi-game setup, waypoint workflow

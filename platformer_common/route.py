@@ -121,19 +121,30 @@ def find_best_recording(config: LevelConfig) -> Path | None:
 def _load_practice_seeds(
     practice_dir: Path,
     min_frames: int = 60,
-) -> list[list[int]]:
-    """Load action-index lists from practice attempt files."""
+) -> list[tuple[list[int] | list[list[int]], bool]]:
+    """Load practice attempts as ``(frames, is_raw)`` seed pairs.
+
+    Faithful companion ``*_raw.json`` inputs take precedence. Older attempts
+    that only contain action indices remain supported as a fallback.
+    """
+    from platformer_common.bk2_extract import load_raw_buttons
+
     seed_files = sorted(practice_dir.glob("attempt_*.json"))
     seed_files = [f for f in seed_files if "_raw" not in f.stem]
 
-    seeds: list[list[int]] = []
+    seeds: list[tuple[list[int] | list[list[int]], bool]] = []
     for f in seed_files:
         try:
+            raw = load_raw_buttons(f)
+            if raw is not None:
+                if len(raw) >= min_frames:
+                    seeds.append((raw, True))
+                continue
             data = json.loads(f.read_text())
             actions = data["actions"]
             if len(actions) >= min_frames:
-                seeds.append(actions)
-        except Exception:
+                seeds.append((actions, False))
+        except (KeyError, OSError, TypeError, json.JSONDecodeError):
             pass
     return seeds
 
@@ -947,8 +958,11 @@ def chain_optimize(
 
     Repeats until all segments chain or a segment can't be fixed.
     """
-    from platformer_common.actions import buttons_to_action_index, DEFAULT_PLATFORMER_ACTIONS
-    from platformer_common.bk2_extract import load_raw_buttons
+    from platformer_common.actions import (
+        DEFAULT_PLATFORMER_ACTIONS,
+        action_index_to_buttons,
+        buttons_to_action_index,
+    )
     from platformer_common.hillclimb import hillclimb
 
     max_rounds = len(route.segments) * 2  # safety limit
@@ -1102,6 +1116,7 @@ def chain_optimize(
                 ev = Evaluator(config, start_state=state_name)
                 best_result = ev.evaluate(padded_indices, early_terminate=False)
                 ev.close()
+            best_actions_raw = False
 
         else:
             # No alignment works — check for practice recordings to use GA
@@ -1109,30 +1124,62 @@ def chain_optimize(
             practice_seeds = _load_practice_seeds(practice_dir) if practice_dir.exists() else []
 
             if len(practice_seeds) >= 2:
-                # Multi-seed GA: use practice recordings for diverse crossover
-                from platformer_common.genetic import run_ga
+                # Preserve faithful practice input whenever paired raw files
+                # exist. Legacy indexed seeds can join the raw population via
+                # their exact action-table representation.
+                from platformer_common.genetic import run_ga, run_ga_raw
 
                 print(f"  No alignment found. Using GA with {len(practice_seeds)} practice seeds")
                 evaluator = Evaluator(config, start_state=state_name)
-                ga_best = run_ga(
-                    seed_actions=practice_seeds,
-                    evaluator=evaluator,
-                    output_dir=config.runs_dir / "chained",
-                    verbose=verbose,
-                )
+                best_actions_raw = any(is_raw_seed for _, is_raw_seed in practice_seeds)
+                if best_actions_raw:
+                    raw_seeds = [
+                        frames
+                        if is_raw_seed
+                        else [
+                            action_index_to_buttons(action, action_table=action_table)
+                            for action in frames
+                        ]
+                        for frames, is_raw_seed in practice_seeds
+                    ]
+                    ga_best = run_ga_raw(
+                        seeds=raw_seeds,
+                        evaluator=evaluator,
+                        output_dir=config.runs_dir / "chained",
+                        verbose=verbose,
+                    )
+                else:
+                    indexed_seeds = [frames for frames, _ in practice_seeds]
+                    ga_best = run_ga(
+                        seed_actions=indexed_seeds,
+                        evaluator=evaluator,
+                        output_dir=config.runs_dir / "chained",
+                        verbose=verbose,
+                    )
                 best_actions = ga_best.actions
                 best_result = ga_best.result if ga_best.result else evaluator.evaluate(best_actions)
 
                 # If GA found completion, hill-climb for speed
                 if best_result.completed and iterations > 0:
                     print(f"  GA completed! Hill-climbing for speed ({iterations} iters)...")
-                    best_actions, best_result = hillclimb(
-                        actions=best_actions,
-                        evaluator=evaluator,
-                        max_iterations=iterations,
-                        output_dir=config.runs_dir / "chained",
-                        verbose=verbose,
-                    )
+                    if best_actions_raw:
+                        from platformer_common.hillclimb_raw import hillclimb_raw
+
+                        best_actions, best_result = hillclimb_raw(
+                            raw_buttons=best_actions,
+                            evaluator=evaluator,
+                            max_iterations=iterations,
+                            output_dir=config.runs_dir / "chained",
+                            verbose=verbose,
+                        )
+                    else:
+                        best_actions, best_result = hillclimb(
+                            actions=best_actions,
+                            evaluator=evaluator,
+                            max_iterations=iterations,
+                            output_dir=config.runs_dir / "chained",
+                            verbose=verbose,
+                        )
                 evaluator.close()
             else:
                 # Fallback: hill climb from best available seed.
@@ -1180,13 +1227,14 @@ def chain_optimize(
                     verbose=verbose,
                 )
                 evaluator.close()
+                best_actions_raw = False
 
         if not best_result.completed:
             # Save partial progress to chained/ for incremental improvement
             partial_path = config.runs_dir / "chained" / "hillclimb_best_final.json"
             partial_path.parent.mkdir(parents=True, exist_ok=True)
             partial_data = {
-                "actions": best_actions,
+                "raw_buttons" if best_actions_raw else "actions": best_actions,
                 "num_frames": len(best_actions),
                 "fitness": best_result.fitness,
                 "completed": False,
@@ -1209,7 +1257,7 @@ def chain_optimize(
         # Save as the primary hillclimb result so chain-live picks it up
         optimized_path = config.runs_dir / "hillclimb_best_final.json"
         data = {
-            "actions": best_actions,
+            "raw_buttons" if best_actions_raw else "actions": best_actions,
             "num_frames": len(best_actions),
             "fitness": best_result.fitness,
             "completed": best_result.completed,

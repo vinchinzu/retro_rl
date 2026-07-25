@@ -1,0 +1,24 @@
+{
+  "info": {
+    "speed_raw": {
+      "address": 2,
+      "type": "<u2"
+    },
+    "race_state": {
+      "address": 70,
+      "type": "|u1"
+    },
+    "track_state": {
+      "address": 71,
+      "type": "|u1"
+    },
+    "lateral": {
+      "address": 127,
+      "type": "<u2"
+    },
+    "lateral_fine": {
+      "address": 166,
+      "type": "<u2"
+    }
+  }
+}

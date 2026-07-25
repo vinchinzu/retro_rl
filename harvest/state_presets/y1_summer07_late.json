@@ -1,0 +1,24 @@
+{
+  "schema": "harvest_state_preset_v1",
+  "name": "y1_summer07_late",
+  "base_state": "latest",
+  "output_state": "Y1_Summer07_late",
+  "description": "Pinned late-summer checkpoint for fall/winter autonomy soaks.",
+  "notes": [
+    "Copied from latest (Y1 Summer 7) with plantable summer seeds injected.",
+    "Potato seed stock remains from spring but is ignored by seasonal policy.",
+    "buy_summer recording still ends in the shop; use this preset until a return slice exists.",
+    "Target soak: --state Y1_Summer07_late --until-season 3 --until-day 30"
+  ],
+  "scalars": {
+    "corn_seeds": 12,
+    "tomato_seeds": 12,
+    "money": 12000
+  },
+  "expected_initial": {
+    "season": 1,
+    "day": 7,
+    "corn_seeds": 12,
+    "tomato_seeds": 12
+  }
+}

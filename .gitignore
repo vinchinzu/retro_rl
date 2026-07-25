@@ -1,129 +1,208 @@
-# Python
+# Public-repository safety policy
+#
+# Keep source, tests, docs, and emulator integration metadata. Keep local ROMs,
+# save states, recordings, ROM-derived media/data, trained models, caches, and
+# third-party working clones out of Git at every directory depth.
+
+# Python caches, build output, and test/tool state
 __pycache__/
-*.py[oc]
+*.py[cod]
 *.pyd
 *.so
 *.egg-info/
 build/
 dist/
+wheels/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
 
-# Virtual environments
+# Virtual environments and local environment/secrets
 **/.venv/
 **/venv/
-.env/
+.env
+.env.*
+!.env.example
+!.env.sample
 retro_env/
+*.pem
+*.key
+*.p12
+credentials*.json
+secrets*.json
 
-# OS/editor
+# OS and editor state
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# ROMs (copyright-protected)
+# ROM directories and cartridge/disc images
 roms/
 **/roms/
-**/custom_integrations/**/rom.*
+*.rom
 *.sfc
 *.smc
+*.swc
+*.fig
 *.nes
+*.fds
 *.gba
 *.gb
 *.gbc
 *.gen
+*.sms
 *.gg
+*.n64
+*.z64
+*.v64
+*.iso
+*.cue
+*.chd
+*.wad
+*.bin
 *.undo
 
-# Trained models
-**/models/*.zip
-**/models/*.pth
+# Emulator saves, save states, and state deltas
+**/saves/
+*.state
+*.state.*
+*.sav
+*.save
+*.srm
+*.rtc
+*.frm
+*.delta
 
-# Logs and training output
-*.log
-**/logs/
-*.monitor.csv
-**/events.out.tfevents.*
-
-# Recordings, demos, replays
+# Recordings, replays, TAS input, and captured media
+**/recording/
 **/recordings/
+**/replays/
 **/demos/
+**/tas/
 *.bk2
-*.npz
-*.npy
+*.fm2
 *.replay.jsonl
+*.jsonl
+*.mp4
+*.mkv
+*.avi
+*.webm
+*.mov
+*.ogv
+*.mpeg
+*.mpg
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.aac
+*.m4a
+*.spc
+*.nsf
+*.gbs
+*.vgm
+*.brr
 
-# Screenshots, montages, debug screens
+# ROM-derived or otherwise non-redistributable visual/game assets
 **/screenshots/
 **/state_screenshots/
 **/montages/
 **/debug_screens/
-
-# Images (maps already tracked are kept, but no new ones)
+**/debug_frames/
 *.png
 *.gif
 *.jpg
 *.jpeg
 *.bmp
 *.webp
+*.tif
+*.tiff
+*.ico
+*.svg
+*.pal
+*.chr
+*.ttf
+*.otf
+*.pdf
+*.ips
+*.bps
+*.xdelta
 
-# Videos
-*.mp4
-*.mkv
-*.avi
-*.webm
-*.mov
+# Trained models, numeric dumps, archives, and generated datasets
+**/models/
+**/checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.pkl
+*.pickle
+*.npy
+*.npz
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.db
+*.sqlite
+*.sqlite3
 
-# Archive directories (old experiments)
-**/archive/
-
-# Optimizer run outputs
+# Logs, training runs, optimizer output, and debugging artifacts
+**/logs/
+**/wandb/
+**/tensorboard/
 **/optimizer/runs/
-
-# Manual/stray save states (custom_integrations states are kept)
-ManualSave.state
-QuickSave.state
-GTOutside.state
-/*.state
-
-# Personal/session notes
-onotes.md
-TRAINING_IN_PROGRESS.md
-
-# Runtime data
+**/debug_*/
+*.log
+*.monitor.csv
+**/events.out.tfevents.*
 best_times.json
 split_runs.jsonl
+**/experiments/results.*
 
-# Save files (SRAM, etc.)
-**/saves/
-*.srm
-*.FRM
-
-# Backup files
+# Stale experiments and session-specific material
+**/archive/
+onotes.md
+TRAINING_IN_PROGRESS.md
+monitor_all_training.sh
 *.bak
-
-# DKC misc
+**/.*_last_*
 donkey_kong_country/button
 donkey_kong_country/notes
+harvest/tasks/
 
-# Session-specific scripts
-monitor_all_training.sh
+# Recorded input policies and ROM-derived navigation/map exports
+super_metroid/policies/
+super_metroid/maps/*
+!super_metroid/maps/README.md
 
-# Claude Code / agent config
+# Agent/session configuration and local task databases
 .claude/
 **/CLAUDE.md
 **/.agents.md
 **/.beads/
+**/.bv/
 
-# Third-party / external repos / editor backups (clone separately)
-alttp/
-super_metroid_rl/super_metroid_editor/
-super_metroid_rl/super_metroid_editor_*/
-super_metroid_rl/refs/
+# Third-party/reference source trees are cloned separately.
 harvest/HM-Decomp/
+alttp/
+uwnh/
+super_metroid_rl/
+SMW/refs/*
+!SMW/refs/README.md
+SMW/tools/external/*
+!SMW/tools/external/README.md
 
-# Build artifacts
+# Other generated build/runtime trees
 **/.gradle/
 **/boss_data/
-
-# Harvest tasks (action recordings)
-harvest/tasks/

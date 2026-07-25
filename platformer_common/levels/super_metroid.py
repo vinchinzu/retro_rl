@@ -9,7 +9,7 @@ levels like DKC.
 """
 
 from platformer_common.level_config import PlatformerRAM, LevelConfig, register_level
-from platformer_common.actions import _make, NUM_BUTTONS
+from platformer_common.actions import NUM_BUTTONS
 
 # -- SNES button indices (retro env order) -----------------------------------
 _B, _Y, _SELECT, _START, _UP, _DOWN, _LEFT, _RIGHT, _A, _X, _L, _R = range(12)
@@ -22,6 +22,13 @@ SM_RAM = PlatformerRAM(
     level_id=(0x079B, "u16"),       # Current room ID (2-byte pointer)
     extras={
         "health": (0x09C2, "u16"),  # Samus energy (health)
+        "max_health": (0x09C4, "u16"),
+        "missiles": (0x09C6, "u16"),
+        "max_missiles": (0x09C8, "u16"),
+        "super_missiles": (0x09CA, "u16"),
+        "max_super_missiles": (0x09CC, "u16"),
+        "game_state": (0x0998, "u16"),
+        "door_transition": (0x0797, "u16"),
     },
 )
 
@@ -93,7 +100,7 @@ def _sm_config(
         level_id=level_id,
         display_name=display_name,
         game_name="SuperMetroid-Snes",
-        game_dir_name="super_metroid_rl",
+        game_dir_name="super_metroid",
         start_state=start_state,
         ram=SM_RAM,
         target_level_id=start_room_id,
