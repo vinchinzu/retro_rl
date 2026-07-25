@@ -1,3 +1,5 @@
+> **Archived research essay.** Not the program roadmap. See [../GAME_SELECTION_NOTES.md](../GAME_SELECTION_NOTES.md), [../../../docs/GAME_MATRIX.md](../../../docs/GAME_MATRIX.md), and [../../../docs/DEVELOPMENT_LADDER.md](../../../docs/DEVELOPMENT_LADDER.md).
+
 # Easiest SNES Games for AI Agents to Complete Through Emulator Control and RAM Inspection
 
 The goal is not merely to train an agent that becomes competent after thousands
@@ -17,7 +19,7 @@ the game, identify useful state variables, construct a strategy, and then
 execute that strategy reliably from the title screen to the ending.
 
 The canonical execution order and current evidence are tracked in
-[STATUS.md](STATUS.md). That table distinguishes checkpoint-based segment
+[STATUS.md](../STATUS.md). That table distinguishes checkpoint-based segment
 progress, continuous runs, and available videos.
 
 ## Define “One-Shot” Carefully
@@ -62,7 +64,7 @@ run” as a hard gate. Prefer:
 Reliable automation beats one-shot purity early on.
 
 Once a game advances beyond isolated segments, follow the shared
-[scripted full-run development process](FULL_RUN_PROCESS.md). In particular,
+[scripted full-run development process](../FULL_RUN_PROCESS.md). In particular,
 “clears from a clean checkpoint” and “clears from the entry produced by the
 continuous route” are separate milestones.
 

@@ -1,9 +1,18 @@
 # Status — The Magical Quest Starring Mickey Mouse
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 7 |
-| Tier | 3 |
+| Current maturity | M2 |
+| Best verified result | Controllable Stage 1 checkpoint |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
+| Field | Value |
+|-------|-------|
 | Status | **boot verified; controllable Stage 1 checkpoint** |
 | Integration | `MagicalQuest-Snes` |
 | ROM zip | `Magical Quest starring Mickey Mouse, The.zip` |

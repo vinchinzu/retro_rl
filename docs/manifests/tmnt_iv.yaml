@@ -1,0 +1,24 @@
+game: tmnt_iv
+title: "Teenage Mutant Ninja Turtles IV: Turtles in Time"
+directory: tmnt_iv
+genre_tracks:
+  - linear_combat
+capability_phase: 1
+project_state: verified
+maturity: M8
+runtime_class: bronze
+intervention_class: resource_assisted+protection_assisted
+popularity: high
+engineering_effort: medium
+transfer_value: high
+ending_definition: hard-mode staff/cast credits from power-on
+start_contract: power_on
+completion_contract: full_credits_hard
+best_manifest: tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json
+best_video: tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4
+assist_contract: tmnt_iv/docs/ASSIST_CONTRACT.md
+status_doc: tmnt_iv/docs/STATUS.md
+plan_doc: tmnt_iv/docs/plan.md
+last_verified: 2026-07-24
+blocker: reduce Technodrome/Starbase assists and form-2 iframe guard
+notes: Flagship linear-combat continuous clear; not a ladder rank.

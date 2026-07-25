@@ -1,0 +1,24 @@
+game: smw
+title: "Super Mario World"
+directory: SMW
+genre_tracks:
+  - platforming
+capability_phase: 3
+project_state: instrumented
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: very_high
+engineering_effort: very_high
+transfer_value: very_high
+ending_definition: credits after Bowser / published exit route
+start_contract: power_on_or_level_state
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: SMW/README.md
+plan_doc: SMW/docs/autoplay_speedrun_plan.md
+last_verified: 2026-04-29
+blocker: normalize route tooling into maturity gates and continuous clear path
+notes: Authoritative directory is SMW/ (not super_mario_bros/).

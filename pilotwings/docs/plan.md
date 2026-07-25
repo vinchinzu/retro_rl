@@ -1,7 +1,7 @@
 # Plan — Pilotwings
 
 Ladder #8 (tier 2). See
-`snes_oneshot/docs/EASIEST_SNES_GAMES.md` for program context.
+`snes_oneshot/docs/GAME_SELECTION_NOTES.md` for program context.
 
 ## Control style
 

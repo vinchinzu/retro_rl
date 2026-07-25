@@ -1,14 +1,19 @@
 # Scripted full-run development process
 
 This is the shared workflow for turning a bootable SNES integration into a
-verified reset-to-ending policy. It complements
-[EASIEST_SNES_GAMES.md](EASIEST_SNES_GAMES.md): that document chooses games;
-this one defines how to finish them reliably.
+verified reset-to-ending policy. Game selection lives in
+[GAME_SELECTION_NOTES.md](GAME_SELECTION_NOTES.md) and the live board in
+[../../docs/GAME_MATRIX.md](../../docs/GAME_MATRIX.md). Maturity gates M0–M8 are
+defined in [../../docs/DEVELOPMENT_LADDER.md](../../docs/DEVELOPMENT_LADDER.md).
 
 The central rule is:
 
-> A segment is not ready because it clears from one clean checkpoint. It is
-> ready when it also clears from the entry state produced by the real route.
+> A checkpoint clear is not route-ready until it also clears from the state
+> produced by the real preceding route.
+
+Equivalently: a segment is not ready because it clears from one clean
+checkpoint. It is ready when it also clears from the entry state produced by
+the real route.
 
 TMNT IV made this distinction concrete: the boss checkpoint cleared, while the
 continuous route entered the same fight pinned behind a wall. Natural-entry
@@ -67,23 +72,32 @@ Each game should converge on:
 └── custom_integrations/<GameId>/
 ```
 
-`STATUS.md` states only proven results. `plan.md` owns future milestones.
-`ram_map.md` records address confidence and probe evidence. Generated states,
-logs, reports, screenshots, and video stay in the game directory.
+`STATUS.md` states only proven results (maturity gate, best verified result,
+last verification, runtime class, intervention class, regressions, evidence).
+`plan.md` owns future work only (bottleneck, next acceptance test, next three
+milestones, deferred ideas, infrastructure blockers). `AGENTS.md` stays
+operational (commands, constraints, traps). `ram_map.md` records each address
+with width, meaning, confidence, read/write, evidence, and consumers.
+Generated states, logs, reports, screenshots, and video stay in the game
+directory.
 
 ## 3. Build in gates, not one long leap
 
-| Gate | Required evidence |
-|------|-------------------|
-| Contract | Start, finish, assists, forbidden actions, and metrics documented |
-| Boot | Reset reaches a RAM-verified first controllable frame |
-| Instrumentation | Player, mode, progress, transitions, death, and completion mapped |
-| Segment | One checkpoint clears repeatedly with a hard timeout |
-| Natural entry | The segment clears from a state captured from its real predecessor |
-| Suffix | The predecessor plus target segment clears without a state load |
-| Route | Every required milestone and transition has an owner and stop predicate |
-| Full dry run | One reset-to-ending session passes every integrity invariant |
-| Capture | A previously dry-verified policy produces the final audiovisual artifact |
+| Gate | Name | Required evidence |
+|------|------|-------------------|
+| M0 | Contract | Start, finish, assists, forbidden actions, and metrics documented |
+| M1 | Integration and boot | Reset reaches a RAM-verified first controllable frame |
+| M2 | Instrumentation | Player, mode, progress, transitions, death, and completion mapped |
+| M3 | Isolated segment | One checkpoint clears repeatedly with a hard timeout |
+| M4 | Natural-entry segment | The segment clears from a state captured from its real predecessor |
+| M5 | Chained suffix | The predecessor plus target segment clears without a state load |
+| M6 | Complete route graph | Every required milestone and transition has an owner and stop predicate |
+| M7 | Continuous dry run | One reset-to-ending session passes every integrity invariant |
+| M8 | Verified capture | A previously dry-verified policy produces the final audiovisual artifact |
+
+Local `docs/STATUS.md` reports exactly one current maturity gate. Runtime
+observation class and intervention class are independent labels; see
+[../../docs/BENCHMARK_SPEC.md](../../docs/BENCHMARK_SPEC.md).
 
 For nonlinear games, the route is a graph of rooms, doors, inventory
 requirements, bosses, and events. Do not force it into a stage-number list.

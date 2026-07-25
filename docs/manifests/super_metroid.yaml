@@ -1,0 +1,24 @@
+game: super_metroid
+title: "Super Metroid"
+directory: super_metroid
+genre_tracks:
+  - metroidvania_navigation
+capability_phase: 4
+project_state: route-building
+maturity: M5
+runtime_class: bronze
+intervention_class: resource_assisted
+popularity: very_high
+engineering_effort: high
+transfer_value: very_high
+ending_definition: verified ending/credits after escape
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: super_metroid/recordings/start_to_spore_spawn.json
+best_video: super_metroid/recordings/start_to_spore_spawn.mp4
+assist_contract: super_metroid/docs/ASSIST_CONTRACT.md
+status_doc: super_metroid/docs/STATUS.md
+plan_doc: super_metroid/docs/plan.md
+last_verified: 2026-07-24
+blocker: continue Brinstar progression past Spore Super room toward full clear
+notes: Continuous power-on → Spore Spawn verified; not yet ending.

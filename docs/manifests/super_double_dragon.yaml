@@ -1,0 +1,24 @@
+game: super_double_dragon
+title: "Super Double Dragon"
+directory: super_double_dragon
+genre_tracks:
+  - linear_combat
+capability_phase: 1
+project_state: segmenting
+maturity: M3
+runtime_class: bronze
+intervention_class: clean
+popularity: medium
+engineering_effort: medium
+transfer_value: high
+ending_definition: mission campaign clear to credits
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: super_double_dragon/docs/STATUS.md
+plan_doc: super_double_dragon/docs/plan.md
+last_verified: 2026-07-22
+blocker: natural M3 gym stairs → Chin bosses
+notes: Missions 1–2 proven; M3/M5 transitions partial.

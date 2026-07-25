@@ -1,6 +1,6 @@
 # Agent Instructions — f_zero
 
-Scripted SNES completion agent for **F-Zero** (oneshot ladder #6, tier 2).
+Scripted SNES completion agent for **F-Zero** (continuous control track; maturity M2).
 
 ## Identity
 

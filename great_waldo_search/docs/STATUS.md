@@ -1,5 +1,16 @@
 # Great Waldo Search — Status
 
+
+## Program gate
+
+| Field | Value |
+|-------|-------|
+| Current maturity | M8 |
+| Best verified result | Continuous power-on → five-scrolls ending |
+| Last verification | 2026-07-25 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
 **Approach:** save-state + scene-segment scripts first; continuous
 title-to-credits later. Retries and mid-scene `.state` files are expected.
 
@@ -18,9 +29,27 @@ title-to-credits later. Retries and mid-scene `.state` files are expected.
 | Scene4 Unfriendly Giants | **done** (`clear_scene4.py`; `Scene4_Cleared.state`) |
 | Scene5 Land of Waldos | **done** (`clear_scene5.py`; `Scene5_Cleared.state`) |
 | Ending (five scrolls) | **reached** from Scene5 Waldo clear |
-| Full game / continuous run | later |
+| Full game / continuous run | **done** (`record_full_run.py` → `great_waldo_search_full_credits.mp4`) |
 
 ## Current milestone
+
+### Continuous power-on → five-scrolls ending
+
+One session from `NONE`, `players=2`, no mid-run state loads. Boot via
+`build_boot_script`, clear Scenes 1–5 with `SCENE_RECIPES`, hold ending
+(do not mash A). Proven continuous inter-scene `pre_idle` (not Cleared-state
+rebuild timings — `.state` load mutates RNG):
+
+| Advance | pre_idle | pulses |
+|---------|----------|--------|
+| → Scene2 | 0 | 8 |
+| → Scene3 | 1 | 7 |
+| → Scene4 | 2 | 7 |
+| → Scene5 | 0 | 7 |
+
+Scene3 Waldo click for this path: `(196, 100)`. Latest capture: score
+**18850**, ~9868 emulator frames →
+`recordings/great_waldo_search_full_credits.mp4`.
 
 ### Scene1 Flying Carpets (from `Scene1.state`, `players=2`)
 
@@ -96,6 +125,12 @@ SDL_VIDEODRIVER=dummy uv run python \
 SDL_VIDEODRIVER=dummy uv run python \
   great_waldo_search/scripts/clear_scene5.py
 
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python \
+  great_waldo_search/scripts/record_full_run.py --dry-run
+
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python \
+  great_waldo_search/scripts/record_full_run.py
+
 uv run --frozen pytest great_waldo_search/tests snes_oneshot/tests/test_cursor.py -q
 ```
 
@@ -103,5 +138,7 @@ uv run --frozen pytest great_waldo_search/tests snes_oneshot/tests/test_cursor.p
 
 - Scene-complete / scene-id bytes not isolated (`0x00C3` moves with camera).
 - Score RAM still noisy mid-animation; Scene5 Waldo needs longer settle.
-- Scene3–5 layout RNG can soft-lock assist seeks — rebuild state if needed.
-- Next: optional continuous title → five-scrolls ending without mid-run saves.
+- Scene3–5 layout RNG is `pre_idle`-sensitive; Cleared `.state` rebuild
+  timings differ from the continuous path (load mutates RNG).
+- Segmented showcase remains available via
+  `snes_oneshot.scripts.record_showcase`.

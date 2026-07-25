@@ -1,9 +1,18 @@
 # Status — Joe & Mac
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 10 |
-| Tier | 3 |
+| Current maturity | M2 |
+| Best verified result | Controllable Stage 1 checkpoint |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
+| Field | Value |
+|-------|-------|
 | Status | **boot verified** |
 | Integration | `JoeAndMac-Snes` |
 | ROM zip | `Joe & Mac - Caveman Ninjas.zip` |

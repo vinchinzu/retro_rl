@@ -1,0 +1,24 @@
+game: donkey_kong_country
+title: "Donkey Kong Country"
+directory: donkey_kong_country
+genre_tracks:
+  - platforming
+capability_phase: 3
+project_state: scaffolded
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: very_high
+engineering_effort: high
+transfer_value: high
+ending_definition: credits after final boss
+start_contract: power_on_or_level_state
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: donkey_kong_country/README.md
+plan_doc: donkey_kong_country/PLAN.md
+last_verified: 2026-03-05
+blocker: first documented autonomous level/route clear
+notes: Play/autosplit/replay infrastructure present.

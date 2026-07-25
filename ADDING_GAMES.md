@@ -74,7 +74,8 @@ Each token is `BUTTON[+BUTTON]:hold_frames:wait_frames`. `WAIT`, `NOOP`,
 - Use `retro_harness`: emulator/session lifecycle, actions, input scripts,
   states, recording, RAM schemas, and task protocols.
 - Add `snes_oneshot`: behavior trees, watchdogs, RAM discovery, cursor/combat
-  policy, and segment completion for scripted clears.
+  policy, and segment completion helpers (historical package name for scripted
+  completion).
 - Add `platformer_common`: platformer progress tracking, route evaluation,
   replay, and optimizers.
 - Add `fighters_common`: fighting-game environments and training.
@@ -97,9 +98,16 @@ uv run python -m pytest retro_harness/tests/test_actions.py \
 ## 5. Plan the route to a verified full run
 
 After the first controllable checkpoint, use the shared
-[scripted full-run process](snes_oneshot/docs/FULL_RUN_PROCESS.md). Create the
-game-local `AGENTS.md`, `docs/STATUS.md`, `docs/plan.md`, and `docs/ram_map.md`
-before the project accumulates ad hoc scripts and states.
+[scripted full-run process](snes_oneshot/docs/FULL_RUN_PROCESS.md) and the
+[M0–M8 maturity ladder](docs/DEVELOPMENT_LADDER.md). Create the game-local
+`AGENTS.md`, `docs/STATUS.md`, `docs/plan.md`, and `docs/ram_map.md` before the
+project accumulates ad hoc scripts and states.
+
+Document split:
+
+- `STATUS.md` — one current maturity gate and verified facts only
+- `plan.md` — bottlenecks and next milestones only
+- `AGENTS.md` — commands, constraints, traps only
 
 The first segment acceptance test should include both:
 
@@ -107,9 +115,19 @@ The first segment acceptance test should include both:
 - a state captured from the real predecessor route.
 
 If the project writes RAM for health, ammo, lives, or another assist, add
-`docs/ASSIST_CONTRACT.md` before implementing it. Resource assists should
-refill only naturally unlocked capacity and must not silently grant item,
-stage, boss, door, or other progression flags.
+`docs/ASSIST_CONTRACT.md` before implementing it. Label results with both
+runtime observation class and intervention class
+([benchmark spec](docs/BENCHMARK_SPEC.md)). Resource assists should refill only
+naturally unlocked capacity and must not silently grant item, stage, boss,
+door, or other progression flags.
+
+Add a machine-readable manifest under `docs/manifests/<game>.yaml` and
+regenerate the board:
+
+```bash
+uv run python docs/generate_game_matrix.py
+uv run pytest tests/test_docs.py -q
+```
 
 Do not overwrite the previous successful full-run report during experiments.
 Write a candidate report/log, validate it, and promote it only after the

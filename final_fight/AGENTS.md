@@ -1,8 +1,8 @@
 # Agent Instructions — final_fight
 
-SNES Final Fight oneshot ladder entry (rank 2). Shared helpers:
+SNES Final Fight scripted-completion workspace (rank 2). Shared helpers:
 `snes_oneshot/`. Program notes:
-`snes_oneshot/docs/EASIEST_SNES_GAMES.md`.
+`snes_oneshot/docs/GAME_SELECTION_NOTES.md`.
 
 ## Norms
 

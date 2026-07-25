@@ -1,8 +1,17 @@
 # Agent Instructions — retro_rl
 
-Multi-game emulator/RL monorepo. This root file is for repo-wide rules only.
-Keep game-specific workflow, status, and implementation detail in the
+Multi-game SNES automation monorepo. This root file is for repo-wide rules
+only. Keep game-specific workflow, status, and implementation detail in the
 corresponding game directory.
+
+Program spine:
+
+- Vision: `docs/VISION.md`
+- Maturity / phases: `docs/DEVELOPMENT_LADDER.md`
+- Benchmark rules: `docs/BENCHMARK_SPEC.md`
+- Live status: `docs/PROGRAM_STATUS.md`
+- Game board: `docs/GAME_MATRIX.md` (from `docs/manifests/*.yaml`)
+- Full-run process: `snes_oneshot/docs/FULL_RUN_PROCESS.md`
 
 ## Shared Layout
 
@@ -17,12 +26,15 @@ corresponding game directory.
   game editors (`uv run python -m retro_harness.editor_launcher --list`)
 - `fighters_common/`: shared fighting-game env/training code
 - `platformer_common/`: shared platformer runtime/optimizer code
-- `snes_oneshot/`: shared scripted one-shot policy helpers (GameState,
-  behavior trees, combat/cursor policy, watchdog, RAM discovery); generic
-  controller primitives live in `retro_harness`. Program
-  notes: `snes_oneshot/docs/EASIEST_SNES_GAMES.md`
+- `snes_oneshot/`: shared scripted-completion helpers (GameState, behavior
+  trees, combat/cursor policy, watchdog, RAM discovery); historical package
+  name — prefer “scripted completion” in human-facing prose
 - `<game>/`: game-specific code, integrations, docs, assets, and outputs
 - `roms/`: shared ROM storage (gitignored)
+- `docs/manifests/`: machine-readable game manifests
+
+Authoritative directories: `super_metroid/`, `SMW/`, `harvest/`. Do not invent
+`super_metroid_rl/`, `super_mario_bros/`, or `alttp/` paths in this checkout.
 
 ## Organization Rules
 
@@ -35,11 +47,14 @@ corresponding game directory.
   `<game>/scripts/archive/`.
 - Generated artifacts belong in the owning game folder (`models/`, `logs/`,
   `recordings/`, `debug_*`, `maps/`, and similar), not in the repo root.
+- Local docs split: `STATUS.md` = verified facts + one maturity gate;
+  `plan.md` = future work; `AGENTS.md` = commands and traps only.
 - Game editors can embed the shared Cursor SDK agent dock from
   `retro_harness/editor/cursor_agent_panel.py` (View → Agent Panel). Install
   with `uv sync --extra cursor` and set `CURSOR_API_KEY`.
+- Promote shared abstractions only after a second consumer exists.
 - Only add or expand top-level docs when the content is genuinely shared across
-  multiple games.
+  multiple games. Prefer updating `docs/` spine files over new root markdown.
 
 ## Working Norms
 
@@ -48,4 +63,7 @@ corresponding game directory.
   instead of growing this root file.
 - When changing shared helpers, update the closest tests and any docs that
   describe their behavior.
-- Run the narrowest relevant tests for the code you changed.
+- After editing `docs/manifests/*.yaml`, run
+  `uv run python docs/generate_game_matrix.py`.
+- Run the narrowest relevant tests for the code you changed; include
+  `uv run pytest tests/test_docs.py -q` when touching docs or manifests.

@@ -1,5 +1,16 @@
 # Status — Star Fox completion run
 
+
+## Program gate
+
+| Field | Value |
+|-------|-------|
+| Current maturity | M3 |
+| Best verified result | Route 1 Corneria segment work |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
 ## Target
 
 Bronze Route 1 completion: RAM may select/recover policies, while all game

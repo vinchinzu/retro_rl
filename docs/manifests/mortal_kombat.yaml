@@ -1,0 +1,24 @@
+game: mortal_kombat
+title: "Mortal Kombat"
+directory: mortal_kombat
+genre_tracks:
+  - fighting_game_policies
+capability_phase: 0
+project_state: continuous-candidate
+maturity: M3
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: high
+ending_definition: win published fight / ladder match from fight-ready state
+start_contract: fight_ready_state
+completion_contract: match_win
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: mortal_kombat/README.md
+plan_doc: mortal_kombat/SPEEDRUN_PLAN.md
+last_verified: 2026-03-05
+blocker: elevate match wins into reset-to-ending arcade clear claims when desired
+notes: Shared fighters_common PPO track; match benchmark historically strong.

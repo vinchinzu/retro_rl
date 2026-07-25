@@ -1,9 +1,18 @@
 # Status — F-Zero
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 6 |
-| Tier | 2 |
+| Current maturity | M2 |
+| Best verified result | Mute City race-start checkpoint |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
+| Field | Value |
+|-------|-------|
 | Status | **boot verified; Mute City race-start checkpoint** |
 | Integration | `FZero-Snes` |
 | ROM zip | `F-Zero.zip` |

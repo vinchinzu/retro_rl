@@ -1,6 +1,6 @@
 # Agent Instructions — super_double_dragon
 
-Scripted SNES completion agent for **Super Double Dragon** (oneshot ladder #4, tier 1).
+Scripted SNES completion agent for **Super Double Dragon** (linear combat track; maturity M3).
 
 ## Identity
 

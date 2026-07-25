@@ -1,8 +1,8 @@
 # Agent Instructions — tmnt_iv
 
-SNES TMNT IV: Turtles in Time oneshot ladder entry (rank 3). Shared helpers:
+SNES TMNT IV: Turtles in Time linear-combat reference clear (M8). Shared helpers:
 `snes_oneshot/`. Program notes:
-`snes_oneshot/docs/EASIEST_SNES_GAMES.md`.
+`snes_oneshot/docs/GAME_SELECTION_NOTES.md`.
 
 ## Norms
 

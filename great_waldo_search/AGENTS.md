@@ -1,8 +1,8 @@
 # Agent Instructions — great_waldo_search
 
-SNES The Great Waldo Search oneshot ladder entry (rank 1 / tier 0). Shared
+SNES The Great Waldo Search scripted-completion workspace (rank 1 / tier 0). Shared
 helpers: `snes_oneshot/`. Program notes:
-`snes_oneshot/docs/EASIEST_SNES_GAMES.md`.
+`snes_oneshot/docs/GAME_SELECTION_NOTES.md`.
 
 ## Norms
 
@@ -16,8 +16,10 @@ helpers: `snes_oneshot/`. Program notes:
 
 ## Immediate goal
 
-Scenes 1–5 cleared; five-scrolls ending reached from Scene5. Next: optional
-continuous title → ending without mid-run saves.
+**Continuous power-on → five-scrolls ending done** — one emulator session,
+no mid-run state loads. Artifact:
+`recordings/great_waldo_search_full_credits.mp4`. Re-record with
+`scripts/record_full_run.py`.
 
 ## Clear recipes
 
@@ -54,6 +56,12 @@ uv run python -m snes_oneshot.setup_all_roms great_waldo_search
 
 SDL_VIDEODRIVER=dummy uv run python great_waldo_search/scripts/boot_probe.py
 SDL_VIDEODRIVER=dummy uv run python great_waldo_search/scripts/ram_probe.py
+
+# Continuous power-on → five-scrolls ending (dry-run, then encode)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python \
+  great_waldo_search/scripts/record_full_run.py --dry-run
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python \
+  great_waldo_search/scripts/record_full_run.py
 
 uv run --frozen pytest great_waldo_search/tests snes_oneshot/tests/test_cursor.py -q
 ```

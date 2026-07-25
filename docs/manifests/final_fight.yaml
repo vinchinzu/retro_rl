@@ -1,0 +1,24 @@
+game: final_fight
+title: "Final Fight"
+directory: final_fight
+genre_tracks:
+  - linear_combat
+capability_phase: 1
+project_state: segmenting
+maturity: M3
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: high
+ending_definition: credits after Haggar/final boss (campaign clear)
+start_contract: power_on_or_stage_checkpoint
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: final_fight/docs/STATUS.md
+plan_doc: final_fight/docs/plan.md
+last_verified: 2026-07-22
+blocker: Stage 3 West Side Area1 HP250 thug → Boss3; natural-entry hardening
+notes: Near-term factory line to generalize TMNT combat stack.
