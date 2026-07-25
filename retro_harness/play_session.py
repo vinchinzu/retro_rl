@@ -17,23 +17,35 @@ Usage::
 from __future__ import annotations
 
 import os
+import time
 from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 
+from retro_harness.runtime import reset_env, step_env
+
 if TYPE_CHECKING:
     from numpy import ndarray
 
-# Must be set before pygame import for Hyprland/Arch compatibility
-os.environ.setdefault("SDL_VIDEODRIVER", "x11")
+# Must be set before pygame import for Hyprland/Arch compatibility.
+# Prefer native Wayland when running under a Wayland compositor.
+if "SDL_VIDEODRIVER" not in os.environ:
+    if os.environ.get("WAYLAND_DISPLAY"):
+        os.environ["SDL_VIDEODRIVER"] = "wayland"
+    else:
+        os.environ["SDL_VIDEODRIVER"] = "x11"
 
-SPEED_LEVELS = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0]
-_DEFAULT_SPEED_IDX = 2  # 1.0x
+SPEED_LEVELS = [0.25, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.5, 2.0, 3.0, 4.0]
+_DEFAULT_SPEED_IDX = SPEED_LEVELS.index(1.0)
 _TURBO_RENDER_INTERVAL = 8
 _HUD_LINE_HEIGHT = 18
 _HUD_FONT_SIZE = 16
 _HUD_COLOR = (255, 255, 0)
 _HUD_MARGIN = 4
+
+
+def _speed_index_for(speed: float) -> int:
+    return min(range(len(SPEED_LEVELS)), key=lambda idx: abs(SPEED_LEVELS[idx] - speed))
 
 
 class PlaySession:
@@ -56,6 +68,7 @@ class PlaySession:
         headless: Optional[bool] = None,
         action_size: int = 12,
         base_fps: int = 60,
+        initial_speed: float = 1.0,
     ):
         self.env = env
         self.game_dir = game_dir
@@ -64,7 +77,6 @@ class PlaySession:
         self.title = title or game or "retro_harness"
         self.action_size = action_size
         self.base_fps = base_fps
-
         # Headless auto-detect from env var
         if headless is None:
             self._headless = os.environ.get("HEADLESS", "").lower() in ("1", "true", "yes")
@@ -76,8 +88,8 @@ class PlaySession:
         self._bot_active: bool = bot is not None
 
         # Speed / turbo
-        self._speed_idx: int = _DEFAULT_SPEED_IDX
-        self._speed: float = SPEED_LEVELS[_DEFAULT_SPEED_IDX]
+        self._speed_idx: int = _speed_index_for(initial_speed)
+        self._speed: float = SPEED_LEVELS[self._speed_idx]
         self._turbo: bool = False
         self._hotswap_cooldown: int = 0
 
@@ -85,6 +97,9 @@ class PlaySession:
         self._frame_count: int = 0
         self._last_obs: Optional[ndarray] = None
         self._last_info: dict = {}
+        self._last_frame_time: float = 0.0
+        self._next_frame_time: float = 0.0
+        self._measured_fps: float = 0.0
         self._last_action_pre_sanitize: list[int] = [0] * self.action_size
         self._last_action_post_sanitize: list[int] = [0] * self.action_size
         self.running: bool = False
@@ -100,6 +115,7 @@ class PlaySession:
         self._font = None
         self._clock = None
         self._joystick = None
+        self._joystick_instance_id = None
 
         # Trigger state for save/load (L2/R2)
         self._lt_was_pressed: bool = False
@@ -133,6 +149,11 @@ class PlaySession:
     @property
     def turbo(self) -> bool:
         return self._turbo
+
+    @property
+    def last_action_post_sanitize(self) -> list[int]:
+        """Return a copy of the last action applied to the environment."""
+        return list(self._last_action_post_sanitize)
 
     def save_state(self, name: str = "QuickSave") -> None:
         """Save current emulator state to memory and optionally to disk."""
@@ -203,7 +224,7 @@ class PlaySession:
         self.running = True
 
         # Get initial observation
-        obs, info = self.env.reset()
+        obs, info = reset_env(self.env)
         self._last_obs = obs
         self._last_info = info
         h, w = obs.shape[:2]
@@ -217,8 +238,7 @@ class PlaySession:
             self._font = pygame.font.SysFont("monospace", _HUD_FONT_SIZE)
             self._clock = pygame.time.Clock()
             self._game_w, self._game_h = w, h
-            from retro_harness.controls import init_controller
-            self._joystick = init_controller(pygame)
+            self._refresh_joystick(pygame)
         else:
             # Minimal init for headless -- no display
             os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -226,6 +246,8 @@ class PlaySession:
             self._clock = pygame.time.Clock()
 
         try:
+            self._last_frame_time = time.perf_counter()
+            self._next_frame_time = self._last_frame_time
             self._main_loop(pygame, obs, info)
         finally:
             self.on_close()
@@ -248,9 +270,17 @@ class PlaySession:
                     self._handle_keydown(pg, event.key)
                 elif event.type == pg.KEYUP:
                     self.on_key_up(event.key)
+                elif event.type in (
+                    getattr(pg, "JOYDEVICEADDED", -1),
+                    getattr(pg, "JOYDEVICEREMOVED", -1),
+                ):
+                    self._handle_joystick_event(pg, event)
 
             if not self.running:
                 break
+
+            if self._joystick is None and not self._headless and self._frame_count % 60 == 0:
+                self._refresh_joystick(pg)
 
             if self._hotswap_cooldown > 0:
                 self._hotswap_cooldown -= 1
@@ -268,13 +298,8 @@ class PlaySession:
             # Truncate for NES (9 buttons) when action array is SNES-sized (12)
             env_size = self.env.action_space.shape[0]
             step_action = action[:env_size] if len(action) > env_size else action
-            step_result = self.env.step(step_action)
-            # Handle both 4-tuple (old gym) and 5-tuple (new gym) APIs
-            if len(step_result) == 5:
-                obs, reward, terminated, truncated, info = step_result
-                done = terminated or truncated
-            else:
-                obs, reward, done, info = step_result
+            obs, reward, terminated, truncated, info = step_env(self.env, step_action)
+            done = terminated or truncated
 
             self._frame_count += 1
             self._last_obs = obs
@@ -291,18 +316,15 @@ class PlaySession:
             # --- Tick ---
             if self._turbo:
                 self._clock.tick(0)
+                self._last_frame_time = time.perf_counter()
+                self._next_frame_time = self._last_frame_time
             else:
-                self._clock.tick(int(self.base_fps * self._speed))
+                self._limit_frame_rate(self.base_fps * self._speed)
 
             # --- Done ---
             if done:
                 self.on_reset()
-                reset_result = self.env.reset()
-                if isinstance(reset_result, tuple):
-                    obs, info = reset_result[0], reset_result[1] if len(reset_result) > 1 else {}
-                else:
-                    obs = reset_result
-                    info = {}
+                obs, info = reset_env(self.env)
                 self._last_obs = obs
                 self._last_info = info
 
@@ -331,7 +353,7 @@ class PlaySession:
         # Built-in status line
         speed_str = "TURBO" if self._turbo else f"{self._speed:.2g}x"
         mode_str = "BOT" if self._bot_active else "HUMAN"
-        lines.append(f"F{self._frame_count} | {speed_str} | {mode_str}")
+        lines.append(f"F{self._frame_count} | {speed_str} | {self._measured_fps:.1f} FPS | {mode_str}")
         lines.extend(self._mission_lines())
 
         # Game-specific lines from hook
@@ -383,6 +405,57 @@ class PlaySession:
             self._last_action_post_sanitize = list(action)
 
         return action
+
+    def _limit_frame_rate(self, target_fps: float) -> None:
+        target_dt = 1.0 / max(target_fps, 1.0)
+        target_time = self._next_frame_time + target_dt
+        now = time.perf_counter()
+        if target_time < now - target_dt:
+            target_time = now
+        if target_time > now:
+            time.sleep(target_time - now)
+            now = time.perf_counter()
+        elapsed = now - self._last_frame_time
+        self._measured_fps = 1.0 / elapsed if elapsed > 0 else 0.0
+        self._last_frame_time = now
+        self._next_frame_time = target_time
+        if self._clock is not None:
+            self._clock.tick()
+
+    def _refresh_joystick(self, pg) -> None:
+        from retro_harness.controls import init_controller
+
+        joystick = init_controller(pg)
+        self._joystick = joystick
+        if joystick is None:
+            self._joystick_instance_id = None
+            return
+
+        instance_id_fn = getattr(joystick, "get_instance_id", None)
+        if callable(instance_id_fn):
+            try:
+                self._joystick_instance_id = instance_id_fn()
+            except Exception:
+                self._joystick_instance_id = None
+        else:
+            self._joystick_instance_id = None
+
+    def _handle_joystick_event(self, pg, event) -> None:
+        event_type = getattr(event, "type", None)
+        added = getattr(pg, "JOYDEVICEADDED", None)
+        removed = getattr(pg, "JOYDEVICEREMOVED", None)
+        if event_type == added:
+            self._refresh_joystick(pg)
+            return
+        if event_type != removed:
+            return
+
+        removed_id = getattr(event, "instance_id", None)
+        if removed_id is None and hasattr(event, "which"):
+            removed_id = event.which
+        if self._joystick_instance_id is None or removed_id == self._joystick_instance_id:
+            self._joystick = None
+            self._joystick_instance_id = None
 
     def _mission_lines(self) -> list[str]:
         if self._bot_fn is None:
@@ -449,7 +522,6 @@ class PlaySession:
         if self.on_key_down(key):
             return
 
-        # Checkpoint slot keys: F1-F4 save, Shift+F1-F4 load
         _SLOT_KEYS = {pg.K_F1: 1, pg.K_F2: 2, pg.K_F3: 3, pg.K_F4: 4}
 
         if key == pg.K_ESCAPE:
@@ -458,9 +530,9 @@ class PlaySession:
             slot = _SLOT_KEYS[key]
             mods = pg.key.get_mods()
             if mods & pg.KMOD_SHIFT:
-                self.load_checkpoint(slot)
+                self.on_trigger_load(slot)
             else:
-                self.save_checkpoint(slot)
+                self.on_trigger_save(slot)
         elif key == pg.K_F5:
             self.save_state()
         elif key in (pg.K_F7, pg.K_F8):
@@ -480,11 +552,5 @@ class PlaySession:
             self._set_bot_active(not self._bot_active)
         elif key == pg.K_r:
             self.on_reset()
-            reset_result = self.env.reset()
-            if isinstance(reset_result, tuple):
-                self._last_obs = reset_result[0]
-                self._last_info = reset_result[1] if len(reset_result) > 1 else {}
-            else:
-                self._last_obs = reset_result
-                self._last_info = {}
+            self._last_obs, self._last_info = reset_env(self.env)
             print("[RESET]")

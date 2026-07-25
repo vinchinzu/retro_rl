@@ -1,177 +1,71 @@
-# Agent Instructions
+# Harvest Agent Notes
 
-This project uses **br** (beads_rust) for issue tracking. Run `br onboard` to get started.
+Primary repo-wide instructions live in [../AGENTS.md](../AGENTS.md).
 
-## Architecture
+## Commands
 
-The bot has two main modules:
-
-- **harvest_bot.py** - Game integration, pygame display, state loading, input handling
-- **farm_clearer.py** - All clearing logic: scanning, pathfinding, navigation, tool management
-
-### Key Classes
-
-| Module | Class | Purpose |
-|--------|-------|---------|
-| `harvest_bot` | `GameState` | Parse game state from RAM (date, time, money, stamina) |
-| `harvest_bot` | `AutoClearBot` | Main bot wrapper, delegates to FarmClearer |
-| `harvest_bot` | `PlaySession` | Interactive pygame session with human/bot modes |
-| `farm_clearer` | `TileScanner` | Scan RAM for debris tiles |
-| `farm_clearer` | `Pathfinder` | BFS pathfinding with obstacle avoidance |
-| `farm_clearer` | `Navigator` | Path following and position tracking |
-| `farm_clearer` | `ToolManager` | Track current tool, cycle through inventory |
-| `farm_clearer` | `FarmClearer` | State machine for phase-based clearing |
-
-### Data Types
-
-```python
-from farm_clearer import DebrisType, Tool, Point, Target
-
-DebrisType.WEED    # Bushes, clear with sickle or lift
-DebrisType.STONE   # Small stones, hammer or lift
-DebrisType.ROCK    # Big rocks, hammer only
-DebrisType.STUMP   # Tree stumps, axe only
-
-Tool.SICKLE, Tool.HOE, Tool.HAMMER, Tool.AXE, Tool.WATERING_CAN
-```
-
-### Breaking Changes (Refactor 2025-01)
-
-**Removed entirely:**
-- `MapTransitionManager` - building navigation
-- `DayPlanner` - daily task planning
-- `PlotWorkerBot` - planting/watering automation
-- `find_3x3_plot()`, `is_tilled_tile()`, `is_watered_tile()`, etc.
-- `ITEM_ID_POTATO_SEEDS`
-
-**Moved to farm_clearer module:**
-- `Navigator`, `ToolManager`, `use_tool()`, `ADDR_INPUT_LOCK`
-- `TargetFinder` renamed to `TileScanner`
-
-**Changed API:**
-- `AutoClearBot.brain` → `AutoClearBot.clearer`
-- `AutoClearBot.startup_steps` → `AutoClearBot.clearer.startup_tasks`
-- `AutoClearBot.nav` → `AutoClearBot.clearer.navigator`
-
-**Tests:** Many tests in `tests/run_tests.py` are broken and need updating to import from `farm_clearer`.
-
-## Quick Reference
+All commands require `uv run` (stable-retro is not in base Python).
 
 ```bash
-br ready              # Find available work
-br show <id>          # View issue details
-br update <id> --status in_progress  # Claim work
-br close <id>         # Complete work
-br sync --flush-only  # Export beads data (no git)
-git add .beads/
-git commit -m "sync beads"
+# Run bot
+./run_bot.sh play --autoplay --state latest
+
+# Tests (narrow — pick the modules you changed)
+uv run python -m unittest tests.test_day_plan_sequences tests.test_day_phase_registry tests.test_task_progress -v
+uv run python -m unittest tests.test_coop_task -v
+
+# Record a new task (F5 saves)
+uv run python -m harvest.runtime.harvest_bot play --state latest --record <name> --no-day-plan
+
+# Editor
+./kickoff.sh  # latest/current + autostart
+./startup.sh
+./startup.sh --state Y1_After_Buy_Potato
+./startup.sh --state latest --autostart
+PYTHONPATH=.. uv run --project .. python -m retro_harness.editor_launcher harvest -- --state latest
+uv run python -m harvest.tools.editor_app --state Y1_After_Buy_Potato --export-dir debug_alignment/editor_exports
 ```
 
-## Environment + run_bot
+## File Organization
 
-Use `uv` to provision the venv that `run_bot.sh` expects at `.venv/`.
+- Save states: `custom_integrations/HarvestMoon-Snes/`
+- Recordings: `tasks/<name>.json` + `tasks/<name>_end.state`
+- Editor artifacts: `debug_alignment/` or `maps/`
+- Tests: `tests/` (unit tests need no ROM; integration tests need ROM + states)
+- ROM/state setup: use `harvest.runtime.retro_setup.register_harvest_integration(retro)` before `retro.make(...)`. It registers the custom integration with an absolute path and repairs the ignored `rom.sfc` symlink from known local ROM directories, so do not hand-roll `retro.data.Integrations.add_custom_path(...)` in new scripts. Recording flows should also call `retro_setup.backup_mutable_start_state(...)` so tasks do not point at drifting `latest` / `current` states.
 
-```bash
-uv sync
-uv run python tests/run_tests.py
+## Adding New Autonomous Tasks
 
-# Run the bot (script sources .venv/bin/activate internally)
-uv run ./run_bot.sh
+Follow the `CoopChoresTask` / `HarvestTask` pattern:
 
-# Headless mode
-HEADLESS=1 uv run ./run_bot.sh
-```
+1. **Discover RAM addresses** — diff save states before/after the action.
+2. **Discover walkable tiles** — replay a recording and collect tiles the player stands on. Do NOT trust static save-state tile IDs (SNES re-renders them as viewport scrolls, e.g. `0xA1` → `0x79`).
+3. **Register tiles and landmarks** — update `harvest/core/tile_catalog.py` for tile IDs/walkability and `harvest/maps/map_config.py` for map exits, landmarks, and named routes. Do not add new walkable constants directly to task modules.
+4. **Build the task** as a dataclass implementing `Task` protocol (reset/can_start/step). Use phase-based state machine with `_navigate_to_tile` + `_queue_press_a` + verify loops.
+5. **Add phase spec** in `harvest/planner/day_phase_catalog.py`, register a builder in `day_phase_registry.py` (`PhaseKind` + `PHASE_TASK_BUILDERS`), add it to `build_day_phases()`.
+6. **Add multi_nav route** in `harvest/maps/map_config.py` if navigation crosses long distances. Use intermediate waypoints every ~15 tiles to keep BFS within viewport range.
+7. **Write unit tests** with fake RAM (no ROM needed). Write integration tests that replay recordings against the real emulator.
+8. **For talk/gift tasks** inspect `harvest/core/npc_catalog.py` / `python -m harvest.runtime.harvest_bot npc` first. Dynamic positions come from the WRAM game-object table; dialogue/status data comes from the decomp text table and named flag banks.
 
-## Landing the Plane (Session Completion)
+## Best Practices Learned
 
+- **Viewport-limited BFS**: The SNES only loads ~16x14 tiles around the player. BFS beyond this sees stale `0x72`/`0xFF`. Use hop targets clamped to 7 tiles.
+- **Long-distance nav needs intermediate waypoints**: Multi-map routes over ~15 tiles apart need intermediate `Waypoint` entries or BFS will fail and the bot oscillates.
+- **Avoid circular imports**: task modules cannot import from `harvest/planner/day_plan.py` or `day_plan_orchestrator.py`. Put shared RAM fields in `harvest/core/ram_catalog.py` and shared map/tile facts in `harvest/core/tile_catalog.py` / `harvest/maps/map_config.py`.
+- **Planner layout**: orchestrators in `day_plan_orchestrator.py`; `PhaseKind` + `day_phase_registry.py` build sub-tasks; dynamic lists in `day_plan_phases.py`; `day_plan.py` is a compatibility barrel. Autoplay stall detection uses `harvest/core/task_progress.py` (`progress_snapshot()` on tasks).
+- **Verify with recordings**: Always record a human playthrough first, replay it to discover tile IDs and RAM changes, then build the autonomous version.
+- **Backup states**: Before recording, back up `latest.state` as `latest_backup_<description>.state`.
+- **NPCs are dynamic objects**: use `WorldSnapshot.entities` or `harvest/core/npc_catalog.py` instead of hard-coding temporary NPC positions in task modules.
 
-**MANDATORY WORKFLOW:**
+## Way Forward
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-   ```bash
-   br sync --flush-only
-   git add .beads/
-   git commit -m "sync beads"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND 
-7. **Hand off** - Provide context for next session
-
-
-
-<!-- bv-agent-instructions-v1 -->
-
----
-
-## Beads Workflow Integration
-
-**Note:** `br` is non-invasive and never executes git commands. After `br sync --flush-only`, you must manually run `git add .beads/ && git commit`.
-
-This project uses [beads_rust](https://github.com/Dicklesworthstone/beads_rust) for issue tracking. Issues are stored in `.beads/` and tracked in git.
-
-### Essential Commands
-
-```bash
-# View issues (launches TUI - avoid in automated sessions)
-bv
-
-# CLI commands for agents (use these instead)
-br ready              # Show issues ready to work (no blockers)
-br list --status=open # All open issues
-br show <id>          # Full issue details with dependencies
-br create --title="..." --type=task --priority=2
-br update <id> --status=in_progress
-br close <id> --reason="Completed"
-br close <id1> <id2>  # Close multiple issues at once
-br sync --flush-only  # Export beads data (no git)
-git add .beads/
-git commit -m "sync beads"
-```
-
-### Workflow Pattern
-
-1. **Start**: Run `br ready` to find actionable work
-2. **Claim**: Use `br update <id> --status=in_progress`
-3. **Work**: Implement the task
-4. **Complete**: Use `br close <id>`
-5. **Sync**: Always run:
-   ```bash
-   br sync --flush-only
-   git add .beads/
-   git commit -m "sync beads"
-   ```
-
-### Key Concepts
-
-- **Dependencies**: Issues can block other issues. `br ready` shows only unblocked work.
-- **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers, not words)
-- **Types**: task, bug, feature, epic, question, docs
-- **Blocking**: `br dep add <issue> <depends-on>` to add dependencies
-
-### Session Protocol
-
-**Before ending any session, run this checklist:**
-
-```bash
-git status              # Check what changed
-git add <files>         # Stage code changes
-br sync --flush-only    # Export beads data (no git)
-git add .beads/
-git commit -m "sync beads"
-git commit -m "..."     # Commit code
-br sync --flush-only    # Export beads data (no git)
-git add .beads/
-git commit -m "sync beads"
-```
-
-### Best Practices
-
-- Check `br ready` at session start to find available work
-- Update status as you work (in_progress → closed)
-- Create new issues with `br create` when you discover tasks
-- Use descriptive titles and set appropriate priority/type
-- Always `br sync --flush-only` (plus git add/commit) before ending session
-
-<!-- end-bv-agent-instructions -->
+- [ ] Extract reusable facts from `tasks/spring_festival.json`: Spring 23 festival route, NPC/dialogue/status changes, any girl question responses, and the 1304-frame coop trace; preserve start backup `latest_backup_spring_festival_20260427_155856.state`, end state `spring_festival_end.state`, and post-recording backup `latest_backup_post_spring_festival_20260427_160317.state` for replay/debug.
+- [ ] Extract the ideal rainy-day routine from `tasks/fix_rainy_day.json`: Y1 Spring 24 route where cows were fed and milked, chicken eggs were shipped, the shed route avoided wasted tiles, crops were harvested, and the town social loop talked to people. Use it to improve rainy-day `build_day_phases()` sequencing, barn/coop/crop/town task ordering, and route efficiency. Preserve start backup `latest_backup_fix_rainy_day_20260427_202555.state`, end state `fix_rainy_day_end.state`, mirrored end state `custom_integrations/HarvestMoon-Snes/fix_rainy_day_end.state`, and the 1193-frame coop trace for replay/debug.
+- [ ] Fix `CoopChoresTask` for the Spring 22 two-adult/two-egg coop state: feed adults in separate feed slots, treat visible egg object tiles as dynamic no-go/collision tiles, and add a regression replay before restoring it to the daily plan.
+- [ ] Improve barn chores from the `cow_chores_fix` recording: keep the verified multi-cow feed loop, then add brushing/milking and stronger per-cow/per-slot verification before making it routine.
+- [ ] Record and test barn chores (cow feeding/milking) — same pattern as coop
+- [ ] Add gift delivery task (carry egg to NPC, needs town navigation)
+- [ ] Promote candidate NPC sprite IDs to named NPC schedules and dialogue handlers
+- [ ] Finish ROM-backed mountain walkable tiles and stump/forage landmarks for berry route autonomy
+- [ ] Add cow milking/brushing to daily plan when cows owned
+- [ ] Expand `build_day_phases()` for summer/fall crop rotations

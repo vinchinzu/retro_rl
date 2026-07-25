@@ -21,6 +21,13 @@ from fighters_common.fighting_env import (
     make_fighting_env,
 )
 
+from fighters_common.ram_observation import (
+    RamObservation,
+    make_ram_fighting_env,
+    build_eval_env,
+    MK1_RAM_FEATURES,
+)
+
 from fighters_common.menu_nav import (
     MenuNavigator,
     navigate_to_fight,
@@ -41,6 +48,10 @@ __all__ = [
     "DiscreteAction",
     "FIGHTING_ACTIONS",
     "make_fighting_env",
+    "RamObservation",
+    "make_ram_fighting_env",
+    "build_eval_env",
+    "MK1_RAM_FEATURES",
     "MenuNavigator",
     "navigate_to_fight",
     "create_fight_state",

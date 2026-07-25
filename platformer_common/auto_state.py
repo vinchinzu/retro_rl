@@ -12,40 +12,34 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
 
 import numpy as np
 
-from retro_harness.controls import (
-    SNES_B, SNES_Y, SNES_SELECT, SNES_START,
-    SNES_UP, SNES_DOWN, SNES_LEFT, SNES_RIGHT,
-    SNES_A, SNES_X, SNES_L, SNES_R,
+from retro_harness.actions import indexed_action
+from retro_harness.controls import SNES_BUTTON_NAME_TO_INDEX
+from retro_harness.env import GameSpec
+from retro_harness.input_script import (
+    InputStep,
+    parse_input_script,
 )
-from retro_harness.env import make_env
 
 from platformer_common.level_config import PlatformerRAM
 
 # Button name -> SNES index
 BUTTON_MAP: dict[str, int] = {
-    "B": SNES_B, "Y": SNES_Y, "SELECT": SNES_SELECT, "START": SNES_START,
-    "UP": SNES_UP, "DOWN": SNES_DOWN, "LEFT": SNES_LEFT, "RIGHT": SNES_RIGHT,
-    "A": SNES_A, "X": SNES_X, "L": SNES_L, "R": SNES_R,
+    name: index
+    for name, index in SNES_BUTTON_NAME_TO_INDEX.items()
+    if index is not None
 }
 
 NUM_BUTTONS = 12
-NOOP_TOKENS = {"WAIT", "NOOP", "NONE"}
-
-
-class NavStep(NamedTuple):
-    """Single navigation step: press buttons for hold_frames, then wait."""
-    buttons: list[int]   # SNES button indices to press
-    hold_frames: int     # frames to hold buttons
-    wait_frames: int     # NOOP frames after release
+NavStep = InputStep
 
 
 @dataclass
 class AutoStateResult:
     """Result of an auto-state creation attempt."""
+
     success: bool
     path: Path | None = None
     level_id: int = 0
@@ -65,38 +59,12 @@ def parse_nav_string(nav_string: str) -> list[NavStep]:
         "B:10:300"              - press B for 10 frames, wait 300
         "WAIT:0:300"            - wait 300 frames with no buttons pressed
     """
-    steps: list[NavStep] = []
-    for token in nav_string.strip().split():
-        parts = token.split(":")
-        if len(parts) != 3:
-            raise ValueError(f"Invalid nav step '{token}': expected BUTTONS:hold:wait")
-
-        button_str, hold_str, wait_str = parts
-
-        # Parse buttons (e.g. "RIGHT+Y" -> [7, 1])
-        buttons: list[int] = []
-        if button_str.upper() not in NOOP_TOKENS:
-            for name in button_str.upper().split("+"):
-                if name not in BUTTON_MAP:
-                    valid = sorted(BUTTON_MAP) + sorted(NOOP_TOKENS)
-                    raise ValueError(f"Unknown button '{name}' in step '{token}'. "
-                                     f"Valid: {', '.join(valid)}")
-                buttons.append(BUTTON_MAP[name])
-
-        steps.append(NavStep(
-            buttons=buttons,
-            hold_frames=int(hold_str),
-            wait_frames=int(wait_str),
-        ))
-    return steps
+    return parse_input_script(nav_string)
 
 
 def _make_action(*buttons: int) -> np.ndarray:
     """Create a 12-element action array with given buttons pressed."""
-    action = np.zeros(NUM_BUTTONS, dtype=np.int8)
-    for b in buttons:
-        action[b] = 1
-    return action
+    return indexed_action(buttons, action_size=NUM_BUTTONS, dtype=np.int8)
 
 
 NOOP = _make_action()
@@ -137,10 +105,9 @@ def navigate_and_save(
     print(f"  Steps: {len(steps)}")
 
     # Create headless env
-    env = make_env(
-        game=game_name,
-        state=from_state,
-        game_dir=game_dir,
+    game = GameSpec(game_name, game_dir)
+    env = game.make_env(
+        from_state,
         render_mode="rgb_array" if save_screenshot else None,
     )
     env.reset()
@@ -170,7 +137,11 @@ def navigate_and_save(
             name for name, idx in BUTTON_MAP.items() if idx in step.buttons
         )
         step_n(action, step.hold_frames)
-        step_n(NOOP, step.wait_frames, f"step {i}: {button_names}:{step.hold_frames}:{step.wait_frames}")
+        step_n(
+            NOOP,
+            step.wait_frames,
+            f"step {i}: {button_names}:{step.hold_frames}:{step.wait_frames}",
+        )
 
     # Final settle
     step_n(NOOP, settle_frames, "settle")
@@ -183,8 +154,10 @@ def navigate_and_save(
 
     # Verify expected level_id
     if expected_level_id is not None and level_id != expected_level_id:
-        msg = (f"Level ID mismatch: got 0x{level_id:02X}, "
-               f"expected 0x{expected_level_id:02X}")
+        msg = (
+            f"Level ID mismatch: got 0x{level_id:02X}, "
+            f"expected 0x{expected_level_id:02X}"
+        )
         print(f"\nWARNING: {msg}")
         print("State will still be saved - verify visually.")
 
@@ -194,20 +167,14 @@ def navigate_and_save(
         obs = env.render()
         if obs is not None:
             from PIL import Image
+
             screenshot_dir = game_dir / "state_screenshots"
             screenshot_dir.mkdir(parents=True, exist_ok=True)
             screenshot_path = screenshot_dir / f"{save_name}.png"
             Image.fromarray(obs).save(screenshot_path)
             print(f"  Screenshot: {screenshot_path}")
 
-    # Save state directly to custom_integrations (not cwd)
-    import gzip
-
-    state_data = env.em.get_state()
-    path = game_dir / "custom_integrations" / game_name / f"{save_name}.state"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(path, "wb") as f:
-        f.write(state_data)
+    path = game.save_state(env, save_name)
     env.close()
 
     success = True

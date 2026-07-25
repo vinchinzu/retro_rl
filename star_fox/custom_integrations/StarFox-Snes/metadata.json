@@ -1,0 +1,9 @@
+{
+  "default_state": "",
+  "default_player_state": "",
+  "whitelist": {
+    "data.json": [
+      "*"
+    ]
+  }
+}

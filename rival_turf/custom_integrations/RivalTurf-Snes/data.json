@@ -1,0 +1,20 @@
+{
+  "info": {
+    "run_state": {
+      "address": 171,
+      "type": "|u1"
+    },
+    "player_active": {
+      "address": 512,
+      "type": "|u1"
+    },
+    "player_x": {
+      "address": 514,
+      "type": "|u1"
+    },
+    "player_y": {
+      "address": 517,
+      "type": "|u1"
+    }
+  }
+}

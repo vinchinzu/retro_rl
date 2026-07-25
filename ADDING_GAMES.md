@@ -1,205 +1,116 @@
-# Adding New Games to retro_rl
+# Adding a SNES Game
 
-This guide explains how to add a new SNES game to the project.
+New games should start on the shared `retro_harness.snes` API. Do not copy an
+input loop, button table, Gym compatibility wrapper, state writer, or title
+screen macro from another game.
 
-## Prerequisites
+## 1. Integration files
 
-1. Run `./setup.sh` from the project root to create the shared virtual environment
-2. Have your ROM file ready (legally obtained)
+Create this game-local layout:
 
-## Steps
-
-### 1. Create Game Directory
-
-```bash
-mkdir -p new_game/custom_integrations/GameName-Snes
-mkdir -p new_game/roms
-```
-
-### 2. Set Up ROM
-
-```bash
-# Copy ROM to roms directory (git-ignored)
-cp /path/to/rom.sfc new_game/roms/
-
-# Create symlink in custom_integrations
-ln -s "$(pwd)/new_game/roms/rom.sfc" new_game/custom_integrations/GameName-Snes/rom.sfc
-
-# Generate SHA hash
-sha1sum new_game/roms/rom.sfc | cut -d' ' -f1 > new_game/custom_integrations/GameName-Snes/rom.sha
-```
-
-### 3. Create Integration Files
-
-**data.json** - RAM address mappings:
-```json
-{
-  "info": {
-    "lives": {"address": 1234, "type": "|u1"},
-    "score": {"address": 1236, "type": "<u2"}
-  }
-}
-```
-
-**metadata.json** - Game metadata:
-```json
-{
-  "default_state": "Level1",
-  "default_player_state": ""
-}
-```
-
-**scenario.json** - Reward/done conditions:
-```json
-{
-  "done": {
-    "variables": {"lives": {"op": "equal", "reference": 0}}
-  },
-  "reward": {
-    "variables": {"score": {"reward": 1}}
-  }
-}
-```
-
-### 4. Create Save States
-
-Use an emulator (BizHawk, RetroArch, etc.) to create `.state` files at desired starting points. Copy them to `custom_integrations/GameName-Snes/`.
-
-### 5. Create run_bot.sh
-
-```bash
-#!/bin/bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-# Find venv python
-VENV_CANDIDATES=(
-    "$ROOT_DIR/.venv/bin/python"
-    "$ROOT_DIR/super_metroid_rl/retro_env/bin/python"
-    "$ROOT_DIR/harvest/.venv/bin/python"
-)
-
-VENV_PYTHON=""
-for candidate in "${VENV_CANDIDATES[@]}"; do
-    if [[ -x "$candidate" ]]; then
-        VENV_PYTHON="$candidate"
-        break
-    fi
-done
-
-if [[ -z "$VENV_PYTHON" ]]; then
-    echo "No virtual environment found. Run: cd $ROOT_DIR && ./setup.sh"
-    exit 1
-fi
-
-if [[ "${HEADLESS:-}" == "1" ]]; then
-    export SDL_VIDEODRIVER="dummy"
-    export SDL_AUDIODRIVER="dummy"
-    export SDL_SOFTWARE_RENDERER="1"
-fi
-
-export PYTHONPATH="${ROOT_DIR}:${PYTHONPATH:-}"
-"$VENV_PYTHON" "$SCRIPT_DIR/run_bot.py" "$@"
-```
-
-### 6. Create run_bot.py
-
-Use the shared harness:
-
-```python
-#!/usr/bin/env python3
-from pathlib import Path
-import sys
-
-SCRIPT_DIR = Path(__file__).parent.resolve()
-ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-
-from retro_harness import (
-    make_env,
-    keyboard_action,
-    controller_action,
-    sanitize_action,
-    init_controller,
-)
-
-DEFAULT_GAME = "GameName-Snes"
-DEFAULT_STATE = "Level1"
-
-def play_game(game: str, state: str):
-    import pygame
-
-    env = make_env(game=game, state=state, game_dir=SCRIPT_DIR)
-    obs, info = env.reset()
-
-    screen = pygame.display.set_mode((obs.shape[1] * 3, obs.shape[0] * 3))
-    joystick = init_controller(pygame)
-    clock = pygame.time.Clock()
-    running = True
-
-    while running:
-        keys = pygame.key.get_pressed()
-        action = [0] * 12
-        keyboard_action(keys, action, pygame)
-        controller_action(joystick, action)
-        sanitize_action(action)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                running = False
-
-        obs, reward, terminated, truncated, info = env.step(action)
-
-        surf = pygame.surfarray.make_surface(obs.swapaxes(0, 1))
-        screen.blit(pygame.transform.scale(surf, screen.get_size()), (0, 0))
-        pygame.display.flip()
-        clock.tick(60)
-
-        if terminated or truncated:
-            obs, info = env.reset()
-
-    env.close()
-    pygame.quit()
-
-if __name__ == "__main__":
-    from retro_harness import add_custom_integrations
-    add_custom_integrations(SCRIPT_DIR)
-    play_game(DEFAULT_GAME, DEFAULT_STATE)
-```
-
-## Directory Structure
-
-```
+```text
 new_game/
-├── run_bot.sh              # Entry point
-├── run_bot.py              # Game logic
-├── roms/                   # ROM files (git-ignored)
-│   └── rom.sfc
+├── game.py
+├── roms/                  # gitignored
+├── tests/
 └── custom_integrations/
     └── GameName-Snes/
-        ├── data.json       # RAM addresses
-        ├── metadata.json   # Game metadata
-        ├── scenario.json   # Reward/done conditions
-        ├── rom.sfc         # Symlink to roms/rom.sfc
-        ├── rom.sha         # SHA1 hash of ROM
-        └── Level1.state    # Save states
+        ├── data.json
+        ├── metadata.json
+        ├── scenario.json
+        ├── rom.sfc -> ../../roms/GameName.sfc
+        ├── rom.sha
+        └── FirstAction.state
 ```
 
-## Shared Harness (retro_harness)
+ROMs and generated states remain game-local and gitignored. Reusable Python
+behavior belongs in a shared package.
 
-The root-level `retro_harness/` package provides:
+## 2. Minimal game definition
 
-- **Controls**: `keyboard_action()`, `controller_action()`, `sanitize_action()`, `init_controller()`
-- **Env**: `make_env()`, `add_custom_integrations()`, `get_available_states()`
-- **Protocol**: `Task`, `Skill`, `Plan`, `TaskResult`, `WorldState` for composable bot behaviors
+```python
+from pathlib import Path
 
-## Finding RAM Addresses
+from retro_harness.snes import GameSpec, StartupPlan, run_startup
 
-Resources for finding game RAM addresses:
-- [Data Crystal](https://datacrystal.tcrf.net)
-- [GameHacking.org](https://gamehacking.org)
-- [TASVideos](https://tasvideos.org)
-- Use BizHawk's RAM Watch/Search tools
+GAME = GameSpec("GameName-Snes", Path(__file__).parent)
+STARTUP = StartupPlan.title_menu("DOWN")
+
+
+def player_has_control(env, _info: dict) -> bool:
+    return int(env.get_ram()[0x1234]) == 1  # replace with verified RAM truth
+
+
+def create_first_action_state() -> None:
+    env = GAME.make_env(None)
+    try:
+        result = run_startup(
+            env,
+            STARTUP,
+            is_ready=player_has_control,
+            max_cycles=2,
+            max_frames=1800,
+        )
+        if not result.ready:
+            raise RuntimeError(f"startup failed after {result.frames} frames")
+        GAME.save_state(env, "FirstAction")
+    finally:
+        env.close()
+```
+
+For irregular menus, use the compact script form:
+
+```python
+STARTUP = StartupPlan.parse(
+    "WAIT:0:120 START:2:90 DOWN:2:12 A:2:180"
+)
+```
+
+Each token is `BUTTON[+BUTTON]:hold_frames:wait_frames`. `WAIT`, `NOOP`,
+`NONE`, and `IDLE` create release-only delays.
+
+## 3. Add only the layer the game needs
+
+- Use `retro_harness`: emulator/session lifecycle, actions, input scripts,
+  states, recording, RAM schemas, and task protocols.
+- Add `snes_oneshot`: behavior trees, watchdogs, RAM discovery, cursor/combat
+  policy, and segment completion for scripted clears.
+- Add `platformer_common`: platformer progress tracking, route evaluation,
+  replay, and optimizers.
+- Add `fighters_common`: fighting-game environments and training.
+- Keep RAM addresses, readiness checks, menu choices, maps, and policies in the
+  game directory until at least two games need the same behavior.
+
+See [the toolset boundary](retro_harness/docs/TOOLSET.md) for ownership and
+compatibility details.
+
+## 4. Verify the first seam
+
+The first test should compile the startup plan and assert the readiness signal
+against a known state or recorded trace. Then run the narrow shared tests:
+
+```bash
+uv run python -m pytest retro_harness/tests/test_actions.py \
+  retro_harness/tests/test_input_script.py -q
+```
+
+## 5. Plan the route to a verified full run
+
+After the first controllable checkpoint, use the shared
+[scripted full-run process](snes_oneshot/docs/FULL_RUN_PROCESS.md). Create the
+game-local `AGENTS.md`, `docs/STATUS.md`, `docs/plan.md`, and `docs/ram_map.md`
+before the project accumulates ad hoc scripts and states.
+
+The first segment acceptance test should include both:
+
+- a clean development checkpoint; and
+- a state captured from the real predecessor route.
+
+If the project writes RAM for health, ammo, lives, or another assist, add
+`docs/ASSIST_CONTRACT.md` before implementing it. Resource assists should
+refill only naturally unlocked capacity and must not silently grant item,
+stage, boss, door, or other progression flags.
+
+Do not overwrite the previous successful full-run report during experiments.
+Write a candidate report/log, validate it, and promote it only after the
+reset-to-ending integrity checks pass.

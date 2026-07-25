@@ -1,0 +1,28 @@
+{
+  "info": {
+    "bombs": {
+      "address": 8263085,
+      "type": "|u1"
+    },
+    "health": {
+      "address": 8258454,
+      "type": "|i1"
+    },
+    "kills": {
+      "address": 8262873,
+      "type": "|u1"
+    },
+    "lives": {
+      "address": 8263404,
+      "type": "|u1"
+    },
+    "player_x": {
+      "address": 8257650,
+      "type": "|u1"
+    },
+    "player_y_phase": {
+      "address": 8264013,
+      "type": "|u1"
+    }
+  }
+}

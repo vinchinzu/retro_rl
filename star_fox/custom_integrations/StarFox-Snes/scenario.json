@@ -1,0 +1,12 @@
+{
+  "done": {
+    "condition": "never"
+  },
+  "reward": {
+    "variables": {
+      "kills": {
+        "reward": 1.0
+      }
+    }
+  }
+}

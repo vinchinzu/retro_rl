@@ -1,0 +1,136 @@
+{
+  "info": {
+    "true_frame": {
+      "address": 8257555,
+      "type": "|u1"
+    },
+    "effective_frame": {
+      "address": 8257556,
+      "type": "|u1"
+    },
+    "controller_1": {
+      "address": 8257557,
+      "type": "|u1"
+    },
+    "controller_2": {
+      "address": 8257559,
+      "type": "|u1"
+    },
+    "powerup": {
+      "address": 8257561,
+      "type": "|u1"
+    },
+    "camera_x": {
+      "address": 8257562,
+      "type": "<u2"
+    },
+    "camera_y": {
+      "address": 8257564,
+      "type": "<u2"
+    },
+    "player_animation": {
+      "address": 8257649,
+      "type": "|u1"
+    },
+    "player_in_air": {
+      "address": 8257650,
+      "type": "|u1"
+    },
+    "player_direction": {
+      "address": 8257654,
+      "type": "|u1"
+    },
+    "player_blocked_dir": {
+      "address": 8257655,
+      "type": "|u1"
+    },
+    "player_x_speed": {
+      "address": 8257658,
+      "type": "<i2"
+    },
+    "player_y_speed": {
+      "address": 8257660,
+      "type": "<i2"
+    },
+    "player_x_next": {
+      "address": 8257684,
+      "type": "<u2"
+    },
+    "player_y_next": {
+      "address": 8257686,
+      "type": "<u2"
+    },
+    "player_x": {
+      "address": 8257745,
+      "type": "<u2"
+    },
+    "player_y": {
+      "address": 8257747,
+      "type": "<u2"
+    },
+    "game_mode": {
+      "address": 8257792,
+      "type": "|u1"
+    },
+    "lives": {
+      "address": 8261054,
+      "type": "|i1"
+    },
+    "coins": {
+      "address": 8261055,
+      "type": "|u1"
+    },
+    "item_box": {
+      "address": 8261058,
+      "type": "|u1"
+    },
+    "level_timer_frames": {
+      "address": 8261424,
+      "type": "|u1"
+    },
+    "level_timer_hundreds": {
+      "address": 8261425,
+      "type": "|u1"
+    },
+    "level_timer_tens": {
+      "address": 8261426,
+      "type": "|u1"
+    },
+    "level_timer_ones": {
+      "address": 8261427,
+      "type": "|u1"
+    },
+    "score": {
+      "address": 8261428,
+      "type": "<u4"
+    },
+    "translevel": {
+      "address": 8262591,
+      "type": "|u1"
+    },
+    "current_submap": {
+      "address": 8262595,
+      "type": "|u1"
+    },
+    "midway_flag": {
+      "address": 8262606,
+      "type": "|u1"
+    },
+    "p_meter": {
+      "address": 8262628,
+      "type": "|u1"
+    },
+    "on_ground": {
+      "address": 8262639,
+      "type": "|u1"
+    },
+    "active_boss": {
+      "address": 8262652,
+      "type": "|u1"
+    },
+    "camera_scrolling": {
+      "address": 8262653,
+      "type": "|u1"
+    }
+  }
+}

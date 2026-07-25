@@ -30,6 +30,7 @@ def test_play_game_uses_supplied_factories():
             headless,
             action_size,
             base_fps,
+            initial_speed,
         ):
             seen["env"] = env
             seen["game_dir"] = game_dir
@@ -40,6 +41,7 @@ def test_play_game_uses_supplied_factories():
             seen["headless"] = headless
             seen["action_size"] = action_size
             seen["base_fps"] = base_fps
+            seen["initial_speed"] = initial_speed
             self.on_hud = None
 
         def run(self):
@@ -59,6 +61,7 @@ def test_play_game_uses_supplied_factories():
         scale=4,
         action_size=9,
         base_fps=30,
+        initial_speed=0.7,
         headless=True,
         on_hud=_hud,
         env_factory=_env_factory,
@@ -70,5 +73,6 @@ def test_play_game_uses_supplied_factories():
     assert seen["scale"] == 4
     assert seen["action_size"] == 9
     assert seen["base_fps"] == 30
+    assert seen["initial_speed"] == 0.7
     assert seen["headless"] is True
     assert ran == [["ok"]]

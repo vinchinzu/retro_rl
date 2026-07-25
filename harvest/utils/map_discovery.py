@@ -35,7 +35,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import stable_retro as retro
 
-from farm_clearer import (
+from harvest.tasks.farm_clearer import (
     ADDR_MAP,
     ADDR_TILEMAP,
     ADDR_X,
@@ -194,7 +194,7 @@ def interactive_mode(state: str):
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("monospace", 12)
 
-    from farm_clearer import make_action
+    from harvest.tasks.farm_clearer import make_action
     from retro_harness import keyboard_action
 
     prev_tilemap = None

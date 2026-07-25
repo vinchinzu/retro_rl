@@ -1,0 +1,42 @@
+"""Filesystem constants for TMNT IV."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+GAME_DIR = Path(__file__).resolve().parent
+REPO_ROOT = GAME_DIR.parent
+INTEGRATION = "TMNTIV-Snes"
+GAME = INTEGRATION
+INTEGRATION_DIR = GAME_DIR / "custom_integrations" / INTEGRATION
+RECORDINGS_DIR = GAME_DIR / "recordings"
+ROMS_DIR = GAME_DIR / "roms"
+DOCS_DIR = GAME_DIR / "docs"
+STAGE1_STATE = "Stage1"
+STAGE1_CLEAR_STATE = "Stage1_Clear"
+STAGE1_BEFORE_BOSS_STATE = "Stage1_BeforeBoss"
+STAGE2_STATE = "Stage2"
+STAGE2_CLEAR_STATE = "Stage2_Clear"
+STAGE2_BEFORE_BOSS_STATE = "Boss2"
+STAGE3_STATE = "Stage3"
+STAGE3_CLEAR_STATE = "Stage3_Clear"
+STAGE3_BEFORE_BOSS_STATE = "Boss3"
+STAGE4_STATE = "Stage4"
+STAGE4_CLEAR_STATE = "Stage4_Clear"
+STAGE4_BEFORE_BOSS_STATE = "Boss4"
+STAGE5_STATE = "Stage5"
+STAGE5_CLEAR_STATE = "Stage5_Clear"
+STAGE5_BEFORE_BOSS_STATE = "Boss5"
+STAGE6_STATE = "Stage6"
+STAGE6_CLEAR_STATE = "Stage6_Clear"
+STAGE6_BEFORE_BOSS_STATE = "Boss6"
+STAGE7_STATE = "Stage7"
+STAGE7_CLEAR_STATE = "Stage7_Clear"
+STAGE7_BEFORE_BOSS_STATE = "Boss7"
+STAGE8_STATE = "Stage8"
+STAGE8_CLEAR_STATE = "Stage8_Clear"
+STAGE8_BEFORE_BOSS_STATE = "Boss8"
+STAGE9_STATE = "Stage9"
+STAGE9_CLEAR_STATE = "Stage9_Clear"
+STAGE9_BEFORE_BOSS_STATE = "Boss9"
+ENDING_STATE = "Ending"

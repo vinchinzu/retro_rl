@@ -1,0 +1,16 @@
+{
+  "info": {
+    "player_x": {
+      "address": 36,
+      "type": "<u2"
+    },
+    "progress_x": {
+      "address": 42,
+      "type": "<u2"
+    },
+    "gameplay_active": {
+      "address": 704,
+      "type": "|u1"
+    }
+  }
+}

@@ -23,6 +23,9 @@ Usage:
     python train_speedrun.py --steps 12000000       # Longer run
     python train_speedrun.py --lr 5e-5              # Custom learning rate
     python train_speedrun.py --fresh                # Start from scratch
+    python train_speedrun.py --curriculum ladder    # M1-M7 focus (fix mid-ladder starvation)
+    python train_speedrun.py --curriculum boss      # Goro + Shang focus
+    python train_speedrun.py --curriculum endurance # Endurance rounds focus
 """
 
 import sys
@@ -40,25 +43,14 @@ from stable_baselines3.common.callbacks import BaseCallback
 from fighters_common import train_ppo
 from fighters_common.fighting_env import make_fighting_env
 from fighters_common.game_configs import get_game_config
+from speedrun_curriculum import CURRICULUM_TIERS, get_liukang_tiers
 
 CHARACTERS = ["LiuKang", "Sonya", "JohnnyCage", "Kano", "Raiden", "SubZero", "Scorpion"]
-
-# Difficulty tiers: (state_prefixes, weight)
-# SNES MK1 has 2 endurance rounds (not 3). Goro = Endurance2B (alias).
-# Total: 12 fights across 12 unique states.
-LIUKANG_TIERS = [
-    (["Fight", "Match2", "Match3"],                           0.10, "Easy (M1-M3)"),
-    (["Match4", "Match5", "Match6"],                          0.15, "Medium (M4-M6)"),
-    (["Match7"],                                              0.10, "Mirror (M7)"),
-    (["Endurance1", "Endurance1B", "Endurance2"],             0.20, "Endurance"),
-    (["Goro"],                                                0.25, "Goro (sub-boss)"),
-    (["ShangTsung"],                                          0.20, "Shang Tsung (final)"),
-]
 
 GENERAL_WEIGHT = 0.15  # Weight for non-LiuKang general preservation
 
 
-def discover_states():
+def discover_states(curriculum: str = "full"):
     """Auto-discover all available states."""
     config = get_game_config("mk1")
     game_dir = ROOT_DIR / config.game_dir_name
@@ -66,7 +58,7 @@ def discover_states():
 
     # LiuKang states by tier
     liukang_tiers = []
-    for prefixes, weight, name in LIUKANG_TIERS:
+    for prefixes, weight, name in get_liukang_tiers(curriculum):
         states = []
         for prefix in prefixes:
             state_name = f"{prefix}_LiuKang"
@@ -177,9 +169,36 @@ def main():
     parser.add_argument("--checkpoint-freq", type=int, default=500_000, help="Checkpoint every N steps")
     parser.add_argument("--report-freq", type=int, default=500, help="Report every N episodes")
     parser.add_argument("--fresh", action="store_true", help="Start from scratch")
+    parser.add_argument(
+        "--curriculum",
+        choices=sorted(CURRICULUM_TIERS),
+        default="full",
+        help="Training tier mix: full (default), ladder, endurance, boss",
+    )
+    parser.add_argument(
+        "--no-randomize",
+        action="store_true",
+        help="Disable health/timer randomization in env reset",
+    )
+    parser.add_argument(
+        "--prefix",
+        default="mk1_speedrun_ppo",
+        help="Checkpoint filename prefix (default: mk1_speedrun_ppo)",
+    )
+    parser.add_argument(
+        "--load",
+        default=None,
+        help="Resume from this checkpoint (under models/). Overrides auto base pick.",
+    )
+    parser.add_argument(
+        "--n-envs",
+        type=int,
+        default=None,
+        help="Parallel envs (default: fighters_common TrainConfig, usually 4)",
+    )
     cli_args = parser.parse_args()
 
-    liukang_tiers, general_states = discover_states()
+    liukang_tiers, general_states = discover_states(cli_args.curriculum)
 
     total_liukang = sum(len(s) for s, _, _ in liukang_tiers)
     if total_liukang == 0:
@@ -192,8 +211,13 @@ def main():
 
     print("=" * 70)
     print("MK1 SPEEDRUN TRAINING - LiuKang Full Tournament")
+    print(f"Curriculum: {cli_args.curriculum}")
     print(f"LiuKang states: {total_liukang} | General states: {len(general_states)}")
-    print(f"Steps: {TOTAL_STEPS:,} | LR: {LEARNING_RATE} | Checkpoints: {cli_args.checkpoint_freq:,}")
+    print(
+        f"Steps: {TOTAL_STEPS:,} | LR: {LEARNING_RATE} | "
+        f"Curriculum: {cli_args.curriculum} | Randomize: {not cli_args.no_randomize}"
+    )
+    print(f"Checkpoints: {cli_args.checkpoint_freq:,} | Prefix: {cli_args.prefix}")
     print(f"Estimated time: {estimated_hours:.1f} hours (at ~440 fps)")
     print(f"Start: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
@@ -216,27 +240,48 @@ def main():
     model_dir = game_dir / "models"
 
     model_path = None
-    if not cli_args.fresh:
-        for candidate in [
-            "mk1_speedrun_ppo_final.zip",
-            "mk1_fresh_ppo_final.zip",
-            "mk1_match7_ppo_final.zip",
-            "mk1_match4_ppo_final.zip",
-            "mk1_multichar_ppo_2000000_steps.zip",
-        ]:
-            model_path = model_dir / candidate
-            if model_path.exists():
-                break
+    if cli_args.load:
+        load_name = Path(cli_args.load).name
+        model_path = model_dir / load_name
+        if not model_path.exists():
+            print(f"ERROR: --load not found: {model_path}")
+            sys.exit(1)
+        print(f"\nResume checkpoint: {model_path.name}")
+    elif not cli_args.fresh:
+        # Prefer latest step checkpoint for this prefix when resuming a run
+        prefix_checkpoints = sorted(
+            model_dir.glob(f"{cli_args.prefix}_*_steps.zip"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if prefix_checkpoints:
+            model_path = prefix_checkpoints[0]
+            print(f"\nResume from latest {cli_args.prefix} checkpoint: {model_path.name}")
         else:
-            candidates = sorted(model_dir.glob("mk1*ppo*.zip"),
-                              key=lambda p: p.stat().st_mtime, reverse=True)
-            model_path = candidates[0] if candidates else None
+            for candidate in [
+                "mk1_speedrun_ppo_final.zip",
+                "mk1_fresh_ppo_final.zip",
+                "mk1_match7_ppo_final.zip",
+                "mk1_match4_ppo_final.zip",
+                "mk1_multichar_ppo_2000000_steps.zip",
+            ]:
+                model_path = model_dir / candidate
+                if model_path.exists():
+                    break
+            else:
+                candidates = sorted(
+                    model_dir.glob("mk1*ppo*.zip"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                model_path = candidates[0] if candidates else None
 
         if not model_path or not model_path.exists():
             print("ERROR: No base model found! Use --fresh to start from scratch.")
             sys.exit(1)
 
-        print(f"\nBase model: {model_path.name}")
+        if not prefix_checkpoints:
+            print(f"\nBase model: {model_path.name}")
     else:
         print("\nStarting FRESH (no pretrained model)")
 
@@ -263,9 +308,11 @@ def main():
                     break
             state = random.choice(chosen_states)
 
-        kwargs['state'] = state
+        kwargs["state"] = state
+        kwargs["randomize_state"] = not cli_args.no_randomize
         if random.random() < 0.002:
-            print(f"  [Env] {state}")
+            tag = "randomized" if kwargs["randomize_state"] else "fixed"
+            print(f"  [Env] {state} ({tag})")
         return _original_make_env(*args, **kwargs)
 
     train_ppo.make_fighting_env = speedrun_make_env
@@ -279,7 +326,7 @@ def main():
     train_ppo.TrainConfig.LEARNING_RATE = LEARNING_RATE
     train_ppo.TrainConfig.CHECKPOINT_FREQ = cli_args.checkpoint_freq
 
-    MODEL_PREFIX = "mk1_speedrun_ppo"
+    MODEL_PREFIX = cli_args.prefix
 
     sys.argv = [sys.argv[0]]
     sys.argv.extend(['--game', 'mk1'])
@@ -287,6 +334,8 @@ def main():
     if model_path:
         sys.argv.extend(['--load', str(model_path)])
     sys.argv.extend(['--prefix', MODEL_PREFIX])
+    if cli_args.n_envs is not None:
+        sys.argv.extend(['--n-envs', str(cli_args.n_envs)])
 
     start_time = time.time()
     train_ppo.main()
@@ -311,9 +360,16 @@ def main():
             script="train_speedrun.py",
             steps=TOTAL_STEPS,
             lr=LEARNING_RATE,
-            training_mix=f"85% LiuKang ({tier_str}), 15% general M1",
-            notes=f"Full tournament speedrun, {total_liukang} LiuKang states, "
-                  f"{elapsed/3600:.1f}h, {TOTAL_STEPS:,} steps",
+            training_mix=(
+                f"curriculum={cli_args.curriculum}; "
+                f"randomize={not cli_args.no_randomize}; "
+                f"85% LiuKang ({tier_str}), 15% general M1"
+            ),
+            notes=(
+                f"Full tournament speedrun, curriculum={cli_args.curriculum}, "
+                f"{total_liukang} LiuKang states, {elapsed/3600:.1f}h, "
+                f"{TOTAL_STEPS:,} steps"
+            ),
         )
         print(f"\nRegistered {final_name} in model registry.")
     except Exception as e:

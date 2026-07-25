@@ -330,9 +330,10 @@ class FightingEnv(gym.Wrapper):
     REWARD_TIME_PENALTY = -0.001    # Per-frame time penalty
     REWARD_TIMEOUT_ROUND = -0.15    # Flat penalty for ANY timeout round (discourages passive play)
 
-    def __init__(self, env, config: Optional[FightingGameConfig] = None):
+    def __init__(self, env, config: Optional[FightingGameConfig] = None, randomize_state: bool = False):
         super().__init__(env)
         self.config = config or FightingGameConfig()
+        self.randomize_state = randomize_state
         self.reward_scale = 1.0 / self.config.max_health
         self.prev_health = None
         self.prev_enemy_health = None
@@ -349,6 +350,33 @@ class FightingEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
+        
+        if self.randomize_state:
+            # 1. Randomize healths and timer occasionally (40% probability)
+            if np.random.random() < 0.4:
+                try:
+                    max_h = self.config.max_health
+                    p1_h = int(np.random.randint(40, max_h + 1))
+                    p2_h = int(np.random.randint(40, max_h + 1))
+                    
+                    self.env.unwrapped.data.set_value(self.config.health_key, p1_h)
+                    self.env.unwrapped.data.set_value(self.config.enemy_health_key, p2_h)
+                    
+                    if hasattr(self.config, "timer_key") and self.config.timer_key:
+                        timer_val = int(np.random.randint(40, 154 if max_h == 161 else 100))
+                        self.env.unwrapped.data.set_value(self.config.timer_key, timer_val)
+                except Exception:
+                    pass
+            
+            # 2. Skip a random number of initial frames (0 to 60 frames)
+            skip_frames = np.random.randint(0, 61)
+            if skip_frames > 0:
+                noop = np.zeros(self.env.action_space.shape, dtype=self.env.action_space.dtype)
+                for _ in range(skip_frames):
+                    obs, reward, terminated, truncated, info = self.env.step(noop)
+                    if terminated or truncated:
+                        break
+        
         self.prev_health = info.get(self.config.health_key, self.config.max_health)
         self.prev_enemy_health = info.get(self.config.enemy_health_key, self.config.max_health)
         self.rounds_won = 0
@@ -500,6 +528,7 @@ def make_fighting_env(
     monitor_dir: Optional[str] = None,
     practice: bool = False,
     combos: list[dict] | None = None,
+    randomize_state: bool = False,
 ):
     """
     Create a fully wrapped fighting game environment for PPO training.
@@ -547,7 +576,7 @@ def make_fighting_env(
     elif frame_skip > 1:
         env = FrameSkip(env, n_skip=frame_skip)
     env = GrayscaleResize(env, width=84, height=84)
-    env = FightingEnv(env, config=config)
+    env = FightingEnv(env, config=config, randomize_state=randomize_state)
     action_map = (config.actions if config and config.actions else FIGHTING_ACTIONS)
     if combos:
         from fighters_common.combo_wrapper import get_combo_actions

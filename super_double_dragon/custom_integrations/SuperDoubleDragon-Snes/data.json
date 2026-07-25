@@ -1,0 +1,29 @@
+{
+  "info": {
+    "mission": {"address": 28, "type": "|u1"},
+    "credits": {"address": 217, "type": "|u1"},
+    "player_lives": {"address": 220, "type": "|u1"},
+    "player_page": {"address": 7417, "type": "|u1"},
+    "player_status": {"address": 4608, "type": "|u1"},
+    "player_y": {"address": 4624, "type": "|u1"},
+    "player_hp": {"address": 4647, "type": "|u1"},
+    "player_screen_x": {"address": 4724, "type": "|u1"},
+    "actor06_hp": {"address": 1575, "type": "|u1"},
+    "actor07_hp": {"address": 1831, "type": "|u1"},
+    "actor08_hp": {"address": 2087, "type": "|u1"},
+    "actor09_hp": {"address": 2343, "type": "|u1"},
+    "actor0a_hp": {"address": 2599, "type": "|u1"},
+    "actor0b_hp": {"address": 2855, "type": "|u1"},
+    "actor0c_hp": {"address": 3111, "type": "|u1"},
+    "actor0d_hp": {"address": 3367, "type": "|u1"},
+    "actor0e_hp": {"address": 3623, "type": "|u1"},
+    "actor0f_hp": {"address": 3879, "type": "|u1"},
+    "actor10_hp": {"address": 4135, "type": "|u1"},
+    "actor11_hp": {"address": 4391, "type": "|u1"},
+    "actor12_hp": {"address": 4647, "type": "|u1"},
+    "actor13_hp": {"address": 4903, "type": "|u1"},
+    "actor14_hp": {"address": 5159, "type": "|u1"},
+    "actor15_hp": {"address": 5415, "type": "|u1"},
+    "actor16_hp": {"address": 5671, "type": "|u1"}
+  }
+}

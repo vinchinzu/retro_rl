@@ -30,12 +30,9 @@ sys.path.insert(0, str(ROOT_DIR))
 import numpy as np
 import torch
 from stable_baselines3 import PPO
-from fighters_common.fighting_env import (
-    DirectRAMReader, DiscreteAction, FightingEnv, FightingGameConfig,
-    FrameSkip, FrameStack, GrayscaleResize
-)
+from fighters_common.fighting_env import FightingGameConfig
 from fighters_common.game_configs import get_game_config
-import stable_retro as retro
+from fighters_common.ram_observation import build_eval_env
 
 # Full tournament stages (SNES MK1: 2 endurance rounds, Goro = E2 opp2)
 STAGES = [
@@ -54,50 +51,38 @@ STAGES = [
 ]
 
 
-def build_env(config, game_dir, state):
+def build_env(config, game_dir, state, *, ram: bool = False):
     """Build wrapped environment for model evaluation."""
-    retro.data.Integrations.add_custom_path(str(game_dir / "custom_integrations"))
-
-    base_env = retro.make(
-        game=config.game_id,
-        state=state,
-        render_mode="rgb_array",
-        inttype=retro.data.Integrations.CUSTOM_ONLY,
-        use_restricted_actions=retro.Actions.ALL,
-    )
-
     fight_config = FightingGameConfig(
         max_health=config.max_health,
         health_key=config.health_key,
         enemy_health_key=config.enemy_health_key,
+        timer_key=config.timer_key,
         ram_overrides=config.ram_overrides,
         actions=config.actions,
     )
-
-    env = base_env
-    if config.ram_overrides:
-        env = DirectRAMReader(env, config.ram_overrides)
-    env = FrameSkip(env, n_skip=4)
-    env = GrayscaleResize(env, width=84, height=84)
-    env = FightingEnv(env, fight_config)
-    env = DiscreteAction(env, config.actions)
-    env = FrameStack(env, n_frames=4)
-    return env
+    return build_eval_env(
+        game=config.game_id,
+        state=state,
+        game_dir=game_dir,
+        config=fight_config,
+        ram=ram,
+    )
 
 
-def test_stage(model, config, game_dir, state_name, attempts=5):
+def test_stage(model, config, game_dir, state_name, attempts=5, deterministic=True, ram=False):
     """Test a single stage, return (wins, losses, avg_frames)."""
     wins = 0
     losses = 0
     frame_counts = []
 
     for attempt in range(attempts):
-        env = build_env(config, game_dir, state_name)
+        env = build_env(config, game_dir, state_name, ram=ram)
         obs, info = env.reset()
         frames = 0
 
         for frame in range(15000):  # Max ~4 minutes
-            action, _ = model.predict(obs, deterministic=False)
+            action, _ = model.predict(obs, deterministic=deterministic)
             obs, reward, terminated, truncated, info = env.step(action)
             frames += 1
 
@@ -126,6 +111,16 @@ def main():
     parser.add_argument("--char", default="LiuKang", help="Character to test")
     parser.add_argument("--attempts", type=int, default=5, help="Attempts per stage")
     parser.add_argument("--model", default=None, help="Model path")
+    parser.add_argument(
+        "--stochastic",
+        action="store_true",
+        help="Use stochastic policy during eval (default: deterministic)",
+    )
+    parser.add_argument(
+        "--ram",
+        action="store_true",
+        help="Evaluate RAM-vector MLP model (omit GrayscaleResize/FrameStack)",
+    )
     args = parser.parse_args()
 
     config = get_game_config("mk1")
@@ -137,13 +132,19 @@ def main():
         model_path = Path(args.model)
     else:
         model_dir = game_dir / "models"
-        for candidate in [
+        candidates = [
+            "mk1_ram_v2_ppo_final.zip",
+            "mk1_ram_ppo_final.zip",
             "mk1_speedrun_ppo_final.zip",
             "mk1_fresh_ppo_final.zip",
             "mk1_match7_ppo_final.zip",
             "mk1_match4_ppo_final.zip",
             "mk1_multichar_ppo_2000000_steps.zip",
-        ]:
+        ] if not args.ram else [
+            "mk1_ram_v2_ppo_final.zip",
+            "mk1_ram_ppo_final.zip",
+        ]
+        for candidate in candidates:
             model_path = model_dir / candidate
             if model_path.exists():
                 break
@@ -153,10 +154,13 @@ def main():
         sys.exit(1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args.ram:
+        device = torch.device("cpu")
     model = PPO.load(str(model_path), device=device)
     print(f"Model: {model_path.name}")
     print(f"Character: {args.char}")
     print(f"Attempts per stage: {args.attempts}")
+    print(f"Observation: {'RAM MLP' if args.ram else 'pixel CNN'}")
     print()
 
     # Test each stage
@@ -172,7 +176,13 @@ def main():
             continue
 
         wins, losses, avg_frames = test_stage(
-            model, config, game_dir, state_name, args.attempts
+            model,
+            config,
+            game_dir,
+            state_name,
+            args.attempts,
+            deterministic=not args.stochastic,
+            ram=args.ram,
         )
         win_rate = wins / max(1, wins + losses)
         results.append((display_name, win_rate, wins, losses, avg_frames))

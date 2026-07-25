@@ -1,0 +1,122 @@
+{
+  "schema": "harvest_state_preset_v1",
+  "name": "ranch_master_999",
+  "base_state": "latest",
+  "output_state": "latest_y3_ending_ranch_master_999",
+  "description": "Rebuild the verified Y3 ending save that reaches Ranch Master 999.",
+  "notes": [
+    "Crop and girl-heart Ranch Master categories are bugged: the calculator uses value & 0x01ff, then shifts right by 4.",
+    "Crops are set to 511 for 31 points each.",
+    "Girl hearts are set to 509 because sleeping from this latest-state branch adds +2 to Maria before credits; final Maria becomes 511 instead of rolling to 513.",
+    "The farm map fill converts every persistent farm tile below 0xa0 to mature grass 0x79 and leaves the active map buffer alone for the indoor save."
+  ],
+  "farm": {
+    "fill_non_structure_with_grass": true,
+    "update_visible_map": false,
+    "expected_development_tiles": 2965,
+    "expected_development_percent": 100
+  },
+  "scalars": {
+    "money": 997330,
+    "max_stamina": 200,
+    "power_berry_count": 10,
+    "power_berries": 10,
+    "happiness": 999,
+    "dog_hugs": 102,
+    "shipped_tomatoes": 511,
+    "shipped_corn": 511,
+    "shipped_potatoes": 511,
+    "shipped_turnips": 511,
+    "maria_hearts": 509,
+    "ann_hearts": 509,
+    "nina_hearts": 509,
+    "ellen_hearts": 509,
+    "eve_hearts": 509,
+    "fed_cows_n": 12,
+    "fed_cows_flags": 4095,
+    "fed_chickens_n": 12,
+    "fed_chickens_flags": 4095,
+    "stored_grass": 9999,
+    "cow_feed": 99,
+    "chicken_feed": 99,
+    "ranch_mastery": 999
+  },
+  "flags": {
+    "house_level": 2,
+    "or": {
+      "upgrade_flags": 192,
+      "marriage_flags": 31,
+      "incubator_flags": 16396,
+      "family_event_flags": 4096
+    }
+  },
+  "kids": [
+    {
+      "kid": 1,
+      "stage": "grown"
+    },
+    {
+      "kid": 2,
+      "stage": "grown"
+    }
+  ],
+  "animals": {
+    "cows": {
+      "count": 12,
+      "status_raw": 9,
+      "raw_1": 7,
+      "home_map_raw": 39,
+      "pregnancy_raw": 0,
+      "happiness": 255,
+      "raw_5": 0,
+      "name_bytes_by_slot": [
+        [3, 14, 1, 177],
+        [3, 14, 2, 177],
+        [3, 14, 3, 177],
+        [3, 14, 4, 177],
+        [3, 14, 5, 177],
+        [3, 14, 6, 177],
+        [3, 14, 7, 177],
+        [3, 14, 8, 177],
+        [3, 14, 9, 177],
+        [3, 14, 10, 177],
+        [3, 14, 11, 177],
+        [3, 14, 12, 177]
+      ]
+    },
+    "chickens": {
+      "count": 12,
+      "total_slots": 13,
+      "status_raw": 9,
+      "raw_1": 40,
+      "raw_2": 0,
+      "raw_3": 0
+    }
+  },
+  "expected_initial": {
+    "ranch_mastery": 999,
+    "ranch_development": 100,
+    "num_cows": 12,
+    "num_chickens": 12,
+    "maria_hearts": 509,
+    "ann_hearts": 509,
+    "nina_hearts": 509,
+    "ellen_hearts": 509,
+    "eve_hearts": 509,
+    "shipped_corn": 511,
+    "shipped_tomatoes": 511,
+    "shipped_turnips": 511,
+    "shipped_potatoes": 511,
+    "max_stamina": 200,
+    "happiness": 999,
+    "power_berry_count": 10,
+    "dog_hugs": 102
+  },
+  "expected_ending_probe_final": {
+    "ranch_mastery": 999,
+    "ranch_development": 100,
+    "maria_hearts": 511,
+    "num_cows": 12,
+    "num_chickens": 12
+  }
+}

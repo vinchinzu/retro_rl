@@ -18,7 +18,6 @@ roms/
 *.smc
 *.bin
 *.md5
-*.sha
 
 # Log files and dumps
 *.log
