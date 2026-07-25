@@ -110,8 +110,8 @@ SCENE2_TARGET_META: dict[str, tuple[TargetKind, TargetStatus]] = {
 SCENE3_TARGETS: tuple[CursorTarget, ...] = (
     # Favorable layout (Scene2_Cleared idle~5f then advance): P2-A → land.
     CursorTarget(x=160, y=100, deadzone=4, label="scene3_scroll_p2a300"),
-    # AfterFind1000 → P2-A~200f → click near assist land.
-    CursorTarget(x=198, y=100, deadzone=4, label="scene3_waldo_p2a200"),
+    # Continuous favorable layout: click 196 (198 misses).
+    CursorTarget(x=196, y=100, deadzone=4, label="scene3_waldo_p2a200"),
 )
 
 

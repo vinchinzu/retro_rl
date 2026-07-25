@@ -38,6 +38,7 @@ from retro_harness.env import make_env  # noqa: E402
 from retro_harness.controls import SNES_START  # noqa: E402
 from snes_oneshot.actions import buttons, idle_action  # noqa: E402
 from snes_oneshot.game_state import GameMode, GameState  # noqa: E402
+from snes_oneshot.recording_footer import render_footer_frame  # noqa: E402
 from snes_oneshot.segment_runner import configure_headless  # noqa: E402
 from tmnt_iv.paths import (  # noqa: E402
     GAME,
@@ -362,32 +363,13 @@ def _render_frame(
     frame: int,
     fps: float,
     metrics: RunMetrics,
+    action: list[int] | None = None,
 ) -> np.ndarray:
     """Add a compact live footer and, at the end, an honest metric card."""
     rgb = np.asarray(obs, dtype=np.uint8)
     height, width = rgb.shape[:2]
-    canvas = np.zeros((height + _FOOTER_HEIGHT, width, 3), dtype=np.uint8)
-    canvas[:height] = rgb
-    canvas[height:] = (5, 10, 18)
-    image = Image.fromarray(canvas, mode="RGB")
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.load_default(size=8)
     stage_name = _STAGE_NAMES.get(state.stage, "HARD CREDITS")
     stage_no = min(max(state.stage + 1, 1), 10)
-    draw.text(
-        (4, height),
-        f"HARD  {stage_no:02d}/10 {stage_name}",
-        fill=(219, 234, 246),
-        font=font,
-    )
-    clock = _short_clock(frame, fps)
-    clock_width = draw.textbbox((0, 0), clock, font=font)[2]
-    draw.text(
-        (width - clock_width - 4, height),
-        clock,
-        fill=(103, 232, 164),
-        font=font,
-    )
     display_lives = (
         metrics.lives_end
         if metrics.credits_start_frame is not None
@@ -398,22 +380,24 @@ def _render_frame(
         if metrics.health_guard_interventions
         else "NO HEAL"
     )
-    lower = (
-        f"DMG {metrics.total_damage_taken:05d}  "
-        f"LIVES {display_lives}  LOSS {metrics.life_losses}  {assist}"
-    )
-    draw.text(
-        (4, height + 8),
-        lower,
-        fill=(150, 170, 190),
-        font=font,
+    image = render_footer_frame(
+        rgb,
+        upper_left=f"HARD  {stage_no:02d}/10 {stage_name}",
+        upper_right=_short_clock(frame, fps),
+        lower_left=(
+            f"DMG {metrics.total_damage_taken:05d}  "
+            f"LIVES {display_lives}  LOSS {metrics.life_losses}  {assist}"
+        ),
+        action=action,
+        players=1,
     )
 
     complete = metrics.credits_complete_frame
     if complete is None or frame < complete:
-        return np.asarray(image)
+        return image
 
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    pil_image = Image.fromarray(image, mode="RGB")
+    overlay = Image.new("RGBA", pil_image.size, (0, 0, 0, 0))
     card = ImageDraw.Draw(overlay)
     card.rounded_rectangle(
         (13, 35, width - 13, height - 20),
@@ -463,7 +447,7 @@ def _render_frame(
     for text, current_font, color in lines:
         card.text((23, y), text, font=current_font, fill=color)
         y += 17 if current_font is title else 13
-    return np.asarray(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
+    return np.asarray(Image.alpha_composite(pil_image.convert("RGBA"), overlay).convert("RGB"))
 
 
 def _rom_sha256() -> tuple[str, str]:
@@ -701,34 +685,6 @@ def run_full_hard(
 
             credits.update(state, frame=frame, metrics=metrics)
 
-            if capture is not None:
-                decorated = _render_frame(
-                    obs,
-                    state=state,
-                    frame=frame,
-                    fps=fps,
-                    metrics=metrics,
-                )
-                capture.write(decorated, pending_audio)
-
-            complete = metrics.credits_complete_frame
-            if complete is not None and frame >= complete + _METRIC_HOLD_FRAMES:
-                succeeded = True
-                break
-
-            if frame and frame % 10_000 == 0:
-                targets = [
-                    (hex(enemy.kind), enemy.health, enemy.x, enemy.y)
-                    for enemy in state.living_enemies
-                ]
-                print(
-                    f"frame {frame}  stage={state.stage} event={event:#04x} "
-                    f"damage={metrics.total_damage_taken} lives={state.lives} "
-                    f"p=({state.player_x},{state.player_y}) "
-                    f"targets={targets}",
-                    flush=True,
-                )
-
             if frame <= max(_BOOT_ACTIONS):
                 action = _boot_action(frame)
                 reason = "boot_menu" if any(action) else "boot_idle"
@@ -757,6 +713,36 @@ def run_full_hard(
             if action[8]:
                 raise RuntimeError(f"forbidden A special at frame {frame}")
             metrics.action_reasons[reason] += 1
+
+            if capture is not None:
+                decorated = _render_frame(
+                    obs,
+                    state=state,
+                    frame=frame,
+                    fps=fps,
+                    metrics=metrics,
+                    action=action,
+                )
+                capture.write(decorated, pending_audio)
+
+            complete = metrics.credits_complete_frame
+            if complete is not None and frame >= complete + _METRIC_HOLD_FRAMES:
+                succeeded = True
+                break
+
+            if frame and frame % 10_000 == 0:
+                targets = [
+                    (hex(enemy.kind), enemy.health, enemy.x, enemy.y)
+                    for enemy in state.living_enemies
+                ]
+                print(
+                    f"frame {frame}  stage={state.stage} event={event:#04x} "
+                    f"damage={metrics.total_damage_taken} lives={state.lives} "
+                    f"p=({state.player_x},{state.player_y}) "
+                    f"targets={targets}",
+                    flush=True,
+                )
+
             obs, _reward, _terminated, _truncated, _step_info = env.step(
                 action
             )

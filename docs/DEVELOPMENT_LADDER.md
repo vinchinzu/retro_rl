@@ -80,7 +80,7 @@ death/checkpoint recovery, natural-entry robustness, route stitching.
 
 ### Phase 4 — Graph-based exploration
 
-Games: Super Metroid, A Link to the Past (planned / external ALTTP work),
+Games: Super Metroid, A Link to the Past (`alttp/`),
 Soul Blazer or Goof Troop later.
 
 Capabilities: room/door graphs, inventory prerequisites, event flags, path

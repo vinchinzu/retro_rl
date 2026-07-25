@@ -1,0 +1,36 @@
+"""Tests for shared recording footer helpers."""
+
+from __future__ import annotations
+
+from snes_oneshot.actions import buttons, buttons_multi
+from snes_oneshot.recording_footer import (
+    FOOTER_HEIGHT,
+    format_player_buttons,
+    render_footer_frame,
+)
+
+
+def test_footer_extends_frame_height() -> None:
+    import numpy as np
+
+    obs = np.zeros((224, 256, 3), dtype=np.uint8)
+    frame = render_footer_frame(
+        obs,
+        upper_left="SCENE 01/05 TEST",
+        upper_right="00:12",
+        lower_left="SCORE 01234  CUR 032,100",
+        action=buttons_multi(p1=("A",), p2=("A",)),
+        players=2,
+    )
+    assert frame.shape == (224 + FOOTER_HEIGHT, 256, 3)
+
+
+def test_format_player_buttons_multi() -> None:
+    action = buttons_multi(p1=("RIGHT", "Y"), p2=("A",))
+    label = format_player_buttons(action, players=2)
+    assert label == "P1:RIGHT+Y  P2:A"
+
+
+def test_format_player_buttons_idle() -> None:
+    label = format_player_buttons(buttons(), players=1)
+    assert label == "P1:---"

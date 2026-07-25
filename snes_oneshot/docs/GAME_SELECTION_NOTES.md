@@ -44,7 +44,7 @@ player/enemy pose, and fast recovery. Short human playtime alone is not enough.
 ### Graph navigation
 
 - Super Metroid — active
-- A Link to the Past — planned; no `alttp/` workspace in this checkout yet
+- A Link to the Past (`alttp/`) — title → castle grounds active
 - Soul Blazer, Goof Troop — later
 
 ### Long campaigns

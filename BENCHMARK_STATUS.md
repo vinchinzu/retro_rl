@@ -14,5 +14,4 @@ used stale directory names (`alttp/`, `super_metroid_rl/`,
 | M0–M8 maturity and capability phases | [docs/DEVELOPMENT_LADDER.md](docs/DEVELOPMENT_LADDER.md) |
 | Vision and “scriptably beatable” | [docs/VISION.md](docs/VISION.md) |
 
-Authoritative directories: `super_metroid/`, `SMW/`, `harvest/`. There is no
-`alttp/` workspace in this checkout; ALTTP remains planned/external.
+Authoritative directories: `super_metroid/`, `SMW/`, `harvest/`, `alttp/`.

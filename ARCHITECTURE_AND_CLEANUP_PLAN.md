@@ -3,7 +3,7 @@
 > Historical cleanup plan. Prefer current program docs:
 > [`docs/VISION.md`](docs/VISION.md),
 > [`docs/PROGRAM_STATUS.md`](docs/PROGRAM_STATUS.md).
-> Authoritative paths: `super_metroid/`, `SMW/`. No `alttp/` in this checkout.
+> Authoritative paths: `super_metroid/`, `SMW/`, `alttp/`.
 > Older prose may still say `super_metroid_rl` as a historical alias.
 
 ## Intent
