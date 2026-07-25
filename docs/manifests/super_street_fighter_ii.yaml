@@ -1,0 +1,24 @@
+game: super_street_fighter_ii
+title: "Super Street Fighter II"
+directory: super_street_fighter_ii
+genre_tracks:
+  - fighting_game_policies
+capability_phase: 0
+project_state: scaffolded
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: medium
+ending_definition: win published fight from fight-ready state
+start_contract: fight_ready_state
+completion_contract: match_win
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: super_street_fighter_ii/TRAINING_GUIDE.md
+plan_doc: null
+last_verified: 2026-03-05
+blocker: normalize match benchmark claims under maturity gates
+notes: fighters_common track in progress.

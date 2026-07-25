@@ -1,6 +1,6 @@
 # Agent Instructions — battle_clash
 
-Scripted SNES completion agent for **Battle Clash** (oneshot ladder #9, tier 2).
+Scripted SNES completion agent for **Battle Clash** (cursor/peripheral track; blocked infrastructure; maturity M1).
 
 ## Identity
 

@@ -4,7 +4,7 @@ Ladder #1 (tier 0). Pipeline proof: boot, menus, cursor select, scene advance.
 
 ## Working rule
 
-Not a strict one-shot. Prefer:
+Not gated on uninterrupted evaluation early. Prefer:
 
 1. Dev `.state` files under `custom_integrations/GreatWaldoSearch-Snes/`
 2. Scene-segment policies (title → Scene1; cursor → known Waldo/Woof/etc.)
@@ -22,7 +22,8 @@ Not a strict one-shot. Prefer:
 5. **Segment clear Scene2** — done: scroll (224,100) + P2-A×500 + Waldo (32,120)
 6. **Scene chain** — Scene5 Land of Waldos **done** (`clear_scene5.py`;
    five-scrolls ending from Waldo clear).
-7. **Longer run** — optional title → five-scrolls ending without mid-run saves
+7. **Continuous run** — **done** (`scripts/record_full_run.py` →
+   `recordings/great_waldo_search_full_credits.mp4`)
 
 ## Segment policy (Scene1)
 

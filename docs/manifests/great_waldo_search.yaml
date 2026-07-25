@@ -1,0 +1,25 @@
+game: great_waldo_search
+title: "The Great Waldo Search"
+directory: great_waldo_search
+genre_tracks:
+  - pipeline_and_menus
+  - cursor_and_peripheral
+capability_phase: 0
+project_state: verified
+maturity: M8
+runtime_class: bronze
+intervention_class: clean
+popularity: low
+engineering_effort: low
+transfer_value: medium
+ending_definition: five-scrolls ending from power-on
+start_contract: power_on
+completion_contract: five_scrolls_ending
+best_manifest: null
+best_video: great_waldo_search/recordings/great_waldo_search_full_credits.mp4
+assist_contract: null
+status_doc: great_waldo_search/docs/STATUS.md
+plan_doc: great_waldo_search/docs/plan.md
+last_verified: 2026-07-25
+blocker: none — treat as completed pipeline fixture; keep capture current
+notes: Pipeline validation fixture, not a combat competency step.

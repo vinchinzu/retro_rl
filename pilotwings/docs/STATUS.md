@@ -1,9 +1,18 @@
 # Status — Pilotwings
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 8 |
-| Tier | 2 |
+| Current maturity | M2 |
+| Best verified result | Airborne Lesson 1 checkpoint |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
+| Field | Value |
+|-------|-------|
 | Status | **boot verified** |
 | Integration | `Pilotwings-Snes` |
 | ROM zip | `Pilotwings.zip` |

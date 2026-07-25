@@ -1,0 +1,24 @@
+game: battle_clash
+title: "Battle Clash"
+directory: battle_clash
+genre_tracks:
+  - cursor_and_peripheral
+capability_phase: 2
+project_state: blocked
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: low
+engineering_effort: high
+transfer_value: medium
+ending_definition: campaign clear (contract TBD)
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: battle_clash/docs/STATUS.md
+plan_doc: battle_clash/docs/plan.md
+last_verified: 2026-07-22
+blocker: "infrastructure — Super Scope / light-gun injection unsupported"
+notes: Out of the active execution queue until peripheral input exists.

@@ -1,17 +1,12 @@
 # retro_rl
 
-`retro_rl` is a multi-game SNES emulator automation and reinforcement-learning
-monorepo. It combines shared stable-retro tooling with game-local integrations,
-scripted policies, RL training, replay and recording workflows, and ROM-first
-editors.
+`retro_rl` is a multi-game SNES automation platform. The goal is to produce
+verified reset-to-ending clears across a broad canonical library, beginning with
+bespoke RAM-aware scripts and gradually reducing privileged information.
 
-The repository supports several ways to make progress:
-
-- controller-driven scripted agents developed from save-state segments
-- reinforcement-learning environments and training pipelines
-- human play, input recording, replay, and human-to-agent handoff
-- RAM discovery, deterministic startup scripts, and benchmark instrumentation
-- game-specific editors backed by a shared Qt-to-emulator bridge
+The repository supports scripted policies, reinforcement learning,
+demonstrations, replay, RAM discovery, editors, benchmark instrumentation, and
+game-specific planners as one cumulative program — not separate experiments.
 
 ROMs, save states, recordings, trained models, and ROM-derived assets are not
 included. Bring legally obtained game dumps and keep generated artifacts in the
@@ -43,6 +38,9 @@ Useful smoke checks:
 # Shared harness tests do not require a ROM.
 uv run python -m pytest retro_harness/tests -q
 
+# Documentation integrity (links, manifests, maturity fields).
+uv run pytest tests/test_docs.py -q
+
 # Discover registered game editors.
 uv run python -m retro_harness.editor_launcher --list
 
@@ -51,15 +49,12 @@ uv run python -m SMW --help
 uv run python fighters_common/train_ppo.py --help
 ```
 
-Game commands, expected ROM names, state requirements, and current milestones
-live in the nearest game-local `README.md`, `AGENTS.md`, or `docs/` directory.
-
 ## Architecture
 
 ```text
 game workspace
   ├── game-specific RAM maps, routes, policies, states, and evidence
-  ├── snes_oneshot       scripted clears, behavior trees, combat, watchdogs
+  ├── snes_oneshot       scripted completion helpers (historical package name)
   ├── platformer_common  platformer routes, replay, evaluation, optimizers
   ├── fighters_common    fighting-game environments and PPO training
   └── retro_harness      emulator, input, state, recording, task contracts
@@ -79,21 +74,60 @@ scripts), then add only the genre layer they need. See
 [`ADDING_GAMES.md`](./ADDING_GAMES.md) for the recommended layout and first
 verification seam.
 
-## Game Workspaces
+## Development Ladder
 
-The checkout currently contains these game-specific projects:
+Every game advances through the same maturity gates:
+
+```text
+M0 Contract
+M1 Integration and boot
+M2 Instrumentation
+M3 Isolated segment
+M4 Natural-entry segment
+M5 Chained suffix
+M6 Complete route graph
+M7 Continuous dry run
+M8 Verified capture
+```
+
+Central rule:
+
+> A checkpoint clear is not route-ready until it also clears from the state
+> produced by the real preceding route.
+
+Genre work is organized as **parallel capability tracks** (linear combat,
+platforming, continuous control, graph navigation, planning, …), not a single
+numerical game ranking. See [`docs/DEVELOPMENT_LADDER.md`](./docs/DEVELOPMENT_LADDER.md)
+and the engineering process in
+[`snes_oneshot/docs/FULL_RUN_PROCESS.md`](./snes_oneshot/docs/FULL_RUN_PROCESS.md).
+
+## Program documents
+
+| Document | Role |
+|---|---|
+| [`docs/VISION.md`](./docs/VISION.md) | Why the project exists; scriptably beatable |
+| [`docs/DEVELOPMENT_LADDER.md`](./docs/DEVELOPMENT_LADDER.md) | M0–M8 gates and capability phases |
+| [`docs/BENCHMARK_SPEC.md`](./docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold and Clean vs assisted |
+| [`docs/PROGRAM_STATUS.md`](./docs/PROGRAM_STATUS.md) | Live clears, bottlenecks, priorities |
+| [`docs/GAME_MATRIX.md`](./docs/GAME_MATRIX.md) | All games (generated from manifests) |
+| [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) | Shared vocabulary |
+| [`AGENTS.md`](./AGENTS.md) | Repo-wide agent rules |
+| [`ADDING_GAMES.md`](./ADDING_GAMES.md) | New game onboarding |
+
+## Game Workspaces
 
 | Track | Directories |
 |---|---|
 | Fighting-game RL | `mortal_kombat/`, `mortal_kombat_ii/`, `street_fighter_ii/`, `super_street_fighter_ii/` |
-| Platformers and route optimization | `SMW/`, `donkey_kong_country/` |
-| Scripted and long-horizon agents | `battle_clash/`, `f_zero/`, `final_fight/`, `great_waldo_search/`, `joe_and_mac/`, `magical_quest/`, `pilotwings/`, `rival_turf/`, `star_fox/`, `super_double_dragon/`, `super_metroid/`, `tmnt_iv/` |
-| Simulation and game tooling | `hals_golf/`, `harvest/` |
+| Platformers | `SMW/`, `donkey_kong_country/`, `magical_quest/`, `joe_and_mac/` |
+| Scripted completion | `battle_clash/`, `f_zero/`, `final_fight/`, `great_waldo_search/`, `pilotwings/`, `rival_turf/`, `star_fox/`, `super_double_dragon/`, `super_metroid/`, `tmnt_iv/` |
+| Planning / simulation | `harvest/`, `hals_golf/` |
 
-These projects are at different stages, from integration scaffolds and
-RAM-discovery probes to trained policies and continuous clears. Treat each
-game's local status document as authoritative. The shared one-shot overview is
-in [`snes_oneshot/docs/STATUS.md`](./snes_oneshot/docs/STATUS.md).
+Authoritative names: `super_metroid/` (not `super_metroid_rl/`), `SMW/` (not
+`super_mario_bros/`). There is no `alttp/` workspace in this checkout.
+
+Treat each game’s local `docs/STATUS.md` as authoritative for that title. The
+program-wide board is [`docs/GAME_MATRIX.md`](./docs/GAME_MATRIX.md).
 
 ## Common Workflows
 
@@ -108,9 +142,7 @@ uv run python -m snes_oneshot.setup_all_roms <game-directory>
 ```
 
 Develop from short, reproducible checkpoints, verify natural entry from the
-preceding route, and only then chain segments. The complete process is
-documented in
-[`snes_oneshot/docs/FULL_RUN_PROCESS.md`](./snes_oneshot/docs/FULL_RUN_PROCESS.md).
+preceding route, and only then chain segments.
 
 ### Fighting-game training
 
@@ -140,8 +172,6 @@ models stay in the owning game workspace.
 
 ### Game editors
 
-List or launch editors through the shared registry:
-
 ```bash
 uv run python -m retro_harness.editor_launcher --list
 uv run python -m retro_harness.editor_launcher harvest
@@ -153,37 +183,48 @@ panel.
 
 ## Benchmark Vocabulary
 
-Runtime claims use three broad tiers:
+Report **two** independent labels on every result:
 
-- **Bronze:** autonomous controller input; RAM reads, scripts, shaped rewards,
-  save-state curricula, and game-specific heuristics are allowed.
-- **Silver:** controller-only runtime mutation with substantially less
-  privileged information and mostly visual control.
-- **Gold:** pixels and agent memory in, controller actions out.
+**Runtime observation**
 
-Training method is separate from runtime tier. Imitation learning and
-privileged training signals are valid when disclosed; the claimed tier
-describes the live evaluation loop. Save-state segment clears are development
-evidence, not continuous full runs.
+- **Gold:** pixels only
+- **Silver:** primarily visual, limited generic internals
+- **Bronze:** game-specific read-only RAM permitted
 
-See [`BENCHMARK_STATUS.md`](./BENCHMARK_STATUS.md) for the shared benchmark
-rules and [`snes_oneshot/docs/FULL_RUN_PROCESS.md`](./snes_oneshot/docs/FULL_RUN_PROCESS.md)
-for reset-to-ending integrity requirements.
+**Intervention class**
+
+- **Clean:** no writes or state mutation during the attempt
+- **Survival- / Resource- / Protection-assisted:** disclosed and counted
+- **Progression-assisted:** normally excluded
+
+Example: `Bronze / Resource-assisted`, not merely “Bronze.”
+
+A game is **scriptably beatable** when a disclosed policy starts from a
+published reset, uses controller actions for progression, reaches a defined
+ending, detects success, recovers without humans, and reports a success rate.
+Large game-specific code is allowed.
+
+See [`docs/BENCHMARK_SPEC.md`](./docs/BENCHMARK_SPEC.md).
 
 ## Testing
-
-Run the narrowest suite that covers your change:
 
 ```bash
 uv run python -m pytest retro_harness/tests -q
 uv run python -m pytest snes_oneshot/tests -q
 uv run python -m pytest platformer_common/tests -q
 uv run python -m pytest fighters_common/tests -q
+uv run pytest tests/test_docs.py -q
 ```
 
 ROM-backed tests may skip or require local integration files. Running suites
 separately is recommended because several game workspaces contain same-named
 test modules.
+
+Regenerate the game matrix after editing manifests:
+
+```bash
+uv run python docs/generate_game_matrix.py
+```
 
 ## Repository Rules
 
@@ -195,7 +236,7 @@ test modules.
 - Keep ROMs under a gitignored `roms/` directory or use the game-local setup
   script documented by that project.
 - Promote a helper into a shared package only after its inputs and outputs are
-  no longer game-specific.
+  no longer game-specific (at least a second consumer).
 
 The package boundaries are described in
 [`retro_harness/docs/TOOLSET.md`](./retro_harness/docs/TOOLSET.md).

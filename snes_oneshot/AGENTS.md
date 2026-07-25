@@ -1,15 +1,22 @@
 # Agent Instructions — snes_oneshot
 
-Shared scripted helpers for the SNES completion ladder.
+Shared scripted-completion helpers for the SNES automation program.
 
-Program notes: [docs/EASIEST_SNES_GAMES.md](docs/EASIEST_SNES_GAMES.md)  
-Full-run workflow: [docs/FULL_RUN_PROCESS.md](docs/FULL_RUN_PROCESS.md)
+Program notes: [docs/GAME_SELECTION_NOTES.md](docs/GAME_SELECTION_NOTES.md)  
+Full-run workflow: [docs/FULL_RUN_PROCESS.md](docs/FULL_RUN_PROCESS.md)  
+Live board: [../docs/GAME_MATRIX.md](../docs/GAME_MATRIX.md)
+
+`snes_oneshot` is the historical package name. Prefer human-facing terms:
+scripted completion, continuous clear, reset-to-ending evaluation.
 
 ## Working Rule
 
 Save-state development, segmented stage/scene scripts, and retries are fine.
-Get reliable clears first; chain later. Continuous title-to-credits is a
-later hardening step, not a gate.
+Get reliable clears first; chain later. Continuous title-to-credits is a later
+hardening step (M7–M8), not an early gate.
+
+Natural-entry rule: a checkpoint clear is not route-ready until it also clears
+from the state produced by the real preceding route.
 
 ## Module Map
 

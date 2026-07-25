@@ -1,5 +1,16 @@
 # Final Fight — Status
 
+
+## Program gate
+
+| Field | Value |
+|-------|-------|
+| Current maturity | M3 |
+| Best verified result | Stages 1–2 segment clears; Stage 3 in progress |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
 **Approach:** save-state + segment scripts first; continuous title-to-credits
 later. Retries and mid-stage `.state` files are expected.
 

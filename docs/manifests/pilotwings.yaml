@@ -1,0 +1,24 @@
+game: pilotwings
+title: "Pilotwings"
+directory: pilotwings
+genre_tracks:
+  - continuous_vehicle_control
+capability_phase: 2
+project_state: instrumented
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: medium
+engineering_effort: medium
+transfer_value: medium
+ending_definition: lesson/certification campaign clear (contract TBD)
+start_contract: power_on
+completion_contract: certification_clear
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: pilotwings/docs/STATUS.md
+plan_doc: pilotwings/docs/plan.md
+last_verified: 2026-07-22
+blocker: complete light-plane Lesson 1 objective
+notes: Airborne Lesson 1 checkpoint; altitude/pitch/heading RAM.

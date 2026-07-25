@@ -1,5 +1,16 @@
 # Status — Super Metroid
 
+
+## Program gate
+
+| Field | Value |
+|-------|-------|
+| Current maturity | M5 |
+| Best verified result | Continuous power-on → Spore Spawn |
+| Last verification | 2026-07-24 |
+| Runtime class | Bronze |
+| Intervention class | Resource-assisted |
+
 | Field | Value |
 |-------|-------|
 | Status | **Continuous power-on → Bomb Torizo → Spore Spawn verified** |

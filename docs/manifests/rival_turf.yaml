@@ -1,0 +1,24 @@
+game: rival_turf
+title: "Rival Turf!"
+directory: rival_turf
+genre_tracks:
+  - linear_combat
+capability_phase: 1
+project_state: instrumented
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: low
+engineering_effort: medium
+transfer_value: medium
+ending_definition: campaign clear to credits
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: rival_turf/docs/STATUS.md
+plan_doc: rival_turf/docs/plan.md
+last_verified: 2026-07-22
+blocker: clear opening Stage 1 combat lock
+notes: Reset → fight-ready Stage 1 checkpoint verified.

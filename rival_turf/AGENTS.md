@@ -1,6 +1,6 @@
 # Agent Instructions — rival_turf
 
-Scripted SNES completion agent for **Rival Turf!** (oneshot ladder #5, tier 1).
+Scripted SNES completion agent for **Rival Turf!** (linear combat track; maturity M2).
 
 ## Identity
 

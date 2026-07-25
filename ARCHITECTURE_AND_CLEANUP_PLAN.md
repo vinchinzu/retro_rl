@@ -1,8 +1,16 @@
 # Architecture And Cleanup Plan
 
+> Historical cleanup plan. Prefer current program docs:
+> [`docs/VISION.md`](docs/VISION.md),
+> [`docs/PROGRAM_STATUS.md`](docs/PROGRAM_STATUS.md).
+> Authoritative paths: `super_metroid/`, `SMW/`. No `alttp/` in this checkout.
+> Older prose may still say `super_metroid_rl` as a historical alias.
+
 ## Intent
 
-Use ALTTP as a proving-ground case study, then shift active architecture work to `super_metroid_rl/` and harden shared library boundaries instead of continuing to accrete one-off scripts.
+Use ALTTP as a proving-ground case study, then shift active architecture work
+to `super_metroid/` and harden shared library boundaries instead of continuing
+to accrete one-off scripts.
 
 This plan has three purposes:
 
@@ -77,7 +85,7 @@ Why first:
 
 What to improve first:
 
-1. Define package boundaries inside `super_metroid_rl/`.
+1. Define package boundaries inside `super_metroid/`.
 2. Extract stable shared primitives into `retro_harness/` and `platformer_common/`.
 3. Freeze or isolate legacy code instead of mixing it with current paths.
 4. Add tests at the boundary seams before adding features.
@@ -109,7 +117,7 @@ The cleanup should reduce ambiguity around:
 
 ## Phase 1: Make The Current Shape Explicit
 
-Create a short internal architecture map for `super_metroid_rl/`:
+Create a short internal architecture map for `super_metroid/`:
 
 - runtime entrypoints
 - navigation stack
@@ -141,11 +149,11 @@ Preferred homes:
 
 - `retro_harness/` for emulator/session/recording primitives
 - `platformer_common/` for route, segment, and platformer-level abstractions
-- `super_metroid_rl/` for game-specific map data, room logic, and route content
+- `super_metroid/` for game-specific map data, room logic, and route content
 
 ## Phase 3: Fence Off Legacy
 
-`super_metroid_rl/legacy/` should remain available but not leak into current imports by accident.
+`super_metroid/legacy/` should remain available but not leak into current imports by accident.
 
 Concrete steps:
 
@@ -237,7 +245,7 @@ Concrete moves:
 
 ## Problem 3: Super Metroid Mixes Current App, Legacy App, And Tooling
 
-`super_metroid_rl/` currently contains:
+`super_metroid/` currently contains:
 
 - active navigation/optimizer/runtime code
 - legacy RL/runtime code
@@ -248,17 +256,17 @@ That is too much in one flat project boundary.
 
 Recommended split:
 
-- keep `super_metroid_rl/` for the active runtime/library
-- keep `super_metroid_rl/legacy/` but document it as frozen
+- keep `super_metroid/` for the active runtime/library
+- keep `super_metroid/legacy/` but document it as frozen
 - move editor/tooling under a clearer tools namespace if it remains in-repo
 
 Concrete cleanup steps:
 
-1. Write one `super_metroid_rl/docs/ARCHITECTURE.md` with:
+1. Write one `super_metroid/docs/ARCHITECTURE.md` with:
    - current
    - legacy
    - external/editor/tooling
-2. Decide whether `super_metroid_rl/super_metroid_editor/` is:
+2. Decide whether `super_metroid/super_metroid_editor/` is:
    - an embedded tool project to keep in place, or
    - a separate subproject to move under `tools/`
 3. Move transient debug/artifact directories under a single `artifacts/` policy where practical:
@@ -270,7 +278,7 @@ Concrete cleanup steps:
 
 ## Week 1
 
-1. Write `super_metroid_rl/docs/ARCHITECTURE.md`.
+1. Write `super_metroid/docs/ARCHITECTURE.md`.
 2. Split ALTTP gauntlet and romhack files into subfolders.
 3. Move obviously game-specific root docs into owning folders.
 
@@ -297,4 +305,4 @@ The repo is in a better state when:
 - game-specific code is obviously game-specific
 - experiments are fenced off instead of mixed into active runtime paths
 - published states and benchmarks encode real route meaning
-- new work in `super_metroid_rl/` can be done by extending stable interfaces instead of adding more one-off scripts
+- new work in `super_metroid/` can be done by extending stable interfaces instead of adding more one-off scripts

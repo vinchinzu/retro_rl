@@ -1,7 +1,7 @@
 # Plan — TMNT IV: Turtles in Time
 
 Ladder #3 (tier 1). See
-`snes_oneshot/docs/EASIEST_SNES_GAMES.md` for program context.
+`snes_oneshot/docs/GAME_SELECTION_NOTES.md` for program context.
 
 ## Control style
 

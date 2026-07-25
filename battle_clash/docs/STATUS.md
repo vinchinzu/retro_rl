@@ -1,9 +1,18 @@
 # Status — Battle Clash
 
+
+## Program gate
+
 | Field | Value |
 |-------|-------|
-| Ladder rank | 9 |
-| Tier | 2 |
+| Current maturity | M1 |
+| Best verified result | Title boots; Super Scope input blocked |
+| Last verification | 2026-07-22 |
+| Runtime class | Bronze |
+| Intervention class | Clean |
+
+| Field | Value |
+|-------|-------|
 | Status | **input blocked** |
 | Integration | `BattleClash-Snes` |
 | ROM zip | `Battle Clash.zip` |

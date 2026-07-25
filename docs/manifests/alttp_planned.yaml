@@ -1,0 +1,25 @@
+game: alttp
+title: "The Legend of Zelda: A Link to the Past"
+directory: null
+genre_tracks:
+  - top_down_navigation
+  - metroidvania_navigation
+capability_phase: 4
+project_state: planned
+maturity: M0
+runtime_class: bronze
+intervention_class: clean
+popularity: very_high
+engineering_effort: very_high
+transfer_value: very_high
+ending_definition: credits after Ganon / published dungeon ladder
+start_contract: power_on_or_published_state
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: null
+plan_doc: null
+last_verified: null
+blocker: no alttp/ workspace in this checkout; prior work was external/historical
+notes: Converge with Super Metroid before promoting adventure_common.

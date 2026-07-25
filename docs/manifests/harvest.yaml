@@ -1,0 +1,25 @@
+game: harvest
+title: "Harvest Moon"
+directory: harvest
+genre_tracks:
+  - simulation_and_scheduling
+  - tactical_planning
+capability_phase: 6
+project_state: instrumented
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: very_high
+transfer_value: high
+ending_definition: published multi-year / marriage / farm objective (contract TBD)
+start_contract: fixed_morning_state_or_power_on
+completion_contract: campaign_objective
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: harvest/README.md
+plan_doc: harvest/docs/autonomous_play_phased_plan.md
+last_verified: 2026-04-29
+blocker: frame farm-clear tasks as long-horizon planner benchmarks
+notes: First scheduling / long-horizon planning benchmark; not merely tooling.
