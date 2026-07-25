@@ -1,0 +1,11 @@
+{
+  "done": {
+    "variables": {
+      "health": {"op": "zero"}
+    },
+    "any": "variables"
+  },
+  "reward": {
+    "variables": {}
+  }
+}

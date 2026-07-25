@@ -33,8 +33,8 @@ Program spine:
 - `roms/`: shared ROM storage (gitignored)
 - `docs/manifests/`: machine-readable game manifests
 
-Authoritative directories: `super_metroid/`, `SMW/`, `harvest/`. Do not invent
-`super_metroid_rl/`, `super_mario_bros/`, or `alttp/` paths in this checkout.
+Authoritative directories: `super_metroid/`, `SMW/`, `harvest/`, `alttp/`.
+Do not invent `super_metroid_rl/` or `super_mario_bros/` paths in this checkout.
 
 ## Organization Rules
 

@@ -46,7 +46,7 @@ Battle Clash remains `blocked: infrastructure` (no Super Scope injection).
 | 1 Linear full-game clears | TMNT done; Final Fight / SDD / Rival Turf in flight |
 | 2 Continuous control | Boot/instrumentation only; Battle Clash blocked |
 | 3 Platforming | Boot checkpoints; SMW/DKC tooling present |
-| 4 Graph exploration | Super Metroid leading; ALTTP planned (no `alttp/` in checkout) |
+| 4 Graph exploration | Super Metroid leading; `alttp/` active at title→castle grounds |
 | 5–7 Campaigns / planning / procedural | Harvest is the Phase 6 foothold; later research |
 
 ## Directory name authority
@@ -56,7 +56,7 @@ Battle Clash remains `blocked: infrastructure` (no Super Scope injection).
 | `super_metroid/` | `super_metroid_rl/` |
 | `SMW/` | `super_mario_bros/` |
 | `harvest/` | — |
-| planned ALTTP workspace | claiming `alttp/` exists here |
+| `alttp/` | — |
 
 ## Next documentation / tooling checks
 

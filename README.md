@@ -120,11 +120,11 @@ and the engineering process in
 |---|---|
 | Fighting-game RL | `mortal_kombat/`, `mortal_kombat_ii/`, `street_fighter_ii/`, `super_street_fighter_ii/` |
 | Platformers | `SMW/`, `donkey_kong_country/`, `magical_quest/`, `joe_and_mac/` |
-| Scripted completion | `battle_clash/`, `f_zero/`, `final_fight/`, `great_waldo_search/`, `pilotwings/`, `rival_turf/`, `star_fox/`, `super_double_dragon/`, `super_metroid/`, `tmnt_iv/` |
+| Scripted completion | `alttp/`, `battle_clash/`, `f_zero/`, `final_fight/`, `great_waldo_search/`, `pilotwings/`, `rival_turf/`, `star_fox/`, `super_double_dragon/`, `super_metroid/`, `tmnt_iv/` |
 | Planning / simulation | `harvest/`, `hals_golf/` |
 
 Authoritative names: `super_metroid/` (not `super_metroid_rl/`), `SMW/` (not
-`super_mario_bros/`). There is no `alttp/` workspace in this checkout.
+`super_mario_bros/`), `alttp/`.
 
 Treat each game’s local `docs/STATUS.md` as authoritative for that title. The
 program-wide board is [`docs/GAME_MATRIX.md`](./docs/GAME_MATRIX.md).

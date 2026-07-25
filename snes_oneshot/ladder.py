@@ -44,7 +44,11 @@ LADDER: tuple[LadderEntry, ...] = (
         "Great Waldo Search, The.zip",
         "GreatWaldoSearch-Snes",
         tier=0,
-        status=LadderStatus.ENDING_SEGMENTED,
+        status=LadderStatus.FULL_GAME,
+        video=(
+            "great_waldo_search/recordings/"
+            "great_waldo_search_full_credits.mp4"
+        ),
     ),
     LadderEntry(
         2,

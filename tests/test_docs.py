@@ -26,6 +26,7 @@ DOC_GLOBS = (
 )
 
 ACTIVE_GAME_DIRS = (
+    "alttp",
     "battle_clash",
     "f_zero",
     "final_fight",
@@ -42,7 +43,7 @@ ACTIVE_GAME_DIRS = (
 
 STALE_LINK_RE = re.compile(
     r"\[[^\]]*\]\((?:\.\./)*"
-    r"(?:super_metroid_rl|super_mario_bros|alttp)(?:/[^)]*)?\)"
+    r"(?:super_metroid_rl|super_mario_bros)(?:/[^)]*)?\)"
 )
 
 MD_LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
@@ -114,7 +115,6 @@ def test_backticked_workspace_directories_exist() -> None:
     retired = {
         "super_metroid_rl",
         "super_mario_bros",
-        "alttp",
     }
     allowed_future = {"adventure_common"}
     # Common game-local or generic folder names, not repo root workspaces.
@@ -180,8 +180,6 @@ def test_no_stale_directory_links_in_live_docs() -> None:
                 for part in (
                     "super_metroid_rl/",
                     "super_mario_bros/",
-                    "/alttp/",
-                    "alttp/",
                 )
             ):
                 # Allow glossary/status prose that is not a navigable link to a

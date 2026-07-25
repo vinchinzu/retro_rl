@@ -1,0 +1,7 @@
+{
+  "default_state": "YazeSlot000",
+  "default_player_state": "YazeSlot000",
+  "whitelist": {
+    "data.json": ["*"]
+  }
+}
