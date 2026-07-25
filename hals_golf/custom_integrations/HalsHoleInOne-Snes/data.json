@@ -1,0 +1,28 @@
+{
+  "info": {
+    "stroke_count": {
+      "address": 4257,
+      "type": "|u1"
+    },
+    "hole_index": {
+      "address": 4341,
+      "type": "|u1"
+    },
+    "rest_distance": {
+      "address": 4531,
+      "type": "<u2"
+    },
+    "lie_type": {
+      "address": 4557,
+      "type": "|u1"
+    },
+    "aim_offset": {
+      "address": 4273,
+      "type": "|u1"
+    },
+    "opponent_stroke_count": {
+      "address": 4259,
+      "type": "|u1"
+    }
+  }
+}

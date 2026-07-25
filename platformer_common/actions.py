@@ -16,38 +16,38 @@ from retro_harness.controls import (
     SNES_UP,
     SNES_A,
 )
+from retro_harness.actions import SNES_ACTION_SIZE, indexed_action
 
-NUM_BUTTONS = 12
+NUM_BUTTONS = SNES_ACTION_SIZE
 
 
 def _make(*, buttons: list[int]) -> list[int]:
     """Create a 12-element action array with given buttons pressed."""
-    action = [0] * NUM_BUTTONS
-    for b in buttons:
-        action[b] = 1
-    return action
+    return indexed_action(buttons, action_size=NUM_BUTTONS)
 
 
 # Default reduced action set for SNES platforming
 DEFAULT_PLATFORMER_ACTIONS = [
-    _make(buttons=[]),                              # 0: NOTHING
-    _make(buttons=[SNES_RIGHT]),                    # 1: RIGHT
-    _make(buttons=[SNES_RIGHT, SNES_Y]),            # 2: RIGHT + Y (run right)
-    _make(buttons=[SNES_RIGHT, SNES_Y, SNES_B]),   # 3: RIGHT + Y + B (run + jump)
-    _make(buttons=[SNES_RIGHT, SNES_B]),            # 4: RIGHT + B (walk + jump)
-    _make(buttons=[SNES_B]),                        # 5: JUMP
-    _make(buttons=[SNES_LEFT]),                     # 6: LEFT
-    _make(buttons=[SNES_LEFT, SNES_Y]),             # 7: LEFT + Y (run left)
-    _make(buttons=[SNES_LEFT, SNES_Y, SNES_B]),    # 8: LEFT + Y + B (run left + jump)
-    _make(buttons=[SNES_LEFT, SNES_B]),             # 9: LEFT + B (walk left + jump)
-    _make(buttons=[SNES_DOWN]),                     # 10: DOWN (duck/dismount)
-    _make(buttons=[SNES_A]),                        # 11: A (roll/special)
-    _make(buttons=[SNES_RIGHT, SNES_A]),            # 12: RIGHT + A (roll right)
-    _make(buttons=[SNES_UP]),                       # 13: UP (enter door)
+    _make(buttons=[]),  # 0: NOTHING
+    _make(buttons=[SNES_RIGHT]),  # 1: RIGHT
+    _make(buttons=[SNES_RIGHT, SNES_Y]),  # 2: RIGHT + Y (run right)
+    _make(buttons=[SNES_RIGHT, SNES_Y, SNES_B]),  # 3: RIGHT + Y + B (run + jump)
+    _make(buttons=[SNES_RIGHT, SNES_B]),  # 4: RIGHT + B (walk + jump)
+    _make(buttons=[SNES_B]),  # 5: JUMP
+    _make(buttons=[SNES_LEFT]),  # 6: LEFT
+    _make(buttons=[SNES_LEFT, SNES_Y]),  # 7: LEFT + Y (run left)
+    _make(buttons=[SNES_LEFT, SNES_Y, SNES_B]),  # 8: LEFT + Y + B (run left + jump)
+    _make(buttons=[SNES_LEFT, SNES_B]),  # 9: LEFT + B (walk left + jump)
+    _make(buttons=[SNES_DOWN]),  # 10: DOWN (duck/dismount)
+    _make(buttons=[SNES_A]),  # 11: A (roll/special)
+    _make(buttons=[SNES_RIGHT, SNES_A]),  # 12: RIGHT + A (roll right)
+    _make(buttons=[SNES_UP]),  # 13: UP (enter door)
 ]
 
 
-def action_index_to_buttons(idx: int, action_table: list[list[int]] | None = None) -> list[int]:
+def action_index_to_buttons(
+    idx: int, action_table: list[list[int]] | None = None
+) -> list[int]:
     """Convert action index to 12-element button array."""
     table = action_table or DEFAULT_PLATFORMER_ACTIONS
     if 0 <= idx < len(table):
@@ -55,7 +55,9 @@ def action_index_to_buttons(idx: int, action_table: list[list[int]] | None = Non
     return [0] * NUM_BUTTONS
 
 
-def buttons_to_action_index(buttons: list[int], action_table: list[list[int]] | None = None) -> int:
+def buttons_to_action_index(
+    buttons: list[int], action_table: list[list[int]] | None = None
+) -> int:
     """Find the closest action index for a raw 12-element button array."""
     table = action_table or DEFAULT_PLATFORMER_ACTIONS
     best_idx = 0

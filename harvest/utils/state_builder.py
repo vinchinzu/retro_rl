@@ -8,8 +8,8 @@ from typing import List, Optional, Tuple
 import numpy as np
 import stable_retro as retro
 
-import harvest_bot as hb
-from task_recorder import Task
+from harvest.runtime import harvest_bot as hb
+from harvest.runtime.task_recorder import Task
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

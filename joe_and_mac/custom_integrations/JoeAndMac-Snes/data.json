@@ -1,0 +1,16 @@
+{
+  "info": {
+    "horizontal_progress": {
+      "address": 108,
+      "type": "<u2"
+    },
+    "gameplay_active": {
+      "address": 129,
+      "type": "|u1"
+    },
+    "actor_state": {
+      "address": 130,
+      "type": "|u1"
+    }
+  }
+}

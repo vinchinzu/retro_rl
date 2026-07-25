@@ -1,0 +1,24 @@
+{
+  "done": {
+    "condition": "never"
+  },
+  "reward": {
+    "variables": {
+      "player_hp": {
+        "penalty": 0.01
+      },
+      "enemy0_hp": {
+        "reward": 0.1
+      },
+      "enemy1_hp": {
+        "reward": 0.1
+      },
+      "enemy2_hp": {
+        "reward": 0.1
+      },
+      "camera_x": {
+        "reward": 0.001
+      }
+    }
+  }
+}

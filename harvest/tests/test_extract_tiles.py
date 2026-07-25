@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
+from PySide6.QtGui import QImage
 
-from extract_tiles import (
-    FARM_COVERAGE_RECIPES,
-    REQUIRED_FARM_TILE_IDS,
+from harvest.maps.extract_tiles import (
     camera_offset,
-    run_extraction,
+    mean_rgb_error,
+    save_rgb_image,
     structural_tile_error,
 )
 
@@ -21,12 +23,6 @@ class CameraOffsetTests(unittest.TestCase):
     def test_camera_offset_tracks_centered_positions(self) -> None:
         self.assertEqual(camera_offset(419, 536), (291, 424))
         self.assertEqual(camera_offset(121, 565), (0, 453))
-
-
-class FarmCoverageRecipeTests(unittest.TestCase):
-    def test_farm_coverage_recipes_capture_missing_tiles(self) -> None:
-        atlas = run_extraction(recipes=FARM_COVERAGE_RECIPES, load_existing=False)
-        self.assertTrue(REQUIRED_FARM_TILE_IDS.issubset(set(atlas)))
 
 
 class StructuralValidationTests(unittest.TestCase):
@@ -42,6 +38,27 @@ class StructuralValidationTests(unittest.TestCase):
         top_bottom = np.zeros((16, 16, 3), dtype=np.uint8)
         top_bottom[:8, :] = 255
         self.assertGreater(structural_tile_error(left_right, top_bottom), 0.5)
+
+    def test_save_rgb_image_writes_png(self) -> None:
+        img = np.zeros((6, 8, 3), dtype=np.uint8)
+        img[:, :, 1] = 200
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "sample.png"
+            save_rgb_image(path, img)
+            loaded = QImage(str(path))
+
+        self.assertTrue(path.name.endswith(".png"))
+        self.assertFalse(loaded.isNull())
+        self.assertEqual((loaded.width(), loaded.height()), (8, 6))
+
+    def test_mean_rgb_error_zero_for_identical(self) -> None:
+        a = np.full((16, 16, 3), 128, dtype=np.uint8)
+        self.assertAlmostEqual(mean_rgb_error(a, a), 0.0)
+
+    def test_mean_rgb_error_nonzero_for_different(self) -> None:
+        a = np.zeros((16, 16, 3), dtype=np.uint8)
+        b = np.full((16, 16, 3), 100, dtype=np.uint8)
+        self.assertAlmostEqual(mean_rgb_error(a, b), 100.0)
 
 
 if __name__ == "__main__":

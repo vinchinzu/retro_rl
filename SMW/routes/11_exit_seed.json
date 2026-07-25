@@ -1,0 +1,96 @@
+{
+  "route_id": "smw_11_exit_seed",
+  "display_name": "Super Mario World 11 Exit Seed Route",
+  "status": "draft",
+  "notes": [
+    "Initial human-speedrun route scaffold for segment publication.",
+    "Stable-retro has built-in states for some early levels only; secret-route and Bowser anchors must be created locally.",
+    "Credits warp and ACE categories are intentionally out of scope for the first route."
+  ],
+  "segments": [
+    {
+      "id": "yoshi_island_2",
+      "level": "smw_yoshi_island_2",
+      "state": "YoshiIsland2",
+      "exit": "normal",
+      "anchor_status": "available"
+    },
+    {
+      "id": "yoshi_island_3",
+      "level": "smw_yoshi_island_3",
+      "state": "YoshiIsland3",
+      "exit": "normal",
+      "anchor_status": "available"
+    },
+    {
+      "id": "yoshi_island_4",
+      "level": "smw_yoshi_island_4",
+      "state": "YoshiIsland4",
+      "exit": "normal",
+      "anchor_status": "available"
+    },
+    {
+      "id": "iggys_castle",
+      "level": null,
+      "state": "IggysCastle",
+      "exit": "normal",
+      "anchor_status": "missing"
+    },
+    {
+      "id": "donut_plains_1",
+      "level": "smw_donut_plains_1",
+      "state": "DonutPlains1",
+      "exit": "secret",
+      "anchor_status": "available"
+    },
+    {
+      "id": "donut_secret_1",
+      "level": null,
+      "state": "DonutSecret1",
+      "exit": "secret",
+      "anchor_status": "missing"
+    },
+    {
+      "id": "donut_secret_house",
+      "level": null,
+      "state": "DonutSecretHouse",
+      "exit": "secret",
+      "anchor_status": "missing"
+    },
+    {
+      "id": "star_world_1",
+      "level": null,
+      "state": "StarWorld1",
+      "exit": "normal",
+      "anchor_status": "missing"
+    },
+    {
+      "id": "star_world_2",
+      "level": null,
+      "state": "StarWorld2",
+      "exit": "secret",
+      "anchor_status": "missing"
+    },
+    {
+      "id": "star_world_3",
+      "level": null,
+      "state": "StarWorld3",
+      "exit": "normal",
+      "anchor_status": "missing"
+    },
+    {
+      "id": "star_world_4",
+      "level": null,
+      "state": "StarWorld4",
+      "exit": "secret",
+      "anchor_status": "missing"
+    },
+    {
+      "id": "front_door_bowser",
+      "level": null,
+      "state": "FrontDoor",
+      "exit": "clear",
+      "anchor_status": "missing"
+    }
+  ]
+}

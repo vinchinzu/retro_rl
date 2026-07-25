@@ -14,6 +14,8 @@ Provides common abstractions for SNES emulation via stable-retro:
 from retro_harness.controls import (
     SNES_A,
     SNES_B,
+    SNES_BUTTON_NAME_TO_INDEX,
+    SNES_BUTTON_NAMES,
     SNES_DOWN,
     SNES_L,
     SNES_LEFT,
@@ -26,7 +28,14 @@ from retro_harness.controls import (
     SNES_Y,
     CONTROLLER_MAP,
     controller_action,
+    controller_debug_snapshot,
+    describe_input_mapping,
+    describe_controller,
+    format_input_mapping,
     keyboard_action,
+    action_from_snes_button_names,
+    parse_snes_button_label,
+    pressed_snes_buttons,
     sanitize_action,
     sanitize_action_multi,
     sanitize_action_offset,
@@ -43,11 +52,39 @@ from retro_harness.protocol import (
 )
 
 from retro_harness.env import (
+    GameSpec,
     add_custom_integrations,
     make_env,
     get_available_states,
+    read_state_bytes,
     save_state,
+    state_path,
+    write_state_bytes,
 )
+from retro_harness.actions import (
+    ActionBuilder,
+    SNES_ACTION_SIZE,
+    action_names,
+    buttons,
+    buttons_multi,
+    idle_action,
+    idle_action_multi,
+    indexed_action,
+    multiplayer_action,
+    snes_action,
+)
+from retro_harness.input_script import (
+    FrameAction,
+    InputStep,
+    ScriptResult,
+    StartupPlan,
+    input_step,
+    parse_input_script,
+    press_button_sequence,
+    run_input_steps,
+    run_startup,
+)
+from retro_harness.runtime import reset_env, step_env
 from retro_harness.live_play import (
     play_game,
 )
@@ -102,14 +139,25 @@ __all__ = [
     # Controls
     "SNES_A", "SNES_B", "SNES_DOWN", "SNES_L", "SNES_LEFT",
     "SNES_R", "SNES_RIGHT", "SNES_SELECT", "SNES_START",
-    "SNES_UP", "SNES_X", "SNES_Y", "CONTROLLER_MAP",
-    "controller_action", "keyboard_action", "sanitize_action", "sanitize_action_multi",
+    "SNES_UP", "SNES_X", "SNES_Y", "SNES_BUTTON_NAME_TO_INDEX", "SNES_BUTTON_NAMES", "CONTROLLER_MAP",
+    "controller_action", "controller_debug_snapshot", "describe_input_mapping", "describe_controller",
+    "format_input_mapping",
+    "keyboard_action", "action_from_snes_button_names", "parse_snes_button_label",
+    "pressed_snes_buttons", "sanitize_action", "sanitize_action_multi",
     "sanitize_action_offset", "init_controller",
     "init_controllers",
     # Protocol
     "TaskStatus", "WorldState", "ActionResult", "TaskResult", "Task",
+    # Named actions and scripts
+    "ActionBuilder", "FrameAction", "InputStep", "SNES_ACTION_SIZE",
+    "ScriptResult", "StartupPlan", "action_names", "buttons", "buttons_multi",
+    "idle_action", "idle_action_multi", "indexed_action", "input_step", "multiplayer_action",
+    "parse_input_script", "press_button_sequence", "run_input_steps",
+    "run_startup", "snes_action",
     # Env
-    "add_custom_integrations", "make_env", "get_available_states", "save_state", "play_game",
+    "GameSpec", "add_custom_integrations", "make_env", "get_available_states",
+    "read_state_bytes", "reset_env", "save_state", "state_path", "step_env",
+    "write_state_bytes", "play_game",
     # Recordings/logging
     "ensure_gzip_state", "append_jsonl", "iter_jsonl",
     "find_latest_recording", "find_latest_recording_from_manifest",

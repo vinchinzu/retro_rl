@@ -19,6 +19,7 @@ def play_game(
     scale: int = 3,
     action_size: int = 12,
     base_fps: int = 60,
+    initial_speed: float = 1.0,
     bot: Callable | None = None,
     on_hud: Callable[[dict], list[str]] | None = None,
     env_factory: Callable[[], Any] | None = None,
@@ -53,6 +54,7 @@ def play_game(
         headless=headless,
         action_size=action_size,
         base_fps=base_fps,
+        initial_speed=initial_speed,
     )
     if on_hud is not None:
         session.on_hud = on_hud

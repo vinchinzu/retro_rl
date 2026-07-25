@@ -1,0 +1,100 @@
+{
+  "info": {
+    "game_status": {
+      "address": 3232,
+      "type": "|u1"
+    },
+    "round": {
+      "address": 3248,
+      "type": "|u1"
+    },
+    "area": {
+      "address": 3249,
+      "type": "|u1"
+    },
+    "player_active": {
+      "address": 3328,
+      "type": "|u1"
+    },
+    "player_x": {
+      "address": 3335,
+      "type": "<u2"
+    },
+    "player_y": {
+      "address": 3341,
+      "type": "<u2"
+    },
+    "player_hp": {
+      "address": 3348,
+      "type": "|u1"
+    },
+    "player_lives": {
+      "address": 3438,
+      "type": "|u1"
+    },
+    "camera_x": {
+      "address": 3591,
+      "type": "<u2"
+    },
+    "enemy0_active": {
+      "address": 4096,
+      "type": "|u1"
+    },
+    "enemy0_x": {
+      "address": 4103,
+      "type": "<u2"
+    },
+    "enemy0_y": {
+      "address": 4109,
+      "type": "<u2"
+    },
+    "enemy0_hp": {
+      "address": 4116,
+      "type": "|u1"
+    },
+    "enemy1_active": {
+      "address": 4272,
+      "type": "|u1"
+    },
+    "enemy1_x": {
+      "address": 4279,
+      "type": "<u2"
+    },
+    "enemy1_y": {
+      "address": 4285,
+      "type": "<u2"
+    },
+    "enemy1_hp": {
+      "address": 4292,
+      "type": "|u1"
+    },
+    "enemy2_active": {
+      "address": 4416,
+      "type": "|u1"
+    },
+    "enemy2_x": {
+      "address": 4423,
+      "type": "<u2"
+    },
+    "enemy2_y": {
+      "address": 4429,
+      "type": "<u2"
+    },
+    "enemy2_hp": {
+      "address": 4436,
+      "type": "|u1"
+    },
+    "boss_active": {
+      "address": 4576,
+      "type": "|u1"
+    },
+    "boss_hp": {
+      "address": 4596,
+      "type": "|u1"
+    },
+    "go_flashing": {
+      "address": 3287,
+      "type": "|u1"
+    }
+  }
+}

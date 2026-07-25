@@ -1,0 +1,84 @@
+{
+  "info": {
+    "menu": {
+      "address": 50,
+      "type": "|u1"
+    },
+    "event": {
+      "address": 112,
+      "type": "|u1"
+    },
+    "stage": {
+      "address": 130,
+      "type": "|u1"
+    },
+    "player_x": {
+      "address": 1032,
+      "type": "<u2"
+    },
+    "player_y": {
+      "address": 1036,
+      "type": "<u2"
+    },
+    "player_hp": {
+      "address": 1098,
+      "type": "|u1"
+    },
+    "player_iframes": {
+      "address": 1134,
+      "type": "|u1"
+    },
+    "player_lives": {
+      "address": 6816,
+      "type": "|u1"
+    },
+    "camera_x": {
+      "address": 58,
+      "type": "<u2"
+    },
+    "difficulty": {
+      "address": 8174,
+      "type": "|u1"
+    },
+    "continue_setting": {
+      "address": 8178,
+      "type": "|u1"
+    },
+    "enemy0_x": {
+      "address": 2264,
+      "type": "<u2"
+    },
+    "enemy0_y": {
+      "address": 2268,
+      "type": "<u2"
+    },
+    "enemy0_hp": {
+      "address": 2330,
+      "type": "|u1"
+    },
+    "enemy1_x": {
+      "address": 2376,
+      "type": "<u2"
+    },
+    "enemy1_y": {
+      "address": 2380,
+      "type": "<u2"
+    },
+    "enemy1_hp": {
+      "address": 2442,
+      "type": "|u1"
+    },
+    "enemy2_x": {
+      "address": 2488,
+      "type": "<u2"
+    },
+    "enemy2_y": {
+      "address": 2492,
+      "type": "<u2"
+    },
+    "enemy2_hp": {
+      "address": 2554,
+      "type": "|u1"
+    }
+  }
+}

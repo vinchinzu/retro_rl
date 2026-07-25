@@ -19,6 +19,34 @@
     "p1_character": {
       "address": 6514,
       "type": "|u1"
+    },
+    "p1_rounds": {
+      "address": 6510,
+      "type": "|u1"
+    },
+    "p2_rounds": {
+      "address": 1207,
+      "type": "|u1"
+    },
+    "p2_character": {
+      "address": 36,
+      "type": "|u1"
+    },
+    "match_counter": {
+      "address": 10,
+      "type": "|u1"
+    },
+    "p1_x": {
+      "address": 218,
+      "type": "|u1"
+    },
+    "p1_y": {
+      "address": 219,
+      "type": "|u1"
+    },
+    "p2_x": {
+      "address": 372,
+      "type": "|u1"
     }
   }
 }

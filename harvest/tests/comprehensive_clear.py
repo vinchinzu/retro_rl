@@ -14,7 +14,7 @@ SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
-import harvest_bot as hb
+from harvest.runtime import harvest_bot as hb
 import numpy as np
 import stable_retro as retro
 
