@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "problemId": "room_9c35_from_9b9d_to_9b9d",
+  "status": "verified_development_state",
+  "description": "Leave the one-screen Brinstar Map Room through its only door.",
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "jump_to_door_ledge",
+      "buttons": ["RIGHT", "A", "B"],
+      "frames": 70
+    },
+    {
+      "label": "open_blue_door",
+      "buttons": ["RIGHT", "X"],
+      "frames": 2
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 30
+    },
+    {
+      "label": "enter_door",
+      "buttons": ["RIGHT", "B"],
+      "frames": 80
+    }
+  ]
+}

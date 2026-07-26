@@ -22,15 +22,55 @@ from snes_oneshot.combat import (
 )
 from snes_oneshot.game_state import EnemyState, GameMode, GameState
 from snes_oneshot.primitives import FrameAction
+from tmnt_iv.grind_knobs import active_knobs
+from tmnt_iv.ram import LEO_MAX_HP
 
 # Screen coords: UP decreases Y (probe-confirmed). Do NOT invert.
 _Y_TOLERANCE = 8
-# Sewer Surfin' (stage byte >= 2): hanging spikes punish chasing UP.
-_SEWER_Y_TOLERANCE = 20
+# Big Apple (stage 0): wider poke + tighter cadence clears Baxter
+# heal=none from Boss.state; also cuts wave chip before the pizza windows.
+_STAGE1_ATTACK_RANGE = 64
+_STAGE1_MIN_RANGE = 8
+_STAGE1_STANDOFF = 32
+_STAGE1_ATTACK_HOLD = 2
+_STAGE1_ATTACK_GAP = 2
+# Alleycat Blues (stage byte 1): a one-frame poke avoids trading into the
+# alley packs.  Stage2 checkpoint probe: 15,453f / 124 dmg / 1 emergency
+# heal, down from 15,550f / 293 dmg / 4 heals.
+_ALLEY_Y_TOLERANCE = 6
+_ALLEY_ATTACK_RANGE = 65
+_ALLEY_MIN_RANGE = 8
+_ALLEY_STANDOFF = 24
+_ALLEY_ATTACK_HOLD = 1
+_ALLEY_ATTACK_GAP = 2
+# Skull & Crossbones / Wounded Knee: one less release frame improves the
+# exact-entry clears without raising risk.  FullHardStage6: 19,892→16,793f,
+# 802→526 damage; FullHardStage7: 18,856→17,484f, 924→830 damage.
+_LATE_ATTACK_HOLD = 2
+_LATE_ATTACK_GAP = 4
+# Raphael's shorter weapon benefits from one fewer release frame on Wounded
+# Knee waves, then a one-frame release against Leatherhead. Natural-entry
+# probes: waves 18,156→10,573f / 497→362 dmg; boss 6,712→5,249f /
+# 356→276 dmg.
+_RAPH_WOUNDED_ATTACK_GAP = 3
+_RAPH_LEATHERHEAD_ATTACK_GAP = 1
+# Post-pickup step-out; 6f lines up Baxter entry for the Clean clear.
+_PIZZA_DISENGAGE_FRAMES = 6
+# Sewer Surfin' (stage byte 2): a broad lane tolerance avoids chasing Foot
+# through the hanging spikes while keeping the normal two-frame poke.
+_SEWER_Y_TOLERANCE = 36
 _SEWER_MIN_FIGHT_Y = 160
-# Rat King: long horizontal poke (dx≈120 from left/mid still hits).
-_RAT_KING_Y_TOLERANCE = 16
+_SEWER_ATTACK_RANGE = 64
+_SEWER_MIN_RANGE = 8
+_SEWER_STANDOFF = 24
+_SEWER_ATTACK_HOLD = 2
+_SEWER_ATTACK_GAP = 2
+# Rat King: close far enough for Leo's swing to connect, but accept a wider
+# water lane.  Combined Stage3 probe: 7,768f / 112 dmg / 2 emergency heals,
+# down from 20,172f / 572 dmg / 9 heals.
+_RAT_KING_Y_TOLERANCE = 32
 # Leo weapon reach is generous (~50–68); keep a modest poke band.
+# Runtime values come from ``active_knobs()`` so local grind can A/B.
 _ATTACK_RANGE = 56
 _MIN_RANGE = 8
 _STANDOFF = 24
@@ -38,12 +78,12 @@ _ATTACK_HOLD = 2
 _ATTACK_GAP = 5
 # Rat King Footski: extended range + tight cadence; jump only to
 # escape the auto-scroll left chip (standing jump-slashes whiff).
-_BOSS_ATTACK_RANGE = 140
+_BOSS_ATTACK_RANGE = 120
 _BOSS_MIN_RANGE = 8
 _BOSS_STANDOFF = 24
 _BOSS_ATTACK_HOLD = 2
 _BOSS_ATTACK_GAP = 1
-_BOSS_LEFT_CHIP_X = 118
+_BOSS_LEFT_CHIP_X = 80
 # Player/enemy X are screen-space; combat sees camera_x=0 (see fight_action).
 _CAMERA_LEFT_MARGIN = 24
 _CAMERA_RIGHT_MARGIN = 220
@@ -58,6 +98,18 @@ _STALL_RIGHT_FRAMES = 40
 _STALL_UP_FRAMES = 36
 _STALL_UP_RIGHT_FRAMES = 48
 _STALL_SMASH_FRAMES = 24
+
+
+def _combat_knobs() -> tuple[int, int, int, int, int]:
+    """Live poke-band knobs (defaults match module constants above)."""
+    k = active_knobs()
+    return (
+        k.attack_range,
+        k.min_range,
+        k.standoff,
+        k.attack_hold,
+        k.attack_gap,
+    )
 
 
 def _needs_continue(state: GameState) -> bool:
@@ -107,6 +159,11 @@ def _is_starbase(state: GameState) -> bool:
 _WOUNDED_KNEE_JUMP_CHARS: frozenset[int] = frozenset({0xB0})
 # Starbase: hover Foot / teleporter spawns / stack tops whiff grounded Y.
 _STARBASE_JUMP_CHARS: frozenset[int] = frozenset({0x6A, 0x6C, 0xB0, 0xB2, 0xB4, 0xF2})
+_RAPH_CHAR = 8
+# Raphael needs an aggressive closing jump for the short/elevated Foot stacks,
+# but applying it to Starbase bruisers (0xb2/0xb4) jump-locks beside them.
+_RAPH_STARBASE_CLOSE_CHARS: frozenset[int] = frozenset({0x6A, 0xB0, 0xBA})
+_RAPH_STARBASE_GROUND_CHARS: frozenset[int] = frozenset({0xB2, 0xB4})
 # Mode-7: enemies approach in depth (rising Y). Player Y clamps ~160–213;
 # chasing far slots (y≪player) only burns frames. Fight the near band.
 _NEON_MIN_FIGHT_Y = 140
@@ -114,6 +171,8 @@ _NEON_Y_TOLERANCE = 48
 _NEON_ATTACK_RANGE = 68
 _KRANG_CHAR = 0x4E
 _KRANG_LEFT_STANDOFF = 36
+_SHREDDER_F1_ATTACK_RANGE = 72
+_SHREDDER_F1_Y_TOLERANCE = 8
 
 # The SNES-only Technodrome finale is a special interaction, not a normal
 # beat-'em-up lock.  Pink Foot block standing Y attacks and the Shredder tank
@@ -174,12 +233,13 @@ class SuperShredderForm2Tactics:
         dy = boss.y - state.player_y
         adx_boss = abs(boss.x - state.player_x)
 
+        knobs = active_knobs()
         # Hop dodge cycle — short jump left/right off the projectile lane.
         if self._phase == "dodge":
             self._timer -= 1
             if self._timer <= 0:
                 self._phase = "attack"
-                self._timer = 36
+                self._timer = knobs.shredder_post_dodge_attack
             side = (
                 open_side
                 if (self._timer // 6) % 2 == 0
@@ -202,19 +262,19 @@ class SuperShredderForm2Tactics:
         # In standoff band: cadence Y, then hop.
         if self._phase != "attack":
             self._phase = "attack"
-            self._timer = 40
+            self._timer = knobs.shredder_attack_window
         self._cadence = (self._cadence + 1) % 8
         self._timer -= 1
         if self._timer <= 0:
             self._phase = "dodge"
-            self._timer = 18
+            self._timer = knobs.shredder_dodge_frames
             return FrameAction(
                 action=buttons("B", open_side),
                 reason="shredder_dodge",
             )
-        if self._cadence < 2 and adx_boss <= 72:
+        if self._cadence < 2 and adx_boss <= knobs.shredder_attack_adx:
             return FrameAction(action=buttons("Y"), reason="shredder_attack")
-        if adx_boss < 24:
+        if adx_boss < knobs.shredder_space_adx:
             return FrameAction(
                 action=buttons(open_side),
                 reason="shredder_space",
@@ -265,6 +325,7 @@ class SlashTactics:
             return FrameAction(action=idle_action(), reason="slash_wait")
 
         self._active = True
+        knobs = active_knobs()
         dy = slash.y - state.player_y
         dx = slash.x - state.player_x
         adx = abs(dx)
@@ -283,11 +344,20 @@ class SlashTactics:
 
         # Shell spin (and claw often follows). Lab winner only flees 0xEE;
         # over-dodging 0x83/0x09 starved DPS in probes.
-        if status == self._SPIN and iframes <= 0 and adx < 52 and abs(dy) <= 22:
+        if (
+            status == self._SPIN
+            and iframes <= 0
+            and adx < knobs.slash_spin_dodge_adx
+            and abs(dy) <= knobs.slash_spin_dodge_ady
+        ):
             self._phase = "approach"
             return FrameAction(action=buttons("B", away), reason="slash_dodge")
         # Claw active only when already inside the hit band — don't kite.
-        if status in self._CLAW and iframes <= 0 and adx < 44:
+        if (
+            status in self._CLAW
+            and iframes <= 0
+            and adx < knobs.slash_claw_dodge_adx
+        ):
             self._phase = "approach"
             return FrameAction(action=buttons("B", away), reason="slash_dodge")
 
@@ -298,15 +368,15 @@ class SlashTactics:
                     action=buttons("UP" if dy < 0 else "DOWN"),
                     reason="slash_align",
                 )
-            if adx > 54:
+            if adx > knobs.slash_punish_approach_adx:
                 return FrameAction(action=buttons(toward), reason="slash_approach")
-            if adx < 8:
+            if adx < knobs.slash_back_attack_adx:
                 return FrameAction(
                     action=buttons(away, "Y"), reason="slash_back_attack"
                 )
-            # Brief re-flank hop every ~48f of punish.
-            self._punish_tick = (self._punish_tick + 1) % 48
-            if self._punish_tick < 10 and adx < 40:
+            # Brief re-flank hop every ~punish_cycle frames.
+            self._punish_tick = (self._punish_tick + 1) % knobs.slash_punish_cycle
+            if self._punish_tick < knobs.slash_punish_cross and adx < 40:
                 return FrameAction(action=buttons("B", toward), reason="slash_cross")
             return FrameAction(action=buttons(toward, "Y"), reason="slash_back_attack")
 
@@ -318,9 +388,14 @@ class SlashTactics:
             )
 
         # Thrash cycle — wider approach, shorter cross at low HP.
-        approach_band = 48
-        cross_frames = 16 if slash.health <= 48 else 22
-        attack_frames = 40 if slash.health <= 48 else 36
+        low_hp = slash.health <= knobs.slash_low_hp
+        approach_band = knobs.slash_approach_band
+        cross_frames = (
+            knobs.slash_cross_frames_low if low_hp else knobs.slash_cross_frames
+        )
+        attack_frames = (
+            knobs.slash_attack_frames_low if low_hp else knobs.slash_attack_frames
+        )
 
         if self._phase == "approach":
             if adx > approach_band:
@@ -490,7 +565,7 @@ class TechnodromeTactics:
         self._phase = "retreat"
         # Need a real runway so the shoulder stun actually registers before
         # the grab/throw into Shredder's tank. Too-short retreats whiff forever.
-        self._timer = 40
+        self._timer = active_knobs().blocker_retreat_frames
         self._phase_frames = 0
         self._before_hp = health
 
@@ -501,6 +576,7 @@ class TechnodromeTactics:
     ) -> FrameAction:
         if not self._phase or self._phase.startswith("tank_"):
             self._start_blocker(target.health)
+        knobs = active_knobs()
         self._phase_frames += 1
         toward = self._toward(state, target.x)
         away = self._away(toward)
@@ -516,7 +592,7 @@ class TechnodromeTactics:
 
         if self._phase == "retreat":
             self._timer -= 1
-            if self._timer <= 0 or dx >= 55:
+            if self._timer <= 0 or dx >= knobs.blocker_retreat_dx:
                 self._phase = "charge"
                 self._timer = 0
                 self._before_hp = target.health
@@ -525,11 +601,14 @@ class TechnodromeTactics:
             self._timer += 1
             # Pink Foot stuns after a sustained pure run (~34f) then Y.
             # Old path ended at dx<16 with a 2f Y tap and whiffed ~75%.
-            if self._timer >= 34 and dx < 22:
+            if (
+                self._timer >= knobs.blocker_charge_min
+                and dx < knobs.blocker_charge_dx
+            ):
                 self._phase = "hit"
-                self._timer = 10
+                self._timer = knobs.blocker_hit_frames
                 self._before_hp = target.health
-            elif self._timer >= 70:
+            elif self._timer >= knobs.blocker_charge_timeout:
                 self._start_blocker(target.health)
             return FrameAction(action=buttons(toward), reason="blocker_charge")
         if self._phase == "hit":
@@ -841,12 +920,166 @@ def _neon_fight_action(state: GameState) -> FrameAction | None:
     return None
 
 
+class PizzaSeek:
+    """Walk to ground pizza (char ``0x30``) and tap Y when HP is not full.
+
+    Pizza slots keep HP 0 so they never appear in ``living_enemies``. Seeking
+    them is the main Clean-path heal for Stage 1 Big Apple (and later stages).
+
+    Rules of thumb from Big Apple probes:
+    - Any missing HP + pizza within ~56px → grab it (do not walk past).
+    - Larger HP holes allow a longer seek band.
+    - At critical HP (≤32), cross the screen for any visible box — Stage1
+      heal=none died at HP 12/28 with pizza ~173–233px to the right while
+      Leo kept walking left into the pack (``FAR_DIST`` 140 was too tight).
+    - Do not abandon a boss fight for pizza — Boss.state's left box is
+      collected by natural walk-in; active seek during Baxter regresses DPS.
+    """
+
+    _NEAR_DIST = 56
+    _MID_DIST = 96
+    _FAR_DIST = 180
+    _SCREEN_DIST = 320
+    _MID_HP = LEO_MAX_HP - 16
+    _LOW_HP = 40
+    _CRITICAL_HP = 32
+
+    def __init__(self) -> None:
+        self._disengage_frames = 0
+
+    def next(self, state: GameState) -> FrameAction | None:
+        """Return a seek/pickup action, or ``None`` when pizza is not useful."""
+        # This tactic is tuned for Big Apple's fixed pizza placements. Later
+        # stages can expose unreachable pickup slots (notably Skull &
+        # Crossbones), so applying it globally can stall the continuous run.
+        if state.mode is not GameMode.PLAYING or state.stage != 0:
+            return None
+        # After a pickup in a crowd, step out before resuming the poke.
+        if self._disengage_frames > 0:
+            self._disengage_frames -= 1
+            return FrameAction(action=buttons("LEFT"), reason="pizza_disengage")
+        if not (0 < state.health < LEO_MAX_HP):
+            return None
+        # Boss fights: natural walk-in only (active seek during Baxter
+        # pulled Leo off the poke lane and failed Boss.state heal=none).
+        if state.boss_active:
+            return None
+        pickups = state.extras.get("pickups") or ()
+        if not pickups:
+            return None
+        target = min(
+            pickups,
+            key=lambda p: abs(p[0] - state.player_x) + abs(p[1] - state.player_y),
+        )
+        tx, ty = int(target[0]), int(target[1])
+        dx = tx - state.player_x
+        dy = ty - state.player_y
+        dist = abs(dx) + abs(dy)
+        if dist <= self._NEAR_DIST:
+            max_dist = self._NEAR_DIST
+        elif state.health <= self._CRITICAL_HP:
+            # Any on-screen pizza — Clean survival depends on this grab.
+            max_dist = self._SCREEN_DIST
+        elif state.health <= self._LOW_HP:
+            max_dist = self._FAR_DIST
+        elif state.health <= self._MID_HP:
+            max_dist = self._MID_DIST
+        else:
+            # Scratch damage: only snag pizza we are already walking over.
+            max_dist = self._NEAR_DIST
+        if dist > max_dist:
+            return None
+        close_threats = sum(
+            1
+            for enemy in state.living_enemies
+            if abs(enemy.x - state.player_x) < 24
+            and abs(enemy.y - state.player_y) < 18
+        )
+        # Stay in the fray if surrounded unless pizza is already underfoot
+        # or HP is low enough that the box is the survival play.
+        if (
+            close_threats > 0
+            and dist >= 40
+            and state.health > self._LOW_HP
+        ):
+            return None
+        if abs(dx) <= 14 and abs(dy) <= 18:
+            # Step out after a grab — length tunes Baxter entry alignment.
+            self._disengage_frames = _PIZZA_DISENGAGE_FRAMES
+            return FrameAction(action=buttons("Y"), reason="pizza_pickup")
+        dirs: list[str] = []
+        if abs(dx) > 4:
+            dirs.append("RIGHT" if dx > 0 else "LEFT")
+        if abs(dy) > 4:
+            dirs.append("DOWN" if dy > 0 else "UP")
+        if state.frame % 3 == 0:
+            dirs.append("Y")
+        if not dirs:
+            self._disengage_frames = _PIZZA_DISENGAGE_FRAMES
+            return FrameAction(action=buttons("Y"), reason="pizza_pickup")
+        return FrameAction(action=buttons(*dirs), reason="pizza_seek")
+
+
+class BaxterTactics:
+    """Hold left/mid lane when Baxter has no arena pizza.
+
+    Continuous Stage1→Baxter enters on the right and stalls in
+    ``edge_press``. Boss.state keeps a left pizza that naturally recenters
+    Leo — skip lane overrides while that box (or any pickup) is present,
+    and after it is eaten stay on the proven poke path (no lane thrash).
+    """
+
+    _LANE_X = 110
+    _LANE_Y = 171
+
+    def __init__(self) -> None:
+        self._saw_arena_pizza = False
+
+    def next(self, state: GameState) -> FrameAction | None:
+        """Return a lane-correct step, or ``None`` when already in band."""
+        if state.mode is not GameMode.PLAYING:
+            return None
+        if not (state.boss_active and state.stage == 0 and state.health > 0):
+            self._saw_arena_pizza = False
+            return None
+        if state.extras.get("pickups"):
+            self._saw_arena_pizza = True
+            return None
+        # Boss.state path: pizza already taught the lane — do not override.
+        if self._saw_arena_pizza:
+            return None
+        dx = self._LANE_X - state.player_x
+        dy = self._LANE_Y - state.player_y
+        enemies = state.living_enemies
+        baxter = enemies[0] if enemies else None
+        if abs(dx) > 28 or abs(dy) > 24:
+            if state.player_x > 150 or abs(dy) > 30:
+                dirs: list[str] = []
+                if abs(dx) > 6:
+                    dirs.append("RIGHT" if dx > 0 else "LEFT")
+                if abs(dy) > 6:
+                    dirs.append("DOWN" if dy > 0 else "UP")
+                if dirs:
+                    return FrameAction(
+                        action=buttons(*dirs), reason="baxter_lane"
+                    )
+        if (
+            baxter is not None
+            and baxter.x + 20 < state.player_x
+            and state.player_x > 100
+        ):
+            return FrameAction(action=buttons("LEFT"), reason="baxter_releft")
+        return None
+
+
 class PlayerXStallWalk:
     """Walk right; break Stage 2 dumpster soft-locks when player X freezes.
 
     ``0x003A`` keeps ticking while Leo is glued to alley dumpsters. Deep
     dumpsters block the mid/upper lanes — drop to the bottom lane and
     JUMP+RIGHT, with UP / smash as fallbacks for earlier obstacles.
+    Stage 0 (Big Apple) skips dumpster escapes — frozen X there is usually
+    a wave lock, and DOWN thrash walks into chip.
     """
 
     def __init__(self, *, pickup_every: int = 24) -> None:
@@ -888,6 +1121,14 @@ class PlayerXStallWalk:
 
     def next(self, state: GameState) -> FrameAction:
         """Walk via WalkProgress; on X-stall run dumpster escape."""
+        # Leonardo's frozen Stage 1 X is usually a wave lock, but Raphael
+        # (player char 8) physically catches on the late dumpster at x=128.
+        # Reuse the proven alley escape only for that character.
+        if (
+            state.stage == 0
+            and int(state.extras.get("char_id", -1)) != _RAPH_CHAR
+        ):
+            return self._walk.next(state)
         if state.living_enemies:
             self._stall_frames = 0
             self._escape_frames = 0
@@ -979,6 +1220,48 @@ def build_stage1_tree(
     walk_progress = walk_progress or PlayerXStallWalk(pickup_every=24)
 
     def fight_action(state: GameState) -> FrameAction:
+        # Raphael's short sai make generic Y-align oscillate forever beside
+        # Starbase hover/stack targets. Jump toward the close elevated target;
+        # this remains a normal B+Y attack and never uses the HP-draining A.
+        if (
+            state.stage == 8
+            and not state.boss_active
+            and int(state.extras.get("char_id", -1)) == _RAPH_CHAR
+            and not any(
+                enemy.kind in _RAPH_STARBASE_GROUND_CHARS
+                for enemy in state.living_enemies
+            )
+        ):
+            raph_targets = [
+                enemy
+                for enemy in state.living_enemies
+                if enemy.kind in _RAPH_STARBASE_CLOSE_CHARS
+            ]
+            if raph_targets:
+                target = min(
+                    raph_targets,
+                    key=lambda enemy: abs(enemy.x - state.player_x)
+                    + abs(enemy.y - state.player_y),
+                )
+                dx = target.x - state.player_x
+                dy = target.y - state.player_y
+                if abs(dx) <= 80 and abs(dy) <= 36:
+                    toward = "RIGHT" if dx > 0 else "LEFT"
+                    steering = [toward]
+                    if abs(dy) > 8:
+                        steering.append("DOWN" if dy > 0 else "UP")
+                    # Release B/Y between jumps. Holding them continuously
+                    # lands one hit and leaves Raphael jump-locked beside the
+                    # surviving stack.
+                    if state.frame % 4:
+                        return FrameAction(
+                            action=buttons(*steering),
+                            reason="raph_starbase_close_gap",
+                        )
+                    return FrameAction(
+                        action=buttons("B", "Y", *steering),
+                        reason="raph_starbase_jump",
+                    )
         neon = _neon_fight_action(state)
         if neon is not None:
             return neon
@@ -1024,8 +1307,14 @@ def build_stage1_tree(
             flank = PreferredFlank.LEFT
         elif prehistoric_boss or shredder_boss:
             # Slash / Super Shredder: grounded Y; wide right margin.
-            y_tol = _Y_TOLERANCE
-            attack_range = 72
+            y_tol = (
+                _SHREDDER_F1_Y_TOLERANCE
+                if shredder_boss
+                else _Y_TOLERANCE
+            )
+            attack_range = (
+                _SHREDDER_F1_ATTACK_RANGE if shredder_boss else 72
+            )
             min_range = 10
             standoff = 28
             cadence.hold_frames = _BOSS_ATTACK_HOLD
@@ -1034,26 +1323,60 @@ def build_stage1_tree(
         elif _is_neon_highway(state):
             y_tol = _NEON_Y_TOLERANCE
             attack_range = _NEON_ATTACK_RANGE
-            min_range = _MIN_RANGE
-            standoff = _STANDOFF
-            cadence.hold_frames = _ATTACK_HOLD
-            cadence.gap_frames = _ATTACK_GAP
+            _, min_range, standoff, hold, gap = _combat_knobs()
+            cadence.hold_frames = hold
+            cadence.gap_frames = gap
             flank = PreferredFlank.NONE
         elif _is_sewer(state):
             y_tol = _SEWER_Y_TOLERANCE
-            attack_range = _ATTACK_RANGE
-            min_range = _MIN_RANGE
-            standoff = _STANDOFF
-            cadence.hold_frames = _ATTACK_HOLD
-            cadence.gap_frames = _ATTACK_GAP
+            attack_range = _SEWER_ATTACK_RANGE
+            min_range = _SEWER_MIN_RANGE
+            standoff = _SEWER_STANDOFF
+            cadence.hold_frames = _SEWER_ATTACK_HOLD
+            cadence.gap_frames = _SEWER_ATTACK_GAP
             flank = PreferredFlank.NONE
-        else:
+        elif state.stage == 1:
+            y_tol = _ALLEY_Y_TOLERANCE
+            attack_range = _ALLEY_ATTACK_RANGE
+            min_range = _ALLEY_MIN_RANGE
+            standoff = _ALLEY_STANDOFF
+            cadence.hold_frames = _ALLEY_ATTACK_HOLD
+            cadence.gap_frames = _ALLEY_ATTACK_GAP
+            flank = PreferredFlank.NONE
+        elif state.stage == 0:
+            # Big Apple waves + Baxter: wider standoff / tighter cadence.
+            y_tol = _Y_TOLERANCE
+            attack_range = _STAGE1_ATTACK_RANGE
+            min_range = _STAGE1_MIN_RANGE
+            standoff = _STAGE1_STANDOFF
+            cadence.hold_frames = _STAGE1_ATTACK_HOLD
+            cadence.gap_frames = _STAGE1_ATTACK_GAP
+            flank = PreferredFlank.NONE
+        elif state.stage in {5, 6}:
+            # Pirate / train waves: exact-entry probes favor a slightly
+            # tighter cadence. Pirate duo bosses use their branch above.
             y_tol = _Y_TOLERANCE
             attack_range = _ATTACK_RANGE
             min_range = _MIN_RANGE
             standoff = _STANDOFF
-            cadence.hold_frames = _ATTACK_HOLD
-            cadence.gap_frames = _ATTACK_GAP
+            cadence.hold_frames = _LATE_ATTACK_HOLD
+            if (
+                state.stage == 6
+                and int(state.extras.get("char_id", -1)) == _RAPH_CHAR
+            ):
+                cadence.gap_frames = (
+                    _RAPH_LEATHERHEAD_ATTACK_GAP
+                    if state.boss_active
+                    else _RAPH_WOUNDED_ATTACK_GAP
+                )
+            else:
+                cadence.gap_frames = _LATE_ATTACK_GAP
+            flank = PreferredFlank.NONE
+        else:
+            y_tol = _Y_TOLERANCE
+            attack_range, min_range, standoff, hold, gap = _combat_knobs()
+            cadence.hold_frames = hold
+            cadence.gap_frames = gap
             flank = PreferredFlank.NONE
         # Alleycat / Technodrome Foot sometimes park past ~256 and never
         # close. Shared right-edge wait then soft-locks; widen the margin
@@ -1064,6 +1387,7 @@ def build_stage1_tree(
             400
             if (
                 far_park
+                or (state.boss_active and state.stage == 0)
                 or _is_sewer(state)
                 or technodrome_boss
                 or prehistoric_boss
@@ -1128,6 +1452,13 @@ def build_stage1_tree(
             and action.reason == "attack"
             and not state.boss_active
             and any(e.kind in _STARBASE_JUMP_CHARS for e in state.living_enemies)
+            and not (
+                int(state.extras.get("char_id", -1)) == _RAPH_CHAR
+                and any(
+                    e.kind in _RAPH_STARBASE_GROUND_CHARS
+                    for e in state.living_enemies
+                )
+            )
         ):
             return FrameAction(action=buttons("B", "Y"), reason="jump_slash")
         return action
@@ -1174,6 +1505,8 @@ class Stage1Policy:
     def __init__(self) -> None:
         self._cadence = AttackCadence(hold_frames=_ATTACK_HOLD, gap_frames=_ATTACK_GAP)
         self._walk = PlayerXStallWalk(pickup_every=24)
+        self._pizza = PizzaSeek()
+        self._baxter = BaxterTactics()
         self._technodrome = TechnodromeTactics()
         self._prehistoric_cave = PrehistoricCaveRecovery()
         self._slash = SlashTactics()
@@ -1188,6 +1521,8 @@ class Stage1Policy:
         """Reset cadence / walk stall and rebuild the tree."""
         self._cadence.reset()
         self._walk.reset()
+        self._pizza = PizzaSeek()
+        self._baxter = BaxterTactics()
         self._technodrome.reset()
         self._prehistoric_cave.reset()
         self._slash.reset()
@@ -1200,6 +1535,20 @@ class Stage1Policy:
 
     def tick(self, state: GameState) -> TickResult:
         """Choose one frame of action for the current state."""
+        pizza = self._pizza.next(state)
+        if pizza is not None:
+            return TickResult(
+                status=NodeStatus.RUNNING,
+                action=pizza,
+                reason=pizza.reason,
+            )
+        baxter = self._baxter.next(state)
+        if baxter is not None:
+            return TickResult(
+                status=NodeStatus.RUNNING,
+                action=baxter,
+                reason=baxter.reason,
+            )
         technodrome = self._technodrome.next(state)
         if technodrome is not None:
             return TickResult(

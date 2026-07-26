@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "problemId": "room_9879_from_9804_to_92fd",
+  "status": "verified_development_state",
+  "description": "Cross Flyway from the post-Bomb-Torizo right entry to Parlor.",
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 30
+    },
+    {
+      "label": "left_run_jump_shoot_cycle",
+      "repeat": 5,
+      "steps": [
+        {
+          "buttons": ["LEFT", "A", "B", "X"],
+          "frames": 45
+        },
+        {
+          "buttons": ["LEFT", "B", "X"],
+          "frames": 8
+        }
+      ]
+    }
+  ]
+}

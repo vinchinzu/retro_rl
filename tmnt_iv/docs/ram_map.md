@@ -58,6 +58,16 @@ etc.) filtered only when stage byte **7**. Starbase hover/teleporter
 Foot `0x6A` (plus `0x6C`/`0xB0`/`0xB2`/`0xB4`/`0xF2`) need jump-slash
 or grounded Y soft-locks mid-stage.
 
+**Pickups:** Ground pizza box char **`0x30`** (blue “PIZZA” crate). HP
+byte stays **0**, so it never appears in `living_enemies`. Adapter
+exposes on-screen boxes as `extras["pickups"]` = `(x, y, char)` tuples.
+Full restore to Leo max (**80**). Policy `PizzaSeek` walks to the box
+and taps Y when HP is not full (screen-wide seek when HP ≤ 32).
+
+**Hazards:** `extras["hazards"]` lists char **`0x32`** / **`0x36`**
+wrecking-ball props (HP 0). Ceiling **`0x36`** can deal a −24 chip;
+do not seek either as pizza.
+
 **Boss chars:** `BOSS_CHAR_IDS = {0x44, 0x46, 0x48, 0x4A, 0x4E, 0x50,
 0x52, 0xAE, 0xA0, 0xA2, 0xA8, 0xAC}` (Baxter, Metalhead, Tokka, Rat
 King, Krang, Slash, Super Shredder form1/form2, Rahzar, Leatherhead,

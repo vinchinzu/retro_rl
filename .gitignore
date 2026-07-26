@@ -185,7 +185,10 @@ donkey_kong_country/notes
 harvest/tasks/
 
 # Recorded input policies and ROM-derived navigation/map exports
-super_metroid/policies/
+super_metroid/policies/*
+!super_metroid/policies/room_clears/
+!super_metroid/policies/room_clears/*.json
+super_metroid/custom_integrations/*/*.provenance.json
 super_metroid/maps/*
 !super_metroid/maps/README.md
 

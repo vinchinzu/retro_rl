@@ -19,6 +19,10 @@ best_video: tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4
 assist_contract: tmnt_iv/docs/ASSIST_CONTRACT.md
 status_doc: tmnt_iv/docs/STATUS.md
 plan_doc: tmnt_iv/docs/plan.md
-last_verified: 2026-07-24
-blocker: reduce Technodrome/Starbase assists and form-2 iframe guard
-notes: Flagship linear-combat continuous clear; not a ladder rank.
+last_verified: 2026-07-25
+blocker: Whole-run Bronze/Clean dry-run (Stage1 heal=none segment done; cut later-stage heals + form-2 iframe)
+notes: >-
+  Flagship linear-combat continuous clear (M8). Next publication target is
+  Bronze/Clean unassisted — maturity stays M8. Current low-assist dry-run is
+  01:04:07.131 with zero life losses; Stage1 + Baxter heal=none segment
+  clears are proven, but their checkpoint gain did not transfer at power-on.

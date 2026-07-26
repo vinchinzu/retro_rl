@@ -28,9 +28,21 @@ Super Metroid scripted full-clear project. Shared process:
 
 ## Immediate goal
 
-The continuous power-on → both early Missile expansions → Bomb Torizo/Bombs
-baseline is established. Extend the natural suffix from post-Torizo Parlor
-through Terminator/Green Brinstar and the next required major upgrade. Reuse
-the typed graph, checked replay segments, boundary fingerprints, independent
-artifact verifier, and staged model candidates without weakening the
-no-progression-write contract.
+The continuous power-on → Spore Spawn baseline is established. Continue from
+the settled Spore Super room through Spore Farming/Big Pink to the first Power
+Bomb expansion. Use `maps/room_problems.json` to develop isolated clears, but
+promote only natural-entry continuous transitions.
+
+Room-development commands:
+
+```bash
+uv run python super_metroid/scripts/export_room_problems.py
+uv run python super_metroid/scripts/run_room_problem.py ready --run
+uv run python super_metroid/scripts/run_room_problem.py route 0x9B5B 0x9E11 \
+  --capability morph_ball --capability bombs --capability missiles \
+  --capability spore_spawn_defeated --capability super_missiles
+```
+
+The generated graph/catalog, development states, reports, and screenshots are
+gitignored local artifacts. The compact policies under
+`policies/room_clears/` are curated source.
