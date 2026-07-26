@@ -7,9 +7,10 @@
 |-------|-------|
 | Current maturity | M8 |
 | Best verified result | Continuous hard clear + credits |
-| Last verification | 2026-07-24 |
+| Last verification | 2026-07-25 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted + Protection-assisted |
+| Next publication target | Bronze / Clean (unassisted; maturity stays M8) |
 
 | Field | Value |
 |-------|-------|
@@ -19,7 +20,7 @@
 | Final replay state | None — capture boots from power-on (`NONE`) |
 | Video | [Continuous hard clear with sound](../recordings/tmnt_iv_full_hard_credits.mp4) ([manifest](../recordings/tmnt_iv_full_hard_credits.json)) |
 | Latest dry-run | [manifest](../recordings/tmnt_iv_full_hard_dry_run.json) |
-| Frozen baseline | [BASELINE_METRICS.md](BASELINE_METRICS.md) |
+| Current baseline | [BASELINE_METRICS.md](BASELINE_METRICS.md) |
 
 One unbroken emulator session from power-on through hard-mode staff/cast
 credits. Zero life losses, zero state loads, zero stage/lives writes, no
@@ -27,42 +28,111 @@ A-special uses. **Low-assist** (not the old full-bar spam): emergency HP
 top-up only when HP ≤ 16 (restore to 80), plus form-2 Super Shredder iframe
 hold at 1. Manifest records every intervention.
 
-## Continuous hard-run proof (2026-07-24 / tank + wall recovery)
+Maturity gates stop at **M8**. “Unassisted bronze” means the same M8
+continuous clear with intervention class **Clean** (zero HP/iframe RAM
+writes), not a new M9 gate.
 
-| Metric | Post-Slash whiplash | Previous re-probe | **Tank + wall fixes** |
-|--------|----------------------|-------------------|-----------------------|
-| Power-on → credits | 01:15:34.050 | 01:09:46.389 | **01:05:41.709** |
-| Damage taken | 8,085 | 7,959 | **6,851** |
-| HP interventions | 110 (HP ≤ 16 → 80) | 108 | **93** (HP ≤ 16 → 80) |
-| Form-2 iframe frames | 7,467 | 4,482 | **3,887** |
-| Life losses | 0 | 0 | **0** |
-| Lives start / peak / end | 2 / 6 / 6 | 2 / 6 / 6 | 2 / 6 / 6 |
-| Min HP seen | 2 | 2 | **2** |
-| Frames to credits | 272,491 | 251,597 | **236,892** |
+## Stage 1 Clean track (2026-07-25)
 
-Δ vs previous re-probe: **−4:04.680**, **−1,108 damage**, **−15 heals**,
-and **−595 iframe-guard frames**. Zero life losses held.
+Big Apple **heal=none clear** from `Stage1.state` (segment proof toward
+Bronze / Clean). Evidence:
+[stage1_probes.json](../recordings/stage1_clean_track/stage1_probes.json)
+(3/3 stable repeats).
+
+| Probe | Heal mode | Outcome | Frames | Damage | E-heals | Boss entry HP |
+|-------|-----------|---------|--------|--------|---------|---------------|
+| `Stage1` (current continuous stage-0) | emergency | clear | 19,291 | **324** | (in 91 whole-run) | — |
+| Earlier pizza-seek pass | emergency | stage_advance | 15,064 | 164 | 2 | 80 |
+| **`Stage1`** | **none** | **stage_advance** | **14,921** | **130** | **0** | **76** |
+| `Stage1` | emergency | stage_advance | 14,921 | 130 | 1 | 76 |
+| **`Boss` (Baxter)** | **none** | **stage_advance** | **4,293** | **64** | **0** | 56 |
+
+Policy changes that unlocked the Clean segment:
+
+- Pizza `0x30` seek with screen-wide range at HP ≤ 32; 6f post-pickup
+  disengage (alignment-critical for Baxter).
+- Baxter left-lane hold when the arena has no pizza (Boss.state keeps a
+  left box and skips lane overrides).
+- Wide right camera margin during Baxter; Stage 0 skips dumpster stall.
+
+## Stage 2–3 damage pass (2026-07-25)
+
+Deterministic fight-ready checkpoint probes under the production emergency
+contract (HP ≤ 16 → 80). Each tuned result was reproduced twice and advanced
+to the next stage naturally.
+
+| Checkpoint | Policy | Outcome | Frames | Damage | E-heals | Lives |
+|------------|--------|---------|--------|--------|---------|-------|
+| `Stage2` | previous | stage_advance | 15,550 | 293 | 4 | 1→1 |
+| **`Stage2`** | **tuned** | **stage_advance** | **15,453** | **124** | **1** | **1→1** |
+| `Stage3` | previous | stage_advance | 20,172 | 572 | 9 | 0→1 |
+| **`Stage3`** | **tuned** | **stage_advance** | **7,768** | **112** | **2** | **0→0** |
+
+Checkpoint delta: Alleycat Blues **−169 damage (−58%) / −3 heals**;
+Sewer Surfin' **−460 damage (−80%) / −7 heals / −12,404 frames**.
+
+The production policy also cleared both levels back-to-back from `Stage2`
+with one policy instance and no state load between them: **24,963f / 294
+total damage / 5 heals / lives 1→1**. Subtracting the identical Stage 2
+prefix gives the natural-entry Sewer segment **9,510f / 170 damage / 4
+heals**. That is the closer continuous-context estimate; the 112-damage
+`Stage3` row above is the standalone fight-ready checkpoint.
+
+Policy changes:
+
+- Alleycat Blues: attack range 65, vertical tolerance 6, cadence 1f Y /
+  2f release.
+- Sewer waves: attack range 64, vertical tolerance 36, cadence 2f Y /
+  2f release. The wider lane prevents long spike-lane alignment chases.
+- Rat King: attack range 120, vertical tolerance 32, and JUMP+RIGHT only
+  at the true left edge (`player_x ≤ 80`).
+
+The completed power-on dry-run below now provides the exact continuous
+context. The checkpoint gain did not transfer to Alleycat Blues
+(**5:16.163 / 346 damage**, versus **5:03.234 / 288**), but it did transfer
+materially to Sewer Surfin' (**3:08.889 / 240**, versus **4:31.636 / 466**).
+That Sewer bucket saved **1:22.747 / 226 damage**.
+
+## Continuous hard-run proof (2026-07-25 / Stage 2–3 pass)
+
+| Metric | Post-Slash whiplash | Previous re-probe | Tank + wall fixes | **Stage 2–3 pass** |
+|--------|----------------------|-------------------|-------------------|--------------------|
+| Power-on → credits | 01:15:34.050 | 01:09:46.389 | 01:05:41.709 | **01:04:07.131** |
+| Damage taken | 8,085 | 7,959 | 6,851 | **6,869** |
+| HP interventions | 110 (HP ≤ 16 → 80) | 108 | 93 | **91** (HP ≤ 16 → 80) |
+| Form-2 iframe frames | 7,467 | 4,482 | 3,887 | **3,824** |
+| Life losses | 0 | 0 | 0 | **0** |
+| Lives start / peak / end | 2 / 6 / 6 | 2 / 6 / 6 | 2 / 6 / 6 | **2 / 6 / 6** |
+| Min HP seen | 2 | 2 | 2 | **2** |
+| Frames to credits | 272,491 | 251,597 | 236,892 | **231,208** |
+
+Δ vs tank + wall fixes: **−1:34.578 / −5,684 frames**, **+18 damage**,
+**−2 heals**, and **−63 iframe-guard frames**. Zero life losses held.
 
 ### Damage by stage (new)
 
-| Stage | Damage | Δ |
-|-------|--------|---|
-| Big Apple | 322 | 0 |
-| Alleycat Blues | 288 | 0 |
-| Sewer Surfin' | 466 | 0 |
-| Technodrome (duo + tank) | **1,412** | **−988** |
-| Prehistoric (Slash) | 982 | −56 |
-| Skull & Crossbones | 970 | −8 |
-| Wounded Knee | 916 | −41 |
-| Neon Night Riders | 407 | +261 |
-| Starbase | 1,088 | **−276** |
+| Stage | Damage | Δ vs tank + wall |
+|-------|--------|------------------|
+| Big Apple | 324 | +2 |
+| Alleycat Blues | 346 | +58 |
+| Sewer Surfin' | **240** | **−226** |
+| Technodrome (duo + tank) | **1,262** | **−150** |
+| Prehistoric (Slash) | 1,144 | +162 |
+| Skull & Crossbones | **760** | **−210** |
+| Wounded Knee | 1,159 | +243 |
+| Neon Night Riders | 418 | +11 |
+| Starbase | 1,216 | +128 |
 | Final Shell Shock | 0 (iframe guard) | 0 |
+
+Time was won primarily in Sewer Surfin' (**−1:22.747**) and Technodrome
+(**−2:28.788**). Prehistoric (+0:33.013) and Wounded Knee (+0:55.425)
+were the largest slower buckets in this deterministic route.
 
 Policy: duo left-flank poke with right-door jump recovery; Super Shredder
 form-2 wall-aware dodge cycle;
 emergency-only HP assist; **Slash whiplash** (lab-ported) — FullHardBoss5
 probe **13.6k f / 616 dmg / 10 heals**; whole-run Prehistoric segment
-**~7.2 min**.
+**7:43.354**.
 
 - Hard flag stayed at WRAM value `2`; hard-credits event `0x1A` observed
 - Re-encode video with `uv run python -m tmnt_iv.scripts.record_full_hard_run`
@@ -89,7 +159,7 @@ probe **13.6k f / 616 dmg / 10 heals**; whole-run Prehistoric segment
 - Stage 3 early waves (spike lane) + mid states; surf ghost slots
   (`char 0` / `x 0` / `y≥256`) filtered; sewer Y-clamp avoids spikes
 - Stage 3 boss **Rat King** (`char 0x4A`, HUD `R. KING`, spawn HP
-  96): long poke (`attack_range=140`) from water lane reduces HP to
+  96): long poke (`attack_range=120`) from water lane reduces HP to
   **0**; char despawns; event `0x0A→0x0B` (same pattern as Metalhead).
   States: `Boss3`, `Boss3_mid`, `Boss3_low` (HP18 / boss~24)
 - **Historical `Stage3_Clear` / `Stage3_Clear_post` segment states**:
@@ -172,9 +242,10 @@ probe **13.6k f / 616 dmg / 10 heals**; whole-run Prehistoric segment
 
 ## Not done
 
-- Unassisted zero-loss proof: remove emergency HP heals and the form-2
-  iframe guard without losing continuity.
-- Cut Slash time/damage (still ~40% of total damage and ~22 min of the run).
+- **Bronze / Clean** continuous proof: zero emergency HP heals and zero
+  form-2 iframe guard without losing continuity (Stage 1 segment
+  heal=none is done; roll into whole-run dry-run next).
+- Cut Slash time/damage (still a large whole-run bucket).
 - True camera scroll word (still using `0x003A` progress heuristic)
 
 ## Preferred resumes
@@ -238,12 +309,18 @@ probe **13.6k f / 616 dmg / 10 heals**; whole-run Prehistoric segment
 
 ## Next
 
-Whole-run baseline (2026-07-24): **01:05:41.709** / **6,851 dmg** /
-**93 heals** / **0 lives lost** — see
+1. Reconcile the Stage 1 checkpoint (**130 damage**) with the exact power-on
+   Big Apple bucket (**324**); keep pizza seek scoped to stage byte 0.
+2. Keep cutting Technodrome / Starbase / form-2 iframe for whole-run Clean.
+3. Publish Bronze / Clean when the continuous hard clear has zero HP/iframe
+   assists.
+
+Whole-run baseline (2026-07-25): **01:04:07.131** / **6,869 dmg** /
+**91 heals** / **0 lives lost** — see
 [BASELINE_METRICS.md](BASELINE_METRICS.md).
 
-Biggest remaining damage buckets: **Technodrome 1,412**, Starbase 1,088,
-Prehistoric 982. Neon rose to 407 in this route and remains variance work.
+Biggest remaining damage buckets: **Technodrome 1,262**, Starbase 1,216,
+Wounded Knee 1,159, and Prehistoric 1,144.
 
 ### Tokka/Rahzar (2026-07-23)
 
@@ -268,10 +345,11 @@ Re-probe 2026-07-24 (with `--heal emergency` now default):
 The first post-fix continuous attempt exposed a checkpoint-only blind spot:
 Leo entered Tokka/Rahzar pinned at the right door (`x=224`) and plain LEFT
 made no progress. `duo_wall_escape` (37 jump-left frames in the successful
-run) cleared it. The next full run reached Prehistoric at **26:36.304** with
-Technodrome damage **1,412** (was 31:08.490 / 2,400).
+run) cleared it. The tank + wall run reached Prehistoric at **26:36.304**
+with Technodrome damage **1,412** (was 31:08.490 / 2,400); the current pass
+reaches it at **23:05.901** with **1,262** Technodrome damage.
 
 Form-2 wall-aware flanking reduced the isolated `Boss9_phase2` checkpoint
 from **3,825f** to **2,631f** and whole-run iframe guard use from 4,482f to
-3,887f. Next: tank throw efficiency, Starbase below 1,000, and form-2 iframe
+**3,824f**. Next: tank throw efficiency, Starbase below 1,000, and form-2 iframe
 removal.

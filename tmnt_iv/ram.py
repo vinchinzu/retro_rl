@@ -71,6 +71,12 @@ NPC_CHAR_IDS: frozenset[int] = frozenset(
         0xEE,  # Pterodactyl carrier (drops Foot, then leaves)
     }
 )
+# Ground pizza box (full HP restore). HP byte stays 0; do not fight.
+PIZZA_CHAR_IDS: frozenset[int] = frozenset({0x30})
+# Stage 1 ceiling/wrecking hazards (HP 0; walking under 0x36 is a −24).
+HAZARD_CHAR_IDS: frozenset[int] = frozenset({0x32, 0x36})
+# Leo's full health bar (used for pizza-seek gating).
+LEO_MAX_HP = 80
 # Mode-7 Neon Night Riders (stage byte 7): boards / shots / debris that
 # reuse combat-looking chars (incl. 0xAC Rocksteady id at HP 2).
 NEON_PROP_CHAR_IDS: frozenset[int] = frozenset(
@@ -176,6 +182,34 @@ def _read_enemy(
     )
 
 
+def read_pizza_pickups(ram: np.ndarray) -> tuple[tuple[int, int, int], ...]:
+    """Return ``(x, y, char)`` for on-screen pizza boxes (HP byte is 0)."""
+    found: list[tuple[int, int, int]] = []
+    for base in ENEMY_BASES:
+        char_id = read_u8(ram, base + OFF_CHAR)
+        if char_id not in PIZZA_CHAR_IDS:
+            continue
+        x = read_u16le(ram, base + OFF_X)
+        y = read_u16le(ram, base + OFF_Y)
+        if 0 < x < ENTITY_X_MAX and 0 < y < 256:
+            found.append((x, y, char_id))
+    return tuple(found)
+
+
+def read_hazards(ram: np.ndarray) -> tuple[tuple[int, int, int], ...]:
+    """Return ``(x, y, char)`` for on-screen wrecking-ball hazards."""
+    found: list[tuple[int, int, int]] = []
+    for base in ENEMY_BASES:
+        char_id = read_u8(ram, base + OFF_CHAR)
+        if char_id not in HAZARD_CHAR_IDS:
+            continue
+        x = read_u16le(ram, base + OFF_X)
+        y = read_u16le(ram, base + OFF_Y)
+        if 0 < x < ENTITY_X_MAX and 0 < y < 256:
+            found.append((x, y, char_id))
+    return tuple(found)
+
+
 def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
     """Project TMNT IV WRAM into a normalized ``GameState``."""
     menu = read_u8(ram, ADDR_MENU)
@@ -209,6 +243,8 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
     )
     boss = boss_candidates[0] if boss_candidates else None
     player_dead = lives == 0 and (health == 0 or health > ENTITY_HP_MAX)
+    pickups = read_pizza_pickups(ram)
+    hazards = read_hazards(ram)
     return GameState(
         frame=frame,
         mode=mode,
@@ -240,5 +276,7 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
             "boss_hp": boss.health if boss is not None else 0,
             "boss_status": 1 if boss is not None else 0,
             "boss_slot": boss.slot if boss is not None else -1,
+            "pickups": pickups,
+            "hazards": hazards,
         },
     )

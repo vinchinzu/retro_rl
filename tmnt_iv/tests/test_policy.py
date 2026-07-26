@@ -129,6 +129,35 @@ def test_attack_cadence_gaps() -> None:
     assert reasons[2] == "attack_gap"
 
 
+def test_alleycat_uses_short_poke_cadence() -> None:
+    """Stage byte 1 uses one attack frame followed by two release frames."""
+    enemy = _enemy(110, 160, 16)
+    policy = Stage1Policy()
+    state = replace(_playing(enemies=(enemy,)), stage=1)
+    reasons = [policy.tick(state).action.reason for _ in range(4)]
+    assert reasons == ["attack", "attack_gap", "attack_gap", "attack"]
+
+
+def test_alleycat_keeps_tight_vertical_lane() -> None:
+    """A seven-pixel Alleycat offset is outside the tuned six-pixel band."""
+    enemy = _enemy(110, 153, 16)
+    result = Stage1Policy().tick(
+        replace(_playing(player_y=160, enemies=(enemy,)), stage=1)
+    )
+    assert result.action is not None
+    assert result.action.reason == "align_up"
+
+
+def test_sewer_accepts_broad_vertical_lane() -> None:
+    """Sewer waves attack across a 36-pixel lane instead of chasing spikes."""
+    enemy = _enemy(110, 196, 16)
+    result = Stage1Policy().tick(
+        replace(_playing(player_y=160, enemies=(enemy,)), stage=2)
+    )
+    assert result.action is not None
+    assert result.action.reason == "attack"
+
+
 def test_continue_on_life_loss() -> None:
     result = Stage1Policy().tick(_playing(health=0, lives=2))
     assert result.action is not None
@@ -462,6 +491,38 @@ def test_wounded_knee_jump_slash_on_stack() -> None:
     assert result.action.action[1] == 1  # Y
 
 
+def test_raphael_uses_tighter_wounded_knee_cadences() -> None:
+    """Raph releases for three wave frames and one Leatherhead frame."""
+    foot = replace(_enemy(110, 160, 16), kind=0x60)
+    wave = replace(
+        _playing(player_x=90, player_y=160, enemies=(foot,)),
+        stage=6,
+        extras={"char_id": 8},
+    )
+    wave_policy = Stage1Policy()
+    wave_reasons = [
+        wave_policy.tick(replace(wave, frame=frame)).action.reason
+        for frame in range(6)
+    ]
+    assert wave_reasons == [
+        "attack",
+        "attack",
+        "attack_gap",
+        "attack_gap",
+        "attack_gap",
+        "attack",
+    ]
+
+    leatherhead = replace(foot, kind=0xA2)
+    boss = replace(wave, enemies=(leatherhead,), boss_active=True)
+    boss_policy = Stage1Policy()
+    boss_reasons = [
+        boss_policy.tick(replace(boss, frame=frame)).action.reason
+        for frame in range(4)
+    ]
+    assert boss_reasons == ["attack", "attack", "attack_gap", "attack"]
+
+
 def test_starbase_jump_slash_on_hover_foot() -> None:
     """Stage byte 8 + hover Foot (0x6A) → jump-slash."""
     hover = EnemyState(
@@ -477,6 +538,23 @@ def test_starbase_jump_slash_on_hover_foot() -> None:
     assert result.action.reason == "jump_slash"
     assert result.action.action[0] == 1  # B
     assert result.action.action[1] == 1  # Y
+
+
+def test_raphael_closes_starbase_stack_with_jump_slash() -> None:
+    """Raph must not Y-align forever beside the 0xB0/0xBA stack."""
+    stack = replace(_enemy(40, 190, 8), kind=0xB0)
+    state = replace(
+        _playing(player_x=73, player_y=176, enemies=(stack,), frame=0),
+        stage=8,
+        extras={"char_id": 8},
+    )
+    action = Stage1Policy().tick(state).action
+    assert action is not None
+    assert action.reason == "raph_starbase_jump"
+    assert action.action[0] == 1  # B
+    assert action.action[1] == 1  # Y
+    assert action.action[6] == 1  # LEFT toward the target
+    assert action.action[8] == 0  # never A
 
 
 def test_super_shredder_form1_is_boss() -> None:
@@ -546,7 +624,10 @@ def test_player_x_stall_prefers_down_jump() -> None:
     reasons: list[str] = []
     for frame in range(1, 100):
         tick = policy.tick(
-            _playing(player_x=109, player_y=205, camera_x=frame * 2)
+            replace(
+                _playing(player_x=109, player_y=205, camera_x=frame * 2),
+                stage=1,
+            )
         )
         assert tick.action is not None
         reasons.append(tick.action.reason)
@@ -556,6 +637,35 @@ def test_player_x_stall_prefers_down_jump() -> None:
         i for i, r in enumerate(reasons) if r.startswith("stall_")
     )
     assert reasons[first_stall] == "stall_down"
+
+
+def test_stage0_skips_dumpster_stall() -> None:
+    """Big Apple must not DOWN-thrash on frozen X (wave locks)."""
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 100):
+        tick = policy.tick(
+            _playing(player_x=109, player_y=205, camera_x=frame * 2)
+        )
+        assert tick.action is not None
+        reasons.append(tick.action.reason)
+    assert not any(r.startswith("stall_") for r in reasons)
+
+
+def test_raphael_uses_stage0_dumpster_escape() -> None:
+    """Raphael's shorter collision route catches the late Big Apple dumpster."""
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 100):
+        state = replace(
+            _playing(player_x=128, player_y=156, camera_x=frame * 2),
+            extras={"char_id": 8},
+        )
+        tick = policy.tick(state)
+        assert tick.action is not None
+        reasons.append(tick.action.reason)
+    assert "stall_down" in reasons
+    assert "stall_jump_right" in reasons
 
 
 def test_far_park_enemy_approaches_not_edge_wait() -> None:
@@ -742,7 +852,7 @@ def test_rat_king_left_chip_jump_right() -> None:
     """Pinned near auto-scroll left wall → JUMP+RIGHT escape."""
     boss = replace(_enemy(230, 144, 60, slot=0), kind=0x4A)
     state = replace(
-        _playing(player_x=111, player_y=156, enemies=(boss,)),
+        _playing(player_x=79, player_y=156, enemies=(boss,)),
         stage=2,
         boss_active=True,
     )
@@ -766,7 +876,6 @@ def test_rat_king_long_poke_attacks() -> None:
     assert result.action.reason in {
         "attack",
         "attack_gap",
-        "boss_jump_right",
         "space_left",
     }
 
@@ -849,3 +958,157 @@ def test_jetpack_foot_hp80_not_boss() -> None:
     state = parse_game_state(ram)
     assert state.boss_active is False
     assert len(state.living_enemies) == 1
+
+
+def test_pizza_pickup_in_extras_not_living() -> None:
+    """Pizza box (0x30, HP0) is a pickup, not a combat target."""
+    ram = _ram()
+    _write_enemy(
+        ram, ENEMY_BASES[0], x=140, y=180, health=0, char_id=0x30
+    )
+    state = parse_game_state(ram)
+    assert state.living_enemies == ()
+    assert state.extras["pickups"] == ((140, 180, 0x30),)
+
+
+def test_pizza_seek_when_hurt() -> None:
+    """After a real HP chunk is missing, walk toward on-screen pizza."""
+    state = replace(
+        _playing(player_x=80, player_y=180, health=48),
+        extras={"pickups": ((160, 180, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason == "pizza_seek"
+    assert result.action.action[7] == 1  # RIGHT
+
+
+def test_pizza_pickup_underfoot() -> None:
+    """Tap Y when standing on the pizza box."""
+    state = replace(
+        _playing(player_x=150, player_y=180, health=48),
+        extras={"pickups": ((152, 182, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason == "pizza_pickup"
+
+
+def test_pizza_ignored_at_full_hp() -> None:
+    """Do not divert for pizza while already at Leo max HP."""
+    enemy = _enemy(120, 180, 16)
+    state = replace(
+        _playing(player_x=80, player_y=180, health=80, enemies=(enemy,)),
+        extras={"pickups": ((160, 180, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason != "pizza_seek"
+    assert result.action.reason != "pizza_pickup"
+
+
+def test_pizza_seek_is_limited_to_big_apple() -> None:
+    """Later stages must not chase unreachable pickup slots forever."""
+    enemy = _enemy(120, 180, 16)
+    state = replace(
+        _playing(player_x=80, player_y=180, health=24, enemies=(enemy,)),
+        stage=5,
+        extras={"pickups": ((240, 180, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason not in {
+        "pizza_seek",
+        "pizza_pickup",
+        "pizza_disengage",
+    }
+
+
+def test_pizza_ignored_for_scratch_damage_when_far() -> None:
+    """Scratch damage must not chase a distant pizza across the screen."""
+    enemy = _enemy(120, 180, 16)
+    state = replace(
+        _playing(player_x=80, player_y=180, health=72, enemies=(enemy,)),
+        extras={"pickups": ((200, 180, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason not in {"pizza_seek", "pizza_pickup"}
+
+
+def test_pizza_grabbed_on_scratch_when_near() -> None:
+    """Walking past a pizza at 76 HP should still pick it up."""
+    state = replace(
+        _playing(player_x=100, player_y=180, health=76),
+        extras={"pickups": ((120, 190, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason in {"pizza_seek", "pizza_pickup"}
+
+
+def test_pizza_sought_across_screen_when_critical() -> None:
+    """Critical HP must cross the screen for a visible pizza box.
+
+    Stage1 heal=none died with pizza ~200px right while Leo walked left.
+    """
+    enemy = _enemy(60, 180, 16)
+    state = replace(
+        _playing(
+            player_x=87,
+            player_y=183,
+            health=28,
+            enemies=(enemy,),
+        ),
+        extras={"pickups": ((284, 147, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason == "pizza_seek"
+    assert result.action.action[7] == 1  # RIGHT toward pizza
+
+
+def test_pizza_not_sought_during_boss() -> None:
+    """Active pizza seek during Baxter regresses Boss.state DPS."""
+    boss = replace(_enemy(285, 192, 96, slot=0), kind=0x44)
+    state = replace(
+        _playing(player_x=212, player_y=180, health=12, enemies=(boss,)),
+        boss_active=True,
+        stage=0,
+        extras={"pickups": ((65, 147, 0x30),), "boss_hp": 45},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason not in {
+        "pizza_seek",
+        "pizza_pickup",
+        "pizza_disengage",
+    }
+
+
+def test_baxter_lane_recenters_from_right() -> None:
+    """Without arena pizza, leave the right-edge thrash band."""
+    boss = replace(_enemy(288, 192, 96, slot=0), kind=0x44)
+    state = replace(
+        _playing(player_x=187, player_y=176, health=52, enemies=(boss,)),
+        boss_active=True,
+        stage=0,
+        extras={"boss_hp": 96, "pickups": ()},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason in {"baxter_lane", "baxter_releft"}
+
+
+def test_baxter_lane_skips_when_pizza_present() -> None:
+    """Boss.state left pizza must own positioning over lane recenter."""
+    boss = replace(_enemy(285, 192, 96, slot=0), kind=0x44)
+    state = replace(
+        _playing(player_x=212, player_y=180, health=56, enemies=(boss,)),
+        boss_active=True,
+        stage=0,
+        extras={"boss_hp": 96, "pickups": ((65, 147, 0x30),)},
+    )
+    result = Stage1Policy().tick(state)
+    assert result.action is not None
+    assert result.action.reason not in {"baxter_lane", "baxter_releft"}

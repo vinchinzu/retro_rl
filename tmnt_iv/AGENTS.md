@@ -17,16 +17,14 @@ SNES TMNT IV: Turtles in Time linear-combat reference clear (M8). Shared helpers
 
 ## Immediate goal
 
-**Continuous low-assist hard clear done** — one emulator session from power-on
-through all ten stages and the hard-mode staff/cast credits. No save-state
-loads, stage/lives writes, post-boot START presses, A-special uses, or life
-losses. Assists (disclosed): emergency HP top-up only when HP ≤ 16 (restore to
-80), and form-2 Super Shredder iframe hold at 1 (demutation bypasses HP). The
-old every-hit restore-to-96 spam is gone. Next: full dry-run after Technodrome
-tank pure-run charge fix is complete: **01:05:41.709 / 6,851 dmg / 93 heals /
-0 lives lost** (was 01:09:46.389 / 7,959 / 108). FullHardTank remains
-9.3k f / 232 dmg / 3 heals. Next: cut form-2 iframe guard and emergency heals
-further; reduce Starbase and Neon variance.
+**Continuous low-assist hard clear done** (M8, Bronze / Resource+Protection).
+Next publication target: **Bronze / Clean** (unassisted — maturity stays M8,
+not a new gate). Stage 1 segment **heal=none clear** (2026-07-25):
+**14,921f / 130 dmg / 0 heals** from `Stage1.state` (3/3); Baxter `Boss`
+**4,293f / 64 dmg** heal=none. Exact power-on dry-run:
+**01:04:07.131 / 6,869 dmg / 91 heals / 0 lives lost** (−1:34.578);
+Sewer Surfin' saved 1:22.747, while Alleycat's checkpoint gain did not
+transfer. Next: reconcile Stage 1/2 entry context and reduce later assists.
 
 ## Scripts
 
@@ -46,6 +44,15 @@ further; reduce Starbase and Neon variance.
 - `scripts/run_stage9_segment.py` — Starbase waves / Super Shredder
 - `scripts/record_full_hard_run.py` — deterministic power-on → hard credits
   capture with native audio, live footer, final metrics, and JSON manifest
+- `scripts/run_local_grind_agent.py` — **preferred**: multi-turn Ollama
+  tool agent (`list_knobs` / `run_baseline` / `run_trial` / `inspect_trial`
+  / `finish`). Whitelist knobs in `grind_knobs.py`; prompts in
+  `local_grind/prompts/agent_system.md`. Artifacts:
+  `recordings/local_grind_agent/{agent_trace.jsonl,summary.json,trials/}`.
+  Does **not** auto-edit `policy.py`. Example:
+  `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python -m tmnt_iv.scripts.run_local_grind_agent --focus slash --max-trials 2`
+- `scripts/run_local_grind.py` — older single-shot propose/eval loop
+  (non-agent). Prefer the tool agent above.
 
 ## RAM quick ref
 
