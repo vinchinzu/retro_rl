@@ -540,6 +540,19 @@ def test_starbase_jump_slash_on_hover_foot() -> None:
     assert result.action.action[1] == 1  # Y
 
 
+def test_starbase_spawn_delay_does_not_trigger_dumpster_escape() -> None:
+    """Frozen Starbase launch frames must keep the opening lane."""
+    policy = Stage1Policy()
+    for frame in range(60):
+        action = policy.tick(
+            replace(_playing(player_x=64, player_y=192, frame=frame), stage=8)
+        ).action
+        assert action is not None
+        assert action.reason == "starbase_launch_right"
+        assert action.action[7] == 1  # RIGHT
+        assert action.action[0] == 0  # no dumpster jump
+
+
 def test_raphael_closes_starbase_stack_with_jump_slash() -> None:
     """Raph must not Y-align forever beside the 0xB0/0xBA stack."""
     stack = replace(_enemy(40, 190, 8), kind=0xB0)

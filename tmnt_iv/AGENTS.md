@@ -22,9 +22,10 @@ Next publication target: **Bronze / Clean** (unassisted — maturity stays M8,
 not a new gate). Stage 1 segment **heal=none clear** (2026-07-25):
 **14,921f / 130 dmg / 0 heals** from `Stage1.state` (3/3); Baxter `Boss`
 **4,293f / 64 dmg** heal=none. Exact power-on dry-run:
-**01:04:07.131 / 6,869 dmg / 91 heals / 0 lives lost** (−1:34.578);
-Sewer Surfin' saved 1:22.747, while Alleycat's checkpoint gain did not
-transfer. Next: reconcile Stage 1/2 entry context and reduce later assists.
+**00:57:19.635 / 4,667 dmg / 65 heals / 0 lives lost** (−6:47.496).
+The production menu route selects Raphael; keep the Starbase launch guard
+and pulsed stack jumps intact. Next: reconcile Stage 1/2 entry context and
+reduce later assists without regressing the sub-hour clear.
 
 ## Scripts
 

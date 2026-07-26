@@ -72,6 +72,11 @@ Documented in `docs/ram_map.md`. Highlights:
   91 heals / 3,824 iframe frames / 0 life losses**, improving the prior
   runtime by **1:34.578**. Big Apple pizza seek is stage-0-only; global
   pickup seeking soft-locked Skull & Crossbones on an unreachable slot.
+- Sub-hour Raphael dry-run (2026-07-25): **00:57:19.635 / 4,667 damage /
+  65 heals / 4,635 iframe frames / 0 life losses**. Real-menu Raphael
+  selection, Wounded Knee 3f wave / 1f Leatherhead release cadence, pulsed
+  Starbase stack jumps, and a spawn-delay launch guard cut **6:47.496**
+  while also removing **2,202 damage**.
 
 ## Local grind (optional)
 

@@ -54,8 +54,9 @@ _METRIC_HOLD_FRAMES = 600
 _FINAL_SCENE_SETTLE_FRAMES = 1200
 _HARD_VALUE = 2
 _FINAL_CREDITS_EVENT = 0x1A
-# Only write HP when Leo is one solid hit from death. Restores to Leo's
-# natural full bar (80), not the old Mike-cap 96 spam.
+# Only write HP when the turtle is one solid hit from death. The assist
+# contract retains its fixed 80 restore after the route switches to Raphael
+# (natural max 48); every intervention remains explicit in the manifest.
 _EMERGENCY_HP_THRESHOLD = 16
 _EMERGENCY_HP_RESTORE = 80
 
@@ -74,7 +75,7 @@ _STAGE_NAMES = {
 
 # Frame-accurate real-menu boot plan. The two DOWN presses enter Options,
 # RIGHT changes Level to Hard, the two UP presses return to 1 Player, and the
-# three RIGHT presses select Raphael, and the last START confirms him.
+# three RIGHT presses select Raphael and the last START confirms him.
 _BOOT_ACTIONS: dict[int, tuple[str, ...]] = {
     300: ("START",),
     700: ("DOWN",),

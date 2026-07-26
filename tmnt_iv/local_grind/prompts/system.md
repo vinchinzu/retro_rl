@@ -20,8 +20,8 @@ Example shape:
 {"hypothesis":"tighter spin dodge","target_label":"slash","knobs":{"slash_spin_dodge_adx":48,"slash_approach_band":44},"rationale":"less spin chip"}
 
 Goals context:
-- Full hard clear baseline ~01:04:07 / 6869 damage / 91 heals.
-- Biggest remaining damage buckets: Technodrome, Starbase, Wounded Knee,
-  Prehistoric/Slash.
+- Full hard clear baseline ~00:57:20 / 4667 damage / 65 heals.
+- Biggest remaining damage buckets: Technodrome, Prehistoric/Slash,
+  Starbase, Wounded Knee.
 - Production Slash on FullHardBoss5 is already strong (~13.6k f / 616 dmg).
   Small gains only; do not thrash randomly.
