@@ -37,6 +37,11 @@ Documented in `docs/ram_map.md`. Highlights:
 - Stage 2 alley waves → Metalhead → `Boss2` / `Stage2_Clear` (done)
 - Bridge → fight-ready `Stage3` Sewer Surfin' (done; stage byte **2**)
 - Stage 3 waves → Rat King → natural next stage in continuous run (done)
+- Stage 2–3 checkpoint damage pass (done): `Stage2` 293→124 damage /
+  4→1 emergency heals; standalone `Stage3` 572→112 / 9→2; back-to-back
+  natural-entry Stage 3 is 170 / 4. Exact power-on dry-run completed:
+  Alleycat **346 damage / 5:16.163** (checkpoint gain did not transfer);
+  Sewer **240 / 3:08.889** (**−226 / −1:22.747** vs prior full run).
 - `Stage3_Clear` + bridge → fight-ready `Stage4` Technodrome (done;
   historical Clear state is a clone; continuous run transitions naturally)
 - Stage 4 Technodrome waves → Tokka & Rahzar → natural next stage in the
@@ -59,6 +64,21 @@ Documented in `docs/ram_map.md`. Highlights:
 - Low-assist hard capture + manifest (done, post-Slash): 01:15:34.050, 8,085 damage,
   166 emergency heals (HP≤16→80), form-2 iframe only, zero life losses.
   Old every-hit restore-to-96 removed.
+- Stage 1 Clean track (2026-07-25): `Stage1` + Baxter **heal=none** segment
+  clears (pizza seek + Baxter left-lane + disengage 6f). The power-on
+  low-assist bucket remained **324 damage**; reconcile entry context before
+  the Bronze / Clean attempt (maturity stays M8).
+- Stage 2–3 full dry-run (2026-07-25): **01:04:07.131 / 6,869 damage /
+  91 heals / 3,824 iframe frames / 0 life losses**, improving the prior
+  runtime by **1:34.578**. Big Apple pizza seek is stage-0-only; global
+  pickup seeking soft-locked Skull & Crossbones on an unreachable slot.
+
+## Local grind (optional)
+
+Farm short damage/speed probes to Ollama (`gemma4:12b`) via
+`scripts/run_local_grind.py`. Whitelist knobs only (`grind_knobs.py`);
+KEEP does not auto-edit `policy.py`. Prefer `--focus slash` or
+`technodrome_tank` before burning a full dry-run.
 
 ## Notes
 

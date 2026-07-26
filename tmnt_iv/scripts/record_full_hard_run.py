@@ -34,7 +34,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from retro_harness.env import make_env  # noqa: E402
+from retro_harness.env import make_env, save_state  # noqa: E402
 from retro_harness.controls import SNES_START  # noqa: E402
 from snes_oneshot.actions import buttons, idle_action  # noqa: E402
 from snes_oneshot.game_state import GameMode, GameState  # noqa: E402
@@ -74,7 +74,7 @@ _STAGE_NAMES = {
 
 # Frame-accurate real-menu boot plan. The two DOWN presses enter Options,
 # RIGHT changes Level to Hard, the two UP presses return to 1 Player, and the
-# last START confirms Leonardo.
+# three RIGHT presses select Raphael, and the last START confirms him.
 _BOOT_ACTIONS: dict[int, tuple[str, ...]] = {
     300: ("START",),
     700: ("DOWN",),
@@ -85,7 +85,22 @@ _BOOT_ACTIONS: dict[int, tuple[str, ...]] = {
     1200: ("UP",),
     1220: ("UP",),
     1250: ("START",),
-    1450: ("START",),
+    1440: ("RIGHT",),
+    1441: ("RIGHT",),
+    1442: ("RIGHT",),
+    1443: ("RIGHT",),
+    1444: ("RIGHT",),
+    1452: ("RIGHT",),
+    1453: ("RIGHT",),
+    1454: ("RIGHT",),
+    1455: ("RIGHT",),
+    1456: ("RIGHT",),
+    1464: ("RIGHT",),
+    1465: ("RIGHT",),
+    1466: ("RIGHT",),
+    1467: ("RIGHT",),
+    1468: ("RIGHT",),
+    1490: ("START",),
 }
 
 
@@ -510,6 +525,7 @@ def run_full_hard(
     max_frames: int = 400_000,
     scale: int = 3,
     dry_run: bool = False,
+    entry_state_prefix: str | None = None,
 ) -> dict[str, Any]:
     """Run from power-on through complete Hard credits and record artifacts."""
     configure_headless()
@@ -675,6 +691,13 @@ def run_full_hard(
                         elapsed_seconds=frame / fps,
                     )
                 )
+                if entry_state_prefix:
+                    save_state(
+                        env,
+                        GAME_DIR,
+                        GAME,
+                        f"{entry_state_prefix}Stage{state.stage + 1}",
+                    )
                 print(
                     f"stage {state.stage + 1:02d} "
                     f"{_STAGE_NAMES.get(state.stage, 'UNKNOWN')} "
@@ -861,6 +884,14 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="run all integrity checks without encoding video/audio",
     )
+    parser.add_argument(
+        "--entry-state-prefix",
+        default=None,
+        help=(
+            "save development checkpoints at natural stage entries "
+            "(for example LiveHard -> LiveHardStage5)"
+        ),
+    )
     return parser
 
 
@@ -876,6 +907,7 @@ def main(argv: list[str] | None = None) -> int:
         max_frames=args.max_frames,
         scale=args.scale,
         dry_run=args.dry_run,
+        entry_state_prefix=args.entry_state_prefix,
     )
     return 0
 

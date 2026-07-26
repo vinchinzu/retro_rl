@@ -158,5 +158,12 @@ assist write, or prolonged no-progress.
 5. [x] Clear all of Ceres continuously from power-on.
 6. [x] Continue from the natural Zebes entry through Morph Ball.
 7. [x] Extend through both early Missiles, Climb return, and Bomb Torizo/Bombs.
-8. [ ] Extend post-Torizo through Terminator/Green Brinstar and the next
-   required major upgrade.
+8. [x] Extend post-Torizo through Terminator/Green Brinstar, defeat Spore
+   Spawn, and exit naturally to the Spore Super room.
+9. [x] Merge full reference topology and editor geometry into 262 canonical
+   room-development problems.
+10. [x] Validate save-state teleport and natural target-room settlement on two
+    queue-1 door clears plus Flyway.
+11. [ ] Collect Spore Supers naturally, then clear
+    `0xA0A4 → 0x9D19 → 0x9E11` and collect Power Bombs.
+12. [ ] Work queues 1–2 before sequencing queue-3 rooms and queue-4 bosses.

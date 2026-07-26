@@ -11,6 +11,12 @@
   route from the external `super_metroid_editor` navigation export. Its source
   hashes and its explicit missing-direction patch are embedded in the file.
   It is planning input, not continuous-run evidence.
+- `full_room_graph.json` merges reference physical topology with editor
+  geometry for all 262 editor rooms. It contains 300 physical connections,
+  583 directed traversals, and a 23-anchor full-game research sequence.
+- `room_problems.json` assigns one canonical development problem to every
+  editor room, including entry/exit endpoints, capability gates, static
+  collision waypoints, queues, and expected practice artifacts.
 - `legacy/world_map.json` is the previous project's room-name/ID catalog.
 - `legacy/full_game_route.json` is an unverified objective-level full-game
   research route.
@@ -53,3 +59,15 @@ the two evidence layers by hash: the editor data proposes a route; the typed
 emulator transition timeline proves which doors the continuous run took.
 The editor reference route's Early Supers commentary is advisory and stale for
 this slice; the accepted path reaches Spore Spawn without collecting Supers.
+
+Regenerate the full research graph and room catalog with:
+
+```bash
+uv run python super_metroid/scripts/export_room_problems.py
+```
+
+The full graph uses the sibling editor export for geometry and the sibling
+`sm-json-data` checkout for complete physical connections. Both generated JSON
+files are local ROM-derived planning artifacts. See
+[the room problem catalog](../docs/ROOM_PROBLEM_CATALOG.md) for source
+semantics, teleport commands, queue policy, and the post-Spore route.
