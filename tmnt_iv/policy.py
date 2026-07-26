@@ -1471,6 +1471,15 @@ def build_stage1_tree(
             if state.player_x > 180:
                 return FrameAction(action=buttons("LEFT"), reason="neon_drift_left")
             return FrameAction(action=idle_action(), reason="neon_wait")
+        # Starbase holds Raphael at x=64 during its opening spawn delay.
+        # Feeding those frames into the dumpster-stall detector pushes him
+        # down a lane and desynchronizes the later wave triggers. Keep the
+        # intended launch input until the stage actually starts moving.
+        if state.stage == 8 and state.player_x <= 64:
+            return FrameAction(
+                action=buttons("RIGHT"),
+                reason="starbase_launch_right",
+            )
         return walk_progress.next(state)
 
     return Selector(

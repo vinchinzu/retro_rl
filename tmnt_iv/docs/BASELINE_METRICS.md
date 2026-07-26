@@ -2,17 +2,17 @@
 
 Recorded from continuous power-on dry-run (low-assist).  
 Source: `recordings/tmnt_iv_full_hard_dry_run.json`  
-Date: 2026-07-25 (Stage 2–3 pass + Big Apple pizza-scope fix).
+Date: 2026-07-25 (sub-hour Raphael route).
 
 ## Headline
 
 | Metric | Value |
 |--------|-------|
-| Power-on → credits | **01:04:07.131** |
-| Credits complete frame | **231,208** |
-| Total damage taken | **6,869** |
-| Emergency HP heals (HP≤16→80) | **91** |
-| Form-2 iframe guard frames | **3,824** |
+| Power-on → credits | **00:57:19.635** |
+| Credits complete frame | **206,718** |
+| Total damage taken | **4,667** |
+| Emergency HP heals (HP≤16→80) | **65** |
+| Form-2 iframe guard frames | **4,635** |
 | Life losses | **0** |
 | Min HP seen | **2** |
 | Lives start / peak / end | **2 / 6 / 6** |
@@ -21,53 +21,54 @@ Date: 2026-07-25 (Stage 2–3 pass + Big Apple pizza-scope fix).
 
 ## vs previous baselines
 
-| Metric | Full HP spam | Low-assist + whiplash Slash | Previous re-probe | Tank + wall fixes | **Stage 2–3 pass** |
-|--------|--------------|-----------------------------|-------------------|-------------------|--------------------|
-| Time | 01:28:49.024 | 01:15:34.050 | 01:09:46.389 | 01:05:41.709 | **01:04:07.131** |
-| Damage | 12,309 | 8,085 | 7,959 | 6,851 | **6,869** |
-| HP interventions | 1,302 (→96 every hit) | 110 (≤16→80) | 108 | 93 | **91** (≤16→80) |
-| I-frame guard | 5,042f | 7,467f | 4,482f | 3,887f | **3,824f** |
+| Metric | Full HP spam | Low-assist + whiplash Slash | Tank + wall fixes | Stage 2–3 pass | **Sub-hour Raphael** |
+|--------|--------------|-----------------------------|-------------------|----------------|------------------------|
+| Time | 01:28:49.024 | 01:15:34.050 | 01:05:41.709 | 01:04:07.131 | **00:57:19.635** |
+| Damage | 12,309 | 8,085 | 6,851 | 6,869 | **4,667** |
+| HP interventions | 1,302 (→96 every hit) | 110 (≤16→80) | 93 | 91 | **65** (≤16→80) |
+| I-frame guard | 5,042f | 7,467f | 3,887f | 3,824f | **4,635f** |
 | Life losses | 0 | 0 | 0 | 0 | **0** |
 
-Δ vs the tank + wall baseline: **−1:34.578**, **−5,684 frames**,
-**+18 damage**, **−2 heals**, and **−63 iframe-guard frames**. Zero life
-losses held.
+Δ vs the Stage 2–3 baseline: **−6:47.496**, **−24,490 frames**,
+**−2,202 damage**, and **−26 emergency heals**. The form-2 iframe hold
+increased by 811 frames; zero life losses held.
 
 ## Damage by stage
 
-| Stage byte | Name | Damage | Share | Δ vs pre-Slash | Δ vs tank + wall |
-|------------|------|--------|-------|----------------|------------------|
-| 0 | Big Apple | 324 | 4.7% | +2 | +2 |
-| 1 | Alleycat Blues | 346 | 5.0% | +58 | +58 |
-| **2** | **Sewer Surfin'** | **240** | **3.5%** | **−226** | **−226** |
-| **3** | **Technodrome** | **1,262** | **18.4%** | **−988** | **−150** |
-| 4 | Prehistoric | 1,144 | 16.7% | −3,648 | +162 |
-| **5** | **Skull & Crossbones** | **760** | **11.1%** | **−372** | **−210** |
-| 6 | Wounded Knee | 1,159 | 16.9% | +85 | +243 |
-| 7 | Neon Night Riders | 418 | 6.1% | −69 | +11 |
-| 8 | Starbase | 1,216 | 17.7% | −276 | +128 |
-| 9 | Final Shell Shock | 0 | 0% | 0 | 0 (iframe guard) |
+| Stage byte | Name | Damage | Share | Δ vs Stage 2–3 pass |
+|------------|------|--------|-------|---------------------|
+| 0 | Big Apple | 334 | 7.2% | +10 |
+| 1 | Alleycat Blues | 376 | 8.1% | +30 |
+| **2** | **Sewer Surfin'** | **202** | **4.3%** | **−38** |
+| **3** | **Technodrome** | **1,022** | **21.9%** | **−240** |
+| 4 | Prehistoric | 861 | 18.4% | −283 |
+| **5** | **Skull & Crossbones** | **306** | **6.6%** | **−454** |
+| 6 | Wounded Knee | 579 | 12.4% | −580 |
+| 7 | Neon Night Riders | 238 | 5.1% | −180 |
+| 8 | Starbase | 749 | 16.0% | −467 |
+| 9 | Final Shell Shock | 0 | 0% | 0 (iframe guard) |
 
 ## Stage split times (power-on clock)
 
-| Stage | Elapsed | Split Δ vs tank + wall |
-|-------|---------|------------------------|
-| Big Apple | 00:00:32.896 | −0:01.747 |
-| Alleycat Blues | 00:05:53.884 | +0:08.203 |
-| Sewer Surfin' | 00:11:10.047 | +0:21.132 |
-| Technodrome | 00:14:18.935 | **−1:01.616** |
-| Prehistoric | 00:23:05.901 | **−3:30.403** |
-| Skull & Crossbones | 00:30:49.255 | −2:57.391 |
-| Wounded Knee | 00:36:44.686 | −2:43.963 |
-| Neon Night Riders | 00:43:31.133 | −1:48.538 |
-| Starbase | 00:48:18.543 | −1:39.287 |
-| Final Shell Shock | 00:57:42.398 | −1:34.045 |
-| Credits complete | **01:04:07.131** | **−1:34.578** |
+| Stage | Elapsed | Split Δ vs Stage 2–3 pass |
+|-------|---------|----------------------------|
+| Big Apple | 00:00:35.309 | +0:02.413 |
+| Alleycat Blues | 00:05:44.216 | −0:09.668 |
+| Sewer Surfin' | 00:10:38.382 | −0:31.665 |
+| Technodrome | 00:13:34.226 | −0:44.709 |
+| Prehistoric | 00:22:23.654 | −0:42.247 |
+| Skull & Crossbones | 00:29:11.233 | −1:38.022 |
+| Wounded Knee | 00:33:40.173 | −3:04.513 |
+| Neon Night Riders | 00:38:26.868 | **−5:04.265** |
+| Starbase | 00:42:16.573 | **−6:01.970** |
+| Final Shell Shock | 00:50:44.619 | **−6:57.779** |
+| Credits complete | **00:57:19.635** | **−6:47.496** |
 
-Largest segment time gains: Sewer Surfin' **3:08.889** (**−1:22.747**)
-and Technodrome **8:46.965** (**−2:28.788**). Later-route variance returned
-some of that gain: Prehistoric was **7:43.354** (+0:33.013), Wounded Knee
-**6:46.447** (+0:55.425), and Starbase **9:23.855** (+0:05.242).
+Raphael's real-menu route and tighter Wounded Knee cadence produced the
+largest cumulative gain. Wounded Knee fell from **6:46.447** to
+**4:46.695** while its damage fell from 1,159 to 579. The Starbase launch
+guard then preserved the intended opening lane and prevented the faster
+entry from entering an enemyless stall.
 
 ## Stage 1 Clean-track probes (2026-07-25)
 
@@ -77,7 +78,7 @@ Not a whole-run baseline replacement. Segment evidence after pizza seek
 
 | Probe | Heal | Outcome | Frames | Damage | E-heals | Notes |
 |-------|------|---------|--------|--------|---------|-------|
-| Continuous Big Apple (current) | emergency | clear | 19,291 | **324** | in whole-run 91 | power-on context |
+| Continuous Big Apple (current) | emergency | clear | 18,565 | **334** | in whole-run 65 | power-on context |
 | `Stage1` segment | **none** | **stage_advance** | **14,921** | **130** | **0** | Clean Stage 1; entry HP 76 |
 | `Stage1` segment | emergency | stage_advance | 14,921 | 130 | 1 | same route |
 | `Boss` (Baxter) | none | stage_advance | 4,293 | **64** | **0** | Clean Baxter |
@@ -88,12 +89,12 @@ Publication target remains **Bronze / Clean** (maturity stays M8).
 
 Ranked by absolute damage still taken (best ROI for next policy work):
 
-1. **Technodrome (1,262 / 18.4%)** — still the largest bucket
-2. **Starbase (1,216 / 17.7%)** — long wave chain + Super Shredder form 1
-3. **Wounded Knee (1,159 / 16.9%)** — train + Leatherhead variance
-4. **Prehistoric (1,144 / 16.7%)** — regressed above 1,000
-5. **Skull & Crossbones (760 / 11.1%)** — now below 1,000
-6. **Big Apple (324 → segment Clean 130)** — checkpoint gain did not transfer
+1. **Technodrome (1,022 / 21.9%)** — largest remaining bucket
+2. **Prehistoric (861 / 18.4%)** — Slash remains the largest boss target
+3. **Starbase (749 / 16.0%)** — waves + Super Shredder form 1
+4. **Wounded Knee (579 / 12.4%)** — cadence pass cut this almost in half
+5. **Alleycat Blues (376 / 8.1%)** — checkpoint gain still does not transfer
+6. **Big Apple (334 → segment Clean 130)** — reconcile power-on context
 
 ## Tokka/Rahzar + tank probe
 
@@ -114,7 +115,7 @@ early dx<16 whiffed ~75% of stun cycles (FullHardTank: 1 shredder chip /
 Tank segment alone: **−476 dmg, −7 heals**, now clears. The first continuous
 attempt then exposed a right-door duo pin (`x=224`); 37 frames of targeted
 `duo_wall_escape` cleared it in that run. The current whole-run Technodrome
-bucket is **1,262 damage / 8:46.965**.
+bucket is **1,022 damage / 8:49.428**.
 
 `probe_boss_metrics` now supports `--heal emergency|none` (default: emergency)
 to match the production low-assist run.
@@ -142,9 +143,9 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 
 ## Improvement goals
 
-1. Cut Technodrome below **1,000** (now 1,262)
-2. Cut Starbase below **1,000** (now 1,216)
-3. Return Prehistoric below **1,000** (now 1,144)
+1. Cut Technodrome below **1,000** (now 1,022)
+2. Cut Prehistoric below **750** (now 861)
+3. Reduce the 65 emergency heals without regressing the sub-hour clear
 4. Remove form-2 iframe guard without life losses
 5. Do not regress continuous zero life-loss dry-run
 
