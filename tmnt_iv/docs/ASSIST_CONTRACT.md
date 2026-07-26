@@ -7,7 +7,7 @@ Intervention class: **Resource-assisted + Protection-assisted**.
 
 | Assist | Trigger | Write | Notes |
 |--------|---------|-------|-------|
-| Emergency HP | HP ≤ 16 | restore HP to 80 | Counted per intervention in manifest |
+| Emergency HP | HP ≤ 16 | restore HP to 80 | Fixed contract value; above Raphael's natural 48 HP; counted per intervention |
 | Form-2 iframe hold | Super Shredder form 2 | hold iframe timer at 1 | Counted per frame; demutation bypass |
 
 ## Forbidden writes
