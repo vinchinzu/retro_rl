@@ -1,0 +1,12 @@
+{
+  "info": {
+    "life": {
+      "address": 1907,
+      "type": "|u1"
+    },
+    "flag": {
+      "address": 1897,
+      "type": "|u1"
+    }
+  }
+}

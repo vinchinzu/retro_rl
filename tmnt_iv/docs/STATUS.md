@@ -32,28 +32,102 @@ Maturity gates stop at **M8**. “Unassisted bronze” means the same M8
 continuous clear with intervention class **Clean** (zero HP/iframe RAM
 writes), not a new M9 gate.
 
-## Stage 1 Clean track (2026-07-25)
+## Stage 1 Clean track (pizza-only, path-RNG suite 2026-07-27)
 
-Big Apple **heal=none clear** from `Stage1.state` (segment proof toward
-Bronze / Clean). Evidence:
-[stage1_probes.json](../recordings/stage1_clean_track/stage1_probes.json)
-(3/3 stable repeats).
+Full Big Apple **heal=none** = **no emergency HP writes**; only natural
+pizza (`0x30`) restores. Path-RNG suite (2/2 identical full passes):
 
-| Probe | Heal mode | Outcome | Frames | Damage | E-heals | Boss entry HP |
-|-------|-----------|---------|--------|--------|---------|---------------|
-| `Stage1` (current continuous stage-0) | emergency | clear | 18,565 | **334** | (in 65 whole-run) | — |
-| Earlier pizza-seek pass | emergency | stage_advance | 15,064 | 164 | 2 | 80 |
-| **`Stage1`** | **none** | **stage_advance** | **14,921** | **130** | **0** | **76** |
-| `Stage1` | emergency | stage_advance | 14,921 | 130 | 1 | 76 |
-| **`Boss` (Baxter)** | **none** | **stage_advance** | **4,293** | **64** | **0** | 56 |
+`SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite`
 
-Policy changes that unlocked the Clean segment:
+Evidence: [clean_suite.json](../recordings/stage1_clean_track/clean_suite.json).
 
-- Pizza `0x30` seek with screen-wide range at HP ≤ 32; 6f post-pickup
-  disengage (alignment-critical for Baxter).
-- Baxter left-lane hold when the arena has no pizza (Boss.state keeps a
-  left box and skips lane overrides).
-- Wide right camera margin during Baxter; Stage 0 skips dumpster stall.
+| Entry | Outcome | Frames | Damage | Min HP | Notes |
+|-------|---------|--------|--------|--------|-------|
+| **`Stage1`** | stage_advance | **15,237** | **108** | **30** | fight-ready checkpoint |
+| **`power_on`** (NONE→menus→S1) | stage_advance | **15,046** | **138** | **10** | full Big Apple path |
+| **`Stage1_BeforeBoss`** | stage_advance | **5,323** | **40** | **44** | Baxter entry |
+| **`Boss`** | stage_advance | **5,323** | **40** | **44** | Baxter only |
+
+Prior rows: 2026-07-25 Stage1 heal=none **14,921 / 130**; Baxter **4,293 / 64**.
+Current Baxter **40** (standoff poke); full stage **108–138** pizza-only.
+
+Clean policy (Stage 0, path-flexible):
+
+- **Pizza-first**: HP ≤ 68 seeks out to 260px; ≤ 48 screen-wide; Baxter
+  survival grab when HP ≤ 32. No empty-screen `RIGHT+Y` spam.
+- **Baxter left standoff** (HP-adaptive width/cadence): never walk into his
+  body; jump-slash when elev ≥ 10 and HP > 20.
+- **Hazard dodge offline in production** — A/B: jump-through dodge caused
+  Clean mid-wave deaths; pizza + spacing survives path RNG better.
+  `HazardAvoid` kept for tests / future phase-safe work.
+- Elevated jump-slash for true-air targets (elev ≥ 44).
+
+Suite stresses checkpoint vs power-on entry (different wave timing). Historical
+`Stage1_Clear_w*` mid-locks remain optional probes (different spawn tables).
+
+Whole-run continuous still uses emergency HP outside Stage 1 Clean probes.
+
+**Do not relearn Stage 1:** [`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md)
+(traps, rollout order for stages 2–9 Clean).
+
+## Stage 3 Clean track (Sewer Surfin' — in progress 2026-07-27)
+
+Probe: `scripts/probe_stage3_clean.py` (`--suite` / `--state` /
+`--from-stage2-clear`). Evidence dir: `recordings/stage3_clean_track/`.
+
+**Prefer `LiveHardStage3` (lives=2).** `Stage3` / `Boss3` are last-life
+(lives=0) and die on the post-kill `event=0x0B` fade even after Rat King
+HP hits 0 (known checkpoint artifact). Emergency on LiveHardStage3 still
+stage-advances (~9–13k f / 2–4 heals).
+
+| Entry | heal=none | Notes |
+|-------|-----------|-------|
+| **`LiveHardStage3`** | life_loss ~6.3k f / ~72 dmg / entry ~18 | Residual 0x1C spikes (−16) |
+| **`Boss3`** | kills boss (68 dmg / min 12) then 0x0B death | Fade artifact |
+| **`Stage3`** | life_loss mid-boss entry ~38 | Last-life checkpoint |
+| Stage2_Clear bridge | same early/mid bottleneck | lives=0 after Metalhead |
+
+Policy landings this pass (keep):
+
+- **Sewer dumpster / WalkProgress stall thrash offline** — auto-scroll
+  freezes X; UP/DOWN thrash walked into spikes (4×16 empty-band hits).
+- **`SewerSpikeAvoid`**: jump-right when 0x1C/0x2C adx ≤ 56 (A/B cut
+  empty-band spikes 3→1). 0x1C/0x2C in `HAZARD_CHAR_IDS`.
+- **Rat King**: boss_active down to HP 1 (old floor 4 abandoned finishers);
+  grounded RIGHT at left wall (B+RIGHT soft-lock x≈24); combat-stall
+  suppress; between-wave pizza seek like Alleycat.
+- Spike LEFT thrash **rejected** (4 spikes).
+
+Next: zero residual 0x1C columns on LiveHard entry so boss entry HP ≥ 70
+(Boss3 takes ~68 dmg to kill); then suite green.
+
+## Stage 2 Clean track (Alleycat — in progress 2026-07-27)
+
+Probe: `scripts/probe_stage2_clean.py` (`--suite` / `--state` /
+`--from-stage1-clear`). Evidence dir: `recordings/stage2_clean_track/`.
+
+| Entry | heal=none | Notes |
+|-------|-----------|-------|
+| **`Boss2`** (Metalhead) | **CLEAR** ~3,881f / 38 dmg / min 26 | Boss Clean OK |
+| **`Stage2_Clear_w17_*`** pre-boss | **CLEAR** ~4,493f / 49 dmg / min 19 | Late alley OK |
+| **`Stage2`** full checkpoint | **life_loss** ~8,391f / 104 dmg / min 8 / 1 pizza | Early/mid waves |
+| Stage1_Clear bridge | life_loss | Same early-wave bottleneck |
+| power-on through Alleycat | life_loss | Stage0 Clean holds; S2 dies |
+
+Policy knobs kept for Alleycat Clean work:
+
+- **Left flank + standoff 36** (emergency Stage2 **14,231f / 159 dmg / 2
+  heals** without between-wave pizza; with between-wave pizza **~14.5k /
+  183 / 1 heal**).
+- **Pizza:** underfoot always; far seek **only between waves** (mid-wave
+  chase → emergency 190→479).
+- **Generic elev≥44 jump-slash stage-0-only** (Alleycat false air → ~443
+  dmg emergency). Stage-specific B+Y (dino/stack/hover) unchanged.
+- **Rejected:** mid-wave pizza seek, pack jump-hop thrash.
+
+Bottleneck: early/mid Foot packs (incl. 0x5E 24-dmg pile-ons) after the
+single pizza window. Metalhead is already Clean. Next: cut post-pizza
+chip or a second safe pizza without mid-wave desync.
 
 ## Stage 2–3 damage pass (2026-07-25)
 
@@ -135,9 +209,42 @@ Super Shredder form-2 wall-aware dodge cycle, emergency-only HP assist, and
 **Slash whiplash** (lab-ported). The current whole-run Prehistoric segment
 is **6:47.579 / 861 damage**.
 
+### Raph state capture + continuous lessons (2026-07-27)
+
+**Infrastructure:** continuous-faithful Raphael (char 8) states + capture script.
+
+| State | Meaning | Notes |
+|-------|---------|-------|
+| `RaphFullHardStage4` | Technodrome entry | Clears **30,379f / 886 dmg / 13 heals** |
+| `RaphFullHardDuo` | Tokka/Rahzar first live | |
+| `RaphFullHardTank` | Tank event 0x18 | Mid-empty-foot frame soft-locks; prefer Stage4 |
+| `RaphFullHardBoss5` | Slash first live | Baseline **11,386f / 478 / 6** |
+| `RaphFullHardBoss9` | Super Shredder form 1 | Baseline **9,120f / 136 / 2** (through stage 9) |
+
+Capture: `uv run python -m tmnt_iv.scripts.capture_raph_states`  
+Slash from prehistoric entry: start `RaphDiagStage5` / `RaphFastStage5`.
+
+**Leo / early Raph probe KEEPs vs continuous dry-run:**
+
+| Knob | Raph probe | Continuous dry-run |
+|------|------------|--------------------|
+| Slash approach 36 + cross 18/12 (Leo) | — | Soft-lock WK; Prehistoric worse |
+| `blocker_hit_frames` 8 | Stage4 **worse** (1,157 dmg) | **01:01:28 / 5,431** |
+| `slash_spin_dodge_adx` 40 | Boss5 **6,765f / 226 / 3** (5/5) | **00:57:52 / 5,474 / 78 heals** |
+| `slash_spin_dodge_adx` 44 | Boss5 8,957 / 298 / 4 | **00:57:31 / 5,152 / 74 heals** |
+| production spin 52 | Boss5 11,386 / 478 / 6 | **00:57:19 / 4,667 / 65** (best) |
+
+Faster Slash changes later-stage RNG; probe wins that shrink fight length
+need a **full-route re-tune**, not a blind port. Production keeps spin 52.
+
+**Kept safety:** Wounded Knee stall Y-quantize + B+Y escape on elevated `0xb0`
+(happy-path-neutral; continuous still **00:57:19.635 / 4,667 / 65**).
+
+Next continuous ROI: re-tune the spin-40 trajectory (Skull/WK blew up) **or**
+grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
+
 - Hard flag stayed at WRAM value `2`; hard-credits event `0x1A` observed
-- Re-encode video with `uv run python -m tmnt_iv.scripts.record_full_hard_run`
-  when a fresh capture is needed
+- Dry-run: `uv run python -m tmnt_iv.scripts.record_full_hard_run --dry-run`
 
 ## Done
 
@@ -310,11 +417,15 @@ is **6:47.579 / 861 damage**.
 
 ## Next
 
-1. Reconcile the Stage 1 checkpoint (**130 damage**) with the exact power-on
-   Big Apple bucket (**334**); keep pizza seek scoped to stage byte 0.
-2. Keep cutting Technodrome / Prehistoric / form-2 iframe for whole-run Clean.
-3. Publish Bronze / Clean when the continuous hard clear has zero HP/iframe
-   assists.
+1. **Clean rollout (playbook order):** Alleycat → Sewer → Technodrome → …
+   form-2 iframe removal → full continuous pizza-only. Follow
+   [`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md); do not re-open Stage 1
+   hazard jump-dodge or global pizza seek.
+2. Stage 1 Clean is **closed** (suite green). Whole-run Big Apple emergency
+   bucket still exists until continuous uses the Clean policy without
+   assists for stage 0 only (optional intermediate) then all stages.
+3. Publish Bronze / Clean when continuous hard clear has zero HP/iframe
+   assists and 0 life losses.
 
 Whole-run baseline (2026-07-25): **00:57:19.635** / **4,667 dmg** /
 **65 heals** / **0 lives lost** — see

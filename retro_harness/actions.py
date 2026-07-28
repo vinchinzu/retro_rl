@@ -10,7 +10,10 @@ from collections.abc import Iterable
 from typing import Any
 
 from retro_harness.controls import (
+    NES_ACTION_SIZE,
+    NES_BUTTON_NAMES,
     SNES_BUTTON_NAMES,
+    action_from_nes_button_names,
     action_from_snes_button_names,
     pressed_snes_buttons,
 )
@@ -84,6 +87,40 @@ def buttons(*names: str) -> list[int]:
     """Compatibility-friendly shorthand for a one-player SNES action."""
 
     return snes_action(*names)
+
+
+def nes_action(
+    *button_names: str,
+    action_size: int = NES_ACTION_SIZE,
+    dtype: Any | None = None,
+    **button_states: bool,
+):
+    """Build one NES action from positional names and/or truthy named flags."""
+
+    names = _active_names(button_names, button_states)
+    action = action_from_nes_button_names(names, action_size=action_size)
+    if dtype is None:
+        return action
+
+    import numpy as np
+
+    return np.asarray(action, dtype=dtype)
+
+
+def nes_buttons(*names: str) -> list[int]:
+    """Shorthand for a one-player NES action."""
+
+    return nes_action(*names)
+
+
+def nes_idle_action(
+    *,
+    action_size: int = NES_ACTION_SIZE,
+    dtype: Any | None = None,
+):
+    """Return a released-controller NES action."""
+
+    return nes_action(action_size=action_size, dtype=dtype)
 
 
 def multiplayer_action(
@@ -167,6 +204,8 @@ class ActionBuilder:
 
 __all__ = [
     "ActionBuilder",
+    "NES_ACTION_SIZE",
+    "NES_BUTTON_NAMES",
     "SNES_ACTION_SIZE",
     "action_names",
     "buttons",
@@ -175,5 +214,8 @@ __all__ = [
     "idle_action_multi",
     "indexed_action",
     "multiplayer_action",
+    "nes_action",
+    "nes_buttons",
+    "nes_idle_action",
     "snes_action",
 ]

@@ -6,55 +6,54 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Continuous power-on → Spore Spawn |
-| Last verification | 2026-07-25 |
+| Best verified result | Continuous power-on → Spore Super collect |
+| Last verification | 2026-07-27 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 
 | Field | Value |
 |-------|-------|
-| Status | **Continuous power-on → Bomb Torizo → Spore Spawn verified** |
+| Status | **Continuous power-on → Spore Super Missiles verified** |
 | Target | Continuous assisted power-on → ending/credits |
 | Current assists | Current energy on Zebes + naturally unlocked current ammo |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
-| Acceptance result | Spore Spawn 960→0; natural exit to `0x9B5B` |
-| Video | `recordings/start_to_spore_spawn.mp4` |
-| Machine report | `recordings/start_to_spore_spawn.json` |
-| Independent verification | `recordings/start_to_spore_spawn.verify.json` |
+| Acceptance result | Super capacity 0→5 in room `0x9B5B`; prior Spore clear intact |
+| Video | `recordings/start_to_supers.mp4` (92,425 frames, ~25.7 min) |
+| Machine report | `recordings/start_to_supers.json` |
 | Save-state loads | 0 |
 | Progression/capacity writes | 0 |
 
 ## Verified baseline
 
-The 2026-07-24 acceptance run starts with `retro.State.NONE`, selects a fresh
-file from the title flow, traverses Ceres in both directions, escapes to Zebes,
-collects Morph Ball, naturally collects the First Missile and Blue Brinstar
-Missile expansions, doubles back through Morph Ball Room, climbs from Pit Room
-to Parlor, opens the Flyway red door, collects Bombs, defeats Bomb Torizo, and
-exits naturally back through Flyway. It then collects the Terminator Energy
-Tank, descends into Green Brinstar, crosses Dachora and Big Pink, clears the
-Spore Kihunters, defeats Spore Spawn, and exits naturally to the Super room.
+### Continuous power-on → Spore Super Missiles (2026-07-27)
 
-The H.264 recording is 91,220 frames at 60 fps (1,520.333 seconds), 512×448.
-The report proves:
+`recordings/start_to_supers.json` + `.mp4`: power-on with
+`retro.State.NONE`, full accepted prefix through Spore Spawn exit into Super
+room `0x9B5B`, then natural Super Missile collect (capacity **0 → 5**) via
+`post_spore_controller.play_super_room_collect`.
 
-- Missile capacity changes naturally `0 → 5 → 10`.
-- Collected/equipped item masks end at `0x1004` (Morph Ball + Bombs).
-- Bomb Torizo activates at 800 HP, reaches zero HP, and the locked room exit
-  transition completes naturally.
-- The Terminator Energy Tank changes maximum energy naturally `99 → 199`.
-- Spore Spawn activates at 960 HP, reaches zero, completes its death
-  animation, and the run takes the natural exit to room `0x9B5B`.
-- All 40 observed room transitions match typed graph edges, including every
-  edge in the editor-precalculated Spore route.
-- No save state is loaded after power-on.
-- Energy assist is suspended on Ceres, then performs 252 current-energy writes
-  up to natural max energy on Zebes. Ammo performs 497 current-Missile writes
-  after natural unlock.
-- Progression-write and capacity-write counters remain zero.
+| Metric | Value |
+|--------|-------|
+| Total frames | 92,425 @ 60 fps (~25.7 min) |
+| Super collect frame | ~92,342 |
+| Final room | `0x9B5B` ordinary gameplay |
+| State loads | 0 |
+| Progression / capacity writes | 0 |
+| Outcome | `spore_supers_collected` |
 
-See [START_TO_SPORE_SPAWN.md](START_TO_SPORE_SPAWN.md) for reproduction,
-planning provenance, and evidence.
+Reproduce:
+
+```bash
+uv run python super_metroid/scripts/record_start_to_supers.py --no-video
+uv run python super_metroid/scripts/record_start_to_supers.py
+```
+
+### Prior continuous power-on → Spore Spawn (2026-07-24)
+
+Still valid prefix evidence: Morph, Missiles, Bombs/Torizo, Terminator E-Tank,
+Spore Spawn 960→0, natural exit to Super room (no Supers collected on that
+run). Video `recordings/start_to_spore_spawn.mp4` (91,220 frames). See
+[START_TO_SPORE_SPAWN.md](START_TO_SPORE_SPAWN.md).
 
 ## Full-room development infrastructure
 
@@ -87,7 +86,68 @@ resource assists may not write route progress.
 
 ## Next milestone
 
-Collect the Spore Super naturally, traverse `0xA0A4 → 0x9D19 → 0x9E11`, and
-collect the first Power Bomb expansion. Use the pre-calculated room catalog to
-develop the three room clears independently, then promote only transitions
-observed in the continuous emulator session.
+**Play the path — no door-warp route evidence.** Continuous Super collect is
+verified. Furthest *played* progress and the full 107-room plan:
+
+**[PATH_ROOM_BOARD.md](PATH_ROOM_BOARD.md)** · post-Super detail:
+**[ROUTE_SUPERS_TO_PHANTOON.md](ROUTE_SUPERS_TO_PHANTOON.md)**
+
+| Layer | Furthest played |
+|-------|-----------------|
+| Continuous | Super collect `0x9B5B` (`start_to_supers`) |
+| Controller (dev) | Big Pink main shaft `0x9D19` ~(746,1465); PB sill entry + mid-maze collect |
+| ★ Next hop | Sill approach (wall@613) + maze past wall@437 → pure `0x9E11`+PB |
+
+```bash
+uv run python super_metroid/scripts/export_path_room_board.py
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to main
+```
+
+Path status (unique rooms on research completion path): **20 continuous**,
+**2 controller_dev**, **6 boss_deferred**, **79 open** (107 total / 199 hops).
+
+Topology door-warps (`probe_route.py full` / hybrid) remain diagnostic only —
+they do not count as room clearance.
+
+Still blocked for *played* spine:
+
+| Gap | Why it matters |
+|-----|----------------|
+| Continuous Super collect | **Done** |
+| Super → farming → main shaft | controller_dev; not continuous power-on yet |
+| ★ Shaft → Pink PB door + collect | **partial**: sill entry + morph-bomb collect green; approach/maze bridges remain |
+| All later path hops | open — must be played, not warped |
+| Boss fights | deferred until natural entry on chain |
+| Escape → credits | after MB by play |
+
+Immediate next:
+
+1. Finish Big Pink → PB **without place bridges**: (a) main/intercept onto sill past wall@613, (b) spawn past maze wall@437, then existing sill entry + morph-bomb collect.
+2. Continuous power-on → PB.
+3. Next open hop on the board; promote status; regenerate PATH_ROOM_BOARD.
+
+## Midgame / late dev furthest (not continuous)
+
+| Checkpoint | State / evidence |
+|------------|------------------|
+| Spore Super room | `natural_post_spore_spawn` (no Supers yet on continuous) |
+| Supers + Red Tower / GHZ / Noob / Warehouse | many `dev_*` states, items `0x1004`, supers 5 |
+| Kraid Eye Door | `dev_kraid_eye_at_eye` |
+| **Kraid defeated** | `dev_kraid_defeated`, boss bit 0 set ~frame 2100 |
+| Varia room (dev equip) | `dev_varia_equipped_dev` items `0x1005` |
+| **Power Bombs** | `dev_b1_pb_natural` / probe `--to pb-collect` pb `5/5` (sill+maze place bridges) |
+| **Phantoon entry** | `dev_phantoon_entry` room `0xCD13` |
+| **Ridley entry** | `dev_route_ridley_entry` room `0xB32E` (fights skipped) |
+| **Mother Brain entry** | `dev_route_mother_brain_entry` room `0xDD58` (fights skipped) |
+| **Full 22-leg finish** | door-warp chain ends Landing Site `0x91F8` (`probe_route.py full`) |
+| **Late finish** | same via late 9-leg subset (`probe_route.py late-full`) |
+
+## Endgame development track (not continuous evidence)
+
+Mother Brain room is now reachable via the full late route skeleton (not only
+the old direct teleport). Remaining fight/escape blockers:
+
+- Zebetites regen 1 HP/frame until properly killed.
+- Escape-room geometry needs pipe-corridor placement (air near y≈100).
+- Escape timer needs full engine init to tick; credits evidence still open.
+- Bank `$7E` WRAM must be used for events/boss bits (`read_bank7e_wram`).

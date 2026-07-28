@@ -1,0 +1,16 @@
+{
+  "info": {
+    "mode": {
+      "address": 18,
+      "type": "|u1"
+    },
+    "health": {
+      "address": 1647,
+      "type": "|u1"
+    },
+    "screen": {
+      "address": 235,
+      "type": "|u1"
+    }
+  }
+}

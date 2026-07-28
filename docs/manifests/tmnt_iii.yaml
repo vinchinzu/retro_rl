@@ -1,0 +1,25 @@
+game: tmnt_iii
+title: "Teenage Mutant Ninja Turtles III: The Manhattan Project"
+directory: tmnt_iii
+genre_tracks:
+  - linear_combat
+capability_phase: 1
+project_state: boot_verified
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: medium
+ending_definition: credits after final stage
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: tmnt_iii/docs/STATUS.md
+plan_doc: tmnt_iii/docs/plan.md
+last_verified: 2026-07-27
+blocker: first Stage 1 segment clear
+notes: >-
+  M1: power-on to controllable Stage 1 (Leo, lives RAM live + movement). Platform NES under roms/Nintendo/NES.

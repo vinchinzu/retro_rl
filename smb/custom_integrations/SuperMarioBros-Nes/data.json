@@ -1,0 +1,16 @@
+{
+  "info": {
+    "lives": {
+      "address": 1882,
+      "type": "|u1"
+    },
+    "level_lo": {
+      "address": 1884,
+      "type": "|u1"
+    },
+    "world": {
+      "address": 1887,
+      "type": "|u1"
+    }
+  }
+}

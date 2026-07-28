@@ -1,0 +1,2327 @@
+{
+  "snapshots": [
+    {
+      "frame": 0,
+      "room": "0xdd58",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 1024,
+      "y": 139,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 0,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 129,
+          "y": 111,
+          "hp": 18000,
+          "spritemap": 41760
+        },
+        {
+          "slot": 1,
+          "x": 129,
+          "y": 111,
+          "hp": 3000,
+          "spritemap": 41760
+        },
+        {
+          "slot": 2,
+          "x": 824,
+          "y": 111,
+          "hp": 1000,
+          "spritemap": 65032
+        },
+        {
+          "slot": 3,
+          "x": 999,
+          "y": 38,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 4,
+          "x": 999,
+          "y": 166,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 5,
+          "x": 823,
+          "y": 54,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 120,
+      "room": "0xddf3",
+      "phase": "room_transition",
+      "gs": 11,
+      "x": 65319,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 240,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 360,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 189,
+          "y": 546,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 480,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 75,
+          "y": 618,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 600,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 720,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 166,
+          "y": 561,
+          "hp": 10,
+          "spritemap": 47693
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 840,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 53,
+          "y": 633,
+          "hp": 10,
+          "spritemap": 47686
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 960,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1080,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 144,
+          "y": 576,
+          "hp": 10,
+          "spritemap": 47679
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1200,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 30,
+          "y": 648,
+          "hp": 10,
+          "spritemap": 47686
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47679
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1320,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47679
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1440,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 122,
+          "y": 590,
+          "hp": 10,
+          "spritemap": 47679
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1560,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 8,
+          "y": 661,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1680,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 213,
+          "y": 532,
+          "hp": 10,
+          "spritemap": 47693
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1800,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 99,
+          "y": 603,
+          "hp": 10,
+          "spritemap": 47700
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47686
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 1920,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2040,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 191,
+          "y": 546,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2160,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 77,
+          "y": 617,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2280,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2400,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 169,
+          "y": 560,
+          "hp": 10,
+          "spritemap": 47693
+        },
+        {
+          "slot": 2,
+          "x": 7,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47686
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2520,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 55,
+          "y": 632,
+          "hp": 10,
+          "spritemap": 47686
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2640,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2760,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 146,
+          "y": 574,
+          "hp": 10,
+          "spritemap": 47686
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 2880,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 32,
+          "y": 646,
+          "hp": 10,
+          "spritemap": 47686
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 3000,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 232,
+          "y": 520,
+          "hp": 10,
+          "spritemap": 47679
+        },
+        {
+          "slot": 2,
+          "x": 3,
+          "y": 585,
+          "hp": 10,
+          "spritemap": 47693
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 3120,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 124,
+          "y": 588,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 3240,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 10,
+          "y": 660,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 3360,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 216,
+          "y": 530,
+          "hp": 10,
+          "spritemap": 47693
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    },
+    {
+      "frame": 3480,
+      "room": "0xddf3",
+      "phase": "ordinary_gameplay",
+      "gs": 8,
+      "x": 65335,
+      "y": 651,
+      "hp": 1499,
+      "missiles": 230,
+      "selected": 1,
+      "enemies": [
+        {
+          "slot": 0,
+          "x": 232,
+          "y": 440,
+          "hp": 10,
+          "spritemap": 32845
+        },
+        {
+          "slot": 1,
+          "x": 102,
+          "y": 602,
+          "hp": 10,
+          "spritemap": 47700
+        },
+        {
+          "slot": 2,
+          "x": 8,
+          "y": 584,
+          "hp": 10,
+          "spritemap": 47672
+        },
+        {
+          "slot": 3,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 4,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 5,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 6,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        },
+        {
+          "slot": 7,
+          "x": 0,
+          "y": 0,
+          "hp": 0,
+          "spritemap": 0
+        }
+      ],
+      "timer": [
+        0,
+        0,
+        41
+      ],
+      "beams": 4107
+    }
+  ],
+  "hp_min": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0
+  },
+  "final": {
+    "frame": 0,
+    "game_state": 8,
+    "phase": "ordinary_gameplay",
+    "room_id": 56819,
+    "area_index": 5,
+    "door_transition": 0,
+    "transition_direction": 4,
+    "samus_x": 65335,
+    "samus_y": 651,
+    "velocity_x": 0,
+    "velocity_y": 0,
+    "pose": 138,
+    "health": 1499,
+    "max_health": 1499,
+    "reserve_health": 400,
+    "max_reserve_health": 400,
+    "missiles": 230,
+    "max_missiles": 230,
+    "super_missiles": 50,
+    "max_super_missiles": 50,
+    "power_bombs": 50,
+    "max_power_bombs": 50,
+    "selected_item": 1,
+    "equipped_items": 62255,
+    "collected_items": 62255,
+    "equipped_beams": 4107,
+    "collected_beams": 4107,
+    "timer_type": 0,
+    "escape_timer_frames": 131,
+    "escape_timer_seconds": 41,
+    "escape_timer_minutes": 0,
+    "num_enemies": 3,
+    "enemies_killed": 0,
+    "enemy0_x": 232,
+    "enemy0_y": 440,
+    "enemy0_hp": 10,
+    "enemy0_spritemap": 32845,
+    "event_flags": [
+      255,
+      0,
+      255,
+      0,
+      255,
+      0,
+      255,
+      0
+    ],
+    "boss_bits": [
+      255,
+      0,
+      255,
+      0,
+      255,
+      0,
+      255,
+      0
+    ],
+    "room_id_hex": "0xDDF3",
+    "area_name": "Tourian",
+    "morph_ball": true,
+    "bombs": true
+  }
+}

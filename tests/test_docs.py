@@ -38,7 +38,12 @@ ACTIVE_GAME_DIRS = (
     "star_fox",
     "super_double_dragon",
     "super_metroid",
+    "tmnt_i",
+    "tmnt_ii",
+    "tmnt_iii",
     "tmnt_iv",
+    "zelda_i",
+    "zelda_ii",
 )
 
 STALE_LINK_RE = re.compile(
