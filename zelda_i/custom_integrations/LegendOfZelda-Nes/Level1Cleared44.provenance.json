@@ -1,0 +1,134 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-07-28T18:56:39.862845+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "alive_rule": "hp",
+    "attack_phases": [
+      6
+    ],
+    "enemy_types": [
+      6
+    ],
+    "engage_distances": [
+      24,
+      32
+    ],
+    "jobs": 4,
+    "max_frames": 12000,
+    "output_dir": null,
+    "probe_exits": false,
+    "reward_mode": "clear",
+    "room_id": 68,
+    "room_id_hex": "0x44",
+    "save_state": "Level1Cleared44",
+    "state": "Level1Room44",
+    "tail_frames": 120,
+    "trials_per_config": 2
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controller": {
+      "clear_signal_seen": true,
+      "combat_frames": 2793,
+      "frames": 2794,
+      "initial_inventory": 0,
+      "last_live_enemies": 0,
+      "max_live_enemies": 3,
+      "notes": [
+        "target_room_playable",
+        "room_cleared"
+      ],
+      "phase": "DONE",
+      "spec_id": "level1_room44",
+      "success": true,
+      "tuning": {
+        "attack_phase": 6,
+        "engage_attack_hold": 4,
+        "engage_attack_period": 8,
+        "engage_distance": 32,
+        "patrol_attack_hold": 4,
+        "patrol_attack_period": 8
+      }
+    },
+    "final": {
+      "bombs": 0,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 32,
+      "keys": 0,
+      "level": 1,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 68,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 0,
+          "state": 0,
+          "type_id": 3,
+          "type_name": "unknown_object_0x03",
+          "x": 68,
+          "y": 109
+        },
+        {
+          "hp": 144,
+          "slot": 9,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 175,
+          "y": 141
+        },
+        {
+          "hp": 144,
+          "slot": 10,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 107,
+          "y": 141
+        },
+        {
+          "hp": 144,
+          "slot": 11,
+          "state": 23,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 48,
+          "y": 133
+        }
+      ],
+      "open_doorway_mask": 3,
+      "room": 68,
+      "room_all_dead": 21,
+      "room_item_id": 29,
+      "room_item_name": "unknown_room_item_0x1d",
+      "room_obj_count": 3,
+      "rupees": 1,
+      "x": 68,
+      "y": 109
+    },
+    "frames": 2794,
+    "outcome": "success",
+    "policy": {
+      "attack_phase": 6,
+      "engage_distance": 32
+    },
+    "reward_analysis": {
+      "classification": "no_known_inventory_change",
+      "known_inventory_changes": [],
+      "room_item_id": 29,
+      "room_item_name": "unknown_room_item_0x1d"
+    },
+    "screenshot": "/home/v/01_projects/11_games/retro_rl/zelda_i/recordings/dungeon_lab/room_44_20260728T185637Z/trial_002.final.png",
+    "success": true,
+    "trace": "/home/v/01_projects/11_games/retro_rl/zelda_i/recordings/dungeon_lab/room_44_20260728T185637Z/trial_002.trace.jsonl",
+    "trial_index": 2
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Room44.state",
+  "source_state_sha256": "adb694b688e6d4446a4cafeb9603be26eb92340873181ea5a29acedb9a7ce7e9",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Cleared44.state",
+  "state_sha256": "afd59b1f50bce6692db91dbcb8535507fd2def41c7a13432be6c4937ff389317"
+}

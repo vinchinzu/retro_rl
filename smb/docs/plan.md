@@ -2,19 +2,24 @@
 
 ## Goal
 
-Advance from boot toward a verified continuous clear of Super Mario Bros..
+Verified continuous any% warp (power-on → World 8-4) — **achieved** (M8).
 
-## Next milestones
+## Tracks
 
-1. **M1 boot** — power-on to RAM-verified first controllable frame.
-2. **M2 instrumentation** — map player position, mode, death, and stage/progress.
-3. **M3 isolated segment** — clear one early segment from `Level1.state` with timeout.
+### A — Autonomous completion
 
-## Bottleneck
+1. M2–M7 — done (Clean power-on → ending, 3/3)
+2. M8 verified capture — done (`warp_finish_poweron_m8_capture.json` + MP4)
 
-first 1-1 segment clear (flagpole).
+### B — Optional follow-ons
+
+1. Silver/Gold runtime: natural-entry 4-2 and mushroom-cloud speed
+2. Non-warp all-32-exit route
+3. Transfer continuous fold patterns to SMB3 / platformer_common
 
 ## Notes
 
-- Platform: NES (fceumm via stable-retro custom integration).
-- Shared ROM root: `roms/Nintendo/NES/`.
+- Seed: `smb/models/smb_1_1_to_ending.json` (**21,731f**, −274f)
+- Power-on: boot **350** + settle **16**
+- Level1_1 continuous: settle **14**
+- Rebuild: `uv run python -m smb.scripts.fold_continuous_policy`

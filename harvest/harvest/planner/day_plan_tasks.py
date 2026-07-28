@@ -60,6 +60,7 @@ from harvest.planner.tasks.home import (
     HOUSE_BED_STAND_PX,
     HOUSE_SLEEP_TRANSITION_TILEMAP,
     HOUSE_BED_STAND_TOLERANCE,
+    ReadyToGoHomeTask,
     ReturnHomeTask,
     GoToSleepTask,
 )
@@ -105,6 +106,7 @@ __all__ = [
     "HOUSE_BED_STAND_PX",
     "HOUSE_SLEEP_TRANSITION_TILEMAP",
     "HOUSE_BED_STAND_TOLERANCE",
+    "ReadyToGoHomeTask",
     "ReturnHomeTask",
     "GoToSleepTask",
 ]

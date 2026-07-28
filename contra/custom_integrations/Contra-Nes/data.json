@@ -1,3 +1,12 @@
 {
-  "info": {}
+  "info": {
+    "lives": {
+      "address": 50,
+      "type": "|u1"
+    },
+    "flag": {
+      "address": 8,
+      "type": "|u1"
+    }
+  }
 }

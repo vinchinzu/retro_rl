@@ -10,6 +10,14 @@ All commands require `uv run` (stable-retro is not in base Python).
 # Run bot
 ./run_bot.sh play --autoplay --state latest
 
+# Boot/morning fixture probe (M1/M2)
+uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
+
+# One overnight toward day+1 (M3 target; ROM required)
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House
+# multi-day shell also works:
+HEADLESS=1 ./run_bot.sh play --autoplay --state Y1_Inside_House --days 1
+
 # Tests (narrow — pick the modules you changed)
 uv run python -m unittest tests.test_day_plan_sequences tests.test_day_phase_registry tests.test_task_progress -v
 uv run python -m unittest tests.test_coop_task -v
@@ -28,11 +36,23 @@ uv run python -m harvest.tools.editor_app --state Y1_After_Buy_Potato --export-d
 
 ## File Organization
 
+- Specs: `docs/STATUS.md` (gate facts), `docs/plan.md` (future), `docs/ram_map.md`
+- Scripts: `harvest/scripts/boot_probe.py`, `harvest/scripts/run_to_day2.py`
 - Save states: `custom_integrations/HarvestMoon-Snes/`
 - Recordings: `tasks/<name>.json` + `tasks/<name>_end.state`
 - Editor artifacts: `debug_alignment/` or `maps/`
 - Tests: `tests/` (unit tests need no ROM; integration tests need ROM + states)
 - ROM/state setup: use `harvest.runtime.retro_setup.register_harvest_integration(retro)` before `retro.make(...)`. It registers the custom integration with an absolute path and repairs the ignored `rom.sfc` symlink from known local ROM directories, so do not hand-roll `retro.data.Integrations.add_custom_path(...)` in new scripts. Recording flows should also call `retro_setup.backup_mutable_start_state(...)` so tasks do not point at drifting `latest` / `current` states.
+
+## Day1 / boot→day2 route
+
+Named sequences in `PHASE_SEQUENCES`:
+
+- `day1` — exit farm, clear slice, buy seeds, plant/water, **town_explore**, **ready_to_go_home**, return home, sleep
+- `boot_to_day2` — same plus optional recorded tool macros (`get_hammer` / `get_axe` / `get_sickle`)
+
+`GoToSleepTask` always runs `ReturnHomeTask` first when not already in the house.
+Town explore / buy-seeds success sets the planner go-home flag and ensures end-day phases exist.
 
 ## Adding New Autonomous Tasks
 

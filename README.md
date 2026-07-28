@@ -1,8 +1,9 @@
 # retro_rl
 
-`retro_rl` is a multi-game SNES automation platform. The goal is to produce
-verified reset-to-ending clears across a broad canonical library, beginning with
-bespoke RAM-aware scripts and gradually reducing privileged information.
+`retro_rl` is a multi-game **NES + SNES** automation platform. The goal is to
+produce verified reset-to-ending clears across a prioritized canonical library,
+beginning with bespoke RAM-aware scripts and gradually reducing privileged
+information.
 
 The repository supports scripted policies, reinforcement learning,
 demonstrations, replay, RAM discovery, editors, benchmark instrumentation, and
@@ -11,6 +12,17 @@ game-specific planners as one cumulative program — not separate experiments.
 ROMs, save states, recordings, trained models, and ROM-derived assets are not
 included. Bring legally obtained game dumps and keep generated artifacts in the
 owning game directory.
+
+Program docs:
+
+| Document | Role |
+|----------|------|
+| [`docs/VISION.md`](docs/VISION.md) | Why the project exists |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Multi-horizon NES + SNES strategy |
+| [`docs/DEVELOPMENT_LADDER.md`](docs/DEVELOPMENT_LADDER.md) | M0–M8 gates and capability phases |
+| [`docs/PROGRAM_STATUS.md`](docs/PROGRAM_STATUS.md) | Live flagship results and bottlenecks |
+| [`docs/GAME_MATRIX.md`](docs/GAME_MATRIX.md) | Generated game board |
+| [`docs/BENCHMARK_SPEC.md`](docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold and assist rules |
 
 ## Quick Start
 
@@ -62,7 +74,7 @@ game workspace
 
 | Package | Responsibility |
 |---|---|
-| `retro_harness/` | Stable-retro environment setup, SNES actions, input scripts, save-state paths, runtime normalization, play sessions, RAM schemas, recording, tasks, splits, and benchmarks |
+| `retro_harness/` | Stable-retro environment setup, SNES/NES actions, input scripts, save-state paths, runtime normalization, play sessions, RAM schemas, recording, tasks, splits, and benchmarks |
 | `retro_harness/editor/` | Reusable Qt editor bridge, stdio JSON protocol, embedded emulator panel, map rendering helpers, recording, script segments, and optional Cursor agent panel |
 | `snes_oneshot/` | Shared behavior trees, combat and cursor policies, segment runners, watchdogs, RAM discovery, and continuous-run practices |
 | `platformer_common/` | Platformer level configuration, progress tracking, replay, route evaluation, hill climbing, and genetic/neuroevolution tools |
@@ -70,9 +82,10 @@ game workspace
 
 New SNES integrations should begin with the compact
 `retro_harness.snes` API (`GameSpec`, named actions, `StartupPlan`, and input
-scripts), then add only the genre layer they need. See
+scripts); NES workspaces use the same maturity ladder and
+`snes_oneshot.rom_setup` / harness helpers. See
 [`ADDING_GAMES.md`](./ADDING_GAMES.md) for the recommended layout and first
-verification seam.
+verification seam, and [`docs/ROADMAP.md`](docs/ROADMAP.md) for prioritization.
 
 ## Development Ladder
 
@@ -106,6 +119,7 @@ and the engineering process in
 | Document | Role |
 |---|---|
 | [`docs/VISION.md`](./docs/VISION.md) | Why the project exists; scriptably beatable |
+| [`docs/ROADMAP.md`](./docs/ROADMAP.md) | Multi-horizon NES + SNES strategy |
 | [`docs/DEVELOPMENT_LADDER.md`](./docs/DEVELOPMENT_LADDER.md) | M0–M8 gates and capability phases |
 | [`docs/BENCHMARK_SPEC.md`](./docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold and Clean vs assisted |
 | [`docs/PROGRAM_STATUS.md`](./docs/PROGRAM_STATUS.md) | Live clears, bottlenecks, priorities |

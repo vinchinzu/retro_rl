@@ -1,0 +1,107 @@
+{
+  "benchmark_eligible": false,
+  "ending_settle_frames": 120,
+  "exits_completed": [
+    8,
+    8,
+    8
+  ],
+  "final": {
+    "area_pointer": 229,
+    "level": 3,
+    "level_id": 31,
+    "lives": 2,
+    "oper_mode": 2,
+    "player_state": 8,
+    "player_x": 4826,
+    "player_y": 97,
+    "world": 7
+  },
+  "intervention": {
+    "class": "development splice (not benchmark eligible)",
+    "mid_attempt_state_loads": 1,
+    "note": "one mid-1-2 state splice follows natural 1-1; the suffix is controller-only afterward"
+  },
+  "milestones": [
+    {
+      "exit_id": "1-2",
+      "frame": 2335,
+      "level": 0,
+      "lives": 2,
+      "world": 3
+    },
+    {
+      "exit_id": "4-1",
+      "frame": 4675,
+      "level": 1,
+      "lives": 2,
+      "world": 3
+    },
+    {
+      "exit_id": "4-2",
+      "frame": 7293,
+      "level": 0,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-1",
+      "frame": 10979,
+      "level": 1,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-2",
+      "frame": 14130,
+      "level": 2,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-3",
+      "frame": 16357,
+      "level": 3,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-4",
+      "frame": 19963,
+      "level": 3,
+      "lives": 2,
+      "world": 7
+    }
+  ],
+  "mode": "chain",
+  "outcomes": [
+    "ending",
+    "ending",
+    "ending"
+  ],
+  "policy_frames": 19963,
+  "policy_seed": "smb/models/smb_warp_mid_to_ending.json",
+  "prelude": {
+    "boot_frames": [
+      317,
+      317,
+      317
+    ],
+    "exit_id": "1-1",
+    "frames": [
+      2232,
+      2232,
+      2232
+    ],
+    "outcomes": [
+      "success",
+      "success",
+      "success"
+    ]
+  },
+  "route_id": "smb_warp_any_percent",
+  "runtime_observation": "Bronze",
+  "success_rate": 1.0,
+  "successes": 3,
+  "trials": 3
+}

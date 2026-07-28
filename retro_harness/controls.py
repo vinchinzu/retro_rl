@@ -221,6 +221,17 @@ def pressed_snes_buttons(action: list[int]) -> list[str]:
     ]
 
 
+def pressed_nes_buttons(action: list[int]) -> list[str]:
+    """Return pressed NES button names (skips the unused index-1 hole)."""
+    names: list[str] = []
+    for name, idx in NES_BUTTON_NAME_TO_INDEX.items():
+        if name == "IDLE" or idx is None:
+            continue
+        if idx < len(action) and action[idx]:
+            names.append(name)
+    return names
+
+
 def describe_input_mapping(
     *,
     controller_map: Optional[dict[int, int]] = None,

@@ -1,0 +1,166 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-07-28T19:06:21.921641+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "alive_rule": "hp",
+    "attack_phases": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "enemy_types": [
+      61
+    ],
+    "engage_distances": [
+      64,
+      80,
+      96,
+      112
+    ],
+    "jobs": 4,
+    "max_frames": null,
+    "output_dir": null,
+    "probe_exits": false,
+    "reward_mode": "clear",
+    "room_id": 53,
+    "room_id_hex": "0x35",
+    "save_state": "Level1BossCleared",
+    "state": "Level1Cleared45",
+    "tail_frames": 120,
+    "trials_per_config": 1
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controller": {
+      "clear_signal_seen": true,
+      "combat_frames": 790,
+      "frames": 1193,
+      "initial_inventory": 0,
+      "last_live_enemies": 0,
+      "max_live_enemies": 1,
+      "notes": [
+        "at_entry_door",
+        "target_room_playable",
+        "room_cleared"
+      ],
+      "phase": "DONE",
+      "spec_id": "level1_room35_aquamentus",
+      "success": true,
+      "tuning": {
+        "attack_phase": 2,
+        "engage_attack_hold": 4,
+        "engage_attack_period": 6,
+        "engage_distance": 64,
+        "patrol_attack_hold": 2,
+        "patrol_attack_period": 12
+      }
+    },
+    "final": {
+      "bombs": 0,
+      "cur_opened_doors": 5,
+      "facing": 2,
+      "health": 32,
+      "keys": 0,
+      "level": 1,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 53,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 0,
+          "state": 17,
+          "type_id": 1,
+          "type_name": "unknown_object_0x01",
+          "x": 136,
+          "y": 125
+        },
+        {
+          "hp": 128,
+          "slot": 1,
+          "state": 24,
+          "type_id": 96,
+          "type_name": "green_rupee_drop",
+          "x": 143,
+          "y": 128
+        },
+        {
+          "hp": 192,
+          "slot": 9,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 161,
+          "y": 155
+        },
+        {
+          "hp": 192,
+          "slot": 10,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 161,
+          "y": 191
+        },
+        {
+          "hp": 192,
+          "slot": 11,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 161,
+          "y": 189
+        }
+      ],
+      "open_doorway_mask": 4,
+      "room": 53,
+      "room_all_dead": 21,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 5,
+      "x": 136,
+      "y": 125
+    },
+    "frames": 1193,
+    "outcome": "success",
+    "policy": {
+      "attack_phase": 2,
+      "engage_distance": 64
+    },
+    "reward_analysis": {
+      "classification": "known_inventory_change",
+      "known_inventory_changes": [
+        {
+          "address": 1646,
+          "address_hex": "0x066E",
+          "after": 0,
+          "before": 1,
+          "delta": -1,
+          "symbol": "keys"
+        },
+        {
+          "address": 1647,
+          "address_hex": "0x066F",
+          "after": 32,
+          "before": 34,
+          "delta": -2,
+          "symbol": "health"
+        }
+      ],
+      "room_item_id": 26,
+      "room_item_name": "heart_container"
+    },
+    "screenshot": "/home/v/01_projects/11_games/retro_rl/zelda_i/recordings/dungeon_lab/room_35_20260728T190617Z/trial_008.final.png",
+    "success": true,
+    "trace": "/home/v/01_projects/11_games/retro_rl/zelda_i/recordings/dungeon_lab/room_35_20260728T190617Z/trial_008.trace.jsonl",
+    "trial_index": 8
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Cleared45.state",
+  "source_state_sha256": "51984b76f21cb77346cf13b0d535015e3d5341a9374c9784fa59e5ef495ec5c6",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1BossCleared.state",
+  "state_sha256": "958e9763bbcfa510ee034f92832f311e9e08369414045198b9c98927fe29829e"
+}

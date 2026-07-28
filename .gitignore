@@ -211,3 +211,21 @@ SMW/tools/external/*
 # Other generated build/runtime trees
 **/.gradle/
 **/boss_data/
+
+# SMB's compact JSON controller policies and aggregate completion evidence are
+# source artifacts, not trained model/checkpoint or raw recording dumps.
+!smb/models/
+smb/models/*
+!smb/models/smb_1_1_clear.json
+!smb/models/smb_1_2_warp_w4.json
+!smb/models/smb_warp_mid_to_ending.json
+!smb/models/smb_1_1_to_ending.json
+!smb/recordings/
+smb/recordings/*
+!smb/recordings/warp_finish/
+smb/recordings/warp_finish/*
+!smb/recordings/warp_finish/warp_finish_chain_trials_report.json
+!smb/recordings/warp_finish/warp_finish_suffix_trials_report.json
+!smb/recordings/warp_finish/warp_finish_continuous_trials_report.json
+!smb/recordings/warp_finish/warp_finish_poweron_trials_report.json
+!smb/recordings/warp_finish/warp_finish_poweron_m8_capture.json

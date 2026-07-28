@@ -2,19 +2,24 @@
 
 ## Goal
 
-Advance from M1 (boot) toward a verified continuous clear of Teenage Mutant Ninja Turtles II: The Arcade Game.
+Advance from M3 (first wave) toward a verified continuous clear of
+Teenage Mutant Ninja Turtles II: The Arcade Game.
 
 ## Next milestones
 
-1. **M2 instrumentation** — map player position, mode, death, and stage/progress.
-2. **M3 isolated segment** — clear one early segment from `Level1.state` with timeout.
-3. **M4 natural-entry** — same segment from the real predecessor state (not a warp).
+1. **Past first lock** — score≥8–10 and camera advance; map lock flag.
+2. **M2 complete** — enemy slots, stage/area, death/continue.
+3. **M4 natural-entry** — same first wave from power-on / boot script
+   (not only `Level1.state`).
+4. Chain Stage 1 packs under `Stage1Policy` / shared combat helpers.
 
 ## Bottleneck
 
-first Stage 1 wave/segment clear.
+Right-edge screen lock after early kills: pure RIGHT+B stalls at score 4;
+need face-LEFT B (done for score 5). Next packs need unlock + targeting.
 
 ## Notes
 
 - Platform: NES (fceumm via stable-retro custom integration).
 - Shared ROM root: `roms/Nintendo/NES/`.
+- Transfer target: SNES TMNT IV combat stack (`snes_oneshot.combat`).

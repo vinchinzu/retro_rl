@@ -1,31 +1,41 @@
 # Agent Instructions — smb3
 
-Scripted NES completion agent for **Super Mario Bros. 3** (platforming track; maturity M0→M1).
+Scripted NES completion agent for **Super Mario Bros. 3** (platforming track; maturity M3 segment).
 
 ## Identity
 
 | Field | Value |
 |-------|-------|
-| Status | scaffolded / boot in progress |
+| Status | World 1-1 clear verified |
 | Integration | `SuperMarioBros3-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Super Mario Bros. 3.zip` |
 | Local ROM | `smb3/roms/` (via `scripts/setup_rom.py`) |
+| 1-1 policy | `smb3/policies/level1_1.json` |
 
 ## Commands
 
 ```bash
 uv run python smb3/scripts/setup_rom.py
 uv run python smb3/scripts/boot_probe.py
+uv run python smb3/scripts/run_level1.py
+uv run python smb3/scripts/run_level1.py --from-state Level1_1
 uv run pytest smb3/tests -q
 ```
 
+## Traps
+
+- Boot map pose is **not** on the enterable 1-1 node: need RIGHT then UP, then A.
+- 1-1 policy is frame-synced to natural entry after that path; desyncs if map
+  walk or level-load settle frames change (re-hillclimb from natural entry).
+- NES actions use `retro_harness.nes` (9-button fceumm layout): B=run, A=jump.
+- Progress uses `x_page (0x75) * 256 + hpos (0x90)` only while `x_page < 0x18`.
+
 ## Next milestone
 
-first World 1-1 segment clear.
+World 1-2 natural-entry clear.
 
 ## Norms
 
 - Prefer nearest local docs (`docs/STATUS.md`, `docs/plan.md`) over root notes.
 - Keep RAM maps, save states, and policies inside this game directory.
-- NES actions use `retro_harness.nes` (9-button fceumm layout).
 - Line length 88; type hints; `uv run pytest` for tests.

@@ -131,6 +131,31 @@ HOUSE_L2_BED_ROUTE_FINAL: List[Tuple[Point, str, int, bool]] = [
 
 
 @dataclass
+class ReadyToGoHomeTask(Task):
+    """Marker task: town/day work is done; planner should end the day.
+
+    Success is the go-home flag. The day planner records it and advances into
+    ``RETURN_HOME`` / ``GO_TO_SLEEP`` (or appends them if missing).
+    """
+
+    name: str = "ready_to_go_home"
+
+    def reset(self, world: WorldState) -> None:
+        return None
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        return TaskResult(
+            status=TaskStatus.SUCCESS,
+            reason="ready_to_go_home",
+            checkpoint="ready_to_go_home",
+            meta={"ready_to_go_home": True},
+        )
+
+
+@dataclass
 class ReturnHomeTask(Task):
     """Recover to the farm if needed, then enter the farmhouse."""
 
@@ -386,15 +411,23 @@ class ReturnHomeTask(Task):
 
 @dataclass
 class GoToSleepTask(Task):
-    """Walk to the bed in the farmhouse and sleep until the next day."""
+    """Find the house if needed, walk to the bed, and sleep until the next day.
+
+    Older sleep macros assumed the player was already inside. This task always
+    recovers to the farmhouse first (``ReturnHomeTask``) so multi-day and
+    late-day recovery can call sleep from anywhere.
+    """
 
     name: str = "go_to_sleep"
-    timeout: int = 5200
+    tasks_dir: str = TASKS_DIR
+    timeout: int = 7200
     sleep_attempt_limit: int = 6
     # Wait long enough for the overnight fade before assuming A missed.
     sleep_verify_frames: int = 520
+    # Budget for the outdoor/return-home recovery before bed navigation.
+    return_home_timeout: int = 4500
 
-    _phase: str = field(default="nav_bed", init=False)
+    _phase: str = field(default="ensure_house", init=False)
     _step_count: int = field(default=0, init=False)
     _verify_count: int = field(default=0, init=False)
     _sleep_attempts: int = field(default=0, init=False)
@@ -403,16 +436,24 @@ class GoToSleepTask(Task):
     _route_index: int = field(default=0, init=False)
     _start_season: int = field(default=0, init=False)
     _start_day: int = field(default=0, init=False)
+    _return_home: Optional[ReturnHomeTask] = field(default=None, init=False)
+    _return_home_steps: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
-        self._phase = "nav_bed"
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        self._phase = "nav_bed" if is_house_tilemap(tilemap) else "ensure_house"
         self._step_count = 0
         self._verify_count = 0
         self._sleep_attempts = 0
         self._action_queue.clear()
         self._route = []
         self._route_index = 0
+        self._return_home = None
+        self._return_home_steps = 0
         self._start_season, self._start_day = read_world_date(world.ram)
+        if self._phase == "ensure_house":
+            self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
+            self._return_home.reset(world)
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -560,6 +601,50 @@ class GoToSleepTask(Task):
 
         return make_action()
 
+    def _step_ensure_house(self, world: WorldState) -> TaskResult:
+        """Recover into the farmhouse before bed navigation."""
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        if is_house_tilemap(tilemap):
+            self._phase = "nav_bed"
+            self._return_home = None
+            self._route = []
+            self._route_index = 0
+            print(f"[SLEEP] Inside house tilemap=0x{tilemap:02X}; navigating to bed")
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+        if self._return_home is None:
+            self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
+            self._return_home.reset(world)
+
+        self._return_home_steps += 1
+        if self._return_home_steps > self.return_home_timeout:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"could not find house (tilemap=0x{tilemap:02X})",
+            )
+
+        result = self._return_home.step(world)
+        if result.status == TaskStatus.SUCCESS:
+            self._phase = "nav_bed"
+            self._return_home = None
+            self._route = []
+            self._route_index = 0
+            print("[SLEEP] ReturnHome succeeded; navigating to bed")
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        if result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+            reason = result.reason or "unknown"
+            # One hard retry — house entry can fail mid-throw/debris.
+            if self._return_home_steps < self.return_home_timeout // 2:
+                print(f"[SLEEP] ReturnHome retry after: {reason}")
+                self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
+                self._return_home.reset(world)
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"return home before sleep failed: {reason}",
+            )
+        return result
+
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         if self._step_count > self.timeout:
@@ -589,11 +674,22 @@ class GoToSleepTask(Task):
                 pulse_every=1,
                 reason="bedtime cutscene",
             )
+
+        if self._phase == "ensure_house":
+            return self._step_ensure_house(world)
+
         if not is_house_tilemap(tilemap):
-            return TaskResult(
-                status=TaskStatus.FAILURE,
-                reason=f"expected house tilemap, got 0x{tilemap:02X}",
+            # Left the house mid-sleep attempt (cutscene, failed bed push).
+            print(
+                f"[SLEEP] Left house (tilemap=0x{tilemap:02X}); re-finding house"
             )
+            self._phase = "ensure_house"
+            self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
+            self._return_home.reset(world)
+            self._action_queue.clear()
+            self._route = []
+            self._route_index = 0
+            return self._step_ensure_house(world)
 
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         if input_lock != 1 or scene.needs_input_dismiss:
@@ -662,6 +758,7 @@ __all__ = [
     "HOUSE_BED_STAND_PX",
     "HOUSE_SLEEP_TRANSITION_TILEMAP",
     "HOUSE_BED_STAND_TOLERANCE",
+    "ReadyToGoHomeTask",
     "ReturnHomeTask",
     "GoToSleepTask",
 ]

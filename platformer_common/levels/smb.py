@@ -88,7 +88,7 @@ def _smb_level(
             level_id=level_id_str,
             display_name=display,
             game_name="SuperMarioBros-Nes-v0",
-            game_dir_name="super_mario_bros",
+            game_dir_name="smb",
             start_state=state,
             ram=SMB_RAM,
             target_level_id=target_id,
@@ -113,8 +113,30 @@ def _smb_level(
 # the underground area. level_id_aliases tells the evaluator these are the
 # same level, not sub-levels. Values discovered via --trace on recordings.
 
-_smb_level(1, 1, "Level1_1", "smb_1_1", "smb_11",
-           completion_min_progress=2500.0)
+# Flagpole slide + score tally can stall progress for ~700f; keep max_stall high.
+register_level(
+    LevelConfig(
+        level_id="smb_1_1",
+        display_name="Super Mario Bros 1-1",
+        game_name="SuperMarioBros-Nes-v0",
+        game_dir_name="smb",
+        start_state="Level1_1",
+        ram=SMB_RAM,
+        target_level_id=0,
+        level_id_aliases=[],
+        progress_axis="player_x",
+        progress_direction=1,
+        death_signals=["lives_drop"],
+        completion_signal="level_id_change",
+        completion_min_progress=2500.0,
+        completion_level_ids=[],
+        action_table=SMB_ACTIONS,
+        max_stall_frames=900,
+        computed_values=SMB_COMPUTED,
+        bk2_to_env=[8 - i for i in range(9)],
+    ),
+    "smb_11",
+)
 
 # 1-1 flagpole segment: from pipe exit to end of level.
 # Used for focused optimization of just the flagpole approach.
@@ -123,7 +145,7 @@ register_level(
         level_id="smb_1_1_flagpole",
         display_name="Super Mario Bros 1-1 (flagpole segment)",
         game_name="SuperMarioBros-Nes-v0",
-        game_dir_name="super_mario_bros",
+        game_dir_name="smb",
         start_state="Level1_1_PipeExit",
         ram=SMB_RAM,
         target_level_id=0,   # world 1-1 = (1-1)*4+(1-1) = 0
@@ -182,7 +204,7 @@ def _smb_84_segment(
             level_id=level_id_str,
             display_name=display,
             game_name="SuperMarioBros-Nes-v0",
-            game_dir_name="super_mario_bros",
+            game_dir_name="smb",
             start_state=state,
             ram=SMB_RAM,
             target_level_id=start_area,
@@ -214,7 +236,7 @@ register_level(
         level_id="smb_8_4",
         display_name="Super Mario Bros 8-4 (full)",
         game_name="SuperMarioBros-Nes-v0",
-        game_dir_name="super_mario_bros",
+        game_dir_name="smb",
         start_state="Level8_4",
         ram=SMB_RAM,
         target_level_id=0x65,  # starting area_pointer
@@ -279,4 +301,43 @@ register_route(
     ),
     "smb_any",
     "smb",
+)
+
+# Showcase / stitch routes (video builder lives in smb.full_run; these keep
+# platformer_common aware of the same exit lists).
+register_route(
+    RouteConfig(
+        route_id="smb_warp_any_percent",
+        display_name="Super Mario Bros Any% (Warp → 8 Exit)",
+        segments=[
+            RouteSegment("smb_1_1", label="1-1"),
+            RouteSegment("smb_1_2", label="1-2 (→W4)"),
+            RouteSegment("smb_4_1", label="4-1"),
+            RouteSegment("smb_4_2", label="4-2 (→W8)"),
+            RouteSegment("smb_8_1", label="8-1"),
+            RouteSegment("smb_8_2", label="8-2"),
+            RouteSegment("smb_8_3", label="8-3"),
+            RouteSegment("smb_8_4", label="8-4"),
+        ],
+    ),
+    "warp",
+    "warp8",
+)
+
+# All 32 main-game exits (1-1 … 8-4). Levels beyond the warp route still need
+# LevelConfig registrations + recordings before optimizer chain-video works;
+# smb.full_run already stitches whatever legal_stitch / optimizer sources exist.
+_all_exit_segments = [
+    RouteSegment(f"smb_{world}_{level}", label=f"{world}-{level}")
+    for world in range(1, 9)
+    for level in range(1, 5)
+]
+register_route(
+    RouteConfig(
+        route_id="smb_all_exits",
+        display_name="Super Mario Bros All 32 Exits",
+        segments=_all_exit_segments,
+    ),
+    "all_exits",
+    "smb_100",
 )

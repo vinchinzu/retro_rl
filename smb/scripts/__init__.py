@@ -1,0 +1,1 @@
+"""SMB game scripts."""

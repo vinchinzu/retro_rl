@@ -4,12 +4,52 @@
       "address": 18,
       "type": "|u1"
     },
+    "level": {
+      "address": 16,
+      "type": "|u1"
+    },
     "health": {
       "address": 1647,
       "type": "|u1"
     },
     "screen": {
       "address": 235,
+      "type": "|u1"
+    },
+    "link_x": {
+      "address": 112,
+      "type": "|u1"
+    },
+    "link_y": {
+      "address": 132,
+      "type": "|u1"
+    },
+    "sword": {
+      "address": 1623,
+      "type": "|u1"
+    },
+    "bombs": {
+      "address": 1624,
+      "type": "|u1"
+    },
+    "rupees": {
+      "address": 1645,
+      "type": "|u1"
+    },
+    "keys": {
+      "address": 1646,
+      "type": "|u1"
+    },
+    "room_item_id": {
+      "address": 171,
+      "type": "|u1"
+    },
+    "room_all_dead": {
+      "address": 845,
+      "type": "|u1"
+    },
+    "room_obj_count": {
+      "address": 846,
       "type": "|u1"
     }
   }

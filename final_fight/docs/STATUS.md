@@ -6,10 +6,10 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M3 |
-| Best verified result | Stages 1–2 segment clears; Stage 3 in progress |
-| Last verification | 2026-07-22 |
+| Best verified result | Stages 1–2 segment clears; Stage 3 wave5 clear; Area1 chip in progress |
+| Last verification | 2026-07-27 |
 | Runtime class | Bronze |
-| Intervention class | Clean |
+| Intervention class | Clean (heal poke when documented) |
 
 **Approach:** save-state + segment scripts first; continuous title-to-credits
 later. Retries and mid-stage `.state` files are expected.
@@ -66,6 +66,9 @@ later. Retries and mid-stage `.state` files are expected.
 | Stage 3 wave5 clear (prefer) | **`Stage3_Clear_w5_real_p48_cam640`** / **`…_hp48`** — verified empty 60f @HP48 |
 | Stage 3 far (area0 softlock) | **`Stage3_Far_hp50_L1_cam931`** — poke CLEAR_AREA → Area1 |
 | Stage 3 Area1 entry | **`Stage3_Area1_hp50_L1_cam2560`** — HP50 / area1 / cam2560 |
+| Stage 3 Area1 best mid (prefer) | **`Stage3_Area1_mid_p70_e101_cam2560`** — face-Y chip **250→101** (~149 dmg) with heal pokes |
+| Stage 3 Area1 other mids | `…_e109` / `…_e142` / `…_e197` / older `…_e187` / `…_e189` |
+| Stage 3 Area2 / Boss3 (dev) | **`Boss3`** cam **3072** / `0x11E0=01` — via Area1 kill + CLEAR_AREA (legit HP250 kill still open; force-map with `--force-enemy-hp`) |
 | Stage 3 wave5 dual mid | **`Stage3_Mid_w5_p31_e238_cam640`** / **`…_p20_e238`** — dual 142+96 in fight (pre-chip) |
 | Stage 2 far (scroll softlock) | old **`Stage2_Clear_w*_cam848`** ghost-free — do not use |
 | Stage 2 far clear (poisoned) | **`Stage2_Clear_w1_cam844_threat`** — HP **80** / lives 2 / cam **844** (HP0 + living HP148 misread as UF) |
@@ -131,11 +134,36 @@ wave1 (loading `Stage3.state` has ~1px engage drift and dies).
   UF254 corpse still threats — plant-punch before scroll or HP chips).
   Do **not** trust brief st01 empties (`Clear_w5_p22` is false — tough
   returns at HP102). Softlock cam**931** (not 990): CLEAR_AREA →
-  **Area1 cam2560** (`Stage3_Area1_hp50_L1_cam2560`). Area1 thug peaks
-  **HP≈250** (`ENTITY_HP_MAX=252`); chips to ~189 @HP2 then death —
-  Boss3 not reached. Old **`Clear_w5_hp13`** poisoned. Heal poke
-  documented when used; prefer natural food if found.
+  **Area1 cam2560** (`Stage3_Area1_hp50_L1_cam2560`). Old
+  **`Clear_w5_hp13`** poisoned. Heal poke documented when used; prefer
+  natural food if found.
 - Softlock guard: cam≥**920** area0 no living → CLEAR_AREA.
+
+### Stage 3 Area1 (HP≈250) — in progress
+
+Entry: **`Stage3_Area1_hp50_L1_cam2560`**. First living thug peaks
+**HP≈250** behind the player (dx≈−52). Probe:
+`scripts/stage3_area1_probe.py`.
+
+| Finding | Detail |
+|---------|--------|
+| Continuous `LEFT+Y` | **0 damage** (animation lock) |
+| Face then pulsed `Y` | Chips ~5/hit; first hit ~f120–140 after spawn |
+| Best chip (heal assist) | **250→101** (~149 dmg) → mid `…_p70_e101_cam2560` |
+| Holding LEFT while punching | Walks into left gutter → death |
+| Post-kill ghost | st=03 HP0 still chips — plant-punch before scroll |
+| Post-kill scroll | Camera stays 2560; **CLEAR_AREA** → room2 cam3072 / **Boss3** undrawn |
+| Legit full kill | **Open** (needs ~250 dmg without dying) |
+
+Dev-only Boss3 map (not a Clean segment claim):
+
+```bash
+uv run python final_fight/scripts/stage3_area1_probe.py --force-enemy-hp 5
+# → Stage3_Area1_Clear + Boss3 (bst=01, cam3072)
+```
+
+Evidence: `recordings/stage3_area1_facey_exact/`,
+`recordings/stage3_area1_force_map/`, `recordings/stage3_area1_probe/`.
 
 **Stage 2 subway — Sodom defeated; `Stage2_Clear` saved (HP37 / UF).**
 

@@ -45,9 +45,12 @@ Not gated on uninterrupted evaluation early. Prefer:
    @**HP31** ✅; wave4 Andore HP216 → Clear_w4 @**HP31** ✅ (edge-JD).
    Wave5 dual 142+96 → **cleared** ✅ (`Clear_w5_real_p48`; split+heal
    + LEFT+Y wait-KD). Cam931 softlock → Area1 cam2560 ✅. Area1 HP250
-   thug / Boss3 open (`ENTITY_HP_MAX=252`). Continuous still dies
-   mid-wave2 after Mid.
-10. **Longer run** — optional title → Stage 1 without relying on mid-run saves
+   face-Y chip to ~101 mid ✅; **legit kill open**. Post-kill CLEAR_AREA
+   → Boss3 entry mapped (dev). Continuous still dies mid-wave2 after Mid.
+10. **Area1 legit kill** — sustain face-Y (or better DPS) to HP underflow
+    without death; plant ghost; natural or CLEAR_AREA to Area2/Boss3
+11. **Boss3 (West Side boss)** — from `Boss3` undrawn → drawn → kill
+12. **Longer run** — optional title → Stage 1 without relying on mid-run saves
 
 ## Behavior tree (segment policy)
 

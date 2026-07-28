@@ -397,7 +397,15 @@ def _build_return_home(
 def _build_sleep(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
-    return GoToSleepTask()
+    return GoToSleepTask(tasks_dir=ctx.tasks_dir)
+
+
+def _build_ready_to_go_home(
+    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
+) -> Task:
+    from harvest.planner.tasks.home import ReadyToGoHomeTask
+
+    return ReadyToGoHomeTask()
 
 
 PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
@@ -430,6 +438,7 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.CROP: _build_crop,
     PhaseKind.RETURN_HOME: _build_return_home,
     PhaseKind.SLEEP: _build_sleep,
+    PhaseKind.READY_TO_GO_HOME: _build_ready_to_go_home,
 }
 
 
