@@ -1,9 +1,13 @@
 # Assist Contract — TMNT IV
 
 Runtime observation: **Bronze** (game-specific read-only RAM permitted).  
-Intervention class: **Resource-assisted + Protection-assisted**.
+Intervention class: **Resource-assisted + Protection-assisted** (whole-run).  
+Clean track (Stage 1 done; rest in progress): **Clean** = both assists at 0.
 
-## Allowed writes
+See **`docs/CLEAN_PLAYBOOK.md`** for permanent play rules when removing
+assists stage-by-stage.
+
+## Allowed writes (production low-assist)
 
 | Assist | Trigger | Write | Notes |
 |--------|---------|-------|-------|
@@ -21,8 +25,17 @@ Intervention class: **Resource-assisted + Protection-assisted**.
 
 Ground pizza boxes (`char 0x30`, see `ram_map.md`) fully restore HP when
 picked up with controller input. Collecting pizza is **not** an assist.
-The Clean-track goal is to survive on pizza + better play with
-`emergency_hp` interventions at **0** and form-2 iframe guard at **0**.
+
+**Clean** = survive on pizza + better play with:
+
+- `emergency_hp` interventions = **0**
+- form-2 iframe guard frames = **0**
+- no A-special
+
+Stage 1 Clean suite is verified pizza-only
+(`scripts/probe_stage1_clean.py --suite`). Later stages keep emergency
+until their own heal=none multi-entry suite is green; then drop assists
+for that stage / whole run per playbook order.
 
 ## Reporting
 

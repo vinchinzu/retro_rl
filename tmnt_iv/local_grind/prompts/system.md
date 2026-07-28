@@ -21,7 +21,8 @@ Example shape:
 
 Goals context:
 - Full hard clear baseline ~00:57:20 / 4667 damage / 65 heals.
-- Biggest remaining damage buckets: Technodrome, Prehistoric/Slash,
-  Starbase, Wounded Knee.
-- Production Slash on FullHardBoss5 is already strong (~13.6k f / 616 dmg).
-  Small gains only; do not thrash randomly.
+- Prefer RaphFullHardBoss5 / RaphFullHardStage4 / RaphFullHardBoss9 (char 8).
+- Production slash_spin_dodge_adx=52. Probe KEEP 40 shrinks Slash but
+  continuous total damage regressed — do not re-port without dry-run.
+- Biggest continuous buckets: Technodrome (~1022), Prehistoric, Starbase.
+- Every timing change needs a full dry-run. Do not thrash randomly.

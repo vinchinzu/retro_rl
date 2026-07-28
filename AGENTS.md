@@ -31,9 +31,12 @@ Program spine:
   name — prefer “scripted completion” in human-facing prose
 - `<game>/`: game-specific code, integrations, docs, assets, and outputs
 - `roms/`: shared ROM storage (gitignored)
+  - `roms/Nintendo/NES/`: NES library zips
+  - `roms/Nintendo/SNES` → `roms/Super Nintendo`: SNES library zips
 - `docs/manifests/`: machine-readable game manifests
 
-Authoritative directories: `super_metroid/`, `SMW/`, `harvest/`, `alttp/`.
+Authoritative directories: `super_metroid/`, `SMW/`, `harvest/`, `alttp/`,
+`tmnt_i/`, `tmnt_ii/`, `tmnt_iii/`, `zelda_i/`, `zelda_ii/`.
 Do not invent `super_metroid_rl/` or `super_mario_bros/` paths in this checkout.
 
 ## Organization Rules

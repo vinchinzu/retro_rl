@@ -1,0 +1,25 @@
+game: zelda_ii
+title: "Zelda II: The Adventure of Link"
+directory: zelda_ii
+genre_tracks:
+  - graph_navigation
+capability_phase: 4
+project_state: boot_verified
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: medium
+ending_definition: credits after Grand Palace / Dark Link
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: zelda_ii/docs/STATUS.md
+plan_doc: zelda_ii/docs/plan.md
+last_verified: 2026-07-27
+blocker: leave North Palace / first side-scroll segment
+notes: >-
+  M1: power-on to controllable North Palace (life $0773). Platform NES under roms/Nintendo/NES.

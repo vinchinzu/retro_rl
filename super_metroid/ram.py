@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any  # env protocol objects for WRAM helpers
 
 import numpy as np
 
@@ -51,9 +51,17 @@ ADDR_ENEMY0_X = 0x0F7A
 ADDR_ENEMY0_Y = 0x0F7E
 ADDR_ENEMY0_HP = 0x0F8C
 ADDR_ENEMY0_SPRITEMAP = 0x0F8E
+ADDR_DOOR_DEF_PTR = 0x078D
+ADDR_INVINCIBILITY_TIMER = 0x18A8
+ADDR_KNOCKBACK_TIMER = 0x18AA
+
+# stable-retro maps bank $7E WRAM as a 128 KiB block at this base.
+SNES_WRAM_BANK = 0x7E0000
 
 MORPH_BALL_MASK = 0x0004
 BOMBS_MASK = 0x1000
+# Event 0x0E is set when Mother Brain dies and the escape door sequence starts.
+EVENT_MOTHER_BRAIN_DEFEATED = 0x0E
 AREA_NAMES = (
     "Crateria",
     "Brinstar",
@@ -208,10 +216,56 @@ class SuperMetroidState:
         return data
 
 
+def read_bank7e_wram(env: Any) -> np.ndarray:
+    """Return a copy of SNES bank $7E WRAM (128 KiB).
+
+    ``env.get_ram()`` is reliable for low WRAM (``$7E:0000``–``$7E:1FFF``) but
+    returns open-bus garbage for high addresses such as event/boss flags at
+    ``$7E:D820``. Prefer this helper whenever those fields matter.
+    """
+    blocks = env.data.memory.blocks
+    raw = blocks[SNES_WRAM_BANK]
+    return np.frombuffer(raw, dtype=np.uint8).copy()
+
+
+def write_wram_u8(env: Any, address: int, value: int) -> None:
+    """Write one WRAM byte. Uses bank $7E for addresses at or above ``0x2000``."""
+    mapped = SNES_WRAM_BANK + address if address >= 0x2000 else address
+    env.data.memory.assign(mapped, "|u1", value & 0xFF)
+
+
+def write_wram_u16(env: Any, address: int, value: int) -> None:
+    """Write one little-endian WRAM word."""
+    mapped = SNES_WRAM_BANK + address if address >= 0x2000 else address
+    env.data.memory.assign(mapped, "<u2", value & 0xFFFF)
+
+
+def set_event_flag(env: Any, event_id: int) -> None:
+    """Set one bit in ``events_that_happened`` (``$7E:D820`` bitfield)."""
+    byte_index = event_id >> 3
+    bit = 1 << (event_id & 7)
+    address = ADDR_EVENT_FLAGS + byte_index
+    current = int(read_bank7e_wram(env)[address])
+    write_wram_u8(env, address, current | bit)
+
+
 def parse_state(ram: np.ndarray, *, frame: int = 0) -> SuperMetroidState:
-    """Parse one full WRAM snapshot."""
+    """Parse one full WRAM snapshot.
+
+    Pass bank-$7E WRAM from :func:`read_bank7e_wram` when event/boss flags are
+    needed. Low-only ``env.get_ram()`` slices still work for combat/nav fields
+    below ``0x2000``.
+    """
     game_state = _u16(ram, ADDR_GAME_STATE)
     door_transition = _u16(ram, ADDR_DOOR_TRANSITION)
+    event_end = min(len(ram), ADDR_BOSS_BITS)
+    boss_end = min(len(ram), ADDR_BOSS_BITS + 8)
+    event_flags = tuple(int(value) for value in ram[ADDR_EVENT_FLAGS:event_end])
+    boss_bits = tuple(int(value) for value in ram[ADDR_BOSS_BITS:boss_end])
+    if len(event_flags) < 8:
+        event_flags = event_flags + (0,) * (8 - len(event_flags))
+    if len(boss_bits) < 8:
+        boss_bits = boss_bits + (0,) * (8 - len(boss_bits))
     return SuperMetroidState(
         frame=frame,
         game_state=game_state,
@@ -250,6 +304,11 @@ def parse_state(ram: np.ndarray, *, frame: int = 0) -> SuperMetroidState:
         enemy0_y=_u16(ram, ADDR_ENEMY0_Y),
         enemy0_hp=_u16(ram, ADDR_ENEMY0_HP),
         enemy0_spritemap=_u16(ram, ADDR_ENEMY0_SPRITEMAP),
-        event_flags=tuple(int(value) for value in ram[ADDR_EVENT_FLAGS:ADDR_BOSS_BITS]),
-        boss_bits=tuple(int(value) for value in ram[ADDR_BOSS_BITS : ADDR_BOSS_BITS + 8]),
+        event_flags=event_flags[:8],
+        boss_bits=boss_bits[:8],
     )
+
+
+def parse_env_state(env: Any, *, frame: int = 0) -> SuperMetroidState:
+    """Parse state from the emulator using correct bank-$7E WRAM."""
+    return parse_state(read_bank7e_wram(env), frame=frame)

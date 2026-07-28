@@ -74,7 +74,9 @@ NPC_CHAR_IDS: frozenset[int] = frozenset(
 # Ground pizza box (full HP restore). HP byte stays 0; do not fight.
 PIZZA_CHAR_IDS: frozenset[int] = frozenset({0x30})
 # Stage 1 ceiling/wrecking hazards (HP 0; walking under 0x36 is a −24).
-HAZARD_CHAR_IDS: frozenset[int] = frozenset({0x32, 0x36})
+# Stage 3 (Sewer) hanging spike props: char 0x1C (and occasional 0x2C)
+# deal −16 with HP 0; not living enemies. Dodge with jump-right when near.
+HAZARD_CHAR_IDS: frozenset[int] = frozenset({0x32, 0x36, 0x1C, 0x2C})
 # Leo's full health bar (used for pizza-seek gating).
 LEO_MAX_HP = 80
 # Mode-7 Neon Night Riders (stage byte 7): boards / shots / debris that
@@ -233,13 +235,16 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
         for i, base in enumerate(ENEMY_BASES)
     )
     living = tuple(e for e in enemies if e.active and e.health > 0)
-    # Known boss chars need a little HP left so Neon board props that
-    # reuse Rocksteady's id (0xAC @ HP2) do not trip boss_active.
+    # Known boss chars stay boss_active down to HP 1 so finishers land
+    # (Rat King at HP 3 used to drop off at the old floor of 4, and Clean
+    # walks away from a near-dead Footski). Neon board props that reuse
+    # Rocksteady's id (0xAC @ HP2) are filtered in ``_read_enemy`` on
+    # stage 7, so they never reach this candidate list.
     boss_candidates = tuple(
         e
         for e in living
         if e.health >= BOSS_HP_MIN
-        or (e.kind in BOSS_CHAR_IDS and e.health >= 4)
+        or (e.kind in BOSS_CHAR_IDS and e.health >= 1)
     )
     boss = boss_candidates[0] if boss_candidates else None
     player_dead = lives == 0 and (health == 0 or health > ENTITY_HP_MAX)

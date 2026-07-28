@@ -89,10 +89,11 @@ Publication target remains **Bronze / Clean** (maturity stays M8).
 
 Ranked by absolute damage still taken (best ROI for next policy work):
 
-1. **Technodrome (1,022 / 21.9%)** — largest remaining bucket
-2. **Prehistoric (861 / 18.4%)** — Slash remains the largest boss target
+1. **Technodrome (1,022 / 21.9%)** — largest continuous bucket. Leo
+   `blocker_hit_frames=8` probe win **failed** continuous transfer (→1,131)
+2. **Prehistoric (861 / 18.4%)** — grind only on a **Raphael** Slash state
 3. **Starbase (749 / 16.0%)** — waves + Super Shredder form 1
-4. **Wounded Knee (579 / 12.4%)** — cadence pass cut this almost in half
+4. **Wounded Knee (579 / 12.4%)** — stall-only thrash escape for elevated `0xb0`
 5. **Alleycat Blues (376 / 8.1%)** — checkpoint gain still does not transfer
 6. **Big Apple (334 → segment Clean 130)** — reconcile power-on context
 
@@ -106,16 +107,16 @@ align), then 10f toward+Y; align only on retreat/grab. Old 2f Y-tap after
 early dx<16 whiffed ~75% of stun cycles (FullHardTank: 1 shredder chip /
 8k f → clear).
 
-| State | Stall-suppress | Pre-charge-fix | **Charge fix** |
-|-------|----------------|----------------|----------------|
-| FullHardTank | — | timeout 20k / 708 dmg / 10 heals | **9,366f / 232 dmg / 3 heals** |
-| Boss4 (→stage 4) | 3,218f duo-only | 15,345f / 470 / 7 | **16,422f / 468 / 7** |
-| Boss6_hp80 | **3,236f / 176 / 2** | 3,888f / 176 / 2 | (unchanged) |
+| State | Stall-suppress | Pre-charge-fix | **Charge fix (production)** | hit_frames=8 (Leo only) |
+|-------|----------------|----------------|------------------------------|--------------------------|
+| FullHardTank | — | timeout 20k / 708 / 10 | **9,366f / 232 / 3** | 6,325f / 184 / 2 |
+| FullHardStage4 | — | — | 31,380f / 1,232 / 17 | 29,982f / 1,024 / 14 |
+| Boss4 (→stage 4) | 3,218f duo-only | 15,345f / 470 / 7 | **16,422f / 468 / 7** | — |
+| Boss6_hp80 | **3,236f / 176 / 2** | 3,888f / 176 / 2 | (unchanged) | — |
 
-Tank segment alone: **−476 dmg, −7 heals**, now clears. The first continuous
-attempt then exposed a right-door duo pin (`x=224`); 37 frames of targeted
-`duo_wall_escape` cleared it in that run. The current whole-run Technodrome
-bucket is **1,022 damage / 8:49.428**.
+Tank segment (charge fix): **−476 dmg, −7 heals**. hit_frames=8 is a Leo
+probe win that **regressed continuous Raph Technodrome** (1,022→1,131) and
+is **not** production. Whole-run Technodrome remains **1,022 / 8:49.428**.
 
 `probe_boss_metrics` now supports `--heal emergency|none` (default: emergency)
 to match the production low-assist run.
@@ -123,10 +124,14 @@ to match the production low-assist run.
 ## Slash fight known facts
 
 - Char `0x50`, spawn HP **160**, stage byte **4**, event `0x0A`
-- States: `Boss5`, `Boss5_mid`, `FullHardBoss5`, `FullHardBoss5_hp48`
+- **Prefer** `RaphFullHardBoss5` (char 8, continuous-faithful)
+- Legacy Leo: `FullHardBoss5`, `Boss5`, `Boss5_mid`, `FullHardBoss5_hp48`
 - Entity status (EnemyState.animation): spin `0xEE`; punish windows often after spin settles to `0x3E`; hitstun `0x17` / multi `0x2E`
-- Production policy: `SlashTactics` hybrid whiplash (approach → jump-cross → toward+Y; spin dodge)
-- FullHardBoss5 probe: **13,651f / 616 dmg / 10 heals** (was ~33k / 1820 / 29)
+- Production policy: `SlashTactics` hybrid whiplash (approach@48 → jump-cross 22/16 → toward+Y; spin_dodge_adx **52**)
+- **RaphFullHardBoss5** production: **11,386f / 478 dmg / 6 heals**
+- Raph probe KEEP spin_dodge_adx **40**: **6,765f / 226 / 3** (5/5) — continuous
+  dry-runs regressed total (5,474 dmg); **not** production
+- Leo FullHardBoss5: **13,651f / 730 / 10** (do not grind for continuous)
 
 ## Regression commands
 
@@ -141,13 +146,18 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   --max-frames 40000 --stop-stage-gt 4
 ```
 
-## Improvement goals
+## Improvement goals (toward Bronze / Clean)
 
-1. Cut Technodrome below **1,000** (now 1,022)
-2. Cut Prehistoric below **750** (now 861)
-3. Reduce the 65 emergency heals without regressing the sub-hour clear
-4. Remove form-2 iframe guard without life losses
-5. Do not regress continuous zero life-loss dry-run
+Fewer emergency heals is a function of lower damage + natural pizza, not
+a softer HP threshold. Ranked next steps:
+
+1. **Re-dry-run** after tank `blocker_hit_frames=8` + Wounded Knee thrash harden
+2. **Technodrome** below **1,000** continuous damage (probe already 1,024 on FullHardStage4)
+3. **Raph Slash state** then re-grind approach/cross knobs (Leo KEEP does not transfer)
+4. **Alleycat / Big Apple entry context** — checkpoint Clean gains still
+   fail to transfer to power-on (376 and 334 continuous)
+5. **Form-2 iframe guard → 0** without life losses (last protection assist)
+6. Hold **0 life losses** and sub-hour continuous clear while assists fall
 
 ## Slash probe progress (emergency heal HP≤16→80)
 
@@ -156,13 +166,24 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 | Pre-pass thrash | FullHardBoss5 | ~33,482 | ~1,820 | ~29 | CLEAR |
 | Status-wait only | FullHardBoss5 | 40,000 | 1,908 | 31 | TIMEOUT @ HP44 |
 | Lab `hybrid_whiplash` | FullHardBoss5 | 18,570 | 918 | 13 | CLEAR |
-| **Production whiplash** (2026-07-23) | **FullHardBoss5** | **13,651** | **616** | **10** | **CLEAR** |
-| Production whiplash | Boss5 | 13,315 | 550 | 9 | CLEAR |
+| Leo production whiplash | FullHardBoss5 (Leo) | 13,651 | 730 | 10 | CLEAR |
+| **Raph production (spin 52)** | **RaphFullHardBoss5** | **11,386** | **478** | **6** | **CLEAR** |
+| Raph spin_dodge 44 | RaphFullHardBoss5 | 8,957 | 298 | 4 | CLEAR 3/3 |
+| **Raph spin_dodge 40 KEEP** | **RaphFullHardBoss5** | **6,765** | **226** | **3** | **CLEAR 5/5** |
 
-Δ FullHardBoss5 vs pre-pass: **−59% frames**, **−66% damage**, **−19 heals**.
+Continuous dry-runs (same policy, spin only):
+
+| spin_dodge_adx | Time | Damage | Heals |
+|----------------|------|--------|-------|
+| **52 (production)** | **00:57:19.635** | **4,667** | **65** |
+| 44 | 00:57:31.316 | 5,152 | 74 |
+| 40 | 00:57:52.248 | 5,474 | 78 |
+
+Park spin-40 for a full-route re-tune (Skull/WK regressed hardest).
 
 Research artifacts:
 - `docs/SLASH_VULN_MAP.md` — status lexicon, claw vs punish
 - `scripts/probe_slash_vuln.py`
 - `scripts/slash_pattern_lab.py`
 - `docs/SLASH_PATTERN_LAB.md`
+- `recordings/local_grind_agent/summary.json` — original approach_band KEEP

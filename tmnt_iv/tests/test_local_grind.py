@@ -86,8 +86,10 @@ def test_score_prefers_clear_low_damage() -> None:
 
 
 def test_target_by_label_accepts_state_name() -> None:
-    target = target_by_label("FullHardBoss5")
+    target = target_by_label("RaphFullHardBoss5")
     assert target.label == "slash"
+    leo = target_by_label("FullHardBoss5")
+    assert leo.label == "slash_leo"
 
 
 def test_parse_json_object_strips_fences() -> None:

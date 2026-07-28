@@ -28,12 +28,162 @@ Super Metroid scripted full-clear project. Shared process:
 
 ## Immediate goal
 
-The continuous power-on → Spore Spawn baseline is established. Continue from
-the settled Spore Super room through Spore Farming/Big Pink to the first Power
-Bomb expansion. Use `maps/room_problems.json` to develop isolated clears, but
-promote only natural-entry continuous transitions.
+**Primary: play every completion-path room** (controller/policy). Door-warps
+are topology diagnostics only — not route evidence.
 
-Room-development commands:
+1. **Path board:** `docs/PATH_ROOM_BOARD.md` — 107 rooms / 199 hops; regenerate
+   with `scripts/export_path_room_board.py`.
+2. **Current bottleneck:** pure approach onto PB sill (wall@x≈613) and maze past wall@x≈437; sill **entry** + mid-maze **collect** controllers exist.
+3. **Continuous next:** close place bridges, then power-on through PB and next open hops.
+4. Boss fights only after natural entry to that boss room exists on the chain.
+5. Topology warps (`probe_route.py full` / `full-hybrid`) — debug only.
+
+### Shared dev helpers
+
+`dev_common.py` owns reusable development primitives:
+
+- `boot_from_state`, `door_warp` (waits for game state 8), `place_samus`,
+  `apply_dev_survivability`, `enemy_hps`, `select_weapon`, `save_dev_state`
+
+`mother_brain_dev.py` and `kraid_dev.py` re-use those; do not re-implement
+door-warp settle logic in new probes. Door-warp settle must wait for
+**game state 8** (not merely `ordinary` phase) — multi-screen loads sit in
+state 11 for 50–100+ frames.
+
+### Path room board (play clearance — primary)
+
+```bash
+# Regenerate 107-room / 199-hop board (JSON + markdown)
+uv run python super_metroid/scripts/export_path_room_board.py
+
+# Furthest post-Super controller probe (no door-warp)
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to main
+
+# Pink PB sill entry (place bridge onto sill if not already there)
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-door \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_intercept.state
+
+# PB morph-bomb collect (place bridge past maze wall@437 if needed)
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-collect \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_intercept.state
+```
+
+Board: `docs/PATH_ROOM_BOARD.md`, `maps/path_room_board.json`.
+
+### Topology skeleton (door-warp diagnostics only)
+
+```bash
+# List hop coverage (all 22 completion legs)
+uv run python super_metroid/scripts/probe_route.py list
+
+# Door-warp all 22 legs — connectivity probe, NOT route evidence
+uv run python super_metroid/scripts/probe_route.py full
+uv run python super_metroid/scripts/probe_route.py full-tour
+uv run python super_metroid/scripts/probe_route.py full-hybrid
+```
+
+Reports are labeled `developmentOnly: true`. Hop table:
+`maps/full_route_hops.json`. Runner: `route_dev.py`.
+
+### Late-game route skeleton (boss fights skipped)
+
+```bash
+# Phantoon → Ridley (Gravity, Botwoon, Draygon; fights skipped)
+uv run python super_metroid/scripts/probe_route.py phantoon-to-ridley
+
+# Ridley → Mother Brain (statues + Tourian; fights skipped)
+uv run python super_metroid/scripts/probe_route.py ridley-to-mb
+
+# Phantoon → Landing Site finish
+uv run python super_metroid/scripts/probe_route.py late-full
+
+# Single leg
+uv run python super_metroid/scripts/probe_route.py leg draygon ridley
+```
+
+Late hop table: `maps/late_game_route_hops.json` (9-leg subset of full).
+
+### Post-Spore Super collect → Phantoon (Track B)
+
+Working route board: [`docs/ROUTE_SUPERS_TO_PHANTOON.md`](docs/ROUTE_SUPERS_TO_PHANTOON.md).
+
+```bash
+# Continuous power-on → Super Missile collect (STATUS baseline)
+uv run python super_metroid/scripts/record_start_to_supers.py --no-video
+uv run python super_metroid/scripts/record_start_to_supers.py
+
+# From natural_post_spore_spawn: Supers → farming → Big Pink → pocket crest
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to crest
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to super-block
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to big-pink
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to farming
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to supers
+# Double-tap morph to tunnel floor; full main shaft (controller)
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to tunnel-floor
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to main
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to tunnel-west \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_big_pink_open.state
+```
+
+Controller: `post_spore_controller.py` (no progression RAM writes). Crest lands
+~x=1125 standing; crouch-Super clears (69,87); **double-tap DOWN** morphs
+(standing y≈1387 = morph y≈1401 pose height); tunnel-west + X bombs → main
+x≲750. Climb to Pink PB open.
+
+### Kraid / Power Bombs / Phantoon entry
+
+```bash
+# Dev Kraid fight (door-warp from eye door + Super spray)
+uv run python -c "from super_metroid.kraid_dev import run_kraid_fight; print(run_kraid_fight())"
+
+# Power Bombs + ship route → Phantoon entry (development only)
+uv run python super_metroid/scripts/probe_phantoon.py collect-pb
+uv run python super_metroid/scripts/probe_phantoon.py capture-entry
+uv run python super_metroid/scripts/probe_phantoon.py ship-route
+```
+
+Furthest topology: **Landing Site via full late door-warp skeleton**. Boss
+fights intentionally deferred.
+
+Key door pointers (bank `$83` → destination room):
+
+| Door | Dest |
+|------|------|
+| `0x8DDE` | Pink PB top (`0x9E11`) |
+| `0x901E` | Hellway |
+| `0x908A` | Caterpillar |
+| `0x90BA` | Elevator to Cat |
+| `0x8AF6` | Crateria Kihunter |
+| `0x8A36` | Moat |
+| `0x8AEA` | West Ocean |
+| `0x89D6` | WS Entrance |
+| `0xA1BC` | WS Main Shaft |
+| `0xA21C` | WS Basement |
+| `0xA2AC` | Phantoon (`0xCD13`) |
+| `0x91B6` | Kraid |
+| `0xAAC8` | Mother Brain |
+| `0xAA8C` | Escape Room 1 |
+
+### Mother Brain / escape development
+
+```bash
+# Capture door-warp fixtures (development only; not continuous evidence)
+uv run python super_metroid/scripts/probe_mother_brain.py capture-mb
+uv run python super_metroid/scripts/probe_mother_brain.py capture-escape1
+
+# Spray probe / coarse escape nav
+uv run python super_metroid/scripts/probe_mother_brain.py spray-mb --frames 3600
+uv run python super_metroid/scripts/probe_mother_brain.py run-escape --frames 12000
+```
+
+Helpers live in `mother_brain_dev.py` (shared warp/place from `dev_common.py`).
+High WRAM (events/boss bits at `$7E:D820+`) must use `read_bank7e_wram` /
+`write_wram_u8` — raw `env.get_ram()[0xD820]` is open-bus garbage.
+
+sm_rev reference: `../snes_editor/super_metroid_rl/sm_rev/src/enemy_mother_brain.c`
+and `enemy_ridley_zebetite.c` (zebetites regen 1 HP/frame up to 1000).
+
+### Room-development commands
 
 ```bash
 uv run python super_metroid/scripts/export_room_problems.py
