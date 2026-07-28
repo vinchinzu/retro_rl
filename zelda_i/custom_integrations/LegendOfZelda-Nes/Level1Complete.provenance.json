@@ -1,0 +1,372 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-07-28T19:45:49.712608+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "natural_entry": false,
+    "segment": "level1_complete"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "stages": [
+      {
+        "controller": {
+          "clear_signal_seen": true,
+          "combat_frames": 922,
+          "frames": 1251,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 6,
+          "notes": [
+            "at_entry_door",
+            "target_room_playable",
+            "room_cleared"
+          ],
+          "phase": "DONE",
+          "spec_id": "level1_room52",
+          "success": true,
+          "tuning": {
+            "attack_phase": 0,
+            "engage_attack_hold": 4,
+            "engage_attack_period": 8,
+            "engage_distance": 48,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 3,
+            "patrol_attack_period": 10
+          }
+        },
+        "frames": 1251,
+        "max_frames": 6000,
+        "name": "clear52",
+        "success": true
+      },
+      {
+        "controller": {
+          "clear_signal_seen": true,
+          "combat_frames": 970,
+          "frames": 1265,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 3,
+          "notes": [
+            "at_entry_door",
+            "target_room_playable",
+            "room_cleared"
+          ],
+          "phase": "DONE",
+          "spec_id": "level1_room42",
+          "success": true,
+          "tuning": {
+            "attack_phase": 0,
+            "engage_attack_hold": 4,
+            "engage_attack_period": 8,
+            "engage_distance": 48,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 3,
+            "patrol_attack_period": 10
+          }
+        },
+        "frames": 1265,
+        "max_frames": 6000,
+        "name": "clear42",
+        "success": true
+      },
+      {
+        "controller": {
+          "frames": 1157,
+          "notes": [
+            "center_block_pushed",
+            "hint_room_entered",
+            "hint_dialog_settled",
+            "returned_room42",
+            "at_map_room_door",
+            "map_room_entered"
+          ],
+          "phase": "DONE",
+          "success": true
+        },
+        "frames": 1157,
+        "max_frames": 2400,
+        "name": "exit42",
+        "success": true
+      },
+      {
+        "controller": {
+          "clear_signal_seen": true,
+          "combat_frames": 1802,
+          "frames": 1803,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 5,
+          "notes": [
+            "target_room_playable",
+            "room_cleared"
+          ],
+          "phase": "DONE",
+          "spec_id": "level1_room43",
+          "success": true,
+          "tuning": {
+            "attack_phase": 0,
+            "engage_attack_hold": 4,
+            "engage_attack_period": 8,
+            "engage_distance": 56,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 3,
+            "patrol_attack_period": 10
+          }
+        },
+        "frames": 1803,
+        "max_frames": 6000,
+        "name": "clear43",
+        "success": true
+      },
+      {
+        "controller": {
+          "clear_signal_seen": false,
+          "combat_frames": 829,
+          "frames": 1090,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 3,
+          "notes": [
+            "at_entry_door",
+            "target_room_playable",
+            "reward_collected"
+          ],
+          "phase": "DONE",
+          "spec_id": "level1_room33",
+          "success": true,
+          "tuning": {
+            "attack_phase": 0,
+            "engage_attack_hold": 4,
+            "engage_attack_period": 8,
+            "engage_distance": 40,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 2,
+            "patrol_attack_period": 12
+          }
+        },
+        "frames": 1090,
+        "max_frames": 6000,
+        "name": "clear33_key",
+        "success": true
+      },
+      {
+        "controller": {
+          "clear_signal_seen": true,
+          "combat_frames": 714,
+          "frames": 1095,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 3,
+          "notes": [
+            "at_entry_door",
+            "target_room_playable",
+            "room_cleared",
+            "reward_collected"
+          ],
+          "phase": "DONE",
+          "spec_id": "level1_room23",
+          "success": true,
+          "tuning": {
+            "attack_phase": 0,
+            "engage_attack_hold": 4,
+            "engage_attack_period": 8,
+            "engage_distance": 64,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 2,
+            "patrol_attack_period": 12
+          }
+        },
+        "frames": 1095,
+        "max_frames": 6000,
+        "name": "clear23_key",
+        "success": true
+      },
+      {
+        "controller": {
+          "frames": 916,
+          "notes": [
+            "at_room23_south",
+            "room33_entered",
+            "at_room33_south",
+            "room43_entered",
+            "at_room43_east",
+            "room44_entered"
+          ],
+          "phase": "DONE",
+          "success": true
+        },
+        "frames": 916,
+        "max_frames": 3600,
+        "name": "backtrack44",
+        "success": true
+      },
+      {
+        "controller": {
+          "clear_signal_seen": true,
+          "combat_frames": 2856,
+          "frames": 2857,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 3,
+          "notes": [
+            "target_room_playable",
+            "room_cleared"
+          ],
+          "phase": "DONE",
+          "spec_id": "level1_room44",
+          "success": true,
+          "tuning": {
+            "attack_phase": 6,
+            "engage_attack_hold": 4,
+            "engage_attack_period": 8,
+            "engage_distance": 80,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 4,
+            "patrol_attack_period": 8
+          }
+        },
+        "frames": 2857,
+        "max_frames": 6000,
+        "name": "clear44",
+        "success": true
+      },
+      {
+        "controller": {
+          "clear_signal_seen": false,
+          "combat_frames": 866,
+          "frames": 1274,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 8,
+          "notes": [
+            "at_entry_door",
+            "target_room_playable",
+            "reward_collected"
+          ],
+          "phase": "DONE",
+          "spec_id": "level1_room45",
+          "success": true,
+          "tuning": {
+            "attack_phase": 2,
+            "engage_attack_hold": 4,
+            "engage_attack_period": 8,
+            "engage_distance": 80,
+            "engage_dominant_axis": true,
+            "patrol_attack_hold": 4,
+            "patrol_attack_period": 8
+          }
+        },
+        "frames": 1274,
+        "max_frames": 9000,
+        "name": "clear45_key",
+        "success": true
+      },
+      {
+        "controller": {
+          "attack_frames": 448,
+          "boss_seen": true,
+          "dodge_duration": 8,
+          "frames": 1307,
+          "initial_health": 32,
+          "notes": [
+            "at_boss_door",
+            "boss_room_entered",
+            "aquamentus_spawned",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "boss_stance_ready",
+            "facing_aquamentus",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "boss_stance_ready",
+            "facing_aquamentus",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "boss_stance_ready",
+            "facing_aquamentus",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "boss_stance_ready",
+            "facing_aquamentus",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "fireball_threat",
+            "fireball_dodged",
+            "boss_stance_ready",
+            "facing_aquamentus",
+            "aquamentus_defeated",
+            "heart_container_collected"
+          ],
+          "phase": "DONE",
+          "stance": [
+            128,
+            125
+          ],
+          "success": true,
+          "threat_radius": 20
+        },
+        "frames": 1307,
+        "max_frames": 6000,
+        "name": "aquamentus_heart",
+        "success": true
+      },
+      {
+        "controller": {
+          "frames": 376,
+          "notes": [
+            "triforce_room_entered",
+            "triforce_shard_1_collected"
+          ],
+          "phase": "DONE",
+          "success": true
+        },
+        "frames": 376,
+        "max_frames": 1800,
+        "name": "triforce_shard_1",
+        "success": true
+      }
+    ],
+    "success": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Cleared53.state",
+  "source_state_sha256": "5c87aceb237637e85d6b021d4179b3d24410c1349bdd28647282fe564ab9bb49",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Complete.state",
+  "state_sha256": "4c6e65661381bd080a8c2d646c81f213656b89c4109df53b5cfd00e0722ce736"
+}

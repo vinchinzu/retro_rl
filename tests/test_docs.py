@@ -28,13 +28,22 @@ DOC_GLOBS = (
 ACTIVE_GAME_DIRS = (
     "alttp",
     "battle_clash",
+    "castlevania",
+    "contra",
+    "ducktales",
     "f_zero",
     "final_fight",
     "great_waldo_search",
     "joe_and_mac",
+    "kirby_adventure",
     "magical_quest",
+    "mega_man_2",
+    "metroid",
     "pilotwings",
+    "punch_out",
     "rival_turf",
+    "smb",
+    "smb3",
     "star_fox",
     "super_double_dragon",
     "super_metroid",
@@ -261,4 +270,6 @@ def test_game_matrix_is_generated() -> None:
     text = matrix.read_text(encoding="utf-8")
     assert "Generated from `docs/manifests/*.yaml`" in text
     assert "tmnt_iv" in text
+    assert "zelda_i" in text
+    assert "smb" in text
     assert "Ladder rank" not in text

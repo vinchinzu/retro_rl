@@ -420,6 +420,17 @@ def cmd_optimize(args: argparse.Namespace) -> None:
     evaluator.close()
 
 
+def _parse_window(spec: str | None) -> tuple[int, int] | None:
+    """Parse ``START:END`` window spec into an inclusive-exclusive range."""
+    if not spec:
+        return None
+    text = spec.strip()
+    if ":" not in text:
+        raise SystemExit(f"window must be START:END, got {spec!r}")
+    left, right = text.split(":", 1)
+    return int(left), int(right)
+
+
 def cmd_hillclimb_raw(args: argparse.Namespace) -> None:
     """Hill climb with raw button mutation (no lossy action-index conversion)."""
     from platformer_common.hillclimb_raw import hillclimb_raw
@@ -437,10 +448,21 @@ def cmd_hillclimb_raw(args: argparse.Namespace) -> None:
         print(f"Error: no raw_buttons in {seed_path}")
         return
 
+    window = _parse_window(getattr(args, "window", None))
+    prefer_trim = bool(getattr(args, "prefer_trim", False))
+    require_completion = bool(getattr(args, "require_completion", False))
+
     print(f"Seed: {len(raw)} raw frames from {seed_path}")
     print(f"Level: {config.display_name}")
     if start_state:
         print(f"State override: {start_state}")
+    if window:
+        print(f"Window: [{window[0]}:{window[1]}]")
+    if prefer_trim or require_completion:
+        print(
+            f"Frame-save mode: prefer_trim={prefer_trim} "
+            f"require_completion={require_completion}"
+        )
 
     output_dir = Path(args.output_dir) if args.output_dir else config.runs_dir
     evaluator = Evaluator(config, start_state=start_state)
@@ -450,9 +472,202 @@ def cmd_hillclimb_raw(args: argparse.Namespace) -> None:
         evaluator=evaluator,
         max_iterations=args.iterations,
         output_dir=output_dir,
+        window=window,
+        prefer_trim=prefer_trim,
+        require_completion=require_completion,
     )
 
-    print(f"\nSaved best to {output_dir / 'hillclimb_raw_best.json'}")
+    out_name = (
+        "segment_hillclimb_best.json"
+        if (window or prefer_trim or require_completion)
+        else "hillclimb_raw_best.json"
+    )
+    # segment engine always writes segment_hillclimb_best.json; classic writes hillclimb_raw_best
+    saved = output_dir / out_name
+    if not saved.exists():
+        saved = output_dir / "hillclimb_raw_best.json"
+    if not saved.exists():
+        saved = output_dir / "segment_hillclimb_best.json"
+    print(f"\nSaved best to {saved} ({len(best_raw)} frames, completed={best_result.completed})")
+    evaluator.close()
+
+
+def cmd_analyze_seed(args: argparse.Namespace) -> None:
+    """Report idle prefixes, hold stalls, and (optionally) live clear frames."""
+    from platformer_common.frame_tools import (
+        analyze_seed_static,
+        load_raw_frames,
+    )
+
+    seed_path = Path(args.seed)
+    frames = load_raw_frames(seed_path)
+    report = analyze_seed_static(frames)
+    report["seed"] = str(seed_path)
+
+    if not getattr(args, "static_only", False):
+        config = _resolve_config(args)
+        start_state = getattr(args, "state", None)
+        evaluator = Evaluator(config, start_state=start_state)
+        result = evaluator.evaluate(frames, early_terminate=False)
+        report["completed"] = result.completed
+        report["clear_frames"] = result.total_frames if result.completed else None
+        report["fitness"] = result.fitness
+        report["max_progress"] = result.max_progress
+        report["died"] = result.died
+        evaluator.close()
+
+    print(json.dumps(report, indent=2))
+    if args.output:
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        print(f"Wrote {out}")
+
+
+def cmd_trim_seed(args: argparse.Namespace) -> None:
+    """Trim leading idle / trailing post-clear pad / compress long holds."""
+    from platformer_common.frame_tools import (
+        load_raw_frames,
+        save_raw_seed,
+        search_hold_compressions,
+        trim_after_completion,
+        trim_leading_idle,
+    )
+
+    config = _resolve_config(args)
+    start_state = getattr(args, "state", None)
+    seed_path = Path(args.seed)
+    frames = load_raw_frames(seed_path)
+    evaluator = Evaluator(config, start_state=start_state)
+
+    def evaluate(candidate: list[list[int]]):
+        return evaluator.evaluate(candidate, early_terminate=False)
+
+    current = frames
+    notes: list[str] = []
+    print(f"Seed: {len(current)} frames from {seed_path}")
+    print(f"Level: {config.display_name}")
+
+    if not args.no_leading:
+        result = trim_leading_idle(
+            current,
+            evaluate,
+            max_trim=args.max_leading,
+            step=args.step,
+            parity=args.parity,
+            require_completion=not args.allow_incomplete,
+            verbose=True,
+        )
+        print(
+            f"Leading trim={result.trim} clear={result.clear_frames} "
+            f"completed={result.completed} seed_len={len(result.frames)}"
+        )
+        current = result.frames
+        notes.append(result.notes)
+
+    if args.holds:
+        result = search_hold_compressions(
+            current,
+            evaluate,
+            min_hold=args.min_hold,
+            require_completion=not args.allow_incomplete,
+            verbose=True,
+        )
+        print(
+            f"Hold compress: trim={result.trim} clear={result.clear_frames} "
+            f"completed={result.completed} seed_len={len(result.frames)}"
+        )
+        current = result.frames
+        notes.append(result.notes)
+
+    if not args.no_trailing:
+        result = trim_after_completion(
+            current,
+            evaluate,
+            pad=args.pad,
+            verbose=True,
+        )
+        print(
+            f"Trailing trim={result.trim} clear={result.clear_frames} "
+            f"completed={result.completed} seed_len={len(result.frames)}"
+        )
+        current = result.frames
+        notes.append(result.notes)
+
+    final = evaluate(current)
+    output = Path(args.output) if args.output else (
+        Path(args.output_dir) if args.output_dir else config.runs_dir
+    ) / f"{seed_path.stem}_trimmed.json"
+    if output.suffix != ".json":
+        output = output / f"{seed_path.stem}_trimmed.json"
+
+    save_raw_seed(
+        output,
+        current,
+        metadata={
+            "source": str(seed_path),
+            "completed": final.completed,
+            "total_frames": final.total_frames,
+            "fitness": final.fitness,
+            "max_progress": final.max_progress,
+            "trim_notes": notes,
+            "level": config.level_id,
+        },
+    )
+    print(
+        f"Wrote {output}: {len(frames)} -> {len(current)} frames "
+        f"(clear={final.total_frames if final.completed else None}, "
+        f"completed={final.completed})"
+    )
+    evaluator.close()
+
+
+def cmd_segment_hillclimb(args: argparse.Namespace) -> None:
+    """Checkpoint-accelerated hillclimb inside a frame window."""
+    from platformer_common.segment_hillclimb import segment_hillclimb_raw
+    from platformer_common.frame_tools import load_raw_frames, save_raw_seed
+
+    config = _resolve_config(args)
+    start_state = getattr(args, "state", None)
+    seed_path = Path(args.seed)
+    frames = load_raw_frames(seed_path)
+    window = _parse_window(args.window)
+    if window is None:
+        raise SystemExit("--window START:END is required for segment-hillclimb")
+
+    output_dir = Path(args.output_dir) if args.output_dir else config.runs_dir / "segment_hc"
+    evaluator = Evaluator(config, start_state=start_state)
+    print(f"Seed: {len(frames)} frames from {seed_path}")
+    print(f"Level: {config.display_name}")
+    print(f"Window: [{window[0]}:{window[1]}]")
+
+    best, result = segment_hillclimb_raw(
+        frames,
+        evaluator,
+        window=window,
+        max_iterations=args.iterations,
+        prefer_trim=not args.no_prefer_trim,
+        require_completion=not args.allow_incomplete,
+        output_dir=output_dir,
+        verbose=True,
+    )
+    out = output_dir / "segment_hillclimb_best.json"
+    # Also write a copy with metadata if the engine file exists
+    if out.exists():
+        print(f"Saved {out}")
+    else:
+        save_raw_seed(
+            out,
+            best,
+            metadata={
+                "completed": result.completed,
+                "total_frames": result.total_frames,
+                "fitness": result.fitness,
+                "window": list(window),
+                "level": config.level_id,
+            },
+        )
+        print(f"Saved {out}")
     evaluator.close()
 
 
@@ -2495,6 +2710,91 @@ def main(default_level: str | None = None) -> None:
     p_hraw.add_argument("--iterations", type=int, default=1000)
     p_hraw.add_argument("--output-dir", help="Output directory")
     p_hraw.add_argument("--state", help="Override start state")
+    p_hraw.add_argument(
+        "--window",
+        help="Only mutate START:END (enables checkpoint-accelerated segment engine)",
+    )
+    p_hraw.add_argument(
+        "--prefer-trim",
+        action="store_true",
+        help="Bias mutations toward frame deletion / hold shortening",
+    )
+    p_hraw.add_argument(
+        "--require-completion",
+        action="store_true",
+        help="Never accept a candidate that fails to complete",
+    )
+
+    # analyze-seed (static + optional live eval)
+    p_an = sub.add_parser(
+        "analyze-seed",
+        help="Report leading idle, hold stalls, optional clear-frame eval",
+    )
+    p_an.add_argument("--seed", required=True, help="Path to raw_buttons / nes9_rle seed")
+    p_an.add_argument("--state", help="Override start state")
+    p_an.add_argument(
+        "--static-only",
+        action="store_true",
+        help="Skip emulator eval (idle/hold stats only)",
+    )
+    p_an.add_argument("--output", "-o", help="Write JSON report path")
+
+    # trim-seed (deterministic frame-saving transforms)
+    p_trim = sub.add_parser(
+        "trim-seed",
+        help="Trim leading idle, compress holds, drop post-clear pad",
+    )
+    p_trim.add_argument("--seed", required=True, help="Path to raw_buttons / nes9_rle seed")
+    p_trim.add_argument("--state", help="Override start state")
+    p_trim.add_argument("--output", "-o", help="Output JSON path")
+    p_trim.add_argument("--output-dir", help="Output directory (if --output omitted)")
+    p_trim.add_argument(
+        "--parity",
+        choices=("any", "even", "odd"),
+        default="any",
+        help="Leading-idle trim parity (SMB 1-1 needs even)",
+    )
+    p_trim.add_argument("--step", type=int, default=1, help="Leading-trim search step")
+    p_trim.add_argument("--max-leading", type=int, default=None, help="Cap leading idle trim")
+    p_trim.add_argument("--pad", type=int, default=30, help="Idle frames kept after clear")
+    p_trim.add_argument("--no-leading", action="store_true", help="Skip leading-idle search")
+    p_trim.add_argument("--no-trailing", action="store_true", help="Skip post-clear trim")
+    p_trim.add_argument(
+        "--holds",
+        action="store_true",
+        help="Also binary-search compress long identical-button holds",
+    )
+    p_trim.add_argument("--min-hold", type=int, default=30, help="Min hold length to probe")
+    p_trim.add_argument(
+        "--allow-incomplete",
+        action="store_true",
+        help="Accept non-completing candidates (default: require completion)",
+    )
+
+    # segment-hillclimb (windowed + checkpoint)
+    p_seg = sub.add_parser(
+        "segment-hillclimb",
+        help="Checkpoint-accelerated hillclimb inside a frame window",
+    )
+    p_seg.add_argument("--seed", required=True, help="Path to raw_buttons / nes9_rle seed")
+    p_seg.add_argument(
+        "--window",
+        required=True,
+        help="Mutable frame range START:END (prefix is checkpointed)",
+    )
+    p_seg.add_argument("--iterations", type=int, default=1000)
+    p_seg.add_argument("--output-dir", help="Output directory")
+    p_seg.add_argument("--state", help="Override start state")
+    p_seg.add_argument(
+        "--no-prefer-trim",
+        action="store_true",
+        help="Disable delete/hold-trim mutation bias",
+    )
+    p_seg.add_argument(
+        "--allow-incomplete",
+        action="store_true",
+        help="Allow non-completing fitness improvements",
+    )
 
     # watch
     p_watch = sub.add_parser("watch", help="Watch action sequence visually")
@@ -2613,7 +2913,17 @@ def main(default_level: str | None = None) -> None:
         return
 
     # Validate --level is provided for commands that need it
-    needs_level = args.command not in ("list-levels", "list-routes", "chain", "chain-live", "chain-optimize", "chain-video")
+    needs_level = args.command not in (
+        "list-levels",
+        "list-routes",
+        "chain",
+        "chain-live",
+        "chain-optimize",
+        "chain-video",
+    )
+    # analyze-seed can run static-only without a level
+    if args.command == "analyze-seed" and getattr(args, "static_only", False):
+        needs_level = False
     if needs_level and not args.level:
         parser.error(f"--level is required for '{args.command}'. Use 'list-levels' to see available levels.")
 
@@ -2625,6 +2935,9 @@ def main(default_level: str | None = None) -> None:
         "optimize": cmd_optimize,
         "hillclimb": cmd_hillclimb,
         "hillclimb-raw": cmd_hillclimb_raw,
+        "analyze-seed": cmd_analyze_seed,
+        "trim-seed": cmd_trim_seed,
+        "segment-hillclimb": cmd_segment_hillclimb,
         "watch": cmd_watch,
         "watch-bk2": cmd_watch_bk2,
         "prepare-seeds": cmd_prepare_seeds,

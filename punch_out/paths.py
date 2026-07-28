@@ -12,3 +12,4 @@ ROMS_DIR = GAME_DIR / "roms"
 INTEGRATION_DIR = GAME_DIR / "custom_integrations" / GAME
 SHARED_ROM_ZIP = REPO_ROOT / "roms" / "Nintendo" / "NES" / "Mike Tyson's Punch-Out!!.zip"
 LEVEL1_STATE = "Level1"
+MATCH1_STATE = "Match1"

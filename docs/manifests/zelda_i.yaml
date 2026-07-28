@@ -4,8 +4,8 @@ directory: zelda_i
 genre_tracks:
   - graph_navigation
 capability_phase: 4
-project_state: boot_verified
-maturity: M1
+project_state: segment_verified
+maturity: M5
 runtime_class: bronze
 intervention_class: clean
 popularity: high
@@ -14,12 +14,15 @@ transfer_value: medium
 ending_definition: credits after defeating Ganon and rescuing Zelda
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: null
+best_manifest: zelda_i/recordings/level1_clear54_natural.json
 best_video: null
 assist_contract: null
 status_doc: zelda_i/docs/STATUS.md
 plan_doc: zelda_i/docs/plan.md
-last_verified: 2026-07-27
-blocker: first cave visit / first overworld segment policy
+last_verified: 2026-07-28
+blocker: clear Level 1 room 0x52 west branch and continue toward map / Aquamentus
 notes: >-
-  M1: power-on to controllable overworld (mode $12==5, health $066F). Platform NES under roms/Nintendo/NES.
+  M5: power-on → first key → clear 0x63 → clear/key 0x53 → east → clear
+  room 0x54 (2/2 natural + 2/2 isolated). Data-driven dungeon lab sweep went
+  16/16; item 0x16 has no known inventory delta. West returns to 0x53 and
+  east is blocked. Bronze Clean.

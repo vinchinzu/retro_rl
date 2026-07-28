@@ -1,12 +1,12 @@
 # Agent Instructions — mega_man_2
 
-Scripted NES completion agent for **Mega Man 2** (platforming, stage_action track; maturity M0→M1).
+Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M1).
 
 ## Identity
 
 | Field | Value |
 |-------|-------|
-| Status | scaffolded / boot in progress |
+| Status | boot verified (M1) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |

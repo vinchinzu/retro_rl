@@ -1,0 +1,727 @@
+{
+  "route_id": "smb_warp_any_percent",
+  "maturity": "M8",
+  "runtime_observation": "Bronze",
+  "intervention_class": "Clean",
+  "benchmark_eligible": true,
+  "start_contract": "power_on",
+  "completion_contract": "world_8_4_ending",
+  "timing_contracts": {
+    "rta_any_percent": {
+      "contract_id": "rta_any_percent",
+      "label": "RTA any% (control start → axe)",
+      "start": "first controllable 1-1 frame after boot/settle phase-align",
+      "end": "first frame reached_ending (8-4, oper_mode=2)",
+      "fps": 60.0988138974405,
+      "frames": 22005,
+      "time": "06:06.147",
+      "time_display_60": "06:06.750",
+      "public_anchor": "happylee_warps_rta_note",
+      "public": {
+        "label": "HappyLee warps under RTA timing (TASVideos note on #1715)",
+        "published_time": "04:54.032",
+        "frames": 17671,
+        "publication": "https://tasvideos.org/1715M"
+      },
+      "delta_frames": 4334,
+      "delta_seconds": 72.115,
+      "delta_time": "+01:12.115",
+      "segments": [
+        {
+          "exit_id": "1-1",
+          "policy_frame": 1974,
+          "clock_frame": 1974,
+          "seg_frames": 1974,
+          "cum_time": "00:32.846",
+          "seg_time": "00:32.846",
+          "clock_time": "00:32.846",
+          "world": 0,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "1-2",
+          "policy_frame": 4377,
+          "clock_frame": 4377,
+          "seg_frames": 2403,
+          "cum_time": "01:12.830",
+          "seg_time": "00:39.984",
+          "clock_time": "01:12.830",
+          "world": 3,
+          "level": 0,
+          "lives": 2
+        },
+        {
+          "exit_id": "4-1",
+          "policy_frame": 6717,
+          "clock_frame": 6717,
+          "seg_frames": 2340,
+          "cum_time": "01:51.766",
+          "seg_time": "00:38.936",
+          "clock_time": "01:51.766",
+          "world": 3,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "4-2",
+          "policy_frame": 9335,
+          "clock_frame": 9335,
+          "seg_frames": 2618,
+          "cum_time": "02:35.328",
+          "seg_time": "00:43.562",
+          "clock_time": "02:35.328",
+          "world": 7,
+          "level": 0,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-1",
+          "policy_frame": 13021,
+          "clock_frame": 13021,
+          "seg_frames": 3686,
+          "cum_time": "03:36.660",
+          "seg_time": "01:01.332",
+          "clock_time": "03:36.660",
+          "world": 7,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-2",
+          "policy_frame": 16172,
+          "clock_frame": 16172,
+          "seg_frames": 3151,
+          "cum_time": "04:29.090",
+          "seg_time": "00:52.430",
+          "clock_time": "04:29.090",
+          "world": 7,
+          "level": 2,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-3",
+          "policy_frame": 18399,
+          "clock_frame": 18399,
+          "seg_frames": 2227,
+          "cum_time": "05:06.146",
+          "seg_time": "00:37.056",
+          "clock_time": "05:06.146",
+          "world": 7,
+          "level": 3,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-4",
+          "policy_frame": 22005,
+          "clock_frame": 22005,
+          "seg_frames": 3606,
+          "cum_time": "06:06.147",
+          "seg_time": "01:00.001",
+          "clock_time": "06:06.147",
+          "world": 7,
+          "level": 3,
+          "lives": 2
+        }
+      ]
+    },
+    "tasvideos_poweron": {
+      "contract_id": "tasvideos_poweron",
+      "label": "TASVideos power-on movie",
+      "start": "power_on / env.reset frame 0",
+      "end": "first frame reached_ending (8-4, oper_mode=2)",
+      "fps": 60.0988138974405,
+      "frames": 22371,
+      "time": "06:12.237",
+      "time_display_60": "06:12.850",
+      "public_anchor": "happylee_warps_tasvideos",
+      "public": {
+        "label": "HappyLee NES Super Mario Bros. \"warps\"",
+        "published_time": "04:57.31",
+        "frames": 17868,
+        "publication": "https://tasvideos.org/1715M"
+      },
+      "delta_frames": 4503,
+      "delta_seconds": 74.927,
+      "delta_time": "+01:14.927",
+      "segments": [
+        {
+          "exit_id": "1-1",
+          "policy_frame": 1974,
+          "clock_frame": 2340,
+          "seg_frames": 1974,
+          "cum_time": "00:32.846",
+          "seg_time": "00:32.846",
+          "clock_time": "00:38.936",
+          "world": 0,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "1-2",
+          "policy_frame": 4377,
+          "clock_frame": 4743,
+          "seg_frames": 2403,
+          "cum_time": "01:12.830",
+          "seg_time": "00:39.984",
+          "clock_time": "01:18.920",
+          "world": 3,
+          "level": 0,
+          "lives": 2
+        },
+        {
+          "exit_id": "4-1",
+          "policy_frame": 6717,
+          "clock_frame": 7083,
+          "seg_frames": 2340,
+          "cum_time": "01:51.766",
+          "seg_time": "00:38.936",
+          "clock_time": "01:57.856",
+          "world": 3,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "4-2",
+          "policy_frame": 9335,
+          "clock_frame": 9701,
+          "seg_frames": 2618,
+          "cum_time": "02:35.328",
+          "seg_time": "00:43.562",
+          "clock_time": "02:41.417",
+          "world": 7,
+          "level": 0,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-1",
+          "policy_frame": 13021,
+          "clock_frame": 13387,
+          "seg_frames": 3686,
+          "cum_time": "03:36.660",
+          "seg_time": "01:01.332",
+          "clock_time": "03:42.750",
+          "world": 7,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-2",
+          "policy_frame": 16172,
+          "clock_frame": 16538,
+          "seg_frames": 3151,
+          "cum_time": "04:29.090",
+          "seg_time": "00:52.430",
+          "clock_time": "04:35.180",
+          "world": 7,
+          "level": 2,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-3",
+          "policy_frame": 18399,
+          "clock_frame": 18765,
+          "seg_frames": 2227,
+          "cum_time": "05:06.146",
+          "seg_time": "00:37.056",
+          "clock_time": "05:12.236",
+          "world": 7,
+          "level": 3,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-4",
+          "policy_frame": 22005,
+          "clock_frame": 22371,
+          "seg_frames": 3606,
+          "cum_time": "06:06.147",
+          "seg_time": "01:00.001",
+          "clock_time": "06:12.237",
+          "world": 7,
+          "level": 3,
+          "lives": 2
+        }
+      ]
+    },
+    "policy_seed": {
+      "contract_id": "policy_seed",
+      "label": "Continuous seed length (display 60 Hz)",
+      "start": "seed frame 0 after phase-align idle",
+      "end": "first frame reached_ending (8-4, oper_mode=2)",
+      "fps": 60.0,
+      "frames": 22005,
+      "time": "06:06.750",
+      "time_display_60": "06:06.750",
+      "segments": [
+        {
+          "exit_id": "1-1",
+          "policy_frame": 1974,
+          "clock_frame": 1974,
+          "seg_frames": 1974,
+          "cum_time": "00:32.900",
+          "seg_time": "00:32.900",
+          "clock_time": "00:32.900",
+          "world": 0,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "1-2",
+          "policy_frame": 4377,
+          "clock_frame": 4377,
+          "seg_frames": 2403,
+          "cum_time": "01:12.950",
+          "seg_time": "00:40.050",
+          "clock_time": "01:12.950",
+          "world": 3,
+          "level": 0,
+          "lives": 2
+        },
+        {
+          "exit_id": "4-1",
+          "policy_frame": 6717,
+          "clock_frame": 6717,
+          "seg_frames": 2340,
+          "cum_time": "01:51.950",
+          "seg_time": "00:39.000",
+          "clock_time": "01:51.950",
+          "world": 3,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "4-2",
+          "policy_frame": 9335,
+          "clock_frame": 9335,
+          "seg_frames": 2618,
+          "cum_time": "02:35.583",
+          "seg_time": "00:43.633",
+          "clock_time": "02:35.583",
+          "world": 7,
+          "level": 0,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-1",
+          "policy_frame": 13021,
+          "clock_frame": 13021,
+          "seg_frames": 3686,
+          "cum_time": "03:37.017",
+          "seg_time": "01:01.433",
+          "clock_time": "03:37.017",
+          "world": 7,
+          "level": 1,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-2",
+          "policy_frame": 16172,
+          "clock_frame": 16172,
+          "seg_frames": 3151,
+          "cum_time": "04:29.533",
+          "seg_time": "00:52.517",
+          "clock_time": "04:29.533",
+          "world": 7,
+          "level": 2,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-3",
+          "policy_frame": 18399,
+          "clock_frame": 18399,
+          "seg_frames": 2227,
+          "cum_time": "05:06.650",
+          "seg_time": "00:37.117",
+          "clock_time": "05:06.650",
+          "world": 7,
+          "level": 3,
+          "lives": 2
+        },
+        {
+          "exit_id": "8-4",
+          "policy_frame": 22005,
+          "clock_frame": 22005,
+          "seg_frames": 3606,
+          "cum_time": "06:06.750",
+          "seg_time": "01:00.100",
+          "clock_time": "06:06.750",
+          "world": 7,
+          "level": 3,
+          "lives": 2
+        }
+      ]
+    }
+  },
+  "comparisons": [
+    {
+      "contract_id": "rta_any_percent",
+      "ours_frames": 22005,
+      "ours_time": "06:06.147",
+      "public_label": "HappyLee warps under RTA timing (TASVideos note on #1715)",
+      "public_time": "04:54.032",
+      "public_frames": 17671,
+      "delta_frames": 4334,
+      "delta_time": "+01:12.115"
+    },
+    {
+      "contract_id": "tasvideos_poweron",
+      "ours_frames": 22371,
+      "ours_time": "06:12.237",
+      "public_label": "HappyLee NES Super Mario Bros. \"warps\"",
+      "public_time": "04:57.31",
+      "public_frames": 17868,
+      "delta_frames": 4503,
+      "delta_time": "+01:14.927"
+    }
+  ],
+  "policy_seed": "smb/models/smb_1_1_to_ending.json",
+  "boot_frames": 350,
+  "settle_frames": 16,
+  "policy_frames": 22005,
+  "ending_settle_frames": 120,
+  "trials": 3,
+  "successes": 3,
+  "success_rate": 1.0,
+  "exits_completed": [
+    8,
+    8,
+    8
+  ],
+  "state_loads_during_attempt": [
+    0,
+    0,
+    0
+  ],
+  "milestones": [
+    {
+      "exit_id": "1-1",
+      "frame": 1974,
+      "level": 1,
+      "lives": 2,
+      "world": 0
+    },
+    {
+      "exit_id": "1-2",
+      "frame": 4377,
+      "level": 0,
+      "lives": 2,
+      "world": 3
+    },
+    {
+      "exit_id": "4-1",
+      "frame": 6717,
+      "level": 1,
+      "lives": 2,
+      "world": 3
+    },
+    {
+      "exit_id": "4-2",
+      "frame": 9335,
+      "level": 0,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-1",
+      "frame": 13021,
+      "level": 1,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-2",
+      "frame": 16172,
+      "level": 2,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-3",
+      "frame": 18399,
+      "level": 3,
+      "lives": 2,
+      "world": 7
+    },
+    {
+      "exit_id": "8-4",
+      "frame": 22005,
+      "level": 3,
+      "lives": 2,
+      "world": 7
+    }
+  ],
+  "final": {
+    "area_pointer": 229,
+    "level": 3,
+    "level_id": 31,
+    "lives": 2,
+    "oper_mode": 2,
+    "player_state": 8,
+    "player_x": 4826,
+    "player_y": 97,
+    "world": 7
+  },
+  "intervention": {
+    "boot_frames": 350,
+    "class": "Clean",
+    "mid_attempt_state_loads": 0,
+    "note": "env.reset power-on; fixed boot script frames + idle phase-align; controller-only through 8-4 ending",
+    "settle_frames": 16,
+    "start": "power_on"
+  },
+  "trials_report": "smb/recordings/warp_finish/warp_finish_poweron_trials_report.json",
+  "tas_validation": "smb/recordings/warp_finish/warp_finish_poweron_tas_validation.json",
+  "video": "smb/recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4",
+  "video_bytes": 37868613,
+  "recording": {
+    "audio": true,
+    "audio_rate": 32040,
+    "hud": true,
+    "path": "smb/recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4",
+    "scale": 3
+  },
+  "notes": "This manifest describes the preserved 22,005-frame M8 MP4 and its matching timing block. The current 21,731-frame controller seed is verified by the linked report/trials JSON but has not been re-recorded; see current_best and tas_validation.",
+  "capture_policy_status": "historical_pre_optimization",
+  "current_best": {
+    "verified_at": "2026-07-28",
+    "policy_frames_to_ending": 21731,
+    "rta_any_percent": {
+      "contract_id": "rta_any_percent",
+      "delta_frames": 4060,
+      "delta_seconds": 67.555,
+      "delta_time": "+01:07.555",
+      "end": "first frame reached_ending (8-4, oper_mode=2)",
+      "fps": 60.0988138974405,
+      "frames": 21731,
+      "label": "RTA any% (control start → axe)",
+      "public": {
+        "frames": 17671,
+        "label": "HappyLee warps under RTA timing (TASVideos note on #1715)",
+        "publication": "https://tasvideos.org/1715M",
+        "published_time": "04:54.032"
+      },
+      "public_anchor": "happylee_warps_rta_note",
+      "segments": [
+        {
+          "clock_frame": 1974,
+          "clock_time": "00:32.846",
+          "cum_time": "00:32.846",
+          "exit_id": "1-1",
+          "level": 1,
+          "lives": 2,
+          "policy_frame": 1974,
+          "seg_frames": 1974,
+          "seg_time": "00:32.846",
+          "world": 0
+        },
+        {
+          "clock_frame": 4044,
+          "clock_time": "01:07.289",
+          "cum_time": "01:07.289",
+          "exit_id": "1-2",
+          "level": 0,
+          "lives": 2,
+          "policy_frame": 4044,
+          "seg_frames": 2070,
+          "seg_time": "00:34.443",
+          "world": 3
+        },
+        {
+          "clock_frame": 6366,
+          "clock_time": "01:45.926",
+          "cum_time": "01:45.926",
+          "exit_id": "4-1",
+          "level": 1,
+          "lives": 2,
+          "policy_frame": 6366,
+          "seg_frames": 2322,
+          "seg_time": "00:38.636",
+          "world": 3
+        },
+        {
+          "clock_frame": 9130,
+          "clock_time": "02:31.916",
+          "cum_time": "02:31.916",
+          "exit_id": "4-2",
+          "level": 0,
+          "lives": 2,
+          "policy_frame": 9130,
+          "seg_frames": 2764,
+          "seg_time": "00:45.991",
+          "world": 7
+        },
+        {
+          "clock_frame": 12796,
+          "clock_time": "03:32.916",
+          "cum_time": "03:32.916",
+          "exit_id": "8-1",
+          "level": 1,
+          "lives": 2,
+          "policy_frame": 12796,
+          "seg_frames": 3666,
+          "seg_time": "01:01.000",
+          "world": 7
+        },
+        {
+          "clock_frame": 15947,
+          "clock_time": "04:25.346",
+          "cum_time": "04:25.346",
+          "exit_id": "8-2",
+          "level": 2,
+          "lives": 2,
+          "policy_frame": 15947,
+          "seg_frames": 3151,
+          "seg_time": "00:52.430",
+          "world": 7
+        },
+        {
+          "clock_frame": 18153,
+          "clock_time": "05:02.053",
+          "cum_time": "05:02.053",
+          "exit_id": "8-3",
+          "level": 3,
+          "lives": 2,
+          "policy_frame": 18153,
+          "seg_frames": 2206,
+          "seg_time": "00:36.706",
+          "world": 7
+        },
+        {
+          "clock_frame": 21731,
+          "clock_time": "06:01.588",
+          "cum_time": "06:01.588",
+          "exit_id": "8-4",
+          "level": 3,
+          "lives": 2,
+          "policy_frame": 21731,
+          "seg_frames": 3578,
+          "seg_time": "00:59.535",
+          "world": 7
+        }
+      ],
+      "start": "first controllable 1-1 frame after boot/settle phase-align",
+      "time": "06:01.588",
+      "time_display_60": "06:02.183"
+    },
+    "tasvideos_poweron": {
+      "contract_id": "tasvideos_poweron",
+      "delta_frames": 4229,
+      "delta_seconds": 70.367,
+      "delta_time": "+01:10.367",
+      "end": "first frame reached_ending (8-4, oper_mode=2)",
+      "fps": 60.0988138974405,
+      "frames": 22097,
+      "label": "TASVideos power-on movie",
+      "public": {
+        "frames": 17868,
+        "label": "HappyLee NES Super Mario Bros. \"warps\"",
+        "publication": "https://tasvideos.org/1715M",
+        "published_time": "04:57.31"
+      },
+      "public_anchor": "happylee_warps_tasvideos",
+      "segments": [
+        {
+          "clock_frame": 2340,
+          "clock_time": "00:38.936",
+          "cum_time": "00:32.846",
+          "exit_id": "1-1",
+          "level": 1,
+          "lives": 2,
+          "policy_frame": 1974,
+          "seg_frames": 1974,
+          "seg_time": "00:32.846",
+          "world": 0
+        },
+        {
+          "clock_frame": 4410,
+          "clock_time": "01:13.379",
+          "cum_time": "01:07.289",
+          "exit_id": "1-2",
+          "level": 0,
+          "lives": 2,
+          "policy_frame": 4044,
+          "seg_frames": 2070,
+          "seg_time": "00:34.443",
+          "world": 3
+        },
+        {
+          "clock_frame": 6732,
+          "clock_time": "01:52.016",
+          "cum_time": "01:45.926",
+          "exit_id": "4-1",
+          "level": 1,
+          "lives": 2,
+          "policy_frame": 6366,
+          "seg_frames": 2322,
+          "seg_time": "00:38.636",
+          "world": 3
+        },
+        {
+          "clock_frame": 9496,
+          "clock_time": "02:38.006",
+          "cum_time": "02:31.916",
+          "exit_id": "4-2",
+          "level": 0,
+          "lives": 2,
+          "policy_frame": 9130,
+          "seg_frames": 2764,
+          "seg_time": "00:45.991",
+          "world": 7
+        },
+        {
+          "clock_frame": 13162,
+          "clock_time": "03:39.006",
+          "cum_time": "03:32.916",
+          "exit_id": "8-1",
+          "level": 1,
+          "lives": 2,
+          "policy_frame": 12796,
+          "seg_frames": 3666,
+          "seg_time": "01:01.000",
+          "world": 7
+        },
+        {
+          "clock_frame": 16313,
+          "clock_time": "04:31.436",
+          "cum_time": "04:25.346",
+          "exit_id": "8-2",
+          "level": 2,
+          "lives": 2,
+          "policy_frame": 15947,
+          "seg_frames": 3151,
+          "seg_time": "00:52.430",
+          "world": 7
+        },
+        {
+          "clock_frame": 18519,
+          "clock_time": "05:08.143",
+          "cum_time": "05:02.053",
+          "exit_id": "8-3",
+          "level": 3,
+          "lives": 2,
+          "policy_frame": 18153,
+          "seg_frames": 2206,
+          "seg_time": "00:36.706",
+          "world": 7
+        },
+        {
+          "clock_frame": 22097,
+          "clock_time": "06:07.678",
+          "cum_time": "06:01.588",
+          "exit_id": "8-4",
+          "level": 3,
+          "lives": 2,
+          "policy_frame": 21731,
+          "seg_frames": 3578,
+          "seg_time": "00:59.535",
+          "world": 7
+        }
+      ],
+      "start": "power_on / env.reset frame 0",
+      "time": "06:07.678",
+      "time_display_60": "06:08.283"
+    },
+    "report": "smb/recordings/warp_finish/warp_finish_poweron_report.json",
+    "trials_report": "smb/recordings/warp_finish/warp_finish_poweron_trials_report.json"
+  }
+}

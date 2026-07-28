@@ -8,9 +8,10 @@ game without forcing a nonlinear world into a stage-number list.
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from dataclasses import dataclass, field
 
+from adventure_common.graph import normalize_capability, shortest_path as shared_shortest_path
 from super_metroid.ram import BOMBS_MASK, MORPH_BALL_MASK, SuperMetroidState
 
 
@@ -126,30 +127,31 @@ class RoomProgressionGraph:
         target_room_id: int,
         capabilities: frozenset[str] = frozenset(),
     ) -> tuple[DoorEdge, ...] | None:
-        if source_room_id == target_room_id:
-            return ()
-        queue: deque[int] = deque([source_room_id])
-        parent: dict[int, tuple[int, DoorEdge]] = {}
-        seen = {source_room_id}
-        while queue:
-            room_id = queue.popleft()
-            for edge in self._outgoing.get(room_id, ()):
-                if not edge.requires.issubset(capabilities):
-                    continue
-                if edge.target_room_id in seen:
-                    continue
-                seen.add(edge.target_room_id)
-                parent[edge.target_room_id] = (room_id, edge)
-                if edge.target_room_id == target_room_id:
-                    path: list[DoorEdge] = []
-                    cursor = target_room_id
-                    while cursor != source_room_id:
-                        previous, used = parent[cursor]
-                        path.append(used)
-                        cursor = previous
-                    return tuple(reversed(path))
-                queue.append(edge.target_room_id)
-        return None
+        """Capability-aware BFS; uses shared adventure_common path core."""
+        from adventure_common.graph import GraphEdge
+
+        caps = frozenset(normalize_capability(v) for v in capabilities)
+        shared_edges = tuple(
+            GraphEdge(
+                source_id=edge.source_room_id,
+                target_id=edge.target_room_id,
+                edge_id=edge.edge_id,
+                direction=edge.exit_direction,
+                requires=frozenset(normalize_capability(v) for v in edge.requires),
+            )
+            for edge in self.edges
+        )
+        path = shared_shortest_path(
+            shared_edges,
+            source_room_id,
+            target_room_id,
+            capabilities=caps,
+        )
+        if path is None:
+            return None
+        # Map back to DoorEdge instances (preserve policy/verification metadata).
+        by_id = {edge.edge_id: edge for edge in self.edges}
+        return tuple(by_id[edge.edge_id] for edge in path)
 
     def to_dict(self) -> dict[str, object]:
         """Return a stable JSON-ready navigation-map representation."""

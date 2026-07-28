@@ -357,18 +357,30 @@ def evaluate_network(
         else:
             frames_since_progress += 1
 
-        # Completion check (level_id_change or ram_flag)
+        # Completion check — match Evaluator (aliases + completion_level_ids).
         level_id = values.get("level_id", prev_level_id)
+        main_level_ids = {config.target_level_id, *config.level_id_aliases}
         if config.completion_signal == "ram_flag":
             ram_key = getattr(config, "completion_ram_key", None)
             ram_val = getattr(config, "completion_ram_value", None)
-            if ram_key and values.get(ram_key) == ram_val:
+            if (
+                ram_key
+                and values.get(ram_key) == ram_val
+                and max_progress >= config.completion_min_progress
+            ):
                 completed = True
                 total_frames = frame_idx + 1
                 break
         else:
-            if level_id != prev_level_id and level_id != 0:
-                if max_progress >= config.completion_min_progress:
+            # level_id_change: leave main level set for a real completion id.
+            if (
+                level_id not in main_level_ids
+                and level_id != 0
+                and max_progress >= config.completion_min_progress
+            ):
+                allowed = config.completion_level_ids
+                excluded = config.completion_exclude_ids
+                if (not allowed or level_id in allowed) and level_id not in excluded:
                     completed = True
                     total_frames = frame_idx + 1
                     break

@@ -368,6 +368,22 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x00, target_px=(40, 424), radius=16, is_exit=True, exit_direction="left"),
         Waypoint(tilemap=0x0C, target_px=(10, 128), radius=8, is_exit=True, exit_direction="left"),
     ],
+    # Early-game town loop: enter town, touch shop + church fronts, then leave.
+    # Completing this route is the planner's "ready to go home" signal on day 1.
+    "town_explore": [
+        Waypoint(tilemap=0x00, target_px=(40, 424), radius=16, is_exit=True, exit_direction="left"),
+        Waypoint(tilemap=0x0C, target_px=(10, 128), radius=8, is_exit=True, exit_direction="left"),
+        # Town entry lands near the east gate; walk west toward the square.
+        Waypoint(tilemap=0x04, target_px=(688, 430), radius=20),
+        # Seed shop front (shop_door landmark ~tile 37,13 → px ~600,216).
+        Waypoint(tilemap=0x04, target_px=(600, 230), radius=20),
+        # Church plaza approach (church_door ~tile 23,8 → px ~375,140).
+        Waypoint(tilemap=0x04, target_px=(375, 200), radius=24),
+        # Return to east gate for farm exit.
+        Waypoint(tilemap=0x04, target_px=(688, 430), radius=20),
+        Waypoint(tilemap=0x04, target_px=(756, 422), radius=16, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
+    ],
     "town_to_church": [
         Waypoint(tilemap=0x04, target_px=(232, 128), radius=16),
         Waypoint(tilemap=0x04, target_px=(375, 139), radius=10, is_exit=True, exit_direction="up"),
