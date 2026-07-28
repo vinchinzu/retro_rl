@@ -50,10 +50,10 @@ Manifest count: **35**.
 | `SMW` / Super Mario World | platforming | P3 | instrumented | M2 | bronze | clean | no | normalize route tooling into maturity gates and continuous clear path |
 | `alttp` / The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | active | M1 | bronze | clean | no | opening route only to castle grounds; sword/uncle segments next |
 | `metroid` / Metroid | metroidvania_navigation, graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | morph return + (5,14) door for first missiles; then bombs |
-| `super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | continue Brinstar progression past Spore Super room toward full clear |
-| `zelda_i` / The Legend of Zelda | graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | clear Level 1 room 0x52 west branch and continue toward map / Aquamentus |
+| `super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Super → farming → Big Pink main continuous; pure PB sill approach + maze bridges; then path board hops |
+| `zelda_i` / The Legend of Zelda | graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | walk 0x4A → Level 2 door 0x3C (overworld health) |
 | `zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
-| `harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M2 | bronze | clean | no | continuous morning→sleep→next-day (M3) not ROM-verified |
+| `harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | crop plant/harvest income (seed equip + hoe virgin soil) not ROM-closed; money stuck at $100 through spring |
 
 ## Planned / external
 

@@ -48,6 +48,7 @@ from super_metroid.post_spore_controller import (  # noqa: E402
     play_big_pink_morph_to_tunnel,
     play_big_pink_tunnel_west,
     play_farming_to_big_pink,
+    play_pink_pb_break_maze_wall,
     play_pink_pb_morph_bomb_collect,
     play_super_room_collect,
     play_super_room_to_farming,
@@ -90,6 +91,7 @@ def main() -> None:
             "main",
             "main-bridged",
             "pb-door",
+            "pb-maze-wall",
             "pb-collect",
         ),
         default="crest",
@@ -99,7 +101,8 @@ def main() -> None:
             "main = full into_main_shaft (controller). "
             "main-bridged = place hop (legacy dev bridge). "
             "pb-door = enter 0x9E11 from sill (expects on sill; place for dev). "
-            "pb-collect = morph-bomb collect (expects mid-maze ~x≤200)."
+            "pb-maze-wall = pure morph-bomb open wall@437 from bottom spawn. "
+            "pb-collect = morph-bomb collect (expects pocket x≤225; place bridge)."
         ),
     )
     parser.add_argument(
@@ -160,8 +163,31 @@ def main() -> None:
                 "samusY": session.state.samus_y,
             }
             result["success"] = session.state.room_id == 0x9E11
+        elif args.to == "pb-maze-wall":
+            # Pure controller: open wall@437 from bottom-door spawn in 0x9E11.
+            if session.state.room_id != 0x9E11:
+                if session.state.room_id == 0x9D19:
+                    place_samus(env, 580, 1136)
+                    write_wram_u16(env, 0x0A1C, 1)
+                    for _ in range(12):
+                        env.step(idle_action())
+                        session.state = parse_state(env.get_ram(), frame=session.frame)
+                        session.assist.apply(env.data, session.state)
+                    play_big_pink_enter_pb_door_from_sill(session)
+                    result["sillBridge"] = {
+                        "note": "entered 0x9E11 via sill place for maze-wall probe",
+                    }
+            play_pink_pb_break_maze_wall(session)
+            result["pbMazeWall"] = {
+                "roomIdHex": f"0x{session.state.room_id:04X}",
+                "samusX": session.state.samus_x,
+                "samusY": session.state.samus_y,
+            }
+            result["success"] = (
+                session.state.room_id == 0x9E11 and session.state.samus_x <= 410
+            )
         elif args.to == "pb-collect":
-            # Expects 0x9E11 mid-maze (x≲200, y≈395). Place bridge past wall@437.
+            # Expects 0x9E11 collect pocket (x≤225, y≈395). Place bridge if needed.
             if session.state.room_id != 0x9E11:
                 # Enter first via sill bridge if still in Big Pink.
                 if session.state.room_id == 0x9D19:
@@ -172,17 +198,24 @@ def main() -> None:
                         session.state = parse_state(env.get_ram(), frame=session.frame)
                         session.assist.apply(env.data, session.state)
                     play_big_pink_enter_pb_door_from_sill(session)
+            if session.state.room_id == 0x9E11 and session.state.samus_x > 410:
+                # Pure open wall@437 first when still east of it.
+                play_pink_pb_break_maze_wall(session)
+                result["pbMazeWall"] = {
+                    "samusX": session.state.samus_x,
+                    "samusY": session.state.samus_y,
+                }
             if session.state.room_id == 0x9E11 and (
-                session.state.samus_x > 180 or abs(session.state.samus_y - 395) > 30
+                session.state.samus_x > 225 or abs(session.state.samus_y - 395) > 40
             ):
-                place_samus(env, 150, 395)
+                place_samus(env, 220, 395)
                 write_wram_u16(env, 0x0A1C, 1)
                 for _ in range(8):
                     env.step(idle_action())
                     session.state = parse_state(env.get_ram(), frame=session.frame)
                     session.assist.apply(env.data, session.state)
                 result["mazeBridge"] = {
-                    "note": "place_samus(150,395) — wall@437 still open",
+                    "note": "place_samus(220,395) — mid-maze 405→225 still open",
                     "samusX": session.state.samus_x,
                     "samusY": session.state.samus_y,
                 }

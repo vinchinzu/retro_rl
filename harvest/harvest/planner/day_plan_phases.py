@@ -233,20 +233,31 @@ def _crop_work_phases(
     policy: DayPlannerPolicy,
 ) -> List[PhaseSpec]:
     plant_seeds = bool(has_seeds and policy.include_planting and not late_day)
-    needs_crop_phase = (
-        has_waterable and not is_rainy if late_day else (has_waterable and not is_rainy) or plant_seeds
-    )
+    needs_manual_water = bool(not is_rainy and (has_waterable or plant_seeds))
+    needs_crop_phase = plant_seeds or needs_manual_water
+    if late_day:
+        needs_crop_phase = bool(has_waterable and not is_rainy)
+        plant_seeds = False
+        needs_manual_water = bool(has_waterable and not is_rainy)
     if not policy.include_watering or not needs_crop_phase:
         return []
 
     phases: List[PhaseSpec] = []
-    if not is_rainy:
-        phases.append(ENSURE_WATERING_CAN_PHASE)
+    # Only two carry slots. Plant pass uses hoe+seeds; water pass re-fetches the
+    # can afterward (seed bag frees a slot once the bag is spent).
     if plant_seeds:
         phases.append(ENSURE_CROP_SEEDS_PHASE)
-    if late_day or plant_seeds or not (policy.include_harvest and has_harvest and not late_day):
         phases.append(NAV_CROP_PHASE)
-    phases.append(CROP_WATER_PHASE)
+        phases.append(CROP_WATER_PHASE)
+    if needs_manual_water:
+        phases.append(ENSURE_WATERING_CAN_PHASE)
+        # When a harvest route will already walk the field, skip a second nav.
+        prefer_harvest_nav = bool(
+            policy.include_harvest and has_harvest and not late_day and not plant_seeds
+        )
+        if not prefer_harvest_nav:
+            phases.append(NAV_CROP_PHASE)
+        phases.append(CROP_WATER_PHASE)
     return phases
 
 

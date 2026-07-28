@@ -35,6 +35,14 @@ Training method is separate from runtime observation class. Imitation learning
 and privileged training signals are valid when disclosed; the claimed class
 describes the live evaluation loop.
 
+Offline route research is also separate from runtime class. Walkthroughs,
+maps, wikis, speedrun notes, and other external references are permitted
+development inputs for all games. Record source-informed route facts in the
+closest game-local documentation and validate them in the emulator. Using
+external knowledge does not count as an intervention; live observations,
+state loads, memory writes, and controller inputs determine the benchmark
+labels.
+
 ## Intervention class
 
 What the attempt may mutate mid-run. Independent of runtime observation.

@@ -71,7 +71,11 @@ ROOM_STATUS: dict[str, dict[str, str]] = {
     },
     "0x9D19": {
         "status": "controller_dev",
-        "note": "Big Pink: crest+tunnel→main shaft (play_big_pink_into_main_shaft); PB climb OPEN",
+        "note": "Big Pink: crest+tunnel→main; PB sill entry green; approach wall@613 OPEN",
+    },
+    "0x9E11": {
+        "status": "controller_dev",
+        "note": "Pink PB: wall@437 pure break; collect from x≤225; mid-maze 405→225 OPEN",
     },
     # Boss rooms — entry required eventually; fights deferred
     "0xA59F": {"status": "boss_deferred", "note": "Kraid — dev spray exists; natural entry open"},
@@ -93,8 +97,8 @@ HOP_STATUS: dict[str, dict[str, str]] = {
         "note": "play_farming_to_big_pink",
     },
     "0x9D19->0x9E11": {
-        "status": "open",
-        "note": "★ NEXT: climb shaft to PB door 0x8E02 / block [32,71]",
+        "status": "controller_dev",
+        "note": "sill entry green; ★ pure sill approach + mid-maze 405→225 still open",
     },
 }
 
@@ -233,8 +237,18 @@ def _waves() -> list[dict[str, object]]:
             "title": "Super → Power Bombs by play",
             "goal": "0x9B5B → 0xA0A4 → 0x9D19 → 0x9E11 + PB collect",
             "status": "in_progress",
-            "done": ["Super collect continuous", "farming hop controller_dev", "Big Pink to main shaft"],
-            "open": ["Big Pink climb to PB door", "natural PB collect", "continuous power-on through PB"],
+            "done": [
+                "Super collect continuous",
+                "farming hop controller_dev",
+                "Big Pink to main shaft",
+                "PB wall@437 pure morph-bomb",
+                "PB pocket collect (x≤225)",
+            ],
+            "open": [
+                "Big Pink pure sill approach (wall@613 / y1051)",
+                "mid-maze 405→225 pure",
+                "continuous power-on through PB",
+            ],
             "hops": 3,
         },
         {

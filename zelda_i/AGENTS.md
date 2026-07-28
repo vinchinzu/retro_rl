@@ -1,13 +1,13 @@
 # Agent Instructions — zelda_i
 
 Scripted NES completion agent for **The Legend of Zelda** (graph_navigation
-track; maturity **M5** — boot → Level 1 room 0x54 cleared).
+track; maturity **M5** — Clean power-on → Level 1 Triforce shard 1).
 
 ## Identity
 
 | Field | Value |
 |-------|-------|
-| Status | chained early suffix (M5; east branch room 0x54 clear) |
+| Status | chained Level 1 completion (M5; `triforce & 0x01`) |
 | Integration | `LegendOfZelda-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Legend of Zelda, The.zip` |
 | Local ROM | `zelda_i/roms/` (via `scripts/setup_rom.py`) |
@@ -32,6 +32,10 @@ uv run python zelda_i/scripts/run_level1_clear53.py
 uv run python zelda_i/scripts/run_level1_clear53.py --natural-entry
 uv run python zelda_i/scripts/run_level1_clear54.py
 uv run python zelda_i/scripts/run_level1_clear54.py --natural-entry
+uv run python zelda_i/scripts/run_level1_complete.py --trials 2
+uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
+uv run python zelda_i/scripts/run_to_level2_prefix.py --trials 2
+uv run python zelda_i/scripts/run_to_level2_prefix.py --from-heart --trials 2
 uv run python zelda_i/scripts/dungeon_lab.py --help
 uv run pytest zelda_i/tests adventure_common/tests -q
 ```
@@ -45,8 +49,12 @@ uv run pytest zelda_i/tests adventure_common/tests -q
 | `overworld_nav.py` | Sword → Level 1 overworld/door controller |
 | `level1.py` | First key + locked north-door + room 0x63/0x53 controllers |
 | `dungeon.py` | Data-driven room specs + generic dungeon combat controller |
+| `level1_finish.py` | Switch/hint routing, backtrack, Aquamentus, and Triforce controllers |
+| `level2_overworld.py` | Post-Triforce settle + walk prefix toward Level 2 (stop 0x4A) |
 | `dungeon_lab.py` | Parallel sweeps, traces/diffs, RAM deltas, exit probes, provenance |
 | `docs/DUNGEON_LAB.md` | Lab commands, artifacts, and acceptance boundary |
+| `docs/LEVEL1_ROUTE.md` | Walkthrough correlation + verified Eagle speed route |
+| `docs/LEVEL2_ROUTE.md` | Post-Triforce settle + walk prefix / traps toward Moon |
 | `chain.py` | Shared natural power-on → Level 1 live prefix |
 | `routes.py` | Named routes / milestones |
 | `sword_cave.py` | Sword segment controller |
@@ -75,19 +83,35 @@ uv run pytest zelda_i/tests adventure_common/tests -q
   produces a deterministic death.
 - Room 0x53's key is the fixed room-clear item at **(128,109)**. Do not chase
   transient type `0x60` green-rupee drops as though they were the key.
-- Cleared 0x53 branches west to 0x52 (six Keese) and east to 0x54 (eight
-  Keese, RoomItemId=0x16); north is closed.
+- Cleared 0x53 branches west to the required 0x52 route and east to optional
+  0x54 (eight Keese / Compass); north is closed.
 - Keese (`0x1B`) have HP=0 while alive. Use type-only liveness; HP-positive
   predicates false-clear the room.
-- Room 0x54 clear: attack phase 0, engage distance 48, center patrol. West
-  returns to 0x53; the east doorway probe is blocked. Item `0x16` causes no
-  known inventory change and remains symbolically unknown.
+- Room 0x42's switch block is pushed north from x≈112/y≈149. The accepted
+  route visits hint room 0x41 before crossing east into 0x43.
+- Room 0x44's maze requires the upper corridor to reach 0x45. The speed route
+  skips its Boomerang pickup.
+- Dormant Wallmasters remain at x=0 after the first wave. Use dominant-axis
+  engagement so Link aligns vertically and slashes left into the wall.
+- Aquamentus is north of 0x45 in 0x35. Use the fixed stance/fireball dodge
+  controller; the natural RNG stream needs its recorded 109-frame entry
+  alignment.
+- The Triforce is east in 0x36. Route down the left perimeter, east along the
+  bottom, then north through the x≈112–128 opening.
+- After triforce: **idle** mode 18 (~704f) → overworld **0x37**. Do not reload
+  `Level1Complete` mid-fanfare (can freeze). Use `Level1ExitOverworld` or live
+  settle.
+- Level 2 walk prefix: `0x37→38→48→58→59→49→4A` (controller stop). **Never**
+  route through rocky dead-end **0x79**. On 0x37 only y≈140 exits east.
+- Item IDs `0x16` Compass, `0x17` Map, and `0x1D` Boomerang are
+  walkthrough-correlated; the speed route does not collect them.
 - Lab checkpoints are development fixtures until the same spec passes the
   power-on natural-entry runner.
 
 ## Next milestone
 
-Take the west branch through room 0x52 and continue toward the map/Aquamentus.
+Walk 0x4A → overworld 0x3C (Moon door) with heart-safe combat, then Level 2
+interior.
 
 ## Norms
 

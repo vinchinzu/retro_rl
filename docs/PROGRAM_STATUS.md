@@ -45,7 +45,7 @@ Battle Clash remains `blocked: infrastructure` (no Super Scope injection).
 | Final Fight | Natural-entry hardening + Stage 3 continuity → chain toward continuous dry-run |
 | Magical Quest / Joe & Mac | First reliable room/segment clears with natural entry |
 | Super Metroid | Close remaining critical path rooms (PB sill / maze) and inventory bridges |
-| NES | Zelda I power-on→clear Level 1 room 0x54 done; next: room 0x52 west branch; SMB 1-1, MM2 Air Man, Glass Joe |
+| NES | Zelda I Clean power-on→Triforce shard 1 done; next: route to Level 2; SMB 1-1, MM2 Air Man, Glass Joe |
 | Hygiene | Regenerate matrix + update local `STATUS.md` after every verified advance |
 | Assists | Explicit `ASSIST_CONTRACT.md` before any assisted published result |
 
@@ -70,7 +70,7 @@ track under the same M0–M8 ladder — see [ROADMAP.md](ROADMAP.md).
 | DuckTales | `ducktales/` | Land select control |
 | Castlevania | `castlevania/` | Stage 1 playable |
 | Super Mario Bros. 3 | `smb3/` | World 1-1 clear (natural entry) |
-| Zelda I | `zelda_i/` | **M5** power-on → clear east-branch room 0x54 (graph core + dungeon lab) |
+| Zelda I | `zelda_i/` | **M5** Clean power-on → Level 1 Triforce shard 1 (2/2) |
 | Zelda II | `zelda_ii/` | North Palace control |
 
 ### NES top-10 implementation order (capability pairs)
@@ -89,10 +89,10 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 |-------|--------------|---------|
 | Linear combat | Final Fight M3→M4 | Natural-entry and Stage 3 continuity |
 | Platforming | Magical Quest / Joe & Mac M2→M3 | First room/segment clears |
-| Graph navigation | Super Metroid M5→M6; Zelda I M5 | SM: PB sill/maze; Zelda: room 0x52 west branch + continue dungeon graph (`adventure_common`) |
+| Graph navigation | Super Metroid M5→M6; Zelda I M5 | SM: PB sill/maze; Zelda: Level 1 done, route completion warp → Level 2 (`adventure_common`) |
 | Continuous control | F-Zero / Pilotwings M2→M3 | First lap / lesson objective |
 | NES top-10 | M1→M3+ | TMNT II M3 + Zelda I M5 + SMB M4 (warp→W4) done; remaining: MM2, Glass Joe, pure continuous SMB 1-2, … |
-| Planning | Harvest M2 | Long-horizon evaluation contract |
+| Planning | Harvest M3 | Crop close-loop (plant/harvest income); then summer natural-entry |
 
 ## Capability phase focus
 

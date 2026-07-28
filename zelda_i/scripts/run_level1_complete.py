@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -53,7 +54,45 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 
 
-def _finish_stages():
+def _finish_stages(*, natural_entry: bool):
+    room33 = ROOM_33_SPEC
+    room23 = ROOM_23_SPEC
+    room44 = ROOM_44_SPEC
+    room45 = ROOM_45_SPEC
+    boss_entry_delay = 109
+    if not natural_entry:
+        # Checkpoint-isolated runs start from a different emulator RNG stream.
+        # Preserve the independently verified checkpoint tunings while the
+        # canonical natural-entry chain uses the specs above.
+        room33 = replace(
+            room33,
+            combat=replace(
+                room33.combat,
+                engage_distance=40,
+                attack_phase=0,
+            ),
+        )
+        room23 = replace(
+            room23,
+            combat=replace(
+                room23.combat,
+                engage_distance=64,
+                attack_phase=0,
+            ),
+        )
+        room44 = replace(
+            room44,
+            combat=replace(
+                room44.combat,
+                engage_distance=80,
+                attack_phase=6,
+            ),
+        )
+        room45 = replace(
+            room45,
+            combat=replace(room45.combat, attack_phase=2),
+        )
+        boss_entry_delay = 0
     return (
         (
             "clear52",
@@ -77,13 +116,13 @@ def _finish_stages():
         ),
         (
             "clear33_key",
-            GenericDungeonRoomController(ROOM_33_SPEC),
-            ROOM_33_SPEC.max_frames,
+            GenericDungeonRoomController(room33),
+            room33.max_frames,
         ),
         (
             "clear23_key",
-            GenericDungeonRoomController(ROOM_23_SPEC),
-            ROOM_23_SPEC.max_frames,
+            GenericDungeonRoomController(room23),
+            room23.max_frames,
         ),
         (
             "backtrack44",
@@ -92,17 +131,19 @@ def _finish_stages():
         ),
         (
             "clear44",
-            GenericDungeonRoomController(ROOM_44_SPEC),
-            ROOM_44_SPEC.max_frames,
+            GenericDungeonRoomController(room44),
+            room44.max_frames,
         ),
         (
             "clear45_key",
-            GenericDungeonRoomController(ROOM_45_SPEC),
-            ROOM_45_SPEC.max_frames,
+            GenericDungeonRoomController(room45),
+            room45.max_frames,
         ),
         (
             "aquamentus_heart",
-            Level1AquamentusController(),
+            Level1AquamentusController(
+                entry_delay_frames=boss_entry_delay,
+            ),
             AQUAMENTUS_MAX_FRAMES,
         ),
         (
@@ -135,7 +176,9 @@ def run_once(
             obs, *_ = env.step(nes_idle_action())
             prefix_ok = True
 
-        for name, controller, max_frames in _finish_stages():
+        for name, controller, max_frames in _finish_stages(
+            natural_entry=natural_entry
+        ):
             if not prefix_ok:
                 break
             obs, stage = run_controller_stage(

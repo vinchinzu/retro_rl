@@ -41,18 +41,21 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertTrue(watering_can_in_carry_pair(ram))
         self.assertTrue(seed_item_in_carry_pair(ram, "potato"))
 
-    def test_crop_task_fails_fast_when_watering_can_is_missing(self) -> None:
+    def test_crop_task_continues_when_watering_can_not_in_carry_pair(self) -> None:
+        """Seeds-only carry pair must still allow hoe/plant before watering."""
         ram = _blank_ram()
         ram[ADDR_TOOL] = 0x07
         ram[0x0923] = 0x0C
+        ram[ADDR_TILEMAP] = 0x00
         world = SimpleNamespace(ram=ram, info={}, obs=None)
         task = CropWaterTask()
         task.reset(world)
 
         result = task.step(world)
 
-        self.assertEqual(result.status, TaskStatus.FAILURE)
-        self.assertEqual(result.reason, "watering can not in carry pair")
+        # Must not hard-fail for missing watering can while seeds are in hand.
+        self.assertNotEqual(result.status, TaskStatus.FAILURE)
+        self.assertNotEqual(result.reason, "watering can not in carry pair")
 
     def test_crop_task_succeeds_without_seed_tool_when_raining(self) -> None:
         ram = _blank_ram()

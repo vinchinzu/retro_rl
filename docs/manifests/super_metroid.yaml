@@ -14,11 +14,11 @@ transfer_value: very_high
 ending_definition: verified ending/credits after escape
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: super_metroid/recordings/start_to_spore_spawn.json
-best_video: super_metroid/recordings/start_to_spore_spawn.mp4
+best_manifest: super_metroid/recordings/start_to_supers.json
+best_video: super_metroid/recordings/start_to_supers.mp4
 assist_contract: super_metroid/docs/ASSIST_CONTRACT.md
 status_doc: super_metroid/docs/STATUS.md
 plan_doc: super_metroid/docs/plan.md
-last_verified: 2026-07-24
-blocker: continue Brinstar progression past Spore Super room toward full clear
-notes: Continuous power-on → Spore Spawn verified; not yet ending.
+last_verified: 2026-07-28
+blocker: Super → farming → Big Pink main continuous; pure PB sill approach + maze bridges; then path board hops
+notes: Continuous power-on → Spore Super Missiles verified (M5); not yet ending.

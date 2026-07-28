@@ -5,16 +5,16 @@ Default path: multi-day planner with ``target_days=1`` (return-home + sleep that
 always finds the house). Optional ``--day-plan boot_to_day2`` runs the explicit
 macro-chained phase sequence inside a single-day plan that ends with sleep.
 
-Success (M3+): calendar day advances (or reaches ``--until-day`` / ``--days``),
-morning scene is stable, no mid-run state load.
+Success: calendar goal reached, morning scene stable, no mid-run state load.
 
 Examples:
 
     HEADLESS=1 uv run python -m harvest.scripts.run_to_day2
     HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House
-    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --day-plan boot_to_day2
-    # From Spring day 2 morning → day 4 (two overnights):
     HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --days 2 --until-day 4
+    # Full spring from pinned morning (sleeps through Spring 30 → Summer 1):
+    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --end-of-spring \\
+      --out recordings/run_spring_month.json
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -64,7 +63,7 @@ def _parse_args() -> argparse.Namespace:
         "--until-day",
         type=int,
         default=None,
-        help="Stop once calendar day is >= this (same season as start)",
+        help="Stop once calendar day is >= this (inclusive morning target)",
     )
     p.add_argument(
         "--until-season",
@@ -73,21 +72,32 @@ def _parse_args() -> argparse.Namespace:
         help="Season index for --until-day (default: start season)",
     )
     p.add_argument(
+        "--end-of-spring",
+        action="store_true",
+        help="Run until Summer morning (MultiDay until Spring 30 exclusive end)",
+    )
+    p.add_argument(
         "--max-frames",
         type=int,
         default=None,
-        help="Hard frame budget (default: 80k per overnight)",
+        help="Hard frame budget (default scales with overnight count)",
     )
     p.add_argument(
         "--progress-every",
         type=int,
-        default=1500,
+        default=2000,
         help="Print progress every N frames (0 disables)",
     )
     p.add_argument(
         "--out",
         type=Path,
         default=PROJECT_DIR / "recordings" / "run_to_day2.json",
+    )
+    p.add_argument(
+        "--save-end-state",
+        type=str,
+        default=None,
+        help="Optional state name to write under custom_integrations when done",
     )
     return p.parse_args()
 
@@ -103,16 +113,34 @@ def _date_fields(ram) -> dict[str, int]:
         "hour": int(read_ram_value(ram, "hour")),
         "minute": int(read_ram_value(ram, "minute")),
         "tilemap": int(read_ram_value(ram, "tilemap")),
+        "money": int(read_ram_value(ram, "money")),
+        "stamina": int(read_ram_value(ram, "stamina")),
     }
 
 
 def _build_task(args: argparse.Namespace, start_season: int) -> object:
     if args.day_plan:
-        if args.days is not None or args.until_day is not None:
-            raise SystemExit("--day-plan cannot be combined with --days/--until-day")
+        if (
+            args.days is not None
+            or args.until_day is not None
+            or args.end_of_spring
+        ):
+            raise SystemExit(
+                "--day-plan cannot be combined with --days/--until-day/--end-of-spring"
+            )
         return DayPlanTask(
             phase_sequence=list(PHASE_SEQUENCES[args.day_plan]),
             state_name=args.state,
+        )
+
+    # MultiDayPlannerTask: target_days OR exclusive until_(season, day).
+    # harvest_bot --end-of-spring uses until_season=0 until_day=30 so success
+    # when date > Spring 30 (i.e. Summer 1 morning).
+    if args.end_of_spring:
+        return MultiDayPlannerTask(
+            until_season=0,
+            until_day=30,
+            max_days=40,
         )
 
     target_days = args.days
@@ -122,30 +150,24 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
     if target_days is None and until_day is None:
         target_days = 1
 
-    max_days = 40
-    if target_days is not None:
-        max_days = max(target_days + 1, 2)
-    elif until_day is not None:
-        # Budget a few extra overnights for season wrap / retries.
-        max_days = max(until_day + 5, 4)
-
-    kwargs: dict = {"max_days": max_days}
+    kwargs: dict = {"max_days": 40}
     if target_days is not None:
         kwargs["target_days"] = target_days
+        kwargs["max_days"] = max(target_days + 1, 2)
+
     if until_day is not None:
-        # MultiDayPlannerTask treats until_* as exclusive upper bound
-        # (success when current date > (until_season, until_day)).
-        # Callers pass the *target morning day*, so stop after day-1.
-        kwargs["until_day"] = max(1, until_day - 1)
-        kwargs["until_season"] = until_season
-        # Prefer calendar stop when both are set: leave target_days unset so
-        # _target_reached uses the date comparison.
-        if args.days is None:
-            kwargs.pop("target_days", None)
+        # Inclusive morning target → exclusive MultiDay bound (day-1).
+        # Example: --until-day 4 → stop when date > Spring 3 → D4 morning.
+        # Cross-season: --until-season 1 --until-day 1 → exclusive (1, 0).
+        if until_day <= 1 and until_season > 0:
+            kwargs["until_season"] = until_season - 1
+            kwargs["until_day"] = 30
         else:
-            # Both: require nights and calendar (use nights; calendar is checked
-            # in the runner loop as well).
-            kwargs["target_days"] = target_days
+            kwargs["until_season"] = until_season
+            kwargs["until_day"] = max(0, until_day - 1)
+        if target_days is None:
+            kwargs.pop("target_days", None)
+            kwargs["max_days"] = max(kwargs.get("until_day", 30) + 5, 4)
 
     return MultiDayPlannerTask(**kwargs)
 
@@ -157,6 +179,13 @@ def _goal_reached(
     days_completed: int | None,
     args: argparse.Namespace,
 ) -> bool:
+    if end <= start and not args.end_of_spring:
+        # Still allow end-of-spring only if we somehow wrap? No.
+        if end == start:
+            return False
+    if args.end_of_spring:
+        # Summer (or later) morning after finishing Spring 30 overnight.
+        return end > (0, 30)
     if end <= start:
         return False
     if args.until_day is not None:
@@ -167,23 +196,45 @@ def _goal_reached(
     if args.days is not None:
         if days_completed is not None:
             return days_completed >= args.days
-        # Fallback: calendar advanced by at least N days (same season).
         return end[0] > start[0] or end[1] >= start[1] + args.days
-    # Default: one overnight.
     return end > start
+
+
+def _summarize_journal(journal: list[dict]) -> dict:
+    phase_success: dict[str, int] = {}
+    phase_skip: dict[str, int] = {}
+    for row in journal:
+        for result in row.get("phase_results") or []:
+            name = str(result.get("phase", "?"))
+            status = str(result.get("status", ""))
+            if status == "success":
+                phase_success[name] = phase_success.get(name, 0) + 1
+            elif status == "skipped":
+                phase_skip[name] = phase_skip.get(name, 0) + 1
+    return {
+        "overnights": len(journal),
+        "phase_success_counts": phase_success,
+        "phase_skip_counts": phase_skip,
+        "final_money": journal[-1].get("money") if journal else None,
+    }
 
 
 def main() -> int:
     args = _parse_args()
     _configure_headless()
 
-    overnights = args.days or 1
-    if args.until_day is not None and args.days is None:
-        overnights = max(1, args.until_day)  # rough budget
+    if args.end_of_spring:
+        overnights_budget = 32
+    elif args.days is not None:
+        overnights_budget = args.days
+    elif args.until_day is not None:
+        overnights_budget = max(2, args.until_day + 2)
+    else:
+        overnights_budget = 1
+
     if args.max_frames is None:
-        args.max_frames = 80_000 * max(1, overnights if args.days else 1)
-        if args.until_day is not None and args.days is None:
-            args.max_frames = 80_000 * max(2, args.until_day)
+        # ~25k frames/day upper bound with crop/clear work.
+        args.max_frames = 30_000 * max(1, overnights_budget)
 
     env = make_harvest_env(state=args.state, render_mode="rgb_array")
     t0 = time.monotonic()
@@ -199,12 +250,14 @@ def main() -> int:
         task = _build_task(args, start_season)
         task.reset(world)
 
-        plan_label = args.day_plan or "auto_multi_day"
+        plan_label = args.day_plan or (
+            "end_of_spring" if args.end_of_spring else "auto_multi_day"
+        )
         print(
             f"[RUN] state={args.state} plan={plan_label} "
             f"start=S{start_season}D{start_day} "
-            f"days={args.days} until_day={args.until_day} "
-            f"max_frames={args.max_frames}",
+            f"days={args.days} until=({args.until_season},{args.until_day}) "
+            f"end_of_spring={args.end_of_spring} max_frames={args.max_frames}",
             flush=True,
         )
 
@@ -228,9 +281,6 @@ def main() -> int:
                 )
                 last_logged_day = current
 
-            days_completed = getattr(task, "_days_completed", None)
-            # Do not stop solely on calendar/nights while MultiDay is still
-            # settling the morning after the final sleep — wait for SUCCESS.
             if result.status == TaskStatus.SUCCESS:
                 reason = result.reason or "success"
                 terminal = True
@@ -240,11 +290,10 @@ def main() -> int:
                 terminal = True
                 break
 
-            # Single-day named sequences may finish without MultiDay SUCCESS.
             if args.day_plan and _goal_reached(
                 start=start_key,
                 end=current,
-                days_completed=days_completed,
+                days_completed=getattr(task, "_days_completed", None),
                 args=args,
             ):
                 reason = "goal reached"
@@ -256,9 +305,10 @@ def main() -> int:
                 progress = getattr(task, "progress_text", "")
                 hour = int(read_ram_value(world.ram, "hour"))
                 minute = int(read_ram_value(world.ram, "minute"))
+                money = int(read_ram_value(world.ram, "money"))
                 print(
                     f"[RUN] f={frames} date=S{season}D{day} "
-                    f"{hour:02d}:{minute:02d} phase={phase} {progress}",
+                    f"{hour:02d}:{minute:02d} ${money} phase={phase} {progress}",
                     flush=True,
                 )
 
@@ -274,6 +324,7 @@ def main() -> int:
         end_fields = _date_fields(world.ram)
         end_key = (end_fields["season"], end_fields["day"])
         days_completed = getattr(task, "_days_completed", None)
+        journal = list(getattr(task, "day_journal", ()) or ())
         advanced = end_key > start_key
         goal = _goal_reached(
             start=start_key,
@@ -284,14 +335,26 @@ def main() -> int:
         morning_ok = morning_scene_ready(scene, end_fields["hour"]) or (
             scene.is_normal_map and int(read_ram_value(world.ram, "input_lock")) == 1
         )
-        success = goal and advanced
-        # Soft preference: morning stable after overnight; still count success
-        # if day advanced even during transition (caller can re-check settle).
+        success = bool(goal and advanced and morning_ok)
+
+        if args.save_end_state and success:
+            try:
+                from harvest.paths import GAME_DIR
+
+                state_bytes = env.em.get_state()
+                out_state = GAME_DIR / f"{args.save_end_state}.state"
+                out_state.write_bytes(state_bytes)
+                print(f"[RUN] Saved end state -> {out_state}", flush=True)
+            except Exception as exc:
+                print(f"[RUN] Could not save end state: {exc}", flush=True)
+
         report = {
             "state": args.state,
             "day_plan": plan_label,
             "days": args.days,
             "until_day": args.until_day,
+            "until_season": args.until_season,
+            "end_of_spring": bool(args.end_of_spring),
             "frames": frames,
             "wall_seconds": round(time.monotonic() - t0, 1),
             "start": start_fields,
@@ -300,6 +363,8 @@ def main() -> int:
             "morning_ready": bool(morning_ok),
             "days_completed": days_completed,
             "day_failures": list(getattr(task, "day_failures", ()) or ()),
+            "day_journal": journal,
+            "journal_summary": _summarize_journal(journal),
             "success": success,
             "advanced": advanced,
             "goal_reached": goal,

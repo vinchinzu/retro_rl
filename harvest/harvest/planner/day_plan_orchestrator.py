@@ -115,6 +115,7 @@ class DayPlanTask(Task):
     _recovery_original_reason: str = field(default="", init=False)
     _recovery_attempted_phases: set[tuple[int, str]] = field(default_factory=set, init=False)
     _deferred_plans: list[DeferredPlan] = field(default_factory=list, init=False)
+    _phase_results: list[dict[str, object]] = field(default_factory=list, init=False)
 
     def __post_init__(self):
         self._reset_phase_lists()
@@ -132,6 +133,7 @@ class DayPlanTask(Task):
         self._recovery_original_reason = ""
         self._recovery_attempted_phases.clear()
         self._deferred_plans.clear()
+        self._phase_results.clear()
 
     def _reset_phase_lists(self) -> None:
         self._schedule = PhaseSchedule.from_sequence(self.phase_sequence, DAY1_PHASES)
@@ -156,6 +158,29 @@ class DayPlanTask(Task):
     @property
     def deferred_plans(self) -> tuple[DeferredPlan, ...]:
         return tuple(self._deferred_plans)
+
+    @property
+    def phase_results(self) -> tuple[dict[str, object], ...]:
+        """Per-phase outcomes for the current day (success / skipped / failed)."""
+        return tuple(dict(row) for row in self._phase_results)
+
+    def _record_phase_result(
+        self,
+        spec: PhaseSpec | None,
+        status: str,
+        reason: str = "",
+    ) -> None:
+        if spec is None:
+            return
+        self._phase_results.append(
+            {
+                "phase": spec.phase,
+                "kind": getattr(spec.kind, "value", str(spec.kind)),
+                "status": status,
+                "reason": reason,
+                "step": int(self._step_count),
+            }
+        )
 
     @property
     def phases(self) -> tuple[PhaseSpec, ...]:
@@ -233,6 +258,7 @@ class DayPlanTask(Task):
         current = self._schedule.current_at(self._phase_index)
         phase_name = current.phase if current is not None else "?"
         print(f"[DAY_PLAN] {phase_name} -> {reason}")
+        self._record_phase_result(current, "success", reason)
         if current is not None and current.phase in GO_HOME_TRIGGER_PHASES:
             self._mark_ready_to_go_home(current.phase)
             self._ensure_end_day_phases()
@@ -289,6 +315,7 @@ class DayPlanTask(Task):
     def _skip_failed_phase(self, spec: PhaseSpec, reason: str) -> None:
         """Skip an optional failed phase and avoid optional berry/shop follow-up after harvest trouble."""
         print(f"[DAY_PLAN] Skipping failed phase {spec.phase}: {reason}")
+        self._record_phase_result(spec, "skipped", reason)
         self._record_deferred_phase(spec, reason)
         self._phase_index += 1
         self._current_task = None
@@ -513,7 +540,10 @@ class MultiDayPlannerTask(Task):
     _settle_count: int = field(default=0, init=False)
     _active_day: Tuple[int, int] = field(default=(0, 0), init=False)
     _last_day_decision: Optional[DayPlanDecision] = field(default=None, init=False)
+    _last_day_phase_results: list[dict[str, object]] = field(default_factory=list, init=False)
+    _last_day_deferred: list[dict[str, object]] = field(default_factory=list, init=False)
     _day_failures: list[dict[str, object]] = field(default_factory=list, init=False)
+    _day_journal: list[dict[str, object]] = field(default_factory=list, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "plan_day"
@@ -523,7 +553,10 @@ class MultiDayPlannerTask(Task):
         self._settle_count = 0
         self._active_day = read_world_date(world.ram)
         self._last_day_decision = None
+        self._last_day_phase_results.clear()
+        self._last_day_deferred.clear()
         self._day_failures.clear()
+        self._day_journal.clear()
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -545,6 +578,11 @@ class MultiDayPlannerTask(Task):
     @property
     def day_failures(self) -> tuple[dict[str, object], ...]:
         return tuple(dict(item) for item in self._day_failures)
+
+    @property
+    def day_journal(self) -> tuple[dict[str, object], ...]:
+        """One row per completed overnight with phase outcomes when available."""
+        return tuple(dict(item) for item in self._day_journal)
 
     @property
     def current_task(self) -> Optional[Task]:
@@ -664,7 +702,62 @@ class MultiDayPlannerTask(Task):
         print(f"[MULTI_DAY] Watchdog forced return_home: {reason}")
         return True
 
+    def _capture_day_plan_outcomes(self) -> None:
+        """Snapshot DayPlanTask phase results before switching to return/sleep."""
+        child = self._current_task
+        if not isinstance(child, DayPlanTask):
+            return
+        self._last_day_phase_results = list(child.phase_results)
+        self._last_day_deferred = [
+            {
+                "phase": item.phase,
+                "reason": item.reason,
+                "retry": item.retry,
+            }
+            for item in child.deferred_plans
+        ]
+
+    def _journal_day_complete(self, world: WorldState, *, sleep_reason: str) -> None:
+        """Record phase outcomes for the day that just ended."""
+        season, day = self._active_day
+        end_season, end_day = read_world_date(world.ram)
+        money = 0
+        try:
+            from harvest.core.ram_catalog import read_ram_value
+
+            money = int(read_ram_value(world.ram, "money"))
+        except Exception:
+            money = 0
+        # Prefer snapshot taken when plan_day finished; fall back to live task.
+        self._capture_day_plan_outcomes()
+        phase_results = list(self._last_day_phase_results)
+        deferred = list(self._last_day_deferred)
+        planned = []
+        if self._last_day_decision is not None:
+            planned = [p.phase for p in self._last_day_decision.phases]
+        row = {
+            "plan_season": int(season),
+            "plan_day": int(day),
+            "end_season": int(end_season),
+            "end_day": int(end_day),
+            "overnights_completed": int(self._days_completed + 1),
+            "sleep_reason": sleep_reason,
+            "money": money,
+            "planned_phases": planned,
+            "phase_results": phase_results,
+            "deferred": deferred,
+            "step": int(self._step_count),
+        }
+        self._day_journal.append(row)
+        succeeded = [r["phase"] for r in phase_results if r.get("status") == "success"]
+        skipped = [r["phase"] for r in phase_results if r.get("status") == "skipped"]
+        print(
+            f"[MULTI_DAY] Day journal {season}:{day} -> {end_season}:{end_day} "
+            f"ok={succeeded or ['(none)']} skipped={skipped or ['(none)']} money={money}"
+        )
+
     def _finish_sleep(self, world: WorldState, reason: str = "day advanced") -> TaskResult:
+        self._journal_day_complete(world, sleep_reason=reason)
         self._days_completed += 1
         season, day = read_world_date(world.ram)
         print(
@@ -736,6 +829,8 @@ class MultiDayPlannerTask(Task):
                 return self._finish_sleep(world, "ending reached")
             return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
         if self._phase in {"plan_day", "return_home"} and read_world_date(world.ram) != self._active_day:
+            if self._phase == "plan_day":
+                self._capture_day_plan_outcomes()
             self._record_day_failure(
                 world,
                 "overnight",
@@ -780,6 +875,7 @@ class MultiDayPlannerTask(Task):
             if scene_indicates_ending(scene) or "ending" in reason:
                 return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
             if self._phase == "plan_day":
+                self._capture_day_plan_outcomes()
                 return self._force_return_home_after_failure(world, result.status, reason)
             if self._phase == "return_home":
                 tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -820,6 +916,7 @@ class MultiDayPlannerTask(Task):
             )
 
         if self._phase == "plan_day":
+            self._capture_day_plan_outcomes()
             self._phase = "return_home"
             self._current_task = None
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))

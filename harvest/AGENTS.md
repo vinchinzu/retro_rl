@@ -13,10 +13,19 @@ All commands require `uv run` (stable-retro is not in base Python).
 # Boot/morning fixture probe (M1/M2)
 uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
 
-# One overnight toward day+1 (M3 target; ROM required)
+# One overnight toward day+1 (M3; ROM required)
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House
+# Two overnights: Spring D2 → D4 morning (verified 2026-07-28)
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_Inside_House --days 2 --until-day 4 \
+  --out recordings/run_to_day4.json
+# Full spring calendar → Summer D1 (verified 2026-07-28 calendar; crop income open)
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_Inside_House --end-of-spring \
+  --out recordings/run_spring_month.json \
+  --save-end-state Y1_Summer_D1_Morning
 # multi-day shell also works:
-HEADLESS=1 ./run_bot.sh play --autoplay --state Y1_Inside_House --days 1
+HEADLESS=1 ./run_bot.sh play --autoplay --state Y1_Inside_House --end-of-spring
 
 # Tests (narrow — pick the modules you changed)
 uv run python -m unittest tests.test_day_plan_sequences tests.test_day_phase_registry tests.test_task_progress -v

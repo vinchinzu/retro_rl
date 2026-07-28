@@ -4,65 +4,91 @@
 
 | Field | Value |
 |-------|-------|
-| Current maturity | M2 |
-| Best verified result | Instrumentated day planner + pinned morning/sleep fixtures; continuous boot→day-2 not yet ROM-verified |
+| Current maturity | **M3** (calendar multi-day); crop economy still short of M4 domain |
+| Best verified result | Continuous ROM spring month from `Y1_Inside_House` (Spring D2 06:08) → Summer D1 06:00 house, **29 overnights**, no mid-run state load |
 | Last verification | 2026-07-28 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **M2 instrumented** — RAM catalog, scene classifier, day planner, multi-day shell |
+| Status | **Spring calendar soak verified**; plant/harvest income not yet closed |
 | Integration | `HarvestMoon-Snes` |
-| ROM | `roms/Harvest Moon.sfc` (local) / monorepo `roms/` candidates via `retro_setup` |
-| Start contract | Named morning state (`Y1_Inside_House` / `Y1_Spring_Day01_06h*`) or multi-day from latest |
-| Completion contract | Campaign (multi-year farm / marriage / ending) — TBD in ASSIST_CONTRACT when assists appear |
-| Evidence | Unit suite under `tests/`; long-run logs under `logs/long_runs/`; pinned states in `custom_integrations/HarvestMoon-Snes/` |
+| ROM | `roms/Harvest Moon.sfc` via `retro_setup` (SHA1 gate) |
+| Start contract | Named morning state (`Y1_Inside_House`) |
+| Completion contract | Campaign (multi-year farm / marriage / ending) — TBD |
+| Evidence | `recordings/run_spring_month.json`; `logs/long_runs/run_spring_month_*.log`; end state `Y1_Summer_D1_Morning.state` |
 
 ## Done
 
-- **M1-ish integration**: custom integration path, ROM symlink repair, editor + bot launchers
-- **M2 instrumentation**: `harvest/core/ram_catalog.py`, scene classifier, world snapshot, NPC catalog
-- Day planner with dynamic phases, failure policies, multi-day return-home/sleep loop
-- Coop/cow/crop/harvest tasks with unit coverage
-- **2026-07-28 route work**:
-  - `GoToSleepTask` always finds the house via `ReturnHomeTask` before bed nav
-  - Nav/multi-nav dismiss dialogue **and** menus (scene classifier)
-  - `town_explore` route + `READY_TO_GO_HOME` flag phases
-  - `day1` / `boot_to_day2` sequences chain macros → town → return → sleep
-  - Specs layout: `docs/STATUS.md`, `docs/plan.md`, `docs/ram_map.md`, `scripts/`
+- M1/M2 instrumentation + day planner + multi-day shell
+- Sleep always finds house; morning settle after final overnight
+- **2026-07-28 M3 overnight**: Spring D2 → D4
+- **2026-07-28 full spring calendar** (headless):
+  ```bash
+  HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+    --state Y1_Inside_House --end-of-spring \
+    --out recordings/run_spring_month.json \
+    --save-end-state Y1_Summer_D1_Morning
+  ```
+  - Start Spring **D2** 06:08 → end Summer **D1** 06:00 house `(136,120)`
+  - `days_completed=29`, `day_failures=[]`, `morning_ready=true`, `mid_run_state_load=false`
+  - ~207k frames / ~10 min wall
+  - Phase success counts (every overnight completed its scheduled work or optional partial clear):
+    - `EXIT_TO_FARM` 29, `CLEAR_FIELD` 29, `BUY_SEEDS` 3, `ENSURE_WATERING_CAN` 20,
+      `ENSURE_CROP_SEEDS` 22, `NAV_CROP` 22, `CROP_WATER` 22
+  - Money stayed **$100** (spent seeds, **no harvest income**) — crop plant path was effectively a no-op
 
-## Next acceptance (M3)
+## Crop / domain gap (open → plant path closed)
 
-Continuous single-day clear into next morning:
+Spring calendar still had **no harvest income** ($100 floor). Root causes and fixes:
 
-```bash
-# Unit (no ROM)
-uv run python -m unittest tests.test_day_plan_sequences tests.test_day_phase_registry -v
+| Issue | Status |
+|-------|--------|
+| Virgin soil `CROP_WATER` no-op (`no plots detected`) | Fixed: planner → hoe → plant |
+| Shop seeds stock>0 but bag not in carry | **ROM-verified**: shed shelf pick at (190,118) → tool `0x07` |
+| Seed equip restored watering can (swapped seeds away) | Fixed: leave seeds+hoe in carry |
+| Only 2 carry slots | Day plan plant pass (hoe+seeds) then can+water pass |
+| Plant establish | **ROM-verified** from `Y1_After_Buy_Potato`: `planted=1`, tiles `0x54` dry potato, stock 1→0 |
+| Same-day water after plant | Partial: needs can re-fetch from field (shed nav from deep field still flaky) |
+| Grow → harvest → ship → money > $100 | **Not yet** multi-day verified |
 
-# ROM-backed: morning → sleep → day advanced (headless multi-day days=1)
-HEADLESS=1 ./run_bot.sh play --autoplay --state Y1_Inside_House --day-plan boot_to_day2 --days 1
-
-# Or multi-day auto plan for one overnight
-HEADLESS=1 ./run_bot.sh play --autoplay --state Y1_Inside_House --days 1
+ROM smoke (2026-07-28):
+```text
+EnsureCropSeeds → tools 0x07/0x02 (potato+hoe)
+CropWaterTask plant → planted=1, field shows 0x54 crops, pot stock=0
+Water without can → SUCCESS partial (plant kept); second pass needs ENSURE_WATERING_CAN
 ```
 
-Success predicate: calendar `day` advances, morning scene is house/farm at 06:00, no state load mid-run.
+## Next acceptance
+
+1. Same-day water after plant (can fetch from field / south stream refill).
+2. From `Y1_Inside_House`, multi-day soak with **money > 100** after first potato harvest window (~day+6).
+3. Phase journal: non-zero `planted_count` / `watered_count`, then `HARVEST_ROUTE`.
+4. Re-run `--end-of-spring` without mid-run state load.
+
+```bash
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_Inside_House --end-of-spring \
+  --out recordings/run_spring_month.json
+```
 
 ## Traps
 
-- Viewport BFS: only ~16×14 tiles load; long routes need intermediate waypoints
-- Sleep must stand at bed pixel (base `(70,86)`, L2 wife bed `(294,102)`), face **up**, plain A
-- Doors reject carried items — return-home clears hands first
-- Mutable `latest.state` is for manual diagnosis only; pin fixtures before regressions
-- Multi-day planner sets `include_end_day=False` on the day task and owns return/sleep itself
+- Viewport BFS; sleep bed pixel + face up; doors reject held items
+- Multi-day owns return/sleep (`include_end_day=False` on day task)
+- Scene wake coordinates: house `y < 100` until settle ~(136,120)
+- Seed bags: inventory **count** can be >0 while tool id `0x07` is not in carry pair — bags sit on the shed shelf after shop buy; X only swaps the 2 carried slots
+- Only two carry slots: plant day uses hoe+seeds first, then can for water after the bag is spent
+- `CLEAR_FIELD` morning budget ~3500f is intentional so seed shop is not starved
+- ROM SHA1 must match `rom.sha`
 
 ## Key states
 
 | State | Role |
 |-------|------|
-| `Y1_Inside_House` | Morning house, day≈2 06:00 |
-| `Y1_Front_House` | Outdoor house front |
-| `Y1_After_Sleep` | Post-sleep morning house |
-| `Y1_Spring_Day01_06h` | Named early spring fixture (verify hour/day in RAM) |
-| `day1` / `day1_end` | Human day1 recording endpoints |
+| `Y1_Inside_House` | Spring D2 morning house — spring soak start |
+| `Y1_Summer_D1_Morning` | Written end of spring calendar soak (verify before reuse) |
+| `Y1_After_Buy_Potato` | Post seed purchase (stock=1, carry often empty) |
+| `Y1_After_Till_Plant` | Reference tilled/planted field |
+| `Y1_After_Sleep` | Spring D3-ish morning |

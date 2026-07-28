@@ -7,7 +7,7 @@
 |-------|-------|
 | Current maturity | M5 |
 | Best verified result | Continuous power-on → Spore Super collect |
-| Last verification | 2026-07-27 |
+| Last verification | 2026-07-28 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 
@@ -25,7 +25,7 @@
 
 ## Verified baseline
 
-### Continuous power-on → Spore Super Missiles (2026-07-27)
+### Continuous power-on → Spore Super Missiles (2026-07-28)
 
 `recordings/start_to_supers.json` + `.mp4`: power-on with
 `retro.State.NONE`, full accepted prefix through Spore Spawn exit into Super
@@ -95,8 +95,8 @@ verified. Furthest *played* progress and the full 107-room plan:
 | Layer | Furthest played |
 |-------|-----------------|
 | Continuous | Super collect `0x9B5B` (`start_to_supers`) |
-| Controller (dev) | Big Pink main shaft `0x9D19` ~(746,1465); PB sill entry + mid-maze collect |
-| ★ Next hop | Sill approach (wall@613) + maze past wall@437 → pure `0x9E11`+PB |
+| Controller (dev) | Big Pink main shaft; PB sill entry; **maze wall@437 pure**; collect from x≤225 |
+| ★ Next hop | Sill approach (wall@613 / y1051 ledge) + mid-maze 405→225 → pure PB |
 
 ```bash
 uv run python super_metroid/scripts/export_path_room_board.py
@@ -115,14 +115,14 @@ Still blocked for *played* spine:
 |-----|----------------|
 | Continuous Super collect | **Done** |
 | Super → farming → main shaft | controller_dev; not continuous power-on yet |
-| ★ Shaft → Pink PB door + collect | **partial**: sill entry + morph-bomb collect green; approach/maze bridges remain |
+| ★ Shaft → Pink PB door + collect | **partial**: sill entry; wall@437 **pure**; collect pocket x≤225; sill approach + mid-maze 405→225 open |
 | All later path hops | open — must be played, not warped |
 | Boss fights | deferred until natural entry on chain |
 | Escape → credits | after MB by play |
 
 Immediate next:
 
-1. Finish Big Pink → PB **without place bridges**: (a) main/intercept onto sill past wall@613, (b) spawn past maze wall@437, then existing sill entry + morph-bomb collect.
+1. Finish Big Pink → PB **without place bridges**: (a) main/intercept onto sill past wall@613 (or y1051 ledge), (b) pure mid-maze 405→225 after wall@437 break, then collect.
 2. Continuous power-on → PB.
 3. Next open hop on the board; promote status; regenerate PATH_ROOM_BOARD.
 
