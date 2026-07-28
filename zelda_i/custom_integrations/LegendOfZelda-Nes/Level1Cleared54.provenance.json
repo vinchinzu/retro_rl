@@ -1,0 +1,39 @@
+{
+  "acceptance_warning": "Captured from power-on without a state load; retain the matching evidence manifest for acceptance.",
+  "captured_at": "2026-07-28T18:21:40.847512+00:00",
+  "development_only": false,
+  "natural_entry": true,
+  "request": {
+    "natural_entry": true,
+    "segment": "level1_clear54"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "clear_signal_seen": true,
+    "combat_frames": 1345,
+    "frames": 1665,
+    "initial_inventory": 0,
+    "last_live_enemies": 0,
+    "max_live_enemies": 8,
+    "notes": [
+      "at_entry_door",
+      "target_room_playable",
+      "room_cleared"
+    ],
+    "phase": "DONE",
+    "spec_id": "level1_room54",
+    "success": true,
+    "tuning": {
+      "attack_phase": 0,
+      "engage_attack_hold": 4,
+      "engage_attack_period": 8,
+      "engage_distance": 48,
+      "patrol_attack_hold": 3,
+      "patrol_attack_period": 10
+    }
+  },
+  "source_state_path": null,
+  "source_state_sha256": null,
+  "state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Cleared54.state",
+  "state_sha256": "878a37913f389287ddca9e09f1132ae04eddde7b879aff02b31844d6a153c737"
+}

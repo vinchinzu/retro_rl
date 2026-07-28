@@ -1,0 +1,76 @@
+{
+  "info": {
+    "engine_mode": {
+      "address": 29,
+      "type": "|u1"
+    },
+    "game_mode": {
+      "address": 30,
+      "type": "|u1"
+    },
+    "paused": {
+      "address": 49,
+      "type": "|u1"
+    },
+    "map_y": {
+      "address": 79,
+      "type": "|u1"
+    },
+    "map_x": {
+      "address": 80,
+      "type": "|u1"
+    },
+    "samus_room_y": {
+      "address": 781,
+      "type": "|u1"
+    },
+    "samus_room_x": {
+      "address": 782,
+      "type": "|u1"
+    },
+    "in_door": {
+      "address": 86,
+      "type": "|u1"
+    },
+    "area": {
+      "address": 116,
+      "type": "|u1"
+    },
+    "health_lo": {
+      "address": 262,
+      "type": "|u1"
+    },
+    "health_hi": {
+      "address": 263,
+      "type": "|u1"
+    },
+    "item_pause": {
+      "address": 265,
+      "type": "|u1"
+    },
+    "missiles_enabled": {
+      "address": 270,
+      "type": "|u1"
+    },
+    "samus_status": {
+      "address": 768,
+      "type": "|u1"
+    },
+    "equipment": {
+      "address": 26744,
+      "type": "|u1"
+    },
+    "missiles": {
+      "address": 26745,
+      "type": "|u1"
+    },
+    "missile_capacity": {
+      "address": 26746,
+      "type": "|u1"
+    },
+    "energy_tanks": {
+      "address": 26743,
+      "type": "|u1"
+    }
+  }
+}

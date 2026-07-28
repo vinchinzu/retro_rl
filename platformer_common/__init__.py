@@ -33,3 +33,22 @@ from platformer_common.bk2_extract import (
     save_actions,
     load_actions,
 )
+from platformer_common.frame_tools import (
+    analyze_seed_static,
+    cleanup_auto_inputs,
+    compress_hold_window,
+    count_leading_idle,
+    count_trailing_idle,
+    find_button_hold_stalls,
+    find_stalls,
+    is_idle_frame,
+    load_raw_frames,
+    save_raw_seed,
+    search_hold_compressions,
+    trim_after_completion,
+    trim_leading_idle,
+)
+from platformer_common.segment_hillclimb import (
+    PrefixCheckpoint,
+    segment_hillclimb_raw,
+)

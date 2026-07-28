@@ -1,0 +1,31 @@
+game: smb
+title: "Super Mario Bros."
+directory: smb
+genre_tracks:
+  - platforming
+capability_phase: 3
+project_state: verified_capture
+maturity: M8
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: high
+ending_definition: first World 8-4 oper_mode=2 axe / bridge clear
+start_contract: power_on
+completion_contract: world_8_4_ending
+best_manifest: smb/recordings/warp_finish/warp_finish_poweron_tas_validation.json
+best_video: smb/recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4
+assist_contract: null
+status_doc: smb/docs/STATUS.md
+plan_doc: smb/docs/plan.md
+last_verified: 2026-07-28
+blocker: null
+notes: >-
+  M8 Clean power-on any% warp: boot 350f + settle 16 + smb_1_1_to_ending.json
+  (21,731f, down 274f) clears all eight exits with zero mid-attempt state
+  loads, lives 2→2, 3/3. Times under smb/timing.py contracts:
+  rta_any_percent 06:01.588 vs HappyLee RTA 04:54.032 (+01:07.555);
+  tasvideos_poweron 06:07.678 vs #1715 04:57.31 (+01:10.367). The preserved
+  native-audio + HUD MP4 captures the prior 22,005f route; current controller
+  evidence is the power-on report and trials JSON.

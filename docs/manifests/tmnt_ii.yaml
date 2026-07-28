@@ -4,8 +4,8 @@ directory: tmnt_ii
 genre_tracks:
   - linear_combat
 capability_phase: 1
-project_state: boot_verified
-maturity: M1
+project_state: segment_clear
+maturity: M3
 runtime_class: bronze
 intervention_class: clean
 popularity: high
@@ -14,12 +14,13 @@ transfer_value: medium
 ending_definition: credits after final stage
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: null
+best_manifest: tmnt_ii/recordings/stage1_segment/stage1_segment.json
 best_video: null
 assist_contract: null
 status_doc: tmnt_ii/docs/STATUS.md
 plan_doc: tmnt_ii/docs/plan.md
 last_verified: 2026-07-27
-blocker: first Stage 1 wave/segment clear
+blocker: extend past first wave (score≥5); natural-entry M4
 notes: >-
-  M1: power-on to controllable Stage 1 sidewalk combat (Leo). Platform NES under roms/Nintendo/NES.
+  M3: Level1 → score≥5 first-wave clear (~814f, HP59). Face-LEFT lock
+  after early kills. Platform NES under roms/Nintendo/NES.

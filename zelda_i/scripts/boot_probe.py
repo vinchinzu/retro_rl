@@ -1,5 +1,8 @@
 """Boot Zelda I (NES) from reset and save a controllable Level1 state."""
 
+# Script execution adds the repository root before importing local packages.
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
@@ -14,7 +17,7 @@ from zelda_i.menus import boot_to_level1_script
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import is_level1_ready, parse_game_state
 from retro_harness.env import make_env, save_state
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_action
 from snes_oneshot.game_state import GameMode
 from snes_oneshot.segment_runner import configure_headless, save_rgb_png
 

@@ -1,5 +1,8 @@
 """Extract and link the shared NES ROM for this game."""
 
+# Script execution adds the repository root before importing local packages.
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import sys

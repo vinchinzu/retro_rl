@@ -14,18 +14,16 @@ import json
 from pathlib import Path
 from typing import Iterable, Mapping
 
-
-_ABILITY_ALIASES = {
-    "missile": "missiles",
-    "super_missile": "super_missiles",
-    "power_bomb": "power_bombs",
-}
+from adventure_common.graph import normalize_capability
 
 
 def normalize_ability(value: str) -> str:
-    """Return the capability spelling used by the runtime route graph."""
-    normalized = value.strip().lower().replace(" ", "_")
-    return _ABILITY_ALIASES.get(normalized, normalized)
+    """Return the capability spelling used by the runtime route graph.
+
+    Delegates to ``adventure_common.normalize_capability`` so NES Metroid and
+    Super Metroid share the same token spelling (missile→missiles, etc.).
+    """
+    return normalize_capability(value)
 
 
 def _room_id(value: int | str) -> int:

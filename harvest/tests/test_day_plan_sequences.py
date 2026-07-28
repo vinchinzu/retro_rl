@@ -238,10 +238,27 @@ class DayPlanSequenceTests(unittest.TestCase):
                 "ENSURE_WATERING_CAN",
                 "NAV_CROP",
                 "CROP_WATER",
+                "TOWN_EXPLORE",
+                "READY_TO_GO_HOME",
+                "RETURN_HOME",
+                "GO_TO_SLEEP",
             ],
         )
         self.assertIn("BUY_SEEDS", [phase.phase for phase in phases])
+        self.assertIn("TOWN_EXPLORE", [phase.phase for phase in phases])
+        self.assertIn("RETURN_HOME", [phase.phase for phase in phases])
         self.assertNotIn("GET_BERRIES_AND_SHIP", [phase.phase for phase in phases])
+
+    def test_boot_to_day2_sequence_chains_macros_and_sleep(self) -> None:
+        phases = PHASE_SEQUENCES["boot_to_day2"]
+        names = [phase.phase for phase in phases]
+
+        self.assertEqual(names[0], "EXIT_TO_FARM")
+        self.assertIn("GET_HAMMER", names)
+        self.assertIn("BUY_SEEDS", names)
+        self.assertIn("TOWN_EXPLORE", names)
+        self.assertIn("READY_TO_GO_HOME", names)
+        self.assertEqual(names[-2:], ["RETURN_HOME", "GO_TO_SLEEP"])
 
     def test_resume_water_sequence_exits_house_then_routes_to_crop_watering(self) -> None:
         phases = PHASE_SEQUENCES["resume_water"]
@@ -2882,6 +2899,19 @@ class SleepAndPlannerTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(result.reason, "day advanced")
 
+    def test_go_to_sleep_starts_return_home_when_outside_house(self) -> None:
+        task = GoToSleepTask()
+        world = make_date_world(0x00, season=0, day=12)
+        set_player_pos(world.ram, 200, 500)
+        task.reset(world)
+
+        self.assertEqual(task._phase, "ensure_house")
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "ensure_house")
+        self.assertIsNotNone(task._return_home)
+
     def test_go_to_sleep_succeeds_on_ending_credits(self) -> None:
         task = GoToSleepTask()
         start = make_date_world(0x15, season=3, day=30)
@@ -3206,11 +3236,22 @@ class SleepAndPlannerTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(planner.phase_text, "RETURN_HOME")
 
-        result = planner.step(world)  # overnight while RUNNING
+        result = planner.step(world)  # overnight while RUNNING → settle morning
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(planner.phase_text, "SETTLE_MORNING")
+        self.assertEqual(planner.day_failures[0]["phase"], "return_home")
+
+        # Fake overnight leaves sleep-transition tilemap; land in morning house.
+        world.ram[ADDR_TILEMAP] = 0x15
+        set_player_pos(world.ram, 136, 120)
+        world.ram[ADDR_HOUR + 0x4000] = 6
+        for _ in range(4):
+            result = planner.step(world)
+            if result.status == TaskStatus.SUCCESS:
+                break
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(result.reason, "target date reached")
-        self.assertEqual(planner.day_failures[0]["phase"], "return_home")
 
     def test_multi_day_planner_forces_sleep_route_when_day_plan_blocks(self) -> None:
         class BlockedDayTask:
@@ -3297,14 +3338,15 @@ class SleepAndPlannerTests(unittest.TestCase):
         planner.reset(world)
 
         result = TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-        for _ in range(24):
+        for _ in range(32):
             result = planner.step(world)
             if result.status == TaskStatus.SUCCESS:
                 break
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(result.reason, "target date reached")
-        self.assertEqual(planner.progress_text, "date=0:2 completed=2/2")
+        # After two overnights from day 1, morning is day 3; settle updates active day.
+        self.assertEqual(planner.progress_text, "date=0:3 completed=2/2")
 
     def test_multi_day_planner_counts_event_transition_during_return_home(self) -> None:
         class ImmediateSuccessTask:
@@ -3331,7 +3373,7 @@ class SleepAndPlannerTests(unittest.TestCase):
 
         class TestPlanner(MultiDayPlannerTask):
             def __init__(self) -> None:
-                super().__init__(target_days=1, max_days=1)
+                super().__init__(target_days=1, max_days=1, morning_settle_frames=1)
 
             def _build_day_task(self, world):
                 return ImmediateSuccessTask()
@@ -3345,11 +3387,21 @@ class SleepAndPlannerTests(unittest.TestCase):
         planner.step(world)
 
         result = planner.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(planner.phase_text, "SETTLE_MORNING")
+        self.assertEqual(planner.day_failures[0]["phase"], "return_home")
+
+        world.ram[ADDR_TILEMAP] = 0x15
+        set_player_pos(world.ram, 136, 120)
+        world.ram[ADDR_HOUR + 0x4000] = 6
+        for _ in range(4):
+            result = planner.step(world)
+            if result.status == TaskStatus.SUCCESS:
+                break
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(result.reason, "target date reached")
-        self.assertEqual(planner.progress_text, "date=1:10 completed=1/1")
-        self.assertEqual(planner.day_failures[0]["phase"], "return_home")
+        self.assertEqual(planner.progress_text, "date=1:11 completed=1/1")
 
 
 if __name__ == "__main__":

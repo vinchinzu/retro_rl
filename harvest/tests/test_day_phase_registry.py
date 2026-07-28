@@ -53,6 +53,15 @@ class DayPhaseRegistryTests(unittest.TestCase):
         task = DayTaskFactory().make_task(spec, world)
         self.assertEqual(task.__class__.__name__, "ReturnHomeTask")
 
+    def test_ready_to_go_home_builder(self) -> None:
+        spec = PhaseSpec("READY_TO_GO_HOME", PhaseKind.READY_TO_GO_HOME)
+        world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
+        task = DayTaskFactory().make_task(spec, world)
+        self.assertEqual(task.__class__.__name__, "ReadyToGoHomeTask")
+        result = task.step(world)
+        self.assertEqual(result.status.name, "SUCCESS")
+        self.assertTrue(result.meta.get("ready_to_go_home"))
+
 
 if __name__ == "__main__":
     unittest.main()

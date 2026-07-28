@@ -23,6 +23,7 @@ Never use unqualified **tier**, **class**, or **rank** when another label fits.
 - Continuous vehicle control
 - Top-down navigation
 - Metroidvania navigation
+- Graph navigation (overworld / cave / stage graphs; NES Zelda family)
 - Fighting-game policies
 - RPG and dialogue
 - Tactical planning
@@ -69,18 +70,21 @@ archived
 
 | Directory | Title |
 |-----------|-------|
-| `SMW/` | Super Mario World |
+| `SMW/` | Super Mario World (SNES) |
+| `smb/` | Super Mario Bros. (NES) |
+| `smb3/` | Super Mario Bros. 3 (NES) |
 | `super_metroid/` | Super Metroid |
 | `harvest/` | Harvest Moon |
-| `tmnt_iv/` | Teenage Mutant Ninja Turtles IV |
+| `alttp/` | The Legend of Zelda: A Link to the Past |
+| `tmnt_i/` … `tmnt_iv/` | Teenage Mutant Ninja Turtles I–IV |
+| `zelda_i/` / `zelda_ii/` | The Legend of Zelda / Zelda II (NES) |
 | `great_waldo_search/` | The Great Waldo Search |
 | `snes_oneshot/` | Shared scripted-completion helpers (historical package name) |
 
 Stale names that must not appear as live workspace paths:
 
 - `super_metroid_rl/` → use `super_metroid/`
-- `super_mario_bros/` → use `SMW/` for Super Mario World work in this repo
-- `alttp/` → A Link to the Past opening-route workspace
+- `super_mario_bros/` → use `SMW/` for Super Mario World; use `smb/` for NES SMB
 
 ## Package name note
 

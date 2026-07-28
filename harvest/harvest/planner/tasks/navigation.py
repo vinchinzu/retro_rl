@@ -21,6 +21,7 @@ from harvest.tasks.farm_clearer import (
     TILE_SIZE,
 )
 from harvest.maps.map_config import Waypoint, get_walkable_tiles
+from harvest.core.scene import classify_scene_from_ram
 from harvest.tasks.primitives import (
     dismiss_dialogue_result,
     drain_action_queue,
@@ -28,6 +29,20 @@ from harvest.tasks.primitives import (
 )
 from harvest.tasks.recorded_task import RecordedTask
 from harvest.planner.day_plan_status import TASKS_DIR, tilemaps_match
+
+
+def _nav_needs_menu_dismiss(ram: np.ndarray, step_count: int) -> Optional[TaskResult]:
+    """Dismiss dialogue/menu/input-lock so navigation does not walk blind."""
+    input_lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
+    if input_lock != 1:
+        return dismiss_dialogue_result(step_count, reason="input locked")
+    scene = classify_scene_from_ram(ram)
+    if scene.needs_input_dismiss:
+        return dismiss_dialogue_result(
+            step_count,
+            reason=f"nav {scene.mode.value}",
+        )
+    return None
 
 # ── NavTask ───────────────────────────────────────────────────────
 
@@ -221,10 +236,10 @@ class NavTask(Task):
         self._navigator.update(world.ram)
         self._step_count += 1
 
-        # Dialog dismissal
-        input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
-        if input_lock != 1:
-            return dismiss_dialogue_result(self._step_count)
+        # Dialog / menu dismissal (tool menus and shop prompts block BFS).
+        dismissed = _nav_needs_menu_dismiss(world.ram, self._step_count)
+        if dismissed is not None:
+            return dismissed
 
         # Drain queued actions
         queued = drain_action_queue(self._action_queue)
@@ -539,23 +554,22 @@ class MultiMapNavTask(Task):
         SETTLE_FRAMES = self.initial_settle_frames
         if self._initial_settle < SETTLE_FRAMES:
             self._initial_settle += 1
-            input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
-            if input_lock != 1:
-                return dismiss_dialogue_result(self._step_count)
-            else:
-                # Walk toward first waypoint during settle to trigger tile loading
-                wp = self._current_wp()
-                if wp:
-                    cur = self._navigator.current_pos
-                    dx = wp.target_px[0] - cur.x
-                    dy = wp.target_px[1] - cur.y
-                    if abs(dx) >= abs(dy):
-                        direction = "right" if dx > 0 else "left"
-                    else:
-                        direction = "down" if dy > 0 else "up"
-                    action = make_action(**{direction: True, "b": True})
+            dismissed = _nav_needs_menu_dismiss(world.ram, self._step_count)
+            if dismissed is not None:
+                return dismissed
+            # Walk toward first waypoint during settle to trigger tile loading
+            wp = self._current_wp()
+            if wp:
+                cur = self._navigator.current_pos
+                dx = wp.target_px[0] - cur.x
+                dy = wp.target_px[1] - cur.y
+                if abs(dx) >= abs(dy):
+                    direction = "right" if dx > 0 else "left"
                 else:
-                    action = make_action()
+                    direction = "down" if dy > 0 else "up"
+                action = make_action(**{direction: True, "b": True})
+            else:
+                action = make_action()
             if self._initial_settle == SETTLE_FRAMES:
                 tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
                 self._rebuild_pathfinder(tilemap)
@@ -591,10 +605,10 @@ class MultiMapNavTask(Task):
                     reason=f"expected tilemap 0x{wp.tilemap:02X}, got 0x{tilemap:02X}",
                 )
 
-        # Dialog dismissal
-        input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
-        if input_lock != 1:
-            return dismiss_dialogue_result(self._step_count)
+        # Dialog / menu dismissal
+        dismissed = _nav_needs_menu_dismiss(world.ram, self._step_count)
+        if dismissed is not None:
+            return dismissed
 
         # Drain queued actions
         queued = drain_action_queue(self._action_queue)

@@ -31,11 +31,39 @@ def hillclimb_raw(
     max_iterations: int = 1000,
     output_dir: Path | None = None,
     verbose: bool = True,
+    *,
+    window: tuple[int, int] | None = None,
+    prefer_trim: bool = False,
+    require_completion: bool = False,
+    use_segment_engine: bool | None = None,
 ) -> tuple[list[list[int]], EvalResult]:
-    """Hill climb on raw 12-element button arrays.
+    """Hill climb on raw button arrays (NES 9 / SNES 12).
 
     Returns (best_raw_buttons, best_result).
+
+    Optional *window*, *prefer_trim*, and *require_completion* route through
+    :func:`platformer_common.segment_hillclimb.segment_hillclimb_raw` for
+    checkpoint-accelerated, frame-save-biased search. Pass
+    ``use_segment_engine=True`` to force that path even without a window.
     """
+    if use_segment_engine is None:
+        use_segment_engine = bool(
+            window is not None or prefer_trim or require_completion
+        )
+    if use_segment_engine:
+        from platformer_common.segment_hillclimb import segment_hillclimb_raw
+
+        return segment_hillclimb_raw(
+            raw_buttons,
+            evaluator,
+            window=window,
+            max_iterations=max_iterations,
+            prefer_trim=prefer_trim or require_completion,
+            require_completion=require_completion,
+            output_dir=output_dir,
+            verbose=verbose,
+        )
+
     if output_dir is None:
         output_dir = evaluator.config.runs_dir
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -43,6 +71,7 @@ def hillclimb_raw(
     best = [list(f) for f in raw_buttons]
     best_result = evaluator.evaluate(best, early_terminate=False)
     best_fitness = best_result.fitness
+    button_count = max((len(f) for f in best), default=12)
 
     if verbose:
         status = "COMPLETE" if best_result.completed else "incomplete"
@@ -73,8 +102,9 @@ def hillclimb_raw(
             pos = random.randint(0, n - 1)
             num_toggles = random.randint(1, 3)
             for _ in range(num_toggles):
-                btn = random.randint(0, 11)
-                candidate[pos][btn] ^= 1
+                btn = random.randint(0, button_count - 1)
+                if btn < len(candidate[pos]):
+                    candidate[pos][btn] ^= 1
 
         elif strategy == "delete":
             # Delete 1-5 consecutive frames (trim)
@@ -84,11 +114,11 @@ def hillclimb_raw(
 
         elif strategy == "shift_edge":
             # Find a button transition and shift it by 1-3 frames
-            btn = random.randint(0, 11)
+            btn = random.randint(0, button_count - 1)
             # Find frames where this button changes
             edges = []
             for i in range(1, n):
-                if candidate[i][btn] != candidate[i - 1][btn]:
+                if btn < len(candidate[i]) and candidate[i][btn] != candidate[i - 1][btn]:
                     edges.append(i)
             if edges:
                 edge = random.choice(edges)

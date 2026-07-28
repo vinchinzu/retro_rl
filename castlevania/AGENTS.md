@@ -1,12 +1,12 @@
 # Agent Instructions — castlevania
 
-Scripted NES completion agent for **Castlevania** (platforming, stage_action track; maturity M0→M1).
+Scripted NES completion agent for **Castlevania** (platforming track; maturity M1).
 
 ## Identity
 
 | Field | Value |
 |-------|-------|
-| Status | scaffolded / boot in progress |
+| Status | boot verified (M1) |
 | Integration | `Castlevania-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Castlevania.zip` |
 | Local ROM | `castlevania/roms/` (via `scripts/setup_rom.py`) |

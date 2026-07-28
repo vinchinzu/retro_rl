@@ -1,12 +1,23 @@
-# Adding a SNES Game
+# Adding a Game (NES or SNES)
 
-New games should start on the shared `retro_harness.snes` API. Do not copy an
-input loop, button table, Gym compatibility wrapper, state writer, or title
-screen macro from another game.
+New games should start on the shared harness APIs. Do not copy an input loop,
+button table, Gym compatibility wrapper, state writer, or title screen macro
+from another game.
+
+Before scaffolding, apply the [roadmap prioritization heuristic](docs/ROADMAP.md):
+
+1. Closes a current bottleneck or completes an active trunk.
+2. Extends or proves a shared package (high transfer value).
+3. Clear, detectable ending + good observability.
+4. Cultural / popularity weight.
+5. Engineering difficulty matches current tooling maturity.
+
+Prefer adding titles once the relevant genre stack is mature enough that a new
+game can reach M3 relatively quickly.
 
 ## 1. Integration files
 
-Create this game-local layout:
+### SNES layout
 
 ```text
 new_game/
@@ -23,10 +34,30 @@ new_game/
         └── FirstAction.state
 ```
 
-ROMs and generated states remain game-local and gitignored. Reusable Python
-behavior belongs in a shared package.
+### NES layout
 
-## 2. Minimal game definition
+```text
+new_game/
+├── paths.py / menus.py / ram.py
+├── scripts/setup_rom.py
+├── roms/                  # gitignored
+├── tests/
+└── custom_integrations/
+    └── GameName-Nes/
+        ├── data.json
+        ├── metadata.json
+        ├── scenario.json
+        ├── rom.nes -> ../../roms/GameName.nes
+        ├── rom.sha
+        └── Level1.state
+```
+
+ROMs and generated states remain game-local and gitignored. Reusable Python
+behavior belongs in a shared package. Shared library zips live under
+`roms/Nintendo/NES/` or `roms/Nintendo/SNES` (→ Super Nintendo); copy or link
+into the game tree via `scripts/setup_rom.py` / `snes_oneshot.rom_setup`.
+
+## 2. Minimal SNES game definition
 
 ```python
 from pathlib import Path
@@ -69,13 +100,16 @@ STARTUP = StartupPlan.parse(
 Each token is `BUTTON[+BUTTON]:hold_frames:wait_frames`. `WAIT`, `NOOP`,
 `NONE`, and `IDLE` create release-only delays.
 
+NES boot probes typically live under `scripts/boot_probe.py` and use the same
+contract: power-on → RAM-verified first controllable frame (M1).
+
 ## 3. Add only the layer the game needs
 
 - Use `retro_harness`: emulator/session lifecycle, actions, input scripts,
   states, recording, RAM schemas, and task protocols.
 - Add `snes_oneshot`: behavior trees, watchdogs, RAM discovery, cursor/combat
   policy, and segment completion helpers (historical package name for scripted
-  completion).
+  completion; process applies to NES and SNES).
 - Add `platformer_common`: platformer progress tracking, route evaluation,
   replay, and optimizers.
 - Add `fighters_common`: fighting-game environments and training.

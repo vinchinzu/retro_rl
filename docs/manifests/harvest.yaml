@@ -18,8 +18,11 @@ completion_contract: campaign_objective
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: harvest/README.md
-plan_doc: harvest/docs/autonomous_play_phased_plan.md
-last_verified: 2026-04-29
-blocker: frame farm-clear tasks as long-horizon planner benchmarks
-notes: First scheduling / long-horizon planning benchmark; not merely tooling.
+status_doc: harvest/docs/STATUS.md
+plan_doc: harvest/docs/plan.md
+last_verified: 2026-07-28
+blocker: continuous morning→sleep→next-day (M3) not ROM-verified
+notes: >
+  Day planner + multi-day shell; boot_to_day2 / day1 sequences chain macros,
+  town_explore go-home flag, and sleep that always finds the house. First
+  scheduling / long-horizon planning benchmark.

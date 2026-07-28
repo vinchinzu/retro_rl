@@ -6,6 +6,7 @@ from snes_oneshot.actions import buttons, buttons_multi
 from snes_oneshot.recording_footer import (
     FOOTER_HEIGHT,
     format_player_buttons,
+    frame_timestamp,
     render_footer_frame,
 )
 
@@ -34,3 +35,16 @@ def test_format_player_buttons_multi() -> None:
 def test_format_player_buttons_idle() -> None:
     label = format_player_buttons(buttons(), players=1)
     assert label == "P1:---"
+
+
+def test_format_player_buttons_nes_layout() -> None:
+    # NES: [B, null, Select, Start, Up, Down, Left, Right, A]
+    action = [1, 0, 0, 0, 0, 0, 0, 1, 1]  # B+RIGHT+A
+    label = format_player_buttons(action, players=1, layout="nes")
+    assert label == "P1:A+B+RIGHT"
+
+
+def test_frame_timestamp_format() -> None:
+    assert frame_timestamp(0, 60.0) == "F00000  00:00.00"
+    assert frame_timestamp(60, 60.0) == "F00060  00:01.00"
+    assert frame_timestamp(3661, 60.0).startswith("F03661  ")

@@ -2,7 +2,7 @@
   "info": {
     "lives": {
       "address": 77,
-      "type": "|i1"
+      "type": "|u1"
     },
     "health": {
       "address": 1384,
@@ -10,7 +10,7 @@
     },
     "score": {
       "address": 1008,
-      "type": "<u2"
+      "type": "|u1"
     }
   }
 }

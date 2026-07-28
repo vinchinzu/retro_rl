@@ -1,0 +1,261 @@
+"""Complete Level 1 (The Eagle) and collect Triforce shard 1.
+
+Examples::
+
+    uv run python zelda_i/scripts/run_level1_complete.py --trials 2
+    uv run python zelda_i/scripts/run_level1_complete.py \
+      --natural-entry --trials 2 --save-state
+"""
+
+# ruff: noqa: E402
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from retro_harness.env import make_env, save_state
+from retro_harness.nes import nes_idle_action
+from snes_oneshot.segment_runner import (
+    configure_headless,
+    save_rgb_png,
+    write_json_report,
+)
+from zelda_i.chain import run_controller_stage, run_natural_to_milestone
+from zelda_i.dungeon import (
+    GenericDungeonRoomController,
+    ROOM_23_SPEC,
+    ROOM_33_SPEC,
+    ROOM_42_SPEC,
+    ROOM_43_SPEC,
+    ROOM_44_SPEC,
+    ROOM_45_SPEC,
+    ROOM_52_SPEC,
+)
+from zelda_i.dungeon_trace import write_state_provenance
+from zelda_i.level1_finish import (
+    AQUAMENTUS_MAX_FRAMES,
+    BACKTRACK_TO_44_MAX_FRAMES,
+    LEVEL1_TRIFORCE_BIT,
+    ROOM_42_EXIT_MAX_FRAMES,
+    TRIFORCE_MAX_FRAMES,
+    Level1BacktrackTo44Controller,
+    Level1AquamentusController,
+    Level1Room42ExitController,
+    Level1TriforceController,
+)
+from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
+from zelda_i.ram import read_snapshot
+
+
+def _finish_stages():
+    return (
+        (
+            "clear52",
+            GenericDungeonRoomController(ROOM_52_SPEC),
+            ROOM_52_SPEC.max_frames,
+        ),
+        (
+            "clear42",
+            GenericDungeonRoomController(ROOM_42_SPEC),
+            ROOM_42_SPEC.max_frames,
+        ),
+        (
+            "exit42",
+            Level1Room42ExitController(),
+            ROOM_42_EXIT_MAX_FRAMES,
+        ),
+        (
+            "clear43",
+            GenericDungeonRoomController(ROOM_43_SPEC),
+            ROOM_43_SPEC.max_frames,
+        ),
+        (
+            "clear33_key",
+            GenericDungeonRoomController(ROOM_33_SPEC),
+            ROOM_33_SPEC.max_frames,
+        ),
+        (
+            "clear23_key",
+            GenericDungeonRoomController(ROOM_23_SPEC),
+            ROOM_23_SPEC.max_frames,
+        ),
+        (
+            "backtrack44",
+            Level1BacktrackTo44Controller(),
+            BACKTRACK_TO_44_MAX_FRAMES,
+        ),
+        (
+            "clear44",
+            GenericDungeonRoomController(ROOM_44_SPEC),
+            ROOM_44_SPEC.max_frames,
+        ),
+        (
+            "clear45_key",
+            GenericDungeonRoomController(ROOM_45_SPEC),
+            ROOM_45_SPEC.max_frames,
+        ),
+        (
+            "aquamentus_heart",
+            Level1AquamentusController(),
+            AQUAMENTUS_MAX_FRAMES,
+        ),
+        (
+            "triforce_shard_1",
+            Level1TriforceController(),
+            TRIFORCE_MAX_FRAMES,
+        ),
+    )
+
+
+def run_once(
+    *,
+    natural_entry: bool = False,
+    tag: str = "level1_complete",
+    save_checkpoint: bool = False,
+) -> dict:
+    configure_headless()
+    start_state = "NONE" if natural_entry else "Level1Cleared53"
+    env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
+    prefix = None
+    stages = []
+    try:
+        result = env.reset()
+        obs = result[0] if isinstance(result, tuple) else result
+        if natural_entry:
+            prefix = run_natural_to_milestone(env, milestone="clear53")
+            obs = prefix.obs
+            prefix_ok = prefix.success
+        else:
+            obs, *_ = env.step(nes_idle_action())
+            prefix_ok = True
+
+        for name, controller, max_frames in _finish_stages():
+            if not prefix_ok:
+                break
+            obs, stage = run_controller_stage(
+                env,
+                obs,
+                name=name,
+                controller=controller,
+                max_frames=max_frames,
+            )
+            stages.append(stage)
+            prefix_ok = prefix_ok and stage.success
+            if not stage.success:
+                break
+
+        snap = read_snapshot(env.get_ram())
+        ok = prefix_ok and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
+        checkpoint = None
+        provenance = None
+        if ok and save_checkpoint:
+            checkpoint_path = save_state(env, GAME_DIR, GAME, "Level1Complete")
+            checkpoint = str(checkpoint_path)
+            provenance = str(
+                write_state_provenance(
+                    checkpoint_path,
+                    source_state_path=(
+                        None
+                        if natural_entry
+                        else GAME_DIR
+                        / "custom_integrations"
+                        / GAME
+                        / "Level1Cleared53.state"
+                    ),
+                    request={
+                        "segment": "level1_complete",
+                        "natural_entry": natural_entry,
+                    },
+                    selected_trial={
+                        "success": ok,
+                        "stages": [stage.report() for stage in stages],
+                    },
+                    natural_entry=natural_entry,
+                )
+            )
+
+        label = "natural" if natural_entry else "isolated"
+        screenshot = RECORDINGS_DIR / f"{tag}_{label}.png"
+        save_rgb_png(obs, screenshot)
+        return {
+            "ok": ok,
+            "natural_entry": natural_entry,
+            "prefix_ok": prefix.success if prefix else True,
+            "prefix": prefix.report() if prefix else None,
+            "stages": [stage.report() for stage in stages],
+            "final": {
+                "mode": snap.mode,
+                "level": snap.level,
+                "room": snap.screen,
+                "x": snap.link_x,
+                "y": snap.link_y,
+                "health": snap.health,
+                "keys": snap.keys,
+                "triforce": snap.triforce,
+            },
+            "checkpoint": checkpoint,
+            "provenance": provenance,
+            "screenshot": str(screenshot),
+        }
+    finally:
+        env.close()
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--natural-entry", action="store_true")
+    parser.add_argument("--trials", type=int, default=1)
+    parser.add_argument("--save-state", action="store_true")
+    args = parser.parse_args(argv)
+
+    reports = [
+        run_once(
+            natural_entry=args.natural_entry,
+            tag=f"level1_complete_t{trial}",
+            save_checkpoint=args.save_state,
+        )
+        for trial in range(args.trials)
+    ]
+    for trial, report in enumerate(reports):
+        final = report["final"]
+        failed = next(
+            (
+                stage["name"]
+                for stage in report["stages"]
+                if not stage["success"]
+            ),
+            "-",
+        )
+        print(
+            f"trial={trial} ok={report['ok']} "
+            f"prefix_ok={report['prefix_ok']} failed={failed} "
+            f"room={final['room']:02X} triforce=0x{final['triforce']:02X}"
+        )
+
+    label = "natural" if args.natural_entry else "isolated"
+    output = RECORDINGS_DIR / f"level1_complete_{label}.json"
+    write_json_report(
+        output,
+        {
+            "segment": "level1_complete",
+            "natural_entry": args.natural_entry,
+            "runtime_class": "bronze",
+            "intervention_class": "clean",
+            "trials": args.trials,
+            "successes": sum(report["ok"] for report in reports),
+            "stop_predicate": "triforce & 0x01",
+            "reports": reports,
+        },
+    )
+    print(f"wrote {output}")
+    return 0 if all(report["ok"] for report in reports) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

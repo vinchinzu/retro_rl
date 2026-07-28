@@ -1,7 +1,8 @@
 # Scripted full-run development process
 
-This is the shared workflow for turning a bootable SNES integration into a
-verified reset-to-ending policy. Game selection lives in
+This is the shared workflow for turning a bootable **NES or SNES** integration
+into a verified reset-to-ending policy. Multi-horizon strategy lives in
+[../../docs/ROADMAP.md](../../docs/ROADMAP.md). Game selection lives in
 [GAME_SELECTION_NOTES.md](GAME_SELECTION_NOTES.md) and the live board in
 [../../docs/GAME_MATRIX.md](../../docs/GAME_MATRIX.md). Maturity gates M0–M8 are
 defined in [../../docs/DEVELOPMENT_LADDER.md](../../docs/DEVELOPMENT_LADDER.md).

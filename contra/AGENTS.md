@@ -1,12 +1,12 @@
 # Agent Instructions — contra
 
-Scripted NES completion agent for **Contra** (run_and_gun track; maturity M0→M1).
+Scripted NES completion agent for **Contra** (linear_combat track; maturity M1).
 
 ## Identity
 
 | Field | Value |
 |-------|-------|
-| Status | scaffolded / boot in progress |
+| Status | boot verified (M1) |
 | Integration | `Contra-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Contra.zip` |
 | Local ROM | `contra/roms/` (via `scripts/setup_rom.py`) |

@@ -1,8 +1,8 @@
 # Vision
 
-Build a reusable SNES automation platform capable of producing verified
-reset-to-ending clears across a broad canonical game library, beginning with
-bespoke RAM-aware scripts and gradually reducing privileged game-specific
+Build a reusable **NES + SNES** automation platform capable of producing
+verified reset-to-ending clears across a broad canonical game library, beginning
+with bespoke RAM-aware scripts and gradually reducing privileged game-specific
 information.
 
 This is broader than reinforcement learning, broader than “one-shot”
@@ -11,10 +11,13 @@ supports scripted policies, RL, demonstrations, replay, RAM discovery, editors,
 benchmark instrumentation, and game-specific planners. Those are tools inside
 one cumulative program, not separate experiments.
 
+The multi-horizon plan lives in [ROADMAP.md](ROADMAP.md). Live board facts live
+in [PROGRAM_STATUS.md](PROGRAM_STATUS.md).
+
 ## Why this project exists
 
-1. **Automate major SNES games start to finish** — scriptably beatable clears
-   from published reset or initial states to legitimate endings.
+1. **Automate major NES and SNES games start to finish** — scriptably beatable
+   clears from published reset or initial states to legitimate endings.
 2. **Build reusable genre-specific systems** — combat, platforming, continuous
    control, graph navigation, RPG campaigns, planning — with shared packages
    promoted only after a second consumer exists.
@@ -51,12 +54,14 @@ Prefer:
 Use **one-shot** only for the final uninterrupted evaluation class, or as
 historical project terminology. The package name `snes_oneshot` is retained for
 compatibility; it is the historical home for shared scripted-completion
-policies.
+policies. Prefer “scripted completion” in prose even when the package path is
+unchanged.
 
 ## Canonical documents
 
 | Document | Role |
 |----------|------|
+| [ROADMAP.md](ROADMAP.md) | Multi-horizon strategy and success metrics |
 | [DEVELOPMENT_LADDER.md](DEVELOPMENT_LADDER.md) | Capability phases and M0–M8 maturity gates |
 | [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md) | Stable Bronze/Silver/Gold and assist rules |
 | [PROGRAM_STATUS.md](PROGRAM_STATUS.md) | Live facts and near-term priorities |

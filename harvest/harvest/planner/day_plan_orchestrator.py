@@ -22,6 +22,7 @@ from harvest.planner.day_plan_phases import (
     DayPlannerPolicy,
     DAY1_PHASES,
     EXIT_TO_FARM_PHASE,
+    GO_HOME_TRIGGER_PHASES,
     GO_TO_SLEEP_PHASE,
     OPTIONAL_MONEY_PHASES,
     RETURN_HOME_PHASE,
@@ -108,6 +109,7 @@ class DayPlanTask(Task):
     _step_count: int = field(default=0, init=False)
     _skip_map_lock: bool = field(default=False, init=False)
     _end_day_appended: bool = field(default=False, init=False)
+    _ready_to_go_home: bool = field(default=False, init=False)
     _recovery_task: Optional[Task] = field(default=None, init=False)
     _recovering_spec: Optional[PhaseSpec] = field(default=None, init=False)
     _recovery_original_reason: str = field(default="", init=False)
@@ -124,6 +126,7 @@ class DayPlanTask(Task):
         self._step_count = 0
         self._skip_map_lock = False
         self._end_day_appended = False
+        self._ready_to_go_home = False
         self._recovery_task = None
         self._recovering_spec = None
         self._recovery_original_reason = ""
@@ -208,11 +211,31 @@ class DayPlanTask(Task):
         if callable(resume):
             resume(world)
 
+    def _mark_ready_to_go_home(self, source: str) -> None:
+        if self._ready_to_go_home:
+            return
+        self._ready_to_go_home = True
+        print(f"[DAY_PLAN] Ready to go home (from {source})")
+
+    def _ensure_end_day_phases(self) -> None:
+        """Append return-home/sleep once when the go-home flag is set."""
+        if self._end_day_appended or not self.policy.include_end_day:
+            return
+        if self._schedule.has_end_day_phases():
+            self._end_day_appended = True
+            return
+        self._schedule.append([RETURN_HOME_PHASE, GO_TO_SLEEP_PHASE])
+        self._end_day_appended = True
+        print("[DAY_PLAN] Appending end-day route after go-home flag")
+
     def _advance(self, world: WorldState, reason: str) -> None:
         """Move to next phase."""
         current = self._schedule.current_at(self._phase_index)
         phase_name = current.phase if current is not None else "?"
         print(f"[DAY_PLAN] {phase_name} -> {reason}")
+        if current is not None and current.phase in GO_HOME_TRIGGER_PHASES:
+            self._mark_ready_to_go_home(current.phase)
+            self._ensure_end_day_phases()
         self._phase_index += 1
         self._current_task = None
         self._skip_map_lock = False
@@ -403,17 +426,19 @@ class DayPlanTask(Task):
         )
 
     def _append_late_end_day_if_needed(self, world: WorldState) -> bool:
-        """Append return-home/sleep when a morning-built plan runs into evening."""
+        """Append return-home/sleep for late clock or explicit go-home flag."""
         if self._end_day_appended or not self.policy.include_end_day:
             return False
         if self._schedule.has_end_day_phases():
+            self._end_day_appended = True
             return False
         _day, hour, _minute = read_world_day_time(world.ram)
-        if hour < self.policy.late_water_hour:
+        if not self._ready_to_go_home and hour < self.policy.late_water_hour:
             return False
         self._schedule.append([RETURN_HOME_PHASE, GO_TO_SLEEP_PHASE])
         self._end_day_appended = True
-        print("[DAY_PLAN] Appending late end-day route")
+        reason = "go-home flag" if self._ready_to_go_home else "late clock"
+        print(f"[DAY_PLAN] Appending end-day route ({reason})")
         return True
 
     def step(self, world: WorldState) -> TaskResult:
@@ -587,7 +612,7 @@ class MultiDayPlannerTask(Task):
         return ReturnHomeTask(tasks_dir=self.tasks_dir)
 
     def _build_sleep_task(self) -> GoToSleepTask:
-        return GoToSleepTask()
+        return GoToSleepTask(tasks_dir=self.tasks_dir)
 
     def _activate(self, phase: str, task: Task, world: WorldState) -> None:
         self._phase = phase
@@ -649,13 +674,16 @@ class MultiDayPlannerTask(Task):
         scene = classify_scene_from_ram(world.ram)
         if scene_indicates_ending(scene) or reason == "ending reached":
             return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
-        if self._target_reached(world.ram):
-            return TaskResult(status=TaskStatus.SUCCESS, reason="target date reached")
+        # Always settle the morning after sleep so the final overnight also
+        # ends on a stable house/farm scene (M3 acceptance), not mid-fade.
         self._phase = "settle_morning"
         self._current_task = None
         self._settle_count = 0
         self._active_day = read_world_date(world.ram)
-        print("[MULTI_DAY] Settling morning scene before next day plan")
+        if self._target_reached(world.ram):
+            print("[MULTI_DAY] Settling morning scene before target success")
+        else:
+            print("[MULTI_DAY] Settling morning scene before next day plan")
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
     def _step_settle_morning(self, world: WorldState) -> TaskResult:
@@ -666,10 +694,15 @@ class MultiDayPlannerTask(Task):
         if morning_scene_ready(scene, hour):
             self._settle_count += 1
             if self._settle_count >= self.morning_settle_frames:
-                self._phase = "plan_day"
-                self._current_task = None
                 self._active_day = read_world_date(world.ram)
                 print(f"[MULTI_DAY] Morning settled: {scene.summary()}")
+                if self._target_reached(world.ram):
+                    return TaskResult(
+                        status=TaskStatus.SUCCESS,
+                        reason="target date reached",
+                    )
+                self._phase = "plan_day"
+                self._current_task = None
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             return TaskResult(
                 status=TaskStatus.RUNNING,

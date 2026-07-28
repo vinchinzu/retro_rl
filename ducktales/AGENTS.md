@@ -1,12 +1,12 @@
 # Agent Instructions — ducktales
 
-Scripted NES completion agent for **DuckTales** (platforming track; maturity M0→M1).
+Scripted NES completion agent for **DuckTales** (platforming track; maturity M1).
 
 ## Identity
 
 | Field | Value |
 |-------|-------|
-| Status | scaffolded / boot in progress |
+| Status | boot verified (M1) |
 | Integration | `DuckTales-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Duck Tales.zip` |
 | Local ROM | `ducktales/roms/` (via `scripts/setup_rom.py`) |
@@ -21,7 +21,7 @@ uv run pytest ducktales/tests -q
 
 ## Next milestone
 
-first stage segment clear.
+enter a land stage and clear first segment.
 
 ## Norms
 

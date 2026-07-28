@@ -33,6 +33,7 @@ class PhaseKind(StrEnum):
     CROP = "crop"
     RETURN_HOME = "return_home"
     SLEEP = "sleep"
+    READY_TO_GO_HOME = "ready_to_go_home"
     EVE_TALK_LOOP = "eve_talk_loop"
     PICKUP_CHICKEN = "pickup_chicken"
     DROP_CHICKEN = "drop_chicken"

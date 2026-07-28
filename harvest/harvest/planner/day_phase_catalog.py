@@ -189,6 +189,52 @@ GO_TO_SLEEP_PHASE = PhaseSpec(
     "sleep",
 )
 
+# Town loop whose success sets the planner "ready to go home" flag.
+TOWN_EXPLORE_PHASE = PhaseSpec(
+    "TOWN_EXPLORE",
+    "multi_nav",
+    {"route": "town_explore", "timeout": 10000, "initial_settle_frames": 30},
+    failure_policy="optional",
+)
+
+# Flag phase: successful town work (or explicit mark) appends end-of-day.
+READY_TO_GO_HOME_PHASE = PhaseSpec(
+    "READY_TO_GO_HOME",
+    "ready_to_go_home",
+)
+
+# Chained startup macros for early Spring mornings (tools from shed).
+GET_HAMMER_MACRO_PHASE = PhaseSpec(
+    "GET_HAMMER",
+    "recorded",
+    {"task_name": "get_hammer"},
+    failure_policy="optional",
+)
+GET_AXE_MACRO_PHASE = PhaseSpec(
+    "GET_AXE",
+    "recorded",
+    {"task_name": "get_axe"},
+    failure_policy="optional",
+)
+GET_SICKLE_MACRO_PHASE = PhaseSpec(
+    "GET_SICKLE",
+    "recorded",
+    {"task_name": "get_sickle"},
+    failure_policy="optional",
+)
+LEAVE_HOUSE_MACRO_PHASE = PhaseSpec(
+    "LEAVE_HOUSE_MACRO",
+    "recorded_transition",
+    {
+        "task_name": "leave_house_to_farm",
+        "origin_tilemap": 0x15,
+        "target_tilemap": 0x00,
+        "timeout": 1000,
+        "min_frames_before_success": 30,
+    },
+    failure_policy="optional",
+)
+
 # ── Eve relationship loop phase ──
 
 EVE_TALK_LOOP_PHASE = PhaseSpec(
@@ -611,7 +657,8 @@ BUY_COW_FIRST_PHASES: List[PhaseSpec] = [
     EXIT_BARN_PHASE,
 ]
 
-# Day 1 sequence
+# Day 1 sequence: house exit → light clear → buy seeds → plant/water →
+# town explore (sets go-home flag) → return home → sleep into day 2.
 DAY1_PHASES: List[PhaseSpec] = [
     EXIT_TO_FARM_PHASE,
     CLEAR_FIELD_PHASE,
@@ -620,6 +667,29 @@ DAY1_PHASES: List[PhaseSpec] = [
     ENSURE_WATERING_CAN_PHASE,
     NAV_CROP_PHASE,
     CROP_WATER_PHASE,
+    TOWN_EXPLORE_PHASE,
+    READY_TO_GO_HOME_PHASE,
+    RETURN_HOME_PHASE,
+    GO_TO_SLEEP_PHASE,
+]
+
+# Boot / morning → next calendar day. Prefers reusable recorded macros where
+# they exist, then autonomous return-home + sleep (always finds house).
+BOOT_TO_DAY2_PHASES: List[PhaseSpec] = [
+    EXIT_TO_FARM_PHASE,
+    GET_HAMMER_MACRO_PHASE,
+    GET_AXE_MACRO_PHASE,
+    GET_SICKLE_MACRO_PHASE,
+    CLEAR_FIELD_PHASE,
+    NAV_FARM_EXIT_PHASE,
+    BUY_SEEDS_PHASE,
+    ENSURE_WATERING_CAN_PHASE,
+    NAV_CROP_PHASE,
+    CROP_WATER_PHASE,
+    TOWN_EXPLORE_PHASE,
+    READY_TO_GO_HOME_PHASE,
+    RETURN_HOME_PHASE,
+    GO_TO_SLEEP_PHASE,
 ]
 
 # Focused field-clear run (tools + wipe debris until stamina/clean).
@@ -721,6 +791,7 @@ SELL_THREE_CHICKENS_BATCH_TEST_PHASES: List[PhaseSpec] = chicken_sale_batch_phas
 
 PHASE_SEQUENCES: Dict[str, List[PhaseSpec]] = {
     "day1": DAY1_PHASES,
+    "boot_to_day2": BOOT_TO_DAY2_PHASES,
     "clear": CLEAR_PHASES,
     "spring4": SPRING4_PHASES,
     "berries_water": BERRIES_WATER_PHASES,
@@ -754,6 +825,11 @@ OPTIONAL_MONEY_PHASES = frozenset({
     "BUY_SEEDS_WINDOW",
     "NAV_FARM_EXIT",
     "BUY_SEEDS",
+    "TOWN_EXPLORE",
+    "GET_HAMMER",
+    "GET_AXE",
+    "GET_SICKLE",
+    "LEAVE_HOUSE_MACRO",
     "SELL_CHICKEN_WINDOW",
     "NAV_SELL_CHICKEN_START",
     "NAV_TO_COOP_FOR_SALE",
@@ -771,6 +847,13 @@ OPTIONAL_MONEY_PHASES = frozenset({
     "EXIT_FARM_WEST",
     "BERRY_RECORDING_WINDOW",
     "GET_BERRIES_AND_SHIP",
+})
+
+# Phases whose success marks the day ready for return-home/sleep.
+GO_HOME_TRIGGER_PHASES = frozenset({
+    "TOWN_EXPLORE",
+    "READY_TO_GO_HOME",
+    "BUY_SEEDS",
 })
 
 
@@ -830,6 +913,13 @@ __all__ = [
     "CLEAR_FIELD_PHASE",
     "CLEAR_PHASES",
     "DAY1_PHASES",
+    "BOOT_TO_DAY2_PHASES",
+    "TOWN_EXPLORE_PHASE",
+    "READY_TO_GO_HOME_PHASE",
+    "GET_HAMMER_MACRO_PHASE",
+    "GET_AXE_MACRO_PHASE",
+    "GET_SICKLE_MACRO_PHASE",
+    "LEAVE_HOUSE_MACRO_PHASE",
     "SPRING4_PHASES",
     "BERRIES_WATER_PHASES",
     "SUNDAY_PHASES",
@@ -842,4 +932,5 @@ __all__ = [
     "PHASE_SEQUENCE",
     "BERRY_CUTOFF_HOUR",
     "OPTIONAL_MONEY_PHASES",
+    "GO_HOME_TRIGGER_PHASES",
 ]

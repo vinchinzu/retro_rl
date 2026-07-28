@@ -15,13 +15,13 @@ SNES Final Fight scripted-completion workspace (rank 2). Shared helpers:
 
 ## Immediate goal
 
-**Stage 3 West Side Area1** — wave5 dual cleared (verified). Prefer
-`Stage3_Clear_w5_real_p48_cam640` / `…_hp48` or
-`Stage3_Mid_w5_true1v1_p60_e142_cam640` → LEFT+Y wait-KD. Post-clear:
-scroll → cam931 softlock → CLEAR_AREA → **`Stage3_Area1_hp50_L1_cam2560`**.
-Area1 HP≈250 thug (`ENTITY_HP_MAX=255`) chips hard — Boss3 open.
-Heal poke `player_hp` 60–70 used on crumb→1v1 (document). Continuous
-wave2 still prefers Mid_w2_p66. Damnd `0x0CD2` still open.
+**Stage 3 West Side Area1 HP≈250** — wave5 dual cleared (verified). Prefer
+`Stage3_Clear_w5_real_p48_cam640` → scroll cam931 → CLEAR_AREA →
+**`Stage3_Area1_hp50_L1_cam2560`**. Chip recipe: face LEFT briefly, pulse
+bare **Y** (not continuous LEFT+Y — that whiffs). Best mid:
+**`Stage3_Area1_mid_p70_e101_cam2560`** (~149 dmg with heal pokes).
+Full legit kill open. After kill: plant HP0 ghost → CLEAR_AREA →
+**Boss3** cam3072 (`0x11E0=01`). Damnd `0x0CD2` still open.
 
 ## Scripts
 
@@ -36,6 +36,8 @@ wave2 still prefers Mid_w2_p66. Damnd `0x0CD2` still open.
   waves; also resumes `Stage2*` mid-states (`--state Stage2_Clear_w2_cam537`)
 - `scripts/stage3_advance.py` — Stage2_Clear → West Side `Stage3` (+
   Break Car) + early waves; resumes `Stage3*`
+- `scripts/stage3_area1_probe.py` — Area1 HP250 face-Y chip; optional
+  `--heal-hp` / `--force-enemy-hp` (dev map to Boss3)
 - `scripts/stage3_bridge_probe.py` — minimal CLEAR_AREA → Stage3 probe
 - `scripts/sodom_probe.py` — Sodom UP+Y throw kill (`--mode kill`) /
   cold Drawn chip+flee Mid (`--mode chip`)

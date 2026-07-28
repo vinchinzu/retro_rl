@@ -38,6 +38,17 @@ class FarmWalkableTests(unittest.TestCase):
 
         self.assertEqual(get_map_name(0x01), "farm_summer")
 
+    def test_town_explore_route_spans_farm_path_town(self) -> None:
+        route = ROUTES["town_explore"]
+        tilemaps = {wp.tilemap for wp in route}
+        self.assertIn(0x00, tilemaps)
+        self.assertIn(0x0C, tilemaps)
+        self.assertIn(0x04, tilemaps)
+        self.assertTrue(any(wp.is_exit for wp in route))
+        # Last hop returns toward farm via path east exit.
+        self.assertEqual(route[-1].tilemap, 0x0C)
+        self.assertTrue(route[-1].is_exit)
+
     def test_map_registry_has_named_landmarks(self) -> None:
         self.assertEqual(get_map_name(0x15), "house")
         self.assertEqual(get_map_name(0x16), "house_level1")

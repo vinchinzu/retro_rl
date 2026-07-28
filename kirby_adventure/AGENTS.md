@@ -1,12 +1,12 @@
 # Agent Instructions — kirby_adventure
 
-Scripted NES completion agent for **Kirby's Adventure** (platforming track; maturity M0→M1).
+Scripted NES completion agent for **Kirby's Adventure** (platforming track; maturity M1).
 
 ## Identity
 
 | Field | Value |
 |-------|-------|
-| Status | scaffolded / boot in progress |
+| Status | boot verified (M1) |
 | Integration | `KirbysAdventure-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Kirby's Adventure.zip` |
 | Local ROM | `kirby_adventure/roms/` (via `scripts/setup_rom.py`) |
@@ -21,7 +21,7 @@ uv run pytest kirby_adventure/tests -q
 
 ## Next milestone
 
-first stage/segment clear.
+first stage/segment clear from Vegetable Valley hub.
 
 ## Norms
 

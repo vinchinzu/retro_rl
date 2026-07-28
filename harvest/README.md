@@ -89,6 +89,17 @@ the day's task list dynamically.  Priority order:
 Named sequences (`--day-plan day1`, `sunday`, `harvest`, etc.) still work as
 manual overrides.
 
+## Program specs
+
+- Status / maturity gate: [docs/STATUS.md](docs/STATUS.md)
+- Plan (future work): [docs/plan.md](docs/plan.md)
+- RAM map: [docs/ram_map.md](docs/ram_map.md)
+- Morning fixture probe: `uv run python -m harvest.scripts.boot_probe`
+- Overnight target: `HEADLESS=1 uv run python -m harvest.scripts.run_to_day2`
+
+Day sequences: `--day-plan day1` or `--day-plan boot_to_day2` (macros + town explore
+go-home flag + return home + sleep that always finds the house).
+
 ## Architecture
 
 ```
@@ -98,6 +109,7 @@ harvest/planner/day_phase_types.py   - PhaseKind enum, PhaseSpec
 harvest/planner/day_phase_registry.py - PhaseKind → task builders
 harvest/planner/day_plan_phases.py - Dynamic build_day_phases()
 harvest/planner/day_plan.py      - Compatibility re-exports (tests/tools)
+harvest/planner/tasks/home.py    - ReturnHomeTask, GoToSleepTask (find house first)
 harvest/core/task_progress.py    - ProgressSnapshot (autoplay stall watchdog)
 harvest/tasks/coop_task.py       - CoopChoresTask (feed/egg/incubate/ship, scales to 12)
 harvest/tasks/harvest_task.py    - HarvestTask (pick ripe crops + ship)
@@ -106,6 +118,7 @@ harvest/tasks/farm_clearer.py    - FarmClearer + pathfinding (BFS, Navigator, Pa
 harvest/maps/map_config.py       - Walkable tiles, map registry, named routes
 harvest/core/harvest_state.py    - HarvestStateDocument (persistent tile layer)
 harvest/runtime/rom_tools.py     - Save state parsing, VRAM/ROM inspection
+harvest/scripts/    - boot_probe, run_to_day2
 tasks/              - Recorded action sequences (JSON + end states)
 custom_integrations/  # stable-retro game data + save states
 tests/              - Unit + integration tests (see Testing below)
