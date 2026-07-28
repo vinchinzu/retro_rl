@@ -842,6 +842,8 @@ class CropWaterTask(Task):
     watered_count: int = field(default=0, init=False)
     skipped_water: int = field(default=0, init=False)
     refill_count: int = field(default=0, init=False)
+    # Planned centers that failed hoe/path — avoid infinite redetect loops.
+    _rejected_plan_centers: Set[Tuple[int, int]] = field(default_factory=set, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -891,6 +893,7 @@ class CropWaterTask(Task):
         self.watered_count = 0
         self.skipped_water = 0
         self.refill_count = 0
+        self._rejected_plan_centers = set()
         self._clear_crop_walkable()
         self._navigator.update(world.ram)
         self._tool_mgr.update(world.ram)
@@ -937,6 +940,7 @@ class CropWaterTask(Task):
         self.watered_count = 0
         self.skipped_water = 0
         self.refill_count = 0
+        self._rejected_plan_centers = set()
         print(f"[CROP] Hot-swap resume: re-scan crops/refill state can={self._water_level(world.ram)}")
 
     def can_start(self, world: WorldState) -> bool:
@@ -945,6 +949,88 @@ class CropWaterTask(Task):
     # ------------------------------------------------------------------
     # State handlers
     # ------------------------------------------------------------------
+
+    def _has_plantable_seed_stock(self, ram: np.ndarray) -> bool:
+        """True when seeds are in hand or counted in inventory for this crop."""
+        if seed_item_in_carry_pair(ram, self.seed_type):
+            return True
+        try:
+            from harvest.planner.day_plan_status import ram_seed_count
+
+            return int(ram_seed_count(ram, self.seed_type)) > 0
+        except Exception:
+            return False
+
+    def _plan_bounds_near_player(self, start: Tuple[int, int]) -> Tuple[int, int, int, int]:
+        """Clamp planning to a viewport-reachable neighborhood around the player.
+
+        Full-farm plans often pick distant centers that BFS cannot reach through
+        stale off-screen tiles. Keep new plots within ~12 tiles of the player
+        and inside the task bounds.
+        """
+        x_min, y_min, x_max, y_max = self.bounds
+        px, py = start
+        radius = 12
+        return (
+            max(x_min, px - radius),
+            max(y_min, py - radius),
+            min(x_max, px + radius),
+            min(y_max, py + radius),
+        )
+
+    def _plan_new_plot_centers(self, ram: np.ndarray) -> List[Tuple[int, int]]:
+        """Use crop_planner to place new 3x3 plots on tillable soil."""
+        try:
+            from harvest.planner.crop_planner import CropPlanningConfig, plan_crop_field
+            from harvest.planner.day_plan_status import read_world_date
+        except Exception as exc:
+            print(f"[CROP] Crop planner unavailable: {exc}")
+            return []
+
+        season, day = read_world_date(ram)
+        start = self._navigator.current_tile
+        local_bounds = self._plan_bounds_near_player(start)
+        config = CropPlanningConfig(
+            season=int(season),
+            day=int(day),
+            seed_type=self.seed_type,
+            max_seed_bags=1,
+            bounds=local_bounds,
+            start_tile=start,
+            # Strongly prefer nearby plots over slightly higher remote scores.
+            route_weight=40,
+        )
+        plan = plan_crop_field(ram, config)
+        centers = [
+            plot.center
+            for plot in plan.plots
+            if plot.center not in self._rejected_plan_centers
+        ]
+        if not centers and local_bounds != self.bounds:
+            # Fall back to full bounds once, still skipping rejected centers.
+            config = CropPlanningConfig(
+                season=int(season),
+                day=int(day),
+                seed_type=self.seed_type,
+                max_seed_bags=3,
+                bounds=self.bounds,
+                start_tile=start,
+                route_weight=40,
+            )
+            plan = plan_crop_field(ram, config)
+            centers = [
+                plot.center
+                for plot in plan.plots
+                if plot.center not in self._rejected_plan_centers
+            ][:1]
+        if centers:
+            print(
+                f"[CROP] Planned {len(centers)} new {plan.crop_name} plot(s) "
+                f"layout={plan.layout_name} bounds={local_bounds}: {centers}"
+            )
+        else:
+            print("[CROP] Crop planner found no placeable plots")
+        return centers
 
     def _handle_detect(self, ram: np.ndarray) -> Optional[TaskResult]:
         """Scan for crop plots."""
@@ -955,7 +1041,17 @@ class CropWaterTask(Task):
         else:
             self._plots = detect_plots(ram, self.bounds)
         if not self._plots:
-            if self._pass_number == 1:
+            # Virgin soil: plan + hoe + plant instead of silently succeeding.
+            can_plant = self._has_plantable_seed_stock(ram)
+            if self._pass_number == 1 and can_plant:
+                planned = self._plan_new_plot_centers(ram)
+                if planned:
+                    self._plots = planned
+                else:
+                    print("[CROP] No plots detected and no plantable plan")
+                    return TaskResult(status=TaskStatus.SUCCESS, reason="no plots detected")
+            elif self._pass_number == 1:
+                print("[CROP] No plots detected (no plantable seed stock)")
                 return TaskResult(status=TaskStatus.SUCCESS, reason="no plots detected")
             else:
                 self._state = "done"
@@ -976,14 +1072,21 @@ class CropWaterTask(Task):
         self._set_crop_walkable()  # allow pathfinding through crop tiles
         tilled = count_tilled(ram, center)
         crop_tiles = _count_crop_tiles(ram, center[0], center[1])
-        if crop_tiles == 0 and tilled >= 8:
+        # Seed bag plants a 3x3 from the center notch. Plant once enough ring
+        # tiles are hoed (full 8 is ideal; partial still uses the bag).
+        if crop_tiles == 0 and tilled >= 4:
             self._plot_phase = "plant"
             self._target_tile = center
             self._approach_tile = center  # stand ON center to plant
+            self._face_direction = "down"
+            self._set_crop_walkable()
             self._state = "navigate"
             self._navigator.path = []  # force re-path
             self._steps_on_target = 0
             print(f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} center=({center[0]},{center[1]}) phase=PLANT tilled={tilled}")
+        elif crop_tiles == 0 and tilled < 4:
+            # Untilled soil: hoe the 8 ring tiles, then plant from center.
+            self._begin_hoe_phase(ram)
         else:
             if crop_tiles > 0 and tilled > 0:
                 print(
@@ -992,6 +1095,77 @@ class CropWaterTask(Task):
                 )
             # Skip to water phase
             self._begin_water_phase(ram, allow_unknown_tiles=False)
+
+    def _begin_hoe_phase(self, ram: np.ndarray) -> None:
+        """Hoe untilled ring tiles for the current planned plot center."""
+        center = self._plots[self._plot_index]
+        cx, cy = center
+        self._plot_phase = "hoe"
+        self._water_steps = []
+        self._water_index = 0
+        for target, stand, face in hoe_plan(center):
+            tid = get_tile_at(ram, target[0], target[1])
+            if tid in TILLABLE_TILES or tid == DRIED_TILLED or tid == UNTILLED:
+                self._water_steps.append((target, stand, face))
+            elif tid not in {FRESH_TILLED, WATERED_TILLED}:
+                # Unknown/blocked — still try if soil-like low IDs.
+                if tid in {0x00, 0x01, 0x02}:
+                    self._water_steps.append((target, stand, face))
+        print(
+            f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
+            f"center=({cx},{cy}) phase=HOE steps={len(self._water_steps)}"
+        )
+        if not self._water_steps:
+            # Nothing to hoe; try plant or water.
+            tilled = count_tilled(ram, center)
+            if tilled >= 4:
+                self._plot_phase = "plant"
+                self._target_tile = center
+                self._approach_tile = center
+                self._state = "navigate"
+                self._navigator.path = []
+                self._steps_on_target = 0
+                print(f"[CROP] HOE skipped; planting with tilled={tilled}")
+                return
+            print(f"[CROP] HOE found no tillable tiles at ({cx},{cy}); skipping plot")
+            self._rejected_plan_centers.add(center)
+            self._advance_plot(ram)
+            return
+        target, stand, face = self._water_steps[0]
+        self._target_tile = target
+        self._approach_tile = stand
+        self._face_direction = face
+        self._clear_crop_walkable()
+        self._state = "navigate"
+        self._navigator.path = []
+        self._steps_on_target = 0
+
+    def _advance_hoe_step(self, ram: np.ndarray) -> None:
+        self._water_index += 1
+        self._steps_on_target = 0
+        self._navigator.path = []
+        if self._water_index >= len(self._water_steps):
+            center = self._plots[self._plot_index]
+            tilled = count_tilled(ram, center)
+            print(f"[CROP] HOE complete plot {self._plot_index + 1} tilled={tilled}")
+            if tilled < 4:
+                # No reachable till work — reject this planned center and move on.
+                self._rejected_plan_centers.add(center)
+                print(f"[CROP] Rejecting planned center {center} after failed hoe")
+                self._advance_plot(ram)
+                return
+            self._plot_phase = "plant"
+            self._target_tile = center
+            self._approach_tile = center
+            self._face_direction = "down"
+            self._state = "navigate"
+            self._navigator.path = []
+            return
+        target, stand, face = self._water_steps[self._water_index]
+        self._target_tile = target
+        self._approach_tile = stand
+        self._face_direction = face
+        self._state = "navigate"
 
     def _begin_water_phase(self, ram: np.ndarray, allow_unknown_tiles: bool = False):
         """Set up per-tile watering for current plot using WATER_PLAN_CENTER."""
@@ -1334,6 +1508,24 @@ class CropWaterTask(Task):
                     self._plot_skipped += 1
                     print(f"[CROP] SKIP water tile {self._water_index + 1}/{len(self._water_steps)} (stuck nav) target={self._target_tile}")
                     self._advance_water_step(ram)
+                elif self._plot_phase == "hoe":
+                    print(
+                        f"[CROP] SKIP hoe tile {self._water_index + 1}/{len(self._water_steps)} "
+                        f"(stuck nav) target={self._target_tile}"
+                    )
+                    self._advance_hoe_step(ram)
+                elif self._plot_phase == "plant":
+                    center = self._plots[self._plot_index] if self._plot_index < len(self._plots) else None
+                    tilled = count_tilled(ram, center) if center else 0
+                    if center is not None and tilled >= 4:
+                        # Close enough: attempt plant even if exact center nav struggled.
+                        print(f"[CROP] Plant nav stuck at center {center}; forcing plant attempt tilled={tilled}")
+                        self._state = "act"
+                    else:
+                        if center is not None:
+                            self._rejected_plan_centers.add(center)
+                        print(f"[CROP] Plant nav stuck; skipping plot {center}")
+                        self._advance_plot(ram)
                 elif self._plot_phase == "refill":
                     print("[CROP] Can't reach pond, skipping refill")
                     self._refill_exhausted = True
@@ -1371,6 +1563,29 @@ class CropWaterTask(Task):
                     self._plot_skipped += 1
                     print(f"[CROP] SKIP water tile {self._water_index + 1}/{len(self._water_steps)} (no path) target={self._target_tile}")
                     self._advance_water_step(ram)
+                elif self._plot_phase == "hoe":
+                    print(
+                        f"[CROP] SKIP hoe tile {self._water_index + 1}/{len(self._water_steps)} "
+                        f"(no path) target={self._target_tile}"
+                    )
+                    self._advance_hoe_step(ram)
+                elif self._plot_phase == "plant":
+                    center = self._plots[self._plot_index] if self._plot_index < len(self._plots) else None
+                    tilled = count_tilled(ram, center) if center else 0
+                    if center is not None and tilled >= 4 and tile_dist(self._navigator.current_tile, center) <= 1:
+                        print(f"[CROP] Plant path missing but adjacent to {center}; forcing plant")
+                        self._approach_tile = self._navigator.current_tile
+                        self._state = "act"
+                    elif center is not None and tilled >= 4:
+                        print(f"[CROP] No path to plant center {center}; retrying with crop walkable")
+                        self._set_crop_walkable()
+                        self._navigator.path = []
+                        self._steps_on_target = 0
+                    else:
+                        if center is not None:
+                            self._rejected_plan_centers.add(center)
+                        print(f"[CROP] No path to plant center {center}; skipping plot")
+                        self._advance_plot(ram)
                 elif self._plot_phase == "refill":
                     print("[CROP] No path to pond, skipping refill")
                     self._refill_exhausted = True
@@ -1407,7 +1622,7 @@ class CropWaterTask(Task):
         if self._approach_tile is None:
             self._state = "detect"
             return None
-        tol = 1 if self._plot_phase in ("plant", "water") else 2
+        tol = 1 if self._plot_phase in ("plant", "water", "hoe") else 2
         center_action = self._navigator.center_on_tile(self._approach_tile, tolerance=tol)
         if center_action is None:
             self._state = "act"
@@ -1426,8 +1641,8 @@ class CropWaterTask(Task):
 
         # Position check: must be on the correct tile
         player = self._navigator.current_tile
-        if self._plot_phase in ("plant", "water"):
-            # Must be ON center tile for planting and watering (uses center notch)
+        if self._plot_phase in ("plant", "water", "hoe"):
+            # Must be ON approach tile for plant/water/hoe
             if player != self._approach_tile:
                 print(f"[CROP] {self._plot_phase.upper()} pos mismatch: at ({player[0]},{player[1]}) need ({self._approach_tile[0]},{self._approach_tile[1]}), re-navigate")
                 self._state = "navigate"
@@ -1441,7 +1656,7 @@ class CropWaterTask(Task):
                 return None
 
         # Re-center drift correction
-        tol = 1 if self._plot_phase in ("plant", "water") else 2
+        tol = 1 if self._plot_phase in ("plant", "water", "hoe") else 2
         center_action = self._navigator.center_on_tile(self._approach_tile, tolerance=tol)
         if center_action is not None:
             self._action_queue.append(center_action)
@@ -1449,10 +1664,29 @@ class CropWaterTask(Task):
 
         if self._plot_phase == "plant":
             return self._act_plant(ram)
+        elif self._plot_phase == "hoe":
+            return self._act_hoe(ram)
         elif self._plot_phase == "water":
             return self._act_water(ram)
         elif self._plot_phase == "refill":
             return self._act_refill(ram)
+        return None
+
+    def _act_hoe(self, ram: np.ndarray) -> Optional[TaskResult]:
+        """Hoe one untilled ring tile for the current planned plot."""
+        if self._tool_mgr.current != int(Tool.HOE):
+            self._tool_mgr.start_search()
+            self._state = "tool_switch"
+            return None
+        face = self._face_direction or "down"
+        target = self._target_tile
+        tid = get_tile_at(ram, target[0], target[1]) if target else 0xFF
+        print(
+            f"[CROP] HOE tile {self._water_index + 1}/{len(self._water_steps)} "
+            f"target={target} face={face} tid=0x{tid:02X}"
+        )
+        self._action_queue.extend(hoe_action_sequence(face))
+        self._state = "verify"
         return None
 
     def _act_plant(self, ram: np.ndarray) -> Optional[TaskResult]:
@@ -1572,6 +1806,10 @@ class CropWaterTask(Task):
         if input_lock != 1:
             return None
 
+        if self._plot_phase == "hoe":
+            self._advance_hoe_step(ram)
+            return None
+
         if self._plot_phase == "plant":
             center = self._plots[self._plot_index]
             tilled_remaining = count_tilled(ram, center)
@@ -1671,8 +1909,10 @@ class CropWaterTask(Task):
         """Cycle tools to find the needed one."""
         if self._plot_phase == "plant":
             wanted = SEED_ITEM.get(self.seed_type, SEED_ITEM["potato"])
+        elif self._plot_phase == "hoe":
+            wanted = int(Tool.HOE)
         else:
-            wanted = Tool.WATERING_CAN
+            wanted = int(Tool.WATERING_CAN)
 
         self._tool_mgr.update(ram)
         current = self._tool_mgr.current
@@ -1691,6 +1931,21 @@ class CropWaterTask(Task):
                 print(f"[CROP] Seed tool 0x{wanted:02X} not found, skipping plant plot at {center}")
                 self._advance_plot(ram)
                 return None
+            if self._plot_phase == "hoe":
+                center = self._plots[self._plot_index] if self._plot_index < len(self._plots) else None
+                print(f"[CROP] Hoe 0x{wanted:02X} not found, skipping establish plot at {center}")
+                self._advance_plot(ram)
+                return None
+            # Watering can missing after plant is common (only 2 carry slots).
+            # Report partial success so the day plan can re-fetch the can and
+            # run a second CROP_WATER pass instead of aborting the whole day.
+            if self.planted_count > 0 or self.watered_count > 0:
+                msg = (
+                    f"planted={self.planted_count} watered={self.watered_count} "
+                    f"refills={self.refill_count}; tool 0x{wanted:02X} not in carry pair"
+                )
+                print(f"[CROP] Partial complete: {msg}")
+                return TaskResult(status=TaskStatus.SUCCESS, reason=msg)
             print(f"[CROP] Tool 0x{wanted:02X} not found in inventory")
             return TaskResult(status=TaskStatus.FAILURE, reason=f"tool 0x{wanted:02X} not in inventory")
 
@@ -1709,12 +1964,15 @@ class CropWaterTask(Task):
 
         if self._total_steps == 1 and is_rainy_weather(world.ram) and not seed_item_in_carry_pair(world.ram, self.seed_type):
             wanted = SEED_ITEM.get(self.seed_type, SEED_ITEM["potato"])
+            # Rain waters existing crops; without seeds there is no plant work either.
+            # Still run detect in case established plots need nothing — but if no
+            # seeds and rain, short-circuit so day plan can finish.
             print(f"[CROP] Rain and seed tool 0x{wanted:02X} not in carry pair; no crop work needed")
             return TaskResult(status=TaskStatus.SUCCESS, reason=f"rain; seed tool 0x{wanted:02X} not in carry pair")
 
-        if self._total_steps == 1 and not is_rainy_weather(world.ram) and not watering_can_in_carry_pair(world.ram):
-            print("[CROP] Watering can missing from carry pair; skipping crop phase")
-            return TaskResult(status=TaskStatus.FAILURE, reason="watering can not in carry pair")
+        # Do not fail early when the watering can is out of the 2-slot carry pair.
+        # Day plan often leaves seeds in-hand after ENSURE_CROP_SEEDS; we still
+        # need to hoe/plant, then cycle to the can for watering.
 
         if self.debug and self._total_steps % self.debug_interval == 0:
             cur = self._navigator.current_tile
@@ -1734,6 +1992,12 @@ class CropWaterTask(Task):
                 self._plot_skipped += 1
                 print(f"[CROP] SKIP water tile {self._water_index + 1}/{len(self._water_steps)} (timeout) target={self._target_tile}")
                 self._advance_water_step(world.ram)
+            elif self._plot_phase == "hoe":
+                print(
+                    f"[CROP] SKIP hoe tile {self._water_index + 1}/{len(self._water_steps)} "
+                    f"(timeout) target={self._target_tile}"
+                )
+                self._advance_hoe_step(world.ram)
             elif self._plot_phase == "refill":
                 print("[CROP] Refill timed out, marking bad")
                 if self._refill_pond_tile:
@@ -1752,6 +2016,12 @@ class CropWaterTask(Task):
                     self._approach_tile = center
                 self._state = "navigate"
                 self._navigator.path = []
+            elif self._plot_phase == "plant":
+                center = self._plots[self._plot_index] if self._plot_index < len(self._plots) else None
+                if center is not None:
+                    self._rejected_plan_centers.add(center)
+                print(f"[CROP] Plant timeout at {center}; skipping plot")
+                self._advance_plot(world.ram)
             else:
                 self._target_tile = None
                 self._state = "detect"

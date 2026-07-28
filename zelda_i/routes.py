@@ -6,22 +6,27 @@ from dataclasses import dataclass
 
 from zelda_i.overworld import (
     NODE_LEVEL1_DUNGEON,
+    NODE_LEVEL1_COMPLETE,
     NODE_LEVEL1_ENTRANCE,
     NODE_LEVEL1_ENTRY_ROOM,
+    NODE_LEVEL1_EXIT_OVERWORLD,
     NODE_LEVEL1_FIRST_KEY,
     NODE_LEVEL1_FIRST_KEY_ROOM,
     NODE_LEVEL1_NORTH_CLEARED,
     NODE_LEVEL1_NORTH_ROOM,
     NODE_LEVEL1_ROOM_53_CLEARED,
     NODE_LEVEL1_ROOM_54_CLEARED,
+    NODE_LEVEL2_PATH_4A,
     NODE_START,
     NODE_SWORD_CAVE,
     level1_clear53_route_legs,
     level1_clear54_route_legs,
+    level1_complete_route_legs,
     level1_clear63_route_legs,
     level1_first_key_route_legs,
     level1_north_route_legs,
     level1_route_legs,
+    level2_path_prefix_route_legs,
     sword_cave_route_legs,
 )
 
@@ -199,6 +204,50 @@ ROUTE_LEVEL1_CLEAR54 = NamedRoute(
     ),
 )
 
+ROUTE_LEVEL1_COMPLETE = NamedRoute(
+    route_id="zelda_level1_complete",
+    display_name="Start → Level 1 Triforce Shard 1",
+    description=(
+        "Power-on through the room 0x53 key, take the required west route, "
+        "defeat Aquamentus, collect the Heart Container, and collect the "
+        "first Triforce shard in room 0x36."
+    ),
+    milestones=(
+        *ROUTE_LEVEL1_CLEAR53.milestones,
+        RouteMilestone(
+            "level1_complete",
+            NODE_LEVEL1_COMPLETE,
+            "Level 1 Triforce shard 1",
+            "triforce & 0x01",
+        ),
+    ),
+)
+
+ROUTE_LEVEL2_PATH_PREFIX = NamedRoute(
+    route_id="zelda_level2_path_prefix",
+    display_name="Start → Level 2 Walk Prefix (0x4A)",
+    description=(
+        "Power-on through Level 1 Triforce, idle the fanfare settle onto "
+        "overworld 0x37, then walk 0x37→38→48→58→59→49→4A. Avoids the "
+        "0x79 rocky dead-end. Continuation to 0x3C needs heart-safe combat."
+    ),
+    milestones=(
+        *ROUTE_LEVEL1_COMPLETE.milestones,
+        RouteMilestone(
+            "level1_exit_overworld",
+            NODE_LEVEL1_EXIT_OVERWORLD,
+            "Post-Triforce overworld at Level 1 mouth",
+            "post_triforce_overworld_ready",
+        ),
+        RouteMilestone(
+            "level2_path_4a",
+            NODE_LEVEL2_PATH_4A,
+            "Level 2 path screen 0x4A",
+            "level2_path_prefix_success",
+        ),
+    ),
+)
+
 ROUTE_REGISTRY: dict[str, NamedRoute] = {
     ROUTE_SWORD_CAVE.route_id: ROUTE_SWORD_CAVE,
     "sword": ROUTE_SWORD_CAVE,
@@ -221,6 +270,12 @@ ROUTE_REGISTRY: dict[str, NamedRoute] = {
     ROUTE_LEVEL1_CLEAR54.route_id: ROUTE_LEVEL1_CLEAR54,
     "level1_clear54": ROUTE_LEVEL1_CLEAR54,
     "clear54": ROUTE_LEVEL1_CLEAR54,
+    ROUTE_LEVEL1_COMPLETE.route_id: ROUTE_LEVEL1_COMPLETE,
+    "level1_complete": ROUTE_LEVEL1_COMPLETE,
+    "triforce_1": ROUTE_LEVEL1_COMPLETE,
+    ROUTE_LEVEL2_PATH_PREFIX.route_id: ROUTE_LEVEL2_PATH_PREFIX,
+    "level2_prefix": ROUTE_LEVEL2_PATH_PREFIX,
+    "to_level2_prefix": ROUTE_LEVEL2_PATH_PREFIX,
 }
 
 
@@ -250,3 +305,5 @@ LEVEL1_NORTH_LEGS = level1_north_route_legs()
 LEVEL1_CLEAR63_LEGS = level1_clear63_route_legs()
 LEVEL1_CLEAR53_LEGS = level1_clear53_route_legs()
 LEVEL1_CLEAR54_LEGS = level1_clear54_route_legs()
+LEVEL1_COMPLETE_LEGS = level1_complete_route_legs()
+LEVEL2_PATH_PREFIX_LEGS = level2_path_prefix_route_legs()

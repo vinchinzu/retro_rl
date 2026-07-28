@@ -14,15 +14,14 @@ transfer_value: medium
 ending_definition: credits after defeating Ganon and rescuing Zelda
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: zelda_i/recordings/level1_clear54_natural.json
+best_manifest: zelda_i/recordings/level1_complete_natural.json
 best_video: null
 assist_contract: null
 status_doc: zelda_i/docs/STATUS.md
 plan_doc: zelda_i/docs/plan.md
 last_verified: 2026-07-28
-blocker: clear Level 1 room 0x52 west branch and continue toward map / Aquamentus
+blocker: walk 0x4A → Level 2 door 0x3C (overworld health)
 notes: >-
-  M5: power-on → first key → clear 0x63 → clear/key 0x53 → east → clear
-  room 0x54 (2/2 natural + 2/2 isolated). Data-driven dungeon lab sweep went
-  16/16; item 0x16 has no known inventory delta. West returns to 0x53 and
-  east is blocked. Bronze Clean.
+  M5: Clean power-on → Triforce shard 1 (2/2 natural + 2/2 isolated).
+  Post-triforce settle + walk prefix to 0x4A encoded; Moon door 0x3C and
+  dungeon interior still open. Bronze Clean.

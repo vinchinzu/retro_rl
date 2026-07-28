@@ -1,4 +1,4 @@
-"""Probe-verified symbolic IDs used by the Zelda I dungeon laboratory."""
+"""Probe-verified and source-correlated IDs used by the dungeon laboratory."""
 
 from __future__ import annotations
 
@@ -16,9 +16,11 @@ OBJECT_NAMES: dict[int, str] = {
 
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",
-    0x16: "unknown_room_item_16",
+    0x16: "compass_walkthrough_correlated",
+    0x17: "dungeon_map_walkthrough_correlated",
     0x19: "small_key",
     0x1A: "heart_container",
+    0x1D: "boomerang_walkthrough_correlated",
 }
 
 MODE_NAMES: dict[int, str] = {

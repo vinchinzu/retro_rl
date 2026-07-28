@@ -20,6 +20,28 @@ TMNT IV made this distinction concrete: the boss checkpoint cleared, while the
 continuous route entered the same fight pinned behind a wall. Natural-entry
 coverage is therefore a separate acceptance gate, not optional polish.
 
+## External route references are allowed
+
+Walkthroughs, maps, speedrun notes, wikis, and other public route references
+are approved development accelerators for every game. They may supply route
+hypotheses, item ordering, optional-branch choices, boss tactics, and likely
+room connections.
+
+For each source-informed route:
+
+- link the source in the closest game-local route or research document
+- distinguish sourced claims from emulator-observed facts
+- validate room IDs, transitions, prerequisites, and stop predicates in the
+  target emulator before promoting the route
+- pass the natural-entry gate from the real predecessor state
+
+External knowledge does not by itself make an attempt assisted. Runtime
+observation and intervention classes describe what the live attempt observes
+and mutates. A policy built with a walkthrough can still be Bronze / Clean
+when it uses only allowed read-only observations and controller input during
+the attempt. Save-state loads, RAM writes, or human input during the active
+attempt remain governed by the benchmark and assist contract.
+
 ## 1. Freeze the evaluation contract first
 
 Before RAM discovery or policy work, write down:

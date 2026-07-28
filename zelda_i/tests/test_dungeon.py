@@ -182,9 +182,11 @@ def test_trace_diff_and_ram_delta_are_symbolic() -> None:
     assert any(row["address"] == 0x0200 for row in report["unknown"])
 
 
-def test_symbolic_registry_keeps_unknowns_explicit() -> None:
+def test_symbolic_registry_distinguishes_correlated_and_unknown_ids() -> None:
     assert object_name(0x1B) == "keese"
-    assert room_item_name(0x16) == "unknown_room_item_16"
+    assert room_item_name(0x16) == "compass_walkthrough_correlated"
+    assert room_item_name(0x17) == "dungeon_map_walkthrough_correlated"
+    assert room_item_name(0x1D) == "boomerang_walkthrough_correlated"
     assert object_name(0xFE) == "unknown_object_0xfe"
     assert ram_symbol(ADDR_OBJ_TYPE + 2) == "obj_type[2]"
 

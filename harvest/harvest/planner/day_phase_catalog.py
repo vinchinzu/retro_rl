@@ -120,12 +120,14 @@ NAV_CROP_PHASE = PhaseSpec(
     "nav",
     # Soft radius keeps planting from failing when debris blocks the last
     # few pixels; CropWaterTask re-homes onto exact plot centers.
+    # Optional: crop phase navigates itself if this pre-nav times out.
     {
         "target_px": (136, 520),
         "radius": 28,
-        "soft_radius": 48,
-        "timeout": 6000,
+        "soft_radius": 64,
+        "timeout": 9000,
     },
+    failure_policy="optional",
 )
 
 HARVEST_ROUTE_PHASE = PhaseSpec(
@@ -657,13 +659,17 @@ BUY_COW_FIRST_PHASES: List[PhaseSpec] = [
     EXIT_BARN_PHASE,
 ]
 
-# Day 1 sequence: house exit → light clear → buy seeds → plant/water →
+# Day 1 sequence: house exit → light clear → buy seeds → hoe/plant → water →
 # town explore (sets go-home flag) → return home → sleep into day 2.
+# Plant pass uses hoe+seeds first (only 2 carry slots); can comes after.
 DAY1_PHASES: List[PhaseSpec] = [
     EXIT_TO_FARM_PHASE,
     CLEAR_FIELD_PHASE,
     NAV_FARM_EXIT_PHASE,
     BUY_SEEDS_PHASE,
+    ENSURE_CROP_SEEDS_PHASE,
+    NAV_CROP_PHASE,
+    CROP_WATER_PHASE,
     ENSURE_WATERING_CAN_PHASE,
     NAV_CROP_PHASE,
     CROP_WATER_PHASE,
@@ -683,6 +689,9 @@ BOOT_TO_DAY2_PHASES: List[PhaseSpec] = [
     CLEAR_FIELD_PHASE,
     NAV_FARM_EXIT_PHASE,
     BUY_SEEDS_PHASE,
+    ENSURE_CROP_SEEDS_PHASE,
+    NAV_CROP_PHASE,
+    CROP_WATER_PHASE,
     ENSURE_WATERING_CAN_PHASE,
     NAV_CROP_PHASE,
     CROP_WATER_PHASE,
@@ -727,6 +736,9 @@ SPRING4_PHASES: List[PhaseSpec] = [
         {"route": "berry_ship", "timeout": 8000},
         failure_policy="optional",
     ),
+    ENSURE_CROP_SEEDS_PHASE,
+    NAV_CROP_PHASE,
+    CROP_WATER_PHASE,
     ENSURE_WATERING_CAN_PHASE,
     NAV_CROP_PHASE,
     CROP_WATER_PHASE,

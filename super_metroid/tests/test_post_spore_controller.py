@@ -18,6 +18,7 @@ from super_metroid.post_spore_controller import (
     play_big_pink_morph_to_tunnel,
     play_big_pink_tunnel_west,
     play_farming_to_big_pink,
+    play_pink_pb_break_maze_wall,
     play_pink_pb_morph_bomb_collect,
     play_super_room_collect,
     play_super_room_to_farming,
@@ -43,6 +44,7 @@ def test_controller_exports() -> None:
     assert callable(play_big_pink_bomb_to_walkway_edge)
     assert callable(play_big_pink_into_main_shaft)
     assert callable(play_big_pink_enter_pb_door_from_sill)
+    assert callable(play_pink_pb_break_maze_wall)
     assert callable(play_pink_pb_morph_bomb_collect)
 
 

@@ -19,7 +19,7 @@ Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful only for t
 
 - **0x9D19 → 0x9E11** (Big Pink → Pink Brinstar Power Bomb Room)
 - Door: `0x8E02`
-- Note: sill entry + morph-bomb collect green; ★ approach past wall@613 + maze@437
+- Note: sill entry green; ★ pure sill approach + mid-maze 405→225 still open
 - Leg: `spore_spawn_supers__early_power_bombs`
 
 ## Status counts (unique path rooms)
@@ -27,9 +27,9 @@ Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful only for t
 | Status | Count |
 |--------|------:|
 | continuous | 20 |
-| controller_dev | 2 |
+| controller_dev | 3 |
 | boss_deferred | 6 |
-| open | 79 |
+| open | 78 |
 | **total** | **107** |
 | directed hops | 199 |
 
@@ -66,10 +66,12 @@ Done:
 - [x] Super collect continuous
 - [x] farming hop controller_dev
 - [x] Big Pink to main shaft
+- [x] PB wall@437 pure morph-bomb
+- [x] PB pocket collect (x≤225)
 
 Open:
-- [ ] Big Pink climb to PB door
-- [ ] natural PB collect
+- [ ] Big Pink pure sill approach (wall@613 / y1051)
+- [ ] mid-maze 405→225 pure
 - [ ] continuous power-on through PB
 
 ### W2 — PB → Kraid approach (research path) (open)
@@ -131,12 +133,12 @@ _Requires MB defeat event + escape timer init_
 | 14 | `0x9879` | Flyway | **continuous** | tough | Flyway (+ room_clears policy) |
 | 15 | `0x9804` | Bomb Torizo Room | **continuous** | boss_late | Bomb Torizo fight continuous |
 | 16 | `0x9E52` | Green Hill Zone | **open** | tough |  |
-| 17 | `0x9D19` | Big Pink | **controller_dev** | tough | Big Pink: crest+tunnel→main shaft (play_big_pink_into_main_shaft); PB climb OPEN |
+| 17 | `0x9D19` | Big Pink | **controller_dev** | tough | Big Pink: crest+tunnel→main; PB sill entry green; approach wall@613 OPEN |
 | 18 | `0x9D9C` | Spore Spawn Keyhunter Room | **open** | tough |  |
 | 19 | `0x9DC7` | Spore Spawn Room | **continuous** | boss_late | Spore Spawn fight continuous |
 | 20 | `0x9B5B` | Spore Spawn Super Room | **continuous** | tough | Spore Super room collect continuous (furthest continuous) |
 | 21 | `0xA0A4` | Spore Spawn Farming Room | **controller_dev** | easy | Farming via play_super_room_to_farming |
-| 22 | `0x9E11` | Pink Brinstar Power Bomb Room | **open** | tough |  |
+| 22 | `0x9E11` | Pink Brinstar Power Bomb Room | **controller_dev** | tough | Pink PB: wall@437 pure break; collect from x≤225; mid-maze 405→225 OPEN |
 | 23 | `0x9FBA` | Noob Bridge | **open** | standard |  |
 | 24 | `0xA253` | Red Tower | **open** | tough |  |
 | 25 | `0xA3DD` | Bat Room | **open** | easy |  |
@@ -224,7 +226,7 @@ _Requires MB defeat event + escape timer init_
 
 ## Immediate actions
 
-1. Close **Big Pink → Pink PB** place bridges (sill approach + maze wall@437); entry/collect controllers exist.
+1. Solve **Big Pink → Pink PB** (`0x9D19 → 0x9E11`) by play from main shaft.
 2. Compose Super→PB controller; re-prove on continuous power-on.
 3. For each following hop: capture natural entry → attempt policy → promote.
 4. Boss fights only after natural entry to that boss room exists on the chain.

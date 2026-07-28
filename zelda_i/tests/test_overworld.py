@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from zelda_i.overworld import (
     LEVEL1_PATH_SCREENS,
+    LEVEL2_PATH_SCREENS,
     NODE_LEVEL1_DUNGEON,
+    NODE_LEVEL1_COMPLETE,
     NODE_LEVEL1_ENTRANCE,
+    NODE_LEVEL1_EXIT_OVERWORLD,
     NODE_LEVEL1_FIRST_KEY,
     NODE_LEVEL1_FIRST_KEY_ROOM,
     NODE_LEVEL1_NORTH_CLEARED,
@@ -12,6 +15,7 @@ from zelda_i.overworld import (
     NODE_LEVEL1_ROOM_53_CLEARED,
     NODE_LEVEL1_ROOM_54,
     NODE_LEVEL1_ROOM_54_CLEARED,
+    NODE_LEVEL2_PATH_4A,
     NODE_START,
     NODE_SWORD_CAVE,
     SCREEN_START,
@@ -19,10 +23,12 @@ from zelda_i.overworld import (
     early_route_plan,
     level1_clear53_route_plan,
     level1_clear54_route_plan,
+    level1_complete_route_plan,
     level1_clear63_route_plan,
     level1_first_key_route_plan,
     level1_north_route_plan,
     level1_route_plan,
+    level2_path_prefix_route_plan,
     neighbor_screens,
     screen_to_grid,
     sword_cave_route_legs,
@@ -125,3 +131,19 @@ def test_level1_clear54_route_plan_clears_east_keese_room() -> None:
     assert planned[-1].leg.target_id == NODE_LEVEL1_ROOM_54_CLEARED
     assert planned[-1].edge.verification == "observed"
     assert planned[-1].edge.meta.get("enemies") == "8_keese"
+
+
+def test_level1_complete_route_plan_reaches_first_triforce_shard() -> None:
+    planned = level1_complete_route_plan()
+    assert planned[-1].leg.target_id == NODE_LEVEL1_COMPLETE
+    assert planned[-1].edge.verification == "observed"
+    assert planned[-1].edge.meta.get("segment") == "level1_complete"
+    assert "triforce_shard_1" in planned[-1].capabilities_after
+
+
+def test_level2_path_prefix_route_plan_reaches_4a() -> None:
+    planned = level2_path_prefix_route_plan()
+    assert planned[-1].leg.target_id == NODE_LEVEL2_PATH_4A
+    assert planned[-1].leg.source_id == NODE_LEVEL1_EXIT_OVERWORLD
+    assert "triforce_shard_1" in planned[-1].capabilities_before
+    assert LEVEL2_PATH_SCREENS[-1] == 0x4A

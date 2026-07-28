@@ -1,10 +1,10 @@
 {
-  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-07-28T19:45:49.712608+00:00",
-  "development_only": true,
-  "natural_entry": false,
+  "acceptance_warning": "Captured from power-on without a state load; retain the matching evidence manifest for acceptance.",
+  "captured_at": "2026-07-28T20:11:06.569998+00:00",
+  "development_only": false,
+  "natural_entry": true,
   "request": {
-    "natural_entry": false,
+    "natural_entry": true,
     "segment": "level1_complete"
   },
   "schema_version": 1,
@@ -13,8 +13,8 @@
       {
         "controller": {
           "clear_signal_seen": true,
-          "combat_frames": 922,
-          "frames": 1251,
+          "combat_frames": 826,
+          "frames": 1155,
           "initial_inventory": 0,
           "last_live_enemies": 0,
           "max_live_enemies": 6,
@@ -36,7 +36,7 @@
             "patrol_attack_period": 10
           }
         },
-        "frames": 1251,
+        "frames": 1155,
         "max_frames": 6000,
         "name": "clear52",
         "success": true
@@ -44,8 +44,8 @@
       {
         "controller": {
           "clear_signal_seen": true,
-          "combat_frames": 970,
-          "frames": 1265,
+          "combat_frames": 906,
+          "frames": 1199,
           "initial_inventory": 0,
           "last_live_enemies": 0,
           "max_live_enemies": 3,
@@ -67,14 +67,14 @@
             "patrol_attack_period": 10
           }
         },
-        "frames": 1265,
+        "frames": 1199,
         "max_frames": 6000,
         "name": "clear42",
         "success": true
       },
       {
         "controller": {
-          "frames": 1157,
+          "frames": 1173,
           "notes": [
             "center_block_pushed",
             "hint_room_entered",
@@ -86,7 +86,7 @@
           "phase": "DONE",
           "success": true
         },
-        "frames": 1157,
+        "frames": 1173,
         "max_frames": 2400,
         "name": "exit42",
         "success": true
@@ -94,8 +94,8 @@
       {
         "controller": {
           "clear_signal_seen": true,
-          "combat_frames": 1802,
-          "frames": 1803,
+          "combat_frames": 2322,
+          "frames": 2323,
           "initial_inventory": 0,
           "last_live_enemies": 0,
           "max_live_enemies": 5,
@@ -116,38 +116,39 @@
             "patrol_attack_period": 10
           }
         },
-        "frames": 1803,
+        "frames": 2323,
         "max_frames": 6000,
         "name": "clear43",
         "success": true
       },
       {
         "controller": {
-          "clear_signal_seen": false,
-          "combat_frames": 829,
-          "frames": 1090,
+          "clear_signal_seen": true,
+          "combat_frames": 1686,
+          "frames": 1959,
           "initial_inventory": 0,
           "last_live_enemies": 0,
           "max_live_enemies": 3,
           "notes": [
             "at_entry_door",
             "target_room_playable",
+            "room_cleared",
             "reward_collected"
           ],
           "phase": "DONE",
           "spec_id": "level1_room33",
           "success": true,
           "tuning": {
-            "attack_phase": 0,
+            "attack_phase": 4,
             "engage_attack_hold": 4,
             "engage_attack_period": 8,
-            "engage_distance": 40,
+            "engage_distance": 24,
             "engage_dominant_axis": false,
             "patrol_attack_hold": 2,
             "patrol_attack_period": 12
           }
         },
-        "frames": 1090,
+        "frames": 1959,
         "max_frames": 6000,
         "name": "clear33_key",
         "success": true
@@ -155,8 +156,8 @@
       {
         "controller": {
           "clear_signal_seen": true,
-          "combat_frames": 714,
-          "frames": 1095,
+          "combat_frames": 1155,
+          "frames": 1532,
           "initial_inventory": 0,
           "last_live_enemies": 0,
           "max_live_enemies": 3,
@@ -170,16 +171,16 @@
           "spec_id": "level1_room23",
           "success": true,
           "tuning": {
-            "attack_phase": 0,
+            "attack_phase": 2,
             "engage_attack_hold": 4,
             "engage_attack_period": 8,
-            "engage_distance": 64,
+            "engage_distance": 96,
             "engage_dominant_axis": false,
             "patrol_attack_hold": 2,
             "patrol_attack_period": 12
           }
         },
-        "frames": 1095,
+        "frames": 1532,
         "max_frames": 6000,
         "name": "clear23_key",
         "success": true
@@ -206,8 +207,8 @@
       {
         "controller": {
           "clear_signal_seen": true,
-          "combat_frames": 2856,
-          "frames": 2857,
+          "combat_frames": 4691,
+          "frames": 4692,
           "initial_inventory": 0,
           "last_live_enemies": 0,
           "max_live_enemies": 3,
@@ -219,16 +220,16 @@
           "spec_id": "level1_room44",
           "success": true,
           "tuning": {
-            "attack_phase": 6,
+            "attack_phase": 7,
             "engage_attack_hold": 4,
             "engage_attack_period": 8,
-            "engage_distance": 80,
+            "engage_distance": 64,
             "engage_dominant_axis": false,
             "patrol_attack_hold": 4,
             "patrol_attack_period": 8
           }
         },
-        "frames": 2857,
+        "frames": 4692,
         "max_frames": 6000,
         "name": "clear44",
         "success": true
@@ -236,8 +237,8 @@
       {
         "controller": {
           "clear_signal_seen": false,
-          "combat_frames": 866,
-          "frames": 1274,
+          "combat_frames": 892,
+          "frames": 1303,
           "initial_inventory": 0,
           "last_live_enemies": 0,
           "max_live_enemies": 8,
@@ -250,7 +251,7 @@
           "spec_id": "level1_room45",
           "success": true,
           "tuning": {
-            "attack_phase": 2,
+            "attack_phase": 0,
             "engage_attack_hold": 4,
             "engage_attack_period": 8,
             "engage_distance": 80,
@@ -259,60 +260,23 @@
             "patrol_attack_period": 8
           }
         },
-        "frames": 1274,
+        "frames": 1303,
         "max_frames": 9000,
         "name": "clear45_key",
         "success": true
       },
       {
         "controller": {
-          "attack_frames": 448,
+          "attack_frames": 293,
           "boss_seen": true,
           "dodge_duration": 8,
-          "frames": 1307,
+          "entry_delay_frames": 109,
+          "frames": 1051,
           "initial_health": 32,
           "notes": [
             "at_boss_door",
             "boss_room_entered",
             "aquamentus_spawned",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "boss_stance_ready",
-            "facing_aquamentus",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "boss_stance_ready",
-            "facing_aquamentus",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
-            "boss_stance_ready",
-            "facing_aquamentus",
-            "fireball_threat",
-            "fireball_dodged",
-            "fireball_threat",
-            "fireball_dodged",
             "fireball_threat",
             "fireball_dodged",
             "fireball_threat",
@@ -342,7 +306,7 @@
           "success": true,
           "threat_radius": 20
         },
-        "frames": 1307,
+        "frames": 1051,
         "max_frames": 6000,
         "name": "aquamentus_heart",
         "success": true
@@ -365,8 +329,8 @@
     ],
     "success": true
   },
-  "source_state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Cleared53.state",
-  "source_state_sha256": "5c87aceb237637e85d6b021d4179b3d24410c1349bdd28647282fe564ab9bb49",
+  "source_state_path": null,
+  "source_state_sha256": null,
   "state_path": "/home/v/01_projects/11_games/retro_rl/zelda_i/custom_integrations/LegendOfZelda-Nes/Level1Complete.state",
-  "state_sha256": "4c6e65661381bd080a8c2d646c81f213656b89c4109df53b5cfd00e0722ce736"
+  "state_sha256": "f8bbe191d405315d8aa287944e7cb24596c4ab9208ef74f56757bca5f3b444d3"
 }
