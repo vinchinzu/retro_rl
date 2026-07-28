@@ -25,15 +25,17 @@ Pink PB progress (bottom door path — hop table door ``0x8E02`` / sill y≈1136
 - **Geometry:** door sill island at x≈574–582, y≈1136; solid wall column
   x≈590–610 separates main platform (x≥613, y≈1179). Jump peak from
   platform is y≈1116 but min_x hard-stops at 613 (full-height wall).
+  Upper ledge y≈1051 spans past the wall (x≈549–700+); reverse climb open.
 - **Entry (controller):** from sill ``(580,1136)`` run-shoot-spin-walk left
-  → ``0x9E11`` (``play_big_pink_enter_pb_door_from_sill``). From free-fall
-  air at x≈555–570,y≈1136 shoot-spin also enters.
-- **Collect (controller):** from mid-maze ``(150,395)`` morph-bomb-roll left
-  → PB PLM (``play_pink_pb_morph_bomb_collect``). Maze wall at x≈437 from
-  bottom-door spawn still blocks pure path (bombs/missiles/supers do not
-  open it — path over/under not yet scripted).
-- **Still open:** (1) pure climb from main shaft onto sill without place,
-  (2) pure maze from spawn x≈472 past wall x≈437 to x≈150.
+  → ``0x9E11`` (``play_big_pink_enter_pb_door_from_sill``). Top door
+  ``0x8DDE`` at y≈888 also enters (lands ~y=139).
+- **Maze wall@437:** bombable with **double-tap morph** (release between
+  DOWNs). Crouch-only does not clear it. ``play_pink_pb_break_maze_wall``
+  opens spawn~(460,395) → ~x=405.
+- **Collect (controller):** from x≤225 y≈395 morph-bomb-roll left → PB PLM
+  (``play_pink_pb_morph_bomb_collect``). Place bridge reduced 150→225.
+- **Still open:** (1) pure climb main/intercept → sill (or y1051 ledge),
+  (2) pure maze x≈405 → x≤225 (pit y≈457 traps morph; mid barriers remain).
 """
 
 from __future__ import annotations
@@ -587,26 +589,86 @@ def play_big_pink_enter_pb_door_from_sill(
     return state
 
 
+def _double_tap_morph(session: ControllerSession) -> SuperMetroidState:
+    """Morph ball via double-tap DOWN with release between taps.
+
+    Held DOWN alone only crouches (pose ~40). Wall@437 and maze bomb paths
+    require true morph (pose ~65/31/50).
+    """
+    _hold(session, 4, "UP", reason="morph_pre_unmorph")
+    _hold(session, 4, reason="morph_pre_idle")
+    _hold(session, 6, "DOWN", reason="morph_tap1")
+    _hold(session, 4, reason="morph_release")
+    _hold(session, 6, "DOWN", reason="morph_tap2")
+    return _hold(session, 4, reason="morph_settle")
+
+
+def play_pink_pb_break_maze_wall(
+    session: ControllerSession,
+    *,
+    max_cycles: int = 16,
+) -> SuperMetroidState:
+    """Open bottom-spawn maze wall at x≈437 with morph bombs.
+
+    From natural bottom-door spawn ~(460, 395): walk left into the wall,
+    double-tap morph, bomb + roll. After a few cycles Samus is past the wall
+    around x≈405 (often still on the upper band y≈395–410 before the pit).
+
+    Missiles/supers do **not** open this wall; crouch-bombs do not either —
+    morph is required. Further mid-maze (405 → x≤225 collect pocket) still
+    open.
+    """
+    _require_room(session, ROOM_PINK_PB, "pink_pb_break_maze_wall")
+    if session.state.max_power_bombs > 0:
+        return session.state
+    # Approach wall.
+    for _ in range(40):
+        if session.state.samus_x <= 440:
+            break
+        _hold(session, 1, "LEFT", reason="pb_maze_to_wall")
+    _double_tap_morph(session)
+    for cycle in range(max_cycles):
+        _hold(session, 2, "X", reason="pb_maze_bomb")
+        for step in range(38):
+            y = session.state.samus_y
+            x = session.state.samus_x
+            # Prefer left while elevated by bomb jump or on floor band.
+            if y < 400 or (y <= 412 and step > 25):
+                state = _hold(session, 1, "LEFT", reason="pb_maze_roll")
+            else:
+                state = _hold(session, 1, reason="pb_maze_wait")
+            if state.max_power_bombs > 0:
+                return state
+            if state.samus_x <= 410 and state.samus_y <= 415:
+                return state
+        if session.state.samus_x <= 410 and session.state.samus_y <= 420:
+            return session.state
+    if session.state.samus_x > 420:
+        raise TimeoutError(
+            f"pink_pb_break_maze_wall: still blocked: {session.state}"
+        )
+    return session.state
+
+
 def play_pink_pb_morph_bomb_collect(
     session: ControllerSession,
     *,
     max_cycles: int = 20,
 ) -> SuperMetroidState:
-    """Morph-bomb-roll left from mid-maze (~x≤200, y≈395) to the PB PLM.
+    """Morph-bomb-roll left from collect pocket (x≤225, y≈395) to the PB PLM.
 
-    Proven from place ``(150, 395)`` after bottom-door entry: double-tap morph,
-    lay bomb, roll left; capacity goes 0→5 within one bomb cycle when near the
-    item (~x=100–120, y≈380–400).
+    Proven from place ``(220–225, 395)`` after bottom-door entry: double-tap
+    morph, lay bomb, roll left; capacity 0→5 near the item
+    (~x=100–120, y≈370–400). x≥230 on this floor is solid/stuck without a
+    separate approach.
 
-    Expects Pink PB room ``0x9E11`` already past the solid maze wall at x≈437
-    (spawn after bottom entry is ~472,395; that wall is not bomb/missile/super
-    breakable — over/under path still open).
+    Expects Pink PB room ``0x9E11`` already west of mid-maze barriers (not
+    merely past wall@437 — that only reaches ~x=405).
     """
     _require_room(session, ROOM_PINK_PB, "pink_pb_morph_collect")
     if session.state.max_power_bombs > 0:
         return session.state
-    _hold(session, 8, "DOWN", reason="pb_collect_morph1")
-    _hold(session, 5, "DOWN", reason="pb_collect_morph2")
+    _double_tap_morph(session)
     for cycle in range(max_cycles):
         _hold(session, 2, "X", reason="pb_collect_bomb")
         for _ in range(55):

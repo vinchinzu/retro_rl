@@ -39,6 +39,11 @@ NODE_LEVEL1_ROOM_53_CLEARED = "level1_room_53_cleared"
 NODE_LEVEL1_ROOM_52 = "level1_room_52"
 NODE_LEVEL1_ROOM_54 = "level1_room_54"
 NODE_LEVEL1_ROOM_54_CLEARED = "level1_room_54_cleared"
+NODE_LEVEL1_COMPLETE = "level1_triforce_shard_1"
+NODE_LEVEL1_EXIT_OVERWORLD = "ow_37_post_triforce"
+NODE_LEVEL2_PATH_4A = "ow_4a_level2_path"
+NODE_LEVEL2_ENTRANCE = "ow_3c"
+NODE_LEVEL2_DUNGEON = "dungeon_level2"
 
 # Probe-verified path screens (2026-07-28): east-then-north, not col-7 straight
 LEVEL1_PATH_SCREENS: tuple[int, ...] = (
@@ -51,6 +56,18 @@ LEVEL1_PATH_SCREENS: tuple[int, ...] = (
     0x37,
 )
 
+# Post-Triforce walk prefix toward Level 2 (ends 0x4A; extension open).
+# Avoids rocky dead-end 0x79. See level2_overworld.py.
+LEVEL2_PATH_SCREENS: tuple[int, ...] = (
+    0x37,
+    0x38,
+    0x48,
+    0x58,
+    0x59,
+    0x49,
+    0x4A,
+)
+
 SCREEN_LABELS: dict[int, str] = {
     0x77: "start",
     0x78: "east_of_start",
@@ -61,6 +78,13 @@ SCREEN_LABELS: dict[int, str] = {
     0x37: "level1_entrance",
     0x67: "north_of_start_deadend",
     0x47: "central_lake",
+    0x59: "bush_east_of_58",
+    0x49: "north_of_59",
+    0x4A: "east_of_49",
+    0x4B: "east_of_4a",
+    0x5B: "bush_south_of_4b",
+    0x3C: "level2_entrance",
+    0x79: "rocky_deadend_east_of_78",
 }
 
 
@@ -158,7 +182,7 @@ def build_early_route_graph() -> RouteGraph:
 
         0x77 → E 0x78 → N 0x68 → N 0x58 → N 0x48 → N 0x38 → W 0x37 → dungeon
     """
-    seed_screens = set(LEVEL1_PATH_SCREENS)
+    seed_screens = set(LEVEL1_PATH_SCREENS) | set(LEVEL2_PATH_SCREENS)
     seed_screens.update(
         {
             SCREEN_NORTH_OF_START,  # 0x67 dead-end (documented trap)
@@ -167,10 +191,12 @@ def build_early_route_graph() -> RouteGraph:
             0x47,
             0x57,
             0x59,
+            0x79,  # rocky dead-end trap east of 0x78
+            0x3C,  # Level 2 overworld door (walkthrough target)
         }
     )
-    # Neighborhood around the verified path for expansion
-    for sc in LEVEL1_PATH_SCREENS:
+    # Neighborhood around the verified paths for expansion
+    for sc in list(LEVEL1_PATH_SCREENS) + list(LEVEL2_PATH_SCREENS):
         for neighbor in neighbor_screens(sc).values():
             if neighbor is not None:
                 seed_screens.add(neighbor)
@@ -303,6 +329,60 @@ def build_early_route_graph() -> RouteGraph:
                 "item_id": 0x16,
                 "doors": {"west": 0x53, "east": "blocked"},
             },
+        ),
+        GraphNode(
+            node_id=NODE_LEVEL1_COMPLETE,
+            name="level1_triforce_shard_1",
+            area="level1",
+            tags=frozenset(
+                {"dungeon", "level1", "boss", "triforce", "complete"}
+            ),
+            meta={
+                "level": 1,
+                "room": 0x36,
+                "boss": "aquamentus",
+                "reward": "triforce_shard_1",
+                "stop_predicate": "triforce & 0x01",
+            },
+        ),
+        GraphNode(
+            node_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            name="post_triforce_level1_mouth",
+            area="overworld",
+            tags=frozenset({"overworld", "post_triforce"}),
+            meta={
+                "screen": 0x37,
+                "note": "engine returns here after shard-1 fanfare; then walk",
+            },
+        ),
+        GraphNode(
+            node_id=NODE_LEVEL2_PATH_4A,
+            name="level2_path_4a",
+            area="overworld",
+            tags=frozenset({"overworld", "level2_path"}),
+            meta={
+                "screen": 0x4A,
+                "segment": "to_level2_prefix",
+                "stop_predicate": "level2_path_prefix_success",
+            },
+        ),
+        GraphNode(
+            node_id=NODE_LEVEL2_ENTRANCE,
+            name="level2_overworld_door",
+            area="overworld",
+            tags=frozenset({"overworld", "level2"}),
+            meta={
+                "screen": 0x3C,
+                "source": "walkthrough_correlated",
+                "verification": "planned",
+            },
+        ),
+        GraphNode(
+            node_id=NODE_LEVEL2_DUNGEON,
+            name="level2_moon",
+            area="dungeon",
+            tags=frozenset({"dungeon", "level2"}),
+            meta={"overworld_screen": 0x3C, "level": 2},
         ),
     ]
     extra_edges = [
@@ -482,6 +562,82 @@ def build_early_route_graph() -> RouteGraph:
                 "item_id": 0x16,
             },
         ),
+        GraphEdge(
+            source_id=NODE_LEVEL1_ROOM_53_CLEARED,
+            target_id=NODE_LEVEL1_COMPLETE,
+            edge_id="complete_level1_eagle",
+            direction="ROUTE",
+            requires=frozenset({"wooden_sword"}),
+            verification="observed",
+            provenance="emulator_probe",
+            meta={
+                "segment": "level1_complete",
+                "rooms": (
+                    0x52,
+                    0x42,
+                    0x41,
+                    0x43,
+                    0x33,
+                    0x23,
+                    0x44,
+                    0x45,
+                    0x35,
+                    0x36,
+                ),
+                "source": "walkthrough_correlated_then_live_verified",
+            },
+        ),
+        GraphEdge(
+            source_id=NODE_LEVEL1_COMPLETE,
+            target_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            edge_id="settle_post_triforce_overworld",
+            direction="OUT",
+            verification="observed",
+            provenance="emulator_probe",
+            meta={
+                "segment": "to_level2",
+                "note": "idle through mode-18 fanfare; engine places Link on 0x37",
+                "approx_frames": 704,
+            },
+        ),
+        GraphEdge(
+            source_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            target_id=NODE_LEVEL2_PATH_4A,
+            edge_id="walk_level2_path_prefix",
+            direction="ROUTE",
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            verification="observed",
+            provenance="emulator_probe",
+            meta={
+                "segment": "to_level2_prefix",
+                "screens": LEVEL2_PATH_SCREENS,
+                "avoid": (0x79,),
+            },
+        ),
+        GraphEdge(
+            source_id=NODE_LEVEL2_PATH_4A,
+            target_id=NODE_LEVEL2_ENTRANCE,
+            edge_id="walk_level2_suffix",
+            direction="ROUTE",
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            verification="planned",
+            provenance="walkthrough_plus_partial_probe",
+            meta={
+                "segment": "to_level2",
+                "planned_screens": (0x4B, 0x5B, 0x5C, 0x5D, 0x4D, 0x4C, 0x3C),
+                "blocker": "overworld_health_management",
+            },
+        ),
+        GraphEdge(
+            source_id=NODE_LEVEL2_ENTRANCE,
+            target_id=NODE_LEVEL2_DUNGEON,
+            edge_id="enter_level2",
+            direction="IN",
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            verification="planned",
+            provenance="walkthrough",
+            meta={"segment": "to_level2", "door": "moon_mouth"},
+        ),
     ]
     nodes = list(graph.nodes.values()) + extra_nodes
     edges = list(promoted) + extra_edges
@@ -649,6 +805,21 @@ def level1_clear54_route_legs() -> tuple[RouteLeg, ...]:
     )
 
 
+def level1_complete_route_legs() -> tuple[RouteLeg, ...]:
+    """Power-on route through Aquamentus and Triforce shard 1."""
+    return (
+        *level1_clear53_route_legs(),
+        RouteLeg(
+            leg_id="complete_level1_eagle",
+            source_id=NODE_LEVEL1_ROOM_53_CLEARED,
+            target_id=NODE_LEVEL1_COMPLETE,
+            requires=frozenset({"wooden_sword"}),
+            acquires=frozenset({"triforce_shard_1"}),
+            goal="level1_triforce_bit_0_set",
+        ),
+    )
+
+
 def early_route_plan(graph: RouteGraph | None = None):
     """Plan the sword-cave legs on the early graph (empty initial inventory)."""
     g = graph or build_early_route_graph()
@@ -702,5 +873,44 @@ def level1_clear54_route_plan(graph: RouteGraph | None = None):
     g = graph or build_early_route_graph()
     return g.plan_legs(
         level1_clear54_route_legs(),
+        initial_capabilities=frozenset(),
+    )
+
+
+def level1_complete_route_plan(graph: RouteGraph | None = None):
+    """Plan power-on through the verified Level 1 completion route."""
+    g = graph or build_early_route_graph()
+    return g.plan_legs(
+        level1_complete_route_legs(),
+        initial_capabilities=frozenset(),
+    )
+
+
+def level2_path_prefix_route_legs() -> tuple[RouteLeg, ...]:
+    """Legs from Level 1 complete through the verified walk prefix to 0x4A."""
+    return (
+        *level1_complete_route_legs(),
+        RouteLeg(
+            leg_id="settle_post_triforce_overworld",
+            source_id=NODE_LEVEL1_COMPLETE,
+            target_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            goal="overworld_0x37_after_triforce",
+        ),
+        RouteLeg(
+            leg_id="walk_level2_path_prefix",
+            source_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            target_id=NODE_LEVEL2_PATH_4A,
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            goal="reach_screen_4A_post_triforce",
+        ),
+    )
+
+
+def level2_path_prefix_route_plan(graph: RouteGraph | None = None):
+    """Plan power-on through Level 1 and the verified Level 2 walk prefix."""
+    g = graph or build_early_route_graph()
+    return g.plan_legs(
+        level2_path_prefix_route_legs(),
         initial_capabilities=frozenset(),
     )

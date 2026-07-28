@@ -369,6 +369,8 @@ class Level1AquamentusController:
     attack_frames: int = 0
     dodge_frames: int = 0
     dodge_direction: str = "DOWN"
+    entry_delay_frames: int = 109
+    entry_delay_waited: int = 0
     stance: tuple[int, int] = _AQUAMENTUS_STANCE
     threat_radius: int = 20
     dodge_duration: int = 8
@@ -472,6 +474,12 @@ class Level1AquamentusController:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
 
         if self.phase is AquamentusPhase.ROUTE_ENTRY:
+            if (
+                snap.screen == 0x45
+                and self.entry_delay_waited < self.entry_delay_frames
+            ):
+                self.entry_delay_waited += 1
+                return FrameAction(nes_idle_action(), "align_boss_rng")
             action = self._route_entry(snap)
             if action.reason == "boss_route_done":
                 self._set_phase(AquamentusPhase.ENTER, "at_boss_door")
@@ -568,6 +576,7 @@ class Level1AquamentusController:
             "attack_frames": self.attack_frames,
             "boss_seen": self.boss_seen,
             "initial_health": self.initial_health,
+            "entry_delay_frames": self.entry_delay_frames,
             "stance": list(self.stance),
             "threat_radius": self.threat_radius,
             "dodge_duration": self.dodge_duration,

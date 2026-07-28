@@ -33,8 +33,8 @@ are topology diagnostics only — not route evidence.
 
 1. **Path board:** `docs/PATH_ROOM_BOARD.md` — 107 rooms / 199 hops; regenerate
    with `scripts/export_path_room_board.py`.
-2. **Current bottleneck:** pure approach onto PB sill (wall@x≈613) and maze past wall@x≈437; sill **entry** + mid-maze **collect** controllers exist.
-3. **Continuous next:** close place bridges, then power-on through PB and next open hops.
+2. **Current bottleneck:** pure approach onto PB sill (wall@x≈613 / y1051 ledge) and mid-maze **405→225** after wall@437; sill **entry**, wall@437 **pure break**, and pocket **collect** (x≤225) exist.
+3. **Continuous next:** close remaining place bridges, then power-on through PB and next open hops.
 4. Boss fights only after natural entry to that boss room exists on the chain.
 5. Topology warps (`probe_route.py full` / `full-hybrid`) — debug only.
 
@@ -63,9 +63,12 @@ uv run python super_metroid/scripts/probe_post_spore_pb.py --to main
 uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-door \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_intercept.state
 
-# PB morph-bomb collect (place bridge past maze wall@437 if needed)
+# Pure morph-bomb open wall@437 from bottom-door spawn
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-maze-wall \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_pb_door_entered.state
+# PB collect (wall pure + place(220,395) mid-maze bridge if needed)
 uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-collect \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_intercept.state
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_pb_door_entered.state
 ```
 
 Board: `docs/PATH_ROOM_BOARD.md`, `maps/path_room_board.json`.

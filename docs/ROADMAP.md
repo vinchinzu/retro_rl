@@ -145,8 +145,9 @@ change, not this horizon plan.
 2. **Magical Quest / Joe & Mac** — first reliable room/segment clears with natural
    entry.
 3. **Super Metroid** — close remaining critical path rooms and inventory bridges.
-4. **NES** — Zelda I room 0x52 west branch and continue its dungeon graph;
-   TMNT series first building/stage clears; harden SMB / SMB3 continuations.
+4. **NES** — Zelda I Level 1 is complete; route its completion warp to Level
+   2 and continue the dungeon graph; TMNT series first building/stage clears;
+   harden SMB / SMB3 continuations.
 5. Keep regenerating the game matrix and updating local `STATUS.md` after every
    verified advance.
 6. Ensure every assist has an explicit contract before it is used in published

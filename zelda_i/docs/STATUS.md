@@ -5,19 +5,19 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Power-on → clear Level 1 room 0x54; no state load |
+| Best verified result | Power-on → defeat Aquamentus → collect Triforce shard 1 |
 | Last verification | 2026-07-28 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **chained early suffix** (boot → key room 0x53 → clear east room 0x54) |
+| Status | **Level 1 complete** (`triforce & 0x01`, 2/2 natural + 2/2 isolated) |
 | Integration | `LegendOfZelda-Nes` |
 | ROM zip | `roms/Nintendo/NES/Legend of Zelda, The.zip` |
 | Ready frame (probe) | ~1749 |
-| Checkpoints | `Level1.state`, `Level1Entrance.state`, `Level1FirstKey.state`, `Level1North.state`, `Level1Cleared63.state`, `Level1Cleared53.state`, `Level1Cleared54.state` |
-| Evidence | [level1_clear54_natural.json](../recordings/level1_clear54_natural.json), [level1_clear54_isolated.json](../recordings/level1_clear54_isolated.json), [level1_clear53_natural.json](../recordings/level1_clear53_natural.json) |
+| Checkpoints | `Level1.state`, `Level1Entrance.state`, `Level1FirstKey.state`, `Level1North.state`, `Level1Cleared63.state`, `Level1Cleared53.state`, `Level1Complete.state` |
+| Evidence | [level1_complete_natural.json](../recordings/level1_complete_natural.json), [level1_complete_isolated.json](../recordings/level1_complete_isolated.json), [Level 1 route notes](LEVEL1_ROUTE.md) |
 
 ## Verified segments
 
@@ -37,12 +37,22 @@
 | Power-on → room 0x53 key | power-on natural chain | same clear + collected-key predicate | 758+2328+1091+1004+2922+1508 | `level1_clear53_natural.json` (2/2) |
 | Room 0x53 key → room 0x54 clear | `Level1Cleared53.state` | 0 live Keese, RoomAllDead≥20 | 1223 | `level1_clear54_isolated.json` (2/2) |
 | Power-on → room 0x54 clear | reusable natural milestone chain | same room-clear predicate | prefix + 1665 | `level1_clear54_natural.json` (2/2) |
+| Room 0x53 key → Triforce shard 1 | `Level1Cleared53.state` | room 0x36 and `triforce & 0x01` | 14,391 suffix | `level1_complete_isolated.json` (2/2) |
+| Power-on → Triforce shard 1 | reset / no state load | room 0x36 and `triforce & 0x01` | 29,039 total | `level1_complete_natural.json` (2/2) |
+| Post-L1 OW → Level 2 path 0x4A | `Level1ExitOverworld.state` | screen 0x4A, triforce & 0x01 | ~2,886 | `level2_prefix_isolated.json` (3/3) |
 
 Natural-entry Level 1 chain uses `SwordCaveController`,
 `OverworldToLevel1Controller`, `Level1FirstKeyController`,
 `Level1UnlockNorthController`, `Level1Clear63Controller`, and
 `Level1Clear53Controller`, followed by the generic `DungeonRoomSpec`
 controller for room 0x54 (no RAM writes or state loads).
+
+The complete Level 1 runner extends that same natural prefix through rooms
+`0x52→0x42→0x41→0x43→0x33→0x23→0x44→0x45→0x35→0x36`.
+It defeats Aquamentus with a projectile-aware controller, collects the Heart
+Container, and accepts only the persistent first-shard bit. It remains
+**Bronze / Clean**: read-only RAM plus controller input, with no state load or
+RAM write during the natural attempt.
 
 ## Overworld path (probe-stable)
 
@@ -59,8 +69,15 @@ controller for room 0x54 (no RAM writes or state loads).
 entry 0x73 ─E─► first-key room 0x74 ─key─► W to 0x73
   ─spend key at north door─► room 0x63 (3 Stalfos)
   ─clear─► no drop; N→0x53 open ─clear 5 Stalfos─► fixed key@(128,109)
-  ─W─► 0x52 (6 Keese)  or  ─E─► 0x54 (8 Keese) ─clear─► W back / E blocked
+  ─W─► 0x52→0x42→0x41→0x43→0x33→0x23
+  ─backtrack─► 0x43 ─E─► 0x44→0x45 ─N─► 0x35 Aquamentus
+  ─E─► 0x36 Triforce shard 1
 ```
+
+The walkthrough-informed correlation and required/optional branches are
+documented in [LEVEL1_ROUTE.md](LEVEL1_ROUTE.md). Room `0x54` is the optional
+Compass branch; the accepted speed route also skips the Map, Bow, and
+Boomerang pickups.
 
 Room 0x74 has five Stalfos and two block clusters. The natural policy acquires
 the carried key without requiring a full room clear, returns via the lower lane
@@ -87,7 +104,8 @@ must use object type because their HP bytes remain zero. A 16-trial,
 four-process lab sweep went 16/16; attack phase 0 + engage distance 48 ranked
 first at 1223 isolated frames. The promoted policy then passed 2/2 isolated
 and 2/2 full power-on natural-entry trials (1665 natural suffix frames).
-Clearing causes no known inventory change; `0x16` remains explicitly unknown.
+Clearing causes no known inventory change because the policy does not collect
+the item. The walkthrough correlates `0x16` with the optional Compass.
 West returns to 0x53 and a physical east-door probe is blocked.
 
 The Zelda-local dungeon lab now provides parallel policy sweeps, full traces
@@ -107,19 +125,44 @@ See `docs/DUNGEON_LAB.md`.
 - **M3–M5 Level 1 overworld** — sword → tree door → dungeon interior
 - **M3–M5 Level 1 first rooms** — entrance 0x73 → first key in 0x74 → locked
   north door → clear 0x63 → clear/key 0x53 → east → clear eight Keese in 0x54
+- **M3–M5 Level 1 completion** — required west route, switch/hint, Map room,
+  two more keys, Goriya/Wallmaster rooms, Aquamentus, Heart Container, and
+  Triforce shard 1; 2/2 isolated and 2/2 Clean natural-entry
+- **Level 2 approach scaffolding** — post-triforce settle to 0x37, walk prefix
+  to 0x4A (controllers, route graph, runner); suffix to 0x3C open
 - **Dungeon instrumentation** — room item/count, live object types/positions/HP,
   key inventory, opened-door bits, and room-ready/clear stop predicates
 - **Dungeon laboratory** — room specs, parallel sweeps, trace diff/failure
   tails, RAM deltas, exit probing, provenance, and generated handoffs
 
+## Level 2 overworld (in progress)
+
+After Triforce fanfare the engine returns Link to **overworld 0x37** (~704
+idle frames). From there the agent **walks** (no save-state warp).
+
+Verified walk prefix (controller target 0x4A, 3/3 isolated from
+`Level1ExitOverworld`):
+
+```
+0x37 E@y140 → 0x38 S → 0x48 S → 0x58 E → 0x59 N → 0x49 E → 0x4A
+```
+
+Stop: `level2_path_prefix_success` on screen 0x4A (~2886 frames). See
+[LEVEL2_ROUTE.md](LEVEL2_ROUTE.md). Evidence:
+`recordings/level2_prefix_isolated.json`. Checkpoint fixture:
+`Level1ExitOverworld.state`.
+
+**Not yet:** 0x4A→…→0x3C Moon door (overworld health) and Level 2 interior.
+
 ## Not done
 
-- Level 1 room 0x52 west branch onward, map, boss, and Triforce
-- Broader overworld combat / bomb / white-sword chain
+- Level 2 door entry + interior and the full eight-dungeon/Ganon route graph
+- Overworld combat / heart management for the bush-east suffix
+- Broader overworld bomb / white-sword chain
 - Continuous multi-dungeon dry run (M6–M8)
 
 ## Next
 
-1. Clear/reroute through room 0x52 and continue the west branch.
-2. Continue isolated + natural-entry rooms toward the map and Aquamentus.
-3. Expand route graph milestones toward Triforce piece 1 (M6).
+1. Heart-safe walk from 0x4A to overworld 0x3C and enter Level 2.
+2. Build isolated + natural-entry Level 2 room segments.
+3. Expand route graph milestones toward all eight shards and Ganon (M6).

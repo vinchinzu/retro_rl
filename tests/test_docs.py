@@ -273,3 +273,18 @@ def test_game_matrix_is_generated() -> None:
     assert "zelda_i" in text
     assert "smb" in text
     assert "Ladder rank" not in text
+
+
+def test_external_route_research_policy_is_shared() -> None:
+    process = (
+        ROOT / "snes_oneshot" / "docs" / "FULL_RUN_PROCESS.md"
+    ).read_text(encoding="utf-8")
+    benchmark = (ROOT / "docs" / "BENCHMARK_SPEC.md").read_text(
+        encoding="utf-8"
+    )
+    assert "External route references are allowed" in process
+    assert "approved development accelerators for every game" in process
+    assert (
+        "Offline route research is also separate from runtime class"
+        in benchmark
+    )

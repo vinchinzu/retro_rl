@@ -39,6 +39,8 @@ ADDR_TRIFORCE       = 0x0671
 | 7 | Scrolling |
 | 11 | Cave / underworld item-room play (sword cave) |
 | 16 | Cave enter animation |
+| 17 | Link death |
+| 18 | Triforce collection / dungeon-complete animation |
 
 ## Readiness
 
@@ -74,15 +76,22 @@ green-rupee drop and must not be used as the key target.
 `dungeon_room_cleared(..., ROOM_54_SPEC)` — room 0x54, mode 5, zero type
 `0x1B` objects, and `RoomAllDead >= 20`. Keese HP remains zero while alive,
 so this predicate intentionally uses object type only. Clear causes no known
-inventory delta; RoomItemId remains the unresolved `0x16`.
+inventory delta because the optional Compass pickup (`RoomItemId=0x16`,
+walkthrough-correlated) is skipped.
+
+`level1_complete` — `ADDR_TRIFORCE & 0x01`. The natural runner additionally
+records room `0x36`, mode 18, Heart Container health `0x31`, and every
+room-stage result.
 
 ```text
 0x73 entrance → east 0x74 (RoomItemId=0x19, five Stalfos)
   → first key → west 0x73 → spend key north → 0x63 (three Stalfos)
   → clear 0x63 (no drop) → north door → 0x53 (five Stalfos)
   → clear + fixed key (RoomItemId=0x19)
-  → west 0x52 (six Keese, 0x03) / east 0x54 (eight Keese, 0x16)
-  → clear 0x54 → west returns to 0x53; east blocked
+  → west 0x52 → north 0x42 → hint 0x41 → east 0x43
+  → north 0x33 → north 0x23 → backtrack to 0x43
+  → east 0x44 → east 0x45 → north 0x35 → east 0x36
+  → collect Triforce shard 1 (`ADDR_TRIFORCE & 0x01`)
 ```
 
 Stalfos have object type `0x2A`; the controllers read slots 1–10 from the
@@ -97,3 +106,7 @@ than requiring positive HP.
 Verified Level 1 approach (2026-07-28): east-then-north via screens
 `0x77→0x78→0x68→0x58→0x48→0x38→0x37`, enter tree door UP at x≈112 from y≈140.
 Mode 8 appears after hits; treat as brief freeze.
+
+Post-Triforce: mode 18 fanfare → idle ~704 frames → overworld **0x37** (engine
+return). Walk prefix toward Level 2: `0x37→38→48→58→59→49→4A`. Avoid `0x79`
+(rocky dead-end). Walkthrough Level 2 door screen: **0x3C**.

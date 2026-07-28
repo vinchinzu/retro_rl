@@ -1,6 +1,6 @@
 # Working route: Super collect → Phantoon entry
 
-Last updated: 2026-07-27.
+Last updated: 2026-07-28.
 
 Living checklist for the **any% ship path** after Spore Super Missiles.
 This is the continuous Track B spine toward Phantoon — not the full research
@@ -208,20 +208,27 @@ uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-door \
 
 ---
 
-### 5 — Pink PB room collect `0x9E11` (partial — mid-maze collect green)
+### 5 — Pink PB room collect `0x9E11` (partial — wall@437 pure; pocket collect green)
 
 | Field | Value |
 |-------|-------|
-| Status | **morph-bomb collect green** from mid-maze; spawn→mid-maze **open** |
+| Status | **wall@437 pure morph-bomb**; **collect green** from x≤225; mid-maze 405→225 **open** |
 | Item | Power Bomb PLM ≈ **(100–120, 370–395)** |
-| Entry spawn | Bottom door lands ~**(472, 395)** facing metal maze |
-| Maze wall | Solid at **x≈437** — bombs/missiles/supers do **not** open it; place past wall works |
-| Collect code | `play_pink_pb_morph_bomb_collect` from ~**(150, 395)** morph-bomb-roll → pb 5/5 |
-| Evidence | `dev_b1_pb_natural.state` (pb 5/5); `debug_big_pink/pb_evidence.json` |
-| Continuous? | Needs pure spawn→x≤150 then collect |
-| Blockers | Path over/under maze wall at 437 |
+| Entry spawn | Bottom door lands ~**(460–472, 395)** facing metal maze |
+| Maze wall@437 | **Bombable** with **double-tap morph** (release between DOWN). Crouch-only fails. Missiles/supers no. |
+| Wall code | `play_pink_pb_break_maze_wall` → ~**(408, 398)** |
+| Collect pocket | x≤**225** y≈395 (x≥230 stuck/solid on this floor) |
+| Collect code | `play_pink_pb_morph_bomb_collect` morph-bomb-roll → pb 5/5 |
+| Place bridge | reduced **150 → 220** for mid-maze gap only |
+| Evidence | `--to pb-maze-wall` / `--to pb-collect` from `dev_b1_pb_door_entered` |
+| Continuous? | Needs pure 405→225 then collect; sill approach still open |
+| Blockers | Mid-maze after wall (pit y≈457 traps morph; ceiling not IBJ-clearable yet) |
 
 ```bash
+# Pure wall open (no place once in 0x9E11):
+uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-maze-wall \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_pb_door_entered.state
+# Wall pure + place(220,395) + collect:
 uv run python super_metroid/scripts/probe_post_spore_pb.py --to pb-collect \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_pb_door_entered.state
 uv run python super_metroid/scripts/probe_phantoon.py collect-pb  # warp+place baseline
@@ -294,8 +301,9 @@ uv run python super_metroid/scripts/probe_phantoon.py ship-route
 | 2 | Farming → Big Pink pocket | — | **yes** | — |
 | 3a | Crest pocket lip (→~1125 wall-top) | — | **yes** | — |
 | 3b | Super block + morph + tunnel → main | — | **dev controller** | `dev_b1_bigpink_main_controller` |
-| 4 | Shaft → PB door | — | **open** | door-warp OK |
-| 5 | PB collect in `0x9E11` | — | — | **yes** (warp+place) |
+| 4 | Shaft → PB door | — | sill entry yes; approach **open** | place sill |
+| 5 | PB maze wall@437 | — | **pure break** | — |
+| 5b | PB mid-maze → collect | — | collect from ≤225; 405→225 **open** | place 220 |
 | 6 | PB → Red Tower (GHZ/Noob) | — | **open** | partial states |
 | 7 | Red Tower → Crateria elev | — | **open** | **yes** |
 | 8 | Moat / Ocean / WS entry | — | **open** | **yes** |
@@ -308,10 +316,12 @@ uv run python super_metroid/scripts/probe_phantoon.py ship-route
 
 ## Immediate next actions (ordered)
 
-1. **Crack 4** — from main shaft (`--to main` / `dev_b1_bigpink_main_controller.state`) climb to door (520,1144).
-2. **Compose** `play_post_spore_to_pb` and probe from `natural_post_spore_spawn`.
-3. **Continuous dry** power-on → PB (extend `start_to_supers` suffix through 3b–4).
-4. **Segment 6** GHZ / Noob / Red Tower controller from post-PB Big Pink.
+1. **Crack 4** — pure approach onto sill (or y1051 ledge → drop): wall@613 blocks
+   horizontal; upper ledge exists (`dev_b1_left_upper` ~(597,1051)).
+2. **Crack 5b** — pure mid-maze 405 → x≤225 (avoid pit y≈457 / open ceiling).
+3. **Compose** `play_post_spore_to_pb` (sill + maze + collect) from natural Super.
+4. **Continuous dry** power-on → PB.
+5. **Segment 6** GHZ / Noob / Red Tower controller from post-PB Big Pink.
 
 Do **not** polish Phantoon fight until segments 4–6 are controller-proven.
 

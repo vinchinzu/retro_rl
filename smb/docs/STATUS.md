@@ -70,6 +70,20 @@ uv run python -m smb.scripts.fold_continuous_policy
 - Recording (`--record`): native emulator audio + footer with frame/time stamp,
   level/lives/x, and NES button presses (auto-states blanked in HUD only).
 
+### First-pipe landing fix (continuous seed)
+
+- **Bug:** approach wall-slid the left face of the first pipe at **x≈898**, killed
+  all horizontal speed, then slowly climbed onto the lip before DOWN-enter.
+- **Fix** (phase-safe rejoin at original enter frame 468): run-jump lands on top
+  at **x≈902 / y=112 / xs=40**, coasts+brakes to **x=920**, stands, then
+  original DOWN tail enters. No side collision.
+- Evidence screenshots: `recordings/segment_1_1/pipe_fix/final_f0369_*` (top
+  land) … `final_f0469_*` (enter). Backup:
+  `models/smb_1_1_to_ending_pre_pipefix.json`.
+- Verified: continuous 8/8 + power-on 8/8, same **21,731f** / 1-1 clear **1973f**.
+- **Still open:** end-stairs still face-slam at x≈2962 / x≈2994 (xs→0); needs a
+  2-jump stair window without desyncing the flagpole tail.
+
 ## Warp and transition polish (2026-07-28)
 
 - Removed an accidental Start-button pause in 1-2 and retained the clean warp
@@ -138,9 +152,8 @@ public anchors above.
 
 ## Next
 
-1. Further natural-entry 4-2 polish: its robust hybrid is still the largest
-   regression versus the old isolated split and remains the best next target.
-2. Optional all-32-exit (non-warp) route as a separate track.
-3. Transfer patterns to SMB3 / other platformers.
-4. Optimize mushroom-cloud average speed and remaining pipe landings without
-   breaking continuous predecessor-state alignment.
+1. **1-1 end stairs 2-jump:** still face-slams at x≈2962 / x≈2994 (xs→0). Needs
+   a phase-safe double-jump window before the flagpole tail.
+2. Further natural-entry 4-2 polish: largest remaining split regression.
+3. Optional all-32-exit (non-warp) route as a separate track.
+4. Transfer patterns to SMB3 / other platformers.
