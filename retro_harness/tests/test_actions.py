@@ -7,10 +7,13 @@ import pytest
 
 from retro_harness.actions import (
     ActionBuilder,
+    NES_ACTION_SIZE,
     action_names,
     buttons_multi,
     idle_action_multi,
     indexed_action,
+    nes_action,
+    nes_idle_action,
     snes_action,
 )
 
@@ -48,3 +51,15 @@ def test_multiplayer_compatibility_helpers() -> None:
 
 def test_action_builder_delegates_to_named_builder() -> None:
     assert ActionBuilder().press("START", "A").build() == snes_action("START", "A")
+
+
+def test_nes_actions_use_fceumm_nine_slot_layout() -> None:
+    action = nes_action("START", "A", "B")
+    idle = nes_idle_action()
+
+    assert NES_ACTION_SIZE == 9
+    assert len(action) == 9
+    assert action == [1, 0, 0, 1, 0, 0, 0, 0, 1]
+    assert idle == [0] * 9
+    with pytest.raises(ValueError, match="unknown NES button"):
+        nes_action("Y")

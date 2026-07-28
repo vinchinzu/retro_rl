@@ -1,0 +1,12 @@
+{
+  "info": {
+    "health": {
+      "address": 913,
+      "type": "|u1"
+    },
+    "opp_health": {
+      "address": 920,
+      "type": "|u1"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+game: zelda_i
+title: "The Legend of Zelda"
+directory: zelda_i
+genre_tracks:
+  - graph_navigation
+capability_phase: 4
+project_state: boot_verified
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: medium
+transfer_value: medium
+ending_definition: credits after defeating Ganon and rescuing Zelda
+start_contract: power_on
+completion_contract: full_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: zelda_i/docs/STATUS.md
+plan_doc: zelda_i/docs/plan.md
+last_verified: 2026-07-27
+blocker: first cave visit / first overworld segment policy
+notes: >-
+  M1: power-on to controllable overworld (mode $12==5, health $066F). Platform NES under roms/Nintendo/NES.

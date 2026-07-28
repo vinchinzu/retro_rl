@@ -12,7 +12,7 @@ ladder. Maturity uses M0–M8; runtime and intervention classes are
 independent. See [DEVELOPMENT_LADDER.md](DEVELOPMENT_LADDER.md) and
 [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md).
 
-Manifest count: **21**.
+Manifest count: **26**.
 
 ## Active and scaffolded workspaces
 
@@ -27,6 +27,9 @@ Manifest count: **21**.
 | `final_fight` / Final Fight | linear_combat | P1 | segmenting | M3 | bronze | clean | no | Stage 3 West Side Area1 HP250 thug → Boss3; natural-entry hardening |
 | `rival_turf` / Rival Turf! | linear_combat | P1 | instrumented | M2 | bronze | clean | no | clear opening Stage 1 combat lock |
 | `super_double_dragon` / Super Double Dragon | linear_combat | P1 | segmenting | M3 | bronze | clean | no | natural M3 gym stairs → Chin bosses |
+| `tmnt_i` / Teenage Mutant Ninja Turtles | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Area 1 building/segment clear |
+| `tmnt_ii` / Teenage Mutant Ninja Turtles II: The Arcade Game | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Stage 1 wave/segment clear |
+| `tmnt_iii` / Teenage Mutant Ninja Turtles III: The Manhattan Project | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Stage 1 segment clear |
 | `tmnt_iv` / Teenage Mutant Ninja Turtles IV: Turtles in Time | linear_combat | P1 | verified | M8 | bronze | resource_assisted+protection_assisted | yes | Whole-run Bronze/Clean dry-run (Stage1 heal=none segment done; cut later-stage heals + form-2 iframe) |
 | `battle_clash` / Battle Clash | cursor_and_peripheral | P2 | blocked | M1 | bronze | clean | no | infrastructure — Super Scope / light-gun injection unsupported |
 | `f_zero` / F-Zero | continuous_vehicle_control | P2 | instrumented | M2 | bronze | clean | no | one Mute City lap without crash |
@@ -38,6 +41,8 @@ Manifest count: **21**.
 | `SMW` / Super Mario World | platforming | P3 | instrumented | M2 | bronze | clean | no | normalize route tooling into maturity gates and continuous clear path |
 | `alttp` / The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | active | M1 | bronze | clean | no | opening route only to castle grounds; sword/uncle segments next |
 | `super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | continue Brinstar progression past Spore Super room toward full clear |
+| `zelda_i` / The Legend of Zelda | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | first cave visit / first overworld segment policy |
+| `zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
 | `harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M2 | bronze | clean | no | frame farm-clear tasks as long-horizon planner benchmarks |
 
 ## Planned / external

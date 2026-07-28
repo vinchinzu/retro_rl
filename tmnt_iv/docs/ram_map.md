@@ -36,7 +36,9 @@ Same relative layout as the player. HP PAR one-hit-kill codes land at
 Foot Clan street thugs start around HP **16** (chars
 `0x5E`/`0x60`/`0x62`/`0x68`). Baxter Stockman char `0x44`, HP ≈96.
 Stage 2 alley boss **Metalhead** char `0x46`, HP 128 (HUD `M. HEAD`).
-Stage 3 sewer boss **Rat King** char `0x4A`, spawn HP 96 (HUD
+Stage 3 sewer **spike props** char `0x1C` / `0x2C` (HP 0, −16) are in
+`HAZARD_CHAR_IDS` — not living enemies. Stage 3 sewer boss **Rat King**
+char `0x4A`, spawn HP 96 (HUD
 `R. KING`) — stays boss via char id after HP drops below 80. Stage 4
 Technodrome duo **Tokka** `0x48` + **Rahzar** `0xA0`, spawn HP 96 each
 (HUD `TOKKA`/`RAHZAR`). Stage 5 Prehistoric boss **Slash** `0x50`,

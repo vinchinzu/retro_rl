@@ -39,8 +39,10 @@ Addresses are WRAM offsets.
 | Selected weapon/item | `0x09D2 u16` | Route-verified | beam `0`, Missiles `1`; natural Select input normalizes the Pit replay boundary |
 | Equipped/collected items | `0x09A2/0x09A4 u16` | Route-verified | both change naturally `0 → 0x0004 → 0x1004` at Morph/Bombs |
 | Equipped/collected beams | `0x09A6/0x09A8 u16` | Route-verified | remain zero in accepted prefix |
-| Global event bytes | `0xD820..0xD827 u8[8]` | Source-confirmed | `events_that_happened`; live milestone mapping pending |
-| Per-area boss bits | `0xD828..0xD82F u8[8]` | Source-confirmed | `boss_bits_for_area`; parsed Brinstar byte stayed zero across the natural Spore clear, so live mapping remains pending and is not acceptance evidence |
+| Global event bytes | `0xD820..0xD827 u8[8]` | Source-confirmed | `events_that_happened`; read via bank `$7E` WRAM block (`read_bank7e_wram`), not raw `env.get_ram()` high offsets. Event `0x0E` = Mother Brain defeated / escape started |
+| Per-area boss bits | `0xD828..0xD82F u8[8]` | Source-confirmed | `boss_bits_for_area`; same `$7E` read path as events. Tourian byte bit `0x02` set on MB death |
+| Door definition pointer | `0x078D u16` | Source-confirmed | `door_def_ptr`; write + game state `9` door-warps for development teleports |
+| Samus invincibility timer | `0x18A8 u16` | Source-confirmed | development spray-and-pray i-frames |
 | Morph Ball ownership | collected items bit `0x0004` | Route-verified | natural pickup and item banner in acceptance video |
 | Bomb ownership | collected items bit `0x1000` | Route-verified | natural pickup, `BOMB` banner, Torizo activation, and final `0x1004` mask |
 | Enemy count/kills | `0x0E4E/0x0E50 u16` | Route-verified | sampled across early rooms for combat-aware progress vectors |

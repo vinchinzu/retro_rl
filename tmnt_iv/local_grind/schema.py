@@ -27,24 +27,44 @@ class ProbeTarget:
 
 
 # Default cheap targets ranked by remaining damage ROI.
+# Prefer RaphFullHard* (continuous Raphael) over legacy Leo FullHard*.
 DEFAULT_TARGETS: tuple[ProbeTarget, ...] = (
     ProbeTarget(
-        state="FullHardBoss5",
+        state="RaphFullHardBoss5",
         max_frames=40_000,
         stop_stage_gt=4,
         label="slash",
     ),
     ProbeTarget(
-        state="FullHardTank",
+        state="RaphFullHardTank",
         max_frames=20_000,
-        stop_stage_gt=None,
+        stop_stage_gt=3,
         label="technodrome_tank",
     ),
     ProbeTarget(
-        state="Boss4",
+        state="RaphFullHardDuo",
         max_frames=25_000,
         stop_stage_gt=3,
         label="tokka_rahzar",
+    ),
+    ProbeTarget(
+        state="RaphFullHardStage4",
+        max_frames=45_000,
+        stop_stage_gt=3,
+        label="technodrome_full",
+    ),
+    # Leo legacy (only for regression / comparison)
+    ProbeTarget(
+        state="FullHardBoss5",
+        max_frames=40_000,
+        stop_stage_gt=4,
+        label="slash_leo",
+    ),
+    ProbeTarget(
+        state="FullHardTank",
+        max_frames=20_000,
+        stop_stage_gt=3,
+        label="technodrome_tank_leo",
     ),
     ProbeTarget(
         state="FullHardFinale",

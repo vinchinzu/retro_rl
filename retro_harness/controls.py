@@ -51,6 +51,65 @@ SNES_BUTTON_NAME_TO_INDEX = {
 }
 SNES_BUTTON_NAME_TO_INDEX["IDLE"] = None
 
+# NES Button Map (fceumm): [B, null, Select, Start, Up, Down, Left, Right, A]
+# Index 1 is unused in stable-retro's NES core layout.
+NES_B = 0
+NES_SELECT = 2
+NES_START = 3
+NES_UP = 4
+NES_DOWN = 5
+NES_LEFT = 6
+NES_RIGHT = 7
+NES_A = 8
+
+NES_BUTTON_NAMES = (
+    "B",
+    "SELECT",
+    "START",
+    "UP",
+    "DOWN",
+    "LEFT",
+    "RIGHT",
+    "A",
+)
+
+# Full 9-slot layout including the unused hole at index 1.
+NES_ACTION_SIZE = 9
+NES_BUTTON_NAME_TO_INDEX = {
+    "B": NES_B,
+    "SELECT": NES_SELECT,
+    "START": NES_START,
+    "UP": NES_UP,
+    "DOWN": NES_DOWN,
+    "LEFT": NES_LEFT,
+    "RIGHT": NES_RIGHT,
+    "A": NES_A,
+    "IDLE": None,
+}
+
+
+def action_from_nes_button_names(
+    names: list[str] | tuple[str, ...],
+    *,
+    action_size: int = NES_ACTION_SIZE,
+) -> list[int]:
+    """Build a NES action vector from button names."""
+    action = [0] * action_size
+    for raw in names:
+        name = str(raw).strip().upper()
+        if name in ("", "IDLE", "NONE", "NOOP", "WAIT"):
+            continue
+        if name not in NES_BUTTON_NAME_TO_INDEX:
+            raise ValueError(f"unknown NES button: {raw!r}")
+        index = NES_BUTTON_NAME_TO_INDEX[name]
+        if index is None:
+            continue
+        if index >= action_size:
+            raise ValueError(f"button {name} index {index} >= action_size {action_size}")
+        action[index] = 1
+    return action
+
+
 # Physical SNES-style controller mapping -> SNES buttons.
 # Many USB SNES pads are exposed to SDL/pygame as Xbox-like controllers, but
 # their face-button indices still follow physical SNES positions. Default to
