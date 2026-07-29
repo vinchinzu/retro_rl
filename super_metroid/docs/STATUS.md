@@ -44,8 +44,8 @@ room `0x9B5B`, then natural Super Missile collect (capacity **0 → 5**) via
 Reproduce:
 
 ```bash
-uv run python super_metroid/scripts/record_start_to_supers.py --no-video
-uv run python super_metroid/scripts/record_start_to_supers.py
+uv run python super_metroid/scripts/record/start_to_supers.py --no-video
+uv run python super_metroid/scripts/record/start_to_supers.py
 ```
 
 ### Prior continuous power-on → Spore Spawn (2026-07-24)
@@ -53,7 +53,7 @@ uv run python super_metroid/scripts/record_start_to_supers.py
 Still valid prefix evidence: Morph, Missiles, Bombs/Torizo, Terminator E-Tank,
 Spore Spawn 960→0, natural exit to Super room (no Supers collected on that
 run). Video `recordings/start_to_spore_spawn.mp4` (91,220 frames). See
-[START_TO_SPORE_SPAWN.md](START_TO_SPORE_SPAWN.md).
+[START_TO_SPORE_SPAWN.md](routes/START_TO_SPORE_SPAWN.md).
 
 ## Full-room development infrastructure
 
@@ -75,7 +75,7 @@ validated:
   equipment delta did not occur.
 
 These are development-state results and do not change the accepted continuous
-prefix. See [ROOM_PROBLEM_CATALOG.md](ROOM_PROBLEM_CATALOG.md).
+prefix. See [ROOM_PROBLEM_CATALOG.md](research/ROOM_PROBLEM_CATALOG.md).
 
 ## Definition of done
 
@@ -89,18 +89,18 @@ resource assists may not write route progress.
 **Play the path — no door-warp route evidence.** Continuous Super collect is
 verified. Furthest *played* progress and the full 107-room plan:
 
-**[PATH_ROOM_BOARD.md](PATH_ROOM_BOARD.md)** · post-Super detail:
-**[ROUTE_SUPERS_TO_PHANTOON.md](ROUTE_SUPERS_TO_PHANTOON.md)**
+**[PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md)** · post-Super detail:
+**[ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md)**
 
 | Layer | Furthest played |
 |-------|-----------------|
 | Continuous | Super collect `0x9B5B` (`start_to_supers`) |
-| Controller (dev) | Big Pink main shaft; PB sill entry; **maze wall@437 pure**; collect from x≤225 |
-| ★ Next hop | Sill approach (wall@613 / y1051 ledge) + mid-maze 405→225 → pure PB |
+| Controller (dev) | Big Pink main shaft; PB **top ledge y907** + drop-air map + bottom place entry; maze wall pure; left-zone→collect |
+| ★ Next hop | Pure into drop-air x≈535–555 y≈850–910 (lands y907) or bottom alcove; then pure mid-maze → PB |
 
 ```bash
-uv run python super_metroid/scripts/export_path_room_board.py
-uv run python super_metroid/scripts/probe_post_spore_pb.py --to main
+uv run python super_metroid/scripts/export/path_room_board.py
+uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
 ```
 
 Path status (unique rooms on research completion path): **20 continuous**,
@@ -115,14 +115,16 @@ Still blocked for *played* spine:
 |-----|----------------|
 | Continuous Super collect | **Done** |
 | Super → farming → main shaft | controller_dev; not continuous power-on yet |
-| ★ Shaft → Pink PB door + collect | **partial**: sill entry; wall@437 **pure**; collect pocket x≤225; sill approach + mid-maze 405→225 open |
+| ★ Shaft → Pink PB door + collect | **partial**: top y907 entry + drop-air band proven; pure approach open; wall@437 pure; left-zone→collect; mid-maze open |
 | All later path hops | open — must be played, not warped |
 | Boss fights | deferred until natural entry on chain |
 | Escape → credits | after MB by play |
 
 Immediate next:
 
-1. Finish Big Pink → PB **without place bridges**: (a) main/intercept onto sill past wall@613 (or y1051 ledge), (b) pure mid-maze 405→225 after wall@437 break, then collect.
+1. Finish Big Pink → PB **without place bridges**:
+   - (a) **preferred:** pure into **drop-air x≈535–555 y≈850–910** (free-fall lands y907; entry green). East of wall@613 cannot cross; west (`left_upper`) needs height. y1051 is roof not bottom-sill.
+   - (b) pure door→left free volume (~180,360) then `play_pink_pb_from_left_zone` (or top→crumble→collect).
 2. Continuous power-on → PB.
 3. Next open hop on the board; promote status; regenerate PATH_ROOM_BOARD.
 

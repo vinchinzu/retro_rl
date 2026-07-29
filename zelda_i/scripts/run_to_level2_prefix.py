@@ -28,6 +28,7 @@ from snes_oneshot.segment_runner import (
     save_rgb_png,
     write_json_report,
 )
+from zelda_i.chain import run_controller_stage
 from zelda_i.level1_finish import (
     TRIFORCE_MAX_FRAMES,
     Level1TriforceController,
@@ -44,23 +45,25 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 
 
-def _collect_and_settle(env) -> tuple[object, PostTriforceSettleController, dict]:
+def _collect_and_settle(env, obs) -> tuple[object, PostTriforceSettleController, dict]:
     """From Level1HeartCollected: triforce + settle to overworld 0x37."""
     tf = Level1TriforceController()
-    for _ in range(TRIFORCE_MAX_FRAMES):
-        snap = read_snapshot(env.get_ram())
-        obs, *_ = env.step(tf.step(snap).action)
-        if tf.success or tf.phase.name == "FAILED":
-            break
+    obs, tf_stage = run_controller_stage(
+        env, obs, name="triforce", controller=tf, max_frames=TRIFORCE_MAX_FRAMES
+    )
     settle = PostTriforceSettleController()
-    obs = None
-    for _ in range(SETTLE_MAX_FRAMES):
-        snap = read_snapshot(env.get_ram())
-        fa = settle.step(snap)
-        obs, *_ = env.step(fa.action)
-        if settle.success or settle.phase.name == "FAILED":
-            break
-    return obs, settle, {"triforce": tf.report(), "settle": settle.report()}
+    obs, settle_stage = run_controller_stage(
+        env,
+        obs,
+        name="settle",
+        controller=settle,
+        max_frames=SETTLE_MAX_FRAMES,
+    )
+    return (
+        obs,
+        settle,
+        {"triforce": tf_stage.report(), "settle": settle_stage.report()},
+    )
 
 
 def run_once(
@@ -91,7 +94,7 @@ def run_once(
         }
         pre: dict = {}
         if from_heart:
-            obs, settle, pre = _collect_and_settle(env)
+            obs, settle, pre = _collect_and_settle(env, obs)
             if not settle.success:
                 snap = read_snapshot(env.get_ram())
                 png = RECORDINGS_DIR / f"{tag}_settle_fail.png"
@@ -115,18 +118,18 @@ def run_once(
         elif not post_triforce_overworld_ready(env.get_ram()):
             # Level1ExitOverworld should already be settled; one idle settle try.
             settle = PostTriforceSettleController()
-            for _ in range(SETTLE_MAX_FRAMES):
-                obs, *_ = env.step(
-                    settle.step(read_snapshot(env.get_ram())).action
-                )
-                if settle.success or settle.phase.name == "FAILED":
-                    break
-            pre["settle"] = settle.report()
+            obs, settle_stage = run_controller_stage(
+                env,
+                obs,
+                name="settle",
+                controller=settle,
+                max_frames=SETTLE_MAX_FRAMES,
+            )
+            pre["settle"] = settle_stage.report()
 
-        for _ in range(max_frames):
-            obs, *_ = env.step(nav.step(read_snapshot(env.get_ram())).action)
-            if nav.success or nav.phase.name == "FAILED":
-                break
+        obs, nav_stage = run_controller_stage(
+            env, obs, name="level2_prefix", controller=nav, max_frames=max_frames
+        )
 
         snap = read_snapshot(env.get_ram())
         ok = level2_path_prefix_success(env.get_ram()) or nav.success
@@ -170,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--save-state",
         action="store_true",
-        help="Save Level2Path5B.state on success",
+        help="Save Level2Path4A.state on success",
     )
     args = parser.parse_args(argv)
 

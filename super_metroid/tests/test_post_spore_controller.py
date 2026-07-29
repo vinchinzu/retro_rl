@@ -2,26 +2,34 @@
 
 from __future__ import annotations
 
-from super_metroid.post_spore_controller import (
+from super_metroid.routes.post_spore_controller import (
+    MORPH_POSES,
     ROOM_BIG_PINK,
     ROOM_FARMING,
     ROOM_PINK_PB,
     ROOM_SUPER,
     PowerBombEvidence,
     SuperCollectEvidence,
+    bomb_roll_left_safe,
+    ensure_morph,
+    is_morph,
     play_big_pink_bomb_to_walkway_edge,
     play_big_pink_clear_super_block,
     play_big_pink_crest_pocket,
     play_big_pink_drop_to_pocket,
     play_big_pink_enter_pb_door_from_sill,
+    play_big_pink_enter_pb_door_from_top_ledge,
     play_big_pink_into_main_shaft,
     play_big_pink_morph_to_tunnel,
     play_big_pink_tunnel_west,
     play_farming_to_big_pink,
     play_pink_pb_break_maze_wall,
+    play_pink_pb_from_left_zone,
+    play_pink_pb_mid_maze_to_collect,
     play_pink_pb_morph_bomb_collect,
     play_super_room_collect,
     play_super_room_to_farming,
+    wait_until,
 )
 
 
@@ -44,8 +52,18 @@ def test_controller_exports() -> None:
     assert callable(play_big_pink_bomb_to_walkway_edge)
     assert callable(play_big_pink_into_main_shaft)
     assert callable(play_big_pink_enter_pb_door_from_sill)
+    assert callable(play_big_pink_enter_pb_door_from_top_ledge)
     assert callable(play_pink_pb_break_maze_wall)
     assert callable(play_pink_pb_morph_bomb_collect)
+    assert callable(play_pink_pb_mid_maze_to_collect)
+    assert callable(play_pink_pb_from_left_zone)
+    assert callable(ensure_morph)
+    assert callable(bomb_roll_left_safe)
+    assert callable(wait_until)
+    assert is_morph(65)
+    assert is_morph(31)
+    assert not is_morph(40)  # crouch, not morph
+    assert 65 in MORPH_POSES
 
 
 def test_super_collect_evidence_dict() -> None:

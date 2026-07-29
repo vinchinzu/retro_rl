@@ -10,6 +10,7 @@ from zelda_i.level2_overworld import (
     post_triforce_overworld_ready,
 )
 from zelda_i.overworld import (
+    LEVEL2_PATH_HOPS,
     LEVEL2_PATH_SCREENS as OW_LEVEL2_SCREENS,
     NODE_LEVEL1_COMPLETE,
     NODE_LEVEL1_EXIT_OVERWORLD,
@@ -49,6 +50,11 @@ def test_level2_path_screens_chain() -> None:
     assert LEVEL2_PATH_SCREENS[0] == 0x37
     assert LEVEL2_PATH_SCREENS[-1] == 0x4A
     assert LEVEL2_PATH_SCREENS == OW_LEVEL2_SCREENS
+    assert len(LEVEL2_PATH_HOPS) == len(LEVEL2_PATH_SCREENS) - 1
+    assert all(
+        hop.target == screen
+        for hop, screen in zip(LEVEL2_PATH_HOPS, LEVEL2_PATH_SCREENS[1:])
+    )
     for a, b in zip(LEVEL2_PATH_SCREENS, LEVEL2_PATH_SCREENS[1:]):
         assert b in neighbor_screens(a).values()
 
@@ -108,3 +114,8 @@ def test_graph_has_level2_prefix_edge() -> None:
     edge2 = graph.edge_for(NODE_LEVEL1_EXIT_OVERWORLD, NODE_LEVEL2_PATH_4A)
     assert edge2 is not None
     assert edge2.verification == "observed"
+    # Grid hops along the verified walk prefix are promoted to observed.
+    hop_edge = graph.edge_for("ow_37", "ow_38")
+    assert hop_edge is not None
+    assert hop_edge.verification == "observed"
+    assert hop_edge.meta.get("segment") == "to_level2_prefix"

@@ -15,8 +15,8 @@ backtracking, and recovery from positional stalls.
 controller or room policy (natural door exit). Door-warps are topology
 diagnostics only — never route evidence. Living inventory:
 
-**[PATH_ROOM_BOARD.md](PATH_ROOM_BOARD.md)** (regenerate with
-`scripts/export_path_room_board.py`).
+**[PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md)** (regenerate with
+`scripts/export/path_room_board.py`).
 
 Do not start with a monolithic full-run coordinate script. Grow one hop at a
 time from the furthest played room.
@@ -44,7 +44,7 @@ zero progression writes.
 | `maps/full_room_graph.json` | 261 rooms, 583 directed edges, 22/22 completion legs have room paths |
 | `maps/full_route_hops.json` | **199 door hops** across all 22 legs (~**107 unique rooms**) |
 | `maps/late_game_route_hops.json` | Late 9 legs only (subset of full; identical hop data) |
-| `route_dev.py` + `probe_route.py` | **Full 22-leg hop runner proven** (dev); late subset still available; fights skipped |
+| `dev/route_dev.py` + `probe_route.py` | **Full 22-leg hop runner proven** (dev); late subset still available; fights skipped |
 | Null door substitute | Ceres ship `0xDF45 → 0x91F8` → door `0x896A` (Parlor→Landing Site) |
 | Tour video path | `probe_route.py full-tour` → `full_route_tour.{mp4,json}`; hybrid `full-hybrid` → `full_route_hybrid.{mp4,json}` (continuous Super + warps, bosses skipped) |
 | Mid/late dev states | `dev_power_bombs_collected`, `dev_phantoon_entry`, `dev_route_*` anchors through finish |
@@ -93,7 +93,7 @@ How far we are (play, not warps):
 | Controller dev | Big Pink main shaft `0x9D19` ~(746,1465) |
 | ★ Next hop | `0x9D19 → 0x9E11` (PB door climb) |
 
-Full room list + waves: [PATH_ROOM_BOARD.md](PATH_ROOM_BOARD.md).
+Full room list + waves: [PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md).
 
 ---
 
@@ -111,7 +111,7 @@ Full room list + waves: [PATH_ROOM_BOARD.md](PATH_ROOM_BOARD.md).
 
 ### A0 — Wire full hop runner (1–2 days) — **done**
 
-- [x] Extend `route_dev.py` to load `full_route_hops.json` (not only late).
+- [x] Extend `dev/route_dev.py` to load `full_route_hops.json` (not only late).
 - [x] Define `FULL_LEG_ORDER` = all 22 legs from `completionSequence`.
 - [x] Handle the **one null door hop**: Ceres ship `0xDF45 → 0x91F8`
   substituted with door `0x896A` (Parlor→Landing Site) via
@@ -199,13 +199,17 @@ Natural suffix from verified Spore Super entry:
 - [x] Tunnel morph-west + X bombs — `play_big_pink_tunnel_west`.
 - [x] Green `play_big_pink_into_main_shaft` → main x≲750 (no place/WRAM).
 - [ ] Continuous power-on through farming / Big Pink / crest / main.
-- [ ] Big Pink → Pink PB room `0x9E11` natural — **open**:
-  - climb from shaft ~y=1550 up to door (520, 1144);
-  - standing blue-door touch (warp+place collect known).
-- [ ] Natural PB collect in `0x9E11` after natural entry.
+- [x] Reactive morph/bomb helpers: `ensure_morph`, `bomb_roll_left_safe`,
+  `wait_until`, `is_morph` / `MORPH_POSES` (wall@437 + pocket collect re-proven).
+- [ ] Big Pink → Pink PB `0x9E11` natural — **open** (entry green with place):
+  - preferred top door ledge y≈907; drop-air x∈[535,555] y∈[850,910] lands it;
+  - pure path into drop-air still open (wall@613 east; left_upper needs height);
+  - bottom place-bridge still valid but not a hop-to island (y1051 is roof).
+- [ ] Natural PB collect after natural entry (left-zone suffix green; mid-maze open;
+  top→crumble is wiki alt).
 - [ ] Continuous power-on through PB.
 
-Route-by-route board (Supers → Phantoon): [ROUTE_SUPERS_TO_PHANTOON.md](ROUTE_SUPERS_TO_PHANTOON.md).
+Route-by-route board (Supers → Phantoon): [ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md).
 
 ### B2 — PB → Red Tower → ship → Phantoon entry (natural)
 
@@ -460,7 +464,7 @@ assist write, or prolonged no-progress.
     queue-1 door clears plus Flyway.
 11. [x] **Late route skeleton (dev, fights skipped):** Phantoon → Gravity →
     Botwoon → Draygon → Ridley → Statues → Tourian → MB → Escape → Landing
-    Site (`route_dev.py`, `maps/late_game_route_hops.json`).
+    Site (`dev/route_dev.py`, `maps/late_game_route_hops.json`).
 12. [x] **Kraid defeated (dev):** Super spray; state `dev_kraid_defeated`.
 13. [x] **Power Bombs (dev):** door-warp collect → `dev_power_bombs_collected`.
 14. [x] **Ship route → Phantoon entry (dev):** `dev_phantoon_entry`.

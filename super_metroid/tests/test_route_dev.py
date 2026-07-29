@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from super_metroid.route_dev import (
+from super_metroid.dev.route_dev import (
     DEFAULT_HYBRID_START_LEG,
     FULL_LEG_ORDER,
     LATE_LEG_ORDER,

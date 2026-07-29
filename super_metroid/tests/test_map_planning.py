@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from super_metroid.map_planning import EditorNavigationGraph
-from super_metroid.spore_spawn_route import (
+from super_metroid.routes.spore_spawn_route import (
     POST_TORIZO_CAPABILITIES,
     POST_TORIZO_ROUTE_PATCHES,
     POST_TORIZO_TO_SPORE_SPAWN,
