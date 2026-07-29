@@ -19,6 +19,11 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from snes_oneshot.primitives import FrameAction
+from zelda_i.nav_common import (
+    swing_action,
+    track_stuck,
+    wake_or_wait_mode,
+)
 from zelda_i.ram import (
     SCREEN_LEVEL1_ENTRANCE,
     SCREEN_START,
@@ -54,22 +59,6 @@ class NavPhase(Enum):
     FAILED = auto()
 
 
-# (phase, target_screen when leaving this phase's screen)
-_PHASE_TARGET_SCREEN: dict[NavPhase, int] = {
-    NavPhase.EAST_77: 0x78,
-    NavPhase.NORTH_78: 0x68,
-    NavPhase.NORTH_68: 0x58,
-    NavPhase.ALIGN_58: 0x58,
-    NavPhase.NORTH_58: 0x48,
-    NavPhase.CENTER_48: 0x48,
-    NavPhase.NORTH_48: 0x38,
-    NavPhase.CENTER_38: 0x38,
-    NavPhase.WEST_38: 0x37,
-    NavPhase.APPROACH_DOOR: 0x37,
-    NavPhase.ENTER_DOOR: 0x37,
-}
-
-
 # Waypoints on 0x58 (bush grid) toward the north lane at x=112.
 # Horizontal travel needs y≈150–160; north exit opens once x≈112.
 _ALIGN_58_WAYPOINTS: tuple[tuple[int, int], ...] = (
@@ -77,6 +66,16 @@ _ALIGN_58_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (80, 157),
     (112, 157),
 )
+
+_SCROLL_HOLD: dict[NavPhase, str] = {
+    NavPhase.EAST_77: "RIGHT",
+    NavPhase.NORTH_78: "UP",
+    NavPhase.NORTH_68: "UP",
+    NavPhase.NORTH_58: "UP",
+    NavPhase.NORTH_48: "UP",
+    NavPhase.WEST_38: "LEFT",
+    NavPhase.ENTER_DOOR: "UP",
+}
 
 
 @dataclass
@@ -116,24 +115,14 @@ class OverworldToLevel1Controller:
             if note:
                 self.notes.append(note)
 
-    def _track_stuck(self, snap: ZeldaSnapshot) -> None:
-        if (
-            snap.link_x == self.last_x
-            and snap.link_y == self.last_y
-            and snap.screen == self.last_screen
-            and not snap.transitioning
-        ):
-            self.stuck += 1
-        else:
-            self.stuck = 0
-        self.last_x = snap.link_x
-        self.last_y = snap.link_y
-        self.last_screen = snap.screen
-
     def _swing(self, direction: str, reason: str) -> FrameAction:
-        if self.phase_frames % SWORD_SWING_PERIOD < SWORD_SWING_FRAMES:
-            return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
-        return FrameAction(nes_action(direction), reason)
+        return swing_action(
+            self.phase_frames,
+            direction,
+            reason,
+            period=SWORD_SWING_PERIOD,
+            hold=SWORD_SWING_FRAMES,
+        )
 
     def _align_and_push(
         self,
@@ -144,8 +133,8 @@ class OverworldToLevel1Controller:
         align_y: int | None = None,
         reason: str = "nav",
     ) -> FrameAction:
+        # Level-1 path uses a reverse/side unstick (not the generic card-cycle).
         if self.stuck > STUCK_THRESHOLD:
-            # Wiggle: reverse briefly then sidestep
             rev = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}[
                 direction
             ]
@@ -154,10 +143,18 @@ class OverworldToLevel1Controller:
             self.stuck = 0
             return FrameAction(nes_action(wiggle, "A"), f"{reason}_unstick")
 
-        if align_x is not None and abs(snap.link_x - align_x) > 3 and 90 < snap.link_y < 200:
+        if (
+            align_x is not None
+            and abs(snap.link_x - align_x) > 3
+            and 90 < snap.link_y < 200
+        ):
             btn = "LEFT" if snap.link_x > align_x else "RIGHT"
             return self._swing(btn, f"{reason}_ax")
-        if align_y is not None and abs(snap.link_y - align_y) > 3 and 30 < snap.link_x < 220:
+        if (
+            align_y is not None
+            and abs(snap.link_y - align_y) > 3
+            and 30 < snap.link_x < 220
+        ):
             btn = "UP" if snap.link_y > align_y else "DOWN"
             return self._swing(btn, f"{reason}_ay")
         return self._swing(direction, reason)
@@ -202,10 +199,7 @@ class OverworldToLevel1Controller:
             tx, ty = waypoints[self.waypoint_index]
             dx = snap.link_x - tx
             dy = snap.link_y - ty
-        # Prefer finishing the larger axis first; on 0x58, fix y before long x runs
-        # when still in the entry corridor (x near 48).
         if self.stuck > STUCK_THRESHOLD:
-            # Alternate sidestep / reverse to slip bush gaps
             opts = ("UP", "DOWN", "LEFT", "RIGHT")
             btn = opts[self.phase_frames % 4]
             self.stuck = 0
@@ -229,19 +223,23 @@ class OverworldToLevel1Controller:
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
         self.phase_frames += 1
-        self._track_stuck(snap)
+        self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
+            snap,
+            last_x=self.last_x,
+            last_y=self.last_y,
+            last_screen=self.last_screen,
+            stuck=self.stuck,
+        )
 
         if self.frames >= SEGMENT_MAX_FRAMES:
             self._set_phase(NavPhase.FAILED, "timeout")
             return FrameAction(nes_idle_action(), "timeout")
 
-        # Success: inside Level 1 dungeon
         if snap.level == 1:
             self.success = True
             self._set_phase(NavPhase.DONE, "in_level1")
             return FrameAction(nes_idle_action(), "done")
 
-        # Optional success: on Level 1 overworld screen with sword
         if (
             not self.require_dungeon
             and snap.has_sword
@@ -253,28 +251,15 @@ class OverworldToLevel1Controller:
             return FrameAction(nes_idle_action(), "done")
 
         if snap.transitioning:
-            # Hold the travel direction during scroll
-            hold = {
-                NavPhase.EAST_77: "RIGHT",
-                NavPhase.NORTH_78: "UP",
-                NavPhase.NORTH_68: "UP",
-                NavPhase.NORTH_58: "UP",
-                NavPhase.NORTH_48: "UP",
-                NavPhase.WEST_38: "LEFT",
-                NavPhase.ENTER_DOOR: "UP",
-            }.get(self.phase)
+            hold = _SCROLL_HOLD.get(self.phase)
             if hold:
                 return FrameAction(nes_action(hold), "scroll_hold")
             return FrameAction(nes_idle_action(), "scroll_idle")
 
         # Mode 8 = brief hit freeze; keep holding travel dir. Other modes wait.
         if snap.mode not in (5, 8, 11) and not snap.transitioning:
-            # Mode 17 etc.: idle a few frames then resume with A (wake)
-            if self.phase_frames % 30 < 3:
-                return FrameAction(nes_action("A"), f"wake_mode_{snap.mode}")
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+            return wake_or_wait_mode(self.phase_frames, snap.mode)
 
-        # Phase transitions based on current screen
         self._advance_phase_for_screen(snap)
 
         if self.phase is NavPhase.EAST_77:
@@ -305,12 +290,10 @@ class OverworldToLevel1Controller:
                 return self._swing(btn, "n48_ax")
             return self._align_and_push(snap, direction="UP", reason="n48")
         if self.phase is NavPhase.CENTER_38:
-            # Climb off the south entry edge first
             if snap.link_y > 180:
                 return self._swing("UP", "c38_off_edge")
             return self._goto_xy(snap, 120, 140, "c38")
         if self.phase is NavPhase.WEST_38:
-            # West corridor is mid-height; don't scrape the south wall
             if snap.link_y > 170:
                 return self._swing("UP", "w38_up")
             if snap.link_y < 110:
@@ -319,7 +302,6 @@ class OverworldToLevel1Controller:
                 snap, direction="LEFT", align_y=140, reason="w38"
             )
         if self.phase is NavPhase.APPROACH_DOOR:
-            # Get under the door on open sand, then push north into the mouth
             action = self._goto_xy(snap, LEVEL1_DOOR_X, LEVEL1_DOOR_Y, "door")
             if (
                 abs(snap.link_x - LEVEL1_DOOR_X) <= 4
@@ -334,7 +316,6 @@ class OverworldToLevel1Controller:
                 return self._swing(btn, "enter_ax")
             if self.phase_frames > 200:
                 self._set_phase(NavPhase.APPROACH_DOOR, "retry_door")
-            # Keep walking UP into the tree mouth (no slash — sword can block entry)
             return FrameAction(nes_action("UP"), "enter")
         if self.phase is NavPhase.DONE:
             return FrameAction(nes_idle_action(), "done")
@@ -350,7 +331,6 @@ class OverworldToLevel1Controller:
             self.waypoint_index = 0
             self._set_phase(NavPhase.ALIGN_58, "on_58")
         elif self.phase is NavPhase.ALIGN_58:
-            # Ready for north once on the x=112 corridor (any mid y)
             if abs(snap.link_x - BUSH_NORTH_X) <= 8 and snap.link_y <= 170:
                 self._set_phase(NavPhase.NORTH_58, "aligned_58")
             elif self.waypoint_index >= len(_ALIGN_58_WAYPOINTS):
@@ -360,7 +340,6 @@ class OverworldToLevel1Controller:
         elif self.phase is NavPhase.NORTH_58 and sc == 0x48:
             self._set_phase(NavPhase.CENTER_48, "on_48")
         elif self.phase is NavPhase.CENTER_48:
-            # Loose center, or give up and push north after ~2s
             if abs(snap.link_x - 120) <= 16 and snap.link_y <= 170:
                 self._set_phase(NavPhase.NORTH_48, "centered_48")
             elif self.phase_frames > 120:
@@ -379,7 +358,6 @@ class OverworldToLevel1Controller:
         elif self.phase is NavPhase.WEST_38 and sc == 0x37:
             self._set_phase(NavPhase.APPROACH_DOOR, "on_37")
 
-        # Recovery: if we drifted to a known earlier screen, re-enter the right phase
         if sc == SCREEN_START and self.phase not in (
             NavPhase.EAST_77,
             NavPhase.DONE,

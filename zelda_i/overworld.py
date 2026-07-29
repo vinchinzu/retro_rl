@@ -6,6 +6,7 @@ Caves and dungeons hang off screens as portal nodes in the route graph.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Iterable
 
 from adventure_common.graph import (
@@ -14,6 +15,31 @@ from adventure_common.graph import (
     RouteGraph,
     RouteLeg,
 )
+
+
+@dataclass(frozen=True)
+class ScreenHop:
+    """One overworld screen transition with optional alignment constraints."""
+
+    target: int
+    direction: str  # UP / DOWN / LEFT / RIGHT
+    align_x: int | None = None
+    align_y: int | None = None
+    y_band_lo: int | None = None
+    y_band_hi: int | None = None
+
+    @property
+    def y_band(self) -> tuple[int, int] | None:
+        if self.y_band_lo is None or self.y_band_hi is None:
+            return None
+        return (self.y_band_lo, self.y_band_hi)
+
+
+def path_screens_from_hops(
+    start: int,
+    hops: tuple[ScreenHop, ...],
+) -> tuple[int, ...]:
+    return (start,) + tuple(hop.target for hop in hops)
 
 # Grid geometry
 OVERWORLD_COLS = 16
@@ -57,15 +83,17 @@ LEVEL1_PATH_SCREENS: tuple[int, ...] = (
 )
 
 # Post-Triforce walk prefix toward Level 2 (ends 0x4A; extension open).
-# Avoids rocky dead-end 0x79. See level2_overworld.py.
-LEVEL2_PATH_SCREENS: tuple[int, ...] = (
-    0x37,
-    0x38,
-    0x48,
-    0x58,
-    0x59,
-    0x49,
-    0x4A,
+# Avoids rocky dead-end 0x79. Geometry drives level2_overworld controller.
+LEVEL2_PATH_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x38, "RIGHT", align_y=140),
+    ScreenHop(0x48, "DOWN", align_x=120),
+    ScreenHop(0x58, "DOWN", align_x=112),
+    ScreenHop(0x59, "RIGHT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x49, "UP", align_x=112),
+    ScreenHop(0x4A, "RIGHT", align_y=141),
+)
+LEVEL2_PATH_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    0x37, LEVEL2_PATH_HOPS
 )
 
 SCREEN_LABELS: dict[int, str] = {
@@ -190,9 +218,10 @@ def build_early_route_graph() -> RouteGraph:
             0x66,
             0x47,
             0x57,
-            0x59,
             0x79,  # rocky dead-end trap east of 0x78
             0x3C,  # Level 2 overworld door (walkthrough target)
+            0x4B,  # partial probe past prefix
+            0x5B,
         }
     )
     # Neighborhood around the verified paths for expansion
@@ -203,30 +232,36 @@ def build_early_route_graph() -> RouteGraph:
 
     graph = build_overworld_grid_graph(screens=sorted(seed_screens))
 
-    # Promote verified path edges
-    verified_hops = list(zip(LEVEL1_PATH_SCREENS, LEVEL1_PATH_SCREENS[1:]))
+    # Promote verified path edges (Level 1 approach + Level 2 walk prefix)
+    verified_l1 = {
+        (a, b) for a, b in zip(LEVEL1_PATH_SCREENS, LEVEL1_PATH_SCREENS[1:])
+    }
+    verified_l2 = {
+        (a, b) for a, b in zip(LEVEL2_PATH_SCREENS, LEVEL2_PATH_SCREENS[1:])
+    }
     promoted: list[GraphEdge] = []
     for edge in graph.edges:
         pair = (edge.meta.get("from_screen"), edge.meta.get("to_screen"))
-        if pair in verified_hops or (
-            edge.meta.get("from_screen"),
-            edge.meta.get("to_screen"),
-        ) in {(a, b) for a, b in verified_hops}:
-            promoted.append(
-                GraphEdge(
-                    source_id=edge.source_id,
-                    target_id=edge.target_id,
-                    edge_id=edge.edge_id,
-                    direction=edge.direction,
-                    requires=edge.requires,
-                    cost=edge.cost,
-                    verification="observed",
-                    provenance="emulator_probe",
-                    meta={**dict(edge.meta), "segment": "to_level1"},
-                )
-            )
+        if pair in verified_l1:
+            segment = "to_level1"
+        elif pair in verified_l2:
+            segment = "to_level2_prefix"
         else:
             promoted.append(edge)
+            continue
+        promoted.append(
+            GraphEdge(
+                source_id=edge.source_id,
+                target_id=edge.target_id,
+                edge_id=edge.edge_id,
+                direction=edge.direction,
+                requires=edge.requires,
+                cost=edge.cost,
+                verification="observed",
+                provenance="emulator_probe",
+                meta={**dict(edge.meta), "segment": segment},
+            )
+        )
 
     # Portal nodes
     extra_nodes = [

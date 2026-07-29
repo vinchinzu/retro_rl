@@ -25,7 +25,7 @@
 Regenerate the accepted graph with:
 
 ```bash
-uv run python super_metroid/scripts/export_progression_map.py
+uv run python super_metroid/scripts/export/progression_map.py
 ```
 
 The default export is the latest accepted `start_to_spore_spawn_graph.json`.
@@ -45,7 +45,7 @@ transition and required capabilities.
 Regenerate the editor-backed Spore Spawn plan with:
 
 ```bash
-uv run python super_metroid/scripts/export_spore_spawn_plan.py
+uv run python super_metroid/scripts/export/spore_spawn_plan.py
 ```
 
 Override the editor export location with `--editor-nav` or the
@@ -63,11 +63,11 @@ this slice; the accepted path reaches Spore Spawn without collecting Supers.
 Regenerate the full research graph and room catalog with:
 
 ```bash
-uv run python super_metroid/scripts/export_room_problems.py
+uv run python super_metroid/scripts/export/room_problems.py
 ```
 
 The full graph uses the sibling editor export for geometry and the sibling
 `sm-json-data` checkout for complete physical connections. Both generated JSON
 files are local ROM-derived planning artifacts. See
-[the room problem catalog](../docs/ROOM_PROBLEM_CATALOG.md) for source
+[the room problem catalog](../docs/research/ROOM_PROBLEM_CATALOG.md) for source
 semantics, teleport commands, queue policy, and the post-Spore route.

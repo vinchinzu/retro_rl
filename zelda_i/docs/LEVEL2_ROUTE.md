@@ -51,6 +51,8 @@ Not yet 2/2. Intended continuation:
 
 ## Controllers / runner
 
+- Hop geometry: `overworld.LEVEL2_PATH_HOPS` / `LEVEL2_PATH_SCREENS` (single source)
+- Shared movement helpers: `nav_common` (swing, stuck, edge recovery, align)
 - `level2_overworld.PostTriforceSettleController`
 - `level2_overworld.OverworldToLevel2Controller` (default stop 0x4A)
 - `scripts/run_to_level2_prefix.py`

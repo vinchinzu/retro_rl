@@ -18,7 +18,7 @@ runtime classes.
 |------|-------|--------|----------|
 | TMNT IV | Continuous hard-mode power-on → staff/cast credits in **00:57:19.635** | Bronze / Resource-assisted + Protection-assisted · M8 (4,667 damage; 0 life losses; Stage1 heal=none segment clear) | [dry manifest](../tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json), [prior video](../tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4), [Stage1 probes](../tmnt_iv/recordings/stage1_clean_track/stage1_probes.json) |
 | Great Waldo Search | Continuous power-on → five-scrolls ending | Bronze / Clean · M8 | [video](../great_waldo_search/recordings/great_waldo_search_full_credits.mp4) |
-| Super Metroid | Continuous power-on → Super; controller to Big Pink main; PB sill entry + mid-maze collect (approach/maze bridges remain); 79/107 path rooms open | Bronze / Resource-assisted · M5 | [manifest](../super_metroid/recordings/start_to_supers.json), [path board](../super_metroid/docs/PATH_ROOM_BOARD.md), [assist contract](../super_metroid/docs/ASSIST_CONTRACT.md) |
+| Super Metroid | Continuous power-on → Super; controller to Big Pink main; PB sill entry + mid-maze collect (approach/maze bridges remain); 79/107 path rooms open | Bronze / Resource-assisted · M5 | [manifest](../super_metroid/recordings/start_to_supers.json), [path board](../super_metroid/docs/research/PATH_ROOM_BOARD.md), [assist contract](../super_metroid/docs/ASSIST_CONTRACT.md) |
 | Metroid (NES) | Continuous power-on → Maru Mari (Morph Ball); isolated Level1→morph also clear | Bronze / Clean · M5 | [natural](../metroid/recordings/morph_ball_natural.json), [isolated](../metroid/recordings/morph_ball_isolated.json) |
 
 TMNT IV is the reference **linear combat** clear, not “rank 3.” Two continuous

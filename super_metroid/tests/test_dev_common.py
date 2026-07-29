@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from super_metroid.dev_common import enemy_hps
-from super_metroid.phantoon_dev import SHIP_ROUTE, ROOM_PHANTOON, ROOM_PINK_PB
-from super_metroid.kraid_dev import DOOR_EYE_TO_KRAID, ROOM_KRAID
+from super_metroid.dev.common import enemy_hps
+from super_metroid.dev.phantoon_dev import SHIP_ROUTE, ROOM_PHANTOON, ROOM_PINK_PB
+from super_metroid.dev.kraid_dev import DOOR_EYE_TO_KRAID, ROOM_KRAID
 
 
 def test_ship_route_ends_at_phantoon() -> None:

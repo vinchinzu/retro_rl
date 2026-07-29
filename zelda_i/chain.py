@@ -42,6 +42,8 @@ def boot_to_ready(env) -> tuple[Any, int]:
 
 def run_natural_to_level1(
     env,
+    *,
+    require_dungeon: bool = True,
 ) -> tuple[
     Any,
     int,
@@ -60,7 +62,7 @@ def run_natural_to_level1(
         for _ in range(55):
             obs, *_ = env.step(nes_action("DOWN"))
 
-    nav = OverworldToLevel1Controller()
+    nav = OverworldToLevel1Controller(require_dungeon=require_dungeon)
     if sword.success:
         for _ in range(NAV_MAX_FRAMES):
             obs, *_ = env.step(nav.step(read_snapshot(env.get_ram())).action)
