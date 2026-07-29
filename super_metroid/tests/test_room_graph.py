@@ -6,14 +6,14 @@ from types import SimpleNamespace
 import pytest
 
 from super_metroid.paths import FULL_ROOM_GRAPH_PATH, ROOM_PROBLEMS_PATH
-from super_metroid.room_graph import (
+from super_metroid.rooms.room_graph import (
     PhysicalConnection,
     PhysicalEndpoint,
     load_problem_catalog,
     problem_by_id,
     shortest_room_path,
 )
-from super_metroid.room_practice import (
+from super_metroid.rooms.room_practice import (
     _expand_steps,
     _objective_progress_failure,
     scaffold_room_policy,

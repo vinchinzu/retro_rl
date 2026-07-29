@@ -32,27 +32,16 @@ from snes_oneshot.segment_runner import (
     save_rgb_png,
     write_json_report,
 )
-from zelda_i.menus import boot_to_level1_script
+from zelda_i.chain import boot_to_ready
 from zelda_i.overworld_nav import (
     SEGMENT_MAX_FRAMES,
     OverworldToLevel1Controller,
     level1_entrance_success,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from zelda_i.ram import is_level1_ready, parse_game_state, read_snapshot
+from zelda_i.ram import parse_game_state, read_snapshot
 from zelda_i.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX
 from zelda_i.sword_cave import SwordCaveController, sword_segment_success
-
-
-def _boot_to_ready(env) -> tuple[object, int]:
-    frame = 0
-    obs = None
-    for scripted in boot_to_level1_script():
-        obs, *_ = env.step(scripted.action)
-        frame += 1
-        if is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
-            return obs, frame
-    return obs, frame
 
 
 def run_once(
@@ -72,7 +61,7 @@ def run_once(
         obs = result[0] if isinstance(result, tuple) else result
         boot_frames = 0
         if natural_entry:
-            obs, boot_frames = _boot_to_ready(env)
+            obs, boot_frames = boot_to_ready(env)
         else:
             obs, *_ = env.step(nes_idle_action())
 
@@ -87,15 +76,11 @@ def run_once(
             "boot_frames": boot_frames,
         }
 
-        # --- Sword cave ---
-        sword_ok = False
         for _ in range(SWORD_MAX):
-            ram = env.get_ram()
-            snap = read_snapshot(ram)
-            action = sword.step(snap)
-            obs, *_ = env.step(action.action)
+            obs, *_ = env.step(sword.step(read_snapshot(env.get_ram())).action)
             if sword.success or sword.phase.name == "FAILED":
                 break
+
         ram = env.get_ram()
         sword_ok = bool(
             sword_segment_success(ram)
@@ -122,16 +107,11 @@ def run_once(
                 "screenshot": str(png),
             }
 
-        # Leave cave pocket (down first) so overworld nav is not tree-trapped
         for _ in range(55):
             obs, *_ = env.step(nes_action("DOWN"))
 
-        # --- Overworld to Level 1 ---
         for _ in range(max_frames):
-            ram = env.get_ram()
-            snap = read_snapshot(ram)
-            action = nav.step(snap)
-            obs, *_ = env.step(action.action)
+            obs, *_ = env.step(nav.step(read_snapshot(env.get_ram())).action)
             if nav.success or nav.phase.name == "FAILED":
                 break
 

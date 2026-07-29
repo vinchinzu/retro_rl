@@ -45,12 +45,13 @@ uv run pytest zelda_i/tests adventure_common/tests -q
 | Path | Role |
 |------|------|
 | `ram.py` | Snapshots, readiness, capabilities |
-| `overworld.py` | 16×8 grid + early route graph (sword + Level 1 path) |
+| `overworld.py` | 16×8 grid, `ScreenHop` path tables, early route graph |
 | `overworld_nav.py` | Sword → Level 1 overworld/door controller |
 | `level1.py` | First key + locked north-door + room 0x63/0x53 controllers |
 | `dungeon.py` | Data-driven room specs + generic dungeon combat controller |
 | `level1_finish.py` | Switch/hint routing, backtrack, Aquamentus, and Triforce controllers |
 | `level2_overworld.py` | Post-Triforce settle + walk prefix toward Level 2 (stop 0x4A) |
+| `nav_common.py` | Shared overworld swing/stuck/align helpers |
 | `dungeon_lab.py` | Parallel sweeps, traces/diffs, RAM deltas, exit probes, provenance |
 | `docs/DUNGEON_LAB.md` | Lab commands, artifacts, and acceptance boundary |
 | `docs/LEVEL1_ROUTE.md` | Walkthrough correlation + verified Eagle speed route |

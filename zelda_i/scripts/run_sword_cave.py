@@ -32,25 +32,14 @@ from snes_oneshot.segment_runner import (
     save_rgb_png,
     write_json_report,
 )
-from zelda_i.menus import boot_to_level1_script
+from zelda_i.chain import boot_to_ready
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from zelda_i.ram import is_level1_ready, parse_game_state, read_snapshot
+from zelda_i.ram import parse_game_state, read_snapshot
 from zelda_i.sword_cave import (
     SEGMENT_MAX_FRAMES,
     SwordCaveController,
     sword_segment_success,
 )
-
-
-def _boot_to_ready(env) -> tuple[object, int]:
-    frame = 0
-    obs = None
-    for scripted in boot_to_level1_script():
-        obs, *_ = env.step(scripted.action)
-        frame += 1
-        if is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
-            return obs, frame
-    return obs, frame
 
 
 def run_once(
@@ -68,7 +57,7 @@ def run_once(
         obs = result[0] if isinstance(result, tuple) else result
         boot_frames = 0
         if natural_entry:
-            obs, boot_frames = _boot_to_ready(env)
+            obs, boot_frames = boot_to_ready(env)
         else:
             obs, *_ = env.step(nes_idle_action())
 

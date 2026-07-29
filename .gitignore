@@ -163,6 +163,9 @@ roms/
 **/tensorboard/
 **/optimizer/runs/
 **/debug_*/
+# Consolidated per-game debug trees (screenshots, probe dumps)
+**/debug/
+!**/debug/README.md
 *.log
 *.monitor.csv
 **/events.out.tfevents.*

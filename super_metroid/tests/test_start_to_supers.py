@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from super_metroid.start_to_supers import (
+from super_metroid.routes.continuous import (
     CONTROLLER_PATH,
     SupersRunReport,
     default_artifact_paths,
@@ -25,6 +25,7 @@ def test_supers_report_includes_super_collect_field() -> None:
         schema_version=1,
         success=False,
         outcome="failed:test",
+        kind="supers",
         error="test",
         total_frames=0,
         encoded_frames=0,
