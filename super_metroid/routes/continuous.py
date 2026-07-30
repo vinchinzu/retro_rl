@@ -16,7 +16,7 @@ import numpy as np
 
 from retro_harness.actions import buttons, idle_action
 from super_metroid.assist import UnlimitedAmmoAssist, UnlimitedResourcesAssist
-from super_metroid.paths import POLICY_DIR, SHARED_ROM
+from super_metroid.paths import POLICY_DIR, ROOM_TIMINGS_DIR, SHARED_ROM
 from super_metroid.policy import (
     PolicySegment,
     SegmentEvidence,
@@ -29,6 +29,7 @@ from super_metroid.progression import (
     START_TO_SPORE_SPAWN_GRAPH,
 )
 from super_metroid.ram import BOMBS_MASK, MORPH_BALL_MASK, GameplayPhase
+from super_metroid.room_timer import RoomTimer
 from super_metroid.routes.post_spore_controller import (
     SuperCollectEvidence,
     play_super_room_collect,
@@ -671,20 +672,58 @@ def play_start_to_supers(
     return boss, super_collect
 
 
+def write_room_timing_artifact(
+    timer: RoomTimer,
+    *,
+    path: str | Path,
+    source: str,
+    route_outcome: str,
+    total_frames: int,
+    success: bool | None = None,
+    extra: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Finalize an opt-in session timer and write under ``recordings/room_timings/``.
+
+    Instrumentation only — never part of continuous integrity evaluation.
+    """
+    timer.finalize(frame=total_frames)
+    payload_extra: dict[str, object] = {
+        "mode": "continuous_route",
+        "route_outcome": route_outcome,
+        "total_frames": total_frames,
+    }
+    if success is not None:
+        payload_extra["route_success"] = success
+    if extra:
+        payload_extra.update(extra)
+    report = timer.report(source=source, extra=payload_extra)
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return report
+
+
 def run_start_to_supers(
     *,
     video_path: str | Path | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
 ) -> ContinuousRunReport:
-    """Power-on once through natural Super Missile collect (STATUS baseline)."""
+    """Power-on once through natural Super Missile collect (STATUS baseline).
+
+    ``room_timing_path`` is opt-in: when set, the shared :class:`RoomTimer`
+    observes every frame and a separate timing JSON is written. Timing never
+    affects assist, integrity, or route decisions.
+    """
     assist = UnlimitedResourcesAssist(
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
     )
     box: dict[str, object] = {"boss": None, "super_collect": None}
     plan = route_plan_evidence()
+    timer = RoomTimer() if room_timing_path is not None else None
 
     def play(ctx: PlayContext) -> None:
         boss, super_collect = play_start_to_supers(
@@ -699,74 +738,105 @@ def run_start_to_supers(
         graph=START_TO_SPORE_SPAWN_GRAPH,
         video_path=video_path,
         success_outcome="spore_supers_collected",
+        room_timer=timer,
     )
     boss = box["boss"]
     super_collect = box["super_collect"]
     final = result.final_state
-    return finish_report(
-        result,
-        schema_version=1,
-        kind="supers",
-        required_splits=SUPERS_SPLITS,
-        final_conditions={
-            "both_missile_expansions": final.max_missiles >= 10,
-            "morph_and_bombs": (
-                final.collected_items & (MORPH_BALL_MASK | BOMBS_MASK)
-                == MORPH_BALL_MASK | BOMBS_MASK
-            ),
-            "terminator_energy_tank": final.max_health >= 199,
-            "spore_spawn_activated_at_960_hp": (
-                isinstance(boss, SporeSpawnEvidence) and boss.peak_hp >= 960
-            ),
-            "spore_spawn_hp_reached_zero": (
-                isinstance(boss, SporeSpawnEvidence) and 0 in boss.observed_hp
-            ),
-            "natural_spore_room_exit": any(
-                t.source_room_id == 0x9DC7 and t.target_room_id == 0x9B5B
-                for t in result.session.transitions
-            ),
-            "super_missiles_collected": final.max_super_missiles >= 5,
-            "super_collect_in_super_room": (
-                isinstance(super_collect, SuperCollectEvidence)
-                and super_collect.max_super_missiles >= 5
-                and super_collect.final_room_id == 0x9B5B
-            ),
-            "post_super_ordinary": (
-                final.room_id == 0x9B5B
-                and final.phase is GameplayPhase.ORDINARY_GAMEPLAY
-            ),
-        },
-        source_policy=(
-            "accepted power-on prefix + Spore controller + post-Spore Super "
-            "controller + phase-guarded current resources"
-        ),
-        report_path=report_path,
-        route_label="start-to-Supers",
-        require_deaths_zero=True,
-        route_plan=plan,
-        policy_sources={
-            "continuous_route_module": {
-                "path": str(_THIS.resolve()),
-                "sha256": sha256_file(_THIS),
+    report: ContinuousRunReport | None = None
+    try:
+        report = finish_report(
+            result,
+            schema_version=1,
+            kind="supers",
+            required_splits=SUPERS_SPLITS,
+            final_conditions={
+                "both_missile_expansions": final.max_missiles >= 10,
+                "morph_and_bombs": (
+                    final.collected_items & (MORPH_BALL_MASK | BOMBS_MASK)
+                    == MORPH_BALL_MASK | BOMBS_MASK
+                ),
+                "terminator_energy_tank": final.max_health >= 199,
+                "spore_spawn_activated_at_960_hp": (
+                    isinstance(boss, SporeSpawnEvidence) and boss.peak_hp >= 960
+                ),
+                "spore_spawn_hp_reached_zero": (
+                    isinstance(boss, SporeSpawnEvidence) and 0 in boss.observed_hp
+                ),
+                "natural_spore_room_exit": any(
+                    t.source_room_id == 0x9DC7 and t.target_room_id == 0x9B5B
+                    for t in result.session.transitions
+                ),
+                "super_missiles_collected": final.max_super_missiles >= 5,
+                "super_collect_in_super_room": (
+                    isinstance(super_collect, SuperCollectEvidence)
+                    and super_collect.max_super_missiles >= 5
+                    and super_collect.final_room_id == 0x9B5B
+                ),
+                "post_super_ordinary": (
+                    final.room_id == 0x9B5B
+                    and final.phase is GameplayPhase.ORDINARY_GAMEPLAY
+                ),
             },
-            "post_torizo_controller": {
-                "path": str(SPORE_CONTROLLER_PATH.resolve()),
-                "sha256": sha256_file(SPORE_CONTROLLER_PATH),
+            source_policy=(
+                "accepted power-on prefix + Spore controller + post-Spore Super "
+                "controller + phase-guarded current resources"
+            ),
+            report_path=report_path,
+            route_label="start-to-Supers",
+            require_deaths_zero=True,
+            route_plan=plan,
+            policy_sources={
+                "continuous_route_module": {
+                    "path": str(_THIS.resolve()),
+                    "sha256": sha256_file(_THIS),
+                },
+                "post_torizo_controller": {
+                    "path": str(SPORE_CONTROLLER_PATH.resolve()),
+                    "sha256": sha256_file(SPORE_CONTROLLER_PATH),
+                },
+                "post_spore_controller": {
+                    "path": str(POST_SPORE_CONTROLLER_PATH.resolve()),
+                    "sha256": sha256_file(POST_SPORE_CONTROLLER_PATH),
+                },
+                "route_plan": {
+                    "path": str(ROUTE_PLAN_PATH.resolve()),
+                    "sha256": sha256_file(ROUTE_PLAN_PATH),
+                },
             },
-            "post_spore_controller": {
-                "path": str(POST_SPORE_CONTROLLER_PATH.resolve()),
-                "sha256": sha256_file(POST_SPORE_CONTROLLER_PATH),
-            },
-            "route_plan": {
-                "path": str(ROUTE_PLAN_PATH.resolve()),
-                "sha256": sha256_file(ROUTE_PLAN_PATH),
-            },
-        },
-        boss=boss if isinstance(boss, SporeSpawnEvidence) else None,
-        super_collect=(
-            super_collect if isinstance(super_collect, SuperCollectEvidence) else None
-        ),
-    )
+            boss=boss if isinstance(boss, SporeSpawnEvidence) else None,
+            super_collect=(
+                super_collect
+                if isinstance(super_collect, SuperCollectEvidence)
+                else None
+            ),
+        )
+        return report
+    finally:
+        # Always persist opt-in timing (including partial runs / integrity fails).
+        if timer is not None and room_timing_path is not None:
+            write_room_timing_artifact(
+                timer,
+                path=room_timing_path,
+                source="start_to_supers",
+                route_outcome=(
+                    report.outcome if report is not None else result.outcome
+                ),
+                total_frames=(
+                    report.total_frames
+                    if report is not None
+                    else result.session.frame
+                ),
+                success=report.success if report is not None else False,
+                extra={
+                    "report_path": (
+                        str(report_path) if report_path is not None else None
+                    ),
+                    "video_path": (
+                        str(video_path) if video_path is not None else None
+                    ),
+                },
+            )
 
 
 # ===========================================================================
@@ -788,6 +858,12 @@ def default_spore_artifact_paths() -> tuple[Path, Path]:
 
 def default_supers_artifact_paths() -> tuple[Path, Path]:
     return default_artifacts("start_to_supers")
+
+
+def default_supers_room_timing_path() -> Path:
+    """Default opt-in timing artifact for start-to-Supers (gitignored)."""
+    ROOM_TIMINGS_DIR.mkdir(parents=True, exist_ok=True)
+    return ROOM_TIMINGS_DIR / "start_to_supers_room_timing.json"
 
 
 # Primary baseline alias (most scripts want Supers).

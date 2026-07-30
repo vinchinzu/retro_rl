@@ -5,6 +5,8 @@ Examples::
     uv run python zelda_i/scripts/run_level1_complete.py --trials 2
     uv run python zelda_i/scripts/run_level1_complete.py \
       --natural-entry --trials 2 --save-state
+    uv run python zelda_i/scripts/run_level1_complete.py \
+      --natural-entry --room-timing --trials 1
 """
 
 # ruff: noqa: E402
@@ -50,8 +52,9 @@ from zelda_i.level1_finish import (
     Level1Room42ExitController,
     Level1TriforceController,
 )
-from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
+from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR, ROOM_TIMINGS_DIR
 from zelda_i.ram import read_snapshot
+from zelda_i.room_timer import RoomTimer, bottleneck_visits
 
 
 def _finish_stages(*, natural_entry: bool):
@@ -159,21 +162,33 @@ def run_once(
     natural_entry: bool = False,
     tag: str = "level1_complete",
     save_checkpoint: bool = False,
+    room_timing: bool = False,
 ) -> dict:
     configure_headless()
     start_state = "NONE" if natural_entry else "Level1Cleared53"
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     prefix = None
     stages = []
+    room_timer = RoomTimer() if room_timing else None
+    frame_base = 0
     try:
         result = env.reset()
         obs = result[0] if isinstance(result, tuple) else result
         if natural_entry:
-            prefix = run_natural_to_milestone(env, milestone="clear53")
+            prefix = run_natural_to_milestone(
+                env,
+                milestone="clear53",
+                room_timer=room_timer,
+                frame_base=frame_base,
+            )
             obs = prefix.obs
             prefix_ok = prefix.success
+            frame_base = prefix.end_frame
         else:
             obs, *_ = env.step(nes_idle_action())
+            frame_base = 1
+            if room_timer is not None:
+                room_timer.observe(read_snapshot(env.get_ram()), frame=frame_base)
             prefix_ok = True
 
         for name, controller, max_frames in _finish_stages(
@@ -187,8 +202,11 @@ def run_once(
                 name=name,
                 controller=controller,
                 max_frames=max_frames,
+                room_timer=room_timer,
+                frame_base=frame_base,
             )
             stages.append(stage)
+            frame_base = stage.end_frame
             prefix_ok = prefix_ok and stage.success
             if not stage.success:
                 break
@@ -226,7 +244,7 @@ def run_once(
         label = "natural" if natural_entry else "isolated"
         screenshot = RECORDINGS_DIR / f"{tag}_{label}.png"
         save_rgb_png(obs, screenshot)
-        return {
+        payload = {
             "ok": ok,
             "natural_entry": natural_entry,
             "prefix_ok": prefix.success if prefix else True,
@@ -246,6 +264,19 @@ def run_once(
             "provenance": provenance,
             "screenshot": str(screenshot),
         }
+        if room_timer is not None:
+            room_timer.finalize(frame=frame_base)
+            payload["room_timing"] = room_timer.report(
+                source=f"run_level1_complete:{tag}",
+                extra={
+                    "ok": ok,
+                    "natural_entry": natural_entry,
+                    "final_room": snap.screen,
+                    "final_room_hex": f"0x{snap.screen:02X}",
+                    "bottlenecks": bottleneck_visits(room_timer.visits, top_n=8),
+                },
+            )
+        return payload
     finally:
         env.close()
 
@@ -255,6 +286,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--natural-entry", action="store_true")
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--save-state", action="store_true")
+    parser.add_argument(
+        "--room-timing",
+        action="store_true",
+        help=(
+            "Opt-in screen/room hop timing via zelda_i.room_timer; "
+            f"writes JSON under {ROOM_TIMINGS_DIR}"
+        ),
+    )
     args = parser.parse_args(argv)
 
     reports = [
@@ -262,6 +301,7 @@ def main(argv: list[str] | None = None) -> int:
             natural_entry=args.natural_entry,
             tag=f"level1_complete_t{trial}",
             save_checkpoint=args.save_state,
+            room_timing=args.room_timing,
         )
         for trial in range(args.trials)
     ]
@@ -280,6 +320,13 @@ def main(argv: list[str] | None = None) -> int:
             f"prefix_ok={report['prefix_ok']} failed={failed} "
             f"room={final['room']:02X} triforce=0x{final['triforce']:02X}"
         )
+        if args.room_timing and "room_timing" in report:
+            rt = report["room_timing"]
+            print(
+                f"  room_timing visits={rt.get('visit_count')} "
+                f"dwell={rt.get('total_dwell_frames')} "
+                f"transition={rt.get('total_transition_frames')}"
+            )
 
     label = "natural" if args.natural_entry else "isolated"
     output = RECORDINGS_DIR / f"level1_complete_{label}.json"
@@ -288,6 +335,7 @@ def main(argv: list[str] | None = None) -> int:
         {
             "segment": "level1_complete",
             "natural_entry": args.natural_entry,
+            "room_timing": args.room_timing,
             "runtime_class": "bronze",
             "intervention_class": "clean",
             "trials": args.trials,
@@ -297,6 +345,22 @@ def main(argv: list[str] | None = None) -> int:
         },
     )
     print(f"wrote {output}")
+    if args.room_timing:
+        ROOM_TIMINGS_DIR.mkdir(parents=True, exist_ok=True)
+        timing_out = ROOM_TIMINGS_DIR / f"level1_complete_{label}_timing.json"
+        write_json_report(
+            timing_out,
+            {
+                "segment": "level1_complete",
+                "natural_entry": args.natural_entry,
+                "trials": args.trials,
+                "successes": sum(report["ok"] for report in reports),
+                "trial_timings": [
+                    r.get("room_timing") for r in reports if "room_timing" in r
+                ],
+            },
+        )
+        print(f"room_timing={timing_out}")
     return 0 if all(report["ok"] for report in reports) else 1
 
 

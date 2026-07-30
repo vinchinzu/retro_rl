@@ -119,3 +119,22 @@ def test_graph_has_level2_prefix_edge() -> None:
     assert hop_edge is not None
     assert hop_edge.verification == "observed"
     assert hop_edge.meta.get("segment") == "to_level2_prefix"
+
+
+def test_level2_door_path_geometry() -> None:
+    from zelda_i.overworld import (
+        LEVEL2_5C_MAZE_WAYPOINTS,
+        LEVEL2_DOOR_HOPS,
+        LEVEL2_DOOR_SCREENS,
+    )
+
+    assert LEVEL2_DOOR_SCREENS[0] == 0x37
+    assert LEVEL2_DOOR_SCREENS[-1] == 0x3C
+    assert 0x5A in LEVEL2_DOOR_SCREENS  # west entry into 0x5B
+    assert 0x4B not in LEVEL2_DOOR_SCREENS  # north-entry trap
+    assert 0x79 not in LEVEL2_DOOR_SCREENS
+    assert len(LEVEL2_DOOR_HOPS) == len(LEVEL2_DOOR_SCREENS) - 1
+    assert len(LEVEL2_5C_MAZE_WAYPOINTS) >= 10
+    hop_4d = next(h for h in LEVEL2_DOOR_HOPS if h.target == 0x4D)
+    assert hop_4d.direction == "UP"
+    assert hop_4d.align_x is not None and hop_4d.align_x < 80

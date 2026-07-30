@@ -13,23 +13,23 @@ Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful only for t
 | Layer | Furthest | Evidence |
 |-------|----------|----------|
 | **Continuous** | `0x9B5B` Spore Spawn Super Room | `recordings/start_to_supers.json` |
-| **Controller (dev)** | `0x9D19` Big Pink ~(746,1465) | `probe_post_spore_pb.py --to main` |
+| **Controller (dev)** | `0xA59F` Kraid's Room ~(39,374) | `kpdr.py pure warehouse-hijump-kraid` |
 
 ### ★ Next hop to play
 
-- **0x9D19 → 0x9E11** (Big Pink → Pink Brinstar Power Bomb Room)
-- Door: `0x8E02`
-- Note: sill entry green; ★ pure sill approach + mid-maze 405→225 still open
-- Leg: `spore_spawn_supers__early_power_bombs`
+- **0xA59F → 0xA6E2** (Kraid's Room → Varia Suit Room)
+- Door: `0x91DA`
+- Note: open
+- Leg: `kraid__varia`
 
 ## Status counts (unique path rooms)
 
 | Status | Count |
 |--------|------:|
 | continuous | 20 |
-| controller_dev | 3 |
+| controller_dev | 17 |
 | boss_deferred | 6 |
-| open | 78 |
+| open | 64 |
 | **total** | **107** |
 | directed hops | 199 |
 
@@ -54,35 +54,38 @@ Path priority: only the **~107 completion-path rooms** first, not all 262.
 
 ## Work waves
 
-### W0 — Continuous prefix (done) (done)
+### W0 — Continuous prefix (done)
 
 **Goal:** Power-on → Super collect
 
-### W1 — Super → Power Bombs by play (in_progress)
+### W1 — Super → Red Tower (KPDR K1) (in_progress)
 
-**Goal:** 0x9B5B → 0xA0A4 → 0x9D19 → 0x9E11 + PB collect
+**Goal:** 0x9B5B → farm → Big Pink → GHZ → Noob → Red Tower
 
 Done:
 - [x] Super collect continuous
 - [x] farming hop controller_dev
 - [x] Big Pink to main shaft
-- [x] PB wall@437 pure morph-bomb
-- [x] PB pocket collect (x≤225)
+- [x] direct Big Pink → GHZ → Noob → Red Tower controller
 
 Open:
-- [ ] Big Pink pure sill approach (wall@613 / y1051)
-- [ ] mid-maze 405→225 pure
-- [ ] continuous power-on through PB
+- [ ] Charge Beam conventional return (no IBJ)
+- [ ] continuous power-on composition through Red Tower
 
-### W2 — PB → Kraid approach (research path) (open)
+### W2 — Red Tower → Hi-Jump → Kraid entry (KPDR K2) (controller_dev)
 
-**Goal:** Play GHZ/Noob/Red Tower/Warehouse rooms into Kraid entry
+**Goal:** Warehouse → Hi-Jump real PLM → return → natural Kraid entry
 
-_Any% ship route can diverge after PB; prefer research hops if single board_
+Done:
+- [x] Red Tower → Warehouse
+- [x] Hi-Jump E-Tank + Boots real PLMs
+- [x] Hi-Jump intended ledges + ordinary bomb-tunnel return
+- [x] Warehouse → Zeela → Kihunter → Baby Kraid → Eye → Kraid
+- [x] 15356f composed Warehouse suffix; no IBJ
 
 ### W3 — Kraid → Varia → Speed → Ice by play (open)
 
-**Goal:** Natural Kraid (or deferred fight) + item rooms + Norfair halls
+**Goal:** Natural Kraid fight + rear door/Varia + Norfair item rooms
 
 ### W4 — Ice → Phantoon approach by play (open)
 
@@ -132,28 +135,28 @@ _Requires MB defeat event + escape timer init_
 | 13 | `0xA107` | First Missile Room | **continuous** | easy | First Missiles |
 | 14 | `0x9879` | Flyway | **continuous** | tough | Flyway (+ room_clears policy) |
 | 15 | `0x9804` | Bomb Torizo Room | **continuous** | boss_late | Bomb Torizo fight continuous |
-| 16 | `0x9E52` | Green Hill Zone | **open** | tough |  |
+| 16 | `0x9E52` | Green Hill Zone | **controller_dev** | tough | GHZ by natural Big Pink exit |
 | 17 | `0x9D19` | Big Pink | **controller_dev** | tough | Big Pink: crest+tunnel→main; PB sill entry green; approach wall@613 OPEN |
 | 18 | `0x9D9C` | Spore Spawn Keyhunter Room | **open** | tough |  |
 | 19 | `0x9DC7` | Spore Spawn Room | **continuous** | boss_late | Spore Spawn fight continuous |
 | 20 | `0x9B5B` | Spore Spawn Super Room | **continuous** | tough | Spore Super room collect continuous (furthest continuous) |
 | 21 | `0xA0A4` | Spore Spawn Farming Room | **controller_dev** | easy | Farming via play_super_room_to_farming |
 | 22 | `0x9E11` | Pink Brinstar Power Bomb Room | **controller_dev** | tough | Pink PB: wall@437 pure break; collect from x≤225; mid-maze 405→225 OPEN |
-| 23 | `0x9FBA` | Noob Bridge | **open** | standard |  |
-| 24 | `0xA253` | Red Tower | **open** | tough |  |
-| 25 | `0xA3DD` | Bat Room | **open** | easy |  |
-| 26 | `0xA408` | Below Spazer | **open** | tough |  |
-| 27 | `0xCF54` | West Tunnel | **open** | easy |  |
-| 28 | `0xCEFB` | Glass Tunnel | **open** | tough |  |
-| 29 | `0xCF80` | East Tunnel | **open** | standard |  |
-| 30 | `0xA6A1` | Warehouse Entrance | **open** | tough |  |
-| 31 | `0xA471` | Warehouse Zeela Room | **open** | tough |  |
-| 32 | `0xA4DA` | Warehouse Kihunter Room | **open** | tough |  |
-| 33 | `0xA521` | Baby Kraid Room | **open** | tough |  |
-| 34 | `0xA56B` | Kraid's Eye Door | **open** | tough |  |
-| 35 | `0xA59F` | Kraid's Room | **boss_deferred** | boss_late | Kraid — dev spray exists; natural entry open |
+| 23 | `0x9FBA` | Noob Bridge | **controller_dev** | standard | Noob Bridge upper pit-block route |
+| 24 | `0xA253` | Red Tower | **controller_dev** | tough | Red Tower natural entry |
+| 25 | `0xA3DD` | Bat Room | **controller_dev** | easy | Bat Room controller |
+| 26 | `0xA408` | Below Spazer | **controller_dev** | tough | Below Spazer controller |
+| 27 | `0xCF54` | West Tunnel | **controller_dev** | easy | West Tunnel controller |
+| 28 | `0xCEFB` | Glass Tunnel | **controller_dev** | tough | Glass Tunnel controller |
+| 29 | `0xCF80` | East Tunnel | **controller_dev** | standard | East Tunnel controller |
+| 30 | `0xA6A1` | Warehouse Entrance | **controller_dev** | tough | Warehouse: Hi-Jump detour + three-Super wall controller |
+| 31 | `0xA471` | Warehouse Zeela Room | **controller_dev** | tough | Warehouse Zeela controller |
+| 32 | `0xA4DA` | Warehouse Kihunter Room | **controller_dev** | tough | Warehouse Kihunter controller |
+| 33 | `0xA521` | Baby Kraid Room | **controller_dev** | tough | Baby Kraid gray door clear |
+| 34 | `0xA56B` | Kraid's Eye Door | **controller_dev** | tough | Kraid Eye Door controller |
+| 35 | `0xA59F` | Kraid's Room | **boss_deferred** | boss_late | Kraid — natural entry controller-complete; fight composition next |
 | 36 | `0xA6E2` | Varia Suit Room | **open** | easy |  |
-| 37 | `0xA7DE` | Business Center | **open** | tough |  |
+| 37 | `0xA7DE` | Business Center | **controller_dev** | tough | Business Center descent and Hi-Jump-assisted return |
 | 38 | `0xB167` | Frog Savestation | **open** | easy |  |
 | 39 | `0xB106` | Frog Speedway | **open** | tough |  |
 | 40 | `0xAF72` | Upper Norfair Farming Room | **open** | tough |  |
@@ -226,10 +229,10 @@ _Requires MB defeat event + escape timer init_
 
 ## Immediate actions
 
-1. Solve **Big Pink → Pink PB** (`0x9D19 → 0x9E11`) by play from main shaft.
-2. Compose Super→PB controller; re-prove on continuous power-on.
-3. For each following hop: capture natural entry → attempt policy → promote.
-4. Boss fights only after natural entry to that boss room exists on the chain.
+1. Compose the Kraid fight from the natural controller entry.
+2. Take Kraid's rear door and collect Varia from the real PLM.
+3. Finish Charge with a conventional return; do not route an IBJ.
+4. Compose K1→K2, then re-prove it from continuous power-on.
 5. Refresh this board after every promotion:
 
 ```bash

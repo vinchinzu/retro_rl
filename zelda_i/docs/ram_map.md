@@ -42,6 +42,10 @@ ADDR_TRIFORCE       = 0x0671
 | 17 | Link death |
 | 18 | Triforce collection / dungeon-complete animation |
 
+Screen/room hop timing (`room_timer.py`) treats mode **5** as settled play and
+modes **6/7/16** (plus cave **11**) as non-destination transition noise. See
+[ROOM_TIMER.md](ROOM_TIMER.md).
+
 ## Readiness
 
 `is_level1_ready` — mode 5, level 0, health > 0, optional obs_mean > 50.

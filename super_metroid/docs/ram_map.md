@@ -47,7 +47,7 @@ Addresses are WRAM offsets.
 | Bomb ownership | collected items bit `0x1000` | Route-verified | natural pickup, `BOMB` banner, Torizo activation, and final `0x1004` mask |
 | Enemy count/kills | `0x0E4E/0x0E50 u16` | Route-verified | sampled across early rooms for combat-aware progress vectors |
 | Enemy slot 0 X/Y/HP | `0x0F7A/0x0F7E/0x0F8C u16` | Route-verified | Bomb Torizo reaches 800→0; Spore Spawn reaches 960→0 before natural exits |
-| Enemy slot 0 spritemap | `0x0F8E u16` | Route-verified | Spore Spawn mouth-open states `0xEEAF/0xEEC1/0xEED3/0xEEE5` gate controller fire |
+| Enemy slot 0 spritemap | `0x0F8E u16` | Route-verified | Spore Spawn mouth-open states `0xEE79/0xEE8B/0xEE9D/0xEEAF/0xEEC1/0xEED3/0xEEE5` plus fully-open holds `0xEF3D/0xEF4F/0xEF61` gate controller fire |
 | Ceres timer type | `0x0943 u8` | Route-verified | type `3` marks the natural evacuation countdown |
 | Escape timer | `0x0945..0x0947 u8` | Route-verified | observed during Ceres; Tourian semantics pending |
 

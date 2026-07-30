@@ -64,8 +64,10 @@ matches the typed progression graph.
 `spore_spawn_controller.py` emits controller input only. It checks natural
 room, capability, coordinate, Energy Tank, enemy-clear, boss-activation, HP,
 and exit boundaries. Big Pink and the post-boss shaft use finite map-guided
-controller sequences found in the development emulator. Spore combat reads
-typed enemy position, HP, and mouth-open spritemap state to aim and fire.
+controller sequences found in the development emulator. Spore combat floor-
+bounces under the core, aims up while unspun, and fires missiles whenever
+mouth-open / fully-open hold spritemaps are active (including `0xEF3D` /
+`0xEF4F` / `0xEF61` holds the original policy missed).
 
 The development driver may start editor save states for route search, but it
 is explicitly excluded from acceptance. The accepted runner composes the
@@ -73,28 +75,22 @@ controller only after the verified power-on-through-Bomb-Torizo prefix.
 
 ## Acceptance evidence
 
-`recordings/start_to_spore_spawn.mp4`:
+`recordings/start_to_spore_spawn.json` (2026-07-29 fight rewrite, report-only):
 
-- H.264, 512×448, 60 fps;
-- 91,220 encoded frames / 1,520.333 seconds;
-- SHA-256
-  `0c7fb620aa272044250f3b5e1df38af34da9bef52b3a54a83180f73b9046dd9e`;
-- visibly shows power-on/title, the Terminator Energy Tank, Green Brinstar,
-  Spore Spawn activation and combat, the death animation, natural exit, and
-  settled post-boss room.
-
-`recordings/start_to_spore_spawn.json` records:
-
-- the accepted Missile capacities and Morph Ball/Bombs prefix;
-- Terminator max energy changing naturally `99 → 199` at frame 51,142;
-- all 40 observed room transitions matching typed graph edges;
-- all ten editor-planned suffix transitions observed;
+- power-on continuous, integrity green, outcome `spore_spawn_defeated_and_exited`;
+- total frames **73,216** (was 91,220 with the prior fight policy);
 - Spore Spawn activating at 960 HP at frame 66,130;
-- HP history `960 → 860 → … → 60 → 0`, reaching zero at frame 89,303;
-- natural `0x9DC7 → 0x9B5B` transition at frame 90,802;
-- zero save-state loads, deaths, progression writes, and capacity writes;
-- 252 current-energy refills and 497 current-Missile refills within the assist
-  contract.
+- HP history `960 → 860 → … → 60 → 0`, reaching zero at frame **71,300**
+  (~86 s fight; was 89,303 / ~386 s);
+- natural `0x9DC7 → 0x9B5B` exit split at frame **72,798**;
+- vulnerable spritemaps observed include fully-open holds
+  `0xEF3D` / `0xEF4F` / `0xEF61` in addition to open/close transitions;
+- zero save-state loads, deaths, progression writes, and capacity writes.
+
+Prior video `recordings/start_to_spore_spawn.mp4` (91,220 frames) still shows
+the old slow fight; re-encode with
+`uv run python super_metroid/scripts/record/start_to_spore_spawn.py` when a
+matching video baseline is needed.
 
 `recordings/start_to_spore_spawn.verify.json` independently re-hashes the ROM,
 report, video, accepted prefix policies, available policy sources, controller,

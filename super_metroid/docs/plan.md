@@ -90,10 +90,11 @@ How far we are (play, not warps):
 | Layer | Furthest |
 |-------|----------|
 | Continuous | Super collect `0x9B5B` |
-| Controller dev | Big Pink main shaft `0x9D19` ~(746,1465) |
-| ★ Next hop | `0x9D19 → 0x9E11` (PB door climb) |
+| Controller dev | Natural Big Pink→Red Tower (3,478f); Red Tower→Warehouse Entrance (2,929f); Warehouse→Hi-Jump→Warehouse→natural Kraid entry (15,356f) |
+| ★ Next hop | KPDR **K3**: natural Kraid fight → rear door → Varia PLM |
 
-Full room list + waves: [PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md).
+**Continuous spine:** [ROUTE_KPDR.md](routes/ROUTE_KPDR.md) (K→P→D→R).
+Hop table / waves: [PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md) (topology only).
 
 ---
 
@@ -176,64 +177,71 @@ Replace door-warps with natural room policies **in order**. Bosses remain
 skippable in a “spine dry run” mode until fight scripts land; final acceptance
 requires real fights.
 
-### B1 — Continuous Super → Power Bombs (first continuous growth)
+### B1 — Continuous Super → KPDR Brinstar (no early Pink PB)
 
-Natural suffix from verified Spore Super entry:
+Natural suffix from verified Spore Super entry — **KPDR K0–K1**:
 
 ```text
-0x9B5B (Spore Super) → collect Supers
-  → 0xA0A4 → 0x9D19 (Big Pink) → 0x9E11 → collect Power Bombs
+0x9B5B Super collect → 0xA0A4 → 0x9D19 Big Pink (+ Charge)
+  → GHZ 0x9E52 → Noob 0x9FBA → Red Tower 0xA253
 ```
+
+Authoritative board: [ROUTE_KPDR.md](routes/ROUTE_KPDR.md).
+Legacy Pink-PB / ship-first notes: [ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md).
 
 - [x] Super shaft descent + Chozo collect (capacity 0 → 5) from
   `natural_post_spore_spawn` — `post_spore_controller.play_super_room_collect`.
 - [x] Continuous power-on → Super collect dry report
   (`recordings/start_to_supers.json`, 92,424 frames, integrity green).
+- [x] Opt-in continuous room timing seam
+  (`start_to_supers.py --room-timing` →
+  `recordings/room_timings/start_to_supers_room_timing.json`); measured
+  largest early nav bottleneck = Climb `0x96BA`→Parlor (4,339 dwell).
+- [ ] Next timing experiment: re-record Climb→Parlor slice in
+  `pit_to_post_torizo` (~frames 34,598–39,107), re-baseline with
+  `--room-timing`, keep integrity green.
 - [x] Bottom gate bomb + door shot → farming `0xA0A4` (dev from post-Spore).
 - [x] Farming green Super door → Big Pink `0x9D19` (dev).
-- [x] Big Pink farm-pocket **crest** (run-right + spin-jump-left → ~1125,1387
-  standing) — `play_big_pink_crest_pocket` (dev).
-- [x] Identify 3b blocks: Super-only shot (69,87), bomb (62–63,87), scroll (3,5).
-- [x] Crouch-Super clear of (69,87) from crest — `play_big_pink_clear_super_block`.
-- [x] Double-tap DOWN morph (standing y≈1387 = morph y≈1401 pose height).
-- [x] Tunnel morph-west + X bombs — `play_big_pink_tunnel_west`.
-- [x] Green `play_big_pink_into_main_shaft` → main x≲750 (no place/WRAM).
+- [x] Big Pink farm-pocket **crest** + tunnel → main x≲750 (dev controller).
 - [ ] Continuous power-on through farming / Big Pink / crest / main.
-- [x] Reactive morph/bomb helpers: `ensure_morph`, `bomb_roll_left_safe`,
-  `wait_until`, `is_morph` / `MORPH_POSES` (wall@437 + pocket collect re-proven).
-- [ ] Big Pink → Pink PB `0x9E11` natural — **open** (entry green with place):
-  - preferred top door ledge y≈907; drop-air x∈[535,555] y∈[850,910] lands it;
-  - pure path into drop-air still open (wall@613 east; left_upper needs height);
-  - bottom place-bridge still valid but not a hop-to island (y1051 is roof).
-- [ ] Natural PB collect after natural entry (left-zone suffix green; mid-maze open;
-  top→crumble is wiki alt).
-- [ ] Continuous power-on through PB.
+- [ ] **Charge Beam** return in Big Pink (natural collect works; a conventional
+  return to the route is not ready; do not route an infinite bomb jump).
+- [x] Natural Big Pink main → GHZ green door controller-only.
+- [x] GHZ → Noob → Red Tower controller-only (no Pink PB): upper Noob
+  pit-block bridge, GHZ pillar/blue-gate shot, and both natural door spawns
+  compose. Natural Big Pink→Red composition is 3,478 frames.
+- [x] Pink PB maze work (partial) **parked** — not required for KPDR; first PB
+  is **Alpha `0xA3AE` after Ice** (segment K5).
+- [x] Dev ship bridge (`skip-to-red` / `ship-route`) kept as topology only.
 
-Route-by-route board (Supers → Phantoon): [ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md).
+### B2 — KPDR safety order: Hi-Jump → Kraid → Speed/Wave/Ice → Alpha PB → Phantoon
 
-### B2 — PB → Red Tower → ship → Phantoon entry (natural)
-
-Research hop path already in `full_route_hops.json`
-(`early_power_bombs__kraid` is Brinstar-heavy; ship route is the
-`ice_beam__phantoon` / `phantoon_dev.SHIP_ROUTE` family). Practical continuous
-order after PB:
+**Chosen continuous order: KPDR (B2b-style), not ship-first.**
 
 ```text
-Big Pink → GHZ / Noob Bridge → Red Tower
-  → Hellway → Caterpillar → elev → Crateria Kihunter
-  → Moat → West Ocean → WS → Phantoon room
+Red Tower → Warehouse → Business Center → Hi-Jump 0xA9E5
+  → Warehouse → Kraid → Varia
+  → Bubble Mountain → Speed → Wave → Ice
+  → Alpha PB 0xA3AE → elev → Moat → WS → Phantoon → Gravity
 ```
 
-- [ ] One room policy (or short multi-room controller) per hard room:
-  Red Tower climb, Moat, WS basement.
-- [ ] Kraid detour is on the research path for Varia/Speed/Ice; either:
-  - **B2a (any% spine):** ship route first, defer Kraid/Norfair until needed; or
-  - **B2b (research path):** natural Kraid → Varia → Speed → Ice → ship.
+- [x] K2 prefix: Red Tower → Bat → Below Spazer → West/Glass/East →
+  Warehouse Entrance (2,929 frames).
+- [x] K2 safety detour: Warehouse→Business→Hi-Jump Shaft→Hi-Jump Room;
+  collect the E-Tank and Boots from real PLMs.
+- [x] K2 return: Hi-Jump ledges→ordinary bomb tunnel→Business→Warehouse.
+  No infinite bomb jump is used or required.
+- [x] K2 approach: three-Super Warehouse wall→Zeela→Kihunter→Baby
+  Kraid→Eye Door→natural Kraid-room entry. The full Warehouse detour and
+  approach composes controller-only in **15,356 frames**.
+- [ ] K3: compose the Kraid fight from natural entry, take the rear door, and
+  collect Varia (dev spray exists).
+- [ ] K4: Speed / Wave / Ice by play.
+- [ ] K5: Alpha PB collect (preferred first Power Bombs).
+- [ ] K6: Moat / Ocean / WS / Phantoon / Gravity by play.
+- [ ] Document KPDR edges in `progression.py` as typed graph when segments land.
 
-Prefer **B2b** only if the hop table is the single source of truth for the
-tour video; for continuous clear, **any% ordering can differ** as long as
-capabilities and doors match. Document the chosen continuous order in
-`progression.py` as a typed graph (like start_to_spore_spawn).
+Ship-first / PRKD remains out of continuous scope; hop-table warps stay Track A.
 
 ### B3 — In-room policy factory (parallel)
 
@@ -259,7 +267,7 @@ High-value path rooms (from hop table + known hard geometry):
 |------|------------|-----------------|
 | Bomb Torizo | Continuous | done |
 | Spore Spawn | Continuous | done |
-| Kraid | Super-spray dev clear | natural entry + rear door + Varia |
+| Kraid | Super-spray dev clear; natural entry controller-complete | fight composition + rear door + Varia |
 | Phantoon | entry state only | fight + WS power restore |
 | Botwoon | skip bit only | fight |
 | Draygon | skip bit only | fight + Space Jump collect |
@@ -304,14 +312,15 @@ Track A topology — DONE (stop expanding warp product work)
   ✓  full hop runner + full-tour / full-hybrid diagnostics
 
 Track B — play every path room (PRIMARY) — NEXT
-  Day 1–3  W1: Big Pink climb → PB by play; continuous power-on → PB
-  Day 4–7  W2: next open hops after PB (GHZ / Noob / Red Tower or ship branch)
+  W1  Compose natural Kraid entry → fight → rear door → Varia
+  W2  Finish a conventional Charge return and compose K1→K2
   Ongoing  For each hop: natural entry → attempt → promote on PATH_ROOM_BOARD
   Later    W9 boss scripts only after natural boss-room entry exists
 ```
 
 Do **not** door-warp past open hops to fake progress. Measure furthest played
-room; fix that hop; repeat. Super/PB climb is the current bottleneck.
+room; fix that hop; repeat. The natural-entry Kraid fight is the current
+played-spine boundary.
 
 ---
 

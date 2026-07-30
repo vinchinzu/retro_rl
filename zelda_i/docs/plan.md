@@ -17,10 +17,12 @@ route graph.
 
 ## Bottleneck
 
-Post-Triforce settle + walk prefix to **0x4A** is encoded
-(`level2_overworld.py`). Remaining: heart-safe walk to **0x3C** and dungeon
-entry. Overworld combat is still thin (periodic swings); full-game graph still
-needs seven dungeons, inventory, and Ganon.
+Door-path geometry to **0x3C** is probe-mapped (via 0x5A/5B/5C maze/5D@x52;
+see `LEVEL2_ROUTE.md` + `LEVEL2_DOOR_HOPS`). Timed Clean attempt (2026-07-29)
+dies on **0x5C with 0 hearts** after draining 3→0 across 0x48–0x5C; maze never
+starts. Remaining: **heart-safe farm before 0x5A**, then maze controller, then
+Level 2 interior (Ropes 0x28 → keys → Dodongo bombs → `triforce & 0x02`).
+Full-game graph still needs seven more dungeons, inventory items, and Ganon.
 
 ## Notes
 

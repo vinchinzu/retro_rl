@@ -129,10 +129,26 @@ def main() -> None:
         default=None,
         help="Optional dev state output path",
     )
+    parser.add_argument(
+        "--log-every",
+        type=int,
+        default=0,
+        help="If >0, log x,y,pose,vel every N frames inside bomb-roll loops",
+    )
+    parser.add_argument(
+        "--save-fail",
+        type=Path,
+        default=None,
+        help=(
+            "On TimeoutError/RuntimeError, write emulator state here "
+            "(default: <game>/debug/post_spore/fail_<to>.state)"
+        ),
+    )
     args = parser.parse_args()
 
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     assist = UnlimitedResourcesAssist()
+    session: _Session | None = None
     try:
         env.reset()
         env.em.set_state(read_state_bytes(args.source))
@@ -263,7 +279,9 @@ def main() -> None:
                     "samusY": session.state.samus_y,
                     "pose": session.state.pose,
                 }
-            play_pink_pb_mid_maze_to_collect(session)
+            play_pink_pb_mid_maze_to_collect(
+                session, log_every=args.log_every or 0
+            )
             result["pbMidMaze"] = {
                 "roomIdHex": f"0x{session.state.room_id:04X}",
                 "samusX": session.state.samus_x,
@@ -299,7 +317,9 @@ def main() -> None:
             if session.state.room_id == 0x9E11 and session.state.samus_x > 225:
                 # Pure mid-maze first.
                 try:
-                    play_pink_pb_mid_maze_to_collect(session)
+                    play_pink_pb_mid_maze_to_collect(
+                        session, log_every=args.log_every or 0
+                    )
                     result["pbMidMaze"] = {
                         "samusX": session.state.samus_x,
                         "samusY": session.state.samus_y,
@@ -458,6 +478,9 @@ def main() -> None:
             "roomIdHex": f"0x{session.state.room_id:04X}",
             "samusX": session.state.samus_x,
             "samusY": session.state.samus_y,
+            "pose": session.state.pose,
+            "velocityY": session.state.velocity_y,
+            "velocityX": session.state.velocity_x,
             "maxSuperMissiles": session.state.max_super_missiles,
             "maxPowerBombs": session.state.max_power_bombs,
             "frame": session.frame,
@@ -466,6 +489,46 @@ def main() -> None:
             write_state_bytes(args.save, env.em.get_state())
             result["savedState"] = str(args.save)
         print(json.dumps(result, indent=2))
+    except (TimeoutError, RuntimeError) as exc:
+        # Always dump failure coordinates for threshold tuning.
+        fail_path = args.save_fail
+        if fail_path is None:
+            fail_path = (
+                GAME_DIR
+                / "debug"
+                / "post_spore"
+                / f"fail_{args.to.replace('-', '_')}.state"
+            )
+        fail_path = Path(fail_path)
+        fail_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            write_state_bytes(fail_path, env.em.get_state())
+        except Exception:
+            fail_path = None
+        if session is not None:
+            s = session.state
+            print(
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": str(exc),
+                        "failState": str(fail_path) if fail_path else None,
+                        "final": {
+                            "roomIdHex": f"0x{s.room_id:04X}",
+                            "samusX": s.samus_x,
+                            "samusY": s.samus_y,
+                            "pose": s.pose,
+                            "velocityY": s.velocity_y,
+                            "velocityX": s.velocity_x,
+                            "maxPowerBombs": s.max_power_bombs,
+                            "frame": session.frame,
+                        },
+                    },
+                    indent=2,
+                ),
+                file=sys.stderr,
+            )
+        raise
     finally:
         env.close()
 

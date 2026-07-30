@@ -6,5 +6,8 @@
 | `plan.md` | Future work |
 | `ASSIST_CONTRACT.md` | Allowed resource assists |
 | `ram_map.md` | WRAM addresses |
-| `routes/` | Route boards (Morph → Supers → Phantoon) |
+| `routes/` | Route boards — **KPDR** spine + early continuous segments |
+| `routes/ROUTE_KPDR.md` | Authoritative continuous any% KPDR plan + walkthrough links |
+| `routes/KPDR_TRACKER.csv` | Chartable segment progress (status / room / anchor) |
+| `routes/KPDR_TRACKER.md` | Human summary + bar chart (from export script) |
 | `research/` | Path room board, room problem catalog, legacy |
