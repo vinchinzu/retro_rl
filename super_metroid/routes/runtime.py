@@ -24,6 +24,7 @@ from super_metroid.paths import GAME, GAME_DIR, MAPS_DIR, RECORDINGS_DIR, SHARED
 from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import ObservedTransition, RoomProgressionGraph
 from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_state
+from super_metroid.room_timer import RoomTimer
 from super_metroid.video import FrameVideoWriter
 
 Action = np.ndarray
@@ -192,11 +193,13 @@ class RouteSession:
         writer: FrameVideoWriter | None,
         assist: AssistLike,
         graph: RoomProgressionGraph,
+        room_timer: RoomTimer | None = None,
     ) -> None:
         self.env = env
         self.writer = writer
         self.assist = assist
         self.graph = graph
+        self.room_timer = room_timer
         self.frame = 0
         self.info: dict[str, object] = {}
         self.state = parse_state(env.get_ram(), frame=0)  # type: ignore[attr-defined]
@@ -210,6 +213,9 @@ class RouteSession:
         self._last_room = (
             self.state.room_id if self.state.room_id in self.graph.rooms else 0
         )
+        # Opt-in: seed the shared RoomTimer from the power-on sample.
+        if self.room_timer is not None:
+            self.room_timer.observe(self.state)
 
     def step(self, action: Action, reason: str) -> SuperMetroidState:
         previous = self.state
@@ -220,6 +226,8 @@ class RouteSession:
         self.action_reasons[reason] += 1
         if self.writer is not None:
             self.writer.write(obs)
+        if self.room_timer is not None:
+            self.room_timer.observe(self.state)
 
         room = self.state.room_id
         if room in self.graph.rooms and self._last_room and room != self._last_room:
@@ -530,8 +538,14 @@ def run_continuous(
     graph: RoomProgressionGraph,
     video_path: str | Path | None = None,
     success_outcome: str = "ok",
+    room_timer: RoomTimer | None = None,
 ) -> ContinuousRunResult:
-    """Power-on once, run ``play``, always close env/writer."""
+    """Power-on once, run ``play``, always close env/writer.
+
+    ``room_timer`` is optional instrumentation only: it observes each frame via
+    the shared :class:`~super_metroid.room_timer.RoomTimer` and never feeds
+    integrity, assists, or route decisions.
+    """
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     writer: FrameVideoWriter | None = None
     splits: list[Split] = []
@@ -551,7 +565,13 @@ def run_continuous(
                 height=int(obs.shape[0]),
             )
             writer.write(obs)
-        session = RouteSession(env, writer=writer, assist=assist, graph=graph)
+        session = RouteSession(
+            env,
+            writer=writer,
+            assist=assist,
+            graph=graph,
+            room_timer=room_timer,
+        )
         play(PlayContext(session, splits, segments))
         outcome = success_outcome
     except Exception as exc:

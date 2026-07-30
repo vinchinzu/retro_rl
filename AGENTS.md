@@ -41,9 +41,10 @@ Program spine:
 - `docs/manifests/`: machine-readable game manifests
 
 Authoritative directories include: `super_metroid/`, `SMW/`, `harvest/`,
-`alttp/`, `tmnt_i/`–`tmnt_iv/`, `zelda_i/`, `zelda_ii/`, `metroid/`, and NES M1
-trees (`smb/`, `smb3/`, `mega_man_2/`, `castlevania/`, `contra/`, `ducktales/`,
-`kirby_adventure/`, `punch_out/`).
+`alttp/`, `smz3/` (SM+Z3 combined randomizer race layer), `tmnt_i/`–`tmnt_iv/`,
+`zelda_i/`, `zelda_ii/`, `metroid/`, and NES M1 trees (`smb/`, `smb3/`,
+`mega_man_2/`, `castlevania/`, `contra/`, `ducktales/`, `kirby_adventure/`,
+`punch_out/`).
 Do not invent `super_metroid_rl/` or `super_mario_bros/` paths in this checkout
 (NES SMB lives under `smb/` / `smb3/`).
 

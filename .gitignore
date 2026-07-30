@@ -206,6 +206,10 @@ super_metroid/maps/*
 harvest/HM-Decomp/
 uwnh/
 super_metroid_rl/
+super_metroid/refs/sm-json-data/
+alttp/refs/z3-json-data/
+smz3/refs/
+smz3/seeds/
 SMW/refs/*
 !SMW/refs/README.md
 SMW/tools/external/*

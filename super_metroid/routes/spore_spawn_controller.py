@@ -55,7 +55,23 @@ _SPORE_EXIT_CLIMB = (
     _RJ, _RJ, _RJ, _RJ, _J, _RJ, (), _LJ, (), _J, _LJ,
 )
 
-_VULNERABLE_SPRITEMAPS = frozenset({0xEEAF, 0xEEC1, 0xEED3, 0xEEE5})
+# Mouth open/close transition plus fully-open hold spritemaps. The old set
+# (EEAF/EEC1/EED3/EEE5 only) missed the long open hold windows EF3D/EF4F/EF61
+# where multi-missile damage is available.
+_VULNERABLE_SPRITEMAPS = frozenset(
+    {
+        0xEE79,
+        0xEE8B,
+        0xEE9D,
+        0xEEAF,
+        0xEEC1,
+        0xEED3,
+        0xEEE5,
+        0xEF3D,
+        0xEF4F,
+        0xEF61,
+    }
+)
 
 
 def _require_room(
@@ -342,37 +358,46 @@ def play_main_shaft_to_spore_spawn(session: ControllerSession) -> SporeSpawnEvid
     observed_hp = {session.state.enemy0_hp}
     boss_bits_before = session.state.boss_bits[1]
     seen_spritemaps: set[int] = set()
+    # Floor bounce + aim-up missiles during open windows. Unlimited energy
+    # means survival is free; damage requires airborne proximity to the core
+    # (shell blocks floor shots). Continuous power-on fight ~5.2k frames
+    # (~86s) vs the prior ~23k (~6+ min) single-hit-per-window loop.
     jump_direction = "RIGHT"
     jump_hold = 0
-    for index in range(30_000):
+    for index in range(12_000):
         state = session.state
         peak_hp = max(peak_hp, state.enemy0_hp)
         observed_hp.add(state.enemy0_hp)
-        if state.enemy0_spritemap in _VULNERABLE_SPRITEMAPS:
+        mouth_open = state.enemy0_spritemap in _VULNERABLE_SPRITEMAPS
+        if mouth_open:
             seen_spritemaps.add(state.enemy0_spritemap)
+        # Bounce across the floor so open windows still cross under the core.
         if state.samus_x <= 65:
             jump_direction = "RIGHT"
         elif state.samus_x >= 191:
             jump_direction = "LEFT"
         if state.samus_y >= 710 and jump_hold == 0:
-            jump_hold = 36
+            # Slightly longer hold while open keeps height for multi-missile
+            # windows (missile cadence ~every other frame while open).
+            jump_hold = 52 if mouth_open else 44
         hold_jump = jump_hold > 0
         jump_hold = max(0, jump_hold - 1)
+        fire = mouth_open and index % 2 == 0
+        aim_direction = "LEFT" if state.enemy0_x < state.samus_x else "RIGHT"
         if state.samus_y >= 710:
-            names = (
-                (jump_direction, "A", "B")
-                if hold_jump
-                else (jump_direction, "A")
-            )
+            # Launch jump; still fire if the mouth opens during takeoff.
+            names_list = [jump_direction, "A"]
+            if hold_jump:
+                names_list.append("B")
+            if fire:
+                names_list.extend(("UP", "X"))
+            names = tuple(names_list)
         else:
-            aim_direction = "LEFT" if state.enemy0_x < state.samus_x else "RIGHT"
+            # Airborne: hold UP to unspin so missiles can fire, face the core.
             names_list = [aim_direction, "UP"]
             if hold_jump:
                 names_list.extend(("A", "B"))
-            if (
-                state.enemy0_spritemap in _VULNERABLE_SPRITEMAPS
-                and index % 4 == 0
-            ):
+            if fire:
                 names_list.append("X")
             names = tuple(names_list)
         _hold(session, 1, *names, reason="fight_spore_spawn")

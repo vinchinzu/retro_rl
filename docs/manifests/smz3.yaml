@@ -1,0 +1,28 @@
+game: smz3
+title: "SMZ3 (Super Metroid + ALttP Combined Randomizer)"
+directory: smz3
+genre_tracks:
+  - metroidvania_navigation
+  - top_down_navigation
+capability_phase: 4
+project_state: scaffolded
+maturity: M2
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: very_high
+transfer_value: very_high
+ending_definition: seed goal (defeat both / credits) under race contract
+start_contract: power_on_seed_rom
+completion_contract: seed_goal_or_race_finish
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: smz3/docs/STATUS.md
+plan_doc: smz3/docs/plan.md
+last_verified: 2026-07-29
+blocker: map portal → settled Z3 Link; longer one-bot segment + video; dual-bot race later
+notes: >-
+  Randomizer race layer on alttp/ + super_metroid/. M2: Landing→Parlor natural
+  segment with 3× room timeout; portal catalog (Crateria Map→Fortune Teller).
+  Clean Z3 settle still open. Videos are quest artifacts.

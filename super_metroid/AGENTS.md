@@ -20,7 +20,7 @@ Super Metroid scripted full-clear project. Shared process:
 
 | Path | Role |
 |------|------|
-| `ram.py`, `assist.py`, `policy.py`, `progression.py`, `paths.py` | Core package surface |
+| `ram.py`, `assist.py`, `policy.py`, `progression.py`, `paths.py`, `room_timer.py` | Core package surface |
 | `routes/continuous.py` | Power-on chain (Morph → Bombs → Spore → Supers) |
 | `routes/runtime.py` | Shared session, report harness, integrity |
 | `routes/*_controller.py` | Movement/combat only (no env ownership) |
@@ -39,22 +39,29 @@ Super Metroid scripted full-clear project. Shared process:
 
 ## Immediate goal
 
-**Primary: play every completion-path room** (controller/policy). Door-warps
+**Primary: play KPDR continuous spine** (controller/policy). Door-warps
 are topology diagnostics only — not route evidence.
 
-1. **Path board:** [`docs/research/PATH_ROOM_BOARD.md`](docs/research/PATH_ROOM_BOARD.md)
-   — 107 rooms / 199 hops; regenerate with `scripts/export/path_room_board.py`.
-2. **Current bottleneck:** pure into **drop-air x≈535–555 y≈850–910** (lands top
-   PB ledge y907; entry green) or bottom alcove; then pure door→left-volume in
-   Mission Impossible Room.
-3. **Continuous next:** close remaining place bridges, then power-on through PB
-   and next open hops.
-4. Boss fights only after natural entry to that boss room exists on the chain.
-5. Topology warps (`scripts/probe/route.py full`) — debug only.
+1. **KPDR board:** [`docs/routes/ROUTE_KPDR.md`](docs/routes/ROUTE_KPDR.md)
+   — authoritative continuous order (K→P→D→R). Spore Supers (no mockball);
+   Alpha PB after Ice; **not** ship-first / early Pink PB.
+2. **Path board:** [`docs/research/PATH_ROOM_BOARD.md`](docs/research/PATH_ROOM_BOARD.md)
+   — 107 rooms / 199 hops; hop table is topology, not human KPDR order.
+3. **★ Next play (pure):** compose the Kraid fight from the natural
+   Warehouse→Hi-Jump→Warehouse→Kraid controller entry, take the rear door,
+   and collect Varia. The full safer Warehouse suffix is 15,356 frames and
+   collects Hi-Jump from the real PLM before Kraid.
+4. **Dev topology (green):** `kpdr.py route-to-hijump` — 24 hops Big Pink →
+   Hi-Jump room; anchors `dev_kpdr_*` / `dev_hijump_*`.
+5. **Parked:** pure Pink PB maze; ship-first skip (not KPDR).
+6. Boss fights only after natural entry exists on the continuous chain.
+
+Tracker (chartable CSV/JSON/MD):
+[`docs/routes/KPDR_TRACKER.csv`](docs/routes/KPDR_TRACKER.csv) · export
+`scripts/export/kpdr_tracker.py`.
 
 Status: [`docs/STATUS.md`](docs/STATUS.md). Plan: [`docs/plan.md`](docs/plan.md).
-Post-Super route board:
-[`docs/routes/ROUTE_SUPERS_TO_PHANTOON.md`](docs/routes/ROUTE_SUPERS_TO_PHANTOON.md).
+KPDR board: [`docs/routes/ROUTE_KPDR.md`](docs/routes/ROUTE_KPDR.md).
 
 ## Commands
 
@@ -63,6 +70,8 @@ Post-Super route board:
 ```bash
 uv run python super_metroid/scripts/record/start_to_supers.py --no-video
 uv run python super_metroid/scripts/record/start_to_supers.py
+# Opt-in room timing (separate JSON under recordings/room_timings/; no integrity change)
+uv run python super_metroid/scripts/record/start_to_supers.py --no-video --room-timing
 uv run python super_metroid/scripts/record/start_to_spore_spawn.py --no-video
 uv run python super_metroid/scripts/record/start_to_bombs.py --no-video
 uv run python super_metroid/scripts/record/start_to_morph.py --no-video
@@ -78,14 +87,28 @@ uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
 uv run python super_metroid/scripts/probe/post_spore_pb.py --to crest
 uv run python super_metroid/scripts/probe/post_spore_pb.py --to tunnel-floor
 
-# Pink PB (place-bridge / pure probes)
-uv run python super_metroid/scripts/probe/post_spore_pb.py --to pb-top-door --allow-place \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_upper_floor.state
-uv run python super_metroid/scripts/probe/post_spore_pb.py --to pb-collect --allow-place \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_pb_door_entered.state
+# KPDR K1: Big Pink main (controller)
+uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
+
+# Historical Kraid-before-Hi-Jump topology (dev door-warps; 24 hops)
+uv run python super_metroid/scripts/probe/kpdr.py route-to-hijump --grant-hijump
+uv run python super_metroid/scripts/probe/kpdr.py varia-to-hijump
+uv run python super_metroid/scripts/probe/kpdr.py list
+
+# Pure room controllers (no warp/write inside each segment)
+uv run python super_metroid/scripts/probe/kpdr.py pure ghz-to-noob \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_kpdr_ghz.state
+uv run python super_metroid/scripts/probe/kpdr.py pure noob-to-red \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_kpdr_noob.state
+uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/red_to_warehouse_controller.state
+
+# Chartable progress tracker
+uv run python super_metroid/scripts/export/kpdr_tracker.py
 ```
 
-Controller: `routes/post_spore_controller.py` (no progression RAM writes).
+Controllers: `routes/post_spore_controller.py`, `routes/kpdr_controller.py`.
+KPDR plan: `docs/routes/ROUTE_KPDR.md`. Tracker: `docs/routes/KPDR_TRACKER.csv`.
 
 ### Topology skeleton (door-warp diagnostics only)
 
@@ -121,6 +144,14 @@ uv run python super_metroid/scripts/export/room_problems.py
 uv run python super_metroid/scripts/room/run_problem.py ready --run
 ```
 
+### Room timing (stock ROM / emulator frames)
+
+```bash
+uv run python super_metroid/scripts/probe/room_timer.py self-check
+uv run python super_metroid/scripts/probe/room_timer.py offline -i samples.json
+# docs: docs/ROOM_TIMER.md  ·  core: room_timer.py
+```
+
 ## Dev traps
 
 - `dev/common.py` owns `boot_from_state`, `door_warp`, `place_samus`,
@@ -134,3 +165,6 @@ uv run python super_metroid/scripts/room/run_problem.py ready --run
   dump probe noise into `scratch/`.
 - Prefer room/door/inventory progress vectors over coordinate-only watchdogs.
 - Keep the last successful full-run baseline; candidates use separate reports.
+- Do not route an infinite bomb jump for the current KPDR suffix. The Hi-Jump
+  return uses the intended left-shaft ledges plus ordinary bombs in the top
+  morph tunnel; Charge needs a conventional return.

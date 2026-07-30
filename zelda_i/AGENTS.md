@@ -36,7 +36,11 @@ uv run python zelda_i/scripts/run_level1_complete.py --trials 2
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 uv run python zelda_i/scripts/run_to_level2_prefix.py --trials 2
 uv run python zelda_i/scripts/run_to_level2_prefix.py --from-heart --trials 2
+uv run python zelda_i/scripts/run_to_level2_prefix.py --room-timing --trials 1
+uv run python zelda_i/scripts/run_level1_complete.py --room-timing --trials 1
 uv run python zelda_i/scripts/dungeon_lab.py --help
+uv run python zelda_i/scripts/probe_room_timer.py self-check
+uv run python zelda_i/scripts/probe_room_timer.py offline -i samples.json
 uv run pytest zelda_i/tests adventure_common/tests -q
 ```
 
@@ -59,6 +63,7 @@ uv run pytest zelda_i/tests adventure_common/tests -q
 | `chain.py` | Shared natural power-on → Level 1 live prefix |
 | `routes.py` | Named routes / milestones |
 | `sword_cave.py` | Sword segment controller |
+| `room_timer.py` | Confirmed OW-screen / dungeon-room hop timing (emulator frames) |
 | `adventure_common/` | Shared capability-aware `RouteGraph` (repo root) |
 
 ## Traps
@@ -111,8 +116,12 @@ uv run pytest zelda_i/tests adventure_common/tests -q
 
 ## Next milestone
 
-Walk 0x4A → overworld 0x3C (Moon door) with heart-safe combat, then Level 2
-interior.
+Heart-safe door path 0x37→0x3C (maze on 0x5C; N@x52 on 0x5D), enter Moon room
+0x7d, clear Level 2 (Ropes `0x28`, Dodongo bombs) to `triforce & 0x02`.
+
+Door-path traps: never `0x4B→0x5B` north-entry (east sealed); use `0x5A→0x5B`;
+0x5C needs `LEVEL2_5C_MAZE_WAYPOINTS`; wait ~100f for Rope spawn after room
+enter. Walkthroughs: `docs/research/DUNGEON_WALKTHROUGHS.md`.
 
 ## Norms
 

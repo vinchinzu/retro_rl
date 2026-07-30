@@ -9,6 +9,9 @@
      energy. `first_missiles.py` terminates this evidence point as `FRONTIER`.
    - **Current blocker:** clear the enemy-populated upper west shaft, cross
      the bridge, descend the east shaft, and collect the expansion.
+   - **Screen timing:** opt-in `--screen-timing` on `run_first_missiles.py`.
+     Longest verified-prefix hop is `(9,14)→(10,14)` (1060f corridor dwell).
+     Progress experiment: timed climb from FRONTIER toward `(11,12)`.
    - Existing graph node `b_first_missiles` and route
      `metroid_first_missiles` stay planned until `$687A > 0` is observed.
 2. **Bombs** — old lady sequence; equipment bit 0.

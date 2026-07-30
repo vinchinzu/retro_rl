@@ -19,9 +19,14 @@ uv run python metroid/scripts/setup_rom.py
 uv run python metroid/scripts/boot_probe.py
 uv run python metroid/scripts/run_morph_ball.py              # isolated Level1
 uv run python metroid/scripts/run_morph_ball.py --natural-entry
-uv run python metroid/scripts/run_first_missiles.py         # AfterMorph attempt
+uv run python metroid/scripts/run_first_missiles.py         # AfterMorph diagnostic
 uv run python metroid/scripts/run_first_missiles.py --from-level1
 uv run python metroid/scripts/run_first_missiles.py --natural-entry
+uv run python metroid/scripts/run_first_missiles.py --natural-entry --screen-timing
+# Screen hop timing (emulator frames; self-check/offline need no ROM)
+uv run python metroid/scripts/probe_screen_timer.py self-check
+uv run python metroid/scripts/probe_screen_timer.py offline \
+  -i metroid/tests/fixtures/screen_timer_sample.json
 uv run pytest metroid/tests adventure_common/tests -q
 ```
 
@@ -30,11 +35,14 @@ uv run pytest metroid/tests adventure_common/tests -q
 | Path | Role |
 |------|------|
 | `ram.py` | System RAM + WRAM equipment snapshots |
+| `screen_timer.py` | Map-cell hop timing (emulator frames; optional observer) |
+| `screen_timing_session.py` | Opt-in runner observer + bottleneck summary |
 | `brinstar.py` | Early map graph (start → morph; east probe; planned missiles) |
 | `routes.py` | Named routes / milestones |
 | `morph_ball.py` | Morph segment controller (verified) |
 | `first_missiles.py` | Natural missiles prefix through west-shaft frontier |
 | `adventure_common/` | Shared capability-aware `RouteGraph` (repo root) |
+| `docs/SCREEN_TIMER.md` | Screen-timer semantics / limitations |
 
 ## Traps
 

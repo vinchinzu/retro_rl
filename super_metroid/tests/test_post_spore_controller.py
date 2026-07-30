@@ -62,8 +62,11 @@ def test_controller_exports() -> None:
     assert callable(wait_until)
     assert is_morph(65)
     assert is_morph(31)
+    assert is_morph(29)  # falling morph
+    assert is_morph(30)
     assert not is_morph(40)  # crouch, not morph
     assert 65 in MORPH_POSES
+    assert 29 in MORPH_POSES
 
 
 def test_super_collect_evidence_dict() -> None:
