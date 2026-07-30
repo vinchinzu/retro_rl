@@ -3,6 +3,8 @@
 - ``continuous`` — power-on chain (Morph → Bombs → Spore → Supers)
 - ``runtime`` — shared session / report harness
 - ``*_controller`` — movement/combat only (no env ownership)
+- ``controller_common`` — shared Samus primitives (morph, weapon, wait)
+- ``kpdr/`` / ``post_spore/`` — split segment packages (controllers re-export)
 - ``spore_spawn_route`` — editor-backed leg table for planning
 """
 
