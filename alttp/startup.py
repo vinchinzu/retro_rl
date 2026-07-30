@@ -63,8 +63,17 @@ FRESH_PROFILE_WAKE_SCRIPT: tuple[tuple[str, int], ...] = (
     ("DOWN", 120),
     ("NONE", 60),
 )
-FRESH_PROFILE_EXIT_HOUSE_SCRIPT: tuple[tuple[str, int], ...] = (
-    ("RIGHT", 20),
+# The rear-castle mantle checks the Lamp inventory byte in addition to Zelda's
+# follower id.  The old opening route walked straight past this chest, making
+# the later escort structurally incapable of opening the passage.
+FRESH_PROFILE_LAMP_CHEST_SCRIPT: tuple[tuple[str, int], ...] = (
+    ("RIGHT", 64),
+    ("UP", 16),
+    ("A", 3),
+    ("NONE", 120),
+)
+FRESH_PROFILE_EXIT_AFTER_LAMP_SCRIPT: tuple[tuple[str, int], ...] = (
+    ("LEFT", 44),
     ("DOWN", 120),
     ("NONE", 180),
 )
@@ -234,7 +243,11 @@ def load_fresh_profile_slot_one(env: object) -> None:
 
 def advance_fresh_profile_to_links_house_overworld(env: object) -> None:
     run_button_script(env, FRESH_PROFILE_WAKE_SCRIPT)
-    run_button_script(env, FRESH_PROFILE_EXIT_HOUSE_SCRIPT)
+    run_button_script(env, FRESH_PROFILE_LAMP_CHEST_SCRIPT)
+    wait_for_control(env)
+    if not snapshot_env(env).has_lamp:
+        raise RuntimeError("Failed to collect the Link's House Lamp")
+    run_button_script(env, FRESH_PROFILE_EXIT_AFTER_LAMP_SCRIPT)
 
 
 def advance_to_hyrule_castle_grounds(

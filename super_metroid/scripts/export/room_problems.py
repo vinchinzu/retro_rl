@@ -41,7 +41,7 @@ def _reference_root() -> Path:
     configured = os.environ.get("SUPER_METROID_JSON_DATA")
     if configured:
         return Path(configured).expanduser()
-    return ROOT.parent / "snes_editor" / "super_metroid_rl" / "refs" / "sm-json-data"
+    return ROOT / "super_metroid" / "refs" / "sm-json-data"
 
 
 def main() -> None:

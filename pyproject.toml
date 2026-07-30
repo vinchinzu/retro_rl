@@ -24,6 +24,14 @@ ml = [
 cursor = [
     "cursor-sdk>=0.1.5",
 ]
+smz3 = [
+    "pyz3r>=6.1.0",
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.0.0",
+    "slugid>=2.0.0",
+    "tenacity>=8.0.0",
+    "python-bps-continued>=7",
+]
 
 [dependency-groups]
 dev = [

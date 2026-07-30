@@ -1,0 +1,19 @@
+{
+  "info": {
+    "sm_room_id": {"address": 1947, "type": "<u2"},
+    "sm_area_index": {"address": 1951, "type": "<u2"},
+    "sm_door_transition": {"address": 1943, "type": "<u2"},
+    "sm_game_state": {"address": 2456, "type": "<u2"},
+    "sm_health": {"address": 2498, "type": "<u2"},
+    "sm_max_health": {"address": 2500, "type": "<u2"},
+    "sm_samus_x": {"address": 2806, "type": "<u2"},
+    "sm_samus_y": {"address": 2810, "type": "<u2"},
+    "z3_module": {"address": 16, "type": "|u1"},
+    "z3_submodule": {"address": 17, "type": "|u1"},
+    "z3_indoors": {"address": 27, "type": "|u1"},
+    "z3_link_y": {"address": 32, "type": "|u2"},
+    "z3_link_x": {"address": 34, "type": "|u2"},
+    "z3_room_id": {"address": 160, "type": "|u2"},
+    "z3_health": {"address": 3894, "type": "|u1"}
+  }
+}

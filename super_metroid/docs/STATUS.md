@@ -7,7 +7,7 @@
 |-------|-------|
 | Current maturity | M5 |
 | Best verified result | Continuous power-on → Spore Super collect |
-| Last verification | 2026-07-28 |
+| Last verification | 2026-07-29 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 
@@ -46,14 +46,70 @@ Reproduce:
 ```bash
 uv run python super_metroid/scripts/record/start_to_supers.py --no-video
 uv run python super_metroid/scripts/record/start_to_supers.py
+# Opt-in per-room timing (separate artifact; does not change integrity):
+uv run python super_metroid/scripts/record/start_to_supers.py --no-video --room-timing
 ```
 
-### Prior continuous power-on → Spore Spawn (2026-07-24)
+### Room timing baseline (2026-07-29)
 
-Still valid prefix evidence: Morph, Missiles, Bombs/Torizo, Terminator E-Tank,
-Spore Spawn 960→0, natural exit to Super room (no Supers collected on that
-run). Video `recordings/start_to_spore_spawn.mp4` (91,220 frames). See
-[START_TO_SPORE_SPAWN.md](routes/START_TO_SPORE_SPAWN.md).
+Opt-in `RoomTimer` on continuous power-on → Supers (same integrity contract;
+no door warps / progression writes). Artifacts:
+
+| Artifact | Path |
+|----------|------|
+| Continuous report | `recordings/start_to_supers_room_timing_baseline.json` |
+| Room timing | `recordings/room_timings/start_to_supers_room_timing.json` |
+
+| Metric | Value |
+|--------|-------|
+| Outcome | `spore_supers_collected` (integrity green) |
+| Total frames | 92,424 |
+| Visits timed | 39 hops |
+| Total dwell / room / door | 70,311 / 77,426 / 7,115 emulator frames |
+| Discontinuities | 2 (`boot_or_menu` at Ceres ship cutscene; `session_end` open Super room) |
+
+Slowest hops by **dwell** (controllable room time):
+
+| Rank | Room | Hop | Dwell | Notes |
+|------|------|-----|------:|-------|
+| 1 | Spore Spawn `0x9DC7` | → Super room | 24,780 | Boss fight (expected) |
+| 2 | Spore Kihunters `0x9D9C` | → Spore | 4,968 | Pre-boss clear |
+| 3 | **Climb `0x96BA`** | → Parlor | **4,339** | **Largest early nav hop** (post-Pit bombs path) |
+| 4 | Bomb Torizo `0x9804` | → Flyway | 3,993 | Boss fight |
+| 5 | Parlor `0x92FD` | → Terminator | 3,350 | Post-Torizo left exit |
+
+Aggregate dwell by room (nav-relevant): Parlor 6,775f (3 visits), Climb
+4,995f (2 visits). **Next experiment (not done):** re-record a tighter
+Climb→Parlor slice inside `policies/early_game/pit_to_post_torizo.json`
+(segment frames ~34,598–39,107), then re-run
+`start_to_supers.py --no-video --room-timing` and require lower Climb dwell
+with integrity still green. No policy edit applied from this measurement
+alone (unsafe without a re-verified splice).
+
+### Continuous power-on → Spore Spawn (re-verified 2026-07-29)
+
+Report-only re-run after Spore fight policy rewrite (expanded mouth-open
+spritemaps + multi-missile open windows). Integrity green; no video re-encode
+this pass.
+
+| Metric | Old (2026-07-24) | New (2026-07-29) |
+|--------|-----------------:|-----------------:|
+| Total frames | 91,220 | **73,216** |
+| Fight (activate→HP0) | 23,173 (~386 s) | **5,170 (~86 s)** |
+| Exit frame | 90,802 | 72,798 |
+| Speedup (fight) | — | **~4.5×** |
+
+Root cause of the old ~6–10 min fight: controller only treated open/close
+transition spritemaps as vulnerable and missed the long fully-open holds
+(`0xEF3D` / `0xEF4F` / `0xEF61`), so most open windows landed zero missiles.
+New policy still floor-bounces under the core (floor shots do not hit) and
+fires every other frame while any open spritemap is active.
+
+Reproduce: `uv run python super_metroid/scripts/record/start_to_spore_spawn.py --no-video`.
+See [START_TO_SPORE_SPAWN.md](routes/START_TO_SPORE_SPAWN.md).
+
+Supers continuous baseline above still embeds the old fight until re-recorded
+(`start_to_supers.py`); expected total after re-run ≈ 92k − ~18k frames.
 
 ## Full-room development infrastructure
 
@@ -86,17 +142,22 @@ resource assists may not write route progress.
 
 ## Next milestone
 
-**Play the path — no door-warp route evidence.** Continuous Super collect is
-verified. Furthest *played* progress and the full 107-room plan:
+**Play KPDR by room — no door-warp route evidence.** Continuous Super collect is
+verified. Authoritative order:
 
-**[PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md)** · post-Super detail:
+**[ROUTE_KPDR.md](routes/ROUTE_KPDR.md)** · hop topology:
+**[PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md)** · legacy Pink-PB notes:
 **[ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md)**
 
 | Layer | Furthest played |
 |-------|-----------------|
 | Continuous | Super collect `0x9B5B` (`start_to_supers`) |
-| Controller (dev) | Big Pink main shaft; PB **top ledge y907** + drop-air map + bottom place entry; maze wall pure; left-zone→collect |
-| ★ Next hop | Pure into drop-air x≈535–555 y≈850–910 (lands y907) or bottom alcove; then pure mid-maze → PB |
+| Controller (dev) | **Natural Big Pink main→GHZ→Noob→Red** (3,478f); **Red→Warehouse Entrance** (2,929f); **Warehouse→Hi-Jump→Warehouse→natural Kraid entry** (15,356f). The E-Tank and Boots are real PLM collects; the return uses intended Hi-Jump ledges and ordinary tunnel bombs, not an IBJ |
+| Dev topology | **24/24 hops** Big Pink → Hi-Jump room (`kpdr.py route-to-hijump`); `dev_hijump_room_entry` + granted boots `dev_hijump_collected_dev` |
+| ★ Next hop | Compose the Kraid fight from the natural controller entry, take the rear door, and collect Varia; Charge return remains a separate K1 gap |
+
+Progress chart: [KPDR_TRACKER.md](routes/KPDR_TRACKER.md) · CSV
+[KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) · JSON `maps/kpdr_tracker.json`.
 
 ```bash
 uv run python super_metroid/scripts/export/path_room_board.py
@@ -104,29 +165,40 @@ uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
 ```
 
 Path status (unique rooms on research completion path): **20 continuous**,
-**2 controller_dev**, **6 boss_deferred**, **79 open** (107 total / 199 hops).
+**17 controller_dev**, **6 boss_deferred**, **64 open** (107 total / 199 hops).
 
 Topology door-warps (`probe_route.py full` / hybrid) remain diagnostic only —
 they do not count as room clearance.
 
-Still blocked for *played* spine:
+Still blocked for *played* KPDR spine:
 
 | Gap | Why it matters |
 |-----|----------------|
 | Continuous Super collect | **Done** |
 | Super → farming → main shaft | controller_dev; not continuous power-on yet |
-| ★ Shaft → Pink PB door + collect | **partial**: top y907 entry + drop-air band proven; pure approach open; wall@437 pure; left-zone→collect; mid-maze open |
-| All later path hops | open — must be played, not warped |
-| Boss fights | deferred until natural entry on chain |
+| Charge / Big Pink → GHZ | Direct Big Pink→GHZ is controller-complete; Charge collects naturally, but its conventional return is not route-ready. No IBJ is required on the active suffix |
+| Warehouse → Hi-Jump → Kraid | **Controller-complete from the natural Warehouse predecessor:** real E-Tank/Boots PLMs, reverse traversal, three-Super wall, and natural Kraid-room entry |
+| ★ Kraid + Varia | Kraid combat exists only as a dev probe; compose it from natural entry, take the rear door, and collect the real Varia PLM |
+| Alpha PB (not Pink PB) | First PB on competitive KPDR after Ice |
+| Ship / Phantoon / … | After Alpha PB; warp entry is not continuous |
 | Escape → credits | after MB by play |
 
 Immediate next:
 
-1. Finish Big Pink → PB **without place bridges**:
-   - (a) **preferred:** pure into **drop-air x≈535–555 y≈850–910** (free-fall lands y907; entry green). East of wall@613 cannot cross; west (`left_upper`) needs height. y1051 is roof not bottom-sill.
-   - (b) pure door→left free volume (~180,360) then `play_pink_pb_from_left_zone` (or top→crumble→collect).
-2. Continuous power-on → PB.
-3. Next open hop on the board; promote status; regenerate PATH_ROOM_BOARD.
+1. **Pure K3:** run the Kraid fight from the natural K2 entry, exit through
+   the rear door, and collect Varia from its real PLM.
+2. **Finish K1 safety side trip:** Charge Beam collects naturally; implement a
+   conventional return to the direct Big Pink→GHZ line. Do not pursue an IBJ.
+3. **Promote composition:** attach Red→Warehouse→Hi-Jump→Kraid to the real K1
+   predecessor, then to the continuous power-on prefix.
+4. **Parked:** pure Pink PB; ship-first Phantoon skip.
+
+```bash
+uv run python super_metroid/scripts/probe/kpdr.py route-to-hijump --grant-hijump
+uv run python super_metroid/scripts/export/kpdr_tracker.py
+uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
+```
+
 
 ## Midgame / late dev furthest (not continuous)
 

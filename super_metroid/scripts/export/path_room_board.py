@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from super_metroid.paths import GAME_DIR, MAPS_DIR, RECORDINGS_DIR  # noqa: E402
+from super_metroid.paths import GAME_DIR, MAPS_DIR  # noqa: E402
 from super_metroid.dev.route_dev import FULL_LEG_ORDER, leg_key, load_full_hops  # noqa: E402
 
 FULL_GRAPH_PATH = MAPS_DIR / "full_room_graph.json"
@@ -77,9 +77,44 @@ ROOM_STATUS: dict[str, dict[str, str]] = {
         "status": "controller_dev",
         "note": "Pink PB: wall@437 pure break; collect from x≤225; mid-maze 405→225 OPEN",
     },
+    # KPDR controller suffix from Big Pink through natural Kraid-room entry.
+    "0x9E52": {"status": "controller_dev", "note": "GHZ by natural Big Pink exit"},
+    "0x9FBA": {"status": "controller_dev", "note": "Noob Bridge upper pit-block route"},
+    "0xA253": {"status": "controller_dev", "note": "Red Tower natural entry"},
+    "0xA3DD": {"status": "controller_dev", "note": "Bat Room controller"},
+    "0xA408": {"status": "controller_dev", "note": "Below Spazer controller"},
+    "0xCF54": {"status": "controller_dev", "note": "West Tunnel controller"},
+    "0xCEFB": {"status": "controller_dev", "note": "Glass Tunnel controller"},
+    "0xCF80": {"status": "controller_dev", "note": "East Tunnel controller"},
+    "0xA6A1": {
+        "status": "controller_dev",
+        "note": "Warehouse: Hi-Jump detour + three-Super wall controller",
+    },
+    "0xA7DE": {
+        "status": "controller_dev",
+        "note": "Business Center descent and Hi-Jump-assisted return",
+    },
+    "0xAA41": {
+        "status": "controller_dev",
+        "note": "Hi-Jump Shaft: real E-Tank, intended ledges, ordinary bomb tunnel",
+    },
+    "0xA9E5": {
+        "status": "controller_dev",
+        "note": "Hi-Jump Boots real PLM collect; item bit 0x0100",
+    },
+    "0xA471": {"status": "controller_dev", "note": "Warehouse Zeela controller"},
+    "0xA4DA": {"status": "controller_dev", "note": "Warehouse Kihunter controller"},
+    "0xA521": {"status": "controller_dev", "note": "Baby Kraid gray door clear"},
+    "0xA56B": {"status": "controller_dev", "note": "Kraid Eye Door controller"},
     # Boss rooms — entry required eventually; fights deferred
-    "0xA59F": {"status": "boss_deferred", "note": "Kraid — dev spray exists; natural entry open"},
-    "0xCD13": {"status": "boss_deferred", "note": "Phantoon — entry warp-only; fight open"},
+    "0xA59F": {
+        "status": "boss_deferred",
+        "note": "Kraid — natural entry controller-complete; fight composition next",
+    },
+    "0xCD13": {
+        "status": "boss_deferred",
+        "note": "Phantoon — entry warp-only; fight open",
+    },
     "0xD95E": {"status": "boss_deferred", "note": "Botwoon"},
     "0xDA60": {"status": "boss_deferred", "note": "Draygon"},
     "0xB32E": {"status": "boss_deferred", "note": "Ridley"},
@@ -100,6 +135,38 @@ HOP_STATUS: dict[str, dict[str, str]] = {
         "status": "controller_dev",
         "note": "sill entry green; ★ pure sill approach + mid-maze 405→225 still open",
     },
+    "0x9D19->0x9E52": {"status": "controller_dev", "note": "play_big_pink_to_ghz"},
+    "0x9E52->0x9FBA": {"status": "controller_dev", "note": "play_ghz_to_noob"},
+    "0x9FBA->0xA253": {"status": "controller_dev", "note": "play_noob_to_red_tower"},
+    "0xA253->0xA3DD": {"status": "controller_dev", "note": "play_red_tower_to_bat"},
+    "0xA3DD->0xA408": {"status": "controller_dev", "note": "play_bat_to_below_spazer"},
+    "0xA408->0xCF54": {"status": "controller_dev", "note": "play_below_spazer_to_west"},
+    "0xCF54->0xCEFB": {"status": "controller_dev", "note": "play_west_to_glass"},
+    "0xCEFB->0xCF80": {"status": "controller_dev", "note": "play_glass_to_east"},
+    "0xCF80->0xA6A1": {"status": "controller_dev", "note": "play_east_to_warehouse"},
+    "0xA6A1->0xA7DE": {
+        "status": "controller_dev",
+        "note": "play_warehouse_to_business",
+    },
+    "0xA7DE->0xAA41": {"status": "controller_dev", "note": "play_business_to_hj_shaft"},
+    "0xAA41->0xA9E5": {"status": "controller_dev", "note": "play_hj_shaft_to_hj_room"},
+    "0xA9E5->0xAA41": {"status": "controller_dev", "note": "play_hj_room_to_shaft"},
+    "0xAA41->0xA7DE": {"status": "controller_dev", "note": "play_hj_shaft_to_business"},
+    "0xA7DE->0xA6A1": {
+        "status": "controller_dev",
+        "note": "play_business_to_warehouse",
+    },
+    "0xA6A1->0xA471": {
+        "status": "controller_dev",
+        "note": "play_warehouse_to_zeela_with_hijump",
+    },
+    "0xA471->0xA4DA": {"status": "controller_dev", "note": "play_zeela_to_kihunter"},
+    "0xA4DA->0xA521": {
+        "status": "controller_dev",
+        "note": "play_kihunter_to_baby_kraid",
+    },
+    "0xA521->0xA56B": {"status": "controller_dev", "note": "play_baby_kraid_to_eye"},
+    "0xA56B->0xA59F": {"status": "controller_dev", "note": "play_eye_to_kraid"},
 }
 
 
@@ -185,13 +252,13 @@ def build_board() -> dict[str, object]:
             }
         )
 
-    # First open hop on the board (skip hops already continuous/controller).
-    first_open_hop = next(
-        (h for h in hops if h["status"] == "open"),
+    # The active safer KPDR route has controller evidence through natural
+    # Kraid-room entry. Prefer the rear-door/Varia hop as the next played edge.
+    first_open_hop = next((h for h in hops if h["status"] == "open"), None)
+    varia_hop = next(
+        (h for h in hops if h["from"] == "0xA59F" and h["to"] == "0xA6E2"),
         None,
     )
-    # Prefer the explicit PB climb hop if present.
-    pb_hop = next((h for h in hops if h["from"] == "0x9D19" and h["to"] == "0x9E11"), None)
 
     return {
         "schemaVersion": 1,
@@ -208,13 +275,13 @@ def build_board() -> dict[str, object]:
             "evidence": "recordings/start_to_supers.json",
         },
         "furthestControllerDev": {
-            "roomIdHex": "0x9D19",
-            "name": names.get("0x9D19", "Big Pink"),
-            "position": {"samusX": 746, "samusY": 1465},
-            "note": "main shaft after play_big_pink_into_main_shaft from natural_post_spore",
-            "probe": "probe_post_spore_pb.py --to main",
+            "roomIdHex": "0xA59F",
+            "name": names.get("0xA59F", "Kraid's Room"),
+            "position": {"samusX": 39, "samusY": 374},
+            "note": "Warehouse→Hi-Jump→Warehouse→Kraid; 15356f; no IBJ",
+            "probe": "kpdr.py pure warehouse-hijump-kraid",
         },
-        "nextOpenHop": pb_hop or first_open_hop,
+        "nextOpenHop": varia_hop or first_open_hop,
         "rooms": rooms_out,
         "hops": hops,
         "waves": _waves(),
@@ -226,7 +293,7 @@ def _waves() -> list[dict[str, object]]:
     return [
         {
             "id": "W0",
-            "title": "Continuous prefix (done)",
+            "title": "Continuous prefix",
             "goal": "Power-on → Super collect",
             "status": "done",
             "roomsApprox": 20,
@@ -234,35 +301,37 @@ def _waves() -> list[dict[str, object]]:
         },
         {
             "id": "W1",
-            "title": "Super → Power Bombs by play",
-            "goal": "0x9B5B → 0xA0A4 → 0x9D19 → 0x9E11 + PB collect",
+            "title": "Super → Red Tower (KPDR K1)",
+            "goal": "0x9B5B → farm → Big Pink → GHZ → Noob → Red Tower",
             "status": "in_progress",
             "done": [
                 "Super collect continuous",
                 "farming hop controller_dev",
                 "Big Pink to main shaft",
-                "PB wall@437 pure morph-bomb",
-                "PB pocket collect (x≤225)",
+                "direct Big Pink → GHZ → Noob → Red Tower controller",
             ],
             "open": [
-                "Big Pink pure sill approach (wall@613 / y1051)",
-                "mid-maze 405→225 pure",
-                "continuous power-on through PB",
+                "Charge Beam conventional return (no IBJ)",
+                "continuous power-on composition through Red Tower",
             ],
-            "hops": 3,
         },
         {
             "id": "W2",
-            "title": "PB → Kraid approach (research path)",
-            "goal": "Play GHZ/Noob/Red Tower/Warehouse rooms into Kraid entry",
-            "status": "open",
-            "hops": 15,
-            "note": "Any% ship route can diverge after PB; prefer research hops if single board",
+            "title": "Red Tower → Hi-Jump → Kraid entry (KPDR K2)",
+            "goal": "Warehouse → Hi-Jump real PLM → return → natural Kraid entry",
+            "status": "controller_dev",
+            "done": [
+                "Red Tower → Warehouse",
+                "Hi-Jump E-Tank + Boots real PLMs",
+                "Hi-Jump intended ledges + ordinary bomb-tunnel return",
+                "Warehouse → Zeela → Kihunter → Baby Kraid → Eye → Kraid",
+                "15356f composed Warehouse suffix; no IBJ",
+            ],
         },
         {
             "id": "W3",
             "title": "Kraid → Varia → Speed → Ice by play",
-            "goal": "Natural Kraid (or deferred fight) + item rooms + Norfair halls",
+            "goal": "Natural Kraid fight + rear door/Varia + Norfair item rooms",
             "status": "open",
             "bosses": "Kraid fight when spine reaches door",
         },
@@ -306,7 +375,14 @@ def _waves() -> list[dict[str, object]]:
             "title": "Boss fight scripts (parallel after room entry exists)",
             "goal": "Natural fights for remaining bosses + credits predicate",
             "status": "deferred",
-            "bosses": ["Kraid", "Phantoon", "Botwoon", "Draygon", "Ridley", "Mother Brain"],
+            "bosses": [
+                "Kraid",
+                "Phantoon",
+                "Botwoon",
+                "Draygon",
+                "Ridley",
+                "Mother Brain",
+            ],
         },
     ]
 
@@ -315,8 +391,8 @@ def render_markdown(board: dict[str, object]) -> str:
     lines: list[str] = [
         "# Path room board — clear by play (no door-warp evidence)",
         "",
-        f"Generated by `scripts/export/path_room_board.py`. "
-        f"Machine copy: `maps/path_room_board.json`.",
+        "Generated by `scripts/export/path_room_board.py`. "
+        "Machine copy: `maps/path_room_board.json`.",
         "",
         "## Principle",
         "",
@@ -361,8 +437,8 @@ def render_markdown(board: dict[str, object]) -> str:
             "",
             "## Status counts (unique path rooms)",
             "",
-            f"| Status | Count |",
-            f"|--------|------:|",
+            "| Status | Count |",
+            "|--------|------:|",
         ]
     )
     for key in (
@@ -445,10 +521,10 @@ def render_markdown(board: dict[str, object]) -> str:
             "",
             "## Immediate actions",
             "",
-            "1. Solve **Big Pink → Pink PB** (`0x9D19 → 0x9E11`) by play from main shaft.",
-            "2. Compose Super→PB controller; re-prove on continuous power-on.",
-            "3. For each following hop: capture natural entry → attempt policy → promote.",
-            "4. Boss fights only after natural entry to that boss room exists on the chain.",
+            "1. Compose the Kraid fight from the natural controller entry.",
+            "2. Take Kraid's rear door and collect Varia from the real PLM.",
+            "3. Finish Charge with a conventional return; do not route an IBJ.",
+            "4. Compose K1→K2, then re-prove it from continuous power-on.",
             "5. Refresh this board after every promotion:",
             "",
             "```bash",
@@ -465,7 +541,9 @@ def main() -> None:
     parser.add_argument("--json", type=Path, default=DEFAULT_JSON)
     parser.add_argument("--markdown", type=Path, default=DEFAULT_MD)
     parser.add_argument("--no-markdown", action="store_true")
-    parser.add_argument("--print", action="store_true", help="Print summary JSON to stdout")
+    parser.add_argument(
+        "--print", action="store_true", help="Print summary JSON to stdout"
+    )
     args = parser.parse_args()
 
     board = build_board()

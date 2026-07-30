@@ -14,4 +14,10 @@ stable-retro `get_ram()`:
 | screen id | `$8A` | 138 | overworld screen |
 | room id | `$A0` | 160 | u16 dungeon room |
 | dark world | `$0FFF` | 4095 | nonzero in DW |
-| sword | `$F359` | 78713 via WRAM_IDX | high WRAM |
+| sword | `$F359` | 78713 via WRAM_IDX | high WRAM (0=none, 1=fighter) |
+| dungeon keys | `$F36F` | 78735 via WRAM_IDX | `0xFF` = blank HUD / no dungeon keys yet |
+| follower | `$F3CC` | 78828 via WRAM_IDX | tagalong; `1` = Zelda |
+| secret passage room | `$A0` base | 160 | opening hole drop-in `0x55` |
+| secret hole approach | world X/Y | `$22`/`$20` | near Yaze `0x7D` ~(2432,1696) on screen `0x1B` |
+| link direction | `$2F` | 47 | 0=up, 2=down, 4=left, 6=right |
+| link action | `$5D` | 93 | `21` = hold-up-item after sword get |

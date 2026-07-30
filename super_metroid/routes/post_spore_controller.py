@@ -30,9 +30,11 @@ Pink PB progress (Big Pink exit → Mission Impossible Room):
   y∈[850,910]** lands the ledge (``dev_b1_pb_top_ledge``). Pure path into that
   air still open: east blocked by wall@613; west (`left_upper`) needs height
   (spin peak Δy≈79 only).
-- **Maze wall@437:** double-tap morph + y-safe bomb-roll → ~x=405.
-- **Collect:** left-zone ``play_pink_pb_from_left_zone`` ~(180,360); mid solid.
-- **Still open:** pure into drop-air/y907; pure mid-maze.
+- **Maze wall@437:** double-tap morph + y-safe bomb-roll → ~x=405 (pure).
+- **Collect:** left-zone ``play_pink_pb_from_left_zone`` ~(180,360); mid solid
+  at band y (x≈230–400); pit y≈455 continuous but dead-end (~2px headroom).
+- **Still open:** pure into drop-air/y907; pure mid-maze door→left-volume;
+  top floor sealed (bombs/DOWN do not open crumble from standing).
 """
 
 from __future__ import annotations
@@ -51,9 +53,10 @@ ROOM_FARMING = 0xA0A4
 ROOM_BIG_PINK = 0x9D19
 ROOM_PINK_PB = 0x9E11
 
-# Morph-ball poses observed on this route (and facing/air variants).
-# 31=0x1F, 32=0x20, 49=0x31, 50=0x32, 65=0x41, 66=0x42.
-MORPH_POSES = frozenset({31, 32, 49, 50, 65, 66})
+# Morph-ball poses observed on this route (and facing/air/fall variants).
+# 29=0x1D, 30=0x1E falling; 31=0x1F, 32=0x20; 49=0x31, 50=0x32;
+# 65=0x41, 66=0x42 ground/move. Expand from live logs only.
+MORPH_POSES = frozenset({29, 30, 31, 32, 49, 50, 65, 66})
 
 
 @dataclass(frozen=True)
@@ -140,26 +143,31 @@ def wait_until(
 def ensure_morph(
     session: ControllerSession,
     *,
-    max_attempts: int = 4,
+    max_attempts: int = 5,
 ) -> SuperMetroidState:
     """Pose-confirmed morph via double-tap DOWN (held DOWN only crouches).
 
     Each attempt: brief UP to leave crouch, idle, tap–release–tap DOWN, then
-    poll for a morph pose. Replaces fixed ``_double_tap_morph`` call sites.
+    poll for a morph pose. Later attempts hold DOWN longer and re-UP before
+    retry. Replaces fixed ``_double_tap_morph`` call sites.
     """
     for attempt in range(max_attempts):
         if is_morph(session.state.pose):
             return session.state
-        _hold(session, 4, "UP", reason="morph_pre")
-        _hold(session, 3, reason="morph_idle")
-        _hold(session, 5 + attempt, "DOWN", reason="morph_tap1")
+        # Extra stand/idle on later attempts (leave crouch / super pose).
+        up_frames = 4 + min(attempt, 3) * 2
+        _hold(session, up_frames, "UP", reason="morph_pre")
+        _hold(session, 3 + attempt, reason="morph_idle")
+        tap1 = 5 + attempt * 2
+        tap2 = 6 + attempt * 3
+        _hold(session, tap1, "DOWN", reason="morph_tap1")
         _hold(session, 3, reason="morph_release")
-        _hold(session, 6 + attempt, "DOWN", reason="morph_tap2")
+        _hold(session, tap2, "DOWN", reason="morph_tap2")
         try:
             state = wait_until(
                 session,
                 lambda s: is_morph(s.pose),
-                timeout=25,
+                timeout=28 + attempt * 4,
                 reason="morph_poll",
             )
         except TimeoutError:
@@ -178,35 +186,107 @@ def bomb_roll_left_safe(
     max_frames: int = 280,
     cycle_len: int = 38,
     elev_y: int = 400,
+    log_every: int = 0,
+    stall_frames: int = 0,
 ) -> SuperMetroidState:
     """Morph-bomb-roll left toward ``target_x`` with y-band / pit recovery.
 
     Uses the proven wall-open cycle: lay bomb (X), wait for bomb-jump height,
-    then roll left while elevated or late in the cycle. Stays on the upper
-    maze band (``samus_y <= max_y`` preferred). If Samus falls toward the pit
-    (``y > pit_y`` or hard downward velocity), unmorph, short jump, re-morph,
-    and continue. Early-exits when PB capacity appears.
+    then roll left only while on the upper band and rising/flat. Prefer short
+    LEFT while ``y <= max_y`` and not falling hard.
+
+    Pit recovery (``y > pit_y`` or hard downward velocity): force unmorph →
+    short RIGHT/UP hop back toward the door ledge (not deeper left into the
+    pit) → re-``ensure_morph``. Deep pit (``y > 445``) has ~2px morph
+    headroom — recovery is best-effort; mid x≈230–400 is solid at band y.
+
+    Progress watchdog (``stall_frames > 0`` only): if x has not decreased for
+    that many frames, force a bomb + short pause. Leave at 0 for wall-open
+    (x stalls against the block by design). Optional ``log_every`` prints
+    ``x,y,pose,vel_y,is_morph`` every N frames. Early-exits when PB capacity
+    appears.
     """
     frames = 0
     last_progress_x = session.state.samus_x
+    frames_since_progress = 0
+    deep_pit_y = 445
+    pit_recoveries = 0
+
+    def _log(tag: str) -> None:
+        if log_every <= 0:
+            return
+        if frames % log_every != 0 and tag == "tick":
+            return
+        s = session.state
+        print(
+            f"[bomb_roll {tag} f={frames}] "
+            f"x={s.samus_x} y={s.samus_y} pose={s.pose} "
+            f"vy={s.velocity_y} vx={s.velocity_x} morph={is_morph(s.pose)} "
+            f"pb={s.max_power_bombs}",
+            flush=True,
+        )
+
     while session.state.samus_x > target_x and frames < max_frames:
         s = session.state
         if s.max_power_bombs > 0:
             return s
+        _log("tick")
+
         falling_hard = s.velocity_y > 80
-        if s.samus_y > pit_y or falling_hard:
-            # Recovery: leave ball, hop left/up, re-morph on band.
-            _hold(session, 6, "UP", reason="pit_unmorph")
-            _hold(session, 8, "A", "LEFT", reason="pit_jump")
-            _hold(session, 10, reason="pit_settle")
-            ensure_morph(session)
-            last_progress_x = session.state.samus_x
-            frames += 24
+        in_pit = s.samus_y > pit_y or falling_hard
+        deep_pit = s.samus_y > deep_pit_y
+
+        if in_pit:
+            pit_recoveries += 1
+            # Deep pit: morph headroom ~2px — unmorph usually fails. Nudge
+            # RIGHT toward door ledge first; avoid re-rolling deeper left.
+            if deep_pit:
+                _hold(session, 4, "UP", reason="pit_unmorph")
+                for _ in range(18):
+                    _hold(session, 1, "RIGHT", reason="pit_right")
+                    if session.state.samus_y <= pit_y:
+                        break
+                # Brief hop if we got any headroom.
+                if not is_morph(session.state.pose) or session.state.samus_y <= pit_y + 5:
+                    _hold(session, 6, "A", "RIGHT", reason="pit_jump")
+                    _hold(session, 8, reason="pit_settle")
+                try:
+                    if not is_morph(session.state.pose):
+                        ensure_morph(session)
+                except TimeoutError:
+                    pass
+                frames += 36
+            else:
+                # Shallow fall: unmorph, hop back onto band (prefer right).
+                _hold(session, 6, "UP", reason="pit_unmorph")
+                _hold(session, 8, "A", "RIGHT", reason="pit_jump")
+                _hold(session, 10, reason="pit_settle")
+                try:
+                    ensure_morph(session)
+                except TimeoutError:
+                    pass
+                frames += 24
+            # Bail if stuck in deep pit with no x progress (geometry trap).
+            if deep_pit and pit_recoveries >= 3 and session.state.samus_x >= last_progress_x - 2:
+                _log("deep_pit_stuck")
+                return session.state
             continue
+
         if not is_morph(session.state.pose):
             ensure_morph(session)
             frames += 20
             continue
+
+        # Progress watchdog (opt-in): no leftward progress → bomb + pause.
+        # Disabled when stall_frames==0 (wall-open needs multi-cycle stalls).
+        if stall_frames > 0 and frames_since_progress >= stall_frames:
+            _hold(session, 2, "X", reason="safe_watchdog_bomb")
+            _hold(session, 10, reason="safe_watchdog_pause")
+            frames += 12
+            frames_since_progress = 0
+            _log("watchdog")
+            continue
+
         # Bomb-jump cycle (matches proven wall@437 open timing).
         _hold(session, 2, "X", reason="safe_bomb")
         frames += 2
@@ -222,7 +302,9 @@ def bomb_roll_left_safe(
                 break  # outer loop recovers
             if not is_morph(s.pose):
                 break
+
             # Prefer left while elevated by bomb jump or late in cycle on band.
+            # Never roll left once past max_y toward the pit (band-keeping).
             if s.samus_y < elev_y or (s.samus_y <= max_y and step > cycle_len // 2):
                 _hold(session, 1, "LEFT", reason="safe_roll")
             elif s.samus_y <= max_y + 8:
@@ -234,12 +316,17 @@ def bomb_roll_left_safe(
             else:
                 _hold(session, 1, reason="safe_band_wait")
             frames += 1
+            frames_since_progress += 1
+
         if session.state.samus_x < last_progress_x - 2:
             last_progress_x = session.state.samus_x
-        elif frames > 0 and session.state.samus_x >= last_progress_x - 2:
+            frames_since_progress = 0
+        else:
             # Stalled a full cycle against a barrier — pause then re-bomb.
             _hold(session, 6, reason="safe_stall_pause")
             frames += 6
+            frames_since_progress += 6
+    _log("done")
     return session.state
 
 
@@ -840,6 +927,7 @@ def play_pink_pb_mid_maze_to_collect(
     session: ControllerSession,
     *,
     max_frames: int = 500,
+    log_every: int = 0,
 ) -> SuperMetroidState:
     """After wall break (~408,398) → collect pocket without place (OPEN).
 
@@ -848,44 +936,58 @@ def play_pink_pb_mid_maze_to_collect(
 
     - Room is two-tier: pink upper (top door, sidehoppers) + metal lower maze
       (bottom door, item). 100% often Quick-Drops a **crumble** from above.
-    - After wall@437 open, free-air sampling shows **no mid bridge**:
-      door side x≳410 and item-side left volume x≲220 at y≈310–390 are free;
-      mid x≈230–400 is solid at those y. Pit y≈452 is continuous but morph
-      headroom ~2px (cannot unmorph/climb). Top corridor y≈171 spans full x
-      but is sealed from the shaft below (bombs do not open the floor).
+    - After wall@437 open, continuous morph-roll sampling shows **no mid
+      bridge** at band y: door-side ledge ~x=412 and left volume x≲228 are
+      rollable; mid x≈230–400 is solid. Pit y≈455 is continuous x=90–420 but
+      morph headroom ~2px (cannot unmorph/climb to item). Top corridor y≈171
+      spans full x but is sealed from below (bombs do not open the floor).
     - **Working suffix:** once in left volume (~180,360), walk/fall into
       pocket and collect (``play_pink_pb_from_left_zone``).
-    - **Still open:** pure door-side → left volume (or pure top → left volume).
+    - **Still open:** pure door-side → left volume (or pure top → crumble).
 
-    This helper tries y-safe bomb-roll then left-zone collect; times out with
-    geometry notes if still east of the left volume.
+    Tries y-safe bomb-roll (strict band-keeping + pit recovery toward the
+    door ledge) then left-zone collect; times out with geometry notes if
+    still east of the left volume or stuck in the pit.
     """
     _require_room(session, ROOM_PINK_PB, "mid_maze")
     if session.state.max_power_bombs > 0:
         return session.state
-    # Already in left volume or pocket.
+    # Already in left volume or pocket (not deep pit).
     if session.state.samus_x <= 230 and session.state.samus_y <= 420:
         if session.state.samus_y < 385 and session.state.samus_x <= 220:
             return play_pink_pb_from_left_zone(session)
         return play_pink_pb_morph_bomb_collect(session)
     ensure_morph(session)
     start_x = session.state.samus_x
+    start_y = session.state.samus_y
     bomb_roll_left_safe(
         session,
         225,
-        max_y=415,
-        pit_y=430,
+        max_y=412,
+        pit_y=420,
         max_frames=max_frames,
+        elev_y=400,
+        log_every=log_every,
+        stall_frames=50,
     )
     s = session.state
     if s.max_power_bombs > 0:
         return s
     if s.samus_x <= 230 and s.samus_y <= 420:
         return play_pink_pb_from_left_zone(session)
+    # Stuck in pit after transit: still not collectable (no climb-out).
+    pit_note = ""
+    if s.samus_y > 440:
+        pit_note = (
+            " deep-pit trap y≈457 (rollable under mid but ~2px headroom — "
+            "no climb to item band y≈360–395);"
+        )
     raise TimeoutError(
-        f"pink_pb_mid_maze: no pure path yet (start_x={start_x} → "
-        f"x={s.samus_x} y={s.samus_y} pose={s.pose}); "
-        f"mid solid — need door→left-volume route (see Mission Impossible Room)"
+        f"pink_pb_mid_maze: no pure path yet "
+        f"(start=({start_x},{start_y}) → x={s.samus_x} y={s.samus_y} "
+        f"pose={s.pose});{pit_note} "
+        f"mid solid at band — need door→left-volume or top→crumble "
+        f"(see Mission Impossible Room)"
     )
 
 

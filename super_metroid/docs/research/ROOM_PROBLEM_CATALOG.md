@@ -29,9 +29,11 @@ gitignored; regenerate them from the source data with:
 uv run python super_metroid/scripts/export/room_problems.py
 ```
 
-The default source locations are the sibling editor export and its
-`sm-json-data` reference checkout. Override them with `--editor-nav` and
-`--reference-root`, or with `SUPER_METROID_EDITOR_NAV` and
+The default source locations are the sibling editor export and the game-local,
+gitignored [`sm-json-data`](https://github.com/vg-json-data/sm-json-data) clone
+at `refs/sm-json-data`. The latter is currently pinned at commit
+`d49da689b2620aa1a4223ebf505d4b7791d88662`. Override either source with
+`--editor-nav` and `--reference-root`, or with `SUPER_METROID_EDITOR_NAV` and
 `SUPER_METROID_JSON_DATA`.
 
 Of the 262 canonical problems, 157 have a connected air-cell waypoint path,

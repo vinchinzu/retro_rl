@@ -82,8 +82,8 @@ LEVEL1_PATH_SCREENS: tuple[int, ...] = (
     0x37,
 )
 
-# Post-Triforce walk prefix toward Level 2 (ends 0x4A; extension open).
-# Avoids rocky dead-end 0x79. Geometry drives level2_overworld controller.
+# Post-Triforce walk prefix (health-stable; verified 3/3). Avoids 0x79.
+# Geometry drives level2_overworld controller default stop.
 LEVEL2_PATH_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x38, "RIGHT", align_y=140),
     ScreenHop(0x48, "DOWN", align_x=120),
@@ -94,6 +94,47 @@ LEVEL2_PATH_HOPS: tuple[ScreenHop, ...] = (
 )
 LEVEL2_PATH_SCREENS: tuple[int, ...] = path_screens_from_hops(
     0x37, LEVEL2_PATH_HOPS
+)
+
+# Full walk to Moon door 0x3C (probe-verified 2026-07-29).
+# Avoids 0x4B→0x5B north-entry (east sealed). Uses 0x5A west entry into 0x5B.
+# 0x5C needs a mid-screen maze: east along y≈88, then down to y≈128, then east.
+# 0x5D north exit only around x≈48–56. Clean health management still open.
+LEVEL2_DOOR_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x38, "RIGHT", align_y=140),
+    ScreenHop(0x48, "DOWN", align_x=120),
+    ScreenHop(0x58, "DOWN", align_x=112),
+    ScreenHop(0x59, "RIGHT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x5A, "RIGHT", y_band_lo=120, y_band_hi=145),
+    ScreenHop(0x5B, "RIGHT", y_band_lo=130, y_band_hi=150),
+    # North bush corridor out of 0x5B (y≈80–95); not the south pocket.
+    ScreenHop(0x5C, "RIGHT", y_band_lo=80, y_band_hi=95),
+    # 0x5C→0x5D requires maze waypoints (see LEVEL2_ROUTE.md); hop alone is not enough.
+    ScreenHop(0x5D, "RIGHT", y_band_lo=120, y_band_hi=140),
+    ScreenHop(0x4D, "UP", align_x=52),
+    ScreenHop(0x4C, "LEFT", y_band_lo=120, y_band_hi=170),
+    ScreenHop(0x3C, "UP", align_x=112),
+)
+LEVEL2_DOOR_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    0x37, LEVEL2_DOOR_HOPS
+)
+# 0x5C maze waypoints (pixel) from BFS: east on y≈88 to x≈184, then down/east.
+LEVEL2_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (20, 92),
+    (40, 92),
+    (56, 92),
+    (80, 92),
+    (104, 92),
+    (120, 92),
+    (144, 92),
+    (168, 92),
+    (184, 92),
+    (192, 84),
+    (192, 108),
+    (192, 132),
+    (200, 132),
+    (224, 132),
+    (240, 132),
 )
 
 SCREEN_LABELS: dict[int, str] = {
@@ -659,8 +700,9 @@ def build_early_route_graph() -> RouteGraph:
             provenance="walkthrough_plus_partial_probe",
             meta={
                 "segment": "to_level2",
-                "planned_screens": (0x4B, 0x5B, 0x5C, 0x5D, 0x4D, 0x4C, 0x3C),
+                "planned_screens": LEVEL2_DOOR_SCREENS,
                 "blocker": "overworld_health_management",
+                "maze": "0x5c_waypoints",
             },
         ),
         GraphEdge(

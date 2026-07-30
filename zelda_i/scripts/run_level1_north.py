@@ -65,7 +65,7 @@ def run_once(
         boot_frames = 0
         prefix_ok = True
         if natural_entry:
-            obs, boot_frames, sword, nav = run_natural_to_level1(env)
+            obs, boot_frames, sword, nav, _end = run_natural_to_level1(env)
             prefix_ok = sword.success and nav.success
             first_key = Level1FirstKeyController()
             if prefix_ok:

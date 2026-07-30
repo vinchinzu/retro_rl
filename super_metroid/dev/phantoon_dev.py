@@ -83,10 +83,21 @@ SHIP_ROUTE: tuple[tuple[str, int, int, int, int], ...] = (
 )
 
 BIG_PINK_STATE = INTEGRATION_DIR / "dev_big_pink_mainshaft.state"
+BIG_PINK_MAIN_CONTROLLER_STATE = INTEGRATION_DIR / "dev_b1_bigpink_main_controller.state"
 RED_TOWER_STATE = INTEGRATION_DIR / "dev_red_tower_stable.state"
+RED_TOWER_POST_PB_STATE = INTEGRATION_DIR / "dev_b1_red_tower_post_pb.state"
+GHZ_PLAYABLE_STATE = INTEGRATION_DIR / "dev_b1_ghz_playable.state"
+NOOB_PLAYABLE_STATE = INTEGRATION_DIR / "dev_b1_noob_playable.state"
 PB_COLLECTED_STATE = INTEGRATION_DIR / "dev_power_bombs_collected.state"
 PHANTOON_ENTRY_STATE = INTEGRATION_DIR / "dev_phantoon_entry.state"
 PHANTOON_DEFEATED_STATE = INTEGRATION_DIR / "dev_phantoon_defeated.state"
+
+# Post-PB ship-path rooms (after skipping pure Pink PB / GHZ / Noob).
+ROOM_GHZ = 0x9E52
+ROOM_NOOB = 0x9FBA
+DOOR_BIG_PINK_TO_GHZ = 0x8DEA
+DOOR_GHZ_TO_NOOB = 0x8E92
+DOOR_NOOB_TO_RED = 0x8F0A
 
 
 def wrecked_ship_boss_bits(env: Any) -> int:
@@ -103,6 +114,138 @@ def grant_power_bombs_dev(env: Any, *, capacity: int = 5) -> None:
     """Development-only Power Bomb capacity grant (not continuous-legal)."""
     write_wram_u16(env, 0x09D0, capacity)
     write_wram_u16(env, 0x09CE, capacity)
+
+
+def grant_supers_dev(env: Any, *, capacity: int = 5) -> None:
+    """Development-only Super Missile capacity grant (not continuous-legal)."""
+    write_wram_u16(env, 0x09CC, capacity)
+    write_wram_u16(env, 0x09CA, capacity)
+
+
+def ensure_post_pb_loadout(env: Any) -> None:
+    """Grant PB + Supers capacity if missing (dev scaffold after Big Pink skip)."""
+    state = parse_env_state(env)
+    if state.max_power_bombs <= 0:
+        grant_power_bombs_dev(env)
+    if state.max_super_missiles <= 0:
+        grant_supers_dev(env)
+
+
+def skip_to_ghz(
+    *,
+    source: Path = BIG_PINK_MAIN_CONTROLLER_STATE,
+    output: Path = GHZ_PLAYABLE_STATE,
+    place_x: int = 120,
+    place_y: int = 200,
+) -> dict[str, object]:
+    """Dev skip: grant PB, door-warp Big Pink → GHZ, free-place walkable start.
+
+    Pure Pink PB maze and pure GHZ door approach stay open; this is a
+    development bridge so the ship path can advance past the bottleneck.
+    """
+    env = make_dev_env()
+    assist = UnlimitedResourcesAssist()
+    try:
+        boot_from_state(env, source)
+        for _ in range(5):
+            env.step(idle_action())
+            assist.apply(env.data, parse_env_state(env))
+        ensure_post_pb_loadout(env)
+        state = door_warp(env, DOOR_BIG_PINK_TO_GHZ, expected_room=ROOM_GHZ)
+        if state.room_id != ROOM_GHZ:
+            raise RuntimeError(
+                f"skip_to_ghz: expected 0x{ROOM_GHZ:04X}, got 0x{state.room_id:04X}"
+            )
+        # Warp often lands morph-stuck in the left tunnel; free-place playable.
+        place_samus(env, place_x, place_y)
+        write_wram_u16(env, 0x0A1C, 1)
+        for _ in range(15):
+            apply_dev_survivability(env)
+            env.step(idle_action())
+        ensure_post_pb_loadout(env)
+        save_dev_state(env, output)
+        summary = state_summary(env)
+        summary.update(
+            {
+                "success": True,
+                "skipped": "pink_pb_pure + ghz_door_approach",
+                "statePath": str(output.resolve()),
+                "developmentOnly": True,
+            }
+        )
+        return summary
+    finally:
+        env.close()
+
+
+def skip_to_red_tower_post_pb(
+    *,
+    source: Path = BIG_PINK_MAIN_CONTROLLER_STATE,
+    output: Path = RED_TOWER_POST_PB_STATE,
+) -> dict[str, object]:
+    """Dev skip: grant PB+Supers, warp Big Pink → GHZ → Noob → Red Tower.
+
+    Lands a playable Red Tower anchor with Power Bombs for ship-route work.
+    Not continuous evidence.
+    """
+    env = make_dev_env()
+    assist = UnlimitedResourcesAssist()
+    try:
+        boot_from_state(env, source)
+        for _ in range(5):
+            env.step(idle_action())
+            assist.apply(env.data, parse_env_state(env))
+        ensure_post_pb_loadout(env)
+        hops: list[dict[str, object]] = []
+        chain = (
+            ("ghz", DOOR_BIG_PINK_TO_GHZ, ROOM_GHZ, 120, 200),
+            ("noob", DOOR_GHZ_TO_NOOB, ROOM_NOOB, 100, 200),
+            ("red_tower", DOOR_NOOB_TO_RED, ROOM_RED_TOWER, 80, 400),
+        )
+        for name, door, room, px, py in chain:
+            state = door_warp(env, door, expected_room=room)
+            ok = state.room_id == room
+            free_place_if_stuck(env, px, py)
+            place_samus(env, px, py)
+            write_wram_u16(env, 0x0A1C, 1)
+            for _ in range(12):
+                apply_dev_survivability(env)
+                env.step(idle_action())
+            ensure_post_pb_loadout(env)
+            hops.append(
+                {
+                    "name": name,
+                    "success": ok,
+                    "roomIdHex": f"0x{parse_env_state(env).room_id:04X}",
+                    "samusX": parse_env_state(env).samus_x,
+                    "samusY": parse_env_state(env).samus_y,
+                }
+            )
+            if not ok:
+                break
+        state = parse_env_state(env)
+        if state.room_id != ROOM_RED_TOWER:
+            return {
+                "success": False,
+                "hops": hops,
+                "finalRoomIdHex": f"0x{state.room_id:04X}",
+                "developmentOnly": True,
+            }
+        save_dev_state(env, output)
+        # Also refresh intermediate anchors when full chain succeeds.
+        summary = state_summary(env)
+        summary.update(
+            {
+                "success": True,
+                "hops": hops,
+                "skipped": "pink_pb_pure + ghz + noob pure",
+                "statePath": str(output.resolve()),
+                "developmentOnly": True,
+            }
+        )
+        return summary
+    finally:
+        env.close()
 
 
 def collect_power_bombs(

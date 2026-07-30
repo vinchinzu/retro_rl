@@ -1,0 +1,44 @@
+{
+  "samples": [
+    {
+      "frame": 0,
+      "room_id": 39641,
+      "area_index": 1,
+      "game_state": 8,
+      "door_transition": 0,
+      "collected_items": 4100
+    },
+    {
+      "frame": 20,
+      "room_id": 39641,
+      "area_index": 1,
+      "game_state": 8,
+      "door_transition": 0,
+      "collected_items": 4100
+    },
+    {
+      "frame": 21,
+      "room_id": 39641,
+      "area_index": 1,
+      "game_state": 9,
+      "door_transition": 2,
+      "transition_direction": 2
+    },
+    {
+      "frame": 45,
+      "room_id": 39771,
+      "area_index": 1,
+      "game_state": 11,
+      "door_transition": 1,
+      "transition_direction": 2
+    },
+    {
+      "frame": 60,
+      "room_id": 39771,
+      "area_index": 1,
+      "game_state": 8,
+      "door_transition": 0,
+      "collected_items": 4100
+    }
+  ]
+}

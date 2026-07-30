@@ -6,7 +6,7 @@
 |-------|-------|
 | Current maturity | M5 |
 | Best verified result | Power-on → Morph Ball → three east doors → west-shaft upper platform |
-| Last verification | 2026-07-28 |
+| Last verification | 2026-07-29 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
@@ -18,6 +18,7 @@
 | Ready frame (probe) | ~550–600 |
 | Checkpoint | `Level1.state`, `AfterMorph.state` |
 | Evidence | [first_missiles_natural.json](../recordings/first_missiles_natural.json), [first_missiles_after_morph.json](../recordings/first_missiles_after_morph.json), [morph_ball_natural.json](../recordings/morph_ball_natural.json) |
+| Screen timing (opt-in) | [first_missiles_natural_timing.json](../recordings/screen_timings/first_missiles_natural_timing.json) (Clean), [first_missiles_after_morph_timing.json](../recordings/screen_timings/first_missiles_after_morph_timing.json) (diagnostic) |
 
 ## Verified segments
 
@@ -44,6 +45,24 @@ missile pickup is not route-cleared:
 | Long morph tunnel | **verified** with 14 energy at exit |
 | West shaft | first three stable landings verified at map (11,13), x≈106/y=225 |
 | Missile pickup | **blocked** above current west-shaft platform |
+| Opt-in screen timer on runner | **verified** (`--screen-timing`); passive observer only |
+
+### Measured screen-time bottleneck (2026-07-29)
+
+Clean natural-entry + AfterMorph diagnostic both complete the verified
+prefix to FRONTIER `(11,13)` x≈106/y=225 with 14 energy. Hop timing:
+
+| Rank | Hop | screen_frames | Phase context |
+|------|-----|---------------|---------------|
+| 1 | `(9,14)→(10,14)` | **1060** | missile corridor / long-tunnel approach |
+| 2 | `(5,14)→(6,14)` | ~939–940 (dwell ~760 + door ~180) | first blue door |
+| 3 | `(10,14)→(11,14)` | ~758–789 | long tunnel + third door |
+
+West-shaft climb shows a reproducible mid-climb fall
+`(11,13)→(11,14)` (~42f) before the verified third-platform re-land.
+**Progress blocker** remains upper west shaft above that platform (no hop
+past y=13 under the current policy). Screen-time rank-1 is corridor dwell,
+not the missiles progress frontier.
 
 ## Done
 
@@ -63,8 +82,11 @@ missile pickup is not route-cleared:
 
 ## Next
 
-1. Clear the enemy-populated upper west shaft from the verified map (11,13)
-   x≈106/y=225 natural frontier.
+1. **Measured next experiment (progress):** from the verified FRONTIER pose
+   `(11,13)` x≈106/y=225 (Clean natural or labeled AfterMorph diagnostic),
+   probe short climb spans aimed at a settled hop to `(11,12)` under
+   `--screen-timing`; stop on first controllable `(11,12)` frame or death.
+   Success criterion: ≥1 timed hop `(11,13)→(11,12)` with health > 0.
 2. Cross the bridge, descend the east shaft, and stop on `$687A > 0`.
-3. Promote the existing power-on → morph → west-shaft prefix to a full
-   no-state-load missiles result.
+3. Optional speed (not progress): reduce `_MISSILE_CORRIDOR_SPANS` only if a
+   re-time still reaches long-tunnel base with the same enemy survival.

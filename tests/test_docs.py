@@ -44,6 +44,7 @@ ACTIVE_GAME_DIRS = (
     "rival_turf",
     "smb",
     "smb3",
+    "smz3",
     "star_fox",
     "super_double_dragon",
     "super_metroid",

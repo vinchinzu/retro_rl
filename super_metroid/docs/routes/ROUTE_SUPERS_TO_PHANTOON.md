@@ -1,10 +1,14 @@
-# Working route: Super collect → Phantoon entry
+# Legacy notes: Super collect → Pink PB / ship-first
 
 Last updated: 2026-07-28.
 
-Living checklist for the **any% ship path** after Spore Super Missiles.
-This is the continuous Track B spine toward Phantoon — not the full research
-hop table through Kraid/Norfair.
+> **Superseded for continuous planning by [ROUTE_KPDR.md](ROUTE_KPDR.md).**
+> Keep this file for Pink PB geometry, place-bridge probes, and ship-route
+> topology notes. Continuous product path is **KPDR** (Kraid → Phantoon →
+> Draygon → Ridley) with **Alpha PB after Ice**, not early Pink PB → ship.
+
+Historical checklist for the **ship-first / early Pink PB** path after Spore
+Super Missiles. Not the KPDR continuous spine.
 
 Labels:
 
@@ -238,13 +242,14 @@ uv run python super_metroid/scripts/probe/post_spore_pb.py --to pb-door --allow-
 | Item | Power Bomb PLM ≈ **(100–120, 370–395)** (Brinstar PB 5 on that list) |
 | Entry spawn | Bottom door ~**(460–472, 395)**; top door ~**(472–493, 139)** |
 | Maze wall@437 | **Bombable** morph double-tap; crouch/missiles/supers no → ~**(408, 398)** |
-| Free-air topology (after wall open) | Door side x≳410 free; **left volume** x≲220 at y≈310–390 free; **mid x≈230–400 solid** at those y; pit y≈452 continuous but morph headroom ~2px; top y≈171 sealed from shaft below |
+| Continuous morph topology (after wall open) | Rollable band: door ledge **x≈412** + left **x≲228** at y≈360–410; **mid x≈230–400 solid**. Pit **y≈455** rollable x≈90–420 but **dead-end** (~2px headroom, no climb to item). Top y≈171 full-width floor **sealed** from above (DOWN/bombs/missiles do not pass). |
+| Post-refactor failure (2026-07-29) | Wall green → mid-maze drops **(408,398)→(405,457) pose 65** within ~25f; old recovery re-morphed in pit without left progress. |
+| Helpers | `ensure_morph` (aggressive retries), `bomb_roll_left_safe` (strict band LEFT + rightward pit recovery + progress watchdog + optional `log_every`) |
 | Working suffix | `play_pink_pb_from_left_zone` from ~(180,360) walk/fall → pocket → collect pb 5/5 |
 | Collect code | `play_pink_pb_morph_bomb_collect` / `play_pink_pb_from_left_zone` |
-| Helpers | `ensure_morph`, `bomb_roll_left_safe`, `wait_until`, `is_morph` |
 | Place bridge | Prefer `place(180,360)` left-zone then pure suffix; fallback `place(220,395)` (`--allow-place`) |
 | Evidence | `--to pb-maze-wall`; left-zone place + collect; map `debug/post_spore/sill/PinkBrinstarPowerBombRoom.png` |
-| Continuous? | Need pure door→left-volume (or pure top→left-volume) |
+| Continuous? | Need pure door→left-volume (or pure top→crumble→collect) |
 | Blockers | Mid solid wall; pit dead-end; top floor sealed; sill approach separate |
 
 **External refs**
@@ -272,12 +277,19 @@ uv run python super_metroid/scripts/probe/post_spore_pb.py --to pb-collect --all
 
 | Field | Value |
 |-------|-------|
-| Status | **open** (controller); topology known |
+| Status | **dev warp bridge** (pure open); ship path continues from Red Tower |
 | Path | `0x9E11` → Big Pink → green Super door block `[63,103]` ≈ (1016,1656) → `0x9E52` GHZ → `0x9FBA` Noob Bridge → `0xA253` Red Tower |
 | Door (BP→GHZ) | `0x8DEA` (Super) |
-| Dev state | `dev_red_tower_stable.state` (Red Tower; may lack PB capacity) |
-| Continuous? | No |
-| Blockers | Full natural traversal after PB; GHZ enemies/geometry; Noob bridge |
+| Dev skip | `phantoon.py skip-to-red` / `skip_to_red_tower_post_pb` grants PB+Supers and warps GHZ→Noob→Red |
+| Dev states | `dev_b1_ghz_playable`, `dev_b1_noob_playable`, `dev_b1_red_tower_post_pb` (pb 5/5) |
+| Continuous? | No — pure Pink PB and its Big Pink→GHZ predecessor remain open; GHZ→Noob→Red is controller-complete |
+| Blockers | Pure PB mid-maze; natural predecessor composition into the verified GHZ controller |
+
+```bash
+# Skip pure Big Pink PB maze; land Red Tower with Power Bombs (dev only):
+uv run python super_metroid/scripts/probe/phantoon.py skip-to-red
+uv run python super_metroid/scripts/probe/phantoon.py ship-route
+```
 
 Hop reference: first hops of `early_power_bombs__kraid` through Red Tower, then diverge to ship route (not Kraid).
 
@@ -336,8 +348,8 @@ uv run python super_metroid/scripts/probe/phantoon.py ship-route
 | 4 | Shaft → PB door | — | top y907 + bottom place entry; pure climb **open** | place top/bottom |
 | 5 | PB maze wall@437 | — | **pure break** (reactive helpers) | — |
 | 5b | PB mid-maze → collect | — | left-zone→collect; mid solid **open** | place 180,360 |
-| 6 | PB → Red Tower (GHZ/Noob) | — | **open** | partial states |
-| 7 | Red Tower → Crateria elev | — | **open** | **yes** |
+| 6 | PB → Red Tower (GHZ/Noob) | — | controller_dev suffix | **skip-to-red** (pb 5/5) |
+| 7 | Red Tower → Crateria elev | — | **open** | **yes** (ship-route) |
 | 8 | Moat / Ocean / WS entry | — | **open** | **yes** |
 | 9 | WS → Phantoon room | — | **open** | **yes** |
 | 10 | Phantoon fight | — | **open** | entry state |
@@ -348,16 +360,12 @@ uv run python super_metroid/scripts/probe/phantoon.py ship-route
 
 ## Immediate next actions (ordered)
 
-1. **Crack 4** — pure into **drop-air x≈535–555 y≈850–910** (or onto y907 ledge).
-   Proven: free-fall there lands ledge + entry. Blocked so far: east side wall@613;
-   west side (`left_upper`) needs height gain (~spin peak only Δy≈79).
-2. **Crack 5b** — pure door→left-volume (or top→crumble→collect). Left-zone
-   suffix green; mid y≈395 solid between wall@405 and pocket@225.
-3. **Compose** `play_post_spore_to_pb` (door + maze + collect) from natural Super.
-4. **Continuous dry** power-on → PB.
-5. **Segment 6** GHZ / Noob / Red Tower controller from post-PB Big Pink.
+1. **Ship path (active):** from `dev_b1_red_tower_post_pb` — Red Tower climb
+   controller to Hellway, then Moat/WS pure rooms; Phantoon fight.
+2. **Backfill pure (parked):** drop-air/y907; PB mid-maze; GHZ/Noob pure doors.
+3. **Compose** continuous power-on through skipped segments when pure exists.
 
-Do **not** polish Phantoon fight until segments 4–6 are controller-proven.
+Dev skip is **not** continuous evidence — only unblocks topology / fight work.
 
 ---
 

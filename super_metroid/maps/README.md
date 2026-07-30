@@ -42,6 +42,19 @@ Reference maps do not become verified navigation edges merely by being
 present. Promote connections only after a continuous run observes the door
 transition and required capabilities.
 
+## Full-size visual references
+
+The following local, gitignored images provide whole-map context while
+developing room controllers:
+
+| File | Dimensions | SHA-256 | Source |
+|------|------------|---------|--------|
+| `reference/scripterswar_zebes_tiles_full.png` | 16384×16384 | `95454764fe32ab0dd45c65a9961edc8fe3b8db24e8371d70a85aa94977d4380b` | [ScriptersWar interactive map](https://scripterswar.com/SuperMetroid/map), reconstructed from its 32×32 full-resolution tile set |
+| `reference/snesmaps_zebes_full.png` | 16896×14336 | `114479f4b8c3d5dc60170f1ab8c61fc99ccaff59b784af063d239fa4fd477f9d` | [SNESMaps Zebes map](https://www.snesmaps.com/maps/SuperMetroid/SuperMetroidMapZebes.html) |
+
+These are visual planning references only. They do not establish controller or
+continuous-route evidence.
+
 Regenerate the editor-backed Spore Spawn plan with:
 
 ```bash
@@ -66,8 +79,12 @@ Regenerate the full research graph and room catalog with:
 uv run python super_metroid/scripts/export/room_problems.py
 ```
 
-The full graph uses the sibling editor export for geometry and the sibling
-`sm-json-data` checkout for complete physical connections. Both generated JSON
-files are local ROM-derived planning artifacts. See
+The full graph uses the sibling editor export for geometry and the game-local,
+gitignored [`vg-json-data/sm-json-data`](https://github.com/vg-json-data/sm-json-data)
+clone at `refs/sm-json-data` for complete physical connections. The reference
+clone is pinned locally at
+`d49da689b2620aa1a4223ebf505d4b7791d88662`; update it deliberately when
+regenerating topology. Both generated JSON files are local ROM-derived
+planning artifacts. See
 [the room problem catalog](../docs/research/ROOM_PROBLEM_CATALOG.md) for source
 semantics, teleport commands, queue policy, and the post-Spore route.

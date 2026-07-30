@@ -1,0 +1,52 @@
+{
+  "samples": [
+    {
+      "frame": 0,
+      "map_x": 3,
+      "map_y": 14,
+      "game_mode": 3,
+      "in_door": 0,
+      "area": 16,
+      "health_hi": 3,
+      "equipment": 0
+    },
+    {
+      "frame": 20,
+      "map_x": 3,
+      "map_y": 14,
+      "game_mode": 3,
+      "in_door": 0,
+      "area": 16,
+      "health_hi": 3,
+      "equipment": 0
+    },
+    {
+      "frame": 21,
+      "map_x": 3,
+      "map_y": 14,
+      "game_mode": 3,
+      "in_door": 1,
+      "area": 16,
+      "health_hi": 3
+    },
+    {
+      "frame": 45,
+      "map_x": 2,
+      "map_y": 14,
+      "game_mode": 3,
+      "in_door": 1,
+      "area": 16,
+      "health_hi": 3
+    },
+    {
+      "frame": 60,
+      "map_x": 2,
+      "map_y": 14,
+      "game_mode": 3,
+      "in_door": 0,
+      "area": 16,
+      "health_hi": 3,
+      "equipment": 0
+    }
+  ]
+}
