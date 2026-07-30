@@ -16,15 +16,23 @@ A completed hop is emitted only when ordinary gameplay settles in a *new*
 room after a transition (or after an explicit leave of ordinary gameplay).
 Boot/menu, soft-reset, frame rewinds, and room jumps without a transition
 phase are treated as discontinuities and do not produce timing records.
+
+State machine: :class:`retro_harness.hop_timer.HopTimer`.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Iterable, Mapping, Sequence
 
+from retro_harness.hop_timer import (
+    HopFrame,
+    HopTimer,
+    OpenHop,
+    rank_by_field,
+    snapshots_from_json_mapping,
+)
 from super_metroid.ram import GameplayPhase, SuperMetroidState, phase_for_game_state
 
 # Game state 8 is ordinary controllable gameplay (see docs/ram_map.md).
@@ -78,18 +86,18 @@ class TimingSnapshot:
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> TimingSnapshot:
-        """Build from a JSON-friendly dict (offline replay)."""
         phase_raw = data.get("phase")
-        phase: GameplayPhase | None
-        if phase_raw is None:
-            phase = None
-        elif isinstance(phase_raw, GameplayPhase):
+        phase: GameplayPhase | None = None
+        if isinstance(phase_raw, GameplayPhase):
             phase = phase_raw
-        else:
-            phase = GameplayPhase(str(phase_raw))
+        elif isinstance(phase_raw, str):
+            try:
+                phase = GameplayPhase(phase_raw)
+            except ValueError:
+                phase = None
         return cls(
             frame=int(data["frame"]),
-            room_id=int(data["room_id"]),
+            room_id=int(data.get("room_id", 0)),
             area_index=int(data.get("area_index", 0)),
             game_state=int(data.get("game_state", _ORDINARY_GAME_STATE)),
             door_transition=int(data.get("door_transition", 0)),
@@ -113,19 +121,7 @@ def is_settled_ordinary(snap: TimingSnapshot) -> bool:
 
 @dataclass(frozen=True)
 class RoomVisit:
-    """One completed room hop with project-native frame timing.
-
-    Frame semantics (all integers are emulator frames, 60 Hz NTSC nominal):
-
-    * ``entry_frame`` — first settled ordinary frame in ``room_id``.
-    * ``leave_frame`` — first non-ordinary (or transition) frame after
-      dwelling; ``None`` only for incomplete visits (not stored as completed).
-    * ``exit_frame`` — first settled ordinary frame in the destination room
-      (same as the next visit's ``entry_frame``).
-    * ``room_frames`` — ``exit_frame - entry_frame`` (dwell + door load).
-    * ``dwell_frames`` — ``leave_frame - entry_frame`` (controllable time).
-    * ``transition_frames`` — ``exit_frame - leave_frame`` (door/load).
-    """
+    """One completed room hop with project-native frame timing."""
 
     source_room_id: int
     room_id: int
@@ -196,18 +192,97 @@ class DiscontinuityEvent:
         }
 
 
-@dataclass
-class _OpenVisit:
-    source_room_id: int
-    room_id: int
-    area_index: int
-    entry_frame: int
-    collected_items: int
-    collected_beams: int
-    leave_frame: int | None = None
-    door_transition_at_leave: int = 0
-    transition_direction: int = 0
-    in_transition: bool = False
+_LEAVE_KEYS = frozenset({"door_transition_at_leave", "transition_direction"})
+
+
+def _make_visit(
+    open_hop: OpenHop[int],
+    dest: int,
+    leave_frame: int,
+    exit_frame: int,
+    sequence_index: int,
+    meta: Mapping[str, Any],
+    dest_context: Mapping[str, Any],
+) -> RoomVisit:
+    return RoomVisit(
+        source_room_id=int(open_hop.source or 0),
+        room_id=open_hop.location,
+        dest_room_id=dest,
+        area_index=int(meta.get("area_index", 0)),
+        dest_area_index=int(dest_context.get("area_index", 0)),
+        entry_frame=open_hop.entry_frame,
+        leave_frame=leave_frame,
+        exit_frame=exit_frame,
+        room_frames=exit_frame - open_hop.entry_frame,
+        dwell_frames=leave_frame - open_hop.entry_frame,
+        transition_frames=exit_frame - leave_frame,
+        transition_direction=int(meta.get("transition_direction", 0)),
+        door_transition_at_leave=int(meta.get("door_transition_at_leave", 0)),
+        collected_items=int(meta.get("collected_items", 0)),
+        collected_beams=int(meta.get("collected_beams", 0)),
+        sequence_index=sequence_index,
+    )
+
+
+def _make_disc(frame: int, reason: str, room_id: int, detail: str) -> DiscontinuityEvent:
+    try:
+        reason_enum = DiscontinuityReason(reason)
+    except ValueError:
+        reason_enum = DiscontinuityReason.RESET
+    return DiscontinuityEvent(
+        frame=frame, reason=reason_enum, room_id=room_id, detail=detail
+    )
+
+
+def _snap_to_hop(snap: TimingSnapshot) -> HopFrame[int]:
+    phase = snap.resolved_phase()
+    ctx = {
+        "area_index": snap.area_index,
+        "collected_items": snap.collected_items,
+        "collected_beams": snap.collected_beams,
+    }
+    leave_meta = {
+        "door_transition_at_leave": snap.door_transition,
+        "transition_direction": snap.transition_direction,
+    }
+
+    if phase is GameplayPhase.BOOT_OR_MENU:
+        return HopFrame(
+            frame=snap.frame,
+            location=snap.room_id,
+            status="abandon",
+            abandon_reason=DiscontinuityReason.BOOT_OR_MENU.value,
+            abandon_detail=f"game_state={snap.game_state}",
+        )
+    if phase is GameplayPhase.DEATH_OR_GAME_OVER:
+        return HopFrame(
+            frame=snap.frame,
+            location=snap.room_id,
+            status="abandon",
+            abandon_reason=DiscontinuityReason.DEATH_OR_GAME_OVER.value,
+            abandon_detail=f"game_state={snap.game_state}",
+        )
+    if phase is GameplayPhase.ENDING_OR_CREDITS:
+        return HopFrame(
+            frame=snap.frame,
+            location=snap.room_id,
+            status="abandon",
+            abandon_reason=DiscontinuityReason.ENDING_OR_CREDITS.value,
+            abandon_detail=f"game_state={snap.game_state}",
+        )
+    if is_settled_ordinary(snap):
+        return HopFrame(
+            frame=snap.frame,
+            location=snap.room_id,
+            status="settled",
+            context=ctx,
+        )
+    return HopFrame(
+        frame=snap.frame,
+        location=snap.room_id,
+        status="transition",
+        leave_meta=leave_meta,
+    )
 
 
 @dataclass
@@ -219,12 +294,32 @@ class RoomTimer:
     :attr:`visits`.
     """
 
-    visits: list[RoomVisit] = field(default_factory=list)
-    discontinuities: list[DiscontinuityEvent] = field(default_factory=list)
-    _open: _OpenVisit | None = field(default=None, repr=False)
-    _last_frame: int | None = field(default=None, repr=False)
-    _last_room: int = field(default=0, repr=False)
-    _ever_settled: bool = field(default=False, repr=False)
+    _engine: HopTimer[int, RoomVisit, DiscontinuityEvent] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._engine = HopTimer(
+            make_visit=_make_visit,
+            make_discontinuity=_make_disc,
+            jump_reason=DiscontinuityReason.ROOM_JUMP.value,
+            null_location=0,
+            leave_context_keys=_LEAVE_KEYS,
+            reset_ever_settled_reasons=frozenset(
+                {
+                    DiscontinuityReason.BOOT_OR_MENU.value,
+                    DiscontinuityReason.FRAME_REGRESSION.value,
+                    DiscontinuityReason.RESET.value,
+                    DiscontinuityReason.DEATH_OR_GAME_OVER.value,
+                }
+            ),
+        )
+
+    @property
+    def visits(self) -> list[RoomVisit]:
+        return self._engine.visits
+
+    @property
+    def discontinuities(self) -> list[DiscontinuityEvent]:
+        return self._engine.discontinuities
 
     def observe(self, sample: TimingSnapshot | SuperMetroidState) -> RoomVisit | None:
         """Ingest one frame sample. Return a completed visit if one just closed."""
@@ -233,9 +328,7 @@ class RoomTimer:
             if isinstance(sample, TimingSnapshot)
             else TimingSnapshot.from_state(sample)
         )
-        completed = self._observe_snapshot(snap)
-        self._last_frame = snap.frame
-        return completed
+        return self._engine.observe_frame(_snap_to_hop(snap))
 
     def observe_many(
         self, samples: Iterable[TimingSnapshot | SuperMetroidState]
@@ -250,15 +343,7 @@ class RoomTimer:
 
     def finalize(self, *, frame: int | None = None) -> None:
         """End the session without inventing a synthetic exit hop."""
-        if self._open is None:
-            return
-        end_frame = frame if frame is not None else (self._last_frame or 0)
-        self._abandon(
-            end_frame,
-            DiscontinuityReason.SESSION_END,
-            self._open.room_id,
-            "session finalized with open visit",
-        )
+        self._engine.finalize(frame=frame)
 
     def report(
         self,
@@ -267,11 +352,19 @@ class RoomTimer:
         extra: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """JSON-serializable timing session artifact."""
-        payload: dict[str, Any] = {
-            "schema_version": 1,
-            "kind": "super_metroid_room_timing",
-            "timing_unit": "emulator_frames",
-            "timing_semantics": {
+        open_payload = None
+        if self._engine._open is not None:
+            o = self._engine._open
+            open_payload = {
+                "room_id": o.location,
+                "room_id_hex": f"0x{o.location:04X}",
+                "entry_frame": o.entry_frame,
+                "in_transition": o.in_transition,
+                "leave_frame": o.leave_frame,
+            }
+        return self._engine.report_base(
+            kind="super_metroid_room_timing",
+            timing_semantics={
                 "frame_basis": (
                     "stable-retro env.step frames (nominal 60 Hz NTSC); "
                     "not wall-clock and not practice-hack IGT/lag counters"
@@ -285,227 +378,26 @@ class RoomTimer:
                 "transition_frames": "exit_frame - leave_frame (door/load)",
                 "practice_hack_igt_lag": False,
             },
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "source": source,
-            "visit_count": len(self.visits),
-            "discontinuity_count": len(self.discontinuities),
-            "visits": [visit.to_dict() for visit in self.visits],
-            "discontinuities": [event.to_dict() for event in self.discontinuities],
-            "open_visit": None
-            if self._open is None
-            else {
-                "room_id": self._open.room_id,
-                "room_id_hex": f"0x{self._open.room_id:04X}",
-                "entry_frame": self._open.entry_frame,
-                "in_transition": self._open.in_transition,
-                "leave_frame": self._open.leave_frame,
-            },
-            "total_room_frames": sum(v.room_frames for v in self.visits),
-            "total_dwell_frames": sum(v.dwell_frames for v in self.visits),
-            "total_transition_frames": sum(v.transition_frames for v in self.visits),
-        }
-        if extra:
-            payload["extra"] = dict(extra)
-        return payload
-
-    # --- internals ---------------------------------------------------------
-
-    def _observe_snapshot(self, snap: TimingSnapshot) -> RoomVisit | None:
-        if self._last_frame is not None and snap.frame < self._last_frame:
-            self._abandon(
-                snap.frame,
-                DiscontinuityReason.FRAME_REGRESSION,
-                snap.room_id,
-                f"frame {snap.frame} < previous {self._last_frame}",
-            )
-            # Fall through: may re-anchor if settled after load.
-
-        phase = snap.resolved_phase()
-
-        if phase is GameplayPhase.BOOT_OR_MENU:
-            if self._open is not None or self._ever_settled:
-                self._abandon(
-                    snap.frame,
-                    DiscontinuityReason.BOOT_OR_MENU,
-                    snap.room_id,
-                    f"game_state={snap.game_state}",
-                )
-            return None
-
-        if phase is GameplayPhase.DEATH_OR_GAME_OVER:
-            if self._open is not None:
-                self._abandon(
-                    snap.frame,
-                    DiscontinuityReason.DEATH_OR_GAME_OVER,
-                    snap.room_id,
-                    f"game_state={snap.game_state}",
-                )
-            return None
-
-        if phase is GameplayPhase.ENDING_OR_CREDITS:
-            if self._open is not None:
-                self._abandon(
-                    snap.frame,
-                    DiscontinuityReason.ENDING_OR_CREDITS,
-                    snap.room_id,
-                    f"game_state={snap.game_state}",
-                )
-            return None
-
-        if is_settled_ordinary(snap):
-            return self._on_settled(snap)
-
-        # Non-settled play (door, pause, scripted, unknown).
-        if self._open is not None and not self._open.in_transition:
-            self._mark_leave(snap)
-        elif self._open is not None and self._open.in_transition:
-            # Keep door_transition_at_leave frozen at the leave frame; only
-            # fill direction if it was zero at leave and becomes known later.
-            if not self._open.transition_direction and snap.transition_direction:
-                self._open.transition_direction = snap.transition_direction
-        return None
-
-    def _on_settled(self, snap: TimingSnapshot) -> RoomVisit | None:
-        self._ever_settled = True
-
-        if self._open is None:
-            self._open = _OpenVisit(
-                source_room_id=0,
-                room_id=snap.room_id,
-                area_index=snap.area_index,
-                entry_frame=snap.frame,
-                collected_items=snap.collected_items,
-                collected_beams=snap.collected_beams,
-            )
-            self._last_room = snap.room_id
-            return None
-
-        if not self._open.in_transition:
-            if snap.room_id == self._open.room_id:
-                # Still dwelling; optional inventory context refresh.
-                self._open.collected_items = snap.collected_items
-                self._open.collected_beams = snap.collected_beams
-                self._last_room = snap.room_id
-                return None
-            # Settled ordinary with a different room without a transition phase:
-            # save-state load, door-warp, or other discontinuity.
-            self._abandon(
-                snap.frame,
-                DiscontinuityReason.ROOM_JUMP,
-                snap.room_id,
-                (
-                    f"room 0x{self._open.room_id:04X} -> 0x{snap.room_id:04X} "
-                    "while ordinary (no transition phase)"
+            source=source,
+            extra=extra,
+            open_visit_payload=open_payload,
+            visit_to_dict=lambda v: v.to_dict(),
+            disc_to_dict=lambda d: d.to_dict(),
+            totals={
+                "total_room_frames": sum(v.room_frames for v in self.visits),
+                "total_dwell_frames": sum(v.dwell_frames for v in self.visits),
+                "total_transition_frames": sum(
+                    v.transition_frames for v in self.visits
                 ),
-            )
-            self._open = _OpenVisit(
-                source_room_id=0,
-                room_id=snap.room_id,
-                area_index=snap.area_index,
-                entry_frame=snap.frame,
-                collected_items=snap.collected_items,
-                collected_beams=snap.collected_beams,
-            )
-            self._last_room = snap.room_id
-            return None
-
-        # Completing a transition.
-        if snap.room_id == self._open.room_id:
-            # Returned to same room (failed door / bounce) — cancel leave.
-            self._open.in_transition = False
-            self._open.leave_frame = None
-            self._open.door_transition_at_leave = 0
-            self._last_room = snap.room_id
-            return None
-
-        leave_frame = self._open.leave_frame
-        if leave_frame is None:
-            # Room id changed only after settle without a recorded leave frame
-            # (should be rare); treat leave as the frame just before settle.
-            leave_frame = max(self._open.entry_frame, snap.frame - 1)
-
-        visit = RoomVisit(
-            source_room_id=self._open.source_room_id,
-            room_id=self._open.room_id,
-            dest_room_id=snap.room_id,
-            area_index=self._open.area_index,
-            dest_area_index=snap.area_index,
-            entry_frame=self._open.entry_frame,
-            leave_frame=leave_frame,
-            exit_frame=snap.frame,
-            room_frames=snap.frame - self._open.entry_frame,
-            dwell_frames=leave_frame - self._open.entry_frame,
-            transition_frames=snap.frame - leave_frame,
-            transition_direction=self._open.transition_direction,
-            door_transition_at_leave=self._open.door_transition_at_leave,
-            collected_items=self._open.collected_items,
-            collected_beams=self._open.collected_beams,
-            sequence_index=len(self.visits),
+            },
         )
-        self.visits.append(visit)
-        self._open = _OpenVisit(
-            source_room_id=visit.room_id,
-            room_id=snap.room_id,
-            area_index=snap.area_index,
-            entry_frame=snap.frame,
-            collected_items=snap.collected_items,
-            collected_beams=snap.collected_beams,
-        )
-        self._last_room = snap.room_id
-        return visit
-
-    def _mark_leave(self, snap: TimingSnapshot) -> None:
-        assert self._open is not None
-        self._open.in_transition = True
-        self._open.leave_frame = snap.frame
-        self._open.door_transition_at_leave = snap.door_transition
-        self._open.transition_direction = snap.transition_direction
-
-    def _abandon(
-        self,
-        frame: int,
-        reason: DiscontinuityReason,
-        room_id: int,
-        detail: str,
-    ) -> None:
-        if self._open is not None:
-            self.discontinuities.append(
-                DiscontinuityEvent(
-                    frame=frame,
-                    reason=reason,
-                    room_id=self._open.room_id if self._open.room_id else room_id,
-                    detail=detail,
-                )
-            )
-        elif reason is not DiscontinuityReason.SESSION_END:
-            self.discontinuities.append(
-                DiscontinuityEvent(
-                    frame=frame,
-                    reason=reason,
-                    room_id=room_id,
-                    detail=detail,
-                )
-            )
-        self._open = None
-        self._last_room = 0
-        if reason in {
-            DiscontinuityReason.BOOT_OR_MENU,
-            DiscontinuityReason.FRAME_REGRESSION,
-            DiscontinuityReason.RESET,
-            DiscontinuityReason.DEATH_OR_GAME_OVER,
-        }:
-            self._ever_settled = False
 
 
-def snapshots_from_json(data: Sequence[Mapping[str, Any]] | Mapping[str, Any]) -> list[TimingSnapshot]:
+def snapshots_from_json(
+    data: Sequence[Mapping[str, Any]] | Mapping[str, Any],
+) -> list[TimingSnapshot]:
     """Parse an offline fixture (list of samples or ``{"samples": [...]}``)."""
-    if isinstance(data, Mapping):
-        samples = data.get("samples", data.get("frames", []))
-        if not isinstance(samples, Sequence):
-            raise TypeError("expected samples list in mapping fixture")
-    else:
-        samples = data
-    return [TimingSnapshot.from_mapping(item) for item in samples]
+    return snapshots_from_json_mapping(data, from_mapping=TimingSnapshot.from_mapping)
 
 
 def run_offline(
@@ -537,24 +429,11 @@ def rank_visits(
     key: str = "room_frames",
     limit: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Return visits sorted by a timing field (default total room_frames).
-
-    Useful for spotting the slowest hops on a continuous timing artifact.
-    Accepts :class:`RoomVisit` instances or their ``to_dict()`` payloads.
-    """
-    if key not in {"room_frames", "dwell_frames", "transition_frames"}:
-        raise ValueError(
-            "key must be one of room_frames, dwell_frames, transition_frames"
-        )
-
-    rows: list[dict[str, Any]] = []
-    for visit in visits:
-        if isinstance(visit, RoomVisit):
-            row = visit.to_dict()
-        else:
-            row = dict(visit)
-        rows.append(row)
-    rows.sort(key=lambda row: int(row.get(key, 0)), reverse=True)
-    if limit is not None:
-        return rows[:limit]
-    return rows
+    """Return visits sorted by a timing field (default total room_frames)."""
+    return rank_by_field(
+        visits,
+        key=key,
+        allowed=frozenset({"room_frames", "dwell_frames", "transition_frames"}),
+        to_dict=lambda v: v.to_dict() if isinstance(v, RoomVisit) else dict(v),
+        limit=limit,
+    )

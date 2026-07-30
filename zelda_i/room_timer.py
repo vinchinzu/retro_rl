@@ -19,15 +19,23 @@ location after a non-settled phase (scroll modes 6/7, cave enter 16,
 fanfare 18, etc.). Boot/menu, death, frame rewinds, and location jumps
 without a non-settled phase are discontinuities and do not invent hops.
 
+State machine: :class:`retro_harness.hop_timer.HopTimer`.
+
 Cave play (mode 11) and transition noise are not timed destinations.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Iterable, Mapping, Sequence
+
+from retro_harness.hop_timer import (
+    HopFrame,
+    HopTimer,
+    OpenHop,
+    snapshots_from_json_mapping,
+)
 
 from zelda_i.ram import (
     CAVE_MODE,
@@ -233,21 +241,109 @@ class DiscontinuityEvent:
         }
 
 
-@dataclass
-class _OpenVisit:
-    source_level: int
-    source_screen: int
-    level: int
-    screen: int
-    context: GameContext
-    entry_frame: int
-    sword: int
-    keys: int
-    triforce: int
-    leave_frame: int | None = None
-    mode_at_leave: int = 0
-    next_screen_at_leave: int = 0
-    in_transition: bool = False
+LocationKey = tuple[int, int]
+_LEAVE_KEYS = frozenset({"mode_at_leave", "next_screen_at_leave"})
+
+
+def _make_visit(
+    open_hop: OpenHop[LocationKey],
+    dest: LocationKey,
+    leave_frame: int,
+    exit_frame: int,
+    sequence_index: int,
+    meta: Mapping[str, Any],
+    dest_context: Mapping[str, Any],
+) -> LocationVisit:
+    level, screen = open_hop.location
+    src = open_hop.source or (0, 0)
+    dlevel, dscreen = dest
+    ctx = meta.get("context", GameContext.OVERWORLD)
+    if isinstance(ctx, str):
+        ctx = GameContext(ctx)
+    dctx = dest_context.get("context", context_for_level(dlevel))
+    if isinstance(dctx, str):
+        dctx = GameContext(dctx)
+    return LocationVisit(
+        source_level=src[0],
+        source_screen=src[1],
+        level=level,
+        screen=screen,
+        dest_level=dlevel,
+        dest_screen=dscreen,
+        context=ctx,
+        dest_context=dctx,
+        entry_frame=open_hop.entry_frame,
+        leave_frame=leave_frame,
+        exit_frame=exit_frame,
+        location_frames=exit_frame - open_hop.entry_frame,
+        dwell_frames=leave_frame - open_hop.entry_frame,
+        transition_frames=exit_frame - leave_frame,
+        mode_at_leave=int(meta.get("mode_at_leave", 0)),
+        next_screen_at_leave=int(meta.get("next_screen_at_leave", 0)),
+        sword=int(meta.get("sword", 0)),
+        keys=int(meta.get("keys", 0)),
+        triforce=int(meta.get("triforce", 0)),
+        sequence_index=sequence_index,
+    )
+
+
+def _make_disc(
+    frame: int, reason: str, location: LocationKey, detail: str
+) -> DiscontinuityEvent:
+    try:
+        reason_enum = DiscontinuityReason(reason)
+    except ValueError:
+        reason_enum = DiscontinuityReason.RESET
+    level, screen = location if location else (0, 0)
+    return DiscontinuityEvent(
+        frame=frame, reason=reason_enum, level=level, screen=screen, detail=detail
+    )
+
+
+def _snap_to_hop(snap: TimingSnapshot) -> HopFrame[LocationKey]:
+    loc: LocationKey = (snap.level, snap.screen)
+    ctx = {
+        "context": snap.context,
+        "sword": snap.sword,
+        "keys": snap.keys,
+        "triforce": snap.triforce,
+    }
+    leave_meta = {
+        "mode_at_leave": snap.mode,
+        "next_screen_at_leave": snap.next_screen,
+    }
+
+    if is_boot_or_menu(snap):
+        return HopFrame(
+            frame=snap.frame,
+            location=loc,
+            status="abandon",
+            abandon_reason=DiscontinuityReason.BOOT_OR_MENU.value,
+            abandon_detail=f"mode={snap.mode}",
+        )
+    if is_death(snap):
+        return HopFrame(
+            frame=snap.frame,
+            location=loc,
+            status="abandon",
+            abandon_reason=DiscontinuityReason.DEATH.value,
+            abandon_detail=f"mode={snap.mode}",
+        )
+    if is_settled_play(snap):
+        return HopFrame(
+            frame=snap.frame,
+            location=loc,
+            status="settled",
+            context=ctx,
+        )
+    if is_hit_freeze(snap):
+        return HopFrame(frame=snap.frame, location=loc, status="ignore")
+    return HopFrame(
+        frame=snap.frame,
+        location=loc,
+        status="transition",
+        leave_meta=leave_meta,
+    )
 
 
 @dataclass
@@ -259,11 +355,34 @@ class RoomTimer:
     :attr:`visits`.
     """
 
-    visits: list[LocationVisit] = field(default_factory=list)
-    discontinuities: list[DiscontinuityEvent] = field(default_factory=list)
-    _open: _OpenVisit | None = field(default=None, repr=False)
-    _last_frame: int | None = field(default=None, repr=False)
-    _ever_settled: bool = field(default=False, repr=False)
+    _engine: HopTimer[LocationKey, LocationVisit, DiscontinuityEvent] = field(
+        init=False, repr=False
+    )
+
+    def __post_init__(self) -> None:
+        self._engine = HopTimer(
+            make_visit=_make_visit,
+            make_discontinuity=_make_disc,
+            jump_reason=DiscontinuityReason.LOCATION_JUMP.value,
+            null_location=(0, 0),
+            leave_context_keys=_LEAVE_KEYS,
+            reset_ever_settled_reasons=frozenset(
+                {
+                    DiscontinuityReason.BOOT_OR_MENU.value,
+                    DiscontinuityReason.FRAME_REGRESSION.value,
+                    DiscontinuityReason.RESET.value,
+                    DiscontinuityReason.DEATH.value,
+                }
+            ),
+        )
+
+    @property
+    def visits(self) -> list[LocationVisit]:
+        return self._engine.visits
+
+    @property
+    def discontinuities(self) -> list[DiscontinuityEvent]:
+        return self._engine.discontinuities
 
     def observe(
         self,
@@ -278,9 +397,7 @@ class RoomTimer:
             if frame is None:
                 raise ValueError("frame= is required when observing ZeldaSnapshot")
             snap = TimingSnapshot.from_snapshot(sample, frame=frame)
-        completed = self._observe_snapshot(snap)
-        self._last_frame = snap.frame
-        return completed
+        return self._engine.observe_frame(_snap_to_hop(snap))
 
     def observe_many(
         self,
@@ -299,16 +416,7 @@ class RoomTimer:
 
     def finalize(self, *, frame: int | None = None) -> None:
         """End the session without inventing a synthetic exit hop."""
-        if self._open is None:
-            return
-        end_frame = frame if frame is not None else (self._last_frame or 0)
-        self._abandon(
-            end_frame,
-            DiscontinuityReason.SESSION_END,
-            self._open.level,
-            self._open.screen,
-            "session finalized with open visit",
-        )
+        self._engine.finalize(frame=frame)
 
     def report(
         self,
@@ -317,11 +425,27 @@ class RoomTimer:
         extra: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """JSON-serializable timing session artifact."""
-        payload: dict[str, Any] = {
-            "schema_version": 1,
-            "kind": "zelda_i_screen_room_timing",
-            "timing_unit": "emulator_frames",
-            "timing_semantics": {
+        open_payload = None
+        if self._engine._open is not None:
+            o = self._engine._open
+            level, screen = o.location
+            ctx = o.context.get("context", context_for_level(level))
+            if isinstance(ctx, GameContext):
+                ctx_val = ctx.value
+            else:
+                ctx_val = str(ctx)
+            open_payload = {
+                "level": level,
+                "screen": screen,
+                "screen_hex": f"0x{screen:02X}",
+                "context": ctx_val,
+                "entry_frame": o.entry_frame,
+                "in_transition": o.in_transition,
+                "leave_frame": o.leave_frame,
+            }
+        return self._engine.report_base(
+            kind="zelda_i_screen_room_timing",
+            timing_semantics={
                 "frame_basis": (
                     "stable-retro env.step frames (nominal 60 Hz NTSC); "
                     "not wall-clock and not official IGT/lag counters"
@@ -339,243 +463,26 @@ class RoomTimer:
                     "(6/7/16) as destinations, hit freeze (8) as leave, death (17)"
                 ),
             },
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "source": source,
-            "visit_count": len(self.visits),
-            "discontinuity_count": len(self.discontinuities),
-            "visits": [visit.to_dict() for visit in self.visits],
-            "discontinuities": [event.to_dict() for event in self.discontinuities],
-            "open_visit": None
-            if self._open is None
-            else {
-                "level": self._open.level,
-                "screen": self._open.screen,
-                "screen_hex": f"0x{self._open.screen:02X}",
-                "context": self._open.context.value,
-                "entry_frame": self._open.entry_frame,
-                "in_transition": self._open.in_transition,
-                "leave_frame": self._open.leave_frame,
-            },
-            "total_location_frames": sum(v.location_frames for v in self.visits),
-            "total_dwell_frames": sum(v.dwell_frames for v in self.visits),
-            "total_transition_frames": sum(v.transition_frames for v in self.visits),
-        }
-        if extra:
-            payload["extra"] = dict(extra)
-        return payload
-
-    # --- internals ---------------------------------------------------------
-
-    def _observe_snapshot(self, snap: TimingSnapshot) -> LocationVisit | None:
-        if self._last_frame is not None and snap.frame < self._last_frame:
-            self._abandon(
-                snap.frame,
-                DiscontinuityReason.FRAME_REGRESSION,
-                snap.level,
-                snap.screen,
-                f"frame {snap.frame} < previous {self._last_frame}",
-            )
-            # Fall through: may re-anchor if settled after load.
-
-        if is_boot_or_menu(snap):
-            if self._open is not None or self._ever_settled:
-                self._abandon(
-                    snap.frame,
-                    DiscontinuityReason.BOOT_OR_MENU,
-                    snap.level,
-                    snap.screen,
-                    f"mode={snap.mode}",
-                )
-            return None
-
-        if is_death(snap):
-            if self._open is not None:
-                self._abandon(
-                    snap.frame,
-                    DiscontinuityReason.DEATH,
-                    snap.level,
-                    snap.screen,
-                    f"mode={snap.mode}",
-                )
-            return None
-
-        if is_settled_play(snap):
-            return self._on_settled(snap)
-
-        # Hit freeze: still dwelling in the same room; do not mark leave.
-        if is_hit_freeze(snap):
-            return None
-
-        # Non-settled (scroll, cave enter/play, triforce fanfare, other modes).
-        if self._open is not None and not self._open.in_transition:
-            self._mark_leave(snap)
-        elif self._open is not None and self._open.in_transition:
-            # Prefer non-zero next_screen once known during the transition.
-            if not self._open.next_screen_at_leave and snap.next_screen:
-                self._open.next_screen_at_leave = snap.next_screen
-        return None
-
-    def _on_settled(self, snap: TimingSnapshot) -> LocationVisit | None:
-        self._ever_settled = True
-        key = snap.location_key
-
-        if self._open is None:
-            self._open = _OpenVisit(
-                source_level=0,
-                source_screen=0,
-                level=snap.level,
-                screen=snap.screen,
-                context=snap.context,
-                entry_frame=snap.frame,
-                sword=snap.sword,
-                keys=snap.keys,
-                triforce=snap.triforce,
-            )
-            return None
-
-        open_key = (self._open.level, self._open.screen)
-
-        if not self._open.in_transition:
-            if key == open_key:
-                self._open.sword = snap.sword
-                self._open.keys = snap.keys
-                self._open.triforce = snap.triforce
-                return None
-            # Settled in a different location without a non-settled phase:
-            # save-state load, warp, or other discontinuity.
-            self._abandon(
-                snap.frame,
-                DiscontinuityReason.LOCATION_JUMP,
-                snap.level,
-                snap.screen,
-                (
-                    f"({self._open.level},0x{self._open.screen:02X}) -> "
-                    f"({snap.level},0x{snap.screen:02X}) while settled "
-                    "(no transition phase)"
+            source=source,
+            extra=extra,
+            open_visit_payload=open_payload,
+            visit_to_dict=lambda v: v.to_dict(),
+            disc_to_dict=lambda d: d.to_dict(),
+            totals={
+                "total_location_frames": sum(v.location_frames for v in self.visits),
+                "total_dwell_frames": sum(v.dwell_frames for v in self.visits),
+                "total_transition_frames": sum(
+                    v.transition_frames for v in self.visits
                 ),
-            )
-            self._open = _OpenVisit(
-                source_level=0,
-                source_screen=0,
-                level=snap.level,
-                screen=snap.screen,
-                context=snap.context,
-                entry_frame=snap.frame,
-                sword=snap.sword,
-                keys=snap.keys,
-                triforce=snap.triforce,
-            )
-            return None
-
-        # Completing a transition.
-        if key == open_key:
-            # Returned to same location (failed door / cave bounce) — cancel leave.
-            # Refresh inventory (e.g. sword cave exit onto the same overworld screen).
-            self._open.in_transition = False
-            self._open.leave_frame = None
-            self._open.mode_at_leave = 0
-            self._open.next_screen_at_leave = 0
-            self._open.sword = snap.sword
-            self._open.keys = snap.keys
-            self._open.triforce = snap.triforce
-            return None
-
-        leave_frame = self._open.leave_frame
-        if leave_frame is None:
-            leave_frame = max(self._open.entry_frame, snap.frame - 1)
-
-        visit = LocationVisit(
-            source_level=self._open.source_level,
-            source_screen=self._open.source_screen,
-            level=self._open.level,
-            screen=self._open.screen,
-            dest_level=snap.level,
-            dest_screen=snap.screen,
-            context=self._open.context,
-            dest_context=snap.context,
-            entry_frame=self._open.entry_frame,
-            leave_frame=leave_frame,
-            exit_frame=snap.frame,
-            location_frames=snap.frame - self._open.entry_frame,
-            dwell_frames=leave_frame - self._open.entry_frame,
-            transition_frames=snap.frame - leave_frame,
-            mode_at_leave=self._open.mode_at_leave,
-            next_screen_at_leave=self._open.next_screen_at_leave,
-            sword=self._open.sword,
-            keys=self._open.keys,
-            triforce=self._open.triforce,
-            sequence_index=len(self.visits),
+            },
         )
-        self.visits.append(visit)
-        self._open = _OpenVisit(
-            source_level=visit.level,
-            source_screen=visit.screen,
-            level=snap.level,
-            screen=snap.screen,
-            context=snap.context,
-            entry_frame=snap.frame,
-            sword=snap.sword,
-            keys=snap.keys,
-            triforce=snap.triforce,
-        )
-        return visit
-
-    def _mark_leave(self, snap: TimingSnapshot) -> None:
-        assert self._open is not None
-        self._open.in_transition = True
-        self._open.leave_frame = snap.frame
-        self._open.mode_at_leave = snap.mode
-        self._open.next_screen_at_leave = snap.next_screen
-
-    def _abandon(
-        self,
-        frame: int,
-        reason: DiscontinuityReason,
-        level: int,
-        screen: int,
-        detail: str,
-    ) -> None:
-        if self._open is not None:
-            self.discontinuities.append(
-                DiscontinuityEvent(
-                    frame=frame,
-                    reason=reason,
-                    level=self._open.level,
-                    screen=self._open.screen,
-                    detail=detail,
-                )
-            )
-        elif reason is not DiscontinuityReason.SESSION_END:
-            self.discontinuities.append(
-                DiscontinuityEvent(
-                    frame=frame,
-                    reason=reason,
-                    level=level,
-                    screen=screen,
-                    detail=detail,
-                )
-            )
-        self._open = None
-        if reason in {
-            DiscontinuityReason.BOOT_OR_MENU,
-            DiscontinuityReason.FRAME_REGRESSION,
-            DiscontinuityReason.RESET,
-            DiscontinuityReason.DEATH,
-        }:
-            self._ever_settled = False
 
 
 def snapshots_from_json(
     data: Sequence[Mapping[str, Any]] | Mapping[str, Any],
 ) -> list[TimingSnapshot]:
     """Parse an offline fixture (list of samples or ``{"samples": [...]}``)."""
-    if isinstance(data, Mapping):
-        samples = data.get("samples", data.get("frames", []))
-        if not isinstance(samples, Sequence) or isinstance(samples, (str, bytes)):
-            raise TypeError("expected samples list in mapping fixture")
-    else:
-        samples = data
-    return [TimingSnapshot.from_mapping(item) for item in samples]
+    return snapshots_from_json_mapping(data, from_mapping=TimingSnapshot.from_mapping)
 
 
 def run_offline(
@@ -597,6 +504,7 @@ def run_offline(
     else:
         timer.finalize()
     return timer.report(source=source)
+
 
 
 def bottleneck_visits(

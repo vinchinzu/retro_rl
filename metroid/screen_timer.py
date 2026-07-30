@@ -24,6 +24,8 @@ Boot/title, death (zero energy after play), frame rewinds/loads, and
 non-adjacent map jumps while settled are discontinuities and do not produce
 timing records.
 
+State machine: :class:`retro_harness.hop_timer.HopTimer`.
+
 Map identity is the Brinstar-style cell ``(map_x, map_y)`` from system RAM
 ``$50`` / ``$4F`` — the same coordinates used by ``brinstar.py`` and route
 stop predicates.
@@ -32,9 +34,15 @@ stop predicates.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Iterable, Mapping, Sequence
+
+from retro_harness.hop_timer import (
+    HopFrame,
+    HopTimer,
+    OpenHop,
+    snapshots_from_json_mapping,
+)
 
 from metroid.ram import (
     ENGINE_GAME,
@@ -283,21 +291,100 @@ class DiscontinuityEvent:
         }
 
 
-@dataclass
-class _OpenVisit:
-    source_map_x: int
-    source_map_y: int
-    map_x: int
-    map_y: int
-    area: int
-    entry_frame: int
-    equipment: int
-    missiles: int
-    missile_capacity: int
-    energy_tanks: int
-    leave_frame: int | None = None
-    in_door_at_leave: int = 0
-    in_transition: bool = False
+MapCell = tuple[int, int]
+_LEAVE_KEYS = frozenset({"in_door_at_leave"})
+
+
+def _make_visit(
+    open_hop: OpenHop[MapCell],
+    dest: MapCell,
+    leave_frame: int,
+    exit_frame: int,
+    sequence_index: int,
+    meta: Mapping[str, Any],
+    dest_context: Mapping[str, Any],
+) -> ScreenVisit:
+    mx, my = open_hop.location
+    src = open_hop.source or (0, 0)
+    dx, dy = dest
+    return ScreenVisit(
+        source_map_x=src[0],
+        source_map_y=src[1],
+        map_x=mx,
+        map_y=my,
+        dest_map_x=dx,
+        dest_map_y=dy,
+        area=int(meta.get("area", 0)),
+        dest_area=int(dest_context.get("area", 0)),
+        entry_frame=open_hop.entry_frame,
+        leave_frame=leave_frame,
+        exit_frame=exit_frame,
+        screen_frames=exit_frame - open_hop.entry_frame,
+        dwell_frames=leave_frame - open_hop.entry_frame,
+        transition_frames=exit_frame - leave_frame,
+        in_door_at_leave=int(meta.get("in_door_at_leave", 0)),
+        equipment=int(meta.get("equipment", 0)),
+        missiles=int(meta.get("missiles", 0)),
+        missile_capacity=int(meta.get("missile_capacity", 0)),
+        energy_tanks=int(meta.get("energy_tanks", 0)),
+        sequence_index=sequence_index,
+    )
+
+
+def _make_disc(
+    frame: int, reason: str, location: MapCell, detail: str
+) -> DiscontinuityEvent:
+    try:
+        reason_enum = DiscontinuityReason(reason)
+    except ValueError:
+        reason_enum = DiscontinuityReason.LOAD
+    mx, my = location if location else (0, 0)
+    return DiscontinuityEvent(
+        frame=frame, reason=reason_enum, map_x=mx, map_y=my, detail=detail
+    )
+
+
+def _snap_to_hop(snap: TimingSnapshot) -> HopFrame[MapCell]:
+    loc: MapCell = (snap.map_x, snap.map_y)
+    ctx = {
+        "area": snap.area,
+        "equipment": snap.equipment,
+        "missiles": snap.missiles,
+        "missile_capacity": snap.missile_capacity,
+        "energy_tanks": snap.energy_tanks,
+    }
+    leave_meta = {"in_door_at_leave": snap.in_door}
+
+    if is_boot_or_menu(snap):
+        return HopFrame(
+            frame=snap.frame,
+            location=loc,
+            status="abandon",
+            abandon_reason=DiscontinuityReason.BOOT_OR_MENU.value,
+            abandon_detail=f"engine_mode={snap.engine_mode}",
+        )
+    if is_dead_energy(snap):
+        return HopFrame(
+            frame=snap.frame,
+            location=loc,
+            status="abandon",
+            abandon_reason=DiscontinuityReason.DEATH_OR_RESET.value,
+            # Metroid abandons when open OR ever_settled
+            abandon_detail="ever:health_lo=0 health_hi=0",
+        )
+    if is_settled_play(snap):
+        return HopFrame(
+            frame=snap.frame,
+            location=loc,
+            status="settled",
+            context=ctx,
+        )
+    return HopFrame(
+        frame=snap.frame,
+        location=loc,
+        status="transition",
+        leave_meta=leave_meta,
+    )
 
 
 @dataclass
@@ -309,11 +396,53 @@ class ScreenTimer:
     accumulate in :attr:`visits`.
     """
 
-    visits: list[ScreenVisit] = field(default_factory=list)
-    discontinuities: list[DiscontinuityEvent] = field(default_factory=list)
-    _open: _OpenVisit | None = field(default=None, repr=False)
-    _last_frame: int | None = field(default=None, repr=False)
-    _ever_settled: bool = field(default=False, repr=False)
+    _engine: HopTimer[MapCell, ScreenVisit, DiscontinuityEvent] = field(
+        init=False, repr=False
+    )
+
+    def __post_init__(self) -> None:
+        self._engine = HopTimer(
+            make_visit=_make_visit,
+            make_discontinuity=_make_disc,
+            seamless_allowed=lambda a, b: map_cells_adjacent(a[0], a[1], b[0], b[1]),
+            jump_reason=DiscontinuityReason.MAP_JUMP.value,
+            null_location=(0, 0),
+            leave_context_keys=_LEAVE_KEYS,
+            reset_ever_settled_reasons=frozenset(
+                {
+                    DiscontinuityReason.BOOT_OR_MENU.value,
+                    DiscontinuityReason.FRAME_REGRESSION.value,
+                    DiscontinuityReason.DEATH_OR_RESET.value,
+                    DiscontinuityReason.LOAD.value,
+                }
+            ),
+        )
+
+    @property
+    def visits(self) -> list[ScreenVisit]:
+        return self._engine.visits
+
+    @property
+    def discontinuities(self) -> list[DiscontinuityEvent]:
+        return self._engine.discontinuities
+
+    @property
+    def _open(self):
+        """Compatibility shim for session helpers that inspect open visits."""
+        eng = self._engine._open
+        if eng is None:
+            return None
+        # Duck-type fields used by screen_timing_session.
+        mx, my = eng.location
+
+        class _Compat:
+            map_x = mx
+            map_y = my
+            entry_frame = eng.entry_frame
+            leave_frame = eng.leave_frame
+            in_transition = eng.in_transition
+
+        return _Compat()
 
     def observe(
         self,
@@ -334,9 +463,7 @@ class ScreenTimer:
                     "observe(MetroidSnapshot) requires frame= emulator index"
                 )
             snap = TimingSnapshot.from_snapshot(sample, frame=frame)
-        completed = self._observe_snapshot(snap)
-        self._last_frame = snap.frame
-        return completed
+        return self._engine.observe_frame(_snap_to_hop(snap))
 
     def observe_many(
         self,
@@ -355,16 +482,7 @@ class ScreenTimer:
 
     def finalize(self, *, frame: int | None = None) -> None:
         """End the session without inventing a synthetic exit hop."""
-        if self._open is None:
-            return
-        end_frame = frame if frame is not None else (self._last_frame or 0)
-        self._abandon(
-            end_frame,
-            DiscontinuityReason.SESSION_END,
-            self._open.map_x,
-            self._open.map_y,
-            "session finalized with open visit",
-        )
+        self._engine.finalize(frame=frame)
 
     def report(
         self,
@@ -373,11 +491,21 @@ class ScreenTimer:
         extra: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """JSON-serializable timing session artifact."""
-        payload: dict[str, Any] = {
-            "schema_version": 1,
-            "kind": "metroid_screen_timing",
-            "timing_unit": "emulator_frames",
-            "timing_semantics": {
+        open_payload = None
+        if self._engine._open is not None:
+            o = self._engine._open
+            mx, my = o.location
+            open_payload = {
+                "map_x": mx,
+                "map_y": my,
+                "map_cell": [mx, my],
+                "entry_frame": o.entry_frame,
+                "in_transition": o.in_transition,
+                "leave_frame": o.leave_frame,
+            }
+        return self._engine.report_base(
+            kind="metroid_screen_timing",
+            timing_semantics={
                 "frame_basis": (
                     "stable-retro env.step frames (nominal 60 Hz NTSC); "
                     "not wall-clock and not IGT/lag counters"
@@ -399,256 +527,26 @@ class ScreenTimer:
                 "transition_frames": "exit_frame - leave_frame (door/load; 0 if seamless)",
                 "igt_or_lag": False,
             },
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "source": source,
-            "visit_count": len(self.visits),
-            "discontinuity_count": len(self.discontinuities),
-            "visits": [visit.to_dict() for visit in self.visits],
-            "discontinuities": [event.to_dict() for event in self.discontinuities],
-            "open_visit": None
-            if self._open is None
-            else {
-                "map_x": self._open.map_x,
-                "map_y": self._open.map_y,
-                "map_cell": [self._open.map_x, self._open.map_y],
-                "entry_frame": self._open.entry_frame,
-                "in_transition": self._open.in_transition,
-                "leave_frame": self._open.leave_frame,
-            },
-            "total_screen_frames": sum(v.screen_frames for v in self.visits),
-            "total_dwell_frames": sum(v.dwell_frames for v in self.visits),
-            "total_transition_frames": sum(
-                v.transition_frames for v in self.visits
-            ),
-        }
-        if extra:
-            payload["extra"] = dict(extra)
-        return payload
-
-    # --- internals ---------------------------------------------------------
-
-    def _observe_snapshot(self, snap: TimingSnapshot) -> ScreenVisit | None:
-        if self._last_frame is not None and snap.frame < self._last_frame:
-            self._abandon(
-                snap.frame,
-                DiscontinuityReason.FRAME_REGRESSION,
-                snap.map_x,
-                snap.map_y,
-                f"frame {snap.frame} < previous {self._last_frame}",
-            )
-            # Fall through: may re-anchor if settled after load.
-
-        if is_boot_or_menu(snap):
-            if self._open is not None or self._ever_settled:
-                self._abandon(
-                    snap.frame,
-                    DiscontinuityReason.BOOT_OR_MENU,
-                    snap.map_x,
-                    snap.map_y,
-                    f"engine_mode={snap.engine_mode}",
-                )
-            return None
-
-        if is_dead_energy(snap):
-            if self._open is not None or self._ever_settled:
-                self._abandon(
-                    snap.frame,
-                    DiscontinuityReason.DEATH_OR_RESET,
-                    snap.map_x,
-                    snap.map_y,
-                    "health_lo=0 health_hi=0",
-                )
-            return None
-
-        if is_settled_play(snap):
-            return self._on_settled(snap)
-
-        # Non-settled play (door, pause, fanfare, intro, unknown).
-        if self._open is not None and not self._open.in_transition:
-            self._mark_leave(snap)
-        return None
-
-    def _on_settled(self, snap: TimingSnapshot) -> ScreenVisit | None:
-        self._ever_settled = True
-
-        if self._open is None:
-            self._open = _OpenVisit(
-                source_map_x=0,
-                source_map_y=0,
-                map_x=snap.map_x,
-                map_y=snap.map_y,
-                area=snap.area,
-                entry_frame=snap.frame,
-                equipment=snap.equipment,
-                missiles=snap.missiles,
-                missile_capacity=snap.missile_capacity,
-                energy_tanks=snap.energy_tanks,
-            )
-            return None
-
-        same_cell = (
-            snap.map_x == self._open.map_x and snap.map_y == self._open.map_y
-        )
-
-        if not self._open.in_transition:
-            if same_cell:
-                self._open.equipment = snap.equipment
-                self._open.missiles = snap.missiles
-                self._open.missile_capacity = snap.missile_capacity
-                self._open.energy_tanks = snap.energy_tanks
-                return None
-            # Adjacent settled cells: seamless multi-screen scroll (in_door may
-            # stay 0 for corridor screens). Non-adjacent = load/warp jump.
-            if map_cells_adjacent(
-                self._open.map_x, self._open.map_y, snap.map_x, snap.map_y
-            ):
-                return self._complete_visit(
-                    snap,
-                    leave_frame=snap.frame,
-                    in_door_at_leave=0,
-                )
-            self._abandon(
-                snap.frame,
-                DiscontinuityReason.MAP_JUMP,
-                snap.map_x,
-                snap.map_y,
-                (
-                    f"map ({self._open.map_x},{self._open.map_y}) -> "
-                    f"({snap.map_x},{snap.map_y}) while settled "
-                    "(non-adjacent; no door/leave phase)"
+            source=source,
+            extra=extra,
+            open_visit_payload=open_payload,
+            visit_to_dict=lambda v: v.to_dict(),
+            disc_to_dict=lambda d: d.to_dict(),
+            totals={
+                "total_screen_frames": sum(v.screen_frames for v in self.visits),
+                "total_dwell_frames": sum(v.dwell_frames for v in self.visits),
+                "total_transition_frames": sum(
+                    v.transition_frames for v in self.visits
                 ),
-            )
-            self._open = _OpenVisit(
-                source_map_x=0,
-                source_map_y=0,
-                map_x=snap.map_x,
-                map_y=snap.map_y,
-                area=snap.area,
-                entry_frame=snap.frame,
-                equipment=snap.equipment,
-                missiles=snap.missiles,
-                missile_capacity=snap.missile_capacity,
-                energy_tanks=snap.energy_tanks,
-            )
-            return None
-
-        # Completing a transition after a leave phase.
-        if same_cell:
-            # Bounce / pause return — cancel leave.
-            self._open.in_transition = False
-            self._open.leave_frame = None
-            self._open.in_door_at_leave = 0
-            return None
-
-        leave_frame = self._open.leave_frame
-        if leave_frame is None:
-            leave_frame = max(self._open.entry_frame, snap.frame - 1)
-        return self._complete_visit(
-            snap,
-            leave_frame=leave_frame,
-            in_door_at_leave=self._open.in_door_at_leave,
+            },
         )
-
-    def _complete_visit(
-        self,
-        snap: TimingSnapshot,
-        *,
-        leave_frame: int,
-        in_door_at_leave: int,
-    ) -> ScreenVisit:
-        assert self._open is not None
-        visit = ScreenVisit(
-            source_map_x=self._open.source_map_x,
-            source_map_y=self._open.source_map_y,
-            map_x=self._open.map_x,
-            map_y=self._open.map_y,
-            dest_map_x=snap.map_x,
-            dest_map_y=snap.map_y,
-            area=self._open.area,
-            dest_area=snap.area,
-            entry_frame=self._open.entry_frame,
-            leave_frame=leave_frame,
-            exit_frame=snap.frame,
-            screen_frames=snap.frame - self._open.entry_frame,
-            dwell_frames=leave_frame - self._open.entry_frame,
-            transition_frames=snap.frame - leave_frame,
-            in_door_at_leave=in_door_at_leave,
-            equipment=self._open.equipment,
-            missiles=self._open.missiles,
-            missile_capacity=self._open.missile_capacity,
-            energy_tanks=self._open.energy_tanks,
-            sequence_index=len(self.visits),
-        )
-        self.visits.append(visit)
-        self._open = _OpenVisit(
-            source_map_x=visit.map_x,
-            source_map_y=visit.map_y,
-            map_x=snap.map_x,
-            map_y=snap.map_y,
-            area=snap.area,
-            entry_frame=snap.frame,
-            equipment=snap.equipment,
-            missiles=snap.missiles,
-            missile_capacity=snap.missile_capacity,
-            energy_tanks=snap.energy_tanks,
-        )
-        return visit
-
-    def _mark_leave(self, snap: TimingSnapshot) -> None:
-        assert self._open is not None
-        self._open.in_transition = True
-        self._open.leave_frame = snap.frame
-        self._open.in_door_at_leave = snap.in_door
-
-    def _abandon(
-        self,
-        frame: int,
-        reason: DiscontinuityReason,
-        map_x: int,
-        map_y: int,
-        detail: str,
-    ) -> None:
-        if self._open is not None:
-            self.discontinuities.append(
-                DiscontinuityEvent(
-                    frame=frame,
-                    reason=reason,
-                    map_x=self._open.map_x if self._open.map_x else map_x,
-                    map_y=self._open.map_y if self._open.map_y else map_y,
-                    detail=detail,
-                )
-            )
-        elif reason is not DiscontinuityReason.SESSION_END:
-            self.discontinuities.append(
-                DiscontinuityEvent(
-                    frame=frame,
-                    reason=reason,
-                    map_x=map_x,
-                    map_y=map_y,
-                    detail=detail,
-                )
-            )
-        self._open = None
-        if reason in {
-            DiscontinuityReason.BOOT_OR_MENU,
-            DiscontinuityReason.FRAME_REGRESSION,
-            DiscontinuityReason.DEATH_OR_RESET,
-            DiscontinuityReason.LOAD,
-        }:
-            self._ever_settled = False
 
 
 def snapshots_from_json(
     data: Sequence[Mapping[str, Any]] | Mapping[str, Any],
 ) -> list[TimingSnapshot]:
     """Parse an offline fixture (list of samples or ``{"samples": [...]}``)."""
-    if isinstance(data, Mapping):
-        samples = data.get("samples", data.get("frames", []))
-        if not isinstance(samples, Sequence) or isinstance(samples, (str, bytes)):
-            raise TypeError("expected samples list in mapping fixture")
-    else:
-        samples = data
-    return [TimingSnapshot.from_mapping(item) for item in samples]
+    return snapshots_from_json_mapping(data, from_mapping=TimingSnapshot.from_mapping)
 
 
 def run_offline(
