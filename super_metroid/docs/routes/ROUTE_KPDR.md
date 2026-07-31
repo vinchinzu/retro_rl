@@ -91,20 +91,20 @@ Labels: **continuous** | **dev controller** | **dev warp** | **open**.
 |-------|-------|
 | Status | **continuous** |
 | Span | Ceres → Morph → Missiles → Bombs/Torizo → Terminator ET → Spore → Super capacity 0→5 |
-| Evidence | `recordings/start_to_supers.{mp4,json}` |
+| Evidence | `recordings/start_to_supers.json` (prefix of red-tower run) |
 | Walkthrough | Project: [START_TO_SPORE_SPAWN.md](START_TO_SPORE_SPAWN.md); wiki KPDR Crateria/Blue Brinstar |
 
 ---
 
-### K1 — Super exit → Charge → main shaft → GHZ → Noob → Red Tower
+### K1 — Super exit → main shaft → GHZ → Noob → Red Tower (done continuous)
 
 | Field | Value |
 |-------|-------|
-| Status | **partial** — Super→farm→Big Pink main **dev controller**; direct natural Big Pink→GHZ→Noob→Red controller-complete; Charge return open |
-| Rooms | `0x9B5B` → `0xA0A4` → `0x9D19` (Charge Chozo ~[37,118]) → green Super door → `0x9E52` GHZ → `0x9FBA` Noob → `0xA253` Red Tower |
-| Code today | `post_spore_controller` through main shaft; `kpdr_controller` for natural Big Pink→GHZ→Noob→Red |
-| Parked | Pink PB door/maze (`0x9E11`) — not required for this segment |
-| ★ Remaining K1 work | Charge collects naturally, but a conventional return to the main line is not route-ready. The direct Big Pink→GHZ route does not require an infinite bomb jump |
+| Status | **continuous** (Charge return still open as optional side trip) |
+| Rooms | `0x9B5B` → `0xA0A4` → `0x9D19` main → `0x9E52` GHZ → `0x9FBA` Noob → `0xA253` Red Tower |
+| Evidence | `recordings/start_to_red_tower.json` (**80,445** frames, integrity green) |
+| Code | `run_to("red_tower")` / `play_start_to_red_tower` / `routes/kpdr/` Super→farm→Big Pink main→GHZ→Noob→Red |
+| Parked | Pink PB door/maze (`0x9E11`); Charge conventional return |
 | Walkthrough | Wiki KPDR “Green/Pink/Red Brinstar & Kraid’s Lair” (through Red Tower) |
 
 ```bash
@@ -123,13 +123,14 @@ uv run python super_metroid/scripts/probe/kpdr.py pure noob-to-red \
 
 | Field | Value |
 |-------|-------|
-| Status | **controller-dev through natural Kraid-room entry** |
-| Path | Red Tower → Warehouse `0xA6A1` → Business `0xA7DE` → Hi-Jump Shaft `0xAA41` → Hi-Jump Room `0xA9E5` → collect → reverse to Warehouse → Zeela → Kihunter → Baby Kraid → Eye Door → Kraid `0xA59F` |
-| Controller evidence | Red→Warehouse: 2,929f. Warehouse→Hi-Jump→Warehouse→Kraid: **15,356f**, one composed controller-only probe with no intermediate state load |
+| Status | **continuous through Warehouse Entrance (K2.6)**; remainder controller-dev through natural Kraid entry |
+| Path | Red Tower → Bat `0xA3DD` → Below Spazer `0xA408` → tunnels → Warehouse `0xA6A1` → Business `0xA7DE` → Hi-Jump Shaft `0xAA41` → Hi-Jump Room `0xA9E5` → collect → reverse to Warehouse → Zeela → Kihunter → Baby Kraid → Eye Door → Kraid `0xA59F` |
+| Continuous evidence | Below→Warehouse: `recordings/start_to_warehouse.json` (**83,512** frames, integrity green); `run_to("warehouse")`. Prefixes: Bat 81,652f; Below Spazer 82,300f |
+| Controller evidence | Red→Warehouse pure: 2,929f. Warehouse→Hi-Jump→Warehouse→Kraid: **15,356f**, one composed controller-only probe with no intermediate state load |
 | Item evidence | Hi-Jump E-Tank and Boots are collected from their real PLMs; Boots set item bit `0x0100` (`items=0x1104`) |
 | Return technique | Intended Hi-Jump ledges in the left shaft, then ordinary bombs through the top morph tunnel; **no infinite bomb jumps** |
 | Warehouse technique | After returning with Hi-Jump, crouch/stand/tiny-hop Supers open the three-block wall and one Hi-Jump reaches the upper-right Zeela door |
-| Continuous need | Compose K2 after the continuous K1 predecessor; no room, item, door, or progression writes |
+| Continuous need | Compose Warehouse→Hi-Jump→Kraid after the continuous Warehouse predecessor; no room, item, door, or progression writes |
 | Walkthrough | [Hi Jump Boots Room](https://wiki.supermetroid.run/Hi_Jump_Boots_Room); Wiki KPDR Kraid section; room pages Warehouse / Baby Kraid / Kraid |
 
 ```bash
@@ -146,10 +147,13 @@ uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
 
 | Field | Value |
 |-------|-------|
-| Status | Natural room entry **controller-dev**; fight is **dev only** |
-| Path | Kraid room `0xA59F` → natural fight → rear door → Varia Room `0xA6E2` → real Varia PLM |
-| Dev | `dev_kraid_defeated`, `dev_varia_equipped_dev` are diagnostics, not route evidence |
-| ★ Current boundary | Compose the existing Kraid combat policy from the natural K2 entry, then collect Varia without progression writes |
+| Status | **Boss-only policy complete** from doorway entry; not yet on continuous power-on |
+| Path | Kraid room `0xA59F` → Super-spray fight → rear door → Varia Room `0xA6E2` → real Varia PLM |
+| Code | `combat/kraid.py` (`play_kraid_fight_to_varia`); KPDR segment `kraid_entry_to_varia` |
+| Probe | `scripts/probe/kraid_combat.py varia --state entry` → `debug/kraid_varia_run.json` |
+| Measured (`eye_hj_kraid_entry`) | body 0 ~1321f · boss bit ~1520f · Varia room ~1756f · Varia bit ~1908f · energy restored 0 |
+| Dev | `dev_kraid_defeated`, `dev_varia_equipped_dev` remain diagnostics, not route evidence |
+| ★ Next | Wire after natural `play_eye_to_kraid` on the continuous KPDR predecessor |
 | Walkthrough | Wiki Kraid fight and Varia Suit room pages |
 
 ---
@@ -312,14 +316,18 @@ When watching a tutorial that uses **Early Supers mockball**, substitute our **S
 - [ ] K1: Charge collect controller
 - [x] K1: GHZ + Noob + Red Tower entry by controller-only play
 - [x] K1: natural Big Pink approach to GHZ
+- [x] K1: continuous power-on → Red Tower
+- [x] K2.0: continuous power-on → Bat Room (Red Tower descent)
+- [x] K2.1: continuous power-on → Below Spazer (Bat platforms)
 - [x] K2: Red Tower → Warehouse Entrance controller-only
 - [x] K2: Warehouse → Hi-Jump E-Tank + Boots from real PLMs
 - [x] K2: Hi-Jump → Warehouse return with ordinary jumps/bombs; no IBJ
 - [x] K2: Warehouse → Kraid natural entry
+- [ ] K2: continuous Below Spazer → Warehouse → Hi-Jump → Kraid
 - [ ] K3: Kraid fight + rear door + Varia PLM
 - [ ] K4: Speed / Wave / Ice
 - [ ] K5: Alpha PB collect
 - [ ] K6: Moat / Ocean / WS / Phantoon / Gravity by play
 - [ ] K7–K9: Maridia → Ridley → Tourian / escape
-- [ ] Promote each segment to continuous suffix when predecessor is continuous
+- [ ] Promote each remaining K2 segment to continuous suffix
 - [ ] Optionally regenerate path board notes to label KPDR order vs hop-table order

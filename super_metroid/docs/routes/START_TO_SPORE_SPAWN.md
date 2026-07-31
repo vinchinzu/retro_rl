@@ -8,7 +8,7 @@ From the repository root:
 uv run python super_metroid/scripts/setup_rom.py
 uv run python super_metroid/scripts/export/spore_spawn_plan.py
 uv run python super_metroid/scripts/export/progression_map.py
-uv run python super_metroid/scripts/record/start_to_spore_spawn.py
+uv run python super_metroid/scripts/record/continuous.py --to spore
 uv run python super_metroid/scripts/verify/start_to_spore_spawn.py
 ```
 
@@ -89,7 +89,7 @@ controller only after the verified power-on-through-Bomb-Torizo prefix.
 
 Prior video `recordings/start_to_spore_spawn.mp4` (91,220 frames) still shows
 the old slow fight; re-encode with
-`uv run python super_metroid/scripts/record/start_to_spore_spawn.py` when a
+`uv run python super_metroid/scripts/record/continuous.py --to spore` when a
 matching video baseline is needed.
 
 `recordings/start_to_spore_spawn.verify.json` independently re-hashes the ROM,

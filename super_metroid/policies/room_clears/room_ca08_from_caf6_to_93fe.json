@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_ca08_from_caf6_to_93fe",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Wrecked Ship Entrance (0xCA08); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA1F8",
+    "entrySourceRoomIdHex": "0xCAF6",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      47,
+      7
+    ],
+    "doorPtr": 41464,
+    "entrySourceRoomId": 51958
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 51958,
+      "sourceRoomIdHex": "0xCAF6",
+      "endpoint": {
+        "roomId": 51720,
+        "roomIdHex": "0xCA08",
+        "logicalRoomId": 154,
+        "nodeId": 2,
+        "nodeName": "Wrecked Ship Entrance Right Door (to Main Shaft)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 37886,
+      "targetRoomIdHex": "0x93FE",
+      "endpoint": {
+        "roomId": 51720,
+        "roomIdHex": "0xCA08",
+        "logicalRoomId": 154,
+        "nodeId": 1,
+        "nodeName": "Wrecked Ship Entrance Left Door (to West Ocean)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        47,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 46,
+      "waypointsBlocks": [
+        [
+          47,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-30T22:46:54.610541+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_ca08_from_caf6_to_93fe.json",
+    "reportSha256": "f3194e413e100466ea1927a40ee44a36fb4b6a1e7f21c8d0205896e0be59069e",
+    "stateSha256": "9f10208a8bdb8487c7f9ee235a69807c21a3f6a45e35cad16065b85a9ca2066b",
+    "policySha256Before": "ee0c4f6f9f5f7a54636bb7a3b13fc4b18a7f2de1ce473adf9d13c0dd6608a659"
+  }
+}

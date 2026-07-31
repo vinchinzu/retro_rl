@@ -8,7 +8,7 @@ From the repository root:
 uv run python super_metroid/scripts/setup_rom.py
 uv run python super_metroid/scripts/import_legacy_assets.py
 uv run python super_metroid/scripts/export/progression_map.py
-uv run python super_metroid/scripts/record/start_to_bombs.py
+uv run python super_metroid/scripts/record/continuous.py --to bombs --no-video
 uv run python super_metroid/scripts/verify/start_to_bombs.py
 ```
 

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_aab5_from_aa82_to_aa82",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Post Crocomire Save Room (0xAAB5); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "kind": "doorway_natural",
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true,
+    "rngNote": "Segment starts at doorway so future RNG re-rolls can re-enter the same door without mid-room teleport."
+  },
+  "planning": {
+    "objective": "visit_station_and_return",
+    "entry": {
+      "sourceRoomId": 43650,
+      "sourceRoomIdHex": "0xAA82",
+      "endpoint": {
+        "roomId": 43701,
+        "roomIdHex": "0xAAB5",
+        "logicalRoomId": 311,
+        "nodeId": 1,
+        "nodeName": "Post Crocomire Save Room Door (to Farming Room)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 43650,
+      "targetRoomIdHex": "0xAA82",
+      "endpoint": {
+        "roomId": 43701,
+        "roomIdHex": "0xAAB5",
+        "logicalRoomId": 311,
+        "nodeId": 1,
+        "nodeName": "Post Crocomire Save Room Door (to Farming Room)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        8,
+        8
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 8,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          8,
+          8
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 45
+    },
+    {
+      "label": "turn_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 3
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 35
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 100
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state."
+}

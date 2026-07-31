@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
+from adventure_common.routes import (
+    NamedRoute,
+    RouteMilestone,
+    get_route as _get_route,
+    list_routes as _list_routes,
+)
 from zelda_i.overworld import (
     NODE_LEVEL1_DUNGEON,
     NODE_LEVEL1_COMPLETE,
@@ -19,6 +23,8 @@ from zelda_i.overworld import (
     NODE_LEVEL2_PATH_4A,
     NODE_START,
     NODE_SWORD_CAVE,
+)
+from zelda_i.route_legs import (
     level1_clear53_route_legs,
     level1_clear54_route_legs,
     level1_complete_route_legs,
@@ -29,23 +35,6 @@ from zelda_i.overworld import (
     level2_path_prefix_route_legs,
     sword_cave_route_legs,
 )
-
-
-@dataclass(frozen=True)
-class RouteMilestone:
-    milestone_id: str
-    node_id: str
-    label: str
-    stop_predicate: str
-    """Machine name of the stop check (documented in STATUS / segment code)."""
-
-
-@dataclass(frozen=True)
-class NamedRoute:
-    route_id: str
-    display_name: str
-    milestones: tuple[RouteMilestone, ...]
-    description: str = ""
 
 
 ROUTE_SWORD_CAVE = NamedRoute(
@@ -280,21 +269,11 @@ ROUTE_REGISTRY: dict[str, NamedRoute] = {
 
 
 def get_route(route_id: str) -> NamedRoute:
-    key = route_id.strip().lower()
-    if key not in ROUTE_REGISTRY:
-        available = sorted({r.route_id for r in ROUTE_REGISTRY.values()})
-        raise KeyError(f"Unknown route {route_id!r}. Available: {available}")
-    return ROUTE_REGISTRY[key]
+    return _get_route(ROUTE_REGISTRY, route_id)
 
 
 def list_routes() -> list[NamedRoute]:
-    seen: set[str] = set()
-    out: list[NamedRoute] = []
-    for route in ROUTE_REGISTRY.values():
-        if route.route_id not in seen:
-            seen.add(route.route_id)
-            out.append(route)
-    return out
+    return _list_routes(ROUTE_REGISTRY)
 
 
 # Re-export for segment policies

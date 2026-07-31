@@ -19,11 +19,12 @@ def test_room_names() -> None:
     assert "0x" in room_name(0xABCD)
 
 
-def test_early_portal_is_crateria_map() -> None:
+def test_early_portal_is_parlor_red_door() -> None:
     p = early_portal()
     assert p.sm_door_ptr == 0x8976
     assert p.z3_cave_id == 0x0122
-    assert p.sm_room_id == 0x9994
+    # Combo table uses parlor red door $8976 (not map room 0x9994).
+    assert p.sm_room_id == 0x92FD
     assert not p.dark_world
 
 

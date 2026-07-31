@@ -11,9 +11,9 @@ uv run python super_metroid/scripts/probe/post_spore_pb.py --to tunnel-west \\
   --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_big_pink_open.state
 ```
 
-Route board: ``docs/routes/ROUTE_SUPERS_TO_PHANTOON.md``. Starts from
-``natural_post_spore_spawn.state`` unless ``--source`` overrides. Not continuous
-acceptance evidence.
+KPDR K0/K1 board: ``docs/routes/ROUTE_KPDR.md`` (controllers in
+``routes/kpdr/``). Starts from ``natural_post_spore_spawn.state`` unless
+``--source`` overrides. Not continuous acceptance evidence.
 
 ``super-block``: crest + crouch-Super clear of tile (69, 87).
 ``tunnel-west``: morph-roll + X bombs from raised tunnel floor (use open/tunnel
@@ -38,7 +38,7 @@ from retro_harness.env import make_env, read_state_bytes, write_state_bytes  # n
 from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR  # noqa: E402
 from super_metroid.dev.common import place_samus  # noqa: E402
-from super_metroid.routes.post_spore_controller import (  # noqa: E402
+from super_metroid.routes.kpdr import (  # noqa: E402
     play_big_pink_bomb_to_walkway_edge,
     play_big_pink_clear_super_block,
     play_big_pink_crest_pocket,

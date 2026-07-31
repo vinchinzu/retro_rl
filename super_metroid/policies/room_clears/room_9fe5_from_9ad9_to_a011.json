@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9fe5_from_9ad9_to_a011",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Green Brinstar Beetom Room (0x9FE5); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8CBE",
+    "entrySourceRoomIdHex": "0x9AD9",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 36030,
+    "entrySourceRoomId": 39641
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 39641,
+      "sourceRoomIdHex": "0x9AD9",
+      "endpoint": {
+        "roomId": 40933,
+        "roomIdHex": "0x9FE5",
+        "logicalRoomId": 50,
+        "nodeId": 2,
+        "nodeName": "Green Brinstar Beetoms Right Door (to Green Shaft)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 40977,
+      "targetRoomIdHex": "0xA011",
+      "endpoint": {
+        "roomId": 40933,
+        "roomIdHex": "0x9FE5",
+        "logicalRoomId": 50,
+        "nodeId": 1,
+        "nodeName": "Green Brinstar Beetoms Left Door (to Etecoon E-Tank)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "runup",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 35
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 70
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 16
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned spin-left traverse; development only.",
+  "promotedAt": "2026-07-30T22:36:07.490355+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_9fe5_from_9ad9_to_a011.json",
+    "reportSha256": "054963abce93ca6f9be93f7dfc2654b504a7ea63b22015c492e3fca51526405f",
+    "stateSha256": "c568279f997c6fd608cf1b4688a74f9cf0cc2a41fa8753e293511a5b68a1effc",
+    "policySha256Before": "3ea43f71688b7fb5234ecc5b1da7de9d131c2ad118671435e8ad07ab44559dc4"
+  }
+}

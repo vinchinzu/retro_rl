@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_cf54_from_cefb_to_a408",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for West Tunnel (0xCF54); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA33C",
+    "entrySourceRoomIdHex": "0xCEFB",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 41788,
+    "entrySourceRoomId": 52987
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 52987,
+      "sourceRoomIdHex": "0xCEFB",
+      "endpoint": {
+        "roomId": 53076,
+        "roomIdHex": "0xCF54",
+        "logicalRoomId": 169,
+        "nodeId": 2,
+        "nodeName": "West Tunnel Right Door (to Glass Tunnel)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 41992,
+      "targetRoomIdHex": "0xA408",
+      "endpoint": {
+        "roomId": 53076,
+        "roomIdHex": "0xCF54",
+        "logicalRoomId": 169,
+        "nodeId": 1,
+        "nodeName": "West Tunnel Left Door (to Below Spazer)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 152
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-30T22:27:16.554473+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_cf54_from_cefb_to_a408.json",
+    "reportSha256": "f33b37758e2fcde08457448c0a2791ca5e411f3ea009805374cfdc32a2f459a7",
+    "stateSha256": "b56f7502d3297d1953ba8ca8773fb4e0b903f6f0269c114ff9d107ec0e8eb173",
+    "policySha256Before": "b9d1774ce4e6f6ec40dc6ff0f39fb7409b29e7c09bc61dec82a5ba3a9a9e9d1b"
+  }
+}

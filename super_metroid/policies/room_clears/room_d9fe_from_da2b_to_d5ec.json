@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d9fe_from_da2b_to_d5ec",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for West Cacattack Alley (0xD9FE); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA954",
+    "entrySourceRoomIdHex": "0xDA2B",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 43348,
+    "entrySourceRoomId": 55851
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 55851,
+      "sourceRoomIdHex": "0xDA2B",
+      "endpoint": {
+        "roomId": 55806,
+        "roomIdHex": "0xD9FE",
+        "logicalRoomId": 195,
+        "nodeId": 2,
+        "nodeName": "West Cactus Alley Right Door (to East Cactus Alley)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 54764,
+      "targetRoomIdHex": "0xD5EC",
+      "endpoint": {
+        "roomId": 55806,
+        "roomIdHex": "0xD9FE",
+        "logicalRoomId": 195,
+        "nodeId": 1,
+        "nodeName": "West Cactus Alley Left Door (to Butterfly Room)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          23
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        23
+      ],
+      "exitBlock": [
+        0,
+        23
+      ],
+      "pathBlocks": 28,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          8,
+          15
+        ],
+        [
+          4,
+          15
+        ],
+        [
+          4,
+          20
+        ],
+        [
+          2,
+          20
+        ],
+        [
+          2,
+          23
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "run_left_top",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 45
+    },
+    {
+      "label": "drop1",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "drop2",
+      "buttons": [],
+      "frames": 50
+    },
+    {
+      "label": "bottom_run",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "bottom_spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned drop to bottom-left exit; development only.",
+  "promotedAt": "2026-07-30T22:36:11.861449+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_d9fe_from_da2b_to_d5ec.json",
+    "reportSha256": "f1cc44214fb9a108cbe2a274dd5ed05dd273d4e15006bd3671596d12c5f52bec",
+    "stateSha256": "52ee1410bc0d2a86274dff9b0f40c4351804626b3be4e071f7274620a3ddecac",
+    "policySha256Before": "491abb6146e26a960c0a36a84c572cf1461dd87884a0f4959d0ee4c636c12241"
+  }
+}

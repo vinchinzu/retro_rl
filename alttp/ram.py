@@ -35,17 +35,37 @@ LINKS_HOUSE_SCREEN = 0x2C
 LINKS_HOUSE_ROOM = 0x0004
 SANCTUARY_SCREEN = 0x13
 
-# Opening-route dungeon/cave rooms (stable-retro room base ids).
-# Secret cellar drop-in / uncle passage used by the bush-hole entrance.
-SECRET_PASSAGE_ROOM = 0x55
-# Uncle encounter room in some map notes (same passage family as 0x55).
-UNCLE_ROOM = 0x55
-# Main south hall (ordinary entrance) — post-sword / alternate path context.
+# Opening-route dungeon/cave rooms (stable-retro ``$A0`` base ids).
+# Prefer the descriptive names in logs/docs; hex is RAM only.
+
+# Bush-hole drop east of the castle: multi-screen "Hyrule Castle Secret
+# Entrance" (Uncle + fighter sword, then combat/key path). RAM base = 0x55.
+HYRULE_CASTLE_SECRET_ENTRANCE_ROOM = 0x55
+# Aliases kept for existing imports (same room id).
+SECRET_PASSAGE_ROOM = HYRULE_CASTLE_SECRET_ENTRANCE_ROOM
+UNCLE_ROOM = HYRULE_CASTLE_SECRET_ENTRANCE_ROOM
+
+# Main south hall (ordinary castle entrance) — post-sword / alternate path.
 HYRULE_CASTLE_MAIN_HALL_ROOM = 0x61
 # Zelda's cell (opening rescue target; confirm on real ROM before claiming).
 ZELDA_CELL_ROOM = 0x80
 # Sanctuary indoor room after escort (confirm on real ROM before claiming).
 SANCTUARY_ROOM = 0x12
+
+# Human labels for room_base_id (hex only as fallback).
+ROOM_LABELS: dict[int, str] = {
+    LINKS_HOUSE_ROOM & 0xFF: "links_house",
+    HYRULE_CASTLE_SECRET_ENTRANCE_ROOM: "hyrule_castle_secret_entrance",
+    HYRULE_CASTLE_MAIN_HALL_ROOM: "hyrule_castle_main_hall",
+    ZELDA_CELL_ROOM: "zelda_cell",
+    SANCTUARY_ROOM: "sanctuary",
+}
+
+
+def room_label(room_base_id: int) -> str:
+    """Descriptive name for a room base id, or ``room_XX`` hex fallback."""
+    rid = int(room_base_id) & 0xFF
+    return ROOM_LABELS.get(rid, f"room_{rid:02x}")
 
 # Fighter sword equip level at $F359 (0=none, 1=fighter, …).
 FIGHTER_SWORD_LEVEL = 1

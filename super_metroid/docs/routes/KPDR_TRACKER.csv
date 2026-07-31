@@ -12,14 +12,14 @@ K1.2,12,Big Pink crest+main,0x9D19,Big Pink,,controller_dev,controller,K1.1,,dev
 K1.3,13,Charge Beam (Big Pink),0x9D19,Big Pink (Charge Chozo),,open,controller,K1.2,charge_beam,,kpdr.py charge,natural collect achieved; conventional return not route-ready; do not route an IBJ,2026-07-29
 K1.4,14,Big Pink -> GHZ,0x9E52,Green Hill Zone,0x8DEA,controller_dev,controller,K1.2,,dev_b1_bigpink_main_controller,kpdr.py pure big-pink-to-ghz,969f natural lower tunnel + green Super door; direct line skips unfinished Charge return,2026-07-29
 K1.5,15,GHZ -> Noob Bridge,0x9FBA,Noob Bridge,0x8E92,controller_dev,controller,K1.4,,dev_kpdr_noob,kpdr.py pure ghz-to-noob,1467f anchor / 1626f natural door spawn; pillar jump + blue-gate beam y~888,2026-07-29
-K1.6,16,Noob -> Red Tower,0xA253,Red Tower,0x8F0A,controller_dev,controller,K1.5,,dev_kpdr_red_tower,kpdr.py pure noob-to-red,upper pit-block bridge + spin-Super door; 852f composed from GHZ,2026-07-29
-K2.0,20,Red Tower -> Bat Room,0xA3DD,Bat Room,0x9042,controller_dev,controller,K1.6,,,kpdr.py pure red-to-bat,natural tower zigzag + timed bomb floor,2026-07-29
-K2.1,21,Bat -> Below Spazer,0xA408,Below Spazer,0x9102,controller_dev,controller,K2.0,,,kpdr.py pure bat-to-below,three-platform dry crossing from natural Red door spawn,2026-07-29
+K1.6,16,Noob -> Red Tower,0xA253,Red Tower,0x8F0A,continuous,continuous,K1.5,,dev_kpdr_red_tower,start_to_red_tower / continuous --to red_tower,upper pit-block bridge + spin-Super door; continuous K1 tip,2026-07-30
+K2.0,20,Red Tower -> Bat Room,0xA3DD,Bat Room,0x9042,continuous,continuous,K1.6,,,start_to_bat / continuous --to bat,natural tower zigzag + timed bomb floor; 1245f Red dwell on continuous; 81652f total,2026-07-30
+K2.1,21,Bat -> Below Spazer,0xA408,Below Spazer,0x9102,continuous,continuous,K2.0,,,start_to_below_spazer / continuous --to below_spazer,three-platform dry crossing; high-sill + low-ledge paths; 668f Bat dwell; 82300f total,2026-07-30
 K2.2,22,Spazer (optional),0xA447,Spazer Room,,open,optional,K2.1,spazer,,,safety item not on minimal chain,2026-07-28
-K2.3,23,Below Spazer -> West Tunnel,0xCF54,West Tunnel,0x911A,controller_dev,controller,K2.1,,,kpdr.py pure below-to-west,shoot+jump water crossing,2026-07-29
-K2.4,24,West -> Glass Tunnel,0xCEFB,Glass Tunnel,0xA360,controller_dev,controller,K2.3,,,kpdr.py pure west-to-glass,horizontal glass path no PB,2026-07-29
-K2.5,25,Glass -> East Tunnel,0xCF80,East Tunnel,0xA348,controller_dev,controller,K2.4,,,kpdr.py pure glass-to-east,,2026-07-29
-K2.6,26,East -> Warehouse Entrance,0xA6A1,Warehouse Entrance,0xA384,controller_dev,controller,K2.5,,dev_kpdr_warehouse,kpdr.py pure red-to-warehouse,2929f composed from natural Red spawn,2026-07-29
+K2.3,23,Below Spazer -> West Tunnel,0xCF54,West Tunnel,0x911A,continuous,continuous,K2.1,,,start_to_warehouse / continuous --to warehouse,490f Below Spazer dwell; continuous green,2026-07-31
+K2.4,24,West -> Glass Tunnel,0xCEFB,Glass Tunnel,0xA360,continuous,continuous,K2.3,,,start_to_warehouse / continuous --to warehouse,horizontal glass path no PB,2026-07-31
+K2.5,25,Glass -> East Tunnel,0xCF80,East Tunnel,0xA348,continuous,continuous,K2.4,,,start_to_warehouse / continuous --to warehouse,,2026-07-31
+K2.6,26,East -> Warehouse Entrance,0xA6A1,Warehouse Entrance,0xA384,continuous,continuous,K2.5,,dev_kpdr_warehouse,start_to_warehouse / continuous --to warehouse,83512f total; entry 83391; integrity green,2026-07-31
 K2.7,27,Warehouse -> Business Center,0xA7DE,Business Center,0x9246,controller_dev,controller,K2.6,,,kpdr.py pure warehouse-to-hijump,natural elevator descent,2026-07-29
 K2.8,28,Business -> Hi-Jump Shaft,0xAA41,Hi-Jump Shaft,0x92D6,controller_dev,controller,K2.7,,,kpdr.py pure warehouse-to-hijump,natural Business descent + missile red door,2026-07-29
 K2.9,29,Hi-Jump Shaft -> Room,0xA9E5,Hi-Jump Room,0x9426,controller_dev,controller,K2.8,,,kpdr.py pure warehouse-to-hijump,natural E-Tank PLM + morph tunnel; 1298f shaft segment,2026-07-29
@@ -32,8 +32,8 @@ K2.15,35,Zeela -> Warehouse Kihunter,0xA4DA,Warehouse Kihunter Room,0x9156,contr
 K2.16,36,Kihunter -> Baby Kraid,0xA521,Baby Kraid Room,0x917A,controller_dev,controller,K2.15,,,kpdr.py pure warehouse-to-kraid-hijump,natural bomb-floor drop,2026-07-29
 K2.17,37,Baby Kraid -> Eye Door,0xA56B,Kraid's Eye Door,0x919E,controller_dev,controller,K2.16,,,kpdr.py pure warehouse-to-kraid-hijump,kill-locked gray door cleared naturally,2026-07-29
 K2.18,38,Eye Door -> Kraid entry,0xA59F,Kraid's Room,0x91B6,controller_dev,controller,K2.17,,dev_kpdr_kraid_entry,kpdr.py pure warehouse-to-kraid-hijump,6290f Warehouse suffix; natural eye-door transition,2026-07-29
-K3.0,40,Kraid fight,0xA59F,Kraid's Room,,dev_fight,dev_fight,K2.18,kraid_boss,dev_kpdr_kraid_entry,kraid_dev,fight script exists but is not yet composed from natural entry,2026-07-29
-K3.1,41,Varia Suit,0xA6E2,Varia Suit Room,0x91DA,dev_warp,dev_warp,K3.0,varia,dev_kpdr_varia,kpdr.py hop varia,natural rear-door and PLM collection open,2026-07-29
+K3.0,40,Kraid fight,0xA59F,Kraid's Room,,controller_dev,controller,K2.18,kraid_boss,eye_hj_kraid_entry,kraid_combat.py strategy,Super-spray policy from doorway entry ~1520f boss bit; not continuous yet,2026-07-30
+K3.1,41,Varia Suit,0xA6E2,Varia Suit Room,0x91DA,controller_dev,controller,K3.0,varia,eye_hj_kraid_varia_collected,kraid_combat.py varia,rear door + real Varia PLM ~1908f; compose after play_eye_to_kraid on continuous,2026-07-30
 K4.0,50,Speed Booster,0xAD1B,Speed Booster Room,,open,future,K3.1,speed,,,,2026-07-28
 K4.1,51,Wave Beam,0xADDE,Wave Beam Room,,open,future,K4.0,wave,,,,2026-07-28
 K4.2,52,Ice Beam,0xA890,Ice Beam Room,,open,future,K4.1,ice,,,,2026-07-28

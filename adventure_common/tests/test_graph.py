@@ -94,3 +94,24 @@ def test_apply_milestones_acquires() -> None:
     )
     assert caps == frozenset({"morph_ball", "missiles"})
     assert len(ordered) == 2
+
+
+def test_route_patch_meta_preserved() -> None:
+    graph = RouteGraph(_nodes("a", "b"), ())
+    patched = graph.add_patches(
+        (
+            RoutePatch(
+                "a",
+                "b",
+                direction="Right",
+                requires=frozenset({"missile"}),
+                support="manual",
+                meta={"doorCapColor": "red"},
+            ),
+        )
+    )
+    edge = patched.edge_for("a", "b")
+    assert edge is not None
+    assert edge.requires == frozenset({"missiles"})
+    assert edge.meta["doorCapColor"] == "red"
+    assert edge.meta["support"] == "manual"

@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a107_from_9f11_to_9f11",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for First Missile Room (0xA107); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8EDA",
+    "entrySourceRoomIdHex": "0x9F11",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 36570,
+    "entrySourceRoomId": 40721
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 40721,
+      "sourceRoomIdHex": "0x9F11",
+      "endpoint": {
+        "roomId": 41223,
+        "roomIdHex": "0xA107",
+        "logicalRoomId": 40,
+        "nodeId": 1,
+        "nodeName": "First Missiles Room Door (to Construction Zone)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 40721,
+      "targetRoomIdHex": "0x9F11",
+      "endpoint": {
+        "roomId": 41223,
+        "roomIdHex": "0xA107",
+        "logicalRoomId": 40,
+        "nodeId": 1,
+        "nodeName": "First Missiles Room Door (to Construction Zone)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        4,
+        7
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 10,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          4,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 110
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 130
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-30T22:27:05.587216+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a107_from_9f11_to_9f11.json",
+    "reportSha256": "dd1997672d2692b3c7925c0dc3b5ec531a083925e0d9695637149f160878daa1",
+    "stateSha256": "997111a41f897999b2dbb41c9259a3960dbb1d4e1d375610b0a7d19ecc5d713c",
+    "policySha256Before": "de7ca554c46e2ab9a8567c8b236635531fc376f2df45a922351800afb1225635"
+  }
+}

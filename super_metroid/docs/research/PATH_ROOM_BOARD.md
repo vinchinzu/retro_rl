@@ -12,7 +12,7 @@ Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful only for t
 
 | Layer | Furthest | Evidence |
 |-------|----------|----------|
-| **Continuous** | `0x9B5B` Spore Spawn Super Room | `recordings/start_to_supers.json` |
+| **Continuous** | `0xA6A1` Warehouse Entrance | `recordings/start_to_warehouse.json (83512f)` |
 | **Controller (dev)** | `0xA59F` Kraid's Room ~(39,374) | `kpdr.py pure warehouse-hijump-kraid` |
 
 ### ★ Next hop to play
@@ -26,8 +26,8 @@ Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful only for t
 
 | Status | Count |
 |--------|------:|
-| continuous | 20 |
-| controller_dev | 17 |
+| continuous | 31 |
+| controller_dev | 6 |
 | boss_deferred | 6 |
 | open | 64 |
 | **total** | **107** |
@@ -58,30 +58,33 @@ Path priority: only the **~107 completion-path rooms** first, not all 262.
 
 **Goal:** Power-on → Super collect
 
-### W1 — Super → Red Tower (KPDR K1) (in_progress)
+### W1 — Super → Red Tower (KPDR K1) (done)
 
 **Goal:** 0x9B5B → farm → Big Pink → GHZ → Noob → Red Tower
 
 Done:
 - [x] Super collect continuous
-- [x] farming hop controller_dev
-- [x] Big Pink to main shaft
-- [x] direct Big Pink → GHZ → Noob → Red Tower controller
+- [x] farming hop continuous
+- [x] Big Pink to main shaft continuous
+- [x] direct Big Pink → GHZ → Noob → Red Tower continuous
 
 Open:
 - [ ] Charge Beam conventional return (no IBJ)
-- [ ] continuous power-on composition through Red Tower
 
-### W2 — Red Tower → Hi-Jump → Kraid entry (KPDR K2) (controller_dev)
+### W2 — Red Tower → Hi-Jump → Kraid entry (KPDR K2) (in_progress)
 
 **Goal:** Warehouse → Hi-Jump real PLM → return → natural Kraid entry
 
 Done:
-- [x] Red Tower → Warehouse
-- [x] Hi-Jump E-Tank + Boots real PLMs
+- [x] continuous power-on → Bat / Below Spazer / Warehouse
+- [x] Red Tower → Warehouse continuous (start_to_warehouse 83512f)
+- [x] Hi-Jump E-Tank + Boots real PLMs (controller)
 - [x] Hi-Jump intended ledges + ordinary bomb-tunnel return
 - [x] Warehouse → Zeela → Kihunter → Baby Kraid → Eye → Kraid
 - [x] 15356f composed Warehouse suffix; no IBJ
+
+Open:
+- [ ] continuous Warehouse → Hi-Jump → Kraid
 
 ### W3 — Kraid → Varia → Speed → Ice by play (open)
 
@@ -135,21 +138,21 @@ _Requires MB defeat event + escape timer init_
 | 13 | `0xA107` | First Missile Room | **continuous** | easy | First Missiles |
 | 14 | `0x9879` | Flyway | **continuous** | tough | Flyway (+ room_clears policy) |
 | 15 | `0x9804` | Bomb Torizo Room | **continuous** | boss_late | Bomb Torizo fight continuous |
-| 16 | `0x9E52` | Green Hill Zone | **controller_dev** | tough | GHZ by natural Big Pink exit |
-| 17 | `0x9D19` | Big Pink | **controller_dev** | tough | Big Pink: crest+tunnel→main; PB sill entry green; approach wall@613 OPEN |
+| 16 | `0x9E52` | Green Hill Zone | **continuous** | tough | GHZ continuous on K1 tip |
+| 17 | `0x9D19` | Big Pink | **continuous** | tough | Big Pink main continuous; Pink PB still controller_dev side trip |
 | 18 | `0x9D9C` | Spore Spawn Keyhunter Room | **open** | tough |  |
 | 19 | `0x9DC7` | Spore Spawn Room | **continuous** | boss_late | Spore Spawn fight continuous |
-| 20 | `0x9B5B` | Spore Spawn Super Room | **continuous** | tough | Spore Super room collect continuous (furthest continuous) |
-| 21 | `0xA0A4` | Spore Spawn Farming Room | **controller_dev** | easy | Farming via play_super_room_to_farming |
+| 20 | `0x9B5B` | Spore Spawn Super Room | **continuous** | tough | Spore Super room collect continuous |
+| 21 | `0xA0A4` | Spore Spawn Farming Room | **continuous** | easy | Farming via play_super_room_to_farming continuous |
 | 22 | `0x9E11` | Pink Brinstar Power Bomb Room | **controller_dev** | tough | Pink PB: wall@437 pure break; collect from x≤225; mid-maze 405→225 OPEN |
-| 23 | `0x9FBA` | Noob Bridge | **controller_dev** | standard | Noob Bridge upper pit-block route |
-| 24 | `0xA253` | Red Tower | **controller_dev** | tough | Red Tower natural entry |
-| 25 | `0xA3DD` | Bat Room | **controller_dev** | easy | Bat Room controller |
-| 26 | `0xA408` | Below Spazer | **controller_dev** | tough | Below Spazer controller |
-| 27 | `0xCF54` | West Tunnel | **controller_dev** | easy | West Tunnel controller |
-| 28 | `0xCEFB` | Glass Tunnel | **controller_dev** | tough | Glass Tunnel controller |
-| 29 | `0xCF80` | East Tunnel | **controller_dev** | standard | East Tunnel controller |
-| 30 | `0xA6A1` | Warehouse Entrance | **controller_dev** | tough | Warehouse: Hi-Jump detour + three-Super wall controller |
+| 23 | `0x9FBA` | Noob Bridge | **continuous** | standard | Noob Bridge continuous on K1 tip |
+| 24 | `0xA253` | Red Tower | **continuous** | tough | Red Tower continuous on K1 tip |
+| 25 | `0xA3DD` | Bat Room | **continuous** | easy | Bat Room continuous |
+| 26 | `0xA408` | Below Spazer | **continuous** | tough | Below Spazer continuous |
+| 27 | `0xCF54` | West Tunnel | **continuous** | easy | West Tunnel continuous on warehouse tip |
+| 28 | `0xCEFB` | Glass Tunnel | **continuous** | tough | Glass Tunnel continuous on warehouse tip |
+| 29 | `0xCF80` | East Tunnel | **continuous** | standard | East Tunnel continuous on warehouse tip |
+| 30 | `0xA6A1` | Warehouse Entrance | **continuous** | tough | Warehouse Entrance continuous tip (K2.6; furthest continuous) |
 | 31 | `0xA471` | Warehouse Zeela Room | **controller_dev** | tough | Warehouse Zeela controller |
 | 32 | `0xA4DA` | Warehouse Kihunter Room | **controller_dev** | tough | Warehouse Kihunter controller |
 | 33 | `0xA521` | Baby Kraid Room | **controller_dev** | tough | Baby Kraid gray door clear |

@@ -1,0 +1,384 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a3dd_from_a408_to_a253",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Bat Room (0xA3DD); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x910E",
+    "entrySourceRoomIdHex": "0xA408",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 37134,
+    "entrySourceRoomId": 41992
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 41992,
+      "sourceRoomIdHex": "0xA408",
+      "endpoint": {
+        "roomId": 41949,
+        "roomIdHex": "0xA3DD",
+        "logicalRoomId": 69,
+        "nodeId": 2,
+        "nodeName": "Bat Room Right Door (to Below Spazer)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 41555,
+      "targetRoomIdHex": "0xA253",
+      "endpoint": {
+        "roomId": 41949,
+        "roomIdHex": "0xA3DD",
+        "logicalRoomId": 69,
+        "nodeId": 1,
+        "nodeName": "Bat Room Left Door (to Red Tower)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 28,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 8
+    },
+    {
+      "label": "run0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "jump0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 22
+    },
+    {
+      "label": "land0",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "run1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "jump1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 35
+    },
+    {
+      "label": "land1",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "run2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "jump2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 22
+    },
+    {
+      "label": "land2",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "run3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "jump3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 35
+    },
+    {
+      "label": "land3",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "run4",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "jump4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 22
+    },
+    {
+      "label": "land4",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "run5",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "jump5",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 35
+    },
+    {
+      "label": "land5",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "runx6",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx6",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "landx6",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "runx7",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx7",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "landx7",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "runx8",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx8",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "landx8",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "runx9",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx9",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "landx9",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 250
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned reverse platforms + shoot-into-door; development only.",
+  "promotedAt": "2026-07-30T22:46:29.914799+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a3dd_from_a408_to_a253.json",
+    "reportSha256": "1ef59cc7cf8d52425a17e95db2da83b19cfa28bb9adc846c9eef1c469d379eff",
+    "stateSha256": "f1ace62e9ebb744b5346b1807f1056fb88d3f39827df8d08ca265f5811b657ea",
+    "policySha256Before": "0ed1ad1c011e2590f1e3e182f6ba0b0edbd980e66800be41a916bb1e1dc034ed"
+  }
+}

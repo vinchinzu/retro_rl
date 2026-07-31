@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d433_from_d2d9_to_d86e",
+  "status": "verified_development_state",
+  "description": "Bug Sand Hole: left spin then fall/exit to 0xD86E (down door reached via left).",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA564",
+    "entrySourceRoomIdHex": "0xD2D9",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "DOWN",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 42340,
+    "entrySourceRoomId": 53977
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 53977,
+      "sourceRoomIdHex": "0xD2D9",
+      "endpoint": {
+        "roomId": 54323,
+        "roomIdHex": "0xD433",
+        "logicalRoomId": 211,
+        "nodeId": 3,
+        "nodeName": "Bug Sand Hole Right Door (to Thread the Needle Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 55406,
+      "targetRoomIdHex": "0xD86E",
+      "endpoint": {
+        "roomId": 54323,
+        "roomIdHex": "0xD433",
+        "logicalRoomId": 211,
+        "nodeId": 2,
+        "nodeName": "Bug Sand Hole Sand Exit (to Plasma Beach Quicksand Room)",
+        "position": "top",
+        "orientation": "down",
+        "subtype": "sandpit",
+        "block": [
+          7,
+          15
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        7,
+        15
+      ],
+      "exitBlock": [
+        7,
+        15
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          7,
+          12
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "runup",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 50
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned from probe; development only.",
+  "promotedAt": "2026-07-30T22:31:05.496535+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_d433_from_d2d9_to_d86e.json",
+    "reportSha256": "6d4ff060d86843c879731564f25c138f301b2634bb73a0c017b33c1e293c87c6",
+    "stateSha256": "10217d78ef4d06b0ed9ff568058c98e0d0a8006fa69dc9303e8f63e2aa2e2273",
+    "policySha256Before": "f13b6be37bd60d6f05ef9e7d1c065c44b562a7633d780d33362450b6a88e02f2"
+  }
+}

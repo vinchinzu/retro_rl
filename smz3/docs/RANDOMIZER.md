@@ -52,8 +52,19 @@ Pipeline (ported from the web client `prepareRom`):
 2. **Apply** base IPS `zsm.ips` (gzip in `refs/zsm.ips.gz`)
 3. **Apply** seed patch records: `(u32 LE dest, u16 LE length, data)*`
 
+### Required vanilla ROMs (samus.link)
+
+Same check as the web client's `Upload.jsx` (xxHash32, seed `0x534D5A33` /
+ASCII `SMZ3`):
+
+| Game | Path | xxh32 | Notes |
+|------|------|-------|-------|
+| Super Metroid (JU) | `roms/SuperMetroid.sfc` | `0xCADB4883` | Shared with SM package |
+| ALttP **Japanese 1.0** | `roms/zelda3_jp.sfc` | `0x8AC8FD15` | Title `ZELDANODENSETSU` |
+| ALttP USA (wrong for SMZ3) | `roms/zelda3.sfc` | `0x2D3B129E` | For `alttp/` only |
+
 ```bash
-uv run python smz3/scripts/setup_roms.py
+uv run python smz3/scripts/setup_roms.py   # validates hashes + symlinks
 uv run python smz3/scripts/setup_base_ips.py
 uv run python smz3/scripts/generate_seed.py --test
 uv run python smz3/scripts/smoke_rom.py smz3/seeds/test_seed/smz3.sfc

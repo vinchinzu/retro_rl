@@ -1,8 +1,9 @@
 """KPDR segment registry: tracker id ↔ controller callable.
 
 Maps living ``KPDR_TRACKER.csv`` / hop ids to pure controller entry points
-where a 1:1 controller exists. Dev door-warp hops without a pure segment
-are omitted.
+where a 1:1 controller exists. Includes early post-Spore Super collect
+through Big Pink (K0–K1). Dev door-warp hops without a pure segment are
+omitted.
 """
 
 from __future__ import annotations
@@ -11,6 +12,15 @@ from collections.abc import Callable
 from typing import Any
 
 from super_metroid.routes.kpdr.big_pink import play_big_pink_to_ghz
+from super_metroid.routes.kpdr.big_pink_shaft import (
+    play_big_pink_bomb_to_walkway_edge,
+    play_big_pink_clear_super_block,
+    play_big_pink_crest_pocket,
+    play_big_pink_drop_to_pocket,
+    play_big_pink_into_main_shaft,
+    play_big_pink_morph_to_tunnel,
+    play_big_pink_tunnel_west,
+)
 from super_metroid.routes.kpdr.green_hill import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
@@ -29,10 +39,21 @@ from super_metroid.routes.kpdr.kraid_approach import (
     play_baby_kraid_to_eye,
     play_eye_to_kraid,
     play_kihunter_to_baby_kraid,
+    play_kraid_entry_to_varia,
     play_warehouse_hijump_kraid,
     play_warehouse_to_kraid_with_hijump,
     play_warehouse_to_zeela_with_hijump,
     play_zeela_to_kihunter,
+)
+from super_metroid.routes.kpdr.pb_door import (
+    play_big_pink_enter_pb_door_from_sill,
+    play_big_pink_enter_pb_door_from_top_ledge,
+)
+from super_metroid.routes.kpdr.pink_pb_maze import (
+    play_pink_pb_break_maze_wall,
+    play_pink_pb_from_left_zone,
+    play_pink_pb_mid_maze_to_collect,
+    play_pink_pb_morph_bomb_collect,
 )
 from super_metroid.routes.kpdr.red_tower import (
     play_bat_to_below_spazer,
@@ -43,6 +64,12 @@ from super_metroid.routes.kpdr.red_tower import (
     play_red_tower_to_warehouse,
     play_west_to_glass,
 )
+from super_metroid.routes.kpdr.super_room import (
+    play_farming_to_big_pink,
+    play_post_spore_supers,
+    play_super_room_collect,
+    play_super_room_to_farming,
+)
 from super_metroid.routes.kpdr.warehouse import (
     play_warehouse_to_business,
     play_warehouse_wall_to_lower_lip,
@@ -51,10 +78,32 @@ from super_metroid.routes.kpdr.warehouse import (
 SegmentFn = Callable[..., Any]
 
 # Segment ids used by pure probes / tracker correlation.
+# Order roughly follows continuous KPDR spine (K0 Super → K2 Kraid).
 KPDR_SEGMENTS: dict[str, SegmentFn] = {
+    # K0: Spore Super collect → Big Pink main (was post_spore/)
+    "super_room_collect": play_super_room_collect,
+    "super_room_to_farming": play_super_room_to_farming,
+    "farming_to_big_pink": play_farming_to_big_pink,
+    "post_spore_supers": play_post_spore_supers,
+    "big_pink_crest_pocket": play_big_pink_crest_pocket,
+    "big_pink_clear_super_block": play_big_pink_clear_super_block,
+    "big_pink_morph_to_tunnel": play_big_pink_morph_to_tunnel,
+    "big_pink_tunnel_west": play_big_pink_tunnel_west,
+    "big_pink_drop_to_pocket": play_big_pink_drop_to_pocket,
+    "big_pink_bomb_to_walkway_edge": play_big_pink_bomb_to_walkway_edge,
+    "big_pink_into_main_shaft": play_big_pink_into_main_shaft,
+    # Parked Pink PB (not competitive KPDR; optional backfill)
+    "big_pink_enter_pb_door_from_sill": play_big_pink_enter_pb_door_from_sill,
+    "big_pink_enter_pb_door_from_top_ledge": play_big_pink_enter_pb_door_from_top_ledge,
+    "pink_pb_break_maze_wall": play_pink_pb_break_maze_wall,
+    "pink_pb_morph_bomb_collect": play_pink_pb_morph_bomb_collect,
+    "pink_pb_mid_maze_to_collect": play_pink_pb_mid_maze_to_collect,
+    "pink_pb_from_left_zone": play_pink_pb_from_left_zone,
+    # K1: Big Pink → Red Tower
     "big_pink_to_ghz": play_big_pink_to_ghz,
     "ghz_to_noob": play_ghz_to_noob,
     "noob_to_red_tower": play_noob_to_red_tower,
+    # K2: Red Tower → Hi-Jump → Kraid
     "red_tower_to_bat": play_red_tower_to_bat,
     "bat_to_below_spazer": play_bat_to_below_spazer,
     "below_spazer_to_west": play_below_spazer_to_west,
@@ -77,6 +126,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "kihunter_to_baby_kraid": play_kihunter_to_baby_kraid,
     "baby_kraid_to_eye": play_baby_kraid_to_eye,
     "eye_to_kraid": play_eye_to_kraid,
+    "kraid_entry_to_varia": play_kraid_entry_to_varia,
     "warehouse_to_kraid_with_hijump": play_warehouse_to_kraid_with_hijump,
     "warehouse_hijump_kraid": play_warehouse_hijump_kraid,
 }

@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_cd5c_from_cb8b_to_caf6",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Sponge Bath (0xCD5C); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA24C",
+    "entrySourceRoomIdHex": "0xCB8B",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 41548,
+    "entrySourceRoomId": 52107
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 52107,
+      "sourceRoomIdHex": "0xCB8B",
+      "endpoint": {
+        "roomId": 52572,
+        "roomIdHex": "0xCD5C",
+        "logicalRoomId": 164,
+        "nodeId": 2,
+        "nodeName": "Sponge Bath Right Door (to Spiky Death Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 51958,
+      "targetRoomIdHex": "0xCAF6",
+      "endpoint": {
+        "roomId": 52572,
+        "roomIdHex": "0xCD5C",
+        "logicalRoomId": 164,
+        "nodeId": 1,
+        "nodeName": "Sponge Bath Left Door (to Main Shaft)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 28,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-30T22:33:38.465869+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_cd5c_from_cb8b_to_caf6.json",
+    "reportSha256": "c29a1520879cec5e00cc7dc3cc838a5ed30027f7b9f7e1ab56e1bf71a5a00cb9",
+    "stateSha256": "d2de45a8cea21d046f225774afe6bb47109368c8fbe497e26c8d8f3e02bc1ac3",
+    "policySha256Before": "b1e4a5cb7a43e011c43282f3ec3cc45ebadcf253c293f501964efd9d1fe9aa6b"
+  }
+}

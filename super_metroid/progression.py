@@ -1,9 +1,12 @@
 """Room progression graph and milestone dataclasses.
 
-The graph separates route choice from room movement policy.  Nodes identify
+The graph separates route choice from room movement policy. Nodes identify
 rooms, edges identify observed transitions and capability requirements, and
-milestones describe inventory/event predicates.  It can grow into the full
-game without forcing a nonlinear world into a stage-number list.
+milestones describe inventory/event predicates.
+
+Pathfinding uses :func:`adventure_common.shortest_path`. Door edges keep
+SM-specific policy/entry metadata; continuous-run reports keep
+``source_room_id`` / ``target_room_id`` field names for artifact stability.
 """
 
 from __future__ import annotations
@@ -11,7 +14,12 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from adventure_common.graph import normalize_capability, shortest_path as shared_shortest_path
+from adventure_common.graph import (
+    GraphEdge,
+    GraphNode,
+    RouteGraph,
+    normalize_capability,
+)
 from super_metroid.ram import BOMBS_MASK, MORPH_BALL_MASK, SuperMetroidState
 
 
@@ -21,6 +29,14 @@ class RoomNode:
     name: str
     area: str
     tags: frozenset[str] = field(default_factory=frozenset)
+
+    def as_graph_node(self) -> GraphNode:
+        return GraphNode(
+            node_id=self.room_id,
+            name=self.name,
+            area=self.area,
+            tags=self.tags,
+        )
 
 
 @dataclass(frozen=True)
@@ -34,9 +50,34 @@ class DoorEdge:
     policy_id: str = ""
     verification: str = "unverified"
 
+    def __post_init__(self) -> None:
+        if self.requires:
+            object.__setattr__(
+                self,
+                "requires",
+                frozenset(normalize_capability(v) for v in self.requires),
+            )
+
+    def as_graph_edge(self) -> GraphEdge:
+        return GraphEdge(
+            source_id=self.source_room_id,
+            target_id=self.target_room_id,
+            edge_id=self.edge_id,
+            direction=self.exit_direction,
+            requires=self.requires,
+            verification=self.verification,
+            provenance="progression",
+            meta={
+                "entryDirection": self.entry_direction,
+                "policyId": self.policy_id,
+            },
+        )
+
 
 @dataclass(frozen=True)
 class ProgressCondition:
+    """SM-specific stop predicate over live RAM (not shared catalog text)."""
+
     room_id: int | None = None
     game_states: frozenset[int] = field(default_factory=frozenset)
     collected_items_mask: int = 0
@@ -60,6 +101,8 @@ class ProgressCondition:
 
 @dataclass(frozen=True)
 class ProgressionMilestone:
+    """Runtime milestone with SM RAM condition + capability bookkeeping."""
+
     milestone_id: str
     label: str
     condition: ProgressCondition
@@ -68,13 +111,37 @@ class ProgressionMilestone:
     timeout_frames: int = 0
     policy_id: str = ""
 
+    def __post_init__(self) -> None:
+        if self.requires:
+            object.__setattr__(
+                self,
+                "requires",
+                frozenset(normalize_capability(v) for v in self.requires),
+            )
+        if self.acquires:
+            object.__setattr__(
+                self,
+                "acquires",
+                frozenset(normalize_capability(v) for v in self.acquires),
+            )
+
 
 @dataclass(frozen=True)
 class ObservedTransition:
+    """Live room hop for continuous reports (stable JSON field names)."""
+
     frame: int
     source_room_id: int
     target_room_id: int
     edge_id: str | None
+
+    @property
+    def source_id(self) -> int:
+        return self.source_room_id
+
+    @property
+    def target_id(self) -> int:
+        return self.target_room_id
 
 
 class RoomProgressionGraph:
@@ -99,6 +166,11 @@ class RoomProgressionGraph:
                 raise ValueError(f"edge {edge.edge_id} references an unknown room")
             self._outgoing[edge.source_room_id].append(edge)
             self._edge_pairs[(edge.source_room_id, edge.target_room_id)] = edge
+        # Shared graph view for pathfinding (single BFS implementation).
+        self._route_graph = RouteGraph(
+            (room.as_graph_node() for room in rooms),
+            (edge.as_graph_edge() for edge in edges),
+        )
 
     def room_name(self, room_id: int) -> str:
         room = self.rooms.get(room_id)
@@ -127,29 +199,14 @@ class RoomProgressionGraph:
         target_room_id: int,
         capabilities: frozenset[str] = frozenset(),
     ) -> tuple[DoorEdge, ...] | None:
-        """Capability-aware BFS; uses shared adventure_common path core."""
-        from adventure_common.graph import GraphEdge
-
-        caps = frozenset(normalize_capability(v) for v in capabilities)
-        shared_edges = tuple(
-            GraphEdge(
-                source_id=edge.source_room_id,
-                target_id=edge.target_room_id,
-                edge_id=edge.edge_id,
-                direction=edge.exit_direction,
-                requires=frozenset(normalize_capability(v) for v in edge.requires),
-            )
-            for edge in self.edges
-        )
-        path = shared_shortest_path(
-            shared_edges,
+        """Capability-aware BFS via shared :class:`RouteGraph`."""
+        path = self._route_graph.shortest_path(
             source_room_id,
             target_room_id,
-            capabilities=caps,
+            capabilities=capabilities,
         )
         if path is None:
             return None
-        # Map back to DoorEdge instances (preserve policy/verification metadata).
         by_id = {edge.edge_id: edge for edge in self.edges}
         return tuple(by_id[edge.edge_id] for edge in path)
 
@@ -613,4 +670,254 @@ START_TO_SPORE_SPAWN_GRAPH = RoomProgressionGraph(
     _SPORE_EDGES,
     _SPORE_MILESTONES,
     graph_id="start_to_spore_spawn",
+)
+
+# KPDR K1 suffix: Super exit → farming → Big Pink main → GHZ → Noob → Red Tower.
+# (Charge Beam return is a side trip and is not on this continuous chain.)
+_K1_ROOMS = _SPORE_ROOMS + (
+    RoomNode(0xA0A4, "Pink Brinstar Farming Room", "Brinstar"),
+    RoomNode(0x9E52, "Green Hill Zone", "Brinstar"),
+    RoomNode(0x9FBA, "Noob Bridge", "Brinstar"),
+    RoomNode(0xA253, "Red Tower", "Brinstar", frozenset({"vertical_shaft"})),
+)
+
+_K1_EDGES = _SPORE_EDGES + (
+    DoorEdge(
+        "super_room_to_farming",
+        0x9B5B,
+        0xA0A4,
+        "left",
+        "right",
+        frozenset({"super_missiles", "morph_ball", "bombs"}),
+        "kpdr_super_room",
+        "continuous",
+    ),
+    DoorEdge(
+        "farming_to_big_pink",
+        0xA0A4,
+        0x9D19,
+        "left",
+        "right",
+        frozenset({"super_missiles"}),
+        "kpdr_super_room",
+        "continuous",
+    ),
+    DoorEdge(
+        "big_pink_to_ghz",
+        0x9D19,
+        0x9E52,
+        "right",
+        "left",
+        frozenset({"super_missiles", "morph_ball"}),
+        "kpdr_big_pink",
+        "continuous",
+    ),
+    DoorEdge(
+        "ghz_to_noob",
+        0x9E52,
+        0x9FBA,
+        "right",
+        "left",
+        frozenset({"morph_ball"}),
+        "kpdr_green_hill",
+        "continuous",
+    ),
+    DoorEdge(
+        "noob_to_red_tower",
+        0x9FBA,
+        0xA253,
+        "right",
+        "left",
+        frozenset({"super_missiles"}),
+        "kpdr_green_hill",
+        "continuous",
+    ),
+)
+
+_K1_MILESTONES = _SPORE_MILESTONES + (
+    ProgressionMilestone(
+        "spore_supers_collected",
+        "Spore Super Missiles capacity 0→5",
+        ProgressCondition(
+            room_id=0x9B5B,
+            collected_items_mask=MORPH_BALL_MASK | BOMBS_MASK,
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=frozenset({"morph_ball", "bombs", "missiles"}),
+        acquires=frozenset({"super_missiles"}),
+        timeout_frames=8_000,
+        policy_id="kpdr_super_room",
+    ),
+    ProgressionMilestone(
+        "red_tower_entry",
+        "Natural Red Tower entry via Big Pink → GHZ → Noob",
+        ProgressCondition(
+            room_id=0xA253,
+            collected_items_mask=MORPH_BALL_MASK | BOMBS_MASK,
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=frozenset({"morph_ball", "bombs", "missiles", "super_missiles"}),
+        timeout_frames=30_000,
+        policy_id="kpdr_k1",
+    ),
+)
+
+START_TO_RED_TOWER_GRAPH = RoomProgressionGraph(
+    _K1_ROOMS,
+    _K1_EDGES,
+    _K1_MILESTONES,
+    graph_id="start_to_red_tower",
+)
+
+# KPDR K2.0: Red Tower descent → Bat Room (first continuous hop after K1 tip).
+_K2_BAT_ROOMS = _K1_ROOMS + (
+    RoomNode(0xA3DD, "Bat Room", "Brinstar"),
+)
+
+_K2_BAT_EDGES = _K1_EDGES + (
+    DoorEdge(
+        "red_tower_to_bat",
+        0xA253,
+        0xA3DD,
+        "right",
+        "left",
+        frozenset({"morph_ball", "bombs", "super_missiles"}),
+        "kpdr_red_tower",
+        "continuous",
+    ),
+)
+
+_K2_BAT_MILESTONES = _K1_MILESTONES + (
+    ProgressionMilestone(
+        "bat_room_entry",
+        "Natural Bat Room entry via Red Tower descent",
+        ProgressCondition(
+            room_id=0xA3DD,
+            collected_items_mask=MORPH_BALL_MASK | BOMBS_MASK,
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=frozenset({"morph_ball", "bombs", "missiles", "super_missiles"}),
+        timeout_frames=8_000,
+        policy_id="kpdr_red_tower",
+    ),
+)
+
+START_TO_BAT_GRAPH = RoomProgressionGraph(
+    _K2_BAT_ROOMS,
+    _K2_BAT_EDGES,
+    _K2_BAT_MILESTONES,
+    graph_id="start_to_bat",
+)
+
+# KPDR K2.1: Bat Room three-platform crossing → Below Spazer.
+_K2_BELOW_ROOMS = _K2_BAT_ROOMS + (
+    RoomNode(0xA408, "Below Spazer", "Brinstar"),
+)
+
+_K2_BELOW_EDGES = _K2_BAT_EDGES + (
+    DoorEdge(
+        "bat_to_below_spazer",
+        0xA3DD,
+        0xA408,
+        "right",
+        "left",
+        frozenset({"morph_ball", "bombs", "super_missiles"}),
+        "kpdr_red_tower",
+        "continuous",
+    ),
+)
+
+_K2_BELOW_MILESTONES = _K2_BAT_MILESTONES + (
+    ProgressionMilestone(
+        "below_spazer_entry",
+        "Natural Below Spazer entry via Bat Room platforms",
+        ProgressCondition(
+            room_id=0xA408,
+            collected_items_mask=MORPH_BALL_MASK | BOMBS_MASK,
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=frozenset({"morph_ball", "bombs", "missiles", "super_missiles"}),
+        timeout_frames=4_000,
+        policy_id="kpdr_red_tower",
+    ),
+)
+
+START_TO_BELOW_SPAZER_GRAPH = RoomProgressionGraph(
+    _K2_BELOW_ROOMS,
+    _K2_BELOW_EDGES,
+    _K2_BELOW_MILESTONES,
+    graph_id="start_to_below_spazer",
+)
+
+# KPDR K2.3–K2.6: Below Spazer → West → Glass → East → Warehouse Entrance.
+_K2_WAREHOUSE_ROOMS = _K2_BELOW_ROOMS + (
+    RoomNode(0xCF54, "West Tunnel", "Maridia"),
+    RoomNode(0xCEFB, "Glass Tunnel", "Maridia"),
+    RoomNode(0xCF80, "East Tunnel", "Maridia"),
+    RoomNode(0xA6A1, "Warehouse Entrance", "Brinstar"),
+)
+
+_K2_WAREHOUSE_EDGES = _K2_BELOW_EDGES + (
+    DoorEdge(
+        "below_spazer_to_west",
+        0xA408,
+        0xCF54,
+        "right",
+        "left",
+        frozenset({"morph_ball", "bombs", "super_missiles"}),
+        "kpdr_red_tower",
+        "continuous",
+    ),
+    DoorEdge(
+        "west_to_glass",
+        0xCF54,
+        0xCEFB,
+        "right",
+        "left",
+        frozenset({"morph_ball", "bombs", "super_missiles"}),
+        "kpdr_red_tower",
+        "continuous",
+    ),
+    DoorEdge(
+        "glass_to_east",
+        0xCEFB,
+        0xCF80,
+        "right",
+        "left",
+        frozenset({"morph_ball", "bombs", "super_missiles"}),
+        "kpdr_red_tower",
+        "continuous",
+    ),
+    DoorEdge(
+        "east_to_warehouse",
+        0xCF80,
+        0xA6A1,
+        "right",
+        "left",
+        frozenset({"morph_ball", "bombs", "super_missiles"}),
+        "kpdr_red_tower",
+        "continuous",
+    ),
+)
+
+_K2_WAREHOUSE_MILESTONES = _K2_BELOW_MILESTONES + (
+    ProgressionMilestone(
+        "warehouse_entry",
+        "Natural Warehouse Entrance via Below Spazer tunnels",
+        ProgressCondition(
+            room_id=0xA6A1,
+            collected_items_mask=MORPH_BALL_MASK | BOMBS_MASK,
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=frozenset({"morph_ball", "bombs", "missiles", "super_missiles"}),
+        timeout_frames=12_000,
+        policy_id="kpdr_red_tower",
+    ),
+)
+
+START_TO_WAREHOUSE_GRAPH = RoomProgressionGraph(
+    _K2_WAREHOUSE_ROOMS,
+    _K2_WAREHOUSE_EDGES,
+    _K2_WAREHOUSE_MILESTONES,
+    graph_id="start_to_warehouse",
 )

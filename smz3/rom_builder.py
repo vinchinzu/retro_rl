@@ -5,6 +5,15 @@ Ports the samus.link web client pipeline (``prepareRom`` / ``mergeRoms`` /
 
 Does **not** redistribute ROMs or IPS contents in git — callers supply local
 vanilla ROMs; the base IPS is fetched into ``smz3/refs/`` (gitignored).
+
+Vanilla requirements (samus.link ``Upload.jsx`` xxHash32, seed ``SMZ3``):
+
+* Super Metroid (JU) unheadered 3 MiB → ``0xCADB4883``
+* ALttP **Japanese 1.0** unheadered 1 MiB → ``0x8AC8FD15``
+
+The US ALttP dump used by ``alttp/`` (title ``THE LEGEND OF ZELDA``) is
+**rejected** — building a combo with it yields a broken Z3 side and portal
+handoffs that hang at module ``$0F``.
 """
 
 from __future__ import annotations
@@ -19,12 +28,19 @@ from smz3.paths import (
     BASE_IPS_URL,
     COMBO_ROM_SIZE,
     SHARED_SM_ROM,
+    SHARED_Z3_JP_ROM,
     SHARED_Z3_ROM,
+    SMZ3_SM_XXH32,
+    SMZ3_XXH_SEED,
+    SMZ3_Z3_XXH32,
 )
 
 # Super Metroid unheadered size (3 MiB). Headered dumps are not accepted.
 _SM_SIZE = 0x300000
 _Z3_SIZE = 0x100000  # ALttP JP 1.0 unheadered
+
+# US ALttP (alttp package) — common mis-wire for smz3.
+_US_Z3_XXH32 = 0x2D3B129E
 
 
 def ensure_base_ips(*, path: Path = BASE_IPS_GZ, url: str = BASE_IPS_URL) -> Path:
@@ -143,18 +159,150 @@ def decode_seed_patch_b64(patch_b64: str) -> bytes:
     return base64.b64decode(patch_b64)
 
 
+def strip_smc_header(data: bytes) -> bytes:
+    """Drop a 512-byte copier header when present (samus.link Upload.jsx)."""
+    if len(data) % 0x1000 == 0x200:
+        return data[0x200:]
+    return data
+
+
+def xxh32(data: bytes, seed: int = 0) -> int:
+    """xxHash32 (Cyan4973). Matches js ``xxhashjs`` / samus.link Upload.jsx."""
+    prime1 = 0x9E3779B1
+    prime2 = 0x85EBCA77
+    prime3 = 0xC2B2AE3D
+    prime4 = 0x27D4EB2F
+    prime5 = 0x165667B1
+
+    def rotl(x: int, r: int) -> int:
+        return ((x << r) | (x >> (32 - r))) & 0xFFFFFFFF
+
+    length = len(data)
+    i = 0
+    if length >= 16:
+        v1 = (seed + prime1 + prime2) & 0xFFFFFFFF
+        v2 = (seed + prime2) & 0xFFFFFFFF
+        v3 = seed & 0xFFFFFFFF
+        v4 = (seed - prime1) & 0xFFFFFFFF
+        limit = length - 16
+        while i <= limit:
+            for idx, off in enumerate((0, 4, 8, 12)):
+                k = int.from_bytes(data[i + off : i + off + 4], "little")
+                v = (v1, v2, v3, v4)[idx]
+                v = (v + k * prime2) & 0xFFFFFFFF
+                v = rotl(v, 13)
+                v = (v * prime1) & 0xFFFFFFFF
+                if idx == 0:
+                    v1 = v
+                elif idx == 1:
+                    v2 = v
+                elif idx == 2:
+                    v3 = v
+                else:
+                    v4 = v
+            i += 16
+        h = (rotl(v1, 1) + rotl(v2, 7) + rotl(v3, 12) + rotl(v4, 18)) & 0xFFFFFFFF
+    else:
+        h = (seed + prime5) & 0xFFFFFFFF
+    h = (h + length) & 0xFFFFFFFF
+    while i + 4 <= length:
+        k = int.from_bytes(data[i : i + 4], "little")
+        h = (h + k * prime3) & 0xFFFFFFFF
+        h = (rotl(h, 17) * prime4) & 0xFFFFFFFF
+        i += 4
+    while i < length:
+        h = (h + data[i] * prime5) & 0xFFFFFFFF
+        h = (rotl(h, 11) * prime1) & 0xFFFFFFFF
+        i += 1
+    h ^= h >> 15
+    h = (h * prime2) & 0xFFFFFFFF
+    h ^= h >> 13
+    h = (h * prime3) & 0xFFFFFFFF
+    h ^= h >> 16
+    return h
+
+
+def smz3_rom_digest(data: bytes) -> int:
+    """samus.link vanilla ROM digest (xxh32 seed ``SMZ3``)."""
+    return xxh32(strip_smc_header(data), SMZ3_XXH_SEED)
+
+
+def _lorom_title(data: bytes) -> bytes:
+    body = strip_smc_header(data)
+    if len(body) < 0x7FC0 + 21:
+        return b""
+    return body[0x7FC0 : 0x7FC0 + 21]
+
+
+def validate_sm_rom(data: bytes, *, path: Path | str | None = None) -> bytes:
+    """Return unheadered SM bytes or raise ``ValueError`` if not samus.link-good."""
+    body = strip_smc_header(data)
+    label = f" ({path})" if path else ""
+    if len(body) < _SM_SIZE:
+        raise ValueError(f"Super Metroid ROM too small: {len(body)} < {_SM_SIZE}{label}")
+    body = body[:_SM_SIZE]
+    digest = smz3_rom_digest(body)
+    if digest != SMZ3_SM_XXH32:
+        raise ValueError(
+            f"Super Metroid ROM failed samus.link hash: got 0x{digest:08X}, "
+            f"expected 0x{SMZ3_SM_XXH32:08X}{label}"
+        )
+    return body
+
+
+def validate_z3_jp_rom(data: bytes, *, path: Path | str | None = None) -> bytes:
+    """Return unheadered ALttP **JP 1.0** bytes or raise ``ValueError``."""
+    body = strip_smc_header(data)
+    label = f" ({path})" if path else ""
+    if len(body) < _Z3_SIZE:
+        raise ValueError(f"Zelda 3 ROM too small: {len(body)} < {_Z3_SIZE}{label}")
+    body = body[:_Z3_SIZE]
+    digest = smz3_rom_digest(body)
+    if digest == SMZ3_Z3_XXH32:
+        return body
+    title = _lorom_title(body)
+    if digest == _US_Z3_XXH32 or title.startswith(b"THE LEGEND OF ZELDA"):
+        raise ValueError(
+            "ALttP ROM is the **USA** dump (title THE LEGEND OF ZELDA). "
+            "SMZ3 requires **Japanese 1.0** (internal title ZELDANODENSETSU, "
+            f"samus.link xxh32 0x{SMZ3_Z3_XXH32:08X}). "
+            f"Place it at roms/zelda3_jp.sfc and re-run setup_roms / generate_seed."
+            f"{label}"
+        )
+    raise ValueError(
+        f"ALttP ROM failed samus.link JP 1.0 hash: got 0x{digest:08X}, "
+        f"expected 0x{SMZ3_Z3_XXH32:08X} (title={title!r}){label}"
+    )
+
+
 def read_vanilla_roms(
     sm_path: Path | None = None,
     z3_path: Path | None = None,
+    *,
+    validate: bool = True,
 ) -> tuple[bytes, bytes]:
-    """Load shared vanilla Super Metroid + ALttP ROMs."""
+    """Load Super Metroid + ALttP JP 1.0 ROMs (optionally hash-checked)."""
     sm_path = sm_path or SHARED_SM_ROM
-    z3_path = z3_path or SHARED_Z3_ROM
+    z3_path = z3_path or SHARED_Z3_JP_ROM
     if not sm_path.is_file():
         raise FileNotFoundError(f"Missing Super Metroid ROM: {sm_path}")
     if not z3_path.is_file():
-        raise FileNotFoundError(f"Missing Zelda 3 ROM: {z3_path}")
-    return sm_path.read_bytes(), z3_path.read_bytes()
+        # Helpful hint when only the US dump exists.
+        us = Path(SHARED_Z3_ROM).parent / "zelda3.sfc"
+        hint = ""
+        if us.is_file():
+            hint = (
+                f"\nFound US dump at {us} — that is for alttp/, not SMZ3. "
+                f"Need Japanese 1.0 at {SHARED_Z3_JP_ROM}."
+            )
+        raise FileNotFoundError(f"Missing ALttP JP 1.0 ROM: {z3_path}{hint}")
+    sm_raw = sm_path.read_bytes()
+    z3_raw = z3_path.read_bytes()
+    if validate:
+        return validate_sm_rom(sm_raw, path=sm_path), validate_z3_jp_rom(
+            z3_raw, path=z3_path
+        )
+    return strip_smc_header(sm_raw)[:_SM_SIZE], strip_smc_header(z3_raw)[:_Z3_SIZE]
 
 
 def build_combo_rom(
@@ -165,12 +313,18 @@ def build_combo_rom(
     base_ips: bytes | None = None,
     sm_path: Path | None = None,
     z3_path: Path | None = None,
+    validate: bool = True,
 ) -> bytes:
     """Full pipeline: merge vanilla → base IPS → seed patch → final ROM bytes."""
     if sm_rom is None or z3_rom is None:
-        sm_loaded, z3_loaded = read_vanilla_roms(sm_path, z3_path)
+        sm_loaded, z3_loaded = read_vanilla_roms(
+            sm_path, z3_path, validate=validate
+        )
         sm_rom = sm_rom or sm_loaded
         z3_rom = z3_rom or z3_loaded
+    elif validate:
+        sm_rom = validate_sm_rom(sm_rom)
+        z3_rom = validate_z3_jp_rom(z3_rom)
     if base_ips is None:
         base_ips = load_base_ips()
 

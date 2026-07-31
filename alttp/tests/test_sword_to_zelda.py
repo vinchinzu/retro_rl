@@ -22,7 +22,9 @@ from alttp.ram import (
 )
 from alttp.sword_to_zelda import (
     SWORD_TO_SOUTH_CHAMBER_SCRIPT,
+    STAIRS_ALIGN_X,
     evaluate_acceptance,
+    left_secret_entrance,
     run_from_sword,
 )
 
@@ -64,7 +66,22 @@ def test_evaluate_acceptance_zelda() -> None:
     acc = evaluate_acceptance(snap)
     assert acc["zelda_follower"] is True
     assert acc["fighter_sword_ram"] is True
+    assert acc["left_secret_entrance"] is False
     assert zelda_rescued_accepted(snap) is True
+
+
+def test_left_secret_entrance_outdoors() -> None:
+    writes = _passage()
+    writes[INDOORS] = 0
+    snap = read_snapshot(_ram(writes))
+    assert left_secret_entrance(snap) is True
+    acc = evaluate_acceptance(snap)
+    assert acc["left_secret_entrance"] is True
+    assert acc["in_secret_passage"] is False
+
+
+def test_stairs_align_constant() -> None:
+    assert STAIRS_ALIGN_X == 2672
 
 
 def test_hold_up_flag_blocks_acceptance_clear() -> None:
@@ -110,11 +127,31 @@ class _FakeSwordEnv:
             self._writes[LINK_X + 1] = (2680 >> 8) & 0xFF
 
 
+class _FakeExitEnv(_FakeSwordEnv):
+    """After south chamber, later steps go outdoors (secret-entrance clear)."""
+
+    def step(self, _action: object) -> None:
+        super().step(_action)
+        if self.steps > 500:
+            self._writes[INDOORS] = 0
+            self._writes[MODULE] = 0x09
+
+
 def test_run_from_sword_controller_smoke() -> None:
     env = _FakeSwordEnv()
-    result = run_from_sword(env, source="state_load_dev", try_south=True)
+    result = run_from_sword(
+        env, source="state_load_dev", try_south=True, try_exit=False
+    )
     report = result.to_report()
     assert report["kind"] == "alttp_sword_to_zelda_report"
     assert report["development_only"] is True
-    assert result.ok is False  # no Zelda follower in fake env
+    assert result.ok is False  # no exit / Zelda in this smoke
     assert any(p["phase"] == "ensure_sword_control" for p in report["phases"])
+
+
+def test_run_from_sword_exit_ok() -> None:
+    env = _FakeExitEnv()
+    result = run_from_sword(env, source="state_load_dev", try_south=True, try_exit=True)
+    assert result.acceptance["left_secret_entrance"] is True
+    assert result.ok is True
+    assert result.phase == "secret_entrance_exited"

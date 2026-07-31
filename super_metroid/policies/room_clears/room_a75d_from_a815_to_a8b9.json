@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a75d_from_a815_to_a8b9",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Ice Beam Acid Room (0xA75D); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x931E",
+    "entrySourceRoomIdHex": "0xA815",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 37662,
+    "entrySourceRoomId": 43029
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 43029,
+      "sourceRoomIdHex": "0xA815",
+      "endpoint": {
+        "roomId": 42845,
+        "roomIdHex": "0xA75D",
+        "logicalRoomId": 107,
+        "nodeId": 2,
+        "nodeName": "Ice Beam Acid Room Right Door (to Gate Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 43193,
+      "targetRoomIdHex": "0xA8B9",
+      "endpoint": {
+        "roomId": 42845,
+        "roomIdHex": "0xA75D",
+        "logicalRoomId": 107,
+        "nodeId": 1,
+        "nodeName": "Ice Beam Acid Room Left Door (to Snake Room)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 28,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "run0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run4",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land4",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run5",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump5",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land5",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 16
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned 6-hop acid traverse; development only.",
+  "promotedAt": "2026-07-30T22:45:28.285267+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a75d_from_a815_to_a8b9.json",
+    "reportSha256": "c0982cf0bd7c1e5c1a4e8e56ee1acf16a0f9ea2712ceae61e6bee815e51eee8d",
+    "stateSha256": "abe59ee2e845f8984fa24a57401d55d55486fe4128b2e5dc77c509b4fc3a276b",
+    "policySha256Before": "621ccb01c025dac2e7532014b471b2e3c52ee0b87f26e89d35f90d399a9fde27"
+  }
+}

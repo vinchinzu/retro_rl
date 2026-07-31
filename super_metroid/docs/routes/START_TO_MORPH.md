@@ -8,7 +8,7 @@ From the repository root:
 uv run python super_metroid/scripts/setup_rom.py
 uv run python super_metroid/scripts/import_legacy_assets.py
 uv run python super_metroid/scripts/export/progression_map.py
-uv run python super_metroid/scripts/record/start_to_morph.py
+uv run python super_metroid/scripts/record/continuous.py --to morph
 ```
 
 Use `--no-video` for a faster machine-report-only check. Unlimited ammo is

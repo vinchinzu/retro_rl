@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_ac00_from_abd2_to_ac2b",
+  "status": "verified_development_state",
+  "description": "2-screen left transit Grapple Tutorial Room 1; spin-run left then open.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x94E6",
+    "entrySourceRoomIdHex": "0xABD2",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 38118,
+    "entrySourceRoomId": 43986
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 43986,
+      "sourceRoomIdHex": "0xABD2",
+      "endpoint": {
+        "roomId": 44032,
+        "roomIdHex": "0xAC00",
+        "logicalRoomId": 129,
+        "nodeId": 2,
+        "nodeName": "Grapple Tutorial Room 1 Right Door (to Grapple Tutorial 2)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44075,
+      "targetRoomIdHex": "0xAC2B",
+      "endpoint": {
+        "roomId": 44032,
+        "roomIdHex": "0xAC00",
+        "logicalRoomId": 129,
+        "nodeId": 1,
+        "nodeName": "Grapple Tutorial Room 1 Left Door (to Grapple)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 28,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "runup",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 180
+    },
+    {
+      "label": "land",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 50
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 200
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned from probe; development only.",
+  "promotedAt": "2026-07-30T22:31:06.483896+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_ac00_from_abd2_to_ac2b.json",
+    "reportSha256": "601d90c136664209f083e4e0d29a8db72ef68a94abff812ddbad500458d4c2c0",
+    "stateSha256": "292f3d52f41e556de6516923a23ae0385816119bd178e73bb1af1518e5acdc8d",
+    "policySha256Before": "39ca3b679ec254dae6c4ba82f9df50676fdba13680352bcd67ca92604c4458a2"
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b62b_from_b482_to_b5d5",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Metal Pirates Room (0xB62B); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9966",
+    "entrySourceRoomIdHex": "0xB482",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 39270,
+    "entrySourceRoomId": 46210
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 46210,
+      "sourceRoomIdHex": "0xB482",
+      "endpoint": {
+        "roomId": 46635,
+        "roomIdHex": "0xB62B",
+        "logicalRoomId": 139,
+        "nodeId": 1,
+        "nodeName": "Metal Pirates Room Left Door (to Plowerhouse)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "gray",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [
+          "A",
+          "clear_local_lock",
+          "clear_room_enemies"
+        ],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 46549,
+      "targetRoomIdHex": "0xB5D5",
+      "endpoint": {
+        "roomId": 46635,
+        "roomIdHex": "0xB62B",
+        "logicalRoomId": 139,
+        "nodeId": 2,
+        "nodeName": "Metal Pirates Room Right Door (to Wasteland)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        31,
+        7
+      ],
+      "exitBlock": [
+        31,
+        7
+      ],
+      "pathBlocks": 30,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          31,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 12
+    },
+    {
+      "label": "run",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 60
+    },
+    {
+      "label": "shoot_run",
+      "buttons": [
+        "RIGHT",
+        "B",
+        "X"
+      ],
+      "frames": 100
+    },
+    {
+      "label": "shoot_more",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 250
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned shoot-run metal pirates; development only."
+}
