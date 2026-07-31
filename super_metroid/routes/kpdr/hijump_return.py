@@ -115,7 +115,7 @@ def play_hj_shaft_to_business(session: ControllerSession) -> SuperMetroidState:
     # the Sova, satisfying the gray-door lock.
     ensure_morph(session)
     for frame in range(1100):
-        buttons = ("RIGHT", "X") if frame % 45 < 2 else ("RIGHT",)
+        buttons = ("RIGHT", "X") if frame % 30 < 3 else ("RIGHT",)
         state = _hold(session, 1, *buttons, reason="hj_return_bomb_tunnel")
         if state.samus_x >= 350:
             break
@@ -132,20 +132,20 @@ def play_hj_shaft_to_business(session: ControllerSession) -> SuperMetroidState:
     _unmorph(session)
     _select_weapon(session, 0)
     for frame in range(600):
-        buttons = ("RIGHT", "B", "X") if frame % 30 < 4 else ("RIGHT", "B", "A")
+        buttons = ("RIGHT", "B", "X") if frame < 4 else ("RIGHT", "B")
         state = _hold(session, 1, *buttons, reason="hj_return_gray_exit")
         if state.room_id == ROOM_BUSINESS:
             break
     else:
         raise TimeoutError(f"hj_shaft_to_business: gray door failed: {state}")
     state = _wait_ordinary_room(
-        session, ROOM_BUSINESS, settle_frames=280, label="hj_shaft_to_business"
+        session, ROOM_BUSINESS, settle_frames=180, label="hj_shaft_to_business"
     )
-    for _ in range(120):
+    for _ in range(60):
         state = _hold(session, 1, reason="hj_return_business_floor")
         if state.samus_y >= 1419 and state.pose in (1, 2, 9, 10, 137, 138):
             break
-    for _ in range(100):
+    for _ in range(60):
         state = session.state
         if state.samus_x >= 88:
             break
@@ -162,7 +162,6 @@ def play_hijump_to_warehouse(session: ControllerSession) -> SuperMetroidState:
     play_hj_room_to_shaft(session)
     play_hj_shaft_to_business(session)
     return play_business_to_warehouse(session)
-
 
 
 

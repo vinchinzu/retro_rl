@@ -90,6 +90,9 @@ uv run python -m smb.scripts.rle_polish --list-windows
 - Natural 1-1 segment alone: idle **1** after readiness (`NATURAL_SETTLE_FRAMES`).
 - World 4 = `world` index **3**. Underground `level_id=2` is not completion.
 - Ending = World 8-4 + `oper_mode=2`, held 120 idle frames.
+- **Do not** absolute-frame stitch a faster 1-1 into the old 1-2 suffix — use
+  `smb.reactive_12` (control gates). Do **not** W4 idle-pad to restore phase
+  (erases stairs savings); retime later legs from natural control instead.
 - Prefer `uv run python -m pytest` (project venv / stable_retro).
 
 ## Norms

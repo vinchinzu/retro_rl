@@ -70,17 +70,47 @@ The path board (`maps/path_room_board.json`) is **topology**, not KPDR order.
 |-------|-----------|----------|
 | High | graph + tip milestones | inventory-aware path / tip id |
 | Mid | `RouteHop` / `ControllerSegment` / `PolicySegment` | entry → play → exit evidence |
-| Low | `routes/controller_common` | `hold`, `wait_until`, morph/weapon, door exit |
+| Low | `routes/controller_common` | hybrid primitives (below) |
 | Boss | `combat/*` via `BossStrategy` / `BossSegment` | only after natural boss-room entry |
 
 - **Controllers** (`routes/kpdr/`): pure movement/combat on
   `ControllerSession`; registered in `KPDR_SEGMENTS`.
 - **Policies** (`policy.py` + `policies/`): hash-pinned raw button
-  sequences with `StateRequirement` entry/exit checks.
+  sequences with `StateRequirement` entry/exit checks. **Keep raw JSON for
+  timing-critical segments**; compose primitives around hard slices.
 - **Combat**: approach controllers enter the room; fight policies clear
   the boss (Route / Approach / Trigger split). Full pipeline:
   [`docs/BOSS_PIPELINE.md`](BOSS_PIPELINE.md) — catalog → natural entry →
   strategy → optional structured RL → continuous promote.
+
+**Hybrid primitives** (`routes/controller_common.py`) reduce blank-JSON
+poking without dropping evidence:
+
+| Primitive | Role |
+|-----------|------|
+| `wait_until` / `wait_requirement` | Idle until pred / `StateRequirement` |
+| `require_state` | Fail fast with requirement failure strings |
+| `hold_until` | Hold buttons while polling |
+| `wait_ordinary_room` | Multi-truth settle (room + phase + optional x/y) |
+| `play_run_shoot_exit` / `traverse_door` | Horizontal door exit (+ entry window) |
+| `collect_item_mask` | Wait for PLM item bit |
+| `ensure_morph` / `select_weapon` | Pose / weapon helpers |
+
+**Graph-driven next hop** (`progression.RoomProgressionGraph`):
+
+- `outgoing(room, capabilities=, verification=)`
+- `suggest_next_hops(room, capabilities=)` — ranks continuous → controller_dev
+- `path_verification(src, dst, caps)` — blocking edge for unfinished path
+- `capabilities_from_state(state)` — live RAM → capability tokens
+
+**Offline dwell ranking** (after continuous green, before extending):
+
+```bash
+uv run python super_metroid/scripts/export/split_dwell.py \
+  super_metroid/recordings/start_to_varia.json --top 15
+uv run python super_metroid/scripts/export/split_dwell.py \
+  super_metroid/recordings/start_to_varia.json --reasons --top 20
+```
 
 Both controllers and policies adapt to the same **Segment** surface in
 `routes/segment.py` (thin wrappers over existing callables). Boss

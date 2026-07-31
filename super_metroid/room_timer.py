@@ -437,3 +437,127 @@ def rank_visits(
         to_dict=lambda v: v.to_dict() if isinstance(v, RoomVisit) else dict(v),
         limit=limit,
     )
+
+
+@dataclass(frozen=True)
+class SplitDwell:
+    """Frame gap between consecutive continuous-report splits."""
+
+    split_id: str
+    frame: int
+    room_id: int
+    dwell_frames: int
+    previous_split_id: str | None = None
+    previous_frame: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "split_id": self.split_id,
+            "frame": self.frame,
+            "room_id": self.room_id,
+            "room_id_hex": f"0x{self.room_id:04X}",
+            "dwell_frames": self.dwell_frames,
+            "previous_split_id": self.previous_split_id,
+            "previous_frame": self.previous_frame,
+        }
+
+
+def split_dwells_from_report(
+    report: Mapping[str, Any],
+    *,
+    start_frame: int = 0,
+) -> list[SplitDwell]:
+    """Derive per-split dwells from a continuous JSON report's ``splits`` list.
+
+    Does not require a live ``RoomTimer`` run — useful for offline ranking of
+    high-dwell hops after a continuous tip is integrity-green.
+    """
+    raw_splits = report.get("splits")
+    if not isinstance(raw_splits, list) or not raw_splits:
+        return []
+    rows: list[SplitDwell] = []
+    prev_id: str | None = None
+    prev_frame = start_frame
+    for item in raw_splits:
+        if not isinstance(item, Mapping):
+            continue
+        split_id = str(item.get("split_id") or item.get("id") or "")
+        try:
+            frame = int(item["frame"])
+            room_id = int(item.get("room_id") or 0)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not split_id:
+            continue
+        rows.append(
+            SplitDwell(
+                split_id=split_id,
+                frame=frame,
+                room_id=room_id,
+                dwell_frames=max(0, frame - prev_frame),
+                previous_split_id=prev_id,
+                previous_frame=prev_frame,
+            )
+        )
+        prev_id = split_id
+        prev_frame = frame
+    return rows
+
+
+def rank_split_dwells(
+    report: Mapping[str, Any] | Sequence[SplitDwell | Mapping[str, Any]],
+    *,
+    limit: int | None = None,
+    min_dwell: int = 0,
+) -> list[dict[str, Any]]:
+    """Rank split dwells descending (tightening targets after continuous green)."""
+    if isinstance(report, Mapping) and "splits" in report:
+        dwells = split_dwells_from_report(report)
+    elif isinstance(report, Mapping):
+        dwells = []
+    else:
+        dwells = []
+        for item in report:
+            if isinstance(item, SplitDwell):
+                dwells.append(item)
+            else:
+                dwells.append(
+                    SplitDwell(
+                        split_id=str(item.get("split_id", "")),
+                        frame=int(item.get("frame", 0)),
+                        room_id=int(item.get("room_id", 0)),
+                        dwell_frames=int(item.get("dwell_frames", 0)),
+                        previous_split_id=item.get("previous_split_id"),  # type: ignore[arg-type]
+                        previous_frame=int(item.get("previous_frame", 0)),
+                    )
+                )
+    filtered = [d for d in dwells if d.dwell_frames >= min_dwell]
+    ranked = sorted(filtered, key=lambda d: (-d.dwell_frames, d.frame, d.split_id))
+    if limit is not None:
+        ranked = ranked[:limit]
+    return [d.to_dict() for d in ranked]
+
+
+def action_reason_hotspots(
+    report: Mapping[str, Any],
+    *,
+    limit: int | None = 25,
+    min_frames: int = 50,
+) -> list[dict[str, Any]]:
+    """Rank ``action_reasons`` counters from a continuous report (high dwell labels)."""
+    raw = report.get("action_reasons")
+    if not isinstance(raw, Mapping):
+        return []
+    rows: list[dict[str, Any]] = []
+    for reason, count in raw.items():
+        try:
+            frames = int(count)
+        except (TypeError, ValueError):
+            continue
+        if frames < min_frames:
+            continue
+        rows.append({"reason": str(reason), "frames": frames})
+    rows.sort(key=lambda r: (-r["frames"], r["reason"]))
+    if limit is not None:
+        rows = rows[:limit]
+    return rows
