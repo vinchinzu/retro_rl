@@ -6,24 +6,105 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Continuous power-on → Warehouse Entrance (KPDR K2.6) |
-| Last verification | 2026-07-31 |
+| Best verified result | Continuous power-on → Varia Suit (KPDR K3) |
+| Last verification | 2026-07-30 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 
 | Field | Value |
 |-------|-------|
-| Status | **Continuous power-on → Warehouse Entrance verified** (KPDR K2.6 tip) |
+| Status | **Continuous power-on → Varia Suit verified** (KPDR K3 tip) |
 | Target | Continuous assisted power-on → ending/credits |
 | Current assists | Current energy on Zebes + naturally unlocked current ammo |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
-| Acceptance result | Natural Warehouse Entrance `0xA6A1` after Below Spazer tunnel chain |
-| Video | re-encode optional; machine report is authority |
-| Machine report | `recordings/start_to_warehouse.json` (**83,512** frames) |
+| Acceptance result | Natural Varia PLM after Kraid doorway entry on continuous chain |
+| Video | `recordings/start_to_varia.mp4` (frame count matches report) |
+| Machine report | `recordings/start_to_varia.json` (**101,954** frames) |
 | Save-state loads | 0 |
 | Progression/capacity writes | 0 |
 
 ## Verified baseline
+
+### Continuous power-on → Varia Suit / KPDR K3 (2026-07-30)
+
+`recordings/start_to_varia.json`: power-on through verified Kraid entry, then
+natural Kraid fight + rear door + real Varia PLM in `0xA6E2`. Controllers:
+`routes/kpdr/` + `combat/kraid.py` (`play_kraid_entry_to_varia`). Integrity
+green. Video: `recordings/start_to_varia.mp4`.
+
+| Metric | Value |
+|--------|------:|
+| Total frames | **101,954** (~28.3 min @ 60 fps) |
+| Hi-Jump collect | 87,696 |
+| Warehouse return | 92,241 |
+| Kraid entry | 97,051 |
+| Varia collect | **101,954** |
+| Final room | `0xA6E2` ordinary gameplay |
+| State loads / progression writes | 0 / 0 |
+| Outcome | `varia_collected` |
+
+Reproduce:
+
+```bash
+uv run python super_metroid/scripts/record/continuous.py --to varia
+uv run python super_metroid/scripts/record/continuous.py --no-video  # default tip
+```
+
+### Continuous power-on → Kraid entry / KPDR K2.18 (2026-07-30)
+
+`recordings/start_to_kraid.json`: power-on through verified Hi-Jump collect,
+Business Center return climb (continuous-hardened), Warehouse → Zeela → …
+→ natural **Kraid's Room** `0xA59F`. Controllers: `routes/kpdr/` (including
+`play_business_to_warehouse` grounded hop gates + 987→907 run-up 14 / floor
+retry). Integrity green. Video: `recordings/start_to_kraid.mp4`.
+
+| Metric | Value |
+|--------|------:|
+| Total frames | **97,170** (~27.0 min @ 60 fps) |
+| Hi-Jump collect | 87,696 |
+| Warehouse return | 92,241 |
+| Eye door entry | 96,331 |
+| Kraid entry | **97,051** (split) / report end **97,170** |
+| Final room | `0xA59F` ordinary gameplay |
+| State loads / progression writes | 0 / 0 |
+| Outcome | `kraid_entry` |
+
+Reproduce:
+
+```bash
+uv run python super_metroid/scripts/record/continuous.py --to kraid
+```
+
+Business climb continuous fixes (for the prior 1339 lip / 907 miss / 779 lip
+blockers): standing gates before charged hops; 987→907 uses 14f run-up first
+(pure re-climbs with 8f); 779→elevator setup band x≤80; floor recover + one
+full re-climb on miss.
+
+### Continuous power-on → Hi-Jump Boots / KPDR K2.10 (2026-07-30)
+
+`recordings/start_to_hijump.json`: power-on through verified Warehouse
+prefix, then natural elevator → Business Center → Hi-Jump shaft → **Hi-Jump
+Room** `0xA9E5` with real boots PLM (`collected_items` gains `0x0100`).
+Controllers: `routes/kpdr/` (`play_warehouse_to_business` …
+`play_hj_room_collect`). Integrity green.
+
+| Metric | Value |
+|--------|------:|
+| Total frames | **87,696** (~24.4 min @ 60 fps) |
+| Warehouse entry | 83,391 |
+| Business entry | 83,720 |
+| HJ shaft entry | 85,161 |
+| HJ room entry | 86,519 |
+| Hi-Jump collect | **87,696** |
+| Final room | `0xA9E5` ordinary gameplay |
+| State loads / progression writes | 0 / 0 |
+| Outcome | `hijump_collected` |
+
+Reproduce:
+
+```bash
+uv run python super_metroid/scripts/record/continuous.py --to hijump --no-video
+```
 
 ### Continuous power-on → Warehouse Entrance / KPDR K2.6 (2026-07-31)
 
@@ -51,11 +132,13 @@ prefix, then natural West Tunnel → Glass → East → **Warehouse Entrance**
 Reproduce:
 
 ```bash
-uv run python super_metroid/scripts/record/continuous.py --no-video
 uv run python super_metroid/scripts/record/continuous.py --to warehouse --no-video --room-timing
 ```
 
 Prefix milestones: `--to below_spazer|bat|red_tower|supers|spore|bombs|morph`.
+
+Architecture / contracts: [`ARCHITECTURE.md`](ARCHITECTURE.md),
+`routes/segment.py`.
 
 ### Continuous power-on → Below Spazer / KPDR K2.1 (2026-07-30)
 
@@ -300,26 +383,22 @@ Still blocked for *played* KPDR spine:
 |-----|----------------|
 | Continuous Super → Red Tower | **Done** (`start_to_red_tower`) |
 | Charge / Big Pink return | Charge collects naturally; conventional return is not route-ready. Continuous K1 uses the direct Big Pink→GHZ line (no IBJ) |
-| Continuous Warehouse → Hi-Jump → Kraid | Warehouse continuous green; Hi-Jump→Kraid still controller-only (15,356f) |
-| ★ Kraid + Varia | Boss-only **closeout** from doorway entry: fight + rear door + real Varia PLM (`play_kraid_fight_to_varia`, ~1908f collect / ~2388f w/ fanfare on `eye_hj_kraid_entry`; `debug/kraid_varia_run.json`). Not continuous until composed after natural K2 entry |
+| Continuous Warehouse → Hi-Jump → Kraid → Varia | **Done** (`start_to_kraid` / `start_to_varia`) |
 | Alpha PB (not Pink PB) | First PB on competitive KPDR after Ice |
 | Ship / Phantoon / … | After Alpha PB; warp entry is not continuous |
 | Escape → credits | after MB by play |
 
 Immediate next:
 
-1. **Promote K2 remainder:** attach Warehouse→Hi-Jump collect→return→Kraid
-   to the continuous Warehouse predecessor (`run_to("warehouse")` end state).
-2. **Compose K3 on continuous:** run `kraid_entry_to_varia` after natural
-   `play_eye_to_kraid` — boss-only fight + rear door + Varia PLM is already
-   proven from doorway entry (`kraid_combat.py varia`).
+1. **Post-Varia KPDR:** Bubble Mountain → Speed → Wave → Ice → Alpha PB
+   (natural entry on continuous chain).
+2. **Boss pipeline:** Phantoon after Alpha PB / ship access (see
+   `docs/BOSS_PIPELINE.md`).
 3. **Optional K1 side trip:** Charge Beam conventional return (no IBJ).
 4. **Parked:** pure Pink PB; ship-first Phantoon skip.
 
 ```bash
-uv run python super_metroid/scripts/record/continuous.py --to warehouse --no-video
-uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/red_to_warehouse_controller.state
+uv run python super_metroid/scripts/record/continuous.py --to varia
 uv run python super_metroid/scripts/export/kpdr_tracker.py
 ```
 

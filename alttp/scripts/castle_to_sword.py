@@ -28,7 +28,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from alttp import primitives  # noqa: E402
-from alttp.castle_to_sword import (  # noqa: E402
+from alttp.opening_route.castle_to_sword import (  # noqa: E402
     run_from_castle_grounds,
     run_from_state,
     run_natural_chain,

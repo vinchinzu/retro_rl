@@ -60,6 +60,8 @@ SNES_WRAM_BANK = 0x7E0000
 
 MORPH_BALL_MASK = 0x0004
 BOMBS_MASK = 0x1000
+VARIA_MASK = 0x0001
+HI_JUMP_MASK = 0x0100
 # Event 0x0E is set when Mother Brain dies and the escape door sequence starts.
 EVENT_MOTHER_BRAIN_DEFEATED = 0x0E
 AREA_NAMES = (
@@ -173,6 +175,14 @@ class SuperMetroidState:
         return bool(self.collected_items & BOMBS_MASK)
 
     @property
+    def varia(self) -> bool:
+        return bool(self.collected_items & VARIA_MASK)
+
+    @property
+    def hi_jump(self) -> bool:
+        return bool(self.collected_items & HI_JUMP_MASK)
+
+    @property
     def area_name(self) -> str:
         if 0 <= self.area_index < len(AREA_NAMES):
             return AREA_NAMES[self.area_index]
@@ -213,7 +223,83 @@ class SuperMetroidState:
         data["area_name"] = self.area_name
         data["morph_ball"] = self.morph_ball
         data["bombs"] = self.bombs
+        data["varia"] = self.varia
+        data["hi_jump"] = self.hi_jump
         return data
+
+
+def _wram_mapped_address(address: int) -> int:
+    """Map a WRAM offset to the stable-retro memory key."""
+    return SNES_WRAM_BANK + address if address >= 0x2000 else address
+
+
+def read_wram_u8(env: Any, address: int) -> int:
+    """Read one WRAM byte without copying the full 128 KiB bank."""
+    mapped = _wram_mapped_address(address)
+    # stable-retro exposes bank $7E as a contiguous block; low addresses also
+    # appear via get_ram(). Prefer direct block peeks for high WRAM.
+    if address >= 0x2000:
+        block = env.data.memory.blocks[SNES_WRAM_BANK]
+        return int(np.frombuffer(block, dtype=np.uint8, count=1, offset=address)[0])
+    ram = env.get_ram()
+    return int(ram[address])
+
+
+def read_wram_u16(env: Any, address: int) -> int:
+    """Read one little-endian WRAM word without a full-bank copy."""
+    lo = read_wram_u8(env, address)
+    hi = read_wram_u8(env, address + 1)
+    return lo | (hi << 8)
+
+
+def peek_wram(env: Any, addresses: dict[str, int]) -> dict[str, int]:
+    """Selective WRAM peeks: ``{name: address}`` → ``{name: u8_or_u16}``.
+
+    Values use u16 for known multi-byte navigation addresses, else u8.
+    """
+    u16_addrs = {
+        ADDR_ROOM_ID,
+        ADDR_AREA_INDEX,
+        ADDR_DOOR_TRANSITION,
+        ADDR_TRANSITION_DIRECTION,
+        ADDR_GAME_STATE,
+        ADDR_EQUIPPED_ITEMS,
+        ADDR_COLLECTED_ITEMS,
+        ADDR_EQUIPPED_BEAMS,
+        ADDR_COLLECTED_BEAMS,
+        ADDR_HEALTH,
+        ADDR_MAX_HEALTH,
+        ADDR_MISSILES,
+        ADDR_MAX_MISSILES,
+        ADDR_SUPER_MISSILES,
+        ADDR_MAX_SUPER_MISSILES,
+        ADDR_POWER_BOMBS,
+        ADDR_MAX_POWER_BOMBS,
+        ADDR_SELECTED_ITEM,
+        ADDR_MAX_RESERVE_HEALTH,
+        ADDR_RESERVE_HEALTH,
+        ADDR_SAMUS_POSE,
+        ADDR_SAMUS_X,
+        ADDR_SAMUS_Y,
+        ADDR_VELOCITY_Y,
+        ADDR_VELOCITY_X,
+        ADDR_NUM_ENEMIES,
+        ADDR_ENEMIES_KILLED,
+        ADDR_ENEMY0_X,
+        ADDR_ENEMY0_Y,
+        ADDR_ENEMY0_HP,
+        ADDR_ENEMY0_SPRITEMAP,
+        ADDR_INVINCIBILITY_TIMER,
+        ADDR_KNOCKBACK_TIMER,
+        ADDR_DOOR_DEF_PTR,
+    }
+    out: dict[str, int] = {}
+    for name, address in addresses.items():
+        if address in u16_addrs:
+            out[name] = read_wram_u16(env, address)
+        else:
+            out[name] = read_wram_u8(env, address)
+    return out
 
 
 def read_bank7e_wram(env: Any) -> np.ndarray:
@@ -222,6 +308,9 @@ def read_bank7e_wram(env: Any) -> np.ndarray:
     ``env.get_ram()`` is reliable for low WRAM (``$7E:0000``–``$7E:1FFF``) but
     returns open-bus garbage for high addresses such as event/boss flags at
     ``$7E:D820``. Prefer this helper whenever those fields matter.
+
+    For hot controller loops prefer :func:`read_wram_u16` / :func:`peek_wram`
+    or :func:`parse_env_state` with ``mode="nav"``.
     """
     blocks = env.data.memory.blocks
     raw = blocks[SNES_WRAM_BANK]
@@ -309,6 +398,56 @@ def parse_state(ram: np.ndarray, *, frame: int = 0) -> SuperMetroidState:
     )
 
 
-def parse_env_state(env: Any, *, frame: int = 0) -> SuperMetroidState:
-    """Parse state from the emulator using correct bank-$7E WRAM."""
+def parse_env_state(
+    env: Any,
+    *,
+    frame: int = 0,
+    mode: str = "full",
+) -> SuperMetroidState:
+    """Parse state from the emulator.
+
+    Parameters
+    ----------
+    mode:
+        ``"full"`` — copy bank $7E (correct event/boss flags at ``$D820+``).
+        ``"nav"`` — low WRAM via ``env.get_ram()`` (fast; high fields zero-padded).
+
+    Use ``nav`` in tight wait loops; switch to ``full`` (or :func:`read_wram_u8`
+    peeks) when event/boss integrity matters.
+    """
+    if mode == "nav":
+        return parse_state(env.get_ram(), frame=frame)
+    if mode != "full":
+        raise ValueError(f"unknown parse_env_state mode {mode!r} (use 'full' or 'nav')")
     return parse_state(read_bank7e_wram(env), frame=frame)
+
+
+class StateCache:
+    """Optional per-frame SuperMetroidState cache for continuous / probe loops.
+
+    Call :meth:`invalidate` after every emulator step, or pass the current
+    frame so a stale cache is rebuilt automatically.
+    """
+
+    def __init__(self, env: Any, *, mode: str = "nav") -> None:
+        self.env = env
+        self.mode = mode
+        self._frame: int | None = None
+        self._state: SuperMetroidState | None = None
+
+    def invalidate(self) -> None:
+        self._frame = None
+        self._state = None
+
+    def get(self, *, frame: int = 0, mode: str | None = None) -> SuperMetroidState:
+        use_mode = mode if mode is not None else self.mode
+        if (
+            self._state is not None
+            and self._frame == frame
+            and use_mode == self.mode
+        ):
+            return self._state
+        self.mode = use_mode
+        self._frame = frame
+        self._state = parse_env_state(self.env, frame=frame, mode=use_mode)
+        return self._state

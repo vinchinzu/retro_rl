@@ -17,10 +17,21 @@ DOCS_DIR = GAME_DIR / "docs"
 REFS_DIR = GAME_DIR / "refs"
 BOOT_STATE = "YazeSlot000"
 LINKS_HOUSE_OVERWORLD_STATE = "LinksHouseOverworld"
+# Controllable on screen 0x1B spawn — NOT bridge-turn or secret-hole approach.
+# Semantic name: HyruleCastle_GroundsSpawn_Controllable (see opening_route.anchors).
 HYRULE_CASTLE_GROUNDS_STATE = "HyruleCastleGrounds"
 FIRST_ACTION_STATE = "FirstAction"
 # Dev checkpoint after uncle / fighter-sword (state-load only; not natural-chain proof).
+# Semantic name: HyruleCastle_SecretEntrance_FighterSword.
 FIGHTER_SWORD_STATE = "FighterSword"
+
+# Semantic aliases (meaning-bearing; filenames stay short for integration).
+STATE_SEMANTIC_NAMES: dict[str, str] = {
+    HYRULE_CASTLE_GROUNDS_STATE: "HyruleCastle_GroundsSpawn_Controllable",
+    FIGHTER_SWORD_STATE: "HyruleCastle_SecretEntrance_FighterSword",
+    BOOT_STATE: "TitleBoot_YazeSlot000",
+    FIRST_ACTION_STATE: "HyruleCastle_FirstAction_Dev",
+}
 
 # Sanctuary-path save-state work queue artifacts (see alttp.work_queue).
 ROOM_WORK_QUEUE_JSON = RECORDINGS_DIR / "room_work_queue.json"

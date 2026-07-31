@@ -71,7 +71,7 @@ zero progression writes.
 | Bulk scaffolds | 262 templates exist; almost none promoted |
 | Easiest-first queue | `docs/routes/ROOM_WORK_QUEUE.md` ranks all 262; bootstrap entry states via `run_problem.py bootstrap --queue 1` before large/boss rooms |
 | Directed edges (topology) | **583** in `full_room_graph` — not separate practice units |
-| Boss policies | Spore + Bomb Torizo continuous (replay); full-knowledge Torizo strategy + natural-entry prove + feature-vector Gym/PPO scaffolding in `combat/`; Kraid dev spray only. Vision BC parked until gold — see `docs/research/STRUCTURED_BOSS_RL.md` |
+| Boss policies | Spore + Bomb Torizo continuous; Kraid fight→Varia wired as continuous tip (promote after green report). Full catalog + `BossStrategy` protocol + primitives in `combat/`. Vision BC parked until gold — see [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md), [`STRUCTURED_BOSS_RL.md`](research/STRUCTURED_BOSS_RL.md) |
 
 **Practice track (parallel to continuous KPDR):** finish easy+standard queues first for a clean % complete, then tough geometry, then bosses.
 
@@ -271,19 +271,31 @@ High-value path rooms (from hop table + known hard geometry):
 | P2 | Maridia sand / Botwoon hall, LN exit, Statues, Tourian metroids |
 | P3 | Escape pipes / Climb / Parlor return |
 
-### B4 — Boss scripts (deferred until B1–B3 spine exists)
+### B4 — Boss scripts (pipeline in [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md))
 
-| Boss | Dev status | Continuous need |
-|------|------------|-----------------|
-| Bomb Torizo | Continuous | done |
-| Spore Spawn | Continuous | done |
-| Kraid | Super-spray dev clear; natural entry controller-complete | fight composition + rear door + Varia |
-| Phantoon | entry state only | fight + WS power restore |
-| Botwoon | skip bit only | fight |
-| Draygon | skip bit only | fight + Space Jump collect |
-| Ridley | skip bit only | fight |
-| Mother Brain | room entry + spray probes | zebetite kill, phases, escape init |
-| Escape → credits | warp hop chain | timer, ship, ending/credits RAM |
+**Rule:** no new boss fight until natural entry to that room exists on the
+played continuous chain. Never write boss/event/item RAM to claim a win.
+
+**Phase 0 foundations (do before next fight code):** full `BossCatalogEntry`
+registry, `BossStrategy`/`BossEvidence` protocol, generalized natural-entry
+capture, shared `combat/primitives.py`, continuous tip hooks, probe CLI
+template. Living template: Kraid fight → rear door → Varia.
+
+| Priority | Boss | Dev status | Continuous need |
+|----------|------|------------|-----------------|
+| 0 | Bomb Torizo | Continuous (replay) | done |
+| 0 | Spore Spawn | Continuous | done |
+| 1 | **Kraid** | Fight + Varia strategy; continuous tip wired | green `--to varia` report |
+| 2 | Phantoon | entry state only | fight + WS power restore |
+| 3 | Botwoon | skip bit only | fight |
+| 4 | Draygon | skip bit only | fight + Space Jump collect |
+| 5 | Crocomire | skip / side | fight (acid push; non-HP) |
+| 6 | Ridley | skip bit only | fight |
+| 7 | Golden Torizo | optional / side | multi-phase practice |
+| 8 | Mother Brain | room entry + spray probes | zebetite, phases, escape init |
+| — | Escape → credits | warp hop chain | timer, ship, ending/credits RAM |
+
+Per-boss checklist and promotion criteria: [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md).
 
 ### B5 — Full continuous dry run → verified capture
 
@@ -322,15 +334,15 @@ Track A topology — DONE (stop expanding warp product work)
   ✓  full hop runner + full-tour / full-hybrid diagnostics
 
 Track B — play every path room (PRIMARY) — NEXT
-  W1  Compose natural Kraid entry → fight → rear door → Varia
-  W2  Finish a conventional Charge return and compose K1→K2
-  Ongoing  For each hop: natural entry → attempt → promote on PATH_ROOM_BOARD
-  Later    W9 boss scripts only after natural boss-room entry exists
+  W1  Continuous Kraid attach (warehouse→HJ→fight→Varia) + promote STATUS
+  W1b Boss Phase 0 foundations (catalog / protocol / primitives) — see BOSS_PIPELINE
+  W2  Finish natural path past Varia toward Alpha PB / ship / Phantoon
+  Ongoing  For each hop: natural entry → attempt → promote
+  Later    Boss policies in spine order: Phantoon → Botwoon → Draygon → …
 ```
 
 Do **not** door-warp past open hops to fake progress. Measure furthest played
-room; fix that hop; repeat. The natural-entry Kraid fight is the current
-played-spine boundary.
+room; fix that hop; repeat. Boss work follows [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md).
 
 ---
 

@@ -52,3 +52,17 @@ from platformer_common.segment_hillclimb import (
     PrefixCheckpoint,
     segment_hillclimb_raw,
 )
+from platformer_common.rle_ops import (
+    compress_rle,
+    expand_rle,
+    mutate_rle,
+    rle_normalize,
+    rle_total_frames,
+)
+from platformer_common.rle_optimize import (
+    RleWindow,
+    SMB_BOTTLENECK_WINDOWS,
+    phase_shift_transitions,
+    rle_ga_window,
+    rle_hillclimb_window,
+)

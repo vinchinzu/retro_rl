@@ -205,3 +205,43 @@ def test_k2_graph_below_spazer_to_warehouse() -> None:
         0xA6A1,
     ]
     assert all(edge.verification == "continuous" for edge in path)
+
+
+def test_k2_graph_warehouse_to_hijump() -> None:
+    from super_metroid.progression import START_TO_HIJUMP_GRAPH
+
+    caps = frozenset({"morph_ball", "bombs", "missiles", "super_missiles"})
+    path = START_TO_HIJUMP_GRAPH.shortest_path(0xA6A1, 0xA9E5, caps)
+    assert path is not None
+    assert [edge.target_room_id for edge in path] == [0xA7DE, 0xAA41, 0xA9E5]
+
+
+def test_k2_graph_hijump_return_to_kraid() -> None:
+    from super_metroid.progression import START_TO_KRAID_GRAPH
+
+    caps = frozenset(
+        {"morph_ball", "bombs", "missiles", "super_missiles", "hi_jump"}
+    )
+    path = START_TO_KRAID_GRAPH.shortest_path(0xA9E5, 0xA59F, caps)
+    assert path is not None
+    assert [edge.target_room_id for edge in path] == [
+        0xAA41,
+        0xA7DE,
+        0xA6A1,
+        0xA471,
+        0xA4DA,
+        0xA521,
+        0xA56B,
+        0xA59F,
+    ]
+
+
+def test_k3_graph_kraid_to_varia() -> None:
+    from super_metroid.progression import START_TO_VARIA_GRAPH
+
+    caps = frozenset(
+        {"morph_ball", "bombs", "missiles", "super_missiles", "hi_jump"}
+    )
+    path = START_TO_VARIA_GRAPH.shortest_path(0xA59F, 0xA6E2, caps)
+    assert path is not None
+    assert [edge.target_room_id for edge in path] == [0xA6E2]

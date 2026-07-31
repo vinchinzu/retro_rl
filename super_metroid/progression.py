@@ -20,7 +20,13 @@ from adventure_common.graph import (
     RouteGraph,
     normalize_capability,
 )
-from super_metroid.ram import BOMBS_MASK, MORPH_BALL_MASK, SuperMetroidState
+from super_metroid.ram import (
+    BOMBS_MASK,
+    HI_JUMP_MASK,
+    MORPH_BALL_MASK,
+    VARIA_MASK,
+    SuperMetroidState,
+)
 
 
 @dataclass(frozen=True)
@@ -920,4 +926,228 @@ START_TO_WAREHOUSE_GRAPH = RoomProgressionGraph(
     _K2_WAREHOUSE_EDGES,
     _K2_WAREHOUSE_MILESTONES,
     graph_id="start_to_warehouse",
+)
+
+# KPDR K2.7–K2.10: Warehouse → Business → Hi-Jump shaft → Hi-Jump collect.
+_BASE_CAPS = frozenset({"morph_ball", "bombs", "missiles", "super_missiles"})
+_HJ_CAPS = _BASE_CAPS | frozenset({"hi_jump"})
+_VARIA_CAPS = _HJ_CAPS | frozenset({"varia_suit"})
+
+_K2_HIJUMP_ROOMS = _K2_WAREHOUSE_ROOMS + (
+    RoomNode(0xA7DE, "Business Center", "Norfair"),
+    RoomNode(0xAA41, "Hi-Jump Boots E-Tank Room", "Norfair"),
+    RoomNode(0xA9E5, "Hi-Jump Room", "Norfair"),
+)
+
+_K2_HIJUMP_EDGES = _K2_WAREHOUSE_EDGES + (
+    DoorEdge(
+        "warehouse_to_business",
+        0xA6A1,
+        0xA7DE,
+        "down",
+        "up",
+        _BASE_CAPS,
+        "kpdr_hijump",
+        "continuous",
+    ),
+    DoorEdge(
+        "business_to_hj_shaft",
+        0xA7DE,
+        0xAA41,
+        "left",
+        "right",
+        _BASE_CAPS,
+        "kpdr_hijump",
+        "continuous",
+    ),
+    DoorEdge(
+        "hj_shaft_to_hj_room",
+        0xAA41,
+        0xA9E5,
+        "left",
+        "right",
+        _BASE_CAPS,
+        "kpdr_hijump",
+        "continuous",
+    ),
+)
+
+_K2_HIJUMP_MILESTONES = _K2_WAREHOUSE_MILESTONES + (
+    ProgressionMilestone(
+        "hijump_collected",
+        "Natural Hi-Jump Boots collect from Warehouse continuous tip",
+        ProgressCondition(
+            room_id=0xA9E5,
+            collected_items_mask=MORPH_BALL_MASK | BOMBS_MASK | HI_JUMP_MASK,
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=_BASE_CAPS,
+        acquires=frozenset({"hi_jump"}),
+        timeout_frames=20_000,
+        policy_id="kpdr_hijump",
+    ),
+)
+
+START_TO_HIJUMP_GRAPH = RoomProgressionGraph(
+    _K2_HIJUMP_ROOMS,
+    _K2_HIJUMP_EDGES,
+    _K2_HIJUMP_MILESTONES,
+    graph_id="start_to_hijump",
+)
+
+# KPDR K2.11–K2.18: Hi-Jump return → Warehouse → Zeela → … → natural Kraid entry.
+_K2_KRAID_ROOMS = _K2_HIJUMP_ROOMS + (
+    RoomNode(0xA471, "Warehouse Zeela Room", "Brinstar"),
+    RoomNode(0xA4DA, "Warehouse Kihunter Room", "Brinstar"),
+    RoomNode(0xA521, "Baby Kraid Room", "Brinstar"),
+    RoomNode(0xA56B, "Kraid Eye Door Room", "Brinstar"),
+    RoomNode(0xA59F, "Kraid's Room", "Brinstar"),
+)
+
+_K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
+    DoorEdge(
+        "hj_room_to_shaft",
+        0xA9E5,
+        0xAA41,
+        "right",
+        "left",
+        _HJ_CAPS,
+        "kpdr_hijump",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "hj_shaft_to_business",
+        0xAA41,
+        0xA7DE,
+        "right",
+        "left",
+        _HJ_CAPS,
+        "kpdr_hijump",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "business_to_warehouse",
+        0xA7DE,
+        0xA6A1,
+        "up",
+        "down",
+        _HJ_CAPS,
+        "kpdr_hijump",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "warehouse_to_zeela",
+        0xA6A1,
+        0xA471,
+        "right",
+        "left",
+        _HJ_CAPS,
+        "kpdr_kraid_approach",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "zeela_to_kihunter",
+        0xA471,
+        0xA4DA,
+        "left",
+        "right",
+        _HJ_CAPS,
+        "kpdr_kraid_approach",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "kihunter_to_baby_kraid",
+        0xA4DA,
+        0xA521,
+        "right",
+        "left",
+        _HJ_CAPS,
+        "kpdr_kraid_approach",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "baby_kraid_to_eye",
+        0xA521,
+        0xA56B,
+        "right",
+        "left",
+        _HJ_CAPS,
+        "kpdr_kraid_approach",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "eye_to_kraid",
+        0xA56B,
+        0xA59F,
+        "right",
+        "left",
+        _HJ_CAPS,
+        "kpdr_kraid_approach",
+        "controller_dev",
+    ),
+)
+
+_K2_KRAID_MILESTONES = _K2_HIJUMP_MILESTONES + (
+    ProgressionMilestone(
+        "kraid_entry",
+        "Natural Kraid room entry after Hi-Jump return via Warehouse approach",
+        ProgressCondition(
+            room_id=0xA59F,
+            collected_items_mask=MORPH_BALL_MASK | BOMBS_MASK | HI_JUMP_MASK,
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=_HJ_CAPS,
+        timeout_frames=40_000,
+        policy_id="kpdr_kraid_approach",
+    ),
+)
+
+START_TO_KRAID_GRAPH = RoomProgressionGraph(
+    _K2_KRAID_ROOMS,
+    _K2_KRAID_EDGES,
+    _K2_KRAID_MILESTONES,
+    graph_id="start_to_kraid",
+)
+
+# KPDR K3: Kraid fight → rear exit → natural Varia collect.
+_K3_VARIA_ROOMS = _K2_KRAID_ROOMS + (
+    RoomNode(0xA6E2, "Varia Suit Room", "Brinstar"),
+)
+
+_K3_VARIA_EDGES = _K2_KRAID_EDGES + (
+    DoorEdge(
+        "kraid_to_varia",
+        0xA59F,
+        0xA6E2,
+        "right",
+        "left",
+        _HJ_CAPS,
+        "kpdr_kraid_combat",
+        "controller_dev",
+    ),
+)
+
+_K3_VARIA_MILESTONES = _K2_KRAID_MILESTONES + (
+    ProgressionMilestone(
+        "varia_collected",
+        "Natural Varia collect after Kraid fight from continuous chain",
+        ProgressCondition(
+            room_id=0xA6E2,
+            collected_items_mask=(
+                MORPH_BALL_MASK | BOMBS_MASK | HI_JUMP_MASK | VARIA_MASK
+            ),
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=_HJ_CAPS,
+        acquires=frozenset({"varia_suit"}),
+        timeout_frames=12_000,
+        policy_id="kpdr_kraid_combat",
+    ),
+)
+
+START_TO_VARIA_GRAPH = RoomProgressionGraph(
+    _K3_VARIA_ROOMS,
+    _K3_VARIA_EDGES,
+    _K3_VARIA_MILESTONES,
+    graph_id="start_to_varia",
 )

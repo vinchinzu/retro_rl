@@ -77,6 +77,29 @@ WAREHOUSE_SPLITS = BELOW_SPAZER_SPLITS + (
     "east_to_warehouse",
 )
 
+# KPDR K2.7–K2.10: Warehouse → Business → Hi-Jump collect.
+HIJUMP_SPLITS = WAREHOUSE_SPLITS + (
+    "warehouse_to_business",
+    "business_to_hj_shaft",
+    "hj_shaft_to_hj_room",
+    "hijump_collected",
+)
+
+# KPDR K2.11–K2.18: Hi-Jump return → Warehouse approach → natural Kraid entry.
+KRAID_SPLITS = HIJUMP_SPLITS + (
+    "hj_room_to_shaft",
+    "hj_shaft_to_business",
+    "business_to_warehouse",
+    "warehouse_to_zeela",
+    "zeela_to_kihunter",
+    "kihunter_to_baby_kraid",
+    "baby_kraid_to_eye",
+    "eye_to_kraid",
+)
+
+# KPDR K3: Kraid fight → Varia collect.
+VARIA_SPLITS = KRAID_SPLITS + ("kraid_to_varia",)
+
 
 @dataclass(frozen=True)
 class ContinuousTip:
@@ -176,10 +199,47 @@ CONTINUOUS_TIPS: tuple[ContinuousTip, ...] = (
         supports_unlimited_energy=True,
         aliases=("start_to_warehouse", "warehouse_entrance", "k2_6"),
     ),
+    ContinuousTip(
+        tip_id="hijump",
+        artifact_stem="start_to_hijump",
+        display_name="Power-on → Hi-Jump Boots (KPDR K2.10)",
+        description=(
+            "Warehouse prefix through Business Center, Hi-Jump shaft, "
+            "and natural Hi-Jump Boots collect."
+        ),
+        supports_room_timing=True,
+        supports_unlimited_energy=True,
+        aliases=("start_to_hijump", "hi_jump", "hi-jump", "k2_10"),
+    ),
+    ContinuousTip(
+        tip_id="kraid",
+        artifact_stem="start_to_kraid",
+        display_name="Power-on → Kraid entry (KPDR K2.18)",
+        description=(
+            "Hi-Jump prefix through return to Warehouse, Zeela/Kihunter/"
+            "Baby/Eye approach, and natural Kraid room entry."
+        ),
+        supports_room_timing=True,
+        supports_unlimited_energy=True,
+        aliases=("start_to_kraid", "kraid_entry", "k2_18"),
+    ),
+    ContinuousTip(
+        tip_id="varia",
+        artifact_stem="start_to_varia",
+        display_name="Power-on → Varia Suit (KPDR K3)",
+        description=(
+            "Kraid-entry prefix through natural Kraid fight, rear exit, "
+            "and real Varia PLM collect."
+        ),
+        supports_room_timing=True,
+        supports_unlimited_energy=True,
+        aliases=("start_to_varia", "varia_suit", "k3"),
+    ),
 )
 
-# Current continuous tip (extend CONTINUOUS_TIPS when attaching the next leg).
-DEFAULT_CONTINUOUS_TIP = CONTINUOUS_TIPS[-1].tip_id
+# Verified continuous tip (M5). Kraid/varia remain wired; promote DEFAULT only
+# after integrity-green continuous evidence for those tips.
+DEFAULT_CONTINUOUS_TIP = "varia"
 
 
 def _tip_lookup() -> dict[str, ContinuousTip]:
@@ -294,6 +354,34 @@ ROUTE_START_TO_WAREHOUSE = NamedRoute(
     ),
 )
 
+ROUTE_START_TO_HIJUMP = NamedRoute(
+    route_id="sm_start_to_hijump",
+    display_name="Power-on → Hi-Jump Boots (KPDR K2.10)",
+    description=(
+        "Warehouse prefix through Business Center and natural Hi-Jump collect."
+    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in HIJUMP_SPLITS),
+)
+
+ROUTE_START_TO_KRAID = NamedRoute(
+    route_id="sm_start_to_kraid",
+    display_name="Power-on → Kraid entry (KPDR K2.18)",
+    description=(
+        "Hi-Jump prefix through return and Warehouse approach to natural "
+        "Kraid room entry."
+    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in KRAID_SPLITS),
+)
+
+ROUTE_START_TO_VARIA = NamedRoute(
+    route_id="sm_start_to_varia",
+    display_name="Power-on → Varia Suit (KPDR K3)",
+    description=(
+        "Kraid-entry prefix through natural fight and Varia Suit collect."
+    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in VARIA_SPLITS),
+)
+
 ROUTE_REGISTRY: dict[str, NamedRoute] = {}
 register_routes(ROUTE_REGISTRY, ROUTE_START_TO_MORPH, "morph", "start_to_morph")
 register_routes(ROUTE_REGISTRY, ROUTE_START_TO_BOMBS, "bombs", "start_to_bombs")
@@ -329,6 +417,30 @@ register_routes(
     "start_to_warehouse",
     "warehouse_entrance",
     "k2_6",
+)
+register_routes(
+    ROUTE_REGISTRY,
+    ROUTE_START_TO_HIJUMP,
+    "hijump",
+    "start_to_hijump",
+    "hi_jump",
+    "k2_10",
+)
+register_routes(
+    ROUTE_REGISTRY,
+    ROUTE_START_TO_KRAID,
+    "kraid",
+    "start_to_kraid",
+    "kraid_entry",
+    "k2_18",
+)
+register_routes(
+    ROUTE_REGISTRY,
+    ROUTE_START_TO_VARIA,
+    "varia",
+    "start_to_varia",
+    "varia_suit",
+    "k3",
 )
 
 SegmentFn = Callable[..., Any]
