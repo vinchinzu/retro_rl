@@ -21,7 +21,7 @@ Super Metroid scripted full-clear project. Shared process:
 | Path | Role |
 |------|------|
 | `ram.py`, `assist.py`, `policy.py`, `progression.py`, `paths.py`, `room_timer.py` | Core package surface |
-| `routes/continuous.py` | Power-on chain (Morph → Bombs → Spore → Supers) |
+| `routes/continuous.py` | Power-on chain (Morph → Bombs → Spore → Supers → Red Tower) |
 | `routes/runtime.py` | Shared session, report harness, integrity |
 | `routes/*_controller.py` | Movement/combat only (no env ownership) |
 | `rooms/` | Full-room graph, problem catalog, practice loop |
@@ -47,14 +47,17 @@ are topology diagnostics only — not route evidence.
    Alpha PB after Ice; **not** ship-first / early Pink PB.
 2. **Path board:** [`docs/research/PATH_ROOM_BOARD.md`](docs/research/PATH_ROOM_BOARD.md)
    — 107 rooms / 199 hops; hop table is topology, not human KPDR order.
-3. **★ Next play (pure):** compose the Kraid fight from the natural
-   Warehouse→Hi-Jump→Warehouse→Kraid controller entry, take the rear door,
-   and collect Varia. The full safer Warehouse suffix is 15,356 frames and
-   collects Hi-Jump from the real PLM before Kraid.
-4. **Dev topology (green):** `kpdr.py route-to-hijump` — 24 hops Big Pink →
+3. **Continuous tip:** power-on → Warehouse Entrance
+   (`scripts/record/continuous.py --to warehouse`). Below Spazer / Bat / Red
+   are prefixes.
+4. **★ Next play (pure):** attach Warehouse→Hi-Jump collect→return→Kraid to
+   that continuous predecessor, then `kraid_entry_to_varia`. Warehouse→Hi-Jump→Kraid
+   is controller-complete (15,356f). Boss-only Kraid→Varia is proven from
+   doorway entry (`kraid_combat.py varia --state entry`).
+5. **Dev topology (green):** `kpdr.py route-to-hijump` — 24 hops Big Pink →
    Hi-Jump room; anchors `dev_kpdr_*` / `dev_hijump_*`.
-5. **Parked:** pure Pink PB maze; ship-first skip (not KPDR).
-6. Boss fights only after natural entry exists on the continuous chain.
+6. **Parked:** pure Pink PB maze; ship-first skip (not KPDR).
+7. Boss fights only after natural entry exists on the continuous chain.
 
 Tracker (chartable CSV/JSON/MD):
 [`docs/routes/KPDR_TRACKER.csv`](docs/routes/KPDR_TRACKER.csv) · export
@@ -67,14 +70,27 @@ KPDR board: [`docs/routes/ROUTE_KPDR.md`](docs/routes/ROUTE_KPDR.md).
 
 ### Continuous baselines
 
+One CLI for every tip — play lives in `routes/continuous.py`; register tips in
+`routes/catalog.py` (do **not** add `start_to_*.py` scripts).
+
+**Post-Supers tip extension (room-by-room):** pure controller in `routes/kpdr/`
+→ graph edge in `progression.py` → splits/`ContinuousTip` in `catalog.py` →
+append `RouteHop`s and a thin `run_post_supers_tip(...)` wrapper in
+`continuous.py`. Do not copy another full `run_start_to_*` body.
+
 ```bash
-uv run python super_metroid/scripts/record/start_to_supers.py --no-video
-uv run python super_metroid/scripts/record/start_to_supers.py
-# Opt-in room timing (separate JSON under recordings/room_timings/; no integrity change)
-uv run python super_metroid/scripts/record/start_to_supers.py --no-video --room-timing
-uv run python super_metroid/scripts/record/start_to_spore_spawn.py --no-video
-uv run python super_metroid/scripts/record/start_to_bombs.py --no-video
-uv run python super_metroid/scripts/record/start_to_morph.py --no-video
+# Current continuous tip: power-on → Warehouse Entrance (KPDR K2.6)
+uv run python super_metroid/scripts/record/continuous.py --no-video
+uv run python super_metroid/scripts/record/continuous.py --to warehouse --no-video --room-timing
+# Prefix milestones (shorter checks)
+uv run python super_metroid/scripts/record/continuous.py --to below_spazer --no-video
+uv run python super_metroid/scripts/record/continuous.py --to bat --no-video
+uv run python super_metroid/scripts/record/continuous.py --to red_tower --no-video
+uv run python super_metroid/scripts/record/continuous.py --to supers --no-video
+uv run python super_metroid/scripts/record/continuous.py --to spore --no-video
+uv run python super_metroid/scripts/record/continuous.py --to bombs --no-video
+uv run python super_metroid/scripts/record/continuous.py --to morph --no-video
+uv run python super_metroid/scripts/record/continuous.py --list
 ```
 
 ### Path board + post-Super controller
@@ -107,8 +123,9 @@ uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
 uv run python super_metroid/scripts/export/kpdr_tracker.py
 ```
 
-Controllers: `routes/post_spore_controller.py`, `routes/kpdr_controller.py`.
-KPDR plan: `docs/routes/ROUTE_KPDR.md`. Tracker: `docs/routes/KPDR_TRACKER.csv`.
+Controllers: `routes/kpdr/` (Super collect → Kraid; `post_spore_controller`
+is a thin re-export). KPDR plan: `docs/routes/ROUTE_KPDR.md`. Tracker:
+`docs/routes/KPDR_TRACKER.csv`.
 
 ### Topology skeleton (door-warp diagnostics only)
 
@@ -127,7 +144,21 @@ Reports are labeled `developmentOnly: true`. Hop tables:
 
 ### Boss / late entry (development only)
 
+Full-knowledge boss strategy (RAM hitboxes; vision BC parked until gold):
+[`docs/research/STRUCTURED_BOSS_RL.md`](docs/research/STRUCTURED_BOSS_RL.md).
+
 ```bash
+# Bomb Torizo structured strategy / natural capture / feature-vector RL
+# (not continuous evidence; keep hash-pinned pit_to_post_torizo on acceptance)
+uv run python super_metroid/scripts/probe/bomb_torizo_combat.py --state BossTorizo
+uv run python super_metroid/scripts/probe/bomb_torizo_combat.py prove-natural
+uv run python super_metroid/scripts/probe/bomb_torizo_combat.py eval --episodes 1
+uv run python super_metroid/scripts/probe/bomb_torizo_combat.py train --timesteps 4096
+# Kraid Super-spray + Varia closeout from room entry (no RL; not continuous evidence)
+uv run python super_metroid/scripts/probe/kraid_combat.py strategy --state entry
+uv run python super_metroid/scripts/probe/kraid_combat.py varia --state entry \
+  --report super_metroid/debug/kraid_varia_run.json
+uv run python super_metroid/scripts/probe/kraid_combat.py strategy --state dev_kpdr_kraid_entry
 uv run python -c "from super_metroid.dev.kraid_dev import run_kraid_fight; print(run_kraid_fight())"
 uv run python super_metroid/scripts/probe/phantoon.py collect-pb
 uv run python super_metroid/scripts/probe/phantoon.py capture-entry
@@ -137,12 +168,32 @@ uv run python super_metroid/scripts/probe/mother_brain.py spray-mb --frames 3600
 uv run python super_metroid/scripts/probe/mother_brain.py run-escape --frames 12000
 ```
 
-### Room practice
+### Room practice (easiest-first doorway segments)
+
+Entry fixtures are **doorway-natural**: door-warp through the catalog entry
+door, settle **just inside** (not mid-room). That keeps segments on real door
+boundaries so RNG can be re-rolled later by re-entering the same door.
 
 ```bash
 uv run python super_metroid/scripts/export/room_problems.py
+# Ranked board: 262 problems easiest→hardest + % complete
+uv run python super_metroid/scripts/export/room_work_queue.py
+uv run python super_metroid/scripts/room/run_problem.py queue --limit 20
+# Doorway entry states (default boot: natural_post_spore_spawn)
+uv run python super_metroid/scripts/room/run_problem.py bootstrap --queue 1 --max 10
+uv run python super_metroid/scripts/room/run_problem.py scaffold PROBLEM_ID
+uv run python super_metroid/scripts/room/run_problem.py teleport PROBLEM_ID
+# Green run + sha-gated promote (policy → verified_development_state)
+uv run python super_metroid/scripts/room/run_problem.py run PROBLEM_ID --promote
 uv run python super_metroid/scripts/room/run_problem.py ready --run
 ```
+
+Board: `docs/routes/ROOM_WORK_QUEUE.md` · CSV/JSON under `docs/routes/` +
+`maps/room_work_queue.json`. Units: 262 room problems (practice); 583 directed
+edges are topology only; KPDR spine remains `docs/routes/KPDR_TRACKER.csv`.
+Avoid late full-loadout boots for bootstrap — they can freeze input after warp.
+Entry door pointers live on the catalog graph (`PhysicalEndpoint.door_ptr` /
+`entry.doorPtr`); shared `EntryContract` covers bootstrap, scaffold, and run.
 
 ### Room timing (stock ROM / emulator frames)
 

@@ -425,3 +425,34 @@ def test_optional_connection_does_not_fail_required(tmp_path: Path) -> None:
     validation = validate_against_z3(data)
     assert validation.required_ok is True
     assert validation.connections_optional_missing
+
+
+def test_opening_overworld_route_graph_structure() -> None:
+    """Catalog-only graph/legs data — not a boot executor."""
+    from alttp.opening_route_data import (
+        OVERWORLD_SCREEN_PATH,
+        opening_overworld_route_graph,
+        opening_overworld_route_legs,
+    )
+
+    graph = opening_overworld_route_graph()
+    assert len(graph.nodes) == len(OVERWORLD_SCREEN_PATH)
+    assert len(graph.edges) == len(OVERWORLD_SCREEN_PATH) - 1
+    # Screen path is linear: each edge is consecutive path steps.
+    for i, edge in enumerate(graph.edges):
+        src = int(OVERWORLD_SCREEN_PATH[i]["screen_id"])
+        dst = int(OVERWORLD_SCREEN_PATH[i + 1]["screen_id"])
+        assert edge.source_id == f"ow_{src:02x}"
+        assert edge.target_id == f"ow_{dst:02x}"
+        assert edge.meta["from_screen"] == src
+        assert edge.meta["to_screen"] == dst
+
+    legs = opening_overworld_route_legs()
+    assert len(legs) == len(OVERWORLD_SCREEN_PATH) - 1
+    assert legs[-1].target_id == "ow_1b"
+    assert legs[-1].goal == "reach_screen_1B"
+    # Nodes carry RAM authority, not z3 labels.
+    assert len(graph.nodes) == len(OVERWORLD_SCREEN_PATH)
+    for node in graph.nodes.values():
+        assert node.meta["authority"] == "stable_retro_ram"
+        assert "screen_id" in node.meta

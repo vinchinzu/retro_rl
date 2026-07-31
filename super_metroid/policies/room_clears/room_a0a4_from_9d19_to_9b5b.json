@@ -1,0 +1,363 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a0a4_from_9d19_to_9b5b",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Spore Spawn Farming Room (0xA0A4); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8E26",
+    "entrySourceRoomIdHex": "0x9D19",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 36390,
+    "entrySourceRoomId": 40217
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 40217,
+      "sourceRoomIdHex": "0x9D19",
+      "endpoint": {
+        "roomId": 41124,
+        "roomIdHex": "0xA0A4",
+        "logicalRoomId": 64,
+        "nodeId": 1,
+        "nodeName": "Spore Spawn Farming Room Left Door (to Big Pink)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "green",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [
+          "super_missiles"
+        ],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 39771,
+      "targetRoomIdHex": "0x9B5B",
+      "endpoint": {
+        "roomId": 41124,
+        "roomIdHex": "0xA0A4",
+        "logicalRoomId": 64,
+        "nodeId": 2,
+        "nodeName": "Spore Spawn Farming Room Right Door (to Supers)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        47,
+        7
+      ],
+      "exitBlock": [
+        47,
+        7
+      ],
+      "pathBlocks": 44,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          45,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "run0",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump0",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land0",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run1",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump1",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land1",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run2",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump2",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land2",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run3",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump3",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land3",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run4",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump4",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land4",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run5",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump5",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land5",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run6",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump6",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land6",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx0",
+      "buttons": [
+        "RIGHT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx0",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx0",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx1",
+      "buttons": [
+        "RIGHT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx1",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx1",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 16
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned hop+shoot right traverse; development only.",
+  "promotedAt": "2026-07-30T22:47:42.313220+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a0a4_from_9d19_to_9b5b.json",
+    "reportSha256": "8684240d7f77f820f2b0502101da44f7d7775866ff9f2dad30b0e4e10d19c100",
+    "stateSha256": "1944202c12a9bdfe8b55b8dd58070339efca877447aad32facaba51459107920",
+    "policySha256Before": "4070e6e421593220f7faf2d7cc050df030b6861e1554028c6cc3a6e6a2155446"
+  }
+}

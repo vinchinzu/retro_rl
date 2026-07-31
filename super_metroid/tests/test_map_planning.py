@@ -82,7 +82,7 @@ def test_editor_route_is_contiguous_and_reaches_post_spore_room(tmp_path) -> Non
         initial_capabilities=POST_TORIZO_CAPABILITIES,
     )
 
-    assert [item.leg.target_room_id for item in planned] == [
+    assert [item.leg.target_id for item in planned] == [
         0x990D,
         0x99BD,
         0x9969,
@@ -107,7 +107,7 @@ def test_route_does_not_require_early_supers_or_mockball(tmp_path) -> None:
         initial_capabilities=frozenset({"morph_ball", "bombs", "missiles"}),
     )
 
-    assert all(item.leg.target_room_id != 0x9BC8 for item in planned)
+    assert all(item.leg.target_id != 0x9BC8 for item in planned)
     assert all("mockball" not in item.effective_requires for item in planned)
     assert all("super_missiles" not in item.effective_requires for item in planned)
 

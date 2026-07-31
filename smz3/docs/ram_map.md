@@ -42,9 +42,10 @@ Vanilla module/submodule/Link offsets (`alttp.ram`) apply after a portal.
 
 While SM owns WRAM these bytes are **not** Z3 state (often garbage).
 
-Partial portal residue observed (dev door assist, not settled): module `$0F`,
-room `$0122` (Fortune Teller), world detect → `ALTTP`. Controllable Link not
-yet verified — see `docs/EARLY_ROOMS.md`.
+Portal residue (natural red-door + missile assist, 2026-07-30): module `$0F`,
+room `$0122` (Fortune Teller), indoors 1, world detect → `ALTTP`, framebuffer
+force-blank. Controllable Link not yet verified — see `docs/EARLY_ROOMS.md`.
+Combo `transition_to_zelda` intentionally stores `$0F` before pre-overworld.
 
 ## Detection policy (`smz3.world`)
 
@@ -61,3 +62,17 @@ yet verified — see `docs/EARLY_ROOMS.md`.
 | `0x0` | 8 KiB | Low WRAM mirror (`get_ram()[:0x2000]`) |
 | `0x7E0000` | 128 KiB | Bank `$7E` WRAM |
 | `0x206000` | 8 KiB | Cart save-ish (not full combo SRAM) |
+
+`get_ram()` concatenates blocks in address order → total 147 456 bytes.
+Low WRAM fields (`offset < 0x2000`) are read at that index; high WRAM
+(`>= 0x2000`) is at `16384 + offset` (same as `alttp.ram.wram_index`).
+
+## Integration `data.json` (stable-retro info vars)
+
+Addresses use **absolute** `$7E` bus form (`0x7E0000 + offset`), matching
+stock stable-retro SNES games (e.g. SuperMarioWorld) rather than the
+relative offsets in older custom `SuperMetroid-Snes` / `Zelda3-Snes` files.
+Fields are dual-prefixed (`sm_*` / `z3_*`) so both worlds can be watched.
+
+Examples: `sm_room_id` → `0x7E079B`, `z3_module` → `0x7E0010`,
+`z3_health` → `0x7EF36D`.

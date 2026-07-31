@@ -18,13 +18,23 @@ DOCS_DIR = GAME_DIR / "docs"
 REFS_DIR = GAME_DIR / "refs"
 MAPS_DIR = GAME_DIR / "maps"
 
-# Shared vanilla ROMs (same bytes as alttp / super_metroid setups).
+# Vanilla ROMs for combo build.
+# SM: same NTSC-J dump as super_metroid (samus.link xxh32 0xCADB4883).
+# Z3: **Japanese 1.0** only (samus.link xxh32 0x8AC8FD15). Do NOT reuse
+# roms/zelda3.sfc — that path is the US dump used by the alttp/ package.
 SHARED_SM_ROM = REPO_ROOT / "roms" / "SuperMetroid.sfc"
-SHARED_Z3_ROM = REPO_ROOT / "roms" / "zelda3.sfc"
+SHARED_Z3_JP_ROM = REPO_ROOT / "roms" / "zelda3_jp.sfc"
+# Back-compat alias used by older call sites (must resolve to JP, not US).
+SHARED_Z3_ROM = SHARED_Z3_JP_ROM
 
 # Local copies under smz3/roms/ (symlinks via setup_roms.py).
 LOCAL_SM_ROM = ROMS_DIR / "SuperMetroid.sfc"
-LOCAL_Z3_ROM = ROMS_DIR / "zelda3.sfc"
+LOCAL_Z3_ROM = ROMS_DIR / "zelda3_jp.sfc"
+
+# samus.link Upload.jsx (xxHash32 seed "SMZ3" = 0x534D5A33).
+SMZ3_XXH_SEED = 0x534D5A33
+SMZ3_SM_XXH32 = 0xCADB4883  # Super Metroid (JU) unheadered 3 MiB
+SMZ3_Z3_XXH32 = 0x8AC8FD15  # ALttP JP 1.0 unheadered 1 MiB
 
 # Combo base IPS from tewtal SMZ3Randomizer web client resources.
 # GameVersion > 11.2 uses zsm.ips; older seeds need zsm.v11.2.ips.

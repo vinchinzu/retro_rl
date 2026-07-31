@@ -1,7 +1,8 @@
-"""Controller-only KPDR segments through Hi-Jump and Kraid entry.
+"""Controller-only KPDR segments: Super collect through Hi-Jump and Kraid.
 
 Implementation lives in :mod:`super_metroid.routes.kpdr` (segment modules +
-registry). This module re-exports the historical public surface.
+registry), including Spore Super → Big Pink (formerly post_spore). This
+module re-exports the historical public surface.
 """
 
 from __future__ import annotations

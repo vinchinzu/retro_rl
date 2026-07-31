@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9461_from_968f_to_93fe",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Bowling Alley Path (0x9461); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8B26",
+    "entrySourceRoomIdHex": "0x968F",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 35622,
+    "entrySourceRoomId": 38543
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 38543,
+      "sourceRoomIdHex": "0x968F",
+      "endpoint": {
+        "roomId": 37985,
+        "roomIdHex": "0x9461",
+        "logicalRoomId": 33,
+        "nodeId": 2,
+        "nodeName": "Bowling Alley Path Right Door (to Homing Geemer)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 37886,
+      "targetRoomIdHex": "0x93FE",
+      "endpoint": {
+        "roomId": 37985,
+        "roomIdHex": "0x9461",
+        "logicalRoomId": 33,
+        "nodeId": 1,
+        "nodeName": "Bowling Alley Path Left Door (to West Ocean)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 28,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "run0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run4",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land4",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx0",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx0",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx1",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx1",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 16
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned hop+shoot left traverse; development only.",
+  "promotedAt": "2026-07-30T22:47:43.556077+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_9461_from_968f_to_93fe.json",
+    "reportSha256": "06b589e3a9713d2c33b08e8ddec52dcb94851b8808a7540daf172f99e1f91ad0",
+    "stateSha256": "5d90b053b95cf09aa39d38139fbfe8f121b1eafa8563c85bbe559ab915253901",
+    "policySha256Before": "7d1fd15260573b5b998dcd65276e678a6598baa3f9e2aeadb8c4420de7ccd87c"
+  }
+}

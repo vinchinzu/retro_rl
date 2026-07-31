@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b026_from_affb_to_afce",
+  "status": "verified_development_state",
+  "description": "Doorway-natural right-to-left transit for Nutella Refill; enter right door, exit left door.",
+  "entryContract": {
+    "kind": "doorway_natural",
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false
+  },
+  "planning": {
+    "objective": "visit_station_and_return",
+    "entry": {
+      "sourceRoomId": 45051,
+      "sourceRoomIdHex": "0xAFFB",
+      "endpoint": {
+        "roomId": 45094,
+        "roomIdHex": "0xB026",
+        "logicalRoomId": 308,
+        "nodeId": 2,
+        "nodeName": "Nutella Refill Right Door (so Spiky Acid Snakes Tunnel)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 45006,
+      "targetRoomIdHex": "0xAFCE",
+      "endpoint": {
+        "roomId": 45094,
+        "roomIdHex": "0xB026",
+        "logicalRoomId": 308,
+        "nodeId": 1,
+        "nodeName": "Nutella Refill Left Door (to Acid Snakes Tunnel)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "runup",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "land_run",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "open",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "jump_in",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 160
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state."
+}

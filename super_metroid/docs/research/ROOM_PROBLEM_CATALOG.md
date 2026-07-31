@@ -84,17 +84,39 @@ List or execute work with:
 
 ```bash
 uv run python super_metroid/scripts/room/run_problem.py list --tier easy
+uv run python super_metroid/scripts/room/run_problem.py list --queue 1 --easiest-first --limit 20
+uv run python super_metroid/scripts/room/run_problem.py queue --limit 30
+uv run python super_metroid/scripts/export/room_work_queue.py
+uv run python super_metroid/scripts/room/run_problem.py bootstrap --queue 1 --max 5
 uv run python super_metroid/scripts/room/run_problem.py scaffold PROBLEM_ID
+uv run python super_metroid/scripts/room/run_problem.py run PROBLEM_ID --promote
 uv run python super_metroid/scripts/room/run_problem.py ready
 uv run python super_metroid/scripts/room/run_problem.py ready --run
 ```
 
+**Easiest-first board:** `docs/routes/ROOM_WORK_QUEUE.md` (+ CSV/JSON). Ranks all
+262 room problems by rough difficulty so small stations and low-enemy rooms
+come before large shafts and bosses. Percent-complete focuses on queues 0–2
+before investing in queue 3 geometry or queue 4 bosses.
+
+**Teleport fixtures:** `bootstrap` door-warps through the catalog **entry door**,
+then settles Samus **just inside** that doorway (`method: doorway_natural`).
+Do not mid-room teleport — segments start on a real door boundary so future
+enemy/door RNG re-rolls can re-enter the same door (`--boot-idle-frames` is
+recorded on `EntryContract`). Uses a controllable mid-game boot (default
+`natural_post_spore_spawn`) rather than late full-loadout anchors that can
+freeze input. Door pointers come from the reference connection graph
+(`PhysicalEndpoint.door_ptr` / baked `entry.doorPtr`), not a parallel JSON map.
+Teleport/run still require that fixture; continuous power-on evidence remains
+separate.
+
 `scaffold` creates an explicitly unverified starter policy using the
-pre-calculated entry, exit, orientation, and static waypoints. Use
-`scaffold --all --output-dir PATH` to materialize templates for the entire
-catalog without mixing them with curated policies. A scaffold never enters
-queue 0 merely because its file exists; only a policy marked
-`verified_development_state` after a passing replay is ready.
+pre-calculated entry, exit, orientation, and static waypoints (frame budgets
+from `staticPlan.pathBlocks`). Use `scaffold --all --output-dir PATH` to
+materialize templates for the entire catalog without mixing them with curated
+policies. A scaffold never enters queue 0 merely because its file exists; only
+`run … --promote` (or `promote`) after a green report matching state/policy
+sha256 marks `verified_development_state`.
 
 The bulk command was exercised against this catalog and produced all 262
 templates.

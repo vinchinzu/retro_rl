@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d27e_from_d2aa_to_d387",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Plasma Tutorial Room (0xD27E); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA558",
+    "entrySourceRoomIdHex": "0xD2AA",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 42328,
+    "entrySourceRoomId": 53930
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 53930,
+      "sourceRoomIdHex": "0xD2AA",
+      "endpoint": {
+        "roomId": 53886,
+        "roomIdHex": "0xD27E",
+        "logicalRoomId": 218,
+        "nodeId": 2,
+        "nodeName": "Plasma Tutorial Room Right Door (to Plasma)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 54151,
+      "targetRoomIdHex": "0xD387",
+      "endpoint": {
+        "roomId": 53886,
+        "roomIdHex": "0xD27E",
+        "logicalRoomId": 218,
+        "nodeId": 1,
+        "nodeName": "Plasma Tutorial Room Left Door (to Kassiuz Room)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 152
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-30T22:46:51.607045+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_d27e_from_d2aa_to_d387.json",
+    "reportSha256": "fe063de317886ebadc99718f09fb7af2054aa157d29258581315170ccb3b0e85",
+    "stateSha256": "e329ca38192f099cf99827ce134cff3d03b849afbcd71224f7780d9cae611f74",
+    "policySha256Before": "98e0d3fc89050442a043fb91bbb0ee927c913fe7ff9a3c34be9864e48823ab29"
+  }
+}

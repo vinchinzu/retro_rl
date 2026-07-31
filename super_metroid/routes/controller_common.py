@@ -1,6 +1,6 @@
 """Shared Samus controller primitives for Super Metroid route modules.
 
-Used by KPDR and post-Spore controllers. Keep game-agnostic movement helpers
+Used by KPDR controllers (including Super collect / Big Pink). Keep game-agnostic movement helpers
 here; route-specific choreography stays in segment modules.
 """
 
@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.runtime import ControllerSession, hold
 
-# Re-export hold under the historical private alias used by controllers.
+# Private aliases kept for segment modules that historically imported them.
 _hold = hold
 
 # Morph-ball poses observed on Super routes (and facing/air/fall variants).
@@ -67,7 +67,6 @@ def require_room(session: ControllerSession, room_id: int, label: str) -> None:
         )
 
 
-# Historical private alias (call sites and re-exports).
 _require_room = require_room
 
 
@@ -148,6 +147,9 @@ def wait_ordinary_room(
 
 
 _wait_ordinary_room = wait_ordinary_room
+
+
+
 
 
 def ensure_morph(

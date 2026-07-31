@@ -1,16 +1,22 @@
-"""Continuous power-on route: Morph → Bombs/Torizo → Spore → Supers.
+"""Continuous power-on route: Morph → … → Red → Bat → Below Spazer → Warehouse.
 
 One chain, one module. Each ``play_*`` extends the previous prefix; each
 ``run_*`` powers on, plays through that milestone, and writes a report.
 Shared session/report harness lives in :mod:`super_metroid.routes.runtime`.
-Controllers (movement/combat only) stay in ``*_controller.py``.
+Controllers (movement/combat only) stay in ``*_controller.py`` / ``kpdr/``.
+
+Current continuous tip: KPDR K2.6 natural Warehouse Entrance (Below Spazer
+→ West → Glass → East tunnels). Charge Beam return remains a side-trip gap.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -25,20 +31,67 @@ from super_metroid.policy import (
 )
 from super_metroid.progression import (
     EARLY_GAME_GRAPH,
+    START_TO_BAT_GRAPH,
+    START_TO_BELOW_SPAZER_GRAPH,
     START_TO_MORPH_GRAPH,
+    START_TO_RED_TOWER_GRAPH,
     START_TO_SPORE_SPAWN_GRAPH,
+    START_TO_WAREHOUSE_GRAPH,
+    RoomProgressionGraph,
 )
-from super_metroid.ram import BOMBS_MASK, MORPH_BALL_MASK, GameplayPhase
+from super_metroid.ram import (
+    BOMBS_MASK,
+    MORPH_BALL_MASK,
+    GameplayPhase,
+    SuperMetroidState,
+)
 from super_metroid.room_timer import RoomTimer
-from super_metroid.routes.post_spore_controller import (
+from super_metroid.routes.kpdr import (
     SuperCollectEvidence,
+    play_bat_to_below_spazer,
+    play_below_spazer_to_west,
+    play_big_pink_into_main_shaft,
+    play_big_pink_to_ghz,
+    play_east_to_warehouse,
+    play_farming_to_big_pink,
+    play_ghz_to_noob,
+    play_glass_to_east,
+    play_noob_to_red_tower,
+    play_red_tower_to_bat,
     play_super_room_collect,
+    play_super_room_to_farming,
+    play_west_to_glass,
 )
-from super_metroid.routes.runtime import (
+from super_metroid.routes.kpdr.rooms import (
+    ROOM_BAT,
+    ROOM_BELOW_SPAZER,
+    ROOM_BIG_PINK,
+    ROOM_EAST_TUNNEL,
+    ROOM_FARMING,
+    ROOM_GHZ,
+    ROOM_GLASS,
+    ROOM_NOOB,
+    ROOM_RED_TOWER,
+    ROOM_WAREHOUSE,
+    ROOM_WEST_TUNNEL,
+)
+from super_metroid.routes.catalog import (
+    BAT_SPLITS,
+    BELOW_SPAZER_SPLITS,
     BOMBS_PREFIX_SPLITS,
-    ROUTE_PLAN_PATH,
+    CONTINUOUS_TIPS,
+    DEFAULT_CONTINUOUS_TIP,
+    RED_TOWER_SPLITS,
     SPORE_EXIT_SPLITS,
     SUPERS_SPLITS,
+    WAREHOUSE_SPLITS,
+    ContinuousTip,
+    get_continuous_tip,
+    list_continuous_tips,
+    register_continuous_segments,
+)
+from super_metroid.routes.runtime import (
+    ROUTE_PLAN_PATH,
     Action,
     ActionSpan,
     ContinuousRunReport,
@@ -61,27 +114,23 @@ from super_metroid.routes.spore_spawn_controller import (
 )
 
 # ---------------------------------------------------------------------------
-# Paths / back-compat aliases
+# Paths / report aliases kept for published scripts + tests
 # ---------------------------------------------------------------------------
 
 _THIS = Path(__file__)
 SPORE_CONTROLLER_PATH = _THIS.with_name("spore_spawn_controller.py")
+# Super collect lives under kpdr/; thin re-export kept for report path stability.
 POST_SPORE_CONTROLLER_PATH = _THIS.with_name("post_spore_controller.py")
+KPDR_SUPER_ROOM_PATH = _THIS.parent / "kpdr" / "super_room.py"
 # Historical name used in supers reports / tests.
 CONTROLLER_PATH = POST_SPORE_CONTROLLER_PATH
 
+# Alias: continuous reports used to be per-milestone type names.
 RunReport = ContinuousRunReport
 EarlyRunReport = ContinuousRunReport
 SporeRunReport = ContinuousRunReport
 SupersRunReport = ContinuousRunReport
-_Session = RouteSession
-_EarlySession = RouteSession
-_SporeSession = RouteSession
-_SupersSession = RouteSession
-_sha256 = sha256_file
-_video_evidence = video_evidence
-_route_plan_evidence = route_plan_evidence
-_split_for_transition = split_for_transition
+RedTowerRunReport = ContinuousRunReport
 
 __all__ = [
     "ActionSpan",
@@ -92,21 +141,44 @@ __all__ = [
     "EarlyRunReport",
     "SporeRunReport",
     "SupersRunReport",
+    "RedTowerRunReport",
     "CONTROLLER_PATH",
     "ROUTE_PLAN_PATH",
+    "BOMBS_PREFIX_SPLITS",
+    "SPORE_EXIT_SPLITS",
+    "SUPERS_SPLITS",
+    "RED_TOWER_SPLITS",
+    "BAT_SPLITS",
+    "BELOW_SPAZER_SPLITS",
+    "WAREHOUSE_SPLITS",
+    "CONTINUOUS_TIPS",
+    "DEFAULT_CONTINUOUS_TIP",
+    "ContinuousTip",
+    "get_continuous_tip",
+    "list_continuous_tips",
     "play_start_to_morph",
     "play_start_to_bombs",
     "play_start_to_spore_spawn",
     "play_start_to_supers",
+    "play_start_to_red_tower",
+    "play_start_to_bat",
+    "play_start_to_below_spazer",
+    "play_start_to_warehouse",
     "run_start_to_morph",
     "run_start_to_bombs",
     "run_start_to_spore_spawn",
     "run_start_to_supers",
-    "default_morph_artifact_paths",
-    "default_bombs_artifact_paths",
-    "default_spore_artifact_paths",
-    "default_supers_artifact_paths",
+    "run_start_to_red_tower",
+    "run_start_to_bat",
+    "run_start_to_below_spazer",
+    "run_start_to_warehouse",
+    "run_to",
+    "default_tip_artifact_paths",
+    "default_tip_room_timing_path",
     "default_artifact_paths",
+    "RouteHop",
+    "play_hops",
+    "run_post_supers_tip",
 ]
 
 
@@ -799,6 +871,10 @@ def run_start_to_supers(
                     "path": str(POST_SPORE_CONTROLLER_PATH.resolve()),
                     "sha256": sha256_file(POST_SPORE_CONTROLLER_PATH),
                 },
+                "kpdr_super_room": {
+                    "path": str(KPDR_SUPER_ROOM_PATH.resolve()),
+                    "sha256": sha256_file(KPDR_SUPER_ROOM_PATH),
+                },
                 "route_plan": {
                     "path": str(ROUTE_PLAN_PATH.resolve()),
                     "sha256": sha256_file(ROUTE_PLAN_PATH),
@@ -840,31 +916,607 @@ def run_start_to_supers(
 
 
 # ===========================================================================
-# Artifact paths
+# Post-Supers KPDR tips: hop tables + one shared runner
 # ===========================================================================
+# Room-by-room tip extension recipe (do not copy another run_start_to_*):
+#   1. Pure controller in routes/kpdr/ (+ KPDR_SEGMENTS registry).
+#   2. Graph edges/milestones in progression.py.
+#   3. Split ids in catalog.py (+ ContinuousTip + NamedRoute).
+#   4. Append RouteHop(s) under the tip play_* here; run_* stays a thin
+#      run_post_supers_tip(...) wrapper.
+#   5. Wire tip_id → run_* in run_to() + register_continuous_segments.
 
 
-def default_morph_artifact_paths() -> tuple[Path, Path]:
-    return default_artifacts("start_to_morph")
+@dataclass(frozen=True)
+class RouteHop:
+    """One controller leg: play, record split, assert destination room."""
+
+    split_id: str
+    play: Callable[[RouteSession], Any]
+    from_room: int
+    to_room: int
+    room_label: str
+    #: When False, skip door-edge split lookup (in-room milestones only).
+    use_transition_split: bool = True
+    #: Optional extra assert after play (before room-id check).
+    after: Callable[[RouteSession], None] | None = None
 
 
-def default_bombs_artifact_paths() -> tuple[Path, Path]:
-    return default_artifacts("start_to_bomb_torizo")
+def play_hops(
+    session: RouteSession,
+    splits: list[Split],
+    hops: Sequence[RouteHop],
+) -> None:
+    """Run ordered hops, appending splits and failing fast on wrong room."""
+    for hop in hops:
+        hop.play(session)
+        if hop.after is not None:
+            hop.after(session)
+        if hop.use_transition_split:
+            splits.append(
+                split_for_transition(
+                    session.transitions,
+                    hop.split_id,
+                    hop.from_room,
+                    hop.to_room,
+                )
+            )
+        else:
+            splits.append(Split(hop.split_id, session.frame, session.state.room_id))
+        if session.state.room_id != hop.to_room:
+            raise RuntimeError(
+                f"expected {hop.room_label} 0x{hop.to_room:04X}, got "
+                f"0x{session.state.room_id:04X}"
+            )
 
 
-def default_spore_artifact_paths() -> tuple[Path, Path]:
-    return default_artifacts("start_to_spore_spawn")
+def _require_big_pink_main_shaft(session: RouteSession) -> None:
+    if session.state.room_id != ROOM_BIG_PINK or session.state.samus_x > 750:
+        raise RuntimeError(
+            f"Big Pink main shaft not reached: room=0x{session.state.room_id:04X} "
+            f"x={session.state.samus_x}"
+        )
 
 
-def default_supers_artifact_paths() -> tuple[Path, Path]:
-    return default_artifacts("start_to_supers")
+# K1 legs after Super collect (Charge return intentionally omitted).
+_RED_TOWER_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "super_to_farming",
+        play_super_room_to_farming,
+        0x9B5B,
+        ROOM_FARMING,
+        "farming",
+    ),
+    RouteHop(
+        "farming_to_big_pink",
+        play_farming_to_big_pink,
+        ROOM_FARMING,
+        ROOM_BIG_PINK,
+        "Big Pink",
+    ),
+    RouteHop(
+        "big_pink_main",
+        play_big_pink_into_main_shaft,
+        ROOM_BIG_PINK,
+        ROOM_BIG_PINK,
+        "Big Pink main shaft",
+        use_transition_split=False,
+        after=_require_big_pink_main_shaft,
+    ),
+    RouteHop(
+        "big_pink_to_ghz",
+        play_big_pink_to_ghz,
+        ROOM_BIG_PINK,
+        ROOM_GHZ,
+        "GHZ",
+    ),
+    RouteHop(
+        "ghz_to_noob",
+        play_ghz_to_noob,
+        ROOM_GHZ,
+        ROOM_NOOB,
+        "Noob",
+    ),
+    RouteHop(
+        "noob_to_red_tower",
+        play_noob_to_red_tower,
+        ROOM_NOOB,
+        ROOM_RED_TOWER,
+        "Red Tower",
+    ),
+)
+
+_BAT_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "red_tower_to_bat",
+        play_red_tower_to_bat,
+        ROOM_RED_TOWER,
+        ROOM_BAT,
+        "Bat Room",
+    ),
+)
+
+_BELOW_SPAZER_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "bat_to_below_spazer",
+        play_bat_to_below_spazer,
+        ROOM_BAT,
+        ROOM_BELOW_SPAZER,
+        "Below Spazer",
+    ),
+)
+
+_WAREHOUSE_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "below_spazer_to_west",
+        play_below_spazer_to_west,
+        ROOM_BELOW_SPAZER,
+        ROOM_WEST_TUNNEL,
+        "West Tunnel",
+    ),
+    RouteHop(
+        "west_to_glass",
+        play_west_to_glass,
+        ROOM_WEST_TUNNEL,
+        ROOM_GLASS,
+        "Glass Tunnel",
+    ),
+    RouteHop(
+        "glass_to_east",
+        play_glass_to_east,
+        ROOM_GLASS,
+        ROOM_EAST_TUNNEL,
+        "East Tunnel",
+    ),
+    RouteHop(
+        "east_to_warehouse",
+        play_east_to_warehouse,
+        ROOM_EAST_TUNNEL,
+        ROOM_WAREHOUSE,
+        "Warehouse Entrance",
+    ),
+)
+
+_KPDR_POLICY_SOURCES: dict[str, object] = {
+    "continuous_route_module": {
+        "path": str(_THIS.resolve()),
+        "sha256": sha256_file(_THIS),
+    },
+    "post_torizo_controller": {
+        "path": str(SPORE_CONTROLLER_PATH.resolve()),
+        "sha256": sha256_file(SPORE_CONTROLLER_PATH),
+    },
+    "kpdr_super_room": {
+        "path": str(KPDR_SUPER_ROOM_PATH.resolve()),
+        "sha256": sha256_file(KPDR_SUPER_ROOM_PATH),
+    },
+    "kpdr_package": {
+        "path": str((_THIS.parent / "kpdr").resolve()),
+        "note": "K1/K2 segment controllers under routes/kpdr/",
+    },
+}
 
 
-def default_supers_room_timing_path() -> Path:
-    """Default opt-in timing artifact for start-to-Supers (gitignored)."""
+def _post_supers_final_conditions(
+    final: SuperMetroidState,
+    boss: object,
+    *,
+    room_id: int,
+    entry_key: str,
+    ordinary_key: str,
+) -> dict[str, bool]:
+    """Shared Super+ inventory checks plus tip-room ordinary gameplay."""
+    return {
+        "both_missile_expansions": final.max_missiles >= 10,
+        "morph_and_bombs": (
+            final.collected_items & (MORPH_BALL_MASK | BOMBS_MASK)
+            == MORPH_BALL_MASK | BOMBS_MASK
+        ),
+        "terminator_energy_tank": final.max_health >= 199,
+        "super_missiles_collected": final.max_super_missiles >= 5,
+        "spore_spawn_hp_reached_zero": (
+            isinstance(boss, SporeSpawnEvidence) and 0 in boss.observed_hp
+        ),
+        entry_key: (
+            final.room_id == room_id
+            and final.phase is GameplayPhase.ORDINARY_GAMEPLAY
+        ),
+        ordinary_key: (
+            final.room_id == room_id
+            and final.phase is GameplayPhase.ORDINARY_GAMEPLAY
+            and final.game_state == 8
+        ),
+    }
+
+
+def run_post_supers_tip(
+    play_fn: Callable[
+        [RouteSession, list[Split], list[SegmentEvidence]],
+        tuple[SporeSpawnEvidence, SuperCollectEvidence],
+    ],
+    *,
+    graph: RoomProgressionGraph,
+    kind: str,
+    required_splits: tuple[str, ...],
+    final_room: int,
+    success_outcome: str,
+    route_label: str,
+    source_policy: str,
+    timing_source: str,
+    entry_condition_key: str,
+    ordinary_condition_key: str,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Shared power-on harness for every Super+ continuous tip."""
+    assist = UnlimitedResourcesAssist(
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+    )
+    box: dict[str, object] = {"boss": None, "super_collect": None}
+    plan = route_plan_evidence()
+    timer = RoomTimer() if room_timing_path is not None else None
+
+    def play(ctx: PlayContext) -> None:
+        boss, super_collect = play_fn(ctx.session, ctx.splits, ctx.segments)
+        box["boss"] = boss
+        box["super_collect"] = super_collect
+
+    result = run_continuous(
+        play=play,
+        assist=assist,
+        graph=graph,
+        video_path=video_path,
+        success_outcome=success_outcome,
+        room_timer=timer,
+    )
+    boss = box["boss"]
+    super_collect = box["super_collect"]
+    final = result.final_state
+    report: ContinuousRunReport | None = None
+    try:
+        report = finish_report(
+            result,
+            schema_version=1,
+            kind=kind,
+            required_splits=required_splits,
+            final_conditions=_post_supers_final_conditions(
+                final,
+                boss,
+                room_id=final_room,
+                entry_key=entry_condition_key,
+                ordinary_key=ordinary_condition_key,
+            ),
+            source_policy=source_policy,
+            report_path=report_path,
+            route_label=route_label,
+            require_deaths_zero=True,
+            route_plan=plan,
+            policy_sources=dict(_KPDR_POLICY_SOURCES),
+            boss=boss if isinstance(boss, SporeSpawnEvidence) else None,
+            super_collect=(
+                super_collect
+                if isinstance(super_collect, SuperCollectEvidence)
+                else None
+            ),
+        )
+        return report
+    finally:
+        if timer is not None and room_timing_path is not None:
+            write_room_timing_artifact(
+                timer,
+                path=room_timing_path,
+                source=timing_source,
+                route_outcome=(
+                    report.outcome if report is not None else result.outcome
+                ),
+                total_frames=(
+                    report.total_frames
+                    if report is not None
+                    else result.session.frame
+                ),
+                success=report.success if report is not None else False,
+                extra={
+                    "report_path": (
+                        str(report_path) if report_path is not None else None
+                    ),
+                    "video_path": (
+                        str(video_path) if video_path is not None else None
+                    ),
+                },
+            )
+
+
+def play_start_to_red_tower(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Supers prefix + natural Super exit through Red Tower entry.
+
+    Charge Beam is intentionally skipped (side trip; conventional return not
+    route-ready). Path: Super room → farming → Big Pink → crest/main shaft →
+    GHZ → Noob → Red Tower.
+    """
+    boss, super_collect = play_start_to_supers(session, splits, segments)
+    play_hops(session, splits, _RED_TOWER_HOPS)
+    return boss, super_collect
+
+
+def run_start_to_red_tower(
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through natural Red Tower entry (KPDR K1 tip)."""
+    return run_post_supers_tip(
+        play_start_to_red_tower,
+        graph=START_TO_RED_TOWER_GRAPH,
+        kind="red_tower",
+        required_splits=RED_TOWER_SPLITS,
+        final_room=ROOM_RED_TOWER,
+        success_outcome="red_tower_entry",
+        route_label="start-to-Red-Tower",
+        source_policy=(
+            "accepted power-on prefix + Spore controller + KPDR K1 controllers "
+            "(Super→farm→Big Pink main→GHZ→Noob→Red) + phase-guarded resources"
+        ),
+        timing_source="start_to_red_tower",
+        entry_condition_key="natural_red_tower_entry",
+        ordinary_condition_key="post_red_ordinary",
+        video_path=video_path,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+    )
+
+
+def play_start_to_bat(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Red Tower prefix + natural Red Tower descent into Bat Room."""
+    boss, super_collect = play_start_to_red_tower(session, splits, segments)
+    play_hops(session, splits, _BAT_HOPS)
+    return boss, super_collect
+
+
+def run_start_to_bat(
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through natural Bat Room entry (KPDR K2.0 tip)."""
+    return run_post_supers_tip(
+        play_start_to_bat,
+        graph=START_TO_BAT_GRAPH,
+        kind="bat",
+        required_splits=BAT_SPLITS,
+        final_room=ROOM_BAT,
+        success_outcome="bat_room_entry",
+        route_label="start-to-Bat-Room",
+        source_policy=(
+            "accepted power-on prefix + Spore controller + KPDR K1/K2.0 "
+            "controllers (Super→farm→Big Pink main→GHZ→Noob→Red→Bat) + "
+            "phase-guarded resources"
+        ),
+        timing_source="start_to_bat",
+        entry_condition_key="natural_bat_room_entry",
+        ordinary_condition_key="post_bat_ordinary",
+        video_path=video_path,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+    )
+
+
+def play_start_to_below_spazer(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Bat prefix + natural three-platform crossing into Below Spazer."""
+    boss, super_collect = play_start_to_bat(session, splits, segments)
+    play_hops(session, splits, _BELOW_SPAZER_HOPS)
+    return boss, super_collect
+
+
+def run_start_to_below_spazer(
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through natural Below Spazer entry (KPDR K2.1 tip)."""
+    return run_post_supers_tip(
+        play_start_to_below_spazer,
+        graph=START_TO_BELOW_SPAZER_GRAPH,
+        kind="below_spazer",
+        required_splits=BELOW_SPAZER_SPLITS,
+        final_room=ROOM_BELOW_SPAZER,
+        success_outcome="below_spazer_entry",
+        route_label="start-to-Below-Spazer",
+        source_policy=(
+            "accepted power-on prefix + Spore controller + KPDR K1/K2 "
+            "controllers (…→Red→Bat→Below Spazer) + phase-guarded resources"
+        ),
+        timing_source="start_to_below_spazer",
+        entry_condition_key="natural_below_spazer_entry",
+        ordinary_condition_key="post_below_spazer_ordinary",
+        video_path=video_path,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+    )
+
+
+def play_start_to_warehouse(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Below Spazer prefix + natural tunnel chain into Warehouse Entrance."""
+    boss, super_collect = play_start_to_below_spazer(session, splits, segments)
+    play_hops(session, splits, _WAREHOUSE_HOPS)
+    return boss, super_collect
+
+
+def run_start_to_warehouse(
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through natural Warehouse Entrance (KPDR K2.6 tip)."""
+    return run_post_supers_tip(
+        play_start_to_warehouse,
+        graph=START_TO_WAREHOUSE_GRAPH,
+        kind="warehouse",
+        required_splits=WAREHOUSE_SPLITS,
+        final_room=ROOM_WAREHOUSE,
+        success_outcome="warehouse_entry",
+        route_label="start-to-Warehouse-Entrance",
+        source_policy=(
+            "accepted power-on prefix + Spore controller + KPDR K1/K2 "
+            "controllers (…→Bat→Below Spazer→West→Glass→East→Warehouse) + "
+            "phase-guarded resources"
+        ),
+        timing_source="start_to_warehouse",
+        entry_condition_key="natural_warehouse_entry",
+        ordinary_condition_key="post_warehouse_ordinary",
+        video_path=video_path,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+    )
+
+
+# ===========================================================================
+# Tip dispatch + artifact paths
+# ===========================================================================
+# One CLI entry (scripts/record/continuous.py --to <tip>) calls run_to().
+# Extend via RouteHop tables + ContinuousTip — not a new start_to_*.py file.
+
+
+def _resolve_tip(tip: str | ContinuousTip | None = None) -> ContinuousTip:
+    if tip is None:
+        return get_continuous_tip(DEFAULT_CONTINUOUS_TIP)
+    if isinstance(tip, ContinuousTip):
+        return tip
+    return get_continuous_tip(tip)
+
+
+def default_tip_artifact_paths(tip: str | ContinuousTip | None = None) -> tuple[Path, Path]:
+    """Video/report paths for a continuous tip (default: current tip)."""
+    return default_artifacts(_resolve_tip(tip).artifact_stem)
+
+
+def default_tip_room_timing_path(tip: str | ContinuousTip | None = None) -> Path:
+    """Opt-in room-timing JSON path for a tip (gitignored)."""
+    resolved = _resolve_tip(tip)
     ROOM_TIMINGS_DIR.mkdir(parents=True, exist_ok=True)
-    return ROOM_TIMINGS_DIR / "start_to_supers_room_timing.json"
+    return ROOM_TIMINGS_DIR / f"{resolved.artifact_stem}_room_timing.json"
 
 
-# Primary baseline alias (most scripts want Supers).
-default_artifact_paths = default_supers_artifact_paths
+def default_artifact_paths() -> tuple[Path, Path]:
+    """Video/report paths for the current continuous tip (Warehouse)."""
+    return default_tip_artifact_paths()
+
+
+def run_to(
+    tip: str = DEFAULT_CONTINUOUS_TIP,
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through a named continuous tip (``--to`` target).
+
+    Tips compose as prefixes:
+    morph ⊂ bombs ⊂ spore ⊂ supers ⊂ red_tower ⊂ bat ⊂ below_spazer ⊂ warehouse.
+    Room-timing is only accepted for tips that declare support in the catalog.
+    """
+    resolved = get_continuous_tip(tip)
+    runners: dict[str, Callable[..., ContinuousRunReport]] = {
+        "morph": run_start_to_morph,
+        "bombs": run_start_to_bombs,
+        "spore": run_start_to_spore_spawn,
+        "supers": run_start_to_supers,
+        "red_tower": run_start_to_red_tower,
+        "bat": run_start_to_bat,
+        "below_spazer": run_start_to_below_spazer,
+        "warehouse": run_start_to_warehouse,
+    }
+    runner = runners[resolved.tip_id]
+    kwargs: dict[str, object] = {
+        "video_path": video_path,
+        "report_path": report_path,
+        "unlimited_ammo": unlimited_ammo,
+    }
+    if resolved.supports_unlimited_energy:
+        kwargs["unlimited_energy"] = unlimited_energy
+    elif not unlimited_energy:
+        raise ValueError(
+            f"tip {resolved.tip_id!r} has no unlimited-energy assist "
+            f"(energy assist starts at spore+)"
+        )
+    if room_timing_path is not None:
+        if not resolved.supports_room_timing:
+            raise ValueError(
+                f"tip {resolved.tip_id!r} does not support room timing "
+                f"(supported: supers, red_tower, bat, below_spazer, warehouse)"
+            )
+        kwargs["room_timing_path"] = room_timing_path
+    return runner(**kwargs)
+
+
+register_continuous_segments(
+    {
+        "morph": play_start_to_morph,
+        "bombs": play_start_to_bombs,
+        "spore": play_start_to_spore_spawn,
+        "supers": play_start_to_supers,
+        "red_tower": play_start_to_red_tower,
+        "bat": play_start_to_bat,
+        "below_spazer": play_start_to_below_spazer,
+        "warehouse": play_start_to_warehouse,
+        # Historical segment keys (reports / probes).
+        "start_to_morph": play_start_to_morph,
+        "start_to_bombs": play_start_to_bombs,
+        "start_to_spore_spawn": play_start_to_spore_spawn,
+        "start_to_supers": play_start_to_supers,
+        "start_to_red_tower": play_start_to_red_tower,
+        "start_to_bat": play_start_to_bat,
+        "start_to_below_spazer": play_start_to_below_spazer,
+        "start_to_warehouse": play_start_to_warehouse,
+        "run_start_to_morph": run_start_to_morph,
+        "run_start_to_bombs": run_start_to_bombs,
+        "run_start_to_spore_spawn": run_start_to_spore_spawn,
+        "run_start_to_supers": run_start_to_supers,
+        "run_start_to_red_tower": run_start_to_red_tower,
+        "run_start_to_bat": run_start_to_bat,
+        "run_start_to_below_spazer": run_start_to_below_spazer,
+        "run_start_to_warehouse": run_start_to_warehouse,
+        "run_to": run_to,
+    }
+)

@@ -3,10 +3,13 @@
 Source: tewtal ``alttp_sm_combo_randomizer_rom`` ``src/sm/teleport.asm`` /
 ``src/z3/teleport.asm`` and https://samus.link/information.
 
-Closest early portal from Zebes start:
+Closest early portal from Zebes start (natural; no RAM pokes after door):
 
-  Landing Site → Parlor → (red door, missiles) Pre-Map Flyway → Crateria Map Room
-  → portal door ``$8976`` → ALttP Lake Hylia Fortune Teller (cave ``$0122``).
+  Landing Site → Parlor → bottom-right red door ``$8976`` (missiles)
+  → SM→Z3 teleport → ALttP Lake Hylia Fortune Teller (cave ``$0122``).
+
+tewtal labels the table entry "Crateria map station"; on the combo ROM that
+door pointer is the Parlor red door itself (Pre-Map is not loaded first).
 """
 
 from __future__ import annotations
@@ -48,16 +51,19 @@ class Portal:
 PORTALS: tuple[Portal, ...] = (
     Portal(
         portal_id="crateria_map_fortune_teller",
-        sm_name="Crateria Map Room",
-        sm_room_id=0x9994,
+        sm_name="Parlor red door / Crateria map portal",
+        sm_room_id=0x92FD,
         sm_door_ptr=0x8976,
         z3_name="Lake Hylia Fortune Teller",
         z3_cave_id=0x0122,
         dark_world=False,
         notes=(
-            "Earliest SM-side portal. Path: Landing Site (0x91F8) → Parlor "
-            "(0x92FD) → red door (missiles) → Pre-Map Flyway (0x98E2) → Map "
-            "(0x9994). Z3 return door to Parlor uses SM door $8BCE."
+            "Earliest SM-side portal. Combo sm_teleport_table door $8976 is the "
+            "Parlor bottom-right red door (block [31,55], missiles) — entering "
+            "it teleports to Z3 cave $0122 (Fortune Teller). Vanilla Pre-Map "
+            "is not loaded through this door. Z3→SM return uses door $8BCE. "
+            "Natural portal: module $0F then ~300f settle to OW $09 screen $35 "
+            "(needs ALttP JP 1.0 combo + settle wait)."
         ),
     ),
     Portal(

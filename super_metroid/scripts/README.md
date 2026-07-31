@@ -13,8 +13,8 @@
 Invoke from repo root, e.g.:
 
 ```bash
-uv run python super_metroid/scripts/record/start_to_supers.py --no-video
-uv run python super_metroid/scripts/record/start_to_supers.py --no-video --room-timing
+uv run python super_metroid/scripts/record/continuous.py --no-video
+uv run python super_metroid/scripts/record/continuous.py --to supers --no-video --room-timing
 uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
 uv run python super_metroid/scripts/export/path_room_board.py
 

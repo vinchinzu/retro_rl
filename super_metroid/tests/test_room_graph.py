@@ -16,6 +16,8 @@ from super_metroid.rooms.room_graph import (
 from super_metroid.rooms.room_practice import (
     _expand_steps,
     _objective_progress_failure,
+    _scaffold_frame_budget,
+    promote_room_policy,
     scaffold_room_policy,
 )
 
@@ -127,6 +129,7 @@ def test_scaffold_policy_is_explicitly_unverified(tmp_path) -> None:
                 "problems": [
                     {
                         "problemId": "room_test",
+                        "roomId": 1,
                         "roomIdHex": "0x0001",
                         "roomName": "Test Room",
                         "objective": "traverse_to_exit",
@@ -134,6 +137,7 @@ def test_scaffold_policy_is_explicitly_unverified(tmp_path) -> None:
                         "exit": {"endpoint": {"orientation": "left"}},
                         "staticPlan": {
                             "status": "planned_static",
+                            "pathBlocks": 8,
                             "waypointsBlocks": [[4, 7], [0, 7]],
                         },
                         "practice": {
@@ -157,7 +161,257 @@ def test_scaffold_policy_is_explicitly_unverified(tmp_path) -> None:
 
     assert result["orientationHint"] == "left"
     assert policy["status"] == "generated_unverified"
-    assert policy["steps"][-1]["buttons"] == ["LEFT", "B", "X"]
+    labels = [step["label"] for step in policy["steps"]]
+    assert "open_exit_door" in labels
+    assert "enter_exit_door" in labels
+    open_step = next(s for s in policy["steps"] if s["label"] == "open_exit_door")
+    enter_step = next(s for s in policy["steps"] if s["label"] == "enter_exit_door")
+    assert open_step["buttons"] == ["LEFT", "X"]
+    # Traverse enter uses approach buttons (jump-run) for door-ledge clearance.
+    assert enter_step["buttons"] == ["LEFT", "A", "B"]
+    assert policy.get("entryContract", {}).get("kind") == "doorway_natural"
+    assert "frameBudget" in result
+    # Plan-driven approach (not orientation-specific LEFT magic).
+    approach = next(s for s in policy["steps"] if s["label"] == "coarse_exit_approach")
+    assert approach["frames"] == result["frameBudget"]["traverse_approach"]
+
+
+def test_scaffold_same_door_return_uses_path_budget(tmp_path) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    policy_path = tmp_path / "policy.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "problems": [
+                    {
+                        "problemId": "room_station",
+                        "roomId": 2,
+                        "roomIdHex": "0x0002",
+                        "roomName": "Save Room",
+                        "objective": "visit_station_and_return",
+                        "entry": {
+                            "sourceRoomId": 1,
+                            "sourceRoomIdHex": "0x0001",
+                            "doorPtr": 0x8F52,
+                            "doorPtrHex": "0x8F52",
+                            "endpoint": {
+                                "orientation": "right",
+                                "block": [15, 7],
+                            },
+                        },
+                        "exit": {
+                            "targetRoomId": 1,
+                            "endpoint": {"orientation": "right"},
+                        },
+                        "staticPlan": {
+                            "status": "planned_static",
+                            "pathBlocks": 7,
+                        },
+                        "practice": {
+                            "stateFile": "s.state",
+                            "policyFile": "p.json",
+                            "reportFile": "r.json",
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = scaffold_room_policy(
+        "room_station",
+        catalog_path=catalog_path,
+        output_path=policy_path,
+    )
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    assert result["sameDoorReturn"] is True
+    labels = [s["label"] for s in policy["steps"]]
+    assert "deeper_into_room" in labels
+    deeper = next(s for s in policy["steps"] if s["label"] == "deeper_into_room")
+    assert deeper["frames"] == result["frameBudget"]["into"]
+    assert policy["entryContract"]["doorPtrHex"] == "0x8F52"
+    assert policy["entryContract"]["sameDoorReturn"] is True
+
+
+def test_scaffold_through_station_uses_traverse_not_same_door(tmp_path) -> None:
+    """visit_station naming with a far-door exit must not reverse-out scaffold."""
+    catalog_path = tmp_path / "catalog.json"
+    policy_path = tmp_path / "policy.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "problems": [
+                    {
+                        "problemId": "room_through_station",
+                        "roomId": 2,
+                        "roomIdHex": "0x0002",
+                        "roomName": "Draygon Save Room",
+                        "objective": "visit_station_and_return",
+                        "entry": {
+                            "sourceRoomId": 9,
+                            "sourceRoomIdHex": "0x0009",
+                            "doorPtr": 0xA930,
+                            "endpoint": {
+                                "orientation": "right",
+                                "block": [15, 7],
+                            },
+                        },
+                        "exit": {
+                            "targetRoomId": 8,
+                            "endpoint": {"orientation": "left"},
+                        },
+                        "staticPlan": {
+                            "status": "planned_static",
+                            "pathBlocks": 12,
+                        },
+                        "practice": {
+                            "stateFile": "s.state",
+                            "policyFile": "p.json",
+                            "reportFile": "r.json",
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = scaffold_room_policy(
+        "room_through_station",
+        catalog_path=catalog_path,
+        output_path=policy_path,
+    )
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    assert result["sameDoorReturn"] is False
+    labels = [s["label"] for s in policy["steps"]]
+    assert "coarse_exit_approach" in labels
+    assert "deeper_into_room" not in labels
+    assert policy["entryContract"]["sameDoorReturn"] is False
+    assert policy["entryContract"]["exitTravelDirection"] == "LEFT"
+
+
+def test_scaffold_frame_budget_scales_with_path_blocks() -> None:
+    short = _scaffold_frame_budget({"staticPlan": {"pathBlocks": 3}})
+    long = _scaffold_frame_budget({"staticPlan": {"pathBlocks": 40}})
+    assert short["approach"] < long["approach"]
+    assert short["into"] <= long["into"]
+    assert short["enter"] == long["enter"]
+
+
+def test_promote_requires_green_report_matching_sha(tmp_path) -> None:
+    import hashlib
+
+    state_path = tmp_path / "room.state"
+    policy_path = tmp_path / "policy.json"
+    report_path = tmp_path / "report.json"
+    state_path.write_bytes(b"fake-state")
+    policy = {
+        "schemaVersion": 2,
+        "problemId": "room_promote",
+        "status": "generated_unverified",
+        "steps": [{"label": "idle", "buttons": [], "frames": 1}],
+    }
+    policy_path.write_text(json.dumps(policy) + "\n", encoding="utf-8")
+    state_sha = hashlib.sha256(state_path.read_bytes()).hexdigest()
+    policy_sha = hashlib.sha256(policy_path.read_bytes()).hexdigest()
+    report_path.write_text(
+        json.dumps(
+            {
+                "problemId": "room_promote",
+                "success": True,
+                "state": {"sha256": state_sha},
+                "policy": {"sha256": policy_sha},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "problems": [
+                    {
+                        "problemId": "room_promote",
+                        "roomId": 1,
+                        "practice": {
+                            "stateFile": str(state_path.relative_to(tmp_path)),
+                            "policyFile": str(policy_path.relative_to(tmp_path)),
+                            "reportFile": str(report_path.relative_to(tmp_path)),
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # promote resolves paths via GAME_DIR — monkeypatch by writing under GAME_DIR
+    # is heavy; call with absolute paths by patching _problem_paths via full files
+    # under GAME_DIR-style relative paths. Use direct promote with catalog that
+    # points at absolute-ish files by patching GAME_DIR usage.
+    from super_metroid.rooms import room_practice as rp
+
+    original = rp.GAME_DIR
+    try:
+        rp.GAME_DIR = tmp_path
+        # practice paths are relative to GAME_DIR
+        catalog_path.write_text(
+            json.dumps(
+                {
+                    "problems": [
+                        {
+                            "problemId": "room_promote",
+                            "roomId": 1,
+                            "practice": {
+                                "stateFile": "room.state",
+                                "policyFile": "policy.json",
+                                "reportFile": "report.json",
+                            },
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        # Recompute policy sha after catalog rewrite is unrelated; re-write report
+        # after ensuring policy bytes are final.
+        policy_sha = hashlib.sha256(policy_path.read_bytes()).hexdigest()
+        report_path.write_text(
+            json.dumps(
+                {
+                    "problemId": "room_promote",
+                    "success": True,
+                    "state": {"sha256": state_sha},
+                    "policy": {"sha256": policy_sha},
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        result = promote_room_policy(
+            "room_promote",
+            catalog_path=catalog_path,
+            report_path=report_path,
+        )
+        assert result["promoted"] is True
+        updated = json.loads(policy_path.read_text(encoding="utf-8"))
+        assert updated["status"] == "verified_development_state"
+        assert "promotedAt" in updated
+
+        # Mismatched sha blocks re-promote after editing policy without re-run.
+        updated["steps"] = [{"label": "idle", "buttons": [], "frames": 2}]
+        updated["status"] = "generated_unverified"
+        del updated["promotedAt"]
+        policy_path.write_text(json.dumps(updated) + "\n", encoding="utf-8")
+        blocked = promote_room_policy(
+            "room_promote",
+            catalog_path=catalog_path,
+            report_path=report_path,
+        )
+        assert blocked["promoted"] is False
+        assert "sha256" in blocked["error"]
+    finally:
+        rp.GAME_DIR = original
 
 
 def test_collect_objective_requires_item_capacity_change() -> None:

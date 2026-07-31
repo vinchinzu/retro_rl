@@ -3,6 +3,7 @@ from __future__ import annotations
 from super_metroid.progression import (
     EARLY_GAME_GRAPH,
     START_TO_MORPH_GRAPH,
+    START_TO_RED_TOWER_GRAPH,
     START_TO_SPORE_SPAWN_GRAPH,
 )
 
@@ -118,3 +119,89 @@ def test_spore_exit_requires_natural_defeat_capability() -> None:
         )
         is None
     )
+
+
+def test_k1_graph_super_room_to_red_tower() -> None:
+    path = START_TO_RED_TOWER_GRAPH.shortest_path(
+        0x9B5B,
+        0xA253,
+        frozenset(
+            {
+                "morph_ball",
+                "bombs",
+                "missiles",
+                "super_missiles",
+            }
+        ),
+    )
+    assert path is not None
+    assert [edge.target_room_id for edge in path] == [
+        0xA0A4,
+        0x9D19,
+        0x9E52,
+        0x9FBA,
+        0xA253,
+    ]
+    assert all(edge.verification == "continuous" for edge in path)
+
+
+def test_k2_graph_red_tower_to_bat() -> None:
+    from super_metroid.progression import START_TO_BAT_GRAPH
+
+    path = START_TO_BAT_GRAPH.shortest_path(
+        0xA253,
+        0xA3DD,
+        frozenset(
+            {
+                "morph_ball",
+                "bombs",
+                "missiles",
+                "super_missiles",
+            }
+        ),
+    )
+    assert path is not None
+    assert [edge.target_room_id for edge in path] == [0xA3DD]
+    assert all(edge.verification == "continuous" for edge in path)
+
+
+def test_k2_graph_bat_to_below_spazer() -> None:
+    from super_metroid.progression import START_TO_BELOW_SPAZER_GRAPH
+
+    path = START_TO_BELOW_SPAZER_GRAPH.shortest_path(
+        0xA3DD,
+        0xA408,
+        frozenset(
+            {
+                "morph_ball",
+                "bombs",
+                "missiles",
+                "super_missiles",
+            }
+        ),
+    )
+    assert path is not None
+    assert [edge.target_room_id for edge in path] == [0xA408]
+    assert all(edge.verification == "continuous" for edge in path)
+
+
+def test_k2_graph_below_spazer_to_warehouse() -> None:
+    from super_metroid.progression import START_TO_WAREHOUSE_GRAPH
+
+    caps = frozenset(
+        {
+            "morph_ball",
+            "bombs",
+            "missiles",
+            "super_missiles",
+        }
+    )
+    path = START_TO_WAREHOUSE_GRAPH.shortest_path(0xA408, 0xA6A1, caps)
+    assert path is not None
+    assert [edge.target_room_id for edge in path] == [
+        0xCF54,
+        0xCEFB,
+        0xCF80,
+        0xA6A1,
+    ]
+    assert all(edge.verification == "continuous" for edge in path)

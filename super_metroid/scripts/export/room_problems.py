@@ -19,7 +19,7 @@ from super_metroid.paths import (  # noqa: E402
     ROOM_CLEAR_POLICY_DIR,
     ROOM_PROBLEMS_PATH,
 )
-from super_metroid.rooms.room_graph import export_full_room_catalog  # noqa: E402
+from super_metroid.rooms.room_catalog import export_full_room_catalog  # noqa: E402
 
 
 def _editor_nav() -> Path:

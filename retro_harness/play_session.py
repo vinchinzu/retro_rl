@@ -249,10 +249,22 @@ class PlaySession:
             self._last_frame_time = time.perf_counter()
             self._next_frame_time = self._last_frame_time
             self._main_loop(pygame, obs, info)
+        except KeyboardInterrupt:
+            # Ctrl+C / SIGINT: clean shutdown (write recordings via on_close).
+            self.running = False
         finally:
-            self.on_close()
-            self.env.close()
-            pygame.quit()
+            try:
+                self.on_close()
+            except Exception:
+                pass
+            try:
+                self.env.close()
+            except Exception:
+                pass
+            try:
+                pygame.quit()
+            except Exception:
+                pass
 
     def _main_loop(self, pg, obs: ndarray, info: dict) -> None:
         from retro_harness.controls import (
@@ -412,8 +424,9 @@ class PlaySession:
         now = time.perf_counter()
         if target_time < now - target_dt:
             target_time = now
-        if target_time > now:
-            time.sleep(target_time - now)
+        # Sleep in short slices so Ctrl+C / window close stay responsive.
+        while target_time > now and self.running:
+            time.sleep(min(0.002, target_time - now))
             now = time.perf_counter()
         elapsed = now - self._last_frame_time
         self._measured_fps = 1.0 / elapsed if elapsed > 0 else 0.0
@@ -524,7 +537,8 @@ class PlaySession:
 
         _SLOT_KEYS = {pg.K_F1: 1, pg.K_F2: 2, pg.K_F3: 3, pg.K_F4: 4}
 
-        if key == pg.K_ESCAPE:
+        if key in (pg.K_ESCAPE, pg.K_q):
+            # ESC or Q — window must have focus (terminal ESC is not pygame).
             self.running = False
         elif key in _SLOT_KEYS:
             slot = _SLOT_KEYS[key]

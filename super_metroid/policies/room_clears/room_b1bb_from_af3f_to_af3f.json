@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b1bb_from_af3f_to_af3f",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Lower Norfair Elevator Save Room (0xB1BB); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "kind": "doorway_natural",
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Segment starts at doorway so future RNG re-rolls can re-enter the same door without mid-room teleport."
+  },
+  "planning": {
+    "objective": "visit_station_and_return",
+    "entry": {
+      "sourceRoomId": 44863,
+      "sourceRoomIdHex": "0xAF3F",
+      "endpoint": {
+        "roomId": 45499,
+        "roomIdHex": "0xB1BB",
+        "logicalRoomId": 310,
+        "nodeId": 1,
+        "nodeName": "Lower Norfair Elevator Save Room Door (to Elevator)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44863,
+      "targetRoomIdHex": "0xAF3F",
+      "endpoint": {
+        "roomId": 45499,
+        "roomIdHex": "0xB1BB",
+        "logicalRoomId": 310,
+        "nodeId": 1,
+        "nodeName": "Lower Norfair Elevator Save Room Door (to Elevator)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        8,
+        8
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 7,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          8,
+          8
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 45
+    },
+    {
+      "label": "turn_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 3
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 35
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 100
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state."
+}

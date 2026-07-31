@@ -17,23 +17,22 @@ Measured 2026-07-29 headless probes (HyruleCastleGrounds predecessor):
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
-import numpy as np
-
+from alttp import primitives
 from alttp.ram import (
     SECRET_HOLE_WORLD_X,
     SECRET_HOLE_WORLD_Y,
     SECRET_PASSAGE_ROOM,
     AlttpSnapshot,
     castle_entry_accepted,
-    read_snapshot,
     secret_passage_accepted,
     snapshot_to_diag,
     uncle_sword_event_accepted,
 )
+from alttp.route_report import RoutePhaseResult, SegmentResult
 from alttp.startup import (
     action_for,
     boot_past_title_to_castle,
@@ -41,7 +40,6 @@ from alttp.startup import (
     no_action,
     snapshot_env,
     step_frames,
-    wait_for_control,
 )
 
 # ---------------------------------------------------------------------------
@@ -101,112 +99,24 @@ UNCLE_APPROACH_SCRIPT: tuple[tuple[tuple[str, ...], int], ...] = (
 
 
 @dataclass
-class RoutePhaseResult:
-    """Outcome of one named route phase."""
-
-    phase: str
-    ok: bool
-    frames: int
-    snapshot: AlttpSnapshot
-    detail: str = ""
-    diag: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class CastleToSwordResult:
+class CastleToSwordResult(SegmentResult):
     """Full segment result from a castle-grounds predecessor."""
 
-    ok: bool
-    phase: str
-    frames: int
-    snapshot: AlttpSnapshot
-    phases: list[RoutePhaseResult] = field(default_factory=list)
-    source: str = "unknown"  # natural_boot | state_load_dev
-    acceptance: dict[str, bool] = field(default_factory=dict)
-    blocker: str = ""
-    notes: list[str] = field(default_factory=list)
-
-    def to_report(self) -> dict[str, Any]:
-        return {
-            "kind": "alttp_castle_to_sword_report",
-            "ok": self.ok,
-            "phase": self.phase,
-            "frames": self.frames,
-            "source": self.source,
-            "clean_chain": self.source == "natural_boot" and self.ok,
-            "development_only": self.source != "natural_boot",
-            "acceptance": dict(self.acceptance),
-            "blocker": self.blocker,
-            "notes": list(self.notes),
-            "final": snapshot_to_diag(self.snapshot),
-            "phases": [
-                {
-                    "phase": p.phase,
-                    "ok": p.ok,
-                    "frames": p.frames,
-                    "detail": p.detail,
-                    "diag": p.diag or snapshot_to_diag(p.snapshot),
-                }
-                for p in self.phases
-            ],
-        }
+    def to_report(self, kind: str = "alttp_castle_to_sword_report") -> dict[str, Any]:
+        return super().to_report(kind)
 
 
-def _run_macro(
-    env: object,
-    script: Sequence[tuple[tuple[str, ...], int]],
-    *,
-    stop_when_indoors: bool = True,
-) -> int:
-    """Run multi-button holds; return frames consumed."""
-    frames = 0
-    for buttons, hold in script:
-        if buttons == ("NONE",) or buttons == ():
-            action = no_action()
-        else:
-            action = action_for(*buttons)
-        for _ in range(max(0, hold)):
-            env.step(action)  # type: ignore[attr-defined]
-            frames += 1
-            if stop_when_indoors:
-                snap = snapshot_env(env)
-                if snap.indoors:
-                    return frames
-    return frames
-
-
-def _mash_text(env: object, *, cycles: int = 40) -> int:
-    frames = 0
-    for cycle in range(cycles):
-        snap = snapshot_env(env)
-        if snap.has_control and not snap.is_text_mode:
-            break
-        btn = "A" if cycle % 2 == 0 else "B"
-        step_frames(env, action_for(btn), 2)
-        frames += 2
-        step_frames(env, no_action(), 2)
-        frames += 2
-    return frames
-
-
-def settle_control(env: object, *, max_frames: int = 180) -> int:
-    frames = 0
-    while frames < max_frames:
-        snap = snapshot_env(env)
-        if snap.has_control and not snap.is_text_mode:
-            return frames
-        if snap.is_text_mode:
-            frames += _mash_text(env, cycles=8)
-            continue
-        step_frames(env, no_action(), 4)
-        frames += 4
-    return frames
+def settle_control(env: object, *, max_frames: int = 240) -> int:
+    """Compatibility wrapper: frames spent waiting via :func:`primitives.settle_control`."""
+    return primitives.settle_control(env, max_frames=max_frames).frames
 
 
 def approach_secret_hole(env: object) -> RoutePhaseResult:
     """Walk from castle-grounds spawn toward the secret-hole approach."""
-    frames = settle_control(env)
-    start = snapshot_env(env)
+    frames = 0
+    settle = primitives.settle_control(env)
+    frames += settle.frames
+    start = settle.snapshot
     if not start.on_castle_grounds and not start.near_secret_hole:
         return RoutePhaseResult(
             phase="approach_secret_hole",
@@ -217,9 +127,15 @@ def approach_secret_hole(env: object) -> RoutePhaseResult:
             diag=snapshot_to_diag(start),
         )
 
-    frames += _run_macro(env, CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT)
-    frames += settle_control(env)
-    snap = snapshot_env(env)
+    script = primitives.run_script(
+        env,
+        CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT,
+        stop_when=lambda s: s.indoors,
+    )
+    frames += script.frames
+    settle = primitives.settle_control(env)
+    frames += settle.frames
+    snap = settle.snapshot
     ok = snap.near_secret_hole or snap.in_secret_passage or snap.indoors
     return RoutePhaseResult(
         phase="approach_secret_hole",
@@ -251,8 +167,9 @@ def attempt_secret_entrance_entry(
     not a progression write).
     """
     frames = 0
-    frames += settle_control(env)
-    snap = snapshot_env(env)
+    settle = primitives.settle_control(env)
+    frames += settle.frames
+    snap = settle.snapshot
     if snap.in_secret_passage or (
         snap.indoors and secret_passage_accepted(snap)
     ):
@@ -273,16 +190,21 @@ def attempt_secret_entrance_entry(
 
     if not hasattr(env, "em"):
         # Single-shot proven macro without restore search.
-        used = _run_macro(env, SECRET_HOLE_ENTRY_SCRIPT, stop_when_indoors=True)
-        frames += used
+        script = primitives.run_script(
+            env,
+            SECRET_HOLE_ENTRY_SCRIPT,
+            stop_when=lambda s: s.indoors,
+        )
+        frames += script.frames
         for _ in range(120):
             step_frames(env, no_action(), 1)
             frames += 1
             snap = snapshot_env(env)
             if snap.indoors:
                 break
-        frames += settle_control(env, max_frames=300)
-        snap = snapshot_env(env)
+        settle = primitives.settle_control(env, max_frames=300)
+        frames += settle.frames
+        snap = settle.snapshot
         ok = snap.in_secret_passage or castle_entry_accepted(snap)
         return RoutePhaseResult(
             phase="secret_entrance_entry",
@@ -302,8 +224,12 @@ def attempt_secret_entrance_entry(
     for macro in macros:
         tried += 1
         env.em.set_state(approach_state)  # type: ignore[attr-defined]
-        used = _run_macro(env, macro, stop_when_indoors=True)
-        frames += used
+        script = primitives.run_script(
+            env,
+            macro,
+            stop_when=lambda s: s.indoors,
+        )
+        frames += script.frames
         # Wait for possible fall / room load.
         for _ in range(120):
             step_frames(env, no_action(), 1)
@@ -313,8 +239,9 @@ def attempt_secret_entrance_entry(
                 break
         snap = snapshot_env(env)
         if snap.in_secret_passage or castle_entry_accepted(snap):
-            frames += settle_control(env, max_frames=300)
-            snap = snapshot_env(env)
+            settle = primitives.settle_control(env, max_frames=300)
+            frames += settle.frames
+            snap = settle.snapshot
             return RoutePhaseResult(
                 phase="secret_entrance_entry",
                 ok=True,
@@ -329,8 +256,9 @@ def attempt_secret_entrance_entry(
             )
 
     env.em.set_state(approach_state)  # type: ignore[attr-defined]
-    frames += settle_control(env)
-    snap = snapshot_env(env)
+    settle = primitives.settle_control(env)
+    frames += settle.frames
+    snap = settle.snapshot
     return RoutePhaseResult(
         phase="secret_entrance_entry",
         ok=False,
@@ -368,8 +296,9 @@ def advance_uncle_dialogue_for_sword(
 ) -> RoutePhaseResult:
     """From secret passage, approach uncle and mash dialogue until sword."""
     frames = 0
-    frames += settle_control(env)
-    snap = snapshot_env(env)
+    settle = primitives.settle_control(env)
+    frames += settle.frames
+    snap = settle.snapshot
     if snap.has_fighter_sword:
         frames += dismiss_hold_up_item(env)
         snap = snapshot_env(env)
@@ -382,9 +311,8 @@ def advance_uncle_dialogue_for_sword(
             diag=snapshot_to_diag(snap),
         )
 
-    frames += _run_macro(
-        env, UNCLE_APPROACH_SCRIPT, stop_when_indoors=False
-    )
+    script = primitives.run_script(env, UNCLE_APPROACH_SCRIPT)
+    frames += script.frames
 
     for cycle in range(max_cycles):
         snap = snapshot_env(env)
@@ -588,7 +516,7 @@ def run_from_state(
     env = build_boot_env(state_name)
     try:
         env.reset()  # type: ignore[attr-defined]
-        settle_control(env)
+        primitives.settle_control(env)
         return run_from_castle_grounds(env, source="state_load_dev")
     finally:
         if close:

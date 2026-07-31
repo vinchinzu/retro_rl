@@ -769,7 +769,7 @@ def run_hybrid_full_route(
     if prefix_path is not None and not prefix_path.is_file():
         raise FileNotFoundError(
             f"hybrid prefix video missing: {prefix_path}. "
-            "Record it with: uv run python super_metroid/scripts/record/start_to_supers.py"
+            "Record it with: uv run python super_metroid/scripts/record/continuous.py --to supers"
         )
 
     tour_path = (

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9a90_from_9a44_to_9a44",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for The Final Missile (0x9A90); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "kind": "doorway_natural",
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Segment starts at doorway so future RNG re-rolls can re-enter the same door without mid-room teleport."
+  },
+  "planning": {
+    "objective": "enter_objective_and_return",
+    "entry": {
+      "sourceRoomId": 39492,
+      "sourceRoomIdHex": "0x9A44",
+      "endpoint": {
+        "roomId": 39568,
+        "roomIdHex": "0x9A90",
+        "logicalRoomId": 17,
+        "nodeId": 1,
+        "nodeName": "Final Missile Door (to Final Missile Bombway)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 39492,
+      "targetRoomIdHex": "0x9A44",
+      "endpoint": {
+        "roomId": 39568,
+        "roomIdHex": "0x9A90",
+        "logicalRoomId": 17,
+        "nodeId": 1,
+        "nodeName": "Final Missile Door (to Final Missile Bombway)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        8,
+        8
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 7,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          8,
+          8
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 55
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 350
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 100
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 180
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state."
+}

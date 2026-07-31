@@ -9,16 +9,16 @@ door into Parlor (``0x92FD``) with controllable settle.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable
 
 import numpy as np
 
 from retro_harness.snes import idle_action, snes_action
-from smz3.boot import LANDING_SITE_ROOM_ID, boot_to_controllable, make_boot_env
-from smz3.portals import EARLY_SM_ROOMS, room_name
+from smz3.boot import boot_to_controllable, make_boot_env
 from smz3.ram import ComboSnapshot, snapshot_env
 from smz3.room_timeout import RoomTimeoutWatchdog, TimeoutEvent
+from smz3.segment import RoomVisit, SmSegmentResult, close_last_visit, track_room
 from smz3.world import ActiveWorld, detect_world
 
 PARLOR_ROOM_ID = 0x92FD
@@ -31,86 +31,23 @@ EARLY_ROOM_BASELINES: dict[str, int] = {
     "0x9994": 20 * 60,  # Crateria Map Room
 }
 
-
-@dataclass
-class RoomVisit:
-    room_id: int
-    enter_frame: int
-    leave_frame: int | None = None
-    world: str = "super_metroid"
-
-    @property
-    def dwell_frames(self) -> int | None:
-        if self.leave_frame is None:
-            return None
-        return self.leave_frame - self.enter_frame
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "room_id": self.room_id,
-            "room_id_hex": f"0x{self.room_id:04X}",
-            "room_name": room_name(self.room_id),
-            "enter_frame": self.enter_frame,
-            "leave_frame": self.leave_frame,
-            "dwell_frames": self.dwell_frames,
-            "world": self.world,
-        }
+# Re-export for callers that imported from early_route.
+__all__ = [
+    "EARLY_ROOM_BASELINES",
+    "PARLOR_ROOM_ID",
+    "EarlySegmentResult",
+    "RoomVisit",
+    "default_baselines",
+    "leave_landing_site_to_parlor",
+    "run_landing_to_parlor",
+]
 
 
 @dataclass
-class EarlySegmentResult:
-    ok: bool
-    goal: str
-    frames: int
-    boot_frames: int
-    visits: list[RoomVisit] = field(default_factory=list)
-    final_snapshot: ComboSnapshot | None = None
-    world: ActiveWorld = ActiveWorld.UNKNOWN
-    timeout: TimeoutEvent | None = None
-    detail: str = ""
+class EarlySegmentResult(SmSegmentResult):
+    """Landing → Parlor (or intermediate SM) segment result."""
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "ok": self.ok,
-            "goal": self.goal,
-            "frames": self.frames,
-            "boot_frames": self.boot_frames,
-            "world": self.world.value,
-            "detail": self.detail,
-            "visits": [v.to_dict() for v in self.visits],
-            "timeout": self.timeout.to_dict() if self.timeout else None,
-            "final_snapshot": (
-                self.final_snapshot.to_dict() if self.final_snapshot else None
-            ),
-            "reached_parlor": any(v.room_id == PARLOR_ROOM_ID for v in self.visits),
-            "room_names": [room_name(v.room_id) for v in self.visits],
-        }
-
-
-def _hold(env: Any, *buttons: str, frames: int) -> None:
-    action = snes_action(*buttons, dtype=np.int8) if buttons else idle_action(dtype=np.int8)
-    for _ in range(max(0, frames)):
-        env.step(action)
-
-
-def _track_room(
-    visits: list[RoomVisit],
-    snap: ComboSnapshot,
-    world: ActiveWorld,
-) -> None:
-    rid = snap.sm_room_id
-    if rid == 0:
-        return
-    if not visits or visits[-1].room_id != rid:
-        if visits and visits[-1].leave_frame is None:
-            visits[-1].leave_frame = snap.frame
-        visits.append(
-            RoomVisit(
-                room_id=rid,
-                enter_frame=snap.frame,
-                world=world.value,
-            )
-        )
+    goal: str = "landing_to_parlor"
 
 
 def leave_landing_site_to_parlor(
@@ -128,11 +65,7 @@ def leave_landing_site_to_parlor(
 
     def step(buttons: tuple[str, ...] | None, n: int) -> ComboSnapshot:
         nonlocal frame
-        action = (
-            snes_action(*buttons, dtype=np.int8)
-            if buttons
-            else idle
-        )
+        action = snes_action(*buttons, dtype=np.int8) if buttons else idle
         for _ in range(n):
             env.step(action)
             frame += 1
@@ -193,7 +126,7 @@ def run_landing_to_parlor(
     def on_frame(frame: int, snap: ComboSnapshot) -> None:
         nonlocal timeout_event
         world = detect_world(snap)
-        _track_room(visits, snap, world)
+        track_room(visits, snap, world)
         if snap.sm_controllable:
             key = f"0x{snap.sm_room_id:04X}"
             ev = watchdog.observe(
@@ -225,8 +158,7 @@ def run_landing_to_parlor(
             on_frame=on_frame,
         )
         world = detect_world(snap)
-        if visits and visits[-1].leave_frame is None:
-            visits[-1].leave_frame = frame
+        close_last_visit(visits, frame)
 
         if timeout_event is not None:
             return EarlySegmentResult(

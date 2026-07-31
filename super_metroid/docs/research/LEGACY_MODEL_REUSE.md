@@ -1,56 +1,43 @@
 # Legacy climbing and Bomb Torizo model handoff
 
 The previous project at `../snes_editor/super_metroid_rl` contained four
-candidate policies. `scripts/import_legacy_assets.py` imports them into
-`models/imported/` after checking the SHA-256 values in `models/manifest.json`.
+candidate **vision** policies. `scripts/import_legacy_assets.py` imports them
+into `models/imported/` after checking the SHA-256 values in
+`models/manifest.json`.
 
 | Model | Intended reuse | Current status |
 |-------|----------------|----------------|
-| `bc_nav_model.pth` | General navigation and Climb ascent candidate | Imported, hash-verified, inference adapter tested, not natural-entry accepted |
-| `nav_ppo.zip` | PPO navigation/climbing candidate | Imported, hash-verified, wrapper compatibility pending |
-| `boss_bc.pth` | Bomb Torizo combat candidate | Imported, hash-verified, inference adapter tested, not natural-entry accepted |
-| `boss_ppo.zip` | PPO Bomb Torizo combat candidate | Imported, hash-verified, wrapper compatibility pending |
+| `bc_nav_model.pth` | General navigation and Climb ascent candidate | Imported, hash-verified, inference adapter tested, **parked until gold** |
+| `nav_ppo.zip` | PPO navigation/climbing candidate | Imported, hash-verified, parked |
+| `boss_bc.pth` | Bomb Torizo combat (pixels) | Imported; wins on `BossTorizo` train state; **fails natural Flyway entry**; parked until gold |
+| `boss_ppo.zip` | PPO Bomb Torizo combat (pixels) | Imported, parked |
 
-“Chorizo” in the request is interpreted as Bomb Torizo.
+## Policy for hard spots (2026-07-30)
 
-The accepted start-to-Torizo run does not claim a neural-model promotion. It
-uses hash-pinned controller replays from the same legacy corpus because they
-passed the stronger continuous natural-entry gate. The neural checkpoints
-remain useful candidates for boundary recovery and later state coverage, but
-they do not currently own accepted graph edges.
+**Vision-only networks are not the path for bosses until gold.** Prefer:
 
-## Compatibility contracts
+1. Full-knowledge strategy (RAM hitboxes / HP / spritemap) — see
+   [STRUCTURED_BOSS_RL.md](STRUCTURED_BOSS_RL.md).
+2. Structured-state RL to clean up speed and damage.
+3. Keep accepted hash-pinned replays and controllers on continuous routes.
 
-The navigation BC checkpoint expects one 112×128 grayscale frame, normalized
-inside the network, and emits 12 independent SNES button logits. The original
-runtime used a sigmoid threshold of 0.5 plus room-direction bias.
+The accepted start-to-Torizo run uses hash-pinned controller replays because
+they passed the continuous natural-entry gate. Vision checkpoints remain
+offline artifacts; they do not own accepted graph edges.
 
-The Boss BC checkpoint expects four resized RGB frames stacked channel-first
-(12×112×128) and emits the same 12-button logits.
+## Compatibility contracts (parked)
 
-`visual_models.py` now implements those exact two BC contracts, verifies each
-checkpoint hash before loading, derives channel/stack dimensions from the
-state dict, applies the original 2× downsample and `/255` normalization, emits
-12 environment-order button probabilities, and sanitizes opposite directions.
-This makes the checkpoints callable candidates for future boundary/recovery
-evaluations; it does not promote their gameplay success.
+The navigation BC checkpoint expects one 112×128 grayscale frame and emits
+12 SNES button logits. The Boss BC checkpoint expects four RGB frames
+stacked channel-first (12×112×128). `visual_models.py` still implements
+those contracts for later gold experiments only.
 
-The PPO archives depend on the original discrete action table, sanitization,
-action-hold behavior, 112×128 resize, and four-frame channel stack. Loading an
-archive alone is insufficient; those wrappers must be reproduced exactly.
+## Structured promotion path (active)
 
-## Promotion path
-
-1. Add adapters that preserve each model's original observation/action
-   contract.
-2. Evaluate candidates from their original development states.
-3. Re-evaluate from states captured from the real predecessor segment.
-4. Assign a graph edge only after deterministic or bounded-success evidence.
-5. Chain Morph → first Missiles → Climb ascent → Flyway → Bomb Torizo.
-6. Require natural Bomb Torizo defeat and Bombs pickup; model inference may
-   choose controller inputs but may not write boss/event/item state.
-
-The imported `maps/legacy/full_game_route.json` is a useful objective baseline,
-but its research-only anchors are not accepted room edges. Full-run work should
-promote them incrementally into the typed graph with live transition and
-inventory evidence.
+1. Catalog boss hitbox / HP / weapons (`combat/features.py`).
+2. Hand strategy controller that wins from an **active** fight state
+   (`combat/bomb_torizo.py`).
+3. Capture natural-entry mid-fight states from continuous prefix.
+4. Optional: RL on `feature_vector`, not pixels — Gym + short PPO loop live
+   in `combat/env.py` / `scripts/probe/bomb_torizo_combat.py train`.
+5. Promote only with natural continuous evidence; no boss/event/item writes.

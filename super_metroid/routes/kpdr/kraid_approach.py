@@ -254,6 +254,32 @@ def play_eye_to_kraid(session: ControllerSession) -> SuperMetroidState:
     )
 
 
+def play_kraid_entry_to_varia(session: ControllerSession) -> SuperMetroidState:
+    """From Kraid-room doorway entry: fight → rear door → real Varia PLM.
+
+    Boss-only policy (``combat.kraid.play_kraid_fight_to_varia``). Not continuous
+    evidence until composed after natural ``play_eye_to_kraid`` on the power-on
+    KPDR chain.
+    """
+    from super_metroid.combat.kraid import (  # local import avoids route↔combat cycle
+        play_kraid_fight_to_varia,
+    )
+
+    _require_room(session, ROOM_KRAID, "kraid_entry_to_varia")
+    evidence = play_kraid_fight_to_varia(session)
+    if evidence.fight.outcome != "kraid_defeated":
+        raise RuntimeError(
+            f"kraid_entry_to_varia: fight failed ({evidence.fight.outcome}): "
+            f"{session.state}"
+        )
+    if evidence.varia.outcome != "varia_collected":
+        raise RuntimeError(
+            f"kraid_entry_to_varia: Varia failed ({evidence.varia.outcome}): "
+            f"{session.state}"
+        )
+    return session.state
+
+
 
 def play_warehouse_to_kraid_with_hijump(
     session: ControllerSession,

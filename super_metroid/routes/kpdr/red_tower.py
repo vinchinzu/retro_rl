@@ -124,39 +124,92 @@ def play_red_tower_to_bat(session: ControllerSession) -> SuperMetroidState:
             break
     else:
         raise TimeoutError(f"red_to_bat: Bat Room door not reached: {state}")
-    return _wait_ordinary_room(session, ROOM_BAT, settle_frames=240, label="red_to_bat")
+    # Prefer a high left-sill settle (y<=125) so Bat→Below can use the short
+    # natural run-up. Continuous door transitions sometimes linger and drop
+    # Samus lower; LEFT brake helps, and bat_to_below_spazer also has a low
+    # entry path if we still land around y~155.
+    for frame in range(240):
+        state = _hold(session, 1, "LEFT", reason="red_to_bat_brake")
+        if (
+            state.room_id == ROOM_BAT
+            and state.game_state == 8
+            and state.door_transition == 0
+            and frame > 8
+            and state.samus_y <= 125
+        ):
+            return state
+        if (
+            state.room_id == ROOM_BAT
+            and state.game_state == 8
+            and state.door_transition == 0
+            and frame > 40
+            and state.velocity_y == 0
+        ):
+            # Grounded (possibly low left ledge) — hand off to bat_to_below.
+            return state
+    return _wait_ordinary_room(session, ROOM_BAT, settle_frames=60, label="red_to_bat")
 
 
 
 def play_bat_to_below_spazer(session: ControllerSession) -> SuperMetroidState:
-    """Cross Bat Room's three dry platforms and enter Below Spazer."""
+    """Cross Bat Room's three dry platforms and enter Below Spazer.
+
+    Two entry heights are supported:
+    - High left sill (y<=125): natural door-exit glide + short run-up (pure
+      anchors and continuous red→bat when the sill is secured).
+    - Low left ledge (~y155) or mid-fall continuous tip: wait to ground, then
+      a longer spin-jump reaches the first dry platform.
+    """
     _require_room(session, ROOM_BAT, "bat_to_below_spazer")
     _unmorph(session)
     _select_weapon(session, 0)
-    # Preserve five frames of the natural door-exit glide (x39→x≈48); isolated
-    # anchors already include these boot-settle frames.
-    _hold(session, 5, reason="bat_entry_glide")
 
-    # The natural Red Tower door spawn is x≈39/y≈108 (above the older staged
-    # x≈65/y≈155 anchor), so preserve a longer run-up to the first platform.
-    _hold(session, 35, "RIGHT", "B", reason="bat_first_runup")
-    _hold(session, 60, "RIGHT", "B", "A", reason="bat_first_jump")
-    _hold(session, 30, reason="bat_first_land")
-    if session.state.samus_x < 210:
+    state = session.state
+    if state.samus_y > 125 or abs(state.velocity_y) > 0:
+        for _ in range(60):
+            state = _hold(session, 1, reason="bat_land_wait")
+            if state.velocity_y == 0 and state.pose in (
+                1,
+                2,
+                25,
+                26,
+                27,
+                28,
+                137,
+                138,
+            ):
+                break
+        _unmorph(session)
+
+    if session.state.samus_y <= 125:
+        # High sill — preserve a short door-exit glide then original timings.
+        _hold(session, 5, reason="bat_entry_glide")
+        _hold(session, 35, "RIGHT", "B", reason="bat_first_runup")
+        _hold(session, 60, "RIGHT", "B", "A", reason="bat_first_jump")
+        _hold(session, 30, reason="bat_first_land")
+    else:
+        # Low left ledge / post-fall continuous entry.
+        _hold(session, 8, reason="bat_low_ready")
+        _hold(session, 15, "RIGHT", "B", reason="bat_low_runup")
+        _hold(session, 80, "RIGHT", "B", "A", reason="bat_low_jump")
+        _hold(session, 40, reason="bat_low_land")
+
+    state = session.state
+    if not (state.samus_x >= 210 and state.samus_y <= 165):
         raise TimeoutError(
-            f"bat_to_below_spazer: missed first platform: {session.state}"
+            f"bat_to_below_spazer: missed first platform: {state}"
         )
 
     _hold(session, 8, "RIGHT", "B", reason="bat_second_runup")
     _hold(session, 20, "RIGHT", "B", "A", reason="bat_second_jump")
     _hold(session, 80, reason="bat_second_land")
     state = session.state
-    if not (345 <= state.samus_x <= 380 and 165 <= state.samus_y <= 180):
+    if not (330 <= state.samus_x <= 400 and state.samus_y <= 185):
         raise TimeoutError(f"bat_to_below_spazer: missed middle platform: {state}")
 
     _hold(session, 48, "RIGHT", "B", "A", reason="bat_third_jump")
     _hold(session, 60, reason="bat_third_land")
-    if session.state.samus_x < 405:
+    if session.state.samus_x < 400:
         raise TimeoutError(
             f"bat_to_below_spazer: missed right platform: {session.state}"
         )

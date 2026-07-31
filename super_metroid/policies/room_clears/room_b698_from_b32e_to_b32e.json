@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b698_from_b32e_to_b32e",
+  "status": "verified_development_state",
+  "description": "Ridley Tank: short jump onto right door ledge and exit (same door).",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x98B2",
+    "entrySourceRoomIdHex": "0xB32E",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 39090,
+    "entrySourceRoomId": 45870
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 45870,
+      "sourceRoomIdHex": "0xB32E",
+      "endpoint": {
+        "roomId": 46744,
+        "roomIdHex": "0xB698",
+        "logicalRoomId": 143,
+        "nodeId": 1,
+        "nodeName": "Ridley Tank Room Door (to Ridley)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 45870,
+      "targetRoomIdHex": "0xB32E",
+      "endpoint": {
+        "roomId": 46744,
+        "roomIdHex": "0xB698",
+        "logicalRoomId": 143,
+        "nodeId": 1,
+        "nodeName": "Ridley Tank Room Door (to Ridley)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        14,
+        11
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 5,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          13,
+          11
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 3
+    },
+    {
+      "label": "runup",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 5
+    },
+    {
+      "label": "jump_to_door_ledge",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 50
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 180
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned from probe; development only.",
+  "promotedAt": "2026-07-30T22:31:07.226527+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_b698_from_b32e_to_b32e.json",
+    "reportSha256": "c5907f36c5fe8f8fb6ebd14b05c7739881a1cbb249d583d1c8154e55a22a9877",
+    "stateSha256": "172058113634636625882669b4b8b2cec7eb33d3316811d95a1fe0c66aff08ff",
+    "policySha256Before": "22ceed6c26fef1b51e8ac2a67c7e5c4fe8b3b4f9f77f157b8bd4ad65f372e8a9"
+  }
+}

@@ -6,8 +6,14 @@ import struct
 
 import pytest
 
-from smz3.paths import COMBO_ROM_SIZE
-from smz3.rom_builder import apply_ips, apply_seed_patch, merge_sm_z3
+from smz3.paths import COMBO_ROM_SIZE, SMZ3_XXH_SEED
+from smz3.rom_builder import (
+    apply_ips,
+    apply_seed_patch,
+    merge_sm_z3,
+    validate_z3_jp_rom,
+    xxh32,
+)
 
 
 def _minimal_sm() -> bytes:
@@ -80,3 +86,20 @@ def test_merge_rejects_tiny_roms() -> None:
         merge_sm_z3(b"tiny", _minimal_z3())
     with pytest.raises(ValueError, match="Zelda"):
         merge_sm_z3(_minimal_sm(), b"tiny")
+
+
+def test_xxh32_known_vectors() -> None:
+    # Empty buffer, seed 0 — matches xxhash / samus.link xxhashjs.
+    assert xxh32(b"", 0) == 0x02CC5D05
+    assert xxh32(b"test", 0) == 0x3E2023CF
+    # samus.link seed string "SMZ3" as u32 BE is 0x534D5A33
+    assert SMZ3_XXH_SEED == 0x534D5A33
+
+
+def test_validate_rejects_us_alttp_title() -> None:
+    # Minimal 1 MiB image with USA internal title at LoROM header.
+    z3 = bytearray(0x100000)
+    z3[0x7FC0 : 0x7FC0 + 21] = b"THE LEGEND OF ZELDA  "
+    z3[0x7FD9] = 0x01  # country USA
+    with pytest.raises(ValueError, match="USA|Japanese 1.0"):
+        validate_z3_jp_rom(bytes(z3))

@@ -1,8 +1,8 @@
-"""Controller-only post-Spore Super collect (and planned PB suffix).
+"""Backward-compat re-export: post-Spore Super collect lives in KPDR.
 
-Implementation lives in :mod:`super_metroid.routes.post_spore`. This module
-re-exports the historical public surface (including private helper aliases
-used by older imports).
+Implementation is in :mod:`super_metroid.routes.kpdr` (``super_room``,
+``big_pink_shaft``, etc.). Prefer importing from ``super_metroid.routes.kpdr``
+or ``super_metroid.routes.kpdr_controller``.
 """
 
 from __future__ import annotations
@@ -17,8 +17,7 @@ from super_metroid.routes.controller_common import (
     is_morph,
     wait_until,
 )
-from super_metroid.routes.post_spore import *  # noqa: F403
-from super_metroid.routes.post_spore import (  # noqa: F401
+from super_metroid.routes.kpdr import (
     PowerBombEvidence,
     ROOM_BIG_PINK,
     ROOM_FARMING,

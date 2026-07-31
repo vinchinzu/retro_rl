@@ -27,18 +27,18 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from alttp import primitives  # noqa: E402
 from alttp.castle_to_sword import (  # noqa: E402
-    RoutePhaseResult,
     run_from_castle_grounds,
     run_from_state,
     run_natural_chain,
-    settle_control,
 )
 from alttp.paths import (  # noqa: E402
     HYRULE_CASTLE_GROUNDS_STATE,
     RECORDINGS_DIR,
 )
 from alttp.ram import snapshot_to_diag  # noqa: E402
+from alttp.route_report import RoutePhaseResult  # noqa: E402
 from alttp.startup import build_boot_env  # noqa: E402
 
 DEFAULT_REPORT = RECORDINGS_DIR / "castle_to_sword.json"
@@ -133,7 +133,7 @@ def main() -> int:
         else:
             env = build_boot_env(args.state)
             env.reset()
-            settle_control(env)
+            primitives.settle_control(env)
             result = run_from_castle_grounds(
                 env,
                 source="state_load_dev",

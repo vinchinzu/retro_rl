@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b167_from_b106_to_a7de",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Frog Savestation (0xB167); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x97DA",
+    "entrySourceRoomIdHex": "0xB106",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 38874,
+    "entrySourceRoomId": 45318
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 45318,
+      "sourceRoomIdHex": "0xB106",
+      "endpoint": {
+        "roomId": 45415,
+        "roomIdHex": "0xB167",
+        "logicalRoomId": 302,
+        "nodeId": 2,
+        "nodeName": "Frog Savestation Right Door (to Frog Speedway)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 42974,
+      "targetRoomIdHex": "0xA7DE",
+      "endpoint": {
+        "roomId": 45415,
+        "roomIdHex": "0xB167",
+        "logicalRoomId": 302,
+        "nodeId": 1,
+        "nodeName": "Frog Savestation Left Door (to Business Center)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 152
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-30T22:27:19.507323+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_b167_from_b106_to_a7de.json",
+    "reportSha256": "3fe26178e9930960683037747bc21826b9973c4402449c56d98a1f4ab9232237",
+    "stateSha256": "6a230b2fea07c6ff123e3799b8d357dac4f2f7d39859947b2a8db96f783cb637",
+    "policySha256Before": "6f3504a0d53b08e98ca728afaddeaf2eb148303f0e29ec6ac8de9c57518e12dc"
+  }
+}

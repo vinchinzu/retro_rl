@@ -6,13 +6,22 @@
    reach Zelda cell, set `$F3CC==1`, escort to Sanctuary.
 2. Keep `castle_to_sword.py` green on state-load and `--natural`; treat
    `FighterSword.state` as a development checkpoint only.
-3. Optional: re-emit catalog with live boot/sword/zelda observations.
-4. Add overworld map assets only when tile-accurate nav is needed.
-5. Defer arena / romhack / asset-editor until more opening-route segments are
+3. Drive next room probes from `alttp.work_queue` /
+   `docs/routes/ROOM_WORK_QUEUE.md` (0x55 exit / key / shutter first).
+4. Optional: re-emit catalog with live boot/sword/zelda observations.
+5. Add overworld map assets only when tile-accurate nav is needed.
+6. Defer arena / romhack / asset-editor until more opening-route segments are
    named and acceptance-tested.
 
 ## Done (recent)
 
+- Controller consolidation: live segments use `alttp.primitives` + shared
+  `alttp.route_report` (no dual settle/macro stacks).
+- Offline `test_primitives.py`; deleted pure-theater `opening_overworld_route_plan`.
+- Escape capability graph (`alttp.escape_graph`) grounds → Sanctuary with
+  sword/key/lamp/zelda gates; continuous through 0x55 south chamber only.
+- Sanctuary-path save-state work queue (`alttp.work_queue`,
+  `scripts/export_work_queue.py` → `docs/routes/ROOM_WORK_QUEUE.md`).
 - Title → Hyrule Castle grounds (screen `0x1B`) scripted + headless verified.
 - z3-backed opening-route catalog/validation CLI
   (`alttp.opening_route_catalog`) for Link's House → castle grounds.

@@ -69,7 +69,11 @@ zero progression writes.
 | Curated continuous segments | start_to_morph + early_game + spore_spawn_controller |
 | Verified room_clears | **3** of 262 catalog problems |
 | Bulk scaffolds | 262 templates exist; almost none promoted |
-| Boss policies | Spore + Bomb Torizo continuous; Kraid dev spray only |
+| Easiest-first queue | `docs/routes/ROOM_WORK_QUEUE.md` ranks all 262; bootstrap entry states via `run_problem.py bootstrap --queue 1` before large/boss rooms |
+| Directed edges (topology) | **583** in `full_room_graph` — not separate practice units |
+| Boss policies | Spore + Bomb Torizo continuous (replay); full-knowledge Torizo strategy + natural-entry prove + feature-vector Gym/PPO scaffolding in `combat/`; Kraid dev spray only. Vision BC parked until gold — see `docs/research/STRUCTURED_BOSS_RL.md` |
+
+**Practice track (parallel to continuous KPDR):** finish easy+standard queues first for a clean % complete, then tough geometry, then bosses.
 
 ---
 
@@ -89,9 +93,9 @@ How far we are (play, not warps):
 
 | Layer | Furthest |
 |-------|----------|
-| Continuous | Super collect `0x9B5B` |
-| Controller dev | Natural Big Pink→Red Tower (3,478f); Red Tower→Warehouse Entrance (2,929f); Warehouse→Hi-Jump→Warehouse→natural Kraid entry (15,356f) |
-| ★ Next hop | KPDR **K3**: natural Kraid fight → rear door → Varia PLM |
+| Continuous | **Red Tower `0xA253`** (`start_to_red_tower`, 80,445f) |
+| Controller dev | Red Tower→Warehouse Entrance (2,929f); Warehouse→Hi-Jump→Warehouse→natural Kraid entry (15,356f) |
+| ★ Next hop | KPDR **K2 continuous**: attach Red→Warehouse→Hi-Jump→Kraid; then **K3** fight → Varia |
 
 **Continuous spine:** [ROUTE_KPDR.md](routes/ROUTE_KPDR.md) (K→P→D→R).
 Hop table / waves: [PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md) (topology only).
@@ -190,20 +194,24 @@ Authoritative board: [ROUTE_KPDR.md](routes/ROUTE_KPDR.md).
 Legacy Pink-PB / ship-first notes: [ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md).
 
 - [x] Super shaft descent + Chozo collect (capacity 0 → 5) from
-  `natural_post_spore_spawn` — `post_spore_controller.play_super_room_collect`.
+  `natural_post_spore_spawn` — `kpdr.play_super_room_collect`.
 - [x] Continuous power-on → Super collect dry report
-  (`recordings/start_to_supers.json`, 92,424 frames, integrity green).
+  (`recordings/start_to_supers.json`, **73,251** frames after Spore fight
+  re-record + Climb early-fall splice; was 92,424 then 74,421).
 - [x] Opt-in continuous room timing seam
-  (`start_to_supers.py --room-timing` →
-  `recordings/room_timings/start_to_supers_room_timing.json`); measured
-  largest early nav bottleneck = Climb `0x96BA`→Parlor (4,339 dwell).
-- [ ] Next timing experiment: re-record Climb→Parlor slice in
-  `pit_to_post_torizo` (~frames 34,598–39,107), re-baseline with
-  `--room-timing`, keep integrity green.
+  (`continuous.py --to supers|red_tower --room-timing`).
+- [x] Climb early-fall splice in `pit_to_post_torizo`: drop policy
+  `[2138:3308)` thrash loops (left-wall peak ~y=1970 → fall to y=2067);
+  Climb dwell **4,339 → 3,169**; continuous Supers integrity green.
+- [ ] Next timing experiments (pure nav): Parlor→Terminator (3,350),
+  Parlor→Flyway (2,627), Green Elev→Dachora (2,660).
 - [x] Bottom gate bomb + door shot → farming `0xA0A4` (dev from post-Spore).
 - [x] Farming green Super door → Big Pink `0x9D19` (dev).
 - [x] Big Pink farm-pocket **crest** + tunnel → main x≲750 (dev controller).
-- [ ] Continuous power-on through farming / Big Pink / crest / main.
+- [x] **Continuous power-on through farming / Big Pink main / GHZ / Noob /
+  Red Tower** (`continuous.py --to red_tower`, **80,445** frames, integrity green).
+- [x] Collapse per-tip `start_to_*.py` record scripts into one
+  `scripts/record/continuous.py --to <tip>` + `run_to()` dispatcher.
 - [ ] **Charge Beam** return in Big Pink (natural collect works; a conventional
   return to the route is not ready; do not route an infinite bomb jump).
 - [x] Natural Big Pink main → GHZ green door controller-only.
@@ -234,8 +242,10 @@ Red Tower → Warehouse → Business Center → Hi-Jump 0xA9E5
 - [x] K2 approach: three-Super Warehouse wall→Zeela→Kihunter→Baby
   Kraid→Eye Door→natural Kraid-room entry. The full Warehouse detour and
   approach composes controller-only in **15,356 frames**.
-- [ ] K3: compose the Kraid fight from natural entry, take the rear door, and
-  collect Varia (dev spray exists).
+- [x] K3 boss-only: Super-spray fight + rear door + real Varia PLM from
+  doorway entry (`play_kraid_fight_to_varia`, ~1908f collect).
+- [ ] K3 continuous: compose `kraid_entry_to_varia` after natural
+  `play_eye_to_kraid` on the power-on KPDR chain.
 - [ ] K4: Speed / Wave / Ice by play.
 - [ ] K5: Alpha PB collect (preferred first Power Bombs).
 - [ ] K6: Moat / Ocean / WS / Phantoon / Gravity by play.
