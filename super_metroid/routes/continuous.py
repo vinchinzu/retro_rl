@@ -6,8 +6,8 @@ Shared session/report harness lives in :mod:`super_metroid.routes.runtime`.
 Controllers (movement/combat only) stay in ``*_controller.py`` / ``kpdr/``.
 Segment/hop contracts: :mod:`super_metroid.routes.segment`.
 
-Verified continuous tip: KPDR K2.6 Warehouse Entrance. Hijump / kraid / varia
-tips are wired for natural-entry attachment (promote STATUS after integrity).
+Verified continuous tip: KPDR K3 Varia Suit (101,954f integrity green).
+Prefixes: warehouse / hijump / kraid. Extend post-Varia via RouteHop recipe.
 """
 
 from __future__ import annotations
@@ -1764,7 +1764,7 @@ def run_to(
     Tips compose as prefixes:
     morph ⊂ … ⊂ warehouse ⊂ hijump ⊂ kraid ⊂ varia.
     Room-timing is only accepted for tips that declare support in the catalog.
-    Default tip remains verified Warehouse until later tips are integrity-green.
+    Default tip is the furthest integrity-green tip (Varia / KPDR K3).
     """
     resolved = get_continuous_tip(tip)
     runners: dict[str, Callable[..., ContinuousRunReport]] = {

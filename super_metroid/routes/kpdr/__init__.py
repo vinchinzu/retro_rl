@@ -51,6 +51,12 @@ from super_metroid.routes.kpdr.kraid_approach import (
     play_warehouse_to_zeela_with_hijump,
     play_zeela_to_kihunter,
 )
+from super_metroid.routes.kpdr.kraid_return import (
+    play_baby_to_kihunter_return,
+    play_eye_to_baby_return,
+    play_kihunter_to_zeela_return,
+    play_zeela_to_warehouse_return,
+)
 from super_metroid.routes.kpdr.morph_bomb_roll import (
     MorphBombRollPhase,
     bomb_roll_left_safe,
@@ -94,6 +100,7 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_PINK_PB,
     ROOM_RED_TOWER,
     ROOM_SUPER,
+    ROOM_VARIA,
     ROOM_WAREHOUSE,
     ROOM_WAREHOUSE_KIHUNTER,
     ROOM_WEST_TUNNEL,
@@ -106,6 +113,10 @@ from super_metroid.routes.kpdr.super_room import (
     play_post_spore_supers,
     play_super_room_collect,
     play_super_room_to_farming,
+)
+from super_metroid.routes.kpdr.varia_return import (
+    play_kraid_to_eye_return,
+    play_varia_to_kraid,
 )
 from super_metroid.routes.kpdr.warehouse import (
     play_warehouse_to_business,
@@ -135,6 +146,7 @@ __all__ = [
     "ROOM_PINK_PB",
     "ROOM_RED_TOWER",
     "ROOM_SUPER",
+    "ROOM_VARIA",
     "ROOM_WAREHOUSE",
     "ROOM_WAREHOUSE_KIHUNTER",
     "ROOM_WEST_TUNNEL",
@@ -161,7 +173,9 @@ __all__ = [
     "play_business_to_warehouse",
     "play_east_to_warehouse",
     "play_eye_to_kraid",
+    "play_eye_to_baby_return",
     "play_kraid_entry_to_varia",
+    "play_kraid_to_eye_return",
     "play_farming_to_big_pink",
     "play_ghz_to_noob",
     "play_glass_to_east",
@@ -171,6 +185,7 @@ __all__ = [
     "play_hj_shaft_to_business",
     "play_hj_shaft_to_hj_room",
     "play_kihunter_to_baby_kraid",
+    "play_kihunter_to_zeela_return",
     "play_noob_to_red_tower",
     "play_pink_pb_break_maze_wall",
     "play_pink_pb_from_left_zone",
@@ -182,6 +197,8 @@ __all__ = [
     "play_run_shoot_exit",
     "play_super_room_collect",
     "play_super_room_to_farming",
+    "play_varia_to_kraid",
+    "play_baby_to_kihunter_return",
     "play_warehouse_hijump_kraid",
     "play_warehouse_to_business",
     "play_warehouse_to_hijump",
@@ -190,5 +207,6 @@ __all__ = [
     "play_warehouse_wall_to_lower_lip",
     "play_west_to_glass",
     "play_zeela_to_kihunter",
+    "play_zeela_to_warehouse_return",
     "wait_until",
 ]

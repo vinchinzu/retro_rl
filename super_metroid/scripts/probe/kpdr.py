@@ -59,21 +59,29 @@ from super_metroid.dev.kpdr_dev import (  # noqa: E402
 )
 from super_metroid.ram import parse_env_state  # noqa: E402
 from super_metroid.routes.kpdr_controller import (  # noqa: E402
+    play_baby_to_kihunter_return,
     play_bat_to_below_spazer,
     play_below_spazer_to_west,
     play_big_pink_to_ghz,
     play_east_to_warehouse,
+    play_eye_to_baby_return,
     play_glass_to_east,
     play_ghz_to_noob,
+    play_kraid_to_eye_return,
+    play_kihunter_to_zeela_return,
     play_noob_to_red_tower,
     play_red_tower_to_bat,
     play_red_tower_to_warehouse,
+    play_varia_to_kraid,
     play_warehouse_hijump_kraid,
     play_warehouse_to_hijump,
     play_warehouse_to_kraid_with_hijump,
     play_hijump_to_warehouse,
+    play_hj_shaft_to_business,
+    play_business_to_warehouse,
     play_warehouse_wall_to_lower_lip,
     play_west_to_glass,
+    play_zeela_to_warehouse_return,
 )
 
 
@@ -104,6 +112,7 @@ def _run_pure(
 ) -> dict[str, object]:
     env = make_dev_env()
     assist = UnlimitedResourcesAssist()
+    session: _ProbeSession | None = None
     try:
         boot_from_state(env, source)
         for _ in range(5):
@@ -125,6 +134,8 @@ def _run_pure(
             "roomIdHex": f"0x{st.room_id:04X}",
             "samusX": st.samus_x,
             "samusY": st.samus_y,
+            "pose": st.pose,
+            "frame": session.frame,
             "frames": session.frame,
             "statePath": str(output.resolve()) if output else None,
             "developmentOnly": place_x is not None,
@@ -140,6 +151,8 @@ def _run_pure(
             "roomIdHex": f"0x{st.room_id:04X}",
             "samusX": st.samus_x,
             "samusY": st.samus_y,
+            "pose": st.pose,
+            "frame": session.frame if session is not None else st.frame,
             "controllerOnly": place_x is None,
             "developmentOnly": place_x is not None,
         }
@@ -212,6 +225,14 @@ def main() -> None:
             "hijump-to-warehouse",
             "warehouse-to-kraid-hijump",
             "warehouse-hijump-kraid",
+            "hj-shaft-to-business",
+            "business-to-warehouse",
+            "varia-to-kraid",
+            "kraid-to-eye-return",
+            "eye-to-baby-return",
+            "baby-to-kihunter-return",
+            "kihunter-to-zeela-return",
+            "zeela-to-warehouse-return",
         ),
     )
     pure.add_argument("--source", type=Path, required=True)
@@ -290,6 +311,14 @@ def main() -> None:
             "hijump-to-warehouse": play_hijump_to_warehouse,
             "warehouse-to-kraid-hijump": play_warehouse_to_kraid_with_hijump,
             "warehouse-hijump-kraid": play_warehouse_hijump_kraid,
+            "hj-shaft-to-business": play_hj_shaft_to_business,
+            "business-to-warehouse": play_business_to_warehouse,
+            "varia-to-kraid": play_varia_to_kraid,
+            "kraid-to-eye-return": play_kraid_to_eye_return,
+            "eye-to-baby-return": play_eye_to_baby_return,
+            "baby-to-kihunter-return": play_baby_to_kihunter_return,
+            "kihunter-to-zeela-return": play_kihunter_to_zeela_return,
+            "zeela-to-warehouse-return": play_zeela_to_warehouse_return,
         }[args.segment]
         report = _run_pure(
             source=args.source,

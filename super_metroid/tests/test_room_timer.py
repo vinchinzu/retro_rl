@@ -266,6 +266,31 @@ def test_report_schema_and_totals() -> None:
     assert report["open_visit"] is None  # finalized
 
 
+def test_split_dwells_from_continuous_report() -> None:
+    from super_metroid.room_timer import (
+        action_reason_hotspots,
+        rank_split_dwells,
+        split_dwells_from_report,
+    )
+
+    report = {
+        "total_frames": 1000,
+        "splits": [
+            {"split_id": "a", "frame": 100, "room_id": 0x91F8},
+            {"split_id": "b", "frame": 400, "room_id": 0xA253},
+            {"split_id": "c", "frame": 550, "room_id": 0xA3DD},
+        ],
+        "action_reasons": {"fast_hop": 40, "red_upper_zigzag": 272, "idle": 10},
+    }
+    dwells = split_dwells_from_report(report)
+    assert [d.dwell_frames for d in dwells] == [100, 300, 150]
+    ranked = rank_split_dwells(report, limit=2, min_dwell=100)
+    assert ranked[0]["split_id"] == "b"
+    assert ranked[0]["dwell_frames"] == 300
+    hot = action_reason_hotspots(report, min_frames=50)
+    assert hot == [{"reason": "red_upper_zigzag", "frames": 272}]
+
+
 def test_snapshots_from_json_fixture_shape() -> None:
     payload = {
         "samples": [

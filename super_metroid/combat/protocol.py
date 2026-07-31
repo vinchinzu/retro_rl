@@ -236,6 +236,93 @@ def wrap_bomb_torizo_as_boss_strategy() -> CallableBossStrategy:
     )
 
 
+def wrap_phantoon_as_boss_strategy() -> CallableBossStrategy:
+    """Phantoon development fight as a BossStrategy; continuous is deferred."""
+    from super_metroid.combat.features import phantoon_catalog
+    from super_metroid.combat.phantoon import ROOM_PHANTOON, play_phantoon_fight
+
+    catalog = phantoon_catalog()
+
+    def play(session: ControllerSession) -> BossEvidence:
+        result = play_phantoon_fight(session)
+        success = result.outcome == "phantoon_defeated"
+        return BossEvidence(
+            boss_id="phantoon",
+            start_frame=result.start_frame,
+            end_frame=result.end_frame,
+            outcome=result.outcome,
+            success=success,
+            final_room_id=session.state.room_id,
+            boss_defeated=result.boss_bit_set,
+            detail=result.to_dict(),
+        )
+
+    return CallableBossStrategy(
+        boss_id="phantoon",
+        play_fn=play,
+        entry_requirement=StateRequirement(room_id=ROOM_PHANTOON),
+        catalog_entry=catalog,
+    )
+
+
+def wrap_botwoon_as_boss_strategy() -> CallableBossStrategy:
+    """Botwoon development fight as a BossStrategy; continuous is deferred."""
+    from super_metroid.combat.botwoon import ROOM_BOTWOON, play_botwoon_fight
+    from super_metroid.combat.features import botwoon_catalog
+
+    catalog = botwoon_catalog()
+
+    def play(session: ControllerSession) -> BossEvidence:
+        result = play_botwoon_fight(session)
+        success = result.outcome == "botwoon_defeated"
+        return BossEvidence(
+            boss_id="botwoon",
+            start_frame=result.start_frame,
+            end_frame=result.end_frame,
+            outcome=result.outcome,
+            success=success,
+            final_room_id=session.state.room_id,
+            boss_defeated=result.boss_bit_set,
+            detail=result.to_dict(),
+        )
+
+    return CallableBossStrategy(
+        boss_id="botwoon",
+        play_fn=play,
+        entry_requirement=StateRequirement(room_id=ROOM_BOTWOON),
+        catalog_entry=catalog,
+    )
+
+
+def wrap_draygon_as_boss_strategy() -> CallableBossStrategy:
+    """Draygon development fight as a BossStrategy; continuous is deferred."""
+    from super_metroid.combat.draygon import ROOM_DRAYGON, play_draygon_fight
+    from super_metroid.combat.features import draygon_catalog
+
+    catalog = draygon_catalog()
+
+    def play(session: ControllerSession) -> BossEvidence:
+        result = play_draygon_fight(session)
+        success = result.outcome == "draygon_defeated"
+        return BossEvidence(
+            boss_id="draygon",
+            start_frame=result.start_frame,
+            end_frame=result.end_frame,
+            outcome=result.outcome,
+            success=success,
+            final_room_id=session.state.room_id,
+            boss_defeated=result.boss_bit_set,
+            detail=result.to_dict(),
+        )
+
+    return CallableBossStrategy(
+        boss_id="draygon",
+        play_fn=play,
+        entry_requirement=StateRequirement(room_id=ROOM_DRAYGON),
+        catalog_entry=catalog,
+    )
+
+
 def strategy_summary(strategy: BossStrategy) -> dict[str, Any]:
     """Compact dict for probe reports / docs export."""
     cat = strategy.catalog

@@ -29,6 +29,34 @@ from super_metroid.ram import (
 )
 
 
+def capabilities_from_state(state: SuperMetroidState) -> frozenset[str]:
+    """Map live RAM inventory/ammo into progression capability tokens.
+
+    Covers the KPDR spine through Varia. Beam/speed/PB tokens expand as those
+    continuous tips land (do not invent equipment the state does not hold).
+    """
+    caps: set[str] = set()
+    items = state.collected_items
+    if items & MORPH_BALL_MASK:
+        caps.add("morph_ball")
+    if items & BOMBS_MASK:
+        caps.add("bombs")
+    if items & HI_JUMP_MASK:
+        caps.add("hi_jump")
+    if items & VARIA_MASK:
+        caps.add("varia_suit")
+    if state.max_missiles > 0:
+        caps.add("missiles")
+    if state.max_super_missiles > 0:
+        caps.add("super_missiles")
+    if state.max_power_bombs > 0:
+        caps.add("power_bombs")
+    # Boss/event defeat bits used as graph gates on early spine.
+    # boss_bits layout is area-indexed; Spore/Torizo flags are not always
+    # mirrored here — callers that need them can union extra tokens.
+    return frozenset(caps)
+
+
 @dataclass(frozen=True)
 class RoomNode:
     room_id: int
@@ -215,6 +243,93 @@ class RoomProgressionGraph:
             return None
         by_id = {edge.edge_id: edge for edge in self.edges}
         return tuple(by_id[edge.edge_id] for edge in path)
+
+    def outgoing(
+        self,
+        room_id: int,
+        *,
+        capabilities: frozenset[str] | None = None,
+        verification: str | None = None,
+    ) -> tuple[DoorEdge, ...]:
+        """Edges leaving ``room_id``, optionally filtered by caps / verification."""
+        edges = tuple(self._outgoing.get(room_id, ()))
+        if capabilities is not None:
+            edges = tuple(e for e in edges if e.requires <= capabilities)
+        if verification is not None:
+            edges = tuple(e for e in edges if e.verification == verification)
+        return edges
+
+    def suggest_next_hops(
+        self,
+        room_id: int,
+        *,
+        capabilities: frozenset[str] | None = None,
+        prefer_verification: str = "continuous",
+    ) -> tuple[DoorEdge, ...]:
+        """Ranked next hops from ``room_id`` for continuous extension.
+
+        Prefers edges already marked ``prefer_verification`` (default
+        continuous), then ``controller_dev``, then anything capability-ready.
+        Empty when the room is unknown or no outbound edges exist.
+        """
+        if room_id not in self.rooms:
+            return ()
+        caps = capabilities if capabilities is not None else frozenset()
+        ready = self.outgoing(room_id, capabilities=caps)
+        if not ready:
+            # Still surface gated edges so authors see what is missing.
+            ready = self.outgoing(room_id)
+        order = {
+            prefer_verification: 0,
+            "continuous": 0,
+            "controller_dev": 1,
+            "unverified": 2,
+            "planned": 3,
+        }
+        ranked = sorted(
+            ready,
+            key=lambda e: (
+                order.get(e.verification, 9),
+                e.edge_id,
+            ),
+        )
+        return tuple(ranked)
+
+    def path_verification(
+        self,
+        source_room_id: int,
+        target_room_id: int,
+        capabilities: frozenset[str] = frozenset(),
+    ) -> dict[str, object]:
+        """Summarize shortest-path readiness (edge ids + verification mix)."""
+        path = self.shortest_path(source_room_id, target_room_id, capabilities)
+        if path is None:
+            return {
+                "reachable": False,
+                "edges": [],
+                "all_continuous": False,
+                "blocking": None,
+            }
+        verifications = [e.verification for e in path]
+        first_non_cont = next(
+            (e.edge_id for e in path if e.verification != "continuous"),
+            None,
+        )
+        return {
+            "reachable": True,
+            "edges": [
+                {
+                    "edgeId": e.edge_id,
+                    "from": f"0x{e.source_room_id:04X}",
+                    "to": f"0x{e.target_room_id:04X}",
+                    "verification": e.verification,
+                    "requires": sorted(e.requires),
+                }
+                for e in path
+            ],
+            "all_continuous": all(v == "continuous" for v in verifications),
+            "blocking": first_non_cont,
+        }
 
     def to_dict(self) -> dict[str, object]:
         """Return a stable JSON-ready navigation-map representation."""
@@ -1013,7 +1128,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "left",
         _HJ_CAPS,
         "kpdr_hijump",
-        "controller_dev",
+        "continuous",
     ),
     DoorEdge(
         "hj_shaft_to_business",
@@ -1023,7 +1138,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "left",
         _HJ_CAPS,
         "kpdr_hijump",
-        "controller_dev",
+        "continuous",
     ),
     DoorEdge(
         "business_to_warehouse",
@@ -1033,7 +1148,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "down",
         _HJ_CAPS,
         "kpdr_hijump",
-        "controller_dev",
+        "continuous",
     ),
     DoorEdge(
         "warehouse_to_zeela",
@@ -1043,7 +1158,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "left",
         _HJ_CAPS,
         "kpdr_kraid_approach",
-        "controller_dev",
+        "continuous",
     ),
     DoorEdge(
         "zeela_to_kihunter",
@@ -1053,7 +1168,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "right",
         _HJ_CAPS,
         "kpdr_kraid_approach",
-        "controller_dev",
+        "continuous",
     ),
     DoorEdge(
         "kihunter_to_baby_kraid",
@@ -1063,7 +1178,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "left",
         _HJ_CAPS,
         "kpdr_kraid_approach",
-        "controller_dev",
+        "continuous",
     ),
     DoorEdge(
         "baby_kraid_to_eye",
@@ -1073,7 +1188,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "left",
         _HJ_CAPS,
         "kpdr_kraid_approach",
-        "controller_dev",
+        "continuous",
     ),
     DoorEdge(
         "eye_to_kraid",
@@ -1083,7 +1198,7 @@ _K2_KRAID_EDGES = _K2_HIJUMP_EDGES + (
         "left",
         _HJ_CAPS,
         "kpdr_kraid_approach",
-        "controller_dev",
+        "continuous",
     ),
 )
 
@@ -1123,7 +1238,7 @@ _K3_VARIA_EDGES = _K2_KRAID_EDGES + (
         "left",
         _HJ_CAPS,
         "kpdr_kraid_combat",
-        "controller_dev",
+        "continuous",
     ),
 )
 
@@ -1150,4 +1265,289 @@ START_TO_VARIA_GRAPH = RoomProgressionGraph(
     _K3_VARIA_EDGES,
     _K3_VARIA_MILESTONES,
     graph_id="start_to_varia",
+)
+
+# KPDR K4 scaffold (post-Varia): return to Business → Bubble → Speed, plus
+# Wave/Ice branches. Edges start ``unverified``; first reverse hop
+# ``varia_to_kraid`` promotes to ``controller_dev`` when pure probe is green.
+# Do not claim continuous until composed on power-on via tip recipe.
+_K4_CAPS = _VARIA_CAPS
+
+_K4_SPEED_ROOMS = _K3_VARIA_ROOMS + (
+    # Return path rooms already present through Warehouse/Business on K2.
+    RoomNode(0xB167, "Frog Savestation", "Norfair"),
+    RoomNode(0xB106, "Frog Speedway", "Norfair"),
+    RoomNode(0xAF72, "Upper Norfair Farming Room", "Norfair"),
+    RoomNode(0xACB3, "Bubble Mountain", "Norfair"),
+    RoomNode(0xB07A, "Bat Cave", "Norfair"),
+    RoomNode(0xACF0, "Speed Booster Hall", "Norfair"),
+    RoomNode(0xAD1B, "Speed Booster Room", "Norfair"),
+    RoomNode(0xAD5E, "Single Chamber", "Norfair"),
+    RoomNode(0xADAD, "Double Chamber", "Norfair"),
+    RoomNode(0xADDE, "Wave Beam Room", "Norfair"),
+    RoomNode(0xA815, "Ice Beam Gate Room", "Norfair"),
+    RoomNode(0xA865, "Ice Beam Tutorial Room", "Norfair"),
+    RoomNode(0xA8B9, "Ice Beam Snake Room", "Norfair"),
+    RoomNode(0xA890, "Ice Beam Room", "Norfair"),
+)
+
+_K4_SPEED_EDGES = _K3_VARIA_EDGES + (
+    # --- Varia return through Kraid approach (reverse of K2.14–K2.18) ---
+    DoorEdge(
+        "varia_to_kraid",
+        0xA6E2,
+        0xA59F,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_varia_return",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "kraid_to_eye_return",
+        0xA59F,
+        0xA56B,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_varia_return",
+        "unverified",
+    ),
+    DoorEdge(
+        "eye_to_baby_return",
+        0xA56B,
+        0xA521,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_varia_return",
+        "unverified",
+    ),
+    DoorEdge(
+        "baby_to_kihunter_return",
+        0xA521,
+        0xA4DA,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_varia_return",
+        "unverified",
+    ),
+    DoorEdge(
+        "kihunter_to_zeela_return",
+        0xA4DA,
+        0xA471,
+        "down",
+        "up",
+        _K4_CAPS,
+        "kpdr_varia_return",
+        "unverified",
+    ),
+    DoorEdge(
+        "zeela_to_warehouse_return",
+        0xA471,
+        0xA6A1,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_varia_return",
+        "unverified",
+    ),
+    # warehouse → business reuses continuous edge ``warehouse_to_business``
+    # --- Business → Bubble → Speed ---
+    DoorEdge(
+        "business_to_frog_save",
+        0xA7DE,
+        0xB167,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    DoorEdge(
+        "frog_save_to_speedway",
+        0xB167,
+        0xB106,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    DoorEdge(
+        "speedway_to_farm",
+        0xB106,
+        0xAF72,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    DoorEdge(
+        "farm_to_bubble",
+        0xAF72,
+        0xACB3,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    DoorEdge(
+        "bubble_to_bat_cave",
+        0xACB3,
+        0xB07A,
+        "right",
+        "left",
+        _K4_CAPS | frozenset({"super_missiles"}),
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    DoorEdge(
+        "bat_cave_to_speed_hall",
+        0xB07A,
+        0xACF0,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    DoorEdge(
+        "speed_hall_to_speed",
+        0xACF0,
+        0xAD1B,
+        "right",
+        "left",
+        _K4_CAPS | frozenset({"missiles"}),
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    # --- Wave branch from Bubble ---
+    DoorEdge(
+        "bubble_to_single_chamber",
+        0xACB3,
+        0xAD5E,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_wave",
+        "unverified",
+    ),
+    DoorEdge(
+        "single_to_double_chamber",
+        0xAD5E,
+        0xADAD,
+        "right",
+        "left",
+        _K4_CAPS | frozenset({"missiles"}),
+        "kpdr_k4_wave",
+        "unverified",
+    ),
+    DoorEdge(
+        "double_chamber_to_wave",
+        0xADAD,
+        0xADDE,
+        "right",
+        "left",
+        _K4_CAPS | frozenset({"missiles"}),
+        "kpdr_k4_wave",
+        "unverified",
+    ),
+    # --- Ice branch from Business (after return) ---
+    DoorEdge(
+        "business_to_ice_gate",
+        0xA7DE,
+        0xA815,
+        "left",
+        "right",
+        _K4_CAPS | frozenset({"super_missiles"}),
+        "kpdr_k4_ice",
+        "unverified",
+    ),
+    DoorEdge(
+        "ice_gate_to_tutorial",
+        0xA815,
+        0xA865,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_k4_ice",
+        "unverified",
+    ),
+    DoorEdge(
+        "ice_tutorial_to_snake",
+        0xA865,
+        0xA8B9,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_k4_ice",
+        "unverified",
+    ),
+    DoorEdge(
+        "ice_snake_to_ice",
+        0xA8B9,
+        0xA890,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_ice",
+        "unverified",
+    ),
+)
+
+_K4_SPEED_MILESTONES = _K3_VARIA_MILESTONES + (
+    ProgressionMilestone(
+        "business_post_varia",
+        "Returned to Business Center after Varia (K4 staging room)",
+        ProgressCondition(
+            room_id=0xA7DE,
+            collected_items_mask=(
+                MORPH_BALL_MASK | BOMBS_MASK | HI_JUMP_MASK | VARIA_MASK
+            ),
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=_K4_CAPS,
+        timeout_frames=40_000,
+        policy_id="kpdr_varia_return",
+    ),
+    ProgressionMilestone(
+        "bubble_mountain_entry",
+        "Natural Bubble Mountain entry on post-Varia K4 path",
+        ProgressCondition(
+            room_id=0xACB3,
+            collected_items_mask=(
+                MORPH_BALL_MASK | BOMBS_MASK | HI_JUMP_MASK | VARIA_MASK
+            ),
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=_K4_CAPS,
+        timeout_frames=30_000,
+        policy_id="kpdr_k4_speed",
+    ),
+    ProgressionMilestone(
+        "speed_collected",
+        "Natural Speed Booster collect (K4.0) — promote after continuous tip",
+        ProgressCondition(
+            room_id=0xAD1B,
+            collected_items_mask=(
+                MORPH_BALL_MASK | BOMBS_MASK | HI_JUMP_MASK | VARIA_MASK
+            ),
+            minimum_ammo_capacities=(10, 5, 0),
+        ),
+        requires=_K4_CAPS,
+        acquires=frozenset({"speed_booster"}),
+        timeout_frames=40_000,
+        policy_id="kpdr_k4_speed",
+    ),
+)
+
+START_TO_SPEED_GRAPH = RoomProgressionGraph(
+    _K4_SPEED_ROOMS,
+    _K4_SPEED_EDGES,
+    _K4_SPEED_MILESTONES,
+    graph_id="start_to_speed",
 )

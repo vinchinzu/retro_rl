@@ -87,7 +87,7 @@ def _business_high_jump_platforms(
     ``runup_907``: RIGHT+B frames before the 987→907 hop. Continuous natural
     entry needs 14; pure probe prefers 8 (used on floor re-climb fallback).
     """
-    # Four forgiving setup jumps land on the first left platform (~y=1339).
+    # Four setup jumps land on the first left platform (~y=1339).
     # If already standing there (pure mid-climb states), skip the open-loop setup.
     _unmorph(session)
     already = (
@@ -96,7 +96,7 @@ def _business_high_jump_platforms(
         and session.state.velocity_y == 0
     )
     if not already:
-        for direction in ("RIGHT", "LEFT", "LEFT", "RIGHT"):
+        for direction in ("LEFT", "LEFT", "RIGHT"):
             _hold(session, 12, reason="business_climb_release")
             _hold(session, 85, direction, "B", "A", reason="business_climb_setup")
             _hold(session, 30, reason="business_climb_setup_land")
@@ -106,7 +106,7 @@ def _business_high_jump_platforms(
     # so A never charges. Gate on standing; pure needs ~x84 for the LEFT+A arc,
     # but stop at 86 if the second-climb path is edgy after floor recover.
     _unmorph(session)
-    _hold(session, 20, reason="business_1339_settle")
+    _hold(session, 12, reason="business_1339_settle")
     _wait_standing_y(session, 1339, timeout=60, reason="business_1339_ground")
     for _ in range(80):
         state = session.state
@@ -117,7 +117,7 @@ def _business_high_jump_platforms(
             if session.state.samus_y != 1339:
                 # Walked off — re-setup first platform and re-enter this hop.
                 _unmorph(session)
-                for direction in ("RIGHT", "LEFT", "LEFT", "RIGHT"):
+                for direction in ("LEFT", "LEFT", "RIGHT"):
                     _hold(session, 12, reason="business_climb_release")
                     _hold(
                         session, 85, direction, "B", "A", reason="business_climb_setup"
@@ -143,7 +143,7 @@ def _business_high_jump_platforms(
         if frame > 45 and state.samus_y == 1227 and state.samus_x >= 120:
             break
     _hold(session, 3, "LEFT", reason="business_1227_brake")
-    _hold(session, 20, reason="business_1227_settle")
+    _hold(session, 12, reason="business_1227_settle")
     _wait_standing_y(session, 1227, timeout=50, reason="business_1227_land")
 
     # y1227 → right platform y1147.
@@ -162,7 +162,7 @@ def _business_high_jump_platforms(
         if frame > 88 and state.samus_y == 1147 and state.samus_x >= 192:
             break
     _hold(session, 3, "LEFT", reason="business_1147_brake")
-    _hold(session, 20, reason="business_1147_settle")
+    _hold(session, 12, reason="business_1147_settle")
     _wait_standing_y(session, 1147, timeout=50, reason="business_1147_land")
 
     # y1147 → center platform y1067.
@@ -193,7 +193,7 @@ def _business_high_jump_platforms(
     # Landing is on the extreme left pixel of the three-block platform;
     # nudge inward instead of braking back off its edge.
     _hold(session, 4, "RIGHT", reason="business_987_brake")
-    _hold(session, 20, reason="business_987_settle")
+    _hold(session, 12, reason="business_987_settle")
     _wait_standing_y(session, 987, timeout=50, reason="business_987_land")
     # Capture continuous natural-entry at this hop for offline iteration.
     _maybe_dump_climb_state(session, "business_987_pre_907")
@@ -214,7 +214,7 @@ def _business_high_jump_platforms(
             break
         _hold(session, 1, "LEFT", reason="business_907_brake")
     _hold(session, 2, "RIGHT", reason="business_907_brake")
-    _hold(session, 20, reason="business_907_settle")
+    _hold(session, 12, reason="business_907_settle")
     try:
         _wait_standing_y(session, 907, timeout=50, reason="business_907_land")
     except TimeoutError:
@@ -236,7 +236,7 @@ def _business_high_jump_platforms(
         if frame > 35 and state.samus_y == 843 and 108 <= state.samus_x <= 160:
             break
     _hold(session, 2, "RIGHT", reason="business_843_brake")
-    _hold(session, 20, reason="business_843_settle")
+    _hold(session, 12, reason="business_843_settle")
     _wait_standing_y(session, 843, timeout=50, reason="business_843_land")
 
     # y843 → left y779.
@@ -254,7 +254,7 @@ def _business_high_jump_platforms(
         if frame > 25 and state.samus_y == 779 and state.samus_x <= 115:
             break
     _hold(session, 2, "RIGHT", reason="business_779_brake")
-    _hold(session, 20, reason="business_779_settle")
+    _hold(session, 12, reason="business_779_settle")
     _wait_standing_y(session, 779, timeout=50, reason="business_779_land")
 
     # y779 → center elevator y683.
@@ -284,7 +284,7 @@ def _business_high_jump_platforms(
         if frame > 45 and state.samus_y == 683 and 95 <= state.samus_x <= 160:
             break
     _hold(session, 2, "LEFT", reason="business_elevator_brake")
-    _hold(session, 20, reason="business_elevator_settle")
+    _hold(session, 12, reason="business_elevator_settle")
     _wait_standing_y(session, 683, timeout=50, reason="business_elevator_land")
     if not (95 <= session.state.samus_x <= 160):
         for _ in range(40):

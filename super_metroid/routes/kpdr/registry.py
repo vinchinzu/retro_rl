@@ -45,6 +45,12 @@ from super_metroid.routes.kpdr.kraid_approach import (
     play_warehouse_to_zeela_with_hijump,
     play_zeela_to_kihunter,
 )
+from super_metroid.routes.kpdr.kraid_return import (
+    play_baby_to_kihunter_return,
+    play_eye_to_baby_return,
+    play_kihunter_to_zeela_return,
+    play_zeela_to_warehouse_return,
+)
 from super_metroid.routes.kpdr.pb_door import (
     play_big_pink_enter_pb_door_from_sill,
     play_big_pink_enter_pb_door_from_top_ledge,
@@ -69,6 +75,10 @@ from super_metroid.routes.kpdr.super_room import (
     play_post_spore_supers,
     play_super_room_collect,
     play_super_room_to_farming,
+)
+from super_metroid.routes.kpdr.varia_return import (
+    play_kraid_to_eye_return,
+    play_varia_to_kraid,
 )
 from super_metroid.routes.kpdr.warehouse import (
     play_warehouse_to_business,
@@ -129,6 +139,13 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "kraid_entry_to_varia": play_kraid_entry_to_varia,
     "warehouse_to_kraid_with_hijump": play_warehouse_to_kraid_with_hijump,
     "warehouse_hijump_kraid": play_warehouse_hijump_kraid,
+    # K4 prefix: first natural post-Varia door (pure/controller_dev)
+    "varia_to_kraid": play_varia_to_kraid,
+    "kraid_to_eye_return": play_kraid_to_eye_return,
+    "eye_to_baby_return": play_eye_to_baby_return,
+    "baby_to_kihunter_return": play_baby_to_kihunter_return,
+    "kihunter_to_zeela_return": play_kihunter_to_zeela_return,
+    "zeela_to_warehouse_return": play_zeela_to_warehouse_return,
 }
 
 

@@ -201,7 +201,7 @@ def play_parlor_to_main_shaft(session: ControllerSession) -> None:
     _hold_until_room(
         session,
         0x99BD,
-        900,
+        600,
         "LEFT",
         "A",
         "B",
@@ -251,6 +251,9 @@ def play_main_shaft_to_spore_spawn(session: ControllerSession) -> SporeSpawnEvid
     """Take the editor-planned route, defeat Spore Spawn, and exit naturally."""
     _require_room(session, 0x9AD9, "Main Shaft route entry")
 
+    # Wave-4 04A guarded settle (x 118–126, 360f) timed out continuous at
+    # x=128 y=680 pose=0 — too tight for elevator land variance. Restore fixed
+    # settle; pure/docs may re-attempt with a wider band later.
     _hold(session, 1_000, reason="main_shaft_entry_settle")
     for names in (
         ("RIGHT", "B"),

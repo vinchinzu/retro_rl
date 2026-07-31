@@ -20,6 +20,13 @@ from super_metroid.combat.bomb_torizo import (
     fight_bomb_torizo_action,
     play_bomb_torizo_fight,
 )
+from super_metroid.combat.botwoon import (
+    ROOM_BOTWOON,
+    BotwoonEvidence,
+    BotwoonStrategy,
+    fight_botwoon_action,
+    play_botwoon_fight,
+)
 from super_metroid.combat.features import (
     BOMB_TORIZO_INACTIVE_SPRITEMAPS,
     BOSS_CATALOG,
@@ -59,6 +66,13 @@ from super_metroid.combat.kraid import (
     play_kraid_to_varia,
     play_varia_collect,
 )
+from super_metroid.combat.phantoon import (
+    ROOM_PHANTOON,
+    PhantoonEvidence,
+    PhantoonStrategy,
+    fight_phantoon_action,
+    play_phantoon_fight,
+)
 from super_metroid.combat.natural_entry import (
     DEFAULT_NATURAL_ACTIVE_STATE,
     BossActivationCaptured,
@@ -91,7 +105,10 @@ from super_metroid.combat.protocol import (
     CallableBossStrategy,
     strategy_summary,
     wrap_bomb_torizo_as_boss_strategy,
+    wrap_botwoon_as_boss_strategy,
+    wrap_draygon_as_boss_strategy,
     wrap_kraid_as_boss_strategy,
+    wrap_phantoon_as_boss_strategy,
 )
 
 __all__ = [
@@ -105,6 +122,8 @@ __all__ = [
     "AxisAlignedBox",
     "BombTorizoEvidence",
     "BombTorizoStrategy",
+    "BotwoonEvidence",
+    "BotwoonStrategy",
     "BossActivationCaptured",
     "BossCatalogEntry",
     "BossEvidence",
@@ -120,6 +139,10 @@ __all__ = [
     "NaturalCaptureResult",
     "PhaseMachine",
     "PhaseResult",
+    "PhantoonEvidence",
+    "PhantoonStrategy",
+    "ROOM_PHANTOON",
+    "ROOM_BOTWOON",
     "TorizoActivationCaptured",
     "VariaEvidence",
     "action_names",
@@ -137,7 +160,9 @@ __all__ = [
     "feature_vector",
     "features_from_state",
     "fight_bomb_torizo_action",
+    "fight_botwoon_action",
     "fight_kraid_action",
+    "fight_phantoon_action",
     "get_boss_catalog",
     "golden_torizo_catalog",
     "is_capture_frame",
@@ -149,11 +174,13 @@ __all__ = [
     "nearest_action_id",
     "phantoon_catalog",
     "play_bomb_torizo_fight",
+    "play_botwoon_fight",
     "play_kraid_fight",
     "play_kraid_fight_to_varia",
     "play_kraid_rear_exit",
     "play_kraid_to_varia",
     "play_varia_collect",
+    "play_phantoon_fight",
     "push_horizontal_door",
     "range_kite_action",
     "ridley_catalog",
@@ -166,5 +193,8 @@ __all__ = [
     "wait_predicate",
     "wait_room",
     "wrap_bomb_torizo_as_boss_strategy",
+    "wrap_botwoon_as_boss_strategy",
+    "wrap_draygon_as_boss_strategy",
     "wrap_kraid_as_boss_strategy",
+    "wrap_phantoon_as_boss_strategy",
 ]
