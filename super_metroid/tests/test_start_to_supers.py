@@ -43,11 +43,11 @@ def _put_u16(ram: np.ndarray, address: int, value: int) -> None:
 
 
 def test_default_artifact_paths() -> None:
-    """Primary continuous tip is Warehouse Entrance (KPDR K2.6)."""
+    """Primary continuous tip is Varia Suit (KPDR K3)."""
     video, report = default_artifact_paths()
-    assert video.name == "start_to_warehouse.mp4"
-    assert report.name == "start_to_warehouse.json"
-    assert DEFAULT_CONTINUOUS_TIP == "warehouse"
+    assert video.name == "start_to_varia.mp4"
+    assert report.name == "start_to_varia.json"
+    assert DEFAULT_CONTINUOUS_TIP == "varia"
 
 
 def test_continuous_tips_chain_ends_at_default() -> None:
@@ -61,6 +61,9 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "bat",
         "below_spazer",
         "warehouse",
+        "hijump",
+        "kraid",
+        "varia",
     ]
     assert CONTINUOUS_TIPS[-1].tip_id == DEFAULT_CONTINUOUS_TIP
 

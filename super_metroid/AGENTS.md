@@ -52,8 +52,9 @@ are topology diagnostics only — not route evidence.
 3. **Verified continuous tip:** power-on → Varia Suit
    (`scripts/record/continuous.py --to varia`, **101,954f**). Prefixes:
    Hi-Jump **87,696f**, Kraid entry **97,170f**.
-4. **★ Next play:** post-Varia KPDR (Bubble Mountain → Speed → Wave → Ice →
-   Alpha PB) on continuous; then Phantoon natural entry
+4. **★ Next play:** post-Varia return → Business → K4 (Bubble → Speed → Wave
+   → Ice → Alpha PB). Graph scaffold `START_TO_SPEED_GRAPH`; first reverse
+   hop pure: `kpdr.py pure varia-to-kraid`. Then Phantoon natural entry
    ([`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md)).
 5. **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers,
    Segment contracts, package boundaries, tip-extension recipe.
@@ -72,6 +73,42 @@ Tracker (chartable CSV/JSON/MD):
 Status: [`docs/STATUS.md`](docs/STATUS.md). Plan: [`docs/plan.md`](docs/plan.md).
 KPDR board: [`docs/routes/ROUTE_KPDR.md`](docs/routes/ROUTE_KPDR.md).
 Boss pipeline: [`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md).
+
+### Cheap executor (OpenCode)
+
+Farm **atomic** implementation to a cheap executor; keep integrity / STATUS /
+natural-entry judgment on a strong planner (Grok) or human.
+
+- Template: [`docs/TASK_TEMPLATE.md`](docs/TASK_TEMPLATE.md)
+- Queue: [`docs/tasks/QUEUE.md`](docs/tasks/QUEUE.md)
+- Cards: [`docs/tasks/`](docs/tasks/) (`SM-*.md`)
+- Dispatch: `./super_metroid/scripts/dispatch_opencode.sh SM-K4-03`
+- Session logs: `docs/tasks/logs/` (**gitignored** — do not force-add)
+- Model IDs / provider routing: `scripts/dispatch_opencode.sh` (env-overridable)
+  and local `opencode.json` (copy from `opencode.example.json`; gitignored).
+  Auth stays outside the repo.
+
+```bash
+# From repo root (Flash auto-picked for docs/report cards)
+./super_metroid/scripts/dispatch_opencode.sh SM-K4-03
+./super_metroid/scripts/dispatch_opencode.sh SM-K4-03 SM-K4-04 SM-K4-05  # parallel if disjoint files
+./super_metroid/scripts/dispatch_opencode.sh --foreground SM-K4-06
+```
+
+Do **not** hand the executor open-ended “next tip after Varia” work. Cards must
+list exact files, recipe step, acceptance commands, and (for pure probes) the
+**exact source state path + expected room id**.
+
+**Role guide:** Flash = tracker/docs/dwell report; Luna = tests + controller
+scaffold + bounded geometry with a named source state. Planner only for STATUS,
+continuous compose, and natural-entry design.
+
+**Post-Varia reverse source states (scratch):**
+
+| State | Room | Use for |
+|-------|------|---------|
+| `scratch/post_varia_collected.state` | 0xA6E2 Varia | pure `varia-to-kraid` |
+| `scratch/post_varia_to_kraid_pure.state` | 0xA59F Kraid | pure `kraid-to-eye-return` |
 
 ## Commands
 
@@ -128,9 +165,18 @@ uv run python super_metroid/scripts/probe/kpdr.py pure noob-to-red \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_kpdr_noob.state
 uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/red_to_warehouse_controller.state
+# First post-Varia door (controller_dev; natural post-collect source)
+uv run python super_metroid/scripts/probe/kpdr.py pure varia-to-kraid \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_collected.state
 
 # Chartable progress tracker
 uv run python super_metroid/scripts/export/kpdr_tracker.py
+
+# Offline high-dwell ranks from a continuous report (no emu re-run)
+uv run python super_metroid/scripts/export/split_dwell.py \
+  super_metroid/recordings/start_to_varia.json --top 15
+uv run python super_metroid/scripts/export/split_dwell.py \
+  super_metroid/recordings/start_to_varia.json --reasons --top 20
 ```
 
 Controllers: `routes/kpdr/` (Super collect → Kraid; `post_spore_controller`

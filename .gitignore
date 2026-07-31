@@ -236,3 +236,13 @@ smb/recordings/warp_finish/*
 !smb/recordings/warp_finish/warp_finish_continuous_trials_report.json
 !smb/recordings/warp_finish/warp_finish_poweron_trials_report.json
 !smb/recordings/warp_finish/warp_finish_poweron_m8_capture.json
+
+# OpenCode executor session logs (transcripts; may include local paths)
+super_metroid/docs/tasks/logs/
+
+# Local OpenCode overrides / agent auth (never commit)
+# Tracked template: super_metroid/opencode.example.json — copy to opencode.json locally.
+super_metroid/opencode.json
+**/opencode.local.json
+**/.opencode/
+**/auth.json

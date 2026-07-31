@@ -388,18 +388,34 @@ Still blocked for *played* KPDR spine:
 | Ship / Phantoon / … | After Alpha PB; warp entry is not continuous |
 | Escape → credits | after MB by play |
 
-Immediate next:
+Immediate next (hybrid: continuous tip + structure):
 
-1. **Post-Varia KPDR:** Bubble Mountain → Speed → Wave → Ice → Alpha PB
-   (natural entry on continuous chain).
-2. **Boss pipeline:** Phantoon after Alpha PB / ship access (see
-   `docs/BOSS_PIPELINE.md`).
-3. **Optional K1 side trip:** Charge Beam conventional return (no IBJ).
-4. **Parked:** pure Pink PB; ship-first Phantoon skip.
+1. **K4 return spine (play):** reverse hops after pure `varia_to_kraid`
+   (controller_dev) — Eye → Baby → Kihunter → Zeela → Warehouse → Business.
+   Graph: `START_TO_SPEED_GRAPH` (`progression.py`); first hop pure:
+   `kpdr.py pure varia-to-kraid`.
+2. **K4 forward:** Business → Frog Speedway → Bubble → Speed (then Wave /
+   Ice branches) — edges still `unverified`; adopt `controller_common`
+   primitives in new controllers (not a green-spine rewrite).
+3. **Optional tighten** high-dwell continuous hops (offline rank first):
+   `business_to_warehouse` ~2.3k, `hj_shaft_to_business` ~1.9k. Use
+   `scripts/export/split_dwell.py` on `start_to_varia.json`; re-check with
+   `--to varia --no-video`.
+4. **K5 Alpha PB** after Ice; then Phantoon natural entry
+   (`docs/BOSS_PIPELINE.md`).
+5. **Seam extract** only after 1–2 more continuous tips
+   (session/segment → `retro_harness` / `adventure_common`).
+6. **Parked:** pure Pink PB; ship-first Phantoon skip; Charge conventional
+   return (optional K1 side trip).
 
 ```bash
 uv run python super_metroid/scripts/record/continuous.py --to varia
 uv run python super_metroid/scripts/export/kpdr_tracker.py
+uv run python super_metroid/scripts/export/split_dwell.py \
+  super_metroid/recordings/start_to_varia.json --top 15
+# First post-Varia door (pure / controller_dev)
+uv run python super_metroid/scripts/probe/kpdr.py pure varia-to-kraid \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_collected.state
 ```
 
 

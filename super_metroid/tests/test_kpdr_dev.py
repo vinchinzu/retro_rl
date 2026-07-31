@@ -98,6 +98,15 @@ def test_kpdr_segment_registry_includes_super_collect() -> None:
     assert get_segment("super_room_collect") is KPDR_SEGMENTS["super_room_collect"]
 
 
+def test_post_hijump_climb_segments_resolve_from_registry() -> None:
+    from super_metroid.routes.kpdr import get_segment
+    from super_metroid.routes.kpdr.business_climb import play_business_to_warehouse
+    from super_metroid.routes.kpdr.hijump_return import play_hj_shaft_to_business
+
+    assert get_segment("hj_shaft_to_business") is play_hj_shaft_to_business
+    assert get_segment("business_to_warehouse") is play_business_to_warehouse
+
+
 def test_kpdr_controller_has_no_progression_writes_or_state_loads() -> None:
     import inspect
 
@@ -126,13 +135,18 @@ def test_tracker_csv_exists_and_parses() -> None:
     assert "K0.6" in ids
     assert "K2.10" in ids
     assert "K2.18" in ids
-    assert next(r for r in rows if r["seg_id"] == "K1.5")["status"] == "controller_dev"
+    assert next(r for r in rows if r["seg_id"] == "K1.5")["status"] == "continuous"
     assert next(r for r in rows if r["seg_id"] == "K1.6")["status"] == "continuous"
     assert next(r for r in rows if r["seg_id"] == "K2.0")["status"] == "continuous"
     assert next(r for r in rows if r["seg_id"] == "K2.1")["status"] == "continuous"
     hj = next(r for r in rows if r["seg_id"] == "K2.10")
     assert hj["item_or_boss"] == "hi_jump"
-    assert hj["status"] == "controller_dev"
+    assert hj["status"] == "continuous"
     kraid_entry = next(r for r in rows if r["seg_id"] == "K2.18")
     assert kraid_entry["room_id_hex"] == "0xA59F"
-    assert kraid_entry["status"] == "controller_dev"
+    assert kraid_entry["status"] == "continuous"
+    varia = next(r for r in rows if r["seg_id"] == "K3.1")
+    assert varia["status"] == "continuous"
+    post = next(r for r in rows if r["seg_id"] == "K3.2")
+    assert post["status"] == "controller_dev"
+    assert post["room_id_hex"] == "0xA59F"

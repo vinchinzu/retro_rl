@@ -47,7 +47,17 @@ uv run python super_metroid/scripts/probe/room_timer.py session \
 # Opt-in continuous start-to-Supers baseline timing (needs ROM; no integrity change)
 uv run python super_metroid/scripts/record/continuous.py --to supers --no-video --room-timing
 # → recordings/room_timings/start_to_supers_room_timing.json
+
+# Rank high-dwell splits / action_reasons from an existing continuous report
+uv run python super_metroid/scripts/export/split_dwell.py \
+  super_metroid/recordings/start_to_varia.json --top 15
+uv run python super_metroid/scripts/export/split_dwell.py \
+  super_metroid/recordings/start_to_varia.json --reasons --top 20
 ```
+
+`room_timer.split_dwells_from_report` / `rank_split_dwells` /
+`action_reason_hotspots` rank tightening targets offline after a tip is
+integrity-green (no emulator re-run).
 
 Offline JSON shape:
 

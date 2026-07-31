@@ -1,14 +1,24 @@
 """Shared Samus controller primitives for Super Metroid route modules.
 
-Used by KPDR controllers (including Super collect / Big Pink). Keep game-agnostic movement helpers
-here; route-specific choreography stays in segment modules.
+Used by KPDR controllers (including Super collect / Big Pink). Keep
+composable movement / exit helpers here; route-specific choreography stays in
+segment modules.
+
+Hybrid policy surface (raise abstraction without dropping raw timing):
+- :func:`wait_until` / :func:`wait_requirement` — RAM gates
+- :func:`require_state` — fail with StateRequirement failure strings
+- :func:`hold_until` — hold buttons while polling a predicate
+- :func:`play_run_shoot_exit` / :func:`traverse_door` — horizontal door exits
+- :func:`collect_item_mask` — wait for PLM item bit
+- :func:`wait_ordinary_room` — multi-truth settle (room + phase + door)
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+from super_metroid.policy import StateRequirement
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.runtime import ControllerSession, hold
 
@@ -121,27 +131,99 @@ def wait_until(
     raise TimeoutError(f"{reason} timed out: {session.state}")
 
 
+def wait_requirement(
+    session: ControllerSession,
+    requirement: StateRequirement,
+    *,
+    timeout: int = 120,
+    reason: str = "wait_requirement",
+) -> SuperMetroidState:
+    """Idle until :class:`StateRequirement` matches live RAM (or timeout)."""
+    try:
+        return wait_until(
+            session,
+            requirement.matches,
+            timeout=timeout,
+            reason=reason,
+        )
+    except TimeoutError as exc:
+        failures = requirement.failures(session.state)
+        detail = "; ".join(failures) if failures else "predicate never true"
+        raise TimeoutError(
+            f"{reason} timed out ({detail}): frame={session.frame} "
+            f"room=0x{session.state.room_id:04X} "
+            f"xy=({session.state.samus_x},{session.state.samus_y})"
+        ) from exc
+
+
+def require_state(
+    session: ControllerSession,
+    requirement: StateRequirement,
+    label: str,
+) -> SuperMetroidState:
+    """Raise immediately if live RAM fails ``requirement`` (no waiting)."""
+    failures = requirement.failures(session.state)
+    if failures:
+        raise RuntimeError(
+            f"{label}: {'; '.join(failures)}; "
+            f"frame={session.frame} room=0x{session.state.room_id:04X} "
+            f"xy=({session.state.samus_x},{session.state.samus_y}) "
+            f"items=0x{session.state.collected_items:04X}"
+        )
+    return session.state
+
+
+def hold_until(
+    session: ControllerSession,
+    pred: Callable[[SuperMetroidState], bool],
+    *buttons: str,
+    timeout: int = 120,
+    reason: str = "hold_until",
+) -> SuperMetroidState:
+    """Hold ``buttons`` each frame until ``pred`` matches or timeout."""
+    for _ in range(timeout):
+        if pred(session.state):
+            return session.state
+        hold(session, 1, *buttons, reason=reason)
+    raise TimeoutError(
+        f"{reason} timed out: frame={session.frame} "
+        f"room=0x{session.state.room_id:04X} xy=({session.state.samus_x},{session.state.samus_y})"
+    )
+
+
 def wait_ordinary_room(
     session: ControllerSession,
     room_id: int,
     *,
     settle_frames: int = 200,
     label: str,
+    x_range: tuple[int, int] | None = None,
+    y_range: tuple[int, int] | None = None,
+    min_settle_frame: int = 15,
 ) -> SuperMetroidState:
-    """Hold until ordinary gameplay settles in ``room_id``."""
+    """Hold until multi-truth settle: room + ordinary phase + optional window."""
     for frame in range(settle_frames):
         state = hold(session, 1, reason=f"{label}_settle")
         if (
             state.room_id == room_id
             and state.game_state == 8
             and state.door_transition == 0
-            and frame > 15
+            and frame > min_settle_frame
         ):
+            if x_range is not None and not (x_range[0] <= state.samus_x <= x_range[1]):
+                continue
+            if y_range is not None and not (y_range[0] <= state.samus_y <= y_range[1]):
+                continue
             return state
     state = session.state
     if state.room_id != room_id:
         raise RuntimeError(
             f"{label}: expected 0x{room_id:04X}, got 0x{state.room_id:04X} @ {state}"
+        )
+    if x_range is not None or y_range is not None:
+        raise TimeoutError(
+            f"{label}: settled in room but position window missed "
+            f"xy=({state.samus_x},{state.samus_y}) x_range={x_range} y_range={y_range}"
         )
     return state
 
@@ -149,7 +231,33 @@ def wait_ordinary_room(
 _wait_ordinary_room = wait_ordinary_room
 
 
+def collect_item_mask(
+    session: ControllerSession,
+    item_mask: int,
+    *,
+    timeout: int = 600,
+    reason: str = "collect_item",
+    buttons: Sequence[str] = (),
+) -> SuperMetroidState:
+    """Hold optional buttons until ``collected_items`` gains ``item_mask``."""
+    if session.state.collected_items & item_mask == item_mask:
+        return session.state
+    target = session.state.collected_items | item_mask
 
+    def _has_items(state: SuperMetroidState) -> bool:
+        return state.collected_items & item_mask == item_mask
+
+    if buttons:
+        return hold_until(
+            session, _has_items, *buttons, timeout=timeout, reason=reason
+        )
+    try:
+        return wait_until(session, _has_items, timeout=timeout, reason=reason)
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"{reason}: items still 0x{session.state.collected_items:04X}, "
+            f"want mask 0x{item_mask:04X} (target 0x{target:04X})"
+        ) from exc
 
 
 def ensure_morph(
@@ -238,6 +346,59 @@ def play_run_shoot_exit(
     )
 
 
+def traverse_door(
+    session: ControllerSession,
+    *,
+    from_room: int,
+    to_room: int,
+    direction: str,
+    label: str,
+    run_frames: int = 40,
+    shoot_frames: int = 6,
+    spin_frames: int = 40,
+    hold_frames: int = 160,
+    settle_frames: int = 200,
+    super_door: bool = False,
+    entry_x_range: tuple[int, int] | None = None,
+    entry_y_range: tuple[int, int] | None = None,
+) -> SuperMetroidState:
+    """Door exit primitive; optional local position window after settle.
+
+    Same core as :func:`play_run_shoot_exit`, with multi-truth entry window for
+    continuous variance (door-spawn x/y bands).
+    """
+    play_run_shoot_exit(
+        session,
+        from_room=from_room,
+        to_room=to_room,
+        direction=direction,
+        label=label,
+        run_frames=run_frames,
+        shoot_frames=shoot_frames,
+        spin_frames=spin_frames,
+        hold_frames=hold_frames,
+        settle_frames=settle_frames,
+        super_door=super_door,
+    )
+    if entry_x_range is None and entry_y_range is None:
+        return session.state
+    # Re-check window; if already good, return; else short poll without moving.
+    req = StateRequirement(
+        room_id=to_room,
+        game_states=frozenset({8}),
+        x_range=entry_x_range,
+        y_range=entry_y_range,
+    )
+    if req.matches(session.state):
+        return session.state
+    return wait_requirement(
+        session,
+        req,
+        timeout=min(90, settle_frames),
+        reason=f"{label}_entry_window",
+    )
+
+
 __all__ = [
     "DEFAULT_MORPH_POLICY",
     "MORPH_POSES",
@@ -247,13 +408,18 @@ __all__ = [
     "_select_weapon",
     "_unmorph",
     "_wait_ordinary_room",
+    "collect_item_mask",
     "ensure_morph",
     "hold",
+    "hold_until",
     "is_morph",
     "play_run_shoot_exit",
     "require_room",
+    "require_state",
     "select_weapon",
+    "traverse_door",
     "unmorph",
     "wait_ordinary_room",
+    "wait_requirement",
     "wait_until",
 ]
