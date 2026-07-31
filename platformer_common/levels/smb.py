@@ -27,17 +27,28 @@ SMB_RAM = PlatformerRAM(
     extras={
         "x_page": (0x006D, "u8"),       # level page (256-pixel chunks)
         "x_offset": (0x0086, "u8"),     # position within page
+        "x_speed": (0x0057, "s8"),      # signed horizontal speed
+        "y_speed": (0x009F, "s8"),      # signed vertical speed
+        "facing": (0x0033, "u8"),       # 1=right, 2=left
+        "screen_page": (0x071A, "u8"),  # camera page
+        "screen_x_off": (0x071C, "u8"), # camera X within page
         "world": (0x075F, "u8"),        # world number (0-indexed)
         "level": (0x0760, "u8"),        # level number (0-indexed)
         "player_status": (0x000E, "u8"),  # 0x0B = dying
+        "player_power": (0x0756, "u8"), # 0=small, 1=big, 2=fire
         "area_pointer": (0x0750, "u8"), # area/venue within a level (8-4 pipe transitions)
         "game_mode": (0x0770, "u8"),    # 0=demo, 1=playing, 2=end world, 3=game over
+        "timer_hundreds": (0x07F8, "u8"),
+        "timer_tens": (0x07F9, "u8"),
+        "timer_ones": (0x07FA, "u8"),
     },
 )
 
 SMB_COMPUTED = {
     "player_x": lambda v: v["x_page"] * 256 + v["x_offset"],
     "level_id": lambda v: v["world"] * 4 + v["level"],
+    "screen_x": lambda v: v["screen_page"] * 256 + v["screen_x_off"],
+    "timer": lambda v: v["timer_hundreds"] * 100 + v["timer_tens"] * 10 + v["timer_ones"],
 }
 
 # For 8-4 segments: use area_pointer as level_id so pipe transitions

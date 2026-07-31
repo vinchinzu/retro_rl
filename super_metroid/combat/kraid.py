@@ -27,6 +27,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from super_metroid.combat.features import kraid_catalog
+from super_metroid.combat.primitives import (
+    ensure_weapon,
+    lane_hold_action,
+    settle_standing,
+    spray_action,
+)
 from super_metroid.ram import GameplayPhase, SuperMetroidState, read_bank7e_wram
 from super_metroid.routes.controller_common import select_weapon, unmorph
 from super_metroid.routes.runtime import ControllerSession, hold
@@ -129,20 +135,24 @@ def fight_kraid_action(
         return ("RIGHT", "B", "A")
 
     # Lane: stay left-mid so Supers hit the rising body without walking into it.
-    if x > strategy.max_x:
-        return ("LEFT", "B")
-    if x < strategy.min_x:
-        return ("RIGHT", "B")
+    if x > strategy.max_x or x < strategy.min_x:
+        return lane_hold_action(
+            x,
+            min_x=strategy.min_x,
+            max_x=strategy.max_x,
+            face="RIGHT",
+            dash=True,
+        )
 
-    names: list[str] = ["RIGHT"]
-    if frame_index % strategy.jump_period < strategy.jump_hold_frames:
-        names.append("A")
-    if frame_index % strategy.fire_period < strategy.fire_hold_frames:
-        names.append("X")
-    # Dash only when not jumping this window — keeps spray stable on entry.
-    if "A" not in names:
-        names.append("B")
-    return tuple(dict.fromkeys(names))
+    return spray_action(
+        frame_index,
+        face="RIGHT",
+        fire_period=strategy.fire_period,
+        fire_hold_frames=strategy.fire_hold_frames,
+        jump_period=strategy.jump_period,
+        jump_hold_frames=strategy.jump_hold_frames,
+        dash_when_not_jumping=True,
+    )
 
 
 def play_kraid_fight(
@@ -164,17 +174,19 @@ def play_kraid_fight(
             f"got 0x{session.state.room_id:04X}"
         )
 
-    if session.state.selected_item != WEAPON_SUPERS and session.state.max_super_missiles > 0:
-        select_weapon(session, WEAPON_SUPERS)
+    if session.state.max_super_missiles > 0:
+        ensure_weapon(session, WEAPON_SUPERS)
 
     # Composed doorway entries often load mid-air (pose 81). Idle until the
     # floor so the spray starts from a stable standing distribution. Settled
     # saves (y≥390, not falling) skip immediately.
-    for _ in range(60):
-        st = session.state
-        if st.samus_y >= 390 and st.pose not in (81, 164):
-            break
-        hold(session, 1, reason="fight_kraid_land")
+    settle_standing(
+        session,
+        min_y=390,
+        bad_poses=frozenset({81, 164}),
+        max_frames=60,
+        reason="fight_kraid_land",
+    )
 
     peak_hp = 0
     min_hp = catalog.max_hp

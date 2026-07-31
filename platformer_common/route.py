@@ -364,7 +364,12 @@ def _run_neuro_live(
 
     Returns (completed, died, frames_played, max_progress).
     """
-    from platformer_common.neuro import NeuralNet, read_smb_inputs, outputs_to_buttons
+    from platformer_common.neuro import (
+        NeuralNet,
+        outputs_to_buttons,
+        read_smb_inputs,
+        read_smb_inputs_legacy,
+    )
 
     ckpt = json.loads(checkpoint_path.read_text())
     net = NeuralNet(
@@ -372,17 +377,24 @@ def _run_neuro_live(
         n_hidden=ckpt["n_hidden"],
         n_outputs=ckpt["n_outputs"],
         weights=np.array(ckpt["weights"], dtype=np.float32),
+        arch=ckpt.get("arch", "mlp"),
+        hidden_layers=tuple(ckpt.get("hidden_layers", (ckpt["n_hidden"],))),
+        n_conv=int(ckpt.get("n_conv", 8)),
+        use_recurrent=bool(ckpt.get("use_recurrent", False)),
     )
+    # Old checkpoints are 189-dim; new builder is 210-dim.
+    read_fn = read_smb_inputs_legacy if int(ckpt["n_inputs"]) <= 189 else read_smb_inputs
     if verbose:
         print(f"       neuro: {ckpt['n_inputs']}in {ckpt['n_hidden']}h {ckpt['n_outputs']}out")
 
     action_size = env.action_space.shape[0]
     completed = False
     died = False
+    net.reset_state()
 
     for frame_idx in range(max_frames):
         ram = env.get_ram()
-        inputs = read_smb_inputs(ram)
+        inputs = read_fn(ram)
         outputs = net.forward(inputs)
         buttons = outputs_to_buttons(outputs)
 

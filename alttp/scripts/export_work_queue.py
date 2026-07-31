@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from alttp.work_queue import (  # noqa: E402
+from alttp.opening_route.work_queue import (  # noqa: E402
     DEFAULT_QUEUE_JSON,
     DEFAULT_QUEUE_MD,
     build_work_queue,

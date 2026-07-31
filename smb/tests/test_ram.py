@@ -7,9 +7,13 @@ from smb.ram import (
     ADDR_LIVES,
     ADDR_OPER_MODE,
     ADDR_WORLD,
+    ADDR_X_SPEED,
+    ADDR_Y_SPEED,
     is_dying,
+    is_in_air,
     parse_game_state,
     player_x,
+    player_x_speed,
     reached_ending,
     read_snapshot,
 )
@@ -51,3 +55,16 @@ def test_reached_ending_requires_8_4_end_mode_and_lives() -> None:
     ram[ADDR_OPER_MODE] = 2
     ram[ADDR_LIVES] = 1
     assert not reached_ending(ram, start_lives=2)
+
+
+def test_velocity_and_in_air_in_snapshot_extras() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_X_SPEED] = 40
+    ram[ADDR_Y_SPEED] = 10
+    ram[0x000E] = 0x08
+    assert player_x_speed(ram) == 40
+    assert is_in_air(ram) is True
+    state = parse_game_state(ram, frame=1)
+    assert state.extras["x_speed"] == 40
+    assert state.extras["in_air"] is True
+    assert state.extras["y_speed"] == 10

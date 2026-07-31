@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from alttp.paths import INTEGRATION_DIR
-from alttp.work_queue import (
+from alttp.opening_route.work_queue import (
     build_catalog,
     build_work_queue,
     classify_group,

@@ -27,7 +27,7 @@ if str(_REPO_ROOT) not in sys.path:
 from alttp import primitives  # noqa: E402
 from alttp.paths import FIGHTER_SWORD_STATE, RECORDINGS_DIR  # noqa: E402
 from alttp.startup import build_boot_env  # noqa: E402
-from alttp.sword_to_zelda import run_from_sword  # noqa: E402
+from alttp.opening_route.sword_to_zelda import run_from_sword  # noqa: E402
 
 DEFAULT_REPORT = RECORDINGS_DIR / "sword_to_zelda.json"
 DEFAULT_SCREENSHOT = RECORDINGS_DIR / "sword_to_zelda.png"

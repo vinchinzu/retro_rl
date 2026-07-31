@@ -22,6 +22,8 @@ from snes_oneshot.primitives import FrameAction
 GAME_DIR = Path(__file__).resolve().parent
 DEFAULT_1_1_SEED = GAME_DIR / "models" / "smb_1_1_clear.json"
 DEFAULT_1_2_WARP_SEED = GAME_DIR / "models" / "smb_1_2_warp_w4.json"
+# State-gated 1-2 fragments (control-relative underground + optional surface macro).
+DEFAULT_1_2_REACTIVE_FRAGMENTS = GAME_DIR / "models" / "smb_1_2_reactive_fragments.json"
 DEFAULT_WARP_SUFFIX_SEED = GAME_DIR / "models" / "smb_warp_mid_to_ending.json"
 # Natural-entry 4-2 fragment used by the optimized continuous fold.
 DEFAULT_FAST_4_2_SEED = GAME_DIR / "models" / "smb_4_2_fast_w8.json"

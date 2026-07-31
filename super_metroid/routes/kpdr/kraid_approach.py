@@ -41,7 +41,12 @@ _select_weapon = select_weapon
 _unmorph = unmorph
 _wait_ordinary_room = wait_ordinary_room
 
+from super_metroid.routes.kpdr.hijump import (
+    play_hijump_to_warehouse,
+    play_warehouse_to_hijump,
+)
 from super_metroid.routes.kpdr.warehouse import play_warehouse_wall_to_lower_lip
+
 
 def play_warehouse_to_zeela_with_hijump(
     session: ControllerSession,

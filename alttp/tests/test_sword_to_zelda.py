@@ -20,7 +20,7 @@ from alttp.ram import (
     wram_index,
     zelda_rescued_accepted,
 )
-from alttp.sword_to_zelda import (
+from alttp.opening_route.sword_to_zelda import (
     SWORD_TO_SOUTH_CHAMBER_SCRIPT,
     STAIRS_ALIGN_X,
     evaluate_acceptance,

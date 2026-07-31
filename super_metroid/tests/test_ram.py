@@ -17,7 +17,9 @@ from super_metroid.ram import (
     ADDR_SAMUS_Y,
     GameplayPhase,
     BOMBS_MASK,
+    HI_JUMP_MASK,
     MORPH_BALL_MASK,
+    VARIA_MASK,
     parse_state,
     phase_for_game_state,
 )
@@ -66,6 +68,17 @@ def test_bombs_mask_is_exposed_separately_from_morph_ball() -> None:
 
     assert state.morph_ball
     assert state.bombs
+
+
+def test_hi_jump_and_varia_masks() -> None:
+    ram = np.zeros(0x10000, dtype=np.uint8)
+    _put_u16(ram, ADDR_COLLECTED_ITEMS, HI_JUMP_MASK | VARIA_MASK)
+
+    state = parse_state(ram)
+
+    assert state.hi_jump
+    assert state.varia
+    assert not state.morph_ball
 
 
 def test_source_defined_game_state_phases() -> None:

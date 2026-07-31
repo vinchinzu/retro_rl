@@ -30,6 +30,27 @@
 - **M8 verified capture**: power-on MP4 with **native audio**, footer HUD
   (frame/timestamp, NES buttons, level/lives/x), trials report + capture
   manifest + public TAS time validation
+- **Optimizer architecture (2026-07-30)**: hierarchical RLE ops + window
+  polish (`platformer_common/rle_*`, `smb.scripts.rle_polish`); richer obs
+  (velocities/grounded/timer/camera, 210-dim `smb/obs.py`); neuro MLP/CNN +
+  BC warm-start. Verified continuous seed still **21,731f**.
+- **1-1 stairs research (2026-07-30)**: bottleneck window was wrong
+  (1700–1974 = castle score idle). Real wall-slams at **f≈1164 / 1210**
+  (x=2962 / 2994). Micro A-hold hillclimb on frames 1120–1290 → flag
+  **1311→1242**, level-load **1975→1912** (**−63f**), **0** wall-slams.
+  Artifacts: `models/smb_1_1_stairs_best_frames.json`,
+  `models/smb_1_1_stairs_clear_fragment.json`.
+- **Reactive 1-2 (2026-07-31)**: replaced phase-sensitive absolute 1-2 macro
+  stitch with state-gated controller (`smb/reactive_12.py`):
+  wait surface control → reactive RIGHT/DOWN pipe → wait underground control
+  → control-relative underground RLE → World 4. Fragments in
+  `models/smb_1_2_reactive_fragments.json`. Verified **2/2** after stairs
+  1-1 (settle=14): 1-1 **1911f** + 1-2 **2070f** = **3981f to W4**
+  (**−63f** vs baseline 4044; no pad). CLI:
+  `uv run python -m smb.scripts.run_1_2 --predecessor stairs`.
+  **Continuous full ending still open**: W4 player physics matches; 4-1→8-1
+  clear without pad; 8-2 clears with drop-5 retime; **8-3 dies** (~x=2535)
+  and still needs natural re-solve (no W4 phase pad — that would erase −63f).
 
 ## Autobot commands
 
@@ -152,8 +173,11 @@ public anchors above.
 
 ## Next
 
-1. **1-1 end stairs 2-jump:** still face-slams at x≈2962 / x≈2994 (xs→0). Needs
-   a phase-safe double-jump window before the flagpole tail.
-2. Further natural-entry 4-2 polish: largest remaining split regression.
+1. **Finish continuous fold (no pad):** stairs 1-1 + reactive 1-2 + mid-route
+   already reach 8-2; re-solve **8-3** (then 8-4) from natural control and
+   promote `smb_1_1_to_ending.json` (**target ≤ 21,668f**). Do **not** idle-pad
+   at W4 to restore old phase.
+2. Further natural-entry 4-2 polish: largest remaining split regression
+   (prefer `smb_4_2_fast_w8.json`, not isolated Level4_2 on continuous frames).
 3. Optional all-32-exit (non-warp) route as a separate track.
-4. Transfer patterns to SMB3 / other platformers.
+4. Transfer reactive control-gate patterns to SMB3 / other platformers.

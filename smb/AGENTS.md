@@ -43,23 +43,45 @@ uv run python -m smb.scripts.fold_continuous_policy
 # 1-1 natural segment
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python smb/scripts/run_1_1.py --natural-entry --trials 3
+
+# Reactive 1-2 (state-gated; works after stairs or baseline 1-1)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.run_1_2 --predecessor stairs --trials 3
 ```
 
 ## Architecture
 
 | Module | Role |
 |--------|------|
-| `smb/ram.py` | M2 + segment / stable 8-4 ending predicates |
+| `smb/ram.py` | M2 + velocities/timer/camera + segment / ending predicates |
+| `smb/obs.py` | Shared 210-dim observation builder (neuro / future PPO) |
 | `smb/policy.py` | RLE seeds + power-on/continuous phase constants |
+| `smb/reactive_12.py` | State-gated 1-2 warp (wait control → reactive surface → ug RLE) |
+| `smb/scripts/run_1_2.py` | Natural 1-1 predecessor + reactive 1-2 → World 4 |
 | `smb/scripts/run_warp_finish.py` | poweron / continuous / suffix / chain finish + video |
 | `smb/scripts/fold_continuous_policy.py` | Fold prelude + suffix into continuous seed |
+| `smb/scripts/rle_polish.py` | Hierarchical RLE hillclimb/GA on bottleneck windows |
 | `smb/scripts/run_1_1.py` | M3/M4 1-1 runner |
 | `smb/routes.py` / `full_run.py` | Showcase stitch routes |
 | `smb/timing.py` | TASVideos / RTA / policy timing contracts + public anchors |
+| `platformer_common/rle_ops.py` | RLE compress/mutate/crossover |
+| `platformer_common/rle_optimize.py` | Windowed RLE hillclimb/GA + phase-shift polish |
+| `platformer_common/neuro.py` | MLP/CNN neuroevo + BC warm-start from RLE |
 
 ## Next milestone
 
-Optional: Silver/Gold runtime, or non-warp all-32-exit route.
+Fold stairs + reactive 1-2 into continuous without phase pad (8-3/8-4 retime
+still open after 8-2 drop-5). Then 4-2 polish / optional all-32.
+
+```bash
+# Reactive 1-2 after stairs 1-1 (verified 2/2 → World 4, −63f to W4)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.run_1_2 --predecessor stairs --trials 3
+
+# Hierarchical RLE polish (bottleneck windows)
+# 1-1-stairs = frames 1050-1311 (wall-slam region), NOT castle idle.
+uv run python -m smb.scripts.rle_polish --list-windows
+```
 
 ## Traps
 

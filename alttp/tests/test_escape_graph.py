@@ -11,6 +11,7 @@ from alttp.escape_graph import (
     CAP_SMALL_KEY,
     CAP_ZELDA_FOLLOWER,
     N_CASTLE_GROUNDS,
+    N_COURTYARD_SECRET_POCKET,
     N_ROOM_55_KEYED,
     N_ROOM_55_SOUTH,
     N_ROOM_55_SWORD,
@@ -20,10 +21,14 @@ from alttp.escape_graph import (
     N_SANCTUARY,
     N_SEWERS_DARK,
     NATURAL_HOUSE_EXIT_CAPABILITIES,
+    VERIFICATION_CONTINUOUS,
+    VERIFICATION_PLANNED,
     capabilities_from_snapshot,
+    continuous_spine_legs,
     escape_route_graph,
     escape_route_legs,
     escape_route_legs_from_room_55,
+    escape_route_legs_key_path,
     plan_escape_to_sanctuary,
 )
 from alttp.ram import (
@@ -60,8 +65,8 @@ def _snap(**kwargs: object) -> AlttpSnapshot:
 
 def test_escape_graph_builds_and_nodes_cover_edges() -> None:
     graph = escape_route_graph()
-    assert len(graph.nodes) >= 10
-    assert len(graph.edges) >= 8
+    assert len(graph.nodes) >= 11
+    assert len(graph.edges) >= 10
     # RouteGraph constructor already rejects missing endpoints; re-check pairs.
     for edge in graph.edges:
         assert edge.source_id in graph.nodes
@@ -73,6 +78,7 @@ def test_escape_graph_builds_and_nodes_cover_edges() -> None:
     assert graph.nodes[N_ROOM_61].meta["room_base_id"] == HYRULE_CASTLE_MAIN_HALL_ROOM
     assert graph.nodes[N_ROOM_80].meta["room_base_id"] == ZELDA_CELL_ROOM
     assert graph.nodes[N_SANCTUARY].meta["room_base_id"] == SANCTUARY_ROOM
+    assert graph.nodes[N_COURTYARD_SECRET_POCKET].meta["screen_id"] == 0x1B
 
 
 def test_verified_edges_are_continuous() -> None:
@@ -81,13 +87,15 @@ def test_verified_edges_are_continuous() -> None:
         (N_CASTLE_GROUNDS, N_ROOM_55_UNCLE),
         (N_ROOM_55_UNCLE, N_ROOM_55_SWORD),
         (N_ROOM_55_SWORD, N_ROOM_55_SOUTH),
+        (N_ROOM_55_SOUTH, N_COURTYARD_SECRET_POCKET),
+        (N_COURTYARD_SECRET_POCKET, N_ROOM_61),
     }
     for edge in graph.edges:
         pair = (edge.source_id, edge.target_id)
         if pair in continuous_pairs:
-            assert edge.verification == "continuous", edge.edge_id
+            assert edge.verification == VERIFICATION_CONTINUOUS, edge.edge_id
         else:
-            assert edge.verification == "planned", edge.edge_id
+            assert edge.verification == VERIFICATION_PLANNED, edge.edge_id
 
 
 def test_multi_screen_55_connected() -> None:
@@ -102,9 +110,11 @@ def test_full_plan_with_natural_lamp_reaches_sanctuary() -> None:
     planned = plan_escape_to_sanctuary()
     assert planned[0].leg.source_id == N_CASTLE_GROUNDS
     assert planned[-1].leg.target_id == N_SANCTUARY
+    # Outdoor primary path: lamp + sword + Zelda; small_key is alternate only.
     assert planned[-1].capabilities_after >= frozenset(
-        {CAP_LAMP, CAP_FIGHTER_SWORD, CAP_SMALL_KEY, CAP_ZELDA_FOLLOWER}
+        {CAP_LAMP, CAP_FIGHTER_SWORD, CAP_ZELDA_FOLLOWER}
     )
+    assert CAP_SMALL_KEY not in planned[-1].capabilities_after
     # Sword acquired on uncle leg before south chamber.
     sword_leg = next(p for p in planned if p.leg.leg_id == "uncle_fighter_sword")
     assert CAP_FIGHTER_SWORD in sword_leg.capabilities_after
@@ -112,26 +122,48 @@ def test_full_plan_with_natural_lamp_reaches_sanctuary() -> None:
     path = [p.leg.source_id for p in planned] + [planned[-1].leg.target_id]
     assert path[0] == N_CASTLE_GROUNDS
     assert path[-1] == N_SANCTUARY
+    assert N_COURTYARD_SECRET_POCKET in path
     assert N_SEWERS_DARK in path
 
 
+def test_continuous_spine_ends_at_main_hall() -> None:
+    legs = continuous_spine_legs()
+    assert legs[0].source_id == N_CASTLE_GROUNDS
+    assert legs[-1].target_id == N_ROOM_61
+    assert any(leg.target_id == N_COURTYARD_SECRET_POCKET for leg in legs)
+    graph = escape_route_graph()
+    for leg in legs:
+        edge = graph.edge_for(leg.source_id, leg.target_id)
+        assert edge is not None
+        assert edge.verification == VERIFICATION_CONTINUOUS
+    pocket_edge = graph.edge_for(N_COURTYARD_SECRET_POCKET, N_ROOM_61)
+    assert pocket_edge is not None
+    assert pocket_edge.edge_id == "pocket_to_main_hall"
+
+
+def test_key_path_plan_still_acquires_small_key() -> None:
+    planned = plan_escape_to_sanctuary(legs=escape_route_legs_key_path())
+    assert CAP_SMALL_KEY in planned[-1].capabilities_after
+    assert N_ROOM_55_KEYED in (
+        [p.leg.source_id for p in planned] + [planned[-1].leg.target_id]
+    )
+
+
 def test_plan_from_room_55_with_sword_and_lamp() -> None:
-    """Resume at 0x55 with sword+lamp; keys/Zelda still come from leg.acquires."""
+    """Resume at 0x55 with sword+lamp; Zelda acquired on route (outdoor path)."""
     planned = plan_escape_to_sanctuary(
         frozenset({CAP_FIGHTER_SWORD, CAP_LAMP}),
         legs=escape_route_legs_from_room_55(),
     )
     assert planned[0].leg.source_id == N_ROOM_55_UNCLE
     assert planned[-1].leg.target_id == N_SANCTUARY
-    # Key and follower are not in the initial set — acquired on the route.
-    assert CAP_SMALL_KEY not in planned[0].capabilities_before
     assert CAP_ZELDA_FOLLOWER not in planned[0].capabilities_before
-    assert CAP_SMALL_KEY in planned[-1].capabilities_after
     assert CAP_ZELDA_FOLLOWER in planned[-1].capabilities_after
+    assert CAP_SMALL_KEY not in planned[-1].capabilities_after
 
 
 def test_plan_without_sword_cannot_leave_combat_section() -> None:
-    """South chamber → keyed exit requires fighter_sword."""
+    """South chamber exits require fighter_sword (pocket or keyed)."""
     graph = escape_route_graph()
     leave_combat = (
         RouteLeg(
@@ -146,7 +178,7 @@ def test_plan_without_sword_cannot_leave_combat_section() -> None:
             leave_combat,
             initial_capabilities=frozenset({CAP_LAMP}),
         )
-    # Same edge pathfinding is blocked without sword.
+    # Pathfinding blocked without sword (both pocket and key routes need it).
     assert (
         graph.shortest_path(
             N_ROOM_55_SOUTH,
@@ -155,13 +187,22 @@ def test_plan_without_sword_cannot_leave_combat_section() -> None:
         )
         is None
     )
+    # With sword only: outdoor pocket path (2 hops: south→pocket→main).
     path = graph.shortest_path(
+        N_ROOM_55_SOUTH,
+        N_ROOM_61,
+        capabilities=frozenset({CAP_FIGHTER_SWORD}),
+    )
+    assert path is not None
+    nodes_on_path = {path[0].source_id} | {e.target_id for e in path}
+    assert N_COURTYARD_SECRET_POCKET in nodes_on_path
+    # Key path still works with sword + key.
+    key_path = graph.shortest_path(
         N_ROOM_55_SOUTH,
         N_ROOM_61,
         capabilities=frozenset({CAP_FIGHTER_SWORD, CAP_SMALL_KEY}),
     )
-    assert path is not None
-    assert len(path) == 2
+    assert key_path is not None
 
 
 def test_plan_without_lamp_fails_at_sewers() -> None:

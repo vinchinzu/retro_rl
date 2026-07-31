@@ -21,13 +21,15 @@ Super Metroid scripted full-clear project. Shared process:
 | Path | Role |
 |------|------|
 | `ram.py`, `assist.py`, `policy.py`, `progression.py`, `paths.py`, `room_timer.py` | Core package surface |
-| `routes/continuous.py` | Power-on chain (Morph → Bombs → Spore → Supers → Red Tower) |
+| `routes/continuous.py` | Power-on chain (… → Warehouse → Hi-Jump → Kraid → Varia) |
+| `routes/segment.py` | Segment / HopExecutor / ContinuousSession contracts |
 | `routes/runtime.py` | Shared session, report harness, integrity |
-| `routes/*_controller.py` | Movement/combat only (no env ownership) |
+| `routes/kpdr/` | Pure movement/combat controllers (no env ownership) |
 | `rooms/` | Full-room graph, problem catalog, practice loop |
+| `legacy/` | Frozen vision BC / model registry (do not import into continuous) |
 | `dev/` | Door-warp / boss probes (not continuous evidence) |
 | `scripts/record/` `verify/` `probe/` `export/` `room/` | CLI entry points |
-| `docs/` | `STATUS.md`, `plan.md`, `ASSIST_CONTRACT.md`, `ram_map.md` |
+| `docs/` | `STATUS.md`, `plan.md`, `ARCHITECTURE.md`, `ASSIST_CONTRACT.md` |
 | `docs/routes/` | Accepted / working route boards |
 | `docs/research/` | Path board, room catalog, legacy notes |
 | `policies/room_clears/` | Curated room policies (tracked) |
@@ -47,17 +49,21 @@ are topology diagnostics only — not route evidence.
    Alpha PB after Ice; **not** ship-first / early Pink PB.
 2. **Path board:** [`docs/research/PATH_ROOM_BOARD.md`](docs/research/PATH_ROOM_BOARD.md)
    — 107 rooms / 199 hops; hop table is topology, not human KPDR order.
-3. **Continuous tip:** power-on → Warehouse Entrance
-   (`scripts/record/continuous.py --to warehouse`). Below Spazer / Bat / Red
-   are prefixes.
-4. **★ Next play (pure):** attach Warehouse→Hi-Jump collect→return→Kraid to
-   that continuous predecessor, then `kraid_entry_to_varia`. Warehouse→Hi-Jump→Kraid
-   is controller-complete (15,356f). Boss-only Kraid→Varia is proven from
-   doorway entry (`kraid_combat.py varia --state entry`).
-5. **Dev topology (green):** `kpdr.py route-to-hijump` — 24 hops Big Pink →
+3. **Verified continuous tip:** power-on → Varia Suit
+   (`scripts/record/continuous.py --to varia`, **101,954f**). Prefixes:
+   Hi-Jump **87,696f**, Kraid entry **97,170f**.
+4. **★ Next play:** post-Varia KPDR (Bubble Mountain → Speed → Wave → Ice →
+   Alpha PB) on continuous; then Phantoon natural entry
+   ([`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md)).
+5. **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers,
+   Segment contracts, package boundaries, tip-extension recipe.
+6. **Dev topology (green):** `kpdr.py route-to-hijump` — 24 hops Big Pink →
    Hi-Jump room; anchors `dev_kpdr_*` / `dev_hijump_*`.
-6. **Parked:** pure Pink PB maze; ship-first skip (not KPDR).
-7. Boss fights only after natural entry exists on the continuous chain.
+7. **Parked:** pure Pink PB maze; ship-first skip (not KPDR); vision BC in
+   `legacy/` until gold.
+8. Boss fights only after natural entry exists on the continuous chain.
+   Pipeline: [`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md) — Phantoon next
+   after Alpha PB / ship access.
 
 Tracker (chartable CSV/JSON/MD):
 [`docs/routes/KPDR_TRACKER.csv`](docs/routes/KPDR_TRACKER.csv) · export
@@ -65,6 +71,7 @@ Tracker (chartable CSV/JSON/MD):
 
 Status: [`docs/STATUS.md`](docs/STATUS.md). Plan: [`docs/plan.md`](docs/plan.md).
 KPDR board: [`docs/routes/ROUTE_KPDR.md`](docs/routes/ROUTE_KPDR.md).
+Boss pipeline: [`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md).
 
 ## Commands
 
@@ -79,10 +86,13 @@ append `RouteHop`s and a thin `run_post_supers_tip(...)` wrapper in
 `continuous.py`. Do not copy another full `run_start_to_*` body.
 
 ```bash
-# Current continuous tip: power-on → Warehouse Entrance (KPDR K2.6)
+# Verified continuous tip: power-on → Varia Suit (KPDR K3)
 uv run python super_metroid/scripts/record/continuous.py --no-video
-uv run python super_metroid/scripts/record/continuous.py --to warehouse --no-video --room-timing
+uv run python super_metroid/scripts/record/continuous.py --to varia
+uv run python super_metroid/scripts/record/continuous.py --to kraid
+uv run python super_metroid/scripts/record/continuous.py --to hijump --no-video
 # Prefix milestones (shorter checks)
+uv run python super_metroid/scripts/record/continuous.py --to warehouse --no-video
 uv run python super_metroid/scripts/record/continuous.py --to below_spazer --no-video
 uv run python super_metroid/scripts/record/continuous.py --to bat --no-video
 uv run python super_metroid/scripts/record/continuous.py --to red_tower --no-video
@@ -145,6 +155,7 @@ Reports are labeled `developmentOnly: true`. Hop tables:
 ### Boss / late entry (development only)
 
 Full-knowledge boss strategy (RAM hitboxes; vision BC parked until gold):
+[`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md) ·
 [`docs/research/STRUCTURED_BOSS_RL.md`](docs/research/STRUCTURED_BOSS_RL.md).
 
 ```bash

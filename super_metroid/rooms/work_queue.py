@@ -54,6 +54,35 @@ _TIER_ORDER = {
 
 _STATUS_DONE = frozenset({"ready", "verified_development_state"})
 
+# Next continuous-spine gap after verified Warehouse tip (K2.7–K3).
+# Practice work on these rooms unblocks continuous attachment first.
+CONTINUOUS_SPINE_BLOCKER_ROOMS: frozenset[int] = frozenset(
+    {
+        0xA7DE,  # Business Center
+        0xAA41,  # Hi-Jump shaft
+        0xA9E5,  # Hi-Jump room
+        0xA471,  # Zeela
+        0xA4DA,  # Kihunter
+        0xA521,  # Baby Kraid
+        0xA56B,  # Eye door
+        0xA59F,  # Kraid
+        0xA6E2,  # Varia
+    }
+)
+
+# KPDR order for continuous-spine priority listing.
+CONTINUOUS_SPINE_BLOCKER_ORDER: tuple[int, ...] = (
+    0xA7DE,
+    0xAA41,
+    0xA9E5,
+    0xA471,
+    0xA4DA,
+    0xA521,
+    0xA56B,
+    0xA59F,
+    0xA6E2,
+)
+
 
 def difficulty_score(problem: Mapping[str, Any]) -> int:
     """Return a rough lower-is-easier score for isolated room practice.
@@ -97,6 +126,15 @@ def difficulty_score(problem: Mapping[str, Any]) -> int:
         score = min(score, 0)
     elif status == "state_ready":
         score = min(score, 50)
+    # Continuous-spine blockers (Warehouse→Kraid gap) sort ahead of other
+    # unstarted work so practice effort lands on the product path first.
+    room_id = int(problem.get("roomId") or 0)
+    if (
+        room_id in CONTINUOUS_SPINE_BLOCKER_ROOMS
+        and status not in _STATUS_DONE
+        and status != "ready"
+    ):
+        score = max(0, score - 2_500)
     return score
 
 
@@ -197,6 +235,7 @@ def annotate_problem(
         "pathBlocks": (problem.get("staticPlan") or {}).get("pathBlocks"),
         "onCompletionPath": room_id in path_room_ids,
         "onKpdrTracker": room_id in kpdr_room_ids,
+        "continuousSpineBlocker": room_id in CONTINUOUS_SPINE_BLOCKER_ROOMS,
         "practiceStatus": status,
         "hasEntryState": state_ok,
         "hasPolicy": policy_ok,
@@ -331,6 +370,21 @@ def _summarize(
         and str(r["tier"]) != "boss_late"
     ][:25]
 
+    spine_rows = [
+        r for r in rows if r.get("continuousSpineBlocker") or r["roomId"] in CONTINUOUS_SPINE_BLOCKER_ROOMS
+    ]
+    spine_by_id = {int(r["roomId"]): r for r in spine_rows}
+    spine_ordered = [
+        spine_by_id[rid]
+        for rid in CONTINUOUS_SPINE_BLOCKER_ORDER
+        if rid in spine_by_id
+    ]
+    spine_ready = sum(
+        1
+        for r in spine_ordered
+        if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
+    )
+
     return {
         "problemCount": total,
         "directedEdgeCount": edge_count or None,
@@ -347,6 +401,7 @@ def _summarize(
             "completionPathReady": _pct(path_ready, len(on_path)),
             "easyAndStandardTeleportReady": _pct(teleport_easy, len(easy_std)),
             "allTeleportReady": _pct(teleport_ready, total),
+            "continuousSpineBlockersReady": _pct(spine_ready, len(spine_ordered)),
         },
         "workFocus": {
             "easyAndStandardTotal": len(easy_std),
@@ -355,6 +410,21 @@ def _summarize(
             "bossDeferred": by_queue.get(4, 0),
             "toughOrLate": by_queue.get(3, 0),
             "nextOpenEasyProblemIds": [r["problemId"] for r in open_easy],
+            "continuousSpineBlockers": [
+                {
+                    "roomIdHex": r["roomIdHex"],
+                    "roomName": r["roomName"],
+                    "problemId": r["problemId"],
+                    "practiceStatus": r["practiceStatus"],
+                    "rank": r["rank"],
+                }
+                for r in spine_ordered
+            ],
+            "continuousSpineNote": (
+                "Warehouse→Hi-Jump→Kraid→Varia gap after verified continuous "
+                "Warehouse tip; prefer these over general open rooms for "
+                "product progress."
+            ),
         },
         "catalogSummary": dict(catalog_summary or {}),
     }

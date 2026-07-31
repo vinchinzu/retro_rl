@@ -14,12 +14,12 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from alttp.opening_route_data import (  # noqa: E402
+from alttp.opening_route.data import (  # noqa: E402
     DEFAULT_ARTIFACT,
     OpeningCheckpoint,
     opening_checkpoints,
 )
-from alttp.opening_route_validate import (  # noqa: E402
+from alttp.opening_route.validate import (  # noqa: E402
     build_catalog_artifact,
     correlate_boot_report,
     load_and_validate,

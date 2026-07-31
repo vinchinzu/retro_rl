@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from alttp.castle_to_sword import (
+from alttp.opening_route.castle_to_sword import (
     BUSH_LIFT_CANDIDATES,
     CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT,
     SECRET_HOLE_ENTRY_SCRIPT,
