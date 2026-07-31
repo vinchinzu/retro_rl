@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from alttp.opening_route_catalog import (
+from alttp.opening_route.catalog import (
     CATALOG_KIND,
     DISCLAIMER,
     build_catalog_artifact,
@@ -429,7 +429,7 @@ def test_optional_connection_does_not_fail_required(tmp_path: Path) -> None:
 
 def test_opening_overworld_route_graph_structure() -> None:
     """Catalog-only graph/legs data — not a boot executor."""
-    from alttp.opening_route_data import (
+    from alttp.opening_route.data import (
         OVERWORLD_SCREEN_PATH,
         opening_overworld_route_graph,
         opening_overworld_route_legs,

@@ -5,8 +5,8 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M1 |
-| Best verified result | Title → castle grounds → secret hole → uncle fighter sword → south combat chamber → stairs exit outdoors (secret entrance clear) |
-| Last verification | 2026-07-30 (headless `sword_to_zelda` stairs exit from `FighterSword`) |
+| Best verified result | Title → castle grounds → secret hole → uncle fighter sword → south combat chamber → stairs exit outdoors → bush-cut courtyard → main door → room `0x61` |
+| Last verification | 2026-07-30 (headless `pocket_to_main_hall` from `FighterSword` via stairs exit) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
@@ -21,13 +21,29 @@
 | Secret passage room | indoors `$A0` base `0x55` |
 | Fighter sword | equip `$F359 >= 1` |
 | Follower / Zelda | `$F3CC` tagalong (`1` = Zelda) — **not yet** set on measured path |
+| Main hall room | indoors `$A0` base `0x61` — **entered** from courtyard main door |
 | Dungeon keys | `$F36F` (`0xFF` = blank HUD sentinel in room `0x55` so far) |
-| Dev saves | `HyruleCastleGrounds.state`, `FirstAction.state`, `FighterSword.state` |
+| Dev saves | `HyruleCastleGrounds` = grounds spawn controllable (not hole approach); `FighterSword` = room 0x55 post-uncle (dev only) — see anchors/STATE_SEMANTICS |
 | z3-json-data (optional local refs) | local pin `1eb7a785…` via `scripts/setup_z3_json_data.py`; see `docs/Z3_JSON_DATA.md` |
 | Opening-route catalog (z3-backed) | `python -m alttp.opening_route_catalog` validates Link's House→castle rooms/nodes/connections; emit `recordings/opening_route_catalog.json` |
 | Controller primitives | `alttp.primitives` is the live stack (`run_script` / `settle_control` / `move_*` / `fight_nearby`); segments use `alttp.route_report` |
-| Escape capability graph | `alttp.escape_graph` — RAM nodes/legs grounds→Sanctuary; continuous through south chamber; rest **planned** |
-| Save-state work queue | `alttp.work_queue` — 60 `Zelda3-Snes` states ranked for Sanctuary; `docs/routes/ROOM_WORK_QUEUE.md` |
+| Package layout | Core at `alttp/` root; continuous trunk in `alttp/opening_route/`; `gauntlet/` + `romhack/` shells; see `docs/ARCHITECTURE.md` |
+| Escape capability graph | `alttp.opening_route.escape_graph` — continuous through **main hall 0x61**; Zelda/Sanctuary planned |
+| Segment contract | `alttp.opening_route.segment` — `castle_to_sword`, `sword_to_secret_entrance_clear`, `pocket_to_main_hall` |
+| Multi-truth anchors | `alttp.opening_route.anchors` + `docs/TRIGGER_HANDOFF.md` |
+| Session façade | `alttp.session.AlttpSession` (selective snapshot / caps / segment play) |
+| Save-state work queue | `alttp.opening_route.work_queue` — 60 `Zelda3-Snes` states ranked for Sanctuary; `docs/routes/ROOM_WORK_QUEUE.md` |
+
+## Continuous spine (graph)
+
+```text
+castle_grounds → room_55_uncle → room_55_sword → room_55_south
+  → courtyard_secret_pocket → main_hall (0x61)   [continuous tip]
+  → zelda_cell → mantle → sewers → sanctuary   [planned]
+```
+
+Alternate internal key/shutter path from `room_55_south` remains on the graph
+for work-queue practice but is not the default Sanctuary plan.
 
 ## Current milestone
 
@@ -45,16 +61,15 @@ Scripted path from `YazeSlot000` / castle-grounds predecessor:
 
 Acceptance: fighter sword equip RAM ≥ 1 (preferably from `--natural` chain).
 
-### Next milestone — courtyard → castle → Zelda → Sanctuary
+### Next milestone — main hall → Zelda cell → escort → Sanctuary
 
-Secret entrance is **cleared** (dev path from `FighterSword`). After stairs exit:
+Courtyard pocket → main door → room `0x61` is **measured** (dev path from
+`FighterSword` via stairs exit). Remaining:
 
-1. Escape the outdoor hedge pocket at ~`(2248,1755)` on screen `0x1B`
-   (UP re-enters stairs; walkable box is tight — courtyard path unfinished).
-2. Enter main castle door; clear early B1 / key-shutter legs
+1. Clear early B1 / key-shutter legs from main hall
    (work-queue: `CastleB1Key` / `Shutter*`).
-3. Reach Zelda’s cell; set follower `$F3CC == 1`.
-4. Escort via mantle + sewers (needs Lamp from house) to Sanctuary
+2. Reach Zelda’s cell; set follower `$F3CC == 1`.
+3. Escort via mantle + sewers (needs Lamp from house) to Sanctuary
    (`alttp.escape_graph` plan; room `0x12` / OW screen `0x13` — confirm on ROM).
 
 Acceptance: `follower_indicator == 1`, then `in_sanctuary` (preferably natural chain).
@@ -71,7 +86,10 @@ Acceptance: `follower_indicator == 1`, then `in_sanctuary` (preferably natural c
   screen `0x1B` ~`(2248,1755)` (`left_secret_entrance`; `sword_to_zelda` phase
   `secret_entrance_exited`). Screenshots: `recordings/probe_secret_exit/clear/`.
 - Off-center deep south (~y≥2960) soft-locks indoors without transitioning.
-- Outdoor landing is a tight hedge pocket; UP re-enters stairs. Path to main
-  castle door from that pocket is **not** measured yet.
+- Outdoor landing is a tight hedge pocket; UP re-enters stairs. **Escape needs
+  bush-cutting** (walk-only stays ~48×64). Measured path: cut S/W → gardens →
+  hard south to y≈2024 → west to x≈2040 → north to door approach ~(2040,1790)
+  → UP → room `0x61` (`pocket_to_main_hall`; screenshots under
+  `recordings/probe_courtyard_door/south_door/`).
 - Main south gate remains soldier-blocked (text `0x0E`) until sword.
-- **Blocker:** courtyard pocket → main castle door → Zelda cell (not secret entrance).
+- **Blocker:** main hall B1 → Zelda cell (`$F3CC==1`) → escort → Sanctuary.

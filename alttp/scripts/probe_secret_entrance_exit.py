@@ -37,7 +37,7 @@ from alttp.ram import (  # noqa: E402
     snapshot_to_diag,
 )
 from alttp.startup import action_for, build_boot_env, no_action, snapshot_env, step_frames  # noqa: E402
-from alttp.sword_to_zelda import (  # noqa: E402
+from alttp.opening_route.sword_to_zelda import (  # noqa: E402
     SOUTH_CHAMBER_Y_MAX,
     approach_south_chamber,
     ensure_sword_control,
@@ -117,7 +117,7 @@ def open_chest_nearby(env: object, *, max_cycles: int = 40) -> primitives.Primit
             settle = primitives.settle_control(env, max_frames=300)
             frames += settle.frames
             # dismiss hold-up after chest
-            from alttp.castle_to_sword import dismiss_hold_up_item
+            from alttp.opening_route.castle_to_sword import dismiss_hold_up_item
 
             frames += dismiss_hold_up_item(env)
             return primitives.PrimitiveResult(

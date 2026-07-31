@@ -2,33 +2,39 @@
 
 ## Next
 
-1. Finish `sword_to_zelda`: exit multi-screen room `0x55` (key/shutter),
-   reach Zelda cell, set `$F3CC==1`, escort to Sanctuary.
-2. Keep `castle_to_sword.py` green on state-load and `--natural`; treat
-   `FighterSword.state` as a development checkpoint only.
-3. Drive next room probes from `alttp.work_queue` /
-   `docs/routes/ROOM_WORK_QUEUE.md` (0x55 exit / key / shutter first).
-4. Optional: re-emit catalog with live boot/sword/zelda observations.
-5. Add overworld map assets only when tile-accurate nav is needed.
-6. Defer arena / romhack / asset-editor until more opening-route segments are
-   named and acceptance-tested.
+1. **Main hall / early B1 → Zelda cell** (`$F3CC==1`) — active continuous
+   blocker. Work-queue: `CastleB1Key` / `Shutter*` first.
+2. Escort (Lamp + sewers) → Sanctuary after follower is set.
+3. Promote graph edges only with natural-entry evidence
+   (`planned` → `isolated` → `natural_entry` → `continuous`).
+4. Keep `castle_to_sword` / `sword_to_zelda` / `pocket_to_main_hall` green on
+   state-load; treat `FighterSword.state` / `CastleMain.state` as development only.
+5. Drive next room probes from `alttp.opening_route.work_queue` /
+   `docs/routes/ROOM_WORK_QUEUE.md` (continuous-spine blockers first).
+6. Optional: full natural-chain title → main hall; re-emit catalog with live
+   observations.
+7. Defer arena / romhack / asset-editor (`gauntlet/`, `romhack/`) until the
+   opening continuous path is clean.
 
 ## Done (recent)
 
+- **Courtyard pocket → main door → room 0x61:** bush-cut route, door approach
+  ~(2040,1790), UP trigger; graph edge `pocket_to_main_hall` continuous;
+  segment + anchors + `scripts/pocket_to_main_hall.py` + probe tooling.
+- **Package split:** `opening_route/` continuous trunk; `gauntlet/` + `romhack/`
+  ownership shells; core RAM/primitives/startup at root; compat shims.
+- **Segment contract** + multi-truth **anchors** + `AlttpSession` façade.
+- **Escape graph** continuous through main hall; outdoor primary Sanctuary
+  plan; key path kept as alternate.
+- Docs: `ARCHITECTURE.md`, `TRIGGER_HANDOFF.md` (hole + stairs + main door).
 - Controller consolidation: live segments use `alttp.primitives` + shared
-  `alttp.route_report` (no dual settle/macro stacks).
-- Offline `test_primitives.py`; deleted pure-theater `opening_overworld_route_plan`.
-- Escape capability graph (`alttp.escape_graph`) grounds → Sanctuary with
-  sword/key/lamp/zelda gates; continuous through 0x55 south chamber only.
-- Sanctuary-path save-state work queue (`alttp.work_queue`,
-  `scripts/export_work_queue.py` → `docs/routes/ROOM_WORK_QUEUE.md`).
+  `alttp.route_report`.
+- Escape capability graph grounds → Sanctuary with sword/lamp/zelda gates.
+- Sanctuary-path save-state work queue + `ROOM_WORK_QUEUE.md`.
 - Title → Hyrule Castle grounds (screen `0x1B`) scripted + headless verified.
-- z3-backed opening-route catalog/validation CLI
-  (`alttp.opening_route_catalog`) for Link's House → castle grounds.
-- Castle grounds → secret hole (`0x7D` / room `0x55`) → uncle fighter sword
-  (`alttp.castle_to_sword`, proven `SECRET_HOLE_ENTRY_SCRIPT`).
-- Post-sword scaffolding: hold-up dismiss, south-chamber approach, follower/key
-  RAM (`alttp.sword_to_zelda`, `$F3CC` / `$F36F`).
+- z3-backed opening-route catalog/validation CLI.
+- Castle grounds → secret hole (`0x7D` / room `0x55`) → uncle fighter sword.
+- Secret-entrance clear: south chamber stairs → outdoor pocket `0x1B`.
 
 ## Non-goals (for now)
 

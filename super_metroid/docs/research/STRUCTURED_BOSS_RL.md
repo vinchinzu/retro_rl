@@ -1,5 +1,10 @@
 # Structured boss combat (full knowledge → RL)
 
+**Process / promotion order:** see parent
+[`../BOSS_PIPELINE.md`](../BOSS_PIPELINE.md) (catalog, `BossStrategy`
+protocol, natural-entry harness, KPDR priority list). This file is the
+structured-feature + optional RL decision record and measured baselines.
+
 ## Decision
 
 **Do not use vision-only networks for bosses until gold.** Pixel BC/PPO from
@@ -51,11 +56,13 @@ natural entry (replay / door play)
 
 | Module | Role |
 |--------|------|
-| `combat/features.py` | AABB hitboxes, `CombatFeatures`, RL float vector (14) |
+| `combat/features.py` | Full boss catalog, AABB, `CombatFeatures`, RL vector (14) |
+| `combat/protocol.py` | `BossStrategy` / `BossEvidence` / `BossSegment` |
+| `combat/primitives.py` | Lane / spray / phase / closeout helpers |
 | `combat/actions.py` | Shared discrete action table (13) for RL + distillation |
 | `combat/bomb_torizo.py` | Range-kite + missile strategy |
-| `combat/kraid.py` | Left-lane Super-spray strategy (policy only) |
-| `combat/natural_entry.py` | Capture activation mid continuous bombs prefix |
+| `combat/kraid.py` | Left-lane Super-spray + Varia closeout (living template) |
+| `combat/natural_entry.py` | Generalized natural activation capture |
 | `combat/env.py` | Gymnasium env: `feature_vector` obs, reward shaping |
 | `scripts/probe/bomb_torizo_combat.py` | strategy / capture / prove / eval / train |
 | `scripts/probe/kraid_combat.py` | Kraid strategy from room entry |

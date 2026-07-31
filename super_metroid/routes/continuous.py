@@ -1,12 +1,13 @@
-"""Continuous power-on route: Morph → … → Red → Bat → Below Spazer → Warehouse.
+"""Continuous power-on route: Morph → … → Warehouse → Hi-Jump → Kraid → Varia.
 
 One chain, one module. Each ``play_*`` extends the previous prefix; each
 ``run_*`` powers on, plays through that milestone, and writes a report.
 Shared session/report harness lives in :mod:`super_metroid.routes.runtime`.
 Controllers (movement/combat only) stay in ``*_controller.py`` / ``kpdr/``.
+Segment/hop contracts: :mod:`super_metroid.routes.segment`.
 
-Current continuous tip: KPDR K2.6 natural Warehouse Entrance (Below Spazer
-→ West → Glass → East tunnels). Charge Beam return remains a side-trip gap.
+Verified continuous tip: KPDR K2.6 Warehouse Entrance. Hijump / kraid / varia
+tips are wired for natural-entry attachment (promote STATUS after integrity).
 """
 
 from __future__ import annotations
@@ -33,47 +34,74 @@ from super_metroid.progression import (
     EARLY_GAME_GRAPH,
     START_TO_BAT_GRAPH,
     START_TO_BELOW_SPAZER_GRAPH,
+    START_TO_HIJUMP_GRAPH,
+    START_TO_KRAID_GRAPH,
     START_TO_MORPH_GRAPH,
     START_TO_RED_TOWER_GRAPH,
     START_TO_SPORE_SPAWN_GRAPH,
+    START_TO_VARIA_GRAPH,
     START_TO_WAREHOUSE_GRAPH,
     RoomProgressionGraph,
 )
 from super_metroid.ram import (
     BOMBS_MASK,
+    HI_JUMP_MASK,
     MORPH_BALL_MASK,
+    VARIA_MASK,
     GameplayPhase,
     SuperMetroidState,
 )
 from super_metroid.room_timer import RoomTimer
 from super_metroid.routes.kpdr import (
     SuperCollectEvidence,
+    play_baby_kraid_to_eye,
     play_bat_to_below_spazer,
     play_below_spazer_to_west,
     play_big_pink_into_main_shaft,
     play_big_pink_to_ghz,
+    play_business_to_hj_shaft,
+    play_business_to_warehouse,
     play_east_to_warehouse,
+    play_eye_to_kraid,
     play_farming_to_big_pink,
     play_ghz_to_noob,
     play_glass_to_east,
+    play_hj_room_collect,
+    play_hj_room_to_shaft,
+    play_hj_shaft_to_business,
+    play_hj_shaft_to_hj_room,
+    play_kihunter_to_baby_kraid,
+    play_kraid_entry_to_varia,
     play_noob_to_red_tower,
     play_red_tower_to_bat,
     play_super_room_collect,
     play_super_room_to_farming,
+    play_warehouse_to_business,
+    play_warehouse_to_zeela_with_hijump,
     play_west_to_glass,
+    play_zeela_to_kihunter,
 )
 from super_metroid.routes.kpdr.rooms import (
+    ROOM_BABY_KRAID,
     ROOM_BAT,
     ROOM_BELOW_SPAZER,
     ROOM_BIG_PINK,
+    ROOM_BUSINESS,
     ROOM_EAST_TUNNEL,
     ROOM_FARMING,
     ROOM_GHZ,
     ROOM_GLASS,
+    ROOM_HJ,
+    ROOM_HJ_SHAFT,
+    ROOM_KRAID,
+    ROOM_KRAID_EYE,
     ROOM_NOOB,
     ROOM_RED_TOWER,
+    ROOM_VARIA,
     ROOM_WAREHOUSE,
+    ROOM_WAREHOUSE_KIHUNTER,
     ROOM_WEST_TUNNEL,
+    ROOM_ZEELA,
 )
 from super_metroid.routes.catalog import (
     BAT_SPLITS,
@@ -81,9 +109,12 @@ from super_metroid.routes.catalog import (
     BOMBS_PREFIX_SPLITS,
     CONTINUOUS_TIPS,
     DEFAULT_CONTINUOUS_TIP,
+    HIJUMP_SPLITS,
+    KRAID_SPLITS,
     RED_TOWER_SPLITS,
     SPORE_EXIT_SPLITS,
     SUPERS_SPLITS,
+    VARIA_SPLITS,
     WAREHOUSE_SPLITS,
     ContinuousTip,
     get_continuous_tip,
@@ -151,6 +182,9 @@ __all__ = [
     "BAT_SPLITS",
     "BELOW_SPAZER_SPLITS",
     "WAREHOUSE_SPLITS",
+    "HIJUMP_SPLITS",
+    "KRAID_SPLITS",
+    "VARIA_SPLITS",
     "CONTINUOUS_TIPS",
     "DEFAULT_CONTINUOUS_TIP",
     "ContinuousTip",
@@ -164,6 +198,9 @@ __all__ = [
     "play_start_to_bat",
     "play_start_to_below_spazer",
     "play_start_to_warehouse",
+    "play_start_to_hijump",
+    "play_start_to_kraid",
+    "play_start_to_varia",
     "run_start_to_morph",
     "run_start_to_bombs",
     "run_start_to_spore_spawn",
@@ -172,6 +209,9 @@ __all__ = [
     "run_start_to_bat",
     "run_start_to_below_spazer",
     "run_start_to_warehouse",
+    "run_start_to_hijump",
+    "run_start_to_kraid",
+    "run_start_to_varia",
     "run_to",
     "default_tip_artifact_paths",
     "default_tip_room_timing_path",
@@ -1077,6 +1117,128 @@ _WAREHOUSE_HOPS: tuple[RouteHop, ...] = (
     ),
 )
 
+
+def _require_hijump_collected(session: RouteSession) -> None:
+    if not session.state.collected_items & HI_JUMP_MASK:
+        raise RuntimeError(
+            f"Hi-Jump not collected: items=0x{session.state.collected_items:04X}"
+        )
+
+
+def _require_varia_collected(session: RouteSession) -> None:
+    if not session.state.collected_items & VARIA_MASK:
+        raise RuntimeError(
+            f"Varia not collected: items=0x{session.state.collected_items:04X}"
+        )
+
+
+# K2.7–K2.10: Warehouse elevator → Business → HJ shaft → HJ room collect.
+_HIJUMP_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "warehouse_to_business",
+        play_warehouse_to_business,
+        ROOM_WAREHOUSE,
+        ROOM_BUSINESS,
+        "Business Center",
+    ),
+    RouteHop(
+        "business_to_hj_shaft",
+        play_business_to_hj_shaft,
+        ROOM_BUSINESS,
+        ROOM_HJ_SHAFT,
+        "Hi-Jump shaft",
+    ),
+    RouteHop(
+        "hj_shaft_to_hj_room",
+        play_hj_shaft_to_hj_room,
+        ROOM_HJ_SHAFT,
+        ROOM_HJ,
+        "Hi-Jump Room",
+    ),
+    RouteHop(
+        "hijump_collected",
+        play_hj_room_collect,
+        ROOM_HJ,
+        ROOM_HJ,
+        "Hi-Jump collect",
+        use_transition_split=False,
+        after=_require_hijump_collected,
+    ),
+)
+
+# K2.11–K2.18: HJ return → Warehouse → Zeela → … → natural Kraid entry.
+_KRAID_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "hj_room_to_shaft",
+        play_hj_room_to_shaft,
+        ROOM_HJ,
+        ROOM_HJ_SHAFT,
+        "Hi-Jump shaft return",
+    ),
+    RouteHop(
+        "hj_shaft_to_business",
+        play_hj_shaft_to_business,
+        ROOM_HJ_SHAFT,
+        ROOM_BUSINESS,
+        "Business Center return",
+    ),
+    RouteHop(
+        "business_to_warehouse",
+        play_business_to_warehouse,
+        ROOM_BUSINESS,
+        ROOM_WAREHOUSE,
+        "Warehouse return",
+    ),
+    RouteHop(
+        "warehouse_to_zeela",
+        play_warehouse_to_zeela_with_hijump,
+        ROOM_WAREHOUSE,
+        ROOM_ZEELA,
+        "Warehouse Zeela",
+    ),
+    RouteHop(
+        "zeela_to_kihunter",
+        play_zeela_to_kihunter,
+        ROOM_ZEELA,
+        ROOM_WAREHOUSE_KIHUNTER,
+        "Warehouse Kihunter",
+    ),
+    RouteHop(
+        "kihunter_to_baby_kraid",
+        play_kihunter_to_baby_kraid,
+        ROOM_WAREHOUSE_KIHUNTER,
+        ROOM_BABY_KRAID,
+        "Baby Kraid",
+    ),
+    RouteHop(
+        "baby_kraid_to_eye",
+        play_baby_kraid_to_eye,
+        ROOM_BABY_KRAID,
+        ROOM_KRAID_EYE,
+        "Kraid Eye Door",
+    ),
+    RouteHop(
+        "eye_to_kraid",
+        play_eye_to_kraid,
+        ROOM_KRAID_EYE,
+        ROOM_KRAID,
+        "Kraid's Room",
+    ),
+)
+
+# K3: fight + rear exit + Varia PLM (multi-room; graph has kraid→varia edge).
+_VARIA_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "kraid_to_varia",
+        play_kraid_entry_to_varia,
+        ROOM_KRAID,
+        ROOM_VARIA,
+        "Varia Suit Room",
+        use_transition_split=False,
+        after=_require_varia_collected,
+    ),
+)
+
 _KPDR_POLICY_SOURCES: dict[str, object] = {
     "continuous_route_module": {
         "path": str(_THIS.resolve()),
@@ -1104,9 +1266,10 @@ def _post_supers_final_conditions(
     room_id: int,
     entry_key: str,
     ordinary_key: str,
+    extra: dict[str, bool] | None = None,
 ) -> dict[str, bool]:
     """Shared Super+ inventory checks plus tip-room ordinary gameplay."""
-    return {
+    conditions = {
         "both_missile_expansions": final.max_missiles >= 10,
         "morph_and_bombs": (
             final.collected_items & (MORPH_BALL_MASK | BOMBS_MASK)
@@ -1127,6 +1290,9 @@ def _post_supers_final_conditions(
             and final.game_state == 8
         ),
     }
+    if extra:
+        conditions.update(extra)
+    return conditions
 
 
 def run_post_supers_tip(
@@ -1150,6 +1316,8 @@ def run_post_supers_tip(
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
     room_timing_path: str | Path | None = None,
+    extra_final_conditions: Callable[[SuperMetroidState], dict[str, bool]]
+    | None = None,
 ) -> ContinuousRunReport:
     """Shared power-on harness for every Super+ continuous tip."""
     assist = UnlimitedResourcesAssist(
@@ -1176,6 +1344,7 @@ def run_post_supers_tip(
     boss = box["boss"]
     super_collect = box["super_collect"]
     final = result.final_state
+    extra = extra_final_conditions(final) if extra_final_conditions else None
     report: ContinuousRunReport | None = None
     try:
         report = finish_report(
@@ -1189,6 +1358,7 @@ def run_post_supers_tip(
                 room_id=final_room,
                 entry_key=entry_condition_key,
                 ordinary_key=ordinary_condition_key,
+                extra=extra,
             ),
             source_policy=source_policy,
             report_path=report_path,
@@ -1409,6 +1579,145 @@ def run_start_to_warehouse(
     )
 
 
+def play_start_to_hijump(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Warehouse prefix + natural Hi-Jump Boots collect."""
+    boss, super_collect = play_start_to_warehouse(session, splits, segments)
+    play_hops(session, splits, _HIJUMP_HOPS)
+    return boss, super_collect
+
+
+def run_start_to_hijump(
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through natural Hi-Jump collect (KPDR K2.10)."""
+    return run_post_supers_tip(
+        play_start_to_hijump,
+        graph=START_TO_HIJUMP_GRAPH,
+        kind="hijump",
+        required_splits=HIJUMP_SPLITS,
+        final_room=ROOM_HJ,
+        success_outcome="hijump_collected",
+        route_label="start-to-Hi-Jump",
+        source_policy=(
+            "accepted Warehouse continuous prefix + KPDR Hi-Jump controllers "
+            "(Warehouse→Business→shaft→HJ room collect) + phase-guarded resources"
+        ),
+        timing_source="start_to_hijump",
+        entry_condition_key="natural_hijump_room",
+        ordinary_condition_key="post_hijump_ordinary",
+        video_path=video_path,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+        extra_final_conditions=lambda final: {
+            "hi_jump_collected": bool(final.collected_items & HI_JUMP_MASK),
+        },
+    )
+
+
+def play_start_to_kraid(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Hi-Jump prefix + return + Warehouse approach into natural Kraid entry."""
+    boss, super_collect = play_start_to_hijump(session, splits, segments)
+    play_hops(session, splits, _KRAID_HOPS)
+    return boss, super_collect
+
+
+def run_start_to_kraid(
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through natural Kraid room entry (KPDR K2.18)."""
+    return run_post_supers_tip(
+        play_start_to_kraid,
+        graph=START_TO_KRAID_GRAPH,
+        kind="kraid",
+        required_splits=KRAID_SPLITS,
+        final_room=ROOM_KRAID,
+        success_outcome="kraid_entry",
+        route_label="start-to-Kraid-entry",
+        source_policy=(
+            "accepted Warehouse prefix + Hi-Jump collect/return + KPDR Kraid "
+            "approach controllers + phase-guarded resources"
+        ),
+        timing_source="start_to_kraid",
+        entry_condition_key="natural_kraid_entry",
+        ordinary_condition_key="post_kraid_ordinary",
+        video_path=video_path,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+        extra_final_conditions=lambda final: {
+            "hi_jump_collected": bool(final.collected_items & HI_JUMP_MASK),
+        },
+    )
+
+
+def play_start_to_varia(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Kraid-entry prefix + fight + rear exit + natural Varia collect."""
+    boss, super_collect = play_start_to_kraid(session, splits, segments)
+    play_hops(session, splits, _VARIA_HOPS)
+    return boss, super_collect
+
+
+def run_start_to_varia(
+    *,
+    video_path: str | Path | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through natural Varia collect (KPDR K3)."""
+    return run_post_supers_tip(
+        play_start_to_varia,
+        graph=START_TO_VARIA_GRAPH,
+        kind="varia",
+        required_splits=VARIA_SPLITS,
+        final_room=ROOM_VARIA,
+        success_outcome="varia_collected",
+        route_label="start-to-Varia",
+        source_policy=(
+            "accepted Kraid-entry continuous chain + combat.kraid fight/Varia "
+            "policy + phase-guarded resources"
+        ),
+        timing_source="start_to_varia",
+        entry_condition_key="natural_varia_room",
+        ordinary_condition_key="post_varia_ordinary",
+        video_path=video_path,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+        extra_final_conditions=lambda final: {
+            "hi_jump_collected": bool(final.collected_items & HI_JUMP_MASK),
+            "varia_collected": bool(final.collected_items & VARIA_MASK),
+        },
+    )
+
+
 # ===========================================================================
 # Tip dispatch + artifact paths
 # ===========================================================================
@@ -1453,8 +1762,9 @@ def run_to(
     """Power-on once through a named continuous tip (``--to`` target).
 
     Tips compose as prefixes:
-    morph ⊂ bombs ⊂ spore ⊂ supers ⊂ red_tower ⊂ bat ⊂ below_spazer ⊂ warehouse.
+    morph ⊂ … ⊂ warehouse ⊂ hijump ⊂ kraid ⊂ varia.
     Room-timing is only accepted for tips that declare support in the catalog.
+    Default tip remains verified Warehouse until later tips are integrity-green.
     """
     resolved = get_continuous_tip(tip)
     runners: dict[str, Callable[..., ContinuousRunReport]] = {
@@ -1466,6 +1776,9 @@ def run_to(
         "bat": run_start_to_bat,
         "below_spazer": run_start_to_below_spazer,
         "warehouse": run_start_to_warehouse,
+        "hijump": run_start_to_hijump,
+        "kraid": run_start_to_kraid,
+        "varia": run_start_to_varia,
     }
     runner = runners[resolved.tip_id]
     kwargs: dict[str, object] = {
@@ -1484,7 +1797,7 @@ def run_to(
         if not resolved.supports_room_timing:
             raise ValueError(
                 f"tip {resolved.tip_id!r} does not support room timing "
-                f"(supported: supers, red_tower, bat, below_spazer, warehouse)"
+                f"(supported: supers+ tips with supports_room_timing)"
             )
         kwargs["room_timing_path"] = room_timing_path
     return runner(**kwargs)
@@ -1500,6 +1813,9 @@ register_continuous_segments(
         "bat": play_start_to_bat,
         "below_spazer": play_start_to_below_spazer,
         "warehouse": play_start_to_warehouse,
+        "hijump": play_start_to_hijump,
+        "kraid": play_start_to_kraid,
+        "varia": play_start_to_varia,
         # Historical segment keys (reports / probes).
         "start_to_morph": play_start_to_morph,
         "start_to_bombs": play_start_to_bombs,
@@ -1509,6 +1825,9 @@ register_continuous_segments(
         "start_to_bat": play_start_to_bat,
         "start_to_below_spazer": play_start_to_below_spazer,
         "start_to_warehouse": play_start_to_warehouse,
+        "start_to_hijump": play_start_to_hijump,
+        "start_to_kraid": play_start_to_kraid,
+        "start_to_varia": play_start_to_varia,
         "run_start_to_morph": run_start_to_morph,
         "run_start_to_bombs": run_start_to_bombs,
         "run_start_to_spore_spawn": run_start_to_spore_spawn,
@@ -1517,6 +1836,9 @@ register_continuous_segments(
         "run_start_to_bat": run_start_to_bat,
         "run_start_to_below_spazer": run_start_to_below_spazer,
         "run_start_to_warehouse": run_start_to_warehouse,
+        "run_start_to_hijump": run_start_to_hijump,
+        "run_start_to_kraid": run_start_to_kraid,
+        "run_start_to_varia": run_start_to_varia,
         "run_to": run_to,
     }
 )
