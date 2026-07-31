@@ -1,6 +1,12 @@
-"""KPDR room ids and shared segment helpers."""
+"""KPDR room ids, Super-collect evidence, and shared segment helpers.
+
+Includes the early post-Spore rooms (Super / Farming / Pink PB) that are part
+of the continuous KPDR spine (K0–K1), not a separate vanilla-first route.
+"""
 
 from __future__ import annotations
+
+from dataclasses import asdict, dataclass
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
@@ -21,12 +27,17 @@ _select_weapon = select_weapon
 _unmorph = unmorph
 _wait_ordinary_room = wait_ordinary_room
 
+# K0 suffix / K1 prefix (Spore Super → Pink Brinstar)
+ROOM_SUPER = 0x9B5B
+ROOM_FARMING = 0xA0A4
+ROOM_BIG_PINK = 0x9D19
+ROOM_PINK_PB = 0x9E11
 
+# K1–K2 Brinstar → Kraid
 ROOM_GHZ = 0x9E52
 ROOM_NOOB = 0x9FBA
 ROOM_RED_TOWER = 0xA253
 ROOM_BAT = 0xA3DD
-ROOM_BIG_PINK = 0x9D19
 ROOM_BELOW_SPAZER = 0xA408
 ROOM_WEST_TUNNEL = 0xCF54
 ROOM_GLASS = 0xCEFB
@@ -40,6 +51,38 @@ ROOM_WAREHOUSE_KIHUNTER = 0xA4DA
 ROOM_BABY_KRAID = 0xA521
 ROOM_KRAID_EYE = 0xA56B
 ROOM_KRAID = 0xA59F
+ROOM_VARIA = 0xA6E2
 
 ITEM_HI_JUMP = 0x0100
+ITEM_VARIA = 0x0001
+
+
+@dataclass(frozen=True)
+class SuperCollectEvidence:
+    entry_frame: int
+    collect_frame: int
+    exit_frame: int | None
+    max_super_missiles: int
+    final_room_id: int
+    samus_x: int
+    samus_y: int
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PowerBombEvidence:
+    entry_frame: int
+    collect_frame: int | None
+    max_super_missiles: int
+    max_power_bombs: int
+    final_room_id: int
+    samus_x: int
+    samus_y: int
+    reached_big_pink: bool
+    reached_pb_room: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
 

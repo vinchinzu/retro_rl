@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d252_from_d461_to_d21c",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for West Sand Hall Tunnel (0xD252); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA63C",
+    "entrySourceRoomIdHex": "0xD461",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 42556,
+    "entrySourceRoomId": 54369
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 54369,
+      "sourceRoomIdHex": "0xD461",
+      "endpoint": {
+        "roomId": 53842,
+        "roomIdHex": "0xD252",
+        "logicalRoomId": 202,
+        "nodeId": 2,
+        "nodeName": "West Sand Hall Tunnel Right Door (to West Sand Hall)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 53788,
+      "targetRoomIdHex": "0xD21C",
+      "endpoint": {
+        "roomId": 53842,
+        "roomIdHex": "0xD252",
+        "logicalRoomId": 202,
+        "nodeId": 1,
+        "nodeName": "West Sand Hall Tunnel Left Door (to Crab Hole)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 152
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-30T22:27:28.182124+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_d252_from_d461_to_d21c.json",
+    "reportSha256": "21dda9ef873e4b277d1718443fc6e518694d0af752c7d352be87497cf2dafa81",
+    "stateSha256": "550ee4ebf812336a83cd16ac9ed388a7d5c0d4fa172cc38989204ebd00fcd2ff",
+    "policySha256Before": "606e788b2d4978eebbbbd4ecfd63417eed260261f939efac0995d8da31071df7"
+  }
+}

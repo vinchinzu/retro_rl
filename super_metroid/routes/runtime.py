@@ -1,7 +1,7 @@
 """Shared continuous-route runtime: session, evidence helpers, run harness.
 
-Route-specific play logic stays in ``start_to_*.py`` and the controllers;
-this module owns the duplicated session bookkeeping and report plumbing.
+Route-specific play logic stays in :mod:`super_metroid.routes.continuous`
+and the controllers; this module owns session bookkeeping and report plumbing.
 """
 
 from __future__ import annotations
@@ -25,33 +25,16 @@ from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import ObservedTransition, RoomProgressionGraph
 from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_state
 from super_metroid.room_timer import RoomTimer
+from super_metroid.routes.catalog import (
+    BOMBS_PREFIX_SPLITS,
+    SPORE_EXIT_SPLITS,
+    SUPERS_SPLITS,
+)
 from super_metroid.video import FrameVideoWriter
 
 Action = np.ndarray
 
 ROUTE_PLAN_PATH = MAPS_DIR / "post_torizo_to_spore_spawn_plan.json"
-
-BOMBS_PREFIX_SPLITS = (
-    "first_ceres_control",
-    "ridley_countdown",
-    "zebes_landing",
-    "morph_ball",
-    "first_missiles",
-    "blue_brinstar_missiles",
-    "bombs",
-    "bomb_torizo_defeated",
-    "bomb_torizo_exit",
-)
-
-SPORE_EXIT_SPLITS = BOMBS_PREFIX_SPLITS + (
-    "terminator_energy_tank",
-    "green_brinstar_main_shaft",
-    "spore_spawn_activated",
-    "spore_spawn_defeated",
-    "spore_spawn_exit",
-)
-
-SUPERS_SPLITS = SPORE_EXIT_SPLITS + ("spore_supers_collected",)
 
 
 class ControllerSession(Protocol):
@@ -162,11 +145,13 @@ class ContinuousRunReport:
         payload["segments"] = [segment.to_dict() for segment in self.segments]
         payload["integrity"] = self.integrity
         payload["video"] = self.video
-        if self.kind in ("spore", "supers"):
+        # Spore+ tips carry boss/route plan; Super+ tips also carry super_collect.
+        # Post-supers kinds (red_tower, bat, …) must not drop these fields.
+        if self.kind not in ("morph", "bombs"):
             payload["route_plan"] = self.route_plan or {}
             payload["policy_sources"] = self.policy_sources or {}
             payload["boss"] = self.boss.to_dict() if self.boss is not None else None
-        if self.kind == "supers":
+        if self.kind not in ("morph", "bombs", "spore"):
             payload["super_collect"] = (
                 self.super_collect.to_dict() if self.super_collect is not None else None
             )

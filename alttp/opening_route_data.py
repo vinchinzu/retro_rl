@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from adventure_common.graph import GraphEdge, GraphNode, RouteGraph, RouteLeg
 from alttp.paths import (
     RECORDINGS_DIR,
     Z3_JSON_DATA_PIN,
@@ -68,6 +69,76 @@ OVERWORLD_SCREEN_PATH: tuple[dict[str, Any], ...] = (
         "label": "hyrule_castle",
     },
 )
+
+
+def _ow_node_id(screen_id: int) -> str:
+    return f"ow_{int(screen_id) & 0xFF:02x}"
+
+
+def opening_overworld_route_graph() -> RouteGraph:
+    """Catalog-only overworld path as a :class:`RouteGraph` (RAM screen ids).
+
+    Pure data export for tooling / future escape work. **Not** the boot
+    executor — ``boot_to_castle`` / overworld BFS own live movement.
+
+    z3 room/node names are *not* encoded here — they live on checkpoints as
+    logic associations only.
+    """
+    nodes = [
+        GraphNode(
+            node_id=_ow_node_id(int(step["screen_id"])),
+            name=str(step["label"]),
+            area="light_world",
+            tags=frozenset({"overworld", "opening_route"}),
+            meta={
+                "screen_id": int(step["screen_id"]),
+                "screen_hex": step["screen_hex"],
+                "authority": "stable_retro_ram",
+            },
+        )
+        for step in OVERWORLD_SCREEN_PATH
+    ]
+    edges: list[GraphEdge] = []
+    for prev, nxt in zip(OVERWORLD_SCREEN_PATH, OVERWORLD_SCREEN_PATH[1:]):
+        src = int(prev["screen_id"])
+        dst = int(nxt["screen_id"])
+        edges.append(
+            GraphEdge(
+                source_id=_ow_node_id(src),
+                target_id=_ow_node_id(dst),
+                direction="north",
+                verification="continuous",
+                provenance="alttp_opening_bfs",
+                meta={
+                    "from_screen": src,
+                    "to_screen": dst,
+                    "from_label": prev["label"],
+                    "to_label": nxt["label"],
+                },
+            )
+        )
+    return RouteGraph(nodes, edges)
+
+
+def opening_overworld_route_legs() -> tuple[RouteLeg, ...]:
+    """Catalog-only directed legs for Link's House → castle screen path.
+
+    Not wired into boot execution; pairs with
+    :func:`opening_overworld_route_graph` as data for tooling.
+    """
+    legs: list[RouteLeg] = []
+    for prev, nxt in zip(OVERWORLD_SCREEN_PATH, OVERWORLD_SCREEN_PATH[1:]):
+        src = int(prev["screen_id"])
+        dst = int(nxt["screen_id"])
+        legs.append(
+            RouteLeg(
+                leg_id=f"ow_{src:02x}_to_{dst:02x}",
+                source_id=_ow_node_id(src),
+                target_id=_ow_node_id(dst),
+                goal=f"reach_screen_{dst:02X}",
+            )
+        )
+    return tuple(legs)
 
 
 @dataclass(frozen=True)

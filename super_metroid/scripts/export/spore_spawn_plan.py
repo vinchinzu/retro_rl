@@ -14,7 +14,12 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from super_metroid.map_planning import EditorNavigationGraph, sha256_file  # noqa: E402
+from super_metroid.map_planning import (  # noqa: E402
+    EditorNavigationGraph,
+    edge_to_editor_dict,
+    planned_leg_to_editor_dict,
+    sha256_file,
+)
 from super_metroid.paths import MAPS_DIR, SHARED_ROM  # noqa: E402
 from super_metroid.routes.spore_spawn_route import (  # noqa: E402
     POST_TORIZO_CAPABILITIES,
@@ -86,13 +91,13 @@ def export_plan(
         },
         "initialCapabilities": sorted(POST_TORIZO_CAPABILITIES),
         "routePatches": [
-            patch.as_edge().to_dict() for patch in POST_TORIZO_ROUTE_PATCHES
+            edge_to_editor_dict(patch.as_edge()) for patch in POST_TORIZO_ROUTE_PATCHES
         ],
         "roomPath": [
-            f"0x{POST_TORIZO_TO_SPORE_SPAWN[0].source_room_id:04X}",
-            *(f"0x{item.leg.target_room_id:04X}" for item in planned),
+            f"0x{int(POST_TORIZO_TO_SPORE_SPAWN[0].source_id):04X}",
+            *(f"0x{int(item.leg.target_id):04X}" for item in planned),
         ],
-        "legs": [item.to_dict(graph.rooms) for item in planned],
+        "legs": [planned_leg_to_editor_dict(item, graph.rooms) for item in planned],
         "terminal": {
             "roomId": 0x9B5B,
             "roomIdHex": "0x9B5B",

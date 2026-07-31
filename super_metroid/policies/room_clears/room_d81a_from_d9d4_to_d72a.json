@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d81a_from_d9d4_to_d72a",
+  "status": "verified_development_state",
+  "description": "Doorway-natural right-to-left transit for Draygon Save Room; spin-jump left, open, exit.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA930",
+    "entrySourceRoomIdHex": "0xD9D4",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 43312,
+    "entrySourceRoomId": 55764
+  },
+  "planning": {
+    "objective": "visit_station_and_return",
+    "entry": {
+      "sourceRoomId": 55764,
+      "sourceRoomIdHex": "0xD9D4",
+      "endpoint": {
+        "roomId": 55322,
+        "roomIdHex": "0xD81A",
+        "logicalRoomId": 190,
+        "nodeId": 2,
+        "nodeName": "Draygon Save Room Right Door (to Recharge)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 55082,
+      "targetRoomIdHex": "0xD72A",
+      "endpoint": {
+        "roomId": 55322,
+        "roomIdHex": "0xD81A",
+        "logicalRoomId": 190,
+        "nodeId": 1,
+        "nodeName": "Draygon Save Room Left Door (to Colosseum)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 30
+    },
+    {
+      "label": "runup",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 10
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 50
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 200
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. Must cross and settle before verified_development_state.",
+  "promotedAt": "2026-07-30T22:27:04.128627+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_d81a_from_d9d4_to_d72a.json",
+    "reportSha256": "44789eaf54ed49d3c0246b4fea0fcdc29aec1f86a5b57815ab2c1339c4c35062",
+    "stateSha256": "6a5c86adb3b1fe3bb3c8035d01e0616c3049172091e457e6400a10a7cfc6f75c",
+    "policySha256Before": "7e50e163ad6e50c026bc4ff1af45bbc875ed90e70aedf7cce86a85919b3e53fc"
+  }
+}

@@ -16,9 +16,9 @@ from zelda_i.overworld import (
     NODE_LEVEL1_EXIT_OVERWORLD,
     NODE_LEVEL2_PATH_4A,
     build_early_route_graph,
-    level2_path_prefix_route_plan,
     neighbor_screens,
 )
+from zelda_i.route_legs import level2_path_prefix_route_plan
 from zelda_i.ram import (
     ADDR_HEALTH,
     ADDR_LEVEL,

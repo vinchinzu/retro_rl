@@ -8,13 +8,22 @@ tooling, room-timeout game-over, and reuse of vanilla ``alttp`` /
 from __future__ import annotations
 
 __all__ = [
+    "assist",
     "boot",
+    "control",
     "early_route",
+    "house_route",
+    "outdoor_route",
     "paths",
+    "portal_route",
     "portals",
+    "quest",
     "ram",
+    "recording",
     "room_timeout",
     "rom_builder",
+    "route_graph",
     "seed",
+    "segment",
     "world",
 ]

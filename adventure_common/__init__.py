@@ -1,11 +1,8 @@
 """Shared route-graph primitives for nonlinear adventure games.
 
-Consumers: ``zelda_i`` (NES), ``metroid`` (NES). Super Metroid reuses the same
-capability spelling and shortest-path core via thin wrappers in
-``super_metroid.progression`` / ``super_metroid.map_planning``.
-
-Second consumer (Metroid) proved the Phase 4 graph core; keep game-specific
-stop predicates and WRAM maps local.
+Consumers: ``zelda_i``, ``metroid``, ``super_metroid`` (via thin loaders),
+and ``alttp`` opening-route graphs. Game-specific stop predicates and WRAM
+maps stay local.
 """
 
 from adventure_common.graph import (
@@ -22,18 +19,48 @@ from adventure_common.graph import (
     promote_edge_verification,
     shortest_path,
 )
+from adventure_common.hashutil import sha256_file
+from adventure_common.nav import (
+    Waypoint,
+    WaypointFollower,
+    direction_to_waypoint,
+    direction_toward,
+    manhattan,
+    reached_waypoint,
+)
+from adventure_common.routes import (
+    NamedRoute,
+    RouteMilestone,
+    RouteRegistry,
+    get_route,
+    list_routes,
+    register_routes,
+)
 
 __all__ = [
     "GraphEdge",
     "GraphNode",
+    "NamedRoute",
     "ObservedTransition",
     "PlannedLeg",
     "ProgressionMilestone",
     "RouteGraph",
     "RouteLeg",
+    "RouteMilestone",
     "RoutePatch",
+    "RouteRegistry",
+    "Waypoint",
+    "WaypointFollower",
     "apply_milestones",
+    "direction_to_waypoint",
+    "direction_toward",
+    "get_route",
+    "list_routes",
+    "manhattan",
     "normalize_capability",
     "promote_edge_verification",
+    "reached_waypoint",
+    "register_routes",
+    "sha256_file",
     "shortest_path",
 ]

@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_98e2_from_9994_to_92fd",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Pre-Map Flyway (0x98E2); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8C2E",
+    "entrySourceRoomIdHex": "0x9994",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      47,
+      7
+    ],
+    "doorPtr": 35886,
+    "entrySourceRoomId": 39316
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 39316,
+      "sourceRoomIdHex": "0x9994",
+      "endpoint": {
+        "roomId": 39138,
+        "roomIdHex": "0x98E2",
+        "logicalRoomId": 14,
+        "nodeId": 2,
+        "nodeName": "Pre-Map Flyway Right Door (to Map)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 37629,
+      "targetRoomIdHex": "0x92FD",
+      "endpoint": {
+        "roomId": 39138,
+        "roomIdHex": "0x98E2",
+        "logicalRoomId": 14,
+        "nodeId": 1,
+        "nodeName": "Pre-Map Flyway Left Door (to Parlor)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        47,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 44,
+      "waypointsBlocks": [
+        [
+          45,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "run0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run4",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land4",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run5",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump5",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land5",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run6",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump6",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land6",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run7",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump7",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land7",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run8",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump8",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land8",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "run9",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump9",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land9",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx0",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "landx0",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx1",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "landx1",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx2",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "landx2",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 250
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned long hop+shoot pre-map flyway; development only.",
+  "promotedAt": "2026-07-30T22:47:45.000937+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_98e2_from_9994_to_92fd.json",
+    "reportSha256": "7d91c7d08e26cefd9b3d1e98598eaac5fb1aea9096eae688def621ca4e86106e",
+    "stateSha256": "857b9cbaf99f0cd4e6f5dcf9b54c1c8bdf1925128bd8f074870fc3c321d8d8dd",
+    "policySha256Before": "b6b04657f9b26b6b354bc065272e472a4f7f2dc7cf8a4f9914420bd306b51ea7"
+  }
+}

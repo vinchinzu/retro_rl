@@ -1,4 +1,7 @@
-"""Unit tests for post-Spore Super controller helpers (no emulator)."""
+"""Unit tests for Super-collect / Pink PB helpers (now under routes.kpdr).
+
+``post_spore_controller`` remains a thin re-export for older imports.
+"""
 
 from __future__ import annotations
 
@@ -38,6 +41,13 @@ def test_room_constants() -> None:
     assert ROOM_FARMING == 0xA0A4
     assert ROOM_BIG_PINK == 0x9D19
     assert ROOM_PINK_PB == 0x9E11
+
+
+def test_post_spore_reexport_matches_kpdr() -> None:
+    from super_metroid.routes import kpdr, post_spore_controller
+
+    assert post_spore_controller.play_super_room_collect is kpdr.play_super_room_collect
+    assert post_spore_controller.ROOM_SUPER == kpdr.ROOM_SUPER
 
 
 def test_controller_exports() -> None:

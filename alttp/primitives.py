@@ -13,6 +13,8 @@ from typing import TypeAlias
 
 import numpy as np
 
+from adventure_common.nav import Waypoint as SharedWaypoint
+from adventure_common.nav import direction_to_waypoint, reached_waypoint
 from alttp.ram import AlttpSnapshot
 from alttp.startup import action_for, no_action, snapshot_env, step_frames
 
@@ -78,13 +80,32 @@ class PrimitiveResult:
 
 @dataclass(frozen=True)
 class Waypoint:
-    """An absolute in-room navigation target."""
+    """An absolute in-room navigation target (ALTTP room-aware).
+
+    Mirrors :class:`adventure_common.nav.Waypoint` with an optional room id
+    for multi-screen castle chambers.
+    """
 
     x: int
     y: int
     tolerance: int = 5
     room: int | None = None
     label: str = ""
+
+    def as_shared(self) -> SharedWaypoint:
+        return SharedWaypoint(
+            x=self.x,
+            y=self.y,
+            tolerance=self.tolerance,
+            label=self.label,
+            room=self.room,
+        )
+
+    def reached(self, x: int, y: int) -> bool:
+        return reached_waypoint(x, y, self.as_shared())
+
+    def direction_from(self, x: int, y: int) -> str | None:
+        return direction_to_waypoint(x, y, self.as_shared())
 
 
 @dataclass(frozen=True)
@@ -240,13 +261,15 @@ def move_to(
                 frames,
                 snapshot,
             )
-        dx = waypoint.x - snapshot.link_x
-        dy = waypoint.y - snapshot.link_y
-        if abs(dx) <= waypoint.tolerance and abs(dy) <= waypoint.tolerance:
+        if waypoint.reached(snapshot.link_x, snapshot.link_y):
             return PrimitiveResult(True, waypoint.label or "waypoint reached", frames, snapshot)
         if snapshot.game_mode == 0x12:
             return PrimitiveResult(False, "Link died", frames, snapshot)
 
+        # Multi-button diagonal keeps simultaneous axes (direction_from is
+        # single-cardinal only and would slow diagonals).
+        dx = waypoint.x - snapshot.link_x
+        dy = waypoint.y - snapshot.link_y
         buttons: list[str] = []
         if abs(dx) > waypoint.tolerance:
             buttons.append("RIGHT" if dx > 0 else "LEFT")

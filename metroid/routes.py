@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
+from adventure_common.routes import (
+    NamedRoute,
+    RouteMilestone,
+    get_route as _get_route,
+    list_routes as _list_routes,
+)
 from metroid.brinstar import (
     NODE_EAST_DOOR,
     NODE_FIRST_MISSILES,
@@ -12,23 +16,6 @@ from metroid.brinstar import (
     missiles_route_legs,
     morph_route_legs,
 )
-
-
-@dataclass(frozen=True)
-class RouteMilestone:
-    milestone_id: str
-    node_id: str
-    label: str
-    stop_predicate: str
-
-
-@dataclass(frozen=True)
-class NamedRoute:
-    route_id: str
-    display_name: str
-    milestones: tuple[RouteMilestone, ...]
-    description: str = ""
-
 
 ROUTE_MORPH_BALL = NamedRoute(
     route_id="metroid_morph_ball",
@@ -95,21 +82,11 @@ ROUTE_REGISTRY: dict[str, NamedRoute] = {
 
 
 def get_route(route_id: str) -> NamedRoute:
-    key = route_id.strip().lower()
-    if key not in ROUTE_REGISTRY:
-        available = sorted({r.route_id for r in ROUTE_REGISTRY.values()})
-        raise KeyError(f"Unknown route {route_id!r}. Available: {available}")
-    return ROUTE_REGISTRY[key]
+    return _get_route(ROUTE_REGISTRY, route_id)
 
 
 def list_routes() -> list[NamedRoute]:
-    seen: set[str] = set()
-    out: list[NamedRoute] = []
-    for route in ROUTE_REGISTRY.values():
-        if route.route_id not in seen:
-            seen.add(route.route_id)
-            out.append(route)
-    return out
+    return _list_routes(ROUTE_REGISTRY)
 
 
 MORPH_BALL_LEGS = morph_route_legs()

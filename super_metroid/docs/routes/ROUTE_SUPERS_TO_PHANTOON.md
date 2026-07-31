@@ -74,14 +74,14 @@ Hop tables:
 | Status | **continuous** |
 | Span | Power-on → Super Missile capacity 0→5 in `0x9B5B` |
 | Frames | ~92,425 (`recordings/start_to_supers.{json,mp4}`) |
-| Code | `routes/continuous.py` + `post_spore_controller.play_super_room_collect` |
+| Code | `routes/continuous.py` + `kpdr.play_super_room_collect` |
 | Integrity | 0 state loads; 0 progression writes |
 | Next | Farm exit + Big Pink |
 
 Reproduce (optional; long):
 
 ```bash
-uv run python super_metroid/scripts/record/start_to_supers.py --no-video
+uv run python super_metroid/scripts/record/continuous.py --to supers --no-video
 ```
 
 ---
@@ -94,7 +94,7 @@ uv run python super_metroid/scripts/record/start_to_supers.py --no-video
 | Entry | After Super collect, bottom of `0x9B5B` (~x=411, y=2187) |
 | Exit | Farming settled, game state 8 |
 | Door | `0x8D1E` (left blue after bomb gate) |
-| Code | `post_spore_controller.play_super_room_to_farming` |
+| Code | `kpdr.play_super_room_to_farming` |
 | Dev state | `dev_b1_farming_entry.state`, `dev_b1_supers_natural.state` |
 | Continuous? | Not yet re-proven on full power-on suffix |
 | Blockers | None known in isolation |
@@ -113,7 +113,7 @@ uv run python super_metroid/scripts/probe/post_spore_pb.py --to farming
 | Entry | Farming `0xA0A4` with Supers selected |
 | Exit | Big Pink ~**(1240, 1413)** near farm door block `[79,87]` |
 | Door | `0x8F82` (green, Super required) |
-| Code | `post_spore_controller.play_farming_to_big_pink` |
+| Code | `kpdr.play_farming_to_big_pink` |
 | Dev state | `dev_b1_bigpink_entry.state` |
 | Continuous? | Not yet |
 | Blockers | None known in isolation |
@@ -132,7 +132,7 @@ uv run python super_metroid/scripts/probe/post_spore_pb.py --to big-pink
 | Entry | Farm pocket ~x=1240, y=1419 |
 | Method | Walk left into lip → run **right** for speed → spin-jump **left** over lip |
 | Exit | ~**(1125, 1387)** mid ledge |
-| Code | `post_spore_controller.play_big_pink_crest_pocket` |
+| Code | `kpdr.play_big_pink_crest_pocket` |
 | Probe | `probe_post_spore_pb.py --to crest` |
 
 ```bash
@@ -391,7 +391,7 @@ Pink PB room `0x9E11`: item [6, 23] ≈ (104, 376).
 
 | Artifact | Role |
 |----------|------|
-| `routes/post_spore_controller.py` | Super collect → farming → Big Pink crest → main shaft |
+| `routes/kpdr/` (Super collect / Big Pink) | Super collect → farming → Big Pink crest → main shaft; `post_spore_controller` re-exports |
 | `dev/phantoon_dev.py` | PB warp-collect, `SHIP_ROUTE`, Phantoon entry/fight |
 | `scripts/probe/post_spore_pb.py` | Dev probe through crest / tunnel-floor / main |
 | `scripts/probe/phantoon.py` | collect-pb / capture-entry / ship-route |

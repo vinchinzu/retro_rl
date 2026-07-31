@@ -114,8 +114,12 @@ class RoutePatch:
     direction: str = ""
     requires: frozenset[str] = field(default_factory=frozenset)
     support: str = ""
+    meta: Mapping[str, object] = field(default_factory=dict)
 
     def as_edge(self) -> GraphEdge:
+        edge_meta: dict[str, object] = dict(self.meta)
+        if self.support:
+            edge_meta.setdefault("support", self.support)
         return GraphEdge(
             source_id=self.source_id,
             target_id=self.target_id,
@@ -123,7 +127,7 @@ class RoutePatch:
             requires=frozenset(normalize_capability(v) for v in self.requires),
             verification="planned",
             provenance="explicit_route_patch",
-            meta={"support": self.support},
+            meta=edge_meta,
         )
 
 

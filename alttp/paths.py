@@ -22,6 +22,10 @@ FIRST_ACTION_STATE = "FirstAction"
 # Dev checkpoint after uncle / fighter-sword (state-load only; not natural-chain proof).
 FIGHTER_SWORD_STATE = "FighterSword"
 
+# Sanctuary-path save-state work queue artifacts (see alttp.work_queue).
+ROOM_WORK_QUEUE_JSON = RECORDINGS_DIR / "room_work_queue.json"
+ROOM_WORK_QUEUE_MD = DOCS_DIR / "routes" / "ROOM_WORK_QUEUE.md"
+
 # Local clone of vg-json-data/z3-json-data (gitignored; setup script only).
 Z3_JSON_DATA_DIR = REFS_DIR / "z3-json-data"
 Z3_JSON_DATA_REPO = "https://github.com/vg-json-data/z3-json-data.git"

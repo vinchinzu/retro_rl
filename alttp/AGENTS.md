@@ -10,13 +10,16 @@ the shared `retro_harness.snes` seam.
 - ROM: `roms/zelda3.sfc` (symlink from repo `roms/zelda3.sfc`).
 - Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ram_map.md`.
 - Headless probes: `SDL_VIDEODRIVER=dummy`.
+- Live controller stack is `alttp.primitives` + `alttp.route_report`. Prefer
+  `fight_nearby` / `move_path` over new open-loop mega-macros.
 - Do not drag arena/romhack/asset-editor trees in until the opening route is
   stable.
 
 ## Immediate goal
 
-Power-on / boot state → title → fresh file → Link's House exit → Hyrule Castle
-grounds (screen `0x1B`) → secret hole (room `0x55`) → uncle fighter sword.
+Secret entrance clear is verified (sword → south chamber → stairs outdoors).
+Next: courtyard pocket → main castle door → Zelda follower → Sanctuary.
+Drive probes from `docs/routes/ROOM_WORK_QUEUE.md`.
 
 ## Commands
 
@@ -34,6 +37,9 @@ uv run python -m alttp.opening_route_catalog emit
 # After a boot run, attach only real observed milestone facts:
 uv run python -m alttp.opening_route_catalog emit \
   --from-boot-report alttp/recordings/boot_to_castle.json
+
+# Sanctuary-path save-state work queue (60 states)
+uv run python alttp/scripts/export_work_queue.py
 
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/boot_to_castle.py --save
 
@@ -55,6 +61,7 @@ Opening-route catalog: `python -m alttp.opening_route_catalog` (artifact
 `alttp/recordings/opening_route_catalog.json`). z3 node names are logic
 labels, not stable-retro screen coordinates.
 
-Castle→sword segment: `alttp/castle_to_sword.py` +
-`scripts/castle_to_sword.py`. State-load runs are development-only; only
-`--natural` with full sword acceptance is a clean natural-chain claim.
+Escape graph (offline capability plan): `alttp.escape_graph`.
+Castle→sword / sword→Zelda: `castle_to_sword.py`, `sword_to_zelda.py`.
+State-load runs are development-only; only `--natural` with full acceptance is
+a clean natural-chain claim.

@@ -45,7 +45,7 @@ uv run python super_metroid/scripts/probe/room_timer.py session \
   -o super_metroid/recordings/room_timings/session.json
 
 # Opt-in continuous start-to-Supers baseline timing (needs ROM; no integrity change)
-uv run python super_metroid/scripts/record/start_to_supers.py --no-video --room-timing
+uv run python super_metroid/scripts/record/continuous.py --to supers --no-video --room-timing
 # → recordings/room_timings/start_to_supers_room_timing.json
 ```
 
@@ -106,9 +106,9 @@ Tests: `super_metroid/tests/test_room_timer.py` (no ROM).
   the loaded state is mid-transition or you integrate the timer into a real
   controller/run loop.
 - Continuous routes keep the timer **opt-in**. `RouteSession` accepts an
-  optional shared `RoomTimer`; `start_to_supers.py --room-timing` attaches it
-  and writes a separate JSON under `recordings/room_timings/`. Timing never
-  feeds assists, integrity evaluation, or route decisions.
+  optional shared `RoomTimer`; `continuous.py --to supers --room-timing`
+  attaches it and writes a separate JSON under `recordings/room_timings/`.
+  Timing never feeds assists, integrity evaluation, or route decisions.
 
 ## Output location
 

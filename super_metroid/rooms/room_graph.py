@@ -23,54 +23,13 @@ from pathlib import Path
 import re
 from typing import Iterable, Mapping, Sequence
 
-from super_metroid.map_planning import normalize_ability, sha256_file
-
-
-_DOOR_REQUIREMENTS = {
-    "red": "missiles",
-    "green": "super_missiles",
-    "yellow": "power_bombs",
-}
-
-_LOCK_REQUIREMENTS = {
-    "Bombs": "bombs",
-    "Morph": "morph_ball",
-    "Missile": "missiles",
-    "f_DefeatedBombTorizo": "bomb_torizo_defeated",
-    "f_DefeatedBotwoon": "botwoon_defeated",
-    "f_DefeatedCeresRidley": "ceres_ridley_cleared",
-    "f_DefeatedCrocomire": "crocomire_defeated",
-    "f_DefeatedDraygon": "draygon_defeated",
-    "f_DefeatedGoldenTorizo": "golden_torizo_defeated",
-    "f_DefeatedKraid": "kraid_defeated",
-    "f_DefeatedMotherBrain": "mother_brain_defeated",
-    "f_DefeatedPhantoon": "phantoon_defeated",
-    "f_DefeatedRidley": "ridley_defeated",
-    "f_DefeatedSporeSpawn": "spore_spawn_defeated",
-    "f_ZebesSetAblaze": "mother_brain_defeated",
-}
-
-_ITEM_CAPABILITIES = {
-    "bomb": "bombs",
-    "charge beam": "charge_beam",
-    "grapple beam": "grapple_beam",
-    "gravity suit": "gravity_suit",
-    "hi-jump boots": "hi_jump",
-    "ice beam": "ice_beam",
-    "missile": "missiles",
-    "morph ball": "morph_ball",
-    "plasma beam": "plasma_beam",
-    "power bomb": "power_bombs",
-    "screw attack": "screw_attack",
-    "space jump": "space_jump",
-    "spazer": "spazer",
-    "speed booster": "speed_booster",
-    "spring ball": "spring_ball",
-    "super missile": "super_missiles",
-    "varia suit": "varia_suit",
-    "wave beam": "wave_beam",
-    "x-ray scope": "xray_scope",
-}
+from adventure_common.hashutil import sha256_file
+from super_metroid.rooms.capabilities import (
+    _DOOR_REQUIREMENTS,
+    _ITEM_CAPABILITIES,
+    _LOCK_REQUIREMENTS,
+    normalize_ability,
+)
 
 _BOSS_ROOM_IDS = {
     0x9804,  # Bomb Torizo
@@ -250,9 +209,13 @@ class PhysicalEndpoint:
     requires: tuple[str, ...]
     local_requirements: tuple[str, ...]
     impossible_exit: bool
+    # Bank-$83 door definition pointer (sm-json-data nodeAddress low 16 bits).
+    # On the *source* side of a hop this is the door_warp argument that enters
+    # the peer room.
+    door_ptr: int | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "roomId": self.room_id,
             "roomIdHex": f"0x{self.room_id:04X}",
             "logicalRoomId": self.logical_room_id,
@@ -266,6 +229,10 @@ class PhysicalEndpoint:
             "localRequirements": list(self.local_requirements),
             "impossibleExit": self.impossible_exit,
         }
+        if self.door_ptr is not None:
+            payload["doorPtr"] = self.door_ptr
+            payload["doorPtrHex"] = f"0x{self.door_ptr:04X}"
+        return payload
 
 
 @dataclass(frozen=True)
@@ -333,6 +300,13 @@ def _load_reference_rooms(reference_root: Path) -> dict[int, ReferenceRoom]:
     return rooms
 
 
+def _door_ptr_from_node(node: Mapping[str, object]) -> int | None:
+    raw = node.get("nodeAddress")
+    if raw is None or raw == "" or raw == "null":
+        return None
+    return int(str(raw), 0) & 0xFFFF
+
+
 def _endpoint(
     raw: Mapping[str, object],
     rooms: Mapping[int, ReferenceRoom],
@@ -354,6 +328,7 @@ def _endpoint(
         requires=requires,
         local_requirements=local,
         impossible_exit=impossible,
+        door_ptr=_door_ptr_from_node(node),
     )
 
 
@@ -493,16 +468,22 @@ def _canonical_endpoints(
     room_id: int,
     connections: Sequence[PhysicalConnection],
 ) -> tuple[
-    tuple[PhysicalEndpoint, int] | None,
-    tuple[PhysicalEndpoint, int] | None,
+    tuple[PhysicalEndpoint, PhysicalEndpoint] | None,
+    tuple[PhysicalEndpoint, PhysicalEndpoint] | None,
 ]:
-    incident: list[tuple[PhysicalEndpoint, int, bool, bool]] = []
+    """Pick canonical (local, peer) endpoint pairs for entry and exit.
+
+    ``peer.door_ptr`` on the entry pair is the door-warp argument that enters
+    this room from the peer (source) room.
+    """
+    # (local, peer, can_enter_from_peer, can_exit_to_peer)
+    incident: list[tuple[PhysicalEndpoint, PhysicalEndpoint, bool, bool]] = []
     for connection in connections:
         if connection.first.room_id == room_id:
             incident.append(
                 (
                     connection.first,
-                    connection.second.room_id,
+                    connection.second,
                     connection.direction == "Bidirectional",
                     True,
                 )
@@ -511,7 +492,7 @@ def _canonical_endpoints(
             incident.append(
                 (
                     connection.second,
-                    connection.first.room_id,
+                    connection.first,
                     True,
                     connection.direction == "Bidirectional",
                 )
@@ -527,7 +508,8 @@ def _canonical_endpoints(
         return None, None
     if len(incident) == 1:
         item = incident[0]
-        return (item[0], item[1]), (item[0], item[1])
+        pair = (item[0], item[1])
+        return pair, pair
 
     candidates = [
         (entry, exit_)
@@ -672,9 +654,11 @@ def _problem_for_room(
     room_id = int(room["roomId"])
     entry_pair, exit_pair = _canonical_endpoints(room_id, connections)
     entry = entry_pair[0] if entry_pair else None
-    entry_source = entry_pair[1] if entry_pair else None
+    entry_peer = entry_pair[1] if entry_pair else None
+    entry_source = entry_peer.room_id if entry_peer is not None else None
     exit_ = exit_pair[0] if exit_pair else None
-    exit_target = exit_pair[1] if exit_pair else None
+    exit_peer = exit_pair[1] if exit_pair else None
+    exit_target = exit_peer.room_id if exit_peer is not None else None
     endpoint_count = sum(
         connection.first.room_id == room_id or connection.second.room_id == room_id
         for connection in connections
@@ -703,6 +687,24 @@ def _problem_for_room(
         status = "state_ready"
     else:
         status = "unstarted"
+    entry_payload: dict[str, object] | None = None
+    if entry is not None and entry_source is not None and entry_peer is not None:
+        entry_payload = {
+            "sourceRoomId": entry_source,
+            "sourceRoomIdHex": f"0x{entry_source:04X}",
+            "endpoint": entry.to_dict(),
+        }
+        # Source-side door definition used by door_warp into this room.
+        if entry_peer.door_ptr is not None:
+            entry_payload["doorPtr"] = entry_peer.door_ptr
+            entry_payload["doorPtrHex"] = f"0x{entry_peer.door_ptr:04X}"
+    exit_payload: dict[str, object] | None = None
+    if exit_ is not None and exit_target is not None:
+        exit_payload = {
+            "targetRoomId": exit_target,
+            "targetRoomIdHex": f"0x{exit_target:04X}",
+            "endpoint": exit_.to_dict(),
+        }
     return {
         "problemId": problem_id,
         "roomId": room_id,
@@ -714,24 +716,8 @@ def _problem_for_room(
         "queue": queue,
         "difficultyReasons": reasons,
         "endpointCount": endpoint_count,
-        "entry": (
-            {
-                "sourceRoomId": entry_source,
-                "sourceRoomIdHex": f"0x{entry_source:04X}",
-                "endpoint": entry.to_dict(),
-            }
-            if entry is not None and entry_source is not None
-            else None
-        ),
-        "exit": (
-            {
-                "targetRoomId": exit_target,
-                "targetRoomIdHex": f"0x{exit_target:04X}",
-                "endpoint": exit_.to_dict(),
-            }
-            if exit_ is not None and exit_target is not None
-            else None
-        ),
+        "entry": entry_payload,
+        "exit": exit_payload,
         "acquires": _item_capabilities(room.get("items", [])),
         "items": room.get("items", []),
         "geometry": {
@@ -913,191 +899,13 @@ def _physical_components(
     return components
 
 
-def export_full_room_catalog(
-    *,
-    editor_nav: Path,
-    reference_root: Path,
-    legacy_route: Path,
-    graph_output: Path,
-    problems_output: Path,
-    states_dir: Path,
-    policy_dir: Path,
-) -> tuple[dict[str, object], dict[str, object]]:
-    """Merge sources and write self-contained graph/problem artifacts."""
-    editor_nav = editor_nav.expanduser().resolve()
-    editor_root = editor_nav.parent
-    editor_rooms_dir = editor_root / "rooms"
-    reference_root = reference_root.expanduser().resolve()
-    legacy_route = legacy_route.expanduser().resolve()
-
-    nav = _json(editor_nav)
-    editor_rooms = {
-        int(node["roomId"]): _json(
-            editor_rooms_dir / f"room_{int(node['roomId']):04X}.json"
-        )
-        for node in nav["nodes"]
-    }
-    reference_rooms = _load_reference_rooms(reference_root)
-    connections = _load_connections(reference_root, reference_rooms)
-    edges = [edge for connection in connections for edge in connection.directed_edges()]
-
-    reference_ids = {room.room_id for room in reference_rooms.values()}
-    editor_ids = set(editor_rooms)
-    if reference_ids - editor_ids:
-        missing = ", ".join(
-            f"0x{room_id:04X}" for room_id in reference_ids - editor_ids
-        )
-        raise ValueError(f"reference rooms missing editor geometry: {missing}")
-
-    state_names = {path.stem for path in states_dir.glob("*.state")}
-    verified_policy_ids = {
-        path.stem
-        for path in policy_dir.glob("*.json")
-        if _json(path).get("status") == "verified_development_state"
-    }
-    problems = [
-        _problem_for_room(
-            editor_rooms[room_id],
-            connections,
-            state_names=state_names,
-            verified_policy_ids=verified_policy_ids,
-        )
-        for room_id in sorted(editor_rooms)
-    ]
-    tier_counts = Counter(problem["tier"] for problem in problems)
-    status_counts = Counter(problem["practice"]["status"] for problem in problems)
-    queue_counts = Counter(problem["queue"] for problem in problems)
-    static_plan_counts = Counter(
-        problem["staticPlan"]["status"] for problem in problems
-    )
-    direction_counts = Counter(connection.direction for connection in connections)
-    type_counts = Counter(connection.connection_type for connection in connections)
-    editor_components = _physical_components(editor_ids, connections)
-    reference_components = _physical_components(reference_ids, connections)
-    isolated_editor_ids = sorted(
-        next(iter(component)) for component in editor_components if len(component) == 1
+def export_full_room_catalog(**kwargs):
+    """Compatibility re-export — implementation lives in room_catalog."""
+    from super_metroid.rooms.room_catalog import (
+        export_full_room_catalog as _export,
     )
 
-    reference_paths = [room.path for room in reference_rooms.values()] + list(
-        (reference_root / "connection").rglob("*.json")
-    )
-    editor_room_paths = list(editor_rooms_dir.glob("room_*.json"))
-    source = {
-        "editorNavPath": str(editor_nav),
-        "editorNavSha256": sha256_file(editor_nav),
-        "editorRoomsPath": str(editor_rooms_dir),
-        "editorRoomsAggregateSha256": _aggregate_sha256(
-            editor_rooms_dir, editor_room_paths
-        ),
-        "referenceRoot": str(reference_root),
-        "referenceAggregateSha256": _aggregate_sha256(reference_root, reference_paths),
-        "legacyRoutePath": str(legacy_route),
-        "legacyRouteSha256": sha256_file(legacy_route),
-    }
-    generated_at = datetime.now(timezone.utc).isoformat()
-    completion_sequence = _completion_sequence(
-        edges,
-        _json(legacy_route),
-        editor_rooms,
-    )
-    graph_payload = {
-        "schemaVersion": 1,
-        "graphId": "super_metroid_full_room_completion",
-        "status": "planned_not_continuous",
-        "acceptanceWarning": (
-            "Reference topology and editor geometry are planning inputs. "
-            "Individual edges become accepted only after emulator observation."
-        ),
-        "generatedAt": generated_at,
-        "source": source,
-        "summary": {
-            "roomCount": len(editor_rooms),
-            "vanillaReferenceRoomCount": len(reference_rooms),
-            "editorOnlyRoomCount": len(editor_ids - reference_ids),
-            "physicalConnectionCount": len(connections),
-            "directedEdgeCount": len(edges),
-            "editorPhysicalComponentCount": len(editor_components),
-            "vanillaPhysicalComponentCount": len(reference_components),
-            "isolatedEditorRoomIds": [
-                f"0x{room_id:04X}" for room_id in isolated_editor_ids
-            ],
-            "directionCounts": dict(sorted(direction_counts.items())),
-            "connectionTypeCounts": dict(sorted(type_counts.items())),
-            "completionAnchorCount": len(completion_sequence["anchors"]),
-            "completionLegCount": len(completion_sequence["legs"]),
-            "completionTopologyGapCount": sum(
-                leg["status"] != "planned" for leg in completion_sequence["legs"]
-            ),
-        },
-        "rooms": [
-            {
-                "roomId": room_id,
-                "roomIdHex": f"0x{room_id:04X}",
-                "name": room["name"],
-                "handle": room["handle"],
-                "area": room["areaName"],
-                "mapX": room["mapX"],
-                "mapY": room["mapY"],
-                "widthScreens": room["widthScreens"],
-                "heightScreens": room["heightScreens"],
-                "widthBlocks": room["widthBlocks"],
-                "heightBlocks": room["heightBlocks"],
-                "items": room.get("items", []),
-                "acquires": _item_capabilities(room.get("items", [])),
-                "enemyCount": len(room.get("enemies", [])),
-                "referenceTopology": room_id in reference_ids,
-            }
-            for room_id, room in sorted(editor_rooms.items())
-        ],
-        "connections": [connection.to_dict() for connection in connections],
-        "edges": edges,
-        "completionSequence": completion_sequence,
-    }
-    problems_payload = {
-        "schemaVersion": 1,
-        "catalogId": "super_metroid_room_problems",
-        "status": "development_catalog",
-        "generatedAt": generated_at,
-        "sourceGraph": {
-            "path": str(graph_output.resolve()),
-            "graphId": graph_payload["graphId"],
-        },
-        "summary": {
-            "problemCount": len(problems),
-            "tierCounts": dict(sorted(tier_counts.items())),
-            "practiceStatusCounts": dict(sorted(status_counts.items())),
-            "queueCounts": {
-                str(queue): count for queue, count in sorted(queue_counts.items())
-            },
-            "staticPlanStatusCounts": dict(sorted(static_plan_counts.items())),
-        },
-        "queuePolicy": [
-            {"queue": 0, "meaning": "state and policy ready; run now"},
-            {"queue": 1, "meaning": "easy/small rooms"},
-            {"queue": 2, "meaning": "standard traversal"},
-            {"queue": 3, "meaning": "tough, scripted, or unresolved geometry"},
-            {"queue": 4, "meaning": "bosses held for later"},
-        ],
-        "problems": sorted(
-            problems,
-            key=lambda problem: (
-                int(problem["queue"]),
-                str(problem["area"]),
-                int(problem["roomId"]),
-            ),
-        ),
-    }
-    graph_output.parent.mkdir(parents=True, exist_ok=True)
-    problems_output.parent.mkdir(parents=True, exist_ok=True)
-    graph_output.write_text(
-        json.dumps(graph_payload, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    problems_output.write_text(
-        json.dumps(problems_payload, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    return graph_payload, problems_payload
+    return _export(**kwargs)
 
 
 def load_problem_catalog(path: Path) -> dict[str, object]:

@@ -1,19 +1,148 @@
 {
   "info": {
-    "sm_room_id": {"address": 1947, "type": "<u2"},
-    "sm_area_index": {"address": 1951, "type": "<u2"},
-    "sm_door_transition": {"address": 1943, "type": "<u2"},
-    "sm_game_state": {"address": 2456, "type": "<u2"},
-    "sm_health": {"address": 2498, "type": "<u2"},
-    "sm_max_health": {"address": 2500, "type": "<u2"},
-    "sm_samus_x": {"address": 2806, "type": "<u2"},
-    "sm_samus_y": {"address": 2810, "type": "<u2"},
-    "z3_module": {"address": 16, "type": "|u1"},
-    "z3_submodule": {"address": 17, "type": "|u1"},
-    "z3_indoors": {"address": 27, "type": "|u1"},
-    "z3_link_y": {"address": 32, "type": "|u2"},
-    "z3_link_x": {"address": 34, "type": "|u2"},
-    "z3_room_id": {"address": 160, "type": "|u2"},
-    "z3_health": {"address": 3894, "type": "|u1"}
+    "sm_room_id": {
+      "address": 8259483,
+      "type": "<u2"
+    },
+    "sm_area_index": {
+      "address": 8259487,
+      "type": "<u2"
+    },
+    "sm_door_transition": {
+      "address": 8259479,
+      "type": "<u2"
+    },
+    "sm_transition_direction": {
+      "address": 8259473,
+      "type": "<u2"
+    },
+    "sm_game_state": {
+      "address": 8259992,
+      "type": "<u2"
+    },
+    "sm_equipped_items": {
+      "address": 8260002,
+      "type": "<u2"
+    },
+    "sm_collected_items": {
+      "address": 8260004,
+      "type": "<u2"
+    },
+    "sm_equipped_beams": {
+      "address": 8260006,
+      "type": "<u2"
+    },
+    "sm_collected_beams": {
+      "address": 8260008,
+      "type": "<u2"
+    },
+    "sm_health": {
+      "address": 8260034,
+      "type": "<u2"
+    },
+    "sm_max_health": {
+      "address": 8260036,
+      "type": "<u2"
+    },
+    "sm_missiles": {
+      "address": 8260038,
+      "type": "<u2"
+    },
+    "sm_max_missiles": {
+      "address": 8260040,
+      "type": "<u2"
+    },
+    "sm_super_missiles": {
+      "address": 8260042,
+      "type": "<u2"
+    },
+    "sm_max_super_missiles": {
+      "address": 8260044,
+      "type": "<u2"
+    },
+    "sm_power_bombs": {
+      "address": 8260046,
+      "type": "<u2"
+    },
+    "sm_max_power_bombs": {
+      "address": 8260048,
+      "type": "<u2"
+    },
+    "sm_samus_pose": {
+      "address": 8260124,
+      "type": "<u2"
+    },
+    "sm_samus_x": {
+      "address": 8260342,
+      "type": "<u2"
+    },
+    "sm_samus_y": {
+      "address": 8260346,
+      "type": "<u2"
+    },
+    "sm_velocity_y": {
+      "address": 8260398,
+      "type": "<i2"
+    },
+    "sm_velocity_x": {
+      "address": 8260418,
+      "type": "<i2"
+    },
+    "z3_module": {
+      "address": 8257552,
+      "type": "|u1"
+    },
+    "z3_submodule": {
+      "address": 8257553,
+      "type": "|u1"
+    },
+    "z3_indoors": {
+      "address": 8257563,
+      "type": "|u1"
+    },
+    "z3_link_y": {
+      "address": 8257568,
+      "type": "|u2"
+    },
+    "z3_link_x": {
+      "address": 8257570,
+      "type": "|u2"
+    },
+    "z3_link_direction": {
+      "address": 8257583,
+      "type": "|u1"
+    },
+    "z3_link_action": {
+      "address": 8257629,
+      "type": "|u1"
+    },
+    "z3_room_id": {
+      "address": 8257696,
+      "type": "|u2"
+    },
+    "z3_screen_id": {
+      "address": 8257674,
+      "type": "|u1"
+    },
+    "z3_camera_y": {
+      "address": 8257760,
+      "type": "|u2"
+    },
+    "z3_camera_x": {
+      "address": 8257762,
+      "type": "|u2"
+    },
+    "z3_health": {
+      "address": 8319853,
+      "type": "|u1"
+    },
+    "z3_max_health": {
+      "address": 8319852,
+      "type": "|u1"
+    },
+    "z3_sword": {
+      "address": 8319833,
+      "type": "|u1"
+    }
   }
 }

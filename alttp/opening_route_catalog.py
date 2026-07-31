@@ -20,6 +20,8 @@ from alttp.opening_route_data import (
     ExpectedNode,
     OpeningCheckpoint,
     opening_checkpoints,
+    opening_overworld_route_graph,
+    opening_overworld_route_legs,
 )
 from alttp.opening_route_validate import (
     CatalogValidation,
@@ -46,6 +48,8 @@ __all__ = [
     "correlate_boot_report",
     "load_and_validate",
     "opening_checkpoints",
+    "opening_overworld_route_graph",
+    "opening_overworld_route_legs",
     "validate_against_z3",
     "write_artifact",
 ]

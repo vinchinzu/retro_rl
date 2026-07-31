@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9994_from_98e2_to_98e2",
+  "status": "verified_development_state",
+  "description": "Left-door station clear (doorway-natural verified)",
+  "entryContract": {
+    "kind": "doorway_natural",
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "turn_settle",
+      "buttons": [],
+      "frames": 8
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 85
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 140
+    }
+  ]
+}

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from super_metroid.map_planning import RouteLeg, RoutePatch
-
+from adventure_common.graph import RouteLeg, RoutePatch
+from super_metroid.map_planning import sm_route_patch
 
 POST_TORIZO_CAPABILITIES = frozenset(
     {
@@ -14,13 +14,13 @@ POST_TORIZO_CAPABILITIES = frozenset(
 )
 
 POST_TORIZO_ROUTE_PATCHES = (
-    RoutePatch(
+    sm_route_patch(
         0x9AD9,
         0x9CB3,
         "Right",
         frozenset({"missiles"}),
-        "red",
-        (
+        door_cap_color="red",
+        support=(
             "Missing from SMEDIT nav_graph; supported by exported inverse "
             "0x9CB3->0x9AD9 and the editor practice-route door record."
         ),
@@ -103,3 +103,12 @@ POST_TORIZO_TO_SPORE_SPAWN = (
         ),
     ),
 )
+
+# Keep RoutePatch in the module namespace for type checkers / re-exports.
+__all__ = [
+    "POST_TORIZO_CAPABILITIES",
+    "POST_TORIZO_ROUTE_PATCHES",
+    "POST_TORIZO_TO_SPORE_SPAWN",
+    "RouteLeg",
+    "RoutePatch",
+]

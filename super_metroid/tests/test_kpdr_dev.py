@@ -55,13 +55,18 @@ def test_kpdr_controller_exports() -> None:
         play_red_tower_to_bat,
         play_red_tower_to_warehouse,
         play_run_shoot_exit,
+        play_super_room_collect,
         play_warehouse_hijump_kraid,
         play_warehouse_to_hijump,
         play_warehouse_to_kraid_with_hijump,
         play_warehouse_wall_to_lower_lip,
         play_west_to_glass,
+        ROOM_SUPER,
     )
 
+    # K0 Super collect (formerly post_spore/) is part of the KPDR package.
+    assert ROOM_SUPER == 0x9B5B
+    assert callable(play_super_room_collect)
     assert callable(play_big_pink_to_ghz)
     assert callable(play_ghz_to_noob)
     assert callable(play_noob_to_red_tower)
@@ -78,6 +83,19 @@ def test_kpdr_controller_exports() -> None:
     assert callable(play_warehouse_to_kraid_with_hijump)
     assert callable(play_warehouse_hijump_kraid)
     assert callable(play_run_shoot_exit)
+
+    from super_metroid.routes.kpdr import play_kraid_entry_to_varia
+
+    assert callable(play_kraid_entry_to_varia)
+
+
+def test_kpdr_segment_registry_includes_super_collect() -> None:
+    from super_metroid.routes.kpdr import KPDR_SEGMENTS, get_segment
+
+    assert "super_room_collect" in KPDR_SEGMENTS
+    assert "big_pink_into_main_shaft" in KPDR_SEGMENTS
+    assert "big_pink_to_ghz" in KPDR_SEGMENTS
+    assert get_segment("super_room_collect") is KPDR_SEGMENTS["super_room_collect"]
 
 
 def test_kpdr_controller_has_no_progression_writes_or_state_loads() -> None:
@@ -109,7 +127,9 @@ def test_tracker_csv_exists_and_parses() -> None:
     assert "K2.10" in ids
     assert "K2.18" in ids
     assert next(r for r in rows if r["seg_id"] == "K1.5")["status"] == "controller_dev"
-    assert next(r for r in rows if r["seg_id"] == "K1.6")["status"] == "controller_dev"
+    assert next(r for r in rows if r["seg_id"] == "K1.6")["status"] == "continuous"
+    assert next(r for r in rows if r["seg_id"] == "K2.0")["status"] == "continuous"
+    assert next(r for r in rows if r["seg_id"] == "K2.1")["status"] == "continuous"
     hj = next(r for r in rows if r["seg_id"] == "K2.10")
     assert hj["item_or_boss"] == "hi_jump"
     assert hj["status"] == "controller_dev"

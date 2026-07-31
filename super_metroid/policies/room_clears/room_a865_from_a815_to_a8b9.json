@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a865_from_a815_to_a8b9",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Ice Beam Tutorial Room (0xA865); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9312",
+    "entrySourceRoomIdHex": "0xA815",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 37650,
+    "entrySourceRoomId": 43029
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 43029,
+      "sourceRoomIdHex": "0xA815",
+      "endpoint": {
+        "roomId": 43109,
+        "roomIdHex": "0xA865",
+        "logicalRoomId": 110,
+        "nodeId": 2,
+        "nodeName": "Ice Beam Tutorial Room Right Door (to Gate Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 43193,
+      "targetRoomIdHex": "0xA8B9",
+      "endpoint": {
+        "roomId": 43109,
+        "roomIdHex": "0xA865",
+        "logicalRoomId": 110,
+        "nodeId": 1,
+        "nodeName": "Ice Beam Tutorial Room Left Door (to Snake Room)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 28,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "run0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land0",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land1",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "run3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jump3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "land3",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "runx4",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx4",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "runx5",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx5",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx5",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "runx6",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx6",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx6",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "runx7",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx7",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx7",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 16
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned hop+shoot ice tutorial; development only."
+}

@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a1ad_from_9f64_to_a1d8",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Blue Brinstar Boulder Room (0xA1AD); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8EF2",
+    "entrySourceRoomIdHex": "0x9F64",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 36594,
+    "entrySourceRoomId": 40804
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 40804,
+      "sourceRoomIdHex": "0x9F64",
+      "endpoint": {
+        "roomId": 41389,
+        "roomIdHex": "0xA1AD",
+        "logicalRoomId": 42,
+        "nodeId": 2,
+        "nodeName": "Boulder Room Right Door (to Ceiling E-Tank)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 41432,
+      "targetRoomIdHex": "0xA1D8",
+      "endpoint": {
+        "roomId": 41389,
+        "roomIdHex": "0xA1AD",
+        "logicalRoomId": 42,
+        "nodeId": 1,
+        "nodeName": "Boulder Room Left Door (to Billy Mays)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 32,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          23,
+          7
+        ],
+        [
+          23,
+          5
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 12
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "runx0",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx0",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx0",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx1",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx1",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx2",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx2",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx3",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx3",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx4",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx4",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "runx5",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "jumpx5",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 28
+    },
+    {
+      "label": "landx5",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 250
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned shoot-into-door boulder; development only."
+}

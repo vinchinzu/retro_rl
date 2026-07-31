@@ -20,6 +20,10 @@ from zelda_i.overworld import (
     NODE_SWORD_CAVE,
     SCREEN_START,
     build_early_route_graph,
+    neighbor_screens,
+    screen_to_grid,
+)
+from zelda_i.route_legs import (
     early_route_plan,
     level1_clear53_route_plan,
     level1_clear54_route_plan,
@@ -29,8 +33,6 @@ from zelda_i.overworld import (
     level1_north_route_plan,
     level1_route_plan,
     level2_path_prefix_route_plan,
-    neighbor_screens,
-    screen_to_grid,
     sword_cave_route_legs,
 )
 

@@ -9,26 +9,24 @@ Regenerate: `uv run python super_metroid/scripts/export/kpdr_tracker.py`.
 |--------|------:|
 | Total segments | 40 |
 | Super → Kraid-entry segments | 33 |
-| Kraid-entry path progress (weighted) | 75.8% |
+| Kraid-entry path progress (weighted) | 81.1% |
 
 ### Status counts
 
 | Status | Count |
 |--------|------:|
-| `continuous` | 7 |
-| `controller_dev` | 24 |
-| `dev_fight` | 1 |
-| `dev_warp` | 2 |
+| `continuous` | 14 |
+| `controller_dev` | 19 |
+| `dev_warp` | 1 |
 | `open` | 6 |
 
 ### Chart series (status)
 
 ```
-continuous         7 #####
-controller_dev    24 ####################
-dev_fight          1 #
-dev_warp           2 #
-open               6 #####
+continuous        14 ##############
+controller_dev    19 ####################
+dev_warp           1 #
+open               6 ######
 ```
 
 ## Segment table (Super → Kraid-entry focus)
@@ -48,14 +46,14 @@ open               6 #####
 | 13 | `K1.3` | 0x9D19 Big Pink (Charge Chozo) | **open** | controller | charge_beam | `` |
 | 14 | `K1.4` | 0x9E52 Green Hill Zone | **controller_dev** | controller |  | `dev_b1_bigpink_main_controller` |
 | 15 | `K1.5` | 0x9FBA Noob Bridge | **controller_dev** | controller |  | `dev_kpdr_noob` |
-| 16 | `K1.6` | 0xA253 Red Tower | **controller_dev** | controller |  | `dev_kpdr_red_tower` |
-| 20 | `K2.0` | 0xA3DD Bat Room | **controller_dev** | controller |  | `` |
-| 21 | `K2.1` | 0xA408 Below Spazer | **controller_dev** | controller |  | `` |
+| 16 | `K1.6` | 0xA253 Red Tower | **continuous** | continuous |  | `dev_kpdr_red_tower` |
+| 20 | `K2.0` | 0xA3DD Bat Room | **continuous** | continuous |  | `` |
+| 21 | `K2.1` | 0xA408 Below Spazer | **continuous** | continuous |  | `` |
 | 22 | `K2.2` | 0xA447 Spazer Room | **open** | optional | spazer | `` |
-| 23 | `K2.3` | 0xCF54 West Tunnel | **controller_dev** | controller |  | `` |
-| 24 | `K2.4` | 0xCEFB Glass Tunnel | **controller_dev** | controller |  | `` |
-| 25 | `K2.5` | 0xCF80 East Tunnel | **controller_dev** | controller |  | `` |
-| 26 | `K2.6` | 0xA6A1 Warehouse Entrance | **controller_dev** | controller |  | `dev_kpdr_warehouse` |
+| 23 | `K2.3` | 0xCF54 West Tunnel | **continuous** | continuous |  | `` |
+| 24 | `K2.4` | 0xCEFB Glass Tunnel | **continuous** | continuous |  | `` |
+| 25 | `K2.5` | 0xCF80 East Tunnel | **continuous** | continuous |  | `` |
+| 26 | `K2.6` | 0xA6A1 Warehouse Entrance | **continuous** | continuous |  | `dev_kpdr_warehouse` |
 | 27 | `K2.7` | 0xA7DE Business Center | **controller_dev** | controller |  | `` |
 | 28 | `K2.8` | 0xAA41 Hi-Jump Shaft | **controller_dev** | controller |  | `` |
 | 29 | `K2.9` | 0xA9E5 Hi-Jump Room | **controller_dev** | controller |  | `` |
@@ -73,8 +71,8 @@ open               6 #####
 
 | # | Seg | Room | Status | Notes |
 |--:|-----|------|--------|-------|
-| 40 | `K3.0` | 0xA59F Kraid's Room | dev_fight | fight script exists but is not yet composed from natural entry |
-| 41 | `K3.1` | 0xA6E2 Varia Suit Room | dev_warp | natural rear-door and PLM collection open |
+| 40 | `K3.0` | 0xA59F Kraid's Room | controller_dev | Super-spray policy from doorway entry ~1520f boss bit; not continuous yet |
+| 41 | `K3.1` | 0xA6E2 Varia Suit Room | controller_dev | rear door + real Varia PLM ~1908f; compose after play_eye_to_kraid on continuous |
 | 50 | `K4.0` | 0xAD1B Speed Booster Room | open |  |
 | 51 | `K4.1` | 0xADDE Wave Beam Room | open |  |
 | 52 | `K4.2` | 0xA890 Ice Beam Room | open |  |

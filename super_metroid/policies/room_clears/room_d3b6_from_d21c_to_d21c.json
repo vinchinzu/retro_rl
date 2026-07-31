@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d3b6_from_d21c_to_d21c",
+  "status": "verified_development_state",
+  "description": "Maridia Map Room left-door clear (doorway-natural)",
+  "entryContract": {
+    "kind": "doorway_natural",
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "to_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 35
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 200
+    }
+  ]
+}

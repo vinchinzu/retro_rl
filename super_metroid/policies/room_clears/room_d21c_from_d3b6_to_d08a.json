@@ -1,0 +1,321 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d21c_from_d3b6_to_d08a",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Crab Hole (0xD21C); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA5E8",
+    "entrySourceRoomIdHex": "0xD3B6",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      23
+    ],
+    "doorPtr": 42472,
+    "entrySourceRoomId": 54198
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 54198,
+      "sourceRoomIdHex": "0xD3B6",
+      "endpoint": {
+        "roomId": 53788,
+        "roomIdHex": "0xD21C",
+        "logicalRoomId": 201,
+        "nodeId": 3,
+        "nodeName": "Crab Hole Bottom Right Door (to Map)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "red",
+        "block": [
+          15,
+          23
+        ],
+        "requires": [
+          "missiles"
+        ],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 53386,
+      "targetRoomIdHex": "0xD08A",
+      "endpoint": {
+        "roomId": 53788,
+        "roomIdHex": "0xD21C",
+        "logicalRoomId": 201,
+        "nodeId": 1,
+        "nodeName": "Crab Hole Top Left Door (to Crab Tunnel)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "doorway",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        23
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 29,
+      "waypointsBlocks": [
+        [
+          13,
+          23
+        ],
+        [
+          8,
+          23
+        ],
+        [
+          8,
+          13
+        ],
+        [
+          7,
+          13
+        ],
+        [
+          7,
+          12
+        ],
+        [
+          5,
+          12
+        ],
+        [
+          5,
+          11
+        ],
+        [
+          4,
+          11
+        ],
+        [
+          4,
+          9
+        ],
+        [
+          1,
+          9
+        ],
+        [
+          1,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "left",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "wj1",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj1b",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj2",
+      "buttons": [
+        "RIGHT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj2b",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj3",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj3b",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj4",
+      "buttons": [
+        "RIGHT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj4b",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj5",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj5b",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj6",
+      "buttons": [
+        "RIGHT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj6b",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj7",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj7b",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj8",
+      "buttons": [
+        "RIGHT",
+        "A"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "wj8b",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 6
+    },
+    {
+      "label": "wj9",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "wj9b",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "top_left",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "uncrouch",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 30
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 200
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned underwater walljump climb; development only."
+}

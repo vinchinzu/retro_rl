@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_abd2_from_ab64_to_ac00",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Grapple Tutorial Room 2 (0xABD2); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x94B6",
+    "entrySourceRoomIdHex": "0xAB64",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 38070,
+    "entrySourceRoomId": 43876
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 43876,
+      "sourceRoomIdHex": "0xAB64",
+      "endpoint": {
+        "roomId": 43986,
+        "roomIdHex": "0xABD2",
+        "logicalRoomId": 130,
+        "nodeId": 2,
+        "nodeName": "Grapple Tutorial Room 2 Right Door (to Grapple Tutorial 3)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44032,
+      "targetRoomIdHex": "0xAC00",
+      "endpoint": {
+        "roomId": 43986,
+        "roomIdHex": "0xABD2",
+        "logicalRoomId": 130,
+        "nodeId": 1,
+        "nodeName": "Grapple Tutorial Room 2 Left Door (to Grapple Tutorial 1)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          23
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        23
+      ],
+      "exitBlock": [
+        0,
+        23
+      ],
+      "pathBlocks": 29,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          1,
+          23
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 12
+    },
+    {
+      "label": "run_left_top",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "spin",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "fall_shoot",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "land_shoot",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 55
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 250
+    }
+  ],
+  "acceptanceWarning": "Hand-tuned drop+shoot bottom door; development only."
+}

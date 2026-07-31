@@ -24,7 +24,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from alttp.castle_to_sword import settle_control  # noqa: E402
+from alttp import primitives  # noqa: E402
 from alttp.paths import FIGHTER_SWORD_STATE, RECORDINGS_DIR  # noqa: E402
 from alttp.startup import build_boot_env  # noqa: E402
 from alttp.sword_to_zelda import run_from_sword  # noqa: E402
@@ -67,7 +67,7 @@ def main() -> int:
     try:
         env = build_boot_env(args.state)
         env.reset()
-        settle_control(env)
+        primitives.settle_control(env)
         result = run_from_sword(env, source="state_load_dev")
         try:
             rendered = env.render()
