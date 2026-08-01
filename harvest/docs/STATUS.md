@@ -49,6 +49,15 @@
     - `EXIT_TO_FARM` 29, `CLEAR_FIELD` 29, `BUY_SEEDS` 3, `ENSURE_WATERING_CAN` 20,
       `ENSURE_CROP_SEEDS` 22, `NAV_CROP` 22, `CROP_WATER` 22
   - Money stayed **$100** (spent seeds, **no harvest income**) — crop plant path was effectively a no-op
+- **2026-08-01 D1 town reconnaissance**: the six required social events were
+  identified from the ROM and walkthroughs, with controller-only stands
+  verified for Ann, Eve, Nina, Maria, and the livestock dealer. Ann/Eve live
+  probes set bits `0x01`/`0x02`; the logical completion mask is `0x3F` at live
+  event field `0x11F74` (catalog: `d1_town_event_mask`). Record/replay tooling
+  is in `harvest.scripts.town_day1_recon` / `scripts/record_town_day1_recon.sh`.
+  The flower-shop owner’s counter interaction and the truck “ready to leave”
+  handoff still need a human recording. Details:
+  [town_day1_recon.md](town_day1_recon.md).
 
 ## Crop / domain gap (plant fixtures in; water/ship loop open)
 
@@ -83,9 +92,11 @@ Test crop fixtures (for growth / ship work):
 
 ## Next acceptance
 
-1. Close the **natural D1** handoff: town gate `(712,424)` → farm → sleep →
-   D2, then rerun the month without a state load. Current `town_to_farm`
-   assumes the old `(756,422)` gate and times out from this real opening.
+1. Close the **natural D1 town handoff**: complete the six-person town mask,
+   return to the truck, choose ready/leave, then town gate `(712,424)` → farm
+   → sleep → D2. Current `town_to_farm` assumes the old `(756,422)` gate and
+   times out from this real opening. Recon details are in
+   [town_day1_recon.md](town_day1_recon.md).
 2. Natural empty-can refill at north stream / pond (not south-only bounds; not shipping F2).
 3. Same-day water after plant without RAM can poke: `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER`.
 4. Multi-day growth from `Y1_Test_Crops_Planted_Watered` (~6 days to potato harvest).

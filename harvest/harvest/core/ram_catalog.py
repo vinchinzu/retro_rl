@@ -431,6 +431,21 @@ SCALAR_FIELDS: tuple[RamFieldSpec, ...] = (
     RamFieldSpec("event_flags_1f68", "Event Flags 1F68", 0x11F68, "u16", "Flags", "decomp", 0, 0xFFFF),
     RamFieldSpec("romance_event_flags", "Romance Event Flags", 0x11F6A, "u16", "Flags", "decomp", 0, 0xFFFF),
     RamFieldSpec("family_event_flags", "Family Event Flags", 0x11F6C, "u16", "Flags", "decomp", 0, 0xFFFF),
+    # Spring D1 town social handoff (ROM event scripts). Full completion = 0x3F.
+    # Bits: Ann=0x01 Eve=0x02 Nina=0x04 flower-owner=0x08 livestock=0x10 Maria=0x20.
+    # Verified live 2026-08-01; see docs/town_day1_recon.md.
+    RamFieldSpec(
+        "d1_town_event_mask",
+        "D1 Town Event Mask",
+        0x11F74,
+        "u8",
+        "Flags",
+        "rom",
+        0,
+        0x3F,
+        "Spring D1 six-person town handoff bits; truck leave needs 0x3F.",
+        aliases=("town_day1_event_mask",),
+    ),
 )
 
 SCALAR_FIELDS_BY_KEY: dict[str, RamFieldSpec] = {}
