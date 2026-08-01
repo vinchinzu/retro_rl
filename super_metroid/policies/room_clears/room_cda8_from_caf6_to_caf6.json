@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_cda8_from_caf6_to_caf6",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Wrecked Ship West Super Room (0xCDA8); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA210",
+    "entrySourceRoomIdHex": "0xCAF6",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 41488,
+    "entrySourceRoomId": 51958
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 51958,
+      "sourceRoomIdHex": "0xCAF6",
+      "endpoint": {
+        "roomId": 52648,
+        "roomIdHex": "0xCDA8",
+        "logicalRoomId": 159,
+        "nodeId": 1,
+        "nodeName": "Wrecked Ship West Super Room Door (to Main Shaft)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 51958,
+      "targetRoomIdHex": "0xCAF6",
+      "endpoint": {
+        "roomId": 52648,
+        "roomIdHex": "0xCDA8",
+        "logicalRoomId": 159,
+        "nodeId": 1,
+        "nodeName": "Wrecked Ship West Super Room Door (to Main Shaft)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        2,
+        7
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 118
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 146
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

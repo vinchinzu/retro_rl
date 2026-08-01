@@ -17,11 +17,14 @@ Verified transitions (see ``docs/STATUS.md``):
 - south chamber stairs → outdoors screen ``0x1B`` (secret-entrance clear)
 
 Courtyard pocket → main hall is measured (natural-entry / continuous tip
-through ``room_61``). Zelda cell / escort / Sanctuary remain planned.
+through ``room_61``). Main hall west → room ``0x60`` and north → room
+``0x50`` are isolated. After ``0x50`` → Zelda cell / escort / Sanctuary
+remain planned (map seeds under ``maps/``).
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Iterable
 
 from adventure_common.graph import (
@@ -34,6 +37,8 @@ from adventure_common.graph import (
 )
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
+    HYRULE_CASTLE_MAIN_WEST_ROOM,
+    HYRULE_CASTLE_NW_ROOM,
     HYRULE_CASTLE_SCREEN,
     SANCTUARY_ROOM,
     SECRET_PASSAGE_ROOM,
@@ -65,6 +70,10 @@ N_ROOM_55_KEYED = "room_55_keyed"
 # Outdoor hedge pocket after secret-entrance stairs exit (screen 0x1B).
 N_COURTYARD_SECRET_POCKET = "courtyard_secret_pocket"
 N_ROOM_61 = "room_61"
+# West of main hall (Zelda path edge; isolated clear+exit 2026-07-31).
+N_ROOM_60 = "room_60"
+# North of 0x60 (Zelda path hop; isolated 2026-07-31).
+N_ROOM_50 = "room_50"
 N_ROOM_80 = "room_80"
 N_CASTLE_MANTLE = "castle_mantle"
 N_SEWERS_DARK = "sewers_dark"
@@ -78,6 +87,13 @@ VERIFICATION_PLANNED = "planned"
 VERIFICATION_ISOLATED = "isolated"  # works from a save-state, not natural-entry
 VERIFICATION_NATURAL_ENTRY = "natural_entry"  # from real predecessor segment
 VERIFICATION_CONTINUOUS = "continuous"  # on continuous spine claim
+
+# Route-path tags (edge meta ``path``; missing defaults to primary).
+PATH_PRIMARY = "primary"
+PATH_INTERNAL_KEY = "internal_key"
+_BOTH_PATHS: frozenset[str] = frozenset({PATH_PRIMARY, PATH_INTERNAL_KEY})
+_PRIMARY_ONLY: frozenset[str] = frozenset({PATH_PRIMARY})
+_KEY_ONLY: frozenset[str] = frozenset({PATH_INTERNAL_KEY})
 
 
 def _room_meta(
@@ -189,6 +205,34 @@ def escape_route_graph() -> RouteGraph:
             ),
         ),
         GraphNode(
+            node_id=N_ROOM_60,
+            name="Hyrule Castle main west (0x60)",
+            area="hyrule_castle",
+            tags=frozenset({"indoors", "escape", "isolated"}),
+            meta=_room_meta(
+                HYRULE_CASTLE_MAIN_WEST_ROOM,
+                z3_label="Hyrule Castle",
+                extra={
+                    "note": "West of main hall; geometry maps/room_60.json",
+                    "map_id": "room_60",
+                },
+            ),
+        ),
+        GraphNode(
+            node_id=N_ROOM_50,
+            name="Hyrule Castle NW chamber (0x50)",
+            area="hyrule_castle",
+            tags=frozenset({"indoors", "escape", "isolated"}),
+            meta=_room_meta(
+                HYRULE_CASTLE_NW_ROOM,
+                z3_label="Hyrule Castle",
+                extra={
+                    "note": "North of 0x60 on Zelda path; geometry maps/room_50.json",
+                    "map_id": "room_50",
+                },
+            ),
+        ),
+        GraphNode(
             node_id=N_ROOM_80,
             name="Zelda's cell",
             area="hyrule_castle",
@@ -196,6 +240,7 @@ def escape_route_graph() -> RouteGraph:
             meta=_room_meta(
                 ZELDA_CELL_ROOM,
                 z3_label="Hyrule Castle - Zelda's Chest",
+                extra={"map_id": "room_80"},
             ),
         ),
         GraphNode(
@@ -234,7 +279,7 @@ def escape_route_graph() -> RouteGraph:
     )
 
     edges = (
-        # --- continuous (STATUS-proven) ------------------------------------
+        # --- continuous primary outdoor path (STATUS-proven) ----------------
         GraphEdge(
             source_id=N_CASTLE_GROUNDS,
             target_id=N_ROOM_55_UNCLE,
@@ -243,6 +288,7 @@ def escape_route_graph() -> RouteGraph:
             verification=VERIFICATION_CONTINUOUS,
             provenance="castle_to_sword.SECRET_HOLE_ENTRY_SCRIPT",
             meta={
+                "path": PATH_PRIMARY,
                 "status_fact": "grounds→hole",
                 "z3_label": "Hyrule Castle Secret Entrance Drop",
             },
@@ -254,7 +300,7 @@ def escape_route_graph() -> RouteGraph:
             direction="npc",
             verification=VERIFICATION_CONTINUOUS,
             provenance="castle_to_sword.uncle_dialogue",
-            meta={"status_fact": "hole→sword"},
+            meta={"path": PATH_PRIMARY, "status_fact": "hole→sword"},
         ),
         GraphEdge(
             source_id=N_ROOM_55_SWORD,
@@ -263,8 +309,9 @@ def escape_route_graph() -> RouteGraph:
             direction="south",
             requires=frozenset({CAP_FIGHTER_SWORD}),
             verification=VERIFICATION_CONTINUOUS,
-            provenance="sword_to_zelda.SWORD_TO_SOUTH_CHAMBER_SCRIPT",
+            provenance="secret_entrance_clear.SWORD_TO_SOUTH_CHAMBER_SCRIPT",
             meta={
+                "path": PATH_PRIMARY,
                 "status_fact": "sword→south chamber",
                 "script": "LEFT×100 + DOWN×250",
             },
@@ -278,11 +325,10 @@ def escape_route_graph() -> RouteGraph:
             direction="down",
             requires=frozenset({CAP_FIGHTER_SWORD}),
             verification=VERIFICATION_CONTINUOUS,
-            provenance="sword_to_zelda.exit_secret_entrance_stairs",
+            provenance="secret_entrance_clear.exit_secret_entrance_stairs",
             meta={
+                "path": PATH_PRIMARY,
                 "status_fact": "secret-entrance clear (stairs → outdoors)",
-                "stairs_align_xy": (2672, 2916),
-                "landing_xy_approx": (2248, 1755),
                 "tier": "trigger",
             },
         ),
@@ -296,6 +342,7 @@ def escape_route_graph() -> RouteGraph:
             verification=VERIFICATION_CONTINUOUS,
             provenance="pocket_to_main_hall.run_from_pocket",
             meta={
+                "path": PATH_PRIMARY,
                 "status_fact": "pocket→main hall 0x61",
                 "to_room_base_id": HYRULE_CASTLE_MAIN_HALL_ROOM,
                 "door_approach_xy": (2040, 1790),
@@ -318,7 +365,7 @@ def escape_route_graph() -> RouteGraph:
             provenance="planned.sword_to_zelda_key",
             meta={
                 "note": "alternate: clear soldiers; collect small key in 0x55",
-                "path": "internal_key",
+                "path": PATH_INTERNAL_KEY,
             },
         ),
         GraphEdge(
@@ -332,20 +379,60 @@ def escape_route_graph() -> RouteGraph:
             meta={
                 "note": "alternate key/shutter path out of 0x55",
                 "to_room_base_id": HYRULE_CASTLE_MAIN_HALL_ROOM,
-                "path": "internal_key",
+                "path": PATH_INTERNAL_KEY,
             },
         ),
+        # --- isolated: main hall west door → room 0x60 ------------------------
+        # Geometry (approach/landing) lives only in maps/room_61.json.
         GraphEdge(
             source_id=N_ROOM_61,
+            target_id=N_ROOM_60,
+            edge_id="main_hall_west_to_0x60",
+            direction="west",
+            requires=frozenset({CAP_FIGHTER_SWORD}),
+            verification=VERIFICATION_ISOLATED,
+            provenance="room_engine.room_61.west_to_0x60",
+            meta={
+                "path": PATH_PRIMARY,
+                "to_room_base_id": HYRULE_CASTLE_MAIN_WEST_ROOM,
+                "door_label": "west_to_0x60",
+                "map_id": "room_61",
+                "note": "Clear hostiles + side corridor + LEFT push (CastleMain 3/3)",
+            },
+        ),
+        # --- isolated: room 0x60 north → room 0x50 -----------------------------
+        GraphEdge(
+            source_id=N_ROOM_60,
+            target_id=N_ROOM_50,
+            edge_id="room_60_north_to_0x50",
+            direction="north",
+            requires=frozenset({CAP_FIGHTER_SWORD}),
+            verification=VERIFICATION_ISOLATED,
+            provenance="room_engine.room_60.north_to_0x50",
+            meta={
+                "path": PATH_PRIMARY,
+                "to_room_base_id": HYRULE_CASTLE_NW_ROOM,
+                "door_label": "north_to_0x50",
+                "map_id": "room_60",
+                "note": "North shaft → UP (maps/room_60.json)",
+            },
+        ),
+        # --- planned primary: after 0x50 → Zelda cell / escort / Sanctuary ----
+        GraphEdge(
+            source_id=N_ROOM_50,
             target_id=N_ROOM_80,
-            edge_id="main_hall_to_zelda_cell",
+            edge_id="room_50_to_zelda_cell",
             direction="east",
             requires=frozenset({CAP_FIGHTER_SWORD}),
             verification=VERIFICATION_PLANNED,
-            provenance="planned.castle_to_zelda_cell",
+            provenance="planned.b1_to_zelda_cell",
             meta={
+                "path": PATH_PRIMARY,
                 "to_room_base_id": ZELDA_CELL_ROOM,
-                "note": "coarse hop; intermediate B1 rooms not expanded",
+                "note": (
+                    "Measured next hop candidates: 0x50→0x01→…; B1 0x81/0x82/0x72 "
+                    "maps exist. Intermediate rooms not yet continuous."
+                ),
             },
         ),
         GraphEdge(
@@ -359,6 +446,7 @@ def escape_route_graph() -> RouteGraph:
             verification=VERIFICATION_PLANNED,
             provenance="planned.zelda_escort_mantle",
             meta={
+                "path": PATH_PRIMARY,
                 "note": "rescue Zelda then escort to rear mantle / throne",
                 "z3_label": "Throne Room",
             },
@@ -372,6 +460,7 @@ def escape_route_graph() -> RouteGraph:
             verification=VERIFICATION_PLANNED,
             provenance="planned.mantle_sewer_push",
             meta={
+                "path": PATH_PRIMARY,
                 "note": "mantle checks lamp + Zelda; opens dark sewers",
                 "z3_label": "Throne Room → Sewers (Dark)",
             },
@@ -385,6 +474,7 @@ def escape_route_graph() -> RouteGraph:
             verification=VERIFICATION_PLANNED,
             provenance="planned.sewers_sanctuary_push",
             meta={
+                "path": PATH_PRIMARY,
                 "to_room_base_id": SANCTUARY_ROOM,
                 "z3_label": "Sanctuary Push Door",
             },
@@ -393,163 +483,206 @@ def escape_route_graph() -> RouteGraph:
     return RouteGraph(nodes, edges)
 
 
+# ---------------------------------------------------------------------------
+# Single hop table — primary + key-path Sanctuary plans share one definition
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _EscapeHop:
+    """One planned hop; ``paths`` selects which Sanctuary plans include it."""
+
+    leg_id: str
+    source_id: str
+    target_id: str
+    requires: frozenset[str] = field(default_factory=frozenset)
+    acquires: frozenset[str] = field(default_factory=frozenset)
+    goal: str = ""
+    paths: frozenset[str] = field(default_factory=lambda: _PRIMARY_ONLY)
+
+
+# Ordered along each plan. Outdoor continuous + key alternate diverge after
+# room_55_south; both rejoin at room_61 for the shared Zelda→Sanctuary tail.
+_ESCAPE_HOPS: tuple[_EscapeHop, ...] = (
+    # --- shared through south chamber ---------------------------------------
+    _EscapeHop(
+        leg_id="grounds_to_hole",
+        source_id=N_CASTLE_GROUNDS,
+        target_id=N_ROOM_55_UNCLE,
+        goal="enter_secret_passage_0x55",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="uncle_fighter_sword",
+        source_id=N_ROOM_55_UNCLE,
+        target_id=N_ROOM_55_SWORD,
+        acquires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="fighter_sword_equip_ram",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="sword_to_south_chamber",
+        source_id=N_ROOM_55_SWORD,
+        target_id=N_ROOM_55_SOUTH,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="room_55_south_chamber",
+        paths=_BOTH_PATHS,
+    ),
+    # --- primary outdoor continuous path ------------------------------------
+    _EscapeHop(
+        leg_id="south_stairs_to_courtyard_pocket",
+        source_id=N_ROOM_55_SOUTH,
+        target_id=N_COURTYARD_SECRET_POCKET,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="secret_entrance_exited",
+        paths=_PRIMARY_ONLY,
+    ),
+    _EscapeHop(
+        leg_id="pocket_to_main_hall",
+        source_id=N_COURTYARD_SECRET_POCKET,
+        target_id=N_ROOM_61,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="enter_main_castle_door",
+        paths=_PRIMARY_ONLY,
+    ),
+    # --- alternate internal key path ----------------------------------------
+    _EscapeHop(
+        leg_id="south_clear_small_key",
+        source_id=N_ROOM_55_SOUTH,
+        target_id=N_ROOM_55_KEYED,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        acquires=frozenset({CAP_SMALL_KEY}),
+        goal="room_55_small_key",
+        paths=_KEY_ONLY,
+    ),
+    _EscapeHop(
+        leg_id="exit_to_main_hall",
+        source_id=N_ROOM_55_KEYED,
+        target_id=N_ROOM_61,
+        requires=frozenset({CAP_FIGHTER_SWORD, CAP_SMALL_KEY}),
+        goal="reach_room_61",
+        paths=_KEY_ONLY,
+    ),
+    # --- shared post-main-hall (west + north isolated; Zelda planned) -------
+    _EscapeHop(
+        leg_id="main_hall_west_to_0x60",
+        source_id=N_ROOM_61,
+        target_id=N_ROOM_60,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="reach_room_60_west",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="room_60_north_to_0x50",
+        source_id=N_ROOM_60,
+        target_id=N_ROOM_50,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="reach_room_50_nw",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="room_50_to_zelda_cell",
+        source_id=N_ROOM_50,
+        target_id=N_ROOM_80,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="reach_zelda_cell_0x80",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="rescue_zelda",
+        source_id=N_ROOM_80,
+        target_id=N_CASTLE_MANTLE,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        acquires=frozenset({CAP_ZELDA_FOLLOWER}),
+        goal="follower_indicator_zelda",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="mantle_to_dark_sewers",
+        source_id=N_CASTLE_MANTLE,
+        target_id=N_SEWERS_DARK,
+        requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
+        goal="enter_dark_sewers",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="sewers_to_sanctuary",
+        source_id=N_SEWERS_DARK,
+        target_id=N_SANCTUARY,
+        requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
+        goal="reach_sanctuary_0x12",
+        paths=_BOTH_PATHS,
+    ),
+)
+
+
+def _hop_to_leg(hop: _EscapeHop) -> RouteLeg:
+    return RouteLeg(
+        leg_id=hop.leg_id,
+        source_id=hop.source_id,
+        target_id=hop.target_id,
+        requires=hop.requires,
+        acquires=hop.acquires,
+        goal=hop.goal,
+    )
+
+
+def _edge_path(edge: GraphEdge) -> str:
+    """Return edge meta path; missing defaults to primary."""
+    raw = edge.meta.get("path", PATH_PRIMARY)
+    return str(raw) if raw is not None else PATH_PRIMARY
+
+
+def _planned_legs_for_path(path: str) -> tuple[RouteLeg, ...]:
+    """Build a contiguous Sanctuary plan for ``path`` from the shared hop table."""
+    return tuple(_hop_to_leg(hop) for hop in _ESCAPE_HOPS if path in hop.paths)
+
+
 def continuous_spine_legs() -> tuple[RouteLeg, ...]:
     """Verified continuous tip: grounds → secret clear → main hall (0x61).
 
-    This is the truthful continuous claim as of STATUS. Further legs toward
-    Zelda/Sanctuary remain planned (see :func:`escape_route_legs`).
+    Derived from primary-path hops whose matching graph edge is continuous.
+    Further legs toward Zelda/Sanctuary remain planned (see
+    :func:`escape_route_legs`).
     """
-    return (
-        RouteLeg(
-            leg_id="grounds_to_hole",
-            source_id=N_CASTLE_GROUNDS,
-            target_id=N_ROOM_55_UNCLE,
-            goal="enter_secret_passage_0x55",
-        ),
-        RouteLeg(
-            leg_id="uncle_fighter_sword",
-            source_id=N_ROOM_55_UNCLE,
-            target_id=N_ROOM_55_SWORD,
-            acquires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="fighter_sword_equip_ram",
-        ),
-        RouteLeg(
-            leg_id="sword_to_south_chamber",
-            source_id=N_ROOM_55_SWORD,
-            target_id=N_ROOM_55_SOUTH,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="room_55_south_chamber",
-        ),
-        RouteLeg(
-            leg_id="south_stairs_to_courtyard_pocket",
-            source_id=N_ROOM_55_SOUTH,
-            target_id=N_COURTYARD_SECRET_POCKET,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="secret_entrance_exited",
-        ),
-        RouteLeg(
-            leg_id="pocket_to_main_hall",
-            source_id=N_COURTYARD_SECRET_POCKET,
-            target_id=N_ROOM_61,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="enter_main_castle_door",
-        ),
-    )
+    graph = escape_route_graph()
+    legs: list[RouteLeg] = []
+    for hop in _ESCAPE_HOPS:
+        if PATH_PRIMARY not in hop.paths:
+            continue
+        edge = graph.edge_for(hop.source_id, hop.target_id)
+        if edge is None:
+            continue
+        if edge.verification != VERIFICATION_CONTINUOUS:
+            continue
+        if _edge_path(edge) != PATH_PRIMARY:
+            continue
+        legs.append(_hop_to_leg(hop))
+    return tuple(legs)
 
 
 def escape_route_legs() -> tuple[RouteLeg, ...]:
     """Contiguous legs: castle grounds → Sanctuary with capability acquires.
 
     Primary plan uses the outdoor continuous path through the courtyard
-    pocket, then planned main-door / B1 / Zelda / escort legs. The internal
-    key/shutter path remains on the graph as an alternate (work-queue focus)
-    but is not the default Sanctuary plan.
+    pocket, then planned B1 / Zelda / escort legs. The internal key/shutter
+    path remains on the graph as an alternate (``path: internal_key``;
+    demoted in the work queue) but is not the default Sanctuary plan.
 
     Initial inventory after a natural house exit is typically just ``lamp``.
     ``fighter_sword`` is acquired at the uncle leg; ``zelda_follower`` when
     the cell rescue completes.
     """
-    return continuous_spine_legs() + (
-        RouteLeg(
-            leg_id="main_hall_to_zelda_cell",
-            source_id=N_ROOM_61,
-            target_id=N_ROOM_80,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="reach_zelda_cell_0x80",
-        ),
-        RouteLeg(
-            leg_id="rescue_zelda",
-            source_id=N_ROOM_80,
-            target_id=N_CASTLE_MANTLE,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            acquires=frozenset({CAP_ZELDA_FOLLOWER}),
-            goal="follower_indicator_zelda",
-        ),
-        RouteLeg(
-            leg_id="mantle_to_dark_sewers",
-            source_id=N_CASTLE_MANTLE,
-            target_id=N_SEWERS_DARK,
-            requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
-            goal="enter_dark_sewers",
-        ),
-        RouteLeg(
-            leg_id="sewers_to_sanctuary",
-            source_id=N_SEWERS_DARK,
-            target_id=N_SANCTUARY,
-            requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
-            goal="reach_sanctuary_0x12",
-        ),
-    )
+    return _planned_legs_for_path(PATH_PRIMARY)
 
 
 def escape_route_legs_key_path() -> tuple[RouteLeg, ...]:
-    """Alternate Sanctuary plan via internal 0x55 key/shutter (work queue)."""
-    return (
-        RouteLeg(
-            leg_id="grounds_to_hole",
-            source_id=N_CASTLE_GROUNDS,
-            target_id=N_ROOM_55_UNCLE,
-            goal="enter_secret_passage_0x55",
-        ),
-        RouteLeg(
-            leg_id="uncle_fighter_sword",
-            source_id=N_ROOM_55_UNCLE,
-            target_id=N_ROOM_55_SWORD,
-            acquires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="fighter_sword_equip_ram",
-        ),
-        RouteLeg(
-            leg_id="sword_to_south_chamber",
-            source_id=N_ROOM_55_SWORD,
-            target_id=N_ROOM_55_SOUTH,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="room_55_south_chamber",
-        ),
-        RouteLeg(
-            leg_id="south_clear_small_key",
-            source_id=N_ROOM_55_SOUTH,
-            target_id=N_ROOM_55_KEYED,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            acquires=frozenset({CAP_SMALL_KEY}),
-            goal="room_55_small_key",
-        ),
-        RouteLeg(
-            leg_id="exit_to_main_hall",
-            source_id=N_ROOM_55_KEYED,
-            target_id=N_ROOM_61,
-            requires=frozenset({CAP_FIGHTER_SWORD, CAP_SMALL_KEY}),
-            goal="reach_room_61",
-        ),
-        RouteLeg(
-            leg_id="main_hall_to_zelda_cell",
-            source_id=N_ROOM_61,
-            target_id=N_ROOM_80,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            goal="reach_zelda_cell_0x80",
-        ),
-        RouteLeg(
-            leg_id="rescue_zelda",
-            source_id=N_ROOM_80,
-            target_id=N_CASTLE_MANTLE,
-            requires=frozenset({CAP_FIGHTER_SWORD}),
-            acquires=frozenset({CAP_ZELDA_FOLLOWER}),
-            goal="follower_indicator_zelda",
-        ),
-        RouteLeg(
-            leg_id="mantle_to_dark_sewers",
-            source_id=N_CASTLE_MANTLE,
-            target_id=N_SEWERS_DARK,
-            requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
-            goal="enter_dark_sewers",
-        ),
-        RouteLeg(
-            leg_id="sewers_to_sanctuary",
-            source_id=N_SEWERS_DARK,
-            target_id=N_SANCTUARY,
-            requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
-            goal="reach_sanctuary_0x12",
-        ),
-    )
+    """Alternate Sanctuary plan via internal 0x55 key/shutter (work queue).
+
+    Post-``room_61`` legs are the same shared hop-table tail as the primary
+    plan (not a hand-copied Sanctuary sequence).
+    """
+    return _planned_legs_for_path(PATH_INTERNAL_KEY)
 
 
 def escape_route_legs_from_room_55() -> tuple[RouteLeg, ...]:

@@ -361,16 +361,60 @@ def test_k4_graph_locks_varia_return_edge_contract() -> None:
     ]
     assert [edge.verification for edge in path] == [
         "controller_dev",
-        "unverified",
-        "unverified",
-        "unverified",
-        "unverified",
-        "unverified",
+        "controller_dev",  # pure green SM-K4-06E; still not continuous
+        "controller_dev",  # pure green SM-K4-R-01B; still not continuous
+        "controller_dev",  # pure green baby→kihunter (supers clear); still not continuous
+        "controller_dev",  # pure green kihunter→zeela climb redesign
+        "controller_dev",  # pure green SM-K4-R-ZEELA-REDESIGN ~1800f; still not continuous
         "continuous",
     ]
 
 
-def test_k4_graph_keeps_kraid_to_eye_unverified_until_pure_green() -> None:
+def test_k4_reverse_pure_edges_cannot_inflate_to_continuous() -> None:
+    from super_metroid.progression import START_TO_SPEED_GRAPH
+
+    edges = {
+        edge.edge_id: edge for edge in START_TO_SPEED_GRAPH.edges
+    }
+
+    assert edges["kihunter_to_zeela_return"].verification == "controller_dev"
+    assert edges["zeela_to_warehouse_return"].verification not in {
+        "continuous",
+    }
+    assert [
+        edges[edge_id].verification
+        for edge_id in (
+            "kraid_to_eye_return",
+            "eye_to_baby_return",
+            "baby_to_kihunter_return",
+        )
+    ] == ["controller_dev", "controller_dev", "controller_dev"]
+
+    caps = frozenset(
+        {
+            "morph_ball",
+            "bombs",
+            "missiles",
+            "super_missiles",
+            "hi_jump",
+            "varia_suit",
+        }
+    )
+    summary = START_TO_SPEED_GRAPH.path_verification(0xA59F, 0xA6A1, caps)
+
+    assert summary["reachable"] is True
+    assert summary["all_continuous"] is False
+    assert summary["blocking"] == "kraid_to_eye_return"
+    assert [edge["verification"] for edge in summary["edges"]] == [
+        "controller_dev",
+        "controller_dev",
+        "controller_dev",
+        "controller_dev",
+        "controller_dev",  # zeela→warehouse pure green; still not continuous
+    ]
+
+
+def test_k4_graph_locks_kraid_to_eye_controller_dev_after_pure_green() -> None:
     from super_metroid.progression import START_TO_SPEED_GRAPH
 
     edge = next(
@@ -379,10 +423,11 @@ def test_k4_graph_keeps_kraid_to_eye_unverified_until_pure_green() -> None:
         if edge.edge_id == "kraid_to_eye_return"
     )
 
-    assert edge.verification == "unverified"
+    # Pure green (SM-K4-06E) promotes to controller_dev only — not continuous.
+    assert edge.verification == "controller_dev"
 
 
-def test_k4_reverse_business_path_is_not_continuous_ready_with_eye_unverified() -> None:
+def test_k4_reverse_business_path_is_not_continuous_ready() -> None:
     from super_metroid.progression import START_TO_SPEED_GRAPH
 
     caps = frozenset(
@@ -405,7 +450,7 @@ def test_k4_reverse_business_path_is_not_continuous_ready_with_eye_unverified() 
         for edge in summary["edges"]
         if edge["edgeId"] == "kraid_to_eye_return"
     )
-    assert eye["verification"] == "unverified"
+    assert eye["verification"] == "controller_dev"
 
 
 def test_k4_reverse_fixture_promotes_eye_only_after_varia_hop_is_continuous() -> None:
@@ -481,7 +526,8 @@ def test_k4_kraid_next_hop_does_not_rank_eye_return_as_continuous() -> None:
     eye = next(edge for edge in hops if edge.edge_id == "kraid_to_eye_return")
     assert hops[0].verification == "continuous"
     assert hops.index(eye) > 0
-    assert eye.verification == "unverified"
+    # Pure-green reverse hop is controller_dev, never ranked as continuous here.
+    assert eye.verification == "controller_dev"
 
 
 def test_path_verification_blocks_first_non_continuous_edge_on_local_k4_fixture() -> None:

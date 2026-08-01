@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 97,
+  "roomHex": "0x61",
+  "name": "Hyrule Castle main hall",
+  "measured": "2026-07-31",
+  "sourceState": "CastleMain",
+  "points": [
+    {"label": "entry_spawn", "xy": [760, 3520], "role": "spawn", "notes": "CastleMain load; south of carpet"},
+    {"label": "south_mid", "xy": [720, 3400], "role": "waypoint", "notes": "Between entry and side corridor"},
+    {"label": "hall_corridor", "xy": [720, 3320], "role": "waypoint", "notes": "Side-corridor y; unlocks west/east doors"},
+    {"label": "west_mid", "xy": [600, 3320], "role": "waypoint", "notes": ""},
+    {"label": "west_door_approach", "xy": [520, 3320], "role": "approach", "notes": "Hold LEFT → room 0x60"},
+    {"label": "east_door_approach", "xy": [960, 3320], "role": "approach", "notes": "Hold RIGHT → room 0x62"},
+    {"label": "south_door_approach", "xy": [760, 3496], "role": "approach", "notes": "Hold DOWN → outdoors courtyard 0x1B"}
+  ],
+  "doors": [
+    {
+      "label": "west_to_0x60",
+      "direction": "LEFT",
+      "toRoom": 96,
+      "toRoomHex": "0x60",
+      "approachXy": [520, 3320],
+      "landingXy": [511, 3320],
+      "role": "zelda_path",
+      "path": ["south_mid", "hall_corridor", "west_mid", "west_door_approach"],
+      "pathTolerances": {"south_mid": 16, "default": 12},
+      "pushFrames": 300,
+      "notes": "Primary Zelda path; isolated 2026-07-31 from CastleMain"
+    },
+    {
+      "label": "east_to_0x62",
+      "direction": "RIGHT",
+      "toRoom": 98,
+      "toRoomHex": "0x62",
+      "approachXy": [960, 3320],
+      "landingXy": null,
+      "role": "alternate",
+      "path": ["south_mid", "hall_corridor", "east_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": ""
+    },
+    {
+      "label": "south_to_courtyard",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 27,
+      "approachXy": [760, 3496],
+      "landingXy": [2040, 1740],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": ""
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [576, 3176, 960, 3520],
+  "hostilesAtEntry": [
+    {"type": "0x42", "xy": [704, 3296]},
+    {"type": "0x4b", "xy": [720, 3360]},
+    {"type": "0x4b", "xy": [800, 3360]}
+  ],
+  "z3Label": "Hyrule Castle",
+  "notes": [
+    "Side corridor y≈3320 unlocks west/east doors.",
+    "Pure UP on carpet mid-line wedges at y≈3352.",
+    "US/JP vanilla room ids match for this layout (logic labels from z3-json-data).",
+    "Authority: maps/room_61.json (load via alttp.room_sense.load_room_map)."
+  ]
+}

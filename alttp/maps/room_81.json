@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 129,
+  "roomHex": "0x81",
+  "name": "Hyrule Castle B1 west",
+  "measured": "2026-07-31",
+  "sourceState": "CastleB1WestRoom",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_spawn", "xy": [912, 4496], "role": "spawn", "notes": "CastleB1WestRoom south door area"},
+    {"label": "green_room", "xy": [776, 4316], "role": "waypoint", "notes": "CastleB1GreenRoom load"},
+    {"label": "zelda_west", "xy": [632, 4152], "role": "waypoint", "notes": "CastleZeldaB1West; near north door to 0x71"},
+    {"label": "east_door_approach", "xy": [960, 4496], "role": "approach", "notes": "Hold RIGHT → room 0x82"},
+    {"label": "north_door_approach", "xy": [632, 4140], "role": "approach", "notes": "Hold UP → room 0x71"}
+  ],
+  "doors": [
+    {
+      "label": "east_to_0x82",
+      "direction": "RIGHT",
+      "toRoom": 130,
+      "toRoomHex": "0x82",
+      "approachXy": [960, 4496],
+      "landingXy": [1002, 4496],
+      "role": "primary",
+      "path": ["east_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 100,
+      "notes": "Measured from CastleB1WestRoom"
+    },
+    {
+      "label": "north_to_0x71",
+      "direction": "UP",
+      "toRoom": 113,
+      "toRoomHex": "0x71",
+      "approachXy": [632, 4140],
+      "landingXy": [632, 4113],
+      "role": "zelda_path",
+      "path": ["zelda_west", "north_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 80,
+      "notes": "From CastleZeldaB1West UP 26f → 0x71"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 400,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 100
+  },
+  "walkBbox": [608, 4140, 1002, 4496],
+  "hostilesAtEntry": [
+    {"type": "0x42", "xy": [688, 4318]},
+    {"type": "0x42", "xy": [736, 4367]},
+    {"type": "0x41", "xy": [756, 4419]},
+    {"type": "0x41", "xy": [720, 4353]},
+    {"type": "0x41", "xy": [756, 4415]}
+  ],
+  "notes": [
+    "B1 west wing: green room combat (CastleB1GreenRoom) + Zelda-side north to 0x71.",
+    "Hostiles listed from green-room state; WestRoom spawn may be cleared.",
+    "Authority: maps/room_81.json"
+  ]
+}

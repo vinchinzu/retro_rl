@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a051_from_a011_to_a011",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Etacoon Super Room (0xA051); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8F3A",
+    "entrySourceRoomIdHex": "0xA011",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 36666,
+    "entrySourceRoomId": 40977
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 40977,
+      "sourceRoomIdHex": "0xA011",
+      "endpoint": {
+        "roomId": 41041,
+        "roomIdHex": "0xA051",
+        "logicalRoomId": 52,
+        "nodeId": 1,
+        "nodeName": "Etecoon Supers Door (to Etecoon E-Tank)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 40977,
+      "targetRoomIdHex": "0xA011",
+      "endpoint": {
+        "roomId": 41041,
+        "roomIdHex": "0xA051",
+        "logicalRoomId": 52,
+        "nodeId": 1,
+        "nodeName": "Etecoon Supers Door (to Etecoon E-Tank)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        7,
+        9
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 9,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          7,
+          9
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 106
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 122
+    },
+    {
+      "label": "item_recovery_up",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "item_recovery_jump",
+      "buttons": [
+        "A"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "item_recovery_land",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T02:54:11.846708+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a051_from_a011_to_a011.json",
+    "reportSha256": "fa31ba51bc1532e3fce5e737a913d2fcffbea29df26405e9ece31a40b9013814",
+    "stateSha256": "50d6e691434c32251ad6cc7ec106a72a1d873498cc1e8ba75f27fb08b305dcb9",
+    "policySha256Before": "7e42aca9f494c63f51cbd067f512e2e6ee447703df401f2b684a122f8d77c1ca"
+  }
+}

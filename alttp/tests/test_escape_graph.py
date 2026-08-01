@@ -16,12 +16,15 @@ from alttp.escape_graph import (
     N_ROOM_55_SOUTH,
     N_ROOM_55_SWORD,
     N_ROOM_55_UNCLE,
+    N_ROOM_50,
+    N_ROOM_60,
     N_ROOM_61,
     N_ROOM_80,
     N_SANCTUARY,
     N_SEWERS_DARK,
     NATURAL_HOUSE_EXIT_CAPABILITIES,
     VERIFICATION_CONTINUOUS,
+    VERIFICATION_ISOLATED,
     VERIFICATION_PLANNED,
     capabilities_from_snapshot,
     continuous_spine_legs,
@@ -33,6 +36,8 @@ from alttp.escape_graph import (
 )
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
+    HYRULE_CASTLE_MAIN_WEST_ROOM,
+    HYRULE_CASTLE_NW_ROOM,
     SANCTUARY_ROOM,
     SECRET_PASSAGE_ROOM,
     ZELDA_CELL_ROOM,
@@ -65,8 +70,8 @@ def _snap(**kwargs: object) -> AlttpSnapshot:
 
 def test_escape_graph_builds_and_nodes_cover_edges() -> None:
     graph = escape_route_graph()
-    assert len(graph.nodes) >= 11
-    assert len(graph.edges) >= 10
+    assert len(graph.nodes) >= 13
+    assert len(graph.edges) >= 12
     # RouteGraph constructor already rejects missing endpoints; re-check pairs.
     for edge in graph.edges:
         assert edge.source_id in graph.nodes
@@ -76,6 +81,8 @@ def test_escape_graph_builds_and_nodes_cover_edges() -> None:
     assert graph.nodes[N_ROOM_55_UNCLE].meta["room_base_id"] == SECRET_PASSAGE_ROOM
     assert graph.nodes[N_ROOM_55_SOUTH].meta["room_base_id"] == SECRET_PASSAGE_ROOM
     assert graph.nodes[N_ROOM_61].meta["room_base_id"] == HYRULE_CASTLE_MAIN_HALL_ROOM
+    assert graph.nodes[N_ROOM_60].meta["room_base_id"] == HYRULE_CASTLE_MAIN_WEST_ROOM
+    assert graph.nodes[N_ROOM_50].meta["room_base_id"] == HYRULE_CASTLE_NW_ROOM
     assert graph.nodes[N_ROOM_80].meta["room_base_id"] == ZELDA_CELL_ROOM
     assert graph.nodes[N_SANCTUARY].meta["room_base_id"] == SANCTUARY_ROOM
     assert graph.nodes[N_COURTYARD_SECRET_POCKET].meta["screen_id"] == 0x1B
@@ -90,10 +97,17 @@ def test_verified_edges_are_continuous() -> None:
         (N_ROOM_55_SOUTH, N_COURTYARD_SECRET_POCKET),
         (N_COURTYARD_SECRET_POCKET, N_ROOM_61),
     }
+    isolated_pairs = {
+        (N_ROOM_61, N_ROOM_60): "west",
+        (N_ROOM_60, N_ROOM_50): "north",
+    }
     for edge in graph.edges:
         pair = (edge.source_id, edge.target_id)
         if pair in continuous_pairs:
             assert edge.verification == VERIFICATION_CONTINUOUS, edge.edge_id
+        elif pair in isolated_pairs:
+            assert edge.verification == VERIFICATION_ISOLATED, edge.edge_id
+            assert edge.direction == isolated_pairs[pair]
         else:
             assert edge.verification == VERIFICATION_PLANNED, edge.edge_id
 
@@ -146,6 +160,28 @@ def test_key_path_plan_still_acquires_small_key() -> None:
     assert CAP_SMALL_KEY in planned[-1].capabilities_after
     assert N_ROOM_55_KEYED in (
         [p.leg.source_id for p in planned] + [planned[-1].leg.target_id]
+    )
+
+
+def test_key_path_and_primary_share_post_main_hall_tail() -> None:
+    """Both Sanctuary plans derive the same shared hop-table tail after room_61."""
+    primary = escape_route_legs()
+    key = escape_route_legs_key_path()
+
+    def tail_from_main(legs: tuple[RouteLeg, ...]) -> tuple[RouteLeg, ...]:
+        idx = next(i for i, leg in enumerate(legs) if leg.source_id == N_ROOM_61)
+        return legs[idx:]
+
+    assert tail_from_main(primary) == tail_from_main(key)
+    assert CAP_SMALL_KEY not in {cap for leg in primary for cap in leg.acquires}
+    assert any(CAP_SMALL_KEY in leg.acquires for leg in key)
+    assert not any(leg.target_id == N_COURTYARD_SECRET_POCKET for leg in key)
+    assert any(leg.target_id == N_COURTYARD_SECRET_POCKET for leg in primary)
+    # West + north exits on shared tail; Zelda hop starts from room_50.
+    assert any(leg.target_id == N_ROOM_60 for leg in primary)
+    assert any(leg.target_id == N_ROOM_50 for leg in primary)
+    assert any(
+        leg.source_id == N_ROOM_50 and leg.target_id == N_ROOM_80 for leg in primary
     )
 
 

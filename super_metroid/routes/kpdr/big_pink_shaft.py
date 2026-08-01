@@ -8,6 +8,7 @@ from super_metroid.routes.controller_common import (
     hold,
     require_room,
     select_weapon,
+    settle_hold,
     unmorph,
     wait_until,
 )
@@ -56,7 +57,7 @@ def play_big_pink_crest_pocket(session: ControllerSession) -> SuperMetroidState:
         raise TimeoutError(
             f"Big Pink pocket crest failed (still x={state.samus_x}, y={state.samus_y})"
         )
-    _hold(session, 12, reason="big_pink_pocket_crest_settle")
+    settle_hold(session, 12, reason="big_pink_pocket_crest_settle")
     return session.state
 
 
@@ -77,7 +78,7 @@ def play_big_pink_clear_super_block(session: ControllerSession) -> SuperMetroidS
     _require_room(session, ROOM_BIG_PINK, "clear_super_block")
     # Unspin from crest land (pose often 0x8A ran-into-wall).
     _hold(session, 4, "A", reason="big_pink_unspin")
-    _hold(session, 40, reason="big_pink_unspin_settle")
+    settle_hold(session, 40, reason="big_pink_unspin_settle")
     try:
         _select_weapon(session, 2)
     except RuntimeError:
@@ -86,7 +87,7 @@ def play_big_pink_clear_super_block(session: ControllerSession) -> SuperMetroidS
     for _ in range(8):
         _hold(session, 3, "LEFT", "X", reason="big_pink_crouch_super")
         state = _hold(session, 18, "LEFT", "DOWN", reason="big_pink_crouch_super")
-    _hold(session, 10, reason="big_pink_super_block_settle")
+    settle_hold(session, 10, reason="big_pink_super_block_settle")
     return session.state
 
 
@@ -169,7 +170,7 @@ def play_big_pink_tunnel_west(
                 f"tunnel west left Big Pink at frame {session.frame}: {state}"
             )
         if state.samus_x <= target_x:
-            _hold(session, 10, reason="big_pink_tunnel_west_settle")
+            settle_hold(session, 10, reason="big_pink_tunnel_west_settle")
             return session.state
 
     raise TimeoutError(
@@ -187,7 +188,7 @@ def play_big_pink_drop_to_pocket(session: ControllerSession) -> SuperMetroidStat
     raised tunnel ledge.
     """
     _require_room(session, ROOM_BIG_PINK, "drop_to_pocket")
-    _hold(session, 10, reason="big_pink_pocket_drop_settle")
+    settle_hold(session, 10, reason="big_pink_pocket_drop_settle")
     _hold(session, 4, "A", reason="big_pink_pocket_drop_unspin")
     _hold(session, 25, reason="big_pink_pocket_drop_unspin")
     _hold(session, 40, "RIGHT", "B", reason="big_pink_pocket_drop")
@@ -232,7 +233,7 @@ def play_big_pink_bomb_to_walkway_edge(
     # Idle fall/land on walkway edge (no left — left pulls back to crest).
     for _ in range(50):
         state = _hold(session, 1, reason="big_pink_edge_land")
-    _hold(session, 10, reason="big_pink_edge_settle")
+    settle_hold(session, 10, reason="big_pink_edge_settle")
     return session.state
 
 
@@ -252,7 +253,6 @@ def play_big_pink_into_main_shaft(
     play_big_pink_clear_super_block(session)
     play_big_pink_morph_to_tunnel(session)
     return play_big_pink_tunnel_west(session, target_x=target_x)
-
 
 
 

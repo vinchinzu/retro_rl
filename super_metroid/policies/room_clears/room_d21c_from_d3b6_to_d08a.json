@@ -283,11 +283,12 @@
     {
       "label": "top_left",
       "buttons": [
+        "UP",
         "LEFT",
         "A",
         "B"
       ],
-      "frames": 40
+      "frames": 80
     },
     {
       "label": "uncrouch",

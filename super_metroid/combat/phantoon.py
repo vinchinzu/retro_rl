@@ -21,6 +21,9 @@ from super_metroid.routes.runtime import ControllerSession, hold
 ROOM_PHANTOON = 0xCD13
 WEAPON_MISSILES = 1
 WEAPON_SUPERS = 2
+PHANTOON_INVISIBLE = "invisible"
+PHANTOON_VULNERABLE = "vulnerable"
+PHANTOON_DEFEATED = "defeated"
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,7 @@ class PhantoonEvidence:
     final_body_hp: int
     boss_bit_set: bool
     outcome: str
+    phase_transitions: tuple[tuple[str, int], ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -64,7 +68,27 @@ class PhantoonEvidence:
             "final_body_hp": self.final_body_hp,
             "boss_bit_set": self.boss_bit_set,
             "outcome": self.outcome,
+            "phase_transitions": [
+                {"phase": phase, "frame": frame}
+                for phase, frame in self.phase_transitions
+            ],
         }
+
+
+def phantoon_phase(state: SuperMetroidState) -> str:
+    """Classify the observable Phantoon phase from typed RAM features.
+
+    The stock state surface has no eye/flame animation identifier. A live
+    enemy slot with a non-zero spritemap is therefore the vulnerable window;
+    a missing/inactive slot is treated as invisible until HP reaches zero.
+    This is deliberately a conservative heuristic pending a spritemap probe.
+    """
+    if state.enemy0_hp == 0:
+        return PHANTOON_DEFEATED
+    features = features_from_state(state, phantoon_catalog())
+    if not features.enemy_active:
+        return PHANTOON_INVISIBLE
+    return PHANTOON_VULNERABLE
 
 
 def fight_phantoon_action(
@@ -81,7 +105,8 @@ def fight_phantoon_action(
     features = features_from_state(state, catalog)
     if features.enemy_defeated or state.enemy0_hp == 0:
         return ()
-    return range_kite_action(
+    phase = phantoon_phase(state)
+    action = range_kite_action(
         state.samus_x,
         features.enemy_x,
         min_range=strategy.min_range,
@@ -90,9 +115,10 @@ def fight_phantoon_action(
         frame_index=frame_index,
         jump_period=strategy.jump_period,
         jump_hold_frames=strategy.jump_hold_frames,
-        fire_period=strategy.fire_period,
+        fire_period=strategy.fire_period if phase == PHANTOON_VULNERABLE else 0,
         fire_button="X",
     )
+    return action
 
 
 def play_phantoon_fight(
@@ -120,6 +146,8 @@ def play_phantoon_fight(
     body_zero_frame: int | None = None
     boss_bit_frame: int | None = None
     prev_hp = initial_hp
+    current_phase = phantoon_phase(session.state)
+    phase_transitions: list[tuple[str, int]] = [(current_phase, start)]
     if initial_hp == 0:
         body_zero_frame = start
 
@@ -138,6 +166,10 @@ def play_phantoon_fight(
             hold(session, 1, reason="fight_phantoon_idle")
 
         post = session.state
+        next_phase = phantoon_phase(post)
+        if next_phase != current_phase:
+            phase_transitions.append((next_phase, session.frame))
+            current_phase = next_phase
         hp = post.enemy0_hp
         if 0 <= hp <= catalog.max_hp:
             peak_hp = max(peak_hp, hp)
@@ -171,4 +203,5 @@ def play_phantoon_fight(
         final_body_hp=final_hp,
         boss_bit_set=boss_set,
         outcome=outcome,
+        phase_transitions=tuple(phase_transitions),
     )

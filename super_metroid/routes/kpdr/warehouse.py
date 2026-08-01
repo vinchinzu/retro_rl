@@ -9,6 +9,7 @@ from super_metroid.routes.controller_common import (
     play_run_shoot_exit,
     require_room,
     select_weapon,
+    settle_hold,
     unmorph,
     wait_ordinary_room,
 )
@@ -65,7 +66,7 @@ def play_warehouse_wall_to_lower_lip(
     _hold(session, 1, "X", reason="warehouse_bottom_super")
     _hold(session, 30, reason="warehouse_bottom_open")
     _hold(session, 5, "UP", reason="warehouse_stand")
-    _hold(session, 4, reason="warehouse_stand_settle")
+    settle_hold(session, 4, reason="warehouse_stand_settle")
     _hold(session, 1, "X", reason="warehouse_middle_super")
     _hold(session, 30, reason="warehouse_middle_open")
     _hold(session, 5, "A", reason="warehouse_tiny_hop")
@@ -78,7 +79,7 @@ def play_warehouse_wall_to_lower_lip(
             break
     else:
         raise TimeoutError(f"warehouse_wall: lower lip not reached: {state}")
-    _hold(session, 30, reason="warehouse_lower_lip_settle")
+    settle_hold(session, 30, reason="warehouse_lower_lip_settle")
     state = session.state
     if state.samus_x < 500 or state.samus_y < 300:
         raise TimeoutError(f"warehouse_wall: unstable lower lip: {state}")
@@ -96,7 +97,7 @@ def play_warehouse_to_business(session: ControllerSession) -> SuperMetroidState:
             break
         _hold(session, 1, "RIGHT", reason="warehouse_elevator_position")
     _hold(session, 5, "LEFT", reason="warehouse_elevator_brake")
-    _hold(session, 20, reason="warehouse_elevator_settle")
+    settle_hold(session, 20, reason="warehouse_elevator_settle")
     for _ in range(700):
         state = _hold(session, 1, "DOWN", reason="warehouse_elevator_down")
         if state.room_id == ROOM_BUSINESS:
@@ -106,6 +107,5 @@ def play_warehouse_to_business(session: ControllerSession) -> SuperMetroidState:
     return _wait_ordinary_room(
         session, ROOM_BUSINESS, settle_frames=320, label="warehouse_to_business"
     )
-
 
 

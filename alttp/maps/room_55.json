@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 85,
+  "roomHex": "0x55",
+  "name": "Hyrule Castle secret entrance",
+  "measured": "2026-07-30",
+  "sourceState": "FighterSword",
+  "z3Label": "Hyrule Castle Secret Entrance",
+  "points": [
+    {"label": "fighter_sword_spawn", "xy": [2803, 2680], "role": "spawn", "notes": "FighterSword post-uncle"},
+    {"label": "castle_55_spawn", "xy": [2680, 2752], "role": "spawn", "notes": "Castle_55"},
+    {"label": "south_chamber", "xy": [2680, 2925], "role": "waypoint", "notes": "South combat chamber ~LEFT×100 + DOWN×250 from sword"},
+    {"label": "stairs_align", "xy": [2672, 2916], "role": "approach", "notes": "Secret-entrance stairs align; HOLD DOWN → outdoors"},
+    {"label": "uncle_corridor_west", "xy": [2672, 2680], "role": "waypoint", "notes": "West walk bound from FighterSword"},
+    {"label": "uncle_corridor_east", "xy": [2992, 2680], "role": "waypoint", "notes": "East walk bound from FighterSword"}
+  ],
+  "doors": [
+    {
+      "label": "stairs_to_courtyard",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 27,
+      "approachXy": [2672, 2916],
+      "landingXy": [2248, 1755],
+      "role": "zelda_path",
+      "path": ["south_chamber", "stairs_align"],
+      "pathTolerances": {"south_chamber": 24, "default": 12},
+      "pushFrames": 200,
+      "notes": "Continuous secret-entrance clear; off-center deep south soft-locks"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 200,
+    "attackDistance": 50,
+    "maxCycles": 400,
+    "skirmishMaxDistance": 100,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 100
+  },
+  "walkBbox": [2672, 2664, 2992, 2960],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Multi-screen secret entrance (uncle + south combat + stairs).",
+    "Continuous spine already scripts this; map is geometry authority for agents.",
+    "Internal key/shutter path is alternate — not primary doors here.",
+    "Authority: maps/room_55.json"
+  ]
+}

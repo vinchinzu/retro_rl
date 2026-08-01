@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 81,
+  "roomHex": "0x51",
+  "name": "Hyrule Castle throne / mantle approach",
+  "measured": "2026-07-31",
+  "sourceState": "CastleRoom51",
+  "z3Label": "Throne Room",
+  "points": [
+    {"label": "entry_spawn", "xy": [760, 2985], "role": "spawn", "notes": "CastleRoom51"},
+    {"label": "south_door_approach", "xy": [760, 2990], "role": "approach", "notes": "Hold DOWN → room 0x61"},
+    {"label": "north_extent", "xy": [760, 2620], "role": "waypoint", "notes": "North walk toward mantle"},
+    {"label": "mantle_zelda", "xy": [760, 2631], "role": "waypoint", "notes": "CastleMantleZelda load (follower=1)"},
+    {"label": "west_extent", "xy": [640, 2984], "role": "waypoint", "notes": ""},
+    {"label": "east_extent", "xy": [880, 2984], "role": "waypoint", "notes": ""}
+  ],
+  "doors": [
+    {
+      "label": "south_to_0x61",
+      "direction": "DOWN",
+      "toRoom": 97,
+      "toRoomHex": "0x61",
+      "approachXy": [760, 2985],
+      "landingXy": [760, 3000],
+      "role": "backtrack",
+      "path": ["entry_spawn"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 40,
+      "notes": "Spawn is already on south seam; pure DOWN (~16f). Clear may pull north — prefer --no-clear from CastleRoom51."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [640, 2620, 880, 3000],
+  "hostilesAtEntry": [
+    {"type": "0x41", "xy": [656, 2928]},
+    {"type": "0x41", "xy": [864, 2928]},
+    {"type": "0x41", "xy": [664, 2932]}
+  ],
+  "notes": [
+    "North of main hall; escort/mantle states load here with Zelda follower.",
+    "Authority: maps/room_51.json"
+  ]
+}

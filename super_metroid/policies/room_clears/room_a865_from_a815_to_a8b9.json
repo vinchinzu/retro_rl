@@ -296,8 +296,7 @@
       "buttons": [
         "LEFT",
         "A",
-        "B",
-        "X"
+        "B"
       ],
       "frames": 28
     },
@@ -305,7 +304,6 @@
       "label": "landx7",
       "buttons": [
         "LEFT",
-        "B",
         "X"
       ],
       "frames": 14

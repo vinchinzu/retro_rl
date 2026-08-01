@@ -54,35 +54,64 @@ def test_ranking_stable_and_ordered() -> None:
 
 
 def test_sanctuary_priority_policy() -> None:
-    """After sword: 0x55 / key / shutter before random B1; escort later."""
+    """Continuous tip room 0x61: main/Zelda ahead of key_shutter and Castle_55."""
     items = {i.state_name: i for i in build_catalog()}
     assert "FighterSword" in items
     assert "Castle_55" in items
+    assert "CastleMain" in items
 
-    fs = items["FighterSword"]
+    main = items["CastleMain"]
     c55 = items["Castle_55"]
-    # Critical path ranks ahead of a random B1 island clear when present.
-    if "CastleB1IslandCleared" in items:
-        island = items["CastleB1IslandCleared"]
-        assert rank_score(c55) < rank_score(island)
-        assert rank_score(items.get("CastleB1Key", c55)) <= rank_score(island) + 0
+    fs = items["FighterSword"]
+
+    # Continuous-tip main hall ranks ahead of alternate 0x55 / key path.
+    assert main.rank < c55.rank
+    assert main.tier == "blocker"
+    assert main.goal == "main_hall_to_zelda"
+    assert main.status == "probe_state"
+
+    if "CastleMainZeldaReady" in items:
+        ready = items["CastleMainZeldaReady"]
+        assert ready.rank < c55.rank
+        assert ready.goal == "reach_zelda_cell"
+        if "CastleB1Key" in items:
+            assert ready.rank < items["CastleB1Key"].rank
 
     if "CastleB1Key" in items:
-        assert items["CastleB1Key"].rank < items.get(
-            "CastleB1IslandCleared", items["CastleB1Key"]
-        ).rank or "CastleB1IslandCleared" not in items
+        key = items["CastleB1Key"]
+        assert main.rank < key.rank
+        assert key.tier in {"standard", "later"}
+        assert key.tier != "blocker"
+        # key_shutter not ranked as primary blockers above main/zelda
+        assert rank_score(main) < rank_score(key)
+
+    if "CastleB1IslandCleared" in items and "CastleB1Key" in items:
+        # Alternate key path still ranks near other B1 practice; not above tip.
+        island = items["CastleB1IslandCleared"]
+        assert rank_score(main) < rank_score(island)
 
     if "CastleMantleZelda" in items:
         mantle = items["CastleMantleZelda"]
-        assert c55.rank < mantle.rank
+        assert main.rank < mantle.rank
+        if "CastleMainZeldaReady" in items:
+            assert items["CastleMainZeldaReady"].rank < mantle.rank
         assert mantle.goal == "sanctuary"
         assert mantle.tier == "later"
 
-    # Opening natural_chain is not the top "next work" vs 0x55 blocker.
+    # Opening natural_chain is not the top "next work" vs continuous tip.
     grounds = items["HyruleCastleGrounds"]
     assert grounds.status == "natural_chain"
-    assert c55.status == "blocker"
-    assert c55.rank < grounds.rank
+    assert main.rank < grounds.rank
+
+    # Castle_55 is not a primary blocker; secret entrance clear is continuous.
+    assert c55.status in {"segment_scripted", "probe_state"}
+    assert c55.status != "blocker"
+    assert c55.tier != "blocker"
+
+    # FighterSword is done secret-entrance checkpoint, not tip.
+    assert fs.goal == "secret_entrance_clear"
+    assert fs.status == "segment_scripted"
+    assert main.rank < fs.rank
 
 
 def test_classify_group_heuristics() -> None:
@@ -96,14 +125,20 @@ def test_classify_group_heuristics() -> None:
     assert classify_group("CastleMantleZelda") == "escort"
     assert classify_group("CastleZeldaFollower") == "zelda"
     assert classify_group("Castle_55") == "room_55"
+    assert classify_group("CastleMain") == "main"
+    assert classify_group("CastleMainZeldaReady") == "zelda"
 
 
 def test_curated_statuses() -> None:
     items = {i.state_name: i for i in build_catalog()}
     assert items["FighterSword"].status == "segment_scripted"
     assert items["HyruleCastleGrounds"].status == "natural_chain"
-    assert items["Castle_55"].status == "blocker"
-    assert items["FighterSword"].goal == "exit_0x55"
+    assert items["Castle_55"].status in {"segment_scripted", "probe_state"}
+    assert items["Castle_55"].status != "blocker"
+    assert items["FighterSword"].goal == "secret_entrance_clear"
+    assert items["CastleMain"].goal == "main_hall_to_zelda"
+    if "CastleB1Key" in items:
+        assert items["CastleB1Key"].tier in {"standard", "later"}
 
 
 def test_build_work_queue_payload() -> None:
@@ -113,8 +148,15 @@ def test_build_work_queue_payload() -> None:
     assert payload["summary"]["stateCount"] == len(payload["items"])
     assert payload["summary"]["sanctuaryClaimed"] is False
     assert "workFocus" in payload
+    # Focus groups are continuous-tip primary work, not post_sword/key_shutter.
+    for row in payload["workFocus"]:
+        assert row["group"] in {"main", "zelda", "b1"}
+    milestones = payload["summary"]["verifiedMilestones"]
+    assert "secret_entrance_clear" in milestones
+    assert any("0x61" in m or "main_hall" in m for m in milestones)
     md = work_queue_to_markdown(payload)
     assert "Sanctuary" in md
+    assert "0x61" in md
     assert "FighterSword" in md
 
 
@@ -127,7 +169,7 @@ def test_export_writes_artifacts(tmp_path: Path) -> None:
     assert payload["summary"]["stateCount"] > 0
     text = md_out.read_text(encoding="utf-8")
     assert "work queue" in text.lower() or "Work Queue" in text
-    assert "exit_0x55" in text or "0x55" in text
+    assert "0x61" in text
 
 
 def test_synthetic_names_unique_rank() -> None:
@@ -137,6 +179,8 @@ def test_synthetic_names_unique_rank() -> None:
         "HyruleCastleGrounds",
         "FighterSword",
         "Castle_55",
+        "CastleMain",
+        "CastleMainZeldaReady",
         "CastleB1Key",
         "CastleB1Pit",
         "CastleMantleZelda",
@@ -145,5 +189,9 @@ def test_synthetic_names_unique_rank() -> None:
     assert len(items) == len(names)
     assert [i.rank for i in items] == list(range(1, len(names) + 1))
     by_name = {i.state_name: i for i in items}
-    assert by_name["Castle_55"].rank < by_name["CastleB1Pit"].rank
-    assert by_name["CastleB1Key"].rank < by_name["CastleMantleZelda"].rank
+    # Main / Zelda tip ahead of alternate key path and Castle_55.
+    assert by_name["CastleMain"].rank < by_name["CastleB1Key"].rank
+    assert by_name["CastleMain"].rank < by_name["Castle_55"].rank
+    assert by_name["CastleMainZeldaReady"].rank < by_name["CastleB1Key"].rank
+    assert by_name["CastleMain"].rank < by_name["CastleMantleZelda"].rank
+    assert by_name["CastleMainZeldaReady"].rank < by_name["CastleMantleZelda"].rank

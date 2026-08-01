@@ -169,15 +169,29 @@ Do not add new imports of legacy vision policies into continuous routes.
 
 Do **not** add a new `start_to_*.py` script.
 
+Sub-agent process (pure-first, stabilize waves, residual schema):
+[`docs/tasks/PROCESS.md`](tasks/PROCESS.md). Source states:
+[`docs/SOURCE_STATES.md`](SOURCE_STATES.md).
+
 1. Pure controller in `routes/kpdr/` (+ `KPDR_SEGMENTS`).
+   **Gate:** pure-green from a continuous-like source state before step 2.
 2. Graph rooms/edges/milestones in `progression.py` (verification starts
    as `controller_dev`, promote to `continuous` after evidence).
 3. Split ids + `ContinuousTip` + `NamedRoute` in `catalog.py`.
 4. `RouteHop` rows + thin `play_*` / `run_post_supers_tip` in
    `continuous.py`.
 5. Wire tip in `run_to()` + `register_continuous_segments`.
+   (Steps 2–5 may be one executor card **after** pure green; keep integrity
+   judgment with the planner. Prefer declarative hop skeletons over re-copy.)
 6. Record: `scripts/record/continuous.py --to <tip> --no-video`.
-7. Promote STATUS / tracker only after integrity green.
+   **Stabilize:** if live spine knobs changed in a prior stress wave, re-record
+   before stacking more interacting knobs.
+7. Promote STATUS / tracker only after integrity green (planner; Flash may
+   only propose via `SM-ROLLUP-STATUS`).
+
+Successful pure+continuous sequences should be promoted into
+`routes/controller_common` primitives with unit tests before the next similar
+geometry card.
 
 ## Segment / hop contracts
 

@@ -16,17 +16,17 @@ Regenerate: `uv run python super_metroid/scripts/export/kpdr_tracker.py`.
 | Status | Count |
 |--------|------:|
 | `continuous` | 33 |
-| `controller_dev` | 1 |
+| `controller_dev` | 6 |
 | `dev_warp` | 1 |
-| `open` | 12 |
+| `open` | 7 |
 
 ### Chart series (status)
 
 ```
 continuous        33 ####################
-controller_dev     1 #
+controller_dev     6 ###
 dev_warp           1 #
-open              12 #######
+open               7 ####
 ```
 
 ## Segment table (Super → Kraid-entry focus)
@@ -74,12 +74,12 @@ open              12 #######
 | 40 | `K3.0` | 0xA59F Kraid's Room | continuous | Super-spray on continuous chain; fight segment of K3 |
 | 41 | `K3.1` | 0xA6E2 Varia Suit Room | continuous | 101954f continuous K3 tip; 0 loads / 0 progression writes |
 | 42 | `K3.2` | 0xA59F Kraid's Room | controller_dev | first post-Varia door; pure green from natural post-collect; graph edge varia_to_kraid |
-| 43 | `K3.3` | 0xA59F Kraid's Room | open | return edge kraid_to_eye_return (0xA59F→0xA56B); scaffold exists pure-unverified |
-| 44 | `K3.4` | 0xA56B Kraid's Eye Door | open | return edge eye_to_baby_return (0xA56B→0xA521); controller scaffold in routes/kpdr/kraid_return.py; scaffold only, pure needs natural source after K3.3 green |
-| 45 | `K3.5` | 0xA521 Baby Kraid Room | open | return edge baby_to_kihunter_return (0xA521→0xA4DA); controller scaffold in routes/kpdr/kraid_return.py; scaffold only, pure needs natural source after K3.3 green |
-| 46 | `K3.6` | 0xA4DA Warehouse Kihunter Room | open | return edge kihunter_to_zeela_return (0xA4DA→0xA471); controller scaffold in routes/kpdr/kraid_return.py; scaffold only, pure needs natural source after K3.3 green |
-| 47 | `K3.7` | 0xA471 Warehouse Zeela Room | open | return edge zeela_to_warehouse_return (0xA471→0xA6A1); controller scaffold in routes/kpdr/kraid_return.py; scaffold only, pure needs natural source after K3.3 green |
-| 48 | `K3.8` | 0xA6A1 Warehouse Entrance | open | reuses continuous warehouse_to_business edge; reverse-chain unverified until K3.3–K3.7 green |
+| 43 | `K3.3` | 0xA59F Kraid's Room | controller_dev | pure green SM-K4-06E jump-enter Y band (~610f); graph controller_dev not continuous; source post_kraid_to_eye_return |
+| 44 | `K3.4` | 0xA56B Kraid's Eye Door | controller_dev | pure green SM-K4-R-01B ~651f jump mid-room; not continuous; source post_eye_to_baby_return |
+| 45 | `K3.5` | 0xA521 Baby Kraid Room | controller_dev | pure green SM-K4-R-01C ~1248f supers clear gray; not continuous; source post_baby_to_kihunter_return |
+| 46 | `K3.6` | 0xA4DA Warehouse Kihunter Room | controller_dev | pure green ~1716f; source scratch/post_kihunter_to_zeela_return.state; not continuous |
+| 47 | `K3.7` | 0xA471 Warehouse Zeela Room | controller_dev | pure green SM-K4-R-ZEELA-REDESIGN ~1800f; graph controller_dev not continuous; source post_zeela_to_warehouse_return |
+| 48 | `K3.8` | 0xA6A1 Warehouse Entrance | open | reuses continuous warehouse_to_business; reverse pure RED SM-K4-R-04 (right ledge stack) → R-04B |
 | 50 | `K4.0` | 0xAD1B Speed Booster Room | open | START_TO_SPEED_GRAPH scaffold Bubble path; edges unverified; after reverse spine to Business |
 | 51 | `K4.1` | 0xADDE Wave Beam Room | open | graph branch Bubble→Single→Double→Wave unverified |
 | 52 | `K4.2` | 0xA890 Ice Beam Room | open | graph branch Business→Ice Gate→…→Ice unverified |

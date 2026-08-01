@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9c07_from_9bc8_to_9bc8",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Brinstar Reserve Tank Room (0x9C07); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8D5A",
+    "entrySourceRoomIdHex": "0x9BC8",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 36186,
+    "entrySourceRoomId": 39880
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 39880,
+      "sourceRoomIdHex": "0x9BC8",
+      "endpoint": {
+        "roomId": 39943,
+        "roomIdHex": "0x9C07",
+        "logicalRoomId": 46,
+        "nodeId": 1,
+        "nodeName": "Brinstar Reserve Tank Room Door (to Early Supers)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 39880,
+      "targetRoomIdHex": "0x9BC8",
+      "endpoint": {
+        "roomId": 39943,
+        "roomIdHex": "0x9C07",
+        "logicalRoomId": 46,
+        "nodeId": 1,
+        "nodeName": "Brinstar Reserve Tank Room Door (to Early Supers)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        30,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 32,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          8,
+          11
+        ],
+        [
+          24,
+          11
+        ],
+        [
+          24,
+          7
+        ],
+        [
+          25,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 130
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 180
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

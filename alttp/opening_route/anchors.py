@@ -19,13 +19,24 @@ from typing import Any, Callable, Mapping
 
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
+    HYRULE_CASTLE_MAIN_WEST_ROOM,
+    HYRULE_CASTLE_NW_ROOM,
     HYRULE_CASTLE_SCREEN,
+    SANCTUARY_ROOM,
     SECRET_HOLE_APPROACH_TOLERANCE,
     SECRET_HOLE_WORLD_X,
     SECRET_HOLE_WORLD_Y,
     SECRET_PASSAGE_ROOM,
+    ZELDA_CELL_ROOM,
     AlttpSnapshot,
 )
+from alttp.room_map import load_room_map
+
+# Room 0x55 multi-chamber: south guards chamber is clearly past uncle y.
+# Used only for continuous tip resolution when the fighter-sword anchor matches
+# without a position window (same room_base_id for uncle/sword/south).
+# Shared with secret_entrance_clear.approach_south_chamber success y.
+ROOM_55_SOUTH_Y_MIN = 2850
 
 # Outdoor landing after secret-entrance stairs (measured 2026-07-30).
 COURTYARD_SECRET_POCKET_X = 2248
@@ -41,7 +52,6 @@ STAIRS_ALIGN_TOLERANCE = 6
 MAIN_DOOR_APPROACH_X = 2040
 MAIN_DOOR_APPROACH_Y = 1790
 MAIN_DOOR_APPROACH_TOLERANCE = 24
-
 
 AnchorTier = str  # "route" | "approach" | "trigger"
 
@@ -65,6 +75,21 @@ class PositionWindow:
             "tolerance": self.tolerance,
             "label": self.label,
         }
+
+
+def _door_approach_window(
+    map_id: str,
+    door_label: str,
+    *,
+    tolerance: int,
+    label: str,
+) -> PositionWindow:
+    """Build a position window from map door approach (geometry authority)."""
+    door = load_room_map(map_id).door(door_label)
+    if door is None:
+        raise KeyError(f"door {door_label!r} not in map {map_id!r}")
+    ax, ay = door.approach_xy
+    return PositionWindow(ax, ay, tolerance, label=label)
 
 
 @dataclass(frozen=True)
@@ -349,11 +374,154 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             require_fighter_sword=True,
             graph_node_id="room_61",
             notes=(
-                "Indoors after main door. Next: early B1 → Zelda cell.",
+                "Indoors after main door. Next: clear hostiles → west door → 0x60.",
                 "Dev state CastleMain is a checkpoint only.",
+                "Geometry: maps/room_61.json via room_map.load_room_map.",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_MainWest_0x60",
+            name="Hyrule Castle main west (room 0x60)",
+            tier="route",
+            room_base_id=HYRULE_CASTLE_MAIN_WEST_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            graph_node_id="room_60",
+            notes=(
+                "Isolated west exit from main hall (not continuous tip until natural).",
+                "Next: north door → room 0x50 (maps/room_60.json north_to_0x50).",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_NW_0x50",
+            name="Hyrule Castle NW chamber (room 0x50)",
+            tier="route",
+            room_base_id=HYRULE_CASTLE_NW_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            graph_node_id="room_50",
+            notes=(
+                "Isolated north exit from 0x60. Geometry: maps/room_50.json.",
+                "Next: east → 0x01 or B1 path → Zelda cell (planned).",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_MainHall_WestDoorApproach",
+            name="Main hall west door approach (side corridor)",
+            tier="approach",
+            room_base_id=HYRULE_CASTLE_MAIN_HALL_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            position=_door_approach_window(
+                "room_61",
+                "west_to_0x60",
+                tolerance=24,
+                label="main_hall_west_door",
+            ),
+            graph_node_id="room_61",
+            map_note="maps/room_61.json door west_to_0x60; LEFT → room 0x60",
+            screenshot_hint="recordings/probe_main_hall/",
+            notes=(
+                "Approach xy from map door (geometry authority).",
+                "Pure UP on carpet mid-line wedges at y≈3352 — use side corridor.",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_MainHall_WestDoorTrigger",
+            name="Main hall west door exit trigger",
+            tier="trigger",
+            room_base_id=HYRULE_CASTLE_MAIN_HALL_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            position=_door_approach_window(
+                "room_61",
+                "west_to_0x60",
+                tolerance=16,
+                label="main_hall_west_exact",
+            ),
+            map_note="Hitbox: align corridor, hold LEFT → room base 0x60",
+            notes=(
+                "Trigger/hitbox — see docs/TRIGGER_HANDOFF.md.",
+                "Proven 2026-07-31 headless 3/3 from CastleMain.",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_ZeldaCell",
+            name="Zelda cell (room 0x80)",
+            tier="route",
+            room_base_id=ZELDA_CELL_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            graph_node_id="room_80",
+            notes=(
+                "Planned continuous tip — rescue not yet continuous.",
+                "RAM room base 0x80; follower may still be 0 until rescue.",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_Sanctuary",
+            name="Sanctuary (room 0x12)",
+            tier="route",
+            room_base_id=SANCTUARY_ROOM,
+            require_indoors=True,
+            graph_node_id="sanctuary",
+            notes=(
+                "Planned continuous tip — escort not yet continuous.",
+                "RAM room base 0x12.",
             ),
         ),
     )
+
+
+# Most-specific first for continuous tip resolution (graph_node_id).
+# Mantle has no RAM signature yet — stay on the graph only, not tip order.
+TIP_ANCHOR_ORDER: tuple[str, ...] = (
+    # Isolated post-main-hall nodes listed for tip resolve after west/north exits.
+    "HyruleCastle_NW_0x50",
+    "HyruleCastle_MainWest_0x60",
+    "HyruleCastle_MainHall",  # continuous tip (room 0x61)
+    "HyruleCastle_ZeldaCell",  # planned
+    "HyruleCastle_Sanctuary",  # planned
+    "HyruleCastle_Courtyard_SecretStairsPocket",
+    "HyruleCastle_SecretEntrance_StairsAlign",
+    "HyruleCastle_SecretEntrance_SouthChamber",
+    "HyruleCastle_SecretEntrance_FighterSword",
+    "HyruleCastle_SecretEntrance_UncleChamber",
+    "HyruleCastle_MainDoorApproach",
+    "HyruleCastle_GroundsSpawn_Controllable",
+)
+
+
+def resolve_continuous_tip_node(snapshot: AlttpSnapshot) -> str:
+    """Return ``graph_node_id`` of the most specific matching tip anchor.
+
+    Outdoor + main hall + Zelda cell + Sanctuary are decided by anchors in
+    :data:`TIP_ANCHOR_ORDER`. Room ``0x55`` is multi-chamber (uncle / sword /
+    south share the same ``room_base_id``); the fighter-sword route anchor has
+    no position window, so when that anchor wins we apply a single y-threshold
+    (``ROOM_55_SOUTH_Y_MIN``) to prefer ``room_55_south`` over ``room_55_sword``.
+    South-chamber / stairs-align anchors already carry position windows and
+    win earlier in the order when they match.
+
+    Returns ``\"unknown\"`` when nothing matches.
+    """
+    by_id = {a.anchor_id: a for a in opening_anchors()}
+    for aid in TIP_ANCHOR_ORDER:
+        anchor = by_id.get(aid)
+        if anchor is None or not anchor.matches(snapshot):
+            continue
+        node = anchor.graph_node_id
+        if not node:
+            continue
+        # Chamber split for room 0x55 when only the no-position sword anchor matched.
+        if node == "room_55_sword" and int(snapshot.link_y) >= ROOM_55_SOUTH_Y_MIN:
+            return "room_55_south"
+        return node
+    # Fall back: first matched anchor that carries a graph node id.
+    for a in match_anchors(snapshot):
+        if a.graph_node_id:
+            return a.graph_node_id
+    return "unknown"
 
 
 def anchor_by_id(anchor_id: str) -> MultiTruthAnchor | None:

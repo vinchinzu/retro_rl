@@ -10,10 +10,12 @@ from __future__ import annotations
 from super_metroid.policy import StateRequirement
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
+    ensure_morph,
     hold,
     require_room,
     require_state,
     select_weapon,
+    unmorph,
     wait_ordinary_room,
 )
 from super_metroid.routes.kpdr.rooms import (
@@ -60,12 +62,15 @@ def _play_return(
 
 
 def play_eye_to_baby_return(session: ControllerSession) -> SuperMetroidState:
-    """Open the Baby Kraid door, then push left from Kraid Eye toward Baby Kraid.
+    """Left return from Kraid Eye Door Room to Baby Kraid (post pure K3.3).
 
-    This is not continuous evidence; it requires a natural source state.
+    Controller-dev reverse hop. Not continuous evidence.
+
+    Geometry (SM-K4-R-01B): walk-only / floor spin pins mid-room (~x=373,
+    pose 138) on a ledge. Clear with sustained jump-left, open the left blue
+    hatch with standing beams near the lip, then jump-enter. Source:
+    ``scratch/post_kraid_to_eye_return.state`` (0xA56B).
     """
-    # Unlike the naive spin-push scaffold, explicitly open the return door
-    # before crossing it, mirroring the forward Eye-room beam-shot pattern.
     require_state(
         session,
         StateRequirement(room_id=ROOM_KRAID_EYE, game_states=frozenset({8})),
@@ -73,60 +78,691 @@ def play_eye_to_baby_return(session: ControllerSession) -> SuperMetroidState:
     )
     require_room(session, ROOM_KRAID_EYE, "eye_to_baby_return")
     select_weapon(session, 0)
+
+    # Jump-left across the mid-room ledge that floor-walk pins at x≈373.
+    for index in range(500):
+        state = session.state
+        if state.samus_x <= 140:
+            break
+        phase = index % 30
+        if phase < 10:
+            hold(session, 1, "LEFT", "A", reason="eye_to_baby_hop")
+        elif phase < 18:
+            hold(session, 1, "LEFT", "A", "B", reason="eye_to_baby_spin")
+        elif phase < 22:
+            hold(session, 1, "X", reason="eye_to_baby_clear_shot")
+        else:
+            hold(session, 1, "LEFT", "B", reason="eye_to_baby_run")
+    else:
+        raise TimeoutError(
+            f"eye_to_baby_return: mid-room approach timed out: {session.state}"
+        )
+
+    # Stage just right of the left lip; open blue hatch with X-only beams.
+    hold(session, 8, reason="eye_to_baby_approach_settle")
+    hold(session, 8, "RIGHT", reason="eye_to_baby_lip_backoff")
     hold(session, 8, "LEFT", reason="eye_to_baby_face_left")
     hold(session, 6, reason="eye_to_baby_face_release")
-    for _ in range(4):
-        hold(session, 4, "LEFT", "X", reason="eye_to_baby_door_shot")
-        hold(session, 18, reason="eye_to_baby_door_fuse")
-    return _play_return(
+    for _ in range(6):
+        hold(session, 4, "X", reason="eye_to_baby_door_shot")
+        hold(session, 14, reason="eye_to_baby_door_fuse")
+
+    for index in range(700):
+        phase = index % 30
+        if phase < 4:
+            state = hold(session, 1, "LEFT", "A", reason="eye_to_baby_jump")
+        elif phase < 10:
+            state = hold(
+                session, 1, "LEFT", "A", "B", reason="eye_to_baby_jump_spin"
+            )
+        elif phase < 14:
+            state = hold(session, 1, "X", reason="eye_to_baby_reshot")
+        else:
+            state = hold(session, 1, "LEFT", "B", reason="eye_to_baby_exit")
+        if state.room_id == ROOM_BABY_KRAID:
+            break
+        if state.door_transition:
+            for _ in range(80):
+                state = hold(session, 1, reason="eye_to_baby_transition")
+                if (
+                    state.room_id == ROOM_BABY_KRAID
+                    and state.door_transition == 0
+                ):
+                    break
+            if state.room_id == ROOM_BABY_KRAID:
+                break
+    else:
+        raise TimeoutError(
+            f"eye_to_baby_return: left exit timed out: {session.state}"
+        )
+
+    return wait_ordinary_room(
         session,
-        source_room=ROOM_KRAID_EYE,
-        target_room=ROOM_BABY_KRAID,
-        direction="LEFT",
+        ROOM_BABY_KRAID,
+        settle_frames=320,
         label="eye_to_baby_return",
-        spin=True,
     )
 
 
 def play_baby_to_kihunter_return(session: ControllerSession) -> SuperMetroidState:
-    """Controller-dev scaffold: push left from Baby Kraid toward Kihunter.
+    """Left return Baby Kraid → Warehouse Kihunter (post pure eye→baby).
 
-    This is not continuous evidence; it requires a natural source state.
+    Controller-dev reverse hop. Not continuous evidence.
+
+    The left hatch is **gray** with ``clear_room_enemies`` (graph node Baby
+    Kraid Left Door). Floor spin alone pins at the shell (x≈37–69, pose 138,
+    door_transition=0). Clear pirates/Mini-Kraid first, then beam-open and
+    exit left. Source: ``scratch/post_eye_to_baby_return.state``.
     """
-    return _play_return(
+    from super_metroid.routes.kpdr.kraid_approach import _baby_kraid_sweep
+
+    require_state(
         session,
-        source_room=ROOM_BABY_KRAID,
-        target_room=ROOM_WAREHOUSE_KIHUNTER,
-        direction="LEFT",
+        StateRequirement(room_id=ROOM_BABY_KRAID, game_states=frozenset({8})),
+        "baby_to_kihunter_return",
+    )
+    require_room(session, ROOM_BABY_KRAID, "baby_to_kihunter_return")
+    # Supers match play_baby_kraid_to_eye — beams alone leave Mini-Kraid alive
+    # and the gray left hatch stays locked (clear_room_enemies).
+    select_weapon(session, 2)
+
+    # Land from elevated eye-door entry if needed, then clear the room lock.
+    for _ in range(30):
+        state = hold(session, 1, reason="baby_return_land")
+        if state.velocity_y == 0 and state.pose in (1, 2, 5, 6, 9, 10, 137, 138):
+            break
+    _baby_kraid_sweep(
+        session, "LEFT", 80, limit=1700, label="baby_return_clear_left"
+    )
+    if session.state.enemies_killed < session.state.num_enemies:
+        _baby_kraid_sweep(
+            session, "RIGHT", 1490, limit=1900, label="baby_return_clear_right"
+        )
+    if session.state.enemies_killed < session.state.num_enemies:
+        _baby_kraid_sweep(
+            session, "LEFT", 80, limit=1900, label="baby_return_clear_left2"
+        )
+
+    # Stage near left gray door; beams open the unlocked shell.
+    select_weapon(session, 0)
+    for _ in range(200):
+        state = hold(session, 1, "LEFT", "B", reason="baby_return_door_approach")
+        if state.samus_x <= 120:
+            break
+    hold(session, 10, "RIGHT", reason="baby_return_lip_backoff")
+    hold(session, 8, "LEFT", reason="baby_return_face_left")
+    hold(session, 6, reason="baby_return_face_release")
+    for _ in range(6):
+        hold(session, 4, "X", reason="baby_return_door_shot")
+        hold(session, 14, reason="baby_return_door_fuse")
+
+    for index in range(700):
+        phase = index % 30
+        if phase < 4:
+            state = hold(session, 1, "LEFT", "A", reason="baby_return_jump")
+        elif phase < 10:
+            state = hold(
+                session, 1, "LEFT", "A", "B", reason="baby_return_jump_spin"
+            )
+        elif phase < 14:
+            state = hold(session, 1, "X", reason="baby_return_reshot")
+        else:
+            state = hold(session, 1, "LEFT", "B", reason="baby_return_exit")
+        if state.room_id == ROOM_WAREHOUSE_KIHUNTER:
+            break
+        if state.door_transition:
+            for _ in range(80):
+                state = hold(session, 1, reason="baby_return_transition")
+                if (
+                    state.room_id == ROOM_WAREHOUSE_KIHUNTER
+                    and state.door_transition == 0
+                ):
+                    break
+            if state.room_id == ROOM_WAREHOUSE_KIHUNTER:
+                break
+    else:
+        raise TimeoutError(
+            f"baby_to_kihunter_return: left gray exit timed out: {session.state}"
+        )
+
+    return wait_ordinary_room(
+        session,
+        ROOM_WAREHOUSE_KIHUNTER,
+        settle_frames=320,
         label="baby_to_kihunter_return",
-        spin=True,
+    )
+
+
+def _kihunter_guard_rooms(
+    session: ControllerSession, label: str, *, allow_zeela: bool = False
+) -> SuperMetroidState:
+    """Fail loud on Baby / wrong-room transitions during the reverse climb."""
+    state = session.state
+    if state.room_id == ROOM_BABY_KRAID:
+        raise TimeoutError(f"{label}: crossed wrong door into Baby Kraid: {state}")
+    if state.room_id == ROOM_ZEELA:
+        if allow_zeela:
+            return state
+        raise TimeoutError(
+            f"{label}: reached Zeela before true upper Kihunter land: {state}"
+        )
+    if state.room_id != ROOM_WAREHOUSE_KIHUNTER:
+        raise TimeoutError(f"{label}: left source room during climb: {state}")
+    return state
+
+
+def _kihunter_upper_band(state: SuperMetroidState) -> bool:
+    """True when Samus is in the upper Kihunter band (not mid ledge y≈299)."""
+    return (
+        state.samus_y < 220
+        and state.room_id == ROOM_WAREHOUSE_KIHUNTER
+        and state.door_transition == 0
     )
 
 
 def play_kihunter_to_zeela_return(session: ControllerSession) -> SuperMetroidState:
-    """Controller-dev scaffold: push down from Kihunter toward Zeela.
+    """Climb out of the lower Kihunter alcove and drop through Zeela's door.
 
     This is not continuous evidence; it requires a natural source state.
+
+    Redesign (Wave 9 / SM-K4-R-CLIMB-REDESIGN) — room geometry:
+
+    * Floor hard wall at **x≈357** blocks walking under the hole.
+    * Mid ledge at **y≈299, x≈367–379** is reached by wall-plant Hi-Jump then
+      RIGHT drift at apex.
+    * Forward bomb hole is exactly **x≈376** (upper floor y≈171). From the mid
+      ledge, **morph bomb-jump** through that hole, then left to the Zeela
+      down-door window **x∈[96,160]**.
     """
-    return _play_return(
+    label = "kihunter_to_zeela_return"
+    require_state(
         session,
-        source_room=ROOM_WAREHOUSE_KIHUNTER,
-        target_room=ROOM_ZEELA,
-        direction="DOWN",
-        label="kihunter_to_zeela_return",
+        StateRequirement(
+            room_id=ROOM_WAREHOUSE_KIHUNTER,
+            game_states=frozenset({8}),
+        ),
+        label,
+    )
+    require_room(session, ROOM_WAREHOUSE_KIHUNTER, label)
+    select_weapon(session, 0)
+    unmorph(session)
+
+    best_min_y = session.state.samus_y
+
+    # --- 1) Plant on the hard wall at x≈357 ---
+    hold(session, 10, reason="kihunter_zeela_entry_release")
+    for _ in range(220):
+        state = _kihunter_guard_rooms(session, label)
+        if state.samus_x <= 358:
+            break
+        hold(session, 1, "LEFT", "B", reason="kihunter_zeela_wall_run")
+    for _ in range(40):
+        state = _kihunter_guard_rooms(session, label)
+        if state.samus_x <= 120:
+            break
+        hold(session, 1, "LEFT", reason="kihunter_zeela_wall_plant")
+    hold(session, 4, reason="kihunter_zeela_wall_settle")
+
+    # --- 2) Hi-Jump, drift RIGHT onto mid ledge (y≈299, x≥365) ---
+    hold(session, 3, "RIGHT", reason="kihunter_zeela_face_ledge")
+    hold(session, 2, reason="kihunter_zeela_face_settle")
+    hold(session, 8, "DOWN", reason="kihunter_zeela_crouch_load")
+    mid = False
+    for frame in range(110):
+        state = session.state
+        if frame < 30:
+            buttons = ("A",)
+        elif frame < 45:
+            buttons = ("A", "UP", "X")
+        elif state.samus_y <= 300:
+            buttons = ("RIGHT", "A", "B")
+        else:
+            buttons = ("RIGHT", "B")
+        state = hold(session, 1, *buttons, reason="kihunter_zeela_mid_ledge")
+        best_min_y = min(best_min_y, state.samus_y)
+        _kihunter_guard_rooms(session, label)
+        if (
+            state.samus_y <= 299
+            and state.velocity_y == 0
+            and state.samus_x >= 365
+            and frame > 40
+        ):
+            mid = True
+            break
+    hold(session, 16, reason="kihunter_zeela_mid_settle")
+    if not mid and not (
+        session.state.samus_y <= 305 and session.state.samus_x >= 360
+    ):
+        raise TimeoutError(
+            f"{label}: mid ledge missed: {session.state}; best_min_y={best_min_y}"
+        )
+
+    # --- 3) Align under bomb hole x≈376 ---
+    for _ in range(50):
+        state = _kihunter_guard_rooms(session, label)
+        if 374 <= state.samus_x <= 380:
+            break
+        if state.samus_x < 374:
+            hold(session, 1, "RIGHT", reason="kihunter_zeela_hole_align")
+        else:
+            hold(session, 1, "LEFT", reason="kihunter_zeela_hole_align")
+    hold(session, 6, reason="kihunter_zeela_hole_settle")
+
+    # --- 4) Morph bomb-jump through the x≈376 floor hole to upper band ---
+    ensure_morph(session)
+    climbed = False
+    for cycle in range(90):
+        state = _kihunter_guard_rooms(session, label)
+        if state.samus_x < 372:
+            hold(session, 2, "RIGHT", reason="kihunter_zeela_hole_recenter")
+        elif state.samus_x > 382:
+            hold(session, 2, "LEFT", reason="kihunter_zeela_hole_recenter")
+        hold(session, 2, "X", reason="kihunter_zeela_hole_bomb")
+        if state.samus_y < 260:
+            wait = 22
+        elif state.samus_y < 280:
+            wait = 30
+        else:
+            wait = 50
+        for _ in range(wait):
+            state = hold(session, 1, reason="kihunter_zeela_hole_bomb_wait")
+            best_min_y = min(best_min_y, state.samus_y)
+            _kihunter_guard_rooms(session, label)
+        # Firm upper: current settle height, not only a peak boost.
+        if session.state.samus_y < 200:
+            climbed = True
+            break
+        # Once peaking through the hole, keep rapid bombs to settle on top.
+        if best_min_y < 210 and session.state.samus_y < 240:
+            hold(session, 2, "X", reason="kihunter_zeela_hole_top_bomb")
+            for _ in range(20):
+                state = hold(session, 1, reason="kihunter_zeela_hole_top_wait")
+                best_min_y = min(best_min_y, state.samus_y)
+                _kihunter_guard_rooms(session, label)
+                if state.samus_y < 195:
+                    climbed = True
+                    break
+            if climbed:
+                break
+    if not climbed:
+        raise TimeoutError(
+            f"{label}: bomb-hole climb timed out: {session.state}; "
+            f"best_min_y={best_min_y}"
+        )
+
+    # Extra bombs to plant on the upper floor (y≈171–190) before rolling.
+    ensure_morph(session)
+    for _ in range(8):
+        if session.state.samus_y < 190:
+            break
+        hold(session, 2, "X", reason="kihunter_zeela_upper_plant_bomb")
+        for _wait in range(22):
+            state = hold(session, 1, reason="kihunter_zeela_upper_plant_wait")
+            best_min_y = min(best_min_y, state.samus_y)
+            _kihunter_guard_rooms(session, label)
+    hold(session, 10, reason="kihunter_zeela_upper_morph_settle")
+    if session.state.samus_y >= 230:
+        raise TimeoutError(
+            f"{label}: fell off upper after hole climb: {session.state}; "
+            f"best_min_y={best_min_y}"
+        )
+
+    # --- 5) Morph-roll left to Zeela down-door window x=96..160 ---
+    for _ in range(500):
+        state = session.state
+        if state.room_id == ROOM_BABY_KRAID:
+            raise TimeoutError(
+                f"{label}: upper traverse crossed wrong door: {session.state}"
+            )
+        if state.room_id != ROOM_WAREHOUSE_KIHUNTER:
+            raise TimeoutError(
+                f"{label}: upper traverse left source room: {session.state}"
+            )
+        if state.samus_y > 300:
+            raise TimeoutError(
+                f"{label}: fell during upper traverse: {session.state}"
+            )
+        # Bomb-boost if starting to sink through residual floor tiles.
+        if state.samus_y > 210:
+            hold(session, 2, "X", reason="kihunter_zeela_traverse_boost")
+            for _wait in range(18):
+                state = hold(session, 1, reason="kihunter_zeela_traverse_boost_wait")
+                _kihunter_guard_rooms(session, label)
+        if state.samus_x < 96:
+            hold(session, 1, "RIGHT", reason="kihunter_zeela_window_recover")
+            continue
+        if state.samus_x <= 160 and state.samus_y < 230:
+            break
+        hold(session, 1, "LEFT", reason="kihunter_zeela_upper_roll")
+    else:
+        raise TimeoutError(f"{label}: Zeela x-window approach timed out: {session.state}")
+
+    unmorph(session)
+    select_weapon(session, 0)
+    hold(session, 10, reason="kihunter_zeela_window_stand")
+    state = session.state
+    if not 90 <= state.samus_x <= 170 or state.samus_y >= 250:
+        raise TimeoutError(f"{label}: invalid Zeela door window: {state}")
+    hold(session, 8, "LEFT", reason="kihunter_zeela_door_face")
+    hold(session, 6, reason="kihunter_zeela_door_release")
+    for _ in range(6):
+        hold(session, 4, "DOWN", "X", reason="kihunter_zeela_door_shot")
+        hold(session, 14, reason="kihunter_zeela_door_fuse")
+
+    for index in range(520):
+        phase = index % 30
+        if phase < 8:
+            state = hold(session, 1, "DOWN", "A", reason="kihunter_zeela_drop")
+        elif phase < 14:
+            state = hold(session, 1, "DOWN", "A", "B", reason="kihunter_zeela_drop_spin")
+        elif phase < 18:
+            state = hold(session, 1, "DOWN", "X", reason="kihunter_zeela_reshot")
+        else:
+            state = hold(session, 1, "DOWN", reason="kihunter_zeela_drop")
+        if state.room_id == ROOM_ZEELA:
+            break
+        if state.room_id == ROOM_BABY_KRAID:
+            raise TimeoutError(
+                f"{label}: blue down-door entered Baby Kraid: {session.state}"
+            )
+    else:
+        raise TimeoutError(f"{label}: blue down-door exit timed out: {session.state}")
+
+    return wait_ordinary_room(
+        session,
+        ROOM_ZEELA,
+        settle_frames=320,
+        label=label,
     )
 
 
 def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidState:
-    """Controller-dev scaffold: push left from Zeela toward Warehouse.
+    """Climb Zeela reverse to the upper-left Warehouse door.
 
     This is not continuous evidence; it requires a natural source state.
+
+    Redesign (planner / SM-K4-R-ZEELA-REDESIGN) — geometry facts:
+
+    * Source is bottom-right after kihunter drop (~x=403). No Hi-Jump on the
+      reverse pure chain (equipped_items often ``0x1005``).
+    * Floor-left is the Energy Tank door ``0xA4B1`` — fail-loud if ``y>250``.
+    * Middle platform is narrow (~x=90–107, y≈331). Reach it with reverse-shot
+      **RIGHT bias in the hole** (left-only peaks the shaft at x≈52 and falls).
+    * Below-platform lip (~x=40–70, y≈219–235) is reached by crouch-load from
+      mid right-edge (x≈107), then LEFT drift — not by floor-left spam.
+    * Lip crouch-load lands ~x=69 (LEFT walk blocked); hop-left to plant
+      x≈37 y≈219.
+    * Reverse re-entry leaves shot blocks solid above the left wall — clear
+      with ~40 UP+X before wall-spin climb. Hard cap without clear: y≈188.
+    * Top door band is **y≈112–139**. Stop only on grounded standing/crouch
+      at y≤150 (pose 1/2/137/138), not walljump pose 26.
+    * Warehouse door opens with standing LEFT beams from that top band.
     """
-    return _play_return(
+    label = "zeela_to_warehouse_return"
+    require_state(
         session,
-        source_room=ROOM_ZEELA,
-        target_room=ROOM_WAREHOUSE,
-        direction="LEFT",
-        label="zeela_to_warehouse_return",
-        spin=True,
+        StateRequirement(room_id=ROOM_ZEELA, game_states=frozenset({8})),
+        label,
+    )
+    require_room(session, ROOM_ZEELA, label)
+    select_weapon(session, 0)
+
+    def guard_climb(state: SuperMetroidState, phase: str) -> None:
+        if state.door_transition and state.samus_y > 250:
+            raise TimeoutError(
+                f"{label}: floor door transition during {phase}: {state}"
+            )
+        if state.room_id != ROOM_ZEELA:
+            raise TimeoutError(f"{label}: left Zeela during {phase}: {state}")
+
+    # --- 1) Bottom reverse-roll to second-drop lane (x≈110–140, floor) ---
+    ensure_morph(session)
+    for _ in range(900):
+        state = hold(session, 1, "LEFT", reason="zeela_warehouse_bottom_roll")
+        guard_climb(state, "bottom reverse roll")
+        if state.samus_x <= 160 and state.samus_y >= 350:
+            break
+    else:
+        raise TimeoutError(f"{label}: bottom reverse roll stalled: {session.state}")
+
+    unmorph(session)
+    for _ in range(160):
+        state = session.state
+        guard_climb(state, "second-drop align")
+        if 110 <= state.samus_x <= 140:
+            break
+        if state.samus_x < 110:
+            hold(session, 1, "RIGHT", reason="zeela_warehouse_second_align")
+        else:
+            hold(session, 1, "LEFT", reason="zeela_warehouse_second_align")
+    hold(session, 8, reason="zeela_warehouse_second_align_settle")
+
+    # --- 2) Reverse-shot + RIGHT bias in hole → middle platform ---
+    # Landing target: y∈[300,350], grounded, x≥90 (not shaft peak x≈52).
+    select_weapon(session, 0)
+    mid = False
+    for frame in range(700):
+        state = session.state
+        guard_climb(state, "second-drop climb")
+        if (
+            300 <= state.samus_y <= 350
+            and state.velocity_y == 0
+            and state.samus_x >= 90
+            and frame > 50
+        ):
+            mid = True
+            break
+        phase = frame % 28
+        if phase < 5:
+            buttons: tuple[str, ...] = ("UP", "X")
+        elif state.samus_y <= 360:
+            # In/near the hole — drift RIGHT onto the mid platform.
+            buttons = ("RIGHT", "A", "B") if phase >= 16 else ("RIGHT", "A")
+        elif phase < 14:
+            buttons = ("A",)
+        elif state.samus_x <= 70:
+            buttons = ("RIGHT", "A")
+        else:
+            buttons = ("LEFT", "A")
+        hold(session, 1, *buttons, reason="zeela_warehouse_second_reverse_shot")
+    hold(session, 12, reason="zeela_warehouse_mid_settle")
+    if not mid and not (
+        300 <= session.state.samus_y <= 355 and session.state.samus_x >= 85
+    ):
+        raise TimeoutError(f"{label}: middle platform missed: {session.state}")
+
+    # --- 3) Mid right-edge (x≈107) crouch-load → below-platform lip ---
+    for _ in range(80):
+        state = session.state
+        guard_climb(state, "mid right edge")
+        if state.samus_y > 360:
+            raise TimeoutError(f"{label}: fell off mid platform: {state}")
+        if state.samus_x >= 104:
+            break
+        hold(session, 1, "RIGHT", reason="zeela_warehouse_mid_right_edge")
+    hold(session, 8, reason="zeela_warehouse_mid_edge_settle")
+
+    unmorph(session)
+    select_weapon(session, 0)
+    hold(session, 10, "DOWN", reason="zeela_warehouse_first_crouch_load")
+    hold(session, 2, reason="zeela_warehouse_first_crouch_release")
+    lip = False
+    for frame in range(600):
+        state = session.state
+        guard_climb(state, "first-drop climb")
+        if (
+            state.samus_y <= 240
+            and state.velocity_y == 0
+            and state.samus_x <= 80
+            and frame > 40
+        ):
+            lip = True
+            break
+        if frame < 18:
+            buttons = ("A",)
+        elif frame < 30:
+            buttons = ("A", "UP", "X")
+        elif state.samus_y < 280:
+            buttons = ("LEFT", "A", "B")
+        else:
+            phase = frame % 24
+            if phase < 6:
+                buttons = ("UP", "X")
+            elif phase < 16:
+                buttons = ("A",)
+            else:
+                buttons = ()
+        hold(session, 1, *buttons, reason="zeela_warehouse_first_crouch_climb")
+    hold(session, 15, reason="zeela_warehouse_lip_settle")
+    if not lip and not (session.state.samus_y <= 250 and session.state.samus_x <= 90):
+        raise TimeoutError(f"{label}: below-platform lip missed: {session.state}")
+
+    # --- 4) Hop left on the lip to the wall plant (x≈37, y≈219) ---
+    # The crouch-load lands ~x=69 where LEFT walk is blocked; a short hop-left
+    # reaches the below-platform plant used by the wall climb.
+    unmorph(session)
+    for frame in range(50):
+        state = session.state
+        guard_climb(state, "lip hop left")
+        if (
+            state.samus_x <= 45
+            and state.velocity_y == 0
+            and 210 <= state.samus_y <= 230
+            and frame > 10
+        ):
+            break
+        if frame < 8:
+            buttons = ("A",)
+        elif frame < 28:
+            buttons = ("LEFT", "A")
+        else:
+            buttons = ("LEFT",)
+        hold(session, 1, *buttons, reason="zeela_warehouse_lip_hop_left")
+    hold(session, 20, reason="zeela_warehouse_bp_settle")
+    if not (session.state.samus_y <= 230 and session.state.samus_x <= 55):
+        raise TimeoutError(f"{label}: wall-plant band missed: {session.state}")
+
+    # --- 5) Clear respawned shot blocks above the left wall, then spin climb ---
+    # Reverse source re-enters Zeela from Kihunter without the forward shot-block
+    # clear; pure UP+X (≈40) opens the column so the wall climb can reach y≈139.
+    # Without that clear the climb hard-caps near y=188.
+    top = False
+    for attempt in range(3):
+        unmorph(session)
+        select_weapon(session, 0)
+        for _ in range(20):
+            if session.state.pose in (1, 2):
+                break
+            hold(session, 1, "UP", reason="zeela_warehouse_clear_stand")
+        hold(session, 8, reason="zeela_warehouse_clear_stand_settle")
+        if session.state.samus_y > 250:
+            raise TimeoutError(f"{label}: fell off lip before clear: {session.state}")
+
+        for _ in range(40):
+            hold(session, 2, "UP", "X", reason="zeela_warehouse_shotblock_clear")
+            hold(session, 4, reason="zeela_warehouse_shotblock_fuse")
+        for frame in range(60):
+            state = session.state
+            guard_climb(state, "shotblock clear jump")
+            phase = frame % 8
+            if phase < 3:
+                buttons = ("UP", "X")
+            elif phase < 6:
+                buttons = ("A",)
+            else:
+                buttons = ()
+            hold(session, 1, *buttons, reason="zeela_warehouse_clear_jump")
+
+        for _ in range(30):
+            state = session.state
+            guard_climb(state, "wall plant")
+            if state.samus_x <= 35:
+                break
+            if state.samus_y > 250:
+                break
+            hold(session, 1, "LEFT", "B", reason="zeela_warehouse_wall_plant")
+        hold(session, 4, reason="zeela_warehouse_wall_plant_settle")
+
+        for frame in range(900):
+            state = session.state
+            guard_climb(state, "wall climb")
+            if (
+                state.samus_y <= 150
+                and state.velocity_y == 0
+                and state.pose in (1, 2, 39, 40, 137, 138)
+                and frame > 20
+            ):
+                hold(session, 8, reason="zeela_warehouse_top_confirm")
+                if (
+                    session.state.samus_y <= 155
+                    and session.state.velocity_y == 0
+                    and session.state.room_id == ROOM_ZEELA
+                ):
+                    top = True
+                    break
+            phase = frame % 14
+            if phase < 7:
+                buttons = ("LEFT", "A", "B")
+            elif phase < 10:
+                buttons = ("RIGHT", "A")
+            elif phase < 12:
+                buttons = ("LEFT", "A")
+            else:
+                buttons = ("LEFT",)
+            hold(session, 1, *buttons, reason="zeela_warehouse_wall_climb")
+            if session.state.samus_y > 280:
+                break
+        if top:
+            break
+        # Still on the lip — retry clear/climb once more.
+        if not (session.state.samus_y <= 230 and session.state.samus_x <= 55):
+            break
+    if not top:
+        raise TimeoutError(f"{label}: top door band missed: {session.state}")
+
+    # --- 6) Standing LEFT door → Warehouse 0xA6A1 ---
+    unmorph(session)
+    select_weapon(session, 0)
+    for _ in range(15):
+        if session.state.pose in (1, 2):
+            break
+        hold(session, 1, "UP", reason="zeela_warehouse_door_stand")
+    hold(session, 10, reason="zeela_warehouse_door_stand_settle")
+    if session.state.samus_y > 170:
+        raise TimeoutError(f"{label}: fell before Warehouse door: {session.state}")
+
+    hold(session, 6, "LEFT", reason="zeela_warehouse_door_face")
+    hold(session, 4, reason="zeela_warehouse_door_face_release")
+    for _ in range(10):
+        hold(session, 3, "LEFT", "X", reason="zeela_warehouse_door_shot")
+        hold(session, 12, reason="zeela_warehouse_door_fuse")
+
+    for index in range(400):
+        phase = index % 20
+        if phase < 10:
+            state = hold(session, 1, "LEFT", "A", reason="zeela_warehouse_exit")
+        elif phase < 14:
+            state = hold(
+                session, 1, "LEFT", "A", "B", reason="zeela_warehouse_exit_spin"
+            )
+        else:
+            state = hold(session, 1, "LEFT", reason="zeela_warehouse_exit")
+        if state.room_id == ROOM_WAREHOUSE:
+            break
+        if state.door_transition and state.samus_y > 250:
+            raise TimeoutError(
+                f"{label}: floor door transition at Warehouse exit: {state}"
+            )
+        if state.room_id != ROOM_ZEELA:
+            raise TimeoutError(f"{label}: unexpected exit room: {state}")
+        if state.samus_y > 200:
+            raise TimeoutError(f"{label}: fell during Warehouse exit: {state}")
+    else:
+        raise TimeoutError(f"{label}: Warehouse exit timed out: {session.state}")
+
+    return wait_ordinary_room(
+        session,
+        ROOM_WAREHOUSE,
+        settle_frames=320,
+        label=label,
     )

@@ -2,22 +2,29 @@
 
 ## Next
 
-1. **Main hall / early B1 → Zelda cell** (`$F3CC==1`) — active continuous
-   blocker. Work-queue: `CastleB1Key` / `Shutter*` first.
-2. Escort (Lamp + sewers) → Sanctuary after follower is set.
+1. **After room 0x50 → Zelda cell** — maps seeded for 0x50/01/51/52/B1;
+   graph hop `room_50_to_zelda_cell` still planned. Isolate next doors with
+   `room_engine.py run` (not mega-segments). Goal: `$F3CC==1`.
+2. **Implement `escort_to_sanctuary`** after follower is set (Lamp + sewers).
 3. Promote graph edges only with natural-entry evidence
-   (`planned` → `isolated` → `natural_entry` → `continuous`).
-4. Keep `castle_to_sword` / `sword_to_zelda` / `pocket_to_main_hall` green on
-   state-load; treat `FighterSword.state` / `CastleMain.state` as development only.
-5. Drive next room probes from `alttp.opening_route.work_queue` /
-   `docs/routes/ROOM_WORK_QUEUE.md` (continuous-spine blockers first).
-6. Optional: full natural-chain title → main hall; re-emit catalog with live
-   observations.
+   (`planned` → `isolated` → `natural_entry` → `continuous`). Keep graph
+   capability-coarse; expand nodes only when a hop is measured or acquires a cap.
+4. Keep continuous segments green on state-load; treat `FighterSword` /
+   `CastleMain` as development only. Prefer `secret_entrance_clear` module name.
+5. Drive probes from work queue **main / zelda / b1** groups first; key/shutter
+   and pure `exit_0x55` are **alternate** practice only.
+6. Optional: full natural-chain title → main hall → Zelda → Sanctuary.
 7. Defer arena / romhack / asset-editor (`gauntlet/`, `romhack/`) until the
    opening continuous path is clean.
 
 ## Done (recent)
 
+- **All Sanctuary-path room maps:** `maps/room_{55,60,61,62,50,01,51,52,71,72,80,81,82}.json`
+  + isolated `room_60→room_50` (`north_to_0x50`). z3-json-data workspace
+  fallback + US/JP vanilla note.
+- **Main hall room 0x61 + room engine:** JSON map authority, typed doors,
+  generic clear/path/door push, graph isolated `room_61→room_60`, compact CLI
+  `scripts/room_engine.py` (SM-style low context).
 - **Courtyard pocket → main door → room 0x61:** bush-cut route, door approach
   ~(2040,1790), UP trigger; graph edge `pocket_to_main_hall` continuous;
   segment + anchors + `scripts/pocket_to_main_hall.py` + probe tooling.

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 130,
+  "roomHex": "0x82",
+  "name": "Hyrule Castle B1 east / bridge",
+  "measured": "2026-07-31",
+  "sourceState": "CastleB1West",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_spawn", "xy": [1184, 4108], "role": "spawn", "notes": "CastleB1West"},
+    {"label": "south_area", "xy": [1312, 4456], "role": "waypoint", "notes": "CastleB1South"},
+    {"label": "bridge", "xy": [1255, 4393], "role": "waypoint", "notes": "CastleB1Bridge"},
+    {"label": "island", "xy": [1275, 4253], "role": "waypoint", "notes": "CastleZeldaB1Island"},
+    {"label": "east_b1", "xy": [1036, 4492], "role": "waypoint", "notes": "CastleZeldaB1East"},
+    {"label": "north_door_approach", "xy": [1184, 4100], "role": "approach", "notes": "Hold UP → room 0x72"}
+  ],
+  "doors": [
+    {
+      "label": "north_to_0x72",
+      "direction": "UP",
+      "toRoom": 114,
+      "toRoomHex": "0x72",
+      "approachXy": [1184, 4108],
+      "landingXy": [1184, 4099],
+      "role": "primary",
+      "path": ["entry_spawn"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 40,
+      "notes": "CastleB1West spawn is on the north seam; pure UP (~6f). Prefer --no-clear."
+    },
+    {
+      "label": "west_to_0x81",
+      "direction": "LEFT",
+      "toRoom": 129,
+      "toRoomHex": "0x81",
+      "approachXy": [1010, 4496],
+      "landingXy": [960, 4496],
+      "role": "zelda_path",
+      "path": ["east_b1"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 100,
+      "notes": "Reverse of room_81 east door; approach near south seam"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 40,
+    "attackDistance": 48,
+    "maxCycles": 100,
+    "skirmishMaxDistance": 70,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 50
+  },
+  "walkBbox": [1036, 4099, 1312, 4496],
+  "hostilesAtEntry": [
+    {"type": "0x41", "xy": [1168, 4176]},
+    {"type": "0x41", "xy": [1280, 4192]}
+  ],
+  "notes": [
+    "B1 east/bridge chamber; many work-queue states share this room base id.",
+    "Authority: maps/room_82.json"
+  ]
+}

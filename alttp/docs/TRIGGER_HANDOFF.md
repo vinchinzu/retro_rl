@@ -63,19 +63,53 @@ blocked by water until south corridor is reached; soldiers on approach path.
 
 ## Open (active blockers)
 
-### Main hall → Zelda cell — **route open**
+### Main hall room 0x61 — **west edge measured**
 
-Early B1 / key-shutter legs. Work queue states `CastleB1Key`, `Shutter*`, etc.
-Internal key path in `0x55` is an **alternate** (graph path `internal_key`),
-not the continuous outdoor tip.
+| Field | Value |
+|-------|--------|
+| Tier | route + approach + trigger (main hall only) |
+| Anchors | `HyruleCastle_MainHall`, `…_WestDoorApproach`, `…_WestDoorTrigger` |
+| Entry | `CastleMain` ~(760, 3520); 3 hostiles on carpet |
+| Map | `maps/room_61.json`; side corridor **y≈3320** |
+| West edge | approach ~(520, 3320), hold LEFT → room `0x60` landing ~(511, 3320) |
+| East edge | approach ~(960, 3320), hold RIGHT → room `0x62` |
+| South edge | approach ~(760, 3496), hold DOWN → outdoors ~(2040, 1740) screen `0x1B` |
+| Tools | `room_sense` + `room_engine` |
+| Script | `scripts/room_engine.py run room_61 --edge west_to_0x60` |
+| Graph | `main_hall_west_to_0x60` verification=`isolated` |
+| Provenance | headless 2026-07-31 from `CastleMain` |
 
-Continuous tip is now **main hall** (`room_61`). Acceptance for rescue:
-`$F3CC == 1` (Zelda follower). Do not claim from room id alone.
+### Room 0x60 north → 0x50 — **isolated** (Zelda still open)
+
+| Field | Value |
+|-------|--------|
+| Tier | route + approach + trigger (0x60 only) |
+| Anchors | `HyruleCastle_MainWest_0x60`, `HyruleCastle_NW_0x50` |
+| Map | `maps/room_60.json` |
+| Path | west landing → (400,3320) → (376,3200) → (376,3130) UP |
+| North edge | approach ~(376, 3130), hold UP → room `0x50` landing ~(376, 3088) |
+| East edge | approach ~(500, 3320), RIGHT → `0x61` |
+| South edge | x≈376 south → outdoors west courtyard ~(1832, 1540) |
+| Script | `scripts/room_engine.py run room_60 --edge north_to_0x50 --state CastleRoom60` |
+| Graph | `room_60_north_to_0x50` verification=`isolated` |
+
+### After 0x50 → Zelda cell — **planned**
+
+Measured map seeds (not continuous): `room_50` east→`0x01`, plus B1
+`room_81`/`room_82`/`room_72`/`room_71`/`room_80`. Graph hop
+`room_50_to_zelda_cell` remains `planned`.
+
+Continuous tip remains **main hall** until natural-entry reaches further.
+Work queue primary: `CastleMain`, `CastleRoom60`, `CastleRoom50`, Zelda B1 states.
+Internal key/shutter path in/near `0x55` is **alternate** only.
+
+Acceptance for full rescue: `$F3CC == 1`. Do not claim from room id alone.
 
 ### Escort Lamp + sewers → Sanctuary — **planned**
 
-Mantle checks lamp + follower. Natural boot already collects house lamp.
-Sanctuary room base `0x12` / OW screen `0x13` — confirm on ROM before claims.
+Segment scaffold: `escort_to_sanctuary`. Mantle checks lamp + follower.
+Natural boot already collects house lamp. Sanctuary room base `0x12` / OW
+screen `0x13` — confirm on ROM before claims.
 
 ## Multi-truth checklist (any new hop)
 

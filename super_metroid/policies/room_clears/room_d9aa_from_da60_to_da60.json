@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d9aa_from_da60_to_da60",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Space Jump Room (0xD9AA); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA978",
+    "entrySourceRoomIdHex": "0xDA60",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 43384,
+    "entrySourceRoomId": 55904
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 55904,
+      "sourceRoomIdHex": "0xDA60",
+      "endpoint": {
+        "roomId": 55722,
+        "roomIdHex": "0xD9AA",
+        "logicalRoomId": 194,
+        "nodeId": 1,
+        "nodeName": "Space Jump Room Door (to Draygon)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 55904,
+      "targetRoomIdHex": "0xDA60",
+      "endpoint": {
+        "roomId": 55722,
+        "roomIdHex": "0xD9AA",
+        "logicalRoomId": 194,
+        "nodeId": 1,
+        "nodeName": "Space Jump Room Door (to Draygon)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        4,
+        8
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 11,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          4,
+          8
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 1
+    },
+    {
+      "label": "runup_to_item_room",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 60
+    },
+    {
+      "label": "land_on_item_platform",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 60
+    },
+    {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "beam_select_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "jump_to_statue",
+      "buttons": [
+        "A"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "open_statue",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 5
+    },
+    {
+      "label": "statue_open_wait",
+      "buttons": [],
+      "frames": 60
+    },
+    {
+      "label": "collect_space_jump",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 480
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 138
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:03:26.058699+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_d9aa_from_da60_to_da60.json",
+    "reportSha256": "59144eb3e52937f6512ceba034fe3937bbd085e79efc0a1db3b8533b791c1c8e",
+    "stateSha256": "d7ded02f753ec4eb065d67a44adf401c8c3004dce37f5d0e162b156260f41253",
+    "policySha256Before": "1f060d06fd23f94a4b6e4c01ddc21ce483e67c41d9f104ea22dfb5bc6cff54ea"
+  }
+}
