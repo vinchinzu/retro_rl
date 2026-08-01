@@ -14,6 +14,7 @@ from harvest.planner.tasks.transitions import (
 
 from harvest.planner.tasks.inventory import (
     RecordingSliceSpec,
+    ShedShelfSpec,
     ShedToolSpec,
     ShedSeedSpec,
     SHED_TOOL_SPECS,
@@ -27,6 +28,7 @@ from harvest.planner.tasks.inventory import (
     ExitToFarmTask,
     SwapCarrySlotsTask,
     ShedShelfToolTask,
+    ShedFetchItemTask,
     EnsureCarryToolTask,
     EnsureAnimalToolsTask,
     EnsureCropSeedsTask,
@@ -69,6 +71,7 @@ __all__ = [
     "ExitBuildingTask",
     "DirectionalTransitionTask",
     "RecordingSliceSpec",
+    "ShedShelfSpec",
     "ShedToolSpec",
     "ShedSeedSpec",
     "SHED_TOOL_SPECS",
@@ -82,6 +85,7 @@ __all__ = [
     "ExitToFarmTask",
     "SwapCarrySlotsTask",
     "ShedShelfToolTask",
+    "ShedFetchItemTask",
     "EnsureCarryToolTask",
     "EnsureAnimalToolsTask",
     "EnsureCropSeedsTask",

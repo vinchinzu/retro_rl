@@ -31,6 +31,7 @@ class PhaseKind(StrEnum):
     COW_CHORES = "cow_chores"
     COW_PURCHASE = "cow_purchase"
     CROP = "crop"
+    HOT_SPRING = "hot_spring"
     RETURN_HOME = "return_home"
     SLEEP = "sleep"
     READY_TO_GO_HOME = "ready_to_go_home"
@@ -56,6 +57,7 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.CLEAR_FIELD,
         PhaseKind.COW_PURCHASE,
         PhaseKind.EVE_TALK_LOOP,
+        PhaseKind.HOT_SPRING,
     }
 )
 

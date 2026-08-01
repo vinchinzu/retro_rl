@@ -62,10 +62,19 @@ Water without can → SUCCESS partial (plant kept); second pass needs ENSURE_WAT
 
 ## Next acceptance
 
-1. Same-day water after plant (can fetch from field / south stream refill).
+1. Same-day water after plant: `CROP_ESTABLISH` (hoe+seed) → `ENSURE_WATERING_CAN` → `CROP_WATER` (water-only).
 2. From `Y1_Inside_House`, multi-day soak with **money > 100** after first potato harvest window (~day+6).
 3. Phase journal: non-zero `planted_count` / `watered_count`, then `HARVEST_ROUTE`.
 4. Re-run `--end-of-spring` without mid-run state load.
+5. Optional: `HOT_SPRING_STAMINA` — **ROM natural-entry verified 2026-07-31**:
+   farm drain → `farm_to_spa` → upper pond B+A bath (50→110+) → reverse
+   `mountain_to_farm` → farm. Corridor debris-free (`mountain_spa_validate`).
+   ```bash
+   HEADLESS=1 uv run python -m harvest.scripts.mountain_spa_validate
+   HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \
+     --state latest_backup_sunday_go_to_mountain_20260427_152011 \
+     --min-stamina 100 --target-stamina 30 --return-to-farm
+   ```
 
 ```bash
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
@@ -82,6 +91,8 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 - Only two carry slots: plant day uses hoe+seeds first, then can for water after the bag is spent
 - `CLEAR_FIELD` morning budget ~3500f is intentional so seed shop is not starved
 - ROM SHA1 must match `rom.sha`
+- Stamina: tool use drains for real (`INFINITE_STAMINA` off by default). **Noon lunch** is a fixed +20 at 12:00 (decomp `HaveLunch`). Mid-route “+20 on mountain” is that pulse, not spa.
+- Hot spring = **upper outdoor pond on mountain `0x10`** (not camp tent pond, not cave `0x29`). Mountain tilemap stays **0x10 all seasons** (palette only). Path: west mid y~470 → full west climb to y=361 → east mid → ridge x≈433 → lip **tile(38,12)** ~(619,201); water **0xF7** at **(39,12)**. Soak = **B+A+direction** into F7 (`player_action=3`); A-alone with watering can does not enter. Post-soak re-cross west before return. Spa corridor **debris-free** (83 off-path stumps/rocks ignored). Routes: `farm_to_spa` / `fish_spot_to_outdoor_spa` / reverse `mountain_to_farm` with nearest-waypoint slice. Mid-route +20 is **noon lunch**.
 
 ## Key states
 

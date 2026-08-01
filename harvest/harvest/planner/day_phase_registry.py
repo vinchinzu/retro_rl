@@ -380,11 +380,27 @@ def _build_eve_talk_loop(
 
 def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
     refill_bounds = spec.params.get("refill_bounds")
+    work_mode = spec.params.get("work_mode", "full")
     skip_water_tiles = set(live_harvestable_crop_tiles(world.ram, ctx.state_name))
     return CropWaterTask(
         seed_type=ctx.seed_type,
+        work_mode=str(work_mode),
         refill_bounds=refill_bounds,
         skip_water_tiles=skip_water_tiles,
+    )
+
+
+def _build_hot_spring(
+    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
+) -> Task:
+    from harvest.tasks.hot_spring import HotSpringStaminaTask
+
+    return HotSpringStaminaTask(
+        name=f"hot_spring_{spec.phase.lower()}",
+        min_stamina=int(spec.params.get("min_stamina", 40)),
+        return_to_farm=bool(spec.params.get("return_to_farm", True)),
+        tasks_dir=ctx.tasks_dir,
+        timeout=int(spec.params.get("timeout", 24000)),
     )
 
 
@@ -436,6 +452,7 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.COW_CHORES: _build_cow_chores,
     PhaseKind.EVE_TALK_LOOP: _build_eve_talk_loop,
     PhaseKind.CROP: _build_crop,
+    PhaseKind.HOT_SPRING: _build_hot_spring,
     PhaseKind.RETURN_HOME: _build_return_home,
     PhaseKind.SLEEP: _build_sleep,
     PhaseKind.READY_TO_GO_HOME: _build_ready_to_go_home,

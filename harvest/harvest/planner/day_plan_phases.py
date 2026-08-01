@@ -40,7 +40,9 @@ from harvest.planner.day_phase_catalog import (
     ENSURE_CROP_SEEDS_PHASE,
     ENSURE_ANIMAL_TOOLS_PHASE,
     ENSURE_MILKER_PHASE,
+    CROP_ESTABLISH_PHASE,
     CROP_WATER_PHASE,
+    HOT_SPRING_STAMINA_PHASE,
     RETURN_HOME_PHASE,
     GO_TO_SLEEP_PHASE,
     TOWN_EXPLORE_PHASE,
@@ -223,6 +225,27 @@ def _berry_run_phases(
     return []
 
 
+def crop_establish_phases() -> List[PhaseSpec]:
+    """Hoe + plant pass: ensure seeds/hoe, walk to field, establish plots.
+
+    Only two carry slots, so this pass keeps seeds+hoe and does not fetch the can.
+    """
+    return [
+        ENSURE_CROP_SEEDS_PHASE,
+        NAV_CROP_PHASE,
+        CROP_ESTABLISH_PHASE,
+    ]
+
+
+def crop_water_phases(*, include_nav: bool = True) -> List[PhaseSpec]:
+    """Water pass: ensure can, optional field nav, water established crops."""
+    phases: List[PhaseSpec] = [ENSURE_WATERING_CAN_PHASE]
+    if include_nav:
+        phases.append(NAV_CROP_PHASE)
+    phases.append(CROP_WATER_PHASE)
+    return phases
+
+
 def _crop_work_phases(
     *,
     has_harvest: bool,
@@ -246,18 +269,13 @@ def _crop_work_phases(
     # Only two carry slots. Plant pass uses hoe+seeds; water pass re-fetches the
     # can afterward (seed bag frees a slot once the bag is spent).
     if plant_seeds:
-        phases.append(ENSURE_CROP_SEEDS_PHASE)
-        phases.append(NAV_CROP_PHASE)
-        phases.append(CROP_WATER_PHASE)
+        phases.extend(crop_establish_phases())
     if needs_manual_water:
-        phases.append(ENSURE_WATERING_CAN_PHASE)
         # When a harvest route will already walk the field, skip a second nav.
         prefer_harvest_nav = bool(
             policy.include_harvest and has_harvest and not late_day and not plant_seeds
         )
-        if not prefer_harvest_nav:
-            phases.append(NAV_CROP_PHASE)
-        phases.append(CROP_WATER_PHASE)
+        phases.extend(crop_water_phases(include_nav=not prefer_harvest_nav))
     return phases
 
 
@@ -716,7 +734,9 @@ __all__ = [
     "ENSURE_CROP_SEEDS_PHASE",
     "ENSURE_ANIMAL_TOOLS_PHASE",
     "ENSURE_MILKER_PHASE",
+    "CROP_ESTABLISH_PHASE",
     "CROP_WATER_PHASE",
+    "HOT_SPRING_STAMINA_PHASE",
     "RETURN_HOME_PHASE",
     "GO_TO_SLEEP_PHASE",
     "EVE_TALK_LOOP_PHASE",
@@ -777,6 +797,8 @@ __all__ = [
     "auto_day_plan_name_for_ram",
     "auto_day_plan_name_for_state",
     "auto_day_phases",
+    "crop_establish_phases",
+    "crop_water_phases",
     "build_day_phases",
     "build_outdoor_day_phases",
     "build_outdoor_day_phases_from_ram",

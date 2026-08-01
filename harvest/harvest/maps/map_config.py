@@ -173,14 +173,95 @@ MAP_REGISTRY: Dict[int, MapConfig] = {
         exits=[
             # Recorded get_berry replay returns to path at tile(19,46).
             MapExit(region=(18, 44, 20, 48), direction="down", dest_tilemap=0x0C),
+            # West cave hole → MapMountainCave 0x29 (NOT the hot spring).
+            # Sunday replay enters at tile(10,25) walking up from px~(166,411).
+            MapExit(region=(9, 23, 12, 26), direction="up", dest_tilemap=0x29),
         ],
         landmarks=(
             MapLandmark("mountain_entry", (19, 46), "exit", source="get_berry_replay"),
             MapLandmark("west_stump", (20, 25), "stump", face="down", action="use_axe", source="get_berry_replay"),
             MapLandmark("east_stump", (41, 13), "stump", face="right", action="use_axe", source="get_berry_replay"),
-            MapLandmark("spa_area", (41, 13), "hot_spring", source="get_berry_replay", note="same approach area as east stump until map is fully decoded"),
+            # True outdoor hot spring (hot_spring_bath recording): upper pond
+            # water tile 0xF7 at (39,12); stand A0 (38,12) ~(619,201); A+dir.
+            # Stamina 100→130 verified. Not camp tent pond, not cave 0x29.
+            MapLandmark(
+                "spa_outdoor_pond",
+                (38, 12),
+                "hot_spring",
+                face="right",
+                action="press_a",
+                source="hot_spring_bath_recording",
+                note="A0 lip ~(619,201); water 0xF7 at (39,12); A+right into pond",
+            ),
+            MapLandmark(
+                "spa_water",
+                (39, 12),
+                "hot_spring",
+                face="right",
+                action="press_a",
+                source="hot_spring_bath_recording",
+                note="tile id 0xF7; player_action=3 while crossing",
+            ),
+            MapLandmark(
+                "spa_camp_pond",
+                (43, 26),
+                "pond",
+                face="up",
+                source="spa_outdoor_recon / spa_f0_probe",
+                note="WRONG pond (tent/F0); no stam restore — do not use for soak",
+            ),
+            MapLandmark(
+                "cave_door",
+                (10, 25),
+                "cave",
+                face="up",
+                source="sunday_go_to_mountain_replay",
+                note="west hole → 0x29 MapMountainCave; NOT hot spring",
+            ),
+            # Legacy aliases kept so older routes/docs resolve.
+            MapLandmark(
+                "spa_door",
+                (10, 25),
+                "cave",
+                face="up",
+                source="sunday_go_to_mountain_replay",
+                note="deprecated alias of cave_door; do not use for stamina soak",
+            ),
+            MapLandmark(
+                "spa_area",
+                (38, 12),
+                "hot_spring",
+                source="hot_spring_bath_recording",
+                note="alias of spa_outdoor_pond (upper lip)",
+            ),
             MapLandmark("fish_power_berry_cast_spot", (39, 23), "fishing_spot", face="right", action="use_tool", source="mountain_fish_power_berry_replay"),
             MapLandmark("fish_power_berry_throw_spot", (42, 25), "waterfall_pool", face="up", action="press_a", source="mountain_fish_power_berry_replay"),
+        ),
+        source="recorded_provisional",
+    ),
+    0x29: MapConfig(
+        name="mountain_cave",
+        walkable_tiles=INTERIOR_WALKABLE,
+        exits=[
+            # Walk down from cave stand to return to mountain.
+            MapExit(region=(20, 8, 26, 12), direction="down", dest_tilemap=0x10),
+        ],
+        landmarks=(
+            MapLandmark(
+                "cave_stand",
+                (23, 8),
+                "cave",
+                source="sunday_go_to_mountain_replay",
+                note="auto-relocate ~90f after entry at ~(376,128); not spa",
+            ),
+            MapLandmark(
+                "right_lip",
+                (26, 7),
+                "cave",
+                face="right",
+                source="sunday_go_to_mountain_replay + 2026-07-31 recon",
+                note="A1→A0 lip ~(416,121); B runs not jumps; not hot spring",
+            ),
         ),
         source="recorded_provisional",
     ),
@@ -345,6 +426,181 @@ def find_landmark(name: str, tilemap_id: Optional[int] = None) -> Optional[tuple
 
 
 # ── Named routes (waypoint lists for known multi-map trips) ──
+
+def slice_route_from_position(
+    waypoints: List[Waypoint],
+    px: int,
+    py: int,
+    *,
+    tilemap: Optional[int] = None,
+) -> List[Waypoint]:
+    """Return a suffix of ``waypoints`` starting at the nearest relevant hop.
+
+    MultiMapNav always begins at index 0. When already mid-mountain (fish
+    stand, spa lip, west climb), forcing the south entry first walks away
+    from the goal. Pick the closest same-map waypoint and continue from there
+    (or the previous hop if we are slightly past it).
+    """
+    if not waypoints:
+        return []
+    best_i = 0
+    best_d = None
+    for i, wp in enumerate(waypoints):
+        if tilemap is not None and wp.tilemap != tilemap:
+            continue
+        d = abs(wp.target_px[0] - px) + abs(wp.target_px[1] - py)
+        if best_d is None or d < best_d:
+            best_d = d
+            best_i = i
+    # If already within arrival radius of a later waypoint, skip ahead.
+    for i in range(len(waypoints) - 1, best_i - 1, -1):
+        wp = waypoints[i]
+        if tilemap is not None and wp.tilemap != tilemap:
+            continue
+        if (
+            abs(wp.target_px[0] - px) <= wp.radius
+            and abs(wp.target_px[1] - py) <= wp.radius
+        ):
+            return list(waypoints[i:])
+    # Start one hop earlier so we still approach along the corridor.
+    start = max(0, best_i - 1)
+    return list(waypoints[start:])
+
+
+# Outdoor spa path on mountain 0x10 (hot_spring_bath + entry approach).
+# Viewport-limited BFS needs hops ≤ ~15 tiles. Path tiles: 0xA0/0xA8 (clear
+# of stumps/rocks along this corridor — validated on spring mountain RAM).
+# Do NOT route via camp tent pond ~(697,406) or west cave door.
+_MOUNTAIN_ENTRY_APPROACH: List[Waypoint] = [
+    Waypoint(tilemap=0x10, target_px=(328, 718), radius=16),
+    Waypoint(tilemap=0x10, target_px=(420, 713), radius=16),
+    Waypoint(tilemap=0x10, target_px=(496, 708), radius=16),
+    Waypoint(tilemap=0x10, target_px=(580, 680), radius=14),
+    Waypoint(tilemap=0x10, target_px=(640, 620), radius=14),
+    Waypoint(tilemap=0x10, target_px=(680, 520), radius=14),
+    Waypoint(tilemap=0x10, target_px=(686, 430), radius=14),
+]
+
+# West mid corridor y~470 → west climb → east mid y~361 → NE lip ~(619,201).
+# Climb hops use tight radius: a loose radius on (70,377) "arrives" at y~390
+# still below the ridge and then BFS cannot cut NE into solid tiles.
+_FISH_TO_OUTDOOR_SPA: List[Waypoint] = [
+    Waypoint(tilemap=0x10, target_px=(640, 428), radius=14),
+    Waypoint(tilemap=0x10, target_px=(560, 454), radius=14),
+    Waypoint(tilemap=0x10, target_px=(480, 468), radius=14),
+    Waypoint(tilemap=0x10, target_px=(380, 470), radius=14),
+    Waypoint(tilemap=0x10, target_px=(280, 470), radius=14),
+    Waypoint(tilemap=0x10, target_px=(185, 456), radius=14),
+    Waypoint(tilemap=0x10, target_px=(103, 442), radius=12),
+    # Full west climb (human: y 442 → 407 → 361 at x~70–78).
+    Waypoint(tilemap=0x10, target_px=(70, 413), radius=10),
+    Waypoint(tilemap=0x10, target_px=(70, 361), radius=10),
+    # East mid corridor — run_direction skips stale-tile BFS on clear path.
+    Waypoint(
+        tilemap=0x10,
+        target_px=(148, 361),
+        radius=12,
+        run_direction="right",
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(248, 361),
+        radius=12,
+        run_direction="right",
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(348, 361),
+        radius=12,
+        run_direction="right",
+    ),
+    Waypoint(tilemap=0x10, target_px=(430, 345), radius=12),
+    # North then east to lip. Avoid D0 building at tile(36,13): approach west
+    # at x=569 → y=201, then run east along the A0 lip (human bath).
+    Waypoint(tilemap=0x10, target_px=(433, 255), radius=12),
+    Waypoint(tilemap=0x10, target_px=(529, 246), radius=12),
+    Waypoint(tilemap=0x10, target_px=(569, 214), radius=10),
+    Waypoint(tilemap=0x10, target_px=(569, 201), radius=8),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(619, 201),
+        radius=10,
+        run_direction="right",
+    ),
+]
+
+_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA: List[Waypoint] = (
+    list(_MOUNTAIN_ENTRY_APPROACH) + list(_FISH_TO_OUTDOOR_SPA)
+)
+
+# Spa lip → reverse bath path → south exit (for return_to_farm).
+# Drop run_direction on reverse (east runs become west walks via BFS/hops).
+# Start west of lip so post-bath water stand does not block the first hop.
+_OUTDOOR_SPA_TO_MOUNTAIN_EXIT: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x10,
+        target_px=(569, 201),
+        radius=14,
+        run_direction="left",
+    ),
+    Waypoint(tilemap=0x10, target_px=(569, 214), radius=12),
+    Waypoint(tilemap=0x10, target_px=(529, 246), radius=12),
+    # South on the x≈433 ridge (human climb column), then SW into mid corridor.
+    Waypoint(tilemap=0x10, target_px=(433, 255), radius=12),
+    Waypoint(tilemap=0x10, target_px=(433, 300), radius=12),
+    Waypoint(tilemap=0x10, target_px=(433, 345), radius=12),
+    Waypoint(tilemap=0x10, target_px=(416, 345), radius=12),
+    Waypoint(tilemap=0x10, target_px=(372, 347), radius=12),
+    Waypoint(tilemap=0x10, target_px=(348, 361), radius=12),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(280, 361),
+        radius=12,
+        run_direction="left",
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(248, 361),
+        radius=12,
+        run_direction="left",
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(148, 361),
+        radius=12,
+        run_direction="left",
+    ),
+    Waypoint(tilemap=0x10, target_px=(70, 361), radius=10),
+    Waypoint(tilemap=0x10, target_px=(70, 413), radius=10),
+    Waypoint(tilemap=0x10, target_px=(103, 442), radius=12),
+    Waypoint(tilemap=0x10, target_px=(185, 456), radius=12),
+    Waypoint(tilemap=0x10, target_px=(280, 470), radius=12),
+    Waypoint(tilemap=0x10, target_px=(380, 470), radius=12),
+    Waypoint(tilemap=0x10, target_px=(480, 468), radius=12),
+    Waypoint(tilemap=0x10, target_px=(560, 454), radius=12),
+    Waypoint(tilemap=0x10, target_px=(640, 428), radius=12),
+    Waypoint(tilemap=0x10, target_px=(686, 430), radius=12),
+    Waypoint(tilemap=0x10, target_px=(680, 520), radius=12),
+    Waypoint(tilemap=0x10, target_px=(640, 620), radius=12),
+    Waypoint(tilemap=0x10, target_px=(580, 680), radius=12),
+    Waypoint(tilemap=0x10, target_px=(496, 708), radius=12),
+    Waypoint(tilemap=0x10, target_px=(420, 713), radius=12),
+    Waypoint(tilemap=0x10, target_px=(328, 718), radius=12),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(312, 744),
+        radius=16,
+        is_exit=True,
+        exit_direction="down",
+    ),
+]
+
+_FARM_TO_MOUNTAIN_GATE: List[Waypoint] = [
+    Waypoint(tilemap=0x00, target_px=(40, 424), radius=16, is_exit=True, exit_direction="left"),
+    Waypoint(tilemap=0x0C, target_px=(232, 128), radius=16),
+    Waypoint(tilemap=0x0C, target_px=(132, 30), radius=10, is_exit=True, exit_direction="up"),
+]
+
 
 # Berry ship route: farm-only (discovered via ship_berry recording analysis)
 # Berry bush at tile(36,57) ~px(585,920), shipping bin at tile(62,60) ~px(1001,969)
@@ -512,11 +768,29 @@ ROUTES: Dict[str, List[Waypoint]] = {
     "path_to_farm": [
         Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
     ],
-    "farm_to_mountain": [
-        Waypoint(tilemap=0x00, target_px=(40, 424), radius=16, is_exit=True, exit_direction="left"),
-        Waypoint(tilemap=0x0C, target_px=(232, 128), radius=16),
-        Waypoint(tilemap=0x0C, target_px=(132, 30), radius=10, is_exit=True, exit_direction="up"),
+    "farm_to_mountain": list(_FARM_TO_MOUNTAIN_GATE),
+    # Mountain entry (south) → upper outdoor hot spring (0xF7 pond).
+    # Path: SE bottom → fish area → west mid y~470 → west climb → east mid
+    # y~361 → lip ~(619,201) tile(38,12). Short hops for viewport BFS.
+    "mountain_entry_to_outdoor_spa": list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA),
+    # Alias — same upper pond (not west cave door).
+    "mountain_entry_to_spa": list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA),
+    # From fish/camp stand (mountain_fish_power_berry_end) into bath path.
+    "fish_spot_to_outdoor_spa": list(_FISH_TO_OUTDOOR_SPA),
+    # Historical west-cave approach (sunday blue-feather path). Not for soak.
+    "mountain_entry_to_cave": [
+        Waypoint(tilemap=0x10, target_px=(328, 720), radius=22),
+        Waypoint(tilemap=0x10, target_px=(420, 713), radius=20),
+        Waypoint(tilemap=0x10, target_px=(518, 690), radius=18),
+        Waypoint(tilemap=0x10, target_px=(500, 600), radius=18),
+        Waypoint(tilemap=0x10, target_px=(400, 540), radius=18),
+        Waypoint(tilemap=0x10, target_px=(280, 490), radius=18),
+        Waypoint(tilemap=0x10, target_px=(180, 460), radius=16),
+        Waypoint(tilemap=0x10, target_px=(146, 430), radius=14),
+        Waypoint(tilemap=0x10, target_px=(166, 411), radius=12),
     ],
+    # Full farm → upper outdoor spa pond (map 0x10; season-stable tilemap).
+    "farm_to_spa": list(_FARM_TO_MOUNTAIN_GATE) + list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA),
     "mountain_entry_to_fish_power_berry_spots": [
         Waypoint(tilemap=0x10, target_px=(328, 718), radius=16),
         Waypoint(tilemap=0x10, target_px=(496, 708), radius=16),
@@ -525,9 +799,30 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x10, target_px=(624, 371), radius=12),
         Waypoint(tilemap=0x10, target_px=(686, 411), radius=12),
     ],
-    "mountain_to_farm": [
-        Waypoint(tilemap=0x10, target_px=(312, 744), radius=16, is_exit=True, exit_direction="down"),
-        Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
+    # Spa lip / mid-mountain → reverse corridor → south exit → farm.
+    "outdoor_spa_to_farm": list(_OUTDOOR_SPA_TO_MOUNTAIN_EXIT)
+    + [
+        Waypoint(
+            tilemap=0x0C,
+            target_px=(244, 128),
+            radius=16,
+            is_exit=True,
+            exit_direction="right",
+        ),
+        Waypoint(tilemap=0x00, target_px=(40, 424), radius=24),
+    ],
+    "mountain_to_farm": list(_OUTDOOR_SPA_TO_MOUNTAIN_EXIT)
+    + [
+        # Path→farm: accept arrival on path stand or farm just past the door
+        # (exit walk often lands already on 0x00).
+        Waypoint(
+            tilemap=0x0C,
+            target_px=(244, 128),
+            radius=16,
+            is_exit=True,
+            exit_direction="right",
+        ),
+        Waypoint(tilemap=0x00, target_px=(40, 424), radius=24),
     ],
     "church_sunday_talk_loop": [
         Waypoint(tilemap=0x1B, target_px=(128, 456), radius=16),
