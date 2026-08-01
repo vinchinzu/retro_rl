@@ -29,6 +29,13 @@ import numpy as np
 
 from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_u16
 
+from harvest.core.carry import (
+    ADDR_TOOL_BACKPACK,
+    SEED_ITEM,
+    carry_pair_items,
+    seed_in_carry_pair as seed_item_in_carry_pair,
+    watering_can_in_carry_pair,
+)
 from harvest.tasks.farm_clearer import (
     Tool,
     Point,
@@ -49,18 +56,6 @@ from harvest.tasks.farm_clearer import (
     ADDR_INPUT_LOCK,
     WALKABLE_TILES,
 )
-
-# ── seed item IDs (in tool/item slot 0x0921) ────────────────────────
-
-ADDR_TOOL_BACKPACK = 0x0923
-
-SEED_ITEM: Dict[str, int] = {
-    "corn": 0x05,       # yellow seed
-    "tomato": 0x06,     # red seed
-    "potato": 0x07,     # brown seed
-    "turnip": 0x08,     # white seed
-    "grass": 0x0C,
-}
 
 # ── tile IDs ─────────────────────────────────────────────────────────
 
@@ -85,22 +80,8 @@ REFILL_WATER_TILES = frozenset({
 })
 
 
-def carry_pair_items(ram: np.ndarray) -> Set[int]:
-    items: Set[int] = set()
-    if ADDR_TOOL < len(ram):
-        items.add(int(ram[ADDR_TOOL]))
-    if ADDR_TOOL_BACKPACK < len(ram):
-        items.add(int(ram[ADDR_TOOL_BACKPACK]))
-    return items
-
-
-def watering_can_in_carry_pair(ram: np.ndarray) -> bool:
-    return int(Tool.WATERING_CAN) in carry_pair_items(ram)
-
-
-def seed_item_in_carry_pair(ram: np.ndarray, seed_type: str = "potato") -> bool:
-    seed_item = SEED_ITEM.get(seed_type, SEED_ITEM["potato"])
-    return seed_item in carry_pair_items(ram)
+# carry_pair_items / watering_can_in_carry_pair / seed_item_in_carry_pair
+# live in harvest.core.carry (re-exported above).
 
 # ── 3x3 hoe pattern ─────────────────────────────────────────────────
 # Hoe 8 tiles around center.  Center stays untilled — that's where
@@ -766,12 +747,24 @@ def build_water_steps(
 
 # ── CropWaterTask ──────────────────────────────────────────────────
 
+# CropWaterTask work modes — day plan plant pass vs water pass only hold two
+# carry slots, so establish (hoe+seed) and water (can) must not share a run.
+WORK_MODE_FULL = "full"          # hoe/plant then water (legacy single pass)
+WORK_MODE_ESTABLISH = "establish"  # hoe + plant only; no watering can required
+WORK_MODE_WATER = "water"        # water existing crops only; no new plant plan
+
+
 @dataclass
 class CropWaterTask(Task):
     """Detect crop plots, plant seeds on tilled tiles, water all crops.
 
     Follows the GrassPlantTask state machine pattern:
       detect -> navigate -> center -> act -> verify -> tool_switch
+
+    ``work_mode`` splits the two-slot plant vs water ceremony:
+      - establish: hoe + plant only (day-plan plant pass with seeds+hoe)
+      - water: water existing plots only (day-plan can pass)
+      - full: plant then water in one run (legacy / manual crop mode)
 
     Fixes vs v1:
       - Planting: explicit tile position check (must be ON center tile)
@@ -782,6 +775,7 @@ class CropWaterTask(Task):
 
     name: str = "crop_water"
     seed_type: str = "potato"
+    work_mode: str = WORK_MODE_FULL
     bounds: Tuple[int, int, int, int] = DEFAULT_CROP_BOUNDS
     max_steps_per_target: int = 1200
     stasis_repath: int = 180
@@ -848,6 +842,18 @@ class CropWaterTask(Task):
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
         self._navigator = Navigator(self._pathfinder)
+        mode = (self.work_mode or WORK_MODE_FULL).strip().lower()
+        if mode not in {WORK_MODE_FULL, WORK_MODE_ESTABLISH, WORK_MODE_WATER}:
+            mode = WORK_MODE_FULL
+        self.work_mode = mode
+
+    @property
+    def _is_establish_only(self) -> bool:
+        return self.work_mode == WORK_MODE_ESTABLISH
+
+    @property
+    def _is_water_only(self) -> bool:
+        return self.work_mode == WORK_MODE_WATER
 
     @staticmethod
     def _water_level(ram: np.ndarray) -> int:
@@ -1042,7 +1048,11 @@ class CropWaterTask(Task):
             self._plots = detect_plots(ram, self.bounds)
         if not self._plots:
             # Virgin soil: plan + hoe + plant instead of silently succeeding.
-            can_plant = self._has_plantable_seed_stock(ram)
+            # Water-only pass never opens new plots (no seeds/hoe in carry).
+            can_plant = (
+                not self._is_water_only
+                and self._has_plantable_seed_stock(ram)
+            )
             if self._pass_number == 1 and can_plant:
                 planned = self._plan_new_plot_centers(ram)
                 if planned:
@@ -1051,8 +1061,13 @@ class CropWaterTask(Task):
                     print("[CROP] No plots detected and no plantable plan")
                     return TaskResult(status=TaskStatus.SUCCESS, reason="no plots detected")
             elif self._pass_number == 1:
-                print("[CROP] No plots detected (no plantable seed stock)")
-                return TaskResult(status=TaskStatus.SUCCESS, reason="no plots detected")
+                reason = (
+                    "no plots detected (water-only)"
+                    if self._is_water_only
+                    else "no plots detected (no plantable seed stock)"
+                )
+                print(f"[CROP] {reason}")
+                return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
             else:
                 self._state = "done"
                 return None
@@ -1060,7 +1075,10 @@ class CropWaterTask(Task):
         self._plots.sort(key=lambda center: (tile_dist(current_tile, center), center[1], center[0]))
         self._plot_index = 0
         pass_label = f"(pass {self._pass_number})" if self._pass_number > 1 else ""
-        print(f"[CROP] Detected {len(self._plots)} plots: {self._plots} {pass_label}")
+        print(
+            f"[CROP] Detected {len(self._plots)} plots: {self._plots} "
+            f"mode={self.work_mode} {pass_label}"
+        )
         self._start_plot(ram)
         return None
 
@@ -1072,6 +1090,19 @@ class CropWaterTask(Task):
         self._set_crop_walkable()  # allow pathfinding through crop tiles
         tilled = count_tilled(ram, center)
         crop_tiles = _count_crop_tiles(ram, center[0], center[1])
+
+        # Water-only: never hoe/plant; water established crops or skip the plot.
+        if self._is_water_only:
+            if crop_tiles > 0:
+                self._begin_water_phase(ram, allow_unknown_tiles=False)
+            else:
+                print(
+                    f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
+                    f"center=({center[0]},{center[1]}) water-only with no crops; skip"
+                )
+                self._advance_plot(ram)
+            return
+
         # Seed bag plants a 3x3 from the center notch. Plant once enough ring
         # tiles are hoed (full 8 is ideal; partial still uses the bag).
         if crop_tiles == 0 and tilled >= 4:
@@ -1093,8 +1124,15 @@ class CropWaterTask(Task):
                     f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
                     f"has {crop_tiles} crop tiles and {tilled} open tilled tiles; skip seeding partial plot"
                 )
-            # Skip to water phase
-            self._begin_water_phase(ram, allow_unknown_tiles=False)
+            if self._is_establish_only:
+                # Plant pass leaves watering for the later can pass.
+                print(
+                    f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
+                    f"already established; establish-only skips water"
+                )
+                self._advance_plot(ram)
+            else:
+                self._begin_water_phase(ram, allow_unknown_tiles=False)
 
     def _begin_hoe_phase(self, ram: np.ndarray) -> None:
         """Hoe untilled ring tiles for the current planned plot center."""
@@ -1265,7 +1303,12 @@ class CropWaterTask(Task):
         self._clear_crop_walkable()
         self._plot_index += 1
         if self._plot_index >= len(self._plots):
-            if self._pass_number < 3 and self.skipped_water > 0:
+            # Re-scan only helps water passes that skipped tiles; establish is one shot.
+            if (
+                not self._is_establish_only
+                and self._pass_number < 3
+                and self.skipped_water > 0
+            ):
                 prev_skip = self.skipped_water
                 self._pass_number += 1
                 self._state = "detect"
@@ -1821,7 +1864,11 @@ class CropWaterTask(Task):
                 print(f"[CROP] PLANT OK plot {self._plot_index + 1} planted={self.planted_count}")
             else:
                 print(f"[CROP] PLANT OK plot {self._plot_index + 1} planted={self.planted_count} ({tilled_remaining} tiles still updating)")
-            self._begin_water_phase(ram, allow_unknown_tiles=True)
+            if self._is_establish_only:
+                # Day-plan plant pass: seeds+hoe only; water after can re-fetch.
+                self._advance_plot(ram)
+            else:
+                self._begin_water_phase(ram, allow_unknown_tiles=True)
 
         elif self._plot_phase == "water":
             if self._water_index >= len(self._water_steps):
@@ -1946,6 +1993,14 @@ class CropWaterTask(Task):
                 )
                 print(f"[CROP] Partial complete: {msg}")
                 return TaskResult(status=TaskStatus.SUCCESS, reason=msg)
+            # Water-only pass without the can: keep the explicit reason so the
+            # day plan can recover via ENSURE_WATERING_CAN / recovery task.
+            if self._is_water_only and wanted == int(Tool.WATERING_CAN):
+                print("[CROP] Watering can not in carry pair (water-only pass)")
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason="watering can not in carry pair",
+                )
             print(f"[CROP] Tool 0x{wanted:02X} not found in inventory")
             return TaskResult(status=TaskStatus.FAILURE, reason=f"tool 0x{wanted:02X} not in inventory")
 
@@ -1962,11 +2017,17 @@ class CropWaterTask(Task):
         self._total_steps += 1
         self._steps_on_target += 1
 
-        if self._total_steps == 1 and is_rainy_weather(world.ram) and not seed_item_in_carry_pair(world.ram, self.seed_type):
+        if (
+            self._total_steps == 1
+            and is_rainy_weather(world.ram)
+            and not self._is_water_only
+            and not seed_item_in_carry_pair(world.ram, self.seed_type)
+        ):
             wanted = SEED_ITEM.get(self.seed_type, SEED_ITEM["potato"])
             # Rain waters existing crops; without seeds there is no plant work either.
             # Still run detect in case established plots need nothing — but if no
             # seeds and rain, short-circuit so day plan can finish.
+            # Water-only mode still scans (rain already watered; detect will no-op).
             print(f"[CROP] Rain and seed tool 0x{wanted:02X} not in carry pair; no crop work needed")
             return TaskResult(status=TaskStatus.SUCCESS, reason=f"rain; seed tool 0x{wanted:02X} not in carry pair")
 

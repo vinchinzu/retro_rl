@@ -9,12 +9,18 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
-from harvest.tasks.crop_planter import SEED_ITEM, is_rainy_weather
+from harvest.core.carry import (
+    ADDR_TOOL_BACKPACK,
+    ADDR_TOOL_SELECTED,
+    SEED_ITEM,
+    seed_in_carry_pair,
+    seed_item_id,
+    tool_in_carry_pair,
+)
+from harvest.core.tile_catalog import Tool
 from harvest.tasks.farm_clearer import (
-    Tool,
     Point,
     make_action,
-    cycle_tool,
     get_pos_from_ram,
     ADDR_TILEMAP,
     ADDR_INPUT_LOCK,
@@ -33,8 +39,6 @@ from harvest.planner.day_plan_status import (
     SHED_TILEMAP,
     BARN_TILEMAP,
     COOP_TILEMAP,
-    ADDR_TOOL_SELECTED,
-    ADDR_TOOL_BACKPACK,
     read_world_day_time,
     ram_seed_count,
     is_farm_tilemap,
@@ -56,18 +60,14 @@ from harvest.planner.tasks.transitions import (
     SHED_ENTER_STAND_TILE,
 )
 
-def tool_in_carry_pair(ram: np.ndarray, tool_id: int) -> bool:
-    if ADDR_TOOL_SELECTED < len(ram) and int(ram[ADDR_TOOL_SELECTED]) == tool_id:
-        return True
-    if ADDR_TOOL_BACKPACK < len(ram) and int(ram[ADDR_TOOL_BACKPACK]) == tool_id:
-        return True
-    return False
-
-
-def seed_in_carry_pair(ram: np.ndarray, seed_type: str = "potato") -> bool:
-    seed_item = SEED_ITEM.get(seed_type, SEED_ITEM["potato"])
-    return tool_in_carry_pair(ram, seed_item)
-
+# Re-export carry helpers for existing importers.
+__carry_exports__ = (
+    "tool_in_carry_pair",
+    "seed_in_carry_pair",
+    "SEED_ITEM",
+    "ADDR_TOOL_SELECTED",
+    "ADDR_TOOL_BACKPACK",
+)
 
 FARM_BUILDING_EXIT_STAND_TILES: Dict[int, Tuple[int, int]] = {
     SHED_TILEMAP: (8, 12),
@@ -81,6 +81,11 @@ BARN_EXIT_RIGHT_AISLE_X = 204
 BARN_EXIT_BYPASS_X = 216
 BARN_EXIT_LOWER_Y = 20 * 16 + 8
 BARN_EXIT_DOOR_X = 8 * 16 + 8
+
+# Shared outdoor approach target used by all shed shelf specs.
+_DEFAULT_SHED_NAV_PX = (422, 474)
+_DEFAULT_SHED_NAV_RADIUS = 12
+_DEFAULT_SHED_FARM_ROUTE = "farm_to_shed"
 
 
 def shed_enter_transition(*, name: str, timeout: int) -> DirectionalTransitionTask:
@@ -111,87 +116,59 @@ class RecordingSliceSpec:
 
 
 @dataclass(frozen=True)
-class ShedToolSpec:
-    nav_target_px: Tuple[int, int]
-    nav_radius: int
-    enter_direction: str
-    inside_recording: Optional[RecordingSliceSpec] = None
-    farm_route: Optional[str] = None
-    inside_stand_px: Optional[Tuple[int, int]] = None
-    inside_face: str = "up"
-    inside_settle_frames: int = 70
-    inside_timeout: int = 900
+class ShedShelfSpec:
+    """Where a tool or seed bag sits on the tool-shed shelf.
 
-
-@dataclass(frozen=True)
-class ShedSeedSpec:
-    """Where a shop/seed bag sits on the tool-shed shelf.
-
-    Shop-bought bags land on the shed shelf (``shed_items`` bits), not in the
+    Shop-bought bags land on the shelf (``shed_items`` bits), not in the
     2-slot carry pair. Stand under the sprite and press A — same as tools.
     """
 
-    nav_target_px: Tuple[int, int]
-    nav_radius: int
-    enter_direction: str
+    item_id: int
     inside_stand_px: Tuple[int, int]
-    farm_route: Optional[str] = None
+    nav_target_px: Tuple[int, int] = _DEFAULT_SHED_NAV_PX
+    nav_radius: int = _DEFAULT_SHED_NAV_RADIUS
+    enter_direction: str = "up"
+    farm_route: Optional[str] = _DEFAULT_SHED_FARM_ROUTE
     inside_face: str = "up"
-    inside_settle_frames: int = 40
+    inside_settle_frames: int = 70
     inside_timeout: int = 900
     inside_recording: Optional[RecordingSliceSpec] = None
 
 
-SHED_TOOL_SPECS: Dict[int, ShedToolSpec] = {
-    int(Tool.MILKER): ShedToolSpec(
-        farm_route="farm_to_shed",
-        nav_target_px=(422, 474),
-        nav_radius=12,
-        enter_direction="up",
-        # Tool layout from HM-Decomp DATA16_81BE0F:
-        # milker sprite at px(0x40, 0x90); stand one tile below it.
-        inside_stand_px=(64, 168),
-        inside_face="up",
-    ),
-    int(Tool.BRUSH): ShedToolSpec(
-        farm_route="farm_to_shed",
-        nav_target_px=(422, 474),
-        nav_radius=12,
-        enter_direction="up",
-        # Brush sprite at px(0x50, 0x90); stand one tile below it.
-        inside_stand_px=(80, 168),
-        inside_face="up",
-    ),
-    int(Tool.WATERING_CAN): ShedToolSpec(
-        farm_route="farm_to_shed",
-        nav_target_px=(422, 474),
-        nav_radius=12,
-        enter_direction="up",
-        # Watering can sprite at px(0x60, 0x90); stand one tile below it.
-        inside_stand_px=(96, 168),
-        inside_face="up",
-    ),
-    int(Tool.HOE): ShedToolSpec(
-        farm_route="farm_to_shed",
-        nav_target_px=(422, 474),
-        nav_radius=12,
-        enter_direction="up",
-        # Hoe / plow shelf stand verified via water_planted_tile replay.
-        inside_stand_px=(168, 166),
-        inside_face="up",
-    ),
+# Back-compat aliases (same shape fields consumers inspect).
+ShedToolSpec = ShedShelfSpec
+ShedSeedSpec = ShedShelfSpec
+
+
+def _tool_shelf(
+    tool: Tool,
+    stand_px: Tuple[int, int],
+    *,
+    settle: int = 70,
+) -> ShedShelfSpec:
+    return ShedShelfSpec(
+        item_id=int(tool),
+        inside_stand_px=stand_px,
+        inside_settle_frames=settle,
+    )
+
+
+SHED_TOOL_SPECS: Dict[int, ShedShelfSpec] = {
+    # Tool layout from HM-Decomp DATA16_81BE0F; stands one tile below sprites.
+    int(Tool.MILKER): _tool_shelf(Tool.MILKER, (64, 168)),
+    int(Tool.BRUSH): _tool_shelf(Tool.BRUSH, (80, 168)),
+    int(Tool.WATERING_CAN): _tool_shelf(Tool.WATERING_CAN, (96, 168)),
+    # Hoe stand verified via water_planted_tile replay.
+    int(Tool.HOE): _tool_shelf(Tool.HOE, (168, 166)),
 }
 
-SHED_SEED_SPECS: Dict[str, ShedSeedSpec] = {
+SHED_SEED_SPECS: Dict[str, ShedShelfSpec] = {
     # Potato bag after shop buy: upper shelf stand from water_planted_tile
     # (equip at ~frame 922, pos (190,118), tool becomes 0x07).
-    "potato": ShedSeedSpec(
-        farm_route="farm_to_shed",
-        nav_target_px=(422, 474),
-        nav_radius=12,
-        enter_direction="up",
+    "potato": ShedShelfSpec(
+        item_id=seed_item_id("potato"),
         inside_stand_px=(190, 118),
-        inside_face="up",
+        inside_settle_frames=40,
     ),
 }
 
@@ -219,8 +196,6 @@ def load_recording_slice(spec: RecordingSliceSpec, tasks_dir: str) -> RecordedTa
         frames=frames,
         start_state=recording.start_state,
     )
-
-
 
 
 @dataclass
@@ -556,61 +531,80 @@ class ShedShelfToolTask(Task):
 
 
 @dataclass
-class EnsureCarryToolTask(Task):
-    """Ensure a desired shed tool is present in the 2-slot carry pair."""
+class ShedFetchItemTask(Task):
+    """Fetch one shed-shelf item into the carry pair and leave the shed.
 
-    name: str = "ensure_carry_tool"
-    tool_id: int = int(Tool.WATERING_CAN)
+    Shared ladder: exit_to_farm → approach route → enter → shelf → exit_to_farm.
+    X cannot pull shelf bags; this task is the only way to equip them.
+    """
+
+    name: str = "shed_fetch_item"
+    item_id: int = int(Tool.WATERING_CAN)
+    shelf: Optional[ShedShelfSpec] = None
     tasks_dir: str = TASKS_DIR
     nav_timeout: int = 8000
     enter_timeout: int = 1500
+    # When True, success leaves the player on the farm (not inside the shed).
+    exit_when_done: bool = True
 
     _phase: str = field(default="start", init=False)
     _task: Optional[Task] = field(default=None, init=False)
-    _fallback_reason: str = field(default="", init=False)
+    _failed_reason: str = field(default="", init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "start"
         self._task = None
-        self._fallback_reason = ""
+        self._failed_reason = ""
 
     def can_start(self, world: WorldState) -> bool:
         return True
 
-    def _shed_spec(self) -> Optional[ShedToolSpec]:
-        return SHED_TOOL_SPECS.get(self.tool_id)
+    def _spec(self) -> Optional[ShedShelfSpec]:
+        if self.shelf is not None:
+            return self.shelf
+        return SHED_TOOL_SPECS.get(self.item_id)
 
-    def _inside_task(self, spec: ShedToolSpec) -> Task:
+    def _inside_task(self, spec: ShedShelfSpec) -> Task:
         if spec.inside_recording is not None:
             return load_recording_slice(spec.inside_recording, self.tasks_dir)
-        if spec.inside_stand_px is None:
-            raise ValueError(f"no inside shed plan for 0x{self.tool_id:02X}")
         return ShedShelfToolTask(
-            name=f"shed_shelf_tool_0x{self.tool_id:02X}",
-            tool_id=self.tool_id,
+            name=f"shed_shelf_0x{self.item_id:02X}",
+            tool_id=self.item_id,
             stand_px=spec.inside_stand_px,
             face=spec.inside_face,
             settle_frames=spec.inside_settle_frames,
             timeout=spec.inside_timeout,
         )
 
-    def _activate(self, phase: str, task: Task, world: WorldState) -> None:
+    def _activate(self, phase: str, task: Task, world: WorldState) -> TaskResult:
         self._phase = phase
         self._task = task
         task.reset(world)
+        return task.step(world)
+
+    def _item_ready(self, ram: np.ndarray) -> bool:
+        return tool_in_carry_pair(ram, self.item_id)
+
+    def _finish_ready(self, world: WorldState, reason: str) -> TaskResult:
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        if self.exit_when_done and tilemap == SHED_TILEMAP:
+            return self._activate("exit_after_ready", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
+        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
 
     def _start_next_phase(self, world: WorldState) -> TaskResult:
-        if tool_in_carry_pair(world.ram, self.tool_id):
-            return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.tool_id:02X} ready")
+        if self._item_ready(world.ram):
+            return self._finish_ready(world, f"tool 0x{self.item_id:02X} ready")
 
-        spec = self._shed_spec()
+        spec = self._spec()
         if spec is None:
-            return TaskResult(status=TaskStatus.FAILURE, reason=f"no shed tool plan for 0x{self.tool_id:02X}")
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"no shed shelf plan for 0x{self.item_id:02X}",
+            )
 
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         if tilemap == SHED_TILEMAP:
-            self._activate("inside", self._inside_task(spec), world)
-            return self._task.step(world)
+            return self._activate("inside", self._inside_task(spec), world)
         if is_farm_tilemap(tilemap):
             farm_route = shed_farm_route_name(world.ram, spec.farm_route)
             if farm_route:
@@ -620,31 +614,28 @@ class EnsureCarryToolTask(Task):
                         status=TaskStatus.FAILURE,
                         reason=f"missing shed farm route {farm_route}",
                     )
-                self._activate(
+                return self._activate(
                     "route",
                     MultiMapNavTask(
-                        name=f"route_shed_tool_0x{self.tool_id:02X}",
+                        name=f"route_shed_0x{self.item_id:02X}",
                         waypoints=list(waypoints),
                         timeout=self.nav_timeout,
                         initial_settle_frames=0,
                     ),
                     world,
                 )
-            else:
-                self._activate(
-                    "nav",
-                    NavTask(
-                        name=f"nav_shed_tool_0x{self.tool_id:02X}",
-                        target_px=Point(spec.nav_target_px[0], spec.nav_target_px[1]),
-                        radius=spec.nav_radius,
-                        timeout=self.nav_timeout,
-                    ),
-                    world,
-                )
-            return self._task.step(world)
+            return self._activate(
+                "nav",
+                NavTask(
+                    name=f"nav_shed_0x{self.item_id:02X}",
+                    target_px=Point(spec.nav_target_px[0], spec.nav_target_px[1]),
+                    radius=spec.nav_radius,
+                    timeout=self.nav_timeout,
+                ),
+                world,
+            )
 
-        self._activate("exit_to_farm", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
-        return self._task.step(world)
+        return self._activate("exit_to_farm", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
 
     def step(self, world: WorldState) -> TaskResult:
         if self._task is None:
@@ -653,41 +644,125 @@ class EnsureCarryToolTask(Task):
         result = self._task.step(world)
         if result.status == TaskStatus.RUNNING:
             return result
+
         if result.status == TaskStatus.FAILURE:
             tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
             if self._phase in {"route", "nav", "enter"} and tilemap == SHED_TILEMAP:
-                spec = self._shed_spec()
-                self._activate("inside", self._inside_task(spec), world)
-                return self._task.step(world)
+                spec = self._spec()
+                if spec is not None:
+                    return self._activate("inside", self._inside_task(spec), world)
             reason = result.reason or "unknown"
+            if self._phase == "exit_after_ready":
+                # Item is equipped; leave farm even if exit path was messy.
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason=f"tool 0x{self.item_id:02X} ready; shed exit failed: {reason}",
+                )
+            if self._phase == "exit_after_failure":
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=self._failed_reason or reason,
+                )
+            if tilemap == SHED_TILEMAP and self._phase not in {
+                "exit_after_failure",
+                "exit_after_ready",
+            }:
+                self._failed_reason = f"{self._phase} failed: {reason}"
+                return self._activate(
+                    "exit_after_failure",
+                    ExitToFarmTask(tasks_dir=self.tasks_dir),
+                    world,
+                )
             return TaskResult(status=TaskStatus.FAILURE, reason=f"{self._phase} failed: {reason}")
+
+        # Sub-task succeeded.
+        if self._phase == "exit_after_ready":
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.item_id:02X} ready")
+
+        if self._phase == "exit_after_failure":
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=self._failed_reason or "shed fetch failed",
+            )
 
         if self._phase == "exit_to_farm":
             self._task = None
             return self._start_next_phase(world)
 
         if self._phase in {"route", "nav"}:
-            self._activate(
+            return self._activate(
                 "enter",
                 shed_enter_transition(
-                    name=f"enter_shed_tool_0x{self.tool_id:02X}",
+                    name=f"enter_shed_0x{self.item_id:02X}",
                     timeout=self.enter_timeout,
                 ),
                 world,
             )
-            return self._task.step(world)
 
         if self._phase == "enter":
-            spec = self._shed_spec()
-            self._activate("inside", self._inside_task(spec), world)
-            return self._task.step(world)
+            spec = self._spec()
+            if spec is None:
+                return TaskResult(status=TaskStatus.FAILURE, reason="missing shed shelf spec")
+            return self._activate("inside", self._inside_task(spec), world)
 
         if self._phase == "inside":
-            if tool_in_carry_pair(world.ram, self.tool_id):
-                return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.tool_id:02X} ready")
-            return TaskResult(status=TaskStatus.FAILURE, reason=f"tool 0x{self.tool_id:02X} missing after shed task")
+            if self._item_ready(world.ram):
+                return self._finish_ready(world, f"tool 0x{self.item_id:02X} ready")
+            self._failed_reason = f"tool 0x{self.item_id:02X} missing after shed task"
+            tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+            if tilemap == SHED_TILEMAP:
+                return self._activate(
+                    "exit_after_failure",
+                    ExitToFarmTask(tasks_dir=self.tasks_dir),
+                    world,
+                )
+            return TaskResult(status=TaskStatus.FAILURE, reason=self._failed_reason)
 
         return TaskResult(status=TaskStatus.FAILURE, reason=f"unknown phase {self._phase}")
+
+
+@dataclass
+class EnsureCarryToolTask(Task):
+    """Ensure a desired shed tool is present in the 2-slot carry pair."""
+
+    name: str = "ensure_carry_tool"
+    tool_id: int = int(Tool.WATERING_CAN)
+    tasks_dir: str = TASKS_DIR
+    nav_timeout: int = 8000
+    enter_timeout: int = 1500
+    exit_when_done: bool = True
+
+    _fetch: Optional[ShedFetchItemTask] = field(default=None, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._fetch = ShedFetchItemTask(
+            name=f"shed_fetch_0x{self.tool_id:02X}",
+            item_id=self.tool_id,
+            shelf=SHED_TOOL_SPECS.get(self.tool_id),
+            tasks_dir=self.tasks_dir,
+            nav_timeout=self.nav_timeout,
+            enter_timeout=self.enter_timeout,
+            exit_when_done=self.exit_when_done,
+        )
+        self._fetch.reset(world)
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    # Tests inspect phase / nested task for route selection.
+    @property
+    def _phase(self) -> str:
+        return self._fetch._phase if self._fetch is not None else "start"
+
+    @property
+    def _task(self) -> Optional[Task]:
+        return self._fetch._task if self._fetch is not None else None
+
+    def step(self, world: WorldState) -> TaskResult:
+        if self._fetch is None:
+            self.reset(world)
+        assert self._fetch is not None
+        return self._fetch.step(world)
 
 
 @dataclass
@@ -720,7 +795,9 @@ class EnsureAnimalToolsTask(Task):
         return read_ram_u8(ram, ADDR_TOOL_BACKPACK)
 
     def _ready(self, ram: np.ndarray) -> bool:
-        return tool_in_carry_pair(ram, self.first_tool_id) and tool_in_carry_pair(ram, self.second_tool_id)
+        return tool_in_carry_pair(ram, self.first_tool_id) and tool_in_carry_pair(
+            ram, self.second_tool_id
+        )
 
     def _activate(self, phase: str, task: Task, world: WorldState) -> TaskResult:
         self._phase = phase
@@ -741,13 +818,19 @@ class EnsureAnimalToolsTask(Task):
         if selected in desired and backpack not in desired:
             return self._activate("swap", SwapCarrySlotsTask(), world)
 
-        missing = self.first_tool_id if not tool_in_carry_pair(world.ram, self.first_tool_id) else self.second_tool_id
+        missing = (
+            self.first_tool_id
+            if not tool_in_carry_pair(world.ram, self.first_tool_id)
+            else self.second_tool_id
+        )
+        # Nested ensure already exits the shed; no double-exit.
         return self._activate(
             f"ensure_0x{missing:02X}",
             EnsureCarryToolTask(
                 name=f"ensure_animal_tool_0x{missing:02X}",
                 tool_id=missing,
                 tasks_dir=self.tasks_dir,
+                exit_when_done=True,
             ),
             world,
         )
@@ -760,13 +843,20 @@ class EnsureAnimalToolsTask(Task):
         if result.status == TaskStatus.RUNNING:
             return result
         if self._phase == "exit_after_failure":
-            return TaskResult(status=TaskStatus.FAILURE, reason=self._failed_reason or "animal tool prep failed")
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=self._failed_reason or "animal tool prep failed",
+            )
         if result.status == TaskStatus.FAILURE:
             reason = result.reason or "unknown"
             tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
             if tilemap == SHED_TILEMAP:
                 self._failed_reason = f"{self._phase} failed: {reason}"
-                return self._activate("exit_after_failure", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
+                return self._activate(
+                    "exit_after_failure",
+                    ExitToFarmTask(tasks_dir=self.tasks_dir),
+                    world,
+                )
             return TaskResult(status=TaskStatus.FAILURE, reason=f"{self._phase} failed: {reason}")
         self._last_reason = result.reason or ""
         self._task = None
@@ -787,33 +877,24 @@ class EnsureCropSeedsTask(Task):
     tasks_dir: str = TASKS_DIR
     nav_timeout: int = 4000
     enter_timeout: int = 1500
-    cycle_limit: int = 12
     ensure_hoe: bool = True
 
     _phase: str = field(default="start", init=False)
     _task: Optional[Task] = field(default=None, init=False)
-    _fallback_reason: str = field(default="", init=False)
-    _action_queue: deque = field(default_factory=deque, init=False)
-    _cycle_count: int = field(default=0, init=False)
-    _seen_tools: set[int] = field(default_factory=set, init=False)
     _failed_reason: str = field(default="", init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "start"
         self._task = None
-        self._fallback_reason = ""
-        self._action_queue.clear()
-        self._cycle_count = 0
-        self._seen_tools.clear()
         self._failed_reason = ""
 
     def can_start(self, world: WorldState) -> bool:
         return True
 
     def _seed_item(self) -> int:
-        return SEED_ITEM.get(self.seed_type, SEED_ITEM["potato"])
+        return seed_item_id(self.seed_type)
 
-    def _shed_spec(self) -> Optional[ShedSeedSpec]:
+    def _shed_spec(self) -> Optional[ShedShelfSpec]:
         return SHED_SEED_SPECS.get(self.seed_type)
 
     def _activate(self, phase: str, task: Task, world: WorldState) -> TaskResult:
@@ -821,14 +902,6 @@ class EnsureCropSeedsTask(Task):
         self._task = task
         task.reset(world)
         return task.step(world)
-
-    def _success_reason(self, reason: str) -> TaskResult:
-        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
-
-    def _carry_nonempty(self, ram: np.ndarray) -> bool:
-        selected = int(ram[ADDR_TOOL_SELECTED]) if ADDR_TOOL_SELECTED < len(ram) else 0
-        backpack = int(ram[ADDR_TOOL_BACKPACK]) if ADDR_TOOL_BACKPACK < len(ram) else 0
-        return selected != 0 or backpack != 0
 
     def _seeds_ready(self, ram: np.ndarray) -> bool:
         return tool_in_carry_pair(ram, self._seed_item())
@@ -840,27 +913,11 @@ class EnsureCropSeedsTask(Task):
             return True
         return tool_in_carry_pair(ram, int(Tool.HOE))
 
-    def _inside_seed_task(self, spec: ShedSeedSpec) -> Task:
-        if spec.inside_recording is not None:
-            return load_recording_slice(spec.inside_recording, self.tasks_dir)
-        return ShedShelfToolTask(
-            name=f"shed_shelf_seed_{self.seed_type}",
-            tool_id=self._seed_item(),
-            stand_px=spec.inside_stand_px,
-            face=spec.inside_face,
-            settle_frames=spec.inside_settle_frames,
-            timeout=spec.inside_timeout,
-        )
-
-    def _queue_cycle(self) -> None:
-        self._action_queue.extend(cycle_tool())
-        self._cycle_count += 1
-
     def _finish_ready(self, world: WorldState, reason: str) -> TaskResult:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         if tilemap == SHED_TILEMAP:
             return self._activate("exit_after_ready", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
-        return self._success_reason(reason)
+        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
 
     def _start_next_phase(self, world: WorldState) -> TaskResult:
         seed_item = self._seed_item()
@@ -870,9 +927,13 @@ class EnsureCropSeedsTask(Task):
             return self._finish_ready(world, f"seed tool 0x{seed_item:02X} ready")
 
         if stored <= 0 and not self._seeds_ready(world.ram):
-            return self._success_reason(f"no stored {self.seed_type} seeds")
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"no stored {self.seed_type} seeds",
+            )
 
         # Hoe first so the 2-slot pair ends as seeds+hoe after the seed grab.
+        # Nested ensure exits the shed itself.
         if self.ensure_hoe and not tool_in_carry_pair(world.ram, int(Tool.HOE)):
             return self._activate(
                 "ensure_hoe",
@@ -882,6 +943,7 @@ class EnsureCropSeedsTask(Task):
                     tasks_dir=self.tasks_dir,
                     nav_timeout=self.nav_timeout,
                     enter_timeout=self.enter_timeout,
+                    exit_when_done=True,
                 ),
                 world,
             )
@@ -889,107 +951,31 @@ class EnsureCropSeedsTask(Task):
         if self._seeds_ready(world.ram):
             return self._finish_ready(world, f"seed tool 0x{seed_item:02X} ready")
 
-        # X only swaps the carried pair — only cycle when something is already held.
-        if self._carry_nonempty(world.ram) and self._cycle_count == 0 and self._phase == "start":
-            self._phase = "cycle"
-            self._seen_tools.clear()
-            self._queue_cycle()
-            queued = drain_action_queue(self._action_queue)
-            return queued or TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-
-        return self._start_shed_seed_fetch(world)
-
-    def _step_cycle(self, world: WorldState) -> TaskResult:
-        seed_item = self._seed_item()
-        if tool_in_carry_pair(world.ram, seed_item):
-            if self.ensure_hoe and not tool_in_carry_pair(world.ram, int(Tool.HOE)):
-                self._phase = "start"
-                self._task = None
-                return self._start_next_phase(world)
-            return self._finish_ready(world, f"seed tool 0x{seed_item:02X} ready after cycle")
-
-        queued = drain_action_queue(self._action_queue)
-        if queued is not None:
-            return queued
-
-        selected = (
-            int(world.ram[ADDR_TOOL_SELECTED])
-            if ADDR_TOOL_SELECTED < len(world.ram)
-            else -1
-        )
-        backpack = (
-            int(world.ram[ADDR_TOOL_BACKPACK])
-            if ADDR_TOOL_BACKPACK < len(world.ram)
-            else -1
-        )
-        for value in (selected, backpack):
-            if value >= 0:
-                self._seen_tools.add(value)
-
-        # Empty hands or a small closed pair: stop cycling and use the shelf.
-        if (
-            self._cycle_count >= self.cycle_limit
-            or (selected == 0 and backpack == 0)
-            or (
-                self._cycle_count >= 4
-                and len(self._seen_tools) <= 2
-                and self._cycle_count > len(self._seen_tools) + 1
-            )
-        ):
-            return self._start_shed_seed_fetch(world)
-
-        self._queue_cycle()
-        queued = drain_action_queue(self._action_queue)
-        return queued or TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-
-    def _start_shed_seed_fetch(self, world: WorldState) -> TaskResult:
+        # Stock exists but bag is not carried: only the shelf can equip it.
+        # X never pulls shelf bags — go straight to shed fetch.
         spec = self._shed_spec()
         if spec is None:
-            stored = ram_seed_count(world.ram, self.seed_type)
             return TaskResult(
                 status=TaskStatus.FAILURE,
-                reason=f"seed stock={stored} but bag 0x{self._seed_item():02X} has no shed plan",
-            )
-
-        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
-        if tilemap == SHED_TILEMAP:
-            return self._activate("inside", self._inside_seed_task(spec), world)
-        if is_farm_tilemap(tilemap):
-            farm_route = shed_farm_route_name(world.ram, spec.farm_route)
-            if farm_route:
-                waypoints = ROUTES.get(farm_route, [])
-                if not waypoints:
-                    return TaskResult(
-                        status=TaskStatus.FAILURE,
-                        reason=f"missing shed seed route {farm_route}",
-                    )
-                return self._activate(
-                    "route",
-                    MultiMapNavTask(
-                        name=f"route_seed_{self.seed_type}",
-                        waypoints=list(waypoints),
-                        timeout=self.nav_timeout,
-                        initial_settle_frames=0,
-                    ),
-                    world,
-                )
-            return self._activate(
-                "nav",
-                NavTask(
-                    name=f"nav_seed_{self.seed_type}",
-                    target_px=Point(spec.nav_target_px[0], spec.nav_target_px[1]),
-                    radius=spec.nav_radius,
-                    timeout=self.nav_timeout,
+                reason=(
+                    f"seed stock={stored} but bag 0x{seed_item:02X} has no shed plan"
                 ),
-                world,
             )
-
-        return self._activate("exit_to_farm", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
+        return self._activate(
+            "fetch_seed",
+            ShedFetchItemTask(
+                name=f"shed_fetch_seed_{self.seed_type}",
+                item_id=seed_item,
+                shelf=spec,
+                tasks_dir=self.tasks_dir,
+                nav_timeout=self.nav_timeout,
+                enter_timeout=self.enter_timeout,
+                exit_when_done=True,
+            ),
+            world,
+        )
 
     def step(self, world: WorldState) -> TaskResult:
-        if self._phase == "cycle":
-            return self._step_cycle(world)
-
         if self._task is None:
             return self._start_next_phase(world)
 
@@ -998,22 +984,22 @@ class EnsureCropSeedsTask(Task):
             return result
 
         if result.status == TaskStatus.FAILURE:
-            tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
-            if self._phase in {"route", "nav", "enter"} and tilemap == SHED_TILEMAP:
-                spec = self._shed_spec()
-                if spec is not None:
-                    return self._activate("inside", self._inside_seed_task(spec), world)
             reason = result.reason or "unknown"
             if self._phase == "exit_after_ready":
-                return self._success_reason(
-                    f"seed tool 0x{self._seed_item():02X} ready; shed exit failed: {reason}"
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason=f"seed tool 0x{self._seed_item():02X} ready; shed exit failed: {reason}",
                 )
             if self._phase == "exit_after_failure":
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason=self._failed_reason or reason,
                 )
-            if tilemap == SHED_TILEMAP and self._phase not in {"exit_after_failure", "exit_after_ready"}:
+            tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+            if tilemap == SHED_TILEMAP and self._phase not in {
+                "exit_after_failure",
+                "exit_after_ready",
+            }:
                 self._failed_reason = f"{self._phase} failed: {reason}"
                 return self._activate(
                     "exit_after_failure",
@@ -1023,7 +1009,10 @@ class EnsureCropSeedsTask(Task):
             return TaskResult(status=TaskStatus.FAILURE, reason=f"{self._phase} failed: {reason}")
 
         if self._phase == "exit_after_ready":
-            return self._success_reason(f"seed tool 0x{self._seed_item():02X} ready")
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"seed tool 0x{self._seed_item():02X} ready",
+            )
 
         if self._phase == "exit_after_failure":
             return TaskResult(
@@ -1031,50 +1020,35 @@ class EnsureCropSeedsTask(Task):
                 reason=self._failed_reason or "seed equip failed",
             )
 
-        if self._phase == "exit_to_farm":
-            self._task = None
-            return self._start_next_phase(world)
+        # Nested fetch / ensure_hoe finished — re-evaluate readiness.
+        self._task = None
+        return self._start_next_phase(world)
 
-        if self._phase == "ensure_hoe":
-            self._task = None
-            return self._start_next_phase(world)
-
-        if self._phase in {"route", "nav"}:
-            return self._activate(
-                "enter",
-                shed_enter_transition(
-                    name=f"enter_shed_seed_{self.seed_type}",
-                    timeout=self.enter_timeout,
-                ),
-                world,
-            )
-
-        if self._phase == "enter":
-            spec = self._shed_spec()
-            if spec is None:
-                return TaskResult(status=TaskStatus.FAILURE, reason="missing seed shed spec")
-            return self._activate("inside", self._inside_seed_task(spec), world)
-
-        if self._phase == "inside":
-            seed_item = self._seed_item()
-            if tool_in_carry_pair(world.ram, seed_item):
-                # May still need hoe if a prior ensure_hoe was skipped.
-                self._task = None
-                return self._start_next_phase(world)
+    # Test helpers that used to call internal shed-route selection directly.
+    def _start_shed_seed_fetch(self, world: WorldState) -> TaskResult:
+        """Activate seed shelf fetch (tests / debug)."""
+        spec = self._shed_spec()
+        if spec is None:
             stored = ram_seed_count(world.ram, self.seed_type)
-            self._failed_reason = (
-                f"{self.seed_type} seed stock={stored}, seed tool 0x{seed_item:02X} not carried"
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"seed stock={stored} but bag 0x{self._seed_item():02X} has no shed plan"
+                ),
             )
-            tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
-            if tilemap == SHED_TILEMAP:
-                return self._activate(
-                    "exit_after_failure",
-                    ExitToFarmTask(tasks_dir=self.tasks_dir),
-                    world,
-                )
-            return TaskResult(status=TaskStatus.FAILURE, reason=self._failed_reason)
-
-        return TaskResult(status=TaskStatus.FAILURE, reason=f"unknown seed phase {self._phase}")
+        return self._activate(
+            "fetch_seed",
+            ShedFetchItemTask(
+                name=f"shed_fetch_seed_{self.seed_type}",
+                item_id=self._seed_item(),
+                shelf=spec,
+                tasks_dir=self.tasks_dir,
+                nav_timeout=self.nav_timeout,
+                enter_timeout=self.enter_timeout,
+                exit_when_done=True,
+            ),
+            world,
+        )
 
 
 @dataclass
@@ -1113,12 +1087,15 @@ class FarmExitTask(Task):
             direction = "down" if dy > 0 else "up"
         else:
             direction = "right" if dx > 0 else "left"
-        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(**{direction: True, "b": True})))
-
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action(**{direction: True, "b": True})),
+        )
 
 
 __all__ = [
     "RecordingSliceSpec",
+    "ShedShelfSpec",
     "ShedToolSpec",
     "ShedSeedSpec",
     "SHED_TOOL_SPECS",
@@ -1133,6 +1110,7 @@ __all__ = [
     "ExitToFarmTask",
     "SwapCarrySlotsTask",
     "ShedShelfToolTask",
+    "ShedFetchItemTask",
     "EnsureCarryToolTask",
     "EnsureAnimalToolsTask",
     "EnsureCropSeedsTask",

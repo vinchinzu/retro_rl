@@ -771,10 +771,12 @@ class PlaySession:
                 record_frame = len(self.recorded_frames)
                 self.recorded_frames.append(action.tolist())
             
-            # Keep basic resources topped up for autoplay. Prefer the stable
-            # integration field write and only fall back to raw memory writes.
+            # Keep optional cheats topped up for autoplay. Stamina is real by
+            # default so hot-spring refill / clear exhaustion can be verified;
+            # re-enable with INFINITE_STAMINA=1.
             try:
-                self._set_live_value(env, "stamina", 100, 0x4918)
+                if os.getenv("INFINITE_STAMINA", "").lower() in ("1", "true", "yes"):
+                    self._set_live_value(env, "stamina", 100, 0x4918)
                 if self.bot.grass_seed_hack:
                     self._set_live_value(env, "grass_seeds", 99, 0x4927)
                 if self.bot.crop_seed_hack:

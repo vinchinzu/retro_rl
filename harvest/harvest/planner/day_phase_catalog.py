@@ -175,10 +175,26 @@ ENSURE_MILKER_PHASE = PhaseSpec(
     {"tool_id": int(Tool.MILKER)},
 )
 
+# Plant pass: hoe + seed only (two-slot carry holds seeds+hoe).
+CROP_ESTABLISH_PHASE = PhaseSpec(
+    "CROP_ESTABLISH",
+    "crop",
+    {"work_mode": "establish", "refill_bounds": (3, 45, 62, 60)},
+)
+
+# Water pass: watering can only; waters already-established crops.
 CROP_WATER_PHASE = PhaseSpec(
     "CROP_WATER",
     "crop",
-    {"refill_bounds": (3, 45, 62, 60)},
+    {"work_mode": "water", "refill_bounds": (3, 45, 62, 60)},
+)
+
+# Optional stamina refill at outdoor mountain hot spring (tilemap 0x10 pond).
+HOT_SPRING_STAMINA_PHASE = PhaseSpec(
+    "HOT_SPRING_STAMINA",
+    "hot_spring",
+    {"min_stamina": 40, "return_to_farm": True},
+    failure_policy="optional",
 )
 
 RETURN_HOME_PHASE = PhaseSpec(
@@ -662,6 +678,8 @@ BUY_COW_FIRST_PHASES: List[PhaseSpec] = [
 # Day 1 sequence: house exit → light clear → buy seeds → hoe/plant → water →
 # town explore (sets go-home flag) → return home → sleep into day 2.
 # Plant pass uses hoe+seeds first (only 2 carry slots); can comes after.
+# Keep in sync with crop_establish_phases() / crop_water_phases() in
+# day_plan_phases.py (catalog cannot import that module without a cycle).
 DAY1_PHASES: List[PhaseSpec] = [
     EXIT_TO_FARM_PHASE,
     CLEAR_FIELD_PHASE,
@@ -669,7 +687,7 @@ DAY1_PHASES: List[PhaseSpec] = [
     BUY_SEEDS_PHASE,
     ENSURE_CROP_SEEDS_PHASE,
     NAV_CROP_PHASE,
-    CROP_WATER_PHASE,
+    CROP_ESTABLISH_PHASE,
     ENSURE_WATERING_CAN_PHASE,
     NAV_CROP_PHASE,
     CROP_WATER_PHASE,
@@ -691,7 +709,7 @@ BOOT_TO_DAY2_PHASES: List[PhaseSpec] = [
     BUY_SEEDS_PHASE,
     ENSURE_CROP_SEEDS_PHASE,
     NAV_CROP_PHASE,
-    CROP_WATER_PHASE,
+    CROP_ESTABLISH_PHASE,
     ENSURE_WATERING_CAN_PHASE,
     NAV_CROP_PHASE,
     CROP_WATER_PHASE,
@@ -738,7 +756,7 @@ SPRING4_PHASES: List[PhaseSpec] = [
     ),
     ENSURE_CROP_SEEDS_PHASE,
     NAV_CROP_PHASE,
-    CROP_WATER_PHASE,
+    CROP_ESTABLISH_PHASE,
     ENSURE_WATERING_CAN_PHASE,
     NAV_CROP_PHASE,
     CROP_WATER_PHASE,
@@ -886,7 +904,9 @@ __all__ = [
     "ENSURE_CROP_SEEDS_PHASE",
     "ENSURE_ANIMAL_TOOLS_PHASE",
     "ENSURE_MILKER_PHASE",
+    "CROP_ESTABLISH_PHASE",
     "CROP_WATER_PHASE",
+    "HOT_SPRING_STAMINA_PHASE",
     "RETURN_HOME_PHASE",
     "GO_TO_SLEEP_PHASE",
     "EVE_TALK_LOOP_PHASE",
