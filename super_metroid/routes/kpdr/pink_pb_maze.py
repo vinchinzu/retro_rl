@@ -104,7 +104,9 @@ def play_pink_pb_morph_bomb_collect(
     if state.max_power_bombs > 0:
         return state
     # Unmorph + walk fallback near PLM (item may need standing contact).
-    if state.samus_x < 160:
+    # A stopped roll anywhere in the pocket can still miss the PLM; use the
+    # documented pocket bound rather than requiring a deep overshoot first.
+    if state.samus_x <= 225:
         _hold(session, 5, "UP", reason="pb_collect_unmorph")
         _hold(session, 10, reason="pb_collect_unmorph")
         for _ in range(100):
@@ -216,6 +218,5 @@ def play_pink_pb_mid_maze_to_collect(
         f"mid solid at band — need door→left-volume or top→crumble "
         f"(see Mission Impossible Room)"
     )
-
 
 

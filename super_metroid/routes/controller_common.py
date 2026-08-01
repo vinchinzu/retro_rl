@@ -131,6 +131,35 @@ def wait_until(
     raise TimeoutError(f"{reason} timed out: {session.state}")
 
 
+def settle_hold(
+    session: ControllerSession, frames: int = 12, *, reason: str = "settle"
+) -> SuperMetroidState:
+    """Hold idle for a fixed settle window and preserve its reason label."""
+    return hold(session, frames, reason=reason)
+
+
+def short_hop(
+    session: ControllerSession,
+    direction: str,
+    frames: int,
+    *,
+    buttons_extra: Sequence[str] = (),
+    reason: str = "short_hop",
+) -> SuperMetroidState:
+    """Hold a directional jump with optional additional buttons."""
+    return hold(session, frames, direction, *buttons_extra, reason=reason)
+
+
+def vertical_hop(
+    session: ControllerSession,
+    frames: int,
+    *,
+    reason: str = "vertical_hop",
+) -> SuperMetroidState:
+    """Hold jump in place for a fixed vertical hop window."""
+    return hold(session, frames, "A", reason=reason)
+
+
 def wait_requirement(
     session: ControllerSession,
     requirement: StateRequirement,
@@ -416,9 +445,12 @@ __all__ = [
     "play_run_shoot_exit",
     "require_room",
     "require_state",
+    "settle_hold",
     "select_weapon",
+    "short_hop",
     "traverse_door",
     "unmorph",
+    "vertical_hop",
     "wait_ordinary_room",
     "wait_requirement",
     "wait_until",

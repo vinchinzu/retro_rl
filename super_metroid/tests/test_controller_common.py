@@ -117,6 +117,73 @@ def test_wait_requirement_timeout_includes_failures() -> None:
         cc.wait_requirement(session, req, timeout=3, reason="never")
 
 
+def test_settle_hold_advances_frames_and_preserves_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession(_state(frame=4))
+    reasons: list[str] = []
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        del buttons
+        reasons.append(reason)
+        for _ in range(frames):
+            sess.step(np.zeros(12, dtype=np.int8), "tick")
+        return sess.state
+
+    monkeypatch.setattr(cc, "hold", _hold)
+    out = cc.settle_hold(session, 12, reason="platform_settle")
+
+    assert session.frame == 16
+    assert out.frame == 16
+    assert reasons == ["platform_settle"]
+
+
+def test_short_hop_advances_frames_and_forwards_buttons_and_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession(_state(frame=7))
+    calls: list[tuple[int, tuple[str, ...], str]] = []
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        calls.append((frames, buttons, reason))
+        for _ in range(frames):
+            sess.step(np.zeros(12, dtype=np.int8), "tick")
+        return sess.state
+
+    monkeypatch.setattr(cc, "hold", _hold)
+    out = cc.short_hop(
+        session,
+        "LEFT",
+        24,
+        buttons_extra=("A",),
+        reason="kraid_return_short_hop",
+    )
+
+    assert session.frame == 31
+    assert out.frame == 31
+    assert calls == [(24, ("LEFT", "A"), "kraid_return_short_hop")]
+
+
+def test_vertical_hop_advances_frames_and_forwards_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession(_state(frame=7))
+    calls: list[tuple[int, tuple[str, ...], str]] = []
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        calls.append((frames, buttons, reason))
+        for _ in range(frames):
+            sess.step(np.zeros(12, dtype=np.int8), "tick")
+        return sess.state
+
+    monkeypatch.setattr(cc, "hold", _hold)
+    out = cc.vertical_hop(session, 24, reason="ghz_pillar_vertical_jump")
+
+    assert session.frame == 31
+    assert out.frame == 31
+    assert calls == [(24, ("A",), "ghz_pillar_vertical_jump")]
+
+
 def test_collect_item_mask_waits_for_bit(monkeypatch: pytest.MonkeyPatch) -> None:
     start = _state(collected_items=MORPH_BALL_MASK, frame=0)
     mid = _state(collected_items=MORPH_BALL_MASK, frame=1)
@@ -140,3 +207,5 @@ def test_exports_hybrid_surface() -> None:
     assert callable(cc.traverse_door)
     assert callable(cc.collect_item_mask)
     assert callable(cc.require_state)
+    assert callable(cc.short_hop)
+    assert callable(cc.vertical_hop)

@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_ae07_from_ae32_to_ad5e",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Spiky Platforms Tunnel (0xAE07); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x964E",
+    "entrySourceRoomIdHex": "0xAE32",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      47,
+      7
+    ],
+    "doorPtr": 38478,
+    "entrySourceRoomId": 44594
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 44594,
+      "sourceRoomIdHex": "0xAE32",
+      "endpoint": {
+        "roomId": 44551,
+        "roomIdHex": "0xAE07",
+        "logicalRoomId": 117,
+        "nodeId": 2,
+        "nodeName": "Spiky Platforms Tunnel Right Door (to Volcano Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44382,
+      "targetRoomIdHex": "0xAD5E",
+      "endpoint": {
+        "roomId": 44551,
+        "roomIdHex": "0xAE07",
+        "logicalRoomId": 117,
+        "nodeId": 1,
+        "nodeName": "Spiky Platforms Tunnel Left Door (to Single Chamber)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        47,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 54,
+      "waypointsBlocks": [
+        [
+          47,
+          7
+        ],
+        [
+          44,
+          7
+        ],
+        [
+          44,
+          8
+        ],
+        [
+          36,
+          8
+        ],
+        [
+          36,
+          6
+        ],
+        [
+          21,
+          6
+        ],
+        [
+          21,
+          8
+        ],
+        [
+          16,
+          8
+        ],
+        [
+          16,
+          9
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

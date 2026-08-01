@@ -1,17 +1,19 @@
 """Opening-route continuous trunk for A Link to the Past.
 
-Owns the escape graph, opening catalog, work queue, and live segment
-scripts (castle→sword, sword→pocket, pocket→main hall). Core
+Owns the escape graph, opening catalog, work queue, multi-truth anchors, and
+live segment scripts (castle→sword, secret-entrance clear, pocket→main hall;
+planned main_hall→Zelda and escort→Sanctuary scaffolds). Core
 RAM/primitives/startup stay at ``alttp`` root.
 
 Preferred imports::
 
     from alttp.opening_route import escape_route_graph, plan_escape_to_sanctuary
     from alttp.opening_route.castle_to_sword import run_natural_chain
-    from alttp.opening_route.segment import SEGMENT_REGISTRY
+    from alttp.opening_route.secret_entrance_clear import run_from_sword
+    from alttp.opening_route.segment import get_segment, list_segments
 
-Compat shims at ``alttp.escape_graph``, ``alttp.castle_to_sword``, etc.
-re-export this package for older call sites.
+Compat shims at ``alttp.escape_graph``, ``alttp.castle_to_sword``,
+``alttp.sword_to_zelda``, etc. re-export this package for older call sites.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ from alttp.opening_route.escape_graph import (
     N_ROOM_55_SOUTH,
     N_ROOM_55_SWORD,
     N_ROOM_55_UNCLE,
+    N_ROOM_60,
     N_ROOM_61,
     N_SANCTUARY,
     capabilities_from_snapshot,
@@ -45,6 +48,7 @@ __all__ = [
     "N_ROOM_55_SOUTH",
     "N_ROOM_55_SWORD",
     "N_ROOM_55_UNCLE",
+    "N_ROOM_60",
     "N_ROOM_61",
     "N_SANCTUARY",
     "capabilities_from_snapshot",

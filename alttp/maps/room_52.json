@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 82,
+  "roomHex": "0x52",
+  "name": "Hyrule Castle NE chamber",
+  "measured": "2026-07-31",
+  "sourceState": "CastleRoom52",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_spawn", "xy": [1144, 2993], "role": "spawn", "notes": "CastleRoom52"},
+    {"label": "south_door_approach", "xy": [1144, 3020], "role": "approach", "notes": "Hold DOWN → room 0x62"},
+    {"label": "north_extent", "xy": [1144, 2608], "role": "waypoint", "notes": ""},
+    {"label": "west_extent", "xy": [1120, 2984], "role": "waypoint", "notes": ""},
+    {"label": "east_extent", "xy": [1168, 2984], "role": "waypoint", "notes": ""}
+  ],
+  "doors": [
+    {
+      "label": "south_to_0x62",
+      "direction": "DOWN",
+      "toRoom": 98,
+      "toRoomHex": "0x62",
+      "approachXy": [1144, 3020],
+      "landingXy": [1144, 3060],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 60,
+      "notes": "Measured 34f DOWN from spawn"
+    },
+    {
+      "label": "west_to_0x01",
+      "direction": "LEFT",
+      "toRoom": 1,
+      "toRoomHex": "0x01",
+      "approachXy": [1120, 2680],
+      "landingXy": [1011, 120],
+      "role": "alternate",
+      "path": ["west_extent"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 200,
+      "notes": "Reverse of room_01 east; multi-screen"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 40,
+    "attackDistance": 48,
+    "maxCycles": 100,
+    "skirmishMaxDistance": 70,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 50
+  },
+  "walkBbox": [1120, 2608, 1168, 3060],
+  "hostilesAtEntry": [
+    {"type": "0x4b", "xy": [1152, 2800]},
+    {"type": "0x4b", "xy": [1136, 2848]}
+  ],
+  "notes": [
+    "North of east wing 0x62; boomerang Zelda states also use this room.",
+    "Authority: maps/room_52.json"
+  ]
+}

@@ -14,7 +14,7 @@ from super_metroid.combat.features import (
     boss_defeated_in_state,
     features_from_state,
 )
-from super_metroid.combat.primitives import ensure_weapon, spray_action
+from super_metroid.combat.primitives import ensure_weapon, range_kite_action
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.runtime import ControllerSession, hold
 
@@ -25,12 +25,14 @@ WEAPON_SUPERS = 2
 
 @dataclass(frozen=True)
 class BotwoonStrategy:
-    """Tunable periodic spray parameters for Botwoon."""
+    """Tunable range-kite parameters for Botwoon's long body."""
 
+    min_range: int = 110
+    max_range: int = 220
+    jump_range: int = 140
     fire_period: int = 3
-    fire_hold_frames: int = 1
     jump_period: int = 48
-    jump_hold_frames: int = 16
+    jump_hold_frames: int = 18
     max_fight_frames: int = 12_000
     weapon: int = WEAPON_SUPERS
 
@@ -76,15 +78,16 @@ def fight_botwoon_action(
     if features.enemy_defeated or state.enemy0_hp == 0:
         return ()
 
-    dx = features.enemy_x - state.samus_x
-    face = "RIGHT" if dx >= 0 else "LEFT"
-    return spray_action(
-        frame_index,
-        face=face,
-        fire_period=strategy.fire_period,
-        fire_hold_frames=strategy.fire_hold_frames,
+    return range_kite_action(
+        state.samus_x,
+        features.enemy_x,
+        min_range=strategy.min_range,
+        max_range=strategy.max_range,
+        jump_range=strategy.jump_range,
+        frame_index=frame_index,
         jump_period=strategy.jump_period,
         jump_hold_frames=strategy.jump_hold_frames,
+        fire_period=strategy.fire_period,
         fire_button="X",
     )
 
@@ -150,7 +153,7 @@ def play_botwoon_fight(
     elif defeat_frame is not None:
         outcome = "botwoon_body_zero_no_boss_bit"
     else:
-        outcome = "timeout"
+        outcome = "botwoon_timeout"
 
     return BotwoonEvidence(
         start_frame=start,

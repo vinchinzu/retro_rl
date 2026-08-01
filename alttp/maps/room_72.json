@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 114,
+  "roomHex": "0x72",
+  "name": "Hyrule Castle B1 pit / key",
+  "measured": "2026-07-31",
+  "sourceState": "CastleB1Pit",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_spawn", "xy": [1272, 4032], "role": "spawn", "notes": "CastleB1Pit"},
+    {"label": "entry_from_0x82", "xy": [1184, 4099], "role": "spawn", "notes": "Landing from room 0x82 north"},
+    {"label": "key_spot", "xy": [1320, 3656], "role": "waypoint", "notes": "CastleB1Key; keys>=1 on that state"},
+    {"label": "zelda_pit", "xy": [1184, 4016], "role": "waypoint", "notes": "CastleZeldaB1Pit"},
+    {"label": "north_extent", "xy": [1271, 3944], "role": "waypoint", "notes": ""},
+    {"label": "west_extent", "xy": [1224, 3656], "role": "waypoint", "notes": "Key-state west bound"}
+  ],
+  "doors": [
+    {
+      "label": "south_to_0x82",
+      "direction": "DOWN",
+      "toRoom": 130,
+      "toRoomHex": "0x82",
+      "approachXy": [1184, 4080],
+      "landingXy": [1184, 4108],
+      "role": "backtrack",
+      "path": ["entry_from_0x82"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 80,
+      "notes": "Reverse of room_82 north; not fully path-tested from pit spawn"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 160,
+    "attackDistance": 50,
+    "maxCycles": 300,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [1184, 3656, 1320, 4099],
+  "hostilesAtEntry": [
+    {"type": "0x41", "xy": [1249, 4040]}
+  ],
+  "notes": [
+    "Pit/key chamber north of 0x82. CastleB1Key has small key already.",
+    "Doors other than south seam not isolated from pure cardinal holds.",
+    "Authority: maps/room_72.json"
+  ]
+}

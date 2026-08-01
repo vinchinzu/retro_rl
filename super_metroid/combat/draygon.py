@@ -82,6 +82,9 @@ def fight_draygon_action(
     features = features_from_state(state, catalog)
     if features.enemy_defeated or state.enemy0_hp == 0:
         return ()
+    gunk_action = draygon_gunk_clear_action(state, frame_index, strategy)
+    if gunk_action:
+        return gunk_action
     return range_kite_action(
         state.samus_x,
         features.enemy_x,
@@ -94,6 +97,30 @@ def fight_draygon_action(
         fire_period=strategy.fire_period,
         fire_button="X",
     )
+
+
+def draygon_gunk_clear_action(
+    state: SuperMetroidState,
+    frame_index: int,
+    strategy: DraygonStrategy = DraygonStrategy(),
+) -> tuple[str, ...]:
+    """Escape a contact-overlap gunk/grab window for one bounded frame.
+
+    Contact overlap is the available structured-state signal for the dangerous
+    close phase. Jumping away immediately prevents the normal kite action from
+    spending another frame inside Draygon's large body hitbox; firing remains
+    cadence-controlled so this helper does not change weapon throughput.
+    """
+    catalog = draygon_catalog()
+    features = features_from_state(state, catalog)
+    if features.enemy_defeated or state.enemy0_hp == 0 or not features.contact_overlap:
+        return ()
+
+    away = "LEFT" if features.dx >= 0 else "RIGHT"
+    names = [away, "A"]
+    if strategy.fire_period > 0 and frame_index % strategy.fire_period == 0:
+        names.append("X")
+    return tuple(names)
 
 
 def play_draygon_fight(

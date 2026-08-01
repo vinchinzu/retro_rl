@@ -23,6 +23,7 @@ from alttp.paths import (
     Z3_JSON_DATA_DIR,
     Z3_JSON_DATA_PIN,
     Z3_JSON_DATA_REPO,
+    Z3_JSON_DATA_WORKSPACE_DIR,
 )
 
 # Rooms that appear on the boot / opening route (Link's House → castle).
@@ -126,7 +127,17 @@ class Z3SourceStatus:
 
 
 def default_data_root() -> Path:
-    """Return the gitignored game-local checkout path."""
+    """Prefer gitignored refs checkout; fall back to workspace ``z3-json-data/``.
+
+    Upstream is randomizer **logic** labels (not screen coords). The same region
+    names apply to US and Japanese **vanilla** castle layouts for the opening
+    route; measured ``maps/room_XX.json`` geometry is still the execution
+    authority for both.
+    """
+    if Z3_JSON_DATA_DIR.is_dir():
+        return Z3_JSON_DATA_DIR
+    if Z3_JSON_DATA_WORKSPACE_DIR.is_dir():
+        return Z3_JSON_DATA_WORKSPACE_DIR
     return Z3_JSON_DATA_DIR
 
 
@@ -138,9 +149,12 @@ def resolve_data_root(root: Path | None = None) -> Path:
             f"z3-json-data not found at {path}.\n"
             "Fetch it once (no silent download on import):\n"
             "  uv run python alttp/scripts/setup_z3_json_data.py\n"
+            f"Also accepted: {Z3_JSON_DATA_WORKSPACE_DIR} (workspace copy).\n"
             f"Upstream: {Z3_JSON_DATA_REPO}\n"
             f"Pinned revision: {Z3_JSON_DATA_PIN}\n"
-            "Docs: alttp/docs/Z3_JSON_DATA.md"
+            "Docs: alttp/docs/Z3_JSON_DATA.md\n"
+            "Note: logic labels cover US/JP vanilla opening rooms; maps/*.json "
+            "are the measured geometry authority."
         )
     return path.resolve()
 

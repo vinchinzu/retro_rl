@@ -13,9 +13,11 @@ uv run python alttp/scripts/setup_z3_json_data.py
 
 | Field | Value |
 |-------|--------|
-| Local path | `alttp/refs/z3-json-data/` (gitignored) |
+| Local path | `alttp/refs/z3-json-data/` (gitignored; preferred) |
+| Workspace fallback | `alttp/z3-json-data/` (optional local tree; same shape) |
 | Upstream | `https://github.com/vg-json-data/z3-json-data.git` |
 | Pin | `1eb7a785bda0d671136316c24f223c7ce12257e6` |
+| US / JP | Logic labels + vanilla castle **room base ids** match for the opening route; measured `maps/room_XX.json` geometry is execution authority for both |
 
 Options: `--force` re-clone, `--revision SHA` override pin, `--dest PATH`
 override location. Normal `import alttp.z3_json_data` **never** downloads.

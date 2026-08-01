@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a6e2_from_a59f_to_a59f",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Varia Suit Room (0xA6E2); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x91DA",
+    "entrySourceRoomIdHex": "0xA59F",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 37338,
+    "entrySourceRoomId": 42399
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 42399,
+      "sourceRoomIdHex": "0xA59F",
+      "endpoint": {
+        "roomId": 42722,
+        "roomIdHex": "0xA6E2",
+        "logicalRoomId": 85,
+        "nodeId": 1,
+        "nodeName": "Varia Suit Room Door (to Kraid)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 42399,
+      "targetRoomIdHex": "0xA59F",
+      "endpoint": {
+        "roomId": 42722,
+        "roomIdHex": "0xA6E2",
+        "logicalRoomId": 85,
+        "nodeId": 1,
+        "nodeName": "Varia Suit Room Door (to Kraid)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        7,
+        9
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 8,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          7,
+          9
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "approach_chozo_floor",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 102
+    },
+    {
+      "label": "jump_to_chozo",
+      "buttons": [
+        "RIGHT",
+        "A"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "land_on_chozo_platform",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "stand_for_shot",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "open_chozo",
+      "buttons": [
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "wait_for_chozo",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "collect_varia",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 480
+    },
+    {
+      "label": "recover_after_item_up",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "recover_after_item_jump",
+      "buttons": [
+        "A"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "recover_after_item_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "recover_after_item_cycle",
+      "repeat": 8,
+      "steps": [
+        {
+          "label": "cycle_jump",
+          "buttons": [
+            "A"
+          ],
+          "frames": 4
+        },
+        {
+          "label": "cycle_nudge",
+          "buttons": [
+            "RIGHT"
+          ],
+          "frames": 8
+        },
+        {
+          "label": "cycle_settle",
+          "buttons": [],
+          "frames": 12
+        }
+      ]
+    },
+    {
+      "label": "center_settle",
+      "buttons": [],
+      "frames": 8
+    },
+    {
+      "label": "face_exit_left",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "face_exit_release",
+      "buttons": [],
+      "frames": 6
+    },
+    {
+      "label": "open_exit_door",
+      "repeat": 4,
+      "steps": [
+        {
+          "label": "door_shot",
+          "buttons": [
+            "X"
+          ],
+          "frames": 4
+        },
+        {
+          "label": "door_fuse",
+          "buttons": [],
+          "frames": 18
+        }
+      ]
+    },
+    {
+      "label": "exit_spin_before_lip",
+      "buttons": [
+        "LEFT",
+        "B",
+        "A"
+      ],
+      "frames": 59
+    },
+    {
+      "label": "lip_release",
+      "buttons": [],
+      "frames": 4
+    },
+    {
+      "label": "lip_backoff",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 3
+    },
+    {
+      "label": "lip_reshot",
+      "buttons": [
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "lip_fuse",
+      "buttons": [],
+      "frames": 12
+    },
+    {
+      "label": "exit_spin_after_lip",
+      "buttons": [
+        "LEFT",
+        "B",
+        "A"
+      ],
+      "frames": 107
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:00:27.297058+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a6e2_from_a59f_to_a59f.json",
+    "reportSha256": "e015d2f9e7b3919f701daa68a218e69ff9fea79bd7c548938d88ea9237116ab6",
+    "stateSha256": "76e8ebfd63be8de840a876fecb5347bdf2b3078874145fc4f070d1a0d25ae416",
+    "policySha256Before": "e469f51581237b630c7489cf2f6ae704ef37be0787469fdde04990337b44bde0"
+  }
+}

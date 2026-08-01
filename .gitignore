@@ -208,6 +208,8 @@ uwnh/
 super_metroid_rl/
 super_metroid/refs/sm-json-data/
 alttp/refs/z3-json-data/
+# Workspace-local clone (prefer refs/ via setup script; never commit vendor tree)
+alttp/z3-json-data/
 smz3/refs/
 smz3/seeds/
 SMW/refs/*

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 128,
+  "roomHex": "0x80",
+  "name": "Zelda's cell",
+  "measured": "2026-07-31",
+  "sourceState": "CastleZeldaFollower",
+  "z3Label": "Hyrule Castle - Zelda's Chest",
+  "points": [
+    {"label": "entry_spawn", "xy": [352, 4168], "role": "spawn", "notes": "CastleZeldaFollower; $F3CC==1"},
+    {"label": "west_extent", "xy": [320, 4168], "role": "waypoint", "notes": ""},
+    {"label": "east_extent", "xy": [424, 4288], "role": "waypoint", "notes": "SE walk bound from spawn"},
+    {"label": "north_extent", "xy": [352, 4144], "role": "waypoint", "notes": ""},
+    {"label": "south_extent", "xy": [352, 4288], "role": "waypoint", "notes": ""}
+  ],
+  "doors": [
+    {
+      "label": "east_to_0x81",
+      "direction": "RIGHT",
+      "toRoom": 129,
+      "toRoomHex": "0x81",
+      "approachXy": [400, 4168],
+      "landingXy": null,
+      "role": "zelda_path",
+      "path": ["east_extent"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 200,
+      "notes": "Door not isolated from CastleZeldaFollower spawn (room is tight; exit may need prior unlock path)"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 100,
+    "attackDistance": 48,
+    "maxCycles": 150,
+    "skirmishMaxDistance": 70,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [320, 4144, 424, 4288],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Rescue acceptance room: follower $F3CC==1. Chest is Zelda's lamp in rando logic.",
+    "Doors not yet isolated from this save-state; map is geometry seed only.",
+    "Authority: maps/room_80.json"
+  ]
+}

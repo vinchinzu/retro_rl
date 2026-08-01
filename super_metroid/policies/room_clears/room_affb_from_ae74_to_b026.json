@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_affb_from_ae74_to_b026",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Spiky Acid Snakes Room (0xAFFB); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x968A",
+    "entrySourceRoomIdHex": "0xAE74",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      47,
+      7
+    ],
+    "doorPtr": 38538,
+    "entrySourceRoomId": 44660
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 44660,
+      "sourceRoomIdHex": "0xAE74",
+      "endpoint": {
+        "roomId": 45051,
+        "roomIdHex": "0xAFFB",
+        "logicalRoomId": 112,
+        "nodeId": 2,
+        "nodeName": "Spiky Acid Snakes Tunnel Right Door (to Kronic Boost Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 45094,
+      "targetRoomIdHex": "0xB026",
+      "endpoint": {
+        "roomId": 45051,
+        "roomIdHex": "0xAFFB",
+        "logicalRoomId": 112,
+        "nodeId": 1,
+        "nodeName": "Spiky Acid Snakes Tunnel Left Door (to Nutella Refill)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        47,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 46,
+      "waypointsBlocks": [
+        [
+          47,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 320
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

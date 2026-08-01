@@ -32,9 +32,15 @@ Compat shims keep old imports working (`alttp.escape_graph`,
 ## Immediate goal
 
 Main hall entry is verified (pocket bush-cut → door → room `0x61`).
-Next: main hall B1 → Zelda follower → escort → Sanctuary.
-Drive probes from `docs/routes/ROOM_WORK_QUEUE.md` and continuous-spine
-blockers on `opening_route.escape_graph` only.
+Main hall clear + west exit to `0x60` is **isolated** (graph edge
+`main_hall_west_to_0x60`; map `maps/room_61.json` + `room_engine`).
+Room `0x60` north → `0x50` is **isolated** (`room_60_north_to_0x50`).
+Next: after `0x50` → Zelda follower → escort → Sanctuary.
+Drive probes from `docs/ROOM_ENGINE.md` + `docs/routes/ROOM_WORK_QUEUE.md`
+and continuous-spine blockers on `opening_route.escape_graph` only.
+
+**Low-context room work:** use `scripts/room_engine.py show|run` — do not dump
+full segment modules into agent context for B1 doors.
 
 ## Commands
 
@@ -73,17 +79,34 @@ SDL_VIDEODRIVER=dummy uv run python alttp/scripts/pocket_to_main_hall.py
 # Tiered probe / rediscovery:
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/probe_courtyard_main_door.py --tier scripts
 
+# Room engine (preferred for new rooms — compact agent context)
+uv run python alttp/scripts/room_engine.py list
+uv run python alttp/scripts/room_engine.py show room_61
+SDL_VIDEODRIVER=dummy uv run python alttp/scripts/room_engine.py run room_61 \
+  --edge west_to_0x60 --state CastleMain --overlay
+
+# Main hall segment wrapper (same as room_engine west edge)
+SDL_VIDEODRIVER=dummy uv run python alttp/scripts/main_hall_to_zelda.py --overlay
+
 uv run --frozen pytest alttp/tests -q
 ```
 
 ## Contracts (quick)
 
-- **Escape graph:** `alttp.opening_route.escape_graph` — continuous through
-  main hall `0x61`; Zelda/Sanctuary legs planned.
-- **Segments:** `alttp.opening_route.segment` — `castle_to_sword`,
-  `sword_to_secret_entrance_clear`, `pocket_to_main_hall`.
-- **Anchors:** `alttp.opening_route.anchors` — semantic multi-truth names.
-- **Trigger handoff:** `docs/TRIGGER_HANDOFF.md` — hole/stairs/main-door
-  solved; main hall → Zelda open.
+- **Escape graph:** continuous through main hall `0x61`; **isolated** west
+  `0x61→0x60` and north `0x60→0x50`; Zelda/Sanctuary planned; primary vs
+  `internal_key` tags.
+- **Room engine:** `maps/room_XX.json` geometry authority +
+  `opening_route.room_engine` clear/path/door; see `docs/ROOM_ENGINE.md`.
+- **Segments:** continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`,
+  `pocket_to_main_hall`; `main_hall_to_zelda` thin wrap (partial until Zelda);
+  planned: `escort_to_sanctuary`. Prefer `secret_entrance_clear` over
+  historical `sword_to_zelda` name.
+- **Room sense:** sprite AABBs, edge detect, overlay, `load_room_map`.
+- **Anchors:** multi-truth names + approach windows; tip resolve includes
+  isolated `room_60` after west exit.
+- **Work queue:** continuous tip `room_61` → Zelda first; key/0x55 alternate.
+- **Trigger handoff:** hole/stairs/main-door solved; west edge measured;
+  B1 → Zelda open.
 - State-load runs are development-only; only `--natural` with full acceptance
   is a clean natural-chain claim.

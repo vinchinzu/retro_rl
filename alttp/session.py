@@ -20,10 +20,10 @@ from alttp.opening_route.anchors import (
     MultiTruthAnchor,
     anchors_to_report,
     match_anchors,
+    resolve_continuous_tip_node,
 )
 from alttp.opening_route.escape_graph import (
     capabilities_from_snapshot,
-    escape_route_graph,
     plan_escape_to_sanctuary,
 )
 from alttp.opening_route.segment import (
@@ -101,34 +101,12 @@ class AlttpSession:
         ]
 
     def continuous_tip_node(self) -> str:
-        """Best-effort graph node for the current continuous tip location."""
-        s = self.snapshot()
-        g = escape_route_graph()
-        # Prefer specific outdoor pocket over generic grounds.
-        from alttp.opening_route.anchors import anchor_by_id
+        """Best-effort graph node for the current continuous tip location.
 
-        if s.indoors and s.room_base_id == 0x61 and s.has_fighter_sword:
-            return "room_61"
-        pocket = anchor_by_id("HyruleCastle_Courtyard_SecretStairsPocket")
-        if pocket is not None and pocket.matches(s):
-            return "courtyard_secret_pocket"
-        if s.in_secret_passage and s.has_fighter_sword:
-            if s.link_y >= 2850:
-                return "room_55_south"
-            return "room_55_sword"
-        if s.in_secret_passage:
-            return "room_55_uncle"
-        if s.on_castle_grounds:
-            return "castle_grounds"
-        if s.in_zelda_cell:
-            return "room_80"
-        if s.in_sanctuary:
-            return "sanctuary"
-        # Fall back: any matched anchor with graph_node_id
-        for a in match_anchors(s):
-            if a.graph_node_id and a.graph_node_id in g.nodes:
-                return a.graph_node_id
-        return "unknown"
+        Delegates to :func:`alttp.opening_route.anchors.resolve_continuous_tip_node`
+        (anchors = single source; most-specific tip first).
+        """
+        return resolve_continuous_tip_node(self.snapshot())
 
     def play_segment(self, segment_id: str, **kwargs: Any) -> SegmentEvidence:
         """Execute a registered Segment and return uniform evidence."""

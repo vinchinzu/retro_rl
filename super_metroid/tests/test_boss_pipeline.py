@@ -32,7 +32,11 @@ from super_metroid.combat.protocol import (
     BossSegment,
     CallableBossStrategy,
     strategy_summary,
+    wrap_crocomire_as_boss_strategy,
+    wrap_golden_torizo_as_boss_strategy,
     wrap_kraid_as_boss_strategy,
+    wrap_mother_brain_as_boss_strategy,
+    wrap_ridley_as_boss_strategy,
 )
 from super_metroid.policy import StateRequirement
 from super_metroid.ram import GameplayPhase, parse_state
@@ -223,3 +227,15 @@ def test_wrap_kraid_strategy_entry() -> None:
     assert strategy.boss_id == "kraid"
     assert strategy.entry.room_id == 0xA59F
     assert strategy.catalog.max_hp == 1000
+
+
+def test_deferred_boss_wrappers_match_catalog_rooms() -> None:
+    wrapped = (
+        (wrap_ridley_as_boss_strategy(), 0xB32E),
+        (wrap_mother_brain_as_boss_strategy(), 0xDD58),
+        (wrap_crocomire_as_boss_strategy(), 0xA98D),
+        (wrap_golden_torizo_as_boss_strategy(), 0xB283),
+    )
+    for strategy, room_id in wrapped:
+        assert strategy.catalog.room_id == room_id
+        assert strategy.entry.room_id == strategy.catalog.room_id

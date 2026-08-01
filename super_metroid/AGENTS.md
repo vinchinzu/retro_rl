@@ -52,9 +52,11 @@ are topology diagnostics only — not route evidence.
 3. **Verified continuous tip:** power-on → Varia Suit
    (`scripts/record/continuous.py --to varia`, **101,954f**). Prefixes:
    Hi-Jump **87,696f**, Kraid entry **97,170f**.
-4. **★ Next play:** post-Varia return → Business → K4 (Bubble → Speed → Wave
-   → Ice → Alpha PB). Graph scaffold `START_TO_SPEED_GRAPH`; first reverse
-   hop pure: `kpdr.py pure varia-to-kraid`. Then Phantoon natural entry
+4. **★ Next play:** post-Varia reverse pure chain → Business → K4 (Bubble →
+   Speed → Wave → Ice → Alpha PB). `varia-to-kraid` + `kraid-to-eye-return`
+   pure green (`controller_dev`); next pure `eye-to-baby-return` from
+   `scratch/post_kraid_to_eye_return.state`. No continuous post-Varia tip until
+   reverse spine pure-green to Business. Then Phantoon natural entry
    ([`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md)).
 5. **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers,
    Segment contracts, package boundaries, tip-extension recipe.
@@ -79,36 +81,55 @@ Boss pipeline: [`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md).
 Farm **atomic** implementation to a cheap executor; keep integrity / STATUS /
 natural-entry judgment on a strong planner (Grok) or human.
 
+- Process: [`docs/tasks/PROCESS.md`](docs/tasks/PROCESS.md) — pure-first,
+  stabilize waves, residual schema, metrics, dual-track
 - Template: [`docs/TASK_TEMPLATE.md`](docs/TASK_TEMPLATE.md)
 - Queue: [`docs/tasks/QUEUE.md`](docs/tasks/QUEUE.md)
+- Source states: [`docs/SOURCE_STATES.md`](docs/SOURCE_STATES.md)
 - Cards: [`docs/tasks/`](docs/tasks/) (`SM-*.md`)
 - Dispatch: `./super_metroid/scripts/dispatch_opencode.sh SM-K4-03`
+  (ownership conflict check on parallel hot modules)
 - Session logs: `docs/tasks/logs/` (**gitignored** — do not force-add)
 - Model IDs / provider routing: `scripts/dispatch_opencode.sh` (env-overridable)
   and local `opencode.json` (copy from `opencode.example.json`; gitignored).
   Auth stays outside the repo.
 
 ```bash
-# From repo root (Flash auto-picked for docs/report cards)
+# From repo root (Flash auto-picked for docs/report/rollup cards)
 ./super_metroid/scripts/dispatch_opencode.sh SM-K4-03
 ./super_metroid/scripts/dispatch_opencode.sh SM-K4-03 SM-K4-04 SM-K4-05  # parallel if disjoint files
+./super_metroid/scripts/dispatch_opencode.sh --flash SM-ROLLUP-STATUS
 ./super_metroid/scripts/dispatch_opencode.sh --foreground SM-K4-06
+# Luna + max thinking (default for dispatch):
+./super_metroid/scripts/dispatch_opencode.sh --luna --variant max SM-ROOM-SEG-01
+
+# Dual-track room farm: 8-wide × N rounds (continuous tip parked)
+./super_metroid/scripts/farm_room_waves.sh --rounds 10 --parallel 8
+./super_metroid/scripts/farm_room_waves.sh --rounds 20 --parallel 8 --deadline-hours 2
 ```
 
 Do **not** hand the executor open-ended “next tip after Varia” work. Cards must
 list exact files, recipe step, acceptance commands, and (for pure probes) the
-**exact source state path + expected room id**.
+**exact source state path + expected room id** (prefer `SOURCE_STATES.md`).
 
-**Role guide:** Flash = tracker/docs/dwell report; Luna = tests + controller
-scaffold + bounded geometry with a named source state. Planner only for STATUS,
-continuous compose, and natural-entry design.
+**Role guide:** Flash = tracker/docs/dwell report + STATUS **proposals**
+(`SM-ROLLUP-STATUS`); Luna = tests + controller scaffold + primitives +
+bounded geometry with a named source state. Planner only for STATUS apply,
+continuous compose/re-record, and natural-entry design.
 
-**Post-Varia reverse source states (scratch):**
+**Hard gates:** pure-green from continuous-like source before continuous;
+stabilize wave after implement knobs; one-knob geometry; residual → next card
+ID + one change; never parallel-edit `business_climb` / HJ return / spore /
+`varia_return` geometry / continuous / STATUS.
+
+**Post-Varia reverse source states (scratch)** — full index in
+[`docs/SOURCE_STATES.md`](docs/SOURCE_STATES.md):
 
 | State | Room | Use for |
 |-------|------|---------|
 | `scratch/post_varia_collected.state` | 0xA6E2 Varia | pure `varia-to-kraid` |
 | `scratch/post_varia_to_kraid_pure.state` | 0xA59F Kraid | pure `kraid-to-eye-return` |
+| `scratch/continuous_like_business_climb_entry.state` | Business floor | pure `business-to-warehouse` |
 
 ## Commands
 

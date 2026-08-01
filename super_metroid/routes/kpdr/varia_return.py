@@ -133,11 +133,18 @@ def play_varia_to_kraid(session: ControllerSession) -> SuperMetroidState:
 
 
 def play_kraid_to_eye_return(session: ControllerSession) -> SuperMetroidState:
-    """Attempt the left-door return from Kraid's Room to the Eye Door Room.
+    """Left-door return from Kraid's Room to the Eye Door Room (post-Varia).
 
-    This is a ``controller_dev`` scaffold for the post-boss reverse hop, not
-    continuous evidence. It deliberately has a bounded traversal so geometry
-    tuning can fail loudly without taking ownership of the emulator or route.
+    Controller-dev reverse hop from a continuous-like post-Varia re-entry on
+    the right side of Kraid's Room. Not continuous evidence until composed
+    after pure green + planner graph promote.
+
+    Geometry note (SM-K4-06E): this left hatch is a gray/blue shell that opens
+    with standing beams, but the transition trigger does **not** fire on the
+    natural floor band (y≈400–427). Prior 06B–06D pins (pose 82/138, x≈37,
+    door_transition=0) were floor-lip stalls. After opening the door, the exit
+    must **jump-enter** through the elevated Y band (~140–380) — floor spin
+    alone never transitions.
     """
     require_state(
         session,
@@ -148,49 +155,59 @@ def play_kraid_to_eye_return(session: ControllerSession) -> SuperMetroidState:
     # visible at this boundary for pure probes and future entry tightening.
     require_room(session, ROOM_KRAID, "kraid_to_eye_return")
     select_weapon(session, 0)
-    # Stage just right of the lip, then use one fixed short hop to approach at
-    # the higher Y band before settling for the standing door sequence.
-    for _ in range(120):
+
+    # Stage mid-left of the arena (not on the lip) for standing door shots.
+    for _ in range(150):
         state = hold(session, 1, "LEFT", reason="kraid_return_approach")
-        if state.samus_x <= 220:
+        if state.samus_x <= 160:
             break
     else:
         raise TimeoutError(
             f"kraid_to_eye_return: left door approach timed out: {session.state}"
         )
-    hold(session, 24, "LEFT", "A", reason="kraid_return_short_hop")
-    hold(session, 20, reason="kraid_return_approach_settle")
-
-    # Spin-pushing pins Samus in pose 138 on this door lip. Back off, stand,
-    # and open the blue door with the same standing beam-shot pattern as the
-    # Varia-to-Kraid reverse door.
+    hold(session, 12, reason="kraid_return_approach_settle")
+    # Small right backoff so shots clear the shell without walking into it.
     hold(session, 10, "RIGHT", reason="kraid_return_lip_backoff")
     unmorph(session)
     hold(session, 8, "LEFT", reason="kraid_return_face_left")
     hold(session, 6, reason="kraid_return_release")
-    for _ in range(4):
-        hold(session, 4, "LEFT", "X", reason="kraid_return_door_shot")
-        hold(session, 18, reason="kraid_return_door_fuse")
+    # Standing beam only (mirror varia_to_kraid) — do not hold LEFT while
+    # firing or Samus walks into the closed shell.
+    for _ in range(6):
+        hold(session, 4, "X", reason="kraid_return_door_shot")
+        hold(session, 14, reason="kraid_return_door_fuse")
 
-    # Spin-push through. Walk-only / pinned spin often locks pose 138 on the lip
-    # (same pattern as varia_to_kraid left exit).
-    for _ in range(720):
-        state = hold(
-            session,
-            1,
-            "LEFT",
-            "B",
-            "A",
-            reason="kraid_return_exit",
-        )
+    # Jump-enter through the elevated trigger band. Floor walk/spin pins at
+    # x≈37–85 with door_transition=0 even after the shell is open.
+    for index in range(900):
+        phase = index % 30
+        if phase < 4:
+            state = hold(session, 1, "LEFT", "A", reason="kraid_return_jump")
+        elif phase < 10:
+            state = hold(
+                session, 1, "LEFT", "A", "B", reason="kraid_return_jump_spin"
+            )
+        elif phase < 14:
+            state = hold(session, 1, "X", reason="kraid_return_reshot")
+        else:
+            state = hold(session, 1, "LEFT", "B", reason="kraid_return_run")
         if state.room_id == ROOM_KRAID_EYE:
             break
+        if state.door_transition:
+            for _ in range(80):
+                state = hold(session, 1, reason="kraid_return_transition")
+                if (
+                    state.room_id == ROOM_KRAID_EYE
+                    and state.door_transition == 0
+                ):
+                    break
+            if state.room_id == ROOM_KRAID_EYE:
+                break
         if state.pose in (137, 138) and state.samus_x <= 80:
             hold(session, 4, reason="kraid_return_lip_release")
             hold(session, 4, "RIGHT", reason="kraid_return_lip_backoff")
-            hold(session, 4, "LEFT", reason="kraid_return_reface")
-            hold(session, 4, "LEFT", "X", reason="kraid_return_lip_reshot")
-            hold(session, 14, reason="kraid_return_lip_fuse")
+            hold(session, 4, "X", reason="kraid_return_lip_reshot")
+            hold(session, 12, reason="kraid_return_lip_fuse")
     else:
         raise TimeoutError(
             f"kraid_to_eye_return: left eye-door exit timed out: {session.state}"

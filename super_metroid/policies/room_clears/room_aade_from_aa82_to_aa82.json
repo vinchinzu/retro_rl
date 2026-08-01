@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_aade_from_aa82_to_aa82",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Post Crocomire Power Bomb Room (0xAADE); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x943E",
+    "entrySourceRoomIdHex": "0xAA82",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 37950,
+    "entrySourceRoomId": 43650
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 43650,
+      "sourceRoomIdHex": "0xAA82",
+      "endpoint": {
+        "roomId": 43742,
+        "roomIdHex": "0xAADE",
+        "logicalRoomId": 124,
+        "nodeId": 1,
+        "nodeName": "Post Crocomire Power Bomb Room Door (to Farming Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 43650,
+      "targetRoomIdHex": "0xAA82",
+      "endpoint": {
+        "roomId": 43742,
+        "roomIdHex": "0xAADE",
+        "logicalRoomId": 124,
+        "nodeId": 1,
+        "nodeName": "Post Crocomire Power Bomb Room Door (to Farming Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        7,
+        8
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 8,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          7,
+          8
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 102
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 114
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

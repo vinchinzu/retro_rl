@@ -5,6 +5,10 @@ ranked queue toward Sanctuary. Smaller and ALTTP-specific than Super Metroid's
 room-problem board: filename heuristics + curated status from STATUS/docs.
 
 Units are **save-state practice checkpoints**, not a full room-graph topology.
+
+Continuous tip (STATUS): main hall room **0x61** after ``pocket_to_main_hall``.
+Primary next work: main hall / B1 → Zelda cell → follower → escort → Sanctuary.
+Internal 0x55 key/shutter path is **alternate practice**, not the primary route.
 """
 
 from __future__ import annotations
@@ -46,21 +50,21 @@ TIER_VALUES = frozenset({"easy", "standard", "blocker", "later"})
 _TIER_RANK = {"blocker": 0, "easy": 1, "standard": 2, "later": 3}
 
 # Path phase for Sanctuary ordering (lower = earlier on the route / work sooner).
-# After sword: 0x55 exit/key/shutter before random B1; escort/Sanctuary last.
+# Continuous tip is main hall 0x61; key/shutter and room 0x55 exit are alternate.
 _PHASE = {
+    "main": 0,  # continuous tip: room 0x61 main hall
+    "zelda": 1,  # Zelda cell / follower approach
+    "b1_path": 2,  # B1 legs on the Zelda approach
+    "b1": 3,  # general B1 practice
+    "key_shutter": 4,  # demoted alternate internal-key path
+    "post_sword": 5,  # secret-entrance clear done; not continuous tip
+    "room_55": 5,  # alternate / historical; not primary blocker
+    "escort": 6,  # after follower
+    "room": 7,
+    "b2": 8,
+    "b3": 9,
     "opening": 10,  # already largely done; low new-work priority
-    "post_sword": 0,
-    "room_55": 0,
-    "key_shutter": 1,
-    "b1_path": 3,
-    "b1": 5,
-    "room": 4,
-    "b2": 6,
-    "b3": 7,
-    "zelda": 2,
-    "escort": 8,
-    "main": 4,
-    "unknown": 9,
+    "unknown": 11,
 }
 
 _ROOM_RE = re.compile(r"^Castle(?:Room|_|)([0-9A-Fa-f]{1,2})$")
@@ -148,7 +152,7 @@ def classify_group(state_name: str) -> str:
     if n.startswith("CastleB2"):
         return "b2"
     if n.startswith("CastleB1"):
-        # Key/shutter states are the critical post-0x55 tools.
+        # Key/shutter states are alternate internal-key practice, not tip blockers.
         low = n.lower()
         if "key" in low or "shutter" in low:
             return "key_shutter"
@@ -175,7 +179,7 @@ def _default_goal(state_name: str, group: str) -> str:
             return "reach_secret_hole"
         return "opening_progress"
     if group == "post_sword":
-        return "exit_0x55"
+        return "secret_entrance_clear"
     if group == "room_55":
         return "exit_0x55"
     if group == "key_shutter":
@@ -195,7 +199,7 @@ def _default_goal(state_name: str, group: str) -> str:
     if group == "b1":
         return "traverse_b1"
     if group == "main":
-        return "castle_main_nav"
+        return "main_hall_to_zelda"
     rid = _parse_room_id(state_name)
     if rid is not None:
         return f"clear_room_0x{rid:02X}"
@@ -205,15 +209,16 @@ def _default_goal(state_name: str, group: str) -> str:
 def _default_tier(group: str, status: str) -> str:
     if status == "blocker":
         return "blocker"
-    if group in {"room_55", "key_shutter", "post_sword"}:
-        return "blocker" if status in {"blocker", "probe_state", "unstarted"} else "standard"
     if group in {"opening"}:
         return "easy"
-    if group in {"zelda"}:
+    if group in {"main", "zelda"}:
         return "standard"
+    if group in {"key_shutter", "post_sword", "room_55"}:
+        # Alternate / done segments — not primary continuous-tip blockers.
+        return "later" if group == "key_shutter" else "standard"
     if group in {"escort", "b3"}:
         return "later"
-    if group in {"b1", "b2", "room", "main"}:
+    if group in {"b1", "b2", "room"}:
         return "standard"
     return "standard"
 
@@ -239,6 +244,8 @@ def _default_acceptance(group: str, state_name: str) -> dict[str, Any]:
         }
     if group == "key_shutter":
         return {"has_fighter_sword": True, "dungeon_key_count": ">=1"}
+    if group == "main":
+        return {"indoors_room": "0x61", "has_control": True}
     if group == "zelda":
         return {"has_zelda_follower": True}
     if group == "escort":
@@ -261,10 +268,14 @@ def _default_predecessor(state_name: str, group: str) -> str | None:
         return "FighterSword"
     if state_name == "Castle_55":
         return "HyruleCastleGrounds"
-    if group in {"room_55", "key_shutter", "b1", "post_sword"} and state_name != "FighterSword":
+    if group == "main":
         return "FighterSword"
+    if group in {"room_55", "key_shutter", "post_sword"} and state_name != "FighterSword":
+        return "FighterSword"
+    if group == "b1":
+        return "CastleMain"
     if group == "zelda":
-        return "FighterSword"
+        return "CastleMain"
     if group == "escort":
         return "CastleZeldaFollower"
     if group in {"b2", "b3"}:
@@ -281,6 +292,7 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
     """Known statuses/notes from STATUS.md and verified segments.
 
     Keys are ``state_name``. Only fields that should override heuristics.
+    Continuous tip is main hall room 0x61; primary work is B1 → Zelda → escort.
     """
     return {
         "YazeSlot000": {
@@ -318,12 +330,12 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
         "FighterSword": {
             "status": "segment_scripted",
             "tier": "standard",
-            "goal": "exit_0x55",
+            "goal": "secret_entrance_clear",
             "notes": (
                 "Dev checkpoint after uncle/fighter sword (castle_to_sword). "
-                "State-load only is not natural-chain proof; --natural sword claim "
-                "exists. Next work: dismiss hold-up, south chamber, key/shutter out "
-                "of room 0x55. Sanctuary not claimed."
+                "Secret-entrance clear (stairs → outdoor pocket → courtyard) is "
+                "continuous via outdoor path; not the continuous tip. Tip is main "
+                "hall room 0x61 after pocket_to_main_hall."
             ),
             "predecessor": "HyruleCastleGrounds",
             "acceptance_ram": {
@@ -334,8 +346,11 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
         "FighterSwordLamp": {
             "status": "probe_state",
             "tier": "standard",
-            "goal": "exit_0x55",
-            "notes": "Sword + lamp checkpoint; still room-0x55 escape incomplete.",
+            "goal": "secret_entrance_clear",
+            "notes": (
+                "Sword + lamp checkpoint; secret entrance clear is continuous. "
+                "Not the continuous tip (main hall 0x61)."
+            ),
             "predecessor": "FighterSword",
             "acceptance_ram": {
                 "has_fighter_sword": True,
@@ -343,13 +358,14 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             },
         },
         "Castle_55": {
-            "status": "blocker",
-            "tier": "blocker",
+            "status": "segment_scripted",
+            "tier": "standard",
             "goal": "exit_0x55",
             "notes": (
-                "Secret passage room 0x55. Uncle/south chamber partial: south chamber "
-                "~(2680,2925) reached; no measured transition toward Zelda cell yet. "
-                "Main south gate soldier-blocked until sword."
+                "Secret passage room 0x55. Secret-entrance clear is continuous via "
+                "outdoor path (stairs → pocket → courtyard → main door → 0x61). "
+                "Internal key/shutter exit is alternate practice only — not a "
+                "primary continuous-tip blocker."
             ),
             "predecessor": "HyruleCastleGrounds",
             "acceptance_ram": {
@@ -357,48 +373,98 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
                 "has_fighter_sword": True,
             },
         },
-        "CastleB1Key": {
+        "CastleMain": {
             "status": "probe_state",
             "tier": "blocker",
+            "goal": "main_hall_to_zelda",
+            "notes": (
+                "Continuous tip: main hall room 0x61 after pocket_to_main_hall. "
+                "Primary next work: B1 → Zelda cell → follower → escort → Sanctuary."
+            ),
+            "predecessor": "FighterSword",
+            "acceptance_ram": {"indoors_room": "0x61", "has_control": True},
+        },
+        "CastleMainEast": {
+            "status": "probe_state",
+            "tier": "standard",
+            "goal": "main_hall_to_zelda",
+            "notes": "Main-hall east nav from continuous tip room 0x61.",
+            "predecessor": "CastleMain",
+            "acceptance_ram": {"indoors_room": "0x61", "has_control": True},
+        },
+        "CastleMainZeldaReady": {
+            "status": "probe_state",
+            "tier": "blocker",
+            "goal": "reach_zelda_cell",
+            "notes": (
+                "Primary continuous-tip probe: main-hall Zelda approach from room "
+                "0x61. Rank ahead of alternate 0x55 key/shutter practice."
+            ),
+            "predecessor": "CastleMain",
+            "phase": 0,
+        },
+        "CastleMainZeldaBoomerang": {
+            "status": "probe_state",
+            "tier": "standard",
+            "goal": "reach_zelda_cell",
+            "notes": (
+                "Main-hall Zelda path with boomerang loadout; continuous-tip "
+                "adjacent probe from room 0x61."
+            ),
+            "predecessor": "CastleMain",
+            "phase": 0,
+        },
+        "CastleB1Key": {
+            "status": "probe_state",
+            "tier": "standard",
             "goal": "obtain_key",
-            "notes": "Priority after sword: small key for 0x55 / shutter path.",
+            "notes": (
+                "Alternate internal_key practice from 0x55 / B1 — not the primary "
+                "continuous-tip blocker. Primary path is main hall 0x61 → Zelda."
+            ),
             "predecessor": "FighterSword",
             "acceptance_ram": {"dungeon_key_count": ">=1"},
         },
         "CastleB1SecondKey": {
             "status": "probe_state",
-            "tier": "blocker",
+            "tier": "later",
             "goal": "obtain_key",
-            "notes": "Second key probe on B1 escape ladder.",
+            "notes": "Second key probe; alternate internal_key ladder, not tip.",
             "predecessor": "CastleB1Key",
         },
         "CastleB1Shutter": {
             "status": "probe_state",
-            "tier": "blocker",
+            "tier": "standard",
             "goal": "open_shutter",
-            "notes": "Shutter door path out of / through 0x55-adjacent B1.",
+            "notes": (
+                "Shutter door on alternate internal key/shutter path — demoted vs "
+                "main hall → Zelda."
+            ),
             "predecessor": "CastleB1Key",
         },
         "CastleB1ShutterGuard": {
             "status": "probe_state",
-            "tier": "blocker",
+            "tier": "later",
             "goal": "open_shutter",
-            "notes": "Shutter room with guard; critical-path probe.",
+            "notes": "Shutter room with guard; alternate practice, not tip blocker.",
             "predecessor": "CastleB1Shutter",
         },
         "CastleB1ShutterRoom": {
             "status": "probe_state",
-            "tier": "blocker",
+            "tier": "later",
             "goal": "open_shutter",
-            "notes": "Shutter room probe state.",
+            "notes": "Shutter room probe; alternate internal_key path.",
             "predecessor": "CastleB1Shutter",
         },
         "CastleZeldaFollower": {
             "status": "probe_state",
             "tier": "standard",
             "goal": "zelda_follower",
-            "notes": "Expected $F3CC==1 (Zelda tagalong). Not verified on natural path.",
-            "predecessor": "FighterSword",
+            "notes": (
+                "Expected $F3CC==1 (Zelda tagalong). Not verified on natural path. "
+                "Predecessor continuous tip CastleMain (room 0x61)."
+            ),
+            "predecessor": "CastleMain",
             "acceptance_ram": {"has_zelda_follower": True, "follower": 1},
         },
         "CastleMantleZelda": {
@@ -407,7 +473,7 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             "goal": "sanctuary",
             "notes": (
                 "Escort / mantle checkpoint toward Sanctuary (room 0x12 / OW 0x13). "
-                "Defer until follower==1."
+                "Defer until follower==1 verified from main-hall Zelda path."
             ),
             "predecessor": "CastleZeldaFollower",
             "acceptance_ram": {
@@ -415,37 +481,26 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
                 "in_sanctuary": True,
             },
         },
-        "CastleMainZeldaReady": {
-            "status": "probe_state",
-            "tier": "standard",
-            "goal": "reach_zelda_cell",
-            "notes": "Main-hall Zelda approach probe.",
-            "predecessor": "FighterSword",
-        },
-        "CastleMainZeldaBoomerang": {
-            "status": "probe_state",
-            "tier": "standard",
-            "goal": "reach_zelda_cell",
-            "notes": "Zelda path with boomerang loadout.",
-            "predecessor": "FighterSword",
-        },
         "CastleB3": {
             "status": "unstarted",
             "tier": "later",
             "goal": "ball_and_chain",
-            "notes": "Ball-and-chain area; not on immediate post-sword critical path.",
+            "notes": "Ball-and-chain area; not on immediate main-hall → Zelda path.",
         },
         "CastleB3BallApproach": {
             "status": "unstarted",
             "tier": "later",
             "goal": "ball_and_chain",
-            "notes": "Ball-and-chain approach; Sanctuary escort is higher path priority only after Zelda.",
+            "notes": (
+                "Ball-and-chain approach; Sanctuary escort is higher path priority "
+                "only after Zelda follower."
+            ),
         },
         "CastleB3BossOneHitBoomerang": {
             "status": "unstarted",
             "tier": "later",
             "goal": "ball_and_chain",
-            "notes": "Boss one-hit probe; deferred vs 0x55 exit.",
+            "notes": "Boss one-hit probe; deferred vs main hall → Zelda.",
         },
     }
 
@@ -506,9 +561,10 @@ def build_item(
 def rank_score(item: WorkItem) -> int:
     """Lower score = higher on the Sanctuary work queue.
 
-    Policy:
-    - Active critical path (0x55 / key / shutter / post_sword blockers) first.
-    - Zelda cell before random B1 and before escort.
+    Policy (continuous tip = main hall room 0x61):
+    - Prefer **main / Zelda** goals (main_hall_to_zelda, reach_zelda_cell,
+      zelda_follower) over exit_0x55 / obtain_key / open_shutter.
+    - Demote key/shutter boost; boost reach_zelda_cell and main-hall goals.
     - Escort / B3 / already-natural opening later.
     - Within a phase, unfinished work before natural_chain milestones.
     """
@@ -523,21 +579,29 @@ def rank_score(item: WorkItem) -> int:
     phase = item.phase
     if item.group == "opening" and item.status in {"natural_chain", "segment_scripted"}:
         phase = 12
-    if item.group == "post_sword" and item.status == "segment_scripted":
-        # Still the launch pad for next work — keep near top of phase 0.
-        phase = 0
+    # Done post_sword / room_55 segments stay in their phase (not tip).
+    if item.group in {"post_sword", "room_55"} and item.status == "segment_scripted":
+        phase = max(phase, _PHASE.get(item.group, 5))
 
     score = phase * 1000
     score += _TIER_RANK.get(item.tier, 2) * 100
     score += status_boost.get(item.status, 25)
-    # Prefer key/shutter goal names slightly within same phase.
+    # Prefer continuous-tip main/Zelda goals within/across nearby phases.
+    if item.goal in {
+        "reach_zelda_cell",
+        "main_hall_to_zelda",
+        "main_hall_nav",
+        "zelda_follower",
+    }:
+        score -= 10
+    # Demote alternate internal key/shutter and historical 0x55 exit goals.
     if item.goal in {"exit_0x55", "obtain_key", "open_shutter"}:
-        score -= 5
-    if item.goal in {"zelda_follower", "reach_zelda_cell"}:
-        score -= 2
+        score += 15
+    if item.goal == "secret_entrance_clear":
+        score += 10
     if item.goal == "sanctuary":
         score += 50
-    # Stable tie-break by name.
+    # Stable tie-break by name (applied in rank_items sort, not here).
     return score
 
 
@@ -602,7 +666,7 @@ def build_work_queue(
         i
         for i in items
         if i.status in {"blocker", "probe_state", "unstarted"}
-        and i.group in {"post_sword", "room_55", "key_shutter", "zelda"}
+        and i.group in {"main", "zelda", "b1"}
     ][:12]
 
     return {
@@ -611,9 +675,10 @@ def build_work_queue(
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "unitNote": (
             "Units are Zelda3-Snes save states on the boot → fighter sword → "
-            "room 0x55 → Zelda → Sanctuary path. Ranked for Sanctuary progress: "
-            "after sword, prioritize exit_0x55 / key / shutter over random B1; "
-            "escort/Sanctuary later. Sanctuary not claimed."
+            "secret-entrance clear → courtyard pocket → main hall room 0x61 → "
+            "Zelda → Sanctuary path. Continuous tip is **main hall 0x61**; next "
+            "work is B1 → Zelda cell → follower → escort. Internal 0x55 "
+            "key/shutter is alternate practice only. Sanctuary not claimed."
         ),
         "source": {
             "integrationDir": str(integration_dir or INTEGRATION_DIR),
@@ -630,7 +695,8 @@ def build_work_queue(
             "verifiedMilestones": [
                 "title_to_castle_grounds",
                 "castle_to_fighter_sword",
-                "room_0x55_south_chamber_partial",
+                "secret_entrance_clear",
+                "pocket_to_main_hall_0x61",
             ],
         },
         "workFocus": [i.to_dict() for i in focus],
@@ -649,8 +715,9 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
         "# ALTTP — Room / Save-State Work Queue",
         "",
         "Sanctuary-path practice queue for `Zelda3-Snes` save states.",
-        "Ranked for progress after fighter sword: **exit room 0x55 / key / "
-        "shutter** before random B1; escort and Sanctuary later.",
+        "Continuous tip is **main hall room 0x61** (after `pocket_to_main_hall`).",
+        "Ranked for next work: **main hall / B1 → Zelda cell → follower → escort**.",
+        "Internal 0x55 key/shutter path is **alternate practice**, not primary.",
         "",
         f"Generated: `{generated}`  ",
         f"Catalog: `{payload.get('catalogId')}` schema {payload.get('schemaVersion')}  ",
@@ -684,7 +751,7 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
                 f"{row.get('tier')} | {notes} |"
             )
     else:
-        lines.append("_No open critical-path items._")
+        lines.append("_No open continuous-tip items._")
 
     lines.extend(
         [
@@ -722,13 +789,18 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
             "",
             "## Notes",
             "",
+            "- Continuous tip is **main hall room 0x61** after "
+            "`pocket_to_main_hall` (courtyard pocket → main door).",
+            "- Secret-entrance clear (stairs → outdoor pocket) is already "
+            "continuous; do **not** treat `Castle_55` internal exit as the top "
+            "blocker.",
+            "- Primary next work: main hall / B1 → Zelda cell → follower → "
+            "escort → Sanctuary.",
+            "- Internal 0x55 key/shutter path is **alternate practice** only.",
             "- `FighterSword` is a **dev checkpoint** after uncle sword; natural "
             "sword claim needs `--natural` on `castle_to_sword`.",
-            "- Room `0x55` south chamber is **partial**; no measured exit toward "
-            "Zelda cell yet (`blocker`).",
             "- Acceptance for rescue: `has_zelda_follower` (`$F3CC == 1`).",
             "- Sanctuary: room `0x12` / OW screen `0x13` — not claimed.",
-            "- Random B1 cleared/island states are lower priority than key/shutter.",
             "",
             str(payload.get("unitNote") or ""),
             "",

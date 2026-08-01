@@ -1,0 +1,376 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a9e5_from_aa41_to_aa41",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Hi-Jump Room (0xA9E5); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9426",
+    "entrySourceRoomIdHex": "0xAA41",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 37926,
+    "entrySourceRoomId": 43585
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 43585,
+      "sourceRoomIdHex": "0xAA41",
+      "endpoint": {
+        "roomId": 43493,
+        "roomIdHex": "0xA9E5",
+        "logicalRoomId": 89,
+        "nodeId": 1,
+        "nodeName": "HiJump Door (to E-Tank)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 43585,
+      "targetRoomIdHex": "0xAA41",
+      "endpoint": {
+        "roomId": 43493,
+        "roomIdHex": "0xA9E5",
+        "logicalRoomId": 89,
+        "nodeId": 1,
+        "nodeName": "HiJump Door (to E-Tank)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "unresolved",
+      "reason": "no air-only collision path; dynamic blocks or movement abilities need runtime planning",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        3,
+        10
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "waypointsBlocks": []
+    }
+  },
+  "steps": [
+    {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "first_runup",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "first_pillar_jump",
+      "buttons": [
+        "LEFT",
+        "B",
+        "A"
+      ],
+      "frames": 26
+    },
+    {
+      "label": "first_pillar_aim_down",
+      "buttons": [
+        "DOWN"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "first_pillar_downshot",
+      "buttons": [
+        "X"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "first_pillar_land",
+      "buttons": [],
+      "frames": 80
+    },
+    {
+      "label": "face_second_pillar",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 2
+    },
+    {
+      "label": "second_pillar_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "second_pillar_jump",
+      "buttons": [
+        "A"
+      ],
+      "frames": 26
+    },
+    {
+      "label": "second_pillar_aim_down",
+      "buttons": [
+        "DOWN"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "second_pillar_downshot",
+      "buttons": [
+        "X"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "second_pillar_land",
+      "buttons": [],
+      "frames": 80
+    },
+    {
+      "label": "cross_backoff",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "cross_runup",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "cross_pillar",
+      "buttons": [
+        "LEFT",
+        "B",
+        "A"
+      ],
+      "frames": 41
+    },
+    {
+      "label": "left_land",
+      "buttons": [],
+      "frames": 80
+    },
+    {
+      "label": "statue_approach",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "statue_brake",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "statue_settle",
+      "buttons": [],
+      "frames": 8
+    },
+    {
+      "label": "statue_face",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 3
+    },
+    {
+      "label": "statue_face_release",
+      "buttons": [],
+      "frames": 3
+    },
+    {
+      "label": "statue_shot",
+      "buttons": [
+        "X"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "statue_open",
+      "buttons": [],
+      "frames": 60
+    },
+    {
+      "label": "collect_item",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 22
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 480
+    },
+    {
+      "label": "return_unmorph_up",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "return_unmorph_jump",
+      "buttons": [
+        "A"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "return_unmorph_settle",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "return_brake",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "return_release",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "return_runup",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "return_cross",
+      "buttons": [
+        "RIGHT",
+        "B",
+        "A"
+      ],
+      "frames": 120
+    },
+    {
+      "label": "return_land",
+      "buttons": [],
+      "frames": 80
+    },
+    {
+      "label": "door_backoff",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 80
+    },
+    {
+      "label": "door_brake",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_settle",
+      "buttons": [],
+      "frames": 8
+    },
+    {
+      "label": "door_face",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 3
+    },
+    {
+      "label": "door_face_release",
+      "buttons": [],
+      "frames": 3
+    },
+    {
+      "label": "door_shot",
+      "buttons": [
+        "X"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "door_open",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 420
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:16:42.005848+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a9e5_from_aa41_to_aa41.json",
+    "reportSha256": "0c347504080088097c0b6cf84433066f9d0f54dbdf494691bbb27b7c840cbbc5",
+    "stateSha256": "b372e677b7131f694d062a8b8b1c0a2439d035813bfdbc1c37c27f7e830b09ba",
+    "policySha256Before": "bbd95d63cbaffe551e8e7c9af8aa55c60f8c9a03253494cf77d566c7eef7438b"
+  }
+}

@@ -290,16 +290,31 @@
       "frames": 20
     },
     {
+      "label": "close_exit_approach",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 24
+    },
+    {
+      "label": "reopen_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
       "label": "door_open_wait",
       "buttons": [],
-      "frames": 55
+      "frames": 4
     },
     {
       "label": "enter_exit_door",
       "buttons": [
         "LEFT",
-        "A",
-        "B"
+        "X"
       ],
       "frames": 250
     }

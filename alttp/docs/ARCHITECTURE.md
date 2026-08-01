@@ -24,14 +24,21 @@ session.py                        AlttpSession façade (snapshot, caps, segments
 opening_route/                    Continuous trunk (ownership)
   escape_graph.py                 Capability graph grounds → Sanctuary
   segment.py                      Segment / natural-entry contract + registry
-  anchors.py                      Multi-truth route/approach/trigger anchors
+  anchors.py                      Multi-truth anchors + measured constants + tip resolve
   castle_to_sword.py              Live: grounds → uncle sword
-  sword_to_zelda.py               Live: sword → south → stairs outdoor clear
+  secret_entrance_clear.py        Live: sword → south → stairs outdoor clear
+  sword_to_zelda.py               Compat re-export of secret_entrance_clear
   pocket_to_main_hall.py          Live: pocket bush-cut → main door → 0x61
+  main_hall_to_zelda.py           Thin multi-hop: room_engine west + Zelda accept
+  room_engine.py                  Generic clear + door exit (ok=True on edge)
+  escort_to_sanctuary.py          Planned scaffold: escort → Sanctuary
   catalog.py + data + validate    z3-backed opening catalog
-  work_queue.py                   Save-state Sanctuary work queue
+  work_queue.py                   Save-state practice (continuous-spine blockers)
         │
 primitives.py + route_report.py   Preferred low-level control + evidence shape
+room_map.py                       maps/*.json load/save (geometry schema)
+room_sense.py                     Sprite boxes, edge detect, overlay
+maps/room_XX.json                 Geometry authority (doors / points / clear)
 startup.py + overworld.py         Boot / OW BFS
 ram.py                            Sparse snapshot (gameplay authority)
         │
@@ -48,6 +55,15 @@ romhack/                          Editor/asset experiments (shell)
 | `alttp/gauntlet/` | Arena/combat experiments (when revived) | Sanctuary continuous claims |
 | `alttp/romhack/` | Editor/asset experiments (when revived) | Opening-route evidence |
 
+**Layer rule (Sanctuary finish):**
+
+| Layer | Owns | Does not own |
+|-------|------|----------------|
+| Graph | Coarse capability hops + verification ladder | Every B1 door as a node |
+| Segment | Multi-room measured phases (`RoutePhaseResult`) | Alternate-path continuous claims |
+| Work queue | Isolated practice for **open continuous-spine blockers** | Second route truth |
+| Anchors | Measured approach/trigger windows + tip resolution | Filename heuristics |
+
 Compat shims at the old top-level module names
 (`alttp.escape_graph`, `alttp.castle_to_sword`, …) re-export
 `opening_route` for existing imports.
@@ -58,9 +74,11 @@ Compat shims at the old top-level module names
 |---------|-----------|
 | Live position / inventory / room | `alttp.ram.AlttpSnapshot` (stable-retro RAM) |
 | Continuous progress | `opening_route.escape_graph` edges with `verification=continuous` |
-| Capability plan | `plan_escape_to_sanctuary` / `continuous_spine_legs` |
-| Segment play + evidence | `opening_route.segment` + `route_report.SegmentResult` |
-| Multi-truth anchors | `opening_route.anchors` |
+| Capability plan | `plan_escape_to_sanctuary` / `continuous_spine_legs` (single hop table; path tags) |
+| Segment play + evidence | `opening_route.segment` + `route_report.SegmentResult` (entry enforced) |
+| Multi-truth anchors + tip node | `opening_route.anchors` (`resolve_continuous_tip_node`) |
+| Measured room geometry | `maps/room_XX.json` via `room_map.load_room_map` |
+| Approach/trigger windows | `anchors.py` (door approach derived from map; no copy) |
 | z3 / Yaze labels | Association only — **not** screen coordinates |
 | Save-state practice order | `opening_route.work_queue` + `docs/routes/ROOM_WORK_QUEUE.md` |
 
@@ -71,10 +89,15 @@ Verified continuous spine:
 `castle_grounds` → `room_55_uncle` → `room_55_sword` → `room_55_south` →
 `courtyard_secret_pocket` → `room_61` (main hall)
 
-Next planned hop: main hall B1 → Zelda cell → escort → Sanctuary.
+Isolated (state-load): `room_61` → `room_60` (west door);
+`room_60` → `room_50` (north door).
 
-Alternate internal key/shutter path remains on the graph for the work queue
-but is **not** the default Sanctuary plan.
+Next planned hop: **after 0x50 → Zelda cell → escort → Sanctuary**
+(map seeds for 0x01/51/52/62 and B1 0x71–0x82 under `maps/`).
+
+Alternate internal key/shutter path remains on the graph (`path: internal_key`)
+for practice only — **not** the default Sanctuary plan and **not** work-queue
+primary blockers.
 
 ### Segment contract
 
@@ -84,12 +107,18 @@ Segment:
   entry (room/screen + inventory + optional anchors)
   exit  (acceptance keys + graph node + verification)
   play(env) → SegmentResult / SegmentEvidence
+  play_checked: enforces entry (phase entry_rejected if mismatch)
 ```
 
-Registered segments: `castle_to_sword`, `sword_to_secret_entrance_clear`,
-`pocket_to_main_hall`. Natural-entry rule: a hop is route-ready only from
-the real predecessor continuous state (no privileged warps in published
-evidence).
+Registered segments:
+
+- continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`,
+  `pocket_to_main_hall`
+- partial (isolated west, full Zelda planned): `main_hall_to_zelda`
+- planned scaffold: `escort_to_sanctuary`
+
+Natural-entry rule: a hop is route-ready only from the real predecessor
+continuous state (no privileged warps in published evidence).
 
 ### Session façade
 
@@ -100,6 +129,7 @@ session = bind_env(env, source="natural_boot")
 session.snapshot()           # selective RAM
 session.capabilities()       # escape-graph tokens
 session.anchor_report()      # multi-truth matches
+session.continuous_tip_node()  # anchors.resolve_continuous_tip_node
 session.play_segment("castle_to_sword")
 session.plan_to_sanctuary()
 ```
@@ -117,17 +147,18 @@ Promote to `adventure_common` only after a second game adopts them.
 | `docs/STATUS.md` | Verified facts + maturity gate |
 | `docs/plan.md` | Future work |
 | `docs/TRIGGER_HANDOFF.md` | Remaining trigger/hitbox problems |
-| `docs/routes/ROOM_WORK_QUEUE.md` | Save-state practice queue |
+| `docs/routes/ROOM_WORK_QUEUE.md` | Save-state practice queue (tip = room 0x61) |
 | `docs/ram_map.md` | WRAM field notes |
 | `docs/Z3_JSON_DATA.md` | Optional local z3 refs |
 
 ### Extension recipe (next continuous hop)
 
-1. Measure approach + trigger with multi-truth anchors (do not invent coords).
-2. Pure play function in `opening_route/` using `primitives`.
-3. Graph edge: start `planned` or `isolated`; promote to `natural_entry` then
-   `continuous` only with evidence.
-4. Register `ScriptSegment` in `segment.py`.
-5. Drive work queue from the continuous-spine blocker only.
-6. Update STATUS with RAM facts + recording paths; never claim Zelda until
-   `$F3CC == 1` on real RAM.
+Prefer **room engine** for B1 doors (low agent context) — `docs/ROOM_ENGINE.md`:
+
+1. Measure → write `maps/room_XX.json` (points + doors + path). Do not invent.
+2. `scripts/room_engine.py show|run` until isolated green.
+3. Graph: expand node when isolated; promote `planned` → `isolated` →
+   `natural_entry` → `continuous` only with evidence.
+4. Thin segment only when multi-room acceptance needs spine registration.
+5. Anchors for approach/trigger windows; geometry stays in JSON.
+6. STATUS facts; never claim Zelda until `$F3CC == 1` on real RAM.

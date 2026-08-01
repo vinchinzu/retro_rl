@@ -9,6 +9,7 @@ import numpy as np
 from super_metroid.combat.draygon import (
     ROOM_DRAYGON,
     DraygonStrategy,
+    draygon_gunk_clear_action,
     fight_draygon_action,
 )
 from super_metroid.combat import wrap_draygon_as_boss_strategy
@@ -67,3 +68,56 @@ def test_strategy_tuning_changes_fire_period() -> None:
     strategy = DraygonStrategy(fire_period=5)
     assert "X" in fight_draygon_action(state, frame_index=0, strategy=strategy)
     assert "X" not in fight_draygon_action(state, frame_index=1, strategy=strategy)
+
+
+def test_gunk_clear_is_noop_outside_contact_overlap() -> None:
+    state = _state(
+        samus_x=100,
+        samus_y=100,
+        enemy0_x=400,
+        enemy0_y=100,
+        enemy0_hp=6000,
+    )
+    assert draygon_gunk_clear_action(state, frame_index=0) == ()
+
+
+def test_gunk_clear_jumps_away_and_fires_on_cadence() -> None:
+    state = _state(
+        samus_x=100,
+        samus_y=100,
+        enemy0_x=120,
+        enemy0_y=100,
+        enemy0_hp=6000,
+    )
+    strategy = DraygonStrategy(fire_period=3)
+    assert draygon_gunk_clear_action(state, frame_index=0, strategy=strategy) == (
+        "LEFT",
+        "A",
+        "X",
+    )
+    assert draygon_gunk_clear_action(state, frame_index=1, strategy=strategy) == (
+        "LEFT",
+        "A",
+    )
+
+
+def test_gunk_clear_escapes_left_when_enemy_is_left() -> None:
+    state = _state(
+        samus_x=200,
+        samus_y=100,
+        enemy0_x=180,
+        enemy0_y=100,
+        enemy0_hp=6000,
+    )
+    assert draygon_gunk_clear_action(state, frame_index=0)[:2] == ("RIGHT", "A")
+
+
+def test_gunk_clear_is_empty_after_body_defeat() -> None:
+    state = _state(
+        samus_x=100,
+        samus_y=100,
+        enemy0_x=120,
+        enemy0_y=100,
+        enemy0_hp=0,
+    )
+    assert draygon_gunk_clear_action(state, frame_index=0) == ()

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d898_from_d7e4_to_d6fd",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Botwoon Quicksand Room (0xD898); entry just inside door, exit via DOWN.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA858",
+    "entrySourceRoomIdHex": "0xD7E4",
+    "doorOrientation": "up",
+    "face": null,
+    "exitTravelDirection": "DOWN",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      23,
+      0
+    ],
+    "doorPtr": 43096,
+    "entrySourceRoomId": 55268
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 55268,
+      "sourceRoomIdHex": "0xD7E4",
+      "endpoint": {
+        "roomId": 55448,
+        "roomIdHex": "0xD898",
+        "logicalRoomId": 204,
+        "nodeId": 3,
+        "nodeName": "Botwoon Quicksand Top Right Sand Entrance (from E-Tank Right)",
+        "position": "bottom",
+        "orientation": "up",
+        "subtype": "sandpit",
+        "block": [
+          23,
+          0
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 55037,
+      "targetRoomIdHex": "0xD6FD",
+      "endpoint": {
+        "roomId": 55448,
+        "roomIdHex": "0xD898",
+        "logicalRoomId": 204,
+        "nodeId": 2,
+        "nodeName": "Botwoon Quicksand Bottom Left Sand Exit (to Below E-Tank Left)",
+        "position": "top",
+        "orientation": "down",
+        "subtype": "sandpit",
+        "block": [
+          7,
+          15
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        23,
+        0
+      ],
+      "objectiveBlock": [
+        7,
+        15
+      ],
+      "exitBlock": [
+        7,
+        15
+      ],
+      "pathBlocks": 6,
+      "waypointsBlocks": [
+        [
+          18,
+          9
+        ],
+        [
+          13,
+          9
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "DOWN",
+        "B"
+      ],
+      "frames": 116
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "DOWN",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:12:24.143726+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_d898_from_d7e4_to_d6fd.json",
+    "reportSha256": "f3e8462a8c738299d938fb821d00dea60658826e99b09ef95198e8e577c47d33",
+    "stateSha256": "c2196d9ca13e73e5cb8c7898613f8a6d7ee1532c97dce804c85bbab27a55934e",
+    "policySha256Before": "33606af6105b2d0243a0e530142cccf795e3b16e9661d3f19a666efe19946c83"
+  }
+}

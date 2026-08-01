@@ -9,6 +9,7 @@ from super_metroid.routes.controller_common import (
     play_run_shoot_exit,
     require_room,
     select_weapon,
+    settle_hold,
     unmorph,
     wait_ordinary_room,
 )
@@ -39,6 +40,7 @@ _hold = hold
 _require_room = require_room
 _select_weapon = select_weapon
 _unmorph = unmorph
+_settle_hold = settle_hold
 _wait_ordinary_room = wait_ordinary_room
 
 from super_metroid.routes.kpdr.hijump import (
@@ -55,25 +57,25 @@ def play_warehouse_to_zeela_with_hijump(
     play_warehouse_wall_to_lower_lip(session)
     _unmorph(session)
     _select_weapon(session, 0)
-    _hold(session, 12, reason="warehouse_hj_release")
+    _settle_hold(session, 12, reason="warehouse_hj_release")
     for _ in range(120):
         if session.state.samus_x <= 445:
             break
         _hold(session, 1, "LEFT", reason="warehouse_hj_backoff")
     _hold(session, 5, "RIGHT", reason="warehouse_hj_brake")
-    _hold(session, 8, reason="warehouse_hj_jump_release")
+    _settle_hold(session, 8, reason="warehouse_hj_jump_release")
     for frame in range(180):
         buttons = ("A",) if frame < 25 else ("RIGHT", "B", "A")
         state = _hold(session, 1, *buttons, reason="warehouse_hj_climb")
         if state.samus_x >= 720 and state.samus_y <= 160:
             break
-    _hold(session, 30, reason="warehouse_hj_door_settle")
+    _settle_hold(session, 30, reason="warehouse_hj_door_settle")
     _unmorph(session)
     _select_weapon(session, 0)
     _hold(session, 3, "RIGHT", reason="warehouse_face_zeela")
-    _hold(session, 3, reason="warehouse_face_zeela_release")
+    _settle_hold(session, 3, reason="warehouse_face_zeela_release")
     _hold(session, 2, "RIGHT", "X", reason="warehouse_zeela_door_shot")
-    _hold(session, 30, reason="warehouse_zeela_door_open")
+    _settle_hold(session, 30, reason="warehouse_zeela_door_open")
     for _ in range(420):
         state = _hold(session, 1, "RIGHT", "B", "A", reason="warehouse_enter_zeela")
         if state.room_id == ROOM_ZEELA:
@@ -91,18 +93,18 @@ def play_zeela_to_kihunter(session: ControllerSession) -> SuperMetroidState:
     _require_room(session, ROOM_ZEELA, "zeela_to_kihunter")
     _unmorph(session)
     _select_weapon(session, 0)
-    _hold(session, 10, reason="zeela_entry_release")
+    _settle_hold(session, 10, reason="zeela_entry_release")
     _hold(session, 10, "A", reason="zeela_first_drop_jump")
     _hold(session, 1, "DOWN", reason="zeela_first_drop_aim")
     _hold(session, 2, "X", reason="zeela_first_drop_shot")
-    _hold(session, 80, reason="zeela_first_drop")
+    _settle_hold(session, 80, reason="zeela_first_drop")
     ensure_morph(session)
     for _ in range(300):
         state = _hold(session, 1, "RIGHT", reason="zeela_middle_roll")
         if state.samus_x >= 105 and state.samus_y >= 325:
             break
     _unmorph(session)
-    _hold(session, 30, reason="zeela_middle_land")
+    _settle_hold(session, 30, reason="zeela_middle_land")
     _select_weapon(session, 0)
     _hold(session, 8, "A", reason="zeela_second_drop_jump")
     _hold(session, 1, "DOWN", reason="zeela_second_drop_aim")
@@ -111,7 +113,7 @@ def play_zeela_to_kihunter(session: ControllerSession) -> SuperMetroidState:
         state = _hold(session, 1, "LEFT", reason="zeela_second_drop")
         if state.samus_y >= 395:
             break
-    _hold(session, 40, reason="zeela_bottom_land")
+    _settle_hold(session, 40, reason="zeela_bottom_land")
     ensure_morph(session)
     for frame in range(700):
         buttons = ("RIGHT", "X") if frame % 45 < 2 else ("RIGHT",)
@@ -121,11 +123,11 @@ def play_zeela_to_kihunter(session: ControllerSession) -> SuperMetroidState:
     else:
         raise TimeoutError(f"zeela_to_kihunter: tunnel stalled: {state}")
     _unmorph(session)
-    _hold(session, 40, reason="zeela_up_door_stand")
+    _settle_hold(session, 40, reason="zeela_up_door_stand")
     _select_weapon(session, 0)
     _hold(session, 2, "UP", reason="zeela_up_door_aim")
     _hold(session, 2, "UP", "X", reason="zeela_up_door_shot")
-    _hold(session, 35, reason="zeela_up_door_open")
+    _settle_hold(session, 35, reason="zeela_up_door_open")
     for _ in range(400):
         state = _hold(session, 1, "A", reason="zeela_enter_kihunter")
         if state.room_id == ROOM_WAREHOUSE_KIHUNTER:
@@ -144,7 +146,7 @@ def play_zeela_to_kihunter(session: ControllerSession) -> SuperMetroidState:
 def play_kihunter_to_baby_kraid(session: ControllerSession) -> SuperMetroidState:
     """Drop through the Warehouse Kihunter floor and take the lower door."""
     _require_room(session, ROOM_WAREHOUSE_KIHUNTER, "kihunter_to_baby")
-    _hold(session, 80, reason="kihunter_entry_floor")
+    _settle_hold(session, 80, reason="kihunter_entry_floor")
     _unmorph(session)
     _select_weapon(session, 0)
     for _ in range(300):
@@ -152,13 +154,13 @@ def play_kihunter_to_baby_kraid(session: ControllerSession) -> SuperMetroidState
             break
         _hold(session, 1, "RIGHT", "B", reason="kihunter_drop_position")
     _hold(session, 6, "LEFT", reason="kihunter_drop_brake")
-    _hold(session, 10, reason="kihunter_drop_settle")
+    _settle_hold(session, 10, reason="kihunter_drop_settle")
     _hold(session, 3, "RIGHT", reason="kihunter_drop_exact")
     _hold(session, 2, "LEFT", reason="kihunter_drop_exact_brake")
-    _hold(session, 10, reason="kihunter_drop_exact_settle")
+    _settle_hold(session, 10, reason="kihunter_drop_exact_settle")
     ensure_morph(session)
     _hold(session, 2, "X", reason="kihunter_floor_bomb")
-    _hold(session, 55, reason="kihunter_floor_bomb_wait")
+    _settle_hold(session, 55, reason="kihunter_floor_bomb_wait")
     _hold(session, 2, "X", reason="kihunter_floor_bomb2")
     for _ in range(180):
         state = _hold(session, 1, reason="kihunter_floor_drop")
@@ -216,7 +218,7 @@ def _baby_kraid_sweep(
 def play_baby_kraid_to_eye(session: ControllerSession) -> SuperMetroidState:
     """Kill the three pirates and Mini-Kraid, then take the right gray door."""
     _require_room(session, ROOM_BABY_KRAID, "baby_kraid_to_eye")
-    _hold(session, 100, reason="baby_kraid_entry_floor")
+    _settle_hold(session, 100, reason="baby_kraid_entry_floor")
     _unmorph(session)
     _select_weapon(session, 2)
     _baby_kraid_sweep(session, "RIGHT", 1490, limit=1700, label="baby_kraid_forward")
@@ -238,7 +240,7 @@ def play_baby_kraid_to_eye(session: ControllerSession) -> SuperMetroidState:
 def play_eye_to_kraid(session: ControllerSession) -> SuperMetroidState:
     """Cross Kraid Eye Door Room and open the eye door with Supers."""
     _require_room(session, ROOM_KRAID_EYE, "eye_to_kraid")
-    _hold(session, 100, reason="kraid_eye_entry_floor")
+    _settle_hold(session, 100, reason="kraid_eye_entry_floor")
     _unmorph(session)
     _select_weapon(session, 2)
     for frame in range(1800):
@@ -305,4 +307,3 @@ def play_warehouse_hijump_kraid(session: ControllerSession) -> SuperMetroidState
     play_warehouse_to_hijump(session)
     play_hijump_to_warehouse(session)
     return play_warehouse_to_kraid_with_hijump(session)
-

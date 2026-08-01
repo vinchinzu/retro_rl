@@ -323,6 +323,128 @@ def wrap_draygon_as_boss_strategy() -> CallableBossStrategy:
     )
 
 
+def wrap_ridley_as_boss_strategy() -> CallableBossStrategy:
+    """Ridley development fight as a BossStrategy; continuous is deferred."""
+    from super_metroid.combat.features import ridley_catalog
+    from super_metroid.combat.ridley import ROOM_RIDLEY, play_ridley_fight
+
+    catalog = ridley_catalog()
+
+    def play(session: ControllerSession) -> BossEvidence:
+        result = play_ridley_fight(session)
+        success = result.outcome == "ridley_defeated"
+        return BossEvidence(
+            boss_id="ridley",
+            start_frame=result.start_frame,
+            end_frame=result.end_frame,
+            outcome=result.outcome,
+            success=success,
+            final_room_id=session.state.room_id,
+            boss_defeated=result.boss_bit_set,
+            detail=result.to_dict(),
+        )
+
+    return CallableBossStrategy(
+        boss_id="ridley",
+        play_fn=play,
+        entry_requirement=StateRequirement(room_id=ROOM_RIDLEY),
+        catalog_entry=catalog,
+    )
+
+
+def wrap_mother_brain_as_boss_strategy() -> CallableBossStrategy:
+    """Mother Brain development fight as a BossStrategy; continuous is deferred."""
+    from super_metroid.combat.features import mother_brain_catalog
+    from super_metroid.combat.mother_brain import (
+        ROOM_MOTHER_BRAIN,
+        play_mother_brain_fight,
+    )
+
+    catalog = mother_brain_catalog()
+
+    def play(session: ControllerSession) -> BossEvidence:
+        result = play_mother_brain_fight(session)
+        success = result.event_set or result.boss_bit_set
+        return BossEvidence(
+            boss_id="mother_brain",
+            start_frame=result.start_frame,
+            end_frame=result.end_frame,
+            outcome=result.outcome,
+            success=success,
+            final_room_id=session.state.room_id,
+            boss_defeated=result.boss_bit_set,
+            detail=result.to_dict(),
+        )
+
+    return CallableBossStrategy(
+        boss_id="mother_brain",
+        play_fn=play,
+        entry_requirement=StateRequirement(room_id=ROOM_MOTHER_BRAIN),
+        catalog_entry=catalog,
+    )
+
+
+def wrap_crocomire_as_boss_strategy() -> CallableBossStrategy:
+    """Crocomire development fight as a BossStrategy; continuous is deferred."""
+    from super_metroid.combat.crocomire import ROOM_CROCOMIRE, play_crocomire_fight
+    from super_metroid.combat.features import crocomire_catalog
+
+    catalog = crocomire_catalog()
+
+    def play(session: ControllerSession) -> BossEvidence:
+        result = play_crocomire_fight(session)
+        success = result.outcome == "pushed"
+        return BossEvidence(
+            boss_id="crocomire",
+            start_frame=result.start_frame,
+            end_frame=result.end_frame,
+            outcome=result.outcome,
+            success=success,
+            final_room_id=session.state.room_id,
+            boss_defeated=result.boss_bit_set,
+            detail=result.to_dict(),
+        )
+
+    return CallableBossStrategy(
+        boss_id="crocomire",
+        play_fn=play,
+        entry_requirement=StateRequirement(room_id=ROOM_CROCOMIRE),
+        catalog_entry=catalog,
+    )
+
+
+def wrap_golden_torizo_as_boss_strategy() -> CallableBossStrategy:
+    """Golden Torizo development fight as a BossStrategy; continuous is deferred."""
+    from super_metroid.combat.features import golden_torizo_catalog
+    from super_metroid.combat.golden_torizo import (
+        ROOM_GOLDEN_TORIZO,
+        play_golden_torizo_fight,
+    )
+
+    catalog = golden_torizo_catalog()
+
+    def play(session: ControllerSession) -> BossEvidence:
+        result = play_golden_torizo_fight(session)
+        success = result.outcome == "golden_torizo_defeated"
+        return BossEvidence(
+            boss_id="golden_torizo",
+            start_frame=result.start_frame,
+            end_frame=result.end_frame,
+            outcome=result.outcome,
+            success=success,
+            final_room_id=session.state.room_id,
+            boss_defeated=success,
+            detail=result.to_dict(),
+        )
+
+    return CallableBossStrategy(
+        boss_id="golden_torizo",
+        play_fn=play,
+        entry_requirement=StateRequirement(room_id=ROOM_GOLDEN_TORIZO),
+        catalog_entry=catalog,
+    )
+
+
 def strategy_summary(strategy: BossStrategy) -> dict[str, Any]:
     """Compact dict for probe reports / docs export."""
     cat = strategy.catalog
