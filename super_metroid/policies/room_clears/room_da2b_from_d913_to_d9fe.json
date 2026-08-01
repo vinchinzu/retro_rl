@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_da2b_from_d913_to_d9fe",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for East Cactus Alley Room (0xDA2B); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA900",
+    "entrySourceRoomIdHex": "0xD913",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      79,
+      23
+    ],
+    "doorPtr": 43264,
+    "entrySourceRoomId": 55571
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 55571,
+      "sourceRoomIdHex": "0xD913",
+      "endpoint": {
+        "roomId": 55851,
+        "roomIdHex": "0xDA2B",
+        "logicalRoomId": 196,
+        "nodeId": 2,
+        "nodeName": "East Cactus Alley Right Door (to Halfie Climb)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          79,
+          23
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 55806,
+      "targetRoomIdHex": "0xD9FE",
+      "endpoint": {
+        "roomId": 55851,
+        "roomIdHex": "0xDA2B",
+        "logicalRoomId": 196,
+        "nodeId": 1,
+        "nodeName": "East Cactus Alley Left Door (to West Cactus Alley)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        79,
+        23
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 116,
+      "waypointsBlocks": [
+        [
+          77,
+          23
+        ],
+        [
+          66,
+          23
+        ],
+        [
+          66,
+          11
+        ],
+        [
+          50,
+          11
+        ],
+        [
+          50,
+          22
+        ],
+        [
+          26,
+          22
+        ],
+        [
+          26,
+          23
+        ],
+        [
+          20,
+          23
+        ],
+        [
+          20,
+          21
+        ],
+        [
+          6,
+          21
+        ],
+        [
+          6,
+          9
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

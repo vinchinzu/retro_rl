@@ -146,9 +146,13 @@ GREEN | RED | BLOCKED | PARTIAL
 - Did not forge progression/capacity/door/event/boss RAM
 - Not continuous evidence (unless planner continuous card)
 
-### Probe pin (if pure/geometry)
+### Probe pin (if pure/geometry) — mandatory metrics
 room=0x…. pose=… x=… y=… door_transition=…
+frames=… dwell=… last_pin=…
 ```
+
+On RED pure: prefer last pin + clip path (when available) over prose-only
+failure notes. Next action still requires **one** next card ID + **one** change.
 
 ## Good vs bad scopes
 

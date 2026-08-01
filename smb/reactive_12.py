@@ -29,6 +29,7 @@ from retro_harness.nes import NES_ACTION_SIZE, nes_idle_action
 from smb.paths import GAME_DIR
 from smb.policy import expand_nes9_rle
 from smb.ram import SmbSnapshot, read_snapshot, segment_1_2_warp_success
+from smb.reactive_route import GateWaiter, StateGate
 from snes_oneshot.primitives import FrameAction
 
 DEFAULT_FRAGMENTS = GAME_DIR / "models" / "smb_1_2_reactive_fragments.json"
@@ -143,12 +144,30 @@ class Reactive12Policy:
     _ug_frames: list[list[int]] = field(default_factory=list, repr=False)
     _surf_frames: list[list[int]] = field(default_factory=list, repr=False)
     _recorded: list[list[int]] = field(default_factory=list, repr=False)
+    _surface_waiter: GateWaiter = field(init=False, repr=False)
+    _underground_waiter: GateWaiter = field(init=False, repr=False)
     log: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self._ug_frames = underground_frames(self.fragments_path)
         if not self.use_reactive_surface:
             self._surf_frames = surface_frames(self.fragments_path)
+        self._surface_waiter = GateWaiter(
+            StateGate(
+                "1-2:surface_control",
+                is_surface_control,
+                "controllable 1-2 surface after the natural 1-1 predecessor",
+            ),
+            max_frames=self.max_surface_wait,
+        )
+        self._underground_waiter = GateWaiter(
+            StateGate(
+                "1-2:underground_control",
+                is_underground_control,
+                "controllable 1-2 underground after the entry pipe transition",
+            ),
+            max_frames=self.max_underground_wait,
+        )
 
     def reset(self) -> None:
         self.phase = Phase.WAIT_SURFACE
@@ -158,6 +177,8 @@ class Reactive12Policy:
         self.total_steps = 0
         self._recorded.clear()
         self.log.clear()
+        self._surface_waiter.reset()
+        self._underground_waiter.reset()
 
     @property
     def done(self) -> bool:
@@ -196,18 +217,18 @@ class Reactive12Policy:
 
     def _phase_action(self, snap: SmbSnapshot) -> tuple[np.ndarray, str]:
         if self.phase is Phase.WAIT_SURFACE:
-            if is_surface_control(snap):
+            if self._surface_waiter.observe(snap):
                 self.log.append(
                     {
                         "event": "surface_control",
-                        "wait": self.frames_in_phase,
+                        "wait": self._surface_waiter.frames_waited,
                         "x": snap.player_x,
                     }
                 )
                 self.phase = Phase.SURFACE
                 self.frames_in_phase = 0
                 return self._surface_action(snap)
-            if self.frames_in_phase >= self.max_surface_wait:
+            if self._surface_waiter.timed_out:
                 self.phase = Phase.FAILED
                 self.log.append({"event": "timeout_surface_wait"})
                 return _idle(self.action_size), "1_2_timeout_surface_wait"
@@ -228,11 +249,11 @@ class Reactive12Policy:
             return self._surface_action(snap)
 
         if self.phase is Phase.WAIT_UNDERGROUND:
-            if is_underground_control(snap):
+            if self._underground_waiter.observe(snap):
                 self.log.append(
                     {
                         "event": "underground_control",
-                        "wait": self.frames_in_phase,
+                        "wait": self._underground_waiter.frames_waited,
                         "x": snap.player_x,
                         "timer": snap.timer,
                     }
@@ -241,7 +262,7 @@ class Reactive12Policy:
                 self.frames_in_phase = 0
                 self.ug_index = 0
                 return self._underground_action(snap)
-            if self.frames_in_phase >= self.max_underground_wait:
+            if self._underground_waiter.timed_out:
                 self.phase = Phase.FAILED
                 self.log.append({"event": "timeout_ug_wait"})
                 return _idle(self.action_size), "1_2_timeout_ug_wait"
@@ -287,6 +308,10 @@ class Reactive12Policy:
             "ug_total": len(self._ug_frames),
             "use_reactive_surface": self.use_reactive_surface,
             "fragments_path": str(self.fragments_path),
+            "gates": {
+                "surface": self._surface_waiter.report(),
+                "underground": self._underground_waiter.report(),
+            },
             "log": list(self.log),
             "recorded_frames": len(self._recorded),
         }

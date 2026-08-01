@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_ab3b_from_ab07_to_ab07",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Cosine Room (0xAB3B); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9492",
+    "entrySourceRoomIdHex": "0xAB07",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 38034,
+    "entrySourceRoomId": 43783
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 43783,
+      "sourceRoomIdHex": "0xAB07",
+      "endpoint": {
+        "roomId": 43835,
+        "roomIdHex": "0xAB3B",
+        "logicalRoomId": 126,
+        "nodeId": 1,
+        "nodeName": "Cosine Room Left Door (to Shaft)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 43783,
+      "targetRoomIdHex": "0xAB07",
+      "endpoint": {
+        "roomId": 43835,
+        "roomIdHex": "0xAB3B",
+        "logicalRoomId": 126,
+        "nodeId": 1,
+        "nodeName": "Cosine Room Left Door (to Shaft)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        60,
+        9
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 61,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          34,
+          8
+        ],
+        [
+          34,
+          9
+        ],
+        [
+          60,
+          9
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 130
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 180
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:45:14.000388+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_ab3b_from_ab07_to_ab07.json",
+    "reportSha256": "f1352c137eb5985a2b48ba83286b9fdbb67d9d2af4e54da290563728c1fc2150",
+    "stateSha256": "2f37704e22302838024376008d3c77e499d772d908438b581ab9ac3f82907b28",
+    "policySha256Before": "331a03f4f86156cff4d2cbfa0561a00e06ebeb04c609a943853cd630ab9ec2b9"
+  }
+}

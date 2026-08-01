@@ -51,6 +51,8 @@ from smb.policy import (
     Nes9ReplayPolicy,
 )
 from smb.ram import read_snapshot, reached_ending, segment_1_1_success
+from smb.reactive_route import RouteProgressTracker
+from smb.routes import ROUTE_WARP_ANY_PERCENT
 from smb.scripts.run_warp_chain import (
     DEFAULT_MAX_FRAMES_11,
     NATURAL_SETTLE,
@@ -74,28 +76,6 @@ LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"
 DEFAULT_MAX_SUFFIX_FRAMES = 22_000
 DEFAULT_MAX_CONTINUOUS_FRAMES = 25_000
 ENDING_SETTLE_FRAMES = 120
-
-# Exit milestones for the mid-1-2 suffix (world/level after each exit).
-_SUFFIX_MILESTONES: tuple[tuple[str, int, int], ...] = (
-    ("1-2", 3, 0),
-    ("4-1", 3, 1),
-    ("4-2", 7, 0),
-    ("8-1", 7, 1),
-    ("8-2", 7, 2),
-    ("8-3", 7, 3),
-)
-
-# Continuous Level1_1 path also records the 1-1 exit.
-_CONTINUOUS_MILESTONES: tuple[tuple[str, int, int], ...] = (
-    ("1-1", 0, 1),
-    ("1-2", 3, 0),
-    ("4-1", 3, 1),
-    ("4-2", 7, 0),
-    ("8-1", 7, 1),
-    ("8-2", 7, 2),
-    ("8-3", 7, 3),
-)
-
 
 def _snapshot_dict(snap) -> dict[str, int]:
     return {
@@ -370,7 +350,7 @@ def _run_policy_to_ending(
     *,
     seed_path: Path,
     max_frames: int,
-    milestones: tuple[tuple[str, int, int], ...],
+    route_start_index: int,
     ending_settle_frames: int = ENDING_SETTLE_FRAMES,
     video: _VideoWriter | None = None,
     label: str = "",
@@ -382,8 +362,11 @@ def _run_policy_to_ending(
     )
     start = read_snapshot(env.get_ram())
     start_lives = start.lives
-    reached: list[dict[str, Any]] = []
-    next_milestone = 0
+    progress = RouteProgressTracker(
+        ROUTE_WARP_ANY_PERCENT,
+        start_lives=start.lives,
+        start_index=route_start_index,
+    )
     max_x_by_level: dict[str, int] = {}
     outcome = "timeout"
     obs = None
@@ -410,34 +393,12 @@ def _run_policy_to_ending(
             max_x_by_level.get(level_key, 0), snap.player_x
         )
 
+        progress.observe(snap, frame=frame)
         if snap.lives < start_lives or snap.dying:
             outcome = "death"
             break
 
-        if next_milestone < len(milestones):
-            exit_id, world, level = milestones[next_milestone]
-            if snap.world == world and snap.level == level:
-                reached.append(
-                    {
-                        "exit_id": exit_id,
-                        "frame": frame,
-                        "world": snap.world,
-                        "level": snap.level,
-                        "lives": snap.lives,
-                    }
-                )
-                next_milestone += 1
-
         if reached_ending(env.get_ram(), start_lives=start_lives):
-            reached.append(
-                {
-                    "exit_id": "8-4",
-                    "frame": frame,
-                    "world": snap.world,
-                    "level": snap.level,
-                    "lives": snap.lives,
-                }
-            )
             outcome = "ending"
             break
 
@@ -459,11 +420,9 @@ def _run_policy_to_ending(
                 stable += 1
 
     final = read_snapshot(env.get_ram(), frame=frame + stable)
-    expected_ids = [row[0] for row in milestones] + ["8-4"]
-    actual_ids = [row["exit_id"] for row in reached]
     success = (
         outcome == "ending"
-        and actual_ids == expected_ids
+        and progress.complete
         and stable == ending_settle_frames
     )
     return (
@@ -475,7 +434,8 @@ def _run_policy_to_ending(
             "ending_settle_frames": stable,
             "start": _snapshot_dict(start),
             "final": _snapshot_dict(final),
-            "milestones": reached,
+            "milestones": progress.completed,
+            "route_progress": progress.report(),
             "max_x_by_level": max_x_by_level,
             "policy": policy.report(),
             "state_loads_during_policy": 0,
@@ -497,7 +457,7 @@ def run_suffix_policy(
         env,
         seed_path=seed_path,
         max_frames=max_frames,
-        milestones=_SUFFIX_MILESTONES,
+        route_start_index=1,
         ending_settle_frames=ending_settle_frames,
         video=video,
         label="continuous_suffix",
@@ -755,7 +715,7 @@ def run_warp_finish(
                 env,
                 seed_path=seed_continuous,
                 max_frames=max_continuous_frames,
-                milestones=_CONTINUOUS_MILESTONES,
+                route_start_index=0,
                 video=video,
                 label="poweron_to_ending",
             )
@@ -797,7 +757,7 @@ def run_warp_finish(
                 env,
                 seed_path=seed_continuous,
                 max_frames=max_continuous_frames,
-                milestones=_CONTINUOUS_MILESTONES,
+                route_start_index=0,
                 video=video,
                 label="continuous_1_1_to_ending",
             )

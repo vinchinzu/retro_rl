@@ -25,11 +25,6 @@ from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import ObservedTransition, RoomProgressionGraph
 from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_state
 from super_metroid.room_timer import RoomTimer
-from super_metroid.routes.catalog import (
-    BOMBS_PREFIX_SPLITS,
-    SPORE_EXIT_SPLITS,
-    SUPERS_SPLITS,
-)
 from super_metroid.video import FrameVideoWriter
 
 Action = np.ndarray
@@ -389,9 +384,16 @@ def split_for_transition(
     source: int,
     target: int,
 ) -> Split:
+    """Record the transition just taken by the current route hop.
+
+    A continuous route can revisit the same doorway pair (Warehouse→Business
+    before Hi-Jump and again after the Varia return).  The latest matching
+    observation is the hop that just completed; choosing the first corrupts
+    split ordering and correctly fails integrity.
+    """
     transition = next(
         item
-        for item in transitions
+        for item in reversed(transitions)
         if item.source_room_id == source and item.target_room_id == target
     )
     return Split(split_id, transition.frame, transition.target_room_id)
@@ -476,9 +478,8 @@ def evaluate_integrity(
             transition.edge_id is not None for transition in transitions
         )
     assist_flags = assist_integrity(assist, require_deaths_zero=require_deaths_zero)
-    video_ok = (
-        video_evidence_payload is None
-        or bool(video_evidence_payload["frame_count_matches"])
+    video_ok = video_evidence_payload is None or bool(
+        video_evidence_payload["frame_count_matches"]
     )
     integrity: dict[str, object] = {
         "all_transitions_known": transitions_ok,
@@ -512,6 +513,7 @@ class ContinuousRunResult:
     final_state: SuperMetroidState
     encoded_frames: int
     video_evidence: dict[str, object] | None
+    checkpoint_state: bytes | None
     failure: Exception | None
     outcome: str
 
@@ -524,6 +526,7 @@ def run_continuous(
     video_path: str | Path | None = None,
     success_outcome: str = "ok",
     room_timer: RoomTimer | None = None,
+    capture_checkpoint: bool = False,
 ) -> ContinuousRunResult:
     """Power-on once, run ``play``, always close env/writer.
 
@@ -540,6 +543,7 @@ def run_continuous(
     outcome = "runner_error"
     failure: Exception | None = None
     video_payload: dict[str, object] | None = None
+    checkpoint_state: bytes | None = None
 
     try:
         obs, _ = env.reset()
@@ -565,6 +569,11 @@ def run_continuous(
     finally:
         final_frame = session.frame if session is not None else 0
         final_state = parse_state(env.get_ram(), frame=final_frame)
+        # Preserve the emulator snapshot in memory until finish_report has
+        # accepted the run.  Callers may then write a reusable source state
+        # without ever checkpointing a failed/integrity-red attempt.
+        if capture_checkpoint and failure is None:
+            checkpoint_state = env.em.get_state()  # type: ignore[attr-defined]
         if writer is not None:
             encoded_frames = writer.frames
             writer.close()
@@ -581,6 +590,7 @@ def run_continuous(
         final_state=final_state,
         encoded_frames=encoded_frames,
         video_evidence=video_payload,
+        checkpoint_state=checkpoint_state,
         failure=failure,
         outcome=outcome,
     )

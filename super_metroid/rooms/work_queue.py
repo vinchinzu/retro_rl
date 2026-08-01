@@ -54,33 +54,27 @@ _TIER_ORDER = {
 
 _STATUS_DONE = frozenset({"ready", "verified_development_state"})
 
-# Next continuous-spine gap after verified Warehouse tip (K2.7–K3).
+# Next continuous-spine gap after the verified Frog Save tip (K4 forward).
 # Practice work on these rooms unblocks continuous attachment first.
 CONTINUOUS_SPINE_BLOCKER_ROOMS: frozenset[int] = frozenset(
     {
-        0xA7DE,  # Business Center
-        0xAA41,  # Hi-Jump shaft
-        0xA9E5,  # Hi-Jump room
-        0xA471,  # Zeela
-        0xA4DA,  # Kihunter
-        0xA521,  # Baby Kraid
-        0xA56B,  # Eye door
-        0xA59F,  # Kraid
-        0xA6E2,  # Varia
+        0xB106,  # Frog Speedway
+        0xAF72,  # Upper Norfair Farming Room
+        0xACB3,  # Bubble Mountain
+        0xB07A,  # Bat Cave
+        0xACF0,  # Speed Booster Hall
+        0xAD1B,  # Speed Booster Room
     }
 )
 
 # KPDR order for continuous-spine priority listing.
 CONTINUOUS_SPINE_BLOCKER_ORDER: tuple[int, ...] = (
-    0xA7DE,
-    0xAA41,
-    0xA9E5,
-    0xA471,
-    0xA4DA,
-    0xA521,
-    0xA56B,
-    0xA59F,
-    0xA6E2,
+    0xB106,
+    0xAF72,
+    0xACB3,
+    0xB07A,
+    0xACF0,
+    0xAD1B,
 )
 
 
@@ -126,7 +120,7 @@ def difficulty_score(problem: Mapping[str, Any]) -> int:
         score = min(score, 0)
     elif status == "state_ready":
         score = min(score, 50)
-    # Continuous-spine blockers (Warehouse→Kraid gap) sort ahead of other
+    # Continuous-spine blockers (Frog Save→Speed gap) sort ahead of other
     # unstarted work so practice effort lands on the product path first.
     room_id = int(problem.get("roomId") or 0)
     if (
@@ -295,7 +289,9 @@ def build_work_queue(
         if not edge_count and isinstance(graph.get("summary"), dict):
             edge_count = int(graph["summary"].get("directedEdgeCount") or 0)
 
-    summary = _summarize(rows, edge_count=edge_count, catalog_summary=catalog.get("summary"))
+    summary = _summarize(
+        rows, edge_count=edge_count, catalog_summary=catalog.get("summary")
+    )
     return {
         "schemaVersion": 1,
         "catalogId": "super_metroid_room_work_queue",
@@ -346,19 +342,13 @@ def _summarize(
         1 for r in rows if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
     )
     easy_ready = sum(
-        1
-        for r in easy_std
-        if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
+        1 for r in easy_std if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
     )
     path_ready = sum(
-        1
-        for r in on_path
-        if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
+        1 for r in on_path if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
     )
     non_boss_ready = sum(
-        1
-        for r in non_boss
-        if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
+        1 for r in non_boss if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
     )
     teleport_easy = sum(1 for r in easy_std if r["teleportReady"])
 
@@ -371,18 +361,17 @@ def _summarize(
     ][:25]
 
     spine_rows = [
-        r for r in rows if r.get("continuousSpineBlocker") or r["roomId"] in CONTINUOUS_SPINE_BLOCKER_ROOMS
+        r
+        for r in rows
+        if r.get("continuousSpineBlocker")
+        or r["roomId"] in CONTINUOUS_SPINE_BLOCKER_ROOMS
     ]
     spine_by_id = {int(r["roomId"]): r for r in spine_rows}
     spine_ordered = [
-        spine_by_id[rid]
-        for rid in CONTINUOUS_SPINE_BLOCKER_ORDER
-        if rid in spine_by_id
+        spine_by_id[rid] for rid in CONTINUOUS_SPINE_BLOCKER_ORDER if rid in spine_by_id
     ]
     spine_ready = sum(
-        1
-        for r in spine_ordered
-        if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
+        1 for r in spine_ordered if r["practiceStatus"] in _STATUS_DONE or r["runReady"]
     )
 
     return {

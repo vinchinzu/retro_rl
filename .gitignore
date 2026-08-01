@@ -229,8 +229,12 @@ smb/models/*
 !smb/models/smb_1_2_warp_w4.json
 !smb/models/smb_warp_mid_to_ending.json
 !smb/models/smb_1_1_to_ending.json
+!smb/models/smb_1_1_to_ending_reactive_83_84.json
 !smb/recordings/
 smb/recordings/*
+!smb/recordings/reactive_warp/
+smb/recordings/reactive_warp/*
+!smb/recordings/reactive_warp/reactive_83_84_poweron_trials_report.json
 !smb/recordings/warp_finish/
 smb/recordings/warp_finish/*
 !smb/recordings/warp_finish/warp_finish_chain_trials_report.json

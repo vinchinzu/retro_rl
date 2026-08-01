@@ -1,6 +1,6 @@
 # Program Status
 
-Last updated: 2026-07-27.
+Last updated: 2026-07-31.
 
 Live facts only. Stable rules live in [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md).
 Multi-horizon strategy lives in [ROADMAP.md](ROADMAP.md). The full board is
@@ -18,7 +18,7 @@ runtime classes.
 |------|-------|--------|----------|
 | TMNT IV | Continuous hard-mode power-on → staff/cast credits in **00:57:19.635** | Bronze / Resource-assisted + Protection-assisted · M8 (4,667 damage; 0 life losses; Stage1 heal=none segment clear) | [dry manifest](../tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json), [prior video](../tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4), [Stage1 probes](../tmnt_iv/recordings/stage1_clean_track/stage1_probes.json) |
 | Great Waldo Search | Continuous power-on → five-scrolls ending | Bronze / Clean · M8 | [video](../great_waldo_search/recordings/great_waldo_search_full_credits.mp4) |
-| Super Metroid | Continuous power-on → Super; controller to Big Pink main; PB sill entry + mid-maze collect (approach/maze bridges remain); 79/107 path rooms open | Bronze / Resource-assisted · M5 | [manifest](../super_metroid/recordings/start_to_supers.json), [path board](../super_metroid/docs/research/PATH_ROOM_BOARD.md), [assist contract](../super_metroid/docs/ASSIST_CONTRACT.md) |
+| Super Metroid | Continuous power-on → **Varia Suit** (KPDR K3 tip integrity GREEN 2026-08-01; best published ~101,954f / multi-run 104,382f); post-Varia reverse pure + K4 scaffolds; dual-track room farm Wave-10 closed | Bronze / Resource-assisted · M5 | [manifest](../super_metroid/recordings/start_to_varia.json), [STATUS](../super_metroid/docs/STATUS.md), [plan](../super_metroid/docs/plan.md), [assist contract](../super_metroid/docs/ASSIST_CONTRACT.md) |
 | Metroid (NES) | Continuous power-on → Maru Mari (Morph Ball); isolated Level1→morph also clear | Bronze / Clean · M5 | [natural](../metroid/recordings/morph_ball_natural.json), [isolated](../metroid/recordings/morph_ball_isolated.json) |
 
 TMNT IV is the reference **linear combat** clear, not “rank 3.” Two continuous
@@ -29,7 +29,7 @@ platforms.
 
 1. **Final Fight** (M3) — generalize the TMNT combat stack toward a continuous clear
 2. **Magical Quest** (M2) / **Joe & Mac** (M2) — first natural-entry platformer segments
-3. **Super Metroid** (M5) — extend the verified continuous suffix toward ending
+3. **Super Metroid** (M5) — Varia tip green; pure reverse + continuous K4 toward ending
 4. **NES parallel** — top-10 boot-verified; **Zelda I M5** (Level 1 room 0x54
    cleared) and **Metroid M5** (morph); TMNT II M3; advance SMB,
    Mega Man 2, Punch-Out
@@ -44,7 +44,7 @@ Battle Clash remains `blocked: infrastructure` (no Super Scope injection).
 |----------|------|
 | Final Fight | Natural-entry hardening + Stage 3 continuity → chain toward continuous dry-run |
 | Magical Quest / Joe & Mac | First reliable room/segment clears with natural entry |
-| Super Metroid | Close remaining critical path rooms (PB sill / maze) and inventory bridges |
+| Super Metroid | Pure reverse post-Varia → Business; continuous K4 (Bubble→…→Alpha PB); dual-track room farm |
 | NES | Zelda I Clean power-on→Triforce shard 1 done; next: route to Level 2; SMB 1-1, MM2 Air Man, Glass Joe |
 | Hygiene | Regenerate matrix + update local `STATUS.md` after every verified advance |
 | Assists | Explicit `ASSIST_CONTRACT.md` before any assisted published result |
@@ -92,7 +92,7 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 | Graph navigation | Super Metroid M5→M6; Zelda I M5 | SM: PB sill/maze; Zelda: Level 1 done, route completion warp → Level 2 (`adventure_common`) |
 | Continuous control | F-Zero / Pilotwings M2→M3 | First lap / lesson objective |
 | NES top-10 | M1→M3+ | TMNT II M3 + Zelda I M5 + SMB M4 (warp→W4) done; remaining: MM2, Glass Joe, pure continuous SMB 1-2, … |
-| Planning | Harvest M3 | Crop close-loop (plant/harvest income); then summer natural-entry |
+| Planning | Harvest M3 (pioneer trunk) | Crop close-loop (money > $100); skill composition / planning stack; then summer natural-entry |
 
 ## Capability phase focus
 
@@ -103,7 +103,7 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 | 2 Continuous control | Boot/instrumentation only; Battle Clash blocked |
 | 3 Platforming | Magical Quest / Joe & Mac / SMW / DKC instrumented; NES SMB at M4; SMB3 at M3; MM2 / Kirby / DuckTales / Castlevania at M1 |
 | 4 Graph exploration | Super Metroid leading (M5); Zelda I at M5; `alttp/` active; Zelda II at M1 |
-| 5–7 Campaigns / planning / procedural | Harvest is the Phase 6 foothold; later research |
+| 5–7 Campaigns / planning / procedural | Harvest is the Phase 6 pioneer trunk (M3 calendar done; crop income + skill composition next); later research |
 
 ## Success snapshot (see roadmap for full metrics)
 

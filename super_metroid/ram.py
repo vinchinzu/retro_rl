@@ -398,6 +398,21 @@ def parse_state(ram: np.ndarray, *, frame: int = 0) -> SuperMetroidState:
     )
 
 
+# Optional process-wide parse counters (profiling long continuous / pure runs).
+_PARSE_COUNTS: dict[str, int] = {"nav": 0, "full": 0}
+
+
+def reset_parse_counts() -> None:
+    """Zero :func:`parse_env_state` mode counters (tests / long-run profiles)."""
+    _PARSE_COUNTS["nav"] = 0
+    _PARSE_COUNTS["full"] = 0
+
+
+def parse_counts() -> dict[str, int]:
+    """Return a copy of nav/full parse counts since last reset."""
+    return dict(_PARSE_COUNTS)
+
+
 def parse_env_state(
     env: Any,
     *,
@@ -412,42 +427,101 @@ def parse_env_state(
         ``"full"`` — copy bank $7E (correct event/boss flags at ``$D820+``).
         ``"nav"`` — low WRAM via ``env.get_ram()`` (fast; high fields zero-padded).
 
-    Use ``nav`` in tight wait loops; switch to ``full`` (or :func:`read_wram_u8`
-    peeks) when event/boss integrity matters.
+    Use ``nav`` in tight wait loops and pure geometry probes; switch to
+    ``full`` (or :func:`read_wram_u8` peeks) when event/boss integrity matters.
+    Hot controller paths should go through :class:`StateCache` or a session
+    that already holds per-step state (see :class:`routes.runtime.RouteSession`).
     """
     if mode == "nav":
+        _PARSE_COUNTS["nav"] = _PARSE_COUNTS.get("nav", 0) + 1
         return parse_state(env.get_ram(), frame=frame)
     if mode != "full":
         raise ValueError(f"unknown parse_env_state mode {mode!r} (use 'full' or 'nav')")
+    _PARSE_COUNTS["full"] = _PARSE_COUNTS.get("full", 0) + 1
     return parse_state(read_bank7e_wram(env), frame=frame)
+
+
+def probe_pin(state: SuperMetroidState) -> dict[str, object]:
+    """Compact residual pin for pure/geometry cards (PROCESS residual schema)."""
+    return {
+        "room": f"0x{state.room_id:04X}",
+        "roomId": state.room_id,
+        "pose": state.pose,
+        "x": state.samus_x,
+        "y": state.samus_y,
+        "door_transition": state.door_transition,
+        "phase": state.phase.name if hasattr(state.phase, "name") else str(state.phase),
+        "frame": state.frame,
+        "velocity_x": state.velocity_x,
+        "velocity_y": state.velocity_y,
+        "collected_items": f"0x{state.collected_items:04X}",
+    }
 
 
 class StateCache:
     """Optional per-frame SuperMetroidState cache for continuous / probe loops.
 
-    Call :meth:`invalidate` after every emulator step, or pass the current
-    frame so a stale cache is rebuilt automatically.
+    Default mode is ``nav`` (low WRAM only). Call :meth:`invalidate` after every
+    emulator step, or pass the current frame so a stale cache is rebuilt.
+
+    Prefer this (or session-owned state) over bare :func:`parse_env_state` in
+    tight wait loops so accidental full-bank copies stay rare.
+
+    :meth:`stats` reports **cache-local** parse counts (nav/full misses) in
+    addition to hits/misses so long pure probes can avoid relying solely on
+    process-global :func:`parse_counts`.
     """
 
     def __init__(self, env: Any, *, mode: str = "nav") -> None:
+        if mode not in ("nav", "full"):
+            raise ValueError(f"StateCache mode must be 'nav' or 'full', got {mode!r}")
         self.env = env
         self.mode = mode
         self._frame: int | None = None
         self._state: SuperMetroidState | None = None
+        self.hits = 0
+        self.misses = 0
+        self.nav_parses = 0
+        self.full_parses = 0
 
     def invalidate(self) -> None:
         self._frame = None
         self._state = None
 
+    def reset_stats(self) -> None:
+        """Zero hit/miss and local parse counters (session-scoped profiles)."""
+        self.hits = 0
+        self.misses = 0
+        self.nav_parses = 0
+        self.full_parses = 0
+
     def get(self, *, frame: int = 0, mode: str | None = None) -> SuperMetroidState:
         use_mode = mode if mode is not None else self.mode
+        if use_mode not in ("nav", "full"):
+            raise ValueError(f"unknown StateCache mode {use_mode!r}")
         if (
             self._state is not None
             and self._frame == frame
             and use_mode == self.mode
         ):
+            self.hits += 1
             return self._state
+        self.misses += 1
+        if use_mode == "nav":
+            self.nav_parses += 1
+        else:
+            self.full_parses += 1
         self.mode = use_mode
         self._frame = frame
         self._state = parse_env_state(self.env, frame=frame, mode=use_mode)
         return self._state
+
+    def stats(self) -> dict[str, int | str]:
+        """Hit/miss + cache-local parse counters for long pure/continuous loops."""
+        return {
+            "mode": self.mode,
+            "hits": self.hits,
+            "misses": self.misses,
+            "nav_parses": self.nav_parses,
+            "full_parses": self.full_parses,
+        }

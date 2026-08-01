@@ -22,6 +22,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
+# shellcheck source=farm_rollup.sh
+source "$ROOT/super_metroid/scripts/farm_rollup.sh"
 
 ROUNDS=10
 PARALLEL=8
@@ -146,17 +148,9 @@ review_batch() {
     next="?"
     if [[ -n "$log" && -f "$log" ]]; then
       exit_line="$(grep -E '^EXIT:' "$log" | tail -1 | cut -d: -f2 || echo '?')"
-      # Prefer residual Result line near end of log
-      result="$(
-        rg -i '^\s*Result:\s*(GREEN|RED|BLOCKED|PARTIAL)' "$log" \
-          | tail -1 \
-          | sed -E 's/.*Result:\s*//I;s/[^A-Z].*//' \
-          || true
-      )"
-      if [[ -z "$result" ]]; then
-        if rg -qi '\bGREEN\b' "$log"; then result="GREEN?"; fi
-        if rg -qi 'Result:\s*RED|^\*\*RED\*\*|done ✓ RED' "$log"; then result="RED"; fi
-      fi
+      # GREEN requires a filed residual result or runner JSON success; prose
+      # such as "GREEN?" in a worker message is never evidence.
+      result="$(farm_card_result "$id" "$log" "$ROOT/super_metroid/docs/tasks")"
       next="$(
         rg -i 'Next card ID:\s*\S+' "$log" | tail -1 \
           | sed -E 's/.*Next card ID:\s*//I;s/[[:space:]].*//' \

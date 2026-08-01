@@ -47,6 +47,20 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 # Reactive 1-2 (state-gated; works after stairs or baseline 1-1)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.run_1_2 --predecessor stairs --trials 3
+
+# Development: real shifted World-4 predecessor through the old continuation.
+# Without the retime it dies in 8-2; never phase-pad this result.
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.run_reactive_warp
+
+# Apply drop-5, then take over at the natural 8-3/8-4 control gates.
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.run_reactive_warp --retime-8-2
+
+# Recheck the promoted reactive controller from a Clean power-on.
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.run_warp_finish --mode poweron --trials 3 \
+    --seed-continuous smb/models/smb_1_1_to_ending_reactive_83_84.json
 ```
 
 ## Architecture
@@ -57,7 +71,10 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 | `smb/obs.py` | Shared 210-dim observation builder (neuro / future PPO) |
 | `smb/policy.py` | RLE seeds + power-on/continuous phase constants |
 | `smb/reactive_12.py` | State-gated 1-2 warp (wait control → reactive surface → ug RLE) |
+| `smb/reactive_late.py` | Natural-control 8-3/8-4 repairs applied to M8 stage slices |
+| `smb/reactive_route.py` | Reusable state gates, successor contracts, split/fingerprint tracking, coverage |
 | `smb/scripts/run_1_2.py` | Natural 1-1 predecessor + reactive 1-2 → World 4 |
+| `smb/scripts/run_reactive_warp.py` | Same-env reactive predecessor runner for late-leg natural re-solves |
 | `smb/scripts/run_warp_finish.py` | poweron / continuous / suffix / chain finish + video |
 | `smb/scripts/fold_continuous_policy.py` | Fold prelude + suffix into continuous seed |
 | `smb/scripts/rle_polish.py` | Hierarchical RLE hillclimb/GA on bottleneck windows |
@@ -70,8 +87,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 
 ## Next milestone
 
-Fold stairs + reactive 1-2 into continuous without phase pad (8-3/8-4 retime
-still open after 8-2 drop-5). Then 4-2 polish / optional all-32.
+Make the verified 21,643f reactive policy the default reproducible fold, then
+capture it. Afterwards: 4-2 polish / optional all-32.
 
 ```bash
 # Reactive 1-2 after stairs 1-1 (verified 2/2 → World 4, −63f to W4)

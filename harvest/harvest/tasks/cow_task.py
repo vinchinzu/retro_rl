@@ -47,6 +47,7 @@ from harvest.tasks.farm_clearer import (
 from harvest.maps.map_config import find_landmark
 from harvest.core.npc_catalog import game_objects
 from harvest.core.ram_catalog import field_spec, read_ram_u8
+from harvest.tasks.animal_navigation import align_to_pixel, fallback_action, find_path_around_blockers
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.tasks.primitives import press_a_sequence
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
@@ -602,7 +603,11 @@ class CowChoresTask(Task):
             if dy != 0:
                 return make_action(down=dy > 0, up=dy < 0)
             return None
-        return self._align_to_pixel(target, tolerance=1)
+        return align_to_pixel(
+            (self._navigator.current_pos.x, self._navigator.current_pos.y),
+            target,
+            tolerance=1,
+        )
 
     def _candidate_cow_stands(self, ram: np.ndarray) -> list[Tuple[Tuple[int, int], str]]:
         tile = self._target_cow_tile(ram)
@@ -838,11 +843,6 @@ class CowChoresTask(Task):
         self._action_queue.extend(make_action(y=True) for _ in range(y_only_frames))
         self._action_queue.extend(make_action() for _ in range(settle_frames))
 
-    def _pop_action(self) -> Optional[np.ndarray]:
-        if self._action_queue:
-            return self._action_queue.popleft()
-        return None
-
     def _clear_navigation(self) -> None:
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -955,15 +955,6 @@ class CowChoresTask(Task):
         """Tap A with gaps so modal text advances instead of treating A as held."""
         cycle = self._verify_count % 22
         return make_action(a=6 <= cycle < 12)
-
-    def _align_to_pixel(self, target: Tuple[int, int], *, tolerance: int = 2) -> Optional[np.ndarray]:
-        dx = target[0] - self._navigator.current_pos.x
-        dy = target[1] - self._navigator.current_pos.y
-        if abs(dx) <= tolerance and abs(dy) <= tolerance:
-            return None
-        if abs(dx) >= abs(dy) and abs(dx) > tolerance:
-            return make_action(right=dx > 0, left=dx < 0)
-        return make_action(down=dy > 0, up=dy < 0)
 
     def _run_to_pixel_axis(
         self,
@@ -1432,57 +1423,15 @@ class CowChoresTask(Task):
         goal: Tuple[int, int],
     ) -> Optional[list[Tuple[int, int]]]:
         blocked = self._cow_tiles(ram)
-        blocked.discard(start)
-        blocked.discard(goal)
-
-        if start == goal:
-            return []
-
         blocked.update(self._pathfinder.temp_blocked)
-        blocked.discard(start)
         blocked.discard(goal)
-
-        queue = deque([start])
-        came_from: dict[Tuple[int, int], Optional[Tuple[int, int]]] = {start: None}
-        while queue:
-            cx, cy = queue.popleft()
-            if (cx, cy) == goal:
-                break
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nx, ny = cx + dx, cy + dy
-                nxt = (nx, ny)
-                if not (0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH):
-                    continue
-                if nxt in came_from or nxt in blocked:
-                    continue
-                if not self._pathfinder.is_walkable(ram, nx, ny, current_pos=start):
-                    continue
-                came_from[nxt] = (cx, cy)
-                queue.append(nxt)
-
-        if goal not in came_from:
-            return None
-
-        path: list[Tuple[int, int]] = []
-        cur = goal
-        while cur != start:
-            path.append(cur)
-            parent = came_from[cur]
-            if parent is None:
-                break
-            cur = parent
-        path.reverse()
-        return path
-
-    def _fallback_action(self, goal: Tuple[int, int]) -> np.ndarray:
-        current = self._navigator.current_tile
-        dx = goal[0] - current[0]
-        dy = goal[1] - current[1]
-        if abs(dx) >= abs(dy):
-            direction = "right" if dx > 0 else "left"
-        else:
-            direction = "down" if dy > 0 else "up"
-        return make_action(**{direction: True, "b": True})
+        return find_path_around_blockers(
+            ram,
+            self._pathfinder,
+            start,
+            goal,
+            blocked,
+        )
 
     def _navigate_to_tile(self, ram: np.ndarray, goal: Tuple[int, int]) -> Optional[np.ndarray]:
         if self._navigator.current_tile == goal or self._navigator.at_tile(goal):
@@ -1506,7 +1455,7 @@ class CowChoresTask(Task):
                 self._nav_failures += 1
                 if self._nav_failures > MAX_NAV_FALLBACK_FRAMES:
                     return make_action()
-                return self._fallback_action(goal)
+                return fallback_action(self._navigator.current_tile, goal)
             self._nav_failures = 0
             self._navigator.path = path
 
@@ -1515,7 +1464,7 @@ class CowChoresTask(Task):
             self._nav_failures += 1
             if self._nav_failures > MAX_NAV_FALLBACK_FRAMES:
                 return make_action()
-            return self._fallback_action(goal)
+            return fallback_action(self._navigator.current_tile, goal)
         self._nav_failures = 0
         return action
 
@@ -1583,7 +1532,7 @@ class CowChoresTask(Task):
         self._verify_count = 0
         self._interaction_started = False
         self._phase = "brush_verify"
-        action = self._pop_action()
+        action = self._action_queue.popleft() if self._action_queue else None
         if action is not None:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
         return TaskResult(status=TaskStatus.RUNNING)
@@ -1694,7 +1643,7 @@ class CowChoresTask(Task):
         self._verify_count = 0
         self._interaction_started = False
         self._phase = "milk_verify"
-        action = self._pop_action()
+        action = self._action_queue.popleft() if self._action_queue else None
         if action is not None:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
         return TaskResult(status=TaskStatus.RUNNING)
@@ -1902,7 +1851,7 @@ class CowChoresTask(Task):
                 if milk_done and read_held_item(world.ram) and input_lock == 1:
                     self._action_queue.clear()
 
-        action = self._pop_action()
+        action = self._action_queue.popleft() if self._action_queue else None
         if action is not None:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
@@ -2402,7 +2351,11 @@ class CowChoresTask(Task):
             )
             if action is not None:
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
-            action = self._align_to_pixel(feed_spot.interact_px, tolerance=0)
+            action = align_to_pixel(
+                (self._navigator.current_pos.x, self._navigator.current_pos.y),
+                feed_spot.interact_px,
+                tolerance=0,
+            )
             if action is not None:
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
             self._fed_before = self._fed_count_now(world.ram)

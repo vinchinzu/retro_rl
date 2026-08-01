@@ -94,7 +94,7 @@ class SnesDecoderTests(unittest.TestCase):
         self.assertEqual(palette.shape, (16, 16, 3))
         np.testing.assert_array_equal(palette[0, 0], [0, 0, 0])
 
-    def test_render_full_map_shape(self) -> None:
+    def test_render_full_map_uses_atlas_and_semantic_fallback(self) -> None:
         atlas = np.zeros((256, 16, 16, 3), dtype=np.uint8)
         atlas[1, :, :, 0] = 200  # red tile for ID 1
         grid = np.zeros((64, 64), dtype=np.uint8)
@@ -102,7 +102,8 @@ class SnesDecoderTests(unittest.TestCase):
         result = render_full_map(atlas, grid)
         self.assertEqual(result.shape, (1024, 1024, 3))
         self.assertEqual(result[0, 0, 0], 200)  # top-left pixel is red
-        self.assertEqual(result[16, 0, 0], 0)   # next tile is black
+        # A blank atlas slot falls back to the semantic ground color for tile 0.
+        np.testing.assert_array_equal(result[16, 0], [110, 90, 65])
 
 
 @unittest.skipUnless(

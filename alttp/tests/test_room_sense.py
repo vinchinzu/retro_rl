@@ -183,6 +183,12 @@ def test_main_hall_map_json_authority() -> None:
     assert len(wps) >= 3
     assert wps[-1][0] == door.approach_xy[0]
     assert wps[-1][1] == door.approach_xy[1]
+    recovery = m.recovery_waypoints_for_door(door)
+    assert [wp[2] for wp in recovery[:-1]] == [
+        "natural_clear_left",
+        "natural_clear_north",
+    ]
+    assert recovery[-1][0:2] == door.approach_xy
 
     summary = m.compact_summary()
     assert summary["roomHex"] == "0x61"

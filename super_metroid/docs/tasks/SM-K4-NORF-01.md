@@ -1,7 +1,7 @@
 # TASK SM-K4-NORF-01: K4 Norfair pure module scaffold (Bubble path epic)
 
 ## Recipe step
-1 pure controller scaffold (geometry green **not** required)
+1 pure controller + continuous tip extension (**complete**)
 
 ## Model
 Luna
@@ -14,20 +14,19 @@ implement
 - `tests/test_k4_norfair_scaffold.py` (**create**)
 - optional residual: `docs/tasks/SM-K4-NORF-01-residual.md`
 
-**Do not** edit `continuous.py`, `STATUS.md`, `progression.py` verification
-strings (edges stay `unverified`). **Do not** edit `business_climb.py` /
-`kraid_return.py` / `varia_return.py`.
+The completed implementation promoted only after two integrity-green power-on
+Frog Save runs. `business_climb.py`, `kraid_return.py`, and `varia_return.py`
+remain untouched.
 
 Registry / pure CLI wiring may be residual next card (`SM-K4-NORF-REG`) to
 avoid parallel races — prefer self-contained module + unit import tests.
 
 ## Context
-- Continuous tip still Varia-only; reverse pure not yet to Business.
-- Graph already has `START_TO_SPEED_GRAPH` edges (all `unverified`):
-  business→frog_save→speedway→farm→bubble→… (see `test_k4_speed_branches.py`).
-- This card **scaffolds play stubs + room constants + docstrings** so later
-  pure cards have a home file. Pure green is **bonus**, not acceptance.
-- Dev business anchor: `dev_kpdr_business.state` (topology only; not continuous).
+- `business-to-frog-save` was pure green from `post_business_continuous`
+  (**1,190f**) then composed twice from power-on to `0xB167` (**114,923f**).
+- `START_TO_SPEED_GRAPH` marks Business→Frog continuous; the first open K4
+  edge is now Frog Save→Speedway.
+- Source-backed next anchor: `scratch/post_frog_continuous.state`.
 
 ## Read first
 - `tests/test_k4_speed_branches.py`
@@ -58,11 +57,18 @@ avoid parallel races — prefer self-contained module + unit import tests.
 - continuous compose
 
 ## Acceptance
-- [ ] Module + unit tests green
-- [ ] Residual PROCESS schema (pure green optional)
-- [ ] Non-claims explicit
+- [x] Module + unit tests green
+- [x] Pure green from the accepted Business source
+- [x] Two integrity-green continuous runs; graph/tracker promoted
 
 ## Verify
 ```bash
 uv run pytest super_metroid/tests/test_k4_norfair_scaffold.py super_metroid/tests/test_k4_speed_branches.py -q
 ```
+
+## Result
+
+**GREEN.** The controller waits for the incoming Business elevator, snakes to
+the floor band, selects beam, and shoots through the closed Frog door. The
+next bounded card is `SM-K4-SPEEDWAY-PURE`: Frog Save→Speedway from
+`scratch/post_frog_continuous.state`.

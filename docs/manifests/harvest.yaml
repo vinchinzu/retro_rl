@@ -13,17 +13,20 @@ popularity: high
 engineering_effort: very_high
 transfer_value: high
 ending_definition: published multi-year / marriage / farm objective (contract TBD)
-start_contract: fixed_morning_state_or_power_on
+start_contract: power_on_new_game
 completion_contract: campaign_objective
 best_manifest: harvest/recordings/run_spring_month.json
 best_video: null
 assist_contract: null
 status_doc: harvest/docs/STATUS.md
 plan_doc: harvest/docs/plan.md
-last_verified: 2026-07-28
-blocker: crop plant/harvest income (seed equip + hoe virgin soil) not ROM-closed; money stuck at $100 through spring
+last_verified: 2026-08-01
+blocker: same-day water + harvest/ship income (money still ~$100 floor); planning stack skill composition in progress
 notes: >
+  Clean power-on bootstrap verified 2026-08-01: title → START → fresh diary →
+  Spring D1 07:00 town gate, no save-state load or RAM write
+  (recordings/power_on_boot_probe.json). Natural D1 town→farm→D2 remains open.
   Spring calendar soak verified 2026-07-28: Y1_Inside_House Spring D2 → Summer
   D1 morning, 29 overnights, no mid-run state load
-  (recordings/run_spring_month.json). Phase shell (exit/buy/clear/ensure/nav/sleep)
-  succeeds daily; real potato plant→harvest→ship still open.
+  (recordings/run_spring_month.json). Plant path ROM-verified; water after plant
+  and harvest→ship still open. Pioneer planning trunk (docs/PLANNING_STACK.md).

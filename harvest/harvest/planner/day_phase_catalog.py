@@ -121,8 +121,10 @@ NAV_CROP_PHASE = PhaseSpec(
     # Soft radius keeps planting from failing when debris blocks the last
     # few pixels; CropWaterTask re-homes onto exact plot centers.
     # Optional: crop phase navigates itself if this pre-nav times out.
+    # Virgin plant days: land at preferred field (tile 15,29), not ship area —
+    # ship-area start caused plot plans at unreachable southern centers.
     {
-        "target_px": (136, 520),
+        "target_px": (248, 472),
         "radius": 28,
         "soft_radius": 64,
         "timeout": 9000,
@@ -179,14 +181,17 @@ ENSURE_MILKER_PHASE = PhaseSpec(
 CROP_ESTABLISH_PHASE = PhaseSpec(
     "CROP_ESTABLISH",
     "crop",
-    {"work_mode": "establish", "refill_bounds": (3, 45, 62, 60)},
+    # Refill unused in establish; keep broad bounds for any residual water.
+    {"work_mode": "establish", "refill_bounds": (3, 14, 62, 60)},
 )
 
 # Water pass: watering can only; waters already-established crops.
+# Include north stream (y~16-22) as well as south (y~45+). South-only
+# bounds left early west-field plants unable to refill an empty can.
 CROP_WATER_PHASE = PhaseSpec(
     "CROP_WATER",
     "crop",
-    {"work_mode": "water", "refill_bounds": (3, 45, 62, 60)},
+    {"work_mode": "water", "refill_bounds": (3, 14, 62, 60)},
 )
 
 # Optional stamina refill at outdoor mountain hot spring (tilemap 0x10 pond).

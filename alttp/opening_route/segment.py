@@ -18,9 +18,9 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from alttp.opening_route.anchors import MultiTruthAnchor, opening_anchors
+from alttp.opening_route.anchors import opening_anchors
 from alttp.ram import AlttpSnapshot, snapshot_to_diag
-from alttp.route_report import SegmentResult
+from alttp.route_report import RoutePhaseResult, SegmentResult
 
 
 @runtime_checkable
@@ -126,6 +126,9 @@ class SegmentEvidence:
     acceptance: dict[str, bool] = field(default_factory=dict)
     blocker: str = ""
     notes: list[str] = field(default_factory=list)
+    # Preserve the controller-level phases rather than reducing a composed
+    # natural-chain report to one opaque segment row.
+    phases: list[RoutePhaseResult] = field(default_factory=list)
     development_only: bool = True
     matched_anchors: list[str] = field(default_factory=list)
 
@@ -141,6 +144,16 @@ class SegmentEvidence:
             "acceptance": dict(self.acceptance),
             "blocker": self.blocker,
             "notes": list(self.notes),
+            "phases": [
+                {
+                    "phase": phase.phase,
+                    "ok": phase.ok,
+                    "frames": phase.frames,
+                    "detail": phase.detail,
+                    "diag": phase.diag or snapshot_to_diag(phase.snapshot),
+                }
+                for phase in self.phases
+            ],
             "matchedAnchors": list(self.matched_anchors),
             "final": snapshot_to_diag(self.snapshot),
         }
@@ -163,6 +176,7 @@ class SegmentEvidence:
             acceptance=dict(result.acceptance),
             blocker=result.blocker,
             notes=list(result.notes),
+            phases=list(result.phases),
             development_only=result.source != "natural_boot",
             matched_anchors=list(matched_anchors or ()),
         )
@@ -249,6 +263,7 @@ class ScriptSegment:
 def _build_registry() -> dict[str, ScriptSegment]:
     """Lazy registry so heavy route modules import only when needed."""
     from alttp.opening_route import (
+        castle_dungeon,
         castle_to_sword,
         escort_to_sanctuary,
         main_hall_to_zelda,
@@ -274,7 +289,7 @@ def _build_registry() -> dict[str, ScriptSegment]:
             ),
             exit=ExitPredicate(
                 description="Fighter sword equip RAM ≥ 1 in secret entrance",
-                acceptance_keys=("fighter_sword_ram", "in_secret_passage"),
+                acceptance_keys=("fighter_sword_ram", "secret_passage"),
                 graph_node_id="room_55_sword",
                 verification="continuous",
             ),
@@ -343,6 +358,27 @@ def _build_registry() -> dict[str, ScriptSegment]:
             label="Main hall → west 0x60 → Zelda cell / follower",
             # Implemented edge only; planned B1→cell edges are not this segment yet.
             graph_edge_id="main_hall_west_to_0x60",
+        ),
+        "castle_dungeon_prefix": ScriptSegment(
+            segment_id="castle_dungeon_prefix",
+            play_fn=castle_dungeon.run_from_main_hall,
+            entry=EntryRequirement(
+                description="Indoors main hall room 0x61 with fighter sword + control",
+                room_base_id=HYRULE_CASTLE_MAIN_HALL_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_control=True,
+                graph_node_id="room_61",
+                anchor_ids=("HyruleCastle_MainHall",),
+            ),
+            exit=ExitPredicate(
+                description="Continuous clean prefix reaches room 0x50",
+                acceptance_keys=("northwest_0x50",),
+                graph_node_id="room_50",
+                verification="continuous",
+            ),
+            label="Main hall → west 0x60 → NW chamber 0x50",
+            graph_edge_id="main_hall_west_to_0x60+room_60_north_to_0x50",
         ),
         "escort_to_sanctuary": ScriptSegment(
             segment_id="escort_to_sanctuary",

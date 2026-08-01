@@ -57,6 +57,10 @@ from super_metroid.routes.kpdr.kraid_return import (
     play_kihunter_to_zeela_return,
     play_zeela_to_warehouse_return,
 )
+from super_metroid.routes.kpdr.k4_norfair import (
+    play_business_to_frog_save,
+    play_frog_save_to_speedway,
+)
 from super_metroid.routes.kpdr.morph_bomb_roll import (
     MorphBombRollPhase,
     bomb_roll_left_safe,
@@ -170,6 +174,7 @@ __all__ = [
     "play_big_pink_to_ghz",
     "play_big_pink_tunnel_west",
     "play_business_to_hj_shaft",
+    "play_business_to_frog_save",
     "play_business_to_warehouse",
     "play_east_to_warehouse",
     "play_eye_to_kraid",
@@ -177,6 +182,7 @@ __all__ = [
     "play_kraid_entry_to_varia",
     "play_kraid_to_eye_return",
     "play_farming_to_big_pink",
+    "play_frog_save_to_speedway",
     "play_ghz_to_noob",
     "play_glass_to_east",
     "play_hijump_to_warehouse",

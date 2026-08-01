@@ -54,21 +54,25 @@ def test_ranking_stable_and_ordered() -> None:
 
 
 def test_sanctuary_priority_policy() -> None:
-    """Continuous tip room 0x61: main/Zelda ahead of key_shutter and Castle_55."""
+    """Room-0x50 frontier ranks ahead of alternate / historical practice."""
     items = {i.state_name: i for i in build_catalog()}
     assert "FighterSword" in items
     assert "Castle_55" in items
     assert "CastleMain" in items
+    assert "CastleRoom50" in items
 
     main = items["CastleMain"]
+    frontier = items["CastleRoom50"]
     c55 = items["Castle_55"]
     fs = items["FighterSword"]
 
-    # Continuous-tip main hall ranks ahead of alternate 0x55 / key path.
-    assert main.rank < c55.rank
-    assert main.tier == "blocker"
-    assert main.goal == "main_hall_to_zelda"
-    assert main.status == "probe_state"
+    # The physical room-0x50 frontier ranks ahead of alternate 0x55 / key path.
+    assert frontier.rank < c55.rank
+    assert frontier.tier == "blocker"
+    assert frontier.goal == "discover_after_0x50"
+    assert frontier.status == "probe_state"
+    assert main.goal == "castle_dungeon_prefix"
+    assert main.status == "segment_scripted"
 
     if "CastleMainZeldaReady" in items:
         ready = items["CastleMainZeldaReady"]
@@ -79,20 +83,20 @@ def test_sanctuary_priority_policy() -> None:
 
     if "CastleB1Key" in items:
         key = items["CastleB1Key"]
-        assert main.rank < key.rank
+        assert frontier.rank < key.rank
         assert key.tier in {"standard", "later"}
         assert key.tier != "blocker"
-        # key_shutter not ranked as primary blockers above main/zelda
-        assert rank_score(main) < rank_score(key)
+        # key_shutter not ranked as primary blockers above frontier/Zelda.
+        assert rank_score(frontier) < rank_score(key)
 
     if "CastleB1IslandCleared" in items and "CastleB1Key" in items:
         # Alternate key path still ranks near other B1 practice; not above tip.
         island = items["CastleB1IslandCleared"]
-        assert rank_score(main) < rank_score(island)
+        assert rank_score(frontier) < rank_score(island)
 
     if "CastleMantleZelda" in items:
         mantle = items["CastleMantleZelda"]
-        assert main.rank < mantle.rank
+        assert frontier.rank < mantle.rank
         if "CastleMainZeldaReady" in items:
             assert items["CastleMainZeldaReady"].rank < mantle.rank
         assert mantle.goal == "sanctuary"
@@ -101,7 +105,7 @@ def test_sanctuary_priority_policy() -> None:
     # Opening natural_chain is not the top "next work" vs continuous tip.
     grounds = items["HyruleCastleGrounds"]
     assert grounds.status == "natural_chain"
-    assert main.rank < grounds.rank
+    assert frontier.rank < grounds.rank
 
     # Castle_55 is not a primary blocker; secret entrance clear is continuous.
     assert c55.status in {"segment_scripted", "probe_state"}
@@ -111,7 +115,7 @@ def test_sanctuary_priority_policy() -> None:
     # FighterSword is done secret-entrance checkpoint, not tip.
     assert fs.goal == "secret_entrance_clear"
     assert fs.status == "segment_scripted"
-    assert main.rank < fs.rank
+    assert frontier.rank < fs.rank
 
 
 def test_classify_group_heuristics() -> None:
@@ -136,7 +140,7 @@ def test_curated_statuses() -> None:
     assert items["Castle_55"].status in {"segment_scripted", "probe_state"}
     assert items["Castle_55"].status != "blocker"
     assert items["FighterSword"].goal == "secret_entrance_clear"
-    assert items["CastleMain"].goal == "main_hall_to_zelda"
+    assert items["CastleMain"].goal == "castle_dungeon_prefix"
     if "CastleB1Key" in items:
         assert items["CastleB1Key"].tier in {"standard", "later"}
 
@@ -150,13 +154,13 @@ def test_build_work_queue_payload() -> None:
     assert "workFocus" in payload
     # Focus groups are continuous-tip primary work, not post_sword/key_shutter.
     for row in payload["workFocus"]:
-        assert row["group"] in {"main", "zelda", "b1"}
+        assert row["group"] in {"frontier", "zelda", "b1"}
     milestones = payload["summary"]["verifiedMilestones"]
     assert "secret_entrance_clear" in milestones
-    assert any("0x61" in m or "main_hall" in m for m in milestones)
+    assert any("0x50" in m or "dungeon_prefix" in m for m in milestones)
     md = work_queue_to_markdown(payload)
     assert "Sanctuary" in md
-    assert "0x61" in md
+    assert "0x50" in md
     assert "FighterSword" in md
 
 
@@ -169,7 +173,7 @@ def test_export_writes_artifacts(tmp_path: Path) -> None:
     assert payload["summary"]["stateCount"] > 0
     text = md_out.read_text(encoding="utf-8")
     assert "work queue" in text.lower() or "Work Queue" in text
-    assert "0x61" in text
+    assert "0x50" in text
 
 
 def test_synthetic_names_unique_rank() -> None:

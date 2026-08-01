@@ -1,4 +1,4 @@
-"""Exit-route definitions for Super Mario Bros.
+"""Exit-route definitions and completion contracts for Super Mario Bros.
 
 Routes are ordered lists of *exits* (levels / segments). The warp any% route
 is the near-term video target (8 exits). The all-exits route lists all 32
@@ -8,7 +8,30 @@ main-game stages so the same stitch/render pipeline can grow into a full
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass(frozen=True)
+class ExitDestination:
+    """A legal successor state for an exit.
+
+    Worlds and levels use the human-facing one-indexed values here, so route
+    declarations are readable.  :meth:`matches` accepts an SMB RAM snapshot
+    (or any object with the same fields) whose values are zero-indexed.
+    """
+
+    world: int
+    level: int
+    ending: bool = False
+    label: str = ""
+
+    def matches(self, snap: Any) -> bool:
+        if int(getattr(snap, "world")) != self.world - 1:
+            return False
+        if int(getattr(snap, "level")) != self.level - 1:
+            return False
+        return not self.ending or int(getattr(snap, "oper_mode")) == 2
 
 
 @dataclass(frozen=True)
@@ -28,8 +51,49 @@ class ExitSegment:
     level: int = 0
     """1-indexed world/level for all-exits bookkeeping (0 if N/A)."""
 
+    successors: tuple[ExitDestination, ...] = ()
+    """Legal successor states; warp and normal exits can differ."""
+
+    policy_id: str = ""
+    """Stable policy registry key.  Empty means no controller is registered."""
+
     def display(self) -> str:
         return self.label or self.exit_id
+
+    def accepts_successor(self, snap: Any) -> bool:
+        """Return whether ``snap`` is a declared post-exit state."""
+        return any(destination.matches(snap) for destination in self.successors)
+
+
+def _destination_after_normal_exit(world: int, level: int) -> ExitDestination:
+    """Return the normal stage successor for one human-indexed stage."""
+    if (world, level) == (8, 4):
+        return ExitDestination(8, 4, ending=True, label="ending")
+    if level < 4:
+        return ExitDestination(world, level + 1)
+    return ExitDestination(world + 1, 1)
+
+
+def _stage(
+    exit_id: str,
+    *,
+    label: str = "",
+    successors: tuple[ExitDestination, ...] | None = None,
+    policy_id: str | None = None,
+) -> ExitSegment:
+    """Build a stage declaration with its normal successor by default."""
+    world, level = (int(part) for part in exit_id.split("-", 1))
+    return ExitSegment(
+        exit_id=exit_id,
+        segment_id=f"smb_{world}_{level}",
+        label=label or exit_id,
+        world=world,
+        level=level,
+        successors=successors
+        if successors is not None
+        else (_destination_after_normal_exit(world, level),),
+        policy_id=policy_id or f"smb_{world}_{level}",
+    )
 
 
 @dataclass(frozen=True)
@@ -48,14 +112,24 @@ class ExitRoute:
 
 def _warp_exits() -> tuple[ExitSegment, ...]:
     return (
-        ExitSegment("1-1", "smb_1_1", "1-1", 1, 1),
-        ExitSegment("1-2", "smb_1_2", "1-2 (→W4)", 1, 2),
-        ExitSegment("4-1", "smb_4_1", "4-1", 4, 1),
-        ExitSegment("4-2", "smb_4_2", "4-2 (→W8)", 4, 2),
-        ExitSegment("8-1", "smb_8_1", "8-1", 8, 1),
-        ExitSegment("8-2", "smb_8_2", "8-2", 8, 2),
-        ExitSegment("8-3", "smb_8_3", "8-3", 8, 3),
-        ExitSegment("8-4", "smb_8_4", "8-4", 8, 4),
+        _stage("1-1"),
+        _stage(
+            "1-2",
+            label="1-2 (→W4)",
+            successors=(ExitDestination(4, 1, label="warp_world_4"),),
+            policy_id="smb_1_2_warp",
+        ),
+        _stage("4-1"),
+        _stage(
+            "4-2",
+            label="4-2 (→W8)",
+            successors=(ExitDestination(8, 1, label="warp_world_8"),),
+            policy_id="smb_4_2_warp",
+        ),
+        _stage("8-1"),
+        _stage("8-2"),
+        _stage("8-3"),
+        _stage("8-4"),
     )
 
 
@@ -64,15 +138,7 @@ def _all_32_exits() -> tuple[ExitSegment, ...]:
     for world in range(1, 9):
         for level in range(1, 5):
             exit_id = f"{world}-{level}"
-            exits.append(
-                ExitSegment(
-                    exit_id=exit_id,
-                    segment_id=f"smb_{world}_{level}",
-                    label=exit_id,
-                    world=world,
-                    level=level,
-                )
-            )
+            exits.append(_stage(exit_id))
     return tuple(exits)
 
 

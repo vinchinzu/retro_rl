@@ -11,6 +11,8 @@ Examples:
 
     HEADLESS=1 uv run python -m harvest.scripts.run_to_day2
     HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House
+    # Bootstrap from a real power-on first (D1 town-gate → farm remains open):
+    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --until-day 2
     HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --days 2 --until-day 4
     # Full spring from pinned morning (sleeps through Spring 30 → Summer 1):
     HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --end-of-spring \\
@@ -20,12 +22,16 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import subprocess
 import time
 from pathlib import Path
 
-from harvest.paths import PROJECT_DIR, ensure_monorepo_on_path
+import numpy as np
+
+from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
 
 ensure_monorepo_on_path()
 
@@ -34,6 +40,7 @@ from retro_harness import TaskStatus, WorldState
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
 from harvest.planner.day_plan import DayPlanTask, MultiDayPlannerTask, PHASE_SEQUENCES
+from harvest.runtime.power_on import PowerOnStartTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.tasks.farm_clearer import make_action
 
@@ -42,11 +49,127 @@ def _configure_headless() -> None:
     os.environ.setdefault("HEADLESS", "1")
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    # This runner is evidence-oriented: never inherit an optional play-session
+    # assist from the caller's shell.
+    os.environ.pop("INFINITE_STAMINA", None)
+
+
+def _file_sha256(path: Path) -> str | None:
+    """Return a source-state digest for a replay report, when available."""
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+class _VideoRecorder:
+    """Stream raw emulator RGB frames to an H.264 MP4 without dropping frames."""
+
+    def __init__(self, path: Path, first_frame, *, fps: int, scale: int) -> None:
+        if fps <= 0:
+            raise ValueError("video fps must be positive")
+        if scale <= 0:
+            raise ValueError("video scale must be positive")
+
+        frame = self._normalize_frame(first_frame)
+        self.path = path
+        self.fps = fps
+        self.scale = scale
+        self.width = int(frame.shape[1])
+        self.height = int(frame.shape[0])
+        self.frames = 0
+        self._closed = False
+        self._result: dict[str, object] | None = None
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._process = subprocess.Popen(
+            [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "error",
+                "-f",
+                "rawvideo",
+                "-pixel_format",
+                "rgb24",
+                "-video_size",
+                f"{self.width}x{self.height}",
+                "-framerate",
+                str(fps),
+                "-i",
+                "-",
+                "-an",
+                "-vf",
+                f"scale=iw*{scale}:ih*{scale}:flags=neighbor,setsar=7/6",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "18",
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+                str(path),
+            ],
+            stdin=subprocess.PIPE,
+        )
+        self.write(frame)
+
+    @staticmethod
+    def _normalize_frame(frame) -> np.ndarray:
+        image = np.asarray(frame, dtype=np.uint8)
+        if image.ndim != 3 or image.shape[2] < 3:
+            raise ValueError(f"expected RGB emulator frame, got shape={image.shape}")
+        return np.ascontiguousarray(image[:, :, :3])
+
+    def write(self, frame) -> None:
+        image = self._normalize_frame(frame)
+        if image.shape != (self.height, self.width, 3):
+            raise ValueError(
+                f"emulator video size changed from {self.width}x{self.height} "
+                f"to {image.shape[1]}x{image.shape[0]}"
+            )
+        if self._process.stdin is None:
+            raise RuntimeError("ffmpeg stdin is unavailable")
+        self._process.stdin.write(image.tobytes())
+        self.frames += 1
+
+    def close(self) -> dict[str, object]:
+        if self._result is not None:
+            return self._result
+        if self._process.stdin is not None:
+            self._process.stdin.close()
+        return_code = self._process.wait()
+        self._closed = True
+        self._result = {
+            "path": str(self.path),
+            "fps": self.fps,
+            "scale": self.scale,
+            "frames": self.frames,
+            "duration_seconds": round(self.frames / self.fps, 3),
+            "encoded": return_code == 0 and self.path.is_file(),
+            "ffmpeg_return_code": return_code,
+            "audio": False,
+        }
+        return self._result
 
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", default="Y1_Inside_House")
+    p.add_argument(
+        "--power-on",
+        action="store_true",
+        help=(
+            "Boot with no save state, create a new diary, and hand off from "
+            "the controllable Spring day-1 opening. Overrides --state."
+        ),
+    )
     p.add_argument(
         "--day-plan",
         default=None,
@@ -98,6 +221,24 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Optional state name to write under custom_integrations when done",
+    )
+    p.add_argument(
+        "--video",
+        type=Path,
+        default=None,
+        help="Optional H.264 MP4 path. Captures every emulated frame at --video-fps.",
+    )
+    p.add_argument(
+        "--video-fps",
+        type=int,
+        default=60,
+        help="Frame rate for --video (default: 60, native emulation rate)",
+    )
+    p.add_argument(
+        "--video-scale",
+        type=int,
+        default=3,
+        help="Integer nearest-neighbor output scale for --video (default: 3)",
     )
     return p.parse_args()
 
@@ -236,11 +377,105 @@ def main() -> int:
         # ~25k frames/day upper bound with crop/clear work.
         args.max_frames = 30_000 * max(1, overnights_budget)
 
-    env = make_harvest_env(state=args.state, render_mode="rgb_array")
+    source_state = None if args.power_on else GAME_DIR / f"{args.state}.state"
+    source_state_sha256 = _file_sha256(source_state) if source_state else None
+    env = make_harvest_env(state=None if args.power_on else args.state, render_mode="rgb_array")
+    video: _VideoRecorder | None = None
     t0 = time.monotonic()
     try:
-        env.reset()
+        obs = env.reset()
+        if isinstance(obs, tuple):
+            obs = obs[0]
+        if args.video is not None:
+            video = _VideoRecorder(
+                args.video,
+                obs,
+                fps=args.video_fps,
+                scale=args.video_scale,
+            )
         frames = 0
+        power_on_task: PowerOnStartTask | None = None
+        power_on_report: dict[str, object] | None = None
+        boot_frames = 0
+        if args.power_on:
+            power_on_task = PowerOnStartTask()
+            power_on_task.reset(_world(env, frames))
+            print("[RUN] power-on bootstrap: title -> START -> new diary -> Spring D1", flush=True)
+            while boot_frames < power_on_task.timeout:
+                world = _world(env, frames)
+                bootstrap = power_on_task.step(world)
+                if bootstrap.status == TaskStatus.SUCCESS:
+                    power_on_report = power_on_task.summary(world)
+                    break
+                if bootstrap.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                    power_on_report = power_on_task.summary(world)
+                    power_on_report["failure"] = bootstrap.reason or bootstrap.status.value
+                    report = {
+                        "state": None,
+                        "power_on": power_on_report,
+                        "success": False,
+                        "reason": bootstrap.reason or bootstrap.status.value,
+                        "mid_run_state_load": False,
+                        "clean_run": {
+                            "intervention_class": "Clean",
+                            "initial_state_loads": 0,
+                            "mid_run_state_loads": 0,
+                            "ram_writes": 0,
+                            "infinite_stamina": False,
+                            "source_state": None,
+                            "source_state_sha256": None,
+                        },
+                    }
+                    args.out.parent.mkdir(parents=True, exist_ok=True)
+                    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+                    print(json.dumps(report, indent=2), flush=True)
+                    return 2
+                action = (
+                    bootstrap.action.action
+                    if bootstrap.action is not None
+                    else make_action()
+                )
+                step = env.step(action)
+                if video is not None:
+                    video.write(step[0])
+                frames += 1
+                boot_frames += 1
+            else:
+                world = _world(env, frames)
+                power_on_report = power_on_task.summary(world)
+                power_on_report["failure"] = "power-on frame budget exhausted"
+                report = {
+                    "state": None,
+                    "power_on": power_on_report,
+                    "success": False,
+                    "reason": "power-on frame budget exhausted",
+                    "mid_run_state_load": False,
+                    "clean_run": {
+                        "intervention_class": "Clean",
+                        "initial_state_loads": 0,
+                        "mid_run_state_loads": 0,
+                        "ram_writes": 0,
+                        "infinite_stamina": False,
+                        "source_state": None,
+                        "source_state_sha256": None,
+                    },
+                }
+                args.out.parent.mkdir(parents=True, exist_ok=True)
+                args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+                print(json.dumps(report, indent=2), flush=True)
+                return 2
+
+            # Count the successful bootstrap frame in the evidence, but do not
+            # advance the emulator after the task has already reached a stable
+            # controllable scene.
+            boot_frames = frames
+            print(
+                f"[RUN] power-on ready after {boot_frames} frames: "
+                f"{power_on_report['scene']['mode']} "
+                f"S{power_on_report['date']['season']}D{power_on_report['date']['day']}",
+                flush=True,
+            )
+
         world = _world(env, frames)
         start_fields = _date_fields(world.ram)
         start_season = start_fields["season"]
@@ -254,7 +489,7 @@ def main() -> int:
             "end_of_spring" if args.end_of_spring else "auto_multi_day"
         )
         print(
-            f"[RUN] state={args.state} plan={plan_label} "
+            f"[RUN] state={'power_on' if args.power_on else args.state} plan={plan_label} "
             f"start=S{start_season}D{start_day} "
             f"days={args.days} until=({args.until_season},{args.until_day}) "
             f"end_of_spring={args.end_of_spring} max_frames={args.max_frames}",
@@ -264,7 +499,8 @@ def main() -> int:
         reason = "budget"
         terminal = False
         last_logged_day = start_key
-        while frames < args.max_frames:
+        planner_start_frame = frames
+        while frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
             result = task.step(world)
             frames += 1
@@ -317,7 +553,9 @@ def main() -> int:
                 if result.action is not None
                 else make_action()
             )
-            env.step(action)
+            step = env.step(action)
+            if video is not None:
+                video.write(step[0])
 
         world = _world(env, frames)
         scene = classify_scene_from_ram(world.ram)
@@ -337,10 +575,23 @@ def main() -> int:
         )
         success = bool(goal and advanced and morning_ok)
 
+        # The ROM can expose its next-day RAM before its fade has produced a
+        # visible frame.  These neutral frames do not alter inputs, RAM, or
+        # the completed plan; they simply let the captured presentation catch
+        # up to the already-verified morning state.
+        presentation_settle_frames = 0
+        if video is not None and success:
+            for _ in range(360):
+                presentation_step = env.step(make_action())
+                video.write(presentation_step[0])
+                presentation_settle_frames += 1
+
+        video_result = video.close() if video is not None else None
+        if video_result is not None:
+            video_result["post_success_neutral_frames"] = presentation_settle_frames
+
         if args.save_end_state and success:
             try:
-                from harvest.paths import GAME_DIR
-
                 state_bytes = env.em.get_state()
                 out_state = GAME_DIR / f"{args.save_end_state}.state"
                 out_state.write_bytes(state_bytes)
@@ -349,7 +600,10 @@ def main() -> int:
                 print(f"[RUN] Could not save end state: {exc}", flush=True)
 
         report = {
-            "state": args.state,
+            "state": None if args.power_on else args.state,
+            "power_on": power_on_report,
+            "boot_frames": boot_frames,
+            "planner_frames": frames - planner_start_frame,
             "day_plan": plan_label,
             "days": args.days,
             "until_day": args.until_day,
@@ -371,12 +625,24 @@ def main() -> int:
             "reason": ("goal reached" if success else reason),
             "terminal": terminal,
             "mid_run_state_load": False,
+            "clean_run": {
+                "intervention_class": "Clean",
+                "initial_state_loads": 0 if args.power_on else 1,
+                "mid_run_state_loads": 0,
+                "ram_writes": 0,
+                "infinite_stamina": False,
+                "source_state": str(source_state) if source_state else None,
+                "source_state_sha256": source_state_sha256,
+            },
+            "video": video_result,
         }
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(report, indent=2), flush=True)
         return 0 if success else 1
     finally:
+        if video is not None:
+            video.close()
         env.close()
 
 

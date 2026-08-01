@@ -73,6 +73,10 @@ def task_progress_snapshot(task: object, *, depth: int = 0) -> Optional[Progress
         child_task = _read_attr(task, "_current_task")
     if child_task is None:
         child_task = _read_attr(task, "_task")
+    if child_task is None:
+        child_task = _read_attr(task, "_nav")
+    if child_task is None:
+        child_task = _read_attr(task, "_inner")
     child = None
     if child_task is not None and child_task is not task:
         child = task_progress_snapshot(child_task, depth=depth + 1)

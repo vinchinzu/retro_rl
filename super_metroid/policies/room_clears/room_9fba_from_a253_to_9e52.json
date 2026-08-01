@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9fba_from_a253_to_9e52",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Noob Bridge (0x9FBA); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x902A",
+    "entrySourceRoomIdHex": "0xA253",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      79,
+      7
+    ],
+    "doorPtr": 36906,
+    "entrySourceRoomId": 41555
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 41555,
+      "sourceRoomIdHex": "0xA253",
+      "endpoint": {
+        "roomId": 40890,
+        "roomIdHex": "0x9FBA",
+        "logicalRoomId": 55,
+        "nodeId": 2,
+        "nodeName": "Noob Bridge Right Door (to Red Tower)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "green",
+        "block": [
+          79,
+          7
+        ],
+        "requires": [
+          "super_missiles"
+        ],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 40530,
+      "targetRoomIdHex": "0x9E52",
+      "endpoint": {
+        "roomId": 40890,
+        "roomIdHex": "0x9FBA",
+        "logicalRoomId": 55,
+        "nodeId": 1,
+        "nodeName": "Noob Bridge Left Door (to Green Hill Zone)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        79,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 82,
+      "waypointsBlocks": [
+        [
+          79,
+          7
+        ],
+        [
+          72,
+          7
+        ],
+        [
+          72,
+          5
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 400
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

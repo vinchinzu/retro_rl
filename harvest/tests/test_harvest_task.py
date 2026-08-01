@@ -340,6 +340,26 @@ class HarvestTaskTests(unittest.TestCase):
         with patch("harvest.tasks.harvest_task.HarvestStateDocument.load", return_value=fake_doc):
             self.assertEqual(crop_nav_target_px(ram, "fake"), (4 * 16 + 8, 18 * 16 + 8))
 
+    def test_crop_nav_target_virgin_field_uses_preferred_plant_anchor(self) -> None:
+        """No harvest tiles / plots → land at preferred plant field, not ship area."""
+        from harvest.tasks.harvest_task import PREFERRED_PLANT_PX
+
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        for ty in range(MAP_WIDTH):
+            for tx in range(MAP_WIDTH):
+                _set_tile(ram, tx, ty, 0xA0)  # path; no crop/tilled plots
+
+        with patch(
+            "harvest.tasks.harvest_task.HarvestStateDocument.load",
+            side_effect=FileNotFoundError,
+        ):
+            self.assertEqual(crop_nav_target_px(ram, None), PREFERRED_PLANT_PX)
+            # Explicit shipping-area override still honored when passed.
+            self.assertEqual(
+                crop_nav_target_px(ram, None, fallback_px=(136, 520)),
+                (136, 520),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

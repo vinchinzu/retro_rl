@@ -93,8 +93,11 @@ manual overrides.
 
 - Status / maturity gate: [docs/STATUS.md](docs/STATUS.md)
 - Plan (future work): [docs/plan.md](docs/plan.md)
+- Planning stack (skills, contracts, advisor): [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md)
 - RAM map: [docs/ram_map.md](docs/ram_map.md)
 - Morning fixture probe: `uv run python -m harvest.scripts.boot_probe`
+- Clean power-on bootstrap (title → new diary → Spring D1):
+  `HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on`
 - Overnight target: `HEADLESS=1 uv run python -m harvest.scripts.run_to_day2`
 
 Day sequences: `--day-plan day1` or `--day-plan boot_to_day2` (macros + town explore

@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9c5e_from_9ad9_to_9c89",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Green Brinstar Fireflea Room (0x9C5E); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8CCA",
+    "entrySourceRoomIdHex": "0x9AD9",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      47,
+      7
+    ],
+    "doorPtr": 36042,
+    "entrySourceRoomId": 39641
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 39641,
+      "sourceRoomIdHex": "0x9AD9",
+      "endpoint": {
+        "roomId": 40030,
+        "roomIdHex": "0x9C5E",
+        "logicalRoomId": 49,
+        "nodeId": 2,
+        "nodeName": "Green Brinstar Firefleas Right Door (to Green Shaft)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 40073,
+      "targetRoomIdHex": "0x9C89",
+      "endpoint": {
+        "roomId": 40030,
+        "roomIdHex": "0x9C5E",
+        "logicalRoomId": 49,
+        "nodeId": 1,
+        "nodeName": "Green Brinstar Firefleas Left Door (to Missile Recharge)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        47,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 44,
+      "waypointsBlocks": [
+        [
+          45,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

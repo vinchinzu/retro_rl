@@ -57,14 +57,26 @@ from super_metroid.dev.kpdr_dev import (  # noqa: E402
     route_to_hijump,
     route_varia_to_hijump,
 )
-from super_metroid.ram import parse_env_state  # noqa: E402
+from super_metroid.ram import (  # noqa: E402
+    parse_counts,
+    parse_env_state,
+    probe_pin,
+    reset_parse_counts,
+)
+from super_metroid.source_states import (  # noqa: E402
+    match_source_by_path,
+    suggest_source_path,
+    validate_fingerprint,
+)
 from super_metroid.routes.kpdr_controller import (  # noqa: E402
     play_baby_to_kihunter_return,
     play_bat_to_below_spazer,
+    play_business_to_frog_save,
     play_below_spazer_to_west,
     play_big_pink_to_ghz,
     play_east_to_warehouse,
     play_eye_to_baby_return,
+    play_frog_save_to_speedway,
     play_glass_to_east,
     play_ghz_to_noob,
     play_kraid_to_eye_return,
@@ -115,18 +127,23 @@ _REVERSE_ISOLATION_COMMANDS = (
 
 
 class _ProbeSession:
-    """Minimal ControllerSession for pure play probes."""
+    """Minimal ControllerSession for pure play probes.
+
+    Uses ``mode="nav"`` only — pure geometry does not need bank-$7E copies
+    every frame. Prefer this over bare full ``parse_env_state`` in hot loops.
+    """
 
     def __init__(self, env, assist: UnlimitedResourcesAssist) -> None:
         self.env = env
         self.assist = assist
         self.frame = 0
-        self.state = parse_env_state(env)
+        self.state = parse_env_state(env, mode="nav")
 
     def step(self, action, reason: str = ""):
+        del reason
         self.env.step(action)
         self.frame += 1
-        self.state = parse_env_state(self.env, frame=self.frame)
+        self.state = parse_env_state(self.env, frame=self.frame, mode="nav")
         self.assist.apply(self.env.data, self.state)
         return self.state
 
@@ -138,53 +155,116 @@ def _run_pure(
     output: Path | None,
     place_x: int | None = None,
     place_y: int = 171,
+    expect_room: int | None = None,
+    segment: str = "",
+    pin_json: Path | None = None,
 ) -> dict[str, object]:
     env = make_dev_env()
     assist = UnlimitedResourcesAssist()
     session: _ProbeSession | None = None
+    reset_parse_counts()
+    catalog = match_source_by_path(source)
+    expected = expect_room
+    if expected is None and catalog is not None:
+        expected = catalog.room_id
     try:
         boot_from_state(env, source)
         for _ in range(5):
             env.step(idle_action())
-            assist.apply(env.data, parse_env_state(env))
+            assist.apply(env.data, parse_env_state(env, mode="nav"))
         if place_x is not None:
             place_samus(env, place_x, place_y)
             for _ in range(15):
                 env.step(idle_action())
-                assist.apply(env.data, parse_env_state(env))
+                assist.apply(env.data, parse_env_state(env, mode="nav"))
         session = _ProbeSession(env, assist)
+        if expected is not None:
+            check = validate_fingerprint(
+                session.state,
+                expected_room=expected,
+                source=catalog,
+            )
+            if not check.ok:
+                report = {
+                    "success": False,
+                    "error": "source fingerprint failed: " + "; ".join(check.failures),
+                    "fingerprint": {
+                        "ok": False,
+                        "failures": list(check.failures),
+                        "sourceId": check.source_id,
+                    },
+                    "probePin": check.pin,
+                    "suggestedSource": (
+                        str(suggest_source_path(expected, segment_hint=segment))
+                        if expected is not None
+                        else None
+                    ),
+                    "parseCounts": parse_counts(),
+                    "controllerOnly": place_x is None,
+                    "developmentOnly": place_x is not None,
+                }
+                if pin_json is not None:
+                    pin_json.parent.mkdir(parents=True, exist_ok=True)
+                    pin_json.write_text(
+                        json.dumps(report, indent=2) + "\n", encoding="utf-8"
+                    )
+                    report["pinJson"] = str(pin_json)
+                return report
         # Satisfy ControllerSession protocol used by _hold
         play(session)  # type: ignore[arg-type]
         st = session.state
         if output is not None:
             save_dev_state(env, output)
+        pin = probe_pin(st)
         return {
             "success": True,
             "roomIdHex": f"0x{st.room_id:04X}",
             "samusX": st.samus_x,
             "samusY": st.samus_y,
             "pose": st.pose,
+            "doorTransition": st.door_transition,
             "frame": session.frame,
             "frames": session.frame,
+            "probePin": pin,
+            "parseCounts": parse_counts(),
             "statePath": str(output.resolve()) if output else None,
             "developmentOnly": place_x is not None,
             "controllerOnly": place_x is None,
             "placeX": place_x,
             "placeY": place_y if place_x is not None else None,
+            "sourceId": catalog.source_id if catalog else None,
         }
     except Exception as exc:  # noqa: BLE001 — probe surface
-        st = parse_env_state(env)
-        return {
+        st = session.state if session is not None else parse_env_state(env, mode="nav")
+        pin = probe_pin(st)
+        report = {
             "success": False,
             "error": str(exc),
             "roomIdHex": f"0x{st.room_id:04X}",
             "samusX": st.samus_x,
             "samusY": st.samus_y,
             "pose": st.pose,
+            "doorTransition": st.door_transition,
             "frame": session.frame if session is not None else st.frame,
+            "frames": session.frame if session is not None else 0,
+            "probePin": pin,
+            "parseCounts": parse_counts(),
             "controllerOnly": place_x is None,
             "developmentOnly": place_x is not None,
+            "sourceId": catalog.source_id if catalog else None,
+            # Residual-friendly one-liner for PROCESS schema.
+            "residualPinLine": (
+                f"room=0x{st.room_id:04X} pose={st.pose} "
+                f"x={st.samus_x} y={st.samus_y} "
+                f"door_transition={st.door_transition} frames="
+                f"{session.frame if session is not None else 0}"
+            ),
         }
+        if pin_json is not None:
+            pin_json.parent.mkdir(parents=True, exist_ok=True)
+            pin_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            report["pinJson"] = str(pin_json)
+        return report
     finally:
         env.close()
 
@@ -268,10 +348,24 @@ def main() -> None:
             "baby-to-kihunter-return",
             "kihunter-to-zeela-return",
             "zeela-to-warehouse-return",
+            "business-to-frog-save",
+            "frog-save-to-speedway",
         ),
     )
     pure.add_argument("--source", type=Path, required=True)
     pure.add_argument("--output", type=Path, default=None)
+    pure.add_argument(
+        "--expect-room",
+        type=lambda s: int(s, 0),
+        default=None,
+        help="Expected entry room id (hex 0x… or int); defaults from SOURCE catalog",
+    )
+    pure.add_argument(
+        "--pin-json",
+        type=Path,
+        default=None,
+        help="On RED / fingerprint fail, write probe pin JSON here",
+    )
     pure.add_argument(
         "--place-x",
         type=int,
@@ -283,6 +377,22 @@ def main() -> None:
         type=int,
         default=171,
         help="Dev only: place Y used with --place-x (default 171)",
+    )
+    suggest = sub.add_parser(
+        "suggest-source",
+        help="Suggest SOURCE_STATES catalog path for a room / segment",
+    )
+    suggest.add_argument(
+        "--room",
+        type=lambda s: int(s, 0),
+        required=True,
+        help="Entry room id (hex 0x… or int)",
+    )
+    suggest.add_argument(
+        "--segment",
+        type=str,
+        default="",
+        help="Optional segment hint (e.g. varia-to-kraid)",
     )
 
     args = parser.parse_args()
@@ -330,9 +440,7 @@ def main() -> None:
         sys.exit(0 if report.get("success") else 1)
 
     if args.command == "iso-reverse":
-        source_root = (
-            "super_metroid/custom_integrations/SuperMetroid-Snes/scratch"
-        )
+        source_root = "super_metroid/custom_integrations/SuperMetroid-Snes/scratch"
         print("Reverse pure isolation matrix (diagnostic; not continuous evidence):")
         for hop, segment, source_name, room in _REVERSE_ISOLATION_COMMANDS:
             print(f"{hop}: expected source room {room}")
@@ -341,6 +449,30 @@ def main() -> None:
                 f"{segment} --source {source_root}/{source_name}"
             )
         return
+
+    if args.command == "suggest-source":
+        from super_metroid.source_states import suggest_sources_for_room
+
+        ranked = suggest_sources_for_room(
+            args.room, segment_hint=args.segment, continuous_like_only=False
+        )
+        payload = {
+            "roomIdHex": f"0x{args.room:04X}",
+            "segmentHint": args.segment,
+            "suggestions": [
+                {
+                    "sourceId": s.source_id,
+                    "path": str(s.path),
+                    "roomIdHex": s.room_hex(),
+                    "useFor": s.use_for,
+                    "continuousLike": s.continuous_like,
+                    "exists": s.path.is_file(),
+                }
+                for s in ranked
+            ],
+        }
+        print(json.dumps(payload, indent=2))
+        sys.exit(0 if ranked else 1)
 
     if args.command == "pure":
         play_fn = {
@@ -368,6 +500,8 @@ def main() -> None:
             "baby-to-kihunter-return": play_baby_to_kihunter_return,
             "kihunter-to-zeela-return": play_kihunter_to_zeela_return,
             "zeela-to-warehouse-return": play_zeela_to_warehouse_return,
+            "business-to-frog-save": play_business_to_frog_save,
+            "frog-save-to-speedway": play_frog_save_to_speedway,
         }[args.segment]
         report = _run_pure(
             source=args.source,
@@ -375,6 +509,9 @@ def main() -> None:
             output=args.output,
             place_x=args.place_x,
             place_y=args.place_y,
+            expect_room=args.expect_room,
+            segment=args.segment,
+            pin_json=args.pin_json,
         )
         print(json.dumps(report, indent=2))
         sys.exit(0 if report.get("success") else 1)

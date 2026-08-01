@@ -229,12 +229,22 @@ def build_harvest_steps(
     return steps
 
 
+# Virgin plant / water days: ship-area fallback (136,520) made the planner
+# pick unreachable south plots. Prefer the open early-spring field anchor
+# used by crop_planner.DEFAULT_START_TILE (15, 29).
+PREFERRED_PLANT_TILE: Tuple[int, int] = (15, 29)
+PREFERRED_PLANT_PX: Tuple[int, int] = (
+    PREFERRED_PLANT_TILE[0] * TILE_SIZE + 8,
+    PREFERRED_PLANT_TILE[1] * TILE_SIZE + 8,
+)
+
+
 def crop_nav_target_px(
     ram: np.ndarray,
     state_name: Optional[str],
     *,
     bounds: Tuple[int, int, int, int] = DEFAULT_CROP_BOUNDS,
-    fallback_px: Tuple[int, int] = (136, 520),
+    fallback_px: Tuple[int, int] = PREFERRED_PLANT_PX,
 ) -> Tuple[int, int]:
     """Choose the nearest crop-adjacent stand for the pre-crop NAV_CROP phase."""
     target_tiles = state_harvestable_crop_tiles(state_name, bounds=bounds)

@@ -17,6 +17,7 @@ from retro_harness.input_script import (
 
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import SceneLocation, SceneMode, classify_scene_from_ram
+from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.tasks.farm_clearer import make_action
 
 ButtonName = str
@@ -305,6 +306,26 @@ class TaskSequence(Task):
             return "done"
         return getattr(self.tasks[self._index], "name", f"task_{self._index}")
 
+    @property
+    def current_task(self) -> Optional[Task]:
+        if not self._active_started or self._index >= len(self.tasks):
+            return None
+        return self.tasks[self._index]
+
+    @property
+    def phase_index(self) -> int:
+        return self._index
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        child = task_progress_snapshot(self.current_task)
+        return ProgressSnapshot(
+            task_name=self.name,
+            phase_text=self.active_task_name,
+            phase_index=self._index,
+            details=(("task_count", len(self.tasks)),),
+            child=child,
+        )
+
     def _start_active_task(self, world: WorldState) -> Optional[TaskResult]:
         task = self.tasks[self._index]
         if not task.can_start(world):
@@ -369,6 +390,20 @@ class RetryTask(Task):
     @property
     def attempt(self) -> int:
         return self._attempt
+
+    @property
+    def current_task(self) -> Optional[Task]:
+        return self._task
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        child = task_progress_snapshot(self._task)
+        return ProgressSnapshot(
+            task_name=self.name,
+            phase_text=f"attempt_{self._attempt}" if self._attempt else "idle",
+            step_count=self._attempt,
+            details=(("max_attempts", self.max_attempts),),
+            child=child,
+        )
 
     def _start_attempt(self, world: WorldState) -> Optional[TaskResult]:
         if self._attempt >= self.max_attempts:

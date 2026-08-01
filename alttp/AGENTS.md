@@ -32,9 +32,8 @@ Compat shims keep old imports working (`alttp.escape_graph`,
 ## Immediate goal
 
 Main hall entry is verified (pocket bush-cut → door → room `0x61`).
-Main hall clear + west exit to `0x60` is **isolated** (graph edge
-`main_hall_west_to_0x60`; map `maps/room_61.json` + `room_engine`).
-Room `0x60` north → `0x50` is **isolated** (`room_60_north_to_0x50`).
+Main hall clear + west exit to `0x60` and room `0x60` north → `0x50` are
+verified in the clean power-on prefix (`castle_dungeon_prefix`).
 Next: after `0x50` → Zelda follower → escort → Sanctuary.
 Drive probes from `docs/ROOM_ENGINE.md` + `docs/routes/ROOM_WORK_QUEUE.md`
 and continuous-spine blockers on `opening_route.escape_graph` only.
@@ -64,6 +63,10 @@ uv run python alttp/scripts/export_work_queue.py
 
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/boot_to_castle.py --save
 
+# Clean power-on composition through the current verified tip (room 0x50).
+# This deliberately stops before planned Zelda work.
+SDL_VIDEODRIVER=dummy uv run python alttp/scripts/run_to_verified_tip.py
+
 # Castle grounds → secret hole approach / uncle / sword (dev state default)
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/castle_to_sword.py
 # Natural chain (title → grounds → segment):
@@ -88,24 +91,30 @@ SDL_VIDEODRIVER=dummy uv run python alttp/scripts/room_engine.py run room_61 \
 # Main hall segment wrapper (same as room_engine west edge)
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/main_hall_to_zelda.py --overlay
 
+# First dungeon prefix: 0x61 → 0x60 → 0x50.
+SDL_VIDEODRIVER=dummy uv run python alttp/scripts/castle_dungeon_prefix.py
+
 uv run --frozen pytest alttp/tests -q
 ```
 
 ## Contracts (quick)
 
-- **Escape graph:** continuous through main hall `0x61`; **isolated** west
-  `0x61→0x60` and north `0x60→0x50`; Zelda/Sanctuary planned; primary vs
+- **Escape graph:** continuous through NW chamber `0x50` (including
+  `0x61→0x60→0x50`); Zelda/Sanctuary planned; primary vs
   `internal_key` tags.
 - **Room engine:** `maps/room_XX.json` geometry authority +
   `opening_route.room_engine` clear/path/door; see `docs/ROOM_ENGINE.md`.
 - **Segments:** continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`,
-  `pocket_to_main_hall`; `main_hall_to_zelda` thin wrap (partial until Zelda);
-  planned: `escort_to_sanctuary`. Prefer `secret_entrance_clear` over
-  historical `sword_to_zelda` name.
+  `pocket_to_main_hall`; `full_tip.run_to_verified_tip` composes those from
+  power-on through `room_50`. `castle_dungeon_prefix` composes the continuous
+  `0x61→0x60→0x50` room edges; `main_hall_to_zelda` remains a compatibility
+  aggregate and is partial until Zelda. Planned: `escort_to_sanctuary`.
+  Prefer `secret_entrance_clear` over historical `sword_to_zelda` name.
 - **Room sense:** sprite AABBs, edge detect, overlay, `load_room_map`.
 - **Anchors:** multi-truth names + approach windows; tip resolve includes
-  isolated `room_60` after west exit.
-- **Work queue:** continuous tip `room_61` → Zelda first; key/0x55 alternate.
+  continuous `room_60` / `room_50` after the first-dungeon prefix.
+- **Work queue:** continuous tip `room_50` → physical exit discovery first;
+  key/0x55 alternate.
 - **Trigger handoff:** hole/stairs/main-door solved; west edge measured;
   B1 → Zelda open.
 - State-load runs are development-only; only `--natural` with full acceptance

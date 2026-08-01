@@ -10,8 +10,11 @@ All commands require `uv run` (stable-retro is not in base Python).
 # Run bot
 ./run_bot.sh play --autoplay --state latest
 
-# Boot/morning fixture probe (M1/M2)
+# Boot/morning probes (M1/M2)
 uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
+# Clean power-on → title → new diary → Spring D1 07:00 town (no state load)
+HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on \
+  --out recordings/power_on_boot_probe.json
 
 # One overnight toward day+1 (M3; ROM required)
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House
@@ -55,6 +58,11 @@ uv run python -m harvest.tools.editor_app --state Y1_After_Buy_Potato --export-d
 
 ## Day1 / boot→day2 route
 
+`PowerOnStartTask` now establishes the real clean entry: power-on → new diary
+→ Spring D1 07:00 at the town gate. The handoff is ROM-verified, but its
+town-gate → farm return has not yet closed an overnight; do not describe the
+D2→Summer soak as a D1 replay.
+
 Named sequences in `PHASE_SEQUENCES`:
 
 - `day1` — exit farm, clear slice, buy seeds, plant/water, **town_explore**, **ready_to_go_home**, return home, sleep
@@ -65,26 +73,39 @@ Town explore / buy-seeds success sets the planner go-home flag and ensures end-d
 
 ## Adding New Autonomous Tasks
 
-Follow the `CoopChoresTask` / `HarvestTask` pattern:
+Prefer **skill composition** over new 50–100 KB phase machines. See
+[docs/PLANNING_STACK.md](docs/PLANNING_STACK.md).
 
 1. **Discover RAM addresses** — diff save states before/after the action.
 2. **Discover walkable tiles** — replay a recording and collect tiles the player stands on. Do NOT trust static save-state tile IDs (SNES re-renders them as viewport scrolls, e.g. `0xA1` → `0x79`).
 3. **Register tiles and landmarks** — update `harvest/core/tile_catalog.py` for tile IDs/walkability and `harvest/maps/map_config.py` for map exits, landmarks, and named routes. Do not add new walkable constants directly to task modules.
-4. **Build the task** as a dataclass implementing `Task` protocol (reset/can_start/step). Use phase-based state machine with `_navigate_to_tile` + `_queue_press_a` + verify loops.
-5. **Add phase spec** in `harvest/planner/day_phase_catalog.py`, register a builder in `day_phase_registry.py` (`PhaseKind` + `PHASE_TASK_BUILDERS`), add it to `build_day_phases()`.
-6. **Add multi_nav route** in `harvest/maps/map_config.py` if navigation crosses long distances. Use intermediate waypoints every ~15 tiles to keep BFS within viewport range.
+4. **Compose skills first** — build from `harvest/tasks/primitives.py` and
+   `harvest/tasks/skills.py` (`TaskSequence`, `PressAndVerifyTask`,
+   `RamCondition`, `NavSkill`, interact helpers). Only fall back to a custom
+   phase machine when a skill does not exist yet; then extract the skill for
+   reuse. Implement `progress_snapshot()` with a `child` when wrapping sub-tasks.
+5. **Add phase spec** in `harvest/planner/day_phase_catalog.py` (optional
+   contract fields: `required_ram`, `required_maps`, `estimated_frames`,
+   `failure_modes`). Register a builder in `day_phase_registry.py`
+   (`PhaseKind` + `PHASE_TASK_BUILDERS` via `TaskBuildContext`), add it to
+   `build_day_phases()`.
+6. **Add multi_nav route** in `harvest/maps/map_config.py` if navigation crosses
+   long distances. Use intermediate waypoints every ~15 tiles (or
+   `densify_waypoints(..., max_hop_tiles=7)`) to keep BFS within viewport range.
 7. **Write unit tests** with fake RAM (no ROM needed). Write integration tests that replay recordings against the real emulator.
 8. **For talk/gift tasks** inspect `harvest/core/npc_catalog.py` / `python -m harvest.runtime.harvest_bot npc` first. Dynamic positions come from the WRAM game-object table; dialogue/status data comes from the decomp text table and named flag banks.
 
 ## Best Practices Learned
 
 - **Viewport-limited BFS**: The SNES only loads ~16x14 tiles around the player. BFS beyond this sees stale `0x72`/`0xFF`. Use hop targets clamped to 7 tiles.
-- **Long-distance nav needs intermediate waypoints**: Multi-map routes over ~15 tiles apart need intermediate `Waypoint` entries or BFS will fail and the bot oscillates.
+- **Long-distance nav needs intermediate waypoints**: Multi-map routes over ~15 tiles apart need intermediate `Waypoint` entries or BFS will fail and the bot oscillates. Prefer `densify_waypoints` for same-map long hops.
 - **Avoid circular imports**: task modules cannot import from `harvest/planner/day_plan.py` or `day_plan_orchestrator.py`. Put shared RAM fields in `harvest/core/ram_catalog.py` and shared map/tile facts in `harvest/core/tile_catalog.py` / `harvest/maps/map_config.py`.
-- **Planner layout**: orchestrators in `day_plan_orchestrator.py`; `PhaseKind` + `day_phase_registry.py` build sub-tasks; dynamic lists in `day_plan_phases.py`; `day_plan.py` is a compatibility barrel. Autoplay stall detection uses `harvest/core/task_progress.py` (`progress_snapshot()` on tasks).
+- **Planner layout**: orchestrators in `day_plan_orchestrator.py`; `PhaseKind` + `day_phase_registry.py` build sub-tasks; dynamic lists in `day_plan_phases.py`; `day_plan.py` is a compatibility barrel. Autoplay stall detection uses `harvest/core/task_progress.py` (`progress_snapshot()` on tasks). Optional plan advisor: `local_llm.py` (notes/defer by default; set `HARVEST_PLAN_LLM_APPLY=1` only for schema-validated optional phase rewrites).
+- **Observation caching**: prefer `WorldContext` / `WorldSnapshot` over re-reading the same RAM fields every sub-step inside a phase.
 - **Verify with recordings**: Always record a human playthrough first, replay it to discover tile IDs and RAM changes, then build the autonomous version.
 - **Backup states**: Before recording, back up `latest.state` as `latest_backup_<description>.state`.
 - **NPCs are dynamic objects**: use `WorldSnapshot.entities` or `harvest/core/npc_catalog.py` instead of hard-coding temporary NPC positions in task modules.
+- **Do not grow mono task files**: coop/cow-sized FSMs are debt; extract skills before adding behavior.
 
 ## Way Forward
 

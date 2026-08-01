@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b37a_from_b32e_to_b482",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Lower Norfair Farming Room (0xB37A); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x98BE",
+    "entrySourceRoomIdHex": "0xB32E",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 39102,
+    "entrySourceRoomId": 45870
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 45870,
+      "sourceRoomIdHex": "0xB32E",
+      "endpoint": {
+        "roomId": 45946,
+        "roomIdHex": "0xB37A",
+        "logicalRoomId": 141,
+        "nodeId": 1,
+        "nodeName": "Ridley Eye Door",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "eye",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [
+          "clear_local_lock"
+        ],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 46210,
+      "targetRoomIdHex": "0xB482",
+      "endpoint": {
+        "roomId": 45946,
+        "roomIdHex": "0xB37A",
+        "logicalRoomId": 141,
+        "nodeId": 2,
+        "nodeName": "Lower Norfair Farming Room Right Door (to Plowerhouse)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        47,
+        7
+      ],
+      "exitBlock": [
+        47,
+        7
+      ],
+      "pathBlocks": 44,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          45,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

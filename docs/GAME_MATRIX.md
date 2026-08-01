@@ -54,7 +54,7 @@ Manifest count: **36**.
 | `super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Super → farming → Big Pink main continuous; pure PB sill approach + maze bridges; then path board hops |
 | `zelda_i` / The Legend of Zelda | graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | walk 0x4A → Level 2 door 0x3C (overworld health) |
 | `zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
-| `harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | crop plant/harvest income (seed equip + hoe virgin soil) not ROM-closed; money stuck at $100 through spring |
+| `harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | same-day water + harvest/ship income (money still ~$100 floor); planning stack skill composition in progress |
 
 ## Planned / external
 

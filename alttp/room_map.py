@@ -71,6 +71,9 @@ class KnownDoor:
     screen_id: int | None = None
     role: str = "primary"  # zelda_path | alternate | backtrack | primary
     path: tuple[str, ...] = ()  # ordered point labels → approach
+    # Optional fallback after the primary path has physically wedged.  These
+    # labels are still map geometry; room_engine only decides when to use them.
+    recovery_path: tuple[str, ...] = ()
     path_tolerances: Mapping[str, int] = field(default_factory=dict)
     push_frames: int = 300
     notes: str = ""
@@ -96,6 +99,7 @@ class KnownDoor:
             "screenId": self.screen_id,
             "role": self.role,
             "path": list(self.path),
+            "recoveryPath": list(self.recovery_path),
             "pathTolerances": dict(self.path_tolerances),
             "pushFrames": self.push_frames,
             "notes": self.notes,
@@ -110,6 +114,7 @@ class KnownDoor:
             landing = (int(landing_raw[0]), int(landing_raw[1]))
         to_room = data.get("toRoom", data.get("to_room"))
         path = data.get("path") or ()
+        recovery_path = data.get("recoveryPath", data.get("recovery_path")) or ()
         tols = data.get("pathTolerances") or data.get("path_tolerances") or {}
         return cls(
             label=str(data["label"]),
@@ -125,6 +130,7 @@ class KnownDoor:
             ),
             role=str(data.get("role") or "primary"),
             path=tuple(str(p) for p in path),
+            recovery_path=tuple(str(p) for p in recovery_path),
             path_tolerances={str(k): int(v) for k, v in dict(tols).items()},
             push_frames=int(data.get("pushFrames", data.get("push_frames", 300))),
             notes=str(data.get("notes") or ""),
@@ -228,6 +234,24 @@ class RoomMap:
             out.append((ax, ay, f"{d.label}_approach", d.tolerance_for("default")))
         return tuple(out)
 
+    def recovery_waypoints_for_door(
+        self, door: KnownDoor | str
+    ) -> tuple[tuple[int, int, str, int], ...]:
+        """Fallback path for a measured door wedge, ending at its approach."""
+        d = self.door(door) if isinstance(door, str) else door
+        if d is None or not d.recovery_path:
+            return ()
+        out: list[tuple[int, int, str, int]] = []
+        for label in d.recovery_path:
+            pt = self.point(label)
+            if pt is None:
+                continue
+            out.append((pt.x, pt.y, label, d.tolerance_for(label)))
+        ax, ay = d.approach_xy
+        if not out or (out[-1][0], out[-1][1]) != (ax, ay):
+            out.append((ax, ay, f"{d.label}_approach", d.tolerance_for("default")))
+        return tuple(out)
+
     def compact_summary(self) -> dict[str, Any]:
         """Small dict for agent context (avoid dumping full segment code)."""
         return {
@@ -247,6 +271,7 @@ class RoomMap:
                     "role": d.role,
                     "approach": list(d.approach_xy),
                     "path": list(d.path),
+                    "recoveryPath": list(d.recovery_path),
                 }
                 for d in self.doors
             ],
@@ -273,9 +298,7 @@ class RoomMap:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any], *, map_id: str = "") -> RoomMap:
-        points = tuple(
-            RoomMapPoint.from_dict(p) for p in (data.get("points") or ())
-        )
+        points = tuple(RoomMapPoint.from_dict(p) for p in (data.get("points") or ()))
         raw_doors = data.get("doors") or data.get("knownEdges") or ()
         doors = tuple(KnownDoor.from_dict(d) for d in raw_doors)
         walk = data.get("walkBbox") or data.get("walk_bbox")
@@ -317,9 +340,7 @@ def load_room_map(map_id: str) -> RoomMap:
     return _load_room_map_uncached(map_id, maps_dir=None)
 
 
-def _load_room_map_uncached(
-    map_id: str, *, maps_dir: Path | None = None
-) -> RoomMap:
+def _load_room_map_uncached(map_id: str, *, maps_dir: Path | None = None) -> RoomMap:
     path = room_map_path(map_id, maps_dir=maps_dir)
     if maps_dir is not None and not path.is_file():
         cand = Path(maps_dir) / f"{map_id}.json"
@@ -342,9 +363,7 @@ def list_room_maps(*, maps_dir: Path | None = None) -> list[str]:
 
 def save_room_map(room_map: RoomMap, path: Path | None = None) -> Path:
     """Write room map JSON (emit from measured session; prefer hand-edit maps/)."""
-    out = path or room_map_path(
-        room_map.map_id or f"room_{room_map.room_base_id:02x}"
-    )
+    out = path or room_map_path(room_map.map_id or f"room_{room_map.room_base_id:02x}")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(room_map.to_dict(), indent=2) + "\n", encoding="utf-8")
     load_room_map.cache_clear()
