@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from super_metroid.paths import ROOM_TIMINGS_DIR
-from super_metroid.progression import RoomNode, RoomProgressionGraph
+from super_metroid.progression import ObservedTransition, RoomNode, RoomProgressionGraph
 from super_metroid.ram import (
     ADDR_DOOR_TRANSITION,
     ADDR_GAME_STATE,
@@ -31,10 +31,13 @@ from super_metroid.routes.continuous import (
     default_tip_artifact_paths,
     default_tip_room_timing_path,
     run_start_to_supers,
+    run_start_to_business,
+    run_start_to_frog_save,
+    run_start_to_varia,
     run_to,
     write_room_timing_artifact,
 )
-from super_metroid.routes.runtime import RouteSession
+from super_metroid.routes.runtime import RouteSession, split_for_transition
 
 
 def _put_u16(ram: np.ndarray, address: int, value: int) -> None:
@@ -43,11 +46,11 @@ def _put_u16(ram: np.ndarray, address: int, value: int) -> None:
 
 
 def test_default_artifact_paths() -> None:
-    """Primary continuous tip is Varia Suit (KPDR K3)."""
+    """Primary continuous tip is Frog Savestation (KPDR K4.0)."""
     video, report = default_artifact_paths()
-    assert video.name == "start_to_varia.mp4"
-    assert report.name == "start_to_varia.json"
-    assert DEFAULT_CONTINUOUS_TIP == "varia"
+    assert video.name == "start_to_frog_save.mp4"
+    assert report.name == "start_to_frog_save.json"
+    assert DEFAULT_CONTINUOUS_TIP == "frog"
 
 
 def test_continuous_tips_chain_ends_at_default() -> None:
@@ -64,6 +67,8 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "hijump",
         "kraid",
         "varia",
+        "business",
+        "frog",
     ]
     assert CONTINUOUS_TIPS[-1].tip_id == DEFAULT_CONTINUOUS_TIP
 
@@ -78,6 +83,7 @@ def test_get_continuous_tip_aliases() -> None:
     assert get_continuous_tip("k2_1").tip_id == "below_spazer"
     assert get_continuous_tip("warehouse_entrance").tip_id == "warehouse"
     assert get_continuous_tip("k2_6").tip_id == "warehouse"
+    assert get_continuous_tip("k3_return").tip_id == "business"
 
 
 def test_default_tip_room_timing_path() -> None:
@@ -110,6 +116,42 @@ def test_run_start_to_supers_accepts_room_timing_path() -> None:
     assert "room_timing_path" in sig.parameters
     assert sig.parameters["room_timing_path"].default is None
     assert "tip" in inspect.signature(run_to).parameters
+
+
+def test_checkpoint_output_is_explicit_and_early_tips_reject_it() -> None:
+    from super_metroid.routes.catalog import get_continuous_tip
+
+    assert "state_output" in inspect.signature(run_start_to_varia).parameters
+    assert "state_output" in inspect.signature(run_start_to_business).parameters
+    assert "state_output" in inspect.signature(run_start_to_frog_save).parameters
+    assert get_continuous_tip("varia").supports_checkpoint is True
+    assert get_continuous_tip("business").supports_checkpoint is True
+    assert get_continuous_tip("frog").supports_checkpoint is True
+    assert get_continuous_tip("supers").supports_checkpoint is False
+    with pytest.raises(ValueError, match="checkpoint output"):
+        run_to("supers", state_output="/tmp/not-a-source.state")
+
+
+def test_post_supers_tip_specs_cover_prefix_chain() -> None:
+    from super_metroid.routes.continuous import POST_SUPERS_TIP_BY_ID, POST_SUPERS_TIP_SPECS
+
+    expected = (
+        "red_tower",
+        "bat",
+        "below_spazer",
+        "warehouse",
+        "hijump",
+        "kraid",
+        "varia",
+        "business",
+        "frog",
+    )
+    assert tuple(s.tip_id for s in POST_SUPERS_TIP_SPECS) == expected
+    # Parent chain: red_tower on supers; each later tip parents the previous.
+    assert POST_SUPERS_TIP_BY_ID["red_tower"].parent_tip_id is None
+    assert POST_SUPERS_TIP_BY_ID["bat"].parent_tip_id == "red_tower"
+    assert POST_SUPERS_TIP_BY_ID["frog"].parent_tip_id == "business"
+    assert POST_SUPERS_TIP_BY_ID["frog"].require_varia is True
 
 
 def test_post_supers_report_kind_keeps_evidence_fields() -> None:
@@ -159,6 +201,17 @@ def test_warehouse_hops_table_shape() -> None:
         "east_to_warehouse",
     ]
     assert _WAREHOUSE_HOPS[-1].to_room == 0xA6A1
+
+
+def test_split_for_transition_uses_latest_repeated_doorway() -> None:
+    transitions = [
+        ObservedTransition(100, 0xA6A1, 0xA7DE, "warehouse_to_business"),
+        ObservedTransition(200, 0xA6A1, 0xA7DE, "warehouse_to_business"),
+    ]
+    split = split_for_transition(
+        transitions, "warehouse_to_business_return", 0xA6A1, 0xA7DE
+    )
+    assert split.frame == 200
 
 
 def test_controller_module_exists() -> None:

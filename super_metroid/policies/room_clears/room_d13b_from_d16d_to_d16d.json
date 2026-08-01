@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d13b_from_d16d_to_d16d",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Watering Hole (0xD13B); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA498",
+    "entrySourceRoomIdHex": "0xD16D",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 42136,
+    "entrySourceRoomId": 53613
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 53613,
+      "sourceRoomIdHex": "0xD16D",
+      "endpoint": {
+        "roomId": 53563,
+        "roomIdHex": "0xD13B",
+        "logicalRoomId": 181,
+        "nodeId": 1,
+        "nodeName": "Watering Hole Door (to Bug Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 53613,
+      "targetRoomIdHex": "0xD16D",
+      "endpoint": {
+        "roomId": 53563,
+        "roomIdHex": "0xD13B",
+        "logicalRoomId": 181,
+        "nodeId": 1,
+        "nodeName": "Watering Hole Door (to Bug Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        4,
+        38
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 43,
+      "waypointsBlocks": [
+        [
+          15,
+          7
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          7,
+          33
+        ],
+        [
+          4,
+          33
+        ],
+        [
+          4,
+          38
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "DOWN",
+        "B"
+      ],
+      "frames": 130
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 180
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

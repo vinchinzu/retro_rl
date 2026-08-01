@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
-    ensure_morph,
     hold,
-    play_run_shoot_exit,
     require_room,
     select_weapon,
     settle_hold,
@@ -15,32 +15,98 @@ from super_metroid.routes.controller_common import (
 )
 from super_metroid.routes.kpdr.rooms import (
     ITEM_HI_JUMP,
-    ROOM_BABY_KRAID,
-    ROOM_BAT,
-    ROOM_BELOW_SPAZER,
-    ROOM_BIG_PINK,
     ROOM_BUSINESS,
-    ROOM_EAST_TUNNEL,
-    ROOM_GHZ,
-    ROOM_GLASS,
-    ROOM_HJ,
-    ROOM_HJ_SHAFT,
-    ROOM_KRAID,
-    ROOM_KRAID_EYE,
-    ROOM_NOOB,
-    ROOM_RED_TOWER,
     ROOM_WAREHOUSE,
-    ROOM_WAREHOUSE_KIHUNTER,
-    ROOM_WEST_TUNNEL,
-    ROOM_ZEELA,
 )
 from super_metroid.routes.runtime import ControllerSession
 
-_hold = hold
-_require_room = require_room
-_select_weapon = select_weapon
-_unmorph = unmorph
-_wait_ordinary_room = wait_ordinary_room
+WarehouseEntryMode = Literal["auto", "left_elevator", "right_reverse_stack"]
+
+
+def _open_warehouse_stack(
+    session: ControllerSession,
+    *,
+    face: Literal["LEFT", "RIGHT"],
+    label: str,
+) -> None:
+    """Open Warehouse's three Super blocks while staged on the far side of ``face``.
+
+    ``face="LEFT"``: fire leftward (right-ledge reverse lineage).
+    ``face="RIGHT"``: fire rightward (ordinary left-platform power-on lineage).
+    """
+    select_weapon(session, 2)
+    hold(session, 6, face, reason=f"{label}_face")
+    hold(session, 8, "DOWN", reason=f"{label}_crouch")
+    hold(session, 1, "X", reason=f"{label}_bottom_super")
+    hold(session, 30, reason=f"{label}_bottom_open")
+    hold(session, 5, "UP", reason=f"{label}_stand")
+    settle_hold(session, 4, reason=f"{label}_stand_settle")
+    hold(session, 1, "X", reason=f"{label}_middle_super")
+    hold(session, 30, reason=f"{label}_middle_open")
+    hold(session, 5, "A", reason=f"{label}_tiny_hop")
+    hold(session, 1, face, "X", reason=f"{label}_top_super")
+    hold(session, 30 if face == "LEFT" else 24, reason=f"{label}_top_open")
+
+
+def _play_warehouse_reverse_stack(
+    session: ControllerSession,
+) -> SuperMetroidState:
+    """Natural right ledge → left elevator platform, with Hi-Jump.
+
+    The post-Varia return enters on the Zeela-door ledge (x≈722/y≈160),
+    while the ordinary Warehouse→Business hop expects its usual left-side
+    platform.  The floor stack does not cross directly: drop to the lower
+    lip, clear the lower three-Super stack, climb to the mid and upper lips,
+    then clear the same stack from the upper left-facing lip.  This preserves
+    the normal power-on elevator path below.
+    """
+    label = "warehouse_reverse"
+    if not (session.state.collected_items & ITEM_HI_JUMP):
+        raise TimeoutError(f"{label}: right-ledge return requires Hi-Jump")
+
+    # Leave the Zeela ledge, then reverse the fall at the lower-right lip.
+    # A rightward correction after the 120-frame left spin lands at
+    # x≈498/y≈315; holding left all the way instead pins x≈309/y≈251.
+    for _ in range(120):
+        hold(session, 1, "LEFT", "B", "A", reason=f"{label}_drop_left")
+    for _ in range(100):
+        state = hold(session, 1, "RIGHT", reason=f"{label}_lower_lip")
+        if (
+            445 <= state.samus_x <= 510
+            and 300 <= state.samus_y <= 320
+            and state.velocity_y == 0
+        ):
+            break
+    else:
+        raise TimeoutError(f"{label}: lower lip missed: {session.state}")
+
+    # Clear the stack from the lower lip, then use the two Hi-Jump landings
+    # which lead to the upper left-facing firing lip.
+    _open_warehouse_stack(session, face="LEFT", label=f"{label}_lower_stack")
+    for _ in range(180):
+        hold(session, 1, "LEFT", "B", "A", reason=f"{label}_lower_cross")
+    hold(session, 8, "UP", reason=f"{label}_mid_stand")
+    settle_hold(session, 20, reason=f"{label}_mid_settle")
+    for _ in range(105):
+        hold(session, 1, "LEFT", "B", "A", reason=f"{label}_mid_climb")
+    hold(session, 8, "UP", reason=f"{label}_upper_stand")
+    settle_hold(session, 20, reason=f"{label}_upper_settle")
+    for _ in range(105):
+        hold(session, 1, "LEFT", "B", "A", reason=f"{label}_upper_climb")
+
+    # The block stack is still closed at this upper lip.  Reopen it from the
+    # left-facing side, then land on the regular elevator approach (x≈37).
+    _open_warehouse_stack(session, face="LEFT", label=f"{label}_upper_stack")
+    hold(session, 8, "UP", reason=f"{label}_exit_stand")
+    settle_hold(session, 20, reason=f"{label}_exit_settle")
+    for _ in range(180):
+        state = hold(session, 1, "LEFT", "B", "A", reason=f"{label}_exit")
+        if state.samus_x <= 40 and state.samus_y <= 150:
+            break
+    else:
+        raise TimeoutError(f"{label}: left elevator platform missed: {session.state}")
+    return session.state
+
 
 def play_warehouse_wall_to_lower_lip(
     session: ControllerSession,
@@ -53,28 +119,17 @@ def play_warehouse_wall_to_lower_lip(
     climb from that lower lip to the upper-right ledge is still open, so this
     is not a Warehouse→Zeela clearance.
     """
-    _require_room(session, ROOM_WAREHOUSE, "warehouse_wall")
-    _unmorph(session)
-    _select_weapon(session, 2)
+    require_room(session, ROOM_WAREHOUSE, "warehouse_wall")
+    unmorph(session)
     for _ in range(160):
-        state = _hold(session, 1, "RIGHT", "B", reason="warehouse_wall_runup")
+        state = hold(session, 1, "RIGHT", "B", reason="warehouse_wall_runup")
         if state.samus_x >= 75:
             break
-    _hold(session, 30, reason="warehouse_super_cooldown")
-
-    _hold(session, 8, "DOWN", reason="warehouse_crouch")
-    _hold(session, 1, "X", reason="warehouse_bottom_super")
-    _hold(session, 30, reason="warehouse_bottom_open")
-    _hold(session, 5, "UP", reason="warehouse_stand")
-    settle_hold(session, 4, reason="warehouse_stand_settle")
-    _hold(session, 1, "X", reason="warehouse_middle_super")
-    _hold(session, 30, reason="warehouse_middle_open")
-    _hold(session, 5, "A", reason="warehouse_tiny_hop")
-    _hold(session, 1, "RIGHT", "X", reason="warehouse_top_super")
-    _hold(session, 24, reason="warehouse_top_open")
+    hold(session, 30, reason="warehouse_super_cooldown")
+    _open_warehouse_stack(session, face="RIGHT", label="warehouse_wall")
 
     for _ in range(500):
-        state = _hold(session, 1, "RIGHT", "B", "A", reason="warehouse_cross_stack")
+        state = hold(session, 1, "RIGHT", "B", "A", reason="warehouse_cross_stack")
         if state.samus_x >= 500 and state.samus_y >= 300:
             break
     else:
@@ -86,26 +141,56 @@ def play_warehouse_wall_to_lower_lip(
     return state
 
 
+def resolve_warehouse_entry_mode(
+    state: SuperMetroidState,
+    *,
+    entry_mode: WarehouseEntryMode = "auto",
+) -> Literal["left_elevator", "right_reverse_stack"]:
+    """Choose Warehouse→Business lineage once at hop start.
 
-def play_warehouse_to_business(session: ControllerSession) -> SuperMetroidState:
-    """Warehouse Entrance elevator → natural Business Center spawn."""
-    _require_room(session, ROOM_WAREHOUSE, "warehouse_to_business")
-    _unmorph(session)
+    ``auto`` maps right-ledge returns (x>400, post-Zeela) to reverse stack;
+    left-platform / ordinary power-on entries stay on the elevator path.
+    Explicit modes skip the pose heuristic entirely.
+    """
+    if entry_mode == "auto":
+        return "right_reverse_stack" if state.samus_x > 400 else "left_elevator"
+    return entry_mode
+
+
+def play_warehouse_to_business(
+    session: ControllerSession,
+    *,
+    entry_mode: WarehouseEntryMode = "auto",
+) -> SuperMetroidState:
+    """Warehouse Entrance → natural Business Center spawn.
+
+    Entry lineage is selected **once** at hop start via ``entry_mode``:
+
+    - ``left_elevator`` — ordinary power-on left platform → elevator down
+    - ``right_reverse_stack`` — post-Varia Zeela ledge → Hi-Jump reverse stack
+    - ``auto`` (default) — resolve from pose at hop start (x>400 → reverse)
+
+    Continuous composition may pass an explicit mode; do not re-discover
+    lineage mid-frame inside nested helpers.
+    """
+    require_room(session, ROOM_WAREHOUSE, "warehouse_to_business")
+    unmorph(session)
+    mode = resolve_warehouse_entry_mode(session.state, entry_mode=entry_mode)
+    if mode == "right_reverse_stack":
+        _play_warehouse_reverse_stack(session)
     for _ in range(180):
         state = session.state
         if state.samus_x >= 126:
             break
-        _hold(session, 1, "RIGHT", reason="warehouse_elevator_position")
-    _hold(session, 5, "LEFT", reason="warehouse_elevator_brake")
+        hold(session, 1, "RIGHT", reason="warehouse_elevator_position")
+    hold(session, 5, "LEFT", reason="warehouse_elevator_brake")
     settle_hold(session, 20, reason="warehouse_elevator_settle")
     for _ in range(700):
-        state = _hold(session, 1, "DOWN", reason="warehouse_elevator_down")
+        state = hold(session, 1, "DOWN", reason="warehouse_elevator_down")
         if state.room_id == ROOM_BUSINESS:
             break
     else:
         raise TimeoutError(f"warehouse_to_business: {state}")
-    return _wait_ordinary_room(
+    return wait_ordinary_room(
         session, ROOM_BUSINESS, settle_frames=320, label="warehouse_to_business"
     )
-
-

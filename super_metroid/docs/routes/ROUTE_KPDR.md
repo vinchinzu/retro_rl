@@ -150,7 +150,7 @@ uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
 | Continuous evidence | `recordings/start_to_varia.json` (**101,954** frames, integrity green; 0 loads / 0 progression writes) |
 | Code | `combat/kraid.py` (`play_kraid_fight_to_varia`); KPDR segment `kraid_entry_to_varia`; `run_to("varia")` |
 | Probe | `scripts/probe/kraid_combat.py varia --state entry` → `debug/kraid_varia_run.json` |
-| ★ Next | Post-Varia return → Business → K4 Speed/Wave/Ice |
+| ★ Next | K4 forward: Frog Save → Speedway → Bubble → Speed/Wave/Ice |
 | Walkthrough | Wiki Kraid fight and Varia Suit room pages |
 
 ---
@@ -159,10 +159,11 @@ uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
 
 | Field | Value |
 |-------|-------|
-| Status | **scaffold** (graph + first reverse hop; not continuous) |
-| Path | Varia → Kraid return → … → Business → Frog Speedway / farming → Bubble Mountain → Bat Cave → Speed Hall → Speed Room; Wave branch; Ice branch from Business |
-| Graph | `START_TO_SPEED_GRAPH` — return + Bubble→Speed + Wave/Ice edges (`unverified` except `varia_to_kraid` = `controller_dev`) |
-| First hop | `play_varia_to_kraid` pure green (~624f from natural post-collect) |
+| Status | **continuous through Frog Savestation**; K4 forward scaffold remains open |
+| Path | Varia → Kraid return → … → Business → Frog Save → Speedway / farming → Bubble Mountain → Bat Cave → Speed Hall → Speed Room; Wave branch; Ice branch from Business |
+| Graph | `START_TO_SPEED_GRAPH` — Varia return + Business→Frog are **continuous**; Speedway→Speed + Wave/Ice remain `unverified` |
+| Continuous evidence | `recordings/start_to_frog_save*.json` (**114,923f** twice; 0 loads / progression / capacity / deaths) |
+| First open hop | `play_frog_save_to_speedway` from `post_frog_continuous` |
 | Rooms (hop-table subset) | `0xACB3` Bubble, `0xAD1B` Speed, `0xADDE` Wave, `0xA890` Ice |
 | Walkthrough | Wiki KPDR “Norfair & Red Brinstar”; Bubble Mountain walljump / Speed / Wave / Ice pages |
 
@@ -227,17 +228,16 @@ With Speed + Hi-Jump, Moat is shinespark or platform jumps (unequip Hi-Jump if p
 | K0 | → Spore Super | **yes** | yes | Continuous |
 | K1 | Charge / GHZ / Noob / Red Tower | **yes** | yes | Direct Big Pink→Red; Charge return optional |
 | K2 | Hi-Jump + natural Kraid entry | **yes** | **yes** | Continuous through Kraid entry |
-| K3 | Kraid fight + Varia | **yes** | yes | Continuous tip 101,954f; reverse first hop pure |
-| K4 | Speed / Wave / Ice | — | scaffold | Graph + `varia_to_kraid` controller_dev |
+| K3 | Kraid fight + Varia return → Business | **yes** | yes | Continuous Business tip 113,723f ×2 |
+| K4 | Frog / Speed / Wave / Ice | **Frog Save** | partial | First open natural hop is Frog Save→Speedway |
 | K5 | Alpha PB | — | — | Preferred first PB |
 | K6 | Ship / Phantoon / Gravity | — | — | Warp entry only |
 | K7–K9 | Maridia → Ridley → MB | — | — | |
 
 Immediate played-spine queue:
 
-1. **Continuous through Varia done** (`start_to_varia`, 101,954f integrity green).
-2. **K4 scaffold started:** `START_TO_SPEED_GRAPH` + pure `varia_to_kraid`
-   (controller_dev). Next reverse hops → Business, then Bubble → Speed.
+1. **Continuous through Frog Save done** (`start_to_frog_save`, 114,923f integrity green twice).
+2. **K4 forward continues:** `START_TO_SPEED_GRAPH`; Frog Save→Speedway, then Bubble → Speed.
 3. **Separate K1 gap:** Charge Beam conventional return (optional; not on
    continuous K1).
 4. Then K4 continuous tip → K5 Alpha PB → K6 ship / Phantoon.

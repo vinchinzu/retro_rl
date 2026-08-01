@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_9969_from_99bd_to_9938",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Lower Mushrooms (0x9969); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8C46",
+    "entrySourceRoomIdHex": "0x99BD",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      63,
+      7
+    ],
+    "doorPtr": 35910,
+    "entrySourceRoomId": 39357
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 39357,
+      "sourceRoomIdHex": "0x99BD",
+      "endpoint": {
+        "roomId": 39273,
+        "roomIdHex": "0x9969",
+        "logicalRoomId": 22,
+        "nodeId": 2,
+        "nodeName": "Lower Mushrooms Right Door (to Green Pirates Shaft)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          63,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 39224,
+      "targetRoomIdHex": "0x9938",
+      "endpoint": {
+        "roomId": 39273,
+        "roomIdHex": "0x9969",
+        "logicalRoomId": 22,
+        "nodeId": 1,
+        "nodeName": "Lower Mushrooms Left Door (to Elevator)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        63,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 64,
+      "waypointsBlocks": [
+        [
+          61,
+          7
+        ],
+        [
+          49,
+          7
+        ],
+        [
+          49,
+          6
+        ],
+        [
+          38,
+          6
+        ],
+        [
+          38,
+          5
+        ],
+        [
+          4,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "repeat": 24,
+      "steps": [
+        {
+          "label": "jump_left",
+          "buttons": [
+            "LEFT",
+            "A",
+            "B",
+            "X",
+            "DOWN"
+          ],
+          "frames": 8
+        },
+        {
+          "label": "run_left",
+          "buttons": [
+            "LEFT",
+            "B",
+            "X",
+            "DOWN"
+          ],
+          "frames": 22
+        }
+      ]
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

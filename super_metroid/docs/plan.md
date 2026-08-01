@@ -3,13 +3,17 @@
 Shared workflow:
 [`snes_oneshot/docs/FULL_RUN_PROCESS.md`](../../snes_oneshot/docs/FULL_RUN_PROCESS.md).
 Assist semantics: [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
+Verified facts: [STATUS.md](STATUS.md). Layers/contracts: [ARCHITECTURE.md](ARCHITECTURE.md).
+Executor process: [tasks/PROCESS.md](tasks/PROCESS.md).
 
 ## Strategy
 
 Unlimited energy and ammo make combat and hazard attrition secondary. The hard
 problem remains long-horizon navigation: room identity, door/elevator
 transitions, item requirements, movement abilities, boss/event state,
-backtracking, and recovery from positional stalls.
+backtracking, and recovery from positional stalls. Long continuous runs will
+grow to multi-hour frame counts — structure and selective RAM matter as much as
+geometry.
 
 **Clear rooms by play.** Each hop on the completion path must be crossed with a
 controller or room policy (natural door exit). Door-warps are topology
@@ -19,61 +23,88 @@ diagnostics only — never route evidence. Living inventory:
 `scripts/export/path_room_board.py`).
 
 Do not start with a monolithic full-run coordinate script. Grow one hop at a
-time from the furthest played room.
+time from the furthest played room. Continuous tip extension follows the recipe
+in [ARCHITECTURE.md](ARCHITECTURE.md) (pure → graph → catalog → hops → record
+→ STATUS).
 
 **Boss fights stay deferred** until natural *entry* to that boss room exists on
 the played chain. Continuous acceptance still requires natural boss flags and
-zero progression writes.
+zero progression writes. Pipeline: [BOSS_PIPELINE.md](BOSS_PIPELINE.md).
+
+**Agent discipline is non-negotiable:** pure-first, one-knob, residual schema
+with next-card ID + one change, dual-track (spine continuous vs room practice).
+Do not relax these rules for scale — they are the core defense against dark
+poking. See [tasks/PROCESS.md](tasks/PROCESS.md).
 
 ---
 
-## Current inventory (2026-07-27)
+## Current inventory (2026-08-01)
 
 ### Verified continuous (M5)
 
 | Artifact | Coverage |
 |----------|----------|
-| `recordings/start_to_spore_spawn.mp4` | Power-on → Ceres → Morph → Missiles → Bombs/Torizo → Spore Spawn → Super room `0x9B5B` |
-| Frames | 91,220 @ 60 fps (~25.3 min) |
-| Integrity | 0 state loads; 0 progression/capacity writes; natural item/boss flags |
+| `recordings/start_to_varia.{json,mp4}` | Power-on → **Varia Suit** (KPDR K3, post-Kraid) |
+| Frames | **101,954** @ 60 fps (~28.3 min); integrity **0** state loads / **0** progression writes |
+| Prefixes | Spore Supers 73,251f · Red Tower 80,445f · Warehouse 83,512f · Hi-Jump 87,696f · Kraid entry ~97k |
+| Controllers | `routes/kpdr/` + `combat/kraid.py` (`play_kraid_entry_to_varia`) |
+| `recordings/start_to_business*.json` | Power-on → **Business Center return** (KPDR K3→K4) |
+| Frames | **113,723** @ 60 fps (~31.6 min), two matching integrity-green no-video runs |
+| Integrity | 0 state loads / progression writes / capacity writes / deaths |
+| `recordings/start_to_frog_save*.json` | Power-on → **Frog Savestation** (KPDR K4.0) |
+| Frames | **114,923** @ 60 fps (~31.9 min), two matching integrity-green no-video runs |
+| Integrity | 0 state loads / progression writes / capacity writes / deaths |
+| Next source | `scratch/post_frog_continuous.state` for Frog Save → Speedway |
+
+Reproduce: `scripts/record/continuous.py --to frog` (also `--to business|varia|kraid|hijump|warehouse|…`).
+
+### Post-Varia / K4 (continuous through Frog Save)
+
+| Piece | Status |
+|-------|--------|
+| Reverse pure spine | Varia→Kraid→Eye→Baby→Kihunter→Zeela→Warehouse→Business is green from the accepted Varia checkpoint (9,343f) |
+| Continuous tip composition | **Done:** two matching power-on → Frog Save runs at 114,923f |
+| K4 forward | Frog Save → Speedway → Bubble → Speed → Wave → Ice → Alpha PB: pure controllers / graph edges largely open |
+| Bosses past Kraid | Mostly unit/scaffold or dev-warp only; natural continuous entry required before fight claims |
+| Ending / credits | Open |
+
+Live residual board: [tasks/QUEUE.md](tasks/QUEUE.md). Source states:
+[SOURCE_STATES.md](SOURCE_STATES.md).
 
 ### Research topology (not continuous)
 
 | Piece | Status |
 |-------|--------|
 | `maps/full_room_graph.json` | 261 rooms, 583 directed edges, 22/22 completion legs have room paths |
-| `maps/full_route_hops.json` | **199 door hops** across all 22 legs (~**107 unique rooms**) |
-| `maps/late_game_route_hops.json` | Late 9 legs only (subset of full; identical hop data) |
-| `dev/route_dev.py` + `probe_route.py` | **Full 22-leg hop runner proven** (dev); late subset still available; fights skipped |
-| Null door substitute | Ceres ship `0xDF45 → 0x91F8` → door `0x896A` (Parlor→Landing Site) |
-| Tour video path | `probe_route.py full-tour` → `full_route_tour.{mp4,json}`; hybrid `full-hybrid` → `full_route_hybrid.{mp4,json}` (continuous Super + warps, bosses skipped) |
+| `maps/full_route_hops.json` | **~199 door hops** across all 22 legs (~**107 unique rooms**) |
+| `dev/route_dev.py` + `probe_route.py` | Full 22-leg hop runner proven (dev); fights skipped; `developmentOnly` |
 | Mid/late dev states | `dev_power_bombs_collected`, `dev_phantoon_entry`, `dev_route_*` anchors through finish |
 
 ### Continuous gap (first missing natural progress)
 
 ```text
-[VERIFIED] power-on ──► Spore Super collect 0x9B5B (capacity 0→5)
+[VERIFIED] power-on ──► Frog Savestation 0xB167 (K4.0, ordinary gameplay)
                               │
-                    ★ GAP: natural Super exit → PB → …
+                    ★ GAP: Frog Save → Frog Speedway pure controller
+                              │ then continuous K4: Bubble → Speed → Wave → Ice
+                              │ then Alpha PB → ship → Phantoon → …
                               │
-[DEV ONLY] hybrid video: continuous Super + door-warp rest (bosses skipped)
-                              │
-[DEV ONLY] door-warp PB ──► ship ──► Phantoon ──► … ──► Landing Site
-                              (boss bits written; loadout granted)
+[DEV ONLY] hybrid tour: continuous Super prefix + door-warp rest (bosses skipped)
+[DEV ONLY] door-warp chain through finish (loadout/boss bits granted)
 ```
 
-### Room-policy maturity
+### Room-policy + boss maturity
 
 | Layer | Count / note |
 |-------|----------------|
-| Curated continuous segments | start_to_morph + early_game + spore_spawn_controller |
-| Verified room_clears | **3** of 262 catalog problems |
-| Bulk scaffolds | 262 templates exist; almost none promoted |
-| Easiest-first queue | `docs/routes/ROOM_WORK_QUEUE.md` ranks all 262; bootstrap entry states via `run_problem.py bootstrap --queue 1` before large/boss rooms |
-| Directed edges (topology) | **583** in `full_room_graph` — not separate practice units |
-| Boss policies | Spore + Bomb Torizo continuous; Kraid fight→Varia wired as continuous tip (promote after green report). Full catalog + `BossStrategy` protocol + primitives in `combat/`. Vision BC parked until gold — see [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md), [`STRUCTURED_BOSS_RL.md`](research/STRUCTURED_BOSS_RL.md) |
+| Continuous segments | Full KPDR spine through Frog Save via `continuous.py --to` tips |
+| Verified room_clears | Growing via dual-track `ROOM_WORK_QUEUE` + `farm_room_waves.sh` |
+| Bulk scaffolds | 262 catalog problems; practice greens ≠ continuous evidence |
+| Boss policies | Spore + Bomb Torizo + **Kraid→Varia continuous**; catalog + `BossStrategy` in `combat/`. Vision BC parked — see [BOSS_PIPELINE.md](BOSS_PIPELINE.md) |
 
-**Practice track (parallel to continuous KPDR):** finish easy+standard queues first for a clean % complete, then tough geometry, then bosses.
+**Practice track (parallel to continuous KPDR):** easy/standard room farms and
+combat unit scaffolds while the spine advances. Never mix spine knobs into
+farm waves.
 
 ---
 
@@ -85,20 +116,213 @@ Keep these separate so topology probes do not pollute continuous acceptance.
 |-------|------|-----------------|--------|
 | **A — Topology probe** | Hop table / door-warp walk for connectivity only | Dev warps allowed; **label** `developmentOnly`; not route evidence | Skip bits OK for topology |
 | **B — Played room spine** | Every path hop crossed by controller/policy; grow continuous chain | Assist contract for continuous claims; natural entries preferred | Entry by play first; fights later |
+| **C — Room practice (dual-track)** | Isolated doorway segments / policies | Own-files only; not continuous evidence | Unit/scaffold only |
 
 **Primary product path is Track B.** Track A already proved 22-leg connectivity;
-do not invest further in warp tours as a substitute for playing rooms.
+do not invest further in warp tours as a substitute for playing rooms. Track C
+raises practice % without blocking the tip.
 
 How far we are (play, not warps):
 
 | Layer | Furthest |
 |-------|----------|
-| Continuous | **Red Tower `0xA253`** (`start_to_red_tower`, 80,445f) |
-| Controller dev | Red Tower→Warehouse Entrance (2,929f); Warehouse→Hi-Jump→Warehouse→natural Kraid entry (15,356f) |
-| ★ Next hop | KPDR **K2 continuous**: attach Red→Warehouse→Hi-Jump→Kraid; then **K3** fight → Varia |
+| Continuous | **Frog Savestation `0xB167`** (`start_to_frog_save`, **114,923f** twice) |
+| Controller dev | K4 forward scaffolds from Frog Save |
+| ★ Next hop | Frog Save → Speedway → Bubble → Speed → Wave → Ice → Alpha PB → Phantoon |
 
 **Continuous spine:** [ROUTE_KPDR.md](routes/ROUTE_KPDR.md) (K→P→D→R).
 Hop table / waves: [PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md) (topology only).
+
+---
+
+## Structure & API plan (efficiency for whole-game length)
+
+Current layers (CLI → `routes/continuous` + catalog + segment → pure kpdr
+controllers → progression graph → ram/assist → combat) are the right
+boundaries. Tip-extension recipe is clear. **After Frog Save continuous
+acceptance (2026-08-01), structure debt is explicit** — do not keep paying a
+tip tax into 2k-line modules without decomposition. Full map:
+[ARCHITECTURE.md](ARCHITECTURE.md) (known structural debt snapshot).
+
+Planner-serial when touching `continuous.py` / `progression.py` / `catalog.py`.
+Product geometry (Speedway pure, etc.) stays dual-track parallel.
+
+### 1. Selective RAM + StateCache enforcement (highest leverage)
+
+Prefer `read_wram_u8/u16` / `peek_wram` + `StateCache` over full-bank
+`parse_env_state` (especially `mode="full"`). Tight controller loops risk
+accidental full copies as run length grows.
+
+- [x] Pure probes use `mode="nav"`; `StateCache` hits/misses + `parse_counts()`.
+- [x] `probe_pin()` residual helper; pure RED reports pin + optional `--pin-json`.
+- [x] Cache-local parse counters on `StateCache.stats()` / `reset_stats()`
+  (process-global `parse_counts` remains for probe rollups).
+- [ ] Profile frame time on long `--to frog` / full runs (report WRAM-copy rate).
+- [ ] Optional linter: forbid bare full `parse_env_state` inside `routes/kpdr/`.
+
+### 2. Declarative continuous composition (**priority structure debt**)
+
+Post-Supers tips are data-driven via `PostSupersTipSpec` (parent + hops +
+report fields). Early morph→supers runners remain bespoke. Hop tables still
+live in `continuous.py` (extract later if file size is the pain).
+
+- [x] Scaffold script `scripts/scaffold_tip.py` (stub + residual + checklist).
+- [x] Integrity-green `--state-output` checkpoint path on late tips.
+- [x] **Tip-spec table** drives post-Supers `run_to()` / play chain (no new
+  clone runner pair per tip; thin wrappers keep historical names).
+- [ ] Move hop tables out of continuous (e.g. `routes/kpdr/hops.py` or per-tip
+  modules) so continuous stays dispatch + composition only.
+- [x] `ContinuousTip.supports_checkpoint` (and similar) instead of string
+  allowlists in `run_to`.
+- [x] Keep `ContinuousSession` / `HopExecutor` contracts stable.
+- [x] Fix docstring drift in continuous/catalog when default tip moves
+  (default tip is Frog Save / K4.0, not Varia).
+
+### 3. Source-state & pure-probe diagnostics
+
+`SOURCE_STATES.md` + continuous-like scratch states + code catalog. Strengthen:
+
+- [x] Code catalog `source_states.py` + room fingerprint validation on pure load.
+- [x] `kpdr.py suggest-source` + pure `--expect-room` / catalog match.
+- [x] On pure RED: pin fields + optional pin JSON (`door_transition`, pose/x/y).
+- [ ] Short video clip + PLM/door RAM snapshot on RED.
+- [ ] Dispatch auto-suggest `--source` from card schema (pre-dispatch).
+- [ ] Provenance on checkpoints (parent tip, command, capabilities).
+
+### 4. Primitive library growth + promotion discipline
+
+Grow `controller_common` (short-hop Y-approach, guarded settles, climb launches,
+door-shot windows, etc.) aggressively **once a second consumer exists**.
+Promote only after proven pure (+ continuous when on spine). Same for combat
+primitives under `BossStrategy`.
+
+**Controller structure (from tip review):**
+
+- [x] Warehouse: explicit `entry_mode` (`auto` / `left_elevator` /
+  `right_reverse_stack`) chosen once at hop start — not mid-loop rediscovery.
+- [x] Super-stack open helper dedupe (`_open_warehouse_stack(face=…)`).
+- [x] Zeela return: named phases; module docs match `continuous` verification.
+- [ ] Prefer `wait_ordinary_room` handoff bands (`y_range` etc.) over hoping
+  the next hop survives airborne settles.
+- [ ] Remove thin warehouse helper aliases (`_hold = hold`) when touching other
+  kpdr modules that still use them.
+
+### 5. Graph first-class (**API collapse**)
+
+Make `RoomProgressionGraph` the source of truth for next-hop suggestions,
+work-queue ranking, and verification. **Do not keep twin helpers.**
+
+- [x] Landed helpers: `suggest_pure_work`, `pure_gate` (usable for cards).
+- [x] **Collapse** into one rank table (`VERIFICATION_RANK`) + `path_summary`
+  (`min_verification=`) + `suggest_edges` (prefer/exclude filters);
+  `pure_gate` / `path_verification` / `suggest_*` are thin wrappers.
+- [ ] Typed path-summary model instead of ad-hoc `dict[str, object]`.
+- [ ] Stop mechanical multi-line DoorEdge reformats that only inflate
+  `progression.py` (~1.8k); extract edge data if needed.
+- [ ] Work-queue / tracker export reads graph verification + dwell ranks.
+- [ ] Planner “next pure” CLI: unified path summary + SOURCE suggest together.
+
+### 6. Hygiene (from root `ARCHITECTURE_AND_CLEANUP_PLAN.md`)
+
+- [ ] Keep `legacy/` and `dev/` (door-warps) strictly fenced.
+- [ ] Normalize artifact naming (semantic states, not opaque).
+- [ ] Extract shared adventure patterns into `adventure_common` **only after**
+  SM + ALTTP both prove the abstraction (room/door graphs, inventory prereqs,
+  event flags, path replanning).
+- [x] Remove thin warehouse helper aliases (`_hold = hold`) in warehouse.py;
+  call shared helpers directly (other kpdr modules still use aliases).
+
+These keep Segment / HopExecutor / ContinuousSession contracts while making the
+spine cheaper to extend and run. Detail: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Agent system plan (Luna / Flash / planner)
+
+Existing system already limits dark poking:
+
+| Role | Owns |
+|------|------|
+| **Luna** | Tests + controller scaffold + bounded geometry with named continuous-like source |
+| **Flash** | Tracker/docs/dwell reports + STATUS **proposals** |
+| **Planner** | STATUS apply, continuous composition, natural-entry judgment, integrity |
+
+Cards are atomic (recipe step, own-files only, one-knob, pure-first, residual
+schema). Dispatch: `dispatch_opencode.sh` / `farm_room_waves.sh`.
+
+### Targeted process improvements
+
+- [ ] Stronger pre-dispatch schema validation + auto-skeleton residual.md.
+- [ ] Mandatory residual metrics: frames, dwell, exact pose/x/y/`door_transition` pin.
+- [ ] Auto-suggest source state from room + required capabilities.
+- [ ] Ownership / file-locking declarations so parallel waves stay safe
+  (extend existing dispatch conflict check).
+- [ ] On RED pure: richer diagnostics (replay clip, PLM/door RAM snapshot).
+- [ ] Keep continuous / STATUS / hot modules (`business_climb`, `varia_return`,
+  spore, etc.) serialized or planner-only.
+- [ ] Scale dual-track room-segment farming while the spine advances; Luna
+  clears non-interacting rooms/combat units in parallel.
+
+**Do not** relax pure-first / one-knob / residual rules.
+
+---
+
+## Roadmap: run-to-Kraid-and-beyond → whole-game M8
+
+Follow the maturity ladder and [BOSS_PIPELINE.md](BOSS_PIPELINE.md). Natural
+entry is non-negotiable for continuous evidence.
+
+### Immediate (product tip + structure)
+
+- [x] Continuous reverse spine through Business + Frog Save (K4.0 tip).
+- [ ] **K4 forward product:** Frog Save → Speedway pure from
+  `post_frog_continuous`, then Bubble → Speed → Wave → Ice → Alpha PB
+  (`controller_dev` first, continuous only after power-on integrity).
+- [x] **Structure (planner-serial):** tip-spec post-Supers composition, graph
+  API collapse, checkpoint flags, Warehouse/Zeela lineage hygiene, cache-local
+  parse stats — remaining: hop-table extract, typed path summary, full-run
+  profile. Cards in [`tasks/QUEUE.md`](tasks/QUEUE.md).
+- [ ] Re-record continuous `--to frog` (and prefixes) after each stabilize
+  wave that touches spine knobs; promote only after integrity + multi-run
+  dwell honesty.
+
+### Near-term continuous spine (K4 → ship)
+
+1. Continuous post-Varia: Bubble → Speed → Wave → Ice → Alpha PB (natural).
+2. Ship access + natural Phantoon entry.
+3. Sequential bosses per pipeline (Phantoon → Botwoon → Draygon → Ridley → …
+   → Mother Brain + escape/credits). Each requires natural doorway entry on the
+   continuous chain, BossCatalog + strategy, closeout, then continuous
+   promotion. **Kraid/Varia is the living template.**
+
+### Parallel dual-track
+
+- Room practice / policies for remaining critical-path and high-value rooms
+  ([ROOM_WORK_QUEUE](routes/ROOM_WORK_QUEUE.md)).
+- Combat unit scaffolds and shared primitives.
+- Non-blocking side content (Crocomire, Golden Torizo, etc.) only after main
+  spine advances.
+
+### Maturity targets
+
+| Gate | Target |
+|------|--------|
+| **M6** | Complete route graph with owners/predicates |
+| **M7** | Continuous dry-run invariants (full power-on → credits path; resource assists only) |
+| **M8** | Verified capture + ending evidence |
+
+### Medium-term program
+
+- Once SM graphs + inventory/event handling are solid (and ALTTP is advancing),
+  promote `adventure_common`.
+- Reduce assists over time toward Clean where possible.
+- Observation class migration (Bronze → Silver) as a separate workstream after
+  continuous reliability.
+- Broader retro_rl horizons (Final Fight M8, platformers, NES parity) must not
+  dilute the SM continuous spine.
+
+**Prioritization heuristic:** close active trunk bottlenecks first, prove shared
+packages, prefer natural-entry + clean evidence (same as root ROADMAP).
 
 ---
 
@@ -234,22 +458,24 @@ Red Tower → Warehouse → Business Center → Hi-Jump 0xA9E5
 ```
 
 - [x] K2 prefix: Red Tower → Bat → Below Spazer → West/Glass/East →
-  Warehouse Entrance (2,929 frames).
+  Warehouse Entrance (continuous **83,512f**).
 - [x] K2 safety detour: Warehouse→Business→Hi-Jump Shaft→Hi-Jump Room;
-  collect the E-Tank and Boots from real PLMs.
+  collect the E-Tank and Boots from real PLMs (continuous Hi-Jump **87,696f**).
 - [x] K2 return: Hi-Jump ledges→ordinary bomb tunnel→Business→Warehouse.
   No infinite bomb jump is used or required.
 - [x] K2 approach: three-Super Warehouse wall→Zeela→Kihunter→Baby
-  Kraid→Eye Door→natural Kraid-room entry. The full Warehouse detour and
-  approach composes controller-only in **15,356 frames**.
+  Kraid→Eye Door→natural Kraid-room entry (continuous Kraid **~97k**).
 - [x] K3 boss-only: Super-spray fight + rear door + real Varia PLM from
-  doorway entry (`play_kraid_fight_to_varia`, ~1908f collect).
-- [ ] K3 continuous: compose `kraid_entry_to_varia` after natural
-  `play_eye_to_kraid` on the power-on KPDR chain.
-- [ ] K4: Speed / Wave / Ice by play.
+  doorway entry (`play_kraid_fight_to_varia`).
+- [x] K3 continuous: power-on → Varia Suit (`--to varia`, **104,382f**, integrity green).
+- [x] K4 return pure: reverse hops post-Varia → Business (9,343f from accepted Varia checkpoint).
+- [x] K4 continuous: power-on → Business return (`--to business`, 113,723f twice, integrity green).
+- [x] K4.0 forward: Business → Frog Save (`--to frog`, 114,923f twice, integrity green).
+- [ ] K4 forward pure + continuous: Frog Save → Speedway → Bubble → Speed → Wave → Ice.
 - [ ] K5: Alpha PB collect (preferred first Power Bombs).
 - [ ] K6: Moat / Ocean / WS / Phantoon / Gravity by play.
-- [ ] Document KPDR edges in `progression.py` as typed graph when segments land.
+- [ ] Document / promote KPDR edges in `progression.py` as verification advances
+  (`controller_dev` → `continuous`).
 
 Ship-first / PRKD remains out of continuous scope; hop-table warps stay Track A.
 
@@ -285,7 +511,7 @@ template. Living template: Kraid fight → rear door → Varia.
 |----------|------|------------|-----------------|
 | 0 | Bomb Torizo | Continuous (replay) | done |
 | 0 | Spore Spawn | Continuous | done |
-| 1 | **Kraid** | Fight + Varia strategy; continuous tip wired | green `--to varia` report |
+| 1 | **Kraid** | Fight + Varia continuous | **done** (`--to varia`, 101,954f) |
 | 2 | Phantoon | entry state only | fight + WS power restore |
 | 3 | Botwoon | skip bit only | fight |
 | 4 | Draygon | skip bit only | fight + Space Jump collect |
@@ -319,26 +545,39 @@ Promotion order (same as historical Phase 6):
 | ~~Tour video recorder~~ (`full-tour`) | — | **A2 done** |
 | ~~Hybrid continuous-prefix + warp tour~~ | — | **A2 done** (`full-hybrid`) |
 | ~~Natural Super collect~~ | — | **B1 done** (continuous) |
-| Crest → main shaft + PB door | Continuous past Big Pink | B1 |
-| Natural PB + ship rooms | Continuous to Phantoon | B1–B2 |
-| ~100 path room policies | Continuous room running | B3 |
-| Boss fight scripts | True clear | B4 |
+| ~~Continuous Super → Red Tower → … → Varia~~ | — | **B1–B2 done** (K3 tip) |
+| ~~Post-Varia reverse pure → Business~~ | **Done:** `start_to_business` 113,723f ×2 | B2 |
+| K4 forward after Frog Save + Alpha PB | Continuous past Norfair items | B2 |
+| Natural ship + Phantoon entry | Continuous to WS | B2 / B4 |
+| Remaining path room policies | Continuous room running | B3 dual-track |
+| Boss fight scripts past Kraid | True clear | B4 |
 | Escape timer + credits predicate | M8 ending | B4–B5 |
+| ~~Clone Super+ tip runners~~ | — | **partial:** `PostSupersTipSpec` landed; hop extract open (§2) |
+| ~~Twin graph path APIs~~ | — | **partial:** collapse landed; typed summary open (§5) |
+| ~~Lineage special-cases (Warehouse/Zeela)~~ | — | **done** (entry_mode + named phases, §4) |
+| Selective-RAM profile / pure RED clip | Whole-game efficiency | structure plan §1–3 |
 
 ---
 
-## Recommended execution order (next 2 weeks)
+## Recommended execution order (next waves)
 
 ```text
 Track A topology — DONE (stop expanding warp product work)
   ✓  full hop runner + full-tour / full-hybrid diagnostics
 
-Track B — play every path room (PRIMARY) — NEXT
-  W1  Continuous Kraid attach (warehouse→HJ→fight→Varia) + promote STATUS
-  W1b Boss Phase 0 foundations (catalog / protocol / primitives) — see BOSS_PIPELINE
-  W2  Finish natural path past Varia toward Alpha PB / ship / Phantoon
-  Ongoing  For each hop: natural entry → attempt → promote
-  Later    Boss policies in spine order: Phantoon → Botwoon → Draygon → …
+Track B — play every path room (PRIMARY)
+  ✓  Continuous Kraid + Varia (K3 tip @ 104,382f)
+  ✓  Continuous Varia return → Business (K3→K4 tip @ 113,723f ×2)
+  ✓  Continuous Business → Frog Save (K4.0 tip @ 114,923f ×2)
+  NOW  K4 forward: Frog Save → Speedway → Bubble → Speed → Wave → Ice → Alpha PB
+  THEN Ship + Phantoon natural entry; bosses per BOSS_PIPELINE
+  Parallel dual-track room farm + combat units (non-interacting files)
+  Code plan remaining: hop-table extract, typed path summary, full-run
+  RAM profile / pure RED clip (structure plan §1–5 — tip-spec + graph
+  collapse + lineage mostly landed)
+
+Later   Boss policies: Phantoon → Botwoon → Draygon → Ridley → MB + escape
+Maturity M6 graph owners → M7 full dry-run invariants → M8 credits capture
 ```
 
 Do **not** door-warp past open hops to fake progress. Measure furthest played
@@ -503,8 +742,14 @@ assist write, or prolonged no-progress.
     door → `0x896A`).
 16. [x] **A1–A2** Progressive loadout + `full-tour` + `full-hybrid`
     (continuous Super prefix splice; bosses skipped; `developmentOnly`).
-17. [~] **B1** Continuous Super collect done; farming→Big Pink→main shaft
-    dev-proven; climb to PB + continuous still open.
-18. [ ] **B2–B3** Natural ship/Norfair path rooms; path-priority room policies.
-19. [ ] **B4** Boss fights (Kraid natural → Phantoon → … → MB) + escape.
-20. [ ] **B5** Continuous dry run → credits video (M7/M8).
+17. [x] **B1** Continuous Super → Red Tower → Warehouse (early KPDR spine).
+18. [x] **B2 K2–K3** Continuous Hi-Jump → Kraid entry → Varia Suit.
+19. [~] **B2 K4** Post-Varia reverse pure + continuous K4 (Bubble→…→Alpha PB).
+20. [ ] **B2 K5–K6 / B3** Ship rooms + path-priority room policies (dual-track).
+21. [~] **B4** Boss fights: Kraid continuous done; Phantoon → … → MB + escape open.
+22. [ ] **B5** Continuous dry run → credits video (M7/M8).
+23. [~] **Structure plan** Partial: source catalog, scaffold, pure pins,
+    tip-spec post-Supers composition, graph API collapse (`path_summary` /
+    `suggest_edges`), checkpoint flags, Warehouse/Zeela lineage, cache-local
+    parse stats. **Open:** hop-table extract, typed path summary, full-run
+    RAM profile / pure RED clip / linter (see Structure & API plan above).

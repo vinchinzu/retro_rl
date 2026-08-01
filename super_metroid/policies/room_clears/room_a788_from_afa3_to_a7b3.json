@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a788_from_afa3_to_a7b3",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Cathedral (0xA788); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9732",
+    "entrySourceRoomIdHex": "0xAFA3",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      47,
+      7
+    ],
+    "doorPtr": 38706,
+    "entrySourceRoomId": 44963
+  },
+  "planning": {
+    "objective": "collect_items_and_exit",
+    "entry": {
+      "sourceRoomId": 44963,
+      "sourceRoomIdHex": "0xAFA3",
+      "endpoint": {
+        "roomId": 42888,
+        "roomIdHex": "0xA788",
+        "logicalRoomId": 91,
+        "nodeId": 2,
+        "nodeName": "Cathedral Right Door (to Rising Tide)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "green",
+        "block": [
+          47,
+          7
+        ],
+        "requires": [
+          "super_missiles"
+        ],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 42931,
+      "targetRoomIdHex": "0xA7B3",
+      "endpoint": {
+        "roomId": 42888,
+        "roomIdHex": "0xA788",
+        "logicalRoomId": 91,
+        "nodeId": 1,
+        "nodeName": "Cathedral Left Door (to Cathedral Entrance)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        47,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 41,
+      "waypointsBlocks": [
+        [
+          42,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

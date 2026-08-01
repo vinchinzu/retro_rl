@@ -24,7 +24,6 @@ from alttp.escape_graph import (
     N_SEWERS_DARK,
     NATURAL_HOUSE_EXIT_CAPABILITIES,
     VERIFICATION_CONTINUOUS,
-    VERIFICATION_ISOLATED,
     VERIFICATION_PLANNED,
     capabilities_from_snapshot,
     continuous_spine_legs,
@@ -97,19 +96,20 @@ def test_verified_edges_are_continuous() -> None:
         (N_ROOM_55_SOUTH, N_COURTYARD_SECRET_POCKET),
         (N_COURTYARD_SECRET_POCKET, N_ROOM_61),
     }
-    isolated_pairs = {
-        (N_ROOM_61, N_ROOM_60): "west",
-        (N_ROOM_60, N_ROOM_50): "north",
-    }
+    continuous_pairs.update(
+        {
+            (N_ROOM_61, N_ROOM_60),
+            (N_ROOM_60, N_ROOM_50),
+        }
+    )
     for edge in graph.edges:
         pair = (edge.source_id, edge.target_id)
         if pair in continuous_pairs:
             assert edge.verification == VERIFICATION_CONTINUOUS, edge.edge_id
-        elif pair in isolated_pairs:
-            assert edge.verification == VERIFICATION_ISOLATED, edge.edge_id
-            assert edge.direction == isolated_pairs[pair]
         else:
             assert edge.verification == VERIFICATION_PLANNED, edge.edge_id
+    assert graph.edge_for(N_ROOM_61, N_ROOM_60).direction == "west"  # type: ignore[union-attr]
+    assert graph.edge_for(N_ROOM_60, N_ROOM_50).direction == "north"  # type: ignore[union-attr]
 
 
 def test_multi_screen_55_connected() -> None:
@@ -140,10 +140,10 @@ def test_full_plan_with_natural_lamp_reaches_sanctuary() -> None:
     assert N_SEWERS_DARK in path
 
 
-def test_continuous_spine_ends_at_main_hall() -> None:
+def test_continuous_spine_ends_at_nw_chamber() -> None:
     legs = continuous_spine_legs()
     assert legs[0].source_id == N_CASTLE_GROUNDS
-    assert legs[-1].target_id == N_ROOM_61
+    assert legs[-1].target_id == N_ROOM_50
     assert any(leg.target_id == N_COURTYARD_SECRET_POCKET for leg in legs)
     graph = escape_route_graph()
     for leg in legs:
@@ -153,6 +153,8 @@ def test_continuous_spine_ends_at_main_hall() -> None:
     pocket_edge = graph.edge_for(N_COURTYARD_SECRET_POCKET, N_ROOM_61)
     assert pocket_edge is not None
     assert pocket_edge.edge_id == "pocket_to_main_hall"
+    assert any(leg.target_id == N_ROOM_60 for leg in legs)
+    assert any(leg.target_id == N_ROOM_50 for leg in legs)
 
 
 def test_key_path_plan_still_acquires_small_key() -> None:

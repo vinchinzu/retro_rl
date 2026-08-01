@@ -7,7 +7,7 @@ Regenerate: `uv run python super_metroid/scripts/export/kpdr_tracker.py`.
 
 | Metric | Value |
 |--------|------:|
-| Total segments | 47 |
+| Total segments | 48 |
 | Super → Kraid-entry segments | 33 |
 | Kraid-entry path progress (weighted) | 93.9% |
 
@@ -15,18 +15,16 @@ Regenerate: `uv run python super_metroid/scripts/export/kpdr_tracker.py`.
 
 | Status | Count |
 |--------|------:|
-| `continuous` | 33 |
-| `controller_dev` | 6 |
+| `continuous` | 41 |
 | `dev_warp` | 1 |
-| `open` | 7 |
+| `open` | 6 |
 
 ### Chart series (status)
 
 ```
-continuous        33 ####################
-controller_dev     6 ###
+continuous        41 ####################
 dev_warp           1 #
-open               7 ####
+open               6 ##
 ```
 
 ## Segment table (Super → Kraid-entry focus)
@@ -73,15 +71,16 @@ open               7 ####
 |--:|-----|------|--------|-------|
 | 40 | `K3.0` | 0xA59F Kraid's Room | continuous | Super-spray on continuous chain; fight segment of K3 |
 | 41 | `K3.1` | 0xA6E2 Varia Suit Room | continuous | 101954f continuous K3 tip; 0 loads / 0 progression writes |
-| 42 | `K3.2` | 0xA59F Kraid's Room | controller_dev | first post-Varia door; pure green from natural post-collect; graph edge varia_to_kraid |
-| 43 | `K3.3` | 0xA59F Kraid's Room | controller_dev | pure green SM-K4-06E jump-enter Y band (~610f); graph controller_dev not continuous; source post_kraid_to_eye_return |
-| 44 | `K3.4` | 0xA56B Kraid's Eye Door | controller_dev | pure green SM-K4-R-01B ~651f jump mid-room; not continuous; source post_eye_to_baby_return |
-| 45 | `K3.5` | 0xA521 Baby Kraid Room | controller_dev | pure green SM-K4-R-01C ~1248f supers clear gray; not continuous; source post_baby_to_kihunter_return |
-| 46 | `K3.6` | 0xA4DA Warehouse Kihunter Room | controller_dev | pure green ~1716f; source scratch/post_kihunter_to_zeela_return.state; not continuous |
-| 47 | `K3.7` | 0xA471 Warehouse Zeela Room | controller_dev | pure green SM-K4-R-ZEELA-REDESIGN ~1800f; graph controller_dev not continuous; source post_zeela_to_warehouse_return |
-| 48 | `K3.8` | 0xA6A1 Warehouse Entrance | open | reuses continuous warehouse_to_business; reverse pure RED SM-K4-R-04 (right ledge stack) → R-04B |
-| 50 | `K4.0` | 0xAD1B Speed Booster Room | open | START_TO_SPEED_GRAPH scaffold Bubble path; edges unverified; after reverse spine to Business |
-| 51 | `K4.1` | 0xADDE Wave Beam Room | open | graph branch Bubble→Single→Double→Wave unverified |
-| 52 | `K4.2` | 0xA890 Ice Beam Room | open | graph branch Business→Ice Gate→…→Ice unverified |
+| 42 | `K3.2` | 0xA59F Kraid's Room | continuous | integrity-green Business return twice at 113723f; 0 loads/progression/capacity/deaths |
+| 43 | `K3.3` | 0xA59F Kraid's Room | continuous | integrity-green Business return twice; elevated jump-enter band |
+| 44 | `K3.4` | 0xA56B Kraid's Eye Door | continuous | integrity-green Business return twice |
+| 45 | `K3.5` | 0xA521 Baby Kraid Room | continuous | integrity-green Business return twice; gray-door clear |
+| 46 | `K3.6` | 0xA4DA Warehouse Kihunter Room | continuous | integrity-green Business return twice; Hi-Jump y-gated landing |
+| 47 | `K3.7` | 0xA471 Warehouse Zeela Room | continuous | integrity-green Business return twice; valid upper-left transition |
+| 48 | `K3.8` | 0xA6A1 Warehouse Entrance | continuous | right-ledge reverse stack green; lower-lip correction + two-tier Super clear; 113723f twice |
+| 50 | `K4.0` | 0xB167 Frog Savestation | continuous | Business elevator descent + blue-door exit; 114923f integrity green twice |
+| 51 | `K4.1` | 0xAD1B Speed Booster Room | open | START_TO_SPEED_GRAPH scaffold Bubble path; first open Frog Save→Speedway |
+| 52 | `K4.2` | 0xADDE Wave Beam Room | open | graph branch Bubble→Single→Double→Wave unverified |
+| 53 | `K4.3` | 0xA890 Ice Beam Room | open | graph branch Business→Ice Gate→…→Ice unverified |
 | 60 | `K5.0` | 0xA3AE Alpha Power Bomb Room | open | after Ice on KPDR; first PB capacity |
 | 70 | `K6.0` | 0xCD13 Phantoon's Room | dev_warp | after Alpha PB on KPDR |

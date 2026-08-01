@@ -19,7 +19,7 @@ Transition positions (pixel coords):
   Path(0x0C) --right-> Farm(0x00)  exit=(244,128) entry=(244,128)
 """
 
-from typing import Dict, FrozenSet, List, NamedTuple, Optional, Tuple
+from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Tuple
 
 from harvest.core.tile_catalog import (
     CHURCH_WALKABLE,
@@ -28,6 +28,7 @@ from harvest.core.tile_catalog import (
     MOUNTAIN_WALKABLE,
     PATH_WALKABLE,
     SHOP_WALKABLE,
+    TILE_SIZE,
     TOWN_WALKABLE,
 )
 
@@ -465,6 +466,64 @@ def slice_route_from_position(
     # Start one hop earlier so we still approach along the corridor.
     start = max(0, best_i - 1)
     return list(waypoints[start:])
+
+
+def densify_waypoints(
+    waypoints: Sequence[Waypoint],
+    *,
+    max_hop_tiles: int = 7,
+    tile_size: int = TILE_SIZE,
+) -> List[Waypoint]:
+    """Insert intermediate hops so same-map targets stay within viewport BFS range.
+
+    SNES only loads ~16x14 tiles around the player. BFS beyond ~7–10 tiles sees
+    stale tile IDs. Hand-authored routes should still prefer known walkable
+    corridors; this helper fills large pixel gaps with linear interpolants for
+    the same tilemap (map transitions and exit/action waypoints are preserved).
+    """
+    if max_hop_tiles < 1:
+        raise ValueError("max_hop_tiles must be >= 1")
+    if not waypoints:
+        return []
+
+    max_hop_px = max_hop_tiles * tile_size
+    result: List[Waypoint] = [waypoints[0]]
+    for nxt in waypoints[1:]:
+        prev = result[-1]
+        # Never densify across map changes, exits, or scripted actions.
+        if (
+            prev.tilemap != nxt.tilemap
+            or prev.is_exit
+            or nxt.is_exit
+            or prev.action_on_arrive
+            or nxt.action_on_arrive
+            or prev.run_direction
+            or nxt.run_direction
+        ):
+            result.append(nxt)
+            continue
+
+        dx = nxt.target_px[0] - prev.target_px[0]
+        dy = nxt.target_px[1] - prev.target_px[1]
+        dist = max(abs(dx), abs(dy))
+        if dist <= max_hop_px:
+            result.append(nxt)
+            continue
+
+        steps = int((dist + max_hop_px - 1) // max_hop_px)
+        for i in range(1, steps):
+            t = i / steps
+            ix = int(round(prev.target_px[0] + dx * t))
+            iy = int(round(prev.target_px[1] + dy * t))
+            result.append(
+                Waypoint(
+                    tilemap=prev.tilemap,
+                    target_px=(ix, iy),
+                    radius=min(prev.radius, nxt.radius),
+                )
+            )
+        result.append(nxt)
+    return result
 
 
 # Outdoor spa path on mountain 0x10 (hot_spring_bath + entry approach).

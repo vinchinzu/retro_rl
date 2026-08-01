@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from retro_harness import Task, WorldState
 
 from harvest.maps.map_config import ROUTES
-from harvest.planner.day_phase_types import PhaseKind, PhaseSpec
+from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind, PhaseSpec
 from harvest.planner.day_plan_status import FARM_TILEMAP, TASKS_DIR
+
+if TYPE_CHECKING:
+    from harvest.core.world_context import WorldContext
 from harvest.planner.tasks.chicken_sale import (
     ChickenSaleEventTask,
     ChickenSaleFollowupTask,
@@ -51,11 +54,18 @@ PhaseTaskBuilder = Callable[["TaskBuildContext", PhaseSpec, WorldState], Optiona
 
 @dataclass(frozen=True)
 class TaskBuildContext:
-    """Inputs shared by all phase task builders."""
+    """Inputs shared by all phase task builders.
+
+    Keep builders pure functions of ``(ctx, spec, world)``. Optional policy and
+    world_context let skills share calendar/stamina facts and cached reads
+    without re-probing RAM on every construction.
+    """
 
     seed_type: str = "potato"
     tasks_dir: str = TASKS_DIR
     state_name: Optional[str] = None
+    policy: Optional[DayPlannerPolicy] = None
+    world_context: Optional["WorldContext"] = None
 
 
 def _build_exit(

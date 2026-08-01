@@ -106,6 +106,21 @@ def test_continuous_seed_contract() -> None:
     assert not any(frame[3] for frame in frames)
 
 
+def test_reactive_continuous_seed_contract() -> None:
+    path = DEFAULT_CONTINUOUS_SEED.with_name(
+        "smb_1_1_to_ending_reactive_83_84.json"
+    )
+    data = load_nes9_rle_seed(path)
+    assert data["start_state"] == "Level1_1"
+    assert data["settle_frames"] == CONTINUOUS_SETTLE_FRAMES == 14
+    assert data["target"] == "world_8_4_ending"
+    assert data["verified_completed"] is True
+    assert data["num_frames"] == 21_643
+    assert data["verification"]["mode"] == "poweron"
+    assert data["verification"]["successes"] == data["verification"]["trials"] == 3
+    assert sum(int(row["n"]) for row in data["segments"]) == 21_643
+
+
 def test_fast_4_2_fold_fragment_contract() -> None:
     assert DEFAULT_FAST_4_2_SEED.exists()
     data = load_nes9_rle_seed(DEFAULT_FAST_4_2_SEED)
@@ -134,9 +149,7 @@ def test_continuous_seed_regenerates_byte_for_byte() -> None:
         return
     rebuilt = build_continuous_seed()
     published = load_nes9_rle_seed(DEFAULT_CONTINUOUS_SEED)
-    assert rebuilt["num_frames"] == published["num_frames"]
-    assert rebuilt["segments"] == published["segments"]
-    assert rebuilt["settle_frames"] == published["settle_frames"]
+    assert rebuilt == published
 
 
 def test_segment_success_requires_progress_and_level_change() -> None:

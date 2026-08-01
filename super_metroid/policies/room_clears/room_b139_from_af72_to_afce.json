@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b139_from_af72_to_afce",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Red Pirate Shaft (0xB139); entry just inside door, exit via DOWN.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9726",
+    "entrySourceRoomIdHex": "0xAF72",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "DOWN",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 38694,
+    "entrySourceRoomId": 44914
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 44914,
+      "sourceRoomIdHex": "0xAF72",
+      "endpoint": {
+        "roomId": 45369,
+        "roomIdHex": "0xB139",
+        "logicalRoomId": 118,
+        "nodeId": 2,
+        "nodeName": "Red Pirate Shaft Right Door (to Farming Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 45006,
+      "targetRoomIdHex": "0xAFCE",
+      "endpoint": {
+        "roomId": 45369,
+        "roomIdHex": "0xB139",
+        "logicalRoomId": 118,
+        "nodeId": 1,
+        "nodeName": "Red Pirate Shaft Bottom Door (to Acid Snakes Tunnel)",
+        "position": "top",
+        "orientation": "down",
+        "subtype": "blue",
+        "block": [
+          7,
+          31
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        7,
+        31
+      ],
+      "exitBlock": [
+        7,
+        31
+      ],
+      "pathBlocks": 31,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          9,
+          7
+        ],
+        [
+          9,
+          31
+        ],
+        [
+          7,
+          31
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "DOWN",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

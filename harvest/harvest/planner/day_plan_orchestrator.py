@@ -116,12 +116,15 @@ class DayPlanTask(Task):
     _recovery_attempted_phases: set[tuple[int, str]] = field(default_factory=set, init=False)
     _deferred_plans: list[DeferredPlan] = field(default_factory=list, init=False)
     _phase_results: list[dict[str, object]] = field(default_factory=list, init=False)
+    _task_factory: DayTaskFactory = field(init=False, repr=False)
 
     def __post_init__(self):
         self._reset_phase_lists()
+        self._reset_task_factory()
 
     def reset(self, world: WorldState) -> None:
         self._reset_phase_lists()
+        self._reset_task_factory()
         self._phase_index = 0
         self._current_task = None
         self._step_count = 0
@@ -137,6 +140,20 @@ class DayPlanTask(Task):
 
     def _reset_phase_lists(self) -> None:
         self._schedule = PhaseSchedule.from_sequence(self.phase_sequence, DAY1_PHASES)
+
+    def _reset_task_factory(self) -> None:
+        """Start each day with one shared builder context.
+
+        ``DayTaskFactory`` owns the per-frame ``WorldContext`` cache.  Keeping
+        it for the lifetime of a day lets phase builders share observations
+        while reset deliberately drops any cache from the previous morning.
+        """
+        self._task_factory = DayTaskFactory(
+            seed_type=self.seed_type,
+            tasks_dir=self.tasks_dir,
+            state_name=self.state_name,
+            policy=self.policy,
+        )
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -222,11 +239,7 @@ class DayPlanTask(Task):
         )
 
     def _make_task(self, spec: PhaseSpec, world: WorldState) -> Optional[Task]:
-        return DayTaskFactory(
-            seed_type=self.seed_type,
-            tasks_dir=self.tasks_dir,
-            state_name=self.state_name,
-        ).make_task(spec, world)
+        return self._task_factory.make_task(spec, world)
 
     def resume_after_hotswap(self, world: WorldState) -> None:
         task = self._recovery_task or self._current_task
@@ -731,7 +744,16 @@ class MultiDayPlannerTask(Task):
         # Prefer snapshot taken when plan_day finished; fall back to live task.
         self._capture_day_plan_outcomes()
         phase_results = list(self._last_day_phase_results)
-        deferred = list(self._last_day_deferred)
+        # Decision-time omissions (for example rainy-day watering or a closed
+        # shop) used to be printed but disappeared from continuous-run
+        # journals.  Keep them alongside runtime failures so the next planning
+        # review sees the complete reason a task was deferred.
+        planned_deferred = (
+            [item.to_jsonable() for item in self._last_day_decision.deferred]
+            if self._last_day_decision is not None
+            else []
+        )
+        deferred = _merge_deferred_rows(planned_deferred, self._last_day_deferred)
         planned = []
         if self._last_day_decision is not None:
             planned = [p.phase for p in self._last_day_decision.phases]
@@ -941,3 +963,28 @@ class MultiDayPlannerTask(Task):
             return self._handle_result(world, self._start_phase(world))
 
         return self._handle_result(world, self._current_task.step(world))
+
+
+def _merge_deferred_rows(
+    planned: Sequence[dict[str, object]],
+    runtime: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Merge journal deferrals without duplicating the same intention.
+
+    Planner and runtime rows have intentionally different detail levels, so
+    preserve the richer planning row when both report the same phase/reason.
+    """
+    merged: list[dict[str, object]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in (*planned, *runtime):
+        clean = dict(row)
+        key = (
+            str(clean.get("phase", "")),
+            str(clean.get("reason", "")),
+            str(clean.get("retry", "tomorrow")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(clean)
+    return merged

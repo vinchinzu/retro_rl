@@ -26,7 +26,7 @@ def test_k4_business_to_bubble_edge_contract() -> None:
         "farm_to_bubble",
     ]
     assert [edge.verification for edge in path] == [
-        "unverified",
+        "continuous",
         "unverified",
         "unverified",
         "unverified",
@@ -73,7 +73,7 @@ def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
 
     assert wave["reachable"] is True
     assert wave["all_continuous"] is False
-    assert wave["blocking"] == "business_to_frog_save"
+    assert wave["blocking"] == "frog_save_to_speedway"
     assert ice["reachable"] is True
     assert ice["all_continuous"] is False
     assert ice["blocking"] == "business_to_ice_gate"

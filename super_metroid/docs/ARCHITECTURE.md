@@ -56,9 +56,10 @@ legacy/*                                  frozen vision/RL remnants
 | `progression.RoomProgressionGraph` | Rooms, directed edges, capability BFS |
 | `DoorEdge.verification` | `unverified` / `controller_dev` / `continuous` |
 | `ProgressCondition` / `ProgressionMilestone` | Live RAM stop predicates |
-| Staged graphs | `START_TO_MORPH` ⊂ … ⊂ `START_TO_WAREHOUSE` ⊂ `START_TO_HIJUMP` ⊂ `START_TO_KRAID` ⊂ `START_TO_VARIA` |
-| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip |
+| Staged graphs | `START_TO_MORPH` ⊂ … ⊂ `START_TO_VARIA` ⊂ `START_TO_SPEED` (Business return + K4 scaffold) |
+| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`frog`) |
 | `routes/continuous.RouteHop` + `play_hops` | Ordered controller legs after Supers |
+| `source_states.py` | Code twin of `SOURCE_STATES.md` — pure entry fingerprints |
 
 **Source of truth for continuous progress:** graph edges + tip hop tables +
 integrity report (`0` state loads, `0` progression writes, required splits).
@@ -99,8 +100,11 @@ poking without dropping evidence:
 **Graph-driven next hop** (`progression.RoomProgressionGraph`):
 
 - `outgoing(room, capabilities=, verification=)`
-- `suggest_next_hops(room, capabilities=)` — ranks continuous → controller_dev
-- `path_verification(src, dst, caps)` — blocking edge for unfinished path
+- `suggest_edges(room, prefer=, exclude_verifications=)` — **single** suggest surface
+- `suggest_next_hops` / `suggest_pure_work` — thin wrappers over `suggest_edges`
+- `path_summary(src, dst, caps, min_verification=)` — **single** path summary
+- `path_verification` / `pure_gate` — thin wrappers (stable dict shapes)
+- `VERIFICATION_RANK` — one rank table for path + pure gate
 - `capabilities_from_state(state)` — live RAM → capability tokens
 
 **Offline dwell ranking** (after continuous green, before extending):
@@ -177,13 +181,18 @@ Sub-agent process (pure-first, stabilize waves, residual schema):
    **Gate:** pure-green from a continuous-like source state before step 2.
 2. Graph rooms/edges/milestones in `progression.py` (verification starts
    as `controller_dev`, promote to `continuous` after evidence).
-3. Split ids + `ContinuousTip` + `NamedRoute` in `catalog.py`.
-4. `RouteHop` rows + thin `play_*` / `run_post_supers_tip` in
-   `continuous.py`.
-5. Wire tip in `run_to()` + `register_continuous_segments`.
+3. Split ids + `ContinuousTip` + `NamedRoute` in `catalog.py`
+   (capability flags: `supports_room_timing` / `supports_unlimited_energy` /
+   `supports_checkpoint` as needed — never hard-coded `run_to` allowlists).
+4. Append a `PostSupersTipSpec` row in `continuous.py` (parent + hops +
+   report fields). Thin `play_start_to_*` / `run_start_to_*` wrappers optional
+   for historical names only.
+5. `run_to()` dispatches Super+ tips from the tip-spec table; segment registry
+   still lists play/run callables (historical keys).
    (Steps 2–5 may be one executor card **after** pure green; keep integrity
-   judgment with the planner. Prefer declarative hop skeletons over re-copy.)
-6. Record: `scripts/record/continuous.py --to <tip> --no-video`.
+   judgment with the planner.)
+6. Record: `scripts/record/continuous.py --to <tip> --no-video`
+   (optional `--state-output` for integrity-green checkpoints only).
    **Stabilize:** if live spine knobs changed in a prior stress wave, re-record
    before stacking more interacting knobs.
 7. Promote STATUS / tracker only after integrity green (planner; Flash may
@@ -192,6 +201,15 @@ Sub-agent process (pure-first, stabilize waves, residual schema):
 Successful pure+continuous sequences should be promoted into
 `routes/controller_common` primitives with unit tests before the next similar
 geometry card.
+
+### Controller lineage rule
+
+When a hop has two natural entry poses (e.g. Warehouse left elevator vs
+right Zeela-ledge return), **prefer separate segment callables or an
+explicit entry mode chosen once at hop start**. Do not keep discovering
+lineage inside the mid-frame loop via magic thresholds (`samus_x > 400`)
+or ad-hoc mid-climb success escapes unless the phase is named and
+documented. Continuous composition may still chain both lineages.
 
 ## Segment / hop contracts
 
@@ -219,15 +237,132 @@ Composed packages (e.g. `play_warehouse_hijump_kraid`) stay valid for
 probes; continuous tips prefer **one hop per door** for split clarity
 while still registering all intermediate graph edges for integrity.
 
-## Efficiency notes
+## Efficiency & code plan (whole-game length)
 
-1. Continuous `RouteSession` already parses low WRAM via `get_ram()`;
-   use `mode="full"` only when event/boss bits matter.
-2. Controllers with tight `wait_until` loops should prefer peeks or
-   cached state over repeated `parse_env_state` full-bank copies.
-3. Manifest-driven recording + `--no-video` for long dry-runs.
-4. Promote shared primitives only after a **second consumer**
-   (`adventure_common` / `platformer_common` / `snes_oneshot`).
+Long continuous runs will grow past multi-hour frame counts. Keep Segment /
+HopExecutor / ContinuousSession contracts; make the spine cheaper to extend
+and run. Full prioritization lives in [`plan.md`](plan.md); this section is
+the architecture map for those workstreams.
+
+### 1. Selective RAM + StateCache enforcement (highest leverage)
+
+| Prefer | Avoid in hot loops |
+|--------|--------------------|
+| `read_wram_u8` / `read_wram_u16` / `peek_wram` | Repeated full-bank copies |
+| `StateCache` (per-frame reuse) | Uncached `parse_env_state(..., mode="full")` every wait tick |
+| `parse_env_state(..., mode="nav")` when a struct is needed | Accidental default full parse in controllers |
+
+Continuous `RouteSession` already parses low WRAM via `get_ram()`; use
+`mode="full"` only when event/boss bits matter.
+
+**Planned enforcement:**
+
+- Base controller helper / decorator (or lightweight linter) that forces
+  cache/peek inside `wait_until` / settle / climb loops.
+- Profile frame time on long `--to varia` and future full runs; optionally
+  report WRAM-copy rate.
+- Controllers must not call full-bank parse on every frame of a tight loop.
+
+### 2. Declarative continuous composition (**partial — post-Supers landed**)
+
+**Today:** post-Supers tips use `PostSupersTipSpec` (parent + hops + report
+fields) driving play/run/`run_to`. Capability flags on `ContinuousTip`
+(`supports_room_timing` / `supports_unlimited_energy` / `supports_checkpoint`)
+gate kwargs — no tip-id allowlists. Early morph→supers runners remain
+bespoke. Hop tables still live in `continuous.py`.
+
+| Work item | Intent | Status |
+|-----------|--------|--------|
+| Tip-extension scaffold script | Stub + residual + printed checklist | **landed** (`scaffold_tip.py`) |
+| Data-driven tip runners | Collapse clone Super+ `run_start_to_*` / `play_start_to_*` | **landed** (`PostSupersTipSpec`) |
+| Hop tables out of continuous | Optional `routes/kpdr/hops.py` or per-tip module | **open** |
+| Checkpoint on `ContinuousTip` | `supports_checkpoint` like room timing / energy | **landed** |
+| Stable facades | Keep `ContinuousSession` / `HopExecutor`; no env ownership in kpdr | keep |
+
+### 3. Source-state & pure-probe diagnostics
+
+Index: [`SOURCE_STATES.md`](SOURCE_STATES.md) + code twin
+`source_states.py`. Process: [`tasks/PROCESS.md`](tasks/PROCESS.md).
+
+| Work item | Intent | Status |
+|-----------|--------|--------|
+| Fingerprint validation | Room + optional pose/x/y on pure load | **landed** |
+| `suggest-source` / `--expect-room` / pin JSON | Fail loud on wrong source | **landed** |
+| Provenance fields | Command, parent continuous tip, capabilities | **open** |
+| Pure RED auto-capture | Short video clip + PLM/door RAM snapshot | **open** |
+| Dispatch source suggest | Card schema → recommended `--source` pre-dispatch | **open** |
+
+### 4. Primitive library + promotion discipline
+
+Grow `routes/controller_common.py` (short-hop Y-approach, guarded settles,
+climb launches, door-shot windows, …) **after a second consumer** in-package
+or continuous green. Combat primitives under `BossStrategy` follow the same
+rule. Promote only with unit tests + pure evidence.
+
+**Lineage / stack hygiene:** Warehouse `entry_mode` + shared
+`_open_warehouse_stack(face=)`; Zeela reverse has named phases and continuous
+docs. Remaining: hop-table extract; prefer `wait_ordinary_room` handoff bands
+when extending neighbors.
+
+### 5. Graph first-class (**API collapse landed**)
+
+`RoomProgressionGraph` (capability/inventory BFS) is the source of truth for:
+
+- next-hop suggestions for pure cards (`suggest_edges` / wrappers)
+- work-queue ranking (spine blockers first)
+- verification promotion (`unverified` → `controller_dev` → `continuous`)
+- integration with dwell analysis (`split_dwell.py`) and residual metrics
+
+**Landed:** `VERIFICATION_RANK` + `path_summary(min_verification=)` +
+`suggest_edges(prefer=, exclude_verifications=)`. Wrappers keep stable dict
+shapes for cards/tests. **Open:** typed path-summary model; extract edge
+tables if `progression.py` line count remains the pain.
+
+### 6. Hygiene (root cleanup lessons)
+
+From repo [`ARCHITECTURE_AND_CLEANUP_PLAN.md`](../../ARCHITECTURE_AND_CLEANUP_PLAN.md):
+
+- Fence `legacy/` and `dev/` (door-warps) — never continuous evidence.
+- Semantic state names (route anchor meaning), not opaque labels.
+- Promote shared adventure patterns to `adventure_common` only after
+  **SM + ALTTP** both prove the abstraction.
+- Keep controller docstrings aligned with graph `verification` (no
+  “not continuous evidence” on hops locked `continuous`).
+
+### Known structural debt snapshot (2026-08-01 review)
+
+Prioritized for maintainability, not product tip order:
+
+| # | Issue | Preferred remedy | Status |
+|---|--------|------------------|--------|
+| 1 | `continuous.py` clone tip runners | Tip-spec table + generic runner; extract hops | **partial** (tip-spec landed; hop extract open) |
+| 2 | Twin graph planner APIs + soft dict contracts | Collapse + typed path summary | **partial** (collapse landed; typed model open) |
+| 3 | Multi-registry tip wire (graph/catalog/hops/run_to/probe/__init__) | Single tip definition drives the rest | open (catalog flags + tip-spec help) |
+| 4 | Lineage special-cases in dense frame loops | Explicit entry mode / separate segments | **landed** (Warehouse + Zeela phases) |
+| 5 | Global `parse_counts` / probe report field growth | Session- or cache-scoped counters; keep pin schema stable | **partial** (cache-local stats) |
+| 6 | File-size growth past 1k without decomposition | Decompose before next tip tax | open |
+
+Product tip (Frog Save → Speedway …) may proceed in parallel; structure debt
+is **planner-serial** when it touches `continuous.py` / `progression.py` /
+`catalog.py` hot modules. Todo list: [`plan.md`](plan.md) Structure & API +
+[`tasks/QUEUE.md`](tasks/QUEUE.md) architecture cards.
+
+### Runtime efficiency checklist (today)
+
+1. Continuous `RouteSession` — low WRAM via `get_ram()`; full bank only when needed.
+2. Pure probes (`scripts/probe/kpdr.py pure`) — **`mode="nav"`** every frame;
+   report includes `parseCounts` + `probePin` / `residualPinLine` on RED.
+3. Tight `wait_until` loops — peeks or `StateCache`, not full parse.
+4. `StateCache.stats()` (hits/misses + local nav/full parses) + process
+   `ram.parse_counts()` for long-run profiles.
+5. Source catalog: `super_metroid/source_states.py` (+ `kpdr.py suggest-source`).
+6. Tip scaffold: `scripts/scaffold_tip.py` (stub + residual + checklist).
+7. Graph helpers: `path_summary` / `suggest_edges` (+ thin pure_gate wrappers).
+8. Integrity-green `--state-output` via `ContinuousTip.supports_checkpoint`.
+9. Manifest-driven recording + `--no-video` for long dry-runs.
+10. Promote shared primitives only after a **second consumer**.
+11. Offline dwell rank before live tighten (`split_dwell.py`).
+12. Post-Supers tips: `PostSupersTipSpec` in `routes/continuous.py`.
 
 ## Package boundaries (target)
 
@@ -251,8 +386,11 @@ super_metroid/
 
 - Local rules: [`../AGENTS.md`](../AGENTS.md)
 - Gate / verified tip: [`STATUS.md`](STATUS.md)
-- Forward work: [`plan.md`](plan.md)
+- Forward work + structure plan: [`plan.md`](plan.md)
+- Executor process: [`tasks/PROCESS.md`](tasks/PROCESS.md)
 - Assists: [`ASSIST_CONTRACT.md`](ASSIST_CONTRACT.md)
 - KPDR board: [`routes/ROUTE_KPDR.md`](routes/ROUTE_KPDR.md)
 - Path topology: [`research/PATH_ROOM_BOARD.md`](research/PATH_ROOM_BOARD.md)
+- Boss pipeline: [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md)
 - Full-run process: [`../../snes_oneshot/docs/FULL_RUN_PROCESS.md`](../../snes_oneshot/docs/FULL_RUN_PROCESS.md)
+- Root cleanup lessons: [`../../ARCHITECTURE_AND_CLEANUP_PLAN.md`](../../ARCHITECTURE_AND_CLEANUP_PLAN.md)

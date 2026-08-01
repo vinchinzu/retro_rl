@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a5ed_from_a66a_to_99bd",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Statues Hallway (0xA5ED); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9216",
+    "entrySourceRoomIdHex": "0xA66A",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      79,
+      7
+    ],
+    "doorPtr": 37398,
+    "entrySourceRoomId": 42602
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 42602,
+      "sourceRoomIdHex": "0xA66A",
+      "endpoint": {
+        "roomId": 42477,
+        "roomIdHex": "0xA5ED",
+        "logicalRoomId": 26,
+        "nodeId": 2,
+        "nodeName": "Statues Hallway Right Door (to Statues)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          79,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 39357,
+      "targetRoomIdHex": "0x99BD",
+      "endpoint": {
+        "roomId": 42477,
+        "roomIdHex": "0xA5ED",
+        "logicalRoomId": 26,
+        "nodeId": 1,
+        "nodeName": "Statues Hallway Left Door (to Green Pirates Shaft)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        79,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 76,
+      "waypointsBlocks": [
+        [
+          77,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 280
+    },
+    {
+      "label": "jump_to_exit_height",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 16
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 100
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:28:01.317384+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a5ed_from_a66a_to_99bd.json",
+    "reportSha256": "ab615b366d83b9dd0338bfd48713fcb8418db86d3f73a7bad3180931d4ea2a9f",
+    "stateSha256": "54d9296c0abdad4240b97f3585c5c794e90121ef5f0438e415f4a921684fc507",
+    "policySha256Before": "44017fd05f7f799647a7afada816531494501f4fceee3492aaa3630788b2089c"
+  }
+}

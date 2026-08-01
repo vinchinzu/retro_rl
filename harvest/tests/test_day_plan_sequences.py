@@ -83,6 +83,7 @@ from harvest.planner.day_plan import (
     state_has_cows,
 )
 from harvest.planner.day_task_factory import DayTaskFactory
+from harvest.planner.day_plan_decision import DayPlanDecision, DeferredPlan, PlanningFacts
 from harvest.planner.world_probe import WorldProbe
 from harvest.tasks.crop_planter import is_rainy_weather as crop_task_is_rainy_weather
 from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_X, ADDR_Y, Navigator, Pathfinder, Point, TileScanner, Tool
@@ -275,8 +276,8 @@ class DayPlanSequenceTests(unittest.TestCase):
             [phase.kind for phase in phases],
             ["farm_building_exit", "ensure_tool", "nav", "crop"],
         )
-        self.assertEqual(phases[2].params["target_px"], (136, 520))
-        self.assertEqual(phases[3].params["refill_bounds"], (3, 45, 62, 60))
+        self.assertEqual(phases[2].params["target_px"], (248, 472))
+        self.assertEqual(phases[3].params["refill_bounds"], (3, 14, 62, 60))
 
     def test_harvest_sequence_uses_trimmed_recording_only(self) -> None:
         phases = PHASE_SEQUENCES["harvest"]
@@ -3377,6 +3378,35 @@ class SleepAndPlannerTests(unittest.TestCase):
         self.assertEqual(result.reason, "target date reached")
         # After two overnights from day 1, morning is day 3; settle updates active day.
         self.assertEqual(planner.progress_text, "date=0:3 completed=2/2")
+
+    def test_multi_day_journal_keeps_planning_and_runtime_deferrals(self) -> None:
+        planner = MultiDayPlannerTask(target_days=1, max_days=1)
+        world = make_date_world(0x15, season=0, day=4)
+        planner.reset(world)
+        planner._last_day_decision = DayPlanDecision(
+            phases=(),
+            facts=PlanningFacts(source="test", weekday=1, hour=6),
+            deferred=(
+                DeferredPlan(
+                    phase="CROP_WATER",
+                    kind="crop",
+                    reason="rainy_day",
+                    params={"work_mode": "water"},
+                ),
+            ),
+        )
+        # The runtime can report the same deferral as the initial plan plus a
+        # later route miss.  Preserve decision metadata and do not duplicate it.
+        planner._last_day_deferred = [
+            {"phase": "CROP_WATER", "reason": "rainy_day", "retry": "tomorrow"},
+            {"phase": "BUY_SEEDS", "reason": "seed_shop_cutoff", "retry": "tomorrow"},
+        ]
+
+        planner._journal_day_complete(world, sleep_reason="test")
+
+        deferred = planner.day_journal[-1]["deferred"]
+        self.assertEqual([item["phase"] for item in deferred], ["CROP_WATER", "BUY_SEEDS"])
+        self.assertEqual(deferred[0]["params"], {"work_mode": "water"})
 
     def test_multi_day_planner_counts_event_transition_during_return_home(self) -> None:
         class ImmediateSuccessTask:

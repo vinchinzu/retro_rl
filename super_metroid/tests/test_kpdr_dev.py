@@ -85,8 +85,24 @@ def test_kpdr_controller_exports() -> None:
     assert callable(play_run_shoot_exit)
 
     from super_metroid.routes.kpdr import play_kraid_entry_to_varia
+    from super_metroid.routes.kpdr.warehouse import resolve_warehouse_entry_mode
+    from super_metroid.ram import parse_state
+    from dataclasses import replace
+    import numpy as np
 
     assert callable(play_kraid_entry_to_varia)
+    base = parse_state(np.zeros(0x2000, dtype=np.uint8))
+    assert resolve_warehouse_entry_mode(replace(base, samus_x=50)) == "left_elevator"
+    assert (
+        resolve_warehouse_entry_mode(replace(base, samus_x=500))
+        == "right_reverse_stack"
+    )
+    assert (
+        resolve_warehouse_entry_mode(
+            replace(base, samus_x=500), entry_mode="left_elevator"
+        )
+        == "left_elevator"
+    )
 
 
 def test_kpdr_segment_registry_includes_super_collect() -> None:
@@ -148,5 +164,5 @@ def test_tracker_csv_exists_and_parses() -> None:
     varia = next(r for r in rows if r["seg_id"] == "K3.1")
     assert varia["status"] == "continuous"
     post = next(r for r in rows if r["seg_id"] == "K3.2")
-    assert post["status"] == "controller_dev"
+    assert post["status"] == "continuous"
     assert post["room_id_hex"] == "0xA59F"

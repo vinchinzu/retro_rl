@@ -66,7 +66,10 @@ class PositionWindow:
     label: str = ""
 
     def contains(self, x: int, y: int) -> bool:
-        return abs(int(x) - self.x) <= self.tolerance and abs(int(y) - self.y) <= self.tolerance
+        return (
+            abs(int(x) - self.x) <= self.tolerance
+            and abs(int(y) - self.y) <= self.tolerance
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -388,7 +391,7 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             require_fighter_sword=True,
             graph_node_id="room_60",
             notes=(
-                "Isolated west exit from main hall (not continuous tip until natural).",
+                "Continuous clean prefix west exit from main hall.",
                 "Next: north door → room 0x50 (maps/room_60.json north_to_0x50).",
             ),
         ),
@@ -401,8 +404,8 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             require_fighter_sword=True,
             graph_node_id="room_50",
             notes=(
-                "Isolated north exit from 0x60. Geometry: maps/room_50.json.",
-                "Next: east → 0x01 or B1 path → Zelda cell (planned).",
+                "Continuous clean-prefix north exit from 0x60. Geometry: maps/room_50.json.",
+                "Next: isolate the physical exit after 0x50 before asserting Zelda path.",
             ),
         ),
         MultiTruthAnchor(
@@ -476,10 +479,10 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
 # Most-specific first for continuous tip resolution (graph_node_id).
 # Mantle has no RAM signature yet — stay on the graph only, not tip order.
 TIP_ANCHOR_ORDER: tuple[str, ...] = (
-    # Isolated post-main-hall nodes listed for tip resolve after west/north exits.
+    # Continuous post-main-hall nodes listed before earlier spine anchors.
     "HyruleCastle_NW_0x50",
     "HyruleCastle_MainWest_0x60",
-    "HyruleCastle_MainHall",  # continuous tip (room 0x61)
+    "HyruleCastle_MainHall",  # earlier continuous spine checkpoint
     "HyruleCastle_ZeldaCell",  # planned
     "HyruleCastle_Sanctuary",  # planned
     "HyruleCastle_Courtyard_SecretStairsPocket",

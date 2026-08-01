@@ -32,6 +32,20 @@
       "frame": 1974,
       "level": 1,
       "lives": 2,
+      "successor": "1-2",
+      "successor_fingerprint": {
+        "area_pointer": 41,
+        "level": 1,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3266,
+        "player_y": 176,
+        "timer": 0,
+        "world": 0,
+        "x_speed": 2,
+        "y_speed": 0
+      },
       "world": 0
     },
     {
@@ -39,6 +53,20 @@
       "frame": 4044,
       "level": 0,
       "lives": 2,
+      "successor": "warp_world_4",
+      "successor_fingerprint": {
+        "area_pointer": 34,
+        "level": 0,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 3,
+        "player_x": 2852,
+        "player_y": 128,
+        "timer": 337,
+        "world": 3,
+        "x_speed": 24,
+        "y_speed": 0
+      },
       "world": 3
     },
     {
@@ -46,6 +74,20 @@
       "frame": 6366,
       "level": 1,
       "lives": 2,
+      "successor": "4-2",
+      "successor_fingerprint": {
+        "area_pointer": 41,
+        "level": 1,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3698,
+        "player_y": 176,
+        "timer": 0,
+        "world": 3,
+        "x_speed": 2,
+        "y_speed": 0
+      },
       "world": 3
     },
     {
@@ -53,6 +95,20 @@
       "frame": 9130,
       "level": 0,
       "lives": 2,
+      "successor": "warp_world_8",
+      "successor_fingerprint": {
+        "area_pointer": 48,
+        "level": 0,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 3,
+        "player_x": 810,
+        "player_y": 128,
+        "timer": 324,
+        "world": 7,
+        "x_speed": 0,
+        "y_speed": 0
+      },
       "world": 7
     },
     {
@@ -60,6 +116,20 @@
       "frame": 12796,
       "level": 1,
       "lives": 2,
+      "successor": "8-2",
+      "successor_fingerprint": {
+        "area_pointer": 50,
+        "level": 1,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 6114,
+        "player_y": 176,
+        "timer": 0,
+        "world": 7,
+        "x_speed": 2,
+        "y_speed": 0
+      },
       "world": 7
     },
     {
@@ -67,6 +137,20 @@
       "frame": 15947,
       "level": 2,
       "lives": 2,
+      "successor": "8-3",
+      "successor_fingerprint": {
+        "area_pointer": 33,
+        "level": 2,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3554,
+        "player_y": 176,
+        "timer": 0,
+        "world": 7,
+        "x_speed": 1,
+        "y_speed": 0
+      },
       "world": 7
     },
     {
@@ -74,6 +158,20 @@
       "frame": 18153,
       "level": 3,
       "lives": 2,
+      "successor": "8-4",
+      "successor_fingerprint": {
+        "area_pointer": 101,
+        "level": 3,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3554,
+        "player_y": 176,
+        "timer": 0,
+        "world": 7,
+        "x_speed": 0,
+        "y_speed": 0
+      },
       "world": 7
     },
     {
@@ -81,6 +179,20 @@
       "frame": 21731,
       "level": 3,
       "lives": 2,
+      "successor": "ending",
+      "successor_fingerprint": {
+        "area_pointer": 229,
+        "level": 3,
+        "lives": 2,
+        "oper_mode": 2,
+        "player_state": 8,
+        "player_x": 4826,
+        "player_y": 97,
+        "timer": 285,
+        "world": 7,
+        "x_speed": 24,
+        "y_speed": 4
+      },
       "world": 7
     }
   ],

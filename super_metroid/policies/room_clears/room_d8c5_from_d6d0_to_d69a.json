@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d8c5_from_d6d0_to_d69a",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Shaktool Room (0xD8C5); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA7C8",
+    "entrySourceRoomIdHex": "0xD6D0",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 42952,
+    "entrySourceRoomId": 54992
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 54992,
+      "sourceRoomIdHex": "0xD6D0",
+      "endpoint": {
+        "roomId": 55493,
+        "roomIdHex": "0xD8C5",
+        "logicalRoomId": 222,
+        "nodeId": 2,
+        "nodeName": "Shaktool Right Door (to Spring Ball)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 54938,
+      "targetRoomIdHex": "0xD69A",
+      "endpoint": {
+        "roomId": 55493,
+        "roomIdHex": "0xD8C5",
+        "logicalRoomId": 222,
+        "nodeId": 1,
+        "nodeName": "Shaktool Left Door (to East Pants Room)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 13,
+      "waypointsBlocks": [
+        [
+          14,
+          7
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 158
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

@@ -6,6 +6,8 @@ integrity. Executors (OpenCode + Luna / Flash) take **one card per session**.
 Process rules (pure-first, stabilize waves, residual schema, metrics):
 [`PROCESS.md`](PROCESS.md) · template [`docs/TASK_TEMPLATE.md`](../TASK_TEMPLATE.md)
 · sources [`docs/SOURCE_STATES.md`](../SOURCE_STATES.md).
+Forward roadmap + structure/API plan: [`../plan.md`](../plan.md) ·
+[`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 Dispatch from repo root:
 
@@ -53,35 +55,144 @@ Farm logs: `docs/tasks/logs/farm/` (gitignored)
 3. **One knob / residual:** each card one change; residual ends with next
    card ID + one change (PROCESS residual schema).
 4. **Serialize hot modules:** `business_climb`, `hijump_return`, spore
-   controller, `varia_return` geometry, `continuous.py` / `STATUS.md`.
+   controller, `varia_return` geometry, `continuous.py` / `progression.py` /
+   `catalog.py` / `STATUS.md`.
 5. **Dual track:** `ROOM_WORK_QUEUE` practice ≠ KPDR continuous integrity.
 6. **Force-pass ban:** scaffolds / units / diagnostics never claim pure or
    continuous green.
 
-## Wave 10 — dual-track room farm (**open**, continuous tip relaxed)
+## Architecture / structure debt (**planner-serial**, 2026-08-01)
+
+Not product geometry. Tracked from the post–Frog Save code-quality review.
+Detail: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (known structural debt) ·
+checklist: [`../plan.md`](../plan.md) Structure & API plan.
+
+Do **not** dispatch these as dual-track farm cards. Planner or a single
+serialized structure session only; behavior-preserving refactors with unit
+tests, no tip promotion claims.
+
+| ID | Card | Goal | Own files (typical) | Status |
+|----|------|------|---------------------|--------|
+| **SM-ARCH-TIP-SPEC** | Data-driven continuous tips | One tip-spec table → `run_to`; delete clone Super+ runners; hop tables out of `continuous.py` | `routes/continuous.py`, `routes/catalog.py`, tests | **partial** — `PostSupersTipSpec` landed; hop extract open |
+| **SM-ARCH-GRAPH-API** | Collapse path/suggest helpers | Single verification rank + path summary; fold `pure_gate` / `suggest_pure_work` into wrappers; typed summary | `progression.py`, tests | **partial** — collapse landed; typed model open |
+| **SM-ARCH-CHECKPOINT-FLAG** | Tip capability flags | `ContinuousTip.supports_checkpoint` instead of hard-coded tip id allowlists | `catalog.py`, `continuous.py`, tests | **done** |
+| **SM-ARCH-WAREHOUSE-LINEAGE** | Explicit Warehouse entry modes | Mode-select reverse-stack vs left elevator; Super-stack helper dedupe; drop `_hold` aliases | `routes/kpdr/warehouse.py` | **done** |
+| **SM-ARCH-ZEELA-PHASES** | Named Zeela reverse phases | Structure dense loop; docs match `continuous` verification | `routes/kpdr/kraid_return.py` | **done** |
+| **SM-ARCH-PARSE-SCOPE** | Session-scoped parse counters | Prefer cache/session stats over process-global-only `parse_counts` | `ram.py`, probe scripts, tests | **partial** — `StateCache` local stats |
+
+**Product next (parallel, not blocked by arch):** `SM-K4-SPEEDWAY-PURE` from
+`post_frog_continuous` — see K4 gate below.
+
+## K4 Frog Save acceptance (**closed stabilize**, 2026-08-01)
+
+| Gate | Status | Evidence / next action |
+|------|--------|------------------------|
+| Business→Frog pure | **green** | `post_business_continuous` → `0xB167` in 1,190f |
+| Power-on→Frog Save | **continuous** | two integrity-green `--to frog` runs at 114,923f |
+| Next K4 gate | **open** | Frog Save→Speedway from `post_frog_continuous` (`SM-K4-SPEEDWAY-PURE`) |
+
+## Wave 10 — dual-track room farm (**closed implement**, 2026-08-01)
 
 Intent: knock out easy/standard practice rooms with **8-wide** OpenCode Luna
-(`--variant max`). Continuous tip / STATUS / spine geometry **parked** for
-this wave. One agent = one `SM-ROOM-SEG-NN` problem (no file collisions).
+(`--variant max`). Continuous tip / STATUS / spine geometry **parked**.
 
 | Knob | Value |
 |------|-------|
 | Parallel | 8 |
-| Rounds | up to 10 (or `--deadline-hours 2`) |
+| Rounds planned | 10 (deadline 2h) |
+| Rounds run | **6** then early stop (no open cards left unclaimed) |
 | Model | `openrouter/openai/gpt-5.6-luna` + `variant=max` |
-| Generator | `scripts/generate_room_segment_cards.py` |
-| Orchestrator | `scripts/farm_room_waves.sh` |
-| Skip | Wave-9 parked residuals + already-verified policies |
+| Farm id | `farm_20260801T025021Z` |
+| Elapsed | **3,927s** (~65 min) |
+| Generator end | `no open easy/standard problems left unclaimed` |
 
 ```bash
 ./super_metroid/scripts/farm_room_waves.sh --rounds 10 --parallel 8 --deadline-hours 2
 ```
 
-Between rounds: wait EXIT → residual rollup → path guard → fresh sessions →
-next batch. Practice greens are dual-track only.
+### Wave-10 honest rollup (planner spot-check — do not trust GREEN?)
 
-Spine tip work (warehouse→business R-04B, continuous post-Varia) stays
-**planner-serial**, outside this farm.
+Farm auto-rollup labels nearly everything `GREEN?` via loose text match,
+including known RED residuals and stalled workers. **Ignore auto tallies.**
+
+| Metric | Count | Notes |
+|--------|------:|-------|
+| Cards dispatched | **48** | SEG-01…48 |
+| EXIT:0 | **14** | clean session end |
+| NO_EXIT / stalled | **34** | many OpenRouter 502 mid-session |
+| Honest GREEN + promote | **9** | dual-track practice only |
+| Honest RED residual | **5** | SEG-02,10,15,20,21 |
+| Honest PARTIAL | **1** | SEG-08 Gravity (wrong lineage) |
+| Path guard | **pass** | no *new* continuous / STATUS / kpdr / progression dirt vs farm baseline |
+| Continuous / STATUS claim | **0** | dual-track only |
+
+**Confirmed GREEN (promoted `verified_development_state`):**
+
+| Card | Room / problem |
+|------|----------------|
+| SM-ROOM-SEG-01 | Varia Suit Room `room_a6e2_from_a59f_to_a59f` |
+| SM-ROOM-SEG-03 | Etacoon Super Room `room_a051_from_a011_to_a011` |
+| SM-ROOM-SEG-04 | Space Jump Room `room_d9aa_from_da60_to_da60` |
+| SM-ROOM-SEG-06 | Wave Beam Room `room_adde_from_adad_to_adad` |
+| SM-ROOM-SEG-09 | Hi-Jump Room `room_a9e5_from_aa41_to_aa41` |
+| SM-ROOM-SEG-14 | Botwoon Quicksand `room_d898_from_d7e4_to_d6fd` |
+| SM-ROOM-SEG-19 | Statues Hallway `room_a5ed_from_a66a_to_99bd` |
+| SM-ROOM-SEG-36 | Cosine Room `room_ab3b_from_ab07_to_ab07` |
+| SM-ROOM-SEG-37 | WS East Missile `room_caae_from_ca52_to_ca52` |
+
+**Confirmed non-green (residual filed):**
+
+| Card | Result | Why |
+|------|--------|-----|
+| SM-ROOM-SEG-02 | RED | Post Croc PB — residual filed |
+| SM-ROOM-SEG-08 | PARTIAL | Gravity Suit — unpowered WS lineage; needs post-Phantoon fixture |
+| SM-ROOM-SEG-10 | RED | WS West Super — capability/lineage |
+| SM-ROOM-SEG-15 | RED | Spiky Acid Snakes — geometry fail |
+| SM-ROOM-SEG-20 | RED | Crab Tunnel — gate / Gravity fixture |
+| SM-ROOM-SEG-21 | RED | Spring Ball — fixture lacks Gravity/X-Ray |
+
+**Practice board after farm export:** easy+standard ready **62/108 (57.4%)** —
+dual-track only. Generator correctly reports no remaining unclaimed
+easy/standard cards (claimed or already tried this wave). Cron not
+re-launching is **correct**.
+
+**Spine:** pre-farm dirt on `progression.py` (pure_gate helpers) + STATUS
+wording remained; farm did not add continuous / kpdr / progression edge dirt.
+
+**Continuous tip re-verify (planner, 2026-08-01):** `--to varia --no-video`
+→ **GREEN** `varia_collected` **104,382f**, integrity 0/0/0 loads/prog/cap.
+Matches Wave-6 multi-run; **do not** promote over best published **101,954f**.
+STATUS last verification updated; dual-track practice is not continuous
+evidence.
+
+**False continuous claims:** **0**.
+
+Spine tip work (warehouse→business R-04B, continuous post-Varia compose)
+stays **planner-serial**, outside this farm.
+
+---
+
+## Post-Wave-10 planner lineage revalidation (**active**, 2026-08-01)
+
+An accepted `--to varia --no-video` candidate (104,382f; all integrity fields
+true) now captures `scratch/post_varia_continuous.state`. Natural-input pure
+successors through Baby→Kihunter are green: Varia→Kraid **615f**,
+Kraid→Eye **615f**, Eye→Baby **805f**, Baby→Kihunter **1,562f** (all item
+state `0x1105`, including Hi-Jump).
+
+| Gate | Status | Next action |
+|------|--------|-------------|
+| K3.2–K3.5 Varia→Kihunter | **continuous** | two 113,723f Business returns |
+| K3.6 Kihunter→Zeela | **continuous** | Hi-Jump y-gated landing survives the full power-on chain |
+| K3.7 Zeela→Warehouse | **continuous** | valid upper-left transition survives the full power-on chain |
+| **K3.8 Warehouse→Business** | **continuous** | right-ledge lower-lip correction + two-tier Super stack; 1,421f pure |
+| Continuous post-Varia compose | **done** | `--to business` integrity green twice; checkpoint `post_business_continuous` |
+
+The prior K3.6 RED pin was traced to a source-lineage loadout difference:
+Hi-Jump reaches the mid ledge before the old no-Hi-Jump fixture's fixed-frame
+drift. The controller now gates that drift on live height and preserves the
+fixture cadence without Hi-Jump. K3.8 acceptance evidence:
+`SM-K4-R-04B-residual.md`.
 
 ---
 
@@ -306,21 +417,21 @@ cadence spam.
 | SM-ROOM-SPAZER-01 | Spazer residual | Luna | **done ✓ RED** → PLANNER-GATE park |
 | SM-ROLLUP-STATUS-9 | Wave 9 honesty proposal | Flash | **done ✓ GREEN** proposal only |
 
-### Planner gates (still)
+### Planner gates (historical Wave-9 fixture view; superseded by 2026-08-01 lineage revalidation)
 
 | Gate | Action |
 |------|--------|
 | Continuous post-Varia | Blocked until reverse pure → Business |
 | STATUS 104,382 | Do not promote |
 | Graph → continuous | Never from pure alone |
-| **kihunter→zeela climb** | **GREEN** pure + graph `controller_dev` |
-| **zeela→warehouse** | **GREEN** pure ~1800f + graph `controller_dev` (SM-K4-R-ZEELA-REDESIGN) |
+| **kihunter→zeela climb** | fixture GREEN only; natural predecessor revalidation is RED |
+| **zeela→warehouse** | fixture result only; predecessor is not route-ready |
 | SM-K4-R-03…E | closed RED history; redesign landed green |
 | SM-K4-R-04 | **RED** reverse warehouse stack; next **SM-K4-R-04B** planner |
 | Ice / Crab / Grapple / Metal combat | **parked** |
 | Hopper + Billy practice | **GREEN** promoted (dual-track only) |
 
-### Reverse pure chain (live after Wave 9 redesign)
+### Reverse pure chain (historical fixture chain; superseded)
 
 | Hop | Pure | Frames | Source out |
 |-----|------|-------:|------------|
@@ -328,11 +439,11 @@ cadence spam.
 | kraid→eye | GREEN | ~610 | `post_kraid_to_eye_return` |
 | eye→baby | GREEN | ~651 | `post_eye_to_baby_return` |
 | baby→kihunter | GREEN | ~1248 | `post_baby_to_kihunter_return` |
-| **kihunter→zeela** | **GREEN** | **~1716** | `post_kihunter_to_zeela_return` |
-| **zeela→warehouse** | **GREEN** | **~1800** | `post_zeela_to_warehouse_return` |
-| warehouse→business | **RED** | — | reverse stack; R-04B planner |
+| kihunter→zeela | fixture GREEN / natural-source **RED** | 226f to RED pin | `post_varia_continuous_to_kihunter` |
+| zeela→warehouse | fixture-only | — | blocked behind K3.6 |
+| warehouse→business | blocked behind K3.6 | — | do not work R-04B yet |
 
-### Wave 9 spine tip residual (honest) — updated after redesign
+### Wave 9 spine tip residual (historical fixture result; superseded)
 
 R-03→R-03E closed RED. **SM-K4-R-ZEELA-REDESIGN pure GREEN ~1800f** (mid
 RIGHT-bias reverse-shot → crouch-load lip → hop plant → shotblock clear →

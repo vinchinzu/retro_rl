@@ -15,9 +15,9 @@ from super_metroid.routes.segment import (
 )
 
 
-def test_default_continuous_tip_is_verified_varia() -> None:
-    assert DEFAULT_CONTINUOUS_TIP == "varia"
-    assert get_continuous_tip("varia").tip_id == "varia"
+def test_default_continuous_tip_is_verified_frog_save() -> None:
+    assert DEFAULT_CONTINUOUS_TIP == "frog"
+    assert get_continuous_tip("frog").tip_id == "frog"
     assert get_continuous_tip("kraid").tip_id == "kraid"
     assert get_continuous_tip("hijump").tip_id == "hijump"
 

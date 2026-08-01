@@ -18,8 +18,9 @@ full segment source for every B1 door.
 JSON map; re-run. Approach/trigger anchors derive door xy from the map.
 
 **Isolated edge success:** `run_room_edge` → `ok=True` when door dest is
-reached. Multi-hop segments (e.g. `main_hall_to_zelda`) wrap that and set
-their own `ok` for full-route acceptance (Zelda follower).
+reached. `castle_dungeon.DungeonRoomEdge` composes measured first-dungeon
+doors (`0x61→0x60→0x50`); higher-level aggregates such as
+`main_hall_to_zelda` apply their own Zelda-follower acceptance.
 
 ## Agent recipe (small context)
 
@@ -45,8 +46,8 @@ Skip: entire `main_hall_to_zelda.py` history, probe PNG dumps, unrelated docs.
 | Map | Room | Notes |
 |-----|------|--------|
 | `room_55` | 0x55 | Secret entrance (continuous stairs clear already scripted) |
-| `room_61` | 0x61 | Main hall; west isolated |
-| `room_60` | 0x60 | Main west; north→0x50 isolated |
+| `room_61` | 0x61 | Main hall; west continuous prefix |
+| `room_60` | 0x60 | Main west; north→0x50 continuous prefix |
 | `room_50` | 0x50 | NW chamber; east→0x01 measured |
 | `room_01` | 0x01 | North connector |
 | `room_51` | 0x51 | Throne / mantle approach |
@@ -64,8 +65,11 @@ ids for these chambers). Geometry authority is still the measured JSON.
 3. `run room_XX --edge <label> --state <State>` until isolated green.
 4. Graph: add node/edge when isolated (`verification=isolated`) with
    `map_id` + `door_label` only — **no** copied approach/landing xy.
-5. Optional thin segment only if continuous spine needs multi-room acceptance.
-6. STATUS fact + TRIGGER_HANDOFF row — no Zelda claim without `$F3CC==1`.
+5. If a real predecessor wedges on an otherwise measured door, record its
+   alternate measured points as that door's map-only `recoveryPath`; do not
+   add room-specific coordinates to Python.
+6. Optional thin segment only if continuous spine needs multi-room acceptance.
+7. STATUS fact + TRIGGER_HANDOFF row — no Zelda claim without `$F3CC==1`.
 
 ## Map schema (minimal)
 
@@ -84,6 +88,7 @@ ids for these chambers). Geometry authority is still the measured JSON.
     "landingXy": [511, 3320],
     "role": "zelda_path",
     "path": ["south_mid", "hall_corridor", "west_mid", "west_door_approach"],
+    "recoveryPath": ["natural_clear_left", "natural_clear_north"],
     "pathTolerances": {"south_mid": 16, "default": 12}
   }],
   "clearPolicy": {"maxDistance": 180, "skirmishMaxDistance": 90}

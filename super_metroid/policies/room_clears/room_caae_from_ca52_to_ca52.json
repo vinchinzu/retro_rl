@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_caae_from_ca52_to_ca52",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Wrecked Ship East Missile Room (0xCAAE); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA1D4",
+    "entrySourceRoomIdHex": "0xCA52",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 41428,
+    "entrySourceRoomId": 51794
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 51794,
+      "sourceRoomIdHex": "0xCA52",
+      "endpoint": {
+        "roomId": 51886,
+        "roomIdHex": "0xCAAE",
+        "logicalRoomId": 168,
+        "nodeId": 1,
+        "nodeName": "Assembly Line Door (to Attic)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 51794,
+      "targetRoomIdHex": "0xCA52",
+      "endpoint": {
+        "roomId": 51886,
+        "roomIdHex": "0xCAAE",
+        "logicalRoomId": 168,
+        "nodeId": 1,
+        "nodeName": "Assembly Line Door (to Attic)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        45,
+        8
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 45,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          45,
+          7
+        ],
+        [
+          45,
+          8
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 130
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 180
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:45:29.693092+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_caae_from_ca52_to_ca52.json",
+    "reportSha256": "806e577d5557154f7c2cec39b027c3ec9ade2191239ff5856810aed96535872e",
+    "stateSha256": "425c42dc83ac018fe005f4f4a59a5c0cbdb3f9eec6305a89d283d7c09faecca3",
+    "policySha256Before": "365a1e45e7084954af20ff0926f0055c51ae0d4bd97baeccc2054ee0fd4dafea"
+  }
+}

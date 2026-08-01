@@ -15,7 +15,12 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from alttp import primitives
-from alttp.ram import AlttpSnapshot, room_label, snapshot_to_diag, zelda_rescued_accepted
+from alttp.ram import (
+    AlttpSnapshot,
+    room_label,
+    snapshot_to_diag,
+    zelda_rescued_accepted,
+)
 from alttp.room_map import ClearPolicy, KnownDoor, RoomMap, load_room_map
 from alttp.room_sense import detect_edge, enemy_boxes, path_blocked_by_enemies
 from alttp.route_report import RoutePhaseResult, SegmentResult
@@ -88,7 +93,10 @@ def move_path_combat_aware(
             )
         if not move.ok:
             return primitives.PrimitiveResult(
-                False, f"stuck before {wp.label or 'waypoint'}: {move.reason}", frames, snap
+                False,
+                f"stuck before {wp.label or 'waypoint'}: {move.reason}",
+                frames,
+                snap,
             )
     return primitives.PrimitiveResult(True, "path complete", frames, snapshot_env(env))
 
@@ -272,14 +280,45 @@ def exit_via_door(
                 diag=snapshot_to_diag(snap),
             )
         if not path.ok:
-            return RoutePhaseResult(
-                phase=phase_name,
-                ok=False,
-                frames=frames,
-                snapshot=snap,
-                detail=path.reason,
-                diag=snapshot_to_diag(snap),
+            recovery_wps = [
+                primitives.Waypoint(x, y, tolerance=tol, room=room, label=label)
+                for x, y, label, tol in room_map.recovery_waypoints_for_door(d)
+            ]
+            if not recovery_wps:
+                return RoutePhaseResult(
+                    phase=phase_name,
+                    ok=False,
+                    frames=frames,
+                    snapshot=snap,
+                    detail=path.reason,
+                    diag=snapshot_to_diag(snap),
+                )
+            recovery = move_path_combat_aware(
+                env, recovery_wps, room=room, policy=policy
             )
+            frames += recovery.frames
+            snap = recovery.snapshot
+            if at_door_destination(snap, d):
+                return RoutePhaseResult(
+                    phase=phase_name,
+                    ok=True,
+                    frames=frames,
+                    snapshot=snap,
+                    detail=f"left during recovery path: {recovery.reason}",
+                    diag=snapshot_to_diag(snap),
+                )
+            if snap.game_mode == 0x12 or not in_room(snap, room) or not recovery.ok:
+                return RoutePhaseResult(
+                    phase=phase_name,
+                    ok=False,
+                    frames=frames,
+                    snapshot=snap,
+                    detail=(
+                        f"primary path failed ({path.reason}); "
+                        f"recovery path failed ({recovery.reason})"
+                    ),
+                    diag=snapshot_to_diag(snap),
+                )
 
     # Hold door direction through transition.
     before = snapshot_env(env)
@@ -452,6 +491,37 @@ def run_room_edge(
     snap = exit_phase.snapshot
 
     if at_door_destination(snap, door):
+        # A room id can change while the door transition still owns input.
+        # Settle in the destination before reporting a composable edge success;
+        # the next edge must see the real predecessor state, not submodule 2.
+        settled = primitives.settle_control(env)
+        frames += settled.frames
+        phases.append(
+            RoutePhaseResult(
+                phase="settle_destination",
+                ok=settled.ok,
+                frames=settled.frames,
+                snapshot=settled.snapshot,
+                detail=f"settled after {door.label}",
+                diag=snapshot_to_diag(settled.snapshot),
+            )
+        )
+        snap = settled.snapshot
+        if not settled.ok or not at_door_destination(snap, door):
+            return SegmentResult(
+                ok=False,
+                phase="settle_destination",
+                frames=frames,
+                snapshot=snap,
+                phases=phases,
+                source=source,
+                acceptance=_accept(snap),
+                blocker=(
+                    f"destination did not settle after {door.label}: "
+                    f"control={snap.has_control} room={room_label(snap.room_base_id)}"
+                ),
+                notes=base_notes,
+            )
         return _edge_ok(
             snap,
             phase=f"via_{door.label}",

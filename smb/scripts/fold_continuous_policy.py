@@ -48,6 +48,24 @@ EXPECTED_BASELINE = EXPECTED_PRELUDE + EXPECTED_SUFFIX
 EXPECTED_FAST_4_2 = 2_375
 EXPECTED_TOTAL = 21_731
 
+# Frame-local first-pipe repair.  The raw 20260429 prelude wall-slides into
+# the pipe; this replacement leaves the preceding state untouched, lands on
+# the pipe lip at speed, and rejoins the historical DOWN-enter tail at frame
+# 468.  Keep this source-owned rather than relying on the already-published
+# seed as an implicit patch: ``build_continuous_seed`` must be reproducible.
+PIPE_FIX_START = 310
+PIPE_FIX_END = 468
+PIPE_FIX_SEGMENTS = (
+    ({"b": [1, 0, 0, 0, 0, 0, 0, 1, 0], "n": 2}),
+    ({"b": [1, 0, 0, 0, 0, 0, 0, 1, 1], "n": 50}),
+    ({"b": [0, 0, 0, 0, 0, 0, 0, 1, 0], "n": 9}),
+    ({"b": [0, 0, 0, 0, 0, 0, 1, 0, 0], "n": 1}),
+    ({"b": [0, 0, 0, 0, 0, 0, 0, 0, 0], "n": 96}),
+)
+PIPE_FIX_FRAMES = expand_nes9_rle(
+    {"format": "nes9_rle", "segments": list(PIPE_FIX_SEGMENTS)}
+)
+
 # Zero-based, exclusive slice anchors in the 22,005-frame baseline. These
 # boundaries were captured at natural level-entry states, then the complete
 # result was re-verified from Level1_1 and power-on.
@@ -104,6 +122,9 @@ def build_continuous_seed(
         raise ValueError(
             f"prelude has {len(prelude)} frames; expected {EXPECTED_PRELUDE}"
         )
+    if len(PIPE_FIX_FRAMES) != PIPE_FIX_END - PIPE_FIX_START:
+        raise ValueError("pipe-fix fragment does not cover its declared window")
+    prelude[PIPE_FIX_START:PIPE_FIX_END] = PIPE_FIX_FRAMES
 
     suffix_data = load_nes9_rle_seed(suffix_seed)
     suffix = expand_nes9_rle(suffix_data)
@@ -195,7 +216,21 @@ def build_continuous_seed(
                     "identical player-physics state"
                 ),
                 "phase-aligned World 8 level entries with controller idle only",
+                (
+                    "1-1 first pipe: top-land at full speed (js=312,jh=50), "
+                    "coast+brake, stand on pipe top, rejoin original DOWN enter "
+                    "at frame 468 (eliminates x=898 wall-slide)"
+                ),
             ],
+            "pipe_fix": {
+                "js": 312,
+                "jh": 50,
+                "dd_air": 9,
+                "brake_left": 1,
+                "rejoin": 468,
+                "keep_until": 300,
+                "behavior": "land_on_top_brake_stand_rejoin_original_enter",
+            },
         },
         "verification": {
             "start_lives": 2,
@@ -211,7 +246,9 @@ def build_continuous_seed(
             "Published start is Level1_1. After the documented settle frames, "
             "all progress through the 8-4 ending is controller input with no "
             "emulator-state reload. The same seed is power-on Clean with the "
-            "documented fixed boot and settle phases."
+            "documented fixed boot and settle phases. First pipe: lands on top "
+            "near x=920 (no side-hit at x=898), brakes, DOWN-enters via original "
+            "phase-aligned tail."
         ),
         "segments": compress_nes9_rle(frames),
     }

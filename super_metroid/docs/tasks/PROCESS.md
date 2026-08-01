@@ -16,7 +16,7 @@ those stay with the planner.
 | Executor Flash | OpenCode + Flash | Tracker/docs/dwell reports, STATUS **proposals**, source-state index edits |
 | Executor Luna | OpenCode + Luna | Controllers, tests, geometry pure probes, tip wiring skeletons |
 
-Never hand the executor open-ended “next tip after Varia” work.
+Never hand the executor open-ended “next continuous tip” work.
 
 ## Non-negotiable gates
 
@@ -146,9 +146,16 @@ What still blocks pure-green / continuous / STATUS (bullet list).
 - Did not forge progression/capacity/door/event/boss RAM
 - Not continuous evidence (unless card was continuous — then planner only)
 
-### Probe pin (if pure/geometry)
+### Probe pin (if pure/geometry) — **mandatory metrics**
 room=0x…. pose=… x=… y=… door_transition=…
+frames=…   # pure probe total if available
+dwell=…    # optional; room dwell if timed
+last_pin=… # room/pose/x/y at fail or success
 ```
+
+On **RED** pure: attach or path-link last pin + short video clip when tooling
+supports it (planned: auto-capture). Do not “debug dark” — residual must name
+the one next knob and source state.
 
 **Force-pass ban:** pure geometry and continuous integrity are never green from
 scaffolds, diagnostics, or unit tests alone.
@@ -173,17 +180,45 @@ farm waves instead of serial tip work:
 ./super_metroid/scripts/farm_room_waves.sh --rounds 20 --parallel 8 --deadline-hours 2
 ```
 
-## Near-term sequence (post Wave 5)
+## Near-term sequence (post-Varia tip, 2026-07-31)
 
-1. Finish pure door / climb residuals under one-knob + continuous-like sources.
-2. Stabilize continuous re-record `--to kraid` / `--to varia`; promote dwell
-   only if multi-run stable.
-3. Extract 2–3 primitives from last green tightens (`settle_12f`, setup tuple,
-   short-hop hold).
-4. Run `SM-ROLLUP-STATUS` + seed `SOURCE_STATES.md`.
-5. Only then open the next post-Varia continuous tip with pure-first discipline.
-6. **While continuous tip is parked:** Wave 10 dual-track room farm
-   (`farm_room_waves.sh`) to raise easy+standard practice %.
+Verified continuous tip is power-on → Varia (`--to varia`, ~101,954f). Process
+discipline stays fixed; composition beyond Varia is planner-gated.
+
+1. Finish pure reverse-spine residuals (climb/door geometry, Zeela upper,
+   warehouse reverse stack) under one-knob + continuous-like sources.
+2. Stabilize continuous re-record `--to kraid` / `--to varia` after each
+   implement wave; promote frame totals only when multi-run ≤ baseline or
+   deliberately documented (Wave-6 re-verify was slower — do not auto-promote).
+3. Continue primitive extraction from green tightens into `controller_common`.
+4. Flash: `SM-ROLLUP-STATUS` proposals; keep `SOURCE_STATES.md` current.
+5. Only after reverse pure green to Business: open post-Varia continuous tip
+   (planner compose + integrity).
+6. **Parallel dual-track:** room-segment farm (`farm_room_waves.sh`) and combat
+   unit scaffolds on non-interacting files while spine advances.
+7. **Structure plan (planner-owned code work):** selective-RAM enforcement,
+   tip scaffold script, pure RED diagnostics, graph hop ranking — see
+   [`../plan.md`](../plan.md) and [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+
+## Process tooling improvements (do not relax gates)
+
+Targeted upgrades to reduce dark poking further as scale grows. Pure-first /
+one-knob / residual rules remain mandatory.
+
+| Improvement | Owner | Intent |
+|-------------|-------|--------|
+| Pre-dispatch schema validation | Dispatch / Flash | Reject cards missing recipe step, own-files, source path (pure), acceptance |
+| Auto-skeleton residual.md | Dispatch / Luna | Always leave PROCESS residual file shape even on early abort |
+| Mandatory residual metrics | Luna / Flash | Frames, dwell if known, exact pose/x/y/`door_transition` pin on pure |
+| Auto-suggest source state | Dispatch + SOURCE_STATES | From room id + required capabilities |
+| Ownership / file-locking declarations | Dispatch | Parallel waves stay safe (extend conflict check) |
+| RED pure richer diagnostics | Luna tooling | Replay clip + PLM/door RAM snapshot + last pin |
+| Serialize hot modules | Dispatch (existing) | `business_climb`, `varia_return`, spore, continuous, STATUS |
+
+**Scale pattern:** dual-track room-segment farming
+(`farm_room_waves.sh`, `generate_room_segment_cards.py`) while the continuous
+spine advances. Luna productively clears non-interacting rooms/combat units;
+planner owns continuous composition and integrity.
 
 ## Wave bookkeeping
 

@@ -3,10 +3,12 @@
   "roomBaseId": 97,
   "roomHex": "0x61",
   "name": "Hyrule Castle main hall",
-  "measured": "2026-07-31",
+  "measured": "2026-08-01",
   "sourceState": "CastleMain",
   "points": [
     {"label": "entry_spawn", "xy": [760, 3520], "role": "spawn", "notes": "CastleMain load; south of carpet"},
+    {"label": "natural_clear_left", "xy": [688, 3464], "role": "waypoint", "notes": "Measured after natural-tip room clear; move left off carpet before north"},
+    {"label": "natural_clear_north", "xy": [688, 3314], "role": "waypoint", "notes": "Measured natural-entry side corridor recovery"},
     {"label": "south_mid", "xy": [720, 3400], "role": "waypoint", "notes": "Between entry and side corridor"},
     {"label": "hall_corridor", "xy": [720, 3320], "role": "waypoint", "notes": "Side-corridor y; unlocks west/east doors"},
     {"label": "west_mid", "xy": [600, 3320], "role": "waypoint", "notes": ""},
@@ -24,9 +26,10 @@
       "landingXy": [511, 3320],
       "role": "zelda_path",
       "path": ["south_mid", "hall_corridor", "west_mid", "west_door_approach"],
+      "recoveryPath": ["natural_clear_left", "natural_clear_north"],
       "pathTolerances": {"south_mid": 16, "default": 12},
       "pushFrames": 300,
-      "notes": "Primary Zelda path; isolated 2026-07-31 from CastleMain"
+      "notes": "Primary Zelda path; isolated 2026-07-31 from CastleMain. Natural post-clear fallback: LEFT to x≈688, UP to y≈3314, then west door."
     },
     {
       "label": "east_to_0x62",

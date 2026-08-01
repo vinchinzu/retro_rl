@@ -63,6 +63,7 @@ from harvest.tasks.farm_clearer import (
     TILE_SIZE,
 )
 from harvest.tasks.harvest_task import read_shipping_money
+from harvest.tasks.animal_navigation import align_to_pixel, fallback_action, find_path_around_blockers
 from harvest.tasks.primitives import press_a_sequence
 
 # ── Coop interior layout (tilemap 0x28) ─────────────────────────
@@ -354,11 +355,6 @@ class CoopChoresTask(Task):
             )
         )
 
-    def _pop_action(self) -> Optional[np.ndarray]:
-        if self._action_queue:
-            return self._action_queue.popleft()
-        return None
-
     def _queue_place_feed(self, face: str) -> None:
         self._action_queue.extend(make_action(**{face: True}) for _ in range(4))
         self._action_queue.extend(make_action(**{face: True, "a": True}) for _ in range(8))
@@ -389,15 +385,6 @@ class CoopChoresTask(Task):
             if not (flags & spot.flag) and spot.flag not in self._blocked_feed_flags:
                 return spot
         return None
-
-    def _align_to_pixel(self, target: Tuple[int, int], *, tolerance: int = 1) -> Optional[np.ndarray]:
-        dx = target[0] - self._navigator.current_pos.x
-        dy = target[1] - self._navigator.current_pos.y
-        if abs(dx) <= tolerance and abs(dy) <= tolerance:
-            return None
-        if abs(dx) >= abs(dy) and abs(dx) > tolerance:
-            return make_action(right=dx > 0, left=dx < 0)
-        return make_action(down=dy > 0, up=dy < 0)
 
     def _clear_left_top_route(self) -> None:
         self._left_top_route_goal = None
@@ -657,55 +644,13 @@ class CoopChoresTask(Task):
     ) -> Optional[list[Tuple[int, int]]]:
         blocked = self._chicken_tiles(ram)
         blocked.update(self._coop_false_open_tiles())
-        blocked.discard(start)
-        if goal in blocked:
-            return None
-
-        if start == goal:
-            return []
-
-        queue = deque([start])
-        came_from: dict[Tuple[int, int], Optional[Tuple[int, int]]] = {start: None}
-        while queue:
-            cx, cy = queue.popleft()
-            if (cx, cy) == goal:
-                break
-
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nx, ny = cx + dx, cy + dy
-                nxt = (nx, ny)
-                if not (0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH):
-                    continue
-                if nxt in came_from or nxt in blocked:
-                    continue
-                if not self._pathfinder.is_walkable(ram, nx, ny, current_pos=start):
-                    continue
-                came_from[nxt] = (cx, cy)
-                queue.append(nxt)
-
-        if goal not in came_from:
-            return None
-
-        path: list[Tuple[int, int]] = []
-        cur = goal
-        while cur != start:
-            path.append(cur)
-            parent = came_from[cur]
-            if parent is None:
-                break
-            cur = parent
-        path.reverse()
-        return path
-
-    def _fallback_action(self, goal: Tuple[int, int]) -> np.ndarray:
-        current = self._navigator.current_tile
-        dx = goal[0] - current[0]
-        dy = goal[1] - current[1]
-        if abs(dx) >= abs(dy):
-            direction = "right" if dx > 0 else "left"
-        else:
-            direction = "down" if dy > 0 else "up"
-        return make_action(**{direction: True, "b": True})
+        return find_path_around_blockers(
+            ram,
+            self._pathfinder,
+            start,
+            goal,
+            blocked,
+        )
 
     def _strict_center_for_next_step(self) -> Optional[np.ndarray]:
         """Center tightly in the coop's narrow lanes before changing rows."""
@@ -834,7 +779,7 @@ class CoopChoresTask(Task):
         if not self._navigator.path:
             path = self._find_path_around_chickens(ram, self._navigator.current_tile, goal)
             if path is None:
-                return self._fallback_action(goal)
+                return fallback_action(self._navigator.current_tile, goal)
             self._navigator.path = path
 
         action = self._strict_center_for_next_step()
@@ -843,7 +788,7 @@ class CoopChoresTask(Task):
 
         action = self._navigator.follow_path(ram)
         if action is None:
-            return self._fallback_action(goal)
+            return fallback_action(self._navigator.current_tile, goal)
         return action
 
     def _egg_pickup_spot(
@@ -972,7 +917,7 @@ class CoopChoresTask(Task):
         if tilemap != COOP_TILEMAP:
             return TaskResult(status=TaskStatus.BLOCKED, reason=f"not in coop tilemap=0x{tilemap:02X}")
 
-        action = self._pop_action()
+        action = self._action_queue.popleft() if self._action_queue else None
         if action is not None:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
@@ -1094,7 +1039,11 @@ class CoopChoresTask(Task):
                 if action is not None:
                     return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
-            action = self._align_to_pixel(spot.interact_px, tolerance=1)
+            action = align_to_pixel(
+                (self._navigator.current_pos.x, self._navigator.current_pos.y),
+                spot.interact_px,
+                tolerance=1,
+            )
             if action is not None:
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 

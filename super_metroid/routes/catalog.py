@@ -10,8 +10,9 @@ milestones. Extend a post-Supers tip by:
 1. pure controller in ``routes/kpdr/`` (+ ``KPDR_SEGMENTS``)
 2. graph edges in ``progression.py``
 3. split tuple + :class:`ContinuousTip` + :class:`NamedRoute` here
-4. ``RouteHop`` rows + thin ``play_*`` / ``run_post_supers_tip`` wrapper in
-   ``continuous.py``
+4. ``RouteHop`` / tip-spec rows in ``continuous.py`` (data-driven post-Supers
+   composition; capability flags on :class:`ContinuousTip` — no hard-coded
+   ``run_to`` allowlists)
 
 Do **not** add a new ``start_to_*.py`` script or copy another full ``run_*``.
 """
@@ -100,6 +101,20 @@ KRAID_SPLITS = HIJUMP_SPLITS + (
 # KPDR K3: Kraid fight → Varia collect.
 VARIA_SPLITS = KRAID_SPLITS + ("kraid_to_varia",)
 
+# KPDR K3 return: Varia → Kraid return spine → Business Center.
+BUSINESS_RETURN_SPLITS = VARIA_SPLITS + (
+    "varia_to_kraid_return",
+    "kraid_to_eye_return",
+    "eye_to_baby_return",
+    "baby_to_kihunter_return",
+    "kihunter_to_zeela_return",
+    "zeela_to_warehouse_return",
+    "warehouse_to_business_return",
+)
+
+# KPDR K4.0 forward: Business Center → Frog Savestation.
+FROG_SAVE_SPLITS = BUSINESS_RETURN_SPLITS + ("business_to_frog_save",)
+
 
 @dataclass(frozen=True)
 class ContinuousTip:
@@ -115,10 +130,12 @@ class ContinuousTip:
     description: str = ""
     supports_room_timing: bool = False
     supports_unlimited_energy: bool = False
+    supports_checkpoint: bool = False
+    """When True, ``run_to(..., state_output=)`` may write an integrity-green state."""
     aliases: tuple[str, ...] = ()
 
 
-# Ordered prefix chain; last entry is the current continuous tip.
+# Ordered prefix chain; the default is the furthest integrity-green tip.
 CONTINUOUS_TIPS: tuple[ContinuousTip, ...] = (
     ContinuousTip(
         tip_id="morph",
@@ -233,13 +250,40 @@ CONTINUOUS_TIPS: tuple[ContinuousTip, ...] = (
         ),
         supports_room_timing=True,
         supports_unlimited_energy=True,
+        supports_checkpoint=True,
         aliases=("start_to_varia", "varia_suit", "k3"),
+    ),
+    ContinuousTip(
+        tip_id="business",
+        artifact_stem="start_to_business",
+        display_name="Power-on → Business Center return (KPDR K3→K4)",
+        description=(
+            "Varia prefix through the natural Kraid return spine and the "
+            "right-ledge Warehouse reverse stack into Business Center."
+        ),
+        supports_room_timing=True,
+        supports_unlimited_energy=True,
+        supports_checkpoint=True,
+        aliases=("start_to_business", "business_center", "k3_return"),
+    ),
+    ContinuousTip(
+        tip_id="frog",
+        artifact_stem="start_to_frog_save",
+        display_name="Power-on → Frog Savestation (KPDR K4.0)",
+        description=(
+            "Business return plus the elevator descent and blue-door exit to "
+            "Frog Savestation."
+        ),
+        supports_room_timing=True,
+        supports_unlimited_energy=True,
+        supports_checkpoint=True,
+        aliases=("start_to_frog_save", "frog_save", "k4_0"),
     ),
 )
 
-# Verified continuous tip (M5). Kraid/varia remain wired; promote DEFAULT only
-# after integrity-green continuous evidence for those tips.
-DEFAULT_CONTINUOUS_TIP = "varia"
+# Verified continuous tip (M5): Frog Save (K4.0) has two matching
+# integrity-green power-on reports at 114,923f.
+DEFAULT_CONTINUOUS_TIP = "frog"
 
 
 def _tip_lookup() -> dict[str, ContinuousTip]:
@@ -291,9 +335,7 @@ ROUTE_START_TO_BOMBS = NamedRoute(
     route_id="sm_start_to_bombs",
     display_name="Power-on → Bomb Torizo exit",
     description="Morph prefix through natural Bomb Torizo clear and exit.",
-    milestones=tuple(
-        RouteMilestone(sid, sid, sid, sid) for sid in BOMBS_PREFIX_SPLITS
-    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in BOMBS_PREFIX_SPLITS),
 )
 
 ROUTE_START_TO_SPORE = NamedRoute(
@@ -334,12 +376,9 @@ ROUTE_START_TO_BELOW_SPAZER = NamedRoute(
     route_id="sm_start_to_below_spazer",
     display_name="Power-on → Below Spazer (KPDR K2.1)",
     description=(
-        "Bat prefix through natural three-platform Bat crossing and "
-        "Below Spazer entry."
+        "Bat prefix through natural three-platform Bat crossing and Below Spazer entry."
     ),
-    milestones=tuple(
-        RouteMilestone(sid, sid, sid, sid) for sid in BELOW_SPAZER_SPLITS
-    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in BELOW_SPAZER_SPLITS),
 )
 
 ROUTE_START_TO_WAREHOUSE = NamedRoute(
@@ -349,9 +388,7 @@ ROUTE_START_TO_WAREHOUSE = NamedRoute(
         "Below Spazer prefix through West/Glass/East tunnels and natural "
         "Warehouse Entrance (KPDR K2.3–K2.6)."
     ),
-    milestones=tuple(
-        RouteMilestone(sid, sid, sid, sid) for sid in WAREHOUSE_SPLITS
-    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in WAREHOUSE_SPLITS),
 )
 
 ROUTE_START_TO_HIJUMP = NamedRoute(
@@ -376,10 +413,30 @@ ROUTE_START_TO_KRAID = NamedRoute(
 ROUTE_START_TO_VARIA = NamedRoute(
     route_id="sm_start_to_varia",
     display_name="Power-on → Varia Suit (KPDR K3)",
-    description=(
-        "Kraid-entry prefix through natural fight and Varia Suit collect."
-    ),
+    description=("Kraid-entry prefix through natural fight and Varia Suit collect."),
     milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in VARIA_SPLITS),
+)
+
+ROUTE_START_TO_BUSINESS = NamedRoute(
+    route_id="sm_start_to_business",
+    display_name="Power-on → Business Center return (KPDR K3→K4)",
+    description=(
+        "Varia prefix through the natural Kraid return spine and Warehouse "
+        "reverse stack into Business Center."
+    ),
+    milestones=tuple(
+        RouteMilestone(sid, sid, sid, sid) for sid in BUSINESS_RETURN_SPLITS
+    ),
+)
+
+ROUTE_START_TO_FROG_SAVE = NamedRoute(
+    route_id="sm_start_to_frog_save",
+    display_name="Power-on → Frog Savestation (KPDR K4.0)",
+    description=(
+        "Business return plus the natural Business Center elevator descent and "
+        "blue-door exit to Frog Savestation."
+    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in FROG_SAVE_SPLITS),
 )
 
 ROUTE_REGISTRY: dict[str, NamedRoute] = {}
@@ -441,6 +498,22 @@ register_routes(
     "start_to_varia",
     "varia_suit",
     "k3",
+)
+register_routes(
+    ROUTE_REGISTRY,
+    ROUTE_START_TO_BUSINESS,
+    "business",
+    "start_to_business",
+    "business_center",
+    "k3_return",
+)
+register_routes(
+    ROUTE_REGISTRY,
+    ROUTE_START_TO_FROG_SAVE,
+    "frog",
+    "start_to_frog_save",
+    "frog_save",
+    "k4_0",
 )
 
 SegmentFn = Callable[..., Any]

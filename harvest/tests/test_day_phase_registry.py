@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -12,6 +13,7 @@ from harvest.planner.day_phase_registry import (
     build_phase_task,
 )
 from harvest.planner.day_phase_types import PhaseKind, PhaseSpec, SKIP_MAP_LOCK_KINDS
+from harvest.planner.day_plan_orchestrator import DayPlanTask
 from harvest.planner.day_task_factory import DayTaskFactory
 from retro_harness import WorldState
 
@@ -52,6 +54,27 @@ class DayPhaseRegistryTests(unittest.TestCase):
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
         task = DayTaskFactory().make_task(spec, world)
         self.assertEqual(task.__class__.__name__, "ReturnHomeTask")
+
+    def test_day_plan_reuses_factory_context_for_all_phases_in_one_day(self) -> None:
+        world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
+        plan = DayPlanTask(phase_sequence=[])
+        plan.reset(world)
+        first_factory = plan._task_factory
+
+        with patch(
+            "harvest.planner.day_task_factory.build_phase_task",
+            return_value=None,
+        ) as build:
+            plan._make_task(PhaseSpec("FIRST", PhaseKind.NAV), world)
+            plan._make_task(PhaseSpec("SECOND", PhaseKind.NAV), world)
+
+        contexts = [call.args[0].world_context for call in build.call_args_list]
+        self.assertEqual(len(contexts), 2)
+        self.assertIs(contexts[0], contexts[1])
+        self.assertIs(plan._task_factory, first_factory)
+
+        plan.reset(world)
+        self.assertIsNot(plan._task_factory, first_factory)
 
     def test_ready_to_go_home_builder(self) -> None:
         spec = PhaseSpec("READY_TO_GO_HOME", PhaseKind.READY_TO_GO_HOME)
