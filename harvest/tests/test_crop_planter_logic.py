@@ -71,6 +71,66 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(result.reason, "rain; seed tool 0x07 not in carry pair")
 
+    def test_establish_mode_skips_water_after_no_plots(self) -> None:
+        ram = _blank_ram()
+        # No seeds in carry or stock → establish pass has nothing to plant.
+        ram[ADDR_TOOL] = 0x02  # hoe only
+        ram[0x0923] = 0x00
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="establish", seed_type="potato")
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("no plots", result.reason or "")
+
+    def test_water_only_mode_does_not_plan_new_plots(self) -> None:
+        ram = _blank_ram()
+        ram[ADDR_TOOL] = 0x10  # watering can
+        ram[0x0923] = 0x00
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("water-only", result.reason or "")
+
+    def test_water_only_never_enters_plant_or_hoe(self) -> None:
+        ram = _blank_ram()
+        # Dry potato crop tiles around a center so detect finds a plot.
+        center = (10, 40)
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                _set_tile(ram, center[0] + dx, center[1] + dy, 0x54)
+        ram[ADDR_TOOL] = 0x07  # seed, not can
+        ram[0x0923] = 0x02
+        ram[ADDR_TILEMAP] = 0x00
+        px = center[0] * 16 + 8
+        py = center[1] * 16 + 8
+        ram[ADDR_X] = px & 0xFF
+        ram[ADDR_X + 1] = (px >> 8) & 0xFF
+        ram[ADDR_Y] = py & 0xFF
+        ram[ADDR_Y + 1] = (py >> 8) & 0xFF
+        ram[ADDR_INPUT_LOCK] = 1
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water", bounds=(3, 34, 20, 50))
+        task.reset(world)
+
+        for _ in range(40):
+            result = task.step(world)
+            if result.status != TaskStatus.RUNNING:
+                break
+        # Water-only must not start planting even with seeds in hand.
+        self.assertNotEqual(task._plot_phase, "plant")
+        self.assertNotEqual(task._plot_phase, "hoe")
+
     def test_dry_wet_crop_pairs_are_classified_correctly(self) -> None:
         self.assertFalse(tile_needs_watering(0x07))
         self.assertTrue(tile_needs_watering(0x07, include_fresh_tilled=True))

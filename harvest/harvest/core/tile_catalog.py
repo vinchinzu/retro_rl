@@ -181,12 +181,27 @@ CHURCH_WALKABLE = frozenset({
     0xA0, 0xA1, 0xC2, 0xD5, 0xD6, 0xDA, 0xDB, 0xDC,
 })
 
-# Provisional, seeded from recorded mountain traversal.  The map registry marks
-# the source so routes can distinguish discovered data from fully ROM-backed
-# data as we replace it.
+# Seeded from multi-recording stand tiles (spa bath, sunday mountain, chop wood,
+# fish/berry). Primary path: 0xA0 / 0xA8. Entry uses 0xC6; 0xA7 is a common
+# path-edge stand tile on the south corridor. Spa bath corridor only needs
+# 0xA0/0xA3/0xA8 (ROM-validated clear of debris).
+# Do NOT add 0xFF (viewport unload garbage) or water (0xF7 etc).
+# Mountain keeps tilemap 0x10 all seasons (palette/season overlay only).
 MOUNTAIN_WALKABLE = frozenset({
-    0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xC0, 0xC3, 0xD6,
+    0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA7, 0xA8,
+    0xC0, 0xC2, 0xC3, 0xC6,
+    0x35,  # transitional load tile during mountain entry scroll
+    0xD6,
 })
+
+# Farm-style debris that can appear on mountain (off spa corridor in spring
+# ROM dump: stumps west of climb, large rocks near mid-ridge). BFS must not
+# treat them as path; clear only if a future mountain-clear task is added.
+# Do NOT include LARGE_ROCK_DAMAGE_TILES (0x11-0x14): those IDs collide with
+# common mountain terrain fills in the metatile grid (false-positive debris).
+MOUNTAIN_DEBRIS_TILES = frozenset(
+    {WEED, STONE, ROCK, FENCE} | STUMP_TILES | LARGE_ROCK_TILES
+)
 
 WALKABLE_BY_TILEMAP = {
     0x00: FARM_WALKABLE,
@@ -204,6 +219,7 @@ WALKABLE_BY_TILEMAP = {
     0x1C: SHOP_WALKABLE,
     0x24: SHOP_WALKABLE,
     0x28: COOP_WALKABLE,
+    0x29: SHOP_WALKABLE | COOP_WALKABLE,  # MapMountainCave interior (not outdoor spa)
 }
 
 
@@ -234,6 +250,7 @@ TILE_LABEL = {
     0xA4: "floor",
     0xA5: "structure2",
     0xA6: "pond_edge",
+    0xA7: "path_edge",
     0xA8: "border",
     0xC0: "path",
     0xC1: "building",
@@ -289,6 +306,7 @@ TILE_GLYPH = {
     0xA3: " ",
     0xA5: "#",
     0xA6: "P",
+    0xA7: " ",
     0xA8: "#",
     0xF0: "P",
     0xFF: "#",

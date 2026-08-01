@@ -29,7 +29,8 @@ above the post-seed $100 floor.
 |--------|--------|
 | Seed equip | **Done (ROM)**: shed shelf `(190,118)` + hoe `(168,166)` |
 | Hoe/plant | **Done (ROM)**: virgin plan + hoe + plant; reject failed centers |
-| Water after plant | Can re-fetch from deep field; refill level 0 can |
+| Water after plant | `work_mode=establish` then `work_mode=water` + can re-fetch; south stream refill |
+| Hot spring stamina | **ROM natural-entry OK** (farm→bath→farm, stam 30→120). Next: day-plan gate when stam low; optional summer/fall/winter lip smoke |
 | Harvest/ship | `HARVEST_ROUTE` when mature tiles present |
 | Multi-day soak | `--end-of-spring` with crop income |
 

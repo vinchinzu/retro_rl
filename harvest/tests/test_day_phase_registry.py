@@ -62,6 +62,32 @@ class DayPhaseRegistryTests(unittest.TestCase):
         self.assertEqual(result.status.name, "SUCCESS")
         self.assertTrue(result.meta.get("ready_to_go_home"))
 
+    def test_crop_builder_honors_work_mode(self) -> None:
+        from harvest.tasks.crop_planter import CropWaterTask
+
+        world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
+        establish = DayTaskFactory().make_task(
+            PhaseSpec("CROP_ESTABLISH", PhaseKind.CROP, {"work_mode": "establish"}),
+            world,
+        )
+        water = DayTaskFactory().make_task(
+            PhaseSpec("CROP_WATER", PhaseKind.CROP, {"work_mode": "water"}),
+            world,
+        )
+        self.assertIsInstance(establish, CropWaterTask)
+        self.assertIsInstance(water, CropWaterTask)
+        self.assertEqual(establish.work_mode, "establish")
+        self.assertEqual(water.work_mode, "water")
+
+    def test_hot_spring_builder(self) -> None:
+        world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
+        task = DayTaskFactory().make_task(
+            PhaseSpec("HOT_SPRING_STAMINA", PhaseKind.HOT_SPRING, {"min_stamina": 50}),
+            world,
+        )
+        self.assertEqual(task.__class__.__name__, "HotSpringStaminaTask")
+        self.assertEqual(task.min_stamina, 50)
+
 
 if __name__ == "__main__":
     unittest.main()

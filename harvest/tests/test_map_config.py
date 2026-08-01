@@ -143,10 +143,16 @@ class FarmWalkableTests(unittest.TestCase):
     def test_mountain_routes_are_chunked(self) -> None:
         self.assertIn("farm_to_mountain", ROUTES)
         self.assertIn("mountain_entry_to_fish_power_berry_spots", ROUTES)
+        self.assertIn("farm_to_spa", ROUTES)
+        self.assertIn("mountain_entry_to_outdoor_spa", ROUTES)
         self.assertEqual(ROUTES["farm_to_mountain"][0].tilemap, 0x00)
         self.assertTrue(ROUTES["farm_to_mountain"][-1].is_exit)
         self.assertEqual(ROUTES["farm_to_mountain"][-1].target_px, (132, 30))
         self.assertEqual(ROUTES["mountain_entry_to_fish_power_berry_spots"][-1].target_px, (686, 411))
+        self.assertEqual(ROUTES["farm_to_spa"][-1].target_px, (619, 201))
+        self.assertEqual(ROUTES["mountain_entry_to_outdoor_spa"][-1].target_px, (619, 201))
+        # Return path is reverse corridor + exit, not a single south hop.
+        self.assertGreaterEqual(len(ROUTES["mountain_to_farm"]), 10)
 
     def test_church_routes_are_chunked(self) -> None:
         self.assertIn("farm_to_church", ROUTES)

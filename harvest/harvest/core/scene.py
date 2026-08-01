@@ -66,6 +66,7 @@ LOCATION_BY_TILEMAP = {
     0x26: SceneLocation.SHED,
     0x27: SceneLocation.BARN,
     0x28: SceneLocation.COOP,
+    0x29: SceneLocation.MOUNTAIN,  # MapMountainCave (west hole) — not outdoor spa
 }
 FESTIVAL_EVENT_CODES = frozenset({6, 7, 8, 9, 10, 11})
 SLEEP_TRANSITION_TILEMAP = 0x0F

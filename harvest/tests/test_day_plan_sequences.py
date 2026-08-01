@@ -46,6 +46,7 @@ from harvest.planner.day_plan import (
     EnsureCarryToolTask,
     ExitBuildingTask,
     ExitToFarmTask,
+    ShedFetchItemTask,
     EveTalkLoopTask,
     EVE_TALK_LOOP_PHASES,
     GoToSleepTask,
@@ -237,7 +238,7 @@ class DayPlanSequenceTests(unittest.TestCase):
                 "BUY_SEEDS",
                 "ENSURE_CROP_SEEDS",
                 "NAV_CROP",
-                "CROP_WATER",
+                "CROP_ESTABLISH",
                 "ENSURE_WATERING_CAN",
                 "NAV_CROP",
                 "CROP_WATER",
@@ -2082,10 +2083,12 @@ class DayPlanSequenceTests(unittest.TestCase):
         task.reset(world)
         result = task.step(world)
 
-        # Non-empty carry starts a short X-cycle before shed; after first action
-        # we should still be working toward the seed bag.
+        # Stock on shelf and not in carry pair → shed fetch (no X-cycle).
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertIn(task._phase, {"cycle", "route", "nav", "ensure_hoe"})
+        self.assertEqual(task._phase, "fetch_seed")
+        self.assertIsInstance(task._task, ShedFetchItemTask)
+        self.assertEqual(task._task._phase, "route")
+        self.assertIsInstance(task._task._task, MultiMapNavTask)
 
     def test_ensure_crop_seeds_uses_field_route_after_harvest_shipping(self) -> None:
         world = make_world(0x00)
@@ -2093,18 +2096,17 @@ class DayPlanSequenceTests(unittest.TestCase):
         world.ram[0x0921] = int(Tool.HOE)
         world.ram[0x0923] = 0x00
         world.ram[0x092A] = 10
-        task = EnsureCropSeedsTask(seed_type="potato", cycle_limit=0)
+        task = EnsureCropSeedsTask(seed_type="potato")
 
         task.reset(world)
-        # Force shed path without cycling.
-        task._cycle_count = 99
-        task._phase = "start"
         result = task._start_shed_seed_fetch(world)
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertEqual(task._phase, "route")
-        self.assertIsInstance(task._task, MultiMapNavTask)
-        self.assertEqual(task._task.waypoints, ROUTES["field_to_shed"])
+        self.assertEqual(task._phase, "fetch_seed")
+        self.assertIsInstance(task._task, ShedFetchItemTask)
+        self.assertEqual(task._task._phase, "route")
+        self.assertIsInstance(task._task._task, MultiMapNavTask)
+        self.assertEqual(task._task._task.waypoints, ROUTES["field_to_shed"])
 
     def test_ensure_crop_seeds_uses_upper_route_from_coop_frontage(self) -> None:
         world = make_world(0x00)
@@ -2116,8 +2118,9 @@ class DayPlanSequenceTests(unittest.TestCase):
         result = task._start_shed_seed_fetch(world)
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertIsInstance(task._task, MultiMapNavTask)
-        self.assertEqual(task._task.waypoints, ROUTES["upper_farm_to_shed"])
+        self.assertIsInstance(task._task, ShedFetchItemTask)
+        self.assertIsInstance(task._task._task, MultiMapNavTask)
+        self.assertEqual(task._task._task.waypoints, ROUTES["upper_farm_to_shed"])
 
     def test_ensure_crop_seeds_uses_field_route_from_lower_farm_edge(self) -> None:
         world = make_world(0x00)
@@ -2129,8 +2132,9 @@ class DayPlanSequenceTests(unittest.TestCase):
         result = task._start_shed_seed_fetch(world)
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertIsInstance(task._task, MultiMapNavTask)
-        self.assertEqual(task._task.waypoints, ROUTES["field_to_shed"])
+        self.assertIsInstance(task._task, ShedFetchItemTask)
+        self.assertIsInstance(task._task._task, MultiMapNavTask)
+        self.assertEqual(task._task._task.waypoints, ROUTES["field_to_shed"])
 
     def test_shed_routes_stop_below_doorway_for_transition(self) -> None:
         self.assertEqual(ROUTES["farm_to_shed"][-1].target_px, (424, 489))
@@ -2149,7 +2153,7 @@ class DayPlanSequenceTests(unittest.TestCase):
         self.assertEqual(spec.inside_stand_px, (190, 118))
         self.assertIsNone(spec.inside_recording)
 
-    def test_ensure_crop_seeds_exits_shed_when_seed_tool_not_equipped(self) -> None:
+    def test_shed_fetch_exits_shed_when_item_missing_after_shelf(self) -> None:
         class DoneTask:
             def step(self, world):
                 return TaskResult(status=TaskStatus.SUCCESS, reason="done")
@@ -2157,8 +2161,10 @@ class DayPlanSequenceTests(unittest.TestCase):
         world = make_world(0x26)
         world.ram[0x0921] = int(Tool.WATERING_CAN)
         world.ram[0x0923] = int(Tool.BRUSH)
-        world.ram[0x092A] = 10
-        task = EnsureCropSeedsTask(seed_type="potato")
+        task = ShedFetchItemTask(
+            item_id=0x07,
+            shelf=SHED_SEED_SPECS["potato"],
+        )
         task._phase = "inside"
         task._task = DoneTask()
 
@@ -2168,7 +2174,7 @@ class DayPlanSequenceTests(unittest.TestCase):
         self.assertEqual(task._phase, "exit_after_failure")
         self.assertIsInstance(task._task, ExitToFarmTask)
 
-    def test_ensure_crop_seeds_fails_after_shed_exit_without_seed_tool(self) -> None:
+    def test_shed_fetch_fails_after_shed_exit_without_item(self) -> None:
         class DoneTask:
             def step(self, world):
                 return TaskResult(status=TaskStatus.SUCCESS, reason="done")
@@ -2176,15 +2182,29 @@ class DayPlanSequenceTests(unittest.TestCase):
         world = make_world(0x00)
         world.ram[0x0921] = int(Tool.WATERING_CAN)
         world.ram[0x0923] = int(Tool.BRUSH)
-        task = EnsureCropSeedsTask(seed_type="potato")
+        task = ShedFetchItemTask(item_id=0x07, shelf=SHED_SEED_SPECS["potato"])
         task._phase = "exit_after_failure"
         task._task = DoneTask()
-        task._failed_reason = "potato seed stock=10, seed tool 0x07 not carried"
+        task._failed_reason = "tool 0x07 missing after shed task"
 
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.FAILURE)
-        self.assertEqual(result.reason, "potato seed stock=10, seed tool 0x07 not carried")
+        self.assertEqual(result.reason, "tool 0x07 missing after shed task")
+
+    def test_ensure_carry_tool_exits_shed_when_already_holding_tool(self) -> None:
+        """Watering-can ensure must leave the shed so NAV_CROP can run outdoors."""
+        world = make_world(0x26)
+        world.ram[0x0921] = int(Tool.WATERING_CAN)
+        world.ram[0x0923] = 0x00
+        task = EnsureCarryToolTask(tool_id=int(Tool.WATERING_CAN))
+
+        task.reset(world)
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "exit_after_ready")
+        self.assertIsInstance(task._task, ExitToFarmTask)
 
     def test_ensure_crop_seeds_does_not_restore_watering_can(self) -> None:
         """Seeds must stay in the carry pair for the following plant phase."""
@@ -2307,14 +2327,15 @@ class BuildDayPhasesTests(unittest.TestCase):
         self.assertIn("ENSURE_CROP_SEEDS", names)
         self.assertIn("NAV_CROP", names)
         self.assertNotIn("ENSURE_WATERING_CAN", names)
-        self.assertIn("CROP_WATER", names)
+        self.assertIn("CROP_ESTABLISH", names)
+        self.assertNotIn("CROP_WATER", names)
 
     def test_seeded_crop_phase_checks_tool_shed_before_field(self) -> None:
         phases = build_day_phases(None, hour=16, has_seeds=True, is_rainy=True)
         names = self._phase_names(phases)
 
         self.assertLess(names.index("ENSURE_CROP_SEEDS"), names.index("NAV_CROP"))
-        self.assertLess(names.index("NAV_CROP"), names.index("CROP_WATER"))
+        self.assertLess(names.index("NAV_CROP"), names.index("CROP_ESTABLISH"))
 
     def test_rainy_weather_ignores_forecast_weather_field(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=6)
