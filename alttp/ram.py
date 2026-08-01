@@ -47,6 +47,21 @@ UNCLE_ROOM = HYRULE_CASTLE_SECRET_ENTRANCE_ROOM
 
 # Main south hall (ordinary castle entrance) — post-sword / alternate path.
 HYRULE_CASTLE_MAIN_HALL_ROOM = 0x61
+# West of main hall (Zelda-path edge from room 0x61; measured 2026-07-31).
+HYRULE_CASTLE_MAIN_WEST_ROOM = 0x60
+# East of main hall (alternate edge from room 0x61).
+HYRULE_CASTLE_MAIN_EAST_ROOM = 0x62
+# North of main west (Zelda path hop from 0x60; isolated 2026-07-31).
+HYRULE_CASTLE_NW_ROOM = 0x50
+# North connector / NE / throne approach (measured maps).
+HYRULE_CASTLE_NORTH_CONNECTOR_ROOM = 0x01
+HYRULE_CASTLE_THRONE_APPROACH_ROOM = 0x51
+HYRULE_CASTLE_NE_ROOM = 0x52
+# B1 rooms on work-queue / Zelda path (measured maps; not all continuous).
+HYRULE_CASTLE_B1_NORTH_ZELDA_WEST_ROOM = 0x71
+HYRULE_CASTLE_B1_PIT_ROOM = 0x72
+HYRULE_CASTLE_B1_WEST_ROOM = 0x81
+HYRULE_CASTLE_B1_EAST_ROOM = 0x82
 # Zelda's cell (opening rescue target; confirm on real ROM before claiming).
 ZELDA_CELL_ROOM = 0x80
 # Sanctuary indoor room after escort (confirm on real ROM before claiming).
@@ -56,8 +71,18 @@ SANCTUARY_ROOM = 0x12
 ROOM_LABELS: dict[int, str] = {
     LINKS_HOUSE_ROOM & 0xFF: "links_house",
     HYRULE_CASTLE_SECRET_ENTRANCE_ROOM: "hyrule_castle_secret_entrance",
+    HYRULE_CASTLE_NORTH_CONNECTOR_ROOM: "hyrule_castle_north_connector",
+    HYRULE_CASTLE_NW_ROOM: "hyrule_castle_nw",
+    HYRULE_CASTLE_THRONE_APPROACH_ROOM: "hyrule_castle_throne_approach",
+    HYRULE_CASTLE_NE_ROOM: "hyrule_castle_ne",
+    HYRULE_CASTLE_MAIN_WEST_ROOM: "hyrule_castle_main_west",
     HYRULE_CASTLE_MAIN_HALL_ROOM: "hyrule_castle_main_hall",
+    HYRULE_CASTLE_MAIN_EAST_ROOM: "hyrule_castle_main_east",
+    HYRULE_CASTLE_B1_NORTH_ZELDA_WEST_ROOM: "hyrule_castle_b1_north_zelda_west",
+    HYRULE_CASTLE_B1_PIT_ROOM: "hyrule_castle_b1_pit",
     ZELDA_CELL_ROOM: "zelda_cell",
+    HYRULE_CASTLE_B1_WEST_ROOM: "hyrule_castle_b1_west",
+    HYRULE_CASTLE_B1_EAST_ROOM: "hyrule_castle_b1_east",
     SANCTUARY_ROOM: "sanctuary",
 }
 

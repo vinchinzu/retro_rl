@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 113,
+  "roomHex": "0x71",
+  "name": "Hyrule Castle B1 north of Zelda west",
+  "measured": "2026-07-31",
+  "sourceState": "CastleZeldaB1West",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_from_0x81", "xy": [632, 4113], "role": "spawn", "notes": "Landing after UP from CastleZeldaB1West"},
+    {"label": "north_extent", "xy": [632, 3856], "role": "waypoint", "notes": "North walk bound"},
+    {"label": "west_extent", "xy": [576, 4008], "role": "waypoint", "notes": ""},
+    {"label": "east_extent", "xy": [688, 4008], "role": "waypoint", "notes": ""},
+    {"label": "south_door_approach", "xy": [632, 4100], "role": "approach", "notes": "Hold DOWN → room 0x81"}
+  ],
+  "doors": [
+    {
+      "label": "south_to_0x81",
+      "direction": "DOWN",
+      "toRoom": 129,
+      "toRoomHex": "0x81",
+      "approachXy": [632, 4100],
+      "landingXy": [632, 4084],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 200,
+      "notes": "Measured ~180f DOWN from landing back to 0x81"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 140,
+    "attackDistance": 50,
+    "maxCycles": 250,
+    "skirmishMaxDistance": 80,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 60
+  },
+  "walkBbox": [576, 3856, 688, 4113],
+  "hostilesAtEntry": [],
+  "notes": [
+    "No dedicated save-state; measured by UP from CastleZeldaB1West.",
+    "North/west/east bounds measured; no further door isolated yet.",
+    "Authority: maps/room_71.json"
+  ]
+}

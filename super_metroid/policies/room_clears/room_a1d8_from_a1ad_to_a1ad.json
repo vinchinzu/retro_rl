@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a1d8_from_a1ad_to_a1ad",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Billy Mays' Room (0xA1D8); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8FEE",
+    "entrySourceRoomIdHex": "0xA1AD",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      15,
+      7
+    ],
+    "doorPtr": 36846,
+    "entrySourceRoomId": 41389
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 41389,
+      "sourceRoomIdHex": "0xA1AD",
+      "endpoint": {
+        "roomId": 41432,
+        "roomIdHex": "0xA1D8",
+        "logicalRoomId": 43,
+        "nodeId": 1,
+        "nodeName": "Billy Mays Room Door (to Boulder Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 41389,
+      "targetRoomIdHex": "0xA1AD",
+      "endpoint": {
+        "roomId": 41432,
+        "roomIdHex": "0xA1D8",
+        "logicalRoomId": 43,
+        "nodeId": 1,
+        "nodeName": "Billy Mays Room Door (to Boulder Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        15,
+        7
+      ],
+      "objectiveBlock": [
+        5,
+        12
+      ],
+      "exitBlock": [
+        15,
+        7
+      ],
+      "pathBlocks": 15,
+      "waypointsBlocks": [
+        [
+          13,
+          7
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          4,
+          12
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 130
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 170
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-31T20:45:40.364017+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a1d8_from_a1ad_to_a1ad.json",
+    "reportSha256": "3b0918431bc0d603a98a9f9f81a5155d04a4125191b863c6f3f9ca4e111364a6",
+    "stateSha256": "4bc6e9c1a8e589e7440f60c12c21c0107fc5f6ab538f811924c91070008f81fb",
+    "policySha256Before": "fd07d770cd691c7405347369e9db09f92fa153bb8dd1d03007b3537cf351c37f"
+  }
+}

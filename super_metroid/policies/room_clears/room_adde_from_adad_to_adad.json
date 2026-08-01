@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_adde_from_adad_to_adad",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Wave Beam Room (0xADDE); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x961E",
+    "entrySourceRoomIdHex": "0xADAD",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 38430,
+    "entrySourceRoomId": 44461
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 44461,
+      "sourceRoomIdHex": "0xADAD",
+      "endpoint": {
+        "roomId": 44510,
+        "roomIdHex": "0xADDE",
+        "logicalRoomId": 105,
+        "nodeId": 1,
+        "nodeName": "Wave Beam Room Door (to Double Chamber)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44461,
+      "targetRoomIdHex": "0xADAD",
+      "endpoint": {
+        "roomId": 44510,
+        "roomIdHex": "0xADDE",
+        "logicalRoomId": 105,
+        "nodeId": 1,
+        "nodeName": "Wave Beam Room Door (to Double Chamber)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        11,
+        6
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 11,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          10,
+          7
+        ],
+        [
+          10,
+          6
+        ],
+        [
+          11,
+          6
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "weapon_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "recover_entry",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "approach_pillar",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "recover_pillar",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "first_jump",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "platform_approach",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "recover_platform",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "open_chozo",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "chozo_open_wait",
+      "buttons": [],
+      "frames": 60
+    },
+    {
+      "label": "collect_wave",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 10
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "return_left_platform",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "return_jump",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "return_recover",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "return_door_approach",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-01T03:02:54.958673+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_adde_from_adad_to_adad.json",
+    "reportSha256": "722523992ea04ee7e447a61bce57610e7413db807b2d08021346d6843da9b062",
+    "stateSha256": "7389011f3272104de8a3983f09181cab7c0b4c9ff7412cef257e9810ec85ecc5",
+    "policySha256Before": "7f2b32f3000c0b017e2aea6d4b2564390e730f495362b7a4caec986d30362b05"
+  }
+}

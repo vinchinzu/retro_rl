@@ -189,10 +189,45 @@ class ScriptSegment:
     def play(self, env: object, **kwargs: Any) -> SegmentResult:
         return self.play_fn(env, **kwargs)
 
-    def play_checked(self, env: object, **kwargs: Any) -> SegmentEvidence:
-        """Play and wrap evidence; does not hard-fail entry (caller enforces)."""
+    def play_checked(
+        self,
+        env: object,
+        *,
+        enforce_entry: bool = True,
+        **kwargs: Any,
+    ) -> SegmentEvidence:
+        """Play and wrap evidence.
+
+        When ``enforce_entry`` is True (default), snapshot the env and call
+        :meth:`EntryRequirement.matches` first. On mismatch, return
+        ``phase=\"entry_rejected\"`` with ``ok=False`` **without** calling
+        ``play_fn``. Pass ``enforce_entry=False`` only for intentional tests
+        that skip the natural-entry gate.
+        """
         from alttp.opening_route.anchors import match_anchors
         from alttp.startup import snapshot_env
+
+        if enforce_entry:
+            pre = snapshot_env(env)
+            if not self.entry.matches(pre):
+                matched = [a.anchor_id for a in match_anchors(pre)]
+                source = str(kwargs.get("source", "unknown"))
+                return SegmentEvidence(
+                    segment_id=self.segment_id,
+                    ok=False,
+                    frames=0,
+                    snapshot=pre,
+                    source=source,
+                    phase="entry_rejected",
+                    acceptance={},
+                    blocker=(
+                        f"entry requirement not met for {self.segment_id}: "
+                        f"{self.entry.description}"
+                    ),
+                    notes=["play_fn not called (entry gate)"],
+                    development_only=source != "natural_boot",
+                    matched_anchors=matched,
+                )
 
         result = self.play(env, **kwargs)
         snap = result.snapshot
@@ -213,8 +248,18 @@ class ScriptSegment:
 
 def _build_registry() -> dict[str, ScriptSegment]:
     """Lazy registry so heavy route modules import only when needed."""
-    from alttp.opening_route import castle_to_sword, pocket_to_main_hall, sword_to_zelda
-    from alttp.ram import HYRULE_CASTLE_SCREEN, SECRET_PASSAGE_ROOM
+    from alttp.opening_route import (
+        castle_to_sword,
+        escort_to_sanctuary,
+        main_hall_to_zelda,
+        pocket_to_main_hall,
+        secret_entrance_clear,
+    )
+    from alttp.ram import (
+        HYRULE_CASTLE_MAIN_HALL_ROOM,
+        HYRULE_CASTLE_SCREEN,
+        SECRET_PASSAGE_ROOM,
+    )
 
     return {
         "castle_to_sword": ScriptSegment(
@@ -238,7 +283,7 @@ def _build_registry() -> dict[str, ScriptSegment]:
         ),
         "sword_to_secret_entrance_clear": ScriptSegment(
             segment_id="sword_to_secret_entrance_clear",
-            play_fn=sword_to_zelda.run_from_sword,
+            play_fn=secret_entrance_clear.run_from_sword,
             entry=EntryRequirement(
                 description="Fighter sword in secret entrance room 0x55",
                 room_base_id=SECRET_PASSAGE_ROOM,
@@ -276,6 +321,48 @@ def _build_registry() -> dict[str, ScriptSegment]:
             ),
             label="Courtyard pocket → main castle door → room 0x61",
             graph_edge_id="pocket_to_main_hall",
+        ),
+        "main_hall_to_zelda": ScriptSegment(
+            segment_id="main_hall_to_zelda",
+            play_fn=main_hall_to_zelda.run_from_main_hall,
+            entry=EntryRequirement(
+                description="Indoors main hall room 0x61 with fighter sword + control",
+                room_base_id=HYRULE_CASTLE_MAIN_HALL_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_control=True,
+                graph_node_id="room_61",
+                anchor_ids=("HyruleCastle_MainHall",),
+            ),
+            exit=ExitPredicate(
+                description="Zelda follower set (rescue accepted)",
+                acceptance_keys=("zelda_follower",),
+                graph_node_id="room_80",
+                verification="planned",
+            ),
+            label="Main hall → west 0x60 → Zelda cell / follower",
+            # Implemented edge only; planned B1→cell edges are not this segment yet.
+            graph_edge_id="main_hall_west_to_0x60",
+        ),
+        "escort_to_sanctuary": ScriptSegment(
+            segment_id="escort_to_sanctuary",
+            play_fn=escort_to_sanctuary.run_from_escort,
+            entry=EntryRequirement(
+                description="Zelda follower + lamp + control (escort start)",
+                require_zelda_follower=True,
+                require_lamp=True,
+                require_control=True,
+                graph_node_id="room_80",
+            ),
+            exit=ExitPredicate(
+                description="Indoors Sanctuary room 0x12",
+                acceptance_keys=("in_sanctuary",),
+                graph_node_id="sanctuary",
+                verification="planned",
+            ),
+            label="Zelda escort → Sanctuary (planned)",
+            # Planned multi-edge leg (mantle → sewers → sanctuary); no single edge yet.
+            graph_edge_id="",
         ),
     }
 

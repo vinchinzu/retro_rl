@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 1,
+  "roomHex": "0x01",
+  "name": "Hyrule Castle north connector",
+  "measured": "2026-07-31",
+  "sourceState": "CastleRoom01",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_spawn", "xy": [960, 120], "role": "spawn", "notes": "CastleRoom01"},
+    {"label": "west_door_approach", "xy": [920, 120], "role": "approach", "notes": "Hold LEFT → room 0x50"},
+    {"label": "east_door_approach", "xy": [1000, 120], "role": "approach", "notes": "Hold RIGHT → room 0x52"},
+    {"label": "north_extent", "xy": [944, 96], "role": "waypoint", "notes": ""},
+    {"label": "south_extent", "xy": [944, 144], "role": "waypoint", "notes": ""}
+  ],
+  "doors": [
+    {
+      "label": "west_to_0x50",
+      "direction": "LEFT",
+      "toRoom": 80,
+      "toRoomHex": "0x50",
+      "approachXy": [920, 120],
+      "landingXy": [511, 2680],
+      "role": "backtrack",
+      "path": ["west_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 320,
+      "notes": "Long LEFT; multi-screen y jump on landing"
+    },
+    {
+      "label": "east_to_0x52",
+      "direction": "RIGHT",
+      "toRoom": 82,
+      "toRoomHex": "0x52",
+      "approachXy": [1000, 120],
+      "landingXy": [1011, 2680],
+      "role": "alternate",
+      "path": ["east_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 80,
+      "notes": "Measured 29f RIGHT from spawn"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 120,
+    "attackDistance": 50,
+    "maxCycles": 200,
+    "skirmishMaxDistance": 80,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 60
+  },
+  "walkBbox": [920, 96, 1011, 144],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Connector between 0x50 and 0x52; low hostile density at CastleRoom01.",
+    "Authority: maps/room_01.json"
+  ]
+}

@@ -131,10 +131,9 @@
       "label": "land_shoot",
       "buttons": [
         "LEFT",
-        "B",
         "X"
       ],
-      "frames": 50
+      "frames": 60
     },
     {
       "label": "open_exit_door",
@@ -142,7 +141,7 @@
         "LEFT",
         "X"
       ],
-      "frames": 20
+      "frames": 60
     },
     {
       "label": "door_open_wait",

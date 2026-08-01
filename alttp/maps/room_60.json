@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 96,
+  "roomHex": "0x60",
+  "name": "Hyrule Castle main west",
+  "measured": "2026-07-31",
+  "sourceState": "CastleRoom60",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_from_0x61", "xy": [511, 3320], "role": "spawn", "notes": "West landing from main hall (CastleMain west edge)"},
+    {"label": "east_door_approach", "xy": [500, 3320], "role": "approach", "notes": "Hold RIGHT → room 0x61"},
+    {"label": "west_corridor", "xy": [400, 3320], "role": "waypoint", "notes": "West of east door corridor"},
+    {"label": "north_shaft", "xy": [376, 3200], "role": "waypoint", "notes": "North shaft mid"},
+    {"label": "north_door_approach", "xy": [376, 3130], "role": "approach", "notes": "Hold UP → room 0x50"},
+    {"label": "castle_room60_spawn", "xy": [376, 3128], "role": "spawn", "notes": "CastleRoom60 load"},
+    {"label": "south_outdoor_approach", "xy": [376, 3560], "role": "approach", "notes": "Hold DOWN along x≈376 → outdoors west courtyard"}
+  ],
+  "doors": [
+    {
+      "label": "north_to_0x50",
+      "direction": "UP",
+      "toRoom": 80,
+      "toRoomHex": "0x50",
+      "approachXy": [376, 3130],
+      "landingXy": [376, 3088],
+      "role": "zelda_path",
+      "path": ["north_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 120,
+      "notes": "From CastleRoom60 near door. From west landing (511,3320) use points west_corridor→north_shaft→north_door_approach then this edge."
+    },
+    {
+      "label": "east_to_0x61",
+      "direction": "RIGHT",
+      "toRoom": 97,
+      "toRoomHex": "0x61",
+      "approachXy": [500, 3320],
+      "landingXy": [499, 3320],
+      "role": "backtrack",
+      "path": ["east_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 150,
+      "notes": "Return to main hall"
+    },
+    {
+      "label": "south_to_courtyard",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 27,
+      "approachXy": [376, 3560],
+      "landingXy": [1832, 1540],
+      "role": "alternate",
+      "path": ["north_shaft", "west_corridor", "south_outdoor_approach"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 400,
+      "notes": "Long south walk on x≈376; outdoor west courtyard ~1832,1540"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 48,
+    "attackDistance": 48,
+    "maxCycles": 120,
+    "skirmishMaxDistance": 70,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 60
+  },
+  "walkBbox": [352, 3088, 520, 3572],
+  "hostilesAtEntry": [
+    {"type": "0x41", "xy": [304, 3201]},
+    {"type": "0x41", "xy": [312, 3205]}
+  ],
+  "notes": [
+    "From main-hall west landing (511,3320): path west → north shaft → UP to 0x50.",
+    "CastleRoom60 sits near north door; east door returns to 0x61 at y≈3320.",
+    "US/JP vanilla room ids match for this layout (logic labels from z3-json-data).",
+    "Authority: maps/room_60.json"
+  ]
+}

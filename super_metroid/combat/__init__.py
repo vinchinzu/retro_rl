@@ -107,8 +107,12 @@ from super_metroid.combat.protocol import (
     wrap_bomb_torizo_as_boss_strategy,
     wrap_botwoon_as_boss_strategy,
     wrap_draygon_as_boss_strategy,
+    wrap_crocomire_as_boss_strategy,
+    wrap_golden_torizo_as_boss_strategy,
     wrap_kraid_as_boss_strategy,
+    wrap_mother_brain_as_boss_strategy,
     wrap_phantoon_as_boss_strategy,
+    wrap_ridley_as_boss_strategy,
 )
 
 __all__ = [
@@ -194,7 +198,11 @@ __all__ = [
     "wait_room",
     "wrap_bomb_torizo_as_boss_strategy",
     "wrap_botwoon_as_boss_strategy",
+    "wrap_crocomire_as_boss_strategy",
     "wrap_draygon_as_boss_strategy",
+    "wrap_golden_torizo_as_boss_strategy",
     "wrap_kraid_as_boss_strategy",
+    "wrap_mother_brain_as_boss_strategy",
     "wrap_phantoon_as_boss_strategy",
+    "wrap_ridley_as_boss_strategy",
 ]

@@ -8,11 +8,14 @@ import numpy as np
 
 from super_metroid.combat.features import phantoon_catalog
 from super_metroid.combat.phantoon import (
+    PHANTOON_INVISIBLE,
+    PHANTOON_VULNERABLE,
     ROOM_PHANTOON,
     WEAPON_MISSILES,
     PhantoonEvidence,
     PhantoonStrategy,
     fight_phantoon_action,
+    phantoon_phase,
     play_phantoon_fight,
 )
 from super_metroid.combat.protocol import wrap_phantoon_as_boss_strategy
@@ -22,13 +25,16 @@ from super_metroid.ram import GameplayPhase, parse_state
 def _state(**overrides):
     ram = np.zeros(0x2000, dtype=np.uint8)
     base = parse_state(ram, frame=0)
+    values = {
+        "phase": GameplayPhase.ORDINARY_GAMEPLAY,
+        "room_id": ROOM_PHANTOON,
+        "enemy0_spritemap": 0xABCD,
+        "num_enemies": 1,
+        **overrides,
+    }
     return replace(
         base,
-        phase=GameplayPhase.ORDINARY_GAMEPLAY,
-        room_id=ROOM_PHANTOON,
-        enemy0_spritemap=0xABCD,
-        num_enemies=1,
-        **overrides,
+        **values,
     )
 
 
@@ -76,6 +82,33 @@ def test_active_enemy_action_faces_and_fires() -> None:
     action = fight_phantoon_action(state, frame_index=0)
     assert "RIGHT" in action
     assert "X" in action
+
+
+def test_phantoon_phase_labels_live_spritemap_vulnerable() -> None:
+    state = _state(enemy0_hp=2500, enemy0_spritemap=0xABCD)
+    assert phantoon_phase(state) == PHANTOON_VULNERABLE
+
+
+def test_phantoon_phase_labels_missing_spritemap_invisible() -> None:
+    state = _state(enemy0_hp=2500, enemy0_spritemap=0)
+    assert phantoon_phase(state) == PHANTOON_INVISIBLE
+
+
+def test_invisible_phase_gates_fire_but_keeps_movement() -> None:
+    state = _state(
+        samus_x=100,
+        enemy0_x=300,
+        enemy0_hp=2500,
+        enemy0_spritemap=0,
+    )
+    action = fight_phantoon_action(state, frame_index=0)
+    assert "RIGHT" in action
+    assert "X" not in action
+
+
+def test_vulnerable_phase_allows_periodic_fire() -> None:
+    state = _state(samus_x=100, enemy0_x=300, enemy0_hp=2500)
+    assert "X" in fight_phantoon_action(state, frame_index=0)
 
 
 def test_defeated_enemy_returns_empty_actions() -> None:
@@ -144,11 +177,16 @@ def test_phantoon_evidence_dict_preserves_phase_metrics() -> None:
         final_body_hp=0,
         boss_bit_set=True,
         outcome="phantoon_defeated",
+        phase_transitions=(("vulnerable", 10), ("defeated", 80)),
     )
     payload = evidence.to_dict()
     assert payload["body_zero_frame"] == 80
     assert payload["boss_bit_frame"] == 90
     assert payload["outcome"] == "phantoon_defeated"
+    assert payload["phase_transitions"] == [
+        {"phase": "vulnerable", "frame": 10},
+        {"phase": "defeated", "frame": 80},
+    ]
     assert set(payload) == {
         "start_frame",
         "body_zero_frame",
@@ -160,7 +198,21 @@ def test_phantoon_evidence_dict_preserves_phase_metrics() -> None:
         "final_body_hp",
         "boss_bit_set",
         "outcome",
+        "phase_transitions",
     }
+
+
+def test_fight_evidence_records_phase_transition_timestamp() -> None:
+    session = _Session(
+        _state(enemy0_hp=2500, max_missiles=5, enemy0_spritemap=0),
+        hp_after_step=0,
+    )
+    evidence = play_phantoon_fight(
+        session,
+        strategy=PhantoonStrategy(max_fight_frames=1),
+    )
+    assert evidence.phase_transitions[0] == (PHANTOON_INVISIBLE, 0)
+    assert evidence.phase_transitions[-1] == ("defeated", 27)
 
 
 def test_wrapper_entry_room_and_catalog() -> None:

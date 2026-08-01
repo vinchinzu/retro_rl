@@ -1311,7 +1311,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "unverified",
+        "controller_dev",  # pure green SM-K4-06E (jump-enter Y band); not continuous
     ),
     DoorEdge(
         "eye_to_baby_return",
@@ -1321,7 +1321,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "unverified",
+        "controller_dev",  # pure green SM-K4-R-01B; not continuous
     ),
     DoorEdge(
         "baby_to_kihunter_return",
@@ -1331,7 +1331,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "unverified",
+        "controller_dev",  # pure green (supers clear + left gray); not continuous
     ),
     DoorEdge(
         "kihunter_to_zeela_return",
@@ -1341,7 +1341,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "up",
         _K4_CAPS,
         "kpdr_varia_return",
-        "unverified",
+        "controller_dev",
     ),
     DoorEdge(
         "zeela_to_warehouse_return",
@@ -1351,7 +1351,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "unverified",
+        "controller_dev",  # pure green SM-K4-R-ZEELA-REDESIGN ~1800f; not continuous
     ),
     # warehouse → business reuses continuous edge ``warehouse_to_business``
     # --- Business → Bubble → Speed ---

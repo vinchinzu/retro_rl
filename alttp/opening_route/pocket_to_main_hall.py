@@ -25,6 +25,9 @@ from alttp.opening_route.anchors import (
     COURTYARD_SECRET_POCKET_TOLERANCE,
     COURTYARD_SECRET_POCKET_X,
     COURTYARD_SECRET_POCKET_Y,
+    MAIN_DOOR_APPROACH_TOLERANCE,
+    MAIN_DOOR_APPROACH_X,
+    MAIN_DOOR_APPROACH_Y,
 )
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
@@ -36,11 +39,6 @@ from alttp.ram import (
 )
 from alttp.route_report import RoutePhaseResult, SegmentResult
 from alttp.startup import action_for, no_action, snapshot_env, step_frames
-
-# Outdoor main-door approach (measured from CastleMain exit + entry probe).
-MAIN_DOOR_APPROACH_X = 2040
-MAIN_DOOR_APPROACH_Y = 1790
-MAIN_DOOR_APPROACH_TOLERANCE = 24
 
 # Open-courtyard / gardens window after pocket escape (route tier).
 COURTYARD_OPEN_Y_MIN = 1880
@@ -567,7 +565,7 @@ def run_from_sword_through_pocket(
     source: str = "state_load_dev",
 ) -> SegmentResult:
     """Compose sword_to_zelda (to pocket) then pocket_to_main_hall."""
-    from alttp.opening_route.sword_to_zelda import run_from_sword
+    from alttp.opening_route.secret_entrance_clear import run_from_sword
 
     pre = run_from_sword(env, source=source)
     if not pre.ok or not pre.acceptance.get("left_secret_entrance"):

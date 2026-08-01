@@ -10,6 +10,7 @@ from super_metroid.routes.controller_common import (
     require_room,
     select_weapon,
     unmorph,
+    vertical_hop,
     wait_ordinary_room,
 )
 from super_metroid.routes.kpdr.rooms import (
@@ -39,6 +40,7 @@ _hold = hold
 _require_room = require_room
 _select_weapon = select_weapon
 _unmorph = unmorph
+_vertical_hop = vertical_hop
 _wait_ordinary_room = wait_ordinary_room
 
 def play_ghz_to_noob(session: ControllerSession) -> SuperMetroidState:
@@ -109,7 +111,7 @@ def play_ghz_to_noob(session: ControllerSession) -> SuperMetroidState:
 
         # Clear the pillar only after the gate has opened.  Adding RIGHT too
         # early clips the pillar face and produces the old x≈1451 loop.
-        _hold(session, 24, "A", reason="ghz_pillar_vertical_jump")
+        _vertical_hop(session, 24, reason="ghz_pillar_vertical_jump")
         for _ in range(220):
             state = _hold(session, 1, "RIGHT", "B", "A", reason="ghz_pillar_clear")
             if state.samus_x >= 1700:
@@ -179,7 +181,7 @@ def play_noob_to_red_tower(session: ControllerSession) -> SuperMetroidState:
             )
 
         _hold(session, 10, "LEFT", reason="noob_bridge_brake")
-        _hold(session, 24, "A", reason="noob_bridge_vertical_jump")
+        _vertical_hop(session, 24, reason="noob_bridge_vertical_jump")
         for _ in range(330):
             state = _hold(session, 1, "RIGHT", "B", "A", reason="noob_bridge_dash")
             if state.samus_x >= 1200:
@@ -258,6 +260,5 @@ def play_noob_to_red_tower(session: ControllerSession) -> SuperMetroidState:
     return _wait_ordinary_room(
         session, ROOM_RED_TOWER, settle_frames=220, label="noob_to_red"
     )
-
 
 

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a15b_from_a130_to_a130",
+  "status": "verified_development_state",
+  "description": "Doorway-natural starter for Hopper Energy Tank Room (0xA15B); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8FBE",
+    "entrySourceRoomIdHex": "0xA130",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      7
+    ],
+    "doorPtr": 36798,
+    "entrySourceRoomId": 41264
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 41264,
+      "sourceRoomIdHex": "0xA130",
+      "endpoint": {
+        "roomId": 41307,
+        "roomIdHex": "0xA15B",
+        "logicalRoomId": 62,
+        "nodeId": 1,
+        "nodeName": "Hopper E-Tank Door (to Hoppers)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 41264,
+      "targetRoomIdHex": "0xA130",
+      "endpoint": {
+        "roomId": 41307,
+        "roomIdHex": "0xA15B",
+        "logicalRoomId": 62,
+        "nodeId": 1,
+        "nodeName": "Hopper E-Tank Door (to Hoppers)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        7
+      ],
+      "objectiveBlock": [
+        11,
+        9
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 12,
+      "waypointsBlocks": [
+        [
+          2,
+          7
+        ],
+        [
+          11,
+          7
+        ],
+        [
+          11,
+          9
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 118
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 146
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-07-31T20:45:43.713386+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a15b_from_a130_to_a130.json",
+    "reportSha256": "4cfa8393aacc270084ce76d4ff7089df837ae8a3fb6725369fb5fbf63ad0b3c5",
+    "stateSha256": "88c80542d0c16ae5484ebd914c3b7cbe87d48d58380599f45dbe60d80de9870f",
+    "policySha256Before": "e926132b05b6e2d69695f04e192c74906db809d148bc9ec5ed70fae054b4320e"
+  }
+}

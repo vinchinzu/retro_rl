@@ -79,9 +79,38 @@ from super_metroid.routes.kpdr_controller import (  # noqa: E402
     play_hijump_to_warehouse,
     play_hj_shaft_to_business,
     play_business_to_warehouse,
+    play_warehouse_to_business,
     play_warehouse_wall_to_lower_lip,
     play_west_to_glass,
     play_zeela_to_warehouse_return,
+)
+
+
+_REVERSE_ISOLATION_COMMANDS = (
+    (
+        "K3.3",
+        "kraid-to-eye-return",
+        "post_varia_to_kraid_pure.state",
+        "0xA59F",
+    ),
+    (
+        "K3.4",
+        "eye-to-baby-return",
+        "post_kraid_to_eye_return.state",
+        "0xA56B",
+    ),
+    (
+        "K3.5",
+        "baby-to-kihunter-return",
+        "post_eye_to_baby_return.state",
+        "0xA521",
+    ),
+    (
+        "K3.6",
+        "kihunter-to-zeela-return",
+        "post_baby_to_kihunter_return.state",
+        "0xA4DA",
+    ),
 )
 
 
@@ -203,6 +232,11 @@ def main() -> None:
     col.add_argument("--source", type=Path, default=VARIA_STATE)
     col.add_argument("--output", type=Path, default=HJ_COLLECTED_DEV)
 
+    sub.add_parser(
+        "iso-reverse",
+        help="List pure reverse-hop probes and their cataloged source states",
+    )
+
     pure = sub.add_parser(
         "pure",
         help="Controller-only room exit (no door-warp during segment)",
@@ -227,6 +261,7 @@ def main() -> None:
             "warehouse-hijump-kraid",
             "hj-shaft-to-business",
             "business-to-warehouse",
+            "warehouse-to-business",
             "varia-to-kraid",
             "kraid-to-eye-return",
             "eye-to-baby-return",
@@ -294,6 +329,19 @@ def main() -> None:
         print(json.dumps(report, indent=2))
         sys.exit(0 if report.get("success") else 1)
 
+    if args.command == "iso-reverse":
+        source_root = (
+            "super_metroid/custom_integrations/SuperMetroid-Snes/scratch"
+        )
+        print("Reverse pure isolation matrix (diagnostic; not continuous evidence):")
+        for hop, segment, source_name, room in _REVERSE_ISOLATION_COMMANDS:
+            print(f"{hop}: expected source room {room}")
+            print(
+                "  uv run python super_metroid/scripts/probe/kpdr.py pure "
+                f"{segment} --source {source_root}/{source_name}"
+            )
+        return
+
     if args.command == "pure":
         play_fn = {
             "big-pink-to-ghz": play_big_pink_to_ghz,
@@ -313,6 +361,7 @@ def main() -> None:
             "warehouse-hijump-kraid": play_warehouse_hijump_kraid,
             "hj-shaft-to-business": play_hj_shaft_to_business,
             "business-to-warehouse": play_business_to_warehouse,
+            "warehouse-to-business": play_warehouse_to_business,
             "varia-to-kraid": play_varia_to_kraid,
             "kraid-to-eye-return": play_kraid_to_eye_return,
             "eye-to-baby-return": play_eye_to_baby_return,

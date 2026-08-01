@@ -9,6 +9,7 @@ from super_metroid.routes.controller_common import (
     play_run_shoot_exit,
     require_room,
     select_weapon,
+    settle_hold,
     unmorph,
     wait_ordinary_room,
 )
@@ -60,7 +61,7 @@ def play_red_tower_to_bat(session: ControllerSession) -> SuperMetroidState:
         _hold(session, 1, direction, "B", reason="red_upper_zigzag")
     else:
         raise TimeoutError(f"red_to_bat: upper descent stalled: {state}")
-    _hold(session, 40, reason="red_floor_settle")
+    settle_hold(session, 40, reason="red_floor_settle")
 
     # Open the temporary floor and cross it during the bomb timer.
     ensure_morph(session)
@@ -108,7 +109,7 @@ def play_red_tower_to_bat(session: ControllerSession) -> SuperMetroidState:
     else:
         raise TimeoutError(f"red_to_bat: lower descent stalled: {state}")
 
-    _hold(session, 40, reason="red_bottom_settle")
+    settle_hold(session, 40, reason="red_bottom_settle")
     _unmorph(session)
     _select_weapon(session, 0)
     for frame in range(420):
@@ -186,13 +187,13 @@ def play_bat_to_below_spazer(session: ControllerSession) -> SuperMetroidState:
         _hold(session, 5, reason="bat_entry_glide")
         _hold(session, 35, "RIGHT", "B", reason="bat_first_runup")
         _hold(session, 60, "RIGHT", "B", "A", reason="bat_first_jump")
-        _hold(session, 30, reason="bat_first_land")
+        settle_hold(session, 30, reason="bat_first_land")
     else:
         # Low left ledge / post-fall continuous entry.
         _hold(session, 8, reason="bat_low_ready")
         _hold(session, 15, "RIGHT", "B", reason="bat_low_runup")
         _hold(session, 80, "RIGHT", "B", "A", reason="bat_low_jump")
-        _hold(session, 40, reason="bat_low_land")
+        settle_hold(session, 40, reason="bat_low_land")
 
     state = session.state
     if not (state.samus_x >= 210 and state.samus_y <= 165):
@@ -202,13 +203,13 @@ def play_bat_to_below_spazer(session: ControllerSession) -> SuperMetroidState:
 
     _hold(session, 8, "RIGHT", "B", reason="bat_second_runup")
     _hold(session, 20, "RIGHT", "B", "A", reason="bat_second_jump")
-    _hold(session, 80, reason="bat_second_land")
+    settle_hold(session, 80, reason="bat_second_land")
     state = session.state
     if not (330 <= state.samus_x <= 400 and state.samus_y <= 185):
         raise TimeoutError(f"bat_to_below_spazer: missed middle platform: {state}")
 
     _hold(session, 48, "RIGHT", "B", "A", reason="bat_third_jump")
-    _hold(session, 60, reason="bat_third_land")
+    settle_hold(session, 60, reason="bat_third_land")
     if session.state.samus_x < 400:
         raise TimeoutError(
             f"bat_to_below_spazer: missed right platform: {session.state}"
@@ -315,6 +316,5 @@ def play_red_tower_to_warehouse(session: ControllerSession) -> SuperMetroidState
     play_west_to_glass(session)
     play_glass_to_east(session)
     return play_east_to_warehouse(session)
-
 
 

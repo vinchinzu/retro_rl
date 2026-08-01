@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a2ce_from_a293_to_a293",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for X-Ray Room (0xA2CE); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x905A",
+    "entrySourceRoomIdHex": "0xA293",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 36954,
+    "entrySourceRoomId": 41619
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 41619,
+      "sourceRoomIdHex": "0xA293",
+      "endpoint": {
+        "roomId": 41678,
+        "roomIdHex": "0xA2CE",
+        "logicalRoomId": 68,
+        "nodeId": 1,
+        "nodeName": "X-Ray Room Door (to Firefleas)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 41619,
+      "targetRoomIdHex": "0xA293",
+      "endpoint": {
+        "roomId": 41678,
+        "roomIdHex": "0xA2CE",
+        "logicalRoomId": 68,
+        "nodeId": 1,
+        "nodeName": "X-Ray Room Door (to Firefleas)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "unresolved",
+      "reason": "no air-only collision path; dynamic blocks or movement abilities need runtime planning",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        5,
+        7
+      ],
+      "exitBlock": [
+        31,
+        7
+      ],
+      "waypointsBlocks": []
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 70
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 60
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

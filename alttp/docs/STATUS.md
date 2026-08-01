@@ -29,7 +29,13 @@
 | Controller primitives | `alttp.primitives` is the live stack (`run_script` / `settle_control` / `move_*` / `fight_nearby`); segments use `alttp.route_report` |
 | Package layout | Core at `alttp/` root; continuous trunk in `alttp/opening_route/`; `gauntlet/` + `romhack/` shells; see `docs/ARCHITECTURE.md` |
 | Escape capability graph | `alttp.opening_route.escape_graph` — continuous through **main hall 0x61**; Zelda/Sanctuary planned |
-| Segment contract | `alttp.opening_route.segment` — `castle_to_sword`, `sword_to_secret_entrance_clear`, `pocket_to_main_hall` |
+| Segment contract | continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`, `pocket_to_main_hall`; `main_hall_to_zelda` thin room_engine wrap (partial until Zelda); escort planned |
+| Room engine | `maps/room_XX.json` + `opening_route.room_engine` + `scripts/room_engine.py` (`docs/ROOM_ENGINE.md`) |
+| Graph west exit | `room_61` → `room_60` **isolated** (`main_hall_west_to_0x60`) |
+| Graph north hop | `room_60` → `room_50` **isolated** (`room_60_north_to_0x50`) |
+| Room maps | `maps/room_{55,60,61,62,50,01,51,52,71,72,80,81,82}.json` |
+| Tip resolution | `anchors.resolve_continuous_tip_node` (session.continuous_tip_node) |
+| Work queue focus | Continuous tip `room_61` → Zelda; key/0x55 path is alternate only |
 | Multi-truth anchors | `alttp.opening_route.anchors` + `docs/TRIGGER_HANDOFF.md` |
 | Session façade | `alttp.session.AlttpSession` (selective snapshot / caps / segment play) |
 | Save-state work queue | `alttp.opening_route.work_queue` — 60 `Zelda3-Snes` states ranked for Sanctuary; `docs/routes/ROOM_WORK_QUEUE.md` |
@@ -61,16 +67,16 @@ Scripted path from `YazeSlot000` / castle-grounds predecessor:
 
 Acceptance: fighter sword equip RAM ≥ 1 (preferably from `--natural` chain).
 
-### Next milestone — main hall → Zelda cell → escort → Sanctuary
+### Next milestone — B1 → Zelda cell → escort → Sanctuary
 
-Courtyard pocket → main door → room `0x61` is **measured** (dev path from
-`FighterSword` via stairs exit). Remaining:
+Courtyard pocket → main door → room `0x61` is **measured**. Main-hall room
+itself is now scripted (dev `CastleMain`):
 
-1. Clear early B1 / key-shutter legs from main hall
-   (work-queue: `CastleB1Key` / `Shutter*`).
-2. Reach Zelda’s cell; set follower `$F3CC == 1`.
-3. Escort via mantle + sewers (needs Lamp from house) to Sanctuary
-   (`alttp.escape_graph` plan; room `0x12` / OW screen `0x13` — confirm on ROM).
+1. **Done (isolated):** clear 0x61 hostiles (enemy sprite boxes) → side corridor
+   → west door → room `0x60` (`room_engine` + `maps/room_61.json`; multi-hop
+   wrap `main_hall_to_zelda`).
+2. **Open:** B1 path after 0x60 → Zelda cell; set follower `$F3CC == 1`.
+3. Escort via mantle + sewers (Lamp) to Sanctuary.
 
 Acceptance: `follower_indicator == 1`, then `in_sanctuary` (preferably natural chain).
 **Not yet verified.** Drive probes from `docs/routes/ROOM_WORK_QUEUE.md`.
@@ -92,4 +98,13 @@ Acceptance: `follower_indicator == 1`, then `in_sanctuary` (preferably natural c
   → UP → room `0x61` (`pocket_to_main_hall`; screenshots under
   `recordings/probe_courtyard_door/south_door/`).
 - Main south gate remains soldier-blocked (text `0x0E`) until sword.
-- **Blocker:** main hall B1 → Zelda cell (`$F3CC==1`) → escort → Sanctuary.
+- **Main hall 0x61 (2026-07-31):** entry ~(760,3520); hostiles on carpet;
+  corridor y≈3320; west → `0x60`, east → `0x62`, south → courtyard. Tools:
+  `room_sense` sprite boxes + edge detect. Segment west exit 3/3 from
+  `CastleMain` (isolated; not natural-chain continuous yet).
+- **Main west 0x60 (2026-07-31):** landing ~(511,3320); path west/north shaft
+  → UP → room `0x50` ~(376,3088). Map `maps/room_60.json`; graph
+  `room_60_north_to_0x50` isolated from `CastleRoom60`.
+- **Maps:** Sanctuary-path room JSON seeds under `maps/` for 0x55/60/61/62/50/
+  01/51/52 and B1 0x71/72/80/81/82 (doors partial on B1).
+- **Blocker:** after room `0x50` → Zelda cell (`$F3CC==1`) → escort → Sanctuary.

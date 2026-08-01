@@ -15,6 +15,8 @@ RECORDINGS_DIR = GAME_DIR / "recordings"
 ROMS_DIR = GAME_DIR / "roms"
 DOCS_DIR = GAME_DIR / "docs"
 REFS_DIR = GAME_DIR / "refs"
+# Measured room geometry (JSON authority for room_engine / room_sense).
+MAPS_DIR = GAME_DIR / "maps"
 BOOT_STATE = "YazeSlot000"
 LINKS_HOUSE_OVERWORLD_STATE = "LinksHouseOverworld"
 # Controllable on screen 0x1B spawn — NOT bridge-turn or secret-hole approach.
@@ -37,8 +39,11 @@ STATE_SEMANTIC_NAMES: dict[str, str] = {
 ROOM_WORK_QUEUE_JSON = RECORDINGS_DIR / "room_work_queue.json"
 ROOM_WORK_QUEUE_MD = DOCS_DIR / "routes" / "ROOM_WORK_QUEUE.md"
 
-# Local clone of vg-json-data/z3-json-data (gitignored; setup script only).
+# Local clone of vg-json-data/z3-json-data (gitignored under refs/; setup script).
+# Optional committed/workspace copy at GAME_DIR/z3-json-data is also accepted
+# (see resolve in z3_json_data.default_data_root) — same US/JP vanilla labels.
 Z3_JSON_DATA_DIR = REFS_DIR / "z3-json-data"
+Z3_JSON_DATA_WORKSPACE_DIR = GAME_DIR / "z3-json-data"
 Z3_JSON_DATA_REPO = "https://github.com/vg-json-data/z3-json-data.git"
 # Pinned upstream revision for reproducible local checkouts.
 Z3_JSON_DATA_PIN = "1eb7a785bda0d671136316c24f223c7ce12257e6"

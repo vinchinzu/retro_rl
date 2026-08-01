@@ -120,10 +120,34 @@
       "frames": 60
     },
     {
-      "label": "shoot_run",
+      "label": "select_super_missiles_1",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_super_missiles_1_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "select_super_missiles_2",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_super_missiles_2_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "metal_pirate_super_clear",
       "buttons": [
         "RIGHT",
-        "B",
+        "DOWN",
         "X"
       ],
       "frames": 100
