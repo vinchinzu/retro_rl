@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_a0d2_from_9d19_to_9d19",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Waterway (0xA0D2); entry just inside door, exit via RIGHT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x8E0E",
+    "entrySourceRoomIdHex": "0x9D19",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": true,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      63,
+      7
+    ],
+    "doorPtr": 36366,
+    "entrySourceRoomId": 40217
+  },
+  "planning": {
+    "objective": "collect_and_return",
+    "entry": {
+      "sourceRoomId": 40217,
+      "sourceRoomIdHex": "0x9D19",
+      "endpoint": {
+        "roomId": 41170,
+        "roomIdHex": "0xA0D2",
+        "logicalRoomId": 65,
+        "nodeId": 1,
+        "nodeName": "Waterway Door (to Big Pink)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          63,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 40217,
+      "targetRoomIdHex": "0x9D19",
+      "endpoint": {
+        "roomId": 41170,
+        "roomIdHex": "0xA0D2",
+        "logicalRoomId": 65,
+        "nodeId": 1,
+        "nodeName": "Waterway Door (to Big Pink)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          63,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "unresolved",
+      "reason": "no air-only collision path; dynamic blocks or movement abilities need runtime planning",
+      "entryBlock": [
+        63,
+        7
+      ],
+      "objectiveBlock": [
+        4,
+        9
+      ],
+      "exitBlock": [
+        63,
+        7
+      ],
+      "waypointsBlocks": []
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "deeper_into_room",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 70
+    },
+    {
+      "label": "item_fanfare_wait",
+      "buttons": [],
+      "frames": 360
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 60
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 110
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

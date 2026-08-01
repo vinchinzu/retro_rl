@@ -6,8 +6,9 @@ room-problem board: filename heuristics + curated status from STATUS/docs.
 
 Units are **save-state practice checkpoints**, not a full room-graph topology.
 
-Continuous tip (STATUS): main hall room **0x61** after ``pocket_to_main_hall``.
-Primary next work: main hall / B1 → Zelda cell → follower → escort → Sanctuary.
+Continuous tip (STATUS): NW chamber **0x50** after ``castle_dungeon_prefix``.
+Primary next work: discover the physical exit after 0x50, then B1 → Zelda
+cell → follower → escort → Sanctuary.
 Internal 0x55 key/shutter path is **alternate practice**, not the primary route.
 """
 
@@ -19,7 +20,7 @@ from datetime import datetime, timezone
 import json
 import re
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 from alttp.paths import (
     INTEGRATION_DIR,
@@ -50,21 +51,22 @@ TIER_VALUES = frozenset({"easy", "standard", "blocker", "later"})
 _TIER_RANK = {"blocker": 0, "easy": 1, "standard": 2, "later": 3}
 
 # Path phase for Sanctuary ordering (lower = earlier on the route / work sooner).
-# Continuous tip is main hall 0x61; key/shutter and room 0x55 exit are alternate.
+# Continuous tip is room 0x50; key/shutter and room 0x55 exit are alternate.
 _PHASE = {
-    "main": 0,  # continuous tip: room 0x61 main hall
+    "frontier": 0,  # continuous tip: room 0x50 NW chamber
     "zelda": 1,  # Zelda cell / follower approach
     "b1_path": 2,  # B1 legs on the Zelda approach
     "b1": 3,  # general B1 practice
-    "key_shutter": 4,  # demoted alternate internal-key path
-    "post_sword": 5,  # secret-entrance clear done; not continuous tip
-    "room_55": 5,  # alternate / historical; not primary blocker
-    "escort": 6,  # after follower
-    "room": 7,
-    "b2": 8,
-    "b3": 9,
-    "opening": 10,  # already largely done; low new-work priority
-    "unknown": 11,
+    "main": 4,  # completed prefix / east-wing exploration
+    "key_shutter": 5,  # demoted alternate internal-key path
+    "post_sword": 6,  # secret-entrance clear done; not continuous tip
+    "room_55": 6,  # alternate / historical; not primary blocker
+    "escort": 7,  # after follower
+    "room": 8,
+    "b2": 9,
+    "b3": 10,
+    "opening": 11,  # already largely done; low new-work priority
+    "unknown": 12,
 }
 
 _ROOM_RE = re.compile(r"^Castle(?:Room|_|)([0-9A-Fa-f]{1,2})$")
@@ -165,6 +167,8 @@ def classify_group(state_name: str) -> str:
         rid = _parse_room_id(n)
         if rid == 0x55:
             return "room_55"
+        if rid == 0x50:
+            return "frontier"
         return "room"
     return "unknown"
 
@@ -198,6 +202,8 @@ def _default_goal(state_name: str, group: str) -> str:
         return "traverse_b2"
     if group == "b1":
         return "traverse_b1"
+    if group == "frontier":
+        return "discover_after_0x50"
     if group == "main":
         return "main_hall_to_zelda"
     rid = _parse_room_id(state_name)
@@ -211,7 +217,7 @@ def _default_tier(group: str, status: str) -> str:
         return "blocker"
     if group in {"opening"}:
         return "easy"
-    if group in {"main", "zelda"}:
+    if group in {"frontier", "main", "zelda"}:
         return "standard"
     if group in {"key_shutter", "post_sword", "room_55"}:
         # Alternate / done segments — not primary continuous-tip blockers.
@@ -246,6 +252,8 @@ def _default_acceptance(group: str, state_name: str) -> dict[str, Any]:
         return {"has_fighter_sword": True, "dungeon_key_count": ">=1"}
     if group == "main":
         return {"indoors_room": "0x61", "has_control": True}
+    if group == "frontier":
+        return {"indoors_room": "0x50", "has_control": True}
     if group == "zelda":
         return {"has_zelda_follower": True}
     if group == "escort":
@@ -270,7 +278,12 @@ def _default_predecessor(state_name: str, group: str) -> str | None:
         return "HyruleCastleGrounds"
     if group == "main":
         return "FighterSword"
-    if group in {"room_55", "key_shutter", "post_sword"} and state_name != "FighterSword":
+    if group == "frontier":
+        return "CastleMain"
+    if (
+        group in {"room_55", "key_shutter", "post_sword"}
+        and state_name != "FighterSword"
+    ):
         return "FighterSword"
     if group == "b1":
         return "CastleMain"
@@ -292,7 +305,8 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
     """Known statuses/notes from STATUS.md and verified segments.
 
     Keys are ``state_name``. Only fields that should override heuristics.
-    Continuous tip is main hall room 0x61; primary work is B1 → Zelda → escort.
+    Continuous tip is NW chamber room 0x50; primary work is the next physical
+    exit, then B1 → Zelda → escort.
     """
     return {
         "YazeSlot000": {
@@ -334,8 +348,8 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             "notes": (
                 "Dev checkpoint after uncle/fighter sword (castle_to_sword). "
                 "Secret-entrance clear (stairs → outdoor pocket → courtyard) is "
-                "continuous via outdoor path; not the continuous tip. Tip is main "
-                "hall room 0x61 after pocket_to_main_hall."
+                "continuous via outdoor path; not the continuous tip. Tip is NW "
+                "chamber room 0x50 after castle_dungeon_prefix."
             ),
             "predecessor": "HyruleCastleGrounds",
             "acceptance_ram": {
@@ -349,7 +363,7 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             "goal": "secret_entrance_clear",
             "notes": (
                 "Sword + lamp checkpoint; secret entrance clear is continuous. "
-                "Not the continuous tip (main hall 0x61)."
+                "Not the continuous tip (NW chamber 0x50)."
             ),
             "predecessor": "FighterSword",
             "acceptance_ram": {
@@ -363,7 +377,7 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             "goal": "exit_0x55",
             "notes": (
                 "Secret passage room 0x55. Secret-entrance clear is continuous via "
-                "outdoor path (stairs → pocket → courtyard → main door → 0x61). "
+                "outdoor path (stairs → pocket → courtyard → main door → 0x61 → 0x50). "
                 "Internal key/shutter exit is alternate practice only — not a "
                 "primary continuous-tip blocker."
             ),
@@ -374,12 +388,12 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             },
         },
         "CastleMain": {
-            "status": "probe_state",
-            "tier": "blocker",
-            "goal": "main_hall_to_zelda",
+            "status": "segment_scripted",
+            "tier": "standard",
+            "goal": "castle_dungeon_prefix",
             "notes": (
-                "Continuous tip: main hall room 0x61 after pocket_to_main_hall. "
-                "Primary next work: B1 → Zelda cell → follower → escort → Sanctuary."
+                "Development checkpoint for the now-continuous first-dungeon prefix "
+                "0x61 → 0x60 → 0x50. The continuous tip is room 0x50."
             ),
             "predecessor": "FighterSword",
             "acceptance_ram": {"indoors_room": "0x61", "has_control": True},
@@ -387,32 +401,43 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
         "CastleMainEast": {
             "status": "probe_state",
             "tier": "standard",
-            "goal": "main_hall_to_zelda",
-            "notes": "Main-hall east nav from continuous tip room 0x61.",
+            "goal": "east_wing_exploration",
+            "notes": "East-wing exploration from main hall; not the continuous tip.",
             "predecessor": "CastleMain",
             "acceptance_ram": {"indoors_room": "0x61", "has_control": True},
         },
         "CastleMainZeldaReady": {
             "status": "probe_state",
-            "tier": "blocker",
+            "tier": "standard",
             "goal": "reach_zelda_cell",
             "notes": (
-                "Primary continuous-tip probe: main-hall Zelda approach from room "
-                "0x61. Rank ahead of alternate 0x55 key/shutter practice."
+                "State-local Zelda-ready probe from main hall; not evidence of the "
+                "physical route after continuous-tip room 0x50."
             ),
             "predecessor": "CastleMain",
-            "phase": 0,
+            "phase": 1,
         },
         "CastleMainZeldaBoomerang": {
             "status": "probe_state",
             "tier": "standard",
             "goal": "reach_zelda_cell",
             "notes": (
-                "Main-hall Zelda path with boomerang loadout; continuous-tip "
-                "adjacent probe from room 0x61."
+                "Main-hall Zelda path with boomerang loadout; state-local probe, "
+                "not continuous-tip evidence."
             ),
             "predecessor": "CastleMain",
-            "phase": 0,
+            "phase": 1,
+        },
+        "CastleRoom50": {
+            "status": "probe_state",
+            "tier": "blocker",
+            "goal": "discover_after_0x50",
+            "notes": (
+                "Continuous tip / natural-entry frontier. Isolate the next physical "
+                "exit from room 0x50 before asserting a Zelda route."
+            ),
+            "predecessor": "CastleMain",
+            "acceptance_ram": {"indoors_room": "0x50", "has_control": True},
         },
         "CastleB1Key": {
             "status": "probe_state",
@@ -420,7 +445,7 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             "goal": "obtain_key",
             "notes": (
                 "Alternate internal_key practice from 0x55 / B1 — not the primary "
-                "continuous-tip blocker. Primary path is main hall 0x61 → Zelda."
+                "continuous-tip blocker. Primary route now reaches room 0x50 first."
             ),
             "predecessor": "FighterSword",
             "acceptance_ram": {"dungeon_key_count": ">=1"},
@@ -462,7 +487,8 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
             "goal": "zelda_follower",
             "notes": (
                 "Expected $F3CC==1 (Zelda tagalong). Not verified on natural path. "
-                "Predecessor continuous tip CastleMain (room 0x61)."
+                "State-local follower checkpoint; natural predecessor after room 0x50 "
+                "is not verified."
             ),
             "predecessor": "CastleMain",
             "acceptance_ram": {"has_zelda_follower": True, "follower": 1},
@@ -561,10 +587,11 @@ def build_item(
 def rank_score(item: WorkItem) -> int:
     """Lower score = higher on the Sanctuary work queue.
 
-    Policy (continuous tip = main hall room 0x61):
-    - Prefer **main / Zelda** goals (main_hall_to_zelda, reach_zelda_cell,
-      zelda_follower) over exit_0x55 / obtain_key / open_shutter.
-    - Demote key/shutter boost; boost reach_zelda_cell and main-hall goals.
+    Policy (continuous tip = NW chamber room 0x50):
+    - Prefer the physical frontier, then Zelda goals (discover_after_0x50,
+      reach_zelda_cell, zelda_follower) over exit_0x55 / obtain_key /
+      open_shutter.
+    - Demote key/shutter; boost the physical frontier and Zelda goals.
     - Escort / B3 / already-natural opening later.
     - Within a phase, unfinished work before natural_chain milestones.
     """
@@ -586,11 +613,10 @@ def rank_score(item: WorkItem) -> int:
     score = phase * 1000
     score += _TIER_RANK.get(item.tier, 2) * 100
     score += status_boost.get(item.status, 25)
-    # Prefer continuous-tip main/Zelda goals within/across nearby phases.
+    # Prefer the continuous-tip physical frontier and Zelda goals.
     if item.goal in {
+        "discover_after_0x50",
         "reach_zelda_cell",
-        "main_hall_to_zelda",
-        "main_hall_nav",
         "zelda_follower",
     }:
         score -= 10
@@ -639,7 +665,11 @@ def build_catalog(
     overrides: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> list[WorkItem]:
     """Enumerate states and return ranked work items."""
-    names = list(state_names) if state_names is not None else list_state_names(integration_dir)
+    names = (
+        list(state_names)
+        if state_names is not None
+        else list_state_names(integration_dir)
+    )
     ov = overrides if overrides is not None else curated_overrides()
     items = [build_item(name, overrides=ov) for name in names]
     return rank_items(items)
@@ -666,7 +696,7 @@ def build_work_queue(
         i
         for i in items
         if i.status in {"blocker", "probe_state", "unstarted"}
-        and i.group in {"main", "zelda", "b1"}
+        and i.group in {"frontier", "zelda", "b1"}
     ][:12]
 
     return {
@@ -675,9 +705,10 @@ def build_work_queue(
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "unitNote": (
             "Units are Zelda3-Snes save states on the boot → fighter sword → "
-            "secret-entrance clear → courtyard pocket → main hall room 0x61 → "
-            "Zelda → Sanctuary path. Continuous tip is **main hall 0x61**; next "
-            "work is B1 → Zelda cell → follower → escort. Internal 0x55 "
+            "secret-entrance clear → courtyard pocket → main hall → NW chamber "
+            "room 0x50 → Zelda → Sanctuary path. Continuous tip is **room 0x50**; "
+            "next work is the physical exit after 0x50, then B1 → Zelda cell → "
+            "follower → escort. Internal 0x55 "
             "key/shutter is alternate practice only. Sanctuary not claimed."
         ),
         "source": {
@@ -697,6 +728,7 @@ def build_work_queue(
                 "castle_to_fighter_sword",
                 "secret_entrance_clear",
                 "pocket_to_main_hall_0x61",
+                "castle_dungeon_prefix_0x50",
             ],
         },
         "workFocus": [i.to_dict() for i in focus],
@@ -715,13 +747,13 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
         "# ALTTP — Room / Save-State Work Queue",
         "",
         "Sanctuary-path practice queue for `Zelda3-Snes` save states.",
-        "Continuous tip is **main hall room 0x61** (after `pocket_to_main_hall`).",
-        "Ranked for next work: **main hall / B1 → Zelda cell → follower → escort**.",
+        "Continuous tip is **NW chamber room 0x50** (after `castle_dungeon_prefix`).",
+        "Ranked for next work: **physical exit after 0x50 → B1 → Zelda cell → follower → escort**.",
         "Internal 0x55 key/shutter path is **alternate practice**, not primary.",
         "",
-        f"Generated: `{generated}`  ",
-        f"Catalog: `{payload.get('catalogId')}` schema {payload.get('schemaVersion')}  ",
-        f"States: **{summary.get('stateCount', len(items))}**  ",
+        f"Generated: `{generated}`",
+        f"Catalog: `{payload.get('catalogId')}` schema {payload.get('schemaVersion')}",
+        f"States: **{summary.get('stateCount', len(items))}**",
         f"Sanctuary claimed: **{summary.get('sanctuaryClaimed', False)}**",
         "",
         "## Regenerate",
@@ -789,12 +821,12 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
             "",
             "## Notes",
             "",
-            "- Continuous tip is **main hall room 0x61** after "
-            "`pocket_to_main_hall` (courtyard pocket → main door).",
+            "- Continuous tip is **NW chamber room 0x50** after "
+            "`castle_dungeon_prefix` (courtyard pocket → main door → 0x60 → 0x50).",
             "- Secret-entrance clear (stairs → outdoor pocket) is already "
             "continuous; do **not** treat `Castle_55` internal exit as the top "
             "blocker.",
-            "- Primary next work: main hall / B1 → Zelda cell → follower → "
+            "- Primary next work: physical exit after 0x50 / B1 → Zelda cell → follower → "
             "escort → Sanctuary.",
             "- Internal 0x55 key/shutter path is **alternate practice** only.",
             "- `FighterSword` is a **dev checkpoint** after uncle sword; natural "
@@ -838,7 +870,11 @@ def top_items(
     integration_dir: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Return the first *n* ranked items (convenience for CLI)."""
-    data = payload if payload is not None else build_work_queue(integration_dir=integration_dir)
+    data = (
+        payload
+        if payload is not None
+        else build_work_queue(integration_dir=integration_dir)
+    )
     return list(data.get("items") or [])[:n]
 
 

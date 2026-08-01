@@ -12,24 +12,24 @@ Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful only for t
 
 | Layer | Furthest | Evidence |
 |-------|----------|----------|
-| **Continuous** | `0xA6A1` Warehouse Entrance | `recordings/start_to_warehouse.json (83512f)` |
-| **Controller (dev)** | `0xA59F` Kraid's Room ~(39,374) | `kpdr.py pure warehouse-hijump-kraid` |
+| **Continuous** | `0xB167` Frog Savestation | `recordings/start_to_frog_save*.json (114923f x2)` |
+| **Controller (dev)** | — | No controller-only clearance beyond the accepted tip |
 
 ### ★ Next hop to play
 
-- **0xA59F → 0xA6E2** (Kraid's Room → Varia Suit Room)
-- Door: `0x91DA`
+- **0xB167 → 0xB106** (Frog Savestation → Frog Speedway)
+- Door: `0x980A`
 - Note: open
-- Leg: `kraid__varia`
+- Leg: `varia__speed_booster`
 
 ## Status counts (unique path rooms)
 
 | Status | Count |
 |--------|------:|
-| continuous | 31 |
-| controller_dev | 6 |
-| boss_deferred | 6 |
-| open | 64 |
+| continuous | 39 |
+| controller_dev | 1 |
+| boss_deferred | 5 |
+| open | 62 |
 | **total** | **107** |
 | directed hops | 199 |
 
@@ -71,7 +71,7 @@ Done:
 Open:
 - [ ] Charge Beam conventional return (no IBJ)
 
-### W2 — Red Tower → Hi-Jump → Kraid entry (KPDR K2) (in_progress)
+### W2 — Red Tower → Hi-Jump → Kraid entry (KPDR K2) (done)
 
 **Goal:** Warehouse → Hi-Jump real PLM → return → natural Kraid entry
 
@@ -82,13 +82,17 @@ Done:
 - [x] Hi-Jump intended ledges + ordinary bomb-tunnel return
 - [x] Warehouse → Zeela → Kihunter → Baby Kraid → Eye → Kraid
 - [x] 15356f composed Warehouse suffix; no IBJ
+- [x] continuous Warehouse → Hi-Jump → Kraid
+
+### W3 — Kraid → Varia → Speed → Ice by play (in_progress)
+
+**Goal:** Frog Save → Speedway → Bubble → Speed → Ice
+
+Done:
+- [x] Kraid fight + Varia + reverse return + Frog Save continuous
 
 Open:
-- [ ] continuous Warehouse → Hi-Jump → Kraid
-
-### W3 — Kraid → Varia → Speed → Ice by play (open)
-
-**Goal:** Natural Kraid fight + rear door/Varia + Norfair item rooms
+- [ ] Frog Save → Speedway pure controller
 
 ### W4 — Ice → Phantoon approach by play (open)
 
@@ -152,15 +156,15 @@ _Requires MB defeat event + escape timer init_
 | 27 | `0xCF54` | West Tunnel | **continuous** | easy | West Tunnel continuous on warehouse tip |
 | 28 | `0xCEFB` | Glass Tunnel | **continuous** | tough | Glass Tunnel continuous on warehouse tip |
 | 29 | `0xCF80` | East Tunnel | **continuous** | standard | East Tunnel continuous on warehouse tip |
-| 30 | `0xA6A1` | Warehouse Entrance | **continuous** | tough | Warehouse Entrance continuous tip (K2.6; furthest continuous) |
-| 31 | `0xA471` | Warehouse Zeela Room | **controller_dev** | tough | Warehouse Zeela controller |
-| 32 | `0xA4DA` | Warehouse Kihunter Room | **controller_dev** | tough | Warehouse Kihunter controller |
-| 33 | `0xA521` | Baby Kraid Room | **controller_dev** | tough | Baby Kraid gray door clear |
-| 34 | `0xA56B` | Kraid's Eye Door | **controller_dev** | tough | Kraid Eye Door controller |
-| 35 | `0xA59F` | Kraid's Room | **boss_deferred** | boss_late | Kraid — natural entry controller-complete; fight composition next |
-| 36 | `0xA6E2` | Varia Suit Room | **open** | easy |  |
-| 37 | `0xA7DE` | Business Center | **controller_dev** | tough | Business Center descent and Hi-Jump-assisted return |
-| 38 | `0xB167` | Frog Savestation | **open** | easy |  |
+| 30 | `0xA6A1` | Warehouse Entrance | **continuous** | tough | Warehouse Entrance continuous on both K2 and post-Varia return |
+| 31 | `0xA471` | Warehouse Zeela Room | **continuous** | tough | Warehouse Zeela return continuous |
+| 32 | `0xA4DA` | Warehouse Kihunter Room | **continuous** | tough | Warehouse Kihunter return continuous |
+| 33 | `0xA521` | Baby Kraid Room | **continuous** | tough | Baby Kraid return continuous |
+| 34 | `0xA56B` | Kraid's Eye Door | **continuous** | tough | Kraid Eye Door return continuous |
+| 35 | `0xA59F` | Kraid's Room | **continuous** | boss_late | Kraid fight and post-fight return continuous |
+| 36 | `0xA6E2` | Varia Suit Room | **continuous** | easy | Varia Suit collect continuous |
+| 37 | `0xA7DE` | Business Center | **continuous** | tough | Business Center return continuous (start_to_frog_save, 114923f x2) |
+| 38 | `0xB167` | Frog Savestation | **continuous** | easy | Frog Savestation continuous (start_to_frog_save, 114923f x2) |
 | 39 | `0xB106` | Frog Speedway | **open** | tough |  |
 | 40 | `0xAF72` | Upper Norfair Farming Room | **open** | tough |  |
 | 41 | `0xACB3` | Bubble Mountain | **open** | tough |  |

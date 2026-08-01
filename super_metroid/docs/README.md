@@ -2,9 +2,9 @@
 
 | File / dir | Role |
 |------------|------|
-| `STATUS.md` | Verified facts + maturity gate |
-| `plan.md` | Future work |
-| `ARCHITECTURE.md` | Package layers, Segment contracts, tip recipe |
+| `STATUS.md` | Verified facts + maturity gate (M5: power-on → Varia) |
+| `plan.md` | Forward work, M6–M8 roadmap, structure/API + agent system plan |
+| `ARCHITECTURE.md` | Package layers, Segment contracts, tip recipe, efficiency code plan |
 | `TASK_TEMPLATE.md` | Atomic OpenCode card format + residual schema |
 | `SOURCE_STATES.md` | Continuous-like pure entry state index |
 | `tasks/PROCESS.md` | Planner–executor process (pure-first, stabilize, metrics) |

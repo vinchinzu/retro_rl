@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_adad_from_adde_to_ad5e",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Double Chamber (0xADAD); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x962A",
+    "entrySourceRoomIdHex": "0xADDE",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      63,
+      7
+    ],
+    "doorPtr": 38442,
+    "entrySourceRoomId": 44510
+  },
+  "planning": {
+    "objective": "collect_items_and_exit",
+    "entry": {
+      "sourceRoomId": 44510,
+      "sourceRoomIdHex": "0xADDE",
+      "endpoint": {
+        "roomId": 44461,
+        "roomIdHex": "0xADAD",
+        "logicalRoomId": 104,
+        "nodeId": 3,
+        "nodeName": "Double Chamber Right Door (to Wave)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "red",
+        "block": [
+          63,
+          7
+        ],
+        "requires": [
+          "missiles"
+        ],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44382,
+      "targetRoomIdHex": "0xAD5E",
+      "endpoint": {
+        "roomId": 44461,
+        "roomIdHex": "0xADAD",
+        "logicalRoomId": 104,
+        "nodeId": 2,
+        "nodeName": "Double Chamber Bottom Left Door (to Single Chamber Lower)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          23
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        63,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        23
+      ],
+      "exitBlock": [
+        0,
+        23
+      ],
+      "pathBlocks": 76,
+      "waypointsBlocks": [
+        [
+          61,
+          7
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          5,
+          11
+        ],
+        [
+          4,
+          11
+        ],
+        [
+          4,
+          12
+        ],
+        [
+          3,
+          12
+        ],
+        [
+          3,
+          17
+        ],
+        [
+          2,
+          17
+        ],
+        [
+          2,
+          23
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

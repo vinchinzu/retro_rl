@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_d78f_from_da60_to_d72a",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for The Precious Room (0xD78F); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0xA96C",
+    "entrySourceRoomIdHex": "0xDA60",
+    "doorOrientation": "left",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      0,
+      39
+    ],
+    "doorPtr": 43372,
+    "entrySourceRoomId": 55904
+  },
+  "planning": {
+    "objective": "collect_items_and_exit",
+    "entry": {
+      "sourceRoomId": 55904,
+      "sourceRoomIdHex": "0xDA60",
+      "endpoint": {
+        "roomId": 55183,
+        "roomIdHex": "0xD78F",
+        "logicalRoomId": 192,
+        "nodeId": 2,
+        "nodeName": "Draygon Eye Door",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "eye",
+        "block": [
+          0,
+          39
+        ],
+        "requires": [],
+        "localRequirements": [
+          "clear_local_lock"
+        ],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 55082,
+      "targetRoomIdHex": "0xD72A",
+      "endpoint": {
+        "roomId": 55183,
+        "roomIdHex": "0xD78F",
+        "logicalRoomId": 192,
+        "nodeId": 1,
+        "nodeName": "Precious Room Top Left Door (to Colosseum)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        0,
+        39
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "pathBlocks": 39,
+      "waypointsBlocks": [
+        [
+          2,
+          39
+        ],
+        [
+          5,
+          39
+        ],
+        [
+          5,
+          12
+        ],
+        [
+          4,
+          12
+        ],
+        [
+          4,
+          9
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 1
+    },
+    {
+      "label": "probe_bottom_right",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 180
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

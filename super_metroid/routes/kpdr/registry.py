@@ -51,6 +51,10 @@ from super_metroid.routes.kpdr.kraid_return import (
     play_kihunter_to_zeela_return,
     play_zeela_to_warehouse_return,
 )
+from super_metroid.routes.kpdr.k4_norfair import (
+    play_business_to_frog_save,
+    play_frog_save_to_speedway,
+)
 from super_metroid.routes.kpdr.pb_door import (
     play_big_pink_enter_pb_door_from_sill,
     play_big_pink_enter_pb_door_from_top_ledge,
@@ -146,6 +150,9 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "baby_to_kihunter_return": play_baby_to_kihunter_return,
     "kihunter_to_zeela_return": play_kihunter_to_zeela_return,
     "zeela_to_warehouse_return": play_zeela_to_warehouse_return,
+    # K4.0 forward: continuous through Frog Save; its successor is next.
+    "business_to_frog_save": play_business_to_frog_save,
+    "frog_save_to_speedway": play_frog_save_to_speedway,
 }
 
 

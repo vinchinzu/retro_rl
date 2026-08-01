@@ -1,8 +1,9 @@
-"""K4 reverse hops from Kraid's Eye Room back to Warehouse.
+"""Kraid return reverse hops (Eye → Baby → Kihunter → Zeela → Warehouse).
 
-These bounded controllers are ``controller_dev`` scaffolds only. They use
-ordinary inputs and do not own the emulator, door-warp setup, or progression
-state; natural-entry evidence is still required before continuous use.
+Several hops on this spine are locked ``continuous`` on the Business /
+Frog Save tip (see ``START_TO_SPEED_GRAPH``). Controllers stay pure — no
+env ownership, door-warps, or progression writes. Prefer named phases over
+mid-loop magic when extending dense reverse climbs (Zeela).
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from super_metroid.routes.controller_common import (
 )
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BABY_KRAID,
+    ITEM_HI_JUMP,
     ROOM_KRAID_EYE,
     ROOM_WAREHOUSE,
     ROOM_WAREHOUSE_KIHUNTER,
@@ -112,9 +114,7 @@ def play_eye_to_baby_return(session: ControllerSession) -> SuperMetroidState:
         if phase < 4:
             state = hold(session, 1, "LEFT", "A", reason="eye_to_baby_jump")
         elif phase < 10:
-            state = hold(
-                session, 1, "LEFT", "A", "B", reason="eye_to_baby_jump_spin"
-            )
+            state = hold(session, 1, "LEFT", "A", "B", reason="eye_to_baby_jump_spin")
         elif phase < 14:
             state = hold(session, 1, "X", reason="eye_to_baby_reshot")
         else:
@@ -124,17 +124,12 @@ def play_eye_to_baby_return(session: ControllerSession) -> SuperMetroidState:
         if state.door_transition:
             for _ in range(80):
                 state = hold(session, 1, reason="eye_to_baby_transition")
-                if (
-                    state.room_id == ROOM_BABY_KRAID
-                    and state.door_transition == 0
-                ):
+                if state.room_id == ROOM_BABY_KRAID and state.door_transition == 0:
                     break
             if state.room_id == ROOM_BABY_KRAID:
                 break
     else:
-        raise TimeoutError(
-            f"eye_to_baby_return: left exit timed out: {session.state}"
-        )
+        raise TimeoutError(f"eye_to_baby_return: left exit timed out: {session.state}")
 
     return wait_ordinary_room(
         session,
@@ -171,9 +166,7 @@ def play_baby_to_kihunter_return(session: ControllerSession) -> SuperMetroidStat
         state = hold(session, 1, reason="baby_return_land")
         if state.velocity_y == 0 and state.pose in (1, 2, 5, 6, 9, 10, 137, 138):
             break
-    _baby_kraid_sweep(
-        session, "LEFT", 80, limit=1700, label="baby_return_clear_left"
-    )
+    _baby_kraid_sweep(session, "LEFT", 80, limit=1700, label="baby_return_clear_left")
     if session.state.enemies_killed < session.state.num_enemies:
         _baby_kraid_sweep(
             session, "RIGHT", 1490, limit=1900, label="baby_return_clear_right"
@@ -201,9 +194,7 @@ def play_baby_to_kihunter_return(session: ControllerSession) -> SuperMetroidStat
         if phase < 4:
             state = hold(session, 1, "LEFT", "A", reason="baby_return_jump")
         elif phase < 10:
-            state = hold(
-                session, 1, "LEFT", "A", "B", reason="baby_return_jump_spin"
-            )
+            state = hold(session, 1, "LEFT", "A", "B", reason="baby_return_jump_spin")
         elif phase < 14:
             state = hold(session, 1, "X", reason="baby_return_reshot")
         else:
@@ -308,9 +299,16 @@ def play_kihunter_to_zeela_return(session: ControllerSession) -> SuperMetroidSta
     hold(session, 2, reason="kihunter_zeela_face_settle")
     hold(session, 8, "DOWN", reason="kihunter_zeela_crouch_load")
     mid = False
+    has_hi_jump = bool(session.state.collected_items & ITEM_HI_JUMP)
     for frame in range(110):
         state = session.state
-        if frame < 30:
+        # Hi-Jump reaches the y=291 ledge several frames earlier than the
+        # historical no-Hi-Jump fixture.  Start the rightward landing drift
+        # from the live height rather than an absolute loop frame, then cap it
+        # at the same x≈367 hand-off used by the fixture route.
+        if has_hi_jump and state.samus_y <= 300:
+            buttons = ("RIGHT", "A", "B") if state.samus_x < 367 else ()
+        elif frame < 30:
             buttons = ("A",)
         elif frame < 45:
             buttons = ("A", "UP", "X")
@@ -330,9 +328,7 @@ def play_kihunter_to_zeela_return(session: ControllerSession) -> SuperMetroidSta
             mid = True
             break
     hold(session, 16, reason="kihunter_zeela_mid_settle")
-    if not mid and not (
-        session.state.samus_y <= 305 and session.state.samus_x >= 360
-    ):
+    if not mid and not (session.state.samus_y <= 305 and session.state.samus_x >= 360):
         raise TimeoutError(
             f"{label}: mid ledge missed: {session.state}; best_min_y={best_min_y}"
         )
@@ -419,9 +415,7 @@ def play_kihunter_to_zeela_return(session: ControllerSession) -> SuperMetroidSta
                 f"{label}: upper traverse left source room: {session.state}"
             )
         if state.samus_y > 300:
-            raise TimeoutError(
-                f"{label}: fell during upper traverse: {session.state}"
-            )
+            raise TimeoutError(f"{label}: fell during upper traverse: {session.state}")
         # Bomb-boost if starting to sink through residual floor tiles.
         if state.samus_y > 210:
             hold(session, 2, "X", reason="kihunter_zeela_traverse_boost")
@@ -435,7 +429,9 @@ def play_kihunter_to_zeela_return(session: ControllerSession) -> SuperMetroidSta
             break
         hold(session, 1, "LEFT", reason="kihunter_zeela_upper_roll")
     else:
-        raise TimeoutError(f"{label}: Zeela x-window approach timed out: {session.state}")
+        raise TimeoutError(
+            f"{label}: Zeela x-window approach timed out: {session.state}"
+        )
 
     unmorph(session)
     select_weapon(session, 0)
@@ -454,7 +450,9 @@ def play_kihunter_to_zeela_return(session: ControllerSession) -> SuperMetroidSta
         if phase < 8:
             state = hold(session, 1, "DOWN", "A", reason="kihunter_zeela_drop")
         elif phase < 14:
-            state = hold(session, 1, "DOWN", "A", "B", reason="kihunter_zeela_drop_spin")
+            state = hold(
+                session, 1, "DOWN", "A", "B", reason="kihunter_zeela_drop_spin"
+            )
         elif phase < 18:
             state = hold(session, 1, "DOWN", "X", reason="kihunter_zeela_reshot")
         else:
@@ -473,18 +471,43 @@ def play_kihunter_to_zeela_return(session: ControllerSession) -> SuperMetroidSta
         ROOM_ZEELA,
         settle_frames=320,
         label=label,
+        # The down-door transition becomes ordinary while Samus is still
+        # falling.  Do not hand its successor the airborne x≈357/y≈362 frame:
+        # Zeela's reverse controller needs the real floor handoff near y=395.
+        y_range=(385, 410),
     )
+
+
+# Named phases for the continuous Zeela→Warehouse reverse climb. Keep geometry
+# edits inside one phase; do not invent mid-loop lineage branches.
+_ZEELA_PHASE_BOTTOM_ROLL = "bottom_roll"
+_ZEELA_PHASE_MID_PLATFORM = "mid_platform"
+_ZEELA_PHASE_BELOW_LIP = "below_platform_lip"
+_ZEELA_PHASE_WALL_PLANT = "wall_plant"
+_ZEELA_PHASE_SHOTBLOCK_CLIMB = "shotblock_wall_climb"
+_ZEELA_PHASE_WAREHOUSE_DOOR = "warehouse_door_exit"
 
 
 def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidState:
     """Climb Zeela reverse to the upper-left Warehouse door.
 
-    This is not continuous evidence; it requires a natural source state.
+    Continuous on the Business / Frog Save tip (graph verification
+    ``continuous``). Pure probes still need a continuous-like source state.
 
-    Redesign (planner / SM-K4-R-ZEELA-REDESIGN) — geometry facts:
+    Phases (named; one-knob geometry edits stay inside a single phase):
 
-    * Source is bottom-right after kihunter drop (~x=403). No Hi-Jump on the
-      reverse pure chain (equipped_items often ``0x1005``).
+    1. ``bottom_roll`` — morph reverse-roll + align second-drop lane
+    2. ``mid_platform`` — reverse-shot climb onto middle platform
+    3. ``below_platform_lip`` — crouch-load from mid right-edge to lip
+    4. ``wall_plant`` — hop-left to wall plant band (x≈37, y≈219)
+    5. ``shotblock_wall_climb`` — clear shot blocks + wall-spin to top band
+    6. ``warehouse_door_exit`` — standing LEFT beams into Warehouse 0xA6A1
+
+    Geometry facts (SM-K4-R-ZEELA-REDESIGN):
+
+    * Historical fixtures begin bottom-right after the Kihunter drop (~x=403)
+      without Hi-Jump (``items=0x1005``); the natural Varia lineage has
+      Hi-Jump and needs a farther-right mid-platform landing gate.
     * Floor-left is the Energy Tank door ``0xA4B1`` — fail-loud if ``y>250``.
     * Middle platform is narrow (~x=90–107, y≈331). Reach it with reverse-shot
       **RIGHT bias in the hole** (left-only peaks the shaft at x≈52 and falls).
@@ -506,6 +529,7 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
     )
     require_room(session, ROOM_ZEELA, label)
     select_weapon(session, 0)
+    has_hi_jump = bool(session.state.collected_items & ITEM_HI_JUMP)
 
     def guard_climb(state: SuperMetroidState, phase: str) -> None:
         if state.door_transition and state.samus_y > 250:
@@ -515,20 +539,20 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
         if state.room_id != ROOM_ZEELA:
             raise TimeoutError(f"{label}: left Zeela during {phase}: {state}")
 
-    # --- 1) Bottom reverse-roll to second-drop lane (x≈110–140, floor) ---
+    # --- phase: bottom_roll ---
     ensure_morph(session)
     for _ in range(900):
         state = hold(session, 1, "LEFT", reason="zeela_warehouse_bottom_roll")
-        guard_climb(state, "bottom reverse roll")
+        guard_climb(state, _ZEELA_PHASE_BOTTOM_ROLL)
         if state.samus_x <= 160 and state.samus_y >= 350:
             break
     else:
-        raise TimeoutError(f"{label}: bottom reverse roll stalled: {session.state}")
+        raise TimeoutError(f"{label}: {_ZEELA_PHASE_BOTTOM_ROLL} stalled: {session.state}")
 
     unmorph(session)
     for _ in range(160):
         state = session.state
-        guard_climb(state, "second-drop align")
+        guard_climb(state, _ZEELA_PHASE_BOTTOM_ROLL)
         if 110 <= state.samus_x <= 140:
             break
         if state.samus_x < 110:
@@ -537,28 +561,29 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
             hold(session, 1, "LEFT", reason="zeela_warehouse_second_align")
     hold(session, 8, reason="zeela_warehouse_second_align_settle")
 
-    # --- 2) Reverse-shot + RIGHT bias in hole → middle platform ---
+    # --- phase: mid_platform ---
     # Landing target: y∈[300,350], grounded, x≥90 (not shaft peak x≈52).
     select_weapon(session, 0)
     mid = False
     for frame in range(700):
         state = session.state
-        guard_climb(state, "second-drop climb")
+        guard_climb(state, _ZEELA_PHASE_MID_PLATFORM)
+        mid_x_min = 96 if has_hi_jump else 90
         if (
             300 <= state.samus_y <= 350
             and state.velocity_y == 0
-            and state.samus_x >= 90
+            and state.samus_x >= mid_x_min
             and frame > 50
         ):
             mid = True
             break
-        phase = frame % 28
-        if phase < 5:
+        cadence = frame % 28
+        if cadence < 5:
             buttons: tuple[str, ...] = ("UP", "X")
         elif state.samus_y <= 360:
             # In/near the hole — drift RIGHT onto the mid platform.
-            buttons = ("RIGHT", "A", "B") if phase >= 16 else ("RIGHT", "A")
-        elif phase < 14:
+            buttons = ("RIGHT", "A", "B") if cadence >= 16 else ("RIGHT", "A")
+        elif cadence < 14:
             buttons = ("A",)
         elif state.samus_x <= 70:
             buttons = ("RIGHT", "A")
@@ -569,12 +594,12 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
     if not mid and not (
         300 <= session.state.samus_y <= 355 and session.state.samus_x >= 85
     ):
-        raise TimeoutError(f"{label}: middle platform missed: {session.state}")
+        raise TimeoutError(f"{label}: {_ZEELA_PHASE_MID_PLATFORM} missed: {session.state}")
 
-    # --- 3) Mid right-edge (x≈107) crouch-load → below-platform lip ---
+    # --- phase: below_platform_lip ---
     for _ in range(80):
         state = session.state
-        guard_climb(state, "mid right edge")
+        guard_climb(state, _ZEELA_PHASE_BELOW_LIP)
         if state.samus_y > 360:
             raise TimeoutError(f"{label}: fell off mid platform: {state}")
         if state.samus_x >= 104:
@@ -589,7 +614,7 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
     lip = False
     for frame in range(600):
         state = session.state
-        guard_climb(state, "first-drop climb")
+        guard_climb(state, _ZEELA_PHASE_BELOW_LIP)
         if (
             state.samus_y <= 240
             and state.velocity_y == 0
@@ -605,25 +630,25 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
         elif state.samus_y < 280:
             buttons = ("LEFT", "A", "B")
         else:
-            phase = frame % 24
-            if phase < 6:
+            cadence = frame % 24
+            if cadence < 6:
                 buttons = ("UP", "X")
-            elif phase < 16:
+            elif cadence < 16:
                 buttons = ("A",)
             else:
                 buttons = ()
         hold(session, 1, *buttons, reason="zeela_warehouse_first_crouch_climb")
     hold(session, 15, reason="zeela_warehouse_lip_settle")
     if not lip and not (session.state.samus_y <= 250 and session.state.samus_x <= 90):
-        raise TimeoutError(f"{label}: below-platform lip missed: {session.state}")
+        raise TimeoutError(f"{label}: {_ZEELA_PHASE_BELOW_LIP} missed: {session.state}")
 
-    # --- 4) Hop left on the lip to the wall plant (x≈37, y≈219) ---
+    # --- phase: wall_plant ---
     # The crouch-load lands ~x=69 where LEFT walk is blocked; a short hop-left
     # reaches the below-platform plant used by the wall climb.
     unmorph(session)
     for frame in range(50):
         state = session.state
-        guard_climb(state, "lip hop left")
+        guard_climb(state, _ZEELA_PHASE_WALL_PLANT)
         if (
             state.samus_x <= 45
             and state.velocity_y == 0
@@ -640,9 +665,9 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
         hold(session, 1, *buttons, reason="zeela_warehouse_lip_hop_left")
     hold(session, 20, reason="zeela_warehouse_bp_settle")
     if not (session.state.samus_y <= 230 and session.state.samus_x <= 55):
-        raise TimeoutError(f"{label}: wall-plant band missed: {session.state}")
+        raise TimeoutError(f"{label}: {_ZEELA_PHASE_WALL_PLANT} missed: {session.state}")
 
-    # --- 5) Clear respawned shot blocks above the left wall, then spin climb ---
+    # --- phase: shotblock_wall_climb ---
     # Reverse source re-enters Zeela from Kihunter without the forward shot-block
     # clear; pure UP+X (≈40) opens the column so the wall climb can reach y≈139.
     # Without that clear the climb hard-caps near y=188.
@@ -663,11 +688,11 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
             hold(session, 4, reason="zeela_warehouse_shotblock_fuse")
         for frame in range(60):
             state = session.state
-            guard_climb(state, "shotblock clear jump")
-            phase = frame % 8
-            if phase < 3:
+            guard_climb(state, _ZEELA_PHASE_SHOTBLOCK_CLIMB)
+            cadence = frame % 8
+            if cadence < 3:
                 buttons = ("UP", "X")
-            elif phase < 6:
+            elif cadence < 6:
                 buttons = ("A",)
             else:
                 buttons = ()
@@ -675,7 +700,7 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
 
         for _ in range(30):
             state = session.state
-            guard_climb(state, "wall plant")
+            guard_climb(state, _ZEELA_PHASE_SHOTBLOCK_CLIMB)
             if state.samus_x <= 35:
                 break
             if state.samus_y > 250:
@@ -685,7 +710,7 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
 
         for frame in range(900):
             state = session.state
-            guard_climb(state, "wall climb")
+            guard_climb(state, _ZEELA_PHASE_SHOTBLOCK_CLIMB)
             if (
                 state.samus_y <= 150
                 and state.velocity_y == 0
@@ -700,16 +725,29 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
                 ):
                     top = True
                     break
-            phase = frame % 14
-            if phase < 7:
+            cadence = frame % 14
+            if cadence < 7:
                 buttons = ("LEFT", "A", "B")
-            elif phase < 10:
+            elif cadence < 10:
                 buttons = ("RIGHT", "A")
-            elif phase < 12:
+            elif cadence < 12:
                 buttons = ("LEFT", "A")
             else:
                 buttons = ("LEFT",)
-            hold(session, 1, *buttons, reason="zeela_warehouse_wall_climb")
+            state = hold(session, 1, *buttons, reason="zeela_warehouse_wall_climb")
+            # Hi-Jump continuous lineage may naturally enter Warehouse during
+            # the final wall-climb cadence (upper-left door, not floor E-Tank).
+            if state.room_id == ROOM_WAREHOUSE:
+                if state.samus_y > 250:
+                    raise TimeoutError(
+                        f"{label}: floor door transition during wall climb: {state}"
+                    )
+                return wait_ordinary_room(
+                    session,
+                    ROOM_WAREHOUSE,
+                    settle_frames=320,
+                    label=label,
+                )
             if session.state.samus_y > 280:
                 break
         if top:
@@ -718,9 +756,11 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
         if not (session.state.samus_y <= 230 and session.state.samus_x <= 55):
             break
     if not top:
-        raise TimeoutError(f"{label}: top door band missed: {session.state}")
+        raise TimeoutError(
+            f"{label}: {_ZEELA_PHASE_SHOTBLOCK_CLIMB} top band missed: {session.state}"
+        )
 
-    # --- 6) Standing LEFT door → Warehouse 0xA6A1 ---
+    # --- phase: warehouse_door_exit ---
     unmorph(session)
     select_weapon(session, 0)
     for _ in range(15):
@@ -738,10 +778,10 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
         hold(session, 12, reason="zeela_warehouse_door_fuse")
 
     for index in range(400):
-        phase = index % 20
-        if phase < 10:
+        cadence = index % 20
+        if cadence < 10:
             state = hold(session, 1, "LEFT", "A", reason="zeela_warehouse_exit")
-        elif phase < 14:
+        elif cadence < 14:
             state = hold(
                 session, 1, "LEFT", "A", "B", reason="zeela_warehouse_exit_spin"
             )
@@ -758,7 +798,9 @@ def play_zeela_to_warehouse_return(session: ControllerSession) -> SuperMetroidSt
         if state.samus_y > 200:
             raise TimeoutError(f"{label}: fell during Warehouse exit: {state}")
     else:
-        raise TimeoutError(f"{label}: Warehouse exit timed out: {session.state}")
+        raise TimeoutError(
+            f"{label}: {_ZEELA_PHASE_WAREHOUSE_DOOR} timed out: {session.state}"
+        )
 
     return wait_ordinary_room(
         session,

@@ -253,12 +253,16 @@ def collect_deferred_plans(
 
 
 def phase_spec_to_dict(phase: PhaseSpec) -> dict[str, Any]:
-    return {
+    payload = {
         "phase": phase.phase,
         "kind": phase.kind,
         "params": _jsonable(phase.params),
         "failure_policy": phase.failure_policy,
     }
+    contract = getattr(phase, "contract", None)
+    if contract is not None and hasattr(contract, "to_jsonable"):
+        payload["contract"] = contract.to_jsonable()
+    return payload
 
 
 def deferred_from_phase_name(phase_name: str, reason: str, *, retry: str = "tomorrow") -> DeferredPlan:

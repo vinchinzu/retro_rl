@@ -183,6 +183,17 @@ class TaskPrimitiveTests(unittest.TestCase):
         self.assertEqual(first.resets, 1)
         self.assertEqual(second.resets, 1)
 
+    def test_task_sequence_progress_snapshot_tracks_active_child(self) -> None:
+        world = _world()
+        first = _ScriptedTask("first", [TaskStatus.RUNNING, TaskStatus.SUCCESS], running_action=True)
+        task = TaskSequence(name="seq", tasks=[first], idle_between_tasks=False)
+        task.reset(world)
+        task.step(world)
+        snap = task.progress_snapshot()
+        self.assertEqual(snap.task_name, "seq")
+        self.assertEqual(snap.phase_text, "first")
+        self.assertEqual(snap.phase_index, 0)
+
     def test_task_sequence_prefixes_child_failures(self) -> None:
         world = _world()
         task = TaskSequence(tasks=[_ScriptedTask("fragile", [TaskStatus.BLOCKED])])

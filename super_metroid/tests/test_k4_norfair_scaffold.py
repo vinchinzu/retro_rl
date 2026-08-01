@@ -29,6 +29,21 @@ def test_k4_norfair_segment_callables_are_importable() -> None:
     assert all(callable(segment) for segment in segments)
 
 
+def test_business_to_frog_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert get_segment("business_to_frog_save") is k4_norfair.play_business_to_frog_save
+
+
+def test_frog_save_to_speedway_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("frog_save_to_speedway")
+        is k4_norfair.play_frog_save_to_speedway
+    )
+
+
 def test_k4_norfair_constants_match_graph_path() -> None:
     path = START_TO_SPEED_GRAPH.shortest_path(
         k4_norfair.ROOM_BUSINESS,
@@ -37,9 +52,7 @@ def test_k4_norfair_constants_match_graph_path() -> None:
     )
 
     assert path is not None
-    assert [
-        (edge.source_room_id, edge.target_room_id) for edge in path
-    ] == [
+    assert [(edge.source_room_id, edge.target_room_id) for edge in path] == [
         (k4_norfair.ROOM_BUSINESS, k4_norfair.ROOM_FROG_SAVE),
         (k4_norfair.ROOM_FROG_SAVE, k4_norfair.ROOM_FROG_SPEEDWAY),
         (k4_norfair.ROOM_FROG_SPEEDWAY, k4_norfair.ROOM_UPPER_NORFAIR_FARM),

@@ -5,8 +5,9 @@ One CLI for every milestone — do not add ``start_to_*.py`` scripts. Tips are
 functions in ``routes/continuous.py`` registered in ``routes/catalog.py``.
 
 ```bash
-# Current tip (Warehouse Entrance / KPDR K2.6)
+# Current tip (Frog Savestation / KPDR K4.0)
 uv run python super_metroid/scripts/record/continuous.py --no-video
+uv run python super_metroid/scripts/record/continuous.py --to frog --no-video
 uv run python super_metroid/scripts/record/continuous.py --to warehouse --no-video
 uv run python super_metroid/scripts/record/continuous.py --to warehouse --no-video --room-timing
 
@@ -69,6 +70,15 @@ def main() -> None:
     )
     parser.add_argument("--video", type=Path, default=None)
     parser.add_argument("--report", type=Path, default=None)
+    parser.add_argument(
+        "--state-output",
+        type=Path,
+        default=None,
+        help=(
+            "Write a reusable emulator checkpoint only after an integrity-green "
+            "tip run (for continuous-like pure probes)."
+        ),
+    )
     parser.add_argument("--no-video", action="store_true")
     parser.add_argument("--no-unlimited-energy", action="store_true")
     parser.add_argument("--no-unlimited-ammo", action="store_true")
@@ -119,6 +129,7 @@ def main() -> None:
         unlimited_energy=not args.no_unlimited_energy,
         unlimited_ammo=not args.no_unlimited_ammo,
         room_timing_path=room_timing_path,
+        state_output=args.state_output,
     )
     payload = report.to_dict()
     payload["continuous_tip"] = tip.tip_id

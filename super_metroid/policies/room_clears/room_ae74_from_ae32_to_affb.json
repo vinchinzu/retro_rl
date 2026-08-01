@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_ae74_from_ae32_to_affb",
+  "status": "generated_unverified",
+  "description": "Doorway-natural starter for Kronic Boost Room (0xAE74); entry just inside door, exit via LEFT.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x965A",
+    "entrySourceRoomIdHex": "0xAE32",
+    "doorOrientation": "right",
+    "face": null,
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 38490,
+    "entrySourceRoomId": 44594
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 44594,
+      "sourceRoomIdHex": "0xAE32",
+      "endpoint": {
+        "roomId": 44660,
+        "roomIdHex": "0xAE74",
+        "logicalRoomId": 113,
+        "nodeId": 4,
+        "nodeName": "Kronic Boost Room Right Door (to Volcano Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 45051,
+      "targetRoomIdHex": "0xAFFB",
+      "endpoint": {
+        "roomId": 44660,
+        "roomIdHex": "0xAE74",
+        "logicalRoomId": 113,
+        "nodeId": 2,
+        "nodeName": "Kronic Boost Room Center Left Door (to Spiky Acid Snakes Tunnel)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          23
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        23
+      ],
+      "exitBlock": [
+        0,
+        23
+      ],
+      "pathBlocks": 46,
+      "waypointsBlocks": [
+        [
+          29,
+          7
+        ],
+        [
+          26,
+          7
+        ],
+        [
+          26,
+          11
+        ],
+        [
+          27,
+          11
+        ],
+        [
+          27,
+          17
+        ],
+        [
+          25,
+          17
+        ],
+        [
+          25,
+          18
+        ],
+        [
+          22,
+          18
+        ],
+        [
+          22,
+          19
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          19,
+          20
+        ],
+        [
+          18,
+          20
+        ],
+        [
+          18,
+          23
+        ],
+        [
+          2,
+          23
+        ]
+      ]
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "coarse_exit_approach",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 220
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+}

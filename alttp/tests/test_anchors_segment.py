@@ -11,7 +11,11 @@ from alttp.opening_route.anchors import (
     resolve_continuous_tip_node,
 )
 from alttp.opening_route.segment import get_segment, list_segments, segment_registry
-from alttp.paths import FIGHTER_SWORD_STATE, HYRULE_CASTLE_GROUNDS_STATE, STATE_SEMANTIC_NAMES
+from alttp.paths import (
+    FIGHTER_SWORD_STATE,
+    HYRULE_CASTLE_GROUNDS_STATE,
+    STATE_SEMANTIC_NAMES,
+)
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     SANCTUARY_ROOM,
@@ -65,7 +69,9 @@ def test_grounds_spawn_matches_controllable_screen() -> None:
 def test_secret_hole_approach_position_window() -> None:
     a = anchor_by_id("HyruleCastle_SecretPassageApproach")
     assert a is not None
-    near = _snap(screen_id=0x1B, indoors=False, link_x=2430, link_y=1704, game_mode=0x09)
+    near = _snap(
+        screen_id=0x1B, indoors=False, link_x=2430, link_y=1704, game_mode=0x09
+    )
     far = _snap(screen_id=0x1B, indoors=False, link_x=1000, link_y=1000, game_mode=0x09)
     assert a.matches(near)
     assert not a.matches(far)
@@ -152,6 +158,7 @@ def test_segment_registry_has_continuous_segments() -> None:
     assert "castle_to_sword" in reg
     assert "sword_to_secret_entrance_clear" in reg
     assert "pocket_to_main_hall" in reg
+    assert "castle_dungeon_prefix" in reg
     assert "main_hall_to_zelda" in reg
     assert "escort_to_sanctuary" in reg
     assert set(list_segments()) == set(reg)
@@ -162,6 +169,9 @@ def test_segment_registry_has_continuous_segments() -> None:
     planned = get_segment("main_hall_to_zelda")
     assert planned.exit.verification == "planned"
     assert planned.entry.graph_node_id == "room_61"
+    dungeon = get_segment("castle_dungeon_prefix")
+    assert dungeon.exit.verification == "continuous"
+    assert dungeon.exit.graph_node_id == "room_50"
     escort = get_segment("escort_to_sanctuary")
     assert escort.exit.verification == "planned"
     assert escort.exit.graph_node_id == "sanctuary"
@@ -299,7 +309,10 @@ def test_entry_rejection_does_not_call_play() -> None:
 def test_main_hall_to_zelda_offline_acceptance_paths() -> None:
     import numpy as np
 
-    from alttp.opening_route.main_hall_to_zelda import evaluate_acceptance, run_from_main_hall
+    from alttp.opening_route.main_hall_to_zelda import (
+        evaluate_acceptance,
+        run_from_main_hall,
+    )
     from alttp.ram import (
         DARK_WORLD_FLAG,
         EQUIP_SWORD,

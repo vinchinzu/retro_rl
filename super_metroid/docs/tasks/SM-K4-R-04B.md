@@ -15,9 +15,9 @@ implement
 - optional residual: `docs/tasks/SM-K4-R-04B-residual.md`
 
 ## Context
-SM-K4-R-04 **RED**: pure from `post_zeela_to_warehouse_return` (x≈728 y≈139)
-fails — controller only walks to elevator x≥126 then DOWN. Reverse lands on the
-**Zeela door ledge** (right), not the elevator.
+The natural Varia-lineage probe from `post_varia_continuous_to_warehouse`
+(right Zeela-door ledge) is **GREEN**: the reverse branch reaches the lower
+lip, clears both stack tiers, and reuses the left-side elevator closeout.
 
 Geometry findings (R-04 residual):
 
@@ -30,7 +30,7 @@ Geometry findings (R-04 residual):
 | Open from right upper | tried; stack did not open a left path |
 
 ## Source
-`scratch/post_zeela_to_warehouse_return.state` room `0xA6A1` x≈728
+`scratch/post_varia_continuous_to_warehouse.state` room `0xA6A1` x≈728
 
 ## Do
 1. When `samus_x > 400`, run reverse approach class (do not break left-side
@@ -39,17 +39,18 @@ Geometry findings (R-04 residual):
    `scratch/post_warehouse_to_business_return.state` if green.
 3. Residual if RED: multi-strategy pin table + next planner action (not Luna
    cadence spam on elevator settle frames).
-4. No continuous / STATUS.
+4. Continuous promotion is planner-only after the pure gate; it is now covered
+   by two integrity-green `--to business` runs.
 
 ## Acceptance
-- [ ] Pure green → ordinary `0xA7DE` **or** residual with strategy table
-- [ ] Continuous left-side `warehouse_to_business` still valid (no break)
-- [ ] `uv run pytest super_metroid/tests/test_controller_common.py -q` green
+- [x] Pure green → ordinary `0xA7DE` (1,421f)
+- [x] Continuous left-side `warehouse_to_business` still valid (no break)
+- [x] `uv run pytest super_metroid/tests/test_controller_common.py -q` green
 
 ## Verify
 ```bash
 uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-to-business \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_zeela_to_warehouse_return.state \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_continuous_to_warehouse.state \
   --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_warehouse_to_business_return.state
 # Optional left-side sanity (continuous-like elevator source if available):
 # uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-to-business \

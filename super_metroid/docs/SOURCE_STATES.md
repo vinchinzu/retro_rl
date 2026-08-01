@@ -18,16 +18,33 @@ ad-hoc warps. All paths are under
 - `natural_post_spore_spawn` is the shared boot fixture for most K0–K2
   practice and is **not** a continuous tip in itself.
 
+**Planned registry hardening** (see [`plan.md`](plan.md) / [`ARCHITECTURE.md`](ARCHITECTURE.md)):
+
+- Provenance (capture command, parent tip, capabilities) per row.
+- Fingerprint validation on pure load: room + pose + x/y band must match.
+- Dispatch auto-suggest `--source` from room id + required capabilities.
+- On pure RED: auto-capture last pin (+ short clip when tooling lands).
+
 ## Spine / KPDR continuous-like
 
 | ID | Path (under SuperMetroid-Snes/) | Room | Capabilities (approx) | Use for |
 |----|---------------------------------|------|------------------------|---------|
 | `natural_post_spore_spawn` | `natural_post_spore_spawn.state` | `0x9B5B` Spore Super | Morph/Bombs/Supers 0 | pure room practice, K0–K3 probes; **not** continuous tip |
 | `post_varia_collected` | `scratch/post_varia_collected.state` | `0xA6E2` Varia | post-Varia collect | pure `varia-to-kraid` |
+| `post_varia_continuous` | `scratch/post_varia_continuous.state` | `0xA6E2` Varia (x=119/y=126/pose=81) | full zero-load `--to varia` candidate, items `0x1105` | revalidate the reverse chain against persistent route state |
+| `post_varia_continuous_to_kraid` | `scratch/post_varia_continuous_to_kraid.state` | `0xA59F` Kraid | natural Varia-lineage Varia→Kraid exit | revalidate Kraid→Eye |
+| `post_varia_continuous_to_eye` | `scratch/post_varia_continuous_to_eye.state` | `0xA56B` Eye Door | natural Varia-lineage Kraid→Eye exit | revalidate Eye→Baby |
+| `post_varia_continuous_to_baby` | `scratch/post_varia_continuous_to_baby.state` | `0xA521` Baby Kraid | natural Varia-lineage Eye→Baby exit | revalidate Baby→Kihunter |
 | `post_varia_to_kraid` | `scratch/post_varia_to_kraid_pure.state` | `0xA59F` Kraid | post-Varia return | pure `kraid-to-eye-return` |
 | `post_kraid_to_eye` | `scratch/post_kraid_to_eye_return.state` | `0xA56B` Eye Door | post pure K3.3 | pure `eye-to-baby-return` |
 | `post_eye_to_baby` | `scratch/post_eye_to_baby_return.state` | `0xA521` Baby Kraid | post pure K3.4 | pure `baby-to-kihunter-return` |
-| `post_baby_to_kihunter` | `scratch/post_baby_to_kihunter_return.state` | `0xA4DA` Kihunter | post pure K3.5 | pure `kihunter-to-zeela-return` |
+| `post_baby_to_kihunter` | `scratch/post_baby_to_kihunter_return.state` | `0xA4DA` Kihunter | historical fixture chain | fixture-only `kihunter-to-zeela-return` (not route-ready) |
+| `post_varia_continuous_to_kihunter` | `scratch/post_varia_continuous_to_kihunter.state` | `0xA4DA` Kihunter (after 5f settle: x=461/y=395/pose=165) | natural-input successors of `post_varia_continuous` through Baby→Kihunter | authoritative revalidation source for `kihunter-to-zeela-return` |
+| `post_varia_continuous_to_zeela` | `scratch/post_varia_continuous_to_zeela.state` | `0xA471` Zeela | natural Varia-lineage Kihunter→Zeela exit | authoritative revalidation source for `zeela-to-warehouse-return` |
+| `post_varia_continuous_to_warehouse` | `scratch/post_varia_continuous_to_warehouse.state` | `0xA6A1` Warehouse right ledge | natural Varia-lineage Zeela→Warehouse exit | authoritative revalidation source for reverse `warehouse-to-business` |
+| `post_business_continuous` | `scratch/post_business_continuous.state` | `0xA7DE` Business Center | integrity-green `--to business` endpoint | authoritative source for `business-to-frog-save` |
+| `post_frog_continuous` | `scratch/post_frog_continuous.state` | `0xB167` Frog Savestation (reload: x=60/y=139/pose=1) | integrity-green `--to frog` endpoint | authoritative source for `frog-save-to-speedway` |
+| `post_business_to_frog_save_pure` | `scratch/post_business_to_frog_save_pure.state` | `0xB167` Frog Savestation (reload: x=60/y=139/pose=1) | recorded pure handoff from accepted Business; superseded by the accepted Frog checkpoint | probe record only |
 | `business_climb_entry` | `scratch/continuous_like_business_climb_entry.state` | `0xA7DE` Business Center floor band | Hi-Jump, continuous-like | pure `business-to-warehouse` |
 | `continuous_like_bat` | `scratch/continuous_like_bat.state` | `0xA3DD` Bat room | pre-Kraid | bat pure / dwell isolation |
 | `red_to_warehouse` | `scratch/red_to_warehouse_controller.state` | Red Tower → Warehouse path | post-Supers | pure `warehouse-hijump-kraid` |
@@ -35,17 +52,45 @@ ad-hoc warps. All paths are under
 
 ### Post-Varia K4 reverse chain
 
-Pure green hops (controller_dev) in the reverse direction Kraid→Eye→Baby→Kihunter→Zeela→Warehouse→Business.
-Sources captured at each exit for the next hop:
+Historical fixture results for reverse controller development. A controller is
+not route-ready until it also clears from its real predecessor state.
 
 | ID | Path | Room | Use for |
 |----|------|------|---------|
 | `post_varia_to_kraid` | `scratch/post_varia_to_kraid_pure.state` | `0xA59F` Kraid | pure `kraid-to-eye-return` |
 | `post_kraid_to_eye` | `scratch/post_kraid_to_eye_return.state` | `0xA56B` Eye Door | pure `eye-to-baby-return` ✓ green |
 | `post_eye_to_baby` | `scratch/post_eye_to_baby_return.state` | `0xA521` Baby Kraid | pure `baby-to-kihunter-return` ✓ green |
-| `post_baby_to_kihunter` | `scratch/post_baby_to_kihunter_return.state` | `0xA4DA` Kihunter | pure `kihunter-to-zeela-return` ✓ green (~1716f) SM-K4-R-CLIMB-REDESIGN |
-| `post_kihunter_to_zeela` | `scratch/post_kihunter_to_zeela_return.state` | `0xA471` Zeela | pure `zeela-to-warehouse-return` ✓ green (~1800f) SM-K4-R-ZEELA-REDESIGN |
-| `post_zeela_to_warehouse` | `scratch/post_zeela_to_warehouse_return.state` | `0xA6A1` Warehouse right ledge x≈728 | pure `warehouse-to-business` (SM-K4-R-04 RED — reverse stack) |
+| `post_baby_to_kihunter` | `scratch/post_baby_to_kihunter_return.state` | `0xA4DA` Kihunter | fixture GREEN only; superseded by full-continuous revalidation |
+| `post_varia_continuous_to_kraid` | `scratch/post_varia_continuous_to_kraid.state` | `0xA59F` Kraid | natural Varia chain ✓ green → source for K3.3 |
+| `post_varia_continuous_to_eye` | `scratch/post_varia_continuous_to_eye.state` | `0xA56B` Eye Door | natural Varia chain ✓ green → source for K3.4 |
+| `post_varia_continuous_to_baby` | `scratch/post_varia_continuous_to_baby.state` | `0xA521` Baby Kraid | natural Varia chain ✓ green → source for K3.5 |
+| `post_varia_continuous_to_kihunter` | `scratch/post_varia_continuous_to_kihunter.state` | `0xA4DA` Kihunter after 5f settle x=461/y=395/pose=165 | natural predecessor of K3.6 ✓ green |
+| `post_varia_continuous_to_zeela` | `scratch/post_varia_continuous_to_zeela.state` | `0xA471` Zeela | K3.6 natural green → source for K3.7 |
+| `post_varia_continuous_to_warehouse` | `scratch/post_varia_continuous_to_warehouse.state` | `0xA6A1` Warehouse right ledge | K3.7 natural green → K3.8 reverse-stack source |
+| `post_business_continuous` | `scratch/post_business_continuous.state` | `0xA7DE` Business Center | two matching integrity-green `--to business` runs → source for K4 Frog save |
+| `post_frog_continuous` | `scratch/post_frog_continuous.state` | `0xB167` Frog Savestation | two matching integrity-green `--to frog` runs → source for K4 Speedway |
+| `post_kihunter_to_zeela` | `scratch/post_kihunter_to_zeela_return.state` | `0xA471` Zeela | historical fixture only |
+| `post_zeela_to_warehouse` | `scratch/post_zeela_to_warehouse_return.state` | `0xA6A1` Warehouse right ledge x≈728 | historical fixture only |
+
+The chained reverse fixtures do not by themselves prove persistent room state
+from the power-on run (for example, the Warehouse Super-block stack). Capture
+a fresh accepted Varia checkpoint with:
+
+```bash
+uv run python super_metroid/scripts/record/continuous.py --to varia --no-video \
+  --state-output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_continuous.state
+```
+
+The 2026-08-01 Varia candidate is GREEN at 104,382f. Its natural return chain
+now clears Varia→Kraid→Eye→Baby→Kihunter→Zeela→Warehouse→Business in 9,343
+controller frames from that accepted checkpoint. Two power-on `--to business`
+runs then reached ordinary Business at 113,723f with zero state loads,
+progression/capacity writes, and deaths; the accepted endpoint is
+`post_business_continuous`.
+The Business elevator descent and blue-door Frog exit then cleared in 1,190
+pure frames from that source. Two power-on `--to frog` runs reached ordinary
+Frog Savestation at 114,923f with the same zero-write/zero-death integrity;
+the accepted endpoint is `post_frog_continuous`.
 
 ## Dev / topology anchors (not continuous evidence)
 
@@ -112,13 +157,24 @@ and are **not** representative of real continuous loadout.
 
 | Needed for | Expected room | Blocker | Next card |
 |------------|---------------|---------|-----------|
-| pure `zeela-to-warehouse` (K4 reverse) | `0xA471` → `0xA6A1` | **GREEN** ~1800f SM-K4-R-ZEELA-REDESIGN; graph `controller_dev` | next R-04 warehouse reverse |
-| pure `warehouse-to-business` (K4 reverse) | `0xA6A1` right ledge → `0xA7DE` | **RED** elevator-only controller; reverse stack pin x≈325 | SM-K4-R-04B planner redesign |
+| pure `frog-save-to-speedway` (K4 forward) | `0xB167` Frog Save → `0xB106` | needs first geometry controller; `post_frog_continuous` is green | SM-K4-SPEEDWAY-PURE |
 | pure HJ shaft mid-climb isolation | `0xAA41` band | `SM-HJ-SRC` partial (ensure_morph RED) | SM-HJ-SRC follow-up or continuous dump |
 | pure business climb post-Varia entry | `0xA7DE` floor band | no continuous-like source at Business floor after Varia return; `business_climb_entry` is pre-Varia | SM-SRC-BUSINESS |
-| pure bubble mountain entry (K4 Speed) | `0xACB3` Bubble Mountain | needs continuous-like capture after Business→Frog Speedway; no source exists | SM-SRC-BUBBLE |
+| pure bubble mountain entry (K4 Speed) | `0xACB3` Bubble Mountain | needs continuous-like capture after Frog Save→Speedway→Farm; no source exists | SM-SRC-BUBBLE |
 | pure moat entry (K6) | `0x95FF` Moat | needs capture after Crateria elev + Kihunter; loadout: Speed, Hi-Jump, PB | SM-SRC-MOAT |
 | pure west ocean / WS entry (K6) | `0x93AA` West Ocean | needs capture after Moat; loadout: Speed, HJ, PB | SM-SRC-WS |
 | pure crateria Kihunter entry | `0x948C` | needs capture after Crateria elev descent | SM-SRC-CRKIHUNTER |
+| practice SEG-08 Gravity Suit | `0xC98E` Bowling Alley → door `0xA1A4` | needs a controllable post-Phantoon, pre-Gravity state (`boss_bits[3] & 0x01`, `collected_items & 0x0020 == 0`) so the powered Gravity PLM is live | SM-ROOM-SEG-08-R1 / SM-ROOM-SEG-08-SRC |
+| practice SEG-10 WS West Super | `0xCAF6` WS Main Shaft → door `0xA210` | needs a controllable post-Phantoon state with the West Super PLM still uncollected; the ship is powered only after `boss_bits[3] & 0x01` | SM-ROOM-SEG-10-R1 / SM-ROOM-SEG-10-SRC |
+| practice SEG-20 Crab Tunnel | `0xD21C` Crab Hole → door `0xA4F8` | needs a controllable natural state with Gravity (`collected_items & 0x0020`) and at least one Super pack for the underwater green-gate branch | SM-ROOM-SEG-20-R1 / SM-ROOM-SEG-20-SRC |
+| practice SEG-21 Spring Ball | `0xD8C5` Shaktool → door `0xA8D0` | needs a controllable natural state with Gravity + Bombs (`0x0020` and `0x1000`) and Spring Ball still clear (`collected_items & 0x0002 == 0`); X-Ray is only for the alternate suitless route | SM-ROOM-SEG-21-R1 / SM-ROOM-SEG-21-SRC |
+
+The current state inventory contains no valid source for these rows. An
+emulator scan of all 1,735 `*.state` files found 13 post-Phantoon and 18
+Gravity-capable candidates, all development full-loadout anchors
+(`items=0xF32F`, `beams=0x100B`); several are input-frozen. They must not be
+used to fabricate a practice green. Capture the listed source from real play,
+then bootstrap the same doorway and verify ordinary gameplay plus the listed
+inventory/event conditions before changing policy geometry.
 
 Update this table when residuals report "blocked on source."

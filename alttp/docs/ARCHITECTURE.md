@@ -29,7 +29,9 @@ opening_route/                    Continuous trunk (ownership)
   secret_entrance_clear.py        Live: sword → south → stairs outdoor clear
   sword_to_zelda.py               Compat re-export of secret_entrance_clear
   pocket_to_main_hall.py          Live: pocket bush-cut → main door → 0x61
-  main_hall_to_zelda.py           Thin multi-hop: room_engine west + Zelda accept
+  full_tip.py                     Clean power-on composition through verified room_50 tip
+  castle_dungeon.py               Typed continuous prefix: 0x61 → 0x60 → 0x50
+  main_hall_to_zelda.py           Compatibility aggregate; prefix + Zelda acceptance
   room_engine.py                  Generic clear + door exit (ok=True on edge)
   escort_to_sanctuary.py          Planned scaffold: escort → Sanctuary
   catalog.py + data + validate    z3-backed opening catalog
@@ -82,15 +84,16 @@ Compat shims at the old top-level module names
 | z3 / Yaze labels | Association only — **not** screen coordinates |
 | Save-state practice order | `opening_route.work_queue` + `docs/routes/ROOM_WORK_QUEUE.md` |
 
-### Continuous tip (2026-07-30)
+### Continuous tip (2026-08-01)
 
 Verified continuous spine:
 
 `castle_grounds` → `room_55_uncle` → `room_55_sword` → `room_55_south` →
-`courtyard_secret_pocket` → `room_61` (main hall)
+`courtyard_secret_pocket` → `room_61` (main hall) → `room_60` → `room_50`
+(NW chamber)
 
-Isolated (state-load): `room_61` → `room_60` (west door);
-`room_60` → `room_50` (north door).
+`full_tip.run_to_verified_tip` owns the one-environment power-on composition;
+`castle_dungeon_prefix` owns its measured west/north room-edge suffix.
 
 Next planned hop: **after 0x50 → Zelda cell → escort → Sanctuary**
 (map seeds for 0x01/51/52/62 and B1 0x71–0x82 under `maps/`).
@@ -114,7 +117,9 @@ Registered segments:
 
 - continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`,
   `pocket_to_main_hall`
-- partial (isolated west, full Zelda planned): `main_hall_to_zelda`
+- continuous power-on composition through `room_50`: `full_tip.run_to_verified_tip`
+- continuous first-dungeon prefix: `castle_dungeon_prefix` (`0x61→0x60→0x50`)
+- partial (Zelda acceptance planned): `main_hall_to_zelda`
 - planned scaffold: `escort_to_sanctuary`
 
 Natural-entry rule: a hop is route-ready only from the real predecessor
@@ -159,6 +164,8 @@ Prefer **room engine** for B1 doors (low agent context) — `docs/ROOM_ENGINE.md
 2. `scripts/room_engine.py show|run` until isolated green.
 3. Graph: expand node when isolated; promote `planned` → `isolated` →
    `natural_entry` → `continuous` only with evidence.
-4. Thin segment only when multi-room acceptance needs spine registration.
+4. Add the typed edge to `castle_dungeon.DungeonRoomEdge` when it composes
+   with the first-dungeon prefix; keep a thin aggregate only when a multi-room
+   acceptance needs spine registration.
 5. Anchors for approach/trigger windows; geometry stays in JSON.
 6. STATUS facts; never claim Zelda until `$F3CC == 1` on real RAM.

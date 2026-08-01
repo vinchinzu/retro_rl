@@ -482,6 +482,12 @@ class HotSpringStaminaTask(Task):
             f"jumps_seen={self._jumps_seen} jump_cycles={self._jump_cycles}"
         )
         self._task = None
+        # A caller that does not need to return has reached its contract as
+        # soon as stamina is restored.  The east-to-west pond crossing below
+        # only prepares a safe starting point for the return navigation.
+        if not self.return_to_farm:
+            return self._finish_success(world, f"soaked ({reason})")
+
         self._phase = "post_soak_settle"
         self._action_queue.clear()
         # Bath often ends on the *east* lip (x~640+). Plain left walk collides

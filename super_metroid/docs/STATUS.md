@@ -6,47 +6,98 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Continuous power-on → Varia Suit (KPDR K3) |
-| Last verification | 2026-07-30 |
+| Best verified result | Continuous power-on → Frog Savestation (KPDR K4.0) |
+| Last verification | 2026-08-01 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 
 | Field | Value |
 |-------|-------|
-| Status | **Continuous power-on → Varia Suit verified** (KPDR K3 tip) |
+| Status | **Continuous power-on → Frog Savestation verified** (KPDR K4.0) |
 | Target | Continuous assisted power-on → ending/credits |
 | Current assists | Current energy on Zebes + naturally unlocked current ammo |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
-| Acceptance result | Natural Varia PLM after Kraid doorway entry on continuous chain |
-| Video | `recordings/start_to_varia.mp4` (frame count matches report) |
-| Machine report | `recordings/start_to_varia.json` (**101,954** frames) |
+| Acceptance result | Natural Varia return spine + Warehouse reverse stack + Business elevator descent → Frog Save |
+| Video | No-video dual verification (first video still open) |
+| Machine report | `recordings/start_to_frog_save.json` + `_reverify.json` (**114,923f** each) |
 | Save-state loads | 0 |
 | Progression/capacity writes | 0 |
 
 ## Verified baseline
 
-### Continuous power-on → Varia Suit / KPDR K3 (2026-07-30)
+### Continuous power-on → Frog Savestation / KPDR K4.0 (approved 2026-08-01)
 
-`recordings/start_to_varia.json`: power-on through verified Kraid entry, then
-natural Kraid fight + rear door + real Varia PLM in `0xA6E2`. Controllers:
-`routes/kpdr/` + `combat/kraid.py` (`play_kraid_entry_to_varia`). Integrity
-green. Video: `recordings/start_to_varia.mp4`.
+Two matching `--to frog --no-video` runs reached ordinary Frog Savestation
+`0xB167`. The full K3 return spine, Business elevator descent, and closed
+blue-door exit all passed with known transitions, ordered splits, and **0**
+state loads / progression writes / capacity writes / deaths.
 
 | Metric | Value |
 |--------|------:|
-| Total frames | **101,954** (~28.3 min @ 60 fps) |
-| Hi-Jump collect | 87,696 |
-| Warehouse return | 92,241 |
-| Kraid entry | 97,051 |
-| Varia collect | **101,954** |
-| Final room | `0xA6E2` ordinary gameplay |
-| State loads / progression writes | 0 / 0 |
-| Outcome | `varia_collected` |
+| Total frames | **114,923** (~31.9 min @ 60 fps), twice |
+| Business return | 113,530 |
+| Frog Save entry | **114,776** |
+| Final room | `0xB167` ordinary gameplay |
+| Checkpoint | `scratch/post_frog_continuous.state` |
+| Outcome | `frog_save_reached` |
+
+Machine reports: `recordings/start_to_frog_save.json` and
+`recordings/start_to_frog_save_reverify.json`. The default continuous CLI tip
+is now `frog`; the next unplayed natural hop is Frog Save → Frog Speedway.
+
+### Continuous power-on → Business Center return / KPDR K3→K4 (approved 2026-08-01)
+
+Two matching `--to business --no-video` runs reached ordinary Business Center
+`0xA7DE` after the natural Varia return spine and the right-ledge Warehouse
+reverse stack. Both reports are integrity-green: all transitions known,
+required splits present and ordered, natural Business endpoint, and **0** state
+loads / progression writes / capacity writes / deaths.
+
+| Metric | Value |
+|--------|------:|
+| Total frames | **113,723** (~31.6 min @ 60 fps), twice |
+| Varia collect | 104,382 |
+| Business return | **113,723** |
+| Final room | `0xA7DE` ordinary gameplay |
+| Checkpoint | `scratch/post_business_continuous.state` |
+| Outcome | `business_return` |
+
+Machine reports: `recordings/start_to_business.json` and
+`recordings/start_to_business_reverify.json`. This milestone advanced the
+default tip to `business`; Frog Save later superseded it as the current default.
+
+### Continuous power-on → Varia Suit / KPDR K3 (approved 2026-08-01)
+
+**Integrity re-verify GREEN** (post Wave-10 dual-track room farm; spine
+controllers unchanged by farm). Power-on → natural Kraid fight + rear door +
+real Varia PLM in `0xA6E2`. Controllers: `routes/kpdr/` + `combat/kraid.py`
+(`play_kraid_entry_to_varia`).
+
+| Metric | Best published (2026-07-30) | Re-verify (2026-07-31 / 2026-08-01) |
+|--------|----------------------------:|------------------------------------:|
+| Total frames | **101,954** | **104,382** (+2,428; no savings) |
+| Hi-Jump collect | 87,696 | 87,696 |
+| Warehouse return (business exit) | 92,241 | 91,940 |
+| Kraid entry (`eye_to_kraid`) | 97,051 | 96,805 |
+| Varia collect | **101,954** | **104,382** |
+| Final room | `0xA6E2` ordinary | `0xA6E2` ordinary |
+| State loads / prog / capacity | 0 / 0 / 0 | 0 / 0 / 0 |
+| Outcome | `varia_collected` | `varia_collected` |
+
+**Frame-total policy:** keep **101,954** as best published tip time (video-
+matched). Multi-run re-verifies land at **104,382f** with full integrity green
+— do **not** promote the slower total. Climb dwells multi-run match Wave-6:
+`business_to_warehouse` **2,006f**, `hj_shaft` return band **1,835f**.
+
+Latest machine report: `recordings/start_to_varia.json` (and
+`recordings/start_to_varia_reverify_20260801.json`, same totals). Integrity:
+`state_loads_zero`, `progression_writes_zero`, `capacity_writes_zero`,
+`deaths_zero`, `natural_varia_room`, `varia_collected` all true.
 
 Reproduce:
 
 ```bash
-uv run python super_metroid/scripts/record/continuous.py --to varia
+uv run python super_metroid/scripts/record/continuous.py --to business
 uv run python super_metroid/scripts/record/continuous.py --no-video  # default tip
 ```
 
@@ -349,73 +400,74 @@ resource assists may not write route progress.
 
 ## Next milestone
 
-**Play KPDR by room — no door-warp route evidence.** Continuous Bat Room entry is
-verified (first K2 hop). Authoritative order:
+**Play KPDR by room — no door-warp route evidence.** Continuous power-on →
+Frog Savestation is the verified tip (K4.0); K4 forward remains pure-first.
+Authoritative order:
 
 **[ROUTE_KPDR.md](routes/ROUTE_KPDR.md)** · hop topology:
-**[PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md)** · legacy Pink-PB notes:
+**[PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md)** · process:
+**[tasks/PROCESS.md](tasks/PROCESS.md)** · architecture:
+**[ARCHITECTURE.md](ARCHITECTURE.md)** · legacy Pink-PB notes:
 **[ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md)**
 
 | Layer | Furthest played |
 |-------|-----------------|
-| Continuous | **Warehouse Entrance `0xA6A1`** (`start_to_warehouse`, **83,512f**) — K2.1 Below Spazer prefix + West/Glass/East tunnels |
-| Controller (dev) | **Warehouse→Hi-Jump→Warehouse→natural Kraid entry** (15,356f). The E-Tank and Boots are real PLM collects; the return uses intended Hi-Jump ledges and ordinary tunnel bombs, not an IBJ |
-| Dev topology | **24/24 hops** Big Pink → Hi-Jump room (`kpdr.py route-to-hijump`); `dev_hijump_room_entry` + granted boots `dev_hijump_collected_dev` |
-| ★ Next hop | Attach Warehouse→Hi-Jump→Kraid to continuous Warehouse predecessor, then `kraid_entry_to_varia` (boss-only Varia closeout already proven from doorway entry). Charge return remains a separate K1 gap |
+| Continuous | **Frog Savestation `0xB167`** tip **integrity GREEN** twice at **114,923f**. Prefixes: Business 113,723f, Varia 104,382f, Kraid entry ~97k, Hi-Jump 87,696f, Warehouse 83,512f |
+| Controller (dev) | K4 forward (Frog→Speedway→Bubble→Speed→Wave→Ice→Alpha PB) scaffolds only; first source is `post_frog_continuous` |
+| Dev topology | **24/24 hops** Big Pink → Hi-Jump room (`kpdr.py route-to-hijump`); full 22-leg door-warp tour exists (`developmentOnly`) |
+| ★ Next hop | Frog Save→Speedway pure from `post_frog_continuous`; continuous tip extension only after that natural hop is green. |
 
 Progress chart: [KPDR_TRACKER.md](routes/KPDR_TRACKER.md) · CSV
 [KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) · JSON `maps/kpdr_tracker.json`.
 
 ```bash
 uv run python super_metroid/scripts/export/path_room_board.py
-uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
+uv run python super_metroid/scripts/export/kpdr_tracker.py
 ```
 
-Path status (unique rooms on research completion path): **31 continuous**,
-**6 controller_dev**, **6 boss_deferred**, **64 open** (107 total / 199 hops).
+Path status (unique rooms on research completion path): continuous coverage is
+the early KPDR spine through Frog Save; topology has **~107 rooms / 199 hops**
+identified. Exact continuous vs controller_dev counts live in the path board
+export — do not invent hop tallies here.
 
 Topology door-warps (`probe_route.py full` / hybrid) remain diagnostic only —
 they do not count as room clearance.
 
-Still blocked for *played* KPDR spine:
+Still open for *played* KPDR spine:
 
 | Gap | Why it matters |
 |-----|----------------|
-| Continuous Super → Red Tower | **Done** (`start_to_red_tower`) |
-| Charge / Big Pink return | Charge collects naturally; conventional return is not route-ready. Continuous K1 uses the direct Big Pink→GHZ line (no IBJ) |
-| Continuous Warehouse → Hi-Jump → Kraid → Varia | **Done** (`start_to_kraid` / `start_to_varia`) |
+| Continuous Super → Red Tower → Warehouse → Hi-Jump → Kraid → Varia → Business → Frog Save | **Done** (two 114,923f Frog Save returns; see baseline) |
+| K4 forward (Frog Save → Speedway → Bubble → Speed → Wave → Ice) | First missing natural segment; start from `post_frog_continuous` |
 | Alpha PB (not Pink PB) | First PB on competitive KPDR after Ice |
-| Ship / Phantoon / … | After Alpha PB; warp entry is not continuous |
-| Escape → credits | after MB by play |
+| Ship / Phantoon / Botwoon / Draygon / Ridley / MB | Sequential per [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md); warp entry is not continuous |
+| Escape → credits | After MB by play; ending evidence open |
+| Charge / Big Pink return | Optional K1 side trip; continuous K1 uses direct Big Pink→GHZ (no IBJ) |
 
-Immediate next (hybrid: continuous tip + structure):
+Immediate next (continuous tip + structure):
 
-1. **K4 return spine (play):** reverse hops after pure `varia_to_kraid`
-   (controller_dev) — Eye → Baby → Kihunter → Zeela → Warehouse → Business.
-   Graph: `START_TO_SPEED_GRAPH` (`progression.py`); first hop pure:
-   `kpdr.py pure varia-to-kraid`.
-2. **K4 forward:** Business → Frog Speedway → Bubble → Speed (then Wave /
-   Ice branches) — edges still `unverified`; adopt `controller_common`
-   primitives in new controllers (not a green-spine rewrite).
-3. **Optional tighten** high-dwell continuous hops (offline rank first):
-   `business_to_warehouse` ~2.3k, `hj_shaft_to_business` ~1.9k. Use
-   `scripts/export/split_dwell.py` on `start_to_varia.json`; re-check with
-   `--to varia --no-video`.
-4. **K5 Alpha PB** after Ice; then Phantoon natural entry
-   (`docs/BOSS_PIPELINE.md`).
-5. **Seam extract** only after 1–2 more continuous tips
-   (session/segment → `retro_harness` / `adventure_common`).
-6. **Parked:** pure Pink PB; ship-first Phantoon skip; Charge conventional
-   return (optional K1 side trip).
+1. **K4 forward pure + graph:** Business → Frog → Bubble → Speed → Wave →
+   Ice → Alpha PB; tip wiring only after pure green.
+2. **Optional tighten** high-dwell continuous hops offline first
+   (`split_dwell.py` on `start_to_business.json`).
+3. **K6 ship / Phantoon** natural entry after Alpha PB.
+4. **Code-plan leverage** (does not replace pure-first): selective-RAM /
+   StateCache enforcement, declarative tip composition, richer pure RED
+   diagnostics, graph-first hop ranking — see [`plan.md`](plan.md) and
+   [`ARCHITECTURE.md`](ARCHITECTURE.md).
+7. **Dual-track:** room practice / combat unit scaffolds in parallel via
+   `farm_room_waves.sh` while spine advances.
+8. **Parked:** pure Pink PB; ship-first Phantoon skip; Charge conventional
+   return; vision BC in `legacy/`.
 
 ```bash
-uv run python super_metroid/scripts/record/continuous.py --to varia
-uv run python super_metroid/scripts/export/kpdr_tracker.py
+uv run python super_metroid/scripts/record/continuous.py --to business
+uv run python super_metroid/scripts/record/continuous.py --to kraid --no-video
 uv run python super_metroid/scripts/export/split_dwell.py \
-  super_metroid/recordings/start_to_varia.json --top 15
-# First post-Varia door (pure / controller_dev)
-uv run python super_metroid/scripts/probe/kpdr.py pure varia-to-kraid \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_collected.state
+  super_metroid/recordings/start_to_business.json --top 15
+# First K4 forward door (pure / source-backed)
+uv run python super_metroid/scripts/probe/kpdr.py suggest-source \
+  --room 0xA7DE --segment business-to-frog-save
 ```
 
 
@@ -444,3 +496,19 @@ the old direct teleport). Remaining fight/escape blockers:
 - Escape-room geometry needs pipe-corridor placement (air near y≈100).
 - Escape timer needs full engine init to tick; credits evidence still open.
 - Bank `$7E` WRAM must be used for events/boss bits (`read_bank7e_wram`).
+
+## Maturity ladder (this game)
+
+| Gate | Target | Status (2026-07-31) |
+|------|--------|---------------------|
+| **M5** | Bronze observation; resource-assisted continuous tip | **Current** — power-on → Varia |
+| **M6** | Complete route graph with owners/predicates for critical path | In progress — ~107/199 hops identified; early KPDR continuous |
+| **M7** | Continuous dry-run invariants (power-on → credits path; resource assists only) | Open — needs spine through MB + escape |
+| **M8** | Verified capture + ending/credits evidence | Open |
+
+Observation-class migration (Bronze → Silver) is a **separate** workstream after
+continuous reliability. Assist reduction toward Clean follows the same rule:
+reliability first, then privilege reduction.
+
+Program process: pure-first + one-knob + residual schema + dual-track
+([`tasks/PROCESS.md`](tasks/PROCESS.md)). Do not relax those rules for speed.

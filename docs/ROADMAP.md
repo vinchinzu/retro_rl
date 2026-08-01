@@ -1,6 +1,6 @@
 # Strategic Roadmap — NES + SNES Canonical Library
 
-Last updated: 2026-07-27.
+Last updated: 2026-07-31.
 
 This is the multi-horizon plan for `retro_rl`. Live facts and weekly priorities
 belong in [PROGRAM_STATUS.md](PROGRAM_STATUS.md). Maturity and phase definitions
@@ -73,9 +73,11 @@ Highest leverage from current program status:
    reference.
 2. **Magical Quest (and Joe & Mac) → solid segments (M3–M5)** — Establish and
    harden `platformer_common` route tooling, recovery, and evaluation.
-3. **Super Metroid → M6 → continuous toward ending** — Close remaining play-path
-   rooms (especially PB sill / maze), inventory transitions, and natural-entry
-   bridges. Phase 4 flagship.
+3. **Super Metroid → M6 → continuous toward ending** — Verified continuous tip
+   is power-on → Varia (M5). Next: pure reverse → Business, continuous K4
+   (Bubble→Speed→Wave→Ice→Alpha PB), then Phantoon→…→MB per boss pipeline.
+   Structure wins: selective RAM, declarative tip composition, graph-first
+   ranking. Phase 4 flagship.
 4. **Parallel NES advance**
    - Top-10 automation targets are **boot-verified (M1)**: SMB, Mega Man 2,
      Punch-Out, Contra, Kirby, TMNT II, DuckTales, Castlevania, Zelda I, SMB3
@@ -88,6 +90,15 @@ Highest leverage from current program status:
      Punch-Out↔Super Punch-Out, TMNT II↔TMNT IV, Zelda↔ALTTP, Metroid↔SM).
 
 Also push Super Double Dragon and Rival Turf upward in parallel with Final Fight.
+
+**Planning trunk (pull Harvest forward):** Harvest Moon is already M3 with a
+continuous spring calendar, day planner, editor, and recording pipeline. Treat
+it as the **pioneer planning/simulation stack** rather than parking all work in
+long-horizon Phase 6. Near-term: close crop income (plant → water → harvest →
+ship), natural-entry summer, then domain depth (animals, festivals). Structure
+work (skill composition, phase contracts, observation cache, gated plan-advisor
+apply) lives under `harvest/docs/PLANNING_STACK.md` and should later promote to
+a shared `planning_common` only after a second consumer.
 
 ### Medium-term (6–18 months) — genre trunks mature
 
@@ -106,7 +117,8 @@ Also push Super Double Dragon and Rival Turf upward in parallel with Final Fight
   series, EarthBound, Super Mario RPG; NES Dragon Quest / Final Fantasy
   equivalents). Dialogue macros, quest state machines, equipment policies,
   grinding.
-- **Phase 6** — Planning / simulation (Harvest Moon to meaningful long-horizon
+- **Phase 6** — Planning / simulation (Harvest Moon is the early trunk: close
+  crop economy and multi-season natural entry first, then multi-year campaign
   benchmarks; later strategy titles).
 - **Phase 7** — Adaptive / procedural (later research).
 - **Library breadth** — Add high-value titles only via [ADDING_GAMES.md](../ADDING_GAMES.md)
@@ -148,9 +160,12 @@ change, not this horizon plan.
 4. **NES** — Zelda I Level 1 is complete; route its completion warp to Level
    2 and continue the dungeon graph; TMNT series first building/stage clears;
    harden SMB / SMB3 continuations.
-5. Keep regenerating the game matrix and updating local `STATUS.md` after every
+5. **Harvest Moon** — close crop loop (money > $100); skill composition +
+   planning-stack hardening; natural-entry summer (see
+   `harvest/docs/PLANNING_STACK.md`).
+6. Keep regenerating the game matrix and updating local `STATUS.md` after every
    verified advance.
-6. Ensure every assist has an explicit contract before it is used in published
+7. Ensure every assist has an explicit contract before it is used in published
    results.
 
 ## Success metrics

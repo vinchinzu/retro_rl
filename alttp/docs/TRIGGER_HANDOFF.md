@@ -99,7 +99,8 @@ Measured map seeds (not continuous): `room_50` east→`0x01`, plus B1
 `room_81`/`room_82`/`room_72`/`room_71`/`room_80`. Graph hop
 `room_50_to_zelda_cell` remains `planned`.
 
-Continuous tip remains **main hall** until natural-entry reaches further.
+Continuous tip is now **NW chamber room 0x50**. The next handoff is the
+physical exit after 0x50; do not infer the Zelda route from state names.
 Work queue primary: `CastleMain`, `CastleRoom60`, `CastleRoom50`, Zelda B1 states.
 Internal key/shutter path in/near `0x55` is **alternate** only.
 

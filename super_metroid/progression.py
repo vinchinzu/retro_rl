@@ -28,6 +28,15 @@ from super_metroid.ram import (
     SuperMetroidState,
 )
 
+# Shared verification rank (higher = more proven). One table for path_summary,
+# pure_gate, path_verification, and suggest ranking helpers.
+VERIFICATION_RANK: dict[str, int] = {
+    "planned": 0,
+    "unverified": 1,
+    "controller_dev": 2,
+    "continuous": 3,
+}
+
 
 def capabilities_from_state(state: SuperMetroidState) -> frozenset[str]:
     """Map live RAM inventory/ammo into progression capability tokens.
@@ -123,14 +132,20 @@ class ProgressCondition:
         if self.game_states and state.game_state not in self.game_states:
             return False
         if self.collected_items_mask:
-            if state.collected_items & self.collected_items_mask != self.collected_items_mask:
+            if (
+                state.collected_items & self.collected_items_mask
+                != self.collected_items_mask
+            ):
                 return False
         actual = (
             state.max_missiles,
             state.max_super_missiles,
             state.max_power_bombs,
         )
-        return all(value >= minimum for value, minimum in zip(actual, self.minimum_ammo_capacities))
+        return all(
+            value >= minimum
+            for value, minimum in zip(actual, self.minimum_ammo_capacities)
+        )
 
 
 @dataclass(frozen=True)
@@ -196,7 +211,10 @@ class RoomProgressionGraph:
         self._outgoing: dict[int, list[DoorEdge]] = defaultdict(list)
         self._edge_pairs: dict[tuple[int, int], DoorEdge] = {}
         for edge in edges:
-            if edge.source_room_id not in self.rooms or edge.target_room_id not in self.rooms:
+            if (
+                edge.source_room_id not in self.rooms
+                or edge.target_room_id not in self.rooms
+            ):
                 raise ValueError(f"edge {edge.edge_id} references an unknown room")
             self._outgoing[edge.source_room_id].append(edge)
             self._edge_pairs[(edge.source_room_id, edge.target_room_id)] = edge
@@ -259,6 +277,55 @@ class RoomProgressionGraph:
             edges = tuple(e for e in edges if e.verification == verification)
         return edges
 
+    def suggest_edges(
+        self,
+        room_id: int,
+        *,
+        capabilities: frozenset[str] | None = None,
+        prefer: str = "continuous",
+        exclude_verifications: frozenset[str] = frozenset(),
+        include_gated: bool = True,
+    ) -> tuple[DoorEdge, ...]:
+        """Ranked outbound edges from ``room_id`` (single suggest surface).
+
+        ``prefer`` selects sort priority:
+        - ``continuous`` (default): continuous → controller_dev → open work
+        - ``pure_work``: unverified → planned → controller_dev (omit continuous)
+
+        When no capability-ready edges exist and ``include_gated`` is True,
+        still surfaces gated outbound edges so authors see missing requires.
+        """
+        if room_id not in self.rooms:
+            return ()
+        caps = capabilities if capabilities is not None else frozenset()
+        ready = self.outgoing(room_id, capabilities=caps)
+        if not ready and include_gated:
+            ready = self.outgoing(room_id)
+        if exclude_verifications:
+            ready = tuple(e for e in ready if e.verification not in exclude_verifications)
+        if prefer == "pure_work":
+            # Open pure work first; continuous edges are usually excluded above.
+            order = {
+                "unverified": 0,
+                "planned": 1,
+                "controller_dev": 2,
+                "continuous": 3,
+            }
+        else:
+            # Continuous extension: preferred status first, then weaker ranks.
+            order = {
+                prefer: 0,
+                "continuous": 0,
+                "controller_dev": 1,
+                "unverified": 2,
+                "planned": 3,
+            }
+        ranked = sorted(
+            ready,
+            key=lambda e: (order.get(e.verification, 9), e.edge_id),
+        )
+        return tuple(ranked)
+
     def suggest_next_hops(
         self,
         room_id: int,
@@ -268,67 +335,179 @@ class RoomProgressionGraph:
     ) -> tuple[DoorEdge, ...]:
         """Ranked next hops from ``room_id`` for continuous extension.
 
-        Prefers edges already marked ``prefer_verification`` (default
-        continuous), then ``controller_dev``, then anything capability-ready.
-        Empty when the room is unknown or no outbound edges exist.
+        Thin wrapper over :meth:`suggest_edges` with continuous-first ranking.
         """
-        if room_id not in self.rooms:
-            return ()
-        caps = capabilities if capabilities is not None else frozenset()
-        ready = self.outgoing(room_id, capabilities=caps)
-        if not ready:
-            # Still surface gated edges so authors see what is missing.
-            ready = self.outgoing(room_id)
-        order = {
-            prefer_verification: 0,
-            "continuous": 0,
-            "controller_dev": 1,
-            "unverified": 2,
-            "planned": 3,
-        }
-        ranked = sorted(
-            ready,
-            key=lambda e: (
-                order.get(e.verification, 9),
-                e.edge_id,
-            ),
+        return self.suggest_edges(
+            room_id,
+            capabilities=capabilities,
+            prefer=prefer_verification,
         )
-        return tuple(ranked)
 
-    def path_verification(
+    def suggest_pure_work(
+        self,
+        room_id: int,
+        *,
+        capabilities: frozenset[str] | None = None,
+    ) -> tuple[DoorEdge, ...]:
+        """Next hops that still need pure geometry work from ``room_id``.
+
+        Thin wrapper over :meth:`suggest_edges` excluding continuous edges.
+        """
+        return self.suggest_edges(
+            room_id,
+            capabilities=capabilities,
+            prefer="pure_work",
+            exclude_verifications=frozenset({"continuous"}),
+        )
+
+    def path_summary(
         self,
         source_room_id: int,
         target_room_id: int,
         capabilities: frozenset[str] = frozenset(),
+        *,
+        min_verification: str = "continuous",
     ) -> dict[str, object]:
-        """Summarize shortest-path readiness (edge ids + verification mix)."""
+        """Shortest-path readiness with a tunable verification floor.
+
+        Single path API: ``min_verification`` is the lowest accepted status
+        before a blocking edge is reported (default ``continuous``).
+        ``pure_gated`` is True when every edge meets that floor.
+        ``all_continuous`` is True when every edge is continuous regardless
+        of ``min_verification``.
+        """
+        need = VERIFICATION_RANK.get(min_verification, VERIFICATION_RANK["controller_dev"])
         path = self.shortest_path(source_room_id, target_room_id, capabilities)
         if path is None:
             return {
                 "reachable": False,
                 "edges": [],
                 "all_continuous": False,
+                "pure_gated": False,
+                "blocking": None,
+                "blocking_edge_id": None,
+                "min_verification": min_verification,
+            }
+        edges_payload: list[dict[str, object]] = []
+        blocking: dict[str, object] | None = None
+        blocking_edge_id: str | None = None
+        for edge in path:
+            edges_payload.append(
+                {
+                    "edgeId": edge.edge_id,
+                    "from": f"0x{edge.source_room_id:04X}",
+                    "to": f"0x{edge.target_room_id:04X}",
+                    "verification": edge.verification,
+                    "requires": sorted(edge.requires),
+                    "policyId": edge.policy_id,
+                }
+            )
+            if (
+                blocking is None
+                and VERIFICATION_RANK.get(edge.verification, 0) < need
+            ):
+                blocking = {
+                    "edgeId": edge.edge_id,
+                    "from": f"0x{edge.source_room_id:04X}",
+                    "to": f"0x{edge.target_room_id:04X}",
+                    "verification": edge.verification,
+                    "requires": sorted(edge.requires),
+                    "policyId": edge.policy_id,
+                }
+                blocking_edge_id = edge.edge_id
+        verifications = [e.verification for e in path]
+        return {
+            "reachable": True,
+            "edges": edges_payload,
+            "all_continuous": all(v == "continuous" for v in verifications),
+            "pure_gated": blocking is None,
+            "blocking": blocking,
+            "blocking_edge_id": blocking_edge_id,
+            "min_verification": min_verification,
+        }
+
+    def pure_gate(
+        self,
+        source_room_id: int,
+        target_room_id: int,
+        capabilities: frozenset[str] = frozenset(),
+        *,
+        min_verification: str = "controller_dev",
+    ) -> dict[str, object]:
+        """First path edge below the pure gate (for tip composition).
+
+        Wrapper over :meth:`path_summary` preserving the planner dict shape
+        (blocking edge object, slim edge rows without requires).
+        """
+        summary = self.path_summary(
+            source_room_id,
+            target_room_id,
+            capabilities,
+            min_verification=min_verification,
+        )
+        if not summary["reachable"]:
+            return {
+                "reachable": False,
+                "pure_gated": False,
+                "blocking": None,
+                "edges": [],
+            }
+        return {
+            "reachable": True,
+            "pure_gated": summary["pure_gated"],
+            "blocking": summary["blocking"],
+            "edges": [
+                {
+                    "edgeId": e["edgeId"],
+                    "from": e["from"],
+                    "to": e["to"],
+                    "verification": e["verification"],
+                }
+                for e in summary["edges"]  # type: ignore[union-attr]
+            ],
+        }
+
+    def path_verification(
+        self,
+        source_room_id: int,
+        target_room_id: int,
+        capabilities: frozenset[str] = frozenset(),
+        *,
+        min_verification: str = "continuous",
+    ) -> dict[str, object]:
+        """Summarize shortest-path readiness (edge ids + verification mix).
+
+        Wrapper over :meth:`path_summary`. ``blocking`` remains the first
+        edge id below ``min_verification`` (default continuous) for artifact
+        stability; use :meth:`path_summary` for the full blocking object.
+        """
+        summary = self.path_summary(
+            source_room_id,
+            target_room_id,
+            capabilities,
+            min_verification=min_verification,
+        )
+        if not summary["reachable"]:
+            return {
+                "reachable": False,
+                "edges": [],
+                "all_continuous": False,
                 "blocking": None,
             }
-        verifications = [e.verification for e in path]
-        first_non_cont = next(
-            (e.edge_id for e in path if e.verification != "continuous"),
-            None,
-        )
         return {
             "reachable": True,
             "edges": [
                 {
-                    "edgeId": e.edge_id,
-                    "from": f"0x{e.source_room_id:04X}",
-                    "to": f"0x{e.target_room_id:04X}",
-                    "verification": e.verification,
-                    "requires": sorted(e.requires),
+                    "edgeId": e["edgeId"],
+                    "from": e["from"],
+                    "to": e["to"],
+                    "verification": e["verification"],
+                    "requires": e["requires"],
                 }
-                for e in path
+                for e in summary["edges"]  # type: ignore[union-attr]
             ],
-            "all_continuous": all(v == "continuous" for v in verifications),
-            "blocking": first_non_cont,
+            "all_continuous": summary["all_continuous"],
+            "blocking": summary["blocking_edge_id"],
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -408,23 +587,160 @@ _ROOMS = (
 )
 
 _EDGES = (
-    DoorEdge("ceres_elevator_to_falling", 0xDF45, 0xDF8D, "right", "left", policy_id="ceres_outbound", verification="continuous"),
-    DoorEdge("ceres_falling_to_magnet", 0xDF8D, 0xDFD7, "right", "left", policy_id="ceres_outbound", verification="continuous"),
-    DoorEdge("ceres_magnet_to_scientist", 0xDFD7, 0xE021, "bottom_right", "left", policy_id="ceres_outbound", verification="continuous"),
-    DoorEdge("ceres_scientist_to_flat", 0xE021, 0xE06B, "right", "left", policy_id="ceres_outbound", verification="continuous"),
-    DoorEdge("ceres_flat_to_ridley", 0xE06B, 0xE0B5, "right", "left", policy_id="ceres_outbound", verification="continuous"),
-    DoorEdge("ceres_ridley_to_flat", 0xE0B5, 0xE06B, "left", "right", policy_id="ceres_escape", verification="continuous"),
-    DoorEdge("ceres_flat_to_scientist", 0xE06B, 0xE021, "left", "right", policy_id="ceres_escape", verification="continuous"),
-    DoorEdge("ceres_scientist_to_magnet", 0xE021, 0xDFD7, "left", "bottom_right", policy_id="ceres_escape", verification="continuous"),
-    DoorEdge("ceres_magnet_to_falling", 0xDFD7, 0xDF8D, "upper_left", "right", policy_id="ceres_escape", verification="continuous"),
-    DoorEdge("ceres_falling_to_elevator", 0xDF8D, 0xDF45, "left", "bottom", policy_id="ceres_escape", verification="continuous"),
-    DoorEdge("ceres_to_landing", 0xDF45, 0x91F8, "elevator", "ship", policy_id="ceres_escape", verification="continuous"),
-    DoorEdge("landing_to_parlor", 0x91F8, 0x92FD, "left", "right", policy_id="legacy_seed_adapter", verification="continuous"),
-    DoorEdge("parlor_to_climb", 0x92FD, 0x96BA, "bottom_left", "top", policy_id="legacy_room_seed", verification="continuous"),
-    DoorEdge("climb_to_pit", 0x96BA, 0x975C, "bottom", "left", policy_id="legacy_room_seed", verification="continuous"),
-    DoorEdge("pit_to_elevator", 0x975C, 0x97B5, "right", "left", policy_id="legacy_room_seed", verification="continuous"),
-    DoorEdge("elevator_to_morph", 0x97B5, 0x9E9F, "elevator", "right", policy_id="legacy_room_seed", verification="continuous"),
-    DoorEdge("morph_to_construction", 0x9E9F, 0x9F11, "right", "left", frozenset({"morph_ball"}), "legacy_room_seed", "continuous"),
+    DoorEdge(
+        "ceres_elevator_to_falling",
+        0xDF45,
+        0xDF8D,
+        "right",
+        "left",
+        policy_id="ceres_outbound",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_falling_to_magnet",
+        0xDF8D,
+        0xDFD7,
+        "right",
+        "left",
+        policy_id="ceres_outbound",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_magnet_to_scientist",
+        0xDFD7,
+        0xE021,
+        "bottom_right",
+        "left",
+        policy_id="ceres_outbound",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_scientist_to_flat",
+        0xE021,
+        0xE06B,
+        "right",
+        "left",
+        policy_id="ceres_outbound",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_flat_to_ridley",
+        0xE06B,
+        0xE0B5,
+        "right",
+        "left",
+        policy_id="ceres_outbound",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_ridley_to_flat",
+        0xE0B5,
+        0xE06B,
+        "left",
+        "right",
+        policy_id="ceres_escape",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_flat_to_scientist",
+        0xE06B,
+        0xE021,
+        "left",
+        "right",
+        policy_id="ceres_escape",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_scientist_to_magnet",
+        0xE021,
+        0xDFD7,
+        "left",
+        "bottom_right",
+        policy_id="ceres_escape",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_magnet_to_falling",
+        0xDFD7,
+        0xDF8D,
+        "upper_left",
+        "right",
+        policy_id="ceres_escape",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_falling_to_elevator",
+        0xDF8D,
+        0xDF45,
+        "left",
+        "bottom",
+        policy_id="ceres_escape",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "ceres_to_landing",
+        0xDF45,
+        0x91F8,
+        "elevator",
+        "ship",
+        policy_id="ceres_escape",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "landing_to_parlor",
+        0x91F8,
+        0x92FD,
+        "left",
+        "right",
+        policy_id="legacy_seed_adapter",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "parlor_to_climb",
+        0x92FD,
+        0x96BA,
+        "bottom_left",
+        "top",
+        policy_id="legacy_room_seed",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "climb_to_pit",
+        0x96BA,
+        0x975C,
+        "bottom",
+        "left",
+        policy_id="legacy_room_seed",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "pit_to_elevator",
+        0x975C,
+        0x97B5,
+        "right",
+        "left",
+        policy_id="legacy_room_seed",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "elevator_to_morph",
+        0x97B5,
+        0x9E9F,
+        "elevator",
+        "right",
+        policy_id="legacy_room_seed",
+        verification="continuous",
+    ),
+    DoorEdge(
+        "morph_to_construction",
+        0x9E9F,
+        0x9F11,
+        "right",
+        "left",
+        frozenset({"morph_ball"}),
+        "legacy_room_seed",
+        "continuous",
+    ),
 )
 
 _MILESTONES = (
@@ -467,7 +783,9 @@ START_TO_MORPH_GRAPH = RoomProgressionGraph(
 )
 
 _EARLY_ROOMS = _ROOMS + (
-    RoomNode(0x9F64, "Blue Brinstar Energy Tank Room", "Brinstar", frozenset({"item_room"})),
+    RoomNode(
+        0x9F64, "Blue Brinstar Energy Tank Room", "Brinstar", frozenset({"item_room"})
+    ),
     RoomNode(0xA107, "First Missile Room", "Brinstar", frozenset({"item_room"})),
     RoomNode(0x9879, "Flyway", "Crateria"),
     RoomNode(0x9804, "Bomb Torizo Room", "Crateria", frozenset({"boss_item_room"})),
@@ -664,7 +982,9 @@ _SPORE_ROOMS = _EARLY_ROOMS + (
     RoomNode(0x99BD, "Green Pirates Shaft", "Crateria"),
     RoomNode(0x9969, "Lower Mushrooms", "Crateria"),
     RoomNode(0x9938, "Elevator To Green Brinstar", "Crateria", frozenset({"elevator"})),
-    RoomNode(0x9AD9, "Green Brinstar Main Shaft", "Brinstar", frozenset({"vertical_shaft"})),
+    RoomNode(
+        0x9AD9, "Green Brinstar Main Shaft", "Brinstar", frozenset({"vertical_shaft"})
+    ),
     RoomNode(0x9CB3, "Dachora Room", "Brinstar"),
     RoomNode(0x9D19, "Big Pink", "Brinstar", frozenset({"vertical_shaft"})),
     RoomNode(0x9D9C, "Spore Spawn Kihunter Room", "Brinstar"),
@@ -891,9 +1211,7 @@ START_TO_RED_TOWER_GRAPH = RoomProgressionGraph(
 )
 
 # KPDR K2.0: Red Tower descent → Bat Room (first continuous hop after K1 tip).
-_K2_BAT_ROOMS = _K1_ROOMS + (
-    RoomNode(0xA3DD, "Bat Room", "Brinstar"),
-)
+_K2_BAT_ROOMS = _K1_ROOMS + (RoomNode(0xA3DD, "Bat Room", "Brinstar"),)
 
 _K2_BAT_EDGES = _K1_EDGES + (
     DoorEdge(
@@ -931,9 +1249,7 @@ START_TO_BAT_GRAPH = RoomProgressionGraph(
 )
 
 # KPDR K2.1: Bat Room three-platform crossing → Below Spazer.
-_K2_BELOW_ROOMS = _K2_BAT_ROOMS + (
-    RoomNode(0xA408, "Below Spazer", "Brinstar"),
-)
+_K2_BELOW_ROOMS = _K2_BAT_ROOMS + (RoomNode(0xA408, "Below Spazer", "Brinstar"),)
 
 _K2_BELOW_EDGES = _K2_BAT_EDGES + (
     DoorEdge(
@@ -1225,9 +1541,7 @@ START_TO_KRAID_GRAPH = RoomProgressionGraph(
 )
 
 # KPDR K3: Kraid fight → rear exit → natural Varia collect.
-_K3_VARIA_ROOMS = _K2_KRAID_ROOMS + (
-    RoomNode(0xA6E2, "Varia Suit Room", "Brinstar"),
-)
+_K3_VARIA_ROOMS = _K2_KRAID_ROOMS + (RoomNode(0xA6E2, "Varia Suit Room", "Brinstar"),)
 
 _K3_VARIA_EDGES = _K2_KRAID_EDGES + (
     DoorEdge(
@@ -1301,7 +1615,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "controller_dev",
+        "continuous",  # start_to_business integrity-green return spine
     ),
     DoorEdge(
         "kraid_to_eye_return",
@@ -1311,7 +1625,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "controller_dev",  # pure green SM-K4-06E (jump-enter Y band); not continuous
+        "continuous",  # start_to_business integrity-green (jump-enter Y band)
     ),
     DoorEdge(
         "eye_to_baby_return",
@@ -1321,7 +1635,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "controller_dev",  # pure green SM-K4-R-01B; not continuous
+        "continuous",  # start_to_business integrity-green return spine
     ),
     DoorEdge(
         "baby_to_kihunter_return",
@@ -1331,7 +1645,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "controller_dev",  # pure green (supers clear + left gray); not continuous
+        "continuous",  # start_to_business integrity-green return spine
     ),
     DoorEdge(
         "kihunter_to_zeela_return",
@@ -1341,7 +1655,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "up",
         _K4_CAPS,
         "kpdr_varia_return",
-        "controller_dev",
+        "continuous",  # start_to_business integrity-green return spine
     ),
     DoorEdge(
         "zeela_to_warehouse_return",
@@ -1351,9 +1665,10 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "right",
         _K4_CAPS,
         "kpdr_varia_return",
-        "controller_dev",  # pure green SM-K4-R-ZEELA-REDESIGN ~1800f; not continuous
+        "continuous",  # start_to_business integrity-green return spine
     ),
-    # warehouse → business reuses continuous edge ``warehouse_to_business``
+    # Warehouse → Business reuses the continuous edge; the right-ledge branch
+    # is covered by the integrity-green start_to_business return tip.
     # --- Business → Bubble → Speed ---
     DoorEdge(
         "business_to_frog_save",
@@ -1363,7 +1678,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "left",
         _K4_CAPS,
         "kpdr_k4_speed",
-        "unverified",
+        "continuous",  # two integrity-green start_to_frog_save runs
     ),
     DoorEdge(
         "frog_save_to_speedway",

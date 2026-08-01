@@ -16,10 +16,10 @@ Verified transitions (see ``docs/STATUS.md``):
 - post-sword uncle corridor → south combat chamber
 - south chamber stairs → outdoors screen ``0x1B`` (secret-entrance clear)
 
-Courtyard pocket → main hall is measured (natural-entry / continuous tip
-through ``room_61``). Main hall west → room ``0x60`` and north → room
-``0x50`` are isolated. After ``0x50`` → Zelda cell / escort / Sanctuary
-remain planned (map seeds under ``maps/``).
+Courtyard pocket → main hall is measured (natural-entry / continuous spine
+through ``room_50``). Main hall west → room ``0x60`` and north → room
+``0x50`` are continuous via the clean power-on prefix. After ``0x50`` → Zelda
+cell / escort / Sanctuary remain planned (map seeds under ``maps/``).
 """
 
 from __future__ import annotations
@@ -70,9 +70,9 @@ N_ROOM_55_KEYED = "room_55_keyed"
 # Outdoor hedge pocket after secret-entrance stairs exit (screen 0x1B).
 N_COURTYARD_SECRET_POCKET = "courtyard_secret_pocket"
 N_ROOM_61 = "room_61"
-# West of main hall (Zelda path edge; isolated clear+exit 2026-07-31).
+# West of main hall (continuous clean prefix 2026-08-01).
 N_ROOM_60 = "room_60"
-# North of 0x60 (Zelda path hop; isolated 2026-07-31).
+# North of 0x60 (continuous clean prefix 2026-08-01).
 N_ROOM_50 = "room_50"
 N_ROOM_80 = "room_80"
 N_CASTLE_MANTLE = "castle_mantle"
@@ -208,7 +208,7 @@ def escape_route_graph() -> RouteGraph:
             node_id=N_ROOM_60,
             name="Hyrule Castle main west (0x60)",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "isolated"}),
+            tags=frozenset({"indoors", "escape", "continuous"}),
             meta=_room_meta(
                 HYRULE_CASTLE_MAIN_WEST_ROOM,
                 z3_label="Hyrule Castle",
@@ -222,7 +222,7 @@ def escape_route_graph() -> RouteGraph:
             node_id=N_ROOM_50,
             name="Hyrule Castle NW chamber (0x50)",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "isolated"}),
+            tags=frozenset({"indoors", "escape", "continuous"}),
             meta=_room_meta(
                 HYRULE_CASTLE_NW_ROOM,
                 z3_label="Hyrule Castle",
@@ -382,7 +382,7 @@ def escape_route_graph() -> RouteGraph:
                 "path": PATH_INTERNAL_KEY,
             },
         ),
-        # --- isolated: main hall west door → room 0x60 ------------------------
+        # --- continuous: main hall west door → room 0x60 ----------------------
         # Geometry (approach/landing) lives only in maps/room_61.json.
         GraphEdge(
             source_id=N_ROOM_61,
@@ -390,31 +390,31 @@ def escape_route_graph() -> RouteGraph:
             edge_id="main_hall_west_to_0x60",
             direction="west",
             requires=frozenset({CAP_FIGHTER_SWORD}),
-            verification=VERIFICATION_ISOLATED,
-            provenance="room_engine.room_61.west_to_0x60",
+            verification=VERIFICATION_CONTINUOUS,
+            provenance="castle_dungeon.MAIN_HALL_TO_NW_PREFIX",
             meta={
                 "path": PATH_PRIMARY,
                 "to_room_base_id": HYRULE_CASTLE_MAIN_WEST_ROOM,
                 "door_label": "west_to_0x60",
                 "map_id": "room_61",
-                "note": "Clear hostiles + side corridor + LEFT push (CastleMain 3/3)",
+                "note": "Clean power-on prefix: clear hostiles + recovery-aware side corridor + LEFT push",
             },
         ),
-        # --- isolated: room 0x60 north → room 0x50 -----------------------------
+        # --- continuous: room 0x60 north → room 0x50 ---------------------------
         GraphEdge(
             source_id=N_ROOM_60,
             target_id=N_ROOM_50,
             edge_id="room_60_north_to_0x50",
             direction="north",
             requires=frozenset({CAP_FIGHTER_SWORD}),
-            verification=VERIFICATION_ISOLATED,
-            provenance="room_engine.room_60.north_to_0x50",
+            verification=VERIFICATION_CONTINUOUS,
+            provenance="castle_dungeon.MAIN_HALL_TO_NW_PREFIX",
             meta={
                 "path": PATH_PRIMARY,
                 "to_room_base_id": HYRULE_CASTLE_NW_ROOM,
                 "door_label": "north_to_0x50",
                 "map_id": "room_60",
-                "note": "North shaft → UP (maps/room_60.json)",
+                "note": "Clean power-on prefix: north shaft → UP (maps/room_60.json)",
             },
         ),
         # --- planned primary: after 0x50 → Zelda cell / escort / Sanctuary ----
@@ -563,7 +563,7 @@ _ESCAPE_HOPS: tuple[_EscapeHop, ...] = (
         goal="reach_room_61",
         paths=_KEY_ONLY,
     ),
-    # --- shared post-main-hall (west + north isolated; Zelda planned) -------
+    # --- shared post-main-hall (west + north continuous; Zelda planned) -----
     _EscapeHop(
         leg_id="main_hall_west_to_0x60",
         source_id=N_ROOM_61,
@@ -639,7 +639,7 @@ def _planned_legs_for_path(path: str) -> tuple[RouteLeg, ...]:
 
 
 def continuous_spine_legs() -> tuple[RouteLeg, ...]:
-    """Verified continuous tip: grounds → secret clear → main hall (0x61).
+    """Verified continuous tip: grounds → secret clear → NW chamber (0x50).
 
     Derived from primary-path hops whose matching graph edge is continuous.
     Further legs toward Zelda/Sanctuary remain planned (see
@@ -679,7 +679,7 @@ def escape_route_legs() -> tuple[RouteLeg, ...]:
 def escape_route_legs_key_path() -> tuple[RouteLeg, ...]:
     """Alternate Sanctuary plan via internal 0x55 key/shutter (work queue).
 
-    Post-``room_61`` legs are the same shared hop-table tail as the primary
+    Post-``room_50`` legs are the same shared hop-table tail as the primary
     plan (not a hand-copied Sanctuary sequence).
     """
     return _planned_legs_for_path(PATH_INTERNAL_KEY)

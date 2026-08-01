@@ -21,7 +21,7 @@ Super Metroid scripted full-clear project. Shared process:
 | Path | Role |
 |------|------|
 | `ram.py`, `assist.py`, `policy.py`, `progression.py`, `paths.py`, `room_timer.py` | Core package surface |
-| `routes/continuous.py` | Power-on chain (… → Warehouse → Hi-Jump → Kraid → Varia) |
+| `routes/continuous.py` | Power-on chain (… → Varia → Business return → Frog Save) |
 | `routes/segment.py` | Segment / HopExecutor / ContinuousSession contracts |
 | `routes/runtime.py` | Shared session, report harness, integrity |
 | `routes/kpdr/` | Pure movement/combat controllers (no env ownership) |
@@ -49,17 +49,18 @@ are topology diagnostics only — not route evidence.
    Alpha PB after Ice; **not** ship-first / early Pink PB.
 2. **Path board:** [`docs/research/PATH_ROOM_BOARD.md`](docs/research/PATH_ROOM_BOARD.md)
    — 107 rooms / 199 hops; hop table is topology, not human KPDR order.
-3. **Verified continuous tip:** power-on → Varia Suit
-   (`scripts/record/continuous.py --to varia`, **101,954f**). Prefixes:
-   Hi-Jump **87,696f**, Kraid entry **97,170f**.
-4. **★ Next play:** post-Varia reverse pure chain → Business → K4 (Bubble →
-   Speed → Wave → Ice → Alpha PB). `varia-to-kraid` + `kraid-to-eye-return`
-   pure green (`controller_dev`); next pure `eye-to-baby-return` from
-   `scratch/post_kraid_to_eye_return.state`. No continuous post-Varia tip until
-   reverse spine pure-green to Business. Then Phantoon natural entry
-   ([`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md)).
-5. **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers,
-   Segment contracts, package boundaries, tip-extension recipe.
+3. **Verified continuous tip:** power-on → Frog Savestation
+   (`scripts/record/continuous.py --to frog`; two matching integrity-green
+   runs, **114,923f**, 0 loads / progression / capacity writes / deaths).
+   Prefixes: Hi-Jump **87,696f**, Varia **104,382f**, Business **113,723f**.
+4. **★ Next play:** Frog Save→Speedway pure from
+   `scratch/post_frog_continuous.state` (the accepted continuous endpoint).
+   K4 then continues Bubble → Speed → Wave → Ice → Alpha PB; no door-warp
+   evidence or progression writes.
+5. **Architecture + structure plan:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+   (layers, Segment contracts, tip recipe, **known structural debt**) and
+   [`docs/plan.md`](docs/plan.md) (M6–M8 + Structure & API todos). Planner-serial
+   arch cards: [`docs/tasks/QUEUE.md`](docs/tasks/QUEUE.md) (`SM-ARCH-*`).
 6. **Dev topology (green):** `kpdr.py route-to-hijump` — 24 hops Big Pink →
    Hi-Jump room; anchors `dev_kpdr_*` / `dev_hijump_*`.
 7. **Parked:** pure Pink PB maze; ship-first skip (not KPDR); vision BC in
@@ -108,7 +109,7 @@ natural-entry judgment on a strong planner (Grok) or human.
 ./super_metroid/scripts/farm_room_waves.sh --rounds 20 --parallel 8 --deadline-hours 2
 ```
 
-Do **not** hand the executor open-ended “next tip after Varia” work. Cards must
+Do **not** hand the executor open-ended “next continuous tip” work. Cards must
 list exact files, recipe step, acceptance commands, and (for pure probes) the
 **exact source state path + expected room id** (prefer `SOURCE_STATES.md`).
 
@@ -144,9 +145,17 @@ append `RouteHop`s and a thin `run_post_supers_tip(...)` wrapper in
 `continuous.py`. Do not copy another full `run_start_to_*` body.
 
 ```bash
-# Verified continuous tip: power-on → Varia Suit (KPDR K3)
+# Verified continuous tip: power-on → Frog Savestation (KPDR K4.0)
 uv run python super_metroid/scripts/record/continuous.py --no-video
+uv run python super_metroid/scripts/record/continuous.py --to frog
 uv run python super_metroid/scripts/record/continuous.py --to varia
+# Save a source only if that tip run itself passes all integrity checks.
+uv run python super_metroid/scripts/record/continuous.py --to varia --no-video \
+  --state-output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_continuous.state
+uv run python super_metroid/scripts/record/continuous.py --to business --no-video \
+  --state-output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_business_continuous.state
+uv run python super_metroid/scripts/record/continuous.py --to frog --no-video \
+  --state-output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_frog_continuous.state
 uv run python super_metroid/scripts/record/continuous.py --to kraid
 uv run python super_metroid/scripts/record/continuous.py --to hijump --no-video
 # Prefix milestones (shorter checks)
@@ -198,6 +207,18 @@ uv run python super_metroid/scripts/export/split_dwell.py \
   super_metroid/recordings/start_to_varia.json --top 15
 uv run python super_metroid/scripts/export/split_dwell.py \
   super_metroid/recordings/start_to_varia.json --reasons --top 20
+
+# Source catalog + pure RED pin (nav-mode RAM; no full-bank copy per frame)
+uv run python super_metroid/scripts/probe/kpdr.py suggest-source \
+  --room 0xA6E2 --segment varia-to-kraid
+uv run python super_metroid/scripts/probe/kpdr.py pure varia-to-kraid \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_collected.state \
+  --pin-json super_metroid/debug/varia_to_kraid_pin.json
+
+# Scaffold pure tip hop (dry-run checklist; --write emits controller + card)
+uv run python super_metroid/scripts/scaffold_tip.py \
+  --segment business_to_frog_save --from-room 0xA7DE --to-room 0xB167 \
+  --module k4_norfair --card-id SM-K4-BUBBLE-01 --dry-run
 ```
 
 Controllers: `routes/kpdr/` (Super collect → Kraid; `post_spore_controller`
