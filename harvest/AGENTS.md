@@ -16,6 +16,15 @@ uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
 HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on \
   --out recordings/power_on_boot_probe.json
 
+# D1 town recon (six talks → truck → farm → D2): checklist / entry / record / replay
+uv run python -m harvest.scripts.town_day1_recon checklist
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon capture-entry
+./scripts/record_town_day1_recon.sh              # interactive; F5 saves task
+./scripts/record_town_day1_recon.sh --power-on   # clean boot + record
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon replay \
+  --task town_day1_handoff --out recordings/town_day1_handoff_replay.json
+# Docs: docs/town_day1_recon.md
+
 # One overnight toward day+1 (M3; ROM required)
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House
 # Two overnights: Spring D2 → D4 morning (verified 2026-07-28)

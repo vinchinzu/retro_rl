@@ -5,15 +5,19 @@ Structure / API direction: [PLANNING_STACK.md](PLANNING_STACK.md).
 
 ## Bottleneck
 
-**Spring calendar multi-day is ROM-verified** (D2 → Summer D1). Plant path is
-now ROM-verified (shed equip → hoe → plant → `0x54` tiles). Remaining gap:
-**same-day water reliability**, then **grow → harvest → ship** so money rises
-above the post-seed $100 floor.
+**Spring calendar multi-day is ROM-verified** (D2 → Summer D1), but it is a
+separate D2 fixture run. The clean power-on D1 town handoff is now mapped but
+not closed: the flower-shop owner counter interaction, truck response, and
+natural D1→D2 transition still need a controller recording. After that,
+same-day water reliability and **grow → harvest → ship** remain open so money
+rises above the post-seed $100 floor. See
+[town_day1_recon.md](town_day1_recon.md).
 
 ## Next acceptance test
 
-1. From clean power-on, return from the D1 town-gate handoff to farm and sleep
-   naturally to D2. Then repeat the spring soak without a state load.
+1. From clean power-on, complete the six D1 town conversations, return to the
+   truck, leave town, and sleep naturally to D2. Then repeat the spring soak
+   without a state load.
 2. From `Y1_After_Buy_Potato` (or live day plan): plant + water same day.
 3. From `Y1_Inside_House`, 10-day or `--end-of-spring` soak with money > 100
    after first potato harvest (~6 days post-plant).
@@ -27,8 +31,10 @@ above the post-seed $100 floor.
 - Multi-day growth from `Y1_Test_Crops_Planted_Watered` → mature potatoes.
 - Harvest + ship route; **shipping money settles at 5pm** (save pre/post-5pm points).
 - Full spring soak with income growth, no mid-run loads.
-- Correct `town_to_farm` for the real opening gate `(712,424)`; only then
-  promote the current D2→Summer soak to a continuous power-on result.
+   - Record the flower-shop owner counter route and truck handoff; assert the
+     D1 event mask `0x3F` before leaving.
+   - Correct `town_to_farm` for the real opening gate `(712,424)`; only then
+     promote the current D2→Summer soak to a continuous power-on result.
 - Fix `CoopChoresTask` for multi-adult / multi-egg dynamic tiles (Spring 22 case).
 
 ### M4 (natural-entry summer)
