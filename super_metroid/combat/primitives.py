@@ -175,6 +175,91 @@ def settle_standing(
     return session.state
 
 
+def lane_hold_window(
+    session: ControllerSession,
+    *,
+    min_x: int,
+    max_x: int,
+    hold_frames: int,
+    face: str = "RIGHT",
+    dash: bool = True,
+    recovery_frames: int = 0,
+    settle_min_y: int | None = None,
+    settle_bad_poses: frozenset[int] = frozenset({81, 164}),
+    reason: str = "lane_hold_window",
+) -> SuperMetroidState:
+    """Hold a horizontal position lane for a duration, then optional recovery settle.
+
+    Session-level **window** companion to the one-frame :func:`lane_hold_action`.
+    Each hold frame recomputes buttons from the current ``session.state.samus_x``
+    so Samus walks/dashes back into ``[min_x, max_x]`` and faces ``face`` while
+    inside the band. When ``recovery_frames > 0``, finishes with
+    :func:`settle_standing` (idle until standing / not mid-air entry poses).
+
+    Call signature for future ``BossStrategy`` composition::
+
+        lane_hold_window(
+            session,
+            min_x=50,
+            max_x=260,
+            hold_frames=90,
+            face="RIGHT",
+            dash=True,
+            recovery_frames=30,
+            settle_min_y=390,          # optional floor gate (Kraid-style)
+            settle_bad_poses=frozenset({81, 164}),
+            reason="boss_lane",
+        )
+
+    Parameters
+    ----------
+    session:
+        Active controller session (already in the boss room / arena).
+    min_x, max_x:
+        Inclusive position band (same semantics as :func:`lane_hold_action`).
+    hold_frames:
+        Number of frames to re-apply lane hold (``N`` in the card recipe).
+    face:
+        Direction held while inside the band (default ``\"RIGHT\"``).
+    dash:
+        Include ``B`` when walking back into the band.
+    recovery_frames:
+        Max frames for post-window :func:`settle_standing` (``M``). ``0`` skips
+        recovery entirely.
+    settle_min_y, settle_bad_poses:
+        Forwarded to :func:`settle_standing` when recovering.
+    reason:
+        Hold reason prefix; recovery uses ``f\"{reason}_recover\"``.
+
+    Returns
+    -------
+    SuperMetroidState
+        Session state after the hold window (and optional recovery).
+    """
+    for _ in range(max(0, hold_frames)):
+        buttons = lane_hold_action(
+            session.state.samus_x,
+            min_x=min_x,
+            max_x=max_x,
+            face=face,
+            dash=dash,
+        )
+        if buttons:
+            hold(session, 1, *buttons, reason=reason)
+        else:
+            hold(session, 1, reason=reason)
+
+    if recovery_frames > 0:
+        return settle_standing(
+            session,
+            min_y=settle_min_y,
+            bad_poses=settle_bad_poses,
+            max_frames=recovery_frames,
+            reason=f"{reason}_recover",
+        )
+    return session.state
+
+
 def wait_predicate(
     session: ControllerSession,
     pred: Callable[[SuperMetroidState], bool],
@@ -336,6 +421,7 @@ __all__ = [
     "face_toward_action",
     "hold_for",
     "lane_hold_action",
+    "lane_hold_window",
     "push_horizontal_door",
     "range_kite_action",
     "select_weapon",

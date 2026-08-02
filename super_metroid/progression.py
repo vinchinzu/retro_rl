@@ -1585,13 +1585,22 @@ START_TO_VARIA_GRAPH = RoomProgressionGraph(
 # Wave/Ice branches. Edges start ``unverified``; first reverse hop
 # ``varia_to_kraid`` promotes to ``controller_dev`` when pure probe is green.
 # Do not claim continuous until composed on power-on via tip recipe.
+#
+# First Bubble visit is **Cathedral climb** (Business → Cathedral Entrance →
+# Cathedral → Rising Tide → Bubble). Frog Speedway is a **post-Speed** shortcut
+# only — Boost Blocks hard-lock without Speed (SM-K4.2-PURE residual RED).
 _K4_CAPS = _VARIA_CAPS
+_K4_SPEED_CAPS = _K4_CAPS | frozenset({"speed_booster"})
 
 _K4_SPEED_ROOMS = _K3_VARIA_ROOMS + (
     # Return path rooms already present through Warehouse/Business on K2.
     RoomNode(0xB167, "Frog Savestation", "Norfair"),
     RoomNode(0xB106, "Frog Speedway", "Norfair"),
     RoomNode(0xAF72, "Upper Norfair Farming Room", "Norfair"),
+    # First-visit Bubble approach (no Speed required)
+    RoomNode(0xA7B3, "Cathedral Entrance", "Norfair"),
+    RoomNode(0xA788, "Cathedral", "Norfair"),
+    RoomNode(0xAFA3, "Rising Tide", "Norfair"),
     RoomNode(0xACB3, "Bubble Mountain", "Norfair"),
     RoomNode(0xB07A, "Bat Cave", "Norfair"),
     RoomNode(0xACF0, "Speed Booster Hall", "Norfair"),
@@ -1669,7 +1678,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
     ),
     # Warehouse → Business reuses the continuous edge; the right-ledge branch
     # is covered by the integrity-green start_to_business return tip.
-    # --- Business → Bubble → Speed ---
+    # --- Business → Frog Save (K4.0 continuous milestone; optional save) ---
     DoorEdge(
         "business_to_frog_save",
         0xA7DE,
@@ -1680,6 +1689,59 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "kpdr_k4_speed",
         "continuous",  # two integrity-green start_to_frog_save runs
     ),
+    # Reverse so continuous tip at Frog can repath to Cathedral without warp.
+    DoorEdge(
+        "frog_save_to_business",
+        0xB167,
+        0xA7DE,
+        "left",
+        "right",
+        _K4_CAPS,
+        "kpdr_k4_speed",
+        "unverified",
+    ),
+    # --- First Bubble visit: Cathedral climb (no Speed) ---
+    DoorEdge(
+        "business_to_cathedral_entrance",
+        0xA7DE,
+        0xA7B3,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_cathedral",
+        "unverified",
+    ),
+    DoorEdge(
+        "cathedral_entrance_to_cathedral",
+        0xA7B3,
+        0xA788,
+        "right",
+        "left",
+        _K4_CAPS | frozenset({"super_missiles"}),  # red door
+        "kpdr_k4_cathedral",
+        "unverified",
+    ),
+    DoorEdge(
+        "cathedral_to_rising_tide",
+        0xA788,
+        0xAFA3,
+        "right",
+        "left",
+        _K4_CAPS | frozenset({"super_missiles"}),  # green door
+        "kpdr_k4_cathedral",
+        "unverified",
+    ),
+    DoorEdge(
+        "rising_tide_to_bubble",
+        0xAFA3,
+        0xACB3,
+        "right",
+        "left",
+        _K4_CAPS,
+        "kpdr_k4_cathedral",
+        "unverified",
+    ),
+    # --- Post-Speed shortcut: Frog Speedway (Boost Blocks need Speed) ---
     DoorEdge(
         "frog_save_to_speedway",
         0xB167,
@@ -1688,7 +1750,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "left",
         _K4_CAPS,
         "kpdr_k4_speed",
-        "unverified",
+        "unverified",  # pure controller green; not on first Bubble path
     ),
     DoorEdge(
         "speedway_to_farm",
@@ -1696,7 +1758,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         0xAF72,
         "right",
         "left",
-        _K4_CAPS,
+        _K4_SPEED_CAPS,  # Boost Blocks; SM-K4.2-PURE RED without Speed
         "kpdr_k4_speed",
         "unverified",
     ),
@@ -1706,7 +1768,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         0xACB3,
         "right",
         "left",
-        _K4_CAPS,
+        _K4_SPEED_CAPS,  # only after Speedway; post-Speed farm entry
         "kpdr_k4_speed",
         "unverified",
     ),

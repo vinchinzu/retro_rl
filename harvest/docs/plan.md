@@ -32,12 +32,35 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 |----------|------|-------|
 | Done | A1 Phase contracts on crop/coop/sleep/hot-spring | `evaluate_task_contract` + catalog wiring |
 | Done | A2 Skill boundary factories | feed/ship/talk/farm bin in `tasks/skills.py` |
-| Next | A3 Crop close-loop acceptance | Domain bottleneck; not pure architecture |
+| Partial | A3 Crop close-loop acceptance | See A3 progress below |
 | Next | A4 Coop skill composition + multi-adult fix | Stop growing `coop_task.py` |
 | Next | A5 Contract preflight in day-plan probe | Soft notes when map/tool mismatch |
 | Later | A6 D1 skill routes from power-on | Thin handoff over Nav+Talk skills |
 | Later | A7 Festival + rainy-day distillation | Phase ordering from recordings |
 | Later | A8 Promote Pathfinder / primitives | After second consumer |
+
+### A3 progress (2026-08-01 subagent push)
+
+| Piece | Status |
+|-------|--------|
+| Day-plan establish → ensure can → water order | **Verified** (unit tests lock sequence + refill_bounds) |
+| Same-day water with charged can | **ROM OK**: `Y1_Test_Crops_Planted_Dry` + can=20 → 3/3 wet `0x55` |
+| Ship verify without instant money | **Fixed**: bin drop counts ship; money may settle at 5pm |
+| Empty-can natural refill | **Partial** — pond map + preferred-only select + fence-open hook; ROM empty-can from west pocket still needs fence clear with empty hands |
+| Multi-day growth → harvest → money > $100 | **Open** (Day09 fixture currently 0 live ripe tiles) |
+
+**Empty-can refill traps (ROM-mapped 2026-08-01):**
+
+1. `CheckToolSuccess` farm fill only when tile-in-front property is `F0, F9–FD`
+   (`ToolAnimationWateringCan` sets can=`0x14`). Prefer
+   `REFILL_PREFERRED_WATER_TILES`; F1/F2/F7/F8 do **not** refill — selection
+   now preferred-only (no F8 full-path trap).
+2. **Main pond F0** ~(31–34,31–33); stands `(32,34)` face up (human recording)
+   and `(33,30)` face down (ROM fill 0→20). Band order: pond → south → north.
+3. Early west plant pocket is cut off by **y=31 fence wall (0x05, x=11–29)**.
+   Clearing one fence opens full BFS to F0. `_start_refill` starts a limited
+   `FenceClearLoopTask` when preferred water is unreachable and the wall is up.
+4. Shipping F2 pocket remains blacklisted (`BAD_REFILL_STAND_BOUNDS`).
 
 ## Domain milestones
 

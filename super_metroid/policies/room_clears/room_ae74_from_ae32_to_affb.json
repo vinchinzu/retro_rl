@@ -151,7 +151,8 @@
       "buttons": [
         "LEFT",
         "A",
-        "B"
+        "B",
+        "X"
       ],
       "frames": 220
     },

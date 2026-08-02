@@ -44,6 +44,7 @@ ad-hoc warps. All paths are under
 | `post_varia_continuous_to_warehouse` | `scratch/post_varia_continuous_to_warehouse.state` | `0xA6A1` Warehouse right ledge | natural Varia-lineage Zeela→Warehouse exit | authoritative revalidation source for reverse `warehouse-to-business` |
 | `post_business_continuous` | `scratch/post_business_continuous.state` | `0xA7DE` Business Center | integrity-green `--to business` endpoint | authoritative source for `business-to-frog-save` |
 | `post_frog_continuous` | `scratch/post_frog_continuous.state` | `0xB167` Frog Savestation (reload: x=60/y=139/pose=1) | integrity-green `--to frog` endpoint | authoritative source for `frog-save-to-speedway` |
+| `post_frog_save_to_speedway_pure` | `scratch/post_frog_save_to_speedway_pure.state` | `0xB106` Frog Speedway (reload: x=39/y=139/pose=11; door_transition=0) | continuous-like pure successor of Frog Save from `post_frog_continuous` (pure GREEN, frames=295) | pure `speedway-to-farm` / K4.2; **not** continuous tip |
 | `post_business_to_frog_save_pure` | `scratch/post_business_to_frog_save_pure.state` | `0xB167` Frog Savestation (reload: x=60/y=139/pose=1) | recorded pure handoff from accepted Business; superseded by the accepted Frog checkpoint | probe record only |
 | `business_climb_entry` | `scratch/continuous_like_business_climb_entry.state` | `0xA7DE` Business Center floor band | Hi-Jump, continuous-like | pure `business-to-warehouse` |
 | `continuous_like_bat` | `scratch/continuous_like_bat.state` | `0xA3DD` Bat room | pre-Kraid | bat pure / dwell isolation |
@@ -157,7 +158,6 @@ and are **not** representative of real continuous loadout.
 
 | Needed for | Expected room | Blocker | Next card |
 |------------|---------------|---------|-----------|
-| pure `frog-save-to-speedway` (K4 forward) | `0xB167` Frog Save → `0xB106` | needs first geometry controller; `post_frog_continuous` is green | SM-K4-SPEEDWAY-PURE |
 | pure HJ shaft mid-climb isolation | `0xAA41` band | `SM-HJ-SRC` partial (ensure_morph RED) | SM-HJ-SRC follow-up or continuous dump |
 | pure business climb post-Varia entry | `0xA7DE` floor band | no continuous-like source at Business floor after Varia return; `business_climb_entry` is pre-Varia | SM-SRC-BUSINESS |
 | pure bubble mountain entry (K4 Speed) | `0xACB3` Bubble Mountain | needs continuous-like capture after Frog Save→Speedway→Farm; no source exists | SM-SRC-BUBBLE |

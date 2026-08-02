@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_b106_from_af72_to_b167",
+  "status": "verified_development_state",
+  "description": "Frog Speedway (0xB106) right-door entry \u2192 left door to Frog Save. Requires Speed Booster on fixture to smash mid-room Boost Blocks (sm-json Base / h_getBlueSpeedMaxRunway). Dual-track practice only.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x970E",
+    "entrySourceRoomIdHex": "0xAF72",
+    "doorOrientation": "right",
+    "face": "left",
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "spawn": {
+      "x": 1992,
+      "y": 139,
+      "pose": 2
+    },
+    "insetPx": 56,
+    "doorBlock": [
+      127,
+      8
+    ],
+    "warpSample": {
+      "x": 2048,
+      "y": 139
+    },
+    "doorPtr": 38670,
+    "entrySourceRoomId": 44914
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 44914,
+      "sourceRoomIdHex": "0xAF72",
+      "endpoint": {
+        "roomId": 45318,
+        "roomIdHex": "0xB106",
+        "logicalRoomId": 93,
+        "nodeId": 2,
+        "nodeName": "Frog Speedway Right Door (to Farming Room)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          79,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 45415,
+      "targetRoomIdHex": "0xB167",
+      "endpoint": {
+        "roomId": 45318,
+        "roomIdHex": "0xB106",
+        "logicalRoomId": 93,
+        "nodeId": 1,
+        "nodeName": "Frog Speedway Left Door (to Save)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "unresolved",
+      "reason": "mid-room Speed Booster blocks; air-only BFS fails without dynamic block clear",
+      "entryBlock": [
+        79,
+        7
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "waypointsBlocks": [],
+      "runtimeNote": "Smash Boost Blocks with continuous LEFT+B dash (Speed Booster equipped on practice fixture)."
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "speed_dash_left",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 240
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Isolated practice policy. Fixture includes a development Speed Booster grant. Not continuous-run evidence.",
+  "promotedAt": "2026-08-02T01:19:06.286819+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_b106_from_af72_to_b167.json",
+    "reportSha256": "f0575b00af07d08af6e99bea36d33b270a51cfa782d01d76b50c2637a31f151f",
+    "stateSha256": "02afb26fa910de3d378974d35630724efd8881523ee3e6de46332fef593b618a",
+    "policySha256Before": "7977b55d1b53c41eb26ede075a8e34d23f5b783263ef2cb697a4c4d908e26477"
+  }
+}

@@ -1,7 +1,8 @@
 """Pure-first controllers for the K4 Business-to-Bubble Norfair path.
 
-Business Center → Frog Save is the accepted K4.0 continuous extension. The
-remaining Frog Save → Bubble controllers are intentionally bounded scaffolds.
+Business Center → Frog Save is the accepted K4.0 continuous extension (save
+milestone). First Bubble visit is **Cathedral climb** (no Speed). Frog
+Speedway is a post-Speed shortcut only (Boost Blocks need Speed Booster).
 """
 
 from __future__ import annotations
@@ -16,8 +17,11 @@ from super_metroid.routes.controller_common import (
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BUBBLE,
     ROOM_BUSINESS,
+    ROOM_CATHEDRAL,
+    ROOM_CATHEDRAL_ENTRANCE,
     ROOM_FROG_SAVE,
     ROOM_FROG_SPEEDWAY,
+    ROOM_RISING_TIDE,
     ROOM_SPEED,
     ROOM_UPPER_NORFAIR_FARM,
 )
@@ -30,6 +34,10 @@ _FLOOR_Y_MIN = 1405
 _STANDING_POSES = frozenset({1, 2, 9, 10, 25, 26, 27, 28, 37, 38, 137, 138})
 _FROG_SPEEDWAY_DOOR_FRAMES = 400
 _FROG_SPEEDWAY_SETTLE_FRAMES = 320
+# Frog Speedway is an 8-screen horizontal tunnel (left entry → right farm door).
+# Continuous loadout has no Speed; mid-room Boost Blocks may stop progress.
+_SPEEDWAY_TO_FARM_DOOR_FRAMES = 1100
+_SPEEDWAY_TO_FARM_SETTLE_FRAMES = 320
 
 
 def _scaffold_exit(
@@ -38,13 +46,14 @@ def _scaffold_exit(
     entry_room: int,
     target_room: int,
     label: str,
+    face: str = "RIGHT",
 ) -> SuperMetroidState:
     """Run a bounded placeholder toward a door and report a useful failure."""
     require_room(session, entry_room, label)
 
-    # TODO(SM-K4-BUBBLE-PURE): replace this placeholder with room geometry.
+    # TODO: replace placeholder with room geometry (one pure card per hop).
     for _ in range(_MAX_SCAFFOLD_FRAMES):
-        state = hold(session, 1, "RIGHT", "B", reason=f"{label}_scaffold")
+        state = hold(session, 1, face, "B", reason=f"{label}_scaffold")
         if state.room_id == target_room:
             return state
 
@@ -120,15 +129,18 @@ def play_frog_save_to_speedway(session: ControllerSession) -> SuperMetroidState:
     """Frog Savestation right door → ordinary Frog Speedway.
 
     The accepted Frog checkpoint settles on the left side of the short save
-    room.  Its right door is blue, so run toward it while beam-shooting rather
-    than relying on the generic scaffold's unarmed right hold.
+    room.  The central save-tube blocks a flat run, so clear its two sides with
+    separated Hi-Jump pulses before continuing to the blue right door.
     """
     label = "frog_save_to_speedway"
     require_room(session, ROOM_FROG_SAVE, label)
 
     select_weapon(session, 0)
-    for _ in range(_FROG_SPEEDWAY_DOOR_FRAMES):
-        state = hold(session, 1, "RIGHT", "B", "X", reason=f"{label}_door")
+    for frame in range(_FROG_SPEEDWAY_DOOR_FRAMES):
+        inputs = ("RIGHT", "B", "X")
+        if 30 <= frame < 40 or 90 <= frame < 100:
+            inputs += ("A",)
+        state = hold(session, 1, *inputs, reason=f"{label}_door")
         if state.room_id == ROOM_FROG_SPEEDWAY:
             break
     else:
@@ -149,17 +161,54 @@ def play_frog_save_to_speedway(session: ControllerSession) -> SuperMetroidState:
 
 
 def play_speedway_to_farm(session: ControllerSession) -> SuperMetroidState:
-    """Scaffold Frog Speedway ``0xB106`` → Upper Norfair Farm ``0xAF72``."""
-    return _scaffold_exit(
+    """Frog Speedway left entry → ordinary Upper Norfair Farm via right door.
+
+    Continuous-like source spawns on the left of the long horizontal tunnel
+    (x≈39).  Run and beam-shot the blue right door into ``0xAF72``.  Mid-room
+    Boost Blocks normally need Speed Booster; this controller is pure-first
+    **without** a Speed grant — if blocked, timeout reports pose/xy for the
+    residual.
+    """
+    label = "speedway_to_farm"
+    require_room(session, ROOM_FROG_SPEEDWAY, label)
+
+    select_weapon(session, 0)
+    max_x = session.state.samus_x
+    for _ in range(_SPEEDWAY_TO_FARM_DOOR_FRAMES):
+        state = hold(session, 1, "RIGHT", "B", "X", reason=f"{label}_door")
+        if state.samus_x > max_x:
+            max_x = state.samus_x
+        if state.room_id == ROOM_UPPER_NORFAIR_FARM:
+            break
+    else:
+        state = session.state
+        # Mid-room Boost Blocks (~x=795 from left entry) stop progress without
+        # Speed Booster; report max_x so residuals can name the lock.
+        raise TimeoutError(
+            f"{label}: right door missed before room "
+            f"0x{ROOM_UPPER_NORFAIR_FARM:04X}; room=0x{state.room_id:04X} "
+            f"pose={state.pose} xy=({state.samus_x},{state.samus_y}) "
+            f"door_transition={state.door_transition} max_x={max_x}"
+            + (
+                " (boost-block stall; no Speed)"
+                if max_x <= 820 and state.samus_x <= 820
+                else ""
+            )
+        )
+
+    return wait_ordinary_room(
         session,
-        entry_room=ROOM_FROG_SPEEDWAY,
-        target_room=ROOM_UPPER_NORFAIR_FARM,
-        label="speedway_to_farm",
+        ROOM_UPPER_NORFAIR_FARM,
+        settle_frames=_SPEEDWAY_TO_FARM_SETTLE_FRAMES,
+        label=label,
     )
 
 
 def play_farm_to_bubble(session: ControllerSession) -> SuperMetroidState:
-    """Scaffold Upper Norfair Farm ``0xAF72`` → Bubble Mountain ``0xACB3``."""
+    """Scaffold Upper Norfair Farm ``0xAF72`` → Bubble Mountain ``0xACB3``.
+
+    Post-Speed farm entry only (see ``speedway_to_farm`` requires Speed).
+    """
     return _scaffold_exit(
         session,
         entry_room=ROOM_UPPER_NORFAIR_FARM,
@@ -168,15 +217,83 @@ def play_farm_to_bubble(session: ControllerSession) -> SuperMetroidState:
     )
 
 
+def play_frog_save_to_business(session: ControllerSession) -> SuperMetroidState:
+    """Scaffold Frog Save left door reverse → Business Center."""
+    return _scaffold_exit(
+        session,
+        entry_room=ROOM_FROG_SAVE,
+        target_room=ROOM_BUSINESS,
+        label="frog_save_to_business",
+        face="LEFT",
+    )
+
+
+def play_business_to_cathedral_entrance(
+    session: ControllerSession,
+) -> SuperMetroidState:
+    """Scaffold Business top-right door → Cathedral Entrance ``0xA7B3``.
+
+    First hop of no-Speed Cathedral climb to Bubble (SM-K4-CATH-01).
+    """
+    return _scaffold_exit(
+        session,
+        entry_room=ROOM_BUSINESS,
+        target_room=ROOM_CATHEDRAL_ENTRANCE,
+        label="business_to_cathedral_entrance",
+    )
+
+
+def play_cathedral_entrance_to_cathedral(
+    session: ControllerSession,
+) -> SuperMetroidState:
+    """Scaffold Cathedral Entrance red door → Cathedral ``0xA788``."""
+    return _scaffold_exit(
+        session,
+        entry_room=ROOM_CATHEDRAL_ENTRANCE,
+        target_room=ROOM_CATHEDRAL,
+        label="cathedral_entrance_to_cathedral",
+    )
+
+
+def play_cathedral_to_rising_tide(
+    session: ControllerSession,
+) -> SuperMetroidState:
+    """Scaffold Cathedral green door → Rising Tide ``0xAFA3``."""
+    return _scaffold_exit(
+        session,
+        entry_room=ROOM_CATHEDRAL,
+        target_room=ROOM_RISING_TIDE,
+        label="cathedral_to_rising_tide",
+    )
+
+
+def play_rising_tide_to_bubble(session: ControllerSession) -> SuperMetroidState:
+    """Scaffold Rising Tide right door → Bubble Mountain ``0xACB3``."""
+    return _scaffold_exit(
+        session,
+        entry_room=ROOM_RISING_TIDE,
+        target_room=ROOM_BUBBLE,
+        label="rising_tide_to_bubble",
+    )
+
+
 __all__ = [
     "ROOM_BUBBLE",
     "ROOM_BUSINESS",
+    "ROOM_CATHEDRAL",
+    "ROOM_CATHEDRAL_ENTRANCE",
     "ROOM_FROG_SAVE",
     "ROOM_FROG_SPEEDWAY",
+    "ROOM_RISING_TIDE",
     "ROOM_SPEED",
     "ROOM_UPPER_NORFAIR_FARM",
+    "play_business_to_cathedral_entrance",
     "play_business_to_frog_save",
-    "play_frog_save_to_speedway",
-    "play_speedway_to_farm",
+    "play_cathedral_entrance_to_cathedral",
+    "play_cathedral_to_rising_tide",
     "play_farm_to_bubble",
+    "play_frog_save_to_business",
+    "play_frog_save_to_speedway",
+    "play_rising_tide_to_bubble",
+    "play_speedway_to_farm",
 ]

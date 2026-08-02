@@ -128,28 +128,17 @@
     },
     {
       "label": "coarse_exit_approach",
-      "repeat": 24,
+      "repeat": 13,
       "steps": [
         {
-          "label": "jump_left",
+          "label": "left_jump_shoot",
           "buttons": [
             "LEFT",
             "A",
             "B",
-            "X",
-            "DOWN"
+            "X"
           ],
-          "frames": 8
-        },
-        {
-          "label": "run_left",
-          "buttons": [
-            "LEFT",
-            "B",
-            "X",
-            "DOWN"
-          ],
-          "frames": 22
+          "frames": 60
         }
       ]
     },

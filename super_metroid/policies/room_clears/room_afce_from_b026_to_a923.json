@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_afce_from_b026_to_a923",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Acid Snakes Tunnel (0xAFCE); entry just inside door, exit via LEFT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -99,13 +99,28 @@
       "frames": 20
     },
     {
-      "label": "coarse_exit_approach",
-      "buttons": [
-        "LEFT",
-        "A",
-        "B"
-      ],
-      "frames": 500
+      "label": "traverse_jump_run_cycles",
+      "repeat": 12,
+      "steps": [
+        {
+          "label": "jump_pulse",
+          "buttons": [
+            "LEFT",
+            "A",
+            "B",
+            "X"
+          ],
+          "frames": 20
+        },
+        {
+          "label": "run_pulse",
+          "buttons": [
+            "LEFT",
+            "B"
+          ],
+          "frames": 20
+        }
+      ]
     },
     {
       "label": "open_exit_door",
@@ -130,5 +145,12 @@
       "frames": 150
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T01:33:02.899544+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_afce_from_b026_to_a923.json",
+    "reportSha256": "0878f841d817fd475bd014aed4d2250cd4545c36ed5c76a7a99408a852ba05cb",
+    "stateSha256": "d715f231afd324be638dab0a50843ee3e1ac3aa4c4e33c78cc1dcea94e33ae32",
+    "policySha256Before": "7a997f79122949a11304b228904ae680e839f51ffc868f600f11e09daca9e7a4"
+  }
 }

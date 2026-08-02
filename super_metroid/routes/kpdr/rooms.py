@@ -54,9 +54,13 @@ ROOM_KRAID = 0xA59F
 ROOM_VARIA = 0xA6E2
 
 # K4: Varia return → Business → Bubble Mountain → Speed / Wave / Ice
+# First Bubble visit is Cathedral climb (no Speed). Frog Speedway is post-Speed.
 ROOM_FROG_SAVE = 0xB167
 ROOM_FROG_SPEEDWAY = 0xB106
 ROOM_UPPER_NORFAIR_FARM = 0xAF72
+ROOM_CATHEDRAL_ENTRANCE = 0xA7B3
+ROOM_CATHEDRAL = 0xA788
+ROOM_RISING_TIDE = 0xAFA3
 ROOM_BUBBLE = 0xACB3
 ROOM_BAT_CAVE = 0xB07A
 ROOM_SPEED_HALL = 0xACF0

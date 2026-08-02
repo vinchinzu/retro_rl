@@ -101,7 +101,7 @@
     {
       "label": "coarse_exit_approach",
       "buttons": [
-        "RIGHT"
+        "LEFT"
       ],
       "frames": 158
     },

@@ -75,7 +75,9 @@ uv run pytest super_metroid/tests/test_k4_norfair_scaffold.py -q
 
 ## Residual routing
 
-- GREEN → `SM-K4-SPEEDWAY-SRC`: fingerprint-register the captured Speedway
-  successor before opening Speedway→Farm.
+- GREEN → [`SM-K4-SPEEDWAY-SRC`](SM-K4-SPEEDWAY-SRC.md): fingerprint-register
+  the captured Speedway successor before opening Speedway→Farm.
 - RED → `SM-K4-FROG-SPEEDWAY-R1`: change one named controller phase from the
   same Frog source; do not change Business→Frog or graph verification.
+
+Backlog alias: [`SM-K4.1-PURE`](SM-K4.1-PURE.md). Wave: [`WAVE-11.md`](WAVE-11.md).
