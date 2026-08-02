@@ -53,9 +53,10 @@ are topology diagnostics only — not route evidence.
    (`scripts/record/continuous.py --to frog`; two matching integrity-green
    runs, **114,923f**, 0 loads / progression / capacity writes / deaths).
    Prefixes: Hi-Jump **87,696f**, Varia **104,382f**, Business **113,723f**.
-4. **★ Next play:** Frog Save→Speedway pure from
-   `scratch/post_frog_continuous.state` (the accepted continuous endpoint).
-   K4 then continues Bubble → Speed → Wave → Ice → Alpha PB; no door-warp
+4. **★ Next play:** first Bubble via **Cathedral climb** pure stack from
+   `scratch/post_business_continuous.state` (`SM-K4-CATH-01`…). Frog Save is a
+   continuous K4.0 milestone; Frog Speedway is **post-Speed only** (Boost
+   Blocks). Then Bubble → Speed → Wave → Ice → Alpha PB; no door-warp
    evidence or progression writes.
 5. **Architecture + structure plan:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
    (layers, Segment contracts, tip recipe, **known structural debt**) and
@@ -95,6 +96,8 @@ natural-entry judgment on a strong planner (Grok) or human.
   stabilize waves, residual schema, metrics, dual-track
 - Template: [`docs/TASK_TEMPLATE.md`](docs/TASK_TEMPLATE.md)
 - Queue: [`docs/tasks/QUEUE.md`](docs/tasks/QUEUE.md)
+- Wave dispatch: [`docs/tasks/WAVE-11.md`](docs/tasks/WAVE-11.md)
+- Triage: [`docs/tasks/TRIAGE.md`](docs/tasks/TRIAGE.md)
 - Source states: [`docs/SOURCE_STATES.md`](docs/SOURCE_STATES.md)
 - Cards: [`docs/tasks/`](docs/tasks/) (`SM-*.md`)
 - Dispatch: `./super_metroid/scripts/dispatch_opencode.sh SM-K4-03`

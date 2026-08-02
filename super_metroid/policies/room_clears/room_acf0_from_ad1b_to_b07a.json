@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_acf0_from_ad1b_to_b07a",
+  "status": "verified_development_state",
+  "description": "Speed Booster Hall (0xACF0) right-door entry from Speed Room \u2192 left door to Bat Cave. Reverse speed-dash over crumbles (sm-json Speed Run [2,1]). Fixture grants Speed (+ Hi-Jump + Varia). Dual-track practice only.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x95BE",
+    "entrySourceRoomIdHex": "0xAD1B",
+    "doorOrientation": "right",
+    "face": "left",
+    "exitTravelDirection": "LEFT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "spawn": {
+      "x": 3016,
+      "y": 395,
+      "pose": 2
+    },
+    "insetPx": 56,
+    "doorBlock": [
+      188,
+      24
+    ],
+    "warpSample": {
+      "x": 3072,
+      "y": 395
+    },
+    "doorPtr": 38334,
+    "entrySourceRoomId": 44315
+  },
+  "planning": {
+    "objective": "collect_items_and_exit",
+    "entry": {
+      "sourceRoomId": 44315,
+      "sourceRoomIdHex": "0xAD1B",
+      "endpoint": {
+        "roomId": 44272,
+        "roomIdHex": "0xACF0",
+        "logicalRoomId": 101,
+        "nodeId": 2,
+        "nodeName": "Speed Booster Hall Right Door (to Speed Booster)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "red",
+        "block": [
+          111,
+          23
+        ],
+        "requires": [
+          "missiles"
+        ],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 45178,
+      "targetRoomIdHex": "0xB07A",
+      "endpoint": {
+        "roomId": 44272,
+        "roomIdHex": "0xACF0",
+        "logicalRoomId": 101,
+        "nodeId": 1,
+        "nodeName": "Speed Booster Hall Left Door (to Bat Cave)",
+        "position": "right",
+        "orientation": "left",
+        "subtype": "blue",
+        "block": [
+          0,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "unresolved",
+      "reason": "crumble bridges + lower-to-upper ramp; air-only BFS fails without dynamic clear / Speed Booster",
+      "entryBlock": [
+        111,
+        23
+      ],
+      "objectiveBlock": [
+        0,
+        7
+      ],
+      "exitBlock": [
+        0,
+        7
+      ],
+      "waypointsBlocks": [],
+      "runtimeNote": "LEFT+B Speed dash from right-door lip (~x=3016 y=395) across crumbles to left blue door (~x=37 y=139). Hidden missiles optional when boot already has missile capacity. Catalog block [111,23] is stale vs warp lip x=3072."
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "speed_dash_left",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 360
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "LEFT",
+        "X"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 150
+    }
+  ],
+  "acceptanceWarning": "Isolated practice policy. Fixture includes a development Speed Booster grant. Not continuous-run evidence.",
+  "promotedAt": "2026-08-02T01:23:32.226462+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_acf0_from_ad1b_to_b07a.json",
+    "reportSha256": "191105bf21a77c4ff7cad52daf7c271ac9986abc8d4ca90e1d25b603bac8834b",
+    "stateSha256": "15bf538dea241ecd18d6597b3b4131c4361ddd4bdc5dcc00a0a48b07913a2206",
+    "policySha256Before": "fbc2dc87b2773ea49c4fd3a55f3459a2688d0eca5602beb51b3eb2aec15ddb42"
+  }
+}

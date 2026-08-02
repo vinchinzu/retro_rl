@@ -574,6 +574,9 @@ Promotion order (same as historical Phase 6):
 
 ## Recommended execution order (next waves)
 
+Live triage + dispatch: [`tasks/TRIAGE.md`](tasks/TRIAGE.md) ·
+[`tasks/WAVE-11.md`](tasks/WAVE-11.md) · [`tasks/QUEUE.md`](tasks/QUEUE.md).
+
 ```text
 Track A topology — DONE (stop expanding warp product work)
   ✓  full hop runner + full-tour / full-hybrid diagnostics
@@ -582,12 +585,12 @@ Track B — play every path room (PRIMARY)
   ✓  Continuous Kraid + Varia (K3 tip @ 104,382f)
   ✓  Continuous Varia return → Business (K3→K4 tip @ 113,723f ×2)
   ✓  Continuous Business → Frog Save (K4.0 tip @ 114,923f ×2)
-  NOW  K4 forward: Frog Save → Speedway → Bubble → Speed → Wave → Ice → Alpha PB
+  NOW  K4 forward: Frog Save → Speedway pure (residual may be GREEN) → SRC
+       → graph → farm → Bubble → Speed → Wave → Ice → Alpha PB
   THEN Ship + Phantoon natural entry; bosses per BOSS_PIPELINE
   Parallel dual-track room farm + combat units (non-interacting files)
-  Code plan remaining: hop-table extract, typed path summary, full-run
-  RAM profile / pure RED clip (structure plan §1–5 — tip-spec + graph
-  collapse + lineage mostly landed)
+  Code plan remaining: hop-table extract (SM-ARCH-HOPS-MODULE ready),
+  typed path summary, pure RED clip (SM-ARCH-RED-DIAG ready)
 
 Later   Boss policies: Phantoon → Botwoon → Draygon → Ridley → MB + escape
 Maturity M6 graph owners → M7 full dry-run invariants → M8 credits capture

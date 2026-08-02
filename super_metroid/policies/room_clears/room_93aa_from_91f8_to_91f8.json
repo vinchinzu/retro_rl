@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_93aa_from_91f8_to_91f8",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Crateria Power Bomb Room (0x93AA); entry just inside door, exit via LEFT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -100,12 +100,106 @@
     },
     {
       "label": "deeper_into_room",
+      "steps": [
+        {
+          "label": "jump_to_first_platform",
+          "buttons": [
+            "RIGHT",
+            "A",
+            "B"
+          ],
+          "frames": 45
+        },
+        {
+          "label": "release_first_platform",
+          "buttons": [
+            "RIGHT",
+            "B"
+          ],
+          "frames": 20
+        },
+        {
+          "label": "jump_second_platform",
+          "buttons": [
+            "RIGHT",
+            "A",
+            "B"
+          ],
+          "frames": 40
+        },
+        {
+          "label": "release_second_platform",
+          "buttons": [
+            "RIGHT",
+            "B"
+          ],
+          "frames": 20
+        },
+        {
+          "label": "jump_third_platform",
+          "buttons": [
+            "RIGHT",
+            "A",
+            "B"
+          ],
+          "frames": 40
+        },
+        {
+          "label": "release_third_platform",
+          "buttons": [
+            "RIGHT",
+            "B"
+          ],
+          "frames": 20
+        },
+        {
+          "label": "jump_to_item_lane",
+          "buttons": [
+            "RIGHT",
+            "A",
+            "B"
+          ],
+          "frames": 40
+        },
+        {
+          "label": "item_lane_cycle",
+          "repeat": 5,
+          "steps": [
+            {
+              "label": "release",
+              "buttons": [
+                "RIGHT",
+                "B"
+              ],
+              "frames": 20
+            },
+            {
+              "label": "jump",
+              "buttons": [
+                "RIGHT",
+                "A",
+                "B"
+              ],
+              "frames": 40
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "item_align_morph",
+      "buttons": [
+        "DOWN"
+      ],
+      "frames": 2
+    },
+    {
+      "label": "item_collect_roll",
       "buttons": [
         "RIGHT",
-        "A",
         "B"
       ],
-      "frames": 220
+      "frames": 20
     },
     {
       "label": "item_fanfare_wait",
@@ -114,12 +208,31 @@
     },
     {
       "label": "approach_exit_door",
-      "buttons": [
-        "LEFT",
-        "A",
-        "B"
-      ],
-      "frames": 180
+      "steps": [
+        {
+          "label": "return_to_left_door",
+          "repeat": 9,
+          "steps": [
+            {
+              "label": "release",
+              "buttons": [
+                "LEFT",
+                "B"
+              ],
+              "frames": 20
+            },
+            {
+              "label": "jump",
+              "buttons": [
+                "LEFT",
+                "A",
+                "B"
+              ],
+              "frames": 40
+            }
+          ]
+        }
+      ]
     },
     {
       "label": "open_exit_door",
@@ -143,5 +256,12 @@
       "frames": 110
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T00:45:43.887833+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_93aa_from_91f8_to_91f8.json",
+    "reportSha256": "1d1690b9ce987eba7d4835670948de81931b6b55f20152cfef4240edfecbd370",
+    "stateSha256": "89b585383e0664b50e402efdab928f08446a73801214298d8af3a599e8547f8c",
+    "policySha256Before": "cdbea2f090e755a6ac96204f09b21881b893df0814c74d5d758fad6c7e3c75cb"
+  }
 }

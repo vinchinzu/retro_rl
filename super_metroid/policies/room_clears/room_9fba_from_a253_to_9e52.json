@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_9fba_from_a253_to_9e52",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Noob Bridge (0x9FBA); entry just inside door, exit via LEFT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -113,18 +113,65 @@
       "frames": 20
     },
     {
-      "label": "coarse_exit_approach",
+      "label": "reach_right_bridge_wall",
       "buttons": [
         "LEFT",
         "A",
         "B"
       ],
-      "frames": 400
+      "frames": 60
+    },
+    {
+      "label": "brake_at_bridge_wall",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 10
+    },
+    {
+      "label": "vertical_bridge_hop",
+      "buttons": [
+        "A"
+      ],
+      "frames": 24
+    },
+    {
+      "label": "cross_upper_bridge",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 340
+    },
+    {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "back_from_exit_shell",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "approach_exit_door",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 20
     },
     {
       "label": "open_exit_door",
       "buttons": [
         "LEFT",
+        "B",
         "X"
       ],
       "frames": 8
@@ -132,7 +179,7 @@
     {
       "label": "door_open_wait",
       "buttons": [],
-      "frames": 45
+      "frames": 20
     },
     {
       "label": "enter_exit_door",
@@ -141,8 +188,15 @@
         "A",
         "B"
       ],
-      "frames": 150
+      "frames": 210
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T01:02:26.515728+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_9fba_from_a253_to_9e52.json",
+    "reportSha256": "d96b4fe07e587624c1432cb57d01964b0d944e5cd977e6de1567579f0350819b",
+    "stateSha256": "ca7e44154234a455a2017627f44f64c1a2821d5920753517fb36ad3c21ee8a01",
+    "policySha256Before": "d77e4187fbf1ede09a79226ee1f051d0f11bc37cfec7502accb63ef27abc1ed6"
+  }
 }

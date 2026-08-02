@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_9c5e_from_9ad9_to_9c89",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Green Brinstar Fireflea Room (0x9C5E); entry just inside door, exit via LEFT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -99,13 +99,34 @@
       "frames": 20
     },
     {
-      "label": "coarse_exit_approach",
+      "label": "upper_route_to_mid_platform",
       "buttons": [
         "LEFT",
         "A",
         "B"
       ],
       "frames": 220
+    },
+    {
+      "label": "mid_platform_release",
+      "buttons": [],
+      "frames": 45
+    },
+    {
+      "label": "drop_to_lower_exit_route",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 150
+    },
+    {
+      "label": "lower_floor_exit_approach",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 100
     },
     {
       "label": "open_exit_door",
@@ -124,11 +145,17 @@
       "label": "enter_exit_door",
       "buttons": [
         "LEFT",
-        "A",
         "B"
       ],
       "frames": 150
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T01:00:28.671935+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_9c5e_from_9ad9_to_9c89.json",
+    "reportSha256": "e70bb6422a919e54896523a0d942cdc82b581e8b5f623750ea1afb0df36ce0d8",
+    "stateSha256": "f5c0cfdb9f53e372a8d1f8bbbea57dd4187ebcb31bcf48f23eead64f26ed7bba",
+    "policySha256Before": "79b7bddacbe505d6b21ca0e85a93bbf8e199ffbf2552cf7037fe34347d7a6a03"
+  }
 }

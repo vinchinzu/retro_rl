@@ -71,8 +71,8 @@ Spring calendar still had **no harvest income** ($100 floor). Root causes and fi
 | Seed equip restored watering can (swapped seeds away) | Fixed: leave seeds+hoe in carry |
 | Only 2 carry slots | Day plan plant pass (hoe+seeds) then can+water pass |
 | Plant establish | **ROM-verified 2026-08-01** from `Y1_After_Buy_Potato`: seeds+hoe → near-player fallback till → `planted=1`, dry `0x54` tiles, stock 1→0 |
-| Same-day water after plant | Partial: water works when can has charge; **empty-can pond refill still flaky** (PreCheckToolSuccess path) |
-| Grow → harvest → ship → money > $100 | **Not yet** multi-day verified; shipping bin money settles at **5pm**, not on drop |
+| Same-day water after plant | **ROM OK with charged can** (Dry→3×`0x55`); day-plan order unit-locked; **empty-can natural fill still open** |
+| Grow → harvest → ship → money > $100 | Ship **bin-drop success without instant money** fixed; multi-day growth / 5pm wallet assert still open |
 
 ROM smoke (2026-08-01 plant):
 ```text
@@ -98,10 +98,21 @@ Test crop fixtures (for growth / ship work):
    `--power-on`, then **required** shed grass+can pickup on `house_size=0`.
    AnnEve rest auto is green (peak `0x3F` → D2) but shed is soft-optional
    (`house_size=2`). Details: [town_day1_recon.md](town_day1_recon.md).
-2. Natural empty-can refill at north stream / pond (not south-only bounds; not shipping F2).
-3. Same-day water after plant without RAM can poke: `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER`.
+2. **Natural empty-can refill** to a CheckToolSuccess-valid tile (`F0`/`F9`–`FD`).
+   **Mapped 2026-08-01**: main pond **F0** ~(31–34,31–33); human stand
+   `(32,34)` face up (`go_to_water_source_end`); north lip `(33,30)` face down
+   ROM-fills 0→20. Non-fill: F1/F8 north stream, F2 shipping ditch, F7 north
+   pool. **y=31 fence wall (x=11–29)** cuts west plant pocket off from F0 —
+   clearing ≥1 fence opens full BFS. Refill selection now preferred-only
+   (never F8), main-pond band first; blocked path starts fence-open subtask.
+   Landmark `pond_edge` corrected to `(32,34)` (was shipping F2).
+3. Same-day water after plant: day-plan order
+   `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
+   **ROM with charged can OK** (Dry fixture + can=20 → 3 wet `0x55`); still
+   needs natural fill (item 2) for empty-can start without RAM poke.
 4. Multi-day growth from `Y1_Test_Crops_Planted_Watered` (~6 days to potato harvest).
-5. Harvest + ship route; assert **money rises after 5pm** (not immediately on bin drop). Save pre-5pm and post-5pm checkpoints for shipping tests.
+5. Harvest + ship route; **bin drop no longer requires instant money** (code fix);
+   assert **wallet money rises after 5pm**. Save pre-5pm and post-5pm checkpoints.
 6. From `Y1_Inside_House`, multi-day soak with **money > 100** after first potato harvest window.
 7. Optional: `HOT_SPRING_STAMINA` — **ROM natural-entry verified 2026-07-31**:
    farm drain → `farm_to_spa` → upper pond B+A bath (50→110+) → reverse
@@ -128,8 +139,8 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 - Only two carry slots: plant day uses hoe+seeds first, then can for water after the bag is spent
 - Crop planner full-farm centers east of the x≈32 fence (e.g. 35,27) are often **unreachable** from the early-spring west pocket — establish uses near-player fallback till
 - Viewport hop nav must end at the hoe stand; remote centers skip all hoe tiles as `no path`
-- Empty watering can: ToolUsed early-outs at 0; refill is ToolAnimation + PreCheckToolSuccess==2 — natural refill still flaky
-- **Shipping bin money is not instant** — shipped goods credit at **5pm** (test with pre/post-5pm saves)
+- Empty watering can: ToolUsed early-outs at 0; fill is `ToolAnimationWateringCan` when `CheckToolSuccess` returns 2 (property `F0`/`F9`–`FD` → can=`0x14`). F1/F8/F2/F7 do **not** fill — never select them. Main F0 pond is primary; y=31 fence wall blocks west pocket until cleared.
+- **Shipping bin money is not instant** — bin drop clears carry immediately; wallet/shipping credit at **5pm** (HarvestTask counts drop without money delta)
 - `CLEAR_FIELD` morning budget ~3500f is intentional so seed shop is not starved
 - ROM SHA1 must match `rom.sha`
 - Stamina: tool use drains for real (`INFINITE_STAMINA` off by default). **Noon lunch** is a fixed +20 at 12:00 (decomp `HaveLunch`). Mid-route “+20 on mountain” is that pulse, not spa.

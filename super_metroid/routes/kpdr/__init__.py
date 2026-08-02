@@ -60,6 +60,7 @@ from super_metroid.routes.kpdr.kraid_return import (
 from super_metroid.routes.kpdr.k4_norfair import (
     play_business_to_frog_save,
     play_frog_save_to_speedway,
+    play_speedway_to_farm,
 )
 from super_metroid.routes.kpdr.morph_bomb_roll import (
     MorphBombRollPhase,
@@ -183,6 +184,7 @@ __all__ = [
     "play_kraid_to_eye_return",
     "play_farming_to_big_pink",
     "play_frog_save_to_speedway",
+    "play_speedway_to_farm",
     "play_ghz_to_noob",
     "play_glass_to_east",
     "play_hijump_to_warehouse",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_aade_from_aa82_to_aa82",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Post Crocomire Power Bomb Room (0xAADE); entry just inside door, exit via RIGHT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -125,6 +125,20 @@
       "frames": 114
     },
     {
+      "label": "release_after_return_landing",
+      "buttons": [],
+      "frames": 1
+    },
+    {
+      "label": "return_jump_to_exit",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 60
+    },
+    {
       "label": "open_exit_door",
       "buttons": [
         "RIGHT",
@@ -146,5 +160,12 @@
       "frames": 110
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T00:47:53.652393+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_aade_from_aa82_to_aa82.json",
+    "reportSha256": "5e3bc1ddc85eefe7c55b8e93f8f0ca0476dda407f47942134450d94aaa1a7633",
+    "stateSha256": "c85064ef7511998f7b1cb2c8f311223b671ec18fc9338714f1300c5cb374c3ec",
+    "policySha256Before": "2f76975178c58fb558eb6bf11873f5b5dd0314a0cb61721d24773143ca66941a"
+  }
 }

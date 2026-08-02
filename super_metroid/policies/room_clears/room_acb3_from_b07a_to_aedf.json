@@ -1,0 +1,720 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_acb3_from_b07a_to_aedf",
+  "status": "verified_development_state",
+  "description": "Bubble Mountain (0xACB3) top-right Bat Cave entry \u2192 bottom door to Purple Shaft (0xAEDF). Requires practice Power Bomb grant to clear mid-room PB floor; morph + PB, then pulsed down-shots to open bottom blue door. Dual-track practice only.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x97AA",
+    "entrySourceRoomIdHex": "0xB07A",
+    "doorOrientation": "right",
+    "face": "left",
+    "exitTravelDirection": "DOWN",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "doorBlock": [
+      31,
+      7
+    ],
+    "doorPtr": 38826,
+    "entrySourceRoomId": 45178,
+    "spawn": {
+      "x": 448,
+      "y": 120,
+      "pose": 2
+    },
+    "insetPx": 56,
+    "warpSample": {
+      "x": 551,
+      "y": 144
+    },
+    "bootIdleFrames": 0,
+    "loadoutNote": "Practice fixture carries Power Bomb capacity (post-PB boot) so mid-room PB floor blocks can be cleared. Not continuous evidence."
+  },
+  "planning": {
+    "objective": "collect_items_and_exit",
+    "entry": {
+      "sourceRoomId": 45178,
+      "sourceRoomIdHex": "0xB07A",
+      "endpoint": {
+        "roomId": 44211,
+        "roomIdHex": "0xACB3",
+        "logicalRoomId": 97,
+        "nodeId": 7,
+        "nodeName": "Bubble Mountain Top Right Door (to Bat Cave)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "green",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [
+          "super_missiles"
+        ],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44767,
+      "targetRoomIdHex": "0xAEDF",
+      "endpoint": {
+        "roomId": 44211,
+        "roomIdHex": "0xACB3",
+        "logicalRoomId": 97,
+        "nodeId": 5,
+        "nodeName": "Bubble Mountain Bottom Door (to Purple Shaft)",
+        "position": "top",
+        "orientation": "down",
+        "subtype": "blue",
+        "block": [
+          7,
+          63
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "unresolved",
+      "reason": "no air-only collision path; dynamic blocks or movement abilities need runtime planning",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        7,
+        63
+      ],
+      "exitBlock": [
+        7,
+        63
+      ],
+      "waypointsBlocks": []
+    }
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "walk_left",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 25
+    },
+    {
+      "label": "hop1",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 18
+    },
+    {
+      "label": "fall1",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "hop2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 18
+    },
+    {
+      "label": "fall2",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "hop3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 18
+    },
+    {
+      "label": "fall3",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "hop4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 18
+    },
+    {
+      "label": "fall4",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "hop5",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B"
+      ],
+      "frames": 18
+    },
+    {
+      "label": "fall5_to_floor",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 90
+    },
+    {
+      "label": "to_pb_zone",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "stop1",
+      "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "walk_for_morph",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "stop2",
+      "buttons": [],
+      "frames": 12
+    },
+    {
+      "label": "crouch",
+      "buttons": [
+        "DOWN"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "crouch_release",
+      "buttons": [],
+      "frames": 8
+    },
+    {
+      "label": "morph",
+      "buttons": [
+        "DOWN"
+      ],
+      "frames": 25
+    },
+    {
+      "label": "select_missile",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_missile_wait",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "select_super",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_super_wait",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "select_pb",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_pb_wait",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "fire_pb",
+      "buttons": [
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "pb_blast_wait",
+      "buttons": [],
+      "frames": 110
+    },
+    {
+      "label": "unmorph",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "drop_after_pb",
+      "buttons": [],
+      "frames": 90
+    },
+    {
+      "label": "left_low1",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "drop_low2",
+      "buttons": [],
+      "frames": 80
+    },
+    {
+      "label": "right_low1",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 25
+    },
+    {
+      "label": "drop_low3",
+      "buttons": [],
+      "frames": 100
+    },
+    {
+      "label": "left_low2",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "drop_low4",
+      "buttons": [],
+      "frames": 120
+    },
+    {
+      "label": "right_to_door_approach",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "drop_to_door_lip",
+      "buttons": [],
+      "frames": 100
+    },
+    {
+      "label": "onto_door_x",
+      "buttons": [
+        "RIGHT"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "onto_door_drop",
+      "buttons": [
+        "DOWN"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "onto_door_settle",
+      "buttons": [],
+      "frames": 40
+    },
+    {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "select_beam_wait",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "door_shot_00",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_00",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_01",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_01",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_02",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_02",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_03",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_03",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_04",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_04",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_05",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_05",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_06",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_06",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_07",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_07",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_08",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_08",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_09",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_09",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_10",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_10",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_11",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_11",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_12",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_12",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_13",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_13",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_14",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_14",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_15",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_15",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_16",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_16",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_17",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_17",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_18",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_18",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_19",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_19",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_20",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_20",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_21",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_21",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_22",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_22",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_23",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_23",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "door_shot_24",
+      "buttons": [
+        "DOWN",
+        "X"
+      ],
+      "frames": 4
+    },
+    {
+      "label": "door_shot_rel_24",
+      "buttons": [],
+      "frames": 10
+    },
+    {
+      "label": "enter_bottom_door",
+      "buttons": [
+        "DOWN"
+      ],
+      "frames": 200
+    }
+  ],
+  "acceptanceWarning": "Isolated practice policy. Fixture includes a development Power Bomb capacity grant. Not continuous-run evidence.",
+  "promotedAt": "2026-08-02T01:38:05.994623+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_acb3_from_b07a_to_aedf.json",
+    "reportSha256": "0b695335949d30daf3d3477aeb44f4811902c37be7bafb5fbd5fc62dc4e0db9d",
+    "stateSha256": "ea013768b19f62356b972e42b710b573f07e50f57e23b6688c7cf870d0694e42",
+    "policySha256Before": "0273eed0692f77c30898d4a3a68de3d7d32f52674b02cc94b4cdf73f34e0ca3a"
+  }
+}

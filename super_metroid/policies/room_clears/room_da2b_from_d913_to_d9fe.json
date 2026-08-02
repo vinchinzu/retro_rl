@@ -144,12 +144,26 @@
     },
     {
       "label": "coarse_exit_approach",
-      "buttons": [
-        "LEFT",
-        "A",
-        "B"
-      ],
-      "frames": 220
+      "repeat": 9,
+      "steps": [
+        {
+          "label": "jump",
+          "buttons": [
+            "LEFT",
+            "A",
+            "B"
+          ],
+          "frames": 45
+        },
+        {
+          "label": "release",
+          "buttons": [
+            "LEFT",
+            "B"
+          ],
+          "frames": 20
+        }
+      ]
     },
     {
       "label": "open_exit_door",
