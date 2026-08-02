@@ -612,11 +612,19 @@ class HarvestTask(Task):
                     reason="dialog",
                 )
             if not carrying:
+                # Bin drop succeeds immediately; shipping_money often settles at 5pm.
                 if ship_money > self._ship_money_before:
                     self.shipped_count += max(1, (ship_money - self._ship_money_before) // 80)
+                    print(
+                        f"[HARVEST] SHIP OK money={ship_money} "
+                        f"(+{ship_money - self._ship_money_before}) shipped={self.shipped_count}"
+                    )
                 else:
-                    return TaskResult(status=TaskStatus.FAILURE, reason="crop cleared without shipping money")
-                print(f"[HARVEST] SHIP OK money={ship_money} shipped={self.shipped_count}")
+                    self.shipped_count += 1
+                    print(
+                        f"[HARVEST] SHIP OK (bin drop; money settles 5pm) "
+                        f"money={ship_money} shipped={self.shipped_count}"
+                    )
                 self._current = None
                 self._clear_navigation_state()
                 self._phase = "select"

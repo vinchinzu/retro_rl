@@ -102,6 +102,24 @@ class DayPhaseRegistryTests(unittest.TestCase):
         self.assertEqual(establish.work_mode, "establish")
         self.assertEqual(water.work_mode, "water")
 
+    def test_crop_builder_wires_catalog_water_params(self) -> None:
+        """Catalog CROP_WATER must pass work_mode=water and north-stream refill bounds."""
+        from harvest.planner.day_phase_catalog import CROP_ESTABLISH_PHASE, CROP_WATER_PHASE
+        from harvest.tasks.crop_planter import CropWaterTask
+
+        world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
+        establish = DayTaskFactory().make_task(CROP_ESTABLISH_PHASE, world)
+        water = DayTaskFactory().make_task(CROP_WATER_PHASE, world)
+
+        self.assertIsInstance(establish, CropWaterTask)
+        self.assertIsInstance(water, CropWaterTask)
+        self.assertEqual(establish.work_mode, "establish")
+        self.assertEqual(water.work_mode, "water")
+        # North stream (y~16-22) + south pond; south-only left early west plants dry.
+        self.assertEqual(water.refill_bounds, (3, 14, 62, 60))
+        self.assertEqual(CROP_WATER_PHASE.params.get("refill_bounds"), (3, 14, 62, 60))
+        self.assertEqual(CROP_WATER_PHASE.params.get("work_mode"), "water")
+
     def test_hot_spring_builder(self) -> None:
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
         task = DayTaskFactory().make_task(

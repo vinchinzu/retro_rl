@@ -5,13 +5,26 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, WRAM_SNAPSHOT_SIZE
 from harvest.tasks.crop_planter import (
-    CropWaterTask,
+    ADDR_WATER_LEVEL,
     ADDR_WEATHER,
     ADDR_WEATHER_FLAGS,
+    BAD_REFILL_STAND_BOUNDS,
+    CropWaterTask,
+    REFILL_BAND_MID,
+    REFILL_BAND_NORTH,
+    REFILL_BAND_SOUTH,
+    REFILL_PREFERRED_WATER_TILES,
+    REFILL_WATER_TILES,
     build_water_steps,
     carry_pair_items,
     detect_crop_resume_plots,
+    edge_water_tile_id,
+    find_pond_edges,
+    is_bad_refill_stand,
+    refill_edge_sort_key,
+    refill_stand_band,
     seed_item_in_carry_pair,
     tile_can_be_water_target,
     tile_is_watered,
@@ -29,6 +42,15 @@ def _blank_ram() -> np.ndarray:
 
 def _set_tile(ram: np.ndarray, tx: int, ty: int, tile_id: int) -> None:
     ram[ADDR_MAP + ty * MAP_WIDTH + tx] = tile_id
+
+
+def _set_player_tile(ram: np.ndarray, tile: tuple[int, int]) -> None:
+    px = tile[0] * 16 + 8
+    py = tile[1] * 16 + 8
+    ram[ADDR_X] = px & 0xFF
+    ram[ADDR_X + 1] = (px >> 8) & 0xFF
+    ram[ADDR_Y] = py & 0xFF
+    ram[ADDR_Y + 1] = (py >> 8) & 0xFF
 
 
 class CropPlanterLogicTests(unittest.TestCase):
@@ -496,6 +518,231 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertFalse(task._refill_exhausted)
         self.assertEqual(task._steps_on_target, 0)
         self.assertEqual(task._water_steps, [])
+
+    def test_refill_preferred_water_tiles_documented(self) -> None:
+        """CheckToolSuccess fill set must stay F0/F9–FD (decomp bank_82)."""
+        self.assertEqual(
+            REFILL_PREFERRED_WATER_TILES,
+            frozenset({0xF0, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD}),
+        )
+        # Still searchable, but not preferred fill properties:
+        for tid in (0xF1, 0xF2, 0xF7, 0xF8):
+            self.assertIn(tid, REFILL_WATER_TILES)
+            self.assertNotIn(tid, REFILL_PREFERRED_WATER_TILES)
+
+    def test_refill_stand_bands_prefer_north_then_south(self) -> None:
+        north = (15, 16)   # F1 north farm stand
+        stream = (18, 23)  # F8 north stream stand
+        shipping = (9, 28)  # F2 shipping pocket (bad)
+        south = (14, 48)   # FC south stream stand
+        mid_other = (30, 32)  # mid-farm pond lip
+
+        self.assertEqual(refill_stand_band(north), REFILL_BAND_NORTH)
+        self.assertEqual(refill_stand_band(stream), REFILL_BAND_NORTH)
+        self.assertEqual(refill_stand_band(south), REFILL_BAND_SOUTH)
+        self.assertEqual(refill_stand_band(mid_other), REFILL_BAND_MID)
+        self.assertTrue(is_bad_refill_stand(shipping))
+        self.assertFalse(is_bad_refill_stand(north))
+
+        player = (5, 35)  # west field — shipping is closest by Manhattan
+        # Same preferred rank (none): band order north → south → bad.
+        edges = [
+            (shipping, "right"),
+            (south, "down"),
+            (north, "left"),
+        ]
+        edges.sort(key=lambda e: refill_edge_sort_key(e, player, water_tid=-1))
+        self.assertEqual(edges[0][0], north)
+        self.assertEqual(edges[1][0], south)
+        self.assertEqual(edges[2][0], shipping)
+
+    def test_refill_edge_sort_prefers_fc_over_north_f8(self) -> None:
+        """South FC (preferred property) beats closer north F8."""
+        north_f8 = (18, 23)
+        south_fc = (14, 48)
+        player = (18, 24)  # next to north F8 stand — F8 is much closer
+        edges = [
+            (north_f8, "up"),
+            (south_fc, "down"),
+        ]
+        edges.sort(
+            key=lambda e: refill_edge_sort_key(
+                e,
+                player,
+                water_tid=0xF8 if e[0] == north_f8 else 0xFC,
+            )
+        )
+        self.assertEqual(edges[0][0], south_fc)
+        self.assertEqual(edges[1][0], north_f8)
+        # Preferred rank alone decides before band/distance.
+        self.assertLess(
+            refill_edge_sort_key((south_fc, "down"), player, 0xFC),
+            refill_edge_sort_key((north_f8, "up"), player, 0xF8),
+        )
+
+    def test_find_pond_edges_excludes_bad_shipping_stands(self) -> None:
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        # North stream water + stand
+        _set_tile(ram, 18, 22, 0xF8)
+        _set_tile(ram, 18, 23, 0xA1)
+        # Shipping F2 pocket water + stand
+        _set_tile(ram, 9, 29, 0xF2)
+        _set_tile(ram, 9, 28, 0xA1)
+        # South stream
+        _set_tile(ram, 14, 49, 0xFC)
+        _set_tile(ram, 14, 48, 0xA1)
+
+        all_edges = find_pond_edges(ram, (3, 14, 62, 60), water_tiles=REFILL_WATER_TILES)
+        stands = {t for t, _f in all_edges}
+        self.assertIn((18, 23), stands)
+        self.assertIn((9, 28), stands)
+        self.assertIn((14, 48), stands)
+
+        good_edges = find_pond_edges(
+            ram,
+            (3, 14, 62, 60),
+            water_tiles=REFILL_WATER_TILES,
+            exclude_bad_stands=True,
+        )
+        good_stands = {t for t, _f in good_edges}
+        self.assertIn((18, 23), good_stands)
+        self.assertIn((14, 48), good_stands)
+        self.assertNotIn((9, 28), good_stands)
+        for t in good_stands:
+            self.assertFalse(is_bad_refill_stand(t), msg=f"bad stand leaked: {t}")
+
+        # South stand faces FC (preferred); north faces F8 (fallback).
+        by_stand = {t: f for t, f in good_edges}
+        self.assertEqual(edge_water_tile_id(ram, (14, 48), by_stand[(14, 48)]), 0xFC)
+        self.assertEqual(edge_water_tile_id(ram, (18, 23), by_stand[(18, 23)]), 0xF8)
+
+    def test_start_refill_prefers_preferred_water_over_f8_and_skips_bad(self) -> None:
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        # North F8 (closer, not preferred CheckToolSuccess property)
+        _set_tile(ram, 18, 22, 0xF8)
+        # Shipping F2 (closer still — must not be chosen)
+        _set_tile(ram, 9, 29, 0xF2)
+        # South FC (preferred fill property)
+        _set_tile(ram, 14, 49, 0xFC)
+
+        player = (7, 30)  # next to shipping pocket
+        _set_player_tile(ram, player)
+        ram[ADDR_TOOL] = 0x10
+        ram[ADDR_WATER_LEVEL] = 0
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(refill_bounds=(3, 14, 62, 60))
+        task.reset(world)
+        task._navigator.update(ram)
+        task._plots = [(5, 35)]
+        task._plot_index = 0
+        task._plot_phase = "water"
+        task._water_steps = [((4, 34), (5, 35), "left")]
+        task._water_index = 0
+
+        task._start_refill(ram)
+
+        self.assertEqual(task._plot_phase, "refill")
+        self.assertIsNotNone(task._refill_pond_tile)
+        assert task._refill_pond_tile is not None
+        self.assertFalse(is_bad_refill_stand(task._refill_pond_tile))
+        # Preferred FC south beats closer F8 north when both pathable.
+        self.assertEqual(task._refill_pond_tile, (14, 48))
+        water = edge_water_tile_id(
+            ram, task._refill_pond_tile, task._refill_pond_face or "down"
+        )
+        self.assertIn(water, REFILL_PREFERRED_WATER_TILES)
+        x0, y0, x1, y1 = BAD_REFILL_STAND_BOUNDS
+        rx, ry = task._refill_pond_tile
+        self.assertFalse(x0 <= rx <= x1 and y0 <= ry <= y1)
+
+    def test_start_refill_falls_back_to_north_when_only_f8(self) -> None:
+        """If only non-preferred water exists, still path to it (search keeps F8)."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 18, 22, 0xF8)
+        _set_tile(ram, 9, 29, 0xF2)  # bad stand — excluded
+
+        player = (7, 30)
+        _set_player_tile(ram, player)
+        ram[ADDR_TOOL] = 0x10
+        ram[ADDR_WATER_LEVEL] = 0
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(refill_bounds=(3, 14, 62, 60))
+        task.reset(world)
+        task._navigator.update(ram)
+        task._plots = [(5, 35)]
+        task._plot_index = 0
+        task._plot_phase = "water"
+        task._water_steps = [((4, 34), (5, 35), "left")]
+        task._water_index = 0
+
+        task._start_refill(ram)
+
+        self.assertEqual(task._plot_phase, "refill")
+        assert task._refill_pond_tile is not None
+        self.assertFalse(is_bad_refill_stand(task._refill_pond_tile))
+        self.assertLessEqual(task._refill_pond_tile[1], 25)
+
+    def test_empty_can_triggers_refill_before_water(self) -> None:
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 18, 22, 0xF8)
+        # Dry crop tile target so water step is considered waterable
+        _set_tile(ram, 12, 24, 0x5A)
+
+        player = (13, 25)
+        _set_player_tile(ram, player)
+        ram[ADDR_TOOL] = 0x10  # watering can selected
+        ram[ADDR_WATER_LEVEL] = 0  # empty
+        ram[ADDR_INPUT_LOCK] = 1
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(refill_bounds=(3, 14, 62, 60), work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        task._plots = [(13, 25)]
+        task._plot_index = 0
+        task._plot_phase = "water"
+        task._state = "act"
+        task._water_steps = [((12, 24), (13, 25), "left")]
+        task._water_index = 0
+        task._target_tile = (12, 24)
+        task._approach_tile = (13, 25)
+        task._face_direction = "left"
+        task._tool_mgr.update(ram)
+        task._refill_exhausted = False
+
+        result = task._act_water(ram)
+
+        self.assertIsNone(result)
+        self.assertEqual(task._plot_phase, "refill")
+        self.assertIsNotNone(task._refill_pond_tile)
+        assert task._refill_pond_tile is not None
+        self.assertFalse(is_bad_refill_stand(task._refill_pond_tile))
+
+    def test_water_level_uses_catalog_live_offset(self) -> None:
+        # Live-sized RAM: watering_can at address + LIVE_RAM_WRAM_OFFSET
+        live = np.zeros(WRAM_SNAPSHOT_SIZE + 0x8000, dtype=np.uint8)
+        live[ADDR_WATER_LEVEL] = 3  # raw/save-style offset must be ignored
+        live[ADDR_WATER_LEVEL + LIVE_RAM_WRAM_OFFSET] = 17
+        self.assertEqual(CropWaterTask._water_level(live), 17)
+
+        # Tiny test RAM: catalog uses no live offset, reads 0x0926 directly
+        tiny = _blank_ram()
+        tiny[ADDR_WATER_LEVEL] = 11
+        self.assertEqual(CropWaterTask._water_level(tiny), 11)
 
 
 if __name__ == "__main__":

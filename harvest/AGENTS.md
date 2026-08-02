@@ -16,13 +16,16 @@ uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
 HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on \
   --out recordings/power_on_boot_probe.json
 
-# D1 town recon (six talks → truck → farm → D2): checklist / entry / record / replay
+# D1 town recon (six talks → truck → shed grass+can → sleep → D2)
 uv run python -m harvest.scripts.town_day1_recon checklist
 HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon capture-entry
 ./scripts/record_town_day1_recon.sh              # interactive; F5 saves task
 ./scripts/record_town_day1_recon.sh --power-on   # clean boot + record
+# Human rest-of-mask capture (Ann|Eve → full 0x3F → D2): tasks/town_day1_rest.json
 HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon replay \
-  --task town_day1_handoff --out recordings/town_day1_handoff_replay.json
+  --task town_day1_rest --state Y1_Spring_D1_AnnEve --require-day2
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
+  --state Y1_Spring_D1_AnnEve --out recordings/town_day1_rest_auto.json
 # Docs: docs/town_day1_recon.md
 
 # One overnight toward day+1 (M3; ROM required)
@@ -118,13 +121,19 @@ Prefer **skill composition** over new 50–100 KB phase machines. See
 
 ## Way Forward
 
+Architecture / planning spine: [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md),
+[docs/plan.md](docs/plan.md). Contracts on crop/coop/sleep phases + skill
+boundary factories are in; next is crop income close-loop then coop skill split.
+
+- [ ] Close crop loop: natural can refill → multi-day growth → harvest → ship;
+      assert money > $100 after 5pm (see STATUS next acceptance).
+- [ ] Power-on → full D1 → D2 with shed grass+can on `house_size=0` (no AnnEve fixture).
+- [ ] Extract CoopChores feed/collect/ship into `tasks/skills.py` composers;
+      fix Spring 22 multi-adult / dynamic egg tiles + replay before daily plan restore.
+- [ ] Soft contract preflight in day-plan probe (`evaluate_task_contract` reasons).
 - [ ] Extract reusable facts from `tasks/spring_festival.json`: Spring 23 festival route, NPC/dialogue/status changes, any girl question responses, and the 1304-frame coop trace; preserve start backup `latest_backup_spring_festival_20260427_155856.state`, end state `spring_festival_end.state`, and post-recording backup `latest_backup_post_spring_festival_20260427_160317.state` for replay/debug.
 - [ ] Extract the ideal rainy-day routine from `tasks/fix_rainy_day.json`: Y1 Spring 24 route where cows were fed and milked, chicken eggs were shipped, the shed route avoided wasted tiles, crops were harvested, and the town social loop talked to people. Use it to improve rainy-day `build_day_phases()` sequencing, barn/coop/crop/town task ordering, and route efficiency. Preserve start backup `latest_backup_fix_rainy_day_20260427_202555.state`, end state `fix_rainy_day_end.state`, mirrored end state `custom_integrations/HarvestMoon-Snes/fix_rainy_day_end.state`, and the 1193-frame coop trace for replay/debug.
-- [ ] Fix `CoopChoresTask` for the Spring 22 two-adult/two-egg coop state: feed adults in separate feed slots, treat visible egg object tiles as dynamic no-go/collision tiles, and add a regression replay before restoring it to the daily plan.
 - [ ] Improve barn chores from the `cow_chores_fix` recording: keep the verified multi-cow feed loop, then add brushing/milking and stronger per-cow/per-slot verification before making it routine.
-- [ ] Record and test barn chores (cow feeding/milking) — same pattern as coop
 - [ ] Add gift delivery task (carry egg to NPC, needs town navigation)
 - [ ] Promote candidate NPC sprite IDs to named NPC schedules and dialogue handlers
-- [ ] Finish ROM-backed mountain walkable tiles and stump/forage landmarks for berry route autonomy
-- [ ] Add cow milking/brushing to daily plan when cows owned
 - [ ] Expand `build_day_phases()` for summer/fall crop rotations

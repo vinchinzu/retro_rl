@@ -77,29 +77,28 @@ GATE_PIXEL = (712, 424)
 TRUCK_PIXEL = (728, 424)
 GATE_TOLERANCE_PX = 24
 
-# Bit → (person, working stand / notes)
+# Bit → (person, working stand / notes) — stands from tasks/town_day1_rest.json
 D1_TOWN_BITS: dict[int, tuple[str, str]] = {
     0x01: ("Ann", "town lower road; ~ (388,924) face left A"),
     0x02: ("Eve", "town lower-west; ~ (162,896) face up A"),
-    0x04: ("Nina", "flower back room 0x1D; ~ (74,113) face right A"),
-    0x08: ("Flower shop owner", "flower shop 0x1C counter; ROM obj (40,360)"),
-    0x10: ("Livestock dealer", "animal shop 0x24; ~ (201,157) face right A"),
-    0x20: ("Maria", "church 0x1B; ~ (128,396) face left A"),
+    0x04: ("Nina", "flower back 0x1D; ~ (101,102) face left A"),
+    0x08: ("Flower shop owner", "flower shop 0x1C; ~ (34,347) face down A"),
+    0x10: ("Livestock dealer", "animal shop 0x24; ~ (230,139) face down A"),
+    0x20: ("Maria", "church 0x1B; ~ (103,405) face up A"),
 }
 
 VERIFIED_ROUTES = (
     "Town → flower shop: (688,280)→(600,280)→(600,262) walk up → 0x1C @(144,456)",
-    "Flower shop → back room: left ~20f then up → 0x1D near (104,184)",
-    "Town → church: (688,280)→(600,280)→(500,280)→(376,280)→(376,200)→(375,139) up → 0x1B",
-    "Town → animal shop: lower road (688,888)→(601,888)→(601,874) up → 0x24",
-    "Truck / shipper object: town ~ (728,424); leave response after mask 0x3F",
+    "Flower shop → back room: left ~20f then up → 0x1D; Nina stand (101,102) face left",
+    "Town → church: (688,280)→(600,280)→(500,280)→(376,280)→(376,200)→(375,139) up → Maria (103,405) face up",
+    "Town → animal shop: lower road → 0x24; D1 stand (230,139) face down (not buy-cow 201,157)",
+    "Truck ~ (728,424); leave after mask 0x3F cutscenes into farmhouse",
+    "Shed free starters: grass (96,118) + watering can (96,168) face up A",
 )
 
 STILL_TO_RECORD = (
-    "Flower-shop owner counter (bit 0x08) — BFS stops at counter",
-    "Remaining town NPCs as needed for mask 0x3F",
-    "Truck leave/ready dialogue → town → path → farm",
-    "Farmhouse sleep → natural D2 (then promote D2→Summer soak)",
+    "Green auto report: full mask from power-on/gate + shed pickups + D2 sleep",
+    "Optional: re-record AnnEve fixture with house_size=0 (current is size2)",
 )
 
 
@@ -776,6 +775,167 @@ def cmd_status(args: argparse.Namespace) -> int:
         env.close()
 
 
+def cmd_auto(args: argparse.Namespace) -> int:
+    """Run the precomputed D1 town handoff (talks → truck → farm → sleep)."""
+    from harvest.tasks.town_day1_handoff import TARGET_MASK, TownDay1HandoffTask, read_mask
+
+    _configure_headless()
+    use_power_on = bool(args.power_on)
+    state = None if use_power_on else args.state
+    if not use_power_on:
+        path = GAME_DIR / f"{state}.state"
+        if not path.is_file():
+            print(f"[RECON] missing state: {path}", file=sys.stderr)
+            print("[RECON] run capture-entry first, or pass --power-on", file=sys.stderr)
+            return 2
+
+    env = make_harvest_env(state, render_mode="rgb_array")
+    t0 = time.monotonic()
+    mask_events: list[dict[str, object]] = []
+    try:
+        env.reset()
+        power_on = None
+        boot_frames = 0
+        if use_power_on:
+            power_on, boot_frames = _run_power_on(env)
+            if power_on and "failure" in power_on:
+                report = {"success": False, "reason": power_on.get("failure"), "power_on": power_on}
+                args.out.parent.mkdir(parents=True, exist_ok=True)
+                args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+                return 2
+            if args.save_entry:
+                entry_path = _save_state(env, args.save_entry)
+                print(f"[RECON] saved entry state {entry_path}", flush=True)
+
+        start_snap = read_town_snapshot(env.get_ram(), frame=0)
+        prev_mask = start_snap.mask
+        peak_mask = start_snap.mask
+        task = TownDay1HandoffTask(
+            include_sleep=bool(args.sleep),
+            require_full_mask=bool(args.require_full_mask),
+            timeout=int(args.timeout),
+        )
+        task.reset(_world(env, 0))
+        frames = 0
+        last_log = 0
+        final_status = "running"
+        final_reason = ""
+        while frames < task.timeout:
+            world = _world(env, frames)
+            result = task.step(world)
+            snap = read_town_snapshot(world.ram, frame=frames)
+            peak_mask = max(peak_mask, snap.mask)
+            if snap.mask != prev_mask:
+                gained = decode_mask_bits(snap.mask & ~prev_mask)
+                mask_events.append(
+                    {
+                        "frame": frames,
+                        "from": prev_mask,
+                        "to": snap.mask,
+                        "gained": gained,
+                        "pos": [snap.x, snap.y],
+                        "tilemap": snap.tilemap,
+                        "phase": task.summary(world).get("phase"),
+                    }
+                )
+                print(
+                    f"[RECON] mask 0x{prev_mask:02X}→{snap.mask_hex} +{gained} "
+                    f"tm=0x{snap.tilemap:02X} ({snap.x},{snap.y}) f={frames}",
+                    flush=True,
+                )
+                prev_mask = snap.mask
+
+            if frames - last_log >= 600 or result.status != TaskStatus.RUNNING:
+                summary = task.summary(world)
+                print(
+                    f"[RECON] f={frames} phase={summary.get('phase')} "
+                    f"mask={summary.get('mask_hex')} "
+                    f"tm=0x{summary.get('tilemap'):02X} "
+                    f"day={summary.get('day')} "
+                    f"pos=({summary.get('x')},{summary.get('y')}) "
+                    f"status={result.status.value} {result.reason or ''}",
+                    flush=True,
+                )
+                last_log = frames
+
+            if result.status == TaskStatus.SUCCESS:
+                final_status = "success"
+                final_reason = result.reason or "ok"
+                break
+            if result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                final_status = result.status.value
+                final_reason = result.reason or result.status.value
+                break
+            action = result.action.action if result.action is not None else make_action()
+            env.step(action)
+            frames += 1
+        else:
+            final_status = "timeout"
+            final_reason = "frame budget exhausted"
+
+        end_snap = read_town_snapshot(env.get_ram(), frame=frames)
+        scene = classify_scene_from_ram(env.get_ram())
+        summary = task.summary(_world(env, frames))
+        mask = int(read_mask(env.get_ram()))
+        target = TARGET_MASK if args.require_full_mask else 0x03  # Ann|Eve baseline
+        # Mask clears on D2 after truck handoff sleep; accept peak mask too.
+        mask_ok = (mask & target) == target or (peak_mask & target) == target
+        day2_ok = end_snap.day >= 2 and end_snap.season == 0
+        # Rest recording already sleeps; --sleep may be true but include_sleep
+        # was turned off inside the task when the rest file is present.
+        need_day2 = bool(args.require_full_mask)
+        success = final_status == "success" and mask_ok and (
+            (day2_ok if need_day2 else True)
+        )
+
+        if args.save_end_state:
+            end_path = _save_state(env, args.save_end_state)
+            print(f"[RECON] saved end state {end_path}", flush=True)
+
+        report = {
+            "success": success,
+            "final_status": final_status,
+            "reason": final_reason,
+            "state": state,
+            "power_on": power_on,
+            "boot_frames": boot_frames,
+            "frames": frames,
+            "wall_seconds": round(time.monotonic() - t0, 2),
+            "start": start_snap.as_dict(),
+            "end": end_snap.as_dict(),
+            "end_scene": scene.to_dict(),
+            "summary": summary,
+            "mask_events": mask_events,
+            "assertions": {
+                "target_mask": TARGET_MASK,
+                "mask_ok": mask_ok,
+                "peak_mask": peak_mask,
+                "peak_mask_hex": f"0x{peak_mask:02X}",
+                "end_mask": mask,
+                "day2_ok": day2_ok,
+                "include_sleep": bool(args.sleep),
+                "has_watering_can": summary.get("has_watering_can"),
+                "has_grass_seeds": summary.get("has_grass_seeds"),
+            },
+            "clean_run": {
+                "initial_state_loads": 0 if use_power_on else 1,
+                "mid_run_state_loads": 0,
+                "ram_writes": 0,
+            },
+        }
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        print(
+            f"[RECON] auto success={success} status={final_status} "
+            f"mask=0x{mask:02X} day={end_snap.day} frames={frames} "
+            f"report={args.out}",
+            flush=True,
+        )
+        return 0 if success else 1
+    finally:
+        env.close()
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=__doc__,
@@ -839,15 +999,53 @@ def _build_parser() -> argparse.ArgumentParser:
     st.add_argument("--state", default=DEFAULT_ENTRY_STATE)
     st.add_argument("--power-on", action="store_true")
 
+    auto = sub.add_parser(
+        "auto",
+        help="Run precomputed D1 handoff (six talks → truck → farm → sleep)",
+    )
+    auto.add_argument("--state", default=DEFAULT_ENTRY_STATE, help="Start state")
+    auto.add_argument("--power-on", action="store_true", help="Clean power-on entry")
+    auto.add_argument(
+        "--save-entry",
+        default=DEFAULT_ENTRY_STATE,
+        help="With --power-on, also pin entry state ('' to skip)",
+    )
+    auto.add_argument(
+        "--sleep",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include farmhouse sleep to D2 (default: true)",
+    )
+    auto.add_argument(
+        "--require-full-mask",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Require mask 0x3F + truck/sleep (default true). "
+        "Use --no-require-full-mask for Ann|Eve baseline progress runs.",
+    )
+    auto.add_argument("--timeout", type=int, default=90_000, help="Max handoff frames")
+    auto.add_argument(
+        "--save-end-state",
+        default="Y1_Spring_D2_After_Town_Handoff",
+        help="Optional end state name (empty string skips)",
+    )
+    auto.add_argument(
+        "--out",
+        type=Path,
+        default=PROJECT_DIR / "recordings" / "town_day1_auto.json",
+        help="JSON report path",
+    )
+
     return p
 
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
-    # Normalize --save-entry "" to skip.
-    if getattr(args, "save_entry", None) == "":
-        args.save_entry = None
+    # Normalize empty optional string flags.
+    for key in ("save_entry", "save_end_state"):
+        if getattr(args, key, None) == "":
+            setattr(args, key, None)
     if args.command == "checklist":
         return cmd_checklist(args)
     if args.command == "capture-entry":
@@ -858,6 +1056,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         return cmd_replay(args)
     if args.command == "status":
         return cmd_status(args)
+    if args.command == "auto":
+        return cmd_auto(args)
     parser.error(f"unknown command {args.command}")
     return 2
 

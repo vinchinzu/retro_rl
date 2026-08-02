@@ -40,6 +40,10 @@ poking. See [tasks/PROCESS.md](tasks/PROCESS.md).
 
 ## Current inventory (2026-08-01)
 
+**Status board:** [routes/MILESTONES.md](routes/MILESTONES.md) ·
+**Backlog (~288 tickets):** [routes/BACKLOG.csv](routes/BACKLOG.csv) ·
+**Spine segments:** [routes/KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv).
+
 ### Verified continuous (M5)
 
 | Artifact | Coverage |
@@ -57,6 +61,15 @@ poking. See [tasks/PROCESS.md](tasks/PROCESS.md).
 | Next source | `scratch/post_frog_continuous.state` for Frog Save → Speedway |
 
 Reproduce: `scripts/record/continuous.py --to frog` (also `--to business|varia|kraid|hijump|warehouse|…`).
+
+### Backlog model (capacity for rate of progress)
+
+Each remaining spine hop is decomposed as **pure → graph → compose →
+stabilize → status**, plus multi-phase **boss** cards and dual-track
+**practice** waves. That yields ~200–300 atomic tickets through M8 credits
+without inventing work: see epic counts in [BACKLOG.md](routes/BACKLOG.md).
+Living executor markdown is only for ready/in-flight cards (`docs/tasks/`);
+the CSV is the full queue.
 
 ### Post-Varia / K4 (continuous through Frog Save)
 
@@ -415,7 +428,7 @@ Natural suffix from verified Spore Super entry — **KPDR K0–K1**:
 ```
 
 Authoritative board: [ROUTE_KPDR.md](routes/ROUTE_KPDR.md).
-Legacy Pink-PB / ship-first notes: [ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md).
+Legacy Pink-PB / ship-first notes: [ROUTE_SUPERS_TO_PHANTOON.md](archive/routes/ROUTE_SUPERS_TO_PHANTOON.md) (archived).
 
 - [x] Super shaft descent + Chozo collect (capacity 0 → 5) from
   `natural_post_spore_spawn` — `kpdr.play_super_room_collect`.

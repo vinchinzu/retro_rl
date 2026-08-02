@@ -12,7 +12,18 @@ from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
 from harvest.core.task_progress import task_progress_snapshot
 from harvest.core.world_context import WorldContext
 from harvest.maps.map_config import Waypoint, densify_waypoints
-from harvest.planner.day_phase_types import PhaseKind, PhaseSpec, TaskContract
+from harvest.planner.day_phase_catalog import (
+    COOP_CHORES_PHASE,
+    CROP_ESTABLISH_PHASE,
+    CROP_WATER_PHASE,
+    HARVEST_ROUTE_PHASE,
+)
+from harvest.planner.day_phase_types import (
+    PhaseKind,
+    PhaseSpec,
+    TaskContract,
+    evaluate_task_contract,
+)
 from harvest.planner.day_plan_decision import build_day_plan_decision
 from harvest.planner.local_llm import (
     apply_advisor_patch,
@@ -22,7 +33,10 @@ from harvest.planner.local_llm import (
 from harvest.tasks.primitives import TaskSequence
 from harvest.tasks.skills import (
     PressAInteractSkill,
+    coop_nav_to_feed_bin_skill,
+    farm_nav_to_shipping_bin_skill,
     sequence_skills,
+    talk_press_skill,
 )
 from retro_harness import ActionResult, TaskResult, TaskStatus
 
@@ -129,6 +143,45 @@ class TaskContractTests(unittest.TestCase):
         self.assertEqual(c.required_ram, ("stamina",))
         self.assertEqual(c.estimated_frames, 100)
 
+    def test_production_crop_phases_declare_contracts(self) -> None:
+        self.assertFalse(CROP_ESTABLISH_PHASE.contract.is_empty())
+        self.assertIn(0x00, CROP_ESTABLISH_PHASE.contract.required_maps)
+        self.assertIn("hoe", CROP_ESTABLISH_PHASE.contract.required_tools)
+        self.assertIn("watering_can", CROP_WATER_PHASE.contract.required_tools)
+        self.assertIn(0x28, COOP_CHORES_PHASE.contract.required_maps)
+        self.assertIn("ship_money_not_instant", HARVEST_ROUTE_PHASE.contract.failure_modes)
+
+    def test_evaluate_task_contract_map_and_tools(self) -> None:
+        ok, reasons = evaluate_task_contract(
+            CROP_ESTABLISH_PHASE.contract,
+            tilemap=0x00,
+            tools=("hoe", "seed"),
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reasons, ())
+
+        ok, reasons = evaluate_task_contract(
+            CROP_ESTABLISH_PHASE.contract,
+            tilemap=0x28,
+            tools=("hoe",),
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any(r.startswith("map_mismatch") for r in reasons))
+        self.assertTrue(any(r.startswith("missing_tool:seed") for r in reasons))
+
+    def test_evaluate_task_contract_known_ram_fields(self) -> None:
+        ok, reasons = evaluate_task_contract(
+            TaskContract(required_ram=("stamina", "tilemap")),
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reasons, ())
+
+        ok, reasons = evaluate_task_contract(
+            TaskContract(required_ram=("not_a_real_field_xyz",)),
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any("unknown_ram_field" in r for r in reasons))
+
 
 class WorldContextTests(unittest.TestCase):
     def test_caches_repeated_reads_for_same_frame(self) -> None:
@@ -182,6 +235,19 @@ class SkillCompositionTests(unittest.TestCase):
             if result.status != TaskStatus.RUNNING:
                 break
         self.assertEqual(statuses[-1], TaskStatus.SUCCESS)
+
+    def test_skill_factories_bind_named_targets(self) -> None:
+        feed = coop_nav_to_feed_bin_skill()
+        self.assertEqual(feed.name, "coop_nav_feed_bin")
+        self.assertEqual(feed.target_px, (2 * 16 + 8, 6 * 16 + 8))
+
+        ship = farm_nav_to_shipping_bin_skill()
+        self.assertEqual(ship.name, "farm_nav_ship_bin")
+        self.assertEqual(ship.target_px, (62 * 16 + 8, 60 * 16 + 8))
+
+        talk = talk_press_skill(name="d1_ann", face="left")
+        self.assertEqual(talk.name, "d1_ann")
+        self.assertEqual(talk.face, "left")
 
 
 class AdvisorApplyTests(unittest.TestCase):

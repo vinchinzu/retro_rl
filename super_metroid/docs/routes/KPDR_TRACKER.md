@@ -7,7 +7,7 @@ Regenerate: `uv run python super_metroid/scripts/export/kpdr_tracker.py`.
 
 | Metric | Value |
 |--------|------:|
-| Total segments | 48 |
+| Total segments | 92 |
 | Super → Kraid-entry segments | 33 |
 | Kraid-entry path progress (weighted) | 93.9% |
 
@@ -16,15 +16,15 @@ Regenerate: `uv run python super_metroid/scripts/export/kpdr_tracker.py`.
 | Status | Count |
 |--------|------:|
 | `continuous` | 41 |
-| `dev_warp` | 1 |
-| `open` | 6 |
+| `open` | 50 |
+| `parked` | 1 |
 
 ### Chart series (status)
 
 ```
-continuous        41 ####################
-dev_warp           1 #
-open               6 ##
+continuous        41 ################
+open              50 ####################
+parked             1 #
 ```
 
 ## Segment table (Super → Kraid-entry focus)
@@ -79,8 +79,52 @@ open               6 ##
 | 47 | `K3.7` | 0xA471 Warehouse Zeela Room | continuous | integrity-green Business return twice; valid upper-left transition |
 | 48 | `K3.8` | 0xA6A1 Warehouse Entrance | continuous | right-ledge reverse stack green; lower-lip correction + two-tier Super clear; 113723f twice |
 | 50 | `K4.0` | 0xB167 Frog Savestation | continuous | Business elevator descent + blue-door exit; 114923f integrity green twice |
-| 51 | `K4.1` | 0xAD1B Speed Booster Room | open | START_TO_SPEED_GRAPH scaffold Bubble path; first open Frog Save→Speedway |
-| 52 | `K4.2` | 0xADDE Wave Beam Room | open | graph branch Bubble→Single→Double→Wave unverified |
-| 53 | `K4.3` | 0xA890 Ice Beam Room | open | graph branch Business→Ice Gate→…→Ice unverified |
-| 60 | `K5.0` | 0xA3AE Alpha Power Bomb Room | open | after Ice on KPDR; first PB capacity |
-| 70 | `K6.0` | 0xCD13 Phantoon's Room | dev_warp | after Alpha PB on KPDR |
+| 51 | `K4.1` | 0xB106 Frog Speedway | open | ★ next pure hop |
+| 52 | `K4.2` | 0xAF72 Bubble Mountain approach | open | Speedway corridor exit |
+| 53 | `K4.3` | 0xACB3 Bubble Mountain | open |  |
+| 54 | `K4.4` | 0xB07A Speed Hall approach | open |  |
+| 55 | `K4.5` | 0xACF0 Speed Booster Hall | open |  |
+| 56 | `K4.6` | 0xAD1B Speed Booster Room | open | real PLM collect |
+| 57 | `K4.7` | 0xACB3 Bubble Mountain | open | return for Wave branch |
+| 58 | `K4.8` | 0xADAD Single Chamber | open | Wave path |
+| 59 | `K4.9` | 0xAD5E Double Chamber | open |  |
+| 60 | `K4.10` | 0xADDE Wave Beam Room | open | real PLM |
+| 61 | `K4.11` | 0xA7DE Business Center | open | via Cathedral / Bubble reverse |
+| 62 | `K4.12` | 0xA815 Ice Beam Gate Room | open |  |
+| 63 | `K4.13` | 0xA865 Ice Beam Snake Room | open |  |
+| 64 | `K4.14` | 0xA8B9 Ice Beam Reflection | open |  |
+| 65 | `K4.15` | 0xA890 Ice Beam Room | open | real PLM |
+| 70 | `K5.0` | 0xA253 Red Tower | open | post-Ice elev to Red |
+| 71 | `K5.1` | 0xA3AE Alpha Power Bomb Room | open | first PB capacity |
+| 72 | `K5.2` | 0x962A Crateria Kihunter / elev | open | via Red/Green elev |
+| 80 | `K6.0` | 0x95FF The Moat | open | Speed/HJ Moat |
+| 81 | `K6.1` | 0x93FE West Ocean | open |  |
+| 82 | `K6.2` | 0xCA08 Wrecked Ship Entrance | open |  |
+| 83 | `K6.3` | 0xCC6F Basement | open | Supers red door |
+| 84 | `K6.4` | 0xCD13 Phantoon's Room | open | entry only; fight separate |
+| 85 | `K6.5` | 0xCD13 Phantoon's Room | open | BossStrategy |
+| 86 | `K6.6` | 0xCA08 Wrecked Ship Entrance | open | ship powered |
+| 87 | `K6.7` | 0xCE40 Gravity Suit Room | open | via West Ocean attic |
+| 90 | `K7.0` | 0xCEFB Glass Tunnel | open | PB tube break |
+| 91 | `K7.1` | 0xD0B9 Main Street | open | Maridia navigation |
+| 92 | `K7.2` | 0xD5A7 Aqueduct | open |  |
+| 93 | `K7.3` | 0xD95E Botwoon's Room | open |  |
+| 94 | `K7.4` | 0xD95E Botwoon's Room | open |  |
+| 95 | `K7.5` | 0xD72A The Precious Room / Halfie | open |  |
+| 96 | `K7.6` | 0xDA60 Draygon's Room | open |  |
+| 97 | `K7.7` | 0xDA60 Draygon's Room | open |  |
+| 98 | `K7.8` | 0xD9AA Space Jump Room | open | post-Draygon |
+| 100 | `K8.0` | 0xACB3 Bubble Mountain | open | LN approach |
+| 101 | `K8.1` | 0xB656 Lower Norfair Elevator | open | Varia+Speed+SJ path |
+| 102 | `K8.2` | 0xB510 LN amphitheater path | open |  |
+| 103 | `K8.3` | 0xB32E Ridley's Room | open |  |
+| 104 | `K8.4` | 0xB32E Ridley's Room | open | BossStrategy |
+| 110 | `K9.0` | 0xA66A Statues Room | open | all 4 bosses |
+| 111 | `K9.1` | 0xDAAE Tourian Elevator Room | open |  |
+| 112 | `K9.2` | 0xDDC4 Metroid Room 4 | open | Ice helpful; assists ok |
+| 113 | `K9.3` | 0xDD58 Mother Brain Room | open |  |
+| 114 | `K9.4` | 0xDD58 Mother Brain Room | open | multi-phase strategy |
+| 115 | `K9.5` | 0xDEDE Tourian Escape Room 4 | open | timer |
+| 116 | `K9.6` | 0x91F8 Landing Site | open | endgame |
+| 117 | `K9.7` | 0x91F8 Landing Site / credits | open | M8 continuous clear |
+| 999 | `OPT-PINK-PB` | 0x9E11 Pink Brinstar Power Bomb Room | parked | not KPDR; optional backfill |
