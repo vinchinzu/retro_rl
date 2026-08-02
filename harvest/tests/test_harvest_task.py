@@ -293,6 +293,38 @@ class HarvestTaskTests(unittest.TestCase):
         self.assertEqual(task.shipped_count, 1)
         self.assertEqual(task._phase, "select")
 
+    def test_ship_verify_counts_bin_drop_when_shipping_money_unchanged(self) -> None:
+        """Crop no longer carried means successful bin drop; money may settle at 5pm."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        # Not carrying (player_state bit clear), input unlocked, money flat.
+        ram[ADDR_INPUT_LOCK] = 1
+        task = HarvestTask()
+        task._phase = "ship_verify"
+        task._ship_money_before = 0
+        task.shipped_count = 0
+
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertNotIn("crop cleared without shipping money", result.reason or "")
+        self.assertEqual(task.shipped_count, 1)
+        self.assertEqual(task._phase, "select")
+
+    def test_ship_verify_counts_money_delta_when_shipping_money_increases(self) -> None:
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        ram[ADDR_SHIPPING_MONEY] = 8  # read_shipping_money => 80
+        ram[ADDR_INPUT_LOCK] = 1
+        task = HarvestTask()
+        task._phase = "ship_verify"
+        task._ship_money_before = 0
+        task.shipped_count = 0
+
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.shipped_count, 1)  # max(1, 80//80)
+        self.assertEqual(task._phase, "select")
+
     def test_harvest_completion_fails_when_any_target_skipped(self) -> None:
         task = HarvestTask()
         task._initial_target_count = 1

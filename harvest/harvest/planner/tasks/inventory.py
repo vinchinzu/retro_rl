@@ -170,6 +170,13 @@ SHED_SEED_SPECS: Dict[str, ShedShelfSpec] = {
         inside_stand_px=(190, 118),
         inside_settle_frames=40,
     ),
+    # Free D1 grass bag (shed_items_row_2 bit 0x08). ROM-verified stand
+    # (96,118) face up equips tool 0x0C and clears the shelf bit.
+    "grass": ShedShelfSpec(
+        item_id=seed_item_id("grass"),
+        inside_stand_px=(96, 118),
+        inside_settle_frames=40,
+    ),
 }
 
 

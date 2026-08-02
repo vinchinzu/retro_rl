@@ -337,7 +337,35 @@ MAP_REGISTRY: Dict[int, MapConfig] = {
         exits=[],
         landmarks=(
             MapLandmark("seed_counter", (8, 10), "register", face="up", action="press_a", source="buy_potato_replay"),
+            # Flower-shop front room on D1 (same tilemap as seed shop in this ROM).
+            MapLandmark(
+                "flower_owner_counter",
+                (2, 21),
+                "register",
+                face="down",
+                action="press_a",
+                source="town_day1_rest",
+                note="town_day1_rest: bit 0x08 at px(34,347) face down+A.",
+            ),
         ),
+    ),
+    # Flower-shop back room (Nina). Walkable set provisional — same interior set.
+    0x1D: MapConfig(
+        name="flower_back",
+        walkable_tiles=SHOP_WALKABLE | INTERIOR_WALKABLE,
+        exits=[],
+        landmarks=(
+            MapLandmark(
+                "nina_stand",
+                (6, 6),
+                "npc_talk",
+                face="left",
+                action="press_a",
+                source="town_day1_rest",
+                note="town_day1_rest: bit 0x04 at px(101,102) face left+A.",
+            ),
+        ),
+        source="town_day1_recon",
     ),
     0x24: MapConfig(
         name="animal_shop",
@@ -756,6 +784,105 @@ ROUTES: Dict[str, List[Waypoint]] = {
         # After the transition the player resolves at the animal-shop door on
         # town. Step off the door tile before any idle wait or follow-up route.
         Waypoint(tilemap=0x04, target_px=(601, 904), radius=2, run_direction="down"),
+    ],
+    # ── Spring D1 town handoff (docs/town_day1_recon.md) ──
+    # Natural entry lands at town gate ~(712,424). Routes assume start on 0x04.
+    "d1_town_to_flower_shop": [
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(600, 262), radius=10, is_exit=True, exit_direction="up"),
+        # Front-room settle near spawn ~(144,456)
+        Waypoint(tilemap=0x1C, target_px=(144, 456), radius=20),
+    ],
+    "d1_flower_back_to_nina": [
+        Waypoint(tilemap=0x1D, target_px=(104, 184), radius=16),
+        Waypoint(tilemap=0x1D, target_px=(104, 120), radius=12),
+        # town_day1_rest: bit 0x04 at ~(101,102) face left + A.
+        Waypoint(tilemap=0x1D, target_px=(101, 102), radius=6),
+    ],
+    "d1_flower_back_exit_to_town": [
+        Waypoint(tilemap=0x1D, target_px=(104, 184), radius=14),
+        Waypoint(tilemap=0x1D, target_px=(104, 210), radius=12, is_exit=True, exit_direction="down"),
+        Waypoint(tilemap=0x1C, target_px=(144, 456), radius=18),
+        Waypoint(tilemap=0x1C, target_px=(144, 480), radius=12, is_exit=True, exit_direction="down"),
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=16),
+    ],
+    # Enter only — stop at church door lip; scripted up enters 0x1B.
+    "d1_town_to_maria": [
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(500, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(411, 216), radius=14),
+        # town_day1_rest church door approach ~(358,150); is_exit up is flaky
+        # so talk sequence scripts the final up into 0x1B.
+        Waypoint(tilemap=0x04, target_px=(358, 150), radius=8),
+    ],
+    "d1_church_to_maria": [
+        Waypoint(tilemap=0x1B, target_px=(128, 456), radius=16),
+        # town_day1_rest: bit 0x20 at ~(103,405) face up + A.
+        Waypoint(tilemap=0x1B, target_px=(103, 405), radius=6),
+    ],
+    "d1_maria_to_town": [
+        Waypoint(tilemap=0x1B, target_px=(128, 456), radius=14),
+        Waypoint(tilemap=0x1B, target_px=(128, 470), radius=10, is_exit=True, exit_direction="down"),
+        Waypoint(tilemap=0x04, target_px=(376, 200), radius=16),
+    ],
+    "d1_town_to_ann": [
+        Waypoint(tilemap=0x04, target_px=(688, 430), radius=18),
+        Waypoint(tilemap=0x04, target_px=(688, 700), radius=18, run_direction="down"),
+        Waypoint(tilemap=0x04, target_px=(688, 924), radius=16, run_direction="down"),
+        Waypoint(tilemap=0x04, target_px=(500, 924), radius=16),
+        # Live-verified stand: face left at ~(388–392,914–924) sets bit 0x01.
+        # Talk is done by PressAUntilBit after nav (not action_on_arrive) so
+        # facing/mash can retry without multi_nav consuming the only A press.
+        Waypoint(tilemap=0x04, target_px=(392, 914), radius=6),
+    ],
+    "d1_town_to_eve": [
+        # From Ann stand ~(388,914): drop south, run west, stand below Eve.
+        # Live Eve sprite ~ (152,872); stand below facing up.
+        Waypoint(tilemap=0x04, target_px=(388, 950), radius=14, run_direction="down"),
+        Waypoint(tilemap=0x04, target_px=(300, 950), radius=14),
+        Waypoint(tilemap=0x04, target_px=(152, 950), radius=12),
+        Waypoint(tilemap=0x04, target_px=(152, 896), radius=6),
+    ],
+    # Enter only — stop near dealer; scripted push to D1 event stand follows.
+    "d1_town_to_livestock": [
+        Waypoint(tilemap=0x04, target_px=(300, 950), radius=16),
+        Waypoint(tilemap=0x04, target_px=(601, 950), radius=14),
+        Waypoint(
+            tilemap=0x04,
+            target_px=(601, 888),
+            radius=10,
+            is_exit=True,
+            exit_direction="up",
+        ),
+        Waypoint(tilemap=0x24, target_px=(128, 200), radius=14, run_direction="up"),
+        # BFS-reachable approach. D1 bit needs ~(230,139) face down — scripted
+        # after nav (counter blocks a pure BFS to that pixel).
+        Waypoint(tilemap=0x24, target_px=(201, 154), radius=6),
+    ],
+    "d1_livestock_to_town": [
+        Waypoint(tilemap=0x24, target_px=(137, 200), radius=12),
+        Waypoint(tilemap=0x24, target_px=(137, 212), radius=10, is_exit=True, exit_direction="down"),
+        # Clear the animal-shop door lip (door ~y888). Wider radius — south
+        # road BFS often stalls past y~950.
+        Waypoint(tilemap=0x04, target_px=(601, 940), radius=20, run_direction="down"),
+    ],
+    "d1_town_to_truck": [
+        Waypoint(tilemap=0x04, target_px=(688, 888), radius=18),
+        Waypoint(tilemap=0x04, target_px=(688, 500), radius=18, run_direction="up"),
+        Waypoint(tilemap=0x04, target_px=(728, 424), radius=12),
+    ],
+    # Real opening gate is ~(712,424); east path exit still near x≈756.
+    # Note: truck leave dialogue often cutscenes straight into the farmhouse
+    # (path tilemap briefly shows house coords, then house 0x15) — see
+    # tasks/town_day1_rest.json. d1_town_to_farm is for walking when no cutscene.
+    "d1_town_to_farm": [
+        Waypoint(tilemap=0x04, target_px=(728, 424), radius=16),
+        Waypoint(tilemap=0x04, target_px=(756, 422), radius=12, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x0C, target_px=(200, 128), radius=14),
+        Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x00, target_px=(80, 424), radius=20),
     ],
     "berry_ship": [
         # 1. Navigate to berry bush area and pick berry

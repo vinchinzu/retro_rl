@@ -1,6 +1,15 @@
 # Autonomous Play Phased Plan
 
-Updated: 2026-04-29
+Updated: 2026-04-29 · **Status banner: 2026-08-01**
+
+> **Superseded for day-to-day planning.** Use [STATUS.md](STATUS.md) (facts),
+> [plan.md](plan.md) (queue), and [PLANNING_STACK.md](PLANNING_STACK.md)
+> (architecture). This document remains as the recovery/smoke phase history
+> from the April reliability push. Phases 0–2 are largely landed (scene
+> classifier, recovery, failure policy, day-plan decision); Phase 3–5 remain
+> open as skill migration + domain depth; Phase 6 package move is done; Phase 7
+> long-run smoke matrix is still open. M3 spring calendar is verified separately
+> (see STATUS).
 
 Goal: make the bot able to start from durable save states and play the full game without drifting into unrecoverable map, cutscene, dialogue, or task states.
 

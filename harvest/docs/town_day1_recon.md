@@ -47,18 +47,86 @@ The ROM event scripts assign the bits as shown above. Catalog name:
 - Ann and Eve both set their expected bits in live probes. Nina, Maria, and
   the livestock dealer also have verified interaction stands and event text.
 
-## Still to record
+## Human recording (2026-08-01) — `tasks/town_day1_rest.json`
 
-1. Capture the flower-shop owner conversation from a clean D1 entry. The
-   front room has a lower public floor and a counter/object trigger; the
-   generic BFS route stops at the counter, so this needs a short recorded
-   controller segment and a `0x08` assertion.
-2. Return from the shop and visit the remaining town NPCs as needed, then
-   walk to the truck/shipper object near town `(728,424)`.
-3. Press the truck dialogue’s leave/ready response and record the resulting
-   town → path → farm transition.
-4. Continue to the farmhouse, sleep, and assert natural D2. Only after this
-   succeeds should the D2→Summer soak be relabeled as a power-on replay.
+From `Y1_Spring_D1_AnnEve` (mask `0x03`) the rest of the handoff was recorded
+controller-only (11 134 frames) → house sleep → Spring D2 06:00.
+
+| Bit | Frame | Stand / face | Map |
+|-----|------:|--------------|-----|
+| `0x10` Livestock | 2976 | `(230,139)` face **down** + A | animal shop `0x24` |
+| `0x04` Nina | 5159 | `(101,102)` face **left** + A | flower back `0x1D` |
+| `0x08` Flower owner | 6599 | `(34,347)` face **down** + A | flower shop `0x1C` |
+| `0x20` Maria | 8411 | `(103,405)` face **up** + A | church `0x1B` |
+| mask `0x3F` complete | 8411 | — | — |
+| Truck leave | ~9777 | path `0x0C` then **cutscene into house** `0x15` (no outdoor farm map) | |
+| Sleep → D2 | 10788–10845 | bed → morning house `(136,120)` | house |
+
+**Important:** `(201,157)` face-right in the animal shop is the later **buy-cow**
+menu stand — it does **not** set D1 bit `0x10`. Use `(230,139)` face down.
+
+### Starter tools (not picked in the recording)
+
+New-game init already places free bags on the shed shelf
+(`shed_items_row_2 = 0x88` = watering can `0x80` | grass seeds `0x08`).
+`town_day1_rest` never visited the shed — end state still has empty carry.
+
+ROM-verified shelf stands (face up + A):
+
+| Item | Tool id | Stand px | Clears bit |
+|------|---------|----------|------------|
+| Grass seeds | `0x0C` | `(96,118)` | row2 `0x08` |
+| Watering can | `0x10` | `(96,168)` | row2 `0x80` |
+
+`TownDay1HandoffTask` picks **grass then can** after the town sequence (both
+fit in the 2-slot carry pair when hands are empty). Verified from
+`house_size=0` morning house (`Y1_Inside_House`). The AnnEve / rest_end
+fixtures incorrectly have `house_size=2`, which breaks `ExitToFarm` (tilemap
+`0x5F`) — shed pickup is soft-optional on that path.
+
+## Automation status (2026-08-01)
+
+Precomputed controller automation lives in `harvest.tasks.town_day1_handoff`
+and `uv run python -m harvest.scripts.town_day1_recon auto`.
+
+When `tasks/town_day1_rest.json` is present, full-mask auto **replays that
+recording** (livestock → nina → owner → maria → truck → house sleep → D2),
+then optionally attempts shed starter tools.
+
+| Bit | Person | Auto status |
+|-----|--------|-------------|
+| `0x01` | Ann | **Works** — outdoor route; rest recording assumes already set |
+| `0x02` | Eve | **Works** — outdoor route; rest recording assumes already set |
+| `0x04`–`0x20` | Nina/owner/livestock/Maria | **Works via rest recording** (human capture) |
+| Shed pickups | grass + can | **Works** from `house_size=0`; soft-optional after rest (AnnEve is size2) |
+
+Baseline verified run (Ann|Eve = `0x03`):
+
+```bash
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
+  --state Y1_Spring_D1_Town_Gate --no-sleep --no-require-full-mask \
+  --out recordings/town_day1_auto.json
+```
+
+Full handoff via rest recording (peak mask `0x3F` → D2):
+
+```bash
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
+  --state Y1_Spring_D1_AnnEve \
+  --out recordings/town_day1_rest_auto.json
+# Verified 2026-08-01: success=True peak_mask=0x3F day=2
+```
+
+Replay the human capture:
+
+```bash
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon replay \
+  --task town_day1_rest --state Y1_Spring_D1_AnnEve --require-day2 \
+  --out recordings/town_day1_rest_replay.json
+```
+
+Entry state from power-on: `Y1_Spring_D1_Town_Gate.state` (saved by `capture-entry`
+or `auto --power-on`).
 
 ## Record → automate tooling
 

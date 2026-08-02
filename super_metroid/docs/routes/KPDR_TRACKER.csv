@@ -40,10 +40,54 @@ K3.4,44,Eye -> Baby return,0xA56B,Kraid's Eye Door,,continuous,continuous,K3.3,,
 K3.5,45,Baby -> Kihunter return,0xA521,Baby Kraid Room,,continuous,continuous,K3.4,,,continuous --to business,integrity-green Business return twice; gray-door clear,2026-08-01
 K3.6,46,Kihunter -> Zeela return,0xA4DA,Warehouse Kihunter Room,,continuous,continuous,K3.5,,,continuous --to business,integrity-green Business return twice; Hi-Jump y-gated landing,2026-08-01
 K3.7,47,Zeela -> Warehouse return,0xA471,Warehouse Zeela Room,,continuous,continuous,K3.6,,,continuous --to business,integrity-green Business return twice; valid upper-left transition,2026-08-01
-K3.8,48,Warehouse -> Business,0xA6A1,Warehouse Entrance,,continuous,continuous,K3.7,,,continuous --to business,"right-ledge reverse stack green; lower-lip correction + two-tier Super clear; 113723f twice",2026-08-01
-K4.0,50,Frog Savestation,0xB167,Frog Savestation,0x92FA,continuous,continuous,K3.8,,,continuous --to frog,"Business elevator descent + blue-door exit; 114923f integrity green twice",2026-08-01
-K4.1,51,Speed Booster,0xAD1B,Speed Booster Room,,open,future,K4.0,speed,,,START_TO_SPEED_GRAPH scaffold Bubble path; first open Frog Save→Speedway,2026-08-01
-K4.2,52,Wave Beam,0xADDE,Wave Beam Room,,open,future,K4.1,wave,,,graph branch Bubble→Single→Double→Wave unverified,2026-08-01
-K4.3,53,Ice Beam,0xA890,Ice Beam Room,,open,future,K4.2,ice,,,graph branch Business→Ice Gate→…→Ice unverified,2026-08-01
-K5.0,60,Alpha Power Bombs,0xA3AE,Alpha Power Bomb Room,,open,future,K4.3,power_bombs,,,after Ice on KPDR; first PB capacity,2026-08-01
-K6.0,70,Phantoon,0xCD13,Phantoon's Room,,dev_warp,future,K5.0,phantoon,dev_phantoon_entry,phantoon.py,after Alpha PB on KPDR,2026-07-28
+K3.8,48,Warehouse -> Business,0xA6A1,Warehouse Entrance,,continuous,continuous,K3.7,,,continuous --to business,right-ledge reverse stack green; lower-lip correction + two-tier Super clear; 113723f twice,2026-08-01
+K4.0,50,Frog Savestation,0xB167,Frog Savestation,0x92FA,continuous,continuous,K3.8,,,continuous --to frog,Business elevator descent + blue-door exit; 114923f integrity green twice,2026-08-01
+K4.1,51,Frog Save -> Speedway,0xB106,Frog Speedway,0x980A,open,future,K4.0,,post_frog_continuous,pure frog-save-to-speedway,★ next pure hop,2026-08-01
+K4.2,52,Speedway -> Farming path,0xAF72,Bubble Mountain approach,0x97E6,open,future,K4.1,,,,Speedway corridor exit,2026-08-01
+K4.3,53,Approach -> Bubble Mountain,0xACB3,Bubble Mountain,0x971A,open,future,K4.2,,,,,2026-08-01
+K4.4,54,Bubble -> Bat Cave / Speed Hall,0xB07A,Speed Hall approach,0x958E,open,future,K4.3,,,,,2026-08-01
+K4.5,55,Speed Hall -> Speed Room,0xACF0,Speed Booster Hall,0x97B6,open,future,K4.4,,,,,2026-08-01
+K4.6,56,Speed Booster collect,0xAD1B,Speed Booster Room,0x95B2,open,future,K4.5,speed,,,real PLM collect,2026-08-01
+K4.7,57,Speed return -> Bubble,0xACB3,Bubble Mountain,,open,future,K4.6,,,,return for Wave branch,2026-08-01
+K4.8,58,Bubble -> Single Chamber,0xADAD,Single Chamber,,open,future,K4.7,,,,Wave path,2026-08-01
+K4.9,59,Single -> Double Chamber,0xAD5E,Double Chamber,,open,future,K4.8,,,,,2026-08-01
+K4.10,60,Wave Beam collect,0xADDE,Wave Beam Room,,open,future,K4.9,wave,,,real PLM,2026-08-01
+K4.11,61,Return to Business (Ice prep),0xA7DE,Business Center,,open,future,K4.10,,,,via Cathedral / Bubble reverse,2026-08-01
+K4.12,62,Business -> Ice Gate,0xA815,Ice Beam Gate Room,0x92BE,open,future,K4.11,,,,,2026-08-01
+K4.13,63,Ice Gate -> Ice Snake,0xA865,Ice Beam Snake Room,0x9312,open,future,K4.12,,,,,2026-08-01
+K4.14,64,Ice Snake -> Ice Reflect,0xA8B9,Ice Beam Reflection,0x9342,open,future,K4.13,,,,,2026-08-01
+K4.15,65,Ice Beam collect,0xA890,Ice Beam Room,0x937E,open,future,K4.14,ice,,,real PLM,2026-08-01
+K5.0,70,Elev up / Red Tower climb,0xA253,Red Tower,,open,future,K4.15,,,,post-Ice elev to Red,2026-08-01
+K5.1,71,Alpha Power Bombs collect,0xA3AE,Alpha Power Bomb Room,,open,future,K5.0,power_bombs,,SM-ALPHA-PB-01,first PB capacity,2026-08-01
+K5.2,72,Alpha PB -> Crateria elev path,0x962A,Crateria Kihunter / elev,,open,future,K5.1,,,,via Red/Green elev,2026-08-01
+K6.0,80,Crateria -> Moat,0x95FF,The Moat,0x8A36,open,future,K5.2,,,SM-MOAT-01,Speed/HJ Moat,2026-08-01
+K6.1,81,Moat -> West Ocean,0x93FE,West Ocean,0x8AEA,open,future,K6.0,,,,,2026-08-01
+K6.2,82,West Ocean -> WS Entrance,0xCA08,Wrecked Ship Entrance,0x89D6,open,future,K6.1,,,SM-WS-01,,2026-08-01
+K6.3,83,WS shaft -> Basement,0xCC6F,Basement,0xA21C,open,future,K6.2,,,,Supers red door,2026-08-01
+K6.4,84,Phantoon natural entry,0xCD13,Phantoon's Room,0xA2AC,open,future,K6.3,phantoon_entry,dev_phantoon_entry,phantoon.py,entry only; fight separate,2026-08-01
+K6.5,85,Phantoon fight,0xCD13,Phantoon's Room,,open,future,K6.4,phantoon_boss,,SM-PHAN-01,BossStrategy,2026-08-01
+K6.6,86,Post-Phantoon WS reverse,0xCA08,Wrecked Ship Entrance,,open,future,K6.5,,,,ship powered,2026-08-01
+K6.7,87,Gravity Suit collect,0xCE40,Gravity Suit Room,0xA1A4,open,future,K6.6,gravity,,,via West Ocean attic,2026-08-01
+K7.0,90,Return Maridia tube,0xCEFB,Glass Tunnel,,open,future,K6.7,,,,PB tube break,2026-08-01
+K7.1,91,Main Street / Everest path,0xD0B9,Main Street,,open,future,K7.0,,,,Maridia navigation,2026-08-01
+K7.2,92,Aqueduct / crab path,0xD5A7,Aqueduct,,open,future,K7.1,,,,,2026-08-01
+K7.3,93,Botwoon Hallway entry,0xD95E,Botwoon's Room,0xA774,open,future,K7.2,botwoon_entry,,SM-BOTW-01,,2026-08-01
+K7.4,94,Botwoon fight,0xD95E,Botwoon's Room,,open,future,K7.3,botwoon_boss,,SM-BOTW-02,,2026-08-01
+K7.5,95,Halfie / Colosseum,0xD72A,The Precious Room / Halfie,,open,future,K7.4,,,,,2026-08-01
+K7.6,96,Draygon natural entry,0xDA60,Draygon's Room,0xA840,open,future,K7.5,draygon_entry,,SM-DRAY-01,,2026-08-01
+K7.7,97,Draygon fight,0xDA60,Draygon's Room,,open,future,K7.6,draygon_boss,,SM-DRAY-02,,2026-08-01
+K7.8,98,Space Jump collect,0xD9AA,Space Jump Room,,open,future,K7.7,space_jump,,,post-Draygon,2026-08-01
+K8.0,100,Return to Norfair / Bubble,0xACB3,Bubble Mountain,,open,future,K7.8,,,,LN approach,2026-08-01
+K8.1,101,LN entry (Golden Torizo path),0xB656,Lower Norfair Elevator,0x95FA,open,future,K8.0,,,,Varia+Speed+SJ path,2026-08-01
+K8.2,102,LN farm / acid path,0xB510,LN amphitheater path,,open,future,K8.1,,,,,2026-08-01
+K8.3,103,Ridley natural entry,0xB32E,Ridley's Room,0x98CA,open,future,K8.2,ridley_entry,,SM-RIDLEY-01,,2026-08-01
+K8.4,104,Ridley fight,0xB32E,Ridley's Room,,open,future,K8.3,ridley_boss,,,BossStrategy,2026-08-01
+K9.0,110,G4 statues activate,0xA66A,Statues Room,,open,future,K8.4,g4,,,all 4 bosses,2026-08-01
+K9.1,111,Tourian elevator,0xDAAE,Tourian Elevator Room,0x9222,open,future,K9.0,,,,,2026-08-01
+K9.2,112,Metroid rooms clear,0xDDC4,Metroid Room 4,,open,future,K9.1,,,,Ice helpful; assists ok,2026-08-01
+K9.3,113,Mother Brain natural entry,0xDD58,Mother Brain Room,0xAAC8,open,future,K9.2,mb_entry,,SM-MB-01,,2026-08-01
+K9.4,114,Mother Brain fight (all phases),0xDD58,Mother Brain Room,,open,future,K9.3,mb_boss,,,multi-phase strategy,2026-08-01
+K9.5,115,Escape sequence,0xDEDE,Tourian Escape Room 4,,open,future,K9.4,escape,,SM-ESCAPE-01,timer,2026-08-01
+K9.6,116,Landing Site finish / ship,0x91F8,Landing Site,0x896A,open,future,K9.5,ship,,,endgame,2026-08-01
+K9.7,117,Ending / credits evidence,0x91F8,Landing Site / credits,,open,future,K9.6,credits,,,M8 continuous clear,2026-08-01
+OPT-PINK-PB,999,Pink PB maze (parked),0x9E11,Pink Brinstar Power Bomb Room,,parked,parked,K1.2,pink_pb,,SM-PINK-PB-HARD,not KPDR; optional backfill,2026-08-01

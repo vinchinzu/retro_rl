@@ -1,4 +1,4 @@
-# TASK SM-ROOM-SEG-05: Dual-track room segment — Speed Booster Room
+# TASK SM-ROOM-SEG-05: Dual-track room segment — Post Crocomire Power Bomb Room
 
 ## Recipe step
 room practice segment (dual-track — **never** continuous evidence)
@@ -10,7 +10,7 @@ Luna
 implement
 
 ## Own files only
-- `policies/room_clears/room_ad1b_from_acf0_to_acf0.json` (create or edit)
+- `policies/room_clears/room_aade_from_aa82_to_aa82.json` (create or edit)
 - entry fixture under `custom_integrations/SuperMetroid-Snes/` for **this
   problem only** (bootstrap/teleport state if missing)
 - optional residual: `docs/tasks/SM-ROOM-SEG-05-residual.md`
@@ -22,34 +22,34 @@ Do **not** edit: `routes/continuous.py`, `docs/STATUS.md`, `routes/kpdr/*`,
 ## Context
 - Dual-track room farm (Wave 10+): continuous tip work is **parked**.
 - One agent ↔ one problem — no cross-room edits (collision guard).
-- Queue rank **62**, room `0xAD1B` **Speed Booster Room**, problem `room_ad1b_from_acf0_to_acf0`.
-- Board practiceStatus: `unstarted`; state_on_disk=False;
-  policy_on_disk=False; mode=`bootstrap+scaffold`.
+- Queue rank **72**, room `0xAADE` **Post Crocomire Power Bomb Room**, problem `room_aade_from_aa82_to_aa82`.
+- Board practiceStatus: `state_ready`; state_on_disk=True;
+  policy_on_disk=True; mode=`iterate`.
 - Practice promote ≠ continuous integrity.
 
 ## Read first
 - `docs/routes/ROOM_WORK_QUEUE.md`
 - `scripts/room/run_problem.py` (bootstrap / scaffold / teleport / run / promote)
 - If residual exists for this problem, read the latest `docs/tasks/*-residual.md`
-  or note mentioning `room_ad1b_from_acf0_to_acf0`.
+  or note mentioning `room_aade_from_aa82_to_aa82`.
 
 ## Do
 1. If no teleport fixture: bootstrap this problem only:
    ```bash
-   uv run python super_metroid/scripts/room/run_problem.py bootstrap room_ad1b_from_acf0_to_acf0
-   uv run python super_metroid/scripts/room/run_problem.py teleport room_ad1b_from_acf0_to_acf0
+   uv run python super_metroid/scripts/room/run_problem.py bootstrap room_aade_from_aa82_to_aa82
+   uv run python super_metroid/scripts/room/run_problem.py teleport room_aade_from_aa82_to_aa82
    ```
 2. Scaffold policy if missing:
    ```bash
-   uv run python super_metroid/scripts/room/run_problem.py scaffold room_ad1b_from_acf0_to_acf0
+   uv run python super_metroid/scripts/room/run_problem.py scaffold room_aade_from_aa82_to_aa82
    ```
 3. Iterate isolated run until **green** or honest residual with pin:
    ```bash
-   uv run python super_metroid/scripts/room/run_problem.py run room_ad1b_from_acf0_to_acf0
+   uv run python super_metroid/scripts/room/run_problem.py run room_aade_from_aa82_to_aa82
    ```
 4. Promote **only** on green isolated run (practice track):
    ```bash
-   uv run python super_metroid/scripts/room/run_problem.py run room_ad1b_from_acf0_to_acf0 --promote
+   uv run python super_metroid/scripts/room/run_problem.py run room_aade_from_aa82_to_aa82 --promote
    ```
 5. Write residual with PROCESS schema. Next card may be a one-knob residual
    for this same problem (`SM-ROOM-SEG-05-R1`) or `none` if green+promoted.
@@ -69,10 +69,10 @@ Do **not** edit: `routes/continuous.py`, `docs/STATUS.md`, `routes/kpdr/*`,
 
 ## Verify commands
 ```bash
-uv run python super_metroid/scripts/room/run_problem.py teleport room_ad1b_from_acf0_to_acf0
-uv run python super_metroid/scripts/room/run_problem.py run room_ad1b_from_acf0_to_acf0
+uv run python super_metroid/scripts/room/run_problem.py teleport room_aade_from_aa82_to_aa82
+uv run python super_metroid/scripts/room/run_problem.py run room_aade_from_aa82_to_aa82
 # promote only if green:
-# uv run python super_metroid/scripts/room/run_problem.py run room_ad1b_from_acf0_to_acf0 --promote
+# uv run python super_metroid/scripts/room/run_problem.py run room_aade_from_aa82_to_aa82 --promote
 ```
 
 ## Done when
