@@ -2314,6 +2314,86 @@ class BuildDayPhasesTests(unittest.TestCase):
         self.assertIn("ENSURE_WATERING_CAN", names)
         self.assertIn("CROP_WATER", names)
 
+    def test_morning_plant_day_orders_establish_ensure_can_then_water(self) -> None:
+        """A3: after hoe+seeds plant, re-fetch can before same-day water.
+
+        Carry holds only two tools. Establish uses hoe+seeds; seed bag frees a
+        slot once spent, so ENSURE_WATERING_CAN must sit between establish and
+        water (no RAM can poke).
+        """
+        phases = build_day_phases(
+            None,
+            weekday=3,
+            hour=6,
+            has_seeds=True,
+            has_waterable=False,
+            has_harvest=False,
+            is_rainy=False,
+        )
+        names = self._phase_names(phases)
+
+        self.assertIn("ENSURE_CROP_SEEDS", names)
+        self.assertIn("CROP_ESTABLISH", names)
+        self.assertIn("ENSURE_WATERING_CAN", names)
+        self.assertIn("CROP_WATER", names)
+
+        establish_idx = names.index("CROP_ESTABLISH")
+        ensure_can_idx = names.index("ENSURE_WATERING_CAN")
+        water_idx = names.index("CROP_WATER")
+        self.assertLess(names.index("ENSURE_CROP_SEEDS"), establish_idx)
+        self.assertLess(establish_idx, ensure_can_idx)
+        self.assertLess(ensure_can_idx, water_idx)
+
+        # Contiguous plant→water crop block (nav may sit between ensure can and water).
+        crop_block = names[establish_idx : water_idx + 1]
+        self.assertEqual(crop_block[0], "CROP_ESTABLISH")
+        self.assertEqual(crop_block[1], "ENSURE_WATERING_CAN")
+        self.assertEqual(crop_block[-1], "CROP_WATER")
+        self.assertNotIn("CROP_ESTABLISH", crop_block[1:])
+
+        water = phases[water_idx]
+        self.assertEqual(water.params.get("work_mode"), "water")
+        self.assertEqual(water.params.get("refill_bounds"), (3, 14, 62, 60))
+
+        establish = phases[establish_idx]
+        self.assertEqual(establish.params.get("work_mode"), "establish")
+
+    def test_plant_with_existing_waterable_still_re_ensures_can_after_establish(self) -> None:
+        """Plant pass still steals carry slots; water pass must re-ensure can."""
+        phases = build_day_phases(
+            None,
+            weekday=3,
+            hour=8,
+            has_seeds=True,
+            has_waterable=True,
+            has_harvest=False,
+            is_rainy=False,
+        )
+        names = self._phase_names(phases)
+        establish_idx = names.index("CROP_ESTABLISH")
+        ensure_can_idx = names.index("ENSURE_WATERING_CAN")
+        water_idx = names.index("CROP_WATER")
+        self.assertLess(establish_idx, ensure_can_idx)
+        self.assertLess(ensure_can_idx, water_idx)
+        # Only one ensure-can in the crop block (always before water, after plant).
+        self.assertEqual(names.count("ENSURE_WATERING_CAN"), 1)
+
+    def test_water_phase_scheduled_for_dry_plots_regardless_of_can_fill(self) -> None:
+        """Empty can must not drop CROP_WATER — refill lives inside CropWaterTask."""
+        phases = build_day_phases(
+            None,
+            hour=10,
+            has_seeds=False,
+            has_waterable=True,
+            is_rainy=False,
+        )
+        names = self._phase_names(phases)
+        self.assertIn("ENSURE_WATERING_CAN", names)
+        self.assertIn("CROP_WATER", names)
+        water = phases[names.index("CROP_WATER")]
+        self.assertEqual(water.params.get("work_mode"), "water")
+        self.assertEqual(water.params.get("refill_bounds"), (3, 14, 62, 60))
+
     def test_rainy_day_skips_water_only_crop_phase(self) -> None:
         phases = build_day_phases(None, hour=16, has_waterable=True, is_rainy=True)
         names = self._phase_names(phases)

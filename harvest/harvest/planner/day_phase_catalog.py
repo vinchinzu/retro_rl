@@ -17,6 +17,9 @@ EXIT_HOUSE_PHASE = PhaseSpec(
 EXIT_TO_FARM_PHASE = PhaseSpec(
     "EXIT_TO_FARM",
     "farm_building_exit",
+    required_ram=("tilemap", "player_x", "player_y", "input_lock"),
+    estimated_frames=1200,
+    failure_modes=("unknown_scene", "dialogue_stuck", "invalid_coords", "house_size_mismatch"),
 )
 
 LEAVE_HOUSE_TO_FARM_PHASE = PhaseSpec(
@@ -130,12 +133,19 @@ NAV_CROP_PHASE = PhaseSpec(
         "timeout": 9000,
     },
     failure_policy="optional",
+    required_maps=(0x00,),
+    estimated_frames=4000,
+    failure_modes=("no_path", "debris_block", "viewport_bfs_stale"),
 )
 
 HARVEST_ROUTE_PHASE = PhaseSpec(
     "HARVEST_ROUTE",
     "harvest",
     failure_policy="optional",
+    required_maps=(0x00,),
+    required_ram=("tilemap", "money"),
+    estimated_frames=6000,
+    failure_modes=("no_mature", "bin_path_fail", "ship_money_not_instant"),
 )
 
 CLEAR_FIELD_PHASE = PhaseSpec(
@@ -144,6 +154,9 @@ CLEAR_FIELD_PHASE = PhaseSpec(
     # Short morning slice only — seed shop closes early and must not be starved.
     {"timeout": 3500},
     failure_policy="optional",
+    required_maps=(0x00,),
+    estimated_frames=3500,
+    failure_modes=("timeout_budget", "tool_missing", "stamina_low"),
 )
 
 DYNAMIC_OUTDOOR_PLAN_PHASE = PhaseSpec(
@@ -155,11 +168,17 @@ ENSURE_WATERING_CAN_PHASE = PhaseSpec(
     "ENSURE_WATERING_CAN",
     "ensure_tool",
     {"tool_id": int(Tool.WATERING_CAN)},
+    required_tools=("watering_can",),
+    estimated_frames=2500,
+    failure_modes=("shelf_miss", "carry_full", "wrong_house_size"),
 )
 
 ENSURE_CROP_SEEDS_PHASE = PhaseSpec(
     "ENSURE_CROP_SEEDS",
     "ensure_seed",
+    required_tools=("seed",),
+    estimated_frames=2500,
+    failure_modes=("bag_on_shelf_not_carry", "stock_zero", "carry_swap_lost_seed"),
 )
 
 ENSURE_ANIMAL_TOOLS_PHASE = PhaseSpec(
@@ -183,6 +202,10 @@ CROP_ESTABLISH_PHASE = PhaseSpec(
     "crop",
     # Refill unused in establish; keep broad bounds for any residual water.
     {"work_mode": "establish", "refill_bounds": (3, 14, 62, 60)},
+    required_maps=(0x00,),
+    required_tools=("hoe", "seed"),
+    estimated_frames=8000,
+    failure_modes=("unreachable_center", "seed_not_in_carry", "no_path_to_hoe"),
 )
 
 # Water pass: watering can only; waters already-established crops.
@@ -192,6 +215,10 @@ CROP_WATER_PHASE = PhaseSpec(
     "CROP_WATER",
     "crop",
     {"work_mode": "water", "refill_bounds": (3, 14, 62, 60)},
+    required_maps=(0x00,),
+    required_tools=("watering_can",),
+    estimated_frames=6000,
+    failure_modes=("empty_can", "refill_fail", "no_plots", "precheck_tool_success"),
 )
 
 # Optional stamina refill at outdoor mountain hot spring (tilemap 0x10 pond).
@@ -200,16 +227,25 @@ HOT_SPRING_STAMINA_PHASE = PhaseSpec(
     "hot_spring",
     {"min_stamina": 40, "return_to_farm": True},
     failure_policy="optional",
+    required_ram=("stamina", "tilemap"),
+    estimated_frames=12000,
+    failure_modes=("nav_fail", "bath_not_entered", "corridor_debris"),
 )
 
 RETURN_HOME_PHASE = PhaseSpec(
     "RETURN_HOME",
     "return_home",
+    required_ram=("tilemap", "player_x", "player_y"),
+    estimated_frames=4000,
+    failure_modes=("path_fail", "door_held_item"),
 )
 
 GO_TO_SLEEP_PHASE = PhaseSpec(
     "GO_TO_SLEEP",
     "sleep",
+    required_ram=("tilemap", "hour", "day"),
+    estimated_frames=2500,
+    failure_modes=("bed_miss", "scene_wake_stuck", "return_home_first"),
 )
 
 # Town loop whose success sets the planner "ready to go home" flag.
@@ -303,6 +339,9 @@ COOP_CHORES_PHASE = PhaseSpec(
     "COOP_CHORES",
     "coop_chores",
     {"egg_mode": "auto"},
+    required_maps=(0x28,),
+    estimated_frames=4000,
+    failure_modes=("feed_timeout", "egg_stuck", "multi_adult", "dynamic_egg_tile"),
 )
 
 # Gift variant — exit coop holding the egg for delivery to an NPC.
@@ -310,6 +349,9 @@ COOP_GIFT_PHASE = PhaseSpec(
     "COOP_GIFT",
     "coop_chores",
     {"egg_mode": "gift"},
+    required_maps=(0x28,),
+    estimated_frames=4000,
+    failure_modes=("feed_timeout", "egg_stuck", "gift_exit_fail"),
 )
 
 EXIT_COOP_PHASE = PhaseSpec(

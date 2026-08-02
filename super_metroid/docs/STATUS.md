@@ -10,6 +10,8 @@
 | Last verification | 2026-08-01 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
+| Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
+| Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) (~288 tickets → M8) |
 
 | Field | Value |
 |-------|-------|
@@ -408,7 +410,7 @@ Authoritative order:
 **[PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md)** · process:
 **[tasks/PROCESS.md](tasks/PROCESS.md)** · architecture:
 **[ARCHITECTURE.md](ARCHITECTURE.md)** · legacy Pink-PB notes:
-**[ROUTE_SUPERS_TO_PHANTOON.md](routes/ROUTE_SUPERS_TO_PHANTOON.md)**
+**[ROUTE_SUPERS_TO_PHANTOON.md](archive/routes/ROUTE_SUPERS_TO_PHANTOON.md)** (archived; not KPDR)
 
 | Layer | Furthest played |
 |-------|-----------------|

@@ -169,9 +169,11 @@ def sequence_skills(name: str, *skills: Task, idle_between: bool = True) -> Skil
     return SkillSequence(name=name, tasks=tuple(skills), idle_between_tasks=idle_between)
 
 
-# Coop skill factories — thin building blocks for CoopChores composition.
-# Full CoopChoresTask remains the production path until multi-adult feed is
-# fully extracted; these factories pin the target skill boundaries.
+# ── Domain skill factories ────────────────────────────────────────────
+# These pin skill *boundaries* for composition. Production domain tasks
+# (CoopChoresTask, HarvestTask, …) remain the live path until each skill
+# is fully extracted + replay-covered. Prefer factories over growing mono
+# phase machines — see docs/PLANNING_STACK.md.
 
 
 def coop_nav_to_feed_bin_skill(*, timeout: int = 900) -> NavSkill:
@@ -193,6 +195,67 @@ def coop_press_feed_skill(*, face: str = "left") -> PressAInteractSkill:
     return PressAInteractSkill(name="coop_press_feed", face=face)
 
 
+def coop_nav_to_shipping_bin_skill(*, timeout: int = 900) -> NavSkill:
+    """Navigate to the coop shipping-bin stand (egg ship path)."""
+    from harvest.tasks.coop_task import SHIP_BIN_STAND
+    from harvest.tasks.farm_clearer import TILE_SIZE
+
+    tx, ty = SHIP_BIN_STAND
+    return NavSkill(
+        name="coop_nav_ship_bin",
+        target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
+        radius=10,
+        timeout=timeout,
+    )
+
+
+def coop_press_ship_skill(*, face: str = "up") -> PressAInteractSkill:
+    """Press A at the coop shipping bin (egg disposition)."""
+    return PressAInteractSkill(name="coop_press_ship", face=face)
+
+
+def farm_nav_to_shipping_bin_skill(*, timeout: int = 1800) -> NavSkill:
+    """Navigate toward the outdoor farm shipping bin landmark."""
+    from harvest.maps.map_config import find_landmark
+
+    hit = find_landmark("shipping_bin", tilemap_id=0x00)
+    if hit is not None:
+        _tilemap, lm = hit
+        target = (int(lm.target_px[0]), int(lm.target_px[1]))
+    else:
+        # Fallback: farm landmark tile (62, 60) in pixel space.
+        target = (62 * 16 + 8, 60 * 16 + 8)
+    return NavSkill(
+        name="farm_nav_ship_bin",
+        target_px=target,
+        radius=16,
+        timeout=timeout,
+    )
+
+
+def farm_press_ship_skill(*, face: str = "up") -> PressAInteractSkill:
+    """Press A at the farm shipping bin (crops/produce drop).
+
+    Money does **not** post instantly — shipping credits at 5pm. Verify with
+    pre/post-5pm saves, not an immediate money delta.
+    """
+    return PressAInteractSkill(name="farm_press_ship", face=face)
+
+
+def talk_press_skill(
+    *,
+    name: str = "talk_press",
+    face: str | None = "up",
+    hold_frames: int = 25,
+) -> PressAInteractSkill:
+    """Generic face+A talk/interact (D1 town bits, NPC gifts, shop counters)."""
+    return PressAInteractSkill(
+        name=name,
+        face=face,
+        hold_frames=hold_frames,
+    )
+
+
 __all__ = [
     "InteractSkill",
     "NavSkill",
@@ -201,6 +264,11 @@ __all__ = [
     "SkillSequence",
     "VerifyRamSkill",
     "coop_nav_to_feed_bin_skill",
+    "coop_nav_to_shipping_bin_skill",
     "coop_press_feed_skill",
+    "coop_press_ship_skill",
+    "farm_nav_to_shipping_bin_skill",
+    "farm_press_ship_skill",
     "sequence_skills",
+    "talk_press_skill",
 ]

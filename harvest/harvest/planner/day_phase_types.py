@@ -78,6 +78,9 @@ class TaskContract:
 
     Optional on PhaseSpec so advisors and tests can validate proposals without
     executing them. Empty fields mean "no contract declared."
+
+    Soft checks live in :func:`evaluate_task_contract` — contracts document
+    intent and gate advisor rewrites; they do not hard-abort builders yet.
     """
 
     required_ram: tuple[str, ...] = ()
@@ -95,6 +98,15 @@ class TaskContract:
             "failure_modes": list(self.failure_modes),
         }
 
+    def is_empty(self) -> bool:
+        return (
+            not self.required_ram
+            and not self.required_maps
+            and not self.required_tools
+            and self.estimated_frames is None
+            and not self.failure_modes
+        )
+
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None) -> "TaskContract":
         if not data:
@@ -110,6 +122,56 @@ class TaskContract:
             ),
             failure_modes=tuple(str(x) for x in data.get("failure_modes", ()) or ()),
         )
+
+
+def evaluate_task_contract(
+    contract: TaskContract,
+    *,
+    tilemap: int | None = None,
+    tools: tuple[str, ...] | list[str] | set[str] | frozenset[str] | None = None,
+    ram: Any = None,
+) -> tuple[bool, tuple[str, ...]]:
+    """Soft pre-check for advisors, probes, and unit tests.
+
+    Returns ``(ok, reasons)``. Missing optional observation inputs skip that
+    clause (e.g. no ``tilemap`` → map requirements are not evaluated). Does not
+    execute the phase and never mutates RAM.
+    """
+    if contract.is_empty():
+        return True, ()
+
+    reasons: list[str] = []
+
+    if contract.required_maps and tilemap is not None:
+        have = int(tilemap)
+        if have not in contract.required_maps:
+            need = ",".join(f"0x{m:02X}" for m in contract.required_maps)
+            reasons.append(f"map_mismatch:have=0x{have:02X}:need={need}")
+
+    if contract.required_tools and tools is not None:
+        have = {str(t).lower() for t in tools}
+        for tool in contract.required_tools:
+            if str(tool).lower() not in have:
+                reasons.append(f"missing_tool:{tool}")
+
+    if contract.required_ram:
+        # Lazy import keeps day_phase_types free of numpy at module import time
+        # for pure type/serialization unit tests.
+        from harvest.core.ram_catalog import field_spec, read_ram_value
+
+        for name in contract.required_ram:
+            try:
+                field_spec(name)
+            except KeyError:
+                reasons.append(f"unknown_ram_field:{name}")
+                continue
+            if ram is not None:
+                try:
+                    read_ram_value(ram, name)
+                except Exception as exc:  # pragma: no cover - defensive
+                    reasons.append(f"ram_unreadable:{name}:{type(exc).__name__}")
+
+    return (not reasons), tuple(reasons)
 
 
 @dataclass
@@ -228,4 +290,5 @@ __all__ = [
     "TaskContract",
     "coerce_phase_kind",
     "day_planner_policy_for_season",
+    "evaluate_task_contract",
 ]

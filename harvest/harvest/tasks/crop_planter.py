@@ -27,7 +27,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
-from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_u16
+from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_u16, read_ram_value
 
 from harvest.core.carry import (
     ADDR_TOOL_BACKPACK,
@@ -74,11 +74,38 @@ WATER_TILES = frozenset({
     0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD,
 })
 
-# Actual water tiles for refilling — excludes 0xA6 (pond border/decorative)
+# Actual water tiles for refilling — excludes 0xA6 (pond border/decorative).
+# Keep F1/F8/etc. for search (property table may map some); sort prefers
+# REFILL_PREFERRED_WATER_TILES first.
 REFILL_WATER_TILES = frozenset({
     0xF0, 0xF1, 0xF2,
     0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD,
 })
+
+# CheckToolSuccess .chackiffilling / .watercanfilled (HM-Decomp bank_82.asm):
+# farm refill (tilemap < 4) only fills when the tile-in-front *property* is one
+# of F0, F9, FA, FB, FC, FD (returns 2 → ToolAnimationWateringCan sets can=0x14).
+# Raw map IDs F1/F2/F7/F8 often look like water but do not refill.
+REFILL_PREFERRED_WATER_TILES = frozenset({0xF0, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD})
+
+# Shipping-bin F2 pocket (x~8-9,y~29-30) does NOT refill the can. Pre-blacklist
+# stand tiles in this rectangle so path search never prefers them.
+# Bounds: (x_min, y_min, x_max, y_max) inclusive stand coordinates.
+BAD_REFILL_STAND_BOUNDS = (6, 27, 12, 33)
+# Score bands for refill stand preference (lower = better; secondary to
+# preferred-water-id rank in refill_edge_sort_key).
+REFILL_BAND_NORTH = 0   # y <= 25: north stream / path water (often F1, F8)
+REFILL_BAND_SOUTH = 1   # y >= 45: south stream (often FC — preferred)
+REFILL_BAND_MID = 2     # mid-farm water (often shipping F2 / blocked pond)
+REFILL_BAND_BAD = 3     # known-bad shipping pocket (should be filtered out)
+
+# Face direction → delta into the adjacent water cell.
+_REFILL_FACE_DELTA = {
+    "up": (0, -1),
+    "down": (0, 1),
+    "left": (-1, 0),
+    "right": (1, 0),
+}
 
 
 # carry_pair_items / watering_can_in_carry_pair / seed_item_in_carry_pair
@@ -257,27 +284,82 @@ def refill_action_sequence(face_dir: str, face_frames: int = 2) -> List[np.ndarr
     """Action frames to refill watering can at pond edge.
 
     face_frames: fewer frames = less drift away from the water tile.
+    Cooldown must cover ToolAnimationWateringCan writing can=0x14 after Y.
     """
     actions: List[np.ndarray] = []
     actions.extend([make_action(**{face_dir: True}) for _ in range(face_frames)])
     settle = max(1, 8 - face_frames)
     actions.extend([make_action() for _ in range(settle)])
-    actions.extend(use_tool(frames=15, cooldown=45))
+    # 45f was tight for animation write; 75f leaves room for can=0x14.
+    actions.extend(use_tool(frames=15, cooldown=75))
     return actions
+
+
+def is_bad_refill_stand(tile: Tuple[int, int]) -> bool:
+    """True if stand is in the shipping-bin F2 pocket that never refills."""
+    x, y = tile
+    x0, y0, x1, y1 = BAD_REFILL_STAND_BOUNDS
+    return x0 <= x <= x1 and y0 <= y <= y1
+
+
+def refill_stand_band(tile: Tuple[int, int]) -> int:
+    """Preference band for a refill stand (lower is better)."""
+    if is_bad_refill_stand(tile):
+        return REFILL_BAND_BAD
+    y = tile[1]
+    if y <= 25:
+        return REFILL_BAND_NORTH
+    if y >= 45:
+        return REFILL_BAND_SOUTH
+    return REFILL_BAND_MID
+
+
+def edge_water_tile_id(
+    ram: np.ndarray,
+    tile: Tuple[int, int],
+    face: str,
+) -> int:
+    """Tilemap id of the water cell a stand faces, or -1 if out of bounds."""
+    dx, dy = _REFILL_FACE_DELTA.get(face, (0, 0))
+    nx, ny = tile[0] + dx, tile[1] + dy
+    if 0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH:
+        return int(get_tile_at(ram, nx, ny))
+    return -1
+
+
+def refill_edge_sort_key(
+    edge: Tuple[Tuple[int, int], str],
+    player: Tuple[int, int],
+    water_tid: int = -1,
+) -> Tuple[int, int, int]:
+    """Sort key: preferred CheckToolSuccess water → band → Manhattan dist.
+
+    Preferred water ids (F0/F9–FD) rank before F1/F8/etc. Band is secondary
+    (north → south → mid → bad). Distance breaks ties within a class.
+    """
+    tile, _face = edge
+    preferred = 0 if water_tid in REFILL_PREFERRED_WATER_TILES else 1
+    px, py = player
+    dist = abs(tile[0] - px) + abs(tile[1] - py)
+    return (preferred, refill_stand_band(tile), dist)
 
 
 def find_pond_edges(
     ram: np.ndarray,
     bounds: Tuple[int, int, int, int] = (3, 3, 62, 60),
     water_tiles: Optional[frozenset] = None,
+    *,
+    exclude_bad_stands: bool = False,
 ) -> List[Tuple[Tuple[int, int], str]]:
     """Find walkable tiles adjacent to water, suitable for watering can refill.
 
     Returns list of (tile, face_dir) where tile is walkable and face_dir
-    points toward adjacent water.
+    points toward adjacent water. Use edge_water_tile_id(ram, tile, face)
+    for the adjacent water tilemap id (preferred-vs-fallback sort).
 
     water_tiles: set of tile IDs to consider as water.  Defaults to WATER_TILES
         (includes A6 pond border).  Pass REFILL_WATER_TILES for actual water only.
+    exclude_bad_stands: drop shipping-bin F2 pocket stands (never refill).
     """
     from harvest.tasks.farm_clearer import WALKABLE_TILES
 
@@ -291,16 +373,28 @@ def find_pond_edges(
     ]
     for ty in range(y_min, y_max + 1):
         for tx in range(x_min, x_max + 1):
+            if exclude_bad_stands and is_bad_refill_stand((tx, ty)):
+                continue
             tid = get_tile_at(ram, tx, ty)
             if tid not in WALKABLE_TILES:
                 continue
+            # Prefer a face toward CheckToolSuccess-valid water when several
+            # water neighbors exist (e.g. corner stand next to F8 and FC).
+            best_face: Optional[str] = None
+            best_rank = 2  # 0=preferred, 1=other refill water
             for dx, dy, face in directions:
                 nx, ny = tx + dx, ty + dy
                 if 0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH:
                     ntid = get_tile_at(ram, nx, ny)
                     if ntid in water_tiles:
-                        results.append(((tx, ty), face))
-                        break  # one per walkable tile
+                        rank = 0 if ntid in REFILL_PREFERRED_WATER_TILES else 1
+                        if best_face is None or rank < best_rank:
+                            best_face = face
+                            best_rank = rank
+                            if rank == 0:
+                                break
+            if best_face is not None:
+                results.append(((tx, ty), best_face))
     return results
 
 
@@ -858,7 +952,16 @@ class CropWaterTask(Task):
 
     @staticmethod
     def _water_level(ram: np.ndarray) -> int:
-        """Read watering can fill level from RAM (0 = empty, 20 = full)."""
+        """Read watering can fill level (0 = empty, 20 = full).
+
+        Prefer ``read_ram_value(..., "watering_can")`` so live emu RAM uses the
+        WRAM mirror offset. Fall back to fixed ADDR_WATER_LEVEL for tiny test
+        buffers that may not resolve through the catalog path.
+        """
+        try:
+            return int(read_ram_value(ram, "watering_can"))
+        except Exception:
+            pass
         if ADDR_WATER_LEVEL < len(ram):
             return int(ram[ADDR_WATER_LEVEL])
         return 0
@@ -1612,9 +1715,16 @@ class CropWaterTask(Task):
                         self._bad_refill_tiles.add((bad[0] + dx, bad[1] + dy))
             self._refill_search_level = current_lvl  # reset for next attempts
 
-        edges = find_pond_edges(ram, self.refill_bounds or self.bounds, water_tiles=REFILL_WATER_TILES)
+        edges = find_pond_edges(
+            ram,
+            self.refill_bounds or self.bounds,
+            water_tiles=REFILL_WATER_TILES,
+            exclude_bad_stands=True,
+        )
         if self._bad_refill_tiles:
             edges = [(t, f) for t, f in edges if t not in self._bad_refill_tiles]
+        # Defense in depth: drop known-bad stands even if find_pond_edges kept them.
+        edges = [(t, f) for t, f in edges if not is_bad_refill_stand(t)]
         if not edges:
             self._refill_exhausted = True
             remaining = len(self._water_steps) - self._water_index
@@ -1626,19 +1736,33 @@ class CropWaterTask(Task):
             return
 
         player = self._navigator.current_tile
-        edges.sort(key=lambda e: abs(e[0][0] - player[0]) + abs(e[0][1] - player[1]))
+        # Preferred CheckToolSuccess water first, then north→south→mid, then dist.
+        edges.sort(
+            key=lambda e: refill_edge_sort_key(
+                e, player, edge_water_tile_id(ram, e[0], e[1])
+            )
+        )
 
+        # Path-verify candidates; keep the best pathable under sort order
+        # (preferred water wins over closer non-preferred when both pathable).
         chosen = None
-        for tile, face in edges[:10]:
-            path = self._pathfinder.find_path(ram, player, tile)
+        chosen_water = -1
+        check_n = min(len(edges), 24)
+        for tile, face in edges[:check_n]:
+            # Viewport hop so distant south/preferred water is reachable.
+            path = self._find_nav_path(ram, player, tile)
             if path is not None:
                 chosen = (tile, face)
+                chosen_water = edge_water_tile_id(ram, tile, face)
                 break
 
         if chosen is None:
             self._refill_exhausted = True
             remaining = len(self._water_steps) - self._water_index
-            print(f"[CROP] No reachable water edge (checked {min(len(edges), 10)}/{len(edges)}), skipping {remaining} tiles")
+            print(
+                f"[CROP] No reachable water edge "
+                f"(checked {check_n}/{len(edges)}), skipping {remaining} tiles"
+            )
             self.skipped_water += remaining
             self._plot_skipped += remaining
             self._water_index = len(self._water_steps)
@@ -1656,7 +1780,13 @@ class CropWaterTask(Task):
         self._navigator.path = []
         self._steps_on_target = 0
         dist = abs(chosen[0][0] - player[0]) + abs(chosen[0][1] - player[1])
-        print(f"[CROP] Refill at ({chosen[0][0]},{chosen[0][1]}) facing {chosen[1]} dist={dist} can={current_lvl}")
+        band = refill_stand_band(chosen[0])
+        pref = chosen_water in REFILL_PREFERRED_WATER_TILES
+        print(
+            f"[CROP] Refill at ({chosen[0][0]},{chosen[0][1]}) facing {chosen[1]} "
+            f"water=0x{chosen_water:02X} preferred={pref} dist={dist} band={band} "
+            f"can={current_lvl}"
+        )
 
     def _find_nav_path(
         self,
@@ -1945,7 +2075,13 @@ class CropWaterTask(Task):
 
         water_lvl = self._water_level(ram)
 
-        # Count only waterable remaining tiles for refill check
+        # Empty can: always refill before attempting water (ToolUsed early-outs at 0).
+        if water_lvl < 1 and not self._refill_exhausted:
+            print(f"[CROP] Empty can (level={water_lvl}), need refill before watering")
+            self._start_refill(ram)
+            return None
+
+        # Count only waterable remaining tiles for partial-can refill check
         waterable_remaining = 0
         for i in range(self._water_index, len(self._water_steps)):
             t = self._water_steps[i][0]

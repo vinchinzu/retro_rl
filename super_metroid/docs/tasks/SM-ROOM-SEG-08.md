@@ -22,9 +22,9 @@ Do **not** edit: `routes/continuous.py`, `docs/STATUS.md`, `routes/kpdr/*`,
 ## Context
 - Dual-track room farm (Wave 10+): continuous tip work is **parked**.
 - One agent ↔ one problem — no cross-room edits (collision guard).
-- Queue rank **68**, room `0xCE40` **Gravity Suit Room**, problem `room_ce40_from_c98e_to_93fe`.
-- Board practiceStatus: `unstarted`; state_on_disk=False;
-  policy_on_disk=False; mode=`bootstrap+scaffold`.
+- Queue rank **77**, room `0xCE40` **Gravity Suit Room**, problem `room_ce40_from_c98e_to_93fe`.
+- Board practiceStatus: `state_ready`; state_on_disk=True;
+  policy_on_disk=True; mode=`iterate`.
 - Practice promote ≠ continuous integrity.
 
 ## Read first

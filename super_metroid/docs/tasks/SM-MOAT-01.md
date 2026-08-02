@@ -26,7 +26,7 @@ registration card if pure CLI needs a name later.
 
 ## Read first
 - `docs/routes/ROUTE_KPDR.md` K6
-- `docs/routes/ROUTE_SUPERS_TO_PHANTOON.md` if present
+- `docs/archive/routes/ROUTE_SUPERS_TO_PHANTOON.md` if present (historical only)
 - `routes/kpdr/red_tower.py` (style)
 - `combat/phantoon.py` only for “dev-only” docstring tone
 

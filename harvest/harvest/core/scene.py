@@ -53,6 +53,7 @@ HOUSE_VARIANTS = {
 }
 SHOP_VARIANTS = {
     0x1C: "seed_shop",
+    0x1D: "flower_back",
     0x24: "animal_shop",
 }
 LOCATION_BY_TILEMAP = {
@@ -62,6 +63,7 @@ LOCATION_BY_TILEMAP = {
     0x10: SceneLocation.MOUNTAIN,
     0x1B: SceneLocation.CHURCH,
     0x1C: SceneLocation.SHOP,
+    0x1D: SceneLocation.SHOP,
     0x24: SceneLocation.SHOP,
     0x26: SceneLocation.SHED,
     0x27: SceneLocation.BARN,

@@ -1,6 +1,6 @@
 # Route plan: Any% KPDR (project continuous spine)
 
-Last updated: 2026-07-29.
+Last updated: 2026-08-01.
 
 **Boss order:** Kraid → Phantoon → Draygon → Ridley (then Mother Brain / escape).
 
@@ -229,7 +229,7 @@ With Speed + Hi-Jump, Moat is shinespark or platform jumps (unequip Hi-Jump if p
 | K1 | Charge / GHZ / Noob / Red Tower | **yes** | yes | Direct Big Pink→Red; Charge return optional |
 | K2 | Hi-Jump + natural Kraid entry | **yes** | **yes** | Continuous through Kraid entry |
 | K3 | Kraid fight + Varia return → Business | **yes** | yes | Continuous Business tip 113,723f ×2 |
-| K4 | Frog / Speed / Wave / Ice | **Frog Save** | partial | First open natural hop is Frog Save→Speedway |
+| K4 | Frog / Speed / Wave / Ice | **Frog Save** | partial | ★ Next: Frog Save→Speedway pure |
 | K5 | Alpha PB | — | — | Preferred first PB |
 | K6 | Ship / Phantoon / Gravity | — | — | Warp entry only |
 | K7–K9 | Maridia → Ridley → MB | — | — | |
@@ -237,11 +237,12 @@ With Speed + Hi-Jump, Moat is shinespark or platform jumps (unequip Hi-Jump if p
 Immediate played-spine queue:
 
 1. **Continuous through Frog Save done** (`start_to_frog_save`, 114,923f integrity green twice).
-2. **K4 forward continues:** `START_TO_SPEED_GRAPH`; Frog Save→Speedway, then Bubble → Speed.
+2. **K4 forward continues:** Frog Save→Speedway pure (`SM-K4-SPEEDWAY-PURE`), then Bubble → Speed → Wave → Ice.
 3. **Separate K1 gap:** Charge Beam conventional return (optional; not on
    continuous K1).
-4. Then K4 continuous tip → K5 Alpha PB → K6 ship / Phantoon.
+4. Then K5 Alpha PB → K6 ship / Phantoon → … → M8 credits.
 
+**Status board:** [MILESTONES.md](MILESTONES.md) · **Backlog:** [BACKLOG.csv](BACKLOG.csv)  
 **Tracker (chartable):** [KPDR_TRACKER.csv](KPDR_TRACKER.csv) ·
 [KPDR_TRACKER.md](KPDR_TRACKER.md) · `maps/kpdr_tracker.json`  
 Export: `uv run python super_metroid/scripts/export/kpdr_tracker.py`
@@ -286,8 +287,11 @@ When watching a tutorial that uses **Early Supers mockball**, substitute our **S
 | Doc | Role after this plan |
 |-----|----------------------|
 | [ROUTE_KPDR.md](ROUTE_KPDR.md) (this file) | **Authoritative continuous spine** |
-| [ROUTE_SUPERS_TO_PHANTOON.md](ROUTE_SUPERS_TO_PHANTOON.md) | Historical ship-first / Pink PB work; keep for PB maze notes + GHZ geometry |
-| [START_TO_*.md](START_TO_SPORE_SPAWN.md) | Verified early continuous segments |
+| [MILESTONES.md](MILESTONES.md) / [MILESTONES.csv](MILESTONES.csv) | Top-level status marks for every tip / practice rollup |
+| [BACKLOG.csv](BACKLOG.csv) | ~290 atomic tickets through M8 credits |
+| [KPDR_TRACKER.csv](KPDR_TRACKER.csv) | Per-segment chartable spine (K0–K9 expanded) |
+| [START_TO_*.md](START_TO_SPORE_SPAWN.md) | Verified early continuous segment notes |
+| [`../archive/routes/ROUTE_SUPERS_TO_PHANTOON.md`](../archive/routes/ROUTE_SUPERS_TO_PHANTOON.md) | Historical ship-first / Pink PB (not KPDR) |
 | `maps/full_route_hops.json` | Door topology for Track A warps only |
 
 ---

@@ -69,6 +69,14 @@ are topology diagnostics only — not route evidence.
    Pipeline: [`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md) — Phantoon next
    after Alpha PB / ship access.
 
+**Top-level milestone board** (status marks for every tip / practice rollup):
+[`docs/routes/MILESTONES.md`](docs/routes/MILESTONES.md) ·
+[`docs/routes/MILESTONES.csv`](docs/routes/MILESTONES.csv).
+
+**Full backlog** (~288 tickets to M8 credits):
+[`docs/routes/BACKLOG.csv`](docs/routes/BACKLOG.csv) ·
+[`docs/routes/BACKLOG.md`](docs/routes/BACKLOG.md).
+
 Tracker (chartable CSV/JSON/MD):
 [`docs/routes/KPDR_TRACKER.csv`](docs/routes/KPDR_TRACKER.csv) · export
 `scripts/export/kpdr_tracker.py`.
@@ -76,6 +84,7 @@ Tracker (chartable CSV/JSON/MD):
 Status: [`docs/STATUS.md`](docs/STATUS.md). Plan: [`docs/plan.md`](docs/plan.md).
 KPDR board: [`docs/routes/ROUTE_KPDR.md`](docs/routes/ROUTE_KPDR.md).
 Boss pipeline: [`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md).
+Docs index: [`docs/README.md`](docs/README.md).
 
 ### Cheap executor (OpenCode)
 
