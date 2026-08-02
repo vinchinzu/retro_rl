@@ -99,14 +99,25 @@
       "frames": 20
     },
     {
-      "label": "coarse_exit_approach",
-      "buttons": [
-        "LEFT",
-        "A",
-        "B",
-        "X"
-      ],
-      "frames": 220
+      "label": "grounded_left_transit_with_knockback_recover",
+      "repeat": 16,
+      "steps": [
+        {
+          "label": "run_left_dash",
+          "buttons": [
+            "LEFT",
+            "B"
+          ],
+          "frames": 48
+        },
+        {
+          "label": "knockback_recover_hold_left",
+          "buttons": [
+            "LEFT"
+          ],
+          "frames": 16
+        }
+      ]
     },
     {
       "label": "open_exit_door",
@@ -114,7 +125,7 @@
         "LEFT",
         "X"
       ],
-      "frames": 8
+      "frames": 12
     },
     {
       "label": "door_open_wait",
@@ -125,10 +136,9 @@
       "label": "enter_exit_door",
       "buttons": [
         "LEFT",
-        "A",
         "B"
       ],
-      "frames": 150
+      "frames": 180
     }
   ],
   "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."

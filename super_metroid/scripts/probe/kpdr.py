@@ -76,6 +76,10 @@ from super_metroid.source_states import (  # noqa: E402
     suggest_source_path,
     validate_fingerprint,
 )
+from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
+    play_business_to_cathedral_entrance,
+    play_cathedral_entrance_to_cathedral,
+)
 from super_metroid.routes.kpdr_controller import (  # noqa: E402
     play_baby_to_kihunter_return,
     play_bat_to_below_spazer,
@@ -441,6 +445,8 @@ def main() -> None:
             "kihunter-to-zeela-return",
             "zeela-to-warehouse-return",
             "business-to-frog-save",
+            "business-to-cathedral-entrance",
+            "cathedral-entrance-to-cathedral",
             "frog-save-to-speedway",
             "speedway-to-farm",
         ),
@@ -599,6 +605,8 @@ def main() -> None:
             "kihunter-to-zeela-return": play_kihunter_to_zeela_return,
             "zeela-to-warehouse-return": play_zeela_to_warehouse_return,
             "business-to-frog-save": play_business_to_frog_save,
+            "business-to-cathedral-entrance": play_business_to_cathedral_entrance,
+            "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
             "frog-save-to-speedway": play_frog_save_to_speedway,
             "speedway-to-farm": play_speedway_to_farm,
         }[args.segment]

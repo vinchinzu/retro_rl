@@ -54,6 +54,11 @@ _STAGE1_ATTACK_GAP = 2
 # heal=none still dies mid-alley (~68 dmg) — pizza seek desyncs packs;
 # underfoot pickup only. Historic tuned row 15,453f / 124 / 1 may need
 # the pre-Stage1-Clean policy snapshot.
+# Clean rejects (2026-08-01) — keep left flank + standoff 36 / min_range 8:
+# - min_range 8→20: worse (7310f / 130 dmg vs 8391f / 104)
+# - standoff 36→48: no-op (identical 8391/104)
+# - AlleycatPackSpace LEFT on ≥2 near: worse (5349f / 88, earlier death)
+# Residual: post-pizza 0x5E pile-ons (2×24 dmg) at progress ~21126–21464.
 _ALLEY_Y_TOLERANCE = 6
 _ALLEY_ATTACK_RANGE = 65
 _ALLEY_MIN_RANGE = 8

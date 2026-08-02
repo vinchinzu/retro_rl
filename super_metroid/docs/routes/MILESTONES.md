@@ -4,7 +4,9 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 **Goal:** one continuous power-on → ending/credits run with **only** unlimited energy + ammo ([`ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md)). Target runtime class: **less-than-Bronze** assisted full clear (M8).
 
-**Current tip:** Frog Savestation (`--to frog`, **114,923f** ×2 integrity green). ★ Next: Frog Save → Speedway pure.
+**Current tip (primary / assisted):** Frog Savestation (`--to frog`, **114,923f** ×2 integrity green). ★ Next assisted pure: Cathedral climb (`SM-K4-CATH-01`).
+
+**Parallel Clean track:** no energy + no ammo writes — ★ tip target Bomb Torizo (`--to bombs --clean`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
 
 ## Status legend
 
@@ -22,9 +24,9 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 | | ID | Epic | Milestone | Room | Frames / score | CLI / card |
 |--:|----|------|-----------|------|----------------|------------|
-| ✅ | `M-MORPH` | K0 | Continuous → Morph | `0x9E9F` | prefix | `morph` |
-| ✅ | `M-BOMBS` | K0 | Continuous → Bombs/Torizo | `0x9804` | prefix | `bombs` |
-| ✅ | `M-SPORE` | K0 | Continuous → Spore exit | `0x9DC7` | prefix | `spore` |
+| ✅ | `M-MORPH` | K0 | Continuous → Morph | `0x9E9F` | 27074 | `morph` |
+| ✅ | `M-BOMBS` | K0 | Continuous → Bombs/Torizo | `0x9804` | 47132 | `bombs` |
+| ✅ | `M-SPORE` | K0 | Continuous → Spore exit | `0x9DC7` | 73216 | `spore` |
 | ✅ | `M-SUPERS` | K0 | Continuous → Spore Supers | `0x9B5B` | 73251 | `supers` |
 | ✅ | `M-RED` | K1 | Continuous → Red Tower | `0xA253` | 80445 | `red_tower` |
 | ✅ | `M-BAT` | K2 | Continuous → Bat Room | `0xA3DD` | 81652 | `bat` |
@@ -57,6 +59,22 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 | ⬜ | `M-ESCAPE` | K9 | Continuous → Escape + Landing | `0x91F8` | — | `escape` |
 | ⬜ | `M-CREDITS` | K9 | Continuous → Ending/Credits | `0x91F8` | — | `credits` |
 
+## Clean track (parallel — Bronze / Clean)
+
+Intervention: **no** energy refill, **no** ammo refill. Same Bronze observation
+(read-only RAM). Does **not** move the program M5/M8 assisted gate.
+
+| | ID | Milestone | Room | Frames / score | CLI / card |
+|--:|----|-----------|------|----------------|------------|
+| ✅ | `C-INFRA` | Clean CLI + artifact isolation + integrity | — | unit tests | `SM-CLEAN-*` infra done |
+| ✅ | `C-MORPH` | Continuous → Morph (**Clean**) | `0x9E9F` | **27074** | `start_to_morph_clean.json` |
+| ▶ | `C-BOMBS` | Continuous → Bombs/Torizo (**Clean**) ★ | `0x9804` | missiles @ 27928/29690 | `SM-CLEAN-BOMBS` — BT = existing model |
+| ⏸ | `C-SPORE` | Continuous → Spore (**Clean**) | `0x9DC7` | — | parked until C-BOMBS |
+| ⏸ | `C-SUPERS` | Continuous → Supers (**Clean**) | `0x9B5B` | — | parked |
+
+Process: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Infra landed — `--clean` uses
+`*_clean` stems and zero resource-write integrity.
+
 ## Practice + structure rollups
 
 | | ID | Milestone | Score | Notes |
@@ -68,14 +86,16 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 | 🟨 | `A-TIPSPEC` | Data-driven continuous tips complete | — | hop extract open |
 | 🟨 | `A-GRAPH` | Graph API typed path summary | — |  |
 | 🟨 | `A-PARSE` | Session-scoped parse counters | — |  |
+| ⬜ | `C-TRACK` | Clean early tip ladder | 0/3 open | infra → morph → BT |
 
 ## Progress (product milestones only)
 
-- Continuous: **13**
-- Next pure ready: **1**
-- Open: **20**
+- Continuous (assisted): **13**
+- Next pure ready (assisted): **1** (Cathedral)
+- Open (assisted product): **20**
+- Clean track: **infra ✅ + morph ✅**; ★ bombs/Torizo ready (missiles clean green); spore+ parked
 - KPDR tracker segments: **92** (`continuous`=41, `open`=50)
-- Backlog tickets: **288** (open=275, ready=1, done=5)
+- Backlog tickets: **~304** (includes CLEAN epic)
 
 ## How to use
 

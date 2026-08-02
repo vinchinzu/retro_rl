@@ -6,8 +6,8 @@ Super Metroid scripted full-clear project. Shared process:
 ## Evaluation contract
 
 - Target: one continuous power-on-to-ending run.
-- Allowed assists: unlimited health (in-game energy) and unlimited ammo,
-  exactly as defined in
+- Allowed assists (primary path): unlimited health (in-game energy) and
+  unlimited ammo, exactly as defined in
   [`docs/ASSIST_CONTRACT.md`](docs/ASSIST_CONTRACT.md).
 - Resource assists remove attrition only. They must not grant uncollected ammo
   types, capacity, equipment, items, movement abilities, door state, map
@@ -15,6 +15,10 @@ Super Metroid scripted full-clear project. Shared process:
 - Record every assist write in the full-run manifest.
 - Completion requires the natural endgame escape and ending/credits evidence;
   defeating the final boss alone is not a clear.
+- **Parallel Clean track:** no energy + no ammo writes (Bronze/Clean). Target
+  tip Bomb Torizo. Contract: [`docs/CLEAN_TRACK.md`](docs/CLEAN_TRACK.md).
+  Defaults stay assisted; clean artifacts use `*_clean` stems only — never
+  overwrite assisted `recordings/start_to_*.json`.
 
 ## Layout
 
@@ -69,6 +73,11 @@ are topology diagnostics only — not route evidence.
 8. Boss fights only after natural entry exists on the continuous chain.
    Pipeline: [`docs/BOSS_PIPELINE.md`](docs/BOSS_PIPELINE.md) — Phantoon next
    after Alpha PB / ship access.
+9. **Parallel Clean track:** privilege reduction (no health/ammo assists) on
+   the early continuous prefix → **Bomb Torizo**. Infra first
+   (`SM-CLEAN-ARTIFACTS` / `CLI` / `INTEGRITY`), then morph, then bombs tip.
+   Board: [`docs/CLEAN_TRACK.md`](docs/CLEAN_TRACK.md) · milestones Clean
+   section in [`docs/routes/MILESTONES.md`](docs/routes/MILESTONES.md).
 
 **Top-level milestone board** (status marks for every tip / practice rollup):
 [`docs/routes/MILESTONES.md`](docs/routes/MILESTONES.md) ·
@@ -160,6 +169,13 @@ append `RouteHop`s and a thin `run_post_supers_tip(...)` wrapper in
 # Verified continuous tip: power-on → Frog Savestation (KPDR K4.0)
 uv run python super_metroid/scripts/record/continuous.py --no-video
 uv run python super_metroid/scripts/record/continuous.py --to frog
+# Showcase video: shared VideoRecorder (audio + button footer + quality).
+# Play always power-on; --video-start only trims the MP4 (default: zebes).
+uv run python super_metroid/scripts/record/continuous.py --to frog \
+  --video-start zebes --hq
+uv run python super_metroid/scripts/record/continuous.py --to frog \
+  --video-start after_credits --video-start-frame 900 \
+  --fps 60 --scale 2 --crf 17 --preset medium
 uv run python super_metroid/scripts/record/continuous.py --to varia
 # Save a source only if that tip run itself passes all integrity checks.
 uv run python super_metroid/scripts/record/continuous.py --to varia --no-video \
@@ -181,6 +197,9 @@ uv run python super_metroid/scripts/record/continuous.py --to bombs --no-video
 uv run python super_metroid/scripts/record/continuous.py --to morph --no-video
 uv run python super_metroid/scripts/record/continuous.py --list
 ```
+
+Video stack: ``retro_harness.video.VideoRecorder`` (shared). Metroid start
+gates / cutoffs: ``super_metroid.video.continuous_video_config``.
 
 ### Path board + post-Super controller
 

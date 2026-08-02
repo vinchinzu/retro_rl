@@ -199,6 +199,10 @@ discipline stays fixed; composition beyond Varia is planner-gated.
 7. **Structure plan (planner-owned code work):** selective-RAM enforcement,
    tip scaffold script, pure RED diagnostics, graph hop ranking — see
    [`../plan.md`](../plan.md) and [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+8. **Parallel Clean track:** no energy/ammo continuous tips (Bomb Torizo first).
+   Infra before tip (`SM-CLEAN-ARTIFACTS` / `CLI` / `INTEGRITY`); artifacts use
+   `*_clean` stems only. Contract: [`../CLEAN_TRACK.md`](../CLEAN_TRACK.md).
+   Shared geometry changes re-verify **assisted** prefix + clean tip.
 
 ## Process tooling improvements (do not relax gates)
 

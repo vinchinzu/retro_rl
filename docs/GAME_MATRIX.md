@@ -33,7 +33,7 @@ Manifest count: **36**.
 | `tmnt_i` / Teenage Mutant Ninja Turtles | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Area 1 building/segment clear |
 | `tmnt_ii` / Teenage Mutant Ninja Turtles II: The Arcade Game | linear_combat | P1 | segment_clear | M3 | bronze | clean | no | extend past first wave (score≥5); natural-entry M4 |
 | `tmnt_iii` / Teenage Mutant Ninja Turtles III: The Manhattan Project | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Stage 1 segment clear |
-| `tmnt_iv` / Teenage Mutant Ninja Turtles IV: Turtles in Time | linear_combat | P1 | verified | M8 | bronze | resource_assisted+protection_assisted | yes | Whole-run Bronze/Clean dry-run (Stage1 heal=none segment done; cut later-stage heals + form-2 iframe) |
+| `tmnt_iv` / Teenage Mutant Ninja Turtles IV: Turtles in Time | linear_combat | P1 | verified | M8 | bronze | resource_assisted+protection_assisted | yes | Whole-run Bronze/Clean dry-run (ticket T4-CLEAN-FULL; infra + S2–S9 suites first) |
 | `battle_clash` / Battle Clash | cursor_and_peripheral | P2 | blocked | M1 | bronze | clean | no | infrastructure — Super Scope / light-gun injection unsupported |
 | `f_zero` / F-Zero | continuous_vehicle_control | P2 | instrumented | M2 | bronze | clean | no | one Mute City lap without crash |
 | `pilotwings` / Pilotwings | continuous_vehicle_control | P2 | instrumented | M2 | bronze | clean | no | complete light-plane Lesson 1 objective |
