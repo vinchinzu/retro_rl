@@ -101,6 +101,16 @@ from retro_harness.recorder import (
     LabeledRecorder,
     list_labeled_states,
 )
+from retro_harness.video import (
+    FrameVideoWriter,
+    VideoCaptureConfig,
+    VideoRecorder,
+    concat_videos,
+    format_snes_buttons,
+    probe_video_evidence,
+    render_button_footer,
+    should_capture_frame,
+)
 from retro_harness.ram_state import (
     RAMSchema,
     RAMWatcher,
@@ -163,6 +173,10 @@ __all__ = [
     "find_latest_recording", "find_latest_recording_from_manifest",
     # Labeled recorder
     "SavePointSet", "RecordingSession", "LabeledRecorder", "list_labeled_states",
+    # Video capture (shared continuous / showcase MP4)
+    "FrameVideoWriter", "VideoCaptureConfig", "VideoRecorder", "concat_videos",
+    "format_snes_buttons", "probe_video_evidence", "render_button_footer",
+    "should_capture_frame",
     # RAM state
     "RAMSchema", "RAMWatcher", "read_u8", "read_u16", "read_u16_be", "read_s8", "read_s16",
     # Splits

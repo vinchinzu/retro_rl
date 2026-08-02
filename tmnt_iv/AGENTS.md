@@ -12,7 +12,11 @@ SNES TMNT IV: Turtles in Time linear-combat reference clear (M8). Shared helpers
   `segment_runner` — elevate only when clearly shared.
 - Headless probes: `SDL_VIDEODRIVER=dummy` (and audio dummy as needed).
 - Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ram_map.md`,
-  **`docs/CLEAN_PLAYBOOK.md`** (do not relearn Clean lessons).
+  **`docs/CLEAN_PLAYBOOK.md`** (play lessons), **`docs/CLEAN_TRACK.md`**
+  (Clean dual-track process), **`docs/tasks/QUEUE.md`** (live tickets).
+- Task process (from Super Metroid learnings): multi-entry first, one-knob,
+  residual → next card, Clean never clobbers assisted baselines. See
+  `docs/tasks/PROCESS.md` + `docs/TASK_TEMPLATE.md`.
 - Do **not** mash START once Stage 1 HUD is live (pauses the game).
 - Avoid special (**A**) — it drains HP.
 
@@ -20,6 +24,20 @@ SNES TMNT IV: Turtles in Time linear-combat reference clear (M8). Shared helpers
 
 **Continuous low-assist hard clear done** (M8, Bronze / Resource+Protection).
 Next publication target: **Bronze / Clean** (unassisted — maturity stays M8).
+
+**Ticket boards (start here):**
+
+| Board | Path |
+|-------|------|
+| Live queue | [`docs/tasks/QUEUE.md`](docs/tasks/QUEUE.md) |
+| Critical path | [`docs/tasks/TRIAGE.md`](docs/tasks/TRIAGE.md) |
+| Full backlog | [`docs/tasks/BACKLOG.md`](docs/tasks/BACKLOG.md) |
+| ★ Clean full run | [`docs/tasks/T4-CLEAN-FULL.md`](docs/tasks/T4-CLEAN-FULL.md) |
+| Clean track | [`docs/CLEAN_TRACK.md`](docs/CLEAN_TRACK.md) |
+
+**Wave-1 ready:** Clean infra (`T4-CLEAN-CONTRACT` / `ARTIFACTS` / `CLI` /
+`INTEGRITY`) → stage suites S2–S3 → … → S9 form-2 → ★ `T4-CLEAN-FULL`.
+Parallel assisted polish: `T4-ASSIST-TECHNO` (largest damage bucket).
 
 **Stage 1 pizza-only Clean is done** (path-RNG suite 2/2):
 
@@ -34,12 +52,11 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite
 ```
 
-**Next work:** **Sewer Clean** (Stage 3 / byte 2) via `LiveHardStage3`
-(lives=2 — not last-life `Stage3`/`Boss3` fade). Probe:
-`scripts/probe_stage3_clean.py --suite`. Also Alleycat early/mid still
-open. Playbook: `docs/CLEAN_PLAYBOOK.md`. Do **not** re-open Stage 1
-hazard jump-dodge, Alleycat mid-wave pizza chase, global pizza seek, or
-sewer dumpster thrash / spike LEFT thrash.
+**Next stage Clean work:** Alleycat (`T4-CLEAN-S2`) + Sewer (`T4-CLEAN-S3`,
+`LiveHardStage3` — not last-life fade). Playbook:
+`docs/CLEAN_PLAYBOOK.md`. Do **not** re-open Stage 1 hazard jump-dodge,
+Alleycat mid-wave pizza chase, global pizza seek, or sewer dumpster thrash /
+spike LEFT thrash.
 
 Whole-run dry-run still assisted: **00:57:19.635 / 4,667 dmg / 65 heals /
 0 lives lost**. Grind on **RaphFullHard*** (char 8), not Leo FullHard*.
@@ -84,7 +101,10 @@ Full table + stage rollout order: **`docs/CLEAN_PLAYBOOK.md`**.
 - `scripts/run_stage8_segment.py` — Neon Night Riders Mode-7 / Krang
 - `scripts/run_stage9_segment.py` — Starbase waves / Super Shredder
 - `scripts/record_full_hard_run.py` — deterministic power-on → hard credits
-  capture with native audio, live footer, final metrics, and JSON manifest
+  capture with native audio, live footer, final metrics, and JSON manifest.
+  Defaults stay assisted. Clean: `--clean --dry-run` →
+  `recordings/tmnt_iv_full_hard_clean_dry_run.json` (never overwrites
+  assisted baselines).
 - `scripts/capture_raph_states.py` — dump continuous-faithful RaphFullHard*
   states (char 8) for grinding; prefer these over Leo FullHard*
 - `scripts/run_local_grind_agent.py` — **preferred**: multi-turn Ollama

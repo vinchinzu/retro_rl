@@ -417,15 +417,26 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
 
 ## Next
 
-1. **Clean rollout (playbook order):** Alleycat → Sewer → Technodrome → …
-   form-2 iframe removal → full continuous pizza-only. Follow
+Ticket boards (imported from Super Metroid process learnings):
+
+| Board | Path |
+|-------|------|
+| Live queue | [`tasks/QUEUE.md`](tasks/QUEUE.md) |
+| Critical path | [`tasks/TRIAGE.md`](tasks/TRIAGE.md) |
+| Backlog index | [`tasks/BACKLOG.md`](tasks/BACKLOG.md) |
+| Clean track contract | [`CLEAN_TRACK.md`](CLEAN_TRACK.md) |
+| ★ Clean full continuous | [`tasks/T4-CLEAN-FULL.md`](tasks/T4-CLEAN-FULL.md) |
+
+1. **Wave-1 Clean infra:** `T4-CLEAN-CONTRACT` / `ARTIFACTS` / `CLI` /
+   `INTEGRITY` (artifact isolation + `--clean` + zero-assist asserts).
+2. **Clean stage rollout:** `T4-CLEAN-S2` (Alleycat) → `S3` (Sewer) → …
+   → `S9` (form-2 without iframe) → ★ `T4-CLEAN-FULL`. Follow
    [`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md); do not re-open Stage 1
    hazard jump-dodge or global pizza seek.
-2. Stage 1 Clean is **closed** (suite green). Whole-run Big Apple emergency
-   bucket still exists until continuous uses the Clean policy without
-   assists for stage 0 only (optional intermediate) then all stages.
-3. Publish Bronze / Clean when continuous hard clear has zero HP/iframe
-   assists and 0 life losses.
+3. **Parallel assisted improve:** `T4-ASSIST-TECHNO` (1,022 dmg) and other
+   `T4-ASSIST-*` cards → `T4-ASSIST-DRYRUN` before BASELINE promote.
+4. Publish Bronze / Clean when continuous hard clear has zero HP/iframe
+   assists and 0 life losses (STATUS **secondary** until program decision).
 
 Whole-run baseline (2026-07-25): **00:57:19.635** / **4,667 dmg** /
 **65 heals** / **0 lives lost** — see

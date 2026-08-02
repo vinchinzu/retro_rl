@@ -50,6 +50,24 @@ def test_business_to_frog_is_registered_for_pure_segment_use() -> None:
     assert get_segment("business_to_frog_save") is k4_norfair.play_business_to_frog_save
 
 
+def test_business_to_cathedral_entrance_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("business_to_cathedral_entrance")
+        is k4_norfair.play_business_to_cathedral_entrance
+    )
+
+
+def test_cathedral_entrance_to_cathedral_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("cathedral_entrance_to_cathedral")
+        is k4_norfair.play_cathedral_entrance_to_cathedral
+    )
+
+
 def test_frog_save_to_speedway_is_registered_for_pure_segment_use() -> None:
     from super_metroid.routes.kpdr import get_segment
 

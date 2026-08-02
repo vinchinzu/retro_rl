@@ -79,3 +79,20 @@ A successful assisted clear must show:
 - no progression writes
 - natural room and boss/event advancement
 - natural endgame escape and ending/credits evidence
+
+## Clean mode (parallel track)
+
+**Clean** means both unlimited energy and unlimited ammo are **off**: zero
+resource restores and zero resource writes. Observation may still be Bronze
+(read-only RAM). Clean is a **parallel** privilege-reduction workstream; it
+does not replace this assisted contract or the primary KPDR continuous tip.
+
+Rules, artifact isolation (`*_clean` stems), tickets, and the Bomb Torizo
+clean tip ladder: [`CLEAN_TRACK.md`](CLEAN_TRACK.md).
+
+Hard constraints:
+
+- Default continuous CLI remains resource-assisted.
+- Clean runs must not overwrite assisted `recordings/start_to_*.json` / videos.
+- STATUS primary program gate stays assisted until an explicit program decision
+  changes it; Clean results are documented as a secondary track.

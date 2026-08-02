@@ -2,7 +2,10 @@
 
 **Goal:** continuous power-on → ending/credits with unlimited energy + ammo
 only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Current tip: **Frog
-Savestation** (K4.0). Next: Frog Save → Speedway pure.
+Savestation** (K4.0). Next assisted pure: Cathedral climb.
+
+**Parallel Clean track:** no energy + no ammo → Bomb Torizo tip
+([CLEAN_TRACK.md](CLEAN_TRACK.md)).
 
 ## Top-level status board
 
@@ -49,7 +52,8 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | [routes/ROOM_WORK_QUEUE.md](routes/ROOM_WORK_QUEUE.md) | Dual-track practice board (262 problems) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, Segment contracts, tip recipe, debt |
 | [BOSS_PIPELINE.md](BOSS_PIPELINE.md) | Boss catalog → strategy → continuous order |
-| [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md) | Allowed resource assists |
+| [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md) | Allowed resource assists (primary path) |
+| **[CLEAN_TRACK.md](CLEAN_TRACK.md)** | Parallel Bronze/Clean tips (no energy/ammo); Bomb Torizo target |
 | [SOURCE_STATES.md](SOURCE_STATES.md) | Continuous-like pure entry states |
 | [TASK_TEMPLATE.md](TASK_TEMPLATE.md) | OpenCode card format |
 | [tasks/QUEUE.md](tasks/QUEUE.md) | Live wave board + ★ tip |
@@ -74,7 +78,8 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | K9 | 41 | G4 → Tourian → MB → Escape → Credits |
 | PRACTICE | 34 | Dual-track room waves |
 | ARCH / DOCS / BOSS-INFRA | ~25 | Structure + process |
-| **Total** | **~288** | Target 200–300 working depth |
+| CLEAN | 11 | Parallel no-assist early tips → Torizo |
+| **Total** | **~304** | Target 200–310 working depth |
 
 ## Commands (quick)
 

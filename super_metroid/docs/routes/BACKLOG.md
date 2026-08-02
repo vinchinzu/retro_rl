@@ -1,17 +1,18 @@
 # Backlog — Super Metroid full assisted clear
 
-Machine source: [`BACKLOG.csv`](BACKLOG.csv) (**293** tickets).
+Machine source: [`BACKLOG.csv`](BACKLOG.csv) (**~304** tickets; includes CLEAN).
 
-Decomposed from KPDR spine + boss pipeline + dual-track practice + structure debt.
-Target depth ~200–300 so executors always have atomic pure/graph/compose cards.
+Decomposed from KPDR spine + boss pipeline + dual-track practice + structure
+debt + **parallel Clean** (no energy/ammo) early tips. Target depth ~200–310
+so executors always have atomic pure/graph/compose cards.
 
 ## Summary
 
-| Status | Count |
+| Status | Count (approx) |
 |--------|------:|
-| `open` | 270 |
-| `ready` | 11 |
-| `parked` | 7 |
+| `open` | 275 |
+| `ready` | 15 |
+| `parked` | 9 |
 | `done` | 5 |
 
 | Epic | Count |
@@ -23,6 +24,7 @@ Target depth ~200–300 so executors always have atomic pure/graph/compose cards
 | `K6` | 31 |
 | `K8` | 25 |
 | `COMPOSE` | 21 |
+| `CLEAN` | 11 |
 | `K5` | 10 |
 | `ARCH` | 10 |
 | `DOCS` | 7 |
@@ -57,6 +59,20 @@ triage: [`docs/tasks/TRIAGE.md`](../tasks/TRIAGE.md).
 | `SM-BOSS-NATURAL-ENTRY-CLI` | Standardize capture-natural CLI | `combat/` + thin probe CLI | [`SM-BOSS-NATURAL-ENTRY-CLI`](../tasks/SM-BOSS-NATURAL-ENTRY-CLI.md) |
 | `SM-ARCH-HOPS-MODULE` | Extract hop tables → `routes/kpdr/hops.py` | `hops.py` + continuous import | [`SM-ARCH-HOPS-MODULE`](../tasks/SM-ARCH-HOPS-MODULE.md) |
 | `SM-ARCH-RED-DIAG` | Pure RED clip + PLM/door snapshot | probe diagnostics | [`SM-ARCH-RED-DIAG`](../tasks/SM-ARCH-RED-DIAG.md) |
+| `SM-CLEAN-BOMBS` | ★ Continuous bombs/Torizo Clean | continuous CLI | [`SM-CLEAN-BOMBS`](../tasks/SM-CLEAN-BOMBS.md) |
+
+## Parallel Clean (P2 — does not block assisted spine)
+
+Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). ★ product tip: Bomb Torizo
+exit with no energy/ammo assists. **Infra done** (artifacts / CLI / integrity).
+
+| Ticket | Title | Status |
+|--------|-------|--------|
+| `SM-CLEAN-CONTRACT` … `INTEGRITY` | Docs + `_clean` + `--clean` + integrity | **done** |
+| `SM-CLEAN-MORPH` | Continuous morph Clean | **done** (27,074f green) |
+| `SM-CLEAN-BOMBS` | ★ Continuous bombs/Torizo Clean | **ready** (missiles detour green; BT existing model) |
+| `SM-CLEAN-BT-ECONOMY` | One-knob if clean BT RED | gated |
+| `SM-CLEAN-STAB` / `STATUS` | Dual re-verify + STATUS secondary | after bombs GREEN |
 
 ## P0 open (tip-critical)
 
@@ -89,7 +105,8 @@ DONE (K0–K4.0 continuous)
   → K8 Lower Norfair → Ridley
   → K9 G4 → Tourian → MB → Escape → Credits  (M8)
 Parallel: PRACTICE dual-track · ARCH structure · BOSS-INFRA
-Parked: OPTIONAL (Pink PB, Charge return, Croc, GT, …)
+Parallel: CLEAN (no energy/ammo) → Bomb Torizo tip
+Parked: OPTIONAL (Pink PB, Charge return, Croc, GT, …) · CLEAN spore+
 ```
 
 ## Ticket kinds (recipe)

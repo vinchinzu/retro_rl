@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_affb_from_ae74_to_b026",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Spiky Acid Snakes Room (0xAFFB); entry just inside door, exit via LEFT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -96,26 +96,39 @@
     {
       "label": "entry_settle",
       "buttons": [],
-      "frames": 20
+      "frames": 5
     },
     {
-      "label": "coarse_exit_approach",
-      "buttons": [
-        "LEFT",
-        "A",
-        "B"
-      ],
-      "frames": 320
+      "label": "traverse_jump_run_cycles",
+      "repeat": 13,
+      "steps": [
+        {
+          "label": "jump_pulse",
+          "buttons": [
+            "LEFT",
+            "A",
+            "B",
+            "X"
+          ],
+          "frames": 35
+        },
+        {
+          "label": "run_pulse",
+          "buttons": [
+            "LEFT",
+            "B"
+          ],
+          "frames": 8
+        }
+      ]
     },
     {
       "label": "open_exit_door",
       "buttons": [
         "LEFT",
-        "A",
-        "B",
         "X"
       ],
-      "frames": 30
+      "frames": 10
     },
     {
       "label": "door_open_wait",
@@ -127,11 +140,17 @@
       "buttons": [
         "LEFT",
         "A",
-        "B",
-        "X"
+        "B"
       ],
-      "frames": 150
+      "frames": 180
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T03:57:38.701745+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_affb_from_ae74_to_b026.json",
+    "reportSha256": "08cf7b44d8b3eeb6f4ff173b6f1220a4cb5ec5e6160432992bcc3db067ec7936",
+    "stateSha256": "c9dbbda7526cb426323794c34eccd9b0e005a583680bd78bce7a7aadb3b5837b",
+    "policySha256Before": "2788fc09d35ce729691e1145434b68ab404029a29df81f3558cf9e3472401d69"
+  }
 }

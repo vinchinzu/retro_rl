@@ -190,6 +190,11 @@ live in `continuous.py` (extract later if file size is the pain).
 - [x] Keep `ContinuousSession` / `HopExecutor` contracts stable.
 - [x] Fix docstring drift in continuous/catalog when default tip moves
   (default tip is Frog Save / K4.0, not Varia).
+- [x] Clean-track control plane: `resolve_clean_resources`, morph via
+  `finish_report`, no `inspect.signature` in `run_to` (see
+  [tasks/SM-ARCH-CLEAN-TRACK-residual.md](tasks/SM-ARCH-CLEAN-TRACK-residual.md)).
+- [ ] Optional: one harness for early morph→supers runners (delete remaining
+  clean/assist/finish copy).
 
 ### 3. Source-state & pure-probe diagnostics
 
@@ -328,7 +333,9 @@ entry is non-negotiable for continuous evidence.
 
 - Once SM graphs + inventory/event handling are solid (and ALTTP is advancing),
   promote `adventure_common`.
-- Reduce assists over time toward Clean where possible.
+- **Clean track (opened 2026-08-01):** parallel Bronze/Clean continuous tips —
+  no energy, no ammo — starting at Morph → **Bomb Torizo**. Contract + tickets:
+  [CLEAN_TRACK.md](CLEAN_TRACK.md). Does not replace assisted M8 target.
 - Observation class migration (Bronze → Silver) as a separate workstream after
   continuous reliability.
 - Broader retro_rl horizons (Final Fight M8, platformers, NES parity) must not

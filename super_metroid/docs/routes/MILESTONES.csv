@@ -1,7 +1,7 @@
 milestone_id,order,epic,name,room_id_hex,status,frames_or_score,cli_tip,evidence_or_card,notes,updated
-M-MORPH,10,K0,Continuous → Morph,0x9E9F,continuous,prefix,morph,start_to_morph,prefix tip,2026-08-01
-M-BOMBS,20,K0,Continuous → Bombs/Torizo,0x9804,continuous,prefix,bombs,start_to_bomb_torizo,hash-pinned BT ok,2026-08-01
-M-SPORE,30,K0,Continuous → Spore exit,0x9DC7,continuous,prefix,spore,start_to_spore_spawn,,2026-08-01
+M-MORPH,10,K0,Continuous → Morph,0x9E9F,continuous,27074,morph,start_to_morph,power-on continuous,2026-08-01
+M-BOMBS,20,K0,Continuous → Bombs/Torizo,0x9804,continuous,47132,bombs,start_to_bomb_torizo,hash-pinned BT ok,2026-08-01
+M-SPORE,30,K0,Continuous → Spore exit,0x9DC7,continuous,73216,spore,start_to_spore_spawn,fight rewrite 2026-07-29,2026-08-01
 M-SUPERS,40,K0,Continuous → Spore Supers,0x9B5B,continuous,73251,supers,start_to_supers,capacity 0→5,2026-08-01
 M-RED,50,K1,Continuous → Red Tower,0xA253,continuous,80445,red_tower,start_to_red_tower,K1 tip,2026-08-01
 M-BAT,60,K2,Continuous → Bat Room,0xA3DD,continuous,81652,bat,start_to_bat,,2026-08-01
@@ -37,6 +37,11 @@ P-EASY,400,PRACTICE,Room practice easy+standard ready,,partial,62/108,,ROOM_WORK
 P-TOUGH,410,PRACTICE,Room practice tough queue,,open,0/117,,ROOM_WORK_QUEUE,after easy/standard,2026-08-01
 P-LATE,420,PRACTICE,Room practice late_special+boss,,open,0/38,,ROOM_WORK_QUEUE,,2026-08-01
 P-PATH,430,PRACTICE,Completion-path rooms continuous,,partial,39/107,,PATH_ROOM_BOARD,play clearance,2026-08-01
+C-INFRA,450,CLEAN,Clean CLI + artifacts + integrity,,continuous,,,SM-CLEAN-ARTIFACTS;SM-CLEAN-CLI;SM-CLEAN-INTEGRITY,infra landed 2026-08-01; unit tests green,2026-08-01
+C-MORPH,460,CLEAN,Continuous → Morph (Clean),0x9E9F,continuous,27074,morph,SM-CLEAN-MORPH,start_to_morph_clean green 2026-08-02; 0 resource writes,2026-08-02
+C-BOMBS,470,CLEAN,Continuous → Bombs/Torizo (Clean) ★,0x9804,open,,bombs,SM-CLEAN-BOMBS,★ tip; missiles detour green clean; BT existing model,2026-08-02
+C-SPORE,480,CLEAN,Continuous → Spore (Clean),0x9DC7,parked,,spore,SM-CLEAN-SPORE,after C-BOMBS green,2026-08-01
+C-SUPERS,490,CLEAN,Continuous → Supers (Clean),0x9B5B,parked,,supers,SM-CLEAN-SUPERS,parked privilege ladder,2026-08-01
 A-TIPSPEC,500,ARCH,Data-driven continuous tips complete,,partial,,,SM-ARCH-TIP-SPEC,hop extract open,2026-08-01
 A-GRAPH,510,ARCH,Graph API typed path summary,,partial,,,SM-ARCH-GRAPH-API,,2026-08-01
 A-PARSE,520,ARCH,Session-scoped parse counters,,partial,,,SM-ARCH-PARSE-SCOPE,,2026-08-01

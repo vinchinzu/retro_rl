@@ -15,7 +15,12 @@ uv run python super_metroid/scripts/verify/start_to_bombs.py
 Use `--no-video` on the recorder for a dry machine-report run. Unlimited ammo
 is enabled by default and may be disabled with `--no-unlimited-ammo`.
 
-The accepted run starts at emulator power-on (`retro.State.NONE`) and never
+**Clean track (parallel):** no energy + no ammo. Prefer `--clean` once
+`SM-CLEAN-CLI` lands; until then pass `--no-unlimited-ammo` **and** an
+explicit `--report` path under `*_clean` so this assisted baseline is never
+overwritten. Process: [`../CLEAN_TRACK.md`](../CLEAN_TRACK.md).
+
+The accepted **assisted** run starts at emulator power-on (`retro.State.NONE`) and never
 loads a save state. The title, intro, Ceres, and Morph prefix is the previous
 accepted policy. Four hash-pinned continuation policies collect both early
 Missile expansions, return through Morph Ball Room/elevator, climb to Parlor,

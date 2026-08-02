@@ -3,7 +3,11 @@
 Ladder #3 (tier 1). See
 `snes_oneshot/docs/GAME_SELECTION_NOTES.md` for program context.
 
-**Clean lessons (do not relearn):** [`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md).
+**Clean lessons (do not relearn):** [`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md).  
+**Clean dual-track process:** [`CLEAN_TRACK.md`](CLEAN_TRACK.md).  
+**Tickets:** [`tasks/QUEUE.md`](tasks/QUEUE.md) ·
+[`tasks/TRIAGE.md`](tasks/TRIAGE.md) · [`tasks/BACKLOG.md`](tasks/BACKLOG.md).  
+★ Full Clean continuous: [`tasks/T4-CLEAN-FULL.md`](tasks/T4-CLEAN-FULL.md).
 
 ## Control style
 
@@ -41,20 +45,23 @@ complete; remaining work is **Clean** (zero assists).
 Emergency HP (≤16→80) and form-2 iframe hold are the only production
 assists. Clean means both at **0**, pizza + play only.
 
-**Stage 1 Clean is finished.** Do not re-tune Stage 1 hazard jump-dodge
-or reopen global pizza seek. Roll forward:
+Ticketed ladder (infra first, then stages, then ★ full run):
 
-| Pri | Stage | Action | Exit criteria |
-|-----|-------|--------|---------------|
-| 1 | Alleycat (1) | Early/mid wave survival after 1 pizza; Metalhead already Clean; `probe_stage2_clean --suite` | Multi-entry 0 e-heals, 0 lives lost |
-| 2 | Sewer (2) | LiveHard entry; residual 0x1C spikes; Rat King finish; `probe_stage3_clean --suite` | Multi-entry 0 e-heals, 0 lives lost |
-| 3 | Technodrome (3) | Duo flank + tank; damage bucket #1 continuous | Probe + continuous entry |
-| 4 | Prehistoric (4) | Slash spin **52** production; no blind spin-40 port | Probe + continuous entry |
-| 5 | Skull & Crossbones (5) | Duo; **never** global pizza seek | Probe + continuous entry |
-| 6 | Wounded Knee (6) | Raph cadence; stack jump-slash | Probe + continuous entry |
-| 7 | Neon (7) | Near-band Mode-7; Krang | Probe + continuous entry |
-| 8 | Starbase / form-2 (8–9) | Hover jump-slash; form-2 dodge **without** iframe write | form-2 iframe frames → 0 |
-| 9 | Full continuous | One power-on hard dry-run, heal=none, iframe=0 | Bronze / Clean publish |
+| Pri | Ticket | Action | Exit criteria |
+|-----|--------|--------|---------------|
+| 0 | `T4-CLEAN-CONTRACT`…`INTEGRITY` | Dual-path docs + `*_clean` paths + `--clean` CLI + zero-assist asserts | Infra green; assisted defaults intact |
+| 1 | `T4-CLEAN-S2` | Alleycat early/mid; Metalhead already Clean | Multi-entry 0 e-heals, 0 lives lost |
+| 2 | `T4-CLEAN-S3` | LiveHard Sewer; residual 0x1C spikes; Rat King | Multi-entry 0 e-heals, 0 lives lost |
+| 3 | `T4-CLEAN-S4` | Technodrome duo + tank | Suite green |
+| 4 | `T4-CLEAN-S5` | Slash spin **52**; no blind spin-40 | Suite green |
+| 5 | `T4-CLEAN-S6` | Skull; **never** global pizza seek | Suite green |
+| 6 | `T4-CLEAN-S7` | Wounded Knee Raph cadence | Suite green |
+| 7 | `T4-CLEAN-S8` | Neon near-band Mode-7 | Suite green |
+| 8 | `T4-CLEAN-S9` | Form-2 dodge **without** iframe write | iframe frames → 0 |
+| 9 | **`T4-CLEAN-FULL`** ★ | Power-on hard dry-run, both assists off | Bronze / Clean publish |
+
+Parallel assisted improve (does not block Clean): `T4-ASSIST-TECHNO` /
+`PREHIST` / `STARBASE` / `WK` / `HEALS` / `IFRAME` → `T4-ASSIST-DRYRUN`.
 
 ### Non-negotiable process (every stage)
 

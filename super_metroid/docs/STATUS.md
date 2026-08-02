@@ -11,13 +11,15 @@
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
-| Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) (~288 tickets → M8) |
+| Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) (~304 tickets → M8 + CLEAN) |
+| Parallel track | **Clean** (no energy/ammo) → Bomb Torizo — [CLEAN_TRACK.md](CLEAN_TRACK.md) |
 
 | Field | Value |
 |-------|-------|
 | Status | **Continuous power-on → Frog Savestation verified** (KPDR K4.0) |
 | Target | Continuous assisted power-on → ending/credits |
 | Current assists | Current energy on Zebes + naturally unlocked current ammo |
+| Clean track | Morph **green** (27,074f); ★ next bombs/Torizo Clean — [CLEAN_TRACK.md](CLEAN_TRACK.md); does **not** change this program gate |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Acceptance result | Natural Varia return spine + Warehouse reverse stack + Business elevator descent → Frog Save |
 | Video | No-video dual verification (first video still open) |
@@ -509,8 +511,14 @@ the old direct teleport). Remaining fight/escape blockers:
 | **M8** | Verified capture + ending/credits evidence | Open |
 
 Observation-class migration (Bronze → Silver) is a **separate** workstream after
-continuous reliability. Assist reduction toward Clean follows the same rule:
-reliability first, then privilege reduction.
+continuous reliability.
+
+**Clean intervention track (parallel):** early continuous tips with **no**
+energy or ammo assists, targeting Bomb Torizo first. Process, artifact
+isolation, and tickets: [`CLEAN_TRACK.md`](CLEAN_TRACK.md). Primary program
+gate above stays **Resource-assisted** until Clean tips are green and
+explicitly documented as a secondary claim — Clean never overwrites assisted
+baselines or demotes Frog Save.
 
 Program process: pure-first + one-knob + residual schema + dual-track
 ([`tasks/PROCESS.md`](tasks/PROCESS.md)). Do not relax those rules for speed.
