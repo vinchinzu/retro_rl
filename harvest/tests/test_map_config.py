@@ -60,12 +60,20 @@ class FarmWalkableTests(unittest.TestCase):
         farm_landmarks = {landmark.name for landmark in get_landmarks(0x00)}
         self.assertIn("shipping_bin", farm_landmarks)
         self.assertIn("pond_edge", farm_landmarks)
+        self.assertIn("pond_edge_north", farm_landmarks)
+        self.assertIn("shipping_ditch", farm_landmarks)
+        self.assertIn("north_stream", farm_landmarks)
         self.assertIn("house_door", farm_landmarks)
         self.assertIn("shed_door", farm_landmarks)
         house_door = next(lm for lm in get_landmarks(0x00) if lm.name == "house_door")
         shed_door = next(lm for lm in get_landmarks(0x00) if lm.name == "shed_door")
+        pond_edge = next(lm for lm in get_landmarks(0x00) if lm.name == "pond_edge")
         self.assertEqual(house_door.tile, (8, 26))
         self.assertEqual(shed_door.tile, (26, 30))
+        # Main F0 pond south lip (not the non-fill shipping F2 ditch).
+        self.assertEqual(pond_edge.tile, (32, 34))
+        self.assertEqual(pond_edge.face, "up")
+        self.assertEqual(pond_edge.kind, "water_source")
         house_landmarks = {landmark.name for landmark in get_landmarks(0x15)}
         self.assertIn("bed_stand", house_landmarks)
 

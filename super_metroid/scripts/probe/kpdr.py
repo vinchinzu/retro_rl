@@ -63,6 +63,14 @@ from super_metroid.ram import (  # noqa: E402
     probe_pin,
     reset_parse_counts,
 )
+from super_metroid.scripts.probe.red_diag import (  # noqa: E402
+    DEFAULT_RING_FRAMES,
+    FrameRing,
+    attach_red_diag,
+    capture_red_artifacts,
+    default_red_diag_dir,
+    display_path,
+)
 from super_metroid.source_states import (  # noqa: E402
     match_source_by_path,
     suggest_source_path,
@@ -77,6 +85,7 @@ from super_metroid.routes.kpdr_controller import (  # noqa: E402
     play_east_to_warehouse,
     play_eye_to_baby_return,
     play_frog_save_to_speedway,
+    play_speedway_to_farm,
     play_glass_to_east,
     play_ghz_to_noob,
     play_kraid_to_eye_return,
@@ -131,21 +140,86 @@ class _ProbeSession:
 
     Uses ``mode="nav"`` only — pure geometry does not need bank-$7E copies
     every frame. Prefer this over bare full ``parse_env_state`` in hot loops.
+
+    When ``ring_frames`` > 0, keeps a short RGB ring for pure RED auto-capture
+    (frame dump; no geometry side effects).
     """
 
-    def __init__(self, env, assist: UnlimitedResourcesAssist) -> None:
+    def __init__(
+        self,
+        env,
+        assist: UnlimitedResourcesAssist,
+        *,
+        ring_frames: int = DEFAULT_RING_FRAMES,
+    ) -> None:
         self.env = env
         self.assist = assist
         self.frame = 0
         self.state = parse_env_state(env, mode="nav")
+        self.frame_ring = FrameRing(maxlen=ring_frames) if ring_frames > 0 else None
 
     def step(self, action, reason: str = ""):
         del reason
-        self.env.step(action)
+        obs, *_ = self.env.step(action)
         self.frame += 1
         self.state = parse_env_state(self.env, frame=self.frame, mode="nav")
         self.assist.apply(self.env.data, self.state)
+        if self.frame_ring is not None:
+            self.frame_ring.push(obs)
         return self.state
+
+
+def _capture_pure_red(
+    *,
+    env,
+    state,
+    session: _ProbeSession | None,
+    segment: str,
+    source: Path,
+    error: str,
+    pin_json: Path | None,
+    report: dict[str, object],
+    red_diag: bool,
+) -> dict[str, object]:
+    """Attach auto-captured frame dump + door/PLM snapshot on pure RED."""
+    if not red_diag:
+        if pin_json is not None:
+            pin_json.parent.mkdir(parents=True, exist_ok=True)
+            pin_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            report["pinJson"] = display_path(pin_json)
+        return report
+    frames = session.frame_ring.frames() if session and session.frame_ring else []
+    # Fingerprint fail before play: grab a few live frames for visual context.
+    if not frames:
+        try:
+            for _ in range(3):
+                obs, *_ = env.step(idle_action())
+                frames.append(obs)
+        except Exception:  # noqa: BLE001 — diagnostic best-effort
+            frames = []
+    out_dir = default_red_diag_dir(segment=segment or "pure")
+    try:
+        artifacts = capture_red_artifacts(
+            env=env,
+            state=state,
+            frames=frames,
+            segment=segment,
+            error=error,
+            source=display_path(source),
+            probe_frames=int(report.get("frames") or 0),
+            out_dir=out_dir,
+            pin_json=pin_json,
+            report=report,
+            write_pin=True,
+        )
+        attach_red_diag(report, artifacts)
+    except Exception as diag_exc:  # noqa: BLE001 — never mask the original RED
+        report["redDiagError"] = str(diag_exc)
+        if pin_json is not None:
+            pin_json.parent.mkdir(parents=True, exist_ok=True)
+            pin_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            report["pinJson"] = display_path(pin_json)
+    return report
 
 
 def _run_pure(
@@ -158,6 +232,8 @@ def _run_pure(
     expect_room: int | None = None,
     segment: str = "",
     pin_json: Path | None = None,
+    red_diag: bool = True,
+    ring_frames: int = DEFAULT_RING_FRAMES,
 ) -> dict[str, object]:
     env = make_dev_env()
     assist = UnlimitedResourcesAssist()
@@ -177,7 +253,11 @@ def _run_pure(
             for _ in range(15):
                 env.step(idle_action())
                 assist.apply(env.data, parse_env_state(env, mode="nav"))
-        session = _ProbeSession(env, assist)
+        session = _ProbeSession(
+            env,
+            assist,
+            ring_frames=ring_frames if red_diag else 0,
+        )
         if expected is not None:
             check = validate_fingerprint(
                 session.state,
@@ -202,14 +282,20 @@ def _run_pure(
                     "parseCounts": parse_counts(),
                     "controllerOnly": place_x is None,
                     "developmentOnly": place_x is not None,
+                    "frames": session.frame,
+                    "sourceId": catalog.source_id if catalog else None,
                 }
-                if pin_json is not None:
-                    pin_json.parent.mkdir(parents=True, exist_ok=True)
-                    pin_json.write_text(
-                        json.dumps(report, indent=2) + "\n", encoding="utf-8"
-                    )
-                    report["pinJson"] = str(pin_json)
-                return report
+                return _capture_pure_red(
+                    env=env,
+                    state=session.state,
+                    session=session,
+                    segment=segment,
+                    source=source,
+                    error=str(report["error"]),
+                    pin_json=pin_json,
+                    report=report,
+                    red_diag=red_diag,
+                )
         # Satisfy ControllerSession protocol used by _hold
         play(session)  # type: ignore[arg-type]
         st = session.state
@@ -260,11 +346,17 @@ def _run_pure(
                 f"{session.frame if session is not None else 0}"
             ),
         }
-        if pin_json is not None:
-            pin_json.parent.mkdir(parents=True, exist_ok=True)
-            pin_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-            report["pinJson"] = str(pin_json)
-        return report
+        return _capture_pure_red(
+            env=env,
+            state=st,
+            session=session,
+            segment=segment,
+            source=source,
+            error=str(exc),
+            pin_json=pin_json,
+            report=report,
+            red_diag=red_diag,
+        )
     finally:
         env.close()
 
@@ -350,6 +442,7 @@ def main() -> None:
             "zeela-to-warehouse-return",
             "business-to-frog-save",
             "frog-save-to-speedway",
+            "speedway-to-farm",
         ),
     )
     pure.add_argument("--source", type=Path, required=True)
@@ -365,6 +458,11 @@ def main() -> None:
         type=Path,
         default=None,
         help="On RED / fingerprint fail, write probe pin JSON here",
+    )
+    pure.add_argument(
+        "--no-red-diag",
+        action="store_true",
+        help="Disable pure-RED frame dump + door/PLM snapshot auto-capture",
     )
     pure.add_argument(
         "--place-x",
@@ -502,6 +600,7 @@ def main() -> None:
             "zeela-to-warehouse-return": play_zeela_to_warehouse_return,
             "business-to-frog-save": play_business_to_frog_save,
             "frog-save-to-speedway": play_frog_save_to_speedway,
+            "speedway-to-farm": play_speedway_to_farm,
         }[args.segment]
         report = _run_pure(
             source=args.source,
@@ -512,6 +611,7 @@ def main() -> None:
             expect_room=args.expect_room,
             segment=args.segment,
             pin_json=args.pin_json,
+            red_diag=not args.no_red_diag,
         )
         print(json.dumps(report, indent=2))
         sys.exit(0 if report.get("success") else 1)

@@ -1,5 +1,6 @@
 ticket_id,epic,kind,title,depends_on,priority,status,estimate,own_files_hint,notes
-SM-K4.1-PURE,K4,pure,Pure Frog Save→Speedway,,P0,ready,M,routes/kpdr/k4_norfair.py,source scratch/post_frog_continuous.state expect 0xB167; exit 0xB106
+SM-K4.1-PURE,K4,pure,Pure Frog Save→Speedway,,P0,ready,M,routes/kpdr/k4_norfair.py,source scratch/post_frog_continuous.state expect 0xB167; exit 0xB106; living card SM-K4-SPEEDWAY-PURE; residual may be GREEN
+SM-K4-SPEEDWAY-SRC,K4,docs,Fingerprint-register Speedway pure successor,SM-K4.1-PURE,P0,ready,S,docs/SOURCE_STATES.md,post_frog_save_to_speedway_pure.state expect 0xB106; Wave-11
 SM-K4-STAB-ICE,K4,stabilize,Stabilize wave pure+continuous Ice stack,SM-K4-TIP-ICE,P0,open,L,routes/continuous.py catalog.py,planner-serial
 SM-K4-STAB-SPEED,K4,stabilize,Stabilize wave pure+continuous Speed stack,SM-K4-TIP-SPEED,P0,open,L,routes/continuous.py catalog.py,planner-serial
 SM-K4-STATUS-ICE,K4,status,STATUS promote Ice tip,SM-K4-STAB-ICE,P0,open,M,routes/continuous.py catalog.py,planner only
@@ -219,12 +220,16 @@ SM-TOU-07,K9,pure,Big Boy Room pure,,P3,open,M,routes/kpdr/,room-level depth
 SM-TOU-08,K9,pure,Seaweed Room pure,,P3,open,M,routes/kpdr/,room-level depth
 SM-TOU-09,K9,pure,Tourian Eye Door pure,,P3,open,M,routes/kpdr/,room-level depth
 SM-BOSS-EVIDENCE-SCHEMA,BOSS-INFRA,boss,BossEvidence continuous hop compatibility,,P3,open,M,combat/,shared before late bosses
-SM-BOSS-NATURAL-ENTRY-CLI,BOSS-INFRA,boss,Standardize capture-natural CLI for all bosses,,P3,open,M,combat/,shared before late bosses
-SM-BOSS-PRIM-LANE,BOSS-INFRA,boss,Combat primitive: lane-hold windows,,P3,open,M,combat/,shared before late bosses
+SM-BOSS-NATURAL-ENTRY-CLI,BOSS-INFRA,boss,Standardize capture-natural CLI for all bosses,,P3,ready,M,combat/,Wave-11 living card; shared before late bosses
+SM-BOSS-PRIM-LANE,BOSS-INFRA,boss,Combat primitive: lane-hold windows,,P3,ready,M,combat/primitives.py,Wave-11 living card; shared before late bosses
 SM-BOSS-PRIM-PHASE,BOSS-INFRA,boss,Combat primitive: multi-phase SM helpers,,P3,open,M,combat/,shared before late bosses
 SM-BOSS-PRIM-SPRAY,BOSS-INFRA,boss,Combat primitive: periodic spray patterns,,P3,open,M,combat/,shared before late bosses
 SM-BOSS-UNIT-MATRIX,BOSS-INFRA,boss,Boss unit matrix: scaffold all remaining bosses,,P3,open,M,combat/,shared before late bosses
-SM-PATH-ROOM-W01,PRACTICE,practice,Completion-path room clear wave 1 (~8 of 62 open),,P3,open,L,policies/room_clears/ rooms/,PATH_ROOM_BOARD open rooms; dual-track
+SM-PATH-ROOM-W01,PRACTICE,practice,Completion-path room clear wave 1 (~8 of 62 open),,P3,ready,L,policies/room_clears/ rooms/,PATH_ROOM_BOARD; Wave-11 atoms W01a-d living
+SM-PATH-ROOM-W01a,PRACTICE,practice,Path-room Frog Speedway room_b106_from_af72_to_b167,,P3,ready,M,policies/room_clears/room_b106_from_af72_to_b167.json,dual-track; Wave-11
+SM-PATH-ROOM-W01b,PRACTICE,practice,Path-room Bubble Mountain room_acb3_from_b07a_to_aedf,,P3,ready,M,policies/room_clears/room_acb3_from_b07a_to_aedf.json,dual-track; Wave-11
+SM-PATH-ROOM-W01c,PRACTICE,practice,Path-room Speed Booster Hall room_acf0_from_ad1b_to_b07a,,P3,ready,M,policies/room_clears/room_acf0_from_ad1b_to_b07a.json,dual-track; Wave-11
+SM-PATH-ROOM-W01d,PRACTICE,practice,Path-room Single Chamber room_ad5e_from_b656_to_ae07,,P3,ready,M,policies/room_clears/room_ad5e_from_b656_to_ae07.json,dual-track; Wave-11
 SM-PATH-ROOM-W02,PRACTICE,practice,Completion-path room clear wave 2 (~8 of 62 open),SM-PATH-ROOM-W01,P3,open,L,policies/room_clears/ rooms/,PATH_ROOM_BOARD open rooms; dual-track
 SM-PATH-ROOM-W03,PRACTICE,practice,Completion-path room clear wave 3 (~8 of 62 open),SM-PATH-ROOM-W02,P3,open,L,policies/room_clears/ rooms/,PATH_ROOM_BOARD open rooms; dual-track
 SM-PATH-ROOM-W04,PRACTICE,practice,Completion-path room clear wave 4 (~8 of 62 open),SM-PATH-ROOM-W03,P3,open,L,policies/room_clears/ rooms/,PATH_ROOM_BOARD open rooms; dual-track
@@ -247,10 +252,10 @@ SM-PRAC-RETRY-SEG-21,PRACTICE,practice,Retry residual SEG-21: Spring Ball fixtur
 SM-ARCH-CHECKPOINT-PROV,ARCH,arch,Checkpoint provenance parent tip/cmd,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
 SM-ARCH-DISPATCH-SRC,ARCH,arch,Dispatch auto-suggest --source from card,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
 SM-ARCH-GRAPH-API,ARCH,arch,Typed path-summary model,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
-SM-ARCH-HOPS-MODULE,ARCH,arch,routes/kpdr/hops.py hop tables,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
+SM-ARCH-HOPS-MODULE,ARCH,arch,routes/kpdr/hops.py hop tables,,P3,ready,M,routes/kpdr/hops.py routes/continuous.py,Wave-11; import rewire only; no tip claim
 SM-ARCH-PARSE-SCOPE,ARCH,arch,Session-scoped parse counters finish,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
 SM-ARCH-PROFILE,ARCH,arch,Profile WRAM-copy rate on --to frog,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
-SM-ARCH-RED-DIAG,ARCH,arch,Pure RED video clip + PLM/door snapshot,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
+SM-ARCH-RED-DIAG,ARCH,arch,Pure RED video clip + PLM/door snapshot,,P3,ready,M,scripts/probe/,Wave-11 living card; no tip claim
 SM-ARCH-TIP-SPEC,ARCH,arch,Finish hop-table extract from continuous.py,,P3,open,M,routes/ continuous.py progression.py,planner-serial; no tip claim
 SM-DOCS-KPDR-EXPORT,DOCS,docs,Regenerate KPDR_TRACKER.md + maps json,,P3,open,S,docs/,Flash-friendly
 SM-DOCS-MILESTONES-SYNC,DOCS,docs,Sync MILESTONES.csv after tip promotions,,P3,open,S,docs/,Flash-friendly

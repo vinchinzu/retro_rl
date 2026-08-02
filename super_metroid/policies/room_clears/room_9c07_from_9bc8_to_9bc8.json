@@ -118,6 +118,7 @@
       "label": "deeper_into_room",
       "buttons": [
         "RIGHT",
+        "A",
         "B"
       ],
       "frames": 130

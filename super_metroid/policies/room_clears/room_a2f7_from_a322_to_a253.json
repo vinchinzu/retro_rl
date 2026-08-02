@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_a2f7_from_a322_to_a253",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Hellway (0xA2F7); entry just inside door, exit via LEFT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -94,18 +94,123 @@
   },
   "steps": [
     {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "weapon_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
       "label": "entry_settle",
       "buttons": [],
       "frames": 20
     },
     {
-      "label": "coarse_exit_approach",
+      "label": "run_to_first_jump",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 25
+    },
+    {
+      "label": "jump_1",
       "buttons": [
         "LEFT",
         "A",
+        "B",
+        "X"
+      ],
+      "frames": 25
+    },
+    {
+      "label": "run_after_jump_1",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "jump_2",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 25
+    },
+    {
+      "label": "run_after_jump_2",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "jump_3",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "run_after_jump_3",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "jump_4",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 15
+    },
+    {
+      "label": "run_after_jump_4",
+      "buttons": [
+        "LEFT",
+        "B",
+        "X"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "jump_5",
+      "buttons": [
+        "LEFT",
+        "A",
+        "B",
+        "X"
+      ],
+      "frames": 20
+    },
+    {
+      "label": "run_to_left_door",
+      "buttons": [
+        "LEFT",
         "B"
       ],
-      "frames": 220
+      "frames": 100
     },
     {
       "label": "open_exit_door",
@@ -124,11 +229,17 @@
       "label": "enter_exit_door",
       "buttons": [
         "LEFT",
-        "A",
         "B"
       ],
       "frames": 150
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T01:08:34.282784+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_a2f7_from_a322_to_a253.json",
+    "reportSha256": "e605d33fa49c5895efb743068d35a5fa89992d1e8e3b3392cb2b2e48e71b4e5e",
+    "stateSha256": "ab28b15c68d7b2a85b19b0bf5a5f8b50c4ac823efb2a8944c1afc6668b1cff58",
+    "policySha256Before": "907704cef4d4a635e0bfc6a3ecf22e6d2419324ef1890230e47f0e8113edc3d7"
+  }
 }

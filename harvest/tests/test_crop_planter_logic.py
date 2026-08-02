@@ -14,6 +14,7 @@ from harvest.tasks.crop_planter import (
     CropWaterTask,
     REFILL_BAND_MID,
     REFILL_BAND_NORTH,
+    REFILL_BAND_POND,
     REFILL_BAND_SOUTH,
     REFILL_PREFERRED_WATER_TILES,
     REFILL_WATER_TILES,
@@ -23,6 +24,8 @@ from harvest.tasks.crop_planter import (
     edge_water_tile_id,
     find_pond_edges,
     is_bad_refill_stand,
+    is_main_pond_stand,
+    pond_access_blocking_fences,
     refill_edge_sort_key,
     refill_stand_band,
     seed_item_in_carry_pair,
@@ -530,13 +533,16 @@ class CropPlanterLogicTests(unittest.TestCase):
             self.assertIn(tid, REFILL_WATER_TILES)
             self.assertNotIn(tid, REFILL_PREFERRED_WATER_TILES)
 
-    def test_refill_stand_bands_prefer_north_then_south(self) -> None:
-        north = (15, 16)   # F1 north farm stand
+    def test_refill_stand_bands_prefer_main_pond_then_south(self) -> None:
+        north = (15, 16)   # north spur stand
         stream = (18, 23)  # F8 north stream stand
         shipping = (9, 28)  # F2 shipping pocket (bad)
         south = (14, 48)   # FC south stream stand
-        mid_other = (30, 32)  # mid-farm pond lip
+        pond = (32, 34)    # main F0 pond south lip
+        mid_other = (49, 35)  # east FB spur
 
+        self.assertEqual(refill_stand_band(pond), REFILL_BAND_POND)
+        self.assertTrue(is_main_pond_stand(pond))
         self.assertEqual(refill_stand_band(north), REFILL_BAND_NORTH)
         self.assertEqual(refill_stand_band(stream), REFILL_BAND_NORTH)
         self.assertEqual(refill_stand_band(south), REFILL_BAND_SOUTH)
@@ -545,16 +551,18 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertFalse(is_bad_refill_stand(north))
 
         player = (5, 35)  # west field — shipping is closest by Manhattan
-        # Same preferred rank (none): band order north → south → bad.
+        # Same preferred rank (none): band order pond → south → north → bad.
         edges = [
             (shipping, "right"),
             (south, "down"),
             (north, "left"),
+            (pond, "up"),
         ]
         edges.sort(key=lambda e: refill_edge_sort_key(e, player, water_tid=-1))
-        self.assertEqual(edges[0][0], north)
+        self.assertEqual(edges[0][0], pond)
         self.assertEqual(edges[1][0], south)
-        self.assertEqual(edges[2][0], shipping)
+        self.assertEqual(edges[2][0], north)
+        self.assertEqual(edges[3][0], shipping)
 
     def test_refill_edge_sort_prefers_fc_over_north_f8(self) -> None:
         """South FC (preferred property) beats closer north F8."""
@@ -578,6 +586,15 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertLess(
             refill_edge_sort_key((south_fc, "down"), player, 0xFC),
             refill_edge_sort_key((north_f8, "up"), player, 0xF8),
+        )
+
+    def test_refill_edge_sort_prefers_main_pond_f0_over_south_fc(self) -> None:
+        pond = (32, 34)
+        south_fc = (14, 48)
+        player = (13, 27)  # west plant pocket — FC is closer by Manhattan
+        self.assertLess(
+            refill_edge_sort_key((pond, "up"), player, 0xF0),
+            refill_edge_sort_key((south_fc, "down"), player, 0xFC),
         )
 
     def test_find_pond_edges_excludes_bad_shipping_stands(self) -> None:
@@ -662,8 +679,42 @@ class CropPlanterLogicTests(unittest.TestCase):
         rx, ry = task._refill_pond_tile
         self.assertFalse(x0 <= rx <= x1 and y0 <= ry <= y1)
 
-    def test_start_refill_falls_back_to_north_when_only_f8(self) -> None:
-        """If only non-preferred water exists, still path to it (search keeps F8)."""
+    def test_start_refill_prefers_main_pond_f0_when_pathable(self) -> None:
+        """Main F0 pond beats closer south FC when both preferred and pathable."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 33, 31, 0xF0)  # main pond water
+        _set_tile(ram, 14, 49, 0xFC)  # south stream
+
+        player = (14, 40)  # closer to FC
+        _set_player_tile(ram, player)
+        ram[ADDR_TOOL] = 0x10
+        ram[ADDR_WATER_LEVEL] = 0
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(refill_bounds=(3, 14, 62, 60))
+        task.reset(world)
+        task._navigator.update(ram)
+        task._plots = [(13, 35)]
+        task._plot_index = 0
+        task._plot_phase = "water"
+        task._water_steps = [((12, 34), (13, 35), "left")]
+        task._water_index = 0
+
+        task._start_refill(ram)
+
+        self.assertEqual(task._plot_phase, "refill")
+        assert task._refill_pond_tile is not None
+        water = edge_water_tile_id(
+            ram, task._refill_pond_tile, task._refill_pond_face or "down"
+        )
+        self.assertEqual(water, 0xF0)
+        self.assertTrue(is_main_pond_stand(task._refill_pond_tile))
+
+    def test_start_refill_ignores_only_nonfill_water(self) -> None:
+        """F1/F8-only maps must not pretend to refill — no refill stand chosen."""
         ram = _blank_ram()
         for ty in range(64):
             for tx in range(64):
@@ -688,17 +739,30 @@ class CropPlanterLogicTests(unittest.TestCase):
 
         task._start_refill(ram)
 
-        self.assertEqual(task._plot_phase, "refill")
-        assert task._refill_pond_tile is not None
-        self.assertFalse(is_bad_refill_stand(task._refill_pond_tile))
-        self.assertLessEqual(task._refill_pond_tile[1], 25)
+        # No preferred water on map → never enter refill at F8.
+        self.assertIsNone(task._refill_pond_tile)
+        self.assertNotEqual(task._plot_phase, "refill")
+        self.assertNotEqual(task._state, "fence_open")
+
+    def test_pond_access_blocking_fences_detects_y31_wall(self) -> None:
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        fences = pond_access_blocking_fences(ram)
+        self.assertEqual(len(fences), 19)
+        self.assertIn((20, 31), fences)
+        self.assertEqual(pond_access_blocking_fences(ram), fences)
 
     def test_empty_can_triggers_refill_before_water(self) -> None:
         ram = _blank_ram()
         for ty in range(64):
             for tx in range(64):
                 _set_tile(ram, tx, ty, 0xA1)
-        _set_tile(ram, 18, 22, 0xF8)
+        # Preferred fill water (not non-fill F8)
+        _set_tile(ram, 33, 31, 0xF0)
         # Dry crop tile target so water step is considered waterable
         _set_tile(ram, 12, 24, 0x5A)
 
@@ -731,6 +795,10 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertIsNotNone(task._refill_pond_tile)
         assert task._refill_pond_tile is not None
         self.assertFalse(is_bad_refill_stand(task._refill_pond_tile))
+        water = edge_water_tile_id(
+            ram, task._refill_pond_tile, task._refill_pond_face or "down"
+        )
+        self.assertIn(water, REFILL_PREFERRED_WATER_TILES)
 
     def test_water_level_uses_catalog_live_offset(self) -> None:
         # Live-sized RAM: watering_can at address + LIVE_RAM_WRAM_OFFSET

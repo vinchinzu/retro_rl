@@ -53,6 +53,8 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | [SOURCE_STATES.md](SOURCE_STATES.md) | Continuous-like pure entry states |
 | [TASK_TEMPLATE.md](TASK_TEMPLATE.md) | OpenCode card format |
 | [tasks/QUEUE.md](tasks/QUEUE.md) | Live wave board + ★ tip |
+| [tasks/WAVE-11.md](tasks/WAVE-11.md) | Multi-agent dispatch (ready cards) |
+| [tasks/TRIAGE.md](tasks/TRIAGE.md) | Backlog review · critical path · parallel tracks |
 | [tasks/PROCESS.md](tasks/PROCESS.md) | Pure-first / stabilize / residual rules |
 | [tasks/archive/](tasks/archive/) | Completed cards, residuals, farm one-shots |
 | [archive/](archive/) | Superseded route notes |

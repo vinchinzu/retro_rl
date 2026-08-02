@@ -278,6 +278,7 @@ def test_k4_graph_varia_to_speed_scaffold() -> None:
     )
     path = START_TO_SPEED_GRAPH.shortest_path(0xA6E2, 0xAD1B, caps)
     assert path is not None
+    # First Bubble visit is Cathedral climb (Frog Speedway needs Speed).
     assert [edge.target_room_id for edge in path] == [
         0xA59F,  # kraid
         0xA56B,  # eye
@@ -286,9 +287,9 @@ def test_k4_graph_varia_to_speed_scaffold() -> None:
         0xA471,  # zeela
         0xA6A1,  # warehouse
         0xA7DE,  # business
-        0xB167,  # frog save
-        0xB106,  # frog speedway
-        0xAF72,  # farm
+        0xA7B3,  # cathedral entrance
+        0xA788,  # cathedral
+        0xAFA3,  # rising tide
         0xACB3,  # bubble
         0xB07A,  # bat cave
         0xACF0,  # speed hall
@@ -296,12 +297,11 @@ def test_k4_graph_varia_to_speed_scaffold() -> None:
     ]
     assert path[0].edge_id == "varia_to_kraid"
     assert path[0].verification == "continuous"
-    # The return spine is continuous through Frog Save; Speedway is the first
-    # unverified K4 edge.
+    # Return spine continuous through Business; first open Speed path is Cathedral.
     summary = START_TO_SPEED_GRAPH.path_verification(0xA6E2, 0xAD1B, caps)
     assert summary["reachable"] is True
     assert summary["all_continuous"] is False
-    assert summary["blocking"] == "frog_save_to_speedway"
+    assert summary["blocking"] == "business_to_cathedral_entrance"
 
     hops = START_TO_SPEED_GRAPH.suggest_next_hops(0xA6E2, capabilities=caps)
     assert hops
@@ -309,7 +309,13 @@ def test_k4_graph_varia_to_speed_scaffold() -> None:
 
     bubble = START_TO_SPEED_GRAPH.shortest_path(0xA7DE, 0xACB3, caps)
     assert bubble is not None
-    assert [e.target_room_id for e in bubble] == [0xB167, 0xB106, 0xAF72, 0xACB3]
+    assert [e.target_room_id for e in bubble] == [0xA7B3, 0xA788, 0xAFA3, 0xACB3]
+    assert [e.edge_id for e in bubble] == [
+        "business_to_cathedral_entrance",
+        "cathedral_entrance_to_cathedral",
+        "cathedral_to_rising_tide",
+        "rising_tide_to_bubble",
+    ]
 
     wave = START_TO_SPEED_GRAPH.shortest_path(0xACB3, 0xADDE, caps)
     assert wave is not None

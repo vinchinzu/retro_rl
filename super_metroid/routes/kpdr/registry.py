@@ -52,8 +52,15 @@ from super_metroid.routes.kpdr.kraid_return import (
     play_zeela_to_warehouse_return,
 )
 from super_metroid.routes.kpdr.k4_norfair import (
+    play_business_to_cathedral_entrance,
     play_business_to_frog_save,
+    play_cathedral_entrance_to_cathedral,
+    play_cathedral_to_rising_tide,
+    play_farm_to_bubble,
+    play_frog_save_to_business,
     play_frog_save_to_speedway,
+    play_rising_tide_to_bubble,
+    play_speedway_to_farm,
 )
 from super_metroid.routes.kpdr.pb_door import (
     play_big_pink_enter_pb_door_from_sill,
@@ -150,9 +157,18 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "baby_to_kihunter_return": play_baby_to_kihunter_return,
     "kihunter_to_zeela_return": play_kihunter_to_zeela_return,
     "zeela_to_warehouse_return": play_zeela_to_warehouse_return,
-    # K4.0 forward: continuous through Frog Save; its successor is next.
+    # K4.0: continuous through Frog Save (save milestone).
     "business_to_frog_save": play_business_to_frog_save,
+    "frog_save_to_business": play_frog_save_to_business,
+    # First Bubble visit: Cathedral climb (no Speed).
+    "business_to_cathedral_entrance": play_business_to_cathedral_entrance,
+    "cathedral_entrance_to_cathedral": play_cathedral_entrance_to_cathedral,
+    "cathedral_to_rising_tide": play_cathedral_to_rising_tide,
+    "rising_tide_to_bubble": play_rising_tide_to_bubble,
+    # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
+    "speedway_to_farm": play_speedway_to_farm,
+    "farm_to_bubble": play_farm_to_bubble,
 }
 
 

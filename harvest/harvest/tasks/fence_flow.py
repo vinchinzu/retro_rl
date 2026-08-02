@@ -29,7 +29,8 @@ from harvest.tasks.farm_clearer import (
     POND_CHARACTERISTIC_TILES,
 )
 
-POND_TILES = [(32, 34), (33, 34)] # X=32, 33 is the gap at Y=34
+# Main F0 pond south lip (same as map_config pond_edge / go_to_water_source).
+POND_TILES = [(32, 34), (33, 34)]
 ADDR_PLAYER_STATE = 0xD2
 ACTION_CARRYING_BIT = 0x02
 ADDR_PLAYER_ACTION = 0xD4

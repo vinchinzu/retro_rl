@@ -1,0 +1,341 @@
+{
+  "schemaVersion": 2,
+  "problemId": "room_ad5e_from_b656_to_ae07",
+  "status": "verified_development_state",
+  "description": "Single Chamber (0xAD5E) practice clear toward Spiky Platforms (0xAE07). Bottom-door segment from left-shaft floor free zone: open right blue door into 0xAE07. Top-corridor bomb/speed pillars from far-right Musketeers lip not cleared in this policy. Dual-track practice only.",
+  "entryContract": {
+    "schemaVersion": 1,
+    "kind": "doorway_natural",
+    "doorPtrHex": "0x9A4A",
+    "entrySourceRoomIdHex": "0xB656",
+    "doorOrientation": "right",
+    "face": "left",
+    "exitTravelDirection": "RIGHT",
+    "sameDoorReturn": false,
+    "rngNote": "Re-roll enemy/door RNG by re-running doorway bootstrap with a different boot state or boot_idle_frames; door boundary stays fixed.",
+    "spawn": {
+      "x": 210,
+      "y": 881,
+      "pose": 2
+    },
+    "insetPx": null,
+    "doorBlock": [
+      31,
+      7
+    ],
+    "warpSample": {
+      "x": 1536,
+      "y": 139
+    },
+    "bootIdleFrames": 0,
+    "doorPtr": 39498,
+    "entrySourceRoomId": 46678,
+    "loadoutNote": "Practice fixture: door-warp Musketeers\u2192Single Chamber then place at bottom-right free zone near exit door 2. Varia + Hi-Jump granted on post-spore boot. Not continuous evidence."
+  },
+  "planning": {
+    "objective": "traverse_to_exit",
+    "entry": {
+      "sourceRoomId": 46678,
+      "sourceRoomIdHex": "0xB656",
+      "endpoint": {
+        "roomId": 44382,
+        "roomIdHex": "0xAD5E",
+        "logicalRoomId": 103,
+        "nodeId": 5,
+        "nodeName": "Single Chamber Top Right Door (to Three Musketeers)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          31,
+          7
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "exit": {
+      "targetRoomId": 44551,
+      "targetRoomIdHex": "0xAE07",
+      "endpoint": {
+        "roomId": 44382,
+        "roomIdHex": "0xAD5E",
+        "logicalRoomId": 103,
+        "nodeId": 2,
+        "nodeName": "Single Chamber Bottom Right Door (to Spiky Platforms Tunnel)",
+        "position": "left",
+        "orientation": "right",
+        "subtype": "blue",
+        "block": [
+          15,
+          55
+        ],
+        "requires": [],
+        "localRequirements": [],
+        "impossibleExit": false
+      }
+    },
+    "staticPlan": {
+      "status": "planned_static",
+      "warning": "Air-cell connectivity only; jumps, physics, enemies, and dynamic blocks remain runtime work.",
+      "entryBlock": [
+        31,
+        7
+      ],
+      "objectiveBlock": [
+        15,
+        55
+      ],
+      "exitBlock": [
+        15,
+        55
+      ],
+      "pathBlocks": 110,
+      "waypointsBlocks": [
+        [
+          31,
+          8
+        ],
+        [
+          9,
+          8
+        ],
+        [
+          9,
+          11
+        ],
+        [
+          8,
+          11
+        ],
+        [
+          8,
+          12
+        ],
+        [
+          4,
+          12
+        ],
+        [
+          4,
+          13
+        ],
+        [
+          3,
+          13
+        ],
+        [
+          3,
+          19
+        ],
+        [
+          4,
+          19
+        ],
+        [
+          4,
+          20
+        ],
+        [
+          5,
+          20
+        ],
+        [
+          5,
+          21
+        ],
+        [
+          6,
+          21
+        ],
+        [
+          6,
+          22
+        ],
+        [
+          9,
+          22
+        ],
+        [
+          9,
+          27
+        ],
+        [
+          8,
+          27
+        ],
+        [
+          8,
+          28
+        ],
+        [
+          4,
+          28
+        ],
+        [
+          4,
+          29
+        ],
+        [
+          3,
+          29
+        ],
+        [
+          3,
+          35
+        ],
+        [
+          4,
+          35
+        ],
+        [
+          4,
+          36
+        ],
+        [
+          5,
+          36
+        ],
+        [
+          5,
+          37
+        ],
+        [
+          6,
+          37
+        ],
+        [
+          6,
+          38
+        ],
+        [
+          9,
+          38
+        ],
+        [
+          9,
+          43
+        ],
+        [
+          8,
+          43
+        ],
+        [
+          8,
+          44
+        ],
+        [
+          4,
+          44
+        ],
+        [
+          4,
+          45
+        ],
+        [
+          3,
+          45
+        ],
+        [
+          3,
+          51
+        ],
+        [
+          4,
+          51
+        ],
+        [
+          4,
+          52
+        ],
+        [
+          5,
+          52
+        ],
+        [
+          5,
+          53
+        ],
+        [
+          6,
+          53
+        ],
+        [
+          6,
+          54
+        ],
+        [
+          13,
+          54
+        ],
+        [
+          13,
+          55
+        ]
+      ]
+    },
+    "runtimeNote": "Catalog entry block [31,7] disagrees with natural warp lip x=1536. Top corridor requires Morph+Bombs/PB/Screw/BlueSuit to clear pillars (sm-json 5\u21926). Fixture places past that barrier for shaft\u2192exit practice."
+  },
+  "steps": [
+    {
+      "label": "entry_settle",
+      "buttons": [],
+      "frames": 20
+    },
+    {
+      "label": "to_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 40
+    },
+    {
+      "label": "to_door_j",
+      "buttons": [
+        "RIGHT",
+        "A",
+        "B"
+      ],
+      "frames": 14
+    },
+    {
+      "label": "to_door2",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 35
+    },
+    {
+      "label": "open_exit_door",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 12
+    },
+    {
+      "label": "door_open_wait",
+      "buttons": [],
+      "frames": 50
+    },
+    {
+      "label": "enter_exit_door",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 160
+    }
+  ],
+  "acceptanceWarning": "Isolated practice policy. Fixture includes development Varia/Hi-Jump grants and mid-room placement past top-corridor barriers. Not continuous-run evidence.",
+  "promotedAt": "2026-08-02T01:50:44.639640+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_ad5e_from_b656_to_ae07.json",
+    "reportSha256": "2073ff1667c3187d38cd0b9c4fe83cc0ebe1f4ba62cef18c02f2f6f3a8f72611",
+    "stateSha256": "7d64d327642c2828a5dd3c1b81c89bce451970528cc4e6709d9e5cccf61eb367",
+    "policySha256Before": "0eb4866396e88ce1e755e1fb9370a3b070600a7534a3b637e2f758764efe2519"
+  }
+}

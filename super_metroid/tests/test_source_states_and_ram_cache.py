@@ -131,8 +131,9 @@ def test_path_summary_unifies_pure_gate_and_path_verification() -> None:
     )
     assert summary["reachable"] is True
     assert summary["pure_gated"] is False
-    assert summary["blocking_edge_id"] == "frog_save_to_speedway"
-    assert summary["blocking"]["edgeId"] == "frog_save_to_speedway"
+    # From Frog tip: reverse to Business then Cathedral (Speedway is post-Speed).
+    assert summary["blocking_edge_id"] == "frog_save_to_business"
+    assert summary["blocking"]["edgeId"] == "frog_save_to_business"
 
     # Continuous-prefer suggest matches legacy suggest_next_hops ranking.
     next_hops = START_TO_SPEED_GRAPH.suggest_next_hops(0xB167, capabilities=caps)
@@ -228,13 +229,17 @@ def test_suggest_pure_work_and_pure_gate_after_frog_continuous_tip() -> None:
         }
     )
     pure = START_TO_SPEED_GRAPH.suggest_pure_work(0xB167, capabilities=caps)
-    assert [edge.edge_id for edge in pure] == ["frog_save_to_speedway"]
+    # Frog tip pure outs: reverse to Business (Cathedral repath) and optional Speedway.
+    assert {edge.edge_id for edge in pure} >= {
+        "frog_save_to_business",
+        "frog_save_to_speedway",
+    }
 
     gate = START_TO_SPEED_GRAPH.pure_gate(0xB167, 0xAD1B, caps)
     assert gate["reachable"] is True
     assert gate["pure_gated"] is False
     assert gate["blocking"] is not None
-    assert gate["blocking"]["edgeId"] == "frog_save_to_speedway"
+    assert gate["blocking"]["edgeId"] == "frog_save_to_business"
     assert gate["blocking"]["verification"] == "unverified"
 
     # Continuous-only gate from Kraid entry (edge continuous) should clear short hop.

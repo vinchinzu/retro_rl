@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "problemId": "room_ad1b_from_acf0_to_acf0",
-  "status": "generated_unverified",
+  "status": "verified_development_state",
   "description": "Doorway-natural starter for Speed Booster Room (0xAD1B); entry just inside door, exit via LEFT.",
   "entryContract": {
     "schemaVersion": 1,
@@ -104,16 +104,86 @@
     {
       "label": "entry_settle",
       "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "select_beam",
+      "buttons": [
+        "SELECT"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "weapon_settle",
+      "buttons": [],
+      "frames": 25
+    },
+    {
+      "label": "recover_entry",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "approach_pillar",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
       "frames": 20
     },
     {
-      "label": "deeper_into_room",
+      "label": "recover_pillar",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "first_jump",
       "buttons": [
         "RIGHT",
         "A",
         "B"
       ],
-      "frames": 114
+      "frames": 20
+    },
+    {
+      "label": "platform_approach",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "recover_platform",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "open_chozo",
+      "buttons": [
+        "RIGHT",
+        "X"
+      ],
+      "frames": 1
+    },
+    {
+      "label": "chozo_open_wait",
+      "buttons": [],
+      "frames": 60
+    },
+    {
+      "label": "collect_speed",
+      "buttons": [
+        "RIGHT",
+        "B"
+      ],
+      "frames": 10
     },
     {
       "label": "item_fanfare_wait",
@@ -121,13 +191,70 @@
       "frames": 360
     },
     {
-      "label": "approach_exit_door",
+      "label": "return_left_platform",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "return_jump",
       "buttons": [
         "LEFT",
         "A",
         "B"
       ],
-      "frames": 138
+      "frames": 20
+    },
+    {
+      "label": "return_recover",
+      "buttons": [
+        "UP"
+      ],
+      "frames": 8
+    },
+    {
+      "label": "return_door_approach",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 30
+    },
+    {
+      "label": "door_exit_jump_1",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 10
+    },
+    {
+      "label": "door_exit_release_1",
+      "buttons": [],
+      "frames": 5
+    },
+    {
+      "label": "door_exit_jump_2",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 10
+    },
+    {
+      "label": "door_exit_release_2",
+      "buttons": [],
+      "frames": 5
+    },
+    {
+      "label": "door_exit_jump_3",
+      "buttons": [
+        "LEFT",
+        "A"
+      ],
+      "frames": 10
     },
     {
       "label": "open_exit_door",
@@ -151,5 +278,12 @@
       "frames": 110
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command).",
+  "promotedAt": "2026-08-02T00:41:27.984254+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_ad1b_from_acf0_to_acf0.json",
+    "reportSha256": "e26357e6118fd20b6e0ccea27cae64a62c242061a27bd908d91327419ef031f1",
+    "stateSha256": "5482288dc68e72f64e57a186d1f53aafe0c88b8556c4c69aea1da0639552d28f",
+    "policySha256Before": "1fb637fd49f9c9c46d9236a8e7ee0b02c6bf58de4a21627b60f0fcf0b17a3a42"
+  }
 }
