@@ -4,10 +4,15 @@ The run uses one emulator session and selects Hard through the real menus. It
 never loads a save state, never writes stage/lives/boss RAM, and never presses
 the HP-draining special. Damage is measured from natural HP drops.
 
-Assists (disclosed, minimized vs the old every-hit restore-to-96):
-1. Emergency HP top-up when Leo is about to die (HP <= threshold → 80).
+Assists (disclosed, minimized vs the old every-hit restore-to-96; **default ON**):
+1. Emergency HP top-up when about to die (HP <= threshold → 80).
 2. Super Shredder form-2 iframe hold at 1 — his demutation projectile
    bypasses ordinary HP and is not yet reliably dodged.
+
+Clean track (``--clean``): both assists off, default artifacts use the
+``tmnt_iv_full_hard_clean`` stem (never overwrites assisted baselines), and
+integrity fails if any assist counter is non-zero. Long forms:
+``--no-emergency-hp`` / ``--no-iframe-hold`` (either alone is not full Clean).
 
 Any life decrement aborts the run.
 """
@@ -45,6 +50,7 @@ from tmnt_iv.paths import (  # noqa: E402
     GAME_DIR,
     RECORDINGS_DIR,
     ROMS_DIR,
+    default_full_run_paths,
 )
 from tmnt_iv.policy import Stage1Policy  # noqa: E402
 from tmnt_iv.ram import parse_game_state  # noqa: E402
@@ -519,6 +525,33 @@ def _metrics_dict(metrics: RunMetrics, *, fps: float) -> dict[str, Any]:
     return payload
 
 
+def assist_integrity(
+    metrics: RunMetrics,
+    *,
+    require_clean_assists: bool = False,
+) -> dict[str, bool]:
+    """Boolean integrity flags for continuous assist counters."""
+    flags = {
+        "emergency_hp_zero": metrics.health_guard_interventions == 0,
+        "iframe_guard_zero": metrics.final_boss_iframe_guard_frames == 0,
+        "life_losses_zero": metrics.life_losses == 0,
+        "state_loads_zero": True,
+        "stage_writes_zero": True,
+        "lives_writes_zero": True,
+    }
+    if require_clean_assists:
+        flags["clean_assists_zero"] = (
+            flags["emergency_hp_zero"] and flags["iframe_guard_zero"]
+        )
+    return flags
+
+
+def evaluate_clean_integrity(metrics: RunMetrics) -> tuple[bool, dict[str, bool]]:
+    """Return (ok, flags) requiring zero e-HP and zero iframe frames."""
+    flags = assist_integrity(metrics, require_clean_assists=True)
+    return bool(flags.get("clean_assists_zero")), flags
+
+
 def run_full_hard(
     *,
     output: Path,
@@ -527,8 +560,20 @@ def run_full_hard(
     scale: int = 3,
     dry_run: bool = False,
     entry_state_prefix: str | None = None,
+    emergency_hp: bool = True,
+    iframe_hold: bool = True,
+    require_clean_assists: bool | None = None,
 ) -> dict[str, Any]:
-    """Run from power-on through complete Hard credits and record artifacts."""
+    """Run from power-on through complete Hard credits and record artifacts.
+
+    Defaults keep both production assists on. Clean track passes
+    ``emergency_hp=False``, ``iframe_hold=False``, and (implicitly)
+    ``require_clean_assists=True`` so zero-assist integrity fails closed.
+    """
+    if require_clean_assists is None:
+        require_clean_assists = not emergency_hp and not iframe_hold
+    clean_mode = not emergency_hp and not iframe_hold
+
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     policy = Stage1Policy()
@@ -574,7 +619,7 @@ def run_full_hard(
             )
 
             # Track natural damage from HP drops. Emergency heal only when
-            # Leo is about to die — never the old every-hit restore-to-96.
+            # about to die — never the old every-hit restore-to-96.
             if (
                 active
                 and previous_health is not None
@@ -596,7 +641,7 @@ def run_full_hard(
                     or state.health < metrics.min_health_seen
                 ):
                     metrics.min_health_seen = state.health
-                if state.health <= _EMERGENCY_HP_THRESHOLD:
+                if emergency_hp and state.health <= _EMERGENCY_HP_THRESHOLD:
                     env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
                     metrics.health_guard_interventions += 1
                     state = parse_game_state(env.get_ram(), frame=frame)
@@ -605,7 +650,7 @@ def run_full_hard(
                 else:
                     previous_health = state.health
             elif active and state.health == 0:
-                # Last-chance revive before the life counter ticks.
+                # Last-chance revive before the life counter ticks (assisted).
                 if previous_health is not None and previous_health > 0:
                     damage = previous_health
                     metrics.total_damage_taken += damage
@@ -615,17 +660,25 @@ def run_full_hard(
                     metrics.damage_by_stage[state.stage] = (
                         metrics.damage_by_stage.get(state.stage, 0) + damage
                     )
-                env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
-                metrics.health_guard_interventions += 1
-                state = parse_game_state(env.get_ram(), frame=frame)
-                final_state = state
-                previous_health = state.health
+                if emergency_hp:
+                    env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
+                    metrics.health_guard_interventions += 1
+                    state = parse_game_state(env.get_ram(), frame=frame)
+                    final_state = state
+                    previous_health = state.health
+                else:
+                    previous_health = 0
             elif not active:
                 previous_health = None
 
             # Form-2 demutation bypasses HP; hold a 1-frame iframe while the
             # finale arena is live. Still far cheaper than the old full-bar spam.
-            if active and state.stage == 9 and event == 0x0A:
+            if (
+                iframe_hold
+                and active
+                and state.stage == 9
+                and event == 0x0A
+            ):
                 env.set_value("player_iframes", 1)
                 metrics.final_boss_iframe_guard_frames += 1
 
@@ -788,7 +841,34 @@ def run_full_hard(
             video_path = capture.finish()
             capture = None
 
+        integrity_flags = assist_integrity(
+            metrics, require_clean_assists=require_clean_assists
+        )
+        clean_ok = (not require_clean_assists) or bool(
+            integrity_flags.get("clean_assists_zero", False)
+        )
+        if require_clean_assists and not clean_ok:
+            raise RuntimeError(
+                "clean integrity failed: "
+                f"e-heals={metrics.health_guard_interventions} "
+                f"iframe_frames={metrics.final_boss_iframe_guard_frames}"
+            )
+
+        if clean_mode:
+            intervention_class = "Clean"
+        elif emergency_hp and iframe_hold:
+            intervention_class = "Resource-assisted + Protection-assisted"
+        elif emergency_hp:
+            intervention_class = "Resource-assisted"
+        else:
+            intervention_class = "Protection-assisted"
+
         rom_name, rom_digest = _rom_sha256()
+        command = "uv run python -m tmnt_iv.scripts.record_full_hard_run"
+        if clean_mode:
+            command += " --clean"
+        if dry_run:
+            command += " --dry-run"
         report: dict[str, Any] = {
             "schema_version": 1,
             "status": "success",
@@ -804,17 +884,23 @@ def run_full_hard(
                 "stage_writes": 0,
                 "lives_writes": 0,
                 "native_audio": not dry_run,
-                "assisted": True,
+                "assisted": not clean_mode,
+                "intervention_class": intervention_class,
+                "clean_track": clean_mode,
                 "assists": {
                     "health_restore_to_96": False,
+                    "emergency_hp_enabled": emergency_hp,
+                    "iframe_hold_enabled": iframe_hold,
                     "emergency_hp_threshold": _EMERGENCY_HP_THRESHOLD,
                     "emergency_hp_restore": _EMERGENCY_HP_RESTORE,
                     "super_shredder_form2_iframe_value": 1,
+                    "require_clean_assists": require_clean_assists,
                 },
                 "forbidden_a_special_uses": 0,
                 "post_boot_start_presses": 0,
             },
             "metrics": _metrics_dict(metrics, fps=fps),
+            "integrity": integrity_flags,
             "emulator": {
                 "screen_rate": fps,
                 "audio_rate": audio_rate,
@@ -825,10 +911,7 @@ def run_full_hard(
             "reproducibility": {
                 "rom_filename": rom_name,
                 "rom_sha256": rom_digest,
-                "command": (
-                    "uv run python -m "
-                    "tmnt_iv.scripts.record_full_hard_run"
-                ),
+                "command": command,
             },
             "final_state": {
                 "frame": frame,
@@ -854,7 +937,10 @@ def run_full_hard(
             "complete: "
             f"{_format_duration(metrics.credits_complete_frame / fps)}  "
             f"damage={metrics.total_damage_taken}  "
-            f"life_losses={metrics.life_losses}",
+            f"life_losses={metrics.life_losses}  "
+            f"e-heals={metrics.health_guard_interventions}  "
+            f"iframe={metrics.final_boss_iframe_guard_frames}  "
+            f"class={intervention_class}",
             flush=True,
         )
         return report
@@ -871,12 +957,20 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         type=Path,
-        default=RECORDINGS_DIR / "tmnt_iv_full_hard_credits.mp4",
+        default=None,
+        help=(
+            "Video path (default: recordings/tmnt_iv_full_hard_credits.mp4; "
+            "with --clean: .../tmnt_iv_full_hard_clean.mp4)"
+        ),
     )
     parser.add_argument(
         "--report",
         type=Path,
-        default=RECORDINGS_DIR / "tmnt_iv_full_hard_credits.json",
+        default=None,
+        help=(
+            "JSON report path (default assisted credits/dry_run stems; "
+            "with --clean: tmnt_iv_full_hard_clean[_dry_run].json)"
+        ),
     )
     parser.add_argument("--max-frames", type=int, default=400_000)
     parser.add_argument("--scale", type=int, default=3)
@@ -884,6 +978,25 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="run all integrity checks without encoding video/audio",
+    )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help=(
+            "Clean track: disable emergency HP and form-2 iframe hold, "
+            "use *_clean default artifact stems, and require zero assist "
+            "counters. Does not change assisted defaults when omitted."
+        ),
+    )
+    parser.add_argument(
+        "--no-emergency-hp",
+        action="store_true",
+        help="Disable emergency HP restore only (not full Clean alone)",
+    )
+    parser.add_argument(
+        "--no-iframe-hold",
+        action="store_true",
+        help="Disable form-2 iframe hold only (not full Clean alone)",
     )
     parser.add_argument(
         "--entry-state-prefix",
@@ -896,19 +1009,49 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def resolve_cli_paths(
+    *,
+    output: Path | None,
+    report: Path | None,
+    dry_run: bool,
+    clean_artifacts: bool,
+) -> tuple[Path, Path]:
+    """Resolve video/report paths; explicit CLI paths always win."""
+    default_video, default_report = default_full_run_paths(
+        clean=clean_artifacts, dry_run=dry_run
+    )
+    return (
+        output if output is not None else default_video,
+        report if report is not None else default_report,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
     args = _build_parser().parse_args(argv)
-    report = args.report
-    if args.dry_run and report.name == "tmnt_iv_full_hard_credits.json":
-        report = report.with_name("tmnt_iv_full_hard_dry_run.json")
-    run_full_hard(
+    emergency_hp = not (args.clean or args.no_emergency_hp)
+    iframe_hold = not (args.clean or args.no_iframe_hold)
+    # Full Clean: both assists off.
+    clean = not emergency_hp and not iframe_hold
+    # Any assist-off run uses *_clean stems so assisted baselines stay safe.
+    clean_artifacts = not emergency_hp or not iframe_hold
+
+    output, report = resolve_cli_paths(
         output=args.output,
+        report=args.report,
+        dry_run=args.dry_run,
+        clean_artifacts=clean_artifacts,
+    )
+    run_full_hard(
+        output=output,
         report_path=report,
         max_frames=args.max_frames,
         scale=args.scale,
         dry_run=args.dry_run,
         entry_state_prefix=args.entry_state_prefix,
+        emergency_hp=emergency_hp,
+        iframe_hold=iframe_hold,
+        require_clean_assists=clean,
     )
     return 0
 

@@ -1,155 +1,103 @@
-"""Small ffmpeg-backed RGB video sink and helpers."""
+"""Super Metroid continuous-video presets on top of ``retro_harness.video``.
+
+The shared recorder lives in :mod:`retro_harness.video`. This module only
+adds KPDR showcase gates (Zebes landing, opening-credits cutoff) and re-exports
+the shared API so existing imports keep working.
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
-import subprocess
-import tempfile
-from typing import BinaryIO, Sequence
+from typing import Any, Literal
 
-import numpy as np
+from retro_harness.video import (
+    FOOTER_HEIGHT,
+    FrameVideoWriter,
+    VideoCaptureConfig,
+    VideoRecorder,
+    concat_videos,
+    format_snes_buttons,
+    probe_video_evidence,
+    render_button_footer,
+    should_capture_frame,
+    short_clock,
+)
+
+# Landing Site after Ceres escape — natural Zebes start for showcase trims.
+ZEBES_LANDING_ROOM_ID = 0x91F8
+
+# Default frame index after the Nintendo/title lead-in (before first Ceres
+# control ~10.8k). Override via continuous_video_config(start_frame=…).
+DEFAULT_OPENING_CREDITS_CUTOFF = 900
+
+VideoStartMode = Literal["power_on", "zebes", "after_credits", "frame"]
+
+__all__ = [
+    "DEFAULT_OPENING_CREDITS_CUTOFF",
+    "FOOTER_HEIGHT",
+    "FrameVideoWriter",
+    "VideoCaptureConfig",
+    "VideoRecorder",
+    "VideoStartMode",
+    "ZEBES_LANDING_ROOM_ID",
+    "concat_videos",
+    "continuous_video_config",
+    "format_snes_buttons",
+    "opening_credits_cutoff",
+    "probe_video_evidence",
+    "render_button_footer",
+    "should_capture_frame",
+    "short_clock",
+]
 
 
-def concat_videos(
-    parts: Sequence[str | Path],
-    output: str | Path,
+def opening_credits_cutoff(frame: int | None = None) -> int:
+    """Inclusive frame after which capture may begin (title lead-in trim)."""
+    if frame is None:
+        return DEFAULT_OPENING_CREDITS_CUTOFF
+    if frame < 0:
+        raise ValueError("opening credits cutoff must be >= 0")
+    return frame
+
+
+def continuous_video_config(
     *,
-    reencode: bool = False,
-) -> dict[str, object]:
-    """Concatenate H.264 clips with ffmpeg (stream-copy by default).
+    start: VideoStartMode = "power_on",
+    start_frame: int | None = None,
+    hq: bool = False,
+    **overrides: Any,
+) -> VideoCaptureConfig:
+    """Build a :class:`VideoCaptureConfig` with Metroid showcase start gates.
 
-    All parts should share resolution/fps when ``reencode`` is false. Returns a
-    small report dict; raises ``RuntimeError`` on ffmpeg failure.
+    ``start``:
+      - ``power_on`` — write every frame
+      - ``zebes`` — latch when Landing Site (``0x91F8``) is entered
+      - ``after_credits`` — skip until ``start_frame`` or
+        :data:`DEFAULT_OPENING_CREDITS_CUTOFF`
+      - ``frame`` — skip until explicit ``start_frame``
+
+    ``hq=True`` applies :meth:`VideoCaptureConfig.high_quality` defaults
+    (3× scale, CRF 15, slow preset) before overrides.
     """
-    paths = [Path(p).resolve() for p in parts]
-    if not paths:
-        raise ValueError("concat_videos requires at least one part")
-    for path in paths:
-        if not path.is_file():
-            raise FileNotFoundError(f"missing video part: {path}")
-    out = Path(output)
-    out.parent.mkdir(parents=True, exist_ok=True)
+    if start not in ("power_on", "zebes", "after_credits", "frame"):
+        raise ValueError(f"unknown video start mode: {start!r}")
 
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        suffix=".txt",
-        delete=False,
-        encoding="utf-8",
-    ) as list_file:
-        for path in paths:
-            # ffmpeg concat demuxer needs escaped single quotes in paths.
-            escaped = str(path).replace("'", r"'\''")
-            list_file.write(f"file '{escaped}'\n")
-        list_path = Path(list_file.name)
+    gate: dict[str, Any] = {}
+    if start == "zebes":
+        gate["start_room_id"] = ZEBES_LANDING_ROOM_ID
+        gate["start_frame"] = None
+    elif start == "after_credits":
+        gate["start_frame"] = opening_credits_cutoff(start_frame)
+        gate["start_room_id"] = None
+    elif start == "frame":
+        if start_frame is None:
+            raise ValueError("start='frame' requires start_frame")
+        gate["start_frame"] = start_frame
+        gate["start_room_id"] = None
+    else:
+        gate["start_frame"] = None
+        gate["start_room_id"] = None
 
-    try:
-        command = [
-            "ffmpeg",
-            "-loglevel",
-            "error",
-            "-y",
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            str(list_path),
-        ]
-        if reencode:
-            command.extend(
-                [
-                    "-an",
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "veryfast",
-                    "-crf",
-                    "20",
-                    "-pix_fmt",
-                    "yuv420p",
-                ]
-            )
-        else:
-            command.extend(["-c", "copy"])
-        command.append(str(out))
-        result = subprocess.run(command, capture_output=True, text=True)
-        if result.returncode != 0:
-            stderr = (result.stderr or "").strip()
-            raise RuntimeError(
-                f"ffmpeg concat failed ({result.returncode}): {stderr or 'no stderr'}"
-            )
-    finally:
-        list_path.unlink(missing_ok=True)
-
-    return {
-        "path": str(out),
-        "parts": [str(p) for p in paths],
-        "reencode": reencode,
-        "bytes": out.stat().st_size if out.is_file() else 0,
-    }
-
-
-class FrameVideoWriter:
-    def __init__(
-        self,
-        path: str | Path,
-        *,
-        width: int,
-        height: int,
-        fps: int = 60,
-        scale: int = 2,
-    ) -> None:
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        command = [
-            "ffmpeg",
-            "-loglevel",
-            "error",
-            "-y",
-            "-f",
-            "rawvideo",
-            "-pixel_format",
-            "rgb24",
-            "-video_size",
-            f"{width}x{height}",
-            "-framerate",
-            str(fps),
-            "-i",
-            "-",
-            "-vf",
-            f"scale=iw*{scale}:ih*{scale}:flags=neighbor",
-            "-an",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-crf",
-            "20",
-            "-pix_fmt",
-            "yuv420p",
-            str(self.path),
-        ]
-        self._process = subprocess.Popen(command, stdin=subprocess.PIPE)
-        if self._process.stdin is None:
-            raise RuntimeError("ffmpeg did not expose stdin")
-        self._stdin: BinaryIO = self._process.stdin
-        self.frames = 0
-
-    def write(self, frame: np.ndarray) -> None:
-        self._stdin.write(np.ascontiguousarray(frame, dtype=np.uint8).tobytes())
-        self.frames += 1
-
-    def close(self) -> None:
-        if self._stdin.closed:
-            return
-        self._stdin.close()
-        result = self._process.wait()
-        if result:
-            raise RuntimeError(f"ffmpeg exited with status {result}")
-
-    def __enter__(self) -> FrameVideoWriter:
-        return self
-
-    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
-        self.close()
-
+    if hq:
+        # high_quality already sets scale/crf/preset; gates + overrides apply.
+        return VideoCaptureConfig.high_quality(**{**gate, **overrides})
+    return VideoCaptureConfig(**{**gate, **overrides})

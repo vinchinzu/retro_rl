@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
+    ensure_morph,
     hold,
     require_room,
     select_weapon,
+    unmorph,
     wait_ordinary_room,
 )
 from super_metroid.routes.kpdr.rooms import (
@@ -31,13 +33,36 @@ from super_metroid.routes.runtime import ControllerSession
 _MAX_SCAFFOLD_FRAMES = 240
 _ELEVATOR_Y = 680
 _FLOOR_Y_MIN = 1405
+# Top-right Cathedral door is block [15, 55] → pixel y ≈ 880 (screen 3 of 7).
+# Keep the band tight: y>900 is a lower shelf that falls past the door lip.
+_CATHEDRAL_DOOR_Y_MIN = 840
+_CATHEDRAL_DOOR_Y_MAX = 900
+_CATHEDRAL_DOOR_BAND_FRAMES = 500
+_CATHEDRAL_DOOR_FRAMES = 400
+_CATHEDRAL_SETTLE_FRAMES = 320
 _STANDING_POSES = frozenset({1, 2, 9, 10, 25, 26, 27, 28, 37, 38, 137, 138})
+# Grounded poses only for the Cathedral door ledge (exclude knockback 137/138).
+_CATHEDRAL_LEDGE_POSES = frozenset({1, 2, 9, 10, 25, 26, 27, 28, 37, 38})
 _FROG_SPEEDWAY_DOOR_FRAMES = 400
 _FROG_SPEEDWAY_SETTLE_FRAMES = 320
 # Frog Speedway is an 8-screen horizontal tunnel (left entry → right farm door).
 # Continuous loadout has no Speed; mid-room Boost Blocks may stop progress.
 _SPEEDWAY_TO_FARM_DOOR_FRAMES = 1100
 _SPEEDWAY_TO_FARM_SETTLE_FRAMES = 320
+# Cathedral Entrance is 3×2 screens; right red Super door is block [47, 7].
+# Upper left lip is a dead-end (solid at x≈91); KPDR path bombs through the
+# left morph-tunnel floor, crosses the bottom, climbs mid platforms (x≈560–680
+# — extreme-right wall at x≈730 is a dead climb), Supers the right red door.
+# Door ledge standing height ≈ y 112–150; mid shelf ≈ y 280–320.
+_CATH_ENTRANCE_BOMB_FRAMES = 12
+_CATH_ENTRANCE_FLOOR_FRAMES = 800
+_CATH_ENTRANCE_CLIMB_FRAMES = 1800
+_CATH_ENTRANCE_DOOR_X = 680
+_CATH_ENTRANCE_DOOR_Y = 170
+_CATH_ENTRANCE_CLIMB_X_MIN = 560
+_CATH_ENTRANCE_CLIMB_X_MAX = 680
+_CATH_ENTRANCE_MID_Y = (270, 330)
+_CATH_ENTRANCE_TO_CATH_SETTLE_FRAMES = 320
 
 
 def _scaffold_exit(
@@ -231,27 +256,252 @@ def play_frog_save_to_business(session: ControllerSession) -> SuperMetroidState:
 def play_business_to_cathedral_entrance(
     session: ControllerSession,
 ) -> SuperMetroidState:
-    """Scaffold Business top-right door → Cathedral Entrance ``0xA7B3``.
+    """Business Center elevator → Cathedral Entrance via top-right blue door.
 
-    First hop of no-Speed Cathedral climb to Bubble (SM-K4-CATH-01).
+    Continuous Business tip is still on the arriving elevator.  Settle at
+    ``y=680``, drop only to the top-right door band (block ``[15, 55]`` /
+    pixel y≈880 — **not** the floor Frog door), beam-shot the right blue
+    door, and settle ordinary gameplay in ``0xA7B3``.
     """
-    return _scaffold_exit(
+    label = "business_to_cathedral_entrance"
+    require_room(session, ROOM_BUSINESS, label)
+
+    stable_elevator_frames = 0
+    for _ in range(600):
+        state = hold(session, 1, reason=f"{label}_elevator_settle")
+        if state.samus_y == _ELEVATOR_Y:
+            stable_elevator_frames += 1
+            if stable_elevator_frames >= 24:
+                break
+        else:
+            stable_elevator_frames = 0
+    else:
+        raise TimeoutError(f"{label}: elevator did not settle: {session.state}")
+
+    # Shallow drop: leave the elevator platform and land on the top-right
+    # door ledge.  Prefer RIGHT-first so the first landing is the upper
+    # door shelf (LEFT-first often catches a lower y≈923 shelf that falls
+    # past the lip).  Short alternating Hi-Jump pulses clear center shelves
+    # without committing to the full Frog-floor descent.
+    for frame in range(_CATHEDRAL_DOOR_BAND_FRAMES):
+        state = session.state
+        if (
+            _CATHEDRAL_DOOR_Y_MIN <= state.samus_y <= _CATHEDRAL_DOOR_Y_MAX
+            and state.velocity_y == 0
+            and state.pose in _CATHEDRAL_LEDGE_POSES
+        ):
+            break
+        direction = "RIGHT" if (frame // 50) % 2 == 0 else "LEFT"
+        if frame % 50 < 12:
+            buttons = (direction, "B", "A")
+        else:
+            buttons = (direction, "B")
+        hold(session, 1, *buttons, reason=f"{label}_door_band")
+    else:
+        raise TimeoutError(f"{label}: cathedral door band missed: {session.state}")
+
+    select_weapon(session, 0)
+    for _ in range(_CATHEDRAL_DOOR_FRAMES):
+        state = hold(session, 1, "RIGHT", "B", "X", reason=f"{label}_door")
+        if state.room_id == ROOM_CATHEDRAL_ENTRANCE:
+            break
+    else:
+        raise TimeoutError(f"{label}: Cathedral door missed: {session.state}")
+
+    return wait_ordinary_room(
         session,
-        entry_room=ROOM_BUSINESS,
-        target_room=ROOM_CATHEDRAL_ENTRANCE,
-        label="business_to_cathedral_entrance",
+        ROOM_CATHEDRAL_ENTRANCE,
+        settle_frames=_CATHEDRAL_SETTLE_FRAMES,
+        label=label,
     )
 
 
 def play_cathedral_entrance_to_cathedral(
     session: ControllerSession,
 ) -> SuperMetroidState:
-    """Scaffold Cathedral Entrance red door → Cathedral ``0xA788``."""
-    return _scaffold_exit(
+    """Cathedral Entrance left spawn → ordinary Cathedral via right red Super door.
+
+    CATH-01 pure successor lands near the left blue lip (x≈39 / y≈139).  The
+    upper ledge is a dead-end solid at x≈91 — bomb through the left morph-tunnel
+    floor, cross the bottom, Hi-Jump climb mid platforms toward the right red
+    Super door (block ``[47, 7]``), open it, and settle ordinary ``0xA788``.
+    """
+    label = "cathedral_entrance_to_cathedral"
+    require_room(session, ROOM_CATHEDRAL_ENTRANCE, label)
+
+    for _ in range(40):
+        state = hold(session, 1, reason=f"{label}_land")
+        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+            break
+
+    # --- Phase 1: bomb-drop through left morph-tunnel floor ---
+    unmorph(session)
+    ensure_morph(session)
+    for _ in range(40):
+        state = hold(session, 1, "RIGHT", reason=f"{label}_morph_edge")
+        if state.samus_x >= 82:
+            break
+    for _ in range(_CATH_ENTRANCE_BOMB_FRAMES):
+        hold(session, 2, "X", reason=f"{label}_bomb")
+        state = hold(session, 48, reason=f"{label}_bomb_fuse")
+        if state.samus_y > 300:
+            break
+    for _ in range(100):
+        state = hold(session, 1, reason=f"{label}_bomb_fall")
+        if state.velocity_y == 0 and state.samus_y > 300:
+            break
+    unmorph(session)
+
+    # --- Phase 2: floor cross to climb start (~x 620 floor band) ---
+    select_weapon(session, 0)
+    max_x = session.state.samus_x
+    min_y = session.state.samus_y
+    for frame in range(_CATH_ENTRANCE_FLOOR_FRAMES):
+        state = session.state
+        if state.room_id == ROOM_CATHEDRAL:
+            break
+        if state.pose in (137, 138):
+            hold(session, 8, reason=f"{label}_kb")
+            continue
+        if (
+            state.samus_x >= 620
+            and state.velocity_y == 0
+            and state.samus_y >= 380
+            and state.pose in _CATHEDRAL_LEDGE_POSES
+        ):
+            break
+        phase = frame % 45
+        if phase < 20:
+            inputs = ("RIGHT", "B", "A")
+        elif phase < 28:
+            inputs = ("RIGHT", "B", "X")
+        else:
+            inputs = ("RIGHT", "B")
+        state = hold(session, 1, *inputs, reason=f"{label}_floor")
+        max_x = max(max_x, state.samus_x)
+        min_y = min(min_y, state.samus_y)
+
+    # --- Phase 3: climb mid platforms (x 560–680) + Super door ---
+    mid_ground = frozenset({1, 2, 9, 10})
+    mid_landed = False
+    door_reached = False
+    y_lo, y_hi = _CATH_ENTRANCE_MID_Y
+    for frame in range(_CATH_ENTRANCE_CLIMB_FRAMES):
+        state = session.state
+        if state.room_id == ROOM_CATHEDRAL:
+            break
+        max_x = max(max_x, state.samus_x)
+        min_y = min(min_y, state.samus_y)
+
+        if state.pose in (137, 138):
+            hold(session, 12, reason=f"{label}_kb")
+            continue
+
+        # Door band: Super pulses + enter.
+        if (
+            state.samus_y <= _CATH_ENTRANCE_DOOR_Y
+            and state.samus_x >= _CATH_ENTRANCE_DOOR_X
+        ):
+            door_reached = True
+            if state.selected_item != 2:
+                select_weapon(session, 2)
+            phase = frame % 28
+            if phase < 5:
+                inputs = ("RIGHT", "X")
+            elif phase < 12:
+                inputs = ("RIGHT",)
+            elif phase < 20:
+                inputs = ("RIGHT", "B")
+            else:
+                inputs = ("RIGHT", "B", "A")
+            state = hold(session, 1, *inputs, reason=f"{label}_door")
+            if state.room_id == ROOM_CATHEDRAL:
+                break
+            continue
+
+        # High near-door: push right onto the door ledge.
+        if state.samus_y <= 220 and state.samus_x >= 600:
+            if state.selected_item != 2:
+                select_weapon(session, 2)
+            phase = frame % 24
+            if phase < 6:
+                inputs = ("RIGHT", "B", "A")
+            elif phase < 12:
+                inputs = ("RIGHT", "X")
+            else:
+                inputs = ("RIGHT", "B")
+            state = hold(session, 1, *inputs, reason=f"{label}_high")
+            if state.room_id == ROOM_CATHEDRAL:
+                break
+            continue
+
+        # Mid shelf: land standing, charge Hi-Jump UP-RIGHT to door.
+        if (
+            y_lo <= state.samus_y <= y_hi
+            and state.samus_x >= 580
+            and state.velocity_y == 0
+            and state.pose in mid_ground
+        ):
+            mid_landed = True
+            hold(session, 8, reason=f"{label}_mid_plant")
+            for _ in range(22):
+                hold(session, 1, "A", reason=f"{label}_mid_charge")
+            for _ in range(90):
+                state = hold(
+                    session, 1, "RIGHT", "B", "A", reason=f"{label}_mid_jump"
+                )
+                min_y = min(min_y, state.samus_y)
+                max_x = max(max_x, state.samus_x)
+                if state.room_id == ROOM_CATHEDRAL:
+                    break
+                if (
+                    state.samus_y <= _CATH_ENTRANCE_DOOR_Y
+                    and state.samus_x >= _CATH_ENTRANCE_DOOR_X
+                ):
+                    door_reached = True
+                    break
+            if state.room_id == ROOM_CATHEDRAL:
+                break
+            continue
+
+        # Climb: keep x in [560, 680] where mid platforms live.
+        if state.selected_item != 0 and not door_reached:
+            select_weapon(session, 0)
+        x = state.samus_x
+        if x > _CATH_ENTRANCE_CLIMB_X_MAX:
+            dir_h = "LEFT"
+        elif x < _CATH_ENTRANCE_CLIMB_X_MIN:
+            dir_h = "RIGHT"
+        else:
+            dir_h = "RIGHT" if (frame // 40) % 2 == 0 else "LEFT"
+        phase = frame % 60
+        if phase < 30:
+            inputs = (dir_h, "B", "A")
+        elif phase < 40:
+            inputs = ("A",)
+        elif phase < 50:
+            inputs = (dir_h, "B")
+        else:
+            inputs = (dir_h, "B", "X")
+        state = hold(session, 1, *inputs, reason=f"{label}_climb")
+        if state.room_id == ROOM_CATHEDRAL:
+            break
+    else:
+        state = session.state
+        raise TimeoutError(
+            f"{label}: right Super door missed before room "
+            f"0x{ROOM_CATHEDRAL:04X}; room=0x{state.room_id:04X} "
+            f"pose={state.pose} xy=({state.samus_x},{state.samus_y}) "
+            f"door_transition={state.door_transition} max_x={max_x} "
+            f"min_y={min_y} mid_landed={mid_landed} door_reached={door_reached} "
+            f"supers={state.super_missiles} selected={state.selected_item}"
+        )
+
+    return wait_ordinary_room(
         session,
-        entry_room=ROOM_CATHEDRAL_ENTRANCE,
-        target_room=ROOM_CATHEDRAL,
-        label="cathedral_entrance_to_cathedral",
+        ROOM_CATHEDRAL,
+        settle_frames=_CATH_ENTRANCE_TO_CATH_SETTLE_FRAMES,
+        label=label,
     )
 
 

@@ -53,20 +53,31 @@ Dispatch from repo root:
 | Frog Save → Speedway pure | residual **GREEN** | pure controller green; **not** first Bubble path |
 | Speedway → Farm pure | residual **RED** | Boost Blocks need Speed (`SM-K4.2-PURE-residual.md`) |
 | **K4 repath (chosen)** | Cathedral first Bubble | Business → `0xA7B3` → `0xA788` → `0xAFA3` → Bubble |
-| **Next serial** | **`SM-K4-CATH-01` pure** | [`SM-K4-CATH-01`](SM-K4-CATH-01.md) from `post_business_continuous` |
+| **Next serial** | **[`SM-K4-CATH-03`](SM-K4-CATH-03.md) pure** | Cathedral `0xA788` → Rising Tide `0xAFA3` from `post_cathedral_entrance_to_cathedral_pure` (card ready; not yet implemented) |
+| Cathedral pure stack | CATH-01 **GREEN** (~959f) · CATH-02 **GREEN** (~909f) | → **CATH-03** (card) → CATH-04 Bubble |
 | After Cathedral → Bubble | Bat Cave → Speed Hall → Speed → Wave / Ice | then K5 Alpha PB |
 
 ```bash
-# Pure successor already captured (re-verify only if flaky)
-uv run python super_metroid/scripts/probe/kpdr.py pure frog-save-to-speedway \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_frog_continuous.state \
-  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_frog_save_to_speedway_pure.state \
-  --pin-json super_metroid/debug/frog_save_to_speedway_pure_pin.json
+# Cathedral pure stack (post–Frog Save / post–Business repath)
+uv run python super_metroid/scripts/probe/kpdr.py pure business-to-cathedral-entrance \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_business_continuous.state \
+  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_business_to_cathedral_entrance_pure.state
+uv run python super_metroid/scripts/probe/kpdr.py pure cathedral-entrance-to-cathedral \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_business_to_cathedral_entrance_pure.state \
+  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_cathedral_entrance_to_cathedral_pure.state
+# Next serial pure (card SM-K4-CATH-03; probe choice lands with implement):
+# uv run python super_metroid/scripts/probe/kpdr.py pure cathedral-to-rising-tide \
+#   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_cathedral_entrance_to_cathedral_pure.state \
+#   --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_cathedral_to_rising_tide_pure.state
 ```
 
 Cards: Frog Save continuous + Speedway pure GREEN (parked as post-Speed) ·
-next **[`SM-K4-CATH-01`](SM-K4-CATH-01.md)** Cathedral climb.  
+CATH-01/02 pure GREEN · next **[`SM-K4-CATH-03`](SM-K4-CATH-03.md)** (Cathedral → Rising Tide).
 Wave-11 closeout: [`WAVE-11.md`](WAVE-11.md). Triage: [`TRIAGE.md`](TRIAGE.md).
+
+**Structure residual (Clean track / continuous):**
+[`SM-ARCH-CLEAN-TRACK-residual.md`](SM-ARCH-CLEAN-TRACK-residual.md) — do-list
+from 2026-08-02 code review (SM P1 items landed; open P2/P3 + TMNT cross-game).
 
 **Planner only after pure green:** graph edge → compose tip → continuous
 stabilize → STATUS. Never in a farm batch.
@@ -125,9 +136,35 @@ Detail: [`WAVE-11.md`](WAVE-11.md).
 | **C practice** | `ROOM_WORK_QUEUE` / farm waves | Dual-track only; not continuous |
 | **ARCH** | Structure debt | Planner-serial; no tip claims |
 | **BOSS-INFRA** | Catalog / primitives / capture CLI | Dev only until natural entry |
+| **CLEAN** | No energy + no ammo continuous tips | Bronze/Clean; `*_clean` artifacts only |
 
 Practice board after Wave-10: easy+standard ready **62/108 (57.4%)** —
 see `ROOM_WORK_QUEUE`. Generator: `scripts/generate_room_segment_cards.py`.
+
+## Clean track (parallel privilege reduction)
+
+Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Does **not** block B spine.
+Primary STATUS tip remains assisted Frog Save.
+
+| Gate | Status | Card |
+|------|--------|------|
+| Dual-path docs | **done** | [`SM-CLEAN-CONTRACT`](SM-CLEAN-CONTRACT.md) |
+| Artifact isolation `_clean` | **done** | [`SM-CLEAN-ARTIFACTS`](SM-CLEAN-ARTIFACTS.md) |
+| `--clean` CLI + flag wiring | **done** | [`SM-CLEAN-CLI`](SM-CLEAN-CLI.md) |
+| Zero resource-write integrity | **done** | [`SM-CLEAN-INTEGRITY`](SM-CLEAN-INTEGRITY.md) |
+| Morph Clean continuous | **done** 27,074f | [`SM-CLEAN-MORPH`](SM-CLEAN-MORPH.md) |
+| ★ Bombs/Torizo Clean continuous | **ready** (missiles green; BT existing model) | [`SM-CLEAN-BOMBS`](SM-CLEAN-BOMBS.md) |
+| BT economy (only if RED) | gated | [`SM-CLEAN-BT-ECONOMY`](SM-CLEAN-BT-ECONOMY.md) |
+
+Infra landed 2026-08-01: `default_tip_artifact_paths(..., clean=True)`,
+`--clean` CLI, `require_clean_resources` integrity, tests in
+`tests/test_clean_track.py`. Defaults still resource-assisted.
+
+```bash
+# Preferred (defaults to start_to_*_clean.json)
+uv run python super_metroid/scripts/record/continuous.py --to morph --clean --no-video
+uv run python super_metroid/scripts/record/continuous.py --to bombs --clean --no-video
+```
 
 ## Architecture debt (planner-serial)
 

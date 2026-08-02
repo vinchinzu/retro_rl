@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "problemId": "room_b139_from_af72_to_afce",
-  "status": "generated_unverified",
-  "description": "Doorway-natural starter for Red Pirate Shaft (0xB139); entry just inside door, exit via DOWN.",
+  "status": "verified_development_state",
+  "description": "Red Pirate Shaft (0xB139) right-door entry from Farming Room \u2192 bottom door to Acid Snakes (0xAFCE). Walk left off entry ledge, land mid platform, right into shaft gap, pulsed DOWN+X while falling to open bottom blue door. Dual-track practice only.",
   "entryContract": {
     "schemaVersion": 1,
     "kind": "doorway_natural",
@@ -104,38 +104,87 @@
     {
       "label": "entry_settle",
       "buttons": [],
+      "frames": 15
+    },
+    {
+      "label": "walk_left_off_ledge",
+      "buttons": [
+        "LEFT",
+        "B"
+      ],
+      "frames": 24
+    },
+    {
+      "label": "fall_left_to_mid",
+      "buttons": [
+        "LEFT"
+      ],
+      "frames": 50
+    },
+    {
+      "label": "mid_settle",
+      "buttons": [],
       "frames": 20
     },
     {
-      "label": "coarse_exit_approach",
+      "label": "walk_right_into_gap",
       "buttons": [
-        "LEFT",
-        "A",
+        "RIGHT",
         "B"
       ],
-      "frames": 220
+      "frames": 25
     },
     {
-      "label": "open_exit_door",
+      "label": "gap_commit",
+      "buttons": [],
+      "frames": 8
+    },
+    {
+      "label": "fall_down_shot_pulses",
+      "repeat": 6,
+      "steps": [
+        {
+          "label": "down_shot",
+          "buttons": [
+            "DOWN",
+            "X"
+          ],
+          "frames": 4
+        },
+        {
+          "label": "down_shot_gap",
+          "buttons": [],
+          "frames": 20
+        }
+      ]
+    },
+    {
+      "label": "final_door_pulse",
       "buttons": [
         "DOWN",
         "X"
       ],
-      "frames": 8
+      "frames": 6
     },
     {
       "label": "door_open_wait",
       "buttons": [],
-      "frames": 45
+      "frames": 50
     },
     {
       "label": "enter_exit_door",
       "buttons": [
-        "DOWN",
-        "B"
+        "DOWN"
       ],
-      "frames": 150
+      "frames": 200
     }
   ],
-  "acceptanceWarning": "Generated scaffold only. It must cross and settle in emulator before its status can become verified_development_state (use run --promote or the promote command)."
+  "acceptanceWarning": "Isolated doorway-natural practice policy. Must cross and settle in emulator before status can become verified_development_state (use run --promote). Dual-track only \u2014 not continuous evidence.",
+  "promotedAt": "2026-08-02T07:13:27.843875+00:00",
+  "promotion": {
+    "reportPath": "/home/v/01_projects/11_games/retro_rl/super_metroid/recordings/room_clears/room_b139_from_af72_to_afce.json",
+    "reportSha256": "0863d8074d55be21fe88ea98e14595a89948de2054784944e780be76d824be0e",
+    "stateSha256": "d3d0708f5a1d5047e1dbc56fd2c03e20d27b88b5fa2b53babdc9974982b3cbc7",
+    "policySha256Before": "6d2413da66d16b0c7d3fdcd199114081182ea8f523f17029910362ff9a2b8f14"
+  }
 }

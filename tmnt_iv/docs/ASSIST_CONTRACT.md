@@ -41,3 +41,25 @@ for that stage / whole run per playbook order.
 
 Every continuous clear manifest must include intervention counts for HP
 restores and iframe-guard frames. Do not label assisted runs as Clean.
+
+## Clean mode (parallel track)
+
+**Clean** means both emergency HP restore and form-2 iframe hold are **off**:
+zero resource restores and zero protection writes. Observation may still be
+Bronze (read-only RAM). Natural pizza pickup is not an assist.
+
+Clean is a **parallel** privilege-reduction workstream; it does not replace
+this assisted contract or the primary M8 continuous hard clear.
+
+Rules, artifact isolation (`*_clean` stems), tickets, and the full Clean
+ladder: [`CLEAN_TRACK.md`](CLEAN_TRACK.md). Play lessons:
+[`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md). Live queue:
+[`tasks/QUEUE.md`](tasks/QUEUE.md). ★ Product tip ticket:
+[`tasks/T4-CLEAN-FULL.md`](tasks/T4-CLEAN-FULL.md).
+
+Hard constraints:
+
+- Default continuous CLI remains resource + protection assisted.
+- Clean runs must not overwrite assisted `tmnt_iv_full_hard_*` baselines.
+- STATUS primary program gate stays assisted until an explicit program
+  decision changes it; Clean results are documented as a secondary track.

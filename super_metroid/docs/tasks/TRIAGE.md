@@ -75,7 +75,24 @@ Wave-11 atoms: `SM-ARCH-HOPS-MODULE`, `SM-ARCH-RED-DIAG`.
 High-dwell tightening (Business↔Warehouse, HJ shaft, Climb, Spore). Multi-run
 stability after any spine change. Source-state catalog expansion.
 
-### 5. Optional / parked (only if cheap)
+### 5. Clean track — non-assist early tips (P2 parallel)
+
+**Bronze / Clean:** no energy refill, no ammo refill. ★ Target continuous
+power-on → **Bomb Torizo** exit using the same early controllers as assisted.
+
+Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Tickets: `SM-CLEAN-*`.
+
+| Priority | Work | Notes |
+|----------|------|-------|
+| P2 done | `SM-CLEAN-ARTIFACTS` / `CLI` / `INTEGRITY` / `CONTRACT` / `MORPH` | Morph clean 27,074f green 2026-08-02 |
+| P2 ready | `SM-CLEAN-BOMBS` ★ | Missiles detour clean green; BT = existing model (no re-solve) |
+| P3 gated | `SM-CLEAN-BT-ECONOMY` | Only if clean BT RED; re-verify assisted bombs after shared edits |
+| P4 parked | Clean spore / supers | After Clean BT green only |
+
+**Do not** change default CLI assists or primary STATUS tip. Clean failures do
+not demote assisted continuous greens.
+
+### 6. Optional / parked (only if cheap)
 
 Conventional Charge return, Pure Pink PB, ship-first Phantoon, Crocomire side,
 vision BC until gold. Forced progression writes: **never** on continuous path.
@@ -84,10 +101,11 @@ vision BC until gold. Forced progression writes: **never** on continuous path.
 
 | Lane | Action |
 |------|--------|
-| **Spine (serial)** | Land / re-verify Frog→Speedway pure → SRC → graph → continuous tip → re-verify `--to frog` + new intermediate tip |
+| **Spine (serial)** | Cathedral repath pure stack (`SM-K4-CATH-01`…) → Bubble → Speed / Wave / Ice |
+| **Parallel Clean** | Land clean infra → morph → ★ bombs/Torizo Clean tip (`SM-CLEAN-*`) |
 | **Parallel** | Path-room farm waves; BossCatalog + combat primitives; 1–2 ARCH items that reduce continuous friction |
-| **Hygiene** | After spine geometry: pure + continuous **stabilize** before STATUS |
-| **Do not** | Expand topology/warp product work (Track A done). Do not fake continuous with warps or progression writes |
+| **Hygiene** | After spine geometry: pure + continuous **stabilize** before STATUS; clean uses `*_clean` artifacts only |
+| **Do not** | Expand topology/warp product work (Track A done). Do not fake continuous with warps or progression writes. Do not overwrite assisted baselines with clean runs |
 
 ## Maturity path
 

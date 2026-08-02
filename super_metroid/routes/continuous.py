@@ -14,7 +14,6 @@ two matching no-video runs). Extend K4 forward with a new tip-spec row + hops
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from datetime import datetime, timezone
 import json
 from pathlib import Path
 
@@ -23,7 +22,7 @@ import numpy as np
 from retro_harness.actions import buttons, idle_action
 from retro_harness.env import write_state_bytes
 from super_metroid.assist import UnlimitedAmmoAssist, UnlimitedResourcesAssist
-from super_metroid.paths import POLICY_DIR, ROOM_TIMINGS_DIR, SHARED_ROM
+from super_metroid.paths import POLICY_DIR, ROOM_TIMINGS_DIR
 from super_metroid.policy import (
     PolicySegment,
     SegmentEvidence,
@@ -45,6 +44,7 @@ from super_metroid.ram import (
     SuperMetroidState,
 )
 from super_metroid.room_timer import RoomTimer
+from super_metroid.routes.controller_common import select_weapon
 from super_metroid.routes.kpdr import SuperCollectEvidence, play_super_room_collect
 from super_metroid.routes.kpdr import hops as _kpdr_hops
 from super_metroid.routes.kpdr.hops import (
@@ -85,11 +85,13 @@ from super_metroid.routes.runtime import (
     default_artifacts,
     finish_report,
     first_progress_event,
+    resolve_clean_resources,
     route_plan_evidence,
     run_continuous,
     sha256_file,
     split_for_transition,
 )
+from super_metroid.video import VideoCaptureConfig
 from super_metroid.routes.spore_spawn_controller import (
     SporeSpawnEvidence,
     play_post_torizo_to_spore_spawn,
@@ -379,10 +381,22 @@ def play_start_to_morph(session: RouteSession, splits: list[Split]) -> None:
 def run_start_to_morph(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
+    require_clean_resources: bool | None = None,
 ) -> ContinuousRunReport:
-    """Power-on once; stop after Morph Ball."""
+    """Power-on once; stop after Morph Ball.
+
+    Morph never used energy assist historically; ``unlimited_energy`` is accepted
+    for uniform CLI/clean wiring and is a no-op (ammo-only assist).
+    """
+    clean = resolve_clean_resources(
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        require_clean_resources=require_clean_resources,
+    )
     assist = UnlimitedAmmoAssist(enabled=unlimited_ammo)
 
     def play(ctx: PlayContext) -> None:
@@ -393,37 +407,31 @@ def run_start_to_morph(
         assist=assist,
         graph=START_TO_MORPH_GRAPH,
         video_path=video_path,
+        video_config=video_config,
         success_outcome="morph_ball_acquired",
     )
-    if result.failure is not None:
-        raise result.failure
-
-    report = ContinuousRunReport(
+    final = result.final_state
+    report = finish_report(
+        result,
         schema_version=1,
-        success=True,
-        outcome=result.outcome,
         kind="morph",
-        total_frames=result.session.frame,
-        final_state=result.final_state.to_dict(),
-        splits=result.splits,
-        transitions=result.session.transitions,
-        action_reasons=result.session.action_reasons,
-        assist=assist.report(),
-        state_loads=0,
-        progression_writes=assist.telemetry.progression_writes,
-        video_path=str(Path(video_path).resolve()) if video_path is not None else None,
+        required_splits=("morph_ball",),
+        final_conditions={
+            "morph_collected": bool(final.collected_items & MORPH_BALL_MASK),
+        },
         source_policy="power-on Ceres policy + imported natural-entry room seeds",
-        rom_sha256=sha256_file(SHARED_ROM),
-        start_state="power_on/retro.State.NONE",
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        report_path=report_path,
+        route_label="start-to-morph",
+        require_transitions=False,
+        require_clean_resources=clean,
     )
-    if report_path is not None:
-        output = Path(report_path)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            json.dumps(report.to_dict(), indent=2) + "\n",
-            encoding="utf-8",
-        )
+    # Historical morph JSON emits ``video_path`` (not the shared ``video`` blob).
+    if video_path is not None:
+        report.video_path = str(Path(video_path).resolve())
+    elif result.video_evidence is not None:
+        path = result.video_evidence.get("path")
+        if path is not None:
+            report.video_path = str(path)
     return report
 
 
@@ -528,15 +536,29 @@ def play_start_to_bombs(
         timeout=600,
         reason="pit_natural_entry_alignment",
     )
-    session.step(buttons("SELECT"), "pit_weapon_selection_normalize")
+    # Assisted two-Missile detour exits with missiles selected (sel=1); clean
+    # often exits on beam (sel=0) after ammo runs dry. One fixed SELECT when
+    # already on beam would arm missiles and break the climb entry. Match the
+    # historical 1+9 settle budget either way.
+    if session.state.selected_item != 0:
+        session.step(buttons("SELECT"), "pit_weapon_selection_normalize")
+    else:
+        session.step(idle_action(), "pit_weapon_already_beam")
     for _ in range(9):
         session.step(idle_action(), "pit_grounded_settle")
+    if session.state.selected_item != 0:
+        select_weapon(session, 0)
+        for _ in range(9):
+            session.step(idle_action(), "pit_grounded_settle")
     if session.state.selected_item != 0:
         raise RuntimeError(
             f"Pit weapon selection did not return to beam: {session.state}"
         )
 
+    # BT fight stays on the existing hash-pinned policy / combat model — not
+    # solved in the Clean morph→missiles probe. Clean bombs tip composes next.
     segments.append(play_policy(session, _PIT_TO_POST_TORIZO))
+
     bombs_event = next(
         event
         for event in session.progress_events
@@ -563,10 +585,22 @@ def play_start_to_bombs(
 def run_start_to_bombs(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
+    require_clean_resources: bool | None = None,
 ) -> ContinuousRunReport:
-    """Power-on once; stop after Bomb Torizo exit into Parlor."""
+    """Power-on once; stop after Bomb Torizo exit into Parlor.
+
+    Bombs historically used ammo-only assist; ``unlimited_energy`` is accepted
+    for uniform CLI/clean wiring (no-op — energy refill starts at spore+).
+    """
+    clean = resolve_clean_resources(
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        require_clean_resources=require_clean_resources,
+    )
     assist = UnlimitedAmmoAssist(enabled=unlimited_ammo)
 
     def play(ctx: PlayContext) -> None:
@@ -577,10 +611,20 @@ def run_start_to_bombs(
         assist=assist,
         graph=EARLY_GAME_GRAPH,
         video_path=video_path,
+        video_config=video_config,
         success_outcome="bomb_torizo_defeated_bombs_acquired",
     )
     final = result.final_state
     session = result.session
+    source = (
+        "accepted power-on prefix + hash-pinned natural manual replay segments "
+        "+ Clean (no ammo refill)"
+        if clean
+        else (
+            "accepted power-on prefix + hash-pinned natural manual replay segments "
+            "+ phase-guarded unlimited ammo"
+        )
+    )
     return finish_report(
         result,
         schema_version=2,
@@ -601,13 +645,11 @@ def run_start_to_bombs(
                 and final.phase is GameplayPhase.ORDINARY_GAMEPLAY
             ),
         },
-        source_policy=(
-            "accepted power-on prefix + hash-pinned natural manual replay segments "
-            "+ phase-guarded unlimited ammo"
-        ),
+        source_policy=source,
         report_path=report_path,
         route_label="start-to-bombs",
         require_transitions=False,
+        require_clean_resources=clean,
     )
 
 
@@ -649,11 +691,18 @@ def play_start_to_spore_spawn(
 def run_start_to_spore_spawn(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
+    require_clean_resources: bool | None = None,
 ) -> ContinuousRunReport:
     """Power-on once; stop in Super room after Spore Spawn exit."""
+    clean = resolve_clean_resources(
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        require_clean_resources=require_clean_resources,
+    )
     assist = UnlimitedResourcesAssist(
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -671,6 +720,7 @@ def run_start_to_spore_spawn(
         assist=assist,
         graph=START_TO_SPORE_SPAWN_GRAPH,
         video_path=video_path,
+        video_config=video_config,
         success_outcome="spore_spawn_defeated_and_exited",
     )
     boss = boss_box["boss"]
@@ -708,6 +758,7 @@ def run_start_to_spore_spawn(
         report_path=report_path,
         route_label="start-to-Spore-Spawn",
         require_deaths_zero=True,
+        require_clean_resources=clean,
         route_plan=plan,
         policy_sources={
             "continuous_route_module": {
@@ -791,10 +842,12 @@ def write_room_timing_artifact(
 def run_start_to_supers(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
     room_timing_path: str | Path | None = None,
+    require_clean_resources: bool | None = None,
 ) -> ContinuousRunReport:
     """Power-on once through natural Super Missile collect (STATUS baseline).
 
@@ -802,6 +855,11 @@ def run_start_to_supers(
     observes every frame and a separate timing JSON is written. Timing never
     affects assist, integrity, or route decisions.
     """
+    clean = resolve_clean_resources(
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        require_clean_resources=require_clean_resources,
+    )
     assist = UnlimitedResourcesAssist(
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -822,6 +880,7 @@ def run_start_to_supers(
         assist=assist,
         graph=START_TO_SPORE_SPAWN_GRAPH,
         video_path=video_path,
+        video_config=video_config,
         success_outcome="spore_supers_collected",
         room_timer=timer,
     )
@@ -870,6 +929,7 @@ def run_start_to_supers(
             report_path=report_path,
             route_label="start-to-Supers",
             require_deaths_zero=True,
+            require_clean_resources=clean,
             route_plan=plan,
             policy_sources={
                 "continuous_route_module": {
@@ -1039,15 +1099,22 @@ def run_post_supers_tip(
     entry_condition_key: str,
     ordinary_condition_key: str,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
     room_timing_path: str | Path | None = None,
     state_output: str | Path | None = None,
+    require_clean_resources: bool | None = None,
     extra_final_conditions: Callable[[SuperMetroidState], dict[str, bool]]
     | None = None,
 ) -> ContinuousRunReport:
     """Shared power-on harness for every Super+ continuous tip."""
+    clean = resolve_clean_resources(
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        require_clean_resources=require_clean_resources,
+    )
     assist = UnlimitedResourcesAssist(
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1066,6 +1133,7 @@ def run_post_supers_tip(
         assist=assist,
         graph=graph,
         video_path=video_path,
+        video_config=video_config,
         success_outcome=success_outcome,
         room_timer=timer,
         capture_checkpoint=state_output is not None,
@@ -1093,6 +1161,7 @@ def run_post_supers_tip(
             report_path=report_path,
             route_label=route_label,
             require_deaths_zero=True,
+            require_clean_resources=clean,
             route_plan=plan,
             policy_sources=dict(_KPDR_POLICY_SOURCES),
             boss=boss if isinstance(boss, SporeSpawnEvidence) else None,
@@ -1182,11 +1251,13 @@ def run_post_supers_tip_spec(
     tip_id: str,
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
     room_timing_path: str | Path | None = None,
     state_output: str | Path | None = None,
+    require_clean_resources: bool | None = None,
 ) -> ContinuousRunReport:
     """Power-on once through a post-Supers tip-spec id."""
     try:
@@ -1209,11 +1280,13 @@ def run_post_supers_tip_spec(
         entry_condition_key=spec.entry_condition_key,
         ordinary_condition_key=spec.ordinary_condition_key,
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
         room_timing_path=room_timing_path,
         state_output=state_output,
+        require_clean_resources=require_clean_resources,
         extra_final_conditions=_extra_final_conditions_for_spec(spec),
     )
 
@@ -1233,6 +1306,7 @@ def play_start_to_red_tower(
 def run_start_to_red_tower(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1242,6 +1316,7 @@ def run_start_to_red_tower(
     return run_post_supers_tip_spec(
         "red_tower",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1261,6 +1336,7 @@ def play_start_to_bat(
 def run_start_to_bat(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1270,6 +1346,7 @@ def run_start_to_bat(
     return run_post_supers_tip_spec(
         "bat",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1289,6 +1366,7 @@ def play_start_to_below_spazer(
 def run_start_to_below_spazer(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1298,6 +1376,7 @@ def run_start_to_below_spazer(
     return run_post_supers_tip_spec(
         "below_spazer",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1317,6 +1396,7 @@ def play_start_to_warehouse(
 def run_start_to_warehouse(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1326,6 +1406,7 @@ def run_start_to_warehouse(
     return run_post_supers_tip_spec(
         "warehouse",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1345,6 +1426,7 @@ def play_start_to_hijump(
 def run_start_to_hijump(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1354,6 +1436,7 @@ def run_start_to_hijump(
     return run_post_supers_tip_spec(
         "hijump",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1373,6 +1456,7 @@ def play_start_to_kraid(
 def run_start_to_kraid(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1382,6 +1466,7 @@ def run_start_to_kraid(
     return run_post_supers_tip_spec(
         "kraid",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1401,6 +1486,7 @@ def play_start_to_varia(
 def run_start_to_varia(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1411,6 +1497,7 @@ def run_start_to_varia(
     return run_post_supers_tip_spec(
         "varia",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1431,6 +1518,7 @@ def play_start_to_business(
 def run_start_to_business(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1441,6 +1529,7 @@ def run_start_to_business(
     return run_post_supers_tip_spec(
         "business",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1461,6 +1550,7 @@ def play_start_to_frog_save(
 def run_start_to_frog_save(
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
@@ -1471,6 +1561,7 @@ def run_start_to_frog_save(
     return run_post_supers_tip_spec(
         "frog",
         video_path=video_path,
+        video_config=video_config,
         report_path=report_path,
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
@@ -1496,55 +1587,76 @@ def _resolve_tip(tip: str | ContinuousTip | None = None) -> ContinuousTip:
 
 def default_tip_artifact_paths(
     tip: str | ContinuousTip | None = None,
+    *,
+    clean: bool = False,
 ) -> tuple[Path, Path]:
-    """Video/report paths for a continuous tip (default: current tip)."""
-    return default_artifacts(_resolve_tip(tip).artifact_stem)
+    """Video/report paths for a continuous tip (default: current tip).
+
+    When ``clean=True``, basenames use the ``_clean`` stem so Clean-track
+    artifacts never overwrite assisted baselines.
+    """
+    return default_artifacts(_resolve_tip(tip).artifact_stem, clean=clean)
 
 
-def default_tip_room_timing_path(tip: str | ContinuousTip | None = None) -> Path:
+def default_tip_room_timing_path(
+    tip: str | ContinuousTip | None = None,
+    *,
+    clean: bool = False,
+) -> Path:
     """Opt-in room-timing JSON path for a tip (gitignored)."""
     resolved = _resolve_tip(tip)
+    stem = resolved.artifact_stem
+    if clean and not stem.endswith("_clean"):
+        stem = f"{stem}_clean"
     ROOM_TIMINGS_DIR.mkdir(parents=True, exist_ok=True)
-    return ROOM_TIMINGS_DIR / f"{resolved.artifact_stem}_room_timing.json"
+    return ROOM_TIMINGS_DIR / f"{stem}_room_timing.json"
 
 
-def default_artifact_paths() -> tuple[Path, Path]:
+def default_artifact_paths(*, clean: bool = False) -> tuple[Path, Path]:
     """Video/report paths for the current continuous tip (Frog Save)."""
-    return default_tip_artifact_paths()
+    return default_tip_artifact_paths(clean=clean)
 
 
 def run_to(
     tip: str = DEFAULT_CONTINUOUS_TIP,
     *,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     report_path: str | Path | None = None,
     unlimited_energy: bool = True,
     unlimited_ammo: bool = True,
     room_timing_path: str | Path | None = None,
     state_output: str | Path | None = None,
+    require_clean_resources: bool | None = None,
 ) -> ContinuousRunReport:
     """Power-on once through a named continuous tip (``--to`` target).
 
     Tips compose as prefixes:
     morph ⊂ … ⊂ warehouse ⊂ hijump ⊂ kraid ⊂ varia ⊂ business ⊂ frog.
-    Room-timing, energy assist, and checkpoint output are gated by
+    Room-timing and checkpoint output are gated by
     :class:`~super_metroid.routes.catalog.ContinuousTip` capability flags —
     not hard-coded tip-id allowlists. Default tip is the furthest
     integrity-green tip (Frog Save / KPDR K4.0).
+
+    Defaults keep resource assists **on**. Pass both assists off (or set
+    ``require_clean_resources=True``) for Clean-track integrity.
+    Early tips (morph/bombs) accept ``unlimited_energy=False`` as a no-op
+    because energy refill only starts at spore+.
     """
     resolved = get_continuous_tip(tip)
+    clean = resolve_clean_resources(
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        require_clean_resources=require_clean_resources,
+    )
     kwargs: dict[str, object] = {
         "video_path": video_path,
+        "video_config": video_config,
         "report_path": report_path,
         "unlimited_ammo": unlimited_ammo,
+        "unlimited_energy": unlimited_energy,
+        "require_clean_resources": clean,
     }
-    if resolved.supports_unlimited_energy:
-        kwargs["unlimited_energy"] = unlimited_energy
-    elif not unlimited_energy:
-        raise ValueError(
-            f"tip {resolved.tip_id!r} has no unlimited-energy assist "
-            f"(energy assist starts at spore+)"
-        )
     if room_timing_path is not None:
         if not resolved.supports_room_timing:
             raise ValueError(
@@ -1561,6 +1673,7 @@ def run_to(
         kwargs["state_output"] = state_output
 
     # Early tips keep bespoke runners; Super+ tips share the tip-spec path.
+    # Capability flags gate optional kwargs — no signature sniffing.
     early_runners: dict[str, Callable[..., ContinuousRunReport]] = {
         "morph": run_start_to_morph,
         "bombs": run_start_to_bombs,

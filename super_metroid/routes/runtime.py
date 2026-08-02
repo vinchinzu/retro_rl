@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
-import subprocess
 from typing import Any, Protocol
 
 import numpy as np
@@ -25,7 +24,8 @@ from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import ObservedTransition, RoomProgressionGraph
 from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_state
 from super_metroid.room_timer import RoomTimer
-from super_metroid.video import FrameVideoWriter
+from retro_harness.video import probe_video_evidence
+from super_metroid.video import VideoCaptureConfig, VideoRecorder
 
 Action = np.ndarray
 
@@ -170,7 +170,7 @@ class RouteSession:
         self,
         env: object,
         *,
-        writer: FrameVideoWriter | None,
+        writer: VideoRecorder | None,
         assist: AssistLike,
         graph: RoomProgressionGraph,
         room_timer: RoomTimer | None = None,
@@ -197,6 +197,22 @@ class RouteSession:
         if self.room_timer is not None:
             self.room_timer.observe(self.state)
 
+    def _capture_frame(
+        self,
+        obs: np.ndarray,
+        action: Action | None,
+    ) -> None:
+        """Write one video frame via the shared :class:`VideoRecorder`."""
+        if self.writer is None:
+            return
+        self.writer.write_from_env(
+            self.env,
+            obs,
+            action=action,
+            frame_index=self.frame,
+            room_id=self.state.room_id,
+        )
+
     def step(self, action: Action, reason: str) -> SuperMetroidState:
         previous = self.state
         obs, _, _, _, self.info = self.env.step(action)  # type: ignore[attr-defined]
@@ -204,8 +220,7 @@ class RouteSession:
         self.state = parse_state(self.env.get_ram(), frame=self.frame)  # type: ignore[attr-defined]
         self.assist.apply(self.env.data, self.state)  # type: ignore[attr-defined]
         self.action_reasons[reason] += 1
-        if self.writer is not None:
-            self.writer.write(obs)
+        self._capture_frame(obs, action)
         if self.room_timer is not None:
             self.room_timer.observe(self.state)
 
@@ -338,34 +353,25 @@ def sha256_file(path: Path) -> str:
 
 
 def video_evidence(path: Path, expected_frames: int) -> dict[str, object]:
-    command = [
-        "ffprobe",
-        "-v",
-        "error",
-        "-count_frames",
-        "-select_streams",
-        "v:0",
-        "-show_entries",
-        "stream=codec_name,width,height,r_frame_rate,nb_read_frames,duration",
-        "-of",
-        "json",
-        str(path),
-    ]
-    payload = json.loads(subprocess.check_output(command, text=True))
-    stream = payload["streams"][0]
-    actual_frames = int(stream["nb_read_frames"])
-    return {
-        "path": str(path.resolve()),
-        "sha256": sha256_file(path),
-        "codec": stream["codec_name"],
-        "width": int(stream["width"]),
-        "height": int(stream["height"]),
-        "frame_rate": stream["r_frame_rate"],
-        "duration_seconds": float(stream["duration"]),
-        "frames": actual_frames,
-        "expected_frames": expected_frames,
-        "frame_count_matches": actual_frames == expected_frames,
-    }
+    """ffprobe wrapper; delegates to shared :func:`probe_video_evidence`."""
+    return probe_video_evidence(path, expected_frames)
+
+
+def resolve_clean_resources(
+    *,
+    unlimited_energy: bool,
+    unlimited_ammo: bool,
+    require_clean_resources: bool | None = None,
+) -> bool:
+    """Derive Clean-track integrity from assist flags (or an explicit override).
+
+    Full Clean = both resource assists off. Call sites should pass assist
+    booleans only; use ``require_clean_resources`` solely when a caller must
+    force the integrity gate independent of those flags.
+    """
+    if require_clean_resources is not None:
+        return bool(require_clean_resources)
+    return not unlimited_energy and not unlimited_ammo
 
 
 def first_progress_event(
@@ -443,10 +449,26 @@ def all_transitions_known(transitions: list[ObservedTransition]) -> bool:
     )
 
 
+def resource_writes_zero(assist: AssistLike) -> dict[str, bool]:
+    """Per-resource write/restored flags (energy + each ammo type)."""
+    telemetry = assist.telemetry
+    energy = telemetry.energy
+    flags: dict[str, bool] = {
+        "energy_writes_zero": int(energy.writes) == 0,
+        "energy_restored_zero": int(energy.restored) == 0,
+    }
+    ammo = getattr(telemetry, "ammo", {}) or {}
+    for name, counter in ammo.items():
+        flags[f"{name}_writes_zero"] = int(counter.writes) == 0
+        flags[f"{name}_restored_zero"] = int(counter.restored) == 0
+    return flags
+
+
 def assist_integrity(
     assist: AssistLike,
     *,
     require_deaths_zero: bool = False,
+    require_clean_resources: bool = False,
 ) -> dict[str, bool]:
     flags = {
         "state_loads_zero": True,
@@ -455,6 +477,10 @@ def assist_integrity(
     }
     if require_deaths_zero:
         flags["deaths_zero"] = assist.telemetry.deaths == 0
+    if require_clean_resources:
+        resource_flags = resource_writes_zero(assist)
+        flags.update(resource_flags)
+        flags["clean_resources_zero"] = all(resource_flags.values())
     return flags
 
 
@@ -468,6 +494,7 @@ def evaluate_integrity(
     video_evidence_payload: dict[str, object] | None,
     require_deaths_zero: bool = False,
     require_transitions: bool = True,
+    require_clean_resources: bool = False,
 ) -> tuple[bool, dict[str, object]]:
     split_frames = {split.split_id: split.frame for split in splits}
     order_ok = splits_ordered(splits, required_splits)
@@ -477,7 +504,11 @@ def evaluate_integrity(
         transitions_ok = all(
             transition.edge_id is not None for transition in transitions
         )
-    assist_flags = assist_integrity(assist, require_deaths_zero=require_deaths_zero)
+    assist_flags = assist_integrity(
+        assist,
+        require_deaths_zero=require_deaths_zero,
+        require_clean_resources=require_clean_resources,
+    )
     video_ok = video_evidence_payload is None or bool(
         video_evidence_payload["frame_count_matches"]
     )
@@ -491,6 +522,9 @@ def evaluate_integrity(
         **assist_flags,
         "video_frame_count_matches": video_ok,
     }
+    clean_ok = (not require_clean_resources) or bool(
+        assist_flags.get("clean_resources_zero", False)
+    )
     success = all(
         (
             transitions_ok,
@@ -499,6 +533,7 @@ def evaluate_integrity(
             assist.telemetry.progression_writes == 0,
             assist.telemetry.capacity_writes == 0,
             (not require_deaths_zero) or assist.telemetry.deaths == 0,
+            clean_ok,
             video_ok,
         )
     )
@@ -524,6 +559,7 @@ def run_continuous(
     assist: AssistLike,
     graph: RoomProgressionGraph,
     video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
     success_outcome: str = "ok",
     room_timer: RoomTimer | None = None,
     capture_checkpoint: bool = False,
@@ -533,9 +569,13 @@ def run_continuous(
     ``room_timer`` is optional instrumentation only: it observes each frame via
     the shared :class:`~super_metroid.room_timer.RoomTimer` and never feeds
     integrity, assists, or route decisions.
+
+    ``video_config`` only affects the MP4 (quality, audio, footer, start gate).
+    Route play always starts at power-on regardless of video trim.
     """
+    config = video_config or VideoCaptureConfig()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-    writer: FrameVideoWriter | None = None
+    writer: VideoRecorder | None = None
     splits: list[Split] = []
     segments: list[SegmentEvidence] = []
     session: RouteSession | None = None
@@ -548,12 +588,16 @@ def run_continuous(
     try:
         obs, _ = env.reset()
         if video_path is not None:
-            writer = FrameVideoWriter(
+            audio_rate = None
+            if config.audio:
+                audio_rate = int(env.em.get_audio_rate())  # type: ignore[attr-defined]
+            writer = VideoRecorder(
                 video_path,
                 width=int(obs.shape[1]),
                 height=int(obs.shape[0]),
+                config=config,
+                audio_rate=audio_rate,
             )
-            writer.write(obs)
         session = RouteSession(
             env,
             writer=writer,
@@ -561,6 +605,9 @@ def run_continuous(
             graph=graph,
             room_timer=room_timer,
         )
+        # Capture the power-on frame when the gate is already open.
+        if writer is not None:
+            session._capture_frame(obs, None)
         play(PlayContext(session, splits, segments))
         outcome = success_outcome
     except Exception as exc:
@@ -582,6 +629,7 @@ def run_continuous(
     assert session is not None
     if video_path is not None:
         video_payload = video_evidence(Path(video_path), encoded_frames)
+        video_payload["capture"] = config.to_dict()
 
     return ContinuousRunResult(
         session=session,
@@ -608,6 +656,7 @@ def finish_report(
     kind: str = "bombs",
     require_deaths_zero: bool = False,
     require_transitions: bool = True,
+    require_clean_resources: bool = False,
     route_plan: dict[str, object] | None = None,
     policy_sources: dict[str, object] | None = None,
     boss: Any = None,
@@ -625,6 +674,7 @@ def finish_report(
             video_evidence_payload=result.video_evidence,
             require_deaths_zero=require_deaths_zero,
             require_transitions=require_transitions,
+            require_clean_resources=require_clean_resources,
         )
         outcome = result.outcome if success else "failed:integrity"
     else:
@@ -635,12 +685,22 @@ def finish_report(
             "split_order_valid": False,
             "required_splits_present": False,
             "final_conditions": final_conditions,
-            **assist_integrity(assist, require_deaths_zero=require_deaths_zero),
+            **assist_integrity(
+                assist,
+                require_deaths_zero=require_deaths_zero,
+                require_clean_resources=require_clean_resources,
+            ),
             "video_frame_count_matches": (
                 result.video_evidence is None
                 or bool(result.video_evidence["frame_count_matches"])
             ),
         }
+
+    assist_payload = dict(assist.report())
+    assist_payload["intervention_class"] = (
+        "Clean" if require_clean_resources else "Resource-assisted"
+    )
+    assist_payload["require_clean_resources"] = require_clean_resources
 
     report = ContinuousRunReport(
         schema_version=schema_version,
@@ -656,7 +716,7 @@ def finish_report(
         transitions=result.session.transitions,
         segments=result.segments,
         action_reasons=result.session.action_reasons,
-        assist=assist.report(),
+        assist=assist_payload,
         integrity=integrity,
         route_plan=route_plan,
         policy_sources=policy_sources,
@@ -686,6 +746,19 @@ def finish_report(
     return report
 
 
-def default_artifacts(stem: str) -> tuple[Path, Path]:
+def clean_artifact_stem(stem: str) -> str:
+    """Append ``_clean`` once so clean runs never share assisted basenames."""
+    if stem.endswith("_clean"):
+        return stem
+    return f"{stem}_clean"
+
+
+def default_artifacts(stem: str, *, clean: bool = False) -> tuple[Path, Path]:
+    """Video/report paths under ``recordings/`` for a basename stem.
+
+    When ``clean=True``, the stem becomes ``{stem}_clean`` so Clean-track
+    artifacts never overwrite assisted baselines.
+    """
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-    return RECORDINGS_DIR / f"{stem}.mp4", RECORDINGS_DIR / f"{stem}.json"
+    resolved = clean_artifact_stem(stem) if clean else stem
+    return RECORDINGS_DIR / f"{resolved}.mp4", RECORDINGS_DIR / f"{resolved}.json"
