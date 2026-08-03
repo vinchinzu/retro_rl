@@ -114,7 +114,7 @@ the same open-loop path.
 Prefer phase-local helpers once a phase greens:
 
 ```text
-bubble_lower() → bubble_lip_launch() → bubble_right_contact() → bubble_shelf_to_top()
+bubble_lower() → bubble_run_mid(start=launch) → bubble_top_super_door()
 ```
 
 - Unit or pure phase probes lock green phases.

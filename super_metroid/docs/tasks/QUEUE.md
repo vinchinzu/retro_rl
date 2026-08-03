@@ -14,6 +14,7 @@ integrity. Executors take **one card per session**.
 | [PROCESS.md](PROCESS.md) | Pure-first, stabilize, residual schema |
 | [HARD_ROOM_SPLITS.md](HARD_ROOM_SPLITS.md) | Hard in-room geometry: phase ladder, stagnation @ 3 |
 | [SM-K4.4-PHASE-LADDER.md](SM-K4.4-PHASE-LADDER.md) | Bubble → Bat phases A–E + capture/climb probes |
+| [BUBBLE_MOUNTAIN_TODO.md](BUBBLE_MOUNTAIN_TODO.md) | Bubble residual product backlog (not structural refactor) |
 | [TASK_TEMPLATE.md](../TASK_TEMPLATE.md) | Card format |
 | [SOURCE_STATES.md](../SOURCE_STATES.md) | Pure entry states |
 | [plan.md](../plan.md) | Strategy + structure debt |
@@ -62,8 +63,8 @@ Dispatch from repo root:
 | Speedway → Farm pure | residual **RED** | Boost Blocks need Speed (`SM-K4.2-PURE-residual.md`) |
 | **K4 repath (chosen)** | Cathedral first Bubble | Business → `0xA7B3` → `0xA788` → `0xAFA3` → Bubble |
 | Cathedral pure stack | CATH-01…04 **all pure GREEN** | 959f / 909f / 1162f / **2609f** → first Bubble pure |
-| Bubble → Bat pure | RED residual | R11: spin-apex fix; still max_x=349 min_y=260 **phase_c_hit=False** |
-| **Next serial** | **`SM-K4.4-PURE-R12`** new trajectory (not period thrash) | see R11 residual rejected list |
+| Bubble → Bat pure | RED residual (Phase C green) | R16: max_x=370 min_y=228 **phase_c_hit=True** fire seat; top red (mx200 pocket); R15 Phase D GREEN on human pin |
+| **Next serial** | **`SM-K4.4-PURE-R17`** Phase D right push | Right-wall WJ past mx200≈271 so `top_reached` flips |
 | After Bat Cave | Speed Hall → Speed Room → Wave / Ice | then K5 Alpha PB |
 
 ```bash
@@ -85,12 +86,11 @@ uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
 
 Cards: Frog Save continuous + Speedway pure GREEN (parked as post-Speed) ·
 Cathedral CATH-01…04 pure GREEN (first Bubble pure closeout) · Bubble→Bat
-controller registered, pure **RED** (`SM-K4.4-PURE-R10-residual.md`: mid-high
-`y≤450` open-loop max_x=**349** min_y=**260** pin True top still red; place
-air `(360,y≤370)` WJ→top still holds). Hard-room split + stagnation rule:
-[`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md) · ladder
-[`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) · next
-**Phase C capture → climb-only → full pure** (`SM-K4.4-PURE-R11`).
+phases A/B/C pure green (R13 floor-reclimb), Phase D/E red on pure
+(`SM-K4.4-PURE-R16-residual.md` — pure fire seat, min_y=228). Hard-room
+split + stagnation rule: [`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md) ·
+ladder [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) · next
+**Phase D right push** (`SM-K4.4-PURE-R17`).
 Wave-11 closeout: [`WAVE-11.md`](WAVE-11.md). Triage: [`TRIAGE.md`](TRIAGE.md).
 
 **Structure residual (Clean track / continuous):**
@@ -156,6 +156,29 @@ Detail: [`WAVE-11.md`](WAVE-11.md).
 | **ARCH** | Structure debt | Planner-serial; no tip claims |
 | **BOSS-INFRA** | Catalog / primitives / capture CLI | Dev only until natural entry |
 | **CLEAN** | No energy + no ammo continuous tips | Bronze/Clean; `*_clean` artifacts only |
+| **SPAZER / 100%** | Early Spazer walljump detour → tip → fold; 100% board | Secondary tip until `SM-SPAZER-FOLD`; does not block K4 |
+
+### Early Spazer + 100% (opened 2026-08-03)
+
+Epic board: [`SPAZER_EARLY.md`](SPAZER_EARLY.md) · human ref
+`refs/early_spazer_red_room.png` (red room, Sidehopper + floor plant, early
+loadout; walljump context).
+
+| Priority | Card | Notes |
+|----------|------|-------|
+| P2 ready | [`SM-SPAZER-SCAFFOLD`](SM-SPAZER-SCAFFOLD.md) | Module + `ROOM_SPAZER` |
+| P2 ready | [`SM-SPAZER-SRC`](SM-SPAZER-SRC.md) | Continuous-like `0xA408` source |
+| P2 open | [`SM-SPAZER-PURE`](SM-SPAZER-PURE.md) | Collect + return; walljump residual OK |
+| P2 open | graph → compose → stab → status | After pure green |
+| P2 open | [`SM-SPAZER-POLICY`](SM-SPAZER-POLICY.md) | Later fights use Spazer when held |
+| P2 open | [`SM-SPAZER-FOLD`](SM-SPAZER-FOLD.md) | Default continuous spine insert |
+| P3 ready | [`SM-100-TRACK`](SM-100-TRACK.md) | 100% checklist scaffold |
+
+```bash
+# Parallel OK with Bubble spine (disjoint files until compose)
+./super_metroid/scripts/dispatch_opencode.sh --luna SM-SPAZER-SCAFFOLD
+./super_metroid/scripts/dispatch_opencode.sh --flash SM-100-TRACK
+```
 
 Practice board after Wave-10: easy+standard ready **62/108 (57.4%)** —
 see `ROOM_WORK_QUEUE`. Generator: `scripts/generate_room_segment_cards.py`.

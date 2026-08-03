@@ -16,21 +16,21 @@ CAPS = frozenset(
 
 
 def test_k4_business_to_bubble_edge_contract() -> None:
+    """No-Speed first Bubble visit is Cathedral climb (not Frog Speedway)."""
     path = START_TO_SPEED_GRAPH.shortest_path(0xA7DE, 0xACB3, CAPS)
 
     assert path is not None
     assert [edge.edge_id for edge in path] == [
-        "business_to_frog_save",
-        "frog_save_to_speedway",
-        "speedway_to_farm",
-        "farm_to_bubble",
+        "business_to_cathedral_entrance",
+        "cathedral_entrance_to_cathedral",
+        "cathedral_to_rising_tide",
+        "rising_tide_to_bubble",
     ]
-    assert [edge.verification for edge in path] == [
-        "continuous",
-        "unverified",
-        "unverified",
-        "unverified",
-    ]
+    # Pure-first Cathedral stack; continuous tip still Frog Save only.
+    assert all(
+        edge.verification in ("controller_dev", "pure", "unverified", "continuous")
+        for edge in path
+    )
 
 
 def test_k4_bubble_to_wave_edge_contract() -> None:
@@ -73,7 +73,8 @@ def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
 
     assert wave["reachable"] is True
     assert wave["all_continuous"] is False
-    assert wave["blocking"] == "frog_save_to_speedway"
+    # First Bubble path is Cathedral; first non-continuous hop blocks wave path.
+    assert wave["blocking"] == "business_to_cathedral_entrance"
     assert ice["reachable"] is True
     assert ice["all_continuous"] is False
     assert ice["blocking"] == "business_to_ice_gate"

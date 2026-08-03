@@ -299,7 +299,17 @@ SM-OPT-GRAPPLE,OPTIONAL,docs,Grapple/Croc skip confirmation,,P4,parked,L,,not on
 SM-OPT-GT,OPTIONAL,pure,Golden Torizo optional,,P4,parked,L,,not on minimal KPDR spine
 SM-OPT-PINK-PB,OPTIONAL,pure,Pink PB maze (parked; not KPDR),,P4,parked,L,,not on minimal KPDR spine
 SM-OPT-PLASMA,OPTIONAL,pure,Plasma Beam optional post-Draygon,,P4,parked,L,,not on minimal KPDR spine
-SM-OPT-SPAZER,OPTIONAL,pure,Spazer collect optional safety,,P4,parked,L,,not on minimal KPDR spine
+SM-OPT-SPAZER,OPTIONAL,pure,Spazer collect (superseded by SM-SPAZER-*),,P4,parked,L,,superseded 2026-08-03 by SPAZER_EARLY ladder; keep row for history
+SM-SPAZER-SCAFFOLD,SPAZER,pure,Spazer detour module + ROOM_SPAZER scaffold,,P2,ready,S,routes/kpdr/spazer.py routes/kpdr/rooms.py,living card; epic SPAZER_EARLY; walljump path later
+SM-SPAZER-SRC,SPAZER,source,Continuous-like Below Spazer source for pure,,P2,ready,S,docs/SOURCE_STATES.md scratch/,pre-collect 0xA408; natural Bat entry
+SM-SPAZER-PURE,SPAZER,pure,Pure Below Spazer→Spazer collect→return (walljump),SM-SPAZER-SRC;SM-SPAZER-SCAFFOLD,P2,open,M,routes/kpdr/spazer.py,0xA447 natural PLM; residual R1 if WJ gap
+SM-SPAZER-GRAPH,SPAZER,graph,Progression edges Spazer detour,SM-SPAZER-PURE,P2,open,M,progression.py,optional until FOLD; do not break warehouse min path
+SM-SPAZER-COMPOSE,SPAZER,compose,Continuous tip --to spazer,SM-SPAZER-PURE;SM-SPAZER-GRAPH,P2,open,M,routes/catalog.py routes/continuous.py,secondary tip; not primary K4 tip
+SM-SPAZER-STAB,SPAZER,stabilize,Dual continuous integrity Spazer tip,SM-SPAZER-COMPOSE,P2,open,M,recordings/,×2 integrity; Spazer beam set
+SM-SPAZER-STATUS,SPAZER,status,STATUS secondary + K2.2 tracker Spazer,SM-SPAZER-STAB,P2,open,S,docs/STATUS.md KPDR_TRACKER,never silent primary tip swap
+SM-SPAZER-POLICY,SPAZER,pure,Prefer Spazer in later combat when held,SM-SPAZER-PURE,P2,open,M,combat/ routes/kpdr/,branch on collected_beams; no force equip
+SM-SPAZER-FOLD,SPAZER,compose,Fold Spazer into default continuous spine,SM-SPAZER-STAB,P2,open,L,routes/continuous.py ROUTE_KPDR STATUS,planner-serial; re-record affected tips
+SM-100-TRACK,SPAZER,docs,100% item/map/boss board scaffold,,P3,ready,S,docs/routes/TRACK_100.md,gates 100% planning; Spazer first insert
 SM-CLEAN-CONTRACT,CLEAN,docs,Document Clean track dual-path rules,,P2,done,S,docs/CLEAN_TRACK.md docs/ASSIST_CONTRACT.md,living card SM-CLEAN-CONTRACT; primary path stays assisted
 SM-CLEAN-ARTIFACTS,CLEAN,infra,Isolate clean report/video stems (_clean),SM-CLEAN-CONTRACT,P2,done,M,routes/continuous.py scripts/record/continuous.py,never overwrite assisted start_to_*.json; landed 2026-08-01
 SM-CLEAN-CLI,CLEAN,infra,--clean alias + uniform energy/ammo flags,SM-CLEAN-ARTIFACTS,P2,done,M,scripts/record/continuous.py routes/continuous.py,defaults remain assist ON; landed 2026-08-01

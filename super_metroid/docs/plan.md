@@ -409,6 +409,9 @@ entry is non-negotiable for continuous evidence.
   ([ROOM_WORK_QUEUE](routes/ROOM_WORK_QUEUE.md)).
 - Combat unit scaffolds and shared primitives (no full fights before natural entry).
 - Clean track: Morph green; ★ bombs/Torizo — [CLEAN_TRACK.md](CLEAN_TRACK.md).
+- Early Spazer + 100% (opened 2026-08-03): parallel walljump Spazer detour
+  (`0xA447`) → secondary tip → continuous fold; 100% board scaffold —
+  [tasks/SPAZER_EARLY.md](tasks/SPAZER_EARLY.md). Does not block K4 Bubble.
 - Non-blocking side content (Crocomire, Golden Torizo, etc.) only after main
   spine advances.
 
@@ -690,7 +693,7 @@ Track B — play every path room (PRIMARY)
   NOW  ★ SM-K4-CATH-03 pure → CATH-04 Bubble → Speed/Wave/Ice pure stack
        → graph → compose continuous tips → stabilize → STATUS
   THEN K5 Alpha PB → Moat → WS → natural Phantoon + Gravity
-  Parallel dual-track: room farm · Clean bombs · 1–2 ARCH · boss primitives
+  Parallel dual-track: room farm · Clean bombs · Early Spazer/100% · 1–2 ARCH · boss primitives
   ARCH priority: hops module extract, selective-RAM gate, pure RED diag
   Parked: Speedway→Farm until post-Speed (Boost Blocks)
 

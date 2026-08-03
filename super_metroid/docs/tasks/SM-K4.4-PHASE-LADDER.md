@@ -17,8 +17,8 @@ Concrete hard-room split for **SM-K4.4-PURE** / R-series. General rules:
 |-------|------|--------------------------------------|-------------------|
 | **A** | Mid pin | `standing_mid_pinned=True` | **green** (R5) |
 | **B** | Height class | `min_y≤280` after lip launch | **green** (R6; R9/R10 hold 260) |
-| **C** | Usable right contact | first `x∈[300,395]`, `y∈[200,430]` in Bubble (not thrash-only `max_x`) | **red** — bottleneck |
-| **D** | Top band | `y≤200` and `x≥300` | place-proven; natural red |
+| **C** | Usable right contact | first `x∈[300,395]`, `y∈[200,430]` in Bubble (not thrash-only `max_x`) | **green** (R13 floor-reclimb; pin ~`(301,429)` marginal) |
+| **D** | Top band | `y≤200` and `x≥300` | place-proven; natural red — bottleneck |
 | **E** | Bat door | ordinary `0xB07A` | blocked on D |
 
 Place-proven finish (isolation only — not natural proof):
@@ -29,10 +29,11 @@ Place-proven finish (isolation only — not natural proof):
 
 Natural gap (load-bearing):
 
-- Lip peak still `~(150, 260)`; at shelf height y≈360 pure is only ~x211.
-- First `x≥340` still ~y467 (below usable Phase-C altitude).
-- One-shot lip→right air band is too far at fall rate.
-- R10 mid-high window `y≤450` engages earlier but does **not** create Phase C.
+- Lip peak still `~(150, 260)`; one-shot lip→right air band too far at fall rate.
+- R13 floor-reclimb after height class hits Phase C ~`(301,429)` (predicate green).
+- That contact is **marginal**: place climb from dump best min_y≈427; no shelf.
+- Recoverable finish still needs grounded shelf ~`(380,390)` or air `(360,y≤370)`.
+- **R14 bottleneck:** raise right contact into shelf/air band, then Phase D.
 
 ## Frozen green work
 
@@ -99,11 +100,23 @@ Only this path (full pure, no place, no climb-only) can close SM-K4.4-PURE.
 
 ## Code hooks
 
+Modules: `bubble_mountain_params.py` (constants), `bubble_mountain.py`
+(predicates / lower / repin / door / product), `bubble_mountain_mid.py`
+(single mid loop, start=launch|climb). Re-exported from `k4_norfair` for
+compat. Product `play_bubble_to_bat_cave(session)` has **no** recon kwargs —
+probe maps CLI flags to dev helpers.
+
 | Symbol / flag | Role |
 |---------------|------|
 | `bubble_phase_c_usable_right_contact` | Phase-C predicate |
+| `bubble_phase_d_top_band` / `bubble_phase_d_near_top` | Phase-D top checks |
+| `bubble_on_launch_lip` / `bubble_on_right_shelf` | lip / shelf seats |
 | `BubblePhaseStop` | early exit for capture (`--stop-at-phase-c`) |
-| `play_bubble_to_bat_cave(..., start_phase=)` | `auto` full path; `climb` skip lower/repin/launch |
+| `play_bubble_to_bat_cave(session)` | product full pure (session only) |
+| `play_bubble_climb_from_handoff` | dev: skip lower/repin/launch |
+| `play_bubble_from_top_door` | dev: Super door only |
+| `play_bubble_to_bat_cave_with_phase_capture` | probe full path + dump/stop |
+| `bubble_lower_to_mid_pin` / `bubble_run_mid` / `bubble_top_super_door` | phase helpers (mid is one call) |
 | `--dump-phase-c` | save first Phase-C state (needs probe env) |
 | `--start-phase climb` | climb-only pure probe |
 | `--stop-at-phase-c` | stop at first Phase C (diagnostic success) |
@@ -114,7 +127,9 @@ Only this path (full pure, no place, no climb-only) can close SM-K4.4-PURE.
 |------|-------------|
 | R5–R6 residuals | A / B green history |
 | R7–R10 residuals | approach thrash; top still red |
-| **`SM-K4.4-PURE-R11`** | Phase C → D (capture + climb + full recheck) |
+| **`SM-K4.4-PURE-R11`** | spin-apex false-land fix; Phase C still red |
+| **`SM-K4.4-PURE-R12`** | extract lip stand_pin restore (pure R11 envelope); trajectory IMPL still open — fall-gated WJ Phase C only with height regress |
+| **`SM-K4.4-PURE-R13`** | floor-reclimb after height class → **Phase C green** on full pure; top still red (marginal y≈429 contact) |
 
 ## Non-claims
 

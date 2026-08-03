@@ -2,9 +2,10 @@
 
 Handles: pygame init, frame rendering, speed control ([/] and TAB turbo),
 state save/load (F5/F7/F8), keyboard+controller input via retro_harness.controls,
-HUD overlay, bot/human hot-swap (~ key), headless mode (HEADLESS=1 env var).
+HUD overlay, path/guide overlay hook, bot/human hot-swap (~ key), headless mode
+(HEADLESS=1 env var).
 
-Customize via hooks (on_hud, on_step, on_key_down, on_reset) or subclass.
+Customize via hooks (on_hud, on_overlay, on_step, on_key_down, on_reset) or subclass.
 
 Usage::
 
@@ -126,6 +127,9 @@ class PlaySession:
 
         # Hooks -- all optional, defaults do nothing
         self.on_hud: Callable[[dict], list[str]] = lambda info: []
+        # Called after the frame blit with a layout ctx (scale, x_off, y_off, …).
+        # Use for path guide polylines; see retro_harness.path_overlay.
+        self.on_overlay: Callable[[object, dict], None] = lambda pg, ctx: None
         self.on_step: Callable[[ndarray, float, bool, dict], None] = lambda *a: None
         self.on_key_down: Callable[[int], bool] = lambda key: False
         self.on_key_up: Callable[[int], bool] = lambda key: False
@@ -321,7 +325,11 @@ class PlaySession:
             # --- Render ---
             if not self._headless:
                 if not self._turbo or self._frame_count % _TURBO_RENDER_INTERVAL == 0:
-                    self._render_frame(pg, obs)
+                    layout = self._render_frame(pg, obs)
+                    if layout is not None:
+                        layout["info"] = info
+                        layout["obs"] = obs
+                        self.on_overlay(pg, layout)
                     self._draw_hud(pg, info)
                     pg.display.flip()
 
@@ -340,9 +348,10 @@ class PlaySession:
                 self._last_obs = obs
                 self._last_info = info
 
-    def _render_frame(self, pg, obs: ndarray) -> None:
+    def _render_frame(self, pg, obs: ndarray) -> dict | None:
+        """Blit the game frame; return layout dict for overlay hooks."""
         if self._screen is None:
-            return
+            return None
         surf = pg.surfarray.make_surface(obs.swapaxes(0, 1))
         win_w, win_h = self._screen.get_size()
         game_w, game_h = self._game_w, self._game_h
@@ -355,6 +364,17 @@ class PlaySession:
         self._screen.fill((0, 0, 0))
         scaled = pg.transform.scale(surf, (draw_w, draw_h))
         self._screen.blit(scaled, (x_off, y_off))
+        return {
+            "scale": scale,
+            "x_off": x_off,
+            "y_off": y_off,
+            "draw_w": draw_w,
+            "draw_h": draw_h,
+            "game_w": game_w,
+            "game_h": game_h,
+            "screen": self._screen,
+            "font": self._font,
+        }
 
     def _draw_hud(self, pg, info: dict) -> None:
         if self._screen is None or self._font is None:
@@ -537,7 +557,11 @@ class PlaySession:
 
         _SLOT_KEYS = {pg.K_F1: 1, pg.K_F2: 2, pg.K_F3: 3, pg.K_F4: 4}
 
-        if key in (pg.K_ESCAPE, pg.K_q):
+        quit_keys = {pg.K_ESCAPE}
+        k_q = getattr(pg, "K_q", None)
+        if k_q is not None:
+            quit_keys.add(k_q)
+        if key in quit_keys:
             # ESC or Q — window must have focus (terminal ESC is not pygame).
             self.running = False
         elif key in _SLOT_KEYS:

@@ -34,7 +34,7 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 | Done | A2 Skill boundary factories | feed/ship/talk/farm bin in `tasks/skills.py` |
 | Partial | A3 Crop close-loop acceptance | See A3 progress below |
 | Next | A4 Coop skill composition + multi-adult fix | Stop growing `coop_task.py` |
-| Next | A5 Contract preflight in day-plan probe | Soft notes when map/tool mismatch |
+| Done | A5 Contract preflight in day-plan probe | Soft notes when map/tool mismatch |
 | Later | A6 D1 skill routes from power-on | Thin handoff over Nav+Talk skills |
 | Later | A7 Festival + rainy-day distillation | Phase ordering from recordings |
 | Later | A8 Promote Pathfinder / primitives | After second consumer |
@@ -46,8 +46,8 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 | Day-plan establish → ensure can → water order | **Verified** (unit tests lock sequence + refill_bounds) |
 | Same-day water with charged can | **ROM OK**: `Y1_Test_Crops_Planted_Dry` + can=20 → 3/3 wet `0x55` |
 | Ship verify without instant money | **Fixed**: bin drop counts ship; money may settle at 5pm |
-| Empty-can natural refill | **Partial** — pond map + preferred-only select + fence-open hook; ROM empty-can from west pocket still needs fence clear with empty hands |
-| Multi-day growth → harvest → money > $100 | **Open** (Day09 fixture currently 0 live ripe tiles) |
+| Empty-can natural refill | **Partial** — west-pocket **stages** via `(12,29)` then fence clear; ROM lifts 1 fence but toss/nav to pond still stalls; can stays 0 |
+| Multi-day growth → harvest → money > $100 | **Open** — 6d soak D2→D8 Clean (`Y1_Test_Crops_DayPlus6`) but test crops withered (water no-op); Day09 still 0 ripe |
 
 **Empty-can refill traps (ROM-mapped 2026-08-01):**
 
@@ -106,7 +106,7 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 | Multi-day soak | `--end-of-spring` with crop income |
 | D1 town handoff | Rest auto green; pure power-on path + shed open |
 | Skill composition | Factories exist; extract production coop/cow/harvest |
-| Phase contracts | **Wired** on critical phases; probe preflight next |
+| Phase contracts | **Wired** + probe preflight (A5 done 2026-08-03) |
 | Plan advisor | Advisory default; gated apply (`HARVEST_PLAN_LLM_APPLY`) |
 | Navigation | `densify_waypoints`; promote Pathfinder later |
 

@@ -18,6 +18,8 @@ game/ RAM + maps + policy
 | Timed button/menu macro | `InputStep`, `StartupPlan`, `run_startup` |
 | Old Gym / Gymnasium compatibility | `retro_harness.runtime` |
 | State path/read/write | `retro_harness.env` or `GameSpec` |
+| Human task JSON + trace analysis | `retro_harness.task_recording` (`RecordedTask`, `pressed_buttons`, stasis/run coalesce) |
+| Route guide polyline overlay | `retro_harness.path_overlay` (+ `PlaySession.on_overlay`) |
 | Scripted clear policy | `snes_oneshot` |
 | Platformer optimization | `platformer_common` |
 

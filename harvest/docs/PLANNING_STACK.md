@@ -28,7 +28,7 @@ DayPlanTask (orchestrator)
 |-------|------|--------|
 | **Task protocol** (`retro_harness.protocol`) | `name`, `reset`, `can_start`, `step → TaskResult` | Stable; extend via `progress_snapshot()` + child tree |
 | **Planner** | Phase catalog + registry builders, decision/advisor, `local_llm.py` | Stable; advisor advisory by default; gated apply for optional reorder/append |
-| **Contracts** (`TaskContract` on `PhaseSpec`) | Soft preconditions for advisors/tests/probes | **Wired** on crop establish/water, harvest, coop, ensure tools, exit/sleep, hot spring; evaluate helper exists; builders do **not** hard-abort on fail yet |
+| **Contracts** (`TaskContract` on `PhaseSpec`) | Soft preconditions for advisors/tests/probes | **Wired** on crop establish/water, harvest, coop, ensure tools, exit/sleep, hot spring; `evaluate_task_contract` + `preflight_phase_contract` / `tool_tags_from_ram`; day-plan probe emits soft preflight events; builders do **not** hard-abort on fail yet |
 | **Primitives** (`tasks/primitives.py`) | `TaskSequence`, `PressAndVerifyTask`, `RamCondition`, `RetryTask` | Prefer composing these over new 50–100 KB phase machines |
 | **Skills** (`tasks/skills.py`) | `NavSkill`, interact helpers, coop/farm/talk factories | Boundary factories exist; production coop/cow/harvest still mono FSMs |
 | **Pathfinding** | `Pathfinder` / `Navigator` in `farm_clearer` | Viewport-limited BFS; `densify_waypoints` for long same-map hops |
@@ -154,7 +154,7 @@ contract still means "no contract declared."
 | A2 | Expand skill factories (feed/ship/talk/farm bin) | **Boundary done**; production still mono |
 | A3 | Close crop loop (water refill → harvest → ship → money > $100) | Domain acceptance in STATUS |
 | A4 | Extract CoopChores feed/collect/ship into skill composers + multi-adult fix | Unit + replay green; coop back on daily plan |
-| A5 | Soft-evaluate contracts in day-plan probe / optional preflight notes | Probe JSON shows contract ok/fail reasons |
+| A5 | Soft-evaluate contracts in day-plan probe / optional preflight notes | **Done 2026-08-03** — probe JSON + `day_plan_debug_snapshot` |
 | A6 | D1 town handoff: pure skill routes from power-on (reduce rest-recording dependency) | power-on → D2 without AnnEve fixture |
 | A7 | Distill `spring_festival.json` + `fix_rainy_day.json` into phase ordering | Documented sequences in planner |
 | A8 | Promote Pathfinder / skill primitives after second game consumer | Shared package or leave in harvest |

@@ -5,7 +5,12 @@ import unittest
 import numpy as np
 
 from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_TILEMAP, ADDR_X, ADDR_Y, MAP_WIDTH
+from harvest.core.carry import ADDR_TOOL_BACKPACK, ADDR_TOOL_SELECTED
+from harvest.core.tile_catalog import Tool
+from harvest.planner.day_phase_catalog import CROP_ESTABLISH_PHASE
 from harvest.runtime.probe_utils import (
+    day_plan_debug_snapshot,
+    event_row,
     frame_in_ranges,
     parse_field_list,
     parse_frame_ranges,
@@ -96,6 +101,56 @@ class ProbeUtilsTests(unittest.TestCase):
         self.assertEqual(row["nav_tile"], [2, 3])
         self.assertEqual(row["path_len"], 2)
         self.assertEqual(row["action_queue_len"], 2)
+
+    def test_day_plan_debug_snapshot_includes_contract_preflight(self) -> None:
+        class DummyDayPlan:
+            phase_text = "CROP_ESTABLISH"
+            progress_text = "phase=1/1"
+            phase_index = 0
+            step_count = 3
+            current_task = None
+            current_phase = CROP_ESTABLISH_PHASE
+
+        ram = _make_ram()
+        ram[ADDR_TILEMAP] = 0x00  # farm
+        ram[ADDR_TOOL_SELECTED] = int(Tool.HOE)
+        ram[ADDR_TOOL_BACKPACK] = 0x07  # potato seed
+
+        row = day_plan_debug_snapshot(DummyDayPlan(), ram=ram)
+        preflight = row["contract_preflight"]
+        self.assertEqual(preflight["phase"], "CROP_ESTABLISH")
+        self.assertTrue(preflight["ok"])
+        self.assertNotIn("contract_note", row)
+
+        # Wrong map + missing seed → soft fail note
+        ram[ADDR_TILEMAP] = 0x28
+        ram[ADDR_TOOL_BACKPACK] = 0
+        row_fail = day_plan_debug_snapshot(DummyDayPlan(), ram=ram)
+        self.assertFalse(row_fail["contract_preflight"]["ok"])
+        self.assertTrue(str(row_fail["contract_note"]).startswith("contract_fail:CROP_ESTABLISH:"))
+
+    def test_event_row_extras_and_ram_preflight(self) -> None:
+        class DummyDayPlan:
+            phase_text = "CROP_WATER"
+            progress_text = "phase=1/1"
+            phase_index = 0
+            step_count = 1
+            current_task = None
+            current_phase = CROP_ESTABLISH_PHASE
+
+        ram = _make_ram()
+        snap = snapshot_from_ram(ram, frame=1, action=[0] * 12)
+        row = event_row(
+            "phase",
+            snap,
+            day_plan=DummyDayPlan(),
+            ram=ram,
+            extras={"contract_preflight": {"phase": "x", "ok": False}},
+        )
+        self.assertEqual(row["event"], "phase")
+        self.assertIn("day_plan", row)
+        self.assertIn("contract_preflight", row["day_plan"])
+        self.assertEqual(row["contract_preflight"]["phase"], "x")
 
 
 if __name__ == "__main__":

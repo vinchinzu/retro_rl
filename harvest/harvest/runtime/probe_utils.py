@@ -159,8 +159,13 @@ def task_debug_snapshot(task, *, depth: int = 0, max_depth: int = 3) -> dict[str
     return row
 
 
-def day_plan_debug_snapshot(day_plan_task) -> dict[str, object]:
-    """Return current day-plan state plus current subtask debug state."""
+def day_plan_debug_snapshot(day_plan_task, *, ram=None) -> dict[str, object]:
+    """Return current day-plan state plus current subtask debug state.
+
+    When ``ram`` is provided, soft-evaluate the current phase
+    :class:`~harvest.planner.day_phase_types.TaskContract` and attach
+    ``contract_preflight`` (A5 diagnostics — never aborts the plan).
+    """
     if day_plan_task is None:
         return {}
 
@@ -186,6 +191,19 @@ def day_plan_debug_snapshot(day_plan_task) -> dict[str, object]:
     current = getattr(day_plan_task, "current_task", None)
     if current is not None:
         row["current_task"] = task_debug_snapshot(current)
+
+    current_phase = getattr(day_plan_task, "current_phase", None)
+    if current_phase is not None and hasattr(current_phase, "contract"):
+        from harvest.planner.day_phase_types import preflight_phase_contract
+
+        preflight = preflight_phase_contract(current_phase, ram=ram)
+        row["contract_preflight"] = preflight
+        # Compact note for grepping soak logs when a phase false-starts.
+        if not preflight.get("empty") and not preflight.get("ok"):
+            reasons = preflight.get("reasons") or []
+            row["contract_note"] = (
+                f"contract_fail:{preflight.get('phase')}:{','.join(reasons)}"
+            )
     return row
 
 
@@ -198,6 +216,8 @@ def event_row(
     day_plan=None,
     task=None,
     note: str | None = None,
+    ram=None,
+    extras: dict[str, object] | None = None,
 ) -> dict[str, object]:
     row = {"event": event, **snapshot.as_event()}
     if watches:
@@ -205,9 +225,11 @@ def event_row(
     if changes:
         row["changes"] = changes
     if day_plan is not None:
-        row["day_plan"] = day_plan_debug_snapshot(day_plan)
+        row["day_plan"] = day_plan_debug_snapshot(day_plan, ram=ram)
     if task is not None:
         row["task"] = task_debug_snapshot(task)
     if note:
         row["note"] = note
+    if extras:
+        row.update(extras)
     return row

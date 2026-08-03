@@ -182,6 +182,47 @@ class TaskContractTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("unknown_ram_field" in r for r in reasons))
 
+    def test_tool_tags_from_ram_maps_carry_pair(self) -> None:
+        from harvest.core.carry import ADDR_TOOL_BACKPACK, ADDR_TOOL_SELECTED
+        from harvest.core.tile_catalog import Tool
+        from harvest.planner.day_phase_types import tool_tags_from_ram
+
+        ram = np.zeros(0x1000, dtype=np.uint8)
+        ram[ADDR_TOOL_SELECTED] = int(Tool.HOE)
+        ram[ADDR_TOOL_BACKPACK] = 0x07  # potato seeds
+        tags = tool_tags_from_ram(ram)
+        self.assertEqual(tags, ("hoe", "seed"))
+
+        ram[ADDR_TOOL_SELECTED] = int(Tool.WATERING_CAN)
+        ram[ADDR_TOOL_BACKPACK] = 0
+        self.assertEqual(tool_tags_from_ram(ram), ("watering_can",))
+
+    def test_preflight_phase_contract_soft_reasons(self) -> None:
+        from harvest.core.carry import ADDR_TOOL_BACKPACK, ADDR_TOOL_SELECTED
+        from harvest.core.ram_catalog import field_spec
+        from harvest.core.tile_catalog import Tool
+        from harvest.planner.day_phase_types import preflight_phase_contract
+
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        ram[field_spec("tilemap").address] = 0x28  # coop, not farm
+        ram[ADDR_TOOL_SELECTED] = int(Tool.HOE)
+        ram[ADDR_TOOL_BACKPACK] = 0  # missing seed
+
+        result = preflight_phase_contract(CROP_ESTABLISH_PHASE, ram=ram)
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["empty"])
+        self.assertEqual(result["phase"], "CROP_ESTABLISH")
+        self.assertTrue(any(r.startswith("map_mismatch") for r in result["reasons"]))
+        self.assertTrue(any(r.startswith("missing_tool:seed") for r in result["reasons"]))
+        self.assertIn("hoe", result["tools"])
+
+        # Farm + hoe + seed → ok
+        ram[field_spec("tilemap").address] = 0x00
+        ram[ADDR_TOOL_BACKPACK] = 0x07
+        ok_result = preflight_phase_contract(CROP_ESTABLISH_PHASE, ram=ram)
+        self.assertTrue(ok_result["ok"])
+        self.assertEqual(ok_result["reasons"], [])
+
 
 class WorldContextTests(unittest.TestCase):
     def test_caches_repeated_reads_for_same_frame(self) -> None:
