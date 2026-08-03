@@ -1,10 +1,11 @@
 # TMNT IV task queue
 
 Planner (Grok / human) owns design, natural-entry judgment, STATUS, and
-integrity. Executors take **one card per session**.
+integrity. Executors take **one thin card per session** — never an epic shell.
 
 | Doc | Role |
 |-----|------|
+| **[CLEAN_LADDER.md](CLEAN_LADDER.md)** | ★ Thin Clean rungs (PROBE→…→SUITE) |
 | **[TRIAGE.md](TRIAGE.md)** | Critical path, parallel tracks |
 | **[BACKLOG.md](BACKLOG.md)** | Full ticket list by epic |
 | [PROCESS.md](PROCESS.md) | Multi-entry, stabilize, residual schema |
@@ -16,38 +17,54 @@ integrity. Executors take **one card per session**.
 
 ## Process gates (non-negotiable)
 
-1. **Multi-entry first** (checkpoint + continuous-faithful / power-on) before
-   continuous Clean claim.
-2. **Stabilize wave** after policy knobs land (suite + assisted dry-run before
-   more knobs).
-3. **One knob / residual** → next card ID + one change.
-4. **Serialize** hot modules: `policy.py`, `record_full_hard_run.py`,
+1. **Thin rungs:** Clean stage progress is PROBE / BOSS / LATE / REACH / CKPT /
+   BRIDGE / SUITE / STAB — not one “green the stage” card
+   ([CLEAN_LADDER.md](CLEAN_LADDER.md)).
+2. **Pizza-only ≫ assist:** metric REACH wins count; full stage_advance is a
+   later rung. Never force-pass SUITE from unit tests.
+3. **Multi-entry** before continuous Clean claim (CKPT + BRIDGE → SUITE).
+4. **Stabilize** after KEEP knobs (suite + assisted dry-run; no new knobs).
+5. **One knob / residual** → next **thin** card ID + one change.
+6. **Serialize** hot modules: `policy.py`, `record_full_hard_run.py`,
    `STATUS.md`, `BASELINE_METRICS.md`.
-5. **Dual track:** Clean suite progress ≠ assisted demotion; grind ≠ continuous.
-6. **Force-pass ban:** scaffolds never claim suite/continuous green.
+7. **Dual track:** Clean progress ≠ assisted demotion.
+8. **Executors never STATUS-promote** or invent suite numbers (JSON only).
 
-## ★ Live tips (2026-08-01)
+## ★ Live tips (2026-08-02)
 
 | Gate | Status | Evidence / action |
 |------|--------|-------------------|
 | Power-on → hard credits (assisted) | **continuous** | 00:57:19.635 / 4,667 dmg / 65 e-heals / 0 lives |
-| Clean infra (paths / CLI / integrity) | **done** | `tests/test_clean_track.py`; `--clean` defaults |
+| Clean infra | **done** | `tests/test_clean_track.py`; `--clean` defaults |
 | Stage 1 Clean suite | **done** | `probe_stage1_clean --suite` 2/2 |
-| Stage 2 Alleycat Clean | **in progress** | Metalhead Clean; residual post-pizza 0x5E pile-ons |
-| Stage 3 Sewer Clean | **in progress** | LiveHard; residual 0x1C spikes |
-| ★ Clean full continuous | **open** | After stages + form-2 |
-| Assisted polish | **open** | Techno / Prehist / Starbase / WK buckets |
+| Stage 2 Alleycat Clean | **rungs** | BOSS+LATE **done**; CKPT+BRIDGE **RED** (`clean_suite.json` **2/4** — do not claim 3/4) |
+| Stage 3 Sewer Clean | **rungs** | Start `T4-CLEAN-S3-PROBE`; LiveHard; residual 0x1C |
+| ★ Clean full continuous | **open** | `T4-CLEAN-FULL-ATTEMPT` only when measuring; expect RED |
+| Assisted polish | **open** | TECHNO shell → spawn PROBE/KNOB |
+
+### Ready now (pick **one**)
+
+| Track | Card | Why thin |
+|-------|------|----------|
+| CLEAN S2 | [`T4-CLEAN-S2-PROBE`](T4-CLEAN-S2-PROBE.md) | Re-baseline JSON after policy churn |
+| CLEAN S2 | [`T4-CLEAN-S2-EDGE`](T4-CLEAN-S2-EDGE.md) | One residual pack edge-wait knob |
+| CLEAN S2 | [`T4-CLEAN-S2-REACH`](T4-CLEAN-S2-REACH.md) | Metric win on full Stage2 (not full clear) |
+| CLEAN S3 | [`T4-CLEAN-S3-PROBE`](T4-CLEAN-S3-PROBE.md) | LiveHard baseline only |
+| CLEAN measure | [`T4-CLEAN-FULL-ATTEMPT`](T4-CLEAN-FULL-ATTEMPT.md) | Clean dry-run death stage (expect RED) |
+| A assisted | `T4-ASSIST-TECHNO` shell → PROBE first | Damage cut is multi-card |
+
+**Do not assign:** epic `T4-CLEAN-S2` / `S3` / `FULL` as the session card.
 
 ```bash
-# Assisted baseline re-verify
+# Assisted baseline re-verify (stabilize only)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m tmnt_iv.scripts.record_full_hard_run --dry-run
 
-# Clean continuous (infra ready; stages still RED — expect fail until S2–S9)
+# Clean continuous (expect fail until rungs green)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
 
-# Stage Clean suites (existing)
+# Stage Clean suites
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -56,85 +73,59 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m tmnt_iv.scripts.probe_stage3_clean --suite
 ```
 
-## Epic board (product path → Clean full run)
+## Epic board (product path)
 
 ```text
 ✅ M8 assisted continuous hard credits
-✅ Stage 1 Clean suite (Big Apple)
-✅ Clean infra (CONTRACT / ARTIFACTS / CLI / INTEGRITY)
-▶  Stage 2 Alleycat Clean suite  ← YOU ARE HERE
-▶  Stage 3 Sewer Clean suite
-⬜  Stages 4–8 Clean suites
-⬜  Stage 9 + form-2 Clean (no iframe write)
-⬜  ★ Clean continuous hard credits (T4-CLEAN-FULL)
-⬜  STATUS secondary Clean section
+✅ Stage 1 Clean suite
+✅ Clean infra
+▶  S2 rungs: BOSS+LATE done → REACH/EDGE → CKPT → BRIDGE → SUITE  ← YOU ARE HERE
+▶  S3 rungs: PROBE → REACH/BOSS → CKPT → BRIDGE → SUITE
+⬜  S4–S8 thin rungs (after INFRA-PROBE-Sn)
+⬜  S9 WAVE + F2 (no iframe)
+⬜  ★ Clean continuous (FULL-ATTEMPT → STAB → STATUS secondary)
 ```
 
-Parallel: **A assisted** damage/heal/iframe polish (`T4-ASSIST-*`).
+Parallel: **A assisted** PROBE/KNOB polish (serialize `policy.py`).
 
-### Ticket recipe (each Clean stage)
+### Ticket recipe (each Clean **rung**)
 
 | Step | Kind | Owner |
 |------|------|-------|
-| 1 | `probe suite` heal=none multi-entry | Executor |
-| 2 | `policy knob` if RED (one change) | Executor |
-| 3 | `stabilize` suite re-verify (+ assisted dry-run if shared knob) | planner-serial |
-| 4 | next stage or continuous | planner |
-
-Whole-run Clean inserts infra cards first, then `T4-CLEAN-FULL` after stages.
-
-## Ready now (Wave-2 — stage Clean suites)
-
-| Track | Cards | Notes |
-|-------|-------|-------|
-| **CLEAN stages** | `T4-CLEAN-S2`, `T4-CLEAN-S3` | Multi-entry heal=none; one-knob if RED |
-| **A assisted** | `T4-ASSIST-TECHNO` | Largest damage bucket; serialize policy |
-| **CLEAN infra** | done | residuals under `T4-CLEAN-*-residual.md` |
-
-## Parallel tracks
-
-| Track | What | Integrity |
-|-------|------|-----------|
-| **A assisted** | Improve already-green continuous | Keep 0 lives lost; update BASELINE after dry-run |
-| **CLEAN** | Zero e-HP + zero iframe | `*_clean` artifacts only; STATUS secondary |
-| **Grind / lab** | Ollama grind, slash lab | Dual-track only; not continuous evidence |
+| 1 | PROBE (JSON only) | Flash / Gemini |
+| 2 | REACH or one KNOB/EDGE | Luna / Gemini |
+| 3 | CKPT / BRIDGE when metrics ready | Luna |
+| 4 | SUITE verify (no knobs) | Flash |
+| 5 | STAB suite + assisted dry-run | Flash; planner on regression |
 
 ## Clean track detail
 
-Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Does **not** block assisted
-polish. Primary STATUS gate remains assisted full clear.
-
-| Gate | Status | Card |
-|------|--------|------|
-| Dual-path docs | **done** | [`T4-CLEAN-CONTRACT`](T4-CLEAN-CONTRACT.md) |
-| Artifact isolation `_clean` | **done** | [`T4-CLEAN-ARTIFACTS`](T4-CLEAN-ARTIFACTS.md) |
-| `--clean` CLI + flag wiring | **done** | [`T4-CLEAN-CLI`](T4-CLEAN-CLI.md) |
-| Zero assist integrity | **done** | [`T4-CLEAN-INTEGRITY`](T4-CLEAN-INTEGRITY.md) |
-| S1 Clean suite | **done** | (playbook / STATUS) |
-| S2 Alleycat Clean | open | [`T4-CLEAN-S2`](T4-CLEAN-S2.md) |
-| S3 Sewer Clean | open | [`T4-CLEAN-S3`](T4-CLEAN-S3.md) |
-| S4–S8 Clean | open | `T4-CLEAN-S4`…`S8` |
-| S9 form-2 Clean | open | [`T4-CLEAN-S9`](T4-CLEAN-S9.md) |
-| ★ Full Clean continuous | open (after stages) | [`T4-CLEAN-FULL`](T4-CLEAN-FULL.md) |
-| Stab / STATUS | gated | `T4-CLEAN-STAB` / `T4-CLEAN-STATUS` |
+| Gate | Status | Card(s) |
+|------|--------|---------|
+| Infra | **done** | CONTRACT / ARTIFACTS / CLI / INTEGRITY |
+| S1 suite | **done** | playbook / STATUS |
+| S2 rungs | active | [T4-CLEAN-S2](T4-CLEAN-S2.md) children |
+| S3 rungs | active | [T4-CLEAN-S3](T4-CLEAN-S3.md) children |
+| S4–S8 | gated | epic shells + INFRA-PROBE |
+| S9 F2 | gated | [T4-CLEAN-S9](T4-CLEAN-S9.md) |
+| ★ Full Clean | open | [FULL-ATTEMPT](T4-CLEAN-FULL-ATTEMPT.md) |
+| Stab / STATUS | gated | STAB / STATUS (planner) |
 
 ## Assisted improve detail
 
-| Card | Goal | Baseline |
-|------|------|----------|
-| [`T4-ASSIST-TECHNO`](T4-ASSIST-TECHNO.md) | Cut Technodrome damage | 1,022 |
-| [`T4-ASSIST-PREHIST`](T4-ASSIST-PREHIST.md) | Cut Prehistoric / Slash | 861 |
-| [`T4-ASSIST-STARBASE`](T4-ASSIST-STARBASE.md) | Cut Starbase damage | 749 |
-| [`T4-ASSIST-WK`](T4-ASSIST-WK.md) | Cut Wounded Knee | 579 |
-| [`T4-ASSIST-HEALS`](T4-ASSIST-HEALS.md) | Fewer e-heals (< 65) | 65 |
-| [`T4-ASSIST-IFRAME`](T4-ASSIST-IFRAME.md) | Fewer form-2 frames | 4,635 |
-| [`T4-ASSIST-DRYRUN`](T4-ASSIST-DRYRUN.md) | Re-record assisted baseline | planner gate |
+| Shell | Goal | Baseline | Execute as |
+|-------|------|----------|------------|
+| [T4-ASSIST-TECHNO](T4-ASSIST-TECHNO.md) | Cut Technodrome dmg | 1,022 | PROBE→KNOB→STAB |
+| [T4-ASSIST-PREHIST](T4-ASSIST-PREHIST.md) | Prehistoric / Slash | 861 | same |
+| [T4-ASSIST-STARBASE](T4-ASSIST-STARBASE.md) | Starbase | 749 | same |
+| [T4-ASSIST-WK](T4-ASSIST-WK.md) | Wounded Knee | 579 | same |
+| [T4-ASSIST-HEALS](T4-ASSIST-HEALS.md) | e-heals &lt; 65 | 65 | same |
+| [T4-ASSIST-IFRAME](T4-ASSIST-IFRAME.md) | form-2 frames down | 4,635 | feeds S9-F2 |
+| [T4-ASSIST-DRYRUN](T4-ASSIST-DRYRUN.md) | BASELINE promote | planner | planner |
 
 ## Hygiene
 
-- Living markdown cards are **ready / in-flight** work — scaffold from
-  `TASK_TEMPLATE.md` when promoting a backlog row.
-- Archive residuals after the successor card exists.
-- After assisted improve promotion: update `BASELINE_METRICS.md` + `STATUS.md`.
-- After Clean continuous: secondary STATUS only; keep primary intervention
-  class until program decides Clean is the published default.
+- Living cards = ready / in-flight. Epics are trackers only.
+- Residual numbers must match suite JSON; force-pass ban.
+- After assisted KEEP: STAB dry-run before more knobs; BASELINE = planner.
+- After Clean continuous: STATUS **secondary** only.

@@ -18,8 +18,9 @@ Verified transitions (see ``docs/STATUS.md``):
 
 Courtyard pocket → main hall is measured (natural-entry / continuous spine
 through ``room_50``). Main hall west → room ``0x60`` and north → room
-``0x50`` are continuous via the clean power-on prefix. After ``0x50`` → Zelda
-cell / escort / Sanctuary remain planned (map seeds under ``maps/``).
+``0x50`` are continuous via the clean power-on prefix. Room ``0x50`` east →
+``0x01`` is natural_entry (only physical forward exit from the tip; 2026-08-02
+exhaustive probe). ``0x01`` → Zelda cell / escort / Sanctuary remain planned.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ from adventure_common.graph import (
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     HYRULE_CASTLE_MAIN_WEST_ROOM,
+    HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
     HYRULE_CASTLE_NW_ROOM,
     HYRULE_CASTLE_SCREEN,
     SANCTUARY_ROOM,
@@ -74,6 +76,8 @@ N_ROOM_61 = "room_61"
 N_ROOM_60 = "room_60"
 # North of 0x60 (continuous clean prefix 2026-08-01).
 N_ROOM_50 = "room_50"
+# East of 0x50 north connector (natural_entry 2026-08-02).
+N_ROOM_01 = "room_01"
 N_ROOM_80 = "room_80"
 N_CASTLE_MANTLE = "castle_mantle"
 N_SEWERS_DARK = "sewers_dark"
@@ -229,6 +233,20 @@ def escape_route_graph() -> RouteGraph:
                 extra={
                     "note": "North of 0x60 on Zelda path; geometry maps/room_50.json",
                     "map_id": "room_50",
+                },
+            ),
+        ),
+        GraphNode(
+            node_id=N_ROOM_01,
+            name="Hyrule Castle north connector (0x01)",
+            area="hyrule_castle",
+            tags=frozenset({"indoors", "escape", "natural_entry"}),
+            meta=_room_meta(
+                HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
+                z3_label="Hyrule Castle",
+                extra={
+                    "note": "East of 0x50; only physical forward exit from tip (2026-08-02)",
+                    "map_id": "room_01",
                 },
             ),
         ),
@@ -417,11 +435,31 @@ def escape_route_graph() -> RouteGraph:
                 "note": "Clean power-on prefix: north shaft → UP (maps/room_60.json)",
             },
         ),
-        # --- planned primary: after 0x50 → Zelda cell / escort / Sanctuary ----
+        # --- natural_entry: room 0x50 east → 0x01 (only forward exit; 2026-08-02)
         GraphEdge(
             source_id=N_ROOM_50,
+            target_id=N_ROOM_01,
+            edge_id="room_50_east_to_0x01",
+            direction="east",
+            requires=frozenset({CAP_FIGHTER_SWORD}),
+            verification=VERIFICATION_NATURAL_ENTRY,
+            provenance="room_engine.room_50.east_to_0x01+natural_room_50_east",
+            meta={
+                "path": PATH_PRIMARY,
+                "to_room_base_id": HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
+                "door_label": "east_to_0x01",
+                "map_id": "room_50",
+                "note": (
+                    "Exhaustive 2026-08-02 probe: only physical forward exit from "
+                    "continuous tip 0x50. Natural entry from real 0x50 predecessor."
+                ),
+            },
+        ),
+        # --- planned primary: after 0x01 → Zelda cell / escort / Sanctuary ----
+        GraphEdge(
+            source_id=N_ROOM_01,
             target_id=N_ROOM_80,
-            edge_id="room_50_to_zelda_cell",
+            edge_id="room_01_to_zelda_cell",
             direction="east",
             requires=frozenset({CAP_FIGHTER_SWORD}),
             verification=VERIFICATION_PLANNED,
@@ -430,8 +468,8 @@ def escape_route_graph() -> RouteGraph:
                 "path": PATH_PRIMARY,
                 "to_room_base_id": ZELDA_CELL_ROOM,
                 "note": (
-                    "Measured next hop candidates: 0x50→0x01→…; B1 0x81/0x82/0x72 "
-                    "maps exist. Intermediate rooms not yet continuous."
+                    "Measured exploration chain: 0x01→0x52→0x62 (clear required in "
+                    "0x52). B1 stairs not yet isolated; maps/room_70.json seed exists."
                 ),
             },
         ),
@@ -581,8 +619,16 @@ _ESCAPE_HOPS: tuple[_EscapeHop, ...] = (
         paths=_BOTH_PATHS,
     ),
     _EscapeHop(
-        leg_id="room_50_to_zelda_cell",
+        leg_id="room_50_east_to_0x01",
         source_id=N_ROOM_50,
+        target_id=N_ROOM_01,
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        goal="reach_room_01_connector",
+        paths=_BOTH_PATHS,
+    ),
+    _EscapeHop(
+        leg_id="room_01_to_zelda_cell",
+        source_id=N_ROOM_01,
         target_id=N_ROOM_80,
         requires=frozenset({CAP_FIGHTER_SWORD}),
         goal="reach_zelda_cell_0x80",

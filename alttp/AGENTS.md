@@ -34,7 +34,8 @@ Compat shims keep old imports working (`alttp.escape_graph`,
 Main hall entry is verified (pocket bush-cut → door → room `0x61`).
 Main hall clear + west exit to `0x60` and room `0x60` north → `0x50` are
 verified in the clean power-on prefix (`castle_dungeon_prefix`).
-Next: after `0x50` → Zelda follower → escort → Sanctuary.
+Tip exit `0x50` east → `0x01` is natural_entry (only physical forward exit).
+Next: after `0x01` → B1 stairs → Zelda follower → escort → Sanctuary.
 Drive probes from `docs/ROOM_ENGINE.md` + `docs/routes/ROOM_WORK_QUEUE.md`
 and continuous-spine blockers on `opening_route.escape_graph` only.
 
@@ -100,8 +101,8 @@ uv run --frozen pytest alttp/tests -q
 ## Contracts (quick)
 
 - **Escape graph:** continuous through NW chamber `0x50` (including
-  `0x61→0x60→0x50`); Zelda/Sanctuary planned; primary vs
-  `internal_key` tags.
+  `0x61→0x60→0x50`); `0x50→0x01` natural_entry; Zelda/Sanctuary planned;
+  primary vs `internal_key` tags.
 - **Room engine:** `maps/room_XX.json` geometry authority +
   `opening_route.room_engine` clear/path/door; see `docs/ROOM_ENGINE.md`.
 - **Segments:** continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`,
@@ -113,9 +114,9 @@ uv run --frozen pytest alttp/tests -q
 - **Room sense:** sprite AABBs, edge detect, overlay, `load_room_map`.
 - **Anchors:** multi-truth names + approach windows; tip resolve includes
   continuous `room_60` / `room_50` after the first-dungeon prefix.
-- **Work queue:** continuous tip `room_50` → physical exit discovery first;
-  key/0x55 alternate.
-- **Trigger handoff:** hole/stairs/main-door solved; west edge measured;
-  B1 → Zelda open.
+- **Work queue:** tip `room_50` east→`0x01` natural_entry; next B1 stairs
+  after 0x01 chain; key/0x55 alternate.
+- **Trigger handoff:** hole/stairs-exit/main-door/0x50-east solved; B1
+  stairs → Zelda open.
 - State-load runs are development-only; only `--natural` with full acceptance
   is a clean natural-chain claim.

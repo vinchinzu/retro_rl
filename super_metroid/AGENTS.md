@@ -57,11 +57,18 @@ are topology diagnostics only — not route evidence.
    (`scripts/record/continuous.py --to frog`; two matching integrity-green
    runs, **114,923f**, 0 loads / progression / capacity writes / deaths).
    Prefixes: Hi-Jump **87,696f**, Varia **104,382f**, Business **113,723f**.
-4. **★ Next play:** first Bubble via **Cathedral climb** pure stack from
-   `scratch/post_business_continuous.state` (`SM-K4-CATH-01`…). Frog Save is a
-   continuous K4.0 milestone; Frog Speedway is **post-Speed only** (Boost
-   Blocks). Then Bubble → Speed → Wave → Ice → Alpha PB; no door-warp
-   evidence or progression writes.
+4. **★ Next play:** first Bubble pure is **done** (CATH-01…04 pure GREEN;
+   successor `scratch/post_rising_tide_to_bubble_pure.state`). Bubble → Bat
+   controller registered, pure **RED** (phases A/B green; **Phase C** usable
+   right contact still red; top place-proven only). R10 mid-high open-loop
+   (`y≤450`; pin True, max_x=349 min_y=260). Hard-room ladder:
+   [`docs/tasks/SM-K4.4-PHASE-LADDER.md`](docs/tasks/SM-K4.4-PHASE-LADDER.md)
+   · process [`docs/tasks/HARD_ROOM_SPLITS.md`](docs/tasks/HARD_ROOM_SPLITS.md).
+   R11 fixed spin-apex false-land; pure still **phase_c_hit=False** /
+   top red. Next **`SM-K4.4-PURE-R12`**: new trajectory class (see R11
+   residual rejected list). Frog Save remains continuous K4.0 tip; Frog
+   Speedway is **post-Speed only**. Then Bat → Speed → Wave → Ice → Alpha
+   PB; no door-warp evidence or progression writes.
 5. **Architecture + structure plan:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
    (layers, Segment contracts, tip recipe, **known structural debt**) and
    [`docs/plan.md`](docs/plan.md) (M6–M8 + Structure & API todos). Planner-serial
@@ -83,7 +90,7 @@ are topology diagnostics only — not route evidence.
 [`docs/routes/MILESTONES.md`](docs/routes/MILESTONES.md) ·
 [`docs/routes/MILESTONES.csv`](docs/routes/MILESTONES.csv).
 
-**Full backlog** (~288 tickets to M8 credits):
+**Full backlog** (~308 tickets to M8 credits):
 [`docs/routes/BACKLOG.csv`](docs/routes/BACKLOG.csv) ·
 [`docs/routes/BACKLOG.md`](docs/routes/BACKLOG.md).
 
@@ -102,7 +109,8 @@ Farm **atomic** implementation to a cheap executor; keep integrity / STATUS /
 natural-entry judgment on a strong planner (Grok) or human.
 
 - Process: [`docs/tasks/PROCESS.md`](docs/tasks/PROCESS.md) — pure-first,
-  stabilize waves, residual schema, metrics, dual-track
+  stabilize waves, residual schema, metrics, dual-track,
+  **tangible progress / anti-ceremony / named reward-hacking bans**
 - Template: [`docs/TASK_TEMPLATE.md`](docs/TASK_TEMPLATE.md)
 - Queue: [`docs/tasks/QUEUE.md`](docs/tasks/QUEUE.md)
 - Wave dispatch: [`docs/tasks/WAVE-11.md`](docs/tasks/WAVE-11.md)
@@ -115,6 +123,24 @@ natural-entry judgment on a strong planner (Grok) or human.
 - Model IDs / provider routing: `scripts/dispatch_opencode.sh` (env-overridable)
   and local `opencode.json` (copy from `opencode.example.json`; gitignored).
   Auth stays outside the repo.
+
+**Tangible progress (ticket process — non-negotiable):**
+
+Process exists to ship runnable route software; it must never become the
+product. Full rules + 12 named reward-hacking patterns live in
+[`docs/tasks/PROCESS.md`](docs/tasks/PROCESS.md) § *Tangible progress…*.
+
+- **No process porn** — residuals, boards, dashboards, meta-reports are not
+  progress unless they hard-gate a named pure/continuous/STATUS capability.
+- **Feature-first** — most open ready cards must deliver runnable behavior;
+  process/ops/docs-only ≤ ~5% of open ready, and each must name the feature it
+  gates.
+- **Honesty absolute** — no faked tests, fixture/door-warp as live proof,
+  weakened assertions, hard-coded success paths, or false closes.
+- **Refusal ≠ delivery** — honest `BLOCKED`/`PARTIAL` beats fabricated green;
+  scaffold-only never closes a feature card.
+- **Churn without tip advance is a process failure** — re-triage to highest-
+  priority runnable spine/feature card.
 
 ```bash
 # From repo root (Flash auto-picked for docs/report/rollup cards)
@@ -142,7 +168,11 @@ continuous compose/re-record, and natural-entry design.
 **Hard gates:** pure-green from continuous-like source before continuous;
 stabilize wave after implement knobs; one-knob geometry; residual → next card
 ID + one change; never parallel-edit `business_climb` / HJ return / spore /
-`varia_return` geometry / continuous / STATUS.
+`varia_return` geometry / continuous / STATUS; no reward-hacking (gate
+self-weakening, proof-class inflation, golden regen, commit-stream pumping,
+tautological tests, easy-card cherry-picking, close-pump, scope-splitting,
+spec-editing as progress, conformance metastasis, dependency smuggling,
+demo-path hardcoding — see PROCESS.md).
 
 **Post-Varia reverse source states (scratch)** — full index in
 [`docs/SOURCE_STATES.md`](docs/SOURCE_STATES.md):

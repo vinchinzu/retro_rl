@@ -80,15 +80,19 @@ are green (or after form-2 play solution lands).
 |------:|-----------|---------|------------------------|--------|
 | − | Infra (paths / `--clean` / integrity) | `tests/test_clean_track.py` | `tmnt_iv_full_hard_clean*` | **done** |
 | 0 | Stage 1 Big Apple Clean suite | `probe_stage1_clean --suite` | `stage1_clean_track/` | **done** |
-| 1 | Stage 2 Alleycat Clean suite | `probe_stage2_clean --suite` | `stage2_clean_track/` | in progress (residual) |
-| 2 | Stage 3 Sewer Clean suite | `probe_stage3_clean --suite` | `stage3_clean_track/` | in progress |
-| 3 | Stage 4 Technodrome Clean | stage probe + multi-entry | `stage4_clean_track/` | open |
-| 4 | Stage 5 Prehistoric / Slash Clean | stage probe | `stage5_clean_track/` | open |
-| 5 | Stage 6 Skull Clean | stage probe; **no global pizza seek** | `stage6_clean_track/` | open |
-| 6 | Stage 7 Wounded Knee Clean | stage probe | `stage7_clean_track/` | open |
-| 7 | Stage 8 Neon Clean | stage probe | `stage8_clean_track/` | open |
-| 8 | Stage 9 Starbase + form-2 Clean | form-2 **without** iframe write | `stage9_clean_track/` | open |
-| 9 | ★ Power-on → hard credits **Clean** | `record_full_hard_run --clean` | `tmnt_iv_full_hard_clean` | ★ product tip |
+| 1 | Stage 2 Alleycat **thin rungs** | `probe_stage2_clean`; [CLEAN_LADDER](tasks/CLEAN_LADDER.md) | `stage2_clean_track/` | BOSS+LATE done; suite **2/4** |
+| 2 | Stage 3 Sewer **thin rungs** | `probe_stage3_clean` + LiveHard | `stage3_clean_track/` | PROBE ready |
+| 3 | Stage 4 Technodrome Clean rungs | INFRA-PROBE then rungs | `stage4_clean_track/` | open |
+| 4 | Stage 5 Prehistoric / Slash rungs | stage probe | `stage5_clean_track/` | open |
+| 5 | Stage 6 Skull rungs | **no global pizza seek** | `stage6_clean_track/` | open |
+| 6 | Stage 7 Wounded Knee rungs | stage probe | `stage7_clean_track/` | open |
+| 7 | Stage 8 Neon rungs | stage probe | `stage8_clean_track/` | open |
+| 8 | Stage 9 WAVE + form-2 **F2** | form-2 **without** iframe write | `stage9_clean_track/` | open |
+| 9 | ★ Power-on → hard credits **Clean** | `FULL-ATTEMPT` then STAB | `tmnt_iv_full_hard_clean` | ★ product tip |
+
+**Executor rule:** pizza-only Clear is much harder than emergency-HP assist.
+Assign **one rung card** (PROBE / REACH / EDGE / CKPT / …), never “green whole
+stage suite” or the epic shell alone.
 
 Preferred continuous (after infra cards land):
 

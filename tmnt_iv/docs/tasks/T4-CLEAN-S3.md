@@ -1,45 +1,34 @@
-# TASK T4-CLEAN-S3: Sewer Surfin' Clean multi-entry suite
+# EPIC T4-CLEAN-S3: Sewer Surfin' Clean (shell — not an executor ticket)
 
 ## Recipe step
-probe suite
+epic / tracker
 
 ## Model
-Luna
+Planner only
 
-## Wave type
-implement
+## Children (one per session)
 
-## Own files only
-- `scripts/probe_stage3_clean.py` (if needed)
-- `policy.py` — **one** Sewer-local knob only if suite RED
-- residual: `docs/tasks/T4-CLEAN-S3-residual.md`
+See [CLEAN_LADDER.md](CLEAN_LADDER.md#s3-sewer-stage-byte-2--active).
+
+| Order | Card | Goal | Status |
+|------:|------|------|--------|
+| 0 | [T4-CLEAN-S3-PROBE](T4-CLEAN-S3-PROBE.md) | LiveHard suite baseline | ready |
+| 1 | [T4-CLEAN-S3-BOSS](T4-CLEAN-S3-BOSS.md) | Rat King finish on LiveHard path | open |
+| 2 | [T4-CLEAN-S3-REACH](T4-CLEAN-S3-REACH.md) | Cut 0x1C spikes / farther LiveHard | open |
+| 3 | [T4-CLEAN-S3-CKPT](T4-CLEAN-S3-CKPT.md) | LiveHard full stage_advance | open |
+| 4 | [T4-CLEAN-S3-BRIDGE](T4-CLEAN-S3-BRIDGE.md) | Stage2_Clear → sewer | open |
+| 5 | [T4-CLEAN-S3-SUITE](T4-CLEAN-S3-SUITE.md) | Required entries green | gated |
+| 6 | [T4-CLEAN-S3-STAB](T4-CLEAN-S3-STAB.md) | Suite + assisted dry-run | gated |
 
 ## Context
-- Stage byte **2**. Prefer **`LiveHardStage3` (lives=2)** — last-life
-  Stage3/Boss3 die on post-kill `event=0x0B` fade (checkpoint artifact).
-- Residual 0x1C spikes; `SewerSpikeAvoid` jump-right landed; spike LEFT thrash
-  rejected.
-- Rat King: boss_active down to HP 1; long poke not jump-slash.
-- Evidence dir: `recordings/stage3_clean_track/`.
 
-## Read first
-- `docs/CLEAN_PLAYBOOK.md`
-- `docs/STATUS.md` (Stage 3 Clean section)
-- `scripts/probe_stage3_clean.py`
+- Stage byte **2**. Prefer **`LiveHardStage3` (lives=2)**.
+- Last-life `Stage3`/`Boss3` post-kill `0x0B` fade death is a **checkpoint
+  artifact** — not a Clean gate.
+- Residual: 0x1C spikes; dumpster thrash rejected; spike LEFT thrash rejected.
+- Evidence: `recordings/stage3_clean_track/`.
 
-## Do
-1. Run `--suite` with LiveHard entries; do not gate on last-life Boss3 fade.
-2. Target: stage_advance, **0 e-heals, 0 lives lost**, boss finish holds.
-3. Cut residual 0x1C columns so boss entry HP stays high enough.
-4. If RED: one spike/Rat King knob only; residual routes next.
+## Do not
 
-## Acceptance
-- [ ] Suite green on LiveHard multi-entry
-- [ ] No dumpster/WalkProgress thrash re-open
-- [ ] Residual PROCESS fields
-
-## Verify commands
-```bash
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_stage3_clean --suite
-```
+- Hand this epic to an executor as the session card.
+- Gate on last-life Boss3 fade artifact.

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 112,
+  "roomHex": "0x70",
+  "name": "Hyrule Castle B1/B2 west landing",
+  "measured": "2026-08-02",
+  "sourceState": "CastleB2Landing",
+  "z3Label": "Hyrule Castle",
+  "points": [
+    {"label": "entry_spawn", "xy": [161, 3640], "role": "spawn", "notes": "CastleB2Landing"},
+    {"label": "north_to_0x71_approach", "xy": [160, 3620], "role": "approach", "notes": "Hold UP → room 0x71"},
+    {"label": "west_to_0x80_area", "xy": [80, 3640], "role": "waypoint", "notes": "West; UP → room 0x80 (Zelda cell) from here"}
+  ],
+  "doors": [
+    {
+      "label": "north_to_0x71",
+      "direction": "UP",
+      "toRoom": 113,
+      "toRoomHex": "0x71",
+      "approachXy": [160, 3620],
+      "landingXy": [160, 3613],
+      "role": "primary",
+      "path": ["north_to_0x71_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 40,
+      "notes": "From CastleB2Landing spawn UP ~28f → 0x71"
+    },
+    {
+      "label": "west_north_to_0x80",
+      "direction": "UP",
+      "toRoom": 128,
+      "toRoomHex": "0x80",
+      "approachXy": [80, 3640],
+      "landingXy": [80, 3613],
+      "role": "zelda_path",
+      "path": ["west_to_0x80_area"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 40,
+      "notes": "Walk west to x≈80 then UP → Zelda cell 0x80 (state-local; not natural from F1)"
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 80,
+    "attackDistance": 48,
+    "maxCycles": 100,
+    "skirmishMaxDistance": 70,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [67, 3619, 172, 3661],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Discovered via CastleB2Landing dump (2026-08-02). Small chamber; no F1 stairs isolated from this state.",
+    "F1→B1 stair entry into this room (or neighbor) is still unmeasured from the continuous tip.",
+    "Authority: maps/room_70.json"
+  ]
+}

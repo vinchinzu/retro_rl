@@ -1,5 +1,7 @@
 # TASK T4-ASSIST-HEALS: Drive emergency HP interventions below 65
 
+> **Shell:** execute as PROBE → KNOB → STAB → planner DRYRUN (see CLEAN_LADDER assisted pattern). Do not “finish this stage bucket” in one session.
+
 ## Recipe step
 policy knob / route polish
 

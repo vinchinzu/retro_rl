@@ -1,17 +1,22 @@
 ticket_id,epic,kind,title,depends_on,priority,status,estimate,own_files_hint,notes
-SM-K4.1-PURE,K4,pure,Pure Frog Save→Speedway,,P0,ready,M,routes/kpdr/k4_norfair.py,source scratch/post_frog_continuous.state expect 0xB167; exit 0xB106; living card SM-K4-SPEEDWAY-PURE; residual may be GREEN
-SM-K4-SPEEDWAY-SRC,K4,docs,Fingerprint-register Speedway pure successor,SM-K4.1-PURE,P0,ready,S,docs/SOURCE_STATES.md,post_frog_save_to_speedway_pure.state expect 0xB106; Wave-11
+SM-K4-CATH-01,K4,pure,Pure Business→Cathedral Entrance,,P0,done,M,routes/kpdr/k4_norfair.py,pure GREEN ~959f; first Bubble repath; living residual may archive
+SM-K4-CATH-02,K4,pure,Pure Cathedral Entrance→Cathedral,SM-K4-CATH-01,P0,done,M,routes/kpdr/k4_norfair.py,pure GREEN ~909f; successor post_cathedral_entrance_to_cathedral_pure
+SM-K4-CATH-03,K4,pure,Pure Cathedral→Rising Tide,SM-K4-CATH-02,P0,done,M,routes/kpdr/k4_norfair.py,pure GREEN ~1162f; successor post_cathedral_to_rising_tide_pure
+SM-K4-CATH-04,K4,pure,Pure Rising Tide→Bubble Mountain,SM-K4-CATH-03,P0,done,M,routes/kpdr/k4_norfair.py,pure GREEN ~2609f ×2; first Bubble pure closeout; successor post_rising_tide_to_bubble_pure
+
+SM-K4.1-PURE,K4,pure,Pure Frog Save→Speedway,,P3,parked,M,routes/kpdr/k4_norfair.py,source scratch/post_frog_continuous.state expect 0xB167; exit 0xB106; living card SM-K4-SPEEDWAY-PURE; residual may be GREEN; parked post-Speed shortcut; pure GREEN; not first Bubble (Cathedral repath 2026-08-02)
+SM-K4-SPEEDWAY-SRC,K4,docs,Fingerprint-register Speedway pure successor,SM-K4.1-PURE,P0,done,S,docs/SOURCE_STATES.md,post_frog_save_to_speedway_pure.state expect 0xB106; Wave-11; Wave-11 closed; post-Speed path
 SM-K4-STAB-ICE,K4,stabilize,Stabilize wave pure+continuous Ice stack,SM-K4-TIP-ICE,P0,open,L,routes/continuous.py catalog.py,planner-serial
 SM-K4-STAB-SPEED,K4,stabilize,Stabilize wave pure+continuous Speed stack,SM-K4-TIP-SPEED,P0,open,L,routes/continuous.py catalog.py,planner-serial
 SM-K4-STATUS-ICE,K4,status,STATUS promote Ice tip,SM-K4-STAB-ICE,P0,open,M,routes/continuous.py catalog.py,planner only
 SM-K4-STATUS-SPEED,K4,status,STATUS promote Speed tip,SM-K4-STAB-SPEED,P0,open,M,routes/continuous.py catalog.py,planner only
 SM-K4-TIP-ICE,K4,compose,Continuous tip --to ice,SM-K4.15-PURE,P0,open,L,routes/continuous.py catalog.py,Ice collect integrity
 SM-K4-TIP-SPEED,K4,compose,Continuous tip --to speed,SM-K4.6-PURE,P0,open,L,routes/continuous.py catalog.py,Speed collect integrity
-SM-K4-TIP-SPEEDWAY,K4,compose,Continuous tip --to speedway (or intermediate),SM-K4.3-PURE,P0,open,L,routes/continuous.py catalog.py,after Bubble path pure stack
+SM-K4-TIP-SPEEDWAY,K4,compose,Continuous tip --to speedway (or intermediate),SM-K4.3-PURE,P0,open,L,routes/continuous.py catalog.py,after Bubble path pure stack; optional intermediate; first Bubble is Cathedral
 SM-K4-TIP-WAVE,K4,compose,Continuous tip --to wave,SM-K4.10-PURE,P0,open,L,routes/continuous.py catalog.py,Wave collect integrity
-SM-K4.1-GRAPH,K4,graph,Graph edge Frog Save→Speedway controller_dev,SM-K4.1-PURE,P0,open,S,progression.py,mark 0xB167->0xB106 after pure green
-SM-K4.2-GRAPH,K4,graph,Graph edge Speedway→farm approach controller_dev,SM-K4.2-PURE,P0,open,S,progression.py,mark 0xB106->0xAF72 after pure green
-SM-K4.2-PURE,K4,pure,Pure Speedway→farm approach,SM-K4.1-PURE,P0,open,M,routes/kpdr/k4_norfair.py,source scratch/post_speedway.state expect 0xB106; exit 0xAF72
+SM-K4.1-GRAPH,K4,graph,Graph edge Frog Save→Speedway controller_dev,SM-K4.1-PURE,P3,parked,S,progression.py,mark 0xB167->0xB106 after pure green; parked with Speedway post-Speed path
+SM-K4.2-GRAPH,K4,graph,Graph edge Speedway→farm approach controller_dev,SM-K4.2-PURE,P3,parked,S,progression.py,mark 0xB106->0xAF72 after pure green
+SM-K4.2-PURE,K4,pure,Pure Speedway→farm approach,SM-K4.1-PURE,P3,parked,M,routes/kpdr/k4_norfair.py,source scratch/post_speedway.state expect 0xB106; exit 0xAF72; RED without Speed; parked until post-Speed
 SM-K4.3-GRAPH,K4,graph,Graph edge Approach→Bubble Mountain controller_dev,SM-K4.3-PURE,P0,open,S,progression.py,mark 0xAF72->0xACB3 after pure green
 SM-K4.3-PURE,K4,pure,Pure Approach→Bubble Mountain,SM-K4.2-PURE,P0,open,M,routes/kpdr/k4_norfair.py,source scratch/post_farm.state expect 0xAF72; exit 0xACB3
 SM-K4-SRC-01,K4,infra,Capture continuous-like source post_speedway,SM-K4-TIP-SPEEDWAY,P1,open,S,SOURCE_STATES.md scratch/,only after integrity-green tip that creates it
@@ -32,7 +37,10 @@ SM-K4.14-PURE,K4,pure,Pure Snake→Reflection,SM-K4.13-PURE,P1,open,M,routes/kpd
 SM-K4.15-GRAPH,K4,graph,Graph edge Ice Beam PLM collect controller_dev,SM-K4.15-PURE,P1,open,S,progression.py,mark 0xA8B9->0xA890 after pure green
 SM-K4.15-PURE,K4,pure,Pure Ice Beam PLM collect,SM-K4.14-PURE,P1,open,M,routes/kpdr/k4_ice.py,source scratch/post_reflect.state expect 0xA8B9; exit 0xA890
 SM-K4.4-GRAPH,K4,graph,Graph edge Bubble→Speed Hall controller_dev,SM-K4.4-PURE,P1,open,S,progression.py,mark 0xACB3->0xB07A after pure green
-SM-K4.4-PURE,K4,pure,Pure Bubble→Speed Hall,SM-K4.3-PURE,P1,open,M,routes/kpdr/k4_norfair.py,source scratch/post_bubble.state expect 0xACB3; exit 0xB07A
+SM-K4.4-PURE,K4,pure,Pure Bubble→Bat Cave,SM-K4-CATH-04,P0,partial,M,routes/kpdr/k4_norfair.py,RED residual 2026-08-02; door open proven; climb gap y350-150 needs walljump R1; source post_rising_tide_to_bubble_pure
+SM-K4.4-PURE-R1,K4,pure,Bubble mid walljump climb y350→150,SM-K4.4-PURE,P0,ready,M,routes/kpdr/k4_norfair.py,★ serial next; one phase; stay in 0xACB3; avoid left doors + Single Chamber
+
+
 SM-K4.5-GRAPH,K4,graph,Graph edge Speed Hall→Speed Room door controller_dev,SM-K4.5-PURE,P1,open,S,progression.py,mark 0xB07A->0xACF0 after pure green
 SM-K4.5-PURE,K4,pure,Pure Speed Hall→Speed Room door,SM-K4.4-PURE,P1,open,M,routes/kpdr/k4_norfair.py,source scratch/post_hall.state expect 0xB07A; exit 0xACF0
 SM-K4.6-GRAPH,K4,graph,Graph edge Speed Booster PLM collect controller_dev,SM-K4.6-PURE,P1,open,S,progression.py,mark 0xACF0->0xAD1B after pure green

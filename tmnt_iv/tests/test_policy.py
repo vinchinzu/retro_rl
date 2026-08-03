@@ -144,10 +144,10 @@ def test_alleycat_uses_short_poke_cadence() -> None:
 
 
 def test_alleycat_keeps_tight_vertical_lane() -> None:
-    """A seven-pixel Alleycat offset is outside the tuned six-pixel band."""
+    """An eighteen-pixel Alleycat offset is outside the tuned 16-pixel band."""
     enemy = _enemy(110, 153, 16)
     result = Stage1Policy().tick(
-        replace(_playing(player_y=160, enemies=(enemy,)), stage=1)
+        replace(_playing(player_y=180, enemies=(enemy,)), stage=1)
     )
     assert result.action is not None
     assert result.action.reason == "align_up"

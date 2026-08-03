@@ -2,10 +2,10 @@
 
 Sanctuary-path practice queue for `Zelda3-Snes` save states.
 Continuous tip is **NW chamber room 0x50** (after `castle_dungeon_prefix`).
-Ranked for next work: **physical exit after 0x50 → B1 → Zelda cell → follower → escort**.
+Tip exit **0x50 east → 0x01** is natural_entry. Ranked for next work: **B1 stairs after 0x01 chain → Zelda cell → follower → escort**.
 Internal 0x55 key/shutter path is **alternate practice**, not primary.
 
-Generated: `2026-08-01T14:27:52.564252+00:00`
+Generated: `2026-08-02T14:38:49.438819+00:00`
 Catalog: `alttp_sanctuary_work_queue` schema 1
 States: **61**
 Sanctuary claimed: **False**
@@ -23,7 +23,7 @@ Artifacts: `docs/routes/ROOM_WORK_QUEUE.md` · `recordings/room_work_queue.json`
 
 | Rank | State | Group | Goal | Status | Tier | Notes |
 |-----:|-------|-------|------|--------|------|-------|
-| 1 | `CastleRoom50` | frontier | discover_after_0x50 | probe_state | blocker | Continuous tip / natural-entry frontier. Isolate the next physical exit from ... |
+| 1 | `CastleRoom50` | frontier | discover_b1_stairs | probe_state | standard | 2026-08-02: only physical forward exit is east→0x01 (graph natural_entry room... |
 | 2 | `CastleMainZeldaBoomerang` | zelda | reach_zelda_cell | probe_state | standard | Main-hall Zelda path with boomerang loadout; state-local probe, not continuou... |
 | 3 | `CastleMainZeldaReady` | zelda | reach_zelda_cell | probe_state | standard | State-local Zelda-ready probe from main hall; not evidence of the physical ro... |
 | 4 | `CastleZeldaFollower` | zelda | zelda_follower | probe_state | standard | Expected $F3CC==1 (Zelda tagalong). Not verified on natural path. State-local... |
@@ -41,16 +41,16 @@ Artifacts: `docs/routes/ROOM_WORK_QUEUE.md` · `recordings/room_work_queue.json`
 ```
 byStatus: {'natural_chain': 2, 'probe_state': 25, 'segment_scripted': 4, 'unstarted': 30}
 byGroup:  {'b1': 20, 'b2': 2, 'b3': 5, 'escort': 1, 'frontier': 1, 'key_shutter': 5, 'main': 2, 'opening': 4, 'post_sword': 2, 'room': 8, 'room_55': 1, 'unknown': 1, 'zelda': 9}
-byTier:   {'blocker': 1, 'easy': 4, 'later': 9, 'standard': 47}
+byTier:   {'easy': 4, 'later': 9, 'standard': 48}
 ```
 
-Verified milestones (docs): title_to_castle_grounds, castle_to_fighter_sword, secret_entrance_clear, pocket_to_main_hall_0x61, castle_dungeon_prefix_0x50
+Verified milestones (docs): title_to_castle_grounds, castle_to_fighter_sword, secret_entrance_clear, pocket_to_main_hall_0x61, castle_dungeon_prefix_0x50, room_50_east_to_0x01_natural_entry
 
 ## Full ranked table
 
 | Rank | State | Group | Goal | Status | Tier | Predecessor |
 |-----:|-------|-------|------|--------|------|-------------|
-| 1 | `CastleRoom50` | frontier | discover_after_0x50 | probe_state | blocker | `CastleMain` |
+| 1 | `CastleRoom50` | frontier | discover_b1_stairs | probe_state | standard | `CastleMain` |
 | 2 | `CastleMainZeldaBoomerang` | zelda | reach_zelda_cell | probe_state | standard | `CastleMain` |
 | 3 | `CastleMainZeldaReady` | zelda | reach_zelda_cell | probe_state | standard | `CastleMain` |
 | 4 | `CastleZeldaFollower` | zelda | zelda_follower | probe_state | standard | `CastleMain` |
@@ -115,11 +115,12 @@ Verified milestones (docs): title_to_castle_grounds, castle_to_fighter_sword, se
 ## Notes
 
 - Continuous tip is **NW chamber room 0x50** after `castle_dungeon_prefix` (courtyard pocket → main door → 0x60 → 0x50).
+- Tip exit **0x50 east → 0x01** is graph natural_entry (2026-08-02 exhaustive probe: only physical forward exit from tip).
 - Secret-entrance clear (stairs → outdoor pocket) is already continuous; do **not** treat `Castle_55` internal exit as the top blocker.
-- Primary next work: physical exit after 0x50 / B1 → Zelda cell → follower → escort → Sanctuary.
+- Primary next work: B1 stairs after 0x01 chain → Zelda cell → follower → escort → Sanctuary.
 - Internal 0x55 key/shutter path is **alternate practice** only.
 - `FighterSword` is a **dev checkpoint** after uncle sword; natural sword claim needs `--natural` on `castle_to_sword`.
 - Acceptance for rescue: `has_zelda_follower` (`$F3CC == 1`).
 - Sanctuary: room `0x12` / OW screen `0x13` — not claimed.
 
-Units are Zelda3-Snes save states on the boot → fighter sword → secret-entrance clear → courtyard pocket → main hall → NW chamber room 0x50 → Zelda → Sanctuary path. Continuous tip is **room 0x50**; next work is the physical exit after 0x50, then B1 → Zelda cell → follower → escort. Internal 0x55 key/shutter is alternate practice only. Sanctuary not claimed.
+Units are Zelda3-Snes save states on the boot → fighter sword → secret-entrance clear → courtyard pocket → main hall → NW chamber room 0x50 → 0x01 → Zelda → Sanctuary path. Continuous tip is **room 0x50**; tip exit east→0x01 is natural_entry. Next work is B1 stairs after the 0x01 chain → Zelda cell → follower → escort. Internal 0x55 key/shutter is alternate practice only. Sanctuary not claimed.

@@ -11,7 +11,7 @@
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
-| Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) (~304 tickets → M8 + CLEAN) |
+| Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) (~308 tickets → M8 + CLEAN + Cathedral) |
 | Parallel track | **Clean** (no energy/ammo) → Bomb Torizo — [CLEAN_TRACK.md](CLEAN_TRACK.md) |
 
 | Field | Value |
@@ -47,7 +47,8 @@ state loads / progression writes / capacity writes / deaths.
 
 Machine reports: `recordings/start_to_frog_save.json` and
 `recordings/start_to_frog_save_reverify.json`. The default continuous CLI tip
-is now `frog`; the next unplayed natural hop is Frog Save → Frog Speedway.
+is now `frog`; first Bubble path is **Cathedral climb** (CATH-01/02 pure green;
+★ next `SM-K4-CATH-03`). Frog Speedway is post-Speed only.
 
 ### Continuous power-on → Business Center return / KPDR K3→K4 (approved 2026-08-01)
 
@@ -417,9 +418,9 @@ Authoritative order:
 | Layer | Furthest played |
 |-------|-----------------|
 | Continuous | **Frog Savestation `0xB167`** tip **integrity GREEN** twice at **114,923f**. Prefixes: Business 113,723f, Varia 104,382f, Kraid entry ~97k, Hi-Jump 87,696f, Warehouse 83,512f |
-| Controller (dev) | K4 forward (Frog→Speedway→Bubble→Speed→Wave→Ice→Alpha PB) scaffolds only; first source is `post_frog_continuous` |
+| Controller (dev) | Cathedral pure **CATH-01/02 GREEN**; CATH-03 scaffold open. First Bubble = Cathedral (no Speed). Speedway pure green but **parked** post-Speed |
 | Dev topology | **24/24 hops** Big Pink → Hi-Jump room (`kpdr.py route-to-hijump`); full 22-leg door-warp tour exists (`developmentOnly`) |
-| ★ Next hop | Frog Save→Speedway pure from `post_frog_continuous`; continuous tip extension only after that natural hop is green. |
+| ★ Next hop | **`SM-K4-CATH-03`** Cathedral → Rising Tide from `post_cathedral_entrance_to_cathedral_pure`; then Bubble → Speed → Wave → Ice pure before continuous tips |
 
 Progress chart: [KPDR_TRACKER.md](routes/KPDR_TRACKER.md) · CSV
 [KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) · JSON `maps/kpdr_tracker.json`.
@@ -442,7 +443,8 @@ Still open for *played* KPDR spine:
 | Gap | Why it matters |
 |-----|----------------|
 | Continuous Super → Red Tower → Warehouse → Hi-Jump → Kraid → Varia → Business → Frog Save | **Done** (two 114,923f Frog Save returns; see baseline) |
-| K4 forward (Frog Save → Speedway → Bubble → Speed → Wave → Ice) | First missing natural segment; start from `post_frog_continuous` |
+| K4 forward (Cathedral → Bubble → Speed → Wave → Ice) | First missing natural segment; CATH-01/02 green; ★ CATH-03 |
+| Speedway → Farm → Bubble | Parked until post-Speed (Boost Blocks) |
 | Alpha PB (not Pink PB) | First PB on competitive KPDR after Ice |
 | Ship / Phantoon / Botwoon / Draygon / Ridley / MB | Sequential per [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md); warp entry is not continuous |
 | Escape → credits | After MB by play; ending evidence open |
@@ -450,13 +452,14 @@ Still open for *played* KPDR spine:
 
 Immediate next (continuous tip + structure):
 
-1. **K4 forward pure + graph:** Business → Frog → Bubble → Speed → Wave →
-   Ice → Alpha PB; tip wiring only after pure green.
-2. **Optional tighten** high-dwell continuous hops offline first
-   (`split_dwell.py` on `start_to_business.json`).
-3. **K6 ship / Phantoon** natural entry after Alpha PB.
-4. **Code-plan leverage** (does not replace pure-first): selective-RAM /
-   StateCache enforcement, declarative tip composition, richer pure RED
+1. **★ K4 Cathedral pure stack:** CATH-03 → Bubble → Speed → Wave → Ice;
+   graph/compose/continuous only after pure green; stabilize after each tip.
+2. **Parallel:** Clean bombs tip · room farm · 1–2 ARCH (hops extract, RAM gate).
+3. **Optional tighten** high-dwell continuous hops offline first
+   (`split_dwell.py` on green reports) — secondary to pure stack.
+4. **K5–K6** Alpha PB → ship / natural Phantoon after Ice continuous.
+5. **Code-plan leverage** (does not replace pure-first): selective-RAM /
+   StateCache enforcement, hop-table extract, richer pure RED
    diagnostics, graph-first hop ranking — see [`plan.md`](plan.md) and
    [`ARCHITECTURE.md`](ARCHITECTURE.md).
 7. **Dual-track:** room practice / combat unit scaffolds in parallel via

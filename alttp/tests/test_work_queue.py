@@ -66,10 +66,10 @@ def test_sanctuary_priority_policy() -> None:
     c55 = items["Castle_55"]
     fs = items["FighterSword"]
 
-    # The physical room-0x50 frontier ranks ahead of alternate 0x55 / key path.
+    # The room-0x50 frontier ranks ahead of alternate 0x55 / key path.
     assert frontier.rank < c55.rank
-    assert frontier.tier == "blocker"
-    assert frontier.goal == "discover_after_0x50"
+    assert frontier.tier == "standard"
+    assert frontier.goal == "discover_b1_stairs"
     assert frontier.status == "probe_state"
     assert main.goal == "castle_dungeon_prefix"
     assert main.status == "segment_scripted"

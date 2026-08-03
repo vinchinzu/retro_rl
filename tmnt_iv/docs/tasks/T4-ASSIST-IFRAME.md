@@ -1,5 +1,7 @@
 # TASK T4-ASSIST-IFRAME: Shrink form-2 iframe hold (path to Clean)
 
+> **Shell:** execute as PROBE → KNOB → STAB → planner DRYRUN (see CLEAN_LADDER assisted pattern). Do not “finish this stage bucket” in one session.
+
 ## Recipe step
 policy knob
 

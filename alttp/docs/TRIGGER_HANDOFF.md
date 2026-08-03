@@ -93,16 +93,30 @@ blocked by water until south corridor is reached; soldiers on approach path.
 | Script | `scripts/room_engine.py run room_60 --edge north_to_0x50 --state CastleRoom60` |
 | Graph | `room_60_north_to_0x50` verification=`isolated` |
 
-### After 0x50 → Zelda cell — **planned**
+### Room 0x50 east → 0x01 — **natural_entry** (2026-08-02)
 
-Measured map seeds (not continuous): `room_50` east→`0x01`, plus B1
-`room_81`/`room_82`/`room_72`/`room_71`/`room_80`. Graph hop
-`room_50_to_zelda_cell` remains `planned`.
+| Field | Value |
+|-------|--------|
+| Tier | approach + trigger (tip exit) |
+| Map | `maps/room_50.json` door `east_to_0x01` |
+| Approach | ~(480, 2680), hold RIGHT → room `0x01` landing ~(499–560, 120) |
+| Exhaustive probe | After clear: grid + cardinal rays + west-wall holds — **only** east→`0x01` and south→`0x60`. No B1 stairs in 0x50. |
+| Natural entry | From real 0x50 predecessor (`CastleRoom60` north + clear; also `natural_room_50_east.json`) |
+| Graph | `room_50_east_to_0x01` verification=`natural_entry` |
+| Script | `scripts/room_engine.py run room_50 --edge east_to_0x01 --state CastleRoom50` |
 
-Continuous tip is now **NW chamber room 0x50**. The next handoff is the
-physical exit after 0x50; do not infer the Zelda route from state names.
-Work queue primary: `CastleMain`, `CastleRoom60`, `CastleRoom50`, Zelda B1 states.
-Internal key/shutter path in/near `0x55` is **alternate** only.
+### After 0x01 → Zelda cell — **planned** (B1 stairs open)
+
+Measured exploration chain (state/predecessor, not continuous tip):
+`0x01` east→`0x52` → clear guards → south→`0x62` → west→`0x61`. Dense scan
+found **no stairs** in 0x01/0x52/0x62. B1 seed `maps/room_70.json` from
+`CastleB2Landing` (room 0x70; UP→0x71 / west UP→0x80) — F1 stair entry still
+unmeasured. Graph hop `room_01_to_zelda_cell` remains `planned`.
+
+Continuous tip remains **NW chamber room 0x50**; next physical hop is east
+`0x01` (natural_entry). Work queue primary: promote `0x01` chain / find B1
+stairs, then Zelda B1 states. Internal key/shutter path in/near `0x55` is
+**alternate** only.
 
 Acceptance for full rescue: `$F3CC == 1`. Do not claim from room id alone.
 

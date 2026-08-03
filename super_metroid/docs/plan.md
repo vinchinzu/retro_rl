@@ -38,11 +38,12 @@ poking. See [tasks/PROCESS.md](tasks/PROCESS.md).
 
 ---
 
-## Current inventory (2026-08-01)
+## Current inventory (2026-08-02)
 
 **Status board:** [routes/MILESTONES.md](routes/MILESTONES.md) ·
-**Backlog (~288 tickets):** [routes/BACKLOG.csv](routes/BACKLOG.csv) ·
-**Spine segments:** [routes/KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv).
+**Backlog (~308 tickets):** [routes/BACKLOG.csv](routes/BACKLOG.csv) ·
+**Spine segments:** [routes/KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) ·
+**Live triage:** [tasks/TRIAGE.md](tasks/TRIAGE.md) · [tasks/QUEUE.md](tasks/QUEUE.md).
 
 ### Verified continuous (M5)
 
@@ -58,31 +59,41 @@ poking. See [tasks/PROCESS.md](tasks/PROCESS.md).
 | `recordings/start_to_frog_save*.json` | Power-on → **Frog Savestation** (KPDR K4.0) |
 | Frames | **114,923** @ 60 fps (~31.9 min), two matching integrity-green no-video runs |
 | Integrity | 0 state loads / progression writes / capacity writes / deaths |
-| Next source | `scratch/post_frog_continuous.state` for Frog Save → Speedway |
+| Checkpoint | `scratch/post_frog_continuous.state` (tip) · `scratch/post_business_continuous.state` (Cathedral source) |
 
 Reproduce: `scripts/record/continuous.py --to frog` (also `--to business|varia|kraid|hijump|warehouse|…`).
 
-### Backlog model (capacity for rate of progress)
+### Backlog model (healthy, atomic)
 
-Each remaining spine hop is decomposed as **pure → graph → compose →
-stabilize → status**, plus multi-phase **boss** cards and dual-track
-**practice** waves. That yields ~200–300 atomic tickets through M8 credits
-without inventing work: see epic counts in [BACKLOG.md](routes/BACKLOG.md).
-Living executor markdown is only for ready/in-flight cards (`docs/tasks/`);
-the CSV is the full queue.
+~**308** tickets in [BACKLOG.csv](routes/BACKLOG.csv) (epic summary:
+[BACKLOG.md](routes/BACKLOG.md)). Status mix is mostly `open`, a small `ready`
+set, a few `parked`/`done`. Kinds lean pure → graph → compose → practice/boss.
+Epic weight: **K4-heavy** (next spine), then K7/K9/practice/K6, with ARCH /
+DOCS / BOSS-INFRA / CLEAN parallel.
 
-### Post-Varia / K4 (continuous through Frog Save)
+Each remaining spine hop stays **pure → graph → compose → stabilize →
+status**. Living executor markdown is only for ready/in-flight cards
+(`docs/tasks/`); the CSV is the full queue. **Ticket size rule:** one pure hop
+or one residual change per card; STATUS/docs updates are planner-owned or tiny
+follow-ons. Prefer 30–90 min agent sessions. Avoid mega-cards that mix pure +
+continuous + STATUS.
+
+### Post-Varia / K4 (continuous through Frog Save; Cathedral repath)
 
 | Piece | Status |
 |-------|--------|
-| Reverse pure spine | Varia→Kraid→Eye→Baby→Kihunter→Zeela→Warehouse→Business is green from the accepted Varia checkpoint (9,343f) |
-| Continuous tip composition | **Done:** two matching power-on → Frog Save runs at 114,923f |
-| K4 forward | Frog Save → Speedway → Bubble → Speed → Wave → Ice → Alpha PB: pure controllers / graph edges largely open |
-| Bosses past Kraid | Mostly unit/scaffold or dev-warp only; natural continuous entry required before fight claims |
-| Ending / credits | Open |
+| Reverse pure spine | Varia→…→Business green from accepted Varia checkpoint (9,343f) |
+| Continuous tip | **Done:** power-on → Frog Save 114,923f ×2 integrity green |
+| First Bubble repath | **Cathedral climb** (no Speed). Speedway→Farm needs Speed (parked) |
+| Pure stack | CATH-01 **GREEN** (~959f) · CATH-02 **GREEN** (~909f) · ★ **CATH-03** open |
+| Frog Save → Speedway | Pure **GREEN** (~295f); **post-Speed shortcut only**, not first Bubble |
+| K4 forward after Bubble | Bat Cave → Speed Hall → Speed → Wave → Ice → (K5) Alpha PB |
+| Bosses past Kraid | Unit/scaffold or dev-warp only until natural continuous entry |
+| Ending / credits | Open (Zebetites / escape / timer correctly deferred) |
 
 Live residual board: [tasks/QUEUE.md](tasks/QUEUE.md). Source states:
-[SOURCE_STATES.md](SOURCE_STATES.md).
+[SOURCE_STATES.md](SOURCE_STATES.md). Repath note:
+[tasks/SM-K4-REPATH-CATH-note.md](tasks/SM-K4-REPATH-CATH-note.md).
 
 ### Research topology (not continuous)
 
@@ -96,14 +107,16 @@ Live residual board: [tasks/QUEUE.md](tasks/QUEUE.md). Source states:
 ### Continuous gap (first missing natural progress)
 
 ```text
-[VERIFIED] power-on ──► Frog Savestation 0xB167 (K4.0, ordinary gameplay)
+[VERIFIED] power-on ──► Frog Savestation 0xB167 (K4.0)  + Business return 0xA7DE
                               │
-                    ★ GAP: Frog Save → Frog Speedway pure controller
-                              │ then continuous K4: Bubble → Speed → Wave → Ice
-                              │ then Alpha PB → ship → Phantoon → …
+                    ★ GAP: first Bubble via Cathedral (no Speed)
+                       Business → 0xA7B3 → 0xA788 → 0xAFA3 → Bubble 0xACB3
+                       pure: CATH-01✓ CATH-02✓ → ★ CATH-03 → CATH-04
+                              │ then continuous tips: speedway?/bubble → speed → wave → ice
+                              │ then Alpha PB → Moat → WS → Phantoon → …
                               │
-[DEV ONLY] hybrid tour: continuous Super prefix + door-warp rest (bosses skipped)
-[DEV ONLY] door-warp chain through finish (loadout/boss bits granted)
+[PARKED] Frog Save → Speedway → Farm → Bubble  (requires speed_booster)
+[DEV ONLY] hybrid tour / door-warp chain (not continuous evidence)
 ```
 
 ### Room-policy + boss maturity
@@ -140,11 +153,86 @@ How far we are (play, not warps):
 | Layer | Furthest |
 |-------|----------|
 | Continuous | **Frog Savestation `0xB167`** (`start_to_frog_save`, **114,923f** twice) |
-| Controller dev | K4 forward scaffolds from Frog Save |
-| ★ Next hop | Frog Save → Speedway → Bubble → Speed → Wave → Ice → Alpha PB → Phantoon |
+| Controller dev | Cathedral pure: CATH-01/02 green; CATH-03 scaffold open |
+| ★ Next hop | Cathedral → Rising Tide → Bubble → Speed → Wave → Ice → Alpha PB → Phantoon |
 
 **Continuous spine:** [ROUTE_KPDR.md](routes/ROUTE_KPDR.md) (K→P→D→R).
 Hop table / waves: [PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md) (topology only).
+
+---
+
+## Critical path & dual-track (triage)
+
+**Serial spine (integrity — pure-first is non-negotiable):**
+
+| Priority | Work | Notes |
+|----------|------|-------|
+| **P0 now** | Finish pure stack **CATH-03+** → Bubble → Speed/Wave/Ice pure | Then graph edge + compose tip + dual re-record + STATUS |
+| P0 | Stabilize continuous tip extensions (`--to` bubble/speed/wave/ice) | Short stabilize wave after each continuous promotion |
+| P1 | K5 Alpha PB (natural post-Ice) | First competitive PB on KPDR |
+| P1 | K6 Moat → Wrecked Ship → natural Phantoon + fight + Gravity | Per [BOSS_PIPELINE.md](BOSS_PIPELINE.md) |
+| Later | Maridia (Botwoon/Draygon/SJ) → LN/Ridley → G4/Tourian/MB → Escape/Credits | Endgame notes deferred until natural entry |
+
+**Parallel (safe dual-track — width ≤ 8, own-files only):**
+
+| Lane | Work | Rule |
+|------|------|------|
+| Practice | `ROOM_WORK_QUEUE` + `farm_room_waves.sh` | Practice ≠ continuous integrity |
+| Clean | Bombs/Torizo next (`SM-CLEAN-BOMBS`); Morph green | Separate `*_clean` artifacts; no default CLI assist mutation |
+| ARCH | Tip-spec/hops extract, selective WRAM/StateCache, graph cleanup | Planner-serial on hot modules |
+| Boss infra | Primitives / catalog / capture CLI only | Full fights only after natural entry |
+| Sources | Catalog + diagnostics | Capture cards, not free geometry pokes |
+
+Do **not** let Clean or farm waves claim continuous greens or change default
+assists. Treat dual-track violations as hard fails ([PROCESS.md](tasks/PROCESS.md)).
+
+---
+
+## Key risks (none catastrophic)
+
+| Risk | Mitigation |
+|------|------------|
+| Long-horizon nav fragility / high-dwell segments | Tighten offline secondary; stabilize after each tip |
+| Architecture debt (cloned tip runners, multi-registry tips, full WRAM in hot paths, large files, source diagnostics) | Highest-leverage ARCH first — see Structure plan below |
+| Residual / card proliferation | Archive-after-successor + one-knob residual schema (PROCESS) |
+| Process drift (practice claiming continuous) | Dual-track gates; planner owns STATUS |
+| Endgame (Zebetites regen, escape geometry, timer/WRAM) | Correctly deferred until natural entry |
+
+No major integrity regressions on the continuous spine; historical issues
+(Climb loop, Spore fight) already cleaned.
+
+---
+
+## Ticket sizing & plan accelerators
+
+**Keep tickets atomic for agentic work:** pure hop, one-knob residual, focused
+unit tests, clear acceptance (source fingerprint → target room, no
+placement/warp, residual with exact next-card ID).
+
+**Near-term (1–2 weeks):**
+
+1. **Serial spine:** dispatch CATH-03 (then CATH-04 / Bubble stack) → green
+   residual → planner lands graph/catalog/continuous tip + dual re-verify →
+   STATUS / MILESTONES / KPDR_TRACKER.
+2. After each continuous promotion, force a short **stabilize** wave before
+   more knobs.
+3. Parallel width ≤ 8 on own-files practice / ARCH / CLEAN only.
+4. After Speed/Wave/Ice continuous tips land, push Alpha PB and first boss
+   natural-entry work.
+
+**Plan improvements (process + structure):**
+
+| Improvement | Why | Where |
+|-------------|-----|-------|
+| Residual lifecycle: living cards only once successor exists | Prune residual pile; archive aggressively | [PROCESS.md](tasks/PROCESS.md) § residual lifecycle |
+| Collapse tip runners / hop tables → data-driven + `hops.py` | Shrink `continuous.py` surface / merge pain | Structure §2 · `SM-ARCH-HOPS-MODULE` |
+| Selective RAM / StateCache linter or test gate | Stop full parses in hot paths as runs lengthen | Structure §1 |
+| Clean track isolation (artifacts + CLI) | Morph green validates contract; deepen carefully | [CLEAN_TRACK.md](CLEAN_TRACK.md) |
+| Hygiene-only board commit after 1–2 tips | Regenerate matrix / boards without geometry | Flash rollup |
+
+Main accelerators: finish the immediate pure stack, land continuous tips
+cleanly, chip highest-leverage ARCH so each hop is cheaper. Focus serial
+effort on the **K4 pure → continuous ladder**; everything else is parallel fuel.
 
 ---
 
@@ -293,21 +381,23 @@ entry is non-negotiable for continuous evidence.
 ### Immediate (product tip + structure)
 
 - [x] Continuous reverse spine through Business + Frog Save (K4.0 tip).
-- [ ] **K4 forward product:** Frog Save → Speedway pure from
-  `post_frog_continuous`, then Bubble → Speed → Wave → Ice → Alpha PB
-  (`controller_dev` first, continuous only after power-on integrity).
+- [x] K4 repath decision: first Bubble = **Cathedral climb** (no Speed);
+  Speedway→Farm parked until post-Speed.
+- [x] Cathedral pure CATH-01 / CATH-02 green from continuous-like sources.
+- [ ] **★ K4 forward product:** CATH-03 → Bubble pure stack, then Speed →
+  Wave → Ice → Alpha PB (`controller_dev` first; continuous only after
+  power-on integrity). Recipe: pure → graph → compose → stabilize.
 - [x] **Structure (planner-serial):** tip-spec post-Supers composition, graph
   API collapse, checkpoint flags, Warehouse/Zeela lineage hygiene, cache-local
   parse stats — remaining: hop-table extract, typed path summary, full-run
-  profile. Cards in [`tasks/QUEUE.md`](tasks/QUEUE.md).
-- [ ] Re-record continuous `--to frog` (and prefixes) after each stabilize
-  wave that touches spine knobs; promote only after integrity + multi-run
-  dwell honesty.
+  profile, full-parse linter. Cards in [`tasks/QUEUE.md`](tasks/QUEUE.md).
+- [ ] Re-record continuous tips after each stabilize wave that touches spine
+  knobs; promote only after integrity + multi-run dwell honesty.
 
 ### Near-term continuous spine (K4 → ship)
 
-1. Continuous post-Varia: Bubble → Speed → Wave → Ice → Alpha PB (natural).
-2. Ship access + natural Phantoon entry.
+1. Pure Cathedral → Bubble, then continuous tips through Speed / Wave / Ice.
+2. K5 Alpha PB (natural) → ship access + natural Phantoon entry.
 3. Sequential bosses per pipeline (Phantoon → Botwoon → Draygon → Ridley → …
    → Mother Brain + escape/credits). Each requires natural doorway entry on the
    continuous chain, BossCatalog + strategy, closeout, then continuous
@@ -317,7 +407,8 @@ entry is non-negotiable for continuous evidence.
 
 - Room practice / policies for remaining critical-path and high-value rooms
   ([ROOM_WORK_QUEUE](routes/ROOM_WORK_QUEUE.md)).
-- Combat unit scaffolds and shared primitives.
+- Combat unit scaffolds and shared primitives (no full fights before natural entry).
+- Clean track: Morph green; ★ bombs/Torizo — [CLEAN_TRACK.md](CLEAN_TRACK.md).
 - Non-blocking side content (Crocomire, Golden Torizo, etc.) only after main
   spine advances.
 
@@ -491,7 +582,9 @@ Red Tower → Warehouse → Business Center → Hi-Jump 0xA9E5
 - [x] K4 return pure: reverse hops post-Varia → Business (9,343f from accepted Varia checkpoint).
 - [x] K4 continuous: power-on → Business return (`--to business`, 113,723f twice, integrity green).
 - [x] K4.0 forward: Business → Frog Save (`--to frog`, 114,923f twice, integrity green).
-- [ ] K4 forward pure + continuous: Frog Save → Speedway → Bubble → Speed → Wave → Ice.
+- [x] K4 repath: first Bubble = Cathedral (CATH-01/02 pure green).
+- [ ] K4 forward pure + continuous: CATH-03 → Rising Tide → Bubble → Speed → Wave → Ice.
+- [ ] K4 post-Speed shortcut (parked): Frog Save → Speedway → Farm → Bubble.
 - [ ] K5: Alpha PB collect (preferred first Power Bombs).
 - [ ] K6: Moat / Ocean / WS / Phantoon / Gravity by play.
 - [ ] Document / promote KPDR edges in `progression.py` as verification advances
@@ -567,7 +660,8 @@ Promotion order (same as historical Phase 6):
 | ~~Natural Super collect~~ | — | **B1 done** (continuous) |
 | ~~Continuous Super → Red Tower → … → Varia~~ | — | **B1–B2 done** (K3 tip) |
 | ~~Post-Varia reverse pure → Business~~ | **Done:** `start_to_business` 113,723f ×2 | B2 |
-| K4 forward after Frog Save + Alpha PB | Continuous past Norfair items | B2 |
+| ~~K4.0 Frog Save continuous~~ | **Done:** 114,923f ×2 | B2 |
+| K4 Cathedral → Bubble pure + continuous tips | Continuous past Norfair items | B2 |
 | Natural ship + Phantoon entry | Continuous to WS | B2 / B4 |
 | Remaining path room policies | Continuous room running | B3 dual-track |
 | Boss fight scripts past Kraid | True clear | B4 |
@@ -592,12 +686,13 @@ Track B — play every path room (PRIMARY)
   ✓  Continuous Kraid + Varia (K3 tip @ 104,382f)
   ✓  Continuous Varia return → Business (K3→K4 tip @ 113,723f ×2)
   ✓  Continuous Business → Frog Save (K4.0 tip @ 114,923f ×2)
-  NOW  K4 forward: Frog Save → Speedway pure (residual may be GREEN) → SRC
-       → graph → farm → Bubble → Speed → Wave → Ice → Alpha PB
-  THEN Ship + Phantoon natural entry; bosses per BOSS_PIPELINE
-  Parallel dual-track room farm + combat units (non-interacting files)
-  Code plan remaining: hop-table extract (SM-ARCH-HOPS-MODULE ready),
-  typed path summary, pure RED clip (SM-ARCH-RED-DIAG ready)
+  ✓  Cathedral repath; CATH-01/02 pure green
+  NOW  ★ SM-K4-CATH-03 pure → CATH-04 Bubble → Speed/Wave/Ice pure stack
+       → graph → compose continuous tips → stabilize → STATUS
+  THEN K5 Alpha PB → Moat → WS → natural Phantoon + Gravity
+  Parallel dual-track: room farm · Clean bombs · 1–2 ARCH · boss primitives
+  ARCH priority: hops module extract, selective-RAM gate, pure RED diag
+  Parked: Speedway→Farm until post-Speed (Boost Blocks)
 
 Later   Boss policies: Phantoon → Botwoon → Draygon → Ridley → MB + escape
 Maturity M6 graph owners → M7 full dry-run invariants → M8 credits capture
@@ -605,6 +700,7 @@ Maturity M6 graph owners → M7 full dry-run invariants → M8 credits capture
 
 Do **not** door-warp past open hops to fake progress. Measure furthest played
 room; fix that hop; repeat. Boss work follows [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md).
+Live dispatch board: [`tasks/TRIAGE.md`](tasks/TRIAGE.md).
 
 ---
 
