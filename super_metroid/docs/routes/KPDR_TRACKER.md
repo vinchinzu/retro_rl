@@ -47,7 +47,7 @@ parked             1 #
 | 16 | `K1.6` | 0xA253 Red Tower | **continuous** | continuous |  | `dev_kpdr_red_tower` |
 | 20 | `K2.0` | 0xA3DD Bat Room | **continuous** | continuous |  | `` |
 | 21 | `K2.1` | 0xA408 Below Spazer | **continuous** | continuous |  | `` |
-| 22 | `K2.2` | 0xA447 Spazer Room | **open** | optional | spazer | `` |
+| 22 | `K2.2` | 0xA447 Spazer Room | **open** | optional → tip/fold | spazer | `SM-SPAZER-*` / SPAZER_EARLY |
 | 23 | `K2.3` | 0xCF54 West Tunnel | **continuous** | continuous |  | `` |
 | 24 | `K2.4` | 0xCEFB Glass Tunnel | **continuous** | continuous |  | `` |
 | 25 | `K2.5` | 0xCF80 East Tunnel | **continuous** | continuous |  | `` |

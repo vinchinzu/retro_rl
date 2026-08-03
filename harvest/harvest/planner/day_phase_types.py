@@ -174,6 +174,93 @@ def evaluate_task_contract(
     return (not reasons), tuple(reasons)
 
 
+# Contract tool tags ↔ carry item IDs. Seed bags share the generic "seed" tag.
+_TOOL_TAG_BY_ITEM_ID: dict[int, str] = {
+    0x01: "sickle",
+    0x02: "hoe",
+    0x03: "hammer",
+    0x04: "axe",
+    0x0E: "milker",
+    0x0F: "brush",
+    0x10: "watering_can",
+}
+_SEED_ITEM_IDS = frozenset({0x05, 0x06, 0x07, 0x08, 0x0C})
+
+
+def tool_tags_from_ram(ram: Any) -> tuple[str, ...]:
+    """Map the two-slot carry pair to contract tool tags (``hoe``, ``seed``, …)."""
+    from harvest.core.carry import carry_pair_items
+
+    tags: set[str] = set()
+    for item in carry_pair_items(ram):
+        item_id = int(item)
+        if item_id in _SEED_ITEM_IDS:
+            tags.add("seed")
+        tag = _TOOL_TAG_BY_ITEM_ID.get(item_id)
+        if tag:
+            tags.add(tag)
+    return tuple(sorted(tags))
+
+
+def tilemap_from_ram(ram: Any) -> int | None:
+    """Best-effort live tilemap for contract preflight."""
+    from harvest.core.ram_catalog import field_spec, read_ram_value
+
+    try:
+        return int(read_ram_value(ram, "tilemap", raw=True))
+    except Exception:
+        try:
+            addr = field_spec("tilemap").address
+            return int(ram[addr]) if addr < len(ram) else None
+        except Exception:
+            return None
+
+
+def preflight_phase_contract(
+    phase: "PhaseSpec",
+    *,
+    ram: Any = None,
+    tilemap: int | None = None,
+    tools: tuple[str, ...] | list[str] | set[str] | frozenset[str] | None = None,
+) -> dict[str, Any]:
+    """Soft contract preflight for probes, advisors, and day-plan diagnostics.
+
+    Never aborts execution. Empty contracts report ``ok=True`` with
+    ``empty=True``. When ``ram`` is provided, tools and tilemap are inferred
+    unless explicitly overridden.
+    """
+    contract = phase.contract
+    inferred_tools = tools
+    if inferred_tools is None and ram is not None:
+        inferred_tools = tool_tags_from_ram(ram)
+    inferred_tilemap = tilemap
+    if inferred_tilemap is None and ram is not None:
+        inferred_tilemap = tilemap_from_ram(ram)
+
+    ok, reasons = evaluate_task_contract(
+        contract,
+        tilemap=inferred_tilemap,
+        tools=inferred_tools,
+        ram=ram,
+    )
+    return {
+        "phase": phase.phase,
+        "kind": str(phase.kind),
+        "ok": bool(ok),
+        "empty": contract.is_empty(),
+        "reasons": list(reasons),
+        "tools": list(inferred_tools) if inferred_tools is not None else None,
+        "tilemap": (
+            int(inferred_tilemap) if inferred_tilemap is not None else None
+        ),
+        "tilemap_hex": (
+            f"0x{int(inferred_tilemap):02X}" if inferred_tilemap is not None else None
+        ),
+        "contract": None if contract.is_empty() else contract.to_jsonable(),
+        "failure_policy": phase.failure_policy,
+    }
+
+
 @dataclass
 class PhaseSpec:
     phase: str

@@ -592,9 +592,16 @@ def main() -> int:
 
         if args.save_end_state and success:
             try:
+                import gzip
+
                 state_bytes = env.em.get_state()
+                # stable-retro expects gzip-compressed .state files (same as
+                # play_session / retro_harness.recorder). Raw s9xsnp bytes fail
+                # load with BadGzipFile.
                 out_state = GAME_DIR / f"{args.save_end_state}.state"
-                out_state.write_bytes(state_bytes)
+                with gzip.open(out_state, "wb", compresslevel=9) as handle:
+                    # Preserve original basename inside the gzip header.
+                    handle.write(state_bytes)
                 print(f"[RUN] Saved end state -> {out_state}", flush=True)
             except Exception as exc:
                 print(f"[RUN] Could not save end state: {exc}", flush=True)

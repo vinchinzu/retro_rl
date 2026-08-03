@@ -110,8 +110,11 @@ crop_planner.py             # seasonal crop policy
    growth → harvest → ship (assert money after **5pm**).
 2. **Coop skill extraction:** use factories in `skills.py`; fix multi-adult /
    dynamic egg tiles; restore to daily plan with replay.
-3. **Contract preflight in probes:** emit `evaluate_task_contract` reasons in
-   day-plan probe JSON when a phase false-starts.
+3. **Contract preflight in probes:** **Done 2026-08-03** —
+   `preflight_phase_contract` / `tool_tags_from_ram` in
+   `day_phase_types.py`; day-plan probe emits `contract_preflight` events and
+   planned-phase summary on start; `day_plan_debug_snapshot` attaches soft
+   fail notes when map/tool mismatch.
 4. **D1 pure routes:** replace rest-recording dependency for power-on→D2; keep
    recording as regression oracle.
 5. **Recording distillation:** `spring_festival.json`, `fix_rainy_day.json`.

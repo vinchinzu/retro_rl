@@ -1,7 +1,7 @@
 # Backlog — Super Metroid full assisted clear
 
-Machine source: [`BACKLOG.csv`](BACKLOG.csv) (**~308** tickets; includes CLEAN +
-Cathedral pure stack).
+Machine source: [`BACKLOG.csv`](BACKLOG.csv) (**~319** tickets; includes CLEAN +
+Cathedral pure stack + Early Spazer / 100% ladder).
 
 Decomposed from KPDR spine + boss pipeline + dual-track practice + structure
 debt + **parallel Clean** (no energy/ammo) early tips. Target depth ~200–310
@@ -12,7 +12,7 @@ so executors always have atomic pure/graph/compose cards.
 | Status | Count (approx) |
 |--------|------:|
 | `open` | 271 |
-| `ready` | 11 |
+| `ready` | 14 |
 | `done` | 13 |
 | `parked` | 13 |
 
@@ -30,6 +30,7 @@ so executors always have atomic pure/graph/compose cards.
 | `ARCH` | 10 |
 | `DOCS` | 7 |
 | `OPTIONAL` | 7 |
+| `SPAZER` | 11 |
 | `BOSS-INFRA` | 6 |
 | `DONE` | 5 |
 
@@ -69,6 +70,23 @@ triage: [`docs/tasks/TRIAGE.md`](../tasks/TRIAGE.md).
 | `SM-K4.1-PURE` / Speedway pure | pure **GREEN**, **parked** post-Speed | Not first Bubble path |
 | `SM-K4.2-PURE` Speedway→Farm | **RED** without Speed | Parked until post-Speed |
 | Wave-11 PATH / BOSS / ARCH cards | closed 2026-08-01 | See [`WAVE-11.md`](../tasks/WAVE-11.md) |
+
+## Parallel Early Spazer + 100% (P2/P3 — does not block K4 spine)
+
+Epic: [`docs/tasks/SPAZER_EARLY.md`](../tasks/SPAZER_EARLY.md). Below Spazer
+`0xA408` is already continuous; insert Spazer Room `0xA447` collect with
+walljump-capable approach, secondary tip, then fold into default continuous.
+
+| Ticket | Title | Status |
+|--------|-------|--------|
+| `SM-SPAZER-SCAFFOLD` | Module + `ROOM_SPAZER` | **ready** |
+| `SM-SPAZER-SRC` | Continuous-like Below Spazer source | **ready** |
+| `SM-SPAZER-PURE` | Pure collect + return (walljump) | open |
+| `SM-SPAZER-GRAPH` … `STATUS` | Graph → tip → dual integrity → tracker | open |
+| `SM-SPAZER-POLICY` | Later policies prefer Spazer when held | open |
+| `SM-SPAZER-FOLD` | Fold into default continuous spine | open (after STAB) |
+| `SM-100-TRACK` | 100% item/map/boss board | **ready** |
+| `SM-OPT-SPAZER` | Old one-liner | **parked / superseded** |
 
 ## Parallel Clean (P2 — does not block assisted spine)
 
@@ -110,6 +128,7 @@ DONE (K0–K4.0 continuous)
 Parallel: PRACTICE dual-track · ARCH structure · BOSS-INFRA primitives
 Parallel: CLEAN (no energy/ammo) → Bomb Torizo tip
 Parked: Speedway→Farm until post-Speed · OPTIONAL (Pink PB, Charge, Croc, …)
+Parallel: SPAZER early walljump detour → tip → fold · 100% board scaffold
 ```
 
 ## Ticket kinds (recipe)

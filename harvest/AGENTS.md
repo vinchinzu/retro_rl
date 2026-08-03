@@ -130,7 +130,8 @@ boundary factories are in; next is crop income close-loop then coop skill split.
 - [ ] Power-on → full D1 → D2 with shed grass+can on `house_size=0` (no AnnEve fixture).
 - [ ] Extract CoopChores feed/collect/ship into `tasks/skills.py` composers;
       fix Spring 22 multi-adult / dynamic egg tiles + replay before daily plan restore.
-- [ ] Soft contract preflight in day-plan probe (`evaluate_task_contract` reasons).
+- [x] Soft contract preflight in day-plan probe (`preflight_phase_contract` /
+      `contract_preflight` JSONL events; soft notes only).
 - [ ] Extract reusable facts from `tasks/spring_festival.json`: Spring 23 festival route, NPC/dialogue/status changes, any girl question responses, and the 1304-frame coop trace; preserve start backup `latest_backup_spring_festival_20260427_155856.state`, end state `spring_festival_end.state`, and post-recording backup `latest_backup_post_spring_festival_20260427_160317.state` for replay/debug.
 - [ ] Extract the ideal rainy-day routine from `tasks/fix_rainy_day.json`: Y1 Spring 24 route where cows were fed and milked, chicken eggs were shipped, the shed route avoided wasted tiles, crops were harvested, and the town social loop talked to people. Use it to improve rainy-day `build_day_phases()` sequencing, barn/coop/crop/town task ordering, and route efficiency. Preserve start backup `latest_backup_fix_rainy_day_20260427_202555.state`, end state `fix_rainy_day_end.state`, mirrored end state `custom_integrations/HarvestMoon-Snes/fix_rainy_day_end.state`, and the 1193-frame coop trace for replay/debug.
 - [ ] Improve barn chores from the `cow_chores_fix` recording: keep the verified multi-cow feed loop, then add brushing/milking and stronger per-cow/per-slot verification before making it routine.

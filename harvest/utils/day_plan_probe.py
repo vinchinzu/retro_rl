@@ -27,6 +27,7 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 import stable_retro as retro
 
+from harvest.planner.day_phase_types import preflight_phase_contract
 from harvest.runtime.harvest_bot import AutoClearBot, GameState, resolve_day_plan_name
 from harvest.runtime.probe_utils import (
     event_row,
@@ -55,6 +56,32 @@ def _current_phase_key(bot: AutoClearBot) -> tuple[object, ...]:
         task.__class__.__name__ if task is not None else None,
         getattr(task, "_phase", None),
     )
+
+
+def _planned_contract_summary(bot: AutoClearBot, ram) -> list[dict[str, object]]:
+    """Soft-evaluate contracts for the planned (not runtime-spliced) phase list."""
+    day_plan = getattr(bot, "day_plan_task", None)
+    if day_plan is None:
+        return []
+    phases = getattr(day_plan, "phases", None) or ()
+    summary: list[dict[str, object]] = []
+    for phase in phases:
+        if not hasattr(phase, "contract"):
+            continue
+        result = preflight_phase_contract(phase, ram=ram)
+        # Compact: skip fully empty contracts in the start summary.
+        if result.get("empty"):
+            continue
+        summary.append(
+            {
+                "phase": result["phase"],
+                "ok": result["ok"],
+                "reasons": result["reasons"],
+                "tools": result["tools"],
+                "tilemap_hex": result["tilemap_hex"],
+            }
+        )
+    return summary
 
 
 def run_probe(args: argparse.Namespace) -> int:
@@ -98,7 +125,15 @@ def run_probe(args: argparse.Namespace) -> int:
                     bot.enabled = False
                     was_human = True
                     snap = snapshot_from_ram(ram_before, frame=frame, action=np.zeros(12, dtype=np.int32))
-                    _json_write(out_handle, event_row("hotswap_human", snap, watches=watch_values(ram_before, fields)))
+                    _json_write(
+                        out_handle,
+                        event_row(
+                            "hotswap_human",
+                            snap,
+                            watches=watch_values(ram_before, fields),
+                            ram=ram_before,
+                        ),
+                    )
                 action = np.zeros(12, dtype=np.int32)
             else:
                 if was_human:
@@ -108,7 +143,13 @@ def run_probe(args: argparse.Namespace) -> int:
                     snap = snapshot_from_ram(ram_before, frame=frame, action=np.zeros(12, dtype=np.int32))
                     _json_write(
                         out_handle,
-                        event_row("hotswap_bot", snap, watches=watch_values(ram_before, fields), day_plan=bot.day_plan_task),
+                        event_row(
+                            "hotswap_bot",
+                            snap,
+                            watches=watch_values(ram_before, fields),
+                            day_plan=bot.day_plan_task,
+                            ram=ram_before,
+                        ),
                     )
                 action = bot.get_action(game_state, obs)
 
@@ -122,31 +163,129 @@ def run_probe(args: argparse.Namespace) -> int:
             phase_key = _current_phase_key(bot)
 
             if frame == 0:
-                _json_write(out_handle, event_row("start", snap, watches=current_watch, day_plan=bot.day_plan_task))
+                _json_write(
+                    out_handle,
+                    event_row(
+                        "start",
+                        snap,
+                        watches=current_watch,
+                        day_plan=bot.day_plan_task,
+                        ram=ram,
+                        extras={
+                            "contract_preflight_planned": _planned_contract_summary(
+                                bot, ram
+                            ),
+                        },
+                    ),
+                )
             if previous_tilemap is not None and snap.tilemap != previous_tilemap:
-                _json_write(out_handle, event_row("tilemap", snap, changes=changes, watches=current_watch, day_plan=bot.day_plan_task))
+                _json_write(
+                    out_handle,
+                    event_row(
+                        "tilemap",
+                        snap,
+                        changes=changes,
+                        watches=current_watch,
+                        day_plan=bot.day_plan_task,
+                        ram=ram,
+                    ),
+                )
             if previous_phase is not None and phase_key != previous_phase:
-                _json_write(out_handle, event_row("phase", snap, changes=changes, watches=current_watch, day_plan=bot.day_plan_task))
+                # Soft contract preflight on every phase boundary (A5).
+                current_phase = getattr(bot.day_plan_task, "current_phase", None)
+                preflight = (
+                    preflight_phase_contract(current_phase, ram=ram)
+                    if current_phase is not None and hasattr(current_phase, "contract")
+                    else None
+                )
+                _json_write(
+                    out_handle,
+                    event_row(
+                        "phase",
+                        snap,
+                        changes=changes,
+                        watches=current_watch,
+                        day_plan=bot.day_plan_task,
+                        ram=ram,
+                        extras={"contract_preflight": preflight} if preflight else None,
+                    ),
+                )
+                if preflight is not None and not preflight.get("empty") and not preflight.get("ok"):
+                    _json_write(
+                        out_handle,
+                        event_row(
+                            "contract_preflight",
+                            snap,
+                            watches=current_watch,
+                            day_plan=bot.day_plan_task,
+                            ram=ram,
+                            note=(
+                                f"soft fail {preflight.get('phase')}: "
+                                f"{','.join(preflight.get('reasons') or ())}"
+                            ),
+                            extras={"contract_preflight": preflight},
+                        ),
+                    )
             if changes:
-                _json_write(out_handle, event_row("watch", snap, changes=changes, watches=current_watch, day_plan=bot.day_plan_task))
+                _json_write(
+                    out_handle,
+                    event_row(
+                        "watch",
+                        snap,
+                        changes=changes,
+                        watches=current_watch,
+                        day_plan=bot.day_plan_task,
+                        ram=ram,
+                    ),
+                )
 
             current_task = getattr(bot.day_plan_task, "_current_task", None) if bot.day_plan_started else None
             navigator = getattr(current_task, "_navigator", None)
             stasis = int(getattr(navigator, "stasis", 0)) if navigator is not None else 0
             if stasis >= args.stasis_threshold and frame - last_stasis_report >= args.stasis_report_interval:
                 last_stasis_report = frame
-                _json_write(out_handle, event_row("stasis", snap, watches=current_watch, day_plan=bot.day_plan_task, task=current_task))
+                _json_write(
+                    out_handle,
+                    event_row(
+                        "stasis",
+                        snap,
+                        watches=current_watch,
+                        day_plan=bot.day_plan_task,
+                        task=current_task,
+                        ram=ram,
+                    ),
+                )
 
             if bot.disable_reason:
-                _json_write(out_handle, event_row("disabled", snap, watches=current_watch, day_plan=bot.day_plan_task, note=bot.disable_reason))
+                _json_write(
+                    out_handle,
+                    event_row(
+                        "disabled",
+                        snap,
+                        watches=current_watch,
+                        day_plan=bot.day_plan_task,
+                        note=bot.disable_reason,
+                        ram=ram,
+                    ),
+                )
                 return 0
 
             previous_watch = current_watch
             previous_tilemap = snap.tilemap
             previous_phase = phase_key
 
-        snap = snapshot_from_ram(env.get_ram(), frame=args.max_frames, action=np.zeros(12, dtype=np.int32))
-        _json_write(out_handle, event_row("max_frames", snap, watches=watch_values(env.get_ram(), fields), day_plan=bot.day_plan_task))
+        end_ram = env.get_ram()
+        snap = snapshot_from_ram(end_ram, frame=args.max_frames, action=np.zeros(12, dtype=np.int32))
+        _json_write(
+            out_handle,
+            event_row(
+                "max_frames",
+                snap,
+                watches=watch_values(end_ram, fields),
+                day_plan=bot.day_plan_task,
+                ram=end_ram,
+            ),
+        )
         return 0
     finally:
         if out_handle is not sys.stdout:

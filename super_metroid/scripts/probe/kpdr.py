@@ -77,9 +77,14 @@ from super_metroid.source_states import (  # noqa: E402
     suggest_source_path,
     validate_fingerprint,
 )
-from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
+from super_metroid.routes.kpdr.bubble_mountain import (  # noqa: E402
     BubblePhaseStop,
+    play_bubble_climb_from_handoff,
+    play_bubble_from_top_door,
     play_bubble_to_bat_cave,
+    play_bubble_to_bat_cave_with_phase_capture,
+)
+from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_business_to_cathedral_entrance,
     play_cathedral_entrance_to_cathedral,
     play_cathedral_to_rising_tide,
@@ -702,12 +707,32 @@ def main() -> None:
                 "only apply to bubble-to-bat-cave"
             )
         if args.segment == "bubble-to-bat-cave" and bubble_phase_opts:
-            play_fn = functools.partial(
-                play_bubble_to_bat_cave,
-                start_phase=args.start_phase,
-                dump_phase_c=args.dump_phase_c,
-                stop_at_phase_c=args.stop_at_phase_c,
-            )
+            # Map CLI flags to dev helpers — never kwargs on product play.
+            phase = (args.start_phase or "auto").strip().lower()
+            if phase in ("climb",):
+                play_fn = functools.partial(
+                    play_bubble_climb_from_handoff,
+                    dump_phase_c=args.dump_phase_c,
+                    stop_at_phase_c=args.stop_at_phase_c,
+                )
+            elif phase in ("door",):
+                if args.dump_phase_c is not None or args.stop_at_phase_c:
+                    parser.error(
+                        "--dump-phase-c / --stop-at-phase-c not used with "
+                        "--start-phase door"
+                    )
+                play_fn = play_bubble_from_top_door
+            elif phase in ("auto", "full"):
+                play_fn = functools.partial(
+                    play_bubble_to_bat_cave_with_phase_capture,
+                    dump_phase_c=args.dump_phase_c,
+                    stop_at_phase_c=args.stop_at_phase_c,
+                )
+            else:
+                parser.error(
+                    f"unknown --start-phase {args.start_phase!r} "
+                    "(use auto|full|climb|door)"
+                )
         report = _run_pure(
             source=args.source,
             play=play_fn,

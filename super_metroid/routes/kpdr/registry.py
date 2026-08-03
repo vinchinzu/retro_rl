@@ -51,8 +51,10 @@ from super_metroid.routes.kpdr.kraid_return import (
     play_kihunter_to_zeela_return,
     play_zeela_to_warehouse_return,
 )
-from super_metroid.routes.kpdr.k4_norfair import (
+from super_metroid.routes.kpdr.bubble_mountain import (
     play_bubble_to_bat_cave,
+)
+from super_metroid.routes.kpdr.k4_norfair import (
     play_business_to_cathedral_entrance,
     play_business_to_frog_save,
     play_cathedral_entrance_to_cathedral,

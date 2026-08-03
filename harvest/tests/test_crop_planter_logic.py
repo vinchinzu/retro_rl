@@ -756,6 +756,45 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertIn((20, 31), fences)
         self.assertEqual(pond_access_blocking_fences(ram), fences)
 
+    def test_try_open_pond_access_stages_west_pocket_first(self) -> None:
+        """West plant pocket must stage before FenceClearLoopTask.
+
+        ROM trap: pure-south from (13,27) soft-blocks even when tile IDs look
+        walkable; staging via (12,29)/(15,29) is the proven detour.
+        """
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        # Preferred pond water so refill path exists after open.
+        _set_tile(ram, 33, 31, 0xF0)
+
+        player = (13, 27)
+        _set_player_tile(ram, player)
+        ram[ADDR_TOOL] = 0x10
+        ram[ADDR_WATER_LEVEL] = 0
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(refill_bounds=(3, 14, 62, 60), work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        fences = pond_access_blocking_fences(ram)
+        self.assertTrue(fences)
+        started = task._try_open_pond_access(ram, fences)
+        self.assertTrue(started)
+        self.assertEqual(task._plot_phase, "stage_pond")
+        self.assertIn(task._approach_tile, task._pond_access_staging_tiles())
+        self.assertTrue(task._pond_staged)
+
+        # After staging is marked done, skip_stage starts the fence subtask.
+        started2 = task._try_open_pond_access(ram, fences, skip_stage=True)
+        self.assertTrue(started2)
+        self.assertEqual(task._plot_phase, "open_pond")
+        self.assertEqual(task._state, "fence_open")
+        self.assertIsNotNone(task._fence_subtask)
+
     def test_empty_can_triggers_refill_before_water(self) -> None:
         ram = _blank_ram()
         for ty in range(64):

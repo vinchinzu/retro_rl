@@ -111,6 +111,18 @@ FARM_MAIN_POND_STANDS: Tuple[Tuple[Tuple[int, int], str], ...] = (
 # Fence row that walls west field off from the main pond / south farm.
 FARM_POND_ACCESS_FENCE_ROW: int = 31
 FARM_POND_ACCESS_FENCE_X_RANGE: Tuple[int, int] = (11, 29)
+# Staging stands just north of that wall. West plant-pocket stands (e.g.
+# (13,27) after potato plant) soft-block pure-south movement even when live
+# tile IDs look walkable — stage west/left before FenceClearLoopTask.
+FARM_POND_ACCESS_STAGING_TILES: Tuple[Tuple[int, int], ...] = (
+    (11, 29),
+    (12, 29),
+    (10, 28),
+    (11, 28),
+    (15, 29),
+    (18, 30),
+    (20, 30),
+)
 
 # Named water pockets: (name, water_tile_id, fills_can, sample_cells)
 FARM_WATER_POCKETS: Tuple[Tuple[str, int, bool, Tuple[Tuple[int, int], ...]], ...] = (

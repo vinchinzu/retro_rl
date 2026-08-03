@@ -1045,6 +1045,8 @@ class CropWaterTask(Task):
         self._refill_exhausted = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
+        self._pond_staged = False
+        self._pending_fence_open = False
         self._pre_water_level = -1
         self._last_water_level_before = -1
         self._last_water_tile_before = -1
@@ -1094,6 +1096,8 @@ class CropWaterTask(Task):
         self._refill_exhausted = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
+        self._pond_staged = False
+        self._pending_fence_open = False
         self._pre_water_level = -1
         self._last_water_level_before = -1
         self._last_water_tile_before = -1
@@ -1890,21 +1894,86 @@ class CropWaterTask(Task):
             f"can={current_lvl}"
         )
 
+    def _pond_access_staging_tiles(self) -> Tuple[Tuple[int, int], ...]:
+        try:
+            from harvest.maps.map_config import FARM_POND_ACCESS_STAGING_TILES
+            return FARM_POND_ACCESS_STAGING_TILES
+        except Exception:
+            return (
+                (11, 29),
+                (12, 29),
+                (10, 28),
+                (11, 28),
+                (15, 29),
+                (18, 30),
+                (20, 30),
+            )
+
+    def _try_stage_pond_access(self, ram: np.ndarray) -> bool:
+        """Nav to a free stand north of the fence wall before clearing fences.
+
+        ROM trap: after planting in the west pocket the bot often stands on
+        (13,27) where pure-south movement soft-blocks (tile IDs still look
+        walkable). Staging west/left first makes FenceClearLoopTask pathable.
+        """
+        if getattr(self, "_pond_staged", False):
+            return False
+        player = self._navigator.current_tile
+        staging_tiles = self._pond_access_staging_tiles()
+        if player in staging_tiles:
+            self._pond_staged = True
+            return False
+        # Only stage when still north of the wall in the west/mid field.
+        if player[1] > 30 or player[0] > 28:
+            return False
+
+        candidates = sorted(
+            staging_tiles,
+            key=lambda t: abs(t[0] - player[0]) + abs(t[1] - player[1]),
+        )
+        for stage in candidates:
+            path = self._find_nav_path(ram, player, stage)
+            if path is None:
+                continue
+            self._pond_staged = True
+            self._pending_fence_open = True
+            self._plot_phase = "stage_pond"
+            self._target_tile = stage
+            self._approach_tile = stage
+            self._face_direction = "down"
+            self._state = "navigate"
+            self._navigator.path = []
+            self._steps_on_target = 0
+            print(
+                f"[CROP] Staging pond access via ({stage[0]},{stage[1]}) "
+                f"from {player} (avoid plant-pocket soft-block)"
+            )
+            return True
+        return False
+
     def _try_open_pond_access(
         self,
         ram: np.ndarray,
         fences: List[Tuple[int, int]],
+        *,
+        skip_stage: bool = False,
     ) -> bool:
         """Start a limited fence-clear subtask to open the y=31 pond corridor.
 
-        Returns True if a subtask was started (caller should wait). Fence toss
-        targets the main pond lip, so success both opens the path and parks
-        the player at a fill stand.
+        Returns True if a subtask/nav was started (caller should wait). Fence
+        toss targets the main pond lip, so success both opens the path and
+        parks the player at a fill stand.
         """
         if getattr(self, "_fence_open_attempts", 0) >= 2:
             return False
         if not fences:
             return False
+
+        # Stage out of the plant pocket first — otherwise FenceClearLoopTask
+        # plans a pure-south path that game physics never accepts.
+        if not skip_stage and self._try_stage_pond_access(ram):
+            return True
+
         try:
             from harvest.tasks.fence_flow import FenceClearLoopTask
         except Exception as exc:
@@ -1912,6 +1981,7 @@ class CropWaterTask(Task):
             return False
 
         self._fence_open_attempts = getattr(self, "_fence_open_attempts", 0) + 1
+        self._pending_fence_open = False
         # Prefer fences nearest the player on the access row.
         player = self._navigator.current_tile
         fences_sorted = sorted(
@@ -1920,7 +1990,7 @@ class CropWaterTask(Task):
         )
         print(
             f"[CROP] Opening pond access: clear up to 2 fences "
-            f"(nearest={fences_sorted[0]}, wall n={len(fences)})"
+            f"(nearest={fences_sorted[0]}, wall n={len(fences)}, from={player})"
         )
         task = FenceClearLoopTask(max_fences=2, max_steps_per_fence=2000)
         # Lightweight world for reset
@@ -2046,6 +2116,13 @@ class CropWaterTask(Task):
                         self._approach_tile = center
                     self._state = "navigate"
                     self._navigator.path = []
+                elif self._plot_phase == "stage_pond":
+                    print("[CROP] Stage pond stuck; trying fence open from here")
+                    fences = pond_access_blocking_fences(ram)
+                    if fences and self._try_open_pond_access(ram, fences, skip_stage=True):
+                        return None
+                    self._plot_phase = "water"
+                    self._start_refill(ram)
                 else:
                     self._state = "detect"
                 if self._failures >= self.max_failures:
@@ -2106,6 +2183,13 @@ class CropWaterTask(Task):
                         self._approach_tile = center
                     self._state = "navigate"
                     self._navigator.path = []
+                elif self._plot_phase == "stage_pond":
+                    print("[CROP] No path to pond stage; trying fence open from here")
+                    fences = pond_access_blocking_fences(ram)
+                    if fences and self._try_open_pond_access(ram, fences, skip_stage=True):
+                        return None
+                    self._plot_phase = "water"
+                    self._start_refill(ram)
                 else:
                     self._state = "detect"
                 return None
@@ -2126,9 +2210,21 @@ class CropWaterTask(Task):
         if self._approach_tile is None:
             self._state = "detect"
             return None
-        tol = 1 if self._plot_phase in ("plant", "water", "hoe") else 2
+        tol = 1 if self._plot_phase in ("plant", "water", "hoe", "stage_pond") else 2
         center_action = self._navigator.center_on_tile(self._approach_tile, tolerance=tol)
         if center_action is None:
+            if self._plot_phase == "stage_pond":
+                # Staged — hand off to fence clear (skip re-stage).
+                fences = pond_access_blocking_fences(ram)
+                print(
+                    f"[CROP] Pond stage reached at {self._navigator.current_tile}; "
+                    f"starting fence clear (wall n={len(fences)})"
+                )
+                if fences and self._try_open_pond_access(ram, fences, skip_stage=True):
+                    return None
+                self._plot_phase = "water"
+                self._start_refill(ram)
+                return None
             self._state = "act"
         else:
             self._action_queue.append(center_action)
@@ -2145,7 +2241,7 @@ class CropWaterTask(Task):
 
         # Position check: must be on the correct tile
         player = self._navigator.current_tile
-        if self._plot_phase in ("plant", "water", "hoe"):
+        if self._plot_phase in ("plant", "water", "hoe", "stage_pond"):
             # Must be ON approach tile for plant/water/hoe
             if player != self._approach_tile:
                 print(f"[CROP] {self._plot_phase.upper()} pos mismatch: at ({player[0]},{player[1]}) need ({self._approach_tile[0]},{self._approach_tile[1]}), re-navigate")
@@ -2160,7 +2256,7 @@ class CropWaterTask(Task):
                 return None
 
         # Re-center drift correction
-        tol = 1 if self._plot_phase in ("plant", "water", "hoe") else 2
+        tol = 1 if self._plot_phase in ("plant", "water", "hoe", "stage_pond") else 2
         center_action = self._navigator.center_on_tile(self._approach_tile, tolerance=tol)
         if center_action is not None:
             self._action_queue.append(center_action)
@@ -2174,6 +2270,13 @@ class CropWaterTask(Task):
             return self._act_water(ram)
         elif self._plot_phase == "refill":
             return self._act_refill(ram)
+        elif self._plot_phase == "stage_pond":
+            fences = pond_access_blocking_fences(ram)
+            if fences and self._try_open_pond_access(ram, fences, skip_stage=True):
+                return None
+            self._plot_phase = "water"
+            self._start_refill(ram)
+            return None
         return None
 
     def _act_hoe(self, ram: np.ndarray) -> Optional[TaskResult]:

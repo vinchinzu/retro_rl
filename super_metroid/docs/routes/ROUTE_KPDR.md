@@ -43,7 +43,7 @@ Design goals: no mockball required, no Zeb skip required, strong movement items 
 |--------|----------|-----------|
 | Supers | **Spore Super** (already continuous) | Avoid Early Supers mockball (`0x9BC8`) — project tests deliberately do not require it |
 | Charge Beam | **Collect** (dev → continuous) | Safer bosses; room is on the way through Big Pink |
-| Spazer | **Optional safety** after Red Tower | Easier Kraid/Phantoon/MB; skip later if spray is solid |
+| Spazer | **Early detour (P2)** after Below Spazer; walljump path | Collect `0xA447` → secondary tip → fold into default spine for 100%; epic [`SPAZER_EARLY.md`](../tasks/SPAZER_EARLY.md) |
 | First Power Bombs | **Alpha PB `0xA3AE`** after Ice (or after Speed if Ice delayed) | Standard KPDR; **park pure Pink PB** as optional backfill only |
 | Hi-Jump | **Before Kraid** | Safer Warehouse climb and Kraid approach; time loss is acceptable for controller reliability |
 | Ice | **Collect before Alpha PB / ship** | Safety for Red Tower climb + Phantoon strats; ~10s slower in speedruns, fine for automation |
