@@ -8,6 +8,10 @@ Savestation** (K4.0). ★ Next assisted pure: **Cathedral → Rising Tide**
 **Parallel Clean track:** no energy + no ammo → Bomb Torizo tip
 ([CLEAN_TRACK.md](CLEAN_TRACK.md)).
 
+**Parallel Early Spazer / 100%:** red-room walljump Spazer detour → tip →
+continuous fold; 100% board scaffold
+([tasks/SPAZER_EARLY.md](tasks/SPAZER_EARLY.md)).
+
 ## Top-level status board
 
 | Mark | Meaning |
@@ -57,6 +61,8 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | [BOSS_PIPELINE.md](BOSS_PIPELINE.md) | Boss catalog → strategy → continuous order |
 | [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md) | Allowed resource assists (primary path) |
 | **[CLEAN_TRACK.md](CLEAN_TRACK.md)** | Parallel Bronze/Clean tips (no energy/ammo); Bomb Torizo target |
+| **[tasks/SPAZER_EARLY.md](tasks/SPAZER_EARLY.md)** | Early Spazer walljump detour → tip → fold; seeds 100% |
+| [routes/TRACK_100.md](routes/TRACK_100.md) | 100% checklist (created by `SM-100-TRACK`) |
 | [SOURCE_STATES.md](SOURCE_STATES.md) | Continuous-like pure entry states |
 | [TASK_TEMPLATE.md](TASK_TEMPLATE.md) | OpenCode card format |
 | [tasks/QUEUE.md](tasks/QUEUE.md) | Live wave board + ★ tip |

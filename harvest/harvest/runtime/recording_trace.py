@@ -19,8 +19,13 @@ from harvest.maps.map_config import get_map_name
 from harvest.core.npc_catalog import game_objects
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.tile_catalog import TILE_SIZE, get_tile_at, tile_category, tile_label
+from retro_harness.task_recording import (
+    coalesce_action_runs as _shared_coalesce_action_runs,
+    coalesce_windows as _shared_coalesce_windows,
+    pressed_buttons as _shared_pressed_buttons,
+)
 
-
+# Harvest keeps title-case button labels for existing task JSON compatibility.
 BUTTON_NAMES = {
     0: "B",
     1: "Y",
@@ -35,12 +40,21 @@ BUTTON_NAMES = {
     10: "L",
     11: "R",
 }
+_BUTTON_NAME_SEQ = tuple(BUTTON_NAMES[i] for i in range(12))
 
 MOVEMENT_BUTTONS = {"Up", "Down", "Left", "Right"}
 
 
 def pressed_buttons(action: Sequence[int]) -> list[str]:
-    return [name for idx, name in BUTTON_NAMES.items() if idx < len(action) and int(action[idx]) != 0]
+    return _shared_pressed_buttons(action, names=_BUTTON_NAME_SEQ)
+
+
+def coalesce_windows(frames: Iterable[int]) -> list[dict[str, int]]:
+    return _shared_coalesce_windows(frames)
+
+
+def coalesce_action_runs(frames: Sequence[Sequence[int]]) -> list[dict[str, object]]:
+    return _shared_coalesce_action_runs(frames, names=_BUTTON_NAME_SEQ)
 
 
 def _read_scalar(ram: np.ndarray, key: str, *, raw: bool = False) -> int:
@@ -188,49 +202,6 @@ def recording_trace_entry(
     if entities:
         row["entities"] = entities
     return row
-
-
-def coalesce_windows(frames: Iterable[int]) -> list[dict[str, int]]:
-    ordered = sorted(frames)
-    if not ordered:
-        return []
-    windows: list[dict[str, int]] = []
-    start = end = ordered[0]
-    for frame in ordered[1:]:
-        if frame == end + 1:
-            end = frame
-            continue
-        windows.append({"start": start, "end": end, "length": end - start + 1})
-        start = end = frame
-    windows.append({"start": start, "end": end, "length": end - start + 1})
-    return windows
-
-
-def coalesce_action_runs(frames: Sequence[Sequence[int]]) -> list[dict[str, object]]:
-    runs: list[dict[str, object]] = []
-    start: int | None = None
-    last_buttons: list[str] | None = None
-
-    for idx, frame in enumerate(frames):
-        buttons = pressed_buttons(frame)
-        if not buttons:
-            if start is not None and last_buttons is not None:
-                runs.append({"start": start, "end": idx - 1, "length": idx - start, "buttons": last_buttons})
-                start = None
-                last_buttons = None
-            continue
-        if start is None:
-            start = idx
-            last_buttons = buttons
-            continue
-        if buttons != last_buttons:
-            runs.append({"start": start, "end": idx - 1, "length": idx - start, "buttons": last_buttons})
-            start = idx
-            last_buttons = buttons
-
-    if start is not None and last_buttons is not None:
-        runs.append({"start": start, "end": len(frames) - 1, "length": len(frames) - start, "buttons": last_buttons})
-    return runs
 
 
 def _nearest_chicken_distance(row: dict[str, object]) -> int | None:

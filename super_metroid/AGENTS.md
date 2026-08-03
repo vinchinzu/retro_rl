@@ -32,7 +32,7 @@ Super Metroid scripted full-clear project. Shared process:
 | `rooms/` | Full-room graph, problem catalog, practice loop |
 | `legacy/` | Frozen vision BC / model registry (do not import into continuous) |
 | `dev/` | Door-warp / boss probes (not continuous evidence) |
-| `scripts/record/` `verify/` `probe/` `export/` `room/` | CLI entry points |
+| `scripts/record/` `verify/` `probe/` `export/` `room/` | CLI entry points (`guided_human.py` = human demo + route line) |
 | `docs/` | `STATUS.md`, `plan.md`, `ARCHITECTURE.md`, `ASSIST_CONTRACT.md` |
 | `docs/routes/` | Accepted / working route boards |
 | `docs/research/` | Path board, room catalog, legacy notes |
@@ -59,16 +59,18 @@ are topology diagnostics only — not route evidence.
    Prefixes: Hi-Jump **87,696f**, Varia **104,382f**, Business **113,723f**.
 4. **★ Next play:** first Bubble pure is **done** (CATH-01…04 pure GREEN;
    successor `scratch/post_rising_tide_to_bubble_pure.state`). Bubble → Bat
-   controller registered, pure **RED** (phases A/B green; **Phase C** usable
-   right contact still red; top place-proven only). R10 mid-high open-loop
-   (`y≤450`; pin True, max_x=349 min_y=260). Hard-room ladder:
+   controller registered: phases **A/B/C green** on full pure (R13
+   floor-reclimb → `phase_c_hit=True`); **Phase D** top still red on pure.
+   R15 double-WJ clears Phase D on human runway pin; R16 pure seats fire
+   solid (not lip) and fires open-loop — min_y=228 free-air (was lip 260),
+   mx200 short of 300. Hard-room ladder:
    [`docs/tasks/SM-K4.4-PHASE-LADDER.md`](docs/tasks/SM-K4.4-PHASE-LADDER.md)
-   · process [`docs/tasks/HARD_ROOM_SPLITS.md`](docs/tasks/HARD_ROOM_SPLITS.md).
-   R11 fixed spin-apex false-land; pure still **phase_c_hit=False** /
-   top red. Next **`SM-K4.4-PURE-R12`**: new trajectory class (see R11
-   residual rejected list). Frog Save remains continuous K4.0 tip; Frog
-   Speedway is **post-Speed only**. Then Bat → Speed → Wave → Ice → Alpha
-   PB; no door-warp evidence or progression writes.
+   · process [`docs/tasks/HARD_ROOM_SPLITS.md`](docs/tasks/HARD_ROOM_SPLITS.md)
+   · residual [`docs/tasks/SM-K4.4-PURE-R16-residual.md`](docs/tasks/SM-K4.4-PURE-R16-residual.md).
+   **Next:** R17 right-wall WJ / Phase D push past mx200≈271 ceiling pocket.
+   Frog Save remains continuous K4.0 tip; Frog Speedway is **post-Speed
+   only**. Then Bat → Speed → Wave → Ice → Alpha PB; no door-warp evidence
+   or progression writes.
 5. **Architecture + structure plan:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
    (layers, Segment contracts, tip recipe, **known structural debt**) and
    [`docs/plan.md`](docs/plan.md) (M6–M8 + Structure & API todos). Planner-serial

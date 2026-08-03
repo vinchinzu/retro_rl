@@ -60,6 +60,15 @@
   `harvest.scripts.town_day1_recon` / `scripts/record_town_day1_recon.sh`.
   Details: [town_day1_recon.md](town_day1_recon.md).
 
+## Architecture cleanup (2026-08-03)
+
+| Item | Status |
+|------|--------|
+| A5 contract preflight in day-plan probe | **Done** — `preflight_phase_contract` / `tool_tags_from_ram`; probe emits `contract_preflight` + planned summary; soft notes only |
+| `run_to_day2 --save-end-state` gzip | **Fixed** — raw s9xsnp writes broke stable-retro load (`BadGzipFile`) |
+| Empty-can west-pocket staging | **Partial** — stages via `(12,29)` before fence clear; fence toss still stalls after lifting 1 post |
+| 6-day growth soak from watered fixture | **Calendar OK** (D2→D8 Clean) but **crops gone** by D8 (water no-op / wither); money $150 |
+
 ## Crop / domain gap (plant fixtures in; water/ship loop open)
 
 Spring calendar still had **no harvest income** ($100 floor). Root causes and fixes:

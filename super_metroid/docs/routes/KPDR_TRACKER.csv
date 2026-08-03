@@ -15,7 +15,7 @@ K1.5,15,GHZ -> Noob Bridge,0x9FBA,Noob Bridge,0x8E92,continuous,continuous,K1.4,
 K1.6,16,Noob -> Red Tower,0xA253,Red Tower,0x8F0A,continuous,continuous,K1.5,,dev_kpdr_red_tower,start_to_red_tower / continuous --to red_tower,80445f continuous K1 tip,2026-07-30
 K2.0,20,Red Tower -> Bat Room,0xA3DD,Bat Room,0x9042,continuous,continuous,K1.6,,,start_to_bat / continuous --to bat,natural tower zigzag + timed bomb floor; 1245f Red dwell; 81652f total,2026-07-30
 K2.1,21,Bat -> Below Spazer,0xA408,Below Spazer,0x9102,continuous,continuous,K2.0,,,start_to_below_spazer / continuous --to below_spazer,three-platform dry crossing; 668f Bat dwell; 82300f total,2026-07-30
-K2.2,22,Spazer (optional),0xA447,Spazer Room,,open,optional,K2.1,spazer,,,safety item not on minimal chain,2026-07-28
+K2.2,22,Spazer (early detour),0xA447,Spazer Room,,open,optional,K2.1,spazer,,SM-SPAZER-*; SPAZER_EARLY,early walljump path → tip → fold; 100% seed; was parked safety-only,2026-08-03
 K2.3,23,Below Spazer -> West Tunnel,0xCF54,West Tunnel,0x911A,continuous,continuous,K2.1,,,start_to_warehouse / continuous --to warehouse,490f Below Spazer dwell; continuous green,2026-07-31
 K2.4,24,West -> Glass Tunnel,0xCEFB,Glass Tunnel,0xA360,continuous,continuous,K2.3,,,start_to_warehouse / continuous --to warehouse,horizontal glass path no PB,2026-07-31
 K2.5,25,Glass -> East Tunnel,0xCF80,East Tunnel,0xA348,continuous,continuous,K2.4,,,start_to_warehouse / continuous --to warehouse,,2026-07-31

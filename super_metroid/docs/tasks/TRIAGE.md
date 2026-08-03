@@ -70,6 +70,23 @@ Dual-track via `farm_room_waves.sh` + `ROOM_WORK_QUEUE` / `PATH_ROOM_BOARD`.
 Prioritize ~107 completion-path rooms. Produces reusable policies for later
 spine promotion. Main non-blocking progress engine.
 
+### 2b. Early Spazer + 100% track (P2/P3 parallel)
+
+Epic: [`SPAZER_EARLY.md`](SPAZER_EARLY.md). Collect Spazer `0xA447` early via
+Below Spazer detour (walljump-capable red-room geometry). Secondary continuous
+tip first; **fold** into default spine only after pure + dual integrity
+(`SM-SPAZER-FOLD`). Seeds eventual **100%** board (`SM-100-TRACK`).
+
+| Priority | Work | Notes |
+|----------|------|-------|
+| P2 ready | `SM-SPAZER-SCAFFOLD` / `SM-SPAZER-SRC` | Disjoint from Bubble hot modules |
+| P2 open | pure → graph → compose → stab → status | Pure-first |
+| P2 open | `SM-SPAZER-POLICY` | Prefer Spazer when held (later combat) |
+| P2 open | `SM-SPAZER-FOLD` | Planner-serial continuous insert |
+| P3 ready | `SM-100-TRACK` | Item/map/boss checklist only |
+
+Does **not** block Cathedral/Bubble P0. Supersedes parked `SM-OPT-SPAZER`.
+
 ### 2. Clean track — non-assist early tips (P2 parallel)
 
 **Bronze / Clean:** no energy refill, no ammo refill. ★ Target continuous

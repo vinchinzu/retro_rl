@@ -48,6 +48,7 @@ ad-hoc warps. All paths are under
 | `post_business_to_frog_save_pure` | `scratch/post_business_to_frog_save_pure.state` | `0xB167` Frog Savestation (reload: x=60/y=139/pose=1) | recorded pure handoff from accepted Business; superseded by the accepted Frog checkpoint | probe record only |
 | `business_climb_entry` | `scratch/continuous_like_business_climb_entry.state` | `0xA7DE` Business Center floor band | Hi-Jump, continuous-like | pure `business-to-warehouse` |
 | `continuous_like_bat` | `scratch/continuous_like_bat.state` | `0xA3DD` Bat room | pre-Kraid | bat pure / dwell isolation |
+| `post_below_spazer_for_spazer_pure` | `scratch/post_below_spazer_for_spazer_pure.state` | `0xA408` Below Spazer (x=39/y=395/pose=9; reload: x≈49/y=395/pose=1) | Morph/Bombs, beams 0x0000 | pure `below-spazer-to-spazer` / `spazer-collect-return`; source capture from continuous-like Bat handoff (668f) |
 | `red_to_warehouse` | `scratch/red_to_warehouse_controller.state` | Red Tower → Warehouse path | post-Supers | pure `warehouse-hijump-kraid` |
 | `natural_bomb_torizo_active` | `scratch/natural_bomb_torizo_active.state` | `0x9804` Bomb Torizo | continuous-like entry | pure bomb-torizo combat verification |
 

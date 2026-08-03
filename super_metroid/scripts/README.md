@@ -2,7 +2,7 @@
 
 | Dir | Purpose |
 |-----|---------|
-| `record/` | Continuous power-on recordings (baselines) |
+| `record/` | Continuous power-on recordings (baselines) + guided human demos |
 | `verify/` | Offline report / graph checks on recordings |
 | `probe/` | Development probes (post-Super, bosses, route warps, room timer) |
 | `export/` | Regenerate maps / path board / plans |
@@ -16,6 +16,12 @@ Invoke from repo root, e.g.:
 ```bash
 uv run python super_metroid/scripts/record/continuous.py --no-video
 uv run python super_metroid/scripts/record/continuous.py --to supers --no-video --room-timing
+
+# Human path record from Cathedral with on-screen route guide (F5 saves task JSON)
+uv run python super_metroid/scripts/record/guided_human.py
+uv run python super_metroid/scripts/record/guided_human.py --list
+uv run python super_metroid/scripts/record/guided_human.py --from bubble --route bubble-to-bat
+
 uv run python super_metroid/scripts/probe/post_spore_pb.py --to main
 uv run python super_metroid/scripts/export/path_room_board.py
 

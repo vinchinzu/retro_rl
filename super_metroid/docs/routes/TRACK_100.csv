@@ -1,0 +1,49 @@
+item_id,kind,ram_field,ram_mask,continuous_status,epic,card,on_kpdr,optional,notes
+morph,equipment,collected_items,0x0004,done,K0,,yes,no,Continuous power-on prefix
+bombs,equipment,collected_items,0x1000,done,K0,,yes,no,Bomb Torizo defeat
+first_missiles,ammo,missile_capacity,,done,K0,,yes,no,First missile pack
+first_supers,ammo,super_capacity,,done,K0,,yes,no,Spore Super capacity 0→5
+charge,beam,collected_beams,0x1000,controller_dev,K1,SM-OPT-CHARGE-RETURN,yes,no,Conventional return not route-ready
+varia,equipment,collected_items,0x0001,done,K3,,yes,no,Natural Kraid fight + Varia PLM
+hijump,equipment,collected_items,0x0100,done,K2,,yes,no,Real PLM bit 0x0100
+etank_hijump,etank,,,done,K2,,yes,no,Hi-Jump room E-Tank
+etank_terminator,etank,,,done,K0,,yes,no,Terminator room E-Tank
+spazer,beam,collected_beams,0x04,in_progress,SPAZER,SM-SPAZER-PURE,yes,no,Early walljump detour; SPAZER_EARLY ladder
+speed,equipment,collected_items,0x2000,open,K4,SM-K4-TIP-SPEED,yes,no,After Bubble→Bat→Speed Hall
+wave,beam,collected_beams,0x01,open,K4,SM-K4-TIP-WAVE,yes,no,After Speed; Single→Double chamber
+ice,beam,collected_beams,0x02,open,K4,SM-K4-TIP-ICE,yes,no,Business→Ice Gate→Reflection
+alpha_pb,equipment,collected_items,0x????,open,K5,SM-K5-TIP-ALPHAPB,yes,no,First PB capacity; post-Ice Red Tower climb
+gravity,equipment,collected_items,0x0020,open,K6,SM-K6-TIP-GRAV,yes,no,Post-Phantoon
+space_jump,equipment,collected_items,0x0200,open,K7,SM-K7-TIP-SJ,yes,no,Post-Draygon
+grapple,equipment,equipment_09B2,0x01,optional,OPT,,no,yes,Skip by default; optional 100%
+plasma,beam,collected_beams,0x08,optional,OPT,,no,yes,Post-Draygon side room
+spring_ball,equipment,collected_items,0x0002,optional,OPT,,no,yes,Not on KPDR path
+screw_attack,equipment,collected_items,0x0008,optional,OPT,,no,yes,Not on KPDR path
+pink_pb,equipment,collected_items,0x????,parked,OPT,SM-OPT-PINK-PB,no,yes,Hard pure maze; backfill 100%
+xray,equipment,equipment_09B4,0x????,optional,OPT,,no,yes,Not on KPDR path
+etank_3,etank,,,,open,K1,,yes,no,Green Brinstar main shaft
+etank_4,etank,,,,open,,,no,no,Green Brinstar spike room
+etank_5,etank,,,,open,K2,,yes,no,Kraid Lair before boss
+etank_6,etank,,,,open,K6,,yes,no,Wrecked Ship
+etank_7,etank,,,,open,K7,,yes,no,Maridia Mt Everest
+etank_8,etank,,,,open,K7,,yes,no,Maridia Botwoon Hall
+etank_9,etank,,,,open,K7,,yes,no,Maridia Colosseum
+etank_10,etank,,,,open,K8,,yes,no,Lower Norfair Ridley path
+etank_11,etank,,,,open,K8,,yes,no,Lower Norfair acid
+etank_12,etank,,,,open,K8,,no,no,Lower Norfair entrance
+etank_13,etank,,,,open,K1,,no,no,Brinstar Charge/return path
+etank_14,etank,,,,open,,,no,no,Crateria revisit
+map_crateria,map_station,,,,open,K1,,no,no,Room 0x93AA
+map_brinstar,map_station,,,,open,K1,,no,no,Room 0x9B9D
+map_norfair,map_station,,,,open,K4,,no,no,Room 0xA7A5
+map_ws,map_station,,,,open,K6,,no,no,Room 0xCC6F
+boss_spore_spawn,boss,boss_event,0x0C,done,K0,,yes,no,
+boss_bomb_torizo,boss,boss_event,0x0A,done,K0,,yes,no,
+boss_kraid,boss,boss_event,0x01,continuous,K3,,yes,no,Kraid entry continuous green
+boss_crocomire,boss,boss_event,0x06,parked,OPT,SM-OPT-CROC,no,yes,Not on KPDR path
+boss_phantoon,boss,boss_event,0x02,open,K6,,yes,no,Dev warp only
+boss_botwoon,boss,boss_event,0x04,open,K7,,yes,no,
+boss_draygon,boss,boss_event,0x05,open,K7,,yes,no,
+boss_golden_torizo,boss,boss_event,0x07,parked,OPT,SM-OPT-GT,no,yes,Not on KPDR path
+boss_ridley,boss,boss_event,0x03,open,K8,,yes,no,
+boss_mother_brain,boss,boss_event,0x0E,open,K9,,yes,no,Escape triggers
