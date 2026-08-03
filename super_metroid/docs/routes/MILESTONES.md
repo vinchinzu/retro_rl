@@ -4,7 +4,7 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 **Goal:** one continuous power-on → ending/credits run with **only** unlimited energy + ammo ([`ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md)). Target runtime class: **less-than-Bronze** assisted full clear (M8).
 
-**Current tip (primary / assisted):** Frog Savestation (`--to frog`, **114,923f** ×2 integrity green). ★ Next assisted pure: Cathedral climb (`SM-K4-CATH-01`).
+**Current tip (primary / assisted):** Frog Savestation (`--to frog`, **114,923f** ×2 integrity green). Cathedral first-Bubble pure stack **CATH-01…04 GREEN** (Bubble pure ~2609f). ★ Next assisted pure: Bubble → Bat Cave (`SM-K4.4-PURE`).
 
 **Parallel Clean track:** no energy + no ammo writes — ★ tip target Bomb Torizo (`--to bombs --clean`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
 
@@ -37,8 +37,10 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 | ✅ | `M-VARIA` | K3 | Continuous → Varia Suit | `0xA6E2` | 101954 | `varia` |
 | ✅ | `M-BUSINESS` | K3 | Continuous → Business return | `0xA7DE` | 113723 | `business` |
 | ✅ | `M-FROG` | K4 | Continuous → Frog Savestation | `0xB167` | 114923 | `frog` |
-| ▶ | `M-SPEEDWAY` | K4 | Pure Frog Save → Speedway | `0xB106` | — | `SM-K4-SPEEDWAY-PURE` |
-| ⬜ | `M-BUBBLE` | K4 | Pure → Bubble Mountain | `0xACB3` | — | `—` |
+| 🔶 | `M-CATH` | K4 | Cathedral climb pure stack (first Bubble) | `0xA7B3`…`0xAFA3` | CATH-01…04 pure green | closed pure |
+| ⏸ | `M-SPEEDWAY` | K4 | Pure Frog Save → Speedway (post-Speed) | `0xB106` | pure green ~295f | parked until Speed |
+| 🔶 | `M-BUBBLE` | K4 | Pure → Bubble Mountain via Cathedral | `0xACB3` | pure **2609f** | `SM-K4-CATH-04`; not continuous |
+| ▶ | `M-BAT-SPEED` | K4 | Pure Bubble → Bat → Speed Hall → Speed | `0xB07A`… | — | `SM-K4.4-PURE` ★ |
 | ⬜ | `M-SPEED` | K4 | Continuous → Speed Booster | `0xAD1B` | — | `speed` |
 | ⬜ | `M-WAVE` | K4 | Continuous → Wave Beam | `0xADDE` | — | `wave` |
 | ⬜ | `M-ICE` | K4 | Continuous → Ice Beam | `0xA890` | — | `ice` |
@@ -95,7 +97,7 @@ Process: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Infra landed — `--clean` uses
 - Open (assisted product): **20**
 - Clean track: **infra ✅ + morph ✅**; ★ bombs/Torizo ready (missiles clean green); spore+ parked
 - KPDR tracker segments: **92** (`continuous`=41, `open`=50)
-- Backlog tickets: **~304** (includes CLEAN epic)
+- Backlog tickets: **~308** (includes CLEAN + Cathedral pure stack)
 
 ## How to use
 

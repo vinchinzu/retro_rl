@@ -164,7 +164,7 @@ uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
 | Path (post-Speed shortcut) | Frog Save → Frog Speedway → Farm → Bubble — **requires Speed** (Boost Blocks; `SM-K4.2-PURE` RED without Speed) |
 | Graph | `START_TO_SPEED_GRAPH` — Varia return + Business→Frog **continuous**; Cathedral climb + Speed/Wave/Ice `unverified`; `speedway_to_farm` requires `speed_booster` |
 | Continuous evidence | `recordings/start_to_frog_save*.json` (**114,923f** twice; 0 loads / progression / capacity / deaths) |
-| First open hop | `play_business_to_cathedral_entrance` from `post_business_continuous` ([`SM-K4-CATH-01`](../tasks/SM-K4-CATH-01.md)); from Frog tip reverse `frog_save_to_business` first |
+| First open hop | `play_cathedral_to_rising_tide` ([`SM-K4-CATH-03`](../tasks/SM-K4-CATH-03.md)); CATH-01/02 pure green; source `post_cathedral_entrance_to_cathedral_pure` |
 | Rooms (hop-table subset) | `0xA7B3` / `0xA788` / `0xAFA3` / `0xACB3` Bubble, `0xAD1B` Speed, `0xADDE` Wave, `0xA890` Ice |
 | Walkthrough | Wiki KPDR “Norfair & Red Brinstar”; Cathedral / Bubble Mountain / Speed pages |
 
@@ -238,7 +238,7 @@ With Speed + Hi-Jump, Moat is shinespark or platform jumps (unequip Hi-Jump if p
 Immediate played-spine queue:
 
 1. **Continuous through Frog Save done** (`start_to_frog_save`, 114,923f integrity green twice).
-2. **K4 first Bubble:** Cathedral climb pure stack (`SM-K4-CATH-01`…) from Business;
+2. **K4 first Bubble:** Cathedral climb pure stack (`SM-K4-CATH-03` next; 01/02 green) from Business;
    Frog Speedway is post-Speed only (`SM-K4.2-PURE` RED without Speed).
 3. **Separate K1 gap:** Charge Beam conventional return (optional; not on
    continuous K1).
@@ -290,7 +290,7 @@ When watching a tutorial that uses **Early Supers mockball**, substitute our **S
 |-----|----------------------|
 | [ROUTE_KPDR.md](ROUTE_KPDR.md) (this file) | **Authoritative continuous spine** |
 | [MILESTONES.md](MILESTONES.md) / [MILESTONES.csv](MILESTONES.csv) | Top-level status marks for every tip / practice rollup |
-| [BACKLOG.csv](BACKLOG.csv) | ~290 atomic tickets through M8 credits |
+| [BACKLOG.csv](BACKLOG.csv) | ~308 atomic tickets through M8 credits |
 | [KPDR_TRACKER.csv](KPDR_TRACKER.csv) | Per-segment chartable spine (K0–K9 expanded) |
 | [START_TO_*.md](START_TO_SPORE_SPAWN.md) | Verified early continuous segment notes |
 | [`../archive/routes/ROUTE_SUPERS_TO_PHANTOON.md`](../archive/routes/ROUTE_SUPERS_TO_PHANTOON.md) | Historical ship-first / Pink PB (not KPDR) |

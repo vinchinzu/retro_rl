@@ -1,41 +1,28 @@
-# TASK T4-CLEAN-S5: Prehistoric / Slash Clean multi-entry suite
+# EPIC T4-CLEAN-S5: Prehistoric / Slash Clean (shell)
 
 ## Recipe step
-probe suite
+epic / tracker
 
 ## Model
-Luna
+Planner only
 
-## Wave type
-implement
+## Children (spawn when unlocked)
 
-## Own files only
-- `scripts/probe_stage5_clean.py` (create if missing)
-- `policy.py` — one Prehistoric/Slash-local knob only if RED
-- residual: `docs/tasks/T4-CLEAN-S5-residual.md`
+| Order | Card ID | Goal |
+|------:|---------|------|
+| 0 | T4-INFRA-PROBE-S5 | `probe_stage5_clean.py` |
+| 1 | T4-CLEAN-S5-PROBE | Baseline JSON |
+| 2 | T4-CLEAN-S5-BOSS | Slash pizza-only (no spin thrash) |
+| 3 | T4-CLEAN-S5-REACH | Waves metric progress |
+| 4 | T4-CLEAN-S5-CKPT | Full checkpoint stage_advance |
+| 5 | T4-CLEAN-S5-BRIDGE | Continuous-faithful entry |
+| 6 | T4-CLEAN-S5-SUITE | Required entries |
+| 7 | T4-CLEAN-S5-STAB | Suite + assisted dry-run |
 
 ## Context
-- Stage byte **4**. Dinos need B+Y; **no jump-slash on Slash shell**.
-- Production Slash spin dodge **52** — spin 40 parked (continuous +807 dmg).
-- Prefer `RaphFullHardBoss5` / RaphDiagStage5 entries.
+- Stage byte **4**. Dinos need jump-slash; Slash grounded Y (spin-40 continuous lesson).
+- Ladder: [CLEAN_LADDER.md](CLEAN_LADDER.md).
 
-## Read first
-- `docs/CLEAN_PLAYBOOK.md`
-- `docs/SLASH_PATTERN_LAB.md` (if present)
-- `scripts/run_stage5_segment.py`
-
-## Do
-1. Scaffold heal=none multi-entry suite (stage entry + Slash boss).
-2. 0 e-heals, 0 lives lost; do not port spin-40 without full dry-run.
-3. Residual one knob if RED.
-
-## Acceptance
-- [ ] Multi-entry suite green or residual with next card
-- [ ] Spin-40 ban held unless planner re-opens with dry-run proof
-- [ ] Residual PROCESS fields
-
-## Verify commands
-```bash
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_stage5_clean --suite
-```
+## Do not
+- Port probe-only Slash wins to continuous without STAB
+- Executor session on this epic shell

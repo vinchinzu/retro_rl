@@ -146,6 +146,28 @@ Door-warp anchors under `dev_*` prove topology only. Do not STATUS-promote
 from them. The `dev_route_*` states use `grant_route_loadout` + `mark_all_major_bosses`
 and are **not** representative of real continuous loadout.
 
+## Cathedral first Bubble (no Speed) — pure sources
+
+Authoritative first Bubble path is Cathedral climb, not Frog Speedway.
+
+| ID | Path (under SuperMetroid-Snes/) | Room | Use for |
+|----|---------------------------------|------|---------|
+| `post_rising_tide_to_bubble_pure` | `scratch/post_rising_tide_to_bubble_pure.state` | `0xACB3` Bubble entry | **hop GREEN claim** for `bubble-to-bat-cave` (CATH-04) |
+| `post_bubble_mid_climb_pure` | `scratch/post_bubble_mid_climb_pure.state` | `0xACB3` mid pin | mid-iso only; not hop GREEN |
+| `post_bubble_right_contact_pure` | `scratch/post_bubble_right_contact_pure.state` | `0xACB3` Phase C band | **dev handoff** via `--dump-phase-c`; climb-only (`--start-phase climb`); never hop GREEN alone |
+
+Phase ladder + capture commands:
+[`tasks/SM-K4.4-PHASE-LADDER.md`](tasks/SM-K4.4-PHASE-LADDER.md) ·
+[`tasks/HARD_ROOM_SPLITS.md`](tasks/HARD_ROOM_SPLITS.md).
+
+```bash
+# Create Phase-C handoff (diagnostic success if hit; not Bat GREEN)
+uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state \
+  --dump-phase-c super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_right_contact_pure.state \
+  --stop-at-phase-c --no-red-diag
+```
+
 ## Capture recipe (for SM-*-SRC cards)
 
 1. Run continuous (or pure chain) to the predecessor exit.
@@ -160,7 +182,8 @@ and are **not** representative of real continuous loadout.
 |------------|---------------|---------|-----------|
 | pure HJ shaft mid-climb isolation | `0xAA41` band | `SM-HJ-SRC` partial (ensure_morph RED) | SM-HJ-SRC follow-up or continuous dump |
 | pure business climb post-Varia entry | `0xA7DE` floor band | no continuous-like source at Business floor after Varia return; `business_climb_entry` is pre-Varia | SM-SRC-BUSINESS |
-| pure bubble mountain entry (K4 Speed) | `0xACB3` Bubble Mountain | needs continuous-like capture after Frog Save→Speedway→Farm; no source exists | SM-SRC-BUBBLE |
+| pure bubble mountain entry (K4 **Speed** shortcut) | `0xACB3` Bubble Mountain | post-Speed only (Frog→Speedway→Farm); **not** first Bubble path | park until Speed |
+| pure Bat Cave after Bubble (K4) | `0xB07A` Bat Cave | Bubble→Bat pure still RED (Phase C/D) | SM-K4.4-PURE-R11 |
 | pure moat entry (K6) | `0x95FF` Moat | needs capture after Crateria elev + Kihunter; loadout: Speed, Hi-Jump, PB | SM-SRC-MOAT |
 | pure west ocean / WS entry (K6) | `0x93AA` West Ocean | needs capture after Moat; loadout: Speed, HJ, PB | SM-SRC-WS |
 | pure crateria Kihunter entry | `0x948C` | needs capture after Crateria elev descent | SM-SRC-CRKIHUNTER |

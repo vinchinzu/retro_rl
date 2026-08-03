@@ -18,6 +18,102 @@ those stay with the planner.
 
 Never hand the executor open-ended “next continuous tip” work.
 
+## Tangible progress, anti-ceremony, and honest credit
+
+The purpose of this project is **working, deployable route software** delivered
+accretively in the shortest time compatible with correctness, performance,
+reliability, and innovation. Process exists to serve that outcome; it must
+**never become the product**.
+
+These rules bind human-directed sessions and multi-agent farm/dispatch swarms
+alike. Encode them into card acceptance criteria, not only in this doc.
+
+- **No process porn.** Residuals, queue boards, dashboards, meta-reports, and
+  process documents are **not** progress. A process artifact may exist only
+  when it is a **hard gate** for a named feature or capability — pure-green
+  from continuous-like source, dual continuous integrity, STATUS promote, and
+  required residual schema qualify; self-referential paperwork does not.
+  Choosing process work because it is easy and low-risk is **reward hacking**.
+- **Feature-first ratio.** The overwhelming majority of open cards must deliver
+  **runnable behavior** — controller/code, graph edges, pure probes, continuous
+  tips — that an end user or consuming agent can actually exercise.
+  Process/ops/docs-only items are capped (guideline: **at most ~5% of open
+  ready cards**), and each must name the feature work it gates; a process card
+  that gates nothing does not get created.
+- **Honesty is absolute.** Never fake a test, present a fixture / door-warp /
+  mock / retained capture as live pure or continuous proof, weaken an
+  assertion to make it pass, hard-code a success path, or close work that is
+  not done. A false close is reopened with an incident comment on the residual
+  and queue.
+- **Refusal is not delivery.** A correctly typed **BLOCKED** / residual refusal
+  is far better than a fabricated green — and far less valuable than the real
+  capability. Implementing only scaffolding, diagnostics, or “not yet” paths
+  earns partial credit at most: it **never** closes a feature card. Full credit
+  requires the positive capability implemented for real, pure- and/or
+  continuous-verified as the card requires. Mark scaffold-only / refusal-only
+  states explicitly (e.g. residual `PARTIAL` + next card ID) so they read as
+  unfinished, never as shipped.
+
+### Named reward-hacking patterns (all forbidden)
+
+Beyond refusal-farming and process porn, call these out **by name** when
+reviewing residuals or wave rollups — this architecture specifically invites
+them:
+
+1. **Gate self-weakening** — editing integrity / pure / continuous / STATUS /
+   assist-contract / test gates so a failing check “passes.” Gate code and
+   STATUS claims are planner-owned (or Flash **proposal** only); batch verify
+   diffs them every stabilize wave.
+2. **Proof-class inflation** — presenting fixtures, retained captures, door-warp
+   topology, mocked endpoints, unit scaffolds, or hand-edited states as live
+   pure/continuous proof. Live proof requires the card’s named source state (or
+   power-on continuous), recorded selection/command, integrity/report artifacts
+   chained to real route manifests, and fresh-process readback.
+3. **Golden regeneration reflex** — regenerating expected baselines / goldens /
+   tracker “done” marks to match broken output instead of fixing the controller
+   or route. Golden or STATUS baseline changes require an explicit planner note
+   (treat as `GOLDEN-CHANGE` / STATUS-promote only) and a semantic diff review.
+4. **Commit-stream pumping** — trivial or artificially split commits, or
+   placeholder scaffolds that pass unit check alone (`pass`, empty stubs,
+   `NotImplemented` that still “compiles”). Placeholder macros and force-pass
+   scaffolds are banned in committed green claims; every commit names its card
+   ID and touched scope. Force-pass ban above still applies.
+5. **Tautological tests** — tests that assert the code does whatever the code
+   does, or that omit negative cases. Every feature card pre-specifies its key
+   behavioral assertions, including **at least one negative case** a naive wrong
+   implementation would fail.
+6. **Easy-card cherry-picking** — repeatedly claiming low-risk docs/report/
+   room-practice cards while articulation-point spine tips starve. Claim the
+   highest-priority ready card on the serial tip; act on stalenness for
+   unclaimed P0/P1 spine work before farming comfort work.
+7. **Close-pump abuse** — closing cards (yours or a peer’s) to flood the ready
+   pool, since closure unblocks dependents. **Only the planner closes** feature
+   / continuous / STATUS work; false closes are reopened with an incident
+   residual comment.
+8. **Scope-splitting** — splitting one unit of work into types/impl/tests
+   mini-closures to harvest multiple credits. Code and its tests ship in the
+   **same card**; test-only follow-ups exist only for cross-cutting integration
+   suites or planner-owned continuous re-record.
+9. **Spec-editing as progress** — weakening a plan, card acceptance, pure-first
+   gate, or frozen tip order instead of implementing it. Plan/process edits are
+   a chore lane, never close feature cards, and frozen decisions (tip order,
+   assist contract, dual-track rules) change only through planner decision.
+10. **Conformance metastasis** — adding speculative checks, matrices, or
+    reports because they are safe and satisfying. New checks must cite an
+    **observed defect class** or a named release/tip gate.
+11. **Dependency smuggling** — vendoring or shimming around banned assists,
+    progression/capacity/door/event writes, or dual-track pollution to “make
+    progress.” Batch verify and integrity enforce the deny-list; Clean vs
+    assisted artifacts stay separate (`*_clean` only).
+12. **Demo-path hardcoding** — special-casing pilot rooms, fixed coordinates, or
+    development fixtures so the happy path passes. Conformance subjects are the
+    named continuous-like sources and runtime-selected route tips, not scratch
+    one-offs that differ from natural entry.
+
+**Churn without progress is a process failure.** If a wave produces many
+residuals, card opens/closes, or docs edits but no pure-green hop or continuous
+tip advance, stop and re-triage to the highest-priority runnable feature card.
+
 ## Non-negotiable gates
 
 ### 1. Pure-first + alternate stabilize waves
@@ -112,6 +208,45 @@ Track lightly in QUEUE (update each stabilize wave):
 
 **Dual track:** `ROOM_WORK_QUEUE` practice rooms never pollute the KPDR
 continuous spine integrity story. Practice greens are not continuous evidence.
+Clean-track runs use separate artifacts and must not change default CLI assists
+or demote assisted continuous greens. Dual-track violations are **hard fails**.
+
+## Hard-room splits (in-room geometry)
+
+When a pure hop stays PARTIAL across serial one-knob cards with the **same**
+acceptance checkbox red (especially place-proven finish vs natural approach
+gap), use the hard-room playbook instead of more period/window thrash:
+
+- Process + patterns: [`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md)
+- Bubble → Bat ladder (first consumer): [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md)
+
+Summary rules (full detail in those docs):
+
+1. **Phase ladder** — one card advances one phase (A mid · B height · C
+   usable contact · D top · E door). Do not open D while C is red.
+2. **Intermediate pure states** accelerate climb-only work; only full pure
+   from continuous-like source claims hop GREEN.
+3. **Place + velocity** recon before WJ/HJ knobs; place-at-rest alone is not
+   natural proof.
+4. **RECON → IMPL** ticket pair; no IMPL without a measured pin recipe.
+5. **Stagnation @ 3 PARTIALs** on the same checkbox → mandatory planner
+   triage (handoff state, new trajectory, topology rethink, or park) —
+   not another constant on the same arc.
+
+Probe hooks for Bubble (dev only, not hop GREEN):
+
+```bash
+# Capture first Phase C
+uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
+  --source …/post_rising_tide_to_bubble_pure.state \
+  --dump-phase-c …/post_bubble_right_contact_pure.state \
+  --stop-at-phase-c --no-red-diag
+
+# Climb-only from handoff
+uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
+  --source …/post_bubble_right_contact_pure.state \
+  --start-phase climb --no-red-diag
+```
 
 ## Residual schema (required)
 
@@ -145,6 +280,8 @@ What still blocks pure-green / continuous / STATUS (bullet list).
 - Did not STATUS-promote
 - Did not forge progression/capacity/door/event/boss RAM
 - Not continuous evidence (unless card was continuous — then planner only)
+- Did not reward-hack (no process porn credit, proof-class inflation,
+  gate self-weakening, false close, or scaffold-as-green)
 
 ### Probe pin (if pure/geometry) — **mandatory metrics**
 room=0x…. pose=… x=… y=… door_transition=…
@@ -159,6 +296,31 @@ the one next knob and source state.
 
 **Force-pass ban:** pure geometry and continuous integrity are never green from
 scaffolds, diagnostics, or unit tests alone.
+
+### Residual lifecycle (living cards only)
+
+Residuals and one-shot cards proliferate if left in `docs/tasks/` forever.
+Enforce:
+
+1. **Archive after successor.** When a pure hop’s successor card is **GREEN**
+   (or the next hop is ready and this residual’s one-change is landed), move
+   the predecessor residual / note to `docs/tasks/archive/` in the same
+   hygiene pass that opens the successor living card.
+2. **One living residual per open tip segment.** Prefer a single
+   `SM-*-residual.md` for the active hop; do not stack R1/R2/R3 files without
+   archiving the obsolete ones.
+3. **CSV / boards stay authoritative.** Closed work is `done` or `parked` in
+   `BACKLOG.csv` / MILESTONES; living markdown is only for ready/in-flight.
+4. **Prune aggressively after continuous promote.** After a continuous tip
+   lands, archive pure residuals for that stack and leave only stabilize /
+   status follow-ons (or none).
+
+Schema still requires exact **Next card ID** + **one change** on every residual.
+Do not invent mega-residuals that mix pure + continuous + STATUS.
+
+**Ticket size:** one pure hop or one residual knob per card; prefer 30–90 min
+agent sessions. STATUS / tracker updates are planner-owned or tiny Flash
+follow-ons.
 
 ## Dual-track room farm (continuous tip relaxed)
 
@@ -180,29 +342,29 @@ farm waves instead of serial tip work:
 ./super_metroid/scripts/farm_room_waves.sh --rounds 20 --parallel 8 --deadline-hours 2
 ```
 
-## Near-term sequence (post-Varia tip, 2026-07-31)
+## Near-term sequence (post–Frog Save tip, 2026-08-02)
 
-Verified continuous tip is power-on → Varia (`--to varia`, ~101,954f). Process
-discipline stays fixed; composition beyond Varia is planner-gated.
+Verified continuous tip is power-on → Frog Save (`--to frog`, 114,923f ×2).
+Process discipline stays fixed; composition past Frog is planner-gated.
+First Bubble path is **Cathedral climb** (no Speed) — not Speedway→Farm.
 
-1. Finish pure reverse-spine residuals (climb/door geometry, Zeela upper,
-   warehouse reverse stack) under one-knob + continuous-like sources.
-2. Stabilize continuous re-record `--to kraid` / `--to varia` after each
-   implement wave; promote frame totals only when multi-run ≤ baseline or
-   deliberately documented (Wave-6 re-verify was slower — do not auto-promote).
-3. Continue primitive extraction from green tightens into `controller_common`.
-4. Flash: `SM-ROLLUP-STATUS` proposals; keep `SOURCE_STATES.md` current.
-5. Only after reverse pure green to Business: open post-Varia continuous tip
-   (planner compose + integrity).
-6. **Parallel dual-track:** room-segment farm (`farm_room_waves.sh`) and combat
-   unit scaffolds on non-interacting files while spine advances.
-7. **Structure plan (planner-owned code work):** selective-RAM enforcement,
-   tip scaffold script, pure RED diagnostics, graph hop ranking — see
-   [`../plan.md`](../plan.md) and [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
-8. **Parallel Clean track:** no energy/ammo continuous tips (Bomb Torizo first).
-   Infra before tip (`SM-CLEAN-ARTIFACTS` / `CLI` / `INTEGRITY`); artifacts use
-   `*_clean` stems only. Contract: [`../CLEAN_TRACK.md`](../CLEAN_TRACK.md).
-   Shared geometry changes re-verify **assisted** prefix + clean tip.
+1. **Serial pure stack:** `SM-K4-CATH-03` → Bubble (CATH-04) → Speed/Wave/Ice
+   pure from continuous-like sources; one-knob + residual next-card ID.
+2. After each pure green: graph edge → compose tip (planner) → dual continuous
+   re-record → STATUS promote only after integrity green.
+3. **Stabilize wave** after every continuous tip land before stacking knobs.
+4. Primitive extraction from green tightens into `controller_common` when a
+   second consumer exists.
+5. Flash: board/STATUS proposals; keep `SOURCE_STATES.md` current; archive
+   residuals after successors (lifecycle above).
+6. **Parallel dual-track:** room farm (`farm_room_waves.sh`), Clean bombs tip
+   (`*_clean` only), 1–2 ARCH items, boss **primitives** only — width ≤ 8,
+   own-files, never mutate default assists or claim continuous greens.
+7. **Structure plan (planner-owned):** hop-table extract, selective-RAM gate,
+   pure RED diagnostics — [`../plan.md`](../plan.md) ·
+   [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+8. After Speed/Wave/Ice continuous tips: Alpha PB → Moat → natural Phantoon
+   entry (fights gated on natural entry).
 
 ## Process tooling improvements (do not relax gates)
 

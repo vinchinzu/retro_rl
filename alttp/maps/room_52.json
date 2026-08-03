@@ -7,7 +7,8 @@
   "sourceState": "CastleRoom52",
   "z3Label": "Hyrule Castle",
   "points": [
-    {"label": "entry_spawn", "xy": [1144, 2993], "role": "spawn", "notes": "CastleRoom52"},
+    {"label": "entry_spawn", "xy": [1144, 2993], "role": "spawn", "notes": "CastleRoom52 (south of hostiles)"},
+    {"label": "entry_from_0x01", "xy": [1072, 2680], "role": "spawn", "notes": "Natural landing from room 0x01 east; north of hostiles"},
     {"label": "south_door_approach", "xy": [1144, 3020], "role": "approach", "notes": "Hold DOWN → room 0x62"},
     {"label": "north_extent", "xy": [1144, 2608], "role": "waypoint", "notes": ""},
     {"label": "west_extent", "xy": [1120, 2984], "role": "waypoint", "notes": ""},
@@ -21,11 +22,11 @@
       "toRoomHex": "0x62",
       "approachXy": [1144, 3020],
       "landingXy": [1144, 3060],
-      "role": "backtrack",
+      "role": "zelda_path",
       "path": ["south_door_approach"],
       "pathTolerances": {"default": 12},
       "pushFrames": 60,
-      "notes": "Measured 34f DOWN from spawn"
+      "notes": "From CastleRoom52 spawn ~34f DOWN. From natural 0x01 landing (north): clear hostiles first or path is blocked around y≈2760."
     },
     {
       "label": "west_to_0x01",
@@ -34,20 +35,20 @@
       "toRoomHex": "0x01",
       "approachXy": [1120, 2680],
       "landingXy": [1011, 120],
-      "role": "alternate",
-      "path": ["west_extent"],
+      "role": "backtrack",
+      "path": ["entry_from_0x01"],
       "pathTolerances": {"default": 16},
       "pushFrames": 200,
       "notes": "Reverse of room_01 east; multi-screen"
     }
   ],
   "clearPolicy": {
-    "maxDistance": 40,
+    "maxDistance": 220,
     "attackDistance": 48,
-    "maxCycles": 100,
-    "skirmishMaxDistance": 70,
+    "maxCycles": 300,
+    "skirmishMaxDistance": 120,
     "skirmishPad": 12,
-    "skirmishMaxCycles": 50
+    "skirmishMaxCycles": 100
   },
   "walkBbox": [1120, 2608, 1168, 3060],
   "hostilesAtEntry": [
@@ -55,7 +56,9 @@
     {"type": "0x4b", "xy": [1136, 2848]}
   ],
   "notes": [
-    "North of east wing 0x62; boomerang Zelda states also use this room.",
+    "North of east wing 0x62; tall thin N-S corridor.",
+    "2026-08-02 dense scan: no stairs in this room; only south→0x62 and west→0x01.",
+    "Natural chain 0x50→0x01→0x52 requires clear before south door (guards mid-corridor).",
     "Authority: maps/room_52.json"
   ]
 }

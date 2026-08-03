@@ -48,11 +48,12 @@ Skip: entire `main_hall_to_zelda.py` history, probe PNG dumps, unrelated docs.
 | `room_55` | 0x55 | Secret entrance (continuous stairs clear already scripted) |
 | `room_61` | 0x61 | Main hall; west continuous prefix |
 | `room_60` | 0x60 | Main west; north→0x50 continuous prefix |
-| `room_50` | 0x50 | NW chamber; east→0x01 measured |
-| `room_01` | 0x01 | North connector |
+| `room_50` | 0x50 | NW chamber; east→0x01 **natural_entry** (only forward exit) |
+| `room_01` | 0x01 | North connector; east→0x52 on tip chain |
 | `room_51` | 0x51 | Throne / mantle approach |
-| `room_52` | 0x52 | NE chamber |
+| `room_52` | 0x52 | NE chamber; clear before south→0x62 from north entry |
 | `room_62` | 0x62 | Main east |
+| `room_70` | 0x70 | B1 west landing (`CastleB2Landing`); seed |
 | `room_71`–`room_72`, `room_80`–`room_82` | B1 / Zelda | Geometry seeds; doors partial |
 
 `z3Label` on maps is optional randomizer logic text (US/JP vanilla same room

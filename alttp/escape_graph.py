@@ -12,6 +12,8 @@ from alttp.opening_route.escape_graph import (  # noqa: F401
     N_CASTLE_MANTLE,
     N_COURTYARD_SECRET_POCKET,
     N_ROOM_12,
+    N_ROOM_01,
+    N_ROOM_50,
     N_ROOM_55_KEYED,
     N_ROOM_55_SOUTH,
     N_ROOM_55_SWORD,

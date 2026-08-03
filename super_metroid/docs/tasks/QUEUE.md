@@ -6,12 +6,14 @@ integrity. Executors take **one card per session**.
 | Doc | Role |
 |-----|------|
 | **[MILESTONES.md](../routes/MILESTONES.md)** | Top-level status board (every product tip / practice rollup) |
-| **[BACKLOG.csv](../routes/BACKLOG.csv)** | Full ~290-ticket decomposition to assisted full clear |
+| **[BACKLOG.csv](../routes/BACKLOG.csv)** | Full ~308-ticket decomposition to assisted full clear |
 | [BACKLOG.md](../routes/BACKLOG.md) | Epic summary + ready list |
 | **[TRIAGE.md](TRIAGE.md)** | Backlog review, critical path, parallel tracks |
 | **[WAVE-11.md](WAVE-11.md)** | Multi-agent dispatch board (ready cards) |
 | [KPDR_TRACKER.csv](../routes/KPDR_TRACKER.csv) | Per-segment KPDR spine status |
 | [PROCESS.md](PROCESS.md) | Pure-first, stabilize, residual schema |
+| [HARD_ROOM_SPLITS.md](HARD_ROOM_SPLITS.md) | Hard in-room geometry: phase ladder, stagnation @ 3 |
+| [SM-K4.4-PHASE-LADDER.md](SM-K4.4-PHASE-LADDER.md) | Bubble → Bat phases A–E + capture/climb probes |
 | [TASK_TEMPLATE.md](../TASK_TEMPLATE.md) | Card format |
 | [SOURCE_STATES.md](../SOURCE_STATES.md) | Pure entry states |
 | [plan.md](../plan.md) | Strategy + structure debt |
@@ -20,9 +22,9 @@ integrity. Executors take **one card per session**.
 Dispatch from repo root:
 
 ```bash
-# Spine serial
-./super_metroid/scripts/dispatch_opencode.sh --luna --variant max SM-K4-SPEEDWAY-PURE
-./super_metroid/scripts/dispatch_opencode.sh --flash SM-K4-SPEEDWAY-SRC
+# Spine serial (Cathedral first Bubble)
+./super_metroid/scripts/dispatch_opencode.sh --luna --variant max SM-K4-CATH-03
+# After pure green: planner graph/compose; do not dispatch continuous here
 
 # Wave-11 parallel (disjoint own-files; width ≤ 8)
 ./super_metroid/scripts/dispatch_opencode.sh --flash \
@@ -43,8 +45,14 @@ Dispatch from repo root:
    `progression.py`, `catalog.py`, `STATUS.md`.
 5. **Dual track:** `ROOM_WORK_QUEUE` practice ≠ KPDR continuous integrity.
 6. **Force-pass ban:** scaffolds never claim pure/continuous green.
+7. **Tangible progress / anti-ceremony:** no process porn; feature-first open
+   cards; honesty absolute; refusal ≠ delivery. Named reward-hacking bans
+   (gate self-weakening, proof inflation, golden regen, easy-card cherry-pick,
+   close-pump, scope-split, etc.) — full list in
+   [PROCESS.md](PROCESS.md) § *Tangible progress…*. Churn without pure/continuous
+   tip advance is a process failure.
 
-## ★ Live tip (2026-08-01)
+## ★ Live tip (2026-08-02)
 
 | Gate | Status | Evidence / action |
 |------|--------|-------------------|
@@ -53,26 +61,36 @@ Dispatch from repo root:
 | Frog Save → Speedway pure | residual **GREEN** | pure controller green; **not** first Bubble path |
 | Speedway → Farm pure | residual **RED** | Boost Blocks need Speed (`SM-K4.2-PURE-residual.md`) |
 | **K4 repath (chosen)** | Cathedral first Bubble | Business → `0xA7B3` → `0xA788` → `0xAFA3` → Bubble |
-| **Next serial** | **[`SM-K4-CATH-03`](SM-K4-CATH-03.md) pure** | Cathedral `0xA788` → Rising Tide `0xAFA3` from `post_cathedral_entrance_to_cathedral_pure` (card ready; not yet implemented) |
-| Cathedral pure stack | CATH-01 **GREEN** (~959f) · CATH-02 **GREEN** (~909f) | → **CATH-03** (card) → CATH-04 Bubble |
-| After Cathedral → Bubble | Bat Cave → Speed Hall → Speed → Wave / Ice | then K5 Alpha PB |
+| Cathedral pure stack | CATH-01…04 **all pure GREEN** | 959f / 909f / 1162f / **2609f** → first Bubble pure |
+| Bubble → Bat pure | RED residual | R11: spin-apex fix; still max_x=349 min_y=260 **phase_c_hit=False** |
+| **Next serial** | **`SM-K4.4-PURE-R12`** new trajectory (not period thrash) | see R11 residual rejected list |
+| After Bat Cave | Speed Hall → Speed Room → Wave / Ice | then K5 Alpha PB |
 
 ```bash
-# Cathedral pure stack (post–Frog Save / post–Business repath)
-uv run python super_metroid/scripts/probe/kpdr.py pure business-to-cathedral-entrance \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_business_continuous.state \
-  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_business_to_cathedral_entrance_pure.state
-uv run python super_metroid/scripts/probe/kpdr.py pure cathedral-entrance-to-cathedral \
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_business_to_cathedral_entrance_pure.state \
-  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_cathedral_entrance_to_cathedral_pure.state
-# Next serial pure (card SM-K4-CATH-03; probe choice lands with implement):
-# uv run python super_metroid/scripts/probe/kpdr.py pure cathedral-to-rising-tide \
-#   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_cathedral_entrance_to_cathedral_pure.state \
-#   --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_cathedral_to_rising_tide_pure.state
+# Cathedral pure stack (post–Business repath) — all GREEN
+uv run python super_metroid/scripts/probe/kpdr.py pure rising-tide-to-bubble \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_cathedral_to_rising_tide_pure.state \
+  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state
+# R11a: capture first usable right contact (Phase C) — not hop GREEN
+uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state \
+  --dump-phase-c super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_right_contact_pure.state \
+  --stop-at-phase-c --no-red-diag
+# R11b: climb-only from handoff, then full pure for GREEN claim:
+uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state \
+  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_to_bat_pure.state \
+  --pin-json super_metroid/debug/bubble_to_bat_pure_pin.json
 ```
 
 Cards: Frog Save continuous + Speedway pure GREEN (parked as post-Speed) ·
-CATH-01/02 pure GREEN · next **[`SM-K4-CATH-03`](SM-K4-CATH-03.md)** (Cathedral → Rising Tide).
+Cathedral CATH-01…04 pure GREEN (first Bubble pure closeout) · Bubble→Bat
+controller registered, pure **RED** (`SM-K4.4-PURE-R10-residual.md`: mid-high
+`y≤450` open-loop max_x=**349** min_y=**260** pin True top still red; place
+air `(360,y≤370)` WJ→top still holds). Hard-room split + stagnation rule:
+[`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md) · ladder
+[`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) · next
+**Phase C capture → climb-only → full pure** (`SM-K4.4-PURE-R11`).
 Wave-11 closeout: [`WAVE-11.md`](WAVE-11.md). Triage: [`TRIAGE.md`](TRIAGE.md).
 
 **Structure residual (Clean track / continuous):**
@@ -87,7 +105,7 @@ stabilize → STATUS. Never in a farm batch.
 ```text
 ✅ K0 Supers → ✅ K1 Red → ✅ K2 Kraid entry → ✅ K3 Varia/Business
 ✅ K4.0 Frog Save
-▶  K4 Speed/Wave/Ice     ← YOU ARE HERE (Cathedral repath → CATH-01 pure)
+▶  K4 Speed/Wave/Ice     ← YOU ARE HERE (Cathedral pure → Bubble GREEN; ★ Bat/Speed)
 ⬜  K5 Alpha PB
 ⬜  K6 Moat → Phantoon → Gravity
 ⬜  K7 Maridia → Botwoon → Draygon → Space Jump
@@ -123,7 +141,8 @@ Boss hops insert `boss` catalog/phase/closeout cards before continuous tip.
 **Spine repath applied (2026-08-01):** option **1** — first Bubble = Cathedral
 climb. Graph: `business_to_cathedral_entrance` … `rising_tide_to_bubble`;
 `speedway_to_farm` / `farm_to_bubble` require `speed_booster`; reverse
-`frog_save_to_business` for tip at Frog. **Next pure:** [`SM-K4-CATH-01`](SM-K4-CATH-01.md).
+`frog_save_to_business` for tip at Frog. CATH-01…04 pure **GREEN** (first
+Bubble pure closeout 2026-08-02). **Next pure:** `SM-K4.4-PURE` Bubble → Bat.
 
 Follow-ons (parallel OK): `SM-BOSS-PRIM-SPRAY`, `SM-ARCH-TIP-SPEC`, path-room farm.  
 Detail: [`WAVE-11.md`](WAVE-11.md).
@@ -197,6 +216,6 @@ Historical wave write-ups, residuals, and farm cards live under
   `docs/tasks/SM-*.md`.
 - After tip promotion: update `MILESTONES.csv`, `KPDR_TRACKER.csv`, `STATUS.md`,
   regenerate path board / tracker export.
-- Backlog is the capacity buffer (~290 tickets). Living markdown cards are only
+- Backlog is the capacity buffer (~308 tickets). Living markdown cards are only
   for **ready / in-flight** executor work — scaffold from `TASK_TEMPLATE.md`
   when promoting a backlog row.

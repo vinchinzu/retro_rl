@@ -1,43 +1,35 @@
-# TASK T4-ASSIST-TECHNO: Cut Technodrome damage (assisted continuous)
+# EPIC / SHELL T4-ASSIST-TECHNO: Cut Technodrome damage (assisted)
 
-## Recipe step
-policy knob
+Not a single executor session. Spawn thin children:
 
-## Model
-Luna
-
-## Wave type
-implement
-
-## Own files only
-- `policy.py` — Technodrome / duo / tank knobs only (**one** named group)
-- residual: `docs/tasks/T4-ASSIST-TECHNO-residual.md`
+| Order | Card | Goal |
+|------:|------|------|
+| 1 | T4-ASSIST-TECHNO-PROBE | RaphFullHardStage4 / Duo metrics only; no policy |
+| 2 | T4-ASSIST-TECHNO-KNOB | **One** duo/tank/corridor constant; before/after |
+| 3 | T4-ASSIST-TECHNO-STAB | Assisted dry-run deltas; no BASELINE edit |
+| 4 | T4-ASSIST-DRYRUN | Planner BASELINE promote |
 
 ## Context
 - Baseline stage damage **1,022** (21.9% of route) — largest bucket.
-- Continuous-faithful: `RaphFullHardStage4` clears ~30k f / 886 dmg / 13 heals.
+- Continuous-faithful: `RaphFullHardStage4` ~30k f / 886 dmg / 13 heals.
 - Duo left-flank + stall suppress already landed; tank + wall escape matter.
-- Checkpoint gains often fail transfer — full dry-run before BASELINE claim.
+- Checkpoint gains often fail transfer — STAB dry-run before BASELINE.
+- Assisted continuous is already green; damage cut is multi-session.
 
 ## Read first
+- `docs/tasks/CLEAN_LADDER.md` (assisted thin pattern at bottom)
 - `docs/BASELINE_METRICS.md`
 - `docs/STATUS.md` (Tokka/Rahzar notes)
-- `scripts/capture_raph_states.py` / RaphFullHard* states
 
-## Do
-1. Probe from `RaphFullHardStage4` / Duo under emergency assist.
-2. One knob aimed at damage or heal count (not fight-length only).
-3. If probe green: residual → `T4-ASSIST-DRYRUN` (planner dry-run).
-4. Do not park Slash/other stage knobs in this card.
+## Do not
+- Hand this shell as “cut Technodrome in one session”
+- STATUS / BASELINE self-apply from a probe win
+- Park Slash/other stage knobs here
 
-## Acceptance
-- [ ] Named one-knob change with probe metrics
-- [ ] Residual routes dry-run or next knob
-- [ ] No STATUS/BASELINE self-apply
-
-## Verify commands
+## Verify pattern
 ```bash
-# example probe via stage4 segment or local grind focus
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m tmnt_iv.scripts.run_stage4_segment --help
+# PROBE/KNOB: segment or RaphFullHardStage4 probe with emergency assist
+# STAB: record_full_hard_run --dry-run
 ```

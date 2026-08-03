@@ -34,11 +34,11 @@
       "toRoomHex": "0x52",
       "approachXy": [1000, 120],
       "landingXy": [1011, 2680],
-      "role": "alternate",
+      "role": "zelda_path",
       "path": ["east_door_approach"],
       "pathTolerances": {"default": 12},
       "pushFrames": 80,
-      "notes": "Measured 29f RIGHT from spawn"
+      "notes": "Measured 29f RIGHT from spawn; natural chain from 0x50 east lands ~x=560 then continues east → 0x52"
     }
   ],
   "clearPolicy": {
@@ -53,6 +53,7 @@
   "hostilesAtEntry": [],
   "notes": [
     "Connector between 0x50 and 0x52; low hostile density at CastleRoom01.",
+    "2026-08-02: east_to_0x52 clears on the natural 0x50→0x01 predecessor chain.",
     "Authority: maps/room_01.json"
   ]
 }
