@@ -1,39 +1,28 @@
-# TASK T4-CLEAN-S6: Skull & Crossbones Clean multi-entry suite
+# EPIC T4-CLEAN-S6: Skull & Crossbones Clean (shell)
 
 ## Recipe step
-probe suite
+epic / tracker
 
 ## Model
-Luna
+Planner only
 
-## Wave type
-implement
+## Children (spawn when unlocked)
 
-## Own files only
-- `scripts/probe_stage6_clean.py` (create if missing)
-- `policy.py` — one Skull-local knob only if RED
-- residual: `docs/tasks/T4-CLEAN-S6-residual.md`
+| Order | Card ID | Goal |
+|------:|---------|------|
+| 0 | T4-INFRA-PROBE-S6 | `probe_stage6_clean.py` |
+| 1 | T4-CLEAN-S6-PROBE | Baseline JSON |
+| 2 | T4-CLEAN-S6-BOSS | Bebop/Rocksteady pizza-only |
+| 3 | T4-CLEAN-S6-REACH | Waves metric progress |
+| 4 | T4-CLEAN-S6-CKPT | Full checkpoint stage_advance |
+| 5 | T4-CLEAN-S6-BRIDGE | Continuous-faithful entry |
+| 6 | T4-CLEAN-S6-SUITE | Required entries |
+| 7 | T4-CLEAN-S6-STAB | Suite + assisted dry-run |
 
 ## Context
-- Stage byte **5**. Duo Bebop/Rocksteady left-flank.
-- **Never enable global pizza seek** (soft-locks this stage).
+- Stage byte **5**. **No global pizza seek** (playbook soft-lock).
+- Ladder: [CLEAN_LADDER.md](CLEAN_LADDER.md).
 
-## Read first
-- `docs/CLEAN_PLAYBOOK.md`
-- `scripts/run_stage6_segment.py`
-
-## Do
-1. Scaffold heal=none multi-entry suite.
-2. Scope pizza seek by stage allowlist only.
-3. 0 e-heals, 0 lives lost through stage_advance.
-
-## Acceptance
-- [ ] Suite green or residual with one next knob
-- [ ] Global pizza seek remains disabled
-- [ ] Residual PROCESS fields
-
-## Verify commands
-```bash
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_stage6_clean --suite
-```
+## Do not
+- Re-open global pizza seek
+- Executor session on this epic shell

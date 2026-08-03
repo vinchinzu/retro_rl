@@ -7,9 +7,10 @@ room-problem board: filename heuristics + curated status from STATUS/docs.
 Units are **save-state practice checkpoints**, not a full room-graph topology.
 
 Continuous tip (STATUS): NW chamber **0x50** after ``castle_dungeon_prefix``.
-Primary next work: discover the physical exit after 0x50, then B1 → Zelda
-cell → follower → escort → Sanctuary.
-Internal 0x55 key/shutter path is **alternate practice**, not the primary route.
+Tip exit ``0x50`` east → ``0x01`` is natural_entry (2026-08-02). Primary next
+work: B1 stairs after the 0x01 chain → Zelda cell → follower → escort →
+Sanctuary. Internal 0x55 key/shutter path is **alternate practice**, not the
+primary route.
 """
 
 from __future__ import annotations
@@ -203,7 +204,7 @@ def _default_goal(state_name: str, group: str) -> str:
     if group == "b1":
         return "traverse_b1"
     if group == "frontier":
-        return "discover_after_0x50"
+        return "discover_b1_stairs"
     if group == "main":
         return "main_hall_to_zelda"
     rid = _parse_room_id(state_name)
@@ -430,11 +431,12 @@ def curated_overrides() -> dict[str, dict[str, Any]]:
         },
         "CastleRoom50": {
             "status": "probe_state",
-            "tier": "blocker",
-            "goal": "discover_after_0x50",
+            "tier": "standard",
+            "goal": "discover_b1_stairs",
             "notes": (
-                "Continuous tip / natural-entry frontier. Isolate the next physical "
-                "exit from room 0x50 before asserting a Zelda route."
+                "2026-08-02: only physical forward exit is east→0x01 "
+                "(graph natural_entry room_50_east_to_0x01). Exhaustive probe found "
+                "no B1 stairs in 0x50. Next: B1 stairs after 0x01→0x52→0x62 chain."
             ),
             "predecessor": "CastleMain",
             "acceptance_ram": {"indoors_room": "0x50", "has_control": True},
@@ -587,11 +589,11 @@ def build_item(
 def rank_score(item: WorkItem) -> int:
     """Lower score = higher on the Sanctuary work queue.
 
-    Policy (continuous tip = NW chamber room 0x50):
-    - Prefer the physical frontier, then Zelda goals (discover_after_0x50,
+    Policy (continuous tip = NW chamber room 0x50; exit east→0x01 natural_entry):
+    - Prefer B1 stairs discovery and Zelda goals (discover_b1_stairs,
       reach_zelda_cell, zelda_follower) over exit_0x55 / obtain_key /
       open_shutter.
-    - Demote key/shutter; boost the physical frontier and Zelda goals.
+    - Demote key/shutter; boost frontier and Zelda goals.
     - Escort / B3 / already-natural opening later.
     - Within a phase, unfinished work before natural_chain milestones.
     """
@@ -613,9 +615,10 @@ def rank_score(item: WorkItem) -> int:
     score = phase * 1000
     score += _TIER_RANK.get(item.tier, 2) * 100
     score += status_boost.get(item.status, 25)
-    # Prefer the continuous-tip physical frontier and Zelda goals.
+    # Prefer B1 stairs frontier and Zelda goals.
     if item.goal in {
-        "discover_after_0x50",
+        "discover_b1_stairs",
+        "discover_after_0x50",  # legacy alias
         "reach_zelda_cell",
         "zelda_follower",
     }:
@@ -706,10 +709,11 @@ def build_work_queue(
         "unitNote": (
             "Units are Zelda3-Snes save states on the boot → fighter sword → "
             "secret-entrance clear → courtyard pocket → main hall → NW chamber "
-            "room 0x50 → Zelda → Sanctuary path. Continuous tip is **room 0x50**; "
-            "next work is the physical exit after 0x50, then B1 → Zelda cell → "
-            "follower → escort. Internal 0x55 "
-            "key/shutter is alternate practice only. Sanctuary not claimed."
+            "room 0x50 → 0x01 → Zelda → Sanctuary path. Continuous tip is "
+            "**room 0x50**; tip exit east→0x01 is natural_entry. Next work is "
+            "B1 stairs after the 0x01 chain → Zelda cell → follower → escort. "
+            "Internal 0x55 key/shutter is alternate practice only. Sanctuary "
+            "not claimed."
         ),
         "source": {
             "integrationDir": str(integration_dir or INTEGRATION_DIR),
@@ -729,6 +733,7 @@ def build_work_queue(
                 "secret_entrance_clear",
                 "pocket_to_main_hall_0x61",
                 "castle_dungeon_prefix_0x50",
+                "room_50_east_to_0x01_natural_entry",
             ],
         },
         "workFocus": [i.to_dict() for i in focus],
@@ -748,7 +753,8 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
         "",
         "Sanctuary-path practice queue for `Zelda3-Snes` save states.",
         "Continuous tip is **NW chamber room 0x50** (after `castle_dungeon_prefix`).",
-        "Ranked for next work: **physical exit after 0x50 → B1 → Zelda cell → follower → escort**.",
+        "Tip exit **0x50 east → 0x01** is natural_entry. Ranked for next work: "
+        "**B1 stairs after 0x01 chain → Zelda cell → follower → escort**.",
         "Internal 0x55 key/shutter path is **alternate practice**, not primary.",
         "",
         f"Generated: `{generated}`",
@@ -823,11 +829,13 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
             "",
             "- Continuous tip is **NW chamber room 0x50** after "
             "`castle_dungeon_prefix` (courtyard pocket → main door → 0x60 → 0x50).",
+            "- Tip exit **0x50 east → 0x01** is graph natural_entry (2026-08-02 "
+            "exhaustive probe: only physical forward exit from tip).",
             "- Secret-entrance clear (stairs → outdoor pocket) is already "
             "continuous; do **not** treat `Castle_55` internal exit as the top "
             "blocker.",
-            "- Primary next work: physical exit after 0x50 / B1 → Zelda cell → follower → "
-            "escort → Sanctuary.",
+            "- Primary next work: B1 stairs after 0x01 chain → Zelda cell → "
+            "follower → escort → Sanctuary.",
             "- Internal 0x55 key/shutter path is **alternate practice** only.",
             "- `FighterSword` is a **dev checkpoint** after uncle sword; natural "
             "sword claim needs `--natural` on `castle_to_sword`.",

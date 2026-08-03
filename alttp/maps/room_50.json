@@ -3,15 +3,15 @@
   "roomBaseId": 80,
   "roomHex": "0x50",
   "name": "Hyrule Castle NW chamber",
-  "measured": "2026-07-31",
+  "measured": "2026-08-02",
   "sourceState": "CastleRoom50",
   "z3Label": "Hyrule Castle",
   "points": [
     {"label": "entry_spawn", "xy": [448, 2680], "role": "spawn", "notes": "CastleRoom50"},
-    {"label": "entry_from_0x60", "xy": [376, 3088], "role": "spawn", "notes": "Landing from room 0x60 north"},
+    {"label": "entry_from_0x60", "xy": [376, 3088], "role": "spawn", "notes": "Landing from room 0x60 north; natural tip ~y=3008"},
     {"label": "east_door_approach", "xy": [480, 2680], "role": "approach", "notes": "Hold RIGHT → room 0x01"},
-    {"label": "west_extent", "xy": [352, 2678], "role": "waypoint", "notes": "West walk bound"},
-    {"label": "south_extent", "xy": [432, 2712], "role": "waypoint", "notes": "South walk bound (no door)"}
+    {"label": "west_extent", "xy": [352, 2678], "role": "waypoint", "notes": "West walk bound (wall; no door/stairs isolated)"},
+    {"label": "south_extent", "xy": [432, 2712], "role": "waypoint", "notes": "South walk bound without pathing to south seam"}
   ],
   "doors": [
     {
@@ -25,7 +25,7 @@
       "path": ["east_door_approach"],
       "pathTolerances": {"default": 12},
       "pushFrames": 80,
-      "notes": "Measured 29f RIGHT from CastleRoom50; landing y jumps (multi-screen)"
+      "notes": "Only physical forward exit. Natural entry from real 0x50 predecessor (CastleRoom60 north + clear). Landing y jumps multi-screen to ~0x01 y=120."
     },
     {
       "label": "south_to_0x60",
@@ -38,7 +38,7 @@
       "path": ["entry_from_0x60"],
       "pathTolerances": {"default": 16},
       "pushFrames": 120,
-      "notes": "Reverse of room_60 north; approach near south seam"
+      "notes": "Reverse of room_60 north; approach near south seam after clear"
     }
   ],
   "clearPolicy": {
@@ -56,7 +56,8 @@
     {"type": "0x41", "xy": [392, 2785]}
   ],
   "notes": [
-    "North of room 0x60 on Zelda path; east opens into room 0x01.",
+    "2026-08-02 exhaustive probe (grid + rays after clear, west wall holds): only exits are east→0x01 and south→0x60. No stairs to B1 isolated in this room.",
+    "Forward Zelda-path hop is east_to_0x01 (natural_entry). B1 stairs remain open beyond the 0x01/0x52 chain.",
     "Authority: maps/room_50.json"
   ]
 }

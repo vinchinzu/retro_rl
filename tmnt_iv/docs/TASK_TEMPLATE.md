@@ -34,16 +34,23 @@ exploration. **Always** give exact files, recipe step, and acceptance checks.
 
 ## Non-negotiable card rules (from PROCESS)
 
-1. **Multi-entry first:** Clean stage cards must green a suite (checkpoint +
-   continuous-faithful / power-on), not checkpoint alone.
-2. **One knob:** policy cards change one named constant group or one tactic.
+1. **Thin Clean rungs:** do not write “green whole stage suite” cards. Use
+   [tasks/CLEAN_LADDER.md](tasks/CLEAN_LADDER.md) suffixes (PROBE / BOSS /
+   REACH / CKPT / BRIDGE / SUITE / STAB). Epic shells are planner-only.
+2. **Pizza-only ≫ assist:** REACH metric wins are valid GREEN; full
+   stage_advance is a later rung. Continuous Clean is hardest.
+3. **Multi-entry before continuous Clean:** SUITE needs CKPT + BRIDGE (or
+   documented LiveHard set), not checkpoint alone.
+4. **One knob:** policy cards change one named constant group or one tactic.
    Interacting knobs serialize across cards + stabilize wave.
-3. **No dual spine knobs → same continuous** without intervening suite +
+5. **No dual spine knobs → same continuous** without intervening suite +
    dry-run gate (planner stabilize wave).
-4. **Residual → next card:** every residual ends with `Next card ID` +
-   **one** change.
-5. **Own files only:** list paths; parallel cards must not share hot modules
+6. **Residual → next thin card:** every residual ends with `Next card ID` +
+   **one** change (child ID, not epic).
+7. **Own files only:** list paths; parallel cards must not share hot modules
    (`policy.py` sections, `record_full_hard_run.py`, `STATUS.md`).
+8. **No STATUS / invented JSON:** executors never edit STATUS gates; suite
+   numbers only from artifact files.
 
 ## Card template
 
@@ -89,9 +96,12 @@ implement | stabilize   # stabilize = re-verify only, no new knobs
 
 ## Acceptance
 - [ ] `uv run pytest <narrow tests> -q` green (if code)
-- [ ] (if Clean suite) multi-entry 0 e-heals, 0 lives lost
+- [ ] (if Clean **rung**) acceptance matches ladder rung — not always full suite
+- [ ] (if Clean **SUITE**) multi-entry 0 e-heals, 0 lives lost from JSON
+- [ ] (if REACH) before/after metric from JSON
 - [ ] No unrelated file churn
-- [ ] Residual uses PROCESS schema (next card ID + one change)
+- [ ] Residual uses PROCESS schema (next **thin** card ID + one change)
+- [ ] Did not edit STATUS.md / invent suite pass counts
 
 ## Verify commands
 ```bash

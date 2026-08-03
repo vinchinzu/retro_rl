@@ -405,7 +405,7 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             graph_node_id="room_50",
             notes=(
                 "Continuous clean-prefix north exit from 0x60. Geometry: maps/room_50.json.",
-                "Next: isolate the physical exit after 0x50 before asserting Zelda path.",
+                "Tip exit east→0x01 is natural_entry (2026-08-02); next: B1 stairs after 0x01.",
             ),
         ),
         MultiTruthAnchor(

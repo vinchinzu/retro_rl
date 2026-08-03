@@ -2,7 +2,8 @@
 
 **Goal:** continuous power-on → ending/credits with unlimited energy + ammo
 only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Current tip: **Frog
-Savestation** (K4.0). Next assisted pure: Cathedral climb.
+Savestation** (K4.0). ★ Next assisted pure: **Cathedral → Rising Tide**
+(`SM-K4-CATH-03`; CATH-01/02 green).
 
 **Parallel Clean track:** no energy + no ammo → Bomb Torizo tip
 ([CLEAN_TRACK.md](CLEAN_TRACK.md)).
@@ -15,7 +16,7 @@ Savestation** (K4.0). Next assisted pure: Cathedral climb.
 | ▶ | Next pure hop ready |
 | 🟨 | Partial / in progress |
 | ⬜ | Open |
-| ⏸ | Parked (not KPDR) |
+| ⏸ | Parked (not KPDR / post-Speed only) |
 
 Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 [routes/MILESTONES.csv](routes/MILESTONES.csv).
@@ -28,8 +29,10 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | ✅ | → Varia (K3) | continuous | **101,954** best |
 | ✅ | → Business return | continuous | 113,723 ×2 |
 | ✅ | → **Frog Savestation (K4.0)** | continuous | **114,923** ×2 |
-| ▶ | Frog Save → Speedway pure | pure_open | — |
-| ⬜ | → Speed / Wave / Ice (K4) | open | — |
+| 🔶 | Cathedral pure CATH-01/02 | controller_dev | green |
+| ▶ | **CATH-03** Cathedral → Rising Tide | pure_open | ★ serial |
+| ⏸ | Frog Save → Speedway pure | parked | post-Speed only |
+| ⬜ | → Bubble / Speed / Wave / Ice (K4) | open | after CATH stack |
 | ⬜ | → Alpha PB (K5) | open | — |
 | ⬜ | → Phantoon / Gravity (K6) | open | — |
 | ⬜ | → Botwoon / Draygon / SJ (K7) | open | — |
@@ -43,9 +46,9 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | File / dir | Role |
 |------------|------|
 | **[STATUS.md](STATUS.md)** | Verified facts + maturity gate (M5: → Frog Save) |
-| **[plan.md](plan.md)** | Strategy, M6–M8 roadmap, structure/API plan |
+| **[plan.md](plan.md)** | Strategy, triage, risks, M6–M8 + structure plan |
 | **[routes/MILESTONES.md](routes/MILESTONES.md)** | **Top-level milestone status** (every tip / rollup) |
-| **[routes/BACKLOG.csv](routes/BACKLOG.csv)** | **~290 atomic tickets** to full clear |
+| **[routes/BACKLOG.csv](routes/BACKLOG.csv)** | **~308 atomic tickets** to full clear |
 | [routes/BACKLOG.md](routes/BACKLOG.md) | Backlog epic summary |
 | [routes/KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) | Per-segment KPDR spine (chartable) |
 | [routes/ROUTE_KPDR.md](routes/ROUTE_KPDR.md) | Authoritative continuous any% KPDR plan |
@@ -59,7 +62,9 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | [tasks/QUEUE.md](tasks/QUEUE.md) | Live wave board + ★ tip |
 | [tasks/WAVE-11.md](tasks/WAVE-11.md) | Multi-agent dispatch (ready cards) |
 | [tasks/TRIAGE.md](tasks/TRIAGE.md) | Backlog review · critical path · parallel tracks |
-| [tasks/PROCESS.md](tasks/PROCESS.md) | Pure-first / stabilize / residual rules |
+| [tasks/PROCESS.md](tasks/PROCESS.md) | Pure-first / stabilize / residual + tangible progress / anti-reward-hack |
+| [tasks/HARD_ROOM_SPLITS.md](tasks/HARD_ROOM_SPLITS.md) | Hard in-room geometry: phase ladder, stagnation @ 3, RECON→IMPL |
+| [tasks/SM-K4.4-PHASE-LADDER.md](tasks/SM-K4.4-PHASE-LADDER.md) | Bubble → Bat phases A–E + capture/climb probe commands |
 | [tasks/archive/](tasks/archive/) | Completed cards, residuals, farm one-shots |
 | [archive/](archive/) | Superseded route notes |
 | [research/](research/) | Path board, room catalog, boss RL, legacy |
@@ -79,7 +84,7 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | PRACTICE | 34 | Dual-track room waves |
 | ARCH / DOCS / BOSS-INFRA | ~25 | Structure + process |
 | CLEAN | 11 | Parallel no-assist early tips → Torizo |
-| **Total** | **~304** | Target 200–310 working depth |
+| **Total** | **~308** | Target 200–310 working depth |
 
 ## Commands (quick)
 

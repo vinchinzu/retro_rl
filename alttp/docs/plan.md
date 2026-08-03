@@ -2,27 +2,29 @@
 
 ## Next
 
-1. **After room 0x50 → Zelda cell** — `castle_dungeon_prefix` is now a
-   clean power-on suffix through `0x50`. Isolate the next physical B1 door
-   with `room_engine.py run` (not mega-segments), then add it as a typed
-   `DungeonRoomEdge`. Goal: `$F3CC==1`.
-2. **Implement `escort_to_sanctuary`** after follower is set (Lamp + sewers).
-3. Promote graph edges only with natural-entry evidence
+1. **After room 0x01 → B1 stairs → Zelda cell** — tip exit `0x50→0x01` is
+   natural_entry. Find F1→B1 stairs (not in 0x50/0x01/0x52 dense scans). Use
+   `room_engine.py run` + B1 reverse from `CastleB2Landing`/`room_70`. Goal:
+   `$F3CC==1`.
+2. Promote `0x50→0x01` to continuous only after clean power-on composition
+   includes it; optionally extend `run_to_verified_tip` past `room_50`.
+3. **Implement `escort_to_sanctuary`** after follower is set (Lamp + sewers).
+4. Promote graph edges only with natural-entry evidence
    (`planned` → `isolated` → `natural_entry` → `continuous`). Keep graph
    capability-coarse; expand nodes only when a hop is measured or acquires a cap.
-4. Keep continuous segments green on state-load; treat `FighterSword` /
+5. Keep continuous segments green on state-load; treat `FighterSword` /
    `CastleMain` as development only. Prefer `secret_entrance_clear` module name.
-5. Drive probes from work queue **frontier / zelda / b1** groups first; key/shutter
+6. Drive probes from work queue **frontier / zelda / b1** groups first; key/shutter
    and pure `exit_0x55` are **alternate** practice only.
-6. Extend the clean power-on `run_to_verified_tip` composition only after each
-   following edge passes natural entry; eventual goal is title → Zelda →
-   Sanctuary.
 7. Defer arena / romhack / asset-editor (`gauntlet/`, `romhack/`) until the
    opening continuous path is clean.
 
 ## Done (recent)
 
-- **All Sanctuary-path room maps:** `maps/room_{55,60,61,62,50,01,51,52,71,72,80,81,82}.json`
+- **Tip exit after 0x50 (2026-08-02):** exhaustive probe — only forward exit is
+  east→`0x01` (natural_entry graph edge). Exploration chain
+  `0x01→0x52→0x62`; `maps/room_70.json` seed; no B1 stairs isolated yet.
+- **All Sanctuary-path room maps:** `maps/room_{55,60,61,62,50,01,51,52,70,71,72,80,81,82}.json`
   + continuous `room_60→room_50` (`north_to_0x50`) in the clean power-on
   prefix. z3-json-data workspace
   fallback + US/JP vanilla note.

@@ -32,7 +32,8 @@ Frog Save → Speedway → Farm → Bubble   # requires speed_booster
 - `progression.py`: cathedral rooms + edges; `speedway_to_farm` /
   `farm_to_bubble` require `_K4_SPEED_CAPS`; `frog_save_to_business` reverse.
 - `k4_norfair.py`: scaffold callables for cathedral chain + reverse.
-- Cards: `SM-K4-CATH-01` next pure from `post_business_continuous`.
+- Cards: CATH-01/02 pure **GREEN**; next pure **`SM-K4-CATH-03`**
+  (Cathedral → Rising Tide) from `post_cathedral_entrance_to_cathedral_pure`.
 
 ## Non-claims
 

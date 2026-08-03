@@ -1,47 +1,40 @@
-# TASK T4-CLEAN-S2: Alleycat Blues Clean multi-entry suite
+# EPIC T4-CLEAN-S2: Alleycat Blues Clean (shell — not an executor ticket)
 
 ## Recipe step
-probe suite
+epic / tracker
 
 ## Model
-Luna
+Planner only
 
 ## Wave type
-implement
+— (children are implement / stabilize)
 
-## Own files only
-- `scripts/probe_stage2_clean.py` (if needed)
-- `policy.py` — **one** Alleycat-local knob only if suite RED
-- residual: `docs/tasks/T4-CLEAN-S2-residual.md`
+## Children (take one per session)
+
+See ladder board: [CLEAN_LADDER.md](CLEAN_LADDER.md#s2-alleycat-stage-byte-1--active).
+
+| Order | Card | Goal | Status |
+|------:|------|------|--------|
+| 0 | [T4-CLEAN-S2-PROBE](T4-CLEAN-S2-PROBE.md) | Suite baseline from JSON | ready |
+| 1 | [T4-CLEAN-S2-BOSS](T4-CLEAN-S2-BOSS.md) | Metalhead pizza-only | **done** |
+| 2 | [T4-CLEAN-S2-LATE](T4-CLEAN-S2-LATE.md) | Pre-boss w17 pizza-only | **done** |
+| 3 | [T4-CLEAN-S2-REACH](T4-CLEAN-S2-REACH.md) | Farther / safer full `Stage2` death | open |
+| 3b | [T4-CLEAN-S2-EDGE](T4-CLEAN-S2-EDGE.md) | One residual knob: pack edge-wait | open |
+| 4 | [T4-CLEAN-S2-CKPT](T4-CLEAN-S2-CKPT.md) | Full `Stage2` stage_advance | open |
+| 5 | [T4-CLEAN-S2-BRIDGE](T4-CLEAN-S2-BRIDGE.md) | stage1_clear continuous entry | open |
+| 6 | [T4-CLEAN-S2-SUITE](T4-CLEAN-S2-SUITE.md) | All required entries green | gated |
+| 7 | [T4-CLEAN-S2-STAB](T4-CLEAN-S2-STAB.md) | Suite + assisted dry-run, no knobs | gated |
 
 ## Context
-- Stage byte **1**. Metalhead already Clean; early/mid Foot packs life_loss.
-- Pizza: underfoot always; far seek **only between waves** (mid-wave chase
-  burned continuous).
-- Playbook: no mid-wave pizza chase, no pack jump-hop thrash, no elev≥44
-  generic jump on Alleycat.
-- Evidence dir: `recordings/stage2_clean_track/`.
 
-## Read first
-- `docs/CLEAN_PLAYBOOK.md`
-- `docs/STATUS.md` (Stage 2 Clean section)
-- `scripts/probe_stage2_clean.py`
+- Stage byte **1**. Clean = pizza-only, **0 e-HP** — much harder than assisted.
+- Boss + late mid already clear; full checkpoint + continuous bridge still RED.
+- Playbook bans: mid-wave far pizza, pack jump-hop, elev≥44 generic jump.
+- Evidence: `recordings/stage2_clean_track/`.
+- Residual: [T4-CLEAN-S2-residual.md](T4-CLEAN-S2-residual.md).
 
-## Do
-1. Run `--suite` heal=none multi-entry (Stage2 checkpoint + Stage1_Clear /
-   continuous-faithful bridge; power-on through Alleycat if available).
-2. Target: all required entries stage_advance, **0 e-heals, 0 lives lost**.
-3. If RED: residual names one failure window + one next knob (no thrash).
-4. If shared policy edit: re-verify assisted dry-run or narrow Stage2 emergency
-   probe after suite green (stabilize note).
+## Do not
 
-## Acceptance
-- [ ] Suite green 0 e-heals / 0 lives lost on required entries
-- [ ] Playbook bans not re-opened
-- [ ] Residual PROCESS fields
-
-## Verify commands
-```bash
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_stage2_clean --suite
-```
+- Hand this epic file to an executor as the session card.
+- Claim SUITE green while CKPT or BRIDGE is RED.
+- STATUS-promote from any child residual.

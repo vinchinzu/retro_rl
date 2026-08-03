@@ -52,6 +52,7 @@ from super_metroid.routes.kpdr.kraid_return import (
     play_zeela_to_warehouse_return,
 )
 from super_metroid.routes.kpdr.k4_norfair import (
+    play_bubble_to_bat_cave,
     play_business_to_cathedral_entrance,
     play_business_to_frog_save,
     play_cathedral_entrance_to_cathedral,
@@ -165,6 +166,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "cathedral_entrance_to_cathedral": play_cathedral_entrance_to_cathedral,
     "cathedral_to_rising_tide": play_cathedral_to_rising_tide,
     "rising_tide_to_bubble": play_rising_tide_to_bubble,
+    "bubble_to_bat_cave": play_bubble_to_bat_cave,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,

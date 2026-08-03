@@ -30,6 +30,7 @@ Door-warp and item-grant subcommands remain development-only topology tools.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import sys
 from pathlib import Path
@@ -77,8 +78,12 @@ from super_metroid.source_states import (  # noqa: E402
     validate_fingerprint,
 )
 from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
+    BubblePhaseStop,
+    play_bubble_to_bat_cave,
     play_business_to_cathedral_entrance,
     play_cathedral_entrance_to_cathedral,
+    play_cathedral_to_rising_tide,
+    play_rising_tide_to_bubble,
 )
 from super_metroid.routes.kpdr_controller import (  # noqa: E402
     play_baby_to_kihunter_return,
@@ -238,6 +243,7 @@ def _run_pure(
     pin_json: Path | None = None,
     red_diag: bool = True,
     ring_frames: int = DEFAULT_RING_FRAMES,
+    phase_capture: bool = False,
 ) -> dict[str, object]:
     env = make_dev_env()
     assist = UnlimitedResourcesAssist()
@@ -324,6 +330,49 @@ def _run_pure(
             "placeY": place_y if place_x is not None else None,
             "sourceId": catalog.source_id if catalog else None,
         }
+    except BubblePhaseStop as phase_stop:
+        # Capture / recon early stop — diagnostic success only when requested.
+        st = phase_stop.state
+        pin = probe_pin(st)
+        metrics = dict(phase_stop.metrics)
+        dump = metrics.get("dump_phase_c")
+        report = {
+            "success": bool(phase_capture),
+            "phaseStop": phase_stop.phase,
+            "phaseCapture": True,
+            "phaseCHit": True,
+            "error": None if phase_capture else str(phase_stop),
+            "roomIdHex": f"0x{st.room_id:04X}",
+            "samusX": st.samus_x,
+            "samusY": st.samus_y,
+            "pose": st.pose,
+            "velocityX": int(st.velocity_x),
+            "velocityY": int(st.velocity_y),
+            "doorTransition": st.door_transition,
+            "frame": session.frame if session is not None else st.frame,
+            "frames": session.frame if session is not None else 0,
+            "probePin": pin,
+            "phaseMetrics": metrics,
+            "statePath": str(Path(dump).resolve()) if dump else None,
+            "parseCounts": parse_counts(),
+            "controllerOnly": place_x is None,
+            "developmentOnly": True,
+            "notHopGreen": True,
+            "sourceId": catalog.source_id if catalog else None,
+            "residualPinLine": (
+                f"room=0x{st.room_id:04X} pose={st.pose} "
+                f"x={st.samus_x} y={st.samus_y} "
+                f"vx={st.velocity_x} vy={st.velocity_y} "
+                f"door_transition={st.door_transition} "
+                f"phase_stop={phase_stop.phase} frames="
+                f"{session.frame if session is not None else 0}"
+            ),
+        }
+        if pin_json is not None:
+            pin_json.parent.mkdir(parents=True, exist_ok=True)
+            pin_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            report["pinJson"] = display_path(pin_json)
+        return report
     except Exception as exc:  # noqa: BLE001 — probe surface
         st = session.state if session is not None else parse_env_state(env, mode="nav")
         pin = probe_pin(st)
@@ -447,6 +496,9 @@ def main() -> None:
             "business-to-frog-save",
             "business-to-cathedral-entrance",
             "cathedral-entrance-to-cathedral",
+            "cathedral-to-rising-tide",
+            "rising-tide-to-bubble",
+            "bubble-to-bat-cave",
             "frog-save-to-speedway",
             "speedway-to-farm",
         ),
@@ -481,6 +533,32 @@ def main() -> None:
         type=int,
         default=171,
         help="Dev only: place Y used with --place-x (default 171)",
+    )
+    pure.add_argument(
+        "--start-phase",
+        choices=("auto", "full", "climb", "door"),
+        default="auto",
+        help=(
+            "Bubble→Bat only: auto/full natural path; climb skips lower/"
+            "repin/launch (Phase-C handoff iteration); door skips to Super door"
+        ),
+    )
+    pure.add_argument(
+        "--dump-phase-c",
+        type=Path,
+        default=None,
+        help=(
+            "Bubble→Bat only: write first Phase-C usable-right-contact "
+            "save-state (dev handoff; not hop GREEN)"
+        ),
+    )
+    pure.add_argument(
+        "--stop-at-phase-c",
+        action="store_true",
+        help=(
+            "Bubble→Bat only: stop at first Phase C (capture/recon). "
+            "Exit 0 on hit; not hop GREEN to Bat"
+        ),
     )
     suggest = sub.add_parser(
         "suggest-source",
@@ -607,9 +685,29 @@ def main() -> None:
             "business-to-frog-save": play_business_to_frog_save,
             "business-to-cathedral-entrance": play_business_to_cathedral_entrance,
             "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
+            "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
+            "rising-tide-to-bubble": play_rising_tide_to_bubble,
+            "bubble-to-bat-cave": play_bubble_to_bat_cave,
             "frog-save-to-speedway": play_frog_save_to_speedway,
             "speedway-to-farm": play_speedway_to_farm,
         }[args.segment]
+        bubble_phase_opts = (
+            args.start_phase != "auto"
+            or args.dump_phase_c is not None
+            or args.stop_at_phase_c
+        )
+        if bubble_phase_opts and args.segment != "bubble-to-bat-cave":
+            parser.error(
+                "--start-phase / --dump-phase-c / --stop-at-phase-c "
+                "only apply to bubble-to-bat-cave"
+            )
+        if args.segment == "bubble-to-bat-cave" and bubble_phase_opts:
+            play_fn = functools.partial(
+                play_bubble_to_bat_cave,
+                start_phase=args.start_phase,
+                dump_phase_c=args.dump_phase_c,
+                stop_at_phase_c=args.stop_at_phase_c,
+            )
         report = _run_pure(
             source=args.source,
             play=play_fn,
@@ -620,6 +718,7 @@ def main() -> None:
             segment=args.segment,
             pin_json=args.pin_json,
             red_diag=not args.no_red_diag,
+            phase_capture=bool(args.stop_at_phase_c),
         )
         print(json.dumps(report, indent=2))
         sys.exit(0 if report.get("success") else 1)

@@ -1,6 +1,7 @@
 # Backlog — Super Metroid full assisted clear
 
-Machine source: [`BACKLOG.csv`](BACKLOG.csv) (**~304** tickets; includes CLEAN).
+Machine source: [`BACKLOG.csv`](BACKLOG.csv) (**~308** tickets; includes CLEAN +
+Cathedral pure stack).
 
 Decomposed from KPDR spine + boss pipeline + dual-track practice + structure
 debt + **parallel Clean** (no energy/ammo) early tips. Target depth ~200–310
@@ -10,14 +11,14 @@ so executors always have atomic pure/graph/compose cards.
 
 | Status | Count (approx) |
 |--------|------:|
-| `open` | 275 |
-| `ready` | 15 |
-| `parked` | 9 |
-| `done` | 5 |
+| `open` | 271 |
+| `ready` | 11 |
+| `done` | 13 |
+| `parked` | 13 |
 
 | Epic | Count |
 |------|------:|
-| `K4` | 51 |
+| `K4` | 55 |
 | `K7` | 41 |
 | `K9` | 41 |
 | `PRACTICE` | 38 |
@@ -34,32 +35,40 @@ so executors always have atomic pure/graph/compose cards.
 
 | Kind | Count |
 |------|------:|
-| `pure` | 93 |
+| `pure` | 94 |
 | `graph` | 41 |
-| `compose` | 35 |
-| `practice` | 34 |
+| `compose` | 39 |
+| `practice` | 38 |
 | `boss` | 32 |
-| `stabilize` | 17 |
-| `status` | 12 |
+| `stabilize` | 18 |
+| `status` | 13 |
+| `docs` | 10 |
 | `arch` | 10 |
-| `docs` | 8 |
-| `infra` | 6 |
+| `infra` | 9 |
+
+Kinds lean pure → graph → compose → practice/boss. Epic weight is **K4-heavy**
+(next spine), then K7/K9/practice/K6, with ARCH/DOCS/BOSS-INFRA/CLEAN parallel.
 
 ## ★ Ready now
 
-Living cards: [`docs/tasks/WAVE-11.md`](../tasks/WAVE-11.md) ·
+Living cards: [`docs/tasks/QUEUE.md`](../tasks/QUEUE.md) ·
 triage: [`docs/tasks/TRIAGE.md`](../tasks/TRIAGE.md).
 
 | Ticket | Title | Own files | Living card |
 |--------|-------|-----------|-------------|
-| `SM-K4.1-PURE` | Pure Frog Save→Speedway (residual may be GREEN) | `routes/kpdr/k4_norfair.py` | [`SM-K4.1-PURE`](../tasks/SM-K4.1-PURE.md) / [`SM-K4-SPEEDWAY-PURE`](../tasks/SM-K4-SPEEDWAY-PURE.md) |
-| `SM-K4-SPEEDWAY-SRC` | Fingerprint Speedway pure successor | `docs/SOURCE_STATES.md` | [`SM-K4-SPEEDWAY-SRC`](../tasks/SM-K4-SPEEDWAY-SRC.md) |
-| `SM-PATH-ROOM-W01a`…`d` | Path-room clears (Speedway / Bubble / Speed Hall / Single Chamber) | `policies/room_clears/` (one each) | Wave-11 PATH cards |
-| `SM-BOSS-PRIM-LANE` | Lane-hold window primitive | `combat/primitives.py` | [`SM-BOSS-PRIM-LANE`](../tasks/SM-BOSS-PRIM-LANE.md) |
-| `SM-BOSS-NATURAL-ENTRY-CLI` | Standardize capture-natural CLI | `combat/` + thin probe CLI | [`SM-BOSS-NATURAL-ENTRY-CLI`](../tasks/SM-BOSS-NATURAL-ENTRY-CLI.md) |
+| **`SM-K4-CATH-03`** | ★ Pure Cathedral→Rising Tide (serial spine) | `routes/kpdr/k4_norfair.py` | [`SM-K4-CATH-03`](../tasks/SM-K4-CATH-03.md) |
+| `SM-CLEAN-BOMBS` | Continuous bombs/Torizo Clean (parallel) | continuous CLI (`*_clean`) | [`SM-CLEAN-BOMBS`](../tasks/SM-CLEAN-BOMBS.md) |
 | `SM-ARCH-HOPS-MODULE` | Extract hop tables → `routes/kpdr/hops.py` | `hops.py` + continuous import | [`SM-ARCH-HOPS-MODULE`](../tasks/SM-ARCH-HOPS-MODULE.md) |
 | `SM-ARCH-RED-DIAG` | Pure RED clip + PLM/door snapshot | probe diagnostics | [`SM-ARCH-RED-DIAG`](../tasks/SM-ARCH-RED-DIAG.md) |
-| `SM-CLEAN-BOMBS` | ★ Continuous bombs/Torizo Clean | continuous CLI | [`SM-CLEAN-BOMBS`](../tasks/SM-CLEAN-BOMBS.md) |
+
+**Done / parked (do not re-dispatch as spine):**
+
+| Ticket | Status | Notes |
+|--------|--------|-------|
+| `SM-K4-CATH-01` / `02` | pure **GREEN** | Living residuals may archive after CATH-03 lands |
+| `SM-K4.1-PURE` / Speedway pure | pure **GREEN**, **parked** post-Speed | Not first Bubble path |
+| `SM-K4.2-PURE` Speedway→Farm | **RED** without Speed | Parked until post-Speed |
+| Wave-11 PATH / BOSS / ARCH cards | closed 2026-08-01 | See [`WAVE-11.md`](../tasks/WAVE-11.md) |
 
 ## Parallel Clean (P2 — does not block assisted spine)
 
@@ -74,39 +83,33 @@ exit with no energy/ammo assists. **Infra done** (artifacts / CLI / integrity).
 | `SM-CLEAN-BT-ECONOMY` | One-knob if clean BT RED | gated |
 | `SM-CLEAN-STAB` / `STATUS` | Dual re-verify + STATUS secondary | after bombs GREEN |
 
-## P0 open (tip-critical)
+## P0 open (tip-critical — Cathedral first Bubble)
 
 | Ticket | Title | Depends |
 |--------|-------|---------|
-| `SM-K4.1-PURE` | Pure Frog Save→Speedway | `` |
-| `SM-K4-SPEEDWAY-SRC` | Catalog Speedway successor source | pure green |
-| `SM-K4.1-GRAPH` | Graph edge Frog Save→Speedway controller_dev | `SM-K4.1-PURE` |
-| `SM-K4.2-PURE` | Pure Speedway→farm approach | `SM-K4.1-PURE` |
-| `SM-K4.2-GRAPH` | Graph edge Speedway→farm approach controller_dev | `SM-K4.2-PURE` |
-| `SM-K4.3-PURE` | Pure Approach→Bubble Mountain | `SM-K4.2-PURE` |
-| `SM-K4.3-GRAPH` | Graph edge Approach→Bubble Mountain controller_dev | `SM-K4.3-PURE` |
-| `SM-K4-TIP-SPEEDWAY` | Continuous tip --to speedway (or intermediate) | pure stack green |
-| `SM-K4-TIP-SPEED` | Continuous tip --to speed | `SM-K4.6-PURE` |
-| `SM-K4-TIP-WAVE` | Continuous tip --to wave | `SM-K4.10-PURE` |
-| `SM-K4-TIP-ICE` | Continuous tip --to ice | `SM-K4.15-PURE` |
-| `SM-K4-STAB-SPEED` | Stabilize wave pure+continuous Speed stack | `SM-K4-TIP-SPEED` |
-| `SM-K4-STAB-ICE` | Stabilize wave pure+continuous Ice stack | `SM-K4-TIP-ICE` |
-| `SM-K4-STATUS-SPEED` | STATUS promote Speed tip | `SM-K4-STAB-SPEED` |
-| `SM-K4-STATUS-ICE` | STATUS promote Ice tip | `SM-K4-STAB-ICE` |
+| `SM-K4-CATH-03` | Pure Cathedral→Rising Tide | CATH-02 green |
+| `SM-K4-CATH-04` | Pure Rising Tide→Bubble | CATH-03 |
+| Bubble→Speed / Wave / Ice pure stack | Geometry + sources | CATH-04 |
+| Graph + compose tips (`--to` bubble/speed/wave/ice) | After each pure green | pure stack |
+| Stabilize + STATUS per tip | Planner-serial | compose green |
+| `SM-K4.1-PURE` / Speedway | **Parked** post-Speed shortcut | — |
+
+CSV still lists historical Speedway farm rows; living spine is Cathedral —
+see [`TRIAGE.md`](../tasks/TRIAGE.md) and [`SM-K4-REPATH-CATH-note.md`](../tasks/SM-K4-REPATH-CATH-note.md).
 
 ## Epic order (product)
 
 ```text
 DONE (K0–K4.0 continuous)
-  → K4 Speed/Wave/Ice
+  → K4 Cathedral → Bubble → Speed/Wave/Ice   ★ YOU ARE HERE (CATH-03)
   → K5 Alpha PB
   → K6 Moat → Phantoon → Gravity
   → K7 Maridia → Botwoon → Draygon → Space Jump
   → K8 Lower Norfair → Ridley
   → K9 G4 → Tourian → MB → Escape → Credits  (M8)
-Parallel: PRACTICE dual-track · ARCH structure · BOSS-INFRA
+Parallel: PRACTICE dual-track · ARCH structure · BOSS-INFRA primitives
 Parallel: CLEAN (no energy/ammo) → Bomb Torizo tip
-Parked: OPTIONAL (Pink PB, Charge return, Croc, GT, …) · CLEAN spore+
+Parked: Speedway→Farm until post-Speed · OPTIONAL (Pink PB, Charge, Croc, …)
 ```
 
 ## Ticket kinds (recipe)
@@ -123,8 +126,10 @@ Parked: OPTIONAL (Pink PB, Charge return, Croc, GT, …) · CLEAN spore+
 | `arch` | Structure debt (planner-serial) |
 | `docs` / `infra` | Rollups, sources, dispatch |
 
+**Sizing:** one pure hop or one residual change per card; 30–90 min sessions.
+Do not mix pure + continuous + STATUS in one mega-card.
+
 Living cards (markdown) for active work live in [`docs/tasks/`](../tasks/).
 Wave board: [`WAVE-11.md`](../tasks/WAVE-11.md). Triage:
 [`TRIAGE.md`](../tasks/TRIAGE.md). Historical residuals / completed farm cards:
 [`docs/tasks/archive/`](../tasks/archive/).
-

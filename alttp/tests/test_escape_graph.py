@@ -12,6 +12,7 @@ from alttp.escape_graph import (
     CAP_ZELDA_FOLLOWER,
     N_CASTLE_GROUNDS,
     N_COURTYARD_SECRET_POCKET,
+    N_ROOM_01,
     N_ROOM_55_KEYED,
     N_ROOM_55_SOUTH,
     N_ROOM_55_SWORD,
@@ -24,6 +25,7 @@ from alttp.escape_graph import (
     N_SEWERS_DARK,
     NATURAL_HOUSE_EXIT_CAPABILITIES,
     VERIFICATION_CONTINUOUS,
+    VERIFICATION_NATURAL_ENTRY,
     VERIFICATION_PLANNED,
     capabilities_from_snapshot,
     continuous_spine_legs,
@@ -36,6 +38,7 @@ from alttp.escape_graph import (
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     HYRULE_CASTLE_MAIN_WEST_ROOM,
+    HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
     HYRULE_CASTLE_NW_ROOM,
     SANCTUARY_ROOM,
     SECRET_PASSAGE_ROOM,
@@ -82,6 +85,7 @@ def test_escape_graph_builds_and_nodes_cover_edges() -> None:
     assert graph.nodes[N_ROOM_61].meta["room_base_id"] == HYRULE_CASTLE_MAIN_HALL_ROOM
     assert graph.nodes[N_ROOM_60].meta["room_base_id"] == HYRULE_CASTLE_MAIN_WEST_ROOM
     assert graph.nodes[N_ROOM_50].meta["room_base_id"] == HYRULE_CASTLE_NW_ROOM
+    assert graph.nodes[N_ROOM_01].meta["room_base_id"] == HYRULE_CASTLE_NORTH_CONNECTOR_ROOM
     assert graph.nodes[N_ROOM_80].meta["room_base_id"] == ZELDA_CELL_ROOM
     assert graph.nodes[N_SANCTUARY].meta["room_base_id"] == SANCTUARY_ROOM
     assert graph.nodes[N_COURTYARD_SECRET_POCKET].meta["screen_id"] == 0x1B
@@ -102,14 +106,21 @@ def test_verified_edges_are_continuous() -> None:
             (N_ROOM_60, N_ROOM_50),
         }
     )
+    natural_entry_pairs = {
+        (N_ROOM_50, N_ROOM_01),
+    }
     for edge in graph.edges:
         pair = (edge.source_id, edge.target_id)
         if pair in continuous_pairs:
             assert edge.verification == VERIFICATION_CONTINUOUS, edge.edge_id
+        elif pair in natural_entry_pairs:
+            assert edge.verification == VERIFICATION_NATURAL_ENTRY, edge.edge_id
         else:
             assert edge.verification == VERIFICATION_PLANNED, edge.edge_id
     assert graph.edge_for(N_ROOM_61, N_ROOM_60).direction == "west"  # type: ignore[union-attr]
     assert graph.edge_for(N_ROOM_60, N_ROOM_50).direction == "north"  # type: ignore[union-attr]
+    assert graph.edge_for(N_ROOM_50, N_ROOM_01).direction == "east"  # type: ignore[union-attr]
+    assert graph.edge_for(N_ROOM_50, N_ROOM_01).meta["door_label"] == "east_to_0x01"  # type: ignore[union-attr]
 
 
 def test_multi_screen_55_connected() -> None:
@@ -179,11 +190,14 @@ def test_key_path_and_primary_share_post_main_hall_tail() -> None:
     assert any(CAP_SMALL_KEY in leg.acquires for leg in key)
     assert not any(leg.target_id == N_COURTYARD_SECRET_POCKET for leg in key)
     assert any(leg.target_id == N_COURTYARD_SECRET_POCKET for leg in primary)
-    # West + north exits on shared tail; Zelda hop starts from room_50.
+    # West + north exits on shared tail; tip east hop then planned Zelda.
     assert any(leg.target_id == N_ROOM_60 for leg in primary)
     assert any(leg.target_id == N_ROOM_50 for leg in primary)
     assert any(
-        leg.source_id == N_ROOM_50 and leg.target_id == N_ROOM_80 for leg in primary
+        leg.source_id == N_ROOM_50 and leg.target_id == N_ROOM_01 for leg in primary
+    )
+    assert any(
+        leg.source_id == N_ROOM_01 and leg.target_id == N_ROOM_80 for leg in primary
     )
 
 

@@ -1,63 +1,29 @@
-# TASK T4-CLEAN-FULL: Continuous power-on → hard credits (Clean) ★
+# EPIC T4-CLEAN-FULL: Continuous Clean hard credits (shell) ★
 
 ## Recipe step
-continuous
+epic / continuous (planner)
 
 ## Model
-Luna → planner review
+Planner
 
-## Wave type
-implement
+## Children
 
-## Own files only
-- residual: `docs/tasks/T4-CLEAN-FULL-residual.md`
-- only if route fails: **one** policy knob (then assisted dry-run re-verify)
+| Order | Card | Goal |
+|------:|------|------|
+| 0 | [T4-CLEAN-FULL-ATTEMPT](T4-CLEAN-FULL-ATTEMPT.md) | Run clean dry-run; residual first death stage only |
+| 1 | (loop) failing stage REACH/CKPT/BRIDGE/F2 | Fix thin rung — not whole route |
+| 2 | [T4-CLEAN-STAB](T4-CLEAN-STAB.md) | Dual re-verify when attempt GREEN |
+| 3 | [T4-CLEAN-STATUS](T4-CLEAN-STATUS.md) | STATUS secondary — planner only |
 
-Depends: Clean infra green (`ARTIFACTS` / `CLI` / `INTEGRITY`); stage suites
-S1–S9 Clean green preferred (S9 form-2 without iframe is the hard gate).
+## Depends
+- Clean infra done
+- Prefer S1–S9 thin SUITE/F2 green (S9-F2 is hard gate)
+- Never overwrite assisted `tmnt_iv_full_hard_*` baselines
 
 ## Context
-- Assisted continuous is already green (00:57:19 / 4,667 dmg / 65 e-heals /
-  4,635 iframe / 0 lives).
-- Clean disables emergency HP + form-2 iframe; pizza + play only.
-- **Must not** overwrite `recordings/tmnt_iv_full_hard_credits.*` or
-  `tmnt_iv_full_hard_dry_run.json`.
-- Primary STATUS gate stays assisted until program decision.
-- Super Metroid analog: `SM-CLEAN-BOMBS` (tip continuous Clean).
+- Assisted continuous already green. Clean = 0 e-HP + 0 iframe + 0 lives.
+- Whole-run Clean is **much harder** than stage assisted segments.
 
-## Read first
-- `docs/CLEAN_TRACK.md`
-- `docs/CLEAN_PLAYBOOK.md`
-- `docs/ASSIST_CONTRACT.md`
-- `docs/BASELINE_METRICS.md`
-- `scripts/record_full_hard_run.py`
-
-## Do
-1. Run clean continuous dry-run with clean artifact paths.
-2. Require: hard credits event `0x1A`, 0 lives lost, 0 e-heals, 0 iframe frames,
-   0 state loads, 0 stage writes, no A-special.
-3. If RED: residual → named stage failure + one next card
-   (`T4-CLEAN-S2`…`S9` or policy one-knob).
-4. If GREEN: dual re-verify (`T4-CLEAN-STAB`) then STATUS secondary
-   (`T4-CLEAN-STATUS`) — planner.
-
-## Acceptance
-- [ ] Clean report success + credits complete
-- [ ] E-heals == 0, iframe frames == 0, life losses == 0
-- [ ] Assisted baselines files unchanged
-- [ ] Residual PROCESS fields
-
-## Verify commands
-```bash
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
-# re-verify once path stable:
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run \
-  --report tmnt_iv/recordings/tmnt_iv_full_hard_clean_reverify.json
-```
-
-## Residual routing
-- GREEN → `T4-CLEAN-STAB` then `T4-CLEAN-STATUS`
-- RED life_loss / e-heal would-have-fired → stage suite card for failing stage
-- RED form-2 → `T4-CLEAN-S9` / `T4-ASSIST-IFRAME` play solution
+## Do not
+- Hand this epic as “make Clean continuous green” to Gemini
+- STATUS primary re-label of assisted run as Clean
