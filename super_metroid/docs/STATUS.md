@@ -47,8 +47,10 @@ state loads / progression writes / capacity writes / deaths.
 
 Machine reports: `recordings/start_to_frog_save.json` and
 `recordings/start_to_frog_save_reverify.json`. The default continuous CLI tip
-is now `frog`; first Bubble path is **Cathedral climb** (CATH-01/02 pure green;
-★ next `SM-K4-CATH-03`). Frog Speedway is post-Speed only.
+is now `frog`; first Bubble path is **Cathedral climb** (CATH-01…04 pure green)
++ **Bubble → Bat pure GREEN R19** (2012f → `0xB07A`). ★ next pure:
+Bat → Speed Hall from `post_bubble_to_bat_pure`. Continuous tip stays Frog
+until planner compose. Frog Speedway is post-Speed only.
 
 ### Continuous power-on → Business Center return / KPDR K3→K4 (approved 2026-08-01)
 
@@ -418,9 +420,9 @@ Authoritative order:
 | Layer | Furthest played |
 |-------|-----------------|
 | Continuous | **Frog Savestation `0xB167`** tip **integrity GREEN** twice at **114,923f**. Prefixes: Business 113,723f, Varia 104,382f, Kraid entry ~97k, Hi-Jump 87,696f, Warehouse 83,512f |
-| Controller (dev) | Cathedral pure **CATH-01/02 GREEN**; CATH-03 scaffold open. First Bubble = Cathedral (no Speed). Speedway pure green but **parked** post-Speed |
+| Controller (dev) | Cathedral **CATH-01…04 pure GREEN** + **Bubble → Bat pure GREEN R19** (2012f → ordinary `0xB07A`). Graph edges `controller_dev` through Bat. Speedway pure green but **parked** post-Speed |
 | Dev topology | **24/24 hops** Big Pink → Hi-Jump room (`kpdr.py route-to-hijump`); full 22-leg door-warp tour exists (`developmentOnly`) |
-| ★ Next hop | **`SM-K4-CATH-03`** Cathedral → Rising Tide from `post_cathedral_entrance_to_cathedral_pure`; then Bubble → Speed → Wave → Ice pure before continuous tips |
+| ★ Next hop | **Bat → Speed Hall pure** from `scratch/post_bubble_to_bat_pure.state`; then Speed → Wave → Ice pure before continuous compose/STATUS |
 
 Progress chart: [KPDR_TRACKER.md](routes/KPDR_TRACKER.md) · CSV
 [KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) · JSON `maps/kpdr_tracker.json`.
@@ -443,7 +445,7 @@ Still open for *played* KPDR spine:
 | Gap | Why it matters |
 |-----|----------------|
 | Continuous Super → Red Tower → Warehouse → Hi-Jump → Kraid → Varia → Business → Frog Save | **Done** (two 114,923f Frog Save returns; see baseline) |
-| K4 forward (Cathedral → Bubble → Speed → Wave → Ice) | First missing natural segment; CATH-01/02 green; ★ CATH-03 |
+| K4 forward (Cathedral → Bubble → Bat → Speed → Wave → Ice) | Pure through Bat GREEN; ★ Bat → Speed Hall pure; continuous tip still Frog |
 | Speedway → Farm → Bubble | Parked until post-Speed (Boost Blocks) |
 | Alpha PB (not Pink PB) | First PB on competitive KPDR after Ice |
 | Ship / Phantoon / Botwoon / Draygon / Ridley / MB | Sequential per [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md); warp entry is not continuous |
@@ -452,8 +454,9 @@ Still open for *played* KPDR spine:
 
 Immediate next (continuous tip + structure):
 
-1. **★ K4 Cathedral pure stack:** CATH-03 → Bubble → Speed → Wave → Ice;
-   graph/compose/continuous only after pure green; stabilize after each tip.
+1. **★ K4 pure stack:** Bat → Speed Hall → Speed → Wave → Ice (Bubble→Bat
+   R19 pure GREEN); graph/compose/continuous only after pure green; Frog tip
+   until planner compose; stabilize after each continuous tip.
 2. **Parallel:** Clean bombs tip · room farm · 1–2 ARCH (hops extract, RAM gate).
 3. **Optional tighten** high-dwell continuous hops offline first
    (`split_dwell.py` on green reports) — secondary to pure stack.

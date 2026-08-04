@@ -331,9 +331,125 @@ def test_bubble_save_runway_r15_double_wj_params() -> None:
     assert P.SAVE_SPIN_FRAMES == 83
     assert P.SAVE_WJ_LEFT_A == 20
     assert P.SAVE_WJ_RIGHT_A == 8
-    assert P.SAVE_WJ2_LEFT_A == 24
-    assert P.SAVE_WJ2_RIGHT_A == 14
+    # R18 live pure Phase D timings (R15 human isolation was 24/14).
+    assert P.SAVE_WJ2_LEFT_A == 14
+    assert P.SAVE_WJ2_RIGHT_A == 6
+    assert P.SAVE_WJ_FOLLOW == 40
+    assert P.SAVE_ARM_PUMP is False
     assert P.SAVE_RUNWAY_FIRE_X[0] <= 27 <= P.SAVE_RUNWAY_FIRE_X[1]
+
+
+def test_bubble_r17_stationary_clear_and_human_seat_params() -> None:
+    """R17: stationary X clear + human seat band (not LEFT+X walk)."""
+    from super_metroid.routes.kpdr import bubble_mountain_params as P
+    from super_metroid.routes.kpdr import bubble_mountain_primitives as prim
+
+    assert P.SAVE_STATIONARY_X >= 16
+    assert P.SAVE_STATIONARY_FACE >= 4
+    human_lo, human_hi = P.SAVE_HUMAN_SEAT_X
+    assert human_lo <= 27 <= human_hi
+    assert human_hi <= P.SAVE_RUNWAY_FIRE_X[1]
+    assert callable(prim.bubble_stationary_missile_clear)
+    assert callable(prim.bubble_double_walljump_r15)
+    assert callable(prim.bubble_save_runway_open_loop_r15)
+    assert callable(prim.bubble_walk_brake_to_x)
+
+
+def test_bubble_walljump_skill_library() -> None:
+    """R18: reusable WJ + runway skills — double required; physics knobs."""
+    from super_metroid.routes.kpdr import bubble_mountain_params as P
+    from super_metroid.routes.kpdr import bubble_mountain_primitives as prim
+
+    assert prim.POSE_WALL_LATCH == 132
+    assert prim.bubble_is_wall_latch(
+        _FakeState(x=264, y=297, pose=132)  # type: ignore[arg-type]
+    )
+    assert not prim.bubble_is_wall_latch(
+        _FakeState(x=264, y=297, pose=25)  # type: ignore[arg-type]
+    )
+    assert prim.bubble_is_knockback(
+        _FakeState(x=40, y=395, pose=138)  # type: ignore[arg-type]
+    )
+    assert prim.bubble_wall_approach_band(
+        _FakeState(x=260, y=280, pose=25)  # type: ignore[arg-type]
+    )
+    assert not prim.bubble_wall_approach_band(
+        _FakeState(x=100, y=280, pose=25)  # type: ignore[arg-type]
+    )
+    # R15 double chain is exactly two timings; single is insufficient product.
+    assert len(prim.R15_DOUBLE) == 2
+    assert prim.R15_WJ1.into_frames == P.SAVE_WJ_LEFT_A
+    assert prim.R15_WJ2.into_frames == P.SAVE_WJ2_LEFT_A
+    assert P.WJ_LATCH_TIMEOUT >= 20
+    assert P.WJ_INTO_X >= 240
+    assert P.SAVE_RUN_FRAMES == 21
+    assert P.SAVE_DASH_MAX_FRAMES == 32
+    assert P.SAVE_ARM_PUMP is False  # R18 pure product
+    assert P.SAVE_ARM_PUMP_PERIOD >= 1
+    assert P.SAVE_WJ2_LEFT_A == 14
+    assert P.SAVE_WJ2_RIGHT_A == 6
+    assert P.DMG_BOOST_HOLD_FRAMES >= 5
+    # Vertical constants documented for skill comments / experiments.
+    assert prim.HIJUMP_WALLJUMP_VY0 > prim.REGULAR_WALLJUMP_VY0
+    assert callable(prim.bubble_walljump_once)
+    assert callable(prim.bubble_consecutive_walljumps)
+    assert callable(prim.bubble_wait_wall_ready)
+    assert callable(prim.bubble_wait_wall_latch)
+    assert callable(prim.bubble_prepare_fire_run)
+    assert callable(prim.bubble_runway_dash)
+    assert callable(prim.bubble_spin_glide)
+    assert callable(prim.bubble_save_runway_fire_recipe)
+    assert callable(prim.bubble_period_walljump_climb)
+    assert callable(prim.bubble_walljump_approach_coast)
+    assert callable(prim.bubble_damage_boost_hold)
+    assert callable(prim.bubble_seat_max_left_fire)
+    assert callable(prim.bubble_walljump_second_left_wall)
+    assert P.WJ2_LEFT_X <= 230
+    assert P.WJ2_LEFT_SEEK >= 16
+
+
+def test_bubble_r19_fire_phase_geometry() -> None:
+    """R19: Geruta phase classes A/B gate Phase D; wait params seat-safe."""
+    from super_metroid.routes.kpdr import bubble_mountain_params as P
+    from super_metroid.routes.kpdr import bubble_mountain_primitives as prim
+
+    assert P.FIRE_PHASE_MAX_WAIT >= 200
+    assert P.FIRE_PHASE_MAX_WAIT <= 400
+    assert P.FIRE_PHASE_SLOTS == (4, 6)
+    # Class A (fullpure wait ~89–93)
+    assert prim.bubble_fire_phase_geometry(120, 272, 196, 163)
+    assert prim.bubble_fire_phase_geometry(118, 271, 197, 160)
+    assert prim.bubble_fire_phase_geometry(124, 275, 191, 171)
+    # Class B (fullpure wait ~233–235)
+    assert prim.bubble_fire_phase_geometry(161, 274, 179, 187)
+    assert prim.bubble_fire_phase_geometry(163, 275, 177, 186)
+    # Known fails: wait 0, near-miss, live-adjacent pure false positive
+    assert not prim.bubble_fire_phase_geometry(158, 155, 167, 126)
+    assert not prim.bubble_fire_phase_geometry(127, 275, 188, 175)
+    assert not prim.bubble_fire_phase_geometry(135, 275, 181, 184)
+    assert not prim.bubble_fire_phase_geometry(112, 264, 203, 148)
+    assert not prim.bubble_fire_phase_geometry(185, 105, 140, 157)
+    assert not prim.bubble_fire_phase_geometry(179, 113, 146, 155)
+    assert callable(prim.bubble_wait_fire_phase)
+    assert callable(prim.bubble_fire_phase_clear)
+    assert callable(prim.bubble_read_enemy_slot)
+    # Recipe accepts phase_wait kw (default True for product).
+    sig = inspect.signature(prim.bubble_save_runway_fire_recipe)
+    assert "phase_wait" in sig.parameters
+    assert sig.parameters["phase_wait"].default is True
+
+
+def test_bubble_r19_super_door_params() -> None:
+    """R19 Phase E sticky right WJ + Super band (from Phase D pin)."""
+    from super_metroid.routes.kpdr import bubble_mountain_params as P
+
+    assert P.DOOR_SUPER_X >= 400
+    assert P.DOOR_SUPER_Y <= 180
+    assert P.DOOR_WJ_PERIOD == 10
+    assert P.DOOR_WJ_INTO == 3
+    assert P.DOOR_WJ_BOUNCE == 2
+    assert P.DOOR_X_CAP >= 470
+    assert P.DOOR_FRAMES >= 700
 
 
 def test_bubble_r16_lower_shelves_end_on_fire_solid() -> None:

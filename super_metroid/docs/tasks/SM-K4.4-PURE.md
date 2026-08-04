@@ -53,13 +53,23 @@ Do not edit `continuous.py`, `STATUS.md`, CATH controllers, or progression ranks
 3. Pure-probe GREEN → `scratch/post_bubble_to_bat_pure.state`.
 4. Residual → Speed Hall pure or R1.
 
+## Living residuals (spine)
+
+| Card | Status |
+|------|--------|
+| R13–R18 | Phases A–C + fire seat; R18 Phase D enemy AI root cause |
+| **R19** | **GREEN closeout** — [`SM-K4.4-PURE-R19-residual.md`](SM-K4.4-PURE-R19-residual.md) |
+
+Techniques: [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md) · ladder
+[`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md).
+
 ## Acceptance
 
-- [ ] Source loads at `0xACB3` (CATH-04 pin band)
-- [ ] Ordinary `0xB07A` without warp / item grants
-- [ ] Successor state only if pure GREEN
-- [ ] Unit/registration green
-- [ ] Residual PROCESS fields; no continuous/STATUS claim
+- [x] Source loads at `0xACB3` (CATH-04 pin band)
+- [x] Ordinary `0xB07A` without warp / item grants
+- [x] Successor state only if pure GREEN
+- [x] Unit/registration green (30 scaffold)
+- [x] Residual PROCESS fields; no continuous tip promote
 
 ## Verify
 
@@ -67,17 +77,19 @@ Do not edit `continuous.py`, `STATUS.md`, CATH controllers, or progression ranks
 uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state \
   --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_to_bat_pure.state \
-  --pin-json super_metroid/debug/bubble_to_bat_pure_pin.json
+  --pin-json super_metroid/debug/bubble_to_bat_pure_pin_r19.json --no-red-diag
+# success=true roomIdHex=0xB07A frames=2012
 
 uv run pytest super_metroid/tests/test_k4_norfair_scaffold.py -q
+# 30 passed
 ```
 
 ## Residual routing
 
-- GREEN → `SM-K4.5-PURE` (Bat Cave → Speed Hall) or SRC catalog
-- RED → `SM-K4.4-PURE-R1` one named phase (likely mid climb walljump)
+- **GREEN (R19)** → next: `SM-K4.4-GRAPH` compose / Bat → Speed Hall pure
+  from `scratch/post_bubble_to_bat_pure.state`
+- Continuous/STATUS tip remains Frog Save until planner compose
 
 ### PROCESS residual (required on exit)
 
-Result · Files changed · Verify paste · Acceptance · Residual risks ·
-Next action · Non-claims · Probe pin.
+Authoritative closeout: [`SM-K4.4-PURE-R19-residual.md`](SM-K4.4-PURE-R19-residual.md).

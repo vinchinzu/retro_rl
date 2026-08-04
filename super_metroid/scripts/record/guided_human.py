@@ -20,6 +20,10 @@ uv run python super_metroid/scripts/record/guided_human.py \\
 uv run python super_metroid/scripts/record/guided_human.py \\
   --from bubble --route bubble-to-bat --name bubble_human
 
+# Post-Torizo Parlor — Flyway door → Alcatraz LEFT wall-jump shaft (guide on)
+uv run python super_metroid/scripts/record/guided_human.py \\
+  --from parlor --route parlor-left --name parlor_left_human
+
 # List start presets / routes
 uv run python super_metroid/scripts/record/guided_human.py --list
 ```
@@ -94,6 +98,14 @@ START_PRESETS: dict[str, tuple[str, str]] = {
         "scratch/post_business_continuous.state",
         "Business Center continuous tip",
     ),
+    "parlor": (
+        "scratch/post_torizo_parlor_continuous.state",
+        "Post-Bomb-Torizo Parlor at Flyway door (~968,651) — left climb demo",
+    ),
+    "post-torizo": (
+        "scratch/post_torizo_parlor_continuous.state",
+        "Alias of parlor (post-BT Flyway door pin)",
+    ),
 }
 
 
@@ -160,9 +172,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--route",
-        default="cathedral-to-bat",
+        default=None,
         choices=sorted(ROUTE_PRESETS),
-        help="Guide route preset (waypoints drawn per room)",
+        help=(
+            "Guide route preset (waypoints drawn per room). "
+            "Default: parlor-left when --from parlor/post-torizo, "
+            "else cathedral-to-bat"
+        ),
     )
     parser.add_argument(
         "--name",
@@ -205,6 +221,13 @@ def main() -> int:
             rooms = " → ".join(g.name or f"0x{g.room_id:04X}" for g in guides)
             print(f"  {key:22s} {rooms}")
         return 0
+
+    # Sensible default route from start pin (parlor → Alcatraz left WJ guide).
+    if args.route is None:
+        if args.start in ("parlor", "post-torizo"):
+            args.route = "parlor-left"
+        else:
+            args.route = "cathedral-to-bat"
 
     try:
         state_path = _resolve_state(args.start)

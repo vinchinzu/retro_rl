@@ -28,6 +28,7 @@ from super_metroid.progression import (
 )
 from super_metroid.ram import HI_JUMP_MASK, VARIA_MASK
 from super_metroid.routes.catalog import (
+    BAT_CAVE_SPLITS,
     BAT_SPLITS,
     BELOW_SPAZER_SPLITS,
     BUSINESS_RETURN_SPLITS,
@@ -53,7 +54,14 @@ from super_metroid.routes.kpdr.hijump import (
     play_hj_shaft_to_hj_room,
 )
 from super_metroid.routes.kpdr.warehouse import play_warehouse_to_business
-from super_metroid.routes.kpdr.k4_norfair import play_business_to_frog_save
+from super_metroid.routes.kpdr.bubble_mountain import play_bubble_to_bat_cave
+from super_metroid.routes.kpdr.k4_norfair import (
+    play_business_to_cathedral_entrance,
+    play_business_to_frog_save,
+    play_cathedral_entrance_to_cathedral,
+    play_cathedral_to_rising_tide,
+    play_rising_tide_to_bubble,
+)
 from super_metroid.routes.kpdr.kraid_approach import (
     play_baby_kraid_to_eye,
     play_eye_to_kraid,
@@ -79,9 +87,13 @@ from super_metroid.routes.kpdr.red_tower import (
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BABY_KRAID,
     ROOM_BAT,
+    ROOM_BAT_CAVE,
     ROOM_BELOW_SPAZER,
     ROOM_BIG_PINK,
+    ROOM_BUBBLE,
     ROOM_BUSINESS,
+    ROOM_CATHEDRAL,
+    ROOM_CATHEDRAL_ENTRANCE,
     ROOM_EAST_TUNNEL,
     ROOM_FARMING,
     ROOM_FROG_SAVE,
@@ -93,6 +105,7 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_KRAID_EYE,
     ROOM_NOOB,
     ROOM_RED_TOWER,
+    ROOM_RISING_TIDE,
     ROOM_VARIA,
     ROOM_WAREHOUSE,
     ROOM_WAREHOUSE_KIHUNTER,
@@ -124,6 +137,7 @@ __all__ = [
     "BUSINESS_RETURN_HOPS",
     "FROG_ONLY_HOPS",
     "FROG_SAVE_HOPS",
+    "BAT_CAVE_ONLY_HOPS",
     # Underscore aliases kept for continuous re-export / historical tests.
     "_RED_TOWER_HOPS",
     "_BAT_HOPS",
@@ -135,6 +149,7 @@ __all__ = [
     "_BUSINESS_RETURN_HOPS",
     "_FROG_ONLY_HOPS",
     "_FROG_SAVE_HOPS",
+    "_BAT_CAVE_ONLY_HOPS",
 ]
 
 
@@ -448,6 +463,46 @@ _FROG_ONLY_HOPS: tuple[RouteHop, ...] = (
 # Historical full hop list (business return + frog); prefer tip-spec parents.
 _FROG_SAVE_HOPS: tuple[RouteHop, ...] = _BUSINESS_RETURN_HOPS + _FROG_ONLY_HOPS
 
+# K4.4 first Bubble: Business → Cathedral → Rising Tide → Bubble → Bat Cave.
+# Sibling of Frog Save (parent business); includes R19 Bubble double-WJ product.
+_BAT_CAVE_ONLY_HOPS: tuple[RouteHop, ...] = (
+    RouteHop(
+        "business_to_cathedral_entrance",
+        play_business_to_cathedral_entrance,
+        ROOM_BUSINESS,
+        ROOM_CATHEDRAL_ENTRANCE,
+        "Cathedral Entrance",
+    ),
+    RouteHop(
+        "cathedral_entrance_to_cathedral",
+        play_cathedral_entrance_to_cathedral,
+        ROOM_CATHEDRAL_ENTRANCE,
+        ROOM_CATHEDRAL,
+        "Cathedral",
+    ),
+    RouteHop(
+        "cathedral_to_rising_tide",
+        play_cathedral_to_rising_tide,
+        ROOM_CATHEDRAL,
+        ROOM_RISING_TIDE,
+        "Rising Tide",
+    ),
+    RouteHop(
+        "rising_tide_to_bubble",
+        play_rising_tide_to_bubble,
+        ROOM_RISING_TIDE,
+        ROOM_BUBBLE,
+        "Bubble Mountain",
+    ),
+    RouteHop(
+        "bubble_to_bat_cave",
+        play_bubble_to_bat_cave,
+        ROOM_BUBBLE,
+        ROOM_BAT_CAVE,
+        "Bat Cave",
+    ),
+)
+
 # Public names (same objects as underscore aliases).
 RED_TOWER_HOPS = _RED_TOWER_HOPS
 BAT_HOPS = _BAT_HOPS
@@ -459,6 +514,7 @@ VARIA_HOPS = _VARIA_HOPS
 BUSINESS_RETURN_HOPS = _BUSINESS_RETURN_HOPS
 FROG_ONLY_HOPS = _FROG_ONLY_HOPS
 FROG_SAVE_HOPS = _FROG_SAVE_HOPS
+BAT_CAVE_ONLY_HOPS = _BAT_CAVE_ONLY_HOPS
 
 
 @dataclass(frozen=True)
@@ -654,6 +710,27 @@ POST_SUPERS_TIP_SPECS: tuple[PostSupersTipSpec, ...] = (
         timing_source="start_to_frog_save",
         entry_condition_key="natural_frog_save",
         ordinary_condition_key="post_frog_save_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+    ),
+    PostSupersTipSpec(
+        tip_id="bat_cave",
+        parent_tip_id="business",
+        hops=_BAT_CAVE_ONLY_HOPS,
+        graph=START_TO_SPEED_GRAPH,
+        kind="bat_cave",
+        required_splits=BAT_CAVE_SPLITS,
+        final_room=ROOM_BAT_CAVE,
+        success_outcome="bat_cave_reached",
+        route_label="start-to-Bat-Cave",
+        source_policy=(
+            "accepted Business return chain + Cathedral first-Bubble pure "
+            "controllers (CATH-01…04 + Bubble R19 double-WJ fire / Super door) "
+            "+ phase-guarded resources"
+        ),
+        timing_source="start_to_bat_cave",
+        entry_condition_key="natural_bat_cave_entry",
+        ordinary_condition_key="post_bat_cave_ordinary",
         require_hi_jump=True,
         require_varia=True,
     ),

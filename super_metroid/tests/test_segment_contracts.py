@@ -20,6 +20,9 @@ def test_default_continuous_tip_is_verified_frog_save() -> None:
     assert get_continuous_tip("frog").tip_id == "frog"
     assert get_continuous_tip("kraid").tip_id == "kraid"
     assert get_continuous_tip("hijump").tip_id == "hijump"
+    # Bat Cave tip is wired for compose; default stays frog until dual green.
+    assert get_continuous_tip("bat_cave").tip_id == "bat_cave"
+    assert get_continuous_tip("k4_4").tip_id == "bat_cave"
 
 
 def test_hijump_kraid_varia_tips_registered() -> None:

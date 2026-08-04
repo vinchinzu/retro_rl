@@ -3,6 +3,9 @@
 The room sequence is pre-calculated from the Super Metroid editor export.  This
 module owns movement and combat only: it reads typed state and emits ordinary
 12-button controller actions.  It never loads emulator state or writes RAM.
+
+Parlor left (Alcatraz) climb after Bomb Torizo reuses the shared wall-jump
+skill from :mod:`controller_common` (same pulse shape as Bubble Phase D).
 """
 
 from __future__ import annotations
@@ -13,7 +16,39 @@ import numpy as np
 
 from retro_harness.actions import buttons, idle_action
 from super_metroid.ram import GameplayPhase, SuperMetroidState
+from super_metroid.routes.controller_common import (
+    WallJumpTiming,
+    consecutive_walljumps,
+    settle_hold,
+)
 from super_metroid.routes.runtime import ControllerSession, hold as _hold
+
+# Post-Torizo Alcatraz chimney (pre-Hi-Jump): open-loop into-wall + A pulses.
+# Frame-matched to the legacy RIGHT×6 / LEFT×2 holds; expressed as named
+# WallJumpTiming so the skill is visible on the continuous spine (second
+# consumer after Bubble R15 double WJ).
+_PARLOR_CHIMNEY_RIGHT = WallJumpTiming(
+    into="RIGHT",
+    flip="RIGHT",
+    into_frames=30,
+    amid_frames=0,
+    flip_frames=0,
+    delay_into_frames=0,
+)
+_PARLOR_CHIMNEY_LEFT = WallJumpTiming(
+    into="LEFT",
+    flip="LEFT",
+    into_frames=30,
+    amid_frames=0,
+    flip_frames=0,
+    delay_into_frames=0,
+)
+# Six right-wall pulses then two left-wall pulses; 12f settle between.
+_PARLOR_CHIMNEY_WJ: tuple[WallJumpTiming, ...] = (
+    *(_PARLOR_CHIMNEY_RIGHT for _ in range(6)),
+    *(_PARLOR_CHIMNEY_LEFT for _ in range(2)),
+)
+_PARLOR_CHIMNEY_GAP = 12
 
 
 @dataclass(frozen=True)
@@ -132,12 +167,16 @@ def play_parlor_to_main_shaft(session: ControllerSession) -> None:
         _hold(session, 20, "LEFT", "A", "B", "X", reason="parlor_left_traverse")
         _hold(session, 12, "LEFT", "B", "X", reason="parlor_left_traverse")
     _hold(session, 50, reason="parlor_left_traverse_settle")
-    for _ in range(6):
-        _hold(session, 30, "RIGHT", "A", reason="parlor_chimney_climb")
-        _hold(session, 12, reason="parlor_chimney_climb")
-    for _ in range(2):
-        _hold(session, 30, "LEFT", "A", reason="parlor_chimney_climb")
-        _hold(session, 12, reason="parlor_chimney_climb")
+    # Alcatraz left climb: shared consecutive wall-jump skill (visible WJ).
+    consecutive_walljumps(
+        session,
+        _PARLOR_CHIMNEY_WJ,
+        reason="parlor_chimney_wj",
+        gap_frames=_PARLOR_CHIMNEY_GAP,
+    )
+    # Final pulse had no trailing gap in the old open-loop (gap only between);
+    # add one post-chain settle matching the last idle of the old 8×(30+12).
+    settle_hold(session, _PARLOR_CHIMNEY_GAP, reason="parlor_chimney_wj_tail")
     _hold(session, 100, reason="parlor_chimney_settle")
     _hold(session, 30, "LEFT", "A", reason="parlor_upper_platforms")
     _hold(session, 30, "LEFT", reason="parlor_upper_platforms")

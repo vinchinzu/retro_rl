@@ -27,9 +27,9 @@ Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful only for t
 | Status | Count |
 |--------|------:|
 | continuous | 39 |
-| controller_dev | 1 |
+| controller_dev | 6 |
 | boss_deferred | 5 |
-| open | 62 |
+| open | 57 |
 | **total** | **107** |
 | directed hops | 199 |
 
@@ -167,13 +167,13 @@ _Requires MB defeat event + escape timer init_
 | 38 | `0xB167` | Frog Savestation | **continuous** | easy | Frog Savestation continuous (start_to_frog_save, 114923f x2) |
 | 39 | `0xB106` | Frog Speedway | **open** | tough |  |
 | 40 | `0xAF72` | Upper Norfair Farming Room | **open** | tough |  |
-| 41 | `0xACB3` | Bubble Mountain | **open** | tough |  |
-| 42 | `0xB07A` | Bat Cave | **open** | tough |  |
+| 41 | `0xACB3` | Bubble Mountain | **controller_dev** | tough | Bubble Mountain pure GREEN (CATH-04 entry + R19 climb→Bat) |
+| 42 | `0xB07A` | Bat Cave | **controller_dev** | tough | Bat Cave pure GREEN R19 (2012f from post_rising_tide_to_bubble_pure) |
 | 43 | `0xACF0` | Speed Booster Hall | **open** | tough |  |
 | 44 | `0xAD1B` | Speed Booster Room | **open** | easy |  |
-| 45 | `0xAFA3` | Rising Tide | **open** | tough |  |
-| 46 | `0xA788` | Cathedral | **open** | standard |  |
-| 47 | `0xA7B3` | Cathedral Entrance | **open** | standard |  |
+| 45 | `0xAFA3` | Rising Tide | **controller_dev** | tough | Rising Tide pure (CATH-03/04); first Bubble path |
+| 46 | `0xA788` | Cathedral | **controller_dev** | standard | Cathedral pure (CATH-02/03); first Bubble path |
+| 47 | `0xA7B3` | Cathedral Entrance | **controller_dev** | standard | Cathedral Entrance pure (CATH-01); first Bubble path |
 | 48 | `0xA815` | Ice Beam Gate Room | **open** | tough |  |
 | 49 | `0xA865` | Ice Beam Tutorial Room | **open** | easy |  |
 | 50 | `0xA8B9` | Ice Beam Snake Room | **open** | standard |  |

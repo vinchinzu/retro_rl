@@ -12,10 +12,11 @@ M-KRAID,100,K2,Continuous → Kraid entry,0xA59F,continuous,97170,kraid,start_to
 M-VARIA,110,K3,Continuous → Varia Suit,0xA6E2,continuous,101954,varia,start_to_varia,best published; reverify 104382,2026-08-01
 M-BUSINESS,120,K3,Continuous → Business return,0xA7DE,continuous,113723,business,start_to_business,x2 integrity green,2026-08-01
 M-FROG,130,K4,Continuous → Frog Savestation,0xB167,continuous,114923,frog,start_to_frog_save,CURRENT TIP; x2 integrity green,2026-08-01
-M-CATH,135,K4,Cathedral climb pure (first Bubble),0xA788,controller_dev,CATH-01/02 green,,SM-K4-CATH-03,★ next pure CATH-03; CATH-01/02 green; no Speed,2026-08-02
+M-CATH,135,K4,Cathedral climb pure (first Bubble),0xA788,controller_dev,CATH-01..04 green,,SM-K4-CATH-04,CATH pure stack closed; first Bubble path; not continuous,2026-08-03
 M-SPEEDWAY,140,K4,Pure Frog Save → Speedway (post-Speed),0xB106,parked,pure green ~295f,,SM-K4-SPEEDWAY-PURE,parked until post-Speed; Boost Blocks need Speed,2026-08-02
-M-BUBBLE,150,K4,Pure → Bubble Mountain via Cathedral,0xACB3,pure_green,2609,,SM-K4-CATH-04,CATH-01..04 pure stack; not continuous; not Speedway farm path,2026-08-02
-M-SPEED,160,K4,Continuous → Speed Booster,0xAD1B,open,,speed,,item collect tip,2026-08-01
+M-BUBBLE,150,K4,Pure → Bubble Mountain via Cathedral,0xACB3,controller_dev,2609,,SM-K4-CATH-04,CATH-01..04 pure stack; not continuous; not Speedway farm path,2026-08-03
+M-BAT-CAVE,155,K4,Pure Bubble → Bat Cave,0xB07A,controller_dev,2012,,SM-K4.4-PURE-R19,R19 full pure GREEN; enemy-phase fire + sticky Super door; not continuous,2026-08-03
+M-SPEED,160,K4,Continuous → Speed Booster,0xAD1B,open,,speed,,item collect tip; next pure Bat→Speed Hall,2026-08-03
 M-WAVE,170,K4,Continuous → Wave Beam,0xADDE,open,,wave,,Wave branch,2026-08-01
 M-ICE,180,K4,Continuous → Ice Beam,0xA890,open,,ice,,Ice branch from Business,2026-08-01
 M-ALPHAPB,190,K5,Continuous → Alpha Power Bombs,0xA3AE,open,,alpha_pb,SM-ALPHA-PB-01,first PB capacity KPDR,2026-08-01

@@ -26,11 +26,8 @@ def test_k4_business_to_bubble_edge_contract() -> None:
         "cathedral_to_rising_tide",
         "rising_tide_to_bubble",
     ]
-    # Pure-first Cathedral stack; continuous tip still Frog Save only.
-    assert all(
-        edge.verification in ("controller_dev", "pure", "unverified", "continuous")
-        for edge in path
-    )
+    # CATH-01…04 pure GREEN → controller_dev; continuous tip still Frog Save.
+    assert all(edge.verification == "controller_dev" for edge in path)
 
 
 def test_k4_bubble_to_wave_edge_contract() -> None:
@@ -89,3 +86,7 @@ def test_k4_speed_path_includes_farm_and_speed_hall_hops() -> None:
         "bat_cave_to_speed_hall",
         "speed_hall_to_speed",
     ]
+    # R19 pure GREEN promoted bubble_to_bat_cave; Speed Hall still open.
+    assert path[0].verification == "controller_dev"
+    assert path[1].verification == "unverified"
+    assert path[2].verification == "unverified"

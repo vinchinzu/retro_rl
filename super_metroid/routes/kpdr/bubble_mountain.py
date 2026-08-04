@@ -531,7 +531,14 @@ def bubble_run_mid(
 def bubble_top_super_door(
     session: ControllerSession, track: BubbleTrack
 ) -> SuperMetroidState:
-    """Phase E: top-right Super door → ordinary Bat Cave."""
+    """Phase E: top-right Super door → ordinary Bat Cave.
+
+    R19: from Phase D pin ~(305,141), sticky **right-structure** period WJ
+    (keep Supers selected — do not swap to beams) until ``x≥DOOR_SUPER_X``
+    and ``y≤DOOR_SUPER_Y``, then RIGHT+X/B Super pressure into ``0xB07A``.
+    Proven on ``post_bubble_phase_d_pure_r19`` (~342f). Old walk-right from
+    top band falls to y~280 and never opens the shell.
+    """
     label = track.label
     if session.state.selected_item != 2:
         select_weapon(session, 2)
@@ -550,34 +557,36 @@ def bubble_top_super_door(
                 hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_door_kb")
             continue
 
-        if state.samus_y > 220 or state.samus_x < 280:
-            if state.selected_item != 0:
-                select_weapon(session, 0)
-            dir_h = "RIGHT" if state.samus_x < 320 else "LEFT"
-            phase = frame % 16
-            if phase < 10:
-                hold(session, 1, dir_h, "B", "A", reason=f"{label}_door_climb")
-            elif phase < 12:
-                hold(session, 1, dir_h, "B", reason=f"{label}_door_rel")
-            else:
-                opp = "LEFT" if dir_h == "RIGHT" else "RIGHT"
-                hold(session, 1, opp, "A", reason=f"{label}_door_wj")
-            continue
-
-        track.door_reached = True
+        # Stay on Supers for the whole Phase E (beam swap was a prior regress).
         if state.selected_item != 2:
             select_weapon(session, 2)
-        phase = frame % 28
-        if phase < 4:
-            inputs = ("RIGHT", "X")
-        elif phase < 14:
-            inputs = ("RIGHT",)
-        elif phase < 20:
-            inputs = ("RIGHT", "B")
+
+        x = int(state.samus_x)
+        y = int(state.samus_y)
+        if y <= P.DOOR_SUPER_Y and x >= P.DOOR_SUPER_X:
+            track.door_reached = True
+            if frame % 5 < 2:
+                hold(session, 1, "RIGHT", "X", reason=f"{label}_door_super")
+            else:
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_door_press")
+            if session.state.room_id == ROOM_BAT_CAVE:
+                break
+            continue
+
+        # Sticky right-structure WJ climb toward Super door shell.
+        ph = frame % P.DOOR_WJ_PERIOD
+        if x > P.DOOR_X_CAP:
+            if ph < P.DOOR_WJ_INTO:
+                hold(session, 1, "LEFT", "A", reason=f"{label}_door_cap")
+            else:
+                hold(session, 1, "LEFT", "B", reason=f"{label}_door_cap_l")
+        elif ph < P.DOOR_WJ_INTO:
+            hold(session, 1, "LEFT", "A", reason=f"{label}_door_wj_into")
+        elif ph < P.DOOR_WJ_INTO + P.DOOR_WJ_BOUNCE:
+            hold(session, 1, "RIGHT", "A", reason=f"{label}_door_wj_bounce")
         else:
-            inputs = ("RIGHT", "B", "A")
-        state = hold(session, 1, *inputs, reason=f"{label}_door")
-        if state.room_id == ROOM_BAT_CAVE:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_door_wj_spin")
+        if session.state.room_id == ROOM_BAT_CAVE:
             break
     else:
         state = session.state

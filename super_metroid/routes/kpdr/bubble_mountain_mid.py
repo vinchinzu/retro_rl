@@ -5,11 +5,19 @@ a shared outer-iteration budget (:data:`bubble_mountain_params.MID_FRAMES`).
 Control state is local to :func:`run_bubble_mid_loop` — not on ``BubbleTrack``.
 
 R14: save-door runway (maprando left climb / human ``bubble_jump_try``).
-R15: max-left runway + double walljump open-loop clears ceiling lip into
-Phase D on human runway pin (min_y≈76–138, x≥300 @ y≤200).
+R15: max-left runway + **double** walljump clears ceiling lip into Phase D
+on human runway pin (min_y≈76–138, x≥300 @ y≤200). Single WJ stalls.
 R16: pure lower lands fire solid; X-clear left blocker; seat fire window
 without stealing lip. R13 floor-reclimb still backs up deep falls. Lip
 launch kept as height-class fallback when fire seat misses.
+R17: double-WJ extracted to ``bubble_mountain_primitives``; RECON shows pure
+integer seat ~(27,395)p2 still lacks human run-windup (no p132 wall contact).
+R18: **max-left fire seat** via stationary X + brake (never LEFT+X walk);
+fire only from human seat band. Pure earns p132 + pose 84; Phase D still red
+without enemy-phase wait (mx200≈251).
+R19: **enemy-phase-aware fire** — idle on seat until Geruta slots 4/6 hit a
+proven clear class, then product double-WJ (no RAM patch). See
+BUBBLE_RUNWAY_EXPERIMENTS.md.
 """
 
 from __future__ import annotations
@@ -19,6 +27,10 @@ from typing import Literal
 from super_metroid.routes.controller_common import hold
 from super_metroid.routes.kpdr import bubble_mountain as bm
 from super_metroid.routes.kpdr import bubble_mountain_params as P
+from super_metroid.routes.kpdr.bubble_mountain_primitives import (
+    bubble_save_runway_fire_recipe,
+    bubble_seat_max_left_fire,
+)
 from super_metroid.routes.kpdr.rooms import ROOM_BUBBLE
 from super_metroid.routes.runtime import ControllerSession
 
@@ -91,192 +103,40 @@ def run_bubble_mid_loop(
 
         mid_i += 1
 
-        # --- launch: R6 lip (height class) + R15 max-left save runway (Phase D) ---
+        # --- launch: R6 lip (height class) + R15/R18 max-left save runway ---
         if phase == "launch" and not track.launched:
-            # R15: fire save-door runway only in the max-left fire window.
-            # Do NOT steal solid lip seats (x~79 y~427) — that regressed pure
-            # (launched=False min_y~365). Walk-left onto fire x is via mid-iso /
-            # approach branches; once seated left, open-loop clears Phase D on pin.
+            # R18: fire only from human max-left seat band (x∈[25,32]).
+            # Wider fire window (25–60) shortens runway / no p132 from x~48–50.
+            # Never LEFT+X while walking (KB p138). Stationary clear + brake.
+            # Do NOT steal solid lip seats (x~79 y~427) — pure regress.
+            human_lo, human_hi = P.SAVE_HUMAN_SEAT_X
             fire_lo, fire_hi = P.SAVE_RUNWAY_FIRE_X
-            # Prefer max-left of the fire window (human ~x27). Right edge (~x50+)
-            # shortens runway / misses WJ wall; edge left first when x is high.
-            if (
-                bm.bubble_on_save_runway(state)
-                and fire_lo <= x <= fire_hi
-                and x > 32
-                and not bm.bubble_on_launch_lip(state)
-            ):
-                # X-clear if stalled against left blocker (~x37 pure).
-                if x <= 38 and mid_i % 6 < 2:
-                    hold(
-                        session, 1, "LEFT", "X", reason=f"{label}_save_maxleft_x"
-                    )
-                else:
-                    hold(
-                        session, 1, "LEFT", "B", reason=f"{label}_save_maxleft"
-                    )
-                continue
-            if bm.bubble_on_save_runway(state) and fire_lo <= x <= fire_hi:
-                # Face right then settle so RIGHT+B gets pose-38 run windup
-                # (pose 1 after left-shot skips windup and runs off the shelf).
-                for _ in range(6):
-                    hold(session, 1, "RIGHT", reason=f"{label}_save_face")
-                for _ in range(4):
-                    hold(session, 1, reason=f"{label}_save_settle")
-                # Brief stationary beam spray (bug clear) — no dir so runway x holds.
-                for _ in range(8):
-                    state = hold(
-                        session, 1, "Y", reason=f"{label}_save_clear"
-                    )
-                    bm.bubble_track_state(session, track, state)
-                    if state.room_id != ROOM_BUBBLE:
-                        break
-                # Open-loop: max run → spin-glide → double WJ → right-spin Phase D.
-                for _ in range(P.SAVE_RUN_FRAMES):
-                    state = hold(
-                        session, 1, "RIGHT", "B", reason=f"{label}_save_run"
-                    )
-                    bm.bubble_track_state(session, track, state)
-                    if state.room_id != ROOM_BUBBLE:
-                        break
-                for _ in range(P.SAVE_SPIN_FRAMES):
-                    state = hold(
-                        session,
-                        1,
-                        "RIGHT",
-                        "B",
-                        "A",
-                        reason=f"{label}_save_spin",
-                    )
-                    bm.bubble_track_state(session, track, state)
-                    if state.room_id != ROOM_BUBBLE:
-                        break
-                    if state.samus_y <= P.HEIGHT_CLASS_Y:
-                        height_class = True
-                    if bm.bubble_phase_d_top_band(state):
-                        track.top_reached = True
-                        break
-                if not track.top_reached and state.room_id == ROOM_BUBBLE:
-                    for _ in range(P.SAVE_APPROACH_BA):
-                        state = hold(
-                            session,
-                            1,
-                            "B",
-                            "A",
-                            reason=f"{label}_save_coast",
-                        )
-                        bm.bubble_track_state(session, track, state)
-                    hold(session, 1, "B", reason=f"{label}_save_rel")
-                    for _ in range(P.SAVE_APPROACH_IDLE):
-                        hold(session, 1, reason=f"{label}_save_idle")
-                    for _ in range(P.SAVE_APPROACH_TURN):
-                        hold(session, 1, "LEFT", reason=f"{label}_save_turn")
-                    # First walljump.
-                    for _ in range(P.SAVE_WJ_LEFT_A):
-                        state = hold(
-                            session,
-                            1,
-                            "LEFT",
-                            "A",
-                            reason=f"{label}_save_wj1",
-                        )
-                        bm.bubble_track_state(session, track, state)
-                        if state.room_id != ROOM_BUBBLE:
-                            break
-                        if state.samus_y <= P.HEIGHT_CLASS_Y:
-                            height_class = True
-                        if bm.bubble_phase_d_top_band(state):
-                            track.top_reached = True
-                            break
-                    if not track.top_reached and state.room_id == ROOM_BUBBLE:
-                        for _ in range(P.SAVE_WJ_AMID):
-                            state = hold(
-                                session, 1, "A", reason=f"{label}_save_wj1_a"
-                            )
-                            bm.bubble_track_state(session, track, state)
-                        for _ in range(P.SAVE_WJ_RIGHT_A):
-                            state = hold(
-                                session,
-                                1,
-                                "RIGHT",
-                                "A",
-                                reason=f"{label}_save_flip1",
-                            )
-                            bm.bubble_track_state(session, track, state)
-                            if state.room_id != ROOM_BUBBLE:
-                                break
-                            if state.samus_y <= P.HEIGHT_CLASS_Y:
-                                height_class = True
-                            if bm.bubble_phase_d_top_band(state):
-                                track.top_reached = True
-                                break
-                    # Second walljump (R15 lip-clear / Phase D).
-                    if not track.top_reached and state.room_id == ROOM_BUBBLE:
-                        for _ in range(P.SAVE_WJ2_LEFT_A):
-                            state = hold(
-                                session,
-                                1,
-                                "LEFT",
-                                "A",
-                                reason=f"{label}_save_wj2",
-                            )
-                            bm.bubble_track_state(session, track, state)
-                            if state.room_id != ROOM_BUBBLE:
-                                break
-                            if state.samus_y <= P.HEIGHT_CLASS_Y:
-                                height_class = True
-                            if bm.bubble_phase_d_top_band(state):
-                                track.top_reached = True
-                                break
-                        if not track.top_reached and state.room_id == ROOM_BUBBLE:
-                            for _ in range(P.SAVE_WJ2_AMID):
-                                state = hold(
-                                    session,
-                                    1,
-                                    "A",
-                                    reason=f"{label}_save_wj2_a",
-                                )
-                                bm.bubble_track_state(session, track, state)
-                            for _ in range(P.SAVE_WJ2_RIGHT_A):
-                                state = hold(
-                                    session,
-                                    1,
-                                    "RIGHT",
-                                    "A",
-                                    reason=f"{label}_save_flip2",
-                                )
-                                bm.bubble_track_state(session, track, state)
-                                if state.room_id != ROOM_BUBBLE:
-                                    break
-                                if state.samus_y <= P.HEIGHT_CLASS_Y:
-                                    height_class = True
-                                if bm.bubble_phase_d_top_band(state):
-                                    track.top_reached = True
-                                    break
-                    # Right-spin finish into Phase D (x≥300 y≤200).
-                    if not track.top_reached and state.room_id == ROOM_BUBBLE:
-                        for _ in range(P.SAVE_WJ_FOLLOW):
-                            state = hold(
-                                session,
-                                1,
-                                "RIGHT",
-                                "B",
-                                "A",
-                                reason=f"{label}_save_pd_spin",
-                            )
-                            bm.bubble_track_state(session, track, state)
-                            if state.room_id != ROOM_BUBBLE:
-                                break
-                            if state.samus_y <= P.HEIGHT_CLASS_Y:
-                                height_class = True
-                            if bm.bubble_phase_d_top_band(state):
-                                track.top_reached = True
-                                break
-                            if (
-                                state.samus_x >= P.RIGHT_SHELF_X
-                                and state.samus_y <= P.MIDHIGH_Y
-                            ):
-                                break
+            on_runway = bm.bubble_on_save_runway(state) and not bm.bubble_on_launch_lip(
+                state
+            )
+            seated_max_left = (
+                on_runway
+                and human_lo <= x <= human_hi
+                and bm.bubble_is_true_ground(state)
+                and state.pose not in (137, 138)
+            )
+            if seated_max_left:
+                # R19: phase-wait (idle) → prepare → dash → spin → double WJ.
+                # R18: arm-pump GREEN on human pin, RED on pure max-left seat.
+                # Bare dash + enemy-phase wait clears Phase D on full pure seat
+                # (R18 open-loop alone hard-caps mx200≈251 — Geruta AI phase).
+                bubble_save_runway_fire_recipe(
+                    session,
+                    track,
+                    y_clear=True,
+                    crouch=False,
+                    arm_pump=P.SAVE_ARM_PUMP,  # R18 pure: False
+                    wj_count=2,
+                    phase_wait=True,
+                )
+                state = session.state
+                if track.min_y <= P.HEIGHT_CLASS_Y or state.samus_y <= P.HEIGHT_CLASS_Y:
+                    height_class = True
                 track.launched = True
                 phase = "climb"
                 mid_i = 0
@@ -284,71 +144,16 @@ def run_bubble_mid_loop(
                     break
                 continue
 
-            # On save platform but not yet in fire window: edge left for max runway.
-            # R16: pure stalls at ~x37 against a left blocker — X (missile) clear
-            # then walk left. Skip when solid lip (x~79 y~427) so R6 lip fallback
-            # still runs for height class.
-            if (
-                bm.bubble_on_save_runway(state)
-                and not bm.bubble_on_launch_lip(state)
-            ):
+            # On save platform: seat max-left (stationary X + brake), not fire yet.
+            if on_runway and (x > human_hi or x < human_lo or x > fire_hi):
                 if x < fire_lo:
                     hold(session, 1, "RIGHT", "B", reason=f"{label}_save_align_r")
                     continue
-                if x > fire_hi:
-                    # Brief missile spray left (clears pure left-blocker at ~x37).
-                    for _ in range(P.SAVE_CLEAR_X_FRAMES):
-                        state = hold(
-                            session, 1, "LEFT", "X", reason=f"{label}_save_xclear"
-                        )
-                        bm.bubble_track_state(session, track, state)
-                        if state.room_id != ROOM_BUBBLE:
-                            break
-                        if state.pose in (137, 138):
-                            hold(
-                                session,
-                                1,
-                                "RIGHT",
-                                "B",
-                                "A",
-                                reason=f"{label}_save_xkb",
-                            )
-                            break
-                        if (
-                            fire_lo <= state.samus_x <= fire_hi
-                            and bm.bubble_on_save_runway(state)
-                        ):
-                            break
-                    # Walk left into fire window (cap frames so we don't enter Save).
-                    for _ in range(P.SAVE_EDGE_LEFT_FRAMES):
-                        state = session.state
-                        if state.room_id != ROOM_BUBBLE:
-                            break
-                        if state.pose in (137, 138):
-                            hold(
-                                session,
-                                1,
-                                "RIGHT",
-                                "B",
-                                "A",
-                                reason=f"{label}_save_edge_kb",
-                            )
-                            continue
-                        if state.samus_x < fire_lo:
-                            hold(
-                                session,
-                                1,
-                                "RIGHT",
-                                "B",
-                                reason=f"{label}_save_edge_door",
-                            )
-                            break
-                        if fire_lo <= state.samus_x <= fire_hi:
-                            break
-                        hold(
-                            session, 1, "LEFT", "B", reason=f"{label}_save_edge_l"
-                        )
+                # Cap seat attempts so lip fallback still runs for height class.
+                if mid_i < 8:
+                    bubble_seat_max_left_fire(session, track)
                     continue
+                # Fall through to lip / mid-iso after several seat tries.
 
             # R6 solid lip — proven pure height class min_y=260. Keep for
             # regression; R15 Phase D needs max-left fire window seat separately.

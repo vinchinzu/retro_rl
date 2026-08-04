@@ -1,15 +1,11 @@
 # Bubble Mountain — residual product backlog
 
-**Last updated:** 2026-08-03 (R16 pure fire seat; min_y=228; Phase D still red)
+**Last updated:** 2026-08-03 (**R19 pure GREEN** Bubble→Bat 2012f → `0xB07A`;
+next: graph compose / Bat→Speed)
 
-> **Scope note:** Structural refactor (module extract / phase split / ground
-> model / recon API cleanup / unit tests for ground predicates) is landing
-> **separately**. This file is **residual product work only** — not a pure
-> GREEN claim, not a STATUS promote.
-
-**Do not claim** pure GREEN Bubble→Bat or continuous/STATUS tip advance from
-this backlog alone. Hop GREEN still requires full pure from
-`post_rising_tide_to_bubble_pure` → ordinary `0xB07A` + successor write.
+> **Scope note:** Structural refactor is landed. Pure GREEN Bubble→Bat is
+> **closed** (R19 residual). Continuous/STATUS tip advance is planner compose —
+> not automatic from pure GREEN alone.
 
 ---
 
@@ -56,9 +52,18 @@ finish still holds from higher shelf only.
       min_y=228 free-air (was 260 lip); Phase D still red (mx200 pocket).
       Residual:
       [`SM-K4.4-PURE-R16-residual.md`](SM-K4.4-PURE-R16-residual.md)
-- [ ] **`SM-K4.4-PURE-R17`**: right-wall WJ / Phase D push past mx200≈271
-- [ ] **Phase E** ordinary `0xB07A` closeout (hop GREEN only when E holds)
-- [ ] Successor `scratch/post_bubble_to_bat_pure.state` **only** on pure GREEN
+- [x] **`SM-K4.4-PURE-R17`**: velocity RECON + `bubble_mountain_primitives`
+      (double-WJ named); pure still no p132 / Phase D red. Residual:
+      [`SM-K4.4-PURE-R17-residual.md`](SM-K4.4-PURE-R17-residual.md) ·
+      techniques [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md)
+- [x] **`SM-K4.4-PURE-R18`**: max-left seat + no arm-pump + R18 WJ2; pure
+      earns p132+pose84 min_y≈159; Phase D red (enemy AI phase). Residual:
+      [`SM-K4.4-PURE-R18-residual.md`](SM-K4.4-PURE-R18-residual.md)
+- [x] **`SM-K4.4-PURE-R19`**: enemy-phase fire + sticky Super door → full pure
+      GREEN ordinary `0xB07A` (**2012f** ×2). Residual:
+      [`SM-K4.4-PURE-R19-residual.md`](SM-K4.4-PURE-R19-residual.md)
+- [x] **Phase E** ordinary `0xB07A` (R19 sticky right WJ + Super)
+- [x] Successor `scratch/post_bubble_to_bat_pure.state`
 
 Phase map: [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) · stagnation:
 [`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md).
@@ -69,10 +74,10 @@ Phase map: [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) · stagnation:
 
 Planner-serial; never in a farm batch or while pure is RED.
 
-- [ ] **`SM-K4.4-GRAPH`**: Graph edge Bubble→Bat (`controller_dev` / progression
-      mark) after pure green
+- [x] **`SM-K4.4-GRAPH`**: Graph edge Bubble→Bat `controller_dev` (R19 closeout)
 - [ ] Continuous tip compose (`--to` bat / speed / …) + dual re-record + STATUS
-- [ ] Bat Cave → Speed Hall → Speed pure stack (next serial after Bat)
+- [ ] ★ Bat Cave → Speed Hall → Speed pure stack (next serial from
+      `post_bubble_to_bat_pure`)
 
 ---
 

@@ -16,14 +16,16 @@ Regenerate: `uv run python super_metroid/scripts/export/kpdr_tracker.py`.
 | Status | Count |
 |--------|------:|
 | `continuous` | 41 |
-| `open` | 50 |
+| `controller_dev` | 2 |
+| `open` | 48 |
 | `parked` | 1 |
 
 ### Chart series (status)
 
 ```
-continuous        41 ################
-open              50 ####################
+continuous        41 #################
+controller_dev     2 #
+open              48 ####################
 parked             1 #
 ```
 
@@ -47,7 +49,7 @@ parked             1 #
 | 16 | `K1.6` | 0xA253 Red Tower | **continuous** | continuous |  | `dev_kpdr_red_tower` |
 | 20 | `K2.0` | 0xA3DD Bat Room | **continuous** | continuous |  | `` |
 | 21 | `K2.1` | 0xA408 Below Spazer | **continuous** | continuous |  | `` |
-| 22 | `K2.2` | 0xA447 Spazer Room | **open** | optional → tip/fold | spazer | `SM-SPAZER-*` / SPAZER_EARLY |
+| 22 | `K2.2` | 0xA447 Spazer Room | **open** | optional | spazer | `` |
 | 23 | `K2.3` | 0xCF54 West Tunnel | **continuous** | continuous |  | `` |
 | 24 | `K2.4` | 0xCEFB Glass Tunnel | **continuous** | continuous |  | `` |
 | 25 | `K2.5` | 0xCF80 East Tunnel | **continuous** | continuous |  | `` |
@@ -79,11 +81,11 @@ parked             1 #
 | 47 | `K3.7` | 0xA471 Warehouse Zeela Room | continuous | integrity-green Business return twice; valid upper-left transition |
 | 48 | `K3.8` | 0xA6A1 Warehouse Entrance | continuous | right-ledge reverse stack green; lower-lip correction + two-tier Super clear; 113723f twice |
 | 50 | `K4.0` | 0xB167 Frog Savestation | continuous | Business elevator descent + blue-door exit; 114923f integrity green twice |
-| 51 | `K4.1` | 0xB106 Frog Speedway | open | ★ next pure hop |
-| 52 | `K4.2` | 0xAF72 Bubble Mountain approach | open | Speedway corridor exit |
-| 53 | `K4.3` | 0xACB3 Bubble Mountain | open |  |
-| 54 | `K4.4` | 0xB07A Speed Hall approach | open |  |
-| 55 | `K4.5` | 0xACF0 Speed Booster Hall | open |  |
+| 51 | `K4.1` | 0xB106 Frog Speedway | open | parked post-Speed shortcut; first Bubble is Cathedral |
+| 52 | `K4.2` | 0xAF72 Bubble Mountain approach | open | Speedway corridor exit; parked post-Speed |
+| 53 | `K4.3` | 0xACB3 Bubble Mountain | controller_dev | CATH-01..04 pure GREEN first Bubble; not continuous |
+| 54 | `K4.4` | 0xB07A Bat Cave | controller_dev | R19 pure GREEN 2012f; enemy-phase fire + sticky Super door |
+| 55 | `K4.5` | 0xACF0 Speed Booster Hall | open | ★ next pure hop from Bat successor |
 | 56 | `K4.6` | 0xAD1B Speed Booster Room | open | real PLM collect |
 | 57 | `K4.7` | 0xACB3 Bubble Mountain | open | return for Wave branch |
 | 58 | `K4.8` | 0xADAD Single Chamber | open | Wave path |
