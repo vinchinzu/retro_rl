@@ -63,8 +63,9 @@ Dispatch from repo root:
 | Speedway → Farm pure | residual **RED** | Boost Blocks need Speed (`SM-K4.2-PURE-residual.md`) |
 | **K4 repath (chosen)** | Cathedral first Bubble | Business → `0xA7B3` → `0xA788` → `0xAFA3` → Bubble |
 | Cathedral pure stack | CATH-01…04 **all pure GREEN** | 959f / 909f / 1162f / **2609f** → first Bubble pure |
-| Bubble → Bat pure | RED residual (Phase C green) | R16: max_x=370 min_y=228 **phase_c_hit=True** fire seat; top red (mx200 pocket); R15 Phase D GREEN on human pin |
-| **Next serial** | **`SM-K4.4-PURE-R17`** Phase D right push | Right-wall WJ past mx200≈271 so `top_reached` flips |
+| Bubble → Bat pure | **GREEN residual** | R19: **2012f** ×2 → ordinary `0xB07A`; enemy-phase fire + sticky Super door |
+| Successor | `scratch/post_bubble_to_bat_pure.state` | room `0xB07A` ~(39,395) p11 |
+| **Next serial** | **`SM-K4.4-GRAPH` / Bat→Speed pure** | Graph edge + Speed Hall from Bat successor |
 | After Bat Cave | Speed Hall → Speed Room → Wave / Ice | then K5 Alpha PB |
 
 ```bash
@@ -85,12 +86,12 @@ uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
 ```
 
 Cards: Frog Save continuous + Speedway pure GREEN (parked as post-Speed) ·
-Cathedral CATH-01…04 pure GREEN (first Bubble pure closeout) · Bubble→Bat
-phases A/B/C pure green (R13 floor-reclimb), Phase D/E red on pure
-(`SM-K4.4-PURE-R16-residual.md` — pure fire seat, min_y=228). Hard-room
-split + stagnation rule: [`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md) ·
-ladder [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) · next
-**Phase D right push** (`SM-K4.4-PURE-R17`).
+Cathedral CATH-01…04 pure GREEN · Bubble→Bat **pure GREEN R19** (2012f →
+`0xB07A`; residual [`SM-K4.4-PURE-R19-residual.md`](SM-K4.4-PURE-R19-residual.md)).
+Hard-room split: [`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md) ·
+ladder [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) · techniques
+[`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md) · **next spine** graph compose /
+Bat→Speed pure from `post_bubble_to_bat_pure` (do not park).
 Wave-11 closeout: [`WAVE-11.md`](WAVE-11.md). Triage: [`TRIAGE.md`](TRIAGE.md).
 
 **Structure residual (Clean track / continuous):**
@@ -105,7 +106,7 @@ stabilize → STATUS. Never in a farm batch.
 ```text
 ✅ K0 Supers → ✅ K1 Red → ✅ K2 Kraid entry → ✅ K3 Varia/Business
 ✅ K4.0 Frog Save
-▶  K4 Speed/Wave/Ice     ← YOU ARE HERE (Cathedral pure → Bubble GREEN; ★ Bat/Speed)
+▶  K4 Speed/Wave/Ice     ← YOU ARE HERE (Bubble→Bat pure GREEN; ★ Speed Hall)
 ⬜  K5 Alpha PB
 ⬜  K6 Moat → Phantoon → Gravity
 ⬜  K7 Maridia → Botwoon → Draygon → Space Jump
@@ -142,7 +143,8 @@ Boss hops insert `boss` catalog/phase/closeout cards before continuous tip.
 climb. Graph: `business_to_cathedral_entrance` … `rising_tide_to_bubble`;
 `speedway_to_farm` / `farm_to_bubble` require `speed_booster`; reverse
 `frog_save_to_business` for tip at Frog. CATH-01…04 pure **GREEN** (first
-Bubble pure closeout 2026-08-02). **Next pure:** `SM-K4.4-PURE` Bubble → Bat.
+Bubble pure closeout 2026-08-02; Bubble→Bat pure **GREEN R19**). **Next pure:**
+Bat → Speed Hall / `SM-K4.4-GRAPH` compose.
 
 Follow-ons (parallel OK): `SM-BOSS-PRIM-SPRAY`, `SM-ARCH-TIP-SPEC`, path-room farm.  
 Detail: [`WAVE-11.md`](WAVE-11.md).

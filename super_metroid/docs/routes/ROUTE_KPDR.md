@@ -150,7 +150,7 @@ uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
 | Continuous evidence | `recordings/start_to_varia.json` (**101,954** frames, integrity green; 0 loads / 0 progression writes) |
 | Code | `combat/kraid.py` (`play_kraid_fight_to_varia`); KPDR segment `kraid_entry_to_varia`; `run_to("varia")` |
 | Probe | `scripts/probe/kraid_combat.py varia --state entry` → `debug/kraid_varia_run.json` |
-| ★ Next | K4 first Bubble: **Cathedral climb** (not Frog Speedway) → Speed/Wave/Ice |
+| ★ Next | K4 pure: **Bat → Speed Hall** (Cathedral + Bubble→Bat pure GREEN; continuous tip Frog) |
 | Walkthrough | Wiki Kraid fight and Varia Suit room pages |
 
 ---
@@ -162,10 +162,11 @@ uv run python super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
 | Status | **continuous through Frog Savestation** (K4.0 save milestone); first Bubble path **repathed** |
 | Path (first Bubble) | Varia → … → Business → **Cathedral Entrance `0xA7B3` → Cathedral `0xA788` → Rising Tide `0xAFA3` → Bubble `0xACB3`** → Bat Cave → Speed Hall → Speed Room; then Wave / Ice |
 | Path (post-Speed shortcut) | Frog Save → Frog Speedway → Farm → Bubble — **requires Speed** (Boost Blocks; `SM-K4.2-PURE` RED without Speed) |
-| Graph | `START_TO_SPEED_GRAPH` — Varia return + Business→Frog **continuous**; Cathedral climb + Speed/Wave/Ice `unverified`; `speedway_to_farm` requires `speed_booster` |
+| Graph | `START_TO_SPEED_GRAPH` — Varia return + Business→Frog **continuous**; Cathedral climb + Bubble→Bat **`controller_dev`** (pure GREEN); Speed Hall+ still `unverified` |
 | Continuous evidence | `recordings/start_to_frog_save*.json` (**114,923f** twice; 0 loads / progression / capacity / deaths) |
-| First open hop | `play_cathedral_to_rising_tide` ([`SM-K4-CATH-03`](../tasks/SM-K4-CATH-03.md)); CATH-01/02 pure green; source `post_cathedral_entrance_to_cathedral_pure` |
-| Rooms (hop-table subset) | `0xA7B3` / `0xA788` / `0xAFA3` / `0xACB3` Bubble, `0xAD1B` Speed, `0xADDE` Wave, `0xA890` Ice |
+| Pure stack | CATH-01…04 GREEN; **Bubble → Bat pure GREEN R19** (2012f → `0xB07A`; residual [`SM-K4.4-PURE-R19-residual.md`](../tasks/SM-K4.4-PURE-R19-residual.md)) |
+| ★ First open hop | Bat → Speed Hall pure from `scratch/post_bubble_to_bat_pure.state` |
+| Rooms (hop-table subset) | `0xA7B3` / `0xA788` / `0xAFA3` / `0xACB3` Bubble, `0xB07A` Bat, `0xAD1B` Speed, `0xADDE` Wave, `0xA890` Ice |
 | Walkthrough | Wiki KPDR “Norfair & Red Brinstar”; Cathedral / Bubble Mountain / Speed pages |
 
 ---

@@ -103,11 +103,12 @@ exit with no energy/ammo assists. **Infra done** (artifacts / CLI / integrity).
 
 ## P0 open (tip-critical — Cathedral first Bubble)
 
-| Ticket | Title | Depends |
-|--------|-------|---------|
-| `SM-K4-CATH-03` | Pure Cathedral→Rising Tide | CATH-02 green |
-| `SM-K4-CATH-04` | Pure Rising Tide→Bubble | CATH-03 |
-| Bubble→Speed / Wave / Ice pure stack | Geometry + sources | CATH-04 |
+| Ticket | Title | Status |
+|--------|-------|--------|
+| `SM-K4-CATH-01`…`04` | Cathedral climb → first Bubble | **done** pure GREEN |
+| `SM-K4.4-PURE` / R19 | Bubble → Bat Cave | **done** pure GREEN 2012f |
+| ★ Bat → Speed Hall pure | Next serial pure hop | **ready** from `post_bubble_to_bat_pure` |
+| Speed / Wave / Ice pure stack | Geometry + sources | after Bat→Speed |
 | Graph + compose tips (`--to` bubble/speed/wave/ice) | After each pure green | pure stack |
 | Stabilize + STATUS per tip | Planner-serial | compose green |
 | `SM-K4.1-PURE` / Speedway | **Parked** post-Speed shortcut | — |
@@ -119,7 +120,7 @@ see [`TRIAGE.md`](../tasks/TRIAGE.md) and [`SM-K4-REPATH-CATH-note.md`](../tasks
 
 ```text
 DONE (K0–K4.0 continuous)
-  → K4 Cathedral → Bubble → Speed/Wave/Ice   ★ YOU ARE HERE (CATH-03)
+  → K4 Cathedral → Bubble → Bat pure GREEN; ★ Bat → Speed → Wave/Ice
   → K5 Alpha PB
   → K6 Moat → Phantoon → Gravity
   → K7 Maridia → Botwoon → Draygon → Space Jump

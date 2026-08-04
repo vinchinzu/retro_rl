@@ -11,6 +11,8 @@ Hybrid policy surface (raise abstraction without dropping raw timing):
 - :func:`play_run_shoot_exit` / :func:`traverse_door` — horizontal door exits
 - :func:`collect_item_mask` — wait for PLM item bit
 - :func:`wait_ordinary_room` — multi-truth settle (room + phase + door)
+- :func:`walljump_once` / :func:`consecutive_walljumps` — room-agnostic WJ
+  pulses (Bubble Phase D, post-Torizo Parlor Alcatraz climb, …)
 """
 
 from __future__ import annotations
@@ -29,6 +31,9 @@ _hold = hold
 # 29=0x1D, 30=0x1E falling; 31=0x1F, 32=0x20; 49=0x31, 50=0x32;
 # 65=0x41, 66=0x42 ground/move. Expand from live logs only.
 MORPH_POSES = frozenset({29, 30, 31, 32, 49, 50, 65, 66})
+
+# Wall-latch pose (ready to wall-jump). Shared across Bubble, Parlor, Spazer.
+POSE_WALL_LATCH = 132
 
 
 @dataclass(frozen=True)
@@ -158,6 +163,94 @@ def vertical_hop(
 ) -> SuperMetroidState:
     """Hold jump in place for a fixed vertical hop window."""
     return hold(session, frames, "A", reason=reason)
+
+
+# ---------------------------------------------------------------------------
+# Wall-jump skills (room-agnostic; Bubble / Parlor / Spazer consumers)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WallJumpTiming:
+    """One wall-jump pulse: optional delay into, into+A, amid A, flip+A.
+
+    ``delay_into_frames``: face into the wall **without** A before the A press
+    (delayed WJ window experiment). Product Bubble R15 uses 0.
+    """
+
+    into: str = "LEFT"
+    flip: str = "RIGHT"
+    into_frames: int = 20
+    amid_frames: int = 4
+    flip_frames: int = 8
+    delay_into_frames: int = 0
+
+
+def is_wall_latch(state: SuperMetroidState) -> bool:
+    """True when Samus is in wall-latch pose (ready to wall-jump)."""
+    return int(state.pose) == POSE_WALL_LATCH
+
+
+def walljump_once(
+    session: ControllerSession,
+    timing: WallJumpTiming,
+    *,
+    reason: str = "wj",
+    stop_when: Callable[[SuperMetroidState], bool] | None = None,
+) -> SuperMetroidState:
+    """Execute **one** wall-jump pulse (delay into → into+A → amid A → flip+A).
+
+    Room-agnostic skill. Callers may pass ``stop_when`` for early exit (top
+    band, room leave, track update). Timings are parameters — Bubble R15 and
+    Parlor Alcatraz each pass their own.
+    """
+    tag = reason
+    phases: list[tuple[int, tuple[str, ...], str]] = [
+        (timing.delay_into_frames, (timing.into,), f"{tag}_delay"),
+        (timing.into_frames, (timing.into, "A"), f"{tag}_into"),
+        (timing.amid_frames, ("A",), f"{tag}_amid"),
+        (timing.flip_frames, (timing.flip, "A"), f"{tag}_flip"),
+    ]
+    state = session.state
+    for n, buttons, phase_reason in phases:
+        for _ in range(n):
+            state = hold(session, 1, *buttons, reason=phase_reason)
+            if stop_when is not None and stop_when(state):
+                return state
+    return state
+
+
+def consecutive_walljumps(
+    session: ControllerSession,
+    jumps: Sequence[WallJumpTiming],
+    *,
+    reason: str = "wj_chain",
+    gap_frames: int = 0,
+    stop_when: Callable[[SuperMetroidState], bool] | None = None,
+) -> SuperMetroidState:
+    """Chain N consecutive wall-jump pulses with optional idle gap between.
+
+    Visible multi-room skill: Bubble Phase D (gap=0, R15 pair), post-Torizo
+    Parlor Alcatraz left climb (gap settles between open-loop pulses).
+    """
+    state = session.state
+    for i, timing in enumerate(jumps):
+        if stop_when is not None and stop_when(state):
+            return state
+        state = walljump_once(
+            session,
+            timing,
+            reason=f"{reason}_wj{i + 1}",
+            stop_when=stop_when,
+        )
+        if stop_when is not None and stop_when(state):
+            return state
+        if gap_frames > 0 and i + 1 < len(jumps):
+            for _ in range(gap_frames):
+                state = hold(session, 1, reason=f"{reason}_gap")
+                if stop_when is not None and stop_when(state):
+                    return state
+    return state
 
 
 def wait_requirement(
@@ -432,16 +525,20 @@ __all__ = [
     "DEFAULT_MORPH_POLICY",
     "MORPH_POSES",
     "MorphPolicy",
+    "POSE_WALL_LATCH",
+    "WallJumpTiming",
     "_hold",
     "_require_room",
     "_select_weapon",
     "_unmorph",
     "_wait_ordinary_room",
     "collect_item_mask",
+    "consecutive_walljumps",
     "ensure_morph",
     "hold",
     "hold_until",
     "is_morph",
+    "is_wall_latch",
     "play_run_shoot_exit",
     "require_room",
     "require_state",
@@ -454,4 +551,5 @@ __all__ = [
     "wait_ordinary_room",
     "wait_requirement",
     "wait_until",
+    "walljump_once",
 ]

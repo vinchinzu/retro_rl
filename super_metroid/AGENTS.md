@@ -57,20 +57,19 @@ are topology diagnostics only — not route evidence.
    (`scripts/record/continuous.py --to frog`; two matching integrity-green
    runs, **114,923f**, 0 loads / progression / capacity writes / deaths).
    Prefixes: Hi-Jump **87,696f**, Varia **104,382f**, Business **113,723f**.
-4. **★ Next play:** first Bubble pure is **done** (CATH-01…04 pure GREEN;
-   successor `scratch/post_rising_tide_to_bubble_pure.state`). Bubble → Bat
-   controller registered: phases **A/B/C green** on full pure (R13
-   floor-reclimb → `phase_c_hit=True`); **Phase D** top still red on pure.
-   R15 double-WJ clears Phase D on human runway pin; R16 pure seats fire
-   solid (not lip) and fires open-loop — min_y=228 free-air (was lip 260),
-   mx200 short of 300. Hard-room ladder:
+4. **★ Next play:** first Bubble pure is **done** (CATH-01…04 pure GREEN).
+   **Bubble → Bat pure GREEN (R19):** full pure from
+   `scratch/post_rising_tide_to_bubble_pure.state` → ordinary `0xB07A`
+   (**2012f** ×2); successor `scratch/post_bubble_to_bat_pure.state`. Phases
+   A–E closed: enemy-phase-aware fire (Geruta slots 4/6 idle wait) + sticky
+   Super door. Residual
+   [`docs/tasks/SM-K4.4-PURE-R19-residual.md`](docs/tasks/SM-K4.4-PURE-R19-residual.md).
+   Hard-room ladder:
    [`docs/tasks/SM-K4.4-PHASE-LADDER.md`](docs/tasks/SM-K4.4-PHASE-LADDER.md)
-   · process [`docs/tasks/HARD_ROOM_SPLITS.md`](docs/tasks/HARD_ROOM_SPLITS.md)
-   · residual [`docs/tasks/SM-K4.4-PURE-R16-residual.md`](docs/tasks/SM-K4.4-PURE-R16-residual.md).
-   **Next:** R17 right-wall WJ / Phase D push past mx200≈271 ceiling pocket.
-   Frog Save remains continuous K4.0 tip; Frog Speedway is **post-Speed
-   only**. Then Bat → Speed → Wave → Ice → Alpha PB; no door-warp evidence
-   or progression writes.
+   · techniques [`docs/tasks/BUBBLE_TECHNIQUES.md`](docs/tasks/BUBBLE_TECHNIQUES.md)
+   · **next card** graph compose / Bat → Speed Hall pure (spine continues).
+   Frog Save remains continuous K4.0 tip until planner compose. Then
+   Speed → Wave → Ice → Alpha PB; no door-warp evidence or progression writes.
 5. **Architecture + structure plan:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
    (layers, Segment contracts, tip recipe, **known structural debt**) and
    [`docs/plan.md`](docs/plan.md) (M6–M8 + Structure & API todos). Planner-serial

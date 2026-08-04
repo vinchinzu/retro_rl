@@ -54,6 +54,7 @@ from super_metroid.routes.kpdr.hops import (
     RouteHop,
 )
 from super_metroid.routes.catalog import (
+    BAT_CAVE_SPLITS,
     BAT_SPLITS,
     BELOW_SPAZER_SPLITS,
     BUSINESS_RETURN_SPLITS,
@@ -109,6 +110,7 @@ _VARIA_HOPS = _kpdr_hops._VARIA_HOPS
 _BUSINESS_RETURN_HOPS = _kpdr_hops._BUSINESS_RETURN_HOPS
 _FROG_ONLY_HOPS = _kpdr_hops._FROG_ONLY_HOPS
 _FROG_SAVE_HOPS = _kpdr_hops._FROG_SAVE_HOPS
+_BAT_CAVE_ONLY_HOPS = _kpdr_hops._BAT_CAVE_ONLY_HOPS
 
 # ---------------------------------------------------------------------------
 # Paths / report aliases kept for published scripts + tests
@@ -153,6 +155,7 @@ __all__ = [
     "VARIA_SPLITS",
     "BUSINESS_RETURN_SPLITS",
     "FROG_SAVE_SPLITS",
+    "BAT_CAVE_SPLITS",
     "CONTINUOUS_TIPS",
     "DEFAULT_CONTINUOUS_TIP",
     "ContinuousTip",
@@ -170,6 +173,7 @@ __all__ = [
     "play_start_to_kraid",
     "play_start_to_varia",
     "play_start_to_frog_save",
+    "play_start_to_bat_cave",
     "run_start_to_morph",
     "run_start_to_bombs",
     "run_start_to_spore_spawn",
@@ -183,6 +187,7 @@ __all__ = [
     "run_start_to_varia",
     "run_start_to_business",
     "run_start_to_frog_save",
+    "run_start_to_bat_cave",
     "run_to",
     "default_tip_artifact_paths",
     "default_tip_room_timing_path",
@@ -1570,6 +1575,38 @@ def run_start_to_frog_save(
     )
 
 
+def play_start_to_bat_cave(
+    session: RouteSession,
+    splits: list[Split],
+    segments: list[SegmentEvidence],
+) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
+    """Business return + Cathedral first-Bubble stack into Bat Cave."""
+    return play_post_supers_tip_spec("bat_cave", session, splits, segments)
+
+
+def run_start_to_bat_cave(
+    *,
+    video_path: str | Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
+    report_path: str | Path | None = None,
+    unlimited_energy: bool = True,
+    unlimited_ammo: bool = True,
+    room_timing_path: str | Path | None = None,
+    state_output: str | Path | None = None,
+) -> ContinuousRunReport:
+    """Power-on once through ordinary Bat Cave (K4.4 first Bubble tip)."""
+    return run_post_supers_tip_spec(
+        "bat_cave",
+        video_path=video_path,
+        video_config=video_config,
+        report_path=report_path,
+        unlimited_energy=unlimited_energy,
+        unlimited_ammo=unlimited_ammo,
+        room_timing_path=room_timing_path,
+        state_output=state_output,
+    )
+
+
 # ===========================================================================
 # Tip dispatch + artifact paths
 # ===========================================================================
@@ -1631,12 +1668,12 @@ def run_to(
 ) -> ContinuousRunReport:
     """Power-on once through a named continuous tip (``--to`` target).
 
-    Tips compose as prefixes:
-    morph ⊂ … ⊂ warehouse ⊂ hijump ⊂ kraid ⊂ varia ⊂ business ⊂ frog.
+    Tips compose as prefixes through business; ``frog`` and ``bat_cave`` are
+    sibling extensions of business (Frog Save vs Cathedral first Bubble).
     Room-timing and checkpoint output are gated by
     :class:`~super_metroid.routes.catalog.ContinuousTip` capability flags —
     not hard-coded tip-id allowlists. Default tip is the furthest
-    integrity-green tip (Frog Save / KPDR K4.0).
+    integrity-green tip (Frog Save / KPDR K4.0 until Bat Cave dual green).
 
     Defaults keep resource assists **on**. Pass both assists off (or set
     ``require_clean_resources=True``) for Clean-track integrity.
@@ -1702,6 +1739,7 @@ register_continuous_segments(
         "varia": play_start_to_varia,
         "business": play_start_to_business,
         "frog": play_start_to_frog_save,
+        "bat_cave": play_start_to_bat_cave,
         # Historical segment keys (reports / probes).
         "start_to_morph": play_start_to_morph,
         "start_to_bombs": play_start_to_bombs,
@@ -1716,6 +1754,7 @@ register_continuous_segments(
         "start_to_varia": play_start_to_varia,
         "start_to_business": play_start_to_business,
         "start_to_frog_save": play_start_to_frog_save,
+        "start_to_bat_cave": play_start_to_bat_cave,
         "run_start_to_morph": run_start_to_morph,
         "run_start_to_bombs": run_start_to_bombs,
         "run_start_to_spore_spawn": run_start_to_spore_spawn,
@@ -1729,6 +1768,7 @@ register_continuous_segments(
         "run_start_to_varia": run_start_to_varia,
         "run_start_to_business": run_start_to_business,
         "run_start_to_frog_save": run_start_to_frog_save,
+        "run_start_to_bat_cave": run_start_to_bat_cave,
         "run_to": run_to,
     }
 )

@@ -5,6 +5,10 @@ Rising Tide are aligned to the 2026-08-03 human demo
 (``tasks/cathedral_to_bat_human.json``). Bubble marks **traps** (Save / wrong
 doors) and the MapRando cavity climb — not a freeze-Ice path (Ice is post-Speed).
 
+Also: post-Torizo **Parlor Alcatraz** left wall-jump climb (Flyway door shaft),
+sm-json-data “Alcatraz Escape” family — **not** the product Terminator platform
+hop / bomb-tunnel path.
+
 See ``docs/tasks/HUMAN_CATHEDRAL_TO_BAT_VALIDATE.md``.
 """
 
@@ -22,6 +26,8 @@ from super_metroid.routes.kpdr.rooms import (
 
 # Bubble Mountain Save Room (wrong-door trap at left mid).
 ROOM_BUBBLE_SAVE = 0xB0DD
+# Parlor and Alcatraz (post-Bomb Torizo / Flyway return).
+ROOM_PARLOR = 0x92FD
 
 _C = {
     "entrance": (120, 200, 255),
@@ -30,6 +36,7 @@ _C = {
     "bubble": (200, 120, 255),
     "trap": (255, 60, 60),
     "bat": (255, 100, 100),
+    "parlor": (80, 220, 255),
 }
 
 
@@ -136,6 +143,31 @@ GUIDE_BAT_CAVE = RoomGuide(
     ),
 )
 
+# Parlor and Alcatraz (0x92FD) — post-BT Flyway door → **left shaft WJ climb**.
+# sm-json-data node 5 “Alcatraz Door” (= Flyway return) + notable “Alcatraz Escape”:
+# wall-jump up the shaft left of the door, midair morph out (no Terminator bomb
+# tunnel). Pins from continuous post-BT settle + spore debug waypoint names.
+#
+# NOT the product parlor_chimney open-loop that wanders right-side platforms
+# toward Terminator — that is a different chimney.
+GUIDE_PARLOR_ALCATRAZ = RoomGuide(
+    room_id=ROOM_PARLOR,
+    name="Parlor Alcatraz LEFT WJ (Flyway door)",
+    color=_C["parlor"],
+    points=_pts(
+        # Human demos parlor_left_human{,2}.json — see PARLOR_ALCATRAZ_HUMAN.md
+        (968, 651, "flyway-door"),
+        (895, 539, "mid-plat"),  # human2 first land
+        (850, 459, "mid-ledge"),  # setup ledge
+        (805, 355, "left-wall"),  # left face before spin-up
+        (830, 310, "spin-up"),  # RIGHT+A p131 toward right wall
+        (858, 256, "high-contact"),  # human min_y / p132 class
+        (830, 210, "shaft-lip"),  # goal class (not human-cleared yet)
+        (900, 200, "morph-out"),
+        (980, 180, "central-high"),
+    ),
+)
+
 GUIDE_BY_ROOM: dict[int, RoomGuide] = {
     g.room_id: g
     for g in (
@@ -145,6 +177,7 @@ GUIDE_BY_ROOM: dict[int, RoomGuide] = {
         GUIDE_BUBBLE,
         GUIDE_BUBBLE_SAVE,
         GUIDE_BAT_CAVE,
+        GUIDE_PARLOR_ALCATRAZ,
     )
 }
 
@@ -174,6 +207,9 @@ ROUTE_PRESETS: dict[str, tuple[RoomGuide, ...]] = {
     "cathedral-only": (GUIDE_CATHEDRAL,),
     "rising-only": (GUIDE_RISING_TIDE,),
     "bubble-only": (GUIDE_BUBBLE, GUIDE_BUBBLE_SAVE),
+    # Post-Torizo: Flyway door → Alcatraz left wall-jump shaft (human demo).
+    "parlor-left": (GUIDE_PARLOR_ALCATRAZ,),
+    "parlor-alcatraz": (GUIDE_PARLOR_ALCATRAZ,),
 }
 
 

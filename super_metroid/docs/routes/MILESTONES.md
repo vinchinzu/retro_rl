@@ -4,7 +4,7 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 **Goal:** one continuous power-on → ending/credits run with **only** unlimited energy + ammo ([`ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md)). Target runtime class: **less-than-Bronze** assisted full clear (M8).
 
-**Current tip (primary / assisted):** Frog Savestation (`--to frog`, **114,923f** ×2 integrity green). Cathedral first-Bubble pure stack **CATH-01…04 GREEN** (Bubble pure ~2609f). ★ Next assisted pure: Bubble → Bat Cave (`SM-K4.4-PURE`).
+**Current tip (primary / assisted):** Frog Savestation (`--to frog`, **114,923f** ×2 integrity green). Cathedral first-Bubble pure stack **CATH-01…04 GREEN** + **Bubble → Bat pure GREEN R19** (2012f → `0xB07A`). ★ Next assisted pure: Bat → Speed Hall.
 
 **Parallel Clean track:** no energy + no ammo writes — ★ tip target Bomb Torizo (`--to bombs --clean`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
 
@@ -40,7 +40,8 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 | 🔶 | `M-CATH` | K4 | Cathedral climb pure stack (first Bubble) | `0xA7B3`…`0xAFA3` | CATH-01…04 pure green | closed pure |
 | ⏸ | `M-SPEEDWAY` | K4 | Pure Frog Save → Speedway (post-Speed) | `0xB106` | pure green ~295f | parked until Speed |
 | 🔶 | `M-BUBBLE` | K4 | Pure → Bubble Mountain via Cathedral | `0xACB3` | pure **2609f** | `SM-K4-CATH-04`; not continuous |
-| ▶ | `M-BAT-SPEED` | K4 | Pure Bubble → Bat → Speed Hall → Speed | `0xB07A`… | — | `SM-K4.4-PURE` ★ |
+| 🔶 | `M-BAT-CAVE` | K4 | Pure Bubble → Bat Cave | `0xB07A` | pure **2012f** | `SM-K4.4-PURE` R19; not continuous |
+| ▶ | `M-BAT-SPEED` | K4 | Pure Bat → Speed Hall → Speed | `0xACF0`… | — | ★ next pure |
 | ⬜ | `M-SPEED` | K4 | Continuous → Speed Booster | `0xAD1B` | — | `speed` |
 | ⬜ | `M-WAVE` | K4 | Continuous → Wave Beam | `0xADDE` | — | `wave` |
 | ⬜ | `M-ICE` | K4 | Continuous → Ice Beam | `0xA890` | — | `ice` |

@@ -42,11 +42,11 @@ K3.6,46,Kihunter -> Zeela return,0xA4DA,Warehouse Kihunter Room,,continuous,cont
 K3.7,47,Zeela -> Warehouse return,0xA471,Warehouse Zeela Room,,continuous,continuous,K3.6,,,continuous --to business,integrity-green Business return twice; valid upper-left transition,2026-08-01
 K3.8,48,Warehouse -> Business,0xA6A1,Warehouse Entrance,,continuous,continuous,K3.7,,,continuous --to business,right-ledge reverse stack green; lower-lip correction + two-tier Super clear; 113723f twice,2026-08-01
 K4.0,50,Frog Savestation,0xB167,Frog Savestation,0x92FA,continuous,continuous,K3.8,,,continuous --to frog,Business elevator descent + blue-door exit; 114923f integrity green twice,2026-08-01
-K4.1,51,Frog Save -> Speedway,0xB106,Frog Speedway,0x980A,open,future,K4.0,,post_frog_continuous,pure frog-save-to-speedway,★ next pure hop,2026-08-01
-K4.2,52,Speedway -> Farming path,0xAF72,Bubble Mountain approach,0x97E6,open,future,K4.1,,,,Speedway corridor exit,2026-08-01
-K4.3,53,Approach -> Bubble Mountain,0xACB3,Bubble Mountain,0x971A,open,future,K4.2,,,,,2026-08-01
-K4.4,54,Bubble -> Bat Cave / Speed Hall,0xB07A,Speed Hall approach,0x958E,open,future,K4.3,,,,,2026-08-01
-K4.5,55,Speed Hall -> Speed Room,0xACF0,Speed Booster Hall,0x97B6,open,future,K4.4,,,,,2026-08-01
+K4.1,51,Frog Save -> Speedway,0xB106,Frog Speedway,0x980A,open,future,K4.0,,post_frog_continuous,pure frog-save-to-speedway,parked post-Speed shortcut; first Bubble is Cathedral,2026-08-03
+K4.2,52,Speedway -> Farming path,0xAF72,Bubble Mountain approach,0x97E6,open,future,K4.1,,,,Speedway corridor exit; parked post-Speed,2026-08-03
+K4.3,53,Cathedral climb -> Bubble Mountain,0xACB3,Bubble Mountain,0x971A,controller_dev,controller_dev,K4.0,,post_rising_tide_to_bubble_pure,pure rising-tide-to-bubble,CATH-01..04 pure GREEN first Bubble; not continuous,2026-08-03
+K4.4,54,Bubble -> Bat Cave,0xB07A,Bat Cave,0x958E,controller_dev,controller_dev,K4.3,,post_bubble_to_bat_pure,pure bubble-to-bat-cave,R19 pure GREEN 2012f; enemy-phase fire + sticky Super door,2026-08-03
+K4.5,55,Bat Cave -> Speed Hall / Speed Room,0xACF0,Speed Booster Hall,0x97B6,open,future,K4.4,,post_bubble_to_bat_pure,pure bat-to-speed-hall,★ next pure hop from Bat successor,2026-08-03
 K4.6,56,Speed Booster collect,0xAD1B,Speed Booster Room,0x95B2,open,future,K4.5,speed,,,real PLM collect,2026-08-01
 K4.7,57,Speed return -> Bubble,0xACB3,Bubble Mountain,,open,future,K4.6,,,,return for Wave branch,2026-08-01
 K4.8,58,Bubble -> Single Chamber,0xADAD,Single Chamber,,open,future,K4.7,,,,Wave path,2026-08-01
