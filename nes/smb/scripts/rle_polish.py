@@ -20,18 +20,18 @@ import json
 import sys
 from pathlib import Path
 
-import retro_harness.platformer.levels.smb  # noqa: F401 — register LevelConfigs
+import smb.platformer_levels  # noqa: F401 — register LevelConfigs
 
 from retro_harness.platformer.evaluator import Evaluator
 from retro_harness.platformer.frame_tools import load_raw_frames
 from retro_harness.platformer.level_config import get_level_config
 from retro_harness.platformer.rle_optimize import (
-    SMB_BOTTLENECK_WINDOWS,
     RleWindow,
     phase_shift_transitions,
     rle_ga_window,
     rle_hillclimb_window,
 )
+from smb.rle_windows import SMB_BOTTLENECK_WINDOWS
 from smb.policy import (
     CONTINUOUS_SETTLE_FRAMES,
     DEFAULT_CONTINUOUS_SEED,

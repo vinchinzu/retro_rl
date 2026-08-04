@@ -10,9 +10,12 @@ from retro_harness.platformer.level_config import (
     register_level,
 )
 
-# Import levels to trigger registration
-import retro_harness.platformer.levels.dkc  # noqa: F401
-import retro_harness.platformer.levels.super_metroid  # noqa: F401
+# Import levels to trigger registration (game-owned LevelConfig packs)
+import donkey_kong_country.platformer_levels  # noqa: F401
+import smb.platformer_levels  # noqa: F401
+import smb3.platformer_levels  # noqa: F401
+import SMW.platformer_levels  # noqa: F401
+import super_metroid.platformer_levels  # noqa: F401
 
 
 def test_dkc_winkys_registered():

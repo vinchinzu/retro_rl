@@ -40,6 +40,10 @@ uv run python snes/super_metroid/scripts/record/continuous.py --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video
 
+# Early Spazer human wall-jump (guide on same window; see docs/tasks/EARLY_SPAZER_HUMAN.md)
+uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from below-spazer --route early-spazer --name spazer_human
+
 # Last pure GREEN on tip path (Bubble → Bat); next open pure is Bat → Speed Hall
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state

@@ -27,7 +27,7 @@ Planner owns STATUS, natural entry, and continuous promote. Executors take
 | **P0** | Bat → Speed Hall pure | *scaffold from template* | Source: `post_bubble_to_bat_pure` / `post_bat_cave_continuous` |
 | P0 | Graph + compose Speed tip | planner after pure green | Then stabilize + STATUS |
 | **P2** | Clean bombs/Torizo continuous | [`SM-CLEAN-BOMBS.md`](SM-CLEAN-BOMBS.md) | After morph green; `*_clean` only |
-| P2 | Early Spazer + 100% board | BACKLOG / `SPAZER_EARLY` in routes | Parallel; no spine block |
+| P2 | Early Spazer + 100% board | [`EARLY_SPAZER_HUMAN.md`](EARLY_SPAZER_HUMAN.md) · BACKLOG SPAZER | Human WJ record ready; pure/tip after |
 | — | Room practice farm | planner opt-in only | Metrics board only; not product next-work |
 | — | ARCH / boss primitives | BACKLOG epic rows | Planner-serial on hot modules |
 

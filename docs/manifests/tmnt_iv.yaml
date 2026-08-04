@@ -28,3 +28,9 @@ notes: >-
   ★ T4-CLEAN-FULL. Current low-assist dry-run is 00:57:19.635 with 4,667
   damage and zero life losses; Stage1 Clean suite done; assisted polish
   via T4-ASSIST-* on Techno/Prehist/Starbase/WK damage buckets.
+setup:
+  rom_zip: "Teenage Mutant Ninja Turtles IV - Turtles in Time.zip"
+  integration: TMNTIV-Snes
+  ladder_rank: 3
+  ladder_status: ENDING_SEGMENTED
+  video: tmnt_iv/recordings/tmnt_iv_segmented_completion_showcase.mp4

@@ -7,7 +7,8 @@
 :func:`~super_metroid.routes.tips.play_tip` / :func:`~super_metroid.routes.tips.run_tip`.
 
 Finish shapes differ via TipSpec plugins (``assist_mode``, ``final_conditions_fn``,
-``source_policy_fn``) — no ``custom_run`` dual path.
+``source_policy_fn``). All tips use the generic :func:`~super_metroid.routes.tips.run_tip`
+path.
 
 One tip table: :mod:`super_metroid.routes.tips` (no EarlyTipSpec type).
 """
@@ -79,9 +80,6 @@ __all__ = [
     "early_prefix_conditions",
     "spore_boss_conditions",
 ]
-
-# Back-compat alias (EarlyTipSpec removed).
-EarlyTipSpec = TipSpec
 
 
 # ---------------------------------------------------------------------------
@@ -322,11 +320,11 @@ def play_spore(
 ) -> SporeSpawnEvidence:
     """Bombs prefix + post-Torizo controller through natural Spore exit (``SPORE_SPINE``)."""
     result = play_tip("spore", session, splits, segments)
-    if not isinstance(result, SporeSpawnEvidence):
+    if not isinstance(result.boss, SporeSpawnEvidence):
         raise RuntimeError(
-            f"play_spore expected SporeSpawnEvidence, got {type(result)!r}"
+            f"play_spore expected SporeSpawnEvidence boss, got {type(result.boss)!r}"
         )
-    return result
+    return result.boss
 
 
 def run_spore(
@@ -357,17 +355,15 @@ def play_supers(
 ) -> tuple[SporeSpawnEvidence, SuperCollectEvidence]:
     """Spore-exit prefix, then natural Super collect (``SUPERS_SPINE``)."""
     result = play_tip("supers", session, splits, segments)
-    if (
-        not isinstance(result, tuple)
-        or len(result) != 2
-        or not isinstance(result[0], SporeSpawnEvidence)
-        or not isinstance(result[1], SuperCollectEvidence)
+    if not isinstance(result.boss, SporeSpawnEvidence) or not isinstance(
+        result.super_collect, SuperCollectEvidence
     ):
         raise RuntimeError(
-            f"play_supers expected (SporeSpawnEvidence, SuperCollectEvidence), "
-            f"got {type(result)!r}"
+            "play_supers expected TipPlayResult with SporeSpawnEvidence boss and "
+            f"SuperCollectEvidence super_collect, got boss={type(result.boss)!r} "
+            f"super_collect={type(result.super_collect)!r}"
         )
-    return result[0], result[1]
+    return result.boss, result.super_collect
 
 
 def run_supers(
@@ -399,9 +395,9 @@ def run_supers(
 
 
 # ===========================================================================
-# Early rows on the unified TipSpec table (plugins, no custom_run)
+# Early rows on the unified TipSpec table
 # ===========================================================================
-# Play: parent_tip_id chain + SpineHop deltas via play_tip (no custom_play).
+# Play: parent_tip_id chain + SpineHop deltas via play_tip.
 # Run: assist_mode + final_conditions_fn (+ source/policy plugins) via run_tip.
 
 
@@ -418,6 +414,8 @@ EARLY_TIP_SPECS: tuple[TipSpec, ...] = (
         source_policy=(
             "power-on Ceres policy + imported natural-entry room seeds"
         ),
+        display_name="Power-on → Morph Ball",
+        description="Ceres → Zebes Morph collect.",
         assist_mode="ammo",
         require_deaths_zero=False,
         require_transitions=False,
@@ -435,6 +433,9 @@ EARLY_TIP_SPECS: tuple[TipSpec, ...] = (
         required_splits=BOMBS_PREFIX_SPLITS,
         success_outcome="bomb_torizo_defeated_bombs_acquired",
         route_label="bombs",
+        display_name="Power-on → Bomb Torizo exit",
+        description="Morph prefix through natural Bomb Torizo clear.",
+        aliases=("bomb_torizo", "torizo"),
         assist_mode="ammo",
         schema_version=2,
         require_deaths_zero=False,
@@ -457,6 +458,10 @@ EARLY_TIP_SPECS: tuple[TipSpec, ...] = (
             "accepted power-on prefix + checked read-only post-Torizo controller "
             "+ editor-precalculated room plan + phase-guarded current resources"
         ),
+        display_name="Power-on → Spore Spawn exit",
+        description="Bombs prefix through natural Spore exit into Super room.",
+        aliases=("spore_spawn",),
+        supports_unlimited_energy=True,
         final_conditions_fn=spore_final_conditions,
         policy_sources_fn=_spore_policy_sources,
     ),
@@ -474,6 +479,11 @@ EARLY_TIP_SPECS: tuple[TipSpec, ...] = (
             "controller + phase-guarded current resources"
         ),
         timing_source="supers",
+        display_name="Power-on → Spore Super Missiles",
+        description="Spore prefix through natural Super Missile collect.",
+        aliases=("super",),
+        supports_room_timing=True,
+        supports_unlimited_energy=True,
         final_conditions_fn=supers_final_conditions,
         policy_sources_fn=_supers_policy_sources,
     ),

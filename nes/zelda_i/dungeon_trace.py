@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections import deque
 from dataclasses import dataclass, field
@@ -12,6 +11,7 @@ from typing import Any, Iterable
 
 import numpy as np
 
+from retro_harness.adventure.hashutil import sha256_file
 from retro_harness.nes import NES_BUTTON_NAMES
 from retro_harness.ram_state import diff_changed
 from zelda_i.dungeon_ids import (
@@ -192,14 +192,6 @@ def ram_delta_report(
         "unknown": unknown,
         "unknown_truncated": max(0, len(all_deltas) - len(known) - len(unknown)),
     }
-
-
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def write_state_provenance(

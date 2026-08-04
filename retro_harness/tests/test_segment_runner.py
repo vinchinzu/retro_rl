@@ -8,6 +8,7 @@ from retro_harness.segment_runner import (
     SegmentTracker,
     WaveChainTracker,
     is_screen_clear,
+    player_is_down,
 )
 
 
@@ -18,6 +19,7 @@ def _playing(
     health: int = 80,
     lives: int = 3,
     go_flashing: bool = False,
+    area_clear: bool = False,
     level_complete: bool = False,
     player_dead: bool = False,
 ) -> GameState:
@@ -34,7 +36,8 @@ def _playing(
         level_complete=level_complete,
         player_dead=player_dead,
         screen_locked=bool(living) and not go_flashing,
-        extras={"go_flashing": go_flashing},
+        go_flashing=go_flashing,
+        area_clear=area_clear,
     )
 
 
@@ -114,6 +117,16 @@ def test_tracker_corpse_hp_is_death() -> None:
     assert tracker.waves_cleared == 0
 
 
+def test_player_is_down_max_live_health_none_allows_high_hp() -> None:
+    """Platformers can pass max_live_health=None; health=200 stays alive."""
+    high = _playing(health=200)
+    assert player_is_down(high) is True  # default band treats wrap as down
+    assert player_is_down(high, max_live_health=None) is False
+    assert player_is_down(_playing(health=0), max_live_health=None) is True
+    dead = _playing(health=50, player_dead=True)
+    assert player_is_down(dead, max_live_health=None) is True
+
+
 def test_tracker_timeout() -> None:
     enemy = EnemyState(0, 100, 140, 20, True)
     tracker = SegmentTracker(max_frames=2)
@@ -165,7 +178,8 @@ def test_wave_chain_stop_on_boss() -> None:
         camera_x=200,
         enemies=(),
         boss_active=True,
-        extras={"go_flashing": False, "boss_status": 1, "boss_hp": 100},
+        go_flashing=False,
+        extras={"boss_status": 1, "boss_hp": 100},
     )
     assert tracker.update(boss_loading) is SegmentOutcome.SUCCESS
     assert tracker.boss_reached is True
@@ -181,7 +195,8 @@ def test_wave_chain_stop_on_boss() -> None:
         camera_x=200,
         enemies=(),
         boss_active=True,
-        extras={"go_flashing": False, "boss_status": 3, "boss_hp": 100},
+        go_flashing=False,
+        extras={"boss_status": 3, "boss_hp": 100},
     )
     assert tracker2.update(boss_drawn) is SegmentOutcome.SUCCESS
     assert tracker2.boss_reached is True

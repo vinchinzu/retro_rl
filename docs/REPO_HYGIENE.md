@@ -50,7 +50,8 @@ Agents auto-load hierarchical `AGENTS.md`. Every extra section costs tokens on
 | Priority | Path | Target | Status |
 |---------:|------|--------|--------|
 | 1 | `snes/super_metroid/AGENTS.md` | ~50–60 lines (commands + traps) | **done** (~58 lines) |
-| 2 | Fat game AGENTS (`harvest`, `hals_golf`, `tmnt_iv`, `zelda_i`, MK, `smb`, `alttp`, `smz3`) | ~50 each | open |
+| 2a | `snes/harvest/AGENTS.md`, `snes/hals_golf/AGENTS.md` | ~50 each | **done** |
+| 2b | Fat game AGENTS (`tmnt_iv`, `zelda_i`, MK, MKII, `smb`, `alttp`, `smz3`) | ~50 each | **done** |
 | 3 | Root AGENTS further trim | ~40 | open |
 
 ## Engineering backlog (not docs)
@@ -58,26 +59,42 @@ Agents auto-load hierarchical `AGENTS.md`. Every extra section costs tokens on
 | Item | Notes |
 |------|--------|
 | Unify video writers | `video.FrameVideoWriter` is the canonical pipe |
-| Name clarity | `video.RecordingSession` vs `recorder.RecordingSession` |
-| `ladder.py` vs manifests | Hardcoded ladder is stale vs `docs/manifests/*.yaml` |
-| Artifact gitignore | Probe PNG spam under SM / tmnt_iv / final_fight — keep goldens only |
+| Name clarity | **done** — `video.CaptureSession` (showcase/continuous) vs `recorder.RecordingSession` (labeled saves) |
+| `ladder.py` vs manifests | **done** — ladder loads from `docs/manifests/*.yaml` `setup:` blocks |
+| Nested package import roots | **done** — layout discovery in `repo.discover_nested_package_roots` (no slug map) |
+| Artifact gitignore | **done** — `**/probe*.png`, `debug_frames/`, SM/tmnt/FF probe globs |
+| Shared game layout + Clean stems | **done** — `game_layout.game_paths`, `artifacts.clean_artifact_stem` / `recording_artifacts` |
+
 
 ## Import cheat sheet (scripted completion)
+
+Prefer **submodule** imports (not the package-root barrel) for new code.
+Dual orchestration stacks are documented in
+[retro_harness/docs/TOOLSET.md](../retro_harness/docs/TOOLSET.md) — do not mix
+`protocol.WorldState`/`Task` with `ram_state.GameState`/`BehaviorNode` without
+an adapter.
 
 ```python
 from retro_harness.actions import buttons, idle_action
 from retro_harness.input_script import FrameAction, StartupPlan, run_startup
 from retro_harness.ram_state import GameMode, GameState, diff_changed, snapshot
-from retro_harness.bot_runner import Selector, Sequence, StuckDetector
+from retro_harness.bot_runner import Selector, Sequence, StuckDetector  # BT oneshot
+from retro_harness.bot_runner import BotRunner, TaskSequencer            # PlaySession Task
+from retro_harness.protocol import Task, WorldState
 from retro_harness.segment_runner import configure_headless, SegmentTracker
 from retro_harness.combat import fight_nearest_action, build_segment_tree
 from retro_harness.cursor import step_toward_target
 from retro_harness.env import setup_game_rom, make_env, GameSpec
-from retro_harness.video import FrameVideoWriter, RecordingSession, render_footer_frame
+from retro_harness.video import CaptureSession, FrameVideoWriter, render_footer_frame
 # Genre subdomains (optional):
 # from retro_harness.platformer import Evaluator, LevelConfig
 # from retro_harness.fighters import FightingEnv, get_game_config
 # from retro_harness.adventure import RouteGraph, shortest_path
+# Game-owned platformer packs (register LevelConfigs on import):
+# import super_metroid.platformer_levels
+# Standard paths + Clean artifacts (prefer over copy-paste in paths.py):
+# from retro_harness.game_layout import game_paths
+# from retro_harness.artifacts import clean_artifact_stem, recording_artifacts
 ```
 
 ## Done recently (docs)

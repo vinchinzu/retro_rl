@@ -58,7 +58,7 @@ def test_save_state_writes_only_to_custom_integrations(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     payload = b"super-metroid-state"
     env = _FakeEnv(payload)
-    game_dir = tmp_path / "super_metroid_rl"
+    game_dir = tmp_path / "demo_game"
 
     save_path = save_state(env, game_dir, "SuperMetroid-Snes", "QuickSave")
 

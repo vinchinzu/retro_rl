@@ -78,7 +78,11 @@ def test_continuous_tips_chain_ends_at_default() -> None:
 
 def test_continuous_tips_align_with_tip_specs() -> None:
     """CLI ContinuousTip ids must match ordered TipSpec product tips (no drift)."""
-    from super_metroid.routes.catalog import CONTINUOUS_TIP_ORDER
+    from super_metroid.routes.catalog import (
+        CONTINUOUS_TIP_ORDER,
+        get_named_route,
+        continuous_tip_from_spec,
+    )
     from super_metroid.routes.tips import TIP_BY_ID, TIP_SPECS
 
     catalog_ids = [t.tip_id for t in CONTINUOUS_TIPS]
@@ -86,6 +90,17 @@ def test_continuous_tips_align_with_tip_specs() -> None:
     assert catalog_ids == list(CONTINUOUS_TIP_ORDER)
     assert catalog_ids == tip_spec_ids
     assert list(TIP_BY_ID) == catalog_ids
+    # ContinuousTip / NamedRoute are projections of TipSpec CLI fields.
+    for spec in TIP_SPECS:
+        tip = continuous_tip_from_spec(spec)
+        assert tip.display_name == spec.display_name
+        assert tip.aliases == spec.aliases
+        assert tip.supports_room_timing == spec.supports_room_timing
+        assert tip.supports_checkpoint == spec.supports_checkpoint
+        route = get_named_route(spec.tip_id)
+        assert route.route_id == f"sm_{spec.tip_id}"
+        assert route.display_name == spec.display_name
+        assert [m.milestone_id for m in route.milestones] == list(spec.required_splits)
 
 
 def test_get_continuous_tip_aliases() -> None:
@@ -148,7 +163,7 @@ def test_checkpoint_output_is_explicit_and_early_tips_reject_it() -> None:
 
 
 def test_early_tip_specs_cover_morph_through_supers() -> None:
-    """Early tips are TipSpec rows with real hops + finish plugins (no custom_run)."""
+    """Early tips are TipSpec rows with real hops + finish plugins."""
     from super_metroid.routes.catalog import CONTINUOUS_SEGMENTS
     from super_metroid.routes.continuous import EARLY_TIP_BY_ID, EARLY_TIP_SPECS, TIP_BY_ID
     from super_metroid.routes.early_continuous import (
@@ -171,12 +186,14 @@ def test_early_tip_specs_cover_morph_through_supers() -> None:
     for tip_id in expected:
         assert isinstance(EARLY_TIP_BY_ID[tip_id], TipSpec)
         assert tip_id in TIP_BY_ID
-        assert EARLY_TIP_BY_ID[tip_id].custom_play is None
-        assert EARLY_TIP_BY_ID[tip_id].custom_run is None
-        assert EARLY_TIP_BY_ID[tip_id].is_hop_composed is True
-        assert EARLY_TIP_BY_ID[tip_id].is_spine_driven is True
-        assert EARLY_TIP_BY_ID[tip_id].hops  # real SpineHop deltas
+        # Hop-composed: real SpineHop deltas; finish plugins shape reports.
+        assert EARLY_TIP_BY_ID[tip_id].hops
         assert EARLY_TIP_BY_ID[tip_id].final_conditions_fn is not None
+    # Parent chain + spines (morph is root).
+    assert EARLY_TIP_BY_ID["morph"].parent_tip_id is None
+    assert EARLY_TIP_BY_ID["bombs"].parent_tip_id == "morph"
+    assert EARLY_TIP_BY_ID["spore"].parent_tip_id == "bombs"
+    assert EARLY_TIP_BY_ID["supers"].parent_tip_id == "spore"
     # Hops are the early spines; assist + condition plugins shape finish_report.
     assert EARLY_TIP_BY_ID["morph"].hops is MORPH_SPINE
     assert EARLY_TIP_BY_ID["bombs"].hops is BOMBS_SPINE
@@ -190,8 +207,6 @@ def test_early_tip_specs_cover_morph_through_supers() -> None:
     assert EARLY_TIP_BY_ID["bombs"].schema_version == 2
     assert EARLY_TIP_BY_ID["morph"].required_splits == ("morph_ball",)
     assert EARLY_TIP_BY_ID["supers"].success_outcome == "spore_supers_collected"
-    assert EARLY_TIP_BY_ID["bombs"].parent_tip_id == "morph"
-    assert EARLY_TIP_BY_ID["supers"].parent_tip_id == "spore"
     # Segment registry binds public play_* wrappers (hop-composed).
     assert CONTINUOUS_SEGMENTS["morph"] is play_morph
     assert CONTINUOUS_SEGMENTS["bombs"] is play_bombs
@@ -200,22 +215,23 @@ def test_early_tip_specs_cover_morph_through_supers() -> None:
 
 
 def test_early_play_wrappers_delegate_to_spine_hops() -> None:
-    """play_* wrappers call play_tip; spines carry multi-split after hooks."""
-    import inspect
-
+    """play_* wrappers target tip ids; spines carry multi-split after hooks."""
     from super_metroid.routes import early_continuous as early
     from super_metroid.routes.kpdr import early_post_morph as post
     from super_metroid.routes.kpdr import early_spine as morph_spine
 
-    morph_src = inspect.getsource(early.play_morph)
-    bombs_src = inspect.getsource(early.play_bombs)
-    spore_src = inspect.getsource(early.play_spore)
-    supers_src = inspect.getsource(early.play_supers)
-    assert "play_tip" in morph_src
-    assert "play_tip" in bombs_src
-    assert "play_tip" in spore_src
-    assert "play_tip" in supers_src
-    # Shared hop runner + spines; multi-split bookkeeping on hop.after.
+    # Public early play_* wrappers bind a tip_id for play_tip (not hand-rolled hops).
+    for tip_id, play_fn in (
+        ("morph", early.play_morph),
+        ("bombs", early.play_bombs),
+        ("spore", early.play_spore),
+        ("supers", early.play_supers),
+    ):
+        assert tip_id in play_fn.__code__.co_consts
+        params = list(inspect.signature(play_fn).parameters)
+        assert params[:2] == ["session", "splits"]
+        assert "segments" in params
+    # Pure-probe hop runners + spines remain; multi-split bookkeeping on hop.after.
     assert callable(post.play_bombs_hops)
     assert callable(post.play_spore_hops)
     assert callable(post.play_supers_hops)
@@ -228,17 +244,20 @@ def test_early_play_wrappers_delegate_to_spine_hops() -> None:
     assert post.SPORE_SPINE[0].after is not None
     assert post.SPORE_SPINE[1].after is not None
     assert post.SUPERS_SPINE[0].after is not None
-    # Back-compat hop runners use play_hops (not copy-pasted for-loops).
-    assert "play_hops" in inspect.getsource(post.play_bombs_hops)
-    assert "play_hops" in inspect.getsource(post.play_spore_hops)
-    assert "play_hops" in inspect.getsource(post.play_supers_hops)
+    # Hop room chains are contiguous across early spines.
+    for spine in (morph_spine.MORPH_SPINE, post.BOMBS_SPINE, post.SPORE_SPINE):
+        for prev, hop in zip(spine, spine[1:]):
+            assert prev.to_room == hop.from_room, (
+                f"{prev.hop_id} → {hop.hop_id}: room gap "
+                f"{prev.to_room:#x} vs {hop.from_room:#x}"
+            )
 
 
 def test_unified_tip_specs_cover_full_chain() -> None:
     """One TipSpec table: early + Super+; red_tower parents to supers."""
     from super_metroid.routes.continuous import (
-        POST_SUPERS_TIP_BY_ID,
-        POST_SUPERS_TIP_SPECS,
+        SUPER_TIP_BY_ID,
+        SUPER_TIP_SPECS,
         TIP_BY_ID,
         TIP_SPECS,
     )
@@ -256,7 +275,7 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "frog",
         "bat_cave",
     )
-    assert tuple(s.tip_id for s in POST_SUPERS_TIP_SPECS) == expected_super
+    assert tuple(s.tip_id for s in SUPER_TIP_SPECS) == expected_super
     # Unified table includes early + Super+.
     for tip_id in ("morph", "supers", "red_tower", "bat_cave"):
         assert tip_id in TIP_BY_ID
@@ -268,14 +287,14 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "supers",
     }
     # Parent chain: red_tower → supers (early); frog + bat_cave are business siblings.
-    assert POST_SUPERS_TIP_BY_ID["red_tower"].parent_tip_id == "supers"
-    assert POST_SUPERS_TIP_BY_ID["bat"].parent_tip_id == "red_tower"
-    assert POST_SUPERS_TIP_BY_ID["frog"].parent_tip_id == "business"
-    assert POST_SUPERS_TIP_BY_ID["frog"].require_varia is True
-    assert POST_SUPERS_TIP_BY_ID["bat_cave"].parent_tip_id == "business"
-    assert POST_SUPERS_TIP_BY_ID["bat_cave"].final_room == 0xB07A
-    assert POST_SUPERS_TIP_BY_ID["bat_cave"].custom_run is None
-    assert [h.split_id for h in POST_SUPERS_TIP_BY_ID["bat_cave"].hops] == [
+    assert SUPER_TIP_BY_ID["red_tower"].parent_tip_id == "supers"
+    assert SUPER_TIP_BY_ID["bat"].parent_tip_id == "red_tower"
+    assert SUPER_TIP_BY_ID["frog"].parent_tip_id == "business"
+    assert SUPER_TIP_BY_ID["frog"].require_varia is True
+    assert SUPER_TIP_BY_ID["bat_cave"].parent_tip_id == "business"
+    assert SUPER_TIP_BY_ID["bat_cave"].final_room == 0xB07A
+    assert SUPER_TIP_BY_ID["bat_cave"].hops  # hop-composed Super+ tip
+    assert [h.split_id for h in SUPER_TIP_BY_ID["bat_cave"].hops] == [
         "business_to_cathedral_entrance",
         "cathedral_entrance_to_cathedral",
         "cathedral_to_rising_tide",
@@ -290,15 +309,20 @@ def test_post_supers_aliases_and_hop_tables() -> None:
     from super_metroid.routes.catalog import CONTINUOUS_SEGMENTS
     from super_metroid.routes.kpdr import hops as hop_mod
     from super_metroid.routes.post_supers_aliases import build_post_supers_aliases
+    from super_metroid.routes.tips import TipSpec
 
     assert callable(cont.play_red_tower)
     assert callable(cont.run_bat_cave)
     assert cont.play_warehouse is CONTINUOUS_SEGMENTS["warehouse"]
     # Hop tables are owned by hops.py (not re-exported from continuous).
-    assert not hasattr(cont, "_WAREHOUSE_HOPS")
-    assert not hasattr(cont, "_BAT_CAVE_ONLY_HOPS")
-    assert hop_mod.WAREHOUSE_HOPS is hop_mod._WAREHOUSE_HOPS
-    assert hop_mod.BAT_CAVE_ONLY_HOPS is hop_mod._BAT_CAVE_ONLY_HOPS
+    assert not hasattr(cont, "WAREHOUSE_HOPS")
+    assert not hasattr(cont, "BAT_CAVE_ONLY_HOPS")
+    assert not hasattr(hop_mod, "_WAREHOUSE_HOPS")
+    assert not hasattr(hop_mod, "RouteHop")
+    assert not hasattr(hop_mod, "PostSupersTipSpec")
+    assert isinstance(hop_mod.WAREHOUSE_HOPS[0], hop_mod.SpineHop)
+    assert hop_mod.SUPER_TIP_BY_ID["warehouse"].hops is hop_mod.WAREHOUSE_HOPS
+    assert all(isinstance(s, TipSpec) for s in hop_mod.SUPER_TIP_SPECS)
     # Bind lives outside continuous; tip ids still drive the name set.
     built = build_post_supers_aliases(
         ("red_tower", "bat_cave"),
@@ -397,15 +421,15 @@ def test_report_to_dict_is_kind_agnostic() -> None:
 
 
 def test_warehouse_hops_table_shape() -> None:
-    from super_metroid.routes.kpdr.hops import _WAREHOUSE_HOPS
+    from super_metroid.routes.kpdr.hops import WAREHOUSE_HOPS
 
-    assert [h.split_id for h in _WAREHOUSE_HOPS] == [
+    assert [h.split_id for h in WAREHOUSE_HOPS] == [
         "below_spazer_to_west",
         "west_to_glass",
         "glass_to_east",
         "east_to_warehouse",
     ]
-    assert _WAREHOUSE_HOPS[-1].to_room == 0xA6A1
+    assert WAREHOUSE_HOPS[-1].to_room == 0xA6A1
 
 
 def test_split_for_transition_uses_latest_repeated_doorway() -> None:

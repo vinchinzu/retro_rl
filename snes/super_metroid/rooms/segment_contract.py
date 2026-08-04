@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from super_metroid.paths import GAME_DIR
-from super_metroid.rooms.room_graph import (
+from super_metroid.rooms.topology import (
     PhysicalConnection,
     _load_connections,
     _load_reference_rooms,

@@ -14,6 +14,7 @@ from retro_harness.adventure.routes import (
     NamedRoute,
     RouteMilestone,
     RouteRegistry,
+    get_named_route,
     get_route,
     list_routes,
 )
@@ -29,11 +30,11 @@ def test_named_route_registry() -> None:
     from retro_harness.adventure.routes import register_routes
 
     register_routes(reg, route, "alias")
-    assert get_route(reg, "DEMO").route_id == "demo"
-    assert get_route(reg, "alias").display_name == "Demo"
+    assert get_named_route(reg, "DEMO").route_id == "demo"
+    assert get_route(reg, "alias").display_name == "Demo"  # compat alias
     assert [r.route_id for r in list_routes(reg)] == ["demo"]
     with pytest.raises(KeyError):
-        get_route(reg, "missing")
+        get_named_route(reg, "missing")
 
 
 def test_route_registry_class() -> None:

@@ -235,9 +235,12 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
         level_complete=level_complete,
         player_dead=player_dead,
         screen_locked=bool(lock_threats) and not go_flashing,
+        go_flashing=go_flashing,
+        area_clear=area_clear,
         extras={
             "game_status": status,
             "player_active": player_active,
+            # Dual-written for one-release back-compat with extras readers.
             "go_flashing": go_flashing,
             "boss_hp": boss.health,
             "boss_status": boss_status,

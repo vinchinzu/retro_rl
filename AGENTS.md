@@ -29,14 +29,15 @@ Program spine:
 
 Games live under console folders but keep package import names
 (`import alttp`, `import super_metroid`, `import smb`). Pytest/pythonpath
-includes `snes/` and `nes/` (see root `conftest.py` / `pyproject.toml`).
-Path helpers: `retro_harness.repo.resolve_game_dir`,
-`retro_harness.repo.ensure_import_paths`.
+includes `snes/` and `nes/`; nested packages (`snes/harvest/harvest/`,
+`snes/hals_golf/hals_golf/`) are layout-discovered via
+`repo.ensure_import_paths` (root `conftest.py`). Path helpers:
+`retro_harness.repo.resolve_game_dir`, `ensure_import_paths`.
 
 Authoritative trees include `snes/super_metroid/`, `snes/SMW/`,
-`snes/harvest/`, `snes/alttp/`, `snes/smz3/`, `snes/tmnt_iv/`,
-`nes/tmnt_i/`–`nes/tmnt_iii/`, `nes/zelda_i/`, `nes/zelda_ii/`,
-`nes/metroid/`, `nes/smb/`, `nes/smb3/`. Do not invent
+`snes/harvest/`, `snes/hals_golf/`, `snes/alttp/`, `snes/smz3/`,
+`snes/tmnt_iv/`, `nes/tmnt_i/`–`nes/tmnt_iii/`, `nes/zelda_i/`,
+`nes/zelda_ii/`, `nes/metroid/`, `nes/smb/`, `nes/smb3/`. Do not invent
 `super_metroid_rl/` or `super_mario_bros/`.
 
 ## Organization Rules

@@ -91,6 +91,11 @@ from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_cathedral_to_rising_tide,
     play_rising_tide_to_bubble,
 )
+from super_metroid.routes.kpdr.spazer import (  # noqa: E402
+    play_below_spazer_to_spazer,
+    play_spazer_collect,
+    play_spazer_return_to_below,
+)
 from super_metroid.routes.kpdr import (  # noqa: E402
     play_baby_to_kihunter_return,
     play_bat_to_below_spazer,
@@ -480,6 +485,9 @@ def main() -> None:
             "noob-to-red",
             "red-to-bat",
             "bat-to-below",
+            "below-spazer-to-spazer",
+            "spazer-collect",
+            "spazer-return-to-below",
             "below-to-west",
             "west-to-glass",
             "glass-to-east",
@@ -669,6 +677,9 @@ def main() -> None:
             "noob-to-red": play_noob_to_red_tower,
             "red-to-bat": play_red_tower_to_bat,
             "bat-to-below": play_bat_to_below_spazer,
+            "below-spazer-to-spazer": play_below_spazer_to_spazer,
+            "spazer-collect": play_spazer_collect,
+            "spazer-return-to-below": play_spazer_return_to_below,
             "below-to-west": play_below_spazer_to_west,
             "west-to-glass": play_west_to_glass,
             "glass-to-east": play_glass_to_east,

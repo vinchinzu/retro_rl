@@ -10,7 +10,6 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-import hashlib
 import json
 from pathlib import Path
 from typing import Any, Protocol
@@ -18,13 +17,15 @@ from typing import Any, Protocol
 import numpy as np
 
 from retro_harness.actions import buttons, idle_action
+from retro_harness.adventure.hashutil import sha256_file
+from retro_harness.artifacts import clean_artifact_stem, recording_artifacts
 from retro_harness.env import make_env
+from retro_harness.video import probe_video_evidence
 from super_metroid.paths import GAME, GAME_DIR, MAPS_DIR, RECORDINGS_DIR, SHARED_ROM
 from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import ObservedTransition, RoomProgressionGraph
 from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_state
 from super_metroid.room_timer import RoomTimer
-from retro_harness.video import probe_video_evidence
 from super_metroid.video import VideoCaptureConfig, VideoRecorder
 
 Action = np.ndarray
@@ -342,14 +343,6 @@ def hold(
     for _ in range(frames):
         state = session.step(action, reason)
     return state
-
-
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def video_evidence(path: Path, expected_frames: int) -> dict[str, object]:
@@ -746,22 +739,13 @@ def finish_report(
     return report
 
 
-def clean_artifact_stem(stem: str) -> str:
-    """Append ``_clean`` once so clean runs never share assisted basenames."""
-    if stem.endswith("_clean"):
-        return stem
-    return f"{stem}_clean"
-
-
 def default_artifacts(stem: str, *, clean: bool = False) -> tuple[Path, Path]:
     """Video/report paths under ``recordings/`` for a basename stem.
 
     When ``clean=True``, the stem becomes ``{stem}_clean`` so Clean-track
     artifacts never overwrite assisted baselines.
     """
-    RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-    resolved = clean_artifact_stem(stem) if clean else stem
-    return RECORDINGS_DIR / f"{resolved}.mp4", RECORDINGS_DIR / f"{resolved}.json"
+    return recording_artifacts(RECORDINGS_DIR, stem, clean=clean)
 
 
 def write_room_timing_artifact(

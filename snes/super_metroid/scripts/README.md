@@ -22,6 +22,9 @@ uv run python snes/super_metroid/scripts/record/continuous.py --to supers --no-v
 uv run python snes/super_metroid/scripts/record/guided_human.py
 uv run python snes/super_metroid/scripts/record/guided_human.py --list
 uv run python snes/super_metroid/scripts/record/guided_human.py --from bubble --route bubble-to-bat
+# Post-supers Charge (Big Pink main shaft → collect + return); F5 → tasks/*.json
+uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from big-pink --route charge-collect-return --name charge_human
 
 uv run python snes/super_metroid/scripts/probe/post_spore_pb.py --to main
 uv run python snes/super_metroid/scripts/export/path_room_board.py
@@ -35,6 +38,11 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py suggest-source --room 0xA
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure varia-to-kraid \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_collected.state \
   --pin-json super_metroid/debug/varia_to_kraid_pin.json
+
+# Pure-chain video + reasonSpans (skill extraction source; not continuous evidence)
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --list
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset charge-collect-return
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset big-pink-to-ghz
 
 # Scaffold next pure hop (dry-run checklist; --write to emit files)
 uv run python snes/super_metroid/scripts/scaffold_tip.py \

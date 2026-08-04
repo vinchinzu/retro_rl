@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Record a multi-hop pure controller chain to MP4 (debug / visual review).
 
-Not continuous evidence — loads a scratch source and runs pure controllers only.
-Useful for watching Bubble Mountain policy in post-Varia K4 tip context.
+Not continuous evidence — loads a source state and runs pure controllers only.
+Reason-tagged input spans are written into the report JSON so hop bodies can
+be turned into ``routes/skills/`` extractions later.
 
 ```bash
 # Post-Varia reverse → Business → Cathedral → Bubble (default tip debug)
@@ -13,6 +14,12 @@ uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset bus
 
 # Bubble policy alone (from CATH-04 pure source)
 uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset bubble
+
+# Post-supers Big Pink: Charge collect + ordinary-jump return (skill source)
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset charge-collect-return
+
+# Same path as continuous big_pink_to_ghz hop (Charge detour → GHZ)
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset big-pink-to-ghz
 ```
 """
 
@@ -27,15 +34,21 @@ from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[4]
 _SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
+for _p in (ROOT, globals().get("_SNES_IMPORT_ROOT", ROOT)):
     if _p is not None and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.video import VideoCaptureConfig, VideoRecorder  # noqa: E402
 from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
 from super_metroid.dev.common import boot_from_state, make_dev_env  # noqa: E402
-from super_metroid.paths import GAME_DIR, RECORDINGS_DIR  # noqa: E402
+from super_metroid.paths import GAME_DIR, INTEGRATION_DIR, RECORDINGS_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state, probe_pin  # noqa: E402
+from super_metroid.routes.kpdr.charge_return import (  # noqa: E402
+    CHARGE_BEAM_MASK,
+    play_charge_beam_collect,
+    play_charge_beam_return,
+)
+from super_metroid.routes.kpdr.pink_to_ghz import play_big_pink_to_ghz  # noqa: E402
 from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
     BubblePhaseStop,
     play_bubble_to_bat_cave,
@@ -61,8 +74,23 @@ SCRATCH = GAME_DIR / "custom_integrations" / "SuperMetroid-Snes" / "scratch"
 PlayFn = Callable[[object], object]
 
 
+def _pin_extra(state) -> dict[str, object]:
+    """Inventory bits useful for item-detour skill extraction."""
+    beams = int(getattr(state, "collected_beams", 0) or 0)
+    items = int(getattr(state, "collected_items", 0) or 0)
+    return {
+        "beams": f"0x{beams:04X}",
+        "hasCharge": bool(beams & CHARGE_BEAM_MASK),
+        "items": f"0x{items:04X}",
+    }
+
+
 class _RecordingSession:
-    """ControllerSession-compatible probe that writes every frame to video."""
+    """ControllerSession-compatible probe that writes every frame to video.
+
+    Also collapses consecutive ``reason`` labels into spans for skill extraction
+    (``hold(..., reason=...)`` is the primary signal controllers already emit).
+    """
 
     def __init__(
         self,
@@ -77,27 +105,76 @@ class _RecordingSession:
         self.state = parse_env_state(env, mode="nav")
         self.last_action = None
         self.segment_marks: list[dict[str, object]] = []
+        self.reason_spans: list[dict[str, object]] = []
+        self._open_span: dict[str, object] | None = None
 
     def mark(self, name: str) -> None:
         st = self.state
-        self.segment_marks.append(
-            {
-                "segment": name,
-                "frame": self.frame,
-                "roomIdHex": f"0x{int(st.room_id):04X}",
-                "samusX": int(st.samus_x),
-                "samusY": int(st.samus_y),
-                "pose": int(st.pose),
-            }
-        )
+        mark: dict[str, object] = {
+            "segment": name,
+            "frame": self.frame,
+            "roomIdHex": f"0x{int(st.room_id):04X}",
+            "samusX": int(st.samus_x),
+            "samusY": int(st.samus_y),
+            "pose": int(st.pose),
+        }
+        mark.update(_pin_extra(st))
+        self.segment_marks.append(mark)
+
+    def _close_span(self) -> None:
+        if self._open_span is not None:
+            self.reason_spans.append(self._open_span)
+            self._open_span = None
+
+    def _note_reason(self, reason: str, action) -> None:
+        label = reason or ""
+        st = self.state
+        # Encode a short action fingerprint when available (list/tuple of ints).
+        action_key: object
+        try:
+            action_key = list(action) if action is not None else None
+        except TypeError:
+            action_key = str(action)
+
+        if (
+            self._open_span is not None
+            and self._open_span.get("reason") == label
+            and self._open_span.get("action") == action_key
+        ):
+            self._open_span["endFrame"] = self.frame
+            self._open_span["frames"] = (
+                int(self._open_span["endFrame"]) - int(self._open_span["startFrame"]) + 1
+            )
+            self._open_span["endX"] = int(st.samus_x)
+            self._open_span["endY"] = int(st.samus_y)
+            self._open_span["endPose"] = int(st.pose)
+            self._open_span["endRoomIdHex"] = f"0x{int(st.room_id):04X}"
+            return
+
+        self._close_span()
+        self._open_span = {
+            "reason": label,
+            "action": action_key,
+            "startFrame": self.frame,
+            "endFrame": self.frame,
+            "frames": 1,
+            "startX": int(st.samus_x),
+            "startY": int(st.samus_y),
+            "startPose": int(st.pose),
+            "startRoomIdHex": f"0x{int(st.room_id):04X}",
+            "endX": int(st.samus_x),
+            "endY": int(st.samus_y),
+            "endPose": int(st.pose),
+            "endRoomIdHex": f"0x{int(st.room_id):04X}",
+        }
 
     def step(self, action, reason: str = ""):
-        del reason
         obs, *_ = self.env.step(action)
         self.frame += 1
         self.state = parse_env_state(self.env, frame=self.frame, mode="nav")
         self.assist.apply(self.env.data, self.state)
         self.last_action = action
+        self._note_reason(reason, action)
         if self.writer is not None:
             self.writer.write_from_env(
                 self.env,
@@ -107,6 +184,9 @@ class _RecordingSession:
                 room_id=int(self.state.room_id),
             )
         return self.state
+
+    def flush_spans(self) -> None:
+        self._close_span()
 
 
 # Ordered pure hops: name → play fn
@@ -137,6 +217,21 @@ BUBBLE_ONLY: tuple[tuple[str, PlayFn], ...] = (
     ("bubble-to-bat-cave", play_bubble_to_bat_cave),
 )
 
+# Post-supers Big Pink (K1 after Spore Super collect). Source is main-shaft
+# anchor without Charge; hop bodies already tag hold() reasons for extraction.
+CHARGE_COLLECT_RETURN: tuple[tuple[str, PlayFn], ...] = (
+    ("charge-collect", play_charge_beam_collect),
+    ("charge-return", play_charge_beam_return),
+)
+
+BIG_PINK_TO_GHZ: tuple[tuple[str, PlayFn], ...] = (
+    ("big-pink-to-ghz", play_big_pink_to_ghz),
+)
+
+# Named integration anchors (not scratch) preferred when continuous-like pure
+# sources are not yet cataloged for this room.
+_BIG_PINK_MAIN = INTEGRATION_DIR / "dev_b1_bigpink_main_controller.state"
+
 PRESETS: dict[str, tuple[Path, tuple[tuple[str, PlayFn], ...], str]] = {
     "post-varia-to-bubble": (
         SCRATCH / "post_varia_continuous.state",
@@ -153,6 +248,16 @@ PRESETS: dict[str, tuple[Path, tuple[tuple[str, PlayFn], ...], str]] = {
         BUBBLE_ONLY,
         "bubble_to_bat_debug",
     ),
+    "charge-collect-return": (
+        _BIG_PINK_MAIN,
+        CHARGE_COLLECT_RETURN,
+        "charge_collect_return_debug",
+    ),
+    "big-pink-to-ghz": (
+        _BIG_PINK_MAIN,
+        BIG_PINK_TO_GHZ,
+        "big_pink_to_ghz_debug",
+    ),
 }
 
 
@@ -165,6 +270,7 @@ def run_chain(
     audio: bool = True,
     scale: int = 2,
     crf: int = 20,
+    preset: str | None = None,
 ) -> dict[str, object]:
     if not source.is_file():
         raise FileNotFoundError(f"source state missing: {source}")
@@ -235,20 +341,20 @@ def run_chain(
             try:
                 play(session)  # type: ignore[arg-type]
                 st = session.state
-                hop_results.append(
-                    {
-                        "segment": name,
-                        "ok": True,
-                        "startFrame": start_frame,
-                        "endFrame": session.frame,
-                        "frames": session.frame - start_frame,
-                        "roomIdHex": f"0x{int(st.room_id):04X}",
-                        "samusX": int(st.samus_x),
-                        "samusY": int(st.samus_y),
-                        "pose": int(st.pose),
-                        "probePin": probe_pin(st),
-                    }
-                )
+                hop: dict[str, object] = {
+                    "segment": name,
+                    "ok": True,
+                    "startFrame": start_frame,
+                    "endFrame": session.frame,
+                    "frames": session.frame - start_frame,
+                    "roomIdHex": f"0x{int(st.room_id):04X}",
+                    "samusX": int(st.samus_x),
+                    "samusY": int(st.samus_y),
+                    "pose": int(st.pose),
+                    "probePin": probe_pin(st),
+                }
+                hop.update(_pin_extra(st))
+                hop_results.append(hop)
                 session.mark(f"{name}:ok")
                 print(
                     f"[record]   OK {name} frames={session.frame - start_frame} "
@@ -258,50 +364,52 @@ def run_chain(
                 )
             except BubblePhaseStop as phase_stop:
                 st = phase_stop.state
-                hop_results.append(
-                    {
-                        "segment": name,
-                        "ok": False,
-                        "phaseStop": phase_stop.phase,
-                        "startFrame": start_frame,
-                        "endFrame": session.frame,
-                        "frames": session.frame - start_frame,
-                        "roomIdHex": f"0x{int(st.room_id):04X}",
-                        "samusX": int(st.samus_x),
-                        "samusY": int(st.samus_y),
-                        "pose": int(st.pose),
-                        "error": str(phase_stop),
-                        "metrics": dict(phase_stop.metrics),
-                        "probePin": probe_pin(st),
-                    }
-                )
+                hop = {
+                    "segment": name,
+                    "ok": False,
+                    "phaseStop": phase_stop.phase,
+                    "startFrame": start_frame,
+                    "endFrame": session.frame,
+                    "frames": session.frame - start_frame,
+                    "roomIdHex": f"0x{int(st.room_id):04X}",
+                    "samusX": int(st.samus_x),
+                    "samusY": int(st.samus_y),
+                    "pose": int(st.pose),
+                    "error": str(phase_stop),
+                    "metrics": dict(phase_stop.metrics),
+                    "probePin": probe_pin(st),
+                }
+                hop.update(_pin_extra(st))
+                hop_results.append(hop)
                 failed_hop = name
                 error = str(phase_stop)
                 print(f"[record]   PHASE STOP {name}: {phase_stop}", flush=True)
                 break
             except Exception as exc:
                 st = session.state
-                hop_results.append(
-                    {
-                        "segment": name,
-                        "ok": False,
-                        "startFrame": start_frame,
-                        "endFrame": session.frame,
-                        "frames": session.frame - start_frame,
-                        "roomIdHex": f"0x{int(st.room_id):04X}",
-                        "samusX": int(st.samus_x),
-                        "samusY": int(st.samus_y),
-                        "pose": int(st.pose),
-                        "error": f"{type(exc).__name__}: {exc}",
-                        "probePin": probe_pin(st),
-                    }
-                )
+                hop = {
+                    "segment": name,
+                    "ok": False,
+                    "startFrame": start_frame,
+                    "endFrame": session.frame,
+                    "frames": session.frame - start_frame,
+                    "roomIdHex": f"0x{int(st.room_id):04X}",
+                    "samusX": int(st.samus_x),
+                    "samusY": int(st.samus_y),
+                    "pose": int(st.pose),
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "probePin": probe_pin(st),
+                }
+                hop.update(_pin_extra(st))
+                hop_results.append(hop)
                 failed_hop = name
                 error = f"{type(exc).__name__}: {exc}"
                 print(f"[record]   FAIL {name}: {error}", flush=True)
                 break
     finally:
         encoded = 0
+        if session is not None:
+            session.flush_spans()
         if writer is not None:
             encoded = writer.frames
             writer.close()
@@ -309,8 +417,27 @@ def run_chain(
 
     elapsed = time.perf_counter() - t0
     final = session.state if session is not None else None
+    final_payload: dict[str, object] | None = None
+    if final is not None:
+        final_payload = {
+            "roomIdHex": f"0x{int(final.room_id):04X}",
+            "samusX": int(final.samus_x),
+            "samusY": int(final.samus_y),
+            "pose": int(final.pose),
+            "probePin": probe_pin(final),
+        }
+        final_payload.update(_pin_extra(final))
+
+    reason_spans = session.reason_spans if session is not None else []
+    # Compact skill-facing rollup: unique reason labels with total frames.
+    reason_totals: dict[str, int] = {}
+    for span in reason_spans:
+        key = str(span.get("reason") or "")
+        reason_totals[key] = reason_totals.get(key, 0) + int(span.get("frames") or 0)
+
     report: dict[str, object] = {
         "kind": "pure_chain_debug_recording",
+        "preset": preset,
         "source": str(source.resolve()),
         "video": str(video_path.resolve()),
         "success": error is None and all(h.get("ok") for h in hop_results),
@@ -321,19 +448,12 @@ def run_chain(
         "elapsedSec": round(elapsed, 2),
         "hops": hop_results,
         "segmentMarks": session.segment_marks if session is not None else [],
-        "final": (
-            {
-                "roomIdHex": f"0x{int(final.room_id):04X}",
-                "samusX": int(final.samus_x),
-                "samusY": int(final.samus_y),
-                "pose": int(final.pose),
-                "probePin": probe_pin(final),
-            }
-            if final is not None
-            else None
-        ),
+        "reasonSpans": reason_spans,
+        "reasonTotals": reason_totals,
+        "final": final_payload,
         "note": (
-            "Debug pure-chain video only — not continuous integrity evidence."
+            "Debug pure-chain video only — not continuous integrity evidence. "
+            "reasonSpans/reasonTotals are for skill extraction from hold() labels."
         ),
     }
     report_path.write_text(json.dumps(report, indent=2) + "\n")
@@ -351,6 +471,11 @@ def main() -> None:
         default="post-varia-to-bubble",
         help="Which pure chain to record (default: post-varia-to-bubble)",
     )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="Print presets (source, hops, default stem) and exit",
+    )
     parser.add_argument("--source", type=Path, default=None)
     parser.add_argument("--video", type=Path, default=None)
     parser.add_argument("--report", type=Path, default=None)
@@ -358,6 +483,15 @@ def main() -> None:
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--crf", type=int, default=20)
     args = parser.parse_args()
+
+    if args.list:
+        for name in sorted(PRESETS):
+            source, hops, stem = PRESETS[name]
+            print(f"{name}")
+            print(f"  source={source}")
+            print(f"  stem={stem}")
+            print(f"  hops={[n for n, _ in hops]}")
+        return
 
     source, hops, stem = PRESETS[args.preset]
     if args.source is not None:
@@ -378,11 +512,34 @@ def main() -> None:
         audio=not args.no_audio,
         scale=args.scale,
         crf=args.crf,
+        preset=args.preset,
     )
-    print(json.dumps(result, indent=2))
+    # Slim stdout: full reasonSpans live in the report JSON.
+    slim = {
+        k: result[k]
+        for k in (
+            "kind",
+            "preset",
+            "source",
+            "video",
+            "success",
+            "failedHop",
+            "error",
+            "frames",
+            "encodedFrames",
+            "elapsedSec",
+            "hops",
+            "reasonTotals",
+            "final",
+            "note",
+        )
+        if k in result
+    }
+    slim["reasonSpanCount"] = len(result.get("reasonSpans") or [])
+    print(json.dumps(slim, indent=2))
     print(f"[record] wrote {video}", flush=True)
     print(f"[record] wrote {report}", flush=True)
-    # Exit 0 even on expected Bubble RED so the MP4 is the deliverable.
+    # Exit 0 even on expected RED so the MP4 + reasonSpans are the deliverable.
     sys.exit(0 if result.get("video") else 1)
 
 

@@ -16,11 +16,14 @@ This module re-exports the public API and owns query / validation helpers.
    when the hop is a continuous product door transition. In-room milestones
    and hops that reuse an earlier edge omit door meta.
 3. If new tip: add a :class:`TipSegment` row in :data:`POST_SUPERS_TIP_SEGMENTS`
-   (parent, ``graph_id``, report strings, item flags). First Super+ tip parents
-   to ``"supers"``. Catalog ``ContinuousTip`` + ``NamedRoute`` remain thin CLI
-   metadata in ``catalog.py``; split suffixes derive via :func:`hop_ids_to_tip`.
+   (parent, ``graph_id``, report strings, item flags, **CLI identity** —
+   ``display_name`` / ``description`` / ``aliases`` / capability flags).
+   First Super+ tip parents to ``"supers"``. Catalog ContinuousTip + NamedRoute
+   are **derived** from TipSpec after registration; split suffixes derive via
+   :func:`hop_ids_to_tip`.
 4. :class:`~super_metroid.routes.tips.TipSpec` rows are **generated** in
-   ``hops.py`` from this spine (one tip table for early + Super+).
+   ``hops.py`` from this spine (one tip table for early + Super+), including
+   CLI fields copied from TipSegment.
 5. Super+ continuous ``DoorEdge`` rows are **generated** via
    :func:`continuous_edges_from_spine` / :func:`continuous_edges_for_tips` and
    composed into staged graphs in ``progression/data.py``. Pre-Supers edges and

@@ -24,6 +24,19 @@ uv run python snes/super_metroid/scripts/record/guided_human.py \\
 uv run python snes/super_metroid/scripts/record/guided_human.py \\
   --from parlor --route parlor-left --name parlor_left_human
 
+# Post-supers Big Pink — Charge collect + ordinary return (skill source)
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from big-pink --route charge-collect-return --name charge_human
+
+# Same start, continue through GHZ green door
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from big-pink --route big-pink-to-ghz --name charge_to_ghz_human
+
+# Early Spazer — continuous-like Below Spazer → wall-jump → green Super → collect
+# Guide path draws on the same window; one-pager: docs/tasks/EARLY_SPAZER_HUMAN.md
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from below-spazer --route early-spazer --name spazer_human
+
 # List start presets / routes
 uv run python snes/super_metroid/scripts/record/guided_human.py --list
 ```
@@ -106,6 +119,28 @@ START_PRESETS: dict[str, tuple[str, str]] = {
     "post-torizo": (
         "scratch/post_torizo_parlor_continuous.state",
         "Alias of parlor (post-BT Flyway door pin)",
+    ),
+    # Post-supers K1 Charge detour (main shaft, no Charge yet, 5 supers).
+    "big-pink": (
+        "dev_b1_bigpink_main_controller.state",
+        "Big Pink main shaft (~746,1465) post-supers — Charge collect+return",
+    ),
+    "charge": (
+        "dev_b1_bigpink_main_controller.state",
+        "Alias of big-pink (Charge Chozo detour start)",
+    ),
+    # Early Spazer (K2.2): continuous-like Below Spazer left entry, no Spazer yet.
+    "below-spazer": (
+        "scratch/post_below_spazer_for_spazer_pure.state",
+        "Below Spazer left entry (~49,395) continuous-like — early Spazer WJ",
+    ),
+    "spazer": (
+        "scratch/post_below_spazer_for_spazer_pure.state",
+        "Alias of below-spazer (early Spazer wall-jump detour start)",
+    ),
+    "early-spazer": (
+        "scratch/post_below_spazer_for_spazer_pure.state",
+        "Alias of below-spazer (early Spazer wall-jump detour start)",
     ),
 }
 
@@ -223,10 +258,14 @@ def main() -> int:
             print(f"  {key:22s} {rooms}")
         return 0
 
-    # Sensible default route from start pin (parlor → Alcatraz left WJ guide).
+    # Sensible default route from start pin.
     if args.route is None:
         if args.start in ("parlor", "post-torizo"):
             args.route = "parlor-left"
+        elif args.start in ("big-pink", "charge"):
+            args.route = "charge-collect-return"
+        elif args.start in ("below-spazer", "spazer", "early-spazer"):
+            args.route = "early-spazer"
         else:
             args.route = "cathedral-to-bat"
 
@@ -445,13 +484,20 @@ def main() -> int:
     def _reset_then_boot(e):
         obs, info = _orig_reset(e)
         e.em.set_state(state_bytes)
-        for _ in range(8):
+        # Settle door transition / pose fully (Below Spazer needs ~12f for pose 1).
+        settle = 16 if args.start in ("below-spazer", "spazer", "early-spazer") else 8
+        for _ in range(settle):
             obs, _r, _t, _tr, info = step_env(e, idle_action())
         _seed_live_from_env()
-        print(
+        boot_bits = (
             f"[BOOT] room=0x{int(live['room']):04X} "
             f"xy=({live['x']},{live['y']}) from {state_path.name}"
         )
+        if args.start in ("below-spazer", "spazer", "early-spazer"):
+            boot_bits += (
+                " | no Charge (power X only); keep x>=40 (left door=Bat trap)"
+            )
+        print(boot_bits)
         return obs, info
 
     print("=" * 60)
