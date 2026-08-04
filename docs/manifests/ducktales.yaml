@@ -1,6 +1,6 @@
 game: ducktales
 title: "DuckTales"
-directory: ducktales
+directory: nes/ducktales
 genre_tracks:
   - platforming
 capability_phase: 3
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: ducktales/docs/STATUS.md
-plan_doc: ducktales/docs/plan.md
+status_doc: nes/ducktales/docs/STATUS.md
+plan_doc: nes/ducktales/docs/plan.md
 last_verified: 2026-07-27
 blocker: enter a land stage and clear first segment
 notes: >-

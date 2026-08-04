@@ -1,0 +1,97 @@
+[
+  {
+    "Eastern Palace - Map Chest": "Power Bomb",
+    "Eastern Palace - Compass Chest": "Lamp",
+    "Kakariko Well - Right": "Super Missile",
+    "Blind's Hideout - Left": "Ice Beam",
+    "Mini Moldorm Cave - Left": "Pegasus Boots",
+    "Mini Moldorm Cave - NPC": "Book of Mudora",
+    "Sunken Treasure": "Hi-Jump Boots",
+    "Sanctuary": "Reserve Tank",
+    "Hyrule Castle - Map Chest": "Progressive Glove",
+    "Link's Uncle": "Progressive Sword",
+    "Morphing Ball": "Morphing Ball"
+  },
+  {
+    "Eastern Palace - Big Key Chest": "Flute",
+    "King Zora": "Reserve Tank",
+    "Desert Ledge": "Varia Suit",
+    "Energy Tank, Etecoons": "Bombos",
+    "Missile (pink Brinstar top)": "Zora's Flippers",
+    "Power Bomb (pink Brinstar)": "Progressive Shield",
+    "Missile (green Brinstar pipe)": "Wave Beam",
+    "Missile (Kraid)": "Energy Tank",
+    "Hi-Jump Boots": "Hookshot"
+  },
+  {
+    "Waterfall Fairy - Left": "Ice Rod",
+    "Hobo": "Reserve Tank",
+    "Reserve Tank, Norfair": "Bow",
+    "Missile (bubble Norfair green door)": "Magic Mirror",
+    "Missile (Wave Beam)": "Moon Pearl",
+    "Wave Beam": "Progressive Glove",
+    "Missile (below Crocomire)": "Spring Ball"
+  },
+  {
+    "Skull Woods - Pot Prison": "Magic Cape",
+    "Thieves' Town - Big Key Chest": "Morph Bombs",
+    "Ether Tablet": "Energy Tank",
+    "Spectacle Rock": "Fire Rod",
+    "Graveyard Ledge": "Mushroom",
+    "King's Tomb": "Magic Powder",
+    "South of Grove": "Missile",
+    "Checkerboard Cave": "Hammer",
+    "Hookshot Cave - Bottom Left": "Bottle",
+    "C-Shaped House": "Space Jump",
+    "Hype Cave - Middle Left": "Bug Catching Net"
+  },
+  {
+    "Swamp Palace - Flooded Room - Right": "Energy Tank",
+    "Missile (Crateria gauntlet right)": "Shovel",
+    "Power Bomb (Crateria surface)": "Energy Tank",
+    "Missile (outside Wrecked Ship top)": "Progressive Shield",
+    "Super Missile (Wrecked Ship left)": "Cane of Byrna",
+    "Missile (lower Norfair above fire flea room)": "Gravity Suit",
+    "Power Bomb (lower Norfair above fire flea room)": "Cane of Somaria"
+  },
+  {
+    "Tower of Hera - Compass Chest": "Speed Booster",
+    "Swamp Palace - Big Chest": "Screw Attack",
+    "Sahasrahla": "Quake",
+    "Super Missile (green Maridia)": "Progressive Shield",
+    "Energy Tank, Mama turtle": "Energy Tank",
+    "Power Bomb (right Maridia sand pit room)": "Half Magic"
+  },
+  {
+    "Missile (green Brinstar behind missile)": "Power Bomb",
+    "Reserve Tank, Wrecked Ship": "Ether",
+    "Plasma Beam": "Progressive Sword",
+    "Missile (pink Maridia)": "Charge Beam"
+  },
+  {},
+  {},
+  {
+    "Turtle Rock - Eye Bridge - Bottom Left": "Reserve Tank",
+    "Turtle Rock - Trinexx": "Grappling Beam"
+  },
+  {},
+  {},
+  {
+    "Prize - Eastern Palace": "Blue Crystal",
+    "Prize - Desert Palace": "Red Crystal",
+    "Prize - Tower of Hera": "Green Pendant",
+    "Prize - Dark Palace": "Blue Crystal",
+    "Prize - Swamp Palace": "Blue Crystal",
+    "Prize - Skull Woods": "Red Crystal",
+    "Prize - Thieves' Town": "Blue/Red Pendant",
+    "Prize - Ice Palace": "Blue Crystal",
+    "Prize - Misery Mire": "Kraid Boss Token",
+    "Prize - Turtle Rock": "Draygon Boss Token",
+    "Prize - Brinstar": "Ridley Boss Token",
+    "Prize - Wrecked Ship": "Phantoon Boss Token",
+    "Prize - Maridia": "Blue Crystal",
+    "Prize - Norfair Lower": "Blue/Red Pendant",
+    "Medallion Required - Misery Mire": "Quake",
+    "Medallion Required - Turtle Rock": "Quake"
+  }
+]

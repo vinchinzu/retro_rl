@@ -1,6 +1,6 @@
 game: super_double_dragon
 title: "Super Double Dragon"
-directory: super_double_dragon
+directory: snes/super_double_dragon
 genre_tracks:
   - linear_combat
 capability_phase: 1
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: super_double_dragon/docs/STATUS.md
-plan_doc: super_double_dragon/docs/plan.md
+status_doc: snes/super_double_dragon/docs/STATUS.md
+plan_doc: snes/super_double_dragon/docs/plan.md
 last_verified: 2026-07-22
 blocker: natural M3 gym stairs → Chin bosses
 notes: Missions 1–2 proven; M3/M5 transitions partial.

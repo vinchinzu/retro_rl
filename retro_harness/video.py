@@ -18,12 +18,13 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-from typing import Any, BinaryIO, Sequence
+from collections.abc import Callable
+from typing import Any, BinaryIO, Protocol, Sequence
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from retro_harness.controls import pressed_snes_buttons
+from retro_harness.controls import pressed_nes_buttons, pressed_snes_buttons
 
 FOOTER_HEIGHT = 16
 
@@ -308,7 +309,7 @@ class FrameVideoWriter:
         self.audio_bitrate = audio_bitrate
         self.audio_bytes_written = 0
         self.frames = 0
-        self.frames_written = 0  # alias used by snes_oneshot / golf callers
+        self.frames_written = 0  # alias used by showcase / golf callers
         self._src_height = height + FOOTER_HEIGHT if footer else height
         self._video_path = self.path
         self._audio_handle = None
@@ -656,3 +657,185 @@ def probe_video_evidence(path: Path, expected_frames: int) -> dict[str, object]:
             "channels": int(audio_stream.get("channels") or 0),
         }
     return evidence
+
+
+# -- Multi-player / NES showcase footer (from retro_harness.recording_footer) ----
+
+SNES_PLAYER_STRIDE = 12
+NES_PLAYER_STRIDE = 9
+
+
+def frame_timestamp(frame: int, fps: float) -> str:
+    """Return ``F#####  MM:SS.cc`` (centiseconds) for recording overlays."""
+    total_cs = int(round(frame * 100 / fps)) if fps > 0 else 0
+    minutes, rem = divmod(total_cs, 60 * 100)
+    secs, cs = divmod(rem, 100)
+    return f"F{frame:05d}  {minutes:02d}:{secs:02d}.{cs:02d}"
+
+
+def format_player_buttons(
+    action: list[int] | None,
+    *,
+    players: int = 1,
+    stride: int = SNES_PLAYER_STRIDE,
+    layout: str = "snes",
+) -> str:
+    """Render pressed buttons for one or more players.
+
+    ``layout`` is ``"snes"`` (default) or ``"nes"`` (9-button fceumm).
+    """
+    if action is None:
+        return "P1:---"
+    if layout == "nes":
+        stride = NES_PLAYER_STRIDE
+        press_fn = pressed_nes_buttons
+    else:
+        press_fn = pressed_snes_buttons
+    parts: list[str] = []
+    for player in range(players):
+        start = player * stride
+        end = start + stride
+        if end > len(action) and start >= len(action):
+            break
+        chunk = action[start:end]
+        names = press_fn(chunk)
+        label = "+".join(sorted(names)) if names else "---"
+        parts.append(f"P{player + 1}:{label}")
+    return "  ".join(parts) if parts else "P1:---"
+
+
+def render_footer_frame(
+    obs: np.ndarray,
+    *,
+    upper_left: str,
+    upper_right: str,
+    lower_left: str,
+    action: list[int] | None = None,
+    players: int = 1,
+    layout: str = "snes",
+    footer_bg: tuple[int, int, int] = (5, 10, 18),
+    upper_left_color: tuple[int, int, int] = (219, 234, 246),
+    upper_right_color: tuple[int, int, int] = (103, 232, 164),
+    lower_left_color: tuple[int, int, int] = (150, 170, 190),
+    button_color: tuple[int, int, int] = (255, 214, 102),
+) -> np.ndarray:
+    """Extend the frame with a multi-line footer and live button labels."""
+    rgb = np.asarray(obs, dtype=np.uint8)
+    height, width = rgb.shape[:2]
+    canvas = np.zeros((height + FOOTER_HEIGHT, width, 3), dtype=np.uint8)
+    canvas[:height] = rgb
+    canvas[height:] = footer_bg
+    image = Image.fromarray(canvas, mode="RGB")
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default(size=8)
+
+    draw.text((4, height), upper_left, fill=upper_left_color, font=font)
+    clock_width = draw.textbbox((0, 0), upper_right, font=font)[2]
+    draw.text(
+        (width - clock_width - 4, height),
+        upper_right,
+        fill=upper_right_color,
+        font=font,
+    )
+
+    draw.text((4, height + 8), lower_left, fill=lower_left_color, font=font)
+    buttons = format_player_buttons(action, players=players, layout=layout)
+    button_width = draw.textbbox((0, 0), buttons, font=font)[2]
+    draw.text(
+        (width - button_width - 4, height + 8),
+        buttons,
+        fill=button_color,
+        font=font,
+    )
+    return np.asarray(image)
+
+
+class FrameSink(Protocol):
+    """Accept decorated RGB frames during a replay."""
+
+    def write(self, frame: np.ndarray) -> None: ...
+
+
+@dataclass(frozen=True)
+class FooterLabels:
+    """Three text fields rendered on the live recording banner."""
+
+    upper_left: str
+    upper_right: str
+    lower_left: str
+
+
+FooterProvider = Callable[[object, list[int], int, float], FooterLabels]
+
+
+class RecordingSession:
+    """Wrap env stepping with footer decoration and optional frame stride.
+
+    Distinct from :class:`retro_harness.recorder.RecordingSession` (labeled
+    human save-state recording). This type drives showcase/continuous capture.
+    """
+
+    def __init__(
+        self,
+        env: object,
+        *,
+        sink: FrameSink,
+        footer: FooterProvider,
+        fps: float,
+        frame_stride: int = 1,
+        players: int = 1,
+        idle_action: Callable[[], list[int]] | None = None,
+    ) -> None:
+        self._env = env
+        self._sink = sink
+        self._footer = footer
+        self._fps = fps
+        self._frame_stride = max(1, frame_stride)
+        self._players = players
+        self._idle_action = idle_action
+        self.frame = 0
+
+    def capture(self, obs: np.ndarray, action: list[int]) -> None:
+        """Decorate one emulator frame and optionally write it to the sink."""
+        if self.frame % self._frame_stride != 0:
+            return
+        labels = self._footer(self._env, action, self.frame, self._fps)
+        decorated = render_footer_frame(
+            obs,
+            upper_left=labels.upper_left,
+            upper_right=labels.upper_right,
+            lower_left=labels.lower_left,
+            action=action,
+            players=self._players,
+        )
+        self._sink.write(decorated)
+
+    def step(self, action: list[int]) -> np.ndarray:
+        """Step the emulator and capture the resulting frame."""
+        obs, *_rest = self._env.step(action)  # type: ignore[attr-defined]
+        rgb = np.asarray(obs)
+        self.capture(rgb, action)
+        self.frame += 1
+        return rgb
+
+    def _default_idle(self) -> list[int]:
+        if self._idle_action is not None:
+            return self._idle_action()
+        from retro_harness.actions import idle_action
+
+        return idle_action()
+
+    def idle(self, frames: int) -> np.ndarray:
+        """Hold idle input for several frames."""
+        obs = np.zeros((1, 1, 3), dtype=np.uint8)
+        for _ in range(max(frames, 1)):
+            obs = self.step(self._default_idle())
+        return obs
+
+    def hold(self, action: list[int], frames: int) -> np.ndarray:
+        """Repeat one action for several frames."""
+        obs = np.zeros((1, 1, 3), dtype=np.uint8)
+        for _ in range(max(frames, 1)):
+            obs = self.step(action)
+        return obs
+

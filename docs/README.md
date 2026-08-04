@@ -9,12 +9,10 @@
 | [PROGRAM_STATUS.md](PROGRAM_STATUS.md) | Live facts and near-term priorities |
 | [GAME_MATRIX.md](GAME_MATRIX.md) | All games (generated from `manifests/`) |
 | [GLOSSARY.md](GLOSSARY.md) | Shared vocabulary |
-
-Related process docs outside this folder:
-
-- [../ADDING_GAMES.md](../ADDING_GAMES.md) — how to onboard a new title
-- [../snes_oneshot/docs/FULL_RUN_PROCESS.md](../snes_oneshot/docs/FULL_RUN_PROCESS.md) — segment → continuous clear process
-- [../snes_oneshot/docs/GAME_SELECTION_NOTES.md](../snes_oneshot/docs/GAME_SELECTION_NOTES.md) — research notes
+| [FULL_RUN_PROCESS.md](FULL_RUN_PROCESS.md) | Segment → continuous clear process |
+| [GAME_SELECTION_NOTES.md](GAME_SELECTION_NOTES.md) | Candidate / hard-game research notes |
+| [REPO_HYGIENE.md](REPO_HYGIENE.md) | Agent-context budget and cleanup backlog |
+| [ADDING_GAMES.md](ADDING_GAMES.md) | How to onboard a new title |
 
 Regenerate the matrix after editing manifests:
 

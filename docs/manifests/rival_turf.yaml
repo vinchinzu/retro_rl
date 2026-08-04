@@ -1,6 +1,6 @@
 game: rival_turf
 title: "Rival Turf!"
-directory: rival_turf
+directory: snes/rival_turf
 genre_tracks:
   - linear_combat
 capability_phase: 1
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: rival_turf/docs/STATUS.md
-plan_doc: rival_turf/docs/plan.md
+status_doc: snes/rival_turf/docs/STATUS.md
+plan_doc: snes/rival_turf/docs/plan.md
 last_verified: 2026-07-22
 blocker: clear opening Stage 1 combat lock
 notes: Reset → fight-ready Stage 1 checkpoint verified.

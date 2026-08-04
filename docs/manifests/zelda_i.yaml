@@ -1,6 +1,6 @@
 game: zelda_i
 title: "The Legend of Zelda"
-directory: zelda_i
+directory: nes/zelda_i
 genre_tracks:
   - graph_navigation
 capability_phase: 4
@@ -14,11 +14,11 @@ transfer_value: medium
 ending_definition: credits after defeating Ganon and rescuing Zelda
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: zelda_i/recordings/level1_complete_natural.json
+best_manifest: nes/zelda_i/recordings/level1_complete_natural.json
 best_video: null
 assist_contract: null
-status_doc: zelda_i/docs/STATUS.md
-plan_doc: zelda_i/docs/plan.md
+status_doc: nes/zelda_i/docs/STATUS.md
+plan_doc: nes/zelda_i/docs/plan.md
 last_verified: 2026-07-28
 blocker: walk 0x4A → Level 2 door 0x3C (overworld health)
 notes: >-

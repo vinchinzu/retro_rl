@@ -1,6 +1,6 @@
 game: punch_out
 title: "Mike Tyson's Punch-Out!!"
-directory: punch_out
+directory: nes/punch_out
 genre_tracks:
   - fighting_game_policies
 capability_phase: 1
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: punch_out/docs/STATUS.md
-plan_doc: punch_out/docs/plan.md
+status_doc: nes/punch_out/docs/STATUS.md
+plan_doc: nes/punch_out/docs/plan.md
 last_verified: 2026-07-28
 blocker: Glass Joe bout win (third KD / decision) from Match1
 notes: >-

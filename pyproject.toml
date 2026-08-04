@@ -39,3 +39,8 @@ dev = [
     "pyyaml>=6.0.3",
     "xdis>=6.3.0",
 ]
+
+[tool.pytest.ini_options]
+# Games keep package names (alttp, super_metroid, smb, …) under snes/ and nes/.
+pythonpath = [".", "snes", "nes", "snes/harvest", "snes/hals_golf"]
+testpaths = ["tests", "retro_harness/tests", "retro_harness/platformer/tests", "retro_harness/fighters/tests", "retro_harness/adventure/tests"]

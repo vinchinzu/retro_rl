@@ -1,0 +1,85 @@
+**Here are the best RAM value guides, cheat codes, and resources for watching (e.g., emulators like BizHawk/bsnes), modding/hacking, and cheats for Donkey Kong Country SNES (US/NTSC). Focus is on WRAM (7E0000-7E1FFF), the main game RAM. Addresses work in most debuggers/cheat engines. Rev 1.0 and Rev 2 have slight differences—test your ROM (SHA1: C946DCA0 for v1.0 US).**
+
+### 1. **Comprehensive WRAM Address List (from Verified Cheats)**
+GameHacking.org's database is the **gold standard**—extracted ~40 unique addresses from "Standard" codes (direct RAM pokes). Use these for Cheat Engine (with bsnes core), BizHawk Lua/RAM Search, snes9x-tyran RAM watch, or hacking scripts. All for **US v1.0** (similar for Rev 2).
+
+| Category | Hex Address | Description / Cheat Example |
+|----------|-------------|-----------------------------|
+| **Lives & Counters** | 7E0575 | Diddy Lives (09 = inf) |
+| | 7E0577 | DK Lives (08/09/63 = inf) |
+| | 7E057B | Displayed Bananas (63 = 99) |
+| | 7E057F | KONG Letters for 1-UP (07=K, 0B=O, 0D=N, 0E=G) |
+| | 7E052C-052D | Banana Count (0909 = 999) |
+| **Health / Invincibility** | 7E0579 | Health (01 = inf) |
+| | 7E16D5 | DK Invincibility (FF) |
+| | 7E16D7 | Diddy Invincibility (FF) |
+| | 7E1108 | Hyper DK (01) |
+| | 7E110A | Hyper Diddy (01) |
+| | 7E1112 | Hyper K. Rool (01) |
+| **Bonus / Icons** | 7E0571 | Frog Icon Req. (02 = 1 needed) |
+| | 7E0572 | Ostrich (02) |
+| | 7E0573 | Rhino (02) |
+| | 7E0574 | Swordfish (02) |
+| | 7E0512/0514/0516 | Animal Buddy Start (??) |
+| **Jump / Movement** | 7E0EF2-0EF3 | Moon Jump (6C00 or 806C) |
+| | 7E0EF5 | Moon Jump Diddy (6C) |
+| | 7E052B | Moon Jump Aux (09) |
+| | 7E12A7 | Glide DK (01) |
+| | 7E12A9 | Glide Diddy / Slow Drop (01/11) |
+| | 7E16E5 | DK Roll Lock/Inf (00/04/FE) |
+| | 7E16F9 | DK Jump Height |
+| | 7E16FB | Diddy Jump Height |
+| | 7E1636 | Diddy Roll/Jump Lock (FE) |
+| | 7E102B | DK Jump Lock/Pause (00/01) |
+| | 7E102D | Diddy Jump Lock (01) |
+| | 7E0028 | Continuous Cartwheel Diddy (01) |
+| | 7E002A | Continuous Roll DK (01) |
+| **Time / Level** | 7E137F | Level Time (00/99 = inf) |
+| | 7E13F3 | Bonus Time (99) |
+| | 7E003E | Current Level |
+| | 7E0032 | Stage Properties |
+| **Boss / Misc** | 7E1501 | Necky Boss 1-Hit |
+| | 7E1503 | Very Gnawty 1-Hit |
+| | 7E0888 | Show Hidden Items/Areas |
+| | 7E0565 | Cave Warp |
+| | 7E056B | Cheat Mode |
+| | 7E056F | Character Select |
+| | 7E057D | Die for Dancing Kong / Y=Bonus |
+| | 7E10D3/10D5 | Action State (DK/Diddy) |
+| | 7E1DF1 | Weather |
+| | 7E1DFD/1DFF | Time of Day |
+
+**Full Database (300+ codes):** [GameHacking v1.0](https://gamehacking.org/game/42704), [Rev 2](https://gamehacking.org/game/42701). Search "Standard" for raw RAM pokes.
+
+**Data Crystal Stub Map:** Only 7E003E = Current Level (worlds 1-6, levels 1-~7). 
+
+### 2. **TAS / RAM Watching Files**
+- **DKC.wch (BizHawk/snes9x-rr RAM Watch):** "Useful addresses" by TASer Tompa. Load directly—includes frame rules, positions, speeds for glitching/TAS/modding. **Download:** [TASVideos](https://tasvideos.org/UserFiles/Game/132) (search "DKC.wch").
+
+**Tips:** BizHawk > Tools > RAM Watch > Import .wch. Great for live monitoring (e.g., X/Y pos ~7E00B4/00B6 DK).
+
+### 3. **Cheat Codes (Game Genie / PAR)**
+**Top Game Genie (US v1.0 - works in emus/Action Replay):**
+| Cheat | Code(s) |
+|-------|---------|
+| Infinite Lives | C2C9-4E2C + C2C1-4A9C |
+| Invincibility | 1DCC-CA7A + 1DCA-C2EA (toggle off if stuck) |
+| Moon Jump (All) | EE8F-C273 |
+| High Jump (All) | A08F-C273 + A087-C3E3 |
+| Infinite Time | (Use RAM 7E137F:00) |
+| 999 Bananas | (RAM 7E052C:09 + 7E052D:09) |
+| All Levels/Bonuses | 0AB1-1A37 + DDB1-1247 + ... (14 codes, full list on site) |
+
+**Full Lists:** [GameHacking](https://gamehacking.org/game/42704), [GameFAQs GG](https://gamefaqs.gamespot.com/snes/588282-donkey-kong-country/faqs/9885).
+
+**PAR Codes (Pro Action Replay):** [Almar's Guide](https://www.almarsguides.com/retro/walkthroughs/snes/games/donkeykongcountry/proactionreplay) - e.g., 70C0B098 (Inf Lives).
+
+### 4. **ROM Hacking / Modding**
+- **DKC Text Editor v0.28:** Edit messages, credits. US compatible. **Download:** [RomHacking Forum](https://www.romhacking.net/forum/index.php?topic=35095.0).
+- **ROM Map (Offsets):** [Data Crystal](https://datacrystal.romhacking.net/wiki/Donkey_Kong_Country_(SNES)/ROM_map) - Text, graphics, levels (U v1.0).
+- **Hacks:** [RomHacking.net DKC Hacks](https://www.romhacking.net/?page=hacks&platform=9&game=502&category=) - e.g., Competition Edition (10-min run).
+- **For ASM/Lua Mods:** Use RAM above + bsnes debugger. SMWCentral thread has partial maps (DKC1 sparse).
+
+**Emu Setup:** BizHawk (TAS/cheats), bsnes-hd (watch 7E in hex viewer), Mesen-S (SNES debugger). Load saves from prev, poke RAM for testing.
+
+These cover 101% completion testing, speedrun mods, or cheat carts. Hit me for specific emu help!

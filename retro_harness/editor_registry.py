@@ -19,14 +19,18 @@ class EditorProject:
 
 
 def monorepo_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    from retro_harness.repo import monorepo_root as _root
+
+    return _root()
 
 
 def registered_editor_projects() -> tuple[EditorProject, ...]:
     """Return all editors known to the shared launcher."""
 
+    from retro_harness.repo import resolve_game_dir
+
     root = monorepo_root()
-    harvest_root = root / "harvest"
+    harvest_root = resolve_game_dir("harvest", root=root)
     earthbound_root = root / "earthbound"
     return (
         EditorProject(

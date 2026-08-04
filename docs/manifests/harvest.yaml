@@ -1,6 +1,6 @@
 game: harvest
 title: "Harvest Moon"
-directory: harvest
+directory: snes/harvest
 genre_tracks:
   - simulation_and_scheduling
   - tactical_planning
@@ -15,11 +15,11 @@ transfer_value: high
 ending_definition: published multi-year / marriage / farm objective (contract TBD)
 start_contract: power_on_new_game
 completion_contract: campaign_objective
-best_manifest: harvest/recordings/run_spring_month.json
+best_manifest: snes/harvest/recordings/run_spring_month.json
 best_video: null
 assist_contract: null
-status_doc: harvest/docs/STATUS.md
-plan_doc: harvest/docs/plan.md
+status_doc: snes/harvest/docs/STATUS.md
+plan_doc: snes/harvest/docs/plan.md
 last_verified: 2026-08-01
 blocker: same-day water + harvest/ship income (money still ~$100 floor); planning stack skill composition in progress
 notes: >

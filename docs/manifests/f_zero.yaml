@@ -1,6 +1,6 @@
 game: f_zero
 title: "F-Zero"
-directory: f_zero
+directory: snes/f_zero
 genre_tracks:
   - continuous_vehicle_control
 capability_phase: 2
@@ -17,8 +17,8 @@ completion_contract: cup_clear
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: f_zero/docs/STATUS.md
-plan_doc: f_zero/docs/plan.md
+status_doc: snes/f_zero/docs/STATUS.md
+plan_doc: snes/f_zero/docs/plan.md
 last_verified: 2026-07-22
 blocker: one Mute City lap without crash
 notes: Race-start checkpoint and speed/lateral RAM mapped.

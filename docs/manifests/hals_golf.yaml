@@ -1,6 +1,6 @@
 game: hals_golf
 title: "Hal's Hole in One Golf"
-directory: hals_golf
+directory: snes/hals_golf
 genre_tracks:
   - pipeline_and_menus
   - continuous_vehicle_control
@@ -18,7 +18,7 @@ completion_contract: course_clear
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: hals_golf/README.md
+status_doc: snes/hals_golf/README.md
 plan_doc: null
 last_verified: 2026-07-10
 blocker: publish evaluation contract and first hole clear
