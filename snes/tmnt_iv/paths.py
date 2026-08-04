@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-GAME_DIR = Path(__file__).resolve().parent
-REPO_ROOT = GAME_DIR.parent.parent  # monorepo root (game under snes/ or nes/)
-INTEGRATION = "TMNTIV-Snes"
+from retro_harness.artifacts import clean_artifact_stem
+from retro_harness.game_layout import game_paths
+
+_paths = game_paths(__file__, "TMNTIV-Snes")
+GAME_DIR = _paths.game_dir
+REPO_ROOT = _paths.repo_root
+INTEGRATION = _paths.integration
 GAME = INTEGRATION
-INTEGRATION_DIR = GAME_DIR / "custom_integrations" / INTEGRATION
-RECORDINGS_DIR = GAME_DIR / "recordings"
-ROMS_DIR = GAME_DIR / "roms"
-DOCS_DIR = GAME_DIR / "docs"
+INTEGRATION_DIR = _paths.integration_dir
+RECORDINGS_DIR = _paths.recordings_dir
+ROMS_DIR = _paths.roms_dir
+DOCS_DIR = _paths.docs_dir
 
 # Continuous full-run artifact basenames (see docs/CLEAN_TRACK.md).
 ASSISTED_FULL_RUN_STEM = "tmnt_iv_full_hard_credits"
@@ -48,11 +52,7 @@ STAGE9_BEFORE_BOSS_STATE = "Boss9"
 ENDING_STATE = "Ending"
 
 
-def clean_artifact_stem(stem: str) -> str:
-    """Append ``_clean`` once so Clean runs never share assisted basenames."""
-    if stem.endswith("_clean"):
-        return stem
-    return f"{stem}_clean"
+# Re-export shared helper (canonical: retro_harness.artifacts.clean_artifact_stem).
 
 
 def default_full_run_paths(
@@ -63,17 +63,19 @@ def default_full_run_paths(
     """Default video/report paths for continuous full hard runs.
 
     Assisted defaults stay ``tmnt_iv_full_hard_credits.*`` (dry-run renames the
-    report to ``tmnt_iv_full_hard_dry_run.json``). Clean defaults use the
-    ``tmnt_iv_full_hard_clean`` stem and never equal assisted basenames.
+    report to ``tmnt_iv_full_hard_dry_run.json`` — historical name, not
+    ``{stem}_dry_run``). Clean defaults use the ``tmnt_iv_full_hard_clean``
+    stem and never equal assisted basenames.
     """
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
     if clean:
-        stem = CLEAN_FULL_RUN_STEM
+        stem = CLEAN_FULL_RUN_STEM  # already ends with _clean
         video = RECORDINGS_DIR / f"{stem}.mp4"
-        if dry_run:
-            report = RECORDINGS_DIR / f"{stem}_dry_run.json"
-        else:
-            report = RECORDINGS_DIR / f"{stem}.json"
+        report = (
+            RECORDINGS_DIR / f"{stem}_dry_run.json"
+            if dry_run
+            else RECORDINGS_DIR / f"{stem}.json"
+        )
         return video, report
 
     video = RECORDINGS_DIR / f"{ASSISTED_FULL_RUN_STEM}.mp4"

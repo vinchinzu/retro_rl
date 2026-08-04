@@ -1,10 +1,10 @@
 # Code review: `snes/super_metroid/`
 
-**Date:** 2026-08-04 (wave: unified TipSpec + residual agents)  
+**Date:** 2026-08-04 (wave: residual implementation via sub-agents)  
 **Scope:** package health / maintainability (strict code-quality bar)  
 **Verdict:** **pass**
 
-Tests: **396 passed, 1 skipped**.
+Tests: **397 passed, 1 skipped**.
 
 ---
 
@@ -12,81 +12,80 @@ Tests: **396 passed, 1 skipped**.
 
 | Criterion | Status |
 |-----------|--------|
-| One continuous tip interface | **pass** — `routes/tips.py` `TipSpec` only |
-| RouteHop projection gone | **pass** — `RouteHop = SpineHop` |
-| Single hop runner | **pass** — `tips.play_hops` (early + Super+) |
-| Early play hop-composed | **pass** — real `hops=` + parent chain; `custom_play=None` |
-| Early run finishers | **pass** — `assist_mode` + `final_conditions_fn` on TipSpec → `run_tip` |
-| `spine.py` under 1k | **pass** — facade 162 LOC; hops/types/segments split |
-| Kraid return open-loop density | **pass** — product hop 335 LOC; skills extracted |
-| Report schema kind branches | **pass** — unified `to_dict` key set |
-| ContinuousTip ↔ TipSpec order | **pass** — `CONTINUOUS_TIP_ORDER` + align test |
-| Boss catalog table | **pass** — `_BOSS_TABLE` + thin wrappers |
+| One continuous tip runner | **pass** — `TipSpec` + `play_tip` / `run_tip` |
+| Early hop-composed | **pass** — real spines; no `custom_play` |
+| One tip identity surface | **pass** — CLI fields on TipSpec; ContinuousTip/NamedRoute derived |
+| No dead dual-path escape hatches | **pass** — `custom_play` / `custom_run` deleted |
+| One hop runner only | **pass** — `tips.play_hops` only; HopExecutor gone |
+| Typed tip play evidence | **pass** — `TipPlayResult` |
+| Spine under 1k | **pass** — facade ~162; hops/types/segments split |
+| room_graph under 1k | **pass** — **509** + topology 337 + pathfind 140 |
+| Report schema / boss catalog | **pass** |
+| Historical alias freeze | **pass** — RouteHop / EarlyTipSpec / PostSupersTipSpec gone |
 
 ---
 
-## Residual agent wave (landed)
+## Residual wave (landed via sub-agents)
 
-Five parallel agents finished the review residual list:
+Five parallel workstreams completed the prior review residual list:
 
-### 1. Early tips on TipSpec (play path)
+### 1. Tips runner (`tips.py`)
 
-- Early tips register real spines (`MORPH_SPINE` … `SUPERS_SPINE`) + `parent_tip_id`.
-- Multi-split bookkeeping is SpineHop `after` hooks (not three hop loops).
-- Public `play_*` → `play_tip`; `custom_play=None`.
-- Early finish plugins: `assist_mode`, `final_conditions_fn`, `source_policy_fn`
-  (no `custom_run` dual path; public `run_*` thin-wrap `run_tip`).
+- Deleted `custom_play`, `custom_run`, `_invoke_custom_play`, `is_spine_driven`, `is_hop_composed`
+- `run_to_tip` is a thin alias of `run_tip`
+- Typed `TipPlayResult` (`last` / `boss` / `super_collect`) end-to-end
+- `register_tips` dead first loop removed; rebuilds catalog views after merge
+- `_invoke_after` single signature `(session, splits, result)`
 
-### 2. Spine split
+### 2. Tip CLI identity (`catalog.py` + TipSpec fields)
 
-```text
-routes/kpdr/spine_types.py   — SpineHop, TipSegment
-routes/kpdr/spine_hops.py    — POST_SUPERS_SPINE (~596)
-routes/kpdr/tip_segments.py  — POST_SUPERS_TIP_SEGMENTS
-routes/kpdr/spine.py         — facade (~162) + helpers
-```
+- CLI fields on TipSpec / TipSegment: `display_name`, `description`, `aliases`, `supports_*`
+- `_CONTINUOUS_TIP_META` and hand-written `ROUTE_*` blocks **deleted**
+- `ContinuousTip` + `NamedRoute` rebuilt by `rebuild_from_tip_specs()` on registration
+- `CONTINUOUS_TIP_ORDER` tracks live `TIP_SPECS` order
 
-Public import path unchanged: `from super_metroid.routes.kpdr.spine import ...`.
+### 3. Shadow hop runner (`segment.py`)
 
-### 3. Kraid return skills
+- Deleted `HopExecutor`, `HopResult`, `ContinuousSession`
+- Kept practice adapters: `Segment`, `ControllerSegment`, `PolicySegmentAdapter`, `segment_from_kpdr`
+- ARCHITECTURE: continuous hops only via `tips.play_hops`
 
-| Module | Role |
-|--------|------|
-| `skills/door_exit.py` | Lip stage, beam open, period exit push |
-| `skills/morph_bomb.py` | Align / bomb-hole climb / roll |
-| `skills/kraid_return.py` | Named Kihunter + Zeela phases |
-| `from_kraid.py` | **810 → 335** product hops |
+### 4. Historical aliases (`hops.py` / early)
 
-### 4. Report + catalog
+- Deleted `RouteHop`, `PostSupersTipSpec`, `EarlyTipSpec`, `POST_SUPERS_TIP_*` TipSpec aliases
+- One public hop-table name per tip (no underscore twins)
+- Super+ canonical: `SUPER_TIP_SPECS` / `SUPER_TIP_BY_ID`
+- Kept thin Super+ `play_<tip>` aliases for segment registry; early `play_*_hops` for probes
 
-- `ContinuousRunReport.to_dict`: one key set for all kinds (null/empty optional fields).
-- `CONTINUOUS_TIP_ORDER` + `_CONTINUOUS_TIP_META` build `CONTINUOUS_TIPS`.
-- Test: catalog order matches `TIP_SPECS` / `TIP_BY_ID`.
+### 5. room_graph split
 
-### 5. Boss catalog table
+| File | LOC | Role |
+|------|----:|------|
+| `rooms/topology.py` | 337 | Physical graph load / components |
+| `rooms/pathfind.py` | 140 | Grid + capability path |
+| `rooms/room_graph.py` | 509 | Problem gen + public facade |
 
-- `_BOSS_TABLE` single source; `*_catalog()` one-line wrappers; public names preserved.
-
----
-
-## Still optional (non-blocking)
-
-1. ~~Fold early `custom_run` into generic `run_tip`~~ **done** (`assist_mode` + finish plugins).
-2. ~~Drop continuous historical hop re-exports~~ **done** (hop tables only on `kpdr/hops`).
-3. ~~Eye mid-room / Zeela wall phase splits~~ **done** (`eye_mid_room_approach`,
-   `zeela_shotblock_clear` / `wall_replant` / `wall_spin_climb`).
-4. Merge ContinuousTip CLI meta into TipSpec entirely (optional; order already locked).
-5. Drop Super+ `play_<tip>` / `run_<tip>` aliases on continuous when scripts stop using them.
+Public imports via `room_graph` unchanged.
 
 ---
 
-## Extend a continuous tip
+## Extend a continuous tip (current)
 
-1. Pure controller in `routes/kpdr/` (+ `KPDR_SEGMENTS` if needed).
-2. Graph edges in `progression/stages/`.
-3. `SpineHop` (+ `TipSegment`) in spine modules — first Super+ parents to `supers`.
-4. CLI meta row in `catalog.py` (`CONTINUOUS_TIP_ORDER` + `_CONTINUOUS_TIP_META`).
-5. `run_to("<tip>")` — no new runner.
+1. Pure controller in `routes/kpdr/` (+ `KPDR_SEGMENTS` if needed)
+2. Graph edges in `progression/stages/` as needed
+3. `SpineHop` on the spine (+ DoorEdge meta when product door)
+4. **New tip:** `TipSegment` with parent, report strings, **and CLI fields**  
+   (early: put CLI fields on the TipSpec in `early_continuous.py`)
+5. TipSpec generated / registered → ContinuousTip + NamedRoute refresh automatically
+6. `run_to("<tip>")` — no new runner, no parallel catalog prose
+
+---
+
+## Optional later (non-blocking)
+
+1. Drop Super+ `play_<tip>` / `run_<tip>` module aliases when scripts stop using them
+2. Further thin NamedRoute if harness consumers never need identity milestones
+3. Stronger typing on `TipPlayResult.boss` / `super_collect` (protocol or unions)
 
 ---
 
@@ -94,16 +93,10 @@ Public import path unchanged: `from super_metroid.routes.kpdr.spine import ...`.
 
 | # | Finding | Status |
 |---|---------|--------|
-| 1 | Tip multi-registry | **done** → TipSpec |
-| 2 | progression `stages/` | **done** |
-| 3 | Segment ≠ continuous spine | **done** |
-| 4 | Bubble skills | **done** |
-| 5 | K4 skills | **done** |
-| 6 | Hop renames | **done** |
-| 7 | Dual graph | intentional |
-| 8 | RouteHop delete | **done** |
-| 9 | Early vs Super+ types | **done** |
-| 10 | Spine under 1k | **done** |
-| 11 | Kraid return skills | **done** |
-| 12 | Report schema + catalog order | **done** |
-| 13 | Boss catalog table | **done** |
+| 1–13 | Prior TipSpec / spine / skills / report / boss table | **done** |
+| 14 | Triple tip identity (CLI) | **done** — TipSpec-derived ContinuousTip/NamedRoute |
+| 15 | Dead custom_play/run | **done** |
+| 16 | HopExecutor shadow runner | **done** |
+| 17 | Typed tip play evidence | **done** |
+| 18 | room_graph near 1k | **done** — split |
+| 19 | Alias surface freeze | **done** |

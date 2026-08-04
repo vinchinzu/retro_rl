@@ -1,7 +1,8 @@
-"""Unit tests for continuous Segment / ContinuousSession contracts."""
+"""Unit tests for practice Segment adapters (not the continuous hop runner)."""
 
 from __future__ import annotations
 
+from super_metroid.policy import PolicySegment, StateRequirement
 from super_metroid.routes.catalog import (
     CONTINUOUS_TIPS,
     DEFAULT_CONTINUOUS_TIP,
@@ -9,8 +10,9 @@ from super_metroid.routes.catalog import (
     list_continuous_tips,
 )
 from super_metroid.routes.segment import (
-    ContinuousSession,
     ControllerSegment,
+    PolicySegmentAdapter,
+    Segment,
     segment_from_kpdr,
 )
 
@@ -41,14 +43,28 @@ def test_controller_segment_from_kpdr_registry() -> None:
         exit_room=0xA7DE,
     )
     assert isinstance(seg, ControllerSegment)
+    assert isinstance(seg, Segment)
     assert seg.id == "warehouse_to_business"
     assert callable(seg.play_fn)
+    assert seg.entry_room == 0xA6A1
+    assert seg.exit_room == 0xA7DE
 
 
-def test_continuous_session_run_to_dispatch() -> None:
-    session = ContinuousSession(tip="warehouse")
-    # Facade resolves tip without binding a live env when only inspecting tip.
-    assert session.tip == "warehouse"
-    # segment adapters exist for composed packages used by continuous hops
+def test_segment_from_kpdr_composed_packages() -> None:
     assert segment_from_kpdr("eye_to_kraid").id == "eye_to_kraid"
     assert segment_from_kpdr("kraid_entry_to_varia").id == "kraid_entry_to_varia"
+
+
+def test_policy_segment_adapter_wraps_policy() -> None:
+    policy = PolicySegment(
+        segment_id="unit_policy_seg",
+        filename="unit_policy_seg.json",
+        entry=StateRequirement(),
+        exit=StateRequirement(),
+        expected_policy_id="deadbeef",
+    )
+    adapter = PolicySegmentAdapter(segment=policy)
+    assert isinstance(adapter, Segment)
+    assert adapter.id == "unit_policy_seg"
+    assert adapter.entry is policy.entry
+    assert adapter.exit is policy.exit

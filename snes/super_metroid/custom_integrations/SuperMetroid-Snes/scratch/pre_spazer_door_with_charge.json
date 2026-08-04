@@ -1,0 +1,23 @@
+{
+  "id": "pre_spazer_door_with_charge",
+  "path": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/pre_spazer_door_with_charge.state",
+  "room": "0xA408",
+  "pin": {
+    "x": 460,
+    "y": 139,
+    "pose": 164,
+    "door_transition": 0
+  },
+  "beams": "0x1000",
+  "items": "0x1004",
+  "supers": 5,
+  "max_supers": 5,
+  "provenance": {
+    "parent": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_below_spazer_with_charge_continuous.state",
+    "parent_note": "integrity-green continuous --to below_spazer with Charge (84880f)",
+    "method": "place_samus(460, 120) + settle ordinary",
+    "development_only_geometry": true,
+    "controller_only": false,
+    "use_for": "pure Spazer green-door open / room entry isolation (SM-SPAZER-PURE)"
+  }
+}

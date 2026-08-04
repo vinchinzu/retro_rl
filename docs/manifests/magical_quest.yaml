@@ -22,3 +22,8 @@ plan_doc: snes/magical_quest/docs/plan.md
 last_verified: 2026-07-22
 blocker: clear first room/checkpoint from Stage 1
 notes: Controllable Stage 1 checkpoint; X/progress RAM mapped.
+setup:
+  rom_zip: "Magical Quest starring Mickey Mouse, The.zip"
+  integration: MagicalQuest-Snes
+  ladder_rank: 7
+  ladder_status: BOOT_WORKS

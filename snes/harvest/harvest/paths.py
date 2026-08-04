@@ -13,7 +13,7 @@ from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = PACKAGE_DIR.parent
-# Game lives at snes/harvest/; monorepo root is two levels up from PROJECT_DIR.
+# Nested package: snes/harvest/harvest/ → monorepo is two parents above PROJECT_DIR.
 MONOREPO_DIR = PROJECT_DIR.parent.parent
 
 CUSTOM_INTEGRATIONS_DIR = PROJECT_DIR / "custom_integrations"
@@ -30,8 +30,11 @@ SHARED_ROMS_DIR = MONOREPO_DIR / "roms"
 
 
 def ensure_monorepo_on_path() -> None:
-    """Make shared ``retro_harness`` imports available from game-local commands."""
+    """Make shared ``retro_harness`` + nested harvest imports available."""
     for path in (MONOREPO_DIR, PROJECT_DIR):
         text = str(path)
         if text not in sys.path:
             sys.path.insert(0, text)
+    from retro_harness.repo import ensure_import_paths
+
+    ensure_import_paths(root=MONOREPO_DIR)

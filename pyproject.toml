@@ -42,5 +42,7 @@ dev = [
 
 [tool.pytest.ini_options]
 # Games keep package names (alttp, super_metroid, smb, …) under snes/ and nes/.
-pythonpath = [".", "snes", "nes", "snes/harvest", "snes/hals_golf"]
+# Nested package workspaces (snes/<slug>/<slug>/) are added by root conftest via
+# retro_harness.repo.discover_nested_package_roots — do not hardcode game slugs here.
+pythonpath = [".", "snes", "nes"]
 testpaths = ["tests", "retro_harness/tests", "retro_harness/platformer/tests", "retro_harness/fighters/tests", "retro_harness/adventure/tests"]

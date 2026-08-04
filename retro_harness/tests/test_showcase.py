@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from retro_harness.video import FooterLabels, RecordingSession
+from retro_harness.video import CaptureSession, FooterLabels
 from retro_harness.showcase import default_output_path, load_showcase_game
 
 
@@ -45,6 +45,6 @@ def test_recording_session_uses_footer_provider() -> None:
             lower_left="TEST",
         )
 
-    session = RecordingSession(_Env(), sink=sink, footer=footer, fps=60.0)
+    session = CaptureSession(_Env(), sink=sink, footer=footer, fps=60.0)
     session.step([0] * 12)
     assert len(sink.frames) == 1

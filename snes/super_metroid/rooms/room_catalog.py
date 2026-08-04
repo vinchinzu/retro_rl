@@ -1,6 +1,8 @@
 """Full room catalog / problem export (sm-json-data + editor merge).
 
-Topology helpers and pathfinding live in :mod:`super_metroid.rooms.room_graph`.
+Topology helpers live in :mod:`super_metroid.rooms.topology`; pathfinding in
+:mod:`super_metroid.rooms.pathfind`. Problem generation and stable re-exports
+remain on :mod:`super_metroid.rooms.room_graph`.
 """
 
 from __future__ import annotations
@@ -15,11 +17,13 @@ from super_metroid.rooms.room_graph import (
     _aggregate_sha256,
     _completion_sequence,
     _item_capabilities,
+    _problem_for_room,
+)
+from super_metroid.rooms.topology import (
     _json,
     _load_connections,
     _load_reference_rooms,
     _physical_components,
-    _problem_for_room,
 )
 
 def export_full_room_catalog(

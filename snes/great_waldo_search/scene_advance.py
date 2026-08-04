@@ -17,7 +17,7 @@ import numpy as np
 
 from great_waldo_search.targets import CURSOR_X_ADDR, CURSOR_Y_ADDR
 from retro_harness.actions import buttons_multi
-from retro_harness.video import RecordingSession
+from retro_harness.video import CaptureSession
 
 
 @dataclass(frozen=True)
@@ -56,7 +56,7 @@ SOFT_LAYOUT_X = 206
 
 
 def advance_scene(
-    session: RecordingSession,
+    session: CaptureSession,
     *,
     cleared_scene: int,
 ) -> AdvanceRecipe:
@@ -77,7 +77,7 @@ def cursor_xy(env: object) -> tuple[int, int]:
 
 
 def probe_assist_landing(
-    session: RecordingSession,
+    session: CaptureSession,
     env: object,
     *,
     frames: int = 120,

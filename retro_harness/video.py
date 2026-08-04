@@ -768,11 +768,12 @@ class FooterLabels:
 FooterProvider = Callable[[object, list[int], int, float], FooterLabels]
 
 
-class RecordingSession:
-    """Wrap env stepping with footer decoration and optional frame stride.
+class CaptureSession:
+    """Showcase / continuous capture session with footer decoration.
 
-    Distinct from :class:`retro_harness.recorder.RecordingSession` (labeled
-    human save-state recording). This type drives showcase/continuous capture.
+    Wraps env stepping with optional frame stride and a live button footer.
+    Distinct from :class:`retro_harness.recorder.RecordingSession`, which is
+    for labeled human save-state recording.
     """
 
     def __init__(

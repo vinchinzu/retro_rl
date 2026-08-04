@@ -45,7 +45,7 @@ green; then planner folds them into the default continuous spine. A 100% spine i
 | 7 | Hi-Jump Boots | `collected_items` 0x0100 | ✅ done | K2 continuous `--to hijump` | Real PLM bit 0x0100; E-Tank collected |
 | 8 | E-Tank (Hi-Jump room) | $7E:09C4 | ✅ done | K2 continuous | |
 | 9 | E-Tank (Terminator room) | $7E:09C4 | ✅ done | K0 continuous | Terminator ET, spore path |
-| 10 | Spazer Beam | `beams` 0x04 | 🔷 in progress | Early Spazer (this board) | Inserted during K2 Below Spazer; walljump path |
+| 10 | Spazer Beam | `beams` 0x04 | 🔷 in progress | Early Spazer (this board) | Door/collect/return pure green; climb + top→West residual |
 | 11 | Speed Booster | `collected_items` 0x2000 | ⬜ open | K4 `--to speed` | After Bubble→Bat→Speed Hall |
 | 12 | Wave Beam | `beams` 0x01 | ⬜ open | K4 `--to wave` | After Speed; Single→Double chamber |
 | 13 | Ice Beam | `beams` 0x02 | ⬜ open | K4 `--to ice` | Business→Ice Gate→Reflection |
@@ -150,6 +150,8 @@ are not on the KPDR path; they require LN detours.
 - From continuous `--to below_spazer` (already green), insert:
   `Below Spazer (0xA408) → Spazer Room (0xA447) collect → Below Spazer (0xA408)`.
 - Walljump may be needed for red-room shaft; reuse Bubble walljump patterns.
+- **Human record ready:** [`EARLY_SPAZER_HUMAN.md`](../tasks/EARLY_SPAZER_HUMAN.md)
+  (`guided_human --from below-spazer --route early-spazer`); guide path on same window.
 - After pure green: graph edges → catalog tip `--to spazer` → dual integrity → fold.
 - Priority: P2 parallel (does **not** block K4 Bubble Bat serial spine).
 

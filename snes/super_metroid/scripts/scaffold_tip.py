@@ -6,7 +6,7 @@ Does **not** claim continuous green or edit STATUS. Generates:
 1. Pure controller stub in ``routes/kpdr/<module>.py`` (optional append)
 2. Registry registration snippet / optional write
 3. Residual skeleton under ``docs/tasks/``
-4. Printed checklist for graph edge, catalog tip, SpineHop/TipSpec, run_to wire
+4. Printed checklist for graph edge, SpineHop/TipSegment(+CLI), TipSpec, run_to wire
 
 Usage (from repo root)::
 
@@ -207,8 +207,8 @@ def _checklist(
 |------|--------|-------|
 | 1 | Pure controller `{fn}` in `routes/kpdr/{module}.py` + `KPDR_SEGMENTS` | Luna (this scaffold) |
 | 2 | `DoorEdge` `{edge_id}` in `progression.py` (`verification=controller_dev` after pure green) | Luna / planner |
-| 3 | Split id + optional `ContinuousTip` in `catalog.py` | Luna (after pure) |
-| 4 | `SpineHop` + `TipSegment` in spine; TipSpec generates | Luna (after pure) |
+| 3 | `SpineHop` + `TipSegment` (CLI fields: display/aliases/flags) in spine | Luna (after pure) |
+| 4 | TipSpec generates ContinuousTip + NamedRoute on register | automatic |
 | 5 | `run_to()` + `register_continuous_segments` | Luna (after pure) |
 | 6 | `scripts/record/continuous.py --to <tip> --no-video` | **Planner** |
 | 7 | STATUS / tracker promote | **Planner** only |

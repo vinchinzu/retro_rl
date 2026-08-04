@@ -22,3 +22,8 @@ plan_doc: snes/final_fight/docs/plan.md
 last_verified: 2026-07-22
 blocker: Stage 3 West Side Area1 HP250 thug → Boss3; natural-entry hardening
 notes: Near-term factory line to generalize TMNT combat stack.
+setup:
+  rom_zip: "Final Fight.zip"
+  integration: FinalFight-Snes
+  ladder_rank: 2
+  ladder_status: SEGMENTS

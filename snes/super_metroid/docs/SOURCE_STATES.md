@@ -51,6 +51,11 @@ ad-hoc warps. All paths are under
 | `business_climb_entry` | `scratch/continuous_like_business_climb_entry.state` | `0xA7DE` Business Center floor band | Hi-Jump, continuous-like | pure `business-to-warehouse` |
 | `continuous_like_bat` | `scratch/continuous_like_bat.state` | `0xA3DD` Bat room | pre-Kraid | bat pure / dwell isolation |
 | `post_below_spazer_for_spazer_pure` | `scratch/post_below_spazer_for_spazer_pure.state` | `0xA408` Below Spazer (x=39/y=395/pose=9; reload: x≈49/y=395/pose=1) | Morph/Bombs, beams 0x0000 | pure `below-spazer-to-spazer` / `spazer-collect-return`; source capture from continuous-like Bat handoff (668f) |
+| `post_below_spazer_with_charge_continuous` | `scratch/post_below_spazer_with_charge_continuous.state` | `0xA408` Below Spazer ~(49,395) | Morph/Bombs + **Charge** `0x1000`, supers 5 | integrity-green continuous `--to below_spazer` **with Charge on spine** (84,880f); climb source for Spazer fold |
+| `pre_spazer_door_with_charge` | `scratch/pre_spazer_door_with_charge.state` | `0xA408` top ledge ~(460,139) | Charge + supers 5 | **pre green Super door** for Spazer entry pure; parent continuous-with-Charge + place (geometry developmentOnly; inventory continuous-legal) |
+| `post_spazer_entry_pure` | `scratch/post_spazer_entry_pure.state` | `0xA447` Spazer ~(39,139) | Charge held | pure `below-spazer-to-spazer` GREEN from pre-door |
+| `post_spazer_collect_pure` | `scratch/post_spazer_collect_pure.state` | `0xA447` Spazer ~(171,171) | beams `0x1004` Charge+Spazer | pure `spazer-collect` GREEN |
+| `post_spazer_return_pure` | `scratch/post_spazer_return_pure.state` | `0xA408` Below Spazer top ~(380,155) | beams `0x1004` | pure `spazer-return-to-below` GREEN; handoff clear of open Super door (x≲400) |
 | `red_to_warehouse` | `scratch/red_to_warehouse_controller.state` | Red Tower → Warehouse path | post-Supers | pure `warehouse-hijump-kraid` |
 | `natural_bomb_torizo_active` | `scratch/natural_bomb_torizo_active.state` | `0x9804` Bomb Torizo | continuous-like entry | pure bomb-torizo combat verification |
 

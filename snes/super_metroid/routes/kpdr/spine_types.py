@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from super_metroid.progression.types import DoorEdge
-from super_metroid.routes.runtime import RouteSession
+from super_metroid.routes.runtime import RouteSession, Split
 
 __all__ = [
     "SpineHop",
@@ -52,7 +52,7 @@ class SpineHop:
     """Tip that *ends* after its hop group (delta from parent) is played."""
 
     use_transition_split: bool = True
-    after: Callable[[RouteSession], None] | None = None
+    after: Callable[[RouteSession, list[Split], Any], None] | None = None
     # --- DoorEdge generation (None exit_direction ⇒ no generated DoorEdge) ---
     exit_direction: str | None = None
     entry_direction: str = ""
@@ -100,6 +100,9 @@ class TipSegment:
 
     ``parent_tip_id`` for the first Super+ tip is ``\"supers\"`` (early chain),
     not ``None``.
+
+    CLI identity fields (``display_name``, aliases, capability flags) are copied
+    onto the generated :class:`~super_metroid.routes.tips.TipSpec`.
     """
 
     tip_id: str
@@ -116,4 +119,11 @@ class TipSegment:
     ordinary_condition_key: str
     require_hi_jump: bool = False
     require_varia: bool = False
+    # --- CLI identity (copied onto TipSpec in hops.py) ---
+    display_name: str = ""
+    description: str = ""
+    aliases: tuple[str, ...] = ()
+    supports_room_timing: bool = True
+    supports_unlimited_energy: bool = True
+    supports_checkpoint: bool = False
 

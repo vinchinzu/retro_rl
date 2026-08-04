@@ -1,16 +1,15 @@
-"""Filesystem and integration constants for Rival Turf!."""
+"""Filesystem constants for Rival Turf."""
 
 from __future__ import annotations
 
-from pathlib import Path
+from retro_harness.game_layout import game_paths
 
-GAME_DIR = Path(__file__).resolve().parent
-REPO_ROOT = GAME_DIR.parent.parent  # monorepo root (game under snes/ or nes/)
-INTEGRATION = "RivalTurf-Snes"
+_paths = game_paths(__file__, "RivalTurf-Snes")
+GAME_DIR = _paths.game_dir
+REPO_ROOT = _paths.repo_root
+INTEGRATION = _paths.integration
 GAME = INTEGRATION
-INTEGRATION_DIR = GAME_DIR / "custom_integrations" / INTEGRATION
-RECORDINGS_DIR = GAME_DIR / "recordings"
-ROMS_DIR = GAME_DIR / "roms"
-DOCS_DIR = GAME_DIR / "docs"
-STAGE1_STATE = "Stage1"
-
+INTEGRATION_DIR = _paths.integration_dir
+RECORDINGS_DIR = _paths.recordings_dir
+ROMS_DIR = _paths.roms_dir
+DOCS_DIR = _paths.docs_dir

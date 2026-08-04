@@ -25,7 +25,7 @@ from great_waldo_search.targets import (
     score_u16,
 )
 from retro_harness.actions import buttons_multi
-from retro_harness.video import RecordingSession
+from retro_harness.video import CaptureSession
 from retro_harness.cursor import CursorPose, CursorTarget, step_toward_target
 
 
@@ -137,7 +137,7 @@ def _metrics(env: object) -> dict[str, int]:
 
 
 def _settle(
-    session: RecordingSession,
+    session: CaptureSession,
     env: object,
     *,
     warm: int,
@@ -155,7 +155,7 @@ def _settle(
 
 
 def _drive(
-    session: RecordingSession,
+    session: CaptureSession,
     env: object,
     target: CursorTarget,
     *,
@@ -174,13 +174,13 @@ def _drive(
     return CursorPose(int(ram[CURSOR_X_ADDR]), int(ram[CURSOR_Y_ADDR]))
 
 
-def _click_a(session: RecordingSession, *, hold: int = 6) -> None:
+def _click_a(session: CaptureSession, *, hold: int = 6) -> None:
     for _ in range(hold):
         session.step(buttons_multi(p1=("A",)))
 
 
 def _scroll_find(
-    session: RecordingSession,
+    session: CaptureSession,
     env: object,
     recipe: SceneRecipe,
 ) -> dict[str, int]:
@@ -244,7 +244,7 @@ def _scroll_find(
 
 
 def _waldo_find(
-    session: RecordingSession,
+    session: CaptureSession,
     env: object,
     recipe: SceneRecipe,
 ) -> dict[str, int]:
@@ -280,7 +280,7 @@ def _waldo_find(
 
 
 def run_scene_recipe(
-    session: RecordingSession,
+    session: CaptureSession,
     env: object,
     recipe: SceneRecipe,
 ) -> dict[str, object]:

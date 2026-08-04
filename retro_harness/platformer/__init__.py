@@ -61,8 +61,14 @@ from retro_harness.platformer.rle_ops import (
 )
 from retro_harness.platformer.rle_optimize import (
     RleWindow,
-    SMB_BOTTLENECK_WINDOWS,
+    get_smb_bottleneck_windows,
     phase_shift_transitions,
     rle_ga_window,
     rle_hillclimb_window,
 )
+
+# Back-compat alias (lazy via rle_optimize.__getattr__ when accessed as attribute)
+def __getattr__(name: str):
+    if name == "SMB_BOTTLENECK_WINDOWS":
+        return get_smb_bottleneck_windows()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

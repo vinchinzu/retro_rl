@@ -14,7 +14,7 @@ def main() -> None:
 
     # Importing this module registers SMW levels before the shared runner
     # resolves CLI level aliases.
-    import retro_harness.platformer.levels.super_mario_world  # noqa: F401
+    import SMW.platformer_levels  # noqa: F401
     from retro_harness.platformer.runner import main as runner_main
 
     runner_main()

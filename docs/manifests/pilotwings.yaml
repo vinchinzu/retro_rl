@@ -22,3 +22,8 @@ plan_doc: snes/pilotwings/docs/plan.md
 last_verified: 2026-07-22
 blocker: complete light-plane Lesson 1 objective
 notes: Airborne Lesson 1 checkpoint; altitude/pitch/heading RAM.
+setup:
+  rom_zip: "Pilotwings.zip"
+  integration: Pilotwings-Snes
+  ladder_rank: 8
+  ladder_status: BOOT_WORKS

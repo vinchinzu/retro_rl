@@ -22,7 +22,7 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
    - `4-2-entry` / `4-2-full` (prefer fragment seed, not isolated Level4_2
      on continuous mid-route frames)
 3. **Neuro upgrade** — done: deeper MLP / CNN head, discrete argmax combos,
-   BC warm-start from RLE seed (`retro_harness/platformer/neuro.py`).
+   BC warm-start from RLE seed (`retro_harness/platformer/neuro/`).
 4. **Stairs micro (2026-07-30):** −63f 1-1 clear, 0 wall-slams.
 5. **Reactive 1-2 (2026-07-31):** state-gated controller; World 4 in 3981f
    after stairs (−63f). No W4 phase pad.

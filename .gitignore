@@ -250,6 +250,13 @@ smb/recordings/warp_finish/*
 !smb/recordings/warp_finish/warp_finish_poweron_trials_report.json
 !smb/recordings/warp_finish/warp_finish_poweron_m8_capture.json
 
+# Probe / debug frame spam (keep curated goldens only; never commit scratch)
+**/probe*.png
+**/debug_frames/
+**/super_metroid/debug/**
+**/tmnt_iv/recordings/**/probe*.png
+**/final_fight/**/probe*.png
+
 # Local OpenCode overrides / agent auth (never commit)
 **/opencode.local.json
 **/.opencode/
