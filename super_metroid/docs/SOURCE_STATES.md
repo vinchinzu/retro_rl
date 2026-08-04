@@ -153,20 +153,27 @@ Authoritative first Bubble path is Cathedral climb, not Frog Speedway.
 
 | ID | Path (under SuperMetroid-Snes/) | Room | Use for |
 |----|---------------------------------|------|---------|
-| `post_rising_tide_to_bubble_pure` | `scratch/post_rising_tide_to_bubble_pure.state` | `0xACB3` Bubble entry | **hop GREEN claim** for `bubble-to-bat-cave` (CATH-04) |
-| `post_bubble_mid_climb_pure` | `scratch/post_bubble_mid_climb_pure.state` | `0xACB3` mid pin | mid-iso only; not hop GREEN |
-| `post_bubble_right_contact_pure` | `scratch/post_bubble_right_contact_pure.state` | `0xACB3` Phase C band | **dev handoff** via `--dump-phase-c`; climb-only (`--start-phase climb`); never hop GREEN alone |
+| `post_rising_tide_to_bubble_pure` | `scratch/post_rising_tide_to_bubble_pure.state` | `0xACB3` Bubble entry | source for `bubble-to-bat-cave` (CATH-04) |
+| `post_bubble_to_bat_pure` | `scratch/post_bubble_to_bat_pure.state` | `0xB07A` Bat Cave ~(39,395) p11 | **R19 pure GREEN successor**; next hop Bat→Speed |
+| `post_bubble_phase_d_pure_r19` | `scratch/post_bubble_phase_d_pure_r19.state` | `0xACB3` ~(305,141) | Phase D pin (door recon); not hop GREEN alone |
+| `post_bubble_mid_climb_pure` | `scratch/post_bubble_mid_climb_pure.state` | `0xACB3` mid pin | mid-iso only |
+| `post_bubble_right_contact_pure` | `scratch/post_bubble_right_contact_pure.state` | `0xACB3` Phase C band | **dev handoff** via `--dump-phase-c`; climb-only |
+| `bubble_human_runway` | `scratch/bubble_human_runway.state` | `0xACB3` ~(27,395) p2 | **dev isolation** Phase D (R15); not pure proof |
+| `post_bubble_fire_seat_live_r18` | `scratch/post_bubble_fire_seat_live_r18.state` | fire seat | lucky live isolation (tops without wait); not hop GREEN |
 
 Phase ladder + capture commands:
 [`tasks/SM-K4.4-PHASE-LADDER.md`](tasks/SM-K4.4-PHASE-LADDER.md) ·
-[`tasks/HARD_ROOM_SPLITS.md`](tasks/HARD_ROOM_SPLITS.md).
+[`tasks/HARD_ROOM_SPLITS.md`](tasks/HARD_ROOM_SPLITS.md) ·
+techniques [`tasks/BUBBLE_TECHNIQUES.md`](tasks/BUBBLE_TECHNIQUES.md) ·
+R19 residual [`tasks/SM-K4.4-PURE-R19-residual.md`](tasks/SM-K4.4-PURE-R19-residual.md).
 
 ```bash
-# Create Phase-C handoff (diagnostic success if hit; not Bat GREEN)
+# Full pure GREEN Bubble → Bat (R19)
 uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state \
-  --dump-phase-c super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_right_contact_pure.state \
-  --stop-at-phase-c --no-red-diag
+  --output super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_to_bat_pure.state \
+  --pin-json super_metroid/debug/bubble_to_bat_pure_pin_r19.json --no-red-diag
+# success=true room=0xB07A frames=2012
 ```
 
 ## Capture recipe (for SM-*-SRC cards)
@@ -184,7 +191,7 @@ uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
 | pure HJ shaft mid-climb isolation | `0xAA41` band | `SM-HJ-SRC` partial (ensure_morph RED) | SM-HJ-SRC follow-up or continuous dump |
 | pure business climb post-Varia entry | `0xA7DE` floor band | no continuous-like source at Business floor after Varia return; `business_climb_entry` is pre-Varia | SM-SRC-BUSINESS |
 | pure bubble mountain entry (K4 **Speed** shortcut) | `0xACB3` Bubble Mountain | post-Speed only (Frog→Speedway→Farm); **not** first Bubble path | park until Speed |
-| pure Bat Cave after Bubble (K4) | `0xB07A` Bat Cave | Bubble→Bat pure still RED (Phase C/D) | SM-K4.4-PURE-R11 |
+| pure Speed Hall after Bat (K4) | Speed Hall / Speed Room | Bat pure GREEN; next hop pure from `post_bubble_to_bat_pure` | **SM-K4.4-GRAPH** / Bat→Speed |
 | pure moat entry (K6) | `0x95FF` Moat | needs capture after Crateria elev + Kihunter; loadout: Speed, Hi-Jump, PB | SM-SRC-MOAT |
 | pure west ocean / WS entry (K6) | `0x93AA` West Ocean | needs capture after Moat; loadout: Speed, HJ, PB | SM-SRC-WS |
 | pure crateria Kihunter entry | `0x948C` | needs capture after Crateria elev descent | SM-SRC-CRKIHUNTER |

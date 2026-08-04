@@ -17,6 +17,14 @@ MID_REPIN_FRAMES = 900
 MID_FRAMES = 5500
 DOOR_FRAMES = 900
 TO_BAT_SETTLE_FRAMES = 320
+# R19 Phase E: sticky right-structure WJ + Super pressure (from Phase D pin).
+# Door shell ≈ x496 y112; fire when x≥DOOR_SUPER_X and y≤DOOR_SUPER_Y.
+DOOR_SUPER_X = 420
+DOOR_SUPER_Y = 160
+DOOR_WJ_PERIOD = 10
+DOOR_WJ_INTO = 3  # LEFT+A
+DOOR_WJ_BOUNCE = 2  # RIGHT+A
+DOOR_X_CAP = 480  # pull left if past outer wall
 MID_Y = 400
 TOP_Y = 200
 TOP_X = 300
@@ -75,19 +83,69 @@ SAVE_RUNWAY_FIRE_X = (25, 60)  # max-left fire window (do not walk-right to cent
 # R16: left-blocker clear (missile/X) when walk-left stalls at ~x37 on pure.
 SAVE_CLEAR_X_FRAMES = 12
 SAVE_EDGE_LEFT_FRAMES = 40  # walk left toward fire after solid land
+# R17: stationary left-face X spray (no dir) then walk — avoids KB pose 138
+# that LEFT+X-while-walking produces. Human pin free-walks; pure needs clear.
+SAVE_STATIONARY_FACE = 6
+SAVE_STATIONARY_X = 28  # R18: pure left-blocker needs longer L-angle spray
+# Human-matched fire seat band (maprando left climb / bubble_human_runway).
+# Integer (27,395)p2 is necessary but not sufficient — pure dumps still lack
+# human run-windup/subpixel; open-loop R15 tops only on human pin state.
+SAVE_HUMAN_SEAT_X = (25, 32)
+# Fire-seat dash: 21f proven on human pin. Max dash value without Speed is ~32f,
+# but longer bare dash from x~27 walks off the short runway (probe RED).
 SAVE_RUN_FRAMES = 21
+SAVE_DASH_MAX_FRAMES = 32  # experiment / longer platforms only
+# R18 pure natural seat: arm-pump RED (desyncs jump). Human pin isolation still
+# greens with arm-pump + R15 WJ2 (24/14/56) — product follows pure.
+SAVE_ARM_PUMP = False
+SAVE_ARM_PUMP_PERIOD = 2  # frames per L↔R toggle when arm-pump experiment on
+SAVE_CROUCH_FRAMES = 2  # crouch-jump experiment (+~8 px start); off in product
 SAVE_SPIN_FRAMES = 83
 SAVE_APPROACH_BA = 4  # B+A coast into wall
 SAVE_APPROACH_IDLE = 2
 SAVE_APPROACH_TURN = 2
-# R15 double walljump (clears ceiling lip / Phase D on human runway pin).
+# R18 double walljump — pure natural **live** seat Phase D (full lower→seat):
+#   WJ1 L20 a4 R8 + WJ2 L14 a2 R6 + follow40 → top (mx200≥300, pose 84).
+# Dump-only seat (shorter idle) preferred WJ2 L16/R10; product follows **live**.
+# R15 human-pin isolation used WJ2 L24/R14/follow56 + arm-pump (not pure product).
+# Skills: bubble_consecutive_walljumps / bubble_double_walljump_r15
+# (always 2 WJ — single stalls mx200~251 without enemy damage clip).
 SAVE_WJ_LEFT_A = 20  # first WJ hold LEFT+A
 SAVE_WJ_AMID = 4  # A-only between flips
 SAVE_WJ_RIGHT_A = 8  # first flip RIGHT+A
-SAVE_WJ2_LEFT_A = 24  # second WJ LEFT+A
+SAVE_WJ2_LEFT_A = 14  # R18 live pure Phase D
 SAVE_WJ2_AMID = 2
-SAVE_WJ2_RIGHT_A = 14  # second flip then right-spin finish
-SAVE_WJ_FOLLOW = 56  # RIGHT+B+A spin after double WJ (Phase D push)
+SAVE_WJ2_RIGHT_A = 6  # R18 live pure Phase D
+SAVE_WJ_FOLLOW = 40  # RIGHT+B+A spin after double WJ (Phase D push)
+# Wall-ready seek: RIGHT+B+A only (never LEFT+A — that burns WJ1).
+WJ_INTO_X = 250
+WJ_LATCH_TIMEOUT = 36
+WJ_APPROACH_X = (230, 290)
+WJ_APPROACH_Y = (200, 340)
+# R18: after right-wall WJ1, human tops via left-wall pose 84 at x~212 y~157.
+# Pure dump still fails that contact (not fixed by enemy kill / 3-byte patch).
+WJ2_LEFT_X = 220  # seek band: left of this while y high after WJ1
+WJ2_LEFT_SEEK = 28
+# Experiment: damage-boost hold during KB (Geruta/Waver) — not product.
+DMG_BOOST_HOLD_FRAMES = 8
+
+# R19: enemy-phase-aware fire (Geruta slots 4/6). Open-loop product fire tops
+# only when patrol geometry matches a short clear window; wait with pure idle
+# (preserves max-left seat). Period ~144f between class-A and class-B windows.
+# Proven on post_bubble_fire_start_fullpure_r18: wait 89–93 (class A) and
+# 233–235 (class B). Zeroing HP alone does NOT unlock Phase D.
+FIRE_PHASE_MAX_WAIT = 280
+# Class A: e4 deep-left + e6 mid (fullpure ~89–93, pure_seat ~108–110)
+FIRE_PHASE_A_E4 = (117, 125, 270, 276)  # x0,x1,y0,y1
+FIRE_PHASE_A_E6 = (190, 198, 158, 172)
+# Class B: e4 deep-center + e6 lower-mid (fullpure ~233–235)
+FIRE_PHASE_B_E4 = (158, 165, 272, 276)
+FIRE_PHASE_B_E6 = (175, 182, 184, 190)
+# Note: live isolation seat (179,113)/(146,155) also tops, but a pure_seat
+# near-miss (185,105)/(140,157) does NOT — do not widen a "class C" box.
+# Geruta enemy ID pointer (bank A0 header) for slots 4/6 in Bubble.
+FIRE_PHASE_GERUTA_ID = 0xD63F
+FIRE_PHASE_SLOTS = (4, 6)
 
 # R13 floor-reclimb: after height class, if deep (y>MIDHIGH), re-seat on the
 # mid-right floor solid (~y531 x∈[270,310]) and charged-HJ + period-8 WJ.

@@ -333,7 +333,7 @@ def run_chain(
         ),
         "note": (
             "Debug pure-chain video only — not continuous integrity evidence. "
-            "Bubble→Bat is expected RED until Phase D/E pure green."
+            "Debug pure-chain video only — not continuous integrity evidence."
         ),
     }
     report_path.write_text(json.dumps(report, indent=2) + "\n")

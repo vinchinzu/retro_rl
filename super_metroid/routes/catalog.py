@@ -112,8 +112,18 @@ BUSINESS_RETURN_SPLITS = VARIA_SPLITS + (
     "warehouse_to_business_return",
 )
 
-# KPDR K4.0 forward: Business Center → Frog Savestation.
+# KPDR K4.0 forward: Business Center → Frog Savestation (side save / Speedway).
 FROG_SAVE_SPLITS = BUSINESS_RETURN_SPLITS + ("business_to_frog_save",)
+
+# KPDR K4.4 first Bubble: Business → Cathedral climb → Bubble → Bat Cave.
+# Sibling of Frog Save (not a prefix of frog): Business → Cathedral path.
+BAT_CAVE_SPLITS = BUSINESS_RETURN_SPLITS + (
+    "business_to_cathedral_entrance",
+    "cathedral_entrance_to_cathedral",
+    "cathedral_to_rising_tide",
+    "rising_tide_to_bubble",
+    "bubble_to_bat_cave",
+)
 
 
 @dataclass(frozen=True)
@@ -279,10 +289,31 @@ CONTINUOUS_TIPS: tuple[ContinuousTip, ...] = (
         supports_checkpoint=True,
         aliases=("start_to_frog_save", "frog_save", "k4_0"),
     ),
+    ContinuousTip(
+        tip_id="bat_cave",
+        artifact_stem="start_to_bat_cave",
+        display_name="Power-on → Bat Cave (KPDR K4.4 first Bubble)",
+        description=(
+            "Business return through Cathedral Entrance → Cathedral → Rising "
+            "Tide → Bubble Mountain (R19 double-WJ fire + Super door) into "
+            "ordinary Bat Cave. Sibling of Frog Save, not a frog prefix."
+        ),
+        supports_room_timing=True,
+        supports_unlimited_energy=True,
+        supports_checkpoint=True,
+        aliases=(
+            "start_to_bat_cave",
+            "norfair_bat",
+            "bubble_bat",
+            "k4_4",
+            "k4.4",
+        ),
+    ),
 )
 
 # Verified continuous tip (M5): Frog Save (K4.0) has two matching
-# integrity-green power-on reports at 114,923f.
+# integrity-green power-on reports at 114,923f. Bat Cave tip is wired for
+# compose; promote DEFAULT only after dual integrity-green start_to_bat_cave.
 DEFAULT_CONTINUOUS_TIP = "frog"
 
 
@@ -439,6 +470,16 @@ ROUTE_START_TO_FROG_SAVE = NamedRoute(
     milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in FROG_SAVE_SPLITS),
 )
 
+ROUTE_START_TO_BAT_CAVE = NamedRoute(
+    route_id="sm_start_to_bat_cave",
+    display_name="Power-on → Bat Cave (KPDR K4.4 first Bubble)",
+    description=(
+        "Business return through Cathedral climb and Bubble Mountain into "
+        "ordinary Bat Cave (first Bubble visit, no Speed)."
+    ),
+    milestones=tuple(RouteMilestone(sid, sid, sid, sid) for sid in BAT_CAVE_SPLITS),
+)
+
 ROUTE_REGISTRY: dict[str, NamedRoute] = {}
 register_routes(ROUTE_REGISTRY, ROUTE_START_TO_MORPH, "morph", "start_to_morph")
 register_routes(ROUTE_REGISTRY, ROUTE_START_TO_BOMBS, "bombs", "start_to_bombs")
@@ -514,6 +555,14 @@ register_routes(
     "start_to_frog_save",
     "frog_save",
     "k4_0",
+)
+register_routes(
+    ROUTE_REGISTRY,
+    ROUTE_START_TO_BAT_CAVE,
+    "bat_cave",
+    "start_to_bat_cave",
+    "norfair_bat",
+    "k4_4",
 )
 
 SegmentFn = Callable[..., Any]

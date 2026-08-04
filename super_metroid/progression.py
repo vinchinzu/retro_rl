@@ -1701,6 +1701,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "unverified",
     ),
     # --- First Bubble visit: Cathedral climb (no Speed) ---
+    # CATH-01…04 pure GREEN; continuous tip still Frog Save until compose.
     DoorEdge(
         "business_to_cathedral_entrance",
         0xA7DE,
@@ -1709,7 +1710,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "left",
         _K4_CAPS,
         "kpdr_k4_cathedral",
-        "unverified",
+        "controller_dev",
     ),
     DoorEdge(
         "cathedral_entrance_to_cathedral",
@@ -1719,7 +1720,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "left",
         _K4_CAPS | frozenset({"super_missiles"}),  # red door
         "kpdr_k4_cathedral",
-        "unverified",
+        "controller_dev",
     ),
     DoorEdge(
         "cathedral_to_rising_tide",
@@ -1729,7 +1730,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "left",
         _K4_CAPS | frozenset({"super_missiles"}),  # green door
         "kpdr_k4_cathedral",
-        "unverified",
+        "controller_dev",
     ),
     DoorEdge(
         "rising_tide_to_bubble",
@@ -1739,7 +1740,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "left",
         _K4_CAPS,
         "kpdr_k4_cathedral",
-        "unverified",
+        "controller_dev",
     ),
     # --- Post-Speed shortcut: Frog Speedway (Boost Blocks need Speed) ---
     DoorEdge(
@@ -1780,7 +1781,7 @@ _K4_SPEED_EDGES = _K3_VARIA_EDGES + (
         "left",
         _K4_CAPS | frozenset({"super_missiles"}),
         "kpdr_k4_speed",
-        "unverified",
+        "controller_dev",  # R19 pure GREEN 2012f ×2 → ordinary 0xB07A
     ),
     DoorEdge(
         "bat_cave_to_speed_hall",

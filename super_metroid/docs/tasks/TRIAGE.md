@@ -41,9 +41,9 @@ Pure-first discipline is **non-negotiable**.
 
 | Priority | Ticket / work | Notes |
 |----------|---------------|-------|
-| **P0 ready** | **[`SM-K4.4-PURE-R11`](SM-K4.4-PURE-R11.md)** Bubble → Bat pure (Phase C→D ladder) | CATH-01…04 GREEN; R10 PARTIAL; ladder [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md) |
-| P0 | After Bat GREEN: Speed Hall → Speed / Wave / Ice pure | Graph + compose only after each pure green |
-| P0 | Continuous tip extensions (`--to` bubble / speed / wave / ice) + stabilize + STATUS | Planner-serial; short stabilize after each tip |
+| **P0 done** | Bubble → Bat pure **GREEN R19** (2012f → `0xB07A`) | Residual [`SM-K4.4-PURE-R19-residual.md`](SM-K4.4-PURE-R19-residual.md) |
+| **P0 ready** | ★ Bat → Speed Hall pure | Source `post_bubble_to_bat_pure`; then Speed / Wave / Ice |
+| P0 | Continuous tip extensions (`--to` bubble / speed / wave / ice) + stabilize + STATUS | Planner-serial after pure green stack; tip still Frog |
 | Parked | Frog Save → Speedway pure (**GREEN**) → Farm | Post-Speed shortcut only (Boost Blocks need Speed) |
 | P1 | K5 Alpha PB (post-Ice natural collect) | First competitive PB on KPDR |
 | P1 | K6 Moat → West Ocean → WS → natural Phantoon + fight + Gravity | Per [`BOSS_PIPELINE.md`](../BOSS_PIPELINE.md) |
@@ -55,9 +55,10 @@ Cathedral path (first Bubble, no Speed):
 Business 0xA7DE
   → Cathedral Entrance 0xA7B3   CATH-01 GREEN ~959f
   → Cathedral 0xA788            CATH-02 GREEN ~909f
-  → Rising Tide 0xAFA3          ★ CATH-03
-  → Bubble Mountain 0xACB3      CATH-04
-  → Bat Cave → Speed Hall → Speed → Wave / Ice
+  → Rising Tide 0xAFA3          CATH-03 GREEN ~1162f
+  → Bubble Mountain 0xACB3      CATH-04 GREEN ~2609f
+  → Bat Cave 0xB07A             R19 pure GREEN 2012f
+  → ★ Speed Hall → Speed → Wave / Ice
 ```
 
 ## Parallel tracks (do not block the spine)
@@ -150,7 +151,7 @@ fight issues already cleaned.
 
 | Lane | Action |
 |------|--------|
-| **Spine (serial)** | Dispatch **CATH-03** → CATH-04 / Bubble → Speed/Wave/Ice pure → graph → compose → stabilize → STATUS |
+| **Spine (serial)** | ★ Bat → Speed Hall pure → Speed/Wave/Ice pure → compose continuous tips → stabilize → STATUS |
 | **After each continuous tip** | Force short stabilize wave before more knobs |
 | **Parallel Clean** | ★ `SM-CLEAN-BOMBS` (own artifacts; no default assist change) |
 | **Parallel** | Path-room farm waves; boss primitives only; 1–2 ARCH items that reduce continuous friction |

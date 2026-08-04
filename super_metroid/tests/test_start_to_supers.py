@@ -69,8 +69,11 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "varia",
         "business",
         "frog",
+        "bat_cave",
     ]
-    assert CONTINUOUS_TIPS[-1].tip_id == DEFAULT_CONTINUOUS_TIP
+    # Default remains Frog until dual integrity-green Bat Cave promote.
+    assert DEFAULT_CONTINUOUS_TIP == "frog"
+    assert "bat_cave" in ids
 
 
 def test_get_continuous_tip_aliases() -> None:
@@ -84,6 +87,8 @@ def test_get_continuous_tip_aliases() -> None:
     assert get_continuous_tip("warehouse_entrance").tip_id == "warehouse"
     assert get_continuous_tip("k2_6").tip_id == "warehouse"
     assert get_continuous_tip("k3_return").tip_id == "business"
+    assert get_continuous_tip("norfair_bat").tip_id == "bat_cave"
+    assert get_continuous_tip("k4_4").tip_id == "bat_cave"
 
 
 def test_default_tip_room_timing_path() -> None:
@@ -145,13 +150,23 @@ def test_post_supers_tip_specs_cover_prefix_chain() -> None:
         "varia",
         "business",
         "frog",
+        "bat_cave",
     )
     assert tuple(s.tip_id for s in POST_SUPERS_TIP_SPECS) == expected
-    # Parent chain: red_tower on supers; each later tip parents the previous.
+    # Parent chain: red_tower on supers; frog + bat_cave are business siblings.
     assert POST_SUPERS_TIP_BY_ID["red_tower"].parent_tip_id is None
     assert POST_SUPERS_TIP_BY_ID["bat"].parent_tip_id == "red_tower"
     assert POST_SUPERS_TIP_BY_ID["frog"].parent_tip_id == "business"
     assert POST_SUPERS_TIP_BY_ID["frog"].require_varia is True
+    assert POST_SUPERS_TIP_BY_ID["bat_cave"].parent_tip_id == "business"
+    assert POST_SUPERS_TIP_BY_ID["bat_cave"].final_room == 0xB07A
+    assert [h.split_id for h in POST_SUPERS_TIP_BY_ID["bat_cave"].hops] == [
+        "business_to_cathedral_entrance",
+        "cathedral_entrance_to_cathedral",
+        "cathedral_to_rising_tide",
+        "rising_tide_to_bubble",
+        "bubble_to_bat_cave",
+    ]
 
 
 def test_post_supers_report_kind_keeps_evidence_fields() -> None:

@@ -141,6 +141,18 @@ bubble_lower() → bubble_run_mid(start=launch) → bubble_top_super_door()
 - No STATUS promote from intermediate states.
 - Dual-track room practice remains separate from KPDR continuous.
 
+## Bubble → Bat (first consumer) — R17 snapshot
+
+Phases A–C pure green; Phase D pure red. Human pin isolation greens Phase D
+with named double-WJ (`bubble_double_walljump_r15`). Pure integer seat
+`(27,395)p2` is **not** enough — capture velocity dumps before more open-loop
+knobs. Living docs:
+
+- Residual: [`SM-K4.4-PURE-R17-residual.md`](SM-K4.4-PURE-R17-residual.md)
+- Next card: [`SM-K4.4-PURE-R18.md`](SM-K4.4-PURE-R18.md) (**continue spine**)
+- Techniques: [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md)
+- Ladder: [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md)
+
 ## See also
 
 - Bubble ladder: [`SM-K4.4-PHASE-LADDER.md`](SM-K4.4-PHASE-LADDER.md)

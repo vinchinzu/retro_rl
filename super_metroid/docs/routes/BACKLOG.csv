@@ -36,13 +36,11 @@ SM-K4.14-GRAPH,K4,graph,Graph edge Snake→Reflection controller_dev,SM-K4.14-PU
 SM-K4.14-PURE,K4,pure,Pure Snake→Reflection,SM-K4.13-PURE,P1,open,M,routes/kpdr/k4_ice.py,source scratch/post_snake.state expect 0xA865; exit 0xA8B9
 SM-K4.15-GRAPH,K4,graph,Graph edge Ice Beam PLM collect controller_dev,SM-K4.15-PURE,P1,open,S,progression.py,mark 0xA8B9->0xA890 after pure green
 SM-K4.15-PURE,K4,pure,Pure Ice Beam PLM collect,SM-K4.14-PURE,P1,open,M,routes/kpdr/k4_ice.py,source scratch/post_reflect.state expect 0xA8B9; exit 0xA890
-SM-K4.4-GRAPH,K4,graph,Graph edge Bubble→Speed Hall controller_dev,SM-K4.4-PURE,P1,open,S,progression.py,mark 0xACB3->0xB07A after pure green
-SM-K4.4-PURE,K4,pure,Pure Bubble→Bat Cave,SM-K4-CATH-04,P0,partial,M,routes/kpdr/k4_norfair.py,RED residual 2026-08-02; door open proven; climb gap y350-150 needs walljump R1; source post_rising_tide_to_bubble_pure
-SM-K4.4-PURE-R1,K4,pure,Bubble mid walljump climb y350→150,SM-K4.4-PURE,P0,ready,M,routes/kpdr/k4_norfair.py,★ serial next; one phase; stay in 0xACB3; avoid left doors + Single Chamber
-
-
+SM-K4.4-GRAPH,K4,graph,Graph edge Bubble→Bat Cave controller_dev,SM-K4.4-PURE,P0,done,S,progression.py,mark 0xACB3->0xB07A controller_dev after R19 pure green
+SM-K4.4-PURE,K4,pure,Pure Bubble→Bat Cave,SM-K4-CATH-04,P0,done,M,routes/kpdr/bubble_mountain.py,R19 GREEN 2012f x2 ordinary 0xB07A; residual SM-K4.4-PURE-R19-residual; successor post_bubble_to_bat_pure
+SM-K4.4-PURE-R1,K4,pure,Bubble mid walljump climb y350→150,SM-K4.4-PURE,P0,done,M,routes/kpdr/bubble_mountain.py,closed by R19 series; phases A-E green
 SM-K4.5-GRAPH,K4,graph,Graph edge Speed Hall→Speed Room door controller_dev,SM-K4.5-PURE,P1,open,S,progression.py,mark 0xB07A->0xACF0 after pure green
-SM-K4.5-PURE,K4,pure,Pure Speed Hall→Speed Room door,SM-K4.4-PURE,P1,open,M,routes/kpdr/k4_norfair.py,source scratch/post_hall.state expect 0xB07A; exit 0xACF0
+SM-K4.5-PURE,K4,pure,Pure Bat Cave→Speed Hall / Speed Room door,SM-K4.4-PURE,P0,ready,M,routes/kpdr/k4_norfair.py,★ serial next; source scratch/post_bubble_to_bat_pure expect 0xB07A; exit Speed Hall
 SM-K4.6-GRAPH,K4,graph,Graph edge Speed Booster PLM collect controller_dev,SM-K4.6-PURE,P1,open,S,progression.py,mark 0xACF0->0xAD1B after pure green
 SM-K4.6-PURE,K4,pure,Pure Speed Booster PLM collect,SM-K4.5-PURE,P1,open,M,routes/kpdr/k4_norfair.py,source scratch/post_speed_door.state expect 0xACF0; exit 0xAD1B
 SM-K4.7-GRAPH,K4,graph,Graph edge Speed return→Bubble controller_dev,SM-K4.7-PURE,P1,open,S,progression.py,mark 0xAD1B->0xACB3 after pure green

@@ -123,6 +123,28 @@ ROOM_STATUS: dict[str, dict[str, str]] = {
         "note": "Kraid fight and post-fight return continuous",
     },
     "0xA6E2": {"status": "continuous", "note": "Varia Suit collect continuous"},
+    # Cathedral-first Bubble pure stack (CATH-01…04) + Bubble→Bat R19.
+    # Continuous tip still Frog Save until planner compose.
+    "0xA7B3": {
+        "status": "controller_dev",
+        "note": "Cathedral Entrance pure (CATH-01); first Bubble path",
+    },
+    "0xA788": {
+        "status": "controller_dev",
+        "note": "Cathedral pure (CATH-02/03); first Bubble path",
+    },
+    "0xAFA3": {
+        "status": "controller_dev",
+        "note": "Rising Tide pure (CATH-03/04); first Bubble path",
+    },
+    "0xACB3": {
+        "status": "controller_dev",
+        "note": "Bubble Mountain pure GREEN (CATH-04 entry + R19 climb→Bat)",
+    },
+    "0xB07A": {
+        "status": "controller_dev",
+        "note": "Bat Cave pure GREEN R19 (2012f from post_rising_tide_to_bubble_pure)",
+    },
     # Boss rooms — entry required eventually; fights deferred
     "0xCD13": {
         "status": "boss_deferred",
@@ -193,6 +215,27 @@ HOP_STATUS: dict[str, dict[str, str]] = {
     "0xA471->0xA6A1": {
         "status": "continuous",
         "note": "play_zeela_to_warehouse_return",
+    },
+    # Cathedral first Bubble + Bubble→Bat (pure GREEN; not continuous tip yet)
+    "0xA7DE->0xA7B3": {
+        "status": "controller_dev",
+        "note": "play_business_to_cathedral_entrance (CATH-01 pure)",
+    },
+    "0xA7B3->0xA788": {
+        "status": "controller_dev",
+        "note": "play_cathedral_entrance_to_cathedral (CATH-02 pure)",
+    },
+    "0xA788->0xAFA3": {
+        "status": "controller_dev",
+        "note": "play_cathedral_to_rising_tide (CATH-03 pure)",
+    },
+    "0xAFA3->0xACB3": {
+        "status": "controller_dev",
+        "note": "play_rising_tide_to_bubble (CATH-04 pure)",
+    },
+    "0xACB3->0xB07A": {
+        "status": "controller_dev",
+        "note": "play_bubble_to_bat_cave (R19 pure GREEN 2012f)",
     },
 }
 

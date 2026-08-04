@@ -184,6 +184,132 @@ def test_vertical_hop_advances_frames_and_forwards_reason(
     assert calls == [(24, ("A",), "ghz_pillar_vertical_jump")]
 
 
+def test_is_wall_latch_pose() -> None:
+    assert cc.POSE_WALL_LATCH == 132
+    assert cc.is_wall_latch(_state(pose=132))
+    assert not cc.is_wall_latch(_state(pose=2))
+
+
+def test_walljump_once_emits_into_amid_flip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession(_state(frame=0))
+    calls: list[tuple[int, tuple[str, ...], str]] = []
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        calls.append((frames, buttons, reason))
+        for _ in range(frames):
+            sess.step(np.zeros(12, dtype=np.int8), "tick")
+        return sess.state
+
+    monkeypatch.setattr(cc, "hold", _hold)
+    timing = cc.WallJumpTiming(
+        into="LEFT",
+        flip="RIGHT",
+        into_frames=3,
+        amid_frames=2,
+        flip_frames=4,
+        delay_into_frames=1,
+    )
+    cc.walljump_once(session, timing, reason="test_wj")
+
+    # delay×1 LEFT, into×3 LEFT+A, amid×2 A, flip×4 RIGHT+A
+    assert calls == [
+        (1, ("LEFT",), "test_wj_delay"),
+        (1, ("LEFT", "A"), "test_wj_into"),
+        (1, ("LEFT", "A"), "test_wj_into"),
+        (1, ("LEFT", "A"), "test_wj_into"),
+        (1, ("A",), "test_wj_amid"),
+        (1, ("A",), "test_wj_amid"),
+        (1, ("RIGHT", "A"), "test_wj_flip"),
+        (1, ("RIGHT", "A"), "test_wj_flip"),
+        (1, ("RIGHT", "A"), "test_wj_flip"),
+        (1, ("RIGHT", "A"), "test_wj_flip"),
+    ]
+    assert session.frame == 10
+
+
+def test_walljump_once_stop_when_aborts_mid_pulse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession(_state(frame=0))
+    steps = 0
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        del buttons, reason
+        for _ in range(frames):
+            sess.step(np.zeros(12, dtype=np.int8), "tick")
+        nonlocal steps
+        steps += frames
+        return sess.state
+
+    monkeypatch.setattr(cc, "hold", _hold)
+    timing = cc.WallJumpTiming(
+        into="RIGHT",
+        flip="LEFT",
+        into_frames=10,
+        amid_frames=10,
+        flip_frames=10,
+    )
+
+    def _stop(state: Any) -> bool:
+        return state.frame >= 3
+
+    cc.walljump_once(session, timing, reason="abort_wj", stop_when=_stop)
+    assert session.frame == 3
+    assert steps == 3
+
+
+def test_consecutive_walljumps_with_gap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession(_state(frame=0))
+    calls: list[tuple[int, tuple[str, ...], str]] = []
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        calls.append((frames, buttons, reason))
+        for _ in range(frames):
+            sess.step(np.zeros(12, dtype=np.int8), "tick")
+        return sess.state
+
+    monkeypatch.setattr(cc, "hold", _hold)
+    pulse = cc.WallJumpTiming(
+        into="RIGHT",
+        flip="RIGHT",
+        into_frames=2,
+        amid_frames=0,
+        flip_frames=0,
+    )
+    cc.consecutive_walljumps(
+        session,
+        (pulse, pulse),
+        reason="parlor_chimney_wj",
+        gap_frames=3,
+    )
+    # two into pulses (2f each) + gap of 3 between them
+    into_calls = [c for c in calls if c[1] == ("RIGHT", "A")]
+    gap_calls = [c for c in calls if c[2] == "parlor_chimney_wj_gap"]
+    assert len(into_calls) == 4
+    assert len(gap_calls) == 3
+    assert session.frame == 7
+
+
+def test_parlor_chimney_uses_shared_walljump_skill() -> None:
+    """Post-Torizo Parlor left climb is a named consecutive_walljumps consumer."""
+    from super_metroid.routes import spore_spawn_controller as ssc
+
+    assert len(ssc._PARLOR_CHIMNEY_WJ) == 8
+    assert ssc._PARLOR_CHIMNEY_WJ[0].into == "RIGHT"
+    assert ssc._PARLOR_CHIMNEY_WJ[0].into_frames == 30
+    assert ssc._PARLOR_CHIMNEY_WJ[6].into == "LEFT"
+    assert ssc._PARLOR_CHIMNEY_GAP == 12
+    # Frame budget matches legacy 8×(30 into + 12 idle).
+    into = sum(t.into_frames for t in ssc._PARLOR_CHIMNEY_WJ)
+    gaps = ssc._PARLOR_CHIMNEY_GAP * (len(ssc._PARLOR_CHIMNEY_WJ) - 1)
+    tail = ssc._PARLOR_CHIMNEY_GAP
+    assert into + gaps + tail == 8 * (30 + 12)
+
+
 def test_collect_item_mask_waits_for_bit(monkeypatch: pytest.MonkeyPatch) -> None:
     start = _state(collected_items=MORPH_BALL_MASK, frame=0)
     mid = _state(collected_items=MORPH_BALL_MASK, frame=1)

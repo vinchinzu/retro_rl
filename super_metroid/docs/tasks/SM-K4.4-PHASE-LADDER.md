@@ -18,8 +18,8 @@ Concrete hard-room split for **SM-K4.4-PURE** / R-series. General rules:
 | **A** | Mid pin | `standing_mid_pinned=True` | **green** (R5) |
 | **B** | Height class | `min_y≤280` after lip launch | **green** (R6; R9/R10 hold 260) |
 | **C** | Usable right contact | first `x∈[300,395]`, `y∈[200,430]` in Bubble (not thrash-only `max_x`) | **green** (R13 floor-reclimb; pin ~`(301,429)` marginal) |
-| **D** | Top band | `y≤200` and `x≥300` | place-proven; natural red — bottleneck |
-| **E** | Bat door | ordinary `0xB07A` | blocked on D |
+| **D** | Top band | `y≤200` and `x≥300` | **green** (R19 enemy-phase fire; min_y≈132) |
+| **E** | Bat door | ordinary `0xB07A` | **green** (R19 sticky Super door; full pure 2012f) |
 
 Place-proven finish (isolation only — not natural proof):
 
@@ -33,7 +33,12 @@ Natural gap (load-bearing):
 - R13 floor-reclimb after height class hits Phase C ~`(301,429)` (predicate green).
 - That contact is **marginal**: place climb from dump best min_y≈427; no shelf.
 - Recoverable finish still needs grounded shelf ~`(380,390)` or air `(360,y≤370)`.
-- **R14 bottleneck:** raise right contact into shelf/air band, then Phase D.
+- **R15:** double-WJ clears Phase D on human runway pin `(27,395)p2`.
+- **R16–R18:** pure seats fire solid; p132+pose84; Phase D blocked by Geruta AI.
+- **R19 closeout:** enemy-phase idle wait (classes A/B) + product fire → Phase D;
+  sticky right Super door → ordinary Bat. Full pure GREEN **2012f**. Residual:
+  [`SM-K4.4-PURE-R19-residual.md`](SM-K4.4-PURE-R19-residual.md).
+  Techniques: [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md).
 
 ## Frozen green work
 
@@ -49,6 +54,7 @@ Banned without new pin evidence (known fails):
 - Floor WJ climb (unstable)
 - Left-column top hunt (no solids y~174–394 left)
 - Further `_BUBBLE_MIDHIGH_Y` / period-only tweaks without Phase-C pin
+- Open-loop period / y-window / run-frame on same fire arc after R17 (no p132)
 
 ## Work shape for R11+
 
@@ -117,9 +123,39 @@ probe maps CLI flags to dev helpers.
 | `play_bubble_from_top_door` | dev: Super door only |
 | `play_bubble_to_bat_cave_with_phase_capture` | probe full path + dump/stop |
 | `bubble_lower_to_mid_pin` / `bubble_run_mid` / `bubble_top_super_door` | phase helpers (mid is one call) |
+| `bubble_double_walljump_r15` | named consecutive double WJ (primitives) |
+| `bubble_save_runway_open_loop_r15` | full fire open-loop helper |
+| `bubble_stationary_missile_clear` | X without LEFT (blocker clear) |
 | `--dump-phase-c` | save first Phase-C state (needs probe env) |
 | `--start-phase climb` | climb-only pure probe |
 | `--stop-at-phase-c` | stop at first Phase C (diagnostic success) |
+
+## Work shape for R18 (Phase D — spine continues)
+
+Do **not** park. One living card advances Phase D.
+
+### R18a — pure velocity dumps
+
+```bash
+# Full pure pin (regression baseline)
+uv run python super_metroid/scripts/probe/kpdr.py pure bubble-to-bat-cave \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_rising_tide_to_bubble_pure.state \
+  --pin-json super_metroid/debug/bubble_to_bat_pure_pin_r18.json --no-red-diag
+```
+
+Capture save-states (with velocity) at fire seat, post_run, and wall-approach
+from the **natural** fire path — see card
+[`SM-K4.4-PURE-R18.md`](SM-K4.4-PURE-R18.md). Diff vs human pin critical window.
+
+### R18b — dump search / closed-loop
+
+Short-horizon search or pose-132-gated WJ on wall-approach dump until
+`top_reached` **on that dump**. Not hop GREEN yet.
+
+### R18c — full pure compose
+
+One named controller change; full pure from CATH-04 must flip `top_reached`.
+Then Phase E (Super door) as a follow-on card.
 
 ## Living cards
 
@@ -130,6 +166,11 @@ probe maps CLI flags to dev helpers.
 | **`SM-K4.4-PURE-R11`** | spin-apex false-land fix; Phase C still red |
 | **`SM-K4.4-PURE-R12`** | extract lip stand_pin restore (pure R11 envelope); trajectory IMPL still open — fall-gated WJ Phase C only with height regress |
 | **`SM-K4.4-PURE-R13`** | floor-reclimb after height class → **Phase C green** on full pure; top still red (marginal y≈429 contact) |
+| **`SM-K4.4-PURE-R15`** | double-WJ open-loop Phase D on human pin |
+| **`SM-K4.4-PURE-R16`** | pure fire solid seat; min_y=228 free-air |
+| **`SM-K4.4-PURE-R17`** | RECON + primitive extract; pure Phase D still red (no p132) |
+| **`SM-K4.4-PURE-R18`** | max-left seat; p132+pose84 min_y≈159; Phase D red (enemy AI) |
+| **`SM-K4.4-PURE-R19`** | **next** — enemy-phase fire / left-wall closed-loop → Phase D pure |
 
 ## Non-claims
 
