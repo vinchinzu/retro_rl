@@ -1,0 +1,9 @@
+*.exe
+*.smc
+*.sfc
+__*
+/asar
+*.diz*
+*.log
+*.ini
+*.code-workspace

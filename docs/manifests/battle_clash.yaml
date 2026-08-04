@@ -1,6 +1,6 @@
 game: battle_clash
 title: "Battle Clash"
-directory: battle_clash
+directory: snes/battle_clash
 genre_tracks:
   - cursor_and_peripheral
 capability_phase: 2
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: battle_clash/docs/STATUS.md
-plan_doc: battle_clash/docs/plan.md
+status_doc: snes/battle_clash/docs/STATUS.md
+plan_doc: snes/battle_clash/docs/plan.md
 last_verified: 2026-07-22
 blocker: "infrastructure — Super Scope / light-gun injection unsupported"
 notes: Out of the active execution queue until peripheral input exists.

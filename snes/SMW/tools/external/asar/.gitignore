@@ -1,0 +1,57 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# SNES ROMs
+*.smc
+*.sfc
+
+# Visual Studio build files and CMAKE build files on Windows
+asar/
+src/asar/res/windows/asar_lib.aps
+!src/asar
+CMakefiles/
+asar-tests/
+.vs
+ALL_BUILD.*
+ZERO_CHECK.*
+cmake_install.cmake
+Project.sln
+CMakeCache.txt
+
+# Test folders
+tests_tmp_dll/
+tests_tmp_app/
+*.aps
+
+# Just because I like building into /bin...
+/bin

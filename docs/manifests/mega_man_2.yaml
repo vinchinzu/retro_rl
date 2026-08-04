@@ -1,6 +1,6 @@
 game: mega_man_2
 title: "Mega Man 2"
-directory: mega_man_2
+directory: nes/mega_man_2
 genre_tracks:
   - platforming
 capability_phase: 3
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: mega_man_2/docs/STATUS.md
-plan_doc: mega_man_2/docs/plan.md
+status_doc: nes/mega_man_2/docs/STATUS.md
+plan_doc: nes/mega_man_2/docs/plan.md
 last_verified: 2026-07-27
 blocker: first Robot Master stage segment clear
 notes: >-

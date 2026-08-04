@@ -1,6 +1,6 @@
 game: pilotwings
 title: "Pilotwings"
-directory: pilotwings
+directory: snes/pilotwings
 genre_tracks:
   - continuous_vehicle_control
 capability_phase: 2
@@ -17,8 +17,8 @@ completion_contract: certification_clear
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: pilotwings/docs/STATUS.md
-plan_doc: pilotwings/docs/plan.md
+status_doc: snes/pilotwings/docs/STATUS.md
+plan_doc: snes/pilotwings/docs/plan.md
 last_verified: 2026-07-22
 blocker: complete light-plane Lesson 1 objective
 notes: Airborne Lesson 1 checkpoint; altitude/pitch/heading RAM.

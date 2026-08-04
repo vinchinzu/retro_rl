@@ -1,6 +1,6 @@
 game: castlevania
 title: "Castlevania"
-directory: castlevania
+directory: nes/castlevania
 genre_tracks:
   - platforming
 capability_phase: 3
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: castlevania/docs/STATUS.md
-plan_doc: castlevania/docs/plan.md
+status_doc: nes/castlevania/docs/STATUS.md
+plan_doc: nes/castlevania/docs/plan.md
 last_verified: 2026-07-27
 blocker: first Stage 1 segment clear
 notes: >-

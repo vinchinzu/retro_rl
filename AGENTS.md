@@ -12,51 +12,41 @@ Program spine:
 - Benchmark rules: `docs/BENCHMARK_SPEC.md`
 - Live status: `docs/PROGRAM_STATUS.md`
 - Game board: `docs/GAME_MATRIX.md` (from `docs/manifests/*.yaml`)
-- Full-run process: `snes_oneshot/docs/FULL_RUN_PROCESS.md`
+- Full-run process: `docs/FULL_RUN_PROCESS.md`
 
 ## Shared Layout
 
-- `retro_harness/`: shared emulator/session/input/state utilities;
-  `retro_harness.snes` is the concise new-game facade (`GameSpec`, named
-  actions, `StartupPlan`, menu/input scripts); `retro_harness.nes` for NES
-  helpers where present
-- `retro_harness/editor/`: game-agnostic Qt editor ↔ subprocess
-  bridge (stdio JSON protocol, script segments, map RGBA helpers, recording,
-  `EmbeddedEmulatorPanelBase` for docked emulator UI, `CursorAgentPanel` for
-  embedded Cursor SDK agent sessions)
-- `retro_harness/editor_launcher.py`: shared entry point to launch registered
-  game editors (`uv run python -m retro_harness.editor_launcher --list`)
-- `fighters_common/`: shared fighting-game env/training code
-- `platformer_common/`: shared platformer runtime/optimizer code
-- `adventure_common/`: shared capability-aware route graphs (first consumer
-  `zelda_i/`; promote richer APIs after a second consumer)
-- `snes_oneshot/`: shared scripted-completion helpers (GameState, behavior
-  trees, combat/cursor policy, watchdog, RAM discovery); historical package
-  name — prefer “scripted completion” in human-facing prose; process applies
-  to NES and SNES
-- `<game>/`: game-specific code, integrations, docs, assets, and outputs
-- `roms/`: shared ROM storage (gitignored)
-  - `roms/Nintendo/NES/`: NES library zips
-  - `roms/Nintendo/SNES` → `roms/Super Nintendo`: SNES library zips
+- `retro_harness/`: shared emulator, input, state, recording, and scripted-
+  completion helpers (`GameState`/combat/cursor/segment runners, ROM setup).
+  Facades: `retro_harness.snes`, `retro_harness.nes`. Genre subdomains:
+  `retro_harness.platformer`, `retro_harness.fighters`,
+  `retro_harness.adventure`. Editor bridge under `retro_harness/editor/`;
+  launch with `uv run python -m retro_harness.editor_launcher --list`
+- `snes/<game>/`, `nes/<game>/`: game-specific code, integrations, docs, assets
+- `roms/`: shared ROM storage (gitignored; NES + SNES library zips)
 - `docs/manifests/`: machine-readable game manifests
+- Hygiene / agent-context budget: `docs/REPO_HYGIENE.md`
 
-Authoritative directories include: `super_metroid/`, `SMW/`, `harvest/`,
-`alttp/`, `smz3/` (SM+Z3 combined randomizer race layer), `tmnt_i/`–`tmnt_iv/`,
-`zelda_i/`, `zelda_ii/`, `metroid/`, and NES M1 trees (`smb/`, `smb3/`,
-`mega_man_2/`, `castlevania/`, `contra/`, `ducktales/`, `kirby_adventure/`,
-`punch_out/`).
-Do not invent `super_metroid_rl/` or `super_mario_bros/` paths in this checkout
-(NES SMB lives under `smb/` / `smb3/`).
+Games live under console folders but keep package import names
+(`import alttp`, `import super_metroid`, `import smb`). Pytest/pythonpath
+includes `snes/` and `nes/` (see root `conftest.py` / `pyproject.toml`).
+Path helpers: `retro_harness.repo.resolve_game_dir`,
+`retro_harness.repo.ensure_import_paths`.
+
+Authoritative trees include `snes/super_metroid/`, `snes/SMW/`,
+`snes/harvest/`, `snes/alttp/`, `snes/smz3/`, `snes/tmnt_iv/`,
+`nes/tmnt_i/`–`nes/tmnt_iii/`, `nes/zelda_i/`, `nes/zelda_ii/`,
+`nes/metroid/`, `nes/smb/`, `nes/smb3/`. Do not invent
+`super_metroid_rl/` or `super_mario_bros/`.
 
 ## Organization Rules
 
 - Keep game-specific code, states, docs, plans, screenshots, and debug output
-  inside the owning game directory.
-- Save states belong under `<game>/custom_integrations/<GameId>/`.
+  inside the owning game directory under `snes/` or `nes/`.
+- Save states belong under `<console>/<game>/custom_integrations/<GameId>/`.
   Do not leave `.state` files in the repo root.
-- Game-specific docs and runbooks belong under `<game>/docs/`.
-  Archive stale one-offs under `<game>/docs/archive/` or
-  `<game>/scripts/archive/`.
+- Game-specific docs and runbooks belong under `<console>/<game>/docs/`.
+  Delete stale one-offs; do not accumulate archive trees.
 - Generated artifacts belong in the owning game folder (`models/`, `logs/`,
   `recordings/`, `debug_*`, `maps/`, and similar), not in the repo root.
 - Local docs split: `STATUS.md` = verified facts + one maturity gate;

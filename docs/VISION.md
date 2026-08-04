@@ -52,10 +52,8 @@ Prefer:
 - **reset-to-ending evaluation**
 
 Use **one-shot** only for the final uninterrupted evaluation class, or as
-historical project terminology. The package name `snes_oneshot` is retained for
-compatibility; it is the historical home for shared scripted-completion
-policies. Prefer “scripted completion” in prose even when the package path is
-unchanged.
+historical project terminology. Shared scripted-completion helpers live under
+`retro_harness/`. Prefer “scripted completion” in human-facing prose.
 
 ## Canonical documents
 
@@ -67,5 +65,6 @@ unchanged.
 | [PROGRAM_STATUS.md](PROGRAM_STATUS.md) | Live facts and near-term priorities |
 | [GAME_MATRIX.md](GAME_MATRIX.md) | All games by genre track (generated from manifests) |
 | [GLOSSARY.md](GLOSSARY.md) | Shared vocabulary |
-| [../snes_oneshot/docs/FULL_RUN_PROCESS.md](../snes_oneshot/docs/FULL_RUN_PROCESS.md) | Engineering process for each game |
-| [../snes_oneshot/docs/GAME_SELECTION_NOTES.md](../snes_oneshot/docs/GAME_SELECTION_NOTES.md) | Candidate and hard-game research notes |
+| [FULL_RUN_PROCESS.md](FULL_RUN_PROCESS.md) | Engineering process for each game |
+| [GAME_SELECTION_NOTES.md](GAME_SELECTION_NOTES.md) | Candidate and hard-game research notes |
+| [REPO_HYGIENE.md](REPO_HYGIENE.md) | Agent-context budget and cleanup backlog |

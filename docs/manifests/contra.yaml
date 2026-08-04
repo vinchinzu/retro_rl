@@ -1,6 +1,6 @@
 game: contra
 title: "Contra"
-directory: contra
+directory: nes/contra
 genre_tracks:
   - linear_combat
 capability_phase: 1
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: contra/docs/STATUS.md
-plan_doc: contra/docs/plan.md
+status_doc: nes/contra/docs/STATUS.md
+plan_doc: nes/contra/docs/plan.md
 last_verified: 2026-07-27
 blocker: first Stage 1 segment clear
 notes: >-

@@ -1,6 +1,6 @@
 game: magical_quest
 title: "The Magical Quest Starring Mickey Mouse"
-directory: magical_quest
+directory: snes/magical_quest
 genre_tracks:
   - platforming
 capability_phase: 3
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: magical_quest/docs/STATUS.md
-plan_doc: magical_quest/docs/plan.md
+status_doc: snes/magical_quest/docs/STATUS.md
+plan_doc: snes/magical_quest/docs/plan.md
 last_verified: 2026-07-22
 blocker: clear first room/checkpoint from Stage 1
 notes: Controllable Stage 1 checkpoint; X/progress RAM mapped.

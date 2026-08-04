@@ -25,17 +25,19 @@ def read_exact(stream: BinaryIO, size: int) -> bytes:
 
 
 def bridge_python_command(*, project_root: Path) -> list[str]:
+    from retro_harness.repo import monorepo_root
+
+    repo = monorepo_root()
     for candidate in (
-        project_root.parent / ".venv" / "bin" / "python",
+        repo / ".venv" / "bin" / "python",
         project_root / ".venv" / "bin" / "python",
-        project_root.parent / "harvest" / ".venv" / "bin" / "python",
+        project_root.parent / ".venv" / "bin" / "python",
     ):
         if candidate.exists():
             return [str(candidate)]
     uv_path = shutil.which("uv")
-    parent_project = project_root.parent / "pyproject.toml"
-    if uv_path is not None and parent_project.exists():
-        return [uv_path, "run", "--project", str(project_root.parent), "python"]
+    if uv_path is not None and (repo / "pyproject.toml").exists():
+        return [uv_path, "run", "--project", str(repo), "python"]
     if os.environ.get("PYTHON"):
         return [os.environ["PYTHON"]]
     return [sys.executable]

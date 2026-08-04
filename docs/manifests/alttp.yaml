@@ -1,6 +1,6 @@
 game: alttp
 title: "The Legend of Zelda: A Link to the Past"
-directory: alttp
+directory: snes/alttp
 genre_tracks:
   - top_down_navigation
   - metroidvania_navigation
@@ -18,8 +18,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: alttp/docs/STATUS.md
-plan_doc: alttp/docs/plan.md
+status_doc: snes/alttp/docs/STATUS.md
+plan_doc: snes/alttp/docs/plan.md
 last_verified: 2026-07-25
 blocker: opening route only to castle grounds; sword/uncle segments next
 notes: Ported title→castle from prior snes_editor/alttp work onto retro_harness.snes.

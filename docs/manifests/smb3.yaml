@@ -1,6 +1,6 @@
 game: smb3
 title: "Super Mario Bros. 3"
-directory: smb3
+directory: nes/smb3
 genre_tracks:
   - platforming
 capability_phase: 3
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: smb3/docs/STATUS.md
-plan_doc: smb3/docs/plan.md
+status_doc: nes/smb3/docs/STATUS.md
+plan_doc: nes/smb3/docs/plan.md
 last_verified: 2026-07-27
 blocker: World 1-2 natural-entry clear
 notes: >-

@@ -1,0 +1,28 @@
+{
+  "name": "test_seed",
+  "seed_number": "1337",
+  "hash_code": "BABUSU ZEBBO WAINDA PUYO",
+  "url": "https://samus.link/seed/ZfNfksGqQpetByLfcrvVlg",
+  "guid": "65f35f92c1aa4297ad0722df72bbd596",
+  "game_version": "11.3.2",
+  "settings": {
+    "smlogic": "normal",
+    "goal": "defeatboth",
+    "swordlocation": "uncle",
+    "morphlocation": "original",
+    "race": "false",
+    "gamemode": "normal",
+    "players": "1",
+    "seed": "1337"
+  },
+  "rom_path": "/home/v/01_projects/11_games/retro_rl/smz3/seeds/test_seed/smz3.sfc",
+  "created_at": "2026-07-30T20:02:30Z",
+  "source": "https://samus.link",
+  "location_count": 316,
+  "spoiler_spheres": 13,
+  "game_id": "smz3",
+  "game_name": "Super Metroid & A Link to the Past Combo Randomizer",
+  "mode": "normal",
+  "world_settings": "{\"smlogic\":\"normal\",\"goal\":\"defeatboth\",\"swordlocation\":\"uncle\",\"morphlocation\":\"original\",\"race\":\"false\",\"gamemode\":\"normal\",\"players\":\"1\",\"seed\":\"1337\"}",
+  "rom_size": 6291456
+}

@@ -1,6 +1,6 @@
 game: metroid
 title: "Metroid"
-directory: metroid
+directory: nes/metroid
 genre_tracks:
   - metroidvania_navigation
   - graph_navigation
@@ -15,14 +15,14 @@ transfer_value: very_high
 ending_definition: credits after defeating Mother Brain and escape
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: metroid/recordings/morph_ball_natural.json
+best_manifest: nes/metroid/recordings/morph_ball_natural.json
 best_video: null
 assist_contract: null
-status_doc: metroid/docs/STATUS.md
-plan_doc: metroid/docs/plan.md
+status_doc: nes/metroid/docs/STATUS.md
+plan_doc: nes/metroid/docs/plan.md
 last_verified: 2026-07-27
 blocker: morph return + (5,14) door for first missiles; then bombs
 notes: >-
   M5: power-on → Maru Mari (morph). First-missiles scaffolding in place; east
-  corridor probe to (5,14). adventure_common RouteGraph second consumer with
+  corridor probe to (5,14). retro_harness.adventure RouteGraph second consumer with
   zelda_i. Bronze Clean.

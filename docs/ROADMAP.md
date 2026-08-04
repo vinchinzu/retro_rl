@@ -32,15 +32,15 @@ obscure cartridges.
 
 This matches [VISION.md](VISION.md), the M0–M8 ladder, the natural-entry rule,
 [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md), and
-[../snes_oneshot/docs/FULL_RUN_PROCESS.md](../snes_oneshot/docs/FULL_RUN_PROCESS.md).
+[FULL_RUN_PROCESS.md](FULL_RUN_PROCESS.md).
 
 ## Guiding principles (do not violate)
 
 1. **Natural-entry is sacred** — A segment is not ready until it also clears from
    the real predecessor state, not only a clean checkpoint.
-2. **Reusable stacks first** — Promote to shared packages
-   (`platformer_common`, future `adventure_common`, etc.) only after a second
-   consumer proves the abstraction.
+2. **Reusable stacks first** — Promote into `retro_harness` subdomains
+   (`platformer`, `fighters`, `adventure`, …) only after a second consumer
+   proves the abstraction.
 3. **Phases over flat ranking** — Games live in parallel capability tracks
    (linear combat, platforming, continuous control, graph navigation, campaigns,
    planning).
@@ -72,7 +72,7 @@ Highest leverage from current program status:
    trees, combat policies, watchdogs, natural-entry, continuous dry-run). Phase 1
    reference.
 2. **Magical Quest (and Joe & Mac) → solid segments (M3–M5)** — Establish and
-   harden `platformer_common` route tooling, recovery, and evaluation.
+   harden `retro_harness.platformer` route tooling, recovery, and evaluation.
 3. **Super Metroid → M6 → continuous toward ending** — Verified continuous tip
    is power-on → Varia (M5). Next: pure reverse → Business, continuous K4
    (Bubble→Speed→Wave→Ice→Alpha PB), then Phantoon→…→MB per boss pipeline.
@@ -106,7 +106,7 @@ a shared `planning_common` only after a second consumer.
 |-------|--------|
 | **Phase 1 complete** | 4–6 linear combat / beat-em-up M8s (SNES + NES). Combat framework highly reusable. |
 | **Phase 3 mature** | 3–5 platformers to high maturity / M8 (Magical Quest, SMW, DKC + NES classics SMB / SMB3 / Mega Man). Promote optimizers (hill-climbing, neuroevolution, genetic routes). |
-| **Phase 4** | Super Metroid to M8, then A Link to the Past, full Zelda I, Castlevania. After two solid implementations, promote `adventure_common` (room/door graphs, inventory prerequisites, event flags, path replanning). |
+| **Phase 4** | Super Metroid to M8, then A Link to the Past, full Zelda I, Castlevania. After two solid implementations, promote `retro_harness.adventure` (room/door graphs, inventory prerequisites, event flags, path replanning). |
 | **Phase 2** | Continuous control (F-Zero, Star Fox, Pilotwings) to mission clears. |
 | **Fighters** | Elevate SF2 / MK / Super SF2 from match wins to full arcade-mode continuous clears (hybrid scripted + improved PPO). |
 | **Privilege** | Systematic observation-class improvement on 2–3 mature games (Bronze → Silver). |
@@ -121,7 +121,7 @@ a shared `planning_common` only after a second consumer.
   crop economy and multi-season natural entry first, then multi-year campaign
   benchmarks; later strategy titles).
 - **Phase 7** — Adaptive / procedural (later research).
-- **Library breadth** — Add high-value titles only via [ADDING_GAMES.md](../ADDING_GAMES.md)
+- **Library breadth** — Add high-value titles only via [ADDING_GAMES.md](ADDING_GAMES.md)
   once the relevant genre stack is mature enough that a new game reaches M3
   relatively quickly.
 - **Tooling scale** — Automated route discovery, curricula, hierarchical RL

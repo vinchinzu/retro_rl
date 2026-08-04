@@ -15,45 +15,41 @@ MANIFEST_DIR = ROOT / "docs" / "manifests"
 DOC_GLOBS = (
     "*.md",
     "docs/*.md",
-    "snes_oneshot/*.md",
-    "snes_oneshot/docs/*.md",
-    "snes_oneshot/docs/archive/*.md",
-    "ADDING_GAMES.md",
+    "retro_harness/docs/*.md",
     "AGENTS.md",
     "README.md",
-    "BENCHMARK_STATUS.md",
-    "ARCHITECTURE_AND_CLEANUP_PLAN.md",
 )
 
+# Workspace-relative game directories (under snes/ or nes/).
 ACTIVE_GAME_DIRS = (
-    "alttp",
-    "battle_clash",
-    "castlevania",
-    "contra",
-    "ducktales",
-    "f_zero",
-    "final_fight",
-    "great_waldo_search",
-    "joe_and_mac",
-    "kirby_adventure",
-    "magical_quest",
-    "mega_man_2",
-    "metroid",
-    "pilotwings",
-    "punch_out",
-    "rival_turf",
-    "smb",
-    "smb3",
-    "smz3",
-    "star_fox",
-    "super_double_dragon",
-    "super_metroid",
-    "tmnt_i",
-    "tmnt_ii",
-    "tmnt_iii",
-    "tmnt_iv",
-    "zelda_i",
-    "zelda_ii",
+    "snes/alttp",
+    "snes/battle_clash",
+    "nes/castlevania",
+    "nes/contra",
+    "nes/ducktales",
+    "snes/f_zero",
+    "snes/final_fight",
+    "snes/great_waldo_search",
+    "snes/joe_and_mac",
+    "nes/kirby_adventure",
+    "snes/magical_quest",
+    "nes/mega_man_2",
+    "nes/metroid",
+    "snes/pilotwings",
+    "nes/punch_out",
+    "snes/rival_turf",
+    "nes/smb",
+    "nes/smb3",
+    "snes/smz3",
+    "snes/star_fox",
+    "snes/super_double_dragon",
+    "snes/super_metroid",
+    "nes/tmnt_i",
+    "nes/tmnt_ii",
+    "nes/tmnt_iii",
+    "snes/tmnt_iv",
+    "nes/zelda_i",
+    "nes/zelda_ii",
 )
 
 STALE_LINK_RE = re.compile(
@@ -75,6 +71,18 @@ LAST_VERIFIED_RE = re.compile(
     r"last_verified:\s*\d{4}-\d{2}-\d{2}",
     re.IGNORECASE,
 )
+
+
+def _known_game_slugs() -> set[str]:
+    slugs: set[str] = set()
+    for console in ("snes", "nes"):
+        base = ROOT / console
+        if not base.is_dir():
+            continue
+        for child in base.iterdir():
+            if child.is_dir() and not child.name.startswith("."):
+                slugs.add(child.name)
+    return slugs
 
 
 def _doc_files() -> list[Path]:
@@ -127,11 +135,13 @@ def test_relative_markdown_links_resolve() -> None:
 def test_backticked_workspace_directories_exist() -> None:
     """Root program docs must not claim missing top-level workspaces."""
     known_top = {p.name for p in ROOT.iterdir() if p.is_dir()}
+    known_games = _known_game_slugs()
     retired = {
         "super_metroid_rl",
         "super_mario_bros",
+        "snes_oneshot",  # folded into retro_harness/
     }
-    allowed_future = {"adventure_common"}
+    allowed_future = {"earthbound"}
     # Common game-local or generic folder names, not repo root workspaces.
     non_workspace = {
         "scripts",
@@ -142,20 +152,19 @@ def test_backticked_workspace_directories_exist() -> None:
         "docs",
         "tests",
         "roms",
-            "custom_integrations",
-            "manifests",
-            "archive",
-            "debug_*",
-        }
+        "custom_integrations",
+        "manifests",
+        "archive",
+        "debug_*",
+        # Game package names live under snes/ or nes/; backtick form `game/` is OK.
+        *known_games,
+    }
     program_docs = {
         ROOT / "README.md",
         ROOT / "AGENTS.md",
-        ROOT / "ADDING_GAMES.md",
-        ROOT / "BENCHMARK_STATUS.md",
         *sorted((ROOT / "docs").glob("*.md")),
-        ROOT / "snes_oneshot" / "docs" / "STATUS.md",
-        ROOT / "snes_oneshot" / "docs" / "GAME_SELECTION_NOTES.md",
-        ROOT / "snes_oneshot" / "docs" / "FULL_RUN_PROCESS.md",
+        ROOT / "retro_harness" / "docs" / "TOOLSET.md",
+        ROOT / "retro_harness" / "docs" / "EMULATOR_FEATURES.md",
     }
     missing: list[str] = []
     for path in program_docs:
@@ -180,8 +189,6 @@ def test_no_stale_directory_links_in_live_docs() -> None:
     """Reject Markdown links that point at retired workspace paths."""
     offenders: list[str] = []
     for path in _doc_files():
-        if path.name == "ARCHITECTURE_AND_CLEANUP_PLAN.md":
-            continue
         if "archive" in path.parts:
             continue
         text = path.read_text(encoding="utf-8")
@@ -277,9 +284,9 @@ def test_game_matrix_is_generated() -> None:
 
 
 def test_external_route_research_policy_is_shared() -> None:
-    process = (
-        ROOT / "snes_oneshot" / "docs" / "FULL_RUN_PROCESS.md"
-    ).read_text(encoding="utf-8")
+    process = (ROOT / "docs" / "FULL_RUN_PROCESS.md").read_text(
+        encoding="utf-8"
+    )
     benchmark = (ROOT / "docs" / "BENCHMARK_SPEC.md").read_text(
         encoding="utf-8"
     )

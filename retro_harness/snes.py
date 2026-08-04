@@ -1,8 +1,9 @@
 """Focused public API for starting a new SNES game with minimal imports.
 
 Use this module for game identity, environment creation, named actions, and
-title/menu scripts.  Genre-specific policy remains in packages such as
-``platformer_common`` and ``snes_oneshot``.
+title/menu scripts. Genre policy lives in ``retro_harness.platformer``,
+``retro_harness.fighters``, ``retro_harness.adventure``, or deeper core modules
+(combat, segment runners, etc.).
 """
 
 from retro_harness.actions import (

@@ -16,10 +16,10 @@ runtime classes.
 
 | Game | Claim | Labels | Evidence |
 |------|-------|--------|----------|
-| TMNT IV | Continuous hard-mode power-on → staff/cast credits in **00:57:19.635** | Bronze / Resource-assisted + Protection-assisted · M8 (4,667 damage; 0 life losses; Stage1 heal=none segment clear) | [dry manifest](../tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json), [prior video](../tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4), [Stage1 probes](../tmnt_iv/recordings/stage1_clean_track/stage1_probes.json) |
-| Great Waldo Search | Continuous power-on → five-scrolls ending | Bronze / Clean · M8 | [video](../great_waldo_search/recordings/great_waldo_search_full_credits.mp4) |
-| Super Metroid | Continuous power-on → **Varia Suit** (KPDR K3 tip integrity GREEN 2026-08-01; best published ~101,954f / multi-run 104,382f); post-Varia reverse pure + K4 scaffolds; dual-track room farm Wave-10 closed | Bronze / Resource-assisted · M5 | [manifest](../super_metroid/recordings/start_to_varia.json), [STATUS](../super_metroid/docs/STATUS.md), [plan](../super_metroid/docs/plan.md), [assist contract](../super_metroid/docs/ASSIST_CONTRACT.md) |
-| Metroid (NES) | Continuous power-on → Maru Mari (Morph Ball); isolated Level1→morph also clear | Bronze / Clean · M5 | [natural](../metroid/recordings/morph_ball_natural.json), [isolated](../metroid/recordings/morph_ball_isolated.json) |
+| TMNT IV | Continuous hard-mode power-on → staff/cast credits in **00:57:19.635** | Bronze / Resource-assisted + Protection-assisted · M8 (4,667 damage; 0 life losses; Stage1 heal=none segment clear) | [dry manifest](../snes/tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json), [prior video](../snes/tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4), [Stage1 probes](../snes/tmnt_iv/recordings/stage1_clean_track/stage1_probes.json) |
+| Great Waldo Search | Continuous power-on → five-scrolls ending | Bronze / Clean · M8 | [video](../snes/great_waldo_search/recordings/great_waldo_search_full_credits.mp4) |
+| Super Metroid | Continuous power-on → **Varia Suit** (KPDR K3 tip integrity GREEN 2026-08-01; best published ~101,954f / multi-run 104,382f); post-Varia reverse pure + K4 scaffolds; dual-track room farm Wave-10 closed | Bronze / Resource-assisted · M5 | [manifest](../snes/super_metroid/recordings/start_to_varia.json), [STATUS](../snes/super_metroid/docs/STATUS.md), [plan](../snes/super_metroid/docs/plan.md), [assist contract](../snes/super_metroid/docs/ASSIST_CONTRACT.md) |
+| Metroid (NES) | Continuous power-on → Maru Mari (Morph Ball); isolated Level1→morph also clear | Bronze / Clean · M5 | [natural](../nes/metroid/recordings/morph_ball_natural.json), [isolated](../nes/metroid/recordings/morph_ball_isolated.json) |
 
 TMNT IV is the reference **linear combat** clear, not “rank 3.” Two continuous
 verified clears exist today; the roadmap target is many more at M8 across both
@@ -59,19 +59,19 @@ track under the same M0–M8 ladder — see [ROADMAP.md](ROADMAP.md).
 
 | Game | Directory | M1 evidence |
 |------|-----------|-------------|
-| Super Mario Bros. | `smb/` | **M8** Clean power-on → 8-4 ending 3/3 + video capture |
-| Mega Man 2 | `mega_man_2/` | Air Man stage playable |
-| Mike Tyson's Punch-Out!! | `punch_out/` | Glass Joe KD1 done; bout win next |
-| Contra | `contra/` | Stage 1 playable |
-| Kirby's Adventure | `kirby_adventure/` | Vegetable Valley hub |
-| TMNT | `tmnt_i/` | Area 1 overworld map control |
-| TMNT II | `tmnt_ii/` | Stage 1 combat control → **M3** first wave (score≥5) |
-| TMNT III | `tmnt_iii/` | Stage 1 playable control |
-| DuckTales | `ducktales/` | Land select control |
-| Castlevania | `castlevania/` | Stage 1 playable |
-| Super Mario Bros. 3 | `smb3/` | World 1-1 clear (natural entry) |
-| Zelda I | `zelda_i/` | **M5** Clean power-on → Level 1 Triforce shard 1 (2/2) |
-| Zelda II | `zelda_ii/` | North Palace control |
+| Super Mario Bros. | `nes/smb/` | **M8** Clean power-on → 8-4 ending 3/3 + video capture |
+| Mega Man 2 | `nes/mega_man_2/` | Air Man stage playable |
+| Mike Tyson's Punch-Out!! | `nes/punch_out/` | Glass Joe KD1 done; bout win next |
+| Contra | `nes/contra/` | Stage 1 playable |
+| Kirby's Adventure | `nes/kirby_adventure/` | Vegetable Valley hub |
+| TMNT | `nes/tmnt_i/` | Area 1 overworld map control |
+| TMNT II | `nes/tmnt_ii/` | Stage 1 combat control → **M3** first wave (score≥5) |
+| TMNT III | `nes/tmnt_iii/` | Stage 1 playable control |
+| DuckTales | `nes/ducktales/` | Land select control |
+| Castlevania | `nes/castlevania/` | Stage 1 playable |
+| Super Mario Bros. 3 | `nes/smb3/` | World 1-1 clear (natural entry) |
+| Zelda I | `nes/zelda_i/` | **M5** Clean power-on → Level 1 Triforce shard 1 (2/2) |
+| Zelda II | `nes/zelda_ii/` | North Palace control |
 
 ### NES top-10 implementation order (capability pairs)
 
@@ -89,7 +89,7 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 |-------|--------------|---------|
 | Linear combat | Final Fight M3→M4 | Natural-entry and Stage 3 continuity |
 | Platforming | Magical Quest / Joe & Mac M2→M3 | First room/segment clears |
-| Graph navigation | Super Metroid M5→M6; Zelda I M5 | SM: PB sill/maze; Zelda: Level 1 done, route completion warp → Level 2 (`adventure_common`) |
+| Graph navigation | Super Metroid M5→M6; Zelda I M5 | SM: PB sill/maze; Zelda: Level 1 done, route completion warp → Level 2 (`retro_harness.adventure`) |
 | Continuous control | F-Zero / Pilotwings M2→M3 | First lap / lesson objective |
 | NES top-10 | M1→M3+ | TMNT II M3 + Zelda I M5 + SMB M4 (warp→W4) done; remaining: MM2, Glass Joe, pure continuous SMB 1-2, … |
 | Planning | Harvest M3 (pioneer trunk) | Crop close-loop (money > $100); skill composition / planning stack; then summer natural-entry |
@@ -102,7 +102,7 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 | 1 Linear full-game clears | TMNT IV done; Final Fight / SDD / Rival Turf in flight; NES TMNT/Contra/Punch-Out at M1 |
 | 2 Continuous control | Boot/instrumentation only; Battle Clash blocked |
 | 3 Platforming | Magical Quest / Joe & Mac / SMW / DKC instrumented; NES SMB at M4; SMB3 at M3; MM2 / Kirby / DuckTales / Castlevania at M1 |
-| 4 Graph exploration | Super Metroid leading (M5); Zelda I at M5; `alttp/` active; Zelda II at M1 |
+| 4 Graph exploration | Super Metroid leading (M5); Zelda I at M5; `snes/alttp/` active; Zelda II at M1 |
 | 5–7 Campaigns / planning / procedural | Harvest is the Phase 6 pioneer trunk (M3 calendar done; crop income + skill composition next); later research |
 
 ## Success snapshot (see roadmap for full metrics)
@@ -111,19 +111,19 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 |--------|---------|
 | Continuous verified clears (M8) | 2 (TMNT IV, Great Waldo Search) |
 | Games at M5+ | Super Metroid (M5), plus the two M8s |
-| Shared packages with ≥2 consumers | `retro_harness`, `snes_oneshot`, `fighters_common`, `platformer_common` (growing) |
+| Shared packages with ≥2 consumers | `retro_harness` core + `platformer` / `fighters` / `adventure` subdomains |
 | Preferred publication class | Clean; assists only with contracts |
 
 ## Directory name authority
 
 | Use | Do not use |
 |-----|------------|
-| `super_metroid/` | `super_metroid_rl/` |
-| `SMW/` | `super_mario_bros/` for Super Mario World |
-| `smb/` / `smb3/` | NES Super Mario Bros. / Super Mario Bros. 3 |
-| `harvest/` | — |
-| `alttp/` | — |
-| `tmnt_i/` … `tmnt_iv/`, `zelda_i/`, `zelda_ii/` | — |
+| `snes/super_metroid/` | `super_metroid_rl/` |
+| `snes/SMW/` | `super_mario_bros/` for Super Mario World |
+| `nes/smb/` / `nes/smb3/` | NES Super Mario Bros. / Super Mario Bros. 3 |
+| `snes/harvest/` | — |
+| `snes/alttp/` | — |
+| `nes/tmnt_i/` … `snes/tmnt_iv/`, `nes/zelda_i/`, `nes/zelda_ii/` | — |
 
 ## Next documentation / tooling checks
 

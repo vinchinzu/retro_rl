@@ -1,6 +1,6 @@
 game: kirby_adventure
 title: "Kirby's Adventure"
-directory: kirby_adventure
+directory: nes/kirby_adventure
 genre_tracks:
   - platforming
 capability_phase: 3
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: kirby_adventure/docs/STATUS.md
-plan_doc: kirby_adventure/docs/plan.md
+status_doc: nes/kirby_adventure/docs/STATUS.md
+plan_doc: nes/kirby_adventure/docs/plan.md
 last_verified: 2026-07-27
 blocker: first stage/segment clear from Vegetable Valley hub
 notes: >-

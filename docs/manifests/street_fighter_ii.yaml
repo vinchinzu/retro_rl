@@ -1,6 +1,6 @@
 game: street_fighter_ii
 title: "Street Fighter II"
-directory: street_fighter_ii
+directory: snes/street_fighter_ii
 genre_tracks:
   - fighting_game_policies
 capability_phase: 0
@@ -17,8 +17,8 @@ completion_contract: match_win
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: street_fighter_ii/TRAINING_GUIDE.md
+status_doc: snes/street_fighter_ii/TRAINING_GUIDE.md
 plan_doc: null
 last_verified: 2026-03-05
 blocker: arcade-mode continuous clear not yet the primary claim
-notes: fighters_common SF2 match benchmark achieved historically.
+notes: retro_harness.fighters SF2 match benchmark achieved historically.

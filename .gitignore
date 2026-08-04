@@ -187,13 +187,21 @@ donkey_kong_country/button
 donkey_kong_country/notes
 harvest/tasks/
 
-# Recorded input policies and ROM-derived navigation/map exports
-super_metroid/policies/*
-!super_metroid/policies/room_clears/
-!super_metroid/policies/room_clears/*.json
-super_metroid/custom_integrations/*/*.provenance.json
-super_metroid/maps/*
-!super_metroid/maps/README.md
+# Super Metroid — recorded policies, maps, vendor refs, local demos.
+# Paths use **/super_metroid/ so both legacy root layout and snes/super_metroid/
+# are covered. Curated room_clears policies + maps/README stay tracked.
+**/super_metroid/policies/*
+!**/super_metroid/policies/room_clears/
+!**/super_metroid/policies/room_clears/*.json
+**/super_metroid/custom_integrations/*/*.provenance.json
+**/super_metroid/maps/*
+!**/super_metroid/maps/README.md
+# Human frame dumps / end states under package tasks/ (not docs/tasks cards)
+**/super_metroid/tasks/**
+**/super_metroid/refs/sm-json-data/
+**/super_metroid/docs/tasks/logs/
+# Tracked template: **/super_metroid/opencode.example.json — copy to opencode.json locally.
+**/super_metroid/opencode.json
 
 # Agent/session configuration and local task databases
 .claude/
@@ -206,7 +214,6 @@ super_metroid/maps/*
 harvest/HM-Decomp/
 uwnh/
 super_metroid_rl/
-super_metroid/refs/sm-json-data/
 alttp/refs/z3-json-data/
 # Workspace-local clone (prefer refs/ via setup script; never commit vendor tree)
 alttp/z3-json-data/
@@ -243,12 +250,7 @@ smb/recordings/warp_finish/*
 !smb/recordings/warp_finish/warp_finish_poweron_trials_report.json
 !smb/recordings/warp_finish/warp_finish_poweron_m8_capture.json
 
-# OpenCode executor session logs (transcripts; may include local paths)
-super_metroid/docs/tasks/logs/
-
 # Local OpenCode overrides / agent auth (never commit)
-# Tracked template: super_metroid/opencode.example.json — copy to opencode.json locally.
-super_metroid/opencode.json
 **/opencode.local.json
 **/.opencode/
 **/auth.json
