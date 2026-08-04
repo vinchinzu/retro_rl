@@ -1,6 +1,6 @@
 game: mortal_kombat
 title: "Mortal Kombat"
-directory: mortal_kombat
+directory: snes/mortal_kombat
 genre_tracks:
   - fighting_game_policies
 capability_phase: 0
@@ -17,8 +17,8 @@ completion_contract: match_win
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: mortal_kombat/README.md
-plan_doc: mortal_kombat/SPEEDRUN_PLAN.md
+status_doc: snes/mortal_kombat/README.md
+plan_doc: snes/mortal_kombat/SPEEDRUN_PLAN.md
 last_verified: 2026-03-05
 blocker: elevate match wins into reset-to-ending arcade clear claims when desired
-notes: Shared fighters_common PPO track; match benchmark historically strong.
+notes: Shared retro_harness.fighters PPO track; match benchmark historically strong.

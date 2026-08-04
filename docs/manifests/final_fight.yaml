@@ -1,6 +1,6 @@
 game: final_fight
 title: "Final Fight"
-directory: final_fight
+directory: snes/final_fight
 genre_tracks:
   - linear_combat
 capability_phase: 1
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: final_fight/docs/STATUS.md
-plan_doc: final_fight/docs/plan.md
+status_doc: snes/final_fight/docs/STATUS.md
+plan_doc: snes/final_fight/docs/plan.md
 last_verified: 2026-07-22
 blocker: Stage 3 West Side Area1 HP250 thug → Boss3; natural-entry hardening
 notes: Near-term factory line to generalize TMNT combat stack.

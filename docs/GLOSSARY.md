@@ -79,15 +79,10 @@ archived
 | `tmnt_i/` … `tmnt_iv/` | Teenage Mutant Ninja Turtles I–IV |
 | `zelda_i/` / `zelda_ii/` | The Legend of Zelda / Zelda II (NES) |
 | `great_waldo_search/` | The Great Waldo Search |
-| `snes_oneshot/` | Shared scripted-completion helpers (historical package name) |
+| `retro_harness/` | Shared emulator harness + scripted-completion helpers |
 
 Stale names that must not appear as live workspace paths:
 
 - `super_metroid_rl/` → use `super_metroid/`
 - `super_mario_bros/` → use `SMW/` for Super Mario World; use `smb/` for NES SMB
-
-## Package name note
-
-`snes_oneshot` is the historical package name for shared scripted-completion
-policies. Prefer human-facing terms: scripted completion, full-game automation,
-continuous clear, reset-to-ending evaluation.
+- `snes_oneshot/` → folded into `retro_harness/` (see `docs/REPO_HYGIENE.md`)

@@ -1,6 +1,6 @@
 game: smw
 title: "Super Mario World"
-directory: SMW
+directory: snes/SMW
 genre_tracks:
   - platforming
 capability_phase: 3
@@ -17,8 +17,8 @@ completion_contract: full_credits
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: SMW/README.md
-plan_doc: SMW/docs/autoplay_speedrun_plan.md
+status_doc: snes/SMW/README.md
+plan_doc: snes/SMW/docs/autoplay_speedrun_plan.md
 last_verified: 2026-04-29
 blocker: normalize route tooling into maturity gates and continuous clear path
 notes: Authoritative directory is SMW/ (not super_mario_bros/).

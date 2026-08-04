@@ -1,6 +1,6 @@
 game: smz3
 title: "SMZ3 (Super Metroid + ALttP Combined Randomizer)"
-directory: smz3
+directory: snes/smz3
 genre_tracks:
   - metroidvania_navigation
   - top_down_navigation
@@ -18,8 +18,8 @@ completion_contract: seed_goal_or_race_finish
 best_manifest: null
 best_video: null
 assist_contract: null
-status_doc: smz3/docs/STATUS.md
-plan_doc: smz3/docs/plan.md
+status_doc: snes/smz3/docs/STATUS.md
+plan_doc: snes/smz3/docs/plan.md
 last_verified: 2026-07-29
 blocker: map portal → settled Z3 Link; longer one-bot segment + video; dual-bot race later
 notes: >-

@@ -1,6 +1,6 @@
 game: tmnt_ii
 title: "Teenage Mutant Ninja Turtles II: The Arcade Game"
-directory: tmnt_ii
+directory: nes/tmnt_ii
 genre_tracks:
   - linear_combat
 capability_phase: 1
@@ -14,11 +14,11 @@ transfer_value: medium
 ending_definition: credits after final stage
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: tmnt_ii/recordings/stage1_segment/stage1_segment.json
+best_manifest: nes/tmnt_ii/recordings/stage1_segment/stage1_segment.json
 best_video: null
 assist_contract: null
-status_doc: tmnt_ii/docs/STATUS.md
-plan_doc: tmnt_ii/docs/plan.md
+status_doc: nes/tmnt_ii/docs/STATUS.md
+plan_doc: nes/tmnt_ii/docs/plan.md
 last_verified: 2026-07-27
 blocker: extend past first wave (score≥5); natural-entry M4
 notes: >-

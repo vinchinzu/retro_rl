@@ -1,0 +1,351 @@
+
+#include <cstdio>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <unordered_set>
+#include <unordered_map>
+
+#include "../iohandler.h"
+#include "MeiMei.h"
+
+#ifdef ASAR_USE_DLL
+#include "../asar/asardll.h"
+#else
+#include "../asar/asar.h"
+#endif
+
+constexpr auto SPR_ADDR_LIMIT =
+    (255 * 16) +
+    1; // maximum number of sprites * maximum sprite size (15 + 1 byte for exlevel commands) + 1 byte for the header
+
+bool& MeiMei::AlwaysRemap() {
+    return MeiMei::always;
+}
+
+bool& MeiMei::Debug() {
+    return MeiMei::debug;
+}
+
+bool& MeiMei::KeepTemp() {
+    return MeiMei::keepTemp;
+}
+
+std::string escapeDefines(const std::string& path) {
+    std::stringstream ss("");
+    for (char c : path) {
+        if (c == '!') {
+            ss << "\\!";
+        } else {
+            ss << c;
+        }
+    }
+    return ss.str();
+}
+
+void MeiMei::configureSa1Def(const std::string& pathToSa1Def) {
+    std::string escapedPath = escapeDefines(pathToSa1Def);
+    MeiMei::sa1DefPath = escapedPath;
+}
+
+bool MeiMei::patch(const patchfile& patch, const std::vector<patchfile>& patchfiles, ROM& rom) {
+    iohandler& io = iohandler::get_global();
+    std::vector<memoryfile> memfiles{};
+    memfiles.reserve(patchfiles.size() + 1);
+    memfiles.push_back(patch.vfile());
+    std::transform(patchfiles.begin(), patchfiles.end(), std::back_inserter(memfiles),
+                   [](const auto& p) { return p.vfile(); });
+    patchparams params{.structsize = sizeof(patchparams),
+                       .patchloc = patch.path().c_str(),
+                       .romdata = reinterpret_cast<char*>(rom.unheadered_data()),
+                       .buflen = MAX_ROM_SIZE,
+                       .romlen = &rom.size,
+                       .includepaths = nullptr,
+                       .numincludepaths = 0,
+                       .should_reset = true,
+                       .additional_defines = nullptr,
+                       .additional_define_count = 0,
+                       .stdincludesfile = nullptr,
+                       .stddefinesfile = nullptr,
+                       .warning_settings = nullptr,
+                       .warning_setting_count = 0,
+                       .memory_files = memfiles.data(),
+                       .memory_file_count = static_cast<int>(memfiles.size()),
+                       .override_checksum_gen = false,
+                       .generate_checksum = true};
+    if (!asar_patch_ex(&params)) {
+        int error_count;
+        const errordata* errors = asar_geterrors(&error_count);
+        io.error("An error has been detected:\n");
+        for (int i = 0; i < error_count; i++)
+            io.error("%s\n", errors[i].fullerrdata);
+        return false;
+    }
+
+    if (MeiMei::debug) {
+        int print_count = 0;
+        const char* const* prints = asar_getprints(&print_count);
+        for (int i = 0; i < print_count; ++i) {
+            io.print("%s\n", prints[i]);
+        }
+    }
+
+    return true;
+}
+
+struct AddressConstants {
+    // these constants are all headered addresses (e.g. +0x200)
+    static constexpr int LMLevelSpriteDataBankBytePointer = 0x77300; /* $0EF100 */
+    static constexpr int LMPresentFlagPointer = 0x07750F;            /* $0EF30F should be 0x42 */
+    static constexpr int LMSizeTableAddressPointer = 0x07750C;       /* $0EF30C points to the actual table */
+    static constexpr int LevelSpriteDataPointerTable = 0x02EE00;     /* $05EC00 */
+};
+
+bool MeiMei::initialize(const char* rom_name) {
+    MeiMei::name = std::string(rom_name);
+
+    memset(prevEx, 0x03, 0x400);
+    memset(nowEx, 0x03, 0x400);
+
+    if (!prev.open(MeiMei::name))
+        return false;
+    if (prev.read_byte(AddressConstants::LMPresentFlagPointer) == 0x42) {
+        auto addr = prev.snes_to_pc(prev.read_long(AddressConstants::LMSizeTableAddressPointer));
+        prev.read_data(prevEx, 0x0400, addr);
+    }
+    return true;
+}
+
+int MeiMei::run() {
+    ROM rom;
+    iohandler& io = iohandler::get_global();
+    if (!rom.open(MeiMei::name))
+        return 1;
+
+    int returnValue = MeiMei::run(rom);
+
+    if (returnValue) {
+        prev.close();
+        io.error("\n\nError occurred in MeiMei.\n"
+                 "Your rom has reverted to before pixi insert.\n");
+        return returnValue;
+    }
+
+    rom.close();
+    return returnValue;
+}
+
+int MeiMei::run(ROM& rom) {
+    iohandler& io = iohandler::get_global();
+    ROM now;
+    if (!now.open(MeiMei::name))
+        return 1;
+    if (prev.read_byte(AddressConstants::LMPresentFlagPointer) == 0x42) {
+        auto addr = now.snes_to_pc(now.read_long(AddressConstants::LMSizeTableAddressPointer));
+        now.read_data(nowEx, 0x0400, addr);
+    }
+
+    bool changeEx = false;
+    for (int i = 0; i < 0x400; i++) {
+        if (prevEx[i] != nowEx[i]) {
+            changeEx = true;
+            break;
+        }
+    }
+
+    bool revert = changeEx || MeiMei::always;
+    if (changeEx) {
+        io.print("\nExtra bytes change detected, MeiMei will autofix the sprite data\n\n");
+    }
+
+    if (changeEx || MeiMei::always) {
+        std::vector<uint8_t> sprAllData{};
+        sprAllData.reserve(SPR_ADDR_LIMIT);
+        uint8_t sprCommonData[3];
+        std::unordered_set<pcaddress> sprDataPointers{};
+        constexpr size_t MAX_MEIMEI_PATCHES_PER_PATCH = 125; // asar freespace limit
+
+        std::unordered_map<std::string, patchfile> meimei_patches{};
+
+        std::vector<patchfile> meimei_fixup_patches{};
+
+        auto get_or_create_meimei_patch = [&meimei_patches, &meimei_fixup_patches, this]() -> patchfile& {
+
+            const auto current_patch_index = meimei_fixup_patches.size() / MAX_MEIMEI_PATCHES_PER_PATCH;
+            const auto current_patch_name = "_meimei_fixup_" + std::to_string(current_patch_index) + ".asm";
+
+            if (meimei_patches.contains(current_patch_name)) {
+                return meimei_patches.at(current_patch_name);
+            }
+
+            meimei_patches.insert({current_patch_name,
+                                   patchfile{current_patch_name, patchfile::openflags::w, patchfile::origin::meimei}});
+            auto& patch = meimei_patches.at(current_patch_name);
+            patch.fprintf("incsrc \"%s\"\n", MeiMei::sa1DefPath.c_str());
+            return patch;
+
+        };
+
+        for (int lv = 0; lv < 0x200; lv++) {
+            sprAllData.clear();
+
+            int sprAddrSNES = (now.read_byte(AddressConstants::LMLevelSpriteDataBankBytePointer + lv) << 16) +
+                              now.read_word(AddressConstants::LevelSpriteDataPointerTable + lv * 2);
+            auto sprAddrPC = now.snes_to_pc(sprAddrSNES);
+            if (sprAddrPC == -1) {
+                io.error("Error: level %03X has invalid sprite data pointer $%06X!\n", lv, sprAddrSNES);
+                goto end;
+            }
+            auto [_, inserted] = sprDataPointers.insert(sprAddrPC);
+            if (!inserted)
+                continue;
+
+            const uint8_t spriteHeader = now.read_byte(sprAddrPC);
+            sprAllData.push_back(spriteHeader);
+            int prevOfs = 1;
+            int nowOfs = 1;
+            bool exlevelFlag = spriteHeader & (uint8_t)0x20;
+            bool changeData = false;
+            size_t spriteQuantity = 0;
+            while (true) {
+                now.read_data(sprCommonData, 3, sprAddrPC + prevOfs);
+
+                if (sprCommonData[0] == 0xFF) {
+                    sprAllData.push_back(0xFF);
+                    nowOfs++;
+                    if (!exlevelFlag) {
+                        break;
+                    }
+
+                    sprAllData.push_back(sprCommonData[1]);
+                    nowOfs++;
+                    if (sprCommonData[1] == 0xFE) {
+                        break;
+                    } else {
+                        prevOfs += 2;
+                        now.read_data(sprCommonData, 3, sprAddrPC + prevOfs);
+                    }
+                }
+
+                sprAllData.push_back(sprCommonData[0]); // YYYYEEsy
+                sprAllData.push_back(sprCommonData[1]); // XXXXSSSS
+                sprAllData.push_back(sprCommonData[2]); // NNNNNNNN
+                nowOfs += 3;
+
+                int sprNum = ((sprCommonData[0] & 0x0C) << 6) | (sprCommonData[2]);
+
+                if (nowEx[sprNum] > prevEx[sprNum]) {
+                    changeData = true;
+                    int i;
+                    for (i = 3; i < prevEx[sprNum]; i++) {
+                        sprAllData.push_back(now.read_byte(sprAddrPC + prevOfs + i));
+                        nowOfs++;
+                    }
+                    for (; i < nowEx[sprNum]; i++) {
+                        sprAllData.push_back(0x00);
+                        nowOfs++;
+                    }
+                } else if (nowEx[sprNum] < prevEx[sprNum]) {
+                    changeData = true;
+                    for (int i = 3; i < nowEx[sprNum]; i++) {
+                        sprAllData.push_back(now.read_byte(sprAddrPC + prevOfs + i));
+                        nowOfs++;
+                    }
+                } else {
+                    for (int i = 3; i < nowEx[sprNum]; i++) {
+                        sprAllData.push_back(now.read_byte(sprAddrPC + prevOfs + i));
+                        nowOfs++;
+                    }
+                }
+                prevOfs += prevEx[sprNum];
+                spriteQuantity++;
+            }
+
+            if (static_cast<size_t>(nowOfs) != sprAllData.size()) {
+                io.error("Error: internal error when processing level %03X sprite data, expected %llu but got %d!\n",
+                         lv, sprAllData.size(), nowOfs);
+                goto end;
+            }
+
+            if (spriteQuantity > 0xFF) {
+                io.error("Error: level %03X has too many sprites! Even thought Lunar Magic supports more than 255 "
+                         "sprites in a level "
+                         "Pixi is only built to support 255 sprites, total sprites found in level: %llu, please remove "
+                         "some.\n",
+                         lv, spriteQuantity);
+                goto end;
+            }
+
+            if (changeData) {
+                std::string lvlstr = std::to_string(lv);
+                // create sprite data binary
+                std::string binaryFileName{"_tmp_bin_"};
+                binaryFileName.append(lvlstr);
+                binaryFileName.append(".bin");
+                patchfile binFile{binaryFileName, patchfile::openflags::wb, patchfile::origin::meimei};
+                binFile.fwrite(sprAllData.data(), nowOfs);
+                binFile.close();
+
+                // create patch for sprite data binary
+                std::string fileName{"_tmp_"};
+                fileName.append(lvlstr);
+                fileName.append(".asm");
+                patchfile spriteDataPatch{fileName, patchfile::openflags::w, patchfile::origin::meimei};
+
+                std::string binaryLabel{"SpriteData"};
+                binaryLabel.append(lvlstr);
+
+                // create actual asar patch
+                const auto levelBankAddress = now.pc_to_snes(AddressConstants::LMLevelSpriteDataBankBytePointer + lv);
+                const auto levelWordAddress = now.pc_to_snes(AddressConstants::LevelSpriteDataPointerTable + lv * 2);
+                const char* binL = binaryLabel.c_str();
+                spriteDataPatch.fprintf(
+                    "!level_%03X_oldDataPointer = read2($%06X)|(read1($%06X)<<16)\n"
+                    "!level_%03X_oldDataSize = read2(pctosnes(snestopc(!level_%03X_oldDataPointer)-4))+1\n"
+                    "autoclean !level_%03X_oldDataPointer\n\n"
+                    "org $%06X\n"
+                    "\tdb %s>>16\n\n"
+                    "org $%06X\n"
+                    "\tdw %s\n\n"
+                    "freedata cleaned\n"
+                    "%s:\n"
+                    "\t!level_%03X_newDataPointer = %s\n"
+                    "\tincbin \"%s\"\n"
+                    "%s_end:\n"
+                    "\tprint \"---- Level %03X ----\"\n"
+                    "\tprint \"Data pointer from $\",hex(!level_%03X_oldDataPointer),\" to "
+                    "$\",hex(!level_%03X_newDataPointer)\n"
+                    "\tprint \"Data size    from $\",hex(!level_%03X_oldDataSize),\" to $\",hex(%s_end-%s)\n",
+                    lv, levelWordAddress.raw_value(), levelBankAddress.raw_value(), lv, lv, lv,
+                    levelBankAddress.raw_value(), binL, levelWordAddress.raw_value(), binL, binL, lv, binL,
+                    binaryFileName.c_str(), binL, lv, lv, lv, lv, binL, binL);
+                spriteDataPatch.close();
+
+                meimei_fixup_patches.push_back(std::move(binFile));
+                meimei_fixup_patches.push_back(std::move(spriteDataPatch));
+
+                get_or_create_meimei_patch().fprintf("incsrc \"%s\"\n", fileName.c_str());
+            }
+        }
+
+        if (!meimei_fixup_patches.empty()) {
+            for (auto& [name, mp] : meimei_patches) {
+                mp.close();
+                if (!MeiMei::patch(mp, meimei_fixup_patches, rom)) {
+                    io.error("An error occured when applying MeiMei fixup sprite data with asar.");
+                    goto end;
+                }
+            }
+        }
+
+        io.print("\nSprite data remapped successfully.\n");
+        revert = false;
+    }
+end:
+    if (revert) {
+        return 1;
+    }
+
+    return 0;
+}

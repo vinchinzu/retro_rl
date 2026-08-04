@@ -4,6 +4,21 @@ from __future__ import annotations
 
 import sys
 import types
+from pathlib import Path
+
+# Games live under snes/ and nes/ but keep package names (alttp, smb, …).
+_ROOT = Path(__file__).resolve().parent
+for _extra in (
+    _ROOT,
+    _ROOT / "snes",
+    _ROOT / "nes",
+    _ROOT / "snes" / "harvest",
+    _ROOT / "snes" / "hals_golf",
+):
+    if _extra.is_dir():
+        _text = str(_extra)
+        if _text not in sys.path:
+            sys.path.insert(0, _text)
 
 
 try:

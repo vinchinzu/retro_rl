@@ -58,34 +58,34 @@ uv run python -m retro_harness.editor_launcher --list
 
 # Inspect a platformer or fighter entry point.
 uv run python -m SMW --help
-uv run python fighters_common/train_ppo.py --help
+uv run python retro_harness/fighters/train_ppo.py --help
 ```
 
 ## Architecture
 
 ```text
 game workspace
-  ├── game-specific RAM maps, routes, policies, states, and evidence
-  ├── snes_oneshot       scripted completion helpers (historical package name)
-  ├── platformer_common  platformer routes, replay, evaluation, optimizers
-  ├── fighters_common    fighting-game environments and PPO training
-  └── retro_harness      emulator, input, state, recording, task contracts
+  └── game-specific RAM maps, routes, policies, states, and evidence
+retro_harness/
+  ├── core I/O + scripted-completion helpers
+  ├── platformer/   routes, replay, evaluation, optimizers
+  ├── fighters/     fighting-game envs and PPO training
+  └── adventure/    route graphs, waypoints, named routes
 ```
 
 | Package | Responsibility |
 |---|---|
-| `retro_harness/` | Stable-retro environment setup, SNES/NES actions, input scripts, save-state paths, runtime normalization, play sessions, RAM schemas, recording, tasks, splits, and benchmarks |
+| `retro_harness/` | Stable-retro env setup, SNES/NES actions, input scripts, save-state paths, runtime, play sessions, RAM/`GameState`, recording, combat/cursor/segment helpers, ROM setup, tasks, splits, benchmarks |
 | `retro_harness/editor/` | Reusable Qt editor bridge, stdio JSON protocol, embedded emulator panel, map rendering helpers, recording, script segments, and optional Cursor agent panel |
-| `snes_oneshot/` | Shared behavior trees, combat and cursor policies, segment runners, watchdogs, RAM discovery, and continuous-run practices |
-| `platformer_common/` | Platformer level configuration, progress tracking, replay, route evaluation, hill climbing, and genetic/neuroevolution tools |
-| `fighters_common/` | Fighting-game wrappers, RAM observations, reward shaping, menu navigation, model registry, PPO training, and evaluation |
+| `retro_harness/platformer/` | Platformer level configuration, progress tracking, replay, route evaluation, hill climbing, and genetic/neuroevolution tools |
+| `retro_harness/fighters/` | Fighting-game wrappers, RAM observations, reward shaping, menu navigation, model registry, PPO training, and evaluation |
+| `retro_harness/adventure/` | Nonlinear route graphs, capability-aware planning, waypoints, and named route registries |
 
 New SNES integrations should begin with the compact
 `retro_harness.snes` API (`GameSpec`, named actions, `StartupPlan`, and input
 scripts); NES workspaces use the same maturity ladder and
-`snes_oneshot.rom_setup` / harness helpers. See
-[`ADDING_GAMES.md`](./ADDING_GAMES.md) for the recommended layout and first
-verification seam, and [`docs/ROADMAP.md`](docs/ROADMAP.md) for prioritization.
+`retro_harness.env`. See [`docs/ADDING_GAMES.md`](./docs/ADDING_GAMES.md) and
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Development Ladder
 
@@ -112,7 +112,7 @@ Genre work is organized as **parallel capability tracks** (linear combat,
 platforming, continuous control, graph navigation, planning, …), not a single
 numerical game ranking. See [`docs/DEVELOPMENT_LADDER.md`](./docs/DEVELOPMENT_LADDER.md)
 and the engineering process in
-[`snes_oneshot/docs/FULL_RUN_PROCESS.md`](./snes_oneshot/docs/FULL_RUN_PROCESS.md).
+[`docs/FULL_RUN_PROCESS.md`](./docs/FULL_RUN_PROCESS.md).
 
 ## Program documents
 
@@ -126,19 +126,25 @@ and the engineering process in
 | [`docs/GAME_MATRIX.md`](./docs/GAME_MATRIX.md) | All games (generated from manifests) |
 | [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) | Shared vocabulary |
 | [`AGENTS.md`](./AGENTS.md) | Repo-wide agent rules |
-| [`ADDING_GAMES.md`](./ADDING_GAMES.md) | New game onboarding |
+| [`docs/ADDING_GAMES.md`](./docs/ADDING_GAMES.md) | New game onboarding |
 
 ## Game Workspaces
 
+Games live under `snes/<game>/` and `nes/<game>/` but keep package import names
+(`import alttp`, `import super_metroid`). Run `./setup.sh` (or recreate the
+venv `.pth`) so those folders are on `sys.path`; pytest also uses
+`tool.pytest.ini_options.pythonpath` in `pyproject.toml`.
+
 | Track | Directories |
 |---|---|
-| Fighting-game RL | `mortal_kombat/`, `mortal_kombat_ii/`, `street_fighter_ii/`, `super_street_fighter_ii/` |
-| Platformers | `SMW/`, `donkey_kong_country/`, `magical_quest/`, `joe_and_mac/` |
-| Scripted completion | `alttp/`, `battle_clash/`, `f_zero/`, `final_fight/`, `great_waldo_search/`, `pilotwings/`, `rival_turf/`, `star_fox/`, `super_double_dragon/`, `super_metroid/`, `tmnt_iv/` |
-| Planning / simulation | `harvest/`, `hals_golf/` |
+| Fighting-game RL | `snes/mortal_kombat/`, `snes/mortal_kombat_ii/`, `snes/street_fighter_ii/`, `snes/super_street_fighter_ii/` |
+| Platformers | `snes/SMW/`, `snes/donkey_kong_country/`, `snes/magical_quest/`, `snes/joe_and_mac/` |
+| Scripted completion | `snes/alttp/`, `snes/battle_clash/`, `snes/f_zero/`, `snes/final_fight/`, `snes/great_waldo_search/`, `snes/pilotwings/`, `snes/rival_turf/`, `snes/star_fox/`, `snes/super_double_dragon/`, `snes/super_metroid/`, `snes/tmnt_iv/` |
+| Planning / simulation | `snes/harvest/`, `snes/hals_golf/` |
+| NES | `nes/smb/`, `nes/smb3/`, `nes/metroid/`, `nes/zelda_i/`, … |
 
-Authoritative names: `super_metroid/` (not `super_metroid_rl/`), `SMW/` (not
-`super_mario_bros/`), `alttp/`.
+Authoritative package names: `super_metroid` (not `super_metroid_rl`),
+`SMW` (not `super_mario_bros`), `alttp`.
 
 Treat each game’s local `docs/STATUS.md` as authoritative for that title. The
 program-wide board is [`docs/GAME_MATRIX.md`](./docs/GAME_MATRIX.md).
@@ -152,7 +158,7 @@ runners, and full-run recorders. Shared ROM setup is available for compatible
 projects:
 
 ```bash
-uv run python -m snes_oneshot.setup_all_roms <game-directory>
+uv run python -m retro_harness.setup_all_roms <game-directory>
 ```
 
 Develop from short, reproducible checkpoints, verify natural entry from the
@@ -161,27 +167,27 @@ preceding route, and only then chain segments.
 ### Fighting-game training
 
 ```bash
-uv run python fighters_common/train_ppo.py \
+uv run python retro_harness/fighters/train_ppo.py \
   --game sf2 \
   --state Fight_StreetFighterIITurbo \
   --steps 500000
 ```
 
 Model output belongs under the corresponding game directory. See
-[`fighters_common/AGENTS.md`](./fighters_common/AGENTS.md) and the individual
+[`retro_harness/fighters/AGENTS.md`](./retro_harness/fighters/AGENTS.md) and the individual
 fighting-game docs for state creation, evaluation, and current model lineage.
 
 ### Platformer tooling
 
-`platformer_common` supplies the shared CLI used by platformer workspaces:
+`retro_harness.platformer` supplies the shared CLI used by platformer workspaces:
 
 ```bash
 uv run python -m SMW --help
-uv run python -m platformer_common --help
+uv run python -m retro_harness.platformer --help
 ```
 
 Level-specific RAM layouts and state registrations stay in
-`platformer_common/levels/`; generated routes, optimizer runs, recordings, and
+`retro_harness/platformer/levels/`; generated routes, optimizer runs, recordings, and
 models stay in the owning game workspace.
 
 ### Game editors
@@ -224,9 +230,8 @@ See [`docs/BENCHMARK_SPEC.md`](./docs/BENCHMARK_SPEC.md).
 
 ```bash
 uv run python -m pytest retro_harness/tests -q
-uv run python -m pytest snes_oneshot/tests -q
-uv run python -m pytest platformer_common/tests -q
-uv run python -m pytest fighters_common/tests -q
+uv run python -m pytest retro_harness/platformer/tests -q
+uv run python -m pytest retro_harness/fighters/tests -q
 uv run pytest tests/test_docs.py -q
 ```
 

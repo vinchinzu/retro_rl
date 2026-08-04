@@ -38,7 +38,7 @@ For nonlinear games, the route is a graph of rooms, doors, inventory
 requirements, bosses, and events — not a stage-number list.
 
 Detailed engineering practice lives in
-[../snes_oneshot/docs/FULL_RUN_PROCESS.md](../snes_oneshot/docs/FULL_RUN_PROCESS.md).
+[FULL_RUN_PROCESS.md](FULL_RUN_PROCESS.md).
 The process applies to **NES and SNES** integrations equally.
 
 ## Capability phases
@@ -98,7 +98,7 @@ stage/graph hybrid after platforming basics.
 Capabilities: room/door graphs, inventory prerequisites, event flags, path
 replanning, transition recovery, nonlinear route completion.
 
-Promote a shared `adventure_common` abstraction only after two concrete game
+Promote into `retro_harness.adventure` only after two concrete game
 implementations prove the interface.
 
 ### Phase 5 — Long structured campaigns
@@ -133,7 +133,7 @@ Concentrate implementation on these trunks (detail and horizon in
 [ROADMAP.md](ROADMAP.md)):
 
 1. **Final Fight** — generalize the proven TMNT combat stack toward continuous clear
-2. **Magical Quest / Joe & Mac** — establish the platformer stack (`platformer_common`)
+2. **Magical Quest / Joe & Mac** — establish the platformer stack (`retro_harness.platformer`)
 3. **Super Metroid** — route-graph and inventory-aware navigation toward ending
 4. **NES parallel track** — TMNT I–III and Zelda I/II to M3+; boot remaining NES
    scaffolds to M1–M2

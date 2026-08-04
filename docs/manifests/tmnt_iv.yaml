@@ -1,6 +1,6 @@
 game: tmnt_iv
 title: "Teenage Mutant Ninja Turtles IV: Turtles in Time"
-directory: tmnt_iv
+directory: snes/tmnt_iv
 genre_tracks:
   - linear_combat
 capability_phase: 1
@@ -14,11 +14,11 @@ transfer_value: high
 ending_definition: hard-mode staff/cast credits from power-on
 start_contract: power_on
 completion_contract: full_credits_hard
-best_manifest: tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json
-best_video: tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4
-assist_contract: tmnt_iv/docs/ASSIST_CONTRACT.md
-status_doc: tmnt_iv/docs/STATUS.md
-plan_doc: tmnt_iv/docs/plan.md
+best_manifest: snes/tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json
+best_video: snes/tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4
+assist_contract: snes/tmnt_iv/docs/ASSIST_CONTRACT.md
+status_doc: snes/tmnt_iv/docs/STATUS.md
+plan_doc: snes/tmnt_iv/docs/plan.md
 last_verified: 2026-07-25
 blocker: Whole-run Bronze/Clean dry-run (ticket T4-CLEAN-FULL; infra + S2–S9 suites first)
 notes: >-

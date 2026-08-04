@@ -1,0 +1,263 @@
+{
+  "$schema": "../../../schema/z3-region.schema.json",
+  "id": 78,
+  "name": "Eastern Palace",
+  "roomType": "Dungeon",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Eastern Palace Exit",
+      "area": "Eastern Palace",
+      "nodeType": "door"
+    },
+    {
+      "id": 2,
+      "name": "Eastern Palace - Compass Chest",
+      "area": "Eastern Palace",
+      "nodeType": "item",
+      "nodeItem": "CompassP1",
+      "nodeAddress": "0xE977"
+    },
+    {
+      "id": 3,
+      "name": "Eastern Palace - Big Chest",
+      "area": "Eastern Palace",
+      "requires": [ "BigKeyP1" ],
+      "nodeType": "item",
+      "nodeItem": "Bow",
+      "nodeAddress": "0xE97D"
+    },
+    {
+      "id": 4,
+      "name": "Eastern Palace - Cannonball Chest",
+      "area": "Eastern Palace",
+      "nodeType": "item",
+      "nodeItem": "OneHundredRupees",
+      "nodeAddress": "0xE9B3"
+    },
+    {
+      "id": 5,
+      "name": "Eastern Palace - Big Key Chest",
+      "area": "Eastern Palace",
+      "requires": [ "hasLightCone" ],
+      "nodeType": "item",
+      "nodeItem": "BigKeyP1",
+      "nodeAddress": "0xE9B9"
+    },
+    {
+      "id": 6,
+      "name": "Eastern Palace - Map Chest",
+      "area": "Eastern Palace",
+      "nodeType": "item",
+      "nodeItem": "MapP1",
+      "nodeAddress": "0xE9F5"
+    },
+    {
+      "id": 7,
+      "name": "Eastern Palace - Armos Knights",
+      "area": "Eastern Palace",
+      "requires": [
+        "canShootArrows",
+        "hasLightCone",
+        "BigKeyP1"
+      ],
+      "nodeType": "item",
+      "nodeItem": "BossHeartContainer",
+      "nodeAddress": "0x180150"
+    },
+    {
+      "id": 8,
+      "name": "Eastern Palace - Prize",
+      "area": "Eastern Palace",
+      "nodeType": "item",
+      "nodeItem": "PendantOfCourage",
+      "nodeAddress": [
+        "0x1209D",
+        "0x53EF8",
+        "0x53EF9",
+        "0x180052",
+        "0x18007C",
+        "0xC6FE"
+      ]
+    }
+  ],
+  "strats": [
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Bow",
+      "requires": [
+        {"or": [
+          {"ammo": {"type": "SilverArrows", "count": 7}},
+          {"and": [
+            {"ammo": {"type": "SilverArrows", "count": 6}},
+            {"bossProficiency": 2}
+          ]},
+          {"and": [
+            {"ammo": {"type": "Arrows", "count": 22}},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 2}}
+          ]},
+          {"and": [
+            {"ammo": {"type": "Arrows", "count": 20}},
+            {"bossProficiency": 2}
+          ]},
+          {"and": [
+            {"ammo": {"type": "Arrows", "count": 18}},
+            {"bossProficiency": 3}
+          ]}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Sword (L1-L2)",
+      "requires": [
+        "L1Sword",
+        {"or": [
+          {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 10}},
+          {"and": [
+            {"bossProficiency": 2},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 6}}
+          ]},
+          {"and": [
+            {"bossProficiency": 3},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 2}}
+          ]},
+          {"bossProficiency": 4}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8],
+      "devNote": [
+        "The Master Sword does less damage than the Fighter Sword, so these numbers are for the Master Sword."
+      ]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Sword (Full Health, Sparkles)",
+      "requires": [
+        "hasSwordSparkles",
+        {"or": [
+          {"bossProficiency": 2},
+          {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 3}}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Sword (L1 or L3)",
+      "requires": [
+        {"or": [
+          "L3Sword",
+          {"and": [
+            "L1Sword",
+            {"resourceMissingAtMost": [{"type": "Health", "count": 0}]}
+          ]},
+          {"and": [
+            "L1Sword",
+            "canRiskPermanentLossOfAccess"
+          ]}
+        ]},
+        {"or": [
+          {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 7}},
+          {"and": [
+            {"bossProficiency": 2},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 4}}
+          ]},
+          {"and": [
+            {"bossProficiency": 3},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 1}}
+          ]}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8],
+      "devNote": [
+        "The L1 and L3 swords are equally strong, but the Master Sword is weaker.",
+        "If Link has the L1 sword and full health, this will not have canRiskPermanentLossOfAccess,",
+        "because the fight consumes fewer resources with the Master Sword and full health with sparkles."
+      ]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Sword (L4)",
+      "requires": [
+        "L4Sword",
+        {"or": [
+          {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 3}},
+          {"and": [
+            {"bossProficiency": 2},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 1}}
+          ]},
+          {"bossProficiency": 3}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Blue Cane",
+      "requires": [
+        {"magic": {"type": "BlueCane", "count": 192}},
+        {"bossProficiency": 2}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Red Cane",
+      "requires": [
+        {"magic": {"type": "RedCane", "count": 16}},
+        {"bossProficiency": 3},
+        {"or": [
+          {"and": [
+            {"magic": {"type": "RedCane", "count": 2}},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 4}}
+          ]},
+          {"and": [
+            {"bossProficiency": 4},
+            {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 2}}
+          ]},
+          {"bossProficiency": 9}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Fire or Ice Rod",
+      "requires": [
+        {"bossProficiency": 2},
+        {"or": [
+          {"magic": {"type": "Rod", "count": 6}},
+          {"and": [
+            {"magic": {"type": "Rod", "count": 5}},
+            {"bossProficiency": 3}
+          ]}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8]
+    },
+    {
+      "link": [7, 7],
+      "name": "Armos Knights - Hammer",
+      "requires": [
+        "Hammer",
+        {"bossProficiency": 4},
+        {"or": [
+          {"enemyDamage": {"enemy": "ArmosKnights", "type": "contact", "hits": 20}},
+          {"bossProficiency": 9}
+        ]}
+      ],
+      "setsFlags": ["f_DefeatedArmosKnights"],
+      "collectsItems": [7, 8]
+    }
+  ]
+}

@@ -1,0 +1,666 @@
+"""Walkthrough-informed controllers for the required Level 1 route.
+
+The guide supplies route hypotheses; room IDs, transitions, and stop predicates
+remain emulator-verified before promotion into the natural-entry chain.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import Any
+
+from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.input_script import FrameAction
+from zelda_i.dungeon import AQUAMENTUS_OBJECT_TYPE
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+
+ROOM_GEL_SWITCH = 0x42
+ROOM_OLD_MAN = 0x41
+ROOM_MAP = 0x43
+ROOM_KEY_GORIYA = 0x23
+ROOM_KEY_STALFOS_MAZE = 0x33
+ROOM_BOOMERANG_GORIYA = 0x44
+ROOM_AQUAMENTUS = 0x35
+ROOM_TRIFORCE = 0x36
+ROOM_42_LEFT_DOOR_BIT = 0x02
+ROOM_42_EXIT_MAX_FRAMES = 2400
+BACKTRACK_TO_44_MAX_FRAMES = 3600
+AQUAMENTUS_MAX_FRAMES = 6000
+TRIFORCE_MAX_FRAMES = 1800
+LEVEL1_TRIFORCE_BIT = 0x01
+FIREBALL_OBJECT_TYPE = 0x55
+
+_ROOM_42_EAST_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (32, 181),
+    (208, 181),
+    (208, 141),
+)
+
+
+class Room42ExitPhase(Enum):
+    PUSH_BLOCK = auto()
+    ENTER_HINT = auto()
+    WAIT_HINT = auto()
+    RETURN_FROM_HINT = auto()
+    ROUTE_EAST = auto()
+    ENTER_MAP = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level1Room42ExitController:
+    """Push the Gel-room block, visit the hint room, and enter map room 0x43."""
+
+    phase: Room42ExitPhase = Room42ExitPhase.PUSH_BLOCK
+    frames: int = 0
+    phase_frames: int = 0
+    waypoint_index: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def _set_phase(self, phase: Room42ExitPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            self.waypoint_index = 0
+            if note:
+                self.notes.append(note)
+
+    def _route_east(self, snap: ZeldaSnapshot) -> FrameAction:
+        tx, ty = _ROOM_42_EAST_WAYPOINTS[self.waypoint_index]
+        dx = tx - snap.link_x
+        dy = ty - snap.link_y
+        if abs(dx) <= 2 and abs(dy) <= 2:
+            self.waypoint_index += 1
+            if self.waypoint_index >= len(_ROOM_42_EAST_WAYPOINTS):
+                return FrameAction(nes_idle_action(), "east_route_done")
+            tx, ty = _ROOM_42_EAST_WAYPOINTS[self.waypoint_index]
+            dx = tx - snap.link_x
+            dy = ty - snap.link_y
+        if abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "DOWN" if dy > 0 else "UP"
+        return FrameAction(nes_action(direction), "route_east")
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if snap.mode == 17:
+            self._set_phase(Room42ExitPhase.FAILED, "link_death")
+            return FrameAction(nes_idle_action(), "link_death")
+        if self.frames >= ROOM_42_EXIT_MAX_FRAMES:
+            self._set_phase(Room42ExitPhase.FAILED, "timeout")
+            return FrameAction(nes_idle_action(), "timeout")
+
+        if snap.screen == ROOM_MAP and snap.mode == PLAY_MODE:
+            self.success = True
+            self._set_phase(Room42ExitPhase.DONE, "map_room_entered")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+
+        if self.phase is Room42ExitPhase.PUSH_BLOCK:
+            if snap.screen != ROOM_GEL_SWITCH:
+                return FrameAction(nes_idle_action(), "wait_room42")
+            if snap.mode != PLAY_MODE:
+                return FrameAction(nes_idle_action(), "settle_room42")
+            if snap.cur_opened_doors & ROOM_42_LEFT_DOOR_BIT:
+                self._set_phase(Room42ExitPhase.ENTER_HINT, "center_block_pushed")
+            else:
+                if abs(snap.link_y - 149) > 2:
+                    direction = "DOWN" if snap.link_y < 149 else "UP"
+                    return FrameAction(
+                        nes_action(direction),
+                        "align_switch_block_y",
+                    )
+                if abs(snap.link_x - 112) > 2:
+                    direction = "RIGHT" if snap.link_x < 112 else "LEFT"
+                    return FrameAction(
+                        nes_action(direction),
+                        "align_switch_block_x",
+                    )
+                return FrameAction(nes_action("UP"), "push_center_block")
+
+        if self.phase is Room42ExitPhase.ENTER_HINT:
+            if snap.screen == ROOM_OLD_MAN and snap.mode == PLAY_MODE:
+                self._set_phase(Room42ExitPhase.WAIT_HINT, "hint_room_entered")
+                return FrameAction(nes_idle_action(), "settle_hint")
+            if snap.transitioning:
+                return FrameAction(nes_action("LEFT"), "hint_room_scroll")
+            if snap.mode != PLAY_MODE:
+                return FrameAction(nes_idle_action(), "wait_hint_door")
+            if snap.link_y < 139:
+                return FrameAction(nes_action("DOWN"), "align_hint_door")
+            if snap.link_y > 143:
+                return FrameAction(nes_action("UP"), "align_hint_door")
+            return FrameAction(nes_action("LEFT"), "enter_hint_room")
+
+        if self.phase is Room42ExitPhase.WAIT_HINT:
+            if self.phase_frames < 180:
+                return FrameAction(nes_idle_action(), "wait_hint_dialog")
+            self._set_phase(
+                Room42ExitPhase.RETURN_FROM_HINT,
+                "hint_dialog_settled",
+            )
+
+        if self.phase is Room42ExitPhase.RETURN_FROM_HINT:
+            if snap.screen == ROOM_GEL_SWITCH and snap.mode == PLAY_MODE:
+                self._set_phase(Room42ExitPhase.ROUTE_EAST, "returned_room42")
+            else:
+                return FrameAction(nes_action("RIGHT"), "return_from_hint")
+
+        if self.phase is Room42ExitPhase.ROUTE_EAST:
+            if snap.transitioning:
+                return FrameAction(nes_action("RIGHT"), "map_room_scroll")
+            if snap.mode != PLAY_MODE:
+                return FrameAction(nes_idle_action(), "wait_room42_play")
+            action = self._route_east(snap)
+            if action.reason == "east_route_done":
+                self._set_phase(Room42ExitPhase.ENTER_MAP, "at_map_room_door")
+                return FrameAction(nes_action("RIGHT"), "enter_map_room")
+            return action
+
+        if self.phase is Room42ExitPhase.ENTER_MAP:
+            return FrameAction(nes_action("RIGHT"), "enter_map_room")
+        return FrameAction(nes_idle_action(), "done_or_failed")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+        }
+
+
+class Backtrack44Phase(Enum):
+    ROUTE_23_SOUTH = auto()
+    ENTER_33 = auto()
+    ROUTE_33_SOUTH = auto()
+    ENTER_43 = auto()
+    ROUTE_43_EAST = auto()
+    ENTER_44 = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+_ROOM_23_SOUTH_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (176, 117),
+    (176, 149),
+    (96, 149),
+    (96, 189),
+    (120, 189),
+)
+
+_ROOM_33_SOUTH_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (120, 93),
+    (112, 93),
+    (112, 133),
+    (128, 133),
+    (128, 173),
+    (120, 173),
+    (120, 189),
+)
+
+_ROOM_43_EAST_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (120, 93),
+    (208, 93),
+    (208, 141),
+)
+
+
+@dataclass
+class Level1BacktrackTo44Controller:
+    """Backtrack from room 0x23 and spend its key entering room 0x44."""
+
+    phase: Backtrack44Phase = Backtrack44Phase.ROUTE_23_SOUTH
+    frames: int = 0
+    phase_frames: int = 0
+    waypoint_index: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def _set_phase(self, phase: Backtrack44Phase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            self.waypoint_index = 0
+            if note:
+                self.notes.append(note)
+
+    def _follow(
+        self,
+        snap: ZeldaSnapshot,
+        waypoints: tuple[tuple[int, int], ...],
+        reason: str,
+    ) -> FrameAction:
+        tx, ty = waypoints[self.waypoint_index]
+        dx = tx - snap.link_x
+        dy = ty - snap.link_y
+        if abs(dx) <= 2 and abs(dy) <= 2:
+            self.waypoint_index += 1
+            if self.waypoint_index >= len(waypoints):
+                return FrameAction(nes_idle_action(), f"{reason}_done")
+            tx, ty = waypoints[self.waypoint_index]
+            dx = tx - snap.link_x
+            dy = ty - snap.link_y
+        if abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "DOWN" if dy > 0 else "UP"
+        return FrameAction(nes_action(direction), reason)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if snap.mode == 17:
+            self._set_phase(Backtrack44Phase.FAILED, "link_death")
+            return FrameAction(nes_idle_action(), "link_death")
+        if self.frames >= BACKTRACK_TO_44_MAX_FRAMES:
+            self._set_phase(Backtrack44Phase.FAILED, "timeout")
+            return FrameAction(nes_idle_action(), "timeout")
+        if snap.screen == ROOM_BOOMERANG_GORIYA and snap.mode == PLAY_MODE:
+            self.success = True
+            self._set_phase(Backtrack44Phase.DONE, "room44_entered")
+            return FrameAction(nes_idle_action(), "done")
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+
+        if self.phase is Backtrack44Phase.ROUTE_23_SOUTH:
+            if snap.screen != ROOM_KEY_GORIYA or snap.mode != PLAY_MODE:
+                return FrameAction(nes_idle_action(), "wait_room23")
+            action = self._follow(
+                snap,
+                _ROOM_23_SOUTH_WAYPOINTS,
+                "route_room23_south",
+            )
+            if action.reason.endswith("_done"):
+                self._set_phase(Backtrack44Phase.ENTER_33, "at_room23_south")
+                return FrameAction(nes_action("DOWN"), "enter_room33")
+            return action
+
+        if self.phase is Backtrack44Phase.ENTER_33:
+            if snap.screen == ROOM_KEY_STALFOS_MAZE and snap.mode == PLAY_MODE:
+                self._set_phase(Backtrack44Phase.ROUTE_33_SOUTH, "room33_entered")
+            else:
+                return FrameAction(nes_action("DOWN"), "enter_room33")
+
+        if self.phase is Backtrack44Phase.ROUTE_33_SOUTH:
+            if snap.mode != PLAY_MODE:
+                return FrameAction(nes_action("DOWN"), "settle_room33")
+            action = self._follow(
+                snap,
+                _ROOM_33_SOUTH_WAYPOINTS,
+                "route_room33_south",
+            )
+            if action.reason.endswith("_done"):
+                self._set_phase(Backtrack44Phase.ENTER_43, "at_room33_south")
+                return FrameAction(nes_action("DOWN"), "enter_room43")
+            return action
+
+        if self.phase is Backtrack44Phase.ENTER_43:
+            if snap.screen == ROOM_MAP and snap.mode == PLAY_MODE:
+                self._set_phase(Backtrack44Phase.ROUTE_43_EAST, "room43_entered")
+            else:
+                return FrameAction(nes_action("DOWN"), "enter_room43")
+
+        if self.phase is Backtrack44Phase.ROUTE_43_EAST:
+            if snap.mode != PLAY_MODE:
+                return FrameAction(nes_idle_action(), "settle_room43")
+            action = self._follow(
+                snap,
+                _ROOM_43_EAST_WAYPOINTS,
+                "route_room43_east",
+            )
+            if action.reason.endswith("_done"):
+                self._set_phase(Backtrack44Phase.ENTER_44, "at_room43_east")
+                return FrameAction(nes_action("RIGHT"), "enter_room44")
+            return action
+
+        if self.phase is Backtrack44Phase.ENTER_44:
+            return FrameAction(nes_action("RIGHT"), "enter_room44")
+        return FrameAction(nes_idle_action(), "done_or_failed")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+        }
+
+
+class AquamentusPhase(Enum):
+    ROUTE_ENTRY = auto()
+    ENTER = auto()
+    WAIT_BOSS = auto()
+    ALIGN = auto()
+    FACE = auto()
+    ATTACK = auto()
+    DODGE = auto()
+    COLLECT_HEART = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+_AQUAMENTUS_ENTRY_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (32, 189),
+    (32, 93),
+    (120, 93),
+)
+_AQUAMENTUS_STANCE = (128, 125)
+_AQUAMENTUS_HEART = (192, 141)
+
+
+@dataclass
+class Level1AquamentusController:
+    """Defeat Aquamentus with a fixed stance and reactive fireball dodge."""
+
+    phase: AquamentusPhase = AquamentusPhase.ROUTE_ENTRY
+    frames: int = 0
+    phase_frames: int = 0
+    waypoint_index: int = 0
+    attack_frames: int = 0
+    dodge_frames: int = 0
+    dodge_direction: str = "DOWN"
+    entry_delay_frames: int = 109
+    entry_delay_waited: int = 0
+    stance: tuple[int, int] = _AQUAMENTUS_STANCE
+    threat_radius: int = 20
+    dodge_duration: int = 8
+    initial_health: int | None = None
+    boss_seen: bool = False
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def _set_phase(self, phase: AquamentusPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            self.waypoint_index = 0
+            if note:
+                self.notes.append(note)
+
+    def _route_entry(self, snap: ZeldaSnapshot) -> FrameAction:
+        tx, ty = _AQUAMENTUS_ENTRY_WAYPOINTS[self.waypoint_index]
+        dx = tx - snap.link_x
+        dy = ty - snap.link_y
+        if abs(dx) <= 2 and abs(dy) <= 2:
+            self.waypoint_index += 1
+            if self.waypoint_index >= len(_AQUAMENTUS_ENTRY_WAYPOINTS):
+                return FrameAction(nes_idle_action(), "boss_route_done")
+            return FrameAction(
+                nes_idle_action(),
+                "boss_entry_waypoint_idle",
+            )
+        if abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "DOWN" if dy > 0 else "UP"
+        return FrameAction(nes_action(direction), "route_boss_door")
+
+    @staticmethod
+    def _move_to(
+        snap: ZeldaSnapshot,
+        target: tuple[int, int],
+        reason: str,
+    ) -> FrameAction | None:
+        dx = target[0] - snap.link_x
+        dy = target[1] - snap.link_y
+        if abs(dy) > 3:
+            direction = "DOWN" if dy > 0 else "UP"
+            return FrameAction(nes_action(direction), reason)
+        if abs(dx) > 3:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+            return FrameAction(nes_action(direction), reason)
+        return None
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if snap.mode == 17:
+            self._set_phase(AquamentusPhase.FAILED, "link_death")
+            return FrameAction(nes_idle_action(), "link_death")
+        if self.frames >= AQUAMENTUS_MAX_FRAMES:
+            self._set_phase(AquamentusPhase.FAILED, "timeout")
+            return FrameAction(nes_idle_action(), "timeout")
+
+        if snap.screen == ROOM_AQUAMENTUS and snap.mode == PLAY_MODE:
+            if self.initial_health is None:
+                self.initial_health = snap.health
+            bosses = tuple(
+                obj
+                for obj in snap.objects
+                if obj.type_id == AQUAMENTUS_OBJECT_TYPE and obj.hp > 0
+            )
+            self.boss_seen = self.boss_seen or bool(bosses)
+            if (
+                self.boss_seen
+                and not bosses
+                and self.phase
+                not in (
+                    AquamentusPhase.COLLECT_HEART,
+                    AquamentusPhase.DONE,
+                )
+            ):
+                self._set_phase(
+                    AquamentusPhase.COLLECT_HEART,
+                    "aquamentus_defeated",
+                )
+            if (
+                self.phase is AquamentusPhase.COLLECT_HEART
+                and self.initial_health is not None
+                and snap.health > self.initial_health
+            ):
+                self.success = True
+                self._set_phase(
+                    AquamentusPhase.DONE,
+                    "heart_container_collected",
+                )
+                return FrameAction(nes_idle_action(), "done")
+
+        if snap.transitioning:
+            return FrameAction(nes_action("UP"), "boss_room_scroll")
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if self.phase is AquamentusPhase.ROUTE_ENTRY:
+            if (
+                snap.screen == 0x45
+                and self.entry_delay_waited < self.entry_delay_frames
+            ):
+                self.entry_delay_waited += 1
+                return FrameAction(nes_idle_action(), "align_boss_rng")
+            action = self._route_entry(snap)
+            if action.reason == "boss_route_done":
+                self._set_phase(AquamentusPhase.ENTER, "at_boss_door")
+                return FrameAction(nes_action("UP"), "enter_boss_room")
+            return action
+
+        if self.phase is AquamentusPhase.ENTER:
+            if snap.screen == ROOM_AQUAMENTUS:
+                self._set_phase(AquamentusPhase.WAIT_BOSS, "boss_room_entered")
+                return FrameAction(nes_idle_action(), "wait_boss_spawn")
+            return FrameAction(nes_action("UP"), "enter_boss_room")
+
+        if self.phase is AquamentusPhase.WAIT_BOSS:
+            if self.boss_seen:
+                self._set_phase(AquamentusPhase.ALIGN, "aquamentus_spawned")
+            else:
+                return FrameAction(
+                    nes_action("UP"),
+                    "preposition_while_boss_spawns",
+                )
+
+        if self.phase is AquamentusPhase.COLLECT_HEART:
+            action = self._move_to(
+                snap,
+                _AQUAMENTUS_HEART,
+                "collect_heart_container",
+            )
+            return action or FrameAction(nes_idle_action(), "wait_heart_pickup")
+
+        projectiles = tuple(
+            obj for obj in snap.objects if obj.type_id == FIREBALL_OBJECT_TYPE
+        )
+        if self.phase is AquamentusPhase.DODGE:
+            if self.dodge_frames > 0:
+                self.dodge_frames -= 1
+                return FrameAction(
+                    nes_action(self.dodge_direction),
+                    "dodge_fireball",
+                )
+            self._set_phase(AquamentusPhase.ALIGN, "fireball_dodged")
+
+        threatening = tuple(
+            obj
+            for obj in projectiles
+            if -8 <= obj.x - snap.link_x <= 48
+            and abs(obj.y - snap.link_y) < self.threat_radius
+        )
+        if threatening:
+            nearest = min(
+                threatening,
+                key=lambda obj: abs(obj.x - snap.link_x)
+                + abs(obj.y - snap.link_y),
+            )
+            self.dodge_direction = (
+                "DOWN"
+                if nearest.y <= snap.link_y and snap.link_y < 173
+                else "UP"
+            )
+            self.dodge_frames = self.dodge_duration
+            self._set_phase(AquamentusPhase.DODGE, "fireball_threat")
+            return FrameAction(
+                nes_action(self.dodge_direction),
+                "dodge_fireball",
+            )
+
+        if self.phase is AquamentusPhase.ALIGN:
+            action = self._move_to(
+                snap,
+                self.stance,
+                "align_boss_stance",
+            )
+            if action is not None:
+                return action
+            self._set_phase(AquamentusPhase.FACE, "boss_stance_ready")
+            return FrameAction(nes_action("RIGHT"), "face_aquamentus")
+
+        if self.phase is AquamentusPhase.FACE:
+            self._set_phase(AquamentusPhase.ATTACK, "facing_aquamentus")
+            return FrameAction(nes_idle_action(), "settle_boss_stance")
+
+        if self.phase is AquamentusPhase.ATTACK:
+            self.attack_frames += 1
+            if self.attack_frames % 6 < 4:
+                return FrameAction(nes_action("A"), "attack_aquamentus")
+            return FrameAction(nes_idle_action(), "attack_release")
+
+        return FrameAction(nes_idle_action(), "done_or_failed")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "attack_frames": self.attack_frames,
+            "boss_seen": self.boss_seen,
+            "initial_health": self.initial_health,
+            "entry_delay_frames": self.entry_delay_frames,
+            "stance": list(self.stance),
+            "threat_radius": self.threat_radius,
+            "dodge_duration": self.dodge_duration,
+            "notes": list(self.notes),
+        }
+
+
+class TriforcePhase(Enum):
+    ENTER_ROOM = auto()
+    COLLECT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level1TriforceController:
+    """Enter room 0x36, collect shard 1, and verify its persistent bit."""
+
+    phase: TriforcePhase = TriforcePhase.ENTER_ROOM
+    frames: int = 0
+    waypoint_index: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def _set_phase(self, phase: TriforcePhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            if note:
+                self.notes.append(note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if snap.triforce & LEVEL1_TRIFORCE_BIT:
+            self.success = True
+            self._set_phase(TriforcePhase.DONE, "triforce_shard_1_collected")
+            return FrameAction(nes_idle_action(), "done")
+        if self.frames >= TRIFORCE_MAX_FRAMES:
+            self._set_phase(TriforcePhase.FAILED, "timeout")
+            return FrameAction(nes_idle_action(), "timeout")
+        if snap.mode == 17:
+            self._set_phase(TriforcePhase.FAILED, "link_death")
+            return FrameAction(nes_idle_action(), "link_death")
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+
+        if snap.screen == ROOM_TRIFORCE:
+            self._set_phase(TriforcePhase.COLLECT, "triforce_room_entered")
+
+        if self.phase is TriforcePhase.ENTER_ROOM:
+            if snap.screen != ROOM_AQUAMENTUS:
+                return FrameAction(nes_idle_action(), "wait_boss_room")
+            return FrameAction(nes_action("RIGHT"), "enter_triforce_room")
+
+        if self.phase is TriforcePhase.COLLECT:
+            if snap.transitioning or snap.mode != PLAY_MODE:
+                return FrameAction(nes_action("RIGHT"), "settle_triforce_room")
+            waypoints = (
+                (32, 141),
+                (32, 189),
+                (120, 189),
+                (128, 141),
+            )
+            if self.waypoint_index >= len(waypoints):
+                return FrameAction(nes_idle_action(), "triforce_pickup_wait")
+            tx, ty = waypoints[self.waypoint_index]
+            dx = tx - snap.link_x
+            dy = ty - snap.link_y
+            if abs(dx) <= 3 and abs(dy) <= 3:
+                self.waypoint_index += 1
+                return FrameAction(
+                    nes_idle_action(),
+                    "triforce_waypoint_idle",
+                )
+            if abs(dx) > 3:
+                direction = "RIGHT" if dx > 0 else "LEFT"
+            else:
+                direction = "DOWN" if dy > 0 else "UP"
+            return FrameAction(nes_action(direction), "collect_triforce")
+        return FrameAction(nes_idle_action(), "done_or_failed")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+        }
