@@ -8,7 +8,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from retro_harness.ladder import LADDER, LadderEntry, REPO_ROOT, entry_for
+from retro_harness.ladder import LADDER, LadderEntry, REPO_ROOT, entry_for, shared_rom_zip
 from retro_harness.env import setup_game_rom
 
 
@@ -24,7 +24,7 @@ class SetupResult:
 
 def zip_for_entry(entry: LadderEntry, *, repo_root: Path = REPO_ROOT) -> Path:
     """Absolute path to the shared ROM zip for a ladder entry."""
-    return repo_root / "roms" / "Super Nintendo" / entry.rom_zip
+    return shared_rom_zip(entry, repo_root=repo_root)
 
 
 def setup_entry(entry: LadderEntry, *, repo_root: Path = REPO_ROOT) -> SetupResult:

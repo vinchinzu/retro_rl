@@ -321,7 +321,7 @@ def resolve_optimizer_clip(
         # Action indices — expand via SMB action table at render time is heavier;
         # store as single-int "buttons" and expand later.
         from retro_harness.platformer.actions import action_index_to_buttons
-        from retro_harness.platformer.levels.smb import SMB_ACTIONS
+        from smb.platformer_levels import SMB_ACTIONS
 
         play = [
             list(action_index_to_buttons(int(a), SMB_ACTIONS))
@@ -390,7 +390,7 @@ def _branch_covering(
 
 
 def _smb_ram_snapshot(env: Any) -> dict[str, Any]:
-    from retro_harness.platformer.levels.smb import SMB_COMPUTED, SMB_RAM
+    from smb.platformer_levels import SMB_COMPUTED, SMB_RAM
 
     schema = SMB_RAM.to_schema()
     values = schema.read(env.get_ram())

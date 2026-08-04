@@ -17,7 +17,7 @@ from great_waldo_search.targets import (
     SCORE_LO_ADDR,
     score_u16,
 )
-from retro_harness.video import FooterLabels, RecordingSession
+from retro_harness.video import CaptureSession, FooterLabels
 from retro_harness.video import short_clock
 from retro_harness.showcase import ShowcaseClip, ShowcaseGame
 
@@ -81,7 +81,7 @@ class GreatWaldoSearchShowcase:
     def run_clip(
         self,
         clip: ShowcaseClip,
-        session: RecordingSession,
+        session: CaptureSession,
         env: object,
     ) -> dict[str, Any]:
         recipe = _recipe_for_state(clip.state)

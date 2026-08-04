@@ -22,3 +22,8 @@ plan_doc: snes/battle_clash/docs/plan.md
 last_verified: 2026-07-22
 blocker: "infrastructure — Super Scope / light-gun injection unsupported"
 notes: Out of the active execution queue until peripheral input exists.
+setup:
+  rom_zip: "Battle Clash.zip"
+  integration: BattleClash-Snes
+  ladder_rank: 9
+  ladder_status: INPUT_BLOCKED

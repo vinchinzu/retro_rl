@@ -66,7 +66,7 @@ def play_varia_to_kraid(session: ControllerSession) -> SuperMetroidState:
 
     Expects ordinary gameplay in ``0xA6E2`` with Varia already collected
     (continuous tip endpoint or pure post-collect state). Controller-dev until
-    composed on continuous ``--to varia`` prefix as a RouteHop.
+    composed on continuous ``--to varia`` prefix as a SpineHop.
     """
     require_state(
         session,

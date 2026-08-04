@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from retro_harness.env import get_available_states, make_env
 from retro_harness.ladder import REPO_ROOT, entry_for
-from retro_harness.video import FooterLabels, FrameVideoWriter, RecordingSession
+from retro_harness.video import CaptureSession, FooterLabels, FrameVideoWriter
 from retro_harness.video import FOOTER_HEIGHT
 from retro_harness.segment_runner import configure_headless
 
@@ -56,7 +56,7 @@ class ShowcaseGame(Protocol):
     def run_clip(
         self,
         clip: ShowcaseClip,
-        session: RecordingSession,
+        session: CaptureSession,
         env: object,
     ) -> dict[str, Any]: ...
 
@@ -195,7 +195,7 @@ def record_showcase(
                     if game.players > 1
                     else None
                 )
-                session = RecordingSession(
+                session = CaptureSession(
                     env,
                     sink=writer,
                     footer=footer,

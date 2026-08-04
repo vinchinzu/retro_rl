@@ -23,3 +23,9 @@ plan_doc: snes/great_waldo_search/docs/plan.md
 last_verified: 2026-07-25
 blocker: none — treat as completed pipeline fixture; keep capture current
 notes: Pipeline validation fixture, not a combat competency step.
+setup:
+  rom_zip: "Great Waldo Search, The.zip"
+  integration: GreatWaldoSearch-Snes
+  ladder_rank: 1
+  ladder_status: FULL_GAME
+  video: great_waldo_search/recordings/great_waldo_search_full_credits.mp4

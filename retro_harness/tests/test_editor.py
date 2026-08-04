@@ -275,15 +275,22 @@ class EditorRegistryTests(unittest.TestCase):
         project = get_editor_project("harvest")
         self.assertEqual(project.editor_module, "harvest.tools.editor_app")
         self.assertEqual(project.bridge_module, "harvest.runtime.editor_bridge")
+        self.assertTrue(project.project_root.exists())
 
-    def test_earthbound_editor_is_registered(self) -> None:
-        project = get_editor_project("earthbound")
-        self.assertEqual(project.editor_module, "earthbound_editor.__main__")
-        self.assertEqual(project.bridge_module, "earthbound_editor.editor_bridge")
+    def test_missing_project_raises(self) -> None:
+        with self.assertRaises(KeyError):
+            get_editor_project("earthbound")
 
     def test_registry_entries_are_unique(self) -> None:
         ids = [project.project_id for project in registered_editor_projects()]
         self.assertEqual(len(ids), len(set(ids)))
+        self.assertIn("harvest", ids)
+        for project in registered_editor_projects():
+            self.assertTrue(
+                project.project_root.exists(),
+                f"{project.project_id} root missing: {project.project_root}",
+            )
+
 
 
 if __name__ == "__main__":

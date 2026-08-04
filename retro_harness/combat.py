@@ -24,10 +24,9 @@ DEFAULT_ATTACK_GAP = 10
 DEFAULT_GRAB_RANGE_X = 14
 DEFAULT_PREFERRED_STANDOFF = 18
 DEFAULT_LEFT_THREAT_X = 96
-# Screen-lock edges: chasing past these bands walks into the scroll wall
-# while thugs still chip from just off the playable band.
+# Camera-edge clamps: do not walk past these screen-relative bands during
+# a lock (game policies may override margins).
 DEFAULT_CAMERA_LEFT_MARGIN = 40
-# Playable band tops out near cam+170 during Slum locks.
 DEFAULT_CAMERA_RIGHT_MARGIN = 160
 DEFAULT_EDGE_ATTACK_BONUS = 24
 
@@ -383,9 +382,12 @@ def fight_nearest_action(
     camera_left_margin: int = DEFAULT_CAMERA_LEFT_MARGIN,
     camera_right_margin: int = DEFAULT_CAMERA_RIGHT_MARGIN,
     edge_attack_bonus: int = DEFAULT_EDGE_ATTACK_BONUS,
-    patient_approach: bool = False,
 ) -> FrameAction:
-    """Align vertically, close X distance, then punch/throw nearest threat."""
+    """Generic melee: target → throw → Y-align → X approach → attack.
+
+    Game-specific edge-lock / patient tactics (e.g. Final Fight right-edge
+    parks) live in the owning game package, not here.
+    """
     enemy = select_combat_target(
         state,
         prefer_left_threat=prefer_left_threat,
@@ -394,17 +396,9 @@ def fight_nearest_action(
     if enemy is None:
         return FrameAction(action=idle_action(), reason="no_enemy")
     dx = abs(enemy.x - state.player_x)
-    on_left_edge = near_camera_left(
-        state, margin=camera_left_margin
-    )
-    on_right_edge = near_camera_right(
-        state, margin=camera_right_margin
-    )
+    on_left_edge = near_camera_left(state, margin=camera_left_margin)
     enemy_left = enemy.x < state.player_x
-    enemy_right = enemy.x > state.player_x
-    enemy_screen_x = enemy.x - state.camera_x
-    # Hard clamp: never stand past the scroll walk-limit during a lock.
-    # Skip when any living thug is on/behind us (do not walk into them).
+    # Simple clamp: do not stand past the right walk-limit during a lock.
     hold_limit = state.camera_x + camera_right_margin + 4
     left_threat = any(e.x <= state.player_x for e in state.living_enemies)
     if (
@@ -412,172 +406,9 @@ def fight_nearest_action(
         and state.player_x > hold_limit + 6
         and not left_threat
     ):
-        return FrameAction(
-            action=buttons("LEFT"), reason="edge_recenter"
-        )
-    # Thugs parked past the right walk limit (~cam+190): close X to the
-    # hold first. Y-aligning mid-screen while they chip burns the last life.
-    unreachable_right = (
-        state.screen_locked
-        and enemy_right
-        and enemy_screen_x > camera_right_margin + 8
-    )
-    right_edge_fight = unreachable_right or (
-        state.screen_locked and on_right_edge and enemy_right
-    )
-    # Also treat mid-screen vs far-right park as right-edge so flank
-    # approach cannot walk past the hold toward a closing thug.
-    if (
-        state.screen_locked
-        and enemy_right
-        and enemy_screen_x > camera_right_margin - 20
-    ):
-        right_edge_fight = True
-    if right_edge_fight:
-        left_other = any(
-            e.slot != enemy.slot and e.x <= state.player_x
-            for e in state.living_enemies
-        )
-        hold_x = state.camera_x + camera_right_margin + 4
-        # Wait further left than the walk-limit so far-park jump kicks whiff.
-        # Tough/patient: deeper wait keeps dx>95 vs park~sx197.
-        wait_x = state.camera_x + (72 if patient_approach else 100)
-        # Never stand past the walk limit — RIGHT+throw walks off the band.
-        if not left_other and state.player_x > hold_x + 6:
-            return FrameAction(
-                action=buttons("LEFT"), reason="edge_recenter"
-            )
-        # Engage when the thug has closed into poke distance (~cam+205).
-        engage = enemy_screen_x <= camera_right_margin + 45
-        # Hold sits at ~cam+164; engage-boundary thugs are dx≈40 — need a
-        # little slack past attack_range so the first poke connects.
-        in_punch = dx <= attack_range + 8
-        dy = abs(enemy.y - state.player_y)
-        if in_punch:
-            # Poke spacing: step out of overlap before trading.
-            if (
-                not left_other
-                and min_range > 0
-                and dx < min_range + 2
-                and enemy_right
-            ):
-                return FrameAction(
-                    action=buttons("LEFT"), reason="space_left"
-                )
-            # Attack steps can drift past the walk limit — correct first.
-            if not left_other and state.player_x >= hold_x:
-                return FrameAction(
-                    action=buttons("LEFT"), reason="edge_recenter"
-                )
-            # Only micro-align at punch X. Large Y-chase / punch trades hurt.
-            if dy > y_tolerance + 4 and dy <= y_tolerance + 12:
-                return align_vertical_action(
-                    state,
-                    enemy.y,
-                    tolerance=y_tolerance,
-                    invert_vertical=invert_vertical,
-                )
-            if dy > y_tolerance + 12:
-                return FrameAction(
-                    action=idle_action(), reason="edge_wait"
-                )
-            # Tough thug: keep a lane offset before poking to cut trades.
-            if patient_approach and dy < 6:
-                if enemy.y >= state.player_y:
-                    away = "DOWN" if invert_vertical else "UP"
-                else:
-                    away = "UP" if invert_vertical else "DOWN"
-                return FrameAction(
-                    action=buttons(away), reason="edge_desync"
-                )
-            # Throw only toward LEFT here — throw_right walks past walk X.
-            if (
-                use_throw
-                and dx <= grab_range + 8
-                and enemy.x <= state.player_x
-            ):
-                if cadence is not None:
-                    return cadence.next_throw(
-                        state, enemy.x, attack_button=attack_button
-                    )
-                return grab_throw_action(
-                    state, enemy.x, attack_button=attack_button
-                )
-            if cadence is not None:
-                return cadence.next_attack(button=attack_button)
-            return attack_action(button=attack_button)
-        # Tough thug: park at deep wait + Y-desync; never walk the kick band.
-        # Let them close into punch range (avoids press/retreat stalls).
-        if patient_approach and not left_other:
-            if state.player_x > wait_x + 14:
-                return FrameAction(
-                    action=buttons("LEFT"), reason="edge_recenter"
-                )
-            if state.player_x < wait_x - 10:
-                return FrameAction(
-                    action=buttons("RIGHT"), reason="edge_mid"
-                )
-            if dy < y_tolerance + 14:
-                # Increase |dy| so jump kicks on our old lane whiff.
-                if enemy.y >= state.player_y:
-                    away = "DOWN" if invert_vertical else "UP"
-                else:
-                    away = "UP" if invert_vertical else "DOWN"
-                return FrameAction(
-                    action=buttons(away), reason="edge_desync"
-                )
-            return FrameAction(action=idle_action(), reason="edge_wait")
-        target_x = hold_x if engage else wait_x
-        # Kick band (dx 45–95): never idle at the HOLD (w3 chips dx≈78–88
-        # at psx≈170). Mid-screen idle is safer than walking through kicks.
-        in_kick_dx = enemy_right and 45 <= dx <= 95
-        player_sx = state.player_x - state.camera_x
-        holdish = player_sx >= camera_right_margin - 20
-        if (
-            not left_other
-            and state.player_x < target_x - 10
-            and not (in_kick_dx and not engage)
-        ):
-            return FrameAction(
-                action=buttons("RIGHT"),
-                reason="edge_press" if engage else "edge_mid",
-            )
-        if not left_other and state.player_x > target_x + 14:
-            if in_kick_dx and not engage:
-                if holdish:
-                    return FrameAction(
-                        action=buttons("LEFT"), reason="edge_recenter"
-                    )
-                return FrameAction(
-                    action=idle_action(), reason="edge_wait"
-                )
-            return FrameAction(
-                action=buttons("LEFT"), reason="edge_recenter"
-            )
-        # Engaged but still in kick dx at the hold: fall back to wait
-        # instead of idling into jump kicks (w3 chips at psx≈170).
-        if engage and in_kick_dx and not left_other:
-            if state.player_x > wait_x + 8:
-                return FrameAction(
-                    action=buttons("LEFT"), reason="edge_recenter"
-                )
-            return FrameAction(action=idle_action(), reason="edge_wait")
-        # Far park: do NOT chase enemy Y (jump-kick lane). Hold lane.
-        if not engage:
-            return FrameAction(action=idle_action(), reason="edge_wait")
-        if not is_vertically_aligned(
-            state.player_y, enemy.y, tolerance=y_tolerance
-        ):
-            return align_vertical_action(
-                state,
-                enemy.y,
-                tolerance=y_tolerance,
-                invert_vertical=invert_vertical,
-            )
-        return FrameAction(action=idle_action(), reason="edge_wait")
-    # Grab/throw from above/below is preferred in Final Fight — allow throw
-    # before perfect Y align when already close on X. During a lock, never
-    # throw_right — RIGHT+Y walks into the scroll wall.
+        return FrameAction(action=buttons("LEFT"), reason="edge_recenter")
+    # Throw when close on X (before perfect Y). Never throw_right into the
+    # scroll wall during a lock.
     can_throw = use_throw and dx <= grab_range
     if can_throw and state.screen_locked and enemy.x >= state.player_x:
         can_throw = False
@@ -611,8 +442,7 @@ def fight_nearest_action(
         return attack_action(button=attack_button)
     if on_left_edge and enemy_left:
         return FrameAction(action=buttons("RIGHT"), reason="edge_space")
-    # Sandwiched between two living thugs: throw/space the nearer one;
-    # never walk deeper into the pocket.
+    # Sandwiched: attack/throw the nearer threat; do not walk deeper in.
     living = state.living_enemies
     if len(living) >= 2:
         left_any = any(e.x < state.player_x for e in living)

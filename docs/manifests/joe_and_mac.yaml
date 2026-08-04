@@ -22,3 +22,8 @@ plan_doc: snes/joe_and_mac/docs/plan.md
 last_verified: 2026-07-22
 blocker: first traversable Stage 1 segment
 notes: Controllable Stage 1 checkpoint; progress RAM mapped.
+setup:
+  rom_zip: "Joe & Mac - Caveman Ninjas.zip"
+  integration: JoeAndMac-Snes
+  ladder_rank: 10
+  ladder_status: BOOT_WORKS

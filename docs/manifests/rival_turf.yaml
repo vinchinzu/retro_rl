@@ -22,3 +22,8 @@ plan_doc: snes/rival_turf/docs/plan.md
 last_verified: 2026-07-22
 blocker: clear opening Stage 1 combat lock
 notes: Reset → fight-ready Stage 1 checkpoint verified.
+setup:
+  rom_zip: "Rival Turf!.zip"
+  integration: RivalTurf-Snes
+  ladder_rank: 5
+  ladder_status: BOOT_WORKS

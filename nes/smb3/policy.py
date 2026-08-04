@@ -1,6 +1,6 @@
 """World 1-1 clear policy for Super Mario Bros. 3 (NES).
 
-Action indices match ``retro_harness.platformer.levels.smb3.SMB3_ACTIONS``:
+Action indices match ``smb3.platformer_levels.SMB3_ACTIONS``:
 
 0 NOTHING, 1 RIGHT, 2 RIGHT+B (run), 3 RIGHT+B+A (run+jump),
 4 RIGHT+A, 5 A, 6 LEFT, 7 LEFT+B, 8 LEFT+B+A, 9 LEFT+A, 10 DOWN.
@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from retro_harness.platformer.actions import action_index_to_buttons
-from retro_harness.platformer.levels.smb3 import SMB3_ACTIONS
+from smb3.platformer_levels import SMB3_ACTIONS
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 

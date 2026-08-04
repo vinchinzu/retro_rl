@@ -5,7 +5,7 @@ a :class:`TipSpec` row:
 
 * **Early tips** (morph→supers) register real ``hops`` + ``parent_tip_id`` and
   play through :func:`play_tip` / :func:`play_hops`. Finish shapes differ via
-  ``assist_mode`` + ``final_conditions_fn`` plugins (no ``custom_run``).
+  ``assist_mode`` + ``final_conditions_fn`` plugins.
 * **Super+ tips** parent through ``supers`` and use :func:`play_tip` /
   :func:`run_tip` with :class:`~super_metroid.routes.kpdr.spine.SpineHop` deltas
   and spine entry/ordinary condition keys.
@@ -53,6 +53,7 @@ AssistMode = Literal["ammo", "resources"]
 __all__ = [
     "AssistMode",
     "FinishCtx",
+    "TipPlayResult",
     "TipSpec",
     "TIP_SPECS",
     "TIP_BY_ID",
@@ -63,6 +64,15 @@ __all__ = [
     "run_tip",
     "run_to_tip",
 ]
+
+
+@dataclass(frozen=True)
+class TipPlayResult:
+    """Typed evidence from :func:`play_tip` (parent chain + hop delta)."""
+
+    last: Any = None  # last non-None hop play return
+    boss: Any = None  # SporeSpawnEvidence or similar
+    super_collect: Any = None  # SuperCollectEvidence
 
 
 @dataclass(frozen=True)
@@ -81,9 +91,13 @@ class TipSpec:
     """One continuous power-on tip (CLI ``--to`` / ``run_to`` target).
 
     Spine-driven tips set ``parent_tip_id`` + ``hops`` (SpineHop delta). Play
-    always goes through :func:`play_tip` when ``custom_play`` is None. Run goes
-    through :func:`run_tip` for every tip: early finish shapes use
-    ``assist_mode`` + ``final_conditions_fn``; Super+ uses entry/ordinary keys.
+    always goes through :func:`play_tip`. Run goes through :func:`run_tip` for
+    every tip: early finish shapes use ``assist_mode`` + ``final_conditions_fn``;
+    Super+ uses entry/ordinary keys.
+
+    CLI identity (display, aliases, capability flags) lives here; catalog
+    :class:`~super_metroid.routes.catalog.ContinuousTip` and
+    :class:`~retro_harness.adventure.routes.NamedRoute` are derived views.
     """
 
     tip_id: str
@@ -101,6 +115,13 @@ class TipSpec:
     final_room: int | None = None
     require_hi_jump: bool = False
     require_varia: bool = False
+    # --- CLI identity / capability (source of truth for ContinuousTip) ---
+    display_name: str = ""
+    description: str = ""
+    aliases: tuple[str, ...] = ()
+    supports_room_timing: bool = False
+    supports_unlimited_energy: bool = False
+    supports_checkpoint: bool = False
     # Assist: ammo-only (morph/bombs) vs full energy+ammo (spore+).
     assist_mode: AssistMode = "resources"
     # finish_report knobs (early morph/bombs differ from Super+).
@@ -117,23 +138,19 @@ class TipSpec:
     source_policy_fn: Callable[[bool], str] | None = None
     # Early spore/supers policy hashes; None + include → Super+ kpdr sources.
     policy_sources_fn: Callable[[], dict[str, object]] | None = None
-    custom_play: Callable[..., Any] | None = None
-    # Escape hatch only; product tips leave this None (generic run_tip).
-    custom_run: Callable[..., ContinuousRunReport] | None = None
 
     @property
-    def is_spine_driven(self) -> bool:
-        """True when run goes through :func:`run_tip` (no custom_run)."""
-        return self.custom_run is None
-
-    @property
-    def is_hop_composed(self) -> bool:
-        """True when play goes through parent chain + :func:`play_hops`."""
-        return self.custom_play is None
+    def artifact_stem(self) -> str:
+        """Recording basename under ``recordings/`` (always ``tip_id``)."""
+        return self.tip_id
 
 
 def register_tips(specs: Sequence[TipSpec], *, replace: bool = False) -> None:
-    """Merge tip rows into the module-level table (order preserved)."""
+    """Merge tip rows into the module-level table (order preserved).
+
+    After each merge, rebuilds catalog ContinuousTip / NamedRoute views so CLI
+    identity stays derived from TipSpec (no parallel meta tables).
+    """
     global TIP_SPECS, TIP_BY_ID
     if replace:
         TIP_SPECS = tuple(specs)
@@ -141,17 +158,9 @@ def register_tips(specs: Sequence[TipSpec], *, replace: bool = False) -> None:
         existing = {s.tip_id: s for s in TIP_SPECS}
         for spec in specs:
             existing[spec.tip_id] = spec
-        # Stable order: previous order, then new tip_ids.
+        # Stable order: previous order, then new tip_ids (latest value wins).
         ordered: list[TipSpec] = []
         seen: set[str] = set()
-        for s in list(TIP_SPECS) + list(specs):
-            if s.tip_id in seen:
-                # Prefer latest registration for that id.
-                continue
-            # Will fill below from existing map
-            seen.add(s.tip_id)
-        ordered = []
-        seen.clear()
         for s in list(TIP_SPECS) + list(specs):
             if s.tip_id in seen:
                 continue
@@ -159,6 +168,9 @@ def register_tips(specs: Sequence[TipSpec], *, replace: bool = False) -> None:
             ordered.append(existing[s.tip_id])
         TIP_SPECS = tuple(ordered)
     TIP_BY_ID = {s.tip_id: s for s in TIP_SPECS}
+    from super_metroid.routes.catalog import rebuild_from_tip_specs
+
+    rebuild_from_tip_specs()
 
 
 def get_tip(tip_id: str) -> TipSpec:
@@ -175,20 +187,11 @@ def _invoke_after(
     splits: list[Split],
     result: Any,
 ) -> None:
-    """Call hop.after with (session, splits, result) when supported."""
+    """Call hop.after with a single signature: (session, splits, result)."""
     after = hop.after
     if after is None:
         return
-    try:
-        after(session, splits, result)  # type: ignore[call-arg]
-        return
-    except TypeError:
-        pass
-    try:
-        after(session, splits)  # type: ignore[call-arg]
-        return
-    except TypeError:
-        after(session)
+    after(session, splits, result)
 
 
 def play_hops(
@@ -200,10 +203,9 @@ def play_hops(
     """Run ordered SpineHop legs: play → after → split → assert destination.
 
     Optional ``segments`` collects :class:`SegmentEvidence` return values from
-    policy hops (early bombs path). ``after`` may take ``(session)``,
-    ``(session, splits)``, or ``(session, splits, result)`` for multi-split
-    bookkeeping. Returns the last non-``None`` play result (boss / collect
-    evidence for early tips).
+    policy hops (early bombs path). ``after`` takes
+    ``(session, splits, result)`` for multi-split bookkeeping. Returns the last
+    non-``None`` play result (boss / collect evidence for early tips).
     """
     last: Any = None
     for hop in hops:
@@ -237,36 +239,36 @@ def play_hops(
     return last
 
 
-def _invoke_custom_play(
-    spec: TipSpec,
-    session: RouteSession,
-    splits: list[Split],
-    segments: list[SegmentEvidence],
-) -> Any:
-    play = spec.custom_play
-    if play is None:
-        raise RuntimeError(f"Tip {spec.tip_id!r} has no custom_play")
-    try:
-        return play(session, splits, segments)
-    except TypeError:
-        return play(session, splits)
-
-
-def _merge_tip_play_results(parent_result: Any, hop_result: Any) -> Any:
-    """Combine parent + hop evidence (supers: boss + super_collect)."""
+def _merge_tip_play_results(
+    parent_result: TipPlayResult | None,
+    hop_result: Any,
+) -> TipPlayResult:
+    """Combine parent + hop evidence into typed :class:`TipPlayResult` fields."""
+    base = parent_result if parent_result is not None else TipPlayResult()
     if hop_result is None:
-        return parent_result
-    if parent_result is None:
-        return hop_result
+        return base
+
     # Local imports: avoid tips ↔ early controller cycles at module load.
     from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
     from super_metroid.routes.kpdr.super_collect import SuperCollectEvidence
 
-    if isinstance(parent_result, SporeSpawnEvidence) and isinstance(
-        hop_result, SuperCollectEvidence
-    ):
-        return (parent_result, hop_result)
-    return hop_result
+    boss = base.boss
+    super_collect = base.super_collect
+    if isinstance(hop_result, SporeSpawnEvidence):
+        boss = hop_result
+    elif isinstance(hop_result, SuperCollectEvidence):
+        super_collect = hop_result
+    elif isinstance(hop_result, TipPlayResult):
+        return TipPlayResult(
+            last=hop_result.last if hop_result.last is not None else base.last,
+            boss=hop_result.boss if hop_result.boss is not None else base.boss,
+            super_collect=(
+                hop_result.super_collect
+                if hop_result.super_collect is not None
+                else base.super_collect
+            ),
+        )
+    return TipPlayResult(last=hop_result, boss=boss, super_collect=super_collect)
 
 
 def play_tip(
@@ -274,17 +276,11 @@ def play_tip(
     session: RouteSession,
     splits: list[Split],
     segments: list[SegmentEvidence],
-) -> Any:
-    """Play a tip by id: custom_play, or parent chain + SpineHop delta."""
+) -> TipPlayResult:
+    """Play a tip by id: parent chain + SpineHop delta."""
     spec = get_tip(tip_id)
-    # Prefer hop composition when hops/parent are registered (early + Super+).
-    if spec.custom_play is not None and not spec.hops and spec.parent_tip_id is None:
-        return _invoke_custom_play(spec, session, splits, segments)
-    if spec.custom_play is not None and not spec.hops:
-        # Legacy custom_play that composes its own parent (should be rare).
-        return _invoke_custom_play(spec, session, splits, segments)
 
-    parent_result: Any = None
+    parent_result: TipPlayResult | None = None
     if spec.parent_tip_id is not None:
         parent_result = play_tip(spec.parent_tip_id, session, splits, segments)
     hop_result: Any = None
@@ -444,10 +440,6 @@ def run_tip(
     from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
 
     spec = get_tip(tip_id)
-    if spec.custom_run is not None:
-        raise RuntimeError(
-            f"Tip {tip_id!r} uses custom_run; call that or run_to_tip()"
-        )
 
     clean = resolve_clean_resources(
         unlimited_energy=unlimited_energy,
@@ -459,16 +451,13 @@ def run_tip(
         unlimited_energy=unlimited_energy,
         unlimited_ammo=unlimited_ammo,
     )
-    box: dict[str, object] = {"boss": None, "super_collect": None}
+    play_result = TipPlayResult()
     plan = route_plan_evidence() if spec.include_route_plan else None
     timer = RoomTimer() if room_timing_path is not None else None
 
     def play(ctx: PlayContext) -> None:
-        result = play_tip(tip_id, ctx.session, ctx.splits, ctx.segments)
-        if isinstance(result, tuple) and len(result) == 2:
-            box["boss"], box["super_collect"] = result
-        elif result is not None:
-            box["boss"] = result
+        nonlocal play_result
+        play_result = play_tip(tip_id, ctx.session, ctx.splits, ctx.segments)
 
     result = run_continuous(
         play=play,
@@ -480,8 +469,8 @@ def run_tip(
         room_timer=timer,
         capture_checkpoint=state_output is not None,
     )
-    boss = box["boss"]
-    super_collect = box["super_collect"]
+    boss = play_result.boss
+    super_collect = play_result.super_collect
     finish_ctx = FinishCtx(
         final=result.final_state,
         result=result,
@@ -543,8 +532,5 @@ def run_to_tip(
     tip_id: str,
     **kwargs: Any,
 ) -> ContinuousRunReport:
-    """Dispatch: custom_run when present, else :func:`run_tip`."""
-    spec = get_tip(tip_id)
-    if spec.custom_run is not None:
-        return spec.custom_run(**kwargs)
+    """Power-on through a tip via :func:`run_tip`."""
     return run_tip(tip_id, **kwargs)

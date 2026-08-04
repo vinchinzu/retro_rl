@@ -2,6 +2,9 @@
 
 Hop order lives in :mod:`super_metroid.routes.kpdr.spine_hops`.
 Public facade: :mod:`super_metroid.routes.kpdr.spine`.
+
+CLI identity (display_name, aliases, capability flags) lives on each
+:class:`TipSegment` and is copied onto generated TipSpec rows in hops.py.
 """
 
 from __future__ import annotations
@@ -34,6 +37,12 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         timing_source="red_tower",
         entry_condition_key="natural_red_tower_entry",
         ordinary_condition_key="post_red_ordinary",
+        display_name="Power-on → Red Tower (KPDR K1)",
+        description=(
+            "Supers prefix through farming, Big Pink main, GHZ, Noob, "
+            "and natural Red Tower entry."
+        ),
+        aliases=("red", "k1"),
     ),
     TipSegment(
         tip_id="bat",
@@ -50,6 +59,12 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         timing_source="bat",
         entry_condition_key="natural_bat_room_entry",
         ordinary_condition_key="post_bat_ordinary",
+        display_name="Power-on → Bat Room (KPDR K2.0)",
+        description=(
+            "Red Tower prefix through natural Red Tower descent and "
+            "Bat Room entry (first K2 hop)."
+        ),
+        aliases=("bat_room", "k2_0"),
     ),
     TipSegment(
         tip_id="below_spazer",
@@ -65,6 +80,13 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         timing_source="below_spazer",
         entry_condition_key="natural_below_spazer_entry",
         ordinary_condition_key="post_below_spazer_ordinary",
+        display_name="Power-on → Below Spazer (KPDR K2.1)",
+        description=(
+            "Bat prefix through natural three-platform Bat crossing and "
+            "Below Spazer entry (Charge Beam collected on Big Pink detour)."
+        ),
+        aliases=("below", "k2_1"),
+        supports_checkpoint=True,
     ),
     TipSegment(
         tip_id="warehouse",
@@ -81,6 +103,12 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         timing_source="warehouse",
         entry_condition_key="natural_warehouse_entry",
         ordinary_condition_key="post_warehouse_ordinary",
+        display_name="Power-on → Warehouse Entrance (KPDR K2.6)",
+        description=(
+            "Below Spazer prefix through West Tunnel, Glass Tunnel, "
+            "East Tunnel, and natural Warehouse Entrance."
+        ),
+        aliases=("warehouse_entrance", "k2_6"),
     ),
     TipSegment(
         tip_id="hijump",
@@ -97,6 +125,12 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         entry_condition_key="natural_hijump_room",
         ordinary_condition_key="post_hijump_ordinary",
         require_hi_jump=True,
+        display_name="Power-on → Hi-Jump Boots (KPDR K2.10)",
+        description=(
+            "Warehouse prefix through Business Center, Hi-Jump shaft, "
+            "and natural Hi-Jump Boots collect."
+        ),
+        aliases=("hi_jump", "hi-jump", "k2_10"),
     ),
     TipSegment(
         tip_id="kraid",
@@ -113,6 +147,12 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         entry_condition_key="natural_kraid_entry",
         ordinary_condition_key="post_kraid_ordinary",
         require_hi_jump=True,
+        display_name="Power-on → Kraid entry (KPDR K2.18)",
+        description=(
+            "Hi-Jump prefix through return to Warehouse, Zeela/Kihunter/"
+            "Baby/Eye approach, and natural Kraid room entry."
+        ),
+        aliases=("kraid_entry", "k2_18"),
     ),
     TipSegment(
         tip_id="varia",
@@ -130,6 +170,13 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         ordinary_condition_key="post_varia_ordinary",
         require_hi_jump=True,
         require_varia=True,
+        display_name="Power-on → Varia Suit (KPDR K3)",
+        description=(
+            "Kraid-entry prefix through natural Kraid fight, rear exit, "
+            "and real Varia PLM collect."
+        ),
+        aliases=("varia_suit", "k3"),
+        supports_checkpoint=True,
     ),
     TipSegment(
         tip_id="business",
@@ -148,6 +195,13 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         ordinary_condition_key="post_business_return_ordinary",
         require_hi_jump=True,
         require_varia=True,
+        display_name="Power-on → Business Center return (KPDR K3→K4)",
+        description=(
+            "Varia prefix through the natural Kraid return spine and the "
+            "right-ledge Warehouse reverse stack into Business Center."
+        ),
+        aliases=("business_center", "k3_return"),
+        supports_checkpoint=True,
     ),
     TipSegment(
         tip_id="frog",
@@ -165,6 +219,13 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         ordinary_condition_key="post_frog_save_ordinary",
         require_hi_jump=True,
         require_varia=True,
+        display_name="Power-on → Frog Savestation (KPDR K4.0)",
+        description=(
+            "Business return plus the elevator descent and blue-door exit to "
+            "Frog Savestation."
+        ),
+        aliases=("frog_save", "k4_0"),
+        supports_checkpoint=True,
     ),
     TipSegment(
         tip_id="bat_cave",
@@ -183,6 +244,14 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         ordinary_condition_key="post_bat_cave_ordinary",
         require_hi_jump=True,
         require_varia=True,
+        display_name="Power-on → Bat Cave (KPDR K4.4 first Bubble)",
+        description=(
+            "Business return through Cathedral Entrance → Cathedral → Rising "
+            "Tide → Bubble Mountain (R19 double-WJ fire + Super door) into "
+            "ordinary Bat Cave. Sibling of Frog Save, not a frog prefix."
+        ),
+        aliases=("norfair_bat", "bubble_bat", "k4_4", "k4.4"),
+        supports_checkpoint=True,
     ),
 )
 

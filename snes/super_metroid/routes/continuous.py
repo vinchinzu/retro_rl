@@ -7,8 +7,9 @@ are hop-composed via ``parent_tip_id`` + spines; all finish through
 TipSpec). ``run_to`` dispatches via
 :func:`~super_metroid.routes.tips.run_to_tip`.
 
-Extend Super+: pure controller → graph → spine SpineHop/TipSegment → catalog
-``ContinuousTip`` → ``run_to`` — never another clone runner pair.
+Extend Super+: pure controller → graph → spine SpineHop/TipSegment (with CLI
+fields) → TipSpec registration (derives ContinuousTip) → ``run_to`` — never
+another clone runner pair.
 
 **Public continuous API:** ``run_to``, ``play_tip`` / ``run_tip``, early
 ``play_*`` / ``run_*``. Report type is :class:`ContinuousRunReport` only.
@@ -40,8 +41,7 @@ from super_metroid.routes.early_continuous import (
     run_supers,
 )
 from super_metroid.routes.kpdr.hops import (
-    POST_SUPERS_TIP_BY_ID,
-    POST_SUPERS_TIP_SPECS,
+    SUPER_TIP_BY_ID,
     SUPER_TIP_SPECS,
 )
 from super_metroid.routes.catalog import (
@@ -111,9 +111,8 @@ __all__ = [
     "TIP_BY_ID",
     "EARLY_TIP_SPECS",
     "EARLY_TIP_BY_ID",
-    "POST_SUPERS_TIP_SPECS",
-    "POST_SUPERS_TIP_BY_ID",
     "SUPER_TIP_SPECS",
+    "SUPER_TIP_BY_ID",
     "play_hops",
     "play_tip",
     "run_tip",
@@ -217,17 +216,18 @@ def run_to(
         if not resolved.supports_checkpoint:
             raise ValueError(
                 f"tip {resolved.tip_id!r} does not support checkpoint output "
-                f"(set ContinuousTip.supports_checkpoint=True)"
+                f"(set TipSpec.supports_checkpoint=True)"
             )
         kwargs["state_output"] = state_output
 
     return run_to_tip(resolved.tip_id, **kwargs)
 
 
-# Super+ play_<tip> / run_<tip> on this module (data-driven; not in __all__).
+# Super+ play_<tip> / run_<tip> on this module (thin aliases for segment
+# registry / scripts; prefer run_to / play_tip. Not in __all__).
 _POST_SUPERS_ALIASES = install_post_supers_aliases(
     globals(),
-    POST_SUPERS_TIP_BY_ID,
+    SUPER_TIP_BY_ID,
     play_spec=play_tip,
     run_spec=run_tip,
 )
@@ -237,17 +237,15 @@ def _continuous_segment_registry() -> dict[str, object]:
     """Tip-id → play callable from the unified TipSpec table."""
     segments: dict[str, object] = {}
     segments["run_to"] = run_to
-    # Public play_* wrappers for early tips (hop-composed; no custom_play).
+    # Public play_* wrappers for early tips; Super+ aliases for the rest.
     _early_play = {
         "morph": play_morph,
         "bombs": play_bombs,
         "spore": play_spore,
         "supers": play_supers,
     }
-    for tip_id, spec in TIP_BY_ID.items():
-        if spec.custom_play is not None:
-            segments[tip_id] = spec.custom_play
-        elif tip_id in _early_play:
+    for tip_id in TIP_BY_ID:
+        if tip_id in _early_play:
             segments[tip_id] = _early_play[tip_id]
         else:
             segments[tip_id] = _POST_SUPERS_ALIASES[f"play_{tip_id}"]

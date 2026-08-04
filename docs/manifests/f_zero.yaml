@@ -22,3 +22,8 @@ plan_doc: snes/f_zero/docs/plan.md
 last_verified: 2026-07-22
 blocker: one Mute City lap without crash
 notes: Race-start checkpoint and speed/lateral RAM mapped.
+setup:
+  rom_zip: "F-Zero.zip"
+  integration: FZero-Snes
+  ladder_rank: 6
+  ladder_status: BOOT_WORKS

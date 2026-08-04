@@ -17,10 +17,11 @@ from retro_harness.combat import (
     AttackCadence,
     PreferredFlank,
     WalkProgress,
-    fight_nearest_action,
 )
 from retro_harness.ram_state import GameMode, GameState
 from retro_harness.input_script import FrameAction
+
+from final_fight.edge_combat import ff_fight_nearest_action
 
 
 @dataclass
@@ -930,7 +931,7 @@ def _fight_action(
     in Stage1Policy.tick (gap=3); patient_approach stays tough-only.
     """
     use_patient = _is_tough_thug(state)
-    return fight_nearest_action(
+    return ff_fight_nearest_action(
         state,
         y_tolerance=_Y_TOLERANCE,
         attack_range=_ATTACK_RANGE,

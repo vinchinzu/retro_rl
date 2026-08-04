@@ -55,7 +55,7 @@ from great_waldo_search.targets import (
 )
 from retro_harness.env import make_env
 from retro_harness.actions import buttons_multi, idle_action_multi
-from retro_harness.video import FooterLabels, FrameVideoWriter, RecordingSession
+from retro_harness.video import CaptureSession, FooterLabels, FrameVideoWriter
 from retro_harness.video import FOOTER_HEIGHT, short_clock
 from retro_harness.segment_runner import configure_headless
 from retro_harness.showcase import title_card_with_footer
@@ -124,7 +124,7 @@ def _footer_for_scene(
     )
 
 
-def _run_boot(session: RecordingSession, env: object) -> dict[str, Any]:
+def _run_boot(session: CaptureSession, env: object) -> dict[str, Any]:
     script = _boot_script_multi()
     for action in script:
         session.step(action)
@@ -140,7 +140,7 @@ def _run_boot(session: RecordingSession, env: object) -> dict[str, Any]:
 
 
 def _run_scene(
-    session: RecordingSession,
+    session: CaptureSession,
     env: object,
     recipe: SceneRecipe,
     *,
@@ -238,7 +238,7 @@ def run_full_game(
                 )
 
             sink = writer if writer is not None else _NullSink()
-            session = RecordingSession(
+            session = CaptureSession(
                 env,
                 sink=sink,
                 footer=footer,

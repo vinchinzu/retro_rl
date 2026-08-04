@@ -49,12 +49,61 @@ specific submodule for new imports.
 - `bot_runner` owns Task autopilot wrappers **and** minimal behavior-tree
   nodes / stuck detection used by scripted clears.
 - `video` owns ffmpeg capture, button footers, and footer-driven
-  `RecordingSession` (distinct from `recorder.RecordingSession` labeled
+  `CaptureSession` (distinct from `recorder.RecordingSession` labeled
   human saves).
 - `retro_harness.platformer.auto_state.NavStep` remains supported names backed by
   `input_script`.
 - Game-specific readiness detection stays local because “first playable frame”
   must be verified from that game's RAM, pixels, or both.
+- Game-owned platformer `LevelConfig` packs (e.g. Super Metroid) live under
+  `snes/<game>/` and register into `platformer.level_config` on import; do not
+  re-embed game RAM maps under `retro_harness/platformer/levels/`.
+
+## Per-game layout + Clean artifacts
+
+| Need | Import |
+|---|---|
+| Standard `GAME_DIR` / `INTEGRATION_DIR` / `recordings/` | `retro_harness.game_layout.game_paths` |
+| Clean-track stem rewrite (`foo` → `foo_clean`) | `retro_harness.artifacts.clean_artifact_stem` |
+| `(video.mp4, report.json)` under recordings | `retro_harness.artifacts.recording_artifacts` |
+
+Game `paths.py` should call `game_paths(__file__, "Integration-Id")` instead of
+copying the six path constants. Super Metroid / TMNT re-export Clean helpers
+for local imports but the canonical home is `retro_harness.artifacts`.
+
+## Route lookup naming
+
+Two different `get_route` helpers used to share a name:
+
+| Domain | Prefer | Returns |
+|---|---|---|
+| Platformer speedrun catalogs | `platformer.route.get_platformer_route` | `RouteConfig` |
+| Adventure named routes | `adventure.get_named_route` | `NamedRoute` |
+
+Bare `get_route` remains a compatibility alias on both modules.
+
+## Scripted-completion dual stack (intentional for now)
+
+Two orchestration models coexist. They are **not** interchangeable — do not
+mix without an explicit adapter.
+
+| Stack | Core types | Used for |
+|---|---|---|
+| **Task / PlaySession autopilot** | `protocol.WorldState` + `Task` / `TaskSequencer` / `BotRunner` | Human PlaySession bots, multi-task missions, interactive autopilot |
+| **Behavior tree / oneshot clear** | `ram_state.GameState` + `BehaviorNode` (`Sequence` / `Selector`) / `StuckDetector` | Oneshot segment clears, combat trees, beat-em-up policies |
+
+Guidance:
+
+- Prefer **BT + `GameState`** for new oneshot segment clears.
+- Prefer **`Task` + `WorldState`** for interactive PlaySession bots and sequenced human-assist missions.
+- `bot_runner` houses both surfaces on purpose: Task wrappers for PlaySession, BT nodes for scripted clears. That packaging is shared tooling, not a signal that the models are the same.
+- Medium-term options (not required yet): `BehaviorNode` implements `Task`, or oneshot clears standardize on BT while Task stays PlaySession-only.
+
+Recording naming (related dual; rename landed):
+
+- **Video capture session** — `video.CaptureSession` (footer/ffmpeg showcase; formerly `video.RecordingSession`).
+- **Labeled recorder session** — `recorder.RecordingSession` (human save points / labeled states).
+- Do not treat these as one type; pass the module-qualified name when docs or APIs could collide.
 
 ## Promotion test
 

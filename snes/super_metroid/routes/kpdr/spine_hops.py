@@ -103,7 +103,10 @@ __all__ = [
 ]
 
 
-def _require_big_pink_main_shaft(session: RouteSession) -> None:
+def _require_big_pink_main_shaft(
+    session: RouteSession, splits: list, result: object = None
+) -> None:
+    del splits, result
     if session.state.room_id != ROOM_BIG_PINK or session.state.samus_x > 750:
         raise RuntimeError(
             f"Big Pink main shaft not reached: room=0x{session.state.room_id:04X} "
@@ -111,14 +114,20 @@ def _require_big_pink_main_shaft(session: RouteSession) -> None:
         )
 
 
-def _require_hijump_collected(session: RouteSession) -> None:
+def _require_hijump_collected(
+    session: RouteSession, splits: list, result: object = None
+) -> None:
+    del splits, result
     if not session.state.collected_items & HI_JUMP_MASK:
         raise RuntimeError(
             f"Hi-Jump not collected: items=0x{session.state.collected_items:04X}"
         )
 
 
-def _require_varia_collected(session: RouteSession) -> None:
+def _require_varia_collected(
+    session: RouteSession, splits: list, result: object = None
+) -> None:
+    del splits, result
     if not session.state.collected_items & VARIA_MASK:
         raise RuntimeError(
             f"Varia not collected: items=0x{session.state.collected_items:04X}"
@@ -128,7 +137,7 @@ def _require_varia_collected(session: RouteSession) -> None:
 # Ordered Super+ spine. Each hop is tagged with the tip segment it belongs to.
 # Linear chain red_tower→…→business; frog and bat_cave branch from business.
 POST_SUPERS_SPINE: tuple[SpineHop, ...] = (
-    # --- red_tower (K1 after Super collect; Charge return intentionally omitted) ---
+    # --- red_tower (K1 after Super collect; Charge detour via big_pink_to_ghz) ---
     SpineHop(
         "super_to_farming",
         play_super_room_to_farming,

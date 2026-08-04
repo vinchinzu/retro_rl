@@ -4,8 +4,8 @@ Hop order, tip parent chains, and play callables are declared once in
 :mod:`super_metroid.routes.kpdr.spine`. This module builds :class:`TipSpec`
 rows and named hop groups as :class:`SpineHop` tuples.
 
-There is no separate RouteHop / PostSupersTipSpec type — use
-:class:`~super_metroid.routes.tips.TipSpec` and :class:`SpineHop`.
+Use :class:`~super_metroid.routes.tips.TipSpec` and :class:`SpineHop` — there
+are no historical type aliases here.
 
 **Extend a tip:** see the checklist at the top of ``spine.py``.
 """
@@ -50,11 +50,8 @@ _GRAPH_BY_ID: dict[str, RoomProgressionGraph] = {
 __all__ = [
     "TipSpec",
     "SpineHop",
-    "RouteHop",  # alias of SpineHop
-    "PostSupersTipSpec",  # alias of TipSpec
-    "POST_SUPERS_TIP_SPECS",
-    "POST_SUPERS_TIP_BY_ID",
     "SUPER_TIP_SPECS",
+    "SUPER_TIP_BY_ID",
     "RED_TOWER_HOPS",
     "BAT_HOPS",
     "BELOW_SPAZER_HOPS",
@@ -66,22 +63,7 @@ __all__ = [
     "FROG_ONLY_HOPS",
     "FROG_SAVE_HOPS",
     "BAT_CAVE_ONLY_HOPS",
-    "_RED_TOWER_HOPS",
-    "_BAT_HOPS",
-    "_BELOW_SPAZER_HOPS",
-    "_WAREHOUSE_HOPS",
-    "_HIJUMP_HOPS",
-    "_KRAID_HOPS",
-    "_VARIA_HOPS",
-    "_BUSINESS_RETURN_HOPS",
-    "_FROG_ONLY_HOPS",
-    "_FROG_SAVE_HOPS",
-    "_BAT_CAVE_ONLY_HOPS",
 ]
-
-# Historical name: RouteHop was a field-subset of SpineHop.
-RouteHop = SpineHop
-PostSupersTipSpec = TipSpec
 
 
 validate_spine(POST_SUPERS_SPINE)
@@ -91,30 +73,32 @@ def _hops_for_tip(tip_id: str) -> tuple[SpineHop, ...]:
     return hops_for_tip(tip_id)
 
 
-# Named hop groups (SpineHop tuples; public names for tests / re-exports).
-_RED_TOWER_HOPS: tuple[SpineHop, ...] = _hops_for_tip("red_tower")
-_BAT_HOPS: tuple[SpineHop, ...] = _hops_for_tip("bat")
-_BELOW_SPAZER_HOPS: tuple[SpineHop, ...] = _hops_for_tip("below_spazer")
-_WAREHOUSE_HOPS: tuple[SpineHop, ...] = _hops_for_tip("warehouse")
-_HIJUMP_HOPS: tuple[SpineHop, ...] = _hops_for_tip("hijump")
-_KRAID_HOPS: tuple[SpineHop, ...] = _hops_for_tip("kraid")
-_VARIA_HOPS: tuple[SpineHop, ...] = _hops_for_tip("varia")
-_BUSINESS_RETURN_HOPS: tuple[SpineHop, ...] = _hops_for_tip("business")
-_FROG_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("frog")
-_FROG_SAVE_HOPS: tuple[SpineHop, ...] = _BUSINESS_RETURN_HOPS + _FROG_ONLY_HOPS
-_BAT_CAVE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("bat_cave")
+# Named hop groups (one public SpineHop tuple per tip / composite).
+# TipSpec rows reuse these same tuple objects (identity, not a second call).
+RED_TOWER_HOPS: tuple[SpineHop, ...] = _hops_for_tip("red_tower")
+BAT_HOPS: tuple[SpineHop, ...] = _hops_for_tip("bat")
+BELOW_SPAZER_HOPS: tuple[SpineHop, ...] = _hops_for_tip("below_spazer")
+WAREHOUSE_HOPS: tuple[SpineHop, ...] = _hops_for_tip("warehouse")
+HIJUMP_HOPS: tuple[SpineHop, ...] = _hops_for_tip("hijump")
+KRAID_HOPS: tuple[SpineHop, ...] = _hops_for_tip("kraid")
+VARIA_HOPS: tuple[SpineHop, ...] = _hops_for_tip("varia")
+BUSINESS_RETURN_HOPS: tuple[SpineHop, ...] = _hops_for_tip("business")
+FROG_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("frog")
+FROG_SAVE_HOPS: tuple[SpineHop, ...] = BUSINESS_RETURN_HOPS + FROG_ONLY_HOPS
+BAT_CAVE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("bat_cave")
 
-RED_TOWER_HOPS = _RED_TOWER_HOPS
-BAT_HOPS = _BAT_HOPS
-BELOW_SPAZER_HOPS = _BELOW_SPAZER_HOPS
-WAREHOUSE_HOPS = _WAREHOUSE_HOPS
-HIJUMP_HOPS = _HIJUMP_HOPS
-KRAID_HOPS = _KRAID_HOPS
-VARIA_HOPS = _VARIA_HOPS
-BUSINESS_RETURN_HOPS = _BUSINESS_RETURN_HOPS
-FROG_ONLY_HOPS = _FROG_ONLY_HOPS
-FROG_SAVE_HOPS = _FROG_SAVE_HOPS
-BAT_CAVE_ONLY_HOPS = _BAT_CAVE_ONLY_HOPS
+_HOPS_BY_TIP: dict[str, tuple[SpineHop, ...]] = {
+    "red_tower": RED_TOWER_HOPS,
+    "bat": BAT_HOPS,
+    "below_spazer": BELOW_SPAZER_HOPS,
+    "warehouse": WAREHOUSE_HOPS,
+    "hijump": HIJUMP_HOPS,
+    "kraid": KRAID_HOPS,
+    "varia": VARIA_HOPS,
+    "business": BUSINESS_RETURN_HOPS,
+    "frog": FROG_ONLY_HOPS,
+    "bat_cave": BAT_CAVE_ONLY_HOPS,
+}
 
 
 def _build_super_tip_specs() -> tuple[TipSpec, ...]:
@@ -127,11 +111,18 @@ def _build_super_tip_specs() -> tuple[TipSpec, ...]:
                 f"TipSegment {seg.tip_id!r} graph_id={seg.graph_id!r} not in "
                 f"{sorted(_GRAPH_BY_ID)}"
             ) from exc
+        try:
+            hops = _HOPS_BY_TIP[seg.tip_id]
+        except KeyError as exc:
+            raise KeyError(
+                f"TipSegment {seg.tip_id!r} missing named hop group in "
+                f"{sorted(_HOPS_BY_TIP)}"
+            ) from exc
         specs.append(
             TipSpec(
                 tip_id=seg.tip_id,
                 parent_tip_id=seg.parent_tip_id,
-                hops=_hops_for_tip(seg.tip_id),
+                hops=hops,
                 graph=graph,
                 kind=seg.kind,
                 required_splits=SUPERS_SPLITS + hop_ids_to_tip(seg.tip_id),
@@ -144,15 +135,19 @@ def _build_super_tip_specs() -> tuple[TipSpec, ...]:
                 ordinary_condition_key=seg.ordinary_condition_key,
                 require_hi_jump=seg.require_hi_jump,
                 require_varia=seg.require_varia,
+                display_name=seg.display_name,
+                description=seg.description,
+                aliases=seg.aliases,
+                supports_room_timing=seg.supports_room_timing,
+                supports_unlimited_energy=seg.supports_unlimited_energy,
+                supports_checkpoint=seg.supports_checkpoint,
             )
         )
     return tuple(specs)
 
 
 SUPER_TIP_SPECS: tuple[TipSpec, ...] = _build_super_tip_specs()
-# Historical names.
-POST_SUPERS_TIP_SPECS = SUPER_TIP_SPECS
-POST_SUPERS_TIP_BY_ID: dict[str, TipSpec] = {
+SUPER_TIP_BY_ID: dict[str, TipSpec] = {
     spec.tip_id: spec for spec in SUPER_TIP_SPECS
 }
 

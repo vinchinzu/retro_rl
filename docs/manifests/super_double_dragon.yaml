@@ -22,3 +22,8 @@ plan_doc: snes/super_double_dragon/docs/plan.md
 last_verified: 2026-07-22
 blocker: natural M3 gym stairs → Chin bosses
 notes: Missions 1–2 proven; M3/M5 transitions partial.
+setup:
+  rom_zip: "Super Double Dragon.zip"
+  integration: SuperDoubleDragon-Snes
+  ladder_rank: 4
+  ladder_status: SEGMENTS

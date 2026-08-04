@@ -1,136 +1,50 @@
 # Agent Instructions — tmnt_iv
 
-SNES TMNT IV: Turtles in Time linear-combat reference clear (M8). Shared helpers:
-`retro_harness/` (scripted completion). Program notes:
-`docs/GAME_SELECTION_NOTES.md`.
+SNES TMNT IV (M8 continuous hard clear). Shared combat helpers:
+`retro_harness.combat` / `segment_runner`. Docs: `docs/STATUS.md`,
+`docs/plan.md`, **`docs/CLEAN_PLAYBOOK.md`**, **`docs/CLEAN_TRACK.md`**,
+`docs/tasks/QUEUE.md`.
 
-## Norms
+## Commands
 
-- Prefer development save states and segment scripts over uninterrupted runs.
-- Store `.state` files under `custom_integrations/TMNTIV-Snes/`.
-- Keep RAM maps and game policy here; reuse `retro_harness.combat` /
-  `segment_runner` — elevate only when clearly shared.
-- Headless probes: `SDL_VIDEODRIVER=dummy` (and audio dummy as needed).
-- Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ram_map.md`,
-  **`docs/CLEAN_PLAYBOOK.md`** (play lessons), **`docs/CLEAN_TRACK.md`**
-  (Clean dual-track process), **`docs/tasks/QUEUE.md`** (live tickets).
-- Task process (from Super Metroid learnings): multi-entry first, one-knob,
-  residual → next card, Clean never clobbers assisted baselines. See
-  `docs/tasks/PROCESS.md` + `docs/TASK_TEMPLATE.md`.
-- Do **not** mash START once Stage 1 HUD is live (pauses the game).
-- Avoid special (**A**) — it drains HP.
+```bash
+uv run python -m tmnt_iv.scripts.setup_rom
+uv run python -m tmnt_iv.scripts.boot_probe
+
+# Stage Clean suites
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite
+uv run python -m tmnt_iv.scripts.probe_stage2_clean --suite
+uv run python -m tmnt_iv.scripts.probe_stage3_clean --suite
+
+# Full hard run (assisted default; Clean never clobbers assisted)
+uv run python -m tmnt_iv.scripts.record_full_hard_run --dry-run
+uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
+
+# Segment runners: run_stage{N}_segment / run_stage{N}_bridge
+# Raph grind states (char 8): capture_raph_states
+# Local knob agent: run_local_grind_agent --focus slash --max-trials 2
+uv run pytest tmnt_iv/tests -q
+```
 
 ## Immediate goal
 
-**Continuous low-assist hard clear done** (M8, Bronze / Resource+Protection).
-Next publication target: **Bronze / Clean** (unassisted — maturity stays M8).
+**Bronze / Clean** unassisted full run (maturity stays M8). Wave order:
+Clean infra → S2 Alleycat → S3 Sewer (`LiveHardStage3`) → … → S9 form-2 →
+`T4-CLEAN-FULL`. Parallel assisted: `T4-ASSIST-TECHNO`. Do **not** re-open
+Stage 1 hazard jump-dodge, global pizza seek, or sewer dumpster thrash.
 
-**Ticket boards (start here):**
-
-| Board | Path |
-|-------|------|
-| Live queue | [`docs/tasks/QUEUE.md`](docs/tasks/QUEUE.md) |
-| Critical path | [`docs/tasks/TRIAGE.md`](docs/tasks/TRIAGE.md) |
-| Full backlog | [`docs/tasks/BACKLOG.md`](docs/tasks/BACKLOG.md) |
-| ★ Clean full run | [`docs/tasks/T4-CLEAN-FULL.md`](docs/tasks/T4-CLEAN-FULL.md) |
-| Clean track | [`docs/CLEAN_TRACK.md`](docs/CLEAN_TRACK.md) |
-
-**Wave-1 ready:** Clean infra (`T4-CLEAN-CONTRACT` / `ARTIFACTS` / `CLI` /
-`INTEGRITY`) → stage suites S2–S3 → … → S9 form-2 → ★ `T4-CLEAN-FULL`.
-Parallel assisted polish: `T4-ASSIST-TECHNO` (largest damage bucket).
-
-**Stage 1 pizza-only Clean is done** (path-RNG suite 2/2):
-
-| Entry | Frames | Damage | Min HP |
-|-------|--------|--------|--------|
-| `Stage1` | 15,237 | 108 | 30 |
-| power-on | 15,046 | 138 | 10 |
-| Baxter | 5,323 | 40 | 44 |
-
-```bash
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite
-```
-
-**Next stage Clean work:** Alleycat (`T4-CLEAN-S2`) + Sewer (`T4-CLEAN-S3`,
-`LiveHardStage3` — not last-life fade). Playbook:
-`docs/CLEAN_PLAYBOOK.md`. Do **not** re-open Stage 1 hazard jump-dodge,
-Alleycat mid-wave pizza chase, global pizza seek, or sewer dumpster thrash /
-spike LEFT thrash.
-
-Whole-run dry-run still assisted: **00:57:19.635 / 4,667 dmg / 65 heals /
-0 lives lost**. Grind on **RaphFullHard*** (char 8), not Leo FullHard*.
-Capture: `python -m tmnt_iv.scripts.capture_raph_states`. Slash spin KEEP
-40 is **parked** (continuous +807 dmg); production spin stays **52**. Menu
-selects Raphael; keep Starbase launch guard.
-
-## Clean traps (burned once — never again)
+## Traps
 
 | Trap | Lesson |
 |------|--------|
-| Jump-through wrecking ball | Mid-wave Clean death; production hazard dodge **offline** |
-| Global pizza seek all stages | Soft-locks Skull & Crossbones; scope by `stage` |
-| Blind walk `RIGHT+Y` | Stutter spam; `pickup_every=0`; PizzaSeek owns boxes |
-| Always jump-slash Baxter | Higher boss damage; use elev+standoff only |
-| Checkpoint-only tuning | Prove power-on / continuous-faithful entry too |
-| Port Slash spin=40 blindly | Continuous total damage regressed |
-| Mid-run knob without full dry-run | Route desync |
+| Mash START after Stage 1 HUD | Pauses game |
+| Special (**A**) | Drains HP — avoid |
+| Global pizza seek all stages | Soft-locks Skull & Crossbones; scope by stage |
+| Blind `RIGHT+Y` | Stutter; `pickup_every=0`; PizzaSeek owns boxes |
+| Checkpoint-only tuning | Also prove power-on / continuous entry |
+| Port Slash spin=40 blindly | Continuous damage regressed (keep 52) |
+| Mid-run knob w/o full dry-run | Route desync |
+| Clean artifact stems | Use `retro_harness.artifacts.clean_artifact_stem`; never overwrite assisted |
 
-Full table + stage rollout order: **`docs/CLEAN_PLAYBOOK.md`**.
-
-## Scripts
-
-- `scripts/setup_rom.py` — extract/link shared zip
-- `scripts/boot_probe.py` — headless menus → fight-ready `Stage1.state`
-- `scripts/ram_probe.py` — walk/attack differentials from Stage1
-- `scripts/run_stage1_segment.py` — multi-wave Stage 1 / Baxter
-- `scripts/probe_stage1_clean.py` — Stage1/Boss/power-on **pizza-only**
-  suite (`--suite`); template for later-stage Clean probes
-- `scripts/probe_stage2_clean.py` — Alleycat Clean suite (Stage2 / w17 /
-  Boss2 / Stage1_Clear bridge)
-- `scripts/probe_stage3_clean.py` — Sewer Clean suite (prefer
-  `LiveHardStage3`; Boss3 / Stage3 last-life fade is broken)
-- `scripts/run_stage2_bridge.py` — Stage1_Clear / BeforeBoss → `Stage2`
-- `scripts/run_stage2_segment.py` — Alleycat Blues wave chain
-- `scripts/run_stage3_bridge.py` — Stage2_Clear → fight-ready `Stage3`
-- `scripts/run_stage3_segment.py` — Sewer Surfin' wave chain / Rat King
-- `scripts/run_stage4_segment.py` — Technodrome wave chain / Tokka+Rahzar
-- `scripts/run_stage5_segment.py` — Prehistoric wave chain / Slash
-- `scripts/run_stage6_segment.py` — Skull and Crossbones / Bebop+Rocksteady
-- `scripts/run_stage7_segment.py` — Wounded Knee / Leatherhead
-- `scripts/run_stage8_segment.py` — Neon Night Riders Mode-7 / Krang
-- `scripts/run_stage9_segment.py` — Starbase waves / Super Shredder
-- `scripts/record_full_hard_run.py` — deterministic power-on → hard credits
-  capture with native audio, live footer, final metrics, and JSON manifest.
-  Defaults stay assisted. Clean: `--clean --dry-run` →
-  `recordings/tmnt_iv_full_hard_clean_dry_run.json` (never overwrites
-  assisted baselines).
-- `scripts/capture_raph_states.py` — dump continuous-faithful RaphFullHard*
-  states (char 8) for grinding; prefer these over Leo FullHard*
-- `scripts/run_local_grind_agent.py` — **preferred**: multi-turn Ollama
-  tool agent (`list_knobs` / `run_baseline` / `run_trial` / `inspect_trial`
-  / `finish`). Whitelist knobs in `grind_knobs.py`; prompts in
-  `local_grind/prompts/agent_system.md`. Artifacts:
-  `recordings/local_grind_agent/{agent_trace.jsonl,summary.json,trials/}`.
-  Does **not** auto-edit `policy.py`. Example:
-  `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python -m tmnt_iv.scripts.run_local_grind_agent --focus slash --max-trials 2`
-- `scripts/run_local_grind.py` — older single-shot propose/eval loop
-  (non-agent). Prefer the tool agent above.
-
-## RAM quick ref
-
-Player base `0x0400` (`X+0x08`, `Y+0x0C`, `HP+0x4A`). Enemies
-`0x08D0 + i*0x70`. Lives `0x1AA0` (0 = last life). Menu `0x0032`
-(`0x06` = playing). Stage id `0x0082` (0=S1, 1=S2, **2=S3 Sewer
-Surfin'**, **3=S4 Technodrome**, **4=S5 Prehistoric**, **5=S6 Skull
-and Crossbones**, **6=S7 Wounded Knee**, **7=S8 Neon Night Riders**,
-**8=S9 Starbase**, **9=Super Shredder form 2**, **≥10=ending sequence**).
-Progress heuristic `0x003A`. Difficulty `0x1FEE` (`2` = hard); continue
-setting `0x1FF2`; invulnerability timer `0x046E`. Stage 1 boss = **Baxter**
-(~96 HP). Stage 3 boss = **Rat King** (`char 0x4A`). Stage 4 bosses = **Tokka**
-(`0x48`) + **Rahzar** (`0xA0`). Stage 5 boss = **Slash** (`char 0x50`,
-spawn HP 160). Stage 6 bosses = **Bebop** (`0xA8`) + **Rocksteady**
-(`0xAC`, spawn HP 128). Stage 7 boss = **Leatherhead** (`0xA2`, spawn
-HP 172). Stage 8 boss = **Krang** (`0x4E`, spawn HP **160**). Stage 9
-boss = **Super Shredder** form 1 `0x52` (HP 128) / form 2 `0xAE`
-(HP ~190). See `docs/ram_map.md`.
+RAM: `docs/ram_map.md`. Tickets: `docs/tasks/QUEUE.md` + `TRIAGE.md`.

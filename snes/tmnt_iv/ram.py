@@ -267,6 +267,8 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
         level_complete=False,
         player_dead=player_dead,
         screen_locked=bool(living),
+        go_flashing=False,
+        area_clear=False,
         extras={
             "menu": menu,
             "event": event,
@@ -274,6 +276,7 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
             "char_id": read_u8(ram, PLAYER_BASE + OFF_CHAR),
             "anim": read_u8(ram, PLAYER_BASE + OFF_ANIM),
             "iframes": read_u8(ram, PLAYER_BASE + OFF_IFRAMES),
+            # Dual-written for one-release back-compat with extras readers.
             "go_flashing": False,
             "area_clear": False,
             "progress_x": progress_x,

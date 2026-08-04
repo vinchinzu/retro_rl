@@ -191,15 +191,16 @@ class GameState:
     player_dead: bool = False
     screen_locked: bool = False
     grounded: bool = False
+    go_flashing: bool = False
+    area_clear: bool = False
     extras: dict[str, Any] = field(default_factory=dict)
 
     @property
     def living_enemies(self) -> tuple[EnemyState, ...]:
         """Active enemies with remaining (non-corpse) health.
 
-        HP ``0`` is a corpse/ghost threat (adapters also normalize true
-        underflow bytes to 0). Living HP may exceed 128 — Final Fight
-        subway tough thugs peak around 148.
+        HP ``0`` is a corpse/ghost threat (adapters may normalize HP
+        underflow to 0). Living HP may exceed 128 depending on the game.
         """
         return tuple(
             e for e in self.enemies if e.active and e.health > 0

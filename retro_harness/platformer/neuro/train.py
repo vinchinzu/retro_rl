@@ -1,17 +1,4 @@
-"""Neuroevolution for platformer speedruns.
-
-Inspired by MarI/O (SethBling's NEAT for Super Mario). Instead of evolving
-raw button sequences (which break on crossover), evolve neural networks
-that read game state and output button presses.
-
-Architecture options (``arch``):
-- ``mlp``: flat observation → 1–2 hidden layers (ReLU) → sigmoid combo outputs
-- ``cnn_mlp``: 13×13 grid → 3×3 conv + pool → concat state → MLP head
-
-Observations default to the richer builder in ``smb.obs`` (210 dims: velocities,
-grounded, timer, camera). Use ``read_smb_inputs_legacy`` (189) for old
-checkpoints. Optional behavior-clone warm-start from an RLE seed.
-"""
+"""Neuroevolution GA: evaluate, mutate, crossover, BC warm-start, run_neuro_ga."""
 
 from __future__ import annotations
 
@@ -19,337 +6,28 @@ import json
 import random
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Optional
 
 import numpy as np
 
 from retro_harness.platformer.evaluator import Evaluator, EvalResult
-
-# -- Observation builder (prefer smb.obs) --------------------------------------
-
-try:
-    from smb.obs import (  # type: ignore
-        GRID_SIZE,
-        N_GRID,
-        N_SMB_INPUTS as _OBS_N,
-        N_SMB_INPUTS_LEGACY,
-        grid_as_image,
-        read_smb_inputs as _obs_read,
-        read_smb_inputs_legacy,
-    )
-
-    N_SMB_INPUTS = int(_OBS_N)
-except Exception:  # pragma: no cover
-    N_SMB_INPUTS = 189
-    N_SMB_INPUTS_LEGACY = 189
-    N_GRID = 169
-    GRID_SIZE = 13
-    read_smb_inputs_legacy = None  # type: ignore
-    _obs_read = None  # type: ignore
-
-    def grid_as_image(inputs: np.ndarray) -> np.ndarray:
-        return np.asarray(inputs[:N_GRID], dtype=np.float32).reshape(1, GRID_SIZE, GRID_SIZE)
-
-
-def _legacy_inline(ram: np.ndarray) -> np.ndarray:
-    """189-dim observation without smb.obs (in-air from Y speed)."""
-    inputs = np.zeros(189, dtype=np.float32)
-    x_page = int(ram[0x006D])
-    x_offset = int(ram[0x0086])
-    mario_y = int(ram[0x03B8]) + 16
-    mario_abs_x = x_page * 256 + x_offset
-    gi = 0
-    for dy in range(-6, 7):
-        for dx in range(-6, 7):
-            tile_x = x_offset + dx
-            tile_page = x_page
-            if tile_x < 0:
-                tile_x += 256
-                tile_page -= 1
-            elif tile_x >= 256:
-                tile_x -= 256
-                tile_page += 1
-            tile_y = mario_y // 16 + dy
-            if 0 <= tile_y < 13 and tile_page >= 0:
-                addr = 0x0500 + (tile_page % 2) * 13 * 16 + tile_y * 16 + (tile_x // 16)
-                if addr < len(ram):
-                    inputs[gi] = 1.0 if int(ram[addr]) != 0 else 0.0
-            gi += 1
-    for slot in range(5):
-        if int(ram[0x000F + slot]) == 0:
-            continue
-        ex = int(ram[0x006E + slot]) * 256 + int(ram[0x0087 + slot])
-        ey = int(ram[0x00CF + slot]) + 24
-        gx = (ex - mario_abs_x) // 16 + 6
-        gy = (ey - mario_y) // 16 + 6
-        if 0 <= gx < 13 and 0 <= gy < 13:
-            inputs[gy * 13 + gx] = -1.0
-    inputs[169] = mario_y / 240.0
-    inputs[170] = x_offset / 256.0
-    inputs[171] = min(int(ram[0x000E]) / 2.0, 1.0)
-    ys = int(ram[0x009F])
-    if ys >= 128:
-        ys -= 256
-    inputs[172] = 1.0 if ys != 0 else 0.0
-    inputs[173] = 1.0
-    for slot in range(5):
-        base = 174 + slot * 3
-        et = int(ram[0x000F + slot])
-        if et == 0:
-            continue
-        ex = int(ram[0x006E + slot]) * 256 + int(ram[0x0087 + slot])
-        ey = int(ram[0x00CF + slot])
-        inputs[base] = (ex - mario_abs_x) / 256.0
-        inputs[base + 1] = (ey - mario_y) / 240.0
-        inputs[base + 2] = et / 64.0
-    return inputs
-
-
-def read_smb_inputs(
-    ram: np.ndarray,
-    prev_action: Sequence[int] | None = None,
-) -> np.ndarray:
-    """Default rich SMB observation (210 dims when ``smb.obs`` is available)."""
-    if _obs_read is not None:
-        try:
-            return _obs_read(ram, prev_action=prev_action)
-        except TypeError:
-            return _obs_read(ram)
-    return _legacy_inline(ram)
-
-
-if read_smb_inputs_legacy is None:  # type: ignore[truthy-function]
-
-    def read_smb_inputs_legacy(ram: np.ndarray) -> np.ndarray:  # type: ignore[no-redef]
-        return _legacy_inline(ram)
-
-
-# -- Activations / small CNN ---------------------------------------------------
-
-ArchName = Literal["mlp", "cnn_mlp"]
-
-
-def _relu(x: np.ndarray) -> np.ndarray:
-    return np.maximum(x, 0.0)
-
-
-def _sigmoid(x: np.ndarray) -> np.ndarray:
-    x = np.clip(x, -40.0, 40.0)
-    return 1.0 / (1.0 + np.exp(-x))
-
-
-def _mlp_weight_count(n_in: int, hidden: Sequence[int], n_out: int) -> int:
-    dims = [n_in, *list(hidden), n_out]
-    total = 0
-    for a, b in zip(dims, dims[1:]):
-        total += a * b + b
-    return total
-
-
-def _mlp_forward(x: np.ndarray, w: np.ndarray, hidden: Sequence[int], n_out: int) -> np.ndarray:
-    dims = [int(x.shape[-1]), *list(hidden), n_out]
-    idx = 0
-    h = x.astype(np.float32, copy=False)
-    for li, (a, b) in enumerate(zip(dims, dims[1:])):
-        mat = w[idx : idx + a * b].reshape(a, b)
-        idx += a * b
-        bias = w[idx : idx + b]
-        idx += b
-        h = h @ mat + bias
-        if li < len(dims) - 2:
-            h = _relu(h)
-        else:
-            h = _sigmoid(h)
-    return h
-
-
-def _conv3x3_weight_count(in_ch: int, out_ch: int) -> int:
-    return in_ch * out_ch * 9 + out_ch
-
-
-def _cnn_feature_dim(n_conv: int = 8) -> int:
-    # 13×13 valid 3×3 → 11×11; 2×2 avg pool → 5×5
-    return n_conv * 5 * 5
-
-
-def _conv3x3(img: np.ndarray, w: np.ndarray, in_ch: int, out_ch: int) -> tuple[np.ndarray, int]:
-    k = w[: in_ch * out_ch * 9].reshape(out_ch, in_ch, 3, 3)
-    b = w[in_ch * out_ch * 9 : in_ch * out_ch * 9 + out_ch]
-    _, h, ww = img.shape
-    out_h, out_w = h - 2, ww - 2
-    out = np.zeros((out_ch, out_h, out_w), dtype=np.float32)
-    for oc in range(out_ch):
-        acc = np.zeros((out_h, out_w), dtype=np.float32)
-        for ic in range(in_ch):
-            kernel = k[oc, ic]
-            src = img[ic]
-            for dy in range(3):
-                for dx in range(3):
-                    acc += src[dy : dy + out_h, dx : dx + out_w] * float(kernel[dy, dx])
-        out[oc] = _relu(acc + float(b[oc]))
-    return out, in_ch * out_ch * 9 + out_ch
-
-
-# -- Neural Network ------------------------------------------------------------
-
-
-@dataclass
-class NeuralNet:
-    """Feedforward or tiny-CNN policy with a flat weight vector for GA.
-
-    ``arch='mlp'``: flat ``n_inputs`` → hidden layers → outputs.
-    ``arch='cnn_mlp'``: grid CNN + concat non-grid features → MLP head.
-    ``hidden_layers``: empty → single layer of size ``n_hidden``.
-    ``use_recurrent``: exponential output smoother with evolved alpha (timing).
-    """
-
-    n_inputs: int
-    n_hidden: int
-    n_outputs: int
-    weights: np.ndarray = field(default_factory=lambda: np.array([]))
-    arch: ArchName = "mlp"
-    hidden_layers: tuple[int, ...] = ()
-    n_conv: int = 8
-    use_recurrent: bool = False
-
-    def __post_init__(self) -> None:
-        if not self.hidden_layers:
-            object.__setattr__(self, "hidden_layers", (int(self.n_hidden),))
-        else:
-            object.__setattr__(self, "n_hidden", int(self.hidden_layers[0]))
-        if len(self.weights) == 0:
-            self.weights = np.random.randn(self.total_weights).astype(np.float32) * 0.5
-        self._prev_out: np.ndarray | None = None
-
-    def reset_state(self) -> None:
-        self._prev_out = None
-
-    @property
-    def total_weights(self) -> int:
-        if self.arch == "mlp":
-            n = _mlp_weight_count(self.n_inputs, self.hidden_layers, self.n_outputs)
-        else:
-            conv_n = _conv3x3_weight_count(1, self.n_conv)
-            feat = _cnn_feature_dim(self.n_conv)
-            rest = max(0, self.n_inputs - N_GRID)
-            n = conv_n + _mlp_weight_count(feat + rest, self.hidden_layers, self.n_outputs)
-        if self.use_recurrent:
-            n += 1  # single alpha logit
-        return n
-
-    def forward(self, inputs: np.ndarray) -> np.ndarray:
-        x = np.asarray(inputs, dtype=np.float32).reshape(-1)
-        if x.shape[0] != self.n_inputs:
-            if x.shape[0] < self.n_inputs:
-                pad = np.zeros(self.n_inputs, dtype=np.float32)
-                pad[: x.shape[0]] = x
-                x = pad
-            else:
-                x = x[: self.n_inputs]
-
-        if self.arch == "mlp":
-            out = _mlp_forward(x, self.weights, self.hidden_layers, self.n_outputs)
-        else:
-            img = grid_as_image(x)
-            conv_out, idx = _conv3x3(img, self.weights, 1, self.n_conv)
-            c, h, ww = conv_out.shape
-            ph, pw = h // 2, ww // 2
-            pooled = (
-                conv_out[:, : ph * 2, : pw * 2]
-                .reshape(c, ph, 2, pw, 2)
-                .mean(axis=(2, 4))
-                .reshape(-1)
-            )
-            rest = x[N_GRID:]
-            feats = np.concatenate([pooled, rest])
-            out = _mlp_forward(
-                feats, self.weights[idx:], self.hidden_layers, self.n_outputs
-            )
-
-        if self.use_recurrent:
-            alpha = float(_sigmoid(np.array([self.weights[-1]], dtype=np.float32))[0])
-            if self._prev_out is None:
-                self._prev_out = out
-            out = alpha * out + (1.0 - alpha) * self._prev_out
-            self._prev_out = out.copy()
-        return out
-
-    def copy(self) -> NeuralNet:
-        child = NeuralNet(
-            n_inputs=self.n_inputs,
-            n_hidden=self.n_hidden,
-            n_outputs=self.n_outputs,
-            weights=self.weights.copy(),
-            arch=self.arch,
-            hidden_layers=self.hidden_layers,
-            n_conv=self.n_conv,
-            use_recurrent=self.use_recurrent,
-        )
-        return child
-
-
-# -- Output-to-buttons mapping ------------------------------------------------
-
-SMB_OUTPUT_BUTTONS = [
-    [7],  # RIGHT
-    [7, 0],  # RIGHT + B
-    [7, 0, 8],  # RIGHT + B + A
-    [7, 8],  # RIGHT + A
-    [8],  # JUMP
-    [6],  # LEFT
-    [0],  # B
-    [6, 0],  # LEFT + B
-    [6, 0, 8],  # LEFT + B + A
-]
-
-
-def outputs_to_buttons(outputs: np.ndarray) -> list[int]:
-    """Convert network outputs to 12-element button array.
-
-    Softmax-style: if any output > 0.5, take the argmax combo only (avoids
-    conflicting multi-sigmoid fires). Falls back to multi-threshold if all
-    outputs are mid-range weak.
-    """
-    buttons = [0] * 12
-    if len(outputs) == 0:
-        return buttons
-    # Prefer single discrete combo (cleaner than multi-sigmoid OR)
-    best = int(np.argmax(outputs))
-    if float(outputs[best]) > 0.5 and best < len(SMB_OUTPUT_BUTTONS):
-        for btn_idx in SMB_OUTPUT_BUTTONS[best]:
-            if btn_idx < 12:
-                buttons[btn_idx] = 1
-        return buttons
-    for i, val in enumerate(outputs):
-        if val > 0.5 and i < len(SMB_OUTPUT_BUTTONS):
-            for btn_idx in SMB_OUTPUT_BUTTONS[i]:
-                if btn_idx < 12:
-                    buttons[btn_idx] = 1
-    return buttons
-
-
-def buttons_to_output_target(buttons: Sequence[int]) -> np.ndarray:
-    """Map a button frame to a soft target over SMB_OUTPUT_BUTTONS (for BC)."""
-    target = np.zeros(len(SMB_OUTPUT_BUTTONS), dtype=np.float32)
-    bset = {i for i, v in enumerate(buttons) if int(v)}
-    best_i, best_overlap = 0, -1
-    for i, combo in enumerate(SMB_OUTPUT_BUTTONS):
-        cset = set(combo)
-        # prefer exact match, else max Jaccard
-        if cset == bset & cset and cset <= bset and len(cset) == len(bset):
-            target[i] = 1.0
-            return target
-        overlap = len(cset & bset) - 0.25 * len(cset - bset)
-        if overlap > best_overlap:
-            best_overlap = overlap
-            best_i = i
-    target[best_i] = 1.0
-    return target
-
-
-# -- Neuroevolution GA ---------------------------------------------------------
+from retro_harness.platformer.neuro.checkpoint import (
+    net_from_dict,
+    save_neuro_checkpoint,
+)
+from retro_harness.platformer.neuro.net import (
+    ArchName,
+    NeuralNet,
+    SMB_OUTPUT_BUTTONS,
+    buttons_to_output_target,
+    outputs_to_buttons,
+)
+from retro_harness.platformer.neuro.obs import (
+    N_SMB_INPUTS,
+    resolve_obs_fn,
+)
 
 
 @dataclass
@@ -386,12 +64,19 @@ def evaluate_network(
     net: NeuralNet,
     evaluator: Evaluator,
     max_frames: int = 6000,
-    read_inputs_fn: Callable = read_smb_inputs,
+    read_inputs_fn: Callable | None = None,
     render_surface=None,
     render_scale: int = 3,
     gen_info: str = "",
+    *,
+    obs_fn: Callable | None = None,
 ) -> tuple[list[list[int]], EvalResult]:
-    """Play the game with a neural network, return (buttons, result)."""
+    """Play the game with a neural network, return (buttons, result).
+
+    Provide ``read_inputs_fn`` / ``obs_fn`` (callable ``ram -> ndarray``, optionally
+    accepting ``prev_action=``). Defaults to SMB obs via ``smb.obs`` when available.
+    """
+    read_inputs_fn = resolve_obs_fn(obs_fn if obs_fn is not None else read_inputs_fn)
     evaluator._ensure_env()
     env = evaluator._env
     assert env is not None and evaluator._cached_state is not None
@@ -532,7 +217,8 @@ def collect_bc_dataset(
     evaluator: Evaluator,
     seed_frames: Sequence[Sequence[int]],
     *,
-    read_inputs_fn: Callable = read_smb_inputs,
+    read_inputs_fn: Callable | None = None,
+    obs_fn: Callable | None = None,
     max_frames: int | None = None,
     stride: int = 1,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -540,6 +226,7 @@ def collect_bc_dataset(
 
     Returns ``(X, Y)`` with shapes ``(N, n_inputs)`` and ``(N, n_outputs)``.
     """
+    read_inputs_fn = resolve_obs_fn(obs_fn if obs_fn is not None else read_inputs_fn)
     evaluator._ensure_env()
     env = evaluator._env
     assert env is not None and evaluator._cached_state is not None
@@ -567,7 +254,8 @@ def collect_bc_dataset(
         prev_action = buttons
 
     if not xs:
-        return np.zeros((0, N_SMB_INPUTS), dtype=np.float32), np.zeros(
+        n_in = N_SMB_INPUTS if N_SMB_INPUTS is not None else 0
+        return np.zeros((0, n_in), dtype=np.float32), np.zeros(
             (0, len(SMB_OUTPUT_BUTTONS)), dtype=np.float32
         )
     return np.stack(xs), np.stack(ys)
@@ -600,7 +288,6 @@ def behavior_clone_init(
         loss = 0.0
         for j in idx:
             pred = child.forward(X[j])
-            # binary cross-entropy
             p = np.clip(pred, 1e-6, 1 - 1e-6)
             y = Y[j]
             loss += float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
@@ -609,7 +296,6 @@ def behavior_clone_init(
     w = child.weights.copy()
     for _ in range(steps):
         idx = rng.choice(len(X), size=min(batch_size, len(X)), replace=False)
-        # coordinate-wise random subset gradient estimate
         coords = rng.choice(n, size=min(64, n), replace=False)
         grad = np.zeros(n, dtype=np.float32)
         base = batch_loss(w, idx)
@@ -631,13 +317,14 @@ def warm_start_from_seed(
     arch: ArchName = "mlp",
     hidden_layers: tuple[int, ...] = (),
     use_recurrent: bool = False,
-    read_inputs_fn: Callable = read_smb_inputs,
+    read_inputs_fn: Callable | None = None,
+    obs_fn: Callable | None = None,
     bc_steps: int = 150,
     max_frames: int | None = 4000,
     stride: int = 2,
 ) -> NeuralNet:
     """Build a net and behavior-clone it from an RLE/raw seed replay."""
-    # Probe input size
+    read_inputs_fn = resolve_obs_fn(obs_fn if obs_fn is not None else read_inputs_fn)
     evaluator._ensure_env()
     env = evaluator._env
     assert env is not None and evaluator._cached_state is not None
@@ -677,7 +364,7 @@ def run_neuro_ga(
     output_dir: Path | None = None,
     verbose: bool = True,
     max_frames: int = 6000,
-    read_inputs_fn: Callable = read_smb_inputs,
+    read_inputs_fn: Callable | None = None,
     render: bool = False,
     render_scale: int = 3,
     arch: ArchName = "mlp",
@@ -685,12 +372,19 @@ def run_neuro_ga(
     use_recurrent: bool = False,
     seed_frames: Sequence[Sequence[int]] | None = None,
     bc_steps: int = 100,
+    *,
+    obs_fn: Callable | None = None,
 ) -> NeuroIndividual:
     """Evolve neural networks to play the level.
 
     Pass ``seed_frames`` to warm-start the population around a behavior-cloned
     seed (recommended: current best RLE continuous policy).
+
+    Observation builder: pass ``obs_fn`` / ``read_inputs_fn``
+    (``Callable[[ram], ndarray]``). When omitted, defaults to SMB via
+    ``smb.obs`` and fails clearly if that package is unavailable.
     """
+    read_inputs_fn = resolve_obs_fn(obs_fn if obs_fn is not None else read_inputs_fn)
     config = evaluator.config
     if output_dir is None:
         output_dir = config.runs_dir / "neuro"
@@ -704,6 +398,11 @@ def run_neuro_ga(
     try:
         n_inputs = int(np.asarray(read_inputs_fn(env.get_ram())).shape[0])
     except Exception:
+        if N_SMB_INPUTS is None:
+            raise RuntimeError(
+                "Could not probe observation size and no default N_SMB_INPUTS; "
+                "pass a working obs_fn / read_inputs_fn."
+            ) from None
         n_inputs = N_SMB_INPUTS
     n_outputs = len(SMB_OUTPUT_BUTTONS)
     hl = tuple(hidden_layers) if hidden_layers else (n_hidden,)
@@ -715,16 +414,7 @@ def run_neuro_ga(
         try:
             ckpt = json.loads(checkpoint_path.read_text())
             if ckpt.get("n_inputs") == n_inputs and ckpt.get("n_outputs") == n_outputs:
-                resumed_net = NeuralNet(
-                    n_inputs=ckpt["n_inputs"],
-                    n_hidden=ckpt["n_hidden"],
-                    n_outputs=ckpt["n_outputs"],
-                    weights=np.array(ckpt["weights"], dtype=np.float32),
-                    arch=ckpt.get("arch", "mlp"),
-                    hidden_layers=tuple(ckpt.get("hidden_layers", (ckpt["n_hidden"],))),
-                    n_conv=int(ckpt.get("n_conv", 8)),
-                    use_recurrent=bool(ckpt.get("use_recurrent", False)),
-                )
+                resumed_net = net_from_dict(ckpt)
                 start_gen = ckpt.get("generation", 0)
                 if verbose:
                     print(
@@ -861,7 +551,6 @@ def run_neuro_ga(
         else:
             stall_gens += 1
 
-        # Adaptive mutation scale when stalled
         mut_rate = 0.05 if stall_gens < 20 else min(0.15, 0.05 + stall_gens * 0.002)
         mut_mag = 0.3 if stall_gens < 20 else min(0.8, 0.3 + stall_gens * 0.01)
 
@@ -881,7 +570,7 @@ def run_neuro_ga(
             )
 
         if gen % 10 == 0 and gen > 0:
-            _save_neuro_checkpoint(
+            save_neuro_checkpoint(
                 best_ever, gen, output_dir, evaluator, max_frames, read_inputs_fn
             )
 
@@ -924,7 +613,7 @@ def run_neuro_ga(
 
         population = next_gen
 
-    _save_neuro_checkpoint(
+    save_neuro_checkpoint(
         best_ever,
         start_gen + num_generations,
         output_dir,
@@ -951,42 +640,3 @@ def run_neuro_ga(
             print(f"[NEURO] Progress: {best_ever.result.max_progress:.1f}")
 
     return best_ever
-
-
-def _save_neuro_checkpoint(
-    best: NeuroIndividual,
-    gen: int,
-    output_dir: Path,
-    evaluator: Evaluator,
-    max_frames: int,
-    read_inputs_fn,
-) -> None:
-    """Save best network weights + replay its buttons."""
-    net_path = output_dir / "neuro_best.json"
-    data = {
-        "weights": best.net.weights.tolist(),
-        "n_inputs": best.net.n_inputs,
-        "n_hidden": best.net.n_hidden,
-        "n_outputs": best.net.n_outputs,
-        "arch": best.net.arch,
-        "hidden_layers": list(best.net.hidden_layers),
-        "n_conv": best.net.n_conv,
-        "use_recurrent": best.net.use_recurrent,
-        "generation": gen,
-        "fitness": best.fitness,
-        "completed": best.result.completed if best.result else False,
-        "total_frames": best.result.total_frames if best.result else 0,
-        "max_progress": best.result.max_progress if best.result else 0,
-    }
-    net_path.write_text(json.dumps(data, indent=2))
-
-    buttons, _ = evaluate_network(best.net, evaluator, max_frames, read_inputs_fn)
-    btn_path = output_dir / "neuro_best_buttons.json"
-    btn_data = {
-        "raw_buttons": buttons,
-        "num_frames": len(buttons),
-        "fitness": best.fitness,
-        "completed": best.result.completed if best.result else False,
-        "max_progress": best.result.max_progress if best.result else 0,
-    }
-    btn_path.write_text(json.dumps(btn_data, indent=2))

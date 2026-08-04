@@ -35,18 +35,27 @@ def configure_headless() -> None:
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
 
 
-def player_is_down(state: GameState) -> bool:
-    """True when the player is dead or showing corpse HP bytes.
+def player_is_down(
+    state: GameState,
+    *,
+    max_live_health: int | None = 128,
+) -> bool:
+    """True when the player is dead or outside the live-health band.
 
-    Final Fight (and similar) wrap corpse HP above 128. Treating only
-    ``health <= 0`` as death lets enemy despawns on a corpse false-clear
-    a wave (West Side dual cam640 → cam4608 "clear").
+    Args:
+        state: Normalized game state.
+        max_live_health: When an int (default 128), PLAYING health outside
+            ``1..max_live_health`` counts as down — beat-em-ups with corpse
+            HP wrap should keep this default. When ``None``, only
+            ``player_dead`` or ``health <= 0`` counts (platformers).
     """
     if state.player_dead:
         return True
+    if max_live_health is None:
+        return state.health <= 0
     if state.mode is not GameMode.PLAYING:
         return False
-    return not (0 < state.health <= 128)
+    return not (0 < state.health <= max_live_health)
 
 
 def save_rgb_png(obs: np.ndarray, path: Path) -> Path:
@@ -84,14 +93,18 @@ def is_screen_clear(
 
     Success when the segment started with enemies and now has none, plus one
     of: level complete, GO! flashing, camera scroll, or sustained clear hold.
+
+    Prefers typed ``GameState.go_flashing`` / ``area_clear`` fields; also
+    reads legacy ``extras`` keys for one-release back-compat.
     """
     if not had_enemies:
         return False
-    if state.level_complete or bool(state.extras.get("area_clear")):
+    area_clear = state.area_clear or bool(state.extras.get("area_clear"))
+    if state.level_complete or area_clear:
         return True
     if state.living_enemies:
         return False
-    go_flashing = bool(state.extras.get("go_flashing"))
+    go_flashing = state.go_flashing or bool(state.extras.get("go_flashing"))
     cam_delta = state.camera_x - start_camera_x
     if go_flashing or cam_delta >= camera_unlock_delta:
         return True
@@ -212,7 +225,8 @@ class SegmentTracker:
             "camera_delta": final.camera_x - self.start_camera_x,
             "player_x": final.player_x,
             "player_y": final.player_y,
-            "go_flashing": bool(final.extras.get("go_flashing")),
+            "go_flashing": final.go_flashing
+            or bool(final.extras.get("go_flashing")),
             "screen_locked": final.screen_locked,
             "level_complete": final.level_complete,
             "reason_counts": dict(sorted(self.reason_counts.items())),
@@ -236,7 +250,8 @@ def snapshot_state(state: GameState) -> dict[str, Any]:
         "enemies": len(state.living_enemies),
         "enemy_hp": enemy_health_sum(state),
         "screen_locked": state.screen_locked,
-        "go_flashing": bool(state.extras.get("go_flashing")),
+        "go_flashing": state.go_flashing
+        or bool(state.extras.get("go_flashing")),
         "level_complete": state.level_complete,
         "player_dead": state.player_dead,
         "boss_active": state.boss_active,
@@ -452,10 +467,10 @@ class WaveChainTracker:
             # Without camera unlock / GO!, require a longer empty hold so
             # off-screen filter flicker does not false-clear a lock.
             hold = self.clear_hold_frames
-            if (
-                cam_delta < self.camera_unlock_delta
-                and not bool(state.extras.get("go_flashing"))
-            ):
+            go_flashing = state.go_flashing or bool(
+                state.extras.get("go_flashing")
+            )
+            if cam_delta < self.camera_unlock_delta and not go_flashing:
                 hold = max(hold, 90)
             killed = self._wave is not None and self._wave.kills > 0
             if killed and is_screen_clear(
@@ -510,7 +525,8 @@ class WaveChainTracker:
             "camera_delta": final.camera_x - self.start_camera_x,
             "player_x": final.player_x,
             "player_y": final.player_y,
-            "go_flashing": bool(final.extras.get("go_flashing")),
+            "go_flashing": final.go_flashing
+            or bool(final.extras.get("go_flashing")),
             "screen_locked": final.screen_locked,
             "level_complete": final.level_complete,
             "boss_active": final.boss_active,
@@ -535,6 +551,7 @@ __all__ = [
     "configure_headless",
     "enemy_health_sum",
     "is_screen_clear",
+    "player_is_down",
     "save_rgb_png",
     "snapshot_state",
     "write_json_report",

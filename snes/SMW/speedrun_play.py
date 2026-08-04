@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from retro_harness.platformer.actions import buttons_to_action_index
-from retro_harness.platformer.levels.super_mario_world import SMW_SPEED_ACTIONS
+from SMW.platformer_levels import SMW_SPEED_ACTIONS
 from retro_harness.recordings import append_jsonl
 
 ROOT = Path(__file__).resolve().parent

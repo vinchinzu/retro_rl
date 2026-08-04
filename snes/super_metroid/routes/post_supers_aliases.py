@@ -1,12 +1,13 @@
-"""Historical continuous ``play_<tip>`` / ``run_<tip>`` name bindings.
+"""Thin Super+ ``play_<tip>`` / ``run_<tip>`` bindings for the segment registry.
 
-Tip ids come from Super+ rows in :data:`~super_metroid.routes.tips.TIP_BY_ID`.
-Callables forward to injected ``play_tip`` / ``run_tip`` (passed in to avoid
-circular imports with :mod:`super_metroid.routes.continuous`).
+Not a second tip runner. Tip ids come from Super+ rows
+(:data:`~super_metroid.routes.kpdr.hops.SUPER_TIP_BY_ID`). Callables forward
+to injected ``play_tip`` / ``run_tip`` (passed in to avoid circular imports
+with :mod:`super_metroid.routes.continuous`).
 
-Prefer ``run_to(tip_id)`` / ``play_tip`` for new code.
-New Super+ tips auto-gain aliases when added to the tip-spec table — do not
-hand-write extra runners here.
+Prefer ``run_to(tip_id)`` / ``play_tip`` for new code. New Super+ tips
+auto-gain aliases when added to the tip-spec table — do not hand-write
+extra runners here.
 """
 
 from __future__ import annotations

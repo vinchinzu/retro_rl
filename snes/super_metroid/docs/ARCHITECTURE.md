@@ -23,7 +23,7 @@ scripts/record|verify|probe|export|room   CLI entrypoints
         │
 routes/continuous.py + catalog.py         tip registry + hop composition
 routes/runtime.py                         RouteSession, integrity, reports
-routes/segment.py                         Segment / HopExecutor contracts
+routes/segment.py                         practice Segment adapters only
         │
 routes/kpdr/*.py                          pure room controllers (no env ownership)
 combat/*.py                               boss fight policies (after natural entry)
@@ -59,7 +59,7 @@ legacy/*                                  frozen vision/RL remnants
 | `ProgressCondition` / `ProgressionMilestone` | Live RAM stop predicates |
 | Staged graphs | `START_TO_MORPH` ⊂ … ⊂ `START_TO_VARIA` ⊂ `START_TO_SPEED` (Business return + K4 scaffold) |
 | `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`bat_cave`) |
-| `routes/continuous.RouteHop` + `play_hops` | Ordered controller legs after Supers |
+| `routes/tips.play_hops` + `SpineHop` | Ordered controller legs (only hop runner) |
 | `source_states.py` | Code twin of `SOURCE_STATES.md` — pure entry fingerprints |
 
 **Source of truth for continuous progress:** graph edges + tip hop tables +
@@ -71,7 +71,7 @@ The path board (`maps/path_room_board.json`) is **topology**, not KPDR order.
 | Layer | Module(s) | Contract |
 |-------|-----------|----------|
 | High | graph + tip milestones | inventory-aware path / tip id |
-| Mid | `RouteHop` / `ControllerSegment` / `PolicySegment` | entry → play → exit evidence |
+| Mid | `SpineHop` / `ControllerSegment` / `PolicySegment` | entry → play → exit evidence |
 | Low | `routes/controller_common` | hybrid primitives (below) |
 | Boss | `combat/*` via `BossStrategy` / `BossSegment` | only after natural boss-room entry |
 
@@ -233,16 +233,15 @@ Segment protocol stack:
 | `routes/segment.py` | **Practice / tests only** — not the continuous tip runner |
 | `combat/protocol.py` `BossStrategy` / `BossSegment` | Boss fight adapters after natural entry |
 
-Do **not** expand `HopExecutor` into continuous. Prefer documenting dual-track
-use over inventing a second spine.
+Continuous hop execution is **only** `tips.play_hops` (on `SpineHop` /
+`TipSpec.hops`). Do not add a second hop runner in `segment.py` or elsewhere.
 
 See `routes/segment.py` (tests / practice adapters only):
 
-- **`Segment` Protocol** — `id`, optional entry/exit predicates, `play(session)`.
-- **`ControllerSegment` / `PolicySegmentAdapter`** — adapt existing callables.
-- **`HopExecutor`** — run hop sequences with room asserts (test/adapter).
-- **`ContinuousSession`** — thin facade: `run_to`, `execute_hop`,
-  `current_state`, `verify_milestone`, `progress_vector`.
+- **`Segment` Protocol** — `id`, `play(session)`.
+- **`ControllerSegment` / `PolicySegmentAdapter`** — adapt KPDR callables and
+  hash-pinned policies.
+- **`segment_from_kpdr`** — build a `ControllerSegment` from the KPDR registry.
 
 Practice uses a **different** contract: `rooms.segment_contract.EntryContract`
 (doorway-natural bootstrap). Do not conflate with continuous power-on hops.
@@ -262,10 +261,11 @@ while still registering all intermediate graph edges for integrity.
 
 ## Efficiency & code plan (whole-game length)
 
-Long continuous runs will grow past multi-hour frame counts. Keep Segment /
-HopExecutor / ContinuousSession contracts; make the spine cheaper to extend
-and run. Full prioritization lives in [`plan.md`](plan.md); this section is
-the architecture map for those workstreams.
+Long continuous runs will grow past multi-hour frame counts. Keep practice
+Segment adapters when useful; continuous hop execution stays on
+`tips.play_hops` only. Make the spine cheaper to extend and run. Full
+prioritization lives in [`plan.md`](plan.md); this section is the
+architecture map for those workstreams.
 
 ### 1. Selective RAM + StateCache enforcement (highest leverage)
 
@@ -301,7 +301,7 @@ gate optional kwargs — no tip-id allowlists.
 |-----------|--------|--------|
 | Tip-extension scaffold script | Stub + residual + printed checklist | **landed** (`scaffold_tip.py`) |
 | Unified TipSpec | One type for early + Super+; no Early/PostSupers split | **landed** (`routes/tips.py`) |
-| SpineHop-only hops | Delete RouteHop projection layer | **landed** (`RouteHop = SpineHop`) |
+| SpineHop-only hops | Delete RouteHop projection layer | **landed** (no RouteHop alias) |
 | Shared `play_hops` | One hop runner | **landed** (`tips.play_hops`) |
 | Hop tables out of continuous | `routes/kpdr/hops.py` | **landed** |
 | Checkpoint on `ContinuousTip` | `supports_checkpoint` like room timing / energy | **landed** |
@@ -379,7 +379,7 @@ Prioritized for maintainability, not product tip order:
 
 | # | Issue | Preferred remedy | Status |
 |---|--------|------------------|--------|
-| 1 | `continuous.py` clone tip runners | Tip-spec table + generic runner; extract hops | **landed** (`PostSupersTipSpec` + `hops.py` + alias bind) |
+| 1 | `continuous.py` clone tip runners | Tip-spec table + generic runner; extract hops | **landed** (`TipSpec` / `SUPER_TIP_*` + `hops.py` + thin alias bind) |
 | 2 | Twin graph planner APIs + soft dict contracts | Collapse + typed path summary | **partial** (collapse landed; typed model open) |
 | 3 | Multi-registry tip wire (graph/catalog/hops/run_to/probe/__init__) | Single tip definition drives the rest | open (catalog flags + tip-spec help) |
 | 4 | Lineage special-cases in dense frame loops | Explicit entry mode / separate segments | **landed** (Warehouse + Zeela phases) |
@@ -407,7 +407,7 @@ architecture cards.
 9. Manifest-driven recording + `--no-video` for long dry-runs.
 10. Promote shared primitives only after a **second consumer**.
 11. Offline dwell rank before live tighten (`split_dwell.py`).
-12. Post-Supers tips: `PostSupersTipSpec` in `routes/kpdr/hops.py`; harness in `continuous`.
+12. Post-Supers tips: `SUPER_TIP_SPECS` in `routes/kpdr/hops.py`; harness in `continuous`.
 
 ## Package boundaries (target)
 

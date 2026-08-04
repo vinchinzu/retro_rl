@@ -7,14 +7,10 @@ import types
 from pathlib import Path
 
 # Games live under snes/ and nes/ but keep package names (alttp, smb, …).
+# Nested package roots (harvest, hals_golf, …) are discovered by layout after
+# the stable_retro stub is installed (package import may touch the emulator).
 _ROOT = Path(__file__).resolve().parent
-for _extra in (
-    _ROOT,
-    _ROOT / "snes",
-    _ROOT / "nes",
-    _ROOT / "snes" / "harvest",
-    _ROOT / "snes" / "hals_golf",
-):
+for _extra in (_ROOT, _ROOT / "snes", _ROOT / "nes"):
     if _extra.is_dir():
         _text = str(_extra)
         if _text not in sys.path:
@@ -38,3 +34,8 @@ except ModuleNotFoundError:
             RuntimeError("stable_retro stub cannot create environments")
         ),
     )
+
+
+from retro_harness.repo import ensure_import_paths  # noqa: E402
+
+ensure_import_paths(root=_ROOT)

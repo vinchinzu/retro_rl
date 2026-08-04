@@ -43,8 +43,12 @@ def register_routes(
         registry[alias] = route
 
 
-def get_route(registry: dict[str, NamedRoute], route_id: str) -> NamedRoute:
-    """Look up a route by id or alias (case-insensitive on the key)."""
+def get_named_route(registry: dict[str, NamedRoute], route_id: str) -> NamedRoute:
+    """Look up an adventure named route by id or alias.
+
+    Prefer this name over bare ``get_route`` — platformer speedrun catalogs use
+    ``get_platformer_route`` for a different type.
+    """
     key = route_id.strip().lower()
     # Prefer exact key, then lowercased (registries usually store lowercase aliases).
     if key in registry:
@@ -53,6 +57,10 @@ def get_route(registry: dict[str, NamedRoute], route_id: str) -> NamedRoute:
         return registry[route_id]
     available = sorted({r.route_id for r in registry.values()})
     raise KeyError(f"Unknown route {route_id!r}. Available: {available}")
+
+
+# Compat alias (prefer get_named_route in new code).
+get_route = get_named_route
 
 
 def list_routes(registry: dict[str, NamedRoute]) -> list[NamedRoute]:
@@ -76,7 +84,7 @@ class RouteRegistry:
         register_routes(self._routes, route, *aliases)
 
     def get(self, route_id: str) -> NamedRoute:
-        return get_route(self._routes, route_id)
+        return get_named_route(self._routes, route_id)
 
     def list(self) -> list[NamedRoute]:
         return list_routes(self._routes)

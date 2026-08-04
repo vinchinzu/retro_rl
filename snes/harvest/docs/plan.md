@@ -13,6 +13,14 @@ power-on→D2 continuous claim. After that (or in parallel), same-day water
 reliability and **grow → harvest → ship** remain open so money rises above the
 post-seed $100 floor. Details: [town_day1_recon.md](town_day1_recon.md).
 
+## Product backlog (from AGENTS slim)
+
+- Power-on → full D1 → D2 with shed grass+can on `house_size=0` (no AnnEve).
+- Extract coop feed/collect/ship into `tasks/skills.py`; Spring 22 multi-adult /
+  dynamic egg tiles before daily plan restore.
+- Gift delivery (carry egg to NPC) once town nav is solid.
+- Expand `build_day_phases()` for summer/fall crop rotations.
+
 ## Next acceptance tests
 
 1. From clean power-on, complete six D1 talks + truck + shed grass/can
