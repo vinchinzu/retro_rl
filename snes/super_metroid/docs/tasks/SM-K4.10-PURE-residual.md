@@ -1,29 +1,38 @@
 > **Board split:** `rr-dbu.10` = blue gate open only → `rr-re9` = Super door + Wave PLM.
-> Stop inventing shot knobs without PLM open proof (animation or x≳480 solid).
+> Gate open GREEN dual pure. Wave door still RED (rr-re9).
 
 # Residual — SM-K4.10-GATE / rr-dbu.10 (Double Chamber blue gate open)
 
 ## Result
 
-RED
+GREEN (gate open only)
 
 ## Files changed (this session)
 
-- none for gate geometry (only `_DC_DOOR_*` rename while fixing Bubble `_DOOR_X`
-  collision — no gate behavior change)
+- `routes/kpdr/k4_wave.py` — one-knob: human tape f4650–5200 RLE from Kamer seat x∈[370,375] y≤139; replace scaffold R/peak/fall attempts
+- `custom_integrations/SuperMetroid-Snes/scratch/dev_gate_kamer_top_pure.state` — pure Kamer mid-state (research)
+- `custom_integrations/SuperMetroid-Snes/scratch/dev_gate_open_pure.state` — post-open pure pin ~(488,139)
+- `debug/wave_recon/gate_human_replay.py` — seat+replay research harness
+- `debug/wave_recon/human_replay_pure/report.json` — early RED exact-replay delta log
 
 ## Verify paste
 
 ```bash
+# Dual gate-open only (product controller hop + _dc_open_blue_gate):
+# trial0/1: ok=True xy=(488,139) pose=9 frames=1171 beams=0x0000
+# DUAL_GATE True
+
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure double-chamber-to-wave \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_single_to_double_chamber_pure.state \
   --no-red-diag
-# RED: Wave door missed; room=0xADAD pose=81 xy=(475,409) frames=2995 beams=0x0000
+# exit 0 JSON success=false (Wave door = rr-re9)
+# pin: room=0xADAD pose=25 xy=(920,311) missiles=20 frames=2371
+# missiles=20 proves past-gate pack; x=920 is Super-door column (gate cleared)
 ```
 
 ## Acceptance
 
-- [ ] Pure proves gate open (open animation **or** walk x≳480 y≲200 solid) dual
+- [x] Pure proves gate open (walk x≳480 y≲200 solid) dual
 - [x] Residual PROCESS pin; one-knob policy documented
 - [x] Does not claim Wave beam bit
 
@@ -31,59 +40,49 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure double-chamber-to-wa
 
 | Fact | Value |
 |------|------:|
-| Entry | Double Chamber `0xADAD` ~(39–61,139) post Single→Double pure |
-| Kamer | left-of-gate y **139↔219** (~200f half); shoot only at **top y≤145** |
-| Blue gate bars | hard-stop **x≈411** upper path |
-| Pure fail pin | bottom hard-stop ~(475,409) after failed upper path |
-| Past gate | solid ~(480–520,139); Super red door ~(940,139) → Wave `0xADDE` |
+| Entry | Double Chamber `0xADAD` ~(61,139) post Single→Double pure |
+| Open seat | **x∈[370,375] y≤139** standing; settle **8f** then human RLE |
+| Blue gate bars | hard-stop **x≈411** until open |
+| Dual open pin | solid **(488,139)** pose 9 after human f4650–5200 |
+| Past gate | missile pack → Super column ~(920,·); Wave `0xADDE` still unopened |
 
-## Human tape open timeline (`speed_to_ice_moat` DC segment)
+## Human tape → pure (PLM truth)
 
-Assist ammo (missiles never drain on tape). Gate open **is** on tape:
+Exact buttons from `speed_to_ice_moat_human.json` f4650–5200 open the gate
+**from pure natural seat** when seat pin matches the human band:
 
-| frame | xy | notes |
-|------:|----|-------|
-| 4650 | (378,139) | seat; sel=1 missiles; pose 1 |
-| 4652–4710 | seat | R hold + X+R pulses |
-| 4712–4731 | peak | A+R / A+X+R; peak band y≈100–111 |
-| 4834–4848 | fall | pure X pose 19 y≈122 |
-| 4964 / 5005 | seat | **SELECT** sel 1→2→**0** (beam for final) |
-| 5022–5054 | second volley | A then X+R on beam |
-| 5083–5125 | approach | B+RIGHT (+A); still left of bars |
-| **5126** | **(413,135)** | first x>411 airborne B+RIGHT |
-| **5132** | **(421,139)** | **solid pose 9 walk** — gate clear |
-| 5200 | (477,139) | past-gate platform |
-| 5206 | (494,139) | missile pack (+5); tape end still ADAD |
+| seat | result |
+|------|--------|
+| natural x∈[370,375] y≤139 + 8f settle + human RLE | **GREEN dual** (488,139) |
+| natural x≈387 / y≈149 / wide band only | RED hard-stop ~411 or fall bottom |
+| scaffold R/peak/fall shot knobs | RED bottom ~(475,409) |
 
-Human never enters Wave. Prior pure/human-replay experiments under
-`debug/wave_recon/` and `scratch/dev_gate_*` did **not** reproduce open from
-pure pin (max upper x≈411).
+Key frame match after green path: pose sequence tracks human (5→105→19→SELECT
+1→2→0→105→ approach); first solid past bars ~f5132 class; end x≳480.
 
-## Residual risks / RED cause
+## Residual risks
 
-- Impacts on **bars** ≠ proven **switch** hitbox; PLM WRAM open bit not mapped
-  in-repo (`red_diag` marks PLM records blocked)
-- Human SELECT + long dual-volley + Kamer phase may matter; naive R-angle
-  scaffold still ends bottom ~(475,409)
-- Do **not** add more shot cadence knobs until one of:
-  1. Frame dump shows gate open animation after a single known projectile, or
-  2. Exact human button replay from a **Kamer-top pure save** reaches x≳480, or
-  3. Alternate pure path (bottom climb) documented with pins
+- Full `double-chamber-to-wave` still RED at Super door (rr-re9) — not this bead
+- Human RLE is long (~551f); fragile if hop seat drifts outside 370–375 / y>139
+- Knockback mid-RLE aborts open (desync); rare on dual runs so far
+- Do not re-introduce multi-attempt shot-knob thrash without PLM proof
 
 ## Next action (required)
 
-- **Next card ID:** rr-dbu.10 continue (gate open only)
-- **One change:** PLM truth — capture Kamer-top pure mid-state, replay human
-  f4650–5200 buttons **exactly** (or prove delta); if still RED, map switch
-  hitbox via sm-json / projectile pixel log — **not** another angle knob
-- **Source state:** `scratch/post_single_to_double_chamber_pure.state`
+- **Next card ID:** rr-re9 (Super door + Wave PLM collect)
+- **One change:** open Super/missile red door at ~(940,139) + Wave chozo 0x0001 from post-gate pure pin
+- **Source state:** `scratch/dev_gate_open_pure.state` or `post_single_to_double_chamber_pure` + gate open
 
 ## Non-claims
 
 - Did not STATUS-promote / continuous Wave tip
 - Did not claim Wave beam bit / Super door pure (rr-re9)
-- Human tape is seat/open research only
+- Probe vehicle RED on Wave door is expected; gate open is the dbu.10 claim only
 
-## Probe pin (RED)
+## Probe pin (GREEN gate)
 
-room=0xADAD pose=81 x=475 y=409 door_transition=0 frames=2995 last_pin=post_single_to_double_chamber_pure gate not cleared; beams=0x0000
+room=0xADAD pose=9 x=488 y=139 door_transition=0 frames=1171 last_pin=post_single_to_double_chamber_pure gate open dual; beams=0x0000
+
+## Probe pin (full vehicle — Wave door RED, gate cleared)
+
+room=0xADAD pose=25 x=920 y=311 door_transition=0 frames=2371 missiles=20 beams=0x0000
