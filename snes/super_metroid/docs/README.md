@@ -1,10 +1,9 @@
 # Super Metroid docs
 
 **Goal:** continuous power-on → ending/credits with unlimited energy + ammo
-only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Current tip: **Bat Cave**
-(`--to bat_cave`, **122,304f** ×2 integrity green). Frog Save is a side tip
-only. ★ Next pure: **Bat → Speed Hall** from `post_bat_cave_continuous` /
-`post_bubble_to_bat_pure`.
+only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Current tip: **Speed Booster**
+(`--to speed`, **130,388f** ×2 integrity green, Spazer mainline). Frog Save is
+a side tip only. ★ Next pure: **Speed return → Bubble** (`rr-g4i`).
 
 **Parallel Clean track:** Morph Clean green; ★ next bombs/Torizo Clean
 ([CLEAN_TRACK.md](CLEAN_TRACK.md)).
@@ -34,10 +33,11 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 | ✅ | → Varia (K3) | continuous | **101,954** best |
 | ✅ | → Business return | continuous | 113,723 ×2 |
 | ✅ | → Frog Savestation (K4.0) | continuous side tip | 114,923 ×2 |
-| ✅ | Cathedral + Bubble → **Bat Cave (K4.4)** | continuous **primary** | **122,304** ×2 |
-| ▶ | **Bat → Speed Hall** | pure_open | ★ next pure |
+| ✅ | Cathedral + Bubble → Bat Cave (K4.4) | continuous (previous tip) | **122,304** ×2 |
+| ✅ | → **Speed Booster (K4.5)** | continuous **primary** | **130,388** ×2 |
+| ▶ | **Speed return → Bubble** | pure_open | ★ next pure (`rr-g4i`) |
 | ⏸ | Frog Save → Speedway pure | parked | post-Speed only |
-| ⬜ | → Speed / Wave / Ice (K4) | open | after Bat→Speed |
+| ⬜ | → Wave / Ice (K4) | open | after Speed return |
 | ⬜ | → Alpha PB (K5) | open | — |
 | ⬜ | → Phantoon / Gravity (K6) | open | — |
 | ⬜ | → Botwoon / Draygon / SJ (K7) | open | — |
@@ -50,7 +50,7 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 
 | File / dir | Role |
 |------------|------|
-| **[STATUS.md](STATUS.md)** | Verified facts + maturity gate (M5: → Bat Cave) |
+| **[STATUS.md](STATUS.md)** | Verified facts + maturity gate (M5: → Speed) |
 | **[plan.md](plan.md)** | Strategy, triage, risks, M6–M8 + structure plan |
 | **[routes/MILESTONES.md](routes/MILESTONES.md)** | **Top-level milestone status** (every tip / rollup) |
 | **[routes/BACKLOG.csv](routes/BACKLOG.csv)** | **~308 atomic tickets** to full clear |
@@ -91,8 +91,8 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 ## Commands (quick)
 
 ```bash
-# Current continuous tip (DEFAULT_CONTINUOUS_TIP = bat_cave)
-uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no-video
+# Current continuous tip (DEFAULT_CONTINUOUS_TIP = speed)
+uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video
 
 # Side tip (Frog Save — not primary)
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video

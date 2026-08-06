@@ -297,11 +297,11 @@ def test_k4_graph_varia_to_speed_scaffold() -> None:
     ]
     assert path[0].edge_id == "varia_to_kraid"
     assert path[0].verification == "continuous"
-    # Return spine continuous through Bat Cave; first open Speed hop is Speed Hall.
+    # Return spine continuous through Speed collect (STATUS-promoted tip).
     summary = SPEED_GRAPH.path_verification(0xA6E2, 0xAD1B, caps)
     assert summary["reachable"] is True
-    assert summary["all_continuous"] is False
-    assert summary["blocking"] == "bat_cave_to_speed_hall"
+    assert summary["all_continuous"] is True
+    assert summary["blocking"] is None
 
     hops = SPEED_GRAPH.suggest_next_hops(0xA6E2, capabilities=caps)
     assert hops

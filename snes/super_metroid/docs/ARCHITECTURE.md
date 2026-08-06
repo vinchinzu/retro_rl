@@ -30,7 +30,7 @@ combat/*.py                               boss fight policies (after natural ent
 policy.py + policies/**                   JSON raw-button PolicySegments
         │
 progression/                              RoomNode / DoorEdge / milestones / graphs
-ram.py + assist.py                        state parse + resource assists
+ram.py + door_kinematics.py + assist.py   state parse, door speed/pos, assists
         │
 rooms/*                                   isolated practice (EntryContract, queue)
 dev/*                                     door-warp topology (developmentOnly)
@@ -57,8 +57,10 @@ legacy/*                                  frozen vision/RL remnants
 | `progression.RoomProgressionGraph` | Rooms, directed edges, capability BFS |
 | `DoorEdge.verification` | `unverified` / `controller_dev` / `continuous` |
 | `ProgressCondition` / `ProgressionMilestone` | Live RAM stop predicates |
+| `door_kinematics.DoorKinematics` | Leave/entry speed, position, pose, speed-booster charge, shine timer |
+| `ObservedTransition.leave/entry_kinematics` | Continuous hop snapshots (TAS door tech) |
 | Staged graphs | `START_TO_MORPH` ⊂ … ⊂ `START_TO_VARIA` ⊂ `START_TO_SPEED` (Business return + K4 scaffold) |
-| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`bat_cave`) |
+| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`speed`) |
 | `routes/tips.play_hops` + `SpineHop` | Ordered controller legs (only hop runner) |
 | `source_states.py` | Code twin of `SOURCE_STATES.md` — pure entry fingerprints |
 
@@ -94,7 +96,7 @@ poking without dropping evidence:
 | `require_state` | Fail fast with requirement failure strings |
 | `hold_until` | Hold buttons while polling |
 | `wait_ordinary_room` | Multi-truth settle (room + phase + optional x/y) |
-| `play_run_shoot_exit` / `traverse_door` | Horizontal door exit (+ entry window) |
+| `play_run_shoot_exit` / `traverse_door` | Horizontal door exit (+ entry/leave kinematics) |
 | `collect_item_mask` | Wait for PLM item bit |
 | `ensure_morph` / `select_weapon` | Pose / weapon helpers |
 

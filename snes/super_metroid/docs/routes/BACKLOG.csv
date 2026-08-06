@@ -7,11 +7,11 @@ SM-K4-CATH-04,K4,pure,Pure Rising Tide→Bubble Mountain,SM-K4-CATH-03,P0,done,M
 SM-K4.1-PURE,K4,pure,Pure Frog Save→Speedway,,P3,parked,M,routes/kpdr/k4_norfair.py,source scratch/post_frog_continuous.state expect 0xB167; exit 0xB106; living card SM-K4-SPEEDWAY-PURE; residual may be GREEN; parked post-Speed shortcut; pure GREEN; not first Bubble (Cathedral repath 2026-08-02)
 SM-K4-SPEEDWAY-SRC,K4,docs,Fingerprint-register Speedway pure successor,SM-K4.1-PURE,P0,done,S,docs/SOURCE_STATES.md,post_frog_save_to_speedway_pure.state expect 0xB106; Wave-11; Wave-11 closed; post-Speed path
 SM-K4-STAB-ICE,K4,stabilize,Stabilize wave pure+continuous Ice stack,SM-K4-TIP-ICE,P0,open,L,routes/continuous.py catalog.py,planner-serial
-SM-K4-STAB-SPEED,K4,stabilize,Stabilize wave pure+continuous Speed stack,SM-K4-TIP-SPEED,P0,open,L,routes/continuous.py catalog.py,planner-serial
+SM-K4-STAB-SPEED,K4,stabilize,Stabilize wave pure+continuous Speed stack,SM-K4-TIP-SPEED,P0,open,L,routes/continuous.py catalog.py,planner-serial; bead rr-07b after STATUS
 SM-K4-STATUS-ICE,K4,status,STATUS promote Ice tip,SM-K4-STAB-ICE,P0,open,M,routes/continuous.py catalog.py,planner only
-SM-K4-STATUS-SPEED,K4,status,STATUS promote Speed tip,SM-K4-STAB-SPEED,P0,open,M,routes/continuous.py catalog.py,planner only
+SM-K4-STATUS-SPEED,K4,status,STATUS promote Speed tip,SM-K4-TIP-SPEED,P0,done,M,docs/STATUS.md continuous tip speed,rr-cd0 2026-08-06; DEFAULT_CONTINUOUS_TIP=speed; 130388f x2 Spazer dual
 SM-K4-TIP-ICE,K4,compose,Continuous tip --to ice,SM-K4.15-PURE,P0,open,L,routes/continuous.py catalog.py,Ice collect integrity
-SM-K4-TIP-SPEED,K4,compose,Continuous tip --to speed,SM-K4.6-PURE,P0,ready,L,routes/continuous.py catalog.py,Speed collect integrity
+SM-K4-TIP-SPEED,K4,compose,Continuous tip --to speed,SM-K4.6-PURE,P0,done,L,routes/continuous.py catalog.py,rr-d20 dual GREEN 130388f exact match; then rr-cd0 STATUS
 SM-K4-TIP-SPEEDWAY,K4,compose,Continuous tip --to speedway (or intermediate),SM-K4.3-PURE,P0,open,L,routes/continuous.py catalog.py,after Bubble path pure stack; optional intermediate; first Bubble is Cathedral
 SM-K4-TIP-WAVE,K4,compose,Continuous tip --to wave,SM-K4.10-PURE,P0,open,L,routes/continuous.py catalog.py,Wave collect integrity
 SM-K4.1-GRAPH,K4,graph,Graph edge Frog Save→Speedway controller_dev,SM-K4.1-PURE,P3,parked,S,progression.py,mark 0xB167->0xB106 after pure green; parked with Speedway post-Speed path

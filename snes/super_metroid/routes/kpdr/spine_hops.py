@@ -11,6 +11,10 @@ from super_metroid.ram import HI_JUMP_MASK, VARIA_MASK
 from super_metroid.routes.kpdr.pink_to_ghz import play_big_pink_to_ghz
 from super_metroid.routes.kpdr.pink_shaft import play_big_pink_into_main_shaft
 from super_metroid.routes.kpdr.to_bat_cave import play_bubble_to_bat_cave
+from super_metroid.routes.kpdr.to_speed import (
+    play_bat_cave_to_speed_hall,
+    play_speed_hall_to_speed,
+)
 from super_metroid.routes.kpdr.ghz_to_red import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
@@ -74,6 +78,8 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_NOOB,
     ROOM_RED_TOWER,
     ROOM_RISING_TIDE,
+    ROOM_SPEED,
+    ROOM_SPEED_HALL,
     ROOM_SUPER,
     ROOM_VARIA,
     ROOM_WAREHOUSE,
@@ -600,6 +606,31 @@ POST_SUPERS_SPINE: tuple[SpineHop, ...] = (
         exit_direction="right",
         entry_direction="left",
         requires=_K4_CAPS | frozenset({"super_missiles"}),
+        policy_id="kpdr_k4_speed",
+    ),
+    # --- speed (K4.5; Bat → Speed Hall → Speed Booster collect) ---
+    SpineHop(
+        "bat_cave_to_speed_hall",
+        play_bat_cave_to_speed_hall,
+        ROOM_BAT_CAVE,
+        ROOM_SPEED_HALL,
+        "Speed Booster Hall",
+        "speed",
+        exit_direction="right",
+        entry_direction="left",
+        requires=_K4_CAPS,
+        policy_id="kpdr_k4_speed",
+    ),
+    SpineHop(
+        "speed_hall_to_speed",
+        play_speed_hall_to_speed,
+        ROOM_SPEED_HALL,
+        ROOM_SPEED,
+        "Speed Booster Room",
+        "speed",
+        exit_direction="right",
+        entry_direction="left",
+        requires=_K4_CAPS | frozenset({"missiles"}),
         policy_id="kpdr_k4_speed",
     ),
 )

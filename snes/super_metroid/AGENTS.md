@@ -21,15 +21,15 @@ Shared process: [`docs/FULL_RUN_PROCESS.md`](../../docs/FULL_RUN_PROCESS.md).
 
 ## Immediate goal
 
-**Verified tip:** continuous power-on → Bat Cave (default `bat_cave`, **122,304f**).
-**Pure green (not STATUS):** Bat → Speed Hall + Hall → Speed collect.
-**Next:** continuous `--to speed` dual integrity → STATUS promote (`rr-d20` / `rr-cd0`).
+**Verified tip:** continuous power-on → Speed Booster (default `speed`,
+**130,388f** ×2, room `0xAD1B`, beams `0x1004`, items `0x3105`).
+**History:** non-Spazer Bat Cave **122,304f** ×2 remains a valid previous tip.
+**Next:** stabilize wave after Speed (`rr-07b`); pure Speed return → Bubble
+(`rr-g4i`). Do not claim pure Speed return yet.
 
-**Spazer mainline (K2 warehouse dual — STATUS-promoted):** Charge + Spazer on
-continuous spine. Warehouse dual **89,416 + 90,904f**, beams `0x1004`, room
-`0xA6A1` (`warehouse_with_spazer.json` + `_dual.json`). Floor **Cacatac** clear
-before spin. Does not change default CLI tip. Bat Cave Spazer single **127,806f**
-exists; dual Spazer bat_cave STATUS not claimed. Details: [`docs/STATUS.md`](docs/STATUS.md).
+**Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
+Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:
+[`docs/STATUS.md`](docs/STATUS.md).
 
 **Work tracker:** monorepo **bd (beads)** — `bd ready -l super_metroid`.
 Product evidence stays in STATUS / MILESTONES (not beads alone).
@@ -74,9 +74,10 @@ integrity flags, and the `.mp4` path** — not a pasted JSON body.
 From repo root (`snes/` on pythonpath → `import super_metroid` works).
 
 ```bash
-# Continuous default (bat_cave) / named tips
+# Continuous default (speed) / named tips
 uv run python snes/super_metroid/scripts/record/continuous.py --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no-video  # previous tip
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video
 
 # Early Spazer human wall-jump (guide on same window; see docs/tasks/EARLY_SPAZER_HUMAN.md)
@@ -88,9 +89,6 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bat-cave-to-speed-ha
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bat_cave_continuous.state
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure speed-hall-to-speed \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bat_cave_to_speed_hall_pure.state
-
-# Continuous Speed tip (compose / dual) — default tip remains bat_cave until STATUS
-uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video
 
 uv run python snes/super_metroid/scripts/export/kpdr_tracker.py
 bd ready -l super_metroid
