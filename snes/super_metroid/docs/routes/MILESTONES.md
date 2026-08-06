@@ -6,7 +6,7 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 **Current tip (primary / assisted):** Speed Booster (`--to speed`, **130,388f** ×2 exact match integrity green, 2026-08-06). Room `0xAD1B`, beams `0x1004`, items `0x3105`, outcome `speed_collected`. Reports: `recordings/speed_spazer.json` + `speed_spazer_dual.json`. Previous tip history: non-Spazer Bat Cave **122,304f** ×2 (`--to bat_cave`, 2026-08-03) — superseded as default, still valid. Frog Savestation remains a **side tip** (`--to frog`, 114,923f ×2). Spazer warehouse dual is a promoted prefix (89,416 + 90,904f). ★ Next serial: stabilize wave after Speed (`rr-07b`); pure Speed return → Bubble (`rr-g4i`).
 
-**Parallel Clean track:** no energy + no ammo writes — Morph Clean green; ★ next bombs/Torizo Clean (`--to bombs --clean`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
+**Parallel Clean track:** no energy + no ammo writes — Morph Clean green; bombs/Torizo Clean **RED** (BT economy residual → `SM-CLEAN-BT-ECONOMY`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
 
 ## Status legend
 
@@ -70,8 +70,8 @@ Intervention: **no** energy refill, **no** ammo refill. Same Bronze observation
 | | ID | Milestone | Room | Frames / score | CLI / card |
 |--:|----|-----------|------|----------------|------------|
 | ✅ | `C-INFRA` | Clean CLI + artifact isolation + integrity | — | unit tests | `SM-CLEAN-*` infra done |
-| ✅ | `C-MORPH` | Continuous → Morph (**Clean**) | `0x9E9F` | **27074** | `morph_clean.json` |
-| ▶ | `C-BOMBS` | Continuous → Bombs/Torizo (**Clean**) ★ | `0x9804` | missiles @ 27928/29690 | `SM-CLEAN-BOMBS` — BT = existing model |
+| ✅ | `C-MORPH` | Continuous → Morph (**Clean**) | `0x9E9F` | **27074** (path also **26824**) | `morph_clean.json` |
+| 🟥 | `C-BOMBS` | Continuous → Bombs/Torizo (**Clean**) ★ | `0x9804` | RED @ BT | residual → `SM-CLEAN-BT-ECONOMY` |
 | ⏸ | `C-SPORE` | Continuous → Spore (**Clean**) | `0x9DC7` | — | parked until C-BOMBS |
 | ⏸ | `C-SUPERS` | Continuous → Supers (**Clean**) | `0x9B5B` | — | parked |
 
@@ -96,7 +96,7 @@ Process: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Infra landed — `--clean` uses
 - Continuous (assisted): **18** (includes CATH/BUBBLE/Bat→Speed continuous-integrated + Speed primary; Frog side tip still green)
 - Next pure ready (assisted): **1** (Speed return → Bubble, `rr-g4i`)
 - Open (assisted product): **17** (Wave+ product tips still open)
-- Clean track: **infra ✅ + morph ✅**; ★ bombs/Torizo ready (missiles clean green); spore+ parked
+- Clean track: **infra ✅ + morph ✅**; bombs/Torizo **RED** (BT economy residual); spore+ parked
 - KPDR tracker segments: **92** (`continuous`=41, `open`=50)
 - Backlog tickets: **~308** (includes CLEAN + Cathedral pure stack)
 

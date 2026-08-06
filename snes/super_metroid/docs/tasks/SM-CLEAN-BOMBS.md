@@ -46,10 +46,10 @@ Depends: clean infra green (artifacts + integrity); morph clean **done**.
    (`SM-CLEAN-STATUS`) — planner.
 
 ## Acceptance
-- [ ] Clean report success + bomb_torizo outcome
-- [ ] Resource writes all zero
-- [ ] Assisted bombs baseline files unchanged
-- [ ] Residual PROCESS fields
+- [ ] Clean report success + bomb_torizo outcome — **RED** 2026-08-06
+- [x] Resource writes all zero (failed run still Clean intervention)
+- [x] Assisted bombs baseline files unchanged
+- [x] Residual PROCESS fields → `SM-CLEAN-BOMBS-residual.md` / `SM-CLEAN-BT-ECONOMY`
 
 ## Verify commands
 ```bash
