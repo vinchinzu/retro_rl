@@ -49,8 +49,9 @@ _DROP_X = (370, 400)
 _DROP_TARGET_X = 385
 _MID_Y = (220, 340)
 _FLOOR_Y = 360
-_DOOR_Y = (380, 420)
-_DOOR_X = 470
+# Prefix BSC_ (bubble→single): must not collide with DC door constants below.
+_BSC_DOOR_Y = (380, 420)
+_BSC_DOOR_X = 470
 _SINGLE_SETTLE = 320
 _TOTAL_BUDGET = 5000
 _TOP_WALK_FRAMES = 400
@@ -188,8 +189,8 @@ def _nav_floor_to_door(session: ControllerSession, label: str) -> None:
             continue
 
         on_door_sill = (
-            state.samus_x >= _DOOR_X
-            and _DOOR_Y[0] <= state.samus_y <= _DOOR_Y[1]
+            state.samus_x >= _BSC_DOOR_X
+            and _BSC_DOOR_Y[0] <= state.samus_y <= _BSC_DOOR_Y[1]
             and state.velocity_y == 0
         )
         if on_door_sill:
@@ -223,7 +224,7 @@ def _nav_floor_to_door(session: ControllerSession, label: str) -> None:
             continue
 
         # Floor band y≥360: run right toward door; hop small gaps.
-        if state.samus_x < _DOOR_X:
+        if state.samus_x < _BSC_DOOR_X:
             phase = frame % 22
             if phase < 6:
                 hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_floor_hop")
@@ -252,7 +253,7 @@ def _push_right_blue_door(session: ControllerSession, label: str) -> None:
         if state.samus_y > 430:
             hold(session, 1, "LEFT", "B", "A", reason=f"{label}_under_recover")
             continue
-        if state.samus_x < _DOOR_X - 20:
+        if state.samus_x < _BSC_DOOR_X - 20:
             hold(session, 1, "RIGHT", "B", reason=f"{label}_reapproach")
             continue
 
@@ -584,8 +585,9 @@ _GATE_SEAT_X = (365, 390)
 _GATE_SEAT_Y_MAX = 200
 _GATE_PEAK_Y = (100, 120)
 _PAST_GATE_X = 480
-_DOOR_X = 920
-_DOOR_Y_MAX = 180
+# Prefix DC_ so Bubble `_BSC_DOOR_*` is never overwritten at import time.
+_DC_DOOR_X = 920
+_DC_DOOR_Y_MAX = 180
 
 
 def _escape_kb_dc(session: ControllerSession, label: str, prefer: str) -> None:
@@ -865,7 +867,7 @@ def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
             continue
 
         x, y = state.samus_x, state.samus_y
-        near_door = x >= _DOOR_X and y < _DOOR_Y_MAX
+        near_door = x >= _DC_DOOR_X and y < _DC_DOOR_Y_MAX
 
         if near_door:
             # Red door: Supers (also open missile doors).
@@ -884,7 +886,7 @@ def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
         select_weapon(session, 0)
         if x >= 750:
             # Right structure walljump climb to door sill y≈140.
-            if y > _DOOR_Y_MAX:
+            if y > _DC_DOOR_Y_MAX:
                 phase = frame % 14
                 if phase < 5:
                     hold(session, 1, "LEFT", "A", reason=f"{label}_wj_l")

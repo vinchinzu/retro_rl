@@ -74,15 +74,21 @@ rr-dbu.10 gate open
 `rr-g4i` Speed→Bubble → (`rr-yzv` Bubble→Single) → `rr-g1b` Single→Double → **gate/Wave open**  
 Moat spark hop: `rr-hhj` GREEN (pin-only). Continuous tip: **`--to speed` 130388f** dual.
 
-## Probe smoke (2026-08-06)
+## Probe smoke (2026-08-06 session)
 
 | Segment | Result |
 |---------|--------|
 | `speed-return-to-bubble` | GREEN |
-| `bubble-to-single` from return pin | **RED** → rr-dbu.1 |
-| `single-to-double` | GREEN |
-| `double-chamber-to-wave` | **RED** gate → rr-dbu.10 |
+| `bubble-to-single` from return pin | **GREEN dual 421f** (rr-dbu.1) — fixed `_DOOR_X` shadow |
+| `single-to-double` | GREEN 700f (refreshed successor pin) |
+| `double-chamber-to-wave` | **RED** gate ~(475,409) → rr-dbu.10 open |
 | Moat spark pure | GREEN (rr-hhj) |
+
+### rr-dbu.1 root cause
+
+`k4_wave.py` module constants: Bubble `_DOOR_X = 470` was overwritten by
+Double Chamber `_DOOR_X = 920` after K4.10 scaffold. Sill push never shot.
+Fixed: `_BSC_DOOR_*` / `_DC_DOOR_*`.
 
 ## Non-claims
 
