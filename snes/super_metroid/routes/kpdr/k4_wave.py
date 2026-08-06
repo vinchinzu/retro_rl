@@ -573,21 +573,72 @@ def play_single_to_double_chamber(session: ControllerSession) -> SuperMetroidSta
 
 # ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM
-# Live recon (2026-08-06): entry ~(61,139); upper hop path; blue gate ~x410
-# switch is TOP mechanism. Human speed_to_ice_moat opens with R-angle (not
-# UP+RIGHT) standing + peak X+R at seat ~(370–378,139) peaking y≈104–111.
-# Past-gate solid ~(520,140); right Super door → Wave chozo beams|=0x0001.
+# Live (2026-08-06, rr-dbu.10): entry ~(61,139); upper hop → Kamer seat
+# x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200
+# (``tasks/speed_to_ice_moat_human.json``). Scaffold R/peak/fall knobs miss
+# PLM; frame-exact human sequence from pure natural seat clears bars
+# (past-gate solid x≳480 y≈139). Super door + Wave chozo → rr-re9.
 # ---------------------------------------------------------------------------
 _DC_TOTAL_BUDGET = 9000
 _WAVE_SETTLE = 280
 _GATE_X = (360, 430)
+# Hop delivery band (wide); open phase reseats tighter to human tape.
 _GATE_SEAT_X = (365, 390)
 _GATE_SEAT_Y_MAX = 200
-_GATE_PEAK_Y = (100, 120)
+# Human open seat (tape f4650 ~(378,139); pure green band 370–375 @ y≤139).
+_GATE_OPEN_SEAT_X = (370, 375)
+_GATE_OPEN_SEAT_Y = 139
 _PAST_GATE_X = 480
 # Prefix DC_ so Bubble `_BSC_DOOR_*` is never overwritten at import time.
 _DC_DOOR_X = 920
 _DC_DOOR_Y_MAX = 180
+
+# Exact human open sequence (tape frames 4650–5200), RLE of button names.
+# Source: tasks/speed_to_ice_moat_human.json — do not invent shot cadences.
+_HUMAN_GATE_OPEN_RLE: tuple[tuple[int, tuple[str, ...]], ...] = (
+    (2, ()),
+    (27, ("R",)),
+    (10, ("X", "R")),
+    (11, ("R",)),
+    (10, ("X", "R")),
+    (2, ("R",)),
+    (10, ("B", "A", "R")),
+    (5, ("B", "A", "X", "R")),
+    (3, ("A", "X", "R")),
+    (2, ("X", "R")),
+    (11, ("R",)),
+    (32, ()),
+    (19, ("R",)),
+    (26, ("A", "R")),
+    (1, ("A", "X", "R")),
+    (8, ("X", "R")),
+    (5, ()),
+    (7, ("X",)),
+    (2, ()),
+    (6, ("X",)),
+    (55, ()),
+    (4, ("RIGHT",)),
+    (56, ()),
+    (8, ("SELECT",)),
+    (33, ()),
+    (9, ("SELECT",)),
+    (8, ()),
+    (13, ("A",)),
+    (2, ("A", "X", "R")),
+    (7, ("X", "R")),
+    (4, ("R",)),
+    (7, ("X", "R")),
+    (2, ("R",)),
+    (26, ()),
+    (7, ("RIGHT",)),
+    (2, ("B", "RIGHT")),
+    (11, ("B", "RIGHT", "A")),
+    (6, ("RIGHT",)),
+    (33, ("B", "RIGHT")),
+    (1, ("RIGHT",)),
+    (43, ()),
+    (15, ("RIGHT",)),
+)
 
 
 def _escape_kb_dc(session: ControllerSession, label: str, prefer: str) -> None:
@@ -681,13 +732,14 @@ def _dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
             hold(session, 1, "RIGHT", "B", reason=f"{label}_gate_run")
 
 
-def _dc_wait_kamer_top(session: ControllerSession, label: str) -> bool:
-    """Ride left-of-gate Kamer until y≤145 (cycle 139↔219, ~200f half-period).
+def _dc_wait_kamer_open_seat(session: ControllerSession, label: str) -> bool:
+    """Ride Kamer to human open seat: x∈[370,375], y≤139, standing.
 
-    Live recon (rr-re9): shooting on a low Kamer (y≳180) aims under the top
-    switch; human tape only fires once seated high (~y139–150).
+    Tighter than hop delivery band — pure human-button replay only greens
+    from this pin (rr-dbu.10). y≤145 is too low; shoot starts must be peak.
     """
-    for _ in range(500):
+    x_lo, x_hi = _GATE_OPEN_SEAT_X
+    for _ in range(800):
         state = session.state
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return False
@@ -701,43 +753,45 @@ def _dc_wait_kamer_top(session: ControllerSession, label: str) -> bool:
         if state.pose in (137, 138):
             unmorph(session)
             continue
-        high = (
+        seated = (
             state.velocity_y == 0
-            and state.samus_y <= 145
-            and _GATE_SEAT_X[0] - 10 <= state.samus_x <= _GATE_SEAT_X[1] + 20
+            and state.samus_y <= _GATE_OPEN_SEAT_Y
+            and x_lo <= state.samus_x <= x_hi
+            and state.pose in _STANDING_POSES
         )
-        if high:
+        if seated:
             return True
-        if state.samus_x < _GATE_SEAT_X[0]:
-            hold(session, 1, "RIGHT", reason=f"{label}_kamer_r")
-        elif state.samus_x > _GATE_SEAT_X[1] + 10:
-            hold(session, 1, "LEFT", reason=f"{label}_kamer_l")
+        if state.samus_x < x_lo:
+            hold(session, 1, "RIGHT", reason=f"{label}_seat_r")
+        elif state.samus_x > x_hi:
+            hold(session, 1, "LEFT", reason=f"{label}_seat_l")
         else:
-            hold(session, 1, reason=f"{label}_kamer_wait")
+            hold(session, 1, reason=f"{label}_seat_wait")
     return False
 
 
 def _dc_open_blue_gate(session: ControllerSession, label: str) -> None:
-    """Open mid blue gate (obstacle A) and push onto past-gate platform.
+    """Open mid blue gate and walk onto past-gate platform (x≳480 y≲200).
 
-    One-knob (rr-re9): human ``speed_to_ice_moat`` + GHZ pattern —
-
-    * Seat on left Kamer at ~x370–385; **wait for top** y≤145.
-    * Face right, settle standing (not spin/landing poses).
-    * Hold **R** (angle-up; ``UP+RIGHT`` is not diagonal in SM).
-    * Missiles then beam: standing X+R, jump peak X+R at y∈[100,120],
-      then fall-volley pure X (human pose 19 band y≈122–160).
-    * Walk-probe only (no spin into closed bars).
-
-    Still RED as of last pure: impacts register on bars, PLM may need a
-    tighter switch line — see residual.
+    One-knob (rr-dbu.10 / SM-K4.10-GATE): exact human tape buttons
+    f4650–5200 from ``speed_to_ice_moat_human.json``, after pure natural
+    Kamer seat x∈[370,375] y≤139. Scaffolded R-angle / peak / fall-shot
+    knobs hit bars without PLM open — do not re-invent shot cadence.
     """
     unmorph(session)
-    select_weapon(session, 1)  # human opens with missiles first
-    hold(session, 3, "RIGHT", reason=f"{label}_face")
-    hold(session, 10, reason=f"{label}_face_settle")
+    select_weapon(session, 1)  # human f4650 selected=1 missiles
 
-    for attempt in range(10):
+    if not _dc_wait_kamer_open_seat(session, label):
+        return
+    if session.state.samus_x >= _PAST_GATE_X:
+        return
+
+    # Brief idle so pose/Kamer latch matches tape start (live dual green).
+    hold(session, 8, reason=f"{label}_seat_settle")
+    if session.state.samus_x >= _PAST_GATE_X:
+        return
+
+    for n, btns in _HUMAN_GATE_OPEN_RLE:
         state = session.state
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return
@@ -747,108 +801,23 @@ def _dc_open_blue_gate(session: ControllerSession, label: str) -> None:
             return
         if is_knockback(state):
             _escape_kb_dc(session, label, "RIGHT")
-            continue
-        if state.pose in (137, 138):
-            unmorph(session)
-            continue
-
-        if not _dc_wait_kamer_top(session, label):
+            # After KB, human timeline is desynced — abort open phase.
             return
-        if session.state.samus_x >= _PAST_GATE_X:
-            return
+        hold(session, n, *btns, reason=f"{label}_human_open")
 
-        # Late attempts: beam (human switched sel 1→0 before final volley).
-        select_weapon(session, 1 if attempt < 4 else 0)
-
-        # Standing settle on high Kamer (GHZ: transient poses miss switch).
-        for _ in range(16):
-            state = hold(session, 1, reason=f"{label}_stand_settle")
-            if state.room_id != ROOM_DOUBLE_CHAMBER:
-                return
-            if state.samus_x >= _PAST_GATE_X:
-                return
-            if (
-                state.velocity_y == 0
-                and state.pose in _STANDING_POSES
-                and state.samus_y <= 150
-            ):
-                break
-
-        # Standing R+X (human ~10f pulses at pose 5).
-        hold(session, 6, "R", reason=f"{label}_angle_hold")
-        for _ in range(3):
-            hold(session, 5, "X", "R", reason=f"{label}_stand_shot")
-            hold(session, 6, "R", reason=f"{label}_stand_wait")
-
-        # Jump + peak X+R (human peak y≈104–111 pose 105).
-        hold(session, 2, "A", "R", reason=f"{label}_gate_jump")
-        shot = False
-        for _ in range(28):
-            state = hold(session, 1, "A", "R", reason=f"{label}_gate_rise")
-            if state.room_id != ROOM_DOUBLE_CHAMBER:
-                return
-            if state.samus_x >= _PAST_GATE_X:
-                return
-            if not shot and state.samus_y <= _GATE_PEAK_Y[1]:
-                if state.samus_y >= _GATE_PEAK_Y[0] or state.samus_y < _GATE_PEAK_Y[0]:
-                    hold(session, 5, "X", "R", reason=f"{label}_peak_shot")
-                    shot = True
-                    break
-        if not shot:
-            hold(session, 3, "X", "R", reason=f"{label}_air_shot")
-
-        # Fall-volley pure X through switch heights (human pose 19 y122–160).
-        for _ in range(28):
-            state = hold(session, 1, "X", reason=f"{label}_fall_x")
-            if state.velocity_y == 0 and state.samus_y > 130:
-                break
-
-        hold(session, 16, reason=f"{label}_open_fuse")
-
-        # Re-top if Kamer dropped during volley, then walk-probe only.
-        _dc_wait_kamer_top(session, label)
-        for _ in range(45):
-            state = session.state
-            if state.room_id != ROOM_DOUBLE_CHAMBER:
-                return
-            if state.samus_x >= _PAST_GATE_X and state.samus_y < 220:
-                return
-            if state.samus_y > 300:
-                break
-            if is_knockback(state):
-                _escape_kb_dc(session, label, "RIGHT")
-                break
-            # Closed bars hard-stop ~x411 — reseat for next attempt.
-            if (
-                state.velocity_y == 0
-                and state.samus_x >= 400
-                and state.samus_x < 430
-                and state.samus_y < 200
-            ):
-                hold(session, 10, "LEFT", reason=f"{label}_blocked_back")
-                break
-            hold(session, 1, "RIGHT", reason=f"{label}_probe_walk")
-        else:
-            if session.state.samus_x >= _PAST_GATE_X:
-                return
-
-    # Final commit if bars may have cleared late.
-    for frame in range(60):
+    # Short walk commit if open animation finished late.
+    for _ in range(40):
         state = session.state
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return
         if state.samus_x >= _PAST_GATE_X and state.samus_y < 220:
             return
-        if state.samus_y > 360 and state.velocity_y == 0:
+        if state.samus_y > 300:
             return
         if is_knockback(state):
             _escape_kb_dc(session, label, "RIGHT")
-            continue
-        phase = frame % 18
-        if phase < 10:
-            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_commit_spin")
-        else:
-            hold(session, 1, "RIGHT", "B", reason=f"{label}_commit_run")
+            return
+        hold(session, 1, "RIGHT", reason=f"{label}_past_walk")
 
 
 def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
