@@ -146,6 +146,16 @@ def test_bubble_to_single_chamber_is_registered_for_pure_segment_use() -> None:
     assert k4_norfair.ROOM_SINGLE_CHAMBER == 0xAD5E
 
 
+def test_single_to_double_chamber_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("single_to_double_chamber")
+        is k4_norfair.play_single_to_double_chamber
+    )
+    assert k4_norfair.ROOM_DOUBLE_CHAMBER == 0xADAD
+
+
 def test_speedway_to_farm_is_registered_for_pure_segment_use() -> None:
     from super_metroid.routes.kpdr import get_segment
 
