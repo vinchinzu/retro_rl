@@ -156,6 +156,17 @@ def test_single_to_double_chamber_is_registered_for_pure_segment_use() -> None:
     assert k4_norfair.ROOM_DOUBLE_CHAMBER == 0xADAD
 
 
+def test_double_chamber_to_wave_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("double_chamber_to_wave")
+        is k4_norfair.play_double_chamber_to_wave
+    )
+    assert k4_norfair.ROOM_WAVE == 0xADDE
+    assert k4_norfair.WAVE_BEAM_MASK == 0x0001
+
+
 def test_speedway_to_farm_is_registered_for_pure_segment_use() -> None:
     from super_metroid.routes.kpdr import get_segment
 

@@ -44,7 +44,9 @@ from super_metroid.routes.kpdr.k4_rising_tide import (
     play_rising_tide_to_bubble,
 )
 from super_metroid.routes.kpdr.k4_wave import (
+    WAVE_BEAM_MASK,
     play_bubble_to_single_chamber,
+    play_double_chamber_to_wave,
     play_single_to_double_chamber,
 )
 from super_metroid.routes.kpdr.speed_return import (
@@ -68,6 +70,7 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_SPEED,
     ROOM_SPEED_HALL,
     ROOM_UPPER_NORFAIR_FARM,
+    ROOM_WAVE,
 )
 
 __all__ = [
@@ -99,12 +102,15 @@ __all__ = [
     "play_farm_to_bubble",
     "play_frog_save_to_business",
     "play_frog_save_to_speedway",
+    "WAVE_BEAM_MASK",
     "play_bubble_to_single_chamber",
     "play_single_to_double_chamber",
+    "play_double_chamber_to_wave",
     "play_rising_tide_to_bubble",
     "play_speed_hall_to_speed",
     "play_speed_return_to_bubble",
     "play_speedway_to_farm",
     "ROOM_DOUBLE_CHAMBER",
     "ROOM_SINGLE_CHAMBER",
+    "ROOM_WAVE",
 ]
