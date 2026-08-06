@@ -90,6 +90,18 @@ from super_metroid.routes.skills.walljump import (
     walljump_once,
     walljump_second_left_wall,
 )
+from super_metroid.routes.skills.shinespark import (
+    ECHOES_FULL,
+    SPARK_POSES,
+    TYPICAL_ARM_TIMER,
+    activate_shinespark,
+    charge_store_activate,
+    charge_until_boost,
+    crouch_store,
+    read_spark_wram,
+    store_then_spin_unspin_activate,
+    wait_store_window,
+)
 
 # Historical bubble_* skill names (stable for tests / scripts mid-migration).
 from super_metroid.routes.skills.door import bubble_top_super_door
@@ -198,6 +210,16 @@ __all__ = [
     "morph_bomb_hole_climb",
     "morph_roll_to_window",
     "morph_upper_plant",
+    "ECHOES_FULL",
+    "SPARK_POSES",
+    "TYPICAL_ARM_TIMER",
+    "read_spark_wram",
+    "charge_until_boost",
+    "crouch_store",
+    "wait_store_window",
+    "activate_shinespark",
+    "store_then_spin_unspin_activate",
+    "charge_store_activate",
     "HIJUMP_WALLJUMP_VY0",
     "REGULAR_WALLJUMP_VY0",
     "DAMAGE_BOOST_HX",
