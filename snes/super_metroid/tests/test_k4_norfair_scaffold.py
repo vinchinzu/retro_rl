@@ -106,6 +106,26 @@ def test_frog_save_to_speedway_is_registered_for_pure_segment_use() -> None:
     )
 
 
+def test_bat_cave_to_speed_hall_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("bat_cave_to_speed_hall")
+        is k4_norfair.play_bat_cave_to_speed_hall
+    )
+    assert k4_norfair.ROOM_SPEED_HALL == 0xACF0
+
+
+def test_speed_hall_to_speed_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("speed_hall_to_speed")
+        is k4_norfair.play_speed_hall_to_speed
+    )
+    assert k4_norfair.ROOM_SPEED == 0xAD1B
+
+
 def test_speedway_to_farm_is_registered_for_pure_segment_use() -> None:
     from super_metroid.routes.kpdr import get_segment
 
@@ -406,6 +426,11 @@ def test_bubble_walljump_skill_library() -> None:
     assert callable(prim.bubble_walljump_second_left_wall)
     assert P.WJ2_LEFT_X <= 230
     assert P.WJ2_LEFT_SEEK >= 16
+    # WJ2_LEFT_SEEK named group (into/flip promoted off skill defaults).
+    assert P.WJ2_LEFT_INTO >= 4
+    assert P.WJ2_LEFT_FLIP >= 8
+    assert P.WJ2_LEFT_Y <= 220
+    assert P.WJ2_LEFT_Y >= 160
 
 
 def test_bubble_r19_fire_phase_geometry() -> None:
@@ -450,6 +475,11 @@ def test_bubble_r19_super_door_params() -> None:
     assert P.DOOR_WJ_BOUNCE == 2
     assert P.DOOR_X_CAP >= 470
     assert P.DOOR_FRAMES >= 700
+    # Continuous Spazer Phase E (rr-cwu): crouch settle > pure baseline 8.
+    assert P.DOOR_CROUCH_FRAMES >= 16
+    human_lo, human_hi = P.SAVE_HUMAN_SEAT_X
+    assert human_lo <= 27 <= human_hi
+    assert human_hi <= 30  # continuous fire rejects x=32 seat
 
 
 def test_bubble_r16_lower_shelves_end_on_fire_solid() -> None:

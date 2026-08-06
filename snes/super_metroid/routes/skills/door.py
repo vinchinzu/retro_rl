@@ -47,6 +47,7 @@ class DoorPolicy(Protocol):
     DOOR_X_CAP: int
     DOOR_OUTER_X: int
     DOOR_FALL_Y: int
+    DOOR_CROUCH_FRAMES: int
     DOOR_WJ_POSES: frozenset[int]
     DOOR_WJ: WallJumpTiming
     TO_BAT_SETTLE_FRAMES: int
@@ -142,7 +143,9 @@ def top_super_door(
     if session.state.selected_item != 2:
         select_weapon(session, 2)
 
-    # Land + brief crouch on top structure before sticky WJ.
+    # Land + crouch settle on top structure before sticky WJ.
+    # DOOR_CROUCH_FRAMES (policy): continuous Spazer Phase E needs longer
+    # crouch than pure baseline 8f so SEEK phase matches Geruta-clear window.
     for _ in range(24):
         st = session.state
         if st.room_id != room_id:
@@ -151,7 +154,8 @@ def top_super_door(
         if int(st.pose) in pol.TRUE_GROUND or int(st.pose) in (25, 26, 27, 28):
             break
         hold(session, 1, "RIGHT", reason=f"{label}_door_land")
-    for _ in range(8):
+    crouch_n = int(getattr(pol, "DOOR_CROUCH_FRAMES", 8))
+    for _ in range(max(0, crouch_n)):
         if session.state.room_id != room_id:
             break
         hold(session, 1, "DOWN", reason=f"{label}_door_crouch")
