@@ -43,6 +43,13 @@ from super_metroid.routes.kpdr.k4_cathedral import (
 from super_metroid.routes.kpdr.k4_rising_tide import (
     play_rising_tide_to_bubble,
 )
+from super_metroid.routes.kpdr.speed_return import (
+    play_speed_return_to_bubble,
+)
+from super_metroid.routes.kpdr.to_speed import (
+    play_bat_cave_to_speed_hall,
+    play_speed_hall_to_speed,
+)
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BAT_CAVE,
     ROOM_BUBBLE,
@@ -53,6 +60,7 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_FROG_SPEEDWAY,
     ROOM_RISING_TIDE,
     ROOM_SPEED,
+    ROOM_SPEED_HALL,
     ROOM_UPPER_NORFAIR_FARM,
 )
 
@@ -72,9 +80,11 @@ __all__ = [
     "ROOM_FROG_SPEEDWAY",
     "ROOM_RISING_TIDE",
     "ROOM_SPEED",
+    "ROOM_SPEED_HALL",
     "ROOM_UPPER_NORFAIR_FARM",
     "bubble_phase_c_usable_right_contact",
     "bubble_phase_d_top_band",
+    "play_bat_cave_to_speed_hall",
     "play_bubble_to_bat_cave",
     "play_business_to_cathedral_entrance",
     "play_business_to_frog_save",
@@ -84,5 +94,7 @@ __all__ = [
     "play_frog_save_to_business",
     "play_frog_save_to_speedway",
     "play_rising_tide_to_bubble",
+    "play_speed_hall_to_speed",
+    "play_speed_return_to_bubble",
     "play_speedway_to_farm",
 ]

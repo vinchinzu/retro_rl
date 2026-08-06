@@ -55,6 +55,7 @@ from super_metroid.routes.kpdr.to_bat_cave import (
     play_bubble_to_bat_cave,
 )
 from super_metroid.routes.kpdr.k4_norfair import (
+    play_bat_cave_to_speed_hall,
     play_business_to_cathedral_entrance,
     play_business_to_frog_save,
     play_cathedral_entrance_to_cathedral,
@@ -63,6 +64,8 @@ from super_metroid.routes.kpdr.k4_norfair import (
     play_frog_save_to_business,
     play_frog_save_to_speedway,
     play_rising_tide_to_bubble,
+    play_speed_hall_to_speed,
+    play_speed_return_to_bubble,
     play_speedway_to_farm,
 )
 from super_metroid.routes.kpdr.pb_door import (
@@ -83,6 +86,13 @@ from super_metroid.routes.kpdr.red_stack import (
     play_red_tower_to_bat,
     play_red_tower_to_warehouse,
     play_west_to_glass,
+)
+from super_metroid.routes.kpdr.spazer import (
+    play_below_spazer_to_spazer,
+    play_spazer_collect,
+    play_spazer_detour,
+    play_spazer_return_to_below,
+    play_spazer_top_to_west,
 )
 from super_metroid.routes.kpdr.super_collect import (
     play_farming_to_big_pink,
@@ -130,6 +140,12 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     # K2: Red Tower → Hi-Jump → Kraid
     "red_tower_to_bat": play_red_tower_to_bat,
     "bat_to_below_spazer": play_bat_to_below_spazer,
+    # K2.2 Spazer mainline (detour folded into below_spazer_to_west)
+    "below_spazer_to_spazer": play_below_spazer_to_spazer,
+    "spazer_collect": play_spazer_collect,
+    "spazer_return_to_below": play_spazer_return_to_below,
+    "spazer_top_to_west": play_spazer_top_to_west,
+    "spazer_detour": play_spazer_detour,
     "below_spazer_to_west": play_below_spazer_to_west,
     "west_to_glass": play_west_to_glass,
     "glass_to_east": play_glass_to_east,
@@ -169,6 +185,12 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "cathedral_to_rising_tide": play_cathedral_to_rising_tide,
     "rising_tide_to_bubble": play_rising_tide_to_bubble,
     "bubble_to_bat_cave": play_bubble_to_bat_cave,
+    # K4.5: Bat Cave → Speed Booster Hall (pure-first).
+    "bat_cave_to_speed_hall": play_bat_cave_to_speed_hall,
+    # K4.6: Speed Hall → Speed Booster collect (pure-first).
+    "speed_hall_to_speed": play_speed_hall_to_speed,
+    # K4.7: Speed return → Bubble (pure-first; Wave branch predecessor).
+    "speed_return_to_bubble": play_speed_return_to_bubble,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,
