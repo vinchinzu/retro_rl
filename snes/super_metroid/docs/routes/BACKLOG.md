@@ -96,7 +96,7 @@ exit with no energy/ammo assists. **Infra done** (artifacts / CLI / integrity).
 |--------|-------|--------|
 | `SM-CLEAN-CONTRACT` … `INTEGRITY` | Docs + `_clean` + `--clean` + integrity | **done** |
 | `SM-CLEAN-MORPH` | Continuous morph Clean | **done** (27,074f green) |
-| `SM-CLEAN-BOMBS` | ★ Continuous bombs/Torizo Clean | **ready** (missiles detour green; BT existing model) |
+| `SM-CLEAN-BOMBS` / `BT-ECONOMY` | Continuous bombs/Torizo Clean | **done** dual 49,321f (hybrid BT) |
 | `SM-CLEAN-BT-ECONOMY` | One-knob if clean BT RED | gated |
 | `SM-CLEAN-STAB` / `STATUS` | Dual re-verify + STATUS secondary | after bombs GREEN |
 

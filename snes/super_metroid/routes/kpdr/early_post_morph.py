@@ -139,6 +139,16 @@ PIT_TO_POST_TORIZO = PolicySegment(
     "pit_to_torizo_replay",
 )
 
+# Hash-pinned exit tail after a hybrid Bomb Torizo fight (door open + Flyway +
+# Parlor settle). Measured: last 2000 frames of pit_to_post_torizo.json reach
+# parlor from post-boss-bit BT room under both assist and clean.
+PIT_TO_POST_TORIZO_EXIT_TAIL_START = -2000
+
+# BT room / pre-combat spritemaps (duplicated to avoid combat↔routes import cycle).
+_ROOM_BOMB_TORIZO = 0x9804
+_STATUE_SPRITEMAP = 0x87D0
+_SPAWN_SPRITEMAP = 0x804F
+
 
 # ---------------------------------------------------------------------------
 # Hop play callables (session-only; policy bytes / open-loop unchanged)
@@ -197,9 +207,104 @@ def play_pit_natural_entry(session: RouteSession) -> None:
         )
 
 
+def _assist_ammo_enabled(session: RouteSession) -> bool:
+    """True when unlimited ammo assist is actively refilling missiles."""
+    assist = getattr(session, "assist", None)
+    if assist is None:
+        return False
+    if hasattr(assist, "enabled"):
+        return bool(assist.enabled)
+    report = assist.report() if hasattr(assist, "report") else {}
+    return bool(report.get("unlimited_ammo_enabled", report.get("enabled", False)))
+
+
+def _bt_fight_ready(state) -> bool:
+    """Natural BT activation: in-room, bombs held, combat spritemap, full HP bar."""
+    if state.room_id != _ROOM_BOMB_TORIZO:
+        return False
+    if not (state.collected_items & BOMBS_MASK):
+        return False
+    if state.enemy0_spritemap in (_STATUE_SPRITEMAP, _SPAWN_SPRITEMAP, 0):
+        return False
+    return state.enemy0_hp >= 800
+
+
 def play_pit_to_post_torizo(session: RouteSession) -> SegmentEvidence:
-    """Pit natural entry → Bomb Torizo + Bombs + Parlor settle (hash-pinned)."""
-    return play_policy(session, PIT_TO_POST_TORIZO)
+    """Pit natural entry → Bomb Torizo + Bombs + Parlor settle.
+
+    Assisted path keeps the full hash-pinned replay (116 missile refill writes
+    in the accepted baseline). Clean path (ammo assist off) hybrids:
+
+    1. Policy until natural BT activation
+    2. :func:`play_bomb_torizo_fight` with the clean kite defaults
+    3. Hash-pinned exit tail through Flyway → Parlor
+
+    Assisted baselines are never overwritten; clean only writes ``*_clean``
+    stems. Combat imports are lazy to avoid routes↔combat cycles at import time.
+    """
+    if _assist_ammo_enabled(session):
+        return play_policy(session, PIT_TO_POST_TORIZO)
+
+    # Lazy import: combat.natural_entry → continuous → early_post_morph cycle.
+    from super_metroid.combat.bomb_torizo import (
+        BombTorizoStrategy,
+        play_bomb_torizo_fight,
+    )
+
+    # Clean hybrid: policy prefix → structured fight → policy exit tail.
+    prefix = play_policy(
+        session,
+        PIT_TO_POST_TORIZO,
+        stop_when=_bt_fight_ready,
+        require_exit=False,
+    )
+    if not _bt_fight_ready(session.state):
+        raise RuntimeError(
+            "clean pit_to_post_torizo: policy prefix ended without BT activation; "
+            f"state room=0x{session.state.room_id:04X} hp={session.state.enemy0_hp} "
+            f"sm=0x{session.state.enemy0_spritemap:04X} items=0x{session.state.collected_items:04X}"
+        )
+
+    fight = play_bomb_torizo_fight(
+        session,
+        strategy=BombTorizoStrategy(),
+        require_active=True,
+        require_boss_bit=True,
+    )
+    if fight.outcome != "bomb_torizo_defeated":
+        raise RuntimeError(
+            f"clean Bomb Torizo fight failed: {fight.outcome} "
+            f"min_hp={fight.min_enemy_hp} final_hp={fight.final_enemy_hp} "
+            f"frames={fight.action_frames}"
+        )
+
+    tail = play_policy(
+        session,
+        PIT_TO_POST_TORIZO,
+        require_exit=True,
+        action_slice=slice(PIT_TO_POST_TORIZO_EXIT_TAIL_START, None),
+    )
+    # Merge evidence so report still shows one segment with combined frames.
+    return SegmentEvidence(
+        segment_id=prefix.segment_id,
+        policy_path=prefix.policy_path,
+        policy_sha256=prefix.policy_sha256,
+        source_sha256=prefix.source_sha256,
+        source_slice=f"{prefix.source_slice}+clean_bt_hybrid",
+        start_frame=prefix.start_frame,
+        end_frame=tail.end_frame,
+        action_frames=tail.end_frame - prefix.start_frame,
+        max_identical_navigation_frames=max(
+            prefix.max_identical_navigation_frames,
+            tail.max_identical_navigation_frames,
+        ),
+        start_button_frames=prefix.start_button_frames + tail.start_button_frames,
+        opposite_direction_frames=(
+            prefix.opposite_direction_frames + tail.opposite_direction_frames
+        ),
+        entry_state=prefix.entry_state,
+        exit_state=tail.exit_state,
+    )
 
 
 def play_parlor_to_green_main(session: RouteSession) -> None:

@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 import hashlib
 import json
 from pathlib import Path
+from collections.abc import Callable
 from typing import Protocol
 
 import numpy as np
@@ -16,7 +17,11 @@ from super_metroid.ram import GameplayPhase, SuperMetroidState
 
 @dataclass(frozen=True)
 class StateRequirement:
-    """Small composable state predicate used at policy boundaries."""
+    """Small composable state predicate used at policy boundaries.
+
+    Position and kinematics fields support door-entry contracts (run speed,
+    speed-booster charge, pose, facing) without requiring a separate check.
+    """
 
     room_id: int | None = None
     phases: frozenset[GameplayPhase] = field(default_factory=frozenset)
@@ -25,6 +30,15 @@ class StateRequirement:
     minimum_ammo_capacities: tuple[int, int, int] = (0, 0, 0)
     x_range: tuple[int, int] | None = None
     y_range: tuple[int, int] | None = None
+    velocity_x_range: tuple[int, int] | None = None
+    velocity_y_range: tuple[int, int] | None = None
+    momentum_x_range: tuple[int, int] | None = None
+    speed_counter_min: int | None = None
+    speed_counter_max: int | None = None
+    require_speed_boost: bool | None = None
+    require_shinespark: bool | None = None
+    poses: frozenset[int] = field(default_factory=frozenset)
+    facings: frozenset[int] = field(default_factory=frozenset)
 
     def failures(self, state: SuperMetroidState) -> tuple[str, ...]:
         failures: list[str] = []
@@ -59,6 +73,50 @@ class StateRequirement:
             failures.append(f"x {state.samus_x} outside {self.x_range}")
         if self.y_range is not None and not self.y_range[0] <= state.samus_y <= self.y_range[1]:
             failures.append(f"y {state.samus_y} outside {self.y_range}")
+        if self.velocity_x_range is not None and not (
+            self.velocity_x_range[0] <= state.velocity_x <= self.velocity_x_range[1]
+        ):
+            failures.append(
+                f"velocity_x {state.velocity_x} outside {self.velocity_x_range}"
+            )
+        if self.velocity_y_range is not None and not (
+            self.velocity_y_range[0] <= state.velocity_y <= self.velocity_y_range[1]
+        ):
+            failures.append(
+                f"velocity_y {state.velocity_y} outside {self.velocity_y_range}"
+            )
+        if self.momentum_x_range is not None and not (
+            self.momentum_x_range[0] <= state.momentum_x <= self.momentum_x_range[1]
+        ):
+            failures.append(
+                f"momentum_x {state.momentum_x} outside {self.momentum_x_range}"
+            )
+        if (
+            self.speed_counter_min is not None
+            and state.speed_counter < self.speed_counter_min
+        ):
+            failures.append(
+                f"speed_counter {state.speed_counter} < min {self.speed_counter_min}"
+            )
+        if (
+            self.speed_counter_max is not None
+            and state.speed_counter > self.speed_counter_max
+        ):
+            failures.append(
+                f"speed_counter {state.speed_counter} > max {self.speed_counter_max}"
+            )
+        if self.require_speed_boost is True and not state.speed_boosting:
+            failures.append("expected speed_boosting")
+        if self.require_speed_boost is False and state.speed_boosting:
+            failures.append("unexpected speed_boosting")
+        if self.require_shinespark is True and not state.shinesparking:
+            failures.append("expected shinespark timer")
+        if self.require_shinespark is False and state.shinesparking:
+            failures.append("unexpected shinespark timer")
+        if self.poses and state.pose not in self.poses:
+            failures.append(f"pose {state.pose} not in {sorted(self.poses)}")
+        if self.facings and state.facing not in self.facings:
+            failures.append(f"facing {state.facing} not in {sorted(self.facings)}")
         return tuple(failures)
 
     def matches(self, state: SuperMetroidState) -> bool:
@@ -121,10 +179,20 @@ def compact_state(state: SuperMetroidState) -> dict[str, object]:
         "game_state": state.game_state,
         "phase": state.phase.value,
         "samus_x": state.samus_x,
+        "samus_x_sub": state.samus_x_sub,
         "samus_y": state.samus_y,
+        "samus_y_sub": state.samus_y_sub,
         "velocity_x": state.velocity_x,
         "velocity_y": state.velocity_y,
+        "momentum_x": state.momentum_x,
+        "speed_counter": state.speed_counter,
+        "speed_boosting": state.speed_boosting,
+        "facing": state.facing,
+        "movement_type": state.movement_type,
+        "shinespark_timer": state.shinespark_timer,
         "pose": state.pose,
+        "door_def_ptr": state.door_def_ptr,
+        "door_def_ptr_hex": f"0x{state.door_def_ptr:04X}",
         "health": state.health,
         "missiles": state.missiles,
         "max_missiles": state.max_missiles,
@@ -158,15 +226,30 @@ def load_policy(segment: PolicySegment) -> tuple[list[np.ndarray], dict[str, obj
     return actions, metadata
 
 
-def play_policy(session: PolicySession, segment: PolicySegment) -> SegmentEvidence:
+def play_policy(
+    session: PolicySession,
+    segment: PolicySegment,
+    *,
+    stop_when: Callable[[SuperMetroidState], bool] | None = None,
+    require_exit: bool = True,
+    action_slice: slice | None = None,
+) -> SegmentEvidence:
+    """Replay a hash-pinned policy segment.
+
+    Optional ``stop_when`` ends the replay early (no exit check unless the
+    predicate never matched and ``require_exit`` remains True). ``action_slice``
+    selects a sub-range of the policy (e.g. exit tail after a hybrid fight).
+    """
     entry_failures = segment.entry.failures(session.state)
-    if entry_failures:
+    if entry_failures and action_slice is None:
         raise RuntimeError(
             f"{segment.segment_id} entry mismatch: {'; '.join(entry_failures)}; "
             f"state={compact_state(session.state)}"
         )
 
     actions, metadata = load_policy(segment)
+    if action_slice is not None:
+        actions = actions[action_slice]
     start_frame = session.frame
     entry_state = compact_state(session.state)
     max_identical = 0
@@ -174,6 +257,7 @@ def play_policy(session: PolicySession, segment: PolicySegment) -> SegmentEviden
     previous_navigation = None
     start_button_frames = 0
     opposite_frames = 0
+    stopped_early = False
 
     for action in actions:
         if action[3]:
@@ -195,13 +279,17 @@ def play_policy(session: PolicySession, segment: PolicySegment) -> SegmentEviden
         else:
             identical = 0
             previous_navigation = navigation
+        if stop_when is not None and stop_when(state):
+            stopped_early = True
+            break
 
-    exit_failures = segment.exit.failures(session.state)
-    if exit_failures:
-        raise RuntimeError(
-            f"{segment.segment_id} exit mismatch: {'; '.join(exit_failures)}; "
-            f"entry={entry_state}; state={compact_state(session.state)}"
-        )
+    if require_exit and not stopped_early:
+        exit_failures = segment.exit.failures(session.state)
+        if exit_failures:
+            raise RuntimeError(
+                f"{segment.segment_id} exit mismatch: {'; '.join(exit_failures)}; "
+                f"entry={entry_state}; state={compact_state(session.state)}"
+            )
     return SegmentEvidence(
         segment_id=segment.segment_id,
         policy_path=str(segment.path.resolve()),
@@ -210,7 +298,7 @@ def play_policy(session: PolicySession, segment: PolicySegment) -> SegmentEviden
         source_slice=str(metadata["source_slice"]),
         start_frame=start_frame,
         end_frame=session.frame,
-        action_frames=len(actions),
+        action_frames=session.frame - start_frame,
         max_identical_navigation_frames=max_identical,
         start_button_frames=start_button_frames,
         opposite_direction_frames=opposite_frames,

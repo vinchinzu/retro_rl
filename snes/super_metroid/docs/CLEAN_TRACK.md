@@ -86,17 +86,17 @@ and early skirmishes on natural packs + collected capacity (10 missiles).
 | Order | Milestone | CLI | Artifact stem (clean) | Status |
 |------:|-----------|-----|------------------------|--------|
 | 1 | Power-on → Morph (clean) | `--to morph --clean` | `morph_clean` | **GREEN** 27,074f (prefix on bombs path now hits **26,824f**) |
-| 2 | Power-on → **Bomb Torizo exit (clean)** | `--to bombs --clean` | `bombs_clean` | **RED** 2026-08-06 — BT economy (see residual) |
-| 3 | → Spore exit (clean) | `--to spore --clean` | `spore_clean` | parked until BT green |
+| 2 | Power-on → **Bomb Torizo exit (clean)** | `--to bombs --clean` | `bombs_clean` | **GREEN** **49,321f** ×2 (2026-08-06) |
+| 3 | → Spore exit (clean) | `--to spore --clean` | `spore_clean` | parked until stab/status |
 | … | Later prefixes only after prior clean green | … | `*_clean` | parked |
 
-**Prefix progress (2026-08-06 compose, `bombs_clean.json` local):** clean
-resource writes zero. Morph split **26,824**; missiles **27,678 / 29,440**;
-bombs item **41,243**; BT peak HP 800. Fail in hash-pinned `pit_to_post_torizo`
-(death in room `0x9804`, no parlor settle). Residual:
-[`tasks/SM-CLEAN-BOMBS-residual.md`](tasks/SM-CLEAN-BOMBS-residual.md) →
-`SM-CLEAN-BT-ECONOMY`. Assisted baseline uses 116 missile refill writes — Clean
-must clear BT on natural capacity (10 missiles) without ammo writes.
+**Clean bombs (2026-08-06, `bombs_clean.json` + reverify):** dual integrity
+**49,321f**, room `0x92FD`, items `0x1004`, resource writes zero. Morph
+**26,824**; missiles **27,678 / 29,440**; bombs **41,243**; BT defeated
+**46,946**; exit **48,638**. Clean path hybrids structured BT fight (kite
+defaults for ~3/10 missile continuous entry) + hash-pinned exit tail; assisted
+keeps full policy (116 missile refill writes). Residual:
+[`tasks/SM-CLEAN-BT-ECONOMY-residual.md`](tasks/SM-CLEAN-BT-ECONOMY-residual.md).
 
 `--clean` is landed (disables energy + ammo, defaults to `*_clean` stems,
 requires zero resource writes). Prefer:
@@ -145,9 +145,9 @@ affected prefix before claiming either track green.
 | `SM-CLEAN-CLI` | Done — `--clean` alias + path default |
 | `SM-CLEAN-INTEGRITY` | Done — zero resource-write asserts |
 | `SM-CLEAN-MORPH` | Done — clean morph continuous |
-| [`SM-CLEAN-BOMBS`](tasks/SM-CLEAN-BOMBS.md) | ★ Clean → Bomb Torizo — **RED** residual |
-| [`SM-CLEAN-BT-ECONOMY`](tasks/SM-CLEAN-BOMBS-residual.md) | ★ Next — BT ammo/death one-knob after RED |
-| `SM-CLEAN-STAB` / `SM-CLEAN-STATUS` | Stabilize + STATUS secondary (after tip green) |
+| [`SM-CLEAN-BOMBS`](tasks/SM-CLEAN-BOMBS.md) | Clean → Bomb Torizo — compose RED then economy |
+| [`SM-CLEAN-BT-ECONOMY`](tasks/SM-CLEAN-BT-ECONOMY-residual.md) | Done — clean kite + hybrid; dual 49,321f |
+| `SM-CLEAN-STAB` / `SM-CLEAN-STATUS` | Dual already green; STATUS secondary promote |
 
 Queue: [tasks/QUEUE.md](tasks/QUEUE.md).
 

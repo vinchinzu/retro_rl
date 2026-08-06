@@ -42,7 +42,7 @@ P-LATE,420,PRACTICE,Room practice late_special+boss,,open,0/38,,ROOM_WORK_QUEUE,
 P-PATH,430,PRACTICE,Completion-path rooms continuous,,partial,39/107,,PATH_ROOM_BOARD,play clearance,2026-08-01
 C-INFRA,450,CLEAN,Clean CLI + artifacts + integrity,,continuous,,,SM-CLEAN-ARTIFACTS;SM-CLEAN-CLI;SM-CLEAN-INTEGRITY,infra landed 2026-08-01; unit tests green,2026-08-01
 C-MORPH,460,CLEAN,Continuous → Morph (Clean),0x9E9F,continuous,27074,morph,SM-CLEAN-MORPH,start_to_morph_clean green 2026-08-02; 0 resource writes,2026-08-02
-C-BOMBS,470,CLEAN,Continuous → Bombs/Torizo (Clean) ★,0x9804,open,,bombs,SM-CLEAN-BOMBS,★ tip; missiles detour green clean; BT existing model,2026-08-02
+C-BOMBS,470,CLEAN,Continuous → Bombs/Torizo (Clean) ★,0x92FD,done,49321,bombs,SM-CLEAN-BT-ECONOMY,GREEN dual 49321f parlor settle; hybrid clean BT fight; assisted 45711f reverify,2026-08-06
 C-SPORE,480,CLEAN,Continuous → Spore (Clean),0x9DC7,parked,,spore,SM-CLEAN-SPORE,after C-BOMBS green,2026-08-01
 C-SUPERS,490,CLEAN,Continuous → Supers (Clean),0x9B5B,parked,,supers,SM-CLEAN-SUPERS,parked privilege ladder,2026-08-01
 A-TIPSPEC,500,ARCH,Data-driven continuous tips complete,,continuous,,,SM-ARCH-TIP-SPEC,hops.py + PostSupersTipSpec + alias bind,2026-08-04
