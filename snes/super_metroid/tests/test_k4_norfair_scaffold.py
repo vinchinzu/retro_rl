@@ -126,6 +126,16 @@ def test_speed_hall_to_speed_is_registered_for_pure_segment_use() -> None:
     assert k4_norfair.ROOM_SPEED == 0xAD1B
 
 
+def test_speed_return_to_bubble_is_registered_for_pure_segment_use() -> None:
+    from super_metroid.routes.kpdr import get_segment
+
+    assert (
+        get_segment("speed_return_to_bubble")
+        is k4_norfair.play_speed_return_to_bubble
+    )
+    assert k4_norfair.ROOM_BUBBLE == 0xACB3
+
+
 def test_speedway_to_farm_is_registered_for_pure_segment_use() -> None:
     from super_metroid.routes.kpdr import get_segment
 
