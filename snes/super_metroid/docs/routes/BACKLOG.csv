@@ -3,7 +3,6 @@ SM-K4-CATH-01,K4,pure,Pure Business→Cathedral Entrance,,P0,done,M,routes/kpdr/
 SM-K4-CATH-02,K4,pure,Pure Cathedral Entrance→Cathedral,SM-K4-CATH-01,P0,done,M,routes/kpdr/k4_norfair.py,pure GREEN ~909f; successor post_cathedral_entrance_to_cathedral_pure
 SM-K4-CATH-03,K4,pure,Pure Cathedral→Rising Tide,SM-K4-CATH-02,P0,done,M,routes/kpdr/k4_norfair.py,pure GREEN ~1162f; successor post_cathedral_to_rising_tide_pure
 SM-K4-CATH-04,K4,pure,Pure Rising Tide→Bubble Mountain,SM-K4-CATH-03,P0,done,M,routes/kpdr/k4_norfair.py,pure GREEN ~2609f ×2; first Bubble pure closeout; successor post_rising_tide_to_bubble_pure
-
 SM-K4.1-PURE,K4,pure,Pure Frog Save→Speedway,,P3,parked,M,routes/kpdr/k4_norfair.py,source scratch/post_frog_continuous.state expect 0xB167; exit 0xB106; living card SM-K4-SPEEDWAY-PURE; residual may be GREEN; parked post-Speed shortcut; pure GREEN; not first Bubble (Cathedral repath 2026-08-02)
 SM-K4-SPEEDWAY-SRC,K4,docs,Fingerprint-register Speedway pure successor,SM-K4.1-PURE,P0,done,S,docs/SOURCE_STATES.md,post_frog_save_to_speedway_pure.state expect 0xB106; Wave-11; Wave-11 closed; post-Speed path
 SM-K4-STAB-ICE,K4,stabilize,Stabilize wave pure+continuous Ice stack,SM-K4-TIP-ICE,P0,open,L,routes/continuous.py catalog.py,planner-serial
@@ -313,8 +312,8 @@ SM-CLEAN-ARTIFACTS,CLEAN,infra,Isolate clean report/video stems (_clean),SM-CLEA
 SM-CLEAN-CLI,CLEAN,infra,--clean alias + uniform energy/ammo flags,SM-CLEAN-ARTIFACTS,P2,done,M,scripts/record/continuous.py routes/continuous.py,defaults remain assist ON; landed 2026-08-01
 SM-CLEAN-INTEGRITY,CLEAN,infra,Clean zero resource-write integrity asserts,SM-CLEAN-ARTIFACTS,P2,done,M,routes/runtime.py,require_clean_resources; assisted path unchanged; landed 2026-08-01
 SM-CLEAN-MORPH,CLEAN,compose,Continuous morph Clean baseline,SM-CLEAN-CLI;SM-CLEAN-INTEGRITY,P2,done,M,routes/continuous.py,GREEN 27074f start_to_morph_clean 2026-08-02
-SM-CLEAN-BOMBS,CLEAN,compose,Continuous bombs/Torizo Clean tip ★,SM-CLEAN-MORPH,P2,ready,L,routes/continuous.py combat/bomb_torizo.py,★ ready; missiles clean green; BT=existing model; residual logged
-SM-CLEAN-BT-ECONOMY,CLEAN,pure,BT ammo economy one-knob if clean RED,SM-CLEAN-BOMBS,P3,open,M,combat/bomb_torizo.py,only if SM-CLEAN-BOMBS RED; re-verify assisted bombs
+SM-CLEAN-BOMBS,CLEAN,compose,Continuous bombs/Torizo Clean tip ★,SM-CLEAN-MORPH,P2,open,L,routes/continuous.py combat/bomb_torizo.py,RED 2026-08-06 death in pit_to_post_torizo BT; residual SM-CLEAN-BOMBS-residual.md; missiles/morph prefix green
+SM-CLEAN-BT-ECONOMY,CLEAN,pure,BT ammo economy one-knob if clean RED,,P2,ready,M,combat/bomb_torizo.py,Unblocked by SM-CLEAN-BOMBS RED; one-knob ammo/death; re-verify assisted bombs after shared edit; pin room 0x9804
 SM-CLEAN-STAB,CLEAN,stabilize,Dual re-verify Clean bombs tip,SM-CLEAN-BOMBS,P2,open,M,recordings/,×2 integrity green clean
 SM-CLEAN-STATUS,CLEAN,status,STATUS secondary Clean bombs section,SM-CLEAN-STAB,P2,open,S,docs/STATUS.md MILESTONES,never re-label primary Frog tip
 SM-CLEAN-SPORE,CLEAN,compose,Clean spore tip (parked),SM-CLEAN-STATUS,P4,parked,L,routes/continuous.py,after Clean BT green only
