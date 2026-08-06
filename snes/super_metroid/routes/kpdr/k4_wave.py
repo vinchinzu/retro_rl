@@ -573,13 +573,16 @@ def play_single_to_double_chamber(session: ControllerSession) -> SuperMetroidSta
 # ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM
 # Live recon (2026-08-06): entry ~(61,139); upper hop path; blue gate ~x410
-# is the open RED pin (shots register visually but PLM may not trip from pure
-# pin geometry). Past-gate solid ~(520,140); right Super door → Wave chozo
-# collect beams|=0x0001 at ~(171,120). Caps: missiles/supers for red door.
+# switch is TOP mechanism. Human speed_to_ice_moat opens with R-angle (not
+# UP+RIGHT) standing + peak X+R at seat ~(370–378,139) peaking y≈104–111.
+# Past-gate solid ~(520,140); right Super door → Wave chozo beams|=0x0001.
 # ---------------------------------------------------------------------------
 _DC_TOTAL_BUDGET = 9000
 _WAVE_SETTLE = 280
 _GATE_X = (360, 430)
+_GATE_SEAT_X = (365, 390)
+_GATE_SEAT_Y_MAX = 200
+_GATE_PEAK_Y = (100, 120)
 _PAST_GATE_X = 480
 _DOOR_X = 920
 _DOOR_Y_MAX = 180
@@ -601,7 +604,7 @@ def _has_wave(state: SuperMetroidState) -> bool:
 
 
 def _dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
-    """Top-left ~(61,139) → upper platforms → gate band x∈[360,430] y≲200.
+    """Top-left ~(61,139) → upper platforms → gate seat x∈[365,390] y≲200.
 
     Live recon cadence: hop_run to x≈210, then spin16_run12 toward gate.
     """
@@ -641,8 +644,8 @@ def _dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return
         if (
-            _GATE_X[0] <= state.samus_x <= _GATE_X[1]
-            and state.samus_y < 200
+            _GATE_SEAT_X[0] <= state.samus_x <= _GATE_SEAT_X[1]
+            and state.samus_y < _GATE_SEAT_Y_MAX
             and state.velocity_y == 0
         ):
             return
@@ -656,6 +659,19 @@ def _dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
         if state.pose in (137, 138):
             unmorph(session)
             continue
+        # Near seat band: brake / short walk rather than spin past switch.
+        if (
+            state.samus_x >= _GATE_SEAT_X[0] - 20
+            and state.samus_y < _GATE_SEAT_Y_MAX
+            and state.velocity_y == 0
+        ):
+            if state.samus_x < _GATE_SEAT_X[0]:
+                hold(session, 1, "RIGHT", reason=f"{label}_seat_in")
+            elif state.samus_x > _GATE_SEAT_X[1]:
+                hold(session, 1, "LEFT", reason=f"{label}_seat_back")
+            else:
+                hold(session, 1, reason=f"{label}_seat_brake")
+            continue
         phase = frame % 28
         if phase < 16:
             hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_gate_spin")
@@ -663,14 +679,63 @@ def _dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
             hold(session, 1, "RIGHT", "B", reason=f"{label}_gate_run")
 
 
+def _dc_wait_kamer_top(session: ControllerSession, label: str) -> bool:
+    """Ride left-of-gate Kamer until y≤145 (cycle 139↔219, ~200f half-period).
+
+    Live recon (rr-re9): shooting on a low Kamer (y≳180) aims under the top
+    switch; human tape only fires once seated high (~y139–150).
+    """
+    for _ in range(500):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return False
+        if state.samus_x >= _PAST_GATE_X and state.samus_y < 220:
+            return True
+        if state.samus_y > 360 and state.velocity_y == 0:
+            return False
+        if is_knockback(state):
+            _escape_kb_dc(session, label, "RIGHT")
+            continue
+        if state.pose in (137, 138):
+            unmorph(session)
+            continue
+        high = (
+            state.velocity_y == 0
+            and state.samus_y <= 145
+            and _GATE_SEAT_X[0] - 10 <= state.samus_x <= _GATE_SEAT_X[1] + 20
+        )
+        if high:
+            return True
+        if state.samus_x < _GATE_SEAT_X[0]:
+            hold(session, 1, "RIGHT", reason=f"{label}_kamer_r")
+        elif state.samus_x > _GATE_SEAT_X[1] + 10:
+            hold(session, 1, "LEFT", reason=f"{label}_kamer_l")
+        else:
+            hold(session, 1, reason=f"{label}_kamer_wait")
+    return False
+
+
 def _dc_open_blue_gate(session: ControllerSession, label: str) -> None:
     """Open mid blue gate (obstacle A) and push onto past-gate platform.
 
-    Switch is the top mechanism; prefer UP+RIGHT beam while high (y≲140).
-    Live pure (2026-08-06): power beam selected; residual if PLM does not trip.
+    One-knob (rr-re9): human ``speed_to_ice_moat`` + GHZ pattern —
+
+    * Seat on left Kamer at ~x370–385; **wait for top** y≤145.
+    * Face right, settle standing (not spin/landing poses).
+    * Hold **R** (angle-up; ``UP+RIGHT`` is not diagonal in SM).
+    * Missiles then beam: standing X+R, jump peak X+R at y∈[100,120],
+      then fall-volley pure X (human pose 19 band y≈122–160).
+    * Walk-probe only (no spin into closed bars).
+
+    Still RED as of last pure: impacts register on bars, PLM may need a
+    tighter switch line — see residual.
     """
-    select_weapon(session, 0)
-    for frame in range(400):
+    unmorph(session)
+    select_weapon(session, 1)  # human opens with missiles first
+    hold(session, 3, "RIGHT", reason=f"{label}_face")
+    hold(session, 10, reason=f"{label}_face_settle")
+
+    for attempt in range(10):
         state = session.state
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return
@@ -680,42 +745,108 @@ def _dc_open_blue_gate(session: ControllerSession, label: str) -> None:
             return
         if is_knockback(state):
             _escape_kb_dc(session, label, "RIGHT")
-            select_weapon(session, 0)
             continue
         if state.pose in (137, 138):
             unmorph(session)
             continue
 
-        high = state.samus_y < 145
-        in_gate = _GATE_X[0] <= state.samus_x <= _GATE_X[1]
+        if not _dc_wait_kamer_top(session, label):
+            return
+        if session.state.samus_x >= _PAST_GATE_X:
+            return
 
-        if high and in_gate:
-            phase = frame % 14
-            if phase < 4:
-                hold(session, 1, "UP", "RIGHT", "X", reason=f"{label}_switch")
-            elif phase < 7:
-                hold(session, 1, "RIGHT", "X", reason=f"{label}_beam")
-            elif phase < 11:
-                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_gate_hop")
-            else:
-                hold(session, 1, "RIGHT", reason=f"{label}_gate_nudge")
-        elif high:
-            phase = frame % 12
-            if phase < 3:
-                hold(session, 1, "UP", "RIGHT", "X", reason=f"{label}_hi_shot")
-            else:
-                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_hi_spin")
-        elif state.velocity_y != 0:
-            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_gate_air")
+        # Late attempts: beam (human switched sel 1→0 before final volley).
+        select_weapon(session, 1 if attempt < 4 else 0)
+
+        # Standing settle on high Kamer (GHZ: transient poses miss switch).
+        for _ in range(16):
+            state = hold(session, 1, reason=f"{label}_stand_settle")
+            if state.room_id != ROOM_DOUBLE_CHAMBER:
+                return
+            if state.samus_x >= _PAST_GATE_X:
+                return
+            if (
+                state.velocity_y == 0
+                and state.pose in _STANDING_POSES
+                and state.samus_y <= 150
+            ):
+                break
+
+        # Standing R+X (human ~10f pulses at pose 5).
+        hold(session, 6, "R", reason=f"{label}_angle_hold")
+        for _ in range(3):
+            hold(session, 5, "X", "R", reason=f"{label}_stand_shot")
+            hold(session, 6, "R", reason=f"{label}_stand_wait")
+
+        # Jump + peak X+R (human peak y≈104–111 pose 105).
+        hold(session, 2, "A", "R", reason=f"{label}_gate_jump")
+        shot = False
+        for _ in range(28):
+            state = hold(session, 1, "A", "R", reason=f"{label}_gate_rise")
+            if state.room_id != ROOM_DOUBLE_CHAMBER:
+                return
+            if state.samus_x >= _PAST_GATE_X:
+                return
+            if not shot and state.samus_y <= _GATE_PEAK_Y[1]:
+                if state.samus_y >= _GATE_PEAK_Y[0] or state.samus_y < _GATE_PEAK_Y[0]:
+                    hold(session, 5, "X", "R", reason=f"{label}_peak_shot")
+                    shot = True
+                    break
+        if not shot:
+            hold(session, 3, "X", "R", reason=f"{label}_air_shot")
+
+        # Fall-volley pure X through switch heights (human pose 19 y122–160).
+        for _ in range(28):
+            state = hold(session, 1, "X", reason=f"{label}_fall_x")
+            if state.velocity_y == 0 and state.samus_y > 130:
+                break
+
+        hold(session, 16, reason=f"{label}_open_fuse")
+
+        # Re-top if Kamer dropped during volley, then walk-probe only.
+        _dc_wait_kamer_top(session, label)
+        for _ in range(45):
+            state = session.state
+            if state.room_id != ROOM_DOUBLE_CHAMBER:
+                return
+            if state.samus_x >= _PAST_GATE_X and state.samus_y < 220:
+                return
+            if state.samus_y > 300:
+                break
+            if is_knockback(state):
+                _escape_kb_dc(session, label, "RIGHT")
+                break
+            # Closed bars hard-stop ~x411 — reseat for next attempt.
+            if (
+                state.velocity_y == 0
+                and state.samus_x >= 400
+                and state.samus_x < 430
+                and state.samus_y < 200
+            ):
+                hold(session, 10, "LEFT", reason=f"{label}_blocked_back")
+                break
+            hold(session, 1, "RIGHT", reason=f"{label}_probe_walk")
         else:
-            # Low: try re-hop onto upper path
-            phase = frame % 20
-            if phase < 10:
-                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_recover")
-            elif phase < 14:
-                hold(session, 1, "X", reason=f"{label}_low_shot")
-            else:
-                hold(session, 1, "RIGHT", "B", reason=f"{label}_low_run")
+            if session.state.samus_x >= _PAST_GATE_X:
+                return
+
+    # Final commit if bars may have cleared late.
+    for frame in range(60):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_x >= _PAST_GATE_X and state.samus_y < 220:
+            return
+        if state.samus_y > 360 and state.velocity_y == 0:
+            return
+        if is_knockback(state):
+            _escape_kb_dc(session, label, "RIGHT")
+            continue
+        phase = frame % 18
+        if phase < 10:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_commit_spin")
+        else:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_commit_run")
 
 
 def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
