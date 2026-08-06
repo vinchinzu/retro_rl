@@ -155,10 +155,11 @@ dual (`rr-d20`), not Spazer bat_cave dual.
 
 ### K6 — Ship / Phantoon / Gravity
 
-- [ ] Moat shinespark pure from `post_kihunter_pre_moat_spark` → West Ocean
+- [x] Moat shinespark pure from `post_kihunter_pre_moat_spark` → West Ocean
   — residual [tasks/SM-MOAT-SHINESPARK-residual.md](tasks/SM-MOAT-SHINESPARK-residual.md)
-  (store on pose 9 works; trench spark dies x≈555; store→spin→UP unspin→spark
-  reaches Moat pose 201, not West yet; harness B=dash A=jump)
+  (store→spin→UP unspin→spark + RIGHT+X door; probe hop + controller pure GREEN;
+  West handoff `scratch/post_moat_west_ocean_spark.state`; harness B=dash A=jump;
+  **not** continuous / STATUS)
 - [ ] Moat → West Ocean → Wrecked Ship by play
 - [ ] Natural Phantoon entry → fight → Gravity
 - [ ] Continuous tips only after natural doorway entry
