@@ -38,6 +38,10 @@ DOOR_WJ_BOUNCE = 2  # RIGHT+A
 DOOR_X_CAP = 480  # pull left if past outer wall
 # Outer-wall fail mode ~(470,350): pull left into climbable band first.
 DOOR_OUTER_X = 450
+# Continuous Spazer Phase E (rr-cwu): after Phase D pin, baseline crouch=8
+# desyncs SEEK vs pure (Geruta/physics phase). crouch=18 aligns both pure
+# and continuous-like post_rising_tide_to_bubble_continuous_spazer.
+DOOR_CROUCH_FRAMES = 18
 MID_Y = 400
 TOP_Y = 200
 TOP_X = 300
@@ -103,7 +107,10 @@ SAVE_STATIONARY_X = 28  # R18: pure left-blocker needs longer L-angle spray
 # Human-matched fire seat band (maprando left climb / bubble_human_runway).
 # Integer (27,395)p2 is necessary but not sufficient — pure dumps still lack
 # human run-windup/subpixel; open-loop R15 tops only on human pin state.
-SAVE_HUMAN_SEAT_X = (25, 32)
+# Continuous Spazer (rr-cwu): seat x=32 x_sub~4k fails Phase D (min_y=161
+# mx~267); pure seat x=31 x_sub~49k tops. Cap human_hi at 30 so seat_max_left
+# keeps walking left of the right-edge reject.
+SAVE_HUMAN_SEAT_X = (25, 30)
 # Fire-seat dash: 21f proven on human pin. Max dash value without Speed is ~32f,
 # but longer bare dash from x~27 walks off the short runway (probe RED).
 SAVE_RUN_FRAMES = 21
@@ -136,8 +143,14 @@ WJ_APPROACH_X = (230, 290)
 WJ_APPROACH_Y = (200, 340)
 # R18: after right-wall WJ1, human tops via left-wall pose 84 at x~212 y~157.
 # Pure dump still fails that contact (not fixed by enemy kill / 3-byte patch).
+# Named groups for one-knob cards:
+#   WJ1_FLIP_FOLLOW — SAVE_WJ_RIGHT_A / SAVE_WJ_AMID / SAVE_WJ_FOLLOW (+ R15_WJ1)
+#   WJ2_LEFT_SEEK   — WJ2_LEFT_X / SEEK / INTO / FLIP / Y (walljump_second_left_wall)
 WJ2_LEFT_X = 220  # seek band: left of this while y high after WJ1
+WJ2_LEFT_Y = 200  # y band for left-wall contact (human ~157)
 WJ2_LEFT_SEEK = 28
+WJ2_LEFT_INTO = 8  # RIGHT+A into after seek (was hardcoded skill default)
+WJ2_LEFT_FLIP = 16  # RIGHT+B+A flip after into
 # Experiment: damage-boost hold during KB (Geruta/Waver) — not product.
 DMG_BOOST_HOLD_FRAMES = 8
 
