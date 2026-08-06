@@ -31,7 +31,6 @@ from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.door import super_door_pressure_frame
 from super_metroid.routes.skills.knockback import (
     escape_knockback_spin,
-    hold_through_knockback,
     is_knockback,
 )
 
@@ -123,10 +122,22 @@ def play_business_to_cathedral_entrance(
         raise TimeoutError(f"{label}: cathedral door band missed: {session.state}")
 
     select_weapon(session, 0)
-    for _ in range(_CATHEDRAL_DOOR_FRAMES):
-        state = hold(session, 1, "RIGHT", "B", "X", reason=f"{label}_door")
+    # Spazer continuous Business: Sovas on the door lip can pin pose 137 at
+    # y≈907 mid open-loop. Keep shooting, escape knockback briefly, resume.
+    for _ in range(_CATHEDRAL_DOOR_FRAMES + 280):
+        state = session.state
         if state.room_id == ROOM_CATHEDRAL_ENTRANCE:
             break
+        if is_knockback(state):
+            escape_knockback_spin(
+                session,
+                prefer_dir="RIGHT",
+                run_frames=4,
+                spin_frames=12,
+                label=f"{label}_kb",
+            )
+            continue
+        hold(session, 1, "RIGHT", "B", "X", reason=f"{label}_door")
     else:
         raise TimeoutError(f"{label}: Cathedral door missed: {session.state}")
 
@@ -181,8 +192,16 @@ def _cath_entrance_bomb_drop(session: ControllerSession, label: str) -> None:
 def _cath_entrance_floor_cross(
     session: ControllerSession, label: str
 ) -> tuple[int, int]:
-    """Phase 2: floor cross to climb start (~x 620 floor band)."""
+    """Phase 2: floor cross to climb start (~x 620–680 floor band).
+
+    Spazer continuous live chains leave Sovas on a hotter phase than the saved
+    pure tip: idle-plant knockback on the floor overshoots into the x≈730 dead
+    wall (pose 137) and burns the climb budget. Spin-escape + beam, stop once
+    grounded in the climb-start band, and pull left if past x 700.
+    """
     select_weapon(session, 0)
+    # Grounded floor poses that can start the climb (stand / crouch / turn).
+    floor_ok = _CATHEDRAL_LEDGE_POSES | frozenset({11, 12, 37, 38})
     max_x = session.state.samus_x
     min_y = session.state.samus_y
     for frame in range(_CATH_ENTRANCE_FLOOR_FRAMES):
@@ -190,13 +209,48 @@ def _cath_entrance_floor_cross(
         if state.room_id == ROOM_CATHEDRAL:
             break
         if is_knockback(state):
-            hold_through_knockback(session, 8, label=label)
+            # Prefer LEFT once past climb corridor so KB does not push deeper
+            # into the dead wall at x≈730.
+            prefer = "LEFT" if state.samus_x >= 640 else "RIGHT"
+            escape_knockback_spin(
+                session,
+                prefer_dir=prefer,
+                run_frames=4,
+                spin_frames=12,
+                label=f"{label}_floor",
+                run_with=("B", "X"),
+                spin_with=("B", "A"),
+                ensure_beam=True,
+                break_on_motion_clear=True,
+            )
+            state = session.state
+            max_x = max(max_x, state.samus_x)
+            min_y = min(min_y, state.samus_y)
+            continue
+        # Dead-wall recovery during floor: walk back to climb corridor.
+        if (
+            state.samus_x >= 700
+            and state.samus_y >= 380
+            and state.velocity_y == 0
+            and not is_knockback(state)
+        ):
+            hold(session, 1, "LEFT", "B", reason=f"{label}_floor_deadwall")
+            state = session.state
+            max_x = max(max_x, state.samus_x)
+            min_y = min(min_y, state.samus_y)
+            if (
+                620 <= state.samus_x <= 680
+                and state.velocity_y == 0
+                and state.pose in floor_ok
+            ):
+                break
             continue
         if (
             state.samus_x >= 620
+            and state.samus_x <= 690
             and state.velocity_y == 0
             and state.samus_y >= 380
-            and state.pose in _CATHEDRAL_LEDGE_POSES
+            and state.pose in floor_ok
         ):
             break
         phase = frame % 45
@@ -219,10 +273,23 @@ def _cath_entrance_climb_and_super_door(
     max_x: int,
     min_y: int,
 ) -> None:
-    """Phase 3: climb mid platforms (x 560–680) + Super door into Cathedral."""
-    mid_ground = frozenset({1, 2, 9, 10})
+    """Phase 3: climb mid platforms (x 560–680) + Super door into Cathedral.
+
+    Under Charge+Spazer, Sova contact on the right climb stunlocks pose 137 if
+    we idle-plant through knockback — spin-escape instead (LEFT off dead wall).
+    Mid Hi-Jump kept close to non-Spazer pure cadence so historical CATH-02
+    source stays green; dead-wall floor recovery retries the climb corridor.
+
+    Continuous Spazer spin-bounces the mid shelf (poses 25/26, vy≈0 apex) without
+    standing. After enough near-mid spin without a stand plant, force a short
+    no-A settle window so spin can land into stand_mid, then reuse pure crest.
+    """
+    stand_mid = frozenset({1, 2, 9, 10})
+    spin_air = frozenset({25, 26, 27, 28, 81, 82})
     mid_landed = False
     door_reached = False
+    settle_budget = 0  # frames of forced no-A settle remaining
+    near_mid_spin = 0
     y_lo, y_hi = _CATH_ENTRANCE_MID_Y
     for frame in range(_CATH_ENTRANCE_CLIMB_FRAMES):
         state = session.state
@@ -232,7 +299,18 @@ def _cath_entrance_climb_and_super_door(
         min_y = min(min_y, state.samus_y)
 
         if is_knockback(state):
-            hold_through_knockback(session, 12, label=label)
+            prefer = "LEFT" if state.samus_x >= 640 else "RIGHT"
+            escape_knockback_spin(
+                session,
+                prefer_dir=prefer,
+                run_frames=4,
+                spin_frames=14,
+                label=label,
+                run_with=("B", "X"),
+                spin_with=("B", "A"),
+                ensure_beam=True,
+                break_on_motion_clear=True,
+            )
             continue
 
         # Door band: Super pulses + enter.
@@ -259,7 +337,7 @@ def _cath_entrance_climb_and_super_door(
             if state.selected_item != 2:
                 select_weapon(session, 2)
             phase = frame % 24
-            if phase < 6:
+            if phase < 8:
                 inputs = ("RIGHT", "B", "A")
             elif phase < 12:
                 inputs = ("RIGHT", "X")
@@ -275,13 +353,20 @@ def _cath_entrance_climb_and_super_door(
             y_lo <= state.samus_y <= y_hi
             and state.samus_x >= 580
             and state.velocity_y == 0
-            and state.pose in mid_ground
+            and state.pose in stand_mid
         ):
             mid_landed = True
-            hold(session, 8, reason=f"{label}_mid_plant")
-            for _ in range(22):
+            settle_budget = 0
+            near_mid_spin = 0
+            if state.selected_item != 0:
+                select_weapon(session, 0)
+            if state.samus_x > 650:
+                for _ in range(8):
+                    hold(session, 1, "LEFT", "B", reason=f"{label}_mid_runway")
+            hold(session, 6, reason=f"{label}_mid_plant")
+            for _ in range(30):
                 hold(session, 1, "A", reason=f"{label}_mid_charge")
-            for _ in range(90):
+            for _ in range(110):
                 state = hold(
                     session, 1, "RIGHT", "B", "A", reason=f"{label}_mid_jump"
                 )
@@ -297,6 +382,47 @@ def _cath_entrance_climb_and_super_door(
                     break
             if state.room_id == ROOM_CATHEDRAL:
                 break
+            continue
+
+        # Continuous-only assist: cumulative spin frames near mid (no streak
+        # decay — intermittent spin still counts). Every ~90 spin frames without
+        # a stand plant, open a short no-A settle so spin can land. Gated on
+        # not mid_landed so pure's first crest cadence is untouched.
+        if (
+            not mid_landed
+            and y_lo - 20 <= state.samus_y <= y_hi + 30
+            and state.samus_x >= 560
+            and state.pose in spin_air
+        ):
+            near_mid_spin += 1
+            if near_mid_spin >= 90 and settle_budget <= 0:
+                settle_budget = 28
+                near_mid_spin = 0
+
+        if (
+            settle_budget > 0
+            and not mid_landed
+            and state.samus_y < 380
+            and state.samus_x >= 560
+        ):
+            settle_budget -= 1
+            if state.samus_x > 640:
+                dir_h = "LEFT"
+            elif state.samus_x < 600:
+                dir_h = "RIGHT"
+            else:
+                dir_h = "RIGHT"
+            hold(session, 1, dir_h, "B", reason=f"{label}_mid_settle")
+            continue
+
+        # Extreme-right floor dead wall (Spazer short-crest fallout): walk left.
+        if (
+            state.samus_y >= 390
+            and state.samus_x >= 700
+            and state.velocity_y == 0
+            and state.pose in stand_mid
+        ):
+            hold(session, 1, "LEFT", "B", reason=f"{label}_deadwall_left")
             continue
 
         # Climb: keep x in [560, 680] where mid platforms live.
