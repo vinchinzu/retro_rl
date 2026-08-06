@@ -1,3 +1,5 @@
+> **Board reeval:** Wave split into `rr-dbu.10` (gate open) → `rr-re9` (Super door + PLM). Gate agents cancelled; stop inventing without PLM truth.
+
 # Residual — SM-K4.10-PURE / rr-re9 (Pure Wave Beam PLM collect)
 
 ## Result
