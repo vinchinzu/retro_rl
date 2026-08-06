@@ -312,9 +312,9 @@ SM-CLEAN-ARTIFACTS,CLEAN,infra,Isolate clean report/video stems (_clean),SM-CLEA
 SM-CLEAN-CLI,CLEAN,infra,--clean alias + uniform energy/ammo flags,SM-CLEAN-ARTIFACTS,P2,done,M,scripts/record/continuous.py routes/continuous.py,defaults remain assist ON; landed 2026-08-01
 SM-CLEAN-INTEGRITY,CLEAN,infra,Clean zero resource-write integrity asserts,SM-CLEAN-ARTIFACTS,P2,done,M,routes/runtime.py,require_clean_resources; assisted path unchanged; landed 2026-08-01
 SM-CLEAN-MORPH,CLEAN,compose,Continuous morph Clean baseline,SM-CLEAN-CLI;SM-CLEAN-INTEGRITY,P2,done,M,routes/continuous.py,GREEN 27074f start_to_morph_clean 2026-08-02
-SM-CLEAN-BOMBS,CLEAN,compose,Continuous bombs/Torizo Clean tip ★,SM-CLEAN-MORPH,P2,open,L,routes/continuous.py combat/bomb_torizo.py,RED 2026-08-06 death in pit_to_post_torizo BT; residual SM-CLEAN-BOMBS-residual.md; missiles/morph prefix green
-SM-CLEAN-BT-ECONOMY,CLEAN,pure,BT ammo economy one-knob if clean RED,,P2,ready,M,combat/bomb_torizo.py,Unblocked by SM-CLEAN-BOMBS RED; one-knob ammo/death; re-verify assisted bombs after shared edit; pin room 0x9804
-SM-CLEAN-STAB,CLEAN,stabilize,Dual re-verify Clean bombs tip,SM-CLEAN-BOMBS,P2,open,M,recordings/,×2 integrity green clean
-SM-CLEAN-STATUS,CLEAN,status,STATUS secondary Clean bombs section,SM-CLEAN-STAB,P2,open,S,docs/STATUS.md MILESTONES,never re-label primary Frog tip
+SM-CLEAN-BOMBS,CLEAN,compose,Continuous bombs/Torizo Clean tip ★,SM-CLEAN-MORPH,P2,done,L,routes/continuous.py combat/bomb_torizo.py,GREEN via SM-CLEAN-BT-ECONOMY 49321f dual; residual SM-CLEAN-BT-ECONOMY-residual.md
+SM-CLEAN-BT-ECONOMY,CLEAN,pure,BT ammo economy one-knob if clean RED,SM-CLEAN-BOMBS,P2,done,M,combat/bomb_torizo.py early_post_morph.py,GREEN 2026-08-06 clean kite+hybrid dual 49321f; assisted reverify 45711f; residual SM-CLEAN-BT-ECONOMY-residual.md
+SM-CLEAN-STAB,CLEAN,stabilize,Dual re-verify Clean bombs tip,SM-CLEAN-BT-ECONOMY,P2,done,M,recordings/,dual 49321f already green with economy card
+SM-CLEAN-STATUS,CLEAN,status,STATUS secondary Clean bombs section,SM-CLEAN-STAB,P2,open,S,docs/STATUS.md MILESTONES,secondary facts updated; planner formal promote optional
 SM-CLEAN-SPORE,CLEAN,compose,Clean spore tip (parked),SM-CLEAN-STATUS,P4,parked,L,routes/continuous.py,after Clean BT green only
 SM-CLEAN-SUPERS,CLEAN,compose,Clean supers tip (parked),SM-CLEAN-SPORE,P4,parked,L,routes/continuous.py,parked privilege reduction ladder

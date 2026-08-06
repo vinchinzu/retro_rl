@@ -21,7 +21,7 @@
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
 | Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) |
-| Clean track (parallel) | Morph prefix clean @ **26,824f** on bombs path; bombs/Torizo Clean **RED** (BT economy) — [CLEAN_TRACK.md](CLEAN_TRACK.md); does **not** change this gate |
+| Clean track (parallel) | Morph prefix clean @ **26,824f**; bombs/Torizo Clean **GREEN 49,321f** ×2 — [CLEAN_TRACK.md](CLEAN_TRACK.md); does **not** change this gate |
 
 ## Current verified tip — Speed Booster (K4.5)
 
@@ -106,10 +106,10 @@ Secondary only — does **not** change the program gate above.
 | Fact | Value |
 |------|-------|
 | Morph on clean bombs path | **26,824f** (split; matches assisted morph tip) |
-| Clean bombs tip | **RED** 2026-08-06 — death in BT on hash-pinned `pit_to_post_torizo` |
-| Clean integrity (failed run) | 0 energy/ammo writes; 0 loads/progression/capacity |
-| Residual | [`tasks/SM-CLEAN-BOMBS-residual.md`](tasks/SM-CLEAN-BOMBS-residual.md) |
-| Next | `SM-CLEAN-BT-ECONOMY` one-knob (then re-compose clean bombs) |
+| Clean bombs tip | **GREEN** **49,321f** ×2 (2026-08-06) — parlor `0x92FD`, items `0x1004` |
+| Clean integrity | 0 energy/ammo writes; 0 loads/progression/capacity; dual reverify |
+| Residual | [`tasks/SM-CLEAN-BT-ECONOMY-residual.md`](tasks/SM-CLEAN-BT-ECONOMY-residual.md) |
+| Next | `SM-CLEAN-STATUS` secondary promote; spore clean still parked |
 
 Contract: [CLEAN_TRACK.md](CLEAN_TRACK.md) · [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
 No Clean dual / STATUS primary claim.

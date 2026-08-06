@@ -6,17 +6,22 @@ the baseline policy; structured RL can later refine the same feature vector.
 
 Vision BC from the legacy project is intentionally not used here — it only
 wins on its training save distribution and fails natural Flyway entry.
+
+Clean-track economy: defaults hold a slightly wider kite band so natural
+10-missile capacity + drops clear the fight without ammo writes (see
+``docs/tasks/SM-CLEAN-BT-ECONOMY-residual.md``).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from super_metroid.combat.features import (
     bomb_torizo_catalog,
     features_from_state,
 )
-from super_metroid.ram import SuperMetroidState
+from super_metroid.ram import SuperMetroidState, read_bank7e_wram
 from super_metroid.routes.controller_common import select_weapon
 from super_metroid.routes.runtime import ControllerSession, hold
 
@@ -25,19 +30,31 @@ ROOM_BOMB_TORIZO = 0x9804
 STATUE_SPRITEMAP = 0x87D0
 # Room-load / chozo spawn before the idle statue settles.
 SPAWN_SPRITEMAP = 0x804F
+# Crateria boss bits $7E:D828 — bit 0x04 = Bomb Torizo defeated.
+ADDR_CRATERIA_BOSS_BITS = 0xD828
+BOMB_TORIZO_BOSS_BIT = 0x04
 
 
 @dataclass(frozen=True)
 class BombTorizoStrategy:
-    """Tunable range-kite + missile spray parameters."""
+    """Tunable range-kite + missile spray parameters.
 
-    min_range: int = 70
-    max_range: int = 120
+    Defaults proven clean on ``natural_bomb_torizo_active`` (10 missiles, no
+    resource writes): wider band + longer jump holds vs the original spray so
+    contact damage stays under starting energy while drops refill ammo.
+    """
+
+    # Continuous clean entry often has only ~3/10 missiles; wider kite + longer
+    # jump holds farm egg drops while staying under contact lethal.
+    min_range: int = 100
+    max_range: int = 160
     jump_range: int = 100
-    jump_hold_frames: int = 18
-    jump_period: int = 50
+    jump_hold_frames: int = 28
+    jump_period: int = 40
     fire_period: int = 2  # fire every N frames
-    max_fight_frames: int = 8_000
+    max_fight_frames: int = 12_000
+    # After body HP 0, wait this many frames for the Crateria boss bit.
+    boss_bit_grace_frames: int = 1_200
 
 
 @dataclass(frozen=True)
@@ -51,12 +68,14 @@ class BombTorizoEvidence:
     action_frames: int
     final_enemy_hp: int
     outcome: str
+    boss_bit_frame: int | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
             "start_frame": self.start_frame,
             "activation_seen": self.activation_seen,
             "defeat_frame": self.defeat_frame,
+            "boss_bit_frame": self.boss_bit_frame,
             "end_frame": self.end_frame,
             "peak_hp": self.peak_hp,
             "min_enemy_hp": self.min_enemy_hp,
@@ -66,15 +85,29 @@ class BombTorizoEvidence:
         }
 
 
+def crateria_boss_bits(env: Any) -> int:
+    """Read Crateria boss flags ($7E:D828) via bank-$7E WRAM."""
+    return int(read_bank7e_wram(env)[ADDR_CRATERIA_BOSS_BITS])
+
+
+def bomb_torizo_boss_bit_set(env: Any) -> bool:
+    """True when Crateria boss bit 0x04 is set (Bomb Torizo)."""
+    return bool(crateria_boss_bits(env) & BOMB_TORIZO_BOSS_BIT)
+
+
 def fight_bomb_torizo_action(
     state: SuperMetroidState,
     frame_index: int,
     strategy: BombTorizoStrategy = BombTorizoStrategy(),
 ) -> tuple[str, ...]:
-    """One-frame button names from full-knowledge features (no pixels)."""
+    """One-frame button names from full-knowledge features (no pixels).
+
+    Defeat is keyed on ``enemy0_hp == 0`` only. Low-WRAM ``boss_bits`` from
+    ``env.get_ram()`` are open-bus garbage and must not idle the controller.
+    """
     catalog = bomb_torizo_catalog()
     feat = features_from_state(state, catalog)
-    if feat.enemy_defeated or state.enemy0_hp == 0:
+    if state.enemy0_hp == 0:
         return ()
     if not feat.enemy_active and state.enemy0_spritemap in (
         STATUE_SPRITEMAP,
@@ -98,6 +131,8 @@ def fight_bomb_torizo_action(
         frame_index % strategy.jump_period < strategy.jump_hold_frames
     ):
         names.append("A")
+    # Only pulse fire when missiles remain (or beam as fallback when empty —
+    # still faces the boss). fire_period gates the spray rate.
     if frame_index % strategy.fire_period == 0:
         names.append("X")
     # Deduplicate while preserving order.
@@ -109,13 +144,17 @@ def play_bomb_torizo_fight(
     *,
     strategy: BombTorizoStrategy = BombTorizoStrategy(),
     require_active: bool = True,
+    require_boss_bit: bool = True,
 ) -> BombTorizoEvidence:
-    """Fight Bomb Torizo until HP 0 using the structured strategy.
+    """Fight Bomb Torizo until HP 0 (and optionally Crateria boss bit).
 
     Expects the session already in room ``0x9804`` with combat-active Torizo
     (or a live entry that activates when approached). Incomplete save-states
     that freeze on spritemap ``0x87D0`` will fail activation and return a
     non-success outcome.
+
+    When ``require_boss_bit`` is True and the session exposes ``env``, wait
+    after body HP 0 for $7E:D828 bit 0x04 (door unlock precondition).
     """
     catalog = bomb_torizo_catalog()
     start = session.frame
@@ -132,7 +171,9 @@ def play_bomb_torizo_fight(
     min_hp = session.state.enemy0_hp
     activation_seen = session.state.enemy0_spritemap != STATUE_SPRITEMAP
     defeat_frame: int | None = None
+    boss_bit_frame: int | None = None
     prev_hp = session.state.enemy0_hp
+    env = getattr(session, "env", None)
 
     for index in range(strategy.max_fight_frames):
         state = session.state
@@ -155,13 +196,40 @@ def play_bomb_torizo_fight(
         ):
             defeat_frame = session.frame
             min_hp = 0
-            break
+            if not require_boss_bit or env is None:
+                break
         prev_hp = session.state.enemy0_hp
 
-    if defeat_frame is not None:
+        if (
+            defeat_frame is not None
+            and require_boss_bit
+            and env is not None
+            and bomb_torizo_boss_bit_set(env)
+        ):
+            boss_bit_frame = session.frame
+            break
+
+        if (
+            defeat_frame is not None
+            and require_boss_bit
+            and env is not None
+            and (session.frame - defeat_frame) >= strategy.boss_bit_grace_frames
+        ):
+            break
+
+    if defeat_frame is not None and (
+        not require_boss_bit
+        or env is None
+        or boss_bit_frame is not None
+        or bomb_torizo_boss_bit_set(env)
+    ):
+        if boss_bit_frame is None and env is not None and bomb_torizo_boss_bit_set(env):
+            boss_bit_frame = session.frame
         outcome = "bomb_torizo_defeated"
     elif require_active and not activation_seen:
         outcome = "torizo_inactive_statue"
+    elif defeat_frame is not None and require_boss_bit:
+        outcome = "boss_bit_timeout"
     else:
         outcome = "timeout"
 
@@ -169,6 +237,7 @@ def play_bomb_torizo_fight(
         start_frame=start,
         activation_seen=activation_seen,
         defeat_frame=defeat_frame,
+        boss_bit_frame=boss_bit_frame,
         end_frame=session.frame,
         peak_hp=peak_hp,
         min_enemy_hp=min_hp,

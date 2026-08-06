@@ -107,12 +107,14 @@ def test_evidence_to_dict_keys_are_stable() -> None:
         action_frames=200,
         final_enemy_hp=0,
         outcome="bomb_torizo_defeated",
+        boss_bit_frame=280,
     )
 
     assert set(evidence.to_dict()) == {
         "start_frame",
         "activation_seen",
         "defeat_frame",
+        "boss_bit_frame",
         "end_frame",
         "peak_hp",
         "min_enemy_hp",
@@ -129,6 +131,32 @@ def test_strategy_defaults_have_positive_fight_budget() -> None:
     assert strategy.max_range > strategy.min_range
     assert strategy.fire_period > 0
     assert strategy.max_fight_frames > 0
+
+
+def test_strategy_defaults_are_clean_economy_kite() -> None:
+    """Clean low-ammo defaults: wider band + longer jump holds."""
+    strategy = BombTorizoStrategy()
+
+    assert strategy.min_range >= 100
+    assert strategy.max_range >= 160
+    assert strategy.jump_hold_frames >= 28
+    assert strategy.jump_period <= 40
+    assert strategy.max_fight_frames >= 12_000
+
+
+def test_open_bus_boss_bits_do_not_idle_active_fight() -> None:
+    """Low-WRAM open-bus boss_bits must not suppress fire (enemy_defeated trap)."""
+    # features_from_state would mark defeated if boss_bits[0] & 0x04 — open bus
+    # often has 0xFF. Action path keys on enemy0_hp only.
+    state = _state(
+        samus_x=100,
+        enemy0_x=200,
+        enemy0_hp=800,
+        boss_bits=(255, 0, 255, 0, 255, 0, 255, 0),
+    )
+    action = fight_bomb_torizo_action(state, frame_index=0)
+    assert "X" in action
+    assert action != ()
 
 
 def test_bomb_torizo_boss_strategy_adapter_imports() -> None:
