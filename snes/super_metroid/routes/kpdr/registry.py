@@ -61,6 +61,7 @@ from super_metroid.routes.kpdr.k4_norfair import (
     play_business_to_frog_save,
     play_cathedral_entrance_to_cathedral,
     play_cathedral_to_rising_tide,
+    play_double_chamber_to_wave,
     play_farm_to_bubble,
     play_frog_save_to_business,
     play_frog_save_to_speedway,
@@ -197,6 +198,8 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "bubble_to_single_chamber": play_bubble_to_single_chamber,
     # K4.9: Single → Double Chamber (Wave path pure-first; missile red door).
     "single_to_double_chamber": play_single_to_double_chamber,
+    # K4.10: Double Chamber → Wave Beam PLM (pure-first; Super red door).
+    "double_chamber_to_wave": play_double_chamber_to_wave,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,

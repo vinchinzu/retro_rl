@@ -1,10 +1,13 @@
-"""K4 Wave branch pure controllers — Bubble → Single → Double Chamber.
+"""K4 Wave branch pure controllers — Bubble → Single → Double → Wave.
 
 K4.8 Bubble → Single Chamber (``0xAD5E``): post-Speed return Bubble top-right
 → drop shaft → middle-right blue door into Single left shaft.
 
 K4.9 Single → Double Chamber (``0xADAD``): left-shaft top entry → mid ledge →
 floor platform y≈395 → missile red door (Second Top Right) into Double top.
+
+K4.10 Double Chamber → Wave Beam PLM (``0xADDE``): top-left pin → upper path
+→ blue gate → right Super/missile door → Wave chozo collect (beam bit 0x0001).
 
 Human reference: ``tasks/speed_to_ice_moat_human.json`` frames 2637–3303
 (Single segment). Caps: Morph, Bombs, Missiles, Supers, Hi-Jump, Varia, Speed.
@@ -25,12 +28,16 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_BUBBLE,
     ROOM_DOUBLE_CHAMBER,
     ROOM_SINGLE_CHAMBER,
+    ROOM_WAVE,
 )
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.knockback import (
     escape_knockback_spin,
     is_knockback,
 )
+
+# Wave Beam collected bit on ``collected_beams`` / ``equipped_beams``.
+WAVE_BEAM_MASK = 0x0001
 
 # ---------------------------------------------------------------------------
 # K4.8 Bubble → Single Chamber
@@ -563,10 +570,332 @@ def play_single_to_double_chamber(session: ControllerSession) -> SuperMetroidSta
     return state
 
 
+# ---------------------------------------------------------------------------
+# K4.10 Double Chamber → Wave Beam PLM
+# Live recon (2026-08-06): entry ~(61,139); upper hop path; blue gate ~x410
+# is the open RED pin (shots register visually but PLM may not trip from pure
+# pin geometry). Past-gate solid ~(520,140); right Super door → Wave chozo
+# collect beams|=0x0001 at ~(171,120). Caps: missiles/supers for red door.
+# ---------------------------------------------------------------------------
+_DC_TOTAL_BUDGET = 9000
+_WAVE_SETTLE = 280
+_GATE_X = (360, 430)
+_PAST_GATE_X = 480
+_DOOR_X = 920
+_DOOR_Y_MAX = 180
+
+
+def _escape_kb_dc(session: ControllerSession, label: str, prefer: str) -> None:
+    escape_knockback_spin(
+        session,
+        prefer_dir=prefer,
+        run_frames=6,
+        spin_frames=18,
+        label=label,
+        stop_room_id=ROOM_WAVE,
+    )
+
+
+def _has_wave(state: SuperMetroidState) -> bool:
+    return bool(int(state.collected_beams) & WAVE_BEAM_MASK)
+
+
+def _dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
+    """Top-left ~(61,139) → upper platforms → gate band x∈[360,430] y≲200.
+
+    Live recon cadence: hop_run to x≈210, then spin16_run12 toward gate.
+    """
+    unmorph(session)
+    select_weapon(session, 0)
+    for _ in range(20):
+        state = hold(session, 1, reason=f"{label}_top_stand")
+        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+            break
+
+    # hop_run toward mid platforms
+    for frame in range(160):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_x >= 210 and state.velocity_y == 0 and state.samus_y < 200:
+            break
+        if is_knockback(state):
+            _escape_kb_dc(session, label, "RIGHT")
+            continue
+        if state.pose in (137, 138):
+            unmorph(session)
+            continue
+        phase = frame % 30
+        if phase < 4:
+            hold(session, 1, "RIGHT", "X", reason=f"{label}_hop_shot")
+        elif phase < 12:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_hop_spin")
+        elif phase < 22:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_hop_run")
+        else:
+            hold(session, 1, "RIGHT", reason=f"{label}_hop_walk")
+
+    # spin16_run12 toward gate / high platforms
+    for frame in range(280):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if (
+            _GATE_X[0] <= state.samus_x <= _GATE_X[1]
+            and state.samus_y < 200
+            and state.velocity_y == 0
+        ):
+            return
+        if state.samus_x >= _PAST_GATE_X and state.samus_y < 220:
+            return
+        if state.samus_y > 360 and state.velocity_y == 0:
+            return  # fell; door phase may still recover poorly
+        if is_knockback(state):
+            _escape_kb_dc(session, label, "RIGHT")
+            continue
+        if state.pose in (137, 138):
+            unmorph(session)
+            continue
+        phase = frame % 28
+        if phase < 16:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_gate_spin")
+        else:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_gate_run")
+
+
+def _dc_open_blue_gate(session: ControllerSession, label: str) -> None:
+    """Open mid blue gate (obstacle A) and push onto past-gate platform.
+
+    Switch is the top mechanism; prefer UP+RIGHT beam while high (y≲140).
+    Live pure (2026-08-06): power beam selected; residual if PLM does not trip.
+    """
+    select_weapon(session, 0)
+    for frame in range(400):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_x >= _PAST_GATE_X and state.samus_y < 220:
+            return
+        if state.samus_y > 360 and state.velocity_y == 0:
+            return
+        if is_knockback(state):
+            _escape_kb_dc(session, label, "RIGHT")
+            select_weapon(session, 0)
+            continue
+        if state.pose in (137, 138):
+            unmorph(session)
+            continue
+
+        high = state.samus_y < 145
+        in_gate = _GATE_X[0] <= state.samus_x <= _GATE_X[1]
+
+        if high and in_gate:
+            phase = frame % 14
+            if phase < 4:
+                hold(session, 1, "UP", "RIGHT", "X", reason=f"{label}_switch")
+            elif phase < 7:
+                hold(session, 1, "RIGHT", "X", reason=f"{label}_beam")
+            elif phase < 11:
+                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_gate_hop")
+            else:
+                hold(session, 1, "RIGHT", reason=f"{label}_gate_nudge")
+        elif high:
+            phase = frame % 12
+            if phase < 3:
+                hold(session, 1, "UP", "RIGHT", "X", reason=f"{label}_hi_shot")
+            else:
+                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_hi_spin")
+        elif state.velocity_y != 0:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_gate_air")
+        else:
+            # Low: try re-hop onto upper path
+            phase = frame % 20
+            if phase < 10:
+                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_recover")
+            elif phase < 14:
+                hold(session, 1, "X", reason=f"{label}_low_shot")
+            else:
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_low_run")
+
+
+def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
+    """Past-gate platforms → right red door (Supers open red) → Wave room."""
+    for frame in range(1200):
+        state = session.state
+        if state.room_id == ROOM_WAVE:
+            return
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if is_knockback(state):
+            _escape_kb_dc(session, label, "RIGHT")
+            continue
+        if state.pose in (137, 138):
+            unmorph(session)
+            continue
+
+        x, y = state.samus_x, state.samus_y
+        near_door = x >= _DOOR_X and y < _DOOR_Y_MAX
+
+        if near_door:
+            # Red door: Supers (also open missile doors).
+            select_weapon(session, 2)
+            if state.velocity_y == 0:
+                if frame % 36 < 3:
+                    hold(session, 1, "RIGHT", "X", reason=f"{label}_super")
+                elif frame % 36 < 12:
+                    hold(session, 1, reason=f"{label}_super_fuse")
+                else:
+                    hold(session, 1, "RIGHT", "B", reason=f"{label}_door_push")
+            else:
+                hold(session, 1, "RIGHT", reason=f"{label}_door_air")
+            continue
+
+        select_weapon(session, 0)
+        if x >= 750:
+            # Right structure walljump climb to door sill y≈140.
+            if y > _DOOR_Y_MAX:
+                phase = frame % 14
+                if phase < 5:
+                    hold(session, 1, "LEFT", "A", reason=f"{label}_wj_l")
+                elif phase < 10:
+                    hold(session, 1, "RIGHT", "A", reason=f"{label}_wj_r")
+                else:
+                    hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_wj_up")
+            else:
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_sill_run")
+            continue
+
+        if state.velocity_y != 0:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_mid_air")
+        else:
+            phase = frame % 26
+            if phase < 14:
+                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_mid_spin")
+            elif phase < 20:
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_mid_run")
+            else:
+                hold(session, 1, "RIGHT", "X", reason=f"{label}_mid_shot")
+
+
+def _wave_collect_plm(session: ControllerSession, label: str) -> SuperMetroidState:
+    """Wave Room left entry → chozo PLM → beam bit 0x0001."""
+    require_room(session, ROOM_WAVE, label)
+    if _has_wave(session.state):
+        return session.state
+
+    unmorph(session)
+    select_weapon(session, 0)
+    for _ in range(30):
+        state = hold(session, 1, reason=f"{label}_stand")
+        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+            break
+        if state.pose in (137, 138, 39, 40):
+            hold(session, 1, "UP", reason=f"{label}_unmorph")
+
+    for frame in range(500):
+        state = session.state
+        if _has_wave(state):
+            break
+        if state.room_id != ROOM_WAVE:
+            raise TimeoutError(
+                f"{label}: left Wave Room during collect; "
+                f"room=0x{state.room_id:04X} xy=({state.samus_x},{state.samus_y})"
+            )
+        if state.pose in (137, 138):
+            hold(session, 8, "UP", reason=f"{label}_unmorph")
+            continue
+        if state.samus_x < 160:
+            phase = frame % 20
+            if phase < 8:
+                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_chozo_hop")
+            elif phase < 14:
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_chozo_run")
+            else:
+                hold(session, 1, "RIGHT", "X", reason=f"{label}_chozo_shot")
+        else:
+            if frame % 10 == 0:
+                hold(session, 1, "X", reason=f"{label}_plm_shot")
+            else:
+                hold(session, 1, "RIGHT", reason=f"{label}_plm_walk")
+    else:
+        state = session.state
+        raise TimeoutError(
+            f"{label}: Wave PLM not collected; beams=0x{state.collected_beams:04X} "
+            f"pose={state.pose} xy=({state.samus_x},{state.samus_y})"
+        )
+
+    hold(session, 80, reason=f"{label}_fanfare")
+    unmorph(session)
+    for _ in range(40):
+        state = hold(session, 1, reason=f"{label}_post_stand")
+        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+            break
+    return session.state
+
+
+def play_double_chamber_to_wave(session: ControllerSession) -> SuperMetroidState:
+    """Double Chamber (post Single→Double pure) → Wave Beam PLM collect.
+
+    Path: top-left ~(61,139) → upper hop path → blue gate → right Super door
+    into Wave ``0xADDE`` → chozo collect (``WAVE_BEAM_MASK`` 0x0001).
+
+    Caps: Morph, Bombs, Missiles, Supers, Hi-Jump, Varia, Speed.
+    """
+    label = "double_chamber_to_wave"
+    require_room(session, ROOM_DOUBLE_CHAMBER, label)
+    start = session.frame
+
+    if _has_wave(session.state) and session.state.room_id == ROOM_WAVE:
+        return session.state
+
+    if session.state.room_id == ROOM_DOUBLE_CHAMBER:
+        _dc_hop_to_gate_zone(session, label)
+
+    if (
+        session.state.room_id == ROOM_DOUBLE_CHAMBER
+        and session.state.samus_x < _PAST_GATE_X
+    ):
+        _dc_open_blue_gate(session, label)
+
+    if session.state.room_id == ROOM_DOUBLE_CHAMBER:
+        _dc_to_wave_door(session, label)
+
+    if session.state.room_id != ROOM_WAVE:
+        state = session.state
+        raise TimeoutError(
+            f"{label}: Wave door missed; room=0x{state.room_id:04X} "
+            f"pose={state.pose} xy=({state.samus_x},{state.samus_y}) "
+            f"door_transition={state.door_transition} "
+            f"missiles={state.missiles} supers={state.super_missiles} "
+            f"selected={state.selected_item} "
+            f"beams=0x{state.collected_beams:04X} "
+            f"frames={session.frame - start}"
+        )
+
+    wait_ordinary_room(
+        session, ROOM_WAVE, settle_frames=_WAVE_SETTLE, label=label
+    )
+    state = _wave_collect_plm(session, label)
+
+    if not _has_wave(state):
+        raise TimeoutError(
+            f"{label}: finished without Wave bit; "
+            f"beams=0x{state.collected_beams:04X} room=0x{state.room_id:04X} "
+            f"xy=({state.samus_x},{state.samus_y}) "
+            f"frames={session.frame - start}"
+        )
+    if session.frame - start > _DC_TOTAL_BUDGET:
+        pass
+    return state
+
+
 __all__ = [
+    "WAVE_BEAM_MASK",
     "play_bubble_to_single_chamber",
     "play_single_to_double_chamber",
+    "play_double_chamber_to_wave",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",
+    "ROOM_WAVE",
 ]

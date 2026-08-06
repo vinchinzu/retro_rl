@@ -233,6 +233,17 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=180,
     ),
     SourceFingerprint(
+        "post_double_chamber_to_wave_pure",
+        "scratch/post_double_chamber_to_wave_pure.state",
+        0xADDE,
+        use_for="Wave pure successor / Ice branch predecessor",
+        continuous_like=False,
+        x_min=140,
+        x_max=220,
+        y_min=90,
+        y_max=180,
+    ),
+    SourceFingerprint(
         "post_kihunter_to_zeela",
         "scratch/post_kihunter_to_zeela_return.state",
         0xA471,
