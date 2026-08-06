@@ -128,9 +128,10 @@ class ContinuousTip:
     aliases: tuple[str, ...] = ()
 
 
-# Verified continuous tip (M5): Bat Cave (K4.4 first Bubble) has two matching
-# integrity-green power-on reports at 122,304f. Frog Save remains a side tip.
-DEFAULT_CONTINUOUS_TIP = "bat_cave"
+# Verified continuous tip (M5): Speed Booster (K4.5) has two matching
+# integrity-green power-on reports at 130,388f (Spazer mainline). Frog Save
+# remains a side tip; non-Spazer bat_cave 122,304f is previous tip history.
+DEFAULT_CONTINUOUS_TIP = "speed"
 
 # Live views — mutated in place by :func:`rebuild_from_tip_specs` so importers
 # that bound the name early still see post-registration tips.

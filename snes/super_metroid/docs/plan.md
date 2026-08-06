@@ -41,19 +41,21 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ P0 compose** | Continuous `--to speed` dual (spine wired) | `rr-d20` |
-| P0 status | STATUS promote Speed tip after dual | `rr-cd0` |
+| **★ P0 stabilize** | Stabilize wave after Speed continuous | `rr-07b` |
+| **★ P1 pure** | Pure Speed return → Bubble | `rr-g4i` |
+| P0 done | Continuous `--to speed` dual + STATUS promote | `rr-d20` ✓ / `rr-cd0` ✓ |
 | P0 pure (done) | Bat→Hall + Hall→Speed collect pure green | closed |
 | P0 done | Spazer warehouse dual + STATUS promote | `rr-jx9` ✓ / `rr-4wg` |
 | P0 done | HJ Spazer pillar unequip fix; Business→Cath door KB escape | closed |
-| P1 pure stack | Speed return → Wave → Ice (pure green each) | after `rr-d20` |
-| P1 optional | Dual Spazer `bat_cave` + tip STATUS (single 127,806f green) | after warehouse |
+| P1 pure stack | Wave → Ice (pure green each) after Speed return | after `rr-g4i` |
+| P1 optional | Dual Spazer `bat_cave` tip STATUS (historical single 127,806f) | optional |
 | P1 | K5 **Alpha PB** (natural post-Ice) | later |
 | Parallel Clean | ★ **bombs / Torizo Clean** — [CLEAN_TRACK.md](CLEAN_TRACK.md) | `rr-siz` |
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (needs Speed / Boost Blocks).
-**Do not:** re-open CATH pure or Bat→Speed pure (green residuals exist);
-default continuous tip stays `bat_cave` until Speed STATUS promote.
+**Do not:** re-open CATH pure, Bat→Speed pure, or Speed dual (green residuals +
+STATUS tip promoted); do not claim pure Speed return until `rr-g4i` green.
+Default continuous tip is **`speed`** (**130,388f** ×2).
 
 Live work: `bd ready -l super_metroid` · snapshot [tasks/QUEUE.md](tasks/QUEUE.md).
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
@@ -123,11 +125,13 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
    **90,904f**, beams `0x1004`, room `0xA6A1`, outcome `warehouse_entry`
    (`warehouse_with_spazer_dual.json`). Frame +1,488 = Spore combat variance.
 4. **SM-SPAZER-STATUS** (`rr-4wg`) — STATUS/MILESTONES warehouse Spazer dual
-   promoted (2026-08-06). Default CLI tip remains non-Spazer `bat_cave`.
+   promoted (2026-08-06). Later folded into Speed dual STATUS (`rr-cd0`).
+5. **Speed dual + STATUS** (`rr-d20` / `rr-cd0`) — continuous `--to speed`
+   **130,388f** ×2 exact match, beams `0x1004`, items `0x3105`, room
+   `0xAD1B`; `DEFAULT_CONTINUOUS_TIP = speed`.
 
-**Not done (optional / later):** dual Spazer `bat_cave` tip STATUS (single
-**127,806f** green in `bat_cave_spazer_cwu.json` only). Serial next is Speed
-dual (`rr-d20`), not Spazer bat_cave dual.
+**Optional / later:** dual Spazer `bat_cave` tip STATUS alone (single
+**127,806f** in `bat_cave_spazer_cwu.json`) — superseded by Speed dual tip.
 
 **Sources:** [tasks/EARLY_SPAZER_HUMAN.md](tasks/EARLY_SPAZER_HUMAN.md) ·
 [tasks/SM-SPAZER-HUMAN-CHUNKS.md](tasks/SM-SPAZER-HUMAN-CHUNKS.md).
@@ -141,9 +145,10 @@ dual (`rr-d20`), not Spazer bat_cave dual.
 - [x] Pure **Bat → Speed Hall** (residual GREEN)
 - [x] Pure Speed Hall → Speed Booster room + collect (residual GREEN)
 - [x] Spine graph edges continuous for Speed tip (`--to speed` wired)
-- [ ] Continuous compose + dual re-verify for `speed` (★ next, `rr-d20`)
-- [ ] STATUS promote `speed` + stabilize wave
-- [ ] Pure Speed return → Wave → Ice chain (pure green each)
+- [x] Continuous compose + dual re-verify for `speed` (`rr-d20`, 130388f ×2)
+- [x] STATUS promote `speed` (`rr-cd0`, default CLI tip)
+- [ ] Stabilize wave after Speed continuous (`rr-07b`)
+- [ ] Pure Speed return → Bubble (`rr-g4i`) → Wave → Ice chain
 - [ ] Continuous compose + dual for `wave` / `ice` tips
 - [ ] (Parked) Speedway → Farm → Bubble post-Speed shortcut
 

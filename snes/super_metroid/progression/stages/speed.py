@@ -116,26 +116,8 @@ _BRANCH_EDGES = (
         "kpdr_k4_speed",
         "unverified",
     ),
-    DoorEdge(
-        "bat_cave_to_speed_hall",
-        ROOM_BAT_CAVE,
-        ROOM_SPEED_HALL,
-        "right",
-        "left",
-        _K4_CAPS,
-        "kpdr_k4_speed",
-        "unverified",
-    ),
-    DoorEdge(
-        "speed_hall_to_speed",
-        ROOM_SPEED_HALL,
-        ROOM_SPEED,
-        "right",
-        "left",
-        _K4_CAPS | frozenset({"missiles"}),
-        "kpdr_k4_speed",
-        "unverified",
-    ),
+    # bat_cave_to_speed_hall + speed_hall_to_speed: spine-emitted continuous
+    # (tip ``speed``) via continuous_edges_for_tips — do not hand-author here.
     # --- Wave branch from Bubble ---
     DoorEdge(
         "bubble_to_single_chamber",
@@ -212,7 +194,7 @@ _BRANCH_EDGES = (
 
 EDGES = (
     _VARIA_EDGES
-    + continuous_edges_for_tips("business", "frog", "bat_cave")
+    + continuous_edges_for_tips("business", "frog", "bat_cave", "speed")
     + _BRANCH_EDGES
 )
 
@@ -247,7 +229,7 @@ MILESTONES = _VARIA_MILESTONES + (
     ),
     ProgressionMilestone(
         "speed_collected",
-        "Natural Speed Booster collect (K4.0) — promote after continuous tip",
+        "Natural Speed Booster collect (K4.5) — STATUS-promoted continuous tip (130388f dual)",
         ProgressCondition(
             room_id=ROOM_SPEED,
             collected_items_mask=(

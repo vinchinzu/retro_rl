@@ -19,7 +19,7 @@ lane on that already-green prefix — not a second full-route rewrite.
 | Fact | Assisted (primary) | Clean (this track) |
 |------|--------------------|--------------------|
 | Intervention | Resource-assisted (energy + ammo) | **Clean** (no resource writes) |
-| Program tip | Bat Cave (`--to bat_cave`) | ★ Target: Bomb Torizo exit (`--to bombs`) |
+| Program tip | Speed Booster (`--to speed`) | ★ Target: Bomb Torizo exit (`--to bombs`) |
 | Maturity gate | M5 → M8 assisted full clear | Parallel; does **not** move M5/M8 |
 | STATUS primary | Assisted only | Secondary section when green |
 

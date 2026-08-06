@@ -97,7 +97,8 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         route_label="warehouse",
         source_policy=(
             "accepted power-on prefix + Spore controller + KPDR K1/K2 "
-            "controllers (…→Bat→Below Spazer→West→Glass→East→Warehouse) + "
+            "controllers (…→Charge Big Pink→Bat→Below Spazer→Spazer K2.2 "
+            "detour→West/Maridia hallway→Glass→East→Warehouse) + "
             "phase-guarded resources"
         ),
         timing_source="warehouse",
@@ -105,10 +106,13 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         ordinary_condition_key="post_warehouse_ordinary",
         display_name="Power-on → Warehouse Entrance (KPDR K2.6)",
         description=(
-            "Below Spazer prefix through West Tunnel, Glass Tunnel, "
-            "East Tunnel, and natural Warehouse Entrance."
+            "Below Spazer prefix (Charge + Spazer mainline detour) through "
+            "Maridia hallway West Tunnel, Glass Tunnel, East Tunnel, and "
+            "natural Warehouse Entrance. Climb residual until pure green."
         ),
         aliases=("warehouse_entrance", "k2_6"),
+        # Charge+Spazer mainline endpoint — dump for pure West/Kraid probes.
+        supports_checkpoint=True,
     ),
     TipSegment(
         tip_id="hijump",
@@ -251,6 +255,32 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
             "ordinary Bat Cave. Sibling of Frog Save, not a frog prefix."
         ),
         aliases=("norfair_bat", "bubble_bat", "k4_4", "k4.4"),
+        supports_checkpoint=True,
+    ),
+    TipSegment(
+        tip_id="speed",
+        parent_tip_id="bat_cave",
+        graph_id="speed",
+        kind="speed",
+        success_outcome="speed_collected",
+        route_label="speed",
+        source_policy=(
+            "accepted Bat Cave continuous + pure-green Bat→Speed Hall + "
+            "Speed Hall→Speed Booster collect controllers + phase-guarded "
+            "resources"
+        ),
+        timing_source="speed",
+        entry_condition_key="natural_speed_room_entry",
+        ordinary_condition_key="post_speed_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Speed Booster (KPDR K4.5)",
+        description=(
+            "Bat Cave tip through Speed Booster Hall and natural Speed "
+            "Booster PLM collect. STATUS-promoted default continuous tip "
+            "(130,388f ×2 Spazer dual, 2026-08-06)."
+        ),
+        aliases=("speed_booster", "k4_5", "k4.5"),
         supports_checkpoint=True,
     ),
 )

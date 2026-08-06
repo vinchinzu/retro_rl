@@ -47,11 +47,11 @@ def _put_u16(ram: np.ndarray, address: int, value: int) -> None:
 
 
 def test_default_artifact_paths() -> None:
-    """Primary continuous tip is Bat Cave (KPDR K4.4 first Bubble)."""
+    """Primary continuous tip is Speed Booster (KPDR K4.5)."""
     video, report = default_artifact_paths()
-    assert video.name == "bat_cave.mp4"
-    assert report.name == "bat_cave.json"
-    assert DEFAULT_CONTINUOUS_TIP == "bat_cave"
+    assert video.name == "speed.mp4"
+    assert report.name == "speed.json"
+    assert DEFAULT_CONTINUOUS_TIP == "speed"
 
 
 def test_continuous_tips_chain_ends_at_default() -> None:
@@ -71,9 +71,12 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "business",
         "frog",
         "bat_cave",
+        "speed",
     ]
-    assert CONTINUOUS_TIPS[-1].tip_id == DEFAULT_CONTINUOUS_TIP
-    assert DEFAULT_CONTINUOUS_TIP == "bat_cave"
+    # Default tip is furthest STATUS-promoted integrity-green tip (Speed).
+    assert DEFAULT_CONTINUOUS_TIP == "speed"
+    assert DEFAULT_CONTINUOUS_TIP in ids
+    assert DEFAULT_CONTINUOUS_TIP == ids[-1]
 
 
 def test_continuous_tips_align_with_tip_specs() -> None:
@@ -274,10 +277,11 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "business",
         "frog",
         "bat_cave",
+        "speed",
     )
     assert tuple(s.tip_id for s in SUPER_TIP_SPECS) == expected_super
     # Unified table includes early + Super+.
-    for tip_id in ("morph", "supers", "red_tower", "bat_cave"):
+    for tip_id in ("morph", "supers", "red_tower", "bat_cave", "speed"):
         assert tip_id in TIP_BY_ID
         assert isinstance(TIP_BY_ID[tip_id], TipSpec)
     assert {s.tip_id for s in TIP_SPECS} >= set(expected_super) | {
@@ -300,6 +304,12 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "cathedral_to_rising_tide",
         "rising_tide_to_bubble",
         "bubble_to_bat_cave",
+    ]
+    assert SUPER_TIP_BY_ID["speed"].parent_tip_id == "bat_cave"
+    assert SUPER_TIP_BY_ID["speed"].final_room == 0xAD1B
+    assert [h.split_id for h in SUPER_TIP_BY_ID["speed"].hops] == [
+        "bat_cave_to_speed_hall",
+        "speed_hall_to_speed",
     ]
 
 

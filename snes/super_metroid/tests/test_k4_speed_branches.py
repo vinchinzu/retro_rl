@@ -67,6 +67,7 @@ def test_k4_business_to_ice_edge_contract() -> None:
 def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
     wave = SPEED_GRAPH.path_verification(0xA7DE, 0xADDE, CAPS)
     ice = SPEED_GRAPH.path_verification(0xA7DE, 0xA890, CAPS)
+    speed = SPEED_GRAPH.path_verification(0xACB3, 0xAD1B, CAPS)
 
     assert wave["reachable"] is True
     assert wave["all_continuous"] is False
@@ -75,6 +76,9 @@ def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
     assert ice["reachable"] is True
     assert ice["all_continuous"] is False
     assert ice["blocking"] == "business_to_ice_gate"
+    # Speed Hall + collect are continuous spine product edges.
+    assert speed["reachable"] is True
+    assert speed["all_continuous"] is True
 
 
 def test_k4_speed_path_includes_farm_and_speed_hall_hops() -> None:
@@ -86,7 +90,7 @@ def test_k4_speed_path_includes_farm_and_speed_hall_hops() -> None:
         "bat_cave_to_speed_hall",
         "speed_hall_to_speed",
     ]
-    # Dual integrity bat_cave promoted bubble_to_bat_cave; Speed Hall open.
+    # Dual integrity bat_cave + pure-green Speed hops on spine → continuous.
     assert path[0].verification == "continuous"
-    assert path[1].verification == "unverified"
-    assert path[2].verification == "unverified"
+    assert path[1].verification == "continuous"
+    assert path[2].verification == "continuous"
