@@ -592,6 +592,12 @@ _PAST_GATE_X = 480
 # Prefix DC_ so Bubble `_BSC_DOOR_*` is never overwritten at import time.
 _DC_DOOR_X = 920
 _DC_DOOR_Y_MAX = 180
+# Past-gate **missile ledge** (y≈139). Super door runway lives HERE — not the
+# spike floor (~y400). Solid ledge x≈414–608; launch edge ~x575–600.
+_DC_LEDGE_Y_MAX = 165
+_DC_RUNWAY_X = 425
+_DC_EDGE_X = 575
+_DC_MISSILE_X = 495
 
 # Exact human open sequence (tape frames 4650–5200), RLE of button names.
 # Source: tasks/speed_to_ice_moat_human.json — do not invent shot cadences.
@@ -820,9 +826,117 @@ def _dc_open_blue_gate(session: ControllerSession, label: str) -> None:
         hold(session, 1, "RIGHT", reason=f"{label}_past_walk")
 
 
-def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
-    """Past-gate platforms → right red door (Supers open red) → Wave room."""
-    for frame in range(1200):
+def _dc_on_missile_ledge(state: SuperMetroidState) -> bool:
+    """True when on the past-gate missile ledge (not spike floor)."""
+    return (
+        state.room_id == ROOM_DOUBLE_CHAMBER
+        and state.samus_y <= _DC_LEDGE_Y_MAX
+        and state.velocity_y == 0
+    )
+
+
+def _dc_missiles_and_runway(session: ControllerSession, label: str) -> None:
+    """Missile pack on ledge → backup under gate for longest upper runway.
+
+    Human recipe (rr-re9): same ledge as missiles (y≈139), **not** spike floor.
+    Backup left toward gate (~x420) so the dash into the right gap is max length.
+    """
+    unmorph(session)
+    select_weapon(session, 0)
+    mis0 = int(session.state.missiles)
+
+    # Walk right on ledge to missile pack / past-gate solid.
+    for _ in range(200):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_y > _DC_LEDGE_Y_MAX + 20:
+            # Fell off ledge — try hop back up left toward solid.
+            hold(session, 1, "LEFT", "A", reason=f"{label}_ledge_recover")
+            continue
+        if state.missiles > mis0 and _dc_on_missile_ledge(state):
+            break
+        if state.samus_x >= _DC_MISSILE_X and _dc_on_missile_ledge(state):
+            break
+        hold(session, 1, "RIGHT", reason=f"{label}_to_missiles")
+
+    # Backup LEFT on ledge only (longest runway under gate).
+    for _ in range(280):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_y > _DC_LEDGE_Y_MAX + 20:
+            hold(session, 1, "RIGHT", "A", reason=f"{label}_runway_recover")
+            continue
+        if (
+            state.samus_x <= _DC_RUNWAY_X
+            and _dc_on_missile_ledge(state)
+        ):
+            break
+        hold(session, 1, "LEFT", reason=f"{label}_runway_back")
+
+    # Face right and settle on ledge before dash.
+    hold(session, 10, "RIGHT", reason=f"{label}_runway_face")
+    hold(session, 8, reason=f"{label}_runway_settle")
+
+
+def _dc_ledge_dash_and_launch(session: ControllerSession, label: str) -> None:
+    """Dash along missile ledge → spin-launch at edge (~x575) staying high.
+
+    Live pure: dash on y≈139 to edge, RIGHT+B+A launch peaks y≈69 and crosses
+    toward right structure (~x780) before drop. Never open-loop WJ on spike floor.
+    """
+    # Dash on ledge to edge (no jump — stay planted).
+    for _ in range(220):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_x >= _DC_DOOR_X and state.samus_y < _DC_DOOR_Y_MAX:
+            return
+        if state.samus_y > _DC_LEDGE_Y_MAX + 20:
+            hold(session, 1, "LEFT", "A", reason=f"{label}_dash_recover")
+            continue
+        if state.samus_x >= _DC_EDGE_X and _dc_on_missile_ledge(state):
+            break
+        hold(session, 1, "RIGHT", "B", reason=f"{label}_ledge_dash")
+
+    # Launch + high air toward Super door column. Abort deep spike dives.
+    for frame in range(200):
+        state = session.state
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_x >= _DC_DOOR_X and state.samus_y < _DC_DOOR_Y_MAX:
+            return
+        # Spike floor band — do not thrash WJ down here.
+        if state.samus_y > 280 and state.velocity_y == 0:
+            return
+        if state.samus_y > 320:
+            return
+
+        x, y = state.samus_x, state.samus_y
+        on_ledge = _dc_on_missile_ledge(state)
+
+        # Still on missile ledge short of edge: keep dash / launch.
+        if on_ledge and x < _DC_EDGE_X:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_ledge_dash")
+            continue
+        if on_ledge:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_ledge_launch")
+            continue
+
+        # Air: hold height while drifting right (peak ~y70 natural).
+        if y <= 200:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_high_air")
+            continue
+
+        # Mid drop (y 200–280): still try right+height, no floor WJ spam.
+        hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_mid_air")
+
+
+def _dc_super_door_push(session: ControllerSession, label: str) -> None:
+    """At Super red door sill: Supers + RIGHT into Wave room."""
+    select_weapon(session, 2)
+    for frame in range(400):
         state = session.state
         if state.room_id == ROOM_WAVE:
             return
@@ -834,49 +948,86 @@ def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
         if state.pose in (137, 138):
             unmorph(session)
             continue
-
         x, y = state.samus_x, state.samus_y
-        near_door = x >= _DC_DOOR_X and y < _DC_DOOR_Y_MAX
-
-        if near_door:
-            # Red door: Supers (also open missile doors).
-            select_weapon(session, 2)
-            if state.velocity_y == 0:
-                if frame % 36 < 3:
-                    hold(session, 1, "RIGHT", "X", reason=f"{label}_super")
-                elif frame % 36 < 12:
-                    hold(session, 1, reason=f"{label}_super_fuse")
-                else:
-                    hold(session, 1, "RIGHT", "B", reason=f"{label}_door_push")
+        if x < _DC_DOOR_X - 40 or y > _DC_DOOR_Y_MAX + 40:
+            # Not on sill — stop (caller may re-approach).
+            return
+        if state.velocity_y == 0:
+            if frame % 36 < 3:
+                hold(session, 1, "RIGHT", "X", reason=f"{label}_super")
+            elif frame % 36 < 12:
+                hold(session, 1, reason=f"{label}_super_fuse")
             else:
-                hold(session, 1, "RIGHT", reason=f"{label}_door_air")
-            continue
-
-        select_weapon(session, 0)
-        if x >= 750:
-            # Right structure walljump climb to door sill y≈140.
-            if y > _DC_DOOR_Y_MAX:
-                phase = frame % 14
-                if phase < 5:
-                    hold(session, 1, "LEFT", "A", reason=f"{label}_wj_l")
-                elif phase < 10:
-                    hold(session, 1, "RIGHT", "A", reason=f"{label}_wj_r")
-                else:
-                    hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_wj_up")
-            else:
-                hold(session, 1, "RIGHT", "B", reason=f"{label}_sill_run")
-            continue
-
-        if state.velocity_y != 0:
-            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_mid_air")
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_door_push")
         else:
-            phase = frame % 26
-            if phase < 14:
-                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_mid_spin")
-            elif phase < 20:
-                hold(session, 1, "RIGHT", "B", reason=f"{label}_mid_run")
-            else:
-                hold(session, 1, "RIGHT", "X", reason=f"{label}_mid_shot")
+            hold(session, 1, "RIGHT", reason=f"{label}_door_air")
+
+
+def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
+    """Past-gate missile ledge runway → high launch → Super red door → Wave.
+
+    Geometry (rr-re9, human recipe):
+    1. Missiles on upper ledge y≈139 (same ledge as gate exit)
+    2. Backup under gate for longest runway on **that** ledge — never spike floor
+    3. Dash RIGHT → spin-launch at edge ~x575 (peaks y≈70)
+    4. Super red door ~(920–940,139) when sill reached
+    """
+    if session.state.room_id != ROOM_DOUBLE_CHAMBER:
+        return
+    if session.state.room_id == ROOM_WAVE:
+        return
+
+    # Already at door sill (e.g. post-WJ pin).
+    if (
+        session.state.samus_x >= _DC_DOOR_X
+        and session.state.samus_y < _DC_DOOR_Y_MAX
+    ):
+        _dc_super_door_push(session, label)
+        return
+
+    # Need upper path from past-gate / mid-room.
+    if session.state.samus_x < _PAST_GATE_X and session.state.samus_y < 220:
+        # Still left of open gate — should not happen after open phase.
+        hold(session, 1, "RIGHT", reason=f"{label}_past_nudge")
+
+    if session.state.samus_y <= _DC_LEDGE_Y_MAX + 40 or session.state.samus_x < 650:
+        _dc_missiles_and_runway(session, label)
+        if session.state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        _dc_ledge_dash_and_launch(session, label)
+
+    # If launch landed on/near sill, push Super door.
+    if (
+        session.state.room_id == ROOM_DOUBLE_CHAMBER
+        and session.state.samus_x >= _DC_DOOR_X - 20
+        and session.state.samus_y < _DC_DOOR_Y_MAX
+    ):
+        _dc_super_door_push(session, label)
+        return
+
+    # Short sill-seek if high near door column (no spike-floor WJ).
+    for frame in range(180):
+        state = session.state
+        if state.room_id == ROOM_WAVE:
+            return
+        if state.room_id != ROOM_DOUBLE_CHAMBER:
+            return
+        if state.samus_y > 280:
+            return  # refuse spike floor
+        if state.samus_x >= _DC_DOOR_X and state.samus_y < _DC_DOOR_Y_MAX:
+            _dc_super_door_push(session, label)
+            return
+        if is_knockback(state):
+            _escape_kb_dc(session, label, "RIGHT")
+            continue
+        if state.pose in (137, 138):
+            unmorph(session)
+            continue
+        # Stay high while seeking right wall/sill.
+        if state.samus_y <= 200:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_sill_seek")
+        else:
+            hold(session, 1, "RIGHT", "A", reason=f"{label}_sill_up")
 
 
 def _wave_collect_plm(session: ControllerSession, label: str) -> SuperMetroidState:
