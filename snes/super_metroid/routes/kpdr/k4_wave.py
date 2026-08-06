@@ -22,6 +22,8 @@ from super_metroid.routes.controller_common import (
     select_weapon,
     unmorph,
     wait_ordinary_room,
+    walljump_once,
+    WallJumpTiming,
 )
 from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import (
@@ -593,11 +595,25 @@ _PAST_GATE_X = 480
 _DC_DOOR_X = 920
 _DC_DOOR_Y_MAX = 180
 # Past-gate **missile ledge** (y≈139). Super door runway lives HERE — not the
-# spike floor (~y400). Solid ledge x≈414–608; launch edge ~x575–600.
+# spike floor (~y400). Solid ledge x≈414–608; launch edge ~x600 (later =
+# higher door contact for WJ).
 _DC_LEDGE_Y_MAX = 165
 _DC_RUNWAY_X = 425
-_DC_EDGE_X = 575
+_DC_EDGE_X = 600
 _DC_MISSILE_X = 495
+# High door-column classic WJ off **right** wall: away (LEFT) then LEFT+A.
+# walljump_once phases: delay_into=LEFT×N, into=LEFT+A×M.
+# Live pure: contact ~(923,238) → LEFT×3 + LEFT+A×6 → left spin → right to
+# sill ~(929,116). Never open-loop WJ on spike floor (y≳280).
+_DC_WJ = WallJumpTiming(
+    into="LEFT",
+    flip="LEFT",
+    into_frames=6,
+    amid_frames=0,
+    flip_frames=0,
+    delay_into_frames=3,
+)
+_DC_WJ_LEFT_FOLLOW = 8
 
 # Exact human open sequence (tape frames 4650–5200), RLE of button names.
 # Source: tasks/speed_to_ice_moat_human.json — do not invent shot cadences.
@@ -880,18 +896,31 @@ def _dc_missiles_and_runway(session: ControllerSession, label: str) -> None:
     hold(session, 8, reason=f"{label}_runway_settle")
 
 
-def _dc_ledge_dash_and_launch(session: ControllerSession, label: str) -> None:
-    """Dash along missile ledge → spin-launch at edge (~x575) staying high.
+def _dc_on_sill(state: SuperMetroidState) -> bool:
+    """True when high enough at Super door for sill / door push."""
+    return (
+        state.room_id == ROOM_DOUBLE_CHAMBER
+        and state.samus_x >= _DC_DOOR_X - 20
+        and state.samus_y < _DC_DOOR_Y_MAX
+        and state.velocity_y == 0
+    )
 
-    Live pure: dash on y≈139 to edge, RIGHT+B+A launch peaks y≈69 and crosses
-    toward right structure (~x780) before drop. Never open-loop WJ on spike floor.
+
+def _dc_ledge_dash_and_launch(session: ControllerSession, label: str) -> None:
+    """Dash missile ledge → spin-launch (~x600) → high door-column WJ → sill.
+
+    Live pure (rr-re9): dash y≈139 to edge x600, launch peaks y≈60, wall
+    contact ~(923,238), classic away WJ (LEFT×3 + LEFT+A×6) + left follow,
+    RIGHT arc to sill ~(929,116). Never open-loop WJ on spike floor.
     """
     # Dash on ledge to edge (no jump — stay planted).
     for _ in range(220):
         state = session.state
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return
-        if state.samus_x >= _DC_DOOR_X and state.samus_y < _DC_DOOR_Y_MAX:
+        if _dc_on_sill(state) or (
+            state.samus_x >= _DC_DOOR_X and state.samus_y < _DC_DOOR_Y_MAX
+        ):
             return
         if state.samus_y > _DC_LEDGE_Y_MAX + 20:
             hold(session, 1, "LEFT", "A", reason=f"{label}_dash_recover")
@@ -900,12 +929,20 @@ def _dc_ledge_dash_and_launch(session: ControllerSession, label: str) -> None:
             break
         hold(session, 1, "RIGHT", "B", reason=f"{label}_ledge_dash")
 
-    # Launch + high air toward Super door column. Abort deep spike dives.
-    for frame in range(200):
+    # Launch toward door column; one high-contact classic WJ, then sill arc.
+    did_wj = False
+    left_follow = 0
+    for frame in range(280):
         state = session.state
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return
-        if state.samus_x >= _DC_DOOR_X and state.samus_y < _DC_DOOR_Y_MAX:
+        if state.room_id == ROOM_WAVE:
+            return
+        if _dc_on_sill(state) or (
+            state.samus_x >= _DC_DOOR_X
+            and state.samus_y < _DC_DOOR_Y_MAX
+            and state.velocity_y == 0
+        ):
             return
         # Spike floor band — do not thrash WJ down here.
         if state.samus_y > 280 and state.velocity_y == 0:
@@ -924,7 +961,25 @@ def _dc_ledge_dash_and_launch(session: ControllerSession, label: str) -> None:
             hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_ledge_launch")
             continue
 
-        # Air: hold height while drifting right (peak ~y70 natural).
+        # High door-column contact: classic away WJ (not floor).
+        at_wall = x >= 915 and state.velocity_x == 0 and y < 280
+        if at_wall and not did_wj and y <= 260:
+            walljump_once(session, _DC_WJ, reason=f"{label}_door_wj")
+            did_wj = True
+            left_follow = _DC_WJ_LEFT_FOLLOW
+            continue
+
+        # Post-WJ: left spin carry (gain height left of column), then right to sill.
+        if left_follow > 0:
+            left_follow -= 1
+            hold(session, 1, "LEFT", "B", "A", reason=f"{label}_wj_left")
+            continue
+
+        if did_wj:
+            hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_sill_arc")
+            continue
+
+        # Pre-WJ air: hold height while drifting right (peak ~y60 natural).
         if y <= 200:
             hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_high_air")
             continue
@@ -964,13 +1019,14 @@ def _dc_super_door_push(session: ControllerSession, label: str) -> None:
 
 
 def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
-    """Past-gate missile ledge runway → high launch → Super red door → Wave.
+    """Past-gate missile ledge runway → high launch → door WJ → Super → Wave.
 
-    Geometry (rr-re9, human recipe):
+    Geometry (rr-re9):
     1. Missiles on upper ledge y≈139 (same ledge as gate exit)
     2. Backup under gate for longest runway on **that** ledge — never spike floor
-    3. Dash RIGHT → spin-launch at edge ~x575 (peaks y≈70)
-    4. Super red door ~(920–940,139) when sill reached
+    3. Dash RIGHT → spin-launch at edge ~x600 (peaks y≈60)
+    4. High door-column classic WJ → sill ~(920–940, y≲180)
+    5. Super red door into Wave
     """
     if session.state.room_id != ROOM_DOUBLE_CHAMBER:
         return
@@ -978,7 +1034,7 @@ def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
         return
 
     # Already at door sill (e.g. post-WJ pin).
-    if (
+    if _dc_on_sill(session.state) or (
         session.state.samus_x >= _DC_DOOR_X
         and session.state.samus_y < _DC_DOOR_Y_MAX
     ):
@@ -996,7 +1052,7 @@ def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
             return
         _dc_ledge_dash_and_launch(session, label)
 
-    # If launch landed on/near sill, push Super door.
+    # If launch + WJ landed on/near sill, push Super door.
     if (
         session.state.room_id == ROOM_DOUBLE_CHAMBER
         and session.state.samus_x >= _DC_DOOR_X - 20
@@ -1014,7 +1070,7 @@ def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
             return
         if state.samus_y > 280:
             return  # refuse spike floor
-        if state.samus_x >= _DC_DOOR_X and state.samus_y < _DC_DOOR_Y_MAX:
+        if state.samus_x >= _DC_DOOR_X - 20 and state.samus_y < _DC_DOOR_Y_MAX:
             _dc_super_door_push(session, label)
             return
         if is_knockback(state):
