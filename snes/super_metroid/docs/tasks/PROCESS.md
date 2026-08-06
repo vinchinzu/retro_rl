@@ -1,18 +1,41 @@
 # Super Metroid sub-agent process
 
 Planner–executor loop for KPDR continuous integrity. Cards:
-[`docs/tasks/`](./). Queue: [`QUEUE.md`](QUEUE.md). Template:
+[`docs/tasks/`](./). Live queue: **`bd ready -l super_metroid`** (beads).
+Markdown snapshot: [`QUEUE.md`](QUEUE.md). Template:
 [`docs/TASK_TEMPLATE.md`](../TASK_TEMPLATE.md).
+
+## Beads (primary work tracker)
+
+Monorepo **bd** prefix `rr-`. Product claims still live in STATUS /
+MILESTONES / pure residuals — beads track ready / in-flight / blocked only.
+
+```bash
+bd ready -l super_metroid          # unblocked next work
+bd update <id> --status in_progress
+# … pure-first implement …
+bd close <id> --reason "…"
+bd create "Found X" -p 1 -l super_metroid,pure --deps discovered-from:<id>
+bd sync && git add .beads/issues.jsonl   # with code commit
+```
+
+Labels: `super_metroid` + kind (`pure` | `graph` | `compose` | `stabilize` |
+`status` | `clean` | `meta`) + optional epic (`k4`, `spazer`, …).
+External refs keep BACKLOG ids (`SM-K4.5-PURE`).
+
+**Do not** open a second tracker. QUEUE.md is a human snapshot of `bd ready`,
+not the source of truth.
 
 ## Roles
 
 | Role | Who | Owns |
 |------|-----|------|
-| Planner | Grok / human | Continuous integrity, STATUS, natural-entry design, tip order, promote/revert |
+| Planner | Grok / human | Continuous integrity, STATUS, natural-entry design, tip order, promote/revert, beads triage |
 | Executor Flash | OpenCode + Flash | Tracker/docs, STATUS **proposals**, source-state index |
 | Executor Luna | OpenCode + Luna | Controllers, tests, pure probes, tip wiring skeletons |
 
-Never hand the executor open-ended “next continuous tip” work.
+Never hand the executor open-ended “next continuous tip” work. Point at one
+bead id + residual/card acceptance.
 
 ## Pure-first + stabilize waves
 
@@ -59,8 +82,52 @@ room=0x…. pose=… x=… y=… door_transition=… frames=… last_pin=…
 ```
 
 **Lifecycle:** residuals are ephemeral. Delete residual + closed card when the
-successor is ready or the hop is continuous-promoted. One living residual per
-open tip segment. CSV / MILESTONES are authoritative for done work.
+successor is ready or the hop is continuous-promoted. **One living residual per
+open tip segment** — delete on promote/close; do not archive trees. CSV /
+MILESTONES are authoritative for done work.
+
+## Room policy layout (prevention)
+
+**Gold standard:** `routes/kpdr/spazer/` (package from day 1: `geometry`,
+`scripts`/`data`, hop modules, shared helpers). **Cautionary tale:** Wave
+megafile (`k4_wave.py` ~1.3k lines) + bare/`_DOOR_X` shadow across rooms.
+Do not land the next multi-hop tip (e.g. Ice pure) as another megafile.
+
+### Layout checklist
+
+- [ ] **Package early** — multi-hop tip (≥2 pure hops or human RLE) → package
+      under `routes/kpdr/<tip>/` from day 1 (mirror `spazer/`). Single-hop
+      one-knobs may stay a module; split before the second hop lands.
+- [ ] **Room-prefixed geometry** — constants live in `geometry.py` with
+      **room-prefixed** names (`BSC_DOOR_X`, `DC_DOOR_X_MIN`, …). Never bare
+      `_DOOR_X` / `DOOR_X` in multi-hop modules (shadow risk across rooms).
+- [ ] **Human tape as data** — RLE → `routes/kpdr/data/*.json` via the parse
+      tool; product loads JSON. No inlined RLE tuples in controller modules.
+- [ ] **Shared helpers only** — `play_script`, `escape_knockback`,
+      `wait_ordinary_room`, `require_room` (and package `helpers` that wrap
+      them). No private reimplementation of settle / knockback / script play.
+- [ ] **Size cap** — file under ~500 lines or split before the next knob;
+      never grow past **1k** without a package split first.
+
+### Tip extension recipe (after pure green)
+
+Same pure-first gates as above. Do **not** add a new `start_to_*.py` / per-tip
+runner pair.
+
+1. Pure controller (+ `KPDR_SEGMENTS`)
+2. Graph edges in `progression/stages/` (re-exported via `progression/data.py`)
+3. `SpineHop` + `TipSegment` CLI fields (hop groups / `TipSpec` via spine + hops)
+4. `run_to` automatic via `TipSpec` — no per-tip runners
+
+Full continuous promote/record steps: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md)
+§ Continuous tip extension recipe. Catalog mirror: `routes/catalog.py` module
+doc.
+
+### Residual lifecycle (tip segments)
+
+- One living residual per **open tip segment**
+- Delete residual (+ closed card) on promote or close
+- Next action always names the successor bead/card or `PLANNER-GATE`
 
 ## Hot modules (never parallel-edit)
 
@@ -131,5 +198,7 @@ stagnation triage). Do not thrash the same constant class.
 | [`STATUS.md`](../STATUS.md) | Verified continuous tip (planner) |
 | [`QUEUE.md`](QUEUE.md) | Live ready / in-flight only |
 | [`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md) | In-room geometry playbook |
+| [`ARCHITECTURE.md`](../ARCHITECTURE.md) | Tip extension recipe + hop graph |
+| `routes/kpdr/spazer/` | **Gold-standard** multi-hop package layout |
 | [`routes/BACKLOG.csv`](../routes/BACKLOG.csv) | Full ticket buffer |
 | [`routes/MILESTONES.md`](../routes/MILESTONES.md) | Product tip board |

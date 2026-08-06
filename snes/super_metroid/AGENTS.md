@@ -15,17 +15,25 @@ Shared process: [`docs/FULL_RUN_PROCESS.md`](../../docs/FULL_RUN_PROCESS.md).
 |------|------|
 | `routes/continuous.py`, `early_continuous.py`, `catalog.py` | Power-on chain + tip registry |
 | `routes/kpdr/` | Pure movement/combat controllers |
+| `routes/kpdr/spazer/` | **Gold-standard** multi-hop package (mirror for new tips) |
 | `scripts/record/`, `probe/`, `export/` | Daily CLIs |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
 | `docs/` | STATUS, plan, routes, tasks, contracts |
 
+
+**Room-policy layout / tip-extension prevention:** multi-hop → package from
+day 1 (no megafiles), room-prefixed geometry, RLE as JSON data, shared
+helpers, ≤~500 lines/file — checklist in
+[`docs/tasks/PROCESS.md`](docs/tasks/PROCESS.md) § Room policy layout.
+
 ## Immediate goal
 
-**Verified tip:** continuous power-on → Speed Booster (default `speed`,
-**130,388f** ×2, room `0xAD1B`, beams `0x1004`, items `0x3105`).
-**History:** non-Spazer Bat Cave **122,304f** ×2 remains a valid previous tip.
-**Next:** stabilize wave after Speed (`rr-07b`); pure Speed return → Bubble
-(`rr-g4i`). Do not claim pure Speed return yet.
+**Verified tip:** continuous power-on → Wave Beam (default `wave`,
+**136,361f** ×2, room `0xADDE`, beams `0x1005`, items `0x3105`).
+**History:** Speed **130,388f** ×2 and non-Spazer Bat Cave **122,304f** ×2
+remain valid previous tips.
+**Next:** post-Wave Ice pure when human recon exists (`rr-dbu.11`). Do not
+invent Ice hops without tape.
 
 **Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
 Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:
@@ -74,10 +82,10 @@ integrity flags, and the `.mp4` path** — not a pasted JSON body.
 From repo root (`snes/` on pythonpath → `import super_metroid` works).
 
 ```bash
-# Continuous default (speed) / named tips
+# Continuous default (wave) / named tips
 uv run python snes/super_metroid/scripts/record/continuous.py --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no-video  # previous tip
+uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video  # previous tip
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video
 
 # Early Spazer human wall-jump (guide on same window; see docs/tasks/EARLY_SPAZER_HUMAN.md)
@@ -100,7 +108,16 @@ uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk \
   --start 1338 --end 1351 --name moat_shinespark --spark
 uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk --segment-id k0_ceres
 uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk --segment-id k2_spazer
-# Ceres phase seed (tracked): policies/early_game/ceres_kentroid_spans.json```
+# Ceres phase seed (tracked): policies/early_game/ceres_kentroid_spans.json
+
+# Shinespark practice (Landing Site) + K6 Moat/West pure — see docs/tasks/SHINE_PRACTICE.md
+# Store trap: releasing RIGHT (B alone/idle) dumps echoes 4→0 in 1f; DOWN while still holding RIGHT.
+uv run python snes/super_metroid/scripts/probe/shine_practice.py drill
+uv run python snes/super_metroid/scripts/probe/shine_practice.py human --series ls_edge_v1
+uv run python snes/super_metroid/scripts/probe/moat_spark_watch.py pure
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure
+uv run python snes/super_metroid/scripts/record/guided_human.py --from west-ocean --name west_ocean_ws_human
+```
 
 
 ## Dev traps
@@ -118,14 +135,18 @@ uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk --segment-id k2_s
   `door_kinematics.DoorKinematicsRequirement` or `StateRequirement` velocity/
   speed fields. Practice doorway bootstrap **zeros** momentum — never treat
   those fixtures as natural leave-speed evidence.
+- **Shinespark store:** harness **B**=dash, **A**=activate, **DOWN**=store
+  (VOD swaps A/B). After echoes=4, press DOWN **while still holding RIGHT**
+  (`DOWN+RIGHT+B` ok). Idle or **B alone** dumps echoes **4→0 in one frame** —
+  then crouch never arms `$0A68`. Drill: `shine_practice.py drill`.
+  Full notes: `docs/tasks/SHINE_PRACTICE.md`.
 - **Ceres elev escape:** Falling→elev mid-transition can still read **y≈139**;
   ordinary **gs=8 remaps to bottom y≈651**. Ledge pin **y=571 pose=2** — walk
   LEFT on ledge (not blind product s0). Top: walk right to **pose 137 @ x211
   y171**, then product LEFT+A 38 + LEFT to pad **x≈145 y75** → gs 32. BB elev
   later: `$0E16` elev flag toggles/frame — 1f parity before seed if Ceres is
   odd-frames early. Notes: [`docs/plan.md`](docs/plan.md) § Ceres arm-pump.
-- **Spazer + HJ pillar:** Spazer multi-shot does **not** open the Hi-Jump room
-  pillar with the classic peak down-shot (Charge/power OK). `play_hj_room_collect`
-  temporarily clears equip bit `0x0004` for the pillar only (ownership unchanged).
+- **Spazer + HJ pillar:** single-frame peak down-shot fails under Spazer;
+  `play_hj_room_collect` multi-taps DOWN+X at peak (no equip strip).
 - **Spazer continuous K4:** Business tip green; Cathedral Entrance Super door
   still desyncs under always-Spazer mainline — see `bd ready` / `rr-n2v`.
