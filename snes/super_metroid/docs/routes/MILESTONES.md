@@ -4,7 +4,7 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 **Goal:** one continuous power-on → ending/credits run with **only** unlimited energy + ammo ([`ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md)). Target runtime class: **less-than-Bronze** assisted full clear (M8).
 
-**Current tip (primary / assisted):** Bat Cave (`--to bat_cave`, **122,304f** ×2 integrity green, 2026-08-03). Checkpoint `scratch/post_bat_cave_continuous.state` room `0xB07A`. Cathedral stack + Bubble R19 are **DONE** and continuous-integrated on this tip. Frog Savestation remains a **side tip** (`--to frog`, 114,923f ×2) — not primary. ★ Next pure: **Bat → Speed Hall** from `post_bat_cave_continuous` / `post_bubble_to_bat_pure`.
+**Current tip (primary / assisted):** Bat Cave (`--to bat_cave`, **122,304f** ×2 integrity green, 2026-08-03). Checkpoint `scratch/post_bat_cave_continuous.state` room `0xB07A`. Cathedral stack + Bubble R19 are **DONE** and continuous-integrated on this tip. Frog Savestation remains a **side tip** (`--to frog`, 114,923f ×2) — not primary. **Spazer warehouse dual promoted** (89,416 + 90,904f, beams `0x1004`, 2026-08-05/06) — prefix only; default tip still non-Spazer bat_cave. ★ Next serial: continuous **`--to speed` dual** (`rr-d20`).
 
 **Parallel Clean track:** no energy + no ammo writes — Morph Clean green; ★ next bombs/Torizo Clean (`--to bombs --clean`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
 
@@ -24,14 +24,14 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 | | ID | Epic | Milestone | Room | Frames / score | CLI / card |
 |--:|----|------|-----------|------|----------------|------------|
-| ✅ | `M-MORPH` | K0 | Continuous → Morph | `0x9E9F` | 27074 | `morph` |
+| ✅ | `M-MORPH` | K0 | Continuous → Morph | `0x9E9F` | **26824** | `morph` |
 | ✅ | `M-BOMBS` | K0 | Continuous → Bombs/Torizo | `0x9804` | 47132 | `bombs` |
 | ✅ | `M-SPORE` | K0 | Continuous → Spore exit | `0x9DC7` | 73216 | `spore` |
 | ✅ | `M-SUPERS` | K0 | Continuous → Spore Supers | `0x9B5B` | 73251 | `supers` |
 | ✅ | `M-RED` | K1 | Continuous → Red Tower | `0xA253` | 80445 | `red_tower` |
 | ✅ | `M-BAT` | K2 | Continuous → Bat Room | `0xA3DD` | 81652 | `bat` |
 | ✅ | `M-BELOW` | K2 | Continuous → Below Spazer | `0xA408` | 82300 | `below_spazer` |
-| ✅ | `M-WH` | K2 | Continuous → Warehouse | `0xA6A1` | 83512 | `warehouse` |
+| ✅ | `M-WH` | K2 | Continuous → Warehouse (+ Spazer dual) | `0xA6A1` | 83512 / **89416+90904** Spazer | `warehouse` |
 | ✅ | `M-HJ` | K2 | Continuous → Hi-Jump Boots | `0xA9E5` | 87696 | `hijump` |
 | ✅ | `M-KRAID` | K2 | Continuous → Kraid entry | `0xA59F` | 97170 | `kraid` |
 | ✅ | `M-VARIA` | K3 | Continuous → Varia Suit | `0xA6E2` | 101954 | `varia` |
