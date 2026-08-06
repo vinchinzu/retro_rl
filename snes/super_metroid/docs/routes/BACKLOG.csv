@@ -11,7 +11,7 @@ SM-K4-STAB-SPEED,K4,stabilize,Stabilize wave pure+continuous Speed stack,SM-K4-T
 SM-K4-STATUS-ICE,K4,status,STATUS promote Ice tip,SM-K4-STAB-ICE,P0,open,M,routes/continuous.py catalog.py,planner only
 SM-K4-STATUS-SPEED,K4,status,STATUS promote Speed tip,SM-K4-STAB-SPEED,P0,open,M,routes/continuous.py catalog.py,planner only
 SM-K4-TIP-ICE,K4,compose,Continuous tip --to ice,SM-K4.15-PURE,P0,open,L,routes/continuous.py catalog.py,Ice collect integrity
-SM-K4-TIP-SPEED,K4,compose,Continuous tip --to speed,SM-K4.6-PURE,P0,open,L,routes/continuous.py catalog.py,Speed collect integrity
+SM-K4-TIP-SPEED,K4,compose,Continuous tip --to speed,SM-K4.6-PURE,P0,ready,L,routes/continuous.py catalog.py,Speed collect integrity
 SM-K4-TIP-SPEEDWAY,K4,compose,Continuous tip --to speedway (or intermediate),SM-K4.3-PURE,P0,open,L,routes/continuous.py catalog.py,after Bubble path pure stack; optional intermediate; first Bubble is Cathedral
 SM-K4-TIP-WAVE,K4,compose,Continuous tip --to wave,SM-K4.10-PURE,P0,open,L,routes/continuous.py catalog.py,Wave collect integrity
 SM-K4.1-GRAPH,K4,graph,Graph edge Frog Save→Speedway controller_dev,SM-K4.1-PURE,P3,parked,S,progression.py,mark 0xB167->0xB106 after pure green; parked with Speedway post-Speed path
@@ -39,10 +39,10 @@ SM-K4.15-PURE,K4,pure,Pure Ice Beam PLM collect,SM-K4.14-PURE,P1,open,M,routes/k
 SM-K4.4-GRAPH,K4,graph,Graph edge Bubble→Bat Cave controller_dev,SM-K4.4-PURE,P0,done,S,progression.py,mark 0xACB3->0xB07A controller_dev after R19 pure green
 SM-K4.4-PURE,K4,pure,Pure Bubble→Bat Cave,SM-K4-CATH-04,P0,done,M,routes/kpdr/bubble_mountain.py,R19 GREEN 2012f x2 ordinary 0xB07A; residual SM-K4.4-PURE-R19-residual; successor post_bubble_to_bat_pure
 SM-K4.4-PURE-R1,K4,pure,Bubble mid walljump climb y350→150,SM-K4.4-PURE,P0,done,M,routes/kpdr/bubble_mountain.py,closed by R19 series; phases A-E green
-SM-K4.5-GRAPH,K4,graph,Graph edge Speed Hall→Speed Room door controller_dev,SM-K4.5-PURE,P1,open,S,progression.py,mark 0xB07A->0xACF0 after pure green
-SM-K4.5-PURE,K4,pure,Pure Bat Cave→Speed Hall / Speed Room door,SM-K4.4-PURE,P0,ready,M,routes/kpdr/k4_norfair.py,★ serial next; source scratch/post_bubble_to_bat_pure expect 0xB07A; exit Speed Hall
-SM-K4.6-GRAPH,K4,graph,Graph edge Speed Booster PLM collect controller_dev,SM-K4.6-PURE,P1,open,S,progression.py,mark 0xACF0->0xAD1B after pure green
-SM-K4.6-PURE,K4,pure,Pure Speed Booster PLM collect,SM-K4.5-PURE,P1,open,M,routes/kpdr/k4_norfair.py,source scratch/post_speed_door.state expect 0xACF0; exit 0xAD1B
+SM-K4.5-GRAPH,K4,graph,Graph edge Speed Hall→Speed Room door controller_dev,SM-K4.5-PURE,P0,done,S,progression.py,mark 0xB07A->0xACF0 after pure green
+SM-K4.5-PURE,K4,pure,Pure Bat Cave→Speed Hall / Speed Room door,SM-K4.4-PURE,P0,done,M,routes/kpdr/k4_norfair.py,★ serial next; source scratch/post_bubble_to_bat_pure expect 0xB07A; exit Speed Hall
+SM-K4.6-GRAPH,K4,graph,Graph edge Speed Booster PLM collect controller_dev,SM-K4.6-PURE,P0,done,S,progression.py,mark 0xACF0->0xAD1B after pure green
+SM-K4.6-PURE,K4,pure,Pure Speed Booster PLM collect,SM-K4.5-PURE,P0,done,M,routes/kpdr/k4_norfair.py,source scratch/post_speed_door.state expect 0xACF0; exit 0xAD1B
 SM-K4.7-GRAPH,K4,graph,Graph edge Speed return→Bubble controller_dev,SM-K4.7-PURE,P1,open,S,progression.py,mark 0xAD1B->0xACB3 after pure green
 SM-K4.7-PURE,K4,pure,Pure Speed return→Bubble,SM-K4.6-PURE,P1,open,M,routes/kpdr/k4_norfair.py,source scratch/post_speed.state expect 0xAD1B; exit 0xACB3
 SM-K4.8-GRAPH,K4,graph,Graph edge Bubble→Single Chamber controller_dev,SM-K4.8-PURE,P1,open,S,progression.py,mark 0xACB3->0xADAD after pure green
@@ -304,7 +304,7 @@ SM-SPAZER-PURE,SPAZER,pure,Pure Below Spazer→Spazer collect→return (walljump
 SM-SPAZER-GRAPH,SPAZER,graph,Progression edges Spazer detour,SM-SPAZER-PURE,P2,open,M,progression.py,optional until FOLD; do not break warehouse min path
 SM-SPAZER-COMPOSE,SPAZER,compose,Continuous tip --to spazer,SM-SPAZER-PURE;SM-SPAZER-GRAPH,P2,open,M,routes/catalog.py routes/continuous.py,secondary tip; not primary K4 tip
 SM-SPAZER-STAB,SPAZER,stabilize,Dual continuous integrity Spazer tip,SM-SPAZER-COMPOSE,P2,open,M,recordings/,×2 integrity; Spazer beam set
-SM-SPAZER-STATUS,SPAZER,status,STATUS secondary + K2.2 tracker Spazer,SM-SPAZER-STAB,P2,open,S,docs/STATUS.md KPDR_TRACKER,never silent primary tip swap
+SM-SPAZER-STATUS,SPAZER,status,STATUS Spazer warehouse dual promote,SM-SPAZER-CONT,P2,done,S,docs/STATUS.md warehouse_with_spazer dual,rr-4wg 2026-08-06; primary tip still bat_cave
 SM-SPAZER-POLICY,SPAZER,pure,Prefer Spazer in later combat when held,SM-SPAZER-PURE,P2,open,M,combat/ routes/kpdr/,branch on collected_beams; no force equip
 SM-SPAZER-FOLD,SPAZER,compose,Fold Spazer into default continuous spine,SM-SPAZER-STAB,P2,open,L,routes/continuous.py ROUTE_KPDR STATUS,planner-serial; re-record affected tips
 SM-100-TRACK,SPAZER,docs,100% item/map/boss board scaffold,,P3,ready,S,docs/routes/TRACK_100.md,gates 100% planning; Spazer first insert
