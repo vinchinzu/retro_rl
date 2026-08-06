@@ -19,19 +19,16 @@ and continuous promote. Executors take **one bead per session**.
 | Pure Bat → Speed Hall | **pure green** | ~810–814f → `0xACF0` |
 | Pure Hall → Speed collect | **pure green** | 1695f dual, items `0x3105` |
 | Spine tip `--to speed` | **wired** (unit/graph) | not continuous-green yet |
-| Business continuous + Spazer | **GREEN** | **117,875f**, beams `0x1004` |
-| CATH-01→CATH-02 live + Spazer | **GREEN** | pure 1202f + live dual; continuous clears CATH→Bubble |
-| Continuous bat_cave / speed | **RED** | Spazer: Bubble→Bat Super door (`rr-cwu`) |
-| ★ Next serial | **Stabilize Bubble→Bat under Spazer** | bead `rr-cwu` → then `rr-d20` |
-| Parallel P0 | Spazer warehouse dual + STATUS | `rr-jx9` |
+| Spazer warehouse dual | **STATUS-promoted** | **89,416 + 90,904f** beams `0x1004` (`rr-jx9`/`rr-4wg`) |
+| Spazer bat_cave continuous | **single GREEN** | **127,806f** beams `0x1004` (not dual tip) |
+| ★ Next serial | Continuous **`--to speed` dual** | bead `rr-d20` → STATUS `rr-cd0` |
 | Parked | Frog → Speedway pure GREEN | post-Speed shortcut only |
 
 ```text
-✅ … → Business return continuous (Spazer 117,875f)
+✅ Spazer warehouse dual + STATUS (rr-jx9 / rr-4wg)
+✅ … → Business / CATH / Bubble under Spazer; bat_cave Spazer single 127806f
 ✅ Bat → Speed Hall pure + Hall → Speed pure + tip wired
-✅ CATH entrance Super door under Spazer continuous (rr-n2v)
-▶  Stabilize Bubble→Bat Super door (Spazer continuous)  ← rr-cwu
-⬜  Continuous --to speed dual (rr-d20)
+▶  Continuous --to speed dual  ← rr-d20
 ⬜  STATUS promote speed (rr-cd0)
 ⬜  Speed return → Wave / Ice pure stack
 ```

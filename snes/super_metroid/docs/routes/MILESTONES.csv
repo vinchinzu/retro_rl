@@ -1,12 +1,12 @@
 milestone_id,order,epic,name,room_id_hex,status,frames_or_score,cli_tip,evidence_or_card,notes,updated
-M-MORPH,10,K0,Continuous → Morph,0x9E9F,continuous,27074,morph,start_to_morph,power-on continuous,2026-08-01
+M-MORPH,10,K0,Continuous → Morph,0x9E9F,continuous,26824,morph,start_to_morph,Ceres arm-pump+elev top dual green 2026-08-05,2026-08-05
 M-BOMBS,20,K0,Continuous → Bombs/Torizo,0x9804,continuous,47132,bombs,start_to_bomb_torizo,hash-pinned BT ok,2026-08-01
 M-SPORE,30,K0,Continuous → Spore exit,0x9DC7,continuous,73216,spore,start_to_spore_spawn,fight rewrite 2026-07-29,2026-08-01
 M-SUPERS,40,K0,Continuous → Spore Supers,0x9B5B,continuous,73251,supers,start_to_supers,capacity 0→5,2026-08-01
 M-RED,50,K1,Continuous → Red Tower,0xA253,continuous,80445,red_tower,start_to_red_tower,K1 tip,2026-08-01
 M-BAT,60,K2,Continuous → Bat Room,0xA3DD,continuous,81652,bat,start_to_bat,,2026-08-01
 M-BELOW,70,K2,Continuous → Below Spazer,0xA408,continuous,82300,below_spazer,start_to_below_spazer,,2026-08-01
-M-WH,80,K2,Continuous → Warehouse,0xA6A1,continuous,83512,warehouse,start_to_warehouse,,2026-08-01
+M-WH,80,K2,Continuous → Warehouse,0xA6A1,continuous,83512,warehouse,warehouse_with_spazer.json+dual,baseline 83512; Spazer dual 89416+90904 beams 0x1004 2026-08-06,2026-08-06
 M-HJ,90,K2,Continuous → Hi-Jump Boots,0xA9E5,continuous,87696,hijump,start_to_hijump,real PLM 0x0100,2026-08-01
 M-KRAID,100,K2,Continuous → Kraid entry,0xA59F,continuous,97170,kraid,start_to_kraid,,2026-08-01
 M-VARIA,110,K3,Continuous → Varia Suit,0xA6E2,continuous,101954,varia,start_to_varia,best published; reverify 104382,2026-08-01

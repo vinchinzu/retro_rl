@@ -3,7 +3,8 @@
 Verified facts: [STATUS.md](STATUS.md). Shared workflow:
 [`docs/FULL_RUN_PROCESS.md`](../../../docs/FULL_RUN_PROCESS.md).
 Assist: [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Layers: [ARCHITECTURE.md](ARCHITECTURE.md).
-Executor: [tasks/PROCESS.md](tasks/PROCESS.md) · [tasks/QUEUE.md](tasks/QUEUE.md).
+Executor: [tasks/PROCESS.md](tasks/PROCESS.md) · `bd ready -l super_metroid`
+([tasks/QUEUE.md](tasks/QUEUE.md) snapshot).
 
 ## Strategy
 
@@ -38,21 +39,98 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 ## Current focus
 
-| Priority | Work |
-|----------|------|
-| **★ P0 pure** | **Bat → Speed Hall** from `post_bubble_to_bat_pure` / `post_bat_cave_continuous` |
-| P0 pure stack | Speed Hall → Speed → Wave → Ice (pure green each before compose) |
-| P0 continuous | After pure green: graph → compose tips (`speed` / `wave` / `ice`) → dual re-verify → STATUS |
-| P1 | K5 **Alpha PB** (natural post-Ice; first competitive PB on KPDR) |
-| Parallel Clean | Morph green; ★ **bombs / Torizo Clean** — [CLEAN_TRACK.md](CLEAN_TRACK.md) |
-| Parallel (opt-in) | Room farm (planner only) · 1–2 ARCH · boss primitives (own-files only) |
+| Priority | Work | Beads |
+|----------|------|-------|
+| **★ P0 compose** | Continuous `--to speed` dual (spine wired) | `rr-d20` |
+| P0 status | STATUS promote Speed tip after dual | `rr-cd0` |
+| P0 pure (done) | Bat→Hall + Hall→Speed collect pure green | closed |
+| P0 done | Spazer warehouse dual + STATUS promote | `rr-jx9` ✓ / `rr-4wg` |
+| P0 done | HJ Spazer pillar unequip fix; Business→Cath door KB escape | closed |
+| P1 pure stack | Speed return → Wave → Ice (pure green each) | after `rr-d20` |
+| P1 optional | Dual Spazer `bat_cave` + tip STATUS (single 127,806f green) | after warehouse |
+| P1 | K5 **Alpha PB** (natural post-Ice) | later |
+| Parallel Clean | ★ **bombs / Torizo Clean** — [CLEAN_TRACK.md](CLEAN_TRACK.md) | `rr-siz` |
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (needs Speed / Boost Blocks).
-**Do not:** treat CATH pure as open (CATH-01…04 + Bubble→Bat pure are green);
-default continuous tip is already `bat_cave` (not Frog).
+**Do not:** re-open CATH pure or Bat→Speed pure (green residuals exist);
+default continuous tip stays `bat_cave` until Speed STATUS promote.
 
-Live residual board: [tasks/QUEUE.md](tasks/QUEUE.md).
+Live work: `bd ready -l super_metroid` · snapshot [tasks/QUEUE.md](tasks/QUEUE.md).
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
+---
+
+## Ceres classic L↔R arm-pump (opt-in shave) — notes 2026-08-05
+
+**Policy:** when a faster prefix desyncs a later leg, **re-solve with WRAM** —
+do not blind-restore product open-loop. Speed every section; re-pin tails.
+
+**Code:** `routes/kpdr/early_spine.py` — `_ceres_arm_pump_*`,
+`_ceres_reactive_magnet_escape` / `_ceres_reactive_falling` /
+`_ceres_reactive_elev_climb` / `_ceres_elev_top_to_ship`; `play_ceres_*` on
+morph spine. BB elev downstream: 1f `$0E16` parity + reactive board fallback
+in `play_elevator_to_morph_room`. Unit: `tests/test_ceres_arm_pump.py`.
+
+### Verified facts
+
+| Fact | Detail |
+|------|--------|
+| Product morph | GREEN **27,074f**; ridley **16,414**; zebes_landing **21,799** |
+| Arm-pump outbound | Ridley **16,181** (~**233f** shave) |
+| Falling→elev | Mid-trans y≈139 fake; **gs=8 → bottom y≈651** |
+| Ledge pin | **y=571 pose=2**; s0 re-solve = **ledge walk LEFT** (not blind LEFT+A 70) |
+| Shaft s2–s10 | Product-like band → land **~x189 y171 pose 9** (short of wall) |
+| **SM-CERES-ELEV-TOP (solved)** | Walk RIGHT → **x211 y171 pose 137**, idle plant, product **LEFT+A 38 + LEFT 25** through pad **x≈145 y75** → **gs 32** leave |
+| Arm-pump morph | Dual GREEN **26,824f** ×2 (`morph_arm_pump_probe.json` + `_reverify.json`) |
+| Shave vs old product | **250f** (27,074 → 26,824); BB elev needs 1f `$0E16` parity (flag toggles/frame) |
+
+### STATUS
+
+Morph tip frames updated to **26,824** after dual integrity-green. No further
+Ceres elev residual — next opt-in is more outbound arm-pump (optional).
+
+### Reproduce
+
+```bash
+uv run python snes/super_metroid/scripts/record/continuous.py --to morph --no-video
+```
+
+---
+
+## Finish Spazer K2.2 (mainline — always collect)
+
+**Product path:** `play_below_spazer_to_west` → `play_spazer_detour` always when
+Spazer missing (floor entry included). **No Charge-only West skip.** Continuous
+warehouse without Spazer bit is RED until residual pure is green — intentional.
+
+**Done (do not re-prove):**
+
+| Fact | Evidence |
+|------|----------|
+| Charge on continuous K1 | `play_big_pink_to_ghz`; `below_spazer_with_charge.json` **84,880f** |
+| Spazer door / collect / return pure | `below-spazer-to-spazer`, `spazer-collect`, `spazer-return-to-below` |
+| Mid band → West pure | `spazer-top-to-west` from y≥220 |
+| Mainline wired | `play_below_spazer_to_west` always → `play_spazer_detour` |
+| Historical Charge-only West | `warehouse_with_charge.*` **85,992f** beams `0x1000` — **not** product |
+
+**Done this epic:**
+
+1. Climb / top→West / morph-tunnel Super door / pure detour — **GREEN**.
+2. **SM-SPAZER-CONT** — continuous `--to warehouse` **GREEN** **89,416f**,
+   beams **`0x1004`**, integrity 0 loads/prog/deaths. Floor Cacatac clear
+   (Charge-cadence UP+X) before spin — spike knockoff was continuous fail.
+   Video: `recordings/warehouse_with_spazer.mp4` (from supers frame).
+3. **SM-SPAZER-CONT dual** (`rr-jx9`) — second warehouse integrity match
+   **90,904f**, beams `0x1004`, room `0xA6A1`, outcome `warehouse_entry`
+   (`warehouse_with_spazer_dual.json`). Frame +1,488 = Spore combat variance.
+4. **SM-SPAZER-STATUS** (`rr-4wg`) — STATUS/MILESTONES warehouse Spazer dual
+   promoted (2026-08-06). Default CLI tip remains non-Spazer `bat_cave`.
+
+**Not done (optional / later):** dual Spazer `bat_cave` tip STATUS (single
+**127,806f** green in `bat_cave_spazer_cwu.json` only). Serial next is Speed
+dual (`rr-d20`), not Spazer bat_cave dual.
+
+**Sources:** [tasks/EARLY_SPAZER_HUMAN.md](tasks/EARLY_SPAZER_HUMAN.md) ·
+[tasks/SM-SPAZER-HUMAN-CHUNKS.md](tasks/SM-SPAZER-HUMAN-CHUNKS.md).
 
 ---
 
@@ -60,12 +138,13 @@ Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
 
 ### K4 remaining (Norfair items)
 
-- [ ] Pure **Bat → Speed Hall** (★ next)
-- [ ] Pure Speed Hall → Speed Booster room + collect
-- [ ] Pure Speed → Wave → Ice chain
-- [ ] Graph edges to `continuous` after each pure green
-- [ ] Continuous compose + dual re-verify for `speed` / `wave` / `ice` tips
-- [ ] Short stabilize wave after each continuous promotion
+- [x] Pure **Bat → Speed Hall** (residual GREEN)
+- [x] Pure Speed Hall → Speed Booster room + collect (residual GREEN)
+- [x] Spine graph edges continuous for Speed tip (`--to speed` wired)
+- [ ] Continuous compose + dual re-verify for `speed` (★ next, `rr-d20`)
+- [ ] STATUS promote `speed` + stabilize wave
+- [ ] Pure Speed return → Wave → Ice chain (pure green each)
+- [ ] Continuous compose + dual for `wave` / `ice` tips
 - [ ] (Parked) Speedway → Farm → Bubble post-Speed shortcut
 
 ### K5 — Alpha PB
@@ -76,6 +155,10 @@ Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
 
 ### K6 — Ship / Phantoon / Gravity
 
+- [ ] Moat shinespark pure from `post_kihunter_pre_moat_spark` → West Ocean
+  — residual [tasks/SM-MOAT-SHINESPARK-residual.md](tasks/SM-MOAT-SHINESPARK-residual.md)
+  (store on pose 9 works; trench spark dies x≈555; store→spin→UP unspin→spark
+  reaches Moat pose 201, not West yet; harness B=dash A=jump)
 - [ ] Moat → West Ocean → Wrecked Ship by play
 - [ ] Natural Phantoon entry → fight → Gravity
 - [ ] Continuous tips only after natural doorway entry
@@ -108,7 +191,7 @@ Practice greens ≠ continuous evidence and **not** product next-work
 
 ### CLEAN (parallel)
 
-- [x] Morph Clean continuous green (27,074f)
+- [x] Morph Clean continuous green (was 27,074f; assisted tip now 26,824f — clean re-verify open)
 - [ ] ★ Bombs / Torizo Clean (`SM-CLEAN-BOMBS`)
 - [ ] Later Clean tips only after bombs green
 - Never mutate default CLI assists or demote assisted baselines
