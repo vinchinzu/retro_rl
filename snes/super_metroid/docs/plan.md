@@ -46,7 +46,9 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 | P0 done | Continuous `--to speed` dual + STATUS promote | `rr-d20` ✓ / `rr-cd0` ✓ |
 | P0 pure (done) | Bat→Hall + Hall→Speed collect pure green | closed |
 | P0 done | Spazer warehouse dual + STATUS promote | `rr-jx9` ✓ / `rr-4wg` |
-| P0 done | HJ Spazer pillar unequip fix; Business→Cath door KB escape | closed |
+| P0 done | HJ pillar multi down-shot under Spazer (no equip strip) | closed |
+| P0 done | Continuous tip `--to wave` dual 136361f STATUS | `rr-l0u` ✓ |
+| P0 done | Business→Cath door KB escape | closed |
 | P1 pure stack | Wave → Ice (pure green each) after Speed return | after `rr-g4i` |
 | P1 optional | Dual Spazer `bat_cave` tip STATUS (historical single 127,806f) | optional |
 | P1 | K5 **Alpha PB** (natural post-Ice) | later |
@@ -66,11 +68,11 @@ Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
 **Policy:** when a faster prefix desyncs a later leg, **re-solve with WRAM** —
 do not blind-restore product open-loop. Speed every section; re-pin tails.
 
-**Code:** `routes/kpdr/early_spine.py` — `_ceres_arm_pump_*`,
-`_ceres_reactive_magnet_escape` / `_ceres_reactive_falling` /
-`_ceres_reactive_elev_climb` / `_ceres_elev_top_to_ship`; `play_ceres_*` on
-morph spine. BB elev downstream: 1f `$0E16` parity + reactive board fallback
-in `play_elevator_to_morph_room`. Unit: `tests/test_ceres_arm_pump.py`.
+**Code:** `routes/kpdr/ceres/` (extracted from `early_spine`, rr-7sn.4) —
+`arm_pump` / `magnet` / `elev_escape` / `outbound`; `play_ceres_*` re-exported
+from `early_spine` for morph spine. BB elev downstream: 1f `$0E16` parity +
+reactive board fallback in `play_elevator_to_morph_room`. Unit:
+`tests/test_ceres_arm_pump.py`.
 
 ### Verified facts
 
@@ -128,7 +130,7 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
    promoted (2026-08-06). Later folded into Speed dual STATUS (`rr-cd0`).
 5. **Speed dual + STATUS** (`rr-d20` / `rr-cd0`) — continuous `--to speed`
    **130,388f** ×2 exact match, beams `0x1004`, items `0x3105`, room
-   `0xAD1B`; `DEFAULT_CONTINUOUS_TIP = speed`.
+   `0xADDE`; `DEFAULT_CONTINUOUS_TIP = wave` (Speed prefix still 130,388f).
 
 **Optional / later:** dual Spazer `bat_cave` tip STATUS alone (single
 **127,806f** in `bat_cave_spazer_cwu.json`) — superseded by Speed dual tip.
@@ -165,7 +167,15 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   (store→spin→UP unspin→spark + RIGHT+X door; probe hop + controller pure GREEN;
   West handoff `scratch/post_moat_west_ocean_spark.state`; harness B=dash A=jump;
   **not** continuous / STATUS)
-- [ ] Moat → West Ocean → Wrecked Ship by play
+- [x] Landing Site shine practice gym + diagnose/drill
+  — [tasks/SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md)
+  (`scripts/probe/shine_practice.py` human/drill/demo; store trap documented)
+- [x] West Ocean edge-turn-hop pure → mid-right door `0xC98E` (Bowling)
+  — [tasks/SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md) / `west_ocean_spark.py pure`
+  (**not** green WS `0xCA08`; free-place spit bootstrap)
+- [ ] Natural climb onto West Ocean dry spit (replace place bootstrap)
+- [ ] West Ocean → green Super WS `0xCA08` by play (underwater / Super select)
+- [ ] Moat → West Ocean → Wrecked Ship by play (compose + natural-entry)
 - [ ] Natural Phantoon entry → fight → Gravity
 - [ ] Continuous tips only after natural doorway entry
 

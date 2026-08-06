@@ -12,6 +12,10 @@ policies still span several DoorEdges per play hop; intermediate edges stay
 hand-authored beside the play spine (same verification story as Super+ product
 doors vs pure-only reverse edges).
 
+Ceres reactive room policy (arm-pump, magnet, elev climb) lives in
+:mod:`super_metroid.routes.kpdr.ceres`. Public ``play_ceres_*`` names are
+re-exported here so continuous / morph imports stay stable.
+
 Bombs / Spore / Supers orchestration lives in
 :mod:`super_metroid.routes.kpdr.early_post_morph` (same SpineHop model; policy
 JSON / boss controllers unchanged; pre-Supers DoorEdges remain in ``progression/stages/``).
@@ -21,8 +25,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -34,6 +36,12 @@ from super_metroid.progression.types import (
     ProgressionMilestone,
 )
 from super_metroid.ram import MORPH_BALL_MASK
+from super_metroid.routes.kpdr.ceres import (
+    _CERES_ARM_PUMP_PERIOD,
+    _arm_pump_dash_spans,
+    play_ceres_escape_to_landing,
+    play_ceres_outbound_to_ridley,
+)
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_BLUE_BRINSTAR_ELEVATOR,
     ROOM_CERES_ELEVATOR,
@@ -60,11 +68,17 @@ __all__ = [
     "morph_route_hops",
     "continuous_edges_from_morph_spine",
     "validate_morph_spine",
+    # Stable re-exports for tests / continuous consumers.
+    "play_ceres_outbound_to_ridley",
+    "play_ceres_escape_to_landing",
+    "play_boot_to_ceres",
+    "_CERES_ARM_PUMP_PERIOD",
+    "_arm_pump_dash_spans",
 ]
 
 
 # ---------------------------------------------------------------------------
-# Unchanged open-loop spans / room seeds (hash-pinned product path)
+# Boot (open-loop seed) — power-on mash into first Ceres control
 # ---------------------------------------------------------------------------
 
 
@@ -84,84 +98,6 @@ def _boot_spans() -> list[ActionSpan]:
     return spans
 
 
-def _ceres_outbound_spans() -> list[ActionSpan]:
-    raw = (
-        (("RIGHT", "A"), 24),
-        (("RIGHT",), 120),
-        (("LEFT",), 120),
-        (("RIGHT", "B"), 240),
-        ((), 60),
-        (("RIGHT",), 24),
-        (("RIGHT", "B"), 24),
-        (("RIGHT", "B", "A"), 24),
-        (("RIGHT", "A"), 24),
-        (("RIGHT",), 24),
-        (("RIGHT",), 24),
-        (("RIGHT",), 24),
-        (("RIGHT",), 24),
-        (("RIGHT", "B"), 24),
-        ((), 12),
-        (("RIGHT",), 24),
-        ((), 140),
-        (("RIGHT",), 160),
-        (("LEFT",), 120),
-        (("RIGHT", "B"), 96),
-        ((), 120),
-        (("RIGHT", "B"), 216),
-        ((), 150),
-        (("RIGHT", "B"), 240),
-        ((), 200),
-    )
-    return [ActionSpan(names, frames, "ceres_outbound") for names, frames in raw]
-
-
-def _ceres_escape_spans() -> list[ActionSpan]:
-    raw = (
-        (("LEFT", "A"), 40, "ceres_ridley_exit"),
-        (("LEFT",), 1000, "ceres_reverse_rooms"),
-        ((), 20, "ceres_magnet_phase_align"),
-        (("A",), 16, "ceres_magnet_climb"),
-        (("RIGHT", "A"), 124, "ceres_magnet_climb"),
-        (("LEFT", "A"), 60, "ceres_magnet_climb"),
-        (("LEFT",), 320, "ceres_magnet_exit"),
-        (("LEFT", "A"), 40, "ceres_falling_room"),
-        (("LEFT",), 380, "ceres_falling_room"),
-        (("LEFT", "A"), 70, "ceres_elevator_lower_ledge"),
-    )
-    return [ActionSpan(names, frames, reason) for names, frames, reason in raw]
-
-
-def _ceres_shaft_spans() -> list[ActionSpan]:
-    raw = (
-        (("LEFT", "A"), 70),
-        ((), 7),
-        (("RIGHT", "A"), 67),
-        ((), 1),
-        (("LEFT", "A"), 67),
-        ((), 19),
-        (("RIGHT", "A"), 66),
-        ((), 8),
-        (("RIGHT", "A"), 86),
-        (("LEFT", "A"), 83),
-        (("RIGHT", "A"), 72),
-        ((), 3),
-        (("LEFT", "A"), 38),
-        (("LEFT",), 25),
-    )
-    return [ActionSpan(names, frames, "ceres_elevator_climb") for names, frames in raw]
-
-
-def _load_room_seed(index: int, name: str) -> list[Action]:
-    path = POLICY_DIR / f"seg{index:02d}_{name}.json"
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return [np.asarray(action, dtype=np.int8) for action in payload["raw_buttons"]]
-
-
-# ---------------------------------------------------------------------------
-# Hop play callables (RouteSession) — seed bytes / span budgets identical
-# ---------------------------------------------------------------------------
-
-
 def play_boot_to_ceres(session: RouteSession) -> None:
     """Power-on boot mash through first controllable Ceres elevator frame."""
     session.spans(_boot_spans())
@@ -169,47 +105,15 @@ def play_boot_to_ceres(session: RouteSession) -> None:
         raise RuntimeError(f"boot missed first Ceres control: {session.state}")
 
 
-def play_ceres_outbound_to_ridley(session: RouteSession) -> None:
-    """Ceres elevator → Ridley room + natural countdown gate."""
-    session.spans(_ceres_outbound_spans())
-    session.wait_until(
-        lambda state: state.room_id == ROOM_CERES_RIDLEY
-        and state.timer_type == 3
-        and state.health <= 27,
-        timeout=6_000,
-        reason="ceres_ridley_natural_countdown",
-    )
+# ---------------------------------------------------------------------------
+# Landing → Morph seed hops (hash-pinned room seeds)
+# ---------------------------------------------------------------------------
 
 
-def play_ceres_escape_to_landing(session: RouteSession) -> None:
-    """Ceres reverse rooms + elevator shaft → Zebes Landing Site settle."""
-    session.spans(_ceres_escape_spans())
-    if session.state.room_id != ROOM_CERES_ELEVATOR:
-        raise RuntimeError(f"Ceres reverse route missed elevator: {session.state}")
-    session.wait_until(
-        lambda state: state.room_id == ROOM_CERES_ELEVATOR
-        and state.samus_y == 571
-        and state.pose == 2,
-        timeout=120,
-        reason="ceres_lower_ledge_settle",
-    )
-    session.spans(_ceres_shaft_spans())
-    session.wait_until(
-        lambda state: state.room_id == ROOM_LANDING_SITE and state.game_state == 8,
-        timeout=3_000,
-        reason="zebes_landing_transition",
-    )
-    stable = 0
-    for _ in range(1_200):
-        if session.state.samus_y == 1088:
-            stable += 1
-            if stable >= 30:
-                break
-        else:
-            stable = 0
-        session.step(idle_action(), "zebes_ship_final_settle")
-    else:
-        raise TimeoutError(f"Zebes ship never reached final settle: {session.state}")
+def _load_room_seed(index: int, name: str) -> list[Action]:
+    path = POLICY_DIR / f"seg{index:02d}_{name}.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return [np.asarray(action, dtype=np.int8) for action in payload["raw_buttons"]]
 
 
 def _play_seed_to_room(
@@ -273,13 +177,112 @@ def play_pit_to_elevator(session: RouteSession) -> None:
 
 
 def play_elevator_to_morph_room(session: RouteSession) -> None:
-    _play_seed_to_room(
-        session,
-        index=4,
-        name="bb_elev_hallway",
-        target_room=ROOM_MORPH,
-        align_elevator=True,
-    )
+    """BB elev → Morph. Prefer product seed; re-pin if elev status phase misses.
+
+    Elev standing flag ``$0E16`` toggles each frame. Product open-loop DOWN
+    lands on a ``1`` frame; a faster Ceres path can invert that parity so the
+    same seed crouches instead of boarding. If the seed does not leave elev
+    (gs=8 still in BB elev), re-board WRAM-reactively.
+    """
+    # One idle before product plant restores $0E16 elev-flag parity when
+    # Ceres is an odd number of frames early (flag toggles each frame).
+    session.span(ActionSpan((), 1, "elevator_seed_parity"))
+    session.span(ActionSpan((), 17, "elevator_seed_alignment"))
+    session.raw_actions(_load_room_seed(4, "bb_elev_hallway"), "seed_bb_elev_hallway")
+    if session.state.room_id == ROOM_MORPH or (
+        session.state.room_id == ROOM_BLUE_BRINSTAR_ELEVATOR
+        and session.state.game_state in (9, 11)
+    ):
+        # Product morph seed starts from elev pose 0 in Morph; only need room id.
+        session.wait_until(
+            lambda s: s.room_id == ROOM_MORPH,
+            timeout=180,
+            reason="seed_bb_elev_hallway_transition_settle",
+        )
+        return
+    # Seed missed Morph (elev flag phase desync). Re-solve from WRAM.
+    _play_bb_elev_reactive(session)
+
+
+def _elev_status(session: RouteSession) -> int:
+    """Samus-on-elevator flag at WRAM ``$0E16`` (toggles while standing on pad)."""
+    ram = session.env.get_ram()  # type: ignore[attr-defined]
+    return int(ram[0x0E16])
+
+
+def _play_bb_elev_reactive(session: RouteSession) -> None:
+    """Board Blue Brinstar elev by elev-status WRAM, ride to Morph."""
+    # Settle door if still transitioning.
+    for _ in range(200):
+        st = session.state
+        if st.room_id != ROOM_BLUE_BRINSTAR_ELEVATOR:
+            if st.room_id == ROOM_MORPH:
+                return
+            break
+        if st.game_state == 8 and st.door_transition == 0:
+            break
+        session.step(buttons("RIGHT"), "bb_elev_door")
+
+    # Walk onto pad center (~x128–145). Product boards from x≈142.
+    for _ in range(120):
+        st = session.state
+        if st.room_id == ROOM_MORPH:
+            return
+        if st.room_id != ROOM_BLUE_BRINSTAR_ELEVATOR:
+            break
+        x = int(st.samus_x)
+        if 128 <= x <= 148 and abs(int(st.velocity_x)) <= 1:
+            break
+        if x < 128:
+            session.step(buttons("RIGHT", "B"), "bb_elev_to_pad")
+        elif x > 148:
+            session.step(buttons("LEFT"), "bb_elev_to_pad")
+        else:
+            session.step(buttons("RIGHT"), "bb_elev_to_pad")
+
+    for _ in range(8):
+        session.step(idle_action(), "bb_elev_plant")
+
+    # Wait for elev standing flag ($0E16==1) then DOWN (snaps to elev pose 0).
+    boarded = False
+    for _ in range(40):
+        st = session.state
+        if st.room_id == ROOM_MORPH:
+            return
+        if int(st.pose) == 0 or int(st.samus_y) > 150:
+            boarded = True
+            break
+        if _elev_status(session) == 1:
+            session.step(buttons("DOWN"), "bb_elev_board")
+        else:
+            session.step(idle_action(), "bb_elev_wait_flag")
+    if not boarded and int(session.state.pose) != 0:
+        # One more forced DOWN pair across both parity frames.
+        session.step(buttons("DOWN"), "bb_elev_board")
+        session.step(buttons("DOWN"), "bb_elev_board")
+
+    # Ride / wait Morph room.
+    for _ in range(400):
+        st = session.state
+        if st.room_id == ROOM_MORPH:
+            if st.game_state == 8:
+                return
+            session.step(idle_action(), "bb_elev_morph_settle")
+            continue
+        if st.room_id != ROOM_BLUE_BRINSTAR_ELEVATOR:
+            break
+        if int(st.pose) == 0 or st.game_state in (9, 11) or int(st.samus_y) > 150:
+            session.step(idle_action(), "bb_elev_ride")
+        elif _elev_status(session) == 1:
+            session.step(buttons("DOWN"), "bb_elev_board")
+        else:
+            session.step(idle_action(), "bb_elev_ride")
+    if session.state.room_id != ROOM_MORPH:
+        raise RuntimeError(
+            f"bb elev reactive missed Morph: {session.state}"
+        )
+    # Morph open-loop seed expects elev pose 0 entry (product). Do not force
+    # ordinary stand here — that desyncs the seed.
 
 
 def play_morph_ball_collect(session: RouteSession) -> None:
