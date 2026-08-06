@@ -4,7 +4,7 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 
 **Goal:** one continuous power-on → ending/credits run with **only** unlimited energy + ammo ([`ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md)). Target runtime class: **less-than-Bronze** assisted full clear (M8).
 
-**Current tip (primary / assisted):** Bat Cave (`--to bat_cave`, **122,304f** ×2 integrity green, 2026-08-03). Checkpoint `scratch/post_bat_cave_continuous.state` room `0xB07A`. Cathedral stack + Bubble R19 are **DONE** and continuous-integrated on this tip. Frog Savestation remains a **side tip** (`--to frog`, 114,923f ×2) — not primary. **Spazer warehouse dual promoted** (89,416 + 90,904f, beams `0x1004`, 2026-08-05/06) — prefix only; default tip still non-Spazer bat_cave. ★ Next serial: continuous **`--to speed` dual** (`rr-d20`).
+**Current tip (primary / assisted):** Speed Booster (`--to speed`, **130,388f** ×2 exact match integrity green, 2026-08-06). Room `0xAD1B`, beams `0x1004`, items `0x3105`, outcome `speed_collected`. Reports: `recordings/speed_spazer.json` + `speed_spazer_dual.json`. Previous tip history: non-Spazer Bat Cave **122,304f** ×2 (`--to bat_cave`, 2026-08-03) — superseded as default, still valid. Frog Savestation remains a **side tip** (`--to frog`, 114,923f ×2). Spazer warehouse dual is a promoted prefix (89,416 + 90,904f). ★ Next serial: stabilize wave after Speed (`rr-07b`); pure Speed return → Bubble (`rr-g4i`).
 
 **Parallel Clean track:** no energy + no ammo writes — Morph Clean green; ★ next bombs/Torizo Clean (`--to bombs --clean`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
 
@@ -40,9 +40,9 @@ Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](B
 | ✅ | `M-CATH` | K4 | Cathedral climb (first Bubble) — continuous-integrated | `0xA7B3`…`0xAFA3` | CATH-01…04 pure + continuous path | via `bat_cave` hops |
 | ⏸ | `M-SPEEDWAY` | K4 | Pure Frog Save → Speedway (post-Speed) | `0xB106` | pure green ~295f | parked until Speed |
 | ✅ | `M-BUBBLE` | K4 | Bubble Mountain via Cathedral — continuous-integrated | `0xACB3` | pure stack closed; on continuous tip | via `bat_cave` |
-| ✅ | `M-BAT-CAVE` | K4 | Continuous → Bat Cave (**primary tip**) | `0xB07A` | **122304** ×2 | `bat_cave` |
-| ▶ | `M-BAT-SPEED` | K4 | Pure Bat → Speed Hall → Speed | `0xACF0`… | — | ★ next pure |
-| ⬜ | `M-SPEED` | K4 | Continuous → Speed Booster | `0xAD1B` | — | `speed` |
+| ✅ | `M-BAT-CAVE` | K4 | Continuous → Bat Cave (previous tip) | `0xB07A` | **122304** ×2 | `bat_cave` |
+| ✅ | `M-BAT-SPEED` | K4 | Bat → Speed Hall → Speed — continuous-integrated | `0xACF0`… | pure + continuous path | via `speed` hops |
+| ✅ | `M-SPEED` | K4 | Continuous → Speed Booster (**primary tip**) | `0xAD1B` | **130388** ×2 | `speed` |
 | ⬜ | `M-WAVE` | K4 | Continuous → Wave Beam | `0xADDE` | — | `wave` |
 | ⬜ | `M-ICE` | K4 | Continuous → Ice Beam | `0xA890` | — | `ice` |
 | ⬜ | `M-ALPHAPB` | K5 | Continuous → Alpha Power Bombs | `0xA3AE` | — | `alpha_pb` |
@@ -93,9 +93,9 @@ Process: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Infra landed — `--clean` uses
 
 ## Progress (product milestones only)
 
-- Continuous (assisted): **16** (includes CATH/BUBBLE continuous-integrated + Bat Cave primary; Frog side tip still green)
-- Next pure ready (assisted): **1** (Bat → Speed Hall)
-- Open (assisted product): **19** (Speed+ product tips still open)
+- Continuous (assisted): **18** (includes CATH/BUBBLE/Bat→Speed continuous-integrated + Speed primary; Frog side tip still green)
+- Next pure ready (assisted): **1** (Speed return → Bubble, `rr-g4i`)
+- Open (assisted product): **17** (Wave+ product tips still open)
 - Clean track: **infra ✅ + morph ✅**; ★ bombs/Torizo ready (missiles clean green); spore+ parked
 - KPDR tracker segments: **92** (`continuous`=41, `open`=50)
 - Backlog tickets: **~308** (includes CLEAN + Cathedral pure stack)

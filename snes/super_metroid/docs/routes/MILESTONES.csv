@@ -15,9 +15,9 @@ M-FROG,130,K4,Continuous → Frog Savestation (side tip),0xB167,continuous,11492
 M-CATH,135,K4,Cathedral climb (first Bubble) continuous-integrated,0xA788,continuous,CATH-01..04 + continuous path,,SM-K4-CATH-04,DONE; continuous-integrated on bat_cave tip,2026-08-03
 M-SPEEDWAY,140,K4,Pure Frog Save → Speedway (post-Speed),0xB106,parked,pure green ~295f,,SM-K4-SPEEDWAY-PURE,parked until post-Speed; Boost Blocks need Speed,2026-08-02
 M-BUBBLE,150,K4,Bubble Mountain via Cathedral continuous-integrated,0xACB3,continuous,pure stack closed,,SM-K4-CATH-04,DONE; continuous-integrated on bat_cave tip; not Speedway farm path,2026-08-03
-M-BAT-CAVE,155,K4,Continuous → Bat Cave (primary tip),0xB07A,continuous,122304,bat_cave,start_to_bat_cave,CURRENT TIP; dual integrity 122304f x2; checkpoint post_bat_cave_continuous,2026-08-03
-M-BAT-SPEED,157,K4,Pure Bat → Speed Hall → Speed,0xACF0,pure_open,,,SM-K4.5-PURE,★ next pure from post_bat_cave_continuous / post_bubble_to_bat_pure,2026-08-03
-M-SPEED,160,K4,Continuous → Speed Booster,0xAD1B,open,,speed,,item collect tip after Bat→Speed Hall pure,2026-08-03
+M-BAT-CAVE,155,K4,Continuous → Bat Cave (previous tip),0xB07A,continuous,122304,bat_cave,start_to_bat_cave,PREVIOUS TIP history; dual integrity 122304f x2 non-Spazer; superseded by M-SPEED 2026-08-06,2026-08-06
+M-BAT-SPEED,157,K4,Bat → Speed Hall → Speed continuous-integrated,0xACF0,continuous,pure + continuous path,,SM-K4.5-PURE,DONE; continuous-integrated on speed tip (tail splits bat_cave_to_speed_hall + speed_hall_to_speed),2026-08-06
+M-SPEED,160,K4,Continuous → Speed Booster (primary tip),0xAD1B,continuous,130388,speed,speed_spazer.json+dual,CURRENT TIP; dual exact match 130388f x2 beams 0x1004 items 0x3105 outcome speed_collected; rr-cd0 2026-08-06,2026-08-06
 M-WAVE,170,K4,Continuous → Wave Beam,0xADDE,open,,wave,,Wave branch,2026-08-01
 M-ICE,180,K4,Continuous → Ice Beam,0xA890,open,,ice,,Ice branch from Business,2026-08-01
 M-ALPHAPB,190,K5,Continuous → Alpha Power Bombs,0xA3AE,open,,alpha_pb,SM-ALPHA-PB-01,first PB capacity KPDR,2026-08-01

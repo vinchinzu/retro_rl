@@ -91,13 +91,13 @@ def test_default_tip_artifact_paths_clean_isolated() -> None:
     assert c_video.name == "bombs_clean.mp4"
     assert c_report.name == "bombs_clean.json"
 
-    # Primary assisted default tip stems (Bat Cave K4.4).
+    # Primary assisted default tip stems (Speed Booster K4.5).
     tip_v, tip_r = default_artifact_paths()
-    assert tip_v.name == "bat_cave.mp4"
-    assert tip_r.name == "bat_cave.json"
+    assert tip_v.name == "speed.mp4"
+    assert tip_r.name == "speed.json"
     clean_v, clean_r = default_artifact_paths(clean=True)
-    assert clean_v.name == "bat_cave_clean.mp4"
-    assert clean_r.name == "bat_cave_clean.json"
+    assert clean_v.name == "speed_clean.mp4"
+    assert clean_r.name == "speed_clean.json"
 
 
 def test_default_tip_room_timing_clean_stem() -> None:

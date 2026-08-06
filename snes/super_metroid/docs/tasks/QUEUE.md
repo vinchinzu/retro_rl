@@ -15,22 +15,23 @@ and continuous promote. Executors take **one bead per session**.
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| Power-on → Bat Cave (K4.4) | **continuous green** | **122,304f** ×2 → `0xB07A` (default tip) |
-| Pure Bat → Speed Hall | **pure green** | ~810–814f → `0xACF0` |
-| Pure Hall → Speed collect | **pure green** | 1695f dual, items `0x3105` |
-| Spine tip `--to speed` | **wired** (unit/graph) | not continuous-green yet |
-| Spazer warehouse dual | **STATUS-promoted** | **89,416 + 90,904f** beams `0x1004` (`rr-jx9`/`rr-4wg`) |
-| Spazer bat_cave continuous | **single GREEN** | **127,806f** beams `0x1004` (not dual tip) |
-| ★ Next serial | Continuous **`--to speed` dual** | bead `rr-d20` → STATUS `rr-cd0` |
+| Power-on → Speed Booster (K4.5) | **continuous green** | **130,388f** ×2 → `0xAD1B` beams `0x1004` items `0x3105` (default tip) |
+| Bat Cave (K4.4) | previous tip history | **122,304f** ×2 non-Spazer dual (superseded as default) |
+| Pure Bat → Speed Hall | **pure green** | continuous-integrated on Speed tip |
+| Pure Hall → Speed collect | **pure green** | continuous-integrated on Speed tip |
+| Spine tip `--to speed` | **STATUS-promoted** | dual exact match (`rr-d20` / `rr-cd0`) |
+| Spazer warehouse dual | **STATUS-promoted** | **89,416 + 90,904f** beams `0x1004` (prefix) |
+| ★ Next serial | Stabilize wave after Speed | bead `rr-07b` |
+| ★ Next pure | Speed return → Bubble | bead `rr-g4i` |
 | Parked | Frog → Speedway pure GREEN | post-Speed shortcut only |
 
 ```text
 ✅ Spazer warehouse dual + STATUS (rr-jx9 / rr-4wg)
-✅ … → Business / CATH / Bubble under Spazer; bat_cave Spazer single 127806f
-✅ Bat → Speed Hall pure + Hall → Speed pure + tip wired
-▶  Continuous --to speed dual  ← rr-d20
-⬜  STATUS promote speed (rr-cd0)
-⬜  Speed return → Wave / Ice pure stack
+✅ Continuous --to speed dual + STATUS (rr-d20 / rr-cd0) — 130388f exact
+✅ Bat → Speed Hall pure + Hall → Speed pure continuous-integrated
+▶  Stabilize wave after Speed continuous  ← rr-07b
+▶  Pure Speed return → Bubble  ← rr-g4i
+⬜  Wave / Ice pure stack + continuous
 ```
 
 ## Process pointers
