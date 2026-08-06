@@ -56,6 +56,7 @@ from super_metroid.routes.kpdr.to_bat_cave import (
 )
 from super_metroid.routes.kpdr.k4_norfair import (
     play_bat_cave_to_speed_hall,
+    play_bubble_to_single_chamber,
     play_business_to_cathedral_entrance,
     play_business_to_frog_save,
     play_cathedral_entrance_to_cathedral,
@@ -191,6 +192,8 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "speed_hall_to_speed": play_speed_hall_to_speed,
     # K4.7: Speed return → Bubble (pure-first; Wave branch predecessor).
     "speed_return_to_bubble": play_speed_return_to_bubble,
+    # K4.8: Bubble → Single Chamber (Wave path pure-first).
+    "bubble_to_single_chamber": play_bubble_to_single_chamber,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,
