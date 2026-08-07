@@ -21,7 +21,7 @@ sword kiting once geometry is known.
 |------|--------|-------|
 | Power-on → L1 Triforce | **Clean green** | M5 |
 | L2 interior → TF `0x02` | **active tip** | epic `rr-ci7` |
-| Tip leaf | **rr-bsq / rr-ebe** | boom 0x4f pure (path LIVE via bomb-UP) |
+| Tip leaf | **rr-n5i** | 0x1e UP door residual → Dodongo → TF 0x02 |
 | Next | `rr-n5i` Dodongo → `rr-5dk` assisted natural TF | |
 
 ### All-night wave results (2026-08-06 night)
