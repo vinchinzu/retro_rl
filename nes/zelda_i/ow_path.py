@@ -17,10 +17,10 @@ from zelda_i.nav_common import (
     align_and_push,
     on_arrival_edge,
     recover_off_edge,
-    swing_action,
     track_stuck,
     unstick_wiggle,
     wake_or_wait_mode,
+    walk_or_swing,
 )
 from zelda_i.overworld import (
     MAZE_WAYPOINT_TOL,
@@ -117,10 +117,12 @@ class OverworldPathController:
         self._set_phase(self._phase_member(name), note)
 
     def _swing(self, direction: str, reason: str) -> FrameAction:
-        return swing_action(
+        # Gate A on nearby threats (``_nav_snap`` set each ``step``).
+        return walk_or_swing(
             self.phase_frames,
             direction,
             reason,
+            getattr(self, "_nav_snap", None),
             period=self.swing_period,
             hold=self.swing_hold,
         )
@@ -382,6 +384,7 @@ class OverworldPathController:
     # ------------------------------------------------------------------ #
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self._nav_snap = snap
         self.frames += 1
         self.phase_frames += 1
         self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(

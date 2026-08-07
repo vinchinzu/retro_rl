@@ -31,13 +31,15 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 SCREEN_LEVEL6_ENTRANCE = 0x22  # overworld door (live)
 LEVEL6_ENTRY_ROOM = 0x79  # dungeon south mouth after mode-16 settle
 LEVEL6_EAST_KEY_ROOM = 0x7A  # RIGHT of entry (type 0x24 ×5 + key 0x19)
+LEVEL6_WEST_WIZZROBE_ROOM = 0x78  # LEFT of entry via key door (5× type 0x24)
+LEVEL6_OLD_MAN_ROOM = 0x6A  # UP key door from 0x7a — DO NOT spend first key
 # Door mouth is wide: south-path enter works ~x112; mid-screen band ~24–56.
 LEVEL6_DOOR_X = 112  # preferred for south-path fixture L6Probe_22
 LEVEL6_DOOR_X_LO = 24
 LEVEL6_DOOR_X_HI = 120
 LEVEL6 = 6
 LEVEL6_TRIFORCE_BIT = 0x20
-WIZZROBE_ORANGE_TYPE = 0x24  # walkthrough-correlated; live on 0x7a
+WIZZROBE_ORANGE_TYPE = 0x24  # walkthrough-correlated; live on 0x7a / 0x78
 
 # Entry RIGHT door (fire-block bypass)
 ENTRY_RIGHT_WALL_Y = 157
@@ -45,6 +47,14 @@ ENTRY_RIGHT_DOOR_Y = 141  # channel ~136–152 live (wall blocks tighter y)
 ENTRY_RIGHT_DOOR_Y_LO = 136
 ENTRY_RIGHT_DOOR_Y_HI = 152
 ENTRY_RIGHT_WALL_X = 200  # need x≥200 before y-slide; x~192 y-stuck at 149
+
+# Entry LEFT key door (fire-block bypass) — same wall y as RIGHT path.
+# Naive y≈141 LEFT from east/center sticks on fire solids (x≈208 / x≈112).
+ENTRY_LEFT_WALL_Y = 157
+ENTRY_LEFT_DOOR_Y = 141  # key-door channel; y≈143 live after slide
+ENTRY_LEFT_DOOR_Y_LO = 136
+ENTRY_LEFT_DOOR_Y_HI = 152
+ENTRY_LEFT_WALL_X = 32
 
 SEGMENT_MAX_FRAMES = 25000
 SWORD_SWING_PERIOD = 10
@@ -344,20 +354,169 @@ def level6_east_key_room(ram: np.ndarray) -> bool:
     )
 
 
+def level6_west_wizzrobe_room(ram: np.ndarray) -> bool:
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_WEST_WIZZROBE_ROOM
+    )
+
+
+class EntryLeftKeyPhase(Enum):
+    TO_FIRE_X = auto()  # from east edge: LEFT to x≈208
+    TO_WALL_Y = auto()  # y → 157 (south of fire row)
+    TO_WEST_X = auto()  # LEFT along wall y to x≈32
+    TO_DOOR_Y = auto()  # slide y → 141 at west wall
+    PUSH = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level6WestKeyDoorController:
+    """From 0x79 with keys≥1, fire-bypass LEFT key door into 0x78.
+
+    Live policy (2026-08-06, no A)::
+
+        From east return ~(224,141): x→208 → y→157 → x→32 @ y157 → y→141 → LEFT.
+        From south spawn ~(120,205): y→157 → x→32 @ y157 → y→141 → LEFT.
+
+    Consumes 1 key. Trap: UP from 0x7a spends the same key on Old Man 0x6a.
+    """
+
+    phase: EntryLeftKeyPhase = EntryLeftKeyPhase.TO_FIRE_X
+    frames: int = 0
+    phase_frames: int = 0
+    stuck: int = 0
+    last_x: int = -1
+    last_y: int = -1
+    last_screen: int = -1
+    success: bool = False
+    keys_at_start: int = -1
+    notes: list[str] = field(default_factory=list)
+    max_frames: int = 5000
+
+    def reset(self) -> None:
+        self.phase = EntryLeftKeyPhase.TO_FIRE_X
+        self.frames = 0
+        self.phase_frames = 0
+        self.stuck = 0
+        self.last_x = -1
+        self.last_y = -1
+        self.last_screen = -1
+        self.success = False
+        self.keys_at_start = -1
+        self.notes.clear()
+
+    def _move(self, direction: str, reason: str) -> FrameAction:
+        return FrameAction(nes_action(direction), reason)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        if self.keys_at_start < 0:
+            self.keys_at_start = int(snap.keys)
+        self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
+            snap,
+            last_x=self.last_x,
+            last_y=self.last_y,
+            last_screen=self.last_screen,
+            stuck=self.stuck,
+        )
+        if self.frames >= self.max_frames:
+            self.phase = EntryLeftKeyPhase.FAILED
+            self.notes.append("timeout")
+            return FrameAction(nes_idle_action(), "timeout")
+        if snap.mode == 17:
+            self.phase = EntryLeftKeyPhase.FAILED
+            return FrameAction(nes_idle_action(), "link_death")
+        if (
+            snap.level == LEVEL6
+            and snap.screen == LEVEL6_WEST_WIZZROBE_ROOM
+            and snap.mode == PLAY_MODE
+        ):
+            self.success = True
+            self.phase = EntryLeftKeyPhase.DONE
+            self.notes.append("west_wizzrobe_room")
+            return FrameAction(nes_idle_action(), "done")
+        if snap.transitioning or snap.mode not in (PLAY_MODE, 8):
+            # Keep pressing LEFT through key-door scroll.
+            if snap.mode in (6, 7) or snap.transitioning:
+                return self._move("LEFT", "key_scroll")
+            return FrameAction(nes_idle_action(), "wait")
+        if snap.level != LEVEL6 or snap.screen != LEVEL6_ENTRY_ROOM:
+            return FrameAction(nes_idle_action(), f"wait_room_0x{snap.screen:02x}")
+        if snap.keys < 1 and self.keys_at_start < 1:
+            self.phase = EntryLeftKeyPhase.FAILED
+            self.notes.append("no_keys")
+            return FrameAction(nes_idle_action(), "no_keys")
+
+        if self.stuck > STUCK_THRESHOLD:
+            wiggle = ("UP", "DOWN", "LEFT", "RIGHT")[self.stuck % 4]
+            self.stuck = 0 if self.stuck > 140 else self.stuck
+            return FrameAction(nes_action(wiggle), "unstick")
+
+        # South mouth: leave south edge first.
+        if snap.link_y > 180 and snap.link_x > 48:
+            return self._move("UP", "leave_south_mouth")
+
+        # Door plane (x≤34): slide to door y then push LEFT (key).
+        if snap.link_x <= 34:
+            if abs(snap.link_y - ENTRY_LEFT_DOOR_Y) > 4:
+                btn = "UP" if snap.link_y > ENTRY_LEFT_DOOR_Y else "DOWN"
+                return self._move(btn, "west_door_y")
+            return self._move("LEFT", "push_key_left")
+
+        # East door channel (x>210): vertical blocked — LEFT to fire-wall column.
+        if snap.link_x > 210:
+            return self._move("LEFT", "leave_east_door_channel")
+
+        # At fire-wall column (x≈198–210): y-adjust to wall band, then cross.
+        if snap.link_x >= 198:
+            if abs(snap.link_y - ENTRY_LEFT_WALL_Y) > 4:
+                btn = "UP" if snap.link_y > ENTRY_LEFT_WALL_Y else "DOWN"
+                return self._move(btn, "east_to_wall_y")
+            return self._move("LEFT", "cross_on_wall_y")
+
+        # Approach west door on wall y (keep LEFT until x≤34). Do not drop to
+        # door y early — y≈149 @ x≈48 sticks on fire solids (live).
+        if abs(snap.link_y - ENTRY_LEFT_WALL_Y) > 6:
+            btn = "UP" if snap.link_y > ENTRY_LEFT_WALL_Y else "DOWN"
+            return self._move(btn, "mid_to_wall_y")
+        return self._move("LEFT", "mid_cross_wall_y")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "stuck": self.stuck,
+            "keys_at_start": self.keys_at_start,
+        }
+
+
 __all__ = [
     "SCREEN_LEVEL6_ENTRANCE",
     "LEVEL6_ENTRY_ROOM",
     "LEVEL6_EAST_KEY_ROOM",
+    "LEVEL6_WEST_WIZZROBE_ROOM",
+    "LEVEL6_OLD_MAN_ROOM",
     "LEVEL6_DOOR_X",
     "LEVEL6_DOOR_X_LO",
     "LEVEL6_DOOR_X_HI",
     "LEVEL6",
     "LEVEL6_TRIFORCE_BIT",
     "WIZZROBE_ORANGE_TYPE",
+    "ENTRY_LEFT_WALL_Y",
+    "ENTRY_LEFT_DOOR_Y",
     "LEVEL6_DOOR_HOPS",
     "OverworldToLevel6Controller",
     "Level6EntryRightController",
+    "Level6WestKeyDoorController",
     "level6_screen_reached",
     "level6_entrance_success",
     "level6_east_key_room",
+    "level6_west_wizzrobe_room",
 ]

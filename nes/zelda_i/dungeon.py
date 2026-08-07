@@ -17,6 +17,7 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
+from zelda_i.combat import should_swing_at
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
@@ -25,10 +26,15 @@ CLEAR_SETTLE_ALL_DEAD = 20
 # Shared enemy type IDs (used by multiple dungeon levels / finish helpers).
 KEESE_OBJECT_TYPE = 0x1B
 GEL_OBJECT_TYPE = 0x15
+# L2 boom room 0x4f uses type 0x05 (walkthrough blue Goriya; residual label).
+# Red Goriya on 0x5e is 0x06.
+BLUE_GORIYA_OBJECT_TYPE = 0x05
 GORIYA_OBJECT_TYPE = 0x06
 WALLMASTER_OBJECT_TYPE = 0x27
 ROPE_OBJECT_TYPE = 0x28
 AQUAMENTUS_OBJECT_TYPE = 0x3D
+# Statue / fireball projectiles (Aquamentus + L2 0x4f); not room-clear targets.
+FIREBALL_OBJECT_TYPE = 0x55
 
 
 class AliveRule(str, Enum):
@@ -340,6 +346,7 @@ class GenericDungeonRoomController:
         return FrameAction(nes_action(direction), reason)
 
     def _patrol(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Walk patrol waypoints without pulsing A (sword only on engage hit)."""
         tuning = self.spec.combat
         tx, ty = tuning.patrol[self.patrol_index]
         dx = tx - snap.link_x
@@ -355,14 +362,11 @@ class GenericDungeonRoomController:
             direction = "DOWN" if dy > 0 else "UP"
         else:
             direction = "UP"
-        return self._swing(
-            direction,
-            "combat_patrol",
-            period=tuning.patrol_attack_period,
-            hold=tuning.patrol_attack_hold,
-        )
+        # Walk only: continuous A on patrol looked spasmodic and wasted frames.
+        return FrameAction(nes_action(direction), "combat_patrol")
 
     def _engage(self, snap: ZeldaSnapshot, target: ZeldaObject) -> FrameAction:
+        """Chase target; slash only when sword hitbox can hit or contact-close."""
         dx = target.x - snap.link_x
         dy = target.y - snap.link_y
         if (
@@ -380,12 +384,20 @@ class GenericDungeonRoomController:
         else:
             direction = "DOWN" if dy >= 0 else "UP"
         tuning = self.spec.combat
-        return self._swing(
+        if should_swing_at(
+            snap.link_x,
+            snap.link_y,
             direction,
-            "combat_engage",
-            period=tuning.engage_attack_period,
-            hold=tuning.engage_attack_hold,
-        )
+            (target,),
+        ):
+            return self._swing(
+                direction,
+                "combat_engage",
+                period=tuning.engage_attack_period,
+                hold=tuning.engage_attack_hold,
+            )
+        # Approach without slashing until in blade range.
+        return FrameAction(nes_action(direction), "combat_engage")
 
     def _combat(self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]) -> FrameAction:
         self.combat_frames += 1
@@ -594,6 +606,9 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "ROOM_L2_COMPASS": ("zelda_i.level2_dungeon", "ROOM_L2_COMPASS"),
     "ROOM_L2_BOMB_N": ("zelda_i.level2_dungeon", "ROOM_L2_BOMB_N"),
     "ROOM_L2_GORIYA_WEST": ("zelda_i.level2_dungeon", "ROOM_L2_GORIYA_WEST"),
+    "ROOM_L2_ROPES_NORTH": ("zelda_i.level2_dungeon", "ROOM_L2_ROPES_NORTH"),
+    "ROOM_L2_BOOM_CANDIDATE": ("zelda_i.level2_dungeon", "ROOM_L2_BOOM_CANDIDATE"),
+    "ROOM_L2_NORTH_OF_4E": ("zelda_i.level2_dungeon", "ROOM_L2_NORTH_OF_4E"),
     "ROOM_6D_LEFT_DOOR_BIT": ("zelda_i.level2_dungeon", "ROOM_6D_LEFT_DOOR_BIT"),
     "ROOM_7D_SPEC": ("zelda_i.level2_dungeon", "ROOM_7D_SPEC"),
     "ROOM_6D_SPEC": ("zelda_i.level2_dungeon", "ROOM_6D_SPEC"),
@@ -601,6 +616,9 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "ROOM_7E_SPEC": ("zelda_i.level2_dungeon", "ROOM_7E_SPEC"),
     "ROOM_6E_SPEC": ("zelda_i.level2_dungeon", "ROOM_6E_SPEC"),
     "ROOM_6F_SPEC": ("zelda_i.level2_dungeon", "ROOM_6F_SPEC"),
+    "ROOM_5E_SPEC": ("zelda_i.level2_dungeon", "ROOM_5E_SPEC"),
+    "ROOM_4E_SPEC": ("zelda_i.level2_dungeon", "ROOM_4E_SPEC"),
+    "ROOM_4F_SPEC": ("zelda_i.level2_dungeon", "ROOM_4F_SPEC"),
     "level2_room_6d_cleared": ("zelda_i.level2_dungeon", "level2_room_6d_cleared"),
     "level2_room_6c_key_success": (
         "zelda_i.level2_dungeon",
@@ -614,6 +632,38 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "level2_room_6f_compass_success": (
         "zelda_i.level2_dungeon",
         "level2_room_6f_compass_success",
+    ),
+    "level2_room_5f_ready": ("zelda_i.level2_dungeon", "level2_room_5f_ready"),
+    "level2_room_5e_cleared": ("zelda_i.level2_dungeon", "level2_room_5e_cleared"),
+    "level2_room_4e_key_success": (
+        "zelda_i.level2_dungeon",
+        "level2_room_4e_key_success",
+    ),
+    "level2_room_4f_ready": ("zelda_i.level2_dungeon", "level2_room_4f_ready"),
+    "level2_room_4f_magic_boomerang_success": (
+        "zelda_i.level2_dungeon",
+        "level2_room_4f_magic_boomerang_success",
+    ),
+    "BOMB_N_STAND": ("zelda_i.level2_dungeon", "BOMB_N_STAND"),
+    "BOOM_BOMB_N_STAND": ("zelda_i.level2_dungeon", "BOOM_BOMB_N_STAND"),
+    "B_ITEM_BOMB": ("zelda_i.level2_dungeon", "B_ITEM_BOMB"),
+    "BombNorthPhase": ("zelda_i.level2_dungeon", "BombNorthPhase"),
+    "BoomBombNorthPhase": ("zelda_i.level2_dungeon", "BoomBombNorthPhase"),
+    "Level2BombNorthController": (
+        "zelda_i.level2_dungeon",
+        "Level2BombNorthController",
+    ),
+    "Level2BoomBombNorthController": (
+        "zelda_i.level2_dungeon",
+        "Level2BoomBombNorthController",
+    ),
+    "make_bomb_north_controller": (
+        "zelda_i.level2_dungeon",
+        "make_bomb_north_controller",
+    ),
+    "make_boom_bomb_north_controller": (
+        "zelda_i.level2_dungeon",
+        "make_boom_bomb_north_controller",
     ),
 }
 

@@ -5,13 +5,39 @@
 Human snapshot. Expand room beads when that dungeon is the tip (or for
 parallel isolated pure from checkpoints).
 
+## Agent priority (finish → tune)
+
+1. **Pathfinding + puzzles** (hops, doors, keys, bomb walls, blocks, items)
+2. **Assisted full route** (`--infinite-life`; damage heatmap in report)
+3. **Clean harden later** — rank rooms by `assist.damage_by_location`; combat
+   polish is residual, not tip-blocking
+
+Infinite life is intentional for first-pass agents. Do not stall L2 tip on
+sword kiting once geometry is known.
+
 ## Live tip (L2 — other agents)
 
 | Gate | Status | Notes |
 |------|--------|-------|
 | Power-on → L1 Triforce | **Clean green** | M5 |
 | L2 interior → TF `0x02` | **active tip** | epic `rr-ci7` |
-| Ready L2 leaves | `rr-ebe`, `rr-n5i`, `rr-bcd` (and related) | do not collide |
+| Tip leaf | **rr-bsq / rr-ebe** | boom 0x4f pure (path LIVE via bomb-UP) |
+| Next | `rr-n5i` Dodongo → `rr-5dk` assisted natural TF | |
+
+### All-night wave results (2026-08-06 night)
+
+| Bead | Result |
+|------|--------|
+| **rr-lzk** | **2/2 Clean** bomb N 0x6f→0x5f; `run_level2_bomb_north.py` |
+| **rr-etl** | **2/2 Clean** Goriya 0x5e; `run_level2_clear5e.py` |
+| **rr-fvt** | 0x5f = 5× Gel; doors DOWN-only; clear ≠ open R/U |
+| **rr-cjf** | **LIVE** 0x5f bomb-UP→**0x4f**; 0x5e UP→0x4e→0x4f |
+| **rr-3pz** | `level2_puzzles.py` catalog |
+| **rr-mhl** | `door_graph.py` + L2 seed |
+| **rr-65w** | **2/2 Clean** L3 north to 0x5b Darknuts |
+| **rr-miy** | **2/2 assisted** L6 west wizzrobes 0x78 |
+| **rr-87a** / **rr-076** | L5 graph PARTIAL (0x67 dead-end; Pols door residual) |
+| **rr-iri** / **rr-ccx** / **rr-q8a** | OW hops + candle shop 0x5E; burn residual |
 
 ## Parallel wave results (2026-08-06)
 
@@ -62,6 +88,15 @@ Door traps burned:
 ```bash
 bd ready -l zelda_i
 ```
+
+### Path / puzzle backlog (new)
+
+| Bead | Scope |
+|------|-------|
+| `rr-3pz` | L2 bomb-wall / push-block catalog → lab encode |
+| `rr-mhl` | Dungeon door-graph template (mask / bomb / key / kill) |
+| `rr-iri` | OW item-gate hops (candle → white sword → bombs), assisted |
+| `rr-4oz` | L2 Clean residual from `damage_by_location` (after assisted TF) |
 
 ### OW prep (when free)
 

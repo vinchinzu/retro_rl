@@ -16,6 +16,7 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
+from zelda_i.combat import should_swing_at
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 LEVEL_1 = 1
@@ -48,8 +49,7 @@ _ENTRY_EAST_WAYPOINTS: tuple[tuple[int, int], ...] = (
 )
 
 # Open lanes around the two diamond-shaped block clusters in room 0x74.
-# Continuous sword pulses on this loop are deterministic from the room entry
-# and reach the key carrier without requiring unsafe direct pursuit.
+# Patrol when far; chase + hitbox-gated sword when a Stalfos is in range.
 _FIRST_KEY_PATROL: tuple[tuple[int, int], ...] = (
     (48, 141),
     (48, 101),
@@ -183,8 +183,22 @@ class Level1FirstKeyController:
             and obj.hp > 0
         )
 
-    def _swing(self, direction: str, reason: str) -> FrameAction:
-        if self.frames % SWORD_SWING_PERIOD < SWORD_SWING_FRAMES:
+    def _move(
+        self,
+        snap: ZeldaSnapshot,
+        direction: str,
+        reason: str,
+        *,
+        enemies: tuple[ZeldaObject, ...] = (),
+        allow_swing: bool = True,
+    ) -> FrameAction:
+        """Walk in ``direction``; slash only if allow_swing and enemy in hitbox."""
+        if (
+            allow_swing
+            and enemies
+            and should_swing_at(snap.link_x, snap.link_y, direction, enemies)
+            and self.frames % SWORD_SWING_PERIOD < SWORD_SWING_FRAMES
+        ):
             return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
         return FrameAction(nes_action(direction), reason)
 
@@ -196,6 +210,8 @@ class Level1FirstKeyController:
         tolerance: int,
         loop: bool,
         reason: str,
+        enemies: tuple[ZeldaObject, ...] = (),
+        allow_swing: bool = False,
     ) -> FrameAction:
         tx, ty = waypoints[self.waypoint_index]
         dx = tx - snap.link_x
@@ -216,7 +232,9 @@ class Level1FirstKeyController:
             direction = "RIGHT" if dx > 0 else "LEFT"
         else:
             direction = "DOWN" if dy > 0 else "UP"
-        return self._swing(direction, reason)
+        return self._move(
+            snap, direction, reason, enemies=enemies, allow_swing=allow_swing
+        )
 
     def _collect_key(self, snap: ZeldaSnapshot) -> FrameAction:
         # After the carried-key Stalfos dies, the engine clears its type but
@@ -313,12 +331,38 @@ class Level1FirstKeyController:
                     "key_carrier_defeated",
                 )
                 return self._collect_key(snap)
+            # Chase nearest Stalfos when in range; else patrol box with
+            # hitbox-gated sword (no air-swings).
+            if live_stalfos:
+                nearest = min(
+                    live_stalfos,
+                    key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
+                )
+                dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+                if dist < CLEAR_ENGAGE_DIST:
+                    dx = nearest.x - snap.link_x
+                    dy = nearest.y - snap.link_y
+                    if abs(dx) > 10:
+                        direction = "RIGHT" if dx > 0 else "LEFT"
+                    elif abs(dy) > 10:
+                        direction = "DOWN" if dy > 0 else "UP"
+                    else:
+                        direction = "RIGHT" if dx >= 0 else "LEFT"
+                    return self._move(
+                        snap,
+                        direction,
+                        "key_engage",
+                        enemies=live_stalfos,
+                        allow_swing=True,
+                    )
             return self._follow_waypoints(
                 snap,
                 _FIRST_KEY_PATROL,
                 tolerance=5,
                 loop=True,
                 reason="key_room_patrol",
+                enemies=live_stalfos,
+                allow_swing=True,
             )
 
         if self.phase is Level1KeyPhase.COLLECT_KEY:
@@ -375,17 +419,13 @@ class Level1UnlockNorthController:
             if note:
                 self.notes.append(note)
 
-    def _swing(self, direction: str, reason: str) -> FrameAction:
-        if self.frames % SWORD_SWING_PERIOD < SWORD_SWING_FRAMES:
-            return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
-        return FrameAction(nes_action(direction), reason)
-
     def _follow_waypoints(
         self,
         snap: ZeldaSnapshot,
         waypoints: tuple[tuple[int, int], ...],
         reason: str,
     ) -> FrameAction:
+        """Route without sword — unlock path has no combat requirement."""
         tx, ty = waypoints[self.waypoint_index]
         dx = tx - snap.link_x
         dy = ty - snap.link_y
@@ -400,7 +440,7 @@ class Level1UnlockNorthController:
             direction = "RIGHT" if dx > 0 else "LEFT"
         else:
             direction = "DOWN" if dy > 0 else "UP"
-        return self._swing(direction, reason)
+        return FrameAction(nes_action(direction), reason)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -555,14 +595,28 @@ class Level1Clear63Controller:
             if note:
                 self.notes.append(note)
 
-    def _swing(self, direction: str, reason: str, *, heavy: bool = False) -> FrameAction:
+    def _swing(
+        self,
+        snap: ZeldaSnapshot,
+        direction: str,
+        reason: str,
+        *,
+        enemies: tuple[ZeldaObject, ...],
+        heavy: bool = False,
+    ) -> FrameAction:
+        """Slash only when an enemy is in sword hitbox or contact-close."""
         period = 8 if heavy else SWORD_SWING_PERIOD
         hold = 4 if heavy else SWORD_SWING_FRAMES
-        if self.frames % period < hold:
+        if (
+            enemies
+            and should_swing_at(snap.link_x, snap.link_y, direction, enemies)
+            and self.frames % period < hold
+        ):
             return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
         return FrameAction(nes_action(direction), reason)
 
     def _patrol(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Walk patrol box without A — sword only on engage hitbox."""
         tx, ty = _ROOM_63_PATROL[self.waypoint_index]
         dx = tx - snap.link_x
         dy = ty - snap.link_y
@@ -577,7 +631,7 @@ class Level1Clear63Controller:
             direction = "DOWN" if dy > 0 else "UP"
         else:
             direction = "UP"
-        return self._swing(direction, "clear_patrol")
+        return FrameAction(nes_action(direction), "clear_patrol")
 
     def _engage(self, snap: ZeldaSnapshot, target: ZeldaObject) -> FrameAction:
         dx = target.x - snap.link_x
@@ -590,7 +644,9 @@ class Level1Clear63Controller:
             direction = "RIGHT" if dx >= 0 else "LEFT"
         else:
             direction = "DOWN" if dy >= 0 else "UP"
-        return self._swing(direction, "clear_engage", heavy=True)
+        return self._swing(
+            snap, direction, "clear_engage", enemies=(target,), heavy=True
+        )
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1

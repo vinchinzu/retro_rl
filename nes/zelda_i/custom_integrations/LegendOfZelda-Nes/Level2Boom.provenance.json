@@ -1,0 +1,91 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T04:01:07.900029+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "natural_entry": false,
+    "path": "bomb_5f",
+    "segment": "level2_magic_boomerang",
+    "stand": [
+      120,
+      101
+    ],
+    "start_state": "Level2_5F"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bomb": {
+      "bombs_after_place": 10,
+      "bombs_before_place": 11,
+      "clear": {
+        "clear_signal_seen": true,
+        "combat_frames": 310,
+        "frames": 311,
+        "initial_inventory": 0,
+        "last_live_enemies": 0,
+        "max_live_enemies": 5,
+        "notes": [
+          "room_cleared"
+        ],
+        "phase": "DONE",
+        "spec_id": "level2_room5f_gel_clear_for_boom",
+        "success": true,
+        "tuning": {
+          "attack_phase": 0,
+          "engage_attack_hold": 3,
+          "engage_attack_period": 6,
+          "engage_distance": 56,
+          "engage_dominant_axis": false,
+          "patrol_attack_hold": 3,
+          "patrol_attack_period": 8
+        }
+      },
+      "frames": 613,
+      "notes": [
+        "need_clear_gels_0x5f",
+        "cleared_gels",
+        "at_bomb_stand",
+        "faced_up",
+        "placed_bomb",
+        "bomb_used_11->10",
+        "blast_done",
+        "entered_0x4f"
+      ],
+      "phase": "DONE",
+      "stand": [
+        120,
+        101
+      ],
+      "success": true
+    },
+    "room4e": null,
+    "room4f": {
+      "clear_signal_seen": true,
+      "combat_frames": 514,
+      "frames": 581,
+      "initial_inventory": 0,
+      "last_live_enemies": 0,
+      "max_live_enemies": 3,
+      "notes": [
+        "room_cleared"
+      ],
+      "phase": "COLLECT_REWARD",
+      "spec_id": "level2_room4f_magic_boomerang",
+      "success": true,
+      "tuning": {
+        "attack_phase": 2,
+        "engage_attack_hold": 3,
+        "engage_attack_period": 6,
+        "engage_distance": 80,
+        "engage_dominant_axis": false,
+        "patrol_attack_hold": 3,
+        "patrol_attack_period": 8
+      }
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2_5F.state",
+  "source_state_sha256": "686ef9f5eb307f7f63458f51195bdd0fa5b9b2598907f43e0edc31a6be2e2213",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fda57-f535-7cd3-b5ee-34eb2a101547/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2Boom.state",
+  "state_sha256": "4665cf885db0714a48088962f9768e2c04840133d9deeb2aa45100d07a12d3c5"
+}

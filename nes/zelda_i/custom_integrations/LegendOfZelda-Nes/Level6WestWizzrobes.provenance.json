@@ -1,0 +1,44 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T03:20:55.967136+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "infinite_life": true,
+    "segment": "level6_west_wizzrobes",
+    "start_state": "Level6EastKey"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "clear_signal_seen": true,
+    "combat_frames": 913,
+    "frames": 914,
+    "initial_inventory": 0,
+    "last_live_enemies": 0,
+    "last_progress_frame": 820,
+    "max_live_enemies": 5,
+    "notes": [
+      "target_room_playable",
+      "backstep_f673_d15",
+      "backstep_f797_d4",
+      "room_cleared"
+    ],
+    "phase": "DONE",
+    "prev_live_count": 0,
+    "spec_id": "level6_room78_west_wizzrobes",
+    "success": true,
+    "tuning": {
+      "attack_phase": 2,
+      "engage_attack_hold": 3,
+      "engage_attack_period": 6,
+      "engage_distance": 48,
+      "engage_dominant_axis": false,
+      "patrol_attack_hold": 3,
+      "patrol_attack_period": 8
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fda29-dd94-7ae2-8486-6b483c36ca3b/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level6EastKey.state",
+  "source_state_sha256": "7ada246f9ed8377781d416220995d5f77bdb92ed770213155948b680bb30193f",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fda29-dd94-7ae2-8486-6b483c36ca3b/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level6WestWizzrobes.state",
+  "state_sha256": "73e4b60a7f7beac71b1ce27fa1c1522e5cd3a205799f9f366d69dc711cef8a1f"
+}

@@ -11,6 +11,7 @@ from typing import Callable
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
+from zelda_i.combat import overworld_threat_objects, should_swing_at
 from zelda_i.ram import ZeldaSnapshot
 
 DEFAULT_SWING_PERIOD = 12
@@ -39,6 +40,34 @@ def swing_action(
     """Walk in ``direction``, pulsing A for a few frames each period."""
     if period > 0 and phase_frames % period < hold:
         return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
+    return FrameAction(nes_action(direction), reason)
+
+
+def walk_or_swing(
+    phase_frames: int,
+    direction: str,
+    reason: str,
+    snap: ZeldaSnapshot | None = None,
+    *,
+    period: int = DEFAULT_SWING_PERIOD,
+    hold: int = DEFAULT_SWING_FRAMES,
+    always_swing: bool = False,
+) -> FrameAction:
+    """Walk in ``direction``; pulse A only if always_swing or a nearby threat is swingable.
+
+    When ``snap is None`` or ``always_swing``, keep the old periodic swing
+    (tests / stuck recovery). Otherwise slash only for hitbox or contact-range
+    threats — not merely because any enemy exists on screen.
+    """
+    if snap is None or always_swing:
+        return swing_action(
+            phase_frames, direction, reason, period=period, hold=hold
+        )
+    threats = overworld_threat_objects(snap)
+    if should_swing_at(snap.link_x, snap.link_y, direction, threats):
+        return swing_action(
+            phase_frames, direction, reason, period=period, hold=hold
+        )
     return FrameAction(nes_action(direction), reason)
 
 
@@ -123,13 +152,23 @@ def align_and_push(
     swing_hold: int = DEFAULT_SWING_FRAMES,
     phase_frames: int = 0,
 ) -> FrameAction:
-    """Align to optional x/y or y-band, then push in ``direction``."""
+    """Align to optional x/y or y-band, then push in ``direction``.
+
+    Default movement uses :func:`walk_or_swing` (threat-gated). Callers that
+    pass ``swing=`` own the slash policy (controllers usually close over snap).
+    Stuck recovery always keeps A via :func:`unstick_wiggle`.
+    """
 
     def _swing(dir_: str, why: str) -> FrameAction:
         if swing is not None:
             return swing(dir_, why)
-        return swing_action(
-            phase_frames, dir_, why, period=swing_period, hold=swing_hold
+        return walk_or_swing(
+            phase_frames,
+            dir_,
+            why,
+            snap,
+            period=swing_period,
+            hold=swing_hold,
         )
 
     if stuck > stuck_threshold:
