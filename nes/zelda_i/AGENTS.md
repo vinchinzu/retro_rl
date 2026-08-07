@@ -101,16 +101,22 @@ LEFT→0x5a → LEFT KEY y≈141 → clear 0x59 DOWN → clear 0x69 RIGHT@y141 �
 `level3_raft_assisted.json` (~6448f); checkpoint **`Level3Raft`**. Runner:
 `run_level3_raft.py --infinite-life --trials 2 --save-state`.
 
-**Next tip:** Manhandla + TF `0x04` from `Level3Raft` (backtrack path; bombs
-preferred). Do not claim Clean STATUS.
+**L3 Raft → Manhandla path (assisted recon):** exit 0x0f→0x69 → UP 0x59 →
+**BOMB_RIGHT** 0x5a (walk sealed) → 0x5b → BOMB_RIGHT 0x5c → clear →
+RIGHT@y141 → 0x5d → UP **0x4d** Manhandla type **`0x3c`** candidate. TF `0x04`
+not yet. Evidence: `l3_manhandla_recon.json`. Probe:
+`probe_level3_manhandla.py --infinite-life --tag l3_manhandla`.
+
+**Next tip:** Stabilize 0x5d→0x4d gate + bomb Manhandla + TF `0x04`. Not Clean.
 
 **Traps (L2→L3 OW):** 0x4c east only **y∈[133,145]** (y=149 solid); 0x5c maze
 reverse needs denser channel waypoints (no y_band on 0x5b hop); 0x64 west
 band **y≈125–150**.
 
-**Traps (L3 Raft):** 0x5a key door long y=141 push; 0x59 DOWN lag after clear;
-DOWN push = x≈120 hold (no y thrash); 0x69 stairs **only y≈141**; passage
-channel **x≈176** then LEFT on y≈141 to **x≈136**.
+**Traps (L3 Raft / boss):** 0x5a key door long y=141 push; 0x59 DOWN lag after
+clear; DOWN push = x≈120 hold; 0x69 stairs **only y≈141**; passage channel
+**x≈176** then LEFT on y≈141 to **x≈136**; **0x59 walk-RIGHT sealed post-Raft**
+(bomb reopen); 0x5c RIGHT **y≈141 after clear**; type **0x2b** invuln ≠ boss.
 
 Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
 `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft`.

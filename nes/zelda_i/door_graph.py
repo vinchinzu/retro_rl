@@ -964,6 +964,62 @@ def _l3_exits() -> dict[int, tuple[RoomExit, ...]]:
                 ),
                 verification="observed",
             ),
+            RoomExit(
+                DoorDir.UP,
+                L3_SOUTH_DARKNUTS,
+                GateKind.OPEN,
+                approach_xy=(48, 77),
+                notes=(
+                    "EXIT reverse: channel x≈176 south → west → NW stairs hold UP "
+                    "→ mode10 → play 0x69 (Level3Raft backtrack)"
+                ),
+                verification="observed",
+            ),
+        ),
+        L3_BOMB_SHORTCUT: (
+            RoomExit(
+                DoorDir.LEFT,
+                L3_DARKNUTS,
+                GateKind.OPEN,
+                notes="return west to 0x5b",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                L3_MAP_4C,
+                GateKind.OPEN,
+                approach_xy=(120, 93),
+                notes="north to map room (LIVE post-Raft shortcut)",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.RIGHT,
+                0x5D,
+                GateKind.KILL_CLEAR,
+                approach_xy=(208, 141),
+                notes="RIGHT only @ y≈141 after 3× Darknut clear → 0x5d boss prep",
+                verification="observed",
+            ),
+        ),
+        0x5D: (
+            RoomExit(
+                DoorDir.LEFT,
+                L3_BOMB_SHORTCUT,
+                GateKind.OPEN,
+                notes="return west to 0x5c",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                0x4D,
+                GateKind.OPEN,
+                approach_xy=(120, 93),
+                notes=(
+                    "Manhandla candidate 0x4d type 0x3c (assisted glimpse; "
+                    "UP gate residual / flaky)"
+                ),
+                verification="observed",
+            ),
         ),
     }
 
