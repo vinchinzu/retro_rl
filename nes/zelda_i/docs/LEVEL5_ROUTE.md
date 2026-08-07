@@ -46,9 +46,23 @@ sword are optional for the **door** itself; bracelet warp shortens OW only.
 
 | Room id | Live enemies / notes | Doors / items |
 |---------|----------------------|---------------|
-| **0x76** entry | No combat objects at settle; `room_obj_count=3` (statues?) | North open → 0x66; south exits OW; **east not opened** from south spawn (walkthrough: Pols Voice + key to the right — door may be shutter/locked; still open in source map) |
-| **0x66** | **3× type 0x30** Gibdo-correlated, **HP=112**, `AliveRule.TYPE_AND_HP` | Pre-clear `doors=0`; after clear **`doors=0x08`** (east free) → **0x67**; DOWN → 0x76; UP/LEFT not free from clear bit alone |
-| **0x67** (E of 0x66) | Residual: 1× type **0x4e** (hp0) + 2× type **0x40** (hp240) | Entered from cleared 0x66 RIGHT @y≈141; `doors=0x02` on settle |
+| **0x76** entry | No combat objects at settle; `room_obj_count=3` (statues) | North open → **0x66**; south exits OW; **east → 0x77** (Pols Voice) **not natural-open** from `Level5Entrance` (`doors=0x00`). Mid-room blocks pure RIGHT @ y≈141 (stuck x≈128, tile≈181); y≈149–157 reaches wall x≈208. Keys alone do not open. Door-open residual (RAM poke `cur_opened_doors`/`mask`) required for live entry today |
+| **0x66** | **3× type 0x30** Gibdo, **HP=112**, `AliveRule.TYPE_AND_HP` | Pre-clear `doors=0`; after clear **`doors=0x08`** → east free to **0x67**; DOWN → 0x76; UP/LEFT blocked natural (dark-room / west key residual) |
+| **0x67** (E of 0x66) | **2× type 0x40** Bubble (HP=240, **sword-immune**) + **1× type 0x4e** (hp0 residual) | Settle `doors=0x02` (LEFT only) → back to 0x66; R/U/D solid. **Dead-end graph node** — no clear pure |
+| **0x77** (E of 0x76) | **5× type 0x16** Pols Voice, **HP=160**, `TYPE_AND_HP` | `room_item_id=0x19` small key; doors=0 on settle. Combat pure from `L5_Room_77` **2/2** (~5.3k frames) with backstep controller |
+| **0x65** (W of 0x66) | **5× type 0x30** Gibdo HP=112 | PARTIAL: natural west blocked; with door poke settle `doors=0x01` (east back). Clear-only; no extra door bits after clear |
+| **0x55** (N of 0x65) | **5× type 0x13** Zol HP=32; item `0x19` | PARTIAL dark-room chain via forced doors from 0x65 UP |
+
+### Door bit convention (live)
+
+`ADDR_CUR_OPENED_DOORS` (`0x00EE`): bit0=R, bit1=L, bit2=D, bit3=U (Data Crystal).
+
+| Room | Observed `doors` | Meaning |
+|------|------------------|---------|
+| 0x66 post-clear | `0x08` | East free to 0x67 (east arch / shutter) |
+| 0x67 settle | `0x02` | West open back to 0x66 |
+| 0x65 settle (forced west) | `0x01` | East open back to 0x66 |
+| 0x76 entry | `0x00` | North permanent archway still walkable; east closed |
 
 ### Pure: clear 0x66 (bead `rr-vqw`)
 
@@ -57,20 +71,49 @@ sword are optional for the **door** itself; bracelet warp shortens OW only.
 - Start: `L5_Room_66` (in-room) or chain north from `Level5Entrance` (0x76)
 - Track: **Clean** isolated (no health write); ~2k frames in-room, ~4k from entrance
 - Object confirm: type **0x30**, spawn HP **112**, expected count **3**
-- Doors after clear: **`cur_opened_doors=0x08`** → east open to 0x67; south always back to entry; north/west blocked without further geometry/items
-- Whistle path residual: not mapped this bead (need dark rooms / candle / further graph)
+- Doors after clear: **`cur_opened_doors=0x08`** → east open to 0x67
 
 ```bash
-# Isolated pure 2/2 from room-66 checkpoint
 uv run python nes/zelda_i/scripts/run_level5_clear66.py --trials 2
-
-# Chain 0x76 → 0x66 clear + save Level5Cleared66
 uv run python nes/zelda_i/scripts/run_level5_clear66.py --from-entrance --save-state --trials 1
+```
+
+### Graph pure: 0x66 → 0x67 (bead `rr-87a`)
+
+- Spec: `ROOM_67_SPEC` / stop `level5_room_67_arrived`
+- Controller: `Level5East67Controller` (RIGHT @ y≈141; no combat)
+- Start: `Level5Cleared66`
+- Bubbles **0x40** sword-immune — arrival only, not clear
+- Dark-room / west residual **PARTIAL**: natural N/W from 0x66 blocked even with
+  candle poke; forced doors open west → 0x65 (5× Gibdo) → north 0x55 (5× Zol)
+
+```bash
+uv run python nes/zelda_i/scripts/run_level5_east67.py --trials 2
+uv run python nes/zelda_i/scripts/run_level5_east67.py --save-state
+```
+
+### Pure (room-ready): 0x77 Pols Voice + key (bead `rr-076`)
+
+- Spec: `ROOM_77_SPEC` / stop `level5_room_77_key_success`
+- Controller: `Level5PolsVoiceController` (backstep when stuck close)
+- Start: **`L5_Room_77`** (room-ready; runner forces keys=0 for FIXED_INVENTORY)
+- Entry from `Level5Entrance` east: **PARTIAL** door residual (`--poke-doors` recon)
+- Object: type **0x16**, HP **160**, count **5**; key RoomItemId **0x19**
+- Live 2/2 isolated ~5.3k frames (infinite-life optional for recon)
+
+```bash
+# Combat pure from in-room checkpoint
+uv run python nes/zelda_i/scripts/run_level5_east_key.py --trials 2 --infinite-life
+uv run python nes/zelda_i/scripts/run_level5_east_key.py --save-state --infinite-life
+
+# Recon entry (not Clean): poke doors open then clear
+uv run python nes/zelda_i/scripts/run_level5_east_key.py \
+  --from-state Level5Entrance --poke-doors --infinite-life --trials 1
 ```
 
 Source route (not all live-mapped yet):
 
-- RIGHT Pols Voice + key (source: east of **entry** 0x76 — still not opened live from south spawn)
+- RIGHT Pols Voice + key (live room **0x77**; door open residual)
 - UP Gibdo dark rooms → key; optional bomb skip past Dodongos
 - Map; Zol key; Gibdo bombs; Blue Darknuts → staircase
 - LEFT Darknuts → staircase → **Whistle**
@@ -91,6 +134,11 @@ Source route (not all live-mapped yet):
 | `OW_0B_L5Door.state` | Door screen before enter (dev fixture) |
 | `L5_Room_66.state` | North of entry after walk (assisted) |
 | `Level5Cleared66.state` | Clean pure clear of 0x66; doors=0x08; east free → 0x67 |
+| `L5_Room_67.state` | East residual Bubbles; doors=0x02 |
+| `L5_Room_77.state` | Pols Voice room-ready (door residual entry) |
+| `Level5EastKey.state` | 0x77 cleared + keys≥1 |
+| `L5_Room_65.state` | West of 0x66 via forced doors (PARTIAL) |
+| `L5_Room_55.state` | North of 0x65 via forced doors (PARTIAL) |
 
 ## Probe
 
@@ -112,12 +160,19 @@ uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_0B_L5Door \
 - `recordings/l5_entry_recon.json` — door 0x0B, hills 0x1B, entry 0x76, room probes
 - `recordings/l5_clear66_isolated.json` / `l5_clear66_entrance.json` — pure clear trials
 - `recordings/l5_66_door_probe.json` — N/E/S/W after clear
-- `recordings/l5_entrance.png`, `l5_0b_door.png`, `l5_1b_free.png`, `l5_room_66.png`
-- Modules: `level5_overworld.py`, `level5_dungeon.py`, `scripts/run_level5_clear66.py`, `scripts/probe_level5_entry.py`
+- `recordings/l5_residual_recon.json` — 0x67 / dark-room / entry-east recon
+- `recordings/l5_east67_isolated.json` — graph pure 0x67 arrival
+- `recordings/l5_east_key_*.json` / `l5_pols_2of2.json` — Pols Voice key trials
+- `recordings/l5_entrance.png`, `l5_0b_door.png`, `l5_1b_free.png`, `l5_room_66.png`,
+  `l5_room67.png`, `l5_room_77.png`, `l5_east_key.png`
+- Modules: `level5_overworld.py`, `level5_dungeon.py`,
+  `scripts/run_level5_clear66.py`, `scripts/run_level5_east67.py`,
+  `scripts/run_level5_east_key.py`, `scripts/probe_level5_entry.py`
 
 ## Next
 
-- Open/verify entry **east** Pols Voice room id live (from 0x76)
-- Map north dark rooms from 0x66 (candle); residual 0x67 types 0x4e/0x40
+- Solve natural **0x76 east door** open (no RAM poke) — key door timing / dungeon
+  flag residual; then natural-entry 0x76 → 0x77 key pure
+- Natural west/north from 0x66 (candle equip on B, bomb walls, key use on west)
 - Whistle item room; Digdogger policy
 - Natural-entry from real predecessor (no assist) when tip reaches L5

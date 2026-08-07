@@ -55,10 +55,18 @@ Assisted reports include:
 
 - `assist.enabled`, write count, hearts restored
 - first frame assist became active
-- maximum single-frame damage observed before refill
+- **damage taken** (observed filled-heart units before each refill):
+  - `total_damage` — cumulative units lost over the run
+  - `damage_events` — count of frames with a loss
+  - `maximum_single_frame_damage`
+  - `damage_by_location` — heatmap keys `L{level}:0x{screen}` (hottest first)
+  - `damage_samples` — up to 64 events with frame/xy (debug; totals unbounded)
 - death entries
 - suspended phase frame counts
 - `progression_writes` / `capacity_writes` (must stay 0)
+
+Use `damage_by_location` later for **Clean combat harden** priority. First-pass
+work stays on pathfinding, doors, keys, bombs, and puzzles — not sword polish.
 
 ## Integrity assertions (assisted clear)
 

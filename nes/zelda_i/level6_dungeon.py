@@ -3,12 +3,14 @@
 Owned by L6 pure wave — do not put these specs into ``dungeon.py``.
 Import ``GenericDungeonRoomController`` / dataclasses from ``dungeon`` only.
 
-Live recon (2026-08-06)::
+Live recon (2026-08-06 / 2026-08-07)::
 
     Entry **0x79** (empty combat, RoomItemId 0x03).
     East **0x7a**: 5× type 0x24 (orange wizzrobe-correlated) + key 0x19.
     RIGHT from entry: wall-first y≈157 → x≈208 → y≈144–149 (see
     ``level6_overworld.Level6EntryRightController``; no A while aligning).
+    West **0x78**: key-LEFT from 0x79 (fire-bypass y≈157→141); 5× type 0x24.
+    Trap: UP from 0x7a spends key on Old Man **0x6a** — do not.
 
 Wizzrobe combat: sword misses when overlapping at the door; controller
 backsteps when stuck too close without a kill, then re-engages.
@@ -37,6 +39,7 @@ from zelda_i.level6_overworld import (
     LEVEL6,
     LEVEL6_EAST_KEY_ROOM,
     LEVEL6_ENTRY_ROOM,
+    LEVEL6_WEST_WIZZROBE_ROOM,
     WIZZROBE_ORANGE_TYPE,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
@@ -44,6 +47,9 @@ from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 # Re-export for runners / docs.
 ROOM_L6_ENTRY = LEVEL6_ENTRY_ROOM  # 0x79
 ROOM_L6_EAST_KEY = LEVEL6_EAST_KEY_ROOM  # 0x7a
+ROOM_L6_WEST_WIZZROBE = LEVEL6_WEST_WIZZROBE_ROOM  # 0x78
+# After clear of 0x78, open_doorway_mask includes UP (0x08) → compass room 0x68.
+ROOM_78_UP_DOOR_BIT = 0x08
 
 # Open-floor patrol; wizzrobes teleport — cover mid lanes.
 _ROOM_7A_PATROL: tuple[tuple[int, int], ...] = (
@@ -117,8 +123,43 @@ ROOM_7A_SPEC = DungeonRoomSpec(
     level=LEVEL6,
 )
 
+# West of entry: key door from 0x79 (fire-bypass) then 5× type 0x24.
+# Clear opens UP (mask bit 0x08) → 0x68 compass Zols. No room key drop.
+ROOM_78_SPEC = DungeonRoomSpec(
+    spec_id="level6_room78_west_wizzrobes",
+    source_room=LEVEL6_ENTRY_ROOM,
+    room_id=LEVEL6_WEST_WIZZROBE_ROOM,
+    entry=DoorRoute(
+        "LEFT",
+        ((120, 157), (32, 157), (32, 141)),
+    ),
+    enemy_types=(WIZZROBE_ORANGE_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_7A_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    room_item_id=0x03,
+    # Post-clear live: cur_opened_doors=0x01 (RIGHT), open_doorway_mask=0x09 (R+U).
+    # UP kill-door is walkable via mask; do not gate CLEAR on door bit 0x08.
+    exit_routes=(
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("RIGHT", ((120, 141), (208, 141))),
+    ),
+    max_frames=12000,
+    level=LEVEL6,
+)
+
 register_room_spec(ROOM_79_SPEC)
 register_room_spec(ROOM_7A_SPEC)
+register_room_spec(ROOM_78_SPEC)
 
 
 def level6_room_7a_key_success(ram: np.ndarray) -> bool:
@@ -211,12 +252,42 @@ def make_east_key_controller() -> Level6EastKeyController:
     return Level6EastKeyController(spec=ROOM_7A_SPEC)
 
 
+def level6_room_78_clear_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x78 cleared — no live type-0x24, play mode.
+
+    Does not require UP door bit (mask lag) or inventory change.
+    """
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.screen == LEVEL6_WEST_WIZZROBE_ROOM
+        and snap.mode == PLAY_MODE
+        and not ROOM_78_SPEC.live_enemies(snap)
+    )
+
+
+@dataclass
+class Level6WestWizzrobeController(Level6EastKeyController):
+    """Same wizzrobe backstep combat as east key, bound to ROOM_78_SPEC."""
+
+
+def make_west_wizzrobe_controller() -> Level6WestWizzrobeController:
+    """Factory: backstep combat controller for 0x78 west wizzrobes."""
+    return Level6WestWizzrobeController(spec=ROOM_78_SPEC)
+
+
 __all__ = [
     "ROOM_L6_ENTRY",
     "ROOM_L6_EAST_KEY",
+    "ROOM_L6_WEST_WIZZROBE",
     "ROOM_79_SPEC",
     "ROOM_7A_SPEC",
+    "ROOM_78_SPEC",
+    "ROOM_78_UP_DOOR_BIT",
     "Level6EastKeyController",
+    "Level6WestWizzrobeController",
     "make_east_key_controller",
+    "make_west_wizzrobe_controller",
     "level6_room_7a_key_success",
+    "level6_room_78_clear_success",
 ]

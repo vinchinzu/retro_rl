@@ -80,3 +80,12 @@ alive, so they use type-only liveness. Unknown IDs remain explicitly named
 Parallel lab trials are isolated development evidence. A room becomes
 route-ready only after the winning specification clears from the real
 predecessor in a no-state-load natural-entry run.
+
+## Door graph (pathfinding primitive)
+
+Shared dungeon door-graph template: `zelda_i/door_graph.py` encodes per-room
+exits with gate kinds (`OPEN` / `KILL_CLEAR` / `KEY` / `BOMB` / `SEALED`) and
+inventory-aware BFS. Seed `LEVEL_2_DOOR_GRAPH` matches the verified L2 interior
+in `LEVEL2_ROUTE.md` (rooms `0x7d`–`0x5e`). Pure tests:
+`zelda_i/tests/test_door_graph.py`. Feeds future `RouteGraph` edges; not a
+STATUS promote.

@@ -49,14 +49,18 @@ def test_snapshot_and_capabilities() -> None:
     assert snap.has_sword is True
     assert snap.screen_col == 7
     assert snap.screen_row == 7
+    assert snap.boomerang == 0
+    assert snap.magical_boomerang == 0
     caps = capabilities_from_ram(ram)
     assert "wooden_sword" in caps
     assert "boomerang" not in caps
     assert "magical_boomerang" not in caps
     ram[ADDR_BOOMERANG] = 1
     assert "boomerang" in capabilities_from_ram(ram)
+    assert read_snapshot(ram).boomerang == 1
     ram[ADDR_MAGIC_BOOMERANG] = 1
     caps_magic = capabilities_from_ram(ram)
     assert "magical_boomerang" in caps_magic
+    assert read_snapshot(ram).magical_boomerang == 1
     # Magical supersedes wooden in the capability set.
     assert "boomerang" not in caps_magic

@@ -379,8 +379,18 @@ def main(argv: list[str] | None = None) -> int:
     fin = rep["final"]
     assist_s = ""
     if rep.get("assist"):
-        h = rep["assist"].get("health") or {}
-        assist_s = f" assist_writes={h.get('writes', 0)}"
+        a = rep["assist"]
+        h = a.get("health") or {}
+        assist_s = (
+            f" assist_writes={h.get('writes', 0)}"
+            f" dmg={a.get('total_damage', 0)}"
+            f" dmg_ev={a.get('damage_events', 0)}"
+        )
+        by_loc = a.get("damage_by_location") or {}
+        if by_loc:
+            top = list(by_loc.items())[:3]
+            hot = ",".join(f"{k}:{v}" for k, v in top)
+            assist_s += f" hot=[{hot}]"
     farm_s = ""
     if rep.get("farm"):
         farm_s = (

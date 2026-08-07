@@ -15,7 +15,7 @@
 | Status | **Level 1 complete** (`triforce & 0x01`, 2/2 natural + 2/2 isolated) |
 | Integration | `LegendOfZelda-Nes` |
 | ROM zip | `roms/Nintendo/NES/Legend of Zelda, The.zip` |
-| Ready frame (probe) | ~1749 |
+| Ready frame (probe) | ~567 (BOOT_PERIOD=50; was ~1749 @ period 180) |
 | Checkpoints | `Level1.state`, `Level1Entrance.state`, `Level1FirstKey.state`, `Level1North.state`, `Level1Cleared63.state`, `Level1Cleared53.state`, `Level1Complete.state` |
 | Evidence | [level1_complete_natural.json](../recordings/level1_complete_natural.json), [level1_complete_isolated.json](../recordings/level1_complete_isolated.json), [Level 1 route notes](LEVEL1_ROUTE.md) |
 

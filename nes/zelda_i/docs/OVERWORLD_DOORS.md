@@ -22,7 +22,7 @@ Wave brief: [tasks/PARALLEL_RECON.md](tasks/PARALLEL_RECON.md).
 | 5 | Lizard | **`0x0B`** | **`0x76`** | **verified** assisted Lost Hills `0x1B` ↑×4; `Level5Entrance.state` | none to enter | `0x10` | Whistle | [LEVEL5_ROUTE.md](LEVEL5_ROUTE.md) |
 | 6 | Dragon | **`0x22`** | **`0x79`** | **verified** assisted; east `0x7a` key room; `Level6Entrance.state` | none required | `0x20` | Magical Rod | [LEVEL6_ROUTE.md](LEVEL6_ROUTE.md) |
 | 7 | Demon | `0x42` | TBD | source: whistle pond; bait shop `0x34` | **Whistle** + **Bait** inside | `0x40` | Red Candle | [LEVEL7_ROUTE.md](LEVEL7_ROUTE.md) |
-| 8 | Lion | **`0x6D`** | TBD | **verified bush OW** assisted (`Level8BushOW.state`); **candle** still blocks burn/enter | **Candle** (`0x065B`) | `0x80` | Book / Magic Key | [LEVEL8_ROUTE.md](LEVEL8_ROUTE.md) |
+| 8 | Lion | **`0x6D`** | TBD | **verified bush OW** assisted (`Level8BushOW`); candle→burn→enter **PARTIAL** (rr-q8a) | **Candle** (`0x065B`) | `0x80` | Book / Magic Key | [LEVEL8_ROUTE.md](LEVEL8_ROUTE.md) |
 | 9 | Death Mountain | `0x05` | TBD | source bomb-rock hyp | bombs; full TF `0xFF` inside | — | Red Ring, Silver Arrows | [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md) |
 
 ### Source path notes (planning only)
@@ -51,7 +51,7 @@ Same hop arithmetic reproduces verified L1 (`…→0x37`) and L2 walkthrough pat
 | White sword cave | TBD live | source (Gathering 1.3) | 5 heart containers | plateau N of start; `ADDR_SWORD` → 2 |
 | Magical sword grave | `0x21` | source path via bracelet Armos — **TBD live** | 12 hearts; push 3rd-from-left middle gravestone | graveyard; `ADDR_SWORD` → 3 |
 | Power Bracelet Armos | `0x24` | source (10 Armos, top-right) — **TBD live** | none | `ADDR_BRACELET` `0x0665`; unlocks boulder warps |
-| Blue candle shop(s) | TBD live | source (Gathering) | rupees | `ADDR_CANDLE` `0x065B`; needed for L8 bush + many secrets |
+| Blue candle shop(s) | **`0x5E`** O-6 cave (`CandleShop5E`) | **verified** assisted OW path `CANDLE_SHOP_HOPS` + cave UP@x112; natural 60R farm+buy residual | rupees **60** | `ADDR_CANDLE` `0x065B`; buy touch≈(152,149); L8 bush residual |
 | Bait / Food special shop | `0x34` | source Armos top-middle — **TBD live** | 60R | `ADDR_FOOD` `0x065D`; required for L7 Hungry Goriya |
 | Whistle pond (L7 mouth) | `0x42` | source — **TBD live** | Whistle | drains water → L7 stairs |
 | Raft dock (east heart) | `0x3F` | source path →×8 ↑×4 — **TBD live** | Raft | raft↑ optional Heart Container island `0x2F` |
@@ -112,3 +112,7 @@ Refresh this file when sibling probes land live door screens
   L1–L9 dungeon chapters (linked from walkthroughs doc)
 - Local: `docs/research/DUNGEON_WALKTHROUGHS.md`, `overworld.py`, `ram.py`,
   `level3_overworld.py` (L3 path seed)
+
+## Item-gate hops (`rr-iri`)
+
+See `item_gate_hops.py` / `probe_item_gate_hops.py` for candle 0x66 / bomb 0x4A / white-sword region hops (assisted).

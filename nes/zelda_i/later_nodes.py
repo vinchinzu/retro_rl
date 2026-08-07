@@ -26,6 +26,8 @@ SCREEN_LEVEL7_BAIT_SHOP = 0x34
 SCREEN_LEVEL8_BUSH = 0x6D  # Lion bush pocket — live; needs candle to enter
 SCREEN_LEVEL8_ENTRANCE = 0x6D  # same screen after burn (entry room TBD)
 SCREEN_LEVEL9_ENTRANCE = 0x05  # Death Mountain; bomb rock (source)
+# Blue Candle shop O-6 — live assisted OW path (rr-ccx); natural buy residual
+SCREEN_CANDLE_SHOP = 0x5E
 
 # --- OW capability candidates (source; TBD live) ---
 SCREEN_BRACELET_ARMOS = 0x24
@@ -89,6 +91,7 @@ NODE_LEVEL9_ZELDA = "level9_zelda_ending"
 NODE_BRACELET_ARMOS = "ow_24_bracelet_armos"
 NODE_MAGICAL_SWORD = "ow_21_magical_sword"
 NODE_BAIT_SHOP = "ow_34_bait_shop"
+NODE_CANDLE_SHOP = "ow_5e_candle_shop"
 NODE_WHISTLE_POND = "ow_42_whistle_pond"
 NODE_LOST_HILLS = "ow_1b_lost_hills"
 NODE_RAFT_L4_DOCK = "ow_55_raft_dock_l4"
@@ -115,6 +118,7 @@ LATER_SCREEN_LABELS: dict[int, str] = {
     SCREEN_LEVEL7_ENTRANCE: "level7_entrance_demon_pond_source",
     SCREEN_LEVEL8_ENTRANCE: "level8_entrance_lion_bush_source",
     SCREEN_LEVEL9_ENTRANCE: "level9_entrance_bomb_rock_source",
+    SCREEN_CANDLE_SHOP: "candle_shop_5e_live",
     SCREEN_BRACELET_ARMOS: "bracelet_armos_source",
     SCREEN_MAGICAL_SWORD_GRAVE: "magical_sword_grave_source",
     SCREEN_RAFT_HEART_DOCK: "raft_heart_dock_source",

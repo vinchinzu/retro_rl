@@ -111,6 +111,10 @@ class ZeldaSnapshot:
     cur_opened_doors: int
     open_doorway_mask: int
     objects: tuple[ZeldaObject, ...]
+    # Boomerang inventory (Data Crystal); magical overrides wooden when set.
+    # Defaults keep older ZeldaSnapshot(...) test constructors working.
+    boomerang: int = 0
+    magical_boomerang: int = 0
 
     @property
     def overworld(self) -> bool:
@@ -202,6 +206,8 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         cur_opened_doors=read_u8(ram, ADDR_CUR_OPENED_DOORS),
         open_doorway_mask=read_u8(ram, ADDR_OPEN_DOORWAY_MASK),
         objects=objects,
+        boomerang=read_u8(ram, ADDR_BOOMERANG),
+        magical_boomerang=read_u8(ram, ADDR_MAGIC_BOOMERANG),
     )
 
 

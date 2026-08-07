@@ -8,17 +8,25 @@ route graph.
 
 Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
 
-## Strategy (SM lessons + ~100 beads)
+## Strategy (finish easy → then tune)
 
-1. **Assisted first pass** — `--infinite-life` Survival assist unlocks
-   overworld corridors and dungeon interiors without heart starvation.
-   Evidence is dual-track (not Clean STATUS).
-2. **Pure-first rooms** — isolated controller → natural-entry → graph promote.
-3. **Expand beads at the tip** — epics for L2–L9 + OW prep + Death Mountain;
+**Order of work (agents):** pathfinding and puzzle solving first → full-game
+route under Survival assist → Clean combat/heart harden using damage heatmaps.
+
+1. **Infinite life + damage tracking** — `--infinite-life` Survival assist
+   (`UnlimitedHealthAssist`) keeps agents alive. Telemetry records
+   `total_damage`, `damage_by_location`, samples (see ASSIST_CONTRACT). Not
+   Clean STATUS.
+2. **Path + puzzles first** — overworld hops, door geometry, keys, bomb walls,
+   push-blocks, item gates. Do **not** block route progress on sword kiting.
+3. **Pure-first rooms** — isolated controller → natural-entry → graph promote
+   (geometry + stop predicates; combat only as needed to open doors).
+4. **Expand beads at the tip** — epics for L2–L9 + OW prep + Death Mountain;
    spawn room children when that dungeon is active (~80–120 total by credits).
-4. **Clean pass later** — heart farm / combat harden per segment after geometry
-   is known; never demote assisted greens into Clean rows.
-5. **Adventure harness** — keep RAM/combat local; `RouteGraph`, `NamedRoute`,
+5. **Clean pass later** — rank rooms by assist `damage_by_location`; heart farm /
+   combat harden only after geometry is known. Never demote assisted greens
+   into Clean STATUS rows.
+6. **Adventure harness** — keep RAM/combat local; `RouteGraph`, `NamedRoute`,
    legs, waypoints stay on `retro_harness.adventure`.
 
 ## Next milestones
@@ -38,6 +46,19 @@ Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
 
 **L2 interior tip** remains the serial path to full clear (other agents).
 Parallel pure tracks L3/L5/L6/L8 from checkpoints without blocking L2.
+
+## Video / watchability (2026-08-06)
+
+Hitbox-gated sword + faster boot landed (not a STATUS promote):
+
+- `combat.py` sword rectangle + `should_swing_at`; dungeon + L1 early rooms
+  slash only in blade range / contact (patrol walks clean).
+- OW `walk_or_swing` — no air-swings on empty screens (`nav_common` /
+  `overworld_nav` / `ow_path`).
+- Boot `BOOT_PERIOD=50` (~565f ready vs ~1749); YouTube intro 90f; cave
+  dialog idle 180f.
+
+Residual room-by-room combat polish only if a clear regresses under hitbox gate.
 See `docs/tasks/QUEUE.md`.
 
 ## Notes
@@ -61,3 +82,10 @@ See `docs/tasks/QUEUE.md`.
 - External walkthroughs/maps are approved planning accelerators. Keep their
   claims source-linked and separate from live emulator verification.
 - Use `scripts/dungeon_lab.py` and `docs/DUNGEON_LAB.md` for future rooms.
+
+- Dungeon door-graph template: `door_graph.py` (`LEVEL_2_DOOR_GRAPH` seed). See `docs/DUNGEON_LAB.md` § Door graph (`rr-mhl`).
+
+### Item gates (`rr-iri`)
+- ### ZOW — early item gates (rr-iri pathing; rr-38p residual)
+- Planned hop tables in `item_gate_hops.py` (geometry only, assisted OK):
+- Probe: `scripts/probe_item_gate_hops.py --route all --infinite-life`.

@@ -1,0 +1,89 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T03:27:23.428043+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "intervention_class": "clean",
+    "natural_entry": false,
+    "segment": "level3_north_chain",
+    "start_state": "Level3WestKey"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "combat": {
+      "clear_signal_seen": true,
+      "combat_frames": 1094,
+      "frames": 1095,
+      "initial_inventory": 0,
+      "last_live_enemies": 0,
+      "max_live_enemies": 5,
+      "notes": [
+        "target_room_playable",
+        "room_cleared"
+      ],
+      "phase": "DONE",
+      "spec_id": "level3_room6b_north_zols",
+      "success": true,
+      "tuning": {
+        "attack_phase": 4,
+        "engage_attack_hold": 3,
+        "engage_attack_period": 6,
+        "engage_distance": 64,
+        "engage_dominant_axis": false,
+        "patrol_attack_hold": 3,
+        "patrol_attack_period": 10
+      }
+    },
+    "door": {
+      "failed": false,
+      "frames": 275,
+      "notes": [
+        "entered_0x6b"
+      ],
+      "policy": "UP @ x\u2248120 (|dx|\u22644); wider align sticks at x\u2248112",
+      "success": true
+    },
+    "frames": 4133,
+    "intervention_class": "clean",
+    "north_exit": {
+      "failed": false,
+      "frames": 2764,
+      "hunt_index": 50,
+      "notes": [
+        "block_f60_hunt1",
+        "block_f120_hunt1",
+        "block_f600_hunt8",
+        "block_f720_hunt10",
+        "block_f780_hunt11",
+        "block_f960_hunt14",
+        "block_f1020_hunt15",
+        "block_f1200_hunt17",
+        "block_f1260_hunt18",
+        "block_f1320_hunt19",
+        "block_f1380_hunt20",
+        "block_f1440_hunt21",
+        "block_f2160_hunt39",
+        "block_f2340_hunt46",
+        "block_f2400_hunt47",
+        "block_f2460_hunt48"
+      ],
+      "policy": "free-explore grid hunt + UP @ x\u2248120 on north band",
+      "success": false
+    },
+    "notes": [
+      "door_6b_ok",
+      "zols_cleared",
+      "already_0x5b"
+    ],
+    "phase": "done",
+    "spec_id": "level3_room6b_north_zols",
+    "stop": "level3_reached_5b",
+    "success": true,
+    "track": "clean"
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fda29-dd94-7ae2-8486-6b2825820081/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3WestKey.state",
+  "source_state_sha256": "99fe5320d15a630a4125bea59b6418adf90bbf7f998034fe033fb446ba39306f",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fda29-dd94-7ae2-8486-6b2825820081/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3Darknuts.state",
+  "state_sha256": "1d9def11f03e7f499dbdef8aee8ca5b16a36c7f1a8d88e859c2635d8353fd3d4"
+}

@@ -1,0 +1,26 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T03:23:51.048488+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "natural_entry": false,
+    "segment": "level5_east67",
+    "start_state": "Level5Cleared66"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "failed": false,
+    "frames": 416,
+    "notes": [
+      "settling_67",
+      "arrived_67"
+    ],
+    "spec_id": "level5_room67_bubbles",
+    "success": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared66.state",
+  "source_state_sha256": "c505522a568d6f45962aa230e4cd22294e8ad3daaeab1b504d63d4803425b90f",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fda29-dd94-7ae2-8486-6b3d9a9b6c1b/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/L5_Room_67.state",
+  "state_sha256": "e685ec1c4c58f68e12a7b17b62bd701eb915b3ce06dd83c9ef9a870286f6a218"
+}
