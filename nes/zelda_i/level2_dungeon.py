@@ -22,6 +22,8 @@ from zelda_i.dungeon import (
     DungeonPhase,
     DungeonRoomSpec,
     GEL_OBJECT_TYPE,
+    KEESE_OBJECT_TYPE,
+    MOLDORM_OBJECT_TYPE,
     GORIYA_OBJECT_TYPE,
     GenericDungeonRoomController,
     RewardKind,
@@ -51,7 +53,12 @@ ROOM_L2_BOMB_N = 0x5F  # N of compass via bomb wall @ (120,101); map RoomItemId 
 ROOM_L2_GORIYA_WEST = 0x5E  # W of 0x5f via key-LEFT; Goriya 0x06
 ROOM_L2_ROPES_NORTH = 0x4E  # N of Goriya free-UP; 5× Rope + key (rr-cjf)
 ROOM_L2_BOOM_CANDIDATE = 0x4F  # bomb-N of 0x5f / east of 0x4e; RoomItemId 0x1e
-ROOM_L2_NORTH_OF_4E = 0x3E  # free UP from 0x4e; residual
+ROOM_L2_NORTH_OF_4E = 0x3E  # free UP from 0x4e; also Moldorm via 0x3f LEFT
+ROOM_L2_TRAPS_KEESE = 0x3F  # bomb-N of boom 0x4f; 4× Keese + 4× traps 0x49
+ROOM_L2_GELS_NORTH = 0x2F  # bomb-N of 0x3f; 5× Gel; item 0x0f
+ROOM_L2_ROPES_UNLOCK = 0x2E  # N of Moldorm / W of 0x2f; 8× Rope kill→UP
+ROOM_L2_GORIYA_BOMBS = 0x1E  # N of 0x2e; 5× Goriya 0x06; UP→Dodongo residual
+ROOM_L2_OLD_MAN = 0x1F  # N of 0x2f / bomb-R of 0x1e; bubbles + NPC 0x4b
 ROOM_6D_LEFT_DOOR_BIT = 0x02  # cur_opened_doors bit1 after clear
 # Magical Boomerang: ADDR_MAGIC_BOOMERANG stop via level2_room_4f_magic_boomerang_success.
 # Room 0x4f RoomItemId 0x1e pure 2/2 Clean (rr-bsq/rr-ebe); L1 wooden was 0x1D.
@@ -413,10 +420,223 @@ ROOM_4F_SPEC = DungeonRoomSpec(
     exit_routes=(
         DoorRoute("DOWN", ((120, 141), (120, 205))),
         DoorRoute("LEFT", ((120, 141), (32, 141))),
+        # bomb-UP @(120,101) → 0x3f (not walk-UP); see BOMB_WALL_4F_NORTH
     ),
     max_frames=20000,
     level=LEVEL_2,
 )
+
+# --- Post-boom Dodongo path (rr-n5i, assisted recon 2026-08-06) ---
+# 0x4f bomb N @(120,101) → 0x3f traps+Keese → LEFT Moldorm 0x3e → UP ropes 0x2e
+# → UP Goriya 0x1e (doors UP|DOWN=12 after clear; physical UP to boss residual).
+# Alt: 0x3f bomb N → 0x2f gels → LEFT 0x2e; 0x2f UP → 0x1f old man.
+
+_ROOM_3F_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (120, 109),
+    (176, 109),
+    (176, 141),
+    (176, 173),
+    (120, 173),
+    (64, 173),
+    (64, 141),
+    (120, 141),
+)
+
+ROOM_3F_SPEC = DungeonRoomSpec(
+    spec_id="level2_room3f_traps_keese",
+    source_room=ROOM_L2_BOOM_CANDIDATE,
+    room_id=ROOM_L2_TRAPS_KEESE,
+    entry=DoorRoute("UP", ((120, 189),)),
+    enemy_types=(KEESE_OBJECT_TYPE,),
+    expected_enemy_count=4,
+    alive_rule=AliveRule.TYPE,  # Keese TYPE-only (hp=0 alive)
+    combat=CombatTuning(
+        patrol=_ROOM_3F_PATROL,
+        engage_distance=64,
+        attack_phase=4,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    room_item_id=0x00,
+    exit_routes=(
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+        # bomb-UP @(120,101) → 0x2f
+    ),
+    max_frames=12000,
+    level=LEVEL_2,
+)
+
+_ROOM_3E_MOLDORM_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (120, 109),
+    (176, 109),
+    (176, 141),
+    (176, 173),
+    (120, 173),
+    (64, 173),
+    (64, 141),
+    (120, 141),
+)
+
+ROOM_3E_MOLDORM_SPEC = DungeonRoomSpec(
+    spec_id="level2_room3e_moldorm_key",
+    source_room=ROOM_L2_TRAPS_KEESE,
+    room_id=ROOM_L2_NORTH_OF_4E,
+    entry=DoorRoute("LEFT", ((224, 141),)),
+    enemy_types=(MOLDORM_OBJECT_TYPE,),
+    expected_enemy_count=10,  # multi-segment; TYPE clear collapses chain
+    alive_rule=AliveRule.TYPE,
+    combat=CombatTuning(
+        patrol=_ROOM_3E_MOLDORM_PATROL,
+        engage_distance=80,
+        attack_phase=0,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.FIXED_INVENTORY,
+        inventory_field="keys",
+        target=(120, 141),
+        waypoints=((120, 141), (136, 125), (104, 125), (120, 157), (120, 141)),
+    ),
+    room_item_id=0x19,
+    exit_routes=(
+        DoorRoute("RIGHT", ((120, 141), (208, 141))),
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+    ),
+    max_frames=16000,
+    level=LEVEL_2,
+)
+
+_ROOM_2E_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (112, 109),
+    (160, 109),
+    (160, 141),
+    (160, 173),
+    (112, 173),
+    (64, 173),
+    (64, 141),
+    (120, 141),
+)
+
+ROOM_2E_SPEC = DungeonRoomSpec(
+    spec_id="level2_room2e_ropes_unlock",
+    source_room=ROOM_L2_NORTH_OF_4E,
+    room_id=ROOM_L2_ROPES_UNLOCK,
+    entry=DoorRoute("UP", ((120, 205),)),
+    enemy_types=(ROPE_OBJECT_TYPE,),
+    expected_enemy_count=8,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_2E_PATROL,
+        engage_distance=64,
+        attack_phase=4,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    room_item_id=0x03,
+    exit_routes=(
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+        DoorRoute("RIGHT", ((120, 141), (208, 141))),  # may need clear bit
+    ),
+    max_frames=16000,
+    level=LEVEL_2,
+)
+
+_ROOM_1E_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (120, 109),
+    (176, 109),
+    (176, 141),
+    (176, 173),
+    (120, 173),
+    (64, 173),
+    (64, 141),
+    (120, 141),
+)
+
+ROOM_1E_SPEC = DungeonRoomSpec(
+    spec_id="level2_room1e_goriya_bombs",
+    source_room=ROOM_L2_ROPES_UNLOCK,
+    room_id=ROOM_L2_GORIYA_BOMBS,
+    entry=DoorRoute("UP", ((120, 189),)),
+    enemy_types=(GORIYA_OBJECT_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_1E_PATROL,
+        engage_distance=72,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    room_item_id=0x00,
+    exit_routes=(
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+        # UP → Dodongo residual: doors bit UP|DOWN=12 after clear but physical
+        # collision often stays solid (open_doorway_mask lag). rr-n5i residual.
+        DoorRoute("UP", ((120, 141), (120, 93))),
+    ),
+    max_frames=20000,
+    level=LEVEL_2,
+)
+
+_ROOM_2F_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (120, 109),
+    (176, 109),
+    (176, 141),
+    (176, 173),
+    (120, 173),
+    (64, 173),
+    (64, 141),
+    (120, 141),
+)
+
+ROOM_2F_SPEC = DungeonRoomSpec(
+    spec_id="level2_room2f_gels",
+    source_room=ROOM_L2_TRAPS_KEESE,
+    room_id=ROOM_L2_GELS_NORTH,
+    entry=DoorRoute("UP", ((120, 189),)),
+    enemy_types=(GEL_OBJECT_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE,
+    combat=CombatTuning(
+        patrol=_ROOM_2F_PATROL,
+        engage_distance=56,
+        attack_phase=0,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    room_item_id=0x0F,
+    exit_routes=(
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+    ),
+    max_frames=10000,
+    level=LEVEL_2,
+)
+
 
 
 def level2_room_6d_cleared(ram: np.ndarray) -> bool:
@@ -516,6 +736,39 @@ def level2_room_4f_magic_boomerang_success(ram: np.ndarray) -> bool:
     """
     return read_u8(ram, ADDR_MAGIC_BOOMERANG) != 0
 
+def level2_room_3f_ready(ram: np.ndarray) -> bool:
+    """Play-ready on L2 traps+Keese room 0x3f (bomb-north of boom 0x4f)."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL_2
+        and snap.screen == ROOM_L2_TRAPS_KEESE
+        and snap.mode == PLAY_MODE
+    )
+
+
+def level2_room_3e_moldorm_key_success(ram: np.ndarray) -> bool:
+    """Moldorm dead and keys increased (fixed key 0x19 on 0x3e)."""
+    return inventory_reward_success(ram, ROOM_3E_MOLDORM_SPEC, min_value=1)
+
+
+def level2_room_2e_cleared(ram: np.ndarray) -> bool:
+    """0x2e 8× Rope dead (kill opens UP toward Goriya 0x1e)."""
+    return dungeon_room_cleared(ram, ROOM_2E_SPEC)
+
+
+def level2_room_1e_cleared(ram: np.ndarray) -> bool:
+    """0x1e 5× Goriya dead (doors often UP|DOWN=12; physical UP residual)."""
+    return dungeon_room_cleared(ram, ROOM_1E_SPEC)
+
+
+def level2_triforce_bit_02(ram: np.ndarray) -> bool:
+    """Moon triforce shard collected (ADDR_TRIFORCE & 0x02)."""
+    from zelda_i.ram import ADDR_TRIFORCE
+
+    return (read_u8(ram, ADDR_TRIFORCE) & 0x02) != 0
+
+
+# --- Bomb-north pure: 0x6f stand (120,101) UP+B → 0x5f (rr-lzk) ---
 
 # --- Bomb-north pure: 0x6f stand (120,101) UP+B → 0x5f (rr-lzk) ---
 # Recon: l2_past6f_expand.json. Level2Compass often mid-scroll + gels present
@@ -1042,6 +1295,208 @@ for _spec in (
 ):
     register_room_spec(_spec)
 
+# --- Post-boom bomb-north: 0x4f stand (120,101) UP+B → 0x3f (rr-n5i) ---
+# Same stand as 0x6f/0x5f bomb-N. From Level2Boom (enemies clear, boom owned).
+
+
+class PostBoomBombNorthPhase(Enum):
+    """Phase machine for 0x4f bomb-north → 0x3f traps+Keese."""
+
+    SETTLE = auto()
+    TO_STAND = auto()
+    FACE = auto()
+    PLACE = auto()
+    WAIT = auto()
+    PUSH = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level2PostBoomBombNorthController:
+    """From 0x4f (boom collected): bomb north wall @ (120,101), enter 0x3f.
+
+    Clean geometry policy: no health/inventory poke. Fails if bombs==0.
+    Reuses BOMB_N_STAND / blast wait from compass bomb-N.
+    """
+
+    phase: PostBoomBombNorthPhase = PostBoomBombNorthPhase.SETTLE
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    bombs_before_place: int | None = None
+    bombs_after_place: int | None = None
+    max_frames: int = BOOM_BOMB_N_MAX_FRAMES
+    stand: tuple[int, int] = BOOM_BOMB_N_STAND
+    stand_tol: int = BOMB_N_STAND_TOL
+    wait_blast: int = BOMB_N_WAIT_BLAST
+
+    def _set_phase(self, phase: PostBoomBombNorthPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(PostBoomBombNorthPhase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def _at_stand(self, snap: ZeldaSnapshot) -> bool:
+        tx, ty = self.stand
+        return abs(snap.link_x - tx) <= self.stand_tol and abs(
+            snap.link_y - ty
+        ) <= self.stand_tol
+
+    def _goto_stand(self, snap: ZeldaSnapshot) -> FrameAction:
+        tx, ty = self.stand
+        dx = tx - snap.link_x
+        dy = ty - snap.link_y
+        if abs(snap.link_y - ty) <= 12 and abs(dx) > self.stand_tol:
+            if abs(dy) > self.stand_tol:
+                return FrameAction(
+                    nes_action("UP" if dy < 0 else "DOWN"), "stand_band_y"
+                )
+            return FrameAction(
+                nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_band_x"
+            )
+        if abs(dx) > self.stand_tol and abs(dx) >= abs(dy):
+            return FrameAction(
+                nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_x"
+            )
+        if abs(dy) > self.stand_tol:
+            return FrameAction(
+                nes_action("UP" if dy < 0 else "DOWN"), "stand_y"
+            )
+        return FrameAction(nes_idle_action(), "stand_ready")
+
+    def _push_north(self, snap: ZeldaSnapshot) -> FrameAction:
+        cx = self.stand[0]
+        x_tol = 3 if snap.link_y <= 110 else 6
+        if abs(snap.link_x - cx) > x_tol:
+            return FrameAction(
+                nes_action("RIGHT" if snap.link_x < cx else "LEFT"),
+                "push_align_x",
+            )
+        return FrameAction(nes_action("UP"), "push_north")
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if self.phase is PostBoomBombNorthPhase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is PostBoomBombNorthPhase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+
+        if (
+            snap.level == LEVEL_2
+            and snap.screen == ROOM_L2_TRAPS_KEESE
+            and snap.mode == PLAY_MODE
+        ):
+            self.success = True
+            self._set_phase(PostBoomBombNorthPhase.DONE, "entered_0x3f")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.level != LEVEL_2:
+            return FrameAction(nes_idle_action(), f"wait_level_{LEVEL_2}")
+
+        if snap.transitioning or snap.mode in (4, 6, 7, 16):
+            if (
+                self.phase is PostBoomBombNorthPhase.PUSH
+                or snap.screen == ROOM_L2_TRAPS_KEESE
+            ):
+                return FrameAction(nes_action("UP"), "scroll_north")
+            return FrameAction(nes_idle_action(), f"settle_mode_{snap.mode}")
+
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if self.phase is PostBoomBombNorthPhase.SETTLE:
+            if snap.screen != ROOM_L2_BOOM_CANDIDATE:
+                return self._fail(f"wrong_room_0x{snap.screen:02x}")
+            if snap.bombs <= 0:
+                return self._fail("no_bombs")
+            self._set_phase(PostBoomBombNorthPhase.TO_STAND, "to_bomb_stand")
+            return self._goto_stand(snap)
+
+        if self.phase is PostBoomBombNorthPhase.TO_STAND:
+            if self._at_stand(snap):
+                self._set_phase(PostBoomBombNorthPhase.FACE, "at_bomb_stand")
+                return FrameAction(nes_action("UP"), "face_up")
+            return self._goto_stand(snap)
+
+        if self.phase is PostBoomBombNorthPhase.FACE:
+            if self.phase_frames < 6:
+                return FrameAction(nes_action("UP"), "face_up")
+            self._set_phase(PostBoomBombNorthPhase.PLACE, "faced_up")
+            self.bombs_before_place = int(snap.bombs)
+            return FrameAction(nes_action("UP", "B"), "place_bomb")
+
+        if self.phase is PostBoomBombNorthPhase.PLACE:
+            self.bombs_after_place = int(snap.bombs)
+            if (
+                self.bombs_before_place is not None
+                and self.bombs_after_place < self.bombs_before_place
+            ):
+                self.notes.append(
+                    f"bomb_used_{self.bombs_before_place}->{self.bombs_after_place}"
+                )
+            self._set_phase(PostBoomBombNorthPhase.WAIT, "placed_bomb")
+            return FrameAction(nes_action("UP"), "wait_blast")
+
+        if self.phase is PostBoomBombNorthPhase.WAIT:
+            if self.phase_frames < self.wait_blast:
+                return FrameAction(nes_action("UP"), "wait_blast")
+            self._set_phase(PostBoomBombNorthPhase.PUSH, "blast_done")
+            return self._push_north(snap)
+
+        if self.phase is PostBoomBombNorthPhase.PUSH:
+            return self._push_north(snap)
+
+        return FrameAction(nes_idle_action(), "idle")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "success": self.success,
+            "notes": list(self.notes),
+            "stand": list(self.stand),
+            "bombs_before_place": self.bombs_before_place,
+            "bombs_after_place": self.bombs_after_place,
+        }
+
+
+def make_post_boom_bomb_north_controller() -> Level2PostBoomBombNorthController:
+    """Factory for isolated 0x4f → 0x3f bomb-north segment (post Magical Boom)."""
+    return Level2PostBoomBombNorthController()
+
+
+for _spec in (
+    ROOM_7D_SPEC,
+    ROOM_6D_SPEC,
+    ROOM_6C_SPEC,
+    ROOM_7E_SPEC,
+    ROOM_6E_SPEC,
+    ROOM_6F_SPEC,
+    ROOM_5E_SPEC,
+    ROOM_4E_SPEC,
+    ROOM_4F_SPEC,
+    ROOM_3F_SPEC,
+    ROOM_3E_MOLDORM_SPEC,
+    ROOM_2E_SPEC,
+    ROOM_1E_SPEC,
+    ROOM_2F_SPEC,
+):
+    register_room_spec(_spec)
+
 
 
 # Alias used by run_level2_bomb_north_5f (geometry-only hop; same stand as boom bomb).
@@ -1051,6 +1506,70 @@ Level2BombNorth5FController = Level2BoomBombNorthController
 def make_bomb_north_5f_controller() -> Level2BoomBombNorthController:
     return Level2BoomBombNorthController(clear_gels=False)
 
+
+__all__ = [
+    "LEVEL_2",
+    "ROOM_L2_ENTRY",
+    "ROOM_L2_ROPES",
+    "ROOM_L2_WEST_KEY",
+    "ROOM_L2_EAST_KEY",
+    "ROOM_L2_EAST_OF_ROPES",
+    "ROOM_L2_COMPASS",
+    "ROOM_L2_BOMB_N",
+    "ROOM_L2_GORIYA_WEST",
+    "ROOM_L2_ROPES_NORTH",
+    "ROOM_L2_BOOM_CANDIDATE",
+    "ROOM_L2_NORTH_OF_4E",
+    "ROOM_L2_TRAPS_KEESE",
+    "ROOM_L2_GELS_NORTH",
+    "ROOM_L2_ROPES_UNLOCK",
+    "ROOM_L2_GORIYA_BOMBS",
+    "ROOM_L2_OLD_MAN",
+    "ROOM_6D_LEFT_DOOR_BIT",
+    "ROOM_7D_SPEC",
+    "ROOM_6D_SPEC",
+    "ROOM_6C_SPEC",
+    "ROOM_7E_SPEC",
+    "ROOM_6E_SPEC",
+    "ROOM_6F_SPEC",
+    "ROOM_5E_SPEC",
+    "ROOM_4E_SPEC",
+    "ROOM_4F_SPEC",
+    "ROOM_3F_SPEC",
+    "ROOM_3E_MOLDORM_SPEC",
+    "ROOM_2E_SPEC",
+    "ROOM_1E_SPEC",
+    "ROOM_2F_SPEC",
+    "BOMB_N_STAND",
+    "BOOM_BOMB_N_STAND",
+    "B_ITEM_BOMB",
+    "BombNorthPhase",
+    "BoomBombNorthPhase",
+    "PostBoomBombNorthPhase",
+    "Level2BombNorthController",
+    "Level2BoomBombNorthController",
+    "Level2BombNorth5FController",
+    "Level2PostBoomBombNorthController",
+    "make_bomb_north_5f_controller",
+    "make_bomb_north_controller",
+    "make_boom_bomb_north_controller",
+    "make_post_boom_bomb_north_controller",
+    "level2_room_6d_cleared",
+    "level2_room_6c_key_success",
+    "level2_room_7e_key_success",
+    "level2_room_6e_cleared",
+    "level2_room_6f_compass_success",
+    "level2_room_5f_ready",
+    "level2_room_5e_cleared",
+    "level2_room_4e_key_success",
+    "level2_room_4f_ready",
+    "level2_room_4f_magic_boomerang_success",
+    "level2_room_3f_ready",
+    "level2_room_3e_moldorm_key_success",
+    "level2_room_2e_cleared",
+    "level2_room_1e_cleared",
+    "level2_triforce_bit_02",
+]
 
 __all__ = [
     "LEVEL_2",
@@ -1082,8 +1601,6 @@ __all__ = [
     "BoomBombNorthPhase",
     "Level2BombNorthController",
     "Level2BoomBombNorthController",
-    "Level2BombNorth5FController",
-    "make_bomb_north_5f_controller",
     "make_bomb_north_controller",
     "make_boom_bomb_north_controller",
     "level2_room_6d_cleared",

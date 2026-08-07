@@ -25,6 +25,7 @@ CLEAR_SETTLE_ALL_DEAD = 20
 
 # Shared enemy type IDs (used by multiple dungeon levels / finish helpers).
 KEESE_OBJECT_TYPE = 0x1B
+MOLDORM_OBJECT_TYPE = 0x41  # multi-segment worm (L2 0x3e)
 GEL_OBJECT_TYPE = 0x15
 # L2 boom room 0x4f uses type 0x05 (walkthrough blue Goriya; residual label).
 # Red Goriya on 0x5e is 0x06.
@@ -634,6 +635,10 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
         "level2_room_6f_compass_success",
     ),
     "level2_room_5f_ready": ("zelda_i.level2_dungeon", "level2_room_5f_ready"),
+    "PostBoomBombNorthPhase": ("zelda_i.level2_dungeon", "PostBoomBombNorthPhase"),
+    "Level2PostBoomBombNorthController": ("zelda_i.level2_dungeon", "Level2PostBoomBombNorthController"),
+    "level2_room_3f_ready": ("zelda_i.level2_dungeon", "level2_room_3f_ready"),
+    "ROOM_3F_SPEC": ("zelda_i.level2_dungeon", "ROOM_3F_SPEC"),
     "level2_room_5e_cleared": ("zelda_i.level2_dungeon", "level2_room_5e_cleared"),
     "level2_room_4e_key_success": (
         "zelda_i.level2_dungeon",
