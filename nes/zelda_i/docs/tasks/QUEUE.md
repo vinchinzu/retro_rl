@@ -23,7 +23,7 @@ sword kiting once geometry is known.
 | L2 Boom → TF `0x02` | **assisted green 2/2** | `rr-5dk` / `rr-n5i`; `l2_complete_assisted.json` |
 | Post-L2 → L3 enter | **assisted green 2/2** | `rr-rnx`; `l2_to_l3_assisted.json`; epic `rr-ci7` closed |
 | Checkpoints | **`Level2ExitOverworld`**, **`Level3Entrance`** | post-TF OW 0x3C; Manji room 0x7c |
-| Tip leaf | **L3 interior** | west key / north pure already; Raft → Manhandla → TF `0x04` (`rr-vpl`) |
+| Tip leaf | **L3 Raft residual** | west/north pure; **assisted Raft LIVE** (`Level3Raft`); Manhandla → TF `0x04` (`rr-vpl`) |
 | Deferred | Clean residual `rr-4oz` until full-game assist pass | not tip-blocking |
 
 ### All-night wave results (2026-08-06 night)
@@ -37,6 +37,7 @@ sword kiting once geometry is known.
 | **rr-3pz** | `level2_puzzles.py` catalog |
 | **rr-mhl** | `door_graph.py` + L2 seed |
 | **rr-65w** | **2/2 Clean** L3 north to 0x5b Darknuts |
+| **rr-vpl** tip | L3 past 0x5b **LIVE graph** + **assisted Raft** (`l3_past_5b` / `l3_raft`); Manhandla residual |
 | **rr-miy** | **2/2 assisted** L6 west wizzrobes 0x78 |
 | **rr-87a** / **rr-076** | L5 graph PARTIAL (0x67 dead-end; Pols door residual) |
 | **rr-iri** / **rr-ccx** / **rr-q8a** | OW hops + candle shop 0x5E; burn residual |

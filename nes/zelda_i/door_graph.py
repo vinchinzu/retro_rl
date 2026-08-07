@@ -759,6 +759,243 @@ def level_2_door_graph() -> DungeonDoorGraph:
     return DungeonDoorGraph.from_exits(raw, level=2, name="level_2_moon")
 
 
+# ---------------------------------------------------------------------------
+# Level 3 (Manji) seed — additive LIVE edges (rr-vpl / l3_past_5b 2026-08-07)
+# ---------------------------------------------------------------------------
+
+L3_ENTRY = 0x7C
+L3_WEST_KEY = 0x7B
+L3_NORTH_ZOLS = 0x6B
+L3_DARKNUTS = 0x5B
+L3_ZOL_KEY_4B = 0x4B
+L3_COMPASS = 0x5A
+L3_WEST_DARKNUTS = 0x59
+L3_SOUTH_DARKNUTS = 0x69
+L3_RAFT_PASSAGE = 0x0F
+L3_MAP_4C = 0x4C
+L3_BOMB_SHORTCUT = 0x5C
+L3_KEESE_4A = 0x4A
+
+_BOMB_STAND_5B_R = (192, 141)  # bomb-RIGHT → 0x5c boss shortcut
+_STAIRS_69_RIGHT_Y = 141
+
+
+def _l3_exits() -> dict[int, tuple[RoomExit, ...]]:
+    """L3 edges observed assisted LIVE (not all pure-runner encoded)."""
+    return {
+        L3_ENTRY: (
+            RoomExit(
+                DoorDir.LEFT,
+                L3_WEST_KEY,
+                GateKind.OPEN,
+                approach_xy=(48, 149),
+                notes="LEFT+UP diagonal residual @ y≈149 (pure LEFT sticks x≈32)",
+                verification="observed",
+            ),
+        ),
+        L3_WEST_KEY: (
+            RoomExit(
+                DoorDir.UP,
+                L3_NORTH_ZOLS,
+                GateKind.OPEN,
+                approach_xy=(120, 93),
+                notes="UP @ x≈120 (|dx|≤4); wider align sticks x≈112",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.RIGHT,
+                L3_ENTRY,
+                GateKind.OPEN,
+                notes="return east to entry",
+                verification="observed",
+            ),
+        ),
+        L3_NORTH_ZOLS: (
+            RoomExit(
+                DoorDir.UP,
+                L3_DARKNUTS,
+                GateKind.KILL_CLEAR,
+                approach_xy=(120, 93),
+                notes="after type-0x13 clear; free-explore + UP @ x≈120",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.DOWN,
+                L3_WEST_KEY,
+                GateKind.OPEN,
+                notes="return south",
+                verification="observed",
+            ),
+        ),
+        L3_DARKNUTS: (
+            RoomExit(
+                DoorDir.UP,
+                L3_ZOL_KEY_4B,
+                GateKind.OPEN,
+                approach_xy=(120, 93),
+                notes="open without Darknut clear; 3× Zol + key",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.DOWN,
+                L3_NORTH_ZOLS,
+                GateKind.OPEN,
+                notes="return south",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.LEFT,
+                L3_COMPASS,
+                GateKind.OPEN,
+                approach_xy=(32, 141),
+                notes="4× Keese + traps + Compass 0x16 — Raft path",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.RIGHT,
+                L3_BOMB_SHORTCUT,
+                GateKind.BOMB,
+                bomb_stand=_BOMB_STAND_5B_R,
+                notes="bomb-RIGHT @(192,141) → 0x5c boss shortcut (recon)",
+                verification="observed",
+            ),
+        ),
+        L3_ZOL_KEY_4B: (
+            RoomExit(
+                DoorDir.DOWN,
+                L3_DARKNUTS,
+                GateKind.OPEN,
+                notes="return south",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.LEFT,
+                L3_KEESE_4A,
+                GateKind.KEY,
+                approach_xy=(32, 141),
+                notes="key door → 5× Keese 0x4a",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.RIGHT,
+                L3_MAP_4C,
+                GateKind.KEY,
+                approach_xy=(208, 141),
+                notes="key door → map room item 0x17",
+                verification="observed",
+            ),
+        ),
+        L3_COMPASS: (
+            RoomExit(
+                DoorDir.RIGHT,
+                L3_DARKNUTS,
+                GateKind.OPEN,
+                notes="return east",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.LEFT,
+                L3_WEST_DARKNUTS,
+                GateKind.KEY,
+                approach_xy=(32, 141),
+                notes="key door → 5× Darknut; long y=141 push (key-waste trap if misaligned)",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                L3_KEESE_4A,
+                GateKind.OPEN,
+                notes="free north → 5× Keese",
+                verification="observed",
+            ),
+        ),
+        L3_WEST_DARKNUTS: (
+            RoomExit(
+                DoorDir.RIGHT,
+                L3_COMPASS,
+                GateKind.OPEN,
+                notes="return east after key entry",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.DOWN,
+                L3_SOUTH_DARKNUTS,
+                GateKind.KILL_CLEAR,
+                approach_xy=(120, 205),
+                notes="kill 5 Darknuts opens DOWN; settle spawn ~80–100f",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                0x49,
+                GateKind.OPEN,
+                notes="north mixed room (probe)",
+                verification="observed",
+            ),
+        ),
+        L3_SOUTH_DARKNUTS: (
+            RoomExit(
+                DoorDir.UP,
+                L3_WEST_DARKNUTS,
+                GateKind.OPEN,
+                notes="return north",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.RIGHT,
+                L3_RAFT_PASSAGE,
+                GateKind.KILL_CLEAR,
+                approach_xy=(208, _STAIRS_69_RIGHT_Y),
+                notes=(
+                    "stairs RIGHT only @ y≈141 after 8× Darknut clear → "
+                    "mode-9 passage 0x0f (Raft)"
+                ),
+                verification="observed",
+            ),
+        ),
+        L3_RAFT_PASSAGE: (
+            RoomExit(
+                DoorDir.LEFT,
+                None,
+                GateKind.OPEN,
+                notes=(
+                    "underworld mode 9: DOWN y189 → RIGHT x≈176 → UP channel → "
+                    "LEFT x≈136 touch Raft (ADDR_RAFT); not a cardinal door"
+                ),
+                verification="observed",
+            ),
+        ),
+    }
+
+
+LEVEL_3_DOOR_GRAPH = DungeonDoorGraph.from_exits(
+    _l3_exits(),
+    level=3,
+    name="level_3_manji",
+)
+
+
+def level_3_door_graph() -> DungeonDoorGraph:
+    """Return a fresh copy of the L3 seed graph (safe to mutate rooms)."""
+    raw = {
+        rid: tuple(
+            RoomExit(
+                direction=e.direction,
+                target_room=e.target_room,
+                gate=e.gate,
+                bomb_stand=e.bomb_stand,
+                approach_xy=e.approach_xy,
+                key_cost=e.key_cost,
+                notes=e.notes,
+                verification=e.verification,
+            )
+            for e in exits
+        )
+        for rid, exits in LEVEL_3_DOOR_GRAPH.rooms.items()
+    }
+    return DungeonDoorGraph.from_exits(raw, level=3, name="level_3_manji")
+
+
 __all__ = [
     "DoorDir",
     "GateKind",
@@ -767,6 +1004,8 @@ __all__ = [
     "DungeonDoorGraph",
     "LEVEL_2_DOOR_GRAPH",
     "level_2_door_graph",
+    "LEVEL_3_DOOR_GRAPH",
+    "level_3_door_graph",
     "door_dir_from_label",
     "dirs_from_mask",
     "L2_ENTRY",
@@ -786,4 +1025,16 @@ __all__ = [
     "L2_DODONGO",
     "L2_WEST_OF_BOSS",
     "L2_OW_DOOR_SCREEN",
+    "L3_ENTRY",
+    "L3_WEST_KEY",
+    "L3_NORTH_ZOLS",
+    "L3_DARKNUTS",
+    "L3_ZOL_KEY_4B",
+    "L3_COMPASS",
+    "L3_WEST_DARKNUTS",
+    "L3_SOUTH_DARKNUTS",
+    "L3_RAFT_PASSAGE",
+    "L3_MAP_4C",
+    "L3_BOMB_SHORTCUT",
+    "L3_KEESE_4A",
 ]

@@ -6,21 +6,33 @@ import numpy as np
 
 from zelda_i.level3_dungeon import (
     DARKNUT_OBJECT_TYPE,
+    KEESE_OBJECT_TYPE,
     NORTH_DOOR_X,
+    RAFT_CHANNEL_X,
+    RAFT_PASSAGE_MODE,
+    ROOM_4B_SPEC,
+    ROOM_5A_SPEC,
     ROOM_5B_SPEC,
     ROOM_6B_SPEC,
     ROOM_7B_SPEC,
+    ROOM_ITEM_COMPASS,
+    ROOM_ITEM_RAFT,
+    ROOM_L3_COMPASS,
     ROOM_L3_DARKNUTS,
     ROOM_L3_ENTRY,
     ROOM_L3_NORTH_ZOLS,
+    ROOM_L3_RAFT_PASSAGE,
     ROOM_L3_WEST_KEY,
+    ROOM_L3_ZOL_KEY_4B,
     WEST_DOOR_APPROACH_Y,
     ZOL_OBJECT_TYPE,
     Level3NorthChainController,
     Level3NorthDoor7bController,
     Level3WestDoorController,
     Level3WestKeyController,
+    level3_has_raft,
     level3_reached_5b,
+    level3_room_4b_zols_cleared,
     level3_room_6b_zols_cleared,
     level3_room_7b_key_success,
     north_door_7b_step,
@@ -80,6 +92,13 @@ def test_room_ids_and_spec() -> None:
     assert ROOM_L3_WEST_KEY == 0x7B
     assert ROOM_L3_NORTH_ZOLS == 0x6B
     assert ROOM_L3_DARKNUTS == 0x5B
+    assert ROOM_L3_ZOL_KEY_4B == 0x4B
+    assert ROOM_L3_COMPASS == 0x5A
+    assert ROOM_L3_RAFT_PASSAGE == 0x0F
+    assert RAFT_PASSAGE_MODE == 9
+    assert RAFT_CHANNEL_X == 176
+    assert ROOM_ITEM_RAFT == 0x0C
+    assert ROOM_ITEM_COMPASS == 0x16
     assert ROOM_7B_SPEC.room_id == 0x7B
     assert ROOM_7B_SPEC.level == 3
     assert ROOM_7B_SPEC.enemy_types == (ZOL_OBJECT_TYPE,)
@@ -90,6 +109,12 @@ def test_room_ids_and_spec() -> None:
     assert ROOM_6B_SPEC.reward.settle_all_dead == 0
     assert ROOM_5B_SPEC.enemy_types == (DARKNUT_OBJECT_TYPE,)
     assert ROOM_5B_SPEC.expected_enemy_count == 3
+    assert ROOM_4B_SPEC.room_id == 0x4B
+    assert ROOM_4B_SPEC.expected_enemy_count == 3
+    assert ROOM_4B_SPEC.enemy_types == (ZOL_OBJECT_TYPE,)
+    assert ROOM_5A_SPEC.room_id == 0x5A
+    assert ROOM_5A_SPEC.enemy_types == (KEESE_OBJECT_TYPE,)
+    assert ROOM_5A_SPEC.room_item_id == ROOM_ITEM_COMPASS
 
 
 def test_live_zols_type_and_hp() -> None:
@@ -123,6 +148,21 @@ def test_6b_clear_and_5b_predicates() -> None:
     )
     assert level3_reached_5b(_ram(room=ROOM_L3_DARKNUTS, darknuts=3))
     assert not level3_reached_5b(_ram(room=ROOM_L3_NORTH_ZOLS))
+    assert level3_room_4b_zols_cleared(
+        _ram(room=ROOM_L3_ZOL_KEY_4B, zols=0)
+    )
+    assert not level3_room_4b_zols_cleared(
+        _ram(room=ROOM_L3_ZOL_KEY_4B, zols=2, hp=32)
+    )
+
+
+def test_has_raft_predicate() -> None:
+    from zelda_i.ram import ADDR_RAFT
+
+    ram = _ram(room=ROOM_L3_RAFT_PASSAGE)
+    assert not level3_has_raft(ram)
+    ram[ADDR_RAFT] = 1
+    assert level3_has_raft(ram)
 
 
 def test_west_door_step_mouth_and_align() -> None:
