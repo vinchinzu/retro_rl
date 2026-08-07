@@ -15,6 +15,30 @@ noted. Do not promote natural-entry or Clean gates from this doc alone.
 | Entry room | **`0x7c`** | **live** `level==3` mode 5 |
 | Checkpoint | `Level3Entrance.state` | `custom_integrations/LegendOfZelda-Nes/` |
 
+### Post-L2 (Moon TF) → Manji (assisted LIVE, rr-rnx, 2026-08-07)
+
+After L2 `tf&0x02`, fanfare settles to OW **0x3C** ~(112,125)
+(`Level2ExitOverworld`). Reverse Moon door corridor + reverse 0x5C maze, then
+west-forest join to door:
+
+```
+0x3C S → 0x4C E@y∈[133,145] → 0x4D S@x≈52 → 0x5D W → 0x5C
+  [reverse maze] → 0x5B leave bush → 0x5A … → 0x55 S → 0x65
+  W → 0x64 W@y≈125–150 → 0x63 S → 0x73 E → 0x74 UP → 0x7c
+```
+
+**2/2 assisted** evidence: `recordings/l2_to_l3_assisted.json`.
+Runner: `scripts/run_l2_to_l3.py --infinite-life --from-state Level2ExitOverworld`.
+Hops: `LEVEL3_HOPS_FROM_POST_L2` / `OverworldPostL2ToLevel3Controller`.
+
+**Traps:**
+
+| Screen | Trap |
+|--------|------|
+| 0x4C east | **y∈[133,145] only** — y=149 solid forever |
+| 0x5C reverse | denser channel waypoints; **no y_band** on 0x5B hop |
+| 0x64 west | band **y≈125–150** (y≈109 wall-hug sticks) |
+
 ### Path from start / post-sword
 
 **Source** (Zelda Dungeon — *not* walkable as stated):

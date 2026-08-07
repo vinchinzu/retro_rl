@@ -1,17 +1,26 @@
-"""Assisted: Level2Boom → Dodongo 0x0e bomb-mouth → triforce bit 0x02 (rr-n5i).
+"""Assisted: Level2Boom → Dodongo 0x0e bomb-mouth → triforce bit 0x02 (rr-5dk).
 
 Path (live 2026-08-07):
   0x4f bomb-N → 0x3f → LEFT Moldorm 0x3e → UP ropes 0x2e clear → UP Goriya 0x1e
   clear → **bomb-N @(120,101)** → boss **0x0e** (type 0x32 Dodongo)
-  → 2× bomb-in-mouth → Heart → RIGHT TF room → ADDR_TRIFORCE & 0x02
+  → 2× bomb-in-mouth → Heart → **LEFT** TF room **0x0d** (WEST of boss)
+  → south-band waypoints → ADDR_TRIFORCE & 0x02
+
+TF collect on 0x0d (LIVE)::
+
+    (208,141) → (208,189) → (128,189) → (128,149) → idle (mode 18 / tf&0x02)
 
 Walk-UP on 0x1e after clear is **solid** (doors bit UP|DOWN=12 is a red herring;
-physical open is bomb wall). Prefer ``--infinite-life`` first pass; not Clean STATUS.
+physical open is bomb wall). Walkthrough "TF east of boss" is **wrong live**:
+post-kill doors are LEFT-only; RIGHT sealed. Prefer ``--infinite-life`` first
+pass; not Clean STATUS / natural-entry. Compose tip green: 2/2 Boom→TF +
+``Level2Complete`` (evidence ``recordings/l2_complete_assisted.json``).
 
 Examples::
 
-    uv run python nes/zelda_i/scripts/run_level2_dodongo.py --infinite-life --trials 1
-    uv run python nes/zelda_i/scripts/run_level2_dodongo.py --infinite-life --save-state
+    uv run python nes/zelda_i/scripts/run_level2_dodongo.py --infinite-life --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level2_dodongo.py --infinite-life --from-state Level2_0E
+    uv run python nes/zelda_i/scripts/run_level2_complete.py --infinite-life --trials 2 --save-state
 """
 
 # ruff: noqa: E402
@@ -19,6 +28,7 @@ Examples::
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -57,6 +67,17 @@ from zelda_i.level2_dungeon import (
     ROOM_1E_SPEC,
     ROOM_2E_SPEC,
 )
+from zelda_i.level2_puzzles import (
+    L2_TF_COLLECT_WAYPOINTS,
+    L2_TF_PROBE_EVIDENCE,
+    L2_TF_PUSH_BLOCK_STAND,
+    L2_TF_PUSH_DIR,
+    L2_TF_WAYPOINT_TOL,
+    LEVEL2_TRIFORCE_BIT,
+    POST_BOSS_TF_POLICY,
+    ROOM_L2_BOSS,
+    ROOM_L2_TF,
+)
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import (
     ADDR_TRIFORCE,
@@ -66,18 +87,24 @@ from zelda_i.ram import (
     read_u8,
 )
 
-# Live 2026-08-07 (probe_level2_1e_up)
+# Live 2026-08-07 (probe_level2_1e_up / rr-n5i / l2_0d_tf_reach)
 ROOM_3F = 0x3F
 ROOM_3E = 0x3E
 ROOM_2E = 0x2E
 ROOM_1E = 0x1E
-ROOM_0E = 0x0E  # Dodongo boss
-ROOM_TF = 0x0D  # expected east of boss (walkthrough); verified live if open
+ROOM_0E = ROOM_L2_BOSS  # 0x0E Dodongo
+ROOM_TF = ROOM_L2_TF  # 0x0D WEST/LEFT of boss — NOT east
+LEVEL2_TF_BIT = LEVEL2_TRIFORCE_BIT  # 0x02
 DODONGO_TYPE = 0x32
 KEESE = 0x1B
 BOMB_STAND_1E = (120, 101)
 ADDR_SELECTED_ITEM = 0x0656
 B_ITEM_BOMB = 0x02
+# Optional JSON override; hardcoded LIVE waypoints always available as fallback.
+L2_TF_REACH_JSON = RECORDINGS_DIR / Path(L2_TF_PROBE_EVIDENCE).name
+# Hardcoded LIVE south-band policy (encode even if JSON missing).
+_DEFAULT_TF_WAYPOINTS: tuple[tuple[int, int], ...] = L2_TF_COLLECT_WAYPOINTS
+_DEFAULT_TF_TOL = L2_TF_WAYPOINT_TOL
 
 # Facing bits (ADDR_LINK_FACING / obj facing)
 FACE_E, FACE_W, FACE_S, FACE_N = 0x01, 0x02, 0x04, 0x08
@@ -539,45 +566,168 @@ def _fight_dodongo(env, assist: UnlimitedHealthAssist | None, *, max_frames: int
     }
 
 
-def _collect_and_tf(env, assist: UnlimitedHealthAssist | None, *, budget: int = 4000) -> dict:
-    """After Dodongo: collect heart, leave via open door (live: LEFT bit=2), TF center.
+def _load_tf_policy() -> dict:
+    """Resolve TF collect policy: JSON override if LIVE, else hardcoded catalog.
 
-    Live 2026-08-07: post-kill doors=LEFT only (0x02), heart RoomItemId 0x1A on
-    0x0e; walkthrough "east" is residual vs live LEFT→0x0d candidate.
+    Hardcoded default is LIVE south-band maze from level2_puzzles (always
+    present so encode works even if l2_0d_tf_reach.json is missing).
     """
-    log = []
+    default = {
+        "source": "level2_puzzles.POST_BOSS_TF_POLICY",
+        "waypoints": [list(w) for w in _DEFAULT_TF_WAYPOINTS],
+        "push_stand": (
+            list(L2_TF_PUSH_BLOCK_STAND) if L2_TF_PUSH_BLOCK_STAND else None
+        ),
+        "push_dir": L2_TF_PUSH_DIR,
+        "tol": _DEFAULT_TF_TOL,
+        "notes": POST_BOSS_TF_POLICY.notes,
+        "kind": "south_band_waypoints",
+    }
+    path = L2_TF_REACH_JSON
+    if not path.is_file():
+        return default
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return default
+    result = str(data.get("result") or "").upper()
+    if result not in ("LIVE", "OK", "TF_02", "SUCCESS"):
+        return default
+    pol = data.get("winning_policy") or data.get("policy")
+    if not isinstance(pol, dict):
+        return default
+    # Merge: JSON waypoints win; fill gaps from default.
+    merged = dict(default)
+    merged["source"] = str(path)
+    if pol.get("waypoints") or pol.get("collect_waypoints"):
+        merged["waypoints"] = pol.get("waypoints") or pol.get("collect_waypoints")
+    if "push_stand" in pol or "push_block_stand" in pol:
+        merged["push_stand"] = pol.get("push_stand") or pol.get("push_block_stand")
+    if pol.get("push_dir") or pol.get("push_face"):
+        merged["push_dir"] = pol.get("push_dir") or pol.get("push_face")
+    if pol.get("tol") is not None:
+        merged["tol"] = int(pol["tol"])
+    if pol.get("notes"):
+        merged["notes"] = pol["notes"]
+    if pol.get("kind"):
+        merged["kind"] = pol["kind"]
+    return merged
+
+
+def _policy_waypoints(pol: dict | None) -> list[tuple[int, int]]:
+    if not pol:
+        return list(_DEFAULT_TF_WAYPOINTS)
+    raw = pol.get("waypoints") or pol.get("collect_waypoints") or _DEFAULT_TF_WAYPOINTS
+    out: list[tuple[int, int]] = []
+    for w in raw:
+        if isinstance(w, (list, tuple)) and len(w) >= 2:
+            out.append((int(w[0]), int(w[1])))
+    return out or list(_DEFAULT_TF_WAYPOINTS)
+
+
+def _policy_push(pol: dict | None) -> tuple[tuple[int, int] | None, str | None]:
+    if not pol:
+        return None, None
+    stand = pol.get("push_stand") or pol.get("push_block_stand")
+    face = pol.get("push_dir") or pol.get("push_face") or pol.get("push")
+    if isinstance(stand, (list, tuple)) and len(stand) >= 2:
+        return (int(stand[0]), int(stand[1])), (str(face).upper() if face else None)
+    return None, (str(face).upper() if face else None)
+
+
+def _collect_and_tf(env, assist: UnlimitedHealthAssist | None, *, budget: int = 4000) -> dict:
+    """After Dodongo: HC → LEFT exit → 0x0d south-band maze → triforce & 0x02.
+
+    Phases:
+      1. HEART — stand center of 0x0e (RoomItemId HC 0x1A)
+      2. EXIT_LEFT — doors bit LEFT=0x02 (live); walkthrough east is wrong
+      3. TF_ROOM — south-band waypoints (LIVE):
+           (208,141)→(208,189)→(128,189)→(128,149) → idle until tf&0x02
+
+    Trap: stuck at east alcove x=224 never reaches maze — first WP is LEFT to
+    x=208. North-band green sprite is not the collect hitbox.
+    """
+    log: list = []
+    policy = _load_tf_policy()
+    waypoints = _policy_waypoints(policy)
+    push_stand, push_dir = _policy_push(policy)
+    tol = int(policy.get("tol") or _DEFAULT_TF_TOL)
+    policy_live = bool(waypoints)
+    phase = "HEART"
     heart_touched = False
+    waypoint_index = 0
+    push_done = push_stand is None
+    xy_hist: list[list[int]] = []
+    stuck_frames = 0
+    last_xy: tuple[int, int] | None = None
+
+    log.append(
+        {
+            "event": "tf_policy_load",
+            "source": policy.get("source"),
+            "probe_path": str(L2_TF_REACH_JSON),
+            "probe_present": L2_TF_REACH_JSON.is_file(),
+            "policy_live": policy_live,
+            "n_waypoints": len(waypoints),
+            "waypoints": [list(w) for w in waypoints],
+            "tol": tol,
+            "push_stand": list(push_stand) if push_stand else None,
+            "push_dir": push_dir,
+            "notes": policy.get("notes") or POST_BOSS_TF_POLICY.notes,
+        }
+    )
+
     for f in range(budget):
         if assist is not None and f % 20 == 0:
             assist.apply_env(env, frame=20000 + f)
         s = read_snapshot(env.get_ram())
-        tf = read_u8(env.get_ram(), ADDR_TRIFORCE)
-        if tf & 0x02:
-            log.append(_sample(s, env.get_ram(), event="tf_got"))
-            return {"ok": True, "frames": f + 1, "log": log, "final": log[-1]}
-        if s.mode != PLAY_MODE:
-            # triforce fanfare / mode 18 settle
+        ram = env.get_ram()
+        tf = int(read_u8(ram, ADDR_TRIFORCE))
+        # Success: bit 0x02 (mode 18 fanfare often already set)
+        if tf & LEVEL2_TF_BIT:
+            log.append(_sample(s, ram, event="tf_got") | {"phase": phase})
+            return {
+                "ok": True,
+                "frames": f + 1,
+                "phase": phase,
+                "policy_live": policy_live,
+                "waypoints": [list(w) for w in waypoints],
+                "log": log,
+                "final": log[-1],
+            }
+        if s.mode != PLAY_MODE and s.mode != 18:
+            # scroll / hurt settle
+            env.step(nes_idle_action())
+            continue
+        if s.mode == 18:
+            # fanfare — keep idling; bit may lag one frame
             env.step(nes_idle_action())
             continue
 
+        # --- Boss room 0x0e: heart then LEFT exit (live) ---
         if s.screen == ROOM_0E:
             doors = s.cur_opened_doors
+            if phase not in ("HEART", "EXIT_LEFT"):
+                phase = "HEART" if not heart_touched else "EXIT_LEFT"
             # 1) Touch heart at center if still present
             if not heart_touched and f < 400:
+                phase = "HEART"
                 act, at = _goto(s, 120, 141, tol=8)
                 env.step(act)
                 if at:
                     heart_touched = True
+                    phase = "EXIT_LEFT"
                 if f % 80 == 0:
-                    log.append(_sample(s, env.get_ram(), event=f"heart_f{f}"))
+                    log.append(_sample(s, ram, event=f"heart_f{f}") | {"phase": phase})
                 continue
-            # 2) Prefer open door bits: LEFT=2 first (live), then RIGHT=1, UP, DOWN
-            if doors & 0x02:  # LEFT
+            phase = "EXIT_LEFT"
+            # 2) Prefer open door bits: LEFT=2 first (live WEST → 0x0d TF)
+            if doors & 0x02:  # LEFT → ROOM_TF 0x0d
                 if abs(s.link_y - 141) > 4:
                     env.step(nes_action("DOWN" if s.link_y < 141 else "UP"))
                 else:
                     env.step(nes_action("LEFT"))
-            elif doors & 0x01:  # RIGHT
+            elif doors & 0x01:  # RIGHT residual — sealed live
                 if abs(s.link_y - 141) > 4:
                     env.step(nes_action("DOWN" if s.link_y < 141 else "UP"))
                 else:
@@ -588,40 +738,106 @@ def _collect_and_tf(env, assist: UnlimitedHealthAssist | None, *, budget: int = 
                 else:
                     env.step(nes_action("UP"))
             else:
-                # try RIGHT then LEFT brute even if bit lag
-                if f % 200 < 100:
-                    env.step(nes_action("RIGHT") if abs(s.link_y - 141) <= 4 else (
-                        nes_action("DOWN" if s.link_y < 141 else "UP")
-                    ))
+                # bit lag: prefer LEFT (live), not RIGHT
+                if abs(s.link_y - 141) > 4:
+                    env.step(nes_action("DOWN" if s.link_y < 141 else "UP"))
                 else:
-                    env.step(nes_action("LEFT") if abs(s.link_y - 141) <= 4 else (
-                        nes_action("DOWN" if s.link_y < 141 else "UP")
-                    ))
+                    env.step(nes_action("LEFT"))
             if f % 100 == 0:
-                log.append(_sample(s, env.get_ram(), event=f"boss_exit_f{f}"))
+                log.append(_sample(s, ram, event=f"boss_exit_f{f}") | {"phase": phase})
             continue
 
-        # TF room (live 0x0d via LEFT from boss): free from east entry alcove
-        # then stand on pedestal (center). Stuck at x≈208 needs UP/DOWN free.
+        # --- TF room 0x0d (WEST of boss via LEFT) — south-band maze ---
+        phase = "TF_ROOM"
         x, y = s.link_x, s.link_y
-        if abs(x - 120) > 8 or abs(y - 141) > 8:
-            if x >= 190 and abs(y - 141) <= 6:
-                # east door alcove — step vertically free then LEFT
-                env.step(nes_action("UP" if f % 40 < 20 else "DOWN"))
-            elif abs(x - 120) > 8:
-                env.step(nes_action("RIGHT" if x < 120 else "LEFT"))
-            else:
-                env.step(nes_action("DOWN" if y < 141 else "UP"))
+        if f % 30 == 0:
+            xy_hist.append([x, y])
+            if len(xy_hist) > 40:
+                xy_hist = xy_hist[-40:]
+
+        if last_xy == (x, y):
+            stuck_frames += 1
         else:
-            env.step(nes_idle_action())
-        if f % 60 == 0:
-            log.append(_sample(s, env.get_ram(), event=f"tf_room_f{f}"))
+            stuck_frames = 0
+            last_xy = (x, y)
+
+        # Optional push-block (not required for LIVE path)
+        if not push_done and push_stand is not None:
+            sx, sy = push_stand
+            act, at = _goto(s, sx, sy, tol=4)
+            if not at:
+                env.step(act)
+                if f % 60 == 0:
+                    log.append(
+                        _sample(s, ram, event=f"tf_push_approach_f{f}")
+                        | {"phase": phase, "push_stand": [sx, sy]}
+                    )
+                continue
+            face = push_dir or "UP"
+            env.step(nes_action(face))
+            if f > 0 and f % 90 == 0:
+                push_done = True
+                log.append(
+                    _sample(s, ram, event=f"tf_push_hold_f{f}")
+                    | {"phase": phase, "push_dir": face}
+                )
+            continue
+
+        # LIVE south-band waypoints (always present via catalog fallback)
+        if waypoint_index >= len(waypoints):
+            # On pedestal: idle; micro-nudge UP if just below collect y
+            if y > 149 and abs(x - 128) <= 6:
+                env.step(nes_action("UP"))
+            else:
+                env.step(nes_idle_action())
+            if f % 60 == 0:
+                log.append(_sample(s, ram, event=f"tf_pickup_wait_f{f}") | {"phase": phase})
+            continue
+
+        tx, ty = waypoints[waypoint_index]
+        # Unstick east door alcove x≈224: force LEFT toward first WP column
+        if x >= 216 and waypoint_index == 0:
+            env.step(nes_action("LEFT"))
+            if f % 40 == 0:
+                log.append(
+                    _sample(s, ram, event=f"tf_free_alcove_f{f}")
+                    | {"phase": phase, "target": [tx, ty]}
+                )
+            continue
+        act, at = _goto(s, tx, ty, tol=tol)
+        # Stuck recovery: brief alternate axis
+        if stuck_frames > 20 and not at:
+            if abs(x - tx) > abs(y - ty):
+                env.step(nes_action("DOWN" if y < ty else "UP"))
+            else:
+                env.step(nes_action("RIGHT" if x < tx else "LEFT"))
+            stuck_frames = 0
+        else:
+            env.step(act)
+        if at:
+            waypoint_index += 1
+            stuck_frames = 0
+            log.append(
+                _sample(s, ram, event=f"tf_wp_{waypoint_index}")
+                | {"phase": phase, "target": [tx, ty]}
+            )
+        elif f % 60 == 0:
+            log.append(
+                _sample(s, ram, event=f"tf_wp_nav_f{f}")
+                | {"phase": phase, "target": [tx, ty], "wp_i": waypoint_index}
+            )
+
     s = read_snapshot(env.get_ram())
+    ram = env.get_ram()
     return {
-        "ok": bool(read_u8(env.get_ram(), ADDR_TRIFORCE) & 0x02),
+        "ok": bool(int(read_u8(ram, ADDR_TRIFORCE)) & LEVEL2_TF_BIT),
         "frames": budget,
-        "log": log[-30:],
-        "final": _sample(s, env.get_ram(), event="tf_fail"),
+        "phase": phase,
+        "policy_live": policy_live,
+        "waypoints": [list(w) for w in waypoints],
+        "xy_hist": xy_hist[-20:],
+        "log": log[-40:],
+        "final": _sample(s, ram, event="tf_fail"),
     }
 
 
@@ -644,121 +860,160 @@ def run_once(
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="boot"))
+        boot = _sample(read_snapshot(env.get_ram()), env.get_ram(), event="boot")
+        timeline.append(boot)
+        boot_sc = read_snapshot(env.get_ram()).screen
+        fight: dict = {"success": True, "skipped": True}
 
-        # 0x4f → 0x3f bomb
-        ctrl = Level2PostBoomBombNorthController()
-        for f in range(ctrl.max_frames):
-            if assist is not None:
-                assist.apply_env(env, frame=f)
-            env.step(ctrl.step(read_snapshot(env.get_ram())).action)
-            if ctrl.success or ctrl.phase is PostBoomBombNorthPhase.FAILED:
-                break
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="3f"))
-        if read_snapshot(env.get_ram()).screen != ROOM_3F:
-            return _fail(env, timeline, tag, track, "no_3f")
+        # Mid-path starts: TF room only, or boss room (fight + TF).
+        if start_state == "Level2_0D_PostBoss" or boot_sc == ROOM_TF:
+            timeline.append({"event": "skip_to_tf_room", "sc": f"0x{boot_sc:02x}"})
+            tf_report = _collect_and_tf(env, assist, budget=4000)
+        elif start_state == "Level2_0E" or boot_sc == ROOM_0E:
+            timeline.append({"event": "skip_to_boss", "sc": f"0x{boot_sc:02x}"})
+            for _ in range(90):
+                if assist is not None:
+                    assist.apply_env(env, frame=8000)
+                env.step(nes_idle_action())
+            timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="0e_settle"))
+            fight = _fight_dodongo(env, assist, max_frames=14000)
+            timeline.append(
+                {"event": "dodongo_fight", **{k: v for k, v in fight.items() if k != "log"}}
+            )
+            timeline.extend(fight.get("log") or [])
+            obs, *_ = env.step(nes_idle_action())
+            save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_after_fight.png")
+            if not fight.get("success"):
+                return _fail(env, timeline, tag, track, "dodongo_alive")
+            tf_report = _collect_and_tf(env, assist, budget=4000)
+        else:
+            # Full post-boom: 0x4f → 0x3f bomb
+            ctrl = Level2PostBoomBombNorthController()
+            for f in range(ctrl.max_frames):
+                if assist is not None:
+                    assist.apply_env(env, frame=f)
+                env.step(ctrl.step(read_snapshot(env.get_ram())).action)
+                if ctrl.success or ctrl.phase is PostBoomBombNorthPhase.FAILED:
+                    break
+            timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="3f"))
+            if read_snapshot(env.get_ram()).screen != ROOM_3F:
+                return _fail(env, timeline, tag, track, "no_3f")
 
-        _clear_types(env, (KEESE,), max_frames=5000, min_n=1)
-        if not _enter_left(env, ROOM_3E):
-            return _fail(env, timeline, tag, track, "no_3e")
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="3e"))
+            _clear_types(env, (KEESE,), max_frames=5000, min_n=1)
+            if not _enter_left(env, ROOM_3E):
+                return _fail(env, timeline, tag, track, "no_3e")
+            timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="3e"))
 
-        cr = _clear_types(env, (MOLDORM_OBJECT_TYPE,), max_frames=16000, min_n=1)
-        timeline.append({"event": "moldorm", **cr})
-        for _ in range(250):
-            s = read_snapshot(env.get_ram())
-            act, _ = _goto(s, 120, 141, 8)
-            env.step(act)
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="moldorm_key"))
+            cr = _clear_types(env, (MOLDORM_OBJECT_TYPE,), max_frames=16000, min_n=1)
+            timeline.append({"event": "moldorm", **cr})
+            for _ in range(250):
+                s = read_snapshot(env.get_ram())
+                act, _ = _goto(s, 120, 141, 8)
+                env.step(act)
+            timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="moldorm_key"))
 
-        if not _enter_up(env, ROOM_2E):
-            return _fail(env, timeline, tag, track, "no_2e")
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="2e"))
+            if not _enter_up(env, ROOM_2E):
+                return _fail(env, timeline, tag, track, "no_2e")
+            timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="2e"))
 
-        # ropes: robust clear (ROOM_2E_SPEC flaky when Link pins north pocket)
-        cr = _clear_types(env, (ROPE_OBJECT_TYPE,), max_frames=18000, min_n=4)
-        for _ in range(90):
-            env.step(nes_idle_action())
-        s = read_snapshot(env.get_ram())
-        timeline.append(
-            {
-                "event": "ropes",
-                **cr,
-                "doors": s.cur_opened_doors,
-                "ropes_left": len(_live(s, frozenset({ROPE_OBJECT_TYPE}))),
-                "xy": [s.link_x, s.link_y],
-            }
-        )
-        if not (s.cur_opened_doors & 0x08):
-            # one more mop pass
-            cr2 = _clear_types(env, (ROPE_OBJECT_TYPE,), max_frames=10000, min_n=1)
-            for _ in range(60):
+            # ropes: robust clear (ROOM_2E_SPEC flaky when Link pins north pocket)
+            cr = _clear_types(env, (ROPE_OBJECT_TYPE,), max_frames=18000, min_n=4)
+            for _ in range(90):
                 env.step(nes_idle_action())
             s = read_snapshot(env.get_ram())
             timeline.append(
                 {
-                    "event": "ropes_mop2",
-                    **cr2,
+                    "event": "ropes",
+                    **cr,
                     "doors": s.cur_opened_doors,
                     "ropes_left": len(_live(s, frozenset({ROPE_OBJECT_TYPE}))),
+                    "xy": [s.link_x, s.link_y],
                 }
             )
-        if not (read_snapshot(env.get_ram()).cur_opened_doors & 0x08):
-            return _fail(env, timeline, tag, track, "no_2e_up_door")
+            if not (s.cur_opened_doors & 0x08):
+                # one more mop pass
+                cr2 = _clear_types(env, (ROPE_OBJECT_TYPE,), max_frames=10000, min_n=1)
+                for _ in range(60):
+                    env.step(nes_idle_action())
+                s = read_snapshot(env.get_ram())
+                timeline.append(
+                    {
+                        "event": "ropes_mop2",
+                        **cr2,
+                        "doors": s.cur_opened_doors,
+                        "ropes_left": len(_live(s, frozenset({ROPE_OBJECT_TYPE}))),
+                    }
+                )
+            if not (read_snapshot(env.get_ram()).cur_opened_doors & 0x08):
+                return _fail(env, timeline, tag, track, "no_2e_up_door")
 
-        if not _enter_up(env, ROOM_1E, budget=1600):
-            return _fail(env, timeline, tag, track, "no_1e")
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="1e"))
+            if not _enter_up(env, ROOM_1E, budget=1600):
+                return _fail(env, timeline, tag, track, "no_1e")
+            timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="1e"))
 
-        _wait_types(env, (GORIYA_OBJECT_TYPE,), n=3, budget=200)
-        c1 = GenericDungeonRoomController(ROOM_1E_SPEC)
-        c1.phase = DungeonPhase.FIGHT
-        for f in range(ROOM_1E_SPEC.max_frames):
-            if assist is not None and f % 20 == 0:
-                assist.apply_env(env, frame=6000 + f)
-            env.step(c1.step(read_snapshot(env.get_ram())).action)
-            if c1.success or c1.phase in (DungeonPhase.FAILED, DungeonPhase.DONE):
-                break
-        timeline.append({"event": "goriya", **c1.report(), "frames": f + 1})
-        for _ in range(50):
-            env.step(nes_idle_action())
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="1e_cleared"))
-        obs, *_ = env.step(nes_idle_action())
-        save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_1e_cleared.png")
+            _wait_types(env, (GORIYA_OBJECT_TYPE,), n=3, budget=200)
+            c1 = GenericDungeonRoomController(ROOM_1E_SPEC)
+            c1.phase = DungeonPhase.FIGHT
+            for f in range(ROOM_1E_SPEC.max_frames):
+                if assist is not None and f % 20 == 0:
+                    assist.apply_env(env, frame=6000 + f)
+                env.step(c1.step(read_snapshot(env.get_ram())).action)
+                if c1.success or c1.phase in (DungeonPhase.FAILED, DungeonPhase.DONE):
+                    break
+            timeline.append({"event": "goriya", **c1.report(), "frames": f + 1})
+            for _ in range(50):
+                env.step(nes_idle_action())
+            timeline.append(
+                _sample(read_snapshot(env.get_ram()), env.get_ram(), event="1e_cleared")
+            )
+            obs, *_ = env.step(nes_idle_action())
+            save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_1e_cleared.png")
 
-        # CRITICAL: bomb wall north, not walk-UP
-        bomb = _bomb_north_wall(env, BOMB_STAND_1E, ROOM_0E)
-        timeline.append({"event": "bomb_1e_n", **bomb})
-        if not bomb.get("ok"):
-            return _fail(env, timeline, tag, track, "no_boss_bomb")
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="0e"))
-        obs, *_ = env.step(nes_idle_action())
-        save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_boss_entry.png")
+            # CRITICAL: bomb wall north, not walk-UP
+            bomb = _bomb_north_wall(env, BOMB_STAND_1E, ROOM_0E)
+            timeline.append({"event": "bomb_1e_n", **bomb})
+            if not bomb.get("ok"):
+                return _fail(env, timeline, tag, track, "no_boss_bomb")
+            timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="0e"))
+            obs, *_ = env.step(nes_idle_action())
+            save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_boss_entry.png")
 
-        if save_checkpoint:
-            save_state(env, GAME_DIR, GAME, "Level2_0E")
+            if save_checkpoint:
+                save_state(env, GAME_DIR, GAME, "Level2_0E")
 
-        # settle spawn
-        for _ in range(90):
-            if assist is not None:
-                assist.apply_env(env, frame=8000)
-            env.step(nes_idle_action())
-        timeline.append(_sample(read_snapshot(env.get_ram()), env.get_ram(), event="0e_settle"))
+            # settle spawn
+            for _ in range(90):
+                if assist is not None:
+                    assist.apply_env(env, frame=8000)
+                env.step(nes_idle_action())
+            timeline.append(
+                _sample(read_snapshot(env.get_ram()), env.get_ram(), event="0e_settle")
+            )
 
-        fight = _fight_dodongo(env, assist, max_frames=14000)
-        timeline.append({"event": "dodongo_fight", **{k: v for k, v in fight.items() if k != "log"}})
-        timeline.extend(fight.get("log") or [])
-        obs, *_ = env.step(nes_idle_action())
-        save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_after_fight.png")
+            fight = _fight_dodongo(env, assist, max_frames=14000)
+            timeline.append(
+                {"event": "dodongo_fight", **{k: v for k, v in fight.items() if k != "log"}}
+            )
+            timeline.extend(fight.get("log") or [])
+            obs, *_ = env.step(nes_idle_action())
+            save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_after_fight.png")
 
-        tf_report = _collect_and_tf(env, assist, budget=3000)
-        timeline.append({"event": "tf_phase", "ok": tf_report["ok"], "frames": tf_report["frames"]})
+            tf_report = _collect_and_tf(env, assist, budget=4000)
+        timeline.append(
+            {
+                "event": "tf_phase",
+                "ok": tf_report["ok"],
+                "frames": tf_report["frames"],
+                "phase": tf_report.get("phase"),
+                "policy_live": tf_report.get("policy_live"),
+            }
+        )
         timeline.extend(tf_report.get("log") or [])
 
         ram = env.get_ram()
         snap = read_snapshot(ram)
         tf = int(read_u8(ram, ADDR_TRIFORCE))
-        ok = bool(tf & 0x02)
+        ok = bool(tf & LEVEL2_TF_BIT)
         obs, *_ = env.step(nes_idle_action())
         save_rgb_png(obs, RECORDINGS_DIR / f"{tag}_{'ok' if ok else 'fail'}.png")
 
@@ -767,6 +1022,18 @@ def run_once(
         if ok and save_checkpoint:
             ck_path = save_state(env, GAME_DIR, GAME, "Level2Complete")
             ck = str(ck_path)
+            selected_trial = {
+                "ok": ok,
+                "result": "TF_02",
+                "triforce": tf,
+                "triforce_bit_0x02": True,
+                "tf_policy_live": tf_report.get("policy_live"),
+                "tf_frames": tf_report.get("frames"),
+                "fight_success": fight.get("success"),
+                "final": _sample(snap, ram, event="final"),
+                "start_state": start_state,
+                "track": track,
+            }
             prov = str(
                 write_state_provenance(
                     ck_path,
@@ -776,29 +1043,38 @@ def run_once(
                     / f"{start_state}.state",
                     request={
                         "segment": "level2_dodongo_tf02",
-                        "bead": "rr-n5i",
+                        "bead": "rr-5dk",
                         "track": track,
+                        "start_state": start_state,
+                        "natural_entry": False,
                     },
+                    selected_trial=selected_trial,
+                    natural_entry=False,
                 )
             )
 
         out = {
-            "bead": "rr-n5i",
+            "bead": "rr-5dk",
             "result": "TF_02" if ok else ("DODONGO_DEAD" if fight.get("success") else "PARTIAL"),
             "ok": ok,
             "track": track,
             "intervention_class": "survival" if infinite_life else "clean",
+            "start_state": start_state,
             "triforce": tf,
             "triforce_bit_0x02": ok,
             "boss_room": "0x0e",
+            "tf_room": "0x0d",
+            "tf_room_note": "WEST/LEFT of boss after kill; walkthrough east residual",
             "dodongo_type": "0x32",
             "bomb_wall_1e": {"stand": list(BOMB_STAND_1E), "face": "UP", "to": "0x0e"},
+            "tf_policy_live": tf_report.get("policy_live"),
             "fight": {k: v for k, v in fight.items() if k != "log"},
             "timeline": timeline,
             "final": _sample(snap, ram, event="final"),
             "checkpoint": ck,
             "provenance": prov,
             "natural_entry": False,
+            "status_promote": False,
             "evidence": [
                 f"recordings/{tag}.json",
                 f"recordings/{tag}_boss_entry.png",
@@ -859,10 +1135,36 @@ def main() -> None:
         )
     n_ok = sum(1 for r in results if r.get("ok"))
     print(f"summary: {n_ok}/{len(results)} TF 0x02")
-    if args.trials > 1:
-        write_json_report(
+    write_json_report(
             RECORDINGS_DIR / f"{args.tag}_summary.json",
-            {"ok": n_ok, "trials": len(results), "results": [r.get("result") for r in results]},
+            {
+                "bead": "rr-5dk",
+                "ok": n_ok == len(results) and n_ok > 0,
+                "ok_count": n_ok,
+                "trials": len(results),
+                "results": [r.get("result") for r in results],
+                "track": "assisted" if inf else "clean",
+                "start_state": args.from_state,
+                "triforce_bit_0x02": n_ok > 0,
+                "status_promote": False,
+                "natural_entry": False,
+                "checkpoint": next(
+                    (r.get("checkpoint") for r in results if r.get("checkpoint")),
+                    None,
+                ),
+                "trial_details": [
+                    {
+                        "trial": i,
+                        "ok": r.get("ok"),
+                        "result": r.get("result"),
+                        "triforce": r.get("triforce"),
+                        "tf_policy_live": r.get("tf_policy_live"),
+                        "final": r.get("final"),
+                        "checkpoint": r.get("checkpoint"),
+                    }
+                    for i, r in enumerate(results)
+                ],
+            },
         )
 
 
