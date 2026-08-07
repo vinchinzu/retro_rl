@@ -73,7 +73,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: L3 Raft→Manhandla→TF (assist); Clean deferred
+bd ready -l zelda_i   # tip: L4 Snake (rr-q3n) / OW prep (rr-806); Clean deferred
 ```
 
 | Order | Bead | Work |
@@ -81,7 +81,8 @@ bd ready -l zelda_i   # tip: L3 Raft→Manhandla→TF (assist); Clean deferred
 | ✓ | **rr-n5i** / **rr-5dk** | L2 Dodongo + TF `0x02` assisted LIVE |
 | ✓ | **rr-rnx** / **rr-ci7** | Post-L2 OW → L3 enter **2/2 assisted** |
 | ✓ | **L3 Raft runner** | `run_level3_raft.py` **2/2 assisted** → `Level3Raft` |
-| ✓ | **rr-vpl** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
+| ✓ | **rr-vpl** / **rr-wmv** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
+| 1 | **rr-q3n** | L4 Snake (Raft dock) → Stepladder / TF `0x08` assist-first |
 | later | **rr-4oz** | Clean residual after full-game assist pass |
 
 Full board: `docs/tasks/QUEUE.md`. Routes: `LEVEL2_ROUTE.md`, `LEVEL3_ROUTE.md`.
@@ -109,8 +110,8 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 `run_level3_to_boss.py --infinite-life --trials 2 --save-state`. Checkpoints
 **`Level3Boss`**, **`Level3Complete`**. **Not Clean STATUS.**
 
-**Next tip:** Compose L2→L3→complete chain / Clean residual (`rr-4oz`); or next
-dungeon tip per QUEUE. Not Clean promote.
+**Next tip:** L4 Snake (`rr-q3n`, needs Raft) or OW prep (`rr-806`); Clean
+residual (`rr-4oz`) deferred. Not Clean promote.
 
 **Traps (L2→L3 OW):** 0x4c east only **y∈[133,145]** (y=149 solid); 0x5c maze
 reverse needs denser channel waypoints (no y_band on 0x5b hop); 0x64 west

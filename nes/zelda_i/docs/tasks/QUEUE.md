@@ -15,15 +15,16 @@ parallel isolated pure from checkpoints).
 Infinite life is intentional for first-pass agents. Do not stall L2 tip on
 sword kiting once geometry is known.
 
-## Live tip (L3 Manji — assist-first)
+## Live tip (post-L3 — assist-first)
 
 | Gate | Status | Notes |
 |------|--------|-------|
 | Power-on → L1 Triforce | **Clean green** | M5 |
 | L2 Boom → TF `0x02` | **assisted green 2/2** | `rr-5dk` / `rr-n5i`; `l2_complete_assisted.json` |
 | Post-L2 → L3 enter | **assisted green 2/2** | `rr-rnx`; `l2_to_l3_assisted.json`; epic `rr-ci7` closed |
-| Checkpoints | **`Level2ExitOverworld`**, **`Level3Entrance`** | post-TF OW 0x3C; Manji room 0x7c |
-| Tip leaf | **L3 Manhandla + TF** | Raft **2/2** + Manhandla/TF **2/2 assisted** (`rr-vpl` ✓); next tip per board |
+| L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | `rr-vpl` / epic `rr-wmv` closed; `level3_to_boss_assisted.json` |
+| Checkpoints | **`Level3Raft`**, **`Level3Boss`**, **`Level3Complete`** | + earlier L3 pure |
+| Tip leaf | **L4 Snake** (needs Raft) / **OW prep** | `bd ready -l zelda_i` → `rr-q3n`, `rr-806` |
 | Deferred | Clean residual `rr-4oz` until full-game assist pass | not tip-blocking |
 
 ### All-night wave results (2026-08-06 night)
