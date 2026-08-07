@@ -2,10 +2,11 @@
 
 | Document | Responsibility |
 |----------|----------------|
-| [VISION.md](VISION.md) | Why the project exists; scriptably beatable |
+| [VISION.md](VISION.md) | Why the project exists; scriptably beatable + solver |
 | [ROADMAP.md](ROADMAP.md) | Multi-horizon strategy, NES+SNES library plan |
+| [SOLVER_ARCHITECTURE.md](SOLVER_ARCHITECTURE.md) | Layer stack, tapes demoted, flagship triangle |
 | [DEVELOPMENT_LADDER.md](DEVELOPMENT_LADDER.md) | Capability phases and M0–M8 maturity gates |
-| [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md) | Stable runtime and intervention rules |
+| [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md) | Runtime/intervention rules + seed-robustness |
 | [PROGRAM_STATUS.md](PROGRAM_STATUS.md) | Live facts and near-term priorities |
 | [GAME_MATRIX.md](GAME_MATRIX.md) | All games (generated from `manifests/`) |
 | [GLOSSARY.md](GLOSSARY.md) | Shared vocabulary |

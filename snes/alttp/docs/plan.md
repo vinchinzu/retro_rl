@@ -1,5 +1,13 @@
 # ALTTP — Plan
 
+## Program role (solver flagship)
+
+ALTTP is **substrate B** of the solver flagship triangle (Super Metroid +
+ALTTP + SMZ3). Vanilla skills and capability-graph edges feed the shared
+item-logic planner; SMZ3 is the seed-abstract proof. See
+`docs/SOLVER_ARCHITECTURE.md`. Prefer graph edges with `requires` / natural-entry
+promotion over one-off full-game routes.
+
 ## Next
 
 1. **After room 0x01 → B1 stairs → Zelda cell** — tip exit `0x50→0x01` is

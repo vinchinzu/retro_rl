@@ -1,10 +1,14 @@
-"""Data-driven early-dungeon combat and routing for Zelda I.
+"""Data-driven early-dungeon combat engine for Zelda I.
+
+Room tables live in per-level modules (``level1_dungeon``, ``level2_dungeon``,
+``level3_dungeon``, …). This module is the shared controller + registry API.
 
 Keep this game-local until a second adventure game proves the API shape.
 """
 
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import Any
@@ -13,37 +17,18 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
-from zelda_i.level1 import (
-    CLEAR_SETTLE_ALL_DEAD,
-    LEVEL_1,
-    PLAY_MODE,
-    ROOM_KEY_STALFOS,
-    ROOM_NORTH_STALFOS,
-    STALFOS_OBJECT_TYPE,
-)
-from zelda_i.ram import ZeldaObject, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
+# Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
+CLEAR_SETTLE_ALL_DEAD = 20
+
+# Shared enemy type IDs (used by multiple dungeon levels / finish helpers).
 KEESE_OBJECT_TYPE = 0x1B
 GEL_OBJECT_TYPE = 0x15
 GORIYA_OBJECT_TYPE = 0x06
 WALLMASTER_OBJECT_TYPE = 0x27
 ROPE_OBJECT_TYPE = 0x28
 AQUAMENTUS_OBJECT_TYPE = 0x3D
-
-# Level 2 (Moon) room IDs — live recon 2026-08-06 (see LEVEL2_ROUTE.md).
-LEVEL_2 = 2
-ROOM_L2_ENTRY = 0x7D
-ROOM_L2_ROPES = 0x6D
-ROOM_L2_WEST_KEY = 0x6C
-ROOM_L2_EAST_KEY = 0x7E  # 5× Rope + key 0x19 (entry-east; diamond-nav from 0x7d)
-ROOM_L2_EAST_OF_ROPES = 0x6E  # 3× Rope; also N of 0x7e; key-RIGHT → 0x6f
-ROOM_L2_COMPASS = 0x6F  # 6× Gel 0x15 (TYPE-only) + compass RoomItemId 0x16
-ROOM_6D_LEFT_DOOR_BIT = 0x02  # cur_opened_doors bit1 after clear
-# Magical Boomerang inventory (Data Crystal + live zero-check on L2 states).
-# Stop predicate for future pure item room: read_u8(ram, ADDR_MAGIC_BOOMERANG) != 0
-# RoomItemId for boomerang drops correlates to 0x1D (L1 wooden boom room).
-# Diamond-east (0x7d / 0x6e): band→wall→S2(LEFT×6,vert,RIGHT×10)→pure y=141 RIGHT.
-# See nav_common.diamond_east_phase; bands DIAMOND_BAND_7D=157, DIAMOND_BAND_6E=113.
 
 
 class AliveRule(str, Enum):
@@ -138,7 +123,7 @@ class DungeonRoomSpec:
     required_open_doors: int = 0
     exit_routes: tuple[DoorRoute, ...] = ()
     max_frames: int = 6000
-    level: int = LEVEL_1
+    level: int = 1
 
     def live_enemies(self, snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
         enemies = tuple(
@@ -151,496 +136,66 @@ class DungeonRoomSpec:
         return enemies
 
 
-_STALFOS_PATROL: tuple[tuple[int, int], ...] = (
-    (64, 117),
-    (112, 117),
-    (160, 117),
-    (192, 117),
-    (192, 149),
-    (160, 149),
-    (112, 149),
-    (64, 149),
-    (64, 181),
-    (112, 181),
-    (160, 181),
-    (192, 181),
-)
+# --- Spec registry: primary key (level, room_id); room_id-only for unique rooms ---
 
-_KEESE_54_PATROL: tuple[tuple[int, int], ...] = (
-    (96, 101),
-    (144, 101),
-    (144, 141),
-    (144, 181),
-    (96, 181),
-    (96, 141),
-)
-
-_KEESE_52_PATROL: tuple[tuple[int, int], ...] = (
-    (96, 101),
-    (144, 101),
-    (176, 141),
-    (144, 181),
-    (96, 181),
-    (64, 141),
-)
-
-_ROOM_42_PATROL: tuple[tuple[int, int], ...] = (
-    (72, 109),
-    (120, 109),
-    (168, 109),
-    (168, 157),
-    (120, 181),
-    (72, 157),
-)
-
-_ROOM_43_PATROL: tuple[tuple[int, int], ...] = (
-    (48, 109),
-    (96, 109),
-    (144, 109),
-    (192, 109),
-    (192, 173),
-    (144, 173),
-    (96, 173),
-    (48, 173),
-)
-
-_ROOM_44_PATROL: tuple[tuple[int, int], ...] = (
-    (32, 141),
-    (32, 101),
-    (80, 101),
-    (80, 93),
-    (160, 93),
-    (160, 101),
-    (208, 101),
-    (208, 141),
-    (208, 181),
-    (192, 181),
-    (192, 189),
-    (80, 189),
-    (80, 181),
-    (32, 181),
-)
-
-_WALLMASTER_PATROL: tuple[tuple[int, int], ...] = (
-    (32, 141),
-    (32, 109),
-    (32, 173),
-)
-
-# Level 2 ropes room: open lanes; engage nearest after ~100f spawn settle.
-_ROOM_6D_PATROL: tuple[tuple[int, int], ...] = (
-    (64, 109),
-    (112, 109),
-    (160, 109),
-    (160, 141),
-    (160, 173),
-    (112, 173),
-    (64, 173),
-    (64, 141),
-)
-
-ROOM_53_SPEC = DungeonRoomSpec(
-    spec_id="level1_room53",
-    source_room=ROOM_NORTH_STALFOS,
-    room_id=ROOM_KEY_STALFOS,
-    entry=DoorRoute(
-        "UP",
-        ((64, 101), (120, 101), (120, 93)),
-    ),
-    enemy_types=(STALFOS_OBJECT_TYPE,),
-    expected_enemy_count=5,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(patrol=_STALFOS_PATROL),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="keys",
-        target=(128, 109),
-    ),
-    room_item_id=0x19,
-    exit_routes=(
-        DoorRoute("DOWN", ((128, 189), (120, 189))),
-        DoorRoute("LEFT", ((120, 93), (48, 93), (48, 141))),
-        DoorRoute("RIGHT", ((120, 93), (208, 93), (208, 141))),
-    ),
-)
-
-ROOM_54_SPEC = DungeonRoomSpec(
-    spec_id="level1_room54",
-    source_room=ROOM_KEY_STALFOS,
-    room_id=0x54,
-    entry=DoorRoute(
-        "RIGHT",
-        ((120, 93), (208, 93), (208, 141)),
-    ),
-    enemy_types=(KEESE_OBJECT_TYPE,),
-    expected_enemy_count=8,
-    alive_rule=AliveRule.TYPE,
-    combat=CombatTuning(
-        patrol=_KEESE_54_PATROL,
-        engage_distance=48,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
-    ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    room_item_id=0x16,
-    exit_routes=(
-        DoorRoute("LEFT", ((128, 93), (48, 93), (48, 141))),
-        DoorRoute("RIGHT", ((128, 93), (208, 93), (208, 141))),
-    ),
-)
-
-ROOM_52_SPEC = DungeonRoomSpec(
-    spec_id="level1_room52",
-    source_room=ROOM_KEY_STALFOS,
-    room_id=0x52,
-    entry=DoorRoute(
-        "LEFT",
-        ((120, 93), (48, 93), (48, 141)),
-    ),
-    enemy_types=(KEESE_OBJECT_TYPE,),
-    expected_enemy_count=6,
-    alive_rule=AliveRule.TYPE,
-    combat=CombatTuning(
-        patrol=_KEESE_52_PATROL,
-        engage_distance=48,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
-    ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    room_item_id=0x03,
-    exit_routes=(
-        DoorRoute("RIGHT", ((128, 93), (208, 93), (208, 141))),
-        DoorRoute(
-            "UP",
-            ((176, 149), (176, 101), (120, 101), (120, 93)),
-        ),
-    ),
-)
-
-ROOM_42_SPEC = DungeonRoomSpec(
-    spec_id="level1_room42",
-    source_room=0x52,
-    room_id=0x42,
-    entry=DoorRoute(
-        "UP",
-        ((176, 149), (176, 101), (120, 101), (120, 93)),
-    ),
-    enemy_types=(GEL_OBJECT_TYPE,),
-    expected_enemy_count=3,
-    alive_rule=AliveRule.TYPE,
-    combat=CombatTuning(
-        patrol=_ROOM_42_PATROL,
-        engage_distance=48,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
-    ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    room_item_id=0x03,
-)
-
-ROOM_43_SPEC = DungeonRoomSpec(
-    spec_id="level1_room43",
-    source_room=0x42,
-    room_id=0x43,
-    entry=DoorRoute(
-        "RIGHT",
-        ((32, 181), (208, 181), (208, 141)),
-    ),
-    enemy_types=(GEL_OBJECT_TYPE,),
-    expected_enemy_count=5,
-    alive_rule=AliveRule.TYPE,
-    combat=CombatTuning(
-        patrol=_ROOM_43_PATROL,
-        engage_distance=56,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
-    ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    room_item_id=0x17,
-)
-
-ROOM_33_SPEC = DungeonRoomSpec(
-    spec_id="level1_room33",
-    source_room=0x43,
-    room_id=0x33,
-    entry=DoorRoute(
-        "UP",
-        ((96, 133), (96, 93), (120, 93)),
-    ),
-    enemy_types=(STALFOS_OBJECT_TYPE,),
-    expected_enemy_count=3,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_STALFOS_PATROL,
-        engage_distance=24,
-        attack_phase=4,
-    ),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="keys",
-        target=(96, 173),
-    ),
-    room_item_id=0x19,
-)
-
-ROOM_23_SPEC = DungeonRoomSpec(
-    spec_id="level1_room23",
-    source_room=0x33,
-    room_id=0x23,
-    entry=DoorRoute(
-        "UP",
-        (
-            (128, 173),
-            (128, 133),
-            (112, 133),
-            (112, 93),
-            (120, 93),
-        ),
-    ),
-    enemy_types=(GORIYA_OBJECT_TYPE,),
-    expected_enemy_count=3,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_STALFOS_PATROL,
-        engage_distance=96,
-        attack_phase=2,
-    ),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="keys",
-        waypoints=((176, 149), (176, 115), (112, 115)),
-    ),
-    room_item_id=0x19,
-)
-
-ROOM_44_SPEC = DungeonRoomSpec(
-    spec_id="level1_room44",
-    source_room=0x43,
-    room_id=0x44,
-    entry=DoorRoute(
-        "RIGHT",
-        ((120, 93), (208, 93), (208, 141)),
-    ),
-    enemy_types=(GORIYA_OBJECT_TYPE,),
-    expected_enemy_count=3,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_ROOM_44_PATROL,
-        engage_distance=64,
-        patrol_attack_period=8,
-        patrol_attack_hold=4,
-        attack_phase=7,
-    ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    room_item_id=0x1D,
-)
-
-ROOM_45_SPEC = DungeonRoomSpec(
-    spec_id="level1_room45",
-    source_room=0x44,
-    room_id=0x45,
-    entry=DoorRoute(
-        "RIGHT",
-        (
-            (80, 101),
-            (80, 93),
-            (160, 93),
-            (160, 101),
-            (208, 101),
-            (208, 141),
-        ),
-    ),
-    enemy_types=(WALLMASTER_OBJECT_TYPE,),
-    expected_enemy_count=8,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_WALLMASTER_PATROL,
-        # Dormant Wallmasters sit just outside the wall (x=0).  A wider
-        # engage radius makes Link face and slash into the doorway instead of
-        # walking a vertical patrol forever once only those slots remain.
-        engage_distance=80,
-        engage_dominant_axis=True,
-        attack_phase=0,
-        patrol_attack_period=8,
-        patrol_attack_hold=4,
-    ),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="keys",
-        target=(160, 189),
-    ),
-    room_item_id=0x19,
-    max_frames=9000,
-)
-
-ROOM_35_SPEC = DungeonRoomSpec(
-    spec_id="level1_room35_aquamentus",
-    source_room=0x45,
-    room_id=0x35,
-    entry=DoorRoute(
-        "UP",
-        ((32, 189), (32, 93), (120, 93)),
-    ),
-    enemy_types=(AQUAMENTUS_OBJECT_TYPE,),
-    expected_enemy_count=1,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_STALFOS_PATROL,
-        engage_distance=64,
-        engage_attack_period=6,
-        engage_attack_hold=4,
-        attack_phase=2,
-    ),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="health",
-        target=(192, 141),
-    ),
-    room_item_id=0x1A,
-    max_frames=6000,
-)
-
-# --- Level 2 (Moon) rooms (isolated pure from Level2Entrance / Level2RopesCleared)
-# Entry 0x7d: no combat types at room-ready; north doorway open without door bit.
-# Ropes 0x6d: 5× type 0x28; HP activates ~mode-5 settle; clear sets LEFT bit 0x02.
-# Lab (Clean, 12/12): attack_phase=4, engage=64, median ~674f — lab_l2_6d/.
-ROOM_7D_SPEC = DungeonRoomSpec(
-    spec_id="level2_room7d_entry",
-    source_room=ROOM_L2_ENTRY,
-    room_id=ROOM_L2_ENTRY,
-    entry=DoorRoute("UP", ((120, 205), (120, 93))),
-    enemy_types=(),
-    expected_enemy_count=0,
-    alive_rule=AliveRule.TYPE,
-    combat=CombatTuning(patrol=((120, 141),)),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
-    room_item_id=0x03,
-    exit_routes=(
-        DoorRoute("UP", ((120, 141), (120, 93))),
-    ),
-    max_frames=2000,
-    level=LEVEL_2,
-)
-
-ROOM_6D_SPEC = DungeonRoomSpec(
-    spec_id="level2_room6d_ropes",
-    source_room=ROOM_L2_ENTRY,
-    room_id=ROOM_L2_ROPES,
-    entry=DoorRoute(
-        "UP",
-        ((120, 205), (120, 93)),
-    ),
-    enemy_types=(ROPE_OBJECT_TYPE,),
-    expected_enemy_count=5,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_ROOM_6D_PATROL,
-        engage_distance=64,
-        attack_phase=4,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
-    ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    room_item_id=0x03,
-    required_open_doors=ROOM_6D_LEFT_DOOR_BIT,
-    exit_routes=(
-        DoorRoute("DOWN", ((120, 189),)),
-        DoorRoute("LEFT", ((120, 141), (32, 141))),
-    ),
-    max_frames=6000,
-    level=LEVEL_2,
-)
-
-# West of 0x6d: 6 Ropes + fixed RoomItemId small key (0x19).
-# Key pickup observed near (136, 141) during combat (keys 0→1, 1 rope left).
-# Lab clear-only (Clean): phase 2/4 engage 64 → 2/2; phase 0 times out.
-ROOM_6C_SPEC = DungeonRoomSpec(
-    spec_id="level2_room6c_west_key",
-    source_room=ROOM_L2_ROPES,
-    room_id=ROOM_L2_WEST_KEY,
-    entry=DoorRoute("LEFT", ((120, 141), (32, 141))),
-    enemy_types=(ROPE_OBJECT_TYPE,),
-    expected_enemy_count=6,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_ROOM_6D_PATROL,
-        engage_distance=64,
-        attack_phase=2,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
-    ),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="keys",
-        target=(136, 141),
-    ),
-    room_item_id=0x19,
-    exit_routes=(
-        DoorRoute("RIGHT", ((120, 141), (208, 141))),
-    ),
-    max_frames=8000,
-    level=LEVEL_2,
-)
-
-# East of entry 0x7d: 5 Ropes + fixed RoomItemId small key (0x19).
-# Diamond solids block naive y≈141 RIGHT at x≈128. Entry: skirt south band
-# y≈157 → wall x≥200 → align y≈141 → RIGHT (see LEVEL2_ROUTE / l2_7d_east_nav).
-# Combat seeds from 0x6d 5-rope policy (phase 4, engage 64); key like 0x6c.
-ROOM_7E_SPEC = DungeonRoomSpec(
-    spec_id="level2_room7e_east_key",
-    source_room=ROOM_L2_ENTRY,
-    room_id=ROOM_L2_EAST_KEY,
-    entry=DoorRoute(
-        "RIGHT",
-        ((120, 157), (208, 157), (208, 141)),
-    ),
-    enemy_types=(ROPE_OBJECT_TYPE,),
-    expected_enemy_count=5,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_ROOM_6D_PATROL,
-        engage_distance=64,
-        attack_phase=4,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
-    ),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="keys",
-        target=(136, 141),
-    ),
-    room_item_id=0x19,
-    exit_routes=(
-        DoorRoute("LEFT", ((120, 141), (32, 141))),
-        DoorRoute("UP", ((120, 141), (120, 93))),
-    ),
-    max_frames=8000,
-    level=LEVEL_2,
-)
-
-ROOM_SPECS: dict[int, DungeonRoomSpec] = {
-    ROOM_23_SPEC.room_id: ROOM_23_SPEC,
-    ROOM_33_SPEC.room_id: ROOM_33_SPEC,
-    ROOM_42_SPEC.room_id: ROOM_42_SPEC,
-    ROOM_43_SPEC.room_id: ROOM_43_SPEC,
-    ROOM_44_SPEC.room_id: ROOM_44_SPEC,
-    ROOM_45_SPEC.room_id: ROOM_45_SPEC,
-    ROOM_35_SPEC.room_id: ROOM_35_SPEC,
-    ROOM_52_SPEC.room_id: ROOM_52_SPEC,
-    ROOM_53_SPEC.room_id: ROOM_53_SPEC,
-    ROOM_54_SPEC.room_id: ROOM_54_SPEC,
-    ROOM_7D_SPEC.room_id: ROOM_7D_SPEC,
-    ROOM_6D_SPEC.room_id: ROOM_6D_SPEC,
-    ROOM_6C_SPEC.room_id: ROOM_6C_SPEC,
-    ROOM_7E_SPEC.room_id: ROOM_7E_SPEC,
-}
+_ROOM_SPECS_BY_LEVEL: dict[tuple[int, int], DungeonRoomSpec] = {}
+# Backward-compat room_id → spec when the room_id is unique across levels.
+ROOM_SPECS: dict[int, DungeonRoomSpec] = {}
+_DEFAULT_SPECS_LOADED = False
 
 
-def spec_for_room(room_id: int) -> DungeonRoomSpec:
+def register_room_spec(spec: DungeonRoomSpec) -> None:
+    """Register a room spec under ``(level, room_id)`` and room_id if unique."""
+    key = (int(spec.level), int(spec.room_id))
+    _ROOM_SPECS_BY_LEVEL[key] = spec
+    room_id = int(spec.room_id)
+    existing = ROOM_SPECS.get(room_id)
+    if existing is None or existing.level == spec.level:
+        ROOM_SPECS[room_id] = spec
+    # Ambiguous room_id across levels: leave prior room_id entry; use level=.
+
+
+def ensure_default_specs() -> None:
+    """Import built-in level room modules so specs self-register."""
+    global _DEFAULT_SPECS_LOADED
+    if _DEFAULT_SPECS_LOADED:
+        return
+    _DEFAULT_SPECS_LOADED = True
+    # Import order is free; each module calls register_room_spec on load.
+    import zelda_i.level1_dungeon  # noqa: F401
+    import zelda_i.level2_dungeon  # noqa: F401
+    import zelda_i.level3_dungeon  # noqa: F401
+    import zelda_i.level5_dungeon  # noqa: F401
+    import zelda_i.level6_dungeon  # noqa: F401
+
+
+def spec_for_room(
+    room_id: int, *, level: int | None = None
+) -> DungeonRoomSpec:
+    """Look up a registered room spec.
+
+    Prefer ``level=`` when room IDs could collide across dungeons. Without
+    ``level``, uses the room_id-only table (unique rooms only).
+    """
+    ensure_default_specs()
     room_id = int(room_id)
+    if level is not None:
+        key = (int(level), room_id)
+        if key not in _ROOM_SPECS_BY_LEVEL:
+            known = ", ".join(
+                f"L{lvl}:0x{rid:02X}"
+                for lvl, rid in sorted(_ROOM_SPECS_BY_LEVEL)
+            )
+            raise KeyError(
+                f"no dungeon room spec for level={level} 0x{room_id:02X}; "
+                f"known: {known}"
+            )
+        return _ROOM_SPECS_BY_LEVEL[key]
     if room_id not in ROOM_SPECS:
         known = ", ".join(f"0x{room:02X}" for room in sorted(ROOM_SPECS))
-        raise KeyError(f"no dungeon room spec for 0x{room_id:02X}; known: {known}")
+        raise KeyError(
+            f"no dungeon room spec for 0x{room_id:02X}; known: {known}"
+        )
     return ROOM_SPECS[room_id]
 
 
@@ -661,43 +216,34 @@ def dungeon_room_cleared(ram: np.ndarray, spec: DungeonRoomSpec) -> bool:
     )
 
 
-def level2_room_6d_cleared(ram: np.ndarray) -> bool:
-    """Isolated pure: 0x6d 5 Ropes dead, RoomAllDead≥20, left door bit 0x02."""
-    return dungeon_room_cleared(ram, ROOM_6D_SPEC)
+def inventory_reward_success(
+    ram: np.ndarray,
+    spec: DungeonRoomSpec,
+    *,
+    min_value: int | None = None,
+) -> bool:
+    """Stop predicate for FIXED_INVENTORY rooms.
 
-
-def level2_room_6c_key_success(ram: np.ndarray) -> bool:
-    """Isolated pure: 0x6c with keys≥1 and no live Ropes.
-
-    ``RoomAllDead`` can lag several dozen frames after the last kill (observed
-    0→14→43 while idling post-success). Inventory + type/HP liveness is the
-    reliable stop; do not require the clear counter for FIXED_INVENTORY rooms.
+    Requires level + room_id + PLAY_MODE + no live enemies + inventory field
+    meets target. If ``min_value`` is set: field >= min_value. Else: field > 0
+    (keys-style). Compass-style bitfields should use a thin wrapper with a
+    bit-mask check instead of ``min_value``.
     """
     snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL_2
-        and snap.screen == ROOM_L2_WEST_KEY
-        and snap.mode == PLAY_MODE
-        and snap.keys >= 1
-        and not ROOM_6C_SPEC.live_enemies(snap)
-    )
-
-
-def level2_room_7e_key_success(ram: np.ndarray) -> bool:
-    """Isolated pure: 0x7e east key room with keys≥1 and no live Ropes.
-
-    Same FIXED_INVENTORY stop as west key: inventory + liveness only. From
-    ``Level2Entrance`` (keys=0) this is keys≥1; after west key, controller
-    success uses inventory delta while this stop still holds for keys≥1.
-    """
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL_2
-        and snap.screen == ROOM_L2_EAST_KEY
-        and snap.mode == PLAY_MODE
-        and snap.keys >= 1
-        and not ROOM_7E_SPEC.live_enemies(snap)
-    )
+    if (
+        snap.level != spec.level
+        or snap.screen != spec.room_id
+        or snap.mode != PLAY_MODE
+        or spec.live_enemies(snap)
+    ):
+        return False
+    field_name = spec.reward.inventory_field
+    if not field_name:
+        return False
+    value = int(getattr(snap, field_name))
+    if min_value is not None:
+        return value >= min_value
+    return value > 0
 
 
 def override_room_spec(
@@ -1019,3 +565,67 @@ class GenericDungeonRoomController:
                 "patrol_attack_hold": self.spec.combat.patrol_attack_hold,
             },
         }
+
+
+# ---------------------------------------------------------------------------
+# Lazy re-exports (PEP 562) so ``from zelda_i.dungeon import ROOM_6D_SPEC``
+# and L2 constants/preds keep working without circular imports at load time.
+# ---------------------------------------------------------------------------
+
+_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
+    # Level 1 room specs
+    "ROOM_23_SPEC": ("zelda_i.level1_dungeon", "ROOM_23_SPEC"),
+    "ROOM_33_SPEC": ("zelda_i.level1_dungeon", "ROOM_33_SPEC"),
+    "ROOM_35_SPEC": ("zelda_i.level1_dungeon", "ROOM_35_SPEC"),
+    "ROOM_42_SPEC": ("zelda_i.level1_dungeon", "ROOM_42_SPEC"),
+    "ROOM_43_SPEC": ("zelda_i.level1_dungeon", "ROOM_43_SPEC"),
+    "ROOM_44_SPEC": ("zelda_i.level1_dungeon", "ROOM_44_SPEC"),
+    "ROOM_45_SPEC": ("zelda_i.level1_dungeon", "ROOM_45_SPEC"),
+    "ROOM_52_SPEC": ("zelda_i.level1_dungeon", "ROOM_52_SPEC"),
+    "ROOM_53_SPEC": ("zelda_i.level1_dungeon", "ROOM_53_SPEC"),
+    "ROOM_54_SPEC": ("zelda_i.level1_dungeon", "ROOM_54_SPEC"),
+    # Level 2 constants + room specs + stop preds
+    "LEVEL_2": ("zelda_i.level2_dungeon", "LEVEL_2"),
+    "ROOM_L2_ENTRY": ("zelda_i.level2_dungeon", "ROOM_L2_ENTRY"),
+    "ROOM_L2_ROPES": ("zelda_i.level2_dungeon", "ROOM_L2_ROPES"),
+    "ROOM_L2_WEST_KEY": ("zelda_i.level2_dungeon", "ROOM_L2_WEST_KEY"),
+    "ROOM_L2_EAST_KEY": ("zelda_i.level2_dungeon", "ROOM_L2_EAST_KEY"),
+    "ROOM_L2_EAST_OF_ROPES": ("zelda_i.level2_dungeon", "ROOM_L2_EAST_OF_ROPES"),
+    "ROOM_L2_COMPASS": ("zelda_i.level2_dungeon", "ROOM_L2_COMPASS"),
+    "ROOM_L2_BOMB_N": ("zelda_i.level2_dungeon", "ROOM_L2_BOMB_N"),
+    "ROOM_L2_GORIYA_WEST": ("zelda_i.level2_dungeon", "ROOM_L2_GORIYA_WEST"),
+    "ROOM_6D_LEFT_DOOR_BIT": ("zelda_i.level2_dungeon", "ROOM_6D_LEFT_DOOR_BIT"),
+    "ROOM_7D_SPEC": ("zelda_i.level2_dungeon", "ROOM_7D_SPEC"),
+    "ROOM_6D_SPEC": ("zelda_i.level2_dungeon", "ROOM_6D_SPEC"),
+    "ROOM_6C_SPEC": ("zelda_i.level2_dungeon", "ROOM_6C_SPEC"),
+    "ROOM_7E_SPEC": ("zelda_i.level2_dungeon", "ROOM_7E_SPEC"),
+    "ROOM_6E_SPEC": ("zelda_i.level2_dungeon", "ROOM_6E_SPEC"),
+    "ROOM_6F_SPEC": ("zelda_i.level2_dungeon", "ROOM_6F_SPEC"),
+    "level2_room_6d_cleared": ("zelda_i.level2_dungeon", "level2_room_6d_cleared"),
+    "level2_room_6c_key_success": (
+        "zelda_i.level2_dungeon",
+        "level2_room_6c_key_success",
+    ),
+    "level2_room_7e_key_success": (
+        "zelda_i.level2_dungeon",
+        "level2_room_7e_key_success",
+    ),
+    "level2_room_6e_cleared": ("zelda_i.level2_dungeon", "level2_room_6e_cleared"),
+    "level2_room_6f_compass_success": (
+        "zelda_i.level2_dungeon",
+        "level2_room_6f_compass_success",
+    ),
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _LAZY_EXPORTS:
+        mod_name, attr = _LAZY_EXPORTS[name]
+        value = getattr(importlib.import_module(mod_name), attr)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_LAZY_EXPORTS))

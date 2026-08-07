@@ -36,9 +36,14 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 
 | Path | Role |
 |------|------|
-| `ram.py`, `overworld.py`, `overworld_nav.py` | Snapshots + OW graph |
-| `level1.py`, `level1_finish.py`, `dungeon.py` | L1 combat / finish |
-| `level2_overworld.py`, `chain.py`, `routes.py` | Post-Triforce + named routes |
+| `ram.py`, `overworld.py`, `overworld_nav.py` | Snapshots + OW graph / L1 path |
+| `ow_path.py` | Shared `OverworldPathController` (L2–L8 hop engine) |
+| `level1.py`, `level1_finish.py`, `level1_dungeon.py` | L1 combat / finish / rooms |
+| `dungeon.py` | Shared dungeon combat engine + registry |
+| `level2_dungeon.py`, `level2_overworld.py` | L2 rooms + OW approach |
+| `level3_dungeon.py`–`level6_dungeon.py` | Later-level room specs |
+| `level*_overworld.py` | Path tables + thin subclasses of `ow_path` |
+| `chain.py`, `routes.py` | Post-Triforce + named routes |
 | `nav_common.py`, `room_timer.py`, `dungeon_lab.py` | Shared nav + lab |
 | `assist.py` | Survival infinite-life (opt-in) |
 | `docs/tasks/PROCESS.md` | Dual-track + bead grain |
@@ -63,15 +68,21 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 
 ## Next
 
-1. **Past 0x6f** residual (0x6e RIGHT **open** → 0x6f gels+compass) → boom /
-   Dodongo (`rr-ebe` / `rr-n5i` shared).
-2. Magical Boomerang pure on `ADDR_MAGIC_BOOMERANG`; Dodongo → `triforce & 0x02`.
-3. Clean heart-safe door path 0x4A→0x3C→entry (parallel, not tip-blocking).
-Detail: `docs/LEVEL2_ROUTE.md`, `docs/tasks/PROCESS.md`.
-Key branch (Clean checkpoint): `run_level2_clear6d.py` / `run_level2_clear6c.py` /
-`run_level2_clear7e.py` (east key; `Level2EastKey.state`).
-Recon: `probe_level2_rooms.py` / `probe_level2_boomerang_path.py --infinite-life`.
-**Diamond-east:** `nav_common.diamond_east_phase` — band→wall→S2→pure push.
-0x7d band≈157 → **0x7e**; 0x6e band≈113 (WEST entry + key) → **0x6f**.
-Bombs: `ADDR_BOMBS=0x0658`, B when selected; selected pos `0x0656`.
-Boomerang RAM: `ADDR_BOOMERANG=0x0674`, `ADDR_MAGIC_BOOMERANG=0x0675`.
+```bash
+bd ready -l zelda_i   # tip: rr-lzk → rr-etl → rr-cjf → rr-ebe / rr-n5i
+```
+
+| Order | Bead | Work |
+|------:|------|------|
+| 1 | **rr-lzk** | Encode 0x6f bomb N @(120,101) → 0x5f from `Level2Compass` |
+| 2 | **rr-etl** | Pure clear 0x5e 5× Goriya `0x06` |
+| 3 | **rr-cjf** / **rr-fvt** | Open 0x5f further exits / room policy |
+| 4 | **rr-bsq** / **rr-ebe** | Boom room + `ADDR_MAGIC_BOOMERANG` pure |
+| 5 | **rr-n5i** | Dodongo bombs → TF `0x02` |
+| 6 | **rr-5dk** | Natural-entry assisted power-on → TF 0x02 |
+
+Full board: `docs/tasks/QUEUE.md`. Routes: `docs/LEVEL2_ROUTE.md`.
+
+Checkpoints: `Level2Entrance` / `WestKey` / `EastKey` / `Compass`; recon
+`Level2_5F` / `Level2_5E`. Runners: `run_level2_clear{6d,6c,7e,6f}.py`.
+**Diamond-east** + **bomb-north (120,101)** — see traps in LEVEL2_ROUTE.

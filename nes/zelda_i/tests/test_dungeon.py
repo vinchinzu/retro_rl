@@ -25,12 +25,17 @@ from zelda_i.dungeon import (
     ROOM_54_SPEC,
     ROOM_6C_SPEC,
     ROOM_6D_SPEC,
+    ROOM_6E_SPEC,
+    ROOM_6F_SPEC,
     ROOM_7D_SPEC,
     ROOM_7E_SPEC,
+    GEL_OBJECT_TYPE,
     ROPE_OBJECT_TYPE,
     dungeon_room_cleared,
     level2_room_6c_key_success,
     level2_room_6d_cleared,
+    level2_room_6e_cleared,
+    level2_room_6f_compass_success,
     level2_room_7e_key_success,
 )
 from zelda_i.dungeon_ids import object_name, ram_symbol, room_item_name
@@ -92,9 +97,13 @@ def test_level2_east_of_ropes_room_id_and_boomerang_addrs() -> None:
     )
     from zelda_i.ram import ADDR_BOOMERANG, ADDR_MAGIC_BOOMERANG
 
+    from zelda_i.dungeon import ROOM_L2_BOMB_N, ROOM_L2_GORIYA_WEST
+
     assert ROOM_L2_EAST_OF_ROPES == 0x6E
     assert ROOM_L2_EAST_KEY == 0x7E  # entry-east 5 ropes + key (diamond-nav)
     assert ROOM_L2_COMPASS == 0x6F  # key-RIGHT from 0x6e (rr-c6b)
+    assert ROOM_L2_BOMB_N == 0x5F  # bomb N from 0x6f @ (120,101)
+    assert ROOM_L2_GORIYA_WEST == 0x5E  # key-LEFT from 0x5f
     assert ADDR_BOOMERANG == 0x0674
     assert ADDR_MAGIC_BOOMERANG == 0x0675
     assert ram_symbol(ADDR_BOOMERANG) == "boomerang"
@@ -121,6 +130,7 @@ def test_diamond_east_phase_advances() -> None:
             keys=1,
             health=0x2F,
             triforce=1,
+            compass=0,
             dialog_timer=0,
             colliding_tile=0,
             room_item_id=3,
@@ -176,6 +186,19 @@ def test_level2_room_specs_and_stop_predicates() -> None:
     assert ROOM_7E_SPEC.entry.waypoints[0] == (120, 157)
     assert ROOM_7E_SPEC.combat.engage_distance == 64
     assert ROOM_7E_SPEC.combat.attack_phase == 4
+    assert ROOM_6E_SPEC.room_id == 0x6E
+    assert ROOM_6E_SPEC.expected_enemy_count == 3
+    assert ROOM_6E_SPEC.alive_rule.value == "hp"
+    assert ROOM_6F_SPEC.room_id == 0x6F
+    assert ROOM_6F_SPEC.source_room == 0x6E
+    assert ROOM_6F_SPEC.enemy_types == (GEL_OBJECT_TYPE,)
+    assert ROOM_6F_SPEC.expected_enemy_count == 6
+    assert ROOM_6F_SPEC.alive_rule.value == "type"
+    assert ROOM_6F_SPEC.room_item_id == 0x16
+    assert ROOM_6F_SPEC.reward.inventory_field == "compass"
+    assert ROOM_6F_SPEC.reward.target == (208, 101)
+    assert ROOM_6F_SPEC.reward.waypoints[0] == (192, 101)
+    assert ROOM_6F_SPEC.entry.waypoints[0] == (120, 113)
 
     live = read_snapshot(
         _room_ram(room=0x6D, enemy_type=0x28, enemies=5, hp=0x10)
@@ -224,6 +247,29 @@ def test_level2_room_specs_and_stop_predicates() -> None:
     east_no_key = _room_ram(room=0x7E, enemies=0, keys=0)
     east_no_key[ADDR_LEVEL] = LEVEL_2
     assert not level2_room_7e_key_success(east_no_key)
+
+    ropes_6e = _room_ram(room=0x6E, enemies=0)
+    ropes_6e[ADDR_LEVEL] = LEVEL_2
+    ropes_6e[ADDR_ROOM_ALL_DEAD] = 20
+    assert level2_room_6e_cleared(ropes_6e)
+
+    # Gels: TYPE-only (hp=0 still live); compass bit1 = level 2.
+    from zelda_i.ram import ADDR_COMPASS
+
+    gel_live = _room_ram(room=0x6F, enemy_type=0x15, enemies=6, hp=0)
+    gel_live[ADDR_LEVEL] = LEVEL_2
+    assert len(ROOM_6F_SPEC.live_enemies(read_snapshot(gel_live))) == 6
+    compass_ok = _room_ram(room=0x6F, enemies=0)
+    compass_ok[ADDR_LEVEL] = LEVEL_2
+    compass_ok[ADDR_COMPASS] = 0x02  # level-2 bit
+    assert level2_room_6f_compass_success(compass_ok)
+    no_compass = compass_ok.copy()
+    no_compass[ADDR_COMPASS] = 0
+    assert not level2_room_6f_compass_success(no_compass)
+    gels_remain = _room_ram(room=0x6F, enemy_type=0x15, enemies=2, hp=0)
+    gels_remain[ADDR_LEVEL] = LEVEL_2
+    gels_remain[ADDR_COMPASS] = 0x02
+    assert not level2_room_6f_compass_success(gels_remain)
 
 
 def test_room_specs_support_hp_and_type_only_liveness() -> None:

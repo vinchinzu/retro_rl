@@ -1,0 +1,222 @@
+"""Level 6 (Dragon) dungeon room specs and stop predicates.
+
+Owned by L6 pure wave — do not put these specs into ``dungeon.py``.
+Import ``GenericDungeonRoomController`` / dataclasses from ``dungeon`` only.
+
+Live recon (2026-08-06)::
+
+    Entry **0x79** (empty combat, RoomItemId 0x03).
+    East **0x7a**: 5× type 0x24 (orange wizzrobe-correlated) + key 0x19.
+    RIGHT from entry: wall-first y≈157 → x≈208 → y≈144–149 (see
+    ``level6_overworld.Level6EntryRightController``; no A while aligning).
+
+Wizzrobe combat: sword misses when overlapping at the door; controller
+backsteps when stuck too close without a kill, then re-engages.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
+
+from retro_harness.nes import nes_action
+from retro_harness.input_script import FrameAction
+from zelda_i.dungeon import (
+    AliveRule,
+    CombatTuning,
+    DoorRoute,
+    DungeonRoomSpec,
+    GenericDungeonRoomController,
+    RewardKind,
+    RewardSpec,
+    register_room_spec,
+)
+from zelda_i.level6_overworld import (
+    LEVEL6,
+    LEVEL6_EAST_KEY_ROOM,
+    LEVEL6_ENTRY_ROOM,
+    WIZZROBE_ORANGE_TYPE,
+)
+from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
+
+# Re-export for runners / docs.
+ROOM_L6_ENTRY = LEVEL6_ENTRY_ROOM  # 0x79
+ROOM_L6_EAST_KEY = LEVEL6_EAST_KEY_ROOM  # 0x7a
+
+# Open-floor patrol; wizzrobes teleport — cover mid lanes.
+_ROOM_7A_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (120, 109),
+    (176, 109),
+    (176, 141),
+    (176, 173),
+    (120, 173),
+    (64, 173),
+    (64, 141),
+    (120, 141),
+)
+
+# Entry room — no live combat on room-ready; graph node + door routes.
+ROOM_79_SPEC = DungeonRoomSpec(
+    spec_id="level6_room79_entry",
+    source_room=LEVEL6_ENTRY_ROOM,
+    room_id=LEVEL6_ENTRY_ROOM,
+    entry=DoorRoute("UP", ((120, 205),)),
+    enemy_types=(),
+    expected_enemy_count=0,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=((120, 141),),
+        engage_distance=48,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    room_item_id=0x03,
+    exit_routes=(
+        # Fire-block bypass: wall-first then door channel (controller owns timing).
+        DoorRoute("RIGHT", ((120, 157), (208, 157), (208, 144))),
+        DoorRoute("DOWN", ((120, 205),)),
+    ),
+    max_frames=2000,
+    level=LEVEL6,
+)
+
+# East of entry: 5× type 0x24 + fixed RoomItemId small key (0x19).
+# Key pickup observed near center after clear (keys 0→1); target (136,141).
+ROOM_7A_SPEC = DungeonRoomSpec(
+    spec_id="level6_room7a_east_key",
+    source_room=LEVEL6_ENTRY_ROOM,
+    room_id=LEVEL6_EAST_KEY_ROOM,
+    entry=DoorRoute(
+        "RIGHT",
+        ((120, 157), (208, 157), (208, 144)),
+    ),
+    enemy_types=(WIZZROBE_ORANGE_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_7A_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.FIXED_INVENTORY,
+        inventory_field="keys",
+        target=(136, 141),
+    ),
+    room_item_id=0x19,
+    exit_routes=(
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
+    ),
+    max_frames=12000,
+    level=LEVEL6,
+)
+
+register_room_spec(ROOM_79_SPEC)
+register_room_spec(ROOM_7A_SPEC)
+
+
+def level6_room_7a_key_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x7a with keys≥1 and no live type-0x24 enemies.
+
+    Same FIXED_INVENTORY stop as L2 west/east keys: inventory + liveness only.
+    Do not require RoomAllDead lag after key pickup.
+    """
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.screen == LEVEL6_EAST_KEY_ROOM
+        and snap.mode == PLAY_MODE
+        and snap.keys >= 1
+        and not ROOM_7A_SPEC.live_enemies(snap)
+    )
+
+
+@dataclass
+class Level6EastKeyController(GenericDungeonRoomController):
+    """Generic room clear + wizzrobe backstep when overlapping without kills.
+
+    Live: sword swings at distance 0 on the west door miss forever; retreat
+    when stuck too close, then re-engage from a short offset.
+    """
+
+    last_progress_frame: int = 0
+    prev_live_count: int = -1
+    backstep_frames: int = 0
+
+    def _combat(
+        self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
+    ) -> FrameAction:
+        self.combat_frames += 1
+        n_live = len(live)
+        if self.prev_live_count < 0:
+            self.prev_live_count = n_live
+            self.last_progress_frame = self.frames
+        elif n_live < self.prev_live_count:
+            self.prev_live_count = n_live
+            self.last_progress_frame = self.frames
+            self.backstep_frames = 0
+            self.notes.append(f"kill_to_{n_live}_f{self.frames}")
+
+        if not live:
+            return self._patrol(snap)
+
+        nearest = min(
+            live,
+            key=lambda obj: abs(obj.x - snap.link_x) + abs(obj.y - snap.link_y),
+        )
+        dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+        stuck_close = (
+            dist < 16 and (self.frames - self.last_progress_frame) > 100
+        )
+        if stuck_close or self.backstep_frames > 0:
+            if self.backstep_frames <= 0:
+                self.backstep_frames = 24
+                self.notes.append(f"backstep_f{self.frames}_d{dist}")
+            self.backstep_frames -= 1
+            if self.backstep_frames == 0:
+                # Allow a fresh engage window after retreat.
+                self.last_progress_frame = self.frames
+            dx = nearest.x - snap.link_x
+            dy = nearest.y - snap.link_y
+            if abs(dx) >= abs(dy):
+                direction = "LEFT" if dx >= 0 else "RIGHT"
+            else:
+                direction = "UP" if dy >= 0 else "DOWN"
+            # Prefer center when pinned on a door edge.
+            if snap.link_x < 40:
+                direction = "RIGHT"
+            elif snap.link_x > 200:
+                direction = "LEFT"
+            return FrameAction(nes_action(direction), "wizzrobe_backstep")
+
+        if dist < self.spec.combat.engage_distance:
+            return self._engage(snap, nearest)
+        return self._patrol(snap)
+
+    def report(self) -> dict[str, Any]:
+        base = super().report()
+        base["last_progress_frame"] = self.last_progress_frame
+        base["prev_live_count"] = self.prev_live_count
+        return base
+
+
+def make_east_key_controller() -> Level6EastKeyController:
+    """Factory: GenericDungeonRoomController subclass bound to ROOM_7A_SPEC."""
+    return Level6EastKeyController(spec=ROOM_7A_SPEC)
+
+
+__all__ = [
+    "ROOM_L6_ENTRY",
+    "ROOM_L6_EAST_KEY",
+    "ROOM_79_SPEC",
+    "ROOM_7A_SPEC",
+    "Level6EastKeyController",
+    "make_east_key_controller",
+    "level6_room_7a_key_success",
+]

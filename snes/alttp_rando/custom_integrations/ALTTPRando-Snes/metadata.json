@@ -1,0 +1,9 @@
+{
+  "default_state": "FirstPlay",
+  "default_player_state": "FirstPlay",
+  "whitelist": {
+    "data.json": [
+      "*"
+    ]
+  }
+}

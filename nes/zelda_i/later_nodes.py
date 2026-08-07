@@ -10,18 +10,22 @@ avoids hot-path edits to those files.
 
 from __future__ import annotations
 
-# --- Source-derived door screens (TBD live except where noted in OVERWORLD_DOORS) ---
-SCREEN_LEVEL3_ENTRANCE = 0x74  # Manji; matches level3_overworld candidate
-# L4: align with level4_overworld SOURCE_HYP (dock 0x55 raft→ island 0x45)
-SCREEN_LEVEL4_ENTRANCE = 0x45  # Snake island / door candidate after raft
+# --- Door screens (live assisted 2026-08-06 unless marked source) ---
+SCREEN_LEVEL3_ENTRANCE = 0x74  # Manji — live; entry room 0x7c
+SCREEN_LEVEL3_ENTRY_ROOM = 0x7C
+# L4: source hyp only (needs raft from L3)
+SCREEN_LEVEL4_ENTRANCE = 0x45  # Snake island candidate after raft
 SCREEN_LEVEL4_RAFT_DOCK = 0x55  # mainland dock (source short path)
-SCREEN_LEVEL5_ENTRANCE = 0x0B  # Lizard; Lost Hills ↑×4 from 0x1B
-SCREEN_LEVEL5_LOST_HILLS = 0x1B
-SCREEN_LEVEL6_ENTRANCE = 0x22  # Dragon; near graveyard
-SCREEN_LEVEL7_ENTRANCE = 0x42  # Demon; whistle pond (level7_overworld)
+SCREEN_LEVEL5_ENTRANCE = 0x0B  # Lizard — live; entry room 0x76
+SCREEN_LEVEL5_LOST_HILLS = 0x1B  # live ↑×4
+SCREEN_LEVEL5_ENTRY_ROOM = 0x76
+SCREEN_LEVEL6_ENTRANCE = 0x22  # Dragon — live; entry room 0x79
+SCREEN_LEVEL6_ENTRY_ROOM = 0x79
+SCREEN_LEVEL7_ENTRANCE = 0x42  # Demon; whistle pond (source)
 SCREEN_LEVEL7_BAIT_SHOP = 0x34
-SCREEN_LEVEL8_ENTRANCE = 0x6D  # Lion; candle bush (level8_overworld planned)
-SCREEN_LEVEL9_ENTRANCE = 0x05  # Death Mountain; bomb rock (level9_overworld)
+SCREEN_LEVEL8_BUSH = 0x6D  # Lion bush pocket — live; needs candle to enter
+SCREEN_LEVEL8_ENTRANCE = 0x6D  # same screen after burn (entry room TBD)
+SCREEN_LEVEL9_ENTRANCE = 0x05  # Death Mountain; bomb rock (source)
 
 # --- OW capability candidates (source; TBD live) ---
 SCREEN_BRACELET_ARMOS = 0x24

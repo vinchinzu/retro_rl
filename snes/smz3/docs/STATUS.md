@@ -28,6 +28,13 @@
 | Enter Link's House + open chest | **done** — map path west-ramp → door; chest @ vanilla XY |
 | Dual-bot race + video | scaffold only |
 
+## Solver flagship note
+
+SMZ3 is the combined-randomizer **proof target** for the program solver stack
+(vanilla SM + ALTTP skills → shared planner/discovery → seed-abstract S/T).
+Single-seed parlor→house is development evidence, **not** a seed-robust claim.
+See `docs/SOLVER_ARCHITECTURE.md` and `docs/BENCHMARK_SPEC.md` (seed-robustness).
+
 ## Current milestone
 
 ### M3 — portal settle + first Z3 outdoor leg

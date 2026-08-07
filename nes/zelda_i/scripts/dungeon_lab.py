@@ -22,8 +22,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from zelda_i.dungeon import AliveRule, spec_for_room
+from zelda_i.dungeon import AliveRule, ensure_default_specs, spec_for_room
 from zelda_i.dungeon_lab import LabRequest, run_lab
+
+ensure_default_specs()
 from zelda_i.dungeon_trace import (
     first_trace_divergence,
     read_jsonl,

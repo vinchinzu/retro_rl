@@ -13,7 +13,7 @@ independent. See [ROADMAP.md](ROADMAP.md),
 [DEVELOPMENT_LADDER.md](DEVELOPMENT_LADDER.md), and
 [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md).
 
-Manifest count: **36**.
+Manifest count: **38**.
 
 ## Active and scaffolded workspaces
 
@@ -55,6 +55,8 @@ Manifest count: **36**.
 | `nes/zelda_i` / The Legend of Zelda | graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | walk 0x4A → Level 2 door 0x3C (overworld health) |
 | `nes/zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
 | `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | same-day water + harvest/ship income (money still ~$100 floor); planning stack skill composition in progress |
+| `snes/alttp_rando` / A Link to the Past Randomizer | top_down_navigation, metroidvania_navigation | P7 | scaffolded | M1 | bronze | clean | no | M1 FirstPlay (Link's House) on JP 1.0; ./play records; ALTTPR patch + multi-seed next |
+| `snes/sm_rando` / Super Metroid Randomizer | metroidvania_navigation | P7 | playable_boot | M1 | bronze | clean | no | M1 FirstPlay boot on vanilla SM (Ceres) done; real shuffled seed ROM / generator still open; prove multi-seed S/T next |
 
 ## Planned / external
 

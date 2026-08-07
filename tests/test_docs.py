@@ -23,6 +23,7 @@ DOC_GLOBS = (
 # Workspace-relative game directories (under snes/ or nes/).
 ACTIVE_GAME_DIRS = (
     "snes/alttp",
+    "snes/alttp_rando",
     "snes/battle_clash",
     "nes/castlevania",
     "nes/contra",
@@ -40,6 +41,7 @@ ACTIVE_GAME_DIRS = (
     "snes/rival_turf",
     "nes/smb",
     "nes/smb3",
+    "snes/sm_rando",
     "snes/smz3",
     "snes/star_fox",
     "snes/super_double_dragon",

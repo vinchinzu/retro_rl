@@ -22,24 +22,16 @@ Track: assisted first-pass only — do **not** promote Clean STATUS.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
 import numpy as np
 
-from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
-from zelda_i.nav_common import (
-    align_and_push,
-    on_arrival_edge,
-    recover_off_edge,
-    swing_action,
-    track_stuck,
-    unstick_wiggle,
-    wake_or_wait_mode,
-)
+from retro_harness.nes import nes_idle_action
 from zelda_i.overworld import ScreenHop, path_screens_from_hops
+from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import PLAY_MODE, SCREEN_START, ZeldaSnapshot, read_snapshot
 
 # --- Live anchors (assisted recon 2026-08-06) ---
@@ -69,10 +61,11 @@ LEVEL3_SOURCE_PATH_SCREENS: tuple[int, ...] = (
 
 # Live door approach hops ending on 0x74 (from west-forest 0x66).
 # Start of this chain assumes Link is already on 0x66 (or join mid-table).
+# 0x66 rock rows: y≈117 often works first; widen band if stuck (probe residual).
 LEVEL3_DOOR_HOPS_FROM_66: tuple[ScreenHop, ...] = (
-    ScreenHop(0x65, "LEFT", align_y=141),
-    ScreenHop(0x64, "LEFT", align_y=141),
-    ScreenHop(0x63, "LEFT", align_y=133),
+    ScreenHop(0x65, "LEFT", y_band_lo=110, y_band_hi=150),
+    ScreenHop(0x64, "LEFT", y_band_lo=125, y_band_hi=150),
+    ScreenHop(0x63, "LEFT", y_band_lo=110, y_band_hi=145),
     ScreenHop(0x73, "DOWN", align_x=112),
     ScreenHop(0x74, "RIGHT", align_y=117),
 )
@@ -111,57 +104,29 @@ class Level3NavPhase(Enum):
 
 
 @dataclass
-class OverworldToLevel3Controller:
+class OverworldToLevel3Controller(OverworldPathController):
     """Walk ScreenHop path toward Manji door; optional dungeon settle.
 
     Default stop is door screen **0x74**. Pass ``require_dungeon=True`` to
     hunt UP @ ``door_x`` and idle until level==3 play (entry room 0x7c).
     """
 
-    hop_index: int = 0
     phase: Level3NavPhase = Level3NavPhase.HOP
-    frames: int = 0
-    phase_frames: int = 0
-    stuck: int = 0
-    last_x: int = -1
-    last_y: int = -1
-    last_screen: int = -1
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
     require_level3_screen: bool = False
     require_dungeon: bool = False
     hops: tuple[ScreenHop, ...] = LEVEL3_PATH_HOPS
     door_x: int = LEVEL3_DOOR_X
     entry_room: int = SCREEN_LEVEL3_ENTRY_ROOM
+    entry_level: int | None = LEVEL3
+    door_screen: int | None = SCREEN_LEVEL3_ENTRANCE
+    max_frames: int = SEGMENT_MAX_FRAMES
+    swing_period: int = SWORD_SWING_PERIOD
+    swing_hold: int = SWORD_SWING_FRAMES
+    stuck_threshold: int = STUCK_THRESHOLD
+    require_sword: bool = True
 
-    def reset(self) -> None:
-        self.hop_index = 0
-        self.phase = Level3NavPhase.HOP
-        self.frames = 0
-        self.phase_frames = 0
-        self.stuck = 0
-        self.last_x = -1
-        self.last_y = -1
-        self.last_screen = -1
-        self.success = False
-        self.notes.clear()
-
-    def _set_phase(self, phase: Level3NavPhase, note: str = "") -> None:
-        if phase is not self.phase:
-            self.phase = phase
-            self.phase_frames = 0
-            self.stuck = 0
-            if note:
-                self.notes.append(note)
-
-    def _swing(self, direction: str, reason: str) -> FrameAction:
-        return swing_action(
-            self.phase_frames,
-            direction,
-            reason,
-            period=SWORD_SWING_PERIOD,
-            hold=SWORD_SWING_FRAMES,
-        )
+    def _wants_post_hop(self) -> bool:
+        return self.require_level3_screen or self.require_dungeon
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         if self.require_dungeon:
@@ -187,128 +152,45 @@ class OverworldToLevel3Controller:
             and 40 < snap.link_y < 210
         )
 
-    def _advance_hop(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        if (
-            snap.screen != hop.target
-            or snap.mode not in (PLAY_MODE, 8)
-            or snap.transitioning
-            or on_arrival_edge(hop.direction, snap)
-        ):
-            return None
-
-        self.notes.append(f"hop_{self.hop_index}_{hop.target:02x}")
-        self.hop_index += 1
-        self.stuck = 0
-        self.phase_frames = 0
-        if self.hop_index >= len(self.hops) and not (
-            self.require_level3_screen or self.require_dungeon
-        ):
-            self.success = True
-            self._set_phase(Level3NavPhase.DONE, "path_complete")
-            return FrameAction(nes_idle_action(), "done")
-        return FrameAction(nes_idle_action(), "hop_advance")
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
-            snap,
-            last_x=self.last_x,
-            last_y=self.last_y,
-            last_screen=self.last_screen,
-            stuck=self.stuck,
-        )
-
-        if self.frames >= SEGMENT_MAX_FRAMES:
-            self._set_phase(Level3NavPhase.FAILED, "timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-
-        if snap.mode == 17:
-            self._set_phase(Level3NavPhase.FAILED, "link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-
-        if self._at_stop(snap):
-            self.success = True
-            self._set_phase(Level3NavPhase.DONE, "level3_path_stop")
-            return FrameAction(nes_idle_action(), "done")
-
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.level not in (0, LEVEL3) and snap.level > 0:
             return self._swing("DOWN", f"exit_l{snap.level}")
+        return None
 
-        if snap.transitioning:
-            if self.hop_index < len(self.hops):
-                return FrameAction(
-                    nes_action(self.hops[self.hop_index].direction), "scroll"
-                )
-            return FrameAction(nes_idle_action(), "scroll_idle")
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.require_level3_screen or self.require_dungeon:
+            if snap.level == LEVEL3:
+                return FrameAction(nes_idle_action(), "dungeon_settle")
+            self._set_phase(Level3NavPhase.DOOR, "door_hunt")
+            # Approach from south of mouth then align x and push UP.
+            if snap.link_y < LEVEL3_DOOR_APPROACH_Y - 10:
+                return self._swing("DOWN", "door_south")
+            if abs(snap.link_x - self.door_x) > 5:
+                btn = "LEFT" if snap.link_x > self.door_x else "RIGHT"
+                return self._swing(btn, "door_ax")
+            return self._swing("UP", "door_hunt")
+        return self._finish("hops_complete")
 
-        if snap.mode not in (PLAY_MODE, 8, 11):
-            return wake_or_wait_mode(self.phase_frames, snap.mode)
-
-        if self.hop_index >= len(self.hops):
-            if self.require_level3_screen or self.require_dungeon:
-                if snap.level == LEVEL3:
-                    return FrameAction(nes_idle_action(), "dungeon_settle")
-                self._set_phase(Level3NavPhase.DOOR, "door_hunt")
-                # Approach from south of mouth then align x and push UP.
-                if snap.link_y < LEVEL3_DOOR_APPROACH_Y - 10:
-                    return self._swing("DOWN", "door_south")
-                if abs(snap.link_x - self.door_x) > 5:
-                    btn = "LEFT" if snap.link_x > self.door_x else "RIGHT"
-                    return self._swing(btn, "door_ax")
-                return self._swing("UP", "door_hunt")
-            self.success = True
-            self._set_phase(Level3NavPhase.DONE, "hops_complete")
-            return FrameAction(nes_idle_action(), "done")
-
-        hop = self.hops[self.hop_index]
-        advanced = self._advance_hop(snap, hop)
-        if advanced is not None:
-            return advanced
-
-        if self.stuck > STUCK_THRESHOLD:
-            action, self.stuck = unstick_wiggle(self.stuck)
-            return action
-
-        edge = recover_off_edge(snap, hop.direction, swing=self._swing)
-        if edge is not None:
-            return edge
-
-        return align_and_push(
-            snap,
-            direction=hop.direction,
-            reason=f"hop{self.hop_index}",
-            align_x=hop.align_x,
-            align_y=hop.align_y,
-            y_band=hop.y_band,
-            stuck=0,
-            stuck_threshold=STUCK_THRESHOLD,
-            swing=self._swing,
-        )
+    def _finish(self, note: str = "path_stop") -> FrameAction:
+        # Preserve historical note labels used by probes/logs.
+        label = {
+            "path_stop": "level3_path_stop",
+            "path_complete": "path_complete",
+            "hops_complete": "hops_complete",
+        }.get(note, note)
+        self.success = True
+        self._set_phase(Level3NavPhase.DONE, label)
+        return FrameAction(nes_idle_action(), "done")
 
     def report(self) -> dict[str, Any]:
-        hop = None
-        if self.hop_index < len(self.hops):
-            current = self.hops[self.hop_index]
-            hop = {
-                "index": self.hop_index,
-                "target": current.target,
-                "direction": current.direction,
-            }
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "hop_index": self.hop_index,
-            "hop": hop,
-            "notes": list(self.notes),
-            "stuck": self.stuck,
-            "require_level3_screen": self.require_level3_screen,
-            "require_dungeon": self.require_dungeon,
-            "door_screen": SCREEN_LEVEL3_ENTRANCE,
-            "door_x": self.door_x,
-            "entry_room": self.entry_room,
-        }
+        out = super().report()
+        out["require_level3_screen"] = self.require_level3_screen
+        out["require_dungeon"] = self.require_dungeon
+        out["door_screen"] = SCREEN_LEVEL3_ENTRANCE
+        out["door_x"] = self.door_x
+        out["entry_room"] = self.entry_room
+        out.pop("require_entrance_screen", None)
+        return out
 
 
 def level3_path_success(ram: np.ndarray) -> bool:

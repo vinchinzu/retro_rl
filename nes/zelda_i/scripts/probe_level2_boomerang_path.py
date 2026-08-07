@@ -69,8 +69,9 @@ ROOM_EXIT_GOAL: dict[int, str] = {
     0x7D: "RIGHT",  # entry → 0x7e east key (band≈157)
     0x7E: "UP",  # east key → 0x6e (or LEFT return → 6d RIGHT for west entry)
     0x6E: "RIGHT",  # key door → 0x6f compass gels (band≈113; WEST entry)
-    0x6F: "RIGHT",  # residual past compass room
-    0x5E: "RIGHT",
+    0x6F: "UP",  # bomb N stand (120,101) → 0x5f (handled specially below)
+    0x5F: "RIGHT",  # walkthrough key RIGHT residual; LEFT → 0x5e Goriya
+    0x5E: "RIGHT",  # return / boom path residual
     0x5D: "RIGHT",
     0x5C: "RIGHT",
     0x4E: "RIGHT",
@@ -82,7 +83,7 @@ ROOM_EXIT_GOAL: dict[int, str] = {
 DIAMOND_EAST_ROOMS: dict[int, int] = {
     0x7D: 157,
     0x6E: 113,
-    0x6F: 113,
+    0x5F: 141,
 }
 
 # When stuck, try doors in this order (prefer forward path).
@@ -475,12 +476,29 @@ def run_probe(
                                 "keys": snap.keys,
                             }
                         )
-                    act = _diamond_or_door(
-                        snap,
-                        current_door,
-                        room=play_room,
-                        phase_state=diamond_phase_state,
-                    )
+                    # 0x6f walkthrough bomb N: stand (120,101) UP+B → 0x5f.
+                    if play_room == 0x6F and current_door == "UP" and snap.bombs > 0:
+                        if abs(snap.link_x - 120) > 6:
+                            act = nes_action(
+                                "RIGHT" if snap.link_x < 120 else "LEFT"
+                            )
+                        elif abs(snap.link_y - 101) > 6:
+                            act = nes_action(
+                                "UP" if snap.link_y > 101 else "DOWN"
+                            )
+                        elif door_push_frames % 140 < 2:
+                            act = nes_action("UP", "B")
+                        elif door_push_frames % 140 < 100:
+                            act = nes_idle_action()
+                        else:
+                            act = nes_action("UP")
+                    else:
+                        act = _diamond_or_door(
+                            snap,
+                            current_door,
+                            room=play_room,
+                            phase_state=diamond_phase_state,
+                        )
                 else:
                     # Waiting for spawn.
                     act = _swing(f, "UP", period=12, hold=2)

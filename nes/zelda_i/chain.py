@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -31,6 +32,9 @@ if TYPE_CHECKING:
     from zelda_i.assist import UnlimitedHealthAssist
     from zelda_i.room_timer import RoomTimer
 
+# Post-step hook: (env, obs, action, global_frame) -> None
+FrameCallback = Callable[[Any, Any, Any, int], None]
+
 
 def _observe_room_timer(
     room_timer: RoomTimer | None,
@@ -54,22 +58,38 @@ def _apply_assist(
         assist.apply_env(env, frame=frame)
 
 
+def _notify_frame(
+    on_frame: FrameCallback | None,
+    env,
+    obs: Any,
+    action: Any,
+    *,
+    frame: int,
+) -> None:
+    """Opt-in post-step hook (video capture, debug sinks)."""
+    if on_frame is not None:
+        on_frame(env, obs, action, frame)
+
+
 def boot_to_ready(
     env,
     *,
     room_timer: RoomTimer | None = None,
     assist: UnlimitedHealthAssist | None = None,
+    on_frame: FrameCallback | None = None,
     frame_base: int = 0,
 ) -> tuple[Any, int]:
     """Drive the power-on menu script to the first playable overworld frame."""
     obs = None
     frame = 0
     for scripted in boot_to_level1_script():
-        obs, *_ = env.step(scripted.action)
+        action = scripted.action
+        obs, *_ = env.step(action)
         frame += 1
         gf = frame_base + frame
         _observe_room_timer(room_timer, env, frame=gf)
         _apply_assist(assist, env, frame=gf)
+        _notify_frame(on_frame, env, obs, action, frame=gf)
         if is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
             return obs, frame
     return obs, frame
@@ -81,6 +101,7 @@ def run_natural_to_level1(
     require_dungeon: bool = True,
     room_timer: RoomTimer | None = None,
     assist: UnlimitedHealthAssist | None = None,
+    on_frame: FrameCallback | None = None,
     frame_base: int = 0,
 ) -> tuple[
     Any,
@@ -98,32 +119,39 @@ def run_natural_to_level1(
         env,
         room_timer=room_timer,
         assist=assist,
+        on_frame=on_frame,
         frame_base=frame_base,
     )
     global_frame = frame_base + boot_frames
     sword = SwordCaveController()
     for _ in range(SWORD_MAX_FRAMES):
-        obs, *_ = env.step(sword.step(read_snapshot(env.get_ram())).action)
+        action = sword.step(read_snapshot(env.get_ram())).action
+        obs, *_ = env.step(action)
         global_frame += 1
         _observe_room_timer(room_timer, env, frame=global_frame)
         _apply_assist(assist, env, frame=global_frame)
+        _notify_frame(on_frame, env, obs, action, frame=global_frame)
         if sword.success or sword.phase.name == "FAILED":
             break
 
     if sword.success:
+        down = nes_action("DOWN")
         for _ in range(55):
-            obs, *_ = env.step(nes_action("DOWN"))
+            obs, *_ = env.step(down)
             global_frame += 1
             _observe_room_timer(room_timer, env, frame=global_frame)
             _apply_assist(assist, env, frame=global_frame)
+            _notify_frame(on_frame, env, obs, down, frame=global_frame)
 
     nav = OverworldToLevel1Controller(require_dungeon=require_dungeon)
     if sword.success:
         for _ in range(NAV_MAX_FRAMES):
-            obs, *_ = env.step(nav.step(read_snapshot(env.get_ram())).action)
+            action = nav.step(read_snapshot(env.get_ram())).action
+            obs, *_ = env.step(action)
             global_frame += 1
             _observe_room_timer(room_timer, env, frame=global_frame)
             _apply_assist(assist, env, frame=global_frame)
+            _notify_frame(on_frame, env, obs, action, frame=global_frame)
             if nav.success or nav.phase.name == "FAILED":
                 break
     return obs, boot_frames, sword, nav, global_frame
@@ -191,6 +219,7 @@ def run_controller_stage(
     max_frames: int,
     room_timer: RoomTimer | None = None,
     assist: UnlimitedHealthAssist | None = None,
+    on_frame: FrameCallback | None = None,
     frame_base: int = 0,
 ) -> tuple[Any, ControllerStageResult]:
     """Run one controller without duplicating the standard emulator loop.
@@ -203,6 +232,9 @@ def run_controller_stage(
     When ``assist`` is provided (Survival / infinite-life first pass), health is
     refilled after each frame per ``docs/ASSIST_CONTRACT.md``. Default is no
     assist (Clean).
+
+    When ``on_frame`` is provided, it is called after each step with
+    ``(env, obs, action, global_frame)`` (e.g. video capture).
     """
     result = ControllerStageResult(
         name=name,
@@ -212,11 +244,13 @@ def run_controller_stage(
         end_frame=frame_base,
     )
     for frame in range(1, max_frames + 1):
-        obs, *_ = env.step(controller.step(read_snapshot(env.get_ram())).action)
+        action = controller.step(read_snapshot(env.get_ram())).action
+        obs, *_ = env.step(action)
         result.frames = frame
         result.end_frame = frame_base + frame
         _observe_room_timer(room_timer, env, frame=result.end_frame)
         _apply_assist(assist, env, frame=result.end_frame)
+        _notify_frame(on_frame, env, obs, action, frame=result.end_frame)
         if controller.success or controller.phase.name == "FAILED":
             break
     result.success = bool(controller.success)
@@ -232,6 +266,7 @@ def run_natural_to_milestone(
     milestone: str = "clear53",
     room_timer: RoomTimer | None = None,
     assist: UnlimitedHealthAssist | None = None,
+    on_frame: FrameCallback | None = None,
     frame_base: int = 0,
 ) -> NaturalMilestoneRun:
     """Compose the natural power-on Level 1 prefix through one milestone."""
@@ -244,6 +279,7 @@ def run_natural_to_milestone(
         env,
         room_timer=room_timer,
         assist=assist,
+        on_frame=on_frame,
         frame_base=frame_base,
     )
     run = NaturalMilestoneRun(
@@ -273,6 +309,7 @@ def run_natural_to_milestone(
             max_frames=max_frames,
             room_timer=room_timer,
             assist=assist,
+            on_frame=on_frame,
             frame_base=run.end_frame,
         )
         run.obs = obs

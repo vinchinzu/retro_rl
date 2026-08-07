@@ -65,6 +65,11 @@ from retro_harness.video import (
     frame_timestamp,
     render_footer_frame,
 )
+from retro_harness.youtube_intro import (
+    DEFAULT_INTRO_FRAMES,
+    project_intro_lines,
+    render_intro_card,
+)
 from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
@@ -75,7 +80,12 @@ WARP_MID_STATE = INTEGRATION_V0_DIR / "Level1_2_WarpMid.state"
 LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"
 DEFAULT_MAX_SUFFIX_FRAMES = 22_000
 DEFAULT_MAX_CONTINUOUS_FRAMES = 25_000
+# Success gate: oper_mode=2 held this many idle frames (RTA excludes settle).
 ENDING_SETTLE_FRAMES = 120
+# YouTube / capture hold after first reached_ending: bridge walk → Mario+Peach
+# courtyard (~300f) → full "THANK YOU MARIO!" text (~600–720f). Measured on
+# natural_82 power-on 2026-08-06; do not cut on Bowser-drop alone.
+ENDING_PEACH_HOLD_FRAMES = 780
 
 def _snapshot_dict(snap) -> dict[str, int]:
     return {
@@ -118,9 +128,13 @@ class _VideoWriter:
         self.src_h = height + (FOOTER_HEIGHT if hud else 0)
         self.out_w = self.src_w * self.scale
         self.out_h = self.src_h * self.scale
-        self.frames = 0
+        self.frames = 0  # total encoded frames (intro + gameplay)
+        self.timer_frames = 0  # HUD speedrun clock (gameplay only)
+        self.intro_frames = 0
         self.audio_samples = 0
         self.audio_rate = audio_rate
+        self.game_w = width
+        self.game_h = height
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._silent = path.with_suffix(".partial.video.mp4")
         self._wav = path.with_suffix(".partial.audio.wav")
@@ -193,7 +207,8 @@ class _VideoWriter:
             upper_left = f"{self.route_label}  {level}  {lives}".strip()
             if label:
                 upper_left = f"{upper_left}  {label}".strip()
-            upper_right = frame_timestamp(self.frames, self.fps)
+            # Timer is pure gameplay (intro pre-roll does not advance the clock).
+            upper_right = frame_timestamp(self.timer_frames, self.fps)
             lower_left = xpos or "---"
             rgb = render_footer_frame(
                 rgb,
@@ -205,14 +220,56 @@ class _VideoWriter:
                 layout="nes",
             )
 
-        if rgb.shape != (self.src_h, self.src_w, 3):
+        self._emit_rgb(rgb, audio=audio, count_timer=True)
+
+    def write_intro(
+        self,
+        lines: list[str],
+        *,
+        hold_frames: int = DEFAULT_INTRO_FRAMES,
+    ) -> None:
+        """Write a project intro slide before gameplay (same encode session)."""
+        if hold_frames <= 0:
+            return
+        card = render_intro_card(
+            lines,
+            width=self.game_w,
+            height=self.game_h,
+            with_footer=self.hud,
+        )
+        silent = self._silent_audio_frame()
+        for _ in range(hold_frames):
+            self._emit_rgb(card, audio=silent, count_timer=False)
+            self.intro_frames += 1
+
+    def _silent_audio_frame(self) -> np.ndarray | None:
+        if self.audio_rate is None or self.audio_rate <= 0:
+            return None
+        n = max(1, int(round(self.audio_rate / float(self.fps))))
+        return np.zeros((n, 2), dtype=np.int16)
+
+    def _emit_rgb(
+        self,
+        rgb: np.ndarray,
+        *,
+        audio: np.ndarray | None,
+        count_timer: bool,
+    ) -> None:
+        if self._proc.stdin is None:
+            return
+        frame = np.asarray(rgb, dtype=np.uint8)
+        if frame.shape != (self.src_h, self.src_w, 3):
             raise ValueError(
-                f"expected frame {(self.src_h, self.src_w, 3)}, got {rgb.shape}"
+                f"expected frame {(self.src_h, self.src_w, 3)}, got {frame.shape}"
             )
         if self.scale > 1:
-            rgb = np.repeat(np.repeat(rgb, self.scale, axis=0), self.scale, axis=1)
-        self._proc.stdin.write(rgb.tobytes())
+            frame = np.repeat(
+                np.repeat(frame, self.scale, axis=0), self.scale, axis=1
+            )
+        self._proc.stdin.write(frame.tobytes())
         self.frames += 1
+        if count_timer:
+            self.timer_frames += 1
 
         if self._audio is None or audio is None:
             return
@@ -246,6 +303,19 @@ class _VideoWriter:
             )
 
     def close(self) -> None:
+        # Pad silent audio so -shortest does not clip the final frames.
+        if (
+            self._audio is not None
+            and self.audio_rate is not None
+            and self.audio_rate > 0
+            and self.frames > 0
+        ):
+            expected = int(round(self.frames * self.audio_rate / float(self.fps)))
+            missing = expected - self.audio_samples
+            if missing > 0:
+                pad = np.zeros((missing, 2), dtype=np.int16)
+                self._audio.writeframesraw(pad.astype("<i2", copy=False).tobytes())
+                self.audio_samples += missing
         self._close_streams()
         if self.audio_rate is None or not self._wav.exists():
             # Silent path: just promote the partial video.
@@ -352,10 +422,17 @@ def _run_policy_to_ending(
     max_frames: int,
     route_start_index: int,
     ending_settle_frames: int = ENDING_SETTLE_FRAMES,
+    peach_hold_frames: int = 0,
     video: _VideoWriter | None = None,
     label: str = "",
 ) -> tuple[dict[str, Any], object | None]:
-    """Replay an RLE seed until ending / death / timeout; optional video."""
+    """Replay an RLE seed until ending / death / timeout; optional video.
+
+    ``ending_settle_frames`` is the success gate (stable oper_mode=2).
+    ``peach_hold_frames`` is total post-ending idle for capture (bridge →
+    Peach courtyard → full thank-you text). When larger than the settle
+    gate, extra frames are held after success with label ``peach``.
+    """
     policy = Nes9ReplayPolicy(
         seed_path=seed_path,
         action_size=int(env.action_space.shape[0]),
@@ -403,23 +480,30 @@ def _run_policy_to_ending(
             break
 
     stable = 0
+    peach_held = 0
+    total_hold = max(ending_settle_frames, int(peach_hold_frames or 0))
     if outcome == "ending":
         idle = np.zeros(int(env.action_space.shape[0]), dtype=np.int8)
-        for _ in range(ending_settle_frames):
+        for i in range(total_hold):
             obs, *_ = env.step(idle)
-            snap = read_snapshot(env.get_ram(), frame=frame + stable + 1)
+            hold_frame = frame + i + 1
+            snap = read_snapshot(env.get_ram(), frame=hold_frame)
+            phase = "ending" if i < ending_settle_frames else "peach"
             _write_video(
                 video,
                 obs,
                 env=env,
                 action=idle,
-                label="ending",
+                label=phase,
                 snap=snap,
             )
             if reached_ending(env.get_ram(), start_lives=start_lives):
-                stable += 1
+                if i < ending_settle_frames:
+                    stable += 1
+                else:
+                    peach_held += 1
 
-    final = read_snapshot(env.get_ram(), frame=frame + stable)
+    final = read_snapshot(env.get_ram(), frame=frame + total_hold)
     success = (
         outcome == "ending"
         and progress.complete
@@ -432,6 +516,8 @@ def _run_policy_to_ending(
             "label": label,
             "policy_frames": frame,
             "ending_settle_frames": stable,
+            "peach_hold_frames": peach_held,
+            "ending_total_hold_frames": total_hold if outcome == "ending" else 0,
             "start": _snapshot_dict(start),
             "final": _snapshot_dict(final),
             "milestones": progress.completed,
@@ -450,6 +536,7 @@ def run_suffix_policy(
     seed_path: Path = DEFAULT_WARP_SUFFIX_SEED,
     max_frames: int = DEFAULT_MAX_SUFFIX_FRAMES,
     ending_settle_frames: int = ENDING_SETTLE_FRAMES,
+    peach_hold_frames: int = 0,
     video: _VideoWriter | None = None,
 ) -> tuple[dict[str, Any], object | None]:
     """Run the no-reload mid-1-2-to-ending policy from the current state."""
@@ -459,6 +546,7 @@ def run_suffix_policy(
         max_frames=max_frames,
         route_start_index=1,
         ending_settle_frames=ending_settle_frames,
+        peach_hold_frames=peach_hold_frames,
         video=video,
         label="continuous_suffix",
     )
@@ -582,8 +670,15 @@ def run_warp_finish(
     record_scale: int = 3,
     record_hud: bool = True,
     record_audio: bool = True,
+    intro_frames: int = DEFAULT_INTRO_FRAMES,
+    intro_enabled: bool = True,
+    peach_hold_frames: int | None = None,
 ) -> dict[str, Any]:
-    """Run poweron / continuous / suffix / legacy chain finish attempt."""
+    """Run poweron / continuous / suffix / legacy chain finish attempt.
+
+    When recording, defaults to ``ENDING_PEACH_HOLD_FRAMES`` so the MP4 holds
+    through Peach + full thank-you text (not just Bowser drop / bridge walk).
+    """
     configure_headless()
     out = out_dir or (RECORDINGS_DIR / "warp_finish")
     out.mkdir(parents=True, exist_ok=True)
@@ -656,6 +751,13 @@ def run_warp_finish(
     }
     video: _VideoWriter | None = None
     obs = None
+    # Recordings hold through Peach + thank-you text; dry runs keep the 120f gate.
+    if peach_hold_frames is None:
+        resolved_peach_hold = (
+            ENDING_PEACH_HOLD_FRAMES if record_path is not None else 0
+        )
+    else:
+        resolved_peach_hold = max(0, int(peach_hold_frames))
     try:
         result = env.reset()
         obs = result[0] if isinstance(result, tuple) else result
@@ -674,6 +776,23 @@ def run_warp_finish(
                 hud=record_hud,
                 route_label="SMB any%",
             )
+            # Generic project intro (pre-roll). Gameplay still one continuous
+            # power-on session — not a stitch of segment clips.
+            if intro_enabled and intro_frames > 0:
+                mode_summary = {
+                    "poweron": "Clean power-on any% warp to 8-4 ending",
+                    "continuous": "Level1_1 continuous any% warp to 8-4",
+                    "chain": "Dev chain (1-1 + mid-1-2 splice) to ending",
+                    "suffix": "Warp-mid suffix to World 8-4 ending",
+                }.get(mode, f"SMB warp finish ({mode})")
+                intro_lines = project_intro_lines(
+                    game_title="Super Mario Bros. (NES)",
+                    run_summary=mode_summary,
+                    extra_lines=(
+                        "HUD: frame timer, level/lives, NES buttons",
+                    ),
+                )
+                video.write_intro(intro_lines, hold_frames=intro_frames)
             if obs is not None:
                 _write_video(
                     video,
@@ -688,6 +807,10 @@ def run_warp_finish(
                 "hud": record_hud,
                 "audio": audio_rate is not None,
                 "audio_rate": audio_rate,
+                "intro_frames": video.intro_frames,
+                "continuous_run": True,
+                "stitched_segments": False,
+                "peach_hold_frames": resolved_peach_hold,
             }
 
         if mode == "poweron":
@@ -716,6 +839,7 @@ def run_warp_finish(
                 seed_path=seed_continuous,
                 max_frames=max_continuous_frames,
                 route_start_index=0,
+                peach_hold_frames=resolved_peach_hold,
                 video=video,
                 label="poweron_to_ending",
             )
@@ -758,6 +882,7 @@ def run_warp_finish(
                 seed_path=seed_continuous,
                 max_frames=max_continuous_frames,
                 route_start_index=0,
+                peach_hold_frames=resolved_peach_hold,
                 video=video,
                 label="continuous_1_1_to_ending",
             )
@@ -789,6 +914,7 @@ def run_warp_finish(
                 env,
                 seed_path=seed_suffix,
                 max_frames=max_suffix_frames,
+                peach_hold_frames=resolved_peach_hold,
                 video=video,
             )
             report["stages"]["continuous_suffix"] = suffix
@@ -807,6 +933,7 @@ def run_warp_finish(
                 env,
                 seed_path=seed_suffix,
                 max_frames=max_suffix_frames,
+                peach_hold_frames=resolved_peach_hold,
                 video=video,
             )
             report["stages"]["continuous_suffix"] = suffix
@@ -824,6 +951,8 @@ def run_warp_finish(
         if video is not None:
             report["video"] = str(record_path)
             report["video_frames"] = video.frames
+            report["video_timer_frames"] = video.timer_frames
+            report["video_intro_frames"] = video.intro_frames
             report["video_audio_samples"] = video.audio_samples
 
         # Attach named TAS/RTA timing contracts when we have a continuous path.
@@ -932,6 +1061,30 @@ def main() -> None:
         action="store_true",
         help="Disable native emulator audio mux into the MP4",
     )
+    parser.add_argument(
+        "--intro-frames",
+        type=int,
+        default=DEFAULT_INTRO_FRAMES,
+        help=(
+            "YouTube project intro hold frames at 60fps "
+            f"(default {DEFAULT_INTRO_FRAMES}; 0 disables)"
+        ),
+    )
+    parser.add_argument(
+        "--no-intro",
+        action="store_true",
+        help="Skip the generic retro_rl YouTube intro slide",
+    )
+    parser.add_argument(
+        "--peach-hold-frames",
+        type=int,
+        default=None,
+        help=(
+            "Post-ending idle frames for Peach/thank-you hold "
+            f"(default {ENDING_PEACH_HOLD_FRAMES} when recording, 0 otherwise; "
+            "success gate remains 120f)"
+        ),
+    )
     args = parser.parse_args()
 
     successes = 0
@@ -968,6 +1121,9 @@ def main() -> None:
             record_scale=args.record_scale,
             record_hud=not args.no_record_hud,
             record_audio=not args.no_record_audio,
+            intro_frames=0 if args.no_intro else max(0, args.intro_frames),
+            intro_enabled=not args.no_intro and args.intro_frames != 0,
+            peach_hold_frames=args.peach_hold_frames,
         )
         trial_reports.append(report)
         successes += int(bool(report.get("success")))

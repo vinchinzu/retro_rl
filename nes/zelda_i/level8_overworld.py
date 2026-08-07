@@ -24,26 +24,19 @@ credits). Boss Gleeok 4-head. Triforce bit ``0x80``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.nav_common import (
-    align_and_push,
-    on_arrival_edge,
-    recover_off_edge,
-    swing_action,
-    track_stuck,
-    unstick_wiggle,
-    wake_or_wait_mode,
-)
 from zelda_i.overworld import (
     LEVEL2_5C_MAZE_WAYPOINTS,
     ScreenHop,
+    is_5c_maze_hop,
     path_screens_from_hops,
 )
+from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import (
     ADDR_CANDLE,
     PLAY_MODE,
@@ -68,9 +61,6 @@ SEGMENT_MAX_FRAMES = 50000
 SWORD_SWING_PERIOD = 10
 SWORD_SWING_FRAMES = 3
 STUCK_THRESHOLD = 50
-MAZE_WAYPOINT_TOL = 6
-SCREEN_5C_MAZE = 0x5C
-MAZE_HOP_TARGET = 0x5D
 
 # Live-verified bush approach (assisted 2026-08-06). 0x5C→0x5D needs maze
 # waypoints (same BFS path as L2 door). Final hop 0x5D→0x6D south @x≈48.
@@ -112,12 +102,8 @@ class Level8NavPhase(Enum):
     FAILED = auto()
 
 
-def is_5c_maze_hop(hop: ScreenHop) -> bool:
-    return hop.target == MAZE_HOP_TARGET and hop.direction == "RIGHT"
-
-
 @dataclass
-class OverworldToLevel8Controller:
+class OverworldToLevel8Controller(OverworldPathController):
     """Walk hop table from start toward L8 bush 0x6D; optional burn/enter.
 
     Does **not** require triforce bits. Candle acquisition is external: stop on
@@ -125,56 +111,29 @@ class OverworldToLevel8Controller:
     must already be candle).
     """
 
-    hop_index: int = 0
     phase: Level8NavPhase = Level8NavPhase.HOP
-    frames: int = 0
-    phase_frames: int = 0
-    stuck: int = 0
-    last_x: int = -1
-    last_y: int = -1
-    last_screen: int = -1
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
     hops: tuple[ScreenHop, ...] = LEVEL8_BUSH_HOPS
     maze_waypoints: tuple[tuple[int, int], ...] = LEVEL8_5C_MAZE_WAYPOINTS
-    maze_wp_index: int = 0
+    maze_hop_pred: Any = None
     burn_bush: bool = False
     enter_dungeon: bool = False
     bush_x: int = 120
     bush_y: int = 120
     burn_frames: int = 0
     burn_budget: int = 400
+    max_frames: int = SEGMENT_MAX_FRAMES
+    swing_period: int = SWORD_SWING_PERIOD
+    swing_hold: int = SWORD_SWING_FRAMES
+    stuck_threshold: int = STUCK_THRESHOLD
+    door_screen: int | None = SCREEN_LEVEL8_BUSH
+
+    def __post_init__(self) -> None:
+        if self.maze_hop_pred is None:
+            self.maze_hop_pred = is_5c_maze_hop
 
     def reset(self) -> None:
-        self.hop_index = 0
-        self.phase = Level8NavPhase.HOP
-        self.frames = 0
-        self.phase_frames = 0
-        self.stuck = 0
-        self.last_x = -1
-        self.last_y = -1
-        self.last_screen = -1
-        self.success = False
-        self.notes.clear()
-        self.maze_wp_index = 0
+        super().reset()
         self.burn_frames = 0
-
-    def _set_phase(self, phase: Level8NavPhase, note: str = "") -> None:
-        if phase is not self.phase:
-            self.phase = phase
-            self.phase_frames = 0
-            self.stuck = 0
-            if note:
-                self.notes.append(note)
-
-    def _swing(self, direction: str, reason: str) -> FrameAction:
-        return swing_action(
-            self.phase_frames,
-            direction,
-            reason,
-            period=SWORD_SWING_PERIOD,
-            hold=SWORD_SWING_FRAMES,
-        )
 
     def end_screen(self) -> int:
         return self.hops[-1].target if self.hops else SCREEN_LEVEL8_BUSH
@@ -190,21 +149,38 @@ class OverworldToLevel8Controller:
     def _in_level8(self, snap: ZeldaSnapshot) -> bool:
         return snap.level == LEVEL_8 and snap.mode == PLAY_MODE
 
-    def _advance_hop(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        if (
-            snap.screen != hop.target
-            or snap.mode not in (PLAY_MODE, 8)
-            or snap.transitioning
-            or on_arrival_edge(hop.direction, snap)
-        ):
+    def _wants_post_hop(self) -> bool:
+        return self.burn_bush or self.enter_dungeon
+
+    def _at_stop(self, snap: ZeldaSnapshot) -> bool:
+        # Dungeon entry is success; hop-complete bush screen handled in after_hops.
+        return self._in_level8(snap)
+
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        # Transition handling matches original: only ENTER/HOP push a direction.
+        if snap.transitioning:
             return None
-        self.notes.append(f"hop_{self.hop_index}_{hop.target:02x}")
-        if is_5c_maze_hop(hop):
-            self.notes.append("maze_complete")
-        self.hop_index += 1
-        self.stuck = 0
-        self.phase_frames = 0
-        self.maze_wp_index = 0
+        if self.phase is Level8NavPhase.BURN:
+            return self._burn_step(snap)
+        if self.phase is Level8NavPhase.ENTER:
+            return self._enter_step(snap)
+        return None
+
+    def _handle_transition(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.phase is Level8NavPhase.ENTER or (
+            self.hop_index < len(self.hops) and self.phase is Level8NavPhase.HOP
+        ):
+            direction = (
+                "UP"
+                if self.phase is Level8NavPhase.ENTER
+                else self.hops[self.hop_index].direction
+            )
+            return FrameAction(nes_action(direction), "scroll")
+        return FrameAction(nes_idle_action(), "scroll_idle")
+
+    def _on_hop_advanced(
+        self, snap: ZeldaSnapshot, completed_hop: ScreenHop
+    ) -> FrameAction:
         if self.hop_index >= len(self.hops):
             if self.burn_bush or self.enter_dungeon:
                 self._set_phase(Level8NavPhase.BURN, "at_bush_screen")
@@ -214,104 +190,20 @@ class OverworldToLevel8Controller:
             return FrameAction(nes_idle_action(), "done")
         return FrameAction(nes_idle_action(), "hop_advance")
 
-    def _follow_5c_maze(self, snap: ZeldaSnapshot) -> FrameAction:
-        if not self.maze_waypoints:
-            return self._swing("RIGHT", "maze_no_waypoints")
-        if "maze_start" not in self.notes:
-            self.notes.append("maze_start")
-        if self.maze_wp_index >= len(self.maze_waypoints):
-            return self._swing("RIGHT", "maze_exit")
-        tx, ty = self.maze_waypoints[self.maze_wp_index]
-        if (
-            abs(snap.link_x - tx) <= MAZE_WAYPOINT_TOL
-            and abs(snap.link_y - ty) <= MAZE_WAYPOINT_TOL
-        ):
-            self.maze_wp_index += 1
-            self.stuck = 0
-            if self.maze_wp_index >= len(self.maze_waypoints):
-                return self._swing("RIGHT", "maze_exit")
-            tx, ty = self.maze_waypoints[self.maze_wp_index]
-        if self.stuck > STUCK_THRESHOLD:
-            action, self.stuck = unstick_wiggle(self.stuck, reason="maze_unstick")
-            return action
-        dx = tx - snap.link_x
-        dy = ty - snap.link_y
-        if abs(dx) > MAZE_WAYPOINT_TOL:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > MAZE_WAYPOINT_TOL:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
-            direction = "RIGHT"
-        return self._swing(direction, f"maze_wp{self.maze_wp_index}")
-
-    def _in_maze_phase(self, snap: ZeldaSnapshot, hop: ScreenHop) -> bool:
-        if not is_5c_maze_hop(hop) or not self.maze_waypoints:
-            return False
-        return snap.screen == SCREEN_5C_MAZE
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
-            snap,
-            last_x=self.last_x,
-            last_y=self.last_y,
-            last_screen=self.last_screen,
-            stuck=self.stuck,
-        )
-
-        if self.frames >= SEGMENT_MAX_FRAMES:
-            self._set_phase(Level8NavPhase.FAILED, "timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-
-        if snap.mode == 17:
-            self._set_phase(Level8NavPhase.FAILED, "link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-
-        if self._in_level8(snap):
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.burn_bush or self.enter_dungeon:
+            self._set_phase(Level8NavPhase.BURN, "hops_done_burn")
+            return FrameAction(nes_idle_action(), "bush_ready")
+        if self._at_bush_screen(snap):
             self.success = True
-            self._set_phase(Level8NavPhase.DONE, "level8_entered")
+            self._set_phase(Level8NavPhase.DONE, "bush_screen_reached")
             return FrameAction(nes_idle_action(), "done")
+        self._set_phase(Level8NavPhase.FAILED, "hops_exhausted_off_screen")
+        return FrameAction(nes_idle_action(), "fail")
 
-        if snap.transitioning:
-            if self.phase is Level8NavPhase.ENTER or (
-                self.hop_index < len(self.hops) and self.phase is Level8NavPhase.HOP
-            ):
-                direction = (
-                    "UP"
-                    if self.phase is Level8NavPhase.ENTER
-                    else self.hops[self.hop_index].direction
-                )
-                return FrameAction(nes_action(direction), "scroll")
-            return FrameAction(nes_idle_action(), "scroll_idle")
-
-        if snap.mode not in (PLAY_MODE, 8, 11):
-            return wake_or_wait_mode(self.phase_frames, snap.mode)
-
-        if self.phase is Level8NavPhase.BURN:
-            return self._burn_step(snap)
-        if self.phase is Level8NavPhase.ENTER:
-            return self._enter_step(snap)
-
-        if self.hop_index >= len(self.hops):
-            if self.burn_bush or self.enter_dungeon:
-                self._set_phase(Level8NavPhase.BURN, "hops_done_burn")
-                return FrameAction(nes_idle_action(), "bush_ready")
-            if self._at_bush_screen(snap):
-                self.success = True
-                self._set_phase(Level8NavPhase.DONE, "bush_screen_reached")
-                return FrameAction(nes_idle_action(), "done")
-            self._set_phase(Level8NavPhase.FAILED, "hops_exhausted_off_screen")
-            return FrameAction(nes_idle_action(), "fail")
-
-        hop = self.hops[self.hop_index]
-        advanced = self._advance_hop(snap, hop)
-        if advanced is not None:
-            return advanced
-
-        if self._in_maze_phase(snap, hop):
-            return self._follow_5c_maze(snap)
-
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
         # On 0x5B heading to 0x5C: climb to north corridor before pushing east.
         if (
             hop.target == 0x5C
@@ -320,26 +212,15 @@ class OverworldToLevel8Controller:
             and snap.link_y > 100
         ):
             return self._swing("UP", "5b_north_corridor")
+        return None
 
-        if self.stuck > STUCK_THRESHOLD:
-            action, self.stuck = unstick_wiggle(self.stuck)
-            return action
-
-        edge = recover_off_edge(snap, hop.direction, swing=self._swing)
-        if edge is not None:
-            return edge
-
-        return align_and_push(
-            snap,
-            direction=hop.direction,
-            reason=f"hop{self.hop_index}",
-            align_x=hop.align_x,
-            align_y=hop.align_y,
-            y_band=hop.y_band,
-            stuck=0,
-            stuck_threshold=STUCK_THRESHOLD,
-            swing=self._swing,
-        )
+    def _finish(self, note: str = "path_stop") -> FrameAction:
+        label = {
+            "path_stop": "level8_entered",
+        }.get(note, note)
+        self.success = True
+        self._set_phase(Level8NavPhase.DONE, label)
+        return FrameAction(nes_idle_action(), "done")
 
     def _burn_step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.burn_frames += 1
@@ -438,4 +319,5 @@ __all__ = [
     "has_candle",
     "level8_bush_screen_reached",
     "level8_entered",
+    "is_5c_maze_hop",
 ]
