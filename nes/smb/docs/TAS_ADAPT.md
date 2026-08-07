@@ -288,38 +288,47 @@ Partial HL chain (no 8-3/8-4 yet), same exit-detect clock:
 If 8-3/8-4 later match HL movie length after 8-2, projected RTA would still
 need a fresh full-chain verify (do not invent an ending from partial sums).
 
-### World 8 probe (2026-08-07) — partial
+### World 8 + hybrid ending (2026-08-07)
 
-Predecessor: verified HL chain to W8 @**7512**. W8 entry RAM: world7 level0
-``player_state=3`` x≈810 timer356 (pipe auto). Idle **209** → 8-1 control
-(state7, x40, timer301).
+Predecessor: verified HL chain to W8 @**7512**. Idle **209** → 8-1 control.
 
 | Field | 8-1 | 8-2 |
 |-------|----:|----:|
 | FM2 start | **7930** (even) | **10910** |
 | Leave frames | **2881** → 8-2 load | **2209** → 8-3 load |
 | Gate wait | 209 (odd) | 165 |
-| Seed export | **not yet** | **not yet** |
+| Seed | `smb_8_1_happylee_slice.json` | `smb_8_2_happylee_slice.json` |
 
-```text
-# Not wired to CLI yet — constants live in probe notes / this doc.
-# Next code: is_8_n_control, export/verify-8-x-slice in smb.tas.slice + import_fm2.
+```bash
+uv run python -m smb.scripts.import_fm2 --verify-8-1-8-2-slice
+uv run python -m smb.scripts.import_fm2 --export-8-1-slice --export-8-2-slice
 ```
 
-Evidence: ``recordings/tas_import/happylee_w8_probe_summary.json``,
-``happylee_w8_probe.json``.
+Evidence: ``happylee_8_1_8_2_slice_verify.json`` (to 8-3 load **12976**).
 
-**8-1 parity lesson:** wait81 **odd** but **even** FM2 starts clear (odd
-starts die ~x869). Do **not** assume wait-parity == start-parity on every
-stage — **search both** when probing a new gate.
+**8-1 parity:** wait81 **odd** but **even** FM2 starts clear — search both.
 
-**8-3 blocker:** after 8-2 leave + wait83≈165, coarse FM2 search (+ lead
-idles 0–5) found **no** leave to 8-4 before stop. Continuous from W8 entry
-``si=7681`` clears 8-1@3132 + 8-2@5443 then dies in 8-3 @5877 (x≈188).
-Likely phase / BBG-exit mismatch — next session: wider 8-2 body set that
-preserves 8-3 phase, or continuous-with-gates retime on 8-3.
+**8-3 pure HL:** still **blocked** (FM2 offset / continuous tails die or
+stall early in 8-3). Continuous from 8-2 ``si=10910`` leaves 8-3 then dies
+@x≈188.
 
-**8-4:** not started.
+**Hybrid ending (works 3/3):** after HL 8-2 + wait83=165 → ``is_8_3_control``,
+play **natural_82 from index 15933** → axe in **5626f**.
+
+| Contract | Frames | NTSC | vs n82 | vs sub-5 (18030f) |
+|----------|-------:|------|-------:|------------------:|
+| Hybrid Level1_1→axe | **18769** | **5:12.302** | **−2790** | **+739** (~12.3s) |
+| Seed | `smb_happylee_hybrid_ending.json` | | | |
+| MP4 | `recordings/tas_import/happylee_ending.mp4` | | | |
+
+```bash
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.record_happylee --to ending
+```
+
+**Sub-5 path:** pure HL 8-3/8-4 (movie remainder ~4.7k after 8-2) would land
+~**17.9k / ~4:57** if phase matches. Until then hybrid is the full-clear
+showcase (not Clean power-on; not WR).
 
 ## Expected outcomes (updated)
 
