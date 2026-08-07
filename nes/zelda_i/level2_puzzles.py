@@ -25,6 +25,15 @@ ROOM_L2_BOMB_N: Final = 0x5F
 ROOM_L2_GORIYA_WEST: Final = 0x5E
 ROOM_L2_ROPES_NORTH: Final = 0x4E
 ROOM_L2_BOOM: Final = 0x4F
+# Post-boom Dodongo tip (rr-n5i). Walkthrough "TF east of boss" is wrong live:
+# kill opens LEFT only → TF room is WEST of boss (0x0d south-band maze LIVE).
+ROOM_L2_BOSS: Final = 0x0E  # Dodongo type 0x32; bomb-N of 0x1e
+ROOM_L2_TF: Final = 0x0D  # LEFT/WEST of 0x0e after kill — not east
+LEVEL2_TRIFORCE_BIT: Final = 0x02
+# RoomItemId on 0x0d after boss (dungeon_ids ROOM_ITEM 0x1B); collect residual.
+ROOM_ITEM_L2_TF: Final = 0x1B
+# Heart container on boss room after kill (ROOM_ITEM 0x1A).
+ROOM_ITEM_L2_HC: Final = 0x1A
 
 # cur_opened_doors bits (same as probe scripts / dungeon lab).
 DOOR_RIGHT: Final = 0x01
@@ -170,12 +179,13 @@ BOMB_WALL_1E_NORTH = BombWall(
     notes=(
         "Critical rr-n5i unlock: doors bit UP|DOWN=12 after clear is a red "
         "herring; physical boss door is bomb-N @(120,101). Dodongo type 0x32; "
-        "bomb-mouth → HC; TF exit residual (RIGHT sealed; LEFT→0x0d corridor)."
+        "bomb-mouth → HC; LEFT→0x0d south-band TF LIVE assisted (RIGHT sealed)."
     ),
     evidence=(
         "recordings/l2_1e_up.json",
         "recordings/level2_dodongo.json",
-        "recordings/l2_n5i_partial.json",
+        "recordings/l2_0d_tf_reach.json",
+        "recordings/l2_tf02_encode.json",
     ),
 )
 
@@ -348,6 +358,91 @@ PUSH_BLOCK_PROBE_CENTERS: tuple[tuple[int, int], ...] = (
 )
 
 # ---------------------------------------------------------------------------
+# Post-boss triforce (0x0e → LEFT → 0x0d) — LIVE assisted geometry (rr-n5i)
+# ---------------------------------------------------------------------------
+# Walkthrough "TF east of boss" is wrong live: post-kill doors LEFT-only → 0x0d
+# WEST of Dodongo. Collect is a **south-band maze** walk (not north band /
+# green sprite). Push/bomb not required. Evidence: l2_0d_tf_reach.json LIVE.
+
+L2_TF_PROBE_EVIDENCE: Final = "recordings/l2_0d_tf_reach.json"
+
+# LIVE south-band waypoints on 0x0d (spawn ~(224,141) after LEFT from boss).
+# (208,141) free east column → DOWN south band → LEFT → UP diamond maze.
+L2_TF_COLLECT_WAYPOINTS: Final[tuple[tuple[int, int], ...]] = (
+    (208, 141),
+    (208, 189),
+    (128, 189),
+    (128, 149),
+)
+L2_TF_WAYPOINT_TOL: Final = 3
+L2_TF_COLLECT_XY: Final = (128, 149)
+# Collect hitbox (inclusive-ish); observed hit at y=149.
+L2_TF_COLLECT_BOX: Final = ((112, 128), (140, 149))  # (x0,x1), (y0,y1)
+
+# Push not required for LIVE collect.
+L2_TF_PUSH_BLOCK_STAND: tuple[int, int] | None = None
+L2_TF_PUSH_DIR: str | None = None
+
+# Boss room: touch heart then exit LEFT (doors bit 0x02).
+L2_BOSS_HC_STAND: Final = (120, 141)
+L2_BOSS_EXIT_DOOR_Y: Final = DOOR_Y_DEFAULT  # 141 mid-height LEFT
+
+# Geometry anchors (1-frame BFS free map).
+L2_TF_ENTRY_ALCOVE: Final = (208, 141)  # free east column (not stuck x=224)
+L2_TF_SPAWN_XY: Final = (224, 141)  # typical after LEFT from 0x0e
+L2_TF_NORTH_CORRIDOR_Y: Final = 93  # free but NOT the collect path
+L2_TF_SOUTH_BAND_Y: Final = 189
+L2_TF_CHECKPOINT: Final = "Level2_0D_PostBoss"
+
+
+@dataclass(frozen=True)
+class PostBossTfPolicy:
+    """Collect policy for 0x0d triforce (south-band maze)."""
+
+    waypoints: tuple[tuple[int, int], ...] | None = None
+    push_stand: tuple[int, int] | None = None
+    push_dir: str | None = None
+    collect_xy: tuple[int, int] | None = None
+    collect_box: tuple[tuple[int, int], tuple[int, int]] | None = None
+    tol: int = 3
+    live: bool = False
+    notes: str = ""
+    evidence: tuple[str, ...] = ()
+
+
+POST_BOSS_TF_POLICY = PostBossTfPolicy(
+    waypoints=L2_TF_COLLECT_WAYPOINTS,
+    push_stand=L2_TF_PUSH_BLOCK_STAND,
+    push_dir=L2_TF_PUSH_DIR,
+    collect_xy=L2_TF_COLLECT_XY,
+    collect_box=L2_TF_COLLECT_BOX,
+    tol=L2_TF_WAYPOINT_TOL,
+    live=True,
+    notes=(
+        "LIVE assisted: 0x0e LEFT → 0x0d; south-band maze "
+        "(208,141)→(208,189)→(128,189)→(128,149); idle until tf&0x02 / mode 18. "
+        "North-band green sprite is a red herring. Push/bomb not required. "
+        "Not Clean STATUS / natural-entry until pure 2/2 compose."
+    ),
+    evidence=(
+        L2_TF_PROBE_EVIDENCE,
+        "recordings/l2_0d_tf_reach_HANDOFF.md",
+        "recordings/l2_0d_tf_reach_LIVE.png",
+        "recordings/l2_tf02_encode.json",
+    ),
+)
+
+SEALED_EXIT_BOSS_RIGHT = SealedExit(
+    ROOM_L2_BOSS,
+    "RIGHT",
+    "walkthrough TF-east residual; live sealed (key/bomb/push fail); TF is LEFT→0x0d",
+    evidence=(
+        "recordings/level2_dodongo.json",
+        "recordings/l2_boss_exits.json",
+    ),
+)
+
+# ---------------------------------------------------------------------------
 # Sealed / negative exits
 # ---------------------------------------------------------------------------
 
@@ -366,6 +461,7 @@ SEALED_EXITS: tuple[SealedExit, ...] = (
             "recordings/l2_5f_policy.json",
         ),
     ),
+    SEALED_EXIT_BOSS_RIGHT,
     # 0x5f UP without bomb is sealed; bomb-UP is LIVE (BOMB_WALL_5F_NORTH).
 )
 
@@ -455,6 +551,11 @@ __all__ = [
     "ROOM_L2_GORIYA_WEST",
     "ROOM_L2_ROPES_NORTH",
     "ROOM_L2_BOOM",
+    "ROOM_L2_BOSS",
+    "ROOM_L2_TF",
+    "LEVEL2_TRIFORCE_BIT",
+    "ROOM_ITEM_L2_TF",
+    "ROOM_ITEM_L2_HC",
     "DOOR_RIGHT",
     "DOOR_LEFT",
     "DOOR_DOWN",
@@ -469,8 +570,11 @@ __all__ = [
     "KeyDoor",
     "DiamondEast",
     "SealedExit",
+    "PostBossTfPolicy",
     "BOMB_WALL_6F_NORTH",
     "BOMB_WALL_5F_NORTH",
+    "BOMB_WALL_4F_NORTH",
+    "BOMB_WALL_1E_NORTH",
     "BOMB_WALLS",
     "BOMB_STAND_PROBE_DEFAULTS",
     "BOMB_WALL_NEGATIVES_6F",
@@ -485,6 +589,22 @@ __all__ = [
     "DIAMOND_EAST",
     "DIAMOND_EAST_SEQUENCE",
     "PUSH_BLOCK_PROBE_CENTERS",
+    "L2_TF_PROBE_EVIDENCE",
+    "L2_TF_COLLECT_WAYPOINTS",
+    "L2_TF_WAYPOINT_TOL",
+    "L2_TF_COLLECT_XY",
+    "L2_TF_COLLECT_BOX",
+    "L2_TF_PUSH_BLOCK_STAND",
+    "L2_TF_PUSH_DIR",
+    "L2_BOSS_HC_STAND",
+    "L2_BOSS_EXIT_DOOR_Y",
+    "L2_TF_ENTRY_ALCOVE",
+    "L2_TF_SPAWN_XY",
+    "L2_TF_NORTH_CORRIDOR_Y",
+    "L2_TF_SOUTH_BAND_Y",
+    "L2_TF_CHECKPOINT",
+    "POST_BOSS_TF_POLICY",
+    "SEALED_EXIT_BOSS_RIGHT",
     "SEALED_EXITS",
     "bomb_wall_for_room",
     "diamond_band_for_room",
