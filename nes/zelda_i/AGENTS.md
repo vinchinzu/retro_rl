@@ -80,8 +80,8 @@ bd ready -l zelda_i   # tip: L3 Raft→Manhandla→TF (assist); Clean deferred
 |------:|------|------|
 | ✓ | **rr-n5i** / **rr-5dk** | L2 Dodongo + TF `0x02` assisted LIVE |
 | ✓ | **rr-rnx** / **rr-ci7** | Post-L2 OW → L3 enter **2/2 assisted** |
-| ✓ | **L3 graph past 0x5b** | LIVE doors + **assisted Raft** (`Level3Raft`); see `LEVEL3_ROUTE.md` |
-| 1 | **L3 tip residual** | Encode Raft runner 2/2 assist → Manhandla → TF `0x04` (`rr-vpl`) |
+| ✓ | **L3 Raft runner** | `run_level3_raft.py` **2/2 assisted** → `Level3Raft` |
+| 1 | **L3 tip residual** | Manhandla → TF `0x04` from `Level3Raft` (`rr-vpl`) |
 | later | **rr-4oz** | Clean residual after full-game assist pass |
 
 Full board: `docs/tasks/QUEUE.md`. Routes: `LEVEL2_ROUTE.md`, `LEVEL3_ROUTE.md`.
@@ -95,19 +95,22 @@ door corridor + reverse 0x5C maze → west forest → door **0x74** → room **0
 Evidence: `l2_to_l3_assisted.json`. Runner:
 `run_l2_to_l3.py --infinite-life --from-state Level2ExitOverworld`.
 
-**L3 past Darknuts → Raft (assisted LIVE, 2026-08-07):** from
-`Level3Darknuts` **LEFT→0x5a Compass** → LEFT KEY→0x59 → DOWN clear→0x69 →
-RIGHT @ y≈141 stairs→0x0f mode9 → passage channel x≈176 → Raft
-(`ADDR_RAFT`). Evidence: `l3_past_5b_recon.json`, `l3_raft_recon.json`;
-checkpoint **`Level3Raft`**. Probe:
-`probe_level3_past_darknuts.py --infinite-life --tag l3_past_5b`.
+**L3 Darknuts → Raft (assisted LIVE 2/2):** from `Level3Darknuts`
+LEFT→0x5a → LEFT KEY y≈141 → clear 0x59 DOWN → clear 0x69 RIGHT@y141 →
+0x0f channel x≈176 → Raft (`ADDR_RAFT`). Evidence:
+`level3_raft_assisted.json` (~6448f); checkpoint **`Level3Raft`**. Runner:
+`run_level3_raft.py --infinite-life --trials 2 --save-state`.
+
+**Next tip:** Manhandla + TF `0x04` from `Level3Raft` (backtrack path; bombs
+preferred). Do not claim Clean STATUS.
 
 **Traps (L2→L3 OW):** 0x4c east only **y∈[133,145]** (y=149 solid); 0x5c maze
 reverse needs denser channel waypoints (no y_band on 0x5b hop); 0x64 west
 band **y≈125–150**.
 
-**Traps (L3 Raft):** 0x5a key door needs long y=141 push; Darknut spawn delay
-before clear; 0x69 stairs **only y≈141**; passage south→north only at **x≈176**.
+**Traps (L3 Raft):** 0x5a key door long y=141 push; 0x59 DOWN lag after clear;
+DOWN push = x≈120 hold (no y thrash); 0x69 stairs **only y≈141**; passage
+channel **x≈176** then LEFT on y≈141 to **x≈136**.
 
 Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
 `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft`.
