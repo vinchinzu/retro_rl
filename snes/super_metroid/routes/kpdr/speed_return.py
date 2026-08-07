@@ -56,7 +56,6 @@ _BAT_FLOOR_Y = 360
 _LAVA_Y = 430
 _BAT_DOOR_X = 45
 _BUBBLE_SETTLE = 320
-_TOTAL_BUDGET = 6000
 _MORPH_BOMB_FRAMES = 320
 _HOLE_OPEN_FRAMES = 400
 _FLOOR_TO_DOOR_FRAMES = 900
@@ -427,8 +426,6 @@ def play_speed_return_to_bubble(session: ControllerSession) -> SuperMetroidState
             f"pose={state.pose} xy=({state.samus_x},{state.samus_y}) "
             f"frames={session.frame - start}"
         )
-    if session.frame - start > _TOTAL_BUDGET:
-        pass  # soft budget; room success is the gate
     return state
 
 

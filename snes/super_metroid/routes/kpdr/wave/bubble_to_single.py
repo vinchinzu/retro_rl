@@ -24,11 +24,9 @@ from super_metroid.routes.kpdr.wave.geometry import (
     BSC_SINGLE_SETTLE,
     BSC_TOP_WALK_FRAMES,
     BSC_TOP_Y_MAX,
-    BSC_TOTAL_BUDGET,
 )
-from super_metroid.routes.kpdr.wave.helpers import escape_kb_bsc
+from super_metroid.routes.skills.knockback import escape_kb, is_knockback
 from super_metroid.routes.runtime import ControllerSession
-from super_metroid.routes.skills.knockback import is_knockback
 
 
 def _top_walk_to_drop(session: ControllerSession, label: str) -> None:
@@ -52,7 +50,7 @@ def _top_walk_to_drop(session: ControllerSession, label: str) -> None:
         ):
             return
         if is_knockback(state):
-            escape_kb_bsc(session, label, "LEFT")
+            escape_kb(session, label, "LEFT", stop_room_id=ROOM_SINGLE_CHAMBER)
             continue
         # Near drop band: short walk to center then stop.
         if state.samus_x < BSC_DROP_X[0]:
@@ -76,7 +74,7 @@ def _drop_shaft(session: ControllerSession, label: str) -> None:
         if state.samus_y >= BSC_FLOOR_Y and state.velocity_y == 0:
             return
         if is_knockback(state):
-            escape_kb_bsc(session, label, "LEFT")
+            escape_kb(session, label, "LEFT", stop_room_id=ROOM_SINGLE_CHAMBER)
             continue
 
         # Keep roughly over the shaft while falling / hopping off lip.
@@ -118,7 +116,7 @@ def _nav_floor_to_door(session: ControllerSession, label: str) -> None:
         if state.room_id != ROOM_BUBBLE:
             return
         if is_knockback(state):
-            escape_kb_bsc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_SINGLE_CHAMBER)
             continue
 
         on_door_sill = (
@@ -179,7 +177,7 @@ def _push_right_blue_door(session: ControllerSession, label: str) -> None:
         if state.room_id != ROOM_BUBBLE:
             return
         if is_knockback(state):
-            escape_kb_bsc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_SINGLE_CHAMBER)
             continue
 
         # Fell off sill: climb back.
@@ -229,12 +227,9 @@ def play_bubble_to_single_chamber(session: ControllerSession) -> SuperMetroidSta
             f"frames={session.frame - start}"
         )
 
-    state = wait_ordinary_room(
+    return wait_ordinary_room(
         session, ROOM_SINGLE_CHAMBER, settle_frames=BSC_SINGLE_SETTLE, label=label
     )
-    if session.frame - start > BSC_TOTAL_BUDGET:
-        pass  # soft budget; room success is the gate
-    return state
 
 
 __all__ = ["play_bubble_to_single_chamber"]
