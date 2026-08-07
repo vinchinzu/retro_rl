@@ -169,15 +169,19 @@ Rope `0x28`**, spawn ~100f, clear sets LEFT door bit `0x02` (LEFT @ y≈141 →
 **0x6c** 6 Ropes + fixed key `0x19` @ ~**(136,141)**); east **0x7e** = **5×
 Rope + key `0x19`** via diamond-nav (y≈157 wall-first, not naive y≈141 RIGHT).
 Recon: `recordings/l2_recon_probe.json`. Specs: `ROOM_7D_SPEC` / `ROOM_6D_SPEC` /
-`ROOM_6C_SPEC` / `ROOM_7E_SPEC`. Walkthrough: [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md).
+`ROOM_6C_SPEC` / `ROOM_7E_SPEC` / `ROOM_6E_SPEC` / `ROOM_6F_SPEC`. Walkthrough:
+[LEVEL2_ROUTE.md](LEVEL2_ROUTE.md).
 
 **Isolated pure (Clean, checkpoint — not natural-entry STATUS):** 0x6d clear
 2/2 from `Level2Entrance` (`level2_clear6d_isolated.json`, 674f); 0x6c west
 key 2/2 from `Level2RopesCleared` + 2/2 chain from entrance
 (`level2_clear6c_isolated.json`, `level2_clear6c_from_entrance_isolated.json`);
 0x7e east key 2/2 from `Level2Entrance` (`level2_clear7e_isolated.json`,
-1110f, checkpoint `Level2EastKey.state`). Stops: `level2_room_6d_cleared`,
-`level2_room_6c_key_success`, `level2_room_7e_key_success`.
+1110f, checkpoint `Level2EastKey.state`); 0x6f gels+compass 2/2 from
+`Level2EastKey` (`level2_clear6f_isolated.json`, 1443f, checkpoint
+`Level2Compass.state`). Stops: `level2_room_6d_cleared`,
+`level2_room_6c_key_success`, `level2_room_7e_key_success`,
+`level2_room_6f_compass_success`.
 
 **Assisted Moon entry (not Clean STATUS):** 2/2
 `level==2` mode 5 room **0x7d** ~(120,205) via
@@ -186,18 +190,17 @@ key 2/2 from `Level2RopesCleared` + 2/2 chain from entrance
 `level2_entrance_success`. Checkpoint `Level2Entrance.state` = room-ready.
 
 **Magical Boomerang (`rr-ep8` / `rr-ebe` PARTIAL, not Clean item):** inventory
-map `ADDR_BOOMERANG=0x0674` / `ADDR_MAGIC_BOOMERANG=0x0675`. Live graph
-`0x6c↔0x6d↔0x7d↔0x7e↔0x6e`; entry-east pure done; residual **0x6e RIGHT**
-(compass/boom). Path map in [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md). Probe:
-`recordings/l2_boom_path_probe.json`, `l2_boomerang_partial.json`.
+map `ADDR_BOOMERANG=0x0674` / `ADDR_MAGIC_BOOMERANG=0x0675`. Live graph through
+compass + **bomb-north**: `…↔0x6f --bombN--> 0x5f ↔ 0x5e (5× Goriya 0x06)`.
+Boom **not collected**. Evidence: `l2_past6f_expand.json`, LEVEL2_ROUTE.
 
-**Dodongo / TF bit 0x02 (`rr-a1t` PARTIAL, not Clean):** same residual on
-**0x6e RIGHT** (shared with boom branch). Bombs place via B (`ADDR_BOMBS`);
-boss / HC / `triforce & 0x02` **not observed**. Residual **`rr-n5i`**. Evidence:
-`recordings/l2_dodongo_rr_a1t_partial.json`, `l2_dodongo_path_recon.json`.
+**Dodongo / TF bit 0x02 (`rr-a1t` / `rr-n5i` PARTIAL, not Clean):** same residual
+**past 0x5e**. Bombs place via B; boss / HC / `triforce & 0x02` **not observed**.
+Evidence: `l2_dodongo_rr_a1t_partial.json`, `l2_past6f_expand.json`.
 
-**Not yet Clean:** heart-safe OW transit without RAM poke; natural-entry L2
-interior; Magical Boomerang pickup / Dodongo / `triforce & 0x02`.
+**Not yet Clean STATUS:** natural-entry L2 full clear; Magical Boomerang;
+Dodongo / `triforce & 0x02`. (Clean **At4A→0x3C** isolated exists via `rr-hxs`
+but is not power-on natural STATUS.)
 
 ### Measured door-path breakpoint (2026-07-29)
 
@@ -225,8 +228,9 @@ heart-starvation before the maze, not a single misaligned hop to tweak.
 
 ## Not done
 
-- Clean 0x4A→0x3C heart management (no poke)
-- Level 2 remainder (east key, Magical Boomerang, Dodongo, shard 2); natural-entry after OW door Clean
+- L2 past 0x5e (Goriya pure → 0x5f exits → boom → Dodongo → TF `0x02`)
+- Natural-entry L2 (power-on → TF bit 2) — `rr-5dk`
+- Clean natural OW door (At4A Clean exists; full chain optional)
 - Full eight-dungeon/Ganon route graph
 - Broader overworld bomb / white-sword chain
 - Continuous multi-dungeon dry run (M6–M8)
@@ -243,7 +247,7 @@ is STATUS-promoted yet**. Process: `docs/tasks/PROCESS.md`. Work: `bd ready -l z
 
 ## Next
 
-1. Resolve L2 path past west key (entry-east conflict) → Magical Boomerang pure.
-2. Dodongo bombs pure → Heart + `triforce & 0x02` (`rr-a1t`).
-3. **Clean parallel:** heart-safe farm before 0x5A; promote maze only after 2/2
-   Clean isolated to 0x3C / entry.
+1. **Tip:** encode 0x6f bomb-north → pure clear **0x5e** Goriya → open **0x5f**
+   (`bd ready -l zelda_i`; see `docs/tasks/QUEUE.md`).
+2. Magical Boomerang pure (`rr-ebe`) then Dodongo → TF `0x02` (`rr-n5i`).
+3. Natural-entry assisted (`rr-5dk`) + graph promote (`rr-dlw`).

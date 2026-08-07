@@ -30,24 +30,17 @@ from typing import Any
 
 import numpy as np
 
-from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
-from zelda_i.nav_common import (
-    align_and_push,
-    on_arrival_edge,
-    recover_off_edge,
-    swing_action,
-    track_stuck,
-    unstick_wiggle,
-    wake_or_wait_mode,
-)
+from retro_harness.nes import nes_idle_action
 from zelda_i.overworld import (
     LEVEL2_5C_MAZE_WAYPOINTS,
     LEVEL2_DOOR_HOPS,
     LEVEL2_PATH_HOPS,
     LEVEL2_PATH_SCREENS,
     ScreenHop,
+    is_5c_maze_hop,
 )
+from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import (
     PLAY_MODE,
     SCREEN_LEVEL1_ENTRANCE,
@@ -67,10 +60,6 @@ SEGMENT_MAX_FRAMES = 25000
 SWORD_SWING_PERIOD = 10
 SWORD_SWING_FRAMES = 3
 STUCK_THRESHOLD = 50
-MAZE_WAYPOINT_TOL = 6
-# Screen that owns the maze-hop (0x5C → 0x5D).
-SCREEN_5C_MAZE = 0x5C
-MAZE_HOP_TARGET = 0x5D
 
 # Re-export path tables (single source: overworld.LEVEL2_PATH_HOPS).
 # Verified health-stable prefix ends on 0x4A.
@@ -129,11 +118,6 @@ def level2_door_hops_from(screen: int) -> tuple[ScreenHop, ...]:
     if screen == 0x37:
         return LEVEL2_DOOR_HOPS
     return LEVEL2_DOOR_HOPS
-
-
-def is_5c_maze_hop(hop: ScreenHop) -> bool:
-    """True for the 0x5C→0x5D east hop that requires maze waypoints."""
-    return hop.target == MAZE_HOP_TARGET and hop.direction == "RIGHT"
 
 
 class SettlePhase(Enum):
@@ -200,7 +184,7 @@ class Level2NavPhase(Enum):
 
 
 @dataclass
-class OverworldToLevel2Controller:
+class OverworldToLevel2Controller(OverworldPathController):
     """Walk from post-Triforce overworld 0x37 through the verified Level 2 path.
 
     Default stop is screen **0x4A** with sword and triforce bit 0 — the current
@@ -210,58 +194,37 @@ class OverworldToLevel2Controller:
     dungeon entry after hops complete.
     """
 
-    hop_index: int = 0
     phase: Level2NavPhase = Level2NavPhase.HOP
-    frames: int = 0
-    phase_frames: int = 0
-    stuck: int = 0
-    last_x: int = -1
-    last_y: int = -1
-    last_screen: int = -1
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
     require_level2_screen: bool = False
     require_dungeon: bool = False
     door_path: bool = False
     hops: tuple[ScreenHop, ...] = LEVEL2_PATH_HOPS
     maze_waypoints: tuple[tuple[int, int], ...] = LEVEL2_5C_MAZE_WAYPOINTS
-    maze_wp_index: int = 0
+    maze_hop_pred: Any = None  # set in __post_init__ to is_5c_maze_hop
+    door_x: int | None = LEVEL2_DOOR_X
+    entry_level: int | None = 2
+    entry_room: int | None = LEVEL2_ENTRY_ROOM
+    door_screen: int | None = SCREEN_LEVEL2
+    max_frames: int = SEGMENT_MAX_FRAMES
+    swing_period: int = SWORD_SWING_PERIOD
+    swing_hold: int = SWORD_SWING_FRAMES
+    stuck_threshold: int = STUCK_THRESHOLD
+    require_sword: bool = True
+    require_triforce_bit: int | None = LEVEL1_TRIFORCE_BIT
 
     def __post_init__(self) -> None:
         if self.door_path:
             self.hops = LEVEL2_DOOR_HOPS
+        if self.maze_hop_pred is None:
+            self.maze_hop_pred = is_5c_maze_hop
 
     def reset(self) -> None:
-        self.hop_index = 0
-        self.phase = Level2NavPhase.HOP
-        self.frames = 0
-        self.phase_frames = 0
-        self.stuck = 0
-        self.last_x = -1
-        self.last_y = -1
-        self.last_screen = -1
-        self.success = False
-        self.notes.clear()
-        self.maze_wp_index = 0
+        super().reset()
         if self.door_path:
             self.hops = LEVEL2_DOOR_HOPS
 
-    def _set_phase(self, phase: Level2NavPhase, note: str = "") -> None:
-        if phase is not self.phase:
-            self.phase = phase
-            self.phase_frames = 0
-            self.stuck = 0
-            if note:
-                self.notes.append(note)
-
-    def _swing(self, direction: str, reason: str) -> FrameAction:
-        return swing_action(
-            self.phase_frames,
-            direction,
-            reason,
-            period=SWORD_SWING_PERIOD,
-            hold=SWORD_SWING_FRAMES,
-        )
+    def _wants_post_hop(self) -> bool:
+        return self.require_level2_screen or self.require_dungeon
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         if self.require_dungeon:
@@ -291,154 +254,39 @@ class OverworldToLevel2Controller:
             and 40 < snap.link_y < 210
         )
 
-    def _advance_hop(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        """If arrived off the entry edge, advance hop index. Return action if done."""
-        if (
-            snap.screen != hop.target
-            or snap.mode not in (PLAY_MODE, 8)
-            or snap.transitioning
-            or on_arrival_edge(hop.direction, snap)
-        ):
-            return None
-
-        self.notes.append(f"hop_{self.hop_index}_{hop.target:02x}")
-        if is_5c_maze_hop(hop):
-            self.notes.append("maze_complete")
-        self.hop_index += 1
-        self.stuck = 0
-        self.phase_frames = 0
-        self.maze_wp_index = 0
-        if self.hop_index >= len(self.hops) and not (
-            self.require_level2_screen or self.require_dungeon
-        ):
-            self.success = True
-            self._set_phase(Level2NavPhase.DONE, "path_prefix_complete")
-            return FrameAction(nes_idle_action(), "done")
-        return FrameAction(nes_idle_action(), "hop_advance")
-
-    def _follow_5c_maze(self, snap: ZeldaSnapshot) -> FrameAction:
-        """BFS maze on 0x5C: east @y≈88, channel south, east @y≈128 into 0x5D."""
-        if not self.maze_waypoints:
-            return self._swing("RIGHT", "maze_no_waypoints")
-
-        if "maze_start" not in self.notes:
-            self.notes.append("maze_start")
-
-        if self.maze_wp_index >= len(self.maze_waypoints):
-            return self._swing("RIGHT", "maze_exit")
-
-        tx, ty = self.maze_waypoints[self.maze_wp_index]
-        if (
-            abs(snap.link_x - tx) <= MAZE_WAYPOINT_TOL
-            and abs(snap.link_y - ty) <= MAZE_WAYPOINT_TOL
-        ):
-            self.maze_wp_index += 1
-            self.stuck = 0
-            if self.maze_wp_index >= len(self.maze_waypoints):
-                return self._swing("RIGHT", "maze_exit")
-            tx, ty = self.maze_waypoints[self.maze_wp_index]
-
-        if self.stuck > STUCK_THRESHOLD:
-            action, self.stuck = unstick_wiggle(self.stuck, reason="maze_unstick")
-            return action
-
-        # Axis-aligned corridor: finish x before y when off lane (same as L1).
-        dx = tx - snap.link_x
-        dy = ty - snap.link_y
-        if abs(dx) > MAZE_WAYPOINT_TOL:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > MAZE_WAYPOINT_TOL:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
-            direction = "RIGHT"
-        return self._swing(direction, f"maze_wp{self.maze_wp_index}")
-
-    def _in_maze_phase(self, snap: ZeldaSnapshot, hop: ScreenHop) -> bool:
-        """Use maze waypoints while on 0x5C heading to 0x5D (not yet arrived)."""
-        if not is_5c_maze_hop(hop) or not self.maze_waypoints:
-            return False
-        # Only on the maze screen; arrival on 0x5D is handled by _advance_hop.
-        return snap.screen == SCREEN_5C_MAZE
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
-            snap,
-            last_x=self.last_x,
-            last_y=self.last_y,
-            last_screen=self.last_screen,
-            stuck=self.stuck,
-        )
-
-        if self.frames >= SEGMENT_MAX_FRAMES:
-            self._set_phase(Level2NavPhase.FAILED, "timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-
-        if snap.mode == 17:
-            self._set_phase(Level2NavPhase.FAILED, "link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-
-        if self._at_stop(snap):
-            self.success = True
-            self._set_phase(Level2NavPhase.DONE, "level2_path_stop")
-            return FrameAction(nes_idle_action(), "done")
-
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.level == 1:
             return self._swing("DOWN", "exit_l1")
+        return None
 
-        if snap.transitioning:
-            if self.hop_index < len(self.hops):
-                return FrameAction(
-                    nes_action(self.hops[self.hop_index].direction), "scroll"
-                )
-            return FrameAction(nes_idle_action(), "scroll_idle")
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.require_level2_screen or self.require_dungeon:
+            # Mid-dungeon-enter settle (mode 16/2/3/4) — idle until room-ready.
+            if snap.level == 2:
+                return FrameAction(nes_idle_action(), "dungeon_settle")
+            # Moon door on 0x3C: align x≈112 then push UP (same as L1 mouth).
+            if abs(snap.link_x - LEVEL2_DOOR_X) > 5:
+                btn = "LEFT" if snap.link_x > LEVEL2_DOOR_X else "RIGHT"
+                return self._swing(btn, "door_ax")
+            return self._swing("UP", "door_hunt")
+        return self._finish("hops_complete")
 
-        if snap.mode not in (PLAY_MODE, 8, 11):
-            return wake_or_wait_mode(self.phase_frames, snap.mode)
+    def _finish(self, note: str = "path_stop") -> FrameAction:
+        label = {
+            "path_stop": "level2_path_stop",
+            "path_complete": "path_prefix_complete",
+            "hops_complete": "hops_complete",
+        }.get(note, note)
+        self.success = True
+        self._set_phase(Level2NavPhase.DONE, label)
+        return FrameAction(nes_idle_action(), "done")
 
-        if self.hop_index >= len(self.hops):
-            if self.require_level2_screen or self.require_dungeon:
-                # Mid-dungeon-enter settle (mode 16/2/3/4) — idle until room-ready.
-                if snap.level == 2:
-                    return FrameAction(nes_idle_action(), "dungeon_settle")
-                # Moon door on 0x3C: align x≈112 then push UP (same as L1 mouth).
-                if abs(snap.link_x - LEVEL2_DOOR_X) > 5:
-                    btn = "LEFT" if snap.link_x > LEVEL2_DOOR_X else "RIGHT"
-                    return self._swing(btn, "door_ax")
-                return self._swing("UP", "door_hunt")
-            self.success = True
-            self._set_phase(Level2NavPhase.DONE, "hops_complete")
-            return FrameAction(nes_idle_action(), "done")
-
-        hop = self.hops[self.hop_index]
-        advanced = self._advance_hop(snap, hop)
-        if advanced is not None:
-            return advanced
-
-        # 0x5C maze: plain ScreenHop RIGHT + y-band cannot reach 0x5D.
-        if self._in_maze_phase(snap, hop):
-            return self._follow_5c_maze(snap)
-
-        if self.stuck > STUCK_THRESHOLD:
-            action, self.stuck = unstick_wiggle(self.stuck)
-            return action
-
-        edge = recover_off_edge(snap, hop.direction, swing=self._swing)
-        if edge is not None:
-            return edge
-
-        return align_and_push(
-            snap,
-            direction=hop.direction,
-            reason=f"hop{self.hop_index}",
-            align_x=hop.align_x,
-            align_y=hop.align_y,
-            y_band=hop.y_band,
-            stuck=0,  # already handled above
-            stuck_threshold=STUCK_THRESHOLD,
-            swing=self._swing,
-        )
+    def _on_hop_advanced(
+        self, snap: ZeldaSnapshot, completed_hop: ScreenHop
+    ) -> FrameAction:
+        if self.hop_index >= len(self.hops) and not self._wants_post_hop():
+            return self._finish("path_prefix_complete")
+        return FrameAction(nes_idle_action(), "hop_advance")
 
     def report(self) -> dict[str, Any]:
         hop = None

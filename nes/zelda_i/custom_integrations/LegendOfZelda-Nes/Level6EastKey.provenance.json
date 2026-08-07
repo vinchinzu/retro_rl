@@ -1,0 +1,47 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T02:07:11.659339+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "infinite_life": true,
+    "segment": "level6_east_key",
+    "start_state": "Level6Entrance"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "clear_signal_seen": true,
+    "combat_frames": 1542,
+    "frames": 1615,
+    "initial_inventory": 0,
+    "last_live_enemies": 0,
+    "last_progress_frame": 830,
+    "max_live_enemies": 5,
+    "notes": [
+      "target_room_playable",
+      "backstep_f280_d15",
+      "backstep_f404_d1",
+      "backstep_f637_d14",
+      "backstep_f807_d15",
+      "room_cleared",
+      "reward_collected"
+    ],
+    "phase": "DONE",
+    "prev_live_count": 0,
+    "spec_id": "level6_room7a_east_key",
+    "success": true,
+    "tuning": {
+      "attack_phase": 2,
+      "engage_attack_hold": 3,
+      "engage_attack_period": 6,
+      "engage_distance": 48,
+      "engage_dominant_axis": false,
+      "patrol_attack_hold": 3,
+      "patrol_attack_period": 8
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level6Entrance.state",
+  "source_state_sha256": "37e3ac91ecab98d1dfc5e416096a05bd26302475ef4b672468356a3c83556de4",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level6EastKey.state",
+  "state_sha256": "7ada246f9ed8377781d416220995d5f77bdb92ed770213155948b680bb30193f"
+}

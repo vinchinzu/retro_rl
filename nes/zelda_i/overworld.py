@@ -118,7 +118,7 @@ LEVEL2_DOOR_SCREENS: tuple[int, ...] = path_screens_from_hops(
     0x37, LEVEL2_DOOR_HOPS
 )
 # 0x5C maze waypoints (pixel) from BFS: east on y≈88 to x≈184, then down/east.
-# Wired into OverworldToLevel2Controller for the 0x5C→0x5D hop (rr-gfx).
+# Wired into OverworldPathController / L2+L8 door paths (rr-gfx).
 LEVEL2_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (20, 92),
     (40, 92),
@@ -136,6 +136,15 @@ LEVEL2_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (224, 132),
     (240, 132),
 )
+# Screen that owns the maze hop (0x5C → 0x5D east).
+SCREEN_5C_MAZE = 0x5C
+MAZE_HOP_TARGET = 0x5D
+MAZE_WAYPOINT_TOL = 6
+
+
+def is_5c_maze_hop(hop: ScreenHop) -> bool:
+    """True for the 0x5C→0x5D east hop that requires maze waypoints."""
+    return hop.target == MAZE_HOP_TARGET and hop.direction == "RIGHT"
 
 SCREEN_LABELS: dict[int, str] = {
     0x77: "start",

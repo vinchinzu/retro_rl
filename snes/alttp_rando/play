@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# ALTTP Rando interactive play (JP 1.0 FirstPlay + record).
+# F5 saves into custom_integrations/ALTTPRando-Snes/
+# Recordings → recordings/
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
+exec uv run python -m alttp_rando.scripts.play "$@"

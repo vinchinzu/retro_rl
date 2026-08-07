@@ -117,25 +117,47 @@ Civilization.
 Capabilities: daily or turn planners, resource budgets, delayed consequences,
 campaign-level objective selection.
 
-### Phase 7 — Adaptive and procedural play
+### Phase 7 — Adaptive, procedural, and randomizer-robust play
 
-Games: Shiren the Wanderer; randomized or unseen scenarios; unseen-game
-adaptation.
+Games: **`sm_rando` / `alttp_rando`** (single-game rungs, M0 scaffolded);
+**SMZ3** (combined proof); Shiren the Wanderer; unseen-game adaptation later.
 
-Capabilities: online map discovery, risk-sensitive planning, procedural
-inventory decisions, policy adaptation without fixed room scripts.
+Capabilities: online map discovery, item-logic graph planning over inventory,
+seed-agnostic world models, risk-sensitive planning, procedural inventory
+decisions, policy adaptation without fixed high-level routes, skill synthesis
+when mods change physics.
 
-This is a later research track, not the near-term completion board.
+**Not deferred research only.** SMZ3 is the forcing function that pulls solver
+Layers 2–4 forward while vanilla SM and ALTTP deepen the Layer 1 skill
+substrate. Full architecture: [SOLVER_ARCHITECTURE.md](SOLVER_ARCHITECTURE.md).
+
+Seed-abstract evidence (S/T seeds within budget) is defined in
+[BENCHMARK_SPEC.md](BENCHMARK_SPEC.md). Fixed-ROM M0–M8 still applies to vanilla
+titles and skill quality.
+
+## Solver layers (orthogonal to M-gates)
+
+| Layer | Name | Maturity signal |
+|-------|------|-----------------|
+| L0 | Parallel emulator pool | Multi-env deterministic rollouts for search |
+| L1 | Skill library | Per-game M3–M8 segments (current bulk of work) |
+| L2 | Runtime observation bootstrap | Few-shot RAM / vision semantics per run |
+| L3 | Online world-model discovery | Seed-agnostic room/door/item graph |
+| L4 | Item-logic planner | Inventory-aware search; routes skills |
+
+M0–M8 measure **one title’s completion engineering**. L0–L4 measure **shared
+solver capability**. Both ladders matter; do not collapse them.
 
 ## Active near-term focus
 
 Concentrate implementation on these trunks (detail and horizon in
 [ROADMAP.md](ROADMAP.md)):
 
-1. **Final Fight** — generalize the proven TMNT combat stack toward continuous clear
-2. **Magical Quest / Joe & Mac** — establish the platformer stack (`retro_harness.platformer`)
-3. **Super Metroid** — route-graph and inventory-aware navigation toward ending
-4. **NES parallel track** — TMNT I–III and Zelda I/II to M3+; boot remaining NES
-   scaffolds to M1–M2
+1. **Solver flagship triangle** — Super Metroid + ALTTP (L1) → logic-graph
+   planner (L4) → SMZ3 seed-abstract proof
+2. **Final Fight** — generalize the proven TMNT combat stack toward continuous clear
+3. **Magical Quest / Joe & Mac** — establish the platformer stack (`retro_harness.platformer`)
+4. **NES parallel track** — Zelda I/II, TMNT I–III, SMB family skill growth
 
 Also advance Super Double Dragon and Rival Turf in parallel with Final Fight.
+Keep Great Waldo Search current as the harness fixture.

@@ -65,6 +65,26 @@ archived
 | Continuous clear / dry run | One reset-to-ending session without state loads |
 | Verified capture | Continuous clear plus published audiovisual artifact |
 | Assisted continuous | Continuous clear with disclosed, counted RAM writes |
+| Seed-robust clear | Clears S of T random seeds within budget (randomizer class) |
+| Mod-robust clear | Same idea over a published set of edited ROMs (later) |
+
+## Solver vocabulary
+
+| Term | Meaning |
+|------|---------|
+| Solver | Reactive loop: observe → plan → invoke skill → replan |
+| Skill library | Seed-invariant low-level controllers (rooms, bosses, menus) |
+| Input tape | Precomputed input sequence; CI regression + imitation demo only |
+| Item-logic graph | Transitions annotated with prerequisite item/capability sets |
+| Logic-graph planner | Inventory-aware search over the item-logic graph (Layer 4) |
+| Online world model | Runtime-discovered rooms/doors/items (Layer 3) |
+| Observation bootstrap | Per-run RAM or vision semantics discovery (Layer 2) |
+| Skill synthesis | RL / neuroevo / optimizers that create skills when the library lacks one |
+| Flagship triangle | Super Metroid + ALTTP substrate + SMZ3 seed-abstract proof |
+| Harness fixture | Great Waldo Search — deterministic pipeline M8 |
+
+Solver layers L0–L4 are defined in [SOLVER_ARCHITECTURE.md](SOLVER_ARCHITECTURE.md)
+and are orthogonal to M0–M8 completion gates.
 
 ## Directory names (authoritative)
 
@@ -75,7 +95,10 @@ archived
 | `smb3/` | Super Mario Bros. 3 (NES) |
 | `super_metroid/` | Super Metroid |
 | `harvest/` | Harvest Moon |
-| `alttp/` | The Legend of Zelda: A Link to the Past |
+| `alttp/` | The Legend of Zelda: A Link to the Past (Zelda 3) |
+| `sm_rando/` | Super Metroid Randomizer (single-game) |
+| `alttp_rando/` | ALTTP Randomizer (single-game) |
+| `smz3/` | SMZ3 Super Metroid + ALTTP combined randomizer |
 | `tmnt_i/` … `tmnt_iv/` | Teenage Mutant Ninja Turtles I–IV |
 | `zelda_i/` / `zelda_ii/` | The Legend of Zelda / Zelda II (NES) |
 | `great_waldo_search/` | The Great Waldo Search |

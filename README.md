@@ -1,13 +1,14 @@
 # retro_rl
 
-`retro_rl` is a multi-game **NES + SNES** automation platform. The goal is to
-produce verified reset-to-ending clears across a prioritized canonical library,
-beginning with bespoke RAM-aware scripts and gradually reducing privileged
-information.
+`retro_rl` is a multi-game **NES + SNES game solver**: reactive policies that
+read state, plan, and act each frame across a prioritized canonical library —
+beginning with RAM-aware skill scripts and gradually reducing privileged
+information, including randomizers (flagship: Super Metroid + ALTTP + SMZ3).
 
-The repository supports scripted policies, reinforcement learning,
-demonstrations, replay, RAM discovery, editors, benchmark instrumentation, and
-game-specific planners as one cumulative program — not separate experiments.
+The repository supports scripted skills, reinforcement learning, demonstrations,
+replay, RAM discovery, editors, benchmark instrumentation, and planners as one
+cumulative program. Input tapes are regression fixtures and skill demos, not the
+solver backbone. See [`docs/SOLVER_ARCHITECTURE.md`](docs/SOLVER_ARCHITECTURE.md).
 
 ROMs, save states, recordings, trained models, and ROM-derived assets are not
 included. Bring legally obtained game dumps and keep generated artifacts in the
@@ -19,10 +20,11 @@ Program docs:
 |----------|------|
 | [`docs/VISION.md`](docs/VISION.md) | Why the project exists |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Multi-horizon NES + SNES strategy |
+| [`docs/SOLVER_ARCHITECTURE.md`](docs/SOLVER_ARCHITECTURE.md) | Layer stack, tapes demoted, flagship triangle |
 | [`docs/DEVELOPMENT_LADDER.md`](docs/DEVELOPMENT_LADDER.md) | M0–M8 gates and capability phases |
 | [`docs/PROGRAM_STATUS.md`](docs/PROGRAM_STATUS.md) | Live flagship results and bottlenecks |
 | [`docs/GAME_MATRIX.md`](docs/GAME_MATRIX.md) | Generated game board |
-| [`docs/BENCHMARK_SPEC.md`](docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold and assist rules |
+| [`docs/BENCHMARK_SPEC.md`](docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold, assists, seed-robustness |
 
 ## Quick Start
 
@@ -118,10 +120,11 @@ and the engineering process in
 
 | Document | Role |
 |---|---|
-| [`docs/VISION.md`](./docs/VISION.md) | Why the project exists; scriptably beatable |
+| [`docs/VISION.md`](./docs/VISION.md) | Why the project exists; scriptably beatable + solver |
 | [`docs/ROADMAP.md`](./docs/ROADMAP.md) | Multi-horizon NES + SNES strategy |
+| [`docs/SOLVER_ARCHITECTURE.md`](./docs/SOLVER_ARCHITECTURE.md) | Layer stack, tapes demoted, flagship triangle |
 | [`docs/DEVELOPMENT_LADDER.md`](./docs/DEVELOPMENT_LADDER.md) | M0–M8 gates and capability phases |
-| [`docs/BENCHMARK_SPEC.md`](./docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold and Clean vs assisted |
+| [`docs/BENCHMARK_SPEC.md`](./docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold, assists, seed-robustness |
 | [`docs/PROGRAM_STATUS.md`](./docs/PROGRAM_STATUS.md) | Live clears, bottlenecks, priorities |
 | [`docs/GAME_MATRIX.md`](./docs/GAME_MATRIX.md) | All games (generated from manifests) |
 | [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) | Shared vocabulary |

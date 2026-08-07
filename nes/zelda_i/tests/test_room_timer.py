@@ -378,6 +378,7 @@ def test_from_zelda_snapshot_roundtrip() -> None:
         keys=0,
         health=0x22,
         triforce=0,
+        compass=0,
         dialog_timer=0,
         colliding_tile=0,
         room_item_id=0,

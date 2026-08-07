@@ -228,6 +228,10 @@ alttp/refs/z3-json-data/
 alttp/z3-json-data/
 smz3/refs/
 smz3/seeds/
+sm_rando/seeds/
+alttp_rando/seeds/
+**/seeds/*/
+!**/seeds/.gitkeep
 SMW/refs/*
 !SMW/refs/README.md
 SMW/tools/external/*

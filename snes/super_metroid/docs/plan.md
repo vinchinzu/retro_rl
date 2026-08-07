@@ -6,6 +6,11 @@ Assist: [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Layers: [ARCHITECTURE.md](ARCH
 Executor: [tasks/PROCESS.md](tasks/PROCESS.md) · `bd ready -l super_metroid`
 ([tasks/QUEUE.md](tasks/QUEUE.md) snapshot).
 
+**Program role:** Super Metroid is **substrate A** of the solver flagship
+triangle (SM + ALTTP + SMZ3). Pure room policies and capability edges are Layer 1
+skills the shared item-logic planner will sequence; SMZ3 is the seed-abstract
+proof. See [`docs/SOLVER_ARCHITECTURE.md`](../../../docs/SOLVER_ARCHITECTURE.md).
+
 ## Strategy
 
 Unlimited energy and ammo make combat attrition secondary. The hard problem is

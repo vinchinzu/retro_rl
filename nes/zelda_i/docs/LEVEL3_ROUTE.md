@@ -50,9 +50,22 @@ not required for assisted entry).
 
 | Room id | Enemies | Key/item | Doors | Status |
 |---------|---------|----------|-------|--------|
-| **0x7c** entry | Keese (visual pack; type RAM often 0 / type-liveness residual) | — | S mouth (exit OW), **W open** (visual) | **live** entry + screenshot |
-| West of entry | Zols + key (source) | key | — | source only |
+| **0x7c** entry | Static orange sprites (not live RAM types); `obj_count` residual | — | S mouth (exit OW), **W** (corner residual) | **live** entry |
+| **0x7b** west of entry | **6× Zol type `0x13`** (HP>0; wooden sword can split → Gel `0x15`) | key **RoomItemId `0x19`** | E back to 0x7c | **live pure Clean** |
 | North chain | Zols + key → Darknuts… | bombs / Raft path | — | source only |
+
+### Live room graph (isolated pure)
+
+```
+0x7c (entry, ~(120,205))
+  -- west: y≈149 band → wall x≤48 → LEFT+UP diagonal -->
+0x7b (6× Zol 0x13, key 0x19)  keys 0→1 after clear+pickup
+```
+
+West door residual (fixed for pure): pure **LEFT** sticks at **x≈32**
+(`open_doorway_mask==0`, solid door tiles). **LEFT+UP** at the west wall
+corner-clips into scroll → room **0x7b**. Approach on **y≈149** (y≈141 alone
+often blocks mid-room at x≈112).
 
 ### Source interior (Zelda Dungeon L3)
 
@@ -63,12 +76,14 @@ not required for assisted entry).
 - Backtrack toward boss: Bubbles, Keese, Zols → UP **Manhandla** (bombs best)
 - Heart Container → Triforce shard 3
 
-### Live residual
+### Live pure segment (Clean)
 
-- West door from 0x7c is **visually open** but automated push often stops at
-  x≈32 (`open_doorway_mask==0`). Isolated pure clear of adjacent rooms not yet
-  logged. Prefer live re-enter + combat policy before claiming room IDs east of
-  entry.
+- Module: `zelda_i.level3_dungeon` (`ROOM_7B_SPEC`, `Level3WestKeyController`)
+- Runner: `uv run python nes/zelda_i/scripts/run_level3_west_key.py --trials 2`
+- Stop: `level3_room_7b_key_success` (keys≥1, no live Zols, room 0x7b)
+- Checkpoint: `Level3WestKey.state` (`--save-state`)
+- Evidence: `recordings/level3_west_key_isolated.json` (3/3 Clean lab; door ~319f + combat ~658f)
+- Intervention: **Clean** (no health/inventory poke on this segment)
 
 ## Boss / Triforce
 
@@ -83,14 +98,17 @@ not required for assisted entry).
 | State | Provenance |
 |-------|------------|
 | `Level3Entrance.state` | Assisted enter 2026-08-06; `level==3` room **0x7c** ~(120, 205); Survival health poke only |
+| `Level3WestKey.state` | Clean isolated pure from Level3Entrance; room **0x7b**, keys≥1, Zols dead |
 
 ## Evidence
 
 - `recordings/l3_recon.json` — door/entry facts, path notes
+- `recordings/level3_west_key_isolated.json` — Clean west-key pure trials
 - `recordings/l3_entrance_live.png` / `l3_final_entry.png` / `l3_confirm_state.png` — entry room
 - `recordings/l3e_74_x115_y133.png` — exterior mouth geometry (green statues)
 - Probe: `uv run python nes/zelda_i/scripts/probe_level3_entry.py --infinite-life --from-state OW_66 --save-state`
 - Map-only: `… --from-state Level3Entrance --map-only --infinite-life`
+- West key: `uv run python nes/zelda_i/scripts/run_level3_west_key.py --trials 2 --save-state`
 
 ## Sources
 

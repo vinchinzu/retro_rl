@@ -1,0 +1,28 @@
+game: alttp_rando
+title: "A Link to the Past Randomizer"
+directory: snes/alttp_rando
+genre_tracks:
+  - top_down_navigation
+  - metroidvania_navigation
+capability_phase: 7
+project_state: scaffolded
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: high
+transfer_value: very_high
+ending_definition: seed goal (Ganon / credits) under published logic settings
+start_contract: power_on_seed_rom
+completion_contract: seed_goal_s_of_t
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: snes/alttp_rando/docs/STATUS.md
+plan_doc: snes/alttp_rando/docs/plan.md
+last_verified: 2026-08-06
+blocker: >-
+  M1 FirstPlay (Link's House) on JP 1.0; ./play records; ALTTPR patch + multi-seed next
+notes: >-
+  Single-game ALTTP rando solver ground (simpler than SMZ3). Reuses alttp
+  skills; offline seed fixture + play spine + coarse item-logic graph.
