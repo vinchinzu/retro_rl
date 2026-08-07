@@ -20,7 +20,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x30: "gibdo",
     0x2B: "invuln_mover_residual",  # L3 0x49/0x5d HP240; sword/bomb no dmg (not Manhandla)
     0x32: "dodongo",  # L2 boss room 0x0e (live rr-n5i 2026-08-07)
-    0x3C: "manhandla_candidate",  # L3 room 0x4d assisted glimpse (rr-vpl residual)
+    0x3C: "manhandla",  # L3 room 0x4d assisted kill 2/2 (rr-vpl 2026-08-07)
     0x3D: "aquamentus",
     0x2A: "stalfos",
     0x40: "bubble",

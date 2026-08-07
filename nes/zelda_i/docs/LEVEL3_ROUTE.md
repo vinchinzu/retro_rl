@@ -85,8 +85,9 @@ not required for assisted entry).
 | **0x69** south of 0x59 | **8× Darknut `0x0b`** | — | U→0x59; **R stairs @ y≈141→0x0f** mode 9 | **live assisted** |
 | **0x0f** underworld | 4× Keese (HP residual) | **Raft RoomItemId `0x0c`** → `ADDR_RAFT` | mode-9 passage (not cardinal doors) | **live assisted** Raft |
 | **0x5c** bomb-R of 0x5b | 3× Darknut `0x0b` | item 0x03 | clear → doors R\|L; **R@y≈141→0x5d**; UP→0x4c | **live** bomb + clear |
-| **0x5d** east of 0x5c | 2× Zol + 3× Keese + 3× invuln `0x2b` | item residual | UP→**0x4d** boss (flaky gate residual) | **live** doors residual |
-| **0x4d** north of 0x5d | **Manhandla candidate type `0x3c`** (5 slots) + `0x56` proj | HC / TF residual | post-kill residual | **glimpse** assisted (not beaten) |
+| **0x5d** east of 0x5c | 2× Zol→Gel + Keese + 3× invuln `0x2b` | item residual | clear killables (slots **1–12**) → doors **raw=10** → UP→**0x4d** | **live assisted** |
+| **0x4d** north of 0x5d | **Manhandla type `0x3c`** (5 heads HP64) + `0x56` proj | HC `0x1A` mid-room | kill → **UP→0x3d TF** | **live assisted** kill |
+| **0x3d** north of boss | TF shard (RoomItemId `0x1B`) | — | touch → `ADDR_TRIFORCE&0x04` (mode 18) | **live assisted** |
 | **0x4c** north of 0x5c / east of 0x4b | 2× Zol + blade traps | **Map RoomItemId `0x17`** | L KEY→0x4b; from 0x5c UP | **live** |
 | **0x49** north of 0x59 | 2× Zol + 3× Keese + 3× `0x2b` invuln | key `0x19` | R→0x4a; S→0x59 | **live** (false-boss trap) |
 
@@ -114,11 +115,13 @@ not required for assisted entry).
   -- DOWN y≈189 → RIGHT x≈176 → UP channel → LEFT x≈136 -->
   RAFT (ADDR_RAFT=1)   checkpoint Level3Raft (assisted)
   -- bomb-RIGHT 0x5b @(192,141) --> 0x5c (3× Darknut)
-      -- clear → RIGHT @ y≈141 --> 0x5d --> UP residual --> 0x4d Manhandla?
+      -- clear → doors raw=3 → RIGHT@y141 / bomb-R --> 0x5d
+      -- clear Zol/Gel/Keese (slots 1–12; ignore 0x2b) → doors raw=10
+      -- side_path UP --> 0x4d Manhandla 0x3c → bomb kill → UP 0x3d TF 0x04
       -- UP --> 0x4c Map
 ```
 
-### Post-Raft → boss shortcut (assisted LIVE, 2026-08-07)
+### Post-Raft → Manhandla → TF (assisted LIVE **2/2**, 2026-08-07)
 
 From `Level3Raft` (mode 9, `ADDR_RAFT=1`, room 0x0f):
 
@@ -128,13 +131,16 @@ From `Level3Raft` (mode 9, `ADDR_RAFT=1`, room 0x0f):
   BOMB_RIGHT @(192,141) → 0x5a     *** walk-RIGHT sealed ***
   RIGHT → 0x5b
   BOMB_RIGHT @(192,141) → 0x5c
-  full Darknut clear (doors raw=3) → RIGHT @ y≈141 → 0x5d
-  UP → 0x4d Manhandla candidate 0x3c (gate residual)
+  full Darknut clear (doors raw=3) → RIGHT @ y≈141 (or bomb-R) → 0x5d
+  clear Zol/Gel/Keese until only 0x2b → doors raw=10 (U|L)
+  side_path UP → 0x4d Manhandla type 0x3c (5 heads HP64 + 0x56)
+  bomb heads → HC mid-room → UP → 0x3d → TF bit 0x04
 ```
 
+Runner: `scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`.
+Evidence: `recordings/level3_to_boss_assisted.json` (**2/2** enter+kill+TF,
+~21653f/trial). Checkpoints: `Level3Boss`, `Level3Complete`.
 Probe: `scripts/probe_level3_manhandla.py --infinite-life --tag l3_manhandla`.
-Evidence: `recordings/l3_manhandla_recon.json`, `l3_manhandla_shortcut.json`,
-`l3_manhandla_map_explore.json`.
 
 West door residual (fixed for pure): pure **LEFT** sticks at **x≈32**
 (`open_doorway_mask==0`, solid door tiles). **LEFT+UP** at the west wall
@@ -188,14 +194,15 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
 
 | Field | Value | Evidence |
 |-------|-------|----------|
-| Boss | **Manhandla** (bombs preferred) | source + LIVE type candidate |
-| Boss room | **`0x4d`** (candidate) | assisted glimpse via 0x5d UP |
-| Boss object type | **`0x3c`** (candidate; 5 slots + `0x56` proj) | `l3_manhandla_map_explore` |
+| Boss | **Manhandla** (bombs preferred) | LIVE kill **2/2 assisted** |
+| Boss room | **`0x4d`** | `level3_to_boss_assisted` |
+| Boss object type | **`0x3c`** (5 heads HP64 + `0x56` proj) | LIVE + HP drop under bomb |
 | False boss | type **`0x2b`** HP240 invuln on 0x49/0x5d | sword/bomb no dmg |
-| Prep room | **`0x5d`** east of 0x5c | LIVE RIGHT@y141 after 0x5c clear |
+| Prep room | **`0x5d`** east of 0x5c | clear → doors raw=10 → UP |
+| TF room | **`0x3d`** north of boss | RoomItemId `0x1B`; UP after kill |
 | Item | Raft (`ADDR_RAFT=0x0660`) | LIVE assisted in 0x0f |
-| Triforce bit | **`0x04`** | not yet collected assisted |
-| Constants stub | `ROOM_L3_BOSS`, `MANHANDLA_OBJECT_TYPE` | `level3_dungeon.py` — **not pure green** |
+| Triforce bit | **`0x04`** | **2/2 assisted** collected |
+| Constants | `ROOM_L3_BOSS`, `MANHANDLA_OBJECT_TYPE` | `level3_dungeon.py` — assisted only |
 
 ## Checkpoints
 
@@ -205,6 +212,8 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
 | `Level3WestKey.state` | Clean isolated pure from Level3Entrance; room **0x7b**, keys≥1, Zols dead |
 | `Level3Darknuts.state` | Clean isolated pure from Level3WestKey; room **0x5b**, 3× Darknut 0x0b |
 | `Level3Raft.state` | Assisted Survival from Level3Darknuts via Compass west path; `ADDR_RAFT≠0` in 0x0f |
+| `Level3Boss.state` | Assisted path to 0x4d Manhandla live (from Level3Raft) |
+| `Level3Complete.state` | Assisted Manhandla kill + TF bit `0x04` in 0x3d |
 
 ## Residual toward Raft / boss (after assisted LIVE map)
 
@@ -214,11 +223,13 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
    - Module: `Level3RaftPathController` in `level3_dungeon.py`
    - Runner: `uv run python nes/zelda_i/scripts/run_level3_raft.py --infinite-life --trials 2 --save-state`
    - Evidence: `recordings/level3_raft_assisted.json` (**2/2 assisted**, ~6448f/trial)
-2. **0x5b Darknut clear pure** — side/back hits; combat residual.
-3. **0x4b Zol clear** — spec `ROOM_4B_SPEC` + `run_level3_clear4b.py` (try 2/2).
-4. **0x6b key pickup** residual (inventory may not increment).
-5. **Manhandla + TF `0x04`** — path to 0x5d LIVE; room **0x4d** / type **0x3c**
-   candidate; kill + TF residual (not yet assisted).
+2. **Assisted Manhandla + TF `0x04` 2/2 LIVE** from `Level3Raft` (Survival).
+   Checkpoint `Level3Complete.state`. **Not Clean STATUS.**
+   - Runner: `uv run python nes/zelda_i/scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`
+   - Evidence: `recordings/level3_to_boss_assisted.json` (**2/2** enter 0x4d + kill + TF)
+3. **0x5b Darknut clear pure** — side/back hits; combat residual.
+4. **0x4b Zol clear** — spec `ROOM_4B_SPEC` + `run_level3_clear4b.py` (try 2/2).
+5. **0x6b key pickup** residual (inventory may not increment).
 6. **Natural-entry** from real predecessor before Clean STATUS promote.
 
 ### Traps burned (past-5b + Raft→boss)
@@ -236,9 +247,10 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
 | 0x5b LEFT plane | West wall sits at **x≈26** (not 32); push LEFT once x≤48 (do not snap back to x=32) |
 | 0x5b RIGHT | Walk sealed; bomb stand **(192,141)** opens 0x5c (recon poke OK) |
 | 0x59 RIGHT post-Raft | **Walk sealed** despite door bit; **BOMB_RIGHT @(192,141)** reopens 0x5a |
-| 0x5c RIGHT | Only **y≈141** after full Darknut clear (doors raw=3); incomplete clear seals RIGHT |
-| 0x5d UP | Boss gate **flaky** (doors often 0); type `0x2b` invuln ≠ Manhandla |
-| 0x2b | HP240 invulnerable mover on 0x49/0x5d — ignore for boss fight |
+| 0x5c RIGHT | Need **doors raw=3** after full Darknut clear; raw=1 false-clear seals walk-RIGHT; bomb-R fallback OK |
+| 0x5d UP | Clear **Zol+Gel+Keese slots 1–12** (gel in slot 11 seals shutter); only 0x2b left → doors **raw=10**; then walk-UP |
+| 0x2b | HP240 invulnerable mover on 0x49/0x5d — ignore for clear/boss fight |
+| TF room | **0x3d UP of boss** (not east); HC mid-room first |
 
 ## Evidence
 
@@ -248,13 +260,15 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
 - `recordings/l3_past_5b_recon.json` — **LIVE doors from 0x5b** + compass path hops
 - `recordings/l3_raft_recon.json` — **assisted Raft pickup** (`ADDR_RAFT=1`) recon
 - `recordings/level3_raft_assisted.json` — **2/2 durable runner** from Level3Darknuts
-- `recordings/l3_manhandla_recon.json` — **Raft→boss path** + traps (TF not yet)
+- `recordings/l3_manhandla_recon.json` — early Raft→boss path recon
+- `recordings/level3_to_boss_assisted.json` — **2/2 assisted** Raft→Manhandla→TF `0x04`
 - `recordings/l3_manhandla_shortcut.json` / `l3_manhandla_map_explore.json` — 0x5c/0x5d/0x4d
 - `recordings/l3_westkey_probe_report.json` — door probes from Level3WestKey
 - `recordings/l3_5b_spawn.png` / `l3_north_up_x120.png` — room visuals
 - Probe: `uv run python nes/zelda_i/scripts/probe_level3_entry.py --infinite-life --from-state OW_66 --save-state`
 - Past Darknuts: `uv run python nes/zelda_i/scripts/probe_level3_past_darknuts.py --infinite-life --tag l3_past_5b`
-- Manhandla: `uv run python nes/zelda_i/scripts/probe_level3_manhandla.py --infinite-life --tag l3_manhandla`
+- Manhandla recon: `uv run python nes/zelda_i/scripts/probe_level3_manhandla.py --infinite-life --tag l3_manhandla`
+- Boss+TF runner: `uv run python nes/zelda_i/scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`
 - Map-only: `… --from-state Level3Entrance --map-only --infinite-life`
 - West key: `uv run python nes/zelda_i/scripts/run_level3_west_key.py --trials 2 --save-state`
 - North chain: `uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2 --save-state`

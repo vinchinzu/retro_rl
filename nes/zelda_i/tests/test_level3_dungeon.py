@@ -8,7 +8,10 @@ from zelda_i.level3_dungeon import (
     DARKNUT_OBJECT_TYPE,
     KEY_DOOR_Y,
     KEESE_OBJECT_TYPE,
+    LEVEL3_TRIFORCE_BIT,
+    MANHANDLA_OBJECT_TYPE,
     NORTH_DOOR_X,
+    PASSAGE_EXIT_WAYPOINTS,
     RAFT_CHANNEL_X,
     RAFT_PASSAGE_MODE,
     RAFT_PATH_PHASES,
@@ -24,6 +27,9 @@ from zelda_i.level3_dungeon import (
     ROOM_7B_SPEC,
     ROOM_ITEM_COMPASS,
     ROOM_ITEM_RAFT,
+    ROOM_L3_BOSS,
+    ROOM_L3_BOSS_PREP,
+    ROOM_L3_BOMB_SHORTCUT,
     ROOM_L3_COMPASS,
     ROOM_L3_DARKNUTS,
     ROOM_L3_ENTRY,
@@ -41,8 +47,12 @@ from zelda_i.level3_dungeon import (
     Level3RaftPathController,
     Level3WestDoorController,
     Level3WestKeyController,
+    level3_boss_prep_killables,
     level3_has_raft,
+    level3_manhandla_live,
     level3_reached_5b,
+    level3_reached_boss,
+    level3_reached_boss_prep,
     level3_room_4b_zols_cleared,
     level3_room_6b_zols_cleared,
     level3_room_7b_key_success,
@@ -343,3 +353,51 @@ def test_raft_path_controller_phases_and_raft_success() -> None:
     assert ctrl2.phase == "done"
     assert action.reason == "done"
     assert "raft_acquired" in ctrl2.notes
+
+
+def test_boss_room_constants_and_predicates() -> None:
+    assert ROOM_L3_BOSS_PREP == 0x5D
+    assert ROOM_L3_BOSS == 0x4D
+    assert ROOM_L3_BOMB_SHORTCUT == 0x5C
+    assert MANHANDLA_OBJECT_TYPE == 0x3C
+    assert LEVEL3_TRIFORCE_BIT == 0x04
+    assert PASSAGE_EXIT_WAYPOINTS[0] == (176, 141)
+
+    assert level3_reached_boss_prep(
+        _ram(room=ROOM_L3_BOSS_PREP, x=32, y=141)
+    )
+    assert not level3_reached_boss_prep(
+        _ram(room=ROOM_L3_BOMB_SHORTCUT, x=120, y=141)
+    )
+    assert level3_reached_boss(_ram(room=ROOM_L3_BOSS, x=120, y=141))
+    assert not level3_reached_boss(
+        _ram(room=ROOM_L3_BOSS_PREP, x=120, y=93)
+    )
+
+
+def test_boss_prep_killables_ignore_invuln_0x2b() -> None:
+    """0x5d: clear Zol/Keese; invuln 0x2b must not count as killable."""
+    ram = _ram(room=ROOM_L3_BOSS_PREP, x=120, y=141)
+    # Slot 1: Zol live; slot 2: invuln 0x2b; slot 3: Keese type
+    ram[ADDR_OBJ_TYPE + 1] = ZOL_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 32
+    ram[ADDR_OBJ_TYPE + 2] = 0x2B
+    ram[ADDR_OBJ_HP + 2] = 240
+    ram[ADDR_OBJ_TYPE + 3] = KEESE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 3] = 0  # keese often HP0 while alive
+    snap = read_snapshot(ram)
+    killable = level3_boss_prep_killables(snap)
+    types = {o.type_id for o in killable}
+    assert ZOL_OBJECT_TYPE in types
+    assert KEESE_OBJECT_TYPE in types
+    assert 0x2B not in types
+
+
+def test_manhandla_live_heads() -> None:
+    ram = _ram(room=ROOM_L3_BOSS, x=120, y=141)
+    for slot, hp in ((1, 64), (2, 64), (3, 0)):
+        ram[ADDR_OBJ_TYPE + slot] = MANHANDLA_OBJECT_TYPE
+        ram[ADDR_OBJ_HP + slot] = hp
+    heads = level3_manhandla_live(read_snapshot(ram))
+    assert len(heads) == 2
+    assert all(o.hp > 0 for o in heads)
