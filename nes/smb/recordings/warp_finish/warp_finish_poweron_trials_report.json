@@ -1,0 +1,218 @@
+{
+  "benchmark_eligible": true,
+  "boot_frames": 350,
+  "ending_settle_frames": 120,
+  "exits_completed": [
+    8,
+    8,
+    8
+  ],
+  "final": {
+    "area_pointer": 229,
+    "level": 3,
+    "level_id": 31,
+    "lives": 2,
+    "oper_mode": 2,
+    "player_state": 8,
+    "player_x": 4826,
+    "player_y": 97,
+    "world": 7
+  },
+  "intervention": {
+    "boot_frames": 350,
+    "class": "Clean",
+    "mid_attempt_state_loads": 0,
+    "note": "env.reset power-on; fixed boot script frames + idle phase-align; controller-only through 8-4 ending",
+    "settle_frames": 16,
+    "start": "power_on"
+  },
+  "milestones": [
+    {
+      "exit_id": "1-1",
+      "frame": 1974,
+      "level": 1,
+      "lives": 2,
+      "successor": "1-2",
+      "successor_fingerprint": {
+        "area_pointer": 41,
+        "level": 1,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3266,
+        "player_y": 176,
+        "timer": 0,
+        "world": 0,
+        "x_speed": 2,
+        "y_speed": 0
+      },
+      "world": 0
+    },
+    {
+      "exit_id": "1-2",
+      "frame": 4044,
+      "level": 0,
+      "lives": 2,
+      "successor": "warp_world_4",
+      "successor_fingerprint": {
+        "area_pointer": 34,
+        "level": 0,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 3,
+        "player_x": 2852,
+        "player_y": 128,
+        "timer": 337,
+        "world": 3,
+        "x_speed": 24,
+        "y_speed": 0
+      },
+      "world": 3
+    },
+    {
+      "exit_id": "4-1",
+      "frame": 6366,
+      "level": 1,
+      "lives": 2,
+      "successor": "4-2",
+      "successor_fingerprint": {
+        "area_pointer": 41,
+        "level": 1,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3698,
+        "player_y": 176,
+        "timer": 0,
+        "world": 3,
+        "x_speed": 2,
+        "y_speed": 0
+      },
+      "world": 3
+    },
+    {
+      "exit_id": "4-2",
+      "frame": 9130,
+      "level": 0,
+      "lives": 2,
+      "successor": "warp_world_8",
+      "successor_fingerprint": {
+        "area_pointer": 48,
+        "level": 0,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 3,
+        "player_x": 810,
+        "player_y": 128,
+        "timer": 324,
+        "world": 7,
+        "x_speed": 0,
+        "y_speed": 0
+      },
+      "world": 7
+    },
+    {
+      "exit_id": "8-1",
+      "frame": 12796,
+      "level": 1,
+      "lives": 2,
+      "successor": "8-2",
+      "successor_fingerprint": {
+        "area_pointer": 50,
+        "level": 1,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 6114,
+        "player_y": 176,
+        "timer": 0,
+        "world": 7,
+        "x_speed": 2,
+        "y_speed": 0
+      },
+      "world": 7
+    },
+    {
+      "exit_id": "8-2",
+      "frame": 15947,
+      "level": 2,
+      "lives": 2,
+      "successor": "8-3",
+      "successor_fingerprint": {
+        "area_pointer": 33,
+        "level": 2,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3554,
+        "player_y": 176,
+        "timer": 0,
+        "world": 7,
+        "x_speed": 1,
+        "y_speed": 0
+      },
+      "world": 7
+    },
+    {
+      "exit_id": "8-3",
+      "frame": 18153,
+      "level": 3,
+      "lives": 2,
+      "successor": "8-4",
+      "successor_fingerprint": {
+        "area_pointer": 101,
+        "level": 3,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3554,
+        "player_y": 176,
+        "timer": 0,
+        "world": 7,
+        "x_speed": 0,
+        "y_speed": 0
+      },
+      "world": 7
+    },
+    {
+      "exit_id": "8-4",
+      "frame": 21731,
+      "level": 3,
+      "lives": 2,
+      "successor": "ending",
+      "successor_fingerprint": {
+        "area_pointer": 229,
+        "level": 3,
+        "lives": 2,
+        "oper_mode": 2,
+        "player_state": 8,
+        "player_x": 4826,
+        "player_y": 97,
+        "timer": 285,
+        "world": 7,
+        "x_speed": 24,
+        "y_speed": 4
+      },
+      "world": 7
+    }
+  ],
+  "mode": "poweron",
+  "outcomes": [
+    "ending",
+    "ending",
+    "ending"
+  ],
+  "policy_frames": 21731,
+  "policy_seed": "smb/models/smb_1_1_to_ending.json",
+  "route_id": "smb_warp_any_percent",
+  "runtime_observation": "Bronze",
+  "settle_frames": 16,
+  "state_loads_during_attempt": [
+    0,
+    0,
+    0
+  ],
+  "success_rate": 1.0,
+  "successes": 3,
+  "trials": 3
+}

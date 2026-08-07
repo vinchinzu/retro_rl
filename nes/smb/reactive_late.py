@@ -2,8 +2,13 @@
 
 The M8 seed is still the source of the route's reliable late-game movement,
 but an earlier 1-1/1-2 saving changes the emulator phase seen by World 8.
-These two controllers are deliberately addressed from *natural control* at
-8-3 and 8-4, rather than from an absolute frame in the full-run seed.
+These controllers are deliberately addressed from *natural control* at 8-3
+and 8-4, rather than from an absolute frame in the full-run seed.
+
+After the 1-2 −97f polish + 8-2 +1 lead retime (2026-08-05), 8-3 needs two
+lead idles before the patched M8 body; 8-4 keeps the Bowser/axe patch with
+no lead. Handoff to 8-4 is on first natural control (not forced exhaust) so
+leftover transition frames do not burn the entry phase.
 """
 
 from __future__ import annotations
@@ -20,17 +25,23 @@ from smb.routes import ROUTE_WARP_ANY_PERCENT
 ButtonFrame = list[int]
 
 # These slices start on the first controllable frame in a verified M8 replay.
-# The 8-3 controller retains its complete 2,206-frame transition envelope:
-# 8-4 does not become controllable until that envelope completes.
 M8_83_START = 16_112
 M8_84_START = 18_318
+M8_83_LEN = M8_84_START - M8_83_START  # 2206
 
+IDLE: ButtonFrame = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 RUN: ButtonFrame = [1, 0, 0, 0, 0, 0, 0, 1, 0]
 RUN_JUMP: ButtonFrame = [1, 0, 0, 0, 0, 0, 0, 1, 1]
 
-# State-local corrections found from the shifted, real 8-3 predecessor.  The
-# patch spans are stage-relative and end-exclusive; all other movement is M8
-# source material.  In particular, this is not World-4 idle padding.
+# Lead idles prepended after patches (M8-relative patch indices stay valid).
+# Found on natural 8-3 control after 8-2 +1-idle body (1-2 −97f path).
+LEAD_IDLES: dict[str, int] = {
+    "8-3": 2,
+    "8-4": 0,
+}
+
+# State-local corrections; spans are stage-relative (pre-lead) and end-exclusive.
+# All other movement is M8 source material — not World-4 idle padding.
 PATCHES: dict[str, tuple[tuple[int, int, ButtonFrame], ...]] = {
     "8-3": (
         (1_070, 1_089, RUN_JUMP),
@@ -38,8 +49,7 @@ PATCHES: dict[str, tuple[tuple[int, int, ButtonFrame], ...]] = {
         (1_230, 1_248, RUN_JUMP),
         (1_253, 1_274, RUN),
     ),
-    # The shifted 8-4 route reaches Bowser/axe; this jump window clears the
-    # final contact and retains the original transition timing.
+    # Bowser/axe jump window on natural 8-4 control after the 8-3 lead retime.
     "8-4": ((3_360, 3_388, RUN_JUMP),),
 }
 
@@ -54,7 +64,7 @@ def _m8_frames() -> tuple[tuple[int, ...], ...]:
 
 
 def stage_frames(stage_id: str) -> list[ButtonFrame]:
-    """Return a fresh, patched frame sequence for one late-stage controller."""
+    """Return a fresh, patched (+ optional lead idle) late-stage controller."""
     frames = _m8_frames()
     if stage_id == "8-3":
         source = frames[M8_83_START:M8_84_START]
@@ -70,6 +80,9 @@ def stage_frames(stage_id: str) -> list[ButtonFrame]:
                 f"{stage_id} patch [{start}, {end}) outside {len(controller)} frames"
             )
         controller[start:end] = [list(replacement) for _ in range(end - start)]
+    lead = int(LEAD_IDLES.get(stage_id, 0))
+    if lead:
+        controller = [list(IDLE) for _ in range(lead)] + controller
     return controller
 
 
@@ -78,8 +91,9 @@ class LateRouteController:
     """Replay the repaired 8-3 then 8-4 controllers from natural control.
 
     ``observe`` advances the current segment after its action was applied and
-    verifies the 8-3 → 8-4 handoff.  Completion of 8-4 itself remains the
-    route ending contract in :func:`smb.ram.reached_ending`.
+    hands off to 8-4 on first natural 8-4 control (or fails if the 8-3 body
+    exhausts without control). Completion of 8-4 itself remains the route
+    ending contract in :func:`smb.ram.reached_ending`.
     """
 
     stage_id: str = "8-3"
@@ -111,18 +125,7 @@ class LateRouteController:
             raise RuntimeError(f"{self.stage_id} controller exhausted")
         return list(self._frames[self.index])
 
-    def observe(self, snap: SmbSnapshot) -> str | None:
-        """Record a post-action state and return a stage handoff if one opens."""
-        if self.exhausted:
-            raise RuntimeError(f"{self.stage_id} controller exhausted")
-        self.index += 1
-        if not self.exhausted or self.stage_id != "8-3":
-            return None
-
-        gate = level_control_gate(ROUTE_WARP_ANY_PERCENT.exits[7])
-        if not gate.matches(snap):
-            self.failure = "8-3 controller did not hand off at natural 8-4 control"
-            raise RuntimeError(self.failure)
+    def _handoff_to_8_4(self, snap: SmbSnapshot) -> str:
         self.completed.append(
             {
                 "stage_id": "8-3",
@@ -136,6 +139,24 @@ class LateRouteController:
         self.starts[self.stage_id] = snapshot_fingerprint(snap)
         return self.stage_id
 
+    def observe(self, snap: SmbSnapshot) -> str | None:
+        """Record a post-action state and return a stage handoff if one opens."""
+        if self.exhausted:
+            raise RuntimeError(f"{self.stage_id} controller exhausted")
+        self.index += 1
+        if self.stage_id != "8-3":
+            return None
+
+        gate = level_control_gate(ROUTE_WARP_ANY_PERCENT.exits[7])
+        if gate.matches(snap):
+            # Prefer first natural control — leftover 8-3 transition frames
+            # after control can burn the 8-4 entry phase.
+            return self._handoff_to_8_4(snap)
+        if self.exhausted:
+            self.failure = "8-3 controller did not hand off at natural 8-4 control"
+            raise RuntimeError(self.failure)
+        return None
+
     def report(self) -> dict[str, Any]:
         return {
             "active_stage": self.stage_id,
@@ -144,6 +165,7 @@ class LateRouteController:
             "starts": dict(self.starts),
             "completed": list(self.completed),
             "failure": self.failure,
+            "lead_idles": dict(LEAD_IDLES),
             "patches": {
                 stage_id: [
                     {"start": start, "end": end, "buttons": list(buttons)}

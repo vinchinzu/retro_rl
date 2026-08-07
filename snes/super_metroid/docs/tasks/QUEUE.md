@@ -15,24 +15,46 @@ and continuous promote. Executors take **one bead per session**.
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| Power-on → Speed Booster (K4.5) | **continuous green** | **130,388f** ×2 → `0xAD1B` beams `0x1004` items `0x3105` (default tip) |
-| Bat Cave (K4.4) | previous tip history | **122,304f** ×2 non-Spazer dual (superseded as default) |
-| Pure Bat → Speed Hall | **pure green** | continuous-integrated on Speed tip |
-| Pure Hall → Speed collect | **pure green** | continuous-integrated on Speed tip |
-| Spine tip `--to speed` | **STATUS-promoted** | dual exact match (`rr-d20` / `rr-cd0`) |
-| Spazer warehouse dual | **STATUS-promoted** | **89,416 + 90,904f** beams `0x1004` (prefix) |
-| ★ Next serial | Stabilize wave after Speed | bead `rr-07b` |
-| ★ Next pure | Speed return → Bubble | bead `rr-g4i` |
-| Parked | Frog → Speedway pure GREEN | post-Speed shortcut only |
+| Power-on → **Wave Beam** (K4.10) | **continuous green** | **136,361f** ×2 → `0xADDE` beams `0x1005` (default tip) |
+| Speed Booster (K4.5) | previous tip | **130,388f** ×2 Spazer dual (prefix) |
+| Spazer warehouse dual | prefix green | **89,416 + 90,904f** beams `0x1004` |
+| Clean bombs/Torizo | secondary GREEN | **49,321f** ×2 — [CLEAN_TRACK.md](../CLEAN_TRACK.md) |
+| ★ Product next | Pure **Business → Ice Gate** | `rr-fg3` (then Acid `rr-9t4` → Snake `rr-5cf` → Ice PLM `rr-5if`) |
+| Tape | Full Speed→Wave→Ice→Moat human | `rr-dbu.12` **GREEN** 39,711f |
+| Tracker | Ice pure stack | `rr-dbu.11` (blocked on PLM hop) |
+| Agent optional | consolidate · duck-type · Clean STATUS · speed start Spazer | P3 |
 
 ```text
-✅ Spazer warehouse dual + STATUS (rr-jx9 / rr-4wg)
-✅ Continuous --to speed dual + STATUS (rr-d20 / rr-cd0) — 130388f exact
-✅ Bat → Speed Hall pure + Hall → Speed pure continuous-integrated
-▶  Stabilize wave after Speed continuous  ← rr-07b
-▶  Pure Speed return → Bubble  ← rr-g4i
-⬜  Wave / Ice pure stack + continuous
+✅ Continuous --to wave dual + STATUS — 136361f exact
+✅ Human tape Speed→Wave→Ice→Moat 39711f (rr-dbu.12) — notes: no Spazer start; 2WJ climb
+✅ Residual purge · guide_paths split
+▶  Pure Business → Ice Gate  ← rr-fg3
+⬜  Gate → Acid → Snake (2WJ) → Ice PLM  ← rr-9t4 · rr-5cf · rr-5if
+⬜  Continuous --to ice  ← rr-dbu.7
+⬜  K5 Alpha PB · Moat approach  ← rr-dbu.8 · rr-dbu.9
 ```
+
+## Critical path (product)
+
+```text
+rr-dbu.12 (human tape)
+  → rr-dbu.11 (Ice pure, routes/kpdr/ice/)
+    → rr-dbu.7 (--to ice)
+      → rr-dbu.8 (K5)
+        → rr-dbu.9 (Moat approach → rr-hhj spark pin GREEN)
+          → Wrecked Ship … ending
+```
+
+**Do not invent Ice hops without tape.** Hygiene Pass B does not block product.
+
+## K6 / shinespark (side track — not tip gate)
+
+| Doc / script | Role |
+|--------------|------|
+| [SHINE_PRACTICE.md](SHINE_PRACTICE.md) | **Index** — LS drill, Moat pure, West Ocean pure, follow-ups |
+| `scripts/probe/shine_practice.py` | `drill` / `human` / `diagnose` / `demo` |
+| `scripts/probe/moat_spark_watch.py` | Moat pure → `post_moat_west_ocean_spark.state` |
+| `scripts/probe/west_ocean_spark.py` | Edge spark → `0xC98E` (not green WS yet) |
 
 ## Process pointers
 

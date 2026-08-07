@@ -22,6 +22,8 @@ from zelda_i.overworld import (
     NODE_LEVEL1_ROOM_53_CLEARED,
     NODE_LEVEL1_ROOM_54,
     NODE_LEVEL1_ROOM_54_CLEARED,
+    NODE_LEVEL2_DUNGEON,
+    NODE_LEVEL2_ENTRANCE,
     NODE_LEVEL2_PATH_4A,
     NODE_START,
     NODE_SWORD_CAVE,
@@ -297,5 +299,48 @@ def level2_path_prefix_route_plan(graph: RouteGraph | None = None):
     g = graph or build_early_route_graph()
     return g.plan_legs(
         level2_path_prefix_route_legs(),
+        initial_capabilities=frozenset(),
+    )
+
+
+def level2_door_path_route_legs() -> tuple[RouteLeg, ...]:
+    """Legs through Level 1 complete + planned door path to Moon OW door.
+
+    Abstract ROUTE edges cover the walk (hop geometry is on the grid as
+    planned edges). Not Clean-controller-backed; used for graph scaffolding.
+    """
+    return (
+        *level1_complete_route_legs(),
+        RouteLeg(
+            leg_id="settle_post_triforce_overworld",
+            source_id=NODE_LEVEL1_COMPLETE,
+            target_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            goal="overworld_0x37_after_triforce",
+        ),
+        RouteLeg(
+            leg_id="walk_level2_door_path",
+            source_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            target_id=NODE_LEVEL2_ENTRANCE,
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            goal="reach_screen_3C_moon_door",
+            constraints=("planned_not_clean", "requires_heart_management"),
+        ),
+        RouteLeg(
+            leg_id="enter_level2_dungeon",
+            source_id=NODE_LEVEL2_ENTRANCE,
+            target_id=NODE_LEVEL2_DUNGEON,
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            goal="inside_level2_moon",
+            constraints=("planned_not_clean",),
+        ),
+    )
+
+
+def level2_door_path_route_plan(graph: RouteGraph | None = None):
+    """Plan power-on through Level 1 and the planned Level 2 door path."""
+    g = graph or build_early_route_graph()
+    return g.plan_legs(
+        level2_door_path_route_legs(),
         initial_capabilities=frozenset(),
     )

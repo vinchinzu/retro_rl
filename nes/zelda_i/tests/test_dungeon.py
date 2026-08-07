@@ -12,6 +12,7 @@ from zelda_i.chain import run_controller_stage
 from zelda_i.dungeon import (
     DungeonPhase,
     GenericDungeonRoomController,
+    LEVEL_2,
     ROOM_23_SPEC,
     ROOM_35_SPEC,
     ROOM_33_SPEC,
@@ -22,6 +23,15 @@ from zelda_i.dungeon import (
     ROOM_52_SPEC,
     ROOM_53_SPEC,
     ROOM_54_SPEC,
+    ROOM_6C_SPEC,
+    ROOM_6D_SPEC,
+    ROOM_7D_SPEC,
+    ROOM_7E_SPEC,
+    ROPE_OBJECT_TYPE,
+    dungeon_room_cleared,
+    level2_room_6c_key_success,
+    level2_room_6d_cleared,
+    level2_room_7e_key_success,
 )
 from zelda_i.dungeon_ids import object_name, ram_symbol, room_item_name
 from zelda_i.dungeon_lab import LabRequest
@@ -71,6 +81,149 @@ def _room_ram(
         ram[ADDR_LINK_X + slot] = 80 + slot * 8
         ram[ADDR_LINK_Y + slot] = 93 + slot * 8
     return ram
+
+
+def test_level2_east_of_ropes_room_id_and_boomerang_addrs() -> None:
+    """Post-west-key live graph + Magical Boomerang inventory map (rr-ep8/rr-ebe)."""
+    from zelda_i.dungeon import (
+        ROOM_L2_COMPASS,
+        ROOM_L2_EAST_KEY,
+        ROOM_L2_EAST_OF_ROPES,
+    )
+    from zelda_i.ram import ADDR_BOOMERANG, ADDR_MAGIC_BOOMERANG
+
+    assert ROOM_L2_EAST_OF_ROPES == 0x6E
+    assert ROOM_L2_EAST_KEY == 0x7E  # entry-east 5 ropes + key (diamond-nav)
+    assert ROOM_L2_COMPASS == 0x6F  # key-RIGHT from 0x6e (rr-c6b)
+    assert ADDR_BOOMERANG == 0x0674
+    assert ADDR_MAGIC_BOOMERANG == 0x0675
+    assert ram_symbol(ADDR_BOOMERANG) == "boomerang"
+    assert ram_symbol(ADDR_MAGIC_BOOMERANG) == "magical_boomerang"
+
+
+def test_diamond_east_phase_advances() -> None:
+    """Reusable diamond-blocked east door phases (nav_common)."""
+    from zelda_i.nav_common import DIAMOND_BAND_6E, DIAMOND_BAND_7D, diamond_east_phase
+    from zelda_i.ram import ZeldaSnapshot
+
+    def snap(x: int, y: int) -> ZeldaSnapshot:
+        return ZeldaSnapshot(
+            mode=5,
+            level=2,
+            screen=0x7D,
+            next_screen=0x7D,
+            link_x=x,
+            link_y=y,
+            facing=1,
+            sword=1,
+            bombs=0,
+            rupees=0,
+            keys=1,
+            health=0x2F,
+            triforce=1,
+            dialog_timer=0,
+            colliding_tile=0,
+            room_item_id=3,
+            room_all_dead=0,
+            room_obj_count=0,
+            cur_opened_doors=0,
+            open_doorway_mask=0,
+            objects=(),
+        )
+
+    _, ph = diamond_east_phase(snap(120, 157), phase="band", band_y=DIAMOND_BAND_7D)
+    assert ph == "wall"
+    _, ph = diamond_east_phase(snap(200, 157), phase="wall", band_y=DIAMOND_BAND_7D)
+    assert ph == "door_y"
+    _, ph = diamond_east_phase(
+        snap(200, 141), phase="door_y", band_y=DIAMOND_BAND_7D, cycle=0
+    )
+    assert ph == "push"
+    assert DIAMOND_BAND_6E == 113
+
+
+def test_level2_room_specs_and_stop_predicates() -> None:
+    """L2 Moon rooms: recon IDs + isolated pure stop predicates."""
+    assert ROPE_OBJECT_TYPE == 0x28
+    assert object_name(0x28) == "rope"
+    assert ROOM_7D_SPEC.level == LEVEL_2
+    assert ROOM_7D_SPEC.room_id == 0x7D
+    assert ROOM_7D_SPEC.expected_enemy_count == 0
+    assert ROOM_7D_SPEC.room_item_id == 0x03
+    assert ROOM_6D_SPEC.level == LEVEL_2
+    assert ROOM_6D_SPEC.room_id == 0x6D
+    assert ROOM_6D_SPEC.source_room == 0x7D
+    assert ROOM_6D_SPEC.enemy_types == (0x28,)
+    assert ROOM_6D_SPEC.expected_enemy_count == 5
+    assert ROOM_6D_SPEC.required_open_doors == 0x02
+    assert ROOM_6D_SPEC.entry.direction == "UP"
+    assert ROOM_6D_SPEC.combat.engage_distance == 64
+    assert ROOM_6D_SPEC.combat.attack_phase == 4
+    assert ROOM_6C_SPEC.room_id == 0x6C
+    assert ROOM_6C_SPEC.expected_enemy_count == 6
+    assert ROOM_6C_SPEC.room_item_id == 0x19
+    assert ROOM_6C_SPEC.reward.inventory_field == "keys"
+    assert ROOM_6C_SPEC.reward.target == (136, 141)
+    assert ROOM_6C_SPEC.combat.engage_distance == 64
+    assert ROOM_6C_SPEC.combat.attack_phase == 2
+    assert ROOM_7E_SPEC.room_id == 0x7E
+    assert ROOM_7E_SPEC.source_room == 0x7D
+    assert ROOM_7E_SPEC.expected_enemy_count == 5
+    assert ROOM_7E_SPEC.room_item_id == 0x19
+    assert ROOM_7E_SPEC.reward.inventory_field == "keys"
+    assert ROOM_7E_SPEC.reward.target == (136, 141)
+    assert ROOM_7E_SPEC.entry.direction == "RIGHT"
+    assert ROOM_7E_SPEC.entry.waypoints[0] == (120, 157)
+    assert ROOM_7E_SPEC.combat.engage_distance == 64
+    assert ROOM_7E_SPEC.combat.attack_phase == 4
+
+    live = read_snapshot(
+        _room_ram(room=0x6D, enemy_type=0x28, enemies=5, hp=0x10)
+    )
+    # Force level 2 on synthetic RAM for live_enemies only needs types/hp.
+    assert len(ROOM_6D_SPEC.live_enemies(live)) == 5
+    dead_hp = read_snapshot(
+        _room_ram(room=0x6D, enemy_type=0x28, enemies=5, hp=0)
+    )
+    assert len(ROOM_6D_SPEC.live_enemies(dead_hp)) == 0
+
+    clear = _room_ram(room=0x6D, enemies=0)
+    clear[ADDR_LEVEL] = LEVEL_2
+    clear[ADDR_ROOM_ALL_DEAD] = 20
+    clear[0x00EE] = 0x02  # ADDR_CUR_OPENED_DOORS left bit
+    assert dungeon_room_cleared(clear, ROOM_6D_SPEC)
+    assert level2_room_6d_cleared(clear)
+
+    # Incomplete: missing door bit or all_dead
+    no_door = clear.copy()
+    no_door[0x00EE] = 0
+    assert not level2_room_6d_cleared(no_door)
+
+    key_room = _room_ram(room=0x6C, enemies=0, keys=1)
+    key_room[ADDR_LEVEL] = LEVEL_2
+    assert level2_room_6c_key_success(key_room)
+    # Key held but ropes still live → not done
+    still_fight = _room_ram(
+        room=0x6C, enemy_type=0x28, enemies=2, hp=0x10, keys=1
+    )
+    still_fight[ADDR_LEVEL] = LEVEL_2
+    assert not level2_room_6c_key_success(still_fight)
+    # Cleared but no key yet
+    no_key = _room_ram(room=0x6C, enemies=0, keys=0)
+    no_key[ADDR_LEVEL] = LEVEL_2
+    assert not level2_room_6c_key_success(no_key)
+
+    east_key = _room_ram(room=0x7E, enemies=0, keys=1)
+    east_key[ADDR_LEVEL] = LEVEL_2
+    assert level2_room_7e_key_success(east_key)
+    east_live = _room_ram(
+        room=0x7E, enemy_type=0x28, enemies=3, hp=0x10, keys=1
+    )
+    east_live[ADDR_LEVEL] = LEVEL_2
+    assert not level2_room_7e_key_success(east_live)
+    east_no_key = _room_ram(room=0x7E, enemies=0, keys=0)
+    east_no_key[ADDR_LEVEL] = LEVEL_2
+    assert not level2_room_7e_key_success(east_no_key)
 
 
 def test_room_specs_support_hp_and_type_only_liveness() -> None:

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from super_metroid.door_kinematics import DoorKinematicsRequirement
 from super_metroid.paths import GAME_DIR
 from super_metroid.rooms.topology import (
     PhysicalConnection,
@@ -140,7 +141,12 @@ def resolve_entry_door_ptr(
 
 @dataclass(frozen=True)
 class EntryContract:
-    """Doorway-natural start boundary for an isolated room segment."""
+    """Doorway-natural start boundary for an isolated room segment.
+
+    Optional ``entry_kinematics`` declares expected spawn speed/position after
+    a *natural* door hop (not door-warp practice fixtures, which zero motion).
+    Use for continuous/pure segment handoffs that depend on run-in speed.
+    """
 
     kind: str = "doorway_natural"
     schema_version: int = 1
@@ -158,6 +164,11 @@ class EntryContract:
     same_door_return: bool = False
     boot_idle_frames: int | None = None
     rng_note: str = _DEFAULT_RNG_NOTE
+    # Expected natural-entry kinematics (continuous/pure). Practice bootstrap
+    # fixtures intentionally clear momentum — leave this None for them.
+    entry_kinematics: DoorKinematicsRequirement | None = None
+    # Expected leave kinematics *into* this room's entry door (source room).
+    leave_kinematics: DoorKinematicsRequirement | None = None
 
     @property
     def door_ptr_hex(self) -> str | None:
@@ -201,6 +212,10 @@ class EntryContract:
             payload["doorPtr"] = self.door_ptr
         if self.entry_source_room_id is not None:
             payload["entrySourceRoomId"] = self.entry_source_room_id
+        if self.entry_kinematics is not None:
+            payload["entryKinematics"] = self.entry_kinematics.to_dict()
+        if self.leave_kinematics is not None:
+            payload["leaveKinematics"] = self.leave_kinematics.to_dict()
         return payload
 
     @classmethod
@@ -255,6 +270,12 @@ class EntryContract:
                 else None
             ),
             rng_note=str(raw.get("rngNote") or _DEFAULT_RNG_NOTE),
+            entry_kinematics=DoorKinematicsRequirement.from_dict(
+                raw.get("entryKinematics") or raw.get("entry_kinematics")
+            ),
+            leave_kinematics=DoorKinematicsRequirement.from_dict(
+                raw.get("leaveKinematics") or raw.get("leave_kinematics")
+            ),
         )
 
     @classmethod

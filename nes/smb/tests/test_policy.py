@@ -38,7 +38,9 @@ def test_seed_file_exists_and_loads() -> None:
     assert data["start_state"] == "Level1_1"
     frames = expand_nes9_rle(data)
     assert len(frames) == data["num_frames"]
-    assert len(frames) >= 2000
+    # DEFAULT_1_1_SEED is TAS-polished (leave ~1903f); keep a floor above pre-clear
+    # garbage but do not require the old 2029f clear seed length.
+    assert len(frames) >= 1800
     assert all(len(f) == 9 for f in frames[:10])
 
 

@@ -21,6 +21,7 @@ from retro_harness.adventure.hashutil import sha256_file
 from retro_harness.artifacts import clean_artifact_stem, recording_artifacts
 from retro_harness.env import make_env
 from retro_harness.video import probe_video_evidence
+from super_metroid.door_kinematics import DoorKinematics
 from super_metroid.paths import GAME, GAME_DIR, MAPS_DIR, RECORDINGS_DIR, SHARED_ROM
 from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import ObservedTransition, RoomProgressionGraph
@@ -128,7 +129,14 @@ class ContinuousRunReport:
             "total_frames": self.total_frames,
             "final_state": self.final_state,
             "splits": [asdict(split) for split in self.splits],
-            "transitions": [asdict(transition) for transition in self.transitions],
+            "transitions": [
+                (
+                    transition.to_dict()
+                    if hasattr(transition, "to_dict")
+                    else asdict(transition)
+                )
+                for transition in self.transitions
+            ],
             "action_reasons": dict(self.action_reasons),
             "assist": self.assist,
             "state_loads": self.state_loads,
@@ -190,6 +198,8 @@ class RouteSession:
         self.bomb_torizo_activation_frame: int | None = None
         self.bomb_torizo_defeat_frame: int | None = None
         self.bomb_torizo_peak_hp = 0
+        # Last ordinary-frame kinematics before a door load (TAS entry speed).
+        self._pending_leave_kinematics: DoorKinematics | None = None
         # Reset WRAM is not a meaningful room; skip first unknown → Ceres edge.
         self._last_room = (
             self.state.room_id if self.state.room_id in self.graph.rooms else 0
@@ -225,13 +235,43 @@ class RouteSession:
         if self.room_timer is not None:
             self.room_timer.observe(self.state)
 
+        # Capture leave kinematics on first frame that leaves ordinary control
+        # (door/elevator load). Used by TAS/speedrun entry-speed contracts.
+        if self._pending_leave_kinematics is None and (
+            (
+                previous.phase is GameplayPhase.ORDINARY_GAMEPLAY
+                and self.state.phase is GameplayPhase.ROOM_TRANSITION
+            )
+            or (previous.door_transition == 0 and self.state.door_transition != 0)
+        ):
+            self._pending_leave_kinematics = DoorKinematics.from_state(previous)
+
         room = self.state.room_id
         if room in self.graph.rooms and self._last_room and room != self._last_room:
+            leave = self._pending_leave_kinematics
+            if leave is None:
+                # Room-id changed without a detected transition phase (rare /
+                # elevator edge). Fall back to pre-step state.
+                leave = DoorKinematics.from_state(previous)
+            entry = DoorKinematics.from_state(self.state)
             self.transitions.append(
-                self.graph.observe_transition(self.frame, self._last_room, room)
+                self.graph.observe_transition(
+                    self.frame,
+                    self._last_room,
+                    room,
+                    leave_kinematics=leave.to_dict(),
+                    entry_kinematics=entry.to_dict(),
+                )
             )
+            self._pending_leave_kinematics = None
         if room in self.graph.rooms:
             self._last_room = room
+            # Settled ordinary again after a failed/aborted leave sample.
+            if (
+                self.state.phase is GameplayPhase.ORDINARY_GAMEPLAY
+                and self.state.door_transition == 0
+            ):
+                self._pending_leave_kinematics = None
 
         self._track_inventory(previous, self.state)
         self._track_bomb_torizo(previous, self.state)

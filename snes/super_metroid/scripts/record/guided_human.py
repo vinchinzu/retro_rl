@@ -32,10 +32,41 @@ uv run python snes/super_metroid/scripts/record/guided_human.py \\
 uv run python snes/super_metroid/scripts/record/guided_human.py \\
   --from big-pink --route big-pink-to-ghz --name charge_to_ghz_human
 
-# Early Spazer — continuous-like Below Spazer → wall-jump → green Super → collect
-# Guide path draws on the same window; one-pager: docs/tasks/EARLY_SPAZER_HUMAN.md
+# Early Spazer — from Charge (Big Pink), play natural into Below Spazer climb.
+# Prefer this over --from below-spazer (scratch pin can be corrupted / unplayable).
+# Guide OFF recommended for Spazer (overlay messes camera/play).
 uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from below-spazer --route early-spazer --name spazer_human
+  --from big-pink --route early-spazer --name spazer_from_charge_human --no-guide
+
+# Post-Spazer clean TOP-MID drop (preferred — skip climb/bomb thrash).
+# Pure return handoff ~(380,155) beams 0x1004; do NOT RIGHT into Super.
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from post-spazer-return --route spazer-top-drop --name spazer_top_drop_human --no-guide
+
+# Or start in Spazer Room post-collect, human-return + clean drop in one take.
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from post-spazer --route spazer-return-drop --name spazer_return_drop_human --no-guide
+
+# Post-Speed Wave→Ice→Moat human re-record (rr-dbu.12). Default route for
+# --from speed is speed-to-ice-moat. Do NOT overwrite speed_to_ice_moat_human
+# (misnamed partial); use a new --name. Min acceptance: reach Ice 0xA890.
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from speed --route speed-to-ice-moat --name speed_to_wave_ice_moat_human
+
+# Wave-only take (stop after Wave chozo; F5)
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from speed --route speed-to-wave --name speed_to_wave_human
+
+# Spazer Double Chamber missile ledge → Super → Wave (cont-like leave, beams 0x1004).
+# Multi-take practice loop: scripts/record/practice_takes.py --segment dc-missile-wave
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from double-chamber --route double-chamber-to-wave \\
+  --name dc_missile_wave_take01 --no-guide
+
+# K6: post-Moat shinespark West Ocean → WS (pure pin after yesterday's spark).
+# Multi-take: practice_takes.py --segment west-ocean-to-ws
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from west-ocean --route west-ocean-to-ws --name west_ocean_to_ws_human
 
 # List start presets / routes
 uv run python snes/super_metroid/scripts/record/guided_human.py --list
@@ -129,18 +160,120 @@ START_PRESETS: dict[str, tuple[str, str]] = {
         "dev_b1_bigpink_main_controller.state",
         "Alias of big-pink (Charge Chozo detour start)",
     ),
-    # Early Spazer (K2.2): continuous-like Below Spazer left entry, no Spazer yet.
+    # Early Spazer (K2.2): prefer Charge Big Pink start (play natural into climb).
+    # Below Spazer scratch pins are often unplayable/corrupt for human demos.
+    "charge-to-spazer": (
+        "dev_b1_bigpink_main_controller.state",
+        "Big Pink main shaft post-supers — collect Charge, then play to Spazer WJ",
+    ),
+    # Below Spazer pins (prefer charge-to-spazer / big-pink for human record).
     "below-spazer": (
-        "scratch/post_below_spazer_for_spazer_pure.state",
-        "Below Spazer left entry (~49,395) continuous-like — early Spazer WJ",
+        "scratch/post_below_spazer_with_charge_continuous.state",
+        "Below Spazer left entry (~49,395) Charge continuous — often corrupt for human",
     ),
     "spazer": (
-        "scratch/post_below_spazer_for_spazer_pure.state",
-        "Alias of below-spazer (early Spazer wall-jump detour start)",
+        "scratch/post_below_spazer_with_charge_continuous.state",
+        "Alias of below-spazer (prefer charge-to-spazer for human record)",
     ),
     "early-spazer": (
+        "scratch/post_below_spazer_with_charge_continuous.state",
+        "Alias of below-spazer (prefer charge-to-spazer for human record)",
+    ),
+    # Legacy power-only pin (no Charge) for practice without K1 detour.
+    "below-spazer-no-charge": (
         "scratch/post_below_spazer_for_spazer_pure.state",
-        "Alias of below-spazer (early Spazer wall-jump detour start)",
+        "Below Spazer left entry beams 0x0000 — power-only practice",
+    ),
+    # Post-Spazer pure pins — clean TOP-MID human drop (skip bomb-gap thrash).
+    "post-spazer": (
+        "scratch/post_spazer_collect_pure.state",
+        "Spazer Room post-collect ~(171,171) beams 0x1004 — return + drop",
+    ),
+    "post-spazer-collect": (
+        "scratch/post_spazer_collect_pure.state",
+        "Alias of post-spazer (Chozo floor after Spazer grab)",
+    ),
+    "post-spazer-return": (
+        "scratch/post_spazer_return_pure.state",
+        "Below Spazer top handoff ~(380,155) beams 0x1004 — clean top→mid only",
+    ),
+    "spazer-return": (
+        "scratch/post_spazer_return_pure.state",
+        "Alias of post-spazer-return (pure return handoff)",
+    ),
+    # Warehouse after Charge+Spazer mainline detour (continuous-like pure chain).
+    "warehouse-spazer": (
+        "scratch/post_warehouse_with_spazer_continuous.state",
+        "Warehouse 0xA6A1 beams 0x1004 Charge+Spazer — post mainline K2.2",
+    ),
+    "warehouse-with-spazer": (
+        "scratch/post_warehouse_with_spazer_continuous.state",
+        "Alias of warehouse-spazer",
+    ),
+    # Speed Hall left lip — right before Speed Booster room/collect; beams 0x1004.
+    "speed-hall": (
+        "scratch/post_speed_hall_pre_speed_with_spazer.state",
+        "Speed Hall 0xACF0 pre-Speed, beams 0x1004 Charge+Spazer (no Speed bit)",
+    ),
+    "pre-speed": (
+        "scratch/post_speed_hall_pre_speed_with_spazer.state",
+        "Alias of speed-hall — right before Speed Booster",
+    ),
+    "pre-speed-spazer": (
+        "scratch/post_speed_hall_pre_speed_with_spazer.state",
+        "Alias of speed-hall",
+    ),
+    # Post-Speed Booster pure collect — human Wave/Ice/Moat free-record start.
+    "speed": (
+        "scratch/post_speed_collected.state",
+        "Speed Booster Room post-collect ~(169,123) items 0x3105 — Wave/Ice/Moat human",
+    ),
+    "post-speed": (
+        "scratch/post_speed_collected.state",
+        "Alias of speed (post Speed Booster chozo, standing facing exit)",
+    ),
+    "speed-collected": (
+        "scratch/post_speed_collected.state",
+        "Alias of speed (named save point after pure speed-hall-to-speed)",
+    ),
+    # Double Chamber leave — Spazer missile ledge → Super → Wave practice.
+    # Prefer continuous-like (beams 0x1004) for bot parity; pure is beams=0.
+    "double-chamber": (
+        "scratch/post_single_to_double_chamber_continuous_like.state",
+        "Double Chamber leave ~(39,139) Spazer cont-like beams 0x1004 — missile free+Wave",
+    ),
+    "dc": (
+        "scratch/post_single_to_double_chamber_continuous_like.state",
+        "Alias of double-chamber (Spazer cont-like leave)",
+    ),
+    "dc-cont": (
+        "scratch/post_single_to_double_chamber_continuous_like.state",
+        "Alias of double-chamber continuous-like",
+    ),
+    "dc-pure": (
+        "scratch/post_single_to_double_chamber_pure.state",
+        "Double Chamber leave pure predecessor (often beams 0 — not Spazer mainline)",
+    ),
+    "dc-post-missiles": (
+        "scratch/dev_dc_post_missiles.state",
+        "Double Chamber past-gate post-missile pin — runway/Super only practice",
+    ),
+    # K6: West Ocean after pure Moat shinespark (rr-hhj handoff).
+    "west-ocean": (
+        "scratch/post_moat_west_ocean_spark.state",
+        "West Ocean 0x93FE post-Moat spark ~(49,1163) items 0x3105 — WS human",
+    ),
+    "post-moat": (
+        "scratch/post_moat_west_ocean_spark.state",
+        "Alias of west-ocean (after pure store→hop→spark + blue door)",
+    ),
+    "post-moat-spark": (
+        "scratch/post_moat_west_ocean_spark.state",
+        "Alias of west-ocean",
+    ),
+    "moat-spark": (
+        "scratch/post_moat_west_ocean_spark.state",
+        "Alias of west-ocean (spark already done; start in West Ocean)",
     ),
 }
 
@@ -264,8 +397,34 @@ def main() -> int:
             args.route = "parlor-left"
         elif args.start in ("big-pink", "charge"):
             args.route = "charge-collect-return"
-        elif args.start in ("below-spazer", "spazer", "early-spazer"):
+        elif args.start in (
+            "charge-to-spazer",
+            "below-spazer",
+            "spazer",
+            "early-spazer",
+        ):
             args.route = "early-spazer"
+        elif args.start in ("post-spazer-return", "spazer-return"):
+            args.route = "spazer-top-drop"
+        elif args.start in ("post-spazer", "post-spazer-collect"):
+            args.route = "spazer-return-drop"
+        elif args.start in ("speed", "post-speed", "speed-collected"):
+            args.route = "speed-to-ice-moat"
+        elif args.start in (
+            "double-chamber",
+            "dc",
+            "dc-cont",
+            "dc-pure",
+            "dc-post-missiles",
+        ):
+            args.route = "double-chamber-to-wave"
+        elif args.start in (
+            "west-ocean",
+            "post-moat",
+            "post-moat-spark",
+            "moat-spark",
+        ):
+            args.route = "west-ocean-to-ws"
         else:
             args.route = "cathedral-to-bat"
 
@@ -289,6 +448,22 @@ def main() -> int:
 
     route_guides = ROUTE_PRESETS[args.route]
     route_room_ids = {g.room_id for g in route_guides}
+
+    def _guides_for_active_room(room_id: int) -> list:
+        """All route polylines for this room (main + recovery fallbacks)."""
+        rid = int(room_id)
+        matched = [g for g in route_guides if g.room_id == rid]
+        if matched:
+            return matched
+        g = guide_for_room(rid)
+        if g is not None and g.room_id in route_room_ids:
+            return [g]
+        return []
+
+    def _guide_for_active_room(room_id: int):
+        """Primary guide (first) for HUD nearest-waypoint."""
+        gs = _guides_for_active_room(room_id)
+        return gs[0] if gs else None
 
     state_bytes = read_state_bytes(state_path)
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
@@ -336,8 +511,8 @@ def main() -> int:
         ram = env.get_ram()
         live["cam_x"] = _u16(ram, ADDR_CAMERA_X)
         live["cam_y"] = _u16(ram, ADDR_CAMERA_Y)
-        guide = guide_for_room(int(row["room"]))
-        if guide is not None and guide.room_id in route_room_ids:
+        guide = _guide_for_active_room(int(row["room"]))
+        if guide is not None:
             live["guide_name"] = guide.name
             live["nearest"] = nearest_waypoint_index(guide.points, int(row["x"]), int(row["y"]))
         else:
@@ -351,8 +526,25 @@ def main() -> int:
             f"[REC] {task_name}  F5=save  ESC=cancel",
             f"room=0x{room:04X}  xy=({live['x']},{live['y']})  frames={len(task.frames)}",
         ]
-        if live["guide_name"]:
-            lines.append(f"guide: {live['guide_name']}  wp={live['nearest']}")
+        guides = _guides_for_active_room(room)
+        if guides:
+            names = " + ".join(g.name for g in guides)
+            lines.append(f"guide: {names}  wp={live['nearest']}")
+            # Phase hint for Double Chamber take04 practice.
+            if room == 0xADAD:
+                x, y = int(live["x"] or 0), int(live["y"] or 0)
+                if y >= 300:
+                    lines.append("FALLBACK: red path → floor climb → reseat P2")
+                elif x < 370:
+                    lines.append("phase P1 hop (stay y≲180; purple main)")
+                elif x < 480:
+                    lines.append("phase P2 gate seat/open")
+                elif x < 520:
+                    lines.append("phase P3 missile free RIGHT past 510")
+                elif x < 650:
+                    lines.append("phase P4 runway ~437 → edge 600")
+                else:
+                    lines.append("phase P5 launch / Super sill")
         else:
             lines.append("guide: (no polyline for this room)")
         return lines
@@ -361,8 +553,8 @@ def main() -> int:
         if args.no_guide:
             return
         room = int(live["room"] or 0)
-        guide = guide_for_room(room)
-        if guide is None or guide.room_id not in route_room_ids:
+        guides = _guides_for_active_room(room)
+        if not guides:
             return
         transform = transform_from_session_ctx(
             ctx,
@@ -373,18 +565,26 @@ def main() -> int:
         font = ctx.get("font")
         if surface is None:
             return
-        draw_guide_path(
-            pg,
-            surface,
-            guide.points,
-            transform,
-            color=guide.color,
-            width=2,
-            radius=5,
-            highlight_index=live["nearest"] if isinstance(live["nearest"], int) else 0,
-            font=font,
-            draw_labels=True,
-        )
+        # Draw recovery (later entries) first so main path sits on top.
+        for i, guide in enumerate(reversed(guides)):
+            is_primary = i == len(guides) - 1
+            nearest = (
+                nearest_waypoint_index(guide.points, int(live["x"] or 0), int(live["y"] or 0))
+                if is_primary
+                else None
+            )
+            draw_guide_path(
+                pg,
+                surface,
+                guide.points,
+                transform,
+                color=guide.color,
+                width=3 if is_primary else 2,
+                radius=6 if is_primary else 4,
+                highlight_index=nearest if isinstance(nearest, int) else 0,
+                font=font,
+                draw_labels=True,
+            )
         draw_player_marker(
             pg,
             surface,
@@ -465,8 +665,8 @@ def main() -> int:
         ram0 = env.get_ram()
         live["cam_x"] = _u16(ram0, ADDR_CAMERA_X)
         live["cam_y"] = _u16(ram0, ADDR_CAMERA_Y)
-        g0 = guide_for_room(int(boot.room_id))
-        if g0 is not None and g0.room_id in route_room_ids:
+        g0 = _guide_for_active_room(int(boot.room_id))
+        if g0 is not None:
             live["guide_name"] = g0.name
             live["nearest"] = nearest_waypoint_index(
                 g0.points, int(boot.samus_x), int(boot.samus_y)
@@ -485,7 +685,18 @@ def main() -> int:
         obs, info = _orig_reset(e)
         e.em.set_state(state_bytes)
         # Settle door transition / pose fully (Below Spazer needs ~12f for pose 1).
-        settle = 16 if args.start in ("below-spazer", "spazer", "early-spazer") else 8
+        settle = (
+            16
+            if args.start
+            in (
+                "below-spazer",
+                "spazer",
+                "early-spazer",
+                "post-spazer-return",
+                "spazer-return",
+            )
+            else 8
+        )
         for _ in range(settle):
             obs, _r, _t, _tr, info = step_env(e, idle_action())
         _seed_live_from_env()
@@ -494,8 +705,30 @@ def main() -> int:
             f"xy=({live['x']},{live['y']}) from {state_path.name}"
         )
         if args.start in ("below-spazer", "spazer", "early-spazer"):
+            boot_bits += " | Below Spazer pin — keep x>=40 (left door=Bat trap)"
+        elif args.start in ("post-spazer-return", "spazer-return"):
             boot_bits += (
-                " | no Charge (power X only); keep x>=40 (left door=Bat trap)"
+                " | top handoff Spazer held — NO RIGHT (Super re-entry); "
+                "clean drop to mid y>=220 only"
+            )
+        elif args.start in ("post-spazer", "post-spazer-collect"):
+            boot_bits += (
+                " | Spazer Room post-collect — return left, then clean top→mid drop"
+            )
+        elif args.start in ("charge-to-spazer", "big-pink", "charge"):
+            boot_bits += (
+                " | start Charge area — collect Charge, play Red→Bat→Below→Spazer"
+            )
+        elif args.start in (
+            "double-chamber",
+            "dc",
+            "dc-cont",
+            "dc-pure",
+            "dc-post-missiles",
+        ):
+            boot_bits += (
+                " | DC missile ledge: gate → pack ~x492 free RIGHT past 510 → "
+                "runway ~x425 → dash edge 600 → Super → Wave; F5 when Wave held"
             )
         print(boot_bits)
         return obs, info

@@ -152,6 +152,24 @@ def play_hj_shaft_to_hj_room(session: ControllerSession) -> SuperMetroidState:
         session, ROOM_HJ, settle_frames=260, label="hj_shaft_to_hj"
     )
 
+def _pillar_downshot_burst(
+    session: ControllerSession,
+    *,
+    reason: str,
+    frames: int = 25,
+) -> None:
+    """Hold DOWN and multi-tap fire over the peak/fall of a pillar jump.
+
+    A single-frame aim+shot opens the HJ pillar under Charge/power, but Spazer
+    multi-shot needs several hits at the peak — equip strip is not allowed.
+    """
+    for i in range(frames):
+        if i % 3 == 0:
+            hold(session, 1, "DOWN", "X", reason=reason)
+        else:
+            hold(session, 1, "DOWN", reason=f"{reason}_aim")
+
+
 def play_hj_room_collect(session: ControllerSession) -> SuperMetroidState:
     """Destroy both pillar shot-block sets and collect Hi-Jump naturally."""
     require_room(session, ROOM_HJ, "hj_room_collect")
@@ -159,31 +177,29 @@ def play_hj_room_collect(session: ControllerSession) -> SuperMetroidState:
     select_weapon(session, 0)
     hold(session, 20, reason="hj_room_entry_settle")
 
-    # Left-facing down-shot opens the first half of the pillar.
+    # Left-facing peak: multi down-shots open the first half of the pillar.
     hold(session, 12, "LEFT", "B", reason="hj_room_first_runup")
     for _ in range(70):
         state = hold(session, 1, "LEFT", "B", "A", reason="hj_room_first_jump")
         if state.samus_y <= 52:
             break
-    hold(session, 1, "DOWN", reason="hj_room_first_aim_down")
-    hold(session, 1, "X", reason="hj_room_first_downshot")
-    hold(session, 80, reason="hj_room_first_land")
+    _pillar_downshot_burst(session, reason="hj_room_first_downshot")
+    hold(session, 50, reason="hj_room_first_land")
 
-    # Face right, jump vertically, and down-shoot the other orientation.
+    # Face right, jump vertically, multi down-shot the other orientation.
     hold(session, 2, "RIGHT", reason="hj_room_face_right")
     hold(session, 10, reason="hj_room_face_right_settle")
     for _ in range(80):
         state = hold(session, 1, "A", reason="hj_room_second_jump")
         if state.samus_y <= 53:
             break
-    hold(session, 1, "DOWN", reason="hj_room_second_aim_down")
-    hold(session, 1, "X", reason="hj_room_second_downshot")
-    hold(session, 80, reason="hj_room_second_land")
+    _pillar_downshot_burst(session, reason="hj_room_second_downshot")
+    hold(session, 50, reason="hj_room_second_land")
 
     # Rebuild a leftward run and cross the now-open pillar.
     hold(session, 12, "RIGHT", "B", reason="hj_room_cross_backoff")
     hold(session, 15, "LEFT", "B", reason="hj_room_cross_runup")
-    for _ in range(100):
+    for _ in range(120):
         state = hold(session, 1, "LEFT", "B", "A", reason="hj_room_cross_pillar")
         if state.samus_x < 120:
             break

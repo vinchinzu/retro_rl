@@ -10,7 +10,7 @@ Luna → planner review
 implement
 
 ## Own files only
-- residual: optional `docs/tasks/SM-CLEAN-BOMBS-residual.md` (delete after close)
+- residual: optional PROCESS residual (delete after close / promote)
 - only if fight/economy fails: `combat/bomb_torizo.py` **or** early policy
   segments — **one knob**, then assisted bombs re-verify (see
   `SM-CLEAN-BT-ECONOMY`)
@@ -49,7 +49,7 @@ Depends: clean infra green (artifacts + integrity); morph clean **done**.
 - [ ] Clean report success + bomb_torizo outcome — **RED** 2026-08-06
 - [x] Resource writes all zero (failed run still Clean intervention)
 - [x] Assisted bombs baseline files unchanged
-- [x] Residual PROCESS fields → `SM-CLEAN-BOMBS-residual.md` / `SM-CLEAN-BT-ECONOMY`
+- [x] Residual PROCESS fields (purged after clean dual GREEN)
 
 ## Verify commands
 ```bash

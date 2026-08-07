@@ -20,7 +20,8 @@ from retro_harness.nes import NES_ACTION_SIZE, nes_idle_action
 from retro_harness.input_script import FrameAction
 
 GAME_DIR = Path(__file__).resolve().parent
-DEFAULT_1_1_SEED = GAME_DIR / "models" / "smb_1_1_clear.json"
+# Isolated Level1_1 best (TAS polish): leave 1903f / flag 1242f (was clear.json 2029f).
+DEFAULT_1_1_SEED = GAME_DIR / "models" / "smb_1_1_tas_best.json"
 DEFAULT_1_2_WARP_SEED = GAME_DIR / "models" / "smb_1_2_warp_w4.json"
 # State-gated 1-2 fragments (control-relative underground + optional surface macro).
 DEFAULT_1_2_REACTIVE_FRAGMENTS = GAME_DIR / "models" / "smb_1_2_reactive_fragments.json"

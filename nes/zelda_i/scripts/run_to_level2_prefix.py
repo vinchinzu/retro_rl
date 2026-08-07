@@ -31,6 +31,7 @@ from retro_harness.segment_runner import (
     save_rgb_png,
     write_json_report,
 )
+from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.chain import run_controller_stage
 from zelda_i.level1_finish import (
     TRIFORCE_MAX_FRAMES,
@@ -54,6 +55,7 @@ def _collect_and_settle(
     obs,
     *,
     room_timer: RoomTimer | None = None,
+    assist: UnlimitedHealthAssist | None = None,
     frame_base: int = 0,
 ) -> tuple[object, PostTriforceSettleController, dict, int]:
     """From Level1HeartCollected: triforce + settle to overworld 0x37."""
@@ -65,6 +67,7 @@ def _collect_and_settle(
         controller=tf,
         max_frames=TRIFORCE_MAX_FRAMES,
         room_timer=room_timer,
+        assist=assist,
         frame_base=frame_base,
     )
     settle = PostTriforceSettleController()
@@ -75,6 +78,7 @@ def _collect_and_settle(
         controller=settle,
         max_frames=SETTLE_MAX_FRAMES,
         room_timer=room_timer,
+        assist=assist,
         frame_base=tf_stage.end_frame,
     )
     return (
@@ -92,18 +96,22 @@ def run_once(
     tag: str = "to_level2_prefix",
     save_checkpoint: bool = False,
     room_timing: bool = False,
+    infinite_life: bool = False,
 ) -> dict:
     configure_headless()
     start_state = "Level1HeartCollected" if from_heart else "Level1ExitOverworld"
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     nav = OverworldToLevel2Controller()
     room_timer = RoomTimer() if room_timing else None
+    assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     frame_base = 0
     try:
         result = env.reset()
         obs = result[0] if isinstance(result, tuple) else result
         obs, *_ = env.step(nes_idle_action())
         frame_base = 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame_base)
         if room_timer is not None:
             room_timer.observe(read_snapshot(env.get_ram()), frame=frame_base)
         snap0 = read_snapshot(env.get_ram())
@@ -116,11 +124,16 @@ def run_once(
             "y": snap0.link_y,
             "triforce": snap0.triforce,
             "health": snap0.health,
+            "infinite_life": infinite_life,
         }
         pre: dict = {}
         if from_heart:
             obs, settle, pre, frame_base = _collect_and_settle(
-                env, obs, room_timer=room_timer, frame_base=frame_base
+                env,
+                obs,
+                room_timer=room_timer,
+                assist=assist,
+                frame_base=frame_base,
             )
             if not settle.success:
                 snap = read_snapshot(env.get_ram())
@@ -132,6 +145,7 @@ def run_once(
                     "entry": entry,
                     "pre": pre,
                     "nav": nav.report(),
+                    "assist": assist.report() if assist else None,
                     "final": {
                         "mode": snap.mode,
                         "screen": snap.screen,
@@ -159,6 +173,7 @@ def run_once(
                 controller=settle,
                 max_frames=SETTLE_MAX_FRAMES,
                 room_timer=room_timer,
+                assist=assist,
                 frame_base=frame_base,
             )
             pre["settle"] = settle_stage.report()
@@ -171,6 +186,7 @@ def run_once(
             controller=nav,
             max_frames=max_frames,
             room_timer=room_timer,
+            assist=assist,
             frame_base=frame_base,
         )
         frame_base = nav_stage.end_frame
@@ -188,6 +204,7 @@ def run_once(
             "entry": entry,
             "pre": pre,
             "nav": nav.report(),
+            "assist": assist.report() if assist else None,
             "final": {
                 "mode": snap.mode,
                 "level": snap.level,
@@ -242,6 +259,11 @@ def main(argv: list[str] | None = None) -> int:
             f"writes JSON under {ROOM_TIMINGS_DIR}"
         ),
     )
+    parser.add_argument(
+        "--infinite-life",
+        action="store_true",
+        help="Survival assist: refill hearts each frame (not Clean)",
+    )
     args = parser.parse_args(argv)
 
     reports = []
@@ -253,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
             tag=tag,
             save_checkpoint=args.save_state,
             room_timing=args.room_timing,
+            infinite_life=args.infinite_life,
         )
         reports.append(rep)
         fin = rep["final"]
