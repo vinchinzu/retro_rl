@@ -102,6 +102,7 @@ class ZeldaSnapshot:
     keys: int
     health: int
     triforce: int
+    compass: int  # ADDR_COMPASS bitfield: one bit per dungeon level
     dialog_timer: int
     colliding_tile: int
     room_item_id: int
@@ -192,6 +193,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         keys=read_u8(ram, ADDR_KEYS),
         health=read_u8(ram, ADDR_HEALTH),
         triforce=read_u8(ram, ADDR_TRIFORCE),
+        compass=read_u8(ram, ADDR_COMPASS),
         dialog_timer=read_u8(ram, ADDR_DIALOG_TIMER),
         colliding_tile=read_u8(ram, ADDR_COLLIDING_TILE),
         room_item_id=read_u8(ram, ADDR_ROOM_ITEM_ID),

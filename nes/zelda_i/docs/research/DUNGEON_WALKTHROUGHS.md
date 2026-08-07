@@ -86,9 +86,10 @@ right side; burn 3rd-from-top bush on left with Blue Candle.
 - [x] Rope object type **0x28** (TYPE_AND_HP when play-settled; spawn ~100f after screen)
 - [x] Entry east **0x7e** (5 Ropes + key `0x19`) via diamond-nav; UP→**0x6e** (3 Ropes)
 - [x] Magical Boomerang inventory: `0x0674` / `0x0675` (not yet collected live)
-- [ ] **0x6e RIGHT** (walkthrough key → compass) — residual geometry
-- [ ] Live room ID for Magical Boomerang / boss / triforce
-- [ ] Goriya / Moldorm object type IDs on L2
+- [x] **0x6e RIGHT** → **0x6f** compass gels; **0x6f bomb N @(120,101)** → **0x5f**
+- [x] **0x5f LEFT key** → **0x5e** Goriya `0x06` live
+- [ ] Live room ID for Magical Boomerang / boss / triforce (past 0x5f RIGHT residual)
+- [x] Goriya object type **0x06** on L2 (0x5e); Moldorm still open
 - [ ] Bomb placement policy for Dodongo
 - [ ] Isolated + natural-entry clear with `triforce & 0x02`
 

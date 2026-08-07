@@ -1,29 +1,29 @@
 # Overworld doors & key capabilities (first quest)
 
-**Status:** planning aggregate for L3–L9 recon (`rr-2nx`).  
-**Rule:** screen IDs marked **verified** are live fceumm facts. All other hex IDs
-are **source path arithmetic** from Zelda Dungeon walkthrough hops on the
-`ADDR_SCREEN` grid (`(row << 4) | col`, start `0x77`) until a probe writes
-`LevelNEntrance.state` / updates this table. **Not route-ready** until live.
+**Status:** parallel recon wave 2026-08-06 (`rr-2nx` + L3–L9).  
+**Rule:** screen IDs marked **verified** are live fceumm facts (assisted OK).
+Source-only hex stays labeled until a probe writes `LevelNEntrance.state`.
+**Not Clean route-ready** until natural-entry pure from real predecessor.
 
 Primary planning source: [DUNGEON_WALKTHROUGHS.md](research/DUNGEON_WALKTHROUGHS.md).  
-RAM inventory: [ram_map.md](ram_map.md) / `zelda_i.ram`.
+RAM inventory: [ram_map.md](ram_map.md) / `zelda_i.ram`.  
+Wave brief: [tasks/PARALLEL_RECON.md](tasks/PARALLEL_RECON.md).
 
 ---
 
 ## Dungeon mouths (first quest)
 
-| Level | Name | Door screen (hex) | Evidence | Required items (to *enter*) | TF bit | Item inside | Local route doc |
-|------:|------|-------------------|----------|-----------------------------|--------|-------------|-----------------|
-| 1 | Eagle | **`0x37`** | **verified** live / `SCREEN_LEVEL1_ENTRANCE` | wooden sword | `0x01` | Bow (optional) | [LEVEL1_ROUTE.md](LEVEL1_ROUTE.md) |
-| 2 | Moon | **`0x3C`** | **verified** geometry probe + walkthrough; Clean walk still gated on health | wooden sword; TF1 for natural post-L1 chain | `0x02` | Magical Boomerang | [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md) |
-| 3 | Manji | `0x74` | source path: start ↑ L×4 ↓ → ; `level3_overworld.SCREEN_LEVEL3_ENTRANCE` — **TBD live** enter | wooden sword (potion recommended) | `0x04` | Raft | [LEVEL3_ROUTE.md](LEVEL3_ROUTE.md) *(when present)* |
-| 4 | Snake | `0x45` | source hyp: raft from dock `0x55` → island `0x45` (`level4_overworld` / [LEVEL4_ROUTE.md](LEVEL4_ROUTE.md)) — **TBD live** | **Raft** (`0x0660`) | `0x08` | Stepladder | [LEVEL4_ROUTE.md](LEVEL4_ROUTE.md) |
-| 5 | Lizard | `0x0B` | source: Lost Hills maze `0x1B` ↑×4 — **TBD live** | none to *enter*; bracelet warp optional shortcut | `0x10` | Whistle (Recorder) | [LEVEL5_ROUTE.md](LEVEL5_ROUTE.md) *(when present)* |
-| 6 | Dragon | `0x22` | source path from L5 mouth (↓ L×7 ↓ L ↓ L ↑) — **TBD live** | none required; bracelet warp from near-start helps | `0x20` | Magical Rod | [LEVEL6_ROUTE.md](LEVEL6_ROUTE.md) *(when present)* |
-| 7 | Demon | `0x42` | source: whistle pond (`level7_overworld` / [LEVEL7_ROUTE.md](LEVEL7_ROUTE.md)); bait shop `0x34` — **TBD live** | **Whistle** (`0x065C`); **Bait** inside | `0x40` | Red Candle | [LEVEL7_ROUTE.md](LEVEL7_ROUTE.md) |
-| 8 | Lion | `0x6D` | source planned bush screen (`level8_overworld`; detour around 0x79) — **TBD live** | **Candle** (`0x065B`, blue shop OK) | `0x80` | Book of Magic, Magical Key | [LEVEL8_ROUTE.md](LEVEL8_ROUTE.md) *(when present)* |
-| 9 | Death Mountain | `0x05` | source bomb-rock hyp (`level9_overworld` / [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md)) — **TBD live** | bombs; full TF `0xFF` for Old Man gate inside | — | Red Ring, Silver Arrows | [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md) |
+| Level | Name | Door screen (hex) | Entry room | Evidence | Required items (to *enter*) | TF bit | Item inside | Local route doc |
+|------:|------|-------------------|------------|----------|-----------------------------|--------|-------------|-----------------|
+| 1 | Eagle | **`0x37`** | **`0x73`** | **verified** Clean | wooden sword | `0x01` | Bow (optional) | [LEVEL1_ROUTE.md](LEVEL1_ROUTE.md) |
+| 2 | Moon | **`0x3C`** | **`0x7d`** | **verified** assisted/geometry; Clean health open | wooden sword; TF1 for natural chain | `0x02` | Magical Boomerang | [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md) |
+| 3 | Manji | **`0x74`** | **`0x7c`** | **verified** assisted; `Level3Entrance.state` (source ↑L×4 path **blocked** at 0x67) | wooden sword | `0x04` | Raft | [LEVEL3_ROUTE.md](LEVEL3_ROUTE.md) |
+| 4 | Snake | `0x45` | TBD | source hyp: raft dock `0x55` → island `0x45` | **Raft** (`0x0660`) | `0x08` | Stepladder | [LEVEL4_ROUTE.md](LEVEL4_ROUTE.md) |
+| 5 | Lizard | **`0x0B`** | **`0x76`** | **verified** assisted Lost Hills `0x1B` ↑×4; `Level5Entrance.state` | none to enter | `0x10` | Whistle | [LEVEL5_ROUTE.md](LEVEL5_ROUTE.md) |
+| 6 | Dragon | **`0x22`** | **`0x79`** | **verified** assisted; east `0x7a` key room; `Level6Entrance.state` | none required | `0x20` | Magical Rod | [LEVEL6_ROUTE.md](LEVEL6_ROUTE.md) |
+| 7 | Demon | `0x42` | TBD | source: whistle pond; bait shop `0x34` | **Whistle** + **Bait** inside | `0x40` | Red Candle | [LEVEL7_ROUTE.md](LEVEL7_ROUTE.md) |
+| 8 | Lion | **`0x6D`** | TBD | **verified bush OW** assisted (`Level8BushOW.state`); **candle** still blocks burn/enter | **Candle** (`0x065B`) | `0x80` | Book / Magic Key | [LEVEL8_ROUTE.md](LEVEL8_ROUTE.md) |
+| 9 | Death Mountain | `0x05` | TBD | source bomb-rock hyp | bombs; full TF `0xFF` inside | — | Red Ring, Silver Arrows | [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md) |
 
 ### Source path notes (planning only)
 
@@ -57,7 +57,8 @@ Same hop arithmetic reproduces verified L1 (`…→0x37`) and L2 walkthrough pat
 | Raft dock (east heart) | `0x3F` | source path →×8 ↑×4 — **TBD live** | Raft | raft↑ optional Heart Container island `0x2F` |
 | Raft dock (L4 island) | `0x55` → `0x45` | source hyp (`level4_overworld`) — **TBD live** | Raft | only two first-quest raft docks |
 | Ladder heart (coast) | `0x5F` | source →×8 ↑×2 — **TBD live** | Stepladder | water platform Heart Container |
-| Lost Hills maze | `0x1B` | source — **TBD live** | none | ↑×4 escapes north to L5 |
+| Lost Hills maze | **`0x1B`** | **verified** assisted; enter from `0x1C` W@y140; pocket free then ↑×4 | none | 4th UP → door `0x0B`; see LEVEL5_ROUTE |
+| L8 candle bush | **`0x6D`** | **verified** bush pocket; candle buy residual | Candle | burn then enter; see LEVEL8_ROUTE |
 | L9 bomb rock | `0x05` | source — **TBD live** | bombs | left rock of pair |
 | Bomb capacity upgrades | *inside* L5 / L7 | source walkthrough | 100R each | not OW mouths; raise bomb max 8→12→16 |
 

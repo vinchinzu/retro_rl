@@ -27,6 +27,7 @@ def _snap(
         keys=0,
         health=health,
         triforce=1,
+        compass=0,
         dialog_timer=0,
         colliding_tile=0x26,
         room_item_id=0,

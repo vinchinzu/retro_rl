@@ -119,6 +119,57 @@ Runners should report at least:
 - maximum no-progress interval
 - forbidden inputs or writes
 
+## Seed-robustness (randomizer / solver class)
+
+Fixed-ROM continuous clears (M7/M8) remain the default evidence class for
+vanilla titles. Randomizers and the solver stack need an **additional** class
+that measures generalization across seeds.
+
+### Seed-robust clear
+
+A policy is **seed-robust** for a published contract when:
+
+1. **T** seeds are drawn independently under a documented randomizer config
+   (generator, version, logic settings, goal).
+2. Each attempt starts from that seed’s published power-on / ROM image with
+   **0 human mid-run supervision**.
+3. Success is the same legitimate ending / race goal as the game contract.
+4. Each attempt has a published **frame or wall-clock budget**.
+5. The policy clears at least **S of T** seeds (S and T published; e.g. 3/5,
+   8/10). Report failures with terminal milestone and failure mode.
+6. Runtime observation class and intervention class are labeled as usual
+   (Bronze/Silver/Gold × Clean/assisted). Assists, if any, require
+   `ASSIST_CONTRACT.md` and counts **per seed**.
+
+Do not claim seed-robustness from a single cherry-picked seed or from a
+spoiler-oracle policy unless the contract explicitly allows a development
+oracle and labels it separately from the runtime solver.
+
+### Mod-robust clear (later)
+
+Same structure over a published set of **edited ROMs** (physics, rooms, or
+item placement changes). Requires skill synthesis / rediscovery paths from
+[SOLVER_ARCHITECTURE.md](SOLVER_ARCHITECTURE.md); not required for near-term
+SMZ3 seed-robust proofs.
+
+### Relationship to M-gates
+
+| Evidence | Use |
+|----------|-----|
+| M0–M8 on one fixed ROM or one seed | Skill quality, continuous engineering, vanilla titles |
+| Seed-robust S/T | Solver / randomizer flagship claims |
+| Mod-robust set | Edit / mod robustness claims |
+
+A title may hold both: e.g. SMZ3 M3 on seed 1337 **and** seed-robust 3/5 on
+early portal→house once the multi-seed harness exists.
+
+### Input tapes and solver evaluation
+
+- **Tapes** may back fixed-game regression CI and imitation demos.
+- **Seed-robust evaluation must not** be a single tape replay across seeds.
+- Reactive observe → plan → skill invocation is the intended runtime loop;
+  see [SOLVER_ARCHITECTURE.md](SOLVER_ARCHITECTURE.md).
+
 ## Publication requirements
 
 - Preserve the previous successful baseline while testing candidates.

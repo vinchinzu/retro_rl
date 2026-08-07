@@ -35,7 +35,8 @@ includes `snes/` and `nes/`; nested packages (`snes/harvest/harvest/`,
 `retro_harness.repo.resolve_game_dir`, `ensure_import_paths`.
 
 Authoritative trees include `snes/super_metroid/`, `snes/SMW/`,
-`snes/harvest/`, `snes/hals_golf/`, `snes/alttp/`, `snes/smz3/`,
+`snes/harvest/`, `snes/hals_golf/`, `snes/alttp/`, `snes/alttp_rando/`,
+`snes/sm_rando/`, `snes/smz3/`,
 `snes/tmnt_iv/`, `nes/tmnt_i/`–`nes/tmnt_iii/`, `nes/zelda_i/`,
 `nes/zelda_ii/`, `nes/metroid/`, `nes/smb/`, `nes/smb3/`. Do not invent
 `super_metroid_rl/` or `super_mario_bros/`.

@@ -36,9 +36,13 @@ from zelda_i.dungeon import (
     DungeonPhase,
     GenericDungeonRoomController,
     RewardKind,
+    ensure_default_specs,
     override_room_spec,
     spec_for_room,
 )
+
+# Populate room-spec registry (L1–L6) before lab lookups.
+ensure_default_specs()
 from zelda_i.dungeon_ids import object_name, room_item_name
 from zelda_i.dungeon_trace import (
     TraceRecorder,

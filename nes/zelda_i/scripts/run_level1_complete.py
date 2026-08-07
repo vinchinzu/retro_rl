@@ -3,10 +3,14 @@
 Examples::
 
     uv run python zelda_i/scripts/run_level1_complete.py --trials 2
-    uv run python zelda_i/scripts/run_level1_complete.py \
+    uv run python zelda_i/scripts/run_level1_complete.py \\
       --natural-entry --trials 2 --save-state
-    uv run python zelda_i/scripts/run_level1_complete.py \
+    uv run python zelda_i/scripts/run_level1_complete.py \\
       --natural-entry --room-timing --trials 1
+
+    # Clean tip MP4 (power-on → Triforce shard 1)
+    uv run python zelda_i/scripts/run_level1_complete.py \\
+      --natural-entry --video --trials 1
 """
 
 # ruff: noqa: E402
@@ -18,6 +22,8 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
+import numpy as np
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
@@ -28,6 +34,12 @@ from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
     write_json_report,
+)
+from retro_harness.video import VideoCaptureConfig, VideoRecorder
+from retro_harness.youtube_intro import (
+    DEFAULT_INTRO_FRAMES,
+    project_intro_lines,
+    render_intro_card,
 )
 from zelda_i.chain import run_controller_stage, run_natural_to_milestone
 from zelda_i.dungeon import (
@@ -55,6 +67,51 @@ from zelda_i.level1_finish import (
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR, ROOM_TIMINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.room_timer import RoomTimer, bottleneck_visits
+
+
+def default_video_path(*, natural_entry: bool) -> Path:
+    """Default showcase path for the Clean Level 1 tip."""
+    label = "natural" if natural_entry else "isolated"
+    return RECORDINGS_DIR / f"level1_complete_{label}.mp4"
+
+
+def _write_intro(
+    writer: VideoRecorder,
+    *,
+    width: int,
+    height: int,
+    hold_frames: int,
+    natural_entry: bool,
+    audio_rate: int | None,
+) -> int:
+    """Pipe project intro slide frames (silent audio) before gameplay.
+
+    Card is playfield-sized only; ``VideoRecorder`` appends the footer band when
+    enabled so geometry matches gameplay frames.
+    """
+    if hold_frames <= 0:
+        return 0
+    lines = project_intro_lines(
+        game_title="The Legend of Zelda (NES)",
+        run_summary=(
+            "Clean power-on -> Level 1 Triforce shard 1"
+            if natural_entry
+            else "Clean isolated Level 1 finish -> Triforce shard 1"
+        ),
+    )
+    card = render_intro_card(
+        lines,
+        width=width,
+        height=height,
+        with_footer=False,
+    )
+    silent = None
+    if writer.config.audio and audio_rate is not None and audio_rate > 0:
+        n = max(1, int(round(audio_rate / float(writer.config.fps))))
+        silent = np.zeros((n, 2), dtype=np.int16)
+    for i in range(hold_frames):
+        writer.write(card, audio=silent, frame_index=-(hold_frames - i))
+    return hold_frames
 
 
 def _finish_stages(*, natural_entry: bool):
@@ -163,6 +220,9 @@ def run_once(
     tag: str = "level1_complete",
     save_checkpoint: bool = False,
     room_timing: bool = False,
+    video_path: Path | None = None,
+    video_config: VideoCaptureConfig | None = None,
+    intro_frames: int = DEFAULT_INTRO_FRAMES,
 ) -> dict:
     configure_headless()
     start_state = "NONE" if natural_entry else "Level1Cleared53"
@@ -171,24 +231,66 @@ def run_once(
     stages = []
     room_timer = RoomTimer() if room_timing else None
     frame_base = 0
+    writer: VideoRecorder | None = None
+    intro_written = 0
     try:
         result = env.reset()
         obs = result[0] if isinstance(result, tuple) else result
+
+        on_frame = None
+        if video_path is not None:
+            config = video_config or VideoCaptureConfig()
+            audio_rate: int | None = None
+            if config.audio:
+                em = getattr(env, "em", None)
+                if em is not None and hasattr(em, "get_audio_rate"):
+                    audio_rate = int(em.get_audio_rate())
+                else:
+                    config = replace(config, audio=False)
+            writer = VideoRecorder(
+                video_path,
+                width=int(obs.shape[1]),
+                height=int(obs.shape[0]),
+                config=config,
+                audio_rate=audio_rate,
+            )
+            intro_written = _write_intro(
+                writer,
+                width=int(obs.shape[1]),
+                height=int(obs.shape[0]),
+                hold_frames=intro_frames,
+                natural_entry=natural_entry,
+                audio_rate=audio_rate,
+            )
+
+            def on_frame(env_, obs_, action, frame: int) -> None:
+                assert writer is not None
+                writer.write_from_env(
+                    env_,
+                    obs_,
+                    action=action,
+                    frame_index=frame,
+                )
+
         if natural_entry:
             prefix = run_natural_to_milestone(
                 env,
                 milestone="clear53",
                 room_timer=room_timer,
+                on_frame=on_frame,
                 frame_base=frame_base,
             )
             obs = prefix.obs
             prefix_ok = prefix.success
             frame_base = prefix.end_frame
         else:
-            obs, *_ = env.step(nes_idle_action())
+            idle = nes_idle_action()
+            obs, *_ = env.step(idle)
             frame_base = 1
             if room_timer is not None:
                 room_timer.observe(read_snapshot(env.get_ram()), frame=frame_base)
+            if on_frame is not None:
+                on_frame(env, obs, idle, frame_base)
             prefix_ok = True
 
         for name, controller, max_frames in _finish_stages(
@@ -203,6 +305,7 @@ def run_once(
                 controller=controller,
                 max_frames=max_frames,
                 room_timer=room_timer,
+                on_frame=on_frame,
                 frame_base=frame_base,
             )
             stages.append(stage)
@@ -244,6 +347,17 @@ def run_once(
         label = "natural" if natural_entry else "isolated"
         screenshot = RECORDINGS_DIR / f"{tag}_{label}.png"
         save_rgb_png(obs, screenshot)
+        video_info = None
+        if writer is not None:
+            encoded = writer.frames
+            closed_path = writer.close()
+            writer = None
+            video_info = {
+                "path": str(closed_path),
+                "encoded_frames": encoded,
+                "intro_frames": intro_written,
+                "gameplay_frames": max(0, encoded - intro_written),
+            }
         payload = {
             "ok": ok,
             "natural_entry": natural_entry,
@@ -263,6 +377,8 @@ def run_once(
             "checkpoint": checkpoint,
             "provenance": provenance,
             "screenshot": str(screenshot),
+            "end_frame": frame_base,
+            "video": video_info,
         }
         if room_timer is not None:
             room_timer.finalize(frame=frame_base)
@@ -278,6 +394,11 @@ def run_once(
             )
         return payload
     finally:
+        if writer is not None:
+            try:
+                writer.close()
+            except Exception:
+                pass
         env.close()
 
 
@@ -294,7 +415,68 @@ def main(argv: list[str] | None = None) -> int:
             f"writes JSON under {ROOM_TIMINGS_DIR}"
         ),
     )
+    parser.add_argument(
+        "--video",
+        nargs="?",
+        const="AUTO",
+        default=None,
+        help=(
+            "Record MP4 of the run (ffmpeg). Pass a path or omit the value "
+            "for the default under recordings/ "
+            "(level1_complete_{natural|isolated}.mp4)."
+        ),
+    )
+    parser.add_argument(
+        "--no-audio",
+        action="store_true",
+        help="Disable emulator audio on the MP4 (default: audio on with --video)",
+    )
+    parser.add_argument(
+        "--no-footer",
+        action="store_true",
+        help="Disable button/frame footer on the MP4",
+    )
+    parser.add_argument(
+        "--no-intro",
+        action="store_true",
+        help="Skip YouTube intro slide before gameplay",
+    )
+    parser.add_argument(
+        "--intro-frames",
+        type=int,
+        default=DEFAULT_INTRO_FRAMES,
+        help=f"Intro hold frames at 60fps (default {DEFAULT_INTRO_FRAMES})",
+    )
+    parser.add_argument(
+        "--hq",
+        action="store_true",
+        help="Higher quality encode (scale=3, crf=15, preset=slow)",
+    )
     args = parser.parse_args(argv)
+
+    video_path: Path | None = None
+    video_config: VideoCaptureConfig | None = None
+    if args.video is not None:
+        if args.video == "AUTO":
+            video_path = default_video_path(natural_entry=args.natural_entry)
+        else:
+            video_path = Path(args.video)
+        if args.hq:
+            video_config = VideoCaptureConfig.high_quality(
+                audio=not args.no_audio,
+                footer=not args.no_footer,
+            )
+        else:
+            video_config = VideoCaptureConfig(
+                audio=not args.no_audio,
+                footer=not args.no_footer,
+            )
+        if args.trials > 1:
+            print(
+                "warning: --video with --trials>1 overwrites the same path "
+                f"each trial ({video_path})",
+                file=sys.stderr,
+            )
 
     reports = [
         run_once(
@@ -302,6 +484,9 @@ def main(argv: list[str] | None = None) -> int:
             tag=f"level1_complete_t{trial}",
             save_checkpoint=args.save_state,
             room_timing=args.room_timing,
+            video_path=video_path,
+            video_config=video_config,
+            intro_frames=0 if args.no_intro else max(0, args.intro_frames),
         )
         for trial in range(args.trials)
     ]
@@ -318,8 +503,15 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"trial={trial} ok={report['ok']} "
             f"prefix_ok={report['prefix_ok']} failed={failed} "
-            f"room={final['room']:02X} triforce=0x{final['triforce']:02X}"
+            f"room={final['room']:02X} triforce=0x{final['triforce']:02X} "
+            f"end_frame={report.get('end_frame')}"
         )
+        if report.get("video"):
+            v = report["video"]
+            print(
+                f"  video={v['path']} frames={v['encoded_frames']} "
+                f"(intro={v['intro_frames']} gameplay={v['gameplay_frames']})"
+            )
         if args.room_timing and "room_timing" in report:
             rt = report["room_timing"]
             print(
@@ -341,10 +533,14 @@ def main(argv: list[str] | None = None) -> int:
             "trials": args.trials,
             "successes": sum(report["ok"] for report in reports),
             "stop_predicate": "triforce & 0x01",
+            "video": str(video_path) if video_path is not None else None,
             "reports": reports,
         },
     )
     print(f"wrote {output}")
+    if video_path is not None and video_path.exists():
+        size_mb = video_path.stat().st_size / (1024 * 1024)
+        print(f"video={video_path} ({size_mb:.1f} MB)")
     if args.room_timing:
         ROOM_TIMINGS_DIR.mkdir(parents=True, exist_ok=True)
         timing_out = ROOM_TIMINGS_DIR / f"level1_complete_{label}_timing.json"
