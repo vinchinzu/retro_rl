@@ -16,6 +16,7 @@ Shared process: [`docs/FULL_RUN_PROCESS.md`](../../docs/FULL_RUN_PROCESS.md).
 | `routes/continuous.py`, `early_continuous.py`, `catalog.py` | Power-on chain + tip registry |
 | `routes/kpdr/` | Pure movement/combat controllers |
 | `routes/kpdr/spazer/` | **Gold-standard** multi-hop package (mirror for new tips) |
+| `tas/` | Sniq any%/100% movies + `snes12_rle` slices (see `tas/README.md`) |
 | `scripts/record/`, `probe/`, `export/` | Daily CLIs |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
 | `docs/` | STATUS, plan, routes, tasks, contracts |
@@ -141,11 +142,13 @@ uv run python snes/super_metroid/scripts/record/guided_human.py --from west-ocea
   then crouch never arms `$0A68`. Drill: `shine_practice.py drill`.
   Full notes: `docs/tasks/SHINE_PRACTICE.md`.
 - **Ceres elev escape:** Falling→elev mid-transition can still read **y≈139**;
-  ordinary **gs=8 remaps to bottom y≈651**. Ledge pin **y=571 pose=2** — walk
-  LEFT on ledge (not blind product s0). Top: walk right to **pose 137 @ x211
-  y171**, then product LEFT+A 38 + LEFT to pad **x≈145 y75** → gs 32. BB elev
-  later: `$0E16` elev flag toggles/frame — 1f parity before seed if Ceres is
-  odd-frames early. Notes: [`docs/plan.md`](docs/plan.md) § Ceres arm-pump.
+  ordinary **gs=8 remaps to bottom y≈651**. Ledge pin **y=571** (pose 2 or
+  137/138 left seat) — walk LEFT on ledge. Product shaft s2–s10 is
+  **debris-phase** sensitive (TAS boot same pin, needs idle 14); use
+  `_ceres_product_shaft_with_phase` — no hop thrash. Top: walk right to
+  **pose 137 @ x211 y171**, LEFT+A 38 + LEFT to pad **x≈145 y75** → gs 32.
+  BB elev: `$0E16` elev flag toggles/frame — product parity 1 first, then
+  parity 0 / reactive. Notes: [`docs/plan.md`](docs/plan.md) § Ceres arm-pump.
 - **Spazer + HJ pillar:** single-frame peak down-shot fails under Spazer;
   `play_hj_room_collect` multi-taps DOWN+X at peak (no equip strip).
 - **Spazer continuous K4:** Business tip green; Cathedral Entrance Super door
