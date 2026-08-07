@@ -16,7 +16,7 @@ Shared process: [`docs/FULL_RUN_PROCESS.md`](../../docs/FULL_RUN_PROCESS.md).
 | `routes/continuous.py`, `early_continuous.py`, `catalog.py` | Power-on chain + tip registry |
 | `routes/kpdr/` | Pure movement/combat controllers |
 | `routes/kpdr/spazer/` | **Gold-standard** multi-hop package (mirror for new tips) |
-| `tas/` | Sniq any%/100% movies + `snes12_rle` slices (see `tas/README.md`) |
+| `tas/` | Sniq any%/100% movies + `snes12_rle` slices + harness replay/annotate (`tas/README.md`, `docs/TAS_ADAPT.md`) |
 | `scripts/record/`, `probe/`, `export/` | Daily CLIs |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
 | `docs/` | STATUS, plan, routes, tasks, contracts |
@@ -102,6 +102,17 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure speed-hall-to-speed 
 uv run python snes/super_metroid/scripts/export/kpdr_tracker.py
 bd ready -l super_metroid
 ./snes/super_metroid/scripts/dispatch_opencode.sh SM-K4-03
+
+# Area-basemap CoG paths (pixel-aligned; same-room segments only)
+uv run python -m super_metroid.map_viewer serve --open --export-defaults
+uv run python -m super_metroid.map_viewer export-path tasks/parlor_left_human.json
+
+# TAS movie replay + WRAM annotate (pose/x,y/vel/rooms; no L+R sanitize)
+uv run python -m super_metroid.tas.replay --list-slices
+uv run python -m super_metroid.tas.replay --slice sniq_any_menu --annotate --series-stride 1
+# Zebes resync: product → Landing + Sniq movie body (Landing→Parlor @ movie_start=15000)
+uv run python -m super_metroid.tas.resync --to landing --movie-start 15000 --body 12000
+# Full any% (long; desyncs mid-Ceres): --slice sniq_any_full --series-stride 8
 
 # YouTube KPDR reference (gitignored refs/yt_reference/; default Kentroid TFsGVxQReMw)
 uv run python snes/super_metroid/scripts/tools/yt_ref.py status

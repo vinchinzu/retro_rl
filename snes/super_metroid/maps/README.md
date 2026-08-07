@@ -55,6 +55,35 @@ developing room controllers:
 These are visual planning references only. They do not establish controller or
 continuous-route evidence.
 
+## Interactive path map (pixel-aligned CoG)
+
+**Area basemaps** (`maps/legacy/crateria.png`, …) — not the ScriptersWar full
+montage. `mapX`/`mapY` are **per-area**; global raw map squares do not line up
+with the full website image.
+
+```text
+area_x = (mapX - area_min_map_x) * 256 + samus_x
+area_y = (mapY - area_min_map_y) * 256 + samus_y
+```
+
+Polylines are **same-room + short step only** (default max 48 px). No
+straight lines across doors or the map. Continuous tip JSON is markers only.
+
+```bash
+uv run python -m super_metroid.map_viewer serve --open --export-defaults
+
+# Dense human CoG (recommended demo)
+uv run python -m super_metroid.map_viewer export-path \
+  tasks/parlor_left_human.json --id parlor_human
+
+# Dense TAS series
+uv run python -m super_metroid.map_viewer export-path \
+  recordings/tas_import/resync_zebes_rooms --stride 2 --id resync_zebes
+```
+
+Generated assets: `maps/viewer/` (area PNGs, geojson, paths). UI package:
+`super_metroid/map_viewer/`.
+
 Regenerate the editor-backed Spore Spawn plan with:
 
 ```bash

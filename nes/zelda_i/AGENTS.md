@@ -30,6 +30,11 @@ uv run python zelda_i/scripts/run_to_level2_prefix.py --infinite-life --trials 1
 uv run python zelda_i/scripts/probe_room_timer.py self-check
 uv run python zelda_i/scripts/dungeon_lab.py --help
 uv run pytest zelda_i/tests retro_harness/adventure/tests -q
+
+# TAS button movies (non-glitch all-items default) — docs/TAS_ADAPT.md
+uv run python -m zelda_i.tas.fetch_refs
+uv run python -m zelda_i.tas.import_fm2 --summary-only
+# uv run python -m zelda_i.tas.fetch_refs --include-glitched  # any% etc.
 ```
 
 ## Layout (pointers)
@@ -42,10 +47,14 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 | `dungeon.py` | Shared dungeon combat engine + registry |
 | `level2_dungeon.py`, `level2_overworld.py` | L2 rooms + OW approach |
 | `level3_dungeon.py`–`level6_dungeon.py` | Later-level room specs |
+| `level3_geometry.py`, `level3_boss_path.py` | L3 geometry + Raft→Manhandla→TF controller |
+| `level2_boss_path.py`, `dungeon_ops.py` | L2 Dodongo→TF path + shared door/clear ops |
+| `door_graph/` | Door topology (core + L2/L3 exit tables) |
 | `level*_overworld.py` | Path tables + thin subclasses of `ow_path` |
 | `chain.py`, `routes.py` | Post-Triforce + named routes |
 | `nav_common.py`, `room_timer.py`, `dungeon_lab.py` | Shared nav + lab |
 | `assist.py` | Survival infinite-life (opt-in) |
+| `tas/` | FM2 import (fetch_refs / import_fm2); `docs/TAS_ADAPT.md` |
 | `docs/tasks/PROCESS.md` | Dual-track + bead grain |
 
 ## Dual track
@@ -73,7 +82,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: L4 Snake (rr-q3n) / OW prep (rr-806); Clean deferred
+bd ready -l zelda_i   # tip leaf: rr-0fx Z4.1; parallel: rr-38p; Clean deferred
 ```
 
 | Order | Bead | Work |
@@ -82,8 +91,11 @@ bd ready -l zelda_i   # tip: L4 Snake (rr-q3n) / OW prep (rr-806); Clean deferre
 | ✓ | **rr-rnx** / **rr-ci7** | Post-L2 OW → L3 enter **2/2 assisted** |
 | ✓ | **L3 Raft runner** | `run_level3_raft.py` **2/2 assisted** → `Level3Raft` |
 | ✓ | **rr-vpl** / **rr-wmv** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
-| 1 | **rr-q3n** | L4 Snake (Raft dock) → Stepladder / TF `0x08` assist-first |
-| later | **rr-4oz** | Clean residual after full-game assist pass |
+| ✓ | **rr-k0w** | L4 planning scaffold (`level4_overworld`, plan-only probe) |
+| **1 TIP** | **`rr-0fx`** | L4 live: `Level3Complete`+Raft → dock → island → `Level4Entrance` 2/2 assist |
+| next | **`rr-5lu`** | L4 interior residual (blocked on Z4.1) |
+| free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
+| later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
 Full board: `docs/tasks/QUEUE.md`. Routes: `LEVEL2_ROUTE.md`, `LEVEL3_ROUTE.md`.
 
@@ -110,8 +122,9 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 `run_level3_to_boss.py --infinite-life --trials 2 --save-state`. Checkpoints
 **`Level3Boss`**, **`Level3Complete`**. **Not Clean STATUS.**
 
-**Next tip:** L4 Snake (`rr-q3n`, needs Raft) or OW prep (`rr-806`); Clean
-residual (`rr-4oz`) deferred. Not Clean promote.
+**Next tip:** **`rr-0fx` Z4.1** L4 live entry (Raft already on `Level3Complete`).
+Epic container `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
+Not Clean promote.
 
 **Traps (L2→L3 OW):** 0x4c east only **y∈[133,145]** (y=149 solid); 0x5c maze
 reverse needs denser channel waypoints (no y_band on 0x5b hop); 0x64 west

@@ -1,0 +1,172 @@
+{
+  "slices": {
+    "moozooh_smtc4_full": {
+      "path": "slices/moozooh_smtc4_full.json",
+      "movie": "tas/ref/moozooh_smtc4.bk2",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "contest",
+        "short"
+      ],
+      "source": "moozooh SM TAS Contest Round 4 final BK2",
+      "notes": "Short contest segment (Wrecked Ship E-Tank start). Smoke-test size."
+    },
+    "sniq_100_ceres_open": {
+      "path": "slices/sniq_100_ceres_open.json",
+      "movie": "tas/ref/sniq_100p.bk2",
+      "start": 8640,
+      "end": 13237,
+      "tags": [
+        "100%",
+        "ceres",
+        "early"
+      ],
+      "source": "Sniq 100% BK2",
+      "notes": "First post-intro movement (aligned with any% open)."
+    },
+    "sniq_100_final_15k": {
+      "path": "slices/sniq_100_final_15k.json",
+      "movie": "tas/ref/sniq_100p.bk2",
+      "start": 207789,
+      "end": null,
+      "tags": [
+        "100%",
+        "escape",
+        "finish"
+      ],
+      "source": "Sniq 100% BK2",
+      "notes": "Last 15k \u2014 endgame finish reference."
+    },
+    "sniq_100_full": {
+      "path": "slices/sniq_100_full.json",
+      "movie": "tas/ref/sniq_100p.bk2",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "100%",
+        "full",
+        "finish"
+      ],
+      "source": "Sniq 100% BK2 (feos converter userfile #55928342467251616)",
+      "notes": "Full 100% button log. Prefer for item-route reference."
+    },
+    "sniq_100_late": {
+      "path": "slices/sniq_100_late.json",
+      "movie": "tas/ref/sniq_100p.bk2",
+      "start": 192789,
+      "end": null,
+      "tags": [
+        "100%",
+        "late",
+        "finish"
+      ],
+      "source": "Sniq 100% BK2",
+      "notes": "Last 30k frames \u2014 late item cleanup + Tourian/MB/escape."
+    },
+    "sniq_100_menu": {
+      "path": "slices/sniq_100_menu.json",
+      "movie": "tas/ref/sniq_100p.bk2",
+      "start": 0,
+      "end": 600,
+      "tags": [
+        "100%",
+        "menu"
+      ],
+      "source": "Sniq 100% BK2",
+      "notes": "Menu Start+A mash (matches any% timing)."
+    },
+    "sniq_any_ceres_open": {
+      "path": "slices/sniq_any_ceres_open.json",
+      "movie": "tas/ref/sniq_any_3653M.lsmv",
+      "start": 8639,
+      "end": 13235,
+      "tags": [
+        "any%",
+        "ceres",
+        "early"
+      ],
+      "source": "Sniq any% #3653M",
+      "notes": "First post-intro movement block (Ceres-ish open)."
+    },
+    "sniq_any_final_10k": {
+      "path": "slices/sniq_any_final_10k.json",
+      "movie": "tas/ref/sniq_any_3653M.lsmv",
+      "start": 119712,
+      "end": null,
+      "tags": [
+        "any%",
+        "escape",
+        "finish"
+      ],
+      "source": "Sniq any% #3653M",
+      "notes": "Last 10k frames \u2014 escape/ship polish reference."
+    },
+    "sniq_any_full": {
+      "path": "slices/sniq_any_full.json",
+      "movie": "tas/ref/sniq_any_3653M.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "any%",
+        "full",
+        "finish"
+      ],
+      "source": "Sniq any% #3653M LSMV (lsnes rr2)",
+      "notes": "Full power-on \u2192 credits inputs. Core desync risk on non-lsnes."
+    },
+    "sniq_any_late": {
+      "path": "slices/sniq_any_late.json",
+      "movie": "tas/ref/sniq_any_3653M.lsmv",
+      "start": 83933,
+      "end": 110526,
+      "tags": [
+        "any%",
+        "late",
+        "finish"
+      ],
+      "source": "Sniq any% #3653M",
+      "notes": "Long late block (pre-Tourian / bosses by position)."
+    },
+    "sniq_any_menu": {
+      "path": "slices/sniq_any_menu.json",
+      "movie": "tas/ref/sniq_any_3653M.lsmv",
+      "start": 0,
+      "end": 600,
+      "tags": [
+        "any%",
+        "menu"
+      ],
+      "source": "Sniq any% #3653M",
+      "notes": "Title/file menu Start+A mash (~first activity block)."
+    },
+    "sniq_any_tourian_escape": {
+      "path": "slices/sniq_any_tourian_escape.json",
+      "movie": "tas/ref/sniq_any_3653M.lsmv",
+      "start": 111291,
+      "end": null,
+      "tags": [
+        "any%",
+        "tourian",
+        "mb",
+        "escape",
+        "finish"
+      ],
+      "source": "Sniq any% #3653M",
+      "notes": "Tail: last two activity blocks through movie end (MB/escape/ship)."
+    },
+    "sniq_any_wip_full": {
+      "path": "slices/sniq_any_wip_full.json",
+      "movie": "tas/ref/sniq_any_wip.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "any%",
+        "wip",
+        "early"
+      ],
+      "source": "Sniq any% WIP userfile (to Red Brinstar 2nd visit)",
+      "notes": "Shorter early/mid route experiment; good parser + early slice tests."
+    }
+  }
+}

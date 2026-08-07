@@ -26,7 +26,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from retro_harness.env import make_env
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
@@ -107,9 +107,7 @@ def run_once(
                 "screenshot": str(png),
             }
 
-        for _ in range(55):
-            obs, *_ = env.step(nes_action("DOWN"))
-
+        # Nav EAST_77 aligns y≈140 from cave exit (~64,77); no fixed DOWN hold.
         for _ in range(max_frames):
             obs, *_ = env.step(nav.step(read_snapshot(env.get_ram())).action)
             if nav.success or nav.phase.name == "FAILED":

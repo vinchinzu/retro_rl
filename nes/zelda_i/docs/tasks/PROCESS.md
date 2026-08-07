@@ -102,4 +102,5 @@ bd sync   # commit issues.jsonl with code
 
 ## Next tip (live)
 
-Assisted Moon door path + L2 interior recon. See `bd ready -l zelda_i`.
+**`rr-0fx` Z4.1** — assisted L4 live entry from `Level3Complete` (Raft owned).
+See `bd ready -l zelda_i` and `QUEUE.md` architecture block.

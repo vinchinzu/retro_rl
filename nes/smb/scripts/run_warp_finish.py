@@ -75,6 +75,8 @@ from retro_harness.segment_runner import (
     save_rgb_png,
     write_json_report,
 )
+from smb.rta_panel import RtaSplitTracker, draw_rta_split_panel
+from smb.timing import NTSC_FPS
 
 WARP_MID_STATE = INTEGRATION_V0_DIR / "Level1_2_WarpMid.state"
 LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"
@@ -102,7 +104,13 @@ def _snapshot_dict(snap) -> dict[str, int]:
 
 
 class _VideoWriter:
-    """ffmpeg RGB (+ native PCM) capture with NES button / timestamp footer."""
+    """ffmpeg RGB (+ native PCM) capture with NES button / timestamp footer.
+
+    When ``splits_panel`` is on (default with HUD), a top-left RTA level list
+    tracks exit-detect cum times and **freezes on Axe** (``oper_mode=2`` on
+    8-4). The footer speedrun clock freezes on the same frame so Peach hold
+    does not inflate the on-screen RTA time.
+    """
 
     def __init__(
         self,
@@ -115,6 +123,8 @@ class _VideoWriter:
         audio_rate: int | None = None,
         hud: bool = True,
         route_label: str = "SMB any%",
+        splits_panel: bool = True,
+        splits_fps: float = NTSC_FPS,
     ) -> None:
         ffmpeg = shutil.which("ffmpeg")
         if ffmpeg is None:
@@ -124,17 +134,22 @@ class _VideoWriter:
         self.fps = fps
         self.hud = hud
         self.route_label = route_label
+        self.splits_panel = bool(splits_panel and hud)
         self.src_w = width
         self.src_h = height + (FOOTER_HEIGHT if hud else 0)
         self.out_w = self.src_w * self.scale
         self.out_h = self.src_h * self.scale
         self.frames = 0  # total encoded frames (intro + gameplay)
-        self.timer_frames = 0  # HUD speedrun clock (gameplay only)
+        self.timer_frames = 0  # HUD speedrun clock (gameplay only; freezes on axe)
         self.intro_frames = 0
         self.audio_samples = 0
         self.audio_rate = audio_rate
         self.game_w = width
         self.game_h = height
+        self._timer_frozen = False
+        self.splits = (
+            RtaSplitTracker(fps=splits_fps) if self.splits_panel else None
+        )
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._silent = path.with_suffix(".partial.video.mp4")
         self._wav = path.with_suffix(".partial.audio.wav")
@@ -196,7 +211,26 @@ class _VideoWriter:
         else:
             act_list = [int(v) for v in np.asarray(action).tolist()]
 
+        # Advance RTA clock before paint so this frame's HUD matches step index.
+        # Freeze after Axe so Peach / thank-you hold does not keep counting.
+        if not self._timer_frozen:
+            self.timer_frames += 1
+        display_clock = self.timer_frames
+
+        if snap is not None and self.splits is not None:
+            self.splits.observe(snap, clock_frames=display_clock)
+            if self.splits.frozen:
+                self._timer_frozen = True
+                if self.splits.freeze_frame is not None:
+                    self.timer_frames = int(self.splits.freeze_frame)
+                    display_clock = self.timer_frames
+
         if self.hud:
+            # Top-left level-by-level RTA panel (baked into pixels).
+            if self.splits is not None:
+                panel_lines = self.splits.lines(clock_frames=display_clock)
+                rgb = draw_rta_split_panel(rgb, panel_lines)
+
             level = ""
             lives = ""
             xpos = ""
@@ -207,8 +241,10 @@ class _VideoWriter:
             upper_left = f"{self.route_label}  {level}  {lives}".strip()
             if label:
                 upper_left = f"{upper_left}  {label}".strip()
+            if self._timer_frozen:
+                upper_left = f"{upper_left}  AXE".strip()
             # Timer is pure gameplay (intro pre-roll does not advance the clock).
-            upper_right = frame_timestamp(self.timer_frames, self.fps)
+            upper_right = frame_timestamp(display_clock, self.fps)
             lower_left = xpos or "---"
             rgb = render_footer_frame(
                 rgb,
@@ -220,7 +256,7 @@ class _VideoWriter:
                 layout="nes",
             )
 
-        self._emit_rgb(rgb, audio=audio, count_timer=True)
+        self._emit_rgb(rgb, audio=audio, count_timer=False)
 
     def write_intro(
         self,

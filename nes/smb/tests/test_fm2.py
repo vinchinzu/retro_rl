@@ -177,7 +177,7 @@ def test_record_happylee_cli_targets() -> None:
     assert rh.TARGETS == ("1-1", "w4", "w8", "ending")
     assert rh.SEED_1_1.name == "smb_1_1_happylee_slice.json"
     assert rh.SEED_4_2.name == "smb_4_2_happylee_slice.json"
-    assert rh.SEED_HYBRID_ENDING.name == "smb_happylee_hybrid_ending.json"
+    assert rh.SEED_HYBRID_ENDING.name == "smb_happylee_hybrid_v2_fx84.json"
 
 
 def test_happylee_8_1_8_2_and_hybrid_metadata() -> None:

@@ -367,7 +367,7 @@ never sets `tf&0x02`). Push/bomb not required.
 | tol | ≈3 |
 | Constants | `L2_TF_COLLECT_WAYPOINTS`, `POST_BOSS_TF_POLICY` (`live=True`) |
 | Checkpoint | `Level2_0D_PostBoss` |
-| Runner | `run_level2_dodongo._collect_and_tf` (hardcoded + JSON override) |
+| Runner | `level2_boss_path` / `level2_boss_tf.collect_and_tf` (hardcoded + JSON override) |
 | Probe | `probe_level2_0d_tf.py --policy-only` |
 | Evidence | `recordings/l2_0d_tf_reach.json`, `l2_tf02_encode.json` |
 

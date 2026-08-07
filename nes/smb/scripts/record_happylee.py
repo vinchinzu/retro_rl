@@ -603,6 +603,7 @@ def record_hybrid_ending(
 
     success = ending_frame is not None and death_frame is None
     chain = ending_frame or frame
+    splits_report = video.splits.report() if video.splits is not None else None
     report: dict[str, Any] = {
         "success": success,
         "outcome": "ending" if success else ("death" if death_frame else "incomplete"),
@@ -613,7 +614,9 @@ def record_hybrid_ending(
         "chain_frames_to_target": chain,
         "chain_time_ntsc": format_time(chain, NTSC_FPS),
         "timer_frames_hud": timer_frames,
+        "timer_frozen": bool(getattr(video, "_timer_frozen", False)),
         "intro_frames": intro_n,
+        "rta_splits": splits_report,
         "stages": stages,
         "end_snapshot": {
             "world": int(end_snap.world) + 1,
