@@ -16,6 +16,16 @@ Live pure chain from ``Level3WestKey`` (2026-08-06 recon + encode)::
           (key drop residual — type-0 HP leftovers stall RoomAllDead)
     0x6b --(UP @ x≈120 after type-0x13 clear)--> 0x5b
     0x5b: 3× Darknut type ``0x0b`` (HP 64); north open → 0x4b (3× Zol+key)
+
+Assisted LIVE past Darknuts toward Raft (2026-08-07, ``l3_past_5b``)::
+
+    0x5b --UP open--> 0x4b (3× Zol 0x13, key 0x19)
+    0x5b --LEFT open--> 0x5a (4× Keese + traps, Compass 0x16)  **Raft path**
+    0x5b --RIGHT walk blocked; BOMB_RIGHT @ (192,141)--> 0x5c (boss shortcut)
+    0x5a --LEFT KEY--> 0x59 (5× Darknut; kill opens DOWN)
+    0x59 --DOWN--> 0x69 (8× Darknut)
+    0x69 --RIGHT @ y≈141--> 0x0f mode-9 passage
+    0x0f: DOWN→y189, RIGHT→x≈176, UP channel, LEFT→x≈136 **Raft** (ADDR_RAFT)
 """
 
 from __future__ import annotations
@@ -41,15 +51,33 @@ from zelda_i.dungeon import (
 from zelda_i.level3_overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
-# --- Live L3 room / enemy anchors (isolated pure 2026-08-06) ---
+# --- Live L3 room / enemy anchors (isolated pure 2026-08-06 + past-5b 08-07) ---
 ROOM_L3_ENTRY = SCREEN_LEVEL3_ENTRY_ROOM  # 0x7C
 ROOM_L3_WEST_KEY = 0x7B
 ROOM_L3_NORTH_ZOLS = 0x6B  # north of west-key; diagonal blocks
 ROOM_L3_DARKNUTS = 0x5B  # north of 0x6b after zol clear
-ROOM_L3_ZOL_KEY_4B = 0x4B  # north of darknuts (source next key)
-ZOL_OBJECT_TYPE = 0x13  # live type on 0x7b/0x6b; wooden sword can leave type-0 HP residual
-DARKNUT_OBJECT_TYPE = 0x0B  # live type on 0x5b (red Darknut, HP 64)
+ROOM_L3_ZOL_KEY_4B = 0x4B  # north of darknuts; 3× Zol + key (LIVE)
+ROOM_L3_COMPASS = 0x5A  # west of darknuts; 4× Keese + traps + Compass (LIVE)
+ROOM_L3_WEST_DARKNUTS = 0x59  # west of compass; 5× Darknut; key door from 0x5a
+ROOM_L3_SOUTH_DARKNUTS = 0x69  # south of 0x59; 8× Darknut; stairs RIGHT
+ROOM_L3_RAFT_PASSAGE = 0x0F  # mode-9 underworld; Raft pickup (LIVE assisted)
+ROOM_L3_MAP_4C = 0x4C  # east of 0x4b via key; map room item 0x17
+ROOM_L3_BOMB_SHORTCUT = 0x5C  # bomb-RIGHT of 0x5b (boss shortcut residual)
+ZOL_OBJECT_TYPE = 0x13  # live type on 0x7b/0x6b/0x4b; wooden sword can leave type-0 HP residual
+DARKNUT_OBJECT_TYPE = 0x0B  # live type on 0x5b/0x59/0x69 (red Darknut, HP 64)
+KEESE_OBJECT_TYPE = 0x1B
 ROOM_ITEM_SMALL_KEY = 0x19
+ROOM_ITEM_COMPASS = 0x16
+ROOM_ITEM_MAP = 0x17
+ROOM_ITEM_RAFT = 0x0C  # live RoomItemId in mode-9 passage 0x0f
+
+# Raft passage geometry (mode 9): enter from 0x69 RIGHT @ y≈141 → spawn ~(48,77).
+# Path: DOWN to y≈189 → RIGHT to x≈176 → UP channel to y≈141 → LEFT to x≈136 touch Raft.
+RAFT_PASSAGE_MODE = 9
+RAFT_CHANNEL_X = 176
+RAFT_PICKUP_X = 136
+RAFT_PICKUP_Y = 141
+STAIRS_69_RIGHT_Y = 141  # only y≈141 opens 0x69 → 0x0f; other y bands blocked
 
 # West door residual: pure LEFT sticks at x≈32 (mask==0). LEFT+UP at the west
 # wall corner-clips into the scroll (mode 6/7 → room 0x7b). Approach band y≈149
@@ -171,6 +199,8 @@ ROOM_6B_SPEC = DungeonRoomSpec(
 )
 
 # Darknut room graph node (combat not pure-encoded yet — side/back hits only).
+# LIVE doors (no clear required): UP→0x4b, DOWN→0x6b, LEFT→0x5a; RIGHT walk sealed
+# (bomb-RIGHT @ (192,141) → 0x5c boss shortcut; recon poke OK).
 ROOM_5B_SPEC = DungeonRoomSpec(
     spec_id="level3_room5b_darknuts",
     source_room=ROOM_L3_NORTH_ZOLS,
@@ -201,14 +231,97 @@ ROOM_5B_SPEC = DungeonRoomSpec(
     exit_routes=(
         DoorRoute("DOWN", ((NORTH_DOOR_X, 205),)),
         DoorRoute("UP", ((NORTH_DOOR_X, 141), (NORTH_DOOR_X, 93))),
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
     ),
     max_frames=15000,
+    level=LEVEL3,
+)
+
+# 0x4b north of Darknuts: 3× Zol + RoomItemId key (LIVE probe). North door open
+# from 0x5b without clear. Key pickup residual (keys inventory may not increment).
+_ROOM_4B_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 125),
+    (120, 125),
+    (176, 125),
+    (176, 157),
+    (120, 173),
+    (64, 157),
+    (120, 141),
+)
+
+ROOM_4B_SPEC = DungeonRoomSpec(
+    spec_id="level3_room4b_zol_key",
+    source_room=ROOM_L3_DARKNUTS,
+    room_id=ROOM_L3_ZOL_KEY_4B,
+    entry=DoorRoute(
+        "UP",
+        ((NORTH_DOOR_X, 141), (NORTH_DOOR_X, 93)),
+    ),
+    enemy_types=(ZOL_OBJECT_TYPE,),
+    expected_enemy_count=3,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_4B_PATROL,
+        engage_distance=64,
+        attack_phase=4,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.CLEAR_ONLY,
+        settle_all_dead=0,
+    ),
+    room_item_id=ROOM_ITEM_SMALL_KEY,
+    exit_routes=(
+        DoorRoute("DOWN", ((NORTH_DOOR_X, 205),)),
+        DoorRoute("LEFT", ((120, 141), (32, 141))),  # KEY → 0x4a
+        DoorRoute("RIGHT", ((120, 141), (208, 141))),  # KEY → 0x4c map
+    ),
+    max_frames=10000,
+    level=LEVEL3,
+)
+
+# Compass room west of Darknuts (assisted LIVE; Keese type-only clear easy).
+ROOM_5A_SPEC = DungeonRoomSpec(
+    spec_id="level3_room5a_compass",
+    source_room=ROOM_L3_DARKNUTS,
+    room_id=ROOM_L3_COMPASS,
+    entry=DoorRoute("LEFT", ((120, 141), (32, 141))),
+    enemy_types=(KEESE_OBJECT_TYPE,),
+    expected_enemy_count=4,
+    alive_rule=AliveRule.TYPE,  # keese often HP residual 0 while typed
+    combat=CombatTuning(
+        patrol=(
+            (64, 117),
+            (120, 117),
+            (176, 117),
+            (176, 173),
+            (64, 173),
+            (120, 141),
+        ),
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=ROOM_ITEM_COMPASS,
+    exit_routes=(
+        DoorRoute("RIGHT", ((120, 141), (208, 141))),
+        DoorRoute("LEFT", ((120, 141), (32, 141))),  # KEY → 0x59
+        DoorRoute("UP", ((NORTH_DOOR_X, 141), (NORTH_DOOR_X, 93))),  # free → 0x4a
+    ),
+    max_frames=8000,
     level=LEVEL3,
 )
 
 register_room_spec(ROOM_7B_SPEC)
 register_room_spec(ROOM_6B_SPEC)
 register_room_spec(ROOM_5B_SPEC)
+register_room_spec(ROOM_4B_SPEC)
+register_room_spec(ROOM_5A_SPEC)
 
 
 def level3_room_7b_key_success(ram: np.ndarray) -> bool:
@@ -247,6 +360,24 @@ def level3_reached_5b(ram: np.ndarray) -> bool:
         and snap.mode == PLAY_MODE
         and not snap.transitioning
     )
+
+
+def level3_room_4b_zols_cleared(ram: np.ndarray) -> bool:
+    """0x4b with no live type-0x13 Zols (RoomAllDead not required)."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL3
+        and snap.screen == ROOM_L3_ZOL_KEY_4B
+        and snap.mode == PLAY_MODE
+        and not ROOM_4B_SPEC.live_enemies(snap)
+    )
+
+
+def level3_has_raft(ram: np.ndarray) -> bool:
+    """ADDR_RAFT inventory bit set (assisted LIVE pickup in 0x0f passage)."""
+    from zelda_i.ram import ADDR_RAFT, read_u8
+
+    return bool(read_u8(ram, ADDR_RAFT))
 
 
 def west_door_step(snap: ZeldaSnapshot) -> FrameAction:
