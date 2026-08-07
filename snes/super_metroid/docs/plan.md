@@ -67,39 +67,71 @@ Live work: `bd ready -l super_metroid` · snapshot [tasks/QUEUE.md](tasks/QUEUE.
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
 ---
 
-## Ceres classic L↔R arm-pump (opt-in shave) — notes 2026-08-05
+## Ceres opener (TAS boot) + arm-pump — 2026-08-07
 
 **Policy:** when a faster prefix desyncs a later leg, **re-solve with WRAM** —
 do not blind-restore product open-loop. Speed every section; re-pin tails.
 
-**Code:** `routes/kpdr/ceres/` (extracted from `early_spine`, rr-7sn.4) —
-`arm_pump` / `magnet` / `elev_escape` / `outbound`; `play_ceres_*` re-exported
-from `early_spine` for morph spine. BB elev downstream: 1f `$0E16` parity +
-reactive board fallback in `play_elevator_to_morph_room`. Unit:
-`tests/test_ceres_arm_pump.py`.
+**Code:** `routes/kpdr/ceres/` + `early_spine.play_boot_to_ceres`. TAS movies under
+`tas/ref/` (Sniq any% #3653M). Unit: `tests/test_ceres_arm_pump.py`.
 
-### Verified facts
+### Improvement table — boot / first Ceres control
+
+| Milestone | Frames | Δ frames | Δ seconds (@ 60.0988) | Notes |
+|-----------|-------:|---------:|----------------------:|-------|
+| Legacy open-loop boot (`_boot_spans` sum) | 10,860 | — | — | Fixed title idle 2,100f + intro mash |
+| Legacy first `gs=8` elev (probe) | 10,642 | — | — | Control during last boot spans |
+| **TAS-style mash first `gs=8`** | **8,479** | **−2,163** | **−36.0 s** | START/A period-1 → A-every-other (Sniq pattern) |
+| TAS boot hop end (+elev settle +plant) | ~8,572 | **−2,288** vs 10,860 | **−38.1 s** | y 0→72 pad settle required for outbound |
+| Sniq any% first B+RIGHT (ref movie) | 8,639 | — | — | lsnes movie; not same core |
+
+### Improvement table — morph spine (published / probe)
+
+| Milestone | Frames | Δ frames | Δ seconds | Notes |
+|-----------|-------:|---------:|----------:|-------|
+| Product morph (pre arm-pump) | 27,074 | — | — | `morph.json` |
+| Arm-pump morph dual GREEN | **26,824** | **−250** | **−4.2 s** | ridley 16,181; landing 21,548 |
+| TAS boot → ridley (probe) | 13,671 | **−2,510** vs 16,181 | **−41.8 s** | Outbound holds after settle |
+| TAS boot full morph dual | **27,494** ×2 | **+670** vs product | **+11.1 s** | Elev GREEN; BB elev + morph reseed cost |
+
+### Elev re-pin findings (`rr-14u`, 2026-08-07)
 
 | Fact | Detail |
 |------|--------|
-| Product morph | GREEN **27,074f**; ridley **16,414**; zebes_landing **21,799** |
-| Arm-pump outbound | Ridley **16,181** (~**233f** shave) |
-| Falling→elev | Mid-trans y≈139 fake; **gs=8 → bottom y≈651** |
-| Ledge pin | **y=571 pose=2**; s0 re-solve = **ledge walk LEFT** (not blind LEFT+A 70) |
-| Shaft s2–s10 | Product-like band → land **~x189 y171 pose 9** (short of wall) |
-| **SM-CERES-ELEV-TOP (solved)** | Walk RIGHT → **x211 y171 pose 137**, idle plant, product **LEFT+A 38 + LEFT 25** through pad **x≈145 y75** → **gs 32** leave |
-| Arm-pump morph | Dual GREEN **26,824f** ×2 (`morph_arm_pump_probe.json` + `_reverify.json`) |
-| Shave vs old product | **250f** (27,074 → 26,824); BB elev needs 1f `$0E16` parity (flag toggles/frame) |
+| Ledge pin | TAS vs legacy: **identical** WRAM at left seat (`x45 y571 pose 138 x_sub=0`) |
+| Desync cause | **Absolute-frame debris phase** in shaft (not subpixel at pin) |
+| Product shaft | Open-loop s2–s10 works when phase matches; thrash hops burn timer |
+| Phase search | Idle **0** = legacy green; idle **14** = TAS elev clear (probe scan) |
+| Falling | Keep product **walk** into door (arm-pump mid desyncs elev entry) |
+| Human (Kentroid) | Shaft ≈432f mostly `LEFT+B` + short A (spin); not used as restore |
+| Sniq TAS | Short `LEFT+A` / `LEFT+B` pulses near Ceres end — reference only |
+| Happy medium | Product wall-spin spans + phase idle list + top residual; no hop thrash |
 
-### STATUS
+### Verified facts (still true)
 
-Morph tip frames updated to **26,824** after dual integrity-green. No further
-Ceres elev residual — next opt-in is more outbound arm-pump (optional).
+| Fact | Detail |
+|------|--------|
+| Arm-pump morph dual | GREEN **26,824f** ×2 (legacy boot + arm-pump escape) |
+| TAS morph dual | GREEN **27,494f** ×2 (probe; elev + landing OK) |
+| Falling→elev | Mid-trans y≈139 fake; **gs=8 → bottom y≈651** — do not LEFT-walk on ghost y |
+| Elev top | x211 y171 pose 137 → LEFT+A → ship pad |
+| Product boot | `_BOOT_STYLE = "legacy"` — do **not** flip to `tas` until TAS ≤ 26,824 |
+
+### STATUS / next
+
+- **Shipped:** elev phase search (`_ceres_product_shaft_with_phase`), BB elev parity
+  retry + reactive board, morph seed pad-return reseed; falling timeout 700f.
+- **Product stays legacy 26,824.** TAS path dual-green but **+670f** from BB elev
+  seed misses + morph reseed — reclaim before `_BOOT_STYLE = "tas"` / STATUS promote.
+- **Follow-on:** first-try BB elev under TAS boot (`$0E16` phase) so morph seed
+  hits product tape without reseed.
 
 ### Reproduce
 
 ```bash
 uv run python snes/super_metroid/scripts/record/continuous.py --to morph --no-video
+# TAS probe: set early_spine._BOOT_STYLE = "tas" then same CLI
+# TAS movies: uv run python -m super_metroid.tas.fetch_refs
 ```
 
 ---
