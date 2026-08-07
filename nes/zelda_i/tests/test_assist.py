@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from zelda_i.assist import UnlimitedHealthAssist, assist_phase_name
+from zelda_i.assist import (
+    UnlimitedHealthAssist,
+    assist_phase_name,
+    location_key,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, full_health_byte
 
 
@@ -12,14 +16,16 @@ def _snap(
     level: int = 0,
     health: int = 0x20,
     screen: int = 0x4A,
+    link_x: int = 120,
+    link_y: int = 141,
 ) -> ZeldaSnapshot:
     return ZeldaSnapshot(
         mode=mode,
         level=level,
         screen=screen,
         next_screen=screen,
-        link_x=120,
-        link_y=141,
+        link_x=link_x,
+        link_y=link_y,
         facing=8,
         sword=1,
         bombs=0,
@@ -61,6 +67,11 @@ def test_phase_names() -> None:
     assert assist_phase_name(_snap(mode=11)) == "ordinary_gameplay"
 
 
+def test_location_key() -> None:
+    assert location_key(_snap(level=2, screen=0x5f)) == "L2:0x5f"
+    assert location_key(_snap(level=0, screen=0x4A)) == "L0:0x4a"
+
+
 def test_assist_refills_on_ordinary_play() -> None:
     data = _FakeData()
     assist = UnlimitedHealthAssist(enabled=True)
@@ -99,12 +110,53 @@ def test_assist_disabled_noop() -> None:
     assert rep["enabled"] is False
 
 
-def test_damage_telemetry() -> None:
+def test_damage_telemetry_cumulative_and_heatmap() -> None:
     data = _FakeData()
     assist = UnlimitedHealthAssist(enabled=True)
-    # First frame establishes baseline filled=2 (0x22).
-    assist.apply_snapshot(data, _snap(health=0x22), frame=1)
-    # After refill, prev filled is 0xF; next damaged frame 0x20 → large "damage".
+    # Baseline full on OW screen 0x4A.
+    assist.apply_snapshot(data, _snap(health=0x2F, screen=0x4A, level=0), frame=1)
+    assert assist.telemetry.total_damage == 0
+
+    # Drop filled 0xF → 0xA (5 units) on same screen.
     data.values.clear()
-    assist.apply_snapshot(data, _snap(health=0x20), frame=2)
-    assert assist.telemetry.maximum_single_frame_damage >= 1
+    assist.apply_snapshot(data, _snap(health=0x2A, screen=0x4A, level=0), frame=2)
+    assert assist.telemetry.total_damage == 5
+    assert assist.telemetry.damage_events == 1
+    assert assist.telemetry.maximum_single_frame_damage == 5
+    assert assist.telemetry.damage_by_location["L0:0x4a"] == 5
+    assert data.values["health"] == 0x2F
+
+    # Second hit on dungeon room 0x5f: full→0xC (3 units).
+    data.values.clear()
+    assist.apply_snapshot(
+        data,
+        _snap(health=0x2C, screen=0x5F, level=2, link_x=100, link_y=120),
+        frame=10,
+    )
+    assert assist.telemetry.total_damage == 8
+    assert assist.telemetry.damage_events == 2
+    assert assist.telemetry.maximum_single_frame_damage == 5
+    assert assist.telemetry.damage_by_location["L2:0x5f"] == 3
+
+    rep = assist.report()
+    assert rep["total_damage"] == 8
+    assert rep["damage_events"] == 2
+    # Hottest location first.
+    locs = list(rep["damage_by_location"].keys())
+    assert locs[0] == "L0:0x4a"
+    assert len(rep["damage_samples"]) == 2
+    assert rep["damage_samples"][1]["location"] == "L2:0x5f"
+    assert rep["damage_samples"][1]["amount"] == 3
+
+
+def test_damage_samples_capped() -> None:
+    data = _FakeData()
+    assist = UnlimitedHealthAssist(enabled=True)
+    assist.apply_snapshot(data, _snap(health=0x2F), frame=0)
+    # Force many events; samples stay bounded, totals do not.
+    for i in range(80):
+        data.values.clear()
+        assist.apply_snapshot(data, _snap(health=0x2E), frame=i + 1)
+    assert assist.telemetry.damage_events == 80
+    assert assist.telemetry.total_damage == 80
+    assert len(assist.telemetry.damage_samples) == 64

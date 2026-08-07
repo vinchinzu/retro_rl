@@ -11,8 +11,14 @@ Work tracker: **`bd ready -l zelda_i`**. Product board: `docs/STATUS.md` +
 | **Clean** | default runners, no RAM write | Yes, after natural-entry 2/2 |
 
 Heart death on 0x5C blocked Clean door-path progress. **First-pass strategy:**
-unlock geometry with infinite life → encode hops/rooms/specs → then Clean
-heart-farm / combat harden per segment.
+
+1. Infinite life so agents **finish the game** (path + puzzles + items).
+2. Track damage (`total_damage`, `damage_by_location`) without stopping the run.
+3. Only then tune: Clean heart-farm / combat harden for hottest rooms.
+
+**Priority within a bead:** route geometry and puzzle mechanics over combat
+polish. A room that opens the next door with sloppy sword work is green for
+first-pass; residual combat harden is a later child bead.
 
 Assist contract: [`docs/ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md).
 

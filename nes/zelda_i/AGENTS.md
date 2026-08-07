@@ -51,8 +51,12 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 ## Dual track
 
 - **Clean** (default): STATUS-eligible; no health writes.
-- **Assisted first pass** (`--infinite-life`): map door geometry / dungeon
-  rooms; do not promote as Clean. Contract: `docs/ASSIST_CONTRACT.md`.
+- **Assisted first pass** (`--infinite-life`): infinite hearts + damage heatmap
+  (`total_damage`, `damage_by_location`); map path / puzzles / doors first.
+  Do not promote as Clean. Contract: `docs/ASSIST_CONTRACT.md`.
+
+**Agent order:** pathfinding + puzzles → assisted full clear → Clean harden
+from damage heatmaps. Do not block tip progress on combat polish.
 
 ## Traps (burned once)
 
@@ -69,20 +73,23 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: rr-lzk → rr-etl → rr-cjf → rr-ebe / rr-n5i
+bd ready -l zelda_i   # tip: rr-n5i Dodongo → TF 0x02 → rr-5dk
 ```
 
 | Order | Bead | Work |
 |------:|------|------|
-| 1 | **rr-lzk** | Encode 0x6f bomb N @(120,101) → 0x5f from `Level2Compass` |
-| 2 | **rr-etl** | Pure clear 0x5e 5× Goriya `0x06` |
-| 3 | **rr-cjf** / **rr-fvt** | Open 0x5f further exits / room policy |
-| 4 | **rr-bsq** / **rr-ebe** | Boom room + `ADDR_MAGIC_BOOMERANG` pure |
-| 5 | **rr-n5i** | Dodongo bombs → TF `0x02` |
-| 6 | **rr-5dk** | Natural-entry assisted power-on → TF 0x02 |
+| ✓ | **rr-lzk** | 0x6f bomb N @(120,101) → 0x5f — **2/2 Clean** |
+| ✓ | **rr-etl** | 0x5e Goriya pure — **2/2 Clean** |
+| ✓ | **rr-fvt** / **rr-cjf** | 0x5f policy + bomb-UP → **0x4f** boom path LIVE |
+| ✓ | **rr-bsq** / **rr-ebe** | 0x4f Magical Boomerang — **2/2 Clean** |
+| 2 | **rr-n5i** | Dodongo bombs → TF `0x02` |
+| 3 | **rr-5dk** | Natural-entry assisted power-on → TF 0x02 |
 
 Full board: `docs/tasks/QUEUE.md`. Routes: `docs/LEVEL2_ROUTE.md`.
 
-Checkpoints: `Level2Entrance` / `WestKey` / `EastKey` / `Compass`; recon
-`Level2_5F` / `Level2_5E`. Runners: `run_level2_clear{6d,6c,7e,6f}.py`.
-**Diamond-east** + **bomb-north (120,101)** — see traps in LEVEL2_ROUTE.
+Checkpoints: `Level2Entrance` / `WestKey` / `EastKey` / `Compass` /
+`Level2_5F` / `Level2_5E`. Runners: `run_level2_clear{6d,6c,7e,6f,5e}.py`,
+`run_level2_bomb_north.py` (0x6f → 0x5f), `run_level2_bomb_north_5f.py` / `run_level2_magic_boomerang.py` (0x5f → 0x4f boom). **Boom path:** 0x5f bomb N
+@(120,101) → **0x4f** (not walk-RIGHT). **Diamond-east** traps in LEVEL2_ROUTE.
+`Level2Compass` may re-spawn gels on load. Use `--infinite-life` for first-pass
+geometry; Clean STATUS only after natural 2/2.

@@ -1,0 +1,65 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T03:09:21.597974+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "natural_entry": false,
+    "segment": "level2_bomb_north",
+    "stand": [
+      120,
+      101
+    ],
+    "start_state": "Level2Compass"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs_after_place": 11,
+    "bombs_before_place": 12,
+    "clear": {
+      "clear_signal_seen": true,
+      "combat_frames": 4843,
+      "frames": 4936,
+      "initial_inventory": 0,
+      "last_live_enemies": 0,
+      "max_live_enemies": 6,
+      "notes": [
+        "room_cleared",
+        "reward_collected"
+      ],
+      "phase": "DONE",
+      "spec_id": "level2_room6f_compass",
+      "success": true,
+      "tuning": {
+        "attack_phase": 0,
+        "engage_attack_hold": 3,
+        "engage_attack_period": 6,
+        "engage_distance": 56,
+        "engage_dominant_axis": false,
+        "patrol_attack_hold": 3,
+        "patrol_attack_period": 8
+      }
+    },
+    "frames": 5420,
+    "notes": [
+      "need_clear_0x6f",
+      "cleared_0x6f",
+      "at_bomb_stand",
+      "faced_up",
+      "placed_bomb",
+      "bomb_used_12->11",
+      "blast_done",
+      "entered_0x5f"
+    ],
+    "phase": "DONE",
+    "stand": [
+      120,
+      101
+    ],
+    "success": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2Compass.state",
+  "source_state_sha256": "f19f0f1b02d27404492ed0a3b3dc9db0452f47f4d8c0e34a8a3c3427a649387d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2_5F.state",
+  "state_sha256": "686ef9f5eb307f7f63458f51195bdd0fa5b9b2598907f43e0edc31a6be2e2213"
+}

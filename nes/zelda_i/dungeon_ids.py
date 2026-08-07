@@ -5,13 +5,24 @@ from __future__ import annotations
 from zelda_i import ram
 
 OBJECT_NAMES: dict[int, str] = {
+    0x05: "goriya_blue_or_residual",  # L2 boom room 0x4f
     0x06: "goriya",
+    0x13: "zol",
     0x15: "gel",
+    0x16: "pols_voice",
     0x1B: "keese",
+    0x23: "wizzrobe_blue_walkthrough_correlated",
+    0x24: "wizzrobe_orange",
     0x27: "wallmaster",
     0x28: "rope",
+    0x30: "gibdo",
     0x3D: "aquamentus",
     0x2A: "stalfos",
+    0x40: "bubble",
+    0x49: "blade_trap_walkthrough_correlated",
+    0x4D: "old_man_or_npc",
+    0x4e: "trap_or_fire_residual",
+    0x55: "fireball_or_statue_projectile",  # L2 0x4f statues
     0x60: "green_rupee_drop",
 }
 
@@ -22,6 +33,7 @@ ROOM_ITEM_NAMES: dict[int, str] = {
     0x19: "small_key",
     0x1A: "heart_container",
     0x1D: "boomerang_walkthrough_correlated",
+    0x1E: "magical_boomerang_room_item_residual",  # live on L2 0x4f (rr-cjf)
 }
 
 MODE_NAMES: dict[int, str] = {

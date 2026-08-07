@@ -1,0 +1,44 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T03:56:25.252104+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "natural_entry": false,
+    "segment": "level2_bomb_north_5f",
+    "stand": [
+      120,
+      101
+    ],
+    "start_state": "Level2_5F"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs_after_place": 10,
+    "bombs_before_place": 11,
+    "clear": null,
+    "clear_source": false,
+    "frames": 347,
+    "notes": [
+      "geometry_only",
+      "at_bomb_stand",
+      "faced_up",
+      "placed_bomb",
+      "bomb_used_11->10",
+      "blast_done",
+      "entered_0x4f"
+    ],
+    "phase": "DONE",
+    "source_room": 95,
+    "stand": [
+      120,
+      101
+    ],
+    "success": true,
+    "target_room": 79
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2_5F.state",
+  "source_state_sha256": "686ef9f5eb307f7f63458f51195bdd0fa5b9b2598907f43e0edc31a6be2e2213",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fda57-f535-7cd3-b5ee-34f270c000a4/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2_4F.state",
+  "state_sha256": "d7c28ae7a389167b962c4427f31c37fb078edcbcc67069a8ab28901575e3fe9f"
+}
