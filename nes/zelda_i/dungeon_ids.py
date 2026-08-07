@@ -7,7 +7,9 @@ from zelda_i import ram
 OBJECT_NAMES: dict[int, str] = {
     0x05: "goriya_blue_or_residual",  # L2 boom room 0x4f
     0x06: "goriya",
+    0x0B: "darknut",  # L3 0x5b/0x59/0x69 live
     0x13: "zol",
+    0x14: "gel_or_zol_split_residual",  # L3 0x4b after wooden-sword hits
     0x15: "gel",
     0x16: "pols_voice",
     0x1B: "keese",
@@ -29,6 +31,7 @@ OBJECT_NAMES: dict[int, str] = {
 
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",
+    0x0C: "raft_room_item_live",  # L3 mode-9 passage 0x0f (assisted 2026-08-07)
     0x16: "compass_walkthrough_correlated",
     0x17: "dungeon_map_walkthrough_correlated",
     0x19: "small_key",
@@ -44,6 +47,8 @@ MODE_NAMES: dict[int, str] = {
     6: "scroll_prepare",
     7: "scroll",
     8: "hurt_freeze_or_game_over_menu",
+    9: "dungeon_underworld_passage",  # L3 Raft stairs 0x0f live
+    10: "dungeon_stairs_exit_residual",
     11: "cave_play",
     16: "cave_enter",
     17: "link_death",
