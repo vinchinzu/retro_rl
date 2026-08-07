@@ -80,8 +80,15 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
       18030 sub-5 budget). Seeds `smb_happylee_hybrid_v2_fx84.json`,
       `smb_8_4_flamexx_slice.json`, `smb_8_3_natural_for_hl_hybrid.json`.
     - **Pure HL 8-3 still open** (phase max_x≈834); 8-4 TAS body done via FX.
-    - **Next:** (1) pure HL 8-3 or −1f for true sub-5; (2) Clean power-on
-      fold only after full chain settles; keep natural_82 + both hybrids.
+    - **8-3 stitchless path (rr-34v, 2026-08-07):** user direction = **no
+      natural_82 hybrid stitch** as primary. Pure HL/FX after HL 8-2 control.
+      Gated FM2 raw best max_x≈**1030** (si≈13081 lead0); multi-round heal
+      del/ins/A-edge → **≈1730** (still no leave). Multi-leave 8-2 does not
+      change 8-3 ctrl fp (t=301). Tools: `probe_stitchless_8_3`, heal notes
+      under `recordings/tas_import/happylee_8_3_stitchless_*.json`. Hybrid
+      v2 18031 + `polish_8_3` kept as showcase/secondary only.
+    - **Next:** continue stitchless heal / grounded reactive 8-3 until leave;
+      then FX/HL 8-4 continuous; Clean power-on fold after full chain.
 6. **Route contracts + natural predecessor evaluator (2026-08-01):** done.
    `smb.reactive_route` tracks declared successors and entry fingerprints;
    `smb.scripts.run_reactive_warp` runs stairs + reactive 1-2 and retimed

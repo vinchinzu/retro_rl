@@ -48,8 +48,21 @@ from zelda_i.dungeon import (
     RewardSpec,
     register_room_spec,
 )
+from zelda_i.door_graph.core import DoorDir
+from zelda_i.level3_geometry import (
+    BOMB_STAND_59_RIGHT,
+    BOMB_STAND_5B_RIGHT,
+    DOOR_5C_RIGHT_Y,
+    KEY_DOOR_Y,
+    KEY_DOOR_Y_TOL,
+    PASSAGE_EXIT_WAYPOINTS,
+    STAIRS_69_RIGHT_Y,
+)
 from zelda_i.level3_overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
+
+# Geometry names above are re-exported so existing
+# ``from zelda_i.level3_dungeon import BOMB_STAND_*`` imports keep working.
 
 # --- Live L3 room / enemy anchors (isolated pure 2026-08-06 + past-5b 08-07) ---
 ROOM_L3_ENTRY = SCREEN_LEVEL3_ENTRY_ROOM  # 0x7C
@@ -76,17 +89,6 @@ ROOM_ITEM_MAP = 0x17
 ROOM_ITEM_RAFT = 0x0C  # live RoomItemId in mode-9 passage 0x0f
 ROOM_ITEM_HEART_CONTAINER = 0x1A
 LEVEL3_TRIFORCE_BIT = 0x04
-# Bomb stands (LIVE recon)
-BOMB_STAND_5B_RIGHT = (192, 141)  # 0x5b → 0x5c boss shortcut
-BOMB_STAND_59_RIGHT = (192, 141)  # post-Raft: walk-RIGHT sealed; bomb reopens 0x5a
-# Raft passage EXIT (reverse of pickup; Level3Raft → 0x69)
-PASSAGE_EXIT_WAYPOINTS: tuple[tuple[int, int], ...] = (
-    (176, 141),
-    (176, 189),
-    (48, 189),
-    (48, 77),
-)
-DOOR_5C_RIGHT_Y = 141  # only y≈141 opens 0x5c → 0x5d after Darknut clear
 
 # Raft passage geometry (mode 9): enter from 0x69 RIGHT @ y≈141 → spawn ~(48,77).
 # Path: DOWN to y≈189 → RIGHT to x≈176 → UP channel to y≈141 → LEFT to x≈136 touch Raft.
@@ -97,14 +99,7 @@ RAFT_PICKUP_X = 136
 RAFT_PICKUP_Y = 141
 RAFT_SOUTH_Y = 189
 RAFT_SOUTH_Y_TOL = 6
-STAIRS_69_RIGHT_Y = 141  # only y≈141 opens 0x69 → 0x0f; other y bands blocked
-KEY_DOOR_Y = 141  # 0x5a LEFT KEY: long push @ y≈141; short/wrong-y spends key w/o scroll
-KEY_DOOR_Y_TOL = 3
 KEY_DOOR_PUSH_FRAMES = 160  # short push can spend key without room change
-DOOR_BIT_RIGHT = 0x01
-DOOR_BIT_LEFT = 0x02
-DOOR_BIT_DOWN = 0x04
-DOOR_BIT_UP = 0x08
 SPAWN_SETTLE_FRAMES = 100  # Darknuts lag ~75–100f before clear registers
 LEFT_5B_MAX_FRAMES = 1500
 KEY_5A_MAX_FRAMES = 2500
@@ -389,7 +384,7 @@ ROOM_59_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
-    required_open_doors=DOOR_BIT_DOWN,  # kill-clear opens south
+    required_open_doors=DoorDir.DOWN,  # kill-clear opens south
     exit_routes=(
         DoorRoute("RIGHT", ((120, 141), (208, 141))),
         DoorRoute("DOWN", ((120, 141), (120, 205))),
@@ -1314,7 +1309,7 @@ class Level3RaftPathController:
                     self._set_phase("spawn_69", "early_0x69")
                     return FrameAction(nes_idle_action(), "phase_handoff")
             action = self.clear_59.step(snap)
-            down_open = bool(snap.cur_opened_doors & DOOR_BIT_DOWN)
+            down_open = bool(snap.cur_opened_doors & DoorDir.DOWN)
             # Kill-clear lag: live can hit 0 while doors still lack DOWN for ~40f
             # (room_all_dead ramps after last corpse). Do not leave early.
             if live == 0 and self.max_live_59 >= 3 and not down_open:

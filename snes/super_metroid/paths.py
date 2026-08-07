@@ -28,3 +28,7 @@ ROOM_CLEAR_RECORDINGS_DIR = RECORDINGS_DIR / "room_clears"
 FULL_ROOM_GRAPH_PATH = MAPS_DIR / "full_room_graph.json"
 ROOM_PROBLEMS_PATH = MAPS_DIR / "room_problems.json"
 SHARED_ROM = REPO_DIR / "roms" / "SuperMetroid.sfc"
+# Vendored TAS movies (Sniq any%/100%) + snes12_rle slices — see tas/README.md.
+TAS_DIR = GAME_DIR / "tas"
+TAS_REF_DIR = TAS_DIR / "ref"
+TAS_SLICE_DIR = TAS_DIR / "slices"

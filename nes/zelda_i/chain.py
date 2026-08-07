@@ -6,7 +6,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from retro_harness.nes import nes_action
 from zelda_i.level1 import (
     CLEAR_53_MAX_FRAMES,
     CLEAR_63_MAX_FRAMES,
@@ -134,15 +133,7 @@ def run_natural_to_level1(
         if sword.success or sword.phase.name == "FAILED":
             break
 
-    if sword.success:
-        down = nes_action("DOWN")
-        for _ in range(55):
-            obs, *_ = env.step(down)
-            global_frame += 1
-            _observe_room_timer(room_timer, env, frame=global_frame)
-            _apply_assist(assist, env, frame=global_frame)
-            _notify_frame(on_frame, env, obs, down, frame=global_frame)
-
+    # EAST_77 aligns y≈140 then walks right — no fixed post-cave DOWN hold.
     nav = OverworldToLevel1Controller(require_dungeon=require_dungeon)
     if sword.success:
         for _ in range(NAV_MAX_FRAMES):

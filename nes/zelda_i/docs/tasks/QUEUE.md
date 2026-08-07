@@ -23,9 +23,22 @@ sword kiting once geometry is known.
 | L2 Boom → TF `0x02` | **assisted green 2/2** | `rr-5dk` / `rr-n5i`; `l2_complete_assisted.json` |
 | Post-L2 → L3 enter | **assisted green 2/2** | `rr-rnx`; `l2_to_l3_assisted.json`; epic `rr-ci7` closed |
 | L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | `rr-vpl` / epic `rr-wmv` closed; `level3_to_boss_assisted.json` |
-| Checkpoints | **`Level3Raft`**, **`Level3Boss`**, **`Level3Complete`** | + earlier L3 pure |
-| Tip leaf | **L4 Snake** (needs Raft) / **OW prep** | `bd ready -l zelda_i` → `rr-q3n`, `rr-806` |
-| Deferred | Clean residual `rr-4oz` until full-game assist pass | not tip-blocking |
+| Checkpoints | **`Level3Raft`**, **`Level3Boss`**, **`Level3Complete`** (raft=1) | L3 epic closed |
+| **Tip leaf** | **`rr-0fx` Z4.1** L4 live entry | `Level3Complete` → dock → island → `Level4Entrance` |
+| Parallel free | **`rr-38p`** early OW caps | white sword / candle / bomb bag |
+| Deferred (blocked on tip) | L5/L6 TF residual, Clean L2 heatmaps, bracelet/mag sword | P4; not tip-blocking |
+
+### Architecture (agent monitor)
+
+```
+tip spine:  L1 Clean → L2 assist TF → L3 assist TF+Raft → **L4 entry (rr-0fx)** → L4 interior
+parallel:   OW early caps (rr-38p); isolated pure only from green checkpoints
+defer:      combat Clean harden, later-dungeon TF residual until tip arrives
+process:    path/puzzle first → --infinite-life full clear → damage heatmap Clean
+```
+
+Claim one tip leaf: `bd update rr-0fx --status in_progress`. Do not expand L4
+room beads until live door/entry ids exist.
 
 ### All-night wave results (2026-08-06 night)
 
@@ -73,48 +86,30 @@ Door traps burned:
 - L3 west: pure LEFT sticks x≈32 → use **LEFT+UP** @ y≈149
 - L6 east: y≈157 → x≈208 → y≈144–149 RIGHT (no A while aligning)
 
-## Next beads (spawned after wave 2)
-
-### Parallel pure (from green checkpoints — no L2 wait)
-
-| Bead | Title | Start state |
-|------|-------|-------------|
-| **rr-65w** Z3.2 | North/key chain toward Raft | `Level3WestKey` |
-| **rr-vpl** Z3.3 | Raft → Manhandla → TF `0x04` residual | after Z3.2 |
-| **rr-87a** Z5.2 | 0x67 + dark-room graph | `Level5Cleared66` |
-| **rr-076** Z5.3 | Entry 0x76 east Pols Voice + key | `Level5Entrance` |
-| **rr-28p** Z5.4 | Whistle + Digdogger + TF `0x10` residual | after graph |
-| **rr-miy** Z6.2 | Post-east-key graph (no Old Man key waste) → Rod | `Level6EastKey` |
-| **rr-d6v** Z6.3 | Rod + Gohma + TF `0x20` residual | after Rod |
-| **rr-q8a** Z8.1 | Candle → burn 0x6D → `Level8Entrance` (open) | `Level8BushOW` |
-| **rr-ccx** Z8.1b | Map Blue Candle shop + rupee farm path | OW |
+## Next beads (tip + ready)
 
 ```bash
-bd ready -l zelda_i
+bd ready -l zelda_i   # tip: rr-0fx; parallel: rr-38p
 ```
 
-### Path / puzzle backlog (new)
+| Bead | Role | Start / notes |
+|------|------|---------------|
+| **`rr-0fx` Z4.1** | **TIP** live L4 entry | `Level3Complete` (raft=1); hyp dock `0x55` / island `0x45` until live |
+| **`rr-5lu` Z4.2** | blocked on Z4.1 | interior first rooms + stepladder path |
+| **`rr-38p` ZOW.1** | parallel free | white sword + candle + bomb bag |
+| **`rr-q3n`** | L4 epic container | spawn more children only after live entry ids |
+| Deferred P4 | `rr-28p` L5 TF, `rr-d6v` L6 TF, `rr-4oz` Clean L2, `rr-yhr` bracelet/mag sword | blocked on tip |
 
-| Bead | Scope |
-|------|-------|
-| `rr-3pz` | L2 bomb-wall / push-block catalog → lab encode |
-| `rr-mhl` | Dungeon door-graph template (mask / bomb / key / kill) |
-| `rr-iri` | OW item-gate hops (candle → white sword → bombs), assisted |
-| `rr-4oz` | L2 Clean residual from `damage_by_location` (after assisted TF) |
+### Closed wave history (keep for evidence)
 
-### OW prep (when free)
+L3 west key / Raft / Manhandla TF, L5 clear 0x66, L6 east key, L2 bomb/Goriya,
+OW recon table — see closed beads + `LEVEL{2,3,5,6}_ROUTE.md`.
 
-| Bead | Scope |
-|------|-------|
-| `rr-38p` | White sword + candle + bomb bag capabilities |
-| `rr-dnp` | Lost Hills (done live) + whistle pond L7 |
-| `rr-yhr` | Raft dock L4 + bracelet Armos + magical sword |
-
-### Gated (after items / L2 tip)
+### Gated (after items)
 
 | Epic | Gate |
 |------|------|
-| L4 Snake | Raft from L3 |
+| L4 Snake clear | live entry `rr-0fx` then interior |
 | L7 Demon | Whistle from L5 + bait shop |
 | L9 Death Mountain | Full TF `0xFF` |
 | Continuous dry run | assisted then Clean stack |

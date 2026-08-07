@@ -32,7 +32,11 @@ CAVE_APPROACH_X = 60
 CAVE_APPROACH_Y = 100
 SWORD_X = 120
 SWORD_Y_TOUCH = 160  # sword collect once Link y <= this at x≈120
-DIALOG_IDLE_FRAMES = 180
+# Old-man text freezes Link ~270f after cave spawn; start trying to walk once
+# Link is at the cave floor (y high) so we move the frame freeze ends.
+DIALOG_SPAWN_Y = 200
+DIALOG_MIN_WAIT = 35
+DIALOG_IDLE_FRAMES = 280  # hard cap if spawn/y never meets early-exit
 SEGMENT_MAX_FRAMES = 3600
 
 
@@ -150,11 +154,15 @@ class SwordCaveController:
             self._set_phase(SwordPhase.EXIT_CAVE, "sword_during_wait")
             return FrameAction(nes_action("DOWN"), "exit")
         self.dialog_waited += 1
+        # Spawn drops Link to the cave floor (~y 213) ~30f after enter; text
+        # freezes input until it finishes. Begin ALIGN as soon as we are on the
+        # floor so the first free frame walks toward the sword (no extra idle).
+        spawned = snap.link_y >= DIALOG_SPAWN_Y
         if self.dialog_waited >= DIALOG_IDLE_FRAMES or (
-            snap.dialog_timer == 0 and self.dialog_waited > 45 and snap.link_y >= 200
+            spawned and self.dialog_waited >= DIALOG_MIN_WAIT
         ):
             self._set_phase(SwordPhase.ALIGN_SWORD, "dialog_done")
-            return FrameAction(nes_idle_action(), "dialog_done")
+            return self._align_sword(snap)
         return FrameAction(nes_idle_action(), "dialog_wait")
 
     def _align_sword(self, snap: ZeldaSnapshot) -> FrameAction:

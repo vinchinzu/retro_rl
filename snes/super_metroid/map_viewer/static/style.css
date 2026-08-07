@@ -1,0 +1,184 @@
+:root {
+  --bg: #0b0f14;
+  --panel: #121820;
+  --text: #e8eef6;
+  --muted: #8b9bb0;
+  --border: #243041;
+  --accent: #00e5ff;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+}
+
+#sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 12px 14px 24px;
+  overflow: auto;
+}
+
+#sidebar h1 {
+  font-size: 1.05rem;
+  margin: 0 0 4px;
+  letter-spacing: 0.02em;
+}
+
+#sidebar h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 16px 0 8px;
+}
+
+.sub {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.sub code,
+.help code {
+  font-size: 0.72rem;
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.path-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0d131b;
+}
+
+.path-item .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-top: 3px;
+}
+
+.path-item .meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.path-item label {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+button,
+select {
+  background: #1a2433;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  margin: 4px 0;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  margin: 6px 0;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+#map {
+  height: 100%;
+  background: #05070a;
+}
+
+.leaflet-container {
+  background: #05070a;
+  font: inherit;
+}
+
+.help ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.leaflet-tooltip.room-tip {
+  background: rgba(10, 14, 20, 0.92);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: none;
+  font-size: 0.75rem;
+}
+
+.leaflet-popup-content {
+  margin: 8px 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 800px) {
+  body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 40vh 1fr;
+  }
+  #sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}

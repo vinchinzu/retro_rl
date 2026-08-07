@@ -91,8 +91,19 @@ roms/
 !nes/smb/tas/
 !nes/smb/tas/**/*.py
 !nes/smb/tas/**/__init__.py
+# Super Metroid TAS import (Sniq any%/100%); keep movies/slices ignored (re-fetch)
+!snes/super_metroid/tas/
+!snes/super_metroid/tas/**/*.py
+!snes/super_metroid/tas/**/__init__.py
+!snes/super_metroid/tas/README.md
+# Zelda I TAS import (Lord Tom any% / chatterbox all-items); keep *.fm2 ignored
+!nes/zelda_i/tas/
+!nes/zelda_i/tas/**/*.py
+!nes/zelda_i/tas/**/__init__.py
+!nes/zelda_i/tas/README.md
 *.bk2
 *.fm2
+*.lsmv
 *.replay.jsonl
 *.jsonl
 # Beads exports must be trackable (override blanket *.jsonl)
