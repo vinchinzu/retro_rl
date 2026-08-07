@@ -174,37 +174,15 @@ def _ceres_reactive_elev_climb(session: RouteSession) -> None:
         else:
             session.step(idle_action(), "ceres_elev_gap")
 
-    # Product shaft s2–s10 only (through idle after RIGHT+A 72). Stops before
-    # product LEFT+A 38 — that tail needs pose-137 right-wall contact first.
-    # Probe: lands ~x189 y171 pose 9 (product s10 is x211 y171 pose 9→137).
+    # Product shaft s2–s10 with debris-phase search (rr-14u).
+    # Identical ledge pin under TAS vs legacy boot; only absolute frame differs.
+    # Probe: idle 0 dual-green on legacy; idle 14 clears TAS boot elev.
+    # Re-seat between phases — do not thrash open-loop hops.
     if session.state.room_id == ROOM_CERES_ELEVATOR:
-        for names, frames in (
-            (("RIGHT", "A"), 67),
-            ((), 1),
-            (("LEFT", "A"), 67),
-            ((), 19),
-            (("RIGHT", "A"), 66),
-            ((), 8),
-            (("RIGHT", "A"), 86),
-            (("LEFT", "A"), 83),
-            (("RIGHT", "A"), 72),
-            ((), 3),
-        ):
-            for _ in range(frames):
-                st = session.state
-                if st.room_id != ROOM_CERES_ELEVATOR:
-                    return
-                if _ceres_elev_leaving(st):
-                    session.step(idle_action(), "ceres_elev_ship_seq")
-                    continue
-                session.step(
-                    buttons(*names) if names else idle_action(), "ceres_elev_shaft"
-                )
-
-        # SM-CERES-ELEV-TOP: force product-like right-wall pose 137, then
-        # LEFT+A boost to ship pad (product: KB @ x211 y171 → LEFT+A → y65 →
-        # LEFT walk to x≈145 y75 → gs 32).
-        _ceres_elev_top_to_ship(session)
+        climbed = _ceres_product_shaft_with_phase(session)
+        if climbed or int(session.state.samus_y) < _CERES_ELEV_LEDGE_Y - 50:
+            # SM-CERES-ELEV-TOP: right-wall pose 137 → LEFT+A → ship pad.
+            _ceres_elev_top_to_ship(session)
 
     if _ceres_elev_leaving(session.state) or session.state.room_id != ROOM_CERES_ELEVATOR:
         return
@@ -310,6 +288,111 @@ def _ceres_reactive_elev_climb(session: RouteSession) -> None:
         )
 
 
+# Debris-phase idles before product shaft (rr-14u probe under TAS vs legacy).
+_CERES_SHAFT_PHASE_IDLES = (0, 14)
+
+
+def _ceres_product_shaft_once(session: RouteSession) -> int:
+    """Product s2–s10 climb. Returns best (lowest) y reached."""
+    best_y = int(session.state.samus_y)
+    for names, frames in (
+        (("RIGHT", "A"), 67),
+        ((), 1),
+        (("LEFT", "A"), 67),
+        ((), 19),
+        (("RIGHT", "A"), 66),
+        ((), 8),
+        (("RIGHT", "A"), 86),
+        (("LEFT", "A"), 83),
+        (("RIGHT", "A"), 72),
+        ((), 3),
+    ):
+        for _ in range(frames):
+            st = session.state
+            if st.room_id != ROOM_CERES_ELEVATOR:
+                return best_y
+            if _ceres_elev_leaving(st) or _ceres_elev_ship_band(st):
+                session.step(idle_action(), "ceres_elev_ship_seq")
+                return best_y
+            y = int(st.samus_y)
+            if y < best_y:
+                best_y = y
+            session.step(
+                buttons(*names) if names else idle_action(), "ceres_elev_shaft"
+            )
+    return best_y
+
+
+def _ceres_reseat_left_seat(session: RouteSession) -> None:
+    """Re-plant left ledge seat after a failed phase (no thrash)."""
+    if session.state.room_id != ROOM_CERES_ELEVATOR:
+        return
+    # If on floor, product ledge hop.
+    if int(session.state.samus_y) >= _CERES_ELEV_BOTTOM_Y - 30:
+        for _ in range(4):
+            session.step(idle_action(), "ceres_elev_bottom_plant")
+        for _ in range(70):
+            if abs(int(session.state.samus_y) - _CERES_ELEV_LEDGE_Y) <= 6:
+                break
+            if _ceres_is_knockback(session.state):
+                break
+            session.step(buttons("LEFT", "A"), "ceres_elev_ledge_jump")
+        for _ in range(20):
+            if (
+                abs(int(session.state.samus_y) - _CERES_ELEV_LEDGE_Y) <= 6
+                and abs(int(session.state.velocity_y)) <= 1
+            ):
+                break
+            session.step(idle_action(), "ceres_elev_ledge_settle")
+    for _ in range(90):
+        st = session.state
+        if int(st.samus_x) <= 50 and abs(int(st.samus_y) - _CERES_ELEV_LEDGE_Y) <= 6:
+            break
+        if int(st.samus_y) > _CERES_ELEV_LEDGE_Y + 12:
+            session.step(buttons("LEFT", "A"), "ceres_elev_reseat")
+            continue
+        if _ceres_is_knockback(st) and int(st.samus_x) <= 55:
+            break
+        if _ceres_is_knockback(st):
+            session.step(idle_action(), "ceres_elev_ledge_kb")
+            continue
+        session.step(buttons("LEFT"), "ceres_elev_ledge_walk")
+    for _ in range(6):
+        session.step(idle_action(), "ceres_elev_gap")
+
+
+def _ceres_product_shaft_with_phase(session: RouteSession) -> bool:
+    """Try product shaft at phase idles 0 then 14. True if top band reached.
+
+    Ledge pin WRAM matches across boots; debris jets are frame-phased.
+    """
+    for i, idle in enumerate(_CERES_SHAFT_PHASE_IDLES):
+        if session.state.room_id != ROOM_CERES_ELEVATOR:
+            return True
+        if _ceres_elev_leaving(session.state) or _ceres_elev_ship_band(session.state):
+            return True
+        if int(session.state.samus_y) <= _CERES_ELEV_TOP_Y + 40:
+            return True
+
+        if i > 0:
+            _ceres_reseat_left_seat(session)
+
+        for _ in range(idle):
+            if _ceres_elev_leaving(session.state):
+                return True
+            session.step(idle_action(), "ceres_elev_phase_align")
+
+        best_y = _ceres_product_shaft_once(session)
+        if _ceres_elev_leaving(session.state) or _ceres_elev_ship_band(session.state):
+            return True
+        cur_y = int(session.state.samus_y)
+        # Product success: currently in top residual band.
+        if cur_y <= _CERES_ELEV_TOP_Y + 50 or best_y <= _CERES_ELEV_TOP_Y + 20:
+            return True
+        # Phase miss — next idle after re-seat.
+    return int(session.state.samus_y) <= _CERES_ELEV_TOP_Y + 80
+
+
 def _ceres_elev_top_to_ship(session: RouteSession) -> None:
     """From s10 land (~y171) force right-wall pose 137 then LEFT+A to ship pad.
 
@@ -405,5 +488,7 @@ __all__ = [
     "_ceres_elev_leaving",
     "_ceres_on_elev_ledge",
     "_ceres_reactive_elev_climb",
+    "_ceres_product_shaft_once",
+    "_ceres_product_shaft_with_phase",
     "_ceres_elev_top_to_ship",
 ]

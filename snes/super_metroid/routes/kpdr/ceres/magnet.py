@@ -176,7 +176,8 @@ def _ceres_reactive_falling(session: RouteSession) -> None:
     session.span(ActionSpan(("LEFT", "A"), 40, "ceres_falling_entry"))
     last_x = int(session.state.samus_x)
     stagnant = 0
-    for i in range(500):
+    # 700f budget: TAS boot debris phase can stall longer mid-room.
+    for i in range(700):
         st = session.state
         if st.room_id == ROOM_CERES_ELEVATOR:
             return
