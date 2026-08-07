@@ -1,0 +1,115 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T15:58:43.154974+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "intervention_class": "survival",
+    "natural_entry": false,
+    "segment": "level3_raft",
+    "start_state": "Level3Darknuts"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "clear_59": {
+      "clear_signal_seen": true,
+      "combat_frames": 2894,
+      "frames": 2895,
+      "initial_inventory": 0,
+      "last_live_enemies": 0,
+      "max_live_enemies": 5,
+      "notes": [
+        "target_room_playable",
+        "room_cleared"
+      ],
+      "phase": "DONE",
+      "spec_id": "level3_room59_west_darknuts",
+      "success": true,
+      "tuning": {
+        "attack_phase": 2,
+        "engage_attack_hold": 3,
+        "engage_attack_period": 5,
+        "engage_distance": 40,
+        "engage_dominant_axis": false,
+        "patrol_attack_hold": 3,
+        "patrol_attack_period": 6
+      }
+    },
+    "clear_69": {
+      "clear_signal_seen": true,
+      "combat_frames": 1437,
+      "frames": 1438,
+      "initial_inventory": 0,
+      "last_live_enemies": 0,
+      "max_live_enemies": 8,
+      "notes": [
+        "target_room_playable",
+        "room_cleared"
+      ],
+      "phase": "DONE",
+      "spec_id": "level3_room69_south_darknuts",
+      "success": true,
+      "tuning": {
+        "attack_phase": 2,
+        "engage_attack_hold": 3,
+        "engage_attack_period": 5,
+        "engage_distance": 40,
+        "engage_dominant_axis": false,
+        "patrol_attack_hold": 3,
+        "patrol_attack_period": 6
+      }
+    },
+    "failed": false,
+    "frames": 6448,
+    "geometry": {
+      "channel_x": 176,
+      "key_door_y": 141,
+      "pickup_xy": [
+        136,
+        141
+      ],
+      "south_y": 189,
+      "stairs_y": 141
+    },
+    "intervention_class": "survival",
+    "keys_at_key_door": 1,
+    "max_live_59": 5,
+    "max_live_69": 8,
+    "notes": [
+      "leave_darknuts_west",
+      "entered_0x5a",
+      "entered_0x59",
+      "spawn_59_live=5_f2",
+      "cleared_59_doors=5_alldead=9",
+      "entered_0x69",
+      "spawn_69_live=8_f2",
+      "cleared_69_maxlive=8",
+      "entered_passage",
+      "raft_acquired"
+    ],
+    "path": "0x5b LEFT\u21920x5a LEFT KEY\u21920x59 clear DOWN\u21920x69 clear RIGHT@y141\u21920x0f channel\u2192Raft",
+    "phase": "done",
+    "phase_frames": 0,
+    "phases": [
+      "settle_5b",
+      "left_to_5a",
+      "key_to_59",
+      "spawn_59",
+      "clear_59",
+      "down_to_69",
+      "spawn_69",
+      "clear_69",
+      "stairs_to_0f",
+      "passage_raft",
+      "done",
+      "failed"
+    ],
+    "stop": "level3_has_raft",
+    "success": true,
+    "track": "assisted"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3Darknuts.state",
+  "source_state_sha256": "1d9def11f03e7f499dbdef8aee8ca5b16a36c7f1a8d88e859c2635d8353fd3d4",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3Raft.state",
+  "state_sha256": "7493dca240279356febaa7dd3c7ba7a6d1b63e14e60e3f3dd943d71359318432"
+}
