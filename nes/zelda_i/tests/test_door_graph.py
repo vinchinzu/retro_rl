@@ -21,7 +21,14 @@ from zelda_i.door_graph import (
     L2_TRAPS_KEESE,
     L2_WEST_KEY,
     L2_WEST_OF_BOSS,
+    L3_COMPASS,
+    L3_DARKNUTS,
+    L3_ENTRY,
+    L3_RAFT_PASSAGE,
+    L3_SOUTH_DARKNUTS,
+    L3_ZOL_KEY_4B,
     LEVEL_2_DOOR_GRAPH,
+    LEVEL_3_DOOR_GRAPH,
     DoorDir,
     DungeonDoorGraph,
     GateKind,
@@ -30,6 +37,7 @@ from zelda_i.door_graph import (
     dirs_from_mask,
     door_dir_from_label,
     level_2_door_graph,
+    level_3_door_graph,
 )
 
 
@@ -348,3 +356,58 @@ def test_level2_fresh_copy_independent() -> None:
     # Mutating the copy must not touch the module seed.
     g.rooms[L2_ENTRY] = ()
     assert LEVEL_2_DOOR_GRAPH.edges_from(L2_ENTRY)
+
+
+# ---------------------------------------------------------------------------
+# Level 3 seed (Manji past-Darknuts LIVE 2026-08-07)
+# ---------------------------------------------------------------------------
+
+
+def test_level3_seed_core_rooms() -> None:
+    g = LEVEL_3_DOOR_GRAPH
+    assert g.level == 3
+    for rid in (
+        L3_ENTRY,
+        L3_DARKNUTS,
+        L3_ZOL_KEY_4B,
+        L3_COMPASS,
+        L3_SOUTH_DARKNUTS,
+        L3_RAFT_PASSAGE,
+    ):
+        assert rid in g.room_ids()
+
+
+def test_level3_darknuts_exits() -> None:
+    g = LEVEL_3_DOOR_GRAPH
+    up = g.exit_between(L3_DARKNUTS, L3_ZOL_KEY_4B, direction=DoorDir.UP)
+    assert up is not None and up.gate is GateKind.OPEN
+    left = g.exit_between(L3_DARKNUTS, L3_COMPASS, direction=DoorDir.LEFT)
+    assert left is not None and left.gate is GateKind.OPEN
+    bomb = [
+        e
+        for e in g.edges_from(L3_DARKNUTS)
+        if e.gate is GateKind.BOMB
+    ]
+    assert len(bomb) == 1
+    assert bomb[0].bomb_stand == (192, 141)
+
+
+def test_level3_raft_path_with_key_and_clear() -> None:
+    """Compass path needs 1 key + kill clears to reach stairs room."""
+    path = LEVEL_3_DOOR_GRAPH.bfs_path(
+        L3_DARKNUTS,
+        L3_SOUTH_DARKNUTS,
+        InventoryCaps(keys=1, bombs=0, can_clear=True),
+    )
+    assert path is not None
+    rooms = [L3_DARKNUTS, *[e.target_room for e in path]]
+    assert L3_COMPASS in rooms
+    assert rooms[-1] == L3_SOUTH_DARKNUTS
+    assert any(e.gate is GateKind.KEY for e in path)
+
+
+def test_level3_fresh_copy() -> None:
+    g = level_3_door_graph()
+    assert g.room_ids() == LEVEL_3_DOOR_GRAPH.room_ids()
+    g.rooms[L3_ENTRY] = ()
+    assert LEVEL_3_DOOR_GRAPH.edges_from(L3_ENTRY)
