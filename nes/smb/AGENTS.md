@@ -42,10 +42,11 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 # Control-relative HappyLee 4-1 + 4-2 → W8 (after HL W4)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice
-# Record verified HL chain MP4 (HUD+audio; Level1_1 → W4/W8; not raw power-on)
+# Record HL / hybrid MP4 (HUD+audio; Level1_1; not raw power-on)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.record_happylee --to w8
-# uv run python -m smb.scripts.record_happylee --to w4
+  uv run python -m smb.scripts.record_happylee --to ending   # hybrid axe ~5:12
+# uv run python -m smb.scripts.record_happylee --to w8
+# uv run python -m smb.scripts.import_fm2 --verify-8-1-8-2-slice
 
 # 1-2 underground polish (control-relative; keeps reactive gates)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -97,14 +98,10 @@ Best Clean power-on: **21,559f** 3/3
 (`smb_1_1_to_ending_natural_82.json`). Published continuous MP4:
 `recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4`.
 
-**Prefer TAS adapt over hill-climb** (`docs/TAS_ADAPT.md`): HappyLee FM2
-vendored; isolated 1-1 **1733f** + natural-entry settle=1 **1749f**;
-control-relative 1-2 W4 **1657f** (@2109) → ≈**3555f to W4** (−329);
-4-1 **2062f** (@3968) + 4-2 **1516f** (@6207) → ≈**7512f to W8** (−5116
-vs natural_82). W8 **probe only** (no seed export): 8-1 **2881f** @7930
-(wait81=209 odd but **even** FM2); 8-2 **2209f** @10910; 8-3/8-4 open.
-Full power-on FM2 desyncs on fceumm — adapt **per level from control**,
-preserve L+R; search both parities if wait-match fails; 4-2 timer may be
-0; 4-2 is glitch path (validate video+RAM). Stage board + WR table in
-`docs/TAS_ADAPT.md`. Old 8-1 polish −42f kept but secondary. Import:
-`python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice`.
+**Prefer TAS adapt over hill-climb** (`docs/TAS_ADAPT.md`): HappyLee through
+8-2 verified + exported; **hybrid ending** (HL→8-2 + natural_82@15933)
+**18,769f / 5:12.3** Level1_1→axe (**−2790** vs n82; **+739** vs sub-5).
+Seeds: `smb_*_happylee_slice.json` (1-1…8-2) + `smb_happylee_hybrid_ending.json`.
+Record: `record_happylee --to ending` → `recordings/tas_import/happylee_ending.mp4`.
+**8-3 pure HL still open** (phase miss; continuous dies early) — landing it
+projects **sub-5** (~4:57 class). Full power-on FM2 desyncs on fceumm.

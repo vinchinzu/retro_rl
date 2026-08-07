@@ -5,19 +5,21 @@ control-relative chain we already verify:
 
   Level1_1 → HL 1-1 → surface → HL 1-2 → W4
            → 4-1 control → HL 4-1 → 4-2 control → HL 4-2 → W8
+           → 8-1 → 8-2 → hybrid 8-3/8-4 (natural_82) → axe
 
 Uses the same ``_VideoWriter`` path as ``run_warp_finish --record`` (footer
 timer, NES buttons, optional audio). Timer is gameplay-only (intro excluded).
 
 ```bash
-# HL chain to World 8 (~2:05 RTA-class; sub-5 min showcase)
+# Full hybrid clear (~5:12; HL through 8-2 + natural 8-3/8-4)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
-  uv run python -m smb.scripts.record_happylee --to w8
+  uv run python -m smb.scripts.record_happylee --to ending
 
-# Stop at W4 only
+# HL chain to World 8 (~2:05)
+uv run python -m smb.scripts.record_happylee --to w8
+
+# Stop at W4 only / isolated 1-1
 uv run python -m smb.scripts.record_happylee --to w4
-
-# Isolated 1-1 from Level1_1
 uv run python -m smb.scripts.record_happylee --to 1-1
 ```
 
@@ -47,10 +49,12 @@ from smb.ram import (
     PLAYER_STATE_DYING,
     WORLD_INDEX_8,
     read_snapshot,
+    reached_ending,
     reached_world_4,
 )
 from smb.reactive_12 import is_surface_control
 from smb.scripts.run_warp_finish import (
+    ENDING_PEACH_HOLD_FRAMES,
     _VideoWriter,
     _env_audio_rate,
     _write_video,
@@ -59,6 +63,9 @@ from smb.tas.slice import (
     HL_1_1_SETTLE,
     is_4_1_control,
     is_4_2_control,
+    is_8_1_control,
+    is_8_2_control,
+    is_8_3_control,
 )
 from smb.timing import NTSC_FPS, format_time
 
@@ -67,11 +74,14 @@ SEED_1_1 = MODELS_DIR / "smb_1_1_happylee_slice.json"
 SEED_1_2 = MODELS_DIR / "smb_1_2_happylee_slice.json"
 SEED_4_1 = MODELS_DIR / "smb_4_1_happylee_slice.json"
 SEED_4_2 = MODELS_DIR / "smb_4_2_happylee_slice.json"
+SEED_8_1 = MODELS_DIR / "smb_8_1_happylee_slice.json"
+SEED_8_2 = MODELS_DIR / "smb_8_2_happylee_slice.json"
+SEED_HYBRID_ENDING = MODELS_DIR / "smb_happylee_hybrid_ending.json"
 
 # Brief hold after target so the last milestone is visible on video.
 DEFAULT_TAIL_HOLD = 120
 
-TARGETS = ("1-1", "w4", "w8")
+TARGETS = ("1-1", "w4", "w8", "ending")
 
 
 def _idle9() -> np.ndarray:
@@ -493,13 +503,158 @@ class _Stop(Exception):
     """Control-flow for early success / failure exit from the try body."""
 
 
+def record_hybrid_ending(
+    *,
+    seed_path: Path = SEED_HYBRID_ENDING,
+    record_path: Path | None = None,
+    record_scale: int = 3,
+    record_hud: bool = True,
+    record_audio: bool = True,
+    intro_frames: int = DEFAULT_INTRO_FRAMES,
+    intro_enabled: bool = True,
+    peach_hold: int = ENDING_PEACH_HOLD_FRAMES,
+    out_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Record continuous hybrid seed (HL→8-2 + natural 8-3/8-4) to axe + Peach.
+
+    Seed already embeds Level1_1 settle=2 and fixed control waits. Do not add
+    extra settle before playback.
+    """
+    out_dir = out_dir or DEFAULT_OUT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if record_path is None:
+        record_path = out_dir / "happylee_ending.mp4"
+
+    frames = expand_nes9_rle(load_nes9_rle_seed(seed_path))
+    configure_headless()
+    env = make_env(GAME_V0, "Level1_1", GAME_DIR, render_mode="rgb_array")
+    result = env.reset()
+    obs = result[0] if isinstance(result, tuple) else result
+    if obs is None:
+        obs = env.render()
+    h, w = int(obs.shape[0]), int(obs.shape[1])
+    audio_rate = _env_audio_rate(env) if record_audio else None
+    video = _VideoWriter(
+        record_path,
+        width=w,
+        height=h,
+        scale=record_scale,
+        audio_rate=audio_rate,
+        hud=record_hud,
+        route_label="SMB HL hybrid",
+    )
+    if intro_enabled and intro_frames > 0:
+        lines = project_intro_lines(
+            game_title="Super Mario Bros. (NES)",
+            run_summary="HappyLee hybrid any% → 8-4 axe",
+            extra_lines=(
+                "HL warps through 8-2 + natural_82 8-3/8-4 tail",
+                "fceumm control-relative (not raw #1715 power-on)",
+            ),
+        )
+        video.write_intro(lines, hold_frames=intro_frames)
+    _write_video(video, obs, env=env, action=None, label="reset")
+
+    idle = _idle9()
+    start_lives: int | None = None
+    ending_frame: int | None = None
+    death_frame: int | None = None
+    frame = 0
+    stages: dict[str, Any] = {"seed": str(seed_path), "seed_frames": len(frames)}
+
+    try:
+        for i, fr in enumerate(frames):
+            frame = i + 1
+            obs, snap = _step_video(
+                env, _act(fr), video, label="hybrid", frame_i=frame
+            )
+            if start_lives is None and int(snap.oper_mode) == 1 and 0 <= int(snap.lives) <= 8:
+                if int(snap.player_state) in (0, 7, 8) and 0 < int(snap.player_x) < 200:
+                    start_lives = int(snap.lives)
+            if start_lives is None:
+                continue
+            ram = env.get_ram()
+            if reached_ending(ram, start_lives=start_lives):
+                ending_frame = frame
+                break
+            if int(snap.lives) < start_lives or int(snap.player_state) == PLAYER_STATE_DYING:
+                death_frame = frame
+                break
+
+        peach = 0
+        if ending_frame is not None and peach_hold > 0:
+            for j in range(peach_hold):
+                frame += 1
+                _step_video(env, idle, video, label="peach", frame_i=frame)
+                peach += 1
+        stages["ending_frame"] = ending_frame
+        stages["death_frame"] = death_frame
+        stages["peach_hold"] = peach
+    finally:
+        end_snap = read_snapshot(env.get_ram(), frame=frame)
+        timer_frames = video.timer_frames
+        intro_n = video.intro_frames
+        try:
+            video.close()
+        except Exception as exc:  # noqa: BLE001
+            stages["video_close_error"] = str(exc)
+        env.close()
+
+    success = ending_frame is not None and death_frame is None
+    chain = ending_frame or frame
+    report: dict[str, Any] = {
+        "success": success,
+        "outcome": "ending" if success else ("death" if death_frame else "incomplete"),
+        "target": "ending",
+        "start_state": "Level1_1",
+        "settle": 0,  # baked into hybrid seed
+        "total_gameplay_frames": frame,
+        "chain_frames_to_target": chain,
+        "chain_time_ntsc": format_time(chain, NTSC_FPS),
+        "timer_frames_hud": timer_frames,
+        "intro_frames": intro_n,
+        "stages": stages,
+        "end_snapshot": {
+            "world": int(end_snap.world) + 1,
+            "level": int(end_snap.level) + 1,
+            "player_x": int(end_snap.player_x),
+            "lives": int(end_snap.lives),
+            "timer": int(end_snap.timer),
+            "oper_mode": int(end_snap.oper_mode),
+            "player_state": int(end_snap.player_state),
+        },
+        "seeds": {"hybrid": str(seed_path)},
+        "recording": {
+            "path": str(record_path),
+            "scale": record_scale,
+            "hud": record_hud,
+            "audio": audio_rate is not None,
+            "audio_rate": audio_rate,
+            "exists": record_path.exists(),
+            "bytes": record_path.stat().st_size if record_path.exists() else 0,
+        },
+        "note": (
+            "Hybrid: HappyLee bodies through 8-2 + natural_82@15933 for 8-3/8-4. "
+            "Level1_1 continuous (not Clean power-on). ~5:12 until HL 8-3 phase lands."
+        ),
+        "vs_natural_82_ending": 21559,
+        "delta_vs_natural_82_ending": 21559 - chain if success else None,
+        "sub_5_min_budget_frames": 18_030,
+        "delta_vs_sub_5": chain - 18_030 if success else None,
+    }
+    rep_path = record_path.with_suffix(".json")
+    write_json_report(rep_path, report)
+    report["report_path"] = str(rep_path)
+    return report
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--to",
         choices=TARGETS,
-        default="w8",
-        help="recording target milestone (default: w8)",
+        default="ending",
+        help="recording target milestone (default: ending)",
     )
     p.add_argument(
         "--record-path",
@@ -523,30 +678,50 @@ def main(argv: list[str] | None = None) -> int:
         "--tail-hold",
         type=int,
         default=DEFAULT_TAIL_HOLD,
-        help=f"idle frames after target (default {DEFAULT_TAIL_HOLD})",
+        help=f"idle frames after non-ending targets (default {DEFAULT_TAIL_HOLD})",
+    )
+    p.add_argument(
+        "--peach-hold",
+        type=int,
+        default=ENDING_PEACH_HOLD_FRAMES,
+        help=f"post-ending Peach hold (default {ENDING_PEACH_HOLD_FRAMES})",
     )
     p.add_argument("--seed-1-1", type=Path, default=SEED_1_1)
     p.add_argument("--seed-1-2", type=Path, default=SEED_1_2)
     p.add_argument("--seed-4-1", type=Path, default=SEED_4_1)
     p.add_argument("--seed-4-2", type=Path, default=SEED_4_2)
+    p.add_argument("--seed-hybrid", type=Path, default=SEED_HYBRID_ENDING)
     args = p.parse_args(argv)
 
-    report = record_happylee(
-        target=args.to,
-        record_path=args.record_path,
-        seed_1_1=args.seed_1_1,
-        seed_1_2=args.seed_1_2,
-        seed_4_1=args.seed_4_1,
-        seed_4_2=args.seed_4_2,
-        settle=args.settle,
-        record_scale=args.record_scale,
-        record_hud=not args.no_record_hud,
-        record_audio=not args.no_record_audio,
-        intro_frames=0 if args.no_intro else max(0, args.intro_frames),
-        intro_enabled=not args.no_intro and args.intro_frames != 0,
-        tail_hold=max(0, args.tail_hold),
-        out_dir=args.out_dir,
-    )
+    if args.to == "ending":
+        report = record_hybrid_ending(
+            seed_path=args.seed_hybrid,
+            record_path=args.record_path,
+            record_scale=args.record_scale,
+            record_hud=not args.no_record_hud,
+            record_audio=not args.no_record_audio,
+            intro_frames=0 if args.no_intro else max(0, args.intro_frames),
+            intro_enabled=not args.no_intro and args.intro_frames != 0,
+            peach_hold=max(0, args.peach_hold),
+            out_dir=args.out_dir,
+        )
+    else:
+        report = record_happylee(
+            target=args.to,
+            record_path=args.record_path,
+            seed_1_1=args.seed_1_1,
+            seed_1_2=args.seed_1_2,
+            seed_4_1=args.seed_4_1,
+            seed_4_2=args.seed_4_2,
+            settle=args.settle,
+            record_scale=args.record_scale,
+            record_hud=not args.no_record_hud,
+            record_audio=not args.no_record_audio,
+            intro_frames=0 if args.no_intro else max(0, args.intro_frames),
+            intro_enabled=not args.no_intro and args.intro_frames != 0,
+            tail_hold=max(0, args.tail_hold),
+            out_dir=args.out_dir,
+        )
     # Compact stdout for agents; full detail in JSON.
     summary = {
         "success": report["success"],
@@ -558,15 +733,17 @@ def main(argv: list[str] | None = None) -> int:
         "bytes": report["recording"]["bytes"],
         "report": report.get("report_path"),
     }
-    if "delta_vs_natural_82_8_1_entry" in report:
-        summary["delta_vs_natural_82_8_1_entry"] = report[
-            "delta_vs_natural_82_8_1_entry"
-        ]
-    if "delta_vs_hl_probe_w8" in report:
-        summary["delta_vs_hl_probe_w8"] = report["delta_vs_hl_probe_w8"]
+    for k in (
+        "delta_vs_natural_82_8_1_entry",
+        "delta_vs_hl_probe_w8",
+        "delta_vs_natural_82_ending",
+        "delta_vs_sub_5",
+    ):
+        if k in report:
+            summary[k] = report[k]
     print(json.dumps(summary, indent=2))
     if not report["success"]:
-        print(json.dumps(report["stages"], indent=2), file=sys.stderr)
+        print(json.dumps(report.get("stages", {}), indent=2), file=sys.stderr)
     return 0 if report["success"] else 1
 
 

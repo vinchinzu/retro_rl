@@ -87,6 +87,10 @@ roms/
 **/replays/
 **/demos/
 **/tas/
+# SMB TAS adapt toolkit (Python package under nes/smb/tas/; keep *.fm2 ignored)
+!nes/smb/tas/
+!nes/smb/tas/**/*.py
+!nes/smb/tas/**/__init__.py
 *.bk2
 *.fm2
 *.replay.jsonl
@@ -256,6 +260,14 @@ nes/smb/models/*
 !nes/smb/models/smb_1_1_to_ending_reactive_83_84.json
 !nes/smb/models/smb_4_2_fast_w8.json
 !nes/smb/models/smb_8_1_control_best.json
+!nes/smb/models/smb_1_1_to_ending_natural_82.json
+!nes/smb/models/smb_1_1_happylee_slice.json
+!nes/smb/models/smb_1_2_happylee_slice.json
+!nes/smb/models/smb_4_1_happylee_slice.json
+!nes/smb/models/smb_4_2_happylee_slice.json
+!nes/smb/models/smb_8_1_happylee_slice.json
+!nes/smb/models/smb_8_2_happylee_slice.json
+!nes/smb/models/smb_happylee_hybrid_ending.json
 !nes/smb/recordings/
 nes/smb/recordings/*
 !nes/smb/recordings/reactive_warp/

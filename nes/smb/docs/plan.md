@@ -49,8 +49,38 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
     Natural continuous splice probe: 8-1 exit **12628→12585**, split
     **3666→3624** (−42). Artifact: `models/smb_8_1_control_best.json`.
     Unpromoted full seed: `smb_1_1_to_ending_natural_81_polished_unpromoted.json`.
-    **Next:** retime 8-2+ for the −42f phase shift, then power-on 3/3.
+    Kept; **not** the main claw-back path (see 5i).
     Evidence: `recordings/segment_8_1/polish_8_1_report.json`.
+5i. **TAS adapt track (2026-08-07):** stop primary hill-climb. Pull open
+    WR-class movies + trick catalog; adapt under fceumm.
+    - Vendored: `tas/ref/happylee_warps_1715M.fm2` (TASVideos #1715),
+      `tas/ref/flamexx_warps_rta_4_54_099.fm2`
+    - Tooling: `smb.tas.fm2`, `smb.tas.slice`, `smb.scripts.import_fm2`
+      (parse, verify, align-search, **--verify-1-2-slice** / export / search).
+      **L+R preserved**; FM2 `T`=Start.
+    - Power-on full FM2 **desyncs** on fceumm (blackout longer than FCEUX).
+    - **Isolated Level1_1** HappyLee slice **1733f clear**
+      (`models/smb_1_1_happylee_slice.json`) vs our ~1903 — **≈−170–190f**.
+    - **Natural-entry 1-1:** odd settle (default 1) clears **1749f**; even dies.
+    - **Control-relative 1-2 W4:** FM2 start **2109**, body **1657f**
+      (`models/smb_1_2_happylee_slice.json`). Chain ≈ **3555f to W4**
+      (−329 vs natural_82 3884). Odd start indices after odd ctrl_wait.
+    - **Control-relative 4-1 / 4-2 → W8:** FM2 **3968**/2062f + **6207**/1516f
+      (`smb_4_1_happylee_slice.json`, `smb_4_2_happylee_slice.json`).
+      Chain ≈ **7512f to W8** (−5116 vs natural_82 12628). Even 4-1 /
+      odd 4-2 parity; 4-2 gate allows timer=0. **4-2 is glitch/warp path**
+      (not natural vine) — video+RAM audit before full promote.
+    - **W8 8-1/8-2 exported + verified:** wait81=209 → 8-1 @7930/2881;
+      wait82=165 → 8-2 @10910/2209; to 8-3 load **12976**. Seeds
+      `smb_8_1_happylee_slice.json`, `smb_8_2_happylee_slice.json`.
+    - **Hybrid full clear (3/3):** natural_82@**15933** after HL 8-3
+      control → axe. Seed `smb_happylee_hybrid_ending.json` **18769f /
+      5:12.3** (−2790 vs n82; **+739** vs sub-5). MP4
+      `recordings/tas_import/happylee_ending.mp4`.
+    - **Pure HL 8-3/8-4 still open** (phase); needed for sub-5 (~4:57 class).
+    - **Next:** (1) land HL 8-3 phase (or flamexx tail); (2) export 8-3/8-4
+      + fold pure continuous; (3) Clean power-on only after full HL chain.
+      Keep natural_82 + hybrid as baselines.
 6. **Route contracts + natural predecessor evaluator (2026-08-01):** done.
    `smb.reactive_route` tracks declared successors and entry fingerprints;
    `smb.scripts.run_reactive_warp` runs stairs + reactive 1-2 and retimed
@@ -93,6 +123,22 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.polish_8_1 --windows late --delete-stride 1
 uv run python -m smb.scripts.polish_8_1 --baseline-only
+
+# TAS / FM2 import (prefer over blind hill-climb)
+uv run python -m smb.scripts.import_fm2 --summary-only
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.import_fm2 --verify
+# HappyLee 1-1 slice (Level1_1, settle=2, fm2 index 190)
+uv run python -m smb.scripts.tas_1_1 verify \
+  --seed nes/smb/models/smb_1_1_happylee_slice.json
+# Natural-entry 1-1 + control-relative 1-2 → W4
+uv run python smb/scripts/run_1_1.py --natural-entry \
+  --seed nes/smb/models/smb_1_1_happylee_slice.json
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.import_fm2 --verify-1-2-slice
+# HL 4-1 + 4-2 → W8
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice
 ```
 
 ## Notes

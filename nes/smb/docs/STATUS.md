@@ -211,9 +211,10 @@ uv run python -m smb.scripts.fold_continuous_policy
   | 1-2 → W4 | `smb_1_2_happylee_slice.json` | FM2 @**2109**, **1657f** W4; chain ≈**3555** to W4 (**−329** vs natural_82 3884) |
   | 4-1 | `smb_4_1_happylee_slice.json` | FM2 @**3968**, **2062f** leave; **≈−252f** vs 2314 |
   | 4-2 → W8 | `smb_4_2_happylee_slice.json` | FM2 @**6207**, **1516f** W8; chain ≈**7512** to W8 (**−5116** vs natural_82 12628) |
-  | 8-1 | *(probe only — no export)* | FM2 @**7930**, leave **2881** (wait81=209); ≈**−785f** body vs 3666 |
-  | 8-2 | *(probe only — no export)* | FM2 @**10910**, leave **2209** (wait82=165); ≈**−942f** body vs 3151 |
-  | 8-3 / 8-4 | — | **open** (8-3 phase miss after fast 8-2) |
+  | 8-1 | `smb_8_1_happylee_slice.json` | FM2 @**7930**, leave **2881** (wait81=209); ≈**−785f** body |
+  | 8-2 | `smb_8_2_happylee_slice.json` | FM2 @**10910**, leave **2209** (wait82=165); ≈**−942f** body |
+  | 8-3 / 8-4 | hybrid tail (natural_82@**15933**) | pure HL **open** (phase); hybrid **5626f** → axe |
+  | **hybrid full** | `smb_happylee_hybrid_ending.json` | Level1_1→axe **18,769f / 5:12.3** (−2790 vs n82; **+739** vs sub-5) |
 
   ### HL chain vs natural_82 (exit-detect frames + NTSC)
 
@@ -239,15 +240,14 @@ uv run python -m smb.scripts.fold_continuous_policy
   | RTA | **05:58.726** (21,559f) | **04:54.032** (17,671f) | +01:04.693 |
   | Power-on | **06:04.816** (21,925f) | **04:57.31** (17,868f) | +01:07.505 |
 
-  Commands: `tas_1_1 verify --seed …happylee_slice`,
-  `import_fm2 --verify-1-2-slice`, `import_fm2 --verify-4-1-4-2-slice`,
-  `record_happylee --to w8` (MP4 + HUD/audio).
-  Evidence: `recordings/tas_import/happylee_1_1_natural_settle_search.json`,
-  `happylee_1_2_slice_verify.json`, `happylee_4_1_4_2_slice_verify.json`,
-  `happylee_w8_probe_summary.json`,
-  **video** [`happylee_w8.mp4`](../recordings/tas_import/happylee_w8.mp4)
-  (Level1_1→W8, chain **7514f** / **2:05.027** incl. settle=2; −5114 vs n82
-  8-1 entry; not full axe — W8 still probe-only).
+  Commands: `import_fm2 --verify-8-1-8-2-slice`,
+  `record_happylee --to ending` (full hybrid MP4).
+  Evidence: `happylee_8_1_8_2_slice_verify.json`,
+  `happylee_hybrid_ending_verify.json` (3/3),
+  **video** [`happylee_ending.mp4`](../recordings/tas_import/happylee_ending.mp4)
+  (Level1_1→axe **18,769f / 5:12.3**, HUD+audio+Peach; **not** Clean power-on;
+  **not** sub-5 yet — need pure HL 8-3/8-4).
+  Also: `happylee_w8.mp4` (to W8 only, 2:05).
 
 ### First-pipe landing fix (continuous seed)
 
