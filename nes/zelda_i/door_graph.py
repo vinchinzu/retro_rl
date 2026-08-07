@@ -700,24 +700,31 @@ def _l2_exits() -> dict[int, tuple[RoomExit, ...]]:
                 DoorDir.LEFT,
                 L2_WEST_OF_BOSS,
                 GateKind.KILL_CLEAR,
-                notes="after kill doors often LEFT only; 0x0d north-corridor residual",
+                notes=(
+                    "after kill doors LEFT only → 0x0d TF (WEST of boss); "
+                    "south-band maze (208,141)→(208,189)→(128,189)→(128,149)"
+                ),
                 verification="observed",
             ),
             RoomExit(
                 DoorDir.RIGHT,
                 None,
                 GateKind.SEALED,
-                notes="walkthrough TF east — live sealed (key/bomb/push fail)",
+                notes=(
+                    "walkthrough 'TF east of boss' is wrong live — RIGHT sealed "
+                    "(key/bomb/push fail); TF is LEFT→0x0d"
+                ),
                 verification="observed",
             ),
         ),
-        # West of boss after kill: north-corridor only; TF not collected yet.
+        # West of boss (0x0d): TF collect LIVE assisted (south-band maze).
+        # Free: east column x≈208, south band y≈189, diamond corridors to (128,149).
         L2_WEST_OF_BOSS: (
             RoomExit(
                 DoorDir.RIGHT,
                 L2_DODONGO,
                 GateKind.OPEN,
-                notes="return east to boss",
+                notes="return east to boss room 0x0e",
                 verification="observed",
             ),
         ),

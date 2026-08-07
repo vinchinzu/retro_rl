@@ -15,14 +15,16 @@ parallel isolated pure from checkpoints).
 Infinite life is intentional for first-pass agents. Do not stall L2 tip on
 sword kiting once geometry is known.
 
-## Live tip (L2 — other agents)
+## Live tip (L3 Manji — assist-first)
 
 | Gate | Status | Notes |
 |------|--------|-------|
 | Power-on → L1 Triforce | **Clean green** | M5 |
-| L2 interior → TF `0x02` | **active tip** | epic `rr-ci7` |
-| Tip leaf | **rr-n5i** | Dodongo 0x0e + HC LIVE; **TF 0x02 exit residual** |
-| Next | TF after boss (RIGHT sealed / 0x0d dead-end) → `rr-5dk` | |
+| L2 Boom → TF `0x02` | **assisted green 2/2** | `rr-5dk` / `rr-n5i`; `l2_complete_assisted.json` |
+| Post-L2 → L3 enter | **assisted green 2/2** | `rr-rnx`; `l2_to_l3_assisted.json`; epic `rr-ci7` closed |
+| Checkpoints | **`Level2ExitOverworld`**, **`Level3Entrance`** | post-TF OW 0x3C; Manji room 0x7c |
+| Tip leaf | **L3 interior** | west key / north pure already; Raft → Manhandla → TF `0x04` (`rr-vpl`) |
+| Deferred | Clean residual `rr-4oz` until full-game assist pass | not tip-blocking |
 
 ### All-night wave results (2026-08-06 night)
 

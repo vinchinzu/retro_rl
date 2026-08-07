@@ -107,8 +107,8 @@ Assisted recon from `Level2Entrance` (Survival, 2026-08-06):
 | East of 0x6d | live door probe | **0x6e**, **3× Rope `0x28`**, RoomItemId `0x03` (no key); RIGHT residual |
 | Magical Boomerang room | **isolated pure Clean** | **0x4f** via 0x5f bomb-N; 3× type `0x05` + fireballs `0x55`; RoomItemId `0x1e` |
 | Magical Boomerang RAM | Data Crystal + pure | `ADDR_BOOMERANG=0x0674`, `ADDR_MAGIC_BOOMERANG=0x0675` stop ≠0 |
-| Dodongo needs bombs | walkthrough | not yet |
-| Triforce bit 0x02 | walkthrough | not yet |
+| Dodongo needs bombs | walkthrough + live | **LIVE** bomb-mouth type `0x32` (assisted) |
+| Triforce bit 0x02 | live assisted | **LIVE 2/2** Boom→TF (`rr-5dk`) |
 
 Specs + controllers: `dungeon.ROOM_7D_SPEC`, `ROOM_6D_SPEC`, `ROOM_6C_SPEC`,
 `ROOM_7E_SPEC`; `ROPE_OBJECT_TYPE=0x28`; `GenericDungeonRoomController`. Stops:
@@ -297,18 +297,79 @@ see room specs, not this catalog).
 
 Code lists: `BOMB_WALL_NEGATIVES_6F`, `SEALED_EXITS` in `level2_puzzles.py`.
 
-## Dodongo / triforce 0x02 (`rr-n5i` PARTIAL, 2026-08-07)
+## L2 assisted complete LIVE (`rr-5dk`, 2026-08-07)
 
-Goal: bomb Dodongo → Heart Container → TF room → `ADDR_TRIFORCE & 0x02`.
-**Boss + HC LIVE (assisted).** TF bit still residual.
+**Assisted tip green:** continuous `Level2Boom` → Dodongo → TF south-band →
+`ADDR_TRIFORCE & 0x02` **2/2**. Survival only (`--infinite-life`). **Not**
+Clean STATUS / natural power-on (deferred).
+
+| | |
+|--|--|
+| Start | `Level2Boom` (0x4f Magical Boomerang owned) |
+| Stop | `tf & 0x02`, mode 18, room **0x0d** @(128,149) |
+| Trials | **2/2** assisted |
+| Fight | Dodongo type `0x32` bomb-mouth ~1632f |
+| TF phase | south-band policy ~513f (`policy_live=True`) |
+| Checkpoint | **`Level2Complete.state`** (+ provenance) |
+| Runner | `scripts/run_level2_dodongo.py` / `scripts/run_level2_complete.py` |
+| Evidence | `recordings/l2_complete_assisted.json` (+ `_t0`/`_t1`/`_summary`) |
+| Prior geometry | `recordings/l2_tf02_encode.json` (`rr-n5i`) |
+
+```bash
+uv run python nes/zelda_i/scripts/run_level2_dodongo.py \
+  --infinite-life --from-state Level2Boom --trials 2 \
+  --tag l2_complete_assisted --save-state
+# or:
+uv run python nes/zelda_i/scripts/run_level2_complete.py \
+  --infinite-life --trials 2 --save-state
+```
+
+**Compose scope:** post-boom tip only (one env session, no mid-run state load).
+Earlier pure segments (entry ropes / keys / compass / boom) remain **isolated
+Clean green** from their own checkpoints. Full **Entrance→TF** continuous
+multi-controller compose and power-on L1+L2 are **PARTIAL / deferred** — do
+not block L3 tip on them. Clean residual after damage heatmaps: `rr-4oz`.
+
+## Dodongo / triforce 0x02 (`rr-n5i` assisted LIVE geometry, 2026-08-07)
+
+Goal: bomb Dodongo → Heart Container → **LEFT** into TF room **0x0d** →
+`ADDR_TRIFORCE & 0x02`.
+**Boss + HC + TF collect path LIVE (assisted).** Not Clean STATUS / natural-entry.
+
+**Geometry trap:** walkthrough “TF **east** of boss” is **wrong live**. After
+kill, doors are **LEFT-only** → room **0x0d** is **WEST** of Dodongo 0x0e.
+RIGHT is sealed (key/bomb/push fail). Catalog: `ROOM_L2_BOSS=0x0E`,
+`ROOM_L2_TF=0x0D`, `L2_TF_COLLECT_WAYPOINTS` in `level2_puzzles.py`.
 
 ### Post-boom tip chain (assisted LIVE)
 
 ```text
 0x4f bomb N @(120,101) → 0x3f Keese → LEFT 0x3e Moldorm → UP 0x2e ropes clear
   → UP 0x1e Goriya clear → bomb N @(120,101) → 0x0e Dodongo (type 0x32)
-  → bomb-mouth → HC → LEFT 0x0d (corridor) / RIGHT SEALED
+  → bomb-mouth → HC → LEFT 0x0d (WEST of boss) / RIGHT SEALED
+  → south-band maze → tf & 0x02 (mode 18)
 ```
+
+### 0x0d triforce collect (LIVE south-band maze)
+
+Spawn after LEFT from boss: **~(224, 141)**. Do **not** sit in east alcove —
+first free column is **x≈208**. Diamond floor is a maze open from the **south**
+(not a solid seal). North-band green sprite is a **red herring** (full y=93 walk
+never sets `tf&0x02`). Push/bomb not required.
+
+```text
+(208, 141) → (208, 189) → (128, 189) → (128, 149) → idle until mode 18 / tf&0x02
+```
+
+| | |
+|--|--|
+| Collect box | x∈[112,128], y∈[140,149] (hit ~(128,149)) |
+| tol | ≈3 |
+| Constants | `L2_TF_COLLECT_WAYPOINTS`, `POST_BOSS_TF_POLICY` (`live=True`) |
+| Checkpoint | `Level2_0D_PostBoss` |
+| Runner | `run_level2_dodongo._collect_and_tf` (hardcoded + JSON override) |
+| Probe | `probe_level2_0d_tf.py --policy-only` |
+| Evidence | `recordings/l2_0d_tf_reach.json`, `l2_tf02_encode.json` |
 
 | Claim | Live |
 |-------|------|
@@ -320,9 +381,9 @@ Goal: bomb Dodongo → Heart Container → TF room → `ADDR_TRIFORCE & 0x02`.
 | **0x1e** bomb N @(120,101) | **LIVE → 0x0e** Dodongo ★ |
 | Dodongo type | **`0x32`** |
 | Boss kill + HC | LIVE assisted (`heart_containers` rises; `Level2_0E`) |
-| Post-kill doors | **LEFT=2 only** → 0x0d; RIGHT sealed (key/bomb/push fail) |
-| **0x0d** | north-corridor free cells only; room_item `0x1b`; center blocked |
-| `triforce & 0x02` | **not set** |
+| Post-kill doors | **LEFT=2 only** → **0x0d** (WEST); RIGHT sealed |
+| **0x0d** TF collect | **LIVE assisted** south-band waypoints; `room_item` `0x1b` |
+| `triforce & 0x02` | **LIVE 2/2 assisted** Boom→TF (`rr-5dk`; `l2_complete_assisted.json`) |
 
 Bombs inventory notes (for future boss policy):
 
@@ -441,9 +502,10 @@ From `Level1ExitOverworld` with `LEVEL2_DOOR_HOPS` + `require_level2_screen`
 - [x] Open past 0x5e/0x5f: **0x4e / 0x4f / 0x3e** live + graph edges (`rr-cjf`; `l2_cjf_expand.json`)
 - [ ] 0x4f boom clear + Magical Boomerang pure 2/2 (`ADDR_MAGIC_BOOMERANG`; `rr-bsq` / `rr-ebe`)
 - [x] Dodongo path recon (`rr-a1t` **PARTIAL**) — boss not reached; residual past 0x4f / 0x3e
-- [ ] Live path past **0x4f/0x3e** → Dodongo (`rr-n5i` / `rr-ebe`)
-- [ ] Dodongo bomb-mouth pure + Heart + `triforce & 0x02` isolated 2/2
-- [ ] Natural-entry Moon complete (`rr-5dk`, blocked on pure TF)
+- [x] Live path past **0x4f/0x3e** → Dodongo + TF (`rr-n5i` geometry; `rr-5dk` compose)
+- [x] Assisted Boom→TF `0x02` **2/2** + `Level2Complete` (`l2_complete_assisted.json`)
+- [ ] Clean residual TF / damage harden (`rr-4oz`); pure 2/2 optional later
+- [ ] Natural-entry / Entrance→TF continuous compose (deferred; not tip-blocking)
 
 ## Room 0x5f further exits (`rr-cjf`, 2026-08-06)
 

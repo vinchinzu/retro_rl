@@ -1,0 +1,73 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T14:04:33.145682+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rnx",
+    "segment": "l2_to_l3_enter",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "entered_level3": true,
+    "final": {
+      "health": 127,
+      "level": 3,
+      "mode": 5,
+      "screen": "0x7c",
+      "sword": 1,
+      "tf02": true,
+      "triforce": 3,
+      "x": 120,
+      "y": 205
+    },
+    "frames": 7109,
+    "nav": {
+      "door_screen": 116,
+      "door_x": 128,
+      "entry_room": 124,
+      "frames": 7109,
+      "hop": null,
+      "hop_index": 16,
+      "leave_5b_phase": "WEST",
+      "maze_wp_index": 0,
+      "notes": [
+        "hop_0_4c",
+        "hop_1_4d",
+        "hop_2_5d",
+        "hop_3_5c",
+        "maze_start",
+        "hop_4_5b",
+        "maze_complete",
+        "5b_south",
+        "5b_west",
+        "hop_5_5a",
+        "hop_6_59",
+        "hop_7_58",
+        "hop_8_57",
+        "hop_9_56",
+        "hop_10_55",
+        "hop_11_65",
+        "hop_12_64",
+        "hop_13_63",
+        "hop_14_73",
+        "hop_15_74",
+        "door_hunt",
+        "level3_path_stop"
+      ],
+      "path": "post_l2",
+      "phase": "DONE",
+      "require_dungeon": true,
+      "require_level3_screen": false,
+      "start_screen": "0x3c",
+      "stuck": 0,
+      "success": true
+    },
+    "ok": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2ExitOverworld.state",
+  "source_state_sha256": "a917bd498102178c875aec8d8d23e429ee3ea14564bfbba5fb21adee6d7c7514",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3Entrance.state",
+  "state_sha256": "54130e3c30a319fae115f259bdba2b6903d8262229d681ede5344dd2d61ee8cd"
+}
