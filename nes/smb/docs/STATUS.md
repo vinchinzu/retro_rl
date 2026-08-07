@@ -213,8 +213,10 @@ uv run python -m smb.scripts.fold_continuous_policy
   | 4-2 → W8 | `smb_4_2_happylee_slice.json` | FM2 @**6207**, **1516f** W8; chain ≈**7512** to W8 (**−5116** vs natural_82 12628) |
   | 8-1 | `smb_8_1_happylee_slice.json` | FM2 @**7930**, leave **2881** (wait81=209); ≈**−785f** body |
   | 8-2 | `smb_8_2_happylee_slice.json` | FM2 @**10910**, leave **2209** (wait82=165); ≈**−942f** body |
-  | 8-3 / 8-4 | hybrid tail (natural_82@**15933**) | pure HL **open** (phase); hybrid **5626f** → axe |
-  | **hybrid full** | `smb_happylee_hybrid_ending.json` | Level1_1→axe **18,769f / 5:12.3** (−2790 vs n82; **+739** vs sub-5) |
+  | 8-3 | nat bridge `smb_8_3_natural_for_hl_hybrid.json` | pure HL **open** (max_x≈834); nat@15933 → 8-4 ctrl **2227f** |
+  | 8-4 | `smb_8_4_flamexx_slice.json` | FX @**15210**, ending **2661f** after nat 8-3 (HL alt 2833) |
+  | hybrid v1 | `smb_happylee_hybrid_ending.json` | 18,769f / 5:12.3 (nat 8-3/8-4) |
+  | **hybrid v2** | `smb_happylee_hybrid_v2_fx84.json` | Level1_1→axe **18,031f / 5:00.02** (−3528 vs n82; **+1** vs 18030) |
 
   ### HL chain vs natural_82 (exit-detect frames + NTSC)
 
@@ -226,11 +228,12 @@ uv run python -m smb.scripts.fold_continuous_policy
   | 4-2 / W8 | 8962 | 2764 | 00:45.991 | **7512** | 1516 | 00:25.225 | −1450 |
   | 8-1 | 12628 | 3666 | 01:01.000 | **≈10602** | 2881 | 00:47.938 | ≈−2026 |
   | 8-2 | 15779 | 3151 | 00:52.430 | **≈12976** | 2209 | 00:36.756 | ≈−2803 |
-  | 8-3 | 17985 | 2206 | 00:36.706 | — | — | — | open |
-  | 8-4 | **21559** | 3574 | 00:59.469 | — | — | — | open |
+  | 8-3 | 17985 | 2206 | 00:36.706 | bridge | nat | — | pure HL open |
+  | 8-4 | **21559** | 3574 | 00:59.469 | **≈18031** v2 | **2661 FX** | 00:44.277 | hybrid v2 |
 
-  \*HL body only (excludes control waits). Full-run still **natural_82** until
-  8-3/8-4 + fold. HL 4-2 is glitch/warp path (not vine) — validate video+RAM
+  \*HL body only (excludes control waits). Showcase continuous is **hybrid
+  v2** (Level1_1, not Clean power-on). Full-run Clean seed still
+  **natural_82** until fold. HL 4-2 is glitch/warp path — validate video+RAM
   before promote. Detail: `docs/TAS_ADAPT.md`.
 
   ### Full-run vs WR (promoted seed only)
@@ -241,12 +244,12 @@ uv run python -m smb.scripts.fold_continuous_policy
   | Power-on | **06:04.816** (21,925f) | **04:57.31** (17,868f) | +01:07.505 |
 
   Commands: `import_fm2 --verify-8-1-8-2-slice`,
-  `record_happylee --to ending` (full hybrid MP4).
+  `record_happylee --to ending` (hybrid v2 MP4).
   Evidence: `happylee_8_1_8_2_slice_verify.json`,
-  `happylee_hybrid_ending_verify.json` (3/3),
+  `happylee_hybrid_v2_fx84_verify.json` (3/3),
   **video** [`happylee_ending.mp4`](../recordings/tas_import/happylee_ending.mp4)
-  (Level1_1→axe **18,769f / 5:12.3**, HUD+audio+Peach; **not** Clean power-on;
-  **not** sub-5 yet — need pure HL 8-3/8-4).
+  (Level1_1→axe **18,031f / 5:00.02**, HUD+audio+Peach; **not** Clean
+  power-on; **+1f** vs 18030 sub-5 budget — pure HL 8-3 still open).
   Also: `happylee_w8.mp4` (to W8 only, 2:05).
 
 ### First-pipe landing fix (continuous seed)
@@ -337,7 +340,8 @@ Prior reactive (drop-5, pre−97f 1-2): ending **21,643f**. M8 baseline: **21,73
 ## Next
 
 1. **HappyLee W8 slices (rr-b8k):** encode 8-1/8-2 gates+export from probe
-   (7930/2881, 10910/2209); solve 8-3 phase then 8-4 → ending; full-chain
+   (7930/2881, 10910/2209); hybrid v2 18031f with FX 8-4; pure HL 8-3 phase
+   still open for ≤18030 / WR; full-chain
    verify + stage table vs WR before fold.
 2. **Default fold + capture**: only after HL chain to axe (or keep natural_82
    as published baseline). Re-record Clean power-on MP4 on promote.
