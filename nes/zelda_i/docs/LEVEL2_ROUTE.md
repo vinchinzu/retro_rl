@@ -228,6 +228,10 @@ corridor) stay residual until room IDs are live.
 | 0x6f | various | R / D / L | — | **FAIL** (no open) | `l2_6f_exits.json`, `l2_6f_bombn.json` |
 | 0x6f | dense y=96–105 (not 101) | UP | — | **FAIL** free-path miss | `l2_6f_exits.json` (stands e.g. (120,100),(120,105),(112,100)…) |
 | 0x5f | various | RIGHT | — | **FAIL** walk+bomb | `l2_cjf_expand.json` |
+| **0x4f** (boom) | **(120, 101)** | UP | **0x3f** | **LIVE** pure | `level2_bomb_north_4f_isolated.json` |
+| **0x1e** (Goriya) | **(120, 101)** | UP | **0x0e** Dodongo | **LIVE** assisted | `l2_1e_up.json`, `level2_dodongo.json` |
+| 0x1e | mid | walk UP | — | **FAIL** solid (doors=12) | `l2_1e_up.json` strict_x120 |
+| 0x0e | various | bomb R / walk R | TF? | **FAIL** sealed after kill | `l2_boss_exits.json` |
 
 **Open predicate (lab):** transition `0x6f → 0x5f` after B-place facing UP at
 stand; destination often `cur_opened_doors` **DOWN=4**. Inventory: need
@@ -293,23 +297,31 @@ see room specs, not this catalog).
 
 Code lists: `BOMB_WALL_NEGATIVES_6F`, `SEALED_EXITS` in `level2_puzzles.py`.
 
-## Dodongo / triforce 0x02 (`rr-a1t` / `rr-n5i` PARTIAL, 2026-08-06)
+## Dodongo / triforce 0x02 (`rr-n5i` PARTIAL, 2026-08-07)
 
-Goal: bomb Dodongo (2 mouths) → Heart Container → east TF room →
-`ADDR_TRIFORCE & 0x02`. **Not reached live.** Boss room / HC / TF IDs unknown.
+Goal: bomb Dodongo → Heart Container → TF room → `ADDR_TRIFORCE & 0x02`.
+**Boss + HC LIVE (assisted).** TF bit still residual.
+
+### Post-boom tip chain (assisted LIVE)
+
+```text
+0x4f bomb N @(120,101) → 0x3f Keese → LEFT 0x3e Moldorm → UP 0x2e ropes clear
+  → UP 0x1e Goriya clear → bomb N @(120,101) → 0x0e Dodongo (type 0x32)
+  → bomb-mouth → HC → LEFT 0x0d (corridor) / RIGHT SEALED
+```
 
 | Claim | Live |
 |-------|------|
-| Reachable graph | **0x6c↔0x6d↔0x6e↔0x6f↔0x7e↔0x7d** + **0x6f–bombN→0x5f↔0x5e** + **0x5e–UP→0x4e↔0x4f/0x3e** + **0x5f–bombN→0x4f** |
-| Entry **0x7d** east | **LIVE → 0x7e** (diamond-nav / pure 7e) |
-| **0x7e** east key | 5× Rope + `0x19`; UP→0x6e |
-| **0x6e** RIGHT | **LIVE → 0x6f** key door (`rr-c6b`) |
-| **0x6f** compass | **isolated pure 2/2** gels+`ADDR_COMPASS` (`rr-bcd`) |
-| **0x6f** bomb N | **LIVE → 0x5f** stand (120,101) (`rr-ebe` advance) |
-| **0x5f** bomb N | **LIVE → 0x4f** stand (120,101) (`rr-cjf`) |
-| **0x5e** free UP | **LIVE → 0x4e** ropes+key (`rr-cjf`) |
-| **0x4f** boom | entered; RoomItemId `0x1e`; pure collect residual (`rr-bsq` / `rr-ebe`) |
-| Dodongo object type | **unverified** (not entered) |
+| **0x4f** bomb N → **0x3f** | **isolated pure 2/2 Clean** (`run_level2_bomb_north_4f`) |
+| **0x3f** LEFT → **0x3e** Moldorm | LIVE assisted; TYPE clear + key |
+| **0x3e** UP → **0x2e** | LIVE; 8× Rope; clear opens UP bit |
+| **0x2e** UP → **0x1e** | LIVE; south-band y≈189 lateral then x=120 UP (mid-y diamond trap) |
+| **0x1e** walk-UP after clear | **SOLID** (doors=12 red herring; min_y≈117) |
+| **0x1e** bomb N @(120,101) | **LIVE → 0x0e** Dodongo ★ |
+| Dodongo type | **`0x32`** |
+| Boss kill + HC | LIVE assisted (`heart_containers` rises; `Level2_0E`) |
+| Post-kill doors | **LEFT=2 only** → 0x0d; RIGHT sealed (key/bomb/push fail) |
+| **0x0d** | north-corridor free cells only; room_item `0x1b`; center blocked |
 | `triforce & 0x02` | **not set** |
 
 Bombs inventory notes (for future boss policy):

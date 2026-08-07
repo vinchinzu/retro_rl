@@ -57,8 +57,12 @@ ROOM_L2_NORTH_OF_4E = 0x3E  # free UP from 0x4e; also Moldorm via 0x3f LEFT
 ROOM_L2_TRAPS_KEESE = 0x3F  # bomb-N of boom 0x4f; 4× Keese + 4× traps 0x49
 ROOM_L2_GELS_NORTH = 0x2F  # bomb-N of 0x3f; 5× Gel; item 0x0f
 ROOM_L2_ROPES_UNLOCK = 0x2E  # N of Moldorm / W of 0x2f; 8× Rope kill→UP
-ROOM_L2_GORIYA_BOMBS = 0x1E  # N of 0x2e; 5× Goriya 0x06; UP→Dodongo residual
+ROOM_L2_GORIYA_BOMBS = 0x1E  # N of 0x2e; 5× Goriya 0x06; bomb-N→Dodongo (not walk-UP)
+ROOM_L2_DODONGO = 0x0E  # boss; type 0x32; bomb-N of 0x1e @(120,101) LIVE (rr-n5i)
+ROOM_L2_WEST_OF_BOSS = 0x0D  # LEFT of 0x0e after kill; north-corridor only; TF residual
 ROOM_L2_OLD_MAN = 0x1F  # N of 0x2f / bomb-R of 0x1e; bubbles + NPC 0x4b
+# Boss kill: bomb-mouth; HC raises heart_containers; doors often LEFT=2 only.
+# Walkthrough "E of boss → TF" not live yet (RIGHT sealed key/bomb/push).
 ROOM_6D_LEFT_DOOR_BIT = 0x02  # cur_opened_doors bit1 after clear
 # Magical Boomerang: ADDR_MAGIC_BOOMERANG stop via level2_room_4f_magic_boomerang_success.
 # Room 0x4f RoomItemId 0x1e pure 2/2 Clean (rr-bsq/rr-ebe); L1 wooden was 0x1D.
@@ -589,8 +593,8 @@ ROOM_1E_SPEC = DungeonRoomSpec(
     room_item_id=0x00,
     exit_routes=(
         DoorRoute("DOWN", ((120, 141), (120, 205))),
-        # UP → Dodongo residual: doors bit UP|DOWN=12 after clear but physical
-        # collision often stays solid (open_doorway_mask lag). rr-n5i residual.
+        # Walk-UP after clear: doors UP|DOWN=12 but physical solid (min_y≈117).
+        # Boss open is bomb-N @(120,101) → 0x0e (LIVE rr-n5i 2026-08-07).
         DoorRoute("UP", ((120, 141), (120, 93))),
     ),
     max_frames=20000,

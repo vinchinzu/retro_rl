@@ -364,11 +364,19 @@ L2_GORIYA_WEST = 0x5E
 L2_ROPES_NORTH = 0x4E  # free UP from Goriya; 5× Rope + key
 L2_BOOM = 0x4F
 L2_BOOM_CANDIDATE = L2_BOOM  # alias  # Magical Boomerang RoomItemId 0x1e
+L2_TRAPS_KEESE = 0x3F  # bomb-N of boom
+L2_MOLDORM = 0x3E  # LEFT of 0x3f
+L2_ROPES_UNLOCK = 0x2E  # N of Moldorm; kill→UP
+L2_GORIYA_BOMBS = 0x1E  # N of 0x2e; bomb-N→boss
+L2_DODONGO = 0x0E  # boss type 0x32
+L2_WEST_OF_BOSS = 0x0D  # LEFT after kill; TF residual
 L2_OW_DOOR_SCREEN = 0x3C  # overworld Moon door (leave-dungeon target)
 
 # Geometry anchors from live recon / pure controllers.
 _BOMB_STAND_6F_N = (120, 101)
 _BOMB_STAND_5F_N = (120, 101)  # same stand → boom 0x4f
+_BOMB_STAND_4F_N = (120, 101)  # → 0x3f
+_BOMB_STAND_1E_N = (120, 101)  # → Dodongo 0x0e (walk-UP solid)
 _APPROACH_6D_LEFT = (48, 141)  # mid-height LEFT door after clear
 _APPROACH_7D_RIGHT = (208, 141)  # diamond pure push y=141
 _APPROACH_6E_RIGHT = (208, 141)  # key door; band y≈113 then push y≥137
@@ -591,7 +599,7 @@ def _l2_exits() -> dict[int, tuple[RoomExit, ...]]:
                 verification="observed",
             ),
         ),
-        # Boom 0x4f: Magical Boomerang pure; D → 0x5f hole; L → 0x4e.
+        # Boom 0x4f: Magical Boomerang pure; D → 0x5f hole; L → 0x4e; bomb-N → 0x3f.
         L2_BOOM: (
             RoomExit(
                 DoorDir.DOWN,
@@ -605,6 +613,111 @@ def _l2_exits() -> dict[int, tuple[RoomExit, ...]]:
                 L2_ROPES_NORTH,
                 GateKind.OPEN,
                 notes="return after key-RIGHT from 0x4e",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                L2_TRAPS_KEESE,
+                GateKind.BOMB,
+                bomb_stand=_BOMB_STAND_4F_N,
+                notes="bomb-N @(120,101) → traps+Keese 0x3f",
+                verification="observed",
+            ),
+        ),
+        L2_TRAPS_KEESE: (
+            RoomExit(
+                DoorDir.DOWN,
+                L2_BOOM,
+                GateKind.OPEN,
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.LEFT,
+                L2_MOLDORM,
+                GateKind.OPEN,
+                notes="LEFT → Moldorm 0x3e",
+                verification="observed",
+            ),
+        ),
+        L2_MOLDORM: (
+            RoomExit(
+                DoorDir.RIGHT,
+                L2_TRAPS_KEESE,
+                GateKind.OPEN,
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                L2_ROPES_UNLOCK,
+                GateKind.OPEN,
+                notes="UP → 8× Rope unlock 0x2e",
+                verification="observed",
+            ),
+        ),
+        L2_ROPES_UNLOCK: (
+            RoomExit(
+                DoorDir.DOWN,
+                L2_MOLDORM,
+                GateKind.OPEN,
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                L2_GORIYA_BOMBS,
+                GateKind.KILL_CLEAR,
+                notes="clear 8 ropes → UP 0x1e (south-band x=120 align)",
+                verification="observed",
+            ),
+        ),
+        L2_GORIYA_BOMBS: (
+            RoomExit(
+                DoorDir.DOWN,
+                L2_ROPES_UNLOCK,
+                GateKind.OPEN,
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                L2_DODONGO,
+                GateKind.BOMB,
+                bomb_stand=_BOMB_STAND_1E_N,
+                notes=(
+                    "walk-UP solid after clear (doors=12 red herring); "
+                    "bomb-N @(120,101) → Dodongo 0x0e"
+                ),
+                verification="observed",
+            ),
+        ),
+        L2_DODONGO: (
+            RoomExit(
+                DoorDir.DOWN,
+                L2_GORIYA_BOMBS,
+                GateKind.OPEN,
+                notes="return south after bomb entry",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.LEFT,
+                L2_WEST_OF_BOSS,
+                GateKind.KILL_CLEAR,
+                notes="after kill doors often LEFT only; 0x0d north-corridor residual",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.RIGHT,
+                None,
+                GateKind.SEALED,
+                notes="walkthrough TF east — live sealed (key/bomb/push fail)",
+                verification="observed",
+            ),
+        ),
+        # West of boss after kill: north-corridor only; TF not collected yet.
+        L2_WEST_OF_BOSS: (
+            RoomExit(
+                DoorDir.RIGHT,
+                L2_DODONGO,
+                GateKind.OPEN,
+                notes="return east to boss",
                 verification="observed",
             ),
         ),
@@ -659,5 +772,11 @@ __all__ = [
     "L2_GORIYA_WEST",
     "L2_ROPES_NORTH",
     "L2_BOOM",
+    "L2_TRAPS_KEESE",
+    "L2_MOLDORM",
+    "L2_ROPES_UNLOCK",
+    "L2_GORIYA_BOMBS",
+    "L2_DODONGO",
+    "L2_WEST_OF_BOSS",
     "L2_OW_DOOR_SCREEN",
 ]
