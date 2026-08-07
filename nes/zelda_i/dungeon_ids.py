@@ -16,6 +16,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x27: "wallmaster",
     0x28: "rope",
     0x30: "gibdo",
+    0x32: "dodongo",  # L2 boss room 0x0e (live rr-n5i 2026-08-07)
     0x3D: "aquamentus",
     0x2A: "stalfos",
     0x40: "bubble",
@@ -32,6 +33,7 @@ ROOM_ITEM_NAMES: dict[int, str] = {
     0x17: "dungeon_map_walkthrough_correlated",
     0x19: "small_key",
     0x1A: "heart_container",
+    0x1B: "triforce_or_residual_room_item",  # L2 0x0d after boss (rr-n5i); not collected yet
     0x1D: "boomerang_walkthrough_correlated",
     0x1E: "magical_boomerang_room_item_residual",  # live on L2 0x4f (rr-cjf)
 }
