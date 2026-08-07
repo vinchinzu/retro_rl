@@ -8,13 +8,19 @@ from zelda_i.door_graph import (
     L2_BOMB_N,
     L2_BOOM,
     L2_COMPASS,
+    L2_DODONGO,
     L2_EAST_KEY,
     L2_EAST_OF_ROPES,
     L2_ENTRY,
+    L2_GORIYA_BOMBS,
     L2_GORIYA_WEST,
+    L2_MOLDORM,
     L2_ROPES,
     L2_ROPES_NORTH,
+    L2_ROPES_UNLOCK,
+    L2_TRAPS_KEESE,
     L2_WEST_KEY,
+    L2_WEST_OF_BOSS,
     LEVEL_2_DOOR_GRAPH,
     DoorDir,
     DungeonDoorGraph,
@@ -158,6 +164,12 @@ _L2_CORE_ROOMS = frozenset(
         L2_GORIYA_WEST,
         L2_ROPES_NORTH,
         L2_BOOM,
+        L2_TRAPS_KEESE,
+        L2_MOLDORM,
+        L2_ROPES_UNLOCK,
+        L2_GORIYA_BOMBS,
+        L2_DODONGO,
+        L2_WEST_OF_BOSS,
     }
 )
 
@@ -219,6 +231,20 @@ def test_level2_5f_bomb_north_to_boom() -> None:
     assert e.bomb_stand == (120, 101)
 
 
+def test_level2_1e_bomb_north_to_dodongo() -> None:
+    """rr-n5i: walk-UP solid; bomb-N @(120,101) → boss 0x0e."""
+    e = LEVEL_2_DOOR_GRAPH.exit_between(
+        L2_GORIYA_BOMBS, L2_DODONGO, direction=DoorDir.UP
+    )
+    assert e is not None
+    assert e.gate is GateKind.BOMB
+    assert e.bomb_stand == (120, 101)
+    boom_n = LEVEL_2_DOOR_GRAPH.exit_between(
+        L2_BOOM, L2_TRAPS_KEESE, direction=DoorDir.UP
+    )
+    assert boom_n is not None and boom_n.gate is GateKind.BOMB
+
+
 def test_level2_reachable_without_resources() -> None:
     """Open subgraph from entry: 7d, 6d, 7e, 6e — not west key (kill) or past key door."""
     g = LEVEL_2_DOOR_GRAPH
@@ -255,8 +281,8 @@ def test_level2_one_key_reaches_compass_not_goriya() -> None:
 def test_level2_two_keys_and_bomb_reach_goriya() -> None:
     """Route doc: carry ≥2 keys into 0x6e; bomb N; another key for 0x5f LEFT.
 
-    With keys=2 bombs=1: reach Goriya + 0x4e (free UP). Boom 0x4f needs a
-    second bomb (5f bomb-N) or a third key (4e RIGHT).
+    With keys=2 bombs=1: reach Goriya + 0x4e (free UP → Moldorm). Boom 0x4f is
+    also reachable via 0x4e→0x3e→0x3f→DOWN (open hole) without a second bomb.
     """
     reached = LEVEL_2_DOOR_GRAPH.bfs_reachable(
         L2_ENTRY, InventoryCaps(keys=2, bombs=1, can_clear=True)
@@ -271,9 +297,9 @@ def test_level2_two_keys_and_bomb_reach_goriya() -> None:
         L2_BOMB_N,
         L2_GORIYA_WEST,
         L2_ROPES_NORTH,
-        0x3E,
+        L2_MOLDORM,  # free UP from 0x4e
+        L2_BOOM,  # via 0x3e↔0x3f open graph after 0x4e
     } <= reached
-    assert L2_BOOM not in reached
 
 
 def test_level2_boom_reachable_with_extra_bomb_or_key() -> None:
