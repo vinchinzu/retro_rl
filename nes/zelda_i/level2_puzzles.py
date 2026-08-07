@@ -146,8 +146,46 @@ BOMB_WALL_5F_NORTH = BombWall(
     ),
 )
 
+# LIVE: 0x4f north wall → traps+Keese 0x3f (post-boom Dodongo path).
+BOMB_WALL_4F_NORTH = BombWall(
+    room=ROOM_L2_BOOM,
+    stand=(120, 101),
+    face="UP",
+    opens_to=0x3F,  # ROOM_L2_TRAPS_KEESE
+    opened_door_bit=DOOR_DOWN,
+    live=True,
+    notes="Post-boom path. Pure 2/2 Clean run_level2_bomb_north_4f.",
+    evidence=("recordings/level2_bomb_north_4f_isolated.json",),
+)
+
+# LIVE: 0x1e north wall → Dodongo boss 0x0e (rr-n5i 2026-08-07).
+# Walk-UP after Goriya clear sets doors=12 but physical solid (min_y≈117).
+BOMB_WALL_1E_NORTH = BombWall(
+    room=0x1E,  # ROOM_L2_GORIYA_BOMBS
+    stand=(120, 101),
+    face="UP",
+    opens_to=0x0E,  # ROOM_L2_DODONGO
+    opened_door_bit=DOOR_DOWN,
+    live=True,
+    notes=(
+        "Critical rr-n5i unlock: doors bit UP|DOWN=12 after clear is a red "
+        "herring; physical boss door is bomb-N @(120,101). Dodongo type 0x32; "
+        "bomb-mouth → HC; TF exit residual (RIGHT sealed; LEFT→0x0d corridor)."
+    ),
+    evidence=(
+        "recordings/l2_1e_up.json",
+        "recordings/level2_dodongo.json",
+        "recordings/l2_n5i_partial.json",
+    ),
+)
+
 # Catalog entry point for lab imports.
-BOMB_WALLS: tuple[BombWall, ...] = (BOMB_WALL_6F_NORTH, BOMB_WALL_5F_NORTH)
+BOMB_WALLS: tuple[BombWall, ...] = (
+    BOMB_WALL_6F_NORTH,
+    BOMB_WALL_5F_NORTH,
+    BOMB_WALL_4F_NORTH,
+    BOMB_WALL_1E_NORTH,
+)
 
 # Negative bomb stands on 0x6f (full cardinal sweep failed except UP@101).
 # Generic probe defaults (BOMB_STAND in probe_level2_past_6f) for reference.

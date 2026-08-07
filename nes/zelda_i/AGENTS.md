@@ -73,7 +73,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: rr-n5i Dodongo → TF 0x02 → rr-5dk
+bd ready -l zelda_i   # tip: rr-n5i TF residual after Dodongo → rr-5dk
 ```
 
 | Order | Bead | Work |
@@ -82,14 +82,20 @@ bd ready -l zelda_i   # tip: rr-n5i Dodongo → TF 0x02 → rr-5dk
 | ✓ | **rr-etl** | 0x5e Goriya pure — **2/2 Clean** |
 | ✓ | **rr-fvt** / **rr-cjf** | 0x5f policy + bomb-UP → **0x4f** boom path LIVE |
 | ✓ | **rr-bsq** / **rr-ebe** | 0x4f Magical Boomerang — **2/2 Clean** |
-| 2 | **rr-n5i** | Dodongo bombs → TF `0x02` |
+| ◐ | **rr-n5i** | path → Dodongo 0x0e + HC LIVE; **TF 0x02 residual** |
 | 3 | **rr-5dk** | Natural-entry assisted power-on → TF 0x02 |
 
 Full board: `docs/tasks/QUEUE.md`. Routes: `docs/LEVEL2_ROUTE.md`.
 
+**Dodongo path (assisted LIVE):** `Level2Boom` → bomb-N 0x3f → LEFT Moldorm →
+UP 0x2e clear → UP 0x1e Goriya clear → **bomb-N @(120,101)** → **0x0e** type
+`0x32` bomb-mouth → HC. **Trap:** walk-UP on 0x1e after clear is solid
+(doors=12 red herring). Post-kill doors LEFT-only; RIGHT/TF residual.
+Runner: `run_level2_dodongo.py --infinite-life`. Checkpoint: `Level2_0E`.
+
 Checkpoints: `Level2Entrance` / `WestKey` / `EastKey` / `Compass` /
-`Level2_5F` / `Level2_5E`. Runners: `run_level2_clear{6d,6c,7e,6f,5e}.py`,
-`run_level2_bomb_north.py` (0x6f → 0x5f), `run_level2_bomb_north_5f.py` / `run_level2_magic_boomerang.py` (0x5f → 0x4f boom). **Boom path:** 0x5f bomb N
-@(120,101) → **0x4f** (not walk-RIGHT). **Diamond-east** traps in LEVEL2_ROUTE.
-`Level2Compass` may re-spawn gels on load. Use `--infinite-life` for first-pass
-geometry; Clean STATUS only after natural 2/2.
+`Level2_5F` / `Level2_5E` / `Level2Boom` / `Level2_0E`. Runners:
+`run_level2_clear{6d,6c,7e,6f,5e}.py`, `run_level2_bomb_north.py`,
+`run_level2_magic_boomerang.py`, `run_level2_bomb_north_4f.py`,
+`run_level2_dodongo.py`. **Boom path:** 0x5f bomb N @(120,101) → **0x4f**.
+Use `--infinite-life` for first-pass; Clean STATUS only after natural 2/2.
