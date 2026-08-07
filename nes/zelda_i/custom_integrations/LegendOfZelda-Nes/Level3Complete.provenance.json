@@ -1,0 +1,20 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T16:37:32.355473+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "intervention_class": "survival",
+    "natural_entry": false,
+    "segment": "level3_complete",
+    "start_state": "Level3Raft"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "tf04": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3Raft.state",
+  "source_state_sha256": "7493dca240279356febaa7dd3c7ba7a6d1b63e14e60e3f3dd943d71359318432",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3Complete.state",
+  "state_sha256": "0ad22095c6097793ea33ce260104b9ac03e207f8c4735ce0d32e3bf0e6e077b7"
+}

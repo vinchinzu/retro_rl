@@ -132,6 +132,8 @@ _NON_COMBAT_TYPES = {
     0x49,  # blade trap
     0x55,  # fireball
     0x40,  # bubble (disarms; do not "clear")
+    0x2B,  # invuln mover on 0x49/0x5d — never clear (seals progress)
+    0x56,  # manhandla projectile
 }
 
 # Boss-like type candidates.

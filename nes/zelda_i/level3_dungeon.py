@@ -494,6 +494,53 @@ def level3_has_raft(ram: np.ndarray) -> bool:
     return bool(read_u8(ram, ADDR_RAFT))
 
 
+def level3_reached_boss_prep(ram: np.ndarray) -> bool:
+    """Play mode in room 0x5d (Manhandla prep east of bomb-shortcut 0x5c)."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL3
+        and snap.screen == ROOM_L3_BOSS_PREP
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+    )
+
+
+def level3_reached_boss(ram: np.ndarray) -> bool:
+    """Play mode in room 0x4d (Manhandla candidate north of 0x5d)."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL3
+        and snap.screen == ROOM_L3_BOSS
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+    )
+
+
+def level3_manhandla_live(snap: ZeldaSnapshot) -> list:
+    """Live Manhandla heads (type 0x3c, HP>0) on current snapshot."""
+    return [
+        o
+        for o in snap.objects
+        if 1 <= o.slot <= 10
+        and o.type_id == MANHANDLA_OBJECT_TYPE
+        and o.hp > 0
+    ]
+
+
+def level3_boss_prep_killables(snap: ZeldaSnapshot) -> list:
+    """Killable enemies on 0x5d: Zol + Keese only (ignore invuln 0x2b)."""
+    out = []
+    for o in snap.objects:
+        if not (1 <= o.slot <= 10):
+            continue
+        if o.type_id == ZOL_OBJECT_TYPE and o.hp > 0:
+            out.append(o)
+        elif o.type_id == KEESE_OBJECT_TYPE:
+            # Keese often report HP 0 while still "alive" for type liveness
+            out.append(o)
+    return out
+
+
 def west_door_step(snap: ZeldaSnapshot) -> FrameAction:
     """One frame of 0x7c → 0x7b west-door policy (diagonal residual)."""
     if snap.level != LEVEL3:
