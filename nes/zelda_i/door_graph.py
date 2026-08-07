@@ -1012,12 +1012,29 @@ def _l3_exits() -> dict[int, tuple[RoomExit, ...]]:
             RoomExit(
                 DoorDir.UP,
                 0x4D,
-                GateKind.OPEN,
+                GateKind.KILL_CLEAR,
                 approach_xy=(120, 93),
                 notes=(
-                    "Manhandla candidate 0x4d type 0x3c (assisted glimpse; "
-                    "UP gate residual / flaky)"
+                    "Manhandla 0x4d type 0x3c: clear Zol/Gel/Keese slots 1–12 "
+                    "(ignore 0x2b) → doors raw=10 then UP (assisted LIVE 2/2)"
                 ),
+                verification="observed",
+            ),
+        ),
+        0x4D: (
+            RoomExit(
+                DoorDir.DOWN,
+                0x5D,
+                GateKind.OPEN,
+                notes="return south to prep",
+                verification="observed",
+            ),
+            RoomExit(
+                DoorDir.UP,
+                0x3D,
+                GateKind.KILL_CLEAR,
+                approach_xy=(120, 93),
+                notes="after Manhandla kill → TF room 0x3d bit 0x04",
                 verification="observed",
             ),
         ),
