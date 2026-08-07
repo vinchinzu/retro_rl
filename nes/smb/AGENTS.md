@@ -44,7 +44,7 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice
 # Record HL / hybrid MP4 (HUD+audio; Level1_1; not raw power-on)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.record_happylee --to ending   # hybrid axe ~5:12
+  uv run python -m smb.scripts.record_happylee --to ending   # hybrid v2 axe ~5:00.02
 # uv run python -m smb.scripts.record_happylee --to w8
 # uv run python -m smb.scripts.import_fm2 --verify-8-1-8-2-slice
 
@@ -99,9 +99,11 @@ Best Clean power-on: **21,559f** 3/3
 `recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4`.
 
 **Prefer TAS adapt over hill-climb** (`docs/TAS_ADAPT.md`): HappyLee through
-8-2 verified + exported; **hybrid ending** (HL→8-2 + natural_82@15933)
-**18,769f / 5:12.3** Level1_1→axe (**−2790** vs n82; **+739** vs sub-5).
-Seeds: `smb_*_happylee_slice.json` (1-1…8-2) + `smb_happylee_hybrid_ending.json`.
-Record: `record_happylee --to ending` → `recordings/tas_import/happylee_ending.mp4`.
-**8-3 pure HL still open** (phase miss; continuous dies early) — landing it
-projects **sub-5** (~4:57 class). Full power-on FM2 desyncs on fceumm.
+8-2 verified + exported; **hybrid v2 ending** (HL→8-2 + natural 8-3 bridge +
+**flamexx 8-4@15210**) **18,031f / 5:00.02** Level1_1→axe (**−3,528** vs n82;
+**+1** vs 18,030 sub-5 budget). Seeds: `smb_*_happylee_slice.json` (1-1…8-2) +
+`smb_8_3_natural_for_hl_hybrid.json` + `smb_8_4_flamexx_slice.json` +
+`smb_happylee_hybrid_v2_fx84.json` (v1 `smb_happylee_hybrid_ending.json` =
+18,769f natural 8-4 kept). Record: `record_happylee --to ending`.
+**8-3 pure HL still open** (phase max_x≈834) — remaining claw for true sub-5 /
+WR class. Full power-on FM2 desyncs on fceumm.

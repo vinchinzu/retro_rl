@@ -5,13 +5,13 @@ control-relative chain we already verify:
 
   Level1_1 → HL 1-1 → surface → HL 1-2 → W4
            → 4-1 control → HL 4-1 → 4-2 control → HL 4-2 → W8
-           → 8-1 → 8-2 → hybrid 8-3/8-4 (natural_82) → axe
+           → 8-1 → 8-2 → hybrid 8-3 (natural) + 8-4 (flamexx) → axe
 
 Uses the same ``_VideoWriter`` path as ``run_warp_finish --record`` (footer
 timer, NES buttons, optional audio). Timer is gameplay-only (intro excluded).
 
 ```bash
-# Full hybrid clear (~5:12; HL through 8-2 + natural 8-3/8-4)
+# Full hybrid clear (~5:00.02; HL→8-2 + natural 8-3 + flamexx 8-4)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python -m smb.scripts.record_happylee --to ending
 
@@ -76,7 +76,8 @@ SEED_4_1 = MODELS_DIR / "smb_4_1_happylee_slice.json"
 SEED_4_2 = MODELS_DIR / "smb_4_2_happylee_slice.json"
 SEED_8_1 = MODELS_DIR / "smb_8_1_happylee_slice.json"
 SEED_8_2 = MODELS_DIR / "smb_8_2_happylee_slice.json"
-SEED_HYBRID_ENDING = MODELS_DIR / "smb_happylee_hybrid_ending.json"
+SEED_HYBRID_ENDING = MODELS_DIR / "smb_happylee_hybrid_v2_fx84.json"
+SEED_HYBRID_V1 = MODELS_DIR / "smb_happylee_hybrid_ending.json"  # 18769f natural 8-4
 
 # Brief hold after target so the last milestone is visible on video.
 DEFAULT_TAIL_HOLD = 120
@@ -548,7 +549,7 @@ def record_hybrid_ending(
             game_title="Super Mario Bros. (NES)",
             run_summary="HappyLee hybrid any% → 8-4 axe",
             extra_lines=(
-                "HL warps through 8-2 + natural_82 8-3/8-4 tail",
+                "HL→8-2 + natural 8-3 + flamexx 8-4 (~5:00.02)",
                 "fceumm control-relative (not raw #1715 power-on)",
             ),
         )
@@ -634,8 +635,9 @@ def record_hybrid_ending(
             "bytes": record_path.stat().st_size if record_path.exists() else 0,
         },
         "note": (
-            "Hybrid: HappyLee bodies through 8-2 + natural_82@15933 for 8-3/8-4. "
-            "Level1_1 continuous (not Clean power-on). ~5:12 until HL 8-3 phase lands."
+            "Hybrid v2: HappyLee through 8-2 + natural_82@15933 8-3 bridge + "
+            "flamexx 8-4@15210 (2661f). Level1_1 continuous (not Clean power-on). "
+            "18031f / ~5:00.02; pure HL 8-3 still open for true sub-5 / WR class."
         ),
         "vs_natural_82_ending": 21559,
         "delta_vs_natural_82_ending": 21559 - chain if success else None,
