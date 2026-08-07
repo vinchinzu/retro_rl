@@ -73,14 +73,15 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
     - **W8 8-1/8-2 exported + verified:** wait81=209 → 8-1 @7930/2881;
       wait82=165 → 8-2 @10910/2209; to 8-3 load **12976**. Seeds
       `smb_8_1_happylee_slice.json`, `smb_8_2_happylee_slice.json`.
-    - **Hybrid full clear (3/3):** natural_82@**15933** after HL 8-3
-      control → axe. Seed `smb_happylee_hybrid_ending.json` **18769f /
-      5:12.3** (−2790 vs n82; **+739** vs sub-5). MP4
-      `recordings/tas_import/happylee_ending.mp4`.
-    - **Pure HL 8-3/8-4 still open** (phase); needed for sub-5 (~4:57 class).
-    - **Next:** (1) land HL 8-3 phase (or flamexx tail); (2) export 8-3/8-4
-      + fold pure continuous; (3) Clean power-on only after full HL chain.
-      Keep natural_82 + hybrid as baselines.
+    - **Hybrid v1 (3/3):** natural_82@**15933** full 8-3/8-4 → **18769f /
+      5:12.3**. Seed `smb_happylee_hybrid_ending.json` (kept baseline).
+    - **Hybrid v2 (3/3):** same through 8-3 control, then **flamexx 8-4
+      @15210 / 2661f** → **18031f / 5:00.02** (−3528 vs n82; **+1** vs
+      18030 sub-5 budget). Seeds `smb_happylee_hybrid_v2_fx84.json`,
+      `smb_8_4_flamexx_slice.json`, `smb_8_3_natural_for_hl_hybrid.json`.
+    - **Pure HL 8-3 still open** (phase max_x≈834); 8-4 TAS body done via FX.
+    - **Next:** (1) pure HL 8-3 or −1f for true sub-5; (2) Clean power-on
+      fold only after full chain settles; keep natural_82 + both hybrids.
 6. **Route contracts + natural predecessor evaluator (2026-08-01):** done.
    `smb.reactive_route` tracks declared successors and entry fingerprints;
    `smb.scripts.run_reactive_warp` runs stairs + reactive 1-2 and retimed

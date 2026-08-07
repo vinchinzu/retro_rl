@@ -267,7 +267,10 @@ nes/smb/models/*
 !nes/smb/models/smb_4_2_happylee_slice.json
 !nes/smb/models/smb_8_1_happylee_slice.json
 !nes/smb/models/smb_8_2_happylee_slice.json
+!nes/smb/models/smb_8_3_natural_for_hl_hybrid.json
+!nes/smb/models/smb_8_4_flamexx_slice.json
 !nes/smb/models/smb_happylee_hybrid_ending.json
+!nes/smb/models/smb_happylee_hybrid_v2_fx84.json
 !nes/smb/recordings/
 nes/smb/recordings/*
 !nes/smb/recordings/reactive_warp/
