@@ -174,6 +174,28 @@ def test_record_happylee_cli_targets() -> None:
     """record_happylee is importable and exposes verified chain targets."""
     from smb.scripts import record_happylee as rh
 
-    assert rh.TARGETS == ("1-1", "w4", "w8")
+    assert rh.TARGETS == ("1-1", "w4", "w8", "ending")
     assert rh.SEED_1_1.name == "smb_1_1_happylee_slice.json"
     assert rh.SEED_4_2.name == "smb_4_2_happylee_slice.json"
+    assert rh.SEED_HYBRID_ENDING.name == "smb_happylee_hybrid_ending.json"
+
+
+def test_happylee_8_1_8_2_and_hybrid_metadata() -> None:
+    p81 = MODELS_DIR / "smb_8_1_happylee_slice.json"
+    p82 = MODELS_DIR / "smb_8_2_happylee_slice.json"
+    ph = MODELS_DIR / "smb_happylee_hybrid_ending.json"
+    if not p81.exists() or not p82.exists():
+        return
+    from smb.tas.slice import HL_8_1_FM2_START, HL_8_1_LEAVE_FRAMES, HL_8_2_FM2_START, HL_8_2_LEAVE_FRAMES
+
+    d81 = load_nes9_rle_seed(p81)
+    d82 = load_nes9_rle_seed(p82)
+    assert d81["num_frames"] == HL_8_1_LEAVE_FRAMES
+    assert d81.get("fm2_start_index") == HL_8_1_FM2_START
+    assert d82["num_frames"] == HL_8_2_LEAVE_FRAMES
+    assert d82.get("fm2_start_index") == HL_8_2_FM2_START
+    if ph.exists():
+        dh = load_nes9_rle_seed(ph)
+        assert dh["num_frames"] == 18_769
+        assert dh.get("target") == "8_4_ending"
+        assert "hybrid" in dh
