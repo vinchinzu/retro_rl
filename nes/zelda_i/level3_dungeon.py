@@ -63,13 +63,30 @@ ROOM_L3_SOUTH_DARKNUTS = 0x69  # south of 0x59; 8× Darknut; stairs RIGHT
 ROOM_L3_RAFT_PASSAGE = 0x0F  # mode-9 underworld; Raft pickup (LIVE assisted)
 ROOM_L3_MAP_4C = 0x4C  # east of 0x4b via key; map room item 0x17
 ROOM_L3_BOMB_SHORTCUT = 0x5C  # bomb-RIGHT of 0x5b (boss shortcut residual)
+ROOM_L3_BOSS_PREP = 0x5D  # east of 0x5c after clear; RIGHT@y≈141 (LIVE residual)
+ROOM_L3_BOSS = 0x4D  # Manhandla candidate north of 0x5d (assisted glimpse; not pure)
 ZOL_OBJECT_TYPE = 0x13  # live type on 0x7b/0x6b/0x4b; wooden sword can leave type-0 HP residual
 DARKNUT_OBJECT_TYPE = 0x0B  # live type on 0x5b/0x59/0x69 (red Darknut, HP 64)
 KEESE_OBJECT_TYPE = 0x1B
+MANHANDLA_OBJECT_TYPE = 0x3C  # LIVE candidate on 0x4d (5 slots + 0x56 projectiles); residual
+INVULN_MOVER_0X2B = 0x2B  # 0x49/0x5d HP240 invuln — not Manhandla
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16
 ROOM_ITEM_MAP = 0x17
 ROOM_ITEM_RAFT = 0x0C  # live RoomItemId in mode-9 passage 0x0f
+ROOM_ITEM_HEART_CONTAINER = 0x1A
+LEVEL3_TRIFORCE_BIT = 0x04
+# Bomb stands (LIVE recon)
+BOMB_STAND_5B_RIGHT = (192, 141)  # 0x5b → 0x5c boss shortcut
+BOMB_STAND_59_RIGHT = (192, 141)  # post-Raft: walk-RIGHT sealed; bomb reopens 0x5a
+# Raft passage EXIT (reverse of pickup; Level3Raft → 0x69)
+PASSAGE_EXIT_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (176, 141),
+    (176, 189),
+    (48, 189),
+    (48, 77),
+)
+DOOR_5C_RIGHT_Y = 141  # only y≈141 opens 0x5c → 0x5d after Darknut clear
 
 # Raft passage geometry (mode 9): enter from 0x69 RIGHT @ y≈141 → spawn ~(48,77).
 # Path: DOWN to y≈189 → RIGHT to x≈176 → UP channel to y≈141 → LEFT to x≈136 touch Raft.
