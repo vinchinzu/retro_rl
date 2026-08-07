@@ -29,6 +29,23 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.tas_1_1 analyze
 uv run python -m smb.scripts.tas_1_1 optimize --window stairs,first-pipe --iters 300
 uv run python -m smb.scripts.tas_1_1 verify --seed nes/smb/models/smb_1_1_tas_best.json
+# Prefer HappyLee FM2 slice when available (~1733f isolated)
+uv run python -m smb.scripts.tas_1_1 verify \
+  --seed nes/smb/models/smb_1_1_happylee_slice.json
+# Import / verify public FM2 (do not sanitize L+R)
+uv run python -m smb.scripts.import_fm2 --summary-only
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.import_fm2 --verify
+# Control-relative HappyLee 1-2 → W4 (after HL 1-1 natural predecessor)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.import_fm2 --verify-1-2-slice
+# Control-relative HappyLee 4-1 + 4-2 → W8 (after HL W4)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice
+# Record verified HL chain MP4 (HUD+audio; Level1_1 → W4/W8; not raw power-on)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.record_happylee --to w8
+# uv run python -m smb.scripts.record_happylee --to w4
 
 # 1-2 underground polish (control-relative; keeps reactive gates)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -78,7 +95,16 @@ uv run python -m smb.scripts.parse_human_recording \
 
 Best Clean power-on: **21,559f** 3/3
 (`smb_1_1_to_ending_natural_82.json`). Published continuous MP4:
-`recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4` (YouTube
-intro + timer HUD). 8-1 isolated polish **−42f** ready
-(`models/smb_8_1_control_best.json`); retime 8-2+ then fold/promote.
-4-2 still 2599f vine (sub-5 needs route structure). Evidence: `docs/STATUS.md`.
+`recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4`.
+
+**Prefer TAS adapt over hill-climb** (`docs/TAS_ADAPT.md`): HappyLee FM2
+vendored; isolated 1-1 **1733f** + natural-entry settle=1 **1749f**;
+control-relative 1-2 W4 **1657f** (@2109) → ≈**3555f to W4** (−329);
+4-1 **2062f** (@3968) + 4-2 **1516f** (@6207) → ≈**7512f to W8** (−5116
+vs natural_82). W8 **probe only** (no seed export): 8-1 **2881f** @7930
+(wait81=209 odd but **even** FM2); 8-2 **2209f** @10910; 8-3/8-4 open.
+Full power-on FM2 desyncs on fceumm — adapt **per level from control**,
+preserve L+R; search both parities if wait-match fails; 4-2 timer may be
+0; 4-2 is glitch path (validate video+RAM). Stage board + WR table in
+`docs/TAS_ADAPT.md`. Old 8-1 polish −42f kept but secondary. Import:
+`python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice`.
