@@ -255,6 +255,7 @@ nes/smb/models/*
 !nes/smb/models/smb_1_1_to_ending.json
 !nes/smb/models/smb_1_1_to_ending_reactive_83_84.json
 !nes/smb/models/smb_4_2_fast_w8.json
+!nes/smb/models/smb_8_1_control_best.json
 !nes/smb/recordings/
 nes/smb/recordings/*
 !nes/smb/recordings/reactive_warp/
@@ -269,6 +270,9 @@ nes/smb/recordings/warp_finish/*
 !nes/smb/recordings/segment_1_2/
 nes/smb/recordings/segment_1_2/*
 !nes/smb/recordings/segment_1_2/polish_1_2_ug_report.json
+!nes/smb/recordings/segment_8_1/
+nes/smb/recordings/segment_8_1/*
+!nes/smb/recordings/segment_8_1/polish_8_1_report.json
 # Legacy root smb/ paths (if present)
 !smb/models/
 smb/models/*

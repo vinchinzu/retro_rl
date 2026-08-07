@@ -55,12 +55,18 @@ NAT_81_START = 8_962  # 4-2 exit → 8-1 segment
 NAT_81_END = 12_628  # 8-1 exit (level change / successor entry)
 
 # Body-relative windows (after lead-idle strip). Pre-flag body ≈ 0..2951.
+# Stall windows from 2026-08-06 Level8_1 progress trace (xs→0 wall-slams).
 WINDOW_PRESETS: dict[str, tuple[int, int]] = {
     "early": (0, 800),
     "mid": (800, 1600),
     "mid2": (1600, 2400),
-    "late": (2400, 3000),  # flag approach
+    "late": (2400, 3000),  # flag approach — best first wins (−42f)
     "body": (0, 3000),  # full pre-flag-ish
+    "stall_pipe": (470, 620),  # x≈1200
+    "stall_mid": (1040, 1200),  # x≈2434
+    "stall_nob": (1750, 1900),  # xs=24 / long hold @1843
+    "stall_wall": (2040, 2180),  # x≈4434 wall-slam
+    "stall_late": (2500, 2720),  # hold @2573
     "all": (0, 10_000),  # entire seed incl. tally (rarely useful)
 }
 
