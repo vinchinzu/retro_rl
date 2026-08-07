@@ -32,8 +32,8 @@ PROJECT_METHOD = "Clean continuous run - one emulator session"
 PROJECT_NO_STITCH = "Not a stitch of segment clips"
 PROJECT_REPO = "github.com/vinchinzu/retro_rl"
 
-# Default hold at 60 fps (~4 s) so viewers can read the slide.
-DEFAULT_INTRO_FRAMES = 240
+# Default hold at 60 fps (~1.5 s) — snappy pre-roll; slide is still readable.
+DEFAULT_INTRO_FRAMES = 90
 
 
 def _ascii_safe(text: str) -> str:
