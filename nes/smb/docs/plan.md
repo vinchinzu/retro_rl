@@ -44,6 +44,13 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
     `smb_1_1_to_ending_natural_82.json`.
 5g. **Clean power-on 3/3 (2026-08-05):** natural seed, boot 350 + settle 16,
     zero mid loads, `benchmark_eligible: true`. RTA **05:58.726**.
+5h. **8-1 Level8_1 polish (2026-08-06):** `smb.scripts.polish_8_1` — hold
+    trim @2573 (−6) + A-edge @2835 → isolated clear **3444→3402** (−42f).
+    Natural continuous splice probe: 8-1 exit **12628→12585**, split
+    **3666→3624** (−42). Artifact: `models/smb_8_1_control_best.json`.
+    Unpromoted full seed: `smb_1_1_to_ending_natural_81_polished_unpromoted.json`.
+    **Next:** retime 8-2+ for the −42f phase shift, then power-on 3/3.
+    Evidence: `recordings/segment_8_1/polish_8_1_report.json`.
 6. **Route contracts + natural predecessor evaluator (2026-08-01):** done.
    `smb.reactive_route` tracks declared successors and entry fingerprints;
    `smb.scripts.run_reactive_warp` runs stairs + reactive 1-2 and retimed
@@ -81,6 +88,11 @@ uv run python -m smb.scripts.tas_1_1 optimize --delete-stride 1 --iters 0 --wind
 # GA on 4-2 entry
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.rle_polish --window 4-2-entry --mode ga --gens 40
+
+# 8-1 Level8_1 body polish (natural_82 slice; best first: late window)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.polish_8_1 --windows late --delete-stride 1
+uv run python -m smb.scripts.polish_8_1 --baseline-only
 ```
 
 ## Notes
