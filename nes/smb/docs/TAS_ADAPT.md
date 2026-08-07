@@ -252,8 +252,8 @@ RAM (or W4/W8 entry / stage load). Seg times @ NTSC 60.0988….
 | 4-2 → W8 | 8962 | 2764 | **7512** | wait165 + 1516 | **−1450** | **done** seed |
 | 8-1 leave | 12628 | 3666 | **≈10602** | wait209 + **2881** | **≈−2026** | probe only |
 | 8-2 leave | 15779 | 3151 | **≈12976** | wait165 + **2209** | **≈−2803** | probe only |
-| 8-3 leave | 17985 | 2206 | — | — | — | **open** |
-| 8-4 axe | **21559** | 3574 | — | — | — | **open** |
+| 8-3 leave | 17985 | 2206 | — | nat bridge | — | **bridge** (pure HL open) |
+| 8-4 axe | **21559** | 3574 | **≈18031** hybrid v2 | FX 2661 | **≈−3528** | **FX 8-4 done** |
 
 HL body-only vs natural_82 segment (control-relative, excluding wait):
 
@@ -265,8 +265,8 @@ HL body-only vs natural_82 segment (control-relative, excluding wait):
 | 4-2 | 2764 | 1516 | −1248 | 6207 odd | glitch path; +wait165 vs n82 |
 | 8-1 | 3666 | **2881** | **−785** | **7930 even** | wait81=209 **odd** but **even** FM2 |
 | 8-2 | 3151 | **2209** | **−942** | **10910** | BBG-class?; 8-3 phase TBD |
-| 8-3 | 2206 | — | — | — | no leave yet |
-| 8-4 | 3574 | — | — | — | not started |
+| 8-3 | 2206 | — / nat 2062 leave | — | — | pure HL blocked; nat bridge |
+| 8-4 | 3574 | **2661 FX** | **−913** | **15210 FX** | after nat 8-3 control |
 
 ### Ours vs WR (full-run contracts — still natural_82 until fold)
 
@@ -308,27 +308,34 @@ Evidence: ``happylee_8_1_8_2_slice_verify.json`` (to 8-3 load **12976**).
 
 **8-1 parity:** wait81 **odd** but **even** FM2 starts clear — search both.
 
-**8-3 pure HL:** still **blocked** (FM2 offset / continuous tails die or
-stall early in 8-3). Continuous from 8-2 ``si=10910`` leaves 8-3 then dies
-@x≈188.
+**8-3 pure HL:** still **blocked**. Wider 8-2 bodies (leave 2209…3049),
+lead idles 0–21, continuous from leave, flamexx 8-3 starts — best gated
+progress **max_x≈834** (flag is ~3554). Continuous from 8-2 dies/stalls
+early in 8-3. Evidence: `happylee_8_3_phase_diag.json`,
+`happylee_8_3_progressive.json`.
 
-**Hybrid ending (works 3/3):** after HL 8-2 + wait83=165 → ``is_8_3_control``,
-play **natural_82 from index 15933** → axe in **5626f**.
+**8-4 TAS after natural 8-3 (works 3/3):** after HL→8-2 + wait83 + natural
+bridge to ``is_8_4_control`` (nat@15933 for **2227f**), **flamexx** FM2
+start **15210** clears axe in **2661f** (HL alt 15034/2833). Replaces
+natural 8-4 (~3400f).
 
 | Contract | Frames | NTSC | vs n82 | vs sub-5 (18030f) |
 |----------|-------:|------|-------:|------------------:|
-| Hybrid Level1_1→axe | **18769** | **5:12.302** | **−2790** | **+739** (~12.3s) |
-| Seed | `smb_happylee_hybrid_ending.json` | | | |
-| MP4 | `recordings/tas_import/happylee_ending.mp4` | | | |
+| Hybrid v1 (nat 8-3/8-4) | 18769 | 5:12.302 | −2790 | +739 |
+| **Hybrid v2 (nat 8-3 + FX 8-4)** | **18031** | **5:00.023** | **−3528** | **+1** |
+| Seed v2 | `smb_happylee_hybrid_v2_fx84.json` | | | |
+| 8-4 slice | `smb_8_4_flamexx_slice.json` | | | |
+| 8-3 bridge | `smb_8_3_natural_for_hl_hybrid.json` | | | |
+| Evidence | `happylee_hybrid_v2_fx84_verify.json` (3/3) | | | |
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_happylee --to ending
 ```
 
-**Sub-5 path:** pure HL 8-3/8-4 (movie remainder ~4.7k after 8-2) would land
-~**17.9k / ~4:57** if phase matches. Until then hybrid is the full-clear
-showcase (not Clean power-on; not WR).
+**Sub-5 path:** pure HL 8-3 (or −1f on v2) for ≤18030; full HL 8-3/8-4
+projects ~**17.9k / ~4:57** if phase matches. v2 is the full-clear showcase
+(not Clean power-on; not WR).
 
 ## Expected outcomes (updated)
 
@@ -337,8 +344,9 @@ showcase (not Clean power-on; not WR).
 | Isolated / natural 1-1 faster | **Done** (−170f class) | Keep; fold later |
 | Control-relative 1-2 → W4 | **Done** (−316f body / −329f to W4) | Keep |
 | Control-relative 4-1 / 4-2 → W8 | **Done** (−252f 4-1 / −1083f 4-2 / −5116f to W8) | Validate 4-2 path video+RAM |
-| 8-1 / 8-2 leave probe | **Partial** (2881 / 2209; no export) | Encode gates + export + verify |
-| 8-3 / 8-4 | **Open** | Phase search after 8-2 |
+| 8-1 / 8-2 leave probe | **Done** (2881 / 2209 exported) | Keep |
+| 8-3 pure HL | **Open** (max_x≈834) | Phase / retime / heal |
+| 8-4 TAS body | **Done** (FX 2661 after nat 8-3) | Hybrid v2 18031f |
 | Power-on full movie dies early | Core lag/blackout ≠ FCEUX | Don't force full FM2 |
 | Absolute stitch → 1-3 | Warp pipe phase miss | Always gate on control |
 | Parity (even/odd starts) | Hitbox / enemy phase | Prefer match wait; **search both** if miss |
@@ -367,8 +375,8 @@ Index **1** is the stable-retro NES hole (always 0).
   - **rr-9m9**: slice FM2 per-level from control — **1-2 W4 done**.
   - **rr-zzw**: slice 4-1 / 4-2 from control after HL W4 — **done** (→ W8 @7512f).
   - **rr-b8k**: slice 8-1…8-4 — **in progress** (8-1/8-2 leave probe-ok;
-    no export; 8-3/8-4 open).
-  - **Next:** gates+export 8-1/8-2; fix 8-3 phase; 8-4; then fold continuous.
+    exported; hybrid v2 18031f with FX 8-4).
+  - **Next:** pure HL 8-3 phase (or −1f); then Clean power-on fold.
   - **rr-k96**: FPG/BBG/fast-accel named macros — open (encode after more slices).
 - **rr-9dg** (8-1 polish −42f): keep artifacts; secondary to TAS structure.
 - 8-2/8-3/8-4 hill-climb (rr-7n0, rr-yqb, rr-6m9) remains secondary until
