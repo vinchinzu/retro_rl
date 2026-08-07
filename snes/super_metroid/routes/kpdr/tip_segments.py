@@ -283,6 +283,33 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         aliases=("speed_booster", "k4_5", "k4.5"),
         supports_checkpoint=True,
     ),
+    TipSegment(
+        tip_id="wave",
+        parent_tip_id="speed",
+        graph_id="speed",
+        kind="wave",
+        success_outcome="wave_collected",
+        route_label="wave",
+        source_policy=(
+            "accepted Speed continuous + pure-green Speed return → Bubble + "
+            "Bubble→Single→Double→Wave Super door / PLM controllers + "
+            "phase-guarded resources"
+        ),
+        timing_source="wave",
+        entry_condition_key="natural_wave_room_entry",
+        ordinary_condition_key="post_wave_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Wave Beam (KPDR K4.10)",
+        description=(
+            "Speed tip through Speed return → Bubble Mountain, Single "
+            "Chamber, Double Chamber (gate + Super door), and natural Wave "
+            "Beam PLM collect. Compose tip after pure dual Wave stack "
+            "(rr-re9); not STATUS-promoted default."
+        ),
+        aliases=("wave_beam", "k4_10", "k4.10"),
+        supports_checkpoint=True,
+    ),
 )
 
 POST_SUPERS_TIP_ORDER: tuple[str, ...] = tuple(

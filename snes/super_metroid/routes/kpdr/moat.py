@@ -22,8 +22,7 @@ Phases (bot / pure — verified hop path from pin):
    into Moat at y≈115–122 → jam ~x475 → after spark dies, ``RIGHT+X``
    opens blue door into West Ocean ``0x93FE``.
 
-Residual / probe: ``docs/tasks/SM-MOAT-SHINESPARK-residual.md``,
-``scripts/probe/moat_spark_watch.py hop``.
+Probe: ``scripts/probe/moat_spark_watch.py hop`` (pure residual purged after green).
 """
 
 from __future__ import annotations

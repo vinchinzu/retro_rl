@@ -54,12 +54,18 @@ ADDR_RUPEES = 0x066D
 ADDR_KEYS = 0x066E
 ADDR_HEALTH = 0x066F  # high nibble = containers-1, low = filled hearts
 ADDR_TRIFORCE = 0x0671
+# Boomerangs sit after triforce in the file-slot inventory block (Data Crystal).
+# Magical (0x0675) overrides wooden (0x0674) when both would apply.
+ADDR_BOOMERANG = 0x0674  # wooden; 0=false, 1=true
+ADDR_MAGIC_BOOMERANG = 0x0675  # magical full-screen; 0=false, 1=true
+ADDR_MAGIC_SHIELD = 0x0676
 
 # Overworld start + first milestones
 SCREEN_START = 0x77
 SCREEN_NORTH_OF_START = 0x67
 SCREEN_LEVEL1_ENTRANCE = 0x37
 SCREEN_LEVEL2_ENTRANCE = 0x3C  # walkthrough-correlated Moon overworld door
+SCREEN_LEVEL2_ENTRY_ROOM = 0x7D  # Moon dungeon south mouth (live settle)
 CAVE_MODE = 11
 PLAY_MODE = 5
 
@@ -137,8 +143,21 @@ class ZeldaSnapshot:
     def filled_hearts(self) -> int:
         return int(self.health) & 0x0F
 
+    @property
+    def health_is_full(self) -> bool:
+        """True when the low nibble is the full-health sentinel ``0xF``."""
+        return (int(self.health) & 0x0F) >= 0x0F
+
     def object_in_slot(self, slot: int) -> ZeldaObject | None:
         return next((obj for obj in self.objects if obj.slot == slot), None)
+
+
+def full_health_byte(health: int) -> int:
+    """Preserve heart containers (high nibble); set filled hearts to full (``0xF``).
+
+    Does **not** grant containers. Used by the survival assist only.
+    """
+    return (int(health) & 0xF0) | 0x0F
 
 
 def read_u8(ram: np.ndarray, addr: int) -> int:
@@ -229,6 +248,10 @@ def capabilities_from_ram(ram) -> frozenset[str]:
         caps.add("bracelet")
     if read_u8(ram, ADDR_CANDLE):
         caps.add("candle")
+    if read_u8(ram, ADDR_MAGIC_BOOMERANG):
+        caps.add("magical_boomerang")
+    elif read_u8(ram, ADDR_BOOMERANG):
+        caps.add("boomerang")
     return frozenset(caps)
 
 

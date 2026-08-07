@@ -80,10 +80,15 @@ right side; burn 3rd-from-top bush on left with Blue Candle.
 **Key items:** Magical Boomerang (full-screen). Bombs required for Dodongo.
 **Boss:** Dodongo (smoke/bombs). **Triforce bit:** `0x02`.
 
-### Live checklist (not yet verified)
+### Live checklist
 
-- [ ] Room IDs for entry / keys / boomerang / boss / triforce
-- [ ] Rope / Goriya / Moldorm object type IDs
+- [x] Entry room **0x7d**; north **0x6d** (5 Ropes); west **0x6c** (6 Ropes, key `0x19`)
+- [x] Rope object type **0x28** (TYPE_AND_HP when play-settled; spawn ~100f after screen)
+- [x] Entry east **0x7e** (5 Ropes + key `0x19`) via diamond-nav; UP→**0x6e** (3 Ropes)
+- [x] Magical Boomerang inventory: `0x0674` / `0x0675` (not yet collected live)
+- [ ] **0x6e RIGHT** (walkthrough key → compass) — residual geometry
+- [ ] Live room ID for Magical Boomerang / boss / triforce
+- [ ] Goriya / Moldorm object type IDs on L2
 - [ ] Bomb placement policy for Dodongo
 - [ ] Isolated + natural-entry clear with `triforce & 0x02`
 
@@ -117,23 +122,30 @@ From start: up, left 4, down, right 1. Harder dungeon; potion recommended
 
 Source:
 [Zelda Dungeon L4](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-4-the-snake/).
+Local route plan: [LEVEL4_ROUTE.md](../LEVEL4_ROUTE.md). Scaffold:
+`level4_overworld.py`, `scripts/probe_level4_entry.py --plan-only`.
 
 ### Overworld prep (source)
 
+- **Gate:** Raft from L3 (`ADDR_RAFT` `0x0660`). Do not poke for Clean.
 - Raft heart: from start east 8, north 4 dock → cave Heart Container (vs potion)
+  - Hypothesized dock **`0x3F`**, cave **`0x2F`** (hop math; not live)
 - Dungeon: raft dock island → building mouth
+  - Hypothesized lake dock **`0x55`** (start U L×2 U), island **`0x45`** (not live)
+- Full ZD path from L3-area dock: L, U, L×6, D×3, L×3, raft island (source)
 
 ### Interior (source)
 
 - LEFT Keese + key; UP Vires (split to red Keese); key RIGHT dark maze → **Compass**
 - Ladder of dark rooms + keys; water blocks north until item
-- RIGHT clear Vires → Like-Likes + Zols → push left block → **Stepladder**
+- RIGHT clear Vires → Like-Likes + Zols → push left block → **Stepladder** (`ADDR_LADDER` `0x0663`)
 - Use ladder over water → Map; optional bomb shortcuts / Manhandla side fight
 - Old Man: “Walk Into The Waterfall” (L5 clue)
 - Clear Vires + Keese, push block → **Gleeok** (2 heads)
 - Heart → Triforce shard 4
 
 **Item:** Stepladder. **Boss:** Gleeok (2-head). **Triforce bit:** `0x08`.
+**Live:** none (entry room / door screen TBD).
 
 ---
 
@@ -190,11 +202,17 @@ Potion shop: bomb between two staircases one screen SE of door.
 
 Source:
 [Zelda Dungeon L7](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-7-the-demon/).
+Local route plan: [LEVEL7_ROUTE.md](../LEVEL7_ROUTE.md). Scaffold:
+`level7_overworld.py`, `scripts/probe_level7_entry.py --plan-only`.
 
 ### Overworld (source)
 
+- **Gates:** Whistle from L5 (`ADDR_WHISTLE` `0x065C`); Bait mid-dungeon
+  (`ADDR_FOOD` `0x065D`). Do not poke for Clean.
 - Buy **Bait/Food** (60R special shop: start up, left 3, up 3, middle top Armos)
+  - Hypothesized shop screen **`0x34`** (not live)
 - Whistle at pond (from shop: down 2, left 2, up) drains water → entrance
+  - Hypothesized pond **`0x42`** (not live)
 
 ### Interior (source)
 
@@ -207,6 +225,7 @@ Source:
 - Boss: **Aquamentus** (same as L1); Heart → Triforce shard 7
 
 **Item:** Red Candle. **Boss:** Aquamentus. **Triforce bit:** `0x40`.
+**Live:** none (pond / entry room TBD).
 
 ---
 
@@ -236,23 +255,29 @@ From start: right 4, up 2, right, down, right; burn lone bush with Candle.
 
 Source:
 [Zelda Dungeon L9](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-9-death-mountain/).
+Local route plan: [LEVEL9_ROUTE.md](../LEVEL9_ROUTE.md). Scaffold:
+`level9_overworld.py`, `scripts/probe_level9_entry.py --plan-only`.
 
 ### Overworld (source)
 
-From start: right, up 5, left, up 2, left 2; bomb left rock of pair.
-Bring full Red Potion (shop one screen left).
+- **Gate:** full Triforce `ADDR_TRIFORCE == 0xFF` for Old Man; bombs for rock.
+- From start: right, up 5, left, up 2, left 2; bomb left rock of pair.
+  - Hypothesized Spectacle Rock **`0x05`** (hop math; not live)
+  - Nearby potion shop hypothesized **`0x04`** (one left)
+- Bring full Red Potion (shop one screen left).
 
 ### Interior (source) — Magical Key path (summary)
 
 - Full Triforce Old Man gate
 - Lanmola; undergrounds; Like-Likes threaten Magical Shield
 - **Patra** (orbiting eyes) — first skippable, second drops **Map**
-- Staircase → **Red Ring** (damage quartering from base)
-- More Patra / Wizzrobe clears → **Silver Arrows**
+- Staircase → **Red Ring** (`ADDR_RING` planned value 2)
+- More Patra / Wizzrobe clears → **Silver Arrows** (`ADDR_ARROWS` planned value 2)
 - Final Patra → **Ganon** (must stun then Silver Arrow)
-- Princess Zelda / ending
+- Princess Zelda / ending (credits stop **unverified** stub)
 
 **Items:** Red Ring, Silver Arrows. **Boss:** Ganon. Routes differ with/without Magical Key.
+**Live:** none (rock / entry / ending TBD).
 
 ---
 

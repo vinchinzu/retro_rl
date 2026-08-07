@@ -13,7 +13,7 @@ Controller geometry in `routes/kpdr/k4_wave.py` is owned by the controller agent
 | `debug/wave_recon/` (gate_switch*, human_full, human_replay) | Visual switch top; closed bars hard-stop; open vs closed frames |
 | GHZ pattern `routes/kpdr/ghz_to_red.py` | Tight **Samus y** band + settle pose before shot |
 | `scripts/probe/red_diag.py` | PLM open-state WRAM **blocked** (no trusted PLM record offset) |
-| Residual `docs/tasks/SM-K4.10-PURE-residual.md` | Entry / Kamer / fail pin |
+| Pure gate open (promoted; residual purged) | Entry / Kamer / fail pin → controller `k4_wave.py` |
 
 ## Geometry truth (verified)
 
@@ -28,10 +28,10 @@ Controller geometry in `routes/kpdr/k4_wave.py` is owned by the controller agent
 
 | Fact | Value | Evidence |
 |------|------:|----------|
-| Closed hard-stop (Samus center) | **x ≈ 411** upper path | residual; human max x before open = 411; pure fail still stops here |
+| Closed hard-stop (Samus center) | **x ≈ 411** upper path | human max x before open = 411; pure fail still stops here |
 | Past-gate solid | **x ≳ 420–480, y ≈ 139** | human f5132 (421,139) pose 9; f5200 (477,139) |
 | Switch side | **Top of bars** (ceiling unit) | diagram label A; all `wave_recon` screenshots; sm-json “shoot straight up” / “from below” |
-| Expected projectile direction (upper seat) | **R-angle = diagonal up-right** (hold **R**, not UP+RIGHT) | human + residual; horizontal RIGHT hits **bars** |
+| Expected projectile direction (upper seat) | **R-angle = diagonal up-right** (hold **R**, not UP+RIGHT) | human tape; horizontal RIGHT hits **bars** |
 | Secondary direction | **Straight UP** from precisely under the gate | sm-json: “Shoot straight up to open the gate on the way up”; “from below without items” |
 
 ### Candidate switch hitbox (room pixels, approximate)

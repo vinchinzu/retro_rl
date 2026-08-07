@@ -28,6 +28,7 @@ from zelda_i.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX_FRAMES
 from zelda_i.sword_cave import SwordCaveController
 
 if TYPE_CHECKING:
+    from zelda_i.assist import UnlimitedHealthAssist
     from zelda_i.room_timer import RoomTimer
 
 
@@ -42,10 +43,22 @@ def _observe_room_timer(
         room_timer.observe(read_snapshot(env.get_ram()), frame=frame)
 
 
+def _apply_assist(
+    assist: UnlimitedHealthAssist | None,
+    env,
+    *,
+    frame: int,
+) -> None:
+    """Opt-in survival assist after each frame (never default)."""
+    if assist is not None:
+        assist.apply_env(env, frame=frame)
+
+
 def boot_to_ready(
     env,
     *,
     room_timer: RoomTimer | None = None,
+    assist: UnlimitedHealthAssist | None = None,
     frame_base: int = 0,
 ) -> tuple[Any, int]:
     """Drive the power-on menu script to the first playable overworld frame."""
@@ -54,7 +67,9 @@ def boot_to_ready(
     for scripted in boot_to_level1_script():
         obs, *_ = env.step(scripted.action)
         frame += 1
-        _observe_room_timer(room_timer, env, frame=frame_base + frame)
+        gf = frame_base + frame
+        _observe_room_timer(room_timer, env, frame=gf)
+        _apply_assist(assist, env, frame=gf)
         if is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
             return obs, frame
     return obs, frame
@@ -65,6 +80,7 @@ def run_natural_to_level1(
     *,
     require_dungeon: bool = True,
     room_timer: RoomTimer | None = None,
+    assist: UnlimitedHealthAssist | None = None,
     frame_base: int = 0,
 ) -> tuple[
     Any,
@@ -79,7 +95,10 @@ def run_natural_to_level1(
     the global emulator frame after this prefix (``frame_base``-relative total).
     """
     obs, boot_frames = boot_to_ready(
-        env, room_timer=room_timer, frame_base=frame_base
+        env,
+        room_timer=room_timer,
+        assist=assist,
+        frame_base=frame_base,
     )
     global_frame = frame_base + boot_frames
     sword = SwordCaveController()
@@ -87,6 +106,7 @@ def run_natural_to_level1(
         obs, *_ = env.step(sword.step(read_snapshot(env.get_ram())).action)
         global_frame += 1
         _observe_room_timer(room_timer, env, frame=global_frame)
+        _apply_assist(assist, env, frame=global_frame)
         if sword.success or sword.phase.name == "FAILED":
             break
 
@@ -95,6 +115,7 @@ def run_natural_to_level1(
             obs, *_ = env.step(nes_action("DOWN"))
             global_frame += 1
             _observe_room_timer(room_timer, env, frame=global_frame)
+            _apply_assist(assist, env, frame=global_frame)
 
     nav = OverworldToLevel1Controller(require_dungeon=require_dungeon)
     if sword.success:
@@ -102,6 +123,7 @@ def run_natural_to_level1(
             obs, *_ = env.step(nav.step(read_snapshot(env.get_ram())).action)
             global_frame += 1
             _observe_room_timer(room_timer, env, frame=global_frame)
+            _apply_assist(assist, env, frame=global_frame)
             if nav.success or nav.phase.name == "FAILED":
                 break
     return obs, boot_frames, sword, nav, global_frame
@@ -168,6 +190,7 @@ def run_controller_stage(
     controller: Any,
     max_frames: int,
     room_timer: RoomTimer | None = None,
+    assist: UnlimitedHealthAssist | None = None,
     frame_base: int = 0,
 ) -> tuple[Any, ControllerStageResult]:
     """Run one controller without duplicating the standard emulator loop.
@@ -176,6 +199,10 @@ def run_controller_stage(
     :class:`~zelda_i.room_timer.RoomTimer` with a continuous global frame index
     starting at ``frame_base + 1``. Controllers are unchanged when the timer is
     omitted (default).
+
+    When ``assist`` is provided (Survival / infinite-life first pass), health is
+    refilled after each frame per ``docs/ASSIST_CONTRACT.md``. Default is no
+    assist (Clean).
     """
     result = ControllerStageResult(
         name=name,
@@ -189,6 +216,7 @@ def run_controller_stage(
         result.frames = frame
         result.end_frame = frame_base + frame
         _observe_room_timer(room_timer, env, frame=result.end_frame)
+        _apply_assist(assist, env, frame=result.end_frame)
         if controller.success or controller.phase.name == "FAILED":
             break
     result.success = bool(controller.success)
@@ -203,6 +231,7 @@ def run_natural_to_milestone(
     *,
     milestone: str = "clear53",
     room_timer: RoomTimer | None = None,
+    assist: UnlimitedHealthAssist | None = None,
     frame_base: int = 0,
 ) -> NaturalMilestoneRun:
     """Compose the natural power-on Level 1 prefix through one milestone."""
@@ -214,6 +243,7 @@ def run_natural_to_milestone(
     obs, boot_frames, sword, nav, end_frame = run_natural_to_level1(
         env,
         room_timer=room_timer,
+        assist=assist,
         frame_base=frame_base,
     )
     run = NaturalMilestoneRun(
@@ -242,6 +272,7 @@ def run_natural_to_milestone(
             controller=controller,
             max_frames=max_frames,
             room_timer=room_timer,
+            assist=assist,
             frame_base=run.end_frame,
         )
         run.obs = obs

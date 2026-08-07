@@ -27,7 +27,23 @@ KEESE_OBJECT_TYPE = 0x1B
 GEL_OBJECT_TYPE = 0x15
 GORIYA_OBJECT_TYPE = 0x06
 WALLMASTER_OBJECT_TYPE = 0x27
+ROPE_OBJECT_TYPE = 0x28
 AQUAMENTUS_OBJECT_TYPE = 0x3D
+
+# Level 2 (Moon) room IDs — live recon 2026-08-06 (see LEVEL2_ROUTE.md).
+LEVEL_2 = 2
+ROOM_L2_ENTRY = 0x7D
+ROOM_L2_ROPES = 0x6D
+ROOM_L2_WEST_KEY = 0x6C
+ROOM_L2_EAST_KEY = 0x7E  # 5× Rope + key 0x19 (entry-east; diamond-nav from 0x7d)
+ROOM_L2_EAST_OF_ROPES = 0x6E  # 3× Rope; also N of 0x7e; key-RIGHT → 0x6f
+ROOM_L2_COMPASS = 0x6F  # 6× Gel 0x15 (TYPE-only) + compass RoomItemId 0x16
+ROOM_6D_LEFT_DOOR_BIT = 0x02  # cur_opened_doors bit1 after clear
+# Magical Boomerang inventory (Data Crystal + live zero-check on L2 states).
+# Stop predicate for future pure item room: read_u8(ram, ADDR_MAGIC_BOOMERANG) != 0
+# RoomItemId for boomerang drops correlates to 0x1D (L1 wooden boom room).
+# Diamond-east (0x7d / 0x6e): band→wall→S2(LEFT×6,vert,RIGHT×10)→pure y=141 RIGHT.
+# See nav_common.diamond_east_phase; bands DIAMOND_BAND_7D=157, DIAMOND_BAND_6E=113.
 
 
 class AliveRule(str, Enum):
@@ -122,6 +138,7 @@ class DungeonRoomSpec:
     required_open_doors: int = 0
     exit_routes: tuple[DoorRoute, ...] = ()
     max_frames: int = 6000
+    level: int = LEVEL_1
 
     def live_enemies(self, snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
         enemies = tuple(
@@ -208,6 +225,18 @@ _WALLMASTER_PATROL: tuple[tuple[int, int], ...] = (
     (32, 141),
     (32, 109),
     (32, 173),
+)
+
+# Level 2 ropes room: open lanes; engage nearest after ~100f spawn settle.
+_ROOM_6D_PATROL: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (112, 109),
+    (160, 109),
+    (160, 141),
+    (160, 173),
+    (112, 173),
+    (64, 173),
+    (64, 141),
 )
 
 ROOM_53_SPEC = DungeonRoomSpec(
@@ -471,6 +500,124 @@ ROOM_35_SPEC = DungeonRoomSpec(
     max_frames=6000,
 )
 
+# --- Level 2 (Moon) rooms (isolated pure from Level2Entrance / Level2RopesCleared)
+# Entry 0x7d: no combat types at room-ready; north doorway open without door bit.
+# Ropes 0x6d: 5× type 0x28; HP activates ~mode-5 settle; clear sets LEFT bit 0x02.
+# Lab (Clean, 12/12): attack_phase=4, engage=64, median ~674f — lab_l2_6d/.
+ROOM_7D_SPEC = DungeonRoomSpec(
+    spec_id="level2_room7d_entry",
+    source_room=ROOM_L2_ENTRY,
+    room_id=ROOM_L2_ENTRY,
+    entry=DoorRoute("UP", ((120, 205), (120, 93))),
+    enemy_types=(),
+    expected_enemy_count=0,
+    alive_rule=AliveRule.TYPE,
+    combat=CombatTuning(patrol=((120, 141),)),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=0x03,
+    exit_routes=(
+        DoorRoute("UP", ((120, 141), (120, 93))),
+    ),
+    max_frames=2000,
+    level=LEVEL_2,
+)
+
+ROOM_6D_SPEC = DungeonRoomSpec(
+    spec_id="level2_room6d_ropes",
+    source_room=ROOM_L2_ENTRY,
+    room_id=ROOM_L2_ROPES,
+    entry=DoorRoute(
+        "UP",
+        ((120, 205), (120, 93)),
+    ),
+    enemy_types=(ROPE_OBJECT_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_6D_PATROL,
+        engage_distance=64,
+        attack_phase=4,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    room_item_id=0x03,
+    required_open_doors=ROOM_6D_LEFT_DOOR_BIT,
+    exit_routes=(
+        DoorRoute("DOWN", ((120, 189),)),
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
+    ),
+    max_frames=6000,
+    level=LEVEL_2,
+)
+
+# West of 0x6d: 6 Ropes + fixed RoomItemId small key (0x19).
+# Key pickup observed near (136, 141) during combat (keys 0→1, 1 rope left).
+# Lab clear-only (Clean): phase 2/4 engage 64 → 2/2; phase 0 times out.
+ROOM_6C_SPEC = DungeonRoomSpec(
+    spec_id="level2_room6c_west_key",
+    source_room=ROOM_L2_ROPES,
+    room_id=ROOM_L2_WEST_KEY,
+    entry=DoorRoute("LEFT", ((120, 141), (32, 141))),
+    enemy_types=(ROPE_OBJECT_TYPE,),
+    expected_enemy_count=6,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_6D_PATROL,
+        engage_distance=64,
+        attack_phase=2,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.FIXED_INVENTORY,
+        inventory_field="keys",
+        target=(136, 141),
+    ),
+    room_item_id=0x19,
+    exit_routes=(
+        DoorRoute("RIGHT", ((120, 141), (208, 141))),
+    ),
+    max_frames=8000,
+    level=LEVEL_2,
+)
+
+# East of entry 0x7d: 5 Ropes + fixed RoomItemId small key (0x19).
+# Diamond solids block naive y≈141 RIGHT at x≈128. Entry: skirt south band
+# y≈157 → wall x≥200 → align y≈141 → RIGHT (see LEVEL2_ROUTE / l2_7d_east_nav).
+# Combat seeds from 0x6d 5-rope policy (phase 4, engage 64); key like 0x6c.
+ROOM_7E_SPEC = DungeonRoomSpec(
+    spec_id="level2_room7e_east_key",
+    source_room=ROOM_L2_ENTRY,
+    room_id=ROOM_L2_EAST_KEY,
+    entry=DoorRoute(
+        "RIGHT",
+        ((120, 157), (208, 157), (208, 141)),
+    ),
+    enemy_types=(ROPE_OBJECT_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_6D_PATROL,
+        engage_distance=64,
+        attack_phase=4,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.FIXED_INVENTORY,
+        inventory_field="keys",
+        target=(136, 141),
+    ),
+    room_item_id=0x19,
+    exit_routes=(
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
+        DoorRoute("UP", ((120, 141), (120, 93))),
+    ),
+    max_frames=8000,
+    level=LEVEL_2,
+)
+
 ROOM_SPECS: dict[int, DungeonRoomSpec] = {
     ROOM_23_SPEC.room_id: ROOM_23_SPEC,
     ROOM_33_SPEC.room_id: ROOM_33_SPEC,
@@ -482,6 +629,10 @@ ROOM_SPECS: dict[int, DungeonRoomSpec] = {
     ROOM_52_SPEC.room_id: ROOM_52_SPEC,
     ROOM_53_SPEC.room_id: ROOM_53_SPEC,
     ROOM_54_SPEC.room_id: ROOM_54_SPEC,
+    ROOM_7D_SPEC.room_id: ROOM_7D_SPEC,
+    ROOM_6D_SPEC.room_id: ROOM_6D_SPEC,
+    ROOM_6C_SPEC.room_id: ROOM_6C_SPEC,
+    ROOM_7E_SPEC.room_id: ROOM_7E_SPEC,
 }
 
 
@@ -497,7 +648,7 @@ def dungeon_room_cleared(ram: np.ndarray, spec: DungeonRoomSpec) -> bool:
     """Stop predicate for a room whose enemies and clear counter are known."""
     snap = read_snapshot(ram)
     return (
-        snap.level == LEVEL_1
+        snap.level == spec.level
         and snap.screen == spec.room_id
         and snap.mode == PLAY_MODE
         and not spec.live_enemies(snap)
@@ -507,6 +658,45 @@ def dungeon_room_cleared(ram: np.ndarray, spec: DungeonRoomSpec) -> bool:
             or snap.cur_opened_doors & spec.required_open_doors
             == spec.required_open_doors
         )
+    )
+
+
+def level2_room_6d_cleared(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x6d 5 Ropes dead, RoomAllDead≥20, left door bit 0x02."""
+    return dungeon_room_cleared(ram, ROOM_6D_SPEC)
+
+
+def level2_room_6c_key_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x6c with keys≥1 and no live Ropes.
+
+    ``RoomAllDead`` can lag several dozen frames after the last kill (observed
+    0→14→43 while idling post-success). Inventory + type/HP liveness is the
+    reliable stop; do not require the clear counter for FIXED_INVENTORY rooms.
+    """
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL_2
+        and snap.screen == ROOM_L2_WEST_KEY
+        and snap.mode == PLAY_MODE
+        and snap.keys >= 1
+        and not ROOM_6C_SPEC.live_enemies(snap)
+    )
+
+
+def level2_room_7e_key_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x7e east key room with keys≥1 and no live Ropes.
+
+    Same FIXED_INVENTORY stop as west key: inventory + liveness only. From
+    ``Level2Entrance`` (keys=0) this is keys≥1; after west key, controller
+    success uses inventory delta while this stop still holds for keys≥1.
+    """
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL_2
+        and snap.screen == ROOM_L2_EAST_KEY
+        and snap.mode == PLAY_MODE
+        and snap.keys >= 1
+        and not ROOM_7E_SPEC.live_enemies(snap)
     )
 
 
@@ -740,8 +930,8 @@ class GenericDungeonRoomController:
             self._set_phase(DungeonPhase.FAILED, "timeout")
             return FrameAction(nes_idle_action(), "timeout")
 
-        if snap.level != LEVEL_1:
-            return FrameAction(nes_idle_action(), "wait_level1")
+        if snap.level != self.spec.level:
+            return FrameAction(nes_idle_action(), f"wait_level_{self.spec.level}")
 
         if snap.screen == self.spec.room_id and self.phase in (
             DungeonPhase.ROUTE_ENTRY,

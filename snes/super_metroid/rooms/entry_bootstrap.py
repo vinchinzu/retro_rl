@@ -33,9 +33,15 @@ from super_metroid.dev.common import (
 from super_metroid.dev.route_dev import PHANTOON_ENTRY, ROUTE_FULL
 from super_metroid.paths import GAME_DIR, INTEGRATION_DIR, ROOM_PROBLEMS_PATH
 from super_metroid.ram import (
+    ADDR_MOMENTUM_X,
+    ADDR_MOMENTUM_X_SUB,
     ADDR_SAMUS_POSE,
+    ADDR_SPEED_COUNTER,
+    ADDR_SPEED_FLAG,
     ADDR_VELOCITY_X,
+    ADDR_VELOCITY_X_SUB,
     ADDR_VELOCITY_Y,
+    ADDR_VELOCITY_Y_SUB,
     GameplayPhase,
     parse_env_state,
     write_wram_u16,
@@ -68,9 +74,9 @@ _POSE_FACE_LEFT = 2
 # Inward offset from door lip so the segment starts *inside* the room.
 _DOORWAY_INSET_PX = 56
 
-# Extra motion clears (momentum / collision leftovers). Named where known.
-_ADDR_YSPEED_SUB = 0x0B2C
-_ADDR_XSPEED_SUB = 0x0B44
+# Extra motion clears (momentum / collision leftovers / speed charge).
+# Practice fixtures intentionally zero kinematics — natural continuous hops
+# must NOT use this path (door entry speed is route-critical).
 _ADDR_POSE_INPUT = 0x0A28
 _ADDR_POSE_TURN = 0x0A2A
 _ADDR_POSE_MOVEMENT = 0x0A2C
@@ -215,12 +221,21 @@ def doorway_spawn(
 
 
 def _clear_motion_and_pose(env: Any, pose: int) -> None:
-    """Standing pose + zero speeds so the fixture is controller-ready."""
+    """Standing pose + zero speeds so the fixture is controller-ready.
+
+    Clears speed-booster charge and momentum as well — practice segments start
+    neutral. Continuous natural-entry hops must retain leave kinematics; do not
+    call this from product controllers.
+    """
     write_wram_u16(env, ADDR_SAMUS_POSE, pose)
     write_wram_u16(env, ADDR_VELOCITY_Y, 0)
+    write_wram_u16(env, ADDR_VELOCITY_Y_SUB, 0)
     write_wram_u16(env, ADDR_VELOCITY_X, 0)
-    write_wram_u16(env, _ADDR_YSPEED_SUB, 0)
-    write_wram_u16(env, _ADDR_XSPEED_SUB, 0)
+    write_wram_u16(env, ADDR_VELOCITY_X_SUB, 0)
+    write_wram_u16(env, ADDR_MOMENTUM_X, 0)
+    write_wram_u16(env, ADDR_MOMENTUM_X_SUB, 0)
+    write_wram_u16(env, ADDR_SPEED_COUNTER, 0)
+    write_wram_u16(env, ADDR_SPEED_FLAG, 0)
     write_wram_u16(env, _ADDR_POSE_INPUT, 0)
     write_wram_u16(env, _ADDR_POSE_TURN, 0)
     write_wram_u16(env, _ADDR_POSE_MOVEMENT, 0)

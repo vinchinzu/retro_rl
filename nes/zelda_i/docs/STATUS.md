@@ -164,12 +164,40 @@ Avoid `0x4B→0x5B` (north entry seals east). Enter 0x5B from **0x5A**. 0x5C
 needs BFS maze waypoints (`LEVEL2_5C_MAZE_WAYPOINTS`). Dev fixtures:
 `Level2DoorOW`, `Level2Entrance`, `Level2EntryFresh`.
 
-**Interior first facts:** entry room **0x7d**; north **0x6d** Ropes type
-**0x28** (spawn ~100f after enter). Walkthrough archive:
-[research/DUNGEON_WALKTHROUGHS.md](research/DUNGEON_WALKTHROUGHS.md).
+**Interior first facts:** entry **0x7d** empty combat; north **0x6d** = **5×
+Rope `0x28`**, spawn ~100f, clear sets LEFT door bit `0x02` (LEFT @ y≈141 →
+**0x6c** 6 Ropes + fixed key `0x19` @ ~**(136,141)**); east **0x7e** = **5×
+Rope + key `0x19`** via diamond-nav (y≈157 wall-first, not naive y≈141 RIGHT).
+Recon: `recordings/l2_recon_probe.json`. Specs: `ROOM_7D_SPEC` / `ROOM_6D_SPEC` /
+`ROOM_6C_SPEC` / `ROOM_7E_SPEC`. Walkthrough: [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md).
 
-**Not yet Clean:** heart-safe OW transit without RAM poke; L2 room chain to
-Dodongo / `triforce & 0x02`.
+**Isolated pure (Clean, checkpoint — not natural-entry STATUS):** 0x6d clear
+2/2 from `Level2Entrance` (`level2_clear6d_isolated.json`, 674f); 0x6c west
+key 2/2 from `Level2RopesCleared` + 2/2 chain from entrance
+(`level2_clear6c_isolated.json`, `level2_clear6c_from_entrance_isolated.json`);
+0x7e east key 2/2 from `Level2Entrance` (`level2_clear7e_isolated.json`,
+1110f, checkpoint `Level2EastKey.state`). Stops: `level2_room_6d_cleared`,
+`level2_room_6c_key_success`, `level2_room_7e_key_success`.
+
+**Assisted Moon entry (not Clean STATUS):** 2/2
+`level==2` mode 5 room **0x7d** ~(120,205) via
+`probe_level2_suffix.py --infinite-life --enter-dungeon`
+(`recordings/l2_entry_assisted_t{0,1}_probe.json`). Stop:
+`level2_entrance_success`. Checkpoint `Level2Entrance.state` = room-ready.
+
+**Magical Boomerang (`rr-ep8` / `rr-ebe` PARTIAL, not Clean item):** inventory
+map `ADDR_BOOMERANG=0x0674` / `ADDR_MAGIC_BOOMERANG=0x0675`. Live graph
+`0x6c↔0x6d↔0x7d↔0x7e↔0x6e`; entry-east pure done; residual **0x6e RIGHT**
+(compass/boom). Path map in [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md). Probe:
+`recordings/l2_boom_path_probe.json`, `l2_boomerang_partial.json`.
+
+**Dodongo / TF bit 0x02 (`rr-a1t` PARTIAL, not Clean):** same residual on
+**0x6e RIGHT** (shared with boom branch). Bombs place via B (`ADDR_BOMBS`);
+boss / HC / `triforce & 0x02` **not observed**. Residual **`rr-n5i`**. Evidence:
+`recordings/l2_dodongo_rr_a1t_partial.json`, `l2_dodongo_path_recon.json`.
+
+**Not yet Clean:** heart-safe OW transit without RAM poke; natural-entry L2
+interior; Magical Boomerang pickup / Dodongo / `triforce & 0x02`.
 
 ### Measured door-path breakpoint (2026-07-29)
 
@@ -198,17 +226,24 @@ heart-starvation before the maze, not a single misaligned hop to tweak.
 ## Not done
 
 - Clean 0x4A→0x3C heart management (no poke)
-- Level 2 interior clear (keys, Magical Boomerang, Dodongo, shard 2)
+- Level 2 remainder (east key, Magical Boomerang, Dodongo, shard 2); natural-entry after OW door Clean
 - Full eight-dungeon/Ganon route graph
 - Broader overworld bomb / white-sword chain
 - Continuous multi-dungeon dry run (M6–M8)
 
+## Dual track (2026-08-06)
+
+| Track | Tooling | STATUS role |
+|-------|---------|-------------|
+| Clean | default runners | only path that promotes verified Clean gates |
+| Survival-assisted | `--infinite-life` / `assist.UnlimitedHealthAssist` | first-pass geometry; contract `ASSIST_CONTRACT.md` |
+
+Infinite life is implemented and CLI-wired; **no assisted end-to-end segment
+is STATUS-promoted yet**. Process: `docs/tasks/PROCESS.md`. Work: `bd ready -l zelda_i`.
+
 ## Next
 
-1. **Heart-safe pre-corridor farm** on 0x4A (or safer screens) until
-   `filled_hearts ≥ 2` (prefer 3), then resume `LEVEL2_DOOR_HOPS`; re-time
-   with `--room-timing` / door probe.
-2. Promote 0x5C maze waypoints into the hop controller only after hearts
-   survive 0x5A–0x5C (2/2 isolated to 0x3C).
-3. Level 2 rooms: 0x7d→0x6d clear/doors → key branches → Dodongo bombs → shard 2.
-4. Natural-entry from power-on through `triforce & 0x02`.
+1. Resolve L2 path past west key (entry-east conflict) → Magical Boomerang pure.
+2. Dodongo bombs pure → Heart + `triforce & 0x02` (`rr-a1t`).
+3. **Clean parallel:** heart-safe farm before 0x5A; promote maze only after 2/2
+   Clean isolated to 0x3C / entry.

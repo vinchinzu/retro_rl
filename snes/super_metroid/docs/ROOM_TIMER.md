@@ -108,7 +108,10 @@ Tests: `super_metroid/tests/test_room_timer.py` (no ROM).
 - Timing is per confirmed room hop, not LiveSplit-style segment UI.
 - Door identity is limited to `transition_direction` and
   `door_transition` flags already on `SuperMetroidState` (not full door BTS
-  tables unless you join against `maps/` separately).
+  tables unless you join against `maps/` separately). Leave/entry **speed and
+  position** for TAS door tech live on continuous
+  `ObservedTransition.leave_kinematics` / `entry_kinematics` (see
+  `door_kinematics.py`), not on the timer records.
 - Multi-screen loads are only complete once settle rules pass (same discipline
   as `dev.common.door_warp`: do not treat mid-load ordinary-looking frames as
   done).

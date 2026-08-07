@@ -9,6 +9,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x15: "gel",
     0x1B: "keese",
     0x27: "wallmaster",
+    0x28: "rope",
     0x3D: "aquamentus",
     0x2A: "stalfos",
     0x60: "green_rupee_drop",
@@ -71,6 +72,9 @@ RAM_SYMBOLS: dict[int, str] = {
     ram.ADDR_KEYS: "keys",
     ram.ADDR_HEALTH: "health",
     ram.ADDR_TRIFORCE: "triforce",
+    ram.ADDR_BOOMERANG: "boomerang",
+    ram.ADDR_MAGIC_BOOMERANG: "magical_boomerang",
+    ram.ADDR_MAGIC_SHIELD: "magic_shield",
 }
 
 

@@ -607,6 +607,7 @@ def test_super_plus_continuous_door_edges_come_from_spine() -> None:
         "big_pink_main",
         "hijump_collected",
         "warehouse_to_business_return",
+        "speed_return_to_bubble",  # multi-room reverse; not a single door
     }
 
     by_id = {edge.edge_id: edge for edge in SPEED_GRAPH.edges}

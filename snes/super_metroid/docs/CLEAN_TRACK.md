@@ -95,8 +95,8 @@ and early skirmishes on natural packs + collected capacity (10 missiles).
 **26,824**; missiles **27,678 / 29,440**; bombs **41,243**; BT defeated
 **46,946**; exit **48,638**. Clean path hybrids structured BT fight (kite
 defaults for ~3/10 missile continuous entry) + hash-pinned exit tail; assisted
-keeps full policy (116 missile refill writes). Residual:
-[`tasks/SM-CLEAN-BT-ECONOMY-residual.md`](tasks/SM-CLEAN-BT-ECONOMY-residual.md).
+keeps full policy (116 missile refill writes). Residual purged
+(ephemeral lifecycle; dual evidence in `recordings/bombs_clean*.json`).
 
 `--clean` is landed (disables energy + ammo, defaults to `*_clean` stems,
 requires zero resource writes). Prefer:
@@ -146,7 +146,7 @@ affected prefix before claiming either track green.
 | `SM-CLEAN-INTEGRITY` | Done — zero resource-write asserts |
 | `SM-CLEAN-MORPH` | Done — clean morph continuous |
 | [`SM-CLEAN-BOMBS`](tasks/SM-CLEAN-BOMBS.md) | Clean → Bomb Torizo — compose RED then economy |
-| [`SM-CLEAN-BT-ECONOMY`](tasks/SM-CLEAN-BT-ECONOMY-residual.md) | Done — clean kite + hybrid; dual 49,321f |
+| `SM-CLEAN-BT-ECONOMY` | Done — clean kite + hybrid; dual 49,321f |
 | `SM-CLEAN-STAB` / `SM-CLEAN-STATUS` | Dual already green; STATUS secondary promote |
 
 Queue: [tasks/QUEUE.md](tasks/QUEUE.md).

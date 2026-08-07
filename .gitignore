@@ -91,6 +91,12 @@ roms/
 *.fm2
 *.replay.jsonl
 *.jsonl
+# Beads exports must be trackable (override blanket *.jsonl)
+!.beads/
+!.beads/*.jsonl
+!.beads/config.yaml
+!.beads/metadata.json
+!.beads/README.md
 *.mp4
 *.mkv
 *.avi
@@ -199,6 +205,8 @@ harvest/tasks/
 # Human frame dumps / end states under package tasks/ (not docs/tasks cards)
 **/super_metroid/tasks/**
 **/super_metroid/refs/sm-json-data/
+# YouTube reference VODs + frame/button extracts (local only; large media)
+**/super_metroid/refs/yt_reference/
 **/super_metroid/docs/tasks/logs/
 # Tracked template: **/super_metroid/opencode.example.json — copy to opencode.json locally.
 **/super_metroid/opencode.json
@@ -207,8 +215,9 @@ harvest/tasks/
 .claude/
 **/CLAUDE.md
 **/.agents.md
-**/.beads/
 **/.bv/
+# Beads: track issues.jsonl + config.yaml + metadata; runtime DB/daemon
+# ignored via .beads/.gitignore (do not blanket-ignore the directory).
 
 # Third-party/reference source trees are cloned separately.
 harvest/HM-Decomp/
@@ -230,6 +239,33 @@ SMW/tools/external/*
 
 # SMB's compact JSON controller policies and aggregate completion evidence are
 # source artifacts, not trained model/checkpoint or raw recording dumps.
+# Layout is nes/smb/ (legacy smb/ paths kept for older checkouts).
+!nes/smb/models/
+nes/smb/models/*
+!nes/smb/models/smb_1_1_clear.json
+!nes/smb/models/smb_1_1_tas_best.json
+!nes/smb/models/smb_1_1_stairs_best_frames.json
+!nes/smb/models/smb_1_2_warp_w4.json
+!nes/smb/models/smb_1_2_reactive_fragments.json
+!nes/smb/models/smb_warp_mid_to_ending.json
+!nes/smb/models/smb_1_1_to_ending.json
+!nes/smb/models/smb_1_1_to_ending_reactive_83_84.json
+!nes/smb/models/smb_4_2_fast_w8.json
+!nes/smb/recordings/
+nes/smb/recordings/*
+!nes/smb/recordings/reactive_warp/
+nes/smb/recordings/reactive_warp/*
+!nes/smb/recordings/reactive_warp/reactive_83_84_poweron_trials_report.json
+!nes/smb/recordings/warp_finish/
+nes/smb/recordings/warp_finish/*
+!nes/smb/recordings/warp_finish/warp_finish_chain_trials_report.json
+!nes/smb/recordings/warp_finish/warp_finish_suffix_trials_report.json
+!nes/smb/recordings/warp_finish/warp_finish_continuous_trials_report.json
+!nes/smb/recordings/warp_finish/warp_finish_poweron_trials_report.json
+!nes/smb/recordings/segment_1_2/
+nes/smb/recordings/segment_1_2/*
+!nes/smb/recordings/segment_1_2/polish_1_2_ug_report.json
+# Legacy root smb/ paths (if present)
 !smb/models/
 smb/models/*
 !smb/models/smb_1_1_clear.json

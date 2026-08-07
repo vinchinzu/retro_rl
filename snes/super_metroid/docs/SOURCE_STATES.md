@@ -48,14 +48,20 @@ ad-hoc warps. All paths are under
 | `post_business_to_frog_save_pure` | `scratch/post_business_to_frog_save_pure.state` | `0xB167` Frog Savestation (reload: x=60/y=139/pose=1) | recorded pure handoff from accepted Business; superseded by the accepted Frog checkpoint | probe record only |
 | `post_bat_cave_continuous` | `scratch/post_bat_cave_continuous.state` | `0xB07A` Bat Cave | integrity-green `--to bat_cave` **primary tip** endpoint (122,304f ×2) | authoritative source for Bat → Speed Hall pure |
 | `post_bubble_to_bat_pure` | `scratch/post_bubble_to_bat_pure.state` | `0xB07A` Bat Cave ~(39,395) p11 | pure GREEN R19 Bubble→Bat successor | alternate pure source for Bat → Speed Hall |
+| `post_bat_cave_to_speed_hall_pure` | `scratch/post_bat_cave_to_speed_hall_pure.state` | `0xACF0` Speed Hall | pure GREEN Bat→Hall successor | pure `speed-hall-to-speed` |
+| `post_speed_hall_pre_speed_with_spazer` | `scratch/post_speed_hall_pre_speed_with_spazer.state` | `0xACF0` Speed Hall ~(54,125) | HJ/Varia + beams **`0x1004`**, **no Speed** | human / pure right before Speed Booster; geometry from pure Hall, Charge+Spazer OR'd (full power-on blocked at Ceres) |
+| `post_speed_hall_to_speed_pure` | `scratch/post_speed_hall_to_speed_pure.state` | `0xAD1B` Speed Room ~(169,123) p2 | pure GREEN Hall→Speed collect; items `0x3105` | next pure / human record |
+| `post_speed_collected` | `scratch/post_speed_collected.state` | `0xAD1B` Speed Room standing | **human-record save point** after Speed (alias of pure handoff) | `guided_human --from speed` → Wave/Ice/Moat |
 | `business_climb_entry` | `scratch/continuous_like_business_climb_entry.state` | `0xA7DE` Business Center floor band | Hi-Jump, continuous-like | pure `business-to-warehouse` |
 | `continuous_like_bat` | `scratch/continuous_like_bat.state` | `0xA3DD` Bat room | pre-Kraid | bat pure / dwell isolation |
 | `post_below_spazer_for_spazer_pure` | `scratch/post_below_spazer_for_spazer_pure.state` | `0xA408` Below Spazer (x=39/y=395/pose=9; reload: x≈49/y=395/pose=1) | Morph/Bombs, beams 0x0000 | pure `below-spazer-to-spazer` / `spazer-collect-return`; source capture from continuous-like Bat handoff (668f) |
 | `post_below_spazer_with_charge_continuous` | `scratch/post_below_spazer_with_charge_continuous.state` | `0xA408` Below Spazer ~(49,395) | Morph/Bombs + **Charge** `0x1000`, supers 5 | integrity-green continuous `--to below_spazer` **with Charge on spine** (84,880f); climb source for Spazer fold |
+| `post_warehouse_with_spazer_continuous` | `scratch/post_warehouse_with_spazer_continuous.state` | `0xA6A1` Warehouse ~(50,121) | beams **`0x1004`** Charge+Spazer | Charge continuous pin → pure `spazer-detour` → West→Glass→East→Warehouse (skip full power-on while Ceres flaky); mainline Spazer handoff |
 | `pre_spazer_door_with_charge` | `scratch/pre_spazer_door_with_charge.state` | `0xA408` top ledge ~(460,139) | Charge + supers 5 | **pre green Super door** for Spazer entry pure; parent continuous-with-Charge + place (geometry developmentOnly; inventory continuous-legal) |
 | `post_spazer_entry_pure` | `scratch/post_spazer_entry_pure.state` | `0xA447` Spazer ~(39,139) | Charge held | pure `below-spazer-to-spazer` GREEN from pre-door |
 | `post_spazer_collect_pure` | `scratch/post_spazer_collect_pure.state` | `0xA447` Spazer ~(171,171) | beams `0x1004` Charge+Spazer | pure `spazer-collect` GREEN |
-| `post_spazer_return_pure` | `scratch/post_spazer_return_pure.state` | `0xA408` Below Spazer top ~(380,155) | beams `0x1004` | pure `spazer-return-to-below` GREEN; handoff clear of open Super door (x≲400) |
+| `post_spazer_return_pure` | `scratch/post_spazer_return_pure.state` | `0xA408` Below Spazer top ~(380,155) | beams `0x1004` | pure `spazer-return-to-below` GREEN; handoff clear of open Super door (x≲400); TOP-MID / `spazer-top-to-west` source |
+| `post_spazer_west_pure` | `scratch/post_spazer_west_pure.state` | `0xCF54` West Tunnel ~(39,108) | beams `0x1004` | pure `spazer-top-to-west` GREEN **1281f** ×2 from return handoff |
 | `red_to_warehouse` | `scratch/red_to_warehouse_controller.state` | Red Tower → Warehouse path | post-Supers | pure `warehouse-hijump-kraid` |
 | `natural_bomb_torizo_active` | `scratch/natural_bomb_torizo_active.state` | `0x9804` Bomb Torizo | continuous-like entry | pure bomb-torizo combat verification |
 
@@ -204,7 +210,8 @@ uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no
 | pure bubble mountain entry (K4 **Speed** shortcut) | `0xACB3` Bubble Mountain | post-Speed only (Frog→Speedway→Farm); **not** first Bubble path | park until Speed |
 | pure Speed Hall after Bat (K4) | Speed Hall / Speed Room | next hop pure from `post_bat_cave_continuous` / `post_bubble_to_bat_pure` | **SM-K4.4-GRAPH** / Bat→Speed |
 | pure moat entry (K6) | `0x95FF` Moat | needs capture after Crateria elev + Kihunter; loadout: Speed, Hi-Jump, PB | SM-SRC-MOAT |
-| pure west ocean / WS entry (K6) | `0x93AA` West Ocean | needs capture after Moat; loadout: Speed, HJ, PB | SM-SRC-WS |
+| pure west ocean / WS entry (K6) | `0x93FE` West Ocean | **pins:** Moat handoff `scratch/post_moat_west_ocean_spark.state` ~(49,1163); mid-right door pure `scratch/post_west_ocean_door_spark.state` → `0xC98E` (not green WS); green Super `0xCA08` still open | [SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md) / SM-SRC-WS |
+| Landing Site shine practice | `0x91F8` | `scratch/landing_site_speed_practice.state` ~(899,1163) items `0x3105` (not escape `0xF32F`) | `shine_practice.py` drill/human |
 | pure crateria Kihunter entry | `0x948C` | needs capture after Crateria elev descent | SM-SRC-CRKIHUNTER |
 | practice SEG-08 Gravity Suit | `0xC98E` Bowling Alley → door `0xA1A4` | needs a controllable post-Phantoon, pre-Gravity state (`boss_bits[3] & 0x01`, `collected_items & 0x0020 == 0`) so the powered Gravity PLM is live | SM-ROOM-SEG-08-R1 / SM-ROOM-SEG-08-SRC |
 | practice SEG-10 WS West Super | `0xCAF6` WS Main Shaft → door `0xA210` | needs a controllable post-Phantoon state with the West Super PLM still uncollected; the ship is powered only after `boss_bits[3] & 0x01` | SM-ROOM-SEG-10-R1 / SM-ROOM-SEG-10-SRC |

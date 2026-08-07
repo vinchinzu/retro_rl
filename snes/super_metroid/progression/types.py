@@ -170,12 +170,20 @@ class ProgressionMilestone:
 
 @dataclass(frozen=True)
 class ObservedTransition:
-    """Live room hop for continuous reports (stable JSON field names)."""
+    """Live room hop for continuous reports (stable JSON field names).
+
+    Optional ``leave_kinematics`` / ``entry_kinematics`` capture Samus
+    speed, position, pose, and door ptr at the last controllable frame
+    before the transition and at room-id change (spawn). Needed for TAS /
+    speedrun door tech that depends on entry speed and alignment.
+    """
 
     frame: int
     source_room_id: int
     target_room_id: int
     edge_id: str | None
+    leave_kinematics: dict[str, object] | None = None
+    entry_kinematics: dict[str, object] | None = None
 
     @property
     def source_id(self) -> int:
@@ -184,3 +192,16 @@ class ObservedTransition:
     @property
     def target_id(self) -> int:
         return self.target_room_id
+
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "frame": self.frame,
+            "source_room_id": self.source_room_id,
+            "target_room_id": self.target_room_id,
+            "edge_id": self.edge_id,
+        }
+        if self.leave_kinematics is not None:
+            payload["leave_kinematics"] = self.leave_kinematics
+        if self.entry_kinematics is not None:
+            payload["entry_kinematics"] = self.entry_kinematics
+        return payload

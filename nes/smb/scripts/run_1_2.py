@@ -28,6 +28,7 @@ from smb.full_run import read_state_bytes
 from smb.paths import GAME_DIR, GAME_V0, INTEGRATION_V0_DIR, RECORDINGS_DIR
 from smb.policy import (
     CONTINUOUS_SETTLE_FRAMES,
+    DEFAULT_1_1_SEED,
     DEFAULT_CONTINUOUS_SEED,
     expand_nes9_rle,
     load_nes9_rle_seed,
@@ -39,7 +40,7 @@ from retro_harness.segment_runner import configure_headless, save_rgb_png, write
 
 LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"
 STAIRS_1_1 = GAME_DIR / "models" / "smb_1_1_stairs_best_frames.json"
-Predecessor = Literal["stairs", "baseline"]
+Predecessor = Literal["stairs", "baseline", "tas"]
 
 
 def _play_1_1_until_clear(env, seed_frames: list[list[int]]) -> dict[str, Any]:
@@ -96,6 +97,11 @@ def run_1_2_natural(
         seed_path = STAIRS_1_1
         if not seed_path.exists():
             raise SystemExit(f"missing stairs 1-1 seed: {seed_path}")
+        seed_11 = expand_nes9_rle(load_nes9_rle_seed(seed_path))
+    elif predecessor == "tas":
+        seed_path = Path(DEFAULT_1_1_SEED)
+        if not seed_path.exists():
+            raise SystemExit(f"missing TAS 1-1 seed: {seed_path}")
         seed_11 = expand_nes9_rle(load_nes9_rle_seed(seed_path))
     else:
         seed_11 = expand_nes9_rle(load_nes9_rle_seed(DEFAULT_CONTINUOUS_SEED))
@@ -173,9 +179,10 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--predecessor",
-        choices=("stairs", "baseline"),
+        choices=("stairs", "baseline", "tas"),
         default="stairs",
-        help="1-1 seed: stairs-improved or continuous baseline prefix",
+        help="1-1 seed: stairs fragment, continuous baseline prefix, or TAS best "
+        "(reactive 1-2 gates — never absolute-stitch into old 1-2)",
     )
     p.add_argument("--settle", type=int, default=CONTINUOUS_SETTLE_FRAMES)
     p.add_argument("--trials", type=int, default=1)

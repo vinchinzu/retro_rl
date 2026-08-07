@@ -242,7 +242,78 @@ def main() -> None:
     payload["clean_track"] = clean
     if room_timing_path is not None:
         payload["room_timing_path"] = str(room_timing_path)
-    print(json.dumps(payload, indent=2))
+    # Full schema stays on disk only (report_path). Stdout is a short human
+    # summary — dumping multi-MB JSON here is unreadable in agent/CLI logs.
+    _print_run_summary(
+        tip_id=tip.tip_id,
+        payload=payload,
+        report_path=report_path,
+        video_path=None if args.no_video else video_path,
+        state_output=args.state_output,
+    )
+
+
+def _print_run_summary(
+    *,
+    tip_id: str,
+    payload: dict,
+    report_path: Path,
+    video_path: Path | None,
+    state_output: Path | None,
+) -> None:
+    """One-screen outcome for agents/humans (not the full report schema)."""
+    ok = bool(payload.get("success"))
+    outcome = payload.get("outcome", "?")
+    frames = payload.get("total_frames", payload.get("frame", "?"))
+    final = payload.get("final_state") or {}
+    room = final.get("room_id_hex") or (
+        f"0x{final['room_id']:04X}" if isinstance(final.get("room_id"), int) else "?"
+    )
+    beams = final.get("collected_beams")
+    beams_s = f"0x{beams:04X}" if isinstance(beams, int) else "?"
+    items = final.get("collected_items")
+    items_s = f"0x{items:04X}" if isinstance(items, int) else "?"
+    integ = payload.get("integrity") or {}
+    loads = integ.get("state_loads_zero")
+    prog = integ.get("progression_writes_zero")
+    deaths = integ.get("deaths_zero")
+    integ_bits = []
+    if loads is True:
+        integ_bits.append("loads=0")
+    elif loads is False:
+        integ_bits.append("loads≠0")
+    if prog is True:
+        integ_bits.append("prog=0")
+    elif prog is False:
+        integ_bits.append("prog≠0")
+    if deaths is True:
+        integ_bits.append("deaths=0")
+    elif deaths is False:
+        integ_bits.append("deaths≠0")
+    status = "GREEN" if ok else "RED"
+    print(f"[{status}] tip={tip_id} outcome={outcome} frames={frames}")
+    print(f"  final room={room} beams={beams_s} items={items_s}")
+    if integ_bits:
+        print(f"  integrity: {', '.join(integ_bits)}")
+    if payload.get("error"):
+        print(f"  error: {payload['error']}")
+    # Tail splits (last 6) — enough to see where the tip landed.
+    splits = payload.get("splits") or []
+    if splits:
+        print("  splits (tail):")
+        for s in splits[-6:]:
+            sid = s.get("split_id", "?")
+            fr = s.get("frame", "?")
+            rid = s.get("room_id")
+            rh = f"0x{rid:04X}" if isinstance(rid, int) else "?"
+            print(f"    {sid} @{fr} {rh}")
+    print(f"  report: {report_path}")
+    if video_path is not None:
+        print(f"  video:  {video_path}")
+    else:
+        print("  video:  (none — pass without --no-video for .mp4 proof)")
+    if state_output is not None:
+        print(f"  state:  {state_output}")
 
 
 if __name__ == "__main__":

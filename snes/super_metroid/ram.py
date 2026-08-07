@@ -35,10 +35,28 @@ ADDR_SELECTED_ITEM = 0x09D2
 ADDR_MAX_RESERVE_HEALTH = 0x09D4
 ADDR_RESERVE_HEALTH = 0x09D6
 ADDR_SAMUS_POSE = 0x0A1C
+# Facing (u8): 4 = left, 8 = right. Movement type (u8) is the next byte.
+ADDR_SAMUS_FACING = 0x0A1E
+ADDR_MOVEMENT_TYPE = 0x0A1F
+# Shine-spark charge / crystal-flash shared timer (source: 0A68).
+ADDR_SHINESPARK_TIMER = 0x0A68
 ADDR_SAMUS_X = 0x0AF6
+ADDR_SAMUS_X_SUB = 0x0AF8
 ADDR_SAMUS_Y = 0x0AFA
+ADDR_SAMUS_Y_SUB = 0x0AFC
+# Vertical: subpixel then pixel (unsigned); direction at 0B36 (0 ground, 1 up, 2 down).
+ADDR_VELOCITY_Y_SUB = 0x0B2C
 ADDR_VELOCITY_Y = 0x0B2E
+ADDR_VERTICAL_DIRECTION = 0x0B36
+# Speed-booster counter word: hi = echoes charge (0–4+), lo = anim tick.
+# 0B3C non-zero gates permanent blue-suit conversion of temp blue.
+ADDR_SPEED_FLAG = 0x0B3C
+ADDR_SPEED_COUNTER = 0x0B3E
+# Horizontal speed (pixels/sub) then separate momentum (mockball / dash carry).
 ADDR_VELOCITY_X = 0x0B42
+ADDR_VELOCITY_X_SUB = 0x0B44
+ADDR_MOMENTUM_X = 0x0B46
+ADDR_MOMENTUM_X_SUB = 0x0B48
 ADDR_TIMER_TYPE = 0x0943
 ADDR_ESCAPE_TIMER_FRAMES = 0x0945
 ADDR_ESCAPE_TIMER_SECONDS = 0x0946
@@ -54,6 +72,10 @@ ADDR_ENEMY0_SPRITEMAP = 0x0F8E
 ADDR_DOOR_DEF_PTR = 0x078D
 ADDR_INVINCIBILITY_TIMER = 0x18A8
 ADDR_KNOCKBACK_TIMER = 0x18AA
+
+# Facing nibble values (0A1E).
+FACING_LEFT = 0x04
+FACING_RIGHT = 0x08
 
 # stable-retro maps bank $7E WRAM as a 128 KiB block at this base.
 SNES_WRAM_BANK = 0x7E0000
@@ -165,6 +187,21 @@ class SuperMetroidState:
     enemy0_spritemap: int
     event_flags: tuple[int, ...]
     boss_bits: tuple[int, ...]
+    # Door-entry kinematics (defaults keep manual SuperMetroidState(...) ergonomic).
+    door_def_ptr: int = 0
+    samus_x_sub: int = 0
+    samus_y_sub: int = 0
+    velocity_x_sub: int = 0
+    velocity_y_sub: int = 0
+    momentum_x: int = 0
+    momentum_x_sub: int = 0
+    # Hi byte of $0B3E — speed-booster charge / echo level (0–4+).
+    speed_counter: int = 0
+    speed_flag: int = 0
+    vertical_direction: int = 0
+    facing: int = 0
+    movement_type: int = 0
+    shinespark_timer: int = 0
 
     @property
     def morph_ball(self) -> bool:
@@ -196,6 +233,23 @@ class SuperMetroidState:
     def controllable(self) -> bool:
         return self.phase is GameplayPhase.ORDINARY_GAMEPLAY
 
+    @property
+    def facing_left(self) -> bool:
+        return self.facing == FACING_LEFT
+
+    @property
+    def facing_right(self) -> bool:
+        return self.facing == FACING_RIGHT
+
+    @property
+    def speed_boosting(self) -> bool:
+        """True when speed-booster charge has reached echo threshold (≥4)."""
+        return self.speed_counter >= 4
+
+    @property
+    def shinesparking(self) -> bool:
+        return self.shinespark_timer > 0
+
     def progress_vector(self) -> tuple[int, ...]:
         """Progress identity intentionally richer than coordinates alone."""
         return (
@@ -216,6 +270,38 @@ class SuperMetroidState:
             int.from_bytes(self.boss_bits, "little"),
         )
 
+    def kinematics_dict(self) -> dict[str, Any]:
+        """Compact leave/entry kinematics for door-transition reports."""
+        return {
+            "frame": self.frame,
+            "room_id": self.room_id,
+            "room_id_hex": f"0x{self.room_id:04X}",
+            "samus_x": self.samus_x,
+            "samus_x_sub": self.samus_x_sub,
+            "samus_y": self.samus_y,
+            "samus_y_sub": self.samus_y_sub,
+            "velocity_x": self.velocity_x,
+            "velocity_x_sub": self.velocity_x_sub,
+            "velocity_y": self.velocity_y,
+            "velocity_y_sub": self.velocity_y_sub,
+            "momentum_x": self.momentum_x,
+            "momentum_x_sub": self.momentum_x_sub,
+            "speed_counter": self.speed_counter,
+            "speed_flag": self.speed_flag,
+            "speed_boosting": self.speed_boosting,
+            "vertical_direction": self.vertical_direction,
+            "facing": self.facing,
+            "movement_type": self.movement_type,
+            "shinespark_timer": self.shinespark_timer,
+            "pose": self.pose,
+            "door_transition": self.door_transition,
+            "transition_direction": self.transition_direction,
+            "door_def_ptr": self.door_def_ptr,
+            "door_def_ptr_hex": f"0x{self.door_def_ptr:04X}",
+            "game_state": self.game_state,
+            "phase": self.phase.value,
+        }
+
     def to_dict(self) -> dict[str, Any]:
         data = dict(self.__dict__)
         data["phase"] = self.phase.value
@@ -225,6 +311,11 @@ class SuperMetroidState:
         data["bombs"] = self.bombs
         data["varia"] = self.varia
         data["hi_jump"] = self.hi_jump
+        data["speed_boosting"] = self.speed_boosting
+        data["shinesparking"] = self.shinesparking
+        data["facing_left"] = self.facing_left
+        data["facing_right"] = self.facing_right
+        data["door_def_ptr_hex"] = f"0x{self.door_def_ptr:04X}"
         return data
 
 
@@ -279,10 +370,20 @@ def peek_wram(env: Any, addresses: dict[str, int]) -> dict[str, int]:
         ADDR_MAX_RESERVE_HEALTH,
         ADDR_RESERVE_HEALTH,
         ADDR_SAMUS_POSE,
+        ADDR_SHINESPARK_TIMER,
         ADDR_SAMUS_X,
+        ADDR_SAMUS_X_SUB,
         ADDR_SAMUS_Y,
+        ADDR_SAMUS_Y_SUB,
+        ADDR_VELOCITY_Y_SUB,
         ADDR_VELOCITY_Y,
+        ADDR_VERTICAL_DIRECTION,
+        ADDR_SPEED_FLAG,
+        ADDR_SPEED_COUNTER,
         ADDR_VELOCITY_X,
+        ADDR_VELOCITY_X_SUB,
+        ADDR_MOMENTUM_X,
+        ADDR_MOMENTUM_X_SUB,
         ADDR_NUM_ENEMIES,
         ADDR_ENEMIES_KILLED,
         ADDR_ENEMY0_X,
@@ -363,10 +464,24 @@ def parse_state(ram: np.ndarray, *, frame: int = 0) -> SuperMetroidState:
         area_index=_u16(ram, ADDR_AREA_INDEX),
         door_transition=door_transition,
         transition_direction=_u16(ram, ADDR_TRANSITION_DIRECTION),
+        door_def_ptr=_u16(ram, ADDR_DOOR_DEF_PTR),
         samus_x=_u16(ram, ADDR_SAMUS_X),
+        samus_x_sub=_u16(ram, ADDR_SAMUS_X_SUB),
         samus_y=_u16(ram, ADDR_SAMUS_Y),
+        samus_y_sub=_u16(ram, ADDR_SAMUS_Y_SUB),
         velocity_x=_i16(ram, ADDR_VELOCITY_X),
+        velocity_x_sub=_u16(ram, ADDR_VELOCITY_X_SUB),
         velocity_y=_i16(ram, ADDR_VELOCITY_Y),
+        velocity_y_sub=_u16(ram, ADDR_VELOCITY_Y_SUB),
+        momentum_x=_i16(ram, ADDR_MOMENTUM_X),
+        momentum_x_sub=_u16(ram, ADDR_MOMENTUM_X_SUB),
+        # Hi byte is the speed-booster charge level used by TAS/speedrun tech.
+        speed_counter=(_u16(ram, ADDR_SPEED_COUNTER) >> 8) & 0xFF,
+        speed_flag=_u16(ram, ADDR_SPEED_FLAG),
+        vertical_direction=_u16(ram, ADDR_VERTICAL_DIRECTION),
+        facing=_u8(ram, ADDR_SAMUS_FACING),
+        movement_type=_u8(ram, ADDR_MOVEMENT_TYPE),
+        shinespark_timer=_u16(ram, ADDR_SHINESPARK_TIMER),
         pose=_u16(ram, ADDR_SAMUS_POSE),
         health=_u16(ram, ADDR_HEALTH),
         max_health=_u16(ram, ADDR_MAX_HEALTH),
@@ -449,11 +564,20 @@ def probe_pin(state: SuperMetroidState) -> dict[str, object]:
         "pose": state.pose,
         "x": state.samus_x,
         "y": state.samus_y,
+        "x_sub": state.samus_x_sub,
+        "y_sub": state.samus_y_sub,
         "door_transition": state.door_transition,
         "phase": state.phase.name if hasattr(state.phase, "name") else str(state.phase),
         "frame": state.frame,
         "velocity_x": state.velocity_x,
         "velocity_y": state.velocity_y,
+        "momentum_x": state.momentum_x,
+        "speed_counter": state.speed_counter,
+        "speed_boosting": state.speed_boosting,
+        "facing": state.facing,
+        "movement_type": state.movement_type,
+        "shinespark_timer": state.shinespark_timer,
+        "door_def_ptr": f"0x{state.door_def_ptr:04X}",
         "collected_items": f"0x{state.collected_items:04X}",
     }
 

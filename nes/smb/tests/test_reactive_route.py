@@ -22,7 +22,13 @@ from smb.reactive_route import (
     missing_policies,
 )
 from smb.routes import ROUTE_ALL_EXITS, ROUTE_WARP_ANY_PERCENT
-from smb.scripts.run_reactive_warp import _continuation_frames
+from smb.scripts.run_reactive_warp import (
+    KNOWN_41_CONTROL_RESUME,
+    KNOWN_42_CONTROL_RESUME,
+    DEFAULT_CONTINUATION_START,
+    _continuation_frames,
+    _in_4_1_exit_auto,
+)
 
 
 def _snap(
@@ -115,6 +121,68 @@ def test_coverage_reports_missing_policies_without_skipping_stages() -> None:
     assert missing[0] == {"exit_id": "1-3", "policy_id": "smb_1_3"}
 
 
+def test_4_1_control_resume_is_after_transition_before_run() -> None:
+    """Resume index is the post-control idle before intentional RIGHT+B."""
+    assert KNOWN_41_CONTROL_RESUME == 218
+    # Global seed index of first post-control input when start=3981.
+    assert DEFAULT_CONTINUATION_START + KNOWN_41_CONTROL_RESUME == 4_199
+
+
+def test_4_2_control_resume_and_exit_auto_gate() -> None:
+    """4-2 body starts at cont index 2487; exit-auto ignores mid-level state 3/4."""
+    assert KNOWN_42_CONTROL_RESUME == 2_487
+    assert DEFAULT_CONTINUATION_START + KNOWN_42_CONTROL_RESUME == 6_468
+    # Mid-level pipe/alive state must not freeze the 4-1 body.
+    mid = SmbSnapshot(
+        frame=0,
+        player_state=4,
+        player_x=3593,
+        player_y=176,
+        x_page=14,
+        x_offset=5,
+        lives=2,
+        world=3,
+        level=0,
+        level_id=12,
+        oper_mode=1,
+        player_power=0,
+        timer_hundreds=3,
+        timer=340,
+        area_pointer=0,
+        x_speed=0,
+        y_speed=0,
+        facing=1,
+        screen_x=0,
+        player_screen_x=40,
+        in_air=False,
+    )
+    assert not _in_4_1_exit_auto(mid)
+    score = SmbSnapshot(
+        frame=0,
+        player_state=5,
+        player_x=3698,
+        player_y=176,
+        x_page=14,
+        x_offset=110,
+        lives=2,
+        world=3,
+        level=1,
+        level_id=13,
+        oper_mode=1,
+        player_power=0,
+        timer_hundreds=0,
+        timer=0,
+        area_pointer=41,
+        x_speed=2,
+        y_speed=0,
+        facing=1,
+        screen_x=0,
+        player_screen_x=40,
+        in_air=False,
+    )
+    assert _in_4_1_exit_auto(score)
+
+
 def test_continuation_frame_drop_is_in_memory_and_coordinates_are_global(
     tmp_path,
 ) -> None:
@@ -143,13 +211,19 @@ def test_continuation_frame_drop_is_in_memory_and_coordinates_are_global(
 
 
 def test_late_stage_frames_are_control_relative_and_patch_only_declared_ranges() -> None:
+    from smb.reactive_late import LEAD_IDLES
+
     frames_83 = stage_frames("8-3")
     frames_84 = stage_frames("8-4")
-    assert len(frames_83) == M8_84_START - M8_83_START == 2_206
-    assert len(frames_84) > 3_405
+    lead_83 = int(LEAD_IDLES.get("8-3", 0))
+    lead_84 = int(LEAD_IDLES.get("8-4", 0))
+    assert len(frames_83) == M8_84_START - M8_83_START + lead_83 == 2_206 + lead_83
+    assert len(frames_84) > 3_405 + lead_84
     for stage_id, frames in (("8-3", frames_83), ("8-4", frames_84)):
+        lead = int(LEAD_IDLES.get(stage_id, 0))
         for start, end, buttons in PATCHES[stage_id]:
-            assert frames[start:end] == [buttons] * (end - start)
+            # Patches are applied pre-lead; played indices are shifted by lead.
+            assert frames[start + lead : end + lead] == [buttons] * (end - start)
 
 
 def test_late_controller_requires_8_3_control_and_hands_off_at_8_4_control() -> None:
@@ -158,11 +232,12 @@ def test_late_controller_requires_8_3_control_and_hands_off_at_8_4_control() -> 
         controller.begin(_snap(world=7, level=3))
 
     controller.begin(_snap(world=7, level=2))
-    for _ in range(controller.current_frame_count - 1):
-        controller.next_frame()
-        assert controller.observe(_snap(world=7, level=2)) is None
+    # Handoff is on first natural 8-4 control, not forced exhaust.
+    controller.next_frame()
+    assert controller.observe(_snap(world=7, level=2)) is None
     controller.next_frame()
     assert controller.observe(_snap(world=7, level=3)) == "8-4"
     assert controller.stage_id == "8-4"
     assert controller.index == 0
     assert controller.report()["completed"][0]["stage_id"] == "8-3"
+    assert controller.report()["completed"][0]["frames"] == 2

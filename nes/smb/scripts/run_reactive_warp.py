@@ -4,14 +4,21 @@ This is a development runner, not a published benchmark: it starts at the
 ``Level1_1`` practice state, then uses the stairs-improved 1-1 policy and the
 state-gated 1-2 controller before continuing from World 4 in the *same*
 environment.  It exists to capture the real shifted predecessor signatures
-needed to re-solve 8-2/8-3; it must never be used to quietly pad back to the
-M8 seed phase.
+needed to re-solve later legs; it must never be used to quietly pad back to
+the M8 seed phase.
 
-The default continuation reproduces the known 63-frame-faster candidate,
-which currently dies in 8-2.  With ``--retime-8-2``, control-relative 8-3 and
-8-4 repairs take over at their natural entry gates. ``--drop-at`` supports
-small timing experiments in memory only. ``--write-seed`` materializes a
-successful controller for a separate Clean power-on verification.
+Default behaviour (``--retime-4-1`` / ``--retime-4-2``): idle through the
+W4 pipe transition until natural 4-1 control, resume the continuation body,
+then at 4-1 exit auto (flag/score/load) **freeze the source** and idle until
+natural 4-2 control before resuming the 4-2 body. That absorbs earlier
+savings and variable castle-tally length without W4/W4-2 idle-pad.
+
+With ``--retime-8-2``, snap the continuation at natural 8-2 control, play
+``KNOWN_82_LEAD_IDLES`` then the control-relative 8-2 body, and let
+control-relative 8-3/8-4 repairs take over at their natural entry gates.
+``--drop-at`` supports small timing experiments in memory only.
+``--write-seed`` materializes a successful controller for a separate Clean
+power-on verification.
 """
 
 from __future__ import annotations
@@ -37,6 +44,7 @@ from smb.reactive_12 import Reactive12Policy, play_reactive_12
 from smb.reactive_late import LateRouteController
 from smb.reactive_route import RouteProgressTracker
 from smb.reactive_route import level_control_gate
+from smb.reactive_route import snapshot_fingerprint
 from smb.routes import ROUTE_WARP_ANY_PERCENT
 from smb.scripts.run_1_2 import STAIRS_1_1, _play_1_1_until_clear
 from retro_harness.segment_runner import configure_headless, write_json_report
@@ -46,10 +54,58 @@ DEFAULT_CONTINUATION = GAME_DIR / "models" / "smb_1_1_to_ending_stairs_try.json"
 # The continuation starts immediately after the reactive 1-2 World-4 split.
 DEFAULT_CONTINUATION_START = 3_981
 DEFAULT_MAX_FRAMES = 25_000
-# Verified from the shifted natural 8-2 control fingerprint. It advances the
-# 8-2 split to 15,863f; the late controllers begin only after natural control.
+# In the stairs/M8 continuation (start=3981), natural 4-1 control is first
+# observed after 218 tail frames. Index 218 is the one-frame post-control idle
+# before the intentional RIGHT+B run at 219. After a faster 1-2 the pipe
+# transition is shorter (~210f); idle until control then resume here so the
+# body stays control-relative (no W4 pad). Verified: 4-1 split 2335→2314.
+KNOWN_41_CONTROL_RESUME = 218
+# First controllable 4-2 frame in the stairs/M8 continuation tail (start=3981).
+# Body from here is surface → UG vine → W8 pipe (2599f in smb_4_2_natural_control).
+# Lead 12 idles are phase-critical (trimming any of them dies). After a shifted
+# 4-1 tally, idle through flag/score/load then resume here — never pad.
+KNOWN_42_CONTROL_RESUME = 2_487
+# Natural 8-2 control in the stairs/M8 continuation (start=3981) is cont
+# index 8917 (= abs 12,898). After 1-2 −97f polish, drop-5 at that abs index
+# is phase-stale; +1 lead idle before the body clears 8-2 (verified 2026-08-05).
+# Cont index 8917 is the first frame of the 8-2 body (6 lead idles then B).
+KNOWN_82_CONTROL_RESUME = 8_917
+KNOWN_82_LEAD_IDLES = 1
+# Legacy abs-frame drop (pre −97f path only; kept for --drop-at experiments).
 KNOWN_82_RETIME_START = 12_898
 KNOWN_82_RETIME_COUNT = 5
+
+
+def _in_4_1_exit_auto(snap) -> bool:
+    """True during 4-1 flagpole / score tally / inter-stage load (no player input).
+
+    Do **not** treat player_state 3 alone as exit-auto — it is a normal alive
+    state mid-level. Real end-of-4-1 signals from the retimed path:
+    - score tally: state 5, timer 0, near flag x
+    - load: zeroed coords / timer dead before 4-2 control
+    """
+    if snap.world != 3 or snap.dying:
+        return False
+    # Castle score tally after flag (verified: x≈3698, timer=0, state=5).
+    if snap.player_state == 5 and snap.timer == 0 and snap.player_x >= 3000:
+        return True
+    # Flagpole slide / auto-walk into castle (state 3/4 near end, timer dead).
+    if (
+        snap.player_state in (3, 4)
+        and snap.timer == 0
+        and snap.player_x >= 3000
+    ):
+        return True
+    # Black-screen / load into 4-2.
+    if (
+        snap.oper_mode == 1
+        and snap.level == 1
+        and snap.player_state in (0, 1, 2)
+        and snap.player_x == 0
+        and snap.timer == 0
+    ):
+        return True
+    return False
 
 
 def _continuation_frames(
@@ -80,6 +136,8 @@ def run_reactive_warp_candidate(
     continuation_start: int = DEFAULT_CONTINUATION_START,
     drop_at: int | None = None,
     drop_count: int = 0,
+    retime_4_1: bool = True,
+    retime_4_2: bool = True,
     retime_8_2: bool = False,
     use_late_controllers: bool = True,
     write_seed: Path | None = None,
@@ -96,17 +154,29 @@ def run_reactive_warp_candidate(
 
     out = out_dir or (RECORDINGS_DIR / "reactive_warp")
     out.mkdir(parents=True, exist_ok=True)
-    if retime_8_2:
-        if drop_at is not None:
-            raise ValueError("--retime-8-2 cannot be combined with --drop-at")
-        drop_at = KNOWN_82_RETIME_START
-        drop_count = KNOWN_82_RETIME_COUNT
+    if retime_8_2 and drop_at is not None:
+        raise ValueError("--retime-8-2 cannot be combined with --drop-at")
     continuation = _continuation_frames(
         continuation_seed,
         start=continuation_start,
         drop_at=drop_at,
         drop_count=drop_count,
     )
+    if retime_4_1 and KNOWN_41_CONTROL_RESUME >= len(continuation):
+        raise ValueError(
+            f"4-1 resume index {KNOWN_41_CONTROL_RESUME} outside "
+            f"{len(continuation)} continuation frames"
+        )
+    if retime_4_2 and KNOWN_42_CONTROL_RESUME >= len(continuation):
+        raise ValueError(
+            f"4-2 resume index {KNOWN_42_CONTROL_RESUME} outside "
+            f"{len(continuation)} continuation frames"
+        )
+    if retime_8_2 and KNOWN_82_CONTROL_RESUME >= len(continuation):
+        raise ValueError(
+            f"8-2 resume index {KNOWN_82_CONTROL_RESUME} outside "
+            f"{len(continuation)} continuation frames"
+        )
     report: dict[str, Any] = {
         "mode": "reactive_candidate",
         "benchmark_eligible": False,
@@ -122,6 +192,17 @@ def run_reactive_warp_candidate(
             "input_frames": len(continuation),
             "drop_at": drop_at,
             "drop_count": drop_count if drop_at is not None else 0,
+            "retime_4_1": retime_4_1,
+            "retime_4_2": retime_4_2,
+            "retime_8_2": retime_8_2,
+            "control_resume_index": KNOWN_41_CONTROL_RESUME if retime_4_1 else None,
+            "control_resume_index_4_2": (
+                KNOWN_42_CONTROL_RESUME if retime_4_2 else None
+            ),
+            "control_resume_index_8_2": (
+                KNOWN_82_CONTROL_RESUME if retime_8_2 else None
+            ),
+            "lead_idles_8_2": KNOWN_82_LEAD_IDLES if retime_8_2 else 0,
             "late_controllers": use_late_controllers,
         },
         "success": False,
@@ -132,6 +213,7 @@ def run_reactive_warp_candidate(
         env.reset()
         env.em.set_state(read_state_bytes(LEVEL1_1_STATE))
         idle = np.zeros(int(env.action_space.shape[0]), dtype=np.int8)
+        idle_buttons = [0] * 9
         for _ in range(CONTINUOUS_SETTLE_FRAMES):
             env.step(idle)
 
@@ -168,13 +250,98 @@ def run_reactive_warp_candidate(
             start_lives=start_lives,
             start_index=2,
         )
+        gate_4_1 = level_control_gate(ROUTE_WARP_ANY_PERCENT.exits[2])
+        gate_4_2 = level_control_gate(ROUTE_WARP_ANY_PERCENT.exits[3])
+        gate_8_2 = level_control_gate(ROUTE_WARP_ANY_PERCENT.exits[5])
         outcome = "seed_exhausted"
         tail_frame = 0
         source_frames = 0
+        aligning_4_1 = retime_4_1
+        aligning_4_2 = False
+        snapped_4_2 = not retime_4_2
+        saw_4_1_control = not retime_4_1
+        snapped_8_2 = not retime_8_2
+        lead_8_2_remaining = 0
+        align_4_1_meta: dict[str, Any] | None = None
+        align_4_2_meta: dict[str, Any] | None = None
+        align_8_2_meta: dict[str, Any] | None = None
         late_controller: LateRouteController | None = None
         last = read_snapshot(env.get_ram())
         for tail_frame in range(1, max_frames + 1):
-            if late_controller is None:
+            if aligning_4_1:
+                if gate_4_1.matches(last):
+                    aligning_4_1 = False
+                    saw_4_1_control = True
+                    source_frames = KNOWN_41_CONTROL_RESUME
+                    align_4_1_meta = {
+                        "tail_frame": tail_frame,
+                        "resume_index": KNOWN_41_CONTROL_RESUME,
+                        "entry": snapshot_fingerprint(last),
+                    }
+                    raw = continuation[source_frames]
+                    source_frames += 1
+                else:
+                    raw = idle_buttons
+            elif retime_4_2 and not snapped_4_2 and saw_4_1_control and (
+                aligning_4_2 or gate_4_2.matches(last)
+            ):
+                # Idle through flag/score/load; snap body at natural 4-2 control.
+                if gate_4_2.matches(last):
+                    aligning_4_2 = False
+                    snapped_4_2 = True
+                    source_before = source_frames
+                    source_frames = KNOWN_42_CONTROL_RESUME
+                    align_4_2_meta = {
+                        "tail_frame": tail_frame,
+                        "resume_index": KNOWN_42_CONTROL_RESUME,
+                        "entry": snapshot_fingerprint(last),
+                        "source_before_snap": source_before,
+                    }
+                    raw = continuation[source_frames]
+                    source_frames += 1
+                else:
+                    aligning_4_2 = True
+                    raw = idle_buttons
+            elif (
+                retime_8_2
+                and not snapped_8_2
+                and late_controller is None
+                and gate_8_2.matches(last)
+            ):
+                # Snap body at natural 8-2 control; optional lead idles then resume.
+                snapped_8_2 = True
+                source_before = source_frames
+                source_frames = KNOWN_82_CONTROL_RESUME
+                lead_8_2_remaining = KNOWN_82_LEAD_IDLES
+                align_8_2_meta = {
+                    "tail_frame": tail_frame,
+                    "resume_index": KNOWN_82_CONTROL_RESUME,
+                    "lead_idles": KNOWN_82_LEAD_IDLES,
+                    "entry": snapshot_fingerprint(last),
+                    "source_before_snap": source_before,
+                }
+                if lead_8_2_remaining > 0:
+                    raw = idle_buttons
+                    lead_8_2_remaining -= 1
+                else:
+                    raw = continuation[source_frames]
+                    source_frames += 1
+            elif late_controller is None and lead_8_2_remaining > 0:
+                raw = idle_buttons
+                lead_8_2_remaining -= 1
+            elif (
+                late_controller is None
+                and use_late_controllers
+                and progress.next_exit is not None
+                and progress.next_exit.exit_id == "8-3"
+                and level_control_gate(progress.next_exit).matches(last)
+            ):
+                # Pre-action takeover at natural 8-3 control (no one-frame leak
+                # of the absolute continuation into the late body).
+                late_controller = LateRouteController()
+                late_controller.begin(last)
+                raw = late_controller.next_frame()
+            elif late_controller is None:
                 if source_frames >= len(continuation):
                     outcome = "seed_exhausted"
                     break
@@ -198,17 +365,20 @@ def run_reactive_warp_candidate(
             if reached_ending(env.get_ram(), start_lives=start_lives):
                 outcome = "ending"
                 break
+            # After 4-1 control: when exit auto begins, freeze source and idle
+            # to natural 4-2 control (handles variable castle-tally length).
+            if (
+                retime_4_2
+                and not snapped_4_2
+                and not aligning_4_1
+                and not aligning_4_2
+                and saw_4_1_control
+                and _in_4_1_exit_auto(last)
+            ):
+                aligning_4_2 = True
             try:
                 if late_controller is not None:
                     late_controller.observe(last)
-                elif (
-                    use_late_controllers
-                    and progress.next_exit is not None
-                    and progress.next_exit.exit_id == "8-3"
-                    and level_control_gate(progress.next_exit).matches(last)
-                ):
-                    late_controller = LateRouteController()
-                    late_controller.begin(last)
             except RuntimeError as exc:
                 outcome = "late_controller_handoff_failed"
                 report["late_controller_error"] = str(exc)
@@ -222,6 +392,9 @@ def run_reactive_warp_candidate(
             "outcome": outcome,
             "tail_frames": tail_frame if continuation else 0,
             "source_frames": source_frames,
+            "align_4_1": align_4_1_meta,
+            "align_4_2": align_4_2_meta,
+            "align_8_2": align_8_2_meta,
             "late_controller": late_controller.report() if late_controller else None,
             "final": {
                 "world": last.world,
@@ -252,6 +425,17 @@ def run_reactive_warp_candidate(
                 source_report_label = str(source_report.relative_to(GAME_DIR))
             except ValueError:
                 source_report_label = str(source_report)
+            source_bits = ["stairs 1-1", "reactive 1-2"]
+            if retime_4_1:
+                source_bits.append("control-relative 4-1 retime")
+            if retime_4_2:
+                source_bits.append("control-relative 4-2 retime")
+            if retime_8_2:
+                source_bits.append(
+                    f"control-relative 8-2 retime (+{KNOWN_82_LEAD_IDLES} lead)"
+                )
+            if use_late_controllers:
+                source_bits.append("control-relative 8-3/8-4 repairs")
             seed_path.write_text(
                 json.dumps(
                     {
@@ -264,10 +448,7 @@ def run_reactive_warp_candidate(
                         "num_frames": len(recorded_policy),
                         "verified_completed": False,
                         "target": "world_8_4_ending",
-                        "source": (
-                            "stairs 1-1 + reactive 1-2 + drop-5 8-2 retime + "
-                            "control-relative 8-3/8-4 repairs"
-                        ),
+                        "source": " + ".join(source_bits),
                         "source_report": source_report_label,
                         "segments": compress_nes9_rle(recorded_policy),
                     },
@@ -290,9 +471,28 @@ def main() -> None:
     parser.add_argument("--drop-at", type=int)
     parser.add_argument("--drop-count", type=int, default=0)
     parser.add_argument(
+        "--retime-4-1",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="idle to natural 4-1 control then resume body (default on)",
+    )
+    parser.add_argument(
+        "--retime-4-2",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "idle through 4-1 flag/score/load to natural 4-2 control then "
+            "resume body (default on; no pad)"
+        ),
+    )
+    parser.add_argument(
         "--retime-8-2",
         action="store_true",
-        help="apply the verified 12,898:12,903 8-2 control retime",
+        help=(
+            "snap at natural 8-2 control, play "
+            f"+{KNOWN_82_LEAD_IDLES} lead idle then body at cont "
+            f"{KNOWN_82_CONTROL_RESUME} (post 1-2 −97f path)"
+        ),
     )
     parser.add_argument("--max-frames", type=int, default=DEFAULT_MAX_FRAMES)
     parser.add_argument(
@@ -313,6 +513,8 @@ def main() -> None:
         continuation_start=args.continuation_start,
         drop_at=args.drop_at,
         drop_count=args.drop_count,
+        retime_4_1=args.retime_4_1,
+        retime_4_2=args.retime_4_2,
         retime_8_2=args.retime_8_2,
         use_late_controllers=args.use_late_controllers,
         write_seed=args.write_seed,

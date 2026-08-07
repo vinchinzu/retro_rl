@@ -3,9 +3,11 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.ram import (
+    ADDR_BOOMERANG,
     ADDR_HEALTH,
     ADDR_LINK_X,
     ADDR_LINK_Y,
+    ADDR_MAGIC_BOOMERANG,
     ADDR_MODE,
     ADDR_SCREEN,
     ADDR_SWORD,
@@ -49,3 +51,12 @@ def test_snapshot_and_capabilities() -> None:
     assert snap.screen_row == 7
     caps = capabilities_from_ram(ram)
     assert "wooden_sword" in caps
+    assert "boomerang" not in caps
+    assert "magical_boomerang" not in caps
+    ram[ADDR_BOOMERANG] = 1
+    assert "boomerang" in capabilities_from_ram(ram)
+    ram[ADDR_MAGIC_BOOMERANG] = 1
+    caps_magic = capabilities_from_ram(ram)
+    assert "magical_boomerang" in caps_magic
+    # Magical supersedes wooden in the capability set.
+    assert "boomerang" not in caps_magic
