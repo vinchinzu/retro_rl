@@ -1,0 +1,49 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T13:34:34.020942+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-5dk",
+    "natural_entry": false,
+    "segment": "level2_dodongo_tf02",
+    "start_state": "Level2Boom",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "fight_success": true,
+    "final": {
+      "all_dead": 140,
+      "bombs": 8,
+      "dodongo": [],
+      "doors": 0,
+      "event": "final",
+      "keys": 3,
+      "live": 0,
+      "mask": 0,
+      "mode": 18,
+      "room_item": 27,
+      "sc": "0x0d",
+      "tf": 3,
+      "tf02": true,
+      "types": {},
+      "xy": [
+        128,
+        149
+      ]
+    },
+    "ok": true,
+    "result": "TF_02",
+    "start_state": "Level2Boom",
+    "tf_frames": 513,
+    "tf_policy_live": true,
+    "track": "assisted",
+    "triforce": 3,
+    "triforce_bit_0x02": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2Boom.state",
+  "source_state_sha256": "4665cf885db0714a48088962f9768e2c04840133d9deeb2aa45100d07a12d3c5",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2Complete.state",
+  "state_sha256": "8cf92fc6551ee04b1d31f3577888f07760a5eb3b564df1e04ae5f232ea37afba"
+}

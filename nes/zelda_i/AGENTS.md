@@ -73,29 +73,31 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: rr-n5i TF residual after Dodongo → rr-5dk
+bd ready -l zelda_i   # tip: L3 Manji interior (assist); Clean deferred full-game
 ```
 
 | Order | Bead | Work |
 |------:|------|------|
-| ✓ | **rr-lzk** | 0x6f bomb N @(120,101) → 0x5f — **2/2 Clean** |
-| ✓ | **rr-etl** | 0x5e Goriya pure — **2/2 Clean** |
-| ✓ | **rr-fvt** / **rr-cjf** | 0x5f policy + bomb-UP → **0x4f** boom path LIVE |
-| ✓ | **rr-bsq** / **rr-ebe** | 0x4f Magical Boomerang — **2/2 Clean** |
-| ◐ | **rr-n5i** | path → Dodongo 0x0e + HC LIVE; **TF 0x02 residual** |
-| 3 | **rr-5dk** | Natural-entry assisted power-on → TF 0x02 |
+| ✓ | **rr-n5i** / **rr-5dk** | L2 Dodongo + TF `0x02` assisted LIVE |
+| ✓ | **rr-rnx** / **rr-ci7** | Post-L2 OW → L3 enter **2/2 assisted** |
+| 1 | **L3 tip** | Manji interior (west key / north already pure) → Raft → Manhandla → TF `0x04` |
+| later | **rr-4oz** | Clean residual after full-game assist pass |
 
-Full board: `docs/tasks/QUEUE.md`. Routes: `docs/LEVEL2_ROUTE.md`.
+Full board: `docs/tasks/QUEUE.md`. Routes: `LEVEL2_ROUTE.md`, `LEVEL3_ROUTE.md`.
 
-**Dodongo path (assisted LIVE):** `Level2Boom` → bomb-N 0x3f → LEFT Moldorm →
-UP 0x2e clear → UP 0x1e Goriya clear → **bomb-N @(120,101)** → **0x0e** type
-`0x32` bomb-mouth → HC. **Trap:** walk-UP on 0x1e after clear is solid
-(doors=12 red herring). Post-kill doors LEFT-only; RIGHT/TF residual.
-Runner: `run_level2_dodongo.py --infinite-life`. Checkpoint: `Level2_0E`.
+**L2 complete (assisted LIVE):** `Level2Boom` → … → Dodongo → LEFT `0x0d`
+south-band TF → `tf&0x02`. Evidence: `l2_complete_assisted.json`;
+checkpoints **`Level2Complete`**, **`Level2ExitOverworld`**.
 
-Checkpoints: `Level2Entrance` / `WestKey` / `EastKey` / `Compass` /
-`Level2_5F` / `Level2_5E` / `Level2Boom` / `Level2_0E`. Runners:
-`run_level2_clear{6d,6c,7e,6f,5e}.py`, `run_level2_bomb_north.py`,
-`run_level2_magic_boomerang.py`, `run_level2_bomb_north_4f.py`,
-`run_level2_dodongo.py`. **Boom path:** 0x5f bomb N @(120,101) → **0x4f**.
-Use `--infinite-life` for first-pass; Clean STATUS only after natural 2/2.
+**Post-L2 → L3 enter (assisted LIVE, rr-rnx):** settle OW **0x3C** → reverse
+door corridor + reverse 0x5C maze → west forest → door **0x74** → room **0x7c**.
+Evidence: `l2_to_l3_assisted.json`. Runner:
+`run_l2_to_l3.py --infinite-life --from-state Level2ExitOverworld`.
+
+**Traps (L2→L3 OW):** 0x4c east only **y∈[133,145]** (y=149 solid); 0x5c maze
+reverse needs denser channel waypoints (no y_band on 0x5b hop); 0x64 west
+band **y≈125–150**.
+
+Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
+`Level3Entrance` / `Level3WestKey` / `Level3Darknuts`.
+Use `--infinite-life` for first-pass; Clean STATUS only after full-game assist.

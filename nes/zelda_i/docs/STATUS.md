@@ -189,17 +189,18 @@ key 2/2 from `Level2RopesCleared` + 2/2 chain from entrance
 (`recordings/l2_entry_assisted_t{0,1}_probe.json`). Stop:
 `level2_entrance_success`. Checkpoint `Level2Entrance.state` = room-ready.
 
-**Magical Boomerang (`rr-ep8` / `rr-ebe` PARTIAL, not Clean item):** inventory
-map `ADDR_BOOMERANG=0x0674` / `ADDR_MAGIC_BOOMERANG=0x0675`. Live graph through
-compass + **bomb-north**: `…↔0x6f --bombN--> 0x5f ↔ 0x5e (5× Goriya 0x06)`.
-Boom **not collected**. Evidence: `l2_past6f_expand.json`, LEVEL2_ROUTE.
+**Assisted L2 complete (not Clean STATUS, 2026-08-07):** Boom → Dodongo →
+south-band TF `0x0d` sets `triforce & 0x02` (**2/2**). Evidence:
+`l2_complete_assisted.json`; checkpoints `Level2Complete`,
+`Level2ExitOverworld`. Magical Boomerang / Dodongo geometry documented in
+LEVEL2_ROUTE.
 
-**Dodongo / TF bit 0x02 (`rr-a1t` / `rr-n5i` PARTIAL, not Clean):** same residual
-**past 0x5e**. Bombs place via B; boss / HC / `triforce & 0x02` **not observed**.
-Evidence: `l2_dodongo_rr_a1t_partial.json`, `l2_past6f_expand.json`.
+**Assisted post-L2 → L3 enter (not Clean STATUS):** OW `0x3C` → reverse door
+corridor → Manji door `0x74` → room `0x7c` (**2/2**). Evidence:
+`l2_to_l3_assisted.json`. Runner: `run_l2_to_l3.py --infinite-life`.
 
-**Not yet Clean STATUS:** natural-entry L2 full clear; Magical Boomerang;
-Dodongo / `triforce & 0x02`. (Clean **At4A→0x3C** isolated exists via `rr-hxs`
+**Not yet Clean STATUS:** natural-entry L2 full clear; continuous power-on →
+L3; Clean door-path health. (Clean **At4A→0x3C** isolated exists via `rr-hxs`
 but is not power-on natural STATUS.)
 
 ### Measured door-path breakpoint (2026-07-29)
@@ -228,9 +229,9 @@ heart-starvation before the maze, not a single misaligned hop to tweak.
 
 ## Not done
 
-- L2 past 0x5e (Goriya pure → 0x5f exits → boom → Dodongo → TF `0x02`)
-- Natural-entry L2 (power-on → TF bit 2) — `rr-5dk`
-- Clean natural OW door (At4A Clean exists; full chain optional)
+- L3 Manji → Raft → Manhandla → TF `0x04` (assist tip; west key/north pure green)
+- Clean residual L2/L3 after full-game assist pass
+- Natural-entry continuous power-on chain (deferred under assist-first)
 - Full eight-dungeon/Ganon route graph
 - Broader overworld bomb / white-sword chain
 - Continuous multi-dungeon dry run (M6–M8)
@@ -247,7 +248,7 @@ is STATUS-promoted yet**. Process: `docs/tasks/PROCESS.md`. Work: `bd ready -l z
 
 ## Next
 
-1. **Tip:** encode 0x6f bomb-north → pure clear **0x5e** Goriya → open **0x5f**
-   (`bd ready -l zelda_i`; see `docs/tasks/QUEUE.md`).
-2. Magical Boomerang pure (`rr-ebe`) then Dodongo → TF `0x02` (`rr-n5i`).
-3. Natural-entry assisted (`rr-5dk`) + graph promote (`rr-dlw`).
+1. **Tip:** L3 Manji assist — Raft + Manhandla + TF `0x04`
+   (`bd ready -l zelda_i`; epic `rr-wmv` / residual `rr-vpl`).
+2. Chain assisted multi-dungeon (L3→L4…) before Clean combat harden.
+3. Clean residual only after full-game assist pass (`rr-4oz`).

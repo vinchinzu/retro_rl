@@ -122,3 +122,21 @@ def test_room_ids_align_level2_dungeon() -> None:
     assert puz.ROOM_L2_BOMB_N == d.ROOM_L2_BOMB_N == 0x5F
     assert puz.ROOM_L2_GORIYA_WEST == d.ROOM_L2_GORIYA_WEST == 0x5E
     assert puz.ROOM_L2_EAST_OF_ROPES == d.ROOM_L2_EAST_OF_ROPES == 0x6E
+
+
+def test_post_boss_tf_policy_live() -> None:
+    """0x0d south-band TF maze is LIVE assisted (west of boss, not east)."""
+    assert puz.ROOM_L2_BOSS == 0x0E
+    assert puz.ROOM_L2_TF == 0x0D
+    assert puz.LEVEL2_TRIFORCE_BIT == 0x02
+    assert puz.L2_TF_COLLECT_WAYPOINTS == (
+        (208, 141),
+        (208, 189),
+        (128, 189),
+        (128, 149),
+    )
+    pol = puz.POST_BOSS_TF_POLICY
+    assert pol.live is True
+    assert pol.collect_xy == (128, 149)
+    assert pol.waypoints == puz.L2_TF_COLLECT_WAYPOINTS
+    assert pol.push_stand is None  # push not required for live collect
