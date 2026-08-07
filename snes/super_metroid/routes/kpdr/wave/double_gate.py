@@ -13,7 +13,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
 )
 from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
-from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER
+from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_WAVE
 from super_metroid.routes.kpdr.wave.geometry import (
     DC_GATE_OPEN_SEAT_X,
     DC_GATE_OPEN_SEAT_Y,
@@ -21,11 +21,10 @@ from super_metroid.routes.kpdr.wave.geometry import (
     DC_GATE_SEAT_Y_MAX,
     DC_PAST_GATE_X,
 )
-from super_metroid.routes.kpdr.wave.helpers import escape_kb_dc
 from super_metroid.routes.kpdr.wave.scripts import HUMAN_GATE_OPEN_RLE
 from super_metroid.routes.rle import play_script
 from super_metroid.routes.runtime import ControllerSession
-from super_metroid.routes.skills.knockback import is_knockback
+from super_metroid.routes.skills.knockback import escape_kb, is_knockback
 
 
 def dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
@@ -68,7 +67,7 @@ def dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
         if state.samus_x >= 210 and state.velocity_y == 0 and state.samus_y < 200:
             break
         if is_knockback(state):
-            escape_kb_dc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
             continue
         if state.pose in (137, 138):
             unmorph(session)
@@ -99,7 +98,7 @@ def dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
         if state.samus_y > 360 and state.velocity_y == 0:
             return  # fell; door phase may still recover poorly
         if is_knockback(state):
-            escape_kb_dc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
             continue
         if state.pose in (137, 138):
             unmorph(session)
@@ -140,7 +139,7 @@ def _dc_wait_kamer_open_seat(session: ControllerSession, label: str) -> bool:
         if state.samus_y > 360 and state.velocity_y == 0:
             return False
         if is_knockback(state):
-            escape_kb_dc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
             continue
         if state.pose in (137, 138):
             unmorph(session)
@@ -196,7 +195,7 @@ def _dc_floor_recover_to_gate(session: ControllerSession, label: str) -> bool:
         ):
             return True
         if is_knockback(state) or int(state.pose) in (20, 83, 84):
-            escape_kb_dc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
             continue
         x, y = state.samus_x, state.samus_y
         # Floor: run to climb column ~x330–360 then HJ up.
@@ -296,7 +295,7 @@ def dc_open_blue_gate(session: ControllerSession, label: str) -> None:
         if session.state.samus_x >= DC_PAST_GATE_X and session.state.samus_y < 220:
             return
         if hit_abort:
-            escape_kb_dc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
 
         if not aborted:
             for _ in range(40):
@@ -309,7 +308,7 @@ def dc_open_blue_gate(session: ControllerSession, label: str) -> None:
                     aborted = True
                     break
                 if is_knockback(state) or int(state.pose) in (20, 83, 84):
-                    escape_kb_dc(session, label, "RIGHT")
+                    escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
                     aborted = True
                     break
                 hold(session, 1, "RIGHT", reason=f"{label}_past_walk")
