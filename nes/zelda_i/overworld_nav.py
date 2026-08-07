@@ -20,9 +20,9 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.nav_common import (
-    swing_action,
     track_stuck,
     wake_or_wait_mode,
+    walk_or_swing,
 )
 from zelda_i.ram import (
     SCREEN_LEVEL1_ENTRANCE,
@@ -116,10 +116,12 @@ class OverworldToLevel1Controller:
                 self.notes.append(note)
 
     def _swing(self, direction: str, reason: str) -> FrameAction:
-        return swing_action(
+        # Gate A on nearby threats (``_nav_snap`` set each ``step``).
+        return walk_or_swing(
             self.phase_frames,
             direction,
             reason,
+            getattr(self, "_nav_snap", None),
             period=SWORD_SWING_PERIOD,
             hold=SWORD_SWING_FRAMES,
         )
@@ -221,6 +223,7 @@ class OverworldToLevel1Controller:
         return self._swing(btn, reason)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self._nav_snap = snap
         self.frames += 1
         self.phase_frames += 1
         self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(

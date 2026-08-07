@@ -105,8 +105,8 @@ Assisted recon from `Level2Entrance` (Survival, 2026-08-06):
 | Entry east | **isolated pure Clean** | **0x7e** via diamond-nav (not sealed); naive y≈141 RIGHT sticks @x≈128 |
 | Entry west | live raster | **sealed** |
 | East of 0x6d | live door probe | **0x6e**, **3× Rope `0x28`**, RoomItemId `0x03` (no key); RIGHT residual |
-| Magical Boomerang room | walkthrough | **not live** — path residual (see below) |
-| Magical Boomerang RAM | Data Crystal | `ADDR_BOOMERANG=0x0674`, `ADDR_MAGIC_BOOMERANG=0x0675` |
+| Magical Boomerang room | **isolated pure Clean** | **0x4f** via 0x5f bomb-N; 3× type `0x05` + fireballs `0x55`; RoomItemId `0x1e` |
+| Magical Boomerang RAM | Data Crystal + pure | `ADDR_BOOMERANG=0x0674`, `ADDR_MAGIC_BOOMERANG=0x0675` stop ≠0 |
 | Dodongo needs bombs | walkthrough | not yet |
 | Triforce bit 0x02 | walkthrough | not yet |
 
@@ -123,6 +123,9 @@ Specs + controllers: `dungeon.ROOM_7D_SPEC`, `ROOM_6D_SPEC`, `ROOM_6C_SPEC`,
 | 0x6c west key | `Level2RopesCleared` | `level2_room_6c_key_success` (keys≥1, 0 live) | **2/2** | 708 | `recordings/level2_clear6c_isolated.json` |
 | 0x7d→0x6d→0x6c chain | `Level2Entrance` | same key stop | **2/2** | ~710 (6c stage) | `recordings/level2_clear6c_from_entrance_isolated.json` |
 | 0x7e east key | `Level2Entrance` | `level2_room_7e_key_success` (keys≥1, 0 live) | **2/2** | 1110 | `recordings/level2_clear7e_isolated.json` |
+| 0x6f bomb N → 0x5f | `Level2Compass` | `level2_room_5f_ready` (sc 0x5f mode 5) | **2/2** | 5420 | `recordings/level2_bomb_north_isolated.json` |
+| 0x5f key-LEFT → 0x5e Goriya clear | `Level2_5F` | `level2_room_5e_cleared` (5× Goriya 0x06 dead) | **2/2** | 12815 | `recordings/level2_clear5e_isolated.json` |
+| 0x5f bomb N → 0x4f Magical Boomerang | `Level2_5F` | `level2_room_4f_magic_boomerang_success` (`ADDR_MAGIC_BOOMERANG≠0`) | **2/2 Clean** | bomb~613 + fight~581 | `recordings/level2_magic_boomerang_isolated.json` |
 
 Policy (lab-promoted): 0x6d `attack_phase=4` `engage=64`; 0x6c `attack_phase=2`
 `engage=64`; 0x7e `attack_phase=4` `engage=64` + diamond entry
@@ -145,7 +148,11 @@ From `Level2WestKey` / `Level2Entrance`. Survival + optional bombs/keys poke.
 0x6e ──RIGHT─► 0x6f (6× Gel + compass 0x16)  ★ key door LIVE (rr-c6b)
 0x6f ──bomb N @ (120,101)──► 0x5f   ★ walkthrough bomb-N LIVE (rr-ebe 2026-08-06)
 0x5f ──LEFT (key)──► 0x5e (Goriya 0x06)   ★ LIVE
-0x5f RIGHT / UP sealed (doors bit often only DOWN=4 after bomb entry)
+0x5f ──bomb N @ (120,101)──► 0x4f (boom candidate RoomItemId 0x1e)  ★ LIVE (rr-cjf)
+0x5f RIGHT sealed (walk+bomb; not the boom path)
+0x5e ──UP (free)──► 0x4e (5× Rope + key 0x19)  ★ LIVE (rr-cjf)
+0x5e ──bomb R @ (176,141)──► 0x5f   ★ walk-RIGHT blocked max_x≈160
+0x4e ──RIGHT──► 0x4f   0x4e ──UP──► 0x3e   0x4e ──DOWN──► 0x5e
 0x6c LEFT/UP/DOWN sealed            0x7d LEFT sealed
 ```
 
@@ -172,8 +179,11 @@ DOWN). R/D/L bomb walls on 0x6f: **no open** in full stand sweep.
 | **0x7e** | East of entry (east key) | **5× Rope `0x28`** | **`0x19` key** | **isolated pure 2/2** (`Level2EastKey`); LEFT→0x7d, UP→0x6e |
 | **0x6e** | N of 0x7e / E of 0x6d | **3× Rope `0x28`** | `0x03` | **key-RIGHT → 0x6f** (consumes 1 key) |
 | **0x6f** | Compass branch | **6× Gel `0x15`** TYPE-only (hp=0 alive) | **`0x16` compass** | **isolated pure 2/2** (`Level2Compass`); east-wall pickup ~(192–208,101); **bomb N → 0x5f** |
-| **0x5f** | N of compass (bomb) | empty on bomb-entry (walkthrough: Red Goriya) | `0x17` map (seen) | DOWN→0x6f hole; **LEFT key → 0x5e**; RIGHT residual |
-| **0x5e** | W of 0x5f | **Goriya `0x06`** (5× peak) | `0x03` | RIGHT→0x5f; other exits residual; map inv seen |
+| **0x5f** | N of compass (bomb) | **5× Gel `0x15`** TYPE-only + map | `0x17` map | DOWN→0x6f; **LEFT key → 0x5e**; **bomb N → 0x4f**; RIGHT sealed |
+| **0x5e** | W of 0x5f | **Goriya `0x06`** (5× peak, TYPE_AND_HP HP≈48) | `0x03` | **isolated pure 2/2** (`Level2_5E`); free **UP→0x4e**; bomb-R→0x5f |
+| **0x4e** | N of Goriya | **5× Rope `0x28`** | **`0x19` key** | RIGHT→0x4f; UP→0x3e; DOWN→0x5e (rr-cjf); `ROOM_4E_SPEC` |
+| **0x4f** | Magical Boomerang | **3× type `0x05`** TYPE_AND_HP (HP≈80) + fireballs `0x55` (ignore) | **`0x1e`** | **isolated pure 2/2 Clean** (`Level2Boom`); pickup ~(136,135); paths bomb-N 0x5f or 0x4e RIGHT |
+| **0x3e** | N of 0x4e | residual | `0x19` key (seen) | free UP from 0x4e; exits not fully mapped |
 
 Evidence: `recordings/l2_east_open.json`, `l2_6e_right_ok.json`,
 `l2_east_map.json`, `level2_clear7e_isolated.json` (**Clean pure 0x7e**),
@@ -186,34 +196,119 @@ compass” = **0x6e → 0x6f**. “optional bomb N” = **0x6f → 0x5f**. Carry
 keys** into 0x6e (west + east) so one remains after the key door; another key
 for **0x5f LEFT**.
 
-#### Magical Boomerang residual (not Clean, not collected)
+#### Magical Boomerang (isolated pure Clean, rr-bsq / rr-ebe)
 
 | Item | Value |
 |------|--------|
-| Inventory stop | `ADDR_MAGIC_BOOMERANG (0x0675) != 0` (wooden `0x0674`) |
-| RoomItemId correlate | `0x1D` (L1 wooden boom / dungeon_ids) |
-| Enemy correlate | **Goriya `0x06` LIVE on 0x5e** (L2); blue boom room not yet |
-| Path live so far | … → **0x6f** → **bomb N 0x5f** → **0x5e** (Goriya); boom room residual |
-| Compass on 0x6f | RoomItemId `0x16`; pickup east wall ~(200,101); `ADDR_COMPASS` bit1→2 |
-| Pure controller | **0x6f gels+compass** (`ROOM_6F_SPEC`, `run_level2_clear6f.py`); **no** boom pure |
+| Inventory stop | `level2_room_4f_magic_boomerang_success` — `ADDR_MAGIC_BOOMERANG (0x0675) != 0` |
+| RoomItemId | **`0x1E` on 0x4f** (L1 wooden boom was `0x1D`) |
+| Enemies | **3× type `0x05`** TYPE_AND_HP HP≈80 (`BLUE_GORIYA_OBJECT_TYPE`); fireballs **`0x55`** not clear targets |
+| Pickup | dense probe **~(136, 135)** after kill; also mid-combat near center |
+| Primary path | `Level2_5F` → bomb N @(120,101) → 0x4f clear+collect (`Level2BoomBombNorthController` + `ROOM_4F_SPEC`) |
+| Alt path | `Level2_5E` free UP → 0x4e (`ROOM_4E_SPEC`) key-RIGHT → 0x4f |
+| Evidence | `recordings/level2_magic_boomerang_isolated.json` (**2/2 Clean**); via-4e `level2_magic_boomerang_via4e.json` (assisted 1/1) |
+| Specs / runner | `ROOM_4E_SPEC`, `ROOM_4F_SPEC`; `scripts/run_level2_magic_boomerang.py`; checkpoint `Level2Boom` |
 
-Next: open **0x5f RIGHT** (walkthrough key after Red Goriya) / finish 0x5e
-graph → Magical Boomerang room; pure 2/2 on `ADDR_MAGIC_BOOMERANG`.
+Walk-RIGHT on 0x5f is **not** required (bomb-UP is the boom open).
 
-### Dodongo / triforce 0x02 (`rr-a1t` / `rr-n5i` PARTIAL, 2026-08-06)
+## Puzzle catalog (`rr-3pz`)
+
+Path/puzzle geometry for lab use. **Data module:** `nes/zelda_i/level2_puzzles.py`
+(pure constants + open predicates; no combat rewrite). Does **not** claim Clean
+STATUS. Walkthrough-only future bomb walls (map room, Moldorm detour, Dodongo
+corridor) stay residual until room IDs are live.
+
+### Bomb walls
+
+| Room | Stand (x,y) | Face | Opens to | Live / source | Evidence |
+|------|-------------|------|----------|---------------|----------|
+| **0x6f** (compass) | **(120, 101)** | UP | **0x5f** | **LIVE** (walkthrough bomb-N) | `l2_past6f_expand.json` (`bomb_tests` stand [120,101] ok); `l2_5f_explore.json` |
+| **0x5f** (map gels) | **(120, 101)** | UP | **0x4f** | **LIVE** pure boom | `level2_magic_boomerang_isolated.json`, `l2_cjf_expand.json` |
+| **0x5e** (Goriya) | **(176, 141)** | RIGHT | **0x5f** | **LIVE** (walk-R blocked) | `l2_cjf_expand.json` |
+| 0x6f | various | R / D / L | — | **FAIL** (no open) | `l2_6f_exits.json`, `l2_6f_bombn.json` |
+| 0x6f | dense y=96–105 (not 101) | UP | — | **FAIL** free-path miss | `l2_6f_exits.json` (stands e.g. (120,100),(120,105),(112,100)…) |
+| 0x5f | various | RIGHT | — | **FAIL** walk+bomb | `l2_cjf_expand.json` |
+
+**Open predicate (lab):** transition `0x6f → 0x5f` after B-place facing UP at
+stand; destination often `cur_opened_doors` **DOWN=4**. Inventory: need
+`bombs≥1`; B-item often already selected on fixtures (sel sometimes `0x01` live;
+probe poke uses `0x02`). Constant: `BOMB_WALL_6F_NORTH` / `bomb_wall_open_predicate`.
+
+**Place policy (recon):** goto (120,101) → face UP → B+UP → wait ~60–90f → push UP.
+Generic probe `BOMB_STAND["UP"]=(120,109)` is **not** the verified open.
+
+Walkthrough residual: Moldorm bomb-N; Keese/trap bomb-N. Map-gels bomb-N is
+**LIVE → 0x4f**. Natural bomb farm for Dodongo is past **0x4f / 0x3e** residual.
+
+### Push-blocks / diamond solids
+
+No verified **push-block → new door** on live L2 graph yet. Mid-room **diamond
+solids** block naive east corridors (not classic center-block stairs).
+
+| Room | Band y | Sequence | Destination | Key? | Evidence |
+|------|--------|----------|-------------|------|----------|
+| **0x7d** | **157** (or 149) | `diamond_east_phase`: free → band → wall x≥200 → S2 (LEFT×6, vert door_y, RIGHT×10) → **pure RIGHT** on y=141 | **0x7e** | no | `level2_clear7e_isolated.json`, `l2_east_open.json` |
+| **0x6e** | **113** | same; prefer **WEST** entry via 0x6d | **0x6f** | **yes** | `l2_6e_right_ok.json`, `l2_6e_band_scan.json` |
+| 0x6f | 113 (probe try) | diamond-east RIGHT residual | — | — | `probe_level2_past_6f` `DIAMOND_EAST_ROOMS` |
+
+**Door y poke:** east wall opens only for **y≥137** (y≤133 never). Constants:
+`DIAMOND_BAND_7D=157`, `DIAMOND_BAND_6E=113`, `DOOR_Y_MIN_OPEN=137` (also
+`nav_common`). **Trap:** no LEFT during final push; south entry into 0x6e from
+0x7e can stick ~y=181.
+
+**Push-block probe (negative):** centers
+`(120,141),(136,141),(104,141),(120,125),(120,157)` cardinal pushes on 0x6f did
+not open a new exit (`probe_level2_past_6f` `push_blocks`; `l2_6f_blocks.json`
+push_log doors stayed closed until other nav).
+
+### Key doors
+
+| Room | Approach | Key cost | Destination | Live | Evidence |
+|------|----------|----------|-------------|------|----------|
+| **0x6e** RIGHT | WEST entry + diamond band≈113 + pure push door_y≥137 | **1** | **0x6f** | **LIVE** | `l2_6e_right_ok.json` (`key_consumed`), `l2_east_open.json` (k2→1) |
+| **0x5f** LEFT | mid y≈141 after bomb-N | **1** | **0x5e** (Goriya) | **LIVE** | `l2_5f_explore.json` (keys 4→3), `l2_past6f_expand.json` |
+| **0x5f** RIGHT | walkthrough guess | — | — | **SEALED** (boom = bomb-UP → 0x4f) | `l2_cjf_expand.json`, `l2_5f_policy.json` |
+
+Carry **≥2 keys** into 0x6e (west + east) so one remains for 0x6f; another for
+**0x5f LEFT**. Predicates: `KEY_DOOR_6E_RIGHT`, `KEY_DOOR_5F_LEFT`,
+`key_door_open_predicate` (room pair + keys_before−after == cost).
+
+Kill-clear doors (not key): **0x6d** clear sets LEFT bit `0x02` → 0x6c (combat;
+see room specs, not this catalog).
+
+### Negative probes / sealed exits
+
+| Probe | Result | Evidence |
+|-------|--------|----------|
+| 0x6f bomb R / D / L (full stand sweep) | no room change; doors stay LEFT-only | `l2_6f_exits.json`, `l2_6f_bombn.json` |
+| 0x6f bomb UP off-stand (y≠101 dense grid) | no open | `l2_6f_exits.json` |
+| 0x6f door cycle R/U/D without bomb | no open (LEFT returns 0x6e) | `l2_6f_exits.json` door_results |
+| 0x5f RIGHT after bomb entry / Goriya / gel clear | sealed (walk+bomb) | `l2_past6f_expand.json`, `l2_cjf_expand.json` |
+| 0x5f walk-UP (no bomb) | sealed; **bomb-UP LIVE → 0x4f** | `l2_cjf_expand.json` |
+| 0x5e walk-RIGHT | blocked max_x≈160; **bomb-RIGHT LIVE → 0x5f** | `l2_cjf_expand.json` |
+| 0x7d LEFT | sealed | live raster / recon |
+| 0x6c LEFT / UP / DOWN | sealed | live recon |
+| 0x6d UP | sealed | live recon |
+| OW 0x4B→0x5B north entry | east of 0x5B sealed | door-path section above |
+
+Code lists: `BOMB_WALL_NEGATIVES_6F`, `SEALED_EXITS` in `level2_puzzles.py`.
+
+## Dodongo / triforce 0x02 (`rr-a1t` / `rr-n5i` PARTIAL, 2026-08-06)
 
 Goal: bomb Dodongo (2 mouths) → Heart Container → east TF room →
 `ADDR_TRIFORCE & 0x02`. **Not reached live.** Boss room / HC / TF IDs unknown.
 
 | Claim | Live |
 |-------|------|
-| Reachable graph | **0x6c↔0x6d↔0x6e↔0x6f↔0x7e↔0x7d** + **0x6f–bombN→0x5f↔0x5e** |
+| Reachable graph | **0x6c↔0x6d↔0x6e↔0x6f↔0x7e↔0x7d** + **0x6f–bombN→0x5f↔0x5e** + **0x5e–UP→0x4e↔0x4f/0x3e** + **0x5f–bombN→0x4f** |
 | Entry **0x7d** east | **LIVE → 0x7e** (diamond-nav / pure 7e) |
 | **0x7e** east key | 5× Rope + `0x19`; UP→0x6e |
 | **0x6e** RIGHT | **LIVE → 0x6f** key door (`rr-c6b`) |
 | **0x6f** compass | **isolated pure 2/2** gels+`ADDR_COMPASS` (`rr-bcd`) |
 | **0x6f** bomb N | **LIVE → 0x5f** stand (120,101) (`rr-ebe` advance) |
-| **0x5f** / **0x5e** | LIVE; boom path / Dodongo still residual past 0x5f RIGHT |
+| **0x5f** bomb N | **LIVE → 0x4f** stand (120,101) (`rr-cjf`) |
+| **0x5e** free UP | **LIVE → 0x4e** ropes+key (`rr-cjf`) |
+| **0x4f** boom | entered; RoomItemId `0x1e`; pure collect residual (`rr-bsq` / `rr-ebe`) |
 | Dodongo object type | **unverified** (not entered) |
 | `triforce & 0x02` | **not set** |
 
@@ -224,12 +319,12 @@ Bombs inventory notes (for future boss policy):
 - `Level2EastCleared` / entry-fresh fixtures often start with **bombs=4** and
   selected pos already bombs — useful for bomb-wall recon only.
 - Natural bomb source for Dodongo (walkthrough: Red Goriya room drop) is
-  **beyond** current residual (0x5f RIGHT / boom branch).
+  **beyond** current residual (0x4f clear / 0x3e / boss approach).
 
 Evidence: `recordings/l2_east_open.json`, `l2_6e_right_ok.json`,
 `l2_dodongo_path_recon.json`, `l2_boomerang_partial.json`,
-`l2_past6f_expand.json`, `l2_5f_explore.json`. Shared residual:
-**past 0x5f RIGHT / Magical Boomerang room** (`rr-ebe` / `rr-n5i`).
+`l2_past6f_expand.json`, `l2_5f_explore.json`, `l2_cjf_expand.json`. Shared
+residual: **0x4f Magical Boomerang pure** (`rr-bsq` / `rr-ebe` / `rr-n5i`).
 
 ### Assisted Moon entry (2026-08-06, Survival only)
 
@@ -287,9 +382,11 @@ uv run python nes/zelda_i/scripts/probe_level2_past_6f.py --infinite-life --poke
 # Diamond-east: nav_common.diamond_east_phase / ROOM_7E_SPEC.entry.
 # 0x6e RIGHT: WEST entry + key + band≈113 wall-vertical pure push → 0x6f (door y≥137).
 # 0x6f bomb N: stand (120,101) UP+B → 0x5f; LEFT key → 0x5e Goriya.
+# Puzzle constants (no emu): zelda_i.level2_puzzles — BOMB_WALL_6F_NORTH, KEY_DOORS, DIAMOND_*
 ```
 
 - `level2_overworld.PostTriforceSettleController`
+- `level2_puzzles` — bomb stands / key doors / diamond bands (lab import)
 - `level2_overworld.OverworldToLevel2Controller` (default stop 0x4A;
   `door_path=True` + maze; `require_dungeon=True` → room-ready 0x7d)
 - `dungeon.GenericDungeonRoomController` + `ROOM_6D_SPEC` / `ROOM_6C_SPEC` /
@@ -326,8 +423,83 @@ From `Level1ExitOverworld` with `LEVEL2_DOOR_HOPS` + `require_level2_screen`
 - [x] Open **0x6e RIGHT → 0x6f** key door (`rr-c6b`; diamond band≈113; 6× Gel)
 - [x] Isolated pure 0x6f gels + compass inventory 2/2 (`rr-bcd`; `Level2Compass`)
 - [x] **0x6f bomb N → 0x5f** live (stand 120,101) + **0x5f LEFT key → 0x5e** Goriya (`rr-ebe` advance)
-- [ ] 0x5f RIGHT / boom room → Magical Boomerang pure 2/2 (`ADDR_MAGIC_BOOMERANG`)
-- [x] Dodongo path recon (`rr-a1t` **PARTIAL**) — boss not reached; residual past 0x5f
-- [ ] Live path past **0x5f** → Dodongo (`rr-n5i` / `rr-ebe`)
+- [x] Isolated pure 0x6f bomb N → 0x5f 2/2 Clean (`rr-lzk`; `Level2BombNorthController` / `Level2_5F`)
+- [x] Isolated pure 0x5e 5× Goriya clear 2/2 Clean (`rr-etl`; `ROOM_5E_SPEC` / `Level2_5E`)
+- [x] Puzzle catalog bomb/key/diamond + `level2_puzzles.py` data (`rr-3pz`) — not Clean STATUS
+- [x] Open past 0x5e/0x5f: **0x4e / 0x4f / 0x3e** live + graph edges (`rr-cjf`; `l2_cjf_expand.json`)
+- [ ] 0x4f boom clear + Magical Boomerang pure 2/2 (`ADDR_MAGIC_BOOMERANG`; `rr-bsq` / `rr-ebe`)
+- [x] Dodongo path recon (`rr-a1t` **PARTIAL**) — boss not reached; residual past 0x4f / 0x3e
+- [ ] Live path past **0x4f/0x3e** → Dodongo (`rr-n5i` / `rr-ebe`)
 - [ ] Dodongo bomb-mouth pure + Heart + `triforce & 0x02` isolated 2/2
 - [ ] Natural-entry Moon complete (`rr-5dk`, blocked on pure TF)
+
+## Room 0x5f further exits (`rr-cjf`, 2026-08-06)
+
+Probe: `scripts/probe_level2_5f_exits.py` + evidence `recordings/l2_cjf_expand.json`
+from checkpoint **`Level2_5E`** (post-Goriya, Survival + inventory poke).
+
+| Claim | Live result | Evidence |
+|-------|-------------|----------|
+| 0x5f walk-RIGHT / key-RIGHT | **SEALED** (post Goriya clear, gel clear, diamond bands) | door_tests ok=False |
+| 0x5f bomb RIGHT | **FAIL** | bomb_tests |
+| **0x5f bomb UP @(120,101)** | **LIVE → 0x4f** boom candidate (item `0x1e`) | `l2_cjf_expand.json` |
+| **0x5e free UP** | **LIVE → 0x4e** (5× Rope `0x28` + key `0x19`) | same |
+| 0x5e walk-RIGHT | **blocked** max_x≈160 | right_probes |
+| **0x5e bomb RIGHT @(176,141)** | **LIVE → 0x5f** | same |
+| **0x4e RIGHT** | **LIVE → 0x4f** | same |
+| **0x4e UP** | **LIVE → 0x3e** | same |
+| Gel clear opens R/U? | **No** (rr-fvt stands) | `l2_5f_policy.json` |
+| Kill-all Goriya opens 0x5f R/U doors? | **No** walk doors; bomb-UP works independently | post-clear expand |
+
+**Boom path (two LIVE routes):**
+
+1. Shortcut: `0x5f` bomb N @(120,101) → **0x4f**
+2. Alt: `0x5e` free UP → `0x4e` RIGHT → **0x4f**
+
+Graph/constants: `door_graph` (`L2_BOOM_CANDIDATE` / `L2_ROPES_NORTH` /
+`L2_NORTH_OF_4E`), `level2_puzzles.BOMB_WALL_5F_NORTH` / `BOMB_WALL_5E_EAST`.
+
+**Residual for `rr-bsq` / `rr-ebe`:** clear 0x4f (obj types + collect
+`ADDR_MAGIC_BOOMERANG`); map 0x3e / Dodongo branch.
+
+## Room 0x5f policy (`rr-fvt`, 2026-08-06)
+
+Probe: `scripts/probe_level2_5f_policy.py` from checkpoint **`Level2_5F`**
+(idle 360–600f @ 60f ticks → optional gel clear → door push R/U/L/D).
+
+| Claim | Live result | Evidence |
+|-------|-------------|----------|
+| Spawn delay | **5× Gel `0x15` already present at entry** (TYPE-only hp=0); stable through idle | `l2_5f_policy.json` timeline f=0…600 |
+| Empty transit? | **No** — gels always live; earlier “empty on hop” missed TYPE-only | same; supersedes empty note |
+| Walkthrough Red Goriya on 0x5f | **Wrong room** — Goriya `0x06` is **0x5e** (key-LEFT) | `l2_5f_explore.json` / 0x5e peak |
+| `cur_opened_doors` on bomb entry | **DOWN only = 4** (stable idle) | entry `doors.raw=4` |
+| Clear opens doors? | **No** — after 5-gel clear doors stay **4** | clear `doors 4→4` |
+| Map `0x17` | RoomItemId **0x17** from entry; **`ADDR_MAP` 0→2** (L2 bit) after clear+wander | `map_gained=True` |
+| Kill-gate for exits? | **No** — LEFT key works without clear; DOWN hole open | door_tests |
+| LEFT key → 0x5e | **LIVE** (keys−1); after use door bits often **L\|D=6** on 0x5f | door_tests LEFT ok |
+| walk-RIGHT / walk-UP after clear+map | **Still sealed** (doors stay 4 or 6) | door_tests RIGHT/UP ok=False |
+| bomb-UP after clear / post-Goriya | **LIVE → 0x4f** (rr-cjf; not tested in rr-fvt) | `l2_cjf_expand.json` |
+| `ROOM_5F_SPEC`? | **Not encoded** — clear is **not** a door-open gate; optional map pure later | docs-first / avoid clash with rr-etl 0x5e |
+
+**Policy label:** `gels_present_key_left_no_kill_gate`.
+
+- **Transit:** key-LEFT → 0x5e / DOWN hole → 0x6f without needing combat.
+- **Map:** clear gels + mid-room wander for `ADDR_MAP` L2 bit (inventory only).
+- **Boom (rr-cjf):** bomb-UP @(120,101) → **0x4f** (not key-RIGHT).
+
+**Walkthrough:** “right → 5 Ropes + key” = **0x7e**. “3 Ropes → key RIGHT →
+compass” = **0x6e → 0x6f**. “optional bomb N” = **0x6f → 0x5f**. Carry **≥2
+keys** into 0x6e (west + east) so one remains after the key door; another key
+for **0x5f LEFT**.
+
+#### Magical Boomerang residual (not Clean, not collected)
+
+| Item | Value |
+|------|--------|
+| Inventory stop | `ADDR_MAGIC_BOOMERANG (0x0675) != 0` (wooden `0x0674`) |
+| RoomItemId correlate | **`0x1E` on live 0x4f** |
+| Enemy correlate | 0x4f objs `0x05`/`0x55` (ID residual); Goriya `0x06` on 0x5e |
+| Path live so far | … → **0x5f bomb N → 0x4f**; alt **0x5e UP → 0x4e RIGHT → 0x4f** |
+| Pure controller | no boom pure yet — `rr-bsq` / `rr-ebe` |
+
+Next (**rr-bsq** / **rr-ebe**): clear **0x4f** + `ADDR_MAGIC_BOOMERANG` pure 2/2.

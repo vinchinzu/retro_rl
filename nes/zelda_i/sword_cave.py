@@ -5,7 +5,7 @@ collect wooden sword ($0657>=1), return to overworld start with sword.
 
 Probe-verified approach (2026-07-27):
   - Door approach ~ (x=60, y=100) then UP into cave (mode 16→11)
-  - Idle through dialog (~280 frames)
+  - Idle through dialog (~180 frames; early-exit when dialog_timer==0)
   - Align x=120, walk UP onto sword
   - DOWN to exit (mode 5, screen 0x77, sword>=1)
 """
@@ -32,7 +32,7 @@ CAVE_APPROACH_X = 60
 CAVE_APPROACH_Y = 100
 SWORD_X = 120
 SWORD_Y_TOUCH = 160  # sword collect once Link y <= this at x≈120
-DIALOG_IDLE_FRAMES = 280
+DIALOG_IDLE_FRAMES = 180
 SEGMENT_MAX_FRAMES = 3600
 
 
@@ -151,7 +151,7 @@ class SwordCaveController:
             return FrameAction(nes_action("DOWN"), "exit")
         self.dialog_waited += 1
         if self.dialog_waited >= DIALOG_IDLE_FRAMES or (
-            snap.dialog_timer == 0 and self.dialog_waited > 60 and snap.link_y >= 200
+            snap.dialog_timer == 0 and self.dialog_waited > 45 and snap.link_y >= 200
         ):
             self._set_phase(SwordPhase.ALIGN_SWORD, "dialog_done")
             return FrameAction(nes_idle_action(), "dialog_done")

@@ -88,7 +88,8 @@ right side; burn 3rd-from-top bush on left with Blue Candle.
 - [x] Magical Boomerang inventory: `0x0674` / `0x0675` (not yet collected live)
 - [x] **0x6e RIGHT** → **0x6f** compass gels; **0x6f bomb N @(120,101)** → **0x5f**
 - [x] **0x5f LEFT key** → **0x5e** Goriya `0x06` live
-- [ ] Live room ID for Magical Boomerang / boss / triforce (past 0x5f RIGHT residual)
+- [x] Live boom-candidate room **0x4f** (RoomItemId `0x1e`) via 0x5f bomb-N / 0x4e RIGHT (`rr-cjf`)
+- [ ] Magical Boomerang inventory pure + boss / triforce (past 0x4f residual)
 - [x] Goriya object type **0x06** on L2 (0x5e); Moldorm still open
 - [ ] Bomb placement policy for Dodongo
 - [ ] Isolated + natural-entry clear with `triforce & 0x02`
