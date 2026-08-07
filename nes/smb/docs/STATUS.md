@@ -195,10 +195,59 @@ uv run python -m smb.scripts.fold_continuous_policy
   level/lives/x, and NES button presses (auto-states blanked in HUD only).
 - **TAS toolkit (2026-08-04):** `smb/tas/` + `scripts/tas_1_1.py`
   (analyze / multi-window hillclimb / systematic delete+edge polish).
-  Best isolated seed: `models/smb_1_1_tas_best.json` — leave **1903f**,
+  Prior isolated seed: `models/smb_1_1_tas_best.json` — leave **1903f**,
   flag **1242f** (−21f vs stairs fragment 1924; −126f vs clear 2029).
   Verified isolated + natural-entry (settle=1). Default `DEFAULT_1_1_SEED`
-  points here. Continuous fold still uses its own 1-1 prefix (reactive route).
+  still points here until continuous fold promotes the HappyLee slice.
+- **HappyLee FM2 adapt (2026-08-07):** vendored #1715 warps movie;
+  `import_fm2` + `smb.tas.slice` + `docs/TAS_ADAPT.md`. **L+R preserved**.
+  Full power-on FM2 desyncs on fceumm — adapt **per level from control**.
+  Prefer this track over 8-x hill-climb. Unpromoted (no Clean full-run yet).
+
+  | Segment | Artifact | Result |
+  |---------|----------|--------|
+  | 1-1 isolated | `smb_1_1_happylee_slice.json` | **1733f** leave (FM2 @190, settle=2); **≈−170f** vs 1903 |
+  | 1-1 natural-entry | same seed, settle **odd** (default 1) | **1749f** clear; even settle dies |
+  | 1-2 → W4 | `smb_1_2_happylee_slice.json` | FM2 @**2109**, **1657f** W4; chain ≈**3555** to W4 (**−329** vs natural_82 3884) |
+  | 4-1 | `smb_4_1_happylee_slice.json` | FM2 @**3968**, **2062f** leave; **≈−252f** vs 2314 |
+  | 4-2 → W8 | `smb_4_2_happylee_slice.json` | FM2 @**6207**, **1516f** W8; chain ≈**7512** to W8 (**−5116** vs natural_82 12628) |
+  | 8-1 | *(probe only — no export)* | FM2 @**7930**, leave **2881** (wait81=209); ≈**−785f** body vs 3666 |
+  | 8-2 | *(probe only — no export)* | FM2 @**10910**, leave **2209** (wait82=165); ≈**−942f** body vs 3151 |
+  | 8-3 / 8-4 | — | **open** (8-3 phase miss after fast 8-2) |
+
+  ### HL chain vs natural_82 (exit-detect frames + NTSC)
+
+  | Exit | n82 cum | n82 seg | n82 time | HL cum | HL body | HL seg time* | Δ cum |
+  |------|--------:|--------:|---------:|-------:|--------:|-------------:|------:|
+  | 1-1 | 1911 | 1911 | 00:31.798 | **1733** | 1733 | 00:28.836 | −178 |
+  | 1-2 / W4 | 3884 | 1973 | 00:32.829 | **3555** | 1657 | 00:27.571 | −329 |
+  | 4-1 | 6198 | 2314 | 00:38.503 | **5831** | 2062 | 00:34.310 | −367 |
+  | 4-2 / W8 | 8962 | 2764 | 00:45.991 | **7512** | 1516 | 00:25.225 | −1450 |
+  | 8-1 | 12628 | 3666 | 01:01.000 | **≈10602** | 2881 | 00:47.938 | ≈−2026 |
+  | 8-2 | 15779 | 3151 | 00:52.430 | **≈12976** | 2209 | 00:36.756 | ≈−2803 |
+  | 8-3 | 17985 | 2206 | 00:36.706 | — | — | — | open |
+  | 8-4 | **21559** | 3574 | 00:59.469 | — | — | — | open |
+
+  \*HL body only (excludes control waits). Full-run still **natural_82** until
+  8-3/8-4 + fold. HL 4-2 is glitch/warp path (not vine) — validate video+RAM
+  before promote. Detail: `docs/TAS_ADAPT.md`.
+
+  ### Full-run vs WR (promoted seed only)
+
+  | Contract | Ours (natural_82) | HappyLee WR | Δ |
+  |----------|------------------:|------------:|--:|
+  | RTA | **05:58.726** (21,559f) | **04:54.032** (17,671f) | +01:04.693 |
+  | Power-on | **06:04.816** (21,925f) | **04:57.31** (17,868f) | +01:07.505 |
+
+  Commands: `tas_1_1 verify --seed …happylee_slice`,
+  `import_fm2 --verify-1-2-slice`, `import_fm2 --verify-4-1-4-2-slice`,
+  `record_happylee --to w8` (MP4 + HUD/audio).
+  Evidence: `recordings/tas_import/happylee_1_1_natural_settle_search.json`,
+  `happylee_1_2_slice_verify.json`, `happylee_4_1_4_2_slice_verify.json`,
+  `happylee_w8_probe_summary.json`,
+  **video** [`happylee_w8.mp4`](../recordings/tas_import/happylee_w8.mp4)
+  (Level1_1→W8, chain **7514f** / **2:05.027** incl. settle=2; −5114 vs n82
+  8-1 entry; not full axe — W8 still probe-only).
 
 ### First-pipe landing fix (continuous seed)
 
@@ -287,11 +336,13 @@ Prior reactive (drop-5, pre−97f 1-2): ending **21,643f**. M8 baseline: **21,73
 
 ## Next
 
-1. **Default fold + capture**: promote `smb_1_1_to_ending_natural_82.json` as
-   the source-owned continuous seed and re-record Clean power-on MP4.
-2. **4-2 route structure** for sub-5: current 2599f vine path is stable but
-   slow vs fast fragment ~2375f; do not pad — retime/replace UG→warp room.
-3. Further 1-2 gains need route structure (second dense delete = 0f).
+1. **HappyLee W8 slices (rr-b8k):** encode 8-1/8-2 gates+export from probe
+   (7930/2881, 10910/2209); solve 8-3 phase then 8-4 → ending; full-chain
+   verify + stage table vs WR before fold.
+2. **Default fold + capture**: only after HL chain to axe (or keep natural_82
+   as published baseline). Re-record Clean power-on MP4 on promote.
+3. **4-2 path audit:** HL glitch/warp vs natural vine — video + RAM before
+   treating 4-2 slice as route-canonical.
 4. Optional all-32-exit; transfer reactive gates to SMB3.
 
 The route contract layer makes the 32-exit inventory auditable, but only the
