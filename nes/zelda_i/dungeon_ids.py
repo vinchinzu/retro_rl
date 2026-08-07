@@ -18,7 +18,9 @@ OBJECT_NAMES: dict[int, str] = {
     0x27: "wallmaster",
     0x28: "rope",
     0x30: "gibdo",
+    0x2B: "invuln_mover_residual",  # L3 0x49/0x5d HP240; sword/bomb no dmg (not Manhandla)
     0x32: "dodongo",  # L2 boss room 0x0e (live rr-n5i 2026-08-07)
+    0x3C: "manhandla_candidate",  # L3 room 0x4d assisted glimpse (rr-vpl residual)
     0x3D: "aquamentus",
     0x2A: "stalfos",
     0x40: "bubble",
@@ -26,6 +28,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x4D: "old_man_or_npc",
     0x4e: "trap_or_fire_residual",
     0x55: "fireball_or_statue_projectile",  # L2 0x4f statues
+    0x56: "manhandla_projectile_residual",  # with 0x3c on L3 0x4d
     0x60: "green_rupee_drop",
 }
 
