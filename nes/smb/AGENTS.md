@@ -79,5 +79,6 @@ uv run python -m smb.scripts.parse_human_recording \
 Best Clean power-on: **21,559f** 3/3
 (`smb_1_1_to_ending_natural_82.json`). Published continuous MP4:
 `recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4` (YouTube
-intro + timer HUD). Next: promote natural_82 as default fold seed.
+intro + timer HUD). 8-1 isolated polish **−42f** ready
+(`models/smb_8_1_control_best.json`); retime 8-2+ then fold/promote.
 4-2 still 2599f vine (sub-5 needs route structure). Evidence: `docs/STATUS.md`.

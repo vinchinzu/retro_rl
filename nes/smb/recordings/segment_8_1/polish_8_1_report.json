@@ -1,0 +1,66 @@
+{
+  "tool": "smb.scripts.polish_8_1",
+  "date": "2026-08-06",
+  "baseline": {
+    "source": "nes/smb/models/smb_1_1_to_ending_natural_82.json",
+    "natural_slice": [8962, 12628],
+    "lead_idle_stripped": 219,
+    "isolated_start": "Level8_1",
+    "isolated_clear": 3444,
+    "natural_8_1_split": 3666,
+    "natural_8_1_exit": 12628
+  },
+  "best": {
+    "artifact": "nes/smb/models/smb_8_1_control_best.json",
+    "also": "nes/smb/models/smb_8_1_win_late.json",
+    "isolated_clear": 3402,
+    "frames_saved_isolated": 42,
+    "body_len": 3441,
+    "natural_splice_8_1_split": 3624,
+    "natural_splice_8_1_exit": 12585,
+    "frames_saved_natural_split": 42,
+    "unpromoted_continuous": "nes/smb/models/smb_1_1_to_ending_natural_81_polished_unpromoted.json"
+  },
+  "improvements": [
+    {
+      "window": "late",
+      "op": "hold_trim",
+      "at": 2573,
+      "hold": 32,
+      "trim": 6,
+      "clear": 3423
+    },
+    {
+      "window": "late",
+      "op": "edge",
+      "button": 8,
+      "edge": 2835,
+      "shift": 1,
+      "clear": 3402
+    }
+  ],
+  "parallel_window_results": {
+    "early": {"clear": 3444, "saved": 0},
+    "mid": {"clear": 3444, "saved": 0},
+    "mid2": {"clear": 3423, "saved": 21, "note": "hold@1843 trim8 alone; does not compose with late pair"},
+    "late": {"clear": 3402, "saved": 42},
+    "hold_body": {"clear": 3423, "saved": 21}
+  },
+  "stalls_noted": [
+    "x≈1200 f470-620",
+    "x≈2434 f1040-1200",
+    "x≈3346 f1500-1580",
+    "x≈4434 wall-slam f2040-2180",
+    "x≈5490 f2580-2680",
+    "flag approach xs=24 f2760-2950"
+  ],
+  "not_done": [
+    "retime 8-2+ after −42f 8-1 body (phase shift)",
+    "Clean power-on 3/3 with folded seed",
+    "promote continuous seed / MP4 re-record"
+  ],
+  "commands": {
+    "baseline": "uv run python -m smb.scripts.polish_8_1 --baseline-only",
+    "late_window": "uv run python -m smb.scripts.polish_8_1 --windows late --delete-stride 1 --out nes/smb/models/smb_8_1_win_late.json"
+  }
+}
