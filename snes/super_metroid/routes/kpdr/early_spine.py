@@ -72,17 +72,31 @@ __all__ = [
     "play_ceres_outbound_to_ridley",
     "play_ceres_escape_to_landing",
     "play_boot_to_ceres",
+    "play_boot_to_ceres_tas",
+    "_boot_spans",
+    "_BOOT_STYLE",
+    "_BOOT_MENU_MASH_FRAMES",
+    "_BOOT_MAX_FRAMES",
     "_CERES_ARM_PUMP_PERIOD",
     "_arm_pump_dash_spans",
 ]
 
 
 # ---------------------------------------------------------------------------
-# Boot (open-loop seed) — power-on mash into first Ceres control
+# Boot — power-on mash into first Ceres control (TAS-inspired, WRAM-gated)
 # ---------------------------------------------------------------------------
+
+# Sniq any% #3653M: first B+RIGHT ~8639f; libretro hits gs=8 elev @ ~8479f with
+# START/A period-1 then A-every-other (−2163f / −36.0s vs legacy first gs=8).
+# Product default stays **legacy** until escape elev is re-pinned (rr-14u).
+# Flip to "tas" only for probes — see docs/plan.md improvement tables.
+_BOOT_STYLE: str = "legacy"  # "legacy" | "tas"
+_BOOT_MENU_MASH_FRAMES = 400
+_BOOT_MAX_FRAMES = 12_000
 
 
 def _boot_spans() -> list[ActionSpan]:
+    """Legacy open-loop boot (product morph dual GREEN @ 26,824f)."""
     spans = [
         ActionSpan((), 2100, "boot_title_wait"),
         ActionSpan(("A",), 10, "boot_title_confirm"),
@@ -98,8 +112,50 @@ def _boot_spans() -> list[ActionSpan]:
     return spans
 
 
+def play_boot_to_ceres_tas(session: RouteSession) -> None:
+    """TAS-style boot → settled Ceres elev pad (probe / residual rr-14u).
+
+    START/A mash then A-every-other; stop on ``elev & gs==8``; wait y≥60 settle.
+    Saves ~2.1k f to first control vs legacy — escape elev still desyncs.
+    """
+    reached = False
+    for i in range(_BOOT_MAX_FRAMES):
+        st = session.state
+        if st.room_id == ROOM_CERES_ELEVATOR and st.game_state == 8:
+            reached = True
+            break
+        if i < _BOOT_MENU_MASH_FRAMES:
+            name = "START" if (i % 2) == 0 else "A"
+            session.step(buttons(name), "boot_menu_mash")
+        elif (i % 2) == 0:
+            session.step(buttons("A"), "boot_cutscene_mash")
+        else:
+            session.step(idle_action(), "boot_cutscene_wait")
+    if not reached:
+        raise RuntimeError(
+            f"TAS boot missed Ceres control after {_BOOT_MAX_FRAMES}f: {session.state}"
+        )
+    session.wait_until(
+        lambda s: s.room_id == ROOM_CERES_ELEVATOR
+        and s.game_state == 8
+        and int(s.samus_y) >= 60
+        and abs(int(s.velocity_y)) <= 1,
+        timeout=200,
+        reason="boot_elev_settle",
+    )
+    for _ in range(4):
+        session.step(idle_action(), "boot_elev_plant")
+
+
 def play_boot_to_ceres(session: RouteSession) -> None:
-    """Power-on boot mash through first controllable Ceres elevator frame."""
+    """Power-on → first controllable Ceres elevator frame.
+
+    Default **legacy** open-loop (morph dual green). Set ``_BOOT_STYLE = "tas"``
+    only when probing residual rr-14u (escape elev re-pin).
+    """
+    if _BOOT_STYLE == "tas":
+        play_boot_to_ceres_tas(session)
+        return
     session.spans(_boot_spans())
     if not (session.state.room_id == ROOM_CERES_ELEVATOR and session.state.game_state == 8):
         raise RuntimeError(f"boot missed first Ceres control: {session.state}")
@@ -180,27 +236,55 @@ def play_elevator_to_morph_room(session: RouteSession) -> None:
     """BB elev → Morph. Prefer product seed; re-pin if elev status phase misses.
 
     Elev standing flag ``$0E16`` toggles each frame. Product open-loop DOWN
-    lands on a ``1`` frame; a faster Ceres path can invert that parity so the
-    same seed crouches instead of boarding. If the seed does not leave elev
-    (gs=8 still in BB elev), re-board WRAM-reactively.
+    lands on a ``1`` frame; a faster Ceres path (TAS boot) can invert that
+    parity so the same seed crouches instead of boarding. First attempt is
+    exact product (parity 1, no pad walk). On miss, re-seat pad and try
+    parity 0 / 2, then WRAM-reactive board.
     """
-    # One idle before product plant restores $0E16 elev-flag parity when
-    # Ceres is an odd number of frames early (flag toggles each frame).
-    session.span(ActionSpan((), 1, "elevator_seed_parity"))
-    session.span(ActionSpan((), 17, "elevator_seed_alignment"))
-    session.raw_actions(_load_room_seed(4, "bb_elev_hallway"), "seed_bb_elev_hallway")
-    if session.state.room_id == ROOM_MORPH or (
-        session.state.room_id == ROOM_BLUE_BRINSTAR_ELEVATOR
-        and session.state.game_state in (9, 11)
-    ):
-        # Product morph seed starts from elev pose 0 in Morph; only need room id.
-        session.wait_until(
-            lambda s: s.room_id == ROOM_MORPH,
-            timeout=180,
-            reason="seed_bb_elev_hallway_transition_settle",
-        )
+    seed = _load_room_seed(4, "bb_elev_hallway")
+
+    def _try_seed(parity: int, *, reseat: bool) -> bool:
+        if session.state.room_id == ROOM_MORPH:
+            return True
+        if session.state.room_id != ROOM_BLUE_BRINSTAR_ELEVATOR:
+            return False
+        if reseat:
+            for _ in range(80):
+                st = session.state
+                if st.room_id != ROOM_BLUE_BRINSTAR_ELEVATOR:
+                    break
+                x = int(st.samus_x)
+                if 128 <= x <= 148 and abs(int(st.velocity_x)) <= 1:
+                    break
+                if x < 128:
+                    session.step(buttons("RIGHT"), "bb_elev_to_pad")
+                elif x > 148:
+                    session.step(buttons("LEFT"), "bb_elev_to_pad")
+                else:
+                    session.step(idle_action(), "bb_elev_to_pad")
+        for _ in range(parity):
+            session.step(idle_action(), "elevator_seed_parity")
+        session.span(ActionSpan((), 17, "elevator_seed_alignment"))
+        session.raw_actions(seed, "seed_bb_elev_hallway")
+        if session.state.room_id == ROOM_MORPH or (
+            session.state.room_id == ROOM_BLUE_BRINSTAR_ELEVATOR
+            and session.state.game_state in (9, 11)
+        ):
+            session.wait_until(
+                lambda s: s.room_id == ROOM_MORPH,
+                timeout=180,
+                reason="seed_bb_elev_hallway_transition_settle",
+            )
+            return True
+        return False
+
+    # Product path first (legacy dual-green @ 26,824f).
+    if _try_seed(1, reseat=False):
         return
-    # Seed missed Morph (elev flag phase desync). Re-solve from WRAM.
+    # TAS boot: elev-flag phase miss — one alternate parity, then WRAM board.
+    # Avoid burning 2× seed length when reactive is the reliable residual.
+    if _try_seed(0, reseat=True):
+        return
     _play_bb_elev_reactive(session)
 
 
@@ -286,9 +370,43 @@ def _play_bb_elev_reactive(session: RouteSession) -> None:
 
 
 def play_morph_ball_collect(session: RouteSession) -> None:
+    """Morph Ball room seed. On miss, return to elev pad and re-seed once.
+
+    Product seed expects elev pose 0 @ x≈128. TAS boot + reactive BB elev can
+    land with matching kinematics yet still desync the open-loop tape by phase;
+    one pad return + idle-14 re-seed is the cheap residual (not thrash).
+    """
+    seed = _load_room_seed(5, "morph_ball_room")
     _play_seed_to_room(
         session, index=5, name="morph_ball_room", target_room=None
     )
+    if session.state.collected_items & MORPH_BALL_MASK:
+        return
+
+    # Walk back toward elev pad (product entry ~x128 y292 pose 0).
+    for _ in range(400):
+        st = session.state
+        if st.room_id != ROOM_MORPH:
+            break
+        if session.state.collected_items & MORPH_BALL_MASK:
+            return
+        x = int(st.samus_x)
+        if int(st.pose) in (137, 138):
+            session.step(idle_action(), "morph_seed_kb")
+            continue
+        if 110 <= x <= 145 and abs(int(st.velocity_x)) <= 1:
+            if int(st.pose) == 0 or abs(int(st.velocity_y)) <= 1:
+                break
+        if x > 145:
+            session.step(buttons("LEFT"), "morph_return_elev")
+        elif x < 110:
+            session.step(buttons("RIGHT"), "morph_return_elev")
+        else:
+            session.step(idle_action(), "morph_return_elev")
+
+    for _ in range(14):
+        session.step(idle_action(), "morph_seed_phase_align")
+    session.raw_actions(seed, "seed_morph_ball_room")
     if not session.state.collected_items & MORPH_BALL_MASK:
         raise RuntimeError(f"Morph Ball was not acquired: {session.state}")
 
