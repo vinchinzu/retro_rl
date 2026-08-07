@@ -118,6 +118,7 @@ LEVEL2_DOOR_SCREENS: tuple[int, ...] = path_screens_from_hops(
     0x37, LEVEL2_DOOR_HOPS
 )
 # 0x5C maze waypoints (pixel) from BFS: east on y≈88 to x≈184, then down/east.
+# Wired into OverworldToLevel2Controller for the 0x5C→0x5D hop (rr-gfx).
 LEVEL2_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (20, 92),
     (40, 92),
@@ -150,7 +151,12 @@ SCREEN_LABELS: dict[int, str] = {
     0x49: "north_of_59",
     0x4A: "east_of_49",
     0x4B: "east_of_4a",
-    0x5B: "bush_south_of_4b",
+    0x5A: "door_path_west_of_5b",
+    0x5B: "bush_corridor_to_5c",
+    0x5C: "maze_before_5d",
+    0x5D: "north_exit_to_4d",
+    0x4D: "north_of_5d",
+    0x4C: "west_of_4d_pre_moon",
     0x3C: "level2_entrance",
     0x79: "rocky_deadend_east_of_78",
 }
@@ -249,8 +255,16 @@ def build_early_route_graph() -> RouteGraph:
     0x47 is a lake). Verified path::
 
         0x77 → E 0x78 → N 0x68 → N 0x58 → N 0x48 → N 0x38 → W 0x37 → dungeon
+
+    Level 2 door-path screens (0x37→…→0x3C via 0x5A/5C maze) are seeded as
+    **planned** hop edges (geometry probe-mapped; Clean transit not verified).
+    Shared prefix hops with the 0x4A walk remain ``observed``.
     """
-    seed_screens = set(LEVEL1_PATH_SCREENS) | set(LEVEL2_PATH_SCREENS)
+    seed_screens = (
+        set(LEVEL1_PATH_SCREENS)
+        | set(LEVEL2_PATH_SCREENS)
+        | set(LEVEL2_DOOR_SCREENS)
+    )
     seed_screens.update(
         {
             SCREEN_NORTH_OF_START,  # 0x67 dead-end (documented trap)
@@ -259,49 +273,93 @@ def build_early_route_graph() -> RouteGraph:
             0x47,
             0x57,
             0x79,  # rocky dead-end trap east of 0x78
-            0x3C,  # Level 2 overworld door (walkthrough target)
-            0x4B,  # partial probe past prefix
-            0x5B,
+            0x4B,  # partial probe past prefix / north-entry trap into 0x5B
         }
     )
-    # Neighborhood around the verified paths for expansion
-    for sc in list(LEVEL1_PATH_SCREENS) + list(LEVEL2_PATH_SCREENS):
+    # Neighborhood around verified + door paths for expansion
+    for sc in (
+        list(LEVEL1_PATH_SCREENS)
+        + list(LEVEL2_PATH_SCREENS)
+        + list(LEVEL2_DOOR_SCREENS)
+    ):
         for neighbor in neighbor_screens(sc).values():
             if neighbor is not None:
                 seed_screens.add(neighbor)
 
     graph = build_overworld_grid_graph(screens=sorted(seed_screens))
 
-    # Promote verified path edges (Level 1 approach + Level 2 walk prefix)
+    # Promote path edges: observed L1 / L2-prefix first; door-only hops stay planned.
     verified_l1 = {
         (a, b) for a, b in zip(LEVEL1_PATH_SCREENS, LEVEL1_PATH_SCREENS[1:])
     }
     verified_l2 = {
         (a, b) for a, b in zip(LEVEL2_PATH_SCREENS, LEVEL2_PATH_SCREENS[1:])
     }
+    # Forward door-path hops (geometry probe-mapped; not Clean continuous).
+    door_path_hops = {
+        (a, b) for a, b in zip(LEVEL2_DOOR_SCREENS, LEVEL2_DOOR_SCREENS[1:])
+    }
     promoted: list[GraphEdge] = []
     for edge in graph.edges:
         pair = (edge.meta.get("from_screen"), edge.meta.get("to_screen"))
         if pair in verified_l1:
-            segment = "to_level1"
+            promoted.append(
+                GraphEdge(
+                    source_id=edge.source_id,
+                    target_id=edge.target_id,
+                    edge_id=edge.edge_id,
+                    direction=edge.direction,
+                    requires=edge.requires,
+                    cost=edge.cost,
+                    verification="observed",
+                    provenance="emulator_probe",
+                    meta={**dict(edge.meta), "segment": "to_level1"},
+                )
+            )
         elif pair in verified_l2:
-            segment = "to_level2_prefix"
+            # Shared with door path (0x37→…→0x59); Clean prefix wins over planned door.
+            promoted.append(
+                GraphEdge(
+                    source_id=edge.source_id,
+                    target_id=edge.target_id,
+                    edge_id=edge.edge_id,
+                    direction=edge.direction,
+                    requires=edge.requires,
+                    cost=edge.cost,
+                    verification="observed",
+                    provenance="emulator_probe",
+                    meta={**dict(edge.meta), "segment": "to_level2_prefix"},
+                )
+            )
+        elif pair in door_path_hops:
+            # Geometry probe-mapped (incl. death-on-0x5C Clean timing); not 2/2 Clean.
+            hop_meta = {
+                **dict(edge.meta),
+                "segment": "to_level2_door",
+                "note": "geometry_probe_mapped; clean_health_not_verified",
+            }
+            if pair == (0x5B, 0x5C):
+                hop_meta["maze"] = "0x5c_waypoints"
+            if pair == (0x5C, 0x5D):
+                hop_meta["maze"] = "0x5c_waypoints"
+                hop_meta["requires_maze"] = True
+            if pair == (0x5D, 0x4D):
+                hop_meta["align_x"] = 52
+            promoted.append(
+                GraphEdge(
+                    source_id=edge.source_id,
+                    target_id=edge.target_id,
+                    edge_id=edge.edge_id,
+                    direction=edge.direction,
+                    requires=edge.requires,
+                    cost=edge.cost,
+                    verification="planned",
+                    provenance="probe_geometry",
+                    meta=hop_meta,
+                )
+            )
         else:
             promoted.append(edge)
-            continue
-        promoted.append(
-            GraphEdge(
-                source_id=edge.source_id,
-                target_id=edge.target_id,
-                edge_id=edge.edge_id,
-                direction=edge.direction,
-                requires=edge.requires,
-                cost=edge.cost,
-                verification="observed",
-                provenance="emulator_probe",
-                meta={**dict(edge.meta), "segment": segment},
-            )
-        )
 
     # Portal nodes
     extra_nodes = [
@@ -445,11 +503,13 @@ def build_early_route_graph() -> RouteGraph:
             node_id=NODE_LEVEL2_ENTRANCE,
             name="level2_overworld_door",
             area="overworld",
-            tags=frozenset({"overworld", "level2"}),
+            tags=frozenset({"overworld", "level2", "door"}),
             meta={
                 "screen": 0x3C,
-                "source": "walkthrough_correlated",
+                "segment": "to_level2_door",
+                "source": "probe_geometry_plus_walkthrough",
                 "verification": "planned",
+                "note": "door_screen_reached_in_probe_states; clean_walk_not_verified",
             },
         ),
         GraphNode(
@@ -457,7 +517,12 @@ def build_early_route_graph() -> RouteGraph:
             name="level2_moon",
             area="dungeon",
             tags=frozenset({"dungeon", "level2"}),
-            meta={"overworld_screen": 0x3C, "level": 2},
+            meta={
+                "overworld_screen": 0x3C,
+                "level": 2,
+                "entry_room": 0x7D,
+                "verification": "planned",
+            },
         ),
     ]
     extra_edges = [
@@ -690,18 +755,41 @@ def build_early_route_graph() -> RouteGraph:
             },
         ),
         GraphEdge(
+            source_id=NODE_LEVEL1_EXIT_OVERWORLD,
+            target_id=NODE_LEVEL2_ENTRANCE,
+            edge_id="walk_level2_door_path",
+            direction="ROUTE",
+            requires=frozenset({"wooden_sword", "triforce_shard_1"}),
+            verification="planned",
+            provenance="probe_geometry",
+            meta={
+                "segment": "to_level2_door",
+                "screens": LEVEL2_DOOR_SCREENS,
+                "hops": "LEVEL2_DOOR_HOPS",
+                "maze": "0x5c_waypoints",
+                "blocker": "overworld_health_management",
+                "avoid": (0x79, 0x4B),
+                "note": (
+                    "geometry probe-mapped via 0x5A west entry; "
+                    "Clean dies on 0x5C with 0 hearts; not 2/2 continuous"
+                ),
+            },
+        ),
+        GraphEdge(
             source_id=NODE_LEVEL2_PATH_4A,
             target_id=NODE_LEVEL2_ENTRANCE,
             edge_id="walk_level2_suffix",
             direction="ROUTE",
             requires=frozenset({"wooden_sword", "triforce_shard_1"}),
             verification="planned",
-            provenance="walkthrough_plus_partial_probe",
+            provenance="probe_geometry",
             meta={
-                "segment": "to_level2",
+                "segment": "to_level2_door",
                 "planned_screens": LEVEL2_DOOR_SCREENS,
+                "from_prefix": 0x4A,
                 "blocker": "overworld_health_management",
                 "maze": "0x5c_waypoints",
+                "note": "continuation from verified prefix; door hops still planned",
             },
         ),
         GraphEdge(
@@ -711,8 +799,13 @@ def build_early_route_graph() -> RouteGraph:
             direction="IN",
             requires=frozenset({"wooden_sword", "triforce_shard_1"}),
             verification="planned",
-            provenance="walkthrough",
-            meta={"segment": "to_level2", "door": "moon_mouth"},
+            provenance="probe_geometry",
+            meta={
+                "segment": "to_level2_door",
+                "door": "moon_mouth",
+                "entry_room": 0x7D,
+                "note": "dev fixtures Level2Entrance/Level2EntryFresh; not Clean natural",
+            },
         ),
     ]
     nodes = list(graph.nodes.values()) + extra_nodes

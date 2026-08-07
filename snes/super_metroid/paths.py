@@ -19,6 +19,10 @@ MODELS_DIR = GAME_DIR / "models"
 MAPS_DIR = GAME_DIR / "maps"
 DEBUG_DIR = GAME_DIR / "debug"
 DOCS_DIR = GAME_DIR / "docs"
+# YouTube KPDR reference VODs + button extracts (gitignored).
+YT_REFERENCE_DIR = GAME_DIR / "refs" / "yt_reference"
+# Default VOD workspace (Kentroid KPDR 59:46.72) when --ref omitted.
+YT_DEFAULT_REF_ID = "TFsGVxQReMw"
 ROOM_CLEAR_POLICY_DIR = GAME_DIR / "policies" / "room_clears"
 ROOM_CLEAR_RECORDINGS_DIR = RECORDINGS_DIR / "room_clears"
 FULL_ROOM_GRAPH_PATH = MAPS_DIR / "full_room_graph.json"

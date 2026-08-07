@@ -41,23 +41,22 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ P0 stabilize** | Stabilize wave after Speed continuous | `rr-07b` |
-| **★ P1 pure** | Pure Speed return → Bubble | `rr-g4i` |
-| P0 done | Continuous `--to speed` dual + STATUS promote | `rr-d20` ✓ / `rr-cd0` ✓ |
-| P0 pure (done) | Bat→Hall + Hall→Speed collect pure green | closed |
-| P0 done | Spazer warehouse dual + STATUS promote | `rr-jx9` ✓ / `rr-4wg` |
-| P0 done | HJ pillar multi down-shot under Spazer (no equip strip) | closed |
-| P0 done | Continuous tip `--to wave` dual 136361f STATUS | `rr-l0u` ✓ |
-| P0 done | Business→Cath door KB escape | closed |
-| P1 pure stack | Wave → Ice (pure green each) after Speed return | after `rr-g4i` |
-| P1 optional | Dual Spazer `bat_cave` tip STATUS (historical single 127,806f) | optional |
-| P1 | K5 **Alpha PB** (natural post-Ice) | later |
-| Parallel Clean | ★ **bombs / Torizo Clean** — [CLEAN_TRACK.md](CLEAN_TRACK.md) | `rr-siz` |
+| **★ Product pure** | Business → Ice Gate → Acid → Snake (2WJ) → Ice PLM | `rr-fg3` → `rr-9t4` → `rr-5cf` → `rr-5if` |
+| Product after Ice | tip ice → K5 → Moat approach | `rr-dbu.7` → `.8` → `.9` |
+| Done | Human full tape 39,711f Wave+Ice+Moat | `rr-dbu.12` · [SM-SPEED-ICE-MOAT-HUMAN.md](tasks/SM-SPEED-ICE-MOAT-HUMAN.md) |
+| Optional | Policy consolidate; duck-type; Clean STATUS; speed start Spazer | P3 |
+| Parallel Clean | bombs/Torizo Clean **GREEN** 49,321f ×2 | polish `rr-3z8` |
+| Done | Wave continuous **136,361f** + hygiene Pass A/B essential | |
 
-**Parked:** Frog Save → Speedway → Farm → Bubble (needs Speed / Boost Blocks).
-**Do not:** re-open CATH pure, Bat→Speed pure, or Speed dual (green residuals +
-STATUS tip promoted); do not claim pure Speed return until `rr-g4i` green.
-Default continuous tip is **`speed`** (**130,388f** ×2).
+**Critical path to credits:** human tape (`rr-dbu.12`) → Ice pure package
+(`rr-dbu.11`, `routes/kpdr/ice/`) → continuous ice → K5 → Moat natural entry
+→ Wrecked Ship → … → ending. **Do not invent Ice hops without tape.**
+
+**Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);
+spore clean; Pass B.3 deep consolidate.
+
+Default continuous tip is **`wave`** (**136,361f** ×2). Hygiene Pass B does
+**not** block product.
 
 Live work: `bd ready -l super_metroid` · snapshot [tasks/QUEUE.md](tasks/QUEUE.md).
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
@@ -163,10 +162,9 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
 ### K6 — Ship / Phantoon / Gravity
 
 - [x] Moat shinespark pure from `post_kihunter_pre_moat_spark` → West Ocean
-  — residual [tasks/SM-MOAT-SHINESPARK-residual.md](tasks/SM-MOAT-SHINESPARK-residual.md)
   (store→spin→UP unspin→spark + RIGHT+X door; probe hop + controller pure GREEN;
   West handoff `scratch/post_moat_west_ocean_spark.state`; harness B=dash A=jump;
-  **not** continuous / STATUS)
+  residual purged after pure green; **not** continuous / STATUS)
 - [x] Landing Site shine practice gym + diagnose/drill
   — [tasks/SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md)
   (`scripts/probe/shine_practice.py` human/drill/demo; store trap documented)

@@ -15,6 +15,7 @@ GAME_V0 = "SuperMarioBros-Nes-v0"
 INTEGRATION_V0_DIR = GAME_DIR / "custom_integrations" / GAME_V0
 
 RECORDINGS_DIR = GAME_DIR / "recordings"
+MODELS_DIR = GAME_DIR / "models"
 FULLGAME_RECORDINGS_DIR = RECORDINGS_DIR / "fullgame"
 FULLGAME_REPLAYS_DIR = RECORDINGS_DIR / "fullgame_replays"
 OPTIMIZER_RUNS_DIR = GAME_DIR / "optimizer" / "runs"

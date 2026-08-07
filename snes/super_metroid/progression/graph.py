@@ -57,6 +57,9 @@ class RoomProgressionGraph:
         frame: int,
         source_room_id: int,
         target_room_id: int,
+        *,
+        leave_kinematics: dict[str, object] | None = None,
+        entry_kinematics: dict[str, object] | None = None,
     ) -> ObservedTransition:
         edge = self.edge_for(source_room_id, target_room_id)
         return ObservedTransition(
@@ -64,6 +67,8 @@ class RoomProgressionGraph:
             source_room_id=source_room_id,
             target_room_id=target_room_id,
             edge_id=edge.edge_id if edge else None,
+            leave_kinematics=leave_kinematics,
+            entry_kinematics=entry_kinematics,
         )
 
     def shortest_path(

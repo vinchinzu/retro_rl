@@ -15,6 +15,12 @@ from super_metroid.routes.kpdr.to_speed import (
     play_bat_cave_to_speed_hall,
     play_speed_hall_to_speed,
 )
+from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble
+from super_metroid.routes.kpdr.k4_wave import (
+    play_bubble_to_single_chamber,
+    play_double_chamber_to_wave,
+    play_single_to_double_chamber,
+)
 from super_metroid.routes.kpdr.ghz_to_red import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
@@ -78,12 +84,15 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_NOOB,
     ROOM_RED_TOWER,
     ROOM_RISING_TIDE,
+    ROOM_DOUBLE_CHAMBER,
+    ROOM_SINGLE_CHAMBER,
     ROOM_SPEED,
     ROOM_SPEED_HALL,
     ROOM_SUPER,
     ROOM_VARIA,
     ROOM_WAREHOUSE,
     ROOM_WAREHOUSE_KIHUNTER,
+    ROOM_WAVE,
     ROOM_WEST_TUNNEL,
     ROOM_ZEELA,
 )
@@ -632,5 +641,54 @@ POST_SUPERS_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=_K4_CAPS | frozenset({"missiles"}),
         policy_id="kpdr_k4_speed",
+    ),
+    # --- wave (K4.7–K4.10; Speed return → Bubble → Single → Double → Wave) ---
+    # Multi-room reverse (Speed→Hall→Bat→Bubble): no DoorEdge; frame split only
+    # (no single Speed→Bubble transition for split_for_transition).
+    SpineHop(
+        "speed_return_to_bubble",
+        play_speed_return_to_bubble,
+        ROOM_SPEED,
+        ROOM_BUBBLE,
+        "Bubble Mountain (post-Speed return)",
+        "wave",
+        use_transition_split=False,
+        policy_id="kpdr_k4_wave",
+    ),
+    SpineHop(
+        "bubble_to_single_chamber",
+        play_bubble_to_single_chamber,
+        ROOM_BUBBLE,
+        ROOM_SINGLE_CHAMBER,
+        "Single Chamber",
+        "wave",
+        exit_direction="right",
+        entry_direction="left",
+        requires=_K4_CAPS,
+        policy_id="kpdr_k4_wave",
+    ),
+    SpineHop(
+        "single_to_double_chamber",
+        play_single_to_double_chamber,
+        ROOM_SINGLE_CHAMBER,
+        ROOM_DOUBLE_CHAMBER,
+        "Double Chamber",
+        "wave",
+        exit_direction="right",
+        entry_direction="left",
+        requires=_K4_CAPS | frozenset({"missiles"}),
+        policy_id="kpdr_k4_wave",
+    ),
+    SpineHop(
+        "double_chamber_to_wave",
+        play_double_chamber_to_wave,
+        ROOM_DOUBLE_CHAMBER,
+        ROOM_WAVE,
+        "Wave Beam Room",
+        "wave",
+        exit_direction="right",
+        entry_direction="left",
+        requires=_K4_CAPS | frozenset({"missiles"}),
+        policy_id="kpdr_k4_wave",
     ),
 )

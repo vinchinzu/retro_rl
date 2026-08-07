@@ -1,21 +1,32 @@
 # Early Spazer — human wall-jump recording (one page)
 
-**Goal:** demo pure path for K2.2 Spazer detour (wall-jump climb) from the
-continuous-like Below Spazer source. Output feeds `SM-SPAZER-PURE` controllers
-then side tip `--to spazer` (sibling of Warehouse under Below Spazer; fold later).
+**Goal:** demo pure path for K2.2 Spazer mainline (wall-jump climb) from the
+continuous Charge Below Spazer source. Spazer is **mainline** — continuous
+Below→West always detours for Spazer (no floor skip). Floor→top climb + top→mid
+drop remain residual; continuous warehouse is RED until those pure-green.
 
-**Does not** change default continuous spine (`--to bat_cave` still skips Spazer).
+Default continuous tip is still `--to bat_cave` (past Warehouse).
 
-## Run (guide path on same window)
+## Run (human record — **no guide**)
+
+Guide overlay messes play/camera for this room. Always pass `--no-guide`.
+
+**Preferred start: Charge (Big Pink)** — not Bat, not Below Spazer scratch
+(those pins are ahead or often corrupt). Play natural: Charge collect → Red →
+Bat → Below Spazer climb → Super door → Spazer → return.
 
 ```bash
-# Full detour: climb → Super green door → Chozo → return
+# From Charge — play the whole path into Spazer climb (recommended)
 uv run python snes/super_metroid/scripts/record/guided_human.py \
-  --from below-spazer --route early-spazer --name spazer_human
+  --from charge-to-spazer --name spazer_from_charge_human --no-guide
 
-# Climb only (stay in 0xA408)
+# Same start (alias)
 uv run python snes/super_metroid/scripts/record/guided_human.py \
-  --from below-spazer --route below-spazer-only --name spazer_climb_human
+  --from big-pink --route early-spazer --name spazer_from_charge_human --no-guide
+
+# Avoid unless you know the pin is good:
+# --from below-spazer   (scratch continuous pin — often unplayable)
+# --from bat            (not a preset; Bat is past Charge and still before climb)
 ```
 
 | Control | Action |
@@ -117,16 +128,59 @@ Probes in `debug/early_spazer_*` (2026-08-04):
 
 Prior `spazer_human` (3596f) stayed in Bat↔Below door loop — not a clear; re-record.
 
+## Clean TOP-MID recording (prefer this over full re-climb)
+
+Door / collect / return are pure-green. **Do not** re-record Charge→climb just
+to capture a drop — start from the pure handoff pin.
+
+```bash
+# Refresh pure post-Spazer states (no human)
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure spazer-collect \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_spazer_entry_pure.state \
+  --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_spazer_collect_pure.state
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure spazer-return-to-below \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_spazer_collect_pure.state \
+  --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_spazer_return_pure.state
+
+# Human: clean drop only from return handoff ~(380,155)
+uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from post-spazer-return --route spazer-top-drop --name spazer_top_drop_human --no-guide
+```
+
+| Control | Action |
+|---------|--------|
+| Goal | Mid band y≥220 (or floor) without enemy catch / thrash |
+| Trap | **RIGHT** re-enters open Super door into Spazer |
+| F5 | Save `tasks/spazer_top_drop_human.json` + end state |
+
 ## Next pure / tip splice
 
-Door hop + collect + return are pure green. Remaining:
+Door hop + collect + return are pure green. **Spazer is mainline K2.2** —
+`play_below_spazer_to_west` always runs `play_spazer_detour` (no floor skip):
 
-1. **WJ climb pure** (floor→top) from `post_below_spazer_with_charge_continuous`
-   — mid→top double WJ probe-ready; floor→mid still hard.
-2. **Top→floor→West residual** after return handoff (`post_spazer_return_pure`)
-   — bomb gap + shaft drop; do **not** call `below-to-west` from top (RIGHT
-   re-enters open Super door).
-3. **Graph** → tip `--to spazer` (parent `below_spazer`) → dual integrity → fold.
+| Piece | Status |
+|-------|--------|
+| `play_below_spazer_to_west` | **Mainline** → always `play_spazer_detour` |
+| `play_spazer_detour` | Climb → door → collect → return → West |
+| Spazer held + top handoff | `play_spazer_top_to_west` (no RIGHT into Super) |
+| Mid → West | pure-green |
+| Return Spazer → Below top | pure-green ~(380,155) |
+| Floor → solid top climb | **GREEN** (401f; FLOOR-MID + CLIMB-LAND) |
+| Top handoff → West | **GREEN** (1281f ×2; `spazer_top_drop_human` guide) |
+| Solid top → Super door | **mainline** morph-tunnel in `play_below_spazer_to_spazer` |
+| Full floor detour | **GREEN** `spazer-detour` 3675f ×2 → West beams `0x1004` |
+
+**Product continuous** is warehouse **with Spazer bit** (`0x1004`). Historical
+`warehouse_with_charge` (beams `0x1000` only) is not the product path.
+
+```bash
+# Pure mainline detour from floor (RED until climb land green)
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure spazer-detour \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_below_spazer_with_charge_continuous.state
+```
+
+Historical climb residual purged (Spazer mainline promoted). Product:
+`routes/kpdr/spazer/`. Board: `docs/plan.md` / `docs/STATUS.md`.
 
 ```bash
 # Return pure (green)
@@ -137,6 +191,10 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure spazer-return-to-bel
 # Door hop pure (green; top ledge source)
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure below-spazer-to-spazer \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/pre_spazer_door_with_charge.state
+
+# Climb (still residual from floor)
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure below-spazer-climb \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_below_spazer_with_charge_continuous.state
 ```
 
 ## Refs
@@ -149,4 +207,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure below-spazer-to-spaz
 | `docs/routes/TRACK_100.md` | 100% board / Spazer insert policy |
 | `docs/SOURCE_STATES.md` | `post_below_spazer_for_spazer_pure` |
 | `routes/kpdr/guide_paths.py` | `early-spazer` presets |
-| `routes/kpdr/spazer.py` | pure door/collect/return controllers (climb residual) |
+| `routes/kpdr/spazer/` | pure door/collect/return + climb/drop (package) |

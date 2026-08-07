@@ -42,6 +42,8 @@ from zelda_i.nav_common import (
     wake_or_wait_mode,
 )
 from zelda_i.overworld import (
+    LEVEL2_5C_MAZE_WAYPOINTS,
+    LEVEL2_DOOR_HOPS,
     LEVEL2_PATH_HOPS,
     LEVEL2_PATH_SCREENS,
     ScreenHop,
@@ -50,23 +52,88 @@ from zelda_i.ram import (
     PLAY_MODE,
     SCREEN_LEVEL1_ENTRANCE,
     SCREEN_LEVEL2_ENTRANCE,
+    SCREEN_LEVEL2_ENTRY_ROOM,
     ZeldaSnapshot,
     read_snapshot,
 )
 
 # --- Geometry / budgets ---
 SCREEN_LEVEL2 = SCREEN_LEVEL2_ENTRANCE
+LEVEL2_ENTRY_ROOM = SCREEN_LEVEL2_ENTRY_ROOM  # 0x7d after mode-16→5 settle
+LEVEL2_DOOR_X = 112  # Moon overworld door UP lane on 0x3C
 LEVEL1_TRIFORCE_BIT = 0x01
 SETTLE_MAX_FRAMES = 1500
 SEGMENT_MAX_FRAMES = 25000
 SWORD_SWING_PERIOD = 10
 SWORD_SWING_FRAMES = 3
 STUCK_THRESHOLD = 50
+MAZE_WAYPOINT_TOL = 6
+# Screen that owns the maze-hop (0x5C → 0x5D).
+SCREEN_5C_MAZE = 0x5C
+MAZE_HOP_TARGET = 0x5D
 
 # Re-export path tables (single source: overworld.LEVEL2_PATH_HOPS).
 # Verified health-stable prefix ends on 0x4A.
 assert LEVEL2_PATH_SCREENS[-1] == 0x4A
 assert LEVEL2_PATH_SCREENS[0] == 0x37
+
+# Verified prefix stop 0x4A is *not* on LEVEL2_DOOR_HOPS (door path turns
+# east at 0x59→0x5A). Live probe: 0x4A has **no south exit** to 0x5A (rock
+# wall). Rejoin west → 0x49 → south → 0x59 → then door hops from 0x5A.
+LEVEL2_REJOIN_4A_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x49, "LEFT", align_y=141),
+    ScreenHop(0x59, "DOWN", align_x=112),
+)
+# Back-compat alias (was incorrectly a single south hop to 0x5A).
+LEVEL2_REJOIN_4A_TO_5A = LEVEL2_REJOIN_4A_HOPS[0]
+
+# Clean heart-safe suffix after farm on 0x4A (probe 2026-08-06):
+# rejoin → east @y≈140 into 0x5A → *corridor clear* → align_y=140 to 0x5B → maze.
+# Default LEVEL2_DOOR_HOPS y-bands lose too many hearts for Clean.
+LEVEL2_CLEAN_FROM_4A_TO_5A: tuple[ScreenHop, ...] = (
+    ScreenHop(0x49, "LEFT", align_y=141),
+    ScreenHop(0x59, "DOWN", align_x=112),
+    ScreenHop(0x5A, "RIGHT", align_y=140),
+)
+LEVEL2_CLEAN_FROM_5A_TO_3C: tuple[ScreenHop, ...] = (
+    ScreenHop(0x5B, "RIGHT", align_y=140),
+    ScreenHop(0x5C, "RIGHT", y_band_lo=80, y_band_hi=95),
+    ScreenHop(0x5D, "RIGHT", y_band_lo=120, y_band_hi=140),
+    ScreenHop(0x4D, "UP", align_x=52),
+    ScreenHop(0x4C, "LEFT", y_band_lo=120, y_band_hi=170),
+    ScreenHop(0x3C, "UP", align_x=112),
+)
+
+
+def level2_door_hops_from(screen: int) -> tuple[ScreenHop, ...]:
+    """Remaining door-path hops after ``screen`` (maze-aware full table).
+
+    ``LEVEL2_DOOR_HOPS`` runs 0x37→…→0x3C via 0x5A (not via 0x4A/0x4B).
+    From the verified prefix stop 0x4A, rejoin west/south via 0x49→0x59
+    (0x4A has no south corridor to 0x5A).
+    """
+    targets = [h.target for h in LEVEL2_DOOR_HOPS]
+    if screen in targets:
+        return LEVEL2_DOOR_HOPS[targets.index(screen) + 1 :]
+    if screen == 0x4A:
+        # After 0x59 on door path comes 0x5A…
+        return LEVEL2_REJOIN_4A_HOPS + LEVEL2_DOOR_HOPS[targets.index(0x59) + 1 :]
+    if screen == 0x49:
+        # Prefix intermediate: drop south to 0x59 then resume door path.
+        return (ScreenHop(0x59, "DOWN", align_x=112),) + LEVEL2_DOOR_HOPS[
+            targets.index(0x59) + 1 :
+        ]
+    if screen == 0x4B:
+        # Wrong north-entry trap screen; west back toward 0x4A then rejoin.
+        return (ScreenHop(0x4A, "LEFT", align_y=141),) + level2_door_hops_from(0x4A)
+    if screen == 0x37:
+        return LEVEL2_DOOR_HOPS
+    return LEVEL2_DOOR_HOPS
+
+
+def is_5c_maze_hop(hop: ScreenHop) -> bool:
+    """True for the 0x5C→0x5D east hop that requires maze waypoints."""
+    return hop.target == MAZE_HOP_TARGET and hop.direction == "RIGHT"
 
 
 class SettlePhase(Enum):
@@ -137,8 +204,10 @@ class OverworldToLevel2Controller:
     """Walk from post-Triforce overworld 0x37 through the verified Level 2 path.
 
     Default stop is screen **0x4A** with sword and triforce bit 0 — the current
-    health-stable milestone. Set ``require_level2_screen=True`` to continue
-    toward 0x3C once the suffix is promoted.
+    health-stable milestone. Pass ``door_path=True`` (or ``hops=LEVEL2_DOOR_HOPS``)
+    for the full Moon-door route via 0x5A/0x5C maze to 0x3C. Set
+    ``require_level2_screen=True`` / ``require_dungeon=True`` for door hunt or
+    dungeon entry after hops complete.
     """
 
     hop_index: int = 0
@@ -153,7 +222,14 @@ class OverworldToLevel2Controller:
     notes: list[str] = field(default_factory=list)
     require_level2_screen: bool = False
     require_dungeon: bool = False
+    door_path: bool = False
     hops: tuple[ScreenHop, ...] = LEVEL2_PATH_HOPS
+    maze_waypoints: tuple[tuple[int, int], ...] = LEVEL2_5C_MAZE_WAYPOINTS
+    maze_wp_index: int = 0
+
+    def __post_init__(self) -> None:
+        if self.door_path:
+            self.hops = LEVEL2_DOOR_HOPS
 
     def reset(self) -> None:
         self.hop_index = 0
@@ -166,6 +242,9 @@ class OverworldToLevel2Controller:
         self.last_screen = -1
         self.success = False
         self.notes.clear()
+        self.maze_wp_index = 0
+        if self.door_path:
+            self.hops = LEVEL2_DOOR_HOPS
 
     def _set_phase(self, phase: Level2NavPhase, note: str = "") -> None:
         if phase is not self.phase:
@@ -186,7 +265,13 @@ class OverworldToLevel2Controller:
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         if self.require_dungeon:
-            return snap.level == 2
+            # Door enter is mode 16 with screen still 0x3C; room-ready is
+            # level==2, mode 5, entry room 0x7d (~180 idle frames).
+            return (
+                snap.level == 2
+                and snap.mode == PLAY_MODE
+                and snap.screen == LEVEL2_ENTRY_ROOM
+            )
         if self.require_level2_screen:
             return (
                 snap.level == 0
@@ -217,9 +302,12 @@ class OverworldToLevel2Controller:
             return None
 
         self.notes.append(f"hop_{self.hop_index}_{hop.target:02x}")
+        if is_5c_maze_hop(hop):
+            self.notes.append("maze_complete")
         self.hop_index += 1
         self.stuck = 0
         self.phase_frames = 0
+        self.maze_wp_index = 0
         if self.hop_index >= len(self.hops) and not (
             self.require_level2_screen or self.require_dungeon
         ):
@@ -227,6 +315,50 @@ class OverworldToLevel2Controller:
             self._set_phase(Level2NavPhase.DONE, "path_prefix_complete")
             return FrameAction(nes_idle_action(), "done")
         return FrameAction(nes_idle_action(), "hop_advance")
+
+    def _follow_5c_maze(self, snap: ZeldaSnapshot) -> FrameAction:
+        """BFS maze on 0x5C: east @y≈88, channel south, east @y≈128 into 0x5D."""
+        if not self.maze_waypoints:
+            return self._swing("RIGHT", "maze_no_waypoints")
+
+        if "maze_start" not in self.notes:
+            self.notes.append("maze_start")
+
+        if self.maze_wp_index >= len(self.maze_waypoints):
+            return self._swing("RIGHT", "maze_exit")
+
+        tx, ty = self.maze_waypoints[self.maze_wp_index]
+        if (
+            abs(snap.link_x - tx) <= MAZE_WAYPOINT_TOL
+            and abs(snap.link_y - ty) <= MAZE_WAYPOINT_TOL
+        ):
+            self.maze_wp_index += 1
+            self.stuck = 0
+            if self.maze_wp_index >= len(self.maze_waypoints):
+                return self._swing("RIGHT", "maze_exit")
+            tx, ty = self.maze_waypoints[self.maze_wp_index]
+
+        if self.stuck > STUCK_THRESHOLD:
+            action, self.stuck = unstick_wiggle(self.stuck, reason="maze_unstick")
+            return action
+
+        # Axis-aligned corridor: finish x before y when off lane (same as L1).
+        dx = tx - snap.link_x
+        dy = ty - snap.link_y
+        if abs(dx) > MAZE_WAYPOINT_TOL:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        elif abs(dy) > MAZE_WAYPOINT_TOL:
+            direction = "DOWN" if dy > 0 else "UP"
+        else:
+            direction = "RIGHT"
+        return self._swing(direction, f"maze_wp{self.maze_wp_index}")
+
+    def _in_maze_phase(self, snap: ZeldaSnapshot, hop: ScreenHop) -> bool:
+        """Use maze waypoints while on 0x5C heading to 0x5D (not yet arrived)."""
+        if not is_5c_maze_hop(hop) or not self.maze_waypoints:
+            return False
+        # Only on the maze screen; arrival on 0x5D is handled by _advance_hop.
+        return snap.screen == SCREEN_5C_MAZE
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -267,6 +399,13 @@ class OverworldToLevel2Controller:
 
         if self.hop_index >= len(self.hops):
             if self.require_level2_screen or self.require_dungeon:
+                # Mid-dungeon-enter settle (mode 16/2/3/4) — idle until room-ready.
+                if snap.level == 2:
+                    return FrameAction(nes_idle_action(), "dungeon_settle")
+                # Moon door on 0x3C: align x≈112 then push UP (same as L1 mouth).
+                if abs(snap.link_x - LEVEL2_DOOR_X) > 5:
+                    btn = "LEFT" if snap.link_x > LEVEL2_DOOR_X else "RIGHT"
+                    return self._swing(btn, "door_ax")
                 return self._swing("UP", "door_hunt")
             self.success = True
             self._set_phase(Level2NavPhase.DONE, "hops_complete")
@@ -276,6 +415,10 @@ class OverworldToLevel2Controller:
         advanced = self._advance_hop(snap, hop)
         if advanced is not None:
             return advanced
+
+        # 0x5C maze: plain ScreenHop RIGHT + y-band cannot reach 0x5D.
+        if self._in_maze_phase(snap, hop):
+            return self._follow_5c_maze(snap)
 
         if self.stuck > STUCK_THRESHOLD:
             action, self.stuck = unstick_wiggle(self.stuck)
@@ -305,6 +448,7 @@ class OverworldToLevel2Controller:
                 "index": self.hop_index,
                 "target": current.target,
                 "direction": current.direction,
+                "maze": is_5c_maze_hop(current),
             }
         return {
             "success": self.success,
@@ -312,6 +456,8 @@ class OverworldToLevel2Controller:
             "frames": self.frames,
             "hop_index": self.hop_index,
             "hop": hop,
+            "maze_wp_index": self.maze_wp_index,
+            "door_path": self.door_path,
             "notes": list(self.notes),
             "stuck": self.stuck,
             "require_level2_screen": self.require_level2_screen,
@@ -343,8 +489,13 @@ def level2_screen_reached(ram: np.ndarray) -> bool:
 
 
 def level2_entrance_success(ram: np.ndarray) -> bool:
+    """Room-ready inside Moon entry: level 2, play mode, room 0x7d."""
     snap = read_snapshot(ram)
-    return snap.level == 2
+    return (
+        snap.level == 2
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL2_ENTRY_ROOM
+    )
 
 
 def post_triforce_overworld_ready(ram: np.ndarray) -> bool:

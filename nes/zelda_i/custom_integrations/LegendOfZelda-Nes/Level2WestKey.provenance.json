@@ -1,0 +1,41 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-06T22:52:24.726612+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "from_entrance": false,
+    "segment": "level2_clear6c",
+    "start_state": "Level2RopesCleared"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "clear_signal_seen": false,
+    "combat_frames": 426,
+    "frames": 708,
+    "initial_inventory": 0,
+    "last_live_enemies": 0,
+    "max_live_enemies": 6,
+    "notes": [
+      "at_entry_door",
+      "target_room_playable",
+      "reward_collected"
+    ],
+    "phase": "DONE",
+    "spec_id": "level2_room6c_west_key",
+    "success": true,
+    "tuning": {
+      "attack_phase": 2,
+      "engage_attack_hold": 4,
+      "engage_attack_period": 8,
+      "engage_distance": 64,
+      "engage_dominant_axis": false,
+      "patrol_attack_hold": 3,
+      "patrol_attack_period": 10
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2RopesCleared.state",
+  "source_state_sha256": "b1740b04d4a99bcd42ce431cfbda850220155ad73f1b6267bbb6528fbaa6ac12",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2WestKey.state",
+  "state_sha256": "834d94c798eb2a404a6fa621a6f28e89c60816776a852c56ff9b63374f5db5db"
+}

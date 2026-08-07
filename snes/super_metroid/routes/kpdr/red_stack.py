@@ -13,6 +13,9 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
+from super_metroid.routes.kpdr.below_spazer_west import (
+    play_below_spazer_floor_to_west,
+)
 from super_metroid.routes.kpdr.rooms import (
     ITEM_HI_JUMP,
     ROOM_BABY_KRAID,
@@ -35,6 +38,19 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_ZEELA,
 )
 from super_metroid.routes.runtime import ControllerSession
+
+# Re-export for callers that import west runner from red_stack.
+__all__ = [
+    "play_below_spazer_floor_to_west",
+    "play_below_spazer_to_west",
+    "play_bat_to_below_spazer",
+    "play_east_to_warehouse",
+    "play_glass_to_east",
+    "play_red_tower_to_bat",
+    "play_red_tower_to_warehouse",
+    "play_west_to_glass",
+]
+
 
 def play_red_tower_to_bat(session: ControllerSession) -> SuperMetroidState:
     """Natural Noob-door spawn → Red Tower bottom → Bat Room ``0xA3DD``."""
@@ -220,24 +236,25 @@ def play_bat_to_below_spazer(session: ControllerSession) -> SuperMetroidState:
     )
 
 def play_below_spazer_to_west(session: ControllerSession) -> SuperMetroidState:
-    """Below Spazer water room → West Tunnel."""
+    """Below Spazer → West Tunnel — **mainline K2.2 always collects Spazer**.
+
+    Continuous spine hop. No floor skip, no Charge-only West bypass.
+
+    * Spazer missing: :func:`~super_metroid.routes.kpdr.spazer.play_spazer_detour`
+      (climb → Super door → collect → return → mid/floor → West).
+    * Spazer held: :func:`~super_metroid.routes.kpdr.spazer.play_spazer_top_to_west`
+      (top handoff → mid/floor → West).
+
+    Spazer detour pure-green from floor (climb + morph-tunnel Super door +
+    collect + return + West). Continuous dual with Spazer bit still pending
+    STATUS promote (see ``docs/plan.md``).
+
+    Fuse: West Tunnel ordinary → Glass → East → Warehouse.
+    """
     require_room(session, ROOM_BELOW_SPAZER, "below_spazer_to_west")
-    # Let the door-exit running pose settle before `unmorph`; pose 9/10 is
-    # intentionally handled by that shared helper and would otherwise turn
-    # this ordinary entry glide into an unwanted jump.
-    hold(session, 6, reason="below_spazer_entry_glide")
-    unmorph(session)
-    select_weapon(session, 0)
-    for frame in range(2000):
-        buttons = ("RIGHT", "B", "X") if frame % 35 < 10 else ("RIGHT", "B", "A")
-        state = hold(session, 1, *buttons, reason="below_spazer_right")
-        if state.room_id == ROOM_WEST_TUNNEL:
-            break
-    else:
-        raise TimeoutError(f"below_spazer_to_west: West Tunnel not reached: {state}")
-    return wait_ordinary_room(
-        session, ROOM_WEST_TUNNEL, settle_frames=260, label="below_spazer_to_west"
-    )
+    from super_metroid.routes.kpdr.spazer import play_spazer_detour
+
+    return play_spazer_detour(session)
 
 def play_west_to_glass(session: ControllerSession) -> SuperMetroidState:
     """West Tunnel → Glass Tunnel."""

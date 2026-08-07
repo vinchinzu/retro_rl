@@ -176,3 +176,103 @@ def wake_or_wait_mode(phase_frames: int, mode: int) -> FrameAction:
     if phase_frames % 30 < 3:
         return FrameAction(nes_action("A"), f"wake_mode_{mode}")
     return FrameAction(nes_idle_action(), f"wait_mode_{mode}")
+
+
+# --- Dungeon diamond-block door approach (L2 0x7d east, 0x6e east, …) ---
+# Mid-room diamond solids block a straight y≈141 corridor near x≈128–176.
+# Correct policy (verified 2026-08-06): reach east wall on an open y-band, then
+# cycle LEFT+vertical to free y≈141 *at the wall*, then RIGHT through the door.
+# Do NOT fully retreat west of ~x=180 on y=141 (re-enters the solid).
+# Do NOT y-align only with micro-LEFT at x≥200 without longer LEFT pulses.
+
+DOOR_Y_DEFAULT = 141
+DIAMOND_WALL_X = 200
+DIAMOND_BAND_7D = 157  # open band for entry-east 0x7d → 0x7e
+DIAMOND_BAND_6E = 113  # open band for 0x6e RIGHT key door → 0x6f
+
+
+def diamond_east_phase(
+    snap: ZeldaSnapshot,
+    *,
+    phase: str,
+    band_y: int = DIAMOND_BAND_7D,
+    door_y: int = DOOR_Y_DEFAULT,
+    wall_x: int = DIAMOND_WALL_X,
+    cycle: int = 0,
+) -> tuple[FrameAction, str]:
+    """One-frame policy for diamond-blocked east doors.
+
+    Phases (caller advances when geometry matches):
+      free     — leave west/east/south/north alcoves toward mid-room
+      band     — align ``band_y`` at mid-x
+      wall     — RIGHT on band until ``link_x >= wall_x``
+      door_y   — at wall: LEFT×6 → vertical to door_y → RIGHT×10 cycles
+      push     — hold RIGHT on door_y (re-nudge if y drifts)
+
+    Returns (action, next_phase_hint). Caller may keep phase until transition.
+    """
+    x, y = snap.link_x, snap.link_y
+
+    if phase == "free":
+        if 70 <= x <= 180 and 110 <= y <= 175:
+            return FrameAction(nes_action("UP" if y > band_y else "DOWN"), "band"), "band"
+        if x >= 200:
+            if not (120 <= y <= 170):
+                return FrameAction(nes_action("UP" if y > 170 else "DOWN"), "free_ey"), "free"
+            return FrameAction(nes_action("LEFT"), "free_ex"), "free"
+        if x <= 48:
+            if not (120 <= y <= 170):
+                return FrameAction(nes_action("DOWN" if y < 120 else "UP"), "free_wy"), "free"
+            return FrameAction(nes_action("RIGHT"), "free_wx"), "free"
+        if y >= 195:
+            if abs(x - 120) > 10:
+                return FrameAction(nes_action("RIGHT" if x < 120 else "LEFT"), "free_sx"), "free"
+            return FrameAction(nes_action("UP"), "free_sy"), "free"
+        if y <= 95:
+            if abs(x - 120) > 10:
+                return FrameAction(nes_action("RIGHT" if x < 120 else "LEFT"), "free_nx"), "free"
+            return FrameAction(nes_action("DOWN"), "free_ny"), "free"
+        if abs(x - 120) >= abs(y - 141):
+            return FrameAction(nes_action("RIGHT" if x < 120 else "LEFT"), "free_cx"), "free"
+        return FrameAction(nes_action("DOWN" if y < 141 else "UP"), "free_cy"), "free"
+
+    if phase == "band":
+        if abs(y - band_y) <= 4 and 90 <= x <= 160:
+            return FrameAction(nes_action("RIGHT"), "to_wall"), "wall"
+        if abs(y - band_y) > 4:
+            return FrameAction(nes_action("DOWN" if y < band_y else "UP"), "band_y"), "band"
+        if x < 90:
+            return FrameAction(nes_action("RIGHT"), "band_x"), "band"
+        if x > 160:
+            return FrameAction(nes_action("LEFT"), "band_x"), "band"
+        return FrameAction(nes_action("RIGHT"), "band"), "band"
+
+    if phase == "wall":
+        if x >= wall_x:
+            return FrameAction(nes_action("LEFT"), "at_wall"), "door_y"
+        if abs(y - band_y) > 8:
+            return FrameAction(nes_action("DOWN" if y < band_y else "UP"), "wall_y"), "wall"
+        return FrameAction(nes_action("RIGHT"), "wall_r"), "wall"
+
+    if phase == "door_y":
+        # S2 cycle: LEFT block → vertical to door_y → RIGHT block.
+        # Longer LEFT when still off door_y (vertical is solid at x≈200).
+        step_in_cycle = cycle % 28
+        if abs(y - door_y) <= 2 and x >= wall_x - 6:
+            return FrameAction(nes_action("RIGHT"), "door_ready"), "push"
+        left_hold = 10 if abs(y - door_y) > 2 else 6
+        if step_in_cycle < left_hold:
+            return FrameAction(nes_action("LEFT"), "door_left"), "door_y"
+        if step_in_cycle < left_hold + 12:
+            if abs(y - door_y) <= 2:
+                return FrameAction(nes_action("RIGHT"), "door_r_early"), "door_y"
+            return FrameAction(
+                nes_action("UP" if y > door_y else "DOWN"), "door_vert"
+            ), "door_y"
+        return FrameAction(nes_action("RIGHT"), "door_right"), "door_y"
+
+    # push — pure y-align + RIGHT. Do NOT LEFT-nudge here: that re-enters the
+    # mid-room diamond solid on door_y (observed fail (208,149)→(176,141)).
+    if abs(y - door_y) > 4:
+        return FrameAction(nes_action("UP" if y > door_y else "DOWN"), "push_y"), "push"
+    return FrameAction(nes_action("RIGHT"), "push_r"), "push"

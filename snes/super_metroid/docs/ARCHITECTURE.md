@@ -60,7 +60,7 @@ legacy/*                                  frozen vision/RL remnants
 | `door_kinematics.DoorKinematics` | Leave/entry speed, position, pose, speed-booster charge, shine timer |
 | `ObservedTransition.leave/entry_kinematics` | Continuous hop snapshots (TAS door tech) |
 | Staged graphs | `START_TO_MORPH` ⊂ … ⊂ `START_TO_VARIA` ⊂ `START_TO_SPEED` (Business return + K4 scaffold) |
-| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`speed`) |
+| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`wave`) |
 | `routes/tips.play_hops` + `SpineHop` | Ordered controller legs (only hop runner) |
 | `source_states.py` | Code twin of `SOURCE_STATES.md` — pure entry fingerprints |
 

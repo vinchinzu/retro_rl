@@ -5,17 +5,18 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M8 |
-| Best verified result | Power-on → 8-4 ending, Clean, reactive continuous |
-| Last verification | 2026-08-01 |
+| Best verified result | Power-on → 8-4 ending, Clean, **21,559f** natural retime |
+| Last verification | 2026-08-05 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **M8** Clean power-on any% warp ending, captured |
+| Status | **M8** Clean power-on any% warp ending (natural retime) |
 | Integration | `SuperMarioBros-Nes` (boot) / `SuperMarioBros-Nes-v0` (autobot) |
 | ROM zip | `roms/Nintendo/NES/Super Mario Bros..zip` |
-| Evidence | [poweron trials](../recordings/warp_finish/warp_finish_poweron_trials_report.json), [M8 capture](../recordings/warp_finish/warp_finish_poweron_m8_capture.json), [TAS validation](../recordings/warp_finish/warp_finish_poweron_tas_validation.json), [video](../recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4) |
+| Best seed | `models/smb_1_1_to_ending_natural_82.json` (**21,559f**, 3/3 Clean) |
+| Evidence | [natural 3/3 poweron](../recordings/reactive_warp/natural_82_poweron_trials_report.json), [M8 baseline](../recordings/warp_finish/warp_finish_poweron_trials_report.json), [M8 capture](../recordings/warp_finish/warp_finish_poweron_m8_capture.json), [video](../recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4) (historical 22,005f) |
 
 ## Done
 
@@ -49,13 +50,101 @@
   (**−63f** vs baseline 4044; no pad). CLI:
   `uv run python -m smb.scripts.run_1_2 --predecessor stairs`.
   W4 player physics matches; 4-1→8-1 clear without pad.
-- **Reactive late-route repair (2026-08-01)**: the documented **drop-5** at
-  controller frame 12,898 makes 8-2 reach 8-3 in **15,863f** (−84f versus
-  M8). `smb.reactive_late` takes control at the natural 8-3 gate, applies four
-  stage-relative corrections, verifies the natural 8-4 handoff, then applies a
-  final Bowser/axe jump window. The generated controller reaches the ending in
-  **21,643f** (−88f versus M8), lives 2→2. It passes **3/3 Clean power-on**
-  trials with zero mid-attempt loads; evidence:
+- **1-2 UG polish (2026-08-05)**: control-relative systematic delete + hold
+  trim on `underground_from_control` only (`smb.scripts.polish_1_2_ug`).
+  UG clear **1545→1507** (**−38f**). Isolated Level1_2 **1854→1816**.
+  Natural stairs: 1-2 **2070→2032**, W4 **3981→3943** (1-1 still 1911).
+  Surface remains reactive (no absolute stitch). Full power-on/any% fold
+  not yet re-captured with this fragment (later legs need natural retime).
+  Evidence:
+  [polish report](../recordings/segment_1_2/polish_1_2_ug_report.json).
+- **1-2 W4 pipe top-land (2026-08-05)**: rewrote late UG suffix (from ug
+  index **1344**) so Mario reverse-jumps from the right platform onto the
+  **rightmost (W4) pipe lip** and holds DOWN — no face-slam at x≈2830 and
+  **no floor bounce** before enter. UG clear **1507→1448** (**−59f**).
+  Isolated Level1_2 **1816→1757**. Natural stairs 2/2: 1-2 **2032→1973**,
+  W4 **3943→3884** (1-1 still 1911). Residual: W4 land still carries
+  leftward speed (xs≈−40); enter is safe because DOWN is already held.
+  Tool: `smb.scripts.polish_1_2_warp_pipe`. Evidence:
+  [warp-pipe report](../recordings/segment_1_2/polish_1_2_warp_pipe_report.json),
+  [natural trials](../recordings/segment_1_2/1_2_reactive_trials_report.json).
+- **Natural 4-1 retime (2026-08-05)**: after polished 1-2 (W4@**3884**),
+  absolute continuation leaves **~9f** of post-control idle before the
+  intentional RIGHT+B (old control was @tail 218; new control @210). No
+  W4 pad — idle through the pipe transition, then resume continuation at
+  index **218** (`KNOWN_41_CONTROL_RESUME`). Results (stairs + reactive
+  1-2, control-relative 4-1):
+
+  | Path | Unretimed | Retimed 4-1 | Δ |
+  |------|-----------|-------------|---|
+  | 4-1 split | 2335 | **2314** | **−21** |
+  | Abs 4-1 | 6219 | **6198** | −21 |
+  | 4-2 | death @~7452 | **8962** clear | unblocked |
+  | 8-1 | — | **12628** clear | unblocked |
+
+  Control-relative body matches the pre-1-2-polish 2104f (vs 2125
+  unretimed). 4-2/8-1 clear without further retime; **8-2 still dies**
+  (old drop-5 is phase-stale for the extra −97f). CLI default:
+  `run_reactive_warp --retime-4-1` (use `--no-retime-4-1` to compare).
+  Evidence: `recordings/reactive_warp/retime_4_1_report.json`.
+- **Natural 4-2 chain (2026-08-05)**: human `late_v1` (3221f from 4-2
+  control) live-cleared W8 but is not TAS-stable on replay. Solved
+  control-relative body from the retimed continuation instead:
+  **2599f** surface→UG→W8 pipe (`x=810,timer=324`), lives 2→2.
+  Artifact: `models/smb_4_2_natural_control.json`. Evidence:
+  [chain report](../recordings/human/late_v1_chain_solve_report.json).
+  Human still useful for jump geometry; skills under
+  `models/human_skills/late_v1/`.
+- **Control-relative 4-1→4-2 retime (2026-08-05)**: 4-1 castle tally length
+  is game-driven; absolute continuation can desync if the body ends early.
+  Runner now (`--retime-4-2`, default on): after 4-1 control body, **freeze
+  source** on score/load (`player_state=5`, timer=0, x≥3000) and idle until
+  natural 4-2 control, then resume cont index **2487**
+  (`KNOWN_42_CONTROL_RESUME`). No pad. Verified same path as 4-1-only retime:
+  4-1@**6198**, 4-2@**8962**, 8-1@**12628**, death in 8-2. Lead 12 idles at
+  4-2 control are phase-critical (any trim dies). Vine climb ~316f is auto.
+  `smb_4_2_fast_w8` does **not** splice onto this natural UG control (phase
+  mismatch). Evidence: `recordings/reactive_warp/natural_41_42_v2_report.json`.
+- **Natural 8-2 retime (2026-08-05)**: after 1-2 −97f, drop-5 @12,898 and all
+  lead-idle **drops** die (clusters x≈450/1450/2271). From natural 8-2 control
+  (cont **8917** / abs 12,898): **+1 lead idle** then body clears 8-2 → 8-3
+  control @ stage **3151f**. Late controllers re-solved for the new phase:
+  8-3 = **+2 lead** + existing mid-level patches (handoff on first 8-4
+  control, not forced exhaust); 8-4 = Bowser/axe patch, no lead. Full natural
+  Level1_1 path (retime 4-1/4-2/8-2 + late):
+
+  | Exit | Frame | Seg |
+  |------|------:|----:|
+  | 1-1 | 1911 | 1911 |
+  | 1-2 | 3884 | 1973 |
+  | 4-1 | 6198 | 2314 |
+  | 4-2 | 8962 | 2764 |
+  | 8-1 | 12628 | 3666 |
+  | 8-2 | 15779 | 3151 |
+  | 8-3 | 17985 | 2206 |
+  | 8-4 | **21559** | 3574 |
+
+  **21,559f** ending (−84 vs prior reactive 21,643; −172 vs M8 21,731), lives
+  2→2. CLI: `run_reactive_warp --retime-4-1 --retime-4-2 --retime-8-2`.
+  Seed: `models/smb_1_1_to_ending_natural_82.json`. Evidence:
+  [natural_82_retime_report](../recordings/reactive_warp/natural_82_retime_report.json).
+- **Clean power-on 3/3 (2026-08-05)**: same natural seed under
+  `env.reset` + boot **350** + settle **16**, zero mid-attempt loads,
+  `benchmark_eligible: true`, intervention Clean. All three trials ending
+  @ **21,559f**, 8/8 exits, lives 2→2.
+
+  | Contract | Ours | Public | Δ |
+  |----------|------|--------|---|
+  | `rta_any_percent` | **05:58.726** (21,559f) | HappyLee 04:54.032 | +01:04.693 |
+  | `tasvideos_poweron` | **06:04.816** (21,925f) | HappyLee 04:57.31 | +01:07.505 |
+
+  Evidence:
+  [natural_82 poweron 3/3](../recordings/reactive_warp/natural_82_poweron_trials_report.json).
+  Default fold / published MP4 still M8 baseline pending promote.
+- **Reactive late-route repair (2026-08-01)**: original **drop-5** @12,898 +
+  8-3/8-4 patches finished in **21,643f** on the pre−97f 1-2 path (3/3 Clean
+  power-on). Superseded for the polished 1-2 path by the natural 8-2 retime
+  above. Evidence (historical):
   [reactive power-on trials](../recordings/reactive_warp/reactive_83_84_poweron_trials_report.json).
 - **Reactive route infrastructure (2026-08-01)**: `smb.reactive_route` now
   declares normal/warp successor contracts for all 32 stages, records
@@ -63,9 +152,8 @@
   explicitly. `run_warp_finish` uses those contracts for the M8 eight-exit
   report (reverified **21,731f**, 8/8). The source-owned first-pipe patch in
   `fold_continuous_policy` now reproduces the published M8 seed byte-for-byte.
-  `smb.scripts.run_reactive_warp` runs the real stairs + reactive-1-2
-  predecessor. Its unretimed continuation reaches 8-2 at **12,733f** then
-  dies; `--retime-8-2` owns the natural 8-3/8-4 handoffs and completes.
+  `smb.scripts.run_reactive_warp` runs stairs + reactive 1-2 with control-
+  relative 4-1/4-2/8-2 retimes and late 8-3/8-4.
 
 ## Autobot commands
 
@@ -86,7 +174,7 @@ uv run python -m smb.scripts.fold_continuous_policy
 
 | Mode | Path | Result |
 |------|------|--------|
-| `poweron` | reset + 350 boot + 16 idle + reactive seed | **8/8 Clean, 3/3** |
+| `poweron` | reset + 350 boot + 16 idle + natural_82 seed | **8/8 Clean, 3/3 @ 21,559f** |
 | `continuous` | Level1_1 + 14 idle + seed | 8/8, no mid load |
 | `suffix` / `chain` | legacy mid-1-2 paths | development only |
 
@@ -97,7 +185,7 @@ uv run python -m smb.scripts.fold_continuous_policy
 - Underground `level_id=2` is not completion.
 - Ending = World 8-4 + `oper_mode=2`, held 120 idle frames.
 
-## 1-1 segment polish (2026-07-28)
+## 1-1 segment polish (2026-07-28 → 2026-08-04)
 
 - `smb_1_1_clear.json`: clear **2029f** (was 2239; **−210f**) via leading-idle
   trim 38 + flagpole/castle auto-input cleanup (`player_state` 3/4/5 idle).
@@ -105,6 +193,12 @@ uv run python -m smb.scripts.fold_continuous_policy
 - Raw hillclimb 400 iters on the trimmed seed: no further improvements.
 - Recording (`--record`): native emulator audio + footer with frame/time stamp,
   level/lives/x, and NES button presses (auto-states blanked in HUD only).
+- **TAS toolkit (2026-08-04):** `smb/tas/` + `scripts/tas_1_1.py`
+  (analyze / multi-window hillclimb / systematic delete+edge polish).
+  Best isolated seed: `models/smb_1_1_tas_best.json` — leave **1903f**,
+  flag **1242f** (−21f vs stairs fragment 1924; −126f vs clear 2029).
+  Verified isolated + natural-entry (settle=1). Default `DEFAULT_1_1_SEED`
+  points here. Continuous fold still uses its own 1-1 prefix (reactive route).
 
 ### First-pipe landing fix (continuous seed)
 
@@ -148,7 +242,7 @@ Module: [`smb/timing.py`](../timing.py) · evidence:
 | Streams | H.264 + AAC stereo @ 32 kHz |
 | Audio | native fceumm PCM muxed (mean ≈ −27 dB) |
 | HUD | `F##### MM:SS.cc`, `P1:…` buttons, level/lives/x |
-| Current policy | **21,643f** → 8-4 ending; boot 350 + settle 16 |
+| Current policy | **21,559f** natural retime, **3/3 Clean power-on**; published MP4 still M8; boot 350 + settle 16 |
 | Preserved MP4 | Historical **22,005f** pre-optimization capture |
 
 ### Timing contracts (same definitions as public figures)
@@ -166,8 +260,8 @@ capture settle. Segment splits = exit-detect (post-exit world/level RAM).
 
 | Contract | Ours | Public | Δ |
 |----------|------|--------|---|
-| `rta_any_percent` | **06:00.124** (21,643f) | HappyLee RTA note **04:54.032** (17,671f) | **+01:06.091** (+3,972f) |
-| `tasvideos_poweron` | **06:06.214** (22,009f) | [HappyLee #1715](https://tasvideos.org/1715M) **04:57.31** (17,868f) | **+01:08.903** (+4,141f) |
+| `rta_any_percent` | **05:58.726** (21,559f) | HappyLee RTA note **04:54.032** (17,671f) | **+01:04.693** (+3,888f) |
+| `tasvideos_poweron` | **06:04.816** (21,925f) | [HappyLee #1715](https://tasvideos.org/1715M) **04:57.31** (17,868f) | **+01:07.505** (+4,057f) |
 | RTA perfect band | — | Maru RTA-rules ≈**04:54.265** | ours +~67s |
 | Human WR band | — | ≈**04:54.4** | ours +~67s |
 
@@ -176,26 +270,29 @@ public anchors above.
 
 ### RTA segments (exit-detect @ NTSC)
 
+Natural retime path (Clean power-on 3/3, RTA exit-detect @ NTSC):
+
 | Exit | Cum | Seg | Seg time |
 |------|-----|-----|----------|
 | 1-1 | 1911 | 1911 | 00:31.798 |
-| 1-2 | 3981 | 2070 | 00:34.443 |
-| 4-1 | 6303 | 2322 | 00:38.636 |
-| 4-2 | 9067 | 2764 | 00:45.991 |
-| 8-1 | 12733 | 3666 | 01:01.000 |
-| 8-2 | 15863 | 3130 | 00:52.081 |
-| 8-3 | 18069 | 2206 | 00:36.706 |
-| 8-4 | 21643 | 3574 | 00:59.469 |
+| 1-2 | 3884 | 1973 | 00:32.829 |
+| 4-1 | 6198 | 2314 | 00:38.503 |
+| 4-2 | 8962 | 2764 | 00:45.991 |
+| 8-1 | 12628 | 3666 | 01:01.000 |
+| 8-2 | 15779 | 3151 | 00:52.430 |
+| 8-3 | 17985 | 2206 | 00:36.706 |
+| 8-4 | **21559** | 3574 | 00:59.469 |
+
+Prior reactive (drop-5, pre−97f 1-2): ending **21,643f**. M8 baseline: **21,731f**.
 
 ## Next
 
-1. **Default fold + capture:** promote the verified reactive 21,643f policy
-   into the source-owned default fold, then capture that Clean run. Do **not**
-   idle-pad at W4 to restore the old phase.
-2. Further natural-entry 4-2 polish: largest remaining split regression
-   (prefer `smb_4_2_fast_w8.json`, not isolated Level4_2 on continuous frames).
-3. Optional all-32-exit (non-warp) route as a separate track.
-4. Transfer reactive control-gate patterns to SMB3 / other platformers.
+1. **Default fold + capture**: promote `smb_1_1_to_ending_natural_82.json` as
+   the source-owned continuous seed and re-record Clean power-on MP4.
+2. **4-2 route structure** for sub-5: current 2599f vine path is stable but
+   slow vs fast fragment ~2375f; do not pad — retime/replace UG→warp room.
+3. Further 1-2 gains need route structure (second dense delete = 0f).
+4. Optional all-32-exit; transfer reactive gates to SMB3.
 
 The route contract layer makes the 32-exit inventory auditable, but only the
 eight warp controllers have source material today. Missing normal-stage

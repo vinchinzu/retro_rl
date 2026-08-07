@@ -20,9 +20,12 @@ from zelda_i.overworld import (
     NODE_LEVEL1_NORTH_ROOM,
     NODE_LEVEL1_ROOM_53_CLEARED,
     NODE_LEVEL1_ROOM_54_CLEARED,
+    NODE_LEVEL2_DUNGEON,
+    NODE_LEVEL2_ENTRANCE,
     NODE_LEVEL2_PATH_4A,
     NODE_START,
     NODE_SWORD_CAVE,
+    node_id_for_screen,
 )
 from zelda_i.route_legs import (
     level1_clear53_route_legs,
@@ -32,6 +35,7 @@ from zelda_i.route_legs import (
     level1_first_key_route_legs,
     level1_north_route_legs,
     level1_route_legs,
+    level2_door_path_route_legs,
     level2_path_prefix_route_legs,
     sword_cave_route_legs,
 )
@@ -237,6 +241,53 @@ ROUTE_LEVEL2_PATH_PREFIX = NamedRoute(
     ),
 )
 
+# Planned scaffolding: door-path geometry probe-mapped; Clean health open.
+# Stop predicates are future controller names (not yet Clean-backed).
+ROUTE_LEVEL2_DOOR_PATH = NamedRoute(
+    route_id="zelda_level2_door_path",
+    display_name="Start → Level 2 Door Path (0x3C)",
+    description=(
+        "Power-on through Level 1 Triforce and post-settle 0x37, then door-path "
+        "geometry 0x37→38→48→58→59→5A→5B→5C(maze)→5D→4D→4C→3C Moon door. "
+        "Enters 0x5B from the west (avoid 0x4B north-entry trap). "
+        "Geometry probe-mapped; Clean heart management not verified "
+        "(dies on 0x5C without farm/assist)."
+    ),
+    milestones=(
+        *ROUTE_LEVEL1_COMPLETE.milestones,
+        RouteMilestone(
+            "level1_exit_overworld",
+            NODE_LEVEL1_EXIT_OVERWORLD,
+            "Post-Triforce overworld at Level 1 mouth",
+            "post_triforce_overworld_ready",
+        ),
+        RouteMilestone(
+            "level2_door_5a",
+            node_id_for_screen(0x5A),
+            "Door path corridor 0x5A (west entry to 0x5B)",
+            "level2_door_screen_5a",
+        ),
+        RouteMilestone(
+            "level2_door_5c",
+            node_id_for_screen(0x5C),
+            "Door path 0x5C maze entry",
+            "level2_door_screen_5c",
+        ),
+        RouteMilestone(
+            "level2_entrance",
+            NODE_LEVEL2_ENTRANCE,
+            "Level 2 overworld door screen 0x3C",
+            "level2_door_screen_3c",
+        ),
+        RouteMilestone(
+            "level2_dungeon",
+            NODE_LEVEL2_DUNGEON,
+            "Inside Level 2 (Moon) entry room 0x7d",
+            "level2_entrance_success",
+        ),
+    ),
+)
+
 ROUTE_REGISTRY: dict[str, NamedRoute] = {
     ROUTE_SWORD_CAVE.route_id: ROUTE_SWORD_CAVE,
     "sword": ROUTE_SWORD_CAVE,
@@ -265,6 +316,10 @@ ROUTE_REGISTRY: dict[str, NamedRoute] = {
     ROUTE_LEVEL2_PATH_PREFIX.route_id: ROUTE_LEVEL2_PATH_PREFIX,
     "level2_prefix": ROUTE_LEVEL2_PATH_PREFIX,
     "to_level2_prefix": ROUTE_LEVEL2_PATH_PREFIX,
+    ROUTE_LEVEL2_DOOR_PATH.route_id: ROUTE_LEVEL2_DOOR_PATH,
+    "level2_door": ROUTE_LEVEL2_DOOR_PATH,
+    "to_level2_door": ROUTE_LEVEL2_DOOR_PATH,
+    "to_level2": ROUTE_LEVEL2_DOOR_PATH,
 }
 
 
@@ -286,3 +341,4 @@ LEVEL1_CLEAR53_LEGS = level1_clear53_route_legs()
 LEVEL1_CLEAR54_LEGS = level1_clear54_route_legs()
 LEVEL1_COMPLETE_LEGS = level1_complete_route_legs()
 LEVEL2_PATH_PREFIX_LEGS = level2_path_prefix_route_legs()
+LEVEL2_DOOR_PATH_LEGS = level2_door_path_route_legs()

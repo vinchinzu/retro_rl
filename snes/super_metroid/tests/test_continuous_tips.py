@@ -47,11 +47,11 @@ def _put_u16(ram: np.ndarray, address: int, value: int) -> None:
 
 
 def test_default_artifact_paths() -> None:
-    """Primary continuous tip is Speed Booster (KPDR K4.5)."""
+    """Primary continuous tip is Wave Beam (KPDR K4.10)."""
     video, report = default_artifact_paths()
-    assert video.name == "speed.mp4"
-    assert report.name == "speed.json"
-    assert DEFAULT_CONTINUOUS_TIP == "speed"
+    assert video.name == "wave.mp4"
+    assert report.name == "wave.json"
+    assert DEFAULT_CONTINUOUS_TIP == "wave"
 
 
 def test_continuous_tips_chain_ends_at_default() -> None:
@@ -72,11 +72,12 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "frog",
         "bat_cave",
         "speed",
+        "wave",
     ]
-    # Default tip is furthest STATUS-promoted integrity-green tip (Speed).
-    assert DEFAULT_CONTINUOUS_TIP == "speed"
+    # Default tip is furthest STATUS-promoted integrity-green tip (Wave).
+    assert DEFAULT_CONTINUOUS_TIP == "wave"
     assert DEFAULT_CONTINUOUS_TIP in ids
-    assert DEFAULT_CONTINUOUS_TIP == ids[-1]
+    assert ids.index("speed") < ids.index("wave")
 
 
 def test_continuous_tips_align_with_tip_specs() -> None:
@@ -278,10 +279,11 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "frog",
         "bat_cave",
         "speed",
+        "wave",
     )
     assert tuple(s.tip_id for s in SUPER_TIP_SPECS) == expected_super
     # Unified table includes early + Super+.
-    for tip_id in ("morph", "supers", "red_tower", "bat_cave", "speed"):
+    for tip_id in ("morph", "supers", "red_tower", "bat_cave", "speed", "wave"):
         assert tip_id in TIP_BY_ID
         assert isinstance(TIP_BY_ID[tip_id], TipSpec)
     assert {s.tip_id for s in TIP_SPECS} >= set(expected_super) | {
@@ -310,6 +312,14 @@ def test_unified_tip_specs_cover_full_chain() -> None:
     assert [h.split_id for h in SUPER_TIP_BY_ID["speed"].hops] == [
         "bat_cave_to_speed_hall",
         "speed_hall_to_speed",
+    ]
+    assert SUPER_TIP_BY_ID["wave"].parent_tip_id == "speed"
+    assert SUPER_TIP_BY_ID["wave"].final_room == 0xADDE
+    assert [h.split_id for h in SUPER_TIP_BY_ID["wave"].hops] == [
+        "speed_return_to_bubble",
+        "bubble_to_single_chamber",
+        "single_to_double_chamber",
+        "double_chamber_to_wave",
     ]
 
 

@@ -30,7 +30,8 @@ from super_metroid.routes.kpdr.room_ids import (
 from super_metroid.routes.kpdr.spine import continuous_edges_for_tips
 
 # KPDR K1 suffix: Super exit → farming → Big Pink main → GHZ → Noob → Red Tower.
-# (Charge Beam return is a side trip and is not on this continuous chain.)
+# Charge Beam is mainline (play_big_pink_to_ghz). Spazer K2.2 is mainline on
+# play_below_spazer_to_west → play_spazer_detour (always collect; no West skip).
 # Continuous door edges: spine tip ``red_tower`` (big_pink_main is in-room only).
 ROOMS_RED_TOWER = _SPORE_ROOMS + (
     RoomNode(ROOM_FARMING, "Pink Brinstar Farming Room", "Brinstar"),

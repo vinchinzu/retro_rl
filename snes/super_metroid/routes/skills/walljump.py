@@ -57,7 +57,10 @@ class WallJumpPolicy(Protocol):
     RIGHT_WJ_INTO: int
     RIGHT_WJ_BOUNCE: int
     WJ2_LEFT_X: int
+    WJ2_LEFT_Y: int
     WJ2_LEFT_SEEK: int
+    WJ2_LEFT_INTO: int
+    WJ2_LEFT_FLIP: int
     DMG_BOOST_HOLD_FRAMES: int
     R15_WJ1: WallJumpTiming
     R15_WJ2: WallJumpTiming
@@ -343,25 +346,32 @@ def walljump_second_left_wall(
     *,
     policy: WallJumpPolicy | None = None,
     seek_frames: int | None = None,
-    into_frames: int = 8,
-    flip_frames: int = 16,
+    into_frames: int | None = None,
+    flip_frames: int | None = None,
     height_box: list[bool] | None = None,
 ) -> bool:
     """Experiment: after right-wall WJ1, seek **left-wall** contact (pose 84).
 
     Does **not** LEFT+A-seek the right wall (that burns WJ1). Seeks with
     LEFT+B+A / LEFT spin toward the left column, then RIGHT+A flip.
+
+    Policy knobs (group ``WJ2_LEFT_SEEK``): ``WJ2_LEFT_X``, ``WJ2_LEFT_Y``,
+    ``WJ2_LEFT_SEEK``, ``WJ2_LEFT_INTO``, ``WJ2_LEFT_FLIP``.
     """
     pol = policy if policy is not None else _default_policy()
     label = track.label
     budget = pol.WJ2_LEFT_SEEK if seek_frames is None else seek_frames
+    n_into = pol.WJ2_LEFT_INTO if into_frames is None else into_frames
+    n_flip = pol.WJ2_LEFT_FLIP if flip_frames is None else flip_frames
+    y_band = getattr(pol, "WJ2_LEFT_Y", 200)
     for _ in range(budget):
         state = session.state
         if _track_upd(session, track, state, pol, height_box):
             return bool(track.top_reached)
         pose = int(state.pose)
         if pose in (83, 84) or (
-            int(state.samus_x) <= pol.WJ2_LEFT_X and int(state.samus_y) <= 200
+            int(state.samus_x) <= pol.WJ2_LEFT_X
+            and int(state.samus_y) <= y_band
         ):
             break
         state = hold(
@@ -369,11 +379,11 @@ def walljump_second_left_wall(
         )
         if _track_upd(session, track, state, pol, height_box):
             return bool(track.top_reached)
-    for _ in range(into_frames):
+    for _ in range(n_into):
         state = hold(session, 1, "RIGHT", "A", reason=f"{label}_wj2_left_into")
         if _track_upd(session, track, state, pol, height_box):
             return bool(track.top_reached)
-    for _ in range(flip_frames):
+    for _ in range(n_flip):
         state = hold(
             session, 1, "RIGHT", "B", "A", reason=f"{label}_wj2_left_flip"
         )

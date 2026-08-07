@@ -21,9 +21,22 @@ Addresses are WRAM offsets.
 | Door/elevator transition | `0x0797 u16` | Route-verified | Becomes nonzero across doors/elevator and guards ordinary gameplay |
 | Door direction | `0x0791 u16` | Route-verified | Direction changes across accepted transitions |
 | Player X/Y | `0x0AF6/0x0AFA u16` | Route-verified | Movement and Landing Site ship-settle predicate |
-| Player velocity X/Y | `0x0B42/0x0B2E i16` | Source-confirmed | `variables.h`, parsed for navigation |
+| Player X/Y subpixel | `0x0AF8/0x0AFC u16` | Source-confirmed | Door-clip / TAS subpixel windows (`door_kinematics`) |
+| Player velocity X/Y | `0x0B42/0x0B2E` | Source-confirmed | Horizontal speed + vertical speed (pixels); subpixels at `0x0B44` / `0x0B2C` |
+| Horizontal momentum X | `0x0B46/0x0B48` | Source-confirmed | Separate from speed; mockball / dash carry across doors |
+| Speed-booster counter | `0x0B3E` hi byte | Source-confirmed | Echo / blue-suit charge (0–4+); `speed_boosting` when ≥4 |
+| Speed-check flag | `0x0B3C u16` | Source-confirmed | Gates temp→permanent blue suit conversion |
+| Vertical direction | `0x0B36 u16` | Source-confirmed | 0 ground, 1 up, 2 down |
+| Facing / movement type | `0x0A1E u8` / `0x0A1F u8` | Source-confirmed | Facing 4=left, 8=right |
+| Shine-spark timer | `0x0A68 u16` | Source-confirmed | Shared with crystal flash |
+| Door definition pointer | `0x078D u16` | Source-confirmed | Active DDB; leave/entry reports + door-warp |
 | Player pose | `0x0A1C u16` | Route-verified | Ceres ledge alignment and room navigation |
 | Grounded/control subflags | — | — | pending; coarse control currently uses game/door state |
+
+Door leave/entry kinematics (speed + position + pose through transitions) are
+first-class on `SuperMetroidState` and `door_kinematics.DoorKinematics`.
+Continuous `RouteSession` attaches leave/entry snapshots on each
+`ObservedTransition`. See `door_kinematics.py` and ARCHITECTURE.
 | Current/max energy | `0x09C2/0x09C4 u16` | Route-verified | natural Ceres damage; Terminator Energy Tank changes max `99 → 199`; assist writes current only on Zebes |
 | Reserve current/max | `0x09D6/0x09D4 u16` | Source-confirmed | zero throughout accepted prefix |
 | Death/game over | `0x0998 = 19–26,29,35–37` | Source-confirmed | source enum; no death in accepted prefix |

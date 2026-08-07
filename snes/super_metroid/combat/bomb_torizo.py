@@ -9,7 +9,7 @@ wins on its training save distribution and fails natural Flyway entry.
 
 Clean-track economy: defaults hold a slightly wider kite band so natural
 10-missile capacity + drops clear the fight without ammo writes (see
-``docs/tasks/SM-CLEAN-BT-ECONOMY-residual.md``).
+``docs/CLEAN_TRACK.md``).
 """
 
 from __future__ import annotations
