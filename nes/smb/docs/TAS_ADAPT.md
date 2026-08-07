@@ -376,7 +376,14 @@ Index **1** is the stable-retro NES hole (always 0).
   - **rr-zzw**: slice 4-1 / 4-2 from control after HL W4 — **done** (→ W8 @7512f).
   - **rr-b8k**: slice 8-1…8-4 — **in progress** (8-1/8-2 leave probe-ok;
     exported; hybrid v2 18031f with FX 8-4).
-  - **Next:** pure HL 8-3 phase (or −1f); then Clean power-on fold.
+  - **Next (rr-34v, stitchless):** do **not** extend natural_82 hybrid bridge
+    / FX −1f polish as the main loop. Want **stitchless** HL (or FX) 8-3 after
+    HL 8-2 control — continuous TAS body or healed FM2 slice, no n82 mid-
+    splice. Status 2026-08-07: gated HL best raw max_x≈**1030** (si≈13081);
+    multi-round del/ins/A-edge heal → **≈1730** (no leave; flag ~3554).
+    Multi-leave 8-2 still re-gates to same ctrl fp (t=301). Tool:
+    `smb.scripts.probe_stitchless_8_3`. Hybrid v2 18031 kept as showcase only.
+    Then Clean power-on fold after stitchless leave.
   - **rr-k96**: FPG/BBG/fast-accel named macros — open (encode after more slices).
 - **rr-9dg** (8-1 polish −42f): keep artifacts; secondary to TAS structure.
 - 8-2/8-3/8-4 hill-climb (rr-7n0, rr-yqb, rr-6m9) remains secondary until

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Super Metroid — Area Path Map</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <aside id="sidebar">
+    <header>
+      <h1>Area path map</h1>
+      <p class="sub">
+        Pixel-aligned CoG on <strong>area basemaps</strong>
+        (<code>(mapX−min)×256 + x</code>). Lines only within a room with short steps.
+      </p>
+    </header>
+
+    <section>
+      <h2>Area</h2>
+      <select id="area-select"></select>
+    </section>
+
+    <section>
+      <h2>Paths</h2>
+      <div id="path-list" class="path-list">
+        <p class="muted">Loading…</p>
+      </div>
+      <div class="row">
+        <button type="button" id="btn-fit">Fit path</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Display</h2>
+      <label class="check">
+        <input type="checkbox" id="chk-rooms" /> Room outlines
+      </label>
+      <label class="check">
+        <input type="checkbox" id="chk-markers" checked /> Start / end / sparse
+      </label>
+      <label>
+        Line weight
+        <input type="range" id="rng-weight" min="1" max="6" value="2" />
+      </label>
+    </section>
+
+    <section>
+      <h2>Scrubber</h2>
+      <input type="range" id="scrub" min="0" max="0" value="0" disabled />
+      <div id="scrub-info" class="muted">—</div>
+    </section>
+
+    <section class="help">
+      <h2>Notes</h2>
+      <ul>
+        <li>No cross-room / cross-map lines</li>
+        <li>Sparse continuous tips = dots only</li>
+        <li>Switch area if the path lives elsewhere</li>
+      </ul>
+    </section>
+  </aside>
+
+  <main id="map"></main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="app.js"></script>
+</body>
+</html>
