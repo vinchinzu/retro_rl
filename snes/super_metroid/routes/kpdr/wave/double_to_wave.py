@@ -29,7 +29,6 @@ from super_metroid.routes.kpdr.wave.geometry import (
     DC_MISSILE_X,
     DC_PAST_GATE_X,
     DC_RUNWAY_X,
-    DC_TOTAL_BUDGET,
     DC_WAVE_SETTLE,
     DC_WJ,
     DC_WJ_LEFT_FOLLOW,
@@ -38,9 +37,8 @@ from super_metroid.routes.kpdr.wave.geometry import (
     dc_on_sill,
     has_wave,
 )
-from super_metroid.routes.kpdr.wave.helpers import escape_kb_dc
+from super_metroid.routes.skills.knockback import escape_kb, is_knockback
 from super_metroid.routes.runtime import ControllerSession
-from super_metroid.routes.skills.knockback import is_knockback
 
 
 def _dc_missiles_and_runway(session: ControllerSession, label: str) -> None:
@@ -200,7 +198,7 @@ def _dc_super_door_push(session: ControllerSession, label: str) -> None:
         if state.room_id != ROOM_DOUBLE_CHAMBER:
             return
         if is_knockback(state):
-            escape_kb_dc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
             continue
         if state.pose in (137, 138):
             unmorph(session)
@@ -276,7 +274,7 @@ def _dc_to_wave_door(session: ControllerSession, label: str) -> None:
             _dc_super_door_push(session, label)
             return
         if is_knockback(state):
-            escape_kb_dc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_WAVE)
             continue
         if state.pose in (137, 138):
             unmorph(session)
@@ -395,8 +393,6 @@ def play_double_chamber_to_wave(session: ControllerSession) -> SuperMetroidState
             f"xy=({state.samus_x},{state.samus_y}) "
             f"frames={session.frame - start}"
         )
-    if session.frame - start > DC_TOTAL_BUDGET:
-        pass
     return state
 
 

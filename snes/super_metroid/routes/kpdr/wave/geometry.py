@@ -32,7 +32,6 @@ BSC_FLOOR_Y = 360
 BSC_DOOR_Y = (380, 420)
 BSC_DOOR_X = 470
 BSC_SINGLE_SETTLE = 320
-BSC_TOTAL_BUDGET = 5000
 BSC_TOP_WALK_FRAMES = 400
 BSC_DROP_FRAMES = 500
 BSC_NAV_TO_DOOR_FRAMES = 1200
@@ -49,7 +48,6 @@ SC_FLOOR_Y = (380, 420)
 SC_SHOT_X = (115, 135)
 SC_DOOR_X = 220
 SC_DOUBLE_SETTLE = 320
-SC_TOTAL_BUDGET = 5000
 
 # ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM (DC_*)
@@ -57,7 +55,6 @@ SC_TOTAL_BUDGET = 5000
 # x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200.
 # Super door + Wave chozo → rr-re9.
 # ---------------------------------------------------------------------------
-DC_TOTAL_BUDGET = 9000
 DC_WAVE_SETTLE = 280
 DC_GATE_X = (360, 430)
 # Hop delivery band (wide); open phase reseats tighter to human tape.
@@ -129,7 +126,6 @@ __all__ = [
     "BSC_DOOR_Y",
     "BSC_DOOR_X",
     "BSC_SINGLE_SETTLE",
-    "BSC_TOTAL_BUDGET",
     "BSC_TOP_WALK_FRAMES",
     "BSC_DROP_FRAMES",
     "BSC_NAV_TO_DOOR_FRAMES",
@@ -140,8 +136,6 @@ __all__ = [
     "SC_SHOT_X",
     "SC_DOOR_X",
     "SC_DOUBLE_SETTLE",
-    "SC_TOTAL_BUDGET",
-    "DC_TOTAL_BUDGET",
     "DC_WAVE_SETTLE",
     "DC_GATE_X",
     "DC_GATE_SEAT_X",

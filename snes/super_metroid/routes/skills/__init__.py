@@ -58,6 +58,7 @@ from super_metroid.routes.skills.geometry import (
     track_state,
 )
 from super_metroid.routes.skills.knockback import (
+    escape_kb,
     escape_knockback_spin,
     hold_through_knockback,
     is_knockback,
@@ -188,6 +189,7 @@ __all__ = [
     "is_knockback",
     "hold_through_knockback",
     "escape_knockback_spin",
+    "escape_kb",
     "wall_approach_band",
     "wait_wall_ready",
     "wait_wall_latch",

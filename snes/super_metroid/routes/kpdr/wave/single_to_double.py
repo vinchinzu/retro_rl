@@ -19,11 +19,9 @@ from super_metroid.routes.kpdr.wave.geometry import (
     SC_MID_Y,
     SC_SHOT_X,
     SC_TOP_Y,
-    SC_TOTAL_BUDGET,
 )
-from super_metroid.routes.kpdr.wave.helpers import escape_kb_sc
+from super_metroid.routes.skills.knockback import escape_kb, is_knockback
 from super_metroid.routes.runtime import ControllerSession
-from super_metroid.routes.skills.knockback import is_knockback
 
 
 def _sc_descend_to_floor(session: ControllerSession, label: str) -> None:
@@ -47,7 +45,7 @@ def _sc_descend_to_floor(session: ControllerSession, label: str) -> None:
         if state.samus_y > SC_TOP_Y:
             break
         if is_knockback(state):
-            escape_kb_sc(session, label, "LEFT")
+            escape_kb(session, label, "LEFT", stop_room_id=ROOM_DOUBLE_CHAMBER)
             continue
         if state.samus_x < 130:
             if frame % 12 < 4:
@@ -73,7 +71,7 @@ def _sc_descend_to_floor(session: ControllerSession, label: str) -> None:
         ):
             return  # skipped mid — already on door floor
         if is_knockback(state):
-            escape_kb_sc(session, label, "LEFT")
+            escape_kb(session, label, "LEFT", stop_room_id=ROOM_DOUBLE_CHAMBER)
             continue
         if state.samus_x > 150:
             hold(session, 1, "LEFT", reason=f"{label}_air_l")
@@ -93,7 +91,7 @@ def _sc_descend_to_floor(session: ControllerSession, label: str) -> None:
         ):
             break
         if is_knockback(state):
-            escape_kb_sc(session, label, "LEFT")
+            escape_kb(session, label, "LEFT", stop_room_id=ROOM_DOUBLE_CHAMBER)
             continue
         if state.samus_x > 62:
             if frame % 10 < 3:
@@ -115,7 +113,7 @@ def _sc_descend_to_floor(session: ControllerSession, label: str) -> None:
         ):
             break
         if is_knockback(state):
-            escape_kb_sc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_DOUBLE_CHAMBER)
             continue
         # Still seated on mid: nudge off lip once.
         if (
@@ -143,7 +141,7 @@ def _sc_descend_to_floor(session: ControllerSession, label: str) -> None:
         if state.room_id == ROOM_DOUBLE_CHAMBER:
             return
         if is_knockback(state):
-            escape_kb_sc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_DOUBLE_CHAMBER)
             continue
         if not (
             SC_FLOOR_Y[0] <= state.samus_y <= SC_FLOOR_Y[1]
@@ -183,7 +181,7 @@ def _sc_missile_door_and_enter(session: ControllerSession, label: str) -> None:
         if state.room_id != ROOM_SINGLE_CHAMBER:
             return
         if is_knockback(state):
-            escape_kb_sc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_DOUBLE_CHAMBER)
             select_weapon(session, 1)
             continue
         # Keep seat; do not walk during volley.
@@ -228,7 +226,7 @@ def _sc_missile_door_and_enter(session: ControllerSession, label: str) -> None:
         if state.room_id != ROOM_SINGLE_CHAMBER:
             return
         if is_knockback(state):
-            escape_kb_sc(session, label, "RIGHT")
+            escape_kb(session, label, "RIGHT", stop_room_id=ROOM_DOUBLE_CHAMBER)
             continue
 
         # Deep shaft: abort hop spam; try to get back left onto something solid.
@@ -282,12 +280,9 @@ def play_single_to_double_chamber(session: ControllerSession) -> SuperMetroidSta
             f"frames={session.frame - start}"
         )
 
-    state = wait_ordinary_room(
+    return wait_ordinary_room(
         session, ROOM_DOUBLE_CHAMBER, settle_frames=SC_DOUBLE_SETTLE, label=label
     )
-    if session.frame - start > SC_TOTAL_BUDGET:
-        pass
-    return state
 
 
 __all__ = ["play_single_to_double_chamber"]

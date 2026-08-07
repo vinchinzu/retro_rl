@@ -12,8 +12,8 @@ K4.10 Double Chamber → Wave Beam PLM (``0xADDE``): top-left pin → upper path
 Package layout
 --------------
 * ``geometry`` — room-prefixed bands + seats + ``WAVE_BEAM_MASK`` / predicates
-* ``scripts`` — human gate-open RLE (JSON load is rr-7sn.2)
-* ``helpers`` — knockback escape wrappers (stop-room variants)
+* ``scripts`` — human gate-open RLE loaded from ``data/*.json``
+* shared ``escape_kb`` — :func:`super_metroid.routes.skills.knockback.escape_kb`
 * ``bubble_to_single`` — K4.8
 * ``single_to_double`` — K4.9
 * ``double_gate`` — K4.10 Kamer hop + blue gate open

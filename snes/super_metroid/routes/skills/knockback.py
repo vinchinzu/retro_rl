@@ -92,8 +92,39 @@ def escape_knockback_spin(
     return session.state
 
 
+def escape_kb(
+    session: ControllerSession,
+    label: str,
+    prefer: str,
+    *,
+    stop_room_id: int | None = None,
+    run_frames: int = 6,
+    spin_frames: int = 18,
+) -> SuperMetroidState:
+    """Corridor knockback escape with shared Wave-shaped defaults.
+
+    Thin wrapper around :func:`escape_knockback_spin` used by multi-hop room
+    policies (Wave branch, etc.). Only ``stop_room_id`` / direction typically
+    vary per hop — do not reintroduce private ``_escape_kb_*`` triples.
+
+    Defaults (``run_frames=6``, ``spin_frames=18``) match the Wave Bubble →
+    Double → Wave corridor escapes. Callers with different knobs (Cathedral
+    beam thrash, Moat, speed halls) should keep calling
+    :func:`escape_knockback_spin` directly.
+    """
+    return escape_knockback_spin(
+        session,
+        prefer_dir=prefer,
+        run_frames=run_frames,
+        spin_frames=spin_frames,
+        label=label,
+        stop_room_id=stop_room_id,
+    )
+
+
 __all__ = [
     "is_knockback",
     "hold_through_knockback",
     "escape_knockback_spin",
+    "escape_kb",
 ]

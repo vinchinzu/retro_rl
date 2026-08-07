@@ -312,11 +312,44 @@ def test_super_door_pressure_frame_selects_weapon(
 
 def test_k4_modules_import_knockback_skills() -> None:
     from super_metroid.routes.kpdr import k4_cathedral, k4_rising_tide
+    from super_metroid.routes.kpdr.wave import bubble_to_single
 
     src_c = open(k4_cathedral.__file__, encoding="utf-8").read()
     src_r = open(k4_rising_tide.__file__, encoding="utf-8").read()
+    src_w = open(bubble_to_single.__file__, encoding="utf-8").read()
     assert "escape_knockback_spin" in src_c
-    assert "hold_through_knockback" in src_c
     assert "super_door_pressure_frame" in src_c
     assert "escape_knockback_spin" in src_r
     assert "is_knockback" in src_r
+    # Wave corridor hops use shared escape_kb (rr-7sn.5), not private triples.
+    assert "escape_kb(" in src_w
+    assert "escape_kb_bsc" not in src_w
+
+
+def test_escape_kb_defaults_to_wave_shaped_spin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """escape_kb is the shared corridor helper (rr-7sn.5); defaults 6/18."""
+    session = _FakeSession(_state(pose=137, room_id=0xAD5E, frame=0))
+    calls: list[dict[str, object]] = []
+
+    def _spin(sess: object, **kwargs: object) -> object:
+        calls.append(kwargs)
+        return sess.state  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(kb, "escape_knockback_spin", _spin)
+    out = kb.escape_kb(session, "bubble_to_single", "RIGHT", stop_room_id=0xAD5E)
+    assert len(calls) == 1
+    assert calls[0]["prefer_dir"] == "RIGHT"
+    assert calls[0]["run_frames"] == 6
+    assert calls[0]["spin_frames"] == 18
+    assert calls[0]["label"] == "bubble_to_single"
+    assert calls[0]["stop_room_id"] == 0xAD5E
+    assert out is session.state
+
+
+def test_skills_package_exports_escape_kb() -> None:
+    from super_metroid.routes import skills as prim
+
+    assert prim.escape_kb is kb.escape_kb
+
