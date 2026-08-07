@@ -81,7 +81,7 @@ bd ready -l zelda_i   # tip: L3 Raft→Manhandla→TF (assist); Clean deferred
 | ✓ | **rr-n5i** / **rr-5dk** | L2 Dodongo + TF `0x02` assisted LIVE |
 | ✓ | **rr-rnx** / **rr-ci7** | Post-L2 OW → L3 enter **2/2 assisted** |
 | ✓ | **L3 Raft runner** | `run_level3_raft.py` **2/2 assisted** → `Level3Raft` |
-| 1 | **L3 tip residual** | Manhandla → TF `0x04` from `Level3Raft` (`rr-vpl`) |
+| ✓ | **rr-vpl** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
 | later | **rr-4oz** | Clean residual after full-game assist pass |
 
 Full board: `docs/tasks/QUEUE.md`. Routes: `LEVEL2_ROUTE.md`, `LEVEL3_ROUTE.md`.
@@ -101,13 +101,16 @@ LEFT→0x5a → LEFT KEY y≈141 → clear 0x59 DOWN → clear 0x69 RIGHT@y141 �
 `level3_raft_assisted.json` (~6448f); checkpoint **`Level3Raft`**. Runner:
 `run_level3_raft.py --infinite-life --trials 2 --save-state`.
 
-**L3 Raft → Manhandla path (assisted recon):** exit 0x0f→0x69 → UP 0x59 →
-**BOMB_RIGHT** 0x5a (walk sealed) → 0x5b → BOMB_RIGHT 0x5c → clear →
-RIGHT@y141 → 0x5d → UP **0x4d** Manhandla type **`0x3c`** candidate. TF `0x04`
-not yet. Evidence: `l3_manhandla_recon.json`. Probe:
-`probe_level3_manhandla.py --infinite-life --tag l3_manhandla`.
+**L3 Raft → Manhandla → TF (assisted LIVE 2/2, rr-vpl):** exit 0x0f→0x69 →
+UP 0x59 → **BOMB_RIGHT** 0x5a → 0x5b → BOMB_RIGHT 0x5c → clear raw=3 →
+RIGHT@y141 → 0x5d clear Zol/Gel/Keese (slots **1–12**, ignore 0x2b) → doors
+raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
+`0x04`. Evidence: `level3_to_boss_assisted.json` (~21653f). Runner:
+`run_level3_to_boss.py --infinite-life --trials 2 --save-state`. Checkpoints
+**`Level3Boss`**, **`Level3Complete`**. **Not Clean STATUS.**
 
-**Next tip:** Stabilize 0x5d→0x4d gate + bomb Manhandla + TF `0x04`. Not Clean.
+**Next tip:** Compose L2→L3→complete chain / Clean residual (`rr-4oz`); or next
+dungeon tip per QUEUE. Not Clean promote.
 
 **Traps (L2→L3 OW):** 0x4c east only **y∈[133,145]** (y=149 solid); 0x5c maze
 reverse needs denser channel waypoints (no y_band on 0x5b hop); 0x64 west
@@ -116,8 +119,11 @@ band **y≈125–150**.
 **Traps (L3 Raft / boss):** 0x5a key door long y=141 push; 0x59 DOWN lag after
 clear; DOWN push = x≈120 hold; 0x69 stairs **only y≈141**; passage channel
 **x≈176** then LEFT on y≈141 to **x≈136**; **0x59 walk-RIGHT sealed post-Raft**
-(bomb reopen); 0x5c RIGHT **y≈141 after clear**; type **0x2b** invuln ≠ boss.
+(bomb reopen); 0x5c need **raw=3** (raw=1 false-clear seals RIGHT); 0x5d gel
+in **slot 11** seals UP until clear slots 1–12; type **0x2b** invuln ≠ boss;
+TF is **0x3d UP of boss** (not east).
 
 Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
-`Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft`.
+`Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft` /
+`Level3Boss` / `Level3Complete`.
 Use `--infinite-life` for first-pass; Clean STATUS only after full-game assist.
