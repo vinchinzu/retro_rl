@@ -1,0 +1,26 @@
+{
+  "baseline_frames": 1545,
+  "best_frames": 1507,
+  "frames_saved": 38,
+  "second_dense_pass": {
+    "baseline": 1507,
+    "best": 1507,
+    "frames_saved": 0,
+    "note": "delete/hold/edge found 0 further improvements"
+  },
+  "isolated_verify": {
+    "success": true,
+    "frames": 1816,
+    "level1_2": true
+  },
+  "natural_verify": {
+    "success": true,
+    "frames_1_1": 1911,
+    "frames_1_2": 2032,
+    "total": 3943,
+    "trials": "2/2 stairs predecessor"
+  },
+  "out_path": "nes/smb/models/smb_1_2_reactive_fragments.json",
+  "tool": "smb.scripts.polish_1_2_ug",
+  "notes": "Control-relative UG polish only (surface stays reactive). Pass1: systematic delete + hold trim 1545\u21921507 (\u221238f). Pass2 dense: 0 further. Natural 1-2 2070\u21922032; W4 3981\u21923943."
+}

@@ -48,7 +48,9 @@ def test_fragments_file_exists_and_loads() -> None:
     data = load_reactive_fragments()
     ug = underground_frames()
     assert data["underground_from_control"]["num_frames"] == len(ug)
-    assert len(ug) == 1545
+    # Polished control-relative UG (was 1545; systematic delete + hold trim).
+    assert len(ug) >= 1400
+    assert len(ug) <= 1545
     assert all(len(f) == 9 for f in ug[:5])
 
 

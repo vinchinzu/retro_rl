@@ -6,23 +6,37 @@ Advance from M5 (Clean power-on → Level 1 Triforce shard 1) toward a verified
 continuous clear of The Legend of Zelda using the shared `retro_harness.adventure`
 route graph.
 
+Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
+
+## Strategy (SM lessons + ~100 beads)
+
+1. **Assisted first pass** — `--infinite-life` Survival assist unlocks
+   overworld corridors and dungeon interiors without heart starvation.
+   Evidence is dual-track (not Clean STATUS).
+2. **Pure-first rooms** — isolated controller → natural-entry → graph promote.
+3. **Expand beads at the tip** — epics for L2–L9 + OW prep + Death Mountain;
+   spawn room children when that dungeon is active (~80–120 total by credits).
+4. **Clean pass later** — heart farm / combat harden per segment after geometry
+   is known; never demote assisted greens into Clean rows.
+5. **Adventure harness** — keep RAM/combat local; `RouteGraph`, `NamedRoute`,
+   legs, waypoints stay on `retro_harness.adventure`.
+
 ## Next milestones
 
-1. **M3 Level 2 entry** — finish 0x4A→0x3C and enter the Moon; define a
-   RAM-backed room-ready stop.
-2. **M4/M5 Level 2 chain** — build its isolated rooms, then pass each from the
-   natural Level 1 completion predecessor.
-3. **M6 route graph** — every required milestone (8 dungeons + Ganon path) has an owner and stop predicate.
-4. **M7–M8** — continuous dry run + verified capture.
+1. **Assisted L2 entry** — done 2/2 Survival (`l2_entry_assisted_t*_probe.json`); next recon.
+2. **L2 pure chain** — rooms → Dodongo → `triforce & 0x02` (assisted then Clean).
+3. **Clean door path** — heart-safe farm before 0x5A (parallel; not tip-blocking).
+4. **M6 route graph** — every required milestone (8 dungeons + Ganon) has graph
+   owner + stop predicate.
+5. **M7–M8** — continuous dry run + verified capture (assisted then Clean).
 
 ## Bottleneck
 
 Door-path geometry to **0x3C** is probe-mapped (via 0x5A/5B/5C maze/5D@x52;
 see `LEVEL2_ROUTE.md` + `LEVEL2_DOOR_HOPS`). Timed Clean attempt (2026-07-29)
-dies on **0x5C with 0 hearts** after draining 3→0 across 0x48–0x5C; maze never
-starts. Remaining: **heart-safe farm before 0x5A**, then maze controller, then
-Level 2 interior (Ropes 0x28 → keys → Dodongo bombs → `triforce & 0x02`).
-Full-game graph still needs seven more dungeons, inventory items, and Ganon.
+dies on **0x5C with 0 hearts**. **First-pass unblock:** infinite-life assist
+(`docs/ASSIST_CONTRACT.md`) so maze + Moon entry can be encoded. Clean heart
+management remains a parallel track.
 
 ## Notes
 

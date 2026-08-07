@@ -118,36 +118,40 @@ _BRANCH_EDGES = (
     ),
     # bat_cave_to_speed_hall + speed_hall_to_speed: spine-emitted continuous
     # (tip ``speed``) via continuous_edges_for_tips — do not hand-author here.
-    # --- Wave branch from Bubble ---
+    # Wave branch (bubble→single→double→wave): spine-emitted continuous
+    # (tip ``wave``) via continuous_edges_for_tips — do not hand-author here.
+    # --- Post-Speed reverse (Speed return hop walks Hall→Bat→Bubble) ---
+    # Multi-room hop ``speed_return_to_bubble`` does not emit one DoorEdge; the
+    # three reverse doors must be known for continuous integrity.
     DoorEdge(
-        "bubble_to_single_chamber",
+        "speed_to_speed_hall",
+        ROOM_SPEED,
+        ROOM_SPEED_HALL,
+        "left",
+        "right",
+        _K4_SPEED_CAPS,
+        "kpdr_k4_wave",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "speed_hall_to_bat_cave",
+        ROOM_SPEED_HALL,
+        ROOM_BAT_CAVE,
+        "left",
+        "right",
+        _K4_SPEED_CAPS,
+        "kpdr_k4_wave",
+        "controller_dev",
+    ),
+    DoorEdge(
+        "bat_cave_to_bubble",
+        ROOM_BAT_CAVE,
         ROOM_BUBBLE,
-        ROOM_SINGLE_CHAMBER,
-        "right",
         "left",
-        _K4_CAPS,
-        "kpdr_k4_wave",
-        "unverified",
-    ),
-    DoorEdge(
-        "single_to_double_chamber",
-        ROOM_SINGLE_CHAMBER,
-        ROOM_DOUBLE_CHAMBER,
         "right",
-        "left",
-        _K4_CAPS | frozenset({"missiles"}),
+        _K4_SPEED_CAPS,
         "kpdr_k4_wave",
-        "unverified",
-    ),
-    DoorEdge(
-        "double_chamber_to_wave",
-        ROOM_DOUBLE_CHAMBER,
-        ROOM_WAVE,
-        "right",
-        "left",
-        _K4_CAPS | frozenset({"missiles"}),
-        "kpdr_k4_wave",
-        "unverified",
+        "controller_dev",
     ),
     # --- Ice branch from Business (after return) ---
     DoorEdge(
@@ -194,7 +198,7 @@ _BRANCH_EDGES = (
 
 EDGES = (
     _VARIA_EDGES
-    + continuous_edges_for_tips("business", "frog", "bat_cave", "speed")
+    + continuous_edges_for_tips("business", "frog", "bat_cave", "speed", "wave")
     + _BRANCH_EDGES
 )
 

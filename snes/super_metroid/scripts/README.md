@@ -11,6 +11,7 @@
 | `scaffold_tip.py` | Pure-first tip extension scaffold (controller stub + residual + checklist) |
 | `setup_rom.py` | Install shared ROM into integration |
 | `import_legacy_assets.py` | Pull legacy map assets |
+| `tools/yt_ref.py` | YouTube KPDR ref VOD: fetch / chunk button+frame extract (gitignored `refs/yt_reference/`) |
 
 Invoke from repo root, e.g.:
 
@@ -25,6 +26,17 @@ uv run python snes/super_metroid/scripts/record/guided_human.py --from bubble --
 # Post-supers Charge (Big Pink main shaft → collect + return); F5 → tasks/*.json
 uv run python snes/super_metroid/scripts/record/guided_human.py \
   --from big-pink --route charge-collect-return --name charge_human
+
+# Multi-take practice (Spazer Double Chamber missile ledge → Wave) — F5 save, reload, repeat
+uv run python snes/super_metroid/scripts/record/practice_takes.py
+uv run python snes/super_metroid/scripts/record/practice_takes.py --list-segments
+uv run python snes/super_metroid/scripts/record/practice_takes.py \
+  --segment dc-missile-wave --series dc_missile_v1 --list
+uv run python snes/super_metroid/scripts/record/practice_takes.py \
+  --segment dc-missile-wave --bot-check
+# One-shot (same pin as practice default)
+uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from double-chamber --route double-chamber-to-wave --name dc_missile_wave_take01 --no-guide
 
 uv run python snes/super_metroid/scripts/probe/post_spore_pb.py --to main
 uv run python snes/super_metroid/scripts/export/path_room_board.py
@@ -48,4 +60,25 @@ uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset big
 uv run python snes/super_metroid/scripts/scaffold_tip.py \
   --segment business_to_frog_save --from-room 0xA7DE --to-room 0xB167 \
   --module k4_norfair --card-id SM-K4-BUBBLE-01 --dry-run
+
+# YouTube reference VOD (default Kentroid KPDR; data under refs/yt_reference/, gitignored)
+uv run python snes/super_metroid/scripts/tools/yt_ref.py list
+uv run python snes/super_metroid/scripts/tools/yt_ref.py status
+uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk \
+  --start 1338 --end 1351 --name moat_shinespark --spark
+uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk --segment-id k2_spazer --stride 2
+
+# Shinespark gym + K6 pure (docs/tasks/SHINE_PRACTICE.md)
+# Landing Site store drill (bot holds RIGHT+B; you press DOWN when e=4)
+uv run python snes/super_metroid/scripts/probe/shine_practice.py drill
+uv run python snes/super_metroid/scripts/probe/shine_practice.py human --series ls_edge_v1
+uv run python snes/super_metroid/scripts/probe/shine_practice.py diagnose \
+  snes/super_metroid/tasks/shine_practice/ls_edge_v1/take03.json
+# Moat pure → West Ocean handoff
+uv run python snes/super_metroid/scripts/probe/moat_spark_watch.py pure
+# West Ocean edge-turn-hop spark (door 0xC98E bowling — not green WS yet)
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure
+uv run python snes/super_metroid/scripts/record/guided_human.py --from west-ocean --list
+uv run python snes/super_metroid/scripts/record/practice_takes.py \
+  --segment west-ocean-to-ws --series west_ocean_ws_v1
 ```

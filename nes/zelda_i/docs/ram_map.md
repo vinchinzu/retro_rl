@@ -27,8 +27,15 @@ ADDR_BOMBS          = 0x0658
 ADDR_RUPEES         = 0x066D
 ADDR_KEYS           = 0x066E
 ADDR_HEALTH         = 0x066F  # hi nibble = containers-1, lo = filled hearts
+                              # full refill (assist): (health & 0xF0) | 0x0F
 ADDR_TRIFORCE       = 0x0671
+ADDR_BOOMERANG      = 0x0674  # wooden; 0=false, 1=true
+ADDR_MAGIC_BOOMERANG= 0x0675  # magical; overrides wooden when set
+ADDR_MAGIC_SHIELD   = 0x0676
 ```
+
+Survival assist (opt-in only): `zelda_i.assist.UnlimitedHealthAssist` writes
+`health` via `data.set_value`; see `docs/ASSIST_CONTRACT.md`.
 
 ## Mode notes
 
