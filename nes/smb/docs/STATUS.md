@@ -16,7 +16,7 @@
 | Integration | `SuperMarioBros-Nes` (boot) / `SuperMarioBros-Nes-v0` (autobot) |
 | ROM zip | `roms/Nintendo/NES/Super Mario Bros..zip` |
 | Best seed | `models/smb_1_1_to_ending_natural_82.json` (**21,559f**, 3/3 Clean) |
-| Evidence | [natural 3/3 poweron](../recordings/reactive_warp/natural_82_poweron_trials_report.json), [M8 baseline](../recordings/warp_finish/warp_finish_poweron_trials_report.json), [M8 capture](../recordings/warp_finish/warp_finish_poweron_m8_capture.json), [video](../recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4) (historical 22,005f) |
+| Evidence | [natural 3/3 poweron](../recordings/reactive_warp/natural_82_poweron_trials_report.json), [M8 baseline](../recordings/warp_finish/warp_finish_poweron_trials_report.json), [M8 capture](../recordings/warp_finish/warp_finish_poweron_m8_capture.json), [video](../recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4) (**21,559f** continuous + YouTube intro, 2026-08-06) |
 
 ## Done
 

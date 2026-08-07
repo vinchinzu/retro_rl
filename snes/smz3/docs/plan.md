@@ -6,6 +6,12 @@ Roll an SMZ3 seed and have **two bots race** it end-to-end, with **video** as a
 first-class quest artifact. That requires strong vanilla Super Metroid and
 ALttP primitives first; this folder is the randomizer + race layer on top.
 
+**Program role:** SMZ3 is the **combined solver proof** in the Super Metroid +
+ALTTP + SMZ3 triangle (see `docs/SOLVER_ARCHITECTURE.md`). Prefer proving
+patterns on single-game **`sm_rando` / `alttp_rando`** first (simpler logic,
+one world), then extend here. Vanilla SM/Z3 skills are Layer 1; this package
+forces portals + dual-world L3–L4 and **seed-abstract** S/T evidence.
+
 ## Architecture
 
 ```
@@ -31,8 +37,12 @@ seed (samus.link / optional local CLI)
 7. **Link's House chest (M3d)** — enter house + open chest (map-driven). *(done; heart container on 1337)*
 8. **Single-bot play** — longer SM segment and/or Z3 segment + video.
 9. **Baselines** — room standard times from vanilla timers / human refs.
-10. **Race** — two bots, same seed, parallel sessions, video pair + report.
-11. **Smarter stop** — replace 3× room rule with progress / softlock metrics.
+10. **Seed-robust dry-run** — multi-seed S/T harness (shared solver benchmark);
+    spoiler optional for oracle dev, not required for claimed solver runs.
+11. **Logic-graph planner hookup** — consume shared item-logic solver
+    (`retro_harness.adventure` → L4) instead of hand routes per seed.
+12. **Race** — two bots, same seed, parallel sessions, video pair + report.
+13. **Smarter stop** — replace 3× room rule with progress / softlock metrics.
 
 ## Stop rule (provisional)
 
@@ -68,10 +78,12 @@ Early legs are composed via `route_graph.py` + `quest.run_early_quest`:
 - Shared control loops live in `control.py` (text / death / hold-up)
 
 Full spoiler-driven auto-routing remains deferred; the graph is the seam it
-will plug into.
+will plug into. Program-level solver stack (L4 logic graph, L3 discovery,
+seed-robust S/T class) is owned in `docs/SOLVER_ARCHITECTURE.md` and shared
+packages — not reimplemented only inside `smz3/`.
 
 ## Out of scope (for now)
 
 - Multiworld multi-player SMZ3
 - Cas' Randomizer tracker integration
-- Full spoiler-driven auto-routing
+- Claiming seed-robustness from a single seed or a fixed input tape

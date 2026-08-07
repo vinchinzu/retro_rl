@@ -1,5 +1,7 @@
 # Parallel recon wave — L3–L9 + OW (2026-08-06)
 
+**Status: complete (scaffold + live entry for L3/L5/L6; L8 bush; L4/L7/L9 plan).**
+
 **Goal:** Prep every dungeon after L2 in parallel while L2 tip agents finish
 Moon. Deliver **planning docs + live OW door IDs + entry checkpoints** so
 isolated pure + reactive splice can land as soon as each tip arrives.

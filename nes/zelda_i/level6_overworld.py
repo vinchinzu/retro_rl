@@ -20,18 +20,11 @@ from typing import Any
 
 import numpy as np
 
-from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
-from zelda_i.nav_common import (
-    align_and_push,
-    on_arrival_edge,
-    recover_off_edge,
-    swing_action,
-    track_stuck,
-    unstick_wiggle,
-    wake_or_wait_mode,
-)
+from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.nav_common import track_stuck
 from zelda_i.overworld import ScreenHop
+from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 # --- Live-verified geometry ---
@@ -77,7 +70,7 @@ class Level6NavPhase(Enum):
 
 
 @dataclass
-class OverworldToLevel6Controller:
+class OverworldToLevel6Controller(OverworldPathController):
     """Walk optional hops then door-hunt / enter Level 6 on OW 0x22.
 
     Default: assume already on or near the door screen (recon fixture
@@ -85,48 +78,28 @@ class OverworldToLevel6Controller:
     prefix exists. ``require_dungeon=True`` waits for room-ready 0x79.
     """
 
-    hop_index: int = 0
     phase: Level6NavPhase = Level6NavPhase.HOP
-    frames: int = 0
-    phase_frames: int = 0
-    stuck: int = 0
-    last_x: int = -1
-    last_y: int = -1
-    last_screen: int = -1
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
     require_level6_screen: bool = False
     require_dungeon: bool = False
     hops: tuple[ScreenHop, ...] = LEVEL6_DOOR_HOPS
     door_x: int = LEVEL6_DOOR_X
+    entry_level: int | None = LEVEL6
+    entry_room: int | None = LEVEL6_ENTRY_ROOM
+    door_screen: int | None = SCREEN_LEVEL6_ENTRANCE
+    max_frames: int = SEGMENT_MAX_FRAMES
+    swing_period: int = SWORD_SWING_PERIOD
+    swing_hold: int = SWORD_SWING_FRAMES
+    stuck_threshold: int = STUCK_THRESHOLD
+    allowed_modes: frozenset[int] = field(
+        default_factory=lambda: frozenset({PLAY_MODE, 8, 11, 16})
+    )
 
-    def reset(self) -> None:
-        self.hop_index = 0
-        self.phase = Level6NavPhase.HOP
-        self.frames = 0
-        self.phase_frames = 0
-        self.stuck = 0
-        self.last_x = -1
-        self.last_y = -1
-        self.last_screen = -1
-        self.success = False
-        self.notes.clear()
-
-    def _set_phase(self, phase: Level6NavPhase, note: str = "") -> None:
-        if phase is not self.phase:
-            self.phase = phase
-            self.phase_frames = 0
-            self.stuck = 0
-            if note:
-                self.notes.append(note)
-
-    def _swing(self, direction: str, reason: str) -> FrameAction:
-        return swing_action(
-            self.phase_frames,
-            direction,
-            reason,
-            period=SWORD_SWING_PERIOD,
-            hold=SWORD_SWING_FRAMES,
+    def _wants_post_hop(self) -> bool:
+        # Empty hops ⇒ always door-hunt (recon fixture path).
+        return (
+            self.require_level6_screen
+            or self.require_dungeon
+            or not self.hops
         )
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
@@ -156,26 +129,6 @@ class OverworldToLevel6Controller:
             and snap.screen == end
         )
 
-    def _advance_hop(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        if (
-            snap.screen != hop.target
-            or snap.mode not in (PLAY_MODE, 8)
-            or snap.transitioning
-            or on_arrival_edge(hop.direction, snap)
-        ):
-            return None
-        self.notes.append(f"hop_{self.hop_index}_{hop.target:02x}")
-        self.hop_index += 1
-        self.stuck = 0
-        self.phase_frames = 0
-        if self.hop_index >= len(self.hops) and not (
-            self.require_level6_screen or self.require_dungeon
-        ):
-            self.success = True
-            self._set_phase(Level6NavPhase.DONE, "hops_complete")
-            return FrameAction(nes_idle_action(), "done")
-        return FrameAction(nes_idle_action(), "hop_advance")
-
     def _door_hunt(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.level == LEVEL6:
             self._set_phase(Level6NavPhase.DUNGEON_SETTLE, "entered_l6")
@@ -204,102 +157,45 @@ class OverworldToLevel6Controller:
             return self._swing(btn, "door_ax")
         return self._swing("UP", "door_hunt")
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
-            snap,
-            last_x=self.last_x,
-            last_y=self.last_y,
-            last_screen=self.last_screen,
-            stuck=self.stuck,
-        )
-
-        if self.frames >= SEGMENT_MAX_FRAMES:
-            self._set_phase(Level6NavPhase.FAILED, "timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-
-        if snap.mode == 17:
-            self._set_phase(Level6NavPhase.FAILED, "link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-
-        if self._at_stop(snap):
-            self.success = True
-            self._set_phase(Level6NavPhase.DONE, "level6_path_stop")
-            return FrameAction(nes_idle_action(), "done")
-
-        if snap.transitioning:
-            if self.hop_index < len(self.hops):
-                return FrameAction(
-                    nes_action(self.hops[self.hop_index].direction), "scroll"
-                )
-            if self.require_dungeon or snap.level == LEVEL6:
-                return FrameAction(nes_idle_action(), "scroll_idle")
-            return self._swing("UP", "scroll_door")
-
-        if snap.mode not in (PLAY_MODE, 8, 11, 16):
-            return wake_or_wait_mode(self.phase_frames, snap.mode)
-
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.level == LEVEL6:
             if self.require_dungeon and snap.mode == PLAY_MODE:
                 if snap.screen == LEVEL6_ENTRY_ROOM:
-                    self.success = True
-                    self._set_phase(Level6NavPhase.DONE, "entry_room_ready")
-                    return FrameAction(nes_idle_action(), "done")
+                    return self._finish("entry_room_ready")
             return FrameAction(nes_idle_action(), "dungeon_settle")
+        return None
 
-        if self.hop_index >= len(self.hops):
-            if self.require_level6_screen or self.require_dungeon or not self.hops:
-                return self._door_hunt(snap)
-            self.success = True
-            self._set_phase(Level6NavPhase.DONE, "hops_complete")
-            return FrameAction(nes_idle_action(), "done")
+    def _handle_transition(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.hop_index < len(self.hops):
+            return FrameAction(
+                nes_action(self.hops[self.hop_index].direction), "scroll"
+            )
+        if self.require_dungeon or snap.level == LEVEL6:
+            return FrameAction(nes_idle_action(), "scroll_idle")
+        return self._swing("UP", "scroll_door")
 
-        hop = self.hops[self.hop_index]
-        advanced = self._advance_hop(snap, hop)
-        if advanced is not None:
-            return advanced
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.require_level6_screen or self.require_dungeon or not self.hops:
+            return self._door_hunt(snap)
+        return self._finish("hops_complete")
 
-        if self.stuck > STUCK_THRESHOLD:
-            action, self.stuck = unstick_wiggle(self.stuck)
-            return action
-
-        edge = recover_off_edge(snap, hop.direction, swing=self._swing)
-        if edge is not None:
-            return edge
-
-        return align_and_push(
-            snap,
-            direction=hop.direction,
-            reason=f"hop{self.hop_index}",
-            align_x=hop.align_x,
-            align_y=hop.align_y,
-            y_band=hop.y_band,
-            stuck=0,
-            stuck_threshold=STUCK_THRESHOLD,
-            swing=self._swing,
-        )
+    def _finish(self, note: str = "path_stop") -> FrameAction:
+        label = {
+            "path_stop": "level6_path_stop",
+            "path_complete": "hops_complete",
+            "hops_complete": "hops_complete",
+            "entry_room_ready": "entry_room_ready",
+        }.get(note, note)
+        self.success = True
+        self._set_phase(Level6NavPhase.DONE, label)
+        return FrameAction(nes_idle_action(), "done")
 
     def report(self) -> dict[str, Any]:
-        hop = None
-        if self.hop_index < len(self.hops):
-            current = self.hops[self.hop_index]
-            hop = {
-                "index": self.hop_index,
-                "target": current.target,
-                "direction": current.direction,
-            }
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "hop_index": self.hop_index,
-            "hop": hop,
-            "notes": list(self.notes),
-            "stuck": self.stuck,
-            "require_level6_screen": self.require_level6_screen,
-            "require_dungeon": self.require_dungeon,
-        }
+        out = super().report()
+        out["require_level6_screen"] = self.require_level6_screen
+        out["require_dungeon"] = self.require_dungeon
+        out.pop("require_entrance_screen", None)
+        return out
 
 
 class EntryRightPhase(Enum):

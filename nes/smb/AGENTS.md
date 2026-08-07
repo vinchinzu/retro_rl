@@ -52,7 +52,9 @@ uv run python -m smb.scripts.parse_human_recording \
 - Level1_1 continuous: **exactly 14** idle after `Level1_1` (different phase).
 - Natural 1-1 alone: idle **1** after readiness (`NATURAL_SETTLE_FRAMES`).
 - World 4 = `world` index **3**. Underground `level_id=2` ≠ completion.
-- Ending = World 8-4 + `oper_mode=2`, held 120 idle frames.
+- Ending = World 8-4 + `oper_mode=2`, held 120 idle frames (success gate).
+  Recordings hold **780f** post-ending through Peach + thank-you text
+  (`--peach-hold-frames`; do not cut on Bowser-drop alone).
 - **Do not** absolute-frame stitch a faster 1-1 into old 1-2 — use
   `smb.reactive_12` control gates. **Do not** W4 idle-pad to restore phase;
   retime later legs from natural control (`--retime-4-1` → cont index 218;
@@ -75,5 +77,7 @@ uv run python -m smb.scripts.parse_human_recording \
 ## Next
 
 Best Clean power-on: **21,559f** 3/3
-(`smb_1_1_to_ending_natural_82.json`). Next: fold promote + re-record MP4.
+(`smb_1_1_to_ending_natural_82.json`). Published continuous MP4:
+`recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4` (YouTube
+intro + timer HUD). Next: promote natural_82 as default fold seed.
 4-2 still 2599f vine (sub-5 needs route structure). Evidence: `docs/STATUS.md`.

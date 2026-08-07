@@ -1,0 +1,40 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-07T02:03:15.614506+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "natural_entry": false,
+    "segment": "level2_clear6f",
+    "start_state": "Level2EastKey"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "clear_signal_seen": true,
+    "combat_frames": 1368,
+    "frames": 1443,
+    "initial_inventory": 0,
+    "last_live_enemies": 0,
+    "max_live_enemies": 6,
+    "notes": [
+      "room_cleared",
+      "reward_collected"
+    ],
+    "phase": "DONE",
+    "spec_id": "level2_room6f_compass",
+    "success": true,
+    "tuning": {
+      "attack_phase": 0,
+      "engage_attack_hold": 3,
+      "engage_attack_period": 6,
+      "engage_distance": 56,
+      "engage_dominant_axis": false,
+      "patrol_attack_hold": 3,
+      "patrol_attack_period": 8
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2EastKey.state",
+  "source_state_sha256": "caa38f13cd8dc73dd56d6806283a47738da4a39c912caa3731c0b6812ea834a0",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level2Compass.state",
+  "state_sha256": "ee752601b93a0c82d893277bdc32213877dedf88280e0af3bf2fbb28355f07f0"
+}
