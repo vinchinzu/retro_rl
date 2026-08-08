@@ -214,6 +214,7 @@ uv run python -m smb.scripts.fold_continuous_policy
   | 8-1 | `smb_8_1_happylee_slice.json` | FM2 @**7930**, leave **2881** (wait81=209); ≈**−785f** body |
   | 8-2 | `smb_8_2_happylee_slice.json` | FM2 @**10910**, leave **2209** (wait82=165); ≈**−942f** body |
   | 8-3 stitchless | `smb_8_3_stitchless_skills_leave.json` | **2374f 2/2** → 8-4 ctrl after HL 8-2; skill-resume (no n82 splice); pure FM2 still phase-blocked |
+  | 8-3 pure FM2 oracle | `oracle_happylee_8_3/*` | FCEUX 2.6.6 entry **exact**; first y/ys break @ body **101** (jump 3 A-hold); A-release@102 → \|dy114\|=1 max_x **532** (was death@209/x≈427); **not** exact first-obstacle / x900 / leave. Probe: `smb.tas.oracle.probe_early_8_3` |
   | 8-3 hybrid bridge | `smb_8_3_natural_for_hl_hybrid.json` | nat@15933 → 8-4 ctrl **2227f** (showcase only) |
   | 8-4 | `smb_8_4_flamexx_slice.json` | FX @**15210**, ending **2661f** after nat 8-3 (HL alt 2833) |
   | hybrid v1 | `smb_happylee_hybrid_ending.json` | 18,769f / 5:12.3 (nat 8-3/8-4) |
