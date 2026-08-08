@@ -116,3 +116,18 @@ Best Clean power-on: **21,559f** 3/3
 no natural_82 splice). Full HL…8-2+skills8-3+FX8-4 chain / Clean power-on
 still open. Pure continuous FM2 8-3 still phase-blocked. Full power-on FM2
 desyncs on fceumm.
+
+### Oracle early-8-3 probe (rr-34v / FCEUX 2.6.6)
+
+Entry **exact**; first `y`/`ys` break @ body **101** (not 8-2→8-3). Gate:
+first obstacle → x900 → x1600 → flag/8-4 (max_x alone ≠ success).
+
+```bash
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.tas.oracle.probe_early_8_3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run pytest nes/smb/tests/test_oracle.py -q
+```
+
+Evidence: `recordings/tas_import/oracle_happylee_8_3/` (distinct candidates;
+do not overwrite shared seeds / natural_82).
