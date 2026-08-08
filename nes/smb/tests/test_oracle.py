@@ -28,7 +28,15 @@ from smb.tas.oracle.probe_early_8_3 import (
     clone_fm2_body,
     count_lr,
     dense_compare_to_oracle,
+    enumerate_local_v3,
     gate_progress,
+    lr_broken,
+    mut_a_clear_single,
+    mut_a_dual_edge,
+    mut_a_release_tail,
+    mut_r_drop_single,
+    rank_v3,
+    should_prune_p1,
 )
 
 
@@ -419,3 +427,223 @@ def test_early_jump_repair_candidate_preserves_lr() -> None:
     assert count_lr(frames) >= 1 or any(fr[6] and fr[7] for fr in frames)
     # Distinct artifact: lives under recordings, not models/
     assert path.is_relative_to(ORACLE_EVIDENCE_DIR)
+
+
+def test_mut_a_release_tail_zeros_a_preserves_lr() -> None:
+    body = [
+        [0, 0, 0, 0, 0, 0, 1, 1, 1],  # L+R+A
+        [0, 0, 0, 0, 0, 0, 0, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0, 1, 1],
+    ]
+    out = mut_a_release_tail(body, release_from=1, end=3)
+    assert out[0][8] == 1 and out[0][6] == 1 and out[0][7] == 1
+    assert out[1][8] == 0 and out[1][7] == 1
+    assert out[2][8] == 0
+    assert count_lr(out) == count_lr(body)
+    assert not lr_broken(body, out)
+    assert body[1][8] == 1  # base unmodified
+
+
+def test_mut_a_clear_single_and_dual_edge() -> None:
+    body = [[0, 0, 0, 0, 0, 0, 0, 0, 1] for _ in range(10)]
+    single = mut_a_clear_single(body, 3)
+    assert single[3][8] == 0 and single[2][8] == 1 and single[4][8] == 1
+    dual = mut_a_dual_edge(body, release_from=2, rehold_at=4, rehold_len=2)
+    # [2,4) cleared, [4,6) rehold A, then clear to 140 cap within body
+    assert dual[2][8] == 0 and dual[3][8] == 0
+    assert dual[4][8] == 1 and dual[5][8] == 1
+    assert dual[6][8] == 0
+    assert body[2][8] == 1  # unmodified
+
+
+def test_mut_r_drop_skips_lr_frames() -> None:
+    body = [
+        [0, 0, 0, 0, 0, 0, 1, 1, 0],  # L+R — must not drop
+        [0, 0, 0, 0, 0, 0, 0, 1, 0],  # R only
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ]
+    assert mut_r_drop_single(body, 0) is None
+    out = mut_r_drop_single(body, 1)
+    assert out is not None and out[1][7] == 0 and out[1][6] == 0
+    # synthetic lr break
+    broken = [list(fr) for fr in body]
+    broken[0][7] = 0
+    assert lr_broken(body, broken) is True
+
+
+def test_rank_v3_exact_beats_high_max_x() -> None:
+    o114 = {
+        "player_x": 280,
+        "player_y": 135,
+        "y_speed": -1,
+        "x_speed": 40,
+        "timer": 296,
+        "timer_mod21": 2,
+        "grounded": False,
+    }
+    exact = {
+        "exact_114": True,
+        "yys_exact_114": True,
+        "gate_progress": {
+            "first_obstacle_xy": True,
+            "x900": False,
+            "x1600": False,
+            "flag_or_leave": False,
+            "control_8_4": False,
+        },
+        "dy114": 0,
+        "dys114": 0,
+        "dx114": 0,
+        "s114": dict(o114),
+        "ys101_match": False,
+        "lr_broken": False,
+        "max_x": 300,
+        "death": None,
+    }
+    far = {
+        "exact_114": False,
+        "yys_exact_114": False,
+        "gate_progress": {
+            "first_obstacle_xy": False,
+            "x900": True,
+            "x1600": False,
+            "flag_or_leave": False,
+            "control_8_4": False,
+        },
+        "dy114": -26,
+        "dys114": -2,
+        "dx114": 0,
+        "s114": {"player_x": 280, "player_y": 109, "y_speed": -3, "timer": 296, "timer_mod21": 2},
+        "ys101_match": False,
+        "lr_broken": False,
+        "max_x": 2000,
+        "death": None,
+    }
+    assert rank_v3(exact, o114) > rank_v3(far, o114)
+    xy_only = {
+        **far,
+        "gate_progress": {**far["gate_progress"], "x900": False, "first_obstacle_xy": True},
+        "dy114": 1,
+        "dys114": 3,
+        "max_x": 532,
+        "s114": {
+            "player_x": 280,
+            "player_y": 136,
+            "y_speed": 2,
+            "timer": 296,
+            "timer_mod21": 2,
+        },
+    }
+    yys = {
+        **xy_only,
+        "yys_exact_114": True,
+        "dy114": 0,
+        "dys114": 0,
+        "s114": dict(o114),
+        "max_x": 400,
+    }
+    assert rank_v3(yys, o114) > rank_v3(xy_only, o114)
+    # same pose quality → x900 beats non-x900 regardless of max_x
+    a = {
+        **xy_only,
+        "gate_progress": {**xy_only["gate_progress"], "x900": True},
+        "max_x": 100,
+    }
+    b = {
+        **xy_only,
+        "gate_progress": {**xy_only["gate_progress"], "x900": False},
+        "max_x": 9000,
+    }
+    assert rank_v3(a, o114) > rank_v3(b, o114)
+
+
+def test_prune_rules_predicates() -> None:
+    assert should_prune_p1({"lr_broken": True, "s114": {"player_y": 136}, "dy114": 1}) == "lr_broken"
+    assert (
+        should_prune_p1({"lr_broken": False, "death": 50, "s114": {}, "dy114": 0})
+        == "death_before_114"
+    )
+    assert should_prune_p1({"lr_broken": False, "death": None, "s114": {}}) == "missing_s114"
+    assert (
+        should_prune_p1(
+            {
+                "lr_broken": False,
+                "death": None,
+                "s114": {"player_y": 100},
+                "dy114": 20,
+            }
+        )
+        == "dy114_gt_10"
+    )
+    assert (
+        should_prune_p1(
+            {
+                "lr_broken": False,
+                "death": None,
+                "s114": {"player_y": 136},
+                "dy114": 1,
+            }
+        )
+        is None
+    )
+
+
+def test_enumerate_local_v3_bounded_and_deduped() -> None:
+    body = [[0] * 9 for _ in range(200)]
+    # synthetic jump-3 A hold 96-115 + R+B run-up
+    for i in range(90, 93):
+        body[i][0] = 1
+        body[i][7] = 1
+    body[96][7] = 1
+    body[96][8] = 1
+    for i in range(97, 116):
+        body[i][8] = 1
+    body[1][6] = 1
+    body[1][7] = 1  # L+R early
+    cands = enumerate_local_v3(body, include_b_r=True)
+    assert 50 < len(cands) <= 320
+    names = [n for n, _, _ in cands]
+    assert names[0] == "baseline_fm2"
+    assert any(n.startswith("a_release_tail_") for n in names)
+    assert any(n.startswith("a_dual_edge_") for n in names)
+    # L+R preserved on all
+    for _, mut, _ in cands:
+        assert not lr_broken(body, mut)
+
+
+def test_v3_evidence_schema_constants() -> None:
+    assert ORACLE_FIRST_OBSTACLE_OFFSET == 114
+    assert ORACLE_FIRST_DIVERGENCE_OFFSET == 101
+    v3_name = "early83_local_search_v3_evidence.json"
+    cand_v3 = "smb_8_3_oracle_early_jump_repair_candidate_v3.json"
+    assert v3_name != "early83_jump_repair_evidence.json"
+    assert cand_v3 != "smb_8_3_oracle_early_jump_repair_candidate.json"
+
+
+@pytest.mark.skipif(
+    not (ORACLE_EVIDENCE_DIR / "early83_local_search_v3_evidence.json").is_file(),
+    reason="v3 local-search evidence not present",
+)
+def test_early83_v3_evidence_honest_if_present() -> None:
+    data = json.loads(
+        (ORACLE_EVIDENCE_DIR / "early83_local_search_v3_evidence.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert data.get("schema") == "smb.oracle_early83_local_search.v3"
+    assert data.get("full_port") is False
+    best = data.get("best") or {}
+    exact = bool(data.get("exact_114_found"))
+    assert exact == bool(best.get("exact_114"))
+    if not exact:
+        g = best.get("gate_progress") or {}
+        # may still have soft xy; must not claim leave/8-4 without exact
+        assert g.get("flag_or_leave") is not True or exact
+        assert g.get("control_8_4") is not True or exact
+    residual = data.get("residual") or {}
+    assert residual.get("schema") == "smb.oracle_early83_local_search_residual.v3"
+    cand = data.get("candidate") or ""
+    if cand:
+        assert "oracle_happylee_8_3" in cand
+        assert "candidate_v3" in cand
+        assert "natural_82" not in cand
