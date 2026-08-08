@@ -1,6 +1,6 @@
 """Shared route-phase / segment reporting for ALTTP live route segments.
 
-Used by ``castle_to_sword`` and ``sword_to_zelda`` so both stacks share one
+Used by ``castle_to_sword`` and ``secret_entrance_clear`` so both stacks share one
 result shape and JSON report layout.
 """
 

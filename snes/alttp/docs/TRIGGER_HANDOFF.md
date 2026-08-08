@@ -42,7 +42,7 @@ Failure modes already known: position drift on natural chain → use
 | Align | `(2672, 2916)` tol 6, then DOWN |
 | Landing | outdoor pocket ~`(2248, 1755)` screen `0x1B` |
 | Soft-lock | off-center deep south `y≥2960` stays indoors |
-| Provenance | `sword_to_zelda.exit_secret_entrance_stairs` 2026-07-30 |
+| Provenance | `secret_entrance_clear.exit_secret_entrance_stairs` 2026-07-30 |
 
 ### Courtyard hedge pocket → main castle door — **trigger solved**
 

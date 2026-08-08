@@ -10,8 +10,8 @@ A Link to the Past opening-route workspace. Docs: `docs/STATUS.md`,
 uv run python alttp/scripts/setup_rom.py
 # Optional local z3-json-data (gitignored): setup_z3_json_data.py
 
-uv run python -m alttp.opening_route_catalog validate
-uv run python -m alttp.opening_route_catalog emit
+uv run python -m alttp.opening_route.catalog validate
+uv run python -m alttp.opening_route.catalog emit
 uv run python alttp/scripts/export_work_queue.py
 
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/boot_to_castle.py --save

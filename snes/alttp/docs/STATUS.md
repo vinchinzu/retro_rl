@@ -25,11 +25,11 @@
 | Dungeon keys | `$F36F` (`0xFF` = blank HUD sentinel in room `0x55` so far) |
 | Dev saves | `HyruleCastleGrounds` = grounds spawn controllable (not hole approach); `FighterSword` = room 0x55 post-uncle (dev only) — see anchors/STATE_SEMANTICS |
 | z3-json-data (optional local refs) | local pin `1eb7a785…` via `scripts/setup_z3_json_data.py`; see `docs/Z3_JSON_DATA.md` |
-| Opening-route catalog (z3-backed) | `python -m alttp.opening_route_catalog` validates Link's House→castle rooms/nodes/connections; emit `recordings/opening_route_catalog.json` |
+| Opening-route catalog (z3-backed) | `python -m alttp.opening_route.catalog` validates Link's House→castle rooms/nodes/connections; emit `recordings/opening_route_catalog.json` |
 | Controller primitives | `alttp.primitives` is the live stack (`run_script` / `settle_control` / `move_*` / `fight_nearby`); segments use `alttp.route_report` |
 | Package layout | Core at `alttp/` root; continuous trunk in `alttp/opening_route/`; `gauntlet/` + `romhack/` shells; see `docs/ARCHITECTURE.md` |
 | Escape capability graph | `alttp.opening_route.escape_graph` — continuous through **NW chamber 0x50**; **0x50→0x01** natural_entry; Zelda/Sanctuary planned |
-| Segment contract | continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`, `pocket_to_main_hall`, `castle_dungeon_prefix`; `full_tip.run_to_verified_tip` composes them from power-on to `room_50`; `main_hall_to_zelda` remains partial; escort planned |
+| Segment contract | continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`, `pocket_to_main_hall`, `castle_dungeon_prefix`; `full_tip.run_to_verified_tip` composes them from power-on to `room_50`; Zelda path planned (not a live segment); escort planned |
 | Room engine | `maps/room_XX.json` + `opening_route.room_engine` + `scripts/room_engine.py` (`docs/ROOM_ENGINE.md`) |
 | Graph west exit | `room_61` → `room_60` **continuous** (`main_hall_west_to_0x60`) |
 | Dungeon prefix | `room_61` → `room_60` → `room_50` **continuous** (`castle_dungeon_prefix`, clean power-on) |
@@ -96,8 +96,8 @@ Acceptance: `follower_indicator == 1`, then `in_sanctuary` (preferably natural c
 - Post-sword hold-up-item (`$5D==21`) needs ~95 frames LEFT to dismiss.
 - South combat chamber (guards) at ~`(2680,2925)` via LEFT×100 + DOWN×250.
 - **Secret-entrance clear:** align stairs ~`(2672,2916)` then DOWN → outdoors
-  screen `0x1B` ~`(2248,1755)` (`left_secret_entrance`; `sword_to_zelda` phase
-  `secret_entrance_exited`). Screenshots: `recordings/probe_secret_exit/clear/`.
+  screen `0x1B` ~`(2248,1755)` (`left_secret_entrance`; `secret_entrance_clear`
+  phase `secret_entrance_exited`). Screenshots: `recordings/probe_secret_exit/clear/`.
 - Off-center deep south (~y≥2960) soft-locks indoors without transitioning.
 - Outdoor landing is a tight hedge pocket; UP re-enters stairs. **Escape needs
   bush-cutting** (walk-only stays ~48×64). Measured path: cut S/W → gardens →

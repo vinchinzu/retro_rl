@@ -173,7 +173,7 @@ def _cmd_list_checkpoints(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m alttp.opening_route_catalog",
+        prog="python -m alttp.opening_route.catalog",
         description=(
             "Validate and emit the Link's House → castle opening-route "
             "catalog against local z3-json-data (no silent download)."

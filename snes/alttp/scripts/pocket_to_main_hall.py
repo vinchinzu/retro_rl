@@ -5,7 +5,7 @@ Usage:
   SDL_VIDEODRIVER=dummy uv run python alttp/scripts/pocket_to_main_hall.py
 
   # Pocket-only (already outdoors after stairs; still boots via FighterSword
-  # then runs sword_to_zelda first unless --pocket-only with a pocket state):
+  # then runs secret_entrance_clear first unless --pocket-only with a pocket state):
   SDL_VIDEODRIVER=dummy uv run python alttp/scripts/pocket_to_main_hall.py --from-sword
 """
 
@@ -55,7 +55,7 @@ def main() -> int:
         "--from-sword",
         action="store_true",
         default=True,
-        help="Compose sword_to_zelda then pocket→hall (default)",
+        help="Compose secret_entrance_clear then pocket→hall (default)",
     )
     parser.add_argument(
         "--pocket-only",
@@ -86,7 +86,7 @@ def main() -> int:
         primitives.settle_control(env)
         if args.pocket_only:
             # Still need stairs exit if loading FighterSword.
-            from alttp.opening_route.sword_to_zelda import run_from_sword
+            from alttp.opening_route.secret_entrance_clear import run_from_sword
 
             pre = run_from_sword(env, source="state_load_dev")
             if not pre.ok:

@@ -7,8 +7,8 @@ tip.  It deliberately stops at room ``0x50``:
 
 Both edges are verified from their real predecessor in one clean power-on
 chain. The prefix is still *not* a Zelda or Sanctuary clear.
-Keep any newly measured B1 door here as a typed edge, rather than extending a
-large ``main_hall_to_zelda`` macro.
+Keep any newly measured B1 door here as a typed edge, rather than a
+monolithic Zelda macro.
 """
 
 from __future__ import annotations

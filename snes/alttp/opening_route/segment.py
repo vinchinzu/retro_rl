@@ -6,9 +6,9 @@ Parallel in spirit to ``super_metroid.routes.segment``:
 - exit / success predicate
 - ``play(env)`` → evidence (frames, final snapshot, phase report)
 
-Existing scripts (``castle_to_sword``, ``sword_to_zelda``) adapt to this
-surface. Continuous composition should walk verified Segments; a hop is
-route-ready only when it succeeds from the real predecessor continuous
+Existing scripts (``castle_to_sword``, ``secret_entrance_clear``) adapt to
+this surface. Continuous composition should walk verified Segments; a hop
+is route-ready only when it succeeds from the real predecessor continuous
 state (no privileged warps in published evidence).
 """
 
@@ -261,12 +261,16 @@ class ScriptSegment:
 
 
 def _build_registry() -> dict[str, ScriptSegment]:
-    """Lazy registry so heavy route modules import only when needed."""
+    """Lazy registry so heavy route modules import only when needed.
+
+    Live segments must be able to succeed under their exit contract.
+    ``main_hall_to_zelda`` is not registered — Zelda rescue is planned; the
+    measured continuous prefix is ``castle_dungeon_prefix``.
+    """
     from alttp.opening_route import (
         castle_dungeon,
         castle_to_sword,
         escort_to_sanctuary,
-        main_hall_to_zelda,
         pocket_to_main_hall,
         secret_entrance_clear,
     )
@@ -336,28 +340,6 @@ def _build_registry() -> dict[str, ScriptSegment]:
             ),
             label="Courtyard pocket → main castle door → room 0x61",
             graph_edge_id="pocket_to_main_hall",
-        ),
-        "main_hall_to_zelda": ScriptSegment(
-            segment_id="main_hall_to_zelda",
-            play_fn=main_hall_to_zelda.run_from_main_hall,
-            entry=EntryRequirement(
-                description="Indoors main hall room 0x61 with fighter sword + control",
-                room_base_id=HYRULE_CASTLE_MAIN_HALL_ROOM,
-                require_indoors=True,
-                require_fighter_sword=True,
-                require_control=True,
-                graph_node_id="room_61",
-                anchor_ids=("HyruleCastle_MainHall",),
-            ),
-            exit=ExitPredicate(
-                description="Zelda follower set (rescue accepted)",
-                acceptance_keys=("zelda_follower",),
-                graph_node_id="room_80",
-                verification="planned",
-            ),
-            label="Main hall → west 0x60 → Zelda cell / follower",
-            # Implemented edge only; planned B1→cell edges are not this segment yet.
-            graph_edge_id="main_hall_west_to_0x60",
         ),
         "castle_dungeon_prefix": ScriptSegment(
             segment_id="castle_dungeon_prefix",
