@@ -26,6 +26,7 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_FROG_SAVE,
     ROOM_FROG_SPEEDWAY,
     ROOM_ICE,
+    ROOM_ICE_ACID,
     ROOM_ICE_GATE,
     ROOM_ICE_SNAKE,
     ROOM_ICE_TUTORIAL,
@@ -65,6 +66,7 @@ ROOMS = _VARIA_ROOMS + (
     RoomNode(ROOM_DOUBLE_CHAMBER, "Double Chamber", "Norfair"),
     RoomNode(ROOM_WAVE, "Wave Beam Room", "Norfair"),
     RoomNode(ROOM_ICE_GATE, "Ice Beam Gate Room", "Norfair"),
+    RoomNode(ROOM_ICE_ACID, "Ice Beam Acid Room", "Norfair"),
     RoomNode(ROOM_ICE_TUTORIAL, "Ice Beam Tutorial Room", "Norfair"),
     RoomNode(ROOM_ICE_SNAKE, "Ice Beam Snake Room", "Norfair"),
     RoomNode(ROOM_ICE, "Ice Beam Room", "Norfair"),
@@ -164,6 +166,29 @@ _BRANCH_EDGES = (
         "kpdr_k4_ice",
         "controller_dev",  # pure dual GREEN 894f ×2 (rr-fg3); no continuous tip yet
     ),
+    # Tape entry path (rr-dbu.12): Gate → Acid → Snake (prefer 2WJ). Needs Speed
+    # for Gate floor Boost Blocks (pure dual GREEN rr-9t4).
+    DoorEdge(
+        "ice_gate_to_acid",
+        ROOM_ICE_GATE,
+        ROOM_ICE_ACID,
+        "left",
+        "right",
+        _K4_SPEED_CAPS,
+        "kpdr_k4_ice",
+        "controller_dev",  # pure dual GREEN 370f ×2 (rr-9t4)
+    ),
+    DoorEdge(
+        "ice_acid_to_snake",
+        ROOM_ICE_ACID,
+        ROOM_ICE_SNAKE,
+        "left",
+        "right",
+        _K4_SPEED_CAPS,
+        "kpdr_k4_ice",
+        "unverified",
+    ),
+    # Return path only (Tutorial); outbound tape skips Tutorial on entry.
     DoorEdge(
         "ice_gate_to_tutorial",
         ROOM_ICE_GATE,

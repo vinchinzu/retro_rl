@@ -10,6 +10,7 @@ from super_metroid.routes.kpdr.ice import (
     ICE_SUPER_Y_MIN,
     on_ice_super_lip,
     play_business_to_ice_gate,
+    play_ice_gate_to_acid,
 )
 from super_metroid.routes.kpdr.ice.geometry import in_ice_super_band
 from super_metroid.routes.kpdr.rooms import ROOM_BUSINESS, ROOM_ICE_GATE
@@ -17,6 +18,7 @@ from super_metroid.routes.kpdr.rooms import ROOM_BUSINESS, ROOM_ICE_GATE
 
 def test_business_to_ice_gate_export_and_registry() -> None:
     assert get_segment("business_to_ice_gate") is play_business_to_ice_gate
+    assert get_segment("ice_gate_to_acid") is play_ice_gate_to_acid
 
 
 def test_on_ice_super_lip_predicate() -> None:

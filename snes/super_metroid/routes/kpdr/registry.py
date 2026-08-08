@@ -54,7 +54,10 @@ from super_metroid.routes.kpdr.from_kraid import (
 from super_metroid.routes.kpdr.to_bat_cave import (
     play_bubble_to_bat_cave,
 )
-from super_metroid.routes.kpdr.ice import play_business_to_ice_gate
+from super_metroid.routes.kpdr.ice import (
+    play_business_to_ice_gate,
+    play_ice_gate_to_acid,
+)
 from super_metroid.routes.kpdr.k4_norfair import (
     play_bat_cave_to_speed_hall,
     play_bubble_to_single_chamber,
@@ -203,6 +206,8 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "double_chamber_to_wave": play_double_chamber_to_wave,
     # K4.12: Business mid-left Super green → Ice Gate (tape-driven pure).
     "business_to_ice_gate": play_business_to_ice_gate,
+    # K4.13: Ice Gate → Acid Room (tape entry path; skip Tutorial).
+    "ice_gate_to_acid": play_ice_gate_to_acid,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,

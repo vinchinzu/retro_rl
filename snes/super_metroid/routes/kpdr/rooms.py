@@ -49,6 +49,7 @@ from super_metroid.routes.kpdr.room_ids import (  # noqa: F401
     ROOM_HJ,
     ROOM_HJ_SHAFT,
     ROOM_ICE,
+    ROOM_ICE_ACID,
     ROOM_ICE_GATE,
     ROOM_ICE_SNAKE,
     ROOM_ICE_TUTORIAL,

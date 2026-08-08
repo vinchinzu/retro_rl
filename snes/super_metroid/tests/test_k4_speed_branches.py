@@ -44,6 +44,7 @@ def test_k4_bubble_to_wave_edge_contract() -> None:
 
 
 def test_k4_business_to_ice_edge_contract() -> None:
+    # Without Speed: graph still has Tutorial return path (no Acid Boost Blocks).
     path = SPEED_GRAPH.shortest_path(0xA7DE, 0xA890, CAPS)
 
     assert path is not None
@@ -53,11 +54,26 @@ def test_k4_business_to_ice_edge_contract() -> None:
         "ice_tutorial_to_snake",
         "ice_snake_to_ice",
     ]
-    # Business→Gate pure dual GREEN (rr-fg3); rest of Ice stack still open.
-    # Graph still routes Tutorial first; tape recon prefers Acid (rr-9t4).
     assert [edge.verification for edge in path] == [
         "controller_dev",
         "unverified",
+        "unverified",
+        "unverified",
+    ]
+
+    # With Speed: tape entry Gate → Acid → Snake (rr-9t4 pure dual GREEN).
+    caps_speed = CAPS | frozenset({"speed_booster"})
+    path_s = SPEED_GRAPH.shortest_path(0xA7DE, 0xA890, caps_speed)
+    assert path_s is not None
+    assert [edge.edge_id for edge in path_s] == [
+        "business_to_ice_gate",
+        "ice_gate_to_acid",
+        "ice_acid_to_snake",
+        "ice_snake_to_ice",
+    ]
+    assert [edge.verification for edge in path_s] == [
+        "controller_dev",
+        "controller_dev",
         "unverified",
         "unverified",
     ]
