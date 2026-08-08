@@ -74,7 +74,7 @@ def test_k4_business_to_ice_edge_contract() -> None:
     assert [edge.verification for edge in path_s] == [
         "controller_dev",
         "controller_dev",
-        "unverified",
+        "controller_dev",  # rr-5cf Acid→Snake pure dual
         "unverified",
     ]
 
