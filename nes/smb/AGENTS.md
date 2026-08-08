@@ -125,9 +125,13 @@ first obstacle → x900 → x1600 → flag/8-4 (max_x alone ≠ success).
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.tas.oracle.probe_early_8_3
+# bounded local-search v3 (exact first-obstacle pose first; distinct artifacts):
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.tas.oracle.probe_early_8_3 --search-v3 --export
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run pytest nes/smb/tests/test_oracle.py -q
 ```
 
 Evidence: `recordings/tas_import/oracle_happylee_8_3/` (distinct candidates;
-do not overwrite shared seeds / natural_82).
+do not overwrite shared seeds / natural_82). v3 →
+`early83_local_search_v3_evidence.json` + `…_candidate_v3.json`.
