@@ -4,34 +4,46 @@
 
 | Field | Value |
 |-------|-------|
-| Current maturity | M1 |
-| Best verified result | Controllable first playable frame (title/stage select → Air Man stage playable) |
-| Last verification | 2026-07-27 |
+| Current maturity | M3 (isolated segment) |
+| Best verified result | Air Man first screen clear from `Level1` (camera X screen ≥ 1; 3/3) |
+| Last verification | 2026-08-08 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **boot verified** |
+| Status | **isolated Air Man screen-1 clear** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
-| Ready frame (probe) | ~1200 |
-| Checkpoint | `Level1.state` |
-| Evidence | [boot_level1.png](../recordings/boot_level1.png) |
+| Ready frame (probe) | ~1204 |
+| Checkpoints | `Level1.state` (Air Man playable), `AirScreen1.state` |
+| Policy | `AirScreen1Policy` (RIGHT + jump 50/12 + shoot pulse) |
+| Evidence | [air_screen1.png](../recordings/air_screen1.png), [air_segment/](../recordings/air_segment/) |
 
 ## Done
 
 - Directory layout and NES integration stubs
 - `scripts/setup_rom.py` wiring via `retro_harness.env` (`.nes`)
 - Deterministic reset → first controllable play (`scripts/boot_probe.py`)
-- Early readiness RAM + unit tests
+- M2 RAM: camera X/screen, player X/Y, health/lives, tile feet, invuln, weapons, boss HP
+- **M3 segment:** `scripts/run_air_segment.py` camera screen ≥ 1, 3/3 deterministic (~248f, HP 26)
+
+## Segment metrics (Level1 → camera screen ≥ 1)
+
+| Metric | Value |
+|--------|------:|
+| Frames | 248 |
+| Final HP | 26 (start 28) |
+| Camera screen | 1 |
+| Trials | 3/3 |
 
 ## Not done
 
-- Broader instrumentation (M2)
-- Segment policies / behavior tree
-- Continuous multi-segment or full-game runs
+- Full Robot Master stage clear (Air Man boss)
+- Natural-entry M4 from power-on through screen-1
+- Stage select other masters / weapon routing
 
 ## Next
 
-first Robot Master stage segment clear.
+1. Extend Air Man past screen 1 (gaps / fans) toward boss door.
+2. Natural-entry: power-on → Level1 pose → screen-1 without loading `Level1`.

@@ -7,6 +7,26 @@
     "health": {
       "address": 1728,
       "type": "|u1"
+    },
+    "camera_x": {
+      "address": 31,
+      "type": "|u1"
+    },
+    "camera_x_screen": {
+      "address": 32,
+      "type": "|u1"
+    },
+    "player_x": {
+      "address": 1120,
+      "type": "|u1"
+    },
+    "player_y": {
+      "address": 1184,
+      "type": "|u1"
+    },
+    "boss_hp": {
+      "address": 1729,
+      "type": "|u1"
     }
   }
 }

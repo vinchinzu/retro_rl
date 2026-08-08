@@ -27,7 +27,7 @@ Manifest count: **38**.
 | `snes/super_street_fighter_ii` / Super Street Fighter II | fighting_game_policies | P0 | scaffolded | M1 | bronze | clean | no | normalize match benchmark claims under maturity gates |
 | `nes/contra` / Contra | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Stage 1 segment clear |
 | `snes/final_fight` / Final Fight | linear_combat | P1 | segmenting | M3 | bronze | clean | no | Stage 3 West Side Area1 HP250 thug → Boss3; natural-entry hardening |
-| `nes/punch_out` / Mike Tyson's Punch-Out!! | fighting_game_policies | P1 | instrumented | M2 | bronze | clean | no | Glass Joe bout win (third KD / decision) from Match1 |
+| `nes/punch_out` / Mike Tyson's Punch-Out!! | fighting_game_policies | P1 | instrumented | M3 | bronze | clean | no | Natural-entry Glass Joe win from power-on / Level1 (M4) |
 | `snes/rival_turf` / Rival Turf! | linear_combat | P1 | instrumented | M2 | bronze | clean | no | clear opening Stage 1 combat lock |
 | `snes/super_double_dragon` / Super Double Dragon | linear_combat | P1 | segmenting | M3 | bronze | clean | no | natural M3 gym stairs → Chin bosses |
 | `nes/tmnt_i` / Teenage Mutant Ninja Turtles | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Area 1 building/segment clear |
@@ -44,7 +44,7 @@ Manifest count: **38**.
 | `snes/joe_and_mac` / Joe & Mac | platforming | P3 | instrumented | M2 | bronze | clean | no | first traversable Stage 1 segment |
 | `nes/kirby_adventure` / Kirby's Adventure | platforming | P3 | boot_verified | M1 | bronze | clean | no | first stage/segment clear from Vegetable Valley hub |
 | `snes/magical_quest` / The Magical Quest Starring Mickey Mouse | platforming | P3 | instrumented | M2 | bronze | clean | no | clear first room/checkpoint from Stage 1 |
-| `nes/mega_man_2` / Mega Man 2 | platforming | P3 | boot_verified | M1 | bronze | clean | no | first Robot Master stage segment clear |
+| `nes/mega_man_2` / Mega Man 2 | platforming | P3 | segment_verified | M3 | bronze | clean | no | Air Man mid-stage / natural-entry M4 |
 | `nes/smb` / Super Mario Bros. | platforming | P3 | verified_capture | M8 | bronze | clean | yes | — |
 | `nes/smb3` / Super Mario Bros. 3 | platforming | P3 | segment_clear | M3 | bronze | clean | no | World 1-2 natural-entry clear |
 | `snes/SMW` / Super Mario World | platforming | P3 | instrumented | M2 | bronze | clean | no | normalize route tooling into maturity gates and continuous clear path |
