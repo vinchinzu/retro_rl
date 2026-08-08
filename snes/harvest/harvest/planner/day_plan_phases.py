@@ -400,8 +400,17 @@ def build_day_phases(
     if seed_buy_phases:
         phases.extend(seed_buy_phases)
 
-    # Early-game field wipe before animals/crops when debris remains.
-    if policy.include_field_clear and has_debris and not late_day:
+    # Field wipe is valuable early, but must not starve crop keep-alive water.
+    # When dry crops already exist, defer CLEAR until after the water pass.
+    defer_field_clear = bool(
+        policy.include_field_clear
+        and has_debris
+        and not late_day
+        and has_waterable
+        and not is_rainy
+        and policy.include_watering
+    )
+    if policy.include_field_clear and has_debris and not late_day and not defer_field_clear:
         phases.append(CLEAR_FIELD_PHASE)
 
     if policy.include_cows and has_cows and not late_day and not buy_cow_first:
@@ -444,6 +453,10 @@ def build_day_phases(
             policy=policy,
         )
     )
+
+    # 3b. Deferred field clear after keep-alive water (rr-3v9).
+    if defer_field_clear:
+        phases.append(CLEAR_FIELD_PHASE)
 
     # 4. Early money route, only after required animal/crop work.
     if not late_day:
@@ -496,7 +509,16 @@ def build_outdoor_day_phases(
     if seed_buy_phases:
         phases.extend(seed_buy_phases)
 
-    if policy.include_field_clear and has_debris and not late_day:
+    # Keep-alive water before field wipe when dry crops already exist (rr-3v9).
+    defer_field_clear = bool(
+        policy.include_field_clear
+        and has_debris
+        and not late_day
+        and has_waterable
+        and not is_rainy
+        and policy.include_watering
+    )
+    if policy.include_field_clear and has_debris and not late_day and not defer_field_clear:
         phases.append(CLEAR_FIELD_PHASE)
 
     if policy.include_harvest and has_harvest and not late_day:
@@ -513,6 +535,9 @@ def build_outdoor_day_phases(
             policy=policy,
         )
     )
+
+    if defer_field_clear:
+        phases.append(CLEAR_FIELD_PHASE)
 
     if not late_day:
         phases.extend(other_berry_phases)

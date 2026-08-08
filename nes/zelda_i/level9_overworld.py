@@ -21,14 +21,11 @@ from zelda_i.ram import (
     read_u8,
 )
 
+from zelda_i.anchors import FULL_TRIFORCE, SCREEN_LEVEL9_ROCK_HYP
+
 SOURCE_HYPOTHESIS = True
-
-# ZD: start R U×5 L U×2 L×2 → Spectacle Rock bomb screen.
-SCREEN_LEVEL9_ROCK_HYP = 0x05
 SCREEN_LEVEL9_POTION_NEAR_HYP = 0x04  # one left (source)
-
 LEVEL9 = 9
-FULL_TRIFORCE = 0xFF
 # Source / Data Crystal style values (confirm live).
 RING_RED_PLANNED = 2
 ARROWS_SILVER_PLANNED = 2

@@ -92,8 +92,10 @@ uv run python -m smb.scripts.parse_human_recording \
 ## Layout (pointers)
 
 `ram.py` / `obs.py` / `policy.py` · `reactive_12|late|route.py` ·
-`scripts/run_warp_finish.py` · `rle_windows.py` · `tas/` (1-1 TAS toolkit) ·
-`scripts/tas_1_1.py` · `scripts/polish_1_2_ug.py` ·
+`scripts/run_warp_finish.py` · `rle_windows.py` ·
+`tas/` (adapt: `stages` StageSpec table, `slice` probe/export, `chain` reach/verify,
+`replay` to_action9/idle_until, `fm2` import; residual `pipeline` 1-1 hill-climb) ·
+`scripts/import_fm2.py` · `scripts/tas_1_1.py` · `scripts/polish_1_2_ug.py` ·
 `scripts/polish_1_2_warp_pipe.py` · `scripts/record_human.py` ·
 `scripts/parse_human_recording.py` · `retro_harness.platformer.rle_*` + `neuro/`.
 

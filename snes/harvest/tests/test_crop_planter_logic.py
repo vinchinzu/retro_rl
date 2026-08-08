@@ -94,7 +94,11 @@ class CropPlanterLogicTests(unittest.TestCase):
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
-        self.assertEqual(result.reason, "rain; seed tool 0x07 not in carry pair")
+        self.assertTrue(
+            (result.reason or "").startswith("no_work"),
+            msg=result.reason,
+        )
+        self.assertIn("rain", result.reason or "")
 
     def test_establish_mode_skips_water_after_no_plots(self) -> None:
         ram = _blank_ram()
@@ -110,7 +114,10 @@ class CropPlanterLogicTests(unittest.TestCase):
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
-        self.assertIn("no plots", result.reason or "")
+        self.assertTrue(
+            (result.reason or "").startswith("no_work"),
+            msg=result.reason,
+        )
 
     def test_water_only_mode_does_not_plan_new_plots(self) -> None:
         ram = _blank_ram()
@@ -125,6 +132,10 @@ class CropPlanterLogicTests(unittest.TestCase):
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertTrue(
+            (result.reason or "").startswith("no_work"),
+            msg=result.reason,
+        )
         self.assertIn("water-only", result.reason or "")
 
     def test_water_only_never_enters_plant_or_hoe(self) -> None:

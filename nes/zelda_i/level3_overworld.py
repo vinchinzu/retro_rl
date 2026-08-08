@@ -47,16 +47,19 @@ from zelda_i.overworld import (
 from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import PLAY_MODE, SCREEN_START, ZeldaSnapshot, read_snapshot
 
-# --- Live anchors (assisted recon 2026-08-06) ---
-SCREEN_LEVEL3_ENTRANCE = 0x74
-SCREEN_LEVEL3_ENTRY_ROOM = 0x7C
+# --- Live anchors (assisted recon 2026-08-06); screens from anchors ---
+from zelda_i.anchors import (
+    SCREEN_LEVEL3_ENTRANCE,
+    SCREEN_LEVEL3_ENTRY_ROOM,
+    TF_BIT_L2 as LEVEL2_TRIFORCE_BIT,
+    TF_BIT_L3 as LEVEL3_TRIFORCE_BIT,
+)
+
 LEVEL3_DOOR_X = 128  # exit-spawn x; UP re-enter after y>130 approach
 LEVEL3_DOOR_APPROACH_Y = 140
 LEVEL3 = 3
-LEVEL3_TRIFORCE_BIT = 0x04
 # Post-L2 return (Moon mouth); TF bits after L1+L2 shards.
 SCREEN_POST_L2_RETURN = 0x3C
-LEVEL2_TRIFORCE_BIT = 0x02
 POST_L2_SETTLE_MAX_FRAMES = 2500
 POST_L2_PATH_MAX_FRAMES = 45000
 

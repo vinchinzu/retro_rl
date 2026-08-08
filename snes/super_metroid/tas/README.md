@@ -45,14 +45,27 @@ uv run python -m super_metroid.tas.resync --to landing --search \
 # Product through Climb → Pit (movie body optional; Pit prefers product first-jump)
 uv run python -m super_metroid.tas.resync --to pit --movie-start 17000 --body 2000
 
+# 100% power-on annotate (long; expect Ceres-only desync — pins still useful)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m super_metroid.tas.replay --slice sniq_100_full \
+    --annotate --series-stride 8 \
+    --states-on room_enter,control,item_gain,beam_gain,capacity_gain \
+    --out snes/super_metroid/recordings/tas_import/sniq_100_full
+
+# Hop inventory + skills/graph extraction board (offline; no emulator)
+uv run python -m super_metroid.tas.extract_hops \
+  snes/super_metroid/recordings/tas_import/sniq_100_full
+uv run python -m super_metroid.tas.extract_hops --list-stages
+
 # Tests (no emulator for parse; skip if refs missing)
 uv run pytest snes/super_metroid/tests/test_tas_movies.py \
-  snes/super_metroid/tests/test_tas_trace.py -q
+  snes/super_metroid/tests/test_tas_trace.py \
+  snes/super_metroid/tests/test_tas_stages_extract.py -q
 ```
 
 Playbook: [`docs/TAS_ADAPT.md`](../docs/TAS_ADAPT.md). Artifacts:
 `recordings/tas_import/<run_id>/` (`trace.json`, `pins.json`, `series.jsonl`,
-optional `states/`).
+optional `states/`, `extraction_board.json`, `hop_inventory.csv`).
 
 ## Finish-oriented slices
 
@@ -77,6 +90,8 @@ tas/
   bk2.py         # BizHawk parser (LogKey-aware)
   rle.py         # compress / expand
   slice.py       # catalog + export
+  stages.py      # RoomStageSpec table (control settle → goal)
+  extract_hops.py # hop inventory + skills/graph extraction board
   annotate.py    # event detectors (rooms/items/speed/shine/stall)
   trace.py       # emulator replay + series / state dumps
   replay.py      # CLI power-on / slice replay

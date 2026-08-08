@@ -884,8 +884,20 @@ def cmd_auto(args: argparse.Namespace) -> int:
         # Rest recording already sleeps; --sleep may be true but include_sleep
         # was turned off inside the task when the rest file is present.
         need_day2 = bool(args.require_full_mask)
-        success = final_status == "success" and mask_ok and (
-            (day2_ok if need_day2 else True)
+        # Gate B: house_size=0 (power-on) must end with grass+can in carry.
+        require_shed = bool(summary.get("require_starter_tools"))
+        shed_ok = (
+            (not require_shed)
+            or (
+                bool(summary.get("has_watering_can"))
+                and bool(summary.get("has_grass_seeds"))
+            )
+        )
+        success = (
+            final_status == "success"
+            and mask_ok
+            and (day2_ok if need_day2 else True)
+            and shed_ok
         )
 
         if args.save_end_state:
@@ -914,6 +926,9 @@ def cmd_auto(args: argparse.Namespace) -> int:
                 "end_mask": mask,
                 "day2_ok": day2_ok,
                 "include_sleep": bool(args.sleep),
+                "require_starter_tools": require_shed,
+                "shed_ok": shed_ok,
+                "house_size_at_start": summary.get("house_size_at_start"),
                 "has_watering_can": summary.get("has_watering_can"),
                 "has_grass_seeds": summary.get("has_grass_seeds"),
             },

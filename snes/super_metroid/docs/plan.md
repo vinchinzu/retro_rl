@@ -134,6 +134,17 @@ uv run python snes/super_metroid/scripts/record/continuous.py --to morph --no-vi
 # TAS movies: uv run python -m super_metroid.tas.fetch_refs
 ```
 
+### TAS 100% reference foundation (2026-08-07) — not STATUS
+
+Power-on Sniq 100% (`sniq_100_full`, 222 789f) annotated under harness: first
+control **11 183** @ Ceres elev; **106** room_enter / **18** desync / **5**
+deaths; **never leaves Ceres** (items/beams stay `0x0000`). Same desync class
+as any%. Artifacts (gitignored): `recordings/tas_import/sniq_100_full/` +
+`extraction_board.json`. Tooling: `tas/stages.py` (RoomStageSpec),
+`tas/extract_hops.py` (skills/graph board). Follow-ons: `rr-ni19` seed
+materialize, `rr-d7mq` skill pure probes. **Product tip remains Wave; Ice pure
+`rr-5cf` is still P0.** Playbook: [`TAS_ADAPT.md`](TAS_ADAPT.md).
+
 ---
 
 ## Finish Spazer K2.2 (mainline — always collect)

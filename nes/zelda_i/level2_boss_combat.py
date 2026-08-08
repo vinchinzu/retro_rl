@@ -6,11 +6,8 @@ Re-exported via ``level2_boss_path`` for public API stability.
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, field
-from enum import Enum, auto
 from typing import Any, Callable
 
-from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon import (
     AliveRule,
@@ -28,17 +25,17 @@ from zelda_i.dungeon_ops import (
     ensure_bomb,
     poke_bombs as ops_poke_bombs,
 )
-from zelda_i.level2_dungeon import (
-    BOMB_N_STAND_TOL,
-    BOMB_N_WAIT_BLAST,
-    LEVEL_2,
+from zelda_i.bomb_wall_path import BombNorth1EPhase
+from zelda_i.level2_bomb_path import (
+    Level2BombNorth1EController,
+    make_bomb_north_1e_controller,
 )
+from zelda_i.level2_dungeon import LEVEL_2
 from zelda_i.level2_puzzles import (
     BOMB_WALL_1E_NORTH,
     DOOR_UP,
     L2_BOSS_EXIT_DOOR_Y,
     BombWall,
-    is_at_bomb_stand,
 )
 from zelda_i.ram import (
     ADDR_TRIFORCE,
@@ -313,197 +310,6 @@ def clear_types(
             ctrl.phase = DungeonPhase.FIGHT
             ctrl.success = False
     return {**ctrl.report(), "frames": f + 1}
-
-class BombNorth1EPhase(Enum):
-    """Phase machine for 0x1e bomb-north → Dodongo 0x0e."""
-
-    SETTLE = auto()
-    SOUTH_BAND = auto()
-    TO_STAND = auto()
-    FACE = auto()
-    PLACE = auto()
-    WAIT = auto()
-    PUSH = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class Level2BombNorth1EController:
-    """From cleared 0x1e: bomb north wall @ catalog stand → enter 0x0e.
-
-    Uses ``BOMB_WALL_1E_NORTH`` stand (120, 101). Walk-UP after Goriya clear
-    is solid (doors bit UP|DOWN=12 is a red herring).
-    """
-
-    phase: BombNorth1EPhase = BombNorth1EPhase.SETTLE
-    frames: int = 0
-    phase_frames: int = 0
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
-    bombs_before_place: int | None = None
-    bombs_after_place: int | None = None
-    max_frames: int = BOMB_1E_MAX_FRAMES
-    stand: tuple[int, int] = BOMB_STAND_1E
-    stand_tol: int = BOMB_N_STAND_TOL
-    wait_blast: int = BOMB_N_WAIT_BLAST
-    wall: BombWall = BOMB_WALL_1E
-
-    def _set_phase(self, phase: BombNorth1EPhase, note: str = "") -> None:
-        if phase is not self.phase:
-            self.phase = phase
-            self.phase_frames = 0
-            if note:
-                self.notes.append(note)
-
-    def _fail(self, note: str) -> FrameAction:
-        self._set_phase(BombNorth1EPhase.FAILED, note)
-        return FrameAction(nes_idle_action(), note)
-
-    def _at_stand(self, snap: ZeldaSnapshot) -> bool:
-        return is_at_bomb_stand(
-            snap.link_x, snap.link_y, self.wall, tol=self.stand_tol
-        )
-
-    def _goto_stand(self, snap: ZeldaSnapshot) -> FrameAction:
-        tx, ty = self.stand
-        dx = tx - snap.link_x
-        dy = ty - snap.link_y
-        if abs(snap.link_y - ty) <= 12 and abs(dx) > self.stand_tol:
-            if abs(dy) > self.stand_tol:
-                return FrameAction(
-                    nes_action("UP" if dy < 0 else "DOWN"), "stand_band_y"
-                )
-            return FrameAction(
-                nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_band_x"
-            )
-        if abs(dx) > self.stand_tol and abs(dx) >= abs(dy):
-            return FrameAction(
-                nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_x"
-            )
-        if abs(dy) > self.stand_tol:
-            return FrameAction(
-                nes_action("UP" if dy < 0 else "DOWN"), "stand_y"
-            )
-        return FrameAction(nes_idle_action(), "stand_ready")
-
-    def _push_north(self, snap: ZeldaSnapshot) -> FrameAction:
-        cx = self.stand[0]
-        x_tol = 3 if snap.link_y <= 110 else 6
-        if abs(snap.link_x - cx) > x_tol:
-            return FrameAction(
-                nes_action("RIGHT" if snap.link_x < cx else "LEFT"),
-                "push_align_x",
-            )
-        return FrameAction(nes_action("UP"), "push_north")
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-
-        if self.phase is BombNorth1EPhase.DONE:
-            return FrameAction(nes_idle_action(), "done")
-        if self.phase is BombNorth1EPhase.FAILED:
-            return FrameAction(nes_idle_action(), "failed")
-
-        if snap.mode == 17:
-            return self._fail("link_death")
-        if self.frames >= self.max_frames:
-            return self._fail("timeout")
-
-        if (
-            snap.level == LEVEL_2
-            and snap.screen == ROOM_0E
-            and snap.mode == PLAY_MODE
-        ):
-            self.success = True
-            self._set_phase(BombNorth1EPhase.DONE, "entered_0x0e")
-            return FrameAction(nes_idle_action(), "done")
-
-        if snap.level != LEVEL_2:
-            return FrameAction(nes_idle_action(), f"wait_level_{LEVEL_2}")
-
-        if snap.transitioning or snap.mode in (4, 6, 7, 16):
-            if self.phase is BombNorth1EPhase.PUSH or snap.screen == ROOM_0E:
-                return FrameAction(nes_action("UP"), "scroll_north")
-            return FrameAction(nes_idle_action(), f"settle_mode_{snap.mode}")
-
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-
-        if self.phase is BombNorth1EPhase.SETTLE:
-            if snap.screen != ROOM_1E:
-                return self._fail(f"wrong_room_0x{snap.screen:02x}")
-            if snap.bombs <= 0:
-                return self._fail("no_bombs")
-            # South-band detour first (north pockets can pin stand approach).
-            self._set_phase(BombNorth1EPhase.SOUTH_BAND, "south_band_first")
-            return FrameAction(nes_action("DOWN"), "south_band")
-
-        if self.phase is BombNorth1EPhase.SOUTH_BAND:
-            if snap.link_y >= 170 or self.phase_frames > 80:
-                self._set_phase(BombNorth1EPhase.TO_STAND, "to_bomb_stand")
-                return self._goto_stand(snap)
-            return FrameAction(nes_action("DOWN"), "south_band")
-
-        if self.phase is BombNorth1EPhase.TO_STAND:
-            if self._at_stand(snap):
-                self._set_phase(BombNorth1EPhase.FACE, "at_bomb_stand")
-                return FrameAction(nes_action("UP"), "face_up")
-            if self.phase_frames > 2500:
-                return self._fail("stand_timeout")
-            return self._goto_stand(snap)
-
-        if self.phase is BombNorth1EPhase.FACE:
-            if self.phase_frames < 6:
-                return FrameAction(nes_action("UP"), "face_up")
-            self._set_phase(BombNorth1EPhase.PLACE, "faced_up")
-            self.bombs_before_place = int(snap.bombs)
-            return FrameAction(nes_action("UP", "B"), "place_bomb")
-
-        if self.phase is BombNorth1EPhase.PLACE:
-            self.bombs_after_place = int(snap.bombs)
-            if (
-                self.bombs_before_place is not None
-                and self.bombs_after_place < self.bombs_before_place
-            ):
-                self.notes.append(
-                    f"bomb_used_{self.bombs_before_place}->{self.bombs_after_place}"
-                )
-            self._set_phase(BombNorth1EPhase.WAIT, "placed_bomb")
-            return FrameAction(nes_action("UP"), "wait_blast")
-
-        if self.phase is BombNorth1EPhase.WAIT:
-            if self.phase_frames < self.wait_blast:
-                return FrameAction(nes_action("UP"), "wait_blast")
-            self._set_phase(BombNorth1EPhase.PUSH, "blast_done")
-            return self._push_north(snap)
-
-        if self.phase is BombNorth1EPhase.PUSH:
-            if self.phase_frames > 700:
-                return self._fail("push_timeout")
-            return self._push_north(snap)
-
-        return FrameAction(nes_idle_action(), "idle")
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "success": self.success,
-            "notes": list(self.notes),
-            "stand": list(self.stand),
-            "wall_room": f"0x{self.wall.room:02x}",
-            "opens_to": f"0x{self.wall.opens_to:02x}",
-            "bombs_before_place": self.bombs_before_place,
-            "bombs_after_place": self.bombs_after_place,
-        }
-
-
-def make_bomb_north_1e_controller() -> Level2BombNorth1EController:
-    """Factory for isolated 0x1e → 0x0e bomb-north segment."""
-    return Level2BombNorth1EController()
-
 
 def bomb_north_1e_wall(env: Any, *, dest: int = ROOM_0E) -> dict[str, Any]:
     """Run bomb-N 0x1e controller until enter dest or fail."""

@@ -23,6 +23,8 @@ from alttp.ram import (
 from alttp.opening_route.secret_entrance_clear import (
     SWORD_TO_SOUTH_CHAMBER_SCRIPT,
     STAIRS_ALIGN_X,
+    approach_south_chamber,
+    ensure_sword_control,
     evaluate_acceptance,
     left_secret_entrance,
     run_from_sword,
@@ -140,7 +142,9 @@ class _FakeExitEnv(_FakeSwordEnv):
 def test_run_from_sword_controller_smoke() -> None:
     env = _FakeSwordEnv()
     result = run_from_sword(
-        env, source="state_load_dev", try_south=True, try_exit=False
+        env,
+        source="state_load_dev",
+        phases=[ensure_sword_control, approach_south_chamber],
     )
     report = result.to_report()
     assert report["kind"] == "alttp_secret_entrance_clear_report"
@@ -151,7 +155,7 @@ def test_run_from_sword_controller_smoke() -> None:
 
 def test_run_from_sword_exit_ok() -> None:
     env = _FakeExitEnv()
-    result = run_from_sword(env, source="state_load_dev", try_south=True, try_exit=True)
+    result = run_from_sword(env, source="state_load_dev")
     assert result.acceptance["left_secret_entrance"] is True
     assert result.ok is True
     assert result.phase == "secret_entrance_exited"
