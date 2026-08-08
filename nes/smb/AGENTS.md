@@ -36,6 +36,11 @@ uv run python -m smb.scripts.tas_1_1 verify \
 uv run python -m smb.scripts.import_fm2 --summary-only
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.import_fm2 --verify
+# Pure HappyLee track 3 (no hybrid/natural/skills; 8-4 blocked until 8-3 leave)
+uv run python -m smb.scripts.pure_hl status
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.pure_hl verify-to-83
+# uv run python -m smb.scripts.pure_hl search-83 --with-continuous
 # Control-relative HappyLee 1-2 → W4 (after HL 1-1 natural predecessor)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.import_fm2 --verify-1-2-slice
