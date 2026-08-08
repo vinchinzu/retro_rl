@@ -1,15 +1,23 @@
-"""Ice branch geometry: Business Super door + Ice Gate bands.
+"""Ice branch geometry: Business Super door + Gate/Acid bands.
 
 Pins from human tape ``tasks/speed_to_wave_ice_moat_human.json`` Phase B
-(Business f9988–10817 → Ice Gate entry ~(18,907)). Controllers import
-predicates — do not re-encode magic thresholds inline.
+(Business f9988–10817 → Ice Gate entry ~(18,907); Acid f11231–11964).
+Controllers import predicates — do not re-encode magic thresholds inline.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.kpdr.k4_common import _LEDGE_POSES, _STANDING_POSES
-from super_metroid.routes.kpdr.rooms import ROOM_BUSINESS, ROOM_ICE_GATE
+from super_metroid.routes.kpdr.rooms import (
+    ROOM_BUSINESS,
+    ROOM_ICE_ACID,
+    ROOM_ICE_GATE,
+    ROOM_ICE_SNAKE,
+)
+from super_metroid.routes.rle import RleScript, load_rle_json
 
 # ---------------------------------------------------------------------------
 # Business Center (0xA7DE) — mid-shaft Super green LEFT → Ice Gate
@@ -38,6 +46,23 @@ DOOR_BAND_FRAMES = 700
 SUPER_PRESSURE_FRAMES = 400
 ICE_GATE_SETTLE_FRAMES = 320
 
+# ---------------------------------------------------------------------------
+# Ice Beam Acid Room (0xA75D) — floor LEFT → Ice Snake
+# ---------------------------------------------------------------------------
+
+# Pure Gate→Acid handoff pin ~(470, 139); floor band for recovery.
+ACID_HANDOFF_X = (400, 520)
+ACID_FLOOR_Y = (120, 160)
+ACID_FLOOR_Y_MAX = 160
+# Left blue door to Snake (block [0,7]); tape door walk x≤40 y≈139.
+ACID_LEFT_DOOR_X = 40
+ACID_SNAKE_SETTLE_FRAMES = 320
+
+_ACID_TO_SNAKE_RLE_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "ice_acid_to_snake_rle.json"
+)
+ACID_TO_SNAKE_RLE: RleScript = load_rle_json(_ACID_TO_SNAKE_RLE_PATH)
+
 
 def in_business(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_BUSINESS
@@ -45,6 +70,26 @@ def in_business(state: SuperMetroidState) -> bool:
 
 def in_ice_gate(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_ICE_GATE
+
+
+def in_ice_acid(state: SuperMetroidState) -> bool:
+    return int(state.room_id) == ROOM_ICE_ACID
+
+
+def in_ice_snake(state: SuperMetroidState) -> bool:
+    return int(state.room_id) == ROOM_ICE_SNAKE
+
+
+def on_acid_floor(state: SuperMetroidState) -> bool:
+    """Standing on Acid main floor band (Gate handoff / mid traverse)."""
+    if not in_ice_acid(state):
+        return False
+    y = int(state.samus_y)
+    if not (ACID_FLOOR_Y[0] <= y <= ACID_FLOOR_Y[1]):
+        return False
+    if int(state.velocity_y) != 0:
+        return False
+    return int(state.pose) in STANDING_POSES | LEDGE_POSES
 
 
 def on_ice_super_lip(state: SuperMetroidState) -> bool:
@@ -71,6 +116,12 @@ def in_ice_super_band(state: SuperMetroidState) -> bool:
 
 
 __all__ = [
+    "ACID_FLOOR_Y",
+    "ACID_FLOOR_Y_MAX",
+    "ACID_HANDOFF_X",
+    "ACID_LEFT_DOOR_X",
+    "ACID_SNAKE_SETTLE_FRAMES",
+    "ACID_TO_SNAKE_RLE",
     "BUSINESS_ELEVATOR_Y",
     "DOOR_BAND_FRAMES",
     "ELEVATOR_SETTLE_FRAMES",
@@ -85,7 +136,10 @@ __all__ = [
     "STANDING_POSES",
     "SUPER_PRESSURE_FRAMES",
     "in_business",
+    "in_ice_acid",
     "in_ice_gate",
+    "in_ice_snake",
     "in_ice_super_band",
+    "on_acid_floor",
     "on_ice_super_lip",
 ]

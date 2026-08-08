@@ -186,7 +186,7 @@ _BRANCH_EDGES = (
         "right",
         _K4_SPEED_CAPS,
         "kpdr_k4_ice",
-        "unverified",
+        "controller_dev",  # pure dual GREEN (rr-5cf); no continuous tip yet
     ),
     # Return path only (Tutorial); outbound tape skips Tutorial on entry.
     DoorEdge(
