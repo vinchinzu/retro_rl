@@ -218,7 +218,7 @@ class _FakeRouteEnv:
 def test_run_from_castle_grounds_controller_smoke() -> None:
     env = _FakeRouteEnv()
     result = run_from_castle_grounds(
-        env, source="state_load_dev", try_entry=True, try_uncle=False
+        env, source="state_load_dev", include_entry=True, include_uncle=False
     )
     assert result.source == "state_load_dev"
     assert result.development_only if hasattr(result, "development_only") else True

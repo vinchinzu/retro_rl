@@ -90,13 +90,29 @@ Artifacts land under `recordings/tas_import/<run_id>/`:
 | `sniq_any_menu` | 600 | — | Still boot/menu (expected; Ceres open ~f8639 movie idx) |
 | `sniq_any_open_15k` | 15 000 | **11 182** | Room `0xDF45` (Ceres elev shaft); pose series + 1 state dump |
 | `sniq_any_full` | 129 712 | **11 182** | ~180s @ ~720 f/s; **54** `room_enter`, **50** RoomTimer visits, **14** `desync_suspect`, **3** deaths; final items still `0x0000` → **core desync after early Ceres** (lsnes vs stable-retro). Artifacts under `recordings/tas_import/sniq_any_full/`. |
+| `sniq_100_full` | 222 789 | **11 183** | ~351s @ ~630 f/s; **106** `room_enter`, **18** `desync_suspect`, **5** deaths; **only Ceres rooms** (`0xDF45`…`0xE0B5`); final items/beams `0x0000` — **same core desync class as any%** (BizHawk BK2 vs stable-retro). **106** state dumps. Artifacts: `recordings/tas_import/sniq_100_full/`. Extraction: `extraction_board.json` + `hop_inventory.csv`. |
 | `moozooh_smtc4_full` | 5 384 | — | Mid-game contest inputs; no usable BizHawk savestate in archive — power-on meaningless |
 
 Artifacts: `recordings/tas_import/<run_id>/{trace,summary,pins,series,states}`.
 
-**Takeaway:** power-on any% is useful through first Ceres control (~11.2k). Past
-that, re-anchor from dumped states / pure product prefixes before adopting
-button bodies. Do not STATUS-claim full-movie sync.
+**Takeaway:** power-on any%/100% is useful through first Ceres control (~11.2k)
+and early Ceres room pins. Past that, thrash in Ceres only (never Zebes / never
+items under open-loop movie). Re-anchor from dumped states / pure product
+prefixes before adopting button bodies. Do not STATUS-claim full-movie sync.
+
+### Sniq 100% desync map (power-on, 2026-08-07)
+
+| Window | Frames | Usable? | Notes |
+|--------|-------:|:-------:|-------|
+| Boot → first_control | 0–11 183 | boot | Still menu/intro; control @ `0xDF45` pose 0 (128,0) — state `f011183_control_rDF45.state` |
+| Elev → Falling | 11 183–17 747 | **yes** | First real hop; walljump pose clusters |
+| Falling → Magnet | ~17 747–19 457 | early | Still Ceres chain |
+| Magnet → Scientist → Flat → Ridley | through ~37 453 | early | First Ridley enter; later thrash |
+| Mid-run | 40k–222k | **no** | 18 desync stalls + 5 deaths; rooms only Ceres six; items stay 0 |
+| Final | 222 789 | — | `0xDFD7` pose 23, items/beams `0x0000` |
+
+**Policy unchanged:** product pure owns Ceres→Morph multi-room. 100% movie is
+item-route / tech encyclopedia **after** re-anchor — not a continuous tip.
 
 ## Zebes resync (product re-anchor + movie splice)
 
@@ -162,6 +178,30 @@ Splice strategy going forward:
 3. Product seed tail from f198 — do not open-loop full movie body in Pit.
 4. Door settle into elev; product elev/morph seeds continue.
 
+## Control-relative stages + hop extraction
+
+SMB-style **room table + re-anchor** (not FM2 code):
+
+| Module | Role |
+|--------|------|
+| `tas/stages.py` | `RoomStageSpec` catalog (control settle → goal enter); Ceres + morph spine + Ice P0 |
+| `tas/extract_hops.py` | Offline hop inventory + skills/graph **extraction board** from annotate dirs |
+| `export_room_body_spec` | Plan-only control-relative body descriptor (movie window hint + settle rule) |
+
+```bash
+# After annotate
+uv run python -m super_metroid.tas.extract_hops \
+  snes/super_metroid/recordings/tas_import/sniq_100_full
+# → extraction_board.json, hop_inventory.csv
+
+uv run python -m super_metroid.tas.extract_hops --list-stages
+```
+
+Board fields: hop id, room ids, tech tags, pure status, graph edge status,
+TAS body path/plan, residual next knob. **Does not** STATUS-promote or wire tip.
+
+Materializing RLE seeds from board windows is still open (plan → seed writer).
+
 ## Follow-ups
 
 - [x] Replay + annotate CLI (`tas.replay` / `tas.trace` / `tas.annotate`)
@@ -170,10 +210,13 @@ Splice strategy going forward:
 - [x] Multi-room Zebes via product morph spine annotate
 - [x] Landing→Parlor TAS movie splice (`movie_start=15000`)
 - [x] Pit first-jump land pin + seed-tail strategy (skip Climb movie)
+- [x] **100% full movie annotate pass** (`sniq_100_full` + desync map)
+- [x] StageSpec-like room table (`tas/stages.py`)
+- [x] Hop inventory + skills/graph extraction board (`tas/extract_hops.py`)
+- [ ] Materialize control-relative RLE seeds from board windows (seed writer)
 - [ ] Optional: retune first-jump A-hold only (land pin gate) for speed
 - [ ] Finer parlor-exit pin search for Climb under movie body (low priority)
 - [ ] Boot pad/skip alignment search (menu length vs lsnes)
-- [ ] Control-relative re-slice export from annotated room hops
-- [ ] Ceres TAS boot residual re-pin (`play_boot_to_ceres_tas`) using f11182 pin
+- [ ] Ceres TAS boot residual re-pin (`play_boot_to_ceres_tas`) using f11183 pin (100%) / f11182 (any%)
 - [ ] Video HUD replay (optional; continuous video path)
-- [ ] 100% full movie annotate pass
+- [ ] First 1–3 pure-probe skill ports from board (only after pure-first)

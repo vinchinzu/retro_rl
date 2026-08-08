@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from alttp import primitives
+from alttp.opening_route.runner import PhaseFn
 from alttp.ram import (
     SECRET_HOLE_WORLD_X,
     SECRET_HOLE_WORLD_Y,
@@ -376,16 +377,37 @@ def run_from_castle_grounds(
     env: object,
     *,
     source: str = "state_load_dev",
-    try_entry: bool = True,
-    try_uncle: bool = True,
+    phases: Sequence[PhaseFn] | None = None,
+    include_entry: bool = True,
+    include_uncle: bool = True,
 ) -> CastleToSwordResult:
-    """Run the segment assuming env is already on castle grounds."""
-    phases: list[RoutePhaseResult] = []
+    """Run the segment assuming env is already on castle grounds.
+
+    Default order: approach → (entry if outdoors) → (uncle if indoors).
+    Prefer ``phases=`` for a fixed list; ``include_entry`` / ``include_uncle``
+    remain for scripts that only want approach (replaces try_entry/try_uncle).
+    """
+    phase_rows: list[RoutePhaseResult] = []
     total = 0
     notes: list[str] = []
 
+    if phases is not None:
+        from alttp.opening_route.runner import run_phases
+
+        return run_phases(
+            env,
+            list(phases),
+            evaluate_acceptance=evaluate_acceptance,
+            success_when=lambda s: bool(s.has_fighter_sword),
+            source=source,
+            notes=notes,
+            success_phase="fighter_sword",
+            partial_blocker="castle-to-sword phases finished without fighter sword",
+            result_factory=CastleToSwordResult,
+        )
+
     approach = approach_secret_hole(env)
-    phases.append(approach)
+    phase_rows.append(approach)
     total += approach.frames
     if not approach.ok and not approach.snapshot.indoors:
         acc = evaluate_acceptance(approach.snapshot)
@@ -394,7 +416,7 @@ def run_from_castle_grounds(
             phase=approach.phase,
             frames=total,
             snapshot=approach.snapshot,
-            phases=phases,
+            phases=phase_rows,
             source=source,
             acceptance=acc,
             blocker=(
@@ -407,19 +429,18 @@ def run_from_castle_grounds(
     if approach.snapshot.in_secret_passage:
         notes.append("entered secret passage during approach walk")
 
-    entry: RoutePhaseResult | None = None
-    if try_entry and not approach.snapshot.in_secret_passage:
+    if include_entry and not approach.snapshot.in_secret_passage:
         entry = attempt_secret_entrance_entry(env)
-        phases.append(entry)
+        phase_rows.append(entry)
         total += entry.frames
 
     snap = snapshot_env(env)
-    if try_uncle and (snap.in_secret_passage or snap.indoors):
+    if include_uncle and (snap.in_secret_passage or snap.indoors):
         uncle = advance_uncle_dialogue_for_sword(env)
-        phases.append(uncle)
+        phase_rows.append(uncle)
         total += uncle.frames
         snap = uncle.snapshot
-    elif try_uncle:
+    elif include_uncle:
         notes.append("skipped uncle phase: not indoors")
 
     snap = snapshot_env(env)
@@ -447,7 +468,7 @@ def run_from_castle_grounds(
         phase=phase,
         frames=total,
         snapshot=snap,
-        phases=phases,
+        phases=phase_rows,
         source=source,
         acceptance=acc,
         blocker=blocker,
@@ -513,11 +534,11 @@ def run_from_state(
     close: bool = True,
 ) -> CastleToSwordResult:
     """Development diagnostic from a saved castle-grounds state."""
-    env = build_boot_env(state_name)
-    try:
-        env.reset()  # type: ignore[attr-defined]
-        primitives.settle_control(env)
-        return run_from_castle_grounds(env, source="state_load_dev")
-    finally:
-        if close:
-            env.close()  # type: ignore[attr-defined]
+    from alttp.opening_route.runner import run_from_state as _run_from_state
+
+    return _run_from_state(  # type: ignore[return-value]
+        state_name,
+        run_from_castle_grounds,
+        close=close,
+        settle=True,
+    )

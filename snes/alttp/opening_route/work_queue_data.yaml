@@ -1,0 +1,372 @@
+schemaVersion: 1
+catalogId: alttp_sanctuary_work_queue
+unitNote: |-
+  Units are Zelda3-Snes save states on the boot → fighter sword → secret-entrance clear → courtyard pocket → main hall → NW chamber room 0x50 → 0x01 → Zelda → Sanctuary path. Continuous tip is **room 0x50**; tip exit east→0x01 is natural_entry. Next work is B1 stairs after the 0x01 chain → Zelda cell → follower → escort. Internal 0x55 key/shutter is alternate practice only. Sanctuary not claimed.
+verifiedMilestones:
+- title_to_castle_grounds
+- castle_to_fighter_sword
+- secret_entrance_clear
+- pocket_to_main_hall_0x61
+- castle_dungeon_prefix_0x50
+- room_50_east_to_0x01_natural_entry
+workFocusGroups:
+- frontier
+- zelda
+- b1
+mdIntro:
+- Sanctuary-path practice queue for `Zelda3-Snes` save states.
+- Continuous tip is **NW chamber room 0x50** (after `castle_dungeon_prefix`).
+- 'Tip exit **0x50 east → 0x01** is natural_entry. Ranked for next work: **B1 stairs after
+  0x01 chain → Zelda cell → follower → escort**.'
+- Internal 0x55 key/shutter path is **alternate practice**, not primary.
+mdNotes:
+- Continuous tip is **NW chamber room 0x50** after `castle_dungeon_prefix` (courtyard pocket
+  → main door → 0x60 → 0x50).
+- 'Tip exit **0x50 east → 0x01** is graph natural_entry (2026-08-02 exhaustive probe: only
+  physical forward exit from tip).'
+- Secret-entrance clear (stairs → outdoor pocket) is already continuous; do **not** treat
+  `Castle_55` internal exit as the top blocker.
+- 'Primary next work: B1 stairs after 0x01 chain → Zelda cell → follower → escort → Sanctuary.'
+- Internal 0x55 key/shutter path is **alternate practice** only.
+- '`FighterSword` is a **dev checkpoint** after uncle sword; natural sword claim needs `--natural`
+  on `castle_to_sword`.'
+- 'Acceptance for rescue: `has_zelda_follower` (`$F3CC == 1`).'
+- 'Sanctuary: room `0x12` / OW screen `0x13` — not claimed.'
+phases:
+  frontier: 0
+  zelda: 1
+  b1_path: 2
+  b1: 3
+  main: 4
+  key_shutter: 5
+  post_sword: 6
+  room_55: 6
+  escort: 7
+  room: 8
+  b2: 9
+  b3: 10
+  opening: 11
+  unknown: 12
+pathTags:
+  key_shutter: internal_key
+  room_55: internal_key
+  post_sword: primary
+  frontier: primary
+  zelda: primary
+  main: primary
+  b1: primary
+  escort: primary
+  opening: primary
+rank:
+  statusBoost:
+    blocker: 0
+    probe_state: 10
+    unstarted: 20
+    segment_scripted: 40
+    natural_chain: 60
+  tierRank:
+    blocker: 0
+    easy: 1
+    standard: 2
+    later: 3
+  goalPrefer:
+  - discover_b1_stairs
+  - discover_after_0x50
+  - reach_zelda_cell
+  - zelda_follower
+  goalPreferDelta: -10
+  goalDemote:
+    exit_0x55: 15
+    obtain_key: 15
+    open_shutter: 15
+    secret_entrance_clear: 10
+    sanctuary: 50
+  openingDonePhase: 12
+  doneGroupsMinPhase:
+    post_sword: 6
+    room_55: 6
+  internalKeyDemote: 15
+groupDefaults:
+  opening:
+    status: probe_state
+    tier: easy
+    goal: opening_progress
+    acceptance_ram:
+      has_control: true
+  post_sword:
+    status: probe_state
+    tier: standard
+    goal: secret_entrance_clear
+    acceptance_ram:
+      has_fighter_sword: true
+      in_secret_passage: true
+    predecessor: FighterSword
+  room_55:
+    status: probe_state
+    tier: standard
+    goal: exit_0x55
+    acceptance_ram:
+      has_fighter_sword: true
+      in_secret_passage: true
+    predecessor: FighterSword
+  key_shutter:
+    status: unstarted
+    tier: later
+    goal: open_shutter
+    acceptance_ram:
+      has_fighter_sword: true
+      dungeon_key_count: '>=1'
+    predecessor: FighterSword
+  zelda:
+    status: unstarted
+    tier: standard
+    goal: reach_zelda_cell
+    acceptance_ram:
+      has_zelda_follower: true
+    predecessor: CastleMain
+  escort:
+    status: unstarted
+    tier: later
+    goal: sanctuary
+    acceptance_ram:
+      has_zelda_follower: true
+      in_sanctuary: true
+    predecessor: CastleZeldaFollower
+  b3:
+    status: unstarted
+    tier: later
+    goal: ball_and_chain
+    acceptance_ram:
+      has_control: true
+    predecessor: CastleB1South
+  b2:
+    status: unstarted
+    tier: standard
+    goal: traverse_b2
+    predecessor: CastleB1South
+  b1:
+    status: unstarted
+    tier: standard
+    goal: traverse_b1
+    predecessor: CastleMain
+  frontier:
+    status: unstarted
+    tier: standard
+    goal: discover_b1_stairs
+    acceptance_ram:
+      indoors_room: '0x50'
+      has_control: true
+    predecessor: CastleMain
+  main:
+    status: unstarted
+    tier: standard
+    goal: reach_zelda_cell
+    acceptance_ram:
+      indoors_room: '0x61'
+      has_control: true
+    predecessor: FighterSword
+  room:
+    status: unstarted
+    tier: standard
+    goal: probe
+  unknown:
+    status: unstarted
+    tier: standard
+    goal: probe
+stateDefaults:
+  YazeSlot000:
+    goal: boot_title
+    predecessor: null
+  LinksHouseWake:
+    goal: exit_links_house
+    predecessor: YazeSlot000
+  FirstAction:
+    goal: opening_progress
+    predecessor: LinksHouseWake
+  HyruleCastleGrounds:
+    goal: reach_secret_hole
+    predecessor: LinksHouseWake
+    acceptance_ram:
+      on_castle_grounds: true
+  FighterSword:
+    predecessor: HyruleCastleGrounds
+  FighterSwordLamp:
+    predecessor: FighterSword
+  Castle_55:
+    predecessor: HyruleCastleGrounds
+overrides:
+  YazeSlot000:
+    status: natural_chain
+    tier: easy
+    goal: boot_title
+    notes: Boot / title entry; natural chain to castle grounds exists.
+    acceptance_ram:
+      module: title_or_file
+  LinksHouseWake:
+    status: segment_scripted
+    tier: easy
+    goal: exit_links_house
+    notes: Wake / exit house on proven button script.
+    predecessor: YazeSlot000
+  FirstAction:
+    status: probe_state
+    tier: easy
+    goal: opening_progress
+    notes: Dev first-action checkpoint.
+    predecessor: LinksHouseWake
+  HyruleCastleGrounds:
+    status: natural_chain
+    tier: easy
+    goal: reach_secret_hole
+    notes: Boot path natural progress to screen 0x1B; approach near_secret_hole ~(2430,1704).
+      Predecessor for castle_to_sword.
+    predecessor: LinksHouseWake
+    acceptance_ram:
+      on_castle_grounds: true
+      overworld_screen: '0x1B'
+  FighterSword:
+    status: segment_scripted
+    tier: standard
+    goal: secret_entrance_clear
+    notes: Dev checkpoint after uncle/fighter sword (castle_to_sword). Secret-entrance clear
+      (stairs → outdoor pocket → courtyard) is continuous via outdoor path; not the continuous
+      tip. Tip is NW chamber room 0x50 after castle_dungeon_prefix.
+    predecessor: HyruleCastleGrounds
+    acceptance_ram:
+      has_fighter_sword: true
+      in_secret_passage: true
+  FighterSwordLamp:
+    status: probe_state
+    tier: standard
+    goal: secret_entrance_clear
+    notes: Sword + lamp checkpoint; secret entrance clear is continuous. Not the continuous
+      tip (NW chamber 0x50).
+    predecessor: FighterSword
+    acceptance_ram:
+      has_fighter_sword: true
+      has_lamp: true
+  Castle_55:
+    status: segment_scripted
+    tier: standard
+    goal: exit_0x55
+    notes: Secret passage room 0x55. Secret-entrance clear is continuous via outdoor path
+      (stairs → pocket → courtyard → main door → 0x61 → 0x50). Internal key/shutter exit is
+      alternate practice only — not a primary continuous-tip blocker.
+    predecessor: HyruleCastleGrounds
+    acceptance_ram:
+      in_secret_passage: true
+      has_fighter_sword: true
+  CastleMain:
+    status: segment_scripted
+    tier: standard
+    goal: castle_dungeon_prefix
+    notes: Development checkpoint for the now-continuous first-dungeon prefix 0x61 → 0x60
+      → 0x50. The continuous tip is room 0x50.
+    predecessor: FighterSword
+    acceptance_ram:
+      indoors_room: '0x61'
+      has_control: true
+  CastleMainEast:
+    status: probe_state
+    tier: standard
+    goal: east_wing_exploration
+    notes: East-wing exploration from main hall; not the continuous tip.
+    predecessor: CastleMain
+    acceptance_ram:
+      indoors_room: '0x61'
+      has_control: true
+  CastleMainZeldaReady:
+    status: probe_state
+    tier: standard
+    goal: reach_zelda_cell
+    notes: State-local Zelda-ready probe from main hall; not evidence of the physical route
+      after continuous-tip room 0x50.
+    predecessor: CastleMain
+    phase: 1
+  CastleMainZeldaBoomerang:
+    status: probe_state
+    tier: standard
+    goal: reach_zelda_cell
+    notes: Main-hall Zelda path with boomerang loadout; state-local probe, not continuous-tip
+      evidence.
+    predecessor: CastleMain
+    phase: 1
+  CastleRoom50:
+    status: probe_state
+    tier: standard
+    goal: discover_b1_stairs
+    notes: '2026-08-02: only physical forward exit is east→0x01 (graph natural_entry room_50_east_to_0x01).
+      Exhaustive probe found no B1 stairs in 0x50. Next: B1 stairs after 0x01→0x52→0x62 chain.'
+    predecessor: CastleMain
+    acceptance_ram:
+      indoors_room: '0x50'
+      has_control: true
+  CastleB1Key:
+    status: probe_state
+    tier: standard
+    goal: obtain_key
+    notes: Alternate internal_key practice from 0x55 / B1 — not the primary continuous-tip
+      blocker. Primary route now reaches room 0x50 first.
+    predecessor: FighterSword
+    acceptance_ram:
+      dungeon_key_count: '>=1'
+  CastleB1SecondKey:
+    status: probe_state
+    tier: later
+    goal: obtain_key
+    notes: Second key probe; alternate internal_key ladder, not tip.
+    predecessor: CastleB1Key
+  CastleB1Shutter:
+    status: probe_state
+    tier: standard
+    goal: open_shutter
+    notes: Shutter door on alternate internal key/shutter path — demoted vs main hall → Zelda.
+    predecessor: CastleB1Key
+  CastleB1ShutterGuard:
+    status: probe_state
+    tier: later
+    goal: open_shutter
+    notes: Shutter room with guard; alternate practice, not tip blocker.
+    predecessor: CastleB1Shutter
+  CastleB1ShutterRoom:
+    status: probe_state
+    tier: later
+    goal: open_shutter
+    notes: Shutter room probe; alternate internal_key path.
+    predecessor: CastleB1Shutter
+  CastleZeldaFollower:
+    status: probe_state
+    tier: standard
+    goal: zelda_follower
+    notes: Expected $F3CC==1 (Zelda tagalong). Not verified on natural path. State-local follower
+      checkpoint; natural predecessor after room 0x50 is not verified.
+    predecessor: CastleMain
+    acceptance_ram:
+      has_zelda_follower: true
+      follower: 1
+  CastleMantleZelda:
+    status: unstarted
+    tier: later
+    goal: sanctuary
+    notes: Escort / mantle checkpoint toward Sanctuary (room 0x12 / OW 0x13). Defer until
+      follower==1 verified from main-hall Zelda path.
+    predecessor: CastleZeldaFollower
+    acceptance_ram:
+      has_zelda_follower: true
+      in_sanctuary: true
+  CastleB3:
+    status: unstarted
+    tier: later
+    goal: ball_and_chain
+    notes: Ball-and-chain area; not on immediate main-hall → Zelda path.
+  CastleB3BallApproach:
+    status: unstarted
+    tier: later
+    goal: ball_and_chain
+    notes: Ball-and-chain approach; Sanctuary escort is higher path priority only after Zelda
+      follower.
+  CastleB3BossOneHitBoomerang:
+    status: unstarted
+    tier: later
+    goal: ball_and_chain
+    notes: Boss one-hit probe; deferred vs main hall → Zelda.

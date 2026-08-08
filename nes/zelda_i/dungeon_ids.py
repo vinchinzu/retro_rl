@@ -32,6 +32,26 @@ OBJECT_NAMES: dict[int, str] = {
     0x60: "green_rupee_drop",
 }
 
+
+# Canonical object type IDs (prefer these over redefining in dungeon_ops / level modules).
+GORIYA_BLUE_OBJECT_TYPE = 0x05
+GORIYA_OBJECT_TYPE = 0x06
+DARKNUT_OBJECT_TYPE = 0x0B
+ZOL_OBJECT_TYPE = 0x13
+GEL_SPLIT_OBJECT_TYPE = 0x14  # wooden-sword Zol split residual
+GEL_OBJECT_TYPE = 0x15
+KEESE_OBJECT_TYPE = 0x1B
+WIZZROBE_ORANGE_OBJECT_TYPE = 0x24
+WALLMASTER_OBJECT_TYPE = 0x27
+ROPE_OBJECT_TYPE = 0x28
+INVULN_MOVER_OBJECT_TYPE = 0x2B
+DODONGO_OBJECT_TYPE = 0x32
+MANHANDLA_OBJECT_TYPE = 0x3C
+AQUAMENTUS_OBJECT_TYPE = 0x3D
+MOLDORM_OBJECT_TYPE = 0x41
+FIREBALL_OBJECT_TYPE = 0x55
+MANHANDLA_PROJECTILE_TYPE = 0x56
+
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",
     0x0C: "raft_room_item_live",  # L3 mode-9 passage 0x0f (assisted 2026-08-07)

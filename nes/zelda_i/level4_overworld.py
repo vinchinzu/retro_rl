@@ -23,14 +23,15 @@ from zelda_i.ram import (
 
 # --- Source-hypothesized geometry (NOT live) ---
 # Dock toward L4 island: start U, L×2, U → 0x55; raft carries N → island 0x45.
+from zelda_i.anchors import (
+    SCREEN_LEVEL4_DOCK_HYP,
+    SCREEN_LEVEL4_ISLAND_HYP,
+    SCREEN_RAFT_HEART_DOCK_HYP,
+    TF_BIT_L4 as LEVEL4_TRIFORCE_BIT,
+)
+
 SOURCE_HYPOTHESIS = True
-
-SCREEN_LEVEL4_DOCK_HYP = 0x55  # mainland dock (source short path)
-SCREEN_LEVEL4_ISLAND_HYP = 0x45  # post-raft island / door candidate
-SCREEN_RAFT_HEART_DOCK_HYP = 0x3F  # east coast heart (E×8 N×4 from start)
-
 LEVEL4 = 4
-LEVEL4_TRIFORCE_BIT = 0x08
 
 # Placeholder hops from start (0x77) to dock — geometry TBD live.
 # Do not wire into Clean NamedRoutes until verified.

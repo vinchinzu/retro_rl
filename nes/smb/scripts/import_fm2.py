@@ -44,23 +44,15 @@ from typing import Any
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-import numpy as np
-
 from smb.paths import GAME_DIR, MODELS_DIR, RECORDINGS_DIR
 from smb.policy import compress_nes9_rle, expand_nes9_rle
 from smb.ram import read_snapshot, reached_ending
 from smb.tas.fm2 import fm2_to_nes9_frames, frames_to_nes9_rle_payload, parse_fm2
+from smb.tas.replay import IDLE, to_action9
 from smb.timing import NTSC_FPS, build_timing_block, format_time
 
 
 DEFAULT_REF = GAME_DIR / "tas" / "ref" / "happylee_warps_1715M.fm2"
-
-
-def _action9(frame: list[int]) -> np.ndarray:
-    action = np.zeros(9, dtype=np.int8)
-    for j in range(min(9, len(frame))):
-        action[j] = int(frame[j])
-    return action
 
 
 def _probe_11_progress(
@@ -81,9 +73,8 @@ def _probe_11_progress(
 
     env = make_env(GAME_V0, "NONE", GAME_DIR, render_mode="rgb_array")
     env.reset()
-    idle = np.zeros(9, dtype=np.int8)
     for _ in range(pad_before):
-        env.step(idle)
+        env.step(IDLE)
 
     body = frames[skip_movie:]
     limit = min(len(body), max_frames)
@@ -94,7 +85,7 @@ def _probe_11_progress(
     x_at: dict[int, int] = {}
 
     for i in range(limit):
-        env.step(_action9(body[i]))
+        env.step(to_action9(body[i]))
         ram = env.get_ram()
         snap = read_snapshot(ram, frame=i + 1 + pad_before)
         if start_lives is None and int(snap.oper_mode) == 1 and 0 <= int(snap.lives) <= 8:
@@ -171,9 +162,8 @@ def _verify_poweron(
     game_name = GAME_V0
     env = make_env(game_name, "NONE", GAME_DIR, render_mode="rgb_array")
     env.reset()
-    idle = np.zeros(9, dtype=np.int8)
     for _ in range(pad_before):
-        env.step(idle)
+        env.step(IDLE)
 
     body = frames[skip_movie:]
     limit = len(body) if max_frames is None else min(len(body), max_frames)
@@ -190,7 +180,7 @@ def _verify_poweron(
 
     for i in range(limit):
         # Do NOT sanitize L+R — TAS depends on simultaneous left+right.
-        env.step(_action9(body[i]))
+        env.step(to_action9(body[i]))
         ram = env.get_ram()
         abs_f = i + 1 + pad_before
         snap = read_snapshot(ram, frame=abs_f)
@@ -227,7 +217,7 @@ def _verify_poweron(
     # optional idle pad after movie ends (axe settle)
     if ending_frame is None and not death and start_lives is not None:
         for j in range(pad_idle):
-            env.step(idle)
+            env.step(IDLE)
             ram = env.get_ram()
             if reached_ending(ram, start_lives=start_lives):
                 ending_frame = limit + pad_before + j + 1
@@ -524,22 +514,22 @@ def main(argv: list[str] | None = None) -> int:
 
     # Control-relative slice ops (may not need full movie summary first)
     if args.verify_1_2_slice or args.export_1_2_slice or args.search_1_2:
+        from smb.tas.chain import verify_1_2_natural_chain
         from smb.tas.slice import (
             HL_1_2_FM2_START,
             HL_1_2_W4_FRAMES,
             export_1_2_slice,
             search_1_2_offsets,
-            verify_1_2_natural_chain,
         )
 
         start = args.slice_1_2_start if args.slice_1_2_start is not None else HL_1_2_FM2_START
         if args.search_1_2:
 
             def _progress(tr: Any) -> None:
-                if tr.w4 or (tr.max_x or 0) > 500:
+                if tr.ok or (tr.max_x or 0) > 500:
                     print(
                         f"  si={tr.start_idx} max_x={tr.max_x} "
-                        f"w4={tr.w4} death={tr.death}",
+                        f"leave={tr.leave_frame} death={tr.death}",
                         flush=True,
                     )
 
@@ -593,6 +583,7 @@ def main(argv: list[str] | None = None) -> int:
         or args.search_4_1
         or args.search_4_2
     ):
+        from smb.tas.chain import verify_4_1_4_2_natural_chain
         from smb.tas.slice import (
             HL_4_1_FM2_START,
             HL_4_1_LEAVE_FRAMES,
@@ -602,7 +593,6 @@ def main(argv: list[str] | None = None) -> int:
             export_4_2_slice,
             search_4_1_offsets,
             search_4_2_offsets,
-            verify_4_1_4_2_natural_chain,
         )
 
         si41 = (
@@ -619,10 +609,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.search_4_1:
 
             def _p41(tr: Any) -> None:
-                if tr.w4 or (tr.max_x or 0) > 800:
+                if tr.ok or (tr.max_x or 0) > 800:
                     print(
                         f"  41 si={tr.start_idx} max_x={tr.max_x} "
-                        f"leave={tr.w4} death={tr.death}",
+                        f"leave={tr.leave_frame} death={tr.death}",
                         flush=True,
                     )
 
@@ -644,10 +634,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.search_4_2:
 
             def _p42(tr: Any) -> None:
-                if tr.w4 or (tr.max_x or 0) > 400:
+                if tr.ok or (tr.max_x or 0) > 400:
                     print(
                         f"  42 si={tr.start_idx} max_x={tr.max_x} "
-                        f"w8={tr.w4} ug={tr.ug} death={tr.death}",
+                        f"w8={tr.leave_frame} ug={tr.ug} death={tr.death}",
                         flush=True,
                     )
 
@@ -726,14 +716,16 @@ def main(argv: list[str] | None = None) -> int:
         or args.search_8_3
         or args.verify_w8_tail
     ):
+        from smb.tas.chain import (
+            verify_8_1_8_2_natural_chain,
+            verify_continuous_tail_from_8_1,
+        )
         from smb.tas.slice import (
             HL_8_1_FM2_START,
             HL_8_2_FM2_START,
             export_8_1_slice,
             export_8_2_slice,
             search_8_3_offsets,
-            verify_8_1_8_2_natural_chain,
-            verify_continuous_tail_from_8_1,
         )
 
         si81 = (
@@ -803,10 +795,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.search_8_3:
 
             def _p83(tr: Any) -> None:
-                if tr.w4 or (tr.max_x or 0) > 600:
+                if tr.ok or (tr.max_x or 0) > 600:
                     print(
                         f"  83 si={tr.start_idx} max_x={tr.max_x} "
-                        f"leave={tr.w4} death={tr.death}",
+                        f"leave={tr.leave_frame} death={tr.death}",
                         flush=True,
                     )
 

@@ -24,7 +24,17 @@ from zelda_i.dungeon import (
     RewardKind,
     RewardSpec,
 )
-from zelda_i.dungeon_ids import object_name, room_item_name
+from zelda_i.anchors import TF_BIT_L3 as TRIFORCE_BIT_L3
+from zelda_i.dungeon_ids import (
+    DARKNUT_OBJECT_TYPE,
+    GEL_OBJECT_TYPE as GEL_ALT_OBJECT_TYPE,
+    GEL_SPLIT_OBJECT_TYPE,
+    INVULN_MOVER_OBJECT_TYPE as INVULN_MOVER_0X2B,
+    KEESE_OBJECT_TYPE,
+    MANHANDLA_PROJECTILE_TYPE,
+    object_name,
+    room_item_name,
+)
 from zelda_i.ram import (
     ADDR_RAFT,
     ADDR_TRIFORCE,
@@ -35,7 +45,7 @@ from zelda_i.ram import (
 )
 
 # ---------------------------------------------------------------------------
-# Constants (raw object-type ints — no level-specific module imports)
+# Constants
 # ---------------------------------------------------------------------------
 
 PUSH_FRAMES = 110
@@ -43,24 +53,12 @@ SETTLE_FRAMES = 70
 ADDR_SELECTED_ITEM = 0x0656
 B_ITEM_BOMB = 0x02
 
-# Shared enemy / residual type ids (see dungeon_ids.OBJECT_NAMES).
-DARKNUT_OBJECT_TYPE = 0x0B
-KEESE_OBJECT_TYPE = 0x1B
-INVULN_MOVER_0X2B = 0x2B  # HP240 invuln residual — never a clear target
-MANHANDLA_PROJECTILE_TYPE = 0x56
-# L3 TF bit for room_fields convenience (ADDR_TRIFORCE & 0x04).
-TRIFORCE_BIT_L3 = 0x04
-
 DOOR_TARGETS: dict[str, tuple[int, int]] = {
     "RIGHT": (208, 141),
     "LEFT": (32, 141),
     "UP": (120, 93),
     "DOWN": (120, 205),
 }
-
-# Wooden sword splits Zol (0x13) → Gel (0x14); dungeon.GEL is 0x15 (other rooms).
-GEL_SPLIT_OBJECT_TYPE = 0x14
-GEL_ALT_OBJECT_TYPE = 0x15
 
 # Types that must never be combat-clear targets.
 NON_COMBAT_TYPES: frozenset[int] = frozenset(

@@ -18,6 +18,7 @@ Do not claim Zelda / Sanctuary from this hop alone.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from alttp import primitives
@@ -29,6 +30,7 @@ from alttp.opening_route.anchors import (
     MAIN_DOOR_APPROACH_X,
     MAIN_DOOR_APPROACH_Y,
 )
+from alttp.opening_route.runner import PhaseFn
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     HYRULE_CASTLE_SCREEN,
@@ -427,135 +429,45 @@ def enter_main_door(env: object) -> RoutePhaseResult:
     )
 
 
+POCKET_PHASES = (
+    escape_hedge_pocket,
+    approach_main_door,
+    enter_main_door,
+)
+
+_POCKET_NOTES = (
+    "Pocket escape requires bush-cutting (walk-only stays boxed).",
+    "South corridor y≈2024 connects east hedges to door axis x≈2040.",
+    "Door trigger: align x≈2040, UP → room 0x61.",
+    "Do not claim Zelda until follower_indicator==1.",
+)
+
+
 def run_from_pocket(
     env: object,
     *,
     source: str = "state_load_dev",
-    try_escape: bool = True,
-    try_approach: bool = True,
-    try_enter: bool = True,
+    phases: Sequence[PhaseFn] | None = None,
 ) -> SegmentResult:
     """Pocket (or open courtyard) → main hall.
 
-    Segment ok means ``main_hall`` (room 0x61). Partial progress is reported
-    via phases / acceptance without claiming Zelda.
+    Segment ok means ``main_hall`` (room 0x61). Pass ``phases`` to run a
+    subset (replaces former try_escape/try_approach/try_enter flags).
     """
-    phases: list[RoutePhaseResult] = []
-    total = 0
-    notes = [
-        "Pocket escape requires bush-cutting (walk-only stays boxed).",
-        "South corridor y≈2024 connects east hedges to door axis x≈2040.",
-        "Door trigger: align x≈2040, UP → room 0x61.",
-        "Do not claim Zelda until follower_indicator==1.",
-    ]
+    from alttp.opening_route.runner import run_phases
 
-    if try_escape:
-        esc = escape_hedge_pocket(env)
-        phases.append(esc)
-        total += esc.frames
-        if not esc.ok and not in_main_hall(esc.snapshot):
-            acc = evaluate_acceptance(esc.snapshot)
-            return SegmentResult(
-                ok=False,
-                phase=esc.phase,
-                frames=total,
-                snapshot=esc.snapshot,
-                phases=phases,
-                source=source,
-                acceptance=acc,
-                blocker=esc.detail,
-                notes=notes,
-            )
-        if in_main_hall(esc.snapshot):
-            acc = evaluate_acceptance(esc.snapshot)
-            return SegmentResult(
-                ok=True,
-                phase="main_hall_entered",
-                frames=total,
-                snapshot=esc.snapshot,
-                phases=phases,
-                source=source,
-                acceptance=acc,
-                blocker="",
-                notes=notes,
-            )
-
-    if try_approach:
-        app = approach_main_door(env)
-        phases.append(app)
-        total += app.frames
-        if not app.ok and not in_main_hall(app.snapshot):
-            acc = evaluate_acceptance(app.snapshot)
-            return SegmentResult(
-                ok=False,
-                phase=app.phase,
-                frames=total,
-                snapshot=app.snapshot,
-                phases=phases,
-                source=source,
-                acceptance=acc,
-                blocker=app.detail,
-                notes=notes,
-            )
-        if in_main_hall(app.snapshot):
-            acc = evaluate_acceptance(app.snapshot)
-            return SegmentResult(
-                ok=True,
-                phase="main_hall_entered",
-                frames=total,
-                snapshot=app.snapshot,
-                phases=phases,
-                source=source,
-                acceptance=acc,
-                blocker="",
-                notes=notes,
-            )
-
-    if try_enter:
-        ent = enter_main_door(env)
-        phases.append(ent)
-        total += ent.frames
-        snap = ent.snapshot
-        acc = evaluate_acceptance(snap)
-        if ent.ok and acc["main_hall"]:
-            return SegmentResult(
-                ok=True,
-                phase="main_hall_entered",
-                frames=total,
-                snapshot=snap,
-                phases=phases,
-                source=source,
-                acceptance=acc,
-                blocker="",
-                notes=notes
-                + [
-                    "Main castle door entered (room 0x61). Next: B1 → Zelda cell."
-                ],
-            )
-        return SegmentResult(
-            ok=False,
-            phase=ent.phase,
-            frames=total,
-            snapshot=snap,
-            phases=phases,
-            source=source,
-            acceptance=acc,
-            blocker=ent.detail,
-            notes=notes,
-        )
-
-    snap = snapshot_env(env)
-    acc = evaluate_acceptance(snap)
-    return SegmentResult(
-        ok=acc["main_hall"],
-        phase="partial",
-        frames=total,
-        snapshot=snap,
-        phases=phases,
+    return run_phases(
+        env,
+        list(phases) if phases is not None else list(POCKET_PHASES),
+        evaluate_acceptance=evaluate_acceptance,
+        success_when=in_main_hall,
         source=source,
-        acceptance=acc,
-        blocker="" if acc["main_hall"] else "enter skipped",
-        notes=notes,
+        notes=_POCKET_NOTES,
+        success_phase="main_hall_entered",
+        success_notes=(
+            "Main castle door entered (room 0x61). Next: B1 → Zelda cell.",
+        ),
+        partial_blocker="pocket phases finished without main hall",
     )
 
 

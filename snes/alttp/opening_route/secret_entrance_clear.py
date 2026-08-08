@@ -30,6 +30,7 @@ Measured (headless, FighterSword / natural sword predecessor):
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -41,6 +42,7 @@ from alttp.opening_route.anchors import (
     STAIRS_ALIGN_Y,
 )
 from alttp.opening_route.castle_to_sword import dismiss_hold_up_item
+from alttp.opening_route.runner import PhaseFn
 from alttp.ram import (
     SECRET_PASSAGE_ROOM,
     AlttpSnapshot,
@@ -316,114 +318,50 @@ def exit_secret_entrance_stairs(env: object) -> RoutePhaseResult:
     )
 
 
+SWORD_CLEAR_PHASES = (
+    ensure_sword_control,
+    approach_south_chamber,
+    exit_secret_entrance_stairs,
+)
+
+_SWORD_CLEAR_NOTES = (
+    "Secret-entrance clear = stairs exit outdoors (screen 0x1B pocket).",
+    "Next hop: pocket_to_main_hall (bush-cut → door → room 0x61).",
+    "Do not claim Zelda rescue until follower_indicator==1.",
+)
+
+
 def run_from_sword(
     env: object,
     *,
     source: str = "state_load_dev",
-    try_south: bool = True,
-    try_exit: bool = True,
+    phases: Sequence[PhaseFn] | None = None,
 ) -> SecretEntranceClearResult:
     """Run post-sword secret-entrance clear assuming fighter sword obtained.
 
     Default path: hold-up clear → south combat chamber → stairs exit outdoors.
-    Segment ``ok`` means ``left_secret_entrance`` only (not Zelda).
+    Segment ``ok`` means ``left_secret_entrance`` only (not Zelda). Pass
+    ``phases`` to run a subset (replaces former try_south/try_exit flags).
     """
-    phases: list[RoutePhaseResult] = []
-    total = 0
-    notes: list[str] = [
-        "Secret-entrance clear = stairs exit outdoors (screen 0x1B pocket).",
-        "Next hop: pocket_to_main_hall (bush-cut → door → room 0x61).",
-        "Do not claim Zelda rescue until follower_indicator==1.",
-    ]
+    from alttp.opening_route.runner import run_phases
 
-    ready = ensure_sword_control(env)
-    phases.append(ready)
-    total += ready.frames
-    if not ready.ok:
-        acc = evaluate_acceptance(ready.snapshot)
-        return SecretEntranceClearResult(
-            ok=False,
-            phase=ready.phase,
-            frames=total,
-            snapshot=ready.snapshot,
-            phases=phases,
-            source=source,
-            acceptance=acc,
-            blocker=ready.detail,
-            notes=notes,
-        )
-
-    if try_south:
-        south = approach_south_chamber(env)
-        phases.append(south)
-        total += south.frames
-        if not south.ok:
-            acc = evaluate_acceptance(south.snapshot)
-            return SecretEntranceClearResult(
-                ok=False,
-                phase=south.phase,
-                frames=total,
-                snapshot=south.snapshot,
-                phases=phases,
-                source=source,
-                acceptance=acc,
-                blocker=south.detail,
-                notes=notes,
-            )
-
-    if try_exit:
-        exit_phase = exit_secret_entrance_stairs(env)
-        phases.append(exit_phase)
-        total += exit_phase.frames
-        snap = exit_phase.snapshot
-        acc = evaluate_acceptance(snap)
-        if not exit_phase.ok:
-            return SecretEntranceClearResult(
-                ok=False,
-                phase=exit_phase.phase,
-                frames=total,
-                snapshot=snap,
-                phases=phases,
-                source=source,
-                acceptance=acc,
-                blocker=exit_phase.detail,
-                notes=notes,
-            )
-    else:
-        snap = snapshot_env(env)
-        acc = evaluate_acceptance(snap)
-
-    # Success only for secret-entrance clear (outdoors). Zelda keys are diagnostic.
-    if acc["left_secret_entrance"]:
-        return SecretEntranceClearResult(
-            ok=True,
-            phase="secret_entrance_exited",
-            frames=total,
-            snapshot=snap,
-            phases=phases,
-            source=source,
-            acceptance=acc,
-            blocker="",
-            notes=notes
-            + [
-                "Secret entrance finished (outdoors). Next: "
-                "pocket_to_main_hall → B1 → Zelda."
-            ],
-        )
-
-    return SecretEntranceClearResult(
-        ok=False,
-        phase="south_chamber",
-        frames=total,
-        snapshot=snap,
-        phases=phases,
+    phase_list = list(phases) if phases is not None else list(SWORD_CLEAR_PHASES)
+    return run_phases(
+        env,
+        phase_list,
+        evaluate_acceptance=evaluate_acceptance,
+        success_when=left_secret_entrance,
         source=source,
-        acceptance=acc,
-        blocker=(
-            "still in secret entrance after south chamber; stairs exit failed "
-            f"xy=({snap.link_x},{snap.link_y}) room={room_label(snap.room_base_id)}"
+        notes=_SWORD_CLEAR_NOTES,
+        success_phase="secret_entrance_exited",
+        success_notes=(
+            "Secret entrance finished (outdoors). Next: "
+            "pocket_to_main_hall → B1 → Zelda.",
         ),
-        notes=notes,
+        partial_blocker=(
+            "still in secret entrance after phases; stairs exit incomplete"
+        ),
+        result_factory=SecretEntranceClearResult,
     )
 
 
@@ -433,13 +371,11 @@ def run_from_state(
     close: bool = True,
 ) -> SecretEntranceClearResult:
     """Development diagnostic from a saved fighter-sword state."""
-    from alttp.startup import build_boot_env
+    from alttp.opening_route.runner import run_from_state as _run_from_state
 
-    env = build_boot_env(state_name)
-    try:
-        env.reset()  # type: ignore[attr-defined]
-        primitives.settle_control(env)
-        return run_from_sword(env, source="state_load_dev")
-    finally:
-        if close:
-            env.close()  # type: ignore[attr-defined]
+    return _run_from_state(  # type: ignore[return-value]
+        state_name,
+        run_from_sword,
+        close=close,
+        settle=True,
+    )

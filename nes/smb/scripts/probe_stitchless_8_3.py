@@ -21,12 +21,12 @@ from typing import Any
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-import numpy as np
-
 from smb.paths import GAME_DIR, GAME_V0, MODELS_DIR, RECORDINGS_DIR
 from smb.policy import compress_nes9_rle
 from smb.ram import PLAYER_STATE_DYING, reached_ending, read_snapshot
 from smb.tas.fm2 import parse_fm2
+from smb.tas.replay import IDLE, get_state, idle_until, set_state, to_action9
+from smb.tas.chain import reach_8_1_control_after_hl_w8
 from smb.tas.slice import (
     DEFAULT_FM2,
     HL_8_1_FM2_START,
@@ -37,27 +37,14 @@ from smb.tas.slice import (
     probe_8_1_from_control,
     probe_8_2_from_control,
     probe_8_3_from_control,
-    reach_8_1_control_after_hl_w8,
 )
 
 FX_FM2 = Path("nes/smb/tas/ref/flamexx_warps_rta_4_54_099.fm2")
-IDLE = np.zeros(9, dtype=np.int8)
 OUT_DIR = RECORDINGS_DIR / "tas_import"
 
 
 def log(*a: object) -> None:
     print(*a, flush=True)
-
-
-def _act(fr) -> np.ndarray:
-    a = np.zeros(9, dtype=np.int8)
-    for i, v in enumerate(fr[:9]):
-        a[i] = int(v)
-    return a
-
-
-def _em(env):
-    return env.em if hasattr(env, "em") else env.unwrapped.em
 
 
 def _fp(snap) -> dict[str, int]:
@@ -70,18 +57,6 @@ def _fp(snap) -> dict[str, int]:
         "ps": int(snap.player_state),
         "lives": int(snap.lives),
     }
-
-
-def wait_control(env, predicate, max_wait: int = 600) -> tuple[int, Any]:
-    wait = 0
-    snap = read_snapshot(env.get_ram(), 0)
-    while wait < max_wait:
-        snap = read_snapshot(env.get_ram(), 0)
-        if predicate(snap):
-            return wait, snap
-        env.step(IDLE)
-        wait += 1
-    return wait, snap
 
 
 def play_until(
@@ -101,7 +76,7 @@ def play_until(
     death = ending = None
     enter83 = enter84 = ctrl83_at = None
     for i in range(n):
-        env.step(_act(body[i]))
+        env.step(to_action9(body[i]))
         ram = env.get_ram()
         snap = read_snapshot(ram, i + 1)
         px = int(snap.player_x)
@@ -225,21 +200,19 @@ def main(argv: list[str] | None = None) -> int:
         env.close()
         return 1
     lives81 = int(pred["control_snap"].lives)
-    st81 = _em(env).get_state()
     log(f"8-1 control ok wait81={pred.get('ctrl_wait_8_1')} t={time.time()-t0:.1f}s")
 
     # 8-1 leave + 8-2 control
-    _em(env).set_state(st81)
     tr81 = probe_8_1_from_control(env, hl, HL_8_1_FM2_START, start_lives=lives81)
-    wait82, snap82 = wait_control(env, is_8_2_control)
+    wait82, snap82 = idle_until(env, is_8_2_control)
     lives82 = int(snap82.lives)
-    st82 = _em(env).get_state()
-    log(f"8-1 leave={tr81.w4} wait82={wait82} fp={_fp(snap82)}")
+    st82 = get_state(env)
+    log(f"8-1 leave={tr81.leave_frame} wait82={wait82} fp={_fp(snap82)}")
 
     report: dict[str, Any] = {
         "note": "stitchless multi-leave 8-2 → re-gate 8-3; no natural_82",
         "pred_wait81": pred.get("ctrl_wait_8_1"),
-        "leave81": tr81.w4,
+        "leave81": tr81.leave_frame,
         "wait82": wait82,
         "leaves_82": [],
         "fanout_83": [],
@@ -250,21 +223,24 @@ def main(argv: list[str] | None = None) -> int:
     # --- Phase 1: find 8-2 leaves (distinct leave frames) ---
     leave_hits: list[dict[str, Any]] = []
     for si in range(args.s82_min, args.s82_max + 1, args.s82_step):
-        _em(env).set_state(st82)
+        set_state(env, st82)
         tr = probe_8_2_from_control(env, hl, si, start_lives=lives82)
-        if tr.w4 is None or tr.death is not None:
+        if not tr.ok:
             continue
-        wait83, snap83 = wait_control(env, is_8_3_control)
+        wait83, snap83 = idle_until(env, is_8_3_control)
         if not is_8_3_control(snap83):
             continue
         row = {
             "si82": si,
-            "leave82": tr.w4,
+            "leave82": tr.leave_frame,
             "wait83": wait83,
             "ctrl83_fp": _fp(snap83),
         }
         leave_hits.append(row)
-        log(f"LEAVE82 si={si} leave={tr.w4} wait83={wait83} t={row['ctrl83_fp']['t']} x={row['ctrl83_fp']['x']}")
+        log(
+            f"LEAVE82 si={si} leave={tr.leave_frame} wait83={wait83} "
+            f"t={row['ctrl83_fp']['t']} x={row['ctrl83_fp']['x']}"
+        )
 
     # unique by (leave82, timer at control)
     seen: set[tuple[int, int]] = set()
@@ -332,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
             for si83 in range(smin, smax + 1, step):
                 if found_leave:
                     return
-                _em(env).set_state(st83)
+                set_state(env, st83)
                 for _ in range(lead):
                     env.step(IDLE)
                 tr = probe_8_3_from_control(
@@ -346,15 +322,15 @@ def main(argv: list[str] | None = None) -> int:
                     "ctrl83_fp": fp83,
                     "lead": lead,
                     "si83": si83,
-                    "leave83": tr.w4,
+                    "leave83": tr.leave_frame,
                     "death": tr.death,
                     "max_x": tr.max_x,
                 }
-                if tr.w4 is not None and tr.death is None:
+                if tr.ok:
                     report["hits"].append(row)
                     consider(row)
                     if args.export_on_hit:
-                        body = [list(f) for f in movie[si83 : si83 + int(tr.w4)]]
+                        body = [list(f) for f in movie[si83 : si83 + int(tr.leave_frame)]]
                         name = (
                             "smb_8_3_happylee_slice.json"
                             if src.startswith("HL")
@@ -368,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
                             target="8_4_load",
                             meta={
                                 "fm2_start_index": si83,
-                                "leave_frames": tr.w4,
+                                "leave_frames": tr.leave_frame,
                                 "si82": si82,
                                 "leave82": leave82,
                                 "lead_idle": lead,
@@ -376,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
                                 "src": src,
                             },
                         )
-                        log(f"EXPORTED {name} leave83={tr.w4}")
+                        log(f"EXPORTED {name} leave83={tr.leave_frame}")
                 elif (tr.max_x or 0) >= 700:
                     consider(row)
 
@@ -386,16 +362,16 @@ def main(argv: list[str] | None = None) -> int:
             break
         si82 = leave["si82"]
         log(f"=== fanout si82={si82} leave82={leave['leave82']} wait83={leave['wait83']} ===")
-        _em(env).set_state(st82)
+        set_state(env, st82)
         tr82 = probe_8_2_from_control(env, hl, si82, start_lives=lives82)
-        if tr82.w4 is None:
+        if tr82.leave_frame is None:
             continue
-        wait83, snap83 = wait_control(env, is_8_3_control)
+        wait83, snap83 = idle_until(env, is_8_3_control)
         if not is_8_3_control(snap83):
             log("  no 8-3 control")
             continue
         lives83 = int(snap83.lives)
-        st83 = _em(env).get_state()
+        st83 = get_state(env)
         fp83 = _fp(snap83)
         log(f"  ctrl83 fp={fp83}")
 
@@ -403,7 +379,7 @@ def main(argv: list[str] | None = None) -> int:
             st83=st83,
             lives83=lives83,
             si82=si82,
-            leave82=int(tr82.w4),
+            leave82=int(tr82.leave_frame),
             wait83=wait83,
             fp83=fp83,
             movie=hl,
@@ -419,7 +395,7 @@ def main(argv: list[str] | None = None) -> int:
                 st83=st83,
                 lives83=lives83,
                 si82=si82,
-                leave82=int(tr82.w4),
+                leave82=int(tr82.leave_frame),
                 wait83=wait83,
                 fp83=fp83,
                 movie=fx,
@@ -432,13 +408,13 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         # Continuous stitchless from this 8-2 start (no re-gate mid body)
-        _em(env).set_state(st82)
+        set_state(env, st82)
         cont = play_until(env, hl[si82:], lives82, max_play=7000)
         consider(
             {
                 "src": "HL_cont",
                 "si82": si82,
-                "leave82": tr82.w4,
+                "leave82": tr82.leave_frame,
                 "enter83": cont.get("enter83"),
                 "enter84": cont.get("enter84"),
                 "ending": cont.get("ending"),
@@ -459,10 +435,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.refine and best and not found_leave and best.get("si83") is not None:
         log("refine around", best.get("si82"), best.get("si83"), best.get("lead"), best.get("max_x"))
         si82 = int(best["si82"])
-        _em(env).set_state(st82)
+        set_state(env, st82)
         tr82 = probe_8_2_from_control(env, hl, si82, start_lives=lives82)
-        wait83, snap83 = wait_control(env, is_8_3_control)
-        st83 = _em(env).get_state()
+        wait83, snap83 = idle_until(env, is_8_3_control)
+        st83 = get_state(env)
         lives83 = int(snap83.lives)
         bsi = int(best["si83"])
         blead = int(best.get("lead") or 0)
@@ -470,7 +446,7 @@ def main(argv: list[str] | None = None) -> int:
             st83=st83,
             lives83=lives83,
             si82=si82,
-            leave82=int(tr82.w4 or 0),
+            leave82=int(tr82.leave_frame or 0),
             wait83=wait83,
             fp83=_fp(snap83),
             movie=hl if str(best.get("src", "HL")).startswith("HL") else fx,

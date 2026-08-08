@@ -150,12 +150,6 @@ def run_from_state(
     close: bool = True,
 ) -> SegmentResult:
     """Development diagnostic for planned Zelda scaffold (no prefix play)."""
-    from alttp.startup import build_boot_env
+    from alttp.opening_route.runner import run_from_state as _run_from_state
 
-    env = build_boot_env(state_name)
-    try:
-        env.reset()  # type: ignore[attr-defined]
-        return run_from_main_hall(env, source="state_load_dev")
-    finally:
-        if close:
-            env.close()  # type: ignore[attr-defined]
+    return _run_from_state(state_name, run_from_main_hall, close=close)

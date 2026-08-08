@@ -57,6 +57,15 @@ from harvest.tasks.farm_clearer import (
     VIEWPORT_HOP_TILES,
     WALKABLE_TILES,
 )
+from harvest.tasks.water_refill import (
+    REFILL_NONFILL_WATER_TILES,
+    REFILL_PREFERRED_WATER_TILES,
+    corridor_needs_fence_open,
+    crop_completion_status,
+    order_preferred_edges,
+    select_main_pond_refill,
+    select_staging_stand,
+)
 
 # ── tile IDs ─────────────────────────────────────────────────────────
 
@@ -82,13 +91,8 @@ REFILL_WATER_TILES = frozenset({
     0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD,
 })
 
-# CheckToolSuccess .chackiffilling / .watercanfilled (HM-Decomp bank_82.asm):
-# farm refill (tilemap < 4) only fills when the tile-in-front *property* is one
-# of F0, F9, FA, FB, FC, FD (returns 2 → ToolAnimationWateringCan sets can=0x14).
-# Raw map IDs F1/F2/F7/F8 often look like water but do not refill.
-REFILL_PREFERRED_WATER_TILES = frozenset({0xF0, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD})
-# Non-fill water still appears on the farm map; never select these for refill.
-REFILL_NONFILL_WATER_TILES = frozenset({0xF1, 0xF2, 0xF7, 0xF8})
+# REFILL_PREFERRED_WATER_TILES / REFILL_NONFILL_WATER_TILES live in water_refill
+# (CheckToolSuccess F0/F9–FD fill; F1/F2/F7/F8 never fill). Re-exported above.
 
 # Shipping-bin F2 pocket (x~8-9,y~29-30) does NOT refill the can. Pre-blacklist
 # stand tiles in this rectangle so path search never prefers them.
@@ -583,6 +587,41 @@ def tile_needs_watering(tile_id: int, *, include_fresh_tilled: bool = False) -> 
     return tile_id in UNRIPE_DRY_CROP_TILES
 
 
+def count_crop_survival(
+    ram: np.ndarray,
+    bounds: Tuple[int, int, int, int] = DEFAULT_CROP_BOUNDS,
+) -> dict:
+    """Count live crop tiles in bounds for multi-day keep-alive acceptance.
+
+    Returns keys: crop, mature, dry, wet, samples (up to 12 (x,y,tid) tuples).
+    Only meaningful when the farm metatile map is loaded (tilemap farm).
+    """
+    x0, y0, x1, y1 = bounds
+    crop = mature = dry = wet = 0
+    samples: List[Tuple[int, int, int]] = []
+    for ty in range(y0, y1 + 1):
+        for tx in range(x0, x1 + 1):
+            tid = int(get_tile_at(ram, tx, ty))
+            if not is_crop_tile(tid):
+                continue
+            crop += 1
+            if is_mature_crop_tile(tid):
+                mature += 1
+            elif tile_needs_watering(tid):
+                dry += 1
+            elif is_watered_crop_tile(tid):
+                wet += 1
+            if len(samples) < 12:
+                samples.append((tx, ty, tid))
+    return {
+        "crop": crop,
+        "mature": mature,
+        "dry": dry,
+        "wet": wet,
+        "samples": samples,
+    }
+
+
 def tile_can_be_water_target(
     tile_id: int,
     allow_unknown: bool = False,
@@ -980,6 +1019,10 @@ class CropWaterTask(Task):
     watered_count: int = field(default=0, init=False)
     skipped_water: int = field(default=0, init=False)
     refill_count: int = field(default=0, init=False)
+    # Acceptance tracking — harden SUCCESS so false greens do not pollute journals.
+    _dry_crop_tiles_at_start: int = field(default=0, init=False)
+    _had_seed_stock_at_start: bool = field(default=False, init=False)
+    _acceptance_snapped: bool = field(default=False, init=False)
     # Planned centers that failed hoe/path — avoid infinite redetect loops.
     _rejected_plan_centers: Set[Tuple[int, int]] = field(default_factory=set, init=False)
 
@@ -1056,6 +1099,9 @@ class CropWaterTask(Task):
         self.watered_count = 0
         self.skipped_water = 0
         self.refill_count = 0
+        self._dry_crop_tiles_at_start = 0
+        self._had_seed_stock_at_start = False
+        self._acceptance_snapped = False
         self._rejected_plan_centers = set()
         self._clear_crop_walkable()
         self._navigator.update(world.ram)
@@ -1107,11 +1153,57 @@ class CropWaterTask(Task):
         self.watered_count = 0
         self.skipped_water = 0
         self.refill_count = 0
+        self._dry_crop_tiles_at_start = 0
+        self._had_seed_stock_at_start = False
+        self._acceptance_snapped = False
         self._rejected_plan_centers = set()
         print(f"[CROP] Hot-swap resume: re-scan crops/refill state can={self._water_level(world.ram)}")
 
     def can_start(self, world: WorldState) -> bool:
         return True
+
+    def _count_dry_crop_tiles(self, ram: np.ndarray) -> int:
+        """Count dry crop / waterable tiles in task bounds (for acceptance)."""
+        x0, y0, x1, y1 = self.bounds
+        n = 0
+        for ty in range(y0, y1 + 1):
+            for tx in range(x0, x1 + 1):
+                tid = get_tile_at(ram, tx, ty)
+                if tile_needs_watering(tid):
+                    n += 1
+        return n
+
+    def _snapshot_start_acceptance(self, ram: np.ndarray) -> None:
+        """Capture dry-tile / seed-stock facts once at first detect."""
+        if self._acceptance_snapped:
+            return
+        self._dry_crop_tiles_at_start = self._count_dry_crop_tiles(ram)
+        self._had_seed_stock_at_start = self._has_plantable_seed_stock(ram)
+        self._acceptance_snapped = True
+
+    def _terminal_result(self, *, rain: bool = False) -> TaskResult:
+        """Map plant/water counters to SUCCESS / no_work SUCCESS / FAILURE."""
+        status, reason = crop_completion_status(
+            work_mode=self.work_mode,
+            planted=self.planted_count,
+            watered=self.watered_count,
+            dry_at_start=self._dry_crop_tiles_at_start,
+            refill_exhausted=self._refill_exhausted,
+            had_seed_stock=self._had_seed_stock_at_start,
+            rain=rain,
+        )
+        extra = ""
+        if self.skipped_water:
+            extra += f" skipped={self.skipped_water}"
+        if self.refill_count:
+            extra += f" refills={self.refill_count}"
+        if self._pass_number:
+            extra += f" passes={self._pass_number}"
+        full_reason = reason + extra
+        print(f"[CROP] Complete ({status}): {full_reason}")
+        if status == "failure":
+            return TaskResult(status=TaskStatus.FAILURE, reason=full_reason)
+        return TaskResult(status=TaskStatus.SUCCESS, reason=full_reason)
 
     # ------------------------------------------------------------------
     # State handlers
@@ -1318,6 +1410,7 @@ class CropWaterTask(Task):
 
     def _handle_detect(self, ram: np.ndarray) -> Optional[TaskResult]:
         """Scan for crop plots."""
+        self._snapshot_start_acceptance(ram)
         resume_plots = detect_crop_resume_plots(ram, self.bounds)
         if resume_plots:
             supplemental = detect_plots(ram, self.bounds)
@@ -1337,15 +1430,9 @@ class CropWaterTask(Task):
                     self._plots = planned
                 else:
                     print("[CROP] No plots detected and no plantable plan")
-                    return TaskResult(status=TaskStatus.SUCCESS, reason="no plots detected")
+                    return self._terminal_result()
             elif self._pass_number == 1:
-                reason = (
-                    "no plots detected (water-only)"
-                    if self._is_water_only
-                    else "no plots detected (no plantable seed stock)"
-                )
-                print(f"[CROP] {reason}")
-                return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
+                return self._terminal_result()
             else:
                 self._state = "done"
                 return None
@@ -1749,16 +1836,11 @@ class CropWaterTask(Task):
         return True
 
     def _start_refill(self, ram: np.ndarray):
-        """Navigate to nearest water source to refill watering can.
+        """Navigate to a CheckToolSuccess fill stand to refill the watering can.
 
-        Only CheckToolSuccess-valid water (F0/F9–FD) is selected. Non-fill
-        stream IDs F1/F2/F7/F8 are never chosen — a full BFS to F8 used to
-        win over hop-only preferred F0 and then fail to fill.
-
-        Selection order:
-          1. Preferred water with full BFS (main pond band first)
-          2. Preferred water with viewport hop (multi-hop nav will close)
-          3. If blocked by the y=31 fence wall, open corridor then retry
+        Named corridor first (map_config main pond stands), then fence-open when
+        the y=31 wall blocks the west plant pocket, then preferred-edge search.
+        Non-fill stream IDs F1/F2/F7/F8 are never chosen.
         """
         current_lvl = self._water_level(ram)
 
@@ -1766,17 +1848,67 @@ class CropWaterTask(Task):
         if self._refill_search_level < 0:
             self._refill_search_level = current_lvl
         elif current_lvl < self._refill_search_level:
-            # Water leaked during failed refill attempts — the area is harmful.
-            # Blacklist all previously-tried tiles + neighborhoods.
             leaked = self._refill_search_level - current_lvl
             print(f"[CROP] Refill search leaked {leaked} water (was {self._refill_search_level}, now {current_lvl})")
             for bad in list(self._bad_refill_tiles):
                 for dy in range(-3, 4):
                     for dx in range(-3, 4):
                         self._bad_refill_tiles.add((bad[0] + dx, bad[1] + dy))
-            self._refill_search_level = current_lvl  # reset for next attempts
+            self._refill_search_level = current_lvl
 
-        # Preferred fill properties only — never path to non-fill F1/F8/F2/F7.
+        player = self._navigator.current_tile
+
+        def _full_path(start: Tuple[int, int], goal: Tuple[int, int]):
+            return self._pathfinder.find_path(ram, start, goal)
+
+        def _hop_path(start: Tuple[int, int], goal: Tuple[int, int]):
+            return self._find_nav_path(ram, start, goal)
+
+        # 1) Named main-pond corridor (FARM_MAIN_POND_STANDS) — only when the
+        # stand still faces CheckToolSuccess-valid water on the live map.
+        def _pond_fill_ok(stand: Tuple[int, int], face: str) -> bool:
+            return edge_water_tile_id(ram, stand, face) in REFILL_PREFERRED_WATER_TILES
+
+        pond = select_main_pond_refill(
+            player, _full_path, bad_stands=self._bad_refill_tiles
+        )
+        if pond is not None and not _pond_fill_ok(pond.stand, pond.face):
+            pond = None
+        if pond is None:
+            hop_pond = select_main_pond_refill(
+                player, _hop_path, bad_stands=self._bad_refill_tiles
+            )
+            if hop_pond is not None and _pond_fill_ok(hop_pond.stand, hop_pond.face):
+                pond = hop_pond
+                print(
+                    f"[CROP] Main-pond corridor hop to ({pond.stand[0]},{pond.stand[1]}) "
+                    f"face={pond.face}"
+                )
+
+        if pond is not None:
+            wid = edge_water_tile_id(ram, pond.stand, pond.face)
+            self._commit_refill_nav(
+                ram,
+                pond.stand,
+                pond.face,
+                current_lvl,
+                source=pond.source,
+                water_id=wid if wid >= 0 else 0xF0,
+            )
+            return
+
+        # 2) West pocket blocked by y=31 fence wall → stage + open corridor.
+        blocking = pond_access_blocking_fences(ram)
+        if corridor_needs_fence_open(
+            player,
+            _full_path,
+            blocking_fences=blocking,
+            bad_stands=self._bad_refill_tiles,
+        ):
+            if self._try_open_pond_access(ram, list(blocking)):
+                return
+
+        # 3) Preferred-edge search (still F0/F9–FD only) as fallback.
         edges = find_pond_edges(
             ram,
             self.refill_bounds or self.bounds,
@@ -1785,9 +1917,7 @@ class CropWaterTask(Task):
         )
         if self._bad_refill_tiles:
             edges = [(t, f) for t, f in edges if t not in self._bad_refill_tiles]
-        # Defense in depth: drop known-bad stands even if find_pond_edges kept them.
         edges = [(t, f) for t, f in edges if not is_bad_refill_stand(t)]
-        # Drop edges that face non-fill water (should not happen with preferred set).
         edges = [
             (t, f)
             for t, f in edges
@@ -1803,16 +1933,12 @@ class CropWaterTask(Task):
             self._advance_water_step(ram)
             return
 
-        player = self._navigator.current_tile
-        # Preferred CheckToolSuccess water: main pond → south → north → mid, then dist.
-        edges.sort(
-            key=lambda e: refill_edge_sort_key(
-                e, player, edge_water_tile_id(ram, e[0], e[1])
-            )
+        edges = order_preferred_edges(
+            edges,
+            player,
+            water_id_for=lambda t, f: edge_water_tile_id(ram, t, f),
         )
 
-        # Path-verify: full BFS first, then hop — both only among preferred water.
-        # Never fall back to non-fill F8 just because it has a full path.
         chosen = None
         chosen_water = -1
         check_n = min(len(edges), 40)
@@ -1830,15 +1956,11 @@ class CropWaterTask(Task):
                     hop_fallback = (tile, face, water_id)
 
         if chosen is None and hop_fallback is not None:
-            # Hop toward preferred only when at least one preferred stand shares
-            # the reachable component OR we are already past the fence wall.
-            # Otherwise hop_toward always returns a partial path that stalls.
             tile, face, water_id = hop_fallback
             full_any_preferred = any(
                 self._pathfinder.find_path(ram, player, t) is not None
                 for t, _f in edges[:check_n]
             )
-            blocking = pond_access_blocking_fences(ram)
             if full_any_preferred or not blocking:
                 chosen = (tile, face)
                 chosen_water = water_id
@@ -1846,20 +1968,11 @@ class CropWaterTask(Task):
                     f"[CROP] Refill using hop path (no full BFS) to "
                     f"({tile[0]},{tile[1]}) water=0x{water_id:02X}"
                 )
-            else:
-                # West pocket walled off by y=31 fences — open corridor first.
-                opened = self._try_open_pond_access(ram, blocking)
-                if opened:
-                    # Re-run selection after corridor open attempt starts.
-                    return
-                print(
-                    f"[CROP] Preferred water blocked by fence wall y=31 "
-                    f"(n={len(blocking)}); cannot hop to pond from {player}"
-                )
+            elif blocking and self._try_open_pond_access(ram, list(blocking)):
+                return
 
         if chosen is None:
-            blocking = pond_access_blocking_fences(ram)
-            if blocking and self._try_open_pond_access(ram, blocking):
+            if blocking and self._try_open_pond_access(ram, list(blocking)):
                 return
             self._refill_exhausted = True
             remaining = len(self._water_steps) - self._water_index
@@ -1875,22 +1988,43 @@ class CropWaterTask(Task):
             self._advance_water_step(ram)
             return
 
-        self._refill_pond_tile, self._refill_pond_face = chosen
+        self._commit_refill_nav(
+            ram,
+            chosen[0],
+            chosen[1],
+            current_lvl,
+            source="preferred_edge",
+            water_id=chosen_water,
+        )
+
+    def _commit_refill_nav(
+        self,
+        ram: np.ndarray,
+        stand: Tuple[int, int],
+        face: str,
+        current_lvl: int,
+        *,
+        source: str,
+        water_id: int = 0xF0,
+    ) -> None:
+        """Begin navigate/act for a chosen refill stand."""
+        player = self._navigator.current_tile
+        self._refill_pond_tile = stand
+        self._refill_pond_face = face
         self._refill_level_before = current_lvl
-        self._clear_crop_walkable()  # refill pathing shouldn't use crop override
+        self._clear_crop_walkable()
         self._plot_phase = "refill"
-        self._target_tile = self._refill_pond_tile
-        self._approach_tile = self._refill_pond_tile
-        self._face_direction = self._refill_pond_face
+        self._target_tile = stand
+        self._approach_tile = stand
+        self._face_direction = face
         self._state = "navigate"
         self._navigator.path = []
         self._steps_on_target = 0
-        dist = abs(chosen[0][0] - player[0]) + abs(chosen[0][1] - player[1])
-        band = refill_stand_band(chosen[0])
-        pref = chosen_water in REFILL_PREFERRED_WATER_TILES
+        dist = abs(stand[0] - player[0]) + abs(stand[1] - player[1])
+        band = refill_stand_band(stand)
         print(
-            f"[CROP] Refill at ({chosen[0][0]},{chosen[0][1]}) facing {chosen[1]} "
-            f"water=0x{chosen_water:02X} preferred={pref} dist={dist} band={band} "
+            f"[CROP] Refill at ({stand[0]},{stand[1]}) facing {face} "
+            f"water=0x{water_id:02X} source={source} dist={dist} band={band} "
             f"can={current_lvl}"
         )
 
@@ -1920,36 +2054,31 @@ class CropWaterTask(Task):
             return False
         player = self._navigator.current_tile
         staging_tiles = self._pond_access_staging_tiles()
-        if player in staging_tiles:
-            self._pond_staged = True
+
+        def _hop(start: Tuple[int, int], goal: Tuple[int, int]):
+            return self._find_nav_path(ram, start, goal)
+
+        target = select_staging_stand(player, _hop, staging_tiles=staging_tiles)
+        if target is None:
             return False
-        # Only stage when still north of the wall in the west/mid field.
-        if player[1] > 30 or player[0] > 28:
+        if target.stand == player:
+            self._pond_staged = True
             return False
 
-        candidates = sorted(
-            staging_tiles,
-            key=lambda t: abs(t[0] - player[0]) + abs(t[1] - player[1]),
+        self._pond_staged = True
+        self._pending_fence_open = True
+        self._plot_phase = "stage_pond"
+        self._target_tile = target.stand
+        self._approach_tile = target.stand
+        self._face_direction = target.face
+        self._state = "navigate"
+        self._navigator.path = []
+        self._steps_on_target = 0
+        print(
+            f"[CROP] Staging pond access via ({target.stand[0]},{target.stand[1]}) "
+            f"from {player} (named corridor)"
         )
-        for stage in candidates:
-            path = self._find_nav_path(ram, player, stage)
-            if path is None:
-                continue
-            self._pond_staged = True
-            self._pending_fence_open = True
-            self._plot_phase = "stage_pond"
-            self._target_tile = stage
-            self._approach_tile = stage
-            self._face_direction = "down"
-            self._state = "navigate"
-            self._navigator.path = []
-            self._steps_on_target = 0
-            print(
-                f"[CROP] Staging pond access via ({stage[0]},{stage[1]}) "
-                f"from {player} (avoid plant-pocket soft-block)"
-            )
-            return True
-        return False
+        return True
 
     def _try_open_pond_access(
         self,
@@ -2513,12 +2642,7 @@ class CropWaterTask(Task):
                 self._start_refill(ram)  # try another water edge
 
         if self._state == "done":
-            msg = f"planted={self.planted_count} watered={self.watered_count} refills={self.refill_count}"
-            if self.skipped_water:
-                msg += f" skipped={self.skipped_water}"
-            msg += f" passes={self._pass_number}"
-            print(f"[CROP] Complete: {msg}")
-            return TaskResult(status=TaskStatus.SUCCESS, reason=msg)
+            return self._terminal_result()
 
         return None
 
@@ -2599,7 +2723,8 @@ class CropWaterTask(Task):
             # seeds and rain, short-circuit so day plan can finish.
             # Water-only mode still scans (rain already watered; detect will no-op).
             print(f"[CROP] Rain and seed tool 0x{wanted:02X} not in carry pair; no crop work needed")
-            return TaskResult(status=TaskStatus.SUCCESS, reason=f"rain; seed tool 0x{wanted:02X} not in carry pair")
+            self._snapshot_start_acceptance(world.ram)
+            return self._terminal_result(rain=True)
 
         # Do not fail early when the watering can is out of the 2-slot carry pair.
         # Day plan often leaves seeds in-hand after ENSURE_CROP_SEEDS; we still
@@ -2671,8 +2796,7 @@ class CropWaterTask(Task):
 
         # Check if all plots done
         if self._state == "done":
-            msg = f"planted={self.planted_count} watered={self.watered_count} refills={self.refill_count}"
-            return TaskResult(status=TaskStatus.SUCCESS, reason=msg)
+            return self._terminal_result()
 
         # State dispatch
         if self._state == "fence_open":

@@ -27,9 +27,13 @@ from zelda_i.overworld import ScreenHop
 from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
-# --- Live-verified geometry ---
-SCREEN_LEVEL6_ENTRANCE = 0x22  # overworld door (live)
-LEVEL6_ENTRY_ROOM = 0x79  # dungeon south mouth after mode-16 settle
+# --- Live-verified geometry; entrance from anchors ---
+from zelda_i.anchors import (
+    LEVEL6_ENTRY_ROOM,
+    SCREEN_LEVEL6_ENTRANCE,
+    TF_BIT_L6 as LEVEL6_TRIFORCE_BIT,
+)
+
 LEVEL6_EAST_KEY_ROOM = 0x7A  # RIGHT of entry (type 0x24 ×5 + key 0x19)
 LEVEL6_WEST_WIZZROBE_ROOM = 0x78  # LEFT of entry via key door (5× type 0x24)
 LEVEL6_OLD_MAN_ROOM = 0x6A  # UP key door from 0x7a — DO NOT spend first key
@@ -38,7 +42,6 @@ LEVEL6_DOOR_X = 112  # preferred for south-path fixture L6Probe_22
 LEVEL6_DOOR_X_LO = 24
 LEVEL6_DOOR_X_HI = 120
 LEVEL6 = 6
-LEVEL6_TRIFORCE_BIT = 0x20
 WIZZROBE_ORANGE_TYPE = 0x24  # walkthrough-correlated; live on 0x7a / 0x78
 
 # Entry RIGHT door (fire-block bypass)

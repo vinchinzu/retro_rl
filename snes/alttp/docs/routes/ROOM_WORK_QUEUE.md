@@ -5,7 +5,7 @@ Continuous tip is **NW chamber room 0x50** (after `castle_dungeon_prefix`).
 Tip exit **0x50 east → 0x01** is natural_entry. Ranked for next work: **B1 stairs after 0x01 chain → Zelda cell → follower → escort**.
 Internal 0x55 key/shutter path is **alternate practice**, not primary.
 
-Generated: `2026-08-02T14:38:49.438819+00:00`
+Generated: `2026-08-08T03:17:09.323835+00:00`
 Catalog: `alttp_sanctuary_work_queue` schema 1
 States: **61**
 Sanctuary claimed: **False**
@@ -18,6 +18,8 @@ uv run python alttp/scripts/export_work_queue.py --json
 ```
 
 Artifacts: `docs/routes/ROOM_WORK_QUEUE.md` · `recordings/room_work_queue.json`.
+
+Source data: `opening_route/work_queue_data.yaml` (curated status/notes; Python discovers + ranks).
 
 ## Work focus (next toward Sanctuary)
 

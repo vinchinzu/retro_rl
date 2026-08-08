@@ -52,10 +52,13 @@ from zelda_i.ram import (
 )
 
 # --- Anchors ---
+from zelda_i.anchors import (
+    SCREEN_CANDLE_SHOP,
+    SCREEN_LEVEL8_BUSH,
+    TF_BIT_L8 as TRIFORCE_BIT_L8,
+)
+
 LEVEL_8 = 8
-TRIFORCE_BIT_L8 = 0x80
-# Live: bush dead-end pocket south of 0x5D @ x≈48.
-SCREEN_LEVEL8_BUSH = 0x6D
 SCREEN_LEVEL8_BUSH_PLANNED = SCREEN_LEVEL8_BUSH  # alias
 # Unknown until live dungeon settle (mode 16→5, level==8) after burn.
 SCREEN_LEVEL8_ENTRY_ROOM: int | None = None
@@ -96,7 +99,6 @@ LEVEL8_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = LEVEL2_5C_MAZE_WAYPOINTS
 # also sells candle but is a longer detour from the L8 bush corridor).
 CANDLE_SHOP_PRICE_SOURCE = 60
 CANDLE_SHOP_PRICE = CANDLE_SHOP_PRICE_SOURCE
-SCREEN_CANDLE_SHOP = 0x5E
 CANDLE_SHOP_SCREEN_LIVE: int = SCREEN_CANDLE_SHOP
 CANDLE_SHOP_STATE = "CandleShop5E"
 # Cave mouth on OW 0x5E (mode 16→11). Enter UP @ x≈112 from mid-screen.

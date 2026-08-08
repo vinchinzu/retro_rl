@@ -25,6 +25,13 @@ from super_metroid.tas.rle import (
     load_snes12_rle_seed,
 )
 from super_metroid.tas.slice import SLICE_CATALOG, export_slice, load_movie_frames
+from super_metroid.tas.stages import (
+    STAGE_CATALOG,
+    RoomStageSpec,
+    export_room_body_spec,
+    get_stage,
+    is_room_settled,
+)
 from super_metroid.tas.trace import (
     MovieTrace,
     resolve_frames,
@@ -35,12 +42,17 @@ from super_metroid.tas.trace import (
 __all__ = [
     "Annotator",
     "MovieTrace",
+    "RoomStageSpec",
     "SLICE_CATALOG",
+    "STAGE_CATALOG",
     "TraceEvent",
     "compress_snes12_rle",
     "expand_snes12_rle",
+    "export_room_body_spec",
     "export_slice",
     "frames_to_snes12_rle_payload",
+    "get_stage",
+    "is_room_settled",
     "load_movie_frames",
     "load_snes12_rle_seed",
     "parse_bk2",
