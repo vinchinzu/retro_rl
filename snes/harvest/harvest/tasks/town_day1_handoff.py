@@ -423,11 +423,23 @@ def build_day1_handoff_tasks(
     include_sleep: bool = True,
     require_full_mask: bool = True,
     pick_starter_tools: bool = True,
+    require_starter_tools: bool = False,
+    use_rest_recording: bool = True,
 ) -> SequenceTask:
     """Build the full D1 town → truck → shed pickups → optional sleep sequence.
 
     Talk stands verified from ``tasks/town_day1_rest.json`` (Ann|Eve start,
     full mask 0x3F, truck cutscene → house, sleep → D2). Outdoor talks first.
+
+    ``require_starter_tools`` forces shed grass+can into carry (Gate B /
+    ``house_size=0``). Soft-optional when false so AnnEve ``house_size=2``
+    fixtures can still finish the truck/sleep path.
+
+    ``use_rest_recording``: when True and the rest capture exists, replay it
+    for the remaining four talks + truck + sleep (AnnEve oracle path). When
+    False (clean power-on / Town_Gate with Ann|Eve still open), use composed
+    pure routes — the rest recording desyncs if Ann|Eve were just run pure
+    (input_lock / path drift).
     """
     # Flower owner: enter shop, remap, push to counter stand ~(34,347), face down A.
     # town_day1_rest bit 0x08 at (34,347) Down+A.
@@ -528,7 +540,7 @@ def build_day1_handoff_tasks(
     truck = SequenceTask(
         name="truck_leave",
         tasks=(
-            _nav("to_truck", _clone_route("d1_town_to_truck"), timeout=4000, settle=15),
+            _nav("to_truck", _clone_route("d1_town_to_truck"), timeout=7000, settle=15),
             _TruckLeaveTask(),
         ),
     )
@@ -539,11 +551,11 @@ def build_day1_handoff_tasks(
         _talk_route("eve", "d1_town_to_eve", BIT_EVE, face="up", timeout=5000),
     ]
     if require_full_mask:
-        # Prefer the verified human capture for the remaining four talks + truck
-        # + house cutscene when bits are still open. Falls back to composed
-        # routes only when the recording is unavailable.
+        # Prefer the verified human capture only when the run already matches
+        # its AnnEve entry (mask 0x03). Clean power-on/Town_Gate must use
+        # composed pure routes — rest desyncs after pure Ann|Eve (rr-bhr).
         rest_path = __import__("os").path.join(TASKS_DIR, "town_day1_rest.json")
-        if __import__("os").path.isfile(rest_path):
+        if use_rest_recording and __import__("os").path.isfile(rest_path):
             # Full human rest capture (Ann|Eve → mask 0x3F → truck → house sleep
             # → D2). Mask clears on day advance, so assert peak mask mid-run is
             # not possible after the fact; success is day≥2 + optional shed.
@@ -654,11 +666,16 @@ def build_day1_handoff_tasks(
                 ]
             )
         if pick_starter_tools:
-            # Free D1 grass bag + watering can into carry. Soft-optional:
-            # AnnEve/rest fixtures have house_size=2 and ExitToFarm can fall
-            # into tilemap 0x5F. Verified required path: house_size=0 morning
-            # house (Y1_Inside_House / clean power-on D2).
-            parts.append(_shed_starter_tools(exit_when_done=True, required=False))
+            # Free D1 grass bag + watering can into carry.
+            # Required on clean house_size=0 (power-on / Gate B). Soft-optional
+            # when house_size!=0: AnnEve/rest fixtures are size2 and ExitToFarm
+            # can fall into tilemap 0x5F.
+            parts.append(
+                _shed_starter_tools(
+                    exit_when_done=True,
+                    required=bool(require_starter_tools),
+                )
+            )
         if include_sleep:
             parts.append(GoToSleepTask(name="sleep_to_d2", timeout=12000))
     else:
@@ -796,11 +813,12 @@ class _TruckLeaveTask(Task):
     """Talk to the truck/shipper and accept leave until we leave town or set 0x40."""
 
     name: str = "truck_leave_dialog"
-    timeout: int = 1800
+    timeout: int = 3600
 
     _step_count: int = field(default=0, init=False)
     _queue: deque = field(default_factory=deque, init=False)
     _pressed: bool = field(default=False, init=False)
+    _face_cycle: Tuple[str, ...] = ("left", "up", "left", "down")
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
@@ -820,10 +838,10 @@ class _TruckLeaveTask(Task):
                 reason=f"left town tm=0x{tilemap:02X} mask=0x{mask:02X}",
             )
         if self._step_count > self.timeout:
-            # Soft continue — gate walk may still work if talks are done.
+            # Still in town — fail so shed is not attempted from the road.
             return TaskResult(
-                status=TaskStatus.SUCCESS,
-                reason=f"truck soft-continue mask=0x{mask:02X}",
+                status=TaskStatus.FAILURE,
+                reason=f"truck leave stuck in town mask=0x{mask:02X}",
             )
 
         queued = drain_action_queue(self._queue)
@@ -836,8 +854,9 @@ class _TruckLeaveTask(Task):
             SceneMode.DIALOGUE,
             SceneMode.MENU,
         }:
-            # Prefer A; occasional down to move menu cursor on multi-choice.
-            if self._step_count % 18 == 0:
+            # Leave menu: cycle down a few times then A (rest recording uses A/down).
+            phase = self._step_count % 24
+            if phase in {0, 6, 12}:
                 return TaskResult(
                     status=TaskStatus.RUNNING,
                     action=ActionResult(make_action(down=True)),
@@ -845,15 +864,17 @@ class _TruckLeaveTask(Task):
                 )
             return dismiss_dialogue_result(self._step_count, reason="truck dialog")
 
-        if not self._pressed or self._step_count % 200 == 0:
+        # Re-approach from a few facings — truck sprite stand is picky.
+        if not self._pressed or self._step_count % 160 == 0:
             self._pressed = True
+            face = self._face_cycle[(self._step_count // 160) % len(self._face_cycle)]
             self._queue.extend(
                 press_a_sequence(
-                    "left",
-                    face_frames=4,
-                    pre_press_settle_frames=6,
-                    hold_frames=22,
-                    settle_frames=12,
+                    face,
+                    face_frames=6,
+                    pre_press_settle_frames=8,
+                    hold_frames=24,
+                    settle_frames=14,
                 )
             )
             queued = drain_action_queue(self._queue)
@@ -870,17 +891,36 @@ class TownDay1HandoffTask(Task):
     include_sleep: bool = True
     require_full_mask: bool = True
     pick_starter_tools: bool = True
+    # None = auto: require shed when house_size==0 (clean power-on / Gate B).
+    require_starter_tools: Optional[bool] = None
     timeout: int = 90_000
 
     _inner: Optional[SequenceTask] = field(default=None, init=False)
     _step_count: int = field(default=0, init=False)
+    _require_starter_tools_effective: bool = field(default=False, init=False)
+    _house_size_at_start: int = field(default=-1, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
+        house_size = int(read_ram_value(world.ram, "house_size", raw=True))
+        self._house_size_at_start = house_size
+        if self.require_starter_tools is None:
+            # Clean starter house is size 0; upgraded fixtures (AnnEve) are 2.
+            require_shed = house_size == 0
+        else:
+            require_shed = bool(self.require_starter_tools)
+        self._require_starter_tools_effective = require_shed
+        # Rest recording only when Ann|Eve bits already set (AnnEve oracle).
+        # Clean power-on/Town_Gate (mask 0) must compose pure routes (rr-bhr).
+        start_mask = read_mask(world.ram)
+        ann_eve_ready = (start_mask & (BIT_ANN | BIT_EVE)) == (BIT_ANN | BIT_EVE)
+        use_rest = ann_eve_ready and not require_shed
         self._inner = build_day1_handoff_tasks(
             include_sleep=self.include_sleep,
             require_full_mask=self.require_full_mask,
             pick_starter_tools=self.pick_starter_tools,
+            require_starter_tools=require_shed,
+            use_rest_recording=use_rest,
         )
         self._inner.reset(world)
 
@@ -918,6 +958,9 @@ class TownDay1HandoffTask(Task):
             "has_watering_can": tool_in_carry_pair(world.ram, int(Tool.WATERING_CAN)),
             "has_grass_seeds": tool_in_carry_pair(world.ram, seed_item_id("grass")),
             "grass_seeds_stock": int(read_ram_value(world.ram, "grass_seeds")),
+            "house_size": int(read_ram_value(world.ram, "house_size", raw=True)),
+            "house_size_at_start": self._house_size_at_start,
+            "require_starter_tools": self._require_starter_tools_effective,
             "frames": self._step_count,
             "phase": (
                 self._inner.progress_snapshot().phase_text if self._inner is not None else ""

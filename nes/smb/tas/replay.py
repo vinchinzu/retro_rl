@@ -82,3 +82,13 @@ def play_body(
     body = frames[start:] if n is None else frames[start : start + n]
     for fr in body:
         env.step(to_action9(fr))
+
+
+def make_level1_env() -> Any:
+    """Fresh ``Level1_1`` fceumm env (rgb_array, already ``reset()``)."""
+    from retro_harness.env import make_env
+    from smb.paths import GAME_DIR, GAME_V0
+
+    env = make_env(GAME_V0, "Level1_1", GAME_DIR, render_mode="rgb_array")
+    env.reset()
+    return env

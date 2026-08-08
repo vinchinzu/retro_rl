@@ -33,12 +33,15 @@ from zelda_i.overworld import ScreenHop
 from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
-# --- Geometry (live recon 2026-08-06) ---
-SCREEN_LOST_HILLS = 0x1B
-SCREEN_LEVEL5_DOOR = 0x0B
-LEVEL5_ENTRY_ROOM = 0x76
+# --- Geometry (live recon 2026-08-06); screens from anchors ---
+from zelda_i.anchors import (
+    LEVEL5_ENTRY_ROOM,
+    SCREEN_LEVEL5_DOOR,
+    SCREEN_LOST_HILLS,
+    TF_BIT_L5 as LEVEL5_TRIFORCE_BIT,
+)
+
 LEVEL5_DOOR_X = 112
-LEVEL5_TRIFORCE_BIT = 0x10
 LEVEL5_LEVEL_ID = 5
 
 # Mid-east approach into Lost Hills (stops on 0x1B after pocket free is separate).

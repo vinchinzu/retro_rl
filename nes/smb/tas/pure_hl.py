@@ -23,11 +23,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-import numpy as np
-
 from smb.paths import GAME_DIR, GAME_V0, MODELS_DIR, RECORDINGS_DIR
 from smb.ram import PLAYER_STATE_DYING, reached_ending, read_snapshot
 from smb.tas.fm2 import frames_to_nes9_rle_payload, parse_fm2
+from smb.tas.replay import IDLE, get_state, idle_until, set_state, to_action9
+from smb.tas.chain import reach_8_1_control_after_hl_w8
 from smb.tas.slice import (
     DEFAULT_FM2,
     DEFAULT_HL_1_1,
@@ -41,8 +41,8 @@ from smb.tas.slice import (
     probe_8_1_from_control,
     probe_8_2_from_control,
     probe_8_3_from_control,
-    reach_8_1_control_after_hl_w8,
 )
+from smb.tas.stages import snap_fingerprint
 
 # ---------------------------------------------------------------------------
 # Isolation paths (hard rules)
@@ -79,33 +79,6 @@ TRACK_RULES = (
 # Gate file: written only when pure 8-3 → 8-4 control is verified.
 PURE_8_3_GATE = PURE_HL_MODELS / "gate_8_3_leave.json"
 PURE_8_3_SEED = PURE_HL_MODELS / "smb_8_3_pure_hl.json"
-
-IDLE = np.zeros(9, dtype=np.int8)
-
-
-def _act(fr) -> np.ndarray:
-    a = np.zeros(9, dtype=np.int8)
-    for i, v in enumerate(fr[:9]):
-        a[i] = int(v)
-    return a
-
-
-def _em(env):
-    return env.em if hasattr(env, "em") else env.unwrapped.em
-
-
-def _snap_fp(snap) -> dict[str, int]:
-    return {
-        "world": int(snap.world),
-        "level": int(snap.level),
-        "area_pointer": int(getattr(snap, "area_pointer", -1) or -1),
-        "oper_mode": int(snap.oper_mode),
-        "player_state": int(snap.player_state),
-        "player_x": int(snap.player_x),
-        "player_y": int(snap.player_y),
-        "timer": int(snap.timer),
-        "lives": int(snap.lives),
-    }
 
 
 def ensure_pure_dirs() -> None:
@@ -193,18 +166,6 @@ def track_status() -> dict[str, Any]:
     }
 
 
-def wait_pred(env, predicate, max_wait: int = 600) -> tuple[int, Any]:
-    wait = 0
-    snap = read_snapshot(env.get_ram(), 0)
-    while wait < max_wait:
-        snap = read_snapshot(env.get_ram(), 0)
-        if predicate(snap):
-            return wait, snap
-        env.step(IDLE)
-        wait += 1
-    return wait, snap
-
-
 @dataclass
 class PureChainTo83:
     """HL pure predecessor through 8-3 control (idle blackouts)."""
@@ -254,43 +215,43 @@ def build_pure_to_8_3_control(
 
     lives = int(pred["control_snap"].lives)
     tr81 = probe_8_1_from_control(env, fm2, start_8_1, start_lives=lives)
-    if tr81.w4 is None or tr81.death is not None:
+    if not tr81.ok:
         return PureChainTo83(
             success=False,
             error="8_1_body_failed",
-            leave_8_1=tr81.w4,
+            leave_8_1=tr81.leave_frame,
             ctrl_wait_8_1=pred.get("ctrl_wait_8_1"),
         )
 
-    wait82, snap82 = wait_pred(env, is_8_2_control)
+    wait82, snap82 = idle_until(env, is_8_2_control)
     if not is_8_2_control(snap82):
         return PureChainTo83(
             success=False,
             error="8_2_control_timeout",
-            leave_8_1=tr81.w4,
+            leave_8_1=tr81.leave_frame,
             wait_8_2=wait82,
             ctrl_wait_8_1=pred.get("ctrl_wait_8_1"),
         )
 
     tr82 = probe_8_2_from_control(env, fm2, start_8_2, start_lives=int(snap82.lives))
-    if tr82.w4 is None or tr82.death is not None:
+    if not tr82.ok:
         return PureChainTo83(
             success=False,
             error="8_2_body_failed",
-            leave_8_1=tr81.w4,
+            leave_8_1=tr81.leave_frame,
             wait_8_2=wait82,
-            leave_8_2=tr82.w4,
+            leave_8_2=tr82.leave_frame,
             ctrl_wait_8_1=pred.get("ctrl_wait_8_1"),
         )
 
-    wait83, snap83 = wait_pred(env, is_8_3_control)
+    wait83, snap83 = idle_until(env, is_8_3_control)
     if not is_8_3_control(snap83):
         return PureChainTo83(
             success=False,
             error="8_3_control_timeout",
-            leave_8_1=tr81.w4,
+            leave_8_1=tr81.leave_frame,
             wait_8_2=wait82,
-            leave_8_2=tr82.w4,
+            leave_8_2=tr82.leave_frame,
             wait_8_3=wait83,
             ctrl_wait_8_1=pred.get("ctrl_wait_8_1"),
         )
@@ -307,15 +268,22 @@ def build_pure_to_8_3_control(
     )
     base = sum(int(pred.get(k) or 0) for k in base_keys)
     wait81 = int(pred.get("ctrl_wait_8_1") or 0)
-    total = base + wait81 + int(tr81.w4) + wait82 + int(tr82.w4) + wait83
+    total = (
+        base
+        + wait81
+        + int(tr81.leave_frame)
+        + wait82
+        + int(tr82.leave_frame)
+        + wait83
+    )
 
     return PureChainTo83(
         success=True,
-        leave_8_1=tr81.w4,
+        leave_8_1=tr81.leave_frame,
         wait_8_2=wait82,
-        leave_8_2=tr82.w4,
+        leave_8_2=tr82.leave_frame,
         wait_8_3=wait83,
-        control_8_3_fp=_snap_fp(snap83),
+        control_8_3_fp=snap_fingerprint(snap83),
         ctrl_wait_8_1=wait81,
         approx_total_to_8_3_control=total,
     )
@@ -377,7 +345,7 @@ def probe_continuous_from_8_2(
     death = ending = None
     enter83 = enter84 = ctrl83_at = leave83 = None
     for i in range(n):
-        env.step(_act(body[i]))
+        env.step(to_action9(body[i]))
         ram = env.get_ram()
         snap = read_snapshot(ram, i + 1)
         px = int(snap.player_x)
@@ -462,11 +430,11 @@ def probe_8_3_continuous(
 
     lives81 = int(pred["control_snap"].lives)
     tr81 = probe_8_1_from_control(env, fm2, start_8_1, start_lives=lives81)
-    if tr81.w4 is None or tr81.death is not None:
+    if not tr81.ok:
         env.close()
         return {"success": False, "error": "8_1_body_failed", "probe": tr81.to_dict()}
 
-    wait82, snap82 = wait_pred(env, is_8_2_control)
+    wait82, snap82 = idle_until(env, is_8_2_control)
     if not is_8_2_control(snap82):
         env.close()
         return {"success": False, "error": "8_2_control_timeout", "wait82": wait82}
@@ -482,7 +450,7 @@ def probe_8_3_continuous(
         "pure_fm2_only": True,
         "si_8_1": start_8_1,
         "si_8_2": si_8_2,
-        "leave_8_1": tr81.w4,
+        "leave_8_1": tr81.leave_frame,
         "wait_8_2": wait82,
         "ctrl_wait_8_1": pred.get("ctrl_wait_8_1"),
         **trial,
@@ -539,19 +507,18 @@ def search_pure_8_3(
         return {"success": False, "error": "8_1_control_failed"}
 
     lives81 = int(pred["control_snap"].lives)
-    st81 = _em(env).get_state()
     tr81 = probe_8_1_from_control(env, fm2, start_8_1, start_lives=lives81)
-    if tr81.w4 is None or tr81.death is not None:
+    if not tr81.ok:
         env.close()
         return {"success": False, "error": "8_1_body_failed", "probe": tr81.to_dict()}
 
-    wait82, snap82 = wait_pred(env, is_8_2_control)
+    wait82, snap82 = idle_until(env, is_8_2_control)
     if not is_8_2_control(snap82):
         env.close()
         return {"success": False, "error": "8_2_control_timeout"}
     lives82 = int(snap82.lives)
-    st82 = _em(env).get_state()
-    log(f"pure_hl: 8-2 control wait82={wait82} leave81={tr81.w4}")
+    st82 = get_state(env)
+    log(f"pure_hl: 8-2 control wait82={wait82} leave81={tr81.leave_frame}")
 
     report: dict[str, Any] = {
         "track": TRACK_NAME,
@@ -561,7 +528,7 @@ def search_pure_8_3(
         "no_natural_82": True,
         "si_8_1": start_8_1,
         "si_8_2_default": start_8_2,
-        "leave_8_1": tr81.w4,
+        "leave_8_1": tr81.leave_frame,
         "wait_8_2": wait82,
         "ctrl_wait_8_1": pred.get("ctrl_wait_8_1"),
         "gated_hits": [],
@@ -576,7 +543,7 @@ def search_pure_8_3(
     if cont_si82_min is not None and cont_si82_max is not None:
         cont_best = None
         for si in range(cont_si82_min, cont_si82_max + 1, cont_si82_step):
-            _em(env).set_state(st82)
+            set_state(env, st82)
             trial = probe_continuous_from_8_2(
                 env, fm2, si, start_lives=lives82, max_play=cont_max_play
             )
@@ -603,9 +570,9 @@ def search_pure_8_3(
             log(f"pure_hl: CONTINUOUS LEAVE 8-3 at si82={cont_best['si']}")
 
     # --- Gated SI search ---
-    _em(env).set_state(st82)
+    set_state(env, st82)
     tr82 = probe_8_2_from_control(env, fm2, start_8_2, start_lives=lives82)
-    if tr82.w4 is None or tr82.death is not None:
+    if not tr82.ok:
         env.close()
         report["error"] = "8_2_body_failed_for_gated"
         report["probe_82"] = tr82.to_dict()
@@ -613,7 +580,7 @@ def search_pure_8_3(
             write_json(PURE_HL_EVIDENCE / "search_8_3.json", report)
         return report
 
-    wait83, snap83 = wait_pred(env, is_8_3_control)
+    wait83, snap83 = idle_until(env, is_8_3_control)
     if not is_8_3_control(snap83):
         env.close()
         report["error"] = "8_3_control_timeout"
@@ -623,12 +590,12 @@ def search_pure_8_3(
         return report
 
     lives83 = int(snap83.lives)
-    st83 = _em(env).get_state()
+    st83 = get_state(env)
     report["wait_8_3"] = wait83
-    report["leave_8_2"] = tr82.w4
-    report["control_8_3_fp"] = _snap_fp(snap83)
+    report["leave_8_2"] = tr82.leave_frame
+    report["control_8_3_fp"] = snap_fingerprint(snap83)
     log(
-        f"pure_hl: 8-3 control wait83={wait83} leave82={tr82.w4} "
+        f"pure_hl: 8-3 control wait83={wait83} leave82={tr82.leave_frame} "
         f"t={snap83.timer} x={snap83.player_x}"
     )
 
@@ -638,7 +605,7 @@ def search_pure_8_3(
     for lead in lead_idles:
         for si in range(si_min, si_max + 1, si_step):
             n_trials += 1
-            _em(env).set_state(st83)
+            set_state(env, st83)
             for _ in range(lead):
                 env.step(IDLE)
             tr = probe_8_3_from_control(
@@ -647,22 +614,22 @@ def search_pure_8_3(
             row = {
                 "si": si,
                 "lead": lead,
-                "leave": tr.w4,
+                "leave": tr.leave_frame,
                 "death": tr.death,
                 "max_x": tr.max_x,
                 "exits": tr.exits,
             }
-            if tr.w4 is not None and tr.death is None:
+            if tr.ok:
                 hits.append(row)
-                log(f"  HIT gated si={si} lead={lead} leave={tr.w4}")
+                log(f"  HIT gated si={si} lead={lead} leave={tr.leave_frame}")
                 if export_on_hit and report.get("exported") is None:
                     # Export pure body only; open gate.
                     exp = export_pure_8_3(
                         start_idx=si,
-                        leave_frames=int(tr.w4),
+                        leave_frames=int(tr.leave_frame),
                         lead_idle=lead,
                         ctrl_fp=report["control_8_3_fp"],
-                        leave_8_2=int(tr82.w4 or 0),
+                        leave_8_2=int(tr82.leave_frame or 0),
                         wait_8_3=wait83,
                         verify=False,  # already just left
                     )
@@ -785,16 +752,16 @@ def export_pure_8_3(
             env, fm2, start_idx, max_play=leave_frames + 50, start_lives=lives
         )
         # Also confirm 8-4 control after leave
-        ok_leave = tr.w4 is not None and tr.death is None
+        ok_leave = tr.ok
         ok_84 = False
         if ok_leave:
-            wait84, snap84 = wait_pred(env, is_8_4_control, max_wait=400)
+            wait84, snap84 = idle_until(env, is_8_4_control, max_wait=400)
             ok_84 = is_8_4_control(snap84)
             gate["wait_8_4"] = wait84
-            gate["control_8_4_fp"] = _snap_fp(snap84) if ok_84 else None
+            gate["control_8_4_fp"] = snap_fingerprint(snap84) if ok_84 else None
         env.close()
         gate["verified_leave_8_4_control"] = bool(ok_leave and ok_84)
-        gate["probe_leave"] = tr.w4
+        gate["probe_leave"] = tr.leave_frame
         gate["probe_death"] = tr.death
         gate["probe_max_x"] = tr.max_x
 

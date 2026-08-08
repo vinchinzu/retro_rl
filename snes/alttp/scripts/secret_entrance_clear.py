@@ -79,11 +79,21 @@ def main() -> int:
         env = build_boot_env(args.state)
         env.reset()
         primitives.settle_control(env)
+        from alttp.opening_route.secret_entrance_clear import (
+            approach_south_chamber,
+            ensure_sword_control,
+            exit_secret_entrance_stairs,
+        )
+
+        phase_fns = [ensure_sword_control]
+        if not args.no_south:
+            phase_fns.append(approach_south_chamber)
+        if not args.no_exit:
+            phase_fns.append(exit_secret_entrance_stairs)
         result = run_from_sword(
             env,
             source="state_load_dev",
-            try_south=not args.no_south,
-            try_exit=not args.no_exit,
+            phases=phase_fns,
         )
         report = result.to_report()
         args.report.write_text(json.dumps(report, indent=2) + "\n")

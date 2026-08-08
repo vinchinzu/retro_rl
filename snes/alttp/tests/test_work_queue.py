@@ -6,14 +6,30 @@ from pathlib import Path
 
 from alttp.paths import INTEGRATION_DIR
 from alttp.opening_route.work_queue import (
+    DATA_PATH,
     build_catalog,
     build_work_queue,
     classify_group,
+    curated_overrides,
     export_work_queue,
     list_state_names,
+    load_queue_data,
     rank_score,
     work_queue_to_markdown,
 )
+
+
+def test_queue_data_file_is_source_of_curated_facts() -> None:
+    assert DATA_PATH.is_file()
+    data = load_queue_data()
+    assert data["catalogId"] == "alttp_sanctuary_work_queue"
+    assert "overrides" in data and "rank" in data and "phases" in data
+    ov = curated_overrides()
+    assert ov["CastleRoom50"]["goal"] == "discover_b1_stairs"
+    assert ov["FighterSword"]["status"] == "segment_scripted"
+    # Path tags demote internal_key practice relative to primary tip.
+    assert data["pathTags"]["key_shutter"] == "internal_key"
+    assert data["pathTags"]["frontier"] == "primary"
 
 
 def test_list_state_names_nonempty() -> None:

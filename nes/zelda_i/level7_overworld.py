@@ -20,15 +20,14 @@ from zelda_i.ram import (
     read_u8,
 )
 
+from zelda_i.anchors import (
+    SCREEN_LEVEL7_BAIT_SHOP_HYP,
+    SCREEN_LEVEL7_POND_HYP,
+    TF_BIT_L7 as LEVEL7_TRIFORCE_BIT,
+)
+
 SOURCE_HYPOTHESIS = True
-
-# Bait shop Armos: start U L×3 U×3 → 0x34
-SCREEN_LEVEL7_BAIT_SHOP_HYP = 0x34
-# Pond: from shop D×2 L×2 U → 0x42
-SCREEN_LEVEL7_POND_HYP = 0x42
-
 LEVEL7 = 7
-LEVEL7_TRIFORCE_BIT = 0x40
 # Source / Data Crystal style: candle 1=blue, 2=red (confirm live).
 CANDLE_RED_PLANNED = 2
 

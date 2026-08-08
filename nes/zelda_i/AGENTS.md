@@ -41,20 +41,22 @@ uv run python -m zelda_i.tas.import_fm2 --summary-only
 
 | Path | Role |
 |------|------|
+| `anchors.py` | Canonical L3–L9 door/entry/TF constants |
 | `ram.py`, `overworld.py`, `overworld_nav.py` | Snapshots + OW graph / L1 path |
 | `ow_path.py` | Shared `OverworldPathController` (L2–L8 hop engine) |
 | `level1.py`, `level1_finish.py`, `level1_dungeon.py` | L1 combat / finish / rooms |
 | `dungeon.py` | Shared dungeon combat engine + registry |
-| `level2_dungeon.py`, `level2_overworld.py` | L2 rooms + OW approach |
-| `level3_dungeon.py`–`level6_dungeon.py` | Later-level room specs |
-| `level3_geometry.py`, `level3_boss_path.py` | L3 geometry + Raft→Manhandla→TF controller |
-| `level2_boss_path.py`, `dungeon_ops.py` | L2 Dodongo→TF path + shared door/clear ops |
-| `door_graph/` | Door topology (core + L2/L3 exit tables) |
-| `level*_overworld.py` | Path tables + thin subclasses of `ow_path` |
+| `level*_dungeon.py` | **Room specs + stop predicates only** |
+| `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall traverse |
+| `level3_path.py` | L3 door micros / west-key / north chain / raft path |
+| `level*_boss_*.py`, `dungeon_ops.py` | Boss chains + shared door/clear ops |
+| `level2_puzzles.py` | BombWall / KeyDoor geometry catalog |
+| `door_graph/` | Door topology (stands from puzzles) |
+| `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
+| `runner.py` | Shared script env/assist/report helpers |
 | `chain.py`, `routes.py` | Post-Triforce + named routes |
-| `nav_common.py`, `room_timer.py`, `dungeon_lab.py` | Shared nav + lab |
 | `assist.py` | Survival infinite-life (opt-in) |
-| `tas/` | FM2 import (fetch_refs / import_fm2); `docs/TAS_ADAPT.md` |
+| `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
 | `docs/tasks/PROCESS.md` | Dual-track + bead grain |
 
 ## Dual track

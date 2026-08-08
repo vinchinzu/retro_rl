@@ -8,6 +8,14 @@ from zelda_i.door_graph.core import (
     GateKind,
     RoomExit,
 )
+# Stands from puzzle catalog (single geometry authority).
+from zelda_i.level2_puzzles import (
+    BOMB_WALL_1E_NORTH,
+    BOMB_WALL_4F_NORTH,
+    BOMB_WALL_5F_NORTH,
+    BOMB_WALL_6F_NORTH,
+)
+
 
 # Level 2 seed (Moon) — live recon LEVEL2_ROUTE.md 2026-08-06
 # Rooms: 0x7d, 0x6d, 0x6c, 0x7e, 0x6e, 0x6f, 0x5f, 0x5e
@@ -34,10 +42,10 @@ L2_WEST_OF_BOSS = 0x0D  # LEFT after kill; TF residual
 L2_OW_DOOR_SCREEN = 0x3C  # overworld Moon door (leave-dungeon target)
 
 # Geometry anchors from live recon / pure controllers.
-_BOMB_STAND_6F_N = (120, 101)
-_BOMB_STAND_5F_N = (120, 101)  # same stand → boom 0x4f
-_BOMB_STAND_4F_N = (120, 101)  # → 0x3f
-_BOMB_STAND_1E_N = (120, 101)  # → Dodongo 0x0e (walk-UP solid)
+_BOMB_STAND_6F_N = BOMB_WALL_6F_NORTH.stand
+_BOMB_STAND_5F_N = BOMB_WALL_5F_NORTH.stand  # same stand → boom 0x4f
+_BOMB_STAND_4F_N = BOMB_WALL_4F_NORTH.stand  # → 0x3f
+_BOMB_STAND_1E_N = BOMB_WALL_1E_NORTH.stand  # → Dodongo 0x0e (walk-UP solid)
 _APPROACH_6D_LEFT = (48, 141)  # mid-height LEFT door after clear
 _APPROACH_7D_RIGHT = (208, 141)  # diamond pure push y=141
 _APPROACH_6E_RIGHT = (208, 141)  # key door; band y≈113 then push y≥137
