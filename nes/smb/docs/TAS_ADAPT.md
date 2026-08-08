@@ -370,6 +370,38 @@ HappyLee’s first non-idle input is **Start** (~frame 41), not Select.
 
 Index **1** is the stable-retro NES hole (always 0).
 
+## Three tracks (do not cross-contaminate seeds)
+
+| Track | Goal | Seeds / writes | 8-3 status | 8-4 status |
+|-------|------|----------------|------------|------------|
+| **1. Clean** | M8 power-on any% | `smb_1_1_to_ending_natural_82.json` | natural body | natural body |
+| **2. Hybrid / stitchless** | Sub-5 showcase + fold | hybrid v2, skills leave, FX 8-4 | nat bridge **or** skills leave | flamexx |
+| **3. Pure HappyLee** | Full FM2 reproduction | **only** `models/pure_hl/` + `recordings/tas_import/pure_hl/` | **open** (sync first) | **blocked** until 8-3 leave |
+
+### Track 3 — pure HappyLee (**rr-32c**)
+
+No hybrid, no natural_82, no flamexx, no skill macros. HappyLee #1715M only.
+
+```bash
+uv run python -m smb.scripts.pure_hl status
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.pure_hl verify-to-83   # gate 1
+uv run python -m smb.scripts.pure_hl probe-83        # continuous diag
+uv run python -m smb.scripts.pure_hl search-83 --with-continuous
+uv run python -m smb.scripts.pure_hl check-8-4-gate  # hard block until 8-3 leave
+```
+
+**Rules:** write only under pure_hl dirs; open `gate_8_3_leave.json` only after
+pure FM2 leaves to 8-4 control; **do not start pure 8-4** before that gate.
+Library: `smb.tas.pure_hl`.
+
+**Verified (2026-08-07):** pure chain → 8-3 control OK (wait81=209, leave81=2881,
+wait82=165, leave82=2209, wait83=165, timer=301). Continuous from 8-2 SI=10910
+enters 8-3 then dies early. Gated pure SI scan (12950–13450, leads 0–1): **0 leave
+hits**; best progress **si=12975 lead=0 max_x=2131 death@1251** (prior raw ~1030).
+Dense re-scan around 12975 (leads 0–5, max_play 3200): same best, still no leave.
+**Pure 8-4 remains hard-blocked.**
+
 ## Relation to beads / prior work
 
 - Epic **rr-asa**: TAS adapt HappyLee per-level (primary claw-back).
@@ -384,6 +416,9 @@ Index **1** is the stable-retro NES hole (always 0).
     Rich handoff FP + `stitchless_8_3` / `skills_8_3`. Grounded/pit-jump
     grids paused. **Next:** fold continuous HL…8-2 + skills 8-3 + FX 8-4;
     Clean power-on 3/3; optional 21f/FPG polish. Hybrid v2 18031 showcase only.
+  - **rr-32c (pure HL track 3):** isolated pure FM2 reproduction — **8-3 sync
+    first**, 8-4 hard-blocked until `models/pure_hl/gate_8_3_leave.json`.
+    CLI `smb.scripts.pure_hl`. Does **not** modify hybrid/natural/stitchless.
   - **rr-k96**: FPG/BBG/fast-accel named macros — open (encode after more slices).
 - **rr-9dg** (8-1 polish −42f): keep artifacts; secondary to TAS structure.
 - 8-2/8-3/8-4 hill-climb (rr-7n0, rr-yqb, rr-6m9) remains secondary until
