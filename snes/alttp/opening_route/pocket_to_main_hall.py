@@ -1,7 +1,7 @@
 """Courtyard secret pocket → main castle door → room 0x61.
 
 Measured 2026-07-30 headless from continuous tip ``courtyard_secret_pocket``
-(after ``sword_to_zelda`` stairs exit / FighterSword predecessor):
+(after ``secret_entrance_clear`` stairs exit / FighterSword predecessor):
 
 1. **Route** — bush-cut south-west out of the hedge pocket into the open
    courtyard (flower gardens ~x≤2216, y≥1900). Pure walking stays in a
@@ -564,7 +564,7 @@ def run_from_sword_through_pocket(
     *,
     source: str = "state_load_dev",
 ) -> SegmentResult:
-    """Compose sword_to_zelda (to pocket) then pocket_to_main_hall."""
+    """Compose secret_entrance_clear (to pocket) then pocket_to_main_hall."""
     from alttp.opening_route.secret_entrance_clear import run_from_sword
 
     pre = run_from_sword(env, source=source)

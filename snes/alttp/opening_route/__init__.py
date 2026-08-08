@@ -1,8 +1,8 @@
 """Opening-route continuous trunk for A Link to the Past.
 
 Owns the escape graph, opening catalog, work queue, multi-truth anchors, and
-live segment scripts (castle→sword, secret-entrance clear, pocket→main hall;
-planned main_hall→Zelda and escort→Sanctuary scaffolds). Core
+live segment scripts (castle→sword, secret-entrance clear, pocket→main hall,
+castle_dungeon_prefix; planned escort→Sanctuary scaffold). Core
 RAM/primitives/startup stay at ``alttp`` root.
 
 Preferred imports::
@@ -11,9 +11,6 @@ Preferred imports::
     from alttp.opening_route.castle_to_sword import run_natural_chain
     from alttp.opening_route.secret_entrance_clear import run_from_sword
     from alttp.opening_route.segment import get_segment, list_segments
-
-Compat shims at ``alttp.escape_graph``, ``alttp.castle_to_sword``,
-``alttp.sword_to_zelda``, etc. re-export this package for older call sites.
 """
 
 from __future__ import annotations

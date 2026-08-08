@@ -159,16 +159,13 @@ def test_segment_registry_has_continuous_segments() -> None:
     assert "sword_to_secret_entrance_clear" in reg
     assert "pocket_to_main_hall" in reg
     assert "castle_dungeon_prefix" in reg
-    assert "main_hall_to_zelda" in reg
+    assert "main_hall_to_zelda" not in reg  # planned only; not a live segment
     assert "escort_to_sanctuary" in reg
     assert set(list_segments()) == set(reg)
     seg = get_segment("castle_to_sword")
     assert seg.exit.verification == "continuous"
     assert seg.entry.graph_node_id == "castle_grounds"
 
-    planned = get_segment("main_hall_to_zelda")
-    assert planned.exit.verification == "planned"
-    assert planned.entry.graph_node_id == "room_61"
     dungeon = get_segment("castle_dungeon_prefix")
     assert dungeon.exit.verification == "continuous"
     assert dungeon.exit.graph_node_id == "room_50"
@@ -306,7 +303,8 @@ def test_entry_rejection_does_not_call_play() -> None:
     assert called == ["play"]
 
 
-def test_main_hall_to_zelda_offline_acceptance_paths() -> None:
+def test_main_hall_to_zelda_scaffold_offline() -> None:
+    """Planned scaffold only — does not run castle_dungeon_prefix."""
     import numpy as np
 
     from alttp.opening_route.main_hall_to_zelda import (
@@ -352,12 +350,18 @@ def test_main_hall_to_zelda_offline_acceptance_paths() -> None:
     result_w = run_from_main_hall(west, source="test")
     assert result_w.ok is False
     assert result_w.phase == "left_main_hall_west"
-    assert "0x60" in result_w.blocker or "B1" in result_w.blocker
+    assert "castle_dungeon" in result_w.blocker or "0x60" in result_w.blocker
 
     cell = _HallEnv(room=ZELDA_CELL_ROOM, follower=0)
     result_c = run_from_main_hall(cell, source="test")
     assert result_c.ok is False
     assert result_c.phase == "in_zelda_cell"
+
+    hall = _HallEnv(room=HYRULE_CASTLE_MAIN_HALL_ROOM, follower=0)
+    result_h = run_from_main_hall(hall, source="test")
+    assert result_h.ok is False
+    assert result_h.phase == "zelda_path_planned"
+    assert "not measured" in result_h.blocker
 
     acc = evaluate_acceptance(
         _snap(

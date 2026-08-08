@@ -6,7 +6,7 @@ Per docs/TRIGGER_HANDOFF.md, keep tiers separate:
   approach  — local window at the main castle door (coords TBD)
   trigger   — exact door entry frames / facing → indoors main hall
 
-Natural predecessor: secret-entrance stairs exit (``sword_to_zelda``).
+Natural predecessor: secret-entrance stairs exit (``secret_entrance_clear``).
 
 Usage:
   SDL_VIDEODRIVER=dummy uv run python alttp/scripts/probe_courtyard_main_door.py
@@ -39,7 +39,7 @@ from alttp.opening_route.anchors import (  # noqa: E402
     COURTYARD_SECRET_POCKET_X,
     COURTYARD_SECRET_POCKET_Y,
 )
-from alttp.opening_route.sword_to_zelda import run_from_sword  # noqa: E402
+from alttp.opening_route.secret_entrance_clear import run_from_sword  # noqa: E402
 from alttp.paths import FIGHTER_SWORD_STATE, RECORDINGS_DIR  # noqa: E402
 from alttp.ram import (  # noqa: E402
     HYRULE_CASTLE_MAIN_HALL_ROOM,
