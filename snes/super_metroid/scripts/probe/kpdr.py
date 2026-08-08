@@ -85,6 +85,7 @@ from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
     play_bubble_to_bat_cave,
     play_bubble_to_bat_cave_with_phase_capture,
 )
+from super_metroid.routes.kpdr.ice import play_business_to_ice_gate  # noqa: E402
 from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_bat_cave_to_speed_hall,
     play_business_to_cathedral_entrance,
@@ -521,6 +522,7 @@ def main() -> None:
             "zeela-to-warehouse-return",
             "business-to-frog-save",
             "business-to-cathedral-entrance",
+            "business-to-ice-gate",
             "cathedral-entrance-to-cathedral",
             "cathedral-to-rising-tide",
             "rising-tide-to-bubble",
@@ -722,6 +724,7 @@ def main() -> None:
             "zeela-to-warehouse-return": play_zeela_to_warehouse_return,
             "business-to-frog-save": play_business_to_frog_save,
             "business-to-cathedral-entrance": play_business_to_cathedral_entrance,
+            "business-to-ice-gate": play_business_to_ice_gate,
             "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
             "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
             "rising-tide-to-bubble": play_rising_tide_to_bubble,
