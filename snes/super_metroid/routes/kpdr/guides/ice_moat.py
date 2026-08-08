@@ -20,26 +20,27 @@ from super_metroid.routes.kpdr.rooms import (
 )
 
 # Business Center (0xA7DE): mid shaft Super green LEFT → Ice Gate.
-# Coarse until post-Wave return human pins land.
+# Pins from speed_to_wave_ice_moat_human.json + pure dual ~(61,922) Super plant.
 GUIDE_BUSINESS_TO_ICE = RoomGuide(
     room_id=ROOM_BUSINESS,
     name="Business → Ice Gate",
     color=_C["ice"],
     points=_pts(
-        (200, 400, "floor-band"),
-        (120, 300, "shaft"),
-        (40, 200, "green-super"),  # Super open left → Ice Gate
+        (128, 680, "elev-settle"),
+        (100, 920, "door-band"),
+        (61, 922, "green-super"),  # Super plant left → Ice Gate
     ),
 )
 
+# Pure dual entry settles right lip ~(1752, 630–651); Acid exit is further left.
 GUIDE_ICE_GATE = RoomGuide(
     room_id=ROOM_ICE_GATE,
     name="Ice Beam Gate Room",
     color=_C["ice"],
     points=_pts(
-        (480, 200, "entry"),
-        (240, 200, "mid"),
-        (40, 200, "left-door"),
+        (1752, 651, "business-entry"),
+        (900, 651, "mid-right"),
+        (40, 651, "acid-left"),  # → Acid Room 0xA75D (tape path)
     ),
 )
 
