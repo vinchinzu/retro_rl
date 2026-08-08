@@ -75,7 +75,7 @@ track under the same M0–M8 ladder — see [ROADMAP.md](ROADMAP.md).
 | Game | Directory | M1 evidence |
 |------|-----------|-------------|
 | Super Mario Bros. | `nes/smb/` | **M8** Clean power-on → 8-4 ending 3/3 + video capture |
-| Mega Man 2 | `nes/mega_man_2/` | Air Man stage playable |
+| Mega Man 2 | `nes/mega_man_2/` | **M3** Air Man screen-1 clear (camera ≥1, 3/3) |
 | Mike Tyson's Punch-Out!! | `nes/punch_out/` | Glass Joe KD1 done; bout win next |
 | Contra | `nes/contra/` | Stage 1 playable |
 | Kirby's Adventure | `nes/kirby_adventure/` | Vegetable Valley hub |

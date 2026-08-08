@@ -4,8 +4,8 @@ directory: nes/mega_man_2
 genre_tracks:
   - platforming
 capability_phase: 3
-project_state: boot_verified
-maturity: M1
+project_state: segment_verified
+maturity: M3
 runtime_class: bronze
 intervention_class: clean
 popularity: high
@@ -19,7 +19,8 @@ best_video: null
 assist_contract: null
 status_doc: nes/mega_man_2/docs/STATUS.md
 plan_doc: nes/mega_man_2/docs/plan.md
-last_verified: 2026-07-27
-blocker: first Robot Master stage segment clear
+last_verified: 2026-08-08
+blocker: Air Man mid-stage / natural-entry M4
 notes: >-
-  M1: power-on to controllable Air Man stage (health/lives). Platform NES under roms/Nintendo/NES.
+  M3: Air Man camera screen ≥1 from Level1 (~248f, 3/3). Next: deeper stage
+  clear and natural-entry. Platform NES under roms/Nintendo/NES.
