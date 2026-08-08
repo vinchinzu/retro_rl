@@ -35,8 +35,6 @@ from typing import Any, Sequence
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-import numpy as np
-
 from smb.paths import GAME_DIR, GAME_V0, MODELS_DIR, RECORDINGS_DIR
 from smb.policy import compress_nes9_rle, expand_nes9_rle, load_nes9_rle_seed
 from smb.ram import (
@@ -47,6 +45,8 @@ from smb.ram import (
     rich_handoff_fingerprint,
 )
 from smb.tas.fm2 import parse_fm2
+from smb.tas.replay import IDLE as IDLE_NP
+from smb.tas.replay import get_state, idle_until, set_state, to_action9
 from smb.tas.skills_8_3 import (
     FLAGPOLE_STYLES,
     IDLE,
@@ -58,6 +58,7 @@ from smb.tas.skills_8_3 import (
     open_skill_catalog,
     score_trial,
 )
+from smb.tas.chain import reach_8_1_control_after_hl_w8, reach_stage_control
 from smb.tas.slice import (
     DEFAULT_FM2,
     HL_8_1_FM2_START,
@@ -68,7 +69,6 @@ from smb.tas.slice import (
     probe_8_1_from_control,
     probe_8_2_from_control,
     probe_8_3_from_control,
-    reach_8_1_control_after_hl_w8,
 )
 
 OUT_DIR = RECORDINGS_DIR / "tas_import"
@@ -76,71 +76,38 @@ PROGRESS_SEED = MODELS_DIR / "smb_8_3_stitchless_progress.json"
 # Distinct from shared progress / hybrid — never write over those.
 CANDIDATE_SEED = MODELS_DIR / "smb_8_3_stitchless_skills_candidate.json"
 LEAVE_SEED = MODELS_DIR / "smb_8_3_stitchless_skills_leave.json"
-_idle = np.zeros(9, dtype=np.int8)
 
 
 def log(*a: object) -> None:
     print(*a, flush=True)
 
 
-def _act(fr: Sequence[int]) -> np.ndarray:
-    a = np.zeros(9, dtype=np.int8)
-    for i, v in enumerate(fr[:9]):
-        a[i] = int(v)
-    return a
-
-
-def _em(env):
-    return env.em if hasattr(env, "em") else env.unwrapped.em
-
-
 def _clone(frames: Sequence[Sequence[int]]) -> list[list[int]]:
     return [[int(x) for x in f[:9]] for f in frames]
-
-
-def wait_pred(env, pred, max_wait: int = 600) -> tuple[int, Any]:
-    wait = 0
-    snap = read_snapshot(env.get_ram(), 0)
-    while wait < max_wait:
-        snap = read_snapshot(env.get_ram(), 0)
-        if pred(snap):
-            return wait, snap
-        env.step(_idle)
-        wait += 1
-    return wait, snap
 
 
 def reach_hl_8_3_control(env) -> dict[str, Any]:
     """HL W8 → 8-1 → 8-2 → 8-3 control with rich fingerprint (no natural_82)."""
     hl = parse_fm2(DEFAULT_FM2).frames
-    pred = reach_8_1_control_after_hl_w8(env)
+    pred = reach_stage_control(env, "8-3")
     if not pred.get("success") or pred.get("control_snap") is None:
-        return {"success": False, "stage": "8_1_control", "pred": pred}
-    lives81 = int(pred["control_snap"].lives)
-    tr81 = probe_8_1_from_control(env, hl, HL_8_1_FM2_START, start_lives=lives81)
-    if tr81.w4 is None or tr81.death is not None:
-        return {"success": False, "stage": "8_1_body", "probe": tr81.to_dict()}
-    wait82, snap82 = wait_pred(env, is_8_2_control)
-    if not is_8_2_control(snap82):
-        return {"success": False, "stage": "8_2_control", "wait82": wait82}
-    lives82 = int(snap82.lives)
-    tr82 = probe_8_2_from_control(env, hl, HL_8_2_FM2_START, start_lives=lives82)
-    if tr82.w4 is None or tr82.death is not None:
-        return {"success": False, "stage": "8_2_body", "probe": tr82.to_dict()}
-    wait83, snap83 = wait_pred(env, is_8_3_control)
-    if not is_8_3_control(snap83):
-        return {"success": False, "stage": "8_3_control", "wait83": wait83}
+        return {
+            "success": False,
+            "stage": pred.get("stage") or "8_3_control",
+            "pred": pred,
+        }
+    snap83 = pred["control_snap"]
     ram = env.get_ram()
     return {
         "success": True,
         "hl": hl,
-        "leave_8_1": tr81.w4,
-        "wait82": wait82,
-        "leave_8_2": tr82.w4,
-        "wait83": wait83,
+        "leave_8_1": pred.get("leave_8_1"),
+        "wait82": pred.get("ctrl_wait_8_2"),
+        "leave_8_2": pred.get("leave_8_2"),
+        "wait83": pred.get("ctrl_wait_8_3"),
         "lives83": int(snap83.lives),
         "control_fp": rich_handoff_fingerprint(ram, snap=snap83),
-        "state": _em(env).get_state(),
+        "state": get_state(env),
     }
 
 
@@ -158,15 +125,15 @@ def eval_body(
     Flagpole auto-walk + castle tally often needs **~700–900 idle frames** after
     the skill body ends — pad is folded into exported leave seeds.
     """
-    _em(env).set_state(state)
+    set_state(env, state)
     for _ in range(lead):
-        env.step(_idle)
+        env.step(IDLE_NP)
     max_x = 0
     flag_at = leave = death = None
     last_fp: dict[str, object] | None = None
     seq = list(body) + [list(IDLE) for _ in range(pad_idle)]
     for i, fr in enumerate(seq):
-        env.step(_act(fr))
+        env.step(to_action9(fr))
         ram = env.get_ram()
         snap = read_snapshot(ram, i + 1)
         px = int(snap.player_x)
@@ -264,9 +231,9 @@ def cmd_annotate(args: argparse.Namespace) -> int:
         env.close()
         return 1
     landmarks: list[dict[str, Any]] = []
-    _em(env).set_state(ctx["state"])
+    set_state(env, ctx["state"])
     for i, fr in enumerate(body):
-        env.step(_act(fr))
+        env.step(to_action9(fr))
         ram = env.get_ram()
         snap = read_snapshot(ram, i + 1)
         px = int(snap.player_x)
@@ -317,13 +284,11 @@ def cmd_fanout(args: argparse.Namespace) -> int:
         env.close()
         return 1
     lives81 = int(pred["control_snap"].lives)
-    st81 = _em(env).get_state()
-    _em(env).set_state(st81)
     tr81 = probe_8_1_from_control(env, hl, HL_8_1_FM2_START, start_lives=lives81)
-    wait82, snap82 = wait_pred(env, is_8_2_control)
+    wait82, snap82 = idle_until(env, is_8_2_control)
     lives82 = int(snap82.lives)
-    st82 = _em(env).get_state()
-    log(f"8-1 leave={tr81.w4} wait82={wait82}")
+    st82 = get_state(env)
+    log(f"8-1 leave={tr81.leave_frame} wait82={wait82}")
 
     leads = [int(x) for x in args.leads.split(",") if x.strip() != ""]
     s82_min, s82_max, s82_step = args.s82_min, args.s82_max, args.s82_step
@@ -331,23 +296,23 @@ def cmd_fanout(args: argparse.Namespace) -> int:
 
     leave_rows: list[dict[str, Any]] = []
     for si82 in range(s82_min, s82_max + 1, s82_step):
-        _em(env).set_state(st82)
+        set_state(env, st82)
         tr = probe_8_2_from_control(env, hl, si82, start_lives=lives82)
-        if tr.w4 is None or tr.death is not None:
+        if not tr.ok:
             continue
-        wait83, snap83 = wait_pred(env, is_8_3_control)
+        wait83, snap83 = idle_until(env, is_8_3_control)
         if not is_8_3_control(snap83):
             continue
         leave_rows.append(
             {
                 "si82": si82,
-                "leave82": tr.w4,
+                "leave82": tr.leave_frame,
                 "wait83": wait83,
                 "ctrl_fp": rich_handoff_fingerprint(env.get_ram(), snap=snap83),
             }
         )
         log(
-            f"LEAVE82 si={si82} leave={tr.w4} wait83={wait83} "
+            f"LEAVE82 si={si82} leave={tr.leave_frame} wait83={wait83} "
             f"t={leave_rows[-1]['ctrl_fp']['timer']} "
             f"fc={leave_rows[-1]['ctrl_fp']['frame_counter']}"
         )
@@ -367,34 +332,34 @@ def cmd_fanout(args: argparse.Namespace) -> int:
 
     for leave in fan:
         si82 = int(leave["si82"])
-        _em(env).set_state(st82)
+        set_state(env, st82)
         tr82 = probe_8_2_from_control(env, hl, si82, start_lives=lives82)
-        wait83, snap83 = wait_pred(env, is_8_3_control)
-        st83 = _em(env).get_state()
+        wait83, snap83 = idle_until(env, is_8_3_control)
+        st83 = get_state(env)
         lives83 = int(snap83.lives)
         fp83 = rich_handoff_fingerprint(env.get_ram(), snap=snap83)
-        log(f"=== fan si82={si82} leave82={tr82.w4} fp.t={fp83['timer']} ===")
+        log(f"=== fan si82={si82} leave82={tr82.leave_frame} fp.t={fp83['timer']} ===")
         for lead in leads:
             for si83 in range(s83_min, s83_max + 1, s83_step):
-                _em(env).set_state(st83)
+                set_state(env, st83)
                 for _ in range(lead):
-                    env.step(_idle)
+                    env.step(IDLE_NP)
                 tr = probe_8_3_from_control(
                     env, hl, si83, start_lives=lives83, max_play=args.max_play
                 )
                 row = {
                     "si82": si82,
-                    "leave82": tr82.w4,
+                    "leave82": tr82.leave_frame,
                     "lead": lead,
                     "si83": si83,
-                    "leave83": tr.w4,
+                    "leave83": tr.leave_frame,
                     "death": tr.death,
                     "max_x": tr.max_x,
                     "ctrl_fp": fp83,
                 }
                 row["_score"] = score_trial(
                     {
-                        "leave": tr.w4,
+                        "leave": tr.leave_frame,
                         "max_x": tr.max_x or 0,
                         "death": tr.death,
                         "timer_mod21": int(fp83.get("timer_mod21") or 0),
@@ -404,17 +369,17 @@ def cmd_fanout(args: argparse.Namespace) -> int:
                 if best is None or row["_score"] > best["_score"]:
                     best = row
                     log(
-                        f"BEST leave={tr.w4} max_x={tr.max_x} "
+                        f"BEST leave={tr.leave_frame} max_x={tr.max_x} "
                         f"si83={si83} lead={lead}"
                     )
-                if tr.w4 is not None and tr.death is None and args.export_on_hit:
-                    body = [list(f) for f in hl[si83 : si83 + int(tr.w4)]]
+                if tr.ok and args.export_on_hit:
+                    body = [list(f) for f in hl[si83 : si83 + int(tr.leave_frame)]]
                     export_seed(
                         LEAVE_SEED,
                         body,
                         route_id="smb_8_3_stitchless_skills_leave",
                         meta={
-                            "leave_frames": tr.w4,
+                            "leave_frames": tr.leave_frame,
                             "fm2_start_hint": si83,
                             "note": "FM2 body hint only — re-gate from control",
                             "si82": si82,
@@ -424,7 +389,7 @@ def cmd_fanout(args: argparse.Namespace) -> int:
                             "source": "stitchless fanout (no natural_82)",
                         },
                     )
-                    log("EXPORTED leave", tr.w4)
+                    log("EXPORTED leave", tr.leave_frame)
 
     report = {
         "lane": "stitchless_skills_fanout",
@@ -481,10 +446,10 @@ def cmd_skill_resume(args: argparse.Namespace) -> int:
     )})
 
     # Build land-pin checkpoints from prefix (grounded seats in stair band)
-    _em(env).set_state(st83)
+    set_state(env, st83)
     pins: list[dict[str, Any]] = []
     for i, fr in enumerate(body0):
-        env.step(_act(fr))
+        env.step(to_action9(fr))
         ram = env.get_ram()
         snap = read_snapshot(ram, i + 1)
         px = int(snap.player_x)
@@ -498,7 +463,7 @@ def cmd_skill_resume(args: argparse.Namespace) -> int:
             pins.append(
                 {
                     "i": i + 1,
-                    "state": _em(env).get_state(),
+                    "state": get_state(env),
                     "fp": rich_handoff_fingerprint(ram, snap=snap),
                     "prefix": _clone(body0[: i + 1]),
                 }
@@ -508,7 +473,7 @@ def cmd_skill_resume(args: argparse.Namespace) -> int:
             pins.append(
                 {
                     "i": i + 1,
-                    "state": _em(env).get_state(),
+                    "state": get_state(env),
                     "fp": rich_handoff_fingerprint(ram, snap=snap),
                     "prefix": _clone(body0[: i + 1]),
                 }
@@ -590,7 +555,7 @@ def cmd_skill_resume(args: argparse.Namespace) -> int:
         for pin in pins:
             for jhold in jholds:
                 for maxj in (3, 4, 5, 6):
-                    _em(env).set_state(pin["state"])
+                    set_state(env, pin["state"])
                     rec: list[list[int]] = []
                     jump_left = 0
                     jumps = 0
@@ -611,7 +576,7 @@ def cmd_skill_resume(args: argparse.Namespace) -> int:
                             jumps += 1
                         else:
                             fr = list(RUN)
-                        env.step(_act(fr))
+                        env.step(to_action9(fr))
                         rec.append(list(fr))
                         s2 = read_snapshot(env.get_ram(), 0)
                         if is_8_4_control(s2):

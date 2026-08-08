@@ -256,6 +256,29 @@ def talk_press_skill(
     )
 
 
+def farm_nav_to_pond_refill_skill(*, timeout: int = 2400) -> NavSkill:
+    """Navigate to the primary main-pond F0 refill stand (map_config corridor)."""
+    from harvest.maps.map_config import farm_pond_refill_primary_stand
+    from harvest.tasks.farm_clearer import TILE_SIZE
+
+    stand, _face = farm_pond_refill_primary_stand()
+    tx, ty = stand
+    return NavSkill(
+        name="farm_nav_pond_refill",
+        target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
+        radius=10,
+        timeout=timeout,
+    )
+
+
+def farm_pond_refill_face() -> str:
+    """Face direction for the primary pond refill stand."""
+    from harvest.maps.map_config import farm_pond_refill_primary_stand
+
+    _stand, face = farm_pond_refill_primary_stand()
+    return face
+
+
 __all__ = [
     "InteractSkill",
     "NavSkill",
@@ -267,7 +290,9 @@ __all__ = [
     "coop_nav_to_shipping_bin_skill",
     "coop_press_feed_skill",
     "coop_press_ship_skill",
+    "farm_nav_to_pond_refill_skill",
     "farm_nav_to_shipping_bin_skill",
+    "farm_pond_refill_face",
     "farm_press_ship_skill",
     "sequence_skills",
     "talk_press_skill",

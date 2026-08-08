@@ -32,23 +32,15 @@ from typing import Any, Sequence
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-import numpy as np
-
 from smb.paths import GAME_DIR, GAME_V0, MODELS_DIR, RECORDINGS_DIR
 from smb.policy import compress_nes9_rle, expand_nes9_rle, load_nes9_rle_seed
 from smb.ram import PLAYER_STATE_DYING, read_snapshot, reached_ending
+from smb.tas.replay import get_state, set_state, to_action9
+from smb.tas.chain import reach_stage_control
 from smb.tas.slice import (
-    DEFAULT_FM2,
     DEFAULT_HL_1_1,
-    HL_8_1_FM2_START,
-    HL_8_2_FM2_START,
-    is_8_2_control,
-    is_8_3_control,
+    DEFAULT_FM2,
     is_8_4_control,
-    parse_fm2,
-    probe_8_1_from_control,
-    probe_8_2_from_control,
-    reach_8_1_control_after_hl_w8,
 )
 
 DEFAULT_BODY = MODELS_DIR / "smb_8_3_natural_for_hl_hybrid.json"
@@ -66,18 +58,6 @@ WINDOW_PRESETS: dict[str, tuple[int, int]] = {
 }
 
 IDLE = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-_idle_np = np.zeros(9, dtype=np.int8)
-
-
-def _act(frame: Sequence[int]) -> np.ndarray:
-    a = np.zeros(9, dtype=np.int8)
-    for i, v in enumerate(frame[:9]):
-        a[i] = int(v)
-    return a
-
-
-def _em(env):
-    return env.em if hasattr(env, "em") else env.unwrapped.em
 
 
 def _clone(frames: Sequence[Sequence[int]]) -> list[list[int]]:
@@ -86,48 +66,23 @@ def _clone(frames: Sequence[Sequence[int]]) -> list[list[int]]:
 
 def reach_hl_8_3_control(env) -> dict[str, Any]:
     """Play HL chain to first ``is_8_3_control``; return waits + fingerprint."""
-    fm2 = parse_fm2(DEFAULT_FM2).frames
-    pred = reach_8_1_control_after_hl_w8(
-        env, fm2_path=DEFAULT_FM2, hl_1_1_path=DEFAULT_HL_1_1
+    pred = reach_stage_control(
+        env, "8-3", fm2_path=DEFAULT_FM2, hl_1_1_path=DEFAULT_HL_1_1
     )
     if not pred.get("success") or pred.get("control_snap") is None:
-        return {"success": False, "stage": "8_1_control", "pred": pred}
-    tr81 = probe_8_1_from_control(
-        env, fm2, HL_8_1_FM2_START, start_lives=int(pred["control_snap"].lives)
-    )
-    if tr81.w4 is None or tr81.death is not None:
-        return {"success": False, "stage": "8_1_body", "probe": tr81.to_dict()}
-    wait82 = 0
-    snap = read_snapshot(env.get_ram(), 0)
-    for _ in range(600):
-        snap = read_snapshot(env.get_ram(), 0)
-        if is_8_2_control(snap):
-            break
-        env.step(_idle_np)
-        wait82 += 1
-    else:
-        return {"success": False, "stage": "8_2_control", "wait82": wait82}
-    tr82 = probe_8_2_from_control(
-        env, fm2, HL_8_2_FM2_START, start_lives=int(snap.lives)
-    )
-    if tr82.w4 is None or tr82.death is not None:
-        return {"success": False, "stage": "8_2_body", "probe": tr82.to_dict()}
-    wait83 = 0
-    for _ in range(600):
-        snap = read_snapshot(env.get_ram(), 0)
-        if is_8_3_control(snap):
-            break
-        env.step(_idle_np)
-        wait83 += 1
-    else:
-        return {"success": False, "stage": "8_3_control", "wait83": wait83}
+        return {
+            "success": False,
+            "stage": pred.get("stage") or "8_3_control",
+            "pred": pred,
+        }
+    snap = pred["control_snap"]
     return {
         "success": True,
         "ctrl_wait_8_1": pred.get("ctrl_wait_8_1"),
-        "leave_8_1": tr81.w4,
-        "ctrl_wait_8_2": wait82,
-        "leave_8_2": tr82.w4,
-        "ctrl_wait_8_3": wait83,
+        "leave_8_1": pred.get("leave_8_1"),
+        "ctrl_wait_8_2": pred.get("ctrl_wait_8_2"),
+        "leave_8_2": pred.get("leave_8_2"),
+        "ctrl_wait_8_3": pred.get("ctrl_wait_8_3"),
         "control_fp": {
             "player_x": int(snap.player_x),
             "player_y": int(snap.player_y),
@@ -152,7 +107,7 @@ def eval_to_8_4(
     flag_at: int | None = None
     seq = list(body) + [list(IDLE) for _ in range(pad_idle)]
     for i, fr in enumerate(seq):
-        env.step(_act(fr))
+        env.step(to_action9(fr))
         snap = read_snapshot(env.get_ram(), i + 1)
         px = int(snap.player_x)
         if 0 < px < 20_000:
@@ -190,7 +145,7 @@ def eval_ending(env, body: Sequence[Sequence[int]], *, start_lives: int | None =
     if start_lives is None:
         start_lives = int(read_snapshot(env.get_ram(), 0).lives)
     for i, fr in enumerate(body):
-        env.step(_act(fr))
+        env.step(to_action9(fr))
         ram = env.get_ram()
         if reached_ending(ram, start_lives=start_lives):
             return {"ok": True, "ending": i + 1}
@@ -255,7 +210,7 @@ def _hold_trim(
                 if hold - trim < 12:
                     continue
                 cand = best[: start + hold - trim] + best[start + hold :]
-                _em(env).set_state(state)
+                set_state(env, state)
                 r = eval_to_8_4(env, cand, pad_idle=pad_idle)
                 if r.get("ok") and int(r["frames"]) < best_clear:
                     if verbose:
@@ -302,7 +257,7 @@ def _delete_sweep(
     t0 = time.time()
     while i < min(hi, len(best)):
         cand = best[:i] + best[i + 1 :]
-        _em(env).set_state(state)
+        set_state(env, state)
         r = eval_to_8_4(env, cand, pad_idle=pad_idle)
         tries += 1
         if r.get("ok") and int(r["frames"]) < best_clear:
@@ -377,9 +332,9 @@ def polish(
     if not meta.get("success"):
         env.close()
         raise RuntimeError(f"failed to reach HL 8-3 control: {meta}")
-    state = _em(env).get_state()
+    state = get_state(env)
     body = _clone(expand_nes9_rle(load_nes9_rle_seed(body_path)))
-    _em(env).set_state(state)
+    set_state(env, state)
     base_r = eval_to_8_4(env, body, pad_idle=0)
     if not base_r.get("ok"):
         env.close()
@@ -454,16 +409,16 @@ def probe_fx_trim(
     if not meta.get("success"):
         env.close()
         return {"success": False, "meta": meta}
-    state83 = _em(env).get_state()
+    state83 = get_state(env)
     body = expand_nes9_rle(load_nes9_rle_seed(body_83))
-    _em(env).set_state(state83)
+    set_state(env, state83)
     r83 = eval_to_8_4(env, body, pad_idle=0)
     if not r83.get("ok"):
         env.close()
         return {"success": False, "r83": r83}
-    state84 = _em(env).get_state()
+    state84 = get_state(env)
     fx = _clone(expand_nes9_rle(load_nes9_rle_seed(fx_path)))
-    _em(env).set_state(state84)
+    set_state(env, state84)
     base = eval_ending(env, fx)
     if not base.get("ok"):
         env.close()
@@ -483,7 +438,7 @@ def probe_fx_trim(
         i = max(0, lo)
         while i < min(hi, len(best_fx)) and len(moves) < max_deletes:
             cand = best_fx[:i] + best_fx[i + 1 :]
-            _em(env).set_state(state84)
+            set_state(env, state84)
             r = eval_ending(env, cand)
             if r.get("ok") and int(r["ending"]) < best_end:
                 if verbose:

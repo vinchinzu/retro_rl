@@ -109,7 +109,10 @@ def main() -> int:
             )
             if not boot.snapshot.on_castle_grounds:
                 result = run_from_castle_grounds(
-                    env, source="natural_boot", try_entry=False, try_uncle=False
+                    env,
+                    source="natural_boot",
+                    include_entry=False,
+                    include_uncle=False,
                 )
                 result.ok = False
                 result.blocker = "natural boot missed castle grounds"
@@ -120,8 +123,8 @@ def main() -> int:
                 result = run_from_castle_grounds(
                     env,
                     source="natural_boot",
-                    try_entry=not args.approach_only,
-                    try_uncle=not args.approach_only,
+                    include_entry=not args.approach_only,
+                    include_uncle=not args.approach_only,
                 )
                 result.frames += boot.frames
                 result.phases.insert(0, boot_phase)
@@ -138,8 +141,8 @@ def main() -> int:
             result = run_from_castle_grounds(
                 env,
                 source="state_load_dev",
-                try_entry=not args.approach_only,
-                try_uncle=not args.approach_only,
+                include_entry=not args.approach_only,
+                include_uncle=not args.approach_only,
             )
             try:
                 rendered = env.render()

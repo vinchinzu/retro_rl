@@ -267,7 +267,7 @@ class DayPlanTask(Task):
         print("[DAY_PLAN] Appending end-day route after go-home flag")
 
     def _advance(self, world: WorldState, reason: str) -> None:
-        """Move to next phase."""
+        """Move to next phase after real work success."""
         current = self._schedule.current_at(self._phase_index)
         phase_name = current.phase if current is not None else "?"
         print(f"[DAY_PLAN] {phase_name} -> {reason}")
@@ -275,6 +275,16 @@ class DayPlanTask(Task):
         if current is not None and current.phase in GO_HOME_TRIGGER_PHASES:
             self._mark_ready_to_go_home(current.phase)
             self._ensure_end_day_phases()
+        self._phase_index += 1
+        self._current_task = None
+        self._skip_map_lock = False
+
+    def _advance_no_work(self, world: WorldState, reason: str) -> None:
+        """Advance after intentional no-op SUCCESS (journal status=no_work)."""
+        current = self._schedule.current_at(self._phase_index)
+        phase_name = current.phase if current is not None else "?"
+        print(f"[DAY_PLAN] {phase_name} -> no_work ({reason})")
+        self._record_phase_result(current, "no_work", reason)
         self._phase_index += 1
         self._current_task = None
         self._skip_map_lock = False
@@ -518,7 +528,17 @@ class DayPlanTask(Task):
         result = self._current_task.step(world)
 
         if result.status == TaskStatus.SUCCESS:
-            self._advance(world, "SUCCESS")
+            reason = result.reason or "SUCCESS"
+            # Crop no-ops (no dry plots / no seeds) must not count as crop work.
+            try:
+                from harvest.tasks.water_refill import is_no_work_reason
+
+                if is_no_work_reason(reason):
+                    self._advance_no_work(world, reason)
+                    return self.step(world)
+            except Exception:
+                pass
+            self._advance(world, reason if reason != "SUCCESS" else "SUCCESS")
             return self.step(world)
         elif result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
             reason = result.reason or "unknown"
@@ -773,9 +793,11 @@ class MultiDayPlannerTask(Task):
         self._day_journal.append(row)
         succeeded = [r["phase"] for r in phase_results if r.get("status") == "success"]
         skipped = [r["phase"] for r in phase_results if r.get("status") == "skipped"]
+        no_work = [r["phase"] for r in phase_results if r.get("status") == "no_work"]
         print(
             f"[MULTI_DAY] Day journal {season}:{day} -> {end_season}:{end_day} "
-            f"ok={succeeded or ['(none)']} skipped={skipped or ['(none)']} money={money}"
+            f"ok={succeeded or ['(none)']} skipped={skipped or ['(none)']} "
+            f"no_work={no_work or ['(none)']} money={money}"
         )
 
     def _finish_sleep(self, world: WorldState, reason: str = "day advanced") -> TaskResult:

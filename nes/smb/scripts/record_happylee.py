@@ -59,6 +59,7 @@ from smb.scripts.run_warp_finish import (
     _env_audio_rate,
     _write_video,
 )
+from smb.tas.replay import IDLE, to_action9
 from smb.tas.slice import (
     HL_1_1_SETTLE,
     is_4_1_control,
@@ -83,17 +84,6 @@ SEED_HYBRID_V1 = MODELS_DIR / "smb_happylee_hybrid_ending.json"  # 18769f natura
 DEFAULT_TAIL_HOLD = 120
 
 TARGETS = ("1-1", "w4", "w8", "ending")
-
-
-def _idle9() -> np.ndarray:
-    return np.zeros(9, dtype=np.int8)
-
-
-def _act(frame: list[int]) -> np.ndarray:
-    action = np.zeros(9, dtype=np.int8)
-    for j in range(min(9, len(frame))):
-        action[j] = int(frame[j])
-    return action
 
 
 def _step_video(
@@ -121,14 +111,13 @@ def _play_body(
     stop: Callable[[Any, Any], bool] | None = None,
 ) -> dict[str, Any]:
     """Play nes9 body; optional early stop predicate(snap, ram)."""
-    idle = _idle9()
     death: int | None = None
     stop_at: int | None = None
     max_x = 0
     last_snap = read_snapshot(env.get_ram(), frame=start_frame)
     for i, fr in enumerate(frames):
         fnum = start_frame + i + 1
-        obs, snap = _step_video(env, _act(fr), video, label=label, frame_i=fnum)
+        obs, snap = _step_video(env, to_action9(fr), video, label=label, frame_i=fnum)
         last_snap = snap
         px = int(snap.player_x)
         if 0 < px < 20_000:
@@ -169,14 +158,14 @@ def _idle_until(
     start_frame: int,
     max_wait: int = 800,
 ) -> tuple[int, Any]:
-    idle = _idle9()
+    """Video-aware idle wait (records each frame; not the plain replay helper)."""
     wait = 0
     snap = read_snapshot(env.get_ram(), frame=start_frame)
     for _ in range(max_wait):
         snap = read_snapshot(env.get_ram(), frame=start_frame + wait)
         if pred(snap):
             return wait, snap
-        _step_video(env, idle, video, label=label, frame_i=start_frame + wait + 1)
+        _step_video(env, IDLE, video, label=label, frame_i=start_frame + wait + 1)
         wait += 1
     return wait, snap
 
@@ -256,7 +245,6 @@ def record_happylee(
 
     stages: dict[str, Any] = {}
     frame = 0
-    idle = _idle9()
     success = False
     outcome = "incomplete"
     start_lives: int | None = None
@@ -266,7 +254,7 @@ def record_happylee(
         for i in range(settle):
             frame += 1
             obs, snap = _step_video(
-                env, idle, video, label="settle", frame_i=frame
+                env, IDLE, video, label="settle", frame_i=frame
             )
             if start_lives is None and 0 <= int(snap.lives) <= 8:
                 start_lives = int(snap.lives)
@@ -294,7 +282,7 @@ def record_happylee(
             # Flag / castle walk may still be finishing; short idle hold.
             for i in range(tail_hold):
                 frame += 1
-                _step_video(env, idle, video, label="tail", frame_i=frame)
+                _step_video(env, IDLE, video, label="tail", frame_i=frame)
             stages["tail_hold"] = tail_hold
             success = st["death"] is None and st["max_x"] >= 2500
             outcome = "clear_1_1" if success else "1_1_incomplete"
@@ -336,7 +324,7 @@ def record_happylee(
         if target == "w4":
             for i in range(tail_hold):
                 frame += 1
-                _step_video(env, idle, video, label="tail_w4", frame_i=frame)
+                _step_video(env, IDLE, video, label="tail_w4", frame_i=frame)
             stages["tail_hold"] = tail_hold
             success = True
             outcome = "w4"
@@ -413,7 +401,7 @@ def record_happylee(
 
         for i in range(tail_hold):
             frame += 1
-            _step_video(env, idle, video, label="tail_w8", frame_i=frame)
+            _step_video(env, IDLE, video, label="tail_w8", frame_i=frame)
         stages["tail_hold"] = tail_hold
         success = True
         outcome = "w8"
@@ -556,7 +544,6 @@ def record_hybrid_ending(
         video.write_intro(lines, hold_frames=intro_frames)
     _write_video(video, obs, env=env, action=None, label="reset")
 
-    idle = _idle9()
     start_lives: int | None = None
     ending_frame: int | None = None
     death_frame: int | None = None
@@ -567,7 +554,7 @@ def record_hybrid_ending(
         for i, fr in enumerate(frames):
             frame = i + 1
             obs, snap = _step_video(
-                env, _act(fr), video, label="hybrid", frame_i=frame
+                env, to_action9(fr), video, label="hybrid", frame_i=frame
             )
             if start_lives is None and int(snap.oper_mode) == 1 and 0 <= int(snap.lives) <= 8:
                 if int(snap.player_state) in (0, 7, 8) and 0 < int(snap.player_x) < 200:
@@ -586,7 +573,7 @@ def record_hybrid_ending(
         if ending_frame is not None and peach_hold > 0:
             for j in range(peach_hold):
                 frame += 1
-                _step_video(env, idle, video, label="peach", frame_i=frame)
+                _step_video(env, IDLE, video, label="peach", frame_i=frame)
                 peach += 1
         stages["ending_frame"] = ending_frame
         stages["death_frame"] = death_frame

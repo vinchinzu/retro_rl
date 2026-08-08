@@ -6,7 +6,7 @@
 |-------|-------|
 | Current maturity | **M3** (calendar multi-day); crop economy still short of M4 domain |
 | Best verified result | Continuous ROM spring month from `Y1_Inside_House` (Spring D2 06:08) → Summer D1 06:00 house, **29 overnights**, no mid-run state load |
-| Last verification | 2026-08-01 (power-on bootstrap); calendar soak 2026-07-28 |
+| Last verification | 2026-08-07 (crop keep-alive D2→D8 mature); power-on bootstrap 2026-08-01 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
@@ -67,7 +67,7 @@
 | A5 contract preflight in day-plan probe | **Done** — `preflight_phase_contract` / `tool_tags_from_ram`; probe emits `contract_preflight` + planned summary; soft notes only |
 | `run_to_day2 --save-end-state` gzip | **Fixed** — raw s9xsnp writes broke stable-retro load (`BadGzipFile`) |
 | Empty-can west-pocket staging | **Partial** — stages via `(12,29)` before fence clear; fence toss still stalls after lifting 1 post |
-| 6-day growth soak from watered fixture | **Calendar OK** (D2→D8 Clean) but **crops gone** by D8 (water no-op / wither); money $150 |
+| 6-day growth soak from watered fixture | **Keep-alive OK** — D2→D8 Clean; daily `CROP_WATER` real deltas (can 17→2); crops grow `0x55→0x5F` then mature `0x60` at D8. House end-state map is **not** farm metatiles — earlier “crops gone” was a false negative. Exit-to-farm scan: **3 mature** at (13,25)/(12–13,26). Journal now records `watered=N` / `no_work`; outdoor plan waters **before** `CLEAR_FIELD` when dry crops exist (rr-3v9). |
 
 ## Crop / domain gap (plant fixtures in; water/ship loop open)
 
@@ -81,7 +81,7 @@ Spring calendar still had **no harvest income** ($100 floor). Root causes and fi
 | Only 2 carry slots | Day plan plant pass (hoe+seeds) then can+water pass |
 | Plant establish | **ROM-verified 2026-08-01** from `Y1_After_Buy_Potato`: seeds+hoe → near-player fallback till → `planted=1`, dry `0x54` tiles, stock 1→0 |
 | Same-day water after plant | **ROM OK with charged can** (Dry→3×`0x55`); day-plan order unit-locked; **empty-can natural fill still open** |
-| Grow → harvest → ship → money > $100 | Ship **bin-drop success without instant money** fixed; multi-day growth / 5pm wallet assert still open |
+| Grow → harvest → ship → money > $100 | **Multi-day keep-alive + mature potatoes verified** (see above); harvest/ship + 5pm wallet assert still open |
 
 ROM smoke (2026-08-01 plant):
 ```text
@@ -97,6 +97,7 @@ Test crop fixtures (for growth / ship work):
 |-------|----------|
 | `Y1_Test_Crops_Planted_Dry` | Spring D2 ~13:00, **3 dry** potato `0x54` at (12–13,25–26) |
 | `Y1_Test_Crops_Planted_Watered` | Same plot **watered** `0x55` (can was LiveRamEditor-filled; natural refill still open) |
+| `Y1_Test_Crops_DayPlus6` | Spring **D8** morning house after 6d soak; **farm exit** shows **3 mature** potato `0x60` (do not trust house metatile buffer) |
 | `potato_plant_end` | Larger west-field reference: 8 wet `0x55` |
 | `Y1_Day09_Harvest_Mode_Start` | Later harvest/ship work (mature tiles); **shipping income posts at 5pm** |
 
@@ -119,8 +120,8 @@ Test crop fixtures (for growth / ship work):
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
    **ROM with charged can OK** (Dry fixture + can=20 → 3 wet `0x55`); still
    needs natural fill (item 2) for empty-can start without RAM poke.
-4. Multi-day growth from `Y1_Test_Crops_Planted_Watered` (~6 days to potato harvest).
-5. Harvest + ship route; **bin drop no longer requires instant money** (code fix);
+4. ~~Multi-day growth from `Y1_Test_Crops_Planted_Watered`~~ — **done** (mature `0x60` at D8; journal water deltas).
+5. Harvest + ship route from mature keep-alive plot; **bin drop no longer requires instant money** (code fix);
    assert **wallet money rises after 5pm**. Save pre-5pm and post-5pm checkpoints.
 6. From `Y1_Inside_House`, multi-day soak with **money > 100** after first potato harvest window.
 7. Optional: `HOT_SPRING_STAMINA` — **ROM natural-entry verified 2026-07-31**:

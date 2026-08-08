@@ -112,7 +112,11 @@ uv run python -m super_metroid.tas.replay --list-slices
 uv run python -m super_metroid.tas.replay --slice sniq_any_menu --annotate --series-stride 1
 # Zebes resync: product → Landing + Sniq movie body (Landing→Parlor @ movie_start=15000)
 uv run python -m super_metroid.tas.resync --to landing --movie-start 15000 --body 12000
-# Full any% (long; desyncs mid-Ceres): --slice sniq_any_full --series-stride 8
+# Full any%/100% (long; desync mid-Ceres — pins + extract board still useful)
+# --slice sniq_any_full|sniq_100_full --series-stride 8
+uv run python -m super_metroid.tas.extract_hops \
+  snes/super_metroid/recordings/tas_import/sniq_100_full
+uv run python -m super_metroid.tas.extract_hops --list-stages
 
 # YouTube KPDR reference (gitignored refs/yt_reference/; default Kentroid TFsGVxQReMw)
 uv run python snes/super_metroid/scripts/tools/yt_ref.py status

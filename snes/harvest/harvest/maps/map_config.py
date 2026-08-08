@@ -124,6 +124,32 @@ FARM_POND_ACCESS_STAGING_TILES: Tuple[Tuple[int, int], ...] = (
     (20, 30),
 )
 
+# Explicit west-pocket → main-pond corridor for empty-can refill.
+# Prefer this route over generic water-edge search when the player is still
+# north of the y=31 fence wall in the early-spring plant pocket.
+FARM_POND_REFILL_CORRIDOR: Tuple[str, ...] = (
+    "stage_west_of_fence",  # FARM_POND_ACCESS_STAGING_TILES
+    "open_fence_row_y31",   # clear ≥1 fence on FARM_POND_ACCESS_FENCE_ROW
+    "fill_at_main_pond",    # FARM_MAIN_POND_STANDS (F0 CheckToolSuccess)
+)
+
+
+def farm_pond_refill_primary_stand() -> Tuple[Tuple[int, int], str]:
+    """Primary verified fill stand (south lip face up)."""
+    return FARM_MAIN_POND_STANDS[0]
+
+
+def farm_pond_refill_stands() -> Tuple[Tuple[Tuple[int, int], str], ...]:
+    """Ordered preferred fill stands for the named pond corridor."""
+    return FARM_MAIN_POND_STANDS
+
+
+def player_in_west_plant_pocket(tile: Tuple[int, int]) -> bool:
+    """True when player is north of the y=31 fence wall in the west/mid field."""
+    x, y = tile
+    return y <= 30 and x <= 28
+
+
 # Named water pockets: (name, water_tile_id, fills_can, sample_cells)
 FARM_WATER_POCKETS: Tuple[Tuple[str, int, bool, Tuple[Tuple[int, int], ...]], ...] = (
     ("main_pond", 0xF0, True, ((32, 32), (33, 32), (31, 32), (34, 32))),
@@ -892,11 +918,14 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x04, target_px=(600, 280), radius=16),
     ],
     # Enter only — stop at church door lip; scripted up enters 0x1B.
+    # Corridor: stay on y≈280 until x≈376, then north — a direct (500,280)→
+    # (411,216) hop stalls on the mid-plaza hard block (power-on composed path).
     "d1_town_to_maria": [
         Waypoint(tilemap=0x04, target_px=(688, 280), radius=16),
         Waypoint(tilemap=0x04, target_px=(600, 280), radius=14),
         Waypoint(tilemap=0x04, target_px=(500, 280), radius=14),
-        Waypoint(tilemap=0x04, target_px=(411, 216), radius=14),
+        Waypoint(tilemap=0x04, target_px=(376, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(376, 200), radius=14),
         # town_day1_rest church door approach ~(358,150); is_exit up is flaky
         # so talk sequence scripts the final up into 0x1B.
         Waypoint(tilemap=0x04, target_px=(358, 150), radius=8),
@@ -955,7 +984,9 @@ ROUTES: Dict[str, List[Waypoint]] = {
     "d1_town_to_truck": [
         Waypoint(tilemap=0x04, target_px=(688, 888), radius=18),
         Waypoint(tilemap=0x04, target_px=(688, 500), radius=18, run_direction="up"),
-        Waypoint(tilemap=0x04, target_px=(728, 424), radius=12),
+        # Gate / truck stand ~(712–728,424). Wide radius: multi_nav often
+        # arrives at (721,438) and stalls if radius is tight (rr-bhr).
+        Waypoint(tilemap=0x04, target_px=(712, 424), radius=22),
     ],
     # Real opening gate is ~(712,424); east path exit still near x≈756.
     # Note: truck leave dialogue often cutscenes straight into the farmhouse

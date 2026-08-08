@@ -23,6 +23,7 @@ session.py                        AlttpSession façade (snapshot, caps, segments
 opening_route/                    Continuous trunk (ownership)
   escape_graph.py                 Capability graph grounds → Sanctuary
   segment.py                      Segment / natural-entry contract + registry
+  runner.py                       Shared run_phases + run_from_state (pre-room-engine)
   anchors.py                      Multi-truth anchors + measured constants + tip resolve
   castle_to_sword.py              Live: grounds → uncle sword
   secret_entrance_clear.py        Live: sword → south → stairs outdoor clear
@@ -33,7 +34,7 @@ opening_route/                    Continuous trunk (ownership)
   room_engine.py                  Generic clear + door exit (ok=True on edge)
   escort_to_sanctuary.py          Planned scaffold: escort → Sanctuary
   catalog.py + data + validate    z3-backed opening catalog
-  work_queue.py                   Save-state practice (continuous-spine blockers)
+  work_queue.py + work_queue_data.yaml  Discover/rank + curated practice data
         │
 primitives.py + route_report.py   Preferred low-level control + evidence shape
 room_map.py                       maps/*.json load/save (geometry schema)
@@ -78,7 +79,7 @@ Import continuous trunk as ``alttp.opening_route.*`` (no root re-export shims).
 | Measured room geometry | `maps/room_XX.json` via `room_map.load_room_map` |
 | Approach/trigger windows | `anchors.py` (door approach derived from map; no copy) |
 | z3 / Yaze labels | Association only — **not** screen coordinates |
-| Save-state practice order | `opening_route.work_queue` + `docs/routes/ROOM_WORK_QUEUE.md` |
+| Save-state practice order | `opening_route.work_queue` + `work_queue_data.yaml` → `docs/routes/ROOM_WORK_QUEUE.md` |
 
 ### Continuous tip (2026-08-01)
 

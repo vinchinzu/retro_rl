@@ -1,13 +1,16 @@
-"""Unit tests for FCEUX FM2 import (no emulator required)."""
+"""Unit tests for FCEUX FM2 import + StageSpec surface (no emulator required)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
+
 from retro_harness.controls import NES_A, NES_B, NES_LEFT, NES_RIGHT, NES_START
 from smb.paths import GAME_DIR, MODELS_DIR
 from smb.policy import expand_nes9_rle, load_nes9_rle_seed
 from smb.tas.fm2 import parse_fm2
+from smb.tas.replay import to_action9
 from smb.tas.slice import (
     HL_1_2_FM2_START,
     HL_1_2_W4_FRAMES,
@@ -15,11 +18,18 @@ from smb.tas.slice import (
     HL_4_1_LEAVE_FRAMES,
     HL_4_2_FM2_START,
     HL_4_2_W8_FRAMES,
+    SliceProbe,
     export_1_2_slice,
     export_4_1_slice,
     export_4_2_slice,
+    export_stage_slice,
     is_4_1_control,
     is_4_2_control,
+)
+from smb.tas.stages import (
+    STAGE_1_2,
+    STAGES,
+    get_stage,
 )
 
 REF = GAME_DIR / "tas" / "ref" / "happylee_warps_1715M.fm2"
@@ -85,6 +95,56 @@ def test_happylee_1_1_slice_metadata() -> None:
     assert lr >= 1
 
 
+def test_stage_1_2_table_matches_constants() -> None:
+    """STAGE_1_2 fm2 start/body match module constants; get_stage works."""
+    assert STAGE_1_2.fm2_start == HL_1_2_FM2_START == 2109
+    assert STAGE_1_2.body_frames == HL_1_2_W4_FRAMES == 1657
+    assert get_stage("1-2") is STAGE_1_2
+    assert get_stage("1_2") is STAGE_1_2
+    assert "1-2" in STAGES
+    assert STAGES["1-2"].seed_name == "smb_1_2_happylee_slice.json"
+
+
+def test_slice_probe_leave_frame_w4_ok() -> None:
+    """SliceProbe.leave_frame is canonical; .w4 is a read/write alias; .ok."""
+    p = SliceProbe(start_idx=2109, leave_frame=1657)
+    assert p.leave_frame == 1657
+    assert p.w4 == 1657
+    assert p.ok is True
+
+    p.w4 = 100
+    assert p.leave_frame == 100
+    assert p.w4 == 100
+
+    dead = SliceProbe(start_idx=0, leave_frame=50, death=40)
+    assert dead.ok is False
+    no_leave = SliceProbe(start_idx=0, max_x=900)
+    assert no_leave.ok is False
+    assert no_leave.w4 is None
+
+    d = p.to_dict()
+    assert d["leave_frame"] == 100
+    assert d["w4"] == 100  # legacy JSON key
+
+
+def test_to_action9_preserves_left_right() -> None:
+    """to_action9 must not sanitize simultaneous Left+Right."""
+    frame = [0] * 9
+    frame[NES_LEFT] = 1
+    frame[NES_RIGHT] = 1
+    frame[NES_B] = 1
+    action = to_action9(frame)
+    assert isinstance(action, np.ndarray)
+    assert action.dtype == np.int8
+    assert int(action[NES_LEFT]) == 1
+    assert int(action[NES_RIGHT]) == 1
+    assert int(action[NES_B]) == 1
+    # short frames still pad to 9
+    short = to_action9([1, 0, 0])
+    assert short.shape == (9,)
+    assert int(short[0]) == 1
+
+
 def test_export_1_2_slice_length(tmp_path: Path) -> None:
     if not REF.exists():
         return
@@ -97,6 +157,25 @@ def test_export_1_2_slice_length(tmp_path: Path) -> None:
     )
     assert payload["num_frames"] == HL_1_2_W4_FRAMES
     assert out.exists()
+    data = load_nes9_rle_seed(out)
+    assert data["fm2_start_index"] == HL_1_2_FM2_START
+    assert len(expand_nes9_rle(data)) == HL_1_2_W4_FRAMES
+
+
+def test_export_stage_slice_via_get_stage(tmp_path: Path) -> None:
+    """export_stage_slice(str|StageSpec) matches export_1_2_slice for 1-2."""
+    if not REF.exists():
+        return
+    out = tmp_path / "smb_1_2_via_stage.json"
+    payload = export_stage_slice(
+        "1-2",
+        fm2_path=REF,
+        start_idx=HL_1_2_FM2_START,
+        body_frames=HL_1_2_W4_FRAMES,
+        out_path=out,
+    )
+    assert payload["num_frames"] == HL_1_2_W4_FRAMES
+    assert payload.get("stage_id") == "1-2"
     data = load_nes9_rle_seed(out)
     assert data["fm2_start_index"] == HL_1_2_FM2_START
     assert len(expand_nes9_rle(data)) == HL_1_2_W4_FRAMES

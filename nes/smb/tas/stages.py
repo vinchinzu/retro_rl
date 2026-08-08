@@ -13,11 +13,11 @@ from typing import Any, Callable
 
 from smb.paths import GAME_DIR, MODELS_DIR
 from smb.ram import (
+    ADDR_WORLD,
     PLAYER_STATE_DYING,
     WORLD_INDEX_4,
     WORLD_INDEX_8,
     reached_ending,
-    reached_world_4,
 )
 from smb.reactive_12 import is_surface_control
 
@@ -159,7 +159,7 @@ def is_8_4_control(snap: Any) -> bool:
 
 def reached_world_8(ram: Any) -> bool:
     """True when warp-zone pipe delivered Mario to World 8."""
-    return int(ram[0x075F]) == WORLD_INDEX_8  # ADDR_WORLD
+    return int(ram[ADDR_WORLD]) == WORLD_INDEX_8
 
 
 def snap_fingerprint(snap: Any) -> dict[str, int]:

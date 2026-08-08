@@ -1,0 +1,210 @@
+"""Level 2 bomb-wall path factories over ``bomb_wall_path.BombWallController``.
+
+Geometry: ``level2_puzzles.BombWall`` catalog.
+Specs for optional clear come from ``level2_dungeon``.
+"""
+
+from __future__ import annotations
+
+from zelda_i.bomb_wall_path import (
+    ADDR_SELECTED_ITEM,
+    B_ITEM_BOMB,
+    BOMB_N_MAX_FRAMES,
+    BOMB_N_STAND_TOL,
+    BOMB_N_STEP_BACK,
+    BOMB_N_WAIT_BLAST,
+    BombNorth1EPhase,
+    BombNorthPhase,
+    BombWallController,
+    BombWallPhase,
+    BoomBombNorthPhase,
+    PostBoomBombNorthPhase,
+)
+from zelda_i.dungeon import (
+    AliveRule,
+    CombatTuning,
+    DoorRoute,
+    DungeonRoomSpec,
+    GEL_OBJECT_TYPE,
+    RewardKind,
+    RewardSpec,
+)
+from zelda_i.level2_dungeon import (
+    LEVEL_2,
+    ROOM_6F_SPEC,
+    ROOM_L2_BOMB_N,
+    ROOM_L2_COMPASS,
+)
+from zelda_i.level2_puzzles import (
+    BOMB_WALL_1E_NORTH,
+    BOMB_WALL_4F_NORTH,
+    BOMB_WALL_5F_NORTH,
+    BOMB_WALL_6F_NORTH,
+)
+from zelda_i.ram import ZeldaSnapshot
+
+# Shared stand (all L2 north bomb walls).
+BOMB_N_STAND = BOMB_WALL_6F_NORTH.stand  # (120, 101)
+BOOM_BOMB_N_STAND = BOMB_N_STAND
+BOOM_BOMB_N_MAX_FRAMES = BOMB_N_MAX_FRAMES
+
+# Probe-local gel clear on 0x5f before bomb-N to boom (not a STATUS room).
+_ROOM_5F_GEL_CLEAR = DungeonRoomSpec(
+    spec_id="level2_room5f_gel_clear_for_boom",
+    source_room=ROOM_L2_COMPASS,
+    room_id=ROOM_L2_BOMB_N,
+    entry=DoorRoute("UP", ((120, 189),)),
+    enemy_types=(GEL_OBJECT_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE,
+    combat=CombatTuning(
+        patrol=(
+            (120, 141),
+            (168, 141),
+            (168, 109),
+            (120, 109),
+            (72, 109),
+            (72, 141),
+            (72, 173),
+            (120, 173),
+            (168, 173),
+            (120, 141),
+        ),
+        engage_distance=56,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=10),
+    max_frames=10000,
+    level=LEVEL_2,
+)
+
+
+def _need_clear_6f(snap: ZeldaSnapshot) -> bool:
+    """Compass room: clear gels or missing L2 compass bit before bomb-N."""
+    level_bit = 1 << (LEVEL_2 - 1)
+    gels = ROOM_6F_SPEC.live_enemies(snap)
+    return bool(gels) or (snap.compass & level_bit) == 0
+
+
+def Level2BombNorthController() -> BombWallController:
+    """0x6f compass → bomb north → 0x5f (Clean geometry; no inventory poke)."""
+    return BombWallController(
+        wall=BOMB_WALL_6F_NORTH,
+        level=LEVEL_2,
+        clear_spec=ROOM_6F_SPEC,
+        clear_when=_need_clear_6f,
+        face_frames=4,
+        step_back=BOMB_N_STEP_BACK,
+        wait_blast=BOMB_N_WAIT_BLAST,
+        require_bomb_consumed=True,
+        wait_hold_face=False,
+    )
+
+
+def Level2BoomBombNorthController(
+    *, clear_gels: bool = True
+) -> BombWallController:
+    """0x5f → bomb north → 0x4f boom room."""
+    return BombWallController(
+        wall=BOMB_WALL_5F_NORTH,
+        level=LEVEL_2,
+        clear_spec=_ROOM_5F_GEL_CLEAR if clear_gels else None,
+        clear_when=(
+            (lambda s: bool(_ROOM_5F_GEL_CLEAR.live_enemies(s)))
+            if clear_gels
+            else None
+        ),
+        face_frames=4,
+        step_back=BOMB_N_STEP_BACK,
+        wait_blast=BOMB_N_WAIT_BLAST,
+        require_bomb_consumed=True,
+        wait_hold_face=False,
+    )
+
+
+# Alias used by run_level2_bomb_north_5f (geometry-only hop).
+Level2BombNorth5FController = Level2BoomBombNorthController
+
+
+def Level2PostBoomBombNorthController() -> BombWallController:
+    """0x4f (boom collected) → bomb north → 0x3f traps+Keese."""
+    return BombWallController(
+        wall=BOMB_WALL_4F_NORTH,
+        level=LEVEL_2,
+        clear_spec=None,
+        face_frames=6,
+        step_back=0,
+        wait_blast=BOMB_N_WAIT_BLAST,
+        require_bomb_consumed=False,
+        wait_hold_face=True,
+    )
+
+
+def Level2BombNorth1EController() -> BombWallController:
+    """0x1e cleared Goriya → bomb north → Dodongo 0x0e."""
+    return BombWallController(
+        wall=BOMB_WALL_1E_NORTH,
+        level=LEVEL_2,
+        clear_spec=None,
+        south_band_first=True,
+        face_frames=6,
+        step_back=0,
+        wait_blast=BOMB_N_WAIT_BLAST,
+        require_bomb_consumed=False,
+        wait_hold_face=True,
+        max_frames=8000,
+    )
+
+
+def make_bomb_north_controller() -> BombWallController:
+    return Level2BombNorthController()
+
+
+def make_boom_bomb_north_controller(
+    *, clear_gels: bool = True
+) -> BombWallController:
+    return Level2BoomBombNorthController(clear_gels=clear_gels)
+
+
+def make_bomb_north_5f_controller() -> BombWallController:
+    return Level2BoomBombNorthController(clear_gels=False)
+
+
+def make_post_boom_bomb_north_controller() -> BombWallController:
+    return Level2PostBoomBombNorthController()
+
+
+def make_bomb_north_1e_controller() -> BombWallController:
+    return Level2BombNorth1EController()
+
+
+__all__ = [
+    "ADDR_SELECTED_ITEM",
+    "B_ITEM_BOMB",
+    "BOMB_N_MAX_FRAMES",
+    "BOMB_N_STAND",
+    "BOMB_N_STAND_TOL",
+    "BOMB_N_STEP_BACK",
+    "BOMB_N_WAIT_BLAST",
+    "BOOM_BOMB_N_MAX_FRAMES",
+    "BOOM_BOMB_N_STAND",
+    "BombNorth1EPhase",
+    "BombNorthPhase",
+    "BombWallController",
+    "BombWallPhase",
+    "BoomBombNorthPhase",
+    "Level2BombNorth1EController",
+    "Level2BombNorth5FController",
+    "Level2BombNorthController",
+    "Level2BoomBombNorthController",
+    "Level2PostBoomBombNorthController",
+    "PostBoomBombNorthPhase",
+    "make_bomb_north_1e_controller",
+    "make_bomb_north_5f_controller",
+    "make_bomb_north_controller",
+    "make_boom_bomb_north_controller",
+    "make_post_boom_bomb_north_controller",
+]

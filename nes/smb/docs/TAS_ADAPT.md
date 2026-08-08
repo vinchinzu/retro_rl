@@ -182,8 +182,8 @@ uv run python -m smb.scripts.import_fm2 --export-1-2-slice
 # uv run python -m smb.scripts.import_fm2 --search-1-2 --1-2-start-min 2080 --1-2-start-max 2140
 ```
 
-Helpers: `smb.tas.slice` (`reach_surface_after_hl_1_1`, `search_1_2_offsets`,
-`verify_1_2_natural_chain`). Evidence:
+Helpers: `smb.tas.chain` (`reach_surface_after_hl_1_1`, `verify_1_2_natural_chain`),
+`smb.tas.slice` (`search_1_2_offsets`). Evidence:
 `recordings/tas_import/happylee_1_2_slice_verify.json`.
 
 Save-state probes can drift one frame vs a full rebuild — always re-verify
@@ -224,8 +224,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 # uv run python -m smb.scripts.record_happylee --to 1-1  # isolated 1-1
 ```
 
-Helpers: ``is_4_1_control`` / ``is_4_2_control`` / ``verify_4_1_4_2_natural_chain``
-in ``smb.tas.slice``; recorder ``smb.scripts.record_happylee``. Evidence:
+Helpers: control gates in ``smb.tas.stages``; chain verify in
+``smb.tas.chain.verify_4_1_4_2_natural_chain``; recorder ``smb.scripts.record_happylee``. Evidence:
 ``recordings/tas_import/happylee_4_1_4_2_slice_verify.json``,
 ``recordings/tas_import/happylee_w8.mp4`` (when recorded).
 

@@ -344,19 +344,60 @@ def _goal_reached(
 def _summarize_journal(journal: list[dict]) -> dict:
     phase_success: dict[str, int] = {}
     phase_skip: dict[str, int] = {}
+    phase_no_work: dict[str, int] = {}
+    phase_failure: dict[str, int] = {}
+    water_deltas: list[dict] = []
     for row in journal:
         for result in row.get("phase_results") or []:
             name = str(result.get("phase", "?"))
             status = str(result.get("status", ""))
+            reason = str(result.get("reason") or "")
             if status == "success":
                 phase_success[name] = phase_success.get(name, 0) + 1
             elif status == "skipped":
                 phase_skip[name] = phase_skip.get(name, 0) + 1
+            elif status == "no_work":
+                phase_no_work[name] = phase_no_work.get(name, 0) + 1
+            elif status in {"failure", "blocked"}:
+                phase_failure[name] = phase_failure.get(name, 0) + 1
+            if name == "CROP_WATER" and "watered=" in reason:
+                water_deltas.append(
+                    {
+                        "plan_day": row.get("plan_day"),
+                        "status": status,
+                        "reason": reason,
+                    }
+                )
     return {
         "overnights": len(journal),
         "phase_success_counts": phase_success,
         "phase_skip_counts": phase_skip,
+        "phase_no_work_counts": phase_no_work,
+        "phase_failure_counts": phase_failure,
+        "crop_water_deltas": water_deltas,
         "final_money": journal[-1].get("money") if journal else None,
+    }
+
+
+def _crop_survival_report(ram: np.ndarray) -> dict:
+    """Farm crop tile counts when the farm map is loaded; else map-not-farm note."""
+    from harvest.planner.day_plan_status import is_farm_tilemap
+    from harvest.tasks.crop_planter import count_crop_survival
+    from harvest.tasks.farm_clearer import ADDR_TILEMAP
+
+    tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else -1
+    if not is_farm_tilemap(tilemap):
+        return {
+            "farm_map_loaded": False,
+            "tilemap": tilemap,
+            "note": "crop tiles only visible on farm metatile map; house end-state is inconclusive",
+        }
+    counts = count_crop_survival(ram)
+    return {
+        "farm_map_loaded": True,
+        "tilemap": tilemap,
+        **counts,
+        "alive": int(counts.get("crop", 0)) > 0,
     }
 
 
@@ -606,6 +647,9 @@ def main() -> int:
             except Exception as exc:
                 print(f"[RUN] Could not save end state: {exc}", flush=True)
 
+        # Crop keep-alive evidence (rr-3v9): only valid on farm metatile maps.
+        crop_survival = _crop_survival_report(world.ram)
+
         report = {
             "state": None if args.power_on else args.state,
             "power_on": power_on_report,
@@ -626,6 +670,7 @@ def main() -> int:
             "day_failures": list(getattr(task, "day_failures", ()) or ()),
             "day_journal": journal,
             "journal_summary": _summarize_journal(journal),
+            "crop_survival": crop_survival,
             "success": success,
             "advanced": advanced,
             "goal_reached": goal,

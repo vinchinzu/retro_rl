@@ -38,7 +38,7 @@
 | Work queue focus | Tip `room_50` east→`0x01` (natural_entry); find B1 stairs after 0x01 chain; key/0x55 alternate |
 | Multi-truth anchors | `alttp.opening_route.anchors` + `docs/TRIGGER_HANDOFF.md` |
 | Session façade | `alttp.session.AlttpSession` (selective snapshot / caps / segment play) |
-| Save-state work queue | `alttp.opening_route.work_queue` — 60 `Zelda3-Snes` states ranked for Sanctuary; `docs/routes/ROOM_WORK_QUEUE.md` |
+| Save-state work queue | `work_queue` + `work_queue_data.yaml` — discover `.state`, merge curated status/notes, rank via path tags; export `docs/routes/ROOM_WORK_QUEUE.md` |
 
 ## Continuous spine (graph)
 
