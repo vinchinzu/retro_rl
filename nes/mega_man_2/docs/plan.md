@@ -2,19 +2,21 @@
 
 ## Goal
 
-Advance from M1 (boot) toward a verified continuous clear of Mega Man 2.
+Advance from M3 (Air Man screen-1 isolated) toward a verified continuous clear.
 
 ## Next milestones
 
-1. **M2 instrumentation** — map player position, mode, death, and stage/progress.
-2. **M3 isolated segment** — clear one early segment from `Level1.state` with timeout.
-3. **M4 natural-entry** — same segment from the real predecessor state (not a warp).
+1. **Air Man mid-stage** — clear more camera screens / landmarks from `AirScreen1`.
+2. **M4 natural-entry** — screen-1 (or better) from power-on without warping to `Level1`.
+3. **Boss segment** — isolated Air Man boss from a door-entry state.
+4. **Stage chain** — stage select → clear → weapons → next master.
 
 ## Bottleneck
 
-first Robot Master stage segment clear.
+Air Man stage beyond first screen (pit timing, wind fans, boss).
 
 ## Notes
 
 - Platform: NES (fceumm via stable-retro custom integration).
 - Shared ROM root: `roms/Nintendo/NES/`.
+- First segment goal is camera X screen ≥ 1 (not full Robot Master kill).
