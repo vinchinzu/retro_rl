@@ -72,7 +72,11 @@ class GateWaiter:
 
 
 def snapshot_fingerprint(snap: SmbSnapshot) -> dict[str, int]:
-    """Small, stable state signature for entry/exit logs and re-solves."""
+    """Small, stable state signature for entry/exit logs and re-solves.
+
+    Includes pose, velocity, grounded, and timer parity (21-frame class).
+    For subpixel / enemy slots use :func:`smb.ram.rich_handoff_fingerprint`.
+    """
     return {
         "world": snap.world,
         "level": snap.level,
@@ -83,8 +87,11 @@ def snapshot_fingerprint(snap: SmbSnapshot) -> dict[str, int]:
         "player_y": snap.player_y,
         "x_speed": snap.x_speed,
         "y_speed": snap.y_speed,
+        "grounded": int(bool(snap.grounded)),
         "timer": snap.timer,
+        "timer_mod21": int(snap.timer) % 21,
         "lives": snap.lives,
+        "screen_x": int(snap.screen_x),
     }
 
 
