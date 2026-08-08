@@ -817,10 +817,14 @@ HL_8_2_FM2_START = 10910
 HL_8_2_LEAVE_FRAMES = 2209
 HL_8_2_CTRL_WAIT = 165
 
-# Pure HL 8-3 still phase-blocked (max_x≈834 after wider 8-2 bodies).
+# Pure continuous FM2 8-3 still phase-blocked; **stitchless leave** via
+# skill-resume (progress prefix + pure hop/flagpole macro) verified 2026-08-07:
+# leave **2374f** 2/2 → 8-4 control (models/smb_8_3_stitchless_skills_leave.json).
+# FM2 start index remains a search hint only — re-gate from is_8_3_control.
 HL_8_3_FM2_START: int | None = None
-HL_8_3_LEAVE_FRAMES: int | None = None
-# Bridge: natural_82@15933 → 8-4 control (2227f). See smb_8_3_natural_for_hl_hybrid.
+HL_8_3_LEAVE_FRAMES: int | None = 2374  # skills leave (not pure FM2 body)
+HL_8_3_SKILLS_LEAVE = MODELS_DIR / "smb_8_3_stitchless_skills_leave.json"
+# Bridge: natural_82@15933 → 8-4 control (2227f). Showcase/hybrid only.
 NAT_8_3_FOR_HL_START = 15933
 NAT_8_3_TO_8_4_CONTROL = 2227
 # Flamexx 8-4 after HL chain + natural 8-3 (verified ending 2661f).

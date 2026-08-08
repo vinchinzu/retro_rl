@@ -79,16 +79,16 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
       @15210 / 2661f** → **18031f / 5:00.02** (−3528 vs n82; **+1** vs
       18030 sub-5 budget). Seeds `smb_happylee_hybrid_v2_fx84.json`,
       `smb_8_4_flamexx_slice.json`, `smb_8_3_natural_for_hl_hybrid.json`.
-    - **Pure HL 8-3 still open** (phase max_x≈834); 8-4 TAS body done via FX.
-    - **8-3 stitchless path (rr-34v, 2026-08-07):** user direction = **no
-      natural_82 hybrid stitch** as primary. Pure HL/FX after HL 8-2 control.
-      Gated FM2 raw best max_x≈**1030** (si≈13081 lead0); multi-round heal
-      del/ins/A-edge → **≈1730** (still no leave). Multi-leave 8-2 does not
-      change 8-3 ctrl fp (t=301). Tools: `probe_stitchless_8_3`, heal notes
-      under `recordings/tas_import/happylee_8_3_stitchless_*.json`. Hybrid
-      v2 18031 + `polish_8_3` kept as showcase/secondary only.
-    - **Next:** continue stitchless heal / grounded reactive 8-3 until leave;
-      then FX/HL 8-4 continuous; Clean power-on fold after full chain.
+    - **8-3 stitchless leave (rr-34v, 2026-08-07):** **done 2/2** — no
+      natural_82 mid-splice. Progress heal max_x **3390** then skill-resume
+      (land-pin cut1478 + pure hop jh=44/gap=6/hops=3 + idle fold) → **8-4
+      control 2374f** (`smb_8_3_stitchless_skills_leave.json`). Evidence
+      `happylee_8_3_skills_leave.json`. Rich FP + skills in `ram.py` /
+      `tas/skills_8_3.py` / `scripts/stitchless_8_3.py`. Pure continuous FM2
+      8-3 still phase-blocked; hybrid v2 showcase-only. Grounded/pit-jump
+      long grids **paused**.
+    - **Next:** fold HL…8-2 + skills 8-3 + FX 8-4 continuous; verify 3/3;
+      Clean power-on; optional 21f polish / FPG macro on leave class.
 6. **Route contracts + natural predecessor evaluator (2026-08-01):** done.
    `smb.reactive_route` tracks declared successors and entry fingerprints;
    `smb.scripts.run_reactive_warp` runs stairs + reactive 1-2 and retimed
