@@ -44,7 +44,7 @@ Manifest count: **38**.
 | `snes/joe_and_mac` / Joe & Mac | platforming | P3 | instrumented | M2 | bronze | clean | no | first traversable Stage 1 segment |
 | `nes/kirby_adventure` / Kirby's Adventure | platforming | P3 | boot_verified | M1 | bronze | clean | no | first stage/segment clear from Vegetable Valley hub |
 | `snes/magical_quest` / The Magical Quest Starring Mickey Mouse | platforming | P3 | instrumented | M2 | bronze | clean | no | clear first room/checkpoint from Stage 1 |
-| `nes/mega_man_2` / Mega Man 2 | platforming | P3 | segment_verified | M3 | bronze | clean | no | Air Man mid-stage / natural-entry M4 |
+| `nes/mega_man_2` / Mega Man 2 | platforming | P3 | segment_verified | M3 | bronze | clean | no | Air Man past screen 2 / natural-entry M4 |
 | `nes/smb` / Super Mario Bros. | platforming | P3 | verified_capture | M8 | bronze | clean | yes | — |
 | `nes/smb3` / Super Mario Bros. 3 | platforming | P3 | segment_clear | M3 | bronze | clean | no | World 1-2 natural-entry clear |
 | `snes/SMW` / Super Mario World | platforming | P3 | instrumented | M2 | bronze | clean | no | normalize route tooling into maturity gates and continuous clear path |
