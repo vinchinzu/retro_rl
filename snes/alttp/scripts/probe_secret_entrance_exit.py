@@ -38,7 +38,7 @@ from alttp.ram import (  # noqa: E402
     snapshot_to_diag,
 )
 from alttp.startup import action_for, build_boot_env, no_action, snapshot_env, step_frames  # noqa: E402
-from alttp.opening_route.sword_to_zelda import (  # noqa: E402
+from alttp.opening_route.secret_entrance_clear import (  # noqa: E402
     SOUTH_CHAMBER_Y_MAX,
     approach_south_chamber,
     ensure_sword_control,

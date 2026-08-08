@@ -206,7 +206,7 @@ def _default_goal(state_name: str, group: str) -> str:
     if group == "frontier":
         return "discover_b1_stairs"
     if group == "main":
-        return "main_hall_to_zelda"
+        return "reach_zelda_cell"
     rid = _parse_room_id(state_name)
     if rid is not None:
         return f"clear_room_0x{rid:02X}"

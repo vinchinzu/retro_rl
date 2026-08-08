@@ -63,17 +63,17 @@ dungeon graphs are loadable but not curated here.
 
 ## Opening-route catalog
 
-`alttp.opening_route_catalog` maps the confirmed Link's House → castle goal
+`alttp.opening_route.catalog` maps the confirmed Link's House → castle goal
 to expected z3 rooms/nodes/connections and gameplay RAM checkpoints, then can
 emit a structured artifact (default
 `alttp/recordings/opening_route_catalog.json`).
 
 ```bash
-uv run python -m alttp.opening_route_catalog status
-uv run python -m alttp.opening_route_catalog validate
-uv run python -m alttp.opening_route_catalog list-checkpoints -v
-uv run python -m alttp.opening_route_catalog emit
-uv run python -m alttp.opening_route_catalog emit \
+uv run python -m alttp.opening_route.catalog status
+uv run python -m alttp.opening_route.catalog validate
+uv run python -m alttp.opening_route.catalog list-checkpoints -v
+uv run python -m alttp.opening_route.catalog emit
+uv run python -m alttp.opening_route.catalog emit \
   --from-boot-report alttp/recordings/boot_to_castle.json
 ```
 

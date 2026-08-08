@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from retro_harness.adventure.graph import RouteLeg
-from alttp.escape_graph import (
+from alttp.opening_route.escape_graph import (
     CAP_FIGHTER_SWORD,
     CAP_LAMP,
     CAP_SMALL_KEY,
@@ -30,6 +30,7 @@ from alttp.escape_graph import (
     capabilities_from_snapshot,
     continuous_spine_legs,
     escape_route_graph,
+    escape_route_hops,
     escape_route_legs,
     escape_route_legs_from_room_55,
     escape_route_legs_key_path,
@@ -141,7 +142,7 @@ def test_full_plan_with_natural_lamp_reaches_sanctuary() -> None:
     )
     assert CAP_SMALL_KEY not in planned[-1].capabilities_after
     # Sword acquired on uncle leg before south chamber.
-    sword_leg = next(p for p in planned if p.leg.leg_id == "uncle_fighter_sword")
+    sword_leg = next(p for p in planned if p.leg.leg_id == "hole_to_sword")
     assert CAP_FIGHTER_SWORD in sword_leg.capabilities_after
     assert CAP_FIGHTER_SWORD not in sword_leg.capabilities_before
     path = [p.leg.source_id for p in planned] + [planned[-1].leg.target_id]
@@ -304,3 +305,28 @@ def test_capabilities_from_snapshot() -> None:
 def test_natural_default_capabilities_include_lamp() -> None:
     assert CAP_LAMP in NATURAL_HOUSE_EXIT_CAPABILITIES
     assert CAP_FIGHTER_SWORD not in NATURAL_HOUSE_EXIT_CAPABILITIES
+
+
+def test_hops_generate_matching_edge_and_leg_ids() -> None:
+    """Single hop table: every hop id is both edge_id and leg_id."""
+    hops = escape_route_hops()
+    graph = escape_route_graph()
+    hop_ids = [h.hop_id for h in hops]
+    assert len(hop_ids) == len(set(hop_ids)), "duplicate hop ids"
+    assert len(graph.edges) == len(hops)
+    for hop in hops:
+        edge = graph.edge_for(hop.source_id, hop.target_id)
+        assert edge is not None, hop.hop_id
+        assert edge.edge_id == hop.hop_id
+        assert edge.verification == hop.verification
+        assert edge.requires == hop.requires
+        leg = hop.to_leg()
+        assert leg.leg_id == hop.hop_id
+        assert leg.acquires == hop.acquires
+    continuous = continuous_spine_legs()
+    for leg in continuous:
+        assert any(h.hop_id == leg.leg_id for h in hops)
+        edge = graph.edge_for(leg.source_id, leg.target_id)
+        assert edge is not None
+        assert edge.edge_id == leg.leg_id
+        assert edge.verification == VERIFICATION_CONTINUOUS

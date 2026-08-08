@@ -36,7 +36,7 @@ STATE_SEMANTIC_NAMES: dict[str, str] = {
     FIRST_ACTION_STATE: "HyruleCastle_FirstAction_Dev",
 }
 
-# Sanctuary-path save-state work queue artifacts (see alttp.work_queue).
+# Sanctuary-path save-state work queue artifacts (see opening_route.work_queue).
 ROOM_WORK_QUEUE_JSON = RECORDINGS_DIR / "room_work_queue.json"
 ROOM_WORK_QUEUE_MD = DOCS_DIR / "routes" / "ROOM_WORK_QUEUE.md"
 
