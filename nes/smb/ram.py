@@ -40,19 +40,33 @@ ADDR_TIMER_ONES = 0x07FA
 
 # Enemy slots (5)
 ADDR_ENEMY_FLAG = 0x000F  # +slot: nonzero = active
+ADDR_ENEMY_TYPE = 0x0016  # +slot (0x05 = Hammer Bro, 0x2E hammer projectile, …)
+ADDR_ENEMY_STATE = 0x001E  # +slot phase / anim
 ADDR_ENEMY_X_PAGE = 0x006E  # +slot
 ADDR_ENEMY_X = 0x0087  # +slot
 ADDR_ENEMY_Y = 0x00CF  # +slot
 
+# Subpixel / frame phase (handoff fingerprints; readable on fceumm)
+ADDR_FRAME_COUNTER = 0x0009  # free-running frame counter
+ADDR_PLAYER_X_FRAC = 0x0400  # player X fractional subpixel
+ADDR_PLAYER_Y_FRAC = 0x0416  # player Y fractional subpixel
+
+# Common enemy type ids (smbdis / GameResources)
+ENEMY_TYPE_HAMMER_BRO = 0x05
+ENEMY_TYPE_HAMMER = 0x2E
+
 # Death / completion helpers
 PLAYER_STATE_DYING = 0x0B
 PLAYER_STATE_NORMAL = 0x08
+PLAYER_STATE_FLAGPOLE = 0x04
+PLAYER_STATE_AUTO_WALK = 0x05
 PLAYER_STATE_ALIVE = frozenset({0x00, 0x01, 0x03, 0x08, 0x0A})
 # States that are still controllable / on-foot physics (not pipe auto / die).
 PLAYER_STATE_GROUNDED_CANDIDATES = frozenset({0x00, 0x08})
 OPER_MODE_PLAYING = 1
 OPER_MODE_END = 2
 LEVEL_ID_1_1 = 0  # world 0 * 4 + level 0
+N_ENEMY_SLOTS = 5
 
 
 def s8(value: int) -> int:
@@ -209,6 +223,72 @@ def read_snapshot(ram: np.ndarray, frame: int = 0) -> SmbSnapshot:
         player_screen_x=int(ram[ADDR_PLAYER_SCREEN_X]),
         in_air=is_in_air(ram),
     )
+
+
+def read_enemy_slots(ram: np.ndarray) -> list[dict[str, int]]:
+    """Active enemy slots: type, state/phase, absolute x/y (for handoff FP)."""
+    out: list[dict[str, int]] = []
+    for slot in range(N_ENEMY_SLOTS):
+        if int(ram[ADDR_ENEMY_FLAG + slot]) == 0:
+            continue
+        out.append(
+            {
+                "slot": slot,
+                "type": int(ram[ADDR_ENEMY_TYPE + slot]),
+                "state": int(ram[ADDR_ENEMY_STATE + slot]),
+                "x": int(ram[ADDR_ENEMY_X_PAGE + slot]) * 256
+                + int(ram[ADDR_ENEMY_X + slot]),
+                "y": int(ram[ADDR_ENEMY_Y + slot]),
+            }
+        )
+    return out
+
+
+def rich_handoff_fingerprint(
+    ram: np.ndarray,
+    *,
+    frame: int = 0,
+    snap: SmbSnapshot | None = None,
+) -> dict[str, object]:
+    """Control/land-pin fingerprint: pose, subpixel, velocity, enemies, camera, timer.
+
+    Absolute FM2 offsets are **not** part of this signature — use only RAM-visible
+    state when matching gates or scoring phase class (e.g. 21-frame timer parity).
+    """
+    if snap is None:
+        snap = read_snapshot(ram, frame=frame)
+    enemies = read_enemy_slots(ram)
+    return {
+        "frame": int(frame),
+        "world": int(snap.world),
+        "level": int(snap.level),
+        "area_pointer": int(snap.area_pointer),
+        "oper_mode": int(snap.oper_mode),
+        "player_state": int(snap.player_state),
+        "player_x": int(snap.player_x),
+        "player_y": int(snap.player_y),
+        "x_frac": int(ram[ADDR_PLAYER_X_FRAC]),
+        "y_frac": int(ram[ADDR_PLAYER_Y_FRAC]),
+        "x_speed": int(snap.x_speed),
+        "y_speed": int(snap.y_speed),
+        "grounded": bool(snap.grounded),
+        "in_air": bool(snap.in_air),
+        "facing": int(snap.facing),
+        "player_power": int(snap.player_power),
+        "timer": int(snap.timer),
+        "timer_mod21": int(snap.timer) % 21,
+        "lives": int(snap.lives),
+        "screen_x": int(snap.screen_x),
+        "player_screen_x": int(snap.player_screen_x),
+        "frame_counter": int(ram[ADDR_FRAME_COUNTER]),
+        "enemies": enemies,
+        "enemy_types": [e["type"] for e in enemies],
+        "enemy_states": [e["state"] for e in enemies],
+        "n_hammer_bro": sum(
+            1 for e in enemies if e["type"] == ENEMY_TYPE_HAMMER_BRO
+        ),
+        "n_hammer": sum(1 for e in enemies if e["type"] == ENEMY_TYPE_HAMMER),
+    }
 
 
 def left_level_1_1(ram: np.ndarray, *, start_level_id: int = LEVEL_ID_1_1) -> bool:

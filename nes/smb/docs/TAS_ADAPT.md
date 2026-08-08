@@ -308,11 +308,12 @@ Evidence: ``happylee_8_1_8_2_slice_verify.json`` (to 8-3 load **12976**).
 
 **8-1 parity:** wait81 **odd** but **even** FM2 starts clear — search both.
 
-**8-3 pure HL:** still **blocked**. Wider 8-2 bodies (leave 2209…3049),
-lead idles 0–21, continuous from leave, flamexx 8-3 starts — best gated
-progress **max_x≈834** (flag is ~3554). Continuous from 8-2 dies/stalls
-early in 8-3. Evidence: `happylee_8_3_phase_diag.json`,
-`happylee_8_3_progressive.json`.
+**8-3 pure continuous FM2:** still phase-blocked (gated raw max_x≈1030;
+continuous dies early). **Stitchless leave (skills path, 2026-08-07):**
+HL 8-2 control → progress-healed body prefix (max_x 3390) → land-pin skill
+(cut1478 + hop jh=44/gap=6/hops=3) + idle fold → **8-4 control 2374f 2/2**.
+No natural_82 mid-splice. Seed: `smb_8_3_stitchless_skills_leave.json`.
+Evidence: `happylee_8_3_skills_leave.json`. CLI: `smb.scripts.stitchless_8_3`.
 
 **8-4 TAS after natural 8-3 (works 3/3):** after HL→8-2 + wait83 + natural
 bridge to ``is_8_4_control`` (nat@15933 for **2227f**), **flamexx** FM2
@@ -345,8 +346,9 @@ projects ~**17.9k / ~4:57** if phase matches. v2 is the full-clear showcase
 | Control-relative 1-2 → W4 | **Done** (−316f body / −329f to W4) | Keep |
 | Control-relative 4-1 / 4-2 → W8 | **Done** (−252f 4-1 / −1083f 4-2 / −5116f to W8) | Validate 4-2 path video+RAM |
 | 8-1 / 8-2 leave probe | **Done** (2881 / 2209 exported) | Keep |
-| 8-3 pure HL | **Open** (max_x≈834) | Phase / retime / heal |
-| 8-4 TAS body | **Done** (FX 2661 after nat 8-3) | Hybrid v2 18031f |
+| 8-3 stitchless leave | **Done** 2374f 2/2 (skills) | Fold full chain + Clean |
+| 8-3 pure continuous FM2 | **Open** (phase-blocked) | Secondary |
+| 8-4 TAS body | **Done** (FX 2661 after nat 8-3) | Attach after skills 8-3 |
 | Power-on full movie dies early | Core lag/blackout ≠ FCEUX | Don't force full FM2 |
 | Absolute stitch → 1-3 | Warp pipe phase miss | Always gate on control |
 | Parity (even/odd starts) | Hitbox / enemy phase | Prefer match wait; **search both** if miss |
@@ -374,16 +376,14 @@ Index **1** is the stable-retro NES hole (always 0).
   - **rr-nwl**: natural-entry 1-1 HappyLee — **done** (settle odd / default 1).
   - **rr-9m9**: slice FM2 per-level from control — **1-2 W4 done**.
   - **rr-zzw**: slice 4-1 / 4-2 from control after HL W4 — **done** (→ W8 @7512f).
-  - **rr-b8k**: slice 8-1…8-4 — **in progress** (8-1/8-2 leave probe-ok;
-    exported; hybrid v2 18031f with FX 8-4).
-  - **Next (rr-34v, stitchless):** do **not** extend natural_82 hybrid bridge
-    / FX −1f polish as the main loop. Want **stitchless** HL (or FX) 8-3 after
-    HL 8-2 control — continuous TAS body or healed FM2 slice, no n82 mid-
-    splice. Status 2026-08-07: gated HL best raw max_x≈**1030** (si≈13081);
-    multi-round del/ins/A-edge heal → **≈1730** (no leave; flag ~3554).
-    Multi-leave 8-2 still re-gates to same ctrl fp (t=301). Tool:
-    `smb.scripts.probe_stitchless_8_3`. Hybrid v2 18031 kept as showcase only.
-    Then Clean power-on fold after stitchless leave.
+  - **rr-b8k**: slice 8-1…8-4 — **in progress** (8-1/8-2 exported; **8-3
+    stitchless leave 2374f** via skills; 8-4 FX body exists; full fold open).
+  - **rr-34v (stitchless 8-3):** leave **done 2/2** at **2374f**
+    (`smb_8_3_stitchless_skills_leave.json`) after HL 8-2 control — progress
+    prefix + pure hop/flagpole skill + idle fold; **no natural_82 splice**.
+    Rich handoff FP + `stitchless_8_3` / `skills_8_3`. Grounded/pit-jump
+    grids paused. **Next:** fold continuous HL…8-2 + skills 8-3 + FX 8-4;
+    Clean power-on 3/3; optional 21f/FPG polish. Hybrid v2 18031 showcase only.
   - **rr-k96**: FPG/BBG/fast-accel named macros — open (encode after more slices).
 - **rr-9dg** (8-1 polish −42f): keep artifacts; secondary to TAS structure.
 - 8-2/8-3/8-4 hill-climb (rr-7n0, rr-yqb, rr-6m9) remains secondary until

@@ -213,7 +213,8 @@ uv run python -m smb.scripts.fold_continuous_policy
   | 4-2 → W8 | `smb_4_2_happylee_slice.json` | FM2 @**6207**, **1516f** W8; chain ≈**7512** to W8 (**−5116** vs natural_82 12628) |
   | 8-1 | `smb_8_1_happylee_slice.json` | FM2 @**7930**, leave **2881** (wait81=209); ≈**−785f** body |
   | 8-2 | `smb_8_2_happylee_slice.json` | FM2 @**10910**, leave **2209** (wait82=165); ≈**−942f** body |
-  | 8-3 | nat bridge `smb_8_3_natural_for_hl_hybrid.json` | pure HL **open** (max_x≈834); nat@15933 → 8-4 ctrl **2227f** |
+  | 8-3 stitchless | `smb_8_3_stitchless_skills_leave.json` | **2374f 2/2** → 8-4 ctrl after HL 8-2; skill-resume (no n82 splice); pure FM2 still phase-blocked |
+  | 8-3 hybrid bridge | `smb_8_3_natural_for_hl_hybrid.json` | nat@15933 → 8-4 ctrl **2227f** (showcase only) |
   | 8-4 | `smb_8_4_flamexx_slice.json` | FX @**15210**, ending **2661f** after nat 8-3 (HL alt 2833) |
   | hybrid v1 | `smb_happylee_hybrid_ending.json` | 18,769f / 5:12.3 (nat 8-3/8-4) |
   | **hybrid v2** | `smb_happylee_hybrid_v2_fx84.json` | Level1_1→axe **18,031f / 5:00.02** (−3528 vs n82; **+1** vs 18030) |
@@ -228,7 +229,7 @@ uv run python -m smb.scripts.fold_continuous_policy
   | 4-2 / W8 | 8962 | 2764 | 00:45.991 | **7512** | 1516 | 00:25.225 | −1450 |
   | 8-1 | 12628 | 3666 | 01:01.000 | **≈10602** | 2881 | 00:47.938 | ≈−2026 |
   | 8-2 | 15779 | 3151 | 00:52.430 | **≈12976** | 2209 | 00:36.756 | ≈−2803 |
-  | 8-3 | 17985 | 2206 | 00:36.706 | bridge | nat | — | pure HL open |
+  | 8-3 | 17985 | 2206 | 00:36.706 | skills leave | **2374** | 00:39.501 | stitchless 2/2; fold open |
   | 8-4 | **21559** | 3574 | 00:59.469 | **≈18031** v2 | **2661 FX** | 00:44.277 | hybrid v2 |
 
   \*HL body only (excludes control waits). Showcase continuous is **hybrid
@@ -249,7 +250,8 @@ uv run python -m smb.scripts.fold_continuous_policy
   `happylee_hybrid_v2_fx84_verify.json` (3/3),
   **video** [`happylee_ending.mp4`](../recordings/tas_import/happylee_ending.mp4)
   (Level1_1→axe **18,031f / 5:00.02**, HUD+audio+Peach; **not** Clean
-  power-on; **+1f** vs 18030 sub-5 budget — pure HL 8-3 still open).
+  power-on; **+1f** vs 18030 sub-5 budget — stitchless 8-3 leave **2374f**
+  done; full chain fold still open).
   Also: `happylee_w8.mp4` (to W8 only, 2:05).
 
 ### First-pipe landing fix (continuous seed)

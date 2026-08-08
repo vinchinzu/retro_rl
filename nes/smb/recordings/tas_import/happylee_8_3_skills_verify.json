@@ -1,0 +1,61 @@
+{
+  "seed": "nes/smb/models/smb_8_3_stitchless_skills_leave.json",
+  "ctrl_fp": {
+    "frame": 0,
+    "world": 7,
+    "level": 2,
+    "area_pointer": 33,
+    "oper_mode": 1,
+    "player_state": 7,
+    "player_x": 40,
+    "player_y": 176,
+    "x_frac": 0,
+    "y_frac": 0,
+    "x_speed": 0,
+    "y_speed": 0,
+    "grounded": true,
+    "in_air": false,
+    "facing": 1,
+    "player_power": 0,
+    "timer": 301,
+    "timer_mod21": 7,
+    "lives": 2,
+    "screen_x": 0,
+    "player_screen_x": 40,
+    "frame_counter": 163,
+    "enemies": [
+      {
+        "slot": 1,
+        "type": 51,
+        "state": 0,
+        "x": 288,
+        "y": 168
+      }
+    ],
+    "enemy_types": [
+      51
+    ],
+    "enemy_states": [
+      0
+    ],
+    "n_hammer_bro": 0,
+    "n_hammer": 0
+  },
+  "trials": [
+    {
+      "ok": true,
+      "leave": 2374,
+      "max_x": 3554,
+      "flag_at": 1645,
+      "timer_mod21": 2
+    },
+    {
+      "ok": true,
+      "leave": 2374,
+      "max_x": 3554,
+      "flag_at": 1645,
+      "timer_mod21": 2
+    }
+  ],
+  "all_ok": true
+}
