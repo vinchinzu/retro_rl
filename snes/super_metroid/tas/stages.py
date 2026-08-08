@@ -416,8 +416,8 @@ STAGE_CATALOG: dict[str, RoomStageSpec] = {
         movie=None,
         track="product",
         tags=("norfair", "ice", "product_p0"),
-        tech=("walljump",),
-        note="★ Product pure P0 (rr-5cf) prefer 2WJ. TAS body only after pure probe.",
+        tech=(),
+        note="Acid→Snake dual GREEN (rr-5cf) horizontal RLE. 2WJ is Snake→Ice (rr-5if).",
     ),
 }
 

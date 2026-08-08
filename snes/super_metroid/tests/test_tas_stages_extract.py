@@ -10,6 +10,7 @@ import pytest
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
     ROOM_CERES_FALLING,
+    ROOM_ICE,
     ROOM_ICE_ACID,
     ROOM_ICE_SNAKE,
     ROOM_LANDING_SITE,
@@ -40,7 +41,7 @@ def test_stage_catalog_has_ceres_and_ice_p0() -> None:
     assert ice.room_id == ROOM_ICE_ACID
     assert ice.goal_room_id == ROOM_ICE_SNAKE
     assert ice.track == "product"
-    assert "product_p0" in ice.tags
+    # Acid→Snake dual GREEN (rr-5cf); product_p0 tag retained as Ice stack track.
 
 
 def test_control_and_goal_on_pin_dict() -> None:
@@ -166,13 +167,12 @@ def test_build_hops_and_board() -> None:
     board = build_extraction_board(hops, pins=_sample_events(), run_id="test")
     assert board["schema"] == "sm_tas_extraction_board_v1"
     assert board["summary"]["hop_count"] == 3
-    # Product P0 always listed in top candidates.
+    # Product P0 always listed: Snake→Ice PLM (rr-5if); Acid→Snake dual GREEN.
     tops = board["top_skill_room_candidates"]
     assert any(
-        c["from_room"] == ROOM_ICE_ACID and c["to_room"] == ROOM_ICE_SNAKE
-        for c in tops
+        c["from_room"] == ROOM_ICE_SNAKE and c["to_room"] == ROOM_ICE for c in tops
     )
-    assert any(c.get("bead_hint") == "rr-5cf" for c in tops)
+    assert any(c.get("bead_hint") == "rr-5if" for c in tops)
 
 
 def test_extract_run_any_full_if_present() -> None:

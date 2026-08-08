@@ -56,6 +56,7 @@ from super_metroid.routes.kpdr.to_bat_cave import (
 )
 from super_metroid.routes.kpdr.ice import (
     play_business_to_ice_gate,
+    play_ice_acid_to_snake,
     play_ice_gate_to_acid,
 )
 from super_metroid.routes.kpdr.k4_norfair import (
@@ -208,6 +209,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "business_to_ice_gate": play_business_to_ice_gate,
     # K4.13: Ice Gate → Acid Room (tape entry path; skip Tutorial).
     "ice_gate_to_acid": play_ice_gate_to_acid,
+    "ice_acid_to_snake": play_ice_acid_to_snake,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,

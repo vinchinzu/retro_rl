@@ -53,10 +53,11 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: Ice pure stack — Gate dual GREEN (`rr-fg3` 894f) + **Gate → Acid dual
-GREEN** (`rr-9t4` 370f ×2, `0xA75D` ~(470,139); needs **Speed** loadout). Next
-**Acid → Snake** (`rr-5cf`, prefer **2WJ**) → Ice PLM. No continuous `--to ice`
-until pure stack greens (`rr-dbu.7`). Work: `bd ready -l super_metroid`.
+★ Next: Ice pure stack — Gate dual GREEN (`rr-fg3` 894f) + Gate→Acid dual GREEN
+(`rr-9t4` 370f ×2) + **Acid → Snake dual GREEN** (`rr-5cf` **652f** ×2,
+`0xA8B9` ~(216,651); horizontal RLE, not freeze). Next **Snake → Ice PLM**
+(`rr-5if`, prefer **2WJ**). No continuous `--to ice` until pure stack greens
+(`rr-dbu.7`). Work: `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
 
