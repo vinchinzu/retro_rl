@@ -1,13 +1,18 @@
-"""Clear Air Man first screen from Level1 with hard timeout.
+"""Clear Air Man early screens with hard timeout.
 
-Success (M3 isolated segment): ``camera_x_screen`` ≥ ``--target-screen``
-(default 1) with health > 0 and not fallen, within ``--max-frames``.
-Verified deterministic 3/3 from ``Level1.state`` at target=1 (~248 frames,
-HP 26).
+Success: ``camera_x_screen`` ≥ ``--target-screen`` with health > 0 and not
+fallen, within ``--max-frames``.
+
+Verified (2026-08-08, Clean Bronze):
+
+- target 1 from ``Level1``: legacy ``AirScreen1Policy`` (~248f)
+- target 2 from ``Level1``: ``AirManPolicy`` (~521f, HP 22, 3/3)
+- target 2 from ``AirLanded``: ``AirManPolicy(start=landed)`` (~225f, 3/3)
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
-  uv run python nes/mega_man_2/scripts/run_air_segment.py
+  uv run python nes/mega_man_2/scripts/run_air_segment.py --trials 3
+uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirLanded --trials 3
 ```
 """
 
@@ -25,7 +30,7 @@ for _p in (_REPO_ROOT, _NES):
         sys.path.insert(0, str(_p))
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from mega_man_2.policy import AirScreen1Policy
+from mega_man_2.policy import AirManPolicy, AirScreen1Policy
 from mega_man_2.ram import (
     ADDR_CAMERA_X_SCREEN,
     ADDR_HEALTH,
@@ -44,19 +49,27 @@ from retro_harness.segment_runner import (
 )
 
 DEFAULT_STATE = "Level1"
-DEFAULT_TARGET_SCREEN = 1
+DEFAULT_TARGET_SCREEN = 2
+
+
+def _make_policy(*, state_name: str, target_screen: int):
+    """Pick policy for start state / target."""
+    if target_screen <= 1:
+        return AirScreen1Policy(target_camera_screen=target_screen)
+    start = "landed" if state_name.startswith("AirLanded") else "level1"
+    return AirManPolicy(target_camera_screen=target_screen, start=start)
 
 
 def run_air_segment(
     *,
     state_name: str = DEFAULT_STATE,
     target_screen: int = DEFAULT_TARGET_SCREEN,
-    max_frames: int = 2000,
+    max_frames: int = 4000,
     out_dir: Path | None = None,
     save_clear: bool = True,
     trials: int = 1,
 ) -> dict[str, Any]:
-    """Load checkpoint, run AirScreen1Policy until screen target or fail."""
+    """Load checkpoint, run policy until screen target or fail."""
     configure_headless()
     available = get_available_states(GAME, GAME_DIR)
     if state_name not in available:
@@ -87,8 +100,8 @@ def run_air_segment(
         "start_state": state_name,
         "trial_reports": trial_reports,
         "notes": (
-            "M3 segment: Air Man camera X screen ≥ target from Level1. "
-            "Policy: RIGHT + jump period 50/12 + shoot pulse."
+            "Air Man camera X screen ≥ target. "
+            "Level1→2 uses AirManPolicy (early 50/12, land jump, mid 50/12, gap@142)."
         ),
     }
     write_json_report(out / "air_segment.json", report)
@@ -96,7 +109,8 @@ def run_air_segment(
     print(
         f"outcome={'success' if report['success'] else 'fail'} "
         f"{successes}/{trials} last_frames={last['frames']} "
-        f"hp={last['final_health']} screen={last['final_camera_screen']}"
+        f"hp={last['final_health']} screen={last['final_camera_screen']} "
+        f"prog={last['final_progress_x']}"
     )
     return report
 
@@ -115,7 +129,7 @@ def _run_one(
     if isinstance(obs, tuple):
         obs = obs[0]
 
-    policy = AirScreen1Policy(target_camera_screen=target_screen)
+    policy = _make_policy(state_name=state_name, target_screen=target_screen)
     reasons: dict[str, int] = {}
     screenshots: list[str] = []
     saved: list[str] = []
@@ -152,10 +166,12 @@ def _run_one(
             png = save_rgb_png(obs, out / f"{prefix}_{frame:04d}_clear.png")
             screenshots.append(png.name)
             if save_clear:
-                path = save_state(env, GAME_DIR, GAME, "AirScreen1")
+                tag = f"AirScreen{target_screen}"
+                path = save_state(env, GAME_DIR, GAME, tag)
                 saved.append(path.name)
-                tagged = f"AirScreen1_scr{cam_scr}_hp{health}"
-                path2 = save_state(env, GAME_DIR, GAME, tagged)
+                path2 = save_state(
+                    env, GAME_DIR, GAME, f"{tag}_scr{cam_scr}_hp{health}"
+                )
                 saved.append(path2.name)
             break
 
@@ -192,6 +208,7 @@ def _run_one(
             "health": start.health,
             "lives": start.lives,
             "camera_x_screen": int(start.extras.get("camera_x_screen", 0)),
+            "progress_x": int(start.extras.get("progress_x", 0)),
         },
     }
 
@@ -200,7 +217,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=DEFAULT_STATE)
     parser.add_argument("--target-screen", type=int, default=DEFAULT_TARGET_SCREEN)
-    parser.add_argument("--max-frames", type=int, default=2000)
+    parser.add_argument("--max-frames", type=int, default=4000)
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--no-save", action="store_true")
     parser.add_argument("--trials", type=int, default=1)
