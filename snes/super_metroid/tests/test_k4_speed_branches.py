@@ -39,11 +39,8 @@ def test_k4_bubble_to_wave_edge_contract() -> None:
         "single_to_double_chamber",
         "double_chamber_to_wave",
     ]
-    assert [edge.verification for edge in path] == [
-        "unverified",
-        "unverified",
-        "unverified",
-    ]
+    # Wave continuous tip (K4.10 dual) promotes branch edges.
+    assert all(edge.verification == "continuous" for edge in path)
 
 
 def test_k4_business_to_ice_edge_contract() -> None:
@@ -56,8 +53,10 @@ def test_k4_business_to_ice_edge_contract() -> None:
         "ice_tutorial_to_snake",
         "ice_snake_to_ice",
     ]
+    # Business→Gate pure dual GREEN (rr-fg3); rest of Ice stack still open.
+    # Graph still routes Tutorial first; tape recon prefers Acid (rr-9t4).
     assert [edge.verification for edge in path] == [
-        "unverified",
+        "controller_dev",
         "unverified",
         "unverified",
         "unverified",
@@ -70,12 +69,18 @@ def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
     speed = SPEED_GRAPH.path_verification(0xACB3, 0xAD1B, CAPS)
 
     assert wave["reachable"] is True
-    assert wave["all_continuous"] is False
-    # Cathedral→Bubble→Bat is continuous; first non-continuous hop is Wave branch.
-    assert wave["blocking"] == "bubble_to_single_chamber"
+    # Business→…→Wave is continuous (default tip).
+    assert wave["all_continuous"] is True
+    assert wave["blocking"] is None
     assert ice["reachable"] is True
     assert ice["all_continuous"] is False
+    # Default floor is continuous; controller_dev Gate hop still blocks tip path.
     assert ice["blocking"] == "business_to_ice_gate"
+    # Pure-gated through Gate once min_verification=controller_dev.
+    ice_pure = SPEED_GRAPH.path_summary(
+        0xA7DE, 0xA890, CAPS, min_verification="controller_dev"
+    )
+    assert ice_pure["blocking_edge_id"] == "ice_gate_to_tutorial"
     # Speed Hall + collect are continuous spine product edges.
     assert speed["reachable"] is True
     assert speed["all_continuous"] is True

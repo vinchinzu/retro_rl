@@ -33,8 +33,8 @@ helpers, ≤~500 lines/file — checklist in
 **136,361f** ×2, room `0xADDE`, beams `0x1005`, items `0x3105`).
 **History:** Speed **130,388f** ×2 and non-Spazer Bat Cave **122,304f** ×2
 remain valid previous tips.
-**Next:** post-Wave Ice pure when human recon exists (`rr-dbu.11`). Do not
-invent Ice hops without tape.
+**Next:** Ice pure stack (`rr-dbu.11`) — Business→Gate dual GREEN (`rr-fg3`);
+next Gate→Acid (`rr-9t4`). Do not invent Ice hops without tape.
 
 **Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
 Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:

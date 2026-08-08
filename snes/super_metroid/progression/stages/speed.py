@@ -162,7 +162,7 @@ _BRANCH_EDGES = (
         "right",
         _K4_CAPS | frozenset({"super_missiles"}),
         "kpdr_k4_ice",
-        "unverified",
+        "controller_dev",  # pure dual GREEN 894f ×2 (rr-fg3); no continuous tip yet
     ),
     DoorEdge(
         "ice_gate_to_tutorial",
