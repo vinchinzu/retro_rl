@@ -46,7 +46,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product pure** | Business → Ice Gate → Acid → Snake (2WJ) → Ice PLM | `rr-fg3` → `rr-9t4` → `rr-5cf` → `rr-5if` |
+| **★ Product pure** | Ice Gate → Acid → Snake (2WJ) → Ice PLM (Business→Gate dual GREEN) | `rr-9t4` → `rr-5cf` → `rr-5if` · done `rr-fg3` |
 | Product after Ice | tip ice → K5 → Moat approach | `rr-dbu.7` → `.8` → `.9` |
 | Done | Human full tape 39,711f Wave+Ice+Moat | `rr-dbu.12` · [SM-SPEED-ICE-MOAT-HUMAN.md](tasks/SM-SPEED-ICE-MOAT-HUMAN.md) |
 | Optional | Policy consolidate; duck-type; Clean STATUS; speed start Spazer | P3 |

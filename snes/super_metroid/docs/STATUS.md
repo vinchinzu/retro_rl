@@ -53,10 +53,10 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: Ice pure from tape (`rr-dbu.12` GREEN 39,711f) — first hop **Business →
-Ice Gate** (`rr-fg3`); package `routes/kpdr/ice/`. Path: Gate → Acid `0xA75D` →
-Snake (prefer **2WJ**, not freeze climb) → Ice PLM. Human start lacked
-Spazer/Charge (fix later). Work: `bd ready -l super_metroid`.
+★ Next: Ice pure stack — **Business → Ice Gate dual GREEN** (`rr-fg3`, 894f ×2,
+room `0xA815` ~(1752,651)); package `routes/kpdr/ice/`. Next hop **Gate → Acid
+`0xA75D`** (`rr-9t4`). Then Snake (prefer **2WJ**) → Ice PLM. No continuous
+`--to ice` until pure stack greens (`rr-dbu.7`). Work: `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
 
