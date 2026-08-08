@@ -185,6 +185,19 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1, 2, 9, 10}),
     ),
     SourceFingerprint(
+        "post_ice_acid_to_snake_pure",
+        "scratch/post_ice_acid_to_snake_pure.state",
+        0xA8B9,
+        use_for="snake-to-ice pure predecessor (rr-5cf dual handoff)",
+        continuous_like=False,
+        # Room-clear / pure settle is mid-shaft ~y650 (multi-screen Snake).
+        x_min=80,
+        x_max=250,
+        y_min=600,
+        y_max=720,
+        poses=frozenset({1, 2, 9, 10}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,

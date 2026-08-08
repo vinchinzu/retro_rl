@@ -19,7 +19,7 @@ and continuous promote. Executors take **one bead per session**.
 | Speed Booster (K4.5) | previous tip | **130,388f** ×2 Spazer dual (prefix) |
 | Spazer warehouse dual | prefix green | **89,416 + 90,904f** beams `0x1004` |
 | Clean bombs/Torizo | secondary GREEN | **49,321f** ×2 — [CLEAN_TRACK.md](../CLEAN_TRACK.md) |
-| ★ Product next | Pure **Business → Ice Gate** | `rr-fg3` (then Acid `rr-9t4` → Snake `rr-5cf` → Ice PLM `rr-5if`) |
+| ★ Product next | Pure **Snake → Ice PLM** (prefer 2WJ) | `rr-5if` (Gate/Acid/Snake dual GREEN) |
 | Tape | Full Speed→Wave→Ice→Moat human | `rr-dbu.12` **GREEN** 39,711f |
 | Tracker | Ice pure stack | `rr-dbu.11` (blocked on PLM hop) |
 | Agent optional | consolidate · duck-type · Clean STATUS · speed start Spazer | P3 |
@@ -28,8 +28,10 @@ and continuous promote. Executors take **one bead per session**.
 ✅ Continuous --to wave dual + STATUS — 136361f exact
 ✅ Human tape Speed→Wave→Ice→Moat 39711f (rr-dbu.12) — notes: no Spazer start; 2WJ climb
 ✅ Residual purge · guide_paths split
-▶  Pure Business → Ice Gate  ← rr-fg3
-⬜  Gate → Acid → Snake (2WJ) → Ice PLM  ← rr-9t4 · rr-5cf · rr-5if
+✅ Pure Business → Ice Gate  ← rr-fg3 dual GREEN
+✅ Gate → Acid  ← rr-9t4 dual GREEN
+✅ Acid → Snake  ← rr-5cf dual GREEN 652f ×2
+▶  Snake → Ice PLM (prefer 2WJ)  ← rr-5if
 ⬜  Continuous --to ice  ← rr-dbu.7
 ⬜  K5 Alpha PB · Moat approach  ← rr-dbu.8 · rr-dbu.9
 ```

@@ -14,6 +14,7 @@ Outbound path (entry order)::
 
 from __future__ import annotations
 
+from super_metroid.routes.kpdr.ice.acid_to_snake import play_ice_acid_to_snake
 from super_metroid.routes.kpdr.ice.business_to_gate import play_business_to_ice_gate
 from super_metroid.routes.kpdr.ice.gate_to_acid import play_ice_gate_to_acid
 from super_metroid.routes.kpdr.ice.geometry import (
@@ -43,5 +44,6 @@ __all__ = [
     "ROOM_ICE_TUTORIAL",
     "on_ice_super_lip",
     "play_business_to_ice_gate",
+    "play_ice_acid_to_snake",
     "play_ice_gate_to_acid",
 ]

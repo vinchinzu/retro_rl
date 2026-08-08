@@ -103,7 +103,7 @@ _PRODUCT_EDGE_STATUS: dict[tuple[int, int], str] = {
     (rid.ROOM_PIT, rid.ROOM_BLUE_BRINSTAR_ELEVATOR): "continuous_green",
     (rid.ROOM_BLUE_BRINSTAR_ELEVATOR, rid.ROOM_MORPH): "continuous_green",
     (rid.ROOM_ICE_GATE, rid.ROOM_ICE_ACID): "pure_green",  # rr-9t4 dual
-    (rid.ROOM_ICE_ACID, rid.ROOM_ICE_SNAKE): "pure_open",  # rr-5cf ★
+    (rid.ROOM_ICE_ACID, rid.ROOM_ICE_SNAKE): "pure_green",  # rr-5cf dual
 }
 
 # High-leverage tech tags for skill extraction priority.
@@ -376,7 +376,7 @@ def _priority(hop: RoomHop, pure: str, graph: str) -> int:
 
 def _residual_knob(hop: RoomHop, pure: str) -> str:
     if pure == "pure_open":
-        return "pure_probe_2wj_bands"  # Ice acid→snake style
+        return "pure_probe_2wj_bands"  # Ice Snake→PLM style (rr-5if)
     if pure == "skill_extract_candidate":
         tech = hop.tech_tags[0] if hop.tech_tags else "door"
         return f"pure_probe_skill:{tech}"
@@ -391,7 +391,13 @@ def _residual_knob(hop: RoomHop, pure: str) -> str:
 
 def _bead_hint(hop: RoomHop, pure: str) -> str:
     if pure == "pure_open":
-        return "rr-5cf"  # known product P0 when Ice acid→snake
+        # Product open Ice residual after Acid→Snake dual GREEN.
+        if (
+            hop.from_room == rid.ROOM_ICE_SNAKE
+            and hop.to_room == rid.ROOM_ICE
+        ):
+            return "rr-5if"
+        return "pure_open"
     if pure == "skill_extract_candidate":
         return "discovered-from:rr-wpy skill pure probe"
     if pure == "tas_desync_unusable":
@@ -515,15 +521,16 @@ def build_extraction_board(
         if len(top_skills) >= 12:
             break
 
-    # Always surface product P0 Ice even if not in this run's hops.
-    ice_pair = (rid.ROOM_ICE_ACID, rid.ROOM_ICE_SNAKE)
+    # Always surface product Ice P0 (Snake→PLM) even if not in this run's hops.
+    # Acid→Snake is pure dual GREEN (rr-5cf); next is Snake→Ice prefer 2WJ.
+    ice_pair = (rid.ROOM_ICE_SNAKE, rid.ROOM_ICE)
     if not any(
         c.from_room == ice_pair[0] and c.to_room == ice_pair[1] for c in candidates
     ):
         top_skills.insert(
             0,
             ExtractionCandidate(
-                hop_id=f"{run_id}_product_ice_acid_to_snake",
+                hop_id=f"{run_id}_product_ice_snake_to_ice",
                 from_room=ice_pair[0],
                 to_room=ice_pair[1],
                 frames=None,
@@ -535,8 +542,8 @@ def build_extraction_board(
                 tas_body=None,
                 residual_next_knob="pure_probe_2wj_bands",
                 priority=0,
-                bead_hint="rr-5cf",
-                notes="Product P0 (always listed). TAS informs residual only.",
+                bead_hint="rr-5if",
+                notes="Product P0 (always listed). Prefer 2WJ; Acid→Snake dual GREEN rr-5cf.",
             ).to_dict(),
         )
 
