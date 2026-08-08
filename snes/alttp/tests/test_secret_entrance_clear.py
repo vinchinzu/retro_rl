@@ -1,4 +1,4 @@
-"""Offline tests for post-sword → Zelda route helpers."""
+"""Offline tests for post-sword → secret-entrance clear helpers."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from alttp.ram import (
     wram_index,
     zelda_rescued_accepted,
 )
-from alttp.opening_route.sword_to_zelda import (
+from alttp.opening_route.secret_entrance_clear import (
     SWORD_TO_SOUTH_CHAMBER_SCRIPT,
     STAIRS_ALIGN_X,
     evaluate_acceptance,
@@ -143,7 +143,7 @@ def test_run_from_sword_controller_smoke() -> None:
         env, source="state_load_dev", try_south=True, try_exit=False
     )
     report = result.to_report()
-    assert report["kind"] == "alttp_sword_to_zelda_report"
+    assert report["kind"] == "alttp_secret_entrance_clear_report"
     assert report["development_only"] is True
     assert result.ok is False  # no exit / Zelda in this smoke
     assert any(p["phase"] == "ensure_sword_control" for p in report["phases"])

@@ -20,7 +20,7 @@ JSON map; re-run. Approach/trigger anchors derive door xy from the map.
 **Isolated edge success:** `run_room_edge` → `ok=True` when door dest is
 reached. `castle_dungeon.DungeonRoomEdge` composes measured first-dungeon
 doors (`0x61→0x60→0x50`); higher-level aggregates such as
-`main_hall_to_zelda` apply their own Zelda-follower acceptance.
+future Zelda segments apply their own follower acceptance.
 
 ## Agent recipe (small context)
 

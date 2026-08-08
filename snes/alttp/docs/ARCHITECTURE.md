@@ -26,11 +26,10 @@ opening_route/                    Continuous trunk (ownership)
   anchors.py                      Multi-truth anchors + measured constants + tip resolve
   castle_to_sword.py              Live: grounds → uncle sword
   secret_entrance_clear.py        Live: sword → south → stairs outdoor clear
-  sword_to_zelda.py               Compat re-export of secret_entrance_clear
   pocket_to_main_hall.py          Live: pocket bush-cut → main door → 0x61
   full_tip.py                     Clean power-on composition through verified room_50 tip
   castle_dungeon.py               Typed continuous prefix: 0x61 → 0x60 → 0x50
-  main_hall_to_zelda.py           Compatibility aggregate; prefix + Zelda acceptance
+  main_hall_to_zelda.py           Planned scaffold + helpers only (not in registry)
   room_engine.py                  Generic clear + door exit (ok=True on edge)
   escort_to_sanctuary.py          Planned scaffold: escort → Sanctuary
   catalog.py + data + validate    z3-backed opening catalog
@@ -65,9 +64,7 @@ romhack/                          Editor/asset experiments (shell)
 | Work queue | Isolated practice for **open continuous-spine blockers** | Second route truth |
 | Anchors | Measured approach/trigger windows + tip resolution | Filename heuristics |
 
-Compat shims at the old top-level module names
-(`alttp.escape_graph`, `alttp.castle_to_sword`, …) re-export
-`opening_route` for existing imports.
+Import continuous trunk as ``alttp.opening_route.*`` (no root re-export shims).
 
 ### Source of truth
 
@@ -118,8 +115,7 @@ Registered segments:
   `pocket_to_main_hall`
 - continuous power-on composition through `room_50`: `full_tip.run_to_verified_tip`
 - continuous first-dungeon prefix: `castle_dungeon_prefix` (`0x61→0x60→0x50`)
-- partial (Zelda acceptance planned): `main_hall_to_zelda`
-- planned scaffold: `escort_to_sanctuary`
+- planned scaffold: `escort_to_sanctuary` (Zelda rescue not yet a segment)
 
 Natural-entry rule: a hop is route-ready only from the real predecessor
 continuous state (no privileged warps in published evidence).

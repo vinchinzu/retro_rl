@@ -5,7 +5,7 @@ Split modules (this package):
   * ``validate`` — validation / boot correlation / emit
   * ``scripts/opening_route_catalog.py`` — argparse CLI
 
-Also re-exported via compat shim ``alttp.opening_route_catalog``.
+Run: ``uv run python -m alttp.opening_route.catalog validate|emit``.
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
 """Secret-entrance clear: post-sword room 0x55 → outdoors courtyard pocket.
 
 Segment success is **left_secret_entrance only** (stairs exit outdoors).
-Does not claim Zelda rescue — that is a later planned hop
-(``main_hall_to_zelda``). Diagnostic acceptance keys may still report
-follower/cell/sanctuary for logs.
+Does not claim Zelda rescue — that remains planned after the continuous
+tip (``castle_dungeon_prefix`` through room ``0x50``). Diagnostic
+acceptance keys may still report follower/cell/sanctuary for logs.
 
 Composes after ``castle_to_sword`` / ``FighterSword`` predecessor. Clean
 intervention only — no progression writes or door warps.
@@ -26,8 +26,6 @@ Measured (headless, FighterSword / natural sword predecessor):
 - Sprite type ``0x4B`` = soldiers; type ``0x73`` at uncle = non-combat corpse.
 - Green-platform chest is the secret-passage item location (not required
   for the stairs exit).
-
-Compat: ``alttp.opening_route.sword_to_zelda`` re-exports this module.
 """
 
 from __future__ import annotations
@@ -61,7 +59,6 @@ __all__ = [
     "SOUTH_CHAMBER_Y_MAX",
     "STAIRS_EXIT_MAX_FRAMES",
     "SWORD_TO_SOUTH_CHAMBER_SCRIPT",
-    "SwordToZeldaResult",
     "SecretEntranceClearResult",
     "approach_south_chamber",
     "ensure_sword_control",
@@ -88,12 +85,9 @@ STAIRS_EXIT_MAX_FRAMES = 320
 class SecretEntranceClearResult(SegmentResult):
     """Segment result from fighter-sword predecessor through stairs exit."""
 
-    def to_report(self, kind: str = "alttp_sword_to_zelda_report") -> dict[str, Any]:
+    def to_report(self, kind: str = "alttp_secret_entrance_clear_report") -> dict[str, Any]:
         return super().to_report(kind)
 
-
-# Compat alias — older call sites / tests expect SwordToZeldaResult.
-SwordToZeldaResult = SecretEntranceClearResult
 
 
 def left_secret_entrance(snapshot: AlttpSnapshot) -> bool:
