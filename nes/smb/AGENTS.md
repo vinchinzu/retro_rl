@@ -105,5 +105,7 @@ Best Clean power-on: **21,559f** 3/3
 `smb_8_3_natural_for_hl_hybrid.json` + `smb_8_4_flamexx_slice.json` +
 `smb_happylee_hybrid_v2_fx84.json` (v1 `smb_happylee_hybrid_ending.json` =
 18,769f natural 8-4 kept). Record: `record_happylee --to ending`.
-**8-3 pure HL still open** (phase max_x≈834) — remaining claw for true sub-5 /
-WR class. Full power-on FM2 desyncs on fceumm.
+**8-3 stitchless leave 2374f 2/2** (`smb_8_3_stitchless_skills_leave.json`;
+no natural_82 splice). Full HL…8-2+skills8-3+FX8-4 chain / Clean power-on
+still open. Pure continuous FM2 8-3 still phase-blocked. Full power-on FM2
+desyncs on fceumm.

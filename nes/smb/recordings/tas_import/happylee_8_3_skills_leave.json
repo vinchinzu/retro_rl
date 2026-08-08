@@ -1,0 +1,96 @@
+{
+  "ok": true,
+  "leave": 2374,
+  "flag_at": 1645,
+  "max_x": 3554,
+  "timer_mod21": 2,
+  "source": "hop_44_6_3_cut1478",
+  "verify_trials": [
+    {
+      "ok": true,
+      "leave": 2374,
+      "flag": 1645,
+      "max_x": 3554,
+      "t": 401,
+      "tmod": 2
+    },
+    {
+      "ok": true,
+      "leave": 2374,
+      "flag": 1645,
+      "max_x": 3554,
+      "t": 401,
+      "tmod": 2
+    }
+  ],
+  "ctrl_fp": {
+    "player_x": 40,
+    "player_y": 176,
+    "timer": 301,
+    "timer_mod21": 7,
+    "frame_counter": 163,
+    "x_frac": 0,
+    "y_frac": 0,
+    "enemy_types": [
+      51
+    ],
+    "grounded": true,
+    "x_speed": 0
+  },
+  "seed": "/home/v/01_projects/11_games/retro_rl/nes/smb/models/smb_8_3_stitchless_skills_leave.json",
+  "all_candidates": [
+    {
+      "name": "hop_44_6_3_cut1478",
+      "ok": true,
+      "leave": 2374,
+      "flag": 1645,
+      "max_x": 3554,
+      "t": 401,
+      "tmod": 2,
+      "death": null
+    },
+    {
+      "name": "tall_cut1480",
+      "ok": true,
+      "leave": 2374,
+      "flag": 1638,
+      "max_x": 3554,
+      "t": 401,
+      "tmod": 2,
+      "death": null
+    },
+    {
+      "name": "hop_32_14_4_cut1490",
+      "ok": true,
+      "leave": 2374,
+      "flag": 1640,
+      "max_x": 3554,
+      "t": 401,
+      "tmod": 2,
+      "death": null
+    },
+    {
+      "name": "tall_cut1500",
+      "ok": true,
+      "leave": 2416,
+      "flag": 1625,
+      "max_x": 3555,
+      "t": 401,
+      "tmod": 2,
+      "death": null
+    },
+    {
+      "name": "hop_48_10_3_cut1510",
+      "ok": true,
+      "leave": 2374,
+      "flag": 1642,
+      "max_x": 3554,
+      "t": 401,
+      "tmod": 2,
+      "death": null
+    }
+  ],
+  "elapsed_s": 24.82113218307495,
+  "vs_natural_83_leave": 2227,
+  "delta_vs_nat": 147
+}
