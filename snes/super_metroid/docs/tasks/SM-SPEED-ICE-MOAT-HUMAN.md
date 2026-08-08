@@ -200,8 +200,8 @@ Controls: **F5/F1** save · **ESC/Q** cancel. Assist ON = practice, not pure.
 |----|-------|--------|
 | **rr-dbu.12** | Full human Speed→Wave→Ice→Moat | **GREEN** — this tape |
 | **rr-fg3** | Pure Business → Ice Gate | **GREEN** dual 894f ×2 `0xA815` ~(1752,651); `routes/kpdr/ice/` |
-| **rr-dbu.11** | Ice pure stack recon → one-hops | **partial** — Gate done; Acid→Snake→PLM open |
-| **rr-9t4** | Pure Ice Gate → Acid Room | **ready** (after rr-fg3) |
+| **rr-9t4** | Pure Ice Gate → Acid Room | **GREEN** dual 370f ×2 `0xA75D` ~(470,139); needs Speed loadout |
+| **rr-dbu.11** | Ice pure stack recon → one-hops | **partial** — Gate+Acid done; Snake→PLM open |
 | rr-dbu.7 | continuous `--to ice` | blocked on Ice pure |
 | rr-dbu.8 | K5 Alpha PB pure | blocked on Ice |
 | rr-dbu.9 | Moat approach pure | blocked on K5; spark pin `rr-hhj` GREEN |
