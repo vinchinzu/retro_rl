@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import json
 
-from super_metroid.map_planning import EditorNavigationGraph
+from retro_harness.adventure.graph import GraphEdge, PlannedLeg, RouteLeg
+from super_metroid.map_planning import (
+    EditorNavigationGraph,
+    edge_to_editor_dict,
+    planned_leg_to_editor_dict,
+)
 from super_metroid.routes.spore_spawn_route import (
     POST_TORIZO_CAPABILITIES,
     POST_TORIZO_ROUTE_PATCHES,
@@ -134,3 +139,33 @@ def test_shortest_path_respects_editor_ability_gates(tmp_path) -> None:
     )
     assert path is not None
     assert path[0].provenance == "explicit_route_patch"
+
+
+def test_map_plan_serializes_edge_and_planned_leg_acquires(tmp_path) -> None:
+    graph = _graph(tmp_path)
+    source_id, target_id = _ROOMS[0][0], _ROOMS[1][0]
+    edge = GraphEdge(
+        source_id,
+        target_id,
+        edge_id="collect_bombs",
+        acquires=frozenset({"bomb"}),
+    )
+    planned = PlannedLeg(
+        leg=RouteLeg(
+            "collect_items",
+            source_id,
+            target_id,
+            acquires=frozenset({"missile"}),
+        ),
+        edge=edge,
+        capabilities_before=frozenset(),
+        effective_requires=frozenset(),
+        capabilities_after=frozenset({"bombs", "missiles"}),
+    )
+
+    edge_payload = edge_to_editor_dict(edge)
+    leg_payload = planned_leg_to_editor_dict(planned, graph.rooms)
+
+    assert edge_payload["acquires"] == ["bombs"]
+    assert leg_payload["edge"]["acquires"] == ["bombs"]
+    assert leg_payload["acquires"] == ["bombs", "missiles"]
