@@ -72,19 +72,25 @@ def transform_from_session_ctx(
     )
 
 
+def _unpack_point(
+    p: GuidePoint | tuple[int, int] | Sequence[int],
+) -> tuple[int, int]:
+    """Normalize a guide point to (world_x, world_y)."""
+    if isinstance(p, GuidePoint):
+        return p.x, p.y
+    try:
+        wx, wy = int(p[0]), int(p[1])
+    except (TypeError, ValueError, IndexError) as exc:
+        raise ValueError(f"invalid waypoint {p!r}: expected (x, y)") from exc
+    return wx, wy
+
+
 def project_points(
     points: Sequence[GuidePoint | tuple[int, int] | Sequence[int]],
     transform: OverlayTransform,
 ) -> list[tuple[float, float]]:
     """Project world waypoints to screen coordinates."""
-    out: list[tuple[float, float]] = []
-    for p in points:
-        if isinstance(p, GuidePoint):
-            wx, wy = p.x, p.y
-        else:
-            wx, wy = int(p[0]), int(p[1])
-        out.append(transform.world_to_screen(wx, wy))
-    return out
+    return [transform.world_to_screen(*_unpack_point(p)) for p in points]
 
 
 def nearest_waypoint_index(
@@ -98,10 +104,7 @@ def nearest_waypoint_index(
     best_i = 0
     best_d = 10**18
     for i, p in enumerate(points):
-        if isinstance(p, GuidePoint):
-            px, py = p.x, p.y
-        else:
-            px, py = int(p[0]), int(p[1])
+        px, py = _unpack_point(p)
         d = (px - wx) * (px - wx) + (py - wy) * (py - wy)
         if d < best_d:
             best_d = d

@@ -29,6 +29,15 @@ def test_project_intro_lines_are_generic_and_game_aware() -> None:
     assert "·" not in joined
 
 
+def test_project_intro_lines_do_not_emit_blank_lines() -> None:
+    lines = project_intro_lines(
+        game_title="Blank Intervention",
+        run_summary="Continuous reset-to-ending clear",
+        intervention="   ",
+    )
+    assert all(line for line in lines)
+
+
 def test_render_intro_card_matches_gameplay_geometry() -> None:
     lines = project_intro_lines(
         game_title="Test Game",

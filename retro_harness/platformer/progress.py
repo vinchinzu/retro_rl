@@ -59,7 +59,9 @@ class MonotonicAxisTracker(ProgressTracker):
         self._max_progress = 0.0
 
     def update(self, ram_values: dict[str, int]) -> float:
-        value = float(ram_values.get(self._axis, 0))
+        if self._axis not in ram_values:
+            return self._max_progress  # no new observation for this axis
+        value = float(ram_values[self._axis])
         if self._initial is None:
             self._initial = value
         progress = (value - self._initial) * self._direction
@@ -155,7 +157,9 @@ class HighWaterWithBacktrack(ProgressTracker):
         self._current_progress = 0.0
 
     def update(self, ram_values: dict[str, int]) -> float:
-        value = float(ram_values.get(self._axis, 0))
+        if self._axis not in ram_values:
+            return self._max_progress  # no new observation for this axis
+        value = float(ram_values[self._axis])
         if self._initial is None:
             self._initial = value
         self._current_progress = (value - self._initial) * self._direction

@@ -114,12 +114,20 @@ class SplitTracker:
         if self._current_segment is not None and len(lines) < max_lines:
             elapsed = time.monotonic() - self._segment_start_time
             name = self._current_name or str(self._current_segment)
-            lines.append(f"Current: {name} +{elapsed:.1f}s")
+            text = f"Current: {name} +{elapsed:.1f}s"
+            pb = self._best_times.get(self._current_segment)
+            if pb is not None:
+                text += f" (PB: {pb:.1f}s)"
+            lines.append(text)
         return lines
 
     @property
     def current_segment(self) -> str | None:
         return self._current_segment
+
+    def best_time(self, segment_id: str) -> float | None:
+        """Return the recorded best time in seconds for a segment, if any."""
+        return self._best_times.get(segment_id)
 
     @property
     def splits(self) -> list[dict]:
