@@ -131,6 +131,15 @@ from retro_harness.bot_runner import (
     TaskRepeater,
 )
 from retro_harness.benchmark import (
+    RuntimeObservationClass,
+    InterventionClass,
+    StartIdentity,
+    PolicyIdentity,
+    policy_identity_for,
+    EvaluationContract,
+    AttemptAudit,
+    ClaimValidationError,
+    validate_claim,
     BenchmarkTier,
     BenchmarkCase,
     BenchmarkAttemptResult,
@@ -187,6 +196,9 @@ __all__ = [
     # Bot runner
     "BotRunner", "TaskSequencer", "TaskRepeater",
     # Benchmarks
+    "RuntimeObservationClass", "InterventionClass", "StartIdentity", "PolicyIdentity",
+    "policy_identity_for",
+    "EvaluationContract", "AttemptAudit", "ClaimValidationError", "validate_claim",
     "BenchmarkTier", "BenchmarkCase", "BenchmarkAttemptResult", "BenchmarkRunResult",
     "IdlePolicy", "RandomPolicy", "run_benchmark", "zero_action_for_env",
     # Mission control
