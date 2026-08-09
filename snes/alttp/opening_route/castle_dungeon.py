@@ -25,7 +25,7 @@ from alttp.ram import (
     zelda_rescued_accepted,
 )
 from alttp.route_report import RoutePhaseResult, SegmentResult
-from alttp.startup import snapshot_env
+from alttp.startup import BootEnv, snapshot_env
 
 
 @dataclass(frozen=True)
@@ -63,12 +63,18 @@ MAIN_HALL_TO_NW_PREFIX: tuple[DungeonRoomEdge, ...] = (
 
 
 def evaluate_prefix_acceptance(snapshot: AlttpSnapshot) -> dict[str, bool]:
-    """Acceptance keys for the measured prefix, plus honest future diagnostics."""
+    """Contract keys for the measured ``0x61 → 0x60 → 0x50`` prefix only."""
     return {
         "fighter_sword_ram": snapshot.has_fighter_sword,
         "main_hall": in_room(snapshot, HYRULE_CASTLE_MAIN_HALL_ROOM),
         "main_west_0x60": in_room(snapshot, HYRULE_CASTLE_MAIN_WEST_ROOM),
         "northwest_0x50": in_room(snapshot, HYRULE_CASTLE_NW_ROOM),
+    }
+
+
+def evaluate_prefix_diagnostics(snapshot: AlttpSnapshot) -> dict[str, bool]:
+    """Log-only later-route flags (not prefix exit success)."""
+    return {
         "zelda_follower": zelda_rescued_accepted(snapshot),
         "in_sanctuary": snapshot.in_sanctuary,
     }
@@ -89,8 +95,34 @@ def _prefix_notes(edges: Sequence[DungeonRoomEdge]) -> list[str]:
     ]
 
 
+def _prefix_result(
+    *,
+    ok: bool,
+    phase: str,
+    frames: int,
+    snapshot: AlttpSnapshot,
+    source: str,
+    phases: list[RoutePhaseResult] | None = None,
+    blocker: str = "",
+    notes: Sequence[str] = (),
+) -> SegmentResult:
+    return SegmentResult(
+        ok=ok,
+        phase=phase,
+        frames=frames,
+        snapshot=snapshot,
+        phases=list(phases or ()),
+        source=source,
+        acceptance=evaluate_prefix_acceptance(snapshot),
+        diagnostics=evaluate_prefix_diagnostics(snapshot),
+        blocker=blocker,
+        notes=list(notes),
+        report_kind="castle_dungeon_prefix",
+    )
+
+
 def run_room_edge_sequence(
-    env: object,
+    env: BootEnv,
     edges: Sequence[DungeonRoomEdge],
     *,
     source: str = "state_load_dev",
@@ -104,13 +136,12 @@ def run_room_edge_sequence(
     """
     if not edges:
         snap = snapshot_env(env)
-        return SegmentResult(
+        return _prefix_result(
             ok=False,
             phase="empty_dungeon_prefix",
             frames=0,
             snapshot=snap,
             source=source,
-            acceptance=evaluate_prefix_acceptance(snap),
             blocker="no dungeon room edges configured",
         )
 
@@ -120,14 +151,13 @@ def run_room_edge_sequence(
     for edge in edges:
         before = snapshot_env(env)
         if not in_room(before, edge.source_room):
-            return SegmentResult(
+            return _prefix_result(
                 ok=False,
                 phase=f"entry_not_{edge.map_id}",
                 frames=frames,
                 snapshot=before,
                 phases=phases,
                 source=source,
-                acceptance=evaluate_prefix_acceptance(before),
                 blocker=(
                     f"{edge.edge_id} expected room 0x{edge.source_room:02X}, got "
                     f"0x{before.room_base_id:02X} indoors={before.indoors}"
@@ -151,26 +181,24 @@ def run_room_edge_sequence(
         phases.extend(result.phases)
         snap = result.snapshot
         if not result.ok:
-            return SegmentResult(
+            return _prefix_result(
                 ok=False,
                 phase=f"{edge.edge_id}:{result.phase}",
                 frames=frames,
                 snapshot=snap,
                 phases=phases,
                 source=source,
-                acceptance=evaluate_prefix_acceptance(snap),
                 blocker=result.blocker or f"{edge.edge_id} failed",
                 notes=notes,
             )
         if not in_room(snap, edge.target_room):
-            return SegmentResult(
+            return _prefix_result(
                 ok=False,
                 phase=f"{edge.edge_id}:wrong_destination",
                 frames=frames,
                 snapshot=snap,
                 phases=phases,
                 source=source,
-                acceptance=evaluate_prefix_acceptance(snap),
                 blocker=(
                     f"{edge.edge_id} expected destination 0x{edge.target_room:02X}, "
                     f"got 0x{snap.room_base_id:02X} indoors={snap.indoors}"
@@ -179,20 +207,19 @@ def run_room_edge_sequence(
             )
 
     final = snapshot_env(env)
-    return SegmentResult(
+    return _prefix_result(
         ok=True,
         phase="castle_dungeon_prefix_complete",
         frames=frames,
         snapshot=final,
         phases=phases,
         source=source,
-        acceptance=evaluate_prefix_acceptance(final),
         notes=notes,
     )
 
 
 def run_from_main_hall(
-    env: object,
+    env: BootEnv,
     *,
     source: str = "state_load_dev",
 ) -> SegmentResult:

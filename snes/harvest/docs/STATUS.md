@@ -103,11 +103,13 @@ Test crop fixtures (for growth / ship work):
 
 ## Next acceptance
 
-1. Close **power-on → full D1** without the AnnEve fixture: Ann|Eve auto +
-   rest recording (or pure routes) from `Y1_Spring_D1_Town_Gate` /
-   `--power-on`, then **required** shed grass+can pickup on `house_size=0`.
-   AnnEve rest auto is green (peak `0x3F` → D2) but shed is soft-optional
-   (`house_size=2`). Details: [town_day1_recon.md](town_day1_recon.md).
+1. Close **power-on → full D1** without the AnnEve fixture (rr-bhr).
+   **2026-08-07 progress:** composed pure talks from `--power-on` hit peak
+   mask `0x3F` (Ann|Eve|livestock|Nina|owner|Maria); truck leave via rest
+   slice `town_day1_rest` f9200→end reaches D2 morning. **Open:** required
+   shed grass+can — ExitToFarm after D2 still falls into tilemap `0x5F`
+   (same house_size mismatch trap as AnnEve). AnnEve rest path remains green
+   for mask→D2 with soft-optional shed. Details: [town_day1_recon.md](town_day1_recon.md).
 2. **Natural empty-can refill** to a CheckToolSuccess-valid tile (`F0`/`F9`–`FD`).
    **Mapped 2026-08-01**: main pond **F0** ~(31–34,31–33); human stand
    `(32,34)` face up (`go_to_water_source_end`); north lip `(33,30)` face down

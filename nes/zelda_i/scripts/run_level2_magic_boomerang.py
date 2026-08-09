@@ -59,7 +59,7 @@ from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level2_dungeon import (
     BOOM_BOMB_N_STAND,
     BoomBombNorthPhase,
-    Level2BoomBombNorthController,
+    make_boom_bomb_north_controller,
     ROOM_L2_BOOM_CANDIDATE,
     level2_room_4f_magic_boomerang_success,
 )
@@ -164,7 +164,7 @@ def run_once(
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
-    bomb_ctrl: Level2BoomBombNorthController | None = None
+    bomb_ctrl = None
     room4e_ctrl: GenericDungeonRoomController | None = None
     room4f_ctrl = GenericDungeonRoomController(ROOM_4F_SPEC)
     prefix_ok = True
@@ -229,7 +229,7 @@ def run_once(
             if entry.screen == 0x4F and entry.mode == PLAY_MODE:
                 room4f_ctrl.phase = DungeonPhase.FIGHT
             elif entry.screen == 0x5F:
-                bomb_ctrl = Level2BoomBombNorthController(clear_gels=clear_gels)
+                bomb_ctrl = make_boom_bomb_north_controller(clear_gels=clear_gels)
                 for i in range(bomb_ctrl.max_frames):
                     if assist is not None:
                         assist.apply_env(env, frame=i)

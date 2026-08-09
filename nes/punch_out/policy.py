@@ -1,16 +1,16 @@
 """Glass Joe bout policy for Mike Tyson's Punch-Out!! (NES).
 
-Verified pieces (from Match1 / Level1 probes):
+Verified recipe (Match1 → M3 bout win):
 
-1. **Wait** for fight clock, then for Glass Joe's Vive La France backup
-   (``opp_pattern_set == 150``).
-2. **Taunt counter**: left face jabs (A) during the backup window → knockdown
-   (~0:42 R1, ~0:32 R2).
+1. **Wait** for Glass Joe's Vive La France backup (``opp_pattern_set == 150`` only).
+2. **Taunt counter**: left face jabs (A, 2 on / 3 off) → knockdown.
 3. **Get-up**: 2-frame A / idle / 2-frame B / idle mash (not hold).
-4. **Survive**: alternating LEFT/RIGHT dodge pulses (3 on / 3 off).
+4. **Survive**: on attack act change, wait ~32f then 5f LEFT/RIGHT pulse.
+5. **Counter**: short left-jab burst after a successful dodge.
 
-Full bout win (3 opp knockdowns or decision) still needs stronger post-KD2
-offense; this policy reliably scores knockdown #1 and often #2.
+Priority each frame (after KD / get-up / between edge updates):
+
+    get-up → between → watch count → taunt jab → timed dodge → counter → idle
 """
 
 from __future__ import annotations
@@ -24,32 +24,39 @@ from retro_harness.input_script import FrameAction
 from punch_out.ram import (
     ADDR_FIGHT_FLAG,
     ADDR_HEALTH,
-    ADDR_KNOCKDOWN,
     ADDR_OPP_ACTION,
     ADDR_OPP_HEALTH,
-    ADDR_OPP_PATTERN_SET,
-    ADDR_ROUND,
     FIGHT_BETWEEN,
     FIGHT_IN_RING,
-    hearts,
     is_taunt_window,
 )
 
+# Acts that deal Mac damage on Glass Joe (probed post-KD1 idle timeline).
+# Hit lands ~40–58 frames after act enters these ids (timer often stuck at 4).
+ATTACK_ACTS = frozenset({4, 6, 7, 10, 13, 17, 20, 23})
+# Acts that dodge LEFT (others dodge RIGHT) in the probed window.
+DODGE_LEFT_ACTS = frozenset({7, 13, 17, 23})
+
+DODGE_WAIT = 32
+DODGE_HOLD = 5
+COUNTER_FRAMES = 28
+
 
 class BoutMode(Enum):
-    WAIT_TAUNT = auto()
+    """Coarse bout phase. Dodge/counter timing lives in dedicated timers, not modes."""
+
+    STAND = auto()  # in-ring standing: idle / dodge / counter (priority stack)
     PUNCH_TAUNT = auto()
     WATCH_KD = auto()
-    SURVIVE = auto()
     GETUP = auto()
     BETWEEN = auto()
 
 
 @dataclass
 class GlassJoePolicy:
-    """Taunt-counter + dodge/get-up policy for the Glass Joe bout."""
+    """Taunt-counter + timed dodge/counter + get-up policy for Glass Joe."""
 
-    mode: BoutMode = BoutMode.WAIT_TAUNT
+    mode: BoutMode = BoutMode.STAND
     mode_t: int = 0
     phase: int = 0
     getup_g: int = 0
@@ -60,6 +67,11 @@ class GlassJoePolicy:
     _prev_mac: int = 96
     _prev_opp0: bool = False
     _prev_fight: int = FIGHT_IN_RING
+    _prev_act: int = -1
+    _dodge_wait: int = 0
+    _dodge_hold: int = 0
+    _dodge_side: str = "LEFT"
+    _counter_t: int = 0
     reasons: dict[str, int] = field(default_factory=dict)
 
     def tick(self, ram) -> FrameAction:
@@ -67,8 +79,7 @@ class GlassJoePolicy:
         opp = int(ram[ADDR_OPP_HEALTH])
         mac = int(ram[ADDR_HEALTH])
         fight = int(ram[ADDR_FIGHT_FLAG])
-        kd = int(ram[ADDR_KNOCKDOWN])
-        h = hearts(ram)
+        act = int(ram[ADDR_OPP_ACTION])
         taunt = is_taunt_window(ram)
         opp0 = opp == 0
 
@@ -76,69 +87,115 @@ class GlassJoePolicy:
             self.hits += 1
         if opp0 and not self._prev_opp0:
             self.opp_kd += 1
-            self.mode = BoutMode.WATCH_KD
-            self.mode_t = 0
+            self._enter(BoutMode.WATCH_KD)
+            self._clear_combat()
         self._prev_opp0 = opp0
 
         if mac == 0 and self._prev_mac > 0:
             self.mac_kd += 1
-            self.mode = BoutMode.GETUP
+            self._enter(BoutMode.GETUP)
             self.getup_g = 0
-            self.mode_t = 0
+            self._clear_combat()
         if mac > 0 and self._prev_mac == 0:
-            self.mode = BoutMode.SURVIVE
-            self.mode_t = 0
+            self._enter(BoutMode.STAND)
         self._prev_mac = mac
         self._prev_opp = opp
 
         if fight != self._prev_fight:
             if fight == FIGHT_BETWEEN:
-                self.mode = BoutMode.BETWEEN
-                self.mode_t = 0
+                self._enter(BoutMode.BETWEEN)
+                self._clear_combat()
             elif self._prev_fight == FIGHT_BETWEEN and fight == FIGHT_IN_RING:
-                self.mode = (
-                    BoutMode.WAIT_TAUNT if self.opp_kd < 2 else BoutMode.SURVIVE
-                )
-                self.mode_t = 0
+                # Glass Joe backups each round — re-arm standing wait.
+                self._enter(BoutMode.STAND)
+                self._clear_combat()
             self._prev_fight = fight
 
         self.mode_t += 1
-        if self.mode == BoutMode.WAIT_TAUNT and taunt:
-            self.mode = BoutMode.PUNCH_TAUNT
-            self.mode_t = 0
-        if self.mode == BoutMode.WATCH_KD and (not opp0) and opp > 0:
-            self.mode = BoutMode.SURVIVE
-            self.mode_t = 0
+
+        # Always track act while Mac is up in-ring so rise-from-KD cannot false-arm.
+        if fight == FIGHT_IN_RING and mac > 0:
+            standing = self.mode in (BoutMode.STAND, BoutMode.PUNCH_TAUNT)
+            if standing and not opp0 and act != self._prev_act and act in ATTACK_ACTS and not taunt:
+                self._arm_dodge(act)
+            self._prev_act = act
+
+        if self.mode == BoutMode.STAND and taunt:
+            self._enter(BoutMode.PUNCH_TAUNT)
+            self._clear_combat()
+        if self.mode == BoutMode.WATCH_KD and not opp0 and opp > 0:
+            self._enter(BoutMode.STAND)
         if self.mode == BoutMode.PUNCH_TAUNT and self.mode_t > 200 and not opp0:
-            self.mode = BoutMode.SURVIVE
-            self.mode_t = 0
+            self._enter(BoutMode.STAND)
 
-        act = self._action(ram, taunt=taunt, mac=mac, fight=fight, hearts=h)
-        self.reasons[act.reason] = self.reasons.get(act.reason, 0) + 1
-        return act
+        act_out = self._action(taunt=taunt, mac=mac, fight=fight)
+        self.reasons[act_out.reason] = self.reasons.get(act_out.reason, 0) + 1
+        return act_out
 
-    def _action(self, ram, *, taunt: bool, mac: int, fight: int, hearts: int) -> FrameAction:
+    def _enter(self, mode: BoutMode) -> None:
+        self.mode = mode
+        self.mode_t = 0
+
+    def _clear_combat(self) -> None:
+        self._dodge_wait = 0
+        self._dodge_hold = 0
+        self._counter_t = 0
+
+    def _arm_dodge(self, act: int) -> None:
+        self._dodge_wait = DODGE_WAIT
+        self._dodge_hold = 0  # armed only when wait completes
+        self._dodge_side = "LEFT" if act in DODGE_LEFT_ACTS else "RIGHT"
+        self._counter_t = 0
+
+    def _action(self, *, taunt: bool, mac: int, fight: int) -> FrameAction:
+        # Priority stack — order is the design.
         if self.mode == BoutMode.GETUP or (mac == 0 and fight == FIGHT_IN_RING):
             return self._getup()
         if self.mode == BoutMode.BETWEEN:
             return self._between()
-        if self.mode == BoutMode.WAIT_TAUNT:
-            return FrameAction(nes_idle_action(), "wait_taunt")
         if self.mode == BoutMode.WATCH_KD:
-            # Dodge during the count so the first post-rise punch is covered.
-            return self._spam_lr("watch_kd")
-        if self.mode == BoutMode.PUNCH_TAUNT:
-            if self.mode_t % 5 < 2:
-                return FrameAction(nes_action("A"), "taunt_a")
-            return FrameAction(nes_idle_action(), "taunt_rec")
-        # SURVIVE
-        if taunt and self.opp_kd < 2:
-            if self.phase % 5 < 2:
-                self.phase += 1
-                return FrameAction(nes_action("A"), "survive_taunt")
-            self.phase += 1
-            return FrameAction(nes_idle_action(), "survive_taunt_rec")
-        return self._spam_lr("survive")
+            return self._dodge_pulse("watch_kd")
+
+        # Taunt offense beats dodge/counter (also catch taunt while mid-dodge).
+        if taunt or self.mode == BoutMode.PUNCH_TAUNT:
+            if self.mode != BoutMode.PUNCH_TAUNT:
+                self._enter(BoutMode.PUNCH_TAUNT)
+                self._clear_combat()
+            return self._jab(self.mode_t, "taunt_a", "taunt_rec")
+
+        if self._dodge_wait > 0 or self._dodge_hold > 0:
+            return self._do_dodge()
+
+        if self._counter_t > 0:
+            return self._counter_jab()
+
+        return FrameAction(nes_idle_action(), "stand_idle")
+
+    def _jab(self, t: int, on: str, rec: str) -> FrameAction:
+        if t % 5 < 2:
+            return FrameAction(nes_action("A"), on)
+        return FrameAction(nes_idle_action(), rec)
+
+    def _do_dodge(self) -> FrameAction:
+        if self._dodge_wait > 0:
+            self._dodge_wait -= 1
+            if self._dodge_wait == 0:
+                self._dodge_hold = DODGE_HOLD
+            return FrameAction(nes_idle_action(), "dodge_wait")
+        if self._dodge_hold > 0:
+            self._dodge_hold -= 1
+            if self._dodge_hold == 0:
+                self._counter_t = COUNTER_FRAMES
+            side = self._dodge_side
+            return FrameAction(nes_action(side), f"dodge_{side.lower()}")
+        return FrameAction(nes_idle_action(), "dodge_idle")
+
+    def _counter_jab(self) -> FrameAction:
+        if self._counter_t <= 0:
+            return FrameAction(nes_idle_action(), "counter_done")
+        self._counter_t -= 1
+        t = COUNTER_FRAMES - self._counter_t
+        return self._jab(t, "counter_a", "counter_rec")
 
     def _getup(self) -> FrameAction:
         g = self.getup_g
@@ -158,7 +215,8 @@ class GlassJoePolicy:
             return FrameAction(nes_action("START"), "between_start")
         return FrameAction(nes_idle_action(), "between_wait")
 
-    def _spam_lr(self, prefix: str) -> FrameAction:
+    def _dodge_pulse(self, prefix: str) -> FrameAction:
+        """Short L/R pulses used only during knockdown count watch."""
         s = self.phase % 12
         self.phase += 1
         if s < 3:

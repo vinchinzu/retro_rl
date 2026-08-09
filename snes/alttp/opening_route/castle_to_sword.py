@@ -18,8 +18,6 @@ Measured 2026-07-29 headless probes (HyruleCastleGrounds predecessor):
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Any
 
 from alttp import primitives
 from alttp.opening_route.runner import PhaseFn
@@ -33,8 +31,9 @@ from alttp.ram import (
     snapshot_to_diag,
     uncle_sword_event_accepted,
 )
-from alttp.route_report import RoutePhaseResult, SegmentResult
+from alttp.route_report import RoutePhaseResult, SegmentResult, segment_result_factory
 from alttp.startup import (
+    BootEnv,
     action_for,
     boot_past_title_to_castle,
     build_boot_env,
@@ -42,6 +41,8 @@ from alttp.startup import (
     snapshot_env,
     step_frames,
 )
+
+_REPORT = segment_result_factory("alttp_castle_to_sword_report")
 
 # ---------------------------------------------------------------------------
 # Proven approach script: castle-grounds spawn → near secret hole 0x7D.
@@ -99,20 +100,7 @@ UNCLE_APPROACH_SCRIPT: tuple[tuple[tuple[str, ...], int], ...] = (
 )
 
 
-@dataclass
-class CastleToSwordResult(SegmentResult):
-    """Full segment result from a castle-grounds predecessor."""
-
-    def to_report(self, kind: str = "alttp_castle_to_sword_report") -> dict[str, Any]:
-        return super().to_report(kind)
-
-
-def settle_control(env: object, *, max_frames: int = 240) -> int:
-    """Compatibility wrapper: frames spent waiting via :func:`primitives.settle_control`."""
-    return primitives.settle_control(env, max_frames=max_frames).frames
-
-
-def approach_secret_hole(env: object) -> RoutePhaseResult:
+def approach_secret_hole(env: BootEnv) -> RoutePhaseResult:
     """Walk from castle-grounds spawn toward the secret-hole approach."""
     frames = 0
     settle = primitives.settle_control(env)
@@ -157,7 +145,7 @@ def approach_secret_hole(env: object) -> RoutePhaseResult:
 
 
 def attempt_secret_entrance_entry(
-    env: object,
+    env: BootEnv,
     *,
     candidates: Sequence[Sequence[tuple[tuple[str, ...], int]]] | None = None,
 ) -> RoutePhaseResult:
@@ -274,7 +262,7 @@ def attempt_secret_entrance_entry(
     )
 
 
-def dismiss_hold_up_item(env: object, *, max_frames: int = 160) -> int:
+def dismiss_hold_up_item(env: BootEnv, *, max_frames: int = 160) -> int:
     """Clear kPlayerState_HoldUpItem ($5D==21) after sword / chest gets.
 
     Hold left until the pose ends (~95 frames measured after fighter sword).
@@ -291,7 +279,7 @@ def dismiss_hold_up_item(env: object, *, max_frames: int = 160) -> int:
 
 
 def advance_uncle_dialogue_for_sword(
-    env: object,
+    env: BootEnv,
     *,
     max_cycles: int = 400,
 ) -> RoutePhaseResult:
@@ -363,6 +351,7 @@ def advance_uncle_dialogue_for_sword(
 
 
 def evaluate_acceptance(snapshot: AlttpSnapshot) -> dict[str, bool]:
+    """Segment contract + on-path progress keys (no later-route diagnostics)."""
     return {
         "on_castle_grounds": snapshot.on_castle_grounds,
         "near_secret_hole": snapshot.near_secret_hole,
@@ -374,13 +363,13 @@ def evaluate_acceptance(snapshot: AlttpSnapshot) -> dict[str, bool]:
 
 
 def run_from_castle_grounds(
-    env: object,
+    env: BootEnv,
     *,
     source: str = "state_load_dev",
     phases: Sequence[PhaseFn] | None = None,
     include_entry: bool = True,
     include_uncle: bool = True,
-) -> CastleToSwordResult:
+) -> SegmentResult:
     """Run the segment assuming env is already on castle grounds.
 
     Default order: approach → (entry if outdoors) → (uncle if indoors).
@@ -403,7 +392,7 @@ def run_from_castle_grounds(
             notes=notes,
             success_phase="fighter_sword",
             partial_blocker="castle-to-sword phases finished without fighter sword",
-            result_factory=CastleToSwordResult,
+            result_factory=_REPORT,
         )
 
     approach = approach_secret_hole(env)
@@ -411,7 +400,7 @@ def run_from_castle_grounds(
     total += approach.frames
     if not approach.ok and not approach.snapshot.indoors:
         acc = evaluate_acceptance(approach.snapshot)
-        return CastleToSwordResult(
+        return _REPORT(
             ok=False,
             phase=approach.phase,
             frames=total,
@@ -463,7 +452,7 @@ def run_from_castle_grounds(
         phase = approach.phase
         blocker = approach.detail
 
-    return CastleToSwordResult(
+    return _REPORT(
         ok=ok,
         phase=phase,
         frames=total,
@@ -477,10 +466,10 @@ def run_from_castle_grounds(
 
 
 def run_natural_chain(
-    env: object | None = None,
+    env: BootEnv | None = None,
     *,
     close: bool = True,
-) -> CastleToSwordResult:
+) -> SegmentResult:
     """Title → castle grounds → secret approach → entry/sword attempts."""
     owns = env is None
     if env is None:
@@ -489,7 +478,7 @@ def run_natural_chain(
         boot = boot_past_title_to_castle(env, close=False)
         if not boot.snapshot.on_castle_grounds:
             acc = evaluate_acceptance(boot.snapshot)
-            return CastleToSwordResult(
+            return _REPORT(
                 ok=False,
                 phase="boot_to_castle",
                 frames=boot.frames,
@@ -525,18 +514,18 @@ def run_natural_chain(
         return result
     finally:
         if owns and close:
-            env.close()  # type: ignore[attr-defined]
+            env.close()
 
 
 def run_from_state(
     state_name: str = "HyruleCastleGrounds",
     *,
     close: bool = True,
-) -> CastleToSwordResult:
+) -> SegmentResult:
     """Development diagnostic from a saved castle-grounds state."""
     from alttp.opening_route.runner import run_from_state as _run_from_state
 
-    return _run_from_state(  # type: ignore[return-value]
+    return _run_from_state(
         state_name,
         run_from_castle_grounds,
         close=close,

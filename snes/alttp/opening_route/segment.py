@@ -21,6 +21,7 @@ from typing import Any, Protocol, runtime_checkable
 from alttp.opening_route.anchors import opening_anchors
 from alttp.ram import AlttpSnapshot, snapshot_to_diag
 from alttp.route_report import RoutePhaseResult, SegmentResult
+from alttp.startup import BootEnv
 
 
 @runtime_checkable
@@ -30,7 +31,7 @@ class Segment(Protocol):
     @property
     def id(self) -> str: ...
 
-    def play(self, env: object, **kwargs: Any) -> SegmentResult: ...
+    def play(self, env: BootEnv, **kwargs: Any) -> SegmentResult: ...
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,7 @@ class SegmentEvidence:
     source: str
     phase: str
     acceptance: dict[str, bool] = field(default_factory=dict)
+    diagnostics: dict[str, bool] = field(default_factory=dict)
     blocker: str = ""
     notes: list[str] = field(default_factory=list)
     # Preserve the controller-level phases rather than reducing a composed
@@ -133,7 +135,7 @@ class SegmentEvidence:
     matched_anchors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "segmentId": self.segment_id,
             "ok": self.ok,
             "frames": self.frames,
@@ -157,6 +159,9 @@ class SegmentEvidence:
             "matchedAnchors": list(self.matched_anchors),
             "final": snapshot_to_diag(self.snapshot),
         }
+        if self.diagnostics:
+            out["diagnostics"] = dict(self.diagnostics)
+        return out
 
     @classmethod
     def from_segment_result(
@@ -174,6 +179,7 @@ class SegmentEvidence:
             source=result.source,
             phase=result.phase,
             acceptance=dict(result.acceptance),
+            diagnostics=dict(result.diagnostics),
             blocker=result.blocker,
             notes=list(result.notes),
             phases=list(result.phases),
@@ -200,12 +206,12 @@ class ScriptSegment:
     def id(self) -> str:
         return self.segment_id
 
-    def play(self, env: object, **kwargs: Any) -> SegmentResult:
+    def play(self, env: BootEnv, **kwargs: Any) -> SegmentResult:
         return self.play_fn(env, **kwargs)
 
     def play_checked(
         self,
-        env: object,
+        env: BootEnv,
         *,
         enforce_entry: bool = True,
         **kwargs: Any,

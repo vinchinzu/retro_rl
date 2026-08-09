@@ -981,12 +981,12 @@ ROUTES: Dict[str, List[Waypoint]] = {
         # road BFS often stalls past y~950.
         Waypoint(tilemap=0x04, target_px=(601, 940), radius=20, run_direction="down"),
     ],
+    # Align with town_day1_rest truck slice start (f≈9200 @ ~(688,357)).
+    # Slice then walks to stand (715,421), leave dialog, east path 0x0C → house.
     "d1_town_to_truck": [
-        Waypoint(tilemap=0x04, target_px=(688, 888), radius=18),
-        Waypoint(tilemap=0x04, target_px=(688, 500), radius=18, run_direction="up"),
-        # Gate / truck stand ~(712–728,424). Wide radius: multi_nav often
-        # arrives at (721,438) and stalls if radius is tight (rr-bhr).
-        Waypoint(tilemap=0x04, target_px=(712, 424), radius=22),
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(688, 360), radius=10),
     ],
     # Real opening gate is ~(712,424); east path exit still near x≈756.
     # Note: truck leave dialogue often cutscenes straight into the farmhouse

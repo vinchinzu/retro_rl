@@ -102,5 +102,6 @@ bd sync   # commit issues.jsonl with code
 
 ## Next tip (live)
 
-**`rr-0fx` Z4.1** — assisted L4 live entry from `Level3Complete` (Raft owned).
+**`rr-0fx` Z4.1** — ✓ assisted L4 live entry (dock 0x55 / island 0x45 / room 0x71).
+**`rr-5lu` Z4.2** — tip: L4 interior from `Level4Entrance`.
 See `bd ready -l zelda_i` and `QUEUE.md` architecture block.
