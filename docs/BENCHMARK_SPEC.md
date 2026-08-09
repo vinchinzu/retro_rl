@@ -145,6 +145,79 @@ Do not claim seed-robustness from a single cherry-picked seed or from a
 spoiler-oracle policy unless the contract explicitly allows a development
 oracle and labels it separately from the runtime solver.
 
+### Machine-readable seed report
+
+The shared [`retro_harness.benchmark` seed-report API](../retro_harness/benchmark.py)
+provides a deterministic dry-run adapter for existing `BenchmarkCase` policies.
+`SeedRobustnessConfig` publishes the generator, generator version, logic, goal,
+ordered unique seed IDs (**T**), frame budget, success threshold (**S**), and
+the runtime/intervention labels. `run_seed_robustness` calls a seed-to-case
+factory once per published seed, resets the policy for each case, and never
+samples, shuffles, or replaces the seed list.
+
+Every seed case's `BenchmarkCase.max_steps` must equal the published frame
+budget. Every per-seed `frames` result must be at most that budget; both direct
+report construction and the runner reject over-budget results. Seed-aware
+environments can put these fields in their final `info` mapping for automatic
+extraction:
+
+- `terminal_milestone`: the furthest durable milestone reached
+- `failure_mode`: a stable failure category; the benchmark timeout reason is
+  used when this is absent on a failed attempt
+- `assists`: a mapping of assist name to per-seed intervention count
+
+`write_seed_robustness_report` emits canonical JSON (`sort_keys=True`) with no
+timestamps or wall-time measurements, so the same ordered inputs produce the
+same artifact. Config metadata must be a JSON object with string keys and only
+JSON values (null, booleans, strings, finite numbers, arrays, and nested
+objects); unsupported values, non-string keys, and `NaN`/infinite numbers are
+rejected before writing. Its schema is:
+
+```json
+{
+  "event": "seed_robustness_report",
+  "schema_version": 1,
+  "policy": "policy-name",
+  "config": {
+    "generator": "generator-name",
+    "generator_version": "1.2.3",
+    "logic": "standard",
+    "goal": "legitimate ending",
+    "seeds": ["1337", "1338", "1339"],
+    "seed_count": 3,
+    "budget": 9000,
+    "budget_unit": "frames",
+    "success_threshold": 2,
+    "runtime_observation_class": "Silver",
+    "intervention_class": "Clean",
+    "metadata": {}
+  },
+  "summary": {
+    "seeds_total": 3,
+    "seeds_successful": 2,
+    "success_rate": 0.6666666666666666,
+    "required_successes": 2,
+    "threshold_met": true
+  },
+  "seed_results": [
+    {
+      "seed": "1337",
+      "outcome": "success",
+      "success": true,
+      "frames": 8120,
+      "terminal_milestone": "ending",
+      "failure_mode": null,
+      "assists": {}
+    }
+  ]
+}
+```
+
+The complete report contains one `seed_results` entry per published seed;
+failures retain their terminal milestone and failure mode. A report is an
+artifact of the stated contract, not permission to omit the per-seed ROM/start
+state or assist contract required by the rules above.
+
 ### Mod-robust clear (later)
 
 Same structure over a published set of **edited ROMs** (physics, rooms, or
