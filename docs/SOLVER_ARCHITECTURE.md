@@ -1,6 +1,6 @@
 # Solver Architecture
 
-Last updated: 2026-08-06.
+Last updated: 2026-08-09.
 
 Strategic reframe for `retro_rl`: a **game solver** that reads state, plans, and
 acts each frame — robust to randomizers, mods, and edited ROMs — not a library
@@ -60,7 +60,7 @@ Layer 0  Deterministic parallel emulator pool (rollouts, save/load, speed)
 | Layer | Status in this repo | Ownership |
 |-------|---------------------|-----------|
 | **L1** Skills | ~90% of current work; strong across ~20 games | Per-game (`snes/*`, `nes/*`) |
-| **L4** Planner sketch | `retro_harness.adventure` (`RouteGraph`, `shortest_path`, edge `requires`) | Shared — incomplete |
+| **L4** Planner scaffold | `retro_harness.adventure` (`RouteGraph.inventory_aware_path`, edge `requires`/`acquires`) | Shared — scaffold |
 | **L3** Discovery | Super Metroid room-graph lessons; SMZ3 portal/world detect | Shared — incomplete |
 | **L2** Observation | Dev-time RAM maps + miner tooling; not runtime bootstrap | Shared — incomplete |
 | **L0** Emulator pool | Single-env harness + some dual-bot SMZ3 scaffold | Shared — incomplete |
@@ -131,6 +131,33 @@ donors.
 | 5 | **Parallel emulator pool** | L0 | Deterministic rollouts for search/simulation/planning. |
 | 6 | **Low-level skill synthesis** | L1+ | Optimizers / neuroevo / RL when library or physics break under mods. |
 
+### L4 capability-edge planner surface
+
+`retro_harness.adventure.graph` provides the small, game-agnostic item-logic
+surface used before any emulator integration:
+
+- `GraphEdge.requires` is the normalized prerequisite capability set.
+- `GraphEdge.acquires` records monotonic items, events, or defeated-boss flags
+  gained after the transition; `RoutePatch` carries the same annotations.
+- `RouteGraph.inventory_aware_path` runs deterministic Dijkstra over
+  `(node, capabilities)` states and returns the least-cost edge sequence. The
+  existing `shortest_path` remains fixed-inventory BFS for callers that already
+  supply a complete inventory.
+
+The shared search deliberately does not model consumable counts or game-local
+stop predicates. Those belong in a game adapter or a future resource-aware
+state model. A useful probe-driven discovery loop is:
+
+1. Hold the source and target transition constant while probing controlled
+   inventories (one item/event variant per run).
+2. Record whether the transition opens, the observed state change, and the
+   smallest capability set that changes the result.
+3. Encode that difference as `requires`; encode a collected item or cleared
+   event on the successful transition as `acquires`.
+4. Keep the edge `verification` at `planned` until emulator evidence promotes
+   it. The planner consumes the graph; it does not claim that a low-level skill
+   can execute an unverified edge.
+
 ## Workflow changes
 
 | Old default | Solver default |
@@ -187,5 +214,5 @@ proofs.
 | [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md) | Seed-robustness class |
 | [PROGRAM_STATUS.md](PROGRAM_STATUS.md) | Live flagship claims |
 | `snes/smz3/docs/` | Combined randomizer ground truth |
-| `retro_harness/adventure/` | Shared graph + shortest_path sketch |
+| `retro_harness/adventure/` | Shared capability graph + inventory-aware path scaffold |
 | `retro_harness/platformer/genetic.py` | Skill-synthesis optimizer foothold |
