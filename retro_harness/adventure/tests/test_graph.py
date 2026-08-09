@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from retro_harness.adventure import inventory_aware_path as facade_inventory_aware_path
+from retro_harness.adventure import (
+    CapabilityId,
+    Has,
+    inventory_aware_path as facade_inventory_aware_path,
+)
 from retro_harness.adventure.graph import (
     GraphEdge,
     GraphNode,
@@ -148,6 +152,33 @@ def test_route_graph_rejects_missing_capability() -> None:
             (RouteLeg("hop", "a", "b"),),
             initial_capabilities=frozenset(),
         )
+
+
+def test_edge_for_handles_direct_typed_requirement() -> None:
+    graph = RouteGraph(
+        _nodes("a", "b"),
+        (GraphEdge("a", "b", requires=Has(CapabilityId("sm", "bombs"))),),
+    )
+
+    assert graph.edge_for("a", "b") is graph.edges[0]
+
+
+def test_plan_legs_conjoins_legacy_edge_and_typed_leg_requirements() -> None:
+    bombs = CapabilityId("sm", "bombs")
+    graph = RouteGraph(
+        _nodes("a", "b"),
+        (GraphEdge("a", "b", requires={"sword"}),),
+    )
+    leg = RouteLeg("hop", "a", "b", requires=Has(bombs))
+
+    with pytest.raises(ValueError, match="missing capabilities"):
+        graph.plan_legs((leg,), initial_capabilities={bombs})
+
+    planned = graph.plan_legs(
+        (leg,),
+        initial_capabilities={"sword", bombs},
+    )
+    assert planned[0].capabilities_before == frozenset({"sword", bombs})
 
 
 def test_add_patches() -> None:

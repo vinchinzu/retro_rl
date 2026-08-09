@@ -14,6 +14,12 @@ from retro_harness.adventure.graph import (
     RouteGraph,
     shortest_path,
 )
+from retro_harness.adventure.progression import (
+    CapabilityId,
+    Has,
+    ItemCheck,
+    SeedPlacement,
+)
 
 # --- Node ids ---------------------------------------------------------------
 
@@ -25,6 +31,17 @@ N_BOMBS = "sm_bombs"
 N_EARLY_MISSILES = "sm_early_missiles"
 N_BRINSTAR = "sm_brinstar_elevator"
 N_VARIA = "sm_varia"  # long-range tip placeholder
+
+# Namespaced offline fixture used by the progression-core tests.  The legacy
+# graph above intentionally remains string-compatible for existing callers.
+SM_BOMBS = CapabilityId("sm", "bombs")
+SM_MISSILES = CapabilityId("sm", "missiles")
+N_PROGRESSION_START = "sm_fixture_start"
+N_PROGRESSION_BOMBS = "sm_fixture_bombs_check"
+N_PROGRESSION_MISSILES = "sm_fixture_missiles_check"
+N_PROGRESSION_GOAL = "sm_fixture_goal"
+SM_BOMBS_CHECK = "sm_fixture_bombs"
+SM_MISSILES_CHECK = "sm_fixture_missiles"
 
 # --- Capability tokens (normalized by adventure.graph) ----------------------
 # morph_ball, bombs, missiles, …
@@ -94,6 +111,75 @@ def build_early_graph() -> RouteGraph:
 
 
 EARLY_GRAPH = build_early_graph()
+
+
+def build_progression_graph() -> RouteGraph:
+    """Build the small namespaced placement fixture, without emulator state."""
+    nodes = (
+        GraphNode(N_PROGRESSION_START, name="SM fixture start", area="crateria"),
+        GraphNode(N_PROGRESSION_BOMBS, name="SM bombs check", area="crateria"),
+        GraphNode(N_PROGRESSION_MISSILES, name="SM missiles check", area="crateria"),
+        GraphNode(N_PROGRESSION_GOAL, name="SM fixture goal", area="brinstar"),
+    )
+    edges = (
+        GraphEdge(
+            N_PROGRESSION_START,
+            N_PROGRESSION_BOMBS,
+            edge_id="sm_fixture_to_bombs_check",
+        ),
+        GraphEdge(
+            N_PROGRESSION_BOMBS,
+            N_PROGRESSION_GOAL,
+            edge_id="sm_fixture_bombs_to_goal",
+            requires=Has(SM_BOMBS),
+        ),
+        GraphEdge(
+            N_PROGRESSION_START,
+            N_PROGRESSION_MISSILES,
+            edge_id="sm_fixture_to_missiles_check",
+        ),
+        GraphEdge(
+            N_PROGRESSION_MISSILES,
+            N_PROGRESSION_GOAL,
+            edge_id="sm_fixture_missiles_to_goal",
+            requires=Has(SM_BOMBS),
+        ),
+    )
+    checks = (
+        ItemCheck(SM_BOMBS_CHECK, N_PROGRESSION_BOMBS),
+        ItemCheck(SM_MISSILES_CHECK, N_PROGRESSION_MISSILES),
+    )
+    return RouteGraph(nodes, edges, checks)
+
+
+PROGRESSION_GRAPH = build_progression_graph()
+PLACEMENT_OVERLAY_A = SeedPlacement(
+    {
+        SM_BOMBS_CHECK: SM_BOMBS,
+        SM_MISSILES_CHECK: SM_MISSILES,
+    },
+    seed_id="sm-fixture-a",
+)
+PLACEMENT_OVERLAY_B = SeedPlacement(
+    {
+        SM_BOMBS_CHECK: SM_MISSILES,
+        SM_MISSILES_CHECK: SM_BOMBS,
+    },
+    seed_id="sm-fixture-b",
+)
+SEED_OVERLAY_A = PLACEMENT_OVERLAY_A
+SEED_OVERLAY_B = PLACEMENT_OVERLAY_B
+
+
+def plan_with_placement(
+    placement: SeedPlacement = PLACEMENT_OVERLAY_A,
+) -> tuple[GraphEdge, ...] | None:
+    """Return the valid offline plan for one SM fixture placement overlay."""
+    return PROGRESSION_GRAPH.progression_path(
+        N_PROGRESSION_START,
+        N_PROGRESSION_GOAL,
+        placement,
+    )
 
 
 def path_with_capabilities(
