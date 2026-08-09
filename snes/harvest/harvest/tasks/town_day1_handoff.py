@@ -537,13 +537,38 @@ def build_day1_handoff_tasks(
 
     # Truck leave often cutscenes into the farmhouse (town_day1_rest). Soft-nav
     # to farm is optional; _TruckLeaveTask succeeds on non-town tilemap.
-    truck = SequenceTask(
-        name="truck_leave",
-        tasks=(
-            _nav("to_truck", _clone_route("d1_town_to_truck"), timeout=7000, settle=15),
-            _TruckLeaveTask(),
-        ),
-    )
+    # Prefer rest-capture truck leave + sleep slice (arrive ~(688,360) then
+    # f9200→end: stand 715,421 → leave → house cutscene → bed → D2 morning).
+    # Ends settled at (136,120) house_size=0 so shed can ExitToFarm cleanly.
+    rest_path = __import__("os").path.join(TASKS_DIR, "town_day1_rest.json")
+    truck_includes_sleep = False
+    if __import__("os").path.isfile(rest_path):
+        truck_slice = load_recording_slice(
+            RecordingSliceSpec("town_day1_rest", start_frame=9200, end_frame=None),
+            TASKS_DIR,
+        )
+        truck_slice.name = "truck_leave_sleep_rest_slice"
+        truck = SequenceTask(
+            name="truck_leave",
+            tasks=(
+                _nav(
+                    "to_truck_slice_start",
+                    _clone_route("d1_town_to_truck"),
+                    timeout=7000,
+                    settle=20,
+                ),
+                truck_slice,
+            ),
+        )
+        truck_includes_sleep = True
+    else:
+        truck = SequenceTask(
+            name="truck_leave",
+            tasks=(
+                _nav("to_truck", _clone_route("d1_town_to_truck"), timeout=7000, settle=15),
+                _TruckLeaveTask(),
+            ),
+        )
 
     # Outdoor first (Ann + Eve ROM-verified on clean D1 entry).
     parts: List[Task] = [
@@ -665,8 +690,13 @@ def build_day1_handoff_tasks(
                     truck,
                 ]
             )
+        # Sleep before shed when truck slice does not already overnight.
+        # Rest truck+sleep slice ends D2 morning at bed (136,120) — verified
+        # house_size=0 shed entry. D1 evening ExitToFarm after cutscene hit 0x5F.
+        if include_sleep and not truck_includes_sleep:
+            parts.append(GoToSleepTask(name="sleep_to_d2", timeout=12000))
         if pick_starter_tools:
-            # Free D1 grass bag + watering can into carry.
+            # Free grass bag + watering can into carry after D2 morning settle.
             # Required on clean house_size=0 (power-on / Gate B). Soft-optional
             # when house_size!=0: AnnEve/rest fixtures are size2 and ExitToFarm
             # can fall into tilemap 0x5F.
@@ -676,8 +706,6 @@ def build_day1_handoff_tasks(
                     required=bool(require_starter_tools),
                 )
             )
-        if include_sleep:
-            parts.append(GoToSleepTask(name="sleep_to_d2", timeout=12000))
     else:
         # Baseline progress run: only the proven outdoor pair.
         parts.append(_AssertMaskTask(name="assert_ann_eve", expected=BIT_ANN | BIT_EVE))
@@ -810,20 +838,25 @@ class _SoftOptionalTask(Task):
 
 @dataclass
 class _TruckLeaveTask(Task):
-    """Talk to the truck/shipper and accept leave until we leave town or set 0x40."""
+    """Shipper leave dialog then east-gate walk (town_day1_rest 9270–9780).
+
+    Rest capture: stand ~(715,421), Right until lock=2, mash A/B through leave
+    menu, then walk Right out to path ``0x0C`` (cutscene continues into house).
+    """
 
     name: str = "truck_leave_dialog"
-    timeout: int = 3600
+    timeout: int = 4800
 
     _step_count: int = field(default=0, init=False)
     _queue: deque = field(default_factory=deque, init=False)
-    _pressed: bool = field(default=False, init=False)
-    _face_cycle: Tuple[str, ...] = ("left", "up", "left", "down")
+    _phase: str = field(default="engage", init=False)
+    _dialog_frames: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
         self._queue = deque()
-        self._pressed = False
+        self._phase = "engage"
+        self._dialog_frames = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -838,10 +871,9 @@ class _TruckLeaveTask(Task):
                 reason=f"left town tm=0x{tilemap:02X} mask=0x{mask:02X}",
             )
         if self._step_count > self.timeout:
-            # Still in town — fail so shed is not attempted from the road.
             return TaskResult(
                 status=TaskStatus.FAILURE,
-                reason=f"truck leave stuck in town mask=0x{mask:02X}",
+                reason=f"truck leave stuck in town mask=0x{mask:02X} phase={self._phase}",
             )
 
         queued = drain_action_queue(self._queue)
@@ -850,36 +882,53 @@ class _TruckLeaveTask(Task):
 
         scene = classify_scene_from_ram(world.ram)
         input_lock = int(read_ram_value(world.ram, "input_lock"))
-        if input_lock != 1 or scene.needs_input_dismiss or scene.mode in {
-            SceneMode.DIALOGUE,
-            SceneMode.MENU,
-        }:
-            # Leave menu: cycle down a few times then A (rest recording uses A/down).
-            phase = self._step_count % 24
-            if phase in {0, 6, 12}:
+        in_dialog = (
+            input_lock != 1
+            or scene.needs_input_dismiss
+            or scene.mode in {SceneMode.DIALOGUE, SceneMode.MENU}
+        )
+
+        if self._phase == "engage":
+            if in_dialog:
+                self._phase = "dialog"
+                self._dialog_frames = 0
+            else:
+                # Nudge right into the shipper trigger (rest used Right into lock=2).
                 return TaskResult(
                     status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action(down=True)),
-                    reason="truck menu cursor",
+                    action=ActionResult(make_action(right=True)),
+                    reason="truck engage right",
                 )
-            return dismiss_dialogue_result(self._step_count, reason="truck dialog")
 
-        # Re-approach from a few facings — truck sprite stand is picky.
-        if not self._pressed or self._step_count % 160 == 0:
-            self._pressed = True
-            face = self._face_cycle[(self._step_count // 160) % len(self._face_cycle)]
-            self._queue.extend(
-                press_a_sequence(
-                    face,
-                    face_frames=6,
-                    pre_press_settle_frames=8,
-                    hold_frames=24,
-                    settle_frames=14,
+        if self._phase == "dialog":
+            self._dialog_frames += 1
+            if not in_dialog and self._dialog_frames > 40:
+                self._phase = "exit_east"
+            else:
+                # Rest mixes A and B; occasional B cancels side-branches.
+                if self._dialog_frames % 50 < 8:
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(b=True)),
+                        reason="truck dialog B",
+                    )
+                return dismiss_dialogue_result(self._step_count, reason="truck dialog")
+
+        # After leave accepted, walk east out of town (path 0x0C).
+        if self._phase == "exit_east":
+            px = int(read_ram_value(world.ram, "player_x"))
+            if px < 750:
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(right=True, b=True)),
+                    reason="truck exit east",
                 )
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(right=True)),
+                reason="truck push gate",
             )
-            queued = drain_action_queue(self._queue)
-            if queued is not None:
-                return queued
+
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
 

@@ -39,6 +39,9 @@ from super_metroid.tas.trace import (
     write_trace_artifacts,
 )
 
+# materialize_room_body: import from super_metroid.tas.materialize (CLI module;
+# not re-exported here so ``python -m super_metroid.tas.materialize`` stays clean).
+
 __all__ = [
     "Annotator",
     "MovieTrace",

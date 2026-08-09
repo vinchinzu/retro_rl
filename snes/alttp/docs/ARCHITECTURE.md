@@ -74,7 +74,8 @@ Import continuous trunk as ``alttp.opening_route.*`` (no root re-export shims).
 | Live position / inventory / room | `alttp.ram.AlttpSnapshot` (stable-retro RAM) |
 | Continuous progress | `opening_route.escape_graph` edges with `verification=continuous` |
 | Capability plan | `plan_escape_to_sanctuary` / `continuous_spine_legs` (single hop table; path tags) |
-| Segment play + evidence | `opening_route.segment` + `route_report.SegmentResult` (entry enforced) |
+| Segment play + evidence | `opening_route.segment` + `route_report.SegmentResult` (entry enforced; `report_kind` / `diagnostics`) |
+| Env typing | `startup.BootEnv` protocol (`reset` / `close` / `step` / `get_ram`) |
 | Multi-truth anchors + tip node | `opening_route.anchors` (`resolve_continuous_tip_node`) |
 | Measured room geometry | `maps/room_XX.json` via `room_map.load_room_map` |
 | Approach/trigger windows | `anchors.py` (door approach derived from map; no copy) |

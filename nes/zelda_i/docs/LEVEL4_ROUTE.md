@@ -1,10 +1,10 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** planning (gated). No live OW door ID, entry room, or Clean
-segment. Do not claim isolated-pure or natural-entry until Raft is obtained
-from Level 3 for real (no inventory poke in Clean STATUS).
+**Status:** OW entry **live (assisted)**. Interior still planning. Do not
+claim Clean STATUS — Survival assist only for this segment.
 
-**Beads:** `rr-k0w` (plan + raft gate RAM).
+**Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
+epic `rr-q3n`.
 
 Planning sources (external, not emulator facts):
 
@@ -12,8 +12,8 @@ Planning sources (external, not emulator facts):
 - Local archive: [research/DUNGEON_WALKTHROUGHS.md](research/DUNGEON_WALKTHROUGHS.md)
 - RAM: `zelda_i/ram.py` (`ADDR_RAFT`, `ADDR_LADDER`, `ADDR_TRIFORCE`)
 
-Every screen id and room id below is **source-hypothesized** unless marked
-**(live)**. Live verification is a future probe after L3 Raft.
+Every screen id and room id is **source-hypothesized** unless marked
+**(live)**.
 
 ---
 
@@ -28,8 +28,7 @@ Every screen id and room id below is **source-hypothesized** unless marked
 | **Stepladder** (dungeon item) | `ADDR_LADDER` (`0x0663`) | Cross water tiles inside L4 (and later OW) |
 | Triforce shard 4 | `ADDR_TRIFORCE & 0x08` | Clear stop |
 
-**Predecessor:** Level 3 Manji must drop Raft. Planning-only may document a
-**dev inventory poke** of `0x0660` for assisted geometry probes — never for
+**Predecessor:** Level 3 Manji drops Raft. **Do not** poke `0x0660` for
 Clean STATUS or published pure-first evidence.
 
 **Optional OW prep (source):** east-coast Raft Heart Container — from start
@@ -40,46 +39,62 @@ Choose Heart over potion.
 
 ## Overworld
 
-### Hypothesized screens (source hop math)
+### Live path (assisted 2026-08-08, rr-0fx)
 
-Overworld id = `(row << 4) | col` (row 0 = north, col 0 = west). Start =
-`0x77` (live).
+Start: checkpoint **`Level3Complete`** (mode 18, room 0x3d, `raft=1`,
+`tf&0x04`). Fanfare settles to OW **`0x74`** ~(128,125).
 
-| Landmark | Source path | Hypothesized id | Live? |
-|----------|-------------|-----------------|-------|
-| East-coast Raft dock (heart) | start E×8 N×4 | **`0x3F`** | no |
-| Raft heart cave screen | dock N (auto) | **`0x2F`** | no |
-| Lake dock toward L4 island | start U, L×2, U (common short path) | **`0x55`** | no |
-| Island after raft (door screen?) | dock N (auto) | **`0x45`** | no |
+```
+0x74 W@y141 → 0x73 free mid x≈128 → N → 0x63 free south
+  → E@y≈145–155 → 0x64 E@y141 → 0x65 N@x112 → dock 0x55
+  → N@x≈128 (Raft) → island 0x45 → door UP @x128 → level 4 room 0x71
+```
 
-ZD long path from “previous dungeon” dock (after Raft): left, up, left×6,
-down×3, left×3, then raft onto island. Treat as **source only** until a live
-trail records the screen sequence; short path above is the usual speed
-approach from start once Raft is owned.
+| Landmark | Id | Live? | Notes |
+|----------|-----|-------|-------|
+| Post-L3 return | **`0x74`** | **live** | Same as L3 door mouth |
+| Raft dock | **`0x55`** | **live** | South entry y=221; raft only x≈128 |
+| Island door | **`0x45`** | **live** | UP into dungeon |
+| Entry room | **`0x71`** | **live** | South mouth ~(120,205) mode 5 |
+| East-coast Raft heart dock | `0x3F` | no | Source only |
+| Raft heart cave | `0x2F` | no | Source only |
 
-**Scaffold:** `level4_overworld.py` — `LEVEL4_DOCK_HOPS` placeholders,
-`has_raft()`, `level4_overworld_stop` stubs. Target constants are labeled
-`SOURCE_HYPOTHESIS` and must be overwritten after live probe.
+**Traps (live):**
 
-### Live recon goals (when free / after Raft)
+- `0x73`: arrive east edge from 0x74 — free mid before UP.
+- `0x63` east: **y∈[145,155]** only. y=141 sticks in bush near x≈144.
+- Dock `0x55`: UP at x≤112 never boards; align **x≈128** then UP.
+- Do not poke Raft. Not Clean STATUS.
 
-1. Walk to lake dock screen without Raft (map dock geometry only).
-2. Save `OW_L4Dock` if dock screen confirmed.
-3. With real Raft: enter island, confirm `level == 4`, mode 5, entry room id.
-4. Save `Level4Entrance` + JSON under `recordings/l4_*_recon.json`.
+**Module:** `level4_overworld.py` — `LEVEL4_HOPS_FROM_POST_L3`,
+`OverworldToLevel4Controller`, `PostL3TriforceSettleController`.
+`SOURCE_HYPOTHESIS = False`.
 
-**Do not** poke Raft for Clean claims.
+### Runner
+
+```bash
+# 2/2 assisted entry + Level4Entrance.state
+uv run python nes/zelda_i/scripts/run_level4_entry.py --infinite-life --trials 2 --save-state
+
+# Dock only → OW_L4Dock.state
+uv run python nes/zelda_i/scripts/run_level4_entry.py --infinite-life --dock-only --save-state
+
+# Plan dry-run
+uv run python nes/zelda_i/scripts/probe_level4_entry.py --plan-only
+```
+
+Evidence: `recordings/l4_entry_recon.json` (**2/2 assisted**, ~2173f/trial).
+Checkpoints: **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**.
 
 ---
 
 ## Interior (source speed route)
 
-Room IDs **unknown** until entry probe. Controllers must not hard-code room
-ids until live settle.
+Room IDs beyond entry **0x71** unknown until interior probe (`rr-5lu`).
 
 | Step | Action (source) | Notes |
 |------|-----------------|-------|
-| Entry | LEFT | 8 Keese → **key** |
+| Entry 0x71 | LEFT | 8 Keese → **key** |
 | Back E, N | Vires | Wooden sword splits Vire → red Keese; key RIGHT |
 | E | Dark maze | Candle; **Compass** |
 | Back W, N | key | then LEFT into dark ladder of rooms |
@@ -120,36 +135,22 @@ Scaffold: `level4_triforce_stop(snap)` returns True only when
 
 ---
 
-## Checkpoints (planned names)
+## Checkpoints
 
-| State | When |
-|-------|------|
-| `OW_L4Dock` | Dock screen mapped (may lack Raft) |
-| `Level4Entrance` | `level==4`, play mode, entry room settled |
-| `Level4Stepladder` | after `ADDR_LADDER` |
-| `Level4BossCleared` | after Gleeok + HC |
-| `Level4Complete` | `triforce & 0x08` |
-
-None exist yet as verified fixtures.
-
----
-
-## Scaffold / probe
-
-```bash
-# Planning dry-run (default): prints caps + hypothesized screens; no emu claim
-uv run python zelda_i/scripts/probe_level4_entry.py --plan-only
-
-# Live (requires real Raft in save, or refuse). Optional Survival assist only.
-uv run python zelda_i/scripts/probe_level4_entry.py --infinite-life --save-state
-```
-
-Module: `zelda_i/level4_overworld.py`.
+| State | When | Status |
+|-------|------|--------|
+| `Level3ExitOverworld` | Post-L3 fanfare settle OW 0x74 raft=1 | **live** |
+| `OW_L4Dock` | Dock screen 0x55 | **live** |
+| `Level4Entrance` | `level==4`, play mode, room 0x71 | **live** |
+| `Level4Stepladder` | after `ADDR_LADDER` | planned |
+| `Level4BossCleared` | after Gleeok + HC | planned |
+| `Level4Complete` | `triforce & 0x08` | planned |
 
 ---
 
 ## Evidence
 
-- Source walkthrough only as of planning recon.
-- No `recordings/l4_*.json` until live.
-- Related RAM already in tree: `ADDR_RAFT`, `ADDR_LADDER`, TF `0x08`.
+- `recordings/l4_entry_recon.json` — **2/2 assisted** entry from `Level3Complete`
+- Checkpoints `Level4Entrance`, `OW_L4Dock`, `Level3ExitOverworld` (+ provenance)
+- Related RAM: `ADDR_RAFT`, `ADDR_LADDER`, TF `0x08`
+- **Not Clean STATUS**

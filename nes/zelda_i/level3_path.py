@@ -15,23 +15,28 @@ from zelda_i.dungeon import (
     DungeonPhase,
     GenericDungeonRoomController,
 )
-from zelda_i.level3_dungeon import (
+from zelda_i.level3_geometry import (
     NORTH_DOOR_X,
     NORTH_DOOR_X_TOL,
-    NORTH_ENTER_MAX_FRAMES,
-    NORTH_EXIT_6B_MAX_FRAMES,
+    WEST_DOOR_APPROACH_Y,
+    WEST_DOOR_WALL_X,
+)
+from zelda_i.level3_dungeon import (
     ROOM_6B_SPEC,
     ROOM_7B_SPEC,
     ROOM_L3_DARKNUTS,
     ROOM_L3_NORTH_ZOLS,
     ROOM_L3_WEST_KEY,
-    WEST_DOOR_APPROACH_Y,
-    WEST_DOOR_WALL_X,
-    WEST_ENTER_MAX_FRAMES,
 )
 from zelda_i.level3_overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
+# Path timing knobs (not room-table data).
+WEST_ENTER_MAX_FRAMES = 1200
+NORTH_ENTER_MAX_FRAMES = 1500
+NORTH_EXIT_6B_MAX_FRAMES = 6000
+
+# Re-export geometry for callers that imported door bands from this module.
 # Re-export for boss path / scripts that imported ROOM_L3_ENTRY from here.
 ROOM_L3_ENTRY = SCREEN_LEVEL3_ENTRY_ROOM
 
@@ -500,13 +505,5 @@ class Level3NorthChainController:
 
 
 
-# Raft path re-export (canonical: level3_raft_path)
-def __getattr__(name: str):
-    if name in {
-        "Level3RaftPathController",
-        "RAFT_PATH_PHASES",
-        "raft_passage_step",
-    }:
-        from zelda_i import level3_raft_path as _raft
-        return getattr(_raft, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+# Raft path: import from ``level3_raft_path`` (canonical) or
+# ``level3_dungeon`` (compatibility shim). No re-export here (rr-iji5).

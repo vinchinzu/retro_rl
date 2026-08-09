@@ -116,7 +116,7 @@ def main() -> int:
         if env is not None:
             env.close()
 
-    report = result.to_report(kind="alttp_pocket_to_main_hall_report")
+    report = result.to_report()
     report["cli"] = {"state": args.state, "pocketOnly": args.pocket_only}
     report["classification"] = (
         "clean_natural_chain"

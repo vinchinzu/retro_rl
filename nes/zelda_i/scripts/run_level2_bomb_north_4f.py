@@ -39,7 +39,7 @@ from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level2_dungeon import (
     BOMB_N_STAND,
-    Level2PostBoomBombNorthController,
+    make_post_boom_bomb_north_controller,
     PostBoomBombNorthPhase,
     level2_room_3f_ready,
 )
@@ -59,7 +59,7 @@ def run_once(
 ) -> dict:
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
-    controller = Level2PostBoomBombNorthController()
+    controller = make_post_boom_bomb_north_controller()
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     try:
         result = env.reset()

@@ -654,17 +654,10 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     ),
     "BOMB_N_STAND": ("zelda_i.level2_bomb_path", "BOMB_N_STAND"),
     "BOOM_BOMB_N_STAND": ("zelda_i.level2_bomb_path", "BOOM_BOMB_N_STAND"),
-    "B_ITEM_BOMB": ("zelda_i.level2_bomb_path", "B_ITEM_BOMB"),
+    "B_ITEM_BOMB": ("zelda_i.dungeon_ops", "B_ITEM_BOMB"),
     "BombNorthPhase": ("zelda_i.level2_bomb_path", "BombNorthPhase"),
     "BoomBombNorthPhase": ("zelda_i.level2_bomb_path", "BoomBombNorthPhase"),
-    "Level2BombNorthController": (
-        "zelda_i.level2_bomb_path",
-        "Level2BombNorthController",
-    ),
-    "Level2BoomBombNorthController": (
-        "zelda_i.level2_bomb_path",
-        "Level2BoomBombNorthController",
-    ),
+    # Canonical factories (make_*); class-named aliases still resolve via same module.
     "make_bomb_north_controller": (
         "zelda_i.level2_bomb_path",
         "make_bomb_north_controller",
@@ -672,6 +665,26 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "make_boom_bomb_north_controller": (
         "zelda_i.level2_bomb_path",
         "make_boom_bomb_north_controller",
+    ),
+    "make_post_boom_bomb_north_controller": (
+        "zelda_i.level2_bomb_path",
+        "make_post_boom_bomb_north_controller",
+    ),
+    "make_bomb_north_1e_controller": (
+        "zelda_i.level2_bomb_path",
+        "make_bomb_north_1e_controller",
+    ),
+    "Level2BombNorthController": (
+        "zelda_i.level2_bomb_path",
+        "make_bomb_north_controller",
+    ),
+    "Level2BoomBombNorthController": (
+        "zelda_i.level2_bomb_path",
+        "make_boom_bomb_north_controller",
+    ),
+    "Level2PostBoomBombNorthController": (
+        "zelda_i.level2_bomb_path",
+        "make_post_boom_bomb_north_controller",
     ),
 }
 

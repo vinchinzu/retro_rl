@@ -35,17 +35,16 @@ from retro_harness.segment_runner import (
     write_json_report,
 )
 from zelda_i.dungeon_trace import write_state_provenance
+from zelda_i.dungeon_ops import ADDR_SELECTED_ITEM
 from zelda_i.level2_dungeon import (
     BOMB_N_STAND,
     BombNorthPhase,
-    Level2BombNorthController,
     ROOM_L2_BOMB_N,
     level2_room_5f_ready,
+    make_bomb_north_controller,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot, read_u8
-
-ADDR_SELECTED_ITEM = 0x0656
 
 
 def run_once(
@@ -57,7 +56,7 @@ def run_once(
 ) -> dict:
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
-    controller = Level2BombNorthController()
+    controller = make_bomb_north_controller()
     try:
         result = env.reset()
         obs = result[0] if isinstance(result, tuple) else result

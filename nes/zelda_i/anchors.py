@@ -52,8 +52,9 @@ TRIFORCE_BITS_BY_LEVEL: dict[int, int] = {
 # --- Door / entry screens ---
 SCREEN_LEVEL3_ENTRANCE = 0x74  # Manji — live
 SCREEN_LEVEL3_ENTRY_ROOM = 0x7C
-SCREEN_LEVEL4_ENTRANCE = 0x45  # Snake island candidate (source until Z4.1)
-SCREEN_LEVEL4_RAFT_DOCK = 0x55  # mainland dock (source)
+SCREEN_LEVEL4_ENTRANCE = 0x45  # Snake island door — live (rr-0fx)
+SCREEN_LEVEL4_RAFT_DOCK = 0x55  # mainland raft dock — live (rr-0fx)
+SCREEN_LEVEL4_ENTRY_ROOM = 0x71  # Snake entry room — live (rr-0fx)
 SCREEN_LEVEL5_ENTRANCE = 0x0B  # Lizard — live
 SCREEN_LEVEL5_LOST_HILLS = 0x1B  # live ↑×4
 SCREEN_LEVEL5_ENTRY_ROOM = 0x76
@@ -85,11 +86,11 @@ ENTRANCES: dict[int, EntranceAnchor] = {
     4: EntranceAnchor(
         level=4,
         door_screen=SCREEN_LEVEL4_ENTRANCE,
-        entry_room=None,
-        verified=False,
+        entry_room=SCREEN_LEVEL4_ENTRY_ROOM,
+        verified=True,
         approach_screen=SCREEN_LEVEL4_RAFT_DOCK,
         label="snake",
-        notes="Source hyp; needs Raft from L3 (rr-0fx live tip)",
+        notes="Live assisted 2026-08-08 rr-0fx; dock 0x55 raft→0x45 door→room 0x71",
     ),
     5: EntranceAnchor(
         level=5,
@@ -141,8 +142,9 @@ DOOR_SCREEN_BY_LEVEL: dict[int, int] = {
 # Doc / probe labels
 LATER_SCREEN_LABELS: dict[int, str] = {
     SCREEN_LEVEL3_ENTRANCE: "level3_entrance_manji_live",
-    SCREEN_LEVEL4_RAFT_DOCK: "level4_raft_dock_0x55_source",
-    SCREEN_LEVEL4_ENTRANCE: "level4_island_door_0x45_source",
+    SCREEN_LEVEL4_RAFT_DOCK: "level4_raft_dock_0x55_live",
+    SCREEN_LEVEL4_ENTRANCE: "level4_island_door_0x45_live",
+    SCREEN_LEVEL4_ENTRY_ROOM: "level4_entry_room_0x71_live",
     SCREEN_LEVEL5_LOST_HILLS: "lost_hills_maze_live",
     SCREEN_LEVEL5_ENTRANCE: "level5_entrance_lizard_live",
     SCREEN_LEVEL6_ENTRANCE: "level6_entrance_dragon_live",
@@ -185,6 +187,7 @@ __all__ = [
     "SCREEN_LEVEL3_ENTRY_ROOM",
     "SCREEN_LEVEL4_DOCK_HYP",
     "SCREEN_LEVEL4_ENTRANCE",
+    "SCREEN_LEVEL4_ENTRY_ROOM",
     "SCREEN_LEVEL4_ISLAND_HYP",
     "SCREEN_LEVEL4_RAFT_DOCK",
     "SCREEN_LEVEL5_DOOR",

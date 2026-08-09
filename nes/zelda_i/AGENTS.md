@@ -35,6 +35,9 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 uv run python -m zelda_i.tas.fetch_refs
 uv run python -m zelda_i.tas.import_fm2 --summary-only
 # uv run python -m zelda_i.tas.fetch_refs --include-glitched  # any% etc.
+
+# L4 entry (assisted; not Clean STATUS)
+uv run python zelda_i/scripts/run_level4_entry.py --infinite-life --trials 2 --save-state
 ```
 
 ## Layout (pointers)
@@ -47,8 +50,9 @@ uv run python -m zelda_i.tas.import_fm2 --summary-only
 | `level1.py`, `level1_finish.py`, `level1_dungeon.py` | L1 combat / finish / rooms |
 | `dungeon.py` | Shared dungeon combat engine + registry |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
-| `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall traverse |
-| `level3_path.py` | L3 door micros / west-key / north chain / raft path |
+| `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*` factories) |
+| `level3_path.py` | L3 door micros / west-key / north chain (no raft re-export) |
+| `level3_raft_path.py` | L3 Raft path (canonical; shim via `level3_dungeon`) |
 | `level*_boss_*.py`, `dungeon_ops.py` | Boss chains + shared door/clear ops |
 | `level2_puzzles.py` | BombWall / KeyDoor geometry catalog |
 | `door_graph/` | Door topology (stands from puzzles) |
@@ -84,7 +88,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip leaf: rr-0fx Z4.1; parallel: rr-38p; Clean deferred
+bd ready -l zelda_i   # tip leaf: rr-5lu L4 interior; parallel: rr-38p; Clean deferred
 ```
 
 | Order | Bead | Work |
@@ -94,8 +98,8 @@ bd ready -l zelda_i   # tip leaf: rr-0fx Z4.1; parallel: rr-38p; Clean deferred
 | ✓ | **L3 Raft runner** | `run_level3_raft.py` **2/2 assisted** → `Level3Raft` |
 | ✓ | **rr-vpl** / **rr-wmv** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
 | ✓ | **rr-k0w** | L4 planning scaffold (`level4_overworld`, plan-only probe) |
-| **1 TIP** | **`rr-0fx`** | L4 live: `Level3Complete`+Raft → dock → island → `Level4Entrance` 2/2 assist |
-| next | **`rr-5lu`** | L4 interior residual (blocked on Z4.1) |
+| ✓ | **`rr-0fx`** | L4 live entry: dock **0x55** → island **0x45** → room **0x71** **2/2 assist** |
+| **1 TIP** | **`rr-5lu`** | L4 interior residual from `Level4Entrance` (Stepladder path) |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -124,9 +128,18 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 `run_level3_to_boss.py --infinite-life --trials 2 --save-state`. Checkpoints
 **`Level3Boss`**, **`Level3Complete`**. **Not Clean STATUS.**
 
-**Next tip:** **`rr-0fx` Z4.1** L4 live entry (Raft already on `Level3Complete`).
+**L4 entry (assisted LIVE 2/2, rr-0fx):** `Level3Complete` settle OW **0x74**
+→ `0x73→0x63 E@y≈149→0x64→0x65→dock 0x55` Raft N → island **0x45** door UP
+→ room **0x71**. Evidence: `l4_entry_recon.json` (~2173f). Runner:
+`run_level4_entry.py --infinite-life --trials 2 --save-state`. Checkpoints
+**`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**. **Not Clean STATUS.**
+
+**Next tip:** **`rr-5lu` Z4.2** L4 interior from `Level4Entrance` (Stepladder).
 Epic container `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
 Not Clean promote.
+
+**Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
+dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
 
 **Traps (L2→L3 OW):** 0x4c east only **y∈[133,145]** (y=149 solid); 0x5c maze
 reverse needs denser channel waypoints (no y_band on 0x5b hop); 0x64 west
@@ -141,5 +154,6 @@ TF is **0x3d UP of boss** (not east).
 
 Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
 `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft` /
-`Level3Boss` / `Level3Complete`.
+`Level3Boss` / `Level3Complete` / `Level3ExitOverworld` / `OW_L4Dock` /
+`Level4Entrance`.
 Use `--infinite-life` for first-pass; Clean STATUS only after full-game assist.

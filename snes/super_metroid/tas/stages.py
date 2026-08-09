@@ -14,8 +14,9 @@ Usage
 -----
 
 * Catalog early Ceres + morph-spine product pins for re-slice export.
-* ``export_room_body`` (stub API) slices movie frames between room_enter pins
-  when an annotated ``pins.json`` / ``trace.json`` is available.
+* ``export_room_body_spec`` builds a plan-only descriptor from pins.
+* ``tas.materialize.materialize_room_body`` writes ``snes12_rle`` seeds
+  (``status=materialized_unproven``; never STATUS from movie indices alone).
 * Future chain player loads a ``.state`` at control, plays the body, checks goal.
 """
 
@@ -493,7 +494,7 @@ def export_room_body_spec(
     * state dump path (if stage.state_hint)
     * goal predicate description
 
-    Downstream ``export_slices`` / RLE writers can materialize seeds from this.
+    Downstream ``tas.materialize.materialize_room_body`` writes snes12_rle seeds.
     """
     window = None
     if stage.goal_room_id is not None:
