@@ -39,7 +39,7 @@ from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level2_dungeon import (
     BOMB_N_STAND,
     BombNorthPhase,
-    Level2BoomBombNorthController,
+    make_boom_bomb_north_controller,
     ROOM_L2_BOOM_CANDIDATE,
     level2_room_4f_ready,
 )
@@ -58,7 +58,7 @@ def run_once(
 ) -> dict:
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
-    controller = Level2BoomBombNorthController(clear_gels=False)
+    controller = make_boom_bomb_north_controller(clear_gels=False)
     try:
         result = env.reset()
         obs = result[0] if isinstance(result, tuple) else result

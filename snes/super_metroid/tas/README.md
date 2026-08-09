@@ -57,15 +57,33 @@ uv run python -m super_metroid.tas.extract_hops \
   snes/super_metroid/recordings/tas_import/sniq_100_full
 uv run python -m super_metroid.tas.extract_hops --list-stages
 
+# Materialize control-relative body seeds (movie parse only; status=materialized_unproven)
+uv run python -m super_metroid.tas.materialize --stage landing_to_parlor
+uv run python -m super_metroid.tas.materialize \
+  --from-board snes/super_metroid/recordings/tas_import/resync_zebes_rooms \
+  --zebes-only
+# → tas/bodies/<stage>.json (or board/bodies/ for --from-board)
+
 # Tests (no emulator for parse; skip if refs missing)
 uv run pytest snes/super_metroid/tests/test_tas_movies.py \
   snes/super_metroid/tests/test_tas_trace.py \
-  snes/super_metroid/tests/test_tas_stages_extract.py -q
+  snes/super_metroid/tests/test_tas_stages_extract.py \
+  snes/super_metroid/tests/test_tas_materialize.py -q
 ```
 
-Playbook: [`docs/TAS_ADAPT.md`](../docs/TAS_ADAPT.md). Artifacts:
+Playbooks:
+
+- Harness hybrid (snes9x re-anchor / Landing→Parlor): [`docs/TAS_ADAPT.md`](../docs/TAS_ADAPT.md)
+- **Long path oracle (BizHawk BSNES / lsnes truth dumps):** [`docs/TAS_BSNES_ORACLE.md`](../docs/TAS_BSNES_ORACLE.md) — epic `rr-0lz6`
+- **Oracle env (BizHawk version, ROM SHA1, SEGV notes):** [`tas/ref/ORACLE_ENV.md`](ref/ORACLE_ENV.md)
+- **Oracle tooling:** [`tas/oracle/`](oracle/) (`run_verify_100.sh`, Phase 1 verify Lua)
+- Next-session prompt: [`docs/tasks/NEXT_SESSION_TAS_ORACLE.md`](../docs/tasks/NEXT_SESSION_TAS_ORACLE.md)
+
+Artifacts (harness thrash / hybrid):
 `recordings/tas_import/<run_id>/` (`trace.json`, `pins.json`, `series.jsonl`,
 optional `states/`, `extraction_board.json`, `hop_inventory.csv`).
+
+Oracle artifacts (target): `recordings/tas_oracle/<run_id>/` (native-core pins only).
 
 ## Finish-oriented slices
 
@@ -92,6 +110,8 @@ tas/
   slice.py       # catalog + export
   stages.py      # RoomStageSpec table (control settle → goal)
   extract_hops.py # hop inventory + skills/graph extraction board
+  materialize.py # stage window → snes12_rle body seeds (unproven)
+  bodies/        # materialized stage seeds (not STATUS)
   annotate.py    # event detectors (rooms/items/speed/shine/stall)
   trace.py       # emulator replay + series / state dumps
   replay.py      # CLI power-on / slice replay

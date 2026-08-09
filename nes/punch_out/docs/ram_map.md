@@ -38,4 +38,10 @@ Sources: Data Crystal, TASVideos MTPO RAM map, in-ring probes (Glass Joe).
 
 - `is_level1_ready` — both health bars live (M1 boot).
 - `is_match_live` — ready + clock on + in-fight flag.
-- `is_taunt_window` — Glass Joe Vive La France backup (`pattern_set == 150`).
+- `is_taunt_window` — Glass Joe Vive La France backup (`pattern_set == 150` only).
+
+## Glass Joe combat notes (probed)
+
+- Damaging attack acts: `4, 6, 7, 10, 13, 17, 20, 23` (hit ~40–58f after act change; timer often stuck at 4).
+- Safe dodge: wait ~32f after act change, then 5-frame LEFT or RIGHT pulse.
+- Continuous L/R spam desyncs and loses HP; strict taunt (`150`) only for offense KDs.

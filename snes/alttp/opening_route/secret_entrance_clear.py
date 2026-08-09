@@ -2,8 +2,8 @@
 
 Segment success is **left_secret_entrance only** (stairs exit outdoors).
 Does not claim Zelda rescue — that remains planned after the continuous
-tip (``castle_dungeon_prefix`` through room ``0x50``). Diagnostic
-acceptance keys may still report follower/cell/sanctuary for logs.
+tip (``castle_dungeon_prefix`` through room ``0x50``). Later-route
+follower/cell/sanctuary flags live under ``diagnostics``, not acceptance.
 
 Composes after ``castle_to_sword`` / ``FighterSword`` predecessor. Clean
 intervention only — no progression writes or door warps.
@@ -31,8 +31,6 @@ Measured (headless, FighterSword / natural sword predecessor):
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Any
 
 from alttp import primitives
 from alttp.opening_route.anchors import (
@@ -50,8 +48,10 @@ from alttp.ram import (
     snapshot_to_diag,
     zelda_rescued_accepted,
 )
-from alttp.route_report import RoutePhaseResult, SegmentResult
-from alttp.startup import action_for, no_action, snapshot_env, step_frames
+from alttp.route_report import RoutePhaseResult, SegmentResult, segment_result_factory
+from alttp.startup import BootEnv, action_for, no_action, snapshot_env, step_frames
+
+_REPORT = segment_result_factory("alttp_secret_entrance_clear_report")
 
 # Re-export measured stairs constants (single source: anchors.py).
 __all__ = [
@@ -61,10 +61,10 @@ __all__ = [
     "SOUTH_CHAMBER_Y_MAX",
     "STAIRS_EXIT_MAX_FRAMES",
     "SWORD_TO_SOUTH_CHAMBER_SCRIPT",
-    "SecretEntranceClearResult",
     "approach_south_chamber",
     "ensure_sword_control",
     "evaluate_acceptance",
+    "evaluate_diagnostics",
     "exit_secret_entrance_stairs",
     "left_secret_entrance",
     "run_from_state",
@@ -83,15 +83,6 @@ SOUTH_CHAMBER_Y_MAX = 2965
 STAIRS_EXIT_MAX_FRAMES = 320
 
 
-@dataclass
-class SecretEntranceClearResult(SegmentResult):
-    """Segment result from fighter-sword predecessor through stairs exit."""
-
-    def to_report(self, kind: str = "alttp_secret_entrance_clear_report") -> dict[str, Any]:
-        return super().to_report(kind)
-
-
-
 def left_secret_entrance(snapshot: AlttpSnapshot) -> bool:
     """True when Link is no longer indoors in the secret-entrance room."""
     if not snapshot.indoors:
@@ -100,23 +91,29 @@ def left_secret_entrance(snapshot: AlttpSnapshot) -> bool:
 
 
 def evaluate_acceptance(snapshot: AlttpSnapshot) -> dict[str, bool]:
-    """Acceptance keys for secret-entrance clear (+ diagnostic Zelda keys).
+    """Contract keys for this segment only.
 
-    Segment ``ok`` uses ``left_secret_entrance`` only. ``zelda_follower`` /
-    cell / sanctuary remain diagnostic and must not alone mark segment success.
+    Segment ``ok`` uses ``left_secret_entrance``. Later-route Zelda flags live
+    in :func:`evaluate_diagnostics` so they never look like exit success.
     """
     return {
         "fighter_sword_ram": snapshot.has_fighter_sword,
         "in_secret_passage": snapshot.in_secret_passage,
         "hold_up_cleared": not snapshot.is_hold_up_item,
         "left_secret_entrance": left_secret_entrance(snapshot),
+    }
+
+
+def evaluate_diagnostics(snapshot: AlttpSnapshot) -> dict[str, bool]:
+    """Log-only later-route flags (not part of this segment's exit)."""
+    return {
         "zelda_follower": zelda_rescued_accepted(snapshot),
         "in_zelda_cell": snapshot.in_zelda_cell,
         "in_sanctuary": snapshot.in_sanctuary,
     }
 
 
-def ensure_sword_control(env: object) -> RoutePhaseResult:
+def ensure_sword_control(env: BootEnv) -> RoutePhaseResult:
     """Dismiss hold-up-item and require fighter sword + control."""
     # LEFT dismiss first: primitives.settle_control waits for hold-up clear
     # but only advances no_action/text, so active LEFT is required.
@@ -147,7 +144,7 @@ def ensure_sword_control(env: object) -> RoutePhaseResult:
     )
 
 
-def approach_south_chamber(env: object) -> RoutePhaseResult:
+def approach_south_chamber(env: BootEnv) -> RoutePhaseResult:
     """Walk from uncle corridor into the south multi-screen combat chamber."""
     frames = 0
     settle = primitives.settle_control(env)
@@ -188,7 +185,7 @@ def approach_south_chamber(env: object) -> RoutePhaseResult:
     )
 
 
-def exit_secret_entrance_stairs(env: object) -> RoutePhaseResult:
+def exit_secret_entrance_stairs(env: BootEnv) -> RoutePhaseResult:
     """Align south-chamber stairs and walk DOWN until outdoors.
 
     Measured: x≈2672 at y≈2916, then DOWN. Off-center deep south soft-locks
@@ -332,11 +329,11 @@ _SWORD_CLEAR_NOTES = (
 
 
 def run_from_sword(
-    env: object,
+    env: BootEnv,
     *,
     source: str = "state_load_dev",
     phases: Sequence[PhaseFn] | None = None,
-) -> SecretEntranceClearResult:
+) -> SegmentResult:
     """Run post-sword secret-entrance clear assuming fighter sword obtained.
 
     Default path: hold-up clear → south combat chamber → stairs exit outdoors.
@@ -350,6 +347,7 @@ def run_from_sword(
         env,
         phase_list,
         evaluate_acceptance=evaluate_acceptance,
+        evaluate_diagnostics=evaluate_diagnostics,
         success_when=left_secret_entrance,
         source=source,
         notes=_SWORD_CLEAR_NOTES,
@@ -361,7 +359,7 @@ def run_from_sword(
         partial_blocker=(
             "still in secret entrance after phases; stairs exit incomplete"
         ),
-        result_factory=SecretEntranceClearResult,
+        result_factory=_REPORT,
     )
 
 
@@ -369,11 +367,11 @@ def run_from_state(
     state_name: str = "FighterSword",
     *,
     close: bool = True,
-) -> SecretEntranceClearResult:
+) -> SegmentResult:
     """Development diagnostic from a saved fighter-sword state."""
     from alttp.opening_route.runner import run_from_state as _run_from_state
 
-    return _run_from_state(  # type: ignore[return-value]
+    return _run_from_state(
         state_name,
         run_from_sword,
         close=close,

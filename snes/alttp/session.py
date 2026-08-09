@@ -33,14 +33,14 @@ from alttp.opening_route.segment import (
     segment_registry,
 )
 from alttp.ram import AlttpSnapshot, read_snapshot, snapshot_to_diag
-from alttp.startup import snapshot_env
+from alttp.startup import BootEnv, snapshot_env
 
 
 @dataclass
 class AlttpSession:
     """Wrap a live stable-retro env with selective observation helpers."""
 
-    env: object
+    env: BootEnv
     _cache: AlttpSnapshot | None = field(default=None, repr=False)
     _frame: int = 0
     source: str = "live"
@@ -126,6 +126,6 @@ class AlttpSession:
         return [s.to_dict() for s in segment_registry().values()]
 
 
-def bind_env(env: object, *, source: str = "live") -> AlttpSession:
+def bind_env(env: BootEnv, *, source: str = "live") -> AlttpSession:
     """Create an :class:`AlttpSession` bound to ``env``."""
     return AlttpSession(env=env, source=source)

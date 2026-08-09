@@ -77,10 +77,12 @@ def between_rounds(ram) -> bool:
 
 
 def is_taunt_window(ram) -> bool:
-    """Glass Joe backup / Vive La France window (pattern set 150)."""
-    p3b = read_u8(ram, ADDR_OPP_PATTERN_SET)
-    p3a = read_u8(ram, ADDR_OPP_ACTION)
-    return p3b == PATTERN_TAUNT or (p3a == 2 and p3b >= 140)
+    """Glass Joe backup / Vive La France window (pattern set 150 only).
+
+    Broader checks (e.g. action==2 with pset>=140) false-trigger on attack
+    sets and waste hearts before the real taunt.
+    """
+    return read_u8(ram, ADDR_OPP_PATTERN_SET) == PATTERN_TAUNT
 
 
 def is_level1_ready(ram, obs_mean: float | None = None) -> bool:

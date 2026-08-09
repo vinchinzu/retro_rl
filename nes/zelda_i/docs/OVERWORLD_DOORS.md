@@ -18,7 +18,7 @@ Wave brief: [tasks/PARALLEL_RECON.md](tasks/PARALLEL_RECON.md).
 | 1 | Eagle | **`0x37`** | **`0x73`** | **verified** Clean | wooden sword | `0x01` | Bow (optional) | [LEVEL1_ROUTE.md](LEVEL1_ROUTE.md) |
 | 2 | Moon | **`0x3C`** | **`0x7d`** | **verified** assisted/geometry; Clean health open | wooden sword; TF1 for natural chain | `0x02` | Magical Boomerang | [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md) |
 | 3 | Manji | **`0x74`** | **`0x7c`** | **verified** assisted; `Level3Entrance.state` (source ↑L×4 path **blocked** at 0x67) | wooden sword | `0x04` | Raft | [LEVEL3_ROUTE.md](LEVEL3_ROUTE.md) |
-| 4 | Snake | `0x45` | TBD | source hyp: raft dock `0x55` → island `0x45` | **Raft** (`0x0660`) | `0x08` | Stepladder | [LEVEL4_ROUTE.md](LEVEL4_ROUTE.md) |
+| 4 | Snake | **`0x45`** | **`0x71`** | **live** raft dock `0x55` → island `0x45` (rr-0fx) | **Raft** (`0x0660`) | `0x08` | Stepladder | [LEVEL4_ROUTE.md](LEVEL4_ROUTE.md) |
 | 5 | Lizard | **`0x0B`** | **`0x76`** | **verified** assisted Lost Hills `0x1B` ↑×4; `Level5Entrance.state` | none to enter | `0x10` | Whistle | [LEVEL5_ROUTE.md](LEVEL5_ROUTE.md) |
 | 6 | Dragon | **`0x22`** | **`0x79`** | **verified** assisted; east `0x7a` key room; `Level6Entrance.state` | none required | `0x20` | Magical Rod | [LEVEL6_ROUTE.md](LEVEL6_ROUTE.md) |
 | 7 | Demon | `0x42` | TBD | source: whistle pond; bait shop `0x34` | **Whistle** + **Bait** inside | `0x40` | Red Candle | [LEVEL7_ROUTE.md](LEVEL7_ROUTE.md) |
@@ -30,7 +30,7 @@ Wave brief: [tasks/PARALLEL_RECON.md](tasks/PARALLEL_RECON.md).
 | Level | Walkthrough hops from start `0x77` (or noted origin) | Derived screens |
 |------:|------------------------------------------------------|-----------------|
 | 3 | ↑, ←×4, ↓, → | `77→67→66→65→64→63→73→**74**` |
-| 4 | Short path hyp: ↑ ←×2 ↑ dock `55` raft↑ island; east heart dock `3F` separate | dock **`0x55`**, island/door **`0x45`** |
+| 4 | **live** post-L3 `74→73→63 E@y149→64→65→dock 55` raft↑ island; east heart dock `3F` separate | dock **`0x55`**, island/door **`0x45`**, entry **`0x71`** |
 | 4 (alt) | Long ZD path via raft heart island then lake | confirm vs short hyp **live** |
 | 5 | Bracelet warp NE → ←×2 Lost Hills → ↑×4 | maze **`0x1B`**, door **`0x0B`** (soft; confirm live) |
 | 6 | From L5 `0x0B`: ↓ ←×7 ↓ ← ↓ ← ↑ | **`0x22`** |
@@ -55,7 +55,7 @@ Same hop arithmetic reproduces verified L1 (`…→0x37`) and L2 walkthrough pat
 | Bait / Food special shop | `0x34` | source Armos top-middle — **TBD live** | 60R | `ADDR_FOOD` `0x065D`; required for L7 Hungry Goriya |
 | Whistle pond (L7 mouth) | `0x42` | source — **TBD live** | Whistle | drains water → L7 stairs |
 | Raft dock (east heart) | `0x3F` | source path →×8 ↑×4 — **TBD live** | Raft | raft↑ optional Heart Container island `0x2F` |
-| Raft dock (L4 island) | `0x55` → `0x45` | source hyp (`level4_overworld`) — **TBD live** | Raft | only two first-quest raft docks |
+| Raft dock (L4 island) | `0x55` → `0x45` | **live** assisted rr-0fx (`level4_overworld`) | Raft | only two first-quest raft docks |
 | Ladder heart (coast) | `0x5F` | source →×8 ↑×2 — **TBD live** | Stepladder | water platform Heart Container |
 | Lost Hills maze | **`0x1B`** | **verified** assisted; enter from `0x1C` W@y140; pocket free then ↑×4 | none | 4th UP → door `0x0B`; see LEVEL5_ROUTE |
 | L8 candle bush | **`0x6D`** | **verified** bush pocket; candle buy residual | Candle | burn then enter; see LEVEL8_ROUTE |

@@ -22,6 +22,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from punch_out.paths import GAME, GAME_DIR
+from punch_out.policy import ATTACK_ACTS
 from punch_out.ram import (
     ADDR_FIGHT_FLAG,
     ADDR_HEALTH,
@@ -41,9 +42,6 @@ from retro_harness.env import make_env
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import configure_headless
-
-# Known damaging attack acts (from probe_patterns)
-ATTACK_ACTS = {4, 6, 7, 10, 17, 20, 23}
 
 
 def _getup(g: int) -> FrameAction:

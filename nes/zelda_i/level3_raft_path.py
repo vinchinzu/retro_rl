@@ -15,25 +15,19 @@ from zelda_i.door_graph.core import DoorDir
 from zelda_i.level3_geometry import (
     KEY_DOOR_Y,
     KEY_DOOR_Y_TOL,
-    STAIRS_69_RIGHT_Y,
-)
-from zelda_i.level3_dungeon import (
-    DARKNUT_OBJECT_TYPE,
-    DOWN_69_MAX_FRAMES,
-    KEY_5A_MAX_FRAMES,
-    KEY_DOOR_PUSH_FRAMES,
-    LEFT_5B_MAX_FRAMES,
     NORTH_DOOR_X,
     NORTH_DOOR_X_TOL,
-    PASSAGE_RAFT_MAX_FRAMES,
     RAFT_CHANNEL_X,
     RAFT_CHANNEL_X_TOL,
     RAFT_PASSAGE_MODE,
-    RAFT_PATH_MAX_FRAMES,
     RAFT_PICKUP_X,
     RAFT_PICKUP_Y,
     RAFT_SOUTH_Y,
     RAFT_SOUTH_Y_TOL,
+    STAIRS_69_RIGHT_Y,
+)
+from zelda_i.level3_dungeon import (
+    DARKNUT_OBJECT_TYPE,
     ROOM_59_SPEC,
     ROOM_69_SPEC,
     ROOM_ITEM_COMPASS,
@@ -42,10 +36,20 @@ from zelda_i.level3_dungeon import (
     ROOM_L3_RAFT_PASSAGE,
     ROOM_L3_SOUTH_DARKNUTS,
     ROOM_L3_WEST_DARKNUTS,
-    SPAWN_SETTLE_FRAMES,
-    STAIRS_69_MAX_FRAMES,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+
+# Path timing knobs (not room-table data).
+KEY_DOOR_PUSH_FRAMES = 160  # short push can spend key without room change
+SPAWN_SETTLE_FRAMES = 100  # Darknuts lag ~75–100f before clear registers
+LEFT_5B_MAX_FRAMES = 1500
+KEY_5A_MAX_FRAMES = 2500
+CLEAR_59_MAX_FRAMES = 18000
+DOWN_69_MAX_FRAMES = 2000
+CLEAR_69_MAX_FRAMES = 28000
+STAIRS_69_MAX_FRAMES = 2500
+PASSAGE_RAFT_MAX_FRAMES = 6000
+RAFT_PATH_MAX_FRAMES = 55000
 
 RAFT_PATH_PHASES: tuple[str, ...] = (
     "settle_5b",

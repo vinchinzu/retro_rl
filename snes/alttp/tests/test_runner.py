@@ -42,9 +42,10 @@ def test_run_phases_success_midway() -> None:
         )
 
     result = run_phases(
-        object(),
+        object(),  # type: ignore[arg-type]
         [phase_a, phase_b, phase_c],
         evaluate_acceptance=lambda s: {"done": bool(getattr(s, "done", False))},
+        evaluate_diagnostics=lambda s: {"extra": True},
         success_when=lambda s: bool(getattr(s, "done", False)),
         success_phase="finished",
         notes=["n1"],
@@ -54,6 +55,7 @@ def test_run_phases_success_midway() -> None:
     assert result.frames == 3
     assert calls == ["a", "b"]  # stopped after success
     assert len(result.phases) == 2
+    assert result.diagnostics == {"extra": True}
 
 
 def test_run_phases_fail_stops() -> None:
@@ -70,7 +72,7 @@ def test_run_phases_fail_stops() -> None:
         raise AssertionError("should not run")
 
     result = run_phases(
-        object(),
+        object(),  # type: ignore[arg-type]
         [bad, never],
         evaluate_acceptance=lambda s: {"done": False},
         success_when=lambda s: False,
@@ -79,6 +81,7 @@ def test_run_phases_fail_stops() -> None:
     assert result.phase == "bad"
     assert result.blocker == "broke"
     assert result.frames == 5
+    assert result.diagnostics == {}
 
 
 def test_run_from_state_calls_play(monkeypatch: object) -> None:

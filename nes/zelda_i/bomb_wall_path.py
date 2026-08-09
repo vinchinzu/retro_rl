@@ -23,8 +23,7 @@ BOMB_N_STAND_TOL = 4
 BOMB_N_WAIT_BLAST = 100
 BOMB_N_STEP_BACK = 6
 BOMB_N_MAX_FRAMES = 16000
-B_ITEM_BOMB = 0x02
-ADDR_SELECTED_ITEM = 0x0656
+# Inventory select poke lives in dungeon_ops (not this path engine).
 
 
 class BombWallLike(Protocol):
@@ -364,8 +363,6 @@ class BombWallController:
 
 
 __all__ = [
-    "ADDR_SELECTED_ITEM",
-    "B_ITEM_BOMB",
     "BOMB_N_MAX_FRAMES",
     "BOMB_N_STAND_TOL",
     "BOMB_N_STEP_BACK",

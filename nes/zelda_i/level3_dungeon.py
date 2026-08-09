@@ -30,8 +30,6 @@ Assisted LIVE past Darknuts toward Raft (2026-08-07, ``l3_past_5b``)::
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from zelda_i.dungeon import (
@@ -43,22 +41,19 @@ from zelda_i.dungeon import (
     RewardSpec,
     register_room_spec,
 )
-from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.level3_geometry import (
-    BOMB_STAND_59_RIGHT,
-    BOMB_STAND_5B_RIGHT,
-    DOOR_5C_RIGHT_Y,
     KEY_DOOR_Y,
-    KEY_DOOR_Y_TOL,
-    PASSAGE_EXIT_WAYPOINTS,
+    NORTH_DOOR_X,
     STAIRS_69_RIGHT_Y,
+    WEST_DOOR_APPROACH_Y,
+    WEST_DOOR_WALL_X,
 )
 from zelda_i.level3_overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
-# Geometry names above are re-exported so existing
-# ``from zelda_i.level3_dungeon import BOMB_STAND_*`` imports keep working.
+# Door-band geometry above is used in DoorRoutes. Other public geometry and
+# path timing re-exports are lazy (see __getattr__).
 
 # --- Live L3 room / enemy anchors (isolated pure 2026-08-06 + past-5b 08-07) ---
 ROOM_L3_ENTRY = SCREEN_LEVEL3_ENTRY_ROOM  # 0x7C
@@ -85,26 +80,6 @@ ROOM_ITEM_MAP = 0x17
 ROOM_ITEM_RAFT = 0x0C  # live RoomItemId in mode-9 passage 0x0f
 ROOM_ITEM_HEART_CONTAINER = 0x1A
 
-# Raft passage geometry (mode 9): enter from 0x69 RIGHT @ y≈141 → spawn ~(48,77).
-# Path: DOWN to y≈189 → RIGHT to x≈176 → UP channel to y≈141 → LEFT to x≈136 touch Raft.
-RAFT_PASSAGE_MODE = 9
-RAFT_CHANNEL_X = 176
-RAFT_CHANNEL_X_TOL = 4
-RAFT_PICKUP_X = 136
-RAFT_PICKUP_Y = 141
-RAFT_SOUTH_Y = 189
-RAFT_SOUTH_Y_TOL = 6
-KEY_DOOR_PUSH_FRAMES = 160  # short push can spend key without room change
-SPAWN_SETTLE_FRAMES = 100  # Darknuts lag ~75–100f before clear registers
-LEFT_5B_MAX_FRAMES = 1500
-KEY_5A_MAX_FRAMES = 2500
-CLEAR_59_MAX_FRAMES = 18000
-DOWN_69_MAX_FRAMES = 2000
-CLEAR_69_MAX_FRAMES = 28000
-STAIRS_69_MAX_FRAMES = 2500
-PASSAGE_RAFT_MAX_FRAMES = 6000
-RAFT_PATH_MAX_FRAMES = 55000
-
 # Darknut sword patrol (side/back hits; assist Survival OK).
 _DARKNUT_PATROL: tuple[tuple[int, int], ...] = (
     (64, 109),
@@ -121,20 +96,6 @@ _DARKNUT_PATROL: tuple[tuple[int, int], ...] = (
     (80, 157),
     (160, 125),
 )
-
-# West door residual: pure LEFT sticks at x≈32 (mask==0). LEFT+UP at the west
-# wall corner-clips into the scroll (mode 6/7 → room 0x7b). Approach band y≈149
-# reaches the wall; y≈141 alone often blocks mid-room at x≈112.
-WEST_DOOR_APPROACH_Y = 149
-WEST_DOOR_WALL_X = 48
-WEST_ENTER_MAX_FRAMES = 1200
-
-# North door residual from 0x7b: UP only works with |x-120|≤4. Threshold 8
-# leaves Link at x≈112 and sticks on the north wall (live probe 2026-08-06).
-NORTH_DOOR_X = 120
-NORTH_DOOR_X_TOL = 4
-NORTH_ENTER_MAX_FRAMES = 1500
-NORTH_EXIT_6B_MAX_FRAMES = 6000
 
 _ROOM_7B_PATROL: tuple[tuple[int, int], ...] = (
     (64, 117),
@@ -160,18 +121,6 @@ _ROOM_6B_PATROL: tuple[tuple[int, int], ...] = (
     (128, 141),
     (112, 173),
     (136, 165),
-)
-
-# After clear, snake toward north door plane (live free-explore path).
-_ROOM_6B_NORTH_EXIT: tuple[tuple[int, int], ...] = (
-    (120, 189),
-    (144, 181),
-    (152, 165),
-    (144, 141),
-    (136, 125),
-    (128, 109),
-    (120, 100),
-    (120, 93),
 )
 
 ROOM_7B_SPEC = DungeonRoomSpec(
@@ -385,7 +334,7 @@ ROOM_59_SPEC = DungeonRoomSpec(
         DoorRoute("DOWN", ((120, 141), (120, 205))),
         DoorRoute("UP", ((NORTH_DOOR_X, 141), (NORTH_DOOR_X, 93))),
     ),
-    max_frames=CLEAR_59_MAX_FRAMES,
+    max_frames=18000,
     level=LEVEL3,
 )
 
@@ -415,17 +364,9 @@ ROOM_69_SPEC = DungeonRoomSpec(
             ((120, STAIRS_69_RIGHT_Y), (208, STAIRS_69_RIGHT_Y)),
         ),
     ),
-    max_frames=CLEAR_69_MAX_FRAMES,
+    max_frames=28000,
     level=LEVEL3,
 )
-
-register_room_spec(ROOM_7B_SPEC)
-register_room_spec(ROOM_6B_SPEC)
-register_room_spec(ROOM_5B_SPEC)
-register_room_spec(ROOM_4B_SPEC)
-register_room_spec(ROOM_5A_SPEC)
-register_room_spec(ROOM_59_SPEC)
-register_room_spec(ROOM_69_SPEC)
 
 
 def level3_room_7b_key_success(ram: np.ndarray) -> bool:
@@ -532,7 +473,7 @@ def level3_boss_prep_killables(snap: ZeldaSnapshot) -> list:
 
 
 
-# Register room specs (path controllers in level3_path).
+# Register room specs (path controllers in level3_path / level3_raft_path).
 for _spec in (
     ROOM_7B_SPEC,
     ROOM_6B_SPEC,
@@ -545,6 +486,7 @@ for _spec in (
     register_room_spec(_spec)
 
 
+# Path controllers + timing knobs (canonical: level3_path / level3_raft_path).
 _PATH_EXPORTS = frozenset({
     "west_door_step",
     "north_door_7b_step",
@@ -554,21 +496,66 @@ _PATH_EXPORTS = frozenset({
     "Level3NorthExit6bController",
     "Level3WestKeyController",
     "Level3NorthChainController",
+    "WEST_ENTER_MAX_FRAMES",
+    "NORTH_ENTER_MAX_FRAMES",
+    "NORTH_EXIT_6B_MAX_FRAMES",
+})
+
+_RAFT_EXPORTS = frozenset({
     "Level3RaftPathController",
     "raft_passage_step",
     "RAFT_PATH_PHASES",
+    "KEY_DOOR_PUSH_FRAMES",
+    "SPAWN_SETTLE_FRAMES",
+    "LEFT_5B_MAX_FRAMES",
+    "KEY_5A_MAX_FRAMES",
+    "CLEAR_59_MAX_FRAMES",
+    "DOWN_69_MAX_FRAMES",
+    "CLEAR_69_MAX_FRAMES",
+    "STAIRS_69_MAX_FRAMES",
+    "PASSAGE_RAFT_MAX_FRAMES",
+    "RAFT_PATH_MAX_FRAMES",
+})
+
+# Geometry / anchors not used in room tables (compat for older imports).
+_GEOMETRY_EXPORTS = frozenset({
+    "BOMB_STAND_59_RIGHT",
+    "BOMB_STAND_5B_RIGHT",
+    "DOOR_5C_RIGHT_Y",
+    "KEY_DOOR_Y_TOL",
+    "NORTH_DOOR_X_TOL",
+    "PASSAGE_EXIT_WAYPOINTS",
+    "RAFT_CHANNEL_X",
+    "RAFT_CHANNEL_X_TOL",
+    "RAFT_PASSAGE_MODE",
+    "RAFT_PICKUP_X",
+    "RAFT_PICKUP_Y",
+    "RAFT_SOUTH_Y",
+    "RAFT_SOUTH_Y_TOL",
 })
 
 
 def __getattr__(name: str):
+    if name == "LEVEL3_TRIFORCE_BIT":
+        from zelda_i.anchors import TF_BIT_L3
+        return TF_BIT_L3
+    if name in _RAFT_EXPORTS:
+        from zelda_i import level3_raft_path as _raft
+        return getattr(_raft, name)
     if name in _PATH_EXPORTS:
-        if name in {"Level3RaftPathController", "RAFT_PATH_PHASES", "raft_passage_step"}:
-            from zelda_i import level3_raft_path as _paths
-        else:
-            from zelda_i import level3_path as _paths
+        from zelda_i import level3_path as _paths
         return getattr(_paths, name)
+    if name in _GEOMETRY_EXPORTS:
+        from zelda_i import level3_geometry as _geo
+        return getattr(_geo, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def __dir__():
-    return sorted(set(globals()) | set(_PATH_EXPORTS))
+    return sorted(
+        set(globals())
+        | set(_PATH_EXPORTS)
+        | set(_RAFT_EXPORTS)
+        | set(_GEOMETRY_EXPORTS)
+        | {"LEVEL3_TRIFORCE_BIT"}
+    )

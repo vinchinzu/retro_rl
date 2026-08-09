@@ -26,6 +26,7 @@ from alttp.opening_route.secret_entrance_clear import (
     approach_south_chamber,
     ensure_sword_control,
     evaluate_acceptance,
+    evaluate_diagnostics,
     left_secret_entrance,
     run_from_sword,
 )
@@ -66,7 +67,9 @@ def test_evaluate_acceptance_zelda() -> None:
     writes[wram_index(FOLLOWER)] = 1
     snap = read_snapshot(_ram(writes))
     acc = evaluate_acceptance(snap)
-    assert acc["zelda_follower"] is True
+    diag = evaluate_diagnostics(snap)
+    assert "zelda_follower" not in acc
+    assert diag["zelda_follower"] is True
     assert acc["fighter_sword_ram"] is True
     assert acc["left_secret_entrance"] is False
     assert zelda_rescued_accepted(snap) is True

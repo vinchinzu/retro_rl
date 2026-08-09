@@ -6,13 +6,19 @@ Landing Site, then splices the movie body at a searched movie index so Zebes
 rooms (Parlor / Climb / …) can be annotated.
 
 ```bash
-# Product → Landing, search movie align, annotate through a few rooms
+# Product → Landing, search movie for Climb (default goal), annotate
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python -m super_metroid.tas.resync --to landing --search \\
-  --body 8000 --out snes/super_metroid/recordings/tas_import/resync_landing
+  --search-goal climb --search-lo 14000 --search-hi 22000 --search-step 200 \\
+  --body 8000 --out snes/super_metroid/recordings/tas_import/resync_zebes_search
 
-# Use a known movie index (skip search)
-uv run python -m super_metroid.tas.resync --to landing --movie-start 21000 --body 6000
+# Product → Parlor then search movie for Climb door
+uv run python -m super_metroid.tas.resync --to parlor --search \\
+  --search-goal climb --search-lo 15000 --search-hi 23000 --search-step 200 \\
+  --body 6000 --out snes/super_metroid/recordings/tas_import/resync_parlor_climb
+
+# Known good Landing→Parlor splice (no Climb under open-loop Sniq @15000)
+uv run python -m super_metroid.tas.resync --to landing --movie-start 15000 --body 12000
 
 # Product through Climb → Pit entry (prefer product first-jump for room tech)
 uv run python -m super_metroid.tas.resync --to pit --movie-start 17000 --body 2000
@@ -72,17 +78,61 @@ from super_metroid.tas.trace import (
 
 # Sniq any% first B+RIGHT (Ceres movement) — movie-relative.
 SNIQ_ANY_CERES_OPEN = 8639
-# Product morph dual: landing ~21.5k; Ceres open relative ≈ 12–14k movie frames
-# after 8639 → landing movie index often near 20–24k. Search widens this.
-DEFAULT_LANDING_SEARCH = range(18_000, 28_000, 250)
+# Product morph dual: landing ~21.5k; Landing→Parlor splice often ~15k movie.
+# Default search window favors early Zebes movie indices over late Ceres thrash.
+DEFAULT_LANDING_SEARCH = range(14_000, 22_000, 200)
 
-ZEBES_MILESTONES = (
+# Ordered depth rooms (Landing → Morph) for contiguous-prefix scoring.
+ZEBES_MILESTONES: tuple[int, ...] = (
     ROOM_LANDING_SITE,
     ROOM_PARLOR,
     ROOM_CLIMB,
     ROOM_PIT,
+    ROOM_BLUE_BRINSTAR_ELEVATOR,
     ROOM_MORPH,
 )
+
+# First settled-control frame keys for milestone rooms (not Landing).
+ZEBES_HIT_KEYS: tuple[tuple[int, str], ...] = (
+    (ROOM_PARLOR, "parlor"),
+    (ROOM_CLIMB, "climb"),
+    (ROOM_PIT, "pit"),
+    (ROOM_BLUE_BRINSTAR_ELEVATOR, "elev"),
+    (ROOM_MORPH, "morph"),
+)
+HIT_KEY_BY_ROOM: dict[int, str] = {rid: key for rid, key in ZEBES_HIT_KEYS}
+HIT_ROOM_BY_KEY: dict[str, int] = {key: rid for rid, key in ZEBES_HIT_KEYS}
+
+# Flat hit bonuses (Climb+ heavily preferred over Landing↔Parlor bounce).
+HIT_BONUS: dict[str, float] = {
+    "parlor": 15.0,
+    "climb": 55.0,
+    "pit": 70.0,
+    "elev": 85.0,
+    "morph": 100.0,
+}
+
+# Contiguous ordered-depth bonuses (stop at first missing room).
+ORDERED_DEPTH_BONUS: tuple[tuple[int, float], ...] = (
+    (ROOM_LANDING_SITE, 2.0),
+    (ROOM_PARLOR, 5.0),
+    (ROOM_CLIMB, 15.0),
+    (ROOM_PIT, 18.0),
+    (ROOM_BLUE_BRINSTAR_ELEVATOR, 20.0),
+    (ROOM_MORPH, 22.0),
+)
+
+# CLI / search goal → hit key (weights that room heavily; can early-stop).
+SEARCH_GOALS: tuple[str, ...] = ("parlor", "climb", "pit", "morph")
+GOAL_HIT_BONUS: dict[str, float] = {
+    "parlor": 40.0,
+    "climb": 120.0,
+    "pit": 140.0,
+    "morph": 180.0,
+}
+
+# Landing + Parlor only — thrash class when Climb never appears.
+_LANDING_PARLOR = frozenset({ROOM_LANDING_SITE, ROOM_PARLOR})
 
 
 def _act(*names: str) -> np.ndarray:
@@ -92,6 +142,11 @@ def _act(*names: str) -> np.ndarray:
 def _combo_assist() -> UnlimitedResourcesAssist:
     """Unlimited energy+ammo assist used by continuous product path."""
     return UnlimitedResourcesAssist()
+
+
+def empty_hits() -> dict[str, int | None]:
+    """Milestone hit map: key → first settled frame or None."""
+    return {key: None for _, key in ZEBES_HIT_KEYS}
 
 
 def play_product_to_landing(session: RouteSession) -> None:
@@ -130,59 +185,111 @@ class AlignTrial:
     score: float
     unique_rooms: int
     room_order: list[str]
-    hit_parlor: int | None = None
-    hit_climb: int | None = None
-    hit_pit: int | None = None
-    hit_elev: int | None = None
-    hit_morph: int | None = None
+    hits: dict[str, int | None] = field(default_factory=empty_hits)
     deaths: int = 0
     frames_played: int = 0
     # Best rightward progress while still in Pit (x pin for jump tuning).
     pit_max_x: int = 0
 
+    # Convenience accessors (compat with older call sites / progress prints).
+    @property
+    def hit_parlor(self) -> int | None:
+        return self.hits.get("parlor")
+
+    @property
+    def hit_climb(self) -> int | None:
+        return self.hits.get("climb")
+
+    @property
+    def hit_pit(self) -> int | None:
+        return self.hits.get("pit")
+
+    @property
+    def hit_elev(self) -> int | None:
+        return self.hits.get("elev")
+
+    @property
+    def hit_morph(self) -> int | None:
+        return self.hits.get("morph")
+
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        """JSON shape keeps flat hit_* fields for older resync.json consumers."""
+        d = asdict(self)
+        for key in HIT_ROOM_BY_KEY:
+            d[f"hit_{key}"] = self.hits.get(key)
+        return d
 
 
 def score_zebes_progress(
     rooms: Sequence[int],
+    hits: dict[str, int | None] | None = None,
     *,
-    hit_parlor: int | None,
-    hit_climb: int | None,
+    deaths: int = 0,
+    pit_max_x: int = 0,
+    goal: str | None = None,
+    # Legacy kwargs (tests / call sites) — preferred path is ``hits`` map.
+    hit_parlor: int | None = None,
+    hit_climb: int | None = None,
     hit_pit: int | None = None,
     hit_elev: int | None = None,
-    hit_morph: int | None,
-    deaths: int,
-    pit_max_x: int = 0,
+    hit_morph: int | None = None,
 ) -> float:
-    score = float(len(set(rooms)))
-    if hit_parlor is not None:
-        score += 20
-    if hit_climb is not None:
-        score += 30
-    if hit_pit is not None:
-        score += 35
-    if hit_elev is not None:
-        score += 45
-    if hit_morph is not None:
-        score += 50
-    # Ordered milestone depth.
-    for rid, bonus in (
-        (ROOM_LANDING_SITE, 2),
-        (ROOM_PARLOR, 5),
-        (ROOM_CLIMB, 8),
-        (ROOM_PIT, 10),
-        (ROOM_BLUE_BRINSTAR_ELEVATOR, 11),
-        (ROOM_MORPH, 12),
-    ):
-        if rid in rooms:
+    """Score a Zebes movie-body trial (higher = deeper / less thrash).
+
+    Climb/Pit/Morph dominate Landing↔Parlor bounce. Optional ``goal`` adds a
+    large bonus when that hit key is reached (used by ``--search-goal``).
+    """
+    if hits is None:
+        hits = {
+            "parlor": hit_parlor,
+            "climb": hit_climb,
+            "pit": hit_pit,
+            "elev": hit_elev,
+            "morph": hit_morph,
+        }
+    room_set = set(rooms)
+    score = float(len(room_set))
+
+    for key, bonus in HIT_BONUS.items():
+        if hits.get(key) is not None:
+            score += bonus
+
+    # Ordered milestone depth (contiguous prefix from Landing).
+    for rid, bonus in ORDERED_DEPTH_BONUS:
+        if rid in room_set:
             score += bonus
         else:
             break
-    # Prefer trials that actually traverse Pit (horizontal platform jumps).
+
+    # Penalize Landing↔Parlor oscillation when Climb never appears.
+    if hits.get("climb") is None and room_set and room_set <= _LANDING_PARLOR:
+        if ROOM_PARLOR in room_set:
+            # Still better than never leaving Landing, but far below Climb.
+            score -= 12.0
+        if len(room_set) == 2:
+            # Unique rooms = Landing+Parlor only: thrash class.
+            score -= 8.0
+
     if pit_max_x > 0:
         score += min(pit_max_x, 800) / 80.0
     score -= deaths * 8
+
+    if goal is not None:
+        g = goal.lower()
+        if g in GOAL_HIT_BONUS and hits.get(g) is not None:
+            score += GOAL_HIT_BONUS[g]
+        elif g in GOAL_HIT_BONUS and hits.get(g) is None:
+            # Soft preference: partial credit for rooms on the path to goal.
+            goal_room = HIT_ROOM_BY_KEY.get(g)
+            if goal_room is not None:
+                try:
+                    goal_idx = ZEBES_MILESTONES.index(goal_room)
+                except ValueError:
+                    goal_idx = -1
+                for i, rid in enumerate(ZEBES_MILESTONES[: max(goal_idx, 0)]):
+                    if rid in room_set:
+                        score += 3.0 * (i + 1)
+
     return score
 
 
@@ -193,8 +300,15 @@ def trial_movie_from_state(
     movie_start: int,
     pad: int = 0,
     body: int = 6000,
+    goal: str | None = None,
 ) -> AlignTrial:
     """Load a harness state, optional idle pad, play movie[movie_start:…]."""
+    stop_key = goal.lower() if goal else None
+    if stop_key is not None and stop_key not in HIT_ROOM_BY_KEY:
+        raise ValueError(
+            f"unknown search goal {goal!r}; choose from {SEARCH_GOALS}"
+        )
+
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     try:
         env.reset()
@@ -205,7 +319,7 @@ def trial_movie_from_state(
             frame += 1
         seen: list[int] = []
         seen_set: set[int] = set()
-        hit_parlor = hit_climb = hit_pit = hit_elev = hit_morph = None
+        hits = empty_hits()
         deaths = 0
         pit_max_x = 0
         mi = movie_start
@@ -224,46 +338,22 @@ def trial_movie_from_state(
             rid = int(st.room_id)
             if rid == ROOM_PIT:
                 pit_max_x = max(pit_max_x, int(st.samus_x))
+            key = HIT_KEY_BY_ROOM.get(rid)
             if (
-                hit_parlor is None
-                and rid == ROOM_PARLOR
+                key is not None
+                and hits[key] is None
                 and is_settled_control(st)
             ):
-                hit_parlor = frame
-            if (
-                hit_climb is None
-                and rid == ROOM_CLIMB
-                and is_settled_control(st)
-            ):
-                hit_climb = frame
-            if (
-                hit_pit is None
-                and rid == ROOM_PIT
-                and is_settled_control(st)
-            ):
-                hit_pit = frame
-            if (
-                hit_elev is None
-                and rid == ROOM_BLUE_BRINSTAR_ELEVATOR
-                and is_settled_control(st)
-            ):
-                hit_elev = frame
-            if (
-                hit_morph is None
-                and rid == ROOM_MORPH
-                and is_settled_control(st)
-            ):
-                hit_morph = frame
-                break
+                hits[key] = frame
+                # Morph always ends trial; optional goal ends early.
+                if key == "morph" or (stop_key is not None and key == stop_key):
+                    break
         score = score_zebes_progress(
             seen,
-            hit_parlor=hit_parlor,
-            hit_climb=hit_climb,
-            hit_pit=hit_pit,
-            hit_elev=hit_elev,
-            hit_morph=hit_morph,
+            hits,
             deaths=deaths,
             pit_max_x=pit_max_x,
+            goal=stop_key,
         )
         return AlignTrial(
             movie_start=movie_start,
@@ -271,11 +361,7 @@ def trial_movie_from_state(
             score=score,
             unique_rooms=len(seen_set),
             room_order=[f"0x{r:04X}" for r in seen],
-            hit_parlor=hit_parlor,
-            hit_climb=hit_climb,
-            hit_pit=hit_pit,
-            hit_elev=hit_elev,
-            hit_morph=hit_morph,
+            hits=hits,
             deaths=deaths,
             frames_played=frame,
             pit_max_x=pit_max_x,
@@ -291,20 +377,39 @@ def search_movie_align(
     starts: Sequence[int],
     pads: Sequence[int] = (0,),
     body: int = 6000,
+    goal: str | None = None,
+    stop_on_goal: bool = True,
     progress: Callable[[AlignTrial], None] | None = None,
 ) -> list[AlignTrial]:
-    """Grid-search movie_start × pad; return trials sorted by score desc."""
+    """Grid-search movie_start × pad; return trials sorted by score desc.
+
+    When ``goal`` is set and ``stop_on_goal`` is true, stop the grid as soon as
+    any trial records that hit (still returns all trials run so far, sorted).
+    """
     trials: list[AlignTrial] = []
+    stop_key = goal.lower() if goal else None
     for ms in starts:
         if ms < 0 or ms >= len(frames):
             continue
         for pad in pads:
             tr = trial_movie_from_state(
-                state_bytes, frames, movie_start=ms, pad=pad, body=body
+                state_bytes,
+                frames,
+                movie_start=ms,
+                pad=pad,
+                body=body,
+                goal=stop_key,
             )
             trials.append(tr)
             if progress is not None:
                 progress(tr)
+            if (
+                stop_on_goal
+                and stop_key is not None
+                and tr.hits.get(stop_key) is not None
+            ):
+                trials.sort(key=lambda t: (-t.score, t.deaths, t.movie_start))
+                return trials
     trials.sort(key=lambda t: (-t.score, t.deaths, t.movie_start))
     return trials
 
@@ -577,13 +682,42 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Grid-search movie_start for Zebes room progress",
     )
-    p.add_argument("--search-lo", type=int, default=18_000)
-    p.add_argument("--search-hi", type=int, default=28_000)
-    p.add_argument("--search-step", type=int, default=250)
+    p.add_argument(
+        "--search-lo",
+        type=int,
+        default=14_000,
+        help="Search movie_start lower bound (default 14000)",
+    )
+    p.add_argument(
+        "--search-hi",
+        type=int,
+        default=22_000,
+        help="Search movie_start upper bound (default 22000)",
+    )
+    p.add_argument(
+        "--search-step",
+        type=int,
+        default=200,
+        help="Search movie_start step (default 200)",
+    )
     p.add_argument(
         "--search-pads",
         default="0,2,4,8",
         help="Comma pads for search",
+    )
+    p.add_argument(
+        "--search-goal",
+        choices=SEARCH_GOALS,
+        default=None,
+        help=(
+            "Weight this room heavily and stop the grid early on first hit "
+            "(parlor|climb|pit|morph). Default: score full depth, no early stop."
+        ),
+    )
+    p.add_argument(
+        "--no-stop-on-goal",
+        action="store_true",
+        help="With --search-goal, still scan the full grid after a hit",
     )
     p.add_argument("--series-stride", type=int, default=4)
     p.add_argument(
@@ -642,9 +776,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.search or movie_start is None:
         pads = [int(x) for x in args.search_pads.split(",") if x.strip()]
         starts = list(range(args.search_lo, args.search_hi + 1, args.search_step))
+        search_goal = args.search_goal
+        # From Landing, default goal is Climb (beyond Parlor bounce).
+        # From Parlor prefix, same. Explicit --search-goal always wins.
+        if search_goal is None and args.search and args.to in ("landing", "parlor"):
+            search_goal = "climb"
         print(
             f"search movie_start {args.search_lo}..{args.search_hi} "
-            f"step {args.search_step} pads={pads} body={min(args.body, 5000)}…",
+            f"step {args.search_step} pads={pads} body={min(args.body, 5000)} "
+            f"goal={search_goal or 'depth'}…",
             flush=True,
         )
         best_so_far: AlignTrial | None = None
@@ -667,15 +807,24 @@ def main(argv: list[str] | None = None) -> int:
             starts=starts,
             pads=pads,
             body=min(args.body, 5000),
+            goal=search_goal,
+            stop_on_goal=not args.no_stop_on_goal,
             progress=_prog,
         )
         search_report = [t.to_dict() for t in trials[:40]]
+        search_meta = {
+            "search_lo": args.search_lo,
+            "search_hi": args.search_hi,
+            "search_step": args.search_step,
+            "pads": pads,
+            "goal": search_goal,
+            "stop_on_goal": not args.no_stop_on_goal,
+            "prefix": args.to,
+            "n_trials": len(trials),
+            "trials_top": search_report,
+        }
         (out / "align_search.json").write_text(
-            json.dumps(
-                {"trials_top": search_report, "n_trials": len(trials)},
-                indent=2,
-            )
-            + "\n",
+            json.dumps(search_meta, indent=2) + "\n",
             encoding="utf-8",
         )
         if not trials:
@@ -686,7 +835,8 @@ def main(argv: list[str] | None = None) -> int:
         pad = align_best.pad
         print(
             f"align pick ms={movie_start} pad={pad} score={align_best.score} "
-            f"rooms={align_best.room_order}",
+            f"rooms={align_best.room_order} "
+            f"climb={align_best.hit_climb} pit={align_best.hit_pit}",
             flush=True,
         )
     assert movie_start is not None
@@ -711,6 +861,23 @@ def main(argv: list[str] | None = None) -> int:
     )
     if align_best is not None:
         run.align_best = align_best.to_dict()
+    # Note for humans/agents: deepest movie room + search params.
+    deepest = None
+    for rid in reversed(ZEBES_MILESTONES):
+        hex_id = f"0x{rid:04X}"
+        if any(r.get("room_id_hex") == hex_id for r in run.rooms):
+            deepest = hex_id
+            break
+    run.meta = {
+        **(run.meta or {}),
+        "deepest_zebes_room": deepest,
+        "search_goal": getattr(args, "search_goal", None),
+        "note": (
+            "Product pure owns multi-room; movie is single-hop splice research. "
+            f"prefix={args.to} movie_start={movie_start} pad={pad} "
+            f"deepest={deepest}."
+        ),
+    }
 
     written = write_trace_artifacts(trace, out, write_series=args.series_stride > 0)
     (out / "resync.json").write_text(

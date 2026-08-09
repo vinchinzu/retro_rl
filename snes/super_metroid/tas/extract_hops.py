@@ -111,6 +111,60 @@ _HIGH_LEVERAGE_TECH = frozenset(
     {"shinespark", "morph", "walljump", "speed_echo", "shine_arm", "knockback"}
 )
 
+# Ceres station only — thrash after desync is not product research.
+_CERES_ROOMS = frozenset(
+    {
+        rid.ROOM_CERES_ELEVATOR,
+        rid.ROOM_CERES_FALLING,
+        rid.ROOM_CERES_MAGNET,
+        rid.ROOM_CERES_SCIENTIST,
+        rid.ROOM_CERES_FLAT,
+        rid.ROOM_CERES_RIDLEY,
+    }
+)
+
+# Early Zebes spine rooms product pure already owns / cares about.
+_ZEBES_EARLY_ROOMS = frozenset(
+    {
+        rid.ROOM_LANDING_SITE,  # 0x91F8
+        rid.ROOM_PARLOR,  # 0x92FD
+        rid.ROOM_CLIMB,  # 0x96BA
+        rid.ROOM_PIT,  # 0x975C
+        rid.ROOM_MORPH,  # 0x9E9F
+        rid.ROOM_BLUE_BRINSTAR_ELEVATOR,  # 0x97B5
+    }
+)
+
+
+def _hop_rooms(hop: "RoomHop") -> set[int]:
+    rooms = {int(hop.from_room)}
+    if hop.to_room is not None:
+        rooms.add(int(hop.to_room))
+    return rooms
+
+
+def _is_ceres_only_hop(hop: "RoomHop") -> bool:
+    return _hop_rooms(hop) <= _CERES_ROOMS
+
+
+def _is_zebes_early_hop(hop: "RoomHop") -> bool:
+    rooms = _hop_rooms(hop)
+    return bool(rooms & _ZEBES_EARLY_ROOMS) and rooms.isdisjoint(_CERES_ROOMS)
+
+
+def _first_desync_or_death_frame(
+    events: Sequence[Mapping[str, Any]],
+) -> int | None:
+    """Earliest desync_suspect / death frame in the annotate stream, if any."""
+    first: int | None = None
+    for e in events:
+        if e.get("kind") not in ("desync_suspect", "death"):
+            continue
+        f = int(e.get("frame") or 0)
+        if first is None or f < first:
+            first = f
+    return first
+
 
 @dataclass
 class RoomHop:
@@ -203,10 +257,20 @@ def build_hops(
     *,
     run_id: str = "run",
 ) -> list[RoomHop]:
-    """Build ordered room hops from annotate events."""
+    """Build ordered room hops from annotate events.
+
+    Usable gating (Zebes-first research):
+    * After the first ``desync_suspect`` or ``death`` frame, all later hops
+      are ``usable=False`` with note ``post_desync_thrash``.
+    * Death-in-hop or desync-in-hop is never a skill candidate.
+    * Pure Ceres-only thrash after that cut is never usable (even if product
+      owns elev→falling continuously — movie thrash is not a skill port).
+    """
     enters = [e for e in events if e.get("kind") == "room_enter"]
     if not enters:
         return []
+
+    first_bad = _first_desync_or_death_frame(events)
 
     # Index secondary events by frame for hop windows.
     by_kind: dict[str, list[Mapping[str, Any]]] = {
@@ -272,7 +336,27 @@ def build_hops(
 
         desync = any(_in_window(e) for e in by_kind["desync_suspect"])
         death = any(_in_window(e) for e in by_kind["death"])
-        usable = not death and (not desync or frames is not None and frames < 500)
+        ceres_only = from_room in _CERES_ROOMS and (
+            to_room is None or to_room in _CERES_ROOMS
+        )
+
+        notes = ""
+        if death:
+            usable = False
+            notes = "death"
+        elif first_bad is not None and start > first_bad:
+            # Entire remainder of the movie after first desync/death is thrash.
+            usable = False
+            notes = "post_desync_thrash"
+        elif desync:
+            usable = False
+            notes = "desync_in_hop"
+        elif ceres_only and first_bad is not None and start > first_bad:
+            # Defensive: same cut as post_desync; keep explicit Ceres tag.
+            usable = False
+            notes = "post_desync_thrash"
+        else:
+            usable = True
 
         hop_id = f"{run_id}_h{i:04d}_{room_hex(from_room)}"
         if to_room is not None:
@@ -298,7 +382,7 @@ def build_hops(
                 desync_in_hop=desync,
                 death_in_hop=death,
                 usable=usable,
-                notes="",
+                notes=notes,
             )
         )
     return hops
@@ -343,7 +427,11 @@ def _skill_modules(tech: Sequence[str]) -> list[str]:
 
 
 def _pure_status(from_room: int, to_room: int | None, hop: RoomHop) -> str:
+    # Unusable first: never promote continuous_green/pure_green product ownership
+    # onto desynced movie thrash as a skill-port candidate.
     if not hop.usable:
+        if hop.notes == "post_desync_thrash":
+            return "post_desync_thrash"
         return "tas_desync_unusable"
     if to_room is None:
         return "open_ended"
@@ -358,19 +446,38 @@ def _pure_status(from_room: int, to_room: int | None, hop: RoomHop) -> str:
 
 
 def _priority(hop: RoomHop, pure: str, graph: str) -> int:
-    """Lower = work sooner."""
+    """Lower = work sooner. Zebes-first; Ceres thrash deprioritized."""
+    if pure in ("tas_desync_unusable", "post_desync_thrash"):
+        return 9
     if pure == "pure_open" or "product_p0" in graph:
         return 0
+
+    ceres_only = _is_ceres_only_hop(hop)
+    zebes_early = _is_zebes_early_hop(hop)
+    high_tech = bool(set(hop.tech_tags) & _HIGH_LEVERAGE_TECH)
+
     if pure == "skill_extract_candidate" and hop.usable:
+        if ceres_only:
+            # Deprioritize Ceres unless high-leverage tech (still behind Zebes).
+            return 2 if high_tech else 4
+        if zebes_early:
+            return 1
         return 1
     if pure == "continuous_green":
         return 5  # already owned — low extract urgency
-    if pure == "tas_desync_unusable":
-        return 9
+    if pure == "pure_green":
+        return 5
     if hop.items_gained or hop.beams_gained:
-        return 2
+        base = 2
+        return 1 if zebes_early else base
     if hop.usable and hop.frames is not None and hop.frames < 2000:
+        if ceres_only:
+            return 2 if high_tech else 4
+        if zebes_early:
+            return 2
         return 3
+    if zebes_early and hop.usable:
+        return 2
     return 6
 
 
@@ -380,7 +487,7 @@ def _residual_knob(hop: RoomHop, pure: str) -> str:
     if pure == "skill_extract_candidate":
         tech = hop.tech_tags[0] if hop.tech_tags else "door"
         return f"pure_probe_skill:{tech}"
-    if pure == "tas_desync_unusable":
+    if pure in ("tas_desync_unusable", "post_desync_thrash"):
         return "re_anchor_control_state"
     if pure == "tas_item_window":
         return "state_pin_at_item_gain"
@@ -400,7 +507,7 @@ def _bead_hint(hop: RoomHop, pure: str) -> str:
         return "pure_open"
     if pure == "skill_extract_candidate":
         return "discovered-from:rr-wpy skill pure probe"
-    if pure == "tas_desync_unusable":
+    if pure in ("tas_desync_unusable", "post_desync_thrash"):
         return "re-anchor only; no pure card"
     return ""
 
@@ -504,18 +611,30 @@ def build_extraction_board(
         for (a, b), n in edge_counts.most_common()
     ]
 
-    # Top skill candidates: usable + high-leverage tech, de-duped by edge.
+    # Top skill candidates: usable research only, de-duped by edge.
+    # Never list post-desync thrash / continuous_green ownership as skill ports.
+    _TOP_SKIP_PURE = frozenset(
+        {
+            "tas_desync_unusable",
+            "post_desync_thrash",
+            "continuous_green",
+            "pure_green",
+        }
+    )
+    usable_by_id = {h.hop_id: h.usable for h in hops}
     top_skills: list[dict[str, Any]] = []
     seen_edges: set[tuple[int, int | None]] = set()
     for c in candidates:
         if c.priority > 3:
             continue
+        if c.pure_status in _TOP_SKIP_PURE:
+            continue
+        # Synthetic product rows are not in hops; real hops must be usable.
+        if c.hop_id in usable_by_id and not usable_by_id[c.hop_id]:
+            continue
         key = (c.from_room, c.to_room)
         if key in seen_edges:
             continue
-        if c.pure_status in ("tas_desync_unusable", "continuous_green", "pure_green"):
-            if c.pure_status != "pure_open":
-                continue
         seen_edges.add(key)
         top_skills.append(c.to_dict())
         if len(top_skills) >= 12:
@@ -523,9 +642,11 @@ def build_extraction_board(
 
     # Always surface product Ice P0 (Snake→PLM) even if not in this run's hops.
     # Acid→Snake is pure dual GREEN (rr-5cf); next is Snake→Ice prefer 2WJ.
+    # Never inject Acid→Snake as pure_open.
     ice_pair = (rid.ROOM_ICE_SNAKE, rid.ROOM_ICE)
     if not any(
-        c.from_room == ice_pair[0] and c.to_room == ice_pair[1] for c in candidates
+        c.get("from_room") == ice_pair[0] and c.get("to_room") == ice_pair[1]
+        for c in top_skills
     ):
         top_skills.insert(
             0,
@@ -547,17 +668,8 @@ def build_extraction_board(
             ).to_dict(),
         )
 
-    desync_frames = [
-        int(e["frame"])
-        for e in (pins or [])
-        if e.get("kind") == "desync_suspect"
-    ]
-    if not desync_frames:
-        desync_frames = [
-            int(e["frame"])
-            for e in []  # filled from hops
-        ]
     desync_hops = [h.to_dict() for h in hops if h.desync_in_hop]
+    thrash_hops = sum(1 for h in hops if h.notes == "post_desync_thrash")
 
     board = {
         "schema": "sm_tas_extraction_board_v1",
@@ -568,10 +680,13 @@ def build_extraction_board(
             "practice room_graph ≠ continuous evidence",
             "never sanitize L+R; assist off on TAS replay",
             "do not auto-wire continuous tip from this board",
+            "Zebes-first: deprioritize Ceres-only thrash; product pure owns multi-room",
+            "post-desync hops are unusable research (post_desync_thrash)",
         ],
         "summary": {
             "hop_count": len(hops),
             "usable_hops": sum(1 for h in hops if h.usable),
+            "post_desync_thrash_hops": thrash_hops,
             "unique_edges": len(unique_edges),
             "item_hops": sum(1 for h in hops if h.items_gained or h.beams_gained),
             "desync_hops": sum(1 for h in hops if h.desync_in_hop),

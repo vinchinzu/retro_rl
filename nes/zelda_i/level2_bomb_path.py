@@ -1,14 +1,12 @@
 """Level 2 bomb-wall path factories over ``bomb_wall_path.BombWallController``.
 
-Geometry: ``level2_puzzles.BombWall`` catalog.
-Specs for optional clear come from ``level2_dungeon``.
+Canonical API: ``make_*_controller()`` only. Geometry from
+``level2_puzzles.BombWall``; inventory poke constants live in ``dungeon_ops``.
 """
 
 from __future__ import annotations
 
 from zelda_i.bomb_wall_path import (
-    ADDR_SELECTED_ITEM,
-    B_ITEM_BOMB,
     BOMB_N_MAX_FRAMES,
     BOMB_N_STAND_TOL,
     BOMB_N_STEP_BACK,
@@ -29,6 +27,7 @@ from zelda_i.dungeon import (
     RewardKind,
     RewardSpec,
 )
+from zelda_i.dungeon_ops import ADDR_SELECTED_ITEM, B_ITEM_BOMB
 from zelda_i.level2_dungeon import (
     LEVEL_2,
     ROOM_6F_SPEC,
@@ -89,7 +88,7 @@ def _need_clear_6f(snap: ZeldaSnapshot) -> bool:
     return bool(gels) or (snap.compass & level_bit) == 0
 
 
-def Level2BombNorthController() -> BombWallController:
+def make_bomb_north_controller() -> BombWallController:
     """0x6f compass → bomb north → 0x5f (Clean geometry; no inventory poke)."""
     return BombWallController(
         wall=BOMB_WALL_6F_NORTH,
@@ -104,7 +103,7 @@ def Level2BombNorthController() -> BombWallController:
     )
 
 
-def Level2BoomBombNorthController(
+def make_boom_bomb_north_controller(
     *, clear_gels: bool = True
 ) -> BombWallController:
     """0x5f → bomb north → 0x4f boom room."""
@@ -125,11 +124,12 @@ def Level2BoomBombNorthController(
     )
 
 
-# Alias used by run_level2_bomb_north_5f (geometry-only hop).
-Level2BombNorth5FController = Level2BoomBombNorthController
+def make_bomb_north_5f_controller() -> BombWallController:
+    """0x5f geometry-only hop (no gel clear) → 0x4f."""
+    return make_boom_bomb_north_controller(clear_gels=False)
 
 
-def Level2PostBoomBombNorthController() -> BombWallController:
+def make_post_boom_bomb_north_controller() -> BombWallController:
     """0x4f (boom collected) → bomb north → 0x3f traps+Keese."""
     return BombWallController(
         wall=BOMB_WALL_4F_NORTH,
@@ -143,7 +143,7 @@ def Level2PostBoomBombNorthController() -> BombWallController:
     )
 
 
-def Level2BombNorth1EController() -> BombWallController:
+def make_bomb_north_1e_controller() -> BombWallController:
     """0x1e cleared Goriya → bomb north → Dodongo 0x0e."""
     return BombWallController(
         wall=BOMB_WALL_1E_NORTH,
@@ -159,26 +159,12 @@ def Level2BombNorth1EController() -> BombWallController:
     )
 
 
-def make_bomb_north_controller() -> BombWallController:
-    return Level2BombNorthController()
-
-
-def make_boom_bomb_north_controller(
-    *, clear_gels: bool = True
-) -> BombWallController:
-    return Level2BoomBombNorthController(clear_gels=clear_gels)
-
-
-def make_bomb_north_5f_controller() -> BombWallController:
-    return Level2BoomBombNorthController(clear_gels=False)
-
-
-def make_post_boom_bomb_north_controller() -> BombWallController:
-    return Level2PostBoomBombNorthController()
-
-
-def make_bomb_north_1e_controller() -> BombWallController:
-    return Level2BombNorth1EController()
+# Back-compat aliases (class-shaped names → make_*). Prefer make_* in new code.
+Level2BombNorthController = make_bomb_north_controller
+Level2BoomBombNorthController = make_boom_bomb_north_controller
+Level2BombNorth5FController = make_bomb_north_5f_controller
+Level2PostBoomBombNorthController = make_post_boom_bomb_north_controller
+Level2BombNorth1EController = make_bomb_north_1e_controller
 
 
 __all__ = [

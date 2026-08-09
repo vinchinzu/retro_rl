@@ -39,8 +39,10 @@ from alttp.ram import (
     room_label,
     snapshot_to_diag,
 )
-from alttp.route_report import RoutePhaseResult, SegmentResult
-from alttp.startup import action_for, no_action, snapshot_env, step_frames
+from alttp.route_report import RoutePhaseResult, SegmentResult, segment_result_factory
+from alttp.startup import BootEnv, action_for, no_action, snapshot_env, step_frames
+
+_REPORT = segment_result_factory("alttp_pocket_to_main_hall_report")
 
 # Open-courtyard / gardens window after pocket escape (route tier).
 COURTYARD_OPEN_Y_MIN = 1880
@@ -51,7 +53,7 @@ COURTYARD_SOUTH_CORRIDOR_Y = 2024
 
 
 def cut_push(
-    env: object,
+    env: BootEnv,
     face: str,
     *,
     walk: int = 12,
@@ -113,6 +115,7 @@ def near_main_door(snap: AlttpSnapshot) -> bool:
 
 
 def evaluate_acceptance(snapshot: AlttpSnapshot) -> dict[str, bool]:
+    """On-path progress + exit keys for pocket → main hall."""
     return {
         "fighter_sword_ram": snapshot.has_fighter_sword,
         "outdoors_castle_screen": (
@@ -127,7 +130,7 @@ def evaluate_acceptance(snapshot: AlttpSnapshot) -> dict[str, bool]:
     }
 
 
-def _settle_transition(env: object, *, max_frames: int = 120) -> tuple[int, AlttpSnapshot]:
+def _settle_transition(env: BootEnv, *, max_frames: int = 120) -> tuple[int, AlttpSnapshot]:
     frames = 0
     while frames < max_frames:
         snap = snapshot_env(env)
@@ -140,7 +143,7 @@ def _settle_transition(env: object, *, max_frames: int = 120) -> tuple[int, Altt
     return frames, snapshot_env(env)
 
 
-def escape_hedge_pocket(env: object) -> RoutePhaseResult:
+def escape_hedge_pocket(env: BootEnv) -> RoutePhaseResult:
     """Route tier: bush-cut south/west out of secret-stairs hedge pocket."""
     frames = 0
     settle = primitives.settle_control(env)
@@ -230,7 +233,7 @@ def escape_hedge_pocket(env: object) -> RoutePhaseResult:
     )
 
 
-def approach_main_door(env: object) -> RoutePhaseResult:
+def approach_main_door(env: BootEnv) -> RoutePhaseResult:
     """Approach tier: south corridor → west to door x → north to door y."""
     frames = 0
     settle = primitives.settle_control(env)
@@ -342,7 +345,7 @@ def approach_main_door(env: object) -> RoutePhaseResult:
     )
 
 
-def enter_main_door(env: object) -> RoutePhaseResult:
+def enter_main_door(env: BootEnv) -> RoutePhaseResult:
     """Trigger tier: align door x and walk UP into room 0x61."""
     frames = 0
     settle = primitives.settle_control(env)
@@ -444,7 +447,7 @@ _POCKET_NOTES = (
 
 
 def run_from_pocket(
-    env: object,
+    env: BootEnv,
     *,
     source: str = "state_load_dev",
     phases: Sequence[PhaseFn] | None = None,
@@ -468,11 +471,12 @@ def run_from_pocket(
             "Main castle door entered (room 0x61). Next: B1 → Zelda cell.",
         ),
         partial_blocker="pocket phases finished without main hall",
+        result_factory=_REPORT,
     )
 
 
 def run_from_sword_through_pocket(
-    env: object,
+    env: BootEnv,
     *,
     source: str = "state_load_dev",
 ) -> SegmentResult:
@@ -481,7 +485,7 @@ def run_from_sword_through_pocket(
 
     pre = run_from_sword(env, source=source)
     if not pre.ok or not pre.acceptance.get("left_secret_entrance"):
-        return SegmentResult(
+        return _REPORT(
             ok=False,
             phase=pre.phase,
             frames=pre.frames,
@@ -489,13 +493,14 @@ def run_from_sword_through_pocket(
             phases=list(pre.phases),
             source=source,
             acceptance={**evaluate_acceptance(pre.snapshot), **pre.acceptance},
+            diagnostics=dict(pre.diagnostics),
             blocker=pre.blocker or "failed to reach courtyard pocket",
             notes=list(pre.notes)
             + ["pocket_to_main_hall requires secret-entrance clear first"],
         )
     hall = run_from_pocket(env, source=source)
     # Merge phases / frames.
-    return SegmentResult(
+    return _REPORT(
         ok=hall.ok,
         phase=hall.phase,
         frames=pre.frames + hall.frames,
@@ -503,6 +508,7 @@ def run_from_sword_through_pocket(
         phases=list(pre.phases) + list(hall.phases),
         source=source,
         acceptance=hall.acceptance,
+        diagnostics={**pre.diagnostics, **hall.diagnostics},
         blocker=hall.blocker,
         notes=list(pre.notes) + list(hall.notes),
     )

@@ -18,12 +18,14 @@ from super_metroid.routes.kpdr.ice.acid_to_snake import play_ice_acid_to_snake
 from super_metroid.routes.kpdr.ice.business_to_gate import play_business_to_ice_gate
 from super_metroid.routes.kpdr.ice.gate_to_acid import play_ice_gate_to_acid
 from super_metroid.routes.kpdr.ice.geometry import (
+    ICE_BEAM_MASK,
     ICE_SUPER_DOOR_X,
     ICE_SUPER_LIP_X_MAX,
     ICE_SUPER_Y_MAX,
     ICE_SUPER_Y_MIN,
     on_ice_super_lip,
 )
+from super_metroid.routes.kpdr.ice.snake_to_ice import play_ice_snake_to_ice
 from super_metroid.routes.kpdr.rooms import (
     ROOM_ICE,
     ROOM_ICE_ACID,
@@ -33,6 +35,7 @@ from super_metroid.routes.kpdr.rooms import (
 )
 
 __all__ = [
+    "ICE_BEAM_MASK",
     "ICE_SUPER_DOOR_X",
     "ICE_SUPER_LIP_X_MAX",
     "ICE_SUPER_Y_MAX",
@@ -46,4 +49,5 @@ __all__ = [
     "play_business_to_ice_gate",
     "play_ice_acid_to_snake",
     "play_ice_gate_to_acid",
+    "play_ice_snake_to_ice",
 ]
