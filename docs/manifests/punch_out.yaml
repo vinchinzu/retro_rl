@@ -5,7 +5,7 @@ genre_tracks:
   - fighting_game_policies
 capability_phase: 1
 project_state: instrumented
-maturity: M2
+maturity: M3
 runtime_class: bronze
 intervention_class: clean
 popularity: high
@@ -14,13 +14,13 @@ transfer_value: high
 ending_definition: credits / circuit clear after final fight
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: null
-best_video: null
+best_manifest: nes/punch_out/recordings/glass_joe/summary.json
+best_video: nes/punch_out/recordings/glass_joe/trial_01/bout.mp4
 assist_contract: null
 status_doc: nes/punch_out/docs/STATUS.md
 plan_doc: nes/punch_out/docs/plan.md
-last_verified: 2026-07-28
-blocker: Glass Joe bout win (third KD / decision) from Match1
+last_verified: 2026-08-07
+blocker: Natural-entry Glass Joe win from power-on / Level1 (M4)
 notes: >-
-  M2: fight RAM + Match1 clock state; Glass Joe KD1 via taunt counter.
+  M3: Match1 bout win 3/3 (taunt KD + timed dodge survival; KO on KD2).
   Platform NES under roms/Nintendo/NES.

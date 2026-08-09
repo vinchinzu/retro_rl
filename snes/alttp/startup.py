@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 import stable_retro as retro
@@ -22,6 +23,24 @@ from alttp.paths import (
 from alttp.ram import AlttpSnapshot, read_snapshot
 from retro_harness.env import write_state_bytes
 from retro_harness.snes import idle_action, snes_action
+
+
+@runtime_checkable
+class BootEnv(Protocol):
+    """Minimal stable-retro env surface used by boot + segment play.
+
+    Segment and primitive call sites take this instead of bare ``object``.
+    Save/restore search may also require ``em`` (get_state/set_state); that
+    is checked with ``hasattr`` where needed, not forced on every env.
+    """
+
+    def reset(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def close(self) -> None: ...
+
+    def step(self, action: Any) -> Any: ...
+
+    def get_ram(self) -> Any: ...
 
 PRIMARY_SLOT_OFFSET = 0x000
 BACKUP_SLOT_OFFSET = 0xF00
@@ -94,18 +113,18 @@ def no_action() -> np.ndarray:
     return idle_action(dtype=np.int8)
 
 
-def step_frames(env: object, action: np.ndarray, frames: int) -> None:
+def step_frames(env: BootEnv, action: np.ndarray, frames: int) -> None:
     for _ in range(max(0, frames)):
-        env.step(action)  # type: ignore[attr-defined]
+        env.step(action)
 
 
-def snapshot_env(env: object) -> AlttpSnapshot:
-    ram = np.asarray(env.get_ram(), dtype=np.uint8)  # type: ignore[attr-defined]
+def snapshot_env(env: BootEnv) -> AlttpSnapshot:
+    ram = np.asarray(env.get_ram(), dtype=np.uint8)
     return read_snapshot(ram)
 
 
 def run_button_script(
-    env: object,
+    env: BootEnv,
     script: Iterable[tuple[str, int]],
 ) -> None:
     for button, frames in script:

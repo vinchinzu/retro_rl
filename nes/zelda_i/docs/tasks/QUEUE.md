@@ -24,21 +24,22 @@ sword kiting once geometry is known.
 | Post-L2 → L3 enter | **assisted green 2/2** | `rr-rnx`; `l2_to_l3_assisted.json`; epic `rr-ci7` closed |
 | L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | `rr-vpl` / epic `rr-wmv` closed; `level3_to_boss_assisted.json` |
 | Checkpoints | **`Level3Raft`**, **`Level3Boss`**, **`Level3Complete`** (raft=1) | L3 epic closed |
-| **Tip leaf** | **`rr-0fx` Z4.1** L4 live entry | `Level3Complete` → dock → island → `Level4Entrance` |
+| L4 OW entry | **assisted green 2/2** | `rr-0fx`; dock **0x55** island **0x45** room **0x71**; `l4_entry_recon.json` |
+| Checkpoints L4 | **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`** | not Clean |
+| **Tip leaf** | **`rr-5lu` Z4.2** L4 interior | from `Level4Entrance` Stepladder path |
 | Parallel free | **`rr-38p`** early OW caps | white sword / candle / bomb bag |
 | Deferred (blocked on tip) | L5/L6 TF residual, Clean L2 heatmaps, bracelet/mag sword | P4; not tip-blocking |
 
 ### Architecture (agent monitor)
 
 ```
-tip spine:  L1 Clean → L2 assist TF → L3 assist TF+Raft → **L4 entry (rr-0fx)** → L4 interior
+tip spine:  L1 Clean → L2 assist TF → L3 assist TF+Raft → L4 entry ✓ → **L4 interior (rr-5lu)**
 parallel:   OW early caps (rr-38p); isolated pure only from green checkpoints
 defer:      combat Clean harden, later-dungeon TF residual until tip arrives
 process:    path/puzzle first → --infinite-life full clear → damage heatmap Clean
 ```
 
-Claim one tip leaf: `bd update rr-0fx --status in_progress`. Do not expand L4
-room beads until live door/entry ids exist.
+Claim one tip leaf: `bd update rr-5lu --status in_progress`.
 
 ### All-night wave results (2026-08-06 night)
 
@@ -63,7 +64,7 @@ room beads until live door/entry ids exist.
 | L | Door OW | Entry room | Checkpoint | Track |
 |--:|---------|------------|------------|-------|
 | 3 | **0x74** | **0x7c** | `Level3Entrance` | assisted enter |
-| 4 | 0x45 hyp | — | plan (needs raft) | source |
+| 4 | **0x45** (dock **0x55**) | **0x71** | `Level4Entrance` | assisted enter |
 | 5 | **0x0B** (hills **0x1B**) | **0x76** | `Level5Entrance` | assisted enter |
 | 6 | **0x22** | **0x79** | `Level6Entrance` | assisted enter |
 | 7 | 0x42 hyp | — | plan (needs whistle) | source |
@@ -89,15 +90,15 @@ Door traps burned:
 ## Next beads (tip + ready)
 
 ```bash
-bd ready -l zelda_i   # tip: rr-0fx; parallel: rr-38p
+bd ready -l zelda_i   # tip: rr-5lu; parallel: rr-38p
 ```
 
 | Bead | Role | Start / notes |
 |------|------|---------------|
-| **`rr-0fx` Z4.1** | **TIP** live L4 entry | `Level3Complete` (raft=1); hyp dock `0x55` / island `0x45` until live |
-| **`rr-5lu` Z4.2** | blocked on Z4.1 | interior first rooms + stepladder path |
+| **`rr-0fx` Z4.1** | ✓ live L4 entry | dock `0x55` island `0x45` room `0x71`; `run_level4_entry.py` |
+| **`rr-5lu` Z4.2** | **TIP** interior | from `Level4Entrance`; first rooms + stepladder |
 | **`rr-38p` ZOW.1** | parallel free | white sword + candle + bomb bag |
-| **`rr-q3n`** | L4 epic container | spawn more children only after live entry ids |
+| **`rr-q3n`** | L4 epic container | more children after interior recon |
 | Deferred P4 | `rr-28p` L5 TF, `rr-d6v` L6 TF, `rr-4oz` Clean L2, `rr-yhr` bracelet/mag sword | blocked on tip |
 
 ### Closed wave history (keep for evidence)
@@ -109,7 +110,7 @@ OW recon table — see closed beads + `LEVEL{2,3,5,6}_ROUTE.md`.
 
 | Epic | Gate |
 |------|------|
-| L4 Snake clear | live entry `rr-0fx` then interior |
+| L4 Snake clear | live entry ✓; interior `rr-5lu` |
 | L7 Demon | Whistle from L5 + bait shop |
 | L9 Death Mountain | Full TF `0xFF` |
 | Continuous dry run | assisted then Clean stack |

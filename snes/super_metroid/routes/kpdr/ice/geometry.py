@@ -63,6 +63,43 @@ _ACID_TO_SNAKE_RLE_PATH = (
 )
 ACID_TO_SNAKE_RLE: RleScript = load_rle_json(_ACID_TO_SNAKE_RLE_PATH)
 
+# ---------------------------------------------------------------------------
+# Ice Beam Snake Room (0xA8B9) — floor → top (2WJ / platform-hop bands)
+# ---------------------------------------------------------------------------
+# Pure Acid→Snake handoff ~(216, 651). Prefer platform-hop / 2WJ climb over
+# freeze ladder (operator note + tape thrash f12664–15400 is non-product).
+# Land bands from live pure probe + clean first-climb tape f12080–12560.
+#
+#   floor y651 → L1 ~587 → L2 ~523 → L3 ~459 → L4 ~395 (mid door height)
+#        → L5 ~331 → L6 ~267 → L7 ~203 → top ~139
+#
+# Morph tunnel to Ice (node 2) is mid-right ~(x≥200, y~377); entry is from the
+# right column after top cross — left-wall morph at x=171 is solid (rr-5if residual).
+
+SNAKE_HANDOFF_X = (80, 250)
+SNAKE_HANDOFF_Y = (600, 720)
+# Platform land bands (y windows; x is shaft mid ~40–160).
+SNAKE_L1_Y = (560, 600)  # first left ledge
+SNAKE_L2_Y = (500, 540)
+SNAKE_L3_Y = (440, 480)
+SNAKE_L4_Y = (380, 420)  # mid-door / Ice door height
+SNAKE_L5_Y = (310, 350)
+SNAKE_L6_Y = (250, 290)
+SNAKE_L7_Y = (190, 220)
+SNAKE_TOP_Y = (120, 160)
+SNAKE_TOP_X = (80, 180)
+# Morph tunnel (right column, after top cross).
+SNAKE_TUNNEL_Y = (360, 420)
+SNAKE_TUNNEL_X_MIN = 195
+SNAKE_WALL_X = 171  # left face of center structure (solid from left shaft)
+# Ice Beam room PLM.
+ICE_BEAM_MASK = 0x0002
+ICE_PLM_X = 187
+ICE_ROOM_SETTLE = 280
+SNAKE_CLIMB_FRAMES = 2500
+SNAKE_TUNNEL_FRAMES = 800
+SNAKE_ICE_COLLECT_FRAMES = 500
+
 
 def in_business(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_BUSINESS
@@ -78,6 +115,42 @@ def in_ice_acid(state: SuperMetroidState) -> bool:
 
 def in_ice_snake(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_ICE_SNAKE
+
+
+def on_snake_floor(state: SuperMetroidState) -> bool:
+    """Acid→Snake pure handoff band ~(216, 651)."""
+    if not in_ice_snake(state):
+        return False
+    x, y = int(state.samus_x), int(state.samus_y)
+    if not (SNAKE_HANDOFF_X[0] <= x <= SNAKE_HANDOFF_X[1]):
+        return False
+    if not (SNAKE_HANDOFF_Y[0] <= y <= SNAKE_HANDOFF_Y[1]):
+        return False
+    return int(state.velocity_y) == 0
+
+
+def on_snake_top(state: SuperMetroidState) -> bool:
+    """Top shelf of Ice Snake (pre right-column drop)."""
+    if not in_ice_snake(state):
+        return False
+    x, y = int(state.samus_x), int(state.samus_y)
+    if not (SNAKE_TOP_Y[0] <= y <= SNAKE_TOP_Y[1]):
+        return False
+    if not (SNAKE_TOP_X[0] <= x <= SNAKE_TOP_X[1] + 80):
+        return False
+    return int(state.velocity_y) == 0 and int(state.pose) in STANDING_POSES | LEDGE_POSES
+
+
+def on_snake_tunnel_band(state: SuperMetroidState) -> bool:
+    """Right-side morph tunnel approach (past center wall)."""
+    if not in_ice_snake(state):
+        return False
+    x, y = int(state.samus_x), int(state.samus_y)
+    return x >= SNAKE_TUNNEL_X_MIN and SNAKE_TUNNEL_Y[0] <= y <= SNAKE_TUNNEL_Y[1]
+
+
+def has_ice(state: SuperMetroidState) -> bool:
+    return bool(int(state.collected_beams) & ICE_BEAM_MASK)
 
 
 def on_acid_floor(state: SuperMetroidState) -> bool:
@@ -127,14 +200,35 @@ __all__ = [
     "ELEVATOR_SETTLE_FRAMES",
     "ICE_APPROACH_X",
     "ICE_APPROACH_Y",
+    "ICE_BEAM_MASK",
     "ICE_GATE_SETTLE_FRAMES",
+    "ICE_PLM_X",
+    "ICE_ROOM_SETTLE",
     "ICE_SUPER_DOOR_X",
     "ICE_SUPER_LIP_X_MAX",
     "ICE_SUPER_Y_MAX",
     "ICE_SUPER_Y_MIN",
     "LEDGE_POSES",
+    "SNAKE_CLIMB_FRAMES",
+    "SNAKE_HANDOFF_X",
+    "SNAKE_HANDOFF_Y",
+    "SNAKE_ICE_COLLECT_FRAMES",
+    "SNAKE_L1_Y",
+    "SNAKE_L2_Y",
+    "SNAKE_L3_Y",
+    "SNAKE_L4_Y",
+    "SNAKE_L5_Y",
+    "SNAKE_L6_Y",
+    "SNAKE_L7_Y",
+    "SNAKE_TOP_X",
+    "SNAKE_TOP_Y",
+    "SNAKE_TUNNEL_FRAMES",
+    "SNAKE_TUNNEL_X_MIN",
+    "SNAKE_TUNNEL_Y",
+    "SNAKE_WALL_X",
     "STANDING_POSES",
     "SUPER_PRESSURE_FRAMES",
+    "has_ice",
     "in_business",
     "in_ice_acid",
     "in_ice_gate",
@@ -142,4 +236,7 @@ __all__ = [
     "in_ice_super_band",
     "on_acid_floor",
     "on_ice_super_lip",
+    "on_snake_floor",
+    "on_snake_top",
+    "on_snake_tunnel_band",
 ]

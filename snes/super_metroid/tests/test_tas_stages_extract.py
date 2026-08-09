@@ -162,15 +162,92 @@ def test_build_hops_and_board() -> None:
     assert hops[0].to_room == ROOM_CERES_FALLING
     assert hops[0].frames == 300
     assert "walljump" in hops[0].tech_tags
+    assert hops[0].usable is True
     assert hops[1].desync_in_hop is True
+    assert hops[1].usable is False  # desync_in_hop
+    # After first desync frame (450), later hop is thrash — not research.
+    assert hops[2].enter_frame > 450
+    assert hops[2].usable is False
+    assert hops[2].notes == "post_desync_thrash"
 
     board = build_extraction_board(hops, pins=_sample_events(), run_id="test")
     assert board["schema"] == "sm_tas_extraction_board_v1"
     assert board["summary"]["hop_count"] == 3
+    assert board["summary"]["usable_hops"] == 1
+    assert "Zebes-first" in " ".join(board["rules"])
     # Product P0 always listed: Snake→Ice PLM (rr-5if); Acid→Snake dual GREEN.
     tops = board["top_skill_room_candidates"]
     assert any(
         c["from_room"] == ROOM_ICE_SNAKE and c["to_room"] == ROOM_ICE for c in tops
+    )
+    assert any(c.get("bead_hint") == "rr-5if" for c in tops)
+    # No Acid→Snake pure_open injection (rr-5cf dual GREEN).
+    assert not any(
+        c["from_room"] == ROOM_ICE_ACID
+        and c["to_room"] == ROOM_ICE_SNAKE
+        and c["pure_status"] == "pure_open"
+        for c in tops
+    )
+    # Post-desync thrash never appears as a skill candidate.
+    thrash_ids = {h.hop_id for h in hops if not h.usable}
+    assert not any(c["hop_id"] in thrash_ids for c in tops)
+    thrash_cand = next(c for c in board["candidates"] if c["hop_id"] == hops[2].hop_id)
+    assert thrash_cand["pure_status"] == "post_desync_thrash"
+
+
+def test_post_desync_thrash_not_top_skill() -> None:
+    """Ceres bounce after desync must not become continuous_green skill port."""
+    events = [
+        {
+            "kind": "room_enter",
+            "frame": 100,
+            "room_id": ROOM_CERES_ELEVATOR,
+            "pose": 0,
+            "x": 0,
+            "y": 0,
+        },
+        {
+            "kind": "desync_suspect",
+            "frame": 200,
+            "room_id": ROOM_CERES_ELEVATOR,
+            "detail": "stall",
+        },
+        {
+            "kind": "room_enter",
+            "frame": 500,
+            "room_id": ROOM_CERES_FALLING,
+            "pose": 0,
+            "x": 0,
+            "y": 0,
+        },
+        {
+            "kind": "room_enter",
+            "frame": 800,
+            "room_id": ROOM_CERES_ELEVATOR,
+            "pose": 0,
+            "x": 0,
+            "y": 0,
+        },
+        {
+            "kind": "room_enter",
+            "frame": 1200,
+            "room_id": ROOM_CERES_FALLING,
+            "pose": 0,
+            "x": 0,
+            "y": 0,
+        },
+    ]
+    hops = build_hops(events, run_id="thrash")
+    assert hops[0].usable is False  # contains desync
+    assert all(h.usable is False for h in hops[1:])
+    assert all(h.notes == "post_desync_thrash" for h in hops[1:])
+    board = build_extraction_board(hops, pins=events, run_id="thrash")
+    assert board["summary"]["usable_hops"] == 0
+    tops = board["top_skill_room_candidates"]
+    # Only synthetic Ice product row (or empty of Ceres thrash).
+    assert not any(
+        c["from_room"] in (ROOM_CERES_ELEVATOR, ROOM_CERES_FALLING)
+        for c in tops
     )
     assert any(c.get("bead_hint") == "rr-5if" for c in tops)
 

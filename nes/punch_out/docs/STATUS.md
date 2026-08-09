@@ -4,19 +4,19 @@
 
 | Field | Value |
 |-------|-------|
-| Current maturity | M2 |
-| Best verified result | Glass Joe first knockdown from Match1 (taunt counter ~0:42) |
-| Last verification | 2026-07-28 |
+| Current maturity | M3 |
+| Best verified result | Glass Joe bout win from Match1 (KO after 2 opp KDs; 3/3) |
+| Last verification | 2026-08-07 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **instrumented + first KD** |
+| Status | **isolated bout win** |
 | Integration | `PunchOut-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mike Tyson's Punch-Out!!.zip` |
-| Checkpoints | `Level1.state` (ring entry), `Match1.state` (clock live) |
-| Evidence | [glass_joe/](../recordings/glass_joe/), [match1.png](../recordings/match1.png) |
+| Checkpoints | `Level1.state` (ring entry), `Match1.state` (clock live), `GlassJoe_Clear.state` |
+| Evidence | [glass_joe/](../recordings/glass_joe/) (`summary.json`, `trial_01/bout.mp4`) |
 
 ## Done
 
@@ -24,15 +24,15 @@
 - Deterministic reset → first controllable play (`scripts/boot_probe.py`)
 - M2 RAM: health, hearts, stars, clock, round, fight flag, opp pattern/timer/action, taunt window
 - `Match1` save at bout clock start
-- Glass Joe policy: taunt counter → KD1; get-up mash; dodge survival; between-round advance
-- Segment runner `scripts/run_glass_joe.py --goal knockdown`
+- Glass Joe policy: taunt counter → KD; timed post-attack dodge (wait ~32f + 5f pulse); get-up mash; between-round advance
+- Segment runner `scripts/run_glass_joe.py --goal win --trials 3`
+- **M3 verified**: 3/3 `ko_win` from Match1, hard timeout 30k frames, Clean Bronze (no mid-run RAM writes / state loads). Frames 6762, mac HP 96, mac_kd 0, opp_kd 2 (count-out on second knockdown).
 
 ## Not done
 
-- Full bout win (3 opp KDs / KO / decision) — often reach KD2 then lose on Mac TKO in R2
-- Natural-entry chain from power-on through bout clear
-- Continuous multi-opponent circuit
+- Natural-entry chain from power-on / Level1 through bout clear (M4)
+- Continuous multi-opponent circuit (Von Kaiser+)
 
 ## Next
 
-Finish Glass Joe bout (third knockdown or decision) with post-KD2 offense that lands damage while `opp_health ≤ 48`.
+M4 natural-entry: same Glass Joe win from power-on or Level1 predecessor (not only Match1 load).

@@ -1,0 +1,61 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-08T13:10:01.161125+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-0fx",
+    "intervention_class": "survival",
+    "segment": "l4_entry",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "entered_level4": true,
+    "entry_room": "0x71",
+    "final": {
+      "health": 111,
+      "level": 4,
+      "mode": 5,
+      "screen": 113,
+      "sword": 1,
+      "triforce": 4,
+      "x": 120,
+      "y": 205
+    },
+    "frames": 2173,
+    "nav": {
+      "dock_screen": "0x55",
+      "door_x": 128,
+      "entry_room": "0x71",
+      "frames": 2173,
+      "hop": null,
+      "hop_index": 6,
+      "island_screen": "0x45",
+      "notes": [
+        "hop_0_73",
+        "hop_1_63",
+        "hop_2_64",
+        "hop_3_65",
+        "hop_4_55",
+        "hop_5_45",
+        "door_hunt",
+        "path_stop"
+      ],
+      "path": "post_l3",
+      "phase": "DONE",
+      "require_dungeon": true,
+      "require_entrance_screen": false,
+      "source_hypothesis": false,
+      "start_screen": "0x74",
+      "stop_at_dock": false,
+      "stuck": 0,
+      "success": true
+    },
+    "ok": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level3Complete.state",
+  "source_state_sha256": "0ad22095c6097793ea33ce260104b9ac03e207f8c4735ce0d32e3bf0e6e077b7",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Entrance.state",
+  "state_sha256": "99b75712adf36fbdd6fee3fed27efd49fb7c410a3943b1e368d33d4b3c5fd3d7"
+}
