@@ -45,4 +45,14 @@ dev = [
 # Nested package workspaces (snes/<slug>/<slug>/) are added by root conftest via
 # retro_harness.repo.discover_nested_package_roots — do not hardcode game slugs here.
 pythonpath = [".", "snes", "nes"]
-testpaths = ["tests", "retro_harness/tests", "retro_harness/platformer/tests", "retro_harness/fighters/tests", "retro_harness/adventure/tests"]
+# Bare `pytest` is the always-on core gate.  ML, all-game, and ROM tiers are
+# explicit because they have different dependency and fixture contracts; see
+# docs/TEST_TIERS.md and .github/workflows/test-tiers.yml.
+testpaths = ["tests", "retro_harness/tests", "retro_harness/platformer/tests", "retro_harness/adventure/tests"]
+addopts = ["--import-mode=importlib", "-m", "not ml and not rom"]
+markers = [
+    "ml: requires the optional ml dependency group",
+    "game: game-owned unit or offline test",
+    "rom: requires a legally supplied ROM or real emulator integration",
+    "rom_smoke: selected bounded real-ROM smoke acceptance",
+]

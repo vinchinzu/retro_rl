@@ -60,10 +60,10 @@ Layer 0  Deterministic parallel emulator pool (rollouts, save/load, speed)
 | Layer | Status in this repo | Ownership |
 |-------|---------------------|-----------|
 | **L1** Skills | ~90% of current work; strong across ~20 games | Per-game (`snes/*`, `nes/*`) |
-| **L4** Planner scaffold | `retro_harness.adventure` (`RouteGraph.inventory_aware_path`, edge `requires`/`acquires`) | Shared — scaffold |
+| **L4** Planner | Bounded capability planner has one real-game consumer; resource/risk extension is fake-tested | Shared — first consumer / extension fake-tested |
 | **L3** Discovery | Super Metroid room-graph lessons; SMZ3 portal/world detect | Shared — incomplete |
 | **L2** Observation | Dev-time RAM maps + miner tooling; not runtime bootstrap | Shared — incomplete |
-| **L0** Emulator pool | Single-env harness + some dual-bot SMZ3 scaffold | Shared — incomplete |
+| **L0** Emulator pool | Emulator-state-only pool; wrapper/RNG/episode snapshots remain open | Shared — fake-tested only |
 
 **Strategic conclusion:** the hard bespoke work (L1) is largely done for many
 titles. Transfer value lives in **L0 + L2–L4**, which are mostly unbuilt and
@@ -133,20 +133,80 @@ donors.
 
 ### L4 capability-edge planner surface
 
-`retro_harness.adventure.graph` provides the small, game-agnostic item-logic
-surface used before any emulator integration:
+`retro_harness.adventure` provides the small, game-agnostic item-logic surface
+used before any emulator integration:
 
 - `GraphEdge.requires` is the normalized prerequisite capability set.
 - `GraphEdge.acquires` records monotonic items, events, or defeated-boss flags
   gained after the transition; `RoutePatch` carries the same annotations.
-- `RouteGraph.inventory_aware_path` runs deterministic Dijkstra over
-  `(node, capabilities)` states and returns the least-cost edge sequence. The
-  existing `shortest_path` remains fixed-inventory BFS for callers that already
-  supply a complete inventory.
+- `PlanRequest` + `PlanBudget` run deterministic Dijkstra over monotonic
+  progression states with same-node dominance pruning. `PlanResult` reports an
+  explicit `FOUND`, `UNREACHABLE`, or `BUDGET_EXHAUSTED` status, path/cost,
+  final progression, expansion/pruning counts, and stable frontier blockers.
+  The default hard gate is 500 expansions.
+- `RouteGraph.inventory_aware_path` remains the compatibility adapter that
+  returns only the least-cost edge sequence. `shortest_path` remains
+  fixed-inventory BFS for callers that already supply a complete inventory.
+- `SkillBinding` binds a versioned dispatch key and entry/exit contract digests
+  to one explicit `edge_id`. `EdgeEvidence` promotes only through typed
+  `ExecutionReadiness` values; natural-entry and higher evidence must link the
+  predecessor exit observation digest to the target entry digest.
+- `BindingCatalog.publication_edges` excludes unbound and below-natural-entry
+  transitions. Parallel graph edges are independent because both bindings and
+  evidence are keyed by edge ID, never only by source/target pair.
+- `retro_harness.solver.SolverSession` is the execution kernel: it checks a
+  `SkillSpec` observation contract, dispatches the bound `SkillInstance`, emits
+  actions until success/failure/timeout, validates observed progression and
+  resource deltas, and replans after retryable failures. Its deterministic
+  trace carries lifecycle transitions, observations, outcomes, actions, and
+  policy identity digests. Legacy `protocol.py` task interfaces remain a thin
+  facade while game consumers migrate edge by edge.
+- `ResourcePlanRequest` extends the bounded state with typed consumable,
+  renewable, and safety resources. Edge profiles declare consume/produce and
+  minimum bounds; `PlanResult` carries the selected resource trajectory and
+  typed resource blockers. Risk cost uses smoothed success and duration
+  statistics aggregated from retained `SkillOutcome` values. This extension
+  is still **fake-tested** until a real game planner consumes it.
 
-The shared search deliberately does not model consumable counts or game-local
-stop predicates. Those belong in a game adapter or a future resource-aware
-state model. A useful probe-driven discovery loop is:
+### Versioned environment/model contracts
+
+`retro_harness.contracts` makes compatibility semantic rather than a tensor-
+dimension guess. `ContractBundle` binds five independently digestible records:
+
+- ordered observation fields and preprocessing;
+- ordered action rows and controller-button order;
+- named reward components and weights;
+- exact wrapper stack order and wrapper configuration (including frame skip);
+- game/start/ROM/emulator-core identity.
+
+`GameSpec.contract` carries this expanded environment identity when a consumer
+has one. Learned checkpoints use a `PolicyArtifact` sidecar containing the four
+schema digests plus ROM, state, and core identities; loading fails if the
+checkpoint bytes, any schema, wrapper order, or environment identity differs.
+The fighter PPO final-save/resume/eval path and platformer neuro checkpoint path
+are the first consumers. Neuro checkpoints embed the complete bundle and no
+longer silently resume a same-shaped but semantically different feature vector.
+
+`retro_harness.entry_states.EntryStateCorpus` is the distribution layer above
+those contracts. Each record binds emulator-state and RAM hashes to its source
+skill/segment/trajectory, frame/parity, game metadata, observation schema, and
+contract bundle. Splits are deterministic by state hash or source trajectory;
+the latter forbids trajectory leakage. Platformer neuro training accepts a
+corpus manifest but exposes only its train partition. The first real corpus is
+the 64-state SM-rando Ceres→Landing distribution documented in
+`snes/sm_rando/docs/STATUS.md`.
+
+`retro_harness.trajectory` is the time-series layer beside the entry-state
+distribution. It binds exact structured actions, observation boundaries,
+reward components, milestones, terminal reasons, optional state digests, and
+source provenance to the same contract/policy identities. `SolverSession`
+exports directly to it. A content-addressed `CounterexampleLibrary` retains
+failed episodes and imports a failure cluster for offline replay or BC instead
+of preserving successes alone. The SM-rando vertical slice is its first real
+consumer.
+
+Game-local stop predicates remain in game adapters. A useful probe-driven
+discovery loop is:
 
 1. Hold the source and target transition constant while probing controlled
    inventories (one item/event variant per run).
@@ -157,6 +217,45 @@ state model. A useful probe-driven discovery loop is:
 4. Keep the edge `verification` at `planned` until emulator evidence promotes
    it. The planner consumes the graph; it does not claim that a low-level skill
    can execute an unverified edge.
+
+## Shared subsystem evidence ladder
+
+Issue closure and subsystem maturity are different facts. Shared work reports
+the highest rung actually evidenced:
+
+| Rung | Required evidence |
+|------|-------------------|
+| **Scaffolded** | API or implementation exists; no behavioral claim yet. |
+| **Fake-tested** | Deterministic unit/adversarial tests pass with fixtures or doubles. |
+| **Real-ROM tested** | A bounded stable-retro run exercises the subsystem on a real ROM. |
+| **First real-game consumer** | A game-owned workflow retains evidence and depends on the shared interface. |
+| **Second independent consumer** | A different game/package proves the abstraction without copying the first adapter. |
+| **Publication-ready** | At least two independent consumers, fail-closed identities/audits, reproducible commands, retained artifacts, and no unresolved claim-critical child issue. |
+
+Closure checklist for a shared-infrastructure bead:
+
+1. Put the evidenced rung in the close reason or notes; never use “complete”
+   to imply a higher rung.
+2. Name tests, real-run artifacts, and game consumers separately.
+3. Link open children for missing restoration, audit, integration, or campaign
+   work.
+4. A first-consumer-only interface may close its implementation task, but it
+   is not called stable or publication-ready.
+5. Publication-ready requires a second independent consumer. Any exception
+   must be an explicitly narrower, first-consumer-only claim.
+
+Current audit (2026-08-09):
+
+| Subsystem | Highest rung | Evidence / remaining gate |
+|-----------|--------------|---------------------------|
+| Emulator pool (`rr-gbd.16`) | Fake-tested | Snapshot is emulator-only; full wrapper/RNG/episode restore remains `rr-gbd.32` / `.34`. |
+| Capability planner + bindings + SolverSession | First real-game consumer | SM-rando real-ROM Landing→Pit vertical slice with recovery/replan. |
+| Resource/risk planner | Fake-tested | Key/missile/reliability golden fixtures; no game-owned planning consumer yet. |
+| Contracts + PolicyArtifact + benchmark audits | First real-game consumer | SM-rando vertical slice and audited Landing BC experiment; resumable multi-seed campaign remains `rr-gbd.33`. |
+| EntryStateCorpus | First real-game consumer | 64-state SM-rando corpus; second predecessor trajectory is still required for stronger generalization evidence. |
+| Trajectory + counterexamples | First real-game consumer | SM-rando vertical and held-out BC trajectories; no second game consumer. |
+
+No shared solver subsystem is currently publication-ready.
 
 ## Workflow changes
 

@@ -24,12 +24,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
 
 from retro_harness.snes import idle_action
+from super_metroid.paths import POLICY_DIR as SM_POLICY_DIR
 from smz3.assist import MISSILE_RED_DOOR_ASSIST, grant_missiles  # re-export grant_missiles
 from smz3.boot import boot_to_controllable, make_boot_env
 from smz3.control import hold
@@ -46,13 +46,7 @@ from smz3.segment import RoomVisit, close_last_visit, track_room
 from smz3.world import ActiveWorld, detect_world
 
 # Morph-route parlor button log (vanilla Super Metroid recording).
-_PARLOR_POLICY = (
-    Path(__file__).resolve().parents[1]
-    / "super_metroid"
-    / "policies"
-    / "start_to_morph"
-    / "seg01_parlor.json"
-)
+_PARLOR_POLICY = SM_POLICY_DIR / "seg01_parlor.json"
 
 # Red door target (pixel space; block [31, 55] × 16).
 RED_DOOR_X = 480

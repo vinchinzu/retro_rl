@@ -26,7 +26,10 @@ from retro_harness.repo import monorepo_root, resolve_game_dir
 ROOT_DIR = monorepo_root()
 
 import numpy as np
+import pytest
 import stable_retro as retro
+
+pytestmark = pytest.mark.rom
 
 from retro_harness.fighters.game_configs import get_game_config, GAME_REGISTRY
 

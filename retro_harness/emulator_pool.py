@@ -1,5 +1,8 @@
 """Deterministic parallel pool for emulator-backed environments.
 
+Maturity: **fake-tested only**. Full wrapper/RNG/episode restoration is tracked
+by rr-gbd.32/.34; this module must not be described as publication-ready L0.
+
 The pool deliberately knows only the small surface shared by the harness:
 ``reset()``, ``step()``, and emulator state ``get_state()``/``set_state()``.
 Stable-retro exposes the latter through ``env.em``; small test doubles and

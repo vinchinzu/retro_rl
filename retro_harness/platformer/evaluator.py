@@ -58,6 +58,9 @@ class Evaluator:
         self._cached_state = None
         self._initial_values: dict[str, int] | None = None
         self._initial_camera_x: float = 0.0
+        self._entry_states: tuple[bytes, ...] = ()
+        self._entry_state_index = 0
+        self.entry_state_selection: dict[str, object] | None = None
         # Pre-compute the set of level_ids that are "this level"
         self._main_level_ids: set[int] = {config.target_level_id} | set(config.level_id_aliases)
 
@@ -82,6 +85,45 @@ class Evaluator:
             ram = self._env.get_ram()
             self._initial_values = self._read_ram(ram)
             self._initial_camera_x = float(self._initial_values.get("camera_x", 0))
+
+    def configure_entry_states(
+        self,
+        states: list[bytes] | tuple[bytes, ...],
+        *,
+        corpus_digest: str,
+        split: str,
+        state_digests: list[str] | tuple[str, ...],
+    ) -> None:
+        """Use a deterministic round-robin natural-entry distribution."""
+        values = tuple(states)
+        if not values or not all(isinstance(value, bytes) and value for value in values):
+            raise ValueError("entry states must be non-empty emulator byte strings")
+        if split != "train":
+            raise ValueError("training evaluators may consume only the train split")
+        if len(values) != len(state_digests):
+            raise ValueError("entry state bytes/digests length mismatch")
+        self._entry_states = values
+        self._entry_state_index = 0
+        self.entry_state_selection = {
+            "corpus_digest": corpus_digest,
+            "split": split,
+            "count": len(values),
+            "state_digests": list(state_digests),
+        }
+
+    def restore_start_state(self) -> bytes:
+        """Restore the next configured entry state and refresh reset baselines."""
+        self._ensure_env()
+        assert self._env is not None and self._cached_state is not None
+        if self._entry_states:
+            state = self._entry_states[self._entry_state_index % len(self._entry_states)]
+            self._entry_state_index += 1
+        else:
+            state = self._cached_state
+        self._env.em.set_state(state)
+        self._initial_values = self._read_ram(self._env.get_ram())
+        self._initial_camera_x = float(self._initial_values.get("camera_x", 0))
+        return state
 
     def _read_ram(self, ram: np.ndarray) -> dict[str, int]:
         """Read all configured RAM fields, then apply computed values."""
@@ -148,7 +190,7 @@ class Evaluator:
         raw_mode = len(actions) > 0 and isinstance(actions[0], list)
 
         # Fast reset via cached state
-        self._env.em.set_state(self._cached_state)
+        self.restore_start_state()
         self._tracker.reset()
 
         # Seed tracker with initial values so progress is relative to state start
@@ -359,7 +401,7 @@ class Evaluator:
         self._ensure_env()
         assert self._env is not None and self._cached_state is not None
 
-        self._env.em.set_state(self._cached_state)
+        self.restore_start_state()
 
         raw_mode = len(actions) > 0 and isinstance(actions[0], list)
         action_table = self._action_table

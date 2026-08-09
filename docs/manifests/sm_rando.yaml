@@ -19,11 +19,12 @@ best_video: null
 assist_contract: null
 status_doc: snes/sm_rando/docs/STATUS.md
 plan_doc: snes/sm_rando/docs/plan.md
-last_verified: 2026-08-06
+last_verified: 2026-08-09
 blocker: >-
-  M1 FirstPlay boot on vanilla SM (Ceres) done; real shuffled seed ROM /
-  generator still open; prove multi-seed S/T next
+  M1 real-ROM SolverSession vertical slice and held-out Landing BC candidate
+  done; real shuffled seed ROM / generator still open; prove multi-seed S/T next
 notes: >-
   Single-game SM rando solver ground (simpler than SMZ3). Reuses super_metroid
-  skills; vanilla ROM + FirstPlay + ./play record spine + demo seed fixture +
-  coarse item-logic graph.
+  skills; real three-edge recovery/replan slice, versioned contracts,
+  EntryStateCorpus, canonical trajectories, audited BC candidate, demo seed
+  fixture, and coarse item-logic graph.

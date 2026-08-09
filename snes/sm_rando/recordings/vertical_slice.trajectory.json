@@ -1,0 +1,274 @@
+{
+  "action_schema_digest": "c7d36eefb81e716af406f8a81026bf2b10ea8e086b3f834d6671ea4aa56d8997",
+  "contract_bundle_digest": "fef2acb987f5d76c9f8df53959618a966f2a0690a2e9853ec34548edb03d1ba2",
+  "final_observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+  "identity_digest": "03dfcc6c0c41d3251b161c21de9b9f0a430e9bc6b6b5367a164127f59dad677d",
+  "initial_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+  "milestones": [
+    {
+      "edge_id": "landing_to_parlor_injected_failure",
+      "end_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+      "frames": 0,
+      "observed_capability_delta": [],
+      "observed_resource_delta": {
+        "energy": 0.0,
+        "missiles": 0.0
+      },
+      "reason": "injected landing-door desync",
+      "recovery_hint": "exclude_primary_and_replan",
+      "replan": true,
+      "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
+      "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+      "status": "retryable_failure"
+    },
+    {
+      "edge_id": "landing_to_parlor_recovery",
+      "end_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+      "frames": 476,
+      "observed_capability_delta": [],
+      "observed_resource_delta": {
+        "energy": 0.0,
+        "missiles": 0.0
+      },
+      "reason": null,
+      "recovery_hint": null,
+      "replan": false,
+      "skill_id": "sm.vertical.landing_to_parlor_recovery",
+      "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+      "status": "success"
+    },
+    {
+      "edge_id": "parlor_to_climb",
+      "end_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+      "frames": 1019,
+      "observed_capability_delta": [],
+      "observed_resource_delta": {
+        "energy": 0.0,
+        "missiles": 0.0
+      },
+      "reason": null,
+      "recovery_hint": null,
+      "replan": false,
+      "skill_id": "sm.vertical.parlor_to_climb",
+      "start_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+      "status": "success"
+    },
+    {
+      "edge_id": "climb_to_pit",
+      "end_observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+      "frames": 823,
+      "observed_capability_delta": [],
+      "observed_resource_delta": {
+        "energy": 0.0,
+        "missiles": 0.0
+      },
+      "reason": null,
+      "recovery_hint": null,
+      "replan": false,
+      "skill_id": "sm.vertical.climb_to_pit",
+      "start_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+      "status": "success"
+    }
+  ],
+  "observation_schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+  "policy_identity_digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+  "provenance": {
+    "evidence_path": "snes/sm_rando/recordings/vertical_slice.evidence.json",
+    "game": "SMRando-Snes",
+    "source": "SolverSession",
+    "start": "power_on_to_natural_landing"
+  },
+  "reward_schema_digest": "e47704baf47b064d75f1c007f92d45deb378affb9692bb4497bfd4527c32146a",
+  "schema_digest": "8df3c9d5b3d6c5c8e8922b35c58a5975f73ce2b514672b53484094953411a841",
+  "steps": [
+    {
+      "action": {
+        "type": "sm_rando.vertical_slice.RouteSkillCommand",
+        "value": {
+          "edge_id": "landing_to_parlor_recovery",
+          "runner": "super_metroid.routes.kpdr.early_spine.play_landing_to_parlor",
+          "target_room": 37629
+        }
+      },
+      "applied_frames": 476,
+      "edge_id": "landing_to_parlor_recovery",
+      "frame_end": 22024,
+      "frame_start": 21548,
+      "milestones": [
+        "landing_to_parlor_recovery"
+      ],
+      "observation_after": {
+        "capabilities": [],
+        "frame": 22024,
+        "identity_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+        "node": {
+          "repr": "37629",
+          "type": "int"
+        },
+        "resources": {
+          "energy": 99.0,
+          "missiles": 0.0
+        },
+        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "values": {
+          "door_transition": 1,
+          "game_state": 11,
+          "room_id": 37629
+        }
+      },
+      "observation_before": {
+        "capabilities": [],
+        "frame": 21548,
+        "identity_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+        "node": {
+          "repr": "37368",
+          "type": "int"
+        },
+        "resources": {
+          "energy": 99.0,
+          "missiles": 0.0
+        },
+        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "values": {
+          "door_transition": 0,
+          "game_state": 8,
+          "room_id": 37368
+        }
+      },
+      "reward_components": {
+        "room_progress": 1.0
+      },
+      "sequence": 0,
+      "skill_id": "sm.vertical.landing_to_parlor_recovery",
+      "state_digest_after": null,
+      "state_digest_before": null
+    },
+    {
+      "action": {
+        "type": "sm_rando.vertical_slice.RouteSkillCommand",
+        "value": {
+          "edge_id": "parlor_to_climb",
+          "runner": "super_metroid.routes.kpdr.early_spine.play_parlor_to_climb",
+          "target_room": 38586
+        }
+      },
+      "applied_frames": 1019,
+      "edge_id": "parlor_to_climb",
+      "frame_end": 23043,
+      "frame_start": 22024,
+      "milestones": [
+        "parlor_to_climb"
+      ],
+      "observation_after": {
+        "capabilities": [],
+        "frame": 23043,
+        "identity_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+        "node": {
+          "repr": "38586",
+          "type": "int"
+        },
+        "resources": {
+          "energy": 99.0,
+          "missiles": 0.0
+        },
+        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "values": {
+          "door_transition": 1,
+          "game_state": 11,
+          "room_id": 38586
+        }
+      },
+      "observation_before": {
+        "capabilities": [],
+        "frame": 22024,
+        "identity_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+        "node": {
+          "repr": "37629",
+          "type": "int"
+        },
+        "resources": {
+          "energy": 99.0,
+          "missiles": 0.0
+        },
+        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "values": {
+          "door_transition": 1,
+          "game_state": 11,
+          "room_id": 37629
+        }
+      },
+      "reward_components": {
+        "room_progress": 1.0
+      },
+      "sequence": 1,
+      "skill_id": "sm.vertical.parlor_to_climb",
+      "state_digest_after": null,
+      "state_digest_before": null
+    },
+    {
+      "action": {
+        "type": "sm_rando.vertical_slice.RouteSkillCommand",
+        "value": {
+          "edge_id": "climb_to_pit",
+          "runner": "super_metroid.routes.kpdr.early_spine.play_climb_to_pit",
+          "target_room": 38748
+        }
+      },
+      "applied_frames": 823,
+      "edge_id": "climb_to_pit",
+      "frame_end": 23866,
+      "frame_start": 23043,
+      "milestones": [
+        "climb_to_pit"
+      ],
+      "observation_after": {
+        "capabilities": [],
+        "frame": 23866,
+        "identity_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+        "node": {
+          "repr": "38748",
+          "type": "int"
+        },
+        "resources": {
+          "energy": 99.0,
+          "missiles": 0.0
+        },
+        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "values": {
+          "door_transition": 1,
+          "game_state": 11,
+          "room_id": 38748
+        }
+      },
+      "observation_before": {
+        "capabilities": [],
+        "frame": 23043,
+        "identity_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+        "node": {
+          "repr": "38586",
+          "type": "int"
+        },
+        "resources": {
+          "energy": 99.0,
+          "missiles": 0.0
+        },
+        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "values": {
+          "door_transition": 1,
+          "game_state": 11,
+          "room_id": 38586
+        }
+      },
+      "reward_components": {
+        "room_progress": 1.0
+      },
+      "sequence": 2,
+      "skill_id": "sm.vertical.climb_to_pit",
+      "state_digest_after": null,
+      "state_digest_before": null
+    }
+  ],
+  "succeeded": true,
+  "terminal_reason": "completed",
+  "version": "1"
+}

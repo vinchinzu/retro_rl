@@ -307,6 +307,10 @@ def main(default_level: str | None = None) -> None:
     p_neuro.add_argument("--output-dir", help="Output directory (default: runs_dir/neuro)")
     p_neuro.add_argument("--render", action="store_true", help="Render best network live each generation")
     p_neuro.add_argument("--scale", type=int, default=3, help="Render pixel scale (default 3)")
+    p_neuro.add_argument(
+        "--entry-corpus",
+        help="EntryStateCorpus manifest; training consumes its train split only",
+    )
 
     args = parser.parse_args()
 

@@ -1,8 +1,9 @@
 """
 Core harness interfaces for composable task-based game automation.
 
-These are intentionally minimal to allow multiple games and runners to share
-common abstractions without coupling to a specific emulator or RAM layout.
+These legacy task interfaces remain intentionally minimal. New graph-solver
+skills use :mod:`retro_harness.solver`; the aliases at the end of this module
+make this file a thin compatibility facade while task consumers migrate.
 """
 
 from __future__ import annotations
@@ -65,3 +66,30 @@ class Task(Protocol):
 
     def step(self, world: WorldState) -> TaskResult:
         ...
+
+
+# Thin facade for the typed solver lifecycle. Legacy Task/TaskResult remains
+# supported for Harvest and bot_runner consumers.
+from retro_harness.solver import (  # noqa: E402
+    SkillInstance,
+    SkillOutcome,
+    SkillOutcomeStatus,
+    SkillPolicy,
+    SkillSpec,
+)
+
+Skill = SkillPolicy
+
+__all__ = [
+    "ActionResult",
+    "Skill",
+    "SkillInstance",
+    "SkillOutcome",
+    "SkillOutcomeStatus",
+    "SkillPolicy",
+    "SkillSpec",
+    "Task",
+    "TaskResult",
+    "TaskStatus",
+    "WorldState",
+]

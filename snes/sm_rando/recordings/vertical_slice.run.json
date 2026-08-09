@@ -1,0 +1,906 @@
+{
+  "game": "SMRando-Snes",
+  "package": "sm_rando",
+  "started_at": "2026-08-09T23:32:08Z",
+  "seed": "vanilla-substrate",
+  "seed_settings": {},
+  "start_state": "power_on/retro.State.NONE",
+  "mode": "bot",
+  "milestones": [
+    {
+      "name": "landing_to_parlor_injected_failure",
+      "at": "2026-08-09T23:32:34Z",
+      "frame": 23866,
+      "status": "retryable_failure",
+      "frames": 0
+    },
+    {
+      "name": "landing_to_parlor_recovery",
+      "at": "2026-08-09T23:32:34Z",
+      "frame": 23866,
+      "status": "success",
+      "frames": 476
+    },
+    {
+      "name": "parlor_to_climb",
+      "at": "2026-08-09T23:32:34Z",
+      "frame": 23866,
+      "status": "success",
+      "frames": 1019
+    },
+    {
+      "name": "climb_to_pit",
+      "at": "2026-08-09T23:32:34Z",
+      "frame": 23866,
+      "status": "success",
+      "frames": 823
+    }
+  ],
+  "notes": [],
+  "frames": 23866,
+  "outcome": "completed",
+  "video_path": null,
+  "meta": {
+    "schema_version": 1,
+    "solver_result": {
+      "status": "completed",
+      "final_observation": {
+        "frame": 23866,
+        "node": {
+          "type": "int",
+          "repr": "38748"
+        },
+        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "capabilities": [],
+        "resources": {
+          "energy": 99.0,
+          "missiles": 0.0
+        },
+        "values": {
+          "game_state": 11,
+          "room_id": 38748,
+          "door_transition": 1
+        },
+        "identity_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3"
+      },
+      "outcomes": [
+        {
+          "edge_id": "landing_to_parlor_injected_failure",
+          "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
+          "status": "retryable_failure",
+          "frames": 0,
+          "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "end_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observed_capability_delta": [],
+          "observed_resource_delta": {
+            "energy": 0.0,
+            "missiles": 0.0
+          },
+          "reason": "injected landing-door desync",
+          "recovery_hint": "exclude_primary_and_replan",
+          "replan": true
+        },
+        {
+          "edge_id": "landing_to_parlor_recovery",
+          "skill_id": "sm.vertical.landing_to_parlor_recovery",
+          "status": "success",
+          "frames": 476,
+          "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "end_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "observed_capability_delta": [],
+          "observed_resource_delta": {
+            "energy": 0.0,
+            "missiles": 0.0
+          },
+          "reason": null,
+          "recovery_hint": null,
+          "replan": false
+        },
+        {
+          "edge_id": "parlor_to_climb",
+          "skill_id": "sm.vertical.parlor_to_climb",
+          "status": "success",
+          "frames": 1019,
+          "start_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "end_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "observed_capability_delta": [],
+          "observed_resource_delta": {
+            "energy": 0.0,
+            "missiles": 0.0
+          },
+          "reason": null,
+          "recovery_hint": null,
+          "replan": false
+        },
+        {
+          "edge_id": "climb_to_pit",
+          "skill_id": "sm.vertical.climb_to_pit",
+          "status": "success",
+          "frames": 823,
+          "start_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "end_observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "observed_capability_delta": [],
+          "observed_resource_delta": {
+            "energy": 0.0,
+            "missiles": 0.0
+          },
+          "reason": null,
+          "recovery_hint": null,
+          "replan": false
+        }
+      ],
+      "trace": [
+        {
+          "sequence": 0,
+          "lifecycle": "planning",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "excluded_edges": []
+          }
+        },
+        {
+          "sequence": 1,
+          "lifecycle": "planning",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "plan_result": {
+              "status": "FOUND",
+              "path": [
+                {
+                  "edge_id": "landing_to_parlor_injected_failure",
+                  "source": {
+                    "type": "int",
+                    "repr": "37368"
+                  },
+                  "target": {
+                    "type": "int",
+                    "repr": "37629"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [],
+                  "cost": 0.5,
+                  "verification": "planned",
+                  "provenance": "",
+                  "meta": {}
+                },
+                {
+                  "edge_id": "parlor_to_climb",
+                  "source": {
+                    "type": "int",
+                    "repr": "37629"
+                  },
+                  "target": {
+                    "type": "int",
+                    "repr": "38586"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [],
+                  "cost": 1.0,
+                  "verification": "planned",
+                  "provenance": "",
+                  "meta": {}
+                },
+                {
+                  "edge_id": "climb_to_pit",
+                  "source": {
+                    "type": "int",
+                    "repr": "38586"
+                  },
+                  "target": {
+                    "type": "int",
+                    "repr": "38748"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [],
+                  "cost": 1.0,
+                  "verification": "planned",
+                  "provenance": "",
+                  "meta": {}
+                }
+              ],
+              "path_edge_ids": [
+                "landing_to_parlor_injected_failure",
+                "parlor_to_climb",
+                "climb_to_pit"
+              ],
+              "total_cost": 2.5,
+              "final_progression": {
+                "node": {
+                  "type": "int",
+                  "repr": "38748"
+                },
+                "capabilities": [],
+                "collected_checks": []
+              },
+              "expanded_count": 3,
+              "dominated_pruned": 1,
+              "frontier_blockers": [],
+              "request_digest": "8267fe1405742a435b6b19f8450c3482b3a2e1139482df2d18efe3642f7fb0fd",
+              "resource_trajectory": [],
+              "resource_blockers": [],
+              "risk_adjusted_cost": null
+            }
+          }
+        },
+        {
+          "sequence": 2,
+          "lifecycle": "dispatching",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": "landing_to_parlor_injected_failure",
+          "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
+          "policy_identity_digest": "146d7c279eb12fd7ced7d1c69956bced371ab53b185722a4267e75b1655a5421",
+          "detail": {}
+        },
+        {
+          "sequence": 3,
+          "lifecycle": "executing",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": "landing_to_parlor_injected_failure",
+          "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
+          "policy_identity_digest": "146d7c279eb12fd7ced7d1c69956bced371ab53b185722a4267e75b1655a5421",
+          "detail": {}
+        },
+        {
+          "sequence": 4,
+          "lifecycle": "validating",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": "landing_to_parlor_injected_failure",
+          "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
+          "policy_identity_digest": "146d7c279eb12fd7ced7d1c69956bced371ab53b185722a4267e75b1655a5421",
+          "detail": {
+            "outcome": {
+              "edge_id": "landing_to_parlor_injected_failure",
+              "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
+              "status": "retryable_failure",
+              "frames": 0,
+              "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+              "end_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+              "observed_capability_delta": [],
+              "observed_resource_delta": {
+                "energy": 0.0,
+                "missiles": 0.0
+              },
+              "reason": "injected landing-door desync",
+              "recovery_hint": "exclude_primary_and_replan",
+              "replan": true
+            }
+          }
+        },
+        {
+          "sequence": 5,
+          "lifecycle": "replanning",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "excluded_edges": [
+              "landing_to_parlor_injected_failure"
+            ]
+          }
+        },
+        {
+          "sequence": 6,
+          "lifecycle": "replanning",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "plan_result": {
+              "status": "FOUND",
+              "path": [
+                {
+                  "edge_id": "landing_to_parlor_recovery",
+                  "source": {
+                    "type": "int",
+                    "repr": "37368"
+                  },
+                  "target": {
+                    "type": "int",
+                    "repr": "37629"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [],
+                  "cost": 1.0,
+                  "verification": "planned",
+                  "provenance": "",
+                  "meta": {}
+                },
+                {
+                  "edge_id": "parlor_to_climb",
+                  "source": {
+                    "type": "int",
+                    "repr": "37629"
+                  },
+                  "target": {
+                    "type": "int",
+                    "repr": "38586"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [],
+                  "cost": 1.0,
+                  "verification": "planned",
+                  "provenance": "",
+                  "meta": {}
+                },
+                {
+                  "edge_id": "climb_to_pit",
+                  "source": {
+                    "type": "int",
+                    "repr": "38586"
+                  },
+                  "target": {
+                    "type": "int",
+                    "repr": "38748"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [],
+                  "cost": 1.0,
+                  "verification": "planned",
+                  "provenance": "",
+                  "meta": {}
+                }
+              ],
+              "path_edge_ids": [
+                "landing_to_parlor_recovery",
+                "parlor_to_climb",
+                "climb_to_pit"
+              ],
+              "total_cost": 3.0,
+              "final_progression": {
+                "node": {
+                  "type": "int",
+                  "repr": "38748"
+                },
+                "capabilities": [],
+                "collected_checks": []
+              },
+              "expanded_count": 3,
+              "dominated_pruned": 0,
+              "frontier_blockers": [],
+              "request_digest": "a2e4acbf29e9d18c07812b2c88a70be66007478a8f235badb7c1aa3cb047137f",
+              "resource_trajectory": [],
+              "resource_blockers": [],
+              "risk_adjusted_cost": null
+            }
+          }
+        },
+        {
+          "sequence": 7,
+          "lifecycle": "dispatching",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": "landing_to_parlor_recovery",
+          "skill_id": "sm.vertical.landing_to_parlor_recovery",
+          "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
+          "detail": {}
+        },
+        {
+          "sequence": 8,
+          "lifecycle": "executing",
+          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "edge_id": "landing_to_parlor_recovery",
+          "skill_id": "sm.vertical.landing_to_parlor_recovery",
+          "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
+          "detail": {}
+        },
+        {
+          "sequence": 9,
+          "lifecycle": "executing",
+          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "edge_id": "landing_to_parlor_recovery",
+          "skill_id": "sm.vertical.landing_to_parlor_recovery",
+          "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
+          "detail": {
+            "action": {
+              "type": "sm_rando.vertical_slice.RouteSkillCommand",
+              "value": {
+                "edge_id": "landing_to_parlor_recovery",
+                "runner": "super_metroid.routes.kpdr.early_spine.play_landing_to_parlor",
+                "target_room": 37629
+              }
+            },
+            "skill_frame": 476
+          }
+        },
+        {
+          "sequence": 10,
+          "lifecycle": "validating",
+          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "edge_id": "landing_to_parlor_recovery",
+          "skill_id": "sm.vertical.landing_to_parlor_recovery",
+          "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
+          "detail": {}
+        },
+        {
+          "sequence": 11,
+          "lifecycle": "validating",
+          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "edge_id": "landing_to_parlor_recovery",
+          "skill_id": "sm.vertical.landing_to_parlor_recovery",
+          "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
+          "detail": {
+            "outcome": {
+              "edge_id": "landing_to_parlor_recovery",
+              "skill_id": "sm.vertical.landing_to_parlor_recovery",
+              "status": "success",
+              "frames": 476,
+              "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+              "end_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+              "observed_capability_delta": [],
+              "observed_resource_delta": {
+                "energy": 0.0,
+                "missiles": 0.0
+              },
+              "reason": null,
+              "recovery_hint": null,
+              "replan": false
+            }
+          }
+        },
+        {
+          "sequence": 12,
+          "lifecycle": "dispatching",
+          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "edge_id": "parlor_to_climb",
+          "skill_id": "sm.vertical.parlor_to_climb",
+          "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
+          "detail": {}
+        },
+        {
+          "sequence": 13,
+          "lifecycle": "executing",
+          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "edge_id": "parlor_to_climb",
+          "skill_id": "sm.vertical.parlor_to_climb",
+          "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
+          "detail": {}
+        },
+        {
+          "sequence": 14,
+          "lifecycle": "executing",
+          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "edge_id": "parlor_to_climb",
+          "skill_id": "sm.vertical.parlor_to_climb",
+          "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
+          "detail": {
+            "action": {
+              "type": "sm_rando.vertical_slice.RouteSkillCommand",
+              "value": {
+                "edge_id": "parlor_to_climb",
+                "runner": "super_metroid.routes.kpdr.early_spine.play_parlor_to_climb",
+                "target_room": 38586
+              }
+            },
+            "skill_frame": 1019
+          }
+        },
+        {
+          "sequence": 15,
+          "lifecycle": "validating",
+          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "edge_id": "parlor_to_climb",
+          "skill_id": "sm.vertical.parlor_to_climb",
+          "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
+          "detail": {}
+        },
+        {
+          "sequence": 16,
+          "lifecycle": "validating",
+          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "edge_id": "parlor_to_climb",
+          "skill_id": "sm.vertical.parlor_to_climb",
+          "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
+          "detail": {
+            "outcome": {
+              "edge_id": "parlor_to_climb",
+              "skill_id": "sm.vertical.parlor_to_climb",
+              "status": "success",
+              "frames": 1019,
+              "start_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+              "end_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+              "observed_capability_delta": [],
+              "observed_resource_delta": {
+                "energy": 0.0,
+                "missiles": 0.0
+              },
+              "reason": null,
+              "recovery_hint": null,
+              "replan": false
+            }
+          }
+        },
+        {
+          "sequence": 17,
+          "lifecycle": "dispatching",
+          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "edge_id": "climb_to_pit",
+          "skill_id": "sm.vertical.climb_to_pit",
+          "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
+          "detail": {}
+        },
+        {
+          "sequence": 18,
+          "lifecycle": "executing",
+          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "edge_id": "climb_to_pit",
+          "skill_id": "sm.vertical.climb_to_pit",
+          "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
+          "detail": {}
+        },
+        {
+          "sequence": 19,
+          "lifecycle": "executing",
+          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "edge_id": "climb_to_pit",
+          "skill_id": "sm.vertical.climb_to_pit",
+          "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
+          "detail": {
+            "action": {
+              "type": "sm_rando.vertical_slice.RouteSkillCommand",
+              "value": {
+                "edge_id": "climb_to_pit",
+                "runner": "super_metroid.routes.kpdr.early_spine.play_climb_to_pit",
+                "target_room": 38748
+              }
+            },
+            "skill_frame": 823
+          }
+        },
+        {
+          "sequence": 20,
+          "lifecycle": "validating",
+          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "edge_id": "climb_to_pit",
+          "skill_id": "sm.vertical.climb_to_pit",
+          "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
+          "detail": {}
+        },
+        {
+          "sequence": 21,
+          "lifecycle": "validating",
+          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "edge_id": "climb_to_pit",
+          "skill_id": "sm.vertical.climb_to_pit",
+          "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
+          "detail": {
+            "outcome": {
+              "edge_id": "climb_to_pit",
+              "skill_id": "sm.vertical.climb_to_pit",
+              "status": "success",
+              "frames": 823,
+              "start_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+              "end_observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+              "observed_capability_delta": [],
+              "observed_resource_delta": {
+                "energy": 0.0,
+                "missiles": 0.0
+              },
+              "reason": null,
+              "recovery_hint": null,
+              "replan": false
+            }
+          }
+        },
+        {
+          "sequence": 22,
+          "lifecycle": "replanning",
+          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "excluded_edges": [
+              "landing_to_parlor_injected_failure"
+            ]
+          }
+        },
+        {
+          "sequence": 23,
+          "lifecycle": "replanning",
+          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "plan_result": {
+              "status": "FOUND",
+              "path": [],
+              "path_edge_ids": [],
+              "total_cost": 0.0,
+              "final_progression": {
+                "node": {
+                  "type": "int",
+                  "repr": "38748"
+                },
+                "capabilities": [],
+                "collected_checks": []
+              },
+              "expanded_count": 0,
+              "dominated_pruned": 0,
+              "frontier_blockers": [],
+              "request_digest": "a9ebdcf1250cf627ef8ea7498a912eea4f5be0ca54bf05e2bd623031b829fc3b",
+              "resource_trajectory": [],
+              "resource_blockers": [],
+              "risk_adjusted_cost": null
+            }
+          }
+        },
+        {
+          "sequence": 24,
+          "lifecycle": "completed",
+          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {}
+        }
+      ],
+      "replans": 1,
+      "completed_edges": [
+        "landing_to_parlor_recovery",
+        "parlor_to_climb",
+        "climb_to_pit"
+      ],
+      "actions": [
+        {
+          "sequence": 0,
+          "edge_id": "landing_to_parlor_recovery",
+          "skill_id": "sm.vertical.landing_to_parlor_recovery",
+          "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
+          "frame_start": 21548,
+          "frame_end": 22024,
+          "applied_frames": 476,
+          "observation_before": {
+            "frame": 21548,
+            "node": {
+              "type": "int",
+              "repr": "37368"
+            },
+            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "capabilities": [],
+            "resources": {
+              "energy": 99.0,
+              "missiles": 0.0
+            },
+            "values": {
+              "game_state": 8,
+              "room_id": 37368,
+              "door_transition": 0
+            },
+            "identity_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004"
+          },
+          "observation_after": {
+            "frame": 22024,
+            "node": {
+              "type": "int",
+              "repr": "37629"
+            },
+            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "capabilities": [],
+            "resources": {
+              "energy": 99.0,
+              "missiles": 0.0
+            },
+            "values": {
+              "game_state": 11,
+              "room_id": 37629,
+              "door_transition": 1
+            },
+            "identity_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f"
+          },
+          "action": {
+            "type": "sm_rando.vertical_slice.RouteSkillCommand",
+            "value": {
+              "edge_id": "landing_to_parlor_recovery",
+              "runner": "super_metroid.routes.kpdr.early_spine.play_landing_to_parlor",
+              "target_room": 37629
+            }
+          }
+        },
+        {
+          "sequence": 1,
+          "edge_id": "parlor_to_climb",
+          "skill_id": "sm.vertical.parlor_to_climb",
+          "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
+          "frame_start": 22024,
+          "frame_end": 23043,
+          "applied_frames": 1019,
+          "observation_before": {
+            "frame": 22024,
+            "node": {
+              "type": "int",
+              "repr": "37629"
+            },
+            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "capabilities": [],
+            "resources": {
+              "energy": 99.0,
+              "missiles": 0.0
+            },
+            "values": {
+              "game_state": 11,
+              "room_id": 37629,
+              "door_transition": 1
+            },
+            "identity_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f"
+          },
+          "observation_after": {
+            "frame": 23043,
+            "node": {
+              "type": "int",
+              "repr": "38586"
+            },
+            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "capabilities": [],
+            "resources": {
+              "energy": 99.0,
+              "missiles": 0.0
+            },
+            "values": {
+              "game_state": 11,
+              "room_id": 38586,
+              "door_transition": 1
+            },
+            "identity_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88"
+          },
+          "action": {
+            "type": "sm_rando.vertical_slice.RouteSkillCommand",
+            "value": {
+              "edge_id": "parlor_to_climb",
+              "runner": "super_metroid.routes.kpdr.early_spine.play_parlor_to_climb",
+              "target_room": 38586
+            }
+          }
+        },
+        {
+          "sequence": 2,
+          "edge_id": "climb_to_pit",
+          "skill_id": "sm.vertical.climb_to_pit",
+          "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
+          "frame_start": 23043,
+          "frame_end": 23866,
+          "applied_frames": 823,
+          "observation_before": {
+            "frame": 23043,
+            "node": {
+              "type": "int",
+              "repr": "38586"
+            },
+            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "capabilities": [],
+            "resources": {
+              "energy": 99.0,
+              "missiles": 0.0
+            },
+            "values": {
+              "game_state": 11,
+              "room_id": 38586,
+              "door_transition": 1
+            },
+            "identity_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88"
+          },
+          "observation_after": {
+            "frame": 23866,
+            "node": {
+              "type": "int",
+              "repr": "38748"
+            },
+            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "capabilities": [],
+            "resources": {
+              "energy": 99.0,
+              "missiles": 0.0
+            },
+            "values": {
+              "game_state": 11,
+              "room_id": 38748,
+              "door_transition": 1
+            },
+            "identity_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3"
+          },
+          "action": {
+            "type": "sm_rando.vertical_slice.RouteSkillCommand",
+            "value": {
+              "edge_id": "climb_to_pit",
+              "runner": "super_metroid.routes.kpdr.early_spine.play_climb_to_pit",
+              "target_room": 38748
+            }
+          }
+        }
+      ]
+    },
+    "benchmark_contract": {
+      "benchmark_id": "sm_rando_vertical_slice_v1",
+      "objective": "Natural Landing Site to Pit Room with recovery replan",
+      "runtime_observation_class": "Bronze",
+      "intervention_class": "Clean",
+      "start_identity_digest": "6b981e6d6f3cf2612fc94e5581437f7adc31745b63b5861b22d35c4a711c3099",
+      "policy_identity_digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+      "start_identity": {
+        "start_state": "power_on_to_natural_landing",
+        "digest": "6b981e6d6f3cf2612fc94e5581437f7adc31745b63b5861b22d35c4a711c3099",
+        "rom_sha256": "12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72"
+      },
+      "policy_identity": {
+        "name": "sm_rando.vertical_slice",
+        "digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+        "version": "1",
+        "source": "sm_rando.vertical_slice:build_solver_session",
+        "metadata": {
+          "binding_count": 4
+        }
+      },
+      "assist_contract_path": null,
+      "assist_contract_digest": null,
+      "assist_mode": null,
+      "metadata": {}
+    },
+    "attempt_audit": {
+      "ram_writes": 0,
+      "mid_run_loads": 0,
+      "assists": {},
+      "runtime_observation_class": "Bronze",
+      "intervention_class": "Clean",
+      "start_identity_digest": "6b981e6d6f3cf2612fc94e5581437f7adc31745b63b5861b22d35c4a711c3099",
+      "policy_identity_digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+      "audit_capabilities": {
+        "schema_version": 1,
+        "provider": "super_metroid.RouteSession.vertical-slice-v1",
+        "observes_ram_writes": true,
+        "observes_mid_run_loads": true,
+        "observes_assists": true
+      }
+    },
+    "claim_valid": true,
+    "evidence_path": "snes/sm_rando/recordings/vertical_slice.evidence.json",
+    "real_edges": [
+      "landing_to_parlor_recovery",
+      "parlor_to_climb",
+      "climb_to_pit"
+    ],
+    "fault_edge": "landing_to_parlor_injected_failure",
+    "trajectory": {
+      "path": "snes/sm_rando/recordings/vertical_slice.trajectory.json",
+      "identity_digest": "03dfcc6c0c41d3251b161c21de9b9f0a430e9bc6b6b5367a164127f59dad677d",
+      "schema_digest": "8df3c9d5b3d6c5c8e8922b35c58a5975f73ce2b514672b53484094953411a841",
+      "steps": 3
+    },
+    "counterexamples": [
+      {
+        "identity_digest": "9f03ff206c72809a5bce68ad4f61e452361e138eeab317e926da1be6f2b315d7",
+        "terminal_reason": "injected landing-door desync",
+        "steps": 0
+      }
+    ],
+    "prefix_splits": [
+      {
+        "split_id": "first_ceres_control",
+        "frame": 10860,
+        "room_id": 57157
+      },
+      {
+        "split_id": "ridley_countdown",
+        "frame": 16181,
+        "room_id": 57525
+      },
+      {
+        "split_id": "zebes_landing",
+        "frame": 21548,
+        "room_id": 37368
+      }
+    ]
+  }
+}

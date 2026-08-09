@@ -65,6 +65,7 @@ __all__ = [
     "MORPH_DOOR_EDGES",
     "MORPH_MILESTONES",
     "play_morph_hops",
+    "play_ship_to_morph",
     "morph_route_hops",
     "continuous_edges_from_morph_spine",
     "validate_morph_spine",
@@ -748,6 +749,19 @@ def play_morph_hops(
     from super_metroid.routes.tips import play_hops
 
     play_hops(session, splits, spine)
+
+
+def play_ship_to_morph(
+    session: RouteSession,
+    splits: list[Split],
+) -> None:
+    """Run the real Landing Site → Morph Ball suffix of the vanilla spine.
+
+    This is the reusable edge-policy entry point for randomizer consumers that
+    begin at a natural Landing Site observation.  It deliberately reuses the
+    vanilla room policies and excludes the power-on/Ceres prefix.
+    """
+    play_morph_hops(session, splits, MORPH_SPINE[3:])
 
 
 def validate_morph_spine(spine: Sequence[SpineHop] = MORPH_SPINE) -> None:
