@@ -13,7 +13,12 @@ from retro_harness.adventure.graph import (
     GraphNode,
     RouteGraph,
     RouteLeg,
-    shortest_path,
+)
+from retro_harness.adventure.progression import (
+    CapabilityId,
+    Has,
+    ItemCheck,
+    SeedPlacement,
 )
 from retro_harness.adventure.routes import NamedRoute, RouteMilestone, RouteRegistry
 
@@ -29,6 +34,17 @@ N_LINKS_HOUSE_CHEST = "z3_links_house_chest"
 
 # Intermediate OW screens (optional path detail).
 N_OW_2D = "z3_ow_0x2d"
+
+# Namespaced offline fixture.  SMZ3 deliberately keeps ``sm:bombs`` and
+# ``z3:bombs`` distinct even though both worlds use the word "bombs".
+SM_BOMBS = CapabilityId("sm", "bombs")
+Z3_BOMBS = CapabilityId("z3", "bombs")
+N_PROGRESSION_START = "smz3_fixture_start"
+N_PROGRESSION_SM_BOMBS = "smz3_fixture_sm_bombs_check"
+N_PROGRESSION_Z3_BOMBS = "smz3_fixture_z3_bombs_check"
+N_PROGRESSION_GOAL = "smz3_fixture_goal"
+SM_BOMBS_CHECK = "smz3_fixture_sm_bombs"
+Z3_BOMBS_CHECK = "smz3_fixture_z3_bombs"
 
 
 def build_early_graph() -> RouteGraph:
@@ -198,6 +214,75 @@ def build_coarse_graph() -> RouteGraph:
 
 
 COARSE_GRAPH = build_coarse_graph()
+
+
+def build_progression_graph() -> RouteGraph:
+    """Build the two-world placement fixture, without emulator state."""
+    nodes = (
+        GraphNode(N_PROGRESSION_START, name="SMZ3 fixture start"),
+        GraphNode(N_PROGRESSION_SM_BOMBS, name="SM bombs check", area="crateria"),
+        GraphNode(N_PROGRESSION_Z3_BOMBS, name="Z3 bombs check", area="light_world"),
+        GraphNode(N_PROGRESSION_GOAL, name="SMZ3 fixture goal"),
+    )
+    edges = (
+        GraphEdge(
+            N_PROGRESSION_START,
+            N_PROGRESSION_SM_BOMBS,
+            edge_id="smz3_fixture_to_sm_bombs_check",
+        ),
+        GraphEdge(
+            N_PROGRESSION_SM_BOMBS,
+            N_PROGRESSION_GOAL,
+            edge_id="smz3_fixture_sm_bombs_to_goal",
+            requires=Has(SM_BOMBS),
+        ),
+        GraphEdge(
+            N_PROGRESSION_START,
+            N_PROGRESSION_Z3_BOMBS,
+            edge_id="smz3_fixture_to_z3_bombs_check",
+        ),
+        GraphEdge(
+            N_PROGRESSION_Z3_BOMBS,
+            N_PROGRESSION_GOAL,
+            edge_id="smz3_fixture_z3_bombs_to_goal",
+            requires=Has(SM_BOMBS),
+        ),
+    )
+    checks = (
+        ItemCheck(SM_BOMBS_CHECK, N_PROGRESSION_SM_BOMBS),
+        ItemCheck(Z3_BOMBS_CHECK, N_PROGRESSION_Z3_BOMBS),
+    )
+    return RouteGraph(nodes, edges, checks)
+
+
+PROGRESSION_GRAPH = build_progression_graph()
+PLACEMENT_OVERLAY_A = SeedPlacement(
+    {
+        SM_BOMBS_CHECK: SM_BOMBS,
+        Z3_BOMBS_CHECK: Z3_BOMBS,
+    },
+    seed_id="smz3-fixture-a",
+)
+PLACEMENT_OVERLAY_B = SeedPlacement(
+    {
+        SM_BOMBS_CHECK: Z3_BOMBS,
+        Z3_BOMBS_CHECK: SM_BOMBS,
+    },
+    seed_id="smz3-fixture-b",
+)
+SEED_OVERLAY_A = PLACEMENT_OVERLAY_A
+SEED_OVERLAY_B = PLACEMENT_OVERLAY_B
+
+
+def plan_with_placement(
+    placement: SeedPlacement = PLACEMENT_OVERLAY_A,
+) -> tuple[GraphEdge, ...] | None:
+    """Return the valid offline plan for one SMZ3 fixture placement overlay."""
+    return PROGRESSION_GRAPH.progression_path(
+        N_PROGRESSION_START,
+        N_PROGRESSION_GOAL,
+        placement,
+    )
 
 
 def path_with_capabilities(

@@ -14,9 +14,21 @@ from dataclasses import dataclass, field
 from heapq import heappop, heappush
 from itertools import count
 from math import isfinite
-from typing import Hashable, Iterable, Mapping
+from typing import Hashable, Iterable, Mapping, TypeAlias
+
+from retro_harness.adventure.progression import (
+    AllOf,
+    CapabilityId,
+    CapabilityValue,
+    ItemCheck,
+    ProgressionState,
+    Requirement,
+    SeedPlacement,
+    coerce_placement,
+)
 
 NodeId = Hashable
+GraphCapability: TypeAlias = CapabilityId | str
 
 
 # Shared spelling for Metroid-family and adventure inventories.
@@ -47,6 +59,79 @@ def normalize_capability(value: str) -> str:
     return _CAPABILITY_ALIASES.get(normalized, normalized)
 
 
+def _normalize_graph_capability(value: GraphCapability) -> GraphCapability:
+    if isinstance(value, CapabilityId):
+        return value
+    if ":" in value:
+        return CapabilityId.parse(value)
+    return normalize_capability(value)
+
+
+def _normalize_graph_capabilities(
+    values: Iterable[GraphCapability],
+) -> frozenset[GraphCapability]:
+    return frozenset(_normalize_graph_capability(value) for value in values)
+
+
+def _edge_requires(edge: GraphEdge, capabilities: frozenset[GraphCapability]) -> bool:
+    if isinstance(edge.requires, Requirement):
+        return edge.requires.satisfied_by(capabilities)
+    return edge.requires.issubset(capabilities)
+
+
+def _edge_acquires(edge: GraphEdge) -> frozenset[GraphCapability]:
+    return frozenset(edge.acquires)
+
+
+def _requirement_order_key(requirement: Requirement | frozenset[str]) -> str:
+    if isinstance(requirement, Requirement):
+        return requirement.canonical_json()
+    return ",".join(sorted(requirement))
+
+
+def _requirement_size(requirement: Requirement | frozenset[str]) -> int:
+    if not isinstance(requirement, Requirement):
+        return len(requirement)
+    children = getattr(requirement, "requirements", None)
+    return len(children) if children is not None else 1
+
+
+def _coerce_edge_requires(
+    value: Requirement
+    | CapabilityId
+    | str
+    | Iterable[Requirement | CapabilityId | str],
+) -> Requirement | frozenset[str]:
+    if isinstance(value, Requirement):
+        return value
+    if isinstance(value, CapabilityId):
+        return AllOf(value)
+    if isinstance(value, str):
+        if ":" in value:
+            return AllOf(value)
+        return frozenset({normalize_capability(value)})
+    values = tuple(value)
+    if not values:
+        return frozenset()
+    if any(
+        isinstance(item, (Requirement, CapabilityId))
+        or (isinstance(item, str) and ":" in item)
+        for item in values
+    ):
+        return AllOf(values)
+    return frozenset(normalize_capability(item) for item in values)  # type: ignore[arg-type]
+
+
+def _coerce_edge_acquires(
+    value: Iterable[GraphCapability] | GraphCapability,
+) -> frozenset[GraphCapability]:
+    if isinstance(value, (CapabilityId, str)):
+        values = (value,)
+    else:
+        values = value
+    return _normalize_graph_capabilities(values)
+
+
 @dataclass(frozen=True)
 class GraphNode:
     """One room, screen, or abstract route node."""
@@ -75,12 +160,12 @@ class GraphEdge:
     target_id: NodeId
     edge_id: str = ""
     direction: str = ""
-    requires: frozenset[str] = field(default_factory=frozenset)
+    requires: Requirement | frozenset[str] = field(default_factory=frozenset)
     cost: float = 1.0
     verification: str = "planned"
     provenance: str = ""
     meta: Mapping[str, object] = field(default_factory=dict)
-    acquires: frozenset[str] = field(default_factory=frozenset)
+    acquires: frozenset[GraphCapability] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:
         if not self.edge_id:
@@ -89,15 +174,11 @@ class GraphEdge:
                 "edge_id",
                 f"{self.source_id}->{self.target_id}",
             )
-        object.__setattr__(
-            self,
-            "requires",
-            frozenset(normalize_capability(v) for v in self.requires),
-        )
+        object.__setattr__(self, "requires", _coerce_edge_requires(self.requires))
         object.__setattr__(
             self,
             "acquires",
-            frozenset(normalize_capability(v) for v in self.acquires),
+            _coerce_edge_acquires(self.acquires),
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -106,8 +187,12 @@ class GraphEdge:
             "sourceId": self.source_id,
             "targetId": self.target_id,
             "direction": self.direction,
-            "requires": sorted(self.requires),
-            "acquires": sorted(self.acquires),
+            "requires": (
+                self.requires.to_dict()
+                if isinstance(self.requires, Requirement)
+                else sorted(self.requires)
+            ),
+            "acquires": sorted(str(value) for value in self.acquires),
             "cost": self.cost,
             "verification": self.verification,
             "provenance": self.provenance,
@@ -122,10 +207,10 @@ class RoutePatch:
     source_id: NodeId
     target_id: NodeId
     direction: str = ""
-    requires: frozenset[str] = field(default_factory=frozenset)
+    requires: Requirement | frozenset[str] = field(default_factory=frozenset)
     support: str = ""
     meta: Mapping[str, object] = field(default_factory=dict)
-    acquires: frozenset[str] = field(default_factory=frozenset)
+    acquires: frozenset[GraphCapability] = field(default_factory=frozenset)
 
     def as_edge(self) -> GraphEdge:
         edge_meta: dict[str, object] = dict(self.meta)
@@ -135,8 +220,8 @@ class RoutePatch:
             source_id=self.source_id,
             target_id=self.target_id,
             direction=self.direction,
-            requires=frozenset(normalize_capability(v) for v in self.requires),
-            acquires=frozenset(normalize_capability(v) for v in self.acquires),
+            requires=self.requires,
+            acquires=self.acquires,
             verification="planned",
             provenance="explicit_route_patch",
             meta=edge_meta,
@@ -150,8 +235,8 @@ class RouteLeg:
     leg_id: str
     source_id: NodeId
     target_id: NodeId
-    requires: frozenset[str] = field(default_factory=frozenset)
-    acquires: frozenset[str] = field(default_factory=frozenset)
+    requires: Requirement | frozenset[str] = field(default_factory=frozenset)
+    acquires: frozenset[GraphCapability] = field(default_factory=frozenset)
     goal: str = ""
     constraints: tuple[str, ...] = ()
 
@@ -162,25 +247,29 @@ class PlannedLeg:
 
     leg: RouteLeg
     edge: GraphEdge
-    capabilities_before: frozenset[str]
-    effective_requires: frozenset[str]
-    capabilities_after: frozenset[str]
+    capabilities_before: frozenset[GraphCapability]
+    effective_requires: Requirement | frozenset[str]
+    capabilities_after: frozenset[GraphCapability]
 
     def to_dict(self, nodes: Mapping[NodeId, GraphNode]) -> dict[str, object]:
         source = nodes.get(self.leg.source_id)
         target = nodes.get(self.leg.target_id)
-        acquires = self.edge.acquires | frozenset(
-            normalize_capability(v) for v in self.leg.acquires
+        acquires = _edge_acquires(self.edge) | _normalize_graph_capabilities(
+            self.leg.acquires
         )
         return {
             "legId": self.leg.leg_id,
             "source": source.to_dict() if source else {"nodeId": self.leg.source_id},
             "target": target.to_dict() if target else {"nodeId": self.leg.target_id},
             "edge": self.edge.to_dict(),
-            "capabilitiesBefore": sorted(self.capabilities_before),
-            "effectiveRequires": sorted(self.effective_requires),
-            "acquires": sorted(acquires),
-            "capabilitiesAfter": sorted(self.capabilities_after),
+            "capabilitiesBefore": sorted(str(value) for value in self.capabilities_before),
+            "effectiveRequires": (
+                self.effective_requires.to_dict()
+                if isinstance(self.effective_requires, Requirement)
+                else sorted(self.effective_requires)
+            ),
+            "acquires": sorted(str(value) for value in acquires),
+            "capabilitiesAfter": sorted(str(value) for value in self.capabilities_after),
             "goal": self.leg.goal,
             "constraints": list(self.leg.constraints),
             "status": "planned_not_continuous",
@@ -191,10 +280,10 @@ def shortest_path(
     edges: Iterable[GraphEdge],
     source_id: NodeId,
     target_id: NodeId,
-    capabilities: frozenset[str] | Iterable[str] = frozenset(),
+    capabilities: frozenset[GraphCapability] | Iterable[GraphCapability] = frozenset(),
 ) -> tuple[GraphEdge, ...] | None:
     """BFS shortest path (edge count) respecting capability gates."""
-    caps = frozenset(normalize_capability(v) for v in capabilities)
+    caps = _normalize_graph_capabilities(capabilities)
     if source_id == target_id:
         return ()
     outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
@@ -206,7 +295,7 @@ def shortest_path(
     while queue:
         node = queue.popleft()
         for edge in outgoing.get(node, ()):
-            if not edge.requires.issubset(caps):
+            if not _edge_requires(edge, caps):
                 continue
             if edge.target_id in seen:
                 continue
@@ -231,8 +320,8 @@ def _edge_order_key(edge: GraphEdge) -> tuple[str, ...]:
         repr(edge.target_id),
         edge.edge_id,
         edge.direction,
-        ",".join(sorted(edge.requires)),
-        ",".join(sorted(edge.acquires)),
+        _requirement_order_key(edge.requires),
+        ",".join(sorted(str(value) for value in edge.acquires)),
         repr(edge.cost),
     )
 
@@ -241,7 +330,7 @@ def inventory_aware_path(
     edges: Iterable[GraphEdge],
     source_id: NodeId,
     target_id: NodeId,
-    capabilities: frozenset[str] | Iterable[str] = frozenset(),
+    capabilities: frozenset[GraphCapability] | Iterable[GraphCapability] = frozenset(),
 ) -> tuple[GraphEdge, ...] | None:
     """Find a least-cost path while capabilities grow on traversed edges.
 
@@ -265,21 +354,21 @@ def inventory_aware_path(
     if source_id == target_id:
         return ()
 
-    normalized = frozenset(normalize_capability(v) for v in capabilities)
+    normalized = _normalize_graph_capabilities(capabilities)
     outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
     for edge in graph_edges:
         outgoing[edge.source_id].append(edge)
     for candidates in outgoing.values():
         candidates.sort(key=_edge_order_key)
 
-    State = tuple[NodeId, frozenset[str]]
+    State = tuple[NodeId, frozenset[GraphCapability]]
     PathKey = tuple[tuple[str, ...], ...]
     initial_state: State = (source_id, normalized)
     initial_rank: tuple[float, PathKey] = (0.0, ())
     best: dict[State, tuple[float, PathKey]] = {initial_state: initial_rank}
     parent: dict[State, tuple[State, GraphEdge]] = {}
     sequence = count()
-    pending: list[tuple[float, PathKey, int, NodeId, frozenset[str]]] = [
+    pending: list[tuple[float, PathKey, int, NodeId, frozenset[GraphCapability]]] = [
         (0.0, (), next(sequence), source_id, normalized)
     ]
 
@@ -298,9 +387,9 @@ def inventory_aware_path(
             return tuple(reversed(path))
 
         for edge in outgoing.get(node_id, ()):
-            if not edge.requires.issubset(current_caps):
+            if not _edge_requires(edge, current_caps):
                 continue
-            next_caps = current_caps | edge.acquires
+            next_caps = current_caps | _edge_acquires(edge)
             next_state: State = (edge.target_id, next_caps)
             next_cost = cost + edge.cost
             next_path_key = path_key + (_edge_order_key(edge),)
@@ -322,6 +411,176 @@ def inventory_aware_path(
     return None
 
 
+def _collect_node_checks(
+    state: ProgressionState,
+    checks_by_node: Mapping[NodeId, tuple[ItemCheck, ...]],
+    placement: SeedPlacement,
+) -> ProgressionState:
+    """Collect every currently available check at a node in stable order."""
+    current = state
+    checks = checks_by_node.get(current.node, ())
+    changed = True
+    while changed:
+        changed = False
+        for check in checks:
+            if check.can_collect(current):
+                current = current.collect(check, placement)
+                changed = True
+    return current
+
+
+def progression_plan(
+    edges: Iterable[GraphEdge],
+    checks: Iterable[ItemCheck],
+    source_id: NodeId,
+    target_id: NodeId,
+    placements: SeedPlacement
+    | Mapping[str, CapabilityValue]
+    | Iterable[SeedPlacement]
+    | Iterable[tuple[str, CapabilityValue]]
+    | None = None,
+    *,
+    capabilities: Iterable[GraphCapability] = frozenset(),
+    collected_checks: Iterable[str] = frozenset(),
+) -> tuple[tuple[GraphEdge, ...], ProgressionState] | None:
+    """Plan over monotonic capabilities and item-check collection state.
+
+    A check at the current node is collected before outgoing edges are
+    expanded.  The returned state is post-collection at the target.  This is
+    intentionally a small deterministic search surface; bounded planner
+    budgets and richer result reporting belong to a later layer.
+    """
+    graph_edges = tuple(edges)
+    graph_checks = tuple(checks)
+    placement = coerce_placement(placements)
+    checks_by_node: dict[NodeId, tuple[ItemCheck, ...]] = defaultdict(tuple)
+    grouped: dict[NodeId, list[ItemCheck]] = defaultdict(list)
+    seen_check_ids: set[str] = set()
+    for check in graph_checks:
+        if check.check_id in seen_check_ids:
+            raise ValueError(f"duplicate item check ID: {check.check_id!r}")
+        seen_check_ids.add(check.check_id)
+        grouped[check.node_id].append(check)
+    for node_id, node_checks in grouped.items():
+        checks_by_node[node_id] = tuple(
+            sorted(node_checks, key=lambda check: check.check_id)
+        )
+    for edge in graph_edges:
+        if not isfinite(edge.cost) or edge.cost < 0:
+            raise ValueError(
+                "progression plan requires finite, non-negative edge costs"
+            )
+
+    initial = ProgressionState(
+        source_id,
+        _normalize_graph_capabilities(capabilities),
+        collected_checks,
+    )
+    initial = _collect_node_checks(initial, checks_by_node, placement)
+    if source_id == target_id:
+        return (), initial
+
+    outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
+    for edge in graph_edges:
+        outgoing[edge.source_id].append(edge)
+    for candidates in outgoing.values():
+        candidates.sort(key=_edge_order_key)
+
+    State = tuple[NodeId, frozenset[GraphCapability], frozenset[str]]
+    PathKey = tuple[tuple[str, ...], ...]
+    initial_state: State = (
+        initial.node,
+        initial.capabilities,
+        initial.collected_checks,
+    )
+    best: dict[State, tuple[float, PathKey]] = {initial_state: (0.0, ())}
+    parent: dict[State, tuple[State, GraphEdge]] = {}
+    sequence = count()
+    pending: list[
+        tuple[float, PathKey, int, NodeId, frozenset[GraphCapability], frozenset[str]]
+    ] = [(0.0, (), next(sequence), *initial_state)]
+
+    while pending:
+        cost, path_key, _sequence, node_id, current_caps, current_checks = heappop(
+            pending
+        )
+        state_key: State = (node_id, current_caps, current_checks)
+        if best.get(state_key) != (cost, path_key):
+            continue
+        if node_id == target_id:
+            path: list[GraphEdge] = []
+            cursor = state_key
+            while cursor in parent:
+                previous, edge = parent[cursor]
+                path.append(edge)
+                cursor = previous
+            final_state = ProgressionState(
+                node_id,
+                current_caps,
+                current_checks,
+            )
+            return tuple(reversed(path)), final_state
+
+        for edge in outgoing.get(node_id, ()):
+            if not _edge_requires(edge, current_caps):
+                continue
+            next_state = ProgressionState(
+                edge.target_id,
+                current_caps | _edge_acquires(edge),
+                current_checks,
+            )
+            next_state = _collect_node_checks(next_state, checks_by_node, placement)
+            next_key: State = (
+                next_state.node,
+                next_state.capabilities,
+                next_state.collected_checks,
+            )
+            next_cost = cost + edge.cost
+            next_path_key = path_key + (_edge_order_key(edge),)
+            next_rank = (next_cost, next_path_key)
+            if next_key in best and next_rank >= best[next_key]:
+                continue
+            best[next_key] = next_rank
+            parent[next_key] = (state_key, edge)
+            heappush(
+                pending,
+                (
+                    next_cost,
+                    next_path_key,
+                    next(sequence),
+                    *next_key,
+                ),
+            )
+    return None
+
+
+def progression_path(
+    edges: Iterable[GraphEdge],
+    checks: Iterable[ItemCheck],
+    source_id: NodeId,
+    target_id: NodeId,
+    placements: SeedPlacement
+    | Mapping[str, CapabilityValue]
+    | Iterable[SeedPlacement]
+    | Iterable[tuple[str, CapabilityValue]]
+    | None = None,
+    *,
+    capabilities: Iterable[GraphCapability] = frozenset(),
+    collected_checks: Iterable[str] = frozenset(),
+) -> tuple[GraphEdge, ...] | None:
+    """Return only the edge sequence from :func:`progression_plan`."""
+    result = progression_plan(
+        edges,
+        checks,
+        source_id,
+        target_id,
+        placements,
+        capabilities=capabilities,
+        collected_checks=collected_checks,
+    )
+    return None if result is None else result[0]
+
+
 class RouteGraph:
     """Validated node/edge set with pathfinding and leg planning."""
 
@@ -329,11 +588,23 @@ class RouteGraph:
         self,
         nodes: Iterable[GraphNode],
         edges: Iterable[GraphEdge],
+        checks: Iterable[ItemCheck] = (),
     ) -> None:
         self.nodes = {node.node_id: node for node in nodes}
         self.edges = tuple(edges)
+        self.checks = tuple(checks)
+        self.item_checks = self.checks
         self._outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
         self._by_pair: dict[tuple[NodeId, NodeId], list[GraphEdge]] = defaultdict(list)
+        check_ids: set[str] = set()
+        for check in self.checks:
+            if check.check_id in check_ids:
+                raise ValueError(f"duplicate item check ID: {check.check_id!r}")
+            if check.node_id not in self.nodes:
+                raise ValueError(
+                    f"item check node {check.node_id!r} is not a node"
+                )
+            check_ids.add(check.check_id)
         for edge in self.edges:
             if edge.source_id not in self.nodes:
                 raise ValueError(f"edge source {edge.source_id!r} is not a node")
@@ -352,8 +623,8 @@ class RouteGraph:
         return min(
             candidates,
             key=lambda edge: (
-                len(edge.requires),
-                sorted(edge.requires),
+                _requirement_size(edge.requires),
+                _requirement_order_key(edge.requires),
                 edge.direction,
                 edge.edge_id,
             ),
@@ -369,13 +640,13 @@ class RouteGraph:
                     f"route patch would hide an existing edge: {pair[0]!r}->{pair[1]!r}"
                 )
             added.append(patch.as_edge())
-        return RouteGraph(self.nodes.values(), (*self.edges, *added))
+        return RouteGraph(self.nodes.values(), (*self.edges, *added), self.checks)
 
     def shortest_path(
         self,
         source_id: NodeId,
         target_id: NodeId,
-        capabilities: frozenset[str] | Iterable[str] = frozenset(),
+        capabilities: frozenset[GraphCapability] | Iterable[GraphCapability] = frozenset(),
     ) -> tuple[GraphEdge, ...] | None:
         return shortest_path(
             self.edges,
@@ -388,7 +659,7 @@ class RouteGraph:
         self,
         source_id: NodeId,
         target_id: NodeId,
-        capabilities: frozenset[str] | Iterable[str] = frozenset(),
+        capabilities: frozenset[GraphCapability] | Iterable[GraphCapability] = frozenset(),
     ) -> tuple[GraphEdge, ...] | None:
         """Plan a least-cost path while collecting edge ``acquires`` items."""
         return inventory_aware_path(
@@ -398,15 +669,63 @@ class RouteGraph:
             capabilities=capabilities,
         )
 
+    def progression_plan(
+        self,
+        source_id: NodeId,
+        target_id: NodeId,
+        placements: SeedPlacement
+        | Mapping[str, CapabilityValue]
+        | Iterable[SeedPlacement]
+        | Iterable[tuple[str, CapabilityValue]]
+        | None = None,
+        *,
+        capabilities: Iterable[GraphCapability] = frozenset(),
+        collected_checks: Iterable[str] = frozenset(),
+    ) -> tuple[tuple[GraphEdge, ...], ProgressionState] | None:
+        """Plan while collecting this graph's item checks from an overlay."""
+        return progression_plan(
+            self.edges,
+            self.checks,
+            source_id,
+            target_id,
+            placements,
+            capabilities=capabilities,
+            collected_checks=collected_checks,
+        )
+
+    def progression_path(
+        self,
+        source_id: NodeId,
+        target_id: NodeId,
+        placements: SeedPlacement
+        | Mapping[str, CapabilityValue]
+        | Iterable[SeedPlacement]
+        | Iterable[tuple[str, CapabilityValue]]
+        | None = None,
+        *,
+        capabilities: Iterable[GraphCapability] = frozenset(),
+        collected_checks: Iterable[str] = frozenset(),
+    ) -> tuple[GraphEdge, ...] | None:
+        """Return only the edge sequence for a placement-aware plan."""
+        result = self.progression_plan(
+            source_id,
+            target_id,
+            placements,
+            capabilities=capabilities,
+            collected_checks=collected_checks,
+        )
+        return None if result is None else result[0]
+
+    plan_with_placement = progression_path
+    plan_progression = progression_plan
+
     def plan_legs(
         self,
         legs: Iterable[RouteLeg],
         *,
-        initial_capabilities: frozenset[str] | Iterable[str] = frozenset(),
+        initial_capabilities: frozenset[GraphCapability] | Iterable[GraphCapability] = frozenset(),
     ) -> tuple[PlannedLeg, ...]:
-        capabilities = frozenset(
-            normalize_capability(value) for value in initial_capabilities
-        )
+        capabilities = _normalize_graph_capabilities(initial_capabilities)
         planned: list[PlannedLeg] = []
         previous_target: NodeId | None = None
         for leg in legs:
@@ -419,16 +738,35 @@ class RouteGraph:
                 raise ValueError(
                     f"route leg {leg.leg_id} has no edge {leg.source_id!r}->{leg.target_id!r}"
                 )
-            explicit = frozenset(normalize_capability(v) for v in leg.requires)
-            effective = edge.requires | explicit
-            missing = effective - capabilities
-            if missing:
+            if isinstance(leg.requires, Requirement):
+                effective: Requirement | frozenset[str] = AllOf(
+                    edge.requires,
+                    leg.requires,
+                ) if isinstance(edge.requires, Requirement) else leg.requires
+                satisfied = _edge_requires(edge, capabilities) and leg.requires.satisfied_by(
+                    capabilities
+                )
+                missing: frozenset[str] = frozenset()
+            else:
+                explicit = frozenset(normalize_capability(v) for v in leg.requires)
+                if isinstance(edge.requires, Requirement):
+                    effective = edge.requires
+                    satisfied = edge.requires.satisfied_by(capabilities) and not explicit - capabilities
+                else:
+                    effective = edge.requires | explicit
+                    missing = effective - capabilities
+                    satisfied = not missing
+            if not satisfied:
+                if isinstance(effective, Requirement):
+                    missing_text = effective.canonical_json()
+                else:
+                    missing_text = ", ".join(sorted(missing))
                 raise ValueError(
                     f"route leg {leg.leg_id} is missing capabilities: "
-                    f"{', '.join(sorted(missing))}"
+                    f"{missing_text}"
                 )
-            after = capabilities | edge.acquires | frozenset(
-                normalize_capability(v) for v in leg.acquires
+            after = capabilities | _edge_acquires(edge) | _normalize_graph_capabilities(
+                leg.acquires
             )
             planned.append(
                 PlannedLeg(
@@ -444,10 +782,13 @@ class RouteGraph:
         return tuple(planned)
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        result: dict[str, object] = {
             "nodes": [node.to_dict() for node in self.nodes.values()],
             "edges": [edge.to_dict() for edge in self.edges],
         }
+        if self.checks:
+            result["checks"] = [check.to_dict() for check in self.checks]
+        return result
 
 
 @dataclass(frozen=True)
@@ -568,4 +909,4 @@ def promote_edge_verification(
             new_edges.append(edge)
     if not found:
         raise ValueError(f"no edge {source_id!r}->{target_id!r} to promote")
-    return RouteGraph(graph.nodes.values(), new_edges)
+    return RouteGraph(graph.nodes.values(), new_edges, graph.checks)
