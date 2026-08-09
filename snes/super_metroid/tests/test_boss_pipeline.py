@@ -19,6 +19,8 @@ from super_metroid.combat.features import (
     phantoon_catalog,
     validate_live_enemy,
 )
+from super_metroid.combat.audit import structured_combat_attempt_audit
+from super_metroid.assist import AssistTelemetry
 from super_metroid.combat.natural_entry import is_capture_frame
 from super_metroid.combat.primitives import (
     PhaseMachine,
@@ -66,6 +68,17 @@ def test_full_catalog_registry_covers_spine_bosses() -> None:
     # Spine order matches KPDR priority intent.
     assert BOSS_SPINE_ORDER[0] == "kraid"
     assert BOSS_SPINE_ORDER[-1] == "mother_brain"
+
+
+def test_structured_combat_dry_run_emits_complete_audit_trail() -> None:
+    telemetry = AssistTelemetry()
+    telemetry.energy.writes = 2
+    telemetry.ammo["missiles"].writes = 1
+    audit = structured_combat_attempt_audit(telemetry)
+    assert audit.has_complete_instrumentation
+    assert audit.ram_writes == 3
+    assert audit.mid_run_loads == 0
+    assert audit.assists == {"unlimited_resources": 3}
 
 
 def test_get_boss_catalog_and_list() -> None:

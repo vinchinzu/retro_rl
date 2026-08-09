@@ -8,6 +8,8 @@ import numpy as np
 import pytest
 
 from retro_harness.benchmark import (
+    AuditCapabilities,
+    AuditedEnv,
     AttemptAudit,
     BenchmarkCase,
     BenchmarkTier,
@@ -16,6 +18,8 @@ from retro_harness.benchmark import (
     InterventionClass,
     IdlePolicy,
     PolicyIdentity,
+    PolicyArtifact,
+    PolicyArtifactError,
     policy_identity_for,
     RandomPolicy,
     RuntimeObservationClass,
@@ -55,10 +59,21 @@ class FakeEnv:
         truncated_after=None,
         array_actions=False,
         info_extra=None,
+        audited=True,
     ):
         self.success_after = success_after
         self.truncated_after = truncated_after
         self.info_extra = dict(info_extra or {})
+        self.audit_info = (
+            {
+                "ram_writes": 0,
+                "mid_run_loads": 0,
+                "assists": {},
+                "audit_capabilities": AuditCapabilities.all("fake-env").to_record(),
+            }
+            if audited
+            else {}
+        )
         self.action_space = FakeArrayActionSpace() if array_actions else FakeDiscreteActionSpace()
         self.closed = False
         self.reset_count = 0
@@ -70,6 +85,7 @@ class FakeEnv:
         return np.zeros((2, 2), dtype=np.uint8), {
             "count": 0,
             "flag": np.int64(1),
+            **self.audit_info,
             **self.info_extra,
         }
 
@@ -78,6 +94,7 @@ class FakeEnv:
         info = {
             "count": self.step_count,
             "array": np.array([1, 2, 3], dtype=np.int64),
+            **self.audit_info,
             **self.info_extra,
         }
         terminated = self.success_after is not None and self.step_count >= self.success_after
@@ -144,6 +161,17 @@ def _seed_config(**kwargs):
     return SeedRobustnessConfig(**values)
 
 
+def _instrumented_audit(**values):
+    defaults = {
+        "ram_writes": 0,
+        "mid_run_loads": 0,
+        "assists": {},
+        "capabilities": AuditCapabilities.all("fixture-audit"),
+    }
+    defaults.update(values)
+    return AttemptAudit(**defaults)
+
+
 def test_zero_action_for_discrete_env():
     env = FakeEnv()
     assert zero_action_for_env(env) == 0
@@ -187,6 +215,123 @@ def test_run_benchmark_success_records_attempts():
     assert result.success_rate == 1.0
     assert policy.reset_calls == 2
     assert policy.act_calls == 4
+
+
+def test_uninstrumented_env_cannot_produce_clean_claim():
+    case = BenchmarkCase(
+        benchmark_id="missing-audit",
+        display_name="Missing audit",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 2",
+        max_steps=2,
+        build_env=lambda: FakeEnv(success_after=2, audited=False),
+        is_success=_success,
+    )
+
+    with pytest.raises(ClaimValidationError, match="audit instrumentation"):
+        run_benchmark(case, IdlePolicy())
+
+
+def test_missing_audit_fields_remain_unknown_and_fail_closed():
+    contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.CLEAN,
+        start_identity=StartIdentity("Start"),
+        policy_identity=PolicyIdentity("fixture"),
+    )
+    audit = AttemptAudit.from_info({})
+    assert audit.ram_writes is None
+    assert audit.mid_run_loads is None
+    assert audit.assists is None
+
+    with pytest.raises(ClaimValidationError, match="audit instrumentation"):
+        validate_claim(contract, audit)
+
+
+def test_audited_env_emits_complete_dry_run_trail():
+    env = AuditedEnv(
+        FakeEnv(success_after=1, audited=False),
+        capabilities=AuditCapabilities.all("fixture-wrapper"),
+    )
+    _, info = env.reset()
+    assert AttemptAudit.from_info(info).has_complete_instrumentation
+    env.record_ram_write()
+    env.record_state_load()
+    env.record_assist("health")
+    _, _, _, _, info = env.step(0)
+    audit = AttemptAudit.from_info(info)
+    assert audit.ram_writes == 1
+    assert audit.mid_run_loads == 1
+    assert audit.assists == {"health": 1}
+    assert audit.capabilities.provider == "fixture-wrapper"
+    env.close()
+
+
+def test_policy_artifact_round_trip_rejects_weight_and_schema_mismatch(tmp_path):
+    checkpoint = tmp_path / "policy.zip"
+    checkpoint.write_bytes(b"weights-v1")
+    lock = tmp_path / "uv.lock"
+    lock.write_text("locked", encoding="utf-8")
+    artifact = PolicyArtifact.from_checkpoint(
+        checkpoint,
+        dependency_lock_path=lock,
+        algorithm="PPO",
+        hyperparameters={"learning_rate": 0.0003, "batch_size": 64},
+        training_seed=7,
+        observation_schema_digest="obs-v1",
+        action_schema_digest="act-v1",
+        reward_schema_digest="reward-v1",
+        wrapper_schema_digest="wrappers-v1",
+        rom_identity_digest="rom-sha",
+        state_identity_digest="state-sha",
+        core_identity_digest="core-sha",
+        source_commit="deadbeef",
+    )
+    manifest = artifact.write(tmp_path / "policy.artifact.json")
+
+    loaded = PolicyArtifact.load(
+        manifest,
+        checkpoint_path=checkpoint,
+        expected_schema_digests={
+            "observation": "obs-v1",
+            "action": "act-v1",
+            "reward": "reward-v1",
+            "wrapper": "wrappers-v1",
+        },
+    )
+    assert loaded == artifact
+    assert loaded.to_policy_identity("fixture").identity_digest == artifact.identity_digest
+
+    with pytest.raises(PolicyArtifactError, match="observation schema"):
+        PolicyArtifact.load(
+            manifest,
+            checkpoint_path=checkpoint,
+            expected_schema_digests={"observation": "obs-v2"},
+        )
+
+    with pytest.raises(PolicyArtifactError, match="rom identity"):
+        PolicyArtifact.load(
+            manifest,
+            checkpoint_path=checkpoint,
+            expected_environment_identity_digests={"rom": "different-rom"},
+        )
+
+    checkpoint.write_bytes(b"weights-v2")
+    with pytest.raises(PolicyArtifactError, match="checkpoint digest"):
+        PolicyArtifact.load(manifest, checkpoint_path=checkpoint)
+
+
+def test_learned_policy_without_artifact_identity_is_rejected():
+    class LearnedFixture:
+        name = "learned"
+
+        def predict(self, observation):
+            return 0
+
+    with pytest.raises(PolicyArtifactError, match="PolicyArtifact"):
+        policy_identity_for(LearnedFixture())
 
 
 @pytest.mark.parametrize(
@@ -710,9 +855,10 @@ def test_validate_claim_rejects_config_contract_identity_contradiction():
             seed=seed,
             success=False,
             frames=0,
-            runtime_observation_class=config.runtime_observation_class,
-            intervention_class=config.intervention_class,
-            contract=shared_contract,
+                runtime_observation_class=config.runtime_observation_class,
+                intervention_class=config.intervention_class,
+                attempt_audit=_instrumented_audit(),
+                contract=shared_contract,
         )
         for seed in config.seeds
     )
@@ -746,9 +892,10 @@ def test_validate_claim_rejects_nested_config_contract_assist_mode_tampering():
             seed=seed,
             success=False,
             frames=0,
-            runtime_observation_class=config.runtime_observation_class,
-            intervention_class=config.intervention_class,
-            contract=shared_contract,
+                runtime_observation_class=config.runtime_observation_class,
+                intervention_class=config.intervention_class,
+                attempt_audit=_instrumented_audit(),
+                contract=shared_contract,
         )
         for seed in config.seeds
     )
@@ -775,7 +922,12 @@ def test_run_seed_robustness_rejects_over_budget_extracted_frames():
     )
 
     def extract(seed, attempt):
-        return SeedAttemptResult(seed=seed, success=attempt.success, frames=config.budget + 1)
+        return SeedAttemptResult(
+            seed=seed,
+            success=attempt.success,
+            frames=config.budget + 1,
+            attempt_audit=_instrumented_audit(),
+        )
 
     with pytest.raises(ValueError, match="exceed the published frame budget"):
         run_seed_robustness(config, lambda seed: case, IdlePolicy(), result_extractor=extract)
@@ -784,7 +936,13 @@ def test_run_seed_robustness_rejects_over_budget_extracted_frames():
 def test_write_seed_robustness_report_rejects_nonfinite_metadata(tmp_path):
     config = _seed_config(metadata={"score": float("nan")})
     results = tuple(
-        SeedAttemptResult(seed=seed, success=False, frames=0) for seed in config.seeds
+        SeedAttemptResult(
+            seed=seed,
+            success=False,
+            frames=0,
+            attempt_audit=_instrumented_audit(),
+        )
+        for seed in config.seeds
     )
     report = SeedRobustnessReport(config, "idle", results)
     report_path = tmp_path / "nested" / "seed_report.json"
@@ -803,7 +961,13 @@ def test_write_seed_robustness_report_rejects_nonfinite_metadata(tmp_path):
 def test_write_seed_robustness_report_rejects_non_json_metadata(tmp_path, metadata):
     config = _seed_config(metadata=metadata)
     results = tuple(
-        SeedAttemptResult(seed=seed, success=False, frames=0) for seed in config.seeds
+        SeedAttemptResult(
+            seed=seed,
+            success=False,
+            frames=0,
+            attempt_audit=_instrumented_audit(),
+        )
+        for seed in config.seeds
     )
     report = SeedRobustnessReport(config, "idle", results)
 
@@ -828,7 +992,7 @@ def _contract(
 
 def test_typed_contract_and_audit_validate_and_emit_identity_digests():
     contract = _contract()
-    audit = AttemptAudit(
+    audit = _instrumented_audit(
         start_identity_digest=contract.start_identity.identity_digest,
         policy_identity_digest=contract.policy_identity.identity_digest,
     )
@@ -843,7 +1007,7 @@ def test_typed_contract_and_audit_validate_and_emit_identity_digests():
 
 def test_serialized_attempt_record_can_be_validated():
     contract = _contract()
-    audit = AttemptAudit(
+    audit = _instrumented_audit(
         start_identity_digest=contract.start_identity.identity_digest,
         policy_identity_digest=contract.policy_identity.identity_digest,
     )
@@ -865,7 +1029,7 @@ def test_serialized_attempt_record_can_be_validated():
 )
 def test_clean_claim_rejects_interventions(field, value, message):
     contract = _contract()
-    audit = AttemptAudit(
+    audit = _instrumented_audit(
         start_identity_digest=contract.start_identity.identity_digest,
         policy_identity_digest=contract.policy_identity.identity_digest,
         **{field: value},
@@ -884,7 +1048,7 @@ def test_assisted_contract_requires_path_and_digest():
         assist_contract_path="docs/ASSIST_CONTRACT.md",
         assist_contract_digest="sha256:fixture",
     )
-    audit = AttemptAudit(
+    audit = _instrumented_audit(
         assists={"ammo": 1},
         start_identity_digest=contract.start_identity.identity_digest,
         policy_identity_digest=contract.policy_identity.identity_digest,

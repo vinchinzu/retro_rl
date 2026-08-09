@@ -46,8 +46,14 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
 from retro_harness.fighters.fighting_env import FightingGameConfig, make_fighting_env
+from retro_harness.fighters.fighting_env import FIGHTING_ACTIONS, FightingEnv
+from retro_harness.fighters.contracts import (
+    build_fighter_contracts,
+    fighting_reward_weights,
+)
 from retro_harness.fighters.game_configs import GAME_REGISTRY, get_game_config
 from retro_harness.fighters.menu_nav import create_fight_state
+from retro_harness.model_artifacts import load_policy_artifact, write_policy_artifact
 from retro_harness.repo import resolve_game_dir
 
 
@@ -163,9 +169,10 @@ class FightMetricsCallback(BaseCallback):
 # ─────────────────────────────────────────────────────────────────────────────
 # Environment factory for vectorized envs
 # ─────────────────────────────────────────────────────────────────────────────
-def _make_env_fn(game_id: str, state: str, game_dir: Path, config, monitor_dir: str, rank: int, practice: bool = False):
+def _make_env_fn(game_id: str, state: str, game_dir: Path, config, monitor_dir: str, rank: int, practice: bool = False, seed: int = 0):
     """Factory function for SubprocVecEnv."""
     def _init():
+        np.random.seed(seed + rank)
         env = make_fighting_env(
             game=game_id,
             state=state,
@@ -180,10 +187,47 @@ def _make_env_fn(game_id: str, state: str, game_dir: Path, config, monitor_dir: 
     return _init
 
 
+def _ppo_hyperparameters(args) -> dict[str, object]:
+    return {
+        "learning_rate": TrainConfig.LEARNING_RATE,
+        "ent_coef_start": TrainConfig.ENT_COEF_START,
+        "ent_coef_end": TrainConfig.ENT_COEF_END,
+        "batch_size": TrainConfig.BATCH_SIZE,
+        "n_steps": TrainConfig.N_STEPS,
+        "n_epochs": TrainConfig.N_EPOCHS,
+        "gamma": TrainConfig.GAMMA,
+        "gae_lambda": TrainConfig.GAE_LAMBDA,
+        "clip_range": TrainConfig.CLIP_RANGE,
+        "frame_skip": TrainConfig.FRAME_SKIP,
+        "frame_stack": TrainConfig.FRAME_STACK,
+        "features_dim": TrainConfig.FEATURES_DIM,
+        "n_envs": args.n_envs,
+        "total_steps": args.steps,
+    }
+
+
+def _runtime_contracts(game_config, game_dir: Path, args, *, monitor: bool):
+    action_maps = game_config.actions or FIGHTING_ACTIONS
+    return build_fighter_contracts(
+        game_id=game_config.game_id,
+        game_dir=game_dir,
+        state=args.state,
+        action_maps=action_maps,
+        reward_weights=fighting_reward_weights(FightingEnv),
+        frame_skip=TrainConfig.FRAME_SKIP,
+        frame_stack=TrainConfig.FRAME_STACK,
+        practice=bool(getattr(args, "practice", False)),
+        direct_ram=bool(game_config.ram_overrides),
+        monitor=monitor,
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Main training loop
 # ─────────────────────────────────────────────────────────────────────────────
 def train(args):
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     game_config = get_game_config(args.game)
     game_dir = resolve_game_dir(game_config.game_dir_name)
@@ -218,9 +262,10 @@ def train(args):
 
     # Create vectorized envs
     env_fns = [
-        _make_env_fn(game_config.game_id, args.state, game_dir, env_config, monitor_dir, i, practice=practice)
+        _make_env_fn(game_config.game_id, args.state, game_dir, env_config, monitor_dir, i, practice=practice, seed=args.seed)
         for i in range(args.n_envs)
     ]
+    contracts = _runtime_contracts(game_config, game_dir, args, monitor=True)
 
     if args.n_envs > 1:
         env = SubprocVecEnv(env_fns)
@@ -236,6 +281,7 @@ def train(args):
 
     if args.load and os.path.exists(args.load):
         print(f"Loading model from {args.load}")
+        load_policy_artifact(args.load, contracts)
         model = PPO.load(
             args.load,
             env=env,
@@ -261,6 +307,7 @@ def train(args):
             clip_range=TrainConfig.CLIP_RANGE,
             gae_lambda=TrainConfig.GAE_LAMBDA,
             gamma=TrainConfig.GAMMA,
+            seed=args.seed,
             tensorboard_log=str(log_dir),
         )
 
@@ -281,9 +328,18 @@ def train(args):
     print(f"\nTraining for {args.steps} steps...")
     model.learn(total_timesteps=args.steps, callback=callbacks)
 
-    final_path = str(model_dir / f"{model_prefix}_final.zip")
-    model.save(final_path)
+    final_path = model_dir / f"{model_prefix}_final.zip"
+    model.save(str(final_path))
+    artifact = write_policy_artifact(
+        final_path,
+        contracts,
+        algorithm="stable_baselines3.PPO",
+        hyperparameters=_ppo_hyperparameters(args),
+        training_seed=args.seed,
+        metadata={"game_alias": args.game, "practice": practice},
+    )
     print(f"\nTraining complete. Model saved to {final_path}")
+    print(f"Contract artifact: {artifact.identity_digest}")
 
     env.close()
 
@@ -313,6 +369,9 @@ def evaluate(args):
         actions=game_config.actions,
     )
 
+    contracts = _runtime_contracts(game_config, game_dir, args, monitor=True)
+    load_policy_artifact(args.load, contracts)
+
     env = make_fighting_env(
         game=game_config.game_id,
         state=args.state,
@@ -321,6 +380,8 @@ def evaluate(args):
         render_mode="rgb_array",
         frame_skip=TrainConfig.FRAME_SKIP,
         frame_stack=TrainConfig.FRAME_STACK,
+        monitor_dir=str(game_dir / "monitor_eval"),
+        practice=bool(getattr(args, "practice", False)),
     )
 
     model = PPO.load(args.load, device=device)
@@ -402,6 +463,7 @@ def main():
     parser.add_argument("--eval", action="store_true", help="Evaluate mode (render)")
     parser.add_argument("--create-state", action="store_true", help="Create fight state from menus")
     parser.add_argument("--practice", action="store_true", help="Practice mode: 2P with idle P2 (null bot)")
+    parser.add_argument("--seed", type=int, default=0, help="Training/evaluation seed")
 
     args = parser.parse_args()
 

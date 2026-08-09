@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
+from retro_harness.contracts import ContractBundle
+
 import stable_retro as retro
 
 
@@ -48,15 +50,28 @@ def write_state_bytes(path: str | Path, state_data: bytes) -> Path:
 
 @dataclass(frozen=True)
 class GameSpec:
-    """The small reusable identity/config object every game can start with."""
+    """Reusable game identity plus an optional full compatibility contract."""
 
     game: str
     game_dir: Path
     action_size: int = 12
     players: int | None = None
+    contract: ContractBundle | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "game_dir", Path(self.game_dir).resolve())
+        if self.contract is not None and not isinstance(self.contract, ContractBundle):
+            raise TypeError("GameSpec contract must be a ContractBundle or None")
+
+    @property
+    def contract_digest(self) -> str | None:
+        return self.contract.identity_digest if self.contract is not None else None
+
+    def require_compatible_contract(self, expected: ContractBundle) -> None:
+        """Fail closed when this environment lacks or disagrees with a model contract."""
+        if self.contract is None:
+            raise ValueError("GameSpec has no compatibility contract")
+        expected.assert_compatible(self.contract)
 
     @property
     def integrations(self) -> Path:

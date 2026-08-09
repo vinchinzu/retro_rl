@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "edge_id": "ship_to_morph",
+  "readiness": "NATURAL_ENTRY",
+  "source_report": "snes/super_metroid/recordings/start_to_morph_clean.json",
+  "source_report_sha256": "87eb36bfe8e3f6a981072ea7c415455bd6158e88699cedc31efe81ee8cc6043a",
+  "attempts": 1,
+  "successes": 1,
+  "note": "Clean vanilla-ROM predecessor run: power-on through natural Landing Site entry, then the reused vanilla pure suffix collects Morph Ball. This does not claim patched-randomizer coverage."
+}

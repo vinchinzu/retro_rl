@@ -10,3 +10,4 @@ import smb.platformer_levels  # noqa: F401 — game-owned SMB LevelConfigs
 import smb3.platformer_levels  # noqa: F401 — game-owned SMB3 LevelConfigs
 import SMW.platformer_levels  # noqa: F401 — game-owned SMW LevelConfigs
 import super_metroid.platformer_levels  # noqa: F401 — game-owned SM LevelConfigs
+import sm_rando.platformer_levels  # noqa: F401 — SM-rando entry-corpus consumer

@@ -8,8 +8,11 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 os.environ["SDL_SOFTWARE_RENDERER"] = "1"
 
 import stable_retro as retro
+import pytest
 from retro_harness import make_env
 from donkey_kong_country.autosplit import LevelStartDetector, read_level_timer_frames
+
+pytestmark = pytest.mark.rom
 
 # RAM offsets
 RAM_LEVEL_ID = 0x0076

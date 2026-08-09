@@ -29,6 +29,7 @@ from super_metroid.combat.actions import (
     action_vector,
     nearest_action_id,
 )
+from super_metroid.combat.audit import structured_combat_audit_info
 from super_metroid.combat.bomb_torizo import fight_bomb_torizo_action
 from super_metroid.combat.features import (
     FEATURE_DIM,
@@ -163,6 +164,7 @@ class BombTorizoFeatureEnv(gym.Env):
         info = {
             "features": feat.to_dict(),
             "state": self.state_spec if isinstance(self.state_spec, str) else str(self.state_spec),
+            **structured_combat_audit_info(self._assist.telemetry),
         }
         return self._last_obs.copy(), info
 
@@ -220,6 +222,7 @@ class BombTorizoFeatureEnv(gym.Env):
                     self._assist.telemetry.maximum_single_frame_damage
                 ),
             },
+            **structured_combat_audit_info(self._assist.telemetry),
         }
         return self._last_obs.copy(), reward, terminated, truncated, info
 

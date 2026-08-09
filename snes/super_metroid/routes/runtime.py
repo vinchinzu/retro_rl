@@ -183,12 +183,14 @@ class RouteSession:
         assist: AssistLike,
         graph: RoomProgressionGraph,
         room_timer: RoomTimer | None = None,
+        frame_observer: Callable[[SuperMetroidState], None] | None = None,
     ) -> None:
         self.env = env
         self.writer = writer
         self.assist = assist
         self.graph = graph
         self.room_timer = room_timer
+        self.frame_observer = frame_observer
         self.frame = 0
         self.info: dict[str, object] = {}
         self.state = parse_state(env.get_ram(), frame=0)  # type: ignore[attr-defined]
@@ -275,6 +277,8 @@ class RouteSession:
 
         self._track_inventory(previous, self.state)
         self._track_bomb_torizo(previous, self.state)
+        if self.frame_observer is not None:
+            self.frame_observer(self.state)
         return self.state
 
     def _track_inventory(

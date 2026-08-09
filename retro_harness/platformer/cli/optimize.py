@@ -223,6 +223,8 @@ def cmd_hillclimb_raw(args: argparse.Namespace) -> None:
     print(f"Level: {config.display_name}")
     if start_state:
         print(f"State override: {start_state}")
+    if args.entry_corpus:
+        print(f"Entry corpus (train split): {args.entry_corpus}")
     if window:
         print(f"Window: [{window[0]}:{window[1]}]")
     if prefer_trim or require_completion:
@@ -525,6 +527,8 @@ def cmd_neuro(args: argparse.Namespace) -> None:
         output_dir=output_dir,
         render=getattr(args, "render", False),
         render_scale=getattr(args, "scale", 3),
+        entry_corpus_path=(Path(args.entry_corpus) if args.entry_corpus else None),
+        obs_fn=config.neuro_observation_fn,
     )
 
     print(f"\nBest network: fitness={best.fitness:.1f}")
@@ -536,5 +540,3 @@ def cmd_neuro(args: argparse.Namespace) -> None:
     print(f"  neuro_best_buttons.json (button replay for watch/verify)")
 
     evaluator.close()
-
-

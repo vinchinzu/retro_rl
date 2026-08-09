@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from retro_harness.platformer.neuro.net import NeuralNet
+from retro_harness.contracts import ContractBundle, ContractMismatchError
 
 if TYPE_CHECKING:
     from retro_harness.platformer.evaluator import Evaluator
@@ -37,8 +38,20 @@ def net_to_dict(net: NeuralNet, *, generation: int = 0, fitness: float = 0.0,
     }
 
 
-def net_from_dict(data: dict) -> NeuralNet:
+def net_from_dict(
+    data: dict,
+    *,
+    expected_contracts: ContractBundle | None = None,
+) -> NeuralNet:
     """Load a NeuralNet from a checkpoint dict."""
+    if expected_contracts is not None:
+        stored_record = data.get("contracts")
+        if not isinstance(stored_record, dict):
+            raise ContractMismatchError(
+                "neuro checkpoint lacks required compatibility contracts"
+            )
+        stored = ContractBundle.from_record(stored_record)
+        expected_contracts.assert_compatible(stored)
     return NeuralNet(
         n_inputs=int(data["n_inputs"]),
         n_hidden=int(data["n_hidden"]),
@@ -71,6 +84,19 @@ def save_neuro_checkpoint(
         total_frames=best.result.total_frames if best.result else 0,
         max_progress=best.result.max_progress if best.result else 0,
     )
+    from retro_harness.platformer.contracts import build_platformer_contracts
+    from retro_harness.platformer.neuro.net import SMB_OUTPUT_BUTTONS
+
+    contracts = build_platformer_contracts(
+        evaluator.config,
+        n_inputs=best.net.n_inputs,
+        read_inputs_fn=read_inputs_fn,
+        output_buttons=SMB_OUTPUT_BUTTONS,
+    )
+    data["contracts"] = contracts.to_record()
+    data["contract_bundle_digest"] = contracts.identity_digest
+    if evaluator.entry_state_selection is not None:
+        data["entry_state_selection"] = dict(evaluator.entry_state_selection)
     net_path.write_text(json.dumps(data, indent=2))
 
     buttons, _ = evaluate_network(best.net, evaluator, max_frames, read_inputs_fn)

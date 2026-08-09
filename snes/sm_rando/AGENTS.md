@@ -20,6 +20,9 @@ SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.make_boot
 # flags: --no-record  --rebuild-boot  --max-frames N  --vanilla
 
 uv run pytest snes/sm_rando/tests -q
+SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_vertical_slice
+SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.harvest_entry_corpus
+SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.evaluate_entry_corpus
 uv run python -c "from sm_rando.seed import ensure_demo_seed; print(ensure_demo_seed().directory)"
 ```
 
@@ -34,6 +37,9 @@ uv run python -c "from sm_rando.seed import ensure_demo_seed; print(ensure_demo_
 - Until a real rando generator is wired, the integration ROM is **vanilla SM**.
 - First controllable frame is **Ceres elevator** (`0xDF45`), not Landing Site.
 - Logic graph edges are **planned** until pure skills bind them.
+- The vertical-slice runner uses the vanilla ROM substrate and writes an
+  audited manifest to `recordings/vertical_slice.run.json`; it is not patched-
+  randomizer evidence.
 - SMZ3 is harder; prove multi-seed patterns here first when possible.
 
 ## Immediate goal

@@ -28,6 +28,8 @@ from retro_harness.platformer.neuro.obs import (
     N_SMB_INPUTS,
     resolve_obs_fn,
 )
+from retro_harness.contracts import ContractMismatchError
+from retro_harness.platformer.contracts import build_platformer_contracts
 
 
 @dataclass
@@ -80,7 +82,7 @@ def evaluate_network(
     evaluator._ensure_env()
     env = evaluator._env
     assert env is not None and evaluator._cached_state is not None
-    env.em.set_state(evaluator._cached_state)
+    evaluator.restore_start_state()
     net.reset_state()
 
     config = evaluator.config
@@ -230,7 +232,7 @@ def collect_bc_dataset(
     evaluator._ensure_env()
     env = evaluator._env
     assert env is not None and evaluator._cached_state is not None
-    env.em.set_state(evaluator._cached_state)
+    evaluator.restore_start_state()
     action_size = int(env.action_space.shape[0])
 
     xs: list[np.ndarray] = []
@@ -328,7 +330,7 @@ def warm_start_from_seed(
     evaluator._ensure_env()
     env = evaluator._env
     assert env is not None and evaluator._cached_state is not None
-    env.em.set_state(evaluator._cached_state)
+    evaluator.restore_start_state()
     ram = env.get_ram()
     try:
         probe = read_inputs_fn(ram, prev_action=None)
@@ -372,6 +374,8 @@ def run_neuro_ga(
     use_recurrent: bool = False,
     seed_frames: Sequence[Sequence[int]] | None = None,
     bc_steps: int = 100,
+    entry_corpus_path: Path | None = None,
+    entry_corpus_root: Path | None = None,
     *,
     obs_fn: Callable | None = None,
 ) -> NeuroIndividual:
@@ -390,11 +394,25 @@ def run_neuro_ga(
         output_dir = config.runs_dir / "neuro"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    if entry_corpus_path is not None:
+        from retro_harness.entry_states import EntryStateCorpus
+        from retro_harness.repo import monorepo_root
+
+        corpus = EntryStateCorpus.load(entry_corpus_path)
+        selected = corpus.split(train_fraction=0.8, salt="sm-landing-v1").train
+        root = entry_corpus_root or monorepo_root()
+        evaluator.configure_entry_states(
+            [corpus.state_bytes(record, root=root) for record in selected],
+            corpus_digest=corpus.identity_digest,
+            split="train",
+            state_digests=[record.state_digest for record in selected],
+        )
+
     # Probe observation size from the chosen reader
     evaluator._ensure_env()
     env = evaluator._env
     assert env is not None and evaluator._cached_state is not None
-    env.em.set_state(evaluator._cached_state)
+    evaluator.restore_start_state()
     try:
         n_inputs = int(np.asarray(read_inputs_fn(env.get_ram())).shape[0])
     except Exception:
@@ -406,6 +424,17 @@ def run_neuro_ga(
         n_inputs = N_SMB_INPUTS
     n_outputs = len(SMB_OUTPUT_BUTTONS)
     hl = tuple(hidden_layers) if hidden_layers else (n_hidden,)
+    active_contracts = build_platformer_contracts(
+        config,
+        n_inputs=n_inputs,
+        read_inputs_fn=read_inputs_fn,
+        output_buttons=SMB_OUTPUT_BUTTONS,
+    )
+    if entry_corpus_path is not None:
+        if corpus.contract_bundle_digest != active_contracts.identity_digest:
+            raise ContractMismatchError(
+                "entry-state corpus contract does not match training environment"
+            )
 
     checkpoint_path = output_dir / "neuro_best.json"
     resumed_net = None
@@ -413,15 +442,23 @@ def run_neuro_ga(
     if checkpoint_path.exists():
         try:
             ckpt = json.loads(checkpoint_path.read_text())
-            if ckpt.get("n_inputs") == n_inputs and ckpt.get("n_outputs") == n_outputs:
-                resumed_net = net_from_dict(ckpt)
-                start_gen = ckpt.get("generation", 0)
-                if verbose:
-                    print(
-                        f"[NEURO] Resumed from checkpoint gen={start_gen} "
-                        f"fitness={ckpt.get('fitness', '?')} "
-                        f"progress={ckpt.get('max_progress', '?')}"
-                    )
+            if ckpt.get("n_inputs") != n_inputs or ckpt.get("n_outputs") != n_outputs:
+                raise ContractMismatchError(
+                    "neuro checkpoint tensor dimensions disagree with active contracts"
+                )
+            resumed_net = net_from_dict(
+                ckpt,
+                expected_contracts=active_contracts,
+            )
+            start_gen = ckpt.get("generation", 0)
+            if verbose:
+                print(
+                    f"[NEURO] Resumed from checkpoint gen={start_gen} "
+                    f"fitness={ckpt.get('fitness', '?')} "
+                    f"progress={ckpt.get('max_progress', '?')}"
+                )
+        except ContractMismatchError:
+            raise
         except Exception as e:
             if verbose:
                 print(f"[NEURO] Could not load checkpoint: {e}, starting fresh")
@@ -490,7 +527,7 @@ def run_neuro_ga(
         evaluator._ensure_env()
         env = evaluator._env
         assert env is not None
-        env.em.set_state(evaluator._cached_state)
+        evaluator.restore_start_state()
         frame = env.render()
         if frame is not None:
             w, h = frame.shape[1] * render_scale, frame.shape[0] * render_scale

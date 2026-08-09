@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "source_report": "snes/super_metroid/recordings/start_to_morph_clean.json",
+  "source_report_sha256": "87eb36bfe8e3f6a981072ea7c415455bd6158e88699cedc31efe81ee8cc6043a",
+  "real_edges": [
+    "landing_to_parlor_recovery",
+    "parlor_to_climb",
+    "climb_to_pit"
+  ],
+  "readiness": "NATURAL_ENTRY",
+  "attempts": 1,
+  "successes": 1,
+  "note": "The source is a tracked clean power-on-to-Morph report with ordered room-transition evidence. These three bindings reuse the exact vanilla controller functions that produced the continuous route. Patched-randomizer coverage remains open."
+}

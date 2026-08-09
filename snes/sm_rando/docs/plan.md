@@ -41,10 +41,55 @@ SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.make_boot
 Sessions write `recordings/play_*.mp4` + `play_*.json` (or spine manifests).
 Use those for demos, imitation, and multi-seed aggregation — not fixed tapes.
 
+The first solver composition proof is:
+
+```bash
+SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_vertical_slice
+```
+
+It naturally enters Landing Site, injects a retryable primary-edge failure,
+replans, then dispatches the real Landing → Parlor → Climb → Pit vanilla
+controllers. The fail-closed contract, audit, solver trace, and failed outcome
+are retained in `recordings/vertical_slice.run.json`; exact macro actions and
+the recovered failure are also retained as canonical trajectories.
+
+## Natural-entry corpus
+
+`recordings/landing_entry_corpus.json` indexes 64 unique states produced by the
+real Ceres→Landing predecessor. Raw state blobs stay in the package integration
+under `entry_corpus/landing_v1/`. The deterministic hash split is 58 train / 6
+held out; the platformer `neuro` entrypoint accepts `--entry-corpus` and loads
+only the train partition. The initial structured-policy measurement is 0/58
+train and 0/6 held out (gap 0.000), retained in
+`recordings/landing_entry_baseline.json`. This measures the actual unsettled-
+entry failure rather than treating the settled ship tape as generalized.
+
+The first behavior-cloning experiment learns the expert wait-to-handoff timing
+from the 58 train states, then dispatches the unchanged Landing room skill. It
+uses no held-out state for fitting and scores 58/58 train plus 6/6 eval on the
+real ROM, versus the fixed-tape baseline's 0/58 and 0/6. The checkpoint,
+PolicyArtifact, audited report, and six eval trajectories are retained under
+`models/` and `recordings/`. This is a **candidate-only** result: do not deploy
+or claim general robustness until it replicates on newly harvested predecessor
+trajectories.
+
+```bash
+uv run python -m sm_rando.scripts.run_landing_bc_experiment
+```
+
+```bash
+uv run python -m retro_harness.platformer.cli \
+  --level sm_rando_landing_entry neuro \
+  --entry-corpus snes/sm_rando/recordings/landing_entry_corpus.json
+```
+
 ## Reuse policy
 
 - Import from `super_metroid` and `retro_harness.adventure`.
 - Do not copy room policies into this tree.
+- The first binding, `ship_to_morph`, dispatches to
+  `super_metroid.routes.kpdr.early_spine:play_ship_to_morph`; its retained
+  vanilla natural-entry evidence is `recordings/ship_to_morph.evidence.json`.
 - Item logic format should stay compatible with the shared L4 solver epic
   (`rr-gbd`).
 

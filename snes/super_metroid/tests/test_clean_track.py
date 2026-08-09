@@ -91,13 +91,13 @@ def test_default_tip_artifact_paths_clean_isolated() -> None:
     assert c_video.name == "bombs_clean.mp4"
     assert c_report.name == "bombs_clean.json"
 
-    # Primary assisted default tip stems (Speed Booster K4.5).
+    # Primary assisted default tip stems (verified Wave Beam tip).
     tip_v, tip_r = default_artifact_paths()
-    assert tip_v.name == "speed.mp4"
-    assert tip_r.name == "speed.json"
+    assert tip_v.name == "wave.mp4"
+    assert tip_r.name == "wave.json"
     clean_v, clean_r = default_artifact_paths(clean=True)
-    assert clean_v.name == "speed_clean.mp4"
-    assert clean_r.name == "speed_clean.json"
+    assert clean_v.name == "wave_clean.mp4"
+    assert clean_r.name == "wave_clean.json"
 
 
 def test_default_tip_room_timing_clean_stem() -> None:

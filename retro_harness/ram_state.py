@@ -77,6 +77,10 @@ class RAMSchema:
         """Return the list of field names."""
         return list(self._addresses)
 
+    def to_dict(self) -> dict[str, tuple[int, str]]:
+        """Return the ordered address/type schema for contract identity."""
+        return dict(self._addresses)
+
     def read(self, ram: np.ndarray) -> dict[str, int]:
         """Read all fields from *ram* and return a name -> value dict."""
         return {
@@ -291,4 +295,3 @@ def candidates_increasing(deltas: list[RamDelta]) -> list[RamDelta]:
 def candidates_decreasing(deltas: list[RamDelta]) -> list[RamDelta]:
     """Filter deltas that decreased (useful for health probes)."""
     return [d for d in deltas if d.delta < 0]
-
