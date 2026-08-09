@@ -1,0 +1,369 @@
+{
+  "schema_version": 1,
+  "kind": "deepseek_microtask_corpus",
+  "corpus_id": "deepseek_microtask_corpus_v1",
+  "title": "DeepSeek OpenRouter pilot — deterministic 20-case microtask corpus",
+  "description": "Fixed candidate set of 20 small, independent, no-emulator microtasks drawn from safe shared-harness pure unit surfaces and documentation-only checks. Used by later baseline capture (rr-zmfh.3) and the 20-query DeepSeek pilot (rr-zmfh.4). This file alone does not claim any pilot pass.",
+  "model_target_hint": "openrouter/~deepseek/deepseek-v4-flash-latest",
+  "constraints": {
+    "case_count": 20,
+    "no_emulator": true,
+    "forbidden_owned_path_prefixes": [
+      "retro_harness/adventure/",
+      "roms/",
+      "nes/",
+      "snes/"
+    ],
+    "forbidden_owned_paths": [
+      "retro_harness/benchmark.py"
+    ],
+    "notes": [
+      "Exclude active solver paths (adventure, benchmark), game movement lanes, ROMs, external services, user data, and dirty artifact trees.",
+      "owned_paths are the exclusive writable ownership surface for conflict scheduling.",
+      "Acceptance commands are single-process local checks only."
+    ]
+  },
+  "cases": [
+    {
+      "id": "mt-01-actions",
+      "title": "Named controller action vectors",
+      "scope": "Preserve the pure retro_harness.actions named-button API (SNES/NES vectors, idle, multi-button) and its focused unit tests.",
+      "owned_paths": [
+        "retro_harness/actions.py",
+        "retro_harness/tests/test_actions.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_actions.py -q",
+      "expected_observable": "pytest exits 0; all tests in retro_harness/tests/test_actions.py pass",
+      "no_emulator": true,
+      "conflict_group": "harness-core-a",
+      "rubric": {
+        "pass": "Acceptance command exits 0 with zero failures/errors; owned_paths stay pure (no ROM/emulator imports introduced).",
+        "fail": "Non-zero exit, collection/import error, or owned_paths gain emulator/ROM/external-service dependencies."
+      }
+    },
+    {
+      "id": "mt-02-artifacts",
+      "title": "Clean-track artifact path helpers",
+      "scope": "Preserve clean_artifact_stem and recording_artifacts path composition without touching real recordings.",
+      "owned_paths": [
+        "retro_harness/artifacts.py",
+        "retro_harness/tests/test_artifacts.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_artifacts.py -q",
+      "expected_observable": "pytest exits 0; clean/dry-run stem composition assertions hold",
+      "no_emulator": true,
+      "conflict_group": "harness-core-a",
+      "rubric": {
+        "pass": "Acceptance command exits 0; helpers remain pure Path composition.",
+        "fail": "Non-zero exit or helpers write outside the provided directory argument."
+      }
+    },
+    {
+      "id": "mt-03-game-layout",
+      "title": "Standard game path layout helper",
+      "scope": "Preserve game_paths flat and nested workspace layout resolution using tmp_path-style pure tests.",
+      "owned_paths": [
+        "retro_harness/game_layout.py",
+        "retro_harness/tests/test_game_layout.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_game_layout.py -q",
+      "expected_observable": "pytest exits 0; flat and nested game_paths fixtures pass",
+      "no_emulator": true,
+      "conflict_group": "harness-core-a",
+      "rubric": {
+        "pass": "Acceptance command exits 0; layout resolution stays deterministic.",
+        "fail": "Non-zero exit or hard-coded absolute machine paths appear in owned_paths."
+      }
+    },
+    {
+      "id": "mt-04-repo",
+      "title": "Monorepo layout and import path helpers",
+      "scope": "Preserve monorepo_root, resolve_game_dir, and nested package root discovery without inventing super_metroid_rl paths.",
+      "owned_paths": [
+        "retro_harness/repo.py",
+        "retro_harness/tests/test_repo.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_repo.py -q",
+      "expected_observable": "pytest exits 0; harvest/hals_golf nested roots discovered; flat packages excluded",
+      "no_emulator": true,
+      "conflict_group": "harness-core-a",
+      "rubric": {
+        "pass": "Acceptance command exits 0; layout discovery remains filesystem-based.",
+        "fail": "Non-zero exit or stale hardcoded game slug maps reintroduced."
+      }
+    },
+    {
+      "id": "mt-05-path-overlay",
+      "title": "Route guide overlay projection math",
+      "scope": "Preserve pure OverlayTransform world-to-screen math and nearest waypoint helpers.",
+      "owned_paths": [
+        "retro_harness/path_overlay.py",
+        "retro_harness/tests/test_path_overlay.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_path_overlay.py -q",
+      "expected_observable": "pytest exits 0; camera/scale projection and nearest-index assertions hold",
+      "no_emulator": true,
+      "conflict_group": "harness-core-b",
+      "rubric": {
+        "pass": "Acceptance command exits 0; projection remains pure arithmetic.",
+        "fail": "Non-zero exit or GUI/emulator coupling added to path_overlay."
+      }
+    },
+    {
+      "id": "mt-06-splits",
+      "title": "Split tracker PB timing helpers",
+      "scope": "Preserve SplitTracker/SplitResult pure timing bookkeeping with tempfile-backed state only.",
+      "owned_paths": [
+        "retro_harness/splits.py",
+        "retro_harness/tests/test_splits.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_splits.py -q",
+      "expected_observable": "pytest exits 0; segment change and PB result assertions hold",
+      "no_emulator": true,
+      "conflict_group": "harness-core-b",
+      "rubric": {
+        "pass": "Acceptance command exits 0; tracker remains offline/unit-testable.",
+        "fail": "Non-zero exit or network/user-home dependencies introduced."
+      }
+    },
+    {
+      "id": "mt-07-hop-timer",
+      "title": "Generic hop timer engine",
+      "scope": "Preserve the pure HopTimer door/hop frame bookkeeping engine (no hop_timer_cli live runs).",
+      "owned_paths": [
+        "retro_harness/hop_timer.py",
+        "retro_harness/tests/test_hop_timer.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_hop_timer.py -q",
+      "expected_observable": "pytest exits 0; door-hop frame recording assertions hold",
+      "no_emulator": true,
+      "conflict_group": "harness-core-b",
+      "rubric": {
+        "pass": "Acceptance command exits 0; engine stays data-driven and pure.",
+        "fail": "Non-zero exit or live emulator CLI paths wired into hop_timer.py."
+      }
+    },
+    {
+      "id": "mt-08-controls",
+      "title": "SNES button label and controller mapping",
+      "scope": "Preserve SNES button name/index mapping and pure fake-joystick controller_action helpers.",
+      "owned_paths": [
+        "retro_harness/controls.py",
+        "retro_harness/tests/test_controls.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_controls.py -q",
+      "expected_observable": "pytest exits 0; button label parse and fake pad mapping tests pass",
+      "no_emulator": true,
+      "conflict_group": "harness-core-b",
+      "rubric": {
+        "pass": "Acceptance command exits 0; mapping remains deterministic.",
+        "fail": "Non-zero exit or real device/user-input requirements added."
+      }
+    },
+    {
+      "id": "mt-09-ram-state",
+      "title": "Typed RAM read and GameState helpers",
+      "scope": "Preserve pure RAM buffer readers, field schemas, and change detection without attaching a live env.",
+      "owned_paths": [
+        "retro_harness/ram_state.py",
+        "retro_harness/tests/test_ram_state.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_ram_state.py -q",
+      "expected_observable": "pytest exits 0; u8/u16/s8/s16 reads and diff detection pass on synthetic buffers",
+      "no_emulator": true,
+      "conflict_group": "harness-core-c",
+      "rubric": {
+        "pass": "Acceptance command exits 0; all reads use in-memory fixtures only.",
+        "fail": "Non-zero exit or live env/ROM attachment required to import ram_state."
+      }
+    },
+    {
+      "id": "mt-10-input-script",
+      "title": "Timed input script startup plans",
+      "scope": "Preserve FrameAction/StartupPlan pure sequencing helpers used by scripted completion.",
+      "owned_paths": [
+        "retro_harness/input_script.py",
+        "retro_harness/tests/test_input_script.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_input_script.py -q",
+      "expected_observable": "pytest exits 0; startup plan sequencing unit tests pass",
+      "no_emulator": true,
+      "conflict_group": "harness-core-c",
+      "rubric": {
+        "pass": "Acceptance command exits 0; script helpers remain pure sequences of actions.",
+        "fail": "Non-zero exit or env.step coupling forced at import time."
+      }
+    },
+    {
+      "id": "mt-11-cursor",
+      "title": "Point-and-click cursor helpers",
+      "scope": "Preserve pure cursor targeting helpers used by point-and-click UI automation tests.",
+      "owned_paths": [
+        "retro_harness/cursor.py",
+        "retro_harness/tests/test_cursor.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_cursor.py -q",
+      "expected_observable": "pytest exits 0; cursor helper unit tests pass",
+      "no_emulator": true,
+      "conflict_group": "harness-core-c",
+      "rubric": {
+        "pass": "Acceptance command exits 0; helpers stay coordinate-pure.",
+        "fail": "Non-zero exit or display/emulator requirements introduced."
+      }
+    },
+    {
+      "id": "mt-12-combat",
+      "title": "Beat-em-up combat pure helpers",
+      "scope": "Preserve nearest-enemy / threat selection combat helpers with synthetic actor fixtures only.",
+      "owned_paths": [
+        "retro_harness/combat.py",
+        "retro_harness/tests/test_combat.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_combat.py -q",
+      "expected_observable": "pytest exits 0; combat selection unit tests pass without a live game",
+      "no_emulator": true,
+      "conflict_group": "harness-core-c",
+      "rubric": {
+        "pass": "Acceptance command exits 0; combat math remains fixture-driven.",
+        "fail": "Non-zero exit or game ROM lane required for combat tests."
+      }
+    },
+    {
+      "id": "mt-13-bot-runner",
+      "title": "Behavior tree and stuck detector",
+      "scope": "Preserve pure BehaviorNode selector/sequence runners and stuck detector logic.",
+      "owned_paths": [
+        "retro_harness/bot_runner.py",
+        "retro_harness/tests/test_bot_runner.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_bot_runner.py -q",
+      "expected_observable": "pytest exits 0; selector/sequence/stuck unit tests pass",
+      "no_emulator": true,
+      "conflict_group": "harness-core-d",
+      "rubric": {
+        "pass": "Acceptance command exits 0; tree nodes remain pure callables over fixtures.",
+        "fail": "Non-zero exit or live play-session coupling required."
+      }
+    },
+    {
+      "id": "mt-14-task-recording",
+      "title": "Human task JSON recording helpers",
+      "scope": "Preserve pure task recording JSON schema/helpers without writing user home paths.",
+      "owned_paths": [
+        "retro_harness/task_recording.py",
+        "retro_harness/tests/test_task_recording.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_task_recording.py -q",
+      "expected_observable": "pytest exits 0; task recording unit tests pass",
+      "no_emulator": true,
+      "conflict_group": "harness-core-d",
+      "rubric": {
+        "pass": "Acceptance command exits 0; helpers use tmp paths only in tests.",
+        "fail": "Non-zero exit or hard-coded user data directories introduced."
+      }
+    },
+    {
+      "id": "mt-15-youtube-intro",
+      "title": "YouTube intro overlay helpers",
+      "scope": "Preserve pure youtube intro framing helpers (no network upload, no live capture).",
+      "owned_paths": [
+        "retro_harness/youtube_intro.py",
+        "retro_harness/tests/test_youtube_intro.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/tests/test_youtube_intro.py -q",
+      "expected_observable": "pytest exits 0; intro helper unit tests pass offline",
+      "no_emulator": true,
+      "conflict_group": "harness-core-d",
+      "rubric": {
+        "pass": "Acceptance command exits 0; no network calls required.",
+        "fail": "Non-zero exit or external API/upload dependency added."
+      }
+    },
+    {
+      "id": "mt-16-platformer-actions",
+      "title": "Platformer discrete action table",
+      "scope": "Preserve platformer action table encode/decode helpers (no level runner, no ROM).",
+      "owned_paths": [
+        "retro_harness/platformer/actions.py",
+        "retro_harness/platformer/tests/test_actions.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/platformer/tests/test_actions.py -q",
+      "expected_observable": "pytest exits 0; action table dimension and round-trip tests pass",
+      "no_emulator": true,
+      "conflict_group": "platformer-pure",
+      "rubric": {
+        "pass": "Acceptance command exits 0; action tables stay pure arrays.",
+        "fail": "Non-zero exit or level/ROM imports forced into actions.py."
+      }
+    },
+    {
+      "id": "mt-17-platformer-rle",
+      "title": "Platformer RLE action compression ops",
+      "scope": "Preserve pure RLE compress/expand/mutate/crossover helpers for platformer optimizers.",
+      "owned_paths": [
+        "retro_harness/platformer/rle_ops.py",
+        "retro_harness/platformer/tests/test_rle_ops.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/platformer/tests/test_rle_ops.py -q",
+      "expected_observable": "pytest exits 0; compress/expand and mutate/crossover unit tests pass",
+      "no_emulator": true,
+      "conflict_group": "platformer-pure",
+      "rubric": {
+        "pass": "Acceptance command exits 0; RLE ops remain pure list transforms.",
+        "fail": "Non-zero exit or emulator evaluation wired into rle_ops."
+      }
+    },
+    {
+      "id": "mt-18-platformer-progress",
+      "title": "Platformer progress trackers",
+      "scope": "Preserve monotonic/composite/waypoint progress trackers with dict fixtures only (no ROM).",
+      "owned_paths": [
+        "retro_harness/platformer/progress.py",
+        "retro_harness/platformer/tests/test_progress.py"
+      ],
+      "acceptance_command": "uv run pytest retro_harness/platformer/tests/test_progress.py -q",
+      "expected_observable": "pytest exits 0; progress tracker unit tests pass without a live level",
+      "no_emulator": true,
+      "conflict_group": "platformer-pure",
+      "rubric": {
+        "pass": "Acceptance command exits 0; trackers update from plain dict observations.",
+        "fail": "Non-zero exit or live env observation required."
+      }
+    },
+    {
+      "id": "mt-19-docs-game-matrix",
+      "title": "Generated game matrix documentation",
+      "scope": "Documentation-only: keep docs/GAME_MATRIX.md generated from docs/manifests/*.yaml with the required banner and sample slugs.",
+      "owned_paths": [
+        "docs/GAME_MATRIX.md",
+        "docs/generate_game_matrix.py",
+        "docs/manifests"
+      ],
+      "acceptance_command": "uv run pytest tests/test_docs.py::test_game_matrix_is_generated -q",
+      "expected_observable": "pytest exits 0; GAME_MATRIX.md contains generated banner and tmnt_iv/zelda_i/smb",
+      "no_emulator": true,
+      "conflict_group": "docs-only",
+      "rubric": {
+        "pass": "Acceptance command exits 0; matrix remains generated prose only (no product code changes required).",
+        "fail": "Non-zero exit, missing banner/slugs, or owned_paths expand into game solver trees."
+      }
+    },
+    {
+      "id": "mt-20-docs-route-research-policy",
+      "title": "Shared external route research policy prose",
+      "scope": "Documentation-only: preserve the shared offline route-research policy wording across FULL_RUN_PROCESS and BENCHMARK_SPEC.",
+      "owned_paths": [
+        "docs/FULL_RUN_PROCESS.md",
+        "docs/BENCHMARK_SPEC.md"
+      ],
+      "acceptance_command": "uv run pytest tests/test_docs.py::test_external_route_research_policy_is_shared -q",
+      "expected_observable": "pytest exits 0; required policy phrases present in both docs",
+      "no_emulator": true,
+      "conflict_group": "docs-only",
+      "rubric": {
+        "pass": "Acceptance command exits 0; policy phrases remain in both documentation surfaces.",
+        "fail": "Non-zero exit or policy language removed/contradicted without dual-doc update."
+      }
+    }
+  ]
+}
