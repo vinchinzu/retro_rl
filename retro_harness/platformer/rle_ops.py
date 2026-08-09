@@ -67,7 +67,12 @@ def expand_rle(runs: Sequence[RleRun[T]], *, as_list: bool = False) -> list[T]:
         if duration <= 0:
             continue
         item = _as_payload(payload, as_list=as_list)
-        out.extend([item] * int(duration))  # type: ignore[list-item]
+        n = int(duration)
+        # Per-frame copies so mutating one frame never aliases the whole run.
+        if as_list:
+            out.extend(list(item) for _ in range(n))  # type: ignore[list-item]
+        else:
+            out.extend([item] * n)  # type: ignore[list-item]
     return out
 
 

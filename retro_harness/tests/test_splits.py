@@ -102,6 +102,14 @@ class TestSplitTrackerPB:
             data = json.loads(pb.read_text())
             assert data["s1"] == 10.0
 
+    def test_best_time_accessor(self):
+        t = SplitTracker(session_id="test")
+        assert t.best_time("s1") is None
+        t.on_segment_change("s1")
+        t.on_segment_change("s2", elapsed_seconds=8.0)
+        assert t.best_time("s1") == 8.0
+        assert t.best_time("s2") is None
+
 
 class TestSplitTrackerLog:
     def test_split_logged(self):
@@ -165,3 +173,16 @@ class TestSplitTrackerHUD:
         t.on_segment_change("b", elapsed_seconds=None)
         lines = t.hud_lines()
         assert "--" in lines[0]
+
+    def test_hud_current_shows_pb(self):
+        with tempfile.TemporaryDirectory() as td:
+            pb_path = Path(td) / "pb.json"
+            t1 = SplitTracker(best_times_path=pb_path, session_id="t1")
+            t1.on_segment_change("s1")
+            t1.on_segment_change("s2", elapsed_seconds=4.0)
+            t1.on_segment_change("s3", elapsed_seconds=12.0)
+
+            t2 = SplitTracker(best_times_path=pb_path, session_id="t2")
+            t2.on_segment_change("s2", segment_name="Beta")
+            lines = t2.hud_lines()
+            assert "(PB: 12.0s)" in lines[0]

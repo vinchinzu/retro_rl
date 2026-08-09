@@ -74,6 +74,36 @@ def test_door_hop_records_frames() -> None:
     assert len(t.visits) == 1
 
 
+def test_door_hop_span_records_leave_meta_and_next_anchor() -> None:
+    t = _timer()
+    t.observe_frame(HopFrame(10, 7, "settled", context={"inv": 3}))
+    t.observe_frame(
+        HopFrame(12, 7, "transition", leave_meta={"leave_flag": 1})
+    )
+    # Later transition frames must not move leave_frame nor drop leave_meta.
+    t.observe_frame(
+        HopFrame(13, 7, "transition", leave_meta={"direction": "E"})
+    )
+    assert t._open is not None
+    assert t._open.leave_frame == 12
+    assert t._open.context["leave_flag"] == 1
+    assert t._open.context["direction"] == "E"
+    visit = t.observe_frame(HopFrame(30, 8, "settled"))
+    assert visit is not None
+    assert visit.loc == 7
+    assert visit.dest == 8
+    assert visit.entry == 10
+    assert visit.leave == 12
+    assert visit.exit == 30
+    assert visit.seq == 0
+    # Fresh open visit is anchored on the destination at the exit frame.
+    assert t._open is not None
+    assert t._open.location == 8
+    assert t._open.source == 7
+    assert t._open.entry_frame == 30
+    assert len(t.visits) == 1
+
+
 def test_settled_jump_is_discontinuity() -> None:
     t = _timer()
     t.observe_frame(HopFrame(0, 1, "settled"))

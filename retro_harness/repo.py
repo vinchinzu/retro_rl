@@ -57,6 +57,9 @@ def discover_nested_package_roots(*, root: Path | None = None) -> list[Path]:
 
     Layout signal: ``snes|nes/<slug>/<slug>/__init__.py`` (package nested under
     the game workspace). Empty when every game package sits at console root.
+
+    Flat packages (package == game dir, i.e. ``snes|nes/<slug>/__init__.py``)
+    are never nested roots: they import through the console root instead.
     """
     base = root if root is not None else monorepo_root()
     found: list[Path] = []
@@ -68,8 +71,11 @@ def discover_nested_package_roots(*, root: Path | None = None) -> list[Path]:
             if not game_dir.is_dir() or game_dir.name.startswith("."):
                 continue
             nested = game_dir / game_dir.name / "__init__.py"
-            if nested.is_file():
-                found.append(game_dir)
+            if not nested.is_file():
+                continue
+            if (game_dir / "__init__.py").is_file():
+                continue
+            found.append(game_dir)
     return found
 
 
