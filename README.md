@@ -25,6 +25,7 @@ Program docs:
 | [`docs/PROGRAM_STATUS.md`](docs/PROGRAM_STATUS.md) | Live flagship results and bottlenecks |
 | [`docs/GAME_MATRIX.md`](docs/GAME_MATRIX.md) | Generated game board |
 | [`docs/BENCHMARK_SPEC.md`](docs/BENCHMARK_SPEC.md) | Bronze/Silver/Gold, assists, seed-robustness |
+| [`docs/TEST_TIERS.md`](docs/TEST_TIERS.md) | Core, ML, game/offline, and opt-in ROM gates |
 
 ## Quick Start
 
@@ -232,15 +233,16 @@ See [`docs/BENCHMARK_SPEC.md`](./docs/BENCHMARK_SPEC.md).
 ## Testing
 
 ```bash
-uv run python -m pytest retro_harness/tests -q
-uv run python -m pytest retro_harness/platformer/tests -q
-uv run python -m pytest retro_harness/fighters/tests -q
-uv run pytest tests/test_docs.py -q
+# Always-on core: no ML extra and no ROM.
+uv run pytest
+
+# Optional ML and every game-owned offline suite.
+uv run pytest retro_harness/fighters/tests retro_harness/platformer/tests -m "not rom"
+RETRO_RL_TEST_TIER=game-no-rom uv run pytest snes nes -m "not rom and not ml"
 ```
 
-ROM-backed tests may skip or require local integration files. Running suites
-separately is recommended because several game workspaces contain same-named
-test modules.
+See [`docs/TEST_TIERS.md`](./docs/TEST_TIERS.md) for exact tier claims and the
+opt-in real-ROM smoke gate.
 
 Regenerate the game matrix after editing manifests:
 

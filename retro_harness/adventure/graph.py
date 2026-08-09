@@ -344,71 +344,24 @@ def inventory_aware_path(
     items, events, or defeated-boss flags and are never consumed.  Resource
     counts and game-specific stop predicates belong above this shared layer.
     """
-    graph_edges = tuple(edges)
-    for edge in graph_edges:
-        if not isfinite(edge.cost) or edge.cost < 0:
+    from retro_harness.adventure.planner import PlanRequest, PlanStatus, plan
+
+    try:
+        result = plan(
+            PlanRequest(
+                edges,
+                source_id,
+                target_id,
+                capabilities=capabilities,
+            )
+        )
+    except ValueError as exc:
+        if "finite, non-negative" in str(exc):
             raise ValueError(
                 "inventory-aware path requires finite, non-negative edge costs"
-            )
-
-    if source_id == target_id:
-        return ()
-
-    normalized = _normalize_graph_capabilities(capabilities)
-    outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
-    for edge in graph_edges:
-        outgoing[edge.source_id].append(edge)
-    for candidates in outgoing.values():
-        candidates.sort(key=_edge_order_key)
-
-    State = tuple[NodeId, frozenset[GraphCapability]]
-    PathKey = tuple[tuple[str, ...], ...]
-    initial_state: State = (source_id, normalized)
-    initial_rank: tuple[float, PathKey] = (0.0, ())
-    best: dict[State, tuple[float, PathKey]] = {initial_state: initial_rank}
-    parent: dict[State, tuple[State, GraphEdge]] = {}
-    sequence = count()
-    pending: list[tuple[float, PathKey, int, NodeId, frozenset[GraphCapability]]] = [
-        (0.0, (), next(sequence), source_id, normalized)
-    ]
-
-    while pending:
-        cost, path_key, _sequence, node_id, current_caps = heappop(pending)
-        state = (node_id, current_caps)
-        if best.get(state) != (cost, path_key):
-            continue
-        if node_id == target_id:
-            path: list[GraphEdge] = []
-            cursor = state
-            while cursor in parent:
-                previous, edge = parent[cursor]
-                path.append(edge)
-                cursor = previous
-            return tuple(reversed(path))
-
-        for edge in outgoing.get(node_id, ()):
-            if not _edge_requires(edge, current_caps):
-                continue
-            next_caps = current_caps | _edge_acquires(edge)
-            next_state: State = (edge.target_id, next_caps)
-            next_cost = cost + edge.cost
-            next_path_key = path_key + (_edge_order_key(edge),)
-            next_rank = (next_cost, next_path_key)
-            if next_state in best and next_rank >= best[next_state]:
-                continue
-            best[next_state] = next_rank
-            parent[next_state] = (state, edge)
-            heappush(
-                pending,
-                (
-                    next_cost,
-                    next_path_key,
-                    next(sequence),
-                    edge.target_id,
-                    next_caps,
-                ),
-            )
-    return None
+            ) from exc
+        raise
+    return result.path if result.status is PlanStatus.FOUND else None
 
 
 def _collect_node_checks(
@@ -597,6 +550,7 @@ class RouteGraph:
         self._outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
         self._by_pair: dict[tuple[NodeId, NodeId], list[GraphEdge]] = defaultdict(list)
         check_ids: set[str] = set()
+        edge_ids: set[str] = set()
         for check in self.checks:
             if check.check_id in check_ids:
                 raise ValueError(f"duplicate item check ID: {check.check_id!r}")
@@ -606,11 +560,14 @@ class RouteGraph:
                 )
             check_ids.add(check.check_id)
         for edge in self.edges:
+            if edge.edge_id in edge_ids:
+                raise ValueError(f"duplicate edge ID: {edge.edge_id!r}")
             if edge.source_id not in self.nodes:
                 raise ValueError(f"edge source {edge.source_id!r} is not a node")
             if edge.target_id not in self.nodes:
                 raise ValueError(f"edge target {edge.target_id!r} is not a node")
             pair = (edge.source_id, edge.target_id)
+            edge_ids.add(edge.edge_id)
             self._by_pair[pair].append(edge)
             self._outgoing[edge.source_id].append(edge)
 
@@ -667,6 +624,40 @@ class RouteGraph:
             source_id,
             target_id,
             capabilities=capabilities,
+        )
+
+    def bounded_plan(
+        self,
+        source_id: NodeId,
+        target_id: NodeId,
+        placements: SeedPlacement
+        | Mapping[str, CapabilityValue]
+        | Iterable[SeedPlacement]
+        | Iterable[tuple[str, CapabilityValue]]
+        | None = None,
+        *,
+        capabilities: Iterable[GraphCapability] = frozenset(),
+        collected_checks: Iterable[str] = frozenset(),
+        max_expansions: int = 500,
+    ):
+        """Return the bounded explainable planner result for this graph."""
+        from retro_harness.adventure.planner import (
+            PlanBudget,
+            PlanRequest,
+            plan,
+        )
+
+        return plan(
+            PlanRequest(
+                self.edges,
+                source_id,
+                target_id,
+                checks=self.checks,
+                placements=placements,
+                capabilities=capabilities,
+                collected_checks=collected_checks,
+                budget=PlanBudget(max_expansions),
+            )
         )
 
     def progression_plan(

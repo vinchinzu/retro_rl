@@ -39,3 +39,20 @@ except ModuleNotFoundError:
 from retro_harness.repo import ensure_import_paths  # noqa: E402
 
 ensure_import_paths(root=_ROOT)
+
+
+def pytest_collection_modifyitems(items):
+    """Attach ownership markers from stable repository boundaries.
+
+    Game suites are intentionally discovered only by the explicit game tier,
+    while this marker makes omissions and CI reporting visible.
+    """
+    import pytest
+
+    for item in items:
+        try:
+            relative = Path(str(item.path)).resolve().relative_to(_ROOT)
+        except (OSError, ValueError):
+            continue
+        if relative.parts and relative.parts[0] in {"nes", "snes"}:
+            item.add_marker(pytest.mark.game)

@@ -19,6 +19,9 @@ from retro_harness.repo import monorepo_root, resolve_game_dir
 ROOT_DIR = monorepo_root()
 
 import numpy as np
+import pytest
+
+pytestmark = [pytest.mark.ml, pytest.mark.rom]
 
 
 class TestPPOSmoke(unittest.TestCase):

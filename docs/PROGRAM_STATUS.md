@@ -34,8 +34,9 @@ clears exist today; seed-robust S/T claims do not yet.
 1. **Solver stack (flagship)** — L4 logic-graph solver + seed-robustness harness;
    ground on **sm_rando / alttp_rando** then SMZ3
    ([SOLVER_ARCHITECTURE.md](SOLVER_ARCHITECTURE.md))
-2. **sm_rando / alttp_rando** (M0) — single-game rando scaffolds; play spine live;
-   next M1 seed ROM boot + skill-bound edges
+2. **sm_rando / alttp_rando** — SM-rando M1 now has a real three-edge
+   SolverSession slice, EntryStateCorpus, and held-out BC candidate;
+   shuffled-seed S/T remains open. ALTTP-rando remains at its boot/graph rung.
 3. **Super Metroid** (M5) — Varia tip green; pure reverse + continuous K4 toward ending
 4. **ALTTP / Zelda 3** (M1) — open beyond title→castle; dungeon/item capability edges
 5. **SMZ3** (M2→M3) — longer one-bot segments; multi-seed after single-game patterns
@@ -102,8 +103,8 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 
 | Track | Current gate | Blocker |
 |-------|--------------|---------|
-| **Solver (L4/L3)** | Architecture documented; code scaffold open | Item-logic solver + seed-robust harness not built |
-| **Single-game rando** | sm_rando / alttp_rando M0 | Seed ROM integration; skill-bound edges; S/T early tips |
+| **Solver (L4/L3)** | Bounded planner + bindings + SolverSession have one real SM-rando consumer | Second game consumer; online discovery; seed-robust campaign |
+| **Single-game rando** | SM-rando M1 vertical slice + held-out BC candidate; ALTTP-rando M1 | Seed ROM integration and S/T early tips |
 | Linear combat | Final Fight M3→M4 | Natural-entry and Stage 3 continuity |
 | Platforming | Magical Quest / Joe & Mac M2→M3 | First room/segment clears |
 | Graph navigation | Super Metroid M5→M6; ALTTP M1; Zelda I M5 | SM: post-Varia pure/K4; ALTTP: beyond opening; Zelda: Level 2 |
