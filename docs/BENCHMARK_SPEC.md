@@ -72,6 +72,42 @@ Loading a save state or mutating emulator memory during an active attempt
 invalidates a Clean attempt. Disclosed assists require a game-local
 `docs/ASSIST_CONTRACT.md` and counted interventions in the manifest.
 
+## Typed evaluation contract
+
+The shared `retro_harness.benchmark` module represents these labels as typed
+`RuntimeObservationClass` and `InterventionClass` values. A published claim
+also binds a `StartIdentity` and `PolicyIdentity`; each identity carries a
+stable (SHA-256 by default) digest. `EvaluationContract` combines the labels, identities, goal,
+and (for assisted classes) both `assist_contract_path` and
+`assist_contract_digest`. A case's intervention, assist-contract fields, and
+`assist_mode` are bound to its `BenchmarkCase.contract` and cannot be replaced
+by an explicit run contract.
+
+`PolicyIdentity.name` is a display label, not the identity of an executed
+policy. `policy_identity_for(policy)` (also available as
+`PolicyIdentity.from_policy`) derives the digest from the implementation's
+module and qualified name plus an inspectable source digest. When source is
+unavailable it uses a marshalled bytecode digest; if neither source nor
+bytecode is inspectable, it deterministically falls back to the module and
+qualified name. This fallback avoids object representations and memory
+addresses, so legacy policies remain usable. An explicit contract policy
+identity must carry the digest produced for the policy implementation that is
+actually executed.
+
+An `AttemptAudit` records observed `ram_writes`, `mid_run_loads`, and counted
+`assists`, alongside the identity digests. `validate_claim(contract, audit)`
+returns true only for a matching audit. It rejects missing or mismatched
+identity digests, rejects all three intervention types for Clean, and fails
+closed on invalid class strings. Assisted contracts cannot be constructed
+without both assist-contract fields. Attempt and seed records expose these
+fields directly as `runtime_observation_class`, `intervention_class`,
+`start_identity_digest`, and `policy_identity_digest`, with the full audit
+under `attempt_audit`.
+
+The old `BenchmarkTier` enum remains only as a deprecated adapter to
+`RuntimeObservationClass`; new contracts should use the typed classes and
+should not publish a bare tier label.
+
 ## Scriptably beatable
 
 A game is scriptably beatable when the repository contains a policy that:
@@ -150,10 +186,15 @@ oracle and labels it separately from the runtime solver.
 The shared [`retro_harness.benchmark` seed-report API](../retro_harness/benchmark.py)
 provides a deterministic dry-run adapter for existing `BenchmarkCase` policies.
 `SeedRobustnessConfig` publishes the generator, generator version, logic, goal,
-ordered unique seed IDs (**T**), frame budget, success threshold (**S**), and
-the runtime/intervention labels. `run_seed_robustness` calls a seed-to-case
-factory once per published seed, resets the policy for each case, and never
-samples, shuffles, or replaces the seed list.
+ordered unique seed IDs (**T**), frame budget, success threshold (**S**), the
+runtime/intervention labels, and contract-level identity digests.
+When config-level start or policy identities are omitted, the report uses an
+explicit per-seed identity scope and validates each seed's typed contract. An
+explicit config identity or contract uses shared scope and must match every
+per-seed result; the serialized scope fields make that distinction auditable.
+`run_seed_robustness` calls a seed-to-case factory once per published seed,
+resets the policy for each case, and never samples, shuffles, or replaces the
+seed list.
 
 Every seed case's `BenchmarkCase.max_steps` must equal the published frame
 budget. Every per-seed `frames` result must be at most that budget; both direct
@@ -190,6 +231,11 @@ rejected before writing. Its schema is:
     "success_threshold": 2,
     "runtime_observation_class": "Silver",
     "intervention_class": "Clean",
+    "start_identity_digest": "sha256-start-set-digest",
+    "policy_identity_digest": "sha256-policy-digest",
+    "assist_contract_path": null,
+    "assist_contract_digest": null,
+    "assist_mode": null,
     "metadata": {}
   },
   "summary": {
@@ -207,7 +253,23 @@ rejected before writing. Its schema is:
       "frames": 8120,
       "terminal_milestone": "ending",
       "failure_mode": null,
-      "assists": {}
+      "assists": {},
+      "runtime_observation_class": "Silver",
+      "intervention_class": "Clean",
+      "start_identity_digest": "sha256-start-digest",
+      "policy_identity_digest": "sha256-policy-digest",
+      "assist_mode": null,
+      "ram_writes": 0,
+      "mid_run_loads": 0,
+      "attempt_audit": {
+        "ram_writes": 0,
+        "mid_run_loads": 0,
+        "assists": {},
+        "runtime_observation_class": "Silver",
+        "intervention_class": "Clean",
+        "start_identity_digest": "sha256-start-digest",
+        "policy_identity_digest": "sha256-policy-digest"
+      }
     }
   ]
 }

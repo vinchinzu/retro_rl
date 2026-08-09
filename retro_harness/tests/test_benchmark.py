@@ -8,15 +8,24 @@ import numpy as np
 import pytest
 
 from retro_harness.benchmark import (
+    AttemptAudit,
     BenchmarkCase,
     BenchmarkTier,
+    ClaimValidationError,
+    EvaluationContract,
+    InterventionClass,
     IdlePolicy,
+    PolicyIdentity,
+    policy_identity_for,
     RandomPolicy,
+    RuntimeObservationClass,
     SeedAttemptResult,
     SeedRobustnessConfig,
     SeedRobustnessReport,
+    StartIdentity,
     run_benchmark,
     run_seed_robustness,
+    validate_claim,
     write_seed_robustness_report,
     zero_action_for_env,
 )
@@ -95,6 +104,26 @@ class CountingPolicy:
         return zero_action_for_env(env)
 
 
+class ClaimedPolicyA:
+    name = "claimed"
+
+    def reset(self, env, case):
+        return None
+
+    def act(self, obs, info, env, case):
+        return zero_action_for_env(env)
+
+
+class ClaimedPolicyB:
+    name = "claimed"
+
+    def reset(self, env, case):
+        return None
+
+    def act(self, obs, info, env, case):
+        return zero_action_for_env(env)
+
+
 def _success(info, terminated, truncated):
     return info.get("count", 0) >= 2
 
@@ -158,6 +187,278 @@ def test_run_benchmark_success_records_attempts():
     assert result.success_rate == 1.0
     assert policy.reset_calls == 2
     assert policy.act_calls == 4
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("benchmark_id", "foreign-benchmark", "benchmark ID"),
+        ("objective", "foreign objective", "objective"),
+        ("runtime_observation_class", RuntimeObservationClass.GOLD, "observation class"),
+        ("start_identity", StartIdentity("foreign-start"), "start identity"),
+    ],
+)
+def test_run_benchmark_rejects_contract_foreign_to_case(field, value, message):
+    case = BenchmarkCase(
+        benchmark_id="case-id",
+        display_name="Case",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=lambda: FakeEnv(success_after=1),
+        is_success=_success,
+    )
+    contract_values = {
+        "runtime_observation_class": RuntimeObservationClass.BRONZE,
+        "intervention_class": InterventionClass.CLEAN,
+        "start_identity": StartIdentity(case.start_state),
+        "policy_identity": PolicyIdentity("idle"),
+        "benchmark_id": case.benchmark_id,
+        "objective": case.objective,
+    }
+    contract_values[field] = value
+    foreign_contract = EvaluationContract(**contract_values)
+
+    with pytest.raises(ValueError, match=message):
+        run_benchmark(case, IdlePolicy(), contract=foreign_contract)
+
+
+def test_run_benchmark_rejects_foreign_policy_identity_before_execution():
+    build_calls = 0
+
+    def build_env():
+        nonlocal build_calls
+        build_calls += 1
+        return FakeEnv(success_after=1)
+
+    case = BenchmarkCase(
+        benchmark_id="case-id",
+        display_name="Case",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=build_env,
+        is_success=_success,
+    )
+    foreign_contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.CLEAN,
+        start_identity=StartIdentity(case.start_state),
+        policy_identity=PolicyIdentity("foreign-policy"),
+        benchmark_id=case.benchmark_id,
+        objective=case.objective,
+    )
+
+    with pytest.raises(ClaimValidationError, match="policy identity"):
+        run_benchmark(case, IdlePolicy(), contract=foreign_contract)
+
+    assert build_calls == 0
+
+
+def test_run_benchmark_rejects_resource_contract_for_clean_case():
+    policy = IdlePolicy()
+    case = BenchmarkCase(
+        benchmark_id="clean-case",
+        display_name="Clean case",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=lambda: FakeEnv(success_after=1),
+        is_success=_success,
+    )
+    resource_contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.RESOURCE_ASSISTED,
+        start_identity=StartIdentity(case.start_state),
+        policy_identity=policy_identity_for(policy),
+        benchmark_id=case.benchmark_id,
+        objective=case.objective,
+        assist_contract_path="docs/ASSIST_CONTRACT.md",
+        assist_contract_digest="fixture-assist-digest",
+    )
+
+    with pytest.raises(ValueError, match="intervention class"):
+        run_benchmark(case, policy, contract=resource_contract)
+
+
+def test_case_contract_binds_assist_mode():
+    policy = IdlePolicy()
+    case = BenchmarkCase(
+        benchmark_id="assist-mode-case",
+        display_name="Assist mode case",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=lambda: FakeEnv(success_after=1),
+        is_success=lambda info, terminated, truncated: info.get("count", 0) >= 1,
+        contract=EvaluationContract(
+            runtime_observation_class=RuntimeObservationClass.BRONZE,
+            intervention_class=InterventionClass.RESOURCE_ASSISTED,
+            start_identity=StartIdentity("Start"),
+            policy_identity=PolicyIdentity("unbound-policy"),
+            benchmark_id="assist-mode-case",
+            objective="Reach count 1",
+            assist_contract_path="docs/ASSIST_CONTRACT.md",
+            assist_contract_digest="fixture-assist-digest",
+            assist_mode="resources",
+        ),
+    )
+    contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.RESOURCE_ASSISTED,
+        start_identity=StartIdentity(case.start_state),
+        policy_identity=policy_identity_for(policy),
+        benchmark_id=case.benchmark_id,
+        objective=case.objective,
+        assist_contract_path="docs/ASSIST_CONTRACT.md",
+        assist_contract_digest="fixture-assist-digest",
+        assist_mode="ammo",
+    )
+
+    with pytest.raises(ValueError, match="assist_mode"):
+        run_benchmark(case, policy, contract=contract)
+
+
+def test_two_distinct_policy_classes_cannot_share_one_contract_identity():
+    policy_a = ClaimedPolicyA()
+    policy_b = ClaimedPolicyB()
+    identity_a = policy_identity_for(policy_a)
+    identity_b = policy_identity_for(policy_b)
+    assert identity_a.identity_digest != identity_b.identity_digest
+
+    case = BenchmarkCase(
+        benchmark_id="policy-identity",
+        display_name="Policy identity",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=lambda: FakeEnv(success_after=1),
+        is_success=lambda info, terminated, truncated: info.get("count", 0) >= 1,
+    )
+    contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.CLEAN,
+        start_identity=StartIdentity(case.start_state),
+        policy_identity=identity_a,
+        benchmark_id=case.benchmark_id,
+        objective=case.objective,
+    )
+
+    with pytest.raises(ClaimValidationError, match="policy identity"):
+        run_benchmark(
+            case,
+            policy_a,
+            contract=contract.with_policy(PolicyIdentity("claimed")),
+        )
+    result = run_benchmark(case, policy_a, contract=contract)
+    assert result.successes == 1
+    assert validate_claim(result.attempts[0].to_record(case, result.policy_name)) is True
+    with pytest.raises(ClaimValidationError, match="policy identity"):
+        run_benchmark(case, policy_b, contract=contract)
+
+
+def test_policy_identity_uses_deterministic_bytecode_fallback_without_source():
+    namespace = {}
+    exec(
+        compile(
+            "def reset(self, env, case):\n    return None\n"
+            "def act(self, obs, info, env, case):\n    return 0\n",
+            "<legacy-policy>",
+            "exec",
+        ),
+        namespace,
+    )
+    legacy_type = type(
+        "LegacyPolicy",
+        (),
+        {
+            "__module__": "legacy_fixture",
+            "name": "legacy",
+            "reset": namespace["reset"],
+            "act": namespace["act"],
+        },
+    )
+    policy = legacy_type()
+
+    first = policy_identity_for(policy)
+    second = policy_identity_for(legacy_type())
+    assert first == second
+    assert first.metadata["fingerprint_kind"] == "bytecode"
+
+    case = BenchmarkCase(
+        benchmark_id="legacy-policy",
+        display_name="Legacy policy",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=lambda: FakeEnv(success_after=1),
+        is_success=lambda info, terminated, truncated: info.get("count", 0) >= 1,
+    )
+    contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.CLEAN,
+        start_identity=StartIdentity(case.start_state),
+        policy_identity=first,
+        benchmark_id=case.benchmark_id,
+        objective=case.objective,
+    )
+    assert run_benchmark(case, policy, contract=contract).successes == 1
+
+
+def test_dynamic_same_module_same_qualname_opaque_classes_are_unverifiable():
+    def make_opaque_policy():
+        return type(
+            "OpaquePolicy",
+            (),
+            {
+                "__module__": "opaque_fixture",
+                "__qualname__": "OpaquePolicy",
+                "__call__": staticmethod(print),
+            },
+        )()
+
+    policy_a = make_opaque_policy()
+    policy_b = make_opaque_policy()
+    identity_a = policy_identity_for(policy_a)
+    identity_b = policy_identity_for(policy_b)
+    assert identity_a == identity_b
+    assert identity_a.metadata["fingerprint_kind"] == "module-qualified-name"
+
+    case = BenchmarkCase(
+        benchmark_id="opaque-policy-identity",
+        display_name="Opaque policy identity",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.BRONZE,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=lambda: FakeEnv(success_after=1),
+        is_success=lambda info, terminated, truncated: info.get("count", 0) >= 1,
+    )
+    assert run_benchmark(case, policy_a).successes == 1
+    for policy, identity in ((policy_a, identity_a), (policy_b, identity_b)):
+        contract = EvaluationContract(
+            runtime_observation_class=RuntimeObservationClass.BRONZE,
+            intervention_class=InterventionClass.CLEAN,
+            start_identity=StartIdentity(case.start_state),
+            policy_identity=identity,
+            benchmark_id=case.benchmark_id,
+            objective=case.objective,
+        )
+        with pytest.raises(ClaimValidationError, match="unverifiable"):
+            run_benchmark(case, policy, contract=contract)
 
 
 def test_run_benchmark_timeout_sets_failure_reason():
@@ -233,7 +534,9 @@ def test_run_seed_robustness_writes_deterministic_st_fixture_report():
         budget=3,
         success_threshold=2,
         runtime_observation_class="Bronze",
-        intervention_class="Clean",
+        intervention_class=InterventionClass.RESOURCE_ASSISTED,
+        assist_contract_path="fixtures/assist-contract.md",
+        assist_contract_digest="fixture-assist-digest",
     )
     outcomes = {
         "alpha": (2, {"terminal_milestone": "house_chest", "assists": {"missile": 1}}),
@@ -266,6 +569,16 @@ def test_run_seed_robustness_writes_deterministic_st_fixture_report():
             ),
             is_success=lambda info, terminated, truncated: success_after is not None
             and _success(info, terminated, truncated),
+            contract=EvaluationContract(
+                runtime_observation_class=RuntimeObservationClass.BRONZE,
+                intervention_class=config.intervention_class,
+                start_identity=StartIdentity(f"power_on_{seed}"),
+                policy_identity=PolicyIdentity("unbound-policy"),
+                benchmark_id=f"fixture_{seed}",
+                objective=config.goal,
+                assist_contract_path=config.assist_contract_path,
+                assist_contract_digest=config.assist_contract_digest,
+            ),
         )
 
     with tempfile.TemporaryDirectory() as td:
@@ -300,6 +613,12 @@ def test_run_seed_robustness_writes_deterministic_st_fixture_report():
     assert record["seed_results"][1]["outcome"] == "failure"
     assert record["seed_results"][1]["failure_mode"] == "stalled"
     assert record["seed_results"][1]["terminal_milestone"] == "red_door"
+    assert validate_claim(record) is True
+    for seed_record in record["seed_results"]:
+        assert seed_record["runtime_observation_class"] == "Bronze"
+        assert seed_record["intervention_class"] == "Resource-assisted"
+        assert seed_record["start_identity_digest"]
+        assert seed_record["policy_identity_digest"]
 
 
 @pytest.mark.parametrize("case_steps", [2, 4])
@@ -334,6 +653,111 @@ def test_seed_robustness_report_rejects_over_budget_frames():
 
     with pytest.raises(ValueError, match="exceed the published frame budget"):
         SeedRobustnessReport(config, "idle", results)
+
+
+@pytest.mark.parametrize(
+    ("identity_field", "foreign_identity", "message"),
+    [
+        ("start_identity", StartIdentity("foreign-start"), "start identity"),
+        ("policy_identity", PolicyIdentity("foreign-policy"), "policy identity"),
+    ],
+)
+def test_seed_report_rejects_shared_config_identity_contradiction(
+    identity_field,
+    foreign_identity,
+    message,
+):
+    config = _seed_config(
+        start_identity=StartIdentity("published-start"),
+        policy_identity=PolicyIdentity("published-policy"),
+    )
+    results = []
+    for seed in config.seeds:
+        start_identity_digest = config.start_identity.identity_digest
+        policy_identity_digest = config.policy_identity.identity_digest
+        if identity_field == "start_identity":
+            start_identity_digest = foreign_identity.identity_digest
+        else:
+            policy_identity_digest = foreign_identity.identity_digest
+        results.append(
+            SeedAttemptResult(
+                seed=seed,
+                success=False,
+                frames=0,
+                runtime_observation_class=config.runtime_observation_class,
+                intervention_class=config.intervention_class,
+                start_identity_digest=start_identity_digest,
+                policy_identity_digest=policy_identity_digest,
+            )
+        )
+
+    with pytest.raises(ValueError, match=message):
+        SeedRobustnessReport(config, "published-policy", tuple(results))
+
+
+def test_validate_claim_rejects_config_contract_identity_contradiction():
+    shared_contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.CLEAN,
+        start_identity=StartIdentity("published-start"),
+        policy_identity=PolicyIdentity("published-policy"),
+        benchmark_id="seed-set",
+        objective="reach house chest",
+    )
+    config = _seed_config(contract=shared_contract)
+    results = tuple(
+        SeedAttemptResult(
+            seed=seed,
+            success=False,
+            frames=0,
+            runtime_observation_class=config.runtime_observation_class,
+            intervention_class=config.intervention_class,
+            contract=shared_contract,
+        )
+        for seed in config.seeds
+    )
+    record = SeedRobustnessReport(config, "published-policy", results).to_record()
+    record["config"]["contract"]["policy_identity_digest"] = PolicyIdentity(
+        "foreign-policy"
+    ).identity_digest
+
+    with pytest.raises(ClaimValidationError, match="policy_identity"):
+        validate_claim(record)
+
+
+def test_validate_claim_rejects_nested_config_contract_assist_mode_tampering():
+    shared_contract = EvaluationContract(
+        runtime_observation_class=RuntimeObservationClass.BRONZE,
+        intervention_class=InterventionClass.RESOURCE_ASSISTED,
+        start_identity=StartIdentity("published-start"),
+        policy_identity=PolicyIdentity("published-policy"),
+        benchmark_id="seed-set",
+        objective="reach house chest",
+        assist_contract_path="docs/ASSIST_CONTRACT.md",
+        assist_contract_digest="fixture-assist-digest",
+        assist_mode="resources",
+    )
+    config = _seed_config(
+        contract=shared_contract,
+        intervention_class=InterventionClass.RESOURCE_ASSISTED,
+    )
+    results = tuple(
+        SeedAttemptResult(
+            seed=seed,
+            success=False,
+            frames=0,
+            runtime_observation_class=config.runtime_observation_class,
+            intervention_class=config.intervention_class,
+            contract=shared_contract,
+        )
+        for seed in config.seeds
+    )
+    record = SeedRobustnessReport(config, "published-policy", results).to_record()
+    assert record["config"]["assist_mode"] == "resources"
+    record["config"]["contract"]["assist_mode"] = "tampered"
+
+    with pytest.raises(ClaimValidationError, match="assist_mode"):
+        validate_claim(record)
 
 
 def test_run_seed_robustness_rejects_over_budget_extracted_frames():
@@ -385,3 +809,129 @@ def test_write_seed_robustness_report_rejects_non_json_metadata(tmp_path, metada
 
     with pytest.raises(TypeError, match="JSON"):
         write_seed_robustness_report(tmp_path / "seed_report.json", report)
+
+
+def _contract(
+    *,
+    observation=RuntimeObservationClass.GOLD,
+    intervention=InterventionClass.CLEAN,
+    **kwargs,
+):
+    return EvaluationContract(
+        runtime_observation_class=observation,
+        intervention_class=intervention,
+        start_identity=StartIdentity("power_on"),
+        policy_identity=PolicyIdentity("fixture-policy"),
+        **kwargs,
+    )
+
+
+def test_typed_contract_and_audit_validate_and_emit_identity_digests():
+    contract = _contract()
+    audit = AttemptAudit(
+        start_identity_digest=contract.start_identity.identity_digest,
+        policy_identity_digest=contract.policy_identity.identity_digest,
+    )
+
+    assert validate_claim(contract, audit) is True
+    record = contract.to_record()
+    assert record["runtime_observation_class"] == "Gold"
+    assert record["intervention_class"] == "Clean"
+    assert record["start_identity_digest"] == contract.start_identity.identity_digest
+    assert record["policy_identity_digest"] == contract.policy_identity.identity_digest
+
+
+def test_serialized_attempt_record_can_be_validated():
+    contract = _contract()
+    audit = AttemptAudit(
+        start_identity_digest=contract.start_identity.identity_digest,
+        policy_identity_digest=contract.policy_identity.identity_digest,
+    )
+    record = {
+        "contract": contract.to_record(),
+        "attempt_audit": audit.to_record(),
+    }
+
+    assert validate_claim(record) is True
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("ram_writes", 1, "RAM writes"),
+        ("mid_run_loads", 1, "mid-run loads"),
+        ("assists", {"health": 1}, "assists"),
+    ],
+)
+def test_clean_claim_rejects_interventions(field, value, message):
+    contract = _contract()
+    audit = AttemptAudit(
+        start_identity_digest=contract.start_identity.identity_digest,
+        policy_identity_digest=contract.policy_identity.identity_digest,
+        **{field: value},
+    )
+
+    with pytest.raises(ClaimValidationError, match=message):
+        validate_claim(contract, audit)
+
+
+def test_assisted_contract_requires_path_and_digest():
+    with pytest.raises(ValueError, match="both assist_contract_path"):
+        _contract(intervention=InterventionClass.RESOURCE_ASSISTED)
+
+    contract = _contract(
+        intervention=InterventionClass.RESOURCE_ASSISTED,
+        assist_contract_path="docs/ASSIST_CONTRACT.md",
+        assist_contract_digest="sha256:fixture",
+    )
+    audit = AttemptAudit(
+        assists={"ammo": 1},
+        start_identity_digest=contract.start_identity.identity_digest,
+        policy_identity_digest=contract.policy_identity.identity_digest,
+    )
+    assert validate_claim(contract, audit) is True
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [("runtime_observation_class", "platinum"), ("intervention_class", "magic")],
+)
+def test_invalid_class_strings_rejected(field, value):
+    values = {
+        "generator": "fixture-generator",
+        "generator_version": "1.0",
+        "logic": "standard",
+        "goal": "goal",
+        "seeds": ("alpha",),
+        "budget": 1,
+        "success_threshold": 1,
+        "runtime_observation_class": "Bronze",
+        "intervention_class": "Clean",
+    }
+    values[field] = value
+
+    with pytest.raises((TypeError, ValueError), match="invalid|expected"):
+        SeedRobustnessConfig(**values)
+
+
+def test_legacy_benchmark_tier_is_adapted_on_every_attempt_record():
+    case = BenchmarkCase(
+        benchmark_id="legacy_contract",
+        display_name="Legacy contract",
+        game="FakeGame",
+        start_state="Start",
+        tier=BenchmarkTier.SILVER,
+        objective="Reach count 1",
+        max_steps=1,
+        build_env=lambda: FakeEnv(success_after=1),
+        is_success=lambda info, terminated, truncated: _success(
+            info, terminated, truncated
+        ),
+    )
+    result = run_benchmark(case, IdlePolicy())
+    record = result.attempts[0].to_record(case, result.policy_name)
+
+    assert record["runtime_observation_class"] == "Silver"
+    assert record["intervention_class"] == "Clean"
+    assert record["start_identity_digest"]
+    assert record["policy_identity_digest"]
