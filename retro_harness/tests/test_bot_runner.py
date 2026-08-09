@@ -1,10 +1,22 @@
 """Tests for retro_harness.bot_runner module."""
 import numpy as np
-import pytest
 
-from retro_harness.bot_runner import BotRunner, TaskRepeater, TaskSequencer
+from retro_harness.actions import buttons, idle_action
+from retro_harness.bot_runner import (
+    ActionNode,
+    BotRunner,
+    Condition,
+    NodeStatus,
+    Selector,
+    Sequence,
+    StuckDetector,
+    TaskRepeater,
+    TaskSequencer,
+    WatchdogEvent,
+)
+from retro_harness.input_script import FrameAction
 from retro_harness.protocol import ActionResult, TaskResult, TaskStatus, WorldState
-from retro_harness.ram_state import RAMSchema
+from retro_harness.ram_state import EnemyState, GameState, RAMSchema
 
 
 class FakeTask:
@@ -173,3 +185,170 @@ class TestTaskRepeater:
         for _ in range(100):
             r = rep.step(world)
             assert r.status == TaskStatus.RUNNING
+
+
+class TestNode:
+    def test_condition_true_and_false(self):
+        state = GameState(frame=0)
+        assert Condition(lambda s: True, name="ok").tick(state).status is NodeStatus.SUCCESS
+        assert Condition(lambda s: False, name="no").tick(state).status is NodeStatus.FAILURE
+
+    def test_action_node_runs_then_succeeds(self):
+        node = ActionNode(
+            lambda s: FrameAction(action=buttons("A"), reason="go"),
+            done=lambda s: s.health > 0,
+            name="act",
+        )
+        r = node.tick(GameState(frame=0))
+        assert r.status is NodeStatus.RUNNING
+        assert r.action.action[8] == 1
+        r = node.tick(GameState(frame=1, health=3))
+        assert r.status is NodeStatus.SUCCESS
+
+
+class TestSelector:
+    def test_succeeds_on_first_success(self):
+        sel = Selector(
+            [
+                Condition(lambda s: True, name="yes"),
+                ActionNode(lambda s: FrameAction(action=buttons("A"), reason="go"), name="go"),
+            ]
+        )
+        result = sel.tick(GameState(frame=0))
+        assert result.status is NodeStatus.SUCCESS
+
+    def test_runs_until_running_child(self):
+        sel = Selector(
+            [
+                Condition(lambda s: False, name="no"),
+                ActionNode(lambda s: FrameAction(action=buttons("A"), reason="go"), name="go"),
+            ]
+        )
+        result = sel.tick(GameState(frame=0))
+        assert result.status is NodeStatus.RUNNING
+        assert result.action is not None
+        assert result.action.action[8] == 1
+
+    def test_idles_when_all_fail(self):
+        sel = Selector(
+            [Condition(lambda s: False, name="no"), Condition(lambda s: False, name="no2")],
+            name="sel",
+        )
+        result = sel.tick(GameState(frame=0))
+        assert result.status is NodeStatus.FAILURE
+        assert result.action.action == idle_action()
+
+
+class TestSequence:
+    def test_succeeds_when_all_children_succeed(self):
+        seq = Sequence(
+            [Condition(lambda s: True, name="a"), Condition(lambda s: True, name="b")]
+        )
+        result = seq.tick(GameState(frame=0))
+        assert result.status is NodeStatus.SUCCESS
+
+    def test_fails_on_first_failure(self):
+        seq = Sequence(
+            [Condition(lambda s: True, name="a"), Condition(lambda s: False, name="b")]
+        )
+        result = seq.tick(GameState(frame=0))
+        assert result.status is NodeStatus.FAILURE
+
+    def test_running_short_circuits(self):
+        seq = Sequence(
+            [
+                Condition(lambda s: True, name="a"),
+                ActionNode(lambda s: FrameAction(action=buttons("A"), reason="go"), name="go"),
+                Condition(lambda s: False, name="never"),  # not reached
+            ]
+        )
+        result = seq.tick(GameState(frame=0))
+        assert result.status is NodeStatus.RUNNING
+        assert result.action.action[8] == 1
+
+
+def _stuck_state(frame, x=0, y=0, cam=0, health=100, enemies=()):
+    return GameState(
+        frame=frame,
+        player_x=x,
+        player_y=y,
+        camera_x=cam,
+        health=health,
+        enemies=enemies,
+    )
+
+
+class TestStuckDetector:
+    def test_position_stall(self):
+        detector = StuckDetector(position_window=3)
+        st = _stuck_state(0, x=5)
+        assert detector.update(st) is WatchdogEvent.NONE
+        assert detector.update(st) is WatchdogEvent.NONE
+        assert detector.update(st) is WatchdogEvent.NONE
+        assert detector.update(st) is WatchdogEvent.POSITION_STALLED
+
+    def test_movement_resets_position_stall(self):
+        detector = StuckDetector(position_window=3)
+        st = _stuck_state(0, x=5)
+        detector.update(st)
+        detector.update(st)  # stall 1
+        st = _stuck_state(2, x=6)  # moved
+        assert detector.update(st) is WatchdogEvent.NONE
+        st = _stuck_state(3, x=6)
+        detector.update(st)  # stall 1
+        detector.update(st)  # stall 2
+        assert detector.update(st) is WatchdogEvent.POSITION_STALLED
+
+    def test_camera_stall(self):
+        detector = StuckDetector(position_window=1000, camera_window=3)
+        st = _stuck_state(0, cam=100)
+        assert detector.update(st) is WatchdogEvent.NONE
+        assert detector.update(st) is WatchdogEvent.NONE
+        assert detector.update(st) is WatchdogEvent.NONE
+        assert detector.update(st) is WatchdogEvent.CAMERA_STALLED
+
+    def test_health_drain(self):
+        detector = StuckDetector(position_window=1000, camera_window=1000, health_window=3)
+        detector.update(_stuck_state(0, health=100))
+        detector.update(_stuck_state(1, health=90))
+        detector.update(_stuck_state(2, health=80))
+        assert detector.update(_stuck_state(3, health=70)) is WatchdogEvent.HEALTH_DRAINING
+
+    def test_health_heal_resets_drain(self):
+        detector = StuckDetector(position_window=1000, camera_window=1000, health_window=3)
+        detector.update(_stuck_state(0, health=100))
+        detector.update(_stuck_state(1, health=90))  # drain 1
+        detector.update(_stuck_state(2, health=120))  # heal resets
+        detector.update(_stuck_state(3, health=110))  # drain 1
+        assert detector.update(_stuck_state(4, health=100)) is WatchdogEvent.NONE
+
+    def test_enemy_stall(self):
+        detector = StuckDetector(position_window=1000, health_window=1000, enemy_window=3)
+        st = _stuck_state(
+            0,
+            x=5,
+            y=10,
+            enemies=(EnemyState(slot=0, x=10, y=10, health=5, active=True),),
+        )
+        detector.update(st)
+        detector.update(st)  # stall 1
+        detector.update(st)  # stall 2
+        assert detector.update(st) is WatchdogEvent.ENEMY_STALLED
+
+    def test_enemy_damage_resets_enemy_stall(self):
+        detector = StuckDetector(position_window=1000, health_window=1000, enemy_window=5)
+        def st(hp):
+            return _stuck_state(
+                0,
+                x=5,
+                y=10,
+                enemies=(EnemyState(slot=0, x=10, y=10, health=hp, active=True),),
+            )
+        detector.update(st(5))
+        detector.update(st(5))  # stall 1
+        detector.update(st(3))  # damage resets
+        detector.update(st(3))  # stall 1
+        detector.update(st(3))  # stall 2
+        detector.update(st(3))  # stall 3
+        detector.update(st(3))  # stall 4
+        assert detector.update(st(3)) is WatchdogEvent.ENEMY_STALLED

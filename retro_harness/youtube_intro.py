@@ -72,7 +72,9 @@ def project_intro_lines(
         PROJECT_NO_STITCH,
     ]
     if intervention:
-        lines.append(_ascii_safe(intervention))
+        text = _ascii_safe(intervention)
+        if text:
+            lines.append(text)
     lines.append(PROJECT_REPO)
     for line in extra_lines:
         text = _ascii_safe(str(line))

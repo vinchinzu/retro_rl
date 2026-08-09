@@ -46,6 +46,15 @@ def test_normalize_merges_adjacent() -> None:
     assert rle_normalize(runs) == [(1, 5), (2, 1), (3, 4)]
 
 
+def test_expand_buttons_frames_are_independent() -> None:
+    a = (0, 0, 0, 0, 0, 0, 0, 1, 0)
+    expanded = expand_rle([(a, 3)], as_list=True)
+    assert len(expanded) == 3
+    expanded[0][7] = 0
+    assert expanded[1] == list(a)
+    assert expanded[2] == list(a)
+
+
 def test_slice_and_replace_window() -> None:
     frames = [0] * 10 + [1] * 10 + [2] * 10
     runs = compress_rle(frames)

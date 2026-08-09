@@ -83,6 +83,56 @@ def test_run_startup_stops_at_first_playable_frame_with_old_gym_api() -> None:
     assert env.actions[3][8] == 1
 
 
+def test_run_startup_replays_plan_across_cycles_until_ready() -> None:
+    env = _FakeEnv()
+    plan = StartupPlan.parse("START:1:2")  # 3 frames per cycle
+
+    result = run_startup(
+        env,
+        plan,
+        is_ready=lambda active_env, _info: active_env.frame >= 5,
+        max_cycles=3,
+    )
+
+    assert result.ready is True
+    assert result.frames == 5
+    assert result.completed is False
+    assert env.frame == 5
+
+
+def test_run_startup_exhausts_cycles_without_readiness() -> None:
+    env = _FakeEnv()
+    plan = StartupPlan.parse("START:1:2")
+
+    result = run_startup(
+        env,
+        plan,
+        is_ready=lambda _a, _i: False,
+        max_cycles=3,
+    )
+
+    assert result.ready is False
+    assert result.completed is True
+    assert result.frames == 9
+    assert env.frame == 9
+
+
+def test_run_startup_returns_reset_ready_without_stepping() -> None:
+    env = _FakeEnv()
+    plan = StartupPlan.parse("START:1:2")
+
+    result = run_startup(
+        env,
+        plan,
+        is_ready=lambda _a, _i: True,
+        max_cycles=3,
+    )
+
+    assert result.ready is True
+    assert result.frames == 0
+    assert env.actions == []
+
+
 def test_press_button_sequence_is_shared_numpy_neutral_primitive() -> None:
     actions = press_button_sequence(
         "A",

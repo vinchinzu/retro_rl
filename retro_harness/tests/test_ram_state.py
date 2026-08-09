@@ -5,11 +5,16 @@ import pytest
 from retro_harness.ram_state import (
     RAMSchema,
     RAMWatcher,
+    RamDelta,
+    candidates_decreasing,
+    candidates_increasing,
+    diff_changed,
     read_u8,
     read_u16,
     read_u16_be,
     read_s8,
     read_s16,
+    snapshot,
 )
 
 
@@ -112,3 +117,49 @@ class TestRAMWatcher:
         watcher.update(sample_ram)
         changes = watcher.update(sample_ram)
         assert changes == {}
+
+
+class TestRAMDiff:
+    def test_snapshot_copies(self, sample_ram):
+        snapshot_ram = snapshot(sample_ram)
+        sample_ram[0x10] = 99
+        assert snapshot_ram[0x10] == 42
+        assert snapshot_ram.dtype == np.uint8
+
+    def test_diff_changed(self, sample_ram):
+        before = snapshot(sample_ram)
+        sample_ram[0x10] = 99
+        sample_ram[0x40] = 100
+        deltas = diff_changed(before, sample_ram)
+        assert deltas == [
+            RamDelta(0x10, 42, 99),
+            RamDelta(0x40, 200, 100),
+        ]
+
+    def test_diff_no_changes(self, sample_ram):
+        before = snapshot(sample_ram)
+        assert diff_changed(before, sample_ram) == []
+
+    def test_diff_limit(self, sample_ram):
+        before = snapshot(sample_ram)
+        sample_ram[0x10] = 99
+        sample_ram[0x40] = 100
+        assert diff_changed(before, sample_ram, limit=1) == [RamDelta(0x10, 42, 99)]
+        assert len(diff_changed(before, sample_ram, limit=None)) == 2
+
+    def test_diff_shape_mismatch_raises(self, sample_ram):
+        other = np.zeros(128, dtype=np.uint8)
+        with pytest.raises(ValueError, match="same shape"):
+            diff_changed(sample_ram, other)
+
+    def test_candidates_direction(self, sample_ram):
+        before = snapshot(sample_ram)
+        sample_ram[0x10] = 99      # increased
+        sample_ram[0x40] = 100     # decreased
+        deltas = diff_changed(before, sample_ram)
+        assert [d.address for d in candidates_increasing(deltas)] == [0x10]
+        assert [d.address for d in candidates_decreasing(deltas)] == [0x40]
+
+    def test_ram_delta_delta(self):
+        delta = RamDelta(0x10, 100, 42)
+        assert delta.delta == -58

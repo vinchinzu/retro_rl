@@ -63,6 +63,27 @@ def test_high_water_with_backtrack():
     assert t.is_stalled  # 100 > 50 tolerance
 
 
+def test_missing_axis_frame_is_ignored():
+    t = HighWaterWithBacktrack(axis="camera_x", direction=1, backtrack_tolerance=50.0)
+    t.reset()
+    t.update({"camera_x": 1000})
+    t.update({"camera_x": 1200})
+    # A frame without the tracked axis must not read as regression from 0
+    t.update({"camera_y": 5})
+    assert t.max_progress == 200.0
+    assert not t.is_stalled
+
+
+def test_missing_axis_first_frame_does_not_anchor():
+    t = MonotonicAxisTracker(axis="camera_x", direction=1)
+    t.reset()
+    # First frame lacks the axis: baseline must anchor on the first real value
+    t.update({"camera_y": 42})
+    p = t.update({"camera_x": 100})
+    assert p == 0.0
+    assert t.update({"camera_x": 200}) == 100.0
+
+
 def test_waypoint_tracker():
     waypoints = [(0, 0), (100, 0), (100, 100), (200, 100)]
     t = WaypointTracker(waypoints=waypoints, capture_radius=20.0)
