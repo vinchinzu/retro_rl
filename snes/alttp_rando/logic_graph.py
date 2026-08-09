@@ -12,6 +12,12 @@ from retro_harness.adventure.graph import (
     RouteGraph,
     shortest_path,
 )
+from retro_harness.adventure.progression import (
+    CapabilityId,
+    Has,
+    ItemCheck,
+    SeedPlacement,
+)
 
 N_LINKS_HOUSE = "z3_links_house"
 N_UNCLE = "z3_uncle_sword"
@@ -21,6 +27,17 @@ N_SANCTUARY = "z3_sanctuary"
 N_EASTERN = "z3_eastern_palace"
 N_EASTERN_BOW = "z3_eastern_bow"
 N_HYRULE_CASTLE = "z3_hyrule_castle_escape"
+
+# Namespaced offline fixture used by the progression-core tests.  The legacy
+# graph above remains available to callers using frozenset[str] inventories.
+Z3_SWORD = CapabilityId("z3", "sword")
+Z3_LAMP = CapabilityId("z3", "lamp")
+N_PROGRESSION_START = "z3_fixture_start"
+N_PROGRESSION_SWORD = "z3_fixture_sword_check"
+N_PROGRESSION_LAMP = "z3_fixture_lamp_check"
+N_PROGRESSION_GOAL = "z3_fixture_goal"
+Z3_SWORD_CHECK = "z3_fixture_sword"
+Z3_LAMP_CHECK = "z3_fixture_lamp"
 
 
 def build_early_graph() -> RouteGraph:
@@ -99,6 +116,75 @@ def build_early_graph() -> RouteGraph:
 
 
 EARLY_GRAPH = build_early_graph()
+
+
+def build_progression_graph() -> RouteGraph:
+    """Build the small namespaced placement fixture, without emulator state."""
+    nodes = (
+        GraphNode(N_PROGRESSION_START, name="ALTTP fixture start", area="light_world"),
+        GraphNode(N_PROGRESSION_SWORD, name="ALTTP sword check", area="castle"),
+        GraphNode(N_PROGRESSION_LAMP, name="ALTTP lamp check", area="castle"),
+        GraphNode(N_PROGRESSION_GOAL, name="ALTTP fixture goal", area="eastern"),
+    )
+    edges = (
+        GraphEdge(
+            N_PROGRESSION_START,
+            N_PROGRESSION_SWORD,
+            edge_id="z3_fixture_to_sword_check",
+        ),
+        GraphEdge(
+            N_PROGRESSION_SWORD,
+            N_PROGRESSION_GOAL,
+            edge_id="z3_fixture_sword_to_goal",
+            requires=Has(Z3_SWORD),
+        ),
+        GraphEdge(
+            N_PROGRESSION_START,
+            N_PROGRESSION_LAMP,
+            edge_id="z3_fixture_to_lamp_check",
+        ),
+        GraphEdge(
+            N_PROGRESSION_LAMP,
+            N_PROGRESSION_GOAL,
+            edge_id="z3_fixture_lamp_to_goal",
+            requires=Has(Z3_SWORD),
+        ),
+    )
+    checks = (
+        ItemCheck(Z3_SWORD_CHECK, N_PROGRESSION_SWORD),
+        ItemCheck(Z3_LAMP_CHECK, N_PROGRESSION_LAMP),
+    )
+    return RouteGraph(nodes, edges, checks)
+
+
+PROGRESSION_GRAPH = build_progression_graph()
+PLACEMENT_OVERLAY_A = SeedPlacement(
+    {
+        Z3_SWORD_CHECK: Z3_SWORD,
+        Z3_LAMP_CHECK: Z3_LAMP,
+    },
+    seed_id="z3-fixture-a",
+)
+PLACEMENT_OVERLAY_B = SeedPlacement(
+    {
+        Z3_SWORD_CHECK: Z3_LAMP,
+        Z3_LAMP_CHECK: Z3_SWORD,
+    },
+    seed_id="z3-fixture-b",
+)
+SEED_OVERLAY_A = PLACEMENT_OVERLAY_A
+SEED_OVERLAY_B = PLACEMENT_OVERLAY_B
+
+
+def plan_with_placement(
+    placement: SeedPlacement = PLACEMENT_OVERLAY_A,
+) -> tuple[GraphEdge, ...] | None:
+    """Return the valid offline plan for one ALTTP fixture placement overlay."""
+    return PROGRESSION_GRAPH.progression_path(
+        N_PROGRESSION_START,
+        N_PROGRESSION_GOAL,
+        placement,
+    )
 
 
 def path_with_capabilities(

@@ -8,12 +8,17 @@ from smz3.route_graph import (
     N_LANDING,
     N_LINKS_HOUSE_CHEST,
     N_LINKS_HOUSE_OW,
-    N_PARLOR,
     N_PORTAL_SETTLED,
     N_RED_DOOR,
+    PLACEMENT_OVERLAY_A,
+    PLACEMENT_OVERLAY_B,
+    SM_BOMBS,
+    Z3_BOMBS,
     path_with_capabilities,
+    plan_with_placement,
     plan_early_legs,
 )
+from retro_harness.adventure import Has
 from smz3.quest import early_path_summary, resolve_stop
 
 
@@ -68,3 +73,23 @@ def test_resolve_stop_and_summary() -> None:
     assert "landing_to_parlor" in summary["path_edge_ids"]
     blocked = early_path_summary("red_door", with_missiles=False)
     assert blocked["path_edge_ids"] is None
+
+
+def test_fixture_placement_overlays_choose_different_valid_plans() -> None:
+    plan_a = plan_with_placement(PLACEMENT_OVERLAY_A)
+    plan_b = plan_with_placement(PLACEMENT_OVERLAY_B)
+    assert plan_a is not None
+    assert plan_b is not None
+    assert [edge.edge_id for edge in plan_a] == [
+        "smz3_fixture_to_sm_bombs_check",
+        "smz3_fixture_sm_bombs_to_goal",
+    ]
+    assert [edge.edge_id for edge in plan_b] == [
+        "smz3_fixture_to_z3_bombs_check",
+        "smz3_fixture_z3_bombs_to_goal",
+    ]
+    assert plan_a != plan_b
+
+
+def test_world_namespaces_do_not_alias_bombs() -> None:
+    assert Has(Z3_BOMBS).satisfied_by({SM_BOMBS}) is False
