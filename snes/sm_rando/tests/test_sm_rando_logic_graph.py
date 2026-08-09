@@ -13,6 +13,13 @@ from sm_rando.logic_graph import (
     plan_with_placement,
     plan_to_varia,
 )
+from sm_rando.solver_bindings import (
+    SHIP_TO_MORPH_SPEC,
+    build_early_binding_catalog,
+    load_ship_to_morph_evidence,
+    play_ship_to_morph,
+)
+from retro_harness.adventure.bindings import ExecutionReadiness
 
 
 def test_ship_to_morph_open() -> None:
@@ -49,3 +56,13 @@ def test_fixture_placement_overlays_choose_different_valid_plans() -> None:
         "sm_fixture_missiles_to_goal",
     ]
     assert plan_a != plan_b
+
+
+def test_ship_to_morph_has_digest_checked_natural_entry_binding() -> None:
+    binding = build_early_binding_catalog().binding_for("ship_to_morph")
+    assert binding is not None
+    assert binding.readiness is ExecutionReadiness.NATURAL_ENTRY
+    assert binding.skill_id == SHIP_TO_MORPH_SPEC.skill_id
+    assert binding.dispatch_key.endswith(":play_ship_to_morph")
+    assert binding.evidence_digest == load_ship_to_morph_evidence().identity_digest
+    assert callable(play_ship_to_morph)

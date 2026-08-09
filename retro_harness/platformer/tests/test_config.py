@@ -16,6 +16,8 @@ import smb.platformer_levels  # noqa: F401
 import smb3.platformer_levels  # noqa: F401
 import SMW.platformer_levels  # noqa: F401
 import super_metroid.platformer_levels  # noqa: F401
+import sm_rando.platformer_levels  # noqa: F401
+from retro_harness.platformer.evaluator import Evaluator
 
 
 def test_dkc_winkys_registered():
@@ -111,3 +113,21 @@ def test_sm_ram_schema():
     assert "player_y" in schema.fields
     assert "level_id" in schema.fields
     assert "health" in schema.fields
+
+
+def test_training_entry_state_distribution_rejects_eval_partition():
+    evaluator = Evaluator(get_level_config("sm_rando_landing_entry"))
+    with pytest.raises(ValueError, match="train split"):
+        evaluator.configure_entry_states(
+            [b"state"],
+            corpus_digest="corpus",
+            split="eval",
+            state_digests=["digest"],
+        )
+    evaluator.configure_entry_states(
+        [b"state-a", b"state-b"],
+        corpus_digest="corpus",
+        split="train",
+        state_digests=["a", "b"],
+    )
+    assert evaluator.entry_state_selection["split"] == "train"

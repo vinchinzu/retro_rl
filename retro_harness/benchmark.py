@@ -1,4 +1,9 @@
-"""Generic benchmark definitions and runners for emulator-backed tasks."""
+"""Generic benchmark definitions and runners for emulator-backed tasks.
+
+Maturity: **first real-game consumer** for fail-closed audits and
+PolicyArtifact identity. Resumable seed-campaign publication evidence remains
+rr-gbd.33, and publication-ready still requires a second independent consumer.
+"""
 
 from __future__ import annotations
 
@@ -137,6 +142,17 @@ def _validate_identity_digest(value: Any, field_name: str) -> str:
     return value.strip()
 
 
+def _sha256_file(path: str | Path) -> str:
+    file_path = Path(path)
+    if not file_path.is_file():
+        raise PolicyArtifactError(f"identity file does not exist: {file_path}")
+    digest = hashlib.sha256()
+    with file_path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 @dataclass(frozen=True)
 class StartIdentity:
     """Stable identity for the ROM and published start condition."""
@@ -271,6 +287,212 @@ class PolicyIdentity:
         return record
 
 
+class PolicyArtifactError(ValueError):
+    """Raised when a learned-policy manifest or its bound files disagree."""
+
+
+@dataclass(frozen=True)
+class PolicyArtifact:
+    """Immutable identity manifest for learned policy weights and contracts."""
+
+    checkpoint_sha256: str
+    algorithm: str
+    hyperparameters: Mapping[str, Any]
+    training_seed: str | int
+    observation_schema_digest: str
+    action_schema_digest: str
+    reward_schema_digest: str
+    wrapper_schema_digest: str
+    rom_identity_digest: str
+    state_identity_digest: str
+    core_identity_digest: str
+    dependency_lock_sha256: str
+    source_commit: str
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    schema_version: int = 1
+
+    def __post_init__(self) -> None:
+        if self.schema_version != 1:
+            raise PolicyArtifactError("unsupported PolicyArtifact schema_version")
+        for field_name in (
+            "checkpoint_sha256",
+            "algorithm",
+            "observation_schema_digest",
+            "action_schema_digest",
+            "reward_schema_digest",
+            "wrapper_schema_digest",
+            "rom_identity_digest",
+            "state_identity_digest",
+            "core_identity_digest",
+            "dependency_lock_sha256",
+            "source_commit",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise PolicyArtifactError(f"{field_name} must be a non-empty string")
+            object.__setattr__(self, field_name, value.strip())
+        if isinstance(self.training_seed, bool) or not isinstance(
+            self.training_seed, (str, int)
+        ):
+            raise PolicyArtifactError("training_seed must be a string or integer")
+        object.__setattr__(
+            self,
+            "hyperparameters",
+            _canonicalize_metadata(dict(self.hyperparameters), path="hyperparameters"),
+        )
+        object.__setattr__(
+            self,
+            "metadata",
+            _canonicalize_metadata(dict(self.metadata), path="metadata"),
+        )
+
+    def _identity_record(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "checkpoint_sha256": self.checkpoint_sha256,
+            "algorithm": self.algorithm,
+            "hyperparameters": dict(self.hyperparameters),
+            "training_seed": self.training_seed,
+            "observation_schema_digest": self.observation_schema_digest,
+            "action_schema_digest": self.action_schema_digest,
+            "reward_schema_digest": self.reward_schema_digest,
+            "wrapper_schema_digest": self.wrapper_schema_digest,
+            "rom_identity_digest": self.rom_identity_digest,
+            "state_identity_digest": self.state_identity_digest,
+            "core_identity_digest": self.core_identity_digest,
+            "dependency_lock_sha256": self.dependency_lock_sha256,
+            "source_commit": self.source_commit,
+            "metadata": dict(self.metadata),
+        }
+
+    @property
+    def identity_digest(self) -> str:
+        payload = json.dumps(
+            self._identity_record(),
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def to_record(self) -> dict[str, Any]:
+        return {**self._identity_record(), "identity_digest": self.identity_digest}
+
+    def to_policy_identity(self, name: str) -> PolicyIdentity:
+        return PolicyIdentity(
+            name=name,
+            digest=self.identity_digest,
+            version=f"policy-artifact-v{self.schema_version}",
+            source=f"checkpoint:sha256:{self.checkpoint_sha256}",
+            metadata={
+                "policy_kind": "learned",
+                "policy_artifact_digest": self.identity_digest,
+                "checkpoint_sha256": self.checkpoint_sha256,
+                "observation_schema_digest": self.observation_schema_digest,
+                "action_schema_digest": self.action_schema_digest,
+                "reward_schema_digest": self.reward_schema_digest,
+                "wrapper_schema_digest": self.wrapper_schema_digest,
+            },
+        )
+
+    def verify_checkpoint(self, checkpoint_path: str | Path) -> None:
+        actual = _sha256_file(checkpoint_path)
+        if actual != self.checkpoint_sha256:
+            raise PolicyArtifactError(
+                "policy checkpoint digest does not match PolicyArtifact"
+            )
+
+    def verify_schema_digests(self, **expected: str) -> None:
+        known = {
+            "observation": self.observation_schema_digest,
+            "action": self.action_schema_digest,
+            "reward": self.reward_schema_digest,
+            "wrapper": self.wrapper_schema_digest,
+        }
+        unknown = set(expected) - set(known)
+        if unknown:
+            raise TypeError(f"unknown schema digest names: {sorted(unknown)}")
+        for name, digest in expected.items():
+            if digest != known[name]:
+                raise PolicyArtifactError(
+                    f"{name} schema digest does not match PolicyArtifact"
+                )
+
+    def verify_environment_identity_digests(self, **expected: str) -> None:
+        known = {
+            "rom": self.rom_identity_digest,
+            "state": self.state_identity_digest,
+            "core": self.core_identity_digest,
+        }
+        unknown = set(expected) - set(known)
+        if unknown:
+            raise TypeError(f"unknown environment identity names: {sorted(unknown)}")
+        for name, digest in expected.items():
+            if digest != known[name]:
+                raise PolicyArtifactError(
+                    f"{name} identity digest does not match PolicyArtifact"
+                )
+
+    def write(self, path: str | Path) -> Path:
+        manifest_path = Path(path)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(self.to_record(), allow_nan=False, indent=2, sort_keys=True)
+            + "\n",
+            encoding="utf-8",
+        )
+        return manifest_path
+
+    @classmethod
+    def from_checkpoint(
+        cls,
+        checkpoint_path: str | Path,
+        *,
+        dependency_lock_path: str | Path,
+        **values: Any,
+    ) -> "PolicyArtifact":
+        return cls(
+            checkpoint_sha256=_sha256_file(checkpoint_path),
+            dependency_lock_sha256=_sha256_file(dependency_lock_path),
+            **values,
+        )
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, Any]) -> "PolicyArtifact":
+        if not isinstance(record, Mapping):
+            raise TypeError("PolicyArtifact record must be a mapping")
+        values = dict(record)
+        published_digest = values.pop("identity_digest", None)
+        try:
+            artifact = cls(**values)
+        except TypeError as exc:
+            raise PolicyArtifactError("invalid PolicyArtifact record fields") from exc
+        if published_digest != artifact.identity_digest:
+            raise PolicyArtifactError("PolicyArtifact identity digest mismatch")
+        return artifact
+
+    @classmethod
+    def load(
+        cls,
+        path: str | Path,
+        *,
+        checkpoint_path: str | Path,
+        expected_schema_digests: Mapping[str, str] | None = None,
+        expected_environment_identity_digests: Mapping[str, str] | None = None,
+    ) -> "PolicyArtifact":
+        record = json.loads(Path(path).read_text(encoding="utf-8"))
+        artifact = cls.from_record(record)
+        artifact.verify_checkpoint(checkpoint_path)
+        if expected_schema_digests:
+            artifact.verify_schema_digests(**dict(expected_schema_digests))
+        if expected_environment_identity_digests:
+            artifact.verify_environment_identity_digests(
+                **dict(expected_environment_identity_digests)
+            )
+        return artifact
+
+
 @dataclass(frozen=True)
 class EvaluationContract:
     """Typed, auditable contract attached to a benchmark claim."""
@@ -379,29 +601,101 @@ class EvaluationContract:
 
 
 @dataclass(frozen=True)
+class AuditCapabilities:
+    """Proof that an audit provider can observe every intervention channel."""
+
+    provider: str
+    observes_ram_writes: bool
+    observes_mid_run_loads: bool
+    observes_assists: bool
+    schema_version: int = 1
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.provider, str) or not self.provider.strip():
+            raise ValueError("audit capability provider must be a non-empty string")
+        if self.schema_version != 1:
+            raise ValueError("unsupported audit capability schema_version")
+        for field_name in (
+            "observes_ram_writes",
+            "observes_mid_run_loads",
+            "observes_assists",
+        ):
+            if not isinstance(getattr(self, field_name), bool):
+                raise TypeError(f"{field_name} must be a bool")
+        object.__setattr__(self, "provider", self.provider.strip())
+
+    @property
+    def complete(self) -> bool:
+        return (
+            self.observes_ram_writes
+            and self.observes_mid_run_loads
+            and self.observes_assists
+        )
+
+    def to_record(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "provider": self.provider,
+            "observes_ram_writes": self.observes_ram_writes,
+            "observes_mid_run_loads": self.observes_mid_run_loads,
+            "observes_assists": self.observes_assists,
+        }
+
+    @classmethod
+    def all(cls, provider: str) -> "AuditCapabilities":
+        return cls(provider, True, True, True)
+
+    @classmethod
+    def from_value(cls, value: Any) -> "AuditCapabilities | None":
+        if value is None:
+            return None
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, Mapping):
+            raise TypeError("audit_capabilities must be a mapping")
+        return cls(
+            provider=value.get("provider", ""),
+            observes_ram_writes=value.get("observes_ram_writes"),
+            observes_mid_run_loads=value.get("observes_mid_run_loads"),
+            observes_assists=value.get("observes_assists"),
+            schema_version=value.get("schema_version", 1),
+        )
+
+
+@dataclass(frozen=True)
 class AttemptAudit:
     """Observed interventions and identity evidence for one attempt."""
 
-    ram_writes: int | bool = 0
-    mid_run_loads: int | bool = 0
-    assists: Mapping[str, int] | int | bool | None = field(default_factory=dict)
+    ram_writes: int | bool | None = None
+    mid_run_loads: int | bool | None = None
+    assists: Mapping[str, int] | int | bool | None = None
     start_identity_digest: str | None = None
     policy_identity_digest: str | None = None
     runtime_observation_class: RuntimeObservationClass | str | None = None
     intervention_class: InterventionClass | str | None = None
+    capabilities: AuditCapabilities | Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "ram_writes",
-            _normalize_event_count(self.ram_writes, "ram_writes"),
+            _normalize_optional_event_count(self.ram_writes, "ram_writes"),
         )
         object.__setattr__(
             self,
             "mid_run_loads",
-            _normalize_event_count(self.mid_run_loads, "mid_run_loads"),
+            _normalize_optional_event_count(self.mid_run_loads, "mid_run_loads"),
         )
-        object.__setattr__(self, "assists", _normalize_assists(self.assists))
+        object.__setattr__(
+            self,
+            "assists",
+            None if self.assists is None else _normalize_assists(self.assists),
+        )
+        object.__setattr__(
+            self,
+            "capabilities",
+            AuditCapabilities.from_value(self.capabilities),
+        )
         for field_name in ("start_identity_digest", "policy_identity_digest"):
             value = getattr(self, field_name)
             if value is not None:
@@ -425,26 +719,37 @@ class AttemptAudit:
 
     @property
     def assist_count(self) -> int:
-        return sum(self.assists.values())
+        return sum((self.assists or {}).values())
 
     @property
     def has_interventions(self) -> bool:
         return bool(self.ram_writes or self.mid_run_loads or self.assist_count)
 
+    @property
+    def has_complete_instrumentation(self) -> bool:
+        return bool(
+            self.capabilities is not None
+            and self.capabilities.complete
+            and self.ram_writes is not None
+            and self.mid_run_loads is not None
+            and self.assists is not None
+        )
+
     @classmethod
     def from_info(cls, info: Mapping[str, Any] | None) -> "AttemptAudit":
         values = info if isinstance(info, Mapping) else {}
         return cls(
-            ram_writes=values.get("ram_writes", values.get("ram_write_count", 0)),
+            ram_writes=values.get("ram_writes", values.get("ram_write_count")),
             mid_run_loads=values.get(
                 "mid_run_loads",
-                values.get("mid_run_load_count", values.get("save_state_loads", 0)),
+                values.get("mid_run_load_count", values.get("save_state_loads")),
             ),
-            assists=values.get("assists", {}),
+            assists=values.get("assists"),
             start_identity_digest=values.get("start_identity_digest"),
             policy_identity_digest=values.get("policy_identity_digest"),
             runtime_observation_class=values.get("runtime_observation_class"),
             intervention_class=values.get("intervention_class"),
+            capabilities=values.get("audit_capabilities"),
         )
 
     def to_record(self) -> dict[str, Any]:
@@ -464,7 +769,92 @@ class AttemptAudit:
             ),
             "start_identity_digest": self.start_identity_digest,
             "policy_identity_digest": self.policy_identity_digest,
+            "audit_capabilities": (
+                self.capabilities.to_record()
+                if self.capabilities is not None
+                else None
+            ),
         }
+
+
+class AuditedEnv:
+    """Capability-bearing adapter that owns attempt intervention counters.
+
+    Backends must be wrapped at the boundary where RAM writes, state loads, and
+    assists are performed.  The wrapper overwrites similarly named ``info``
+    fields so an inner environment cannot accidentally forge a clean audit.
+    """
+
+    def __init__(self, env: Any, *, capabilities: AuditCapabilities):
+        if not isinstance(capabilities, AuditCapabilities):
+            raise TypeError("capabilities must be an AuditCapabilities")
+        self.env = env
+        self.audit_capabilities = capabilities
+        self._ram_writes = 0
+        self._mid_run_loads = 0
+        self._assists: dict[str, int] = {}
+        self._attempt_active = False
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.env, name)
+
+    def _augment_info(self, info: Mapping[str, Any] | None) -> dict[str, Any]:
+        values = dict(info or {})
+        values.update(
+            {
+                "ram_writes": self._ram_writes,
+                "mid_run_loads": self._mid_run_loads,
+                "assists": dict(sorted(self._assists.items())),
+                "audit_capabilities": self.audit_capabilities.to_record(),
+            }
+        )
+        return values
+
+    def reset(self, *args: Any, **kwargs: Any) -> tuple[Any, dict[str, Any]]:
+        self._ram_writes = 0
+        self._mid_run_loads = 0
+        self._assists = {}
+        result = self.env.reset(*args, **kwargs)
+        if not isinstance(result, tuple) or len(result) != 2:
+            raise TypeError("AuditedEnv requires a Gymnasium-style reset result")
+        observation, info = result
+        self._attempt_active = True
+        return observation, self._augment_info(info)
+
+    def step(self, action: Any) -> tuple[Any, float, bool, bool, dict[str, Any]]:
+        result = self.env.step(action)
+        if not isinstance(result, tuple) or len(result) != 5:
+            raise TypeError("AuditedEnv requires a Gymnasium-style step result")
+        observation, reward, terminated, truncated, info = result
+        return (
+            observation,
+            reward,
+            terminated,
+            truncated,
+            self._augment_info(info),
+        )
+
+    def record_ram_write(self, count: int = 1) -> None:
+        self._ram_writes += _positive_audit_increment(count, "RAM write")
+
+    def record_state_load(self, count: int = 1) -> None:
+        increment = _positive_audit_increment(count, "state load")
+        if self._attempt_active:
+            self._mid_run_loads += increment
+
+    def record_assist(self, name: str, count: int = 1) -> None:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("assist name must be a non-empty string")
+        normalized = name.strip()
+        self._assists[normalized] = self._assists.get(normalized, 0) + (
+            _positive_audit_increment(count, "assist")
+        )
+
+    def audit(self) -> AttemptAudit:
+        return AttemptAudit.from_info(self._augment_info({}))
+
+    def close(self) -> None:
+        self.env.close()
 
 
 class ClaimValidationError(ValueError):
@@ -518,10 +908,24 @@ def validate_claim(
         _validate_serialized_claim_fields(record, contract, audit)
 
     errors: list[str] = []
+    if not audit.has_complete_instrumentation:
+        errors.append(
+            "attempt lacks complete intervention audit instrumentation "
+            "(RAM writes, mid-run loads, and assists)"
+        )
     if audit.start_identity_digest != contract.start_identity.identity_digest:
         errors.append("start identity digest does not match the contract")
     if audit.policy_identity_digest != contract.policy_identity.identity_digest:
         errors.append("policy identity digest does not match the contract")
+    if contract.policy_identity.metadata.get("policy_kind") == "learned":
+        artifact_digest = contract.policy_identity.metadata.get(
+            "policy_artifact_digest"
+        )
+        if (
+            not isinstance(artifact_digest, str)
+            or artifact_digest != contract.policy_identity.identity_digest
+        ):
+            errors.append("learned policy lacks a matching PolicyArtifact identity")
     if audit.runtime_observation_class is not None:
         if audit.runtime_observation_class is not contract.runtime_observation_class:
             errors.append("runtime observation class does not match the contract")
@@ -2150,13 +2554,14 @@ def _audit_from_record(value: Any) -> AttemptAudit:
     if isinstance(nested, Mapping):
         value = nested
     return AttemptAudit(
-        ram_writes=value.get("ram_writes", 0),
-        mid_run_loads=value.get("mid_run_loads", 0),
-        assists=value.get("assists", {}),
+        ram_writes=value.get("ram_writes"),
+        mid_run_loads=value.get("mid_run_loads"),
+        assists=value.get("assists"),
         start_identity_digest=value.get("start_identity_digest"),
         policy_identity_digest=value.get("policy_identity_digest"),
         runtime_observation_class=value.get("runtime_observation_class"),
         intervention_class=value.get("intervention_class"),
+        capabilities=value.get("audit_capabilities"),
     )
 
 
@@ -2170,12 +2575,28 @@ def _same_policy_identity(
 
 def _policy_identity_is_verifiable(identity: PolicyIdentity) -> bool:
     """Return whether an identity carries source or bytecode evidence."""
+    if identity.metadata.get("policy_kind") == "learned":
+        return (
+            identity.metadata.get("policy_artifact_digest")
+            == identity.identity_digest
+        )
     fingerprint_kind = identity.metadata.get("fingerprint_kind")
     if fingerprint_kind == "source":
         return isinstance(identity.metadata.get("source_sha256"), str)
     if fingerprint_kind == "bytecode":
         return isinstance(identity.metadata.get("bytecode_sha256"), str)
     return False
+
+
+def _looks_like_learned_policy(policy: Any) -> bool:
+    """Conservatively identify common learned-model interfaces."""
+    target = policy if inspect.isclass(policy) else type(policy)
+    module = str(getattr(target, "__module__", ""))
+    if module.startswith(("torch", "stable_baselines3")):
+        return True
+    return callable(getattr(policy, "predict", None)) or callable(
+        getattr(policy, "state_dict", None)
+    )
 
 
 def _is_unbound_policy_identity(identity: PolicyIdentity) -> bool:
@@ -2301,6 +2722,19 @@ def policy_identity_for(
     digest covers the implementation's module and qualified name plus source,
     bytecode, or the documented stable module-qualified-name fallback.
     """
+    artifact = getattr(policy, "policy_artifact", None)
+    if artifact is not None:
+        if not isinstance(artifact, PolicyArtifact):
+            raise PolicyArtifactError("policy_artifact must be a PolicyArtifact")
+        checkpoint_path = getattr(policy, "checkpoint_path", None)
+        if checkpoint_path is not None:
+            artifact.verify_checkpoint(checkpoint_path)
+        return artifact.to_policy_identity(_policy_name(policy))
+    if _looks_like_learned_policy(policy):
+        raise PolicyArtifactError(
+            "learned policies require a weight-bound PolicyArtifact"
+        )
+
     descriptor = _policy_implementation_descriptor(policy)
     return PolicyIdentity(
         name=_policy_name(policy),
@@ -2338,6 +2772,18 @@ def _normalize_event_count(value: Any, field_name: str) -> int:
     if isinstance(value, int) and value >= 0:
         return value
     raise ValueError(f"{field_name} must be a non-negative integer")
+
+
+def _normalize_optional_event_count(value: Any, field_name: str) -> int | None:
+    if value is None:
+        return None
+    return _normalize_event_count(value, field_name)
+
+
+def _positive_audit_increment(value: Any, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{label} count must be a positive integer")
+    return value
 
 
 def _normalize_assists(value: Any) -> dict[str, int]:

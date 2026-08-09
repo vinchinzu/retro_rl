@@ -135,9 +135,13 @@ from retro_harness.benchmark import (
     InterventionClass,
     StartIdentity,
     PolicyIdentity,
+    PolicyArtifact,
+    PolicyArtifactError,
     policy_identity_for,
     EvaluationContract,
+    AuditCapabilities,
     AttemptAudit,
+    AuditedEnv,
     ClaimValidationError,
     validate_claim,
     BenchmarkTier,
@@ -148,6 +152,56 @@ from retro_harness.benchmark import (
     RandomPolicy,
     run_benchmark,
     zero_action_for_env,
+)
+from retro_harness.solver import (
+    ObservationRequirement,
+    ProgressionDelta,
+    SkillInstance,
+    SkillOutcome,
+    SkillOutcomeStatus,
+    SkillPolicy,
+    SkillSignal,
+    SkillSpec,
+    SkillStep,
+    SolverLifecycle,
+    SolverObservation,
+    SolverResultStatus,
+    SolverSession,
+    SolverSessionResult,
+    SolverActionEvent,
+    SolverTraceEvent,
+    canonical_action_record,
+)
+from retro_harness.contracts import (
+    ActionContract,
+    ActionEntry,
+    ContractBundle,
+    ContractError,
+    ContractMismatchError,
+    EnvironmentContract,
+    ObservationContract,
+    ObservationField,
+    RewardComponent,
+    RewardContract,
+    WrapperContract,
+    WrapperSpec,
+)
+from retro_harness.entry_states import (
+    EntryStateCorpus,
+    EntryStateCorpusBuilder,
+    EntryStateError,
+    EntryStateRecord,
+    EntryStateSplit,
+    SplitStrategy,
+)
+from retro_harness.trajectory import (
+    CounterexampleLibrary,
+    TRAJECTORY_SCHEMA_DIGEST,
+    Trajectory,
+    TrajectoryError,
+    TrajectoryStep,
+    counterexamples_from_solver_result,
+    trajectory_from_solver_result,
 )
 from retro_harness.mission_control import (
     MissionSnapshot,
@@ -197,10 +251,30 @@ __all__ = [
     "BotRunner", "TaskSequencer", "TaskRepeater",
     # Benchmarks
     "RuntimeObservationClass", "InterventionClass", "StartIdentity", "PolicyIdentity",
+    "PolicyArtifact", "PolicyArtifactError",
     "policy_identity_for",
-    "EvaluationContract", "AttemptAudit", "ClaimValidationError", "validate_claim",
+    "EvaluationContract", "AuditCapabilities", "AttemptAudit", "AuditedEnv",
+    "ClaimValidationError", "validate_claim",
     "BenchmarkTier", "BenchmarkCase", "BenchmarkAttemptResult", "BenchmarkRunResult",
     "IdlePolicy", "RandomPolicy", "run_benchmark", "zero_action_for_env",
+    # Solver runtime
+    "ObservationRequirement", "ProgressionDelta", "SkillInstance", "SkillOutcome",
+    "SkillOutcomeStatus", "SkillPolicy", "SkillSignal", "SkillSpec", "SkillStep",
+    "SolverLifecycle", "SolverObservation", "SolverResultStatus", "SolverSession",
+    "SolverSessionResult", "SolverActionEvent", "SolverTraceEvent",
+    "canonical_action_record",
+    # Versioned model/environment contracts
+    "ActionContract", "ActionEntry", "ContractBundle", "ContractError",
+    "ContractMismatchError", "EnvironmentContract", "ObservationContract",
+    "ObservationField", "RewardComponent", "RewardContract",
+    "WrapperContract", "WrapperSpec",
+    # Natural-entry state distributions
+    "EntryStateCorpus", "EntryStateCorpusBuilder", "EntryStateError",
+    "EntryStateRecord", "EntryStateSplit", "SplitStrategy",
+    # Canonical experience and retained failures
+    "CounterexampleLibrary", "TRAJECTORY_SCHEMA_DIGEST", "Trajectory",
+    "TrajectoryError", "TrajectoryStep", "counterexamples_from_solver_result",
+    "trajectory_from_solver_result",
     # Mission control
     "MissionSnapshot", "MissionAware",
 ]

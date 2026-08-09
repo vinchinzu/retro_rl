@@ -17,7 +17,6 @@ import gymnasium as gym
 import numpy as np
 import stable_retro as retro
 from gymnasium import spaces
-from stable_baselines3.common.monitor import Monitor
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -585,8 +584,11 @@ def make_fighting_env(
     if frame_stack > 1:
         env = FrameStack(env, n_frames=frame_stack)
 
-    # Monitor
+    # Monitor is an ML-extra concern.  Keep the module importable with Gymnasium
+    # alone so reward/action wrapper tests do not require Stable-Baselines.
     if monitor_dir:
+        from stable_baselines3.common.monitor import Monitor
+
         os.makedirs(monitor_dir, exist_ok=True)
         monitor_path = os.path.join(monitor_dir, f"{game}_{state}_{int(time.time())}.csv")
         env = Monitor(env, filename=monitor_path)

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional
 
 # Add parent directory for retro_harness import
@@ -36,9 +36,18 @@ class RecordedTask(Task):
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
     @classmethod
-    def load(cls, name: str, tasks_dir: str = "tasks") -> "RecordedTask":
-        path = os.path.join(tasks_dir, f"{name}.json")
-        with open(path, "r") as f:
+    def load(
+        cls,
+        name: str,
+        tasks_dir: str | Path | None = None,
+    ) -> "RecordedTask":
+        root = (
+            Path(__file__).resolve().parents[2] / "tasks"
+            if tasks_dir is None
+            else Path(tasks_dir)
+        )
+        path = root / f"{name}.json"
+        with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
         frames = data.get("frames", [])
         if not frames:

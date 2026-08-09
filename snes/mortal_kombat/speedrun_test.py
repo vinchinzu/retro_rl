@@ -28,11 +28,12 @@ ROOT_DIR = SCRIPT_DIR.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
-import torch
-from stable_baselines3 import PPO
+import pytest
 from retro_harness.fighters.fighting_env import FightingGameConfig
 from retro_harness.fighters.game_configs import get_game_config
 from retro_harness.fighters.ram_observation import build_eval_env
+
+pytestmark = [pytest.mark.ml, pytest.mark.rom]
 
 # Full tournament stages (SNES MK1: 2 endurance rounds, Goro = E2 opp2)
 STAGES = [
@@ -107,6 +108,9 @@ def test_stage(model, config, game_dir, state_name, attempts=5, deterministic=Tr
 
 def main():
     import argparse
+    import torch
+    from stable_baselines3 import PPO
+
     parser = argparse.ArgumentParser(description="MK1 Tournament Speedrun Test")
     parser.add_argument("--char", default="LiuKang", help="Character to test")
     parser.add_argument("--attempts", type=int, default=5, help="Attempts per stage")

@@ -1,0 +1,135 @@
+{
+  "action": {
+    "controller_buttons": [
+      "WAIT_ONE_FRAME",
+      "DISPATCH_LANDING_SKILL"
+    ],
+    "entries": [
+      {
+        "action_id": "wait",
+        "buttons": [
+          1,
+          0
+        ],
+        "label": "wait one emulator frame"
+      },
+      {
+        "action_id": "dispatch",
+        "buttons": [
+          0,
+          1
+        ],
+        "label": "dispatch structured Landing skill"
+      }
+    ],
+    "identity_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
+    "version": "1"
+  },
+  "environment": {
+    "action_space_size": 2,
+    "core_identity_digest": "bc463440203183820fa38b768736d6ff7c23a3dd07ca87e09df62c0081eefd4e",
+    "frame_skip": 1,
+    "game_id": "SMRando-Snes",
+    "identity_digest": "c6cbf04c8e0254b975fc0e64a1fd66251b87c8cbfc0de9c61d25f9c8c4083711",
+    "metadata": {
+      "level_id": "sm_rando_landing_entry",
+      "target_level_id": 37368
+    },
+    "players": 1,
+    "rom_identity_digest": "12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72",
+    "state_id": "NONE",
+    "state_identity_digest": "b7ffa6afdc9e10f305e6e74f3d22a9d685d18ca4261438d6031387e28e808a46",
+    "version": "1"
+  },
+  "identity_digest": "c3fabc5f88880f2d3487536a3ca7cabdeaf18caa3c41983fe382eff4e21410d6",
+  "observation": {
+    "fields": [
+      {
+        "dtype": "float32",
+        "name": "policy_features",
+        "semantic": "ordered output of sm_rando.observations:landing_entry_features",
+        "shape": [
+          12
+        ]
+      }
+    ],
+    "identity_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
+    "preprocessing": {
+      "ram_schema": {
+        "door_transition": [
+          1943,
+          "u16"
+        ],
+        "game_state": [
+          2456,
+          "u16"
+        ],
+        "health": [
+          2498,
+          "u16"
+        ],
+        "level_id": [
+          1947,
+          "u16"
+        ],
+        "max_health": [
+          2500,
+          "u16"
+        ],
+        "max_missiles": [
+          2504,
+          "u16"
+        ],
+        "max_super_missiles": [
+          2508,
+          "u16"
+        ],
+        "missiles": [
+          2502,
+          "u16"
+        ],
+        "player_x": [
+          2806,
+          "u16"
+        ],
+        "player_y": [
+          2810,
+          "u16"
+        ],
+        "super_missiles": [
+          2506,
+          "u16"
+        ]
+      },
+      "reader": "sm_rando.observations:landing_entry_features"
+    },
+    "version": "1"
+  },
+  "reward": {
+    "aggregation": "sum",
+    "components": [
+      {
+        "name": "parlor_reached",
+        "semantic": "entered Parlor room",
+        "weight": 1.0
+      }
+    ],
+    "identity_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
+    "version": "1"
+  },
+  "schema_version": 1,
+  "wrappers": {
+    "identity_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b",
+    "stack": [
+      {
+        "config": {
+          "dispatched_skill": "super_metroid.routes.kpdr.early_spine:play_landing_to_parlor",
+          "max_wait_frames": 496
+        },
+        "name": "LandingBCWaitThenSkill",
+        "version": "1"
+      }
+    ],
+    "version": "1"
+  }
+}

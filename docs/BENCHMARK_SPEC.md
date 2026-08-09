@@ -84,23 +84,31 @@ and (for assisted classes) both `assist_contract_path` and
 by an explicit run contract.
 
 `PolicyIdentity.name` is a display label, not the identity of an executed
-policy. `policy_identity_for(policy)` (also available as
-`PolicyIdentity.from_policy`) derives the digest from the implementation's
-module and qualified name plus an inspectable source digest. When source is
-unavailable it uses a marshalled bytecode digest; if neither source nor
-bytecode is inspectable, it deterministically falls back to the module and
-qualified name. This fallback avoids object representations and memory
-addresses, so legacy policies remain usable. An explicit contract policy
-identity must carry the digest produced for the policy implementation that is
-actually executed.
+policy. For scripted policies, `policy_identity_for(policy)` (also available
+as `PolicyIdentity.from_policy`) derives the digest from the implementation's
+module and qualified name plus an inspectable source or bytecode digest. An
+opaque module/qualified-name fallback remains usable only for non-publication
+compatibility runs.
+
+Learned policies require a `PolicyArtifact`; implementation source does not
+identify model weights. The manifest binds the checkpoint SHA-256, algorithm,
+hyperparameters, training seed, observation/action/reward/wrapper schema
+digests, ROM/start/core identities, dependency-lock SHA-256, and source
+commit. Loading verifies the manifest digest, checkpoint bytes, and expected
+schema digests. A model-like policy without this artifact is rejected before
+evaluation.
 
 An `AttemptAudit` records observed `ram_writes`, `mid_run_loads`, and counted
-`assists`, alongside the identity digests. `validate_claim(contract, audit)`
-returns true only for a matching audit. It rejects missing or mismatched
-identity digests, rejects all three intervention types for Clean, and fails
-closed on invalid class strings. Assisted contracts cannot be constructed
-without both assist-contract fields. Attempt and seed records expose these
-fields directly as `runtime_observation_class`, `intervention_class`,
+`assists`, alongside the identity digests and an `AuditCapabilities` proof.
+Missing counters remain unknown (`null`), never zero. `AuditedEnv` is the
+shared capability-bearing adapter; a game-owned environment may emit the same
+typed fields when it owns all intervention paths (the Super Metroid structured
+combat environment is the first consumer). `validate_claim(contract, audit)`
+returns true only for matching identities and complete instrumentation. It
+rejects uninstrumented environments, all three intervention types for Clean,
+and invalid class strings. Assisted contracts cannot be constructed without
+both assist-contract fields. Attempt and seed records expose these fields
+directly as `runtime_observation_class`, `intervention_class`,
 `start_identity_digest`, and `policy_identity_digest`, with the full audit
 under `attempt_audit`.
 

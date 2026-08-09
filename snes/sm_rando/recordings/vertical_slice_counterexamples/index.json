@@ -1,0 +1,19 @@
+{
+  "counterexamples": [
+    {
+      "cluster": "ed599a6e9017fc93",
+      "path": "trajectories/9f03ff206c72809a5bce68ad4f61e452361e138eeab317e926da1be6f2b315d7.json",
+      "provenance": {
+        "game": "SMRando-Snes",
+        "outcome_index": 0,
+        "parent_trajectory_digest": "03dfcc6c0c41d3251b161c21de9b9f0a430e9bc6b6b5367a164127f59dad677d",
+        "recovery_hint": "exclude_primary_and_replan",
+        "source": "SolverSession.failed-outcome"
+      },
+      "step_count": 0,
+      "terminal_reason": "injected landing-door desync",
+      "trajectory_digest": "9f03ff206c72809a5bce68ad4f61e452361e138eeab317e926da1be6f2b315d7"
+    }
+  ],
+  "schema_version": 1
+}

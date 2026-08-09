@@ -113,6 +113,8 @@ class LevelConfig:
 
     # Action space (None = use DEFAULT_PLATFORMER_ACTIONS)
     action_table: list[list[int]] | None = None
+    # Optional game-owned feature builder for neuro/BC entrypoints.
+    neuro_observation_fn: Callable[..., object] | None = None
 
     # Fitness weights
     progress_weight: float = 10.0
