@@ -1,0 +1,28 @@
+{
+  "kind": "opencode_deepseek_capability_smoke",
+  "status": "PASS",
+  "model": "openrouter/~deepseek/deepseek-v4-flash-latest",
+  "opencode_session_id": "ses_0182b1bf8ffeqodbFkCMBWNzuS",
+  "base_commit": "214ae5ceea6e30a73bd481ccb53d18590533b453",
+  "duration_seconds": 13,
+  "isolation": {
+    "worktree": "detached disposable worktree",
+    "tracked_changes_after_run": 0,
+    "commits_created": 0,
+    "test_commands_run": 0
+  },
+  "request": "Read-only inspection of AGENTS.md and retro_harness/adventure/graph.py; JSON-only structured response.",
+  "result": {
+    "structured_response_received": true,
+    "model_read_only_actions": [
+      "read AGENTS.md",
+      "read retro_harness/adventure/graph.py"
+    ],
+    "proposed_smallest_test_command": "uv run pytest tests/test_docs.py -q"
+  },
+  "notes": [
+    "This verifies OpenRouter latest model selection and isolation only.",
+    "It is not a product-code PASS and it did not run a test command.",
+    "The prior free-model smoke is intentionally excluded from this evaluation."
+  ]
+}
