@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "kind": "deepseek_microtask_baseline",
+  "baseline_id": "deepseek_microtask_baseline_v1",
+  "corpus_id": "deepseek_microtask_corpus_v1",
+  "corpus_path": "docs/evals/deepseek_microtask_corpus_v1.json",
+  "title": "DeepSeek microtask corpus \u2014 clean-worktree baseline ledger",
+  "description": "One-shot pre-agent baseline for each corpus acceptance_command. Captured from a clean worktree with no product-code changes and no emulator runs. Red/flaky/missing-prereq cases are UNUSABLE.",
+  "bead": "rr-zmfh.3",
+  "base_commit": "2680e9d106127f7ccdf735e602e10b1473ac87a6",
+  "captured_at_utc": "2026-08-09T19:46:30.005500+00:00",
+  "capture_policy": {
+    "runs_per_case": 1,
+    "no_emulator": true,
+    "no_product_code_changes": true,
+    "no_command_rewrites": true,
+    "red_baseline_status": "UNUSABLE",
+    "allowed_statuses": [
+      "FAIL",
+      "PASS",
+      "UNUSABLE"
+    ]
+  },
+  "summary": {
+    "case_count": 20,
+    "pass": 20,
+    "fail": 0,
+    "unusable": 0
+  },
+  "cases": [
+    {
+      "id": "mt-01-actions",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_actions.py -q",
+      "exit_code": 0,
+      "duration_ms": 351,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "......                                                                   [100%]\n6 passed in 0.02s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-01-actions.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-01-actions.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:30.005564+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-02-artifacts",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_artifacts.py -q",
+      "exit_code": 0,
+      "duration_ms": 392,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "..                                                                       [100%]\n2 passed in 0.02s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-02-artifacts.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-02-artifacts.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:30.356362+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-03-game-layout",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_game_layout.py -q",
+      "exit_code": 0,
+      "duration_ms": 353,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "..                                                                       [100%]\n2 passed in 0.02s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-03-game-layout.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-03-game-layout.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:30.748755+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-04-repo",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_repo.py -q",
+      "exit_code": 0,
+      "duration_ms": 353,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "...                                                                      [100%]\n3 passed in 0.02s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-04-repo.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-04-repo.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:31.101682+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-05-path-overlay",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_path_overlay.py -q",
+      "exit_code": 0,
+      "duration_ms": 373,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "...                                                                      [100%]\n3 passed in 0.02s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-05-path-overlay.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-05-path-overlay.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:31.455379+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-06-splits",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_splits.py -q",
+      "exit_code": 0,
+      "duration_ms": 365,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".................                                                        [100%]\n17 passed in 0.03s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-06-splits.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-06-splits.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:31.829103+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-07-hop-timer",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_hop_timer.py -q",
+      "exit_code": 0,
+      "duration_ms": 364,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".....                                                                    [100%]\n5 passed in 0.03s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-07-hop-timer.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-07-hop-timer.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:32.194814+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-08-controls",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_controls.py -q",
+      "exit_code": 0,
+      "duration_ms": 358,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".........                                                                [100%]\n9 passed in 0.03s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-08-controls.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-08-controls.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:32.559284+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-09-ram-state",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_ram_state.py -q",
+      "exit_code": 0,
+      "duration_ms": 370,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "................                                                         [100%]\n16 passed in 0.03s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-09-ram-state.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-09-ram-state.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:32.917672+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-10-input-script",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_input_script.py -q",
+      "exit_code": 0,
+      "duration_ms": 353,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".....                                                                    [100%]\n5 passed in 0.02s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-10-input-script.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-10-input-script.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:33.287474+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-11-cursor",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_cursor.py -q",
+      "exit_code": 0,
+      "duration_ms": 360,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".....                                                                    [100%]\n5 passed in 0.02s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-11-cursor.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-11-cursor.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:33.640902+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-12-combat",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_combat.py -q",
+      "exit_code": 0,
+      "duration_ms": 361,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "........                                                                 [100%]\n8 passed in 0.03s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-12-combat.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-12-combat.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:34.001324+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-13-bot-runner",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_bot_runner.py -q",
+      "exit_code": 0,
+      "duration_ms": 359,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "............                                                             [100%]\n12 passed in 0.03s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-13-bot-runner.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-13-bot-runner.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:34.363081+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-14-task-recording",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_task_recording.py -q",
+      "exit_code": 0,
+      "duration_ms": 359,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "....                                                                     [100%]\n4 passed in 0.03s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-14-task-recording.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-14-task-recording.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:34.722149+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-15-youtube-intro",
+      "acceptance_command": "uv run pytest retro_harness/tests/test_youtube_intro.py -q",
+      "exit_code": 0,
+      "duration_ms": 379,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "..                                                                       [100%]\n2 passed in 0.05s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-15-youtube-intro.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-15-youtube-intro.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:35.081706+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-16-platformer-actions",
+      "acceptance_command": "uv run pytest retro_harness/platformer/tests/test_actions.py -q",
+      "exit_code": 0,
+      "duration_ms": 370,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".....                                                                    [100%]\n5 passed in 0.04s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-16-platformer-actions.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-16-platformer-actions.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:35.461411+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-17-platformer-rle",
+      "acceptance_command": "uv run pytest retro_harness/platformer/tests/test_rle_ops.py -q",
+      "exit_code": 0,
+      "duration_ms": 382,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "........                                                                 [100%]\n8 passed in 0.05s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-17-platformer-rle.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-17-platformer-rle.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:35.831958+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-18-platformer-progress",
+      "acceptance_command": "uv run pytest retro_harness/platformer/tests/test_progress.py -q",
+      "exit_code": 0,
+      "duration_ms": 379,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": "............                                                             [100%]\n12 passed in 0.05s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-18-platformer-progress.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-18-platformer-progress.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:36.214649+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-19-docs-game-matrix",
+      "acceptance_command": "uv run pytest tests/test_docs.py::test_game_matrix_is_generated -q",
+      "exit_code": 0,
+      "duration_ms": 391,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".                                                                        [100%]\n1 passed in 0.05s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-19-docs-game-matrix.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-19-docs-game-matrix.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:36.593768+00:00",
+      "timed_out": false
+    },
+    {
+      "id": "mt-20-docs-route-research-policy",
+      "acceptance_command": "uv run pytest tests/test_docs.py::test_external_route_research_policy_is_shared -q",
+      "exit_code": 0,
+      "duration_ms": 381,
+      "status": "PASS",
+      "unusable_reason": null,
+      "stdout_summary": ".                                                                        [100%]\n1 passed in 0.05s",
+      "stderr_summary": "",
+      "artifact_paths": {
+        "stdout": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-20-docs-route-research-policy.stdout.txt",
+        "stderr": "docs/evals/deepseek_microtask_baseline_v1_artifacts/mt-20-docs-route-research-policy.stderr.txt"
+      },
+      "started_at_utc": "2026-08-09T19:46:36.985171+00:00",
+      "timed_out": false
+    }
+  ]
+}
