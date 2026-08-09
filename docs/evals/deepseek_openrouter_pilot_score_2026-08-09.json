@@ -1,0 +1,33 @@
+{
+  "kind": "deepseek_openrouter_pilot_score",
+  "captured_at_utc": "2026-08-09T20:15:27.387829+00:00",
+  "base_commit": "759e0ce770819384906e6955a60699eb9e7ae737",
+  "model": "openrouter/~deepseek/deepseek-v4-flash-latest",
+  "query_cap": 20,
+  "queries_started": 20,
+  "raw_agent_and_acceptance_pass": 20,
+  "strict_scoring_rule": "A candidate needs agent exit 0, acceptance exit 0, a nonempty diff, and no path outside its owned scope. Empty diffs are NO_CHANGE, never PASS.",
+  "strict_results": {
+    "verified_candidates": 12,
+    "no_change": 8,
+    "scope_violation": 0,
+    "failure": 0,
+    "verified_candidate_rate": 0.6,
+    "median_duration_ms": 107086,
+    "mean_duration_ms": 103214.05
+  },
+  "critic_review": {
+    "promoted": ["mt-02-artifacts", "mt-04-repo", "mt-05-path-overlay", "mt-06-splits", "mt-07-hop-timer", "mt-09-ram-state", "mt-10-input-script", "mt-13-bot-runner", "mt-15-youtube-intro", "mt-17-platformer-rle", "mt-18-platformer-progress"],
+    "rejected": {
+      "mt-11-cursor": "The added confirm_button parameter is dead: plan_cursor_path never emits a confirmation frame."
+    },
+    "no_change": ["mt-01-actions", "mt-03-game-layout", "mt-08-controls", "mt-12-combat", "mt-14-task-recording", "mt-16-platformer-actions", "mt-19-docs-game-matrix", "mt-20-docs-route-research-policy"]
+  },
+  "promotion_commit": "4fd2af2",
+  "artifacts": {
+    "local_pilot_ledger": "/home/v/.cache/retro-rl/deepseek-pilot-20/ledger.json",
+    "local_scored_ledger": "/home/v/.cache/retro-rl/deepseek-pilot-20/scored_ledger.json",
+    "notes": "Per-case prompt output, acceptance stdout/stderr, scope status, and patches remain in the local pilot artifact tree."
+  },
+  "scale_decision": "DO NOT SCALE. 60% strict candidate production and eight no-change sessions do not meet a predeclared promotion gate; improve task prompts/corpus and rerun a pilot before considering rr-zmfh.6."
+}
