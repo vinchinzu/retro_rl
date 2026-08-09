@@ -1,7 +1,8 @@
 """Capability-aware directed route graphs.
 
-Game-agnostic core used for room/door/overworld graphs. Edges may require
-capabilities (items, events, boss flags) and route legs may acquire new ones.
+Game-agnostic core used for room/door/overworld graphs. Edges may require or
+acquire capabilities (items, events, boss flags), and route legs may acquire
+new ones explicitly.
 Verification status stays ``planned`` until emulator evidence promotes a
 transition.
 """
@@ -10,6 +11,9 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from heapq import heappop, heappush
+from itertools import count
+from math import isfinite
 from typing import Hashable, Iterable, Mapping
 
 NodeId = Hashable
@@ -76,6 +80,7 @@ class GraphEdge:
     verification: str = "planned"
     provenance: str = ""
     meta: Mapping[str, object] = field(default_factory=dict)
+    acquires: frozenset[str] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:
         if not self.edge_id:
@@ -84,12 +89,16 @@ class GraphEdge:
                 "edge_id",
                 f"{self.source_id}->{self.target_id}",
             )
-        if self.requires:
-            object.__setattr__(
-                self,
-                "requires",
-                frozenset(normalize_capability(v) for v in self.requires),
-            )
+        object.__setattr__(
+            self,
+            "requires",
+            frozenset(normalize_capability(v) for v in self.requires),
+        )
+        object.__setattr__(
+            self,
+            "acquires",
+            frozenset(normalize_capability(v) for v in self.acquires),
+        )
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -98,6 +107,7 @@ class GraphEdge:
             "targetId": self.target_id,
             "direction": self.direction,
             "requires": sorted(self.requires),
+            "acquires": sorted(self.acquires),
             "cost": self.cost,
             "verification": self.verification,
             "provenance": self.provenance,
@@ -115,6 +125,7 @@ class RoutePatch:
     requires: frozenset[str] = field(default_factory=frozenset)
     support: str = ""
     meta: Mapping[str, object] = field(default_factory=dict)
+    acquires: frozenset[str] = field(default_factory=frozenset)
 
     def as_edge(self) -> GraphEdge:
         edge_meta: dict[str, object] = dict(self.meta)
@@ -125,6 +136,7 @@ class RoutePatch:
             target_id=self.target_id,
             direction=self.direction,
             requires=frozenset(normalize_capability(v) for v in self.requires),
+            acquires=frozenset(normalize_capability(v) for v in self.acquires),
             verification="planned",
             provenance="explicit_route_patch",
             meta=edge_meta,
@@ -157,6 +169,9 @@ class PlannedLeg:
     def to_dict(self, nodes: Mapping[NodeId, GraphNode]) -> dict[str, object]:
         source = nodes.get(self.leg.source_id)
         target = nodes.get(self.leg.target_id)
+        acquires = self.edge.acquires | frozenset(
+            normalize_capability(v) for v in self.leg.acquires
+        )
         return {
             "legId": self.leg.leg_id,
             "source": source.to_dict() if source else {"nodeId": self.leg.source_id},
@@ -164,7 +179,7 @@ class PlannedLeg:
             "edge": self.edge.to_dict(),
             "capabilitiesBefore": sorted(self.capabilities_before),
             "effectiveRequires": sorted(self.effective_requires),
-            "acquires": sorted(self.leg.acquires),
+            "acquires": sorted(acquires),
             "capabilitiesAfter": sorted(self.capabilities_after),
             "goal": self.leg.goal,
             "constraints": list(self.leg.constraints),
@@ -206,6 +221,104 @@ def shortest_path(
                     cursor = previous
                 return tuple(reversed(path))
             queue.append(edge.target_id)
+    return None
+
+
+def _edge_order_key(edge: GraphEdge) -> tuple[str, ...]:
+    """Stable ordering key for deterministic capability search tie breaks."""
+    return (
+        type(edge.target_id).__qualname__,
+        repr(edge.target_id),
+        edge.edge_id,
+        edge.direction,
+        ",".join(sorted(edge.requires)),
+        ",".join(sorted(edge.acquires)),
+        repr(edge.cost),
+    )
+
+
+def inventory_aware_path(
+    edges: Iterable[GraphEdge],
+    source_id: NodeId,
+    target_id: NodeId,
+    capabilities: frozenset[str] | Iterable[str] = frozenset(),
+) -> tuple[GraphEdge, ...] | None:
+    """Find a least-cost path while capabilities grow on traversed edges.
+
+    Search state is ``(node_id, capabilities)``.  An edge is traversable when
+    its ``requires`` are in the current inventory, and its ``acquires`` are
+    added after the transition.  Costs must be non-negative.  Equal-cost
+    paths use stable edge metadata as a tie break so a graph's result does not
+    depend on input edge order.
+
+    This is intentionally monotonic item logic: capabilities are set-valued
+    items, events, or defeated-boss flags and are never consumed.  Resource
+    counts and game-specific stop predicates belong above this shared layer.
+    """
+    graph_edges = tuple(edges)
+    for edge in graph_edges:
+        if not isfinite(edge.cost) or edge.cost < 0:
+            raise ValueError(
+                "inventory-aware path requires finite, non-negative edge costs"
+            )
+
+    if source_id == target_id:
+        return ()
+
+    normalized = frozenset(normalize_capability(v) for v in capabilities)
+    outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
+    for edge in graph_edges:
+        outgoing[edge.source_id].append(edge)
+    for candidates in outgoing.values():
+        candidates.sort(key=_edge_order_key)
+
+    State = tuple[NodeId, frozenset[str]]
+    PathKey = tuple[tuple[str, ...], ...]
+    initial_state: State = (source_id, normalized)
+    initial_rank: tuple[float, PathKey] = (0.0, ())
+    best: dict[State, tuple[float, PathKey]] = {initial_state: initial_rank}
+    parent: dict[State, tuple[State, GraphEdge]] = {}
+    sequence = count()
+    pending: list[tuple[float, PathKey, int, NodeId, frozenset[str]]] = [
+        (0.0, (), next(sequence), source_id, normalized)
+    ]
+
+    while pending:
+        cost, path_key, _sequence, node_id, current_caps = heappop(pending)
+        state = (node_id, current_caps)
+        if best.get(state) != (cost, path_key):
+            continue
+        if node_id == target_id:
+            path: list[GraphEdge] = []
+            cursor = state
+            while cursor in parent:
+                previous, edge = parent[cursor]
+                path.append(edge)
+                cursor = previous
+            return tuple(reversed(path))
+
+        for edge in outgoing.get(node_id, ()):
+            if not edge.requires.issubset(current_caps):
+                continue
+            next_caps = current_caps | edge.acquires
+            next_state: State = (edge.target_id, next_caps)
+            next_cost = cost + edge.cost
+            next_path_key = path_key + (_edge_order_key(edge),)
+            next_rank = (next_cost, next_path_key)
+            if next_state in best and next_rank >= best[next_state]:
+                continue
+            best[next_state] = next_rank
+            parent[next_state] = (state, edge)
+            heappush(
+                pending,
+                (
+                    next_cost,
+                    next_path_key,
+                    next(sequence),
+                    edge.target_id,
+                    next_caps,
+                ),
+            )
     return None
 
 
@@ -271,6 +384,20 @@ class RouteGraph:
             capabilities=capabilities,
         )
 
+    def inventory_aware_path(
+        self,
+        source_id: NodeId,
+        target_id: NodeId,
+        capabilities: frozenset[str] | Iterable[str] = frozenset(),
+    ) -> tuple[GraphEdge, ...] | None:
+        """Plan a least-cost path while collecting edge ``acquires`` items."""
+        return inventory_aware_path(
+            self.edges,
+            source_id,
+            target_id,
+            capabilities=capabilities,
+        )
+
     def plan_legs(
         self,
         legs: Iterable[RouteLeg],
@@ -300,7 +427,7 @@ class RouteGraph:
                     f"route leg {leg.leg_id} is missing capabilities: "
                     f"{', '.join(sorted(missing))}"
                 )
-            after = capabilities | frozenset(
+            after = capabilities | edge.acquires | frozenset(
                 normalize_capability(v) for v in leg.acquires
             )
             planned.append(
@@ -433,6 +560,7 @@ def promote_edge_verification(
                     verification=verification,
                     provenance=edge.provenance,
                     meta=edge.meta,
+                    acquires=edge.acquires,
                 )
             )
             found = True

@@ -136,6 +136,7 @@ def edge_to_editor_dict(edge: GraphEdge) -> dict[str, object]:
         "isElevator": bool(meta.get("isElevator", False)),
         "doorCapColor": meta.get("doorCapColor"),
         "requires": sorted(edge.requires),
+        "acquires": sorted(edge.acquires),
         "provenance": edge.provenance,
         "provenanceDetail": meta.get("provenanceDetail") or meta.get("support", ""),
         "verification": edge.verification,
@@ -148,6 +149,9 @@ def planned_leg_to_editor_dict(
 ) -> dict[str, object]:
     source = rooms[int(planned.leg.source_id)]
     target = rooms[int(planned.leg.target_id)]
+    acquires = planned.edge.acquires | frozenset(
+        normalize_capability(v) for v in planned.leg.acquires
+    )
     return {
         "legId": planned.leg.leg_id,
         "source": source.to_dict(),
@@ -155,7 +159,7 @@ def planned_leg_to_editor_dict(
         "edge": edge_to_editor_dict(planned.edge),
         "capabilitiesBefore": sorted(planned.capabilities_before),
         "effectiveRequires": sorted(planned.effective_requires),
-        "acquires": sorted(planned.leg.acquires),
+        "acquires": sorted(acquires),
         "capabilitiesAfter": sorted(planned.capabilities_after),
         "goal": planned.leg.goal,
         "constraints": list(planned.leg.constraints),
