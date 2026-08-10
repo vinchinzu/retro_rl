@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air Man screen-4 clear from AirScreen2 (M3); LL spawns (cloud land residual) |
+| Status | Air Man screen-4 clear from AirScreen2 (M3); LL rider kill OK; cloud stand residual |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -28,10 +28,10 @@ uv run pytest nes/mega_man_2/tests -q
 ## Next milestone
 
 Past screen 4 from `AirFanPlatform` (prog 937–984) toward boss door.
-**LL spawns** at mapset4: types `0x3D`/`0x3E` from prog~961 (see
-`docs/LL_SPAWN_DECODE.md`). Air Tikki is **0x40** (not landable).
-Residual: Clean **cloud land** (~28px X short at apex y≈34). Probe:
-`scripts/ll_spawn_probe.py`. Then M4.
+**LL spawns** mapset4 (`0x3D`/`0x3E` ~prog 961; `docs/LL_SPAWN_DECODE.md`).
+**Rider kill Clean** (pulse B on `0x3D`). Residual: empty cloud **object-solid
+stand** (Y-meet dx≈5–10 still freefall). Probe: `scripts/cloud_land_probe.py`
++ `recordings/air_post4_cloud/RED_PIN.md`. Then M4.
 
 ## Norms
 
@@ -48,3 +48,5 @@ Residual: Clean **cloud land** (~28px X short at apex y≈34). Probe:
 - Jump needs A rising edge after load; continuous A from frame 1 does not jump.
 - Do not save type36-overlap or left-ledge hops as past-island checkpoints.
 - LL watch: `$0400` types **0x3D/0x3E** (not 35/36). Goblin is **0x40**.
+- Kill LL rider with **pulsed B** (period 3–8); hold-B under-fires. Body `0x3E`
+  stays after `0x3D` dies. Stand may not set `tile_feet==1`.

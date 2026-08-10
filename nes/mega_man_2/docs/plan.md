@@ -13,24 +13,25 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Bottleneck
 
-**Post-s4: LL spawns (mapset 4) but cloud land not yet Clean.** Island solid
-prog 937–984; first LL body y≈32–36 at scr4. Pure jump min_sy~34 reaches
-altitude but ~28px short in X vs LL. No camera ≥5 yet.
+**Post-s4: rider kill Clean; empty cloud stand still RED.** Island solid prog
+937–984. LL spawns mapset4; pulse-B kills `0x3D` in air; Y-meet after kill
+reaches dx≈5–10 but freefall continues. No camera ≥5 yet.
 
-Geometry (verified 2026-08-09/10 + fpd6):
+Geometry (verified 2026-08-09/10 + fpd6 + rr-54ui night):
 
 - Tile solids end prog 984; Air Tikki is **0x40** damage enemy (not landable)
-- LL **0x3D/0x3E** spawns ~prog 961 when cam approaches mapset 4 (live + ROM)
-- Cloud is object platform (kill rider → stand); may not set `tile_feet==1`
+- LL **0x3D/0x3E** spawns ~prog 961; kill rider then stand (object-solid)
+- Pulse B (period 3–8) required; hold-B under-fires
+- Kill with dy≳20 freezes gap (co-sink); kill near Y-meet still no `ft=1`
 - Placement ROM: lsmmega/mm2 `airman_wily2_objects_set.asm` idx5 mapset4 x=C0 y=20
 
 ## Suggested next experiments
 
-1. **Cloud land (primary, rr-54ui)** — from `AirFanPlatform`: edge jump apex X
-   toward LL x≈160–192, shoot-kill rider, detect stand via Y-stable / object
-   overlap (not only `tile_feet`). Probe: `scripts/ll_spawn_probe.py`.
+1. **Object-solid decode (primary, rr-54ui)** — `aobject_tsa=$4E0`, post-kill
+   flag/type 118, feet-on-top geometry vs sy==by. Evidence:
+   `recordings/air_post4_cloud/RED_PIN.md`. Probe: `scripts/cloud_land_probe.py`.
 2. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
-3. Do **not** re-sweep goblin-solid or “LL absent” type filters (falsified fpd6).
+3. Do **not** re-sweep goblin-solid, “LL absent”, or hold-B only.
 
 ## Notes
 
