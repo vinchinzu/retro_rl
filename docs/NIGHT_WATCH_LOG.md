@@ -716,3 +716,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next bead **rr-68ib**: East Tunnel → Glass reverse
 - Units: kpdr_dev 8/8; no continuous / STATUS
 - No push
+
+### 2026-08-10T~01:35 CDT — harvest sleep bed miss CLOSED
+- Lane: harvest only (`snes/harvest/`)
+- Bead **rr-m0wq** CLOSED: Sleep interaction miss at bed (70,86) D7
+- Root cause: face-left + A walks into mattress; B after A cancels Yes/No sleep confirm
+- Fix (`GoToSleepTask`): face-up only; B only before first A of attempt; A-only
+  confirm/dismiss; toss held once; re-nav if off-stand mid-verify; longer verify
+- **Evidence:** `recordings/rr_m0wq_sleep_days6.json` — `Y1_Inside_House` D2→D8,
+  6/6 overnights first-try (incl D7→D8), Clean, mid_run_loads=0, ram_writes=0
+- Units: SleepAndPlannerTests green
+- Residual: parent **rr-5in** / **rr-20w** full power-on→Summer income still open
+- No push

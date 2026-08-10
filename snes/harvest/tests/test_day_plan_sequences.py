@@ -3295,6 +3295,30 @@ class SleepAndPlannerTests(unittest.TestCase):
         )
         # Recording taps B before the sleep confirmation.
         self.assertTrue(any(action[0] == 1 for action in task._action_queue))
+        # Never face-left + A (walks into mattress / misses prompt — rr-m0wq).
+        self.assertFalse(
+            any(action[8] == 1 and action[6] == 1 for action in task._action_queue)
+        )
+
+    def test_go_to_sleep_later_attempts_stay_face_up_no_post_a_b(self) -> None:
+        """rr-m0wq: left-face A and B-after-A cancel Yes; stay face-up + A-only."""
+        task = GoToSleepTask()
+        world = make_date_world(0x15, season=0, day=12)
+        set_player_pos(world.ram, 70, 86)
+        task.reset(world)
+        task._sleep_attempts = 6
+        task._phase = "sleep_attempt"
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "sleep_verify")
+        queue = list(task._action_queue)
+        # Still face up somewhere in the attempt.
+        self.assertTrue(any(action[4] == 1 for action in queue))
+        # No left+A combo on the confirm press.
+        self.assertFalse(any(action[8] == 1 and action[6] == 1 for action in queue))
+        # After the first A appears, no B should follow (B = No on sleep confirm).
+        first_a = next(i for i, a in enumerate(queue) if a[8] == 1)
+        self.assertFalse(any(a[0] == 1 for a in queue[first_a:]))
 
     def test_go_to_sleep_level2_uses_recorded_wife_bed_position(self) -> None:
         task = GoToSleepTask()

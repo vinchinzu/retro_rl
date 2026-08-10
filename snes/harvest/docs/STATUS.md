@@ -190,8 +190,15 @@ Test crop fixtures (for growth / ship work):
      Evidence: `recordings/rr_6byj_ensure_crop_seeds_probe.json` —
      `Y1_After_Buy_Potato` → hoe+seeds ready, `multi_nav_starts=2`, `trips=2`,
      SUCCESS ~2248f, `mid_run_state_loads=0`, `ram_writes=0`.
-   - Child residual: `rr-m0wq` (sleep D7); parent `rr-20w` / `rr-5in` full
-     power-on→Summer income still open (live multi-day plant→water path)
+   - **2026-08-10 `rr-m0wq` CLOSED (Clean):** D7 bed miss was face-left + A
+     (walks into mattress) and B-after-A (cancels Yes on sleep confirm).
+     `GoToSleepTask` now face-up only, B only before first A of each attempt,
+     A-only confirm/dismiss, toss held item once, re-nav if off-stand mid-verify.
+     Evidence: `recordings/rr_m0wq_sleep_days6.json` — `Y1_Inside_House` D2→D8,
+     6/6 overnights first-try (incl. D7→D8), `mid_run_state_loads=0`,
+     `ram_writes=0`, Clean.
+   - Parent residual: `rr-20w` / `rr-5in` full power-on→Summer income still open
+     (live multi-day plant→water path after ENSURE + sleep harden)
 6. ~~End-of-spring / continuous soak with **money > 100** + harvest phases (rr-y8n / Gate A)~~ — **CLOSED 2026-08-09 night** Clean multi-day successor:
    ```bash
    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \

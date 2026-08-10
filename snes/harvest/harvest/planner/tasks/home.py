@@ -513,10 +513,11 @@ class GoToSleepTask(Task):
 
     name: str = "go_to_sleep"
     tasks_dir: str = TASKS_DIR
-    timeout: int = 10000
-    sleep_attempt_limit: int = 10
+    timeout: int = 12000
+    sleep_attempt_limit: int = 12
     # Wait long enough for the overnight fade before assuming A missed.
-    sleep_verify_frames: int = 640
+    # Overnight confirm + fade can exceed ~10s; do not re-mash mid-fade.
+    sleep_verify_frames: int = 720
     # Budget for the outdoor/return-home recovery before bed navigation.
     return_home_timeout: int = 5500
 
@@ -535,6 +536,8 @@ class GoToSleepTask(Task):
     # callers (Gate B shed, multi-day planner) do not ExitToFarm mid-wake.
     _morning_settle_frames: int = field(default=0, init=False)
     morning_ready_frames: int = 45
+    # Hands-full at bed: toss once before the first sleep A (doors already toss).
+    _tossed_before_sleep: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -548,6 +551,7 @@ class GoToSleepTask(Task):
         self._return_home = None
         self._return_home_steps = 0
         self._morning_settle_frames = 0
+        self._tossed_before_sleep = False
         self._start_season, self._start_day = read_world_date(world.ram)
         if self._phase == "ensure_house":
             self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
@@ -565,56 +569,63 @@ class GoToSleepTask(Task):
     def _sleep_face_for_tilemap(tilemap: int) -> str:
         # Base + remodel L1: stand right of mattress, face up (go_to_sleep.json).
         # Level-2 wife bed: stand south of bed, face up (map landmark).
+        # Never face left for A — left+A walks into the mattress and misses the
+        # sleep prompt (recording + rr-m0wq D7 miss).
         return "up"
 
     def _queue_sleep_attempt(self, tilemap: int) -> None:
-        """Match go_to_sleep.json: face up, B settle, then plain A bursts.
+        """Match go_to_sleep.json: face up, one B settle, then plain A only.
 
-        Recording arrives facing left, then holds up at (70,86) before B/A.
-        Facing left + A walks into the mattress and misses the sleep prompt.
+        Human recording at (70,86):
+          arrive facing left → hold Up → long idle → B (~10f) → A bursts.
+          Sleep pull-in later walks left into the bed; left is not the face.
 
-        Power-on continuous (rr-5in): carry often has grass seeds (0x0C) + can
-        after Gate B shed. X-cycle + extra B settle before A so the bed prompt
-        is not stolen by tool use. Late spring evenings (D7+) needed more than
-        6 attempts at the exact bed stand (70,86).
+        rr-m0wq (power-on continuous D7): prior harden tried left-face A and
+        mid-attempt B after A. Left+A walks into the mattress; B cancels the
+        Yes/No sleep confirm. Keep face-up only, B only *before* the first A
+        of each attempt, then A-only until verify timeout.
+
+        Gate B carry (grass seeds + can): brief X settle once early so A is
+        not eaten by a tool swing, then re-face up.
         """
         self._sleep_attempts += 1
-        primary = self._sleep_face_for_tilemap(tilemap)
-        # Later attempts try left without walking (face tap only).
-        face = primary if self._sleep_attempts < 6 else "left"
-        # Put away / cycle tools — seeds+can in carry pair can steal A presses.
-        self._action_queue.extend(make_action(x=True) for _ in range(4))
-        self._action_queue.extend(make_action() for _ in range(10))
-        self._action_queue.extend(make_action(x=True) for _ in range(4))
-        self._action_queue.extend(make_action() for _ in range(12))
-        self._action_queue.extend(make_action(**{face: True}) for _ in range(28))
-        self._action_queue.extend(make_action() for _ in range(40))
-        # Recording taps B before the sleep A (closes tool/menu residue).
-        self._action_queue.extend(make_action(b=True) for _ in range(14))
-        self._action_queue.extend(make_action() for _ in range(20))
-        for _ in range(6):
-            self._action_queue.extend(make_action(a=True) for _ in range(14))
-            self._action_queue.extend(make_action() for _ in range(12))
-        self._action_queue.extend(make_action(b=True) for _ in range(8))
-        self._action_queue.extend(make_action() for _ in range(10))
-        self._action_queue.extend(make_action(a=True) for _ in range(16))
-        self._action_queue.extend(make_action() for _ in range(24))
-        self._action_queue.extend(make_action(a=True) for _ in range(24))
-        self._action_queue.extend(make_action() for _ in range(180))
-        if self._sleep_attempts >= 3 and face == "up":
-            # One left-face A burst without movement if up-facing missed.
-            self._action_queue.extend(make_action(left=True) for _ in range(12))
-            self._action_queue.extend(make_action() for _ in range(8))
-            self._action_queue.extend(make_action(a=True) for _ in range(18))
-            self._action_queue.extend(make_action() for _ in range(100))
-        if self._sleep_attempts >= 7:
-            # Micro-nudge re-seat on bed stand then face-up A (pixel slip).
-            self._action_queue.extend(make_action(down=True) for _ in range(4))
+        face = self._sleep_face_for_tilemap(tilemap)
+        n = self._sleep_attempts
+
+        # Tool settle only on early attempts — X mid-confirm is noise.
+        if n <= 3:
+            self._action_queue.extend(make_action(x=True) for _ in range(3))
+            self._action_queue.extend(make_action() for _ in range(10))
+
+        # Late attempts: micro re-seat on the bed stand (pixel slip / shove).
+        if n >= 4:
+            self._action_queue.extend(make_action(down=True) for _ in range(3))
             self._action_queue.extend(make_action() for _ in range(6))
-            self._action_queue.extend(make_action(up=True) for _ in range(10))
-            self._action_queue.extend(make_action() for _ in range(12))
-            self._action_queue.extend(make_action(a=True) for _ in range(20))
-            self._action_queue.extend(make_action() for _ in range(120))
+            # Alternate x column slightly then return (still face-up for A).
+            if n % 2 == 0:
+                self._action_queue.extend(make_action(right=True) for _ in range(3))
+            else:
+                self._action_queue.extend(make_action(left=True) for _ in range(3))
+            self._action_queue.extend(make_action() for _ in range(4))
+            self._action_queue.extend(make_action(up=True) for _ in range(12))
+            self._action_queue.extend(make_action() for _ in range(8))
+
+        # Long face-up hold against the mattress (recording ~20–30f continuous).
+        self._action_queue.extend(make_action(**{face: True}) for _ in range(36))
+        self._action_queue.extend(make_action() for _ in range(48))
+        # Single B settle *before* any A (closes tool residue / menus).
+        self._action_queue.extend(make_action(b=True) for _ in range(12))
+        self._action_queue.extend(make_action() for _ in range(24))
+        # Re-assert face up after B (B can leave facing stale).
+        self._action_queue.extend(make_action(**{face: True}) for _ in range(16))
+        self._action_queue.extend(make_action() for _ in range(20))
+        # A-only bursts — never B here (B selects No on the sleep confirm).
+        bursts = 8 if n < 6 else 10
+        for _ in range(bursts):
+            self._action_queue.extend(make_action(a=True) for _ in range(16))
+            self._action_queue.extend(make_action() for _ in range(14))
+        # Wait for overnight fade / dialogue without canceling.
+        self._action_queue.extend(make_action() for _ in range(220))
 
     @staticmethod
     def _bed_stand_for_tilemap(tilemap: int) -> Point:
@@ -840,8 +851,15 @@ class GoToSleepTask(Task):
             return self._step_ensure_house(world)
 
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
+        # A-only dismiss at the bed: B selects No on the sleep Yes/No confirm
+        # (rr-m0wq). Outside the house, default recovery can still use A.
         if input_lock != 1 or scene.needs_input_dismiss:
-            return dismiss_dialogue_result(self._step_count)
+            return dismiss_dialogue_result(
+                self._step_count,
+                buttons=("a",),
+                pulse_every=2,
+                reason="pre-sleep dismiss",
+            )
 
         queued = drain_action_queue(self._action_queue)
         if queued is not None:
@@ -852,6 +870,17 @@ class GoToSleepTask(Task):
 
         if self._phase == "nav_bed":
             if at_bed:
+                # Hands-full blocks some house interactions; toss once away
+                # from the mattress before the first A (south into open floor).
+                if not self._tossed_before_sleep and not hands_are_clear(world.ram):
+                    self._tossed_before_sleep = True
+                    self._action_queue.extend(toss_held_actions(face="down"))
+                    self._route = []
+                    self._route_index = 0
+                    print("[SLEEP] Tossing held item before bed interaction")
+                    queued = drain_action_queue(self._action_queue)
+                    if queued is not None:
+                        return queued
                 self._phase = "sleep_attempt"
             else:
                 return TaskResult(
@@ -863,16 +892,47 @@ class GoToSleepTask(Task):
             if self._sleep_attempts >= self.sleep_attempt_limit:
                 return TaskResult(
                     status=TaskStatus.FAILURE,
-                    reason="sleep interaction did not advance day",
+                    reason=(
+                        "sleep interaction did not advance day "
+                        f"pos=({pos.x},{pos.y}) attempts={self._sleep_attempts}"
+                    ),
                 )
+            print(
+                f"[SLEEP] Attempt {self._sleep_attempts + 1}/"
+                f"{self.sleep_attempt_limit} at bed pos=({pos.x},{pos.y}) "
+                f"tm=0x{tilemap:02X}"
+            )
             self._queue_sleep_attempt(tilemap)
             self._phase = "sleep_verify"
+            self._verify_count = 0
             queued = drain_action_queue(self._action_queue)
             if queued is not None:
                 return queued
 
         if self._phase == "sleep_verify":
             self._verify_count += 1
+            # Drifted off the stand mid-attempt (tool shove / bad nudge):
+            # re-nav immediately instead of mashing A into empty air.
+            if (
+                not self._at_bed(pos, tilemap)
+                and self._verify_count > 40
+                and scene.mode == SceneMode.NORMAL
+                and input_lock == 1
+            ):
+                self._action_queue.clear()
+                self._verify_count = 0
+                self._route = []
+                self._route_index = 0
+                self._phase = "nav_bed"
+                print(
+                    f"[SLEEP] Off bed during verify pos=({pos.x},{pos.y}); "
+                    f"re-nav (attempt {self._sleep_attempts}/"
+                    f"{self.sleep_attempt_limit})"
+                )
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(self._move_toward_bed(pos, tilemap)),
+                )
             # Overnight fade / dialogue can take several seconds; do not mash
             # a retry that cancels the sleep confirmation.
             if self._verify_count > self.sleep_verify_frames:
@@ -882,14 +942,20 @@ class GoToSleepTask(Task):
                 self._phase = "nav_bed" if not self._at_bed(pos, tilemap) else "sleep_attempt"
                 print(
                     f"[SLEEP] Retry sleep interaction "
-                    f"({self._sleep_attempts}/{self.sleep_attempt_limit})"
+                    f"({self._sleep_attempts}/{self.sleep_attempt_limit}) "
+                    f"pos=({pos.x},{pos.y})"
                 )
-            # Keep dismissing in case a bedtime event dialogue opened.
+            # Keep dismissing with A only (never B — cancels Yes).
             if scene.mode in {SceneMode.DIALOGUE, SceneMode.MENU}:
-                return dismiss_dialogue_result(self._step_count)
+                return dismiss_dialogue_result(
+                    self._step_count,
+                    buttons=("a",),
+                    pulse_every=2,
+                    reason="sleep confirm/dialog",
+                )
             # Pulse A while waiting — the Yes/No sleep prompt can open late
             # and is not always classified as dialogue/menu.
-            if self._verify_count % 28 < 10:
+            if self._verify_count % 28 < 12:
                 return TaskResult(
                     status=TaskStatus.RUNNING,
                     action=ActionResult(make_action(a=True)),
