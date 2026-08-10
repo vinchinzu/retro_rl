@@ -1,0 +1,46 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T08:32:37.199203+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "segment": "clear_push_12",
+    "track": "assisted",
+    "trial": 0
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "doors": 3,
+      "event": "ckpt",
+      "keys": 0,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 176,
+          "name": "unknown_object_0x68",
+          "slot": 11,
+          "type": 104,
+          "x": 80,
+          "y": 144
+        }
+      ],
+      "odm": 10,
+      "rad": 91,
+      "rin": "no_inventory_reward_observed",
+      "room_item": 3,
+      "sc": "0x12",
+      "xy": [
+        96,
+        141
+      ]
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room12.state",
+  "source_state_sha256": "142d51df795e1925557b8173b0bb15af4da69c07a967433c1608f8c03ef0561d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room12Cleared.state",
+  "state_sha256": "1f98c0756e563a5bf319ad233f1225603638c322bf5cbba013d82eeedefa1030"
+}

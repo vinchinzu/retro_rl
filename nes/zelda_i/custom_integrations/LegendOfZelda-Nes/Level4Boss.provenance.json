@@ -1,0 +1,47 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T08:32:37.385175+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "method": "push_left_scripted_right",
+    "segment": "right_13",
+    "track": "assisted",
+    "trial": 0
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "doors": 2,
+      "event": "final",
+      "keys": 0,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 0,
+          "name": "gleeok",
+          "slot": 1,
+          "type": 67,
+          "x": 160,
+          "y": 125
+        }
+      ],
+      "odm": 0,
+      "rad": 0,
+      "rin": "heart_container",
+      "room_item": 26,
+      "sc": "0x13",
+      "xy": [
+        32,
+        141
+      ]
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room12.state",
+  "source_state_sha256": "142d51df795e1925557b8173b0bb15af4da69c07a967433c1608f8c03ef0561d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Boss.state",
+  "state_sha256": "2bffa754a390361885988774d5112e82c7f0497624a5c5765bb93f6abd136dfb"
+}
