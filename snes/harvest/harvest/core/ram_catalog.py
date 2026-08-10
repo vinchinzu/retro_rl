@@ -443,7 +443,20 @@ SCALAR_FIELDS: tuple[RamFieldSpec, ...] = (
     RamFieldSpec("event_flags_1f62", "Event Flags 1F62", 0x11F62, "u16", "Flags", "decomp", 0, 0xFFFF),
     RamFieldSpec("upgrade_flags", "Upgrade Flags", 0x11F64, "u16", "Flags", "decomp", 0, 0xFFFF),
     RamFieldSpec("marriage_flags", "Marriage Flags", 0x11F66, "u16", "Flags", "decomp", 0, 0xFFFF),
-    RamFieldSpec("event_flags_1f68", "Event Flags 1F68", 0x11F68, "u16", "Flags", "decomp", 0, 0xFFFF),
+    RamFieldSpec(
+        "event_flags_1f68",
+        "Event Flags 1F68",
+        0x11F68,
+        "u16",
+        "Flags",
+        "decomp",
+        0,
+        0xFFFF,
+        "Gate B (rr-bhr): bit 0x0001 truck/day, 0x0020 first outdoor morning "
+        "intro done (CODE_83CEAE), 0x0080 dog owned (bank_84). Y1 morning "
+        "0x00B1 keeps free-move on ExitToFarm; truck D2 bed 0x0011 fires intro "
+        "and softlocks free-move. Min safe mask for exit ≈ 0x00A1.",
+    ),
     RamFieldSpec("romance_event_flags", "Romance Event Flags", 0x11F6A, "u16", "Flags", "decomp", 0, 0xFFFF),
     RamFieldSpec("family_event_flags", "Family Event Flags", 0x11F6C, "u16", "Flags", "decomp", 0, 0xFFFF),
     # Spring D1 town social handoff (ROM event scripts). Full completion = 0x3F.

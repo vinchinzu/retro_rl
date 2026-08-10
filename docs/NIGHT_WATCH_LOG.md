@@ -202,3 +202,12 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Source: `post_double_to_single_chamber_pure` ~(216,630) deep climb (no fake top pin); export `post_single_to_bubble_pure` ~(472,395).
 - Parent **`rr-vqv3` remains open** (Wave→Business stack; 4 hops left). No continuous Ice STATUS.
 - Next tip: `rr-czg9` Bubble→Farm return. Residual: `docs/tasks/rr-u0y8-residual.md`.
+
+### 2026-08-09T22:07 CDT — harvest Gate B causal diagnosis (rr-bhr open)
+- **Still open** `rr-bhr`: pure truck→D2 bed works; shed grass+can blocked.
+- **Causal:** `event_flags_1f68` truck D2 = `0x0011` vs Y1 `0x00B1`. Min free-move-safe mask **`0x00A1`** (truck `0x01` + morning intro `0x20` + dog owned `0x80`). Offline A/B on `town_day1_rest_end`: only pre-set `0xA1`/`0xB1` keeps free-move; `house_size` not causal.
+- ROM: `CODE_83CEAE` fires outdoor intro when `0x20` clear → free-move never recovers (mash/name/mid-warp/clock). D1 farm without truck cannot leave town.
+- Landed: `outdoor_intro_flags_ready`, richer `farm_control_lost`, STATUS/recon docs, unit test.
+- **Next:** pure human/auto complete D2 dog intro then shed; do not claim acceptance without free outdoor + grass+can. Alternate progress: `rr-53g` harvest+ship 5pm.
+- No push.
+

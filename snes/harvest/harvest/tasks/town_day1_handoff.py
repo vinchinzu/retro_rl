@@ -706,14 +706,12 @@ def build_day1_handoff_tasks(
                 ]
             )
         # Sleep before shed when truck slice does not already overnight.
-        # Rest truck+sleep slice ends D2 morning at bed (136,120).
-        # 2026-08-09 (rr-bhr): pure talks + truck rest-slice still leave a
-        # broken outdoor free-move state — ExitToFarm clears game_state bit
-        # 0x4000 (gs 0x4001→0x0001), auto-walks to house-enter ~(133,425),
-        # then MultiMapNav soft-locks into tilemap 0x5F. Y1_Inside_House /
-        # Y1_Front_House keep free-move and shed grass+can OK. Next: re-record
-        # pure-path truck+sleep settle or complete morning cutscene flags
-        # (event_flags_1f68 Y1=0x00B1 vs truck=0x0011).
+        # Rest truck+sleep / leave+GoToSleep ends D2 morning at bed (136,120).
+        # 2026-08-09 (rr-bhr): ExitToFarm from truck D2 bed fires ROM morning
+        # intro when event_flags_1f68 lacks 0x00A1 (Y1 has 0x00B1). Free-move
+        # bit 0x4000 clears permanently → house-front softlock → 0x5F.
+        # house_size not causal. Need pure outdoor dog-intro completion, then
+        # shed (ShedFetchItemTask farm_control_lost fail-fast).
         if include_sleep and not truck_includes_sleep:
             parts.append(GoToSleepTask(name="sleep_to_d2", timeout=12000))
         if pick_starter_tools:

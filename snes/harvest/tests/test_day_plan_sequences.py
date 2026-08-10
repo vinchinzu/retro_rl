@@ -1438,8 +1438,10 @@ class DayPlanSequenceTests(unittest.TestCase):
         """Gate B: free-move bit 0x4000 distinguishes good outdoor from soft-lock."""
         from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, live_wram_base
         from harvest.planner.tasks.inventory import (
+            EVENT_1F68_OUTDOOR_INTRO_MASK,
             farm_free_move_ready,
             farm_house_front_softlock,
+            outdoor_intro_flags_ready,
         )
 
         world = make_world(0x00)
@@ -1463,6 +1465,17 @@ class DayPlanSequenceTests(unittest.TestCase):
         live.ram[lo2] = 0x01
         live.ram[lo2 + 1] = 0x40
         self.assertTrue(farm_free_move_ready(live.ram))
+
+        # outdoor intro flags: truck 0x0011 incomplete; 0x00A1 / 0x00B1 ready
+        f68 = live_wram_base(world.ram) + 0x11F68
+        world.ram[f68] = 0x11
+        world.ram[f68 + 1] = 0x00
+        self.assertFalse(outdoor_intro_flags_ready(world.ram))
+        world.ram[f68] = EVENT_1F68_OUTDOOR_INTRO_MASK & 0xFF  # 0xA1
+        world.ram[f68 + 1] = 0x00
+        self.assertTrue(outdoor_intro_flags_ready(world.ram))
+        world.ram[f68] = 0xB1
+        self.assertTrue(outdoor_intro_flags_ready(world.ram))
 
     def test_exit_to_farm_task_exits_shed_with_downward_transition(self) -> None:
         world = make_world(0x26)
