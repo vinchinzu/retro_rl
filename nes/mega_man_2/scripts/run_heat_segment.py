@@ -12,6 +12,7 @@ Verified (Clean Bronze, 2026-08-10):
 - target 4 from ``HeatScreen3``: pillars 25/10 ph10 (~181f grounded)
 - target 5 from ``HeatScreen4``: late 20/12 ph4 (~131f cam)
 - target 7 from ``HeatScreen5Ground``: screen5 j1/LEFT/j2 + hop 9/gw3 (~305f)
+- target 8 from ``HeatScreen7Mid``: screen7 high-path ladder/scroll_down (~587f)
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
@@ -31,6 +32,9 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
   --state HeatScreen5Ground --target-screen 7 --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen7Mid --target-screen 8 --trials 3
 ```
 """
 
@@ -50,7 +54,9 @@ for _p in (_REPO_ROOT, _NES):
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.policy import HeatManPolicy
 from mega_man_2.ram import (
+    ADDR_CAMERA_STATE,
     ADDR_CAMERA_X_SCREEN,
+    ADDR_CAMERA_Y,
     ADDR_HEALTH,
     ADDR_ITEMS,
     ADDR_LIVES,
@@ -116,8 +122,9 @@ def run_heat_segment(
         "notes": (
             "Heat Man camera X screen ≥ target. "
             "Recipes: early 50/12; screen2 mid 60→25; screen3 pillars 25/10 ph10; "
-            "screen4 late 20/12 ph4; screen5 j1/LEFT/j2 + hop 9/gw3 → cam≥7. "
-            "Boss door climb + Item-1 residual (rr-809)."
+            "screen4 late 20/12 ph4; screen5 j1/LEFT/j2 + hop 9/gw3 → cam≥7; "
+            "screen7 high-path ladder → cam≥8 Sniper shaft. "
+            "Boss door + Item-1 residual (rr-809)."
         ),
     }
     write_json_report(out / "heat_segment.json", report)
@@ -174,7 +181,13 @@ def _run_one(
         lives = int(ram[ADDR_LIVES])
         cam_scr = int(ram[ADDR_CAMERA_X_SCREEN])
         tile_feet = int(ram[ADDR_TILE_FEET])
-        fallen = is_fallen(ram)
+        cam_y = int(ram[ADDR_CAMERA_Y])
+        cam_st = int(ram[ADDR_CAMERA_STATE])
+        # sy≥200 is a pit heuristic; false-fires on ladder scroll_down (sy~228)
+        # while tile_feet==2 or vertical camera is mid-transition.
+        on_ladder = tile_feet == 2
+        vert_scroll = cam_y > 0 or (cam_st & 0x80) != 0
+        fallen = is_fallen(ram) and not on_ladder and not vert_scroll
         final_health = health
         final_screen = cam_scr
         final_progress = camera_progress_x(ram)
