@@ -13,6 +13,23 @@ Protocol:
 
 ## Ticks
 
+### 2026-08-10T~03:44 CDT — zelda_i rr-rvae CLOSED (Gleeok TF 0x08 dual-green)
+- Lane: zelda_i only (`nes/zelda_i/`)
+- Claim kept **rr-rvae** (map+Gleeok path already partial dual)
+- **Result: CLOSED** — Gleeok melee + HC + TF bit `0x08` dual-green 2/2
+- Live facts:
+  - From `Level4GleeokEnter` room **0x13**: body type **`0x43`** HP≈160,
+    detached head **`0x46`**, fireball **`0x56`** (ignore)
+  - Melee A-spam prefer heads → body absent → HC `0x1a` (containers 7→8) →
+    free UP → TF room **0x03** → mid walk → **`tf&0x08`** (mode 18)
+  - Dual exact **~4286f** ×2 assisted (`l4_rvae_gleeok_tf_dual.json`)
+- Landed: `level4_boss_combat.py`, `scripts/run_level4_gleeok.py`,
+  checkpoint **`Level4Complete`** (+ provenance)
+- Units: `test_level4_dungeon` + hygiene **15 passed**
+- Parent **rr-05fz** residual: natural key KEY-UP + continuous PostLadder→TF
+- Epic **rr-q3n** stays OPEN (continuous/Clean residual)
+- Not Clean STATUS; no push
+- Next: `bd ready -l zelda_i` tip **rr-05fz** natural continuous or parallel **rr-38p**
 
 ### 2026-08-10 night — SM rr-av5s PARTIAL mid pocket-spin ~y1932
 - Lane: super_metroid only (`snes/super_metroid/`)

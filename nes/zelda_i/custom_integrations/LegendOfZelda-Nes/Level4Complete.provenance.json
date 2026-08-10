@@ -1,0 +1,64 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T08:44:10.416405+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "natural_entry": false,
+    "segment": "gleeok_fight_tf",
+    "start_state": "Level4GleeokEnter",
+    "track": "assisted",
+    "trial": 0
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "cur_opened_doors": 0,
+      "doors": {
+        "D": false,
+        "L": false,
+        "R": false,
+        "U": false,
+        "raw": 0
+      },
+      "health": 117,
+      "heart_containers": 8,
+      "keys": 0,
+      "level": 4,
+      "mode": 18,
+      "objects": [],
+      "open_doorway_mask": 0,
+      "raft": 1,
+      "room_all_dead": 71,
+      "room_item_id": 27,
+      "room_item_name": "triforce_or_residual_room_item",
+      "room_obj_count": 3,
+      "sc": "0x03",
+      "screen": 3,
+      "tf04": true,
+      "triforce": 12,
+      "type_counts": {},
+      "type_names": {},
+      "x": 120,
+      "y": 149
+    },
+    "frames": 4286,
+    "notes": [
+      "boss_dead f=4282 rad=1 doors=0",
+      "HC not mid-room yet (may collect on UP path)",
+      "exit_up result=room_change to=0x03",
+      "entered TF room 0x03",
+      "TF at (120,141)",
+      "tf08 frame=4286"
+    ],
+    "ok": true,
+    "tf08": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4GleeokEnter.state",
+  "source_state_sha256": "de9883de1c6a1be21b2848ee20b723ee2d6788c7b8b5372e68cf1881c3242f5d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Complete.state",
+  "state_sha256": "4bf8a0743a73f6d21cb6606f54eb20683d3214e3989601d588ac50f93b056876"
+}
