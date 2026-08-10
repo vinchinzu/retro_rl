@@ -1306,3 +1306,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-808` PARTIAL: Heat dual-green screens 2–5 (`bc2d2fe`); residual rr-809 boss+Item-1.
 - Spawned harvest return_home/Summer + MM2 Heat boss managers.
 
+### 2026-08-10T06:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - super_metroid: `rr-av5s` Red→Hellway hop12 PARTIAL (y1459) + parent `rr-dbu.8`
+  - zelda_i: `rr-gjey` Entrance→TF Clean residual (Gleeok hp≥108; rr-zavx PARTIAL closed)
+  - harvest: `rr-5in` Gate B full (rr-5go9 water densify CLOSED; D12 return_home residual)
+  - mega_man_2: `rr-54ui` Air s4 cloud residual + `rr-809` Heat boss+Item-1 (Heat screens 2–5 dual GREEN)
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Spawned managers:** none (all priority game lanes busy)
+- **Not spawned:** solver gbd.32 CLOSED; oracle P1 not over pure SM stack; capacity 4/6
+- **Cap:** 4 / 6 concurrent game lanes
+- Board: Heat→Item-1 chain scaffolding; Air cloud solid path falsified → Heat-first route.
+- Never push. Next tick: only free lanes.
