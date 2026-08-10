@@ -271,3 +271,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-05dp` dual pure 621f×2 (0xB106→0xB167). Stack 6/7.
 - Next: `rr-vsjy` Frog Save→Business to finish rr-vqv3.
 
+### 2026-08-09T23:05 CDT — harvest ship money CLOSED
+- **CLOSED** `rr-53g`: shipped 24, wallet +1920 overnight after farm 5pm ShippingScene. Clean.
+- Next: `rr-y8n` end-of-spring soak Gate A.
+

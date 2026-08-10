@@ -24,6 +24,11 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
   --out recordings/run_spring_month.json \
   --save-end-state Y1_Summer_D1_Morning
 
+# Harvest + ship + post-5pm wallet credit (rr-53g)
+HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
+  --state Y1_Day09_Harvest_Mode_Start \
+  --out recordings/harvest_ship_5pm_money.json
+
 # Record task (F5) / tests
 uv run python -m harvest.runtime.harvest_bot play --state latest --record <name> --no-day-plan
 uv run python -m unittest tests.test_day_plan_sequences tests.test_task_progress -v
