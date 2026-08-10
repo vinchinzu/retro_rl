@@ -275,3 +275,16 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-53g`: shipped 24, wallet +1920 overnight after farm 5pm ShippingScene. Clean.
 - Next: `rr-y8n` end-of-spring soak Gate A.
 
+
+### 2026-08-09T22:32 CDT — zelda_i L4 post-Compass recon (rr-o0nn open)
+- **IN PROGRESS** `rr-o0nn`: live recon from `Level4Compass` toward `ADDR_LADDER`.
+- **Finding:** post-compass graph component **CLOSED** at `{0x71,0x61,0x51,0x50,0x62}`.
+  - free/BOMB UP 0x61→0x51; RIGHT re-enter 0x62 (no key); LEFT 0x51→0x50.
+  - 0x51 UP/RIGHT **sealed** (key poke does not consume — not key doors).
+  - 0x50 denser bomb-N no open; 0x62 bomb exits none; no Vire key-farm drops (8 cycles).
+  - `ADDR_LADDER` still 0.
+- Docs/code: `LEVEL4_ROUTE.md` post-compass section; `planning_interior_report` tip `rr-o0nn`; AGENTS tip.
+- Child **`rr-xc3x`**: expand past closed component (first live room outside set).
+- Parent **`rr-5lu` remains open**. No pure Stepladder segment yet. No push.
+- Evidence: `nes/zelda_i/recordings/l4_o0nn_{focus,prod,bombs,keypoke}.json`.
+

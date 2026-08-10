@@ -15,7 +15,11 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
     0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)
     0x62 --maze compass + return LEFT--> 0x61 (ADDR_COMPASS bit 0x08)
-    **Stepladder residual** north of 0x61 / past 0x51 (live recon next)
+    **Post-compass (rr-o0nn live):** component closed at
+    {0x71, 0x61, 0x51, 0x50, 0x62}. From Level4Compass: free/BOMB UP→0x51,
+    RIGHT re-enter 0x62 (no key), LEFT 0x51→0x50. 0x51 UP+RIGHT sealed
+    (key poke does not consume). 0x50 bomb denser N/no new exit. 0x62 bomb
+    exits none. No Vire key-farm drops. ADDR_LADDER residual.
 
 Not Clean STATUS. Stepladder / Gleeok / TF ``0x08`` still residual.
 """
@@ -896,7 +900,7 @@ def planning_interior_report() -> dict:
     return {
         "level": LEVEL4,
         "bead": "rr-5lu",
-        "tip": "rr-9so0",
+        "tip": "rr-o0nn",
         "track": "assisted",
         "status": "interior_compass_live_stepladder_residual",
         "date": "2026-08-10",
@@ -906,19 +910,23 @@ def planning_interior_report() -> dict:
             hex(ROOM_L4_VIRES_61): {
                 "BOMB_UP": hex(ROOM_L4_KEESE_KEY_51),
                 "KEY_RIGHT": hex(ROOM_L4_COMPASS_62),
+                "RIGHT_reenter": hex(ROOM_L4_COMPASS_62),
                 "DOWN": hex(ROOM_L4_ENTRY),
                 "enemies": {"0x12": 3, "split": "0x1c"},
             },
             hex(ROOM_L4_KEESE_KEY_51): {
                 "LEFT": hex(ROOM_L4_VIRES_50),
                 "DOWN": hex(ROOM_L4_VIRES_61),
+                "UP": "sealed",
+                "RIGHT": "sealed",
                 "enemies": {"0x1b": 8},
                 "room_item": hex(ROOM_ITEM_SMALL_KEY),
+                "note": "UP/RIGHT not key doors (poke keys no consume)",
             },
             hex(ROOM_L4_VIRES_50): {
                 "enemies": {"0x12": 5},
                 "RIGHT": hex(ROOM_L4_KEESE_KEY_51),
-                "note": "dead_end_pocket",
+                "note": "dead_end_pocket_no_bomb_exit",
             },
             hex(ROOM_L4_COMPASS_62): {
                 "enemies": {"0x12": 5},
@@ -926,8 +934,33 @@ def planning_interior_report() -> dict:
                 "LEFT": hex(ROOM_L4_VIRES_61),
                 "compass_bit": hex(LEVEL4_COMPASS_BIT),
                 "pickup_xy": list(COMPASS_PICKUP_XY),
-                "note": "dark_maze_compass_live_return_west",
+                "note": "dark_maze_compass_live_return_west_no_bomb_exit",
             },
+        },
+        "post_compass": {
+            "bead": "rr-o0nn",
+            "start": "Level4Compass",
+            "component": [
+                hex(ROOM_L4_ENTRY),
+                hex(ROOM_L4_VIRES_61),
+                hex(ROOM_L4_KEESE_KEY_51),
+                hex(ROOM_L4_VIRES_50),
+                hex(ROOM_L4_COMPASS_62),
+            ],
+            "keys_at_compass": 0,
+            "ladder": 0,
+            "evidence": [
+                "recordings/l4_o0nn_focus.json",
+                "recordings/l4_o0nn_prod.json",
+                "recordings/l4_o0nn_bombs.json",
+                "recordings/l4_o0nn_keypoke.json",
+            ],
+            "blocked": [
+                "0x51 UP/RIGHT sealed (not key)",
+                "0x50 bomb denser N no open",
+                "0x62 bomb exits none",
+                "no Vire key-farm drops (8 cycles)",
+            ],
         },
         "bomb_61_north": {
             "stand": list(BOMB_61_NORTH_STAND),
@@ -955,11 +988,11 @@ def planning_interior_report() -> dict:
             "key_right_62": "rr-2ysf",
             "clear_62": "rr-2ysf",
             "compass_62": "rr-9so0",
-            "stepladder_path": "rr-9so0",
+            "stepladder_path": "rr-o0nn",
         },
         "not_yet": [
             "stepladder room / ADDR_LADDER",
-            "rooms past 0x51 after compass",
+            "room outside closed post-compass component",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
