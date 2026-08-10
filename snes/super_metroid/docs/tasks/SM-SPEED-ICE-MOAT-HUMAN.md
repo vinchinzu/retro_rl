@@ -202,7 +202,8 @@ Controls: **F5/F1** save · **ESC/Q** cancel. Assist ON = practice, not pure.
 | **rr-fg3** | Pure Business → Ice Gate | **GREEN** dual 894f ×2 `0xA815` ~(1752,651); `routes/kpdr/ice/` |
 | **rr-9t4** | Pure Ice Gate → Acid Room | **GREEN** dual 370f ×2 `0xA75D` ~(470,139); needs Speed loadout |
 | **rr-5cf** | Pure Acid → Ice Snake | **GREEN** dual **652f** ×2 `0xA8B9` ~(216,651); horizontal RLE (not freeze/2WJ) |
-| **rr-dbu.11** | Ice pure stack recon → one-hops | **partial** — Gate+Acid+Snake done; Snake→PLM open |
+| **rr-5if** | Pure Snake → Ice PLM | **GREEN** dual **1756f** ×2 `0xA890` ~(187,120) beams `0x1007`; 2WJ climb + mid-shelf RLE |
+| **rr-dbu.11** | Ice pure stack recon → one-hops | **outbound PLM pure green** — Gate+Acid+Snake+PLM done; compose/return open |
 | rr-dbu.7 | continuous `--to ice` | blocked on Ice pure |
 | rr-dbu.8 | K5 Alpha PB pure | blocked on Ice |
 | rr-dbu.9 | Moat approach pure | blocked on K5; spark pin `rr-hhj` GREEN |
