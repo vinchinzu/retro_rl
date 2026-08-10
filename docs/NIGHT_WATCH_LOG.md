@@ -1209,3 +1209,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Re-spawned MM2 for disasm kaminari_goro solid-arm + TAS pin + screen-align.
 - Rider kill remains GREEN. Stand/cam≥5 RED.
 
+
+### 2026-08-10T~session — MM2 disasm + screen-align PARTIAL (rr-54ui)
+- Lane: mega_man_2 only. Claim kept **rr-54ui** (not closed — no stand/cam≥5).
+- **Disasm (lsmmega/mm2 bank14 `14_19`):** body spawns rider `0x3D`; **no solid-arm
+  rewrite** on child death. Flag `$08` = AI phase only. Appear solid needs `$10`
+  (never on empty `0x3E`). Full PRG: 4× CMP #$3E AI-only; 0× CMP #$3D.
+- **Screen-align:** kill window cam=3 / body scr=4; cam=4 arrives top_dy≈−19.
+  247 recipes, 40 kills, 0 stand. Cloud top ≈ by−16 (OAM).
+- **Diag:** fall_top poke achieves top_dy≈+1 still freefall → solid path inactive.
+- Probe: `scripts/cloud_screen_align.py` + `recordings/air_post4_screen_align/`.
+- Residual tip: human/TAS stick pin or alt path past s4 without cloud ride.
+- Bead stays in_progress PARTIAL. No push.
