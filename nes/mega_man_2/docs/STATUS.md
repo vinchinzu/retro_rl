@@ -5,20 +5,20 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
-| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat Man camera ≥ 8 Sniper shaft from `HeatScreen7Mid` (3/3) |
-| Last verification | 2026-08-10 (rr-809 Heat late dual-green cam ≥7) |
+| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat cam ≥ 8 + first Yoku land from `HeatScreen8` (3/3) |
+| Last verification | 2026-08-10 (rr-k1ea HeatScreen8 first Yoku dual-green) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **Air s4 clear; post-s4 cloud RED; Heat dual-green cam ≥7 pre-boss; s7 wall-lock climb residual (rr-809 PARTIAL)** |
+| Status | **Air s4 clear; post-s4 cloud RED; Heat cam≥8 + first Yoku dual-green; multi-level/boss residual (rr-k1ea / rr-809 PARTIAL)** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 Air / ~926 Heat |
-| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen8`, `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatScreen7HighPast`, `HeatLadder`, `HeatScrollDown` |
-| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4/s5/s7) |
-| Evidence | [air_segment/](../recordings/air_segment/), [heat_boot/](../recordings/heat_boot/), [heat_segment/](../recordings/heat_segment/), [heat_s7_seg/](../recordings/heat_s7_seg/), [heat_s7_climb_residual/](../recordings/heat_s7_climb_residual/) |
+| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen8`, `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatScreen7HighPast`, `HeatLadder`, `HeatScrollDown`, `HeatScreen8Yoku` |
+| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4/s5/s7/s8) |
+| Evidence | [air_segment/](../recordings/air_segment/), [heat_boot/](../recordings/heat_boot/), [heat_segment/](../recordings/heat_segment/), [heat_s7_seg/](../recordings/heat_s7_seg/), [heat_s8_yoku_land/](../recordings/heat_s8_yoku_land/) |
 
 ## Done
 

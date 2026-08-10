@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air s4 clear; post-s4 cloud RED; Heat cam≥7 dual-green; s7 wall-lock (rr-809 PARTIAL) |
+| Status | Air s4 clear; post-s4 cloud RED; Heat cam≥8 + first Yoku dual-green (rr-k1ea PARTIAL) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -28,18 +28,18 @@ uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen3 --t
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen4 --target-screen 5 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen5Ground --target-screen 7 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen7Mid --target-screen 8 --trials 3
+uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen8 --yoku-land --trials 3
 uv run pytest nes/mega_man_2/tests -q
 ```
 
 ## Next milestone
 
-**Heat boss door + Item-1** (rr-809 PARTIAL): dual-green cam ≥7 from
-`HeatScreen5Ground` (~293f, 3/3). **s7 high-path dual-green cam≥8** from
-`HeatScreen7Mid` (~587f, 3/3): LEFT→cam6 climb→cross above sx152 wall→ladder→
-scroll_down→`HeatScreen8` Sniper shaft. Low alcove sx152 is a dead-end (sy≥96
-column only). Residual: Sniper/Yoku→boss→Item-1. Doc: `docs/HEAT_ITEM1_PATH.md`.
-Cloud solid still RED; do not re-grid. Use `HeatScreen5Ground` (not mid-air
-`HeatScreen5`).
+**Heat multi-level Yoku → boss door + Item-1** (rr-k1ea / rr-809 PARTIAL):
+dual-green cam≥8 from `HeatScreen7Mid` (~587f) and **first Yoku land** from
+`HeatScreen8` (~44f, sx168 sy100, 3/3). Yoku solid ~20f only; jump-from-below
+into upper block bonks. Residual: multi-level chain → Sniper → boss → Item-1.
+Doc: `docs/HEAT_ITEM1_PATH.md`. Cloud solid still RED; do not re-grid.
+Use `HeatScreen5Ground` (not mid-air `HeatScreen5`). Low alcove sx152 trap.
 
 Air post-s4 context: LL spawns mapset4 (`0x3D`/`0x3E`); rider kill Clean; empty
 cloud object-solid never arms. Gap ~296px. FCEUX stick pin protocol in
@@ -68,9 +68,10 @@ HEAT_ITEM1_PATH (external).
 - Stage select `$002A`: Wily=0, Air=2, Heat=8. Password→select at Wily;
   `LEFT`→Heat, `UP`→Air. Items `$009B` bit `$01` = Item-1 (Heat clear).
 - Heat boot: `boot_to_heat_man_script` / `boot_heat_probe.py` → `Heat1`.
-  Heat multi-phase: `HeatManPolicy(start=early|screen2|screen3|screen4|screen5)`
+  Heat multi-phase: `HeatManPolicy(start=early|…|screen5|screen7|screen8)`
   via `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`8`,
-  `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatLadder`. screen5 needs `tile_feet`
-  (A-edge hops). screen7 = high-path frame script. Death: `tile_feet==3` or lives
-  drop (not only HP=0 / y≥200). s7 low alcove sx152 is trap;
-  do not re-spam RIGHT/UP/DOWN without new route hypothesis.
+  `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatLadder`, `HeatScreen8Yoku`.
+  screen5 needs `tile_feet` (A-edge hops). screen7 = high-path; screen8 =
+  first Yoku land (`--yoku-land`). Death: `tile_feet==3` or lives drop.
+  s7 low alcove sx152 trap; s8 upper Yoku bonks from below — no re-spam
+  without new route hypothesis.
