@@ -85,32 +85,57 @@ fit in the 2-slot carry pair when hands are empty). Verified from
 ### Gate B blocker (2026-08-09, rr-bhr)
 
 Pure Town_Gate / power-on path reaches peak mask `0x3F` and D2 morning bed
-`(136,120)` via composed talks + truck leave + `GoToSleep`. **Shed still fails:**
+`(136,120)` via composed talks + truck leave + `GoToSleep`. **Shed still fails.**
 
-1. `ExitToFarm` / `leave_house_to_farm` from that D2 bed reaches farm mid-warp
-   `~(137,212)` then `(136,344)` but **clears free-move**
-   (`game_state` `0x4001 → 0x0001` / `0x0081`).
+#### Symptoms
+
+1. `ExitToFarm` from that D2 bed reaches farm mid-warp `~(137,212)` then
+   `(136,344)` but **clears free-move** (`game_state` `0x4001 → 0x0001` /
+   `0x0081` during settle).
 2. Player is auto-walked south into house-enter stand `~(133,425)` with no
-   horizontal control (all directions ignored / forced south).
-3. MultiMapNav then soft-locks → tilemap `0x5F` (was misattributed to
-   `house_size` remodel mismatch).
-4. `$0970` (`house_size` catalog) INC's during Ann talk (0→2) as a **dialogue
-   step counter**, not remodel level — Gate B correctly snapshots
-   `house_size_at_start` only.
-5. Contrast: `Y1_Inside_House` outdoor keeps `gs=0x4001`,
-   `event_flags_1f68=0x00B1` (truck path `0x0011`) and shed grass+can succeeds.
+   horizontal control (`gs` bit `0x1000` scripted walk).
+3. Door dialogue (`text 0x0124/0x0125`) then soft-lock → tilemap `0x5F`.
+4. `$0970` (`house_size`) INC's during Ann talk (0→2) is a **dialogue step
+   counter**, not remodel — **not causal** for free-move loss.
 
-**Mitigations landed this session (still not acceptance):**
+#### Causal root (ROM + offline A/B on `town_day1_rest_end`)
 
-- Gate B truck uses rest leave-only slice `f9200:9800` + `GoToSleep` (not full
-  rest sleep end).
-- `GoToSleep` waits for morning house settle before SUCCESS (no mid-wake handoff).
-- `ExitToFarm` / `ExitBuilding` push DOWN through farm mid-warp `y<330`.
-- `ShedFetchItemTask` fails fast with `farm_control_lost`.
+| Pre-exit `event_flags_1f68` | Free-move after ExitToFarm | Notes |
+|----------------------------|----------------------------|-------|
+| `0x0011` (truck D2 bed) | **Lost** → softlock | Baseline pure/rest truck path |
+| `0x0011` + `house_size=0` | **Lost** | house_size not causal |
+| `0x0031` / `0x0091` | **Lost** | partial intro bits still fail |
+| `0x00A1` / `0x00B1` (Y1) | **Kept** — can walk to shed | Min `0x00A1` = truck+intro+dog |
 
-**Next fix:** complete morning cutscene / `event_flags_1f68` bits so house→farm
-keeps free-move (`0x00B1` vs truck `0x0011`), or re-record `leave_house_to_farm`
-from power-on D2 bed through a free-move outdoor stand (not mid-warp y=212).
+Bits (HM-Decomp `bank_83` `CODE_83CEAE`, `bank_84` dog whistle):
+
+- `0x0001` — truck/day processing (present after truck leave)
+- `0x0020` — first outdoor morning intro done (CC `0x0C/0`; sets mid-exit)
+- `0x0080` — **dog owned**
+
+With only `0x0011`, house→farm runs morning intro: ORA `0x0020`, clear free-move,
+auto-walk to door. Controller-only recovery (neutral, mash A/B, name-entry
+guesses, hold-down mid-warp, clock wait) **never restores free-move**; dog bit
+`0x0080` never sets. Y1 fixtures already have `0x00B1` so intro is skipped.
+
+Pure talks alone reach mask `0x3F` with free-move and flags still `0x0010`, but
+`d1_town_to_farm` cannot leave town without the truck cutscene (east gate
+stays closed). So shed cannot be completed on D1 without truck either.
+
+#### Mitigations landed (still not acceptance)
+
+- Gate B truck: rest leave-only slice `f9200:9800` + `GoToSleep` morning settle
+- `ExitToFarm` / `ExitBuilding` push DOWN through farm mid-warp `y<330`
+- `ShedFetchItemTask` fails fast with `farm_control_lost` (+ `f1f68` / intro_ok)
+- Helpers: `farm_free_move_ready`, `outdoor_intro_flags_ready` (mask `0x00A1`)
+
+#### Next fix (pure)
+
+Human (or pure automation) must **complete D2 morning outdoor dog intro** so
+`event_flags_1f68` reaches ≥ `0x00A1` **with free-move restored**, then shed
+grass+can. Re-record from truck D2 bed through successful outdoor free-move
+stand — not mid-warp y=212, and not house-front softlock. RAM-poke of `0x00B1`
+is diagnosis-only (not Clean).
 
 ## Automation status (2026-08-01)
 
