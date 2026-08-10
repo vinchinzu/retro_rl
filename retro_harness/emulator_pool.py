@@ -1,25 +1,26 @@
 """Deterministic parallel pool for emulator-backed environments.
 
-Maturity: **fake-tested only**. Full wrapper/RNG/episode restoration is tracked
-by rr-gbd.32/.34; this module must not be described as publication-ready L0.
+Maturity: **fake-tested + real-ROM smoke for certified snapshots** (rr-gbd.32).
+Branch-rollout batches remain rr-gbd.34.  Not publication-ready L0 until
+certified snapshots have a second independent game consumer and branch
+rollouts land.
 
-The pool deliberately knows only the small surface shared by the harness:
-``reset()``, ``step()``, and emulator state ``get_state()``/``set_state()``.
-Stable-retro exposes the latter through ``env.em``; small test doubles and
-other environments may expose them directly on the environment instead.
+Two snapshot surfaces:
 
-Snapshots contain emulator state only.  They do not capture wrapper state,
-episode bookkeeping, wrapper RNGs, observation caches, or reset results, so
-``save``/``load``/``fork`` provide deterministic restoration only for
-compatible emulator-only environments where all state relevant to future
-behavior is represented by ``get_state``/``set_state``.  They do not claim
-full-environment restoration for wrapped environments.
+* :meth:`EmulatorPool.save` / :meth:`load` / :meth:`fork` — raw emulator
+  ``get_state``/``set_state`` only via :class:`PoolState`.  **Uncertified**
+  (EMULATOR_ONLY).  Does not restore wrapper counters, caches, or RNGs.
+* :meth:`EmulatorPool.save_snapshot` / :meth:`load_snapshot` /
+  :meth:`fork_snapshot` — :class:`~retro_harness.snapshot.SnapshotEnvelope`
+  pools with adapter/schema/core/game identity.  With a full-env
+  :class:`~retro_harness.snapshot.SnapshotAdapter`, envelopes are
+  CERTIFIED_FULL_ENV and restore wrapper state.  Identity mismatches fail
+  **before** mutation.
 
-Each lane owns one environment and is stepped in a fixed order from the
-caller's point of view.  Work is submitted to one long-lived thread per lane,
-so independent emulator calls can run in parallel without requiring an env
-factory to be pickleable.  The pool never samples actions, auto-resets lanes,
-or otherwise introduces randomness.
+Stable-retro exposes emulator state through ``env.em``; test doubles may
+expose it on the environment.  Each lane owns one environment and is stepped
+in fixed caller order; work runs on one long-lived thread per lane.  The pool
+never samples actions, auto-resets lanes, or otherwise introduces randomness.
 """
 
 from __future__ import annotations
@@ -31,6 +32,17 @@ from dataclasses import dataclass
 from typing import Any, TypeAlias
 
 from retro_harness.runtime import reset_env, step_env
+from retro_harness.snapshot import (
+    EmulatorOnlyAdapter,
+    PoolSnapshot,
+    SnapshotAdapter,
+    SnapshotEnvelope,
+    assert_envelope_compatible,
+    capture_envelope,
+    get_emulator_state,
+    restore_envelope,
+    set_emulator_state,
+)
 
 
 EnvFactory: TypeAlias = Callable[[], Any]
@@ -40,12 +52,15 @@ StepResult: TypeAlias = tuple[Any, Any, bool, bool, dict[str, Any]]
 
 @dataclass(frozen=True)
 class PoolState:
-    """A per-lane emulator snapshot captured by :meth:`EmulatorPool.save`.
+    """A per-lane raw emulator snapshot captured by :meth:`EmulatorPool.save`.
 
     State payloads are copied when a snapshot is created and when they are
     loaded.  This prevents mutable fake states (and any future non-byte state
     backend) from being changed through a live environment after saving.
-    The payload is not a full environment or wrapper snapshot.
+
+    This payload is **uncertified** (emulator-only).  Prefer
+    :meth:`EmulatorPool.save_snapshot` when wrapper/RNG/cache restoration is
+    required.
     """
 
     states: tuple[Any, ...]
@@ -60,46 +75,12 @@ def _copy_state(state: Any) -> Any:
     return deepcopy(state)
 
 
-def _state_getter(env: Any) -> Callable[[], Any]:
-    """Find the state getter on a stable-retro env or a test double."""
-
-    emulator = getattr(env, "em", None)
-    getter = getattr(emulator, "get_state", None)
-    if callable(getter):
-        return getter
-
-    getter = getattr(env, "get_state", None)
-    if callable(getter):
-        return getter
-
-    raise TypeError(
-        "pool environments must expose get_state() or em.get_state()"
-    )
-
-
-def _state_setter(env: Any) -> Callable[[Any], None]:
-    """Find the state setter on a stable-retro env or a test double."""
-
-    emulator = getattr(env, "em", None)
-    setter = getattr(emulator, "set_state", None)
-    if callable(setter):
-        return setter
-
-    setter = getattr(env, "set_state", None)
-    if callable(setter):
-        return setter
-
-    raise TypeError(
-        "pool environments must expose set_state() or em.set_state()"
-    )
-
-
 def _get_state(env: Any) -> Any:
-    return _copy_state(_state_getter(env)())
+    return get_emulator_state(env)
 
 
 def _set_state(env: Any, state: Any) -> None:
-    _state_setter(env)(_copy_state(state))
+    set_emulator_state(env, state)
 
 
 def _validate_count(value: Any, name: str) -> int:
@@ -119,16 +100,18 @@ class EmulatorPool:
         env_factory: Zero-argument factory used once for every lane.
         num_envs: Number of independent environment instances to create.
         size: Optional keyword alias for ``num_envs``.
+        snapshot_adapter: Optional full-environment or emulator-only adapter
+            used by :meth:`save_snapshot` / :meth:`load_snapshot` /
+            :meth:`fork_snapshot`.  Defaults to
+            :class:`~retro_harness.snapshot.EmulatorOnlyAdapter` (uncertified).
 
     ``reset`` returns one normalized ``(observation, info)`` pair per lane.
     ``step`` returns one normalized Gymnasium five-tuple per lane, preserving
     input order even though the calls execute concurrently.
 
-    ``save``/``load`` operate on one :class:`PoolState` containing emulator
-    state for every lane.  They do not restore arbitrary wrapper state; see
-    the module contract.  ``fork`` is the rollout convenience operation: it
-    copies one supplied state, or the current state of ``source``, into every
-    lane and returns the resulting snapshot.
+    ``save``/``load``/``fork`` remain the raw emulator-only path
+    (:class:`PoolState`, uncertified).  Certified full-env rollouts use the
+    ``*_snapshot`` methods and a CERTIFIED_FULL_ENV adapter.
     """
 
     def __init__(
@@ -137,6 +120,7 @@ class EmulatorPool:
         num_envs: int | None = None,
         *,
         size: int | None = None,
+        snapshot_adapter: SnapshotAdapter | None = None,
     ) -> None:
         if num_envs is not None and size is not None:
             raise TypeError("pass either num_envs or size, not both")
@@ -166,6 +150,11 @@ class EmulatorPool:
             thread_name_prefix="retro-emulator",
         )
         self._closed = False
+        self._snapshot_adapter: SnapshotAdapter = (
+            snapshot_adapter
+            if snapshot_adapter is not None
+            else EmulatorOnlyAdapter()
+        )
 
     @property
     def num_envs(self) -> int:
@@ -178,6 +167,12 @@ class EmulatorPool:
         """The live lane environments, in deterministic lane order."""
 
         return self._envs
+
+    @property
+    def snapshot_adapter(self) -> SnapshotAdapter:
+        """Adapter used for envelope capture/restore."""
+
+        return self._snapshot_adapter
 
     def __len__(self) -> int:
         return self.num_envs
@@ -213,7 +208,7 @@ class EmulatorPool:
         )
 
     def save(self) -> PoolState:
-        """Capture independent emulator-only state snapshots from all lanes."""
+        """Capture independent **uncertified** emulator-only state snapshots."""
 
         states = self._parallel(_get_state)
         return PoolState(tuple(states))
@@ -242,11 +237,12 @@ class EmulatorPool:
         *,
         source: int = 0,
     ) -> PoolState:
-        """Broadcast an emulator-only branch point to every lane.
+        """Broadcast an **uncertified** emulator-only branch point to every lane.
 
         If ``state`` is omitted, the current state of ``source`` is captured.
         ``fork`` intentionally does not call ``env.reset()``; it is the fast
-        save/load operation used between rollout branches.
+        save/load operation used between rollout branches.  Wrapper state is
+        not restored — use :meth:`fork_snapshot` with a full-env adapter.
         """
 
         self._ensure_open()
@@ -262,6 +258,84 @@ class EmulatorPool:
         )
         self.load(snapshot)
         return self.save()
+
+    def save_snapshot(self) -> PoolSnapshot:
+        """Capture per-lane :class:`SnapshotEnvelope` values via the adapter."""
+
+        adapter = self._snapshot_adapter
+
+        def _capture(env: Any) -> SnapshotEnvelope:
+            return capture_envelope(env, adapter)
+
+        return PoolSnapshot(tuple(self._parallel(_capture)))
+
+    def load_snapshot(self, snapshot: PoolSnapshot) -> None:
+        """Restore a :class:`PoolSnapshot` after identity checks on every lane.
+
+        Identity is validated for **all** lanes before **any** lane is mutated,
+        so a mismatch leaves the pool untouched.
+        """
+
+        self._ensure_open()
+        if not isinstance(snapshot, PoolSnapshot):
+            raise TypeError(
+                "load_snapshot expects a PoolSnapshot returned by save_snapshot()"
+            )
+        if len(snapshot) != self.num_envs:
+            raise ValueError(
+                f"snapshot has {len(snapshot)} envelopes, "
+                f"expected {self.num_envs}"
+            )
+
+        adapter = self._snapshot_adapter
+        # Phase 1: fail closed before mutation.
+        for env, envelope in zip(self._envs, snapshot.envelopes):
+            assert_envelope_compatible(env, envelope, adapter)
+
+        # Phase 2: restore (identity already checked; still re-check inside).
+        list(
+            self._executor.map(
+                lambda pair: restore_envelope(pair[0], pair[1], adapter),
+                zip(self._envs, snapshot.envelopes),
+            )
+        )
+
+    def fork_snapshot(
+        self,
+        envelope: SnapshotEnvelope | None = None,
+        *,
+        source: int = 0,
+    ) -> PoolSnapshot:
+        """Broadcast one certified (or emulator-only) envelope to every lane.
+
+        If ``envelope`` is omitted, the current envelope of ``source`` is
+        captured.  Identity must match every lane before any mutation.
+        """
+
+        self._ensure_open()
+        if not 0 <= source < self.num_envs:
+            raise IndexError(f"source lane {source} is outside the pool")
+        branch = (
+            capture_envelope(self._envs[source], self._snapshot_adapter)
+            if envelope is None
+            else envelope
+        )
+        if not isinstance(branch, SnapshotEnvelope):
+            raise TypeError("fork_snapshot expects a SnapshotEnvelope")
+        # Independent envelopes so later lane mutation cannot alias payloads.
+        pool = PoolSnapshot(
+            tuple(
+                SnapshotEnvelope(
+                    certification=branch.certification,
+                    identity=branch.identity,
+                    emulator_state=branch.emulator_state,
+                    adapter_state=branch.adapter_state,
+                )
+                for _ in range(self.num_envs)
+            )
+        )
+        self.load_snapshot(pool)
+        return self.save_snapshot()
 
     def close(self) -> None:
         """Close all environments and release the pool executor."""
@@ -297,7 +371,11 @@ def _close_env(env: Any) -> None:
 __all__ = [
     "EmulatorPool",
     "EnvFactory",
+    "PoolSnapshot",
     "PoolState",
     "ResetResult",
+    "SnapshotAdapter",
+    "SnapshotEnvelope",
     "StepResult",
 ]
+
