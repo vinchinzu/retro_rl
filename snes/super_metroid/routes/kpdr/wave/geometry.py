@@ -125,6 +125,23 @@ BTF_BOTTOM_FRAMES = 1600
 BTF_DOOR_FRAMES = 400
 
 # ---------------------------------------------------------------------------
+# Farm → Frog Speedway return (FTS_*) — rr-z13h / Phase B hop 12
+# Source post_bubble_to_farm_pure ~(472,139) Farm right-top after Bubble leave.
+# Human tape f9081–9240: LEFT walk → B+LEFT run → mid hop → left blue door
+# into Frog Speedway ``0xB106`` settle **right** ~(2000–2040,139) (Farm is east
+# of the 8-screen tunnel). Product loadout needs Speed (Speedway mid Boost Blocks).
+# ---------------------------------------------------------------------------
+SPEED_BOOSTER_MASK = 0x2000  # collected_items bit
+FTS_PIN_X = (400, 560)  # right-top settle after Bubble leave
+FTS_PIN_Y = (100, 180)
+FTS_MID_HOP_X = 320  # start open-loop hop window ~human x304
+FTS_DOOR_X = 40
+FTS_DOOR_Y = (120, 160)
+FTS_LEAVE_FRAMES = 500
+FTS_DOOR_FRAMES = 280
+FTS_SPEEDWAY_SETTLE = 280
+
+# ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM (DC_*)
 # Live (2026-08-06, rr-dbu.10): entry ~(61,139); upper hop → Kamer seat
 # x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200.
@@ -166,6 +183,10 @@ DC_WJ_LEFT_FOLLOW = 8
 
 def has_wave(state: SuperMetroidState) -> bool:
     return bool(int(state.collected_beams) & WAVE_BEAM_MASK)
+
+
+def has_speed(state: SuperMetroidState) -> bool:
+    return bool(int(state.collected_items) & SPEED_BOOSTER_MASK)
 
 
 def dc_on_missile_ledge(state: SuperMetroidState) -> bool:

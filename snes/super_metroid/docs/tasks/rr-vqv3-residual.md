@@ -1,9 +1,9 @@
 ## Residual — rr-vqv3 Wave→Business pure return stack
 
 ### Result
-PARTIAL — stack beads split from human tape Phase B; first **four** hops
-dual pure GREEN (Wave→Double, Double→Single, Single→Bubble, Bubble→Farm).
-Remaining 3 hops open. Not continuous. Do **not** STATUS-promote continuous Ice.
+PARTIAL — stack beads split from human tape Phase B; first **five** hops
+dual pure GREEN (Wave→Double→Single→Bubble→Farm→Speedway). Remaining 2 hops
+open. Not continuous. Do **not** STATUS-promote continuous Ice.
 
 ### One-hop beads (room IDs) — discovered under this stack
 
@@ -13,33 +13,34 @@ Remaining 3 hops open. Not continuous. Do **not** STATUS-promote continuous Ice.
 | 2 | `rr-qpkd` ✓ | Double → Single return | `0xADAD` → `0xAD5E` | **1101f** ×2 | `play_double_to_single_chamber` |
 | 3 | `rr-u0y8` ✓ | Single → Bubble return | `0xAD5E` → `0xACB3` | **817f** ×2 | `play_single_to_bubble` |
 | 4 | `rr-czg9` ✓ | Bubble → Farm | `0xACB3` → `0xAF72` | **1566f** ×2 | `play_bubble_to_farm` |
-| 5 | `rr-z13h` | Farm → Speedway | `0xAF72` → `0xB106` | open | TBD (needs Speed) |
-| 6 | `rr-05dp` | Speedway → Frog Save | `0xB106` → `0xB167` | open | TBD (needs Speed) |
+| 5 | `rr-z13h` ✓ | Farm → Speedway | `0xAF72` → `0xB106` | **329f** ×2 | `play_farm_to_speedway` |
+| 6 | `rr-05dp` | Speedway → Frog Save | `0xB106` → `0xB167` | open | TBD (needs Speed; RIGHT→LEFT tunnel) |
 | 7 | `rr-vsjy` | Frog Save → Business | `0xB167` → `0xA7DE` | open | replace scaffold |
 
 Tape order (rr-dbu.12 Phase B return): Wave → Double → Single → Bubble →
 Farm → Speedway → Frog Save → Business. Then existing Ice pure from Business.
 
 Package: return hops under `routes/kpdr/wave/` (`wave_to_double`,
-`double_to_single`, `single_to_bubble`, `bubble_to_farm`, + geometry
-`WAVE_*` / `DTS_*` / `STB_*` / `BTF_*`). One module per hop until multi-room
-reverse solidifies.
+`double_to_single`, `single_to_bubble`, `bubble_to_farm`, `farm_to_speedway`,
++ geometry `WAVE_*` / `DTS_*` / `STB_*` / `BTF_*` / `FTS_*`). One module per
+hop until multi-room reverse solidifies.
 
 ### Files changed (stack so far)
 - `routes/kpdr/wave/wave_to_double.py` — pure Wave leave → Double
 - `routes/kpdr/wave/double_to_single.py` — pure Double → Single return
 - `routes/kpdr/wave/single_to_bubble.py` — pure Single → Bubble return
 - `routes/kpdr/wave/bubble_to_farm.py` — pure Bubble → Farm return
-- `routes/kpdr/wave/geometry.py` — `WAVE_*` + `DTS_*` + `STB_*` + `BTF_*`
+- `routes/kpdr/wave/farm_to_speedway.py` — pure Farm → Speedway return
+- `routes/kpdr/wave/geometry.py` — `WAVE_*` + `DTS_*` + `STB_*` + `BTF_*` + `FTS_*`
 - `routes/kpdr/wave/__init__.py`, `k4_wave.py`, `k4_norfair.py`, `registry.py`
 - `scripts/probe/kpdr.py` — pure CLI segments
-- `source_states.py` — `dev_wave_collected`, post Wave/Double/Single/Bubble handoffs
+- `source_states.py` — handoffs through `post_farm_to_speedway_pure`
 - `tests/test_k4_wave_return_scaffold.py` — unit registry / predicates
 
 ### Verify paste
 ```bash
 uv run pytest snes/super_metroid/tests/test_k4_wave_return_scaffold.py -q
-# → 6 passed
+# → 8 passed
 
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure wave-to-double-chamber \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/dev_wave_collected.state \
@@ -64,6 +65,12 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bubble-to-farm \
   --expect-room 0xACB3 \
   --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_to_farm_pure.state
 # → GREEN room=0xAF72 xy=(472,139) frames=1566 (×2 exact dual)
+
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure farm-to-speedway \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bubble_to_farm_pure.state \
+  --expect-room 0xAF72 \
+  --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_farm_to_speedway_pure.state
+# → GREEN room=0xB106 xy=(2008,139) frames=329 (×2 exact dual)
 ```
 
 ### Acceptance
@@ -72,6 +79,7 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bubble-to-farm \
 - [x] Second hop dual pure green Double → Single
 - [x] Third hop dual pure green Single → Bubble
 - [x] Fourth hop dual pure green Bubble → Farm
+- [x] Fifth hop dual pure green Farm → Speedway
 - [ ] Full stack dual pure green to Business
 - [ ] Compose ice-prefix hops / intermediate tip (after stack)
 - [x] No STATUS promote continuous Ice
@@ -85,14 +93,14 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bubble-to-farm \
    launch x≤88. See `rr-u0y8-residual.md`.
 3. Bubble→Farm bottom shelf needs full RIGHT to ~x360 before LEFT tunnels.
    See `rr-czg9-residual.md`.
-4. Farm/Speedway reverse needs **Speed** (Boost Blocks) — product loadout OK
-   after Wave continuous parent.
+4. Farm→Speedway settles Speedway **right** ~(2008,139); Speedway→Frog must
+   run LEFT through Boost Blocks (needs Speed). See `rr-z13h-residual.md`.
 5. `play_frog_save_to_business` remains scaffold until `rr-vsjy`.
 
 ### Next action (required)
-- **Next card ID:** `rr-z13h` — Pure Farm → Frog Speedway
-- **One change:** one-hop pure from `post_bubble_to_farm_pure` (Speed loadout)
-- **Source state:** `scratch/post_bubble_to_farm_pure.state` ~(472,139)
+- **Next card ID:** `rr-05dp` — Pure Speedway → Frog Save
+- **One change:** one-hop pure from `post_farm_to_speedway_pure` (Speed loadout)
+- **Source state:** `scratch/post_farm_to_speedway_pure.state` ~(2008,139)
 
 ### Non-claims
 - Did not STATUS-promote continuous `--to ice`
@@ -105,3 +113,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bubble-to-farm \
 - rr-qpkd dual: room=0xAD5E pose=82 x=216 y=630 frames=1101 exact
 - rr-u0y8 dual: room=0xACB3 pose=12 x=472 y=395 frames=817 exact
 - rr-czg9 dual: room=0xAF72 pose=10 x=472 y=139 frames=1566 exact
+- rr-z13h dual: room=0xB106 pose=10 x=2008 y=139 frames=329 exact
