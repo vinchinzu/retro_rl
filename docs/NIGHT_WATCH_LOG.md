@@ -196,3 +196,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-d03j`: ScriptedSkillPolicy multi-frame + OneShotSkillPolicy; RUNNING hang guard; SM adapters use OneShot.
 - Solver free capacity idle (L0 + SkillPolicy done; product lanes busy).
 
+
+### 2026-08-09T22:05 CDT — SM Single→Bubble pure GREEN (rr-u0y8)
+- **CLOSED** `rr-u0y8` dual pure 817f×2 Single `0xAD5E`→Bubble `0xACB3` via `play_single_to_bubble`.
+- Source: `post_double_to_single_chamber_pure` ~(216,630) deep climb (no fake top pin); export `post_single_to_bubble_pure` ~(472,395).
+- Parent **`rr-vqv3` remains open** (Wave→Business stack; 4 hops left). No continuous Ice STATUS.
+- Next tip: `rr-czg9` Bubble→Farm return. Residual: `docs/tasks/rr-u0y8-residual.md`.
