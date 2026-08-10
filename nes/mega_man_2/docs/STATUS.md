@@ -6,13 +6,13 @@
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
 | Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3) |
-| Last verification | 2026-08-10 |
+| Last verification | 2026-08-10 (night5) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 blocked (~296px pit)** |
+| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 blocked (~296px pit; LL never spawns)** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 |
@@ -108,7 +108,7 @@
 
 Object types seen Level1→death hybrid: **{1, 2, 35, 36}** only (2 early-only). No Kaminari Goro / cloud type.
 
-### Swept (2026-08-09 + 08-10 overnight ×2)
+### Swept (2026-08-09 + 08-10 overnight ×3)
 
 - Platform edge map; Goblin 5px + phase-cycle + top-down phase hops; ladder UP grids
 - Pipi/edge waits; shoot-spam; damage-boost; high-path period variants from AirScreen2
@@ -116,8 +116,16 @@ Object types seen Level1→death hybrid: **{1, 2, 35, 36}** only (2 early-only).
 - **Night4 (LL fork tip):** high forks before y84 descent; descent interrupts;
   AirFan gap micro-hops (186, 0 land >984); edge void shoot 500f; slow late waits;
   Level1 hybrid→screen2 death ~1029; WRAM novelty after prog800 — **no new 0x400 types**
+- **Night5 (ROM/TAS + nametable tip):**
+  - Map-match: prog~950 = pre-LL (A/late); open sky after 984 = expected B/LL start
+  - Type36 = indestructible damage Air Tikki (f420 64→128 teleport-hit); stands are
+    **tiles** adjacent/under sprite (AirScreen2 sx~130 vs goblin x~119)
+  - Freefall collision grid: max feet=1 prog **980**; **0** tile hits prog>984
+  - Shoot-camp / edge / policy-camp / WRAM $0400–$06FF: still types {1,35,36} only
+  - ROM: property rows with type IDs 0x22–0x25; **no** spawn-list decode yet
+  - Smoke AirScreen2→4 still GREEN (502f). Units 10/10
 - No camera ≥ 5; no new grounded s4/s5 checkpoint
-- Evidence: `recordings/air_post4_night3/`, `recordings/air_post4_night4/` (+ RED_PIN.txt)
+- Evidence: `recordings/air_post4_night3/`, `night4/`, `night5/` (+ RED_PIN.txt)
 
 ## Not done
 
@@ -128,8 +136,9 @@ Object types seen Level1→death hybrid: **{1, 2, 35, 36}** only (2 early-only).
 
 ## Next
 
-1. **ROM / TAS spawn path** — Air Man stage enemy placement data or human TAS compare
-   at prog≥1000 (why LL/cloud never enter object table 0x400).
-2. Nametable/tile platforms past 984 that may load only under specific scroll/camera
-   state (not more pure-RIGHT / goblin-solid grids).
-3. Only after grounded s4/s5: freeze recipe → AirScreen2→target 5 (3/3) → boss door.
+1. **Spawn-routine decode** — Mesen-trace / disassembly: LL object type ID + Air Man
+   per-screen enemy list at scroll covering prog≥1000 (gates: slots, Y band, flags).
+2. **TAS FM2 compare** at equivalent camera/progress through section B.
+3. Optional PPU nametable dump at prog 950 vs mid-gap (hidden offscreen tiles).
+4. Do **not** re-sweep goblin-solid, pure-RIGHT grids, or y84 edge LL camps.
+5. Only after grounded s4/s5: freeze recipe → AirScreen2→target 5 (3/3) → boss door.
