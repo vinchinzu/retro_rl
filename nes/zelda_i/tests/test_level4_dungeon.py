@@ -63,6 +63,17 @@ from zelda_i.level4_dungeon import (
     WEST_31_HOLD,
     WEST_31_SAMPLE_PATH,
     ZOL_OBJECT_TYPE,
+    GEL_OBJECT_TYPE,
+    LEVEL4_MAP_BIT,
+    MAP_21_HOLD,
+    MAP_21_PICKUP_XY,
+    MAP_21_SAMPLE_PATH,
+    ROOM_ITEM_MAP,
+    ROOM_L4_MAP_21,
+    ROOM_L4_WATER_NORTH_20,
+    RIGHT_20_STAND,
+    level4_map_success,
+    level4_map_room_success,
     make_bomb_61_north_controller,
     make_compass_62_controller,
     make_entry_up_controller,
@@ -97,7 +108,24 @@ def test_live_room_ids() -> None:
     assert ROOM_L4_EAST_31 == 0x31
     assert ROOM_L4_EAST_32 == 0x32
     assert ROOM_L4_STEPLADDER == 0x60
+    assert ROOM_L4_WATER_NORTH_20 == 0x20
+    assert ROOM_L4_MAP_21 == 0x21
     assert L4_VIRE == VIRE_OBJECT_TYPE == 0x12
+    assert GEL_OBJECT_TYPE == 0x15
+    assert ROOM_ITEM_MAP == 0x17
+    assert LEVEL4_MAP_BIT == 0x08
+    assert MAP_21_HOLD == 6
+    assert MAP_21_PICKUP_XY == (208, 181)
+    assert len(MAP_21_SAMPLE_PATH) >= 20
+    assert RIGHT_20_STAND == (208, 141)
+
+
+def test_map_success_predicates_false_on_zeros() -> None:
+    import numpy as np
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    assert level4_map_success(ram) is False
+    assert level4_map_room_success(ram) is False
     assert VIRE_SPLIT_KEESE_TYPE == 0x1C
     assert ZOL_OBJECT_TYPE == 0x13
     assert GEL_SPLIT_OBJECT_TYPE == 0x14
@@ -262,7 +290,11 @@ def test_maze_40_key_path() -> None:
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"
-    assert r["tip"] == "rr-05fz"
+    assert r["tip"] == "rr-rvae"
+    assert r["map_21"]["room"] == "0x21"
+    assert r["map_21"]["bead"] == "rr-rvae"
+    assert r["live_graph"]["0x20"]["RIGHT_after_clear"] == "0x21"
+    assert r["live_graph"]["0x21"]["map_bit"] == "0x8"
     assert r["entry_room"] == "0x71"
     assert r["live_graph"]["0x71"]["UP"] == "0x61"
     assert r["live_graph"]["0x61"]["BOMB_UP"] == "0x51"

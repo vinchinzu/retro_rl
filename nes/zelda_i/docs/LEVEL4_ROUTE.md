@@ -195,9 +195,10 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_32 --trial
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment stepladder --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinite-life --trials 2 --save-state
 ```
 
-### Post-ladder (rr-05fz live pure 2026-08-10)
+### Post-ladder (rr-05fz pure + rr-rvae map assisted 2026-08-10)
 
 Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
 ~(136,141)).
@@ -206,13 +207,16 @@ Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
 0x60 settle ~150f idle (item freeze) → clear 4× Keese 0x1b
   → hold4 BFS exit → 0x32 play  (Level4PostLadder)
 0x32 free LEFT (BFS around pushed 0x68) → 0x31
-0x31 LEFT → 0x30 → DOWN → 0x40   (backtrack live; map residual)
+0x31 LEFT → 0x30
+0x30 KEY-UP (ladder + keys≥1) → 0x20 clear Vires
+0x20 state-BFS RIGHT → 0x21 gels + map 0x17 → ADDR_MAP|0x08
 ```
 
 | Segment | Evidence | Frames (typ.) | Checkpoint |
 |---------|----------|---------------|------------|
 | `exit_60` pure 2/2 | `l4_05fz_exit60_exit_60.json` | ~765 | `Level4PostLadder` |
 | `west_31` pure 2/2 | `l4_05fz_west31_west_31.json` | ~372 | `Level4Room31PostLadder` |
+| `map_21` assisted 2/2 | `l4_rvae_map21_map_21.json` | ~17872 | `Level4Map` |
 
 **Traps (post-ladder live):**
 
@@ -221,8 +225,11 @@ Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
 - Exit BFS must **settle through mode 4/6/7** (~400f) — 180f leaves mode 4 on
   dest room and false-negatives the exit.
 - Pushed block **0x68** blocks naive west door; use hold4 BFS path.
-- 0x30 north still sealed with ladder; water tiles expand walkability but do
-  not open a new north room from live probe. Map / Gleeok / TF residual.
+- 0x30 free N sealed; **KEY-UP** with ladder + key → **0x20** (recon key poke
+  when checkpoint keys=0).
+- KEY-UP from **0x31** enters **0x21 south pocket** only (isolated; not map).
+- Map room **0x21**: RoomItemId **0x17**, 5× Gel **0x15**; thrash expands maze
+  then hold6 BFS pickup ~(208,181). 0x20 east needs state-BFS (door bit R=0).
 
 **Traps (live):**
 
@@ -313,6 +320,8 @@ Scaffold: `level4_triforce_stop(snap)` returns True only when
 | `Level4Compass` | after `ADDR_COMPASS & 0x08` | partial / residual |
 | `Level4Stepladder` | after `ADDR_LADDER` (mode-9 0x60) | **live** |
 | `Level4PostLadder` | exit 0x60 → 0x32 play ladder=1 | **live** |
+| `Level4Room31PostLadder` | west of PostLadder on 0x31 | **live** |
+| `Level4Map` | `ADDR_MAP & 0x08` on 0x21 | **live** (assisted) |
 | `Level4BossCleared` | after Gleeok + HC | planned |
 | `Level4Complete` | `triforce & 0x08` | planned |
 

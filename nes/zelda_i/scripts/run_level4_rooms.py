@@ -23,6 +23,7 @@ Segments (rr-5lu / rr-2ysf children)::
     stepladder   (rr-tib8)  push left block → stairs 0x60 → ADDR_LADDER
     exit_60      (rr-05fz)  Level4Stepladder mode-9 → clear Keese → BFS → 0x32 play
     west_31      (rr-05fz)  Level4PostLadder 0x32 → BFS LEFT → 0x31 (ladder=1)
+    map_21       (rr-rvae)  Level4Room31PostLadder → KEY-UP 0x30→0x20→0x21 map bit
 
 Live graph only — no walkthrough room hardcodes beyond recon.
 
@@ -44,6 +45,8 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment stepladder --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
+    # Map (assisted first-pass; recon key poke if keys=0)
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinite-life --trials 2 --save-state
 """
 
 # ruff: noqa: E402
@@ -107,6 +110,8 @@ from zelda_i.level4_dungeon import (
     level4_stepladder_success,
     level4_post_ladder_success,
     level4_west_31_success,
+    level4_map_success,
+    level4_map_room_success,
     make_bomb_61_north_controller,
     make_compass_62_controller,
     make_entry_up_controller,
@@ -158,6 +163,7 @@ SEGMENTS = (
     "stepladder",
     "exit_60",
     "west_31",
+    "map_21",
 )
 
 _BEAD = {
@@ -182,6 +188,7 @@ _BEAD = {
     "stepladder": "rr-tib8",
     "exit_60": "rr-05fz",
     "west_31": "rr-05fz",
+    "map_21": "rr-rvae",
 }
 
 _DEFAULT_STATE = {
@@ -206,6 +213,7 @@ _DEFAULT_STATE = {
     "stepladder": "Level4Room32",
     "exit_60": "Level4Stepladder",
     "west_31": "Level4PostLadder",
+    "map_21": "Level4Room31PostLadder",
 }
 
 _CHECKPOINT = {
@@ -230,13 +238,12 @@ _CHECKPOINT = {
     "stepladder": "Level4Stepladder",
     "exit_60": "Level4PostLadder",
     "west_31": "Level4Room31PostLadder",
+    "map_21": "Level4Map",
 }
 
 
 def _snap_fields(snap) -> dict[str, Any]:
-    from zelda_i.ram import ADDR_LADDER, read_u8
-
-    # snap has no ladder field; read from env RAM only when available via snap attrs.
+    # snap has no ladder/map fields; callers may enrich from RAM separately.
     return {
         "mode": snap.mode,
         "level": snap.level,
@@ -2299,11 +2306,441 @@ def run_once(
 
             ok = error is None and level4_west_31_success(env.get_ram())
 
+        elif segment == "map_21":
+            # rr-rvae: 0x31 → 0x30 KEY-UP → 0x20 clear → RIGHT 0x21 → map bit.
+            # Assisted first-pass (use --infinite-life). Recon key poke if keys=0.
+            from collections import deque
+
+            from zelda_i.dungeon import (
+                AliveRule,
+                CombatTuning,
+                DoorRoute,
+                DungeonRoomSpec,
+                GenericDungeonRoomController,
+                RewardKind,
+                RewardSpec,
+            )
+            from zelda_i.level4_dungeon import (
+                GEL_OBJECT_TYPE,
+                KEY_30_NORTH_X,
+                MAP_21_HOLD,
+                MAP_21_SAMPLE_PATH,
+                RIGHT_20_STAND,
+                ROOM_L4_MAP_21,
+                ROOM_L4_NORTH_30,
+                ROOM_L4_WATER_NORTH_20,
+                VIRE_OBJECT_TYPE,
+                VIRE_SPLIT_KEESE_TYPE,
+            )
+            from zelda_i.ram import ADDR_LADDER, ADDR_KEYS, read_u8
+
+            snap = read_snapshot(env.get_ram())
+            if int(read_u8(env.get_ram(), ADDR_LADDER)) <= 0:
+                error = "no_ladder"
+            elif level4_map_success(env.get_ram()):
+                ok = True  # already have map
+            else:
+                recon_key = False
+                if snap.keys < 1:
+                    # RECON-ONLY: post-ladder checkpoints have keys=0 (spent on 0x30 KEY-R).
+                    try:
+                        env.unwrapped.data.set_value("keys", 1)
+                        recon_key = True
+                    except Exception as exc:  # noqa: BLE001
+                        error = f"key_poke_fail:{exc!r}"
+                controllers["map_21_key"] = {
+                    "recon_poke": recon_key,
+                    "keys_after": int(read_snapshot(env.get_ram()).keys),
+                }
+
+            if error is None and not level4_map_success(env.get_ram()):
+                # Ensure on 0x30 (from 0x31 LEFT or already there).
+                snap = read_snapshot(env.get_ram())
+                if snap.screen == ROOM_L4_EAST_31:
+                    path, bfs_meta = _bfs_room_exit(
+                        env,
+                        dest=ROOM_L4_NORTH_30,
+                        assist=assist,
+                        frame0=frame,
+                        hold=4,
+                    )
+                    controllers["map_21_to_30"] = bfs_meta or {}
+                    if path is None:
+                        # naive LEFT push
+                        path = ["LEFT"] * 30
+                    obs, frame, ok30 = _follow_exit_path(
+                        env,
+                        path,
+                        hold=4,
+                        assist=assist,
+                        frame0=frame,
+                        dest_room=ROOM_L4_NORTH_30,
+                    )
+                    if not ok30:
+                        error = "no_0x30"
+
+                if error is None:
+                    snap = read_snapshot(env.get_ram())
+                    if snap.screen != ROOM_L4_NORTH_30:
+                        error = f"want_0x30_got_0x{snap.screen:02x}"
+
+                # KEY-UP 0x30 → 0x20 (ladder water + key door; long push)
+                if error is None:
+                    # Align x≈120 then hold UP through water/key scroll.
+                    for _ in range(200):
+                        snap = read_snapshot(env.get_ram())
+                        if snap.screen != ROOM_L4_NORTH_30:
+                            break
+                        if abs(snap.link_x - KEY_30_NORTH_X) > 4:
+                            d = "RIGHT" if snap.link_x < KEY_30_NORTH_X else "LEFT"
+                            obs, *_ = env.step(nes_action(d))
+                        else:
+                            break
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                    for _ in range(450):
+                        snap = read_snapshot(env.get_ram())
+                        if (
+                            snap.screen == ROOM_L4_WATER_NORTH_20
+                            and snap.mode == PLAY_MODE
+                            and not snap.transitioning
+                        ):
+                            break
+                        if snap.transitioning or snap.mode in (4, 6, 7, 16):
+                            obs, *_ = env.step(nes_action("UP"))
+                        else:
+                            # re-align x while pushing north
+                            if abs(snap.link_x - KEY_30_NORTH_X) > 8:
+                                d = (
+                                    "RIGHT"
+                                    if snap.link_x < KEY_30_NORTH_X
+                                    else "LEFT"
+                                )
+                                obs, *_ = env.step(nes_action(d))
+                            else:
+                                obs, *_ = env.step(nes_action("UP"))
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                    for _ in range(40):
+                        obs, *_ = env.step(nes_idle_action())
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                    snap = read_snapshot(env.get_ram())
+                    if snap.screen != ROOM_L4_WATER_NORTH_20:
+                        error = (
+                            f"key_up_0x30_failed_0x{snap.screen:02x}"
+                            f"_keys={snap.keys}_xy=({snap.link_x},{snap.link_y})"
+                        )
+                    else:
+                        controllers["map_21_key_up"] = {
+                            "success": True,
+                            "keys": int(snap.keys),
+                            "xy": [snap.link_x, snap.link_y],
+                        }
+
+                # Clear 0x20 Vires
+                if error is None:
+                    patrol = tuple(
+                        (x, y)
+                        for y in (93, 109, 125, 141, 157, 173, 189)
+                        for x in (48, 80, 112, 144, 176, 200)
+                    )
+                    spec20 = DungeonRoomSpec(
+                        spec_id="l4_map_clear_20",
+                        source_room=ROOM_L4_WATER_NORTH_20,
+                        room_id=ROOM_L4_WATER_NORTH_20,
+                        entry=DoorRoute("DOWN", ((120, 205), (120, 173))),
+                        enemy_types=(VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE, 0x1B),
+                        expected_enemy_count=1,
+                        alive_rule=AliveRule.TYPE_AND_HP,
+                        type_only_enemy_types=(VIRE_SPLIT_KEESE_TYPE, 0x1B),
+                        combat=CombatTuning(
+                            patrol=patrol,
+                            engage_distance=64,
+                            attack_phase=4,
+                            engage_attack_period=5,
+                            engage_attack_hold=3,
+                            patrol_attack_period=8,
+                            patrol_attack_hold=2,
+                        ),
+                        reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+                        max_frames=25000,
+                        level=4,
+                    )
+                    clr = GenericDungeonRoomController(spec20)
+                    clr.phase = DungeonPhase.FIGHT
+                    for _ in range(25000):
+                        snap = read_snapshot(env.get_ram())
+                        if snap.mode == 17:
+                            error = "death_0x20"
+                            break
+                        if snap.screen != ROOM_L4_WATER_NORTH_20:
+                            break
+                        fa = clr.step(snap)
+                        obs, *_ = env.step(fa.action)
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                        if clr.success:
+                            break
+                    controllers["map_21_clear20"] = {
+                        "success": bool(clr.success),
+                        "frames": clr.frames,
+                    }
+                    for _ in range(40):
+                        obs, *_ = env.step(nes_idle_action())
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+
+                # RIGHT 0x20 → 0x21 via state-saving BFS (maze; door bit R often 0)
+                if error is None:
+                    em = env.unwrapped.em
+                    s0 = read_snapshot(env.get_ram())
+                    hold_e = 4
+
+                    def _cell4(x: int, y: int) -> tuple[int, int]:
+                        return (x // 4 * 4, y // 4 * 4)
+
+                    st = _cell4(s0.link_x, s0.link_y)
+                    cs = {st: em.get_state()}
+                    parent_e: dict = {st: None}
+                    qe: deque = deque([st])
+                    seen_e = {st}
+                    goal_e = None
+                    path_e = None
+                    exp_e = 0
+                    while qe and exp_e < 12000 and goal_e is None:
+                        cur = qe.popleft()
+                        for d in ("RIGHT", "UP", "DOWN", "LEFT"):
+                            exp_e += 1
+                            em.set_state(cs[cur])
+                            for _ in range(hold_e):
+                                env.step(nes_action(d))
+                            s2 = read_snapshot(env.get_ram())
+                            if s2.transitioning or s2.mode in (4, 6, 7, 16):
+                                for _ in range(350):
+                                    env.step(nes_idle_action())
+                                s2 = read_snapshot(env.get_ram())
+                            if (
+                                s2.screen == ROOM_L4_MAP_21
+                                and s2.mode == PLAY_MODE
+                            ):
+                                p = []
+                                n = cur
+                                while n is not None and parent_e[n] is not None:
+                                    pp, pd = parent_e[n]
+                                    p.append(pd)
+                                    n = pp
+                                p.reverse()
+                                p.append(d)
+                                path_e = p
+                                goal_e = em.get_state()
+                                break
+                            if (
+                                s2.screen != ROOM_L4_WATER_NORTH_20
+                                or s2.mode != PLAY_MODE
+                            ):
+                                continue
+                            nc = _cell4(s2.link_x, s2.link_y)
+                            if nc in seen_e:
+                                continue
+                            if abs(s2.link_x - cur[0]) + abs(s2.link_y - cur[1]) < 2:
+                                continue
+                            seen_e.add(nc)
+                            cs[nc] = em.get_state()
+                            parent_e[nc] = (cur, d)
+                            qe.append(nc)
+                    controllers["map_21_to_21_bfs"] = {
+                        "success": goal_e is not None,
+                        "cells": len(seen_e),
+                        "exp": exp_e,
+                        "path_len": len(path_e) if path_e else 0,
+                    }
+                    if goal_e is None:
+                        error = f"no_0x21_bfs_cells={len(seen_e)}"
+                        em.set_state(cs[st])
+                    else:
+                        em.set_state(goal_e)
+                        for _ in range(30):
+                            obs, *_ = env.step(nes_idle_action())
+                            frame += 1
+                            if assist is not None:
+                                assist.apply_env(env, frame=frame)
+                        controllers["map_21_enter"] = {
+                            "success": True,
+                            "xy": [
+                                read_snapshot(env.get_ram()).link_x,
+                                read_snapshot(env.get_ram()).link_y,
+                            ],
+                            "path": path_e,
+                        }
+
+                # Gel thrash (partial clear expands maze) then hold6 BFS to map bit
+                if error is None and not level4_map_success(env.get_ram()):
+                    patrol = tuple(
+                        (x, y)
+                        for y in (93, 109, 125, 141, 157, 173, 189)
+                        for x in (40, 72, 104, 136, 168, 200)
+                    )
+                    spec21 = DungeonRoomSpec(
+                        spec_id="l4_map_gels_21",
+                        source_room=ROOM_L4_MAP_21,
+                        room_id=ROOM_L4_MAP_21,
+                        entry=DoorRoute("LEFT", ((16, 141), (48, 141))),
+                        enemy_types=(GEL_OBJECT_TYPE,),
+                        expected_enemy_count=1,
+                        alive_rule=AliveRule.TYPE,
+                        combat=CombatTuning(
+                            patrol=patrol,
+                            engage_distance=56,
+                            attack_phase=4,
+                            engage_attack_period=4,
+                            engage_attack_hold=2,
+                            patrol_attack_period=8,
+                            patrol_attack_hold=2,
+                        ),
+                        reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+                        max_frames=15000,
+                        level=4,
+                    )
+                    gclr = GenericDungeonRoomController(spec21)
+                    gclr.phase = DungeonPhase.FIGHT
+                    for _ in range(15000):
+                        snap = read_snapshot(env.get_ram())
+                        if snap.mode == 17:
+                            error = "death_0x21"
+                            break
+                        if snap.screen != ROOM_L4_MAP_21:
+                            # nudge west re-entry
+                            obs, *_ = env.step(nes_action("LEFT"))
+                            frame += 1
+                            if assist is not None:
+                                assist.apply_env(env, frame=frame)
+                            continue
+                        if level4_map_success(env.get_ram()):
+                            break
+                        fa = gclr.step(snap)
+                        obs, *_ = env.step(fa.action)
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                        if gclr.success:
+                            break
+                    controllers["map_21_gels"] = {
+                        "success": bool(gclr.success),
+                        "frames": gclr.frames,
+                    }
+
+                if error is None and not level4_map_success(env.get_ram()):
+                    # hold6 BFS for ADDR_MAP bit
+                    em = env.unwrapped.em
+                    s0 = read_snapshot(env.get_ram())
+
+                    def _cell(x: int, y: int) -> tuple[int, int]:
+                        return (x // 2 * 2, y // 2 * 2)
+
+                    st = _cell(s0.link_x, s0.link_y)
+                    cs = {st: em.get_state()}
+                    parent: dict = {st: None}
+                    q: deque = deque([st])
+                    seen = {st}
+                    found_path = None
+                    goal_state = None
+                    exp = 0
+                    while q and exp < 80000 and found_path is None:
+                        cur = q.popleft()
+                        for d in ("UP", "DOWN", "LEFT", "RIGHT"):
+                            exp += 1
+                            em.set_state(cs[cur])
+                            for _ in range(MAP_21_HOLD):
+                                env.step(nes_action(d))
+                            s2 = read_snapshot(env.get_ram())
+                            if level4_map_success(env.get_ram()):
+                                p = []
+                                n = cur
+                                while n is not None and parent[n] is not None:
+                                    pp, pd = parent[n]
+                                    p.append(pd)
+                                    n = pp
+                                p.reverse()
+                                p.append(d)
+                                found_path = p
+                                goal_state = em.get_state()
+                                break
+                            if s2.screen != ROOM_L4_MAP_21 or s2.mode != PLAY_MODE:
+                                continue
+                            nc = _cell(s2.link_x, s2.link_y)
+                            if nc in seen:
+                                continue
+                            if abs(s2.link_x - cur[0]) + abs(s2.link_y - cur[1]) < 1:
+                                continue
+                            seen.add(nc)
+                            cs[nc] = em.get_state()
+                            parent[nc] = (cur, d)
+                            q.append(nc)
+                    if found_path is None:
+                        found_path = list(MAP_21_SAMPLE_PATH)
+                        controllers["map_21_bfs"] = {
+                            "success": False,
+                            "fallback": "sample_path",
+                            "cells": len(seen),
+                            "exp": exp,
+                        }
+                        # restore start of BFS
+                        em.set_state(cs[st])
+                        obs, frame, map_ok = _follow_exit_path(
+                            env,
+                            found_path,
+                            hold=MAP_21_HOLD,
+                            assist=assist,
+                            frame0=frame,
+                            dest_room=ROOM_L4_MAP_21,
+                        )
+                        # follow_exit_path checks room not map bit — recheck
+                        map_ok = level4_map_success(env.get_ram())
+                    else:
+                        em.set_state(goal_state)
+                        for _ in range(20):
+                            obs, *_ = env.step(nes_idle_action())
+                            frame += 1
+                            if assist is not None:
+                                assist.apply_env(env, frame=frame)
+                        map_ok = level4_map_success(env.get_ram())
+                        controllers["map_21_bfs"] = {
+                            "success": map_ok,
+                            "path": found_path,
+                            "hold": MAP_21_HOLD,
+                            "cells": len(seen),
+                            "exp": exp,
+                            "path_len": len(found_path),
+                        }
+                    controllers["map_21"] = {
+                        "success": map_ok,
+                        "frames": frame,
+                        "segment": "level4_map_21",
+                    }
+                    if not map_ok:
+                        error = "map_bit_not_set"
+
+            ok = error is None and level4_map_success(env.get_ram())
+
         else:
             error = f"unknown_segment_{segment}"
 
         snap = read_snapshot(env.get_ram())
         final = _snap_fields(snap)
+        try:
+            from zelda_i.ram import ADDR_LADDER, ADDR_MAP, read_u8
+
+            final["ladder"] = int(read_u8(env.get_ram(), ADDR_LADDER))
+            final["map"] = int(read_u8(env.get_ram(), ADDR_MAP))
+            final["map_l4"] = bool(int(read_u8(env.get_ram(), ADDR_MAP)) & 0x08)
+        except Exception:  # noqa: BLE001
+            pass
         checkpoint = None
         provenance = None
         if ok and save_checkpoint:

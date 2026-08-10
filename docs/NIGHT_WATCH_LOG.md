@@ -875,3 +875,17 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Units: kpdr_dev + controller_common 27 passed; no continuous / STATUS
 - Bead **rr-av5s** left **in_progress** (mid shaft next)
 - No push
+
+### 2026-08-10T~night — zelda_i L4 map room assisted dual-green (rr-rvae partial)
+- Lane: zelda_i only (`nes/zelda_i/`)
+- Claimed **rr-rvae** (in_progress): map + Gleeok path + TF 0x08 from Level4PostLadder
+- **Live recon:** KEY-UP 0x30 (ladder+key) → **0x20** (5× Vire) → RIGHT → **0x21**
+  (5× Gel 0x15 + RoomItemId **0x17** map). Pickup `ADDR_MAP|0x08` @~(208,181).
+- **map_21** assisted **2/2** ~17872f: recon key poke (post-ladder keys=0) → clear
+  0x20 → state-BFS east → gel thrash → hold6 BFS map. Checkpoint **Level4Map**.
+- Evidence: `recordings/l4_rvae_map21_map_21.json`
+- Traps: KEY-UP 0x31 = isolated south pocket on 0x21 (not map path); 0x20 door
+  bit R stays 0; gels block maze until thrash; natural key residual
+- Epic **rr-q3n** left open (TF 0x08). Parent **rr-05fz** open residual.
+- Units: test_level4_dungeon 10 passed. No push.
+- Next: natural key for map natural-entry; Gleeok + TF 0x08
