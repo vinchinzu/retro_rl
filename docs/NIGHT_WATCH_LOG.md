@@ -1347,3 +1347,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Low alcove sx152 is dead-end (solid sy≥96); high path cam6 climb → cross above wall
 - Pins: HeatLadder, HeatScreen8, HeatScreen7HighPast
 - Residual: Sniper/Yoku from HeatScreen8 → boss → Item-1
+
+### 2026-08-10T07:15 CDT — MM2 Heat high-path past wall ★
+- Commits `9604f5a`+: dual HeatScreen7Mid→cam8 3/3; ladder+scroll_down; HeatScreen8 pin.
+- Low alcove sx152 trap; human path climbs high on cam6 then over wall.
+- Residual **rr-k1ea** Sniper/Yoku→boss; spawned manager. No Item-1 yet (rr-809 open).
+
