@@ -22,6 +22,9 @@ SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.make_boot
 uv run pytest snes/sm_rando/tests -q
 SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_vertical_slice
 SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_morph_policy
+# Multi-seed early tip S/T (ship→morph) via SeedCampaignRunner
+SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_early_tip_campaign --mode dry
+# Live (real emulator tip per seed; needs ROM): --mode live
 SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.harvest_entry_corpus
 SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.evaluate_entry_corpus
 uv run python -c "from sm_rando.seed import ensure_demo_seed; print(ensure_demo_seed().directory)"
@@ -45,5 +48,6 @@ uv run python -c "from sm_rando.seed import ensure_demo_seed; print(ensure_demo_
 
 ## Immediate goal
 
-Power-on → Morph Ball now has an `SMRando-Snes` policy product. Next: run the
-same boundary on patched multi-seed fixtures once generator ROMs land.
+Multi-seed early tip S/T dry-run is published (fixture seeds, vanilla substrate).
+Next: patched generator ROMs + live multi-seed morph tip; do not claim shuffled
+seed-robustness until those land.

@@ -35,11 +35,12 @@ Program stack: `docs/SOLVER_ARCHITECTURE.md`.
 | Structured Landing baseline | 0/58 train and 0/6 held-out from unsettled natural entry (gap 0.000); failures retained in `recordings/landing_entry_baseline.json` |
 | Landing timing BC experiment | 58/58 train and 6/6 held out; zero eval states used for fitting; backend-owned Clean/Bronze audits + six canonical eval trajectories retained. Candidate only—new predecessor trajectories required before deployment. |
 | Patched seed ROM / generator | open |
-| Multi-seed S/T dry-run | open |
+| Multi-seed S/T dry-run | verified 2026-08-09: `SeedCampaignRunner` dry campaign on fixture seeds 1337/1338/1339, goal `ship_to_morph`, S=2 of T=3 (actual 3/3), claimable, no spoiler oracle, vanilla substrate labeled. Reports: `recordings/early_tip_seed_campaign.json` + classic `early_tip_seed_robustness.json`. Fail-closed INFRA_ERROR path covered in tests. Not shuffled-seed robustness until generator ROMs land. |
 
 ## Next
 
 1. Wire real rando generator or IPS patch into seed packages.
 2. Harvest a second independent Ceres→Landing predecessor trajectory and
    replicate the 6/6 Landing timing-BC result before promoting the candidate.
-3. Multi-seed report via shared seed-robust harness (`rr-gbd.11`).
+3. Live multi-seed morph tip (`--mode live`) once generator/patched ROMs exist;
+   SMZ3 multi-seed (`rr-gbd.13`) may proceed using this pattern.

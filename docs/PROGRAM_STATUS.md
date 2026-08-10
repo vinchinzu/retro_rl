@@ -35,8 +35,9 @@ clears exist today; seed-robust S/T claims do not yet.
    ground on **sm_rando / alttp_rando** then SMZ3
    ([SOLVER_ARCHITECTURE.md](SOLVER_ARCHITECTURE.md))
 2. **sm_rando / alttp_rando** — SM-rando M1 now has a real three-edge
-   SolverSession slice, EntryStateCorpus, and held-out BC candidate;
-   shuffled-seed S/T remains open. ALTTP-rando remains at its boot/graph rung.
+   SolverSession slice, EntryStateCorpus, held-out BC candidate, and fixture
+   multi-seed early tip S/T dry-run (ship→morph, 3/3 claimable); shuffled-seed
+   live S/T remains open. ALTTP-rando remains at its boot/graph rung.
 3. **Super Metroid** (M5) — Varia tip green; pure reverse + continuous K4 toward ending
 4. **ALTTP / Zelda 3** (M1) — open beyond title→castle; dungeon/item capability edges
 5. **SMZ3** (M2→M3) — longer one-bot segments; multi-seed after single-game patterns
@@ -53,8 +54,8 @@ Battle Clash remains `blocked: infrastructure` (no Super Scope injection).
 
 | Priority | Work |
 |----------|------|
-| Solver | Scaffold item-logic graph solver + S/T seed report format; first consumer on sm_rando/alttp_rando edges |
-| sm_rando | M1 seed ROM boot; bind ship→morph; `play --vanilla` for skill demos |
+| Solver | S/T harness + SeedCampaignRunner landed; first consumer sm_rando early tip dry-run; next alttp_rando / SMZ3 multi-seed |
+| sm_rando | Fixture multi-seed ship→morph S/T dry-run published; live/patched generator next |
 | alttp_rando | M1 seed ROM boot; bind house→uncle; `play --vanilla` for opening practice |
 | Super Metroid | Pure reverse post-Varia → Business; continuous K4; dual-track room farm |
 | ALTTP | Sword/uncle and early dungeon/overworld skills with capability edges |
