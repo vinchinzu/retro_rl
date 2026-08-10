@@ -53,13 +53,13 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: Wave→Business pure return (unblock continuous dual `--to ice`) — then
-dual continuous Ice; **not** STATUS-promoted until dual green.
-Outbound Ice pure stack **CLOSED** (`rr-dbu.11`). Continuous tip **compose**
-wired (`rr-dbu.7`): TipSpec/spine/catalog `--to ice` parent `wave`, hops
-Business→Gate→Acid→Snake→Ice PLM; residual
-[`tasks/rr-dbu.7-residual.md`](tasks/rr-dbu.7-residual.md) (room gap
-Wave→Business). Default CLI tip remains **`wave`**. Work:
+★ Next: Dual continuous `--to ice` stabilize (`rr-kxge`) — compose **LANDED**
+(Wave→Business return + Ice pure on ice tip). Continuous power-on reaches
+Business via return then **RED** on floor→Super climb (residual
+[`tasks/rr-kxge-residual.md`](tasks/rr-kxge-residual.md)). Pure floor→Gate
+dual GREEN; elev pin still green. Wave→Business pure **CLOSED** (`rr-vqv3`);
+Ice pure **CLOSED** (`rr-dbu.11`). Default CLI tip remains **`wave`** — **not**
+STATUS-promoted continuous Ice without dual continuous green. Work:
 `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
