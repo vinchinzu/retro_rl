@@ -122,13 +122,18 @@ Test crop fixtures (for growth / ship work):
    clearing ≥1 fence opens full BFS. Refill selection now preferred-only
    (never F8), main-pond band first; blocked path starts fence-open subtask.
    Landmark `pond_edge` corrected to `(32,34)` (was shipping F2).
-   **2026-08-09 night (rr-jwju):** unit-locked order preferred-edge **before**
-   fence-open; main-pond select uses true reachability (not partial hop);
-   nearest pathable corridor stand; fence pond-nav hop + local-drop when pond
-   BFS dies; refill mid-nav soft repath (no single-miss exhaust); return_home
-   hard timeout 5500f. ROM dry-fixture probe still `can_peak=0` after fence
-   gap open — multi-hop to F0 stand stalls ~tile(25,30) before act (see
-   `recordings/empty_can_refill_probe.json`).
+   **2026-08-09 night (rr-jwju / rr-3q27):** unit-locked order preferred-edge
+   **before** fence-open; main-pond select uses true reachability (not partial
+   hop); nearest pathable corridor stand; fence pond-nav hop + local-drop when
+   pond BFS dies; refill mid-nav soft repath; return_home hard timeout 5500f;
+   post-gap multi-hop densify + carry-drop; **CROP_WATER `refill_bounds` y_min
+   14→10** so north **F9** ~(26,12) is in-bounds (was excluded → always fence).
+   **ROM dry-fixture still `can_peak=0`** (`recordings/empty_can_refill_probe.json`):
+   now multi-hops toward F9 `(25,13)` but plant-pocket soft-block thrash at
+   ~(13,27)/(12,29) prevents climb; single y=31 fence clear is **not** a
+   south-walkable corridor empty-handed (physics blocks gap transit; north-lip
+   soft-blocks at ~(25,30) / 0xFF). Next: recorded west-climb to F9 or
+   carry-to-pond toss completion without soft-timeout.
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
    **ROM with charged can OK** (Dry fixture + can=20 → 3 wet `0x55`); still

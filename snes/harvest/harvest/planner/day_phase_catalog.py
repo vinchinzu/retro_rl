@@ -209,12 +209,13 @@ CROP_ESTABLISH_PHASE = PhaseSpec(
 )
 
 # Water pass: watering can only; waters already-established crops.
-# Include north stream (y~16-22) as well as south (y~45+). South-only
-# bounds left early west-field plants unable to refill an empty can.
+# Include north F9 spur (y~12–13 CheckToolSuccess fill) as well as mid pond
+# and south FC. y_min=14 excluded F9 on dry fixture so empty-can always
+# fell through to y=31 fence thrash.
 CROP_WATER_PHASE = PhaseSpec(
     "CROP_WATER",
     "crop",
-    {"work_mode": "water", "refill_bounds": (3, 14, 62, 60)},
+    {"work_mode": "water", "refill_bounds": (3, 10, 62, 60)},
     required_maps=(0x00,),
     required_tools=("watering_can",),
     estimated_frames=6000,
