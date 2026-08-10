@@ -1,8 +1,9 @@
 ## Residual — rr-dbu.8 K5 Alpha PB pure stack
 
 ### Result
-PARTIAL — three pure one-hop dual GREENs on Ice return (Ice→Snake, Snake→Tutorial,
-Tutorial→Gate). Full K5 stack to Alpha PB PLM still open. Not continuous. No STATUS change.
+PARTIAL — four pure one-hop dual GREENs on Ice return (Ice→Snake, Snake→Tutorial,
+Tutorial→Gate, Gate→Business). Full K5 stack to Alpha PB PLM still open. Not continuous.
+No STATUS change.
 
 ### One-hop map (tape Phase B return + Phase C)
 
@@ -11,8 +12,8 @@ Tutorial→Gate). Full K5 stack to Alpha PB PLM still open. Not continuous. No S
 | 0 | Ice → Snake | `0xA890` → `0xA8B9` | **538f** ×2 ✅ | `play_ice_to_snake` |
 | 1 | Snake → Tutorial | `0xA8B9` → `0xA865` | **2386f** ×2 ✅ | `play_ice_snake_to_tutorial` |
 | 2 | Tutorial → Gate | `0xA865` → `0xA815` | **969f** ×2 ✅ | `play_ice_tutorial_to_gate` |
-| 3 | Gate → Business | `0xA815` → `0xA7DE` | ⬜ | next |
-| 4 | Business → Warehouse | `0xA7DE` → `0xA6A1` | reuse? | `play_business_to_warehouse` exists |
+| 3 | Gate → Business | `0xA815` → `0xA7DE` | **879f** ×2 ✅ | `play_ice_gate_to_business` |
+| 4 | Business → Warehouse | `0xA7DE` → `0xA6A1` | ⬜ | re-verify `play_business_to_warehouse` from Super lip |
 | 5–10 | tunnels reverse | Wh→East→Glass→West→Below→Bat | ⬜ | reverse of red_stack |
 | 11 | Bat → Red Tower | `0xA3DD` → `0xA253` | ⬜ | climb |
 | 12 | Red → Hellway | `0xA253` → `0xA2F7` | ⬜ | long Red Tower (~7k human) |
@@ -22,40 +23,41 @@ Tutorial→Gate). Full K5 stack to Alpha PB PLM still open. Not continuous. No S
 Tape: `tasks/speed_to_wave_ice_moat_human.json` (rr-dbu.12). Packages:
 `routes/kpdr/ice/` (return) + `routes/kpdr/k5/` (outbound map).
 
-### Files changed (this hop: rr-81ek)
-- `routes/kpdr/ice/tutorial_to_gate.py` — hybrid mid-RLE + morph tunnel + gap/door
-- `routes/kpdr/data/ice_tutorial_to_gate_rle.json` — cleaned left→mid human
+### Files changed (this hop: rr-e5i6)
+- `routes/kpdr/ice/gate_to_business.py` — hybrid cleaned RLE + door pressure
+- `routes/kpdr/data/ice_gate_to_business_rle.json` — cleaned mid→Super human
 - registry / probe / source_states / k5 hop map / ice scaffold tests
 
 ### Verify paste
 ```bash
 uv run pytest snes/super_metroid/tests/test_k4_ice_scaffold.py -q
 
-uv run python snes/super_metroid/scripts/probe/kpdr.py pure ice-tutorial-to-gate \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_snake_to_tutorial_pure.state \
-  --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_tutorial_to_gate_pure.state
-# → GREEN room=0xA815 xy=(807,131) frames=969 (×2 exact dual)
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure ice-gate-to-business \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_tutorial_to_gate_pure.state \
+  --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_gate_to_business_pure.state
+# → GREEN room=0xA7DE xy=(41,907) frames=879 (×2 exact dual)
 ```
 
 ### Acceptance
 - [x] First tape-backed pure one-hop dual green (Ice→Snake return)
 - [x] Second hop dual green (Snake→Tutorial return)
 - [x] Third hop dual green (Tutorial→Gate return)
+- [x] Fourth hop dual green (Gate→Business return)
 - [x] Package layout: return in `ice/`; K5 map under `k5/`
 - [ ] Full pure stack through Alpha PB PLM
 - [ ] Continuous tip / STATUS (planner only after dual continuous)
 
 ### Residual risks
 1. Snake climb multi-attempt (L3 pin-sensitive) — OK dual but not single-pass.
-2. Gate settle mid-room ~(807,131) — Gate→Business must accept top-band entry.
+2. Business Super lip ~(41,907) p25 — Warehouse hop must climb/fall from Super band.
 3. Red Tower human stretch ~7k frames — prefer clean climb, not thrash RLE.
 4. Tunnel reverses may reuse geometry of outbound red_stack but need natural-entry pure pins.
-5. `business_to_warehouse` exists but needs re-verify from post-Ice Business handoff.
+5. `business_to_warehouse` exists but needs re-verify from post-Ice Super lip handoff.
 
 ### Next action (required)
-- **Next card:** Pure Ice Gate → Business return (K5 hop 3)
-- **One change:** pure controller Gate mid-top → Business `0xA7DE`
-- **Source state:** `scratch/post_ice_tutorial_to_gate_pure.state`
+- **Next card:** Pure Business → Warehouse return (K5 hop 4)
+- **One change:** pure Business Super lip → Warehouse from `post_ice_gate_to_business_pure`
+- **Source state:** `scratch/post_ice_gate_to_business_pure.state`
 
 ### Non-claims
 - Did not STATUS-promote continuous past Ice
@@ -66,3 +68,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ice-tutorial-to-gate
 - Dual GREEN hop0: room=0xA8B9 pose=10 x=472 y=395 frames=538 ×2
 - Dual GREEN hop1: room=0xA865 pose=81 x=39 y=127 frames=2386 ×2
 - Dual GREEN hop2: room=0xA815 pose=81 x=807 y=131 frames=969 ×2
+- Dual GREEN hop3: room=0xA7DE pose=25 x=41 y=907 frames=879 ×2
