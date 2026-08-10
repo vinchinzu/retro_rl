@@ -87,6 +87,17 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
       `tas/skills_8_3.py` / `scripts/stitchless_8_3.py`. Pure continuous FM2
       8-3 still phase-blocked; hybrid v2 showcase-only. Grounded/pit-jump
       long grids **paused**.
+    - **Pure capture handoff (2026-08-09):** the original 17,868-frame
+      HappyLee FM2 replays through 8-3 and the axe under FCEUX 2.6.6. The
+      stable-retro/fceumm break is local at movie frame **13222** (same
+      x/y/y-fraction, FCEUX vy=−3 vs fceumm vy=−5), so do not repair it by
+      mutating track-3 input. A provisional 299.490s MP4 exists under
+      `recordings/tas_import/pure_hl/`, but the experimental FCEUX raw-pipe
+      encoder had unreliable shutdown and was not retained.
+    - **Next for pure track 3:** replay the untouched FM2 in BizHawk with the
+      matching ROM checksum, use native A/V capture, and verify 17,868 movie
+      inputs, duration <300s, 8-3 passage, and visible axe completion. Keep
+      the stable-retro 8-3 adaptation issue separate and still open.
     - **Next:** fold HL…8-2 + skills 8-3 + FX 8-4 continuous; verify 3/3;
       Clean power-on; optional 21f polish / FPG macro on leave class.
 6. **Route contracts + natural predecessor evaluator (2026-08-01):** done.
