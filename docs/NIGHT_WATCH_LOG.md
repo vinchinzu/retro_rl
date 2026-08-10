@@ -172,3 +172,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-bhr` still open: ExitToFarm drops free-move after pure truck→sleep; softlock → 0x5F.
 - Fail-fast `farm_control_lost` landed. Next: pure truck+sleep re-record keeping gs free-move.
 
+
+### 2026-08-09T22:05 CDT — SM Double→Single pure GREEN (rr-qpkd)
+- **CLOSED** `rr-qpkd` dual pure 1101f×2 Double `0xADAD`→Single `0xAD5E` via `play_double_to_single_chamber`.
+- Source: `post_wave_to_double_chamber_pure` ~(984,139); export `post_double_to_single_chamber_pure` ~(216,630).
+- Parent **`rr-vqv3` remains open** (Wave→Business stack; 5 hops left). No continuous Ice STATUS.
+- Next tip: `rr-u0y8` Single→Bubble return. Residual: `docs/tasks/rr-qpkd-residual.md`.
