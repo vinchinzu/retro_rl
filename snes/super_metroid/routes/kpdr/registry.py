@@ -64,7 +64,7 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_tutorial_to_gate,
     play_ice_gate_to_business,
 )
-from super_metroid.routes.kpdr.k5 import play_warehouse_to_east
+from super_metroid.routes.kpdr.k5 import play_east_to_glass, play_warehouse_to_east
 from super_metroid.routes.kpdr.k4_norfair import (
     play_bat_cave_to_speed_hall,
     play_bubble_to_single_chamber,
@@ -241,6 +241,8 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "ice_gate_to_business": play_ice_gate_to_business,
     # K5 stack hop 5: Warehouse elev → East Tunnel (reverse of east_to_warehouse).
     "warehouse_to_east": play_warehouse_to_east,
+    # K5 stack hop 6: East Tunnel → Glass (reverse of glass_to_east).
+    "east_to_glass": play_east_to_glass,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,

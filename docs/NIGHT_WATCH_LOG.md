@@ -717,6 +717,18 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Units: kpdr_dev 8/8; no continuous / STATUS
 - No push
 
+### 2026-08-10T01:33 CDT — SM rr-68ib East→Glass pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-68ib** CLOSED: Pure East Tunnel → Glass return (K5 hop 6)
+- **Evidence:** `east-to-glass` dual pure **253f** ×2 exact, room `0xCEFB`
+  xy=(216,395) pose=12 from `post_ice_warehouse_to_east_pure` ~(216,364) p26 crouch
+- Controller: uncrouch residual + LEFT blue door (reverse of glass_to_east)
+- Export: `scratch/post_ice_east_to_glass_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–6 GREEN; Alpha PB open)
+- Next bead **rr-85c4**: Glass → West Tunnel reverse
+- Units: kpdr_dev + source_states green; no continuous / STATUS
+- No push
+
 ### 2026-08-10T~01:35 CDT — harvest sleep bed miss CLOSED
 - Lane: harvest only (`snes/harvest/`)
 - Bead **rr-m0wq** CLOSED: Sleep interaction miss at bed (70,86) D7
@@ -728,3 +740,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Units: SleepAndPlannerTests green
 - Residual: parent **rr-5in** / **rr-20w** full power-on→Summer income still open
 - No push
+
+### 2026-08-10T01:30 CDT — zelda_i L4 post-ladder exit+west pure dual-green (rr-05fz partial)
+- Lane: zelda_i only (`nes/zelda_i/`)
+- Claimed **rr-05fz** (in_progress): post-Stepladder residual under epic **rr-q3n**
+- **exit_60** pure **2/2** ~765f: `Level4Stepladder` idle 150f (item freeze) → clear 4× Keese → hold4 BFS exit mode-9 0x60 → **0x32** play → `Level4PostLadder`
+- **west_31** pure **2/2** ~372f: free LEFT BFS around pushed 0x68 → **0x31** → `Level4Room31PostLadder`
+- Live backtrack **0x31→0x30→0x40** with ladder; 0x30 N still sealed; map/Gleeok/TF residual
+- Traps: pedestal freeze ~100–150 idle; BFS settle must wait mode 4/6/7 ~400f (180f false-negative)
+- Segments: `exit_60`, `west_31` in `run_level4_rooms.py`. Units 9 passed.
+- Child **rr-rvae** created for map+Gleeok+TF. **rr-05fz** left open until TF 0x08.
+- Evidence: `l4_05fz_exit60_exit_60.json`, `l4_05fz_west31_west_31.json`
+- No push. Next: map room from Level4PostLadder / rr-rvae
