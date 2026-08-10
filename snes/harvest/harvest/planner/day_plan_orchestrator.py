@@ -44,11 +44,13 @@ from harvest.planner.day_plan_status import (
 from harvest.planner.day_plan_tasks import (
     EnsureCarryToolTask,
     ExitToFarmTask,
+    FarmShippingWaitTask,
     GoToSleepTask,
     HOUSE_SLEEP_TRANSITION_TILEMAP,
     ReturnHomeTask,
 )
 from harvest.planner.day_task_factory import DayTaskFactory
+from harvest.core.shipping_credit import SHIPPING_SCENE_HOUR
 
 
 @dataclass
@@ -692,6 +694,43 @@ class MultiDayPlannerTask(Task):
     def _build_sleep_task(self) -> GoToSleepTask:
         return GoToSleepTask(tasks_dir=self.tasks_dir)
 
+    def _build_farm_shipping_wait_task(self) -> FarmShippingWaitTask:
+        return FarmShippingWaitTask(
+            name="wait_farm_shipping",
+            target_hour=SHIPPING_SCENE_HOUR,
+            timeout=25000,
+        )
+
+    def _needs_farm_shipping_wait(self, world: WorldState) -> bool:
+        """True when bin has goods and farm 5pm ShippingScene has not fired yet.
+
+        Day09 path (rr-53g / rr-y8n): stay on farm through hour 17 so
+        ShippingScene dialogue runs before return-home/sleep. Wallet credit is
+        still NightReset ``AddMoney``; this wait is the farm-side window.
+        """
+        try:
+            from harvest.tasks.harvest_task import read_shipping_money
+
+            shipping_money = int(read_shipping_money(world.ram))
+        except Exception:
+            shipping_money = 0
+        if shipping_money <= 0:
+            # Also honor journaled harvest ships if RAM already zeroed (edge).
+            shipped = 0
+            for row in self._last_day_phase_results:
+                if str(row.get("phase")) == "HARVEST_ROUTE":
+                    try:
+                        shipped += int(row.get("shipped_count") or 0)
+                    except Exception:
+                        pass
+            if shipped <= 0:
+                return False
+        _day, hour, _minute = read_world_day_time(world.ram)
+        if hour >= SHIPPING_SCENE_HOUR:
+            return False
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        return is_farm_tilemap(tilemap)
+
     def _activate(self, phase: str, task: Task, world: WorldState) -> None:
         self._phase = phase
         self._current_task = task
@@ -762,12 +801,16 @@ class MultiDayPlannerTask(Task):
         season, day = self._active_day
         end_season, end_day = read_world_date(world.ram)
         money = 0
+        shipping_money = 0
         try:
             from harvest.core.ram_catalog import read_ram_value
+            from harvest.tasks.harvest_task import read_shipping_money
 
             money = int(read_ram_value(world.ram, "money"))
+            shipping_money = int(read_shipping_money(world.ram))
         except Exception:
             money = 0
+            shipping_money = 0
         # Prefer snapshot taken when plan_day finished; fall back to live task.
         self._capture_day_plan_outcomes()
         phase_results = list(self._last_day_phase_results)
@@ -784,6 +827,24 @@ class MultiDayPlannerTask(Task):
         planned = []
         if self._last_day_decision is not None:
             planned = [p.phase for p in self._last_day_decision.phases]
+        shipped_total = 0
+        harvested_total = 0
+        establish_planted = 0
+        for pr in phase_results:
+            if str(pr.get("phase")) == "HARVEST_ROUTE":
+                try:
+                    shipped_total += int(pr.get("shipped_count") or 0)
+                    harvested_total += int(pr.get("harvested_count") or 0)
+                except Exception:
+                    pass
+            if str(pr.get("phase")) == "CROP_ESTABLISH" and str(pr.get("status")) == "success":
+                reason = str(pr.get("reason") or "")
+                # reason like planted=6 watered=0
+                if "planted=" in reason:
+                    try:
+                        establish_planted += int(reason.split("planted=")[1].split()[0])
+                    except Exception:
+                        establish_planted += 1
         row = {
             "plan_season": int(season),
             "plan_day": int(day),
@@ -792,6 +853,10 @@ class MultiDayPlannerTask(Task):
             "overnights_completed": int(self._days_completed + 1),
             "sleep_reason": sleep_reason,
             "money": money,
+            "shipping_money": shipping_money,
+            "shipped_count": shipped_total,
+            "harvested_count": harvested_total,
+            "establish_planted": establish_planted,
             "planned_phases": planned,
             "phase_results": phase_results,
             "deferred": deferred,
@@ -879,7 +944,9 @@ class MultiDayPlannerTask(Task):
             if self._phase == "sleep":
                 return self._finish_sleep(world, "ending reached")
             return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
-        if self._phase in {"plan_day", "return_home"} and read_world_date(world.ram) != self._active_day:
+        if self._phase in {"plan_day", "wait_shipping", "return_home"} and read_world_date(
+            world.ram
+        ) != self._active_day:
             if self._phase == "plan_day":
                 self._capture_day_plan_outcomes()
             self._record_day_failure(
@@ -906,6 +973,10 @@ class MultiDayPlannerTask(Task):
 
         if self._phase == "plan_day":
             self._activate("plan_day", self._build_day_task(world), world)
+        elif self._phase == "wait_shipping":
+            self._activate(
+                "wait_shipping", self._build_farm_shipping_wait_task(), world
+            )
         elif self._phase == "return_home":
             self._activate("return_home", self._build_return_home_task(), world)
         elif self._phase == "sleep":
@@ -928,6 +999,15 @@ class MultiDayPlannerTask(Task):
             if self._phase == "plan_day":
                 self._capture_day_plan_outcomes()
                 return self._force_return_home_after_failure(world, result.status, reason)
+            if self._phase == "wait_shipping":
+                # Optional window — go home even if 5pm wait fails.
+                self._record_day_failure(world, result.status, f"wait_shipping: {reason}")
+                self._phase = "return_home"
+                self._current_task = None
+                print("[MULTI_DAY] Farm shipping wait failed; forcing return_home")
+                return TaskResult(
+                    status=TaskStatus.RUNNING, action=ActionResult(make_action())
+                )
             if self._phase == "return_home":
                 tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
                 if read_world_date(world.ram) != self._active_day:
@@ -968,6 +1048,29 @@ class MultiDayPlannerTask(Task):
 
         if self._phase == "plan_day":
             self._capture_day_plan_outcomes()
+            if self._needs_farm_shipping_wait(world):
+                self._phase = "wait_shipping"
+                self._current_task = None
+                print(
+                    "[MULTI_DAY] Day work done with shipping bin goods; "
+                    "staying on farm for 5pm ShippingScene (Day09 path)"
+                )
+            else:
+                self._phase = "return_home"
+                self._current_task = None
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        if self._phase == "wait_shipping":
+            # Journal as a synthetic phase result for Gate A evidence.
+            self._last_day_phase_results.append(
+                {
+                    "phase": "WAIT_FARM_SHIPPING",
+                    "kind": "farm_shipping_wait",
+                    "status": "success",
+                    "reason": result.reason or "SUCCESS",
+                    "step": int(self._step_count),
+                }
+            )
+            print(f"[MULTI_DAY] Farm shipping wait done: {result.reason or 'success'}")
             self._phase = "return_home"
             self._current_task = None
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))

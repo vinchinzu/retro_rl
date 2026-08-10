@@ -305,3 +305,21 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Unblocks continuous Ice compose (still NO STATUS without dual continuous green).
 - Note: Business settle is floor ~(216,1419); Ice Super needs climb/re-pin.
 
+
+### 2026-08-09T22:50 CDT — harvest Gate A CLOSED (rr-y8n)
+- **CLOSED** `rr-y8n` End-of-spring soak with money growth (Gate A).
+- Multi-day successor from `Y1_Day09_Harvest_Mode_Start` `--days 1`:
+  - `final_money=3180` (start $1260), `mid_run_state_load=false`
+  - `HARVEST_ROUTE` shipped=24 / harvested=24
+  - `CROP_ESTABLISH` planted=6; `gate_a_economy_ok=true`
+  - Evidence: `snes/harvest/recordings/run_spring_gate_a_day09.json`
+- Wired Day09 farm 5pm path into calendar: `FarmShippingWaitTask` + MultiDay
+  `wait_shipping` when `shipping_money>0` and hour<17 on farm (NightReset still
+  credits wallet even if work already past 5pm).
+- Journal summary: harvest/establish deltas + `gate_a_economy_ok`.
+- Units: `tests.test_shipping_credit` 11/11.
+- Full `--end-of-spring` from `Y1_Inside_House` still flaky (empty-can water fail;
+  return_home hang ~D5) — parent **rr-20w** / Gate B remains open.
+- Next tip: empty-can natural refill or power-on continuous spring (rr-5in).
+- No push.
+

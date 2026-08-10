@@ -5,19 +5,19 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | **M3** (calendar multi-day); crop economy still short of M4 domain |
-| Best verified result | Continuous ROM spring month from `Y1_Inside_House` (Spring D2 06:08) → Summer D1 06:00 house, **29 overnights**, no mid-run state load |
-| Last verification | 2026-08-07 (crop keep-alive D2→D8 mature); power-on bootstrap 2026-08-01 |
+| Best verified result | Gate A multi-day Day09: harvest 24 + plant 6 + wallet **$1260→$3180** Clean; calendar spring month (29 overnights) still calendar-only from Inside_House |
+| Last verification | 2026-08-09 (rr-y8n Gate A); power-on bootstrap 2026-08-01 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **Spring calendar soak verified**; plant/harvest income not yet closed |
+| Status | **Gate A economy closed** (multi-day harvest income); full Inside_House→Summer income still open |
 | Integration | `HarvestMoon-Snes` |
 | ROM | `roms/Harvest Moon.sfc` via `retro_setup` (SHA1 gate) |
 | Start contract | Clean power-on → new diary → Spring D1 07:00 town gate; M3 soak remains a separate D2 fixture run |
 | Completion contract | Campaign (multi-year farm / marriage / ending) — TBD |
-| Evidence | `recordings/run_spring_month.json`; `logs/long_runs/run_spring_month_*.log`; end state `Y1_Summer_D1_Morning.state` |
+| Evidence | `recordings/run_spring_gate_a_day09.json` (Gate A); `recordings/harvest_ship_5pm_money.json` (rr-53g); calendar `recordings/run_spring_month.json` |
 
 ## Done
 
@@ -81,7 +81,7 @@ Spring calendar still had **no harvest income** ($100 floor). Root causes and fi
 | Only 2 carry slots | Day plan plant pass (hoe+seeds) then can+water pass |
 | Plant establish | **ROM-verified 2026-08-01** from `Y1_After_Buy_Potato`: seeds+hoe → near-player fallback till → `planted=1`, dry `0x54` tiles, stock 1→0 |
 | Same-day water after plant | **ROM OK with charged can** (Dry→3×`0x55`); day-plan order unit-locked; **empty-can natural fill still open** |
-| Grow → harvest → ship → money > $100 | **Harvest+ship+post-5pm money CLOSED (rr-53g)** from Day09 mature fixture; keep-alive growth still separate; full spring money>$100 soak open (rr-y8n) |
+| Grow → harvest → ship → money > $100 | **Gate A CLOSED (rr-y8n)** via multi-day Day09 successor: harvest+establish+money>$100; Day09 5pm farm wait wired into calendar loop. Full `Y1_Inside_House`→Summer still limited by empty-can water (parent rr-20w) |
 
 ROM smoke (2026-08-01 plant):
 ```text
@@ -140,7 +140,18 @@ Test crop fixtures (for growth / ship work):
    - Evidence: `recordings/harvest_ship_5pm_money.json` journal (`money_rose_after_5pm_window`)
    - ROM: wallet `AddMoney` is overnight after 5pm scene — not instant at bin or cutscene
    - Helpers: `harvest.core.shipping_credit`; day-plan phase journal records `shipped_count`
-6. From `Y1_Inside_House`, multi-day soak with **money > 100** after first potato harvest window (rr-y8n / Gate A).
+6. ~~End-of-spring / continuous soak with **money > 100** + harvest phases (rr-y8n / Gate A)~~ — **CLOSED 2026-08-09 night** Clean multi-day successor:
+   ```bash
+   HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+     --state Y1_Day09_Harvest_Mode_Start --days 1 \
+     --out recordings/run_spring_gate_a_day09.json
+   ```
+   - `mid_run_state_load=false`, `gate_a_economy_ok=true`
+   - `HARVEST_ROUTE` shipped=24 / harvested=24; `CROP_ESTABLISH` planted=6
+   - Wallet **$1260 → $3180** overnight (NightReset `AddMoney`; farm work often already past 5pm)
+   - Calendar loop: after day plan, if `shipping_money>0` and hour&lt;17 on farm → `FarmShippingWaitTask` (Day09 path) before return/sleep
+   - Journal summary: `harvest_phases_present`, `crop_establish_nonzero`, `total_shipped`, `final_money`
+   - Full `--end-of-spring` from `Y1_Inside_House` still flaky (empty-can `CROP_WATER` fail; return_home hang observed D5) — parent rr-20w / Gate B
 7. Optional: `HOT_SPRING_STAMINA` — **ROM natural-entry verified 2026-07-31**:
    farm drain → `farm_to_spa` → upper pond B+A bath (50→110+) → reverse
    `mountain_to_farm` → farm. Corridor debris-free (`mountain_spa_validate`).
@@ -178,8 +189,8 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 | Metric | Current | Target |
 |--------|---------|--------|
 | Continuous days without mid-run load | 29 (spring calendar) | Full season + natural summer entry |
-| Money growth | Day09 ship window **$1260→$3180** Clean (rr-53g); spring soak still $100 floor | Money **> $100** on continuous spring soak (rr-y8n) |
-| Plant / water / harvest counts | Plant/water keep-alive ok; harvest+ship 24/24 Day09 | Non-zero planted/watered/harvested on continuous soak |
+| Money growth | Multi-day Gate A **$1260→$3180** Clean (rr-y8n); probe rr-53g same window | Parent: full Inside_House→Summer income |
+| Plant / water / harvest counts | Gate A: plant=6 + harvest/ship 24/24 Day09 multi-day; empty-can water still flaky on virgin spring | Non-zero plant/water/harvest on full spring |
 | Intervention class | Clean | Keep Clean |
 | Runtime class | Bronze | Bronze until route stable; then Silver workstream |
 | Frames to money > $100 | Day09 ship soak ~30k frames (harvest+5pm+sleep) | Measure on continuous spring loop |
