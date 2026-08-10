@@ -6,13 +6,13 @@
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
 | Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3) |
-| Last verification | 2026-08-09 |
+| Last verification | 2026-08-10 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 blocked** |
+| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 blocked (~296px pit)** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 |
@@ -28,7 +28,7 @@
 - **M3 screen-1:** camera ≥ 1 (~248f) via `AirScreen1Policy`
 - **M3 mid-stage:** camera ≥ 2 from `Level1` (~522f, HP 22, 3/3) and from `AirLanded` (~226f, 3/3)
 - **M3 late-stage (fans/gaps):** camera ≥ 3 and ≥ 4 from `AirScreen2` (3/3 each; 2026-08-09)
-- **Post-s4 probe (rr-54ui, open):** geometry + checkpoints; no camera ≥5 / boss door yet
+- **Post-s4 probe (rr-54ui, open):** type36 not solid; ~296px pit; no camera ≥5 / boss door yet
 
 ## Segment metrics
 
@@ -71,11 +71,11 @@
 | Progress X | 1024 |
 | Trials | 3/3 |
 
-## Post-s4 probe (2026-08-09, rr-54ui)
+## Post-s4 probe (2026-08-09/10, rr-54ui)
 
 **Not cleared.** No camera ≥ 5; no boss door. M3 screen-4 from AirScreen2 still GREEN.
 
-### Geometry (verified overnight)
+### Geometry (verified)
 
 | Observation | Detail |
 |-------------|--------|
@@ -83,31 +83,36 @@
 | AirScreen4.state | Mid-air (feet=0, sy≈89); freefall death ~17f — **do not start here** |
 | Last solid land | f≈437, scr=3, prog≈949, sx≈53, sy=84, HP16 → `AirFanPlatform` |
 | Platform extent | **Grounded prog 937–984** (left fall walk~14; right fall walk~33, sx~41–88) |
-| Pink head | **Goblin / Air Tikki** obj slot14 type36 @~(39,49) — **not** updraft fan |
-| Goblin top land | Dense hop/wait grids (spike-cycle waits 0–200+, both sides): **0** feet=1 in prog (906,936) or sy&lt;82 |
-| Left of Goblin | `AirLeftPlatform` short ledge prog **902–905** only (~9f walk right then air) |
-| “Ladder” bar | Never `tile_feet==2` on this path |
-| Right of platform | Type35 eggs @y~84; Pipi bounce min_sy≈23–26 with damage |
-| Best press | Shoot+bird-boost ~prog **1086** scr4 min_sy~23, still pit (pure jump ~1064–1072) |
-| False saves | Pruned `AirGoblinHead*` / `AirPastFan*` (were left ledge or same-platform) |
+| Solids are tiles | `tile_feet`/`tile_center==1` on all grounded poses; **not** object collision |
+| Pink head type36 | Damage enemy (slot14). Attack cycle ~111f: when inv=0, teleports to player and hits (−2 HP). **Not landable** |
+| "On goblin" at s2 | Visual only — Mega Man stands on **tile** platform at y=52 (`tile_c=1`); can walk far past type36 x while feet=1 |
+| Goblin top land | 1000+ phase/top-down hops both sides: **0** feet=1 in prog (906,936) or sy<82 |
+| Left of Goblin | `AirLeftPlatform` short ledge prog **902–905**; further left returns prior y84 chain (~865) |
+| "Ladder" bar | Never `tile_feet==2` (UP/UP+dir grids) |
+| Wind / cam Y | Walk speed ~1px/f same as s2; `camera_y` always 0 through death |
+| Right of platform | Type35 eggs/birds; freefall tile sample past 984: **0** solid; no new types in 400–600f camp |
+| Jump envelope | Pure RIGHT max prog **~1065–1071** scr4 min_sy~34 (edge walk~34–38 + jh≥12) |
+| Best press | Shoot+Pipi boost still ~prog **1086** min_sy~23 (prior); damage-boost grids ≤1065 |
+| Gap math | Screen5 @ prog 1280; last solid 984 → **~296px** open. One jump covers ~75–90px only |
+| False saves | Pruned `AirGoblin*`, `AirPast*`, `AirHigh*`, `AirFurtherLeft*` probe states |
 
-### Swept (2026-08-09 overnight)
+### Swept (2026-08-09 + 08-10 overnight)
 
-- Platform edge map; strict land criteria (prog≤935 goblin / prog≥988 past)
-- Goblin 5px + spike-cycle waits from fan + left; long hop only reaches left ledge
-- Pipi/edge waits; shoot-then-jump; adaptive post-bounce steer
+- Platform edge map; Goblin 5px + spike-cycle + top-down phase hops; ladder UP grids
+- Pipi/edge waits; shoot-spam; damage-boost; high-path period variants from AirScreen2
+- Right-edge camp 400f + idle 600f spawn watch (types stay 1/35/36 only)
 - No camera ≥ 5; no new grounded s4/s5 checkpoint
+- Evidence: `recordings/air_post4_night3/` (phase shots, envelopes, JSON summaries)
 
 ## Not done
 
-- Past screen 4 / boss door (true Goblin solid window still unfound; Lightning Lord not reached)
+- Past screen 4 / boss door (**intermediate solid missing** for ~296px gap; Lightning Lord cloud not observed)
 - Full Robot Master stage clear (Air Man boss door / fight)
 - Natural-entry M4 from power-on through screen-2+
 - Stage select other masters / weapon routing
 
 ## Next
 
-1. Re-check Goblin solidity (animation RAM / RTA 5px setup may need different approach X).
-2. Find Lightning Lord spawn / cloud ride past this island (may need earlier route fork).
-3. Controlled Pipi bounce → solid cloud if one exists off current trajectories.
-4. Only after grounded s4/s5: freeze recipe → AirScreen2→target 5 (3/3) → boss door.
+1. **Lightning Lord / cloud object** — identify spawn trigger earlier in route (may need fork before y=84 chain); watch object types while alive past prog ~800 with alternate timings.
+2. Map-match: which stage segment is prog~950 (Pipi C vs Matasaburo E vs drop D).
+3. Only after grounded s4/s5: freeze recipe → AirScreen2→target 5 (3/3) → boss door.
