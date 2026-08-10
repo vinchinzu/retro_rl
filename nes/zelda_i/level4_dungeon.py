@@ -360,6 +360,7 @@ def planning_interior_report() -> dict:
             hex(ROOM_L4_ENTRY): {"UP": hex(ROOM_L4_VIRES_61)},
             hex(ROOM_L4_VIRES_61): {
                 "BOMB_UP": hex(ROOM_L4_KEESE_KEY_51),
+                "KEY_RIGHT": "0x62",
                 "enemies": {"0x12": 3, "split": "0x1c"},
             },
             hex(ROOM_L4_KEESE_KEY_51): {
@@ -367,7 +368,17 @@ def planning_interior_report() -> dict:
                 "enemies": {"0x1b": 8},
                 "room_item": hex(ROOM_ITEM_SMALL_KEY),
             },
-            hex(ROOM_L4_VIRES_50): {"enemies": {"0x12": 5}, "note": "exit_only_recon"},
+            hex(ROOM_L4_VIRES_50): {
+                "enemies": {"0x12": 5},
+                "note": "side_pocket; RIGHT seals after full clear",
+            },
+            "0x62": {
+                "name": "compass_dark_maze",
+                "room_item": "0x16",
+                "entry": "KEY_RIGHT from 0x61",
+                "maze": "DOWN then RIGHT from vestibule",
+                "note": "stepladder residual rr-2ysf",
+            },
         },
         "bomb_61_north": {
             "stand": list(BOMB_61_NORTH_STAND),

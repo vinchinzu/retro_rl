@@ -78,5 +78,8 @@ def test_planning_interior_report() -> None:
     assert r["entry_room"] == "0x71"
     assert r["live_graph"]["0x71"]["UP"] == "0x61"
     assert r["live_graph"]["0x61"]["BOMB_UP"] == "0x51"
+    assert r["live_graph"]["0x61"]["KEY_RIGHT"] == "0x62"
     assert r["live_graph"]["0x51"]["LEFT"] == "0x50"
+    assert r["live_graph"]["0x62"]["entry"].startswith("KEY_RIGHT")
     assert r["segments"]["clear_vires_61"] == "rr-yr77"
+    assert r["segments"]["stepladder_path"] == "rr-2ysf"
