@@ -1169,3 +1169,10 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Gleeok south-stand policy (`STAND_DY=22`, FB dodge≤14; no head chase). Evidence `l4_vdnc_clean_cont_tf.json`, `l4_vdnc_gleeok_clean_dual.json`.
 - Not full-game Clean STATUS. Parent epic `rr-q3n` residual remains compose/natural-entry.
 - SMB still permanently skipped.
+
+### 2026-08-10T04:55 CDT — zelda rr-vdnc CLOSED ★ (merged to main)
+- Cherry-picked worktree commits → `77ff000` / beads notes.
+- Clean continuous PostLadder→TF dual ~33.9kf (south-stand Gleeok).
+- Created **rr-zavx** Z4.5 natural-entry Clean compose; spawned manager.
+- SMB permanently skipped.
+
