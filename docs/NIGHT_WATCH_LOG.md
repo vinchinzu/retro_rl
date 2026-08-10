@@ -378,3 +378,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next: Goblin solidity confirmation or Lightning Lord alternate entry.
 - No push.
 
+### 2026-08-09T23:55 CDT — harvest empty-can path harden (open)
+- `rr-jwju` open under rr-20w: F9-before-fence, pond reachability, fence local_drop, return_home timeout 5500f.
+- Units green; ROM natural fill still can_peak=0 (stall ~tile 25,30). Next: multi-hop F0 act densify.
+

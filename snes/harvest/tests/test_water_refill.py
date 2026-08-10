@@ -93,7 +93,21 @@ class RefillSelectionTests(unittest.TestCase):
         )
         self.assertIsNotNone(hit)
         assert hit is not None
+        # Nearest remaining north-lip stand from (20,25) among corridor list.
+        self.assertIn(hit.stand, {(32, 30), (33, 30), (34, 30)})
+        self.assertNotIn(hit.stand, {(32, 34), (33, 34)})
+
+    def test_select_main_pond_prefers_nearest_pathable(self) -> None:
+        """North of pond: north lip must beat far south lip when both pathable."""
+
+        def find_path(start, goal):
+            return [start, goal]
+
+        hit = select_main_pond_refill((33, 28), find_path)
+        self.assertIsNotNone(hit)
+        assert hit is not None
         self.assertEqual(hit.stand, (33, 30))
+        self.assertEqual(hit.face, "down")
 
     def test_select_staging_from_west_pocket(self) -> None:
         def find_path(start, goal):
@@ -306,6 +320,81 @@ class SameDayEstablishWaterOrderTests(unittest.TestCase):
                 names.index("CROP_ESTABLISH"),
                 names.index("ENSURE_WATERING_CAN"),
             )
+
+
+class FenceLocalDropTests(unittest.TestCase):
+    """FenceClearLoopTask must not hard-fail when pond BFS is viewport-blocked."""
+
+    def test_navigate_pond_falls_back_to_local_drop(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        # Wall of solid tiles — no path to pond stands.
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0x05)
+        # Tiny open cell around player.
+        for ty in range(28, 31):
+            for tx in range(14, 17):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (15, 29))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=1, max_steps_per_fence=200)
+        # Avoid loading recorded toss task from disk.
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(15, 31), tile_id=0x05)
+        task._navigator.update(ram)
+
+        # Hop may improve manhattan inside the pocket once; then local_drop.
+        final_state = None
+        for _ in range(8):
+            result = task.step(world)
+            final_state = task._state
+            if final_state == "local_drop":
+                break
+            # Simulate walk along hop without leaving the pocket.
+            task._navigator.update(ram)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(final_state, "local_drop")
+
+    def test_local_drop_clears_when_hands_empty(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(20, 40):
+            for tx in range(10, 40):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (15, 29))
+        # Not carrying — local_drop should count as cleared.
+        ram[ADDR_PLAYER_STATE] = 0
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=2, max_steps_per_fence=200)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "local_drop"
+        task._navigator.update(ram)
+
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.cleared_count, 1)
+        self.assertEqual(task._state, "scan")
 
 
 class KeepAliveClearOrderTests(unittest.TestCase):
