@@ -1,0 +1,71 @@
+{
+  "claim": "rr-6byj ENSURE_CROP_SEEDS Clean probe",
+  "state": "Y1_After_Buy_Potato",
+  "frames": 2248,
+  "wall_s": 4.07,
+  "status": "SUCCESS",
+  "reason": "seed tool 0x07 ready",
+  "shed_trips": 2,
+  "multi_nav_starts": 2,
+  "start": {
+    "label": "start",
+    "tilemap": 0,
+    "x": 93,
+    "y": 448,
+    "selected": 0,
+    "backpack": 0,
+    "has_hoe": false,
+    "has_seed": false,
+    "stock": 1
+  },
+  "end": {
+    "label": "end",
+    "tilemap": 0,
+    "x": 424,
+    "y": 488,
+    "selected": 7,
+    "backpack": 2,
+    "has_hoe": true,
+    "has_seed": true,
+    "stock": 1
+  },
+  "phases": [
+    {
+      "f": 0,
+      "phase": "ensure_hoe",
+      "nested": "EnsureCarryToolTask",
+      "snap": {
+        "label": "ensure_hoe",
+        "tilemap": 0,
+        "x": 93,
+        "y": 448,
+        "selected": 0,
+        "backpack": 0,
+        "has_hoe": false,
+        "has_seed": false,
+        "stock": 1
+      }
+    },
+    {
+      "f": 1078,
+      "phase": "fetch_seed",
+      "nested": "ShedFetchItemTask",
+      "snap": {
+        "label": "fetch_seed",
+        "tilemap": 0,
+        "x": 424,
+        "y": 488,
+        "selected": 2,
+        "backpack": 0,
+        "has_hoe": true,
+        "has_seed": false,
+        "stock": 1
+      }
+    }
+  ],
+  "plant_ready": true,
+  "no_thrash": true,
+  "mid_run_state_loads": 0,
+  "ram_writes": 0,
+  "intervention_class": "Clean"
+}
