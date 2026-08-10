@@ -14,9 +14,12 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_acid_to_snake,
     play_ice_gate_to_acid,
     play_ice_snake_to_ice,
+    play_ice_to_snake,
 )
 from super_metroid.routes.kpdr.ice.geometry import (
     ACID_TO_SNAKE_RLE,
+    ICE_LEAVE_DOOR_X,
+    ICE_LEAVE_FRAMES,
     SNAKE_L4_Y,
     SNAKE_TOP_Y,
     has_ice,
@@ -38,6 +41,9 @@ def test_business_to_ice_gate_export_and_registry() -> None:
     assert get_segment("ice_gate_to_acid") is play_ice_gate_to_acid
     assert get_segment("ice_acid_to_snake") is play_ice_acid_to_snake
     assert get_segment("ice_snake_to_ice") is play_ice_snake_to_ice
+    assert get_segment("ice_to_snake") is play_ice_to_snake
+    assert ICE_LEAVE_DOOR_X == 40
+    assert ICE_LEAVE_FRAMES >= 200
 
 
 def test_acid_to_snake_rle_loaded() -> None:
