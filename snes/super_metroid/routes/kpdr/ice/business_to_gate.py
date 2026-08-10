@@ -21,7 +21,7 @@ from super_metroid.routes.controller_common import (
 )
 from super_metroid.routes.kpdr.business_climb import (
     _business_high_jump_platforms,
-    _fall_to_business_floor,
+    _maybe_dump_climb_state,
 )
 from super_metroid.routes.kpdr.ice.geometry import (
     BUSINESS_ELEVATOR_Y,
@@ -36,7 +36,7 @@ from super_metroid.routes.kpdr.ice.geometry import (
     SUPER_PRESSURE_FRAMES,
     on_ice_super_lip,
 )
-from super_metroid.routes.kpdr.rooms import ROOM_BUSINESS, ROOM_ICE_GATE
+from super_metroid.routes.kpdr.rooms import ROOM_BUSINESS, ROOM_HJ_SHAFT, ROOM_ICE_GATE
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.door import super_door_pressure_frame
 from super_metroid.routes.skills.knockback import (
@@ -239,38 +239,164 @@ def _open_ice_super_and_enter(session: ControllerSession, label: str) -> None:
     raise TimeoutError(f"{label}: Ice Super door did not open: {session.state}")
 
 
+def _recover_hj_door_to_business(
+    session: ControllerSession, label: str
+) -> bool:
+    """If setup kissed HJ shaft, pressure RIGHT back into Business floor."""
+    if session.state.room_id == ROOM_BUSINESS:
+        return True
+    if session.state.room_id != ROOM_HJ_SHAFT:
+        return False
+    unmorph(session)
+    for frame in range(320):
+        st = session.state
+        if st.room_id == ROOM_BUSINESS:
+            wait_ordinary_room(
+                session,
+                ROOM_BUSINESS,
+                settle_frames=40,
+                label=f"{label}_hj_return",
+            )
+            return True
+        if is_knockback(st):
+            escape_knockback_spin(
+                session,
+                prefer_dir="RIGHT",
+                run_frames=4,
+                spin_frames=10,
+                label=f"{label}_hj_kb",
+            )
+            continue
+        y = int(st.samus_y)
+        if y < 1200:
+            if frame % 24 < 8:
+                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_hj_drop")
+            else:
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_hj_drop_run")
+        else:
+            phase = frame % 16
+            if phase < 5:
+                hold(session, 1, "RIGHT", "X", reason=f"{label}_hj_door_shot")
+            elif phase < 12:
+                hold(session, 1, "RIGHT", "B", reason=f"{label}_hj_door_push")
+            else:
+                hold(session, 1, "RIGHT", reason=f"{label}_hj_door_walk")
+    return session.state.room_id == ROOM_BUSINESS
+
+
+def _right_biased_floor_recover(session: ControllerSession, label: str) -> None:
+    """Drop to Business floor without kissing the left HJ door.
+
+    Stock :func:`_fall_to_business_floor` can exit into ``0xAA41`` on continuous
+    Ice natural entry (rr-kxge). Prefer RIGHT on the left half of the room.
+    """
+    if session.state.room_id == ROOM_HJ_SHAFT:
+        if not _recover_hj_door_to_business(session, label):
+            raise TimeoutError(
+                f"{label}: HJ recover failed before floor recover: {session.state}"
+            )
+    unmorph(session)
+    for frame in range(500):
+        state = session.state
+        if state.room_id != ROOM_BUSINESS:
+            if state.room_id == ROOM_HJ_SHAFT and _recover_hj_door_to_business(
+                session, label
+            ):
+                continue
+            raise TimeoutError(
+                f"{label}: left Business during floor recover: {session.state}"
+            )
+        if (
+            int(state.pose) in LEDGE_POSES
+            and int(state.velocity_y) == 0
+            and int(state.samus_y) >= 1405
+        ):
+            break
+        x = int(state.samus_x)
+        if x <= 90:
+            direction = "RIGHT"
+        elif x >= 230:
+            direction = "LEFT"
+        else:
+            direction = "RIGHT" if (frame % 40) < 28 else "LEFT"
+        phase = frame % 70
+        buttons = (direction, "B") if phase < 45 else (direction, "B", "A")
+        hold(session, 1, *buttons, reason=f"{label}_rbiased_recover")
+    else:
+        raise TimeoutError(f"{label}: right-biased floor recover: {session.state}")
+    _anchor_business_floor_for_climb(session, label)
+    hold(session, 16, "RIGHT", "B", reason=f"{label}_rbiased_buf")
+    hold(session, 12, reason=f"{label}_rbiased_buf_settle")
+
+
 def _climb_business_floor_to_elevator(session: ControllerSession, label: str) -> None:
     """Business floor / below-Super → elevator platform (then drop to Super).
 
-    Reuses Hi-Jump platform climb from :mod:`business_climb` (Warehouse path).
-    Pure dual frog settle ~(216,1419) is the proven start — re-anchor there
-    before open-loop setup. Continuous natural entry is colder; one floor
-    recover + shorter runup matches warehouse climb fallback.
+    Attempt order (rr-kxge continuous Ice stabilize):
+    1. Pure dual first try — runup 8 / pos_1339=84
+    2. Pure 907 retry — runup 14 / pos 84 after RIGHT-biased recover
+    3–4. Continuous 1227/907 — pos_1339=90, runup 8 then 14
+    5–6. Extra continuous attempts after HJ door recover
     """
     unmorph(session)
     if session.state.room_id != ROOM_BUSINESS:
         raise TimeoutError(f"{label}: not in Business for floor climb: {session.state}")
     _anchor_business_floor_for_climb(session, label)
-    try:
-        # Pure dual pin prefers 8f; continuous warehouse path prefers 14f first.
-        _business_high_jump_platforms(session, runup_907=8)
-    except TimeoutError:
-        if session.state.room_id != ROOM_BUSINESS:
-            raise TimeoutError(
-                f"{label}: left Business during floor climb: {session.state}"
-            )
-        _fall_to_business_floor(session)
-        _anchor_business_floor_for_climb(session, label)
+    beams = int(session.state.collected_beams)
+    dump = (
+        "business_floor_pre_ice_climb_wave"
+        if beams & 0x1000
+        else "business_floor_pre_ice_climb"
+    )
+    _maybe_dump_climb_state(session, dump)
+
+    attempts: list[tuple[int, int]] = [
+        (8, 84),
+        (14, 84),
+        (8, 90),
+        (14, 90),
+        (8, 90),
+        (14, 90),
+    ]
+    last_err: TimeoutError | None = None
+    for i, (runup, pos_1339) in enumerate(attempts):
         try:
-            _business_high_jump_platforms(session, runup_907=14)
-        except TimeoutError:
+            if i > 0:
+                if session.state.room_id == ROOM_HJ_SHAFT:
+                    if not _recover_hj_door_to_business(session, label):
+                        raise TimeoutError(
+                            f"{label}: left Business during floor climb: "
+                            f"{session.state}"
+                        )
+                if session.state.room_id != ROOM_BUSINESS:
+                    raise TimeoutError(
+                        f"{label}: left Business during floor climb: {session.state}"
+                    )
+                _right_biased_floor_recover(session, label)
+            _business_high_jump_platforms(
+                session,
+                runup_907=runup,
+                pos_1339=pos_1339,
+                # Bound LEFT setup only on continuous-tuned pos≈90 retries.
+                bound_floor_left=(pos_1339 >= 90),
+            )
+            last_err = None
+            break
+        except TimeoutError as exc:
+            last_err = exc
+            _maybe_dump_climb_state(session, f"business_ice_climb_fail_{i}")
+            if session.state.room_id == ROOM_HJ_SHAFT:
+                if not _recover_hj_door_to_business(session, label):
+                    # Keep trying remaining attempts only if we get back.
+                    continue
+                continue
             if session.state.room_id != ROOM_BUSINESS:
                 raise TimeoutError(
                     f"{label}: left Business during floor climb: {session.state}"
-                )
-            _fall_to_business_floor(session)
-            _anchor_business_floor_for_climb(session, label)
-            _business_high_jump_platforms(session, runup_907=8)
+                ) from exc
+            continue
+    if last_err is not None:
+        raise last_err
     if session.state.room_id != ROOM_BUSINESS:
         raise TimeoutError(
             f"{label}: left Business after floor climb: {session.state}"

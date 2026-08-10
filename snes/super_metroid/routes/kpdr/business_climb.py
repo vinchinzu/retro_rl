@@ -73,11 +73,19 @@ def _business_high_jump_platforms(
     session: ControllerSession,
     *,
     runup_907: int = 14,
+    pos_1339: int = 84,
+    bound_floor_left: bool = False,
 ) -> None:
     """Bottom Business Center floor → center elevator (Hi-Jump route).
 
     ``runup_907``: RIGHT+B frames before the 987→907 hop. Continuous natural
     entry needs 14; pure probe prefers 8 (used on floor re-climb fallback).
+
+    ``pos_1339``: LEFT walk target on y1339 before 1227 hop (pure=84;
+    continuous Ice floor pin needs ~90 — rr-kxge offline grid).
+
+    ``bound_floor_left``: when True, soft-bound LEFT setup near the HJ door
+    (continuous Ice retries only — pure open-loop stays unbound).
     """
     # Four setup jumps land on the first left platform (~y=1339).
     # If already standing there (pure mid-climb states), skip the open-loop setup.
@@ -90,8 +98,46 @@ def _business_high_jump_platforms(
     if not already:
         for direction in ("LEFT", "LEFT", "RIGHT"):
             hold(session, 12, reason="business_climb_release")
-            hold(session, 85, direction, "B", "A", reason="business_climb_setup")
+            if not bound_floor_left:
+                hold(session, 85, direction, "B", "A", reason="business_climb_setup")
+            else:
+                for _ in range(85):
+                    st = session.state
+                    if st.room_id != ROOM_BUSINESS:
+                        raise TimeoutError(
+                            f"business_climb_setup: left Business: {session.state}"
+                        )
+                    if (
+                        direction == "LEFT"
+                        and int(st.samus_y) >= 1300
+                        and int(st.samus_x) <= 80
+                    ):
+                        hold(
+                            session,
+                            1,
+                            "RIGHT",
+                            "B",
+                            "A",
+                            reason="business_climb_setup_bound",
+                        )
+                    else:
+                        hold(
+                            session,
+                            1,
+                            direction,
+                            "B",
+                            "A",
+                            reason="business_climb_setup",
+                        )
+            if session.state.room_id != ROOM_BUSINESS:
+                raise TimeoutError(
+                    f"business_climb_setup: left Business: {session.state}"
+                )
             hold(session, 30, reason="business_climb_setup_land")
+            if session.state.room_id != ROOM_BUSINESS:
+                raise TimeoutError(
+                    f"business_climb_setup_land: left Business: {session.state}"
+                )
 
     # y1339 → y1227.
     # Continuous failure mode: walk left while not grounded → lip fall (pose 41)
@@ -102,7 +148,7 @@ def _business_high_jump_platforms(
     _wait_standing_y(session, 1339, timeout=60, reason="business_1339_ground")
     for _ in range(80):
         state = session.state
-        if state.samus_x <= 84:
+        if state.samus_x <= pos_1339:
             break
         if state.samus_y != 1339 or state.pose not in _STANDING:
             hold(session, 1, reason="business_1339_replant")
