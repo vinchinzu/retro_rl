@@ -1,0 +1,160 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T04:00:24.065415+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-xc3x",
+    "intervention_class": "clean",
+    "segment": "l4_north_40",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "bomb_61": {
+        "bombs_after_place": 8,
+        "bombs_before_place": 9,
+        "clear": null,
+        "frames": 229,
+        "notes": [
+          "already_clear",
+          "at_bomb_stand",
+          "faced",
+          "placed_bomb",
+          "bomb_used_9->8",
+          "entered_0x51"
+        ],
+        "opens_to": "0x51",
+        "phase": "DONE",
+        "stand": [
+          120,
+          105
+        ],
+        "success": true,
+        "wall_room": "0x61"
+      },
+      "clear_50": {
+        "clear_signal_seen": true,
+        "combat_frames": 6998,
+        "frames": 6999,
+        "initial_inventory": 0,
+        "last_live_enemies": 0,
+        "max_live_enemies": 8,
+        "notes": [
+          "room_cleared"
+        ],
+        "phase": "DONE",
+        "spec_id": "level4_room50_vires",
+        "success": true,
+        "tuning": {
+          "attack_phase": 0,
+          "engage_attack_hold": 3,
+          "engage_attack_period": 6,
+          "engage_distance": 72,
+          "engage_dominant_axis": false,
+          "patrol_attack_hold": 2,
+          "patrol_attack_period": 12
+        }
+      },
+      "clear_61": {
+        "clear_signal_seen": true,
+        "combat_frames": 283,
+        "frames": 284,
+        "initial_inventory": 0,
+        "last_live_enemies": 0,
+        "max_live_enemies": 5,
+        "notes": [
+          "room_cleared"
+        ],
+        "phase": "DONE",
+        "spec_id": "level4_room61_vires",
+        "success": true,
+        "tuning": {
+          "attack_phase": 0,
+          "engage_attack_hold": 3,
+          "engage_attack_period": 6,
+          "engage_distance": 72,
+          "engage_dominant_axis": false,
+          "patrol_attack_hold": 2,
+          "patrol_attack_period": 12
+        }
+      },
+      "left_50": {
+        "frames": 373,
+        "notes": [
+          "push_left",
+          "entered_0x50"
+        ],
+        "phase": "DONE",
+        "segment": "level4_left_0x50",
+        "success": true,
+        "target_room": "0x50"
+      },
+      "north_40": {
+        "frames": 8254,
+        "path": [
+          "DOWN",
+          "DOWN",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "RIGHT",
+          "RIGHT",
+          "UP",
+          "UP",
+          "UP",
+          "LEFT",
+          "UP"
+        ],
+        "segment": "level4_north_0x40",
+        "success": true
+      },
+      "north_40_bfs": {
+        "expansions": 577,
+        "hold": 6,
+        "long_up": 280,
+        "n_cells": 150,
+        "path_len": 21,
+        "segment": "level4_north_0x40_bfs",
+        "start": [
+          144,
+          165
+        ],
+        "success": true
+      }
+    },
+    "final": {
+      "bombs": 8,
+      "compass": 12,
+      "compass_l4": true,
+      "cur_opened_doors": 0,
+      "health": 110,
+      "keys": 0,
+      "level": 4,
+      "mode": 5,
+      "room": 64,
+      "room_all_dead": 0,
+      "room_hex": "0x40",
+      "room_item_id": 25,
+      "x": 120,
+      "y": 205
+    },
+    "frames": 8254,
+    "ok": true,
+    "segment": "north_40"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Compass.state",
+  "source_state_sha256": "9fa87ef821c2947bab53fd9bc7aa450cfc237b6302209cfbe262f45280941e3b",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40.state",
+  "state_sha256": "72ea7d2a6ef551b43106bca2bc8e179269bd971371940abb8d9f472fd378c6b7"
+}
