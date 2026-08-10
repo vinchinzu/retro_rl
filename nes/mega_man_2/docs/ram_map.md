@@ -33,9 +33,18 @@ Progress helper: `camera_progress_x = screen * 256 + camera_x`.
 
 | Addr | Name | Notes |
 |------|------|-------|
-| `$009A` | Unlocked weapons | Bitfield (Air Shooter `$02`, …) |
+| `$009A` | Unlocked weapons | `$01` Atomic Fire (Heat), `$02` Air Shooter, `$04` Leaf, `$08` Bubble, `$10` Quick, `$20` Time, `$40` Metal, `$80` Crash |
+| `$009B` | Unlocked items | `$01` Item-1 (Heat), `$02` Item-2 (Air), `$04` Item-3 (Flash) |
 | `$009C–$00A6` | Weapon / item ammo | |
-| `$002A` | Stage-select cursor | Menu; may linger into play |
+| `$002A` | Stage-select cursor | `$00` Wily; `$01`–`$08` clockwise from Bubble (Heat=`$08`, Air=`$02`) |
+
+Stage-select grid:
+
+```
+1 Bubble   2 Air     3 Quick
+8 Heat     0 Wily    4 Wood
+7 Metal    6 Flash   5 Crash
+```
 
 ## Readiness
 
