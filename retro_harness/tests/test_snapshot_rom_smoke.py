@@ -226,3 +226,91 @@ def test_stable_retro_certified_snapshot_replay(sm_game_dir: Path) -> None:
         monorepo_root()  # touch path helper so layout stays wired
     finally:
         pool.close()
+
+
+def test_stable_retro_branch_rollout_batch_width1(sm_game_dir: Path) -> None:
+    """Real-game smoke for rr-gbd.34: certified-root branch batch (width 1).
+
+    stable-retro is single-emulator-per-process, so multi-width parallelism is
+    fake-tested; this smoke proves controllers re-restore a certified root and
+    that accounting/replay digests are exact on a real core.
+    """
+    import stable_retro as retro
+
+    from retro_harness.branch_rollout import (
+        BranchStatus,
+        RolloutSpec,
+        branch_from_actions,
+        run_branch_rollouts_on_pool,
+    )
+
+    if not hasattr(retro.data.Integrations, "CUSTOM"):
+        pytest.skip("stable_retro test stub cannot execute ROM smoke")
+
+    state = _pick_state(sm_game_dir)
+    adapter = AttributeSnapshotAdapter(
+        adapter_id="retro_harness.tests.InstrumentedRetroEnv",
+        attributes=("step_count", "obs_cache", "rng"),
+        core_digest=CORE_DIGEST,
+        game_digest=GAME_DIGEST,
+    )
+
+    def factory() -> _InstrumentedRetroEnv:
+        raw = make_env(
+            GAME_ID,
+            state,
+            sm_game_dir,
+            render_mode="rgb_array",
+        )
+        return _InstrumentedRetroEnv(raw)
+
+    pool = EmulatorPool(factory, num_envs=1, snapshot_adapter=adapter)
+    try:
+        pool.reset()
+        action = _zero_action(pool.envs[0])
+        for _ in range(3):
+            pool.step([action])
+
+        root = pool.save_snapshot().envelopes[0]
+        assert root.certification is SnapshotCertification.CERTIFIED_FULL_ENV
+
+        def boom(_env: object, step_index: int):
+            if step_index >= 1:
+                raise RuntimeError("rom smoke controller isolation")
+            return action
+
+        from retro_harness.branch_rollout import BranchSpec
+
+        spec = RolloutSpec(
+            root=root,
+            branches=(
+                branch_from_actions("hold_a", [action, action, action]),
+                BranchSpec(branch_id="bad", max_steps=4, controller=boom),
+                branch_from_actions("hold_b", [action, action]),
+            ),
+        )
+        result = run_branch_rollouts_on_pool(pool, spec)
+        assert result.width == 1
+        assert result.accounting.branch_count == 3
+        assert result.accounting.ok_count == 2
+        assert result.accounting.controller_error_count == 1
+        assert result.accounting.total_steps == (
+            result.result_for("hold_a").steps_executed
+            + result.result_for("bad").steps_executed
+            + result.result_for("hold_b").steps_executed
+        )
+        assert result.result_for("hold_a").status is BranchStatus.OK
+        assert result.result_for("hold_a").steps_executed == 3
+        assert result.result_for("hold_b").status is BranchStatus.OK
+        assert result.result_for("hold_b").steps_executed == 2
+        bad = result.result_for("bad")
+        assert bad.status is BranchStatus.CONTROLLER_ERROR
+        assert bad.error_type == "RuntimeError"
+        assert bad.steps_executed == 1
+        assert len(result.replay_digest) == 64
+
+        # Re-run same spec: replay digest must match (deterministic root restore).
+        again = run_branch_rollouts_on_pool(pool, spec)
+        assert again.replay_digest == result.replay_digest
+    finally:
+        pool.close()
