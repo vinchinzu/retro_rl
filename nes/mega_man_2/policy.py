@@ -38,10 +38,11 @@ Post-screen-4 bottleneck (2026-08-09/10 probe, rr-54ui — open):
   1000+ goblin-top / phase hops: 0 elevated lands.
 - LL **does spawn** (fpd6): types **0x3D/0x3E** mapset4 from prog~961;
   body y≈32–36. Goblin **0x40** (was mislabeled type36).
-- rr-54ui: **rider kill Clean** (pulse B on 0x3D); empty cloud solid never arms
-  under fceumm (body AI no rewrite; appear $10 never set; fall_top poke freefall).
+- rr-54ui PARTIAL: rider kill Clean; empty cloud solid never arms (body never
+  LDA #$90; only appear-block AI does). Zero-mask force = global solid OK.
+  No Air-first Clean alt (Item-1 needs Heat; gap ~296px). Child rr-f3nr.
 - A needs rising edge after load. Pipi family 0x37–0x3C.
-- Next (rr-54ui): human/TAS stick pin or alt path past s4 → camera≥5.
+- Next (rr-f3nr): FCEUX stick RAM pin or Heat→Air Item-1 → camera≥5.
 
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """
