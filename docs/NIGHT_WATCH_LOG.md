@@ -455,3 +455,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Residual `snes/super_metroid/docs/tasks/rr-kxge-residual.md`. Tests 55 passed. Bead left open.
 - Next: dual continuous 2/2 integrity green before STATUS.
 
+### 2026-08-10T01:00 CDT — SM single continuous Ice GREEN (dual open)
+- `rr-kxge` open: climb harden landed (cbb46f8). Pure floor→Gate dual 3255f×2.
+- Continuous 1× GREEN ice_r3 148192f room 0xA890 beams 0x1007. Dual flaky.
+- No STATUS. Next: dual continuous integrity 2/2.
+
