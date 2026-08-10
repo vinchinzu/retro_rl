@@ -18,7 +18,7 @@ from retro_harness.audit import (
     InterventionClass,
     RuntimeObservationClass,
 )
-from retro_harness.benchmark import (
+from retro_harness.benchmark_claims import (
     EvaluationContract,
     PolicyIdentity,
     StartIdentity,

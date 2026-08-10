@@ -123,8 +123,8 @@ class PolicyArtifact:
 
     def to_policy_identity(self, name: str):
         # Imported lazily so benchmark claims may consume PolicyArtifact without
-        # making model artifact ownership point back into benchmark.py.
-        from retro_harness.benchmark import PolicyIdentity
+        # creating an eager module cycle.
+        from retro_harness.benchmark_claims import PolicyIdentity
 
         return PolicyIdentity(
             name=name,

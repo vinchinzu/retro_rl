@@ -138,13 +138,15 @@ from retro_harness.audit import (
     AuditedEnv,
 )
 from retro_harness.model_artifacts import PolicyArtifact, PolicyArtifactError
-from retro_harness.benchmark import (
+from retro_harness.benchmark_claims import (
     StartIdentity,
     PolicyIdentity,
     policy_identity_for,
     EvaluationContract,
     ClaimValidationError,
     validate_claim,
+)
+from retro_harness.benchmark_runner import (
     BenchmarkTier,
     BenchmarkCase,
     BenchmarkAttemptResult,
