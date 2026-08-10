@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable
 
 from retro_harness.adventure import (
     BindingCatalog,
@@ -24,6 +24,7 @@ from retro_harness.contracts import ObservationContract, ObservationField
 from retro_harness.identity import canonical_json, sha256_bytes, sha256_file
 from retro_harness.solver import (
     ObservationRequirement,
+    OneShotSkillPolicy,
     ProgressionDelta,
     SkillInstance,
     SkillSignal,
@@ -87,22 +88,17 @@ class RouteSkillCommand:
         }
 
 
-class RouteCommandPolicy:
-    """Honest one-shot adapter for an existing synchronous route controller."""
+class RouteCommandPolicy(OneShotSkillPolicy):
+    """Honest one-shot adapter for an existing synchronous route controller.
+
+    Macro route runners execute the full edge inside ``apply_route_command``;
+    multi-frame :class:`~retro_harness.skill_policies.ScriptedSkillPolicy`
+    consumers are the shared shape for tick-level RUNNING skills.
+    """
 
     def __init__(self, command: RouteSkillCommand) -> None:
         self.command = command
-
-    def reset(
-        self,
-        observation: SolverObservation,
-        config: Mapping[str, Any],
-    ) -> None:
-        del observation, config
-
-    def step(self, observation: SolverObservation) -> SkillStep:
-        del observation
-        return SkillStep(SkillSignal.SUCCESS, action=self.command)
+        super().__init__(SkillStep(SkillSignal.SUCCESS, action=command))
 
 
 @dataclass(frozen=True, slots=True)

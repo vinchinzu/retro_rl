@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from retro_harness.adventure import (
     BindingCatalog,
     ExecutionReadiness,
@@ -13,7 +15,9 @@ from retro_harness.adventure import (
 from retro_harness.benchmark import PolicyIdentity
 from retro_harness.solver import (
     ObservationRequirement,
+    OneShotSkillPolicy,
     ProgressionDelta,
+    ScriptedSkillPolicy,
     SkillInstance,
     SkillOutcomeStatus,
     SkillSignal,
@@ -27,6 +31,8 @@ from retro_harness.solver import (
 
 
 class FixturePolicy:
+    """Legacy sequence helper; prefer ScriptedSkillPolicy in new tests."""
+
     def __init__(self, steps):
         self.steps = list(steps)
         self.index = 0
@@ -280,3 +286,115 @@ def test_action_adapter_can_report_multi_frame_skill_duration():
 
     assert result.status is SolverResultStatus.COMPLETED
     assert result.outcomes[0].frames == 7
+
+
+def test_scripted_multi_step_running_lifecycle_reaches_success():
+    """Shared multi-frame consumer: RUNNING ticks then SUCCESS."""
+    world = {"frame": 0, "node": "start"}
+    policy = ScriptedSkillPolicy(
+        (
+            SkillStep(SkillSignal.RUNNING, action="noop"),
+            SkillStep(SkillSignal.RUNNING, action="noop"),
+            SkillStep(SkillSignal.SUCCESS, action="finish"),
+        )
+    )
+    instance = _instance("scripted", "start", "goal", policy, timeout=8)
+    result = _runtime(
+        (GraphEdge("start", "goal", edge_id="scripted"),),
+        (instance,),
+        world,
+    ).run()
+
+    assert result.status is SolverResultStatus.COMPLETED
+    assert result.outcomes[0].status is SkillOutcomeStatus.SUCCESS
+    assert result.outcomes[0].frames == 3
+    assert [event.action["value"] for event in result.actions] == [
+        "noop",
+        "noop",
+        "finish",
+    ]
+    assert result.final_observation.node_id == "goal"
+    assert policy.index == 3
+    executing = [
+        event
+        for event in result.trace
+        if event.lifecycle is SolverLifecycle.EXECUTING and event.detail.get("skill_frame")
+    ]
+    assert [event.detail["skill_frame"] for event in executing] == [1, 2, 3]
+
+
+def test_scripted_mid_skill_retryable_failure_replans():
+    world = {"frame": 0, "node": "start"}
+    failed = _instance(
+        "bad-edge",
+        "start",
+        "goal",
+        ScriptedSkillPolicy(
+            (
+                SkillStep(SkillSignal.RUNNING, action="noop"),
+                SkillStep(
+                    SkillSignal.RETRYABLE_FAILURE,
+                    reason="desync mid skill",
+                    recovery_hint="try_parallel_edge",
+                ),
+            )
+        ),
+        timeout=8,
+    )
+    recovered = _instance(
+        "good-edge",
+        "start",
+        "goal",
+        OneShotSkillPolicy(SkillStep(SkillSignal.SUCCESS, action="good")),
+    )
+    result = _runtime(
+        (
+            GraphEdge("start", "goal", edge_id="bad-edge", cost=1),
+            GraphEdge("start", "goal", edge_id="good-edge", cost=2),
+        ),
+        (failed, recovered),
+        world,
+    ).run()
+
+    assert result.status is SolverResultStatus.COMPLETED
+    assert result.replans == 1
+    assert [outcome.status for outcome in result.outcomes] == [
+        SkillOutcomeStatus.RETRYABLE_FAILURE,
+        SkillOutcomeStatus.SUCCESS,
+    ]
+    assert result.outcomes[0].frames == 1
+    assert result.outcomes[0].recovery_hint == "try_parallel_edge"
+    assert result.completed_edges == ("good-edge",)
+
+
+def test_running_without_action_is_rejected():
+    world = {"frame": 0, "node": "start"}
+    instance = _instance(
+        "hang",
+        "start",
+        "goal",
+        ScriptedSkillPolicy((SkillStep(SkillSignal.RUNNING, action=None),)),
+        timeout=3,
+    )
+    with pytest.raises(ValueError, match="RUNNING requires a non-None action"):
+        _runtime(
+            (GraphEdge("start", "goal", edge_id="hang"),),
+            (instance,),
+            world,
+        ).run()
+
+
+def test_one_shot_policy_rejects_running_and_double_step():
+    with pytest.raises(ValueError, match="cannot use SkillSignal.RUNNING"):
+        OneShotSkillPolicy(SkillStep(SkillSignal.RUNNING, action="noop"))
+
+    policy = OneShotSkillPolicy(SkillStep(SkillSignal.SUCCESS, action="good"))
+    obs = SolverObservation(
+        frame=0, node_id="start", schema_digest="fixture-obs-v1"
+    )
+    policy.reset(obs, {})
+    assert policy.step(obs).signal is SkillSignal.SUCCESS
+    with pytest.raises(RuntimeError, match="more than once"):
+        policy.step(obs)
+    policy.reset(obs, {})
+    assert policy.step(obs).action == "good"
