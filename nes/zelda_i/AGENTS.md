@@ -52,6 +52,8 @@ uv run python zelda_i/scripts/run_level4_rooms.py --segment key_40 --trials 2 --
 uv run python zelda_i/scripts/run_level4_rooms.py --segment north_30 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
+# L4 map (assisted first-pass; recon key poke if keys=0 on checkpoint)
+uv run python zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinite-life --trials 2 --save-state
 ```
 
 ## Layout (pointers)
@@ -118,7 +120,8 @@ bd ready -l zelda_i   # tip: post-ladder L4 residual; parallel: rr-38p
 | ✓ | **`rr-n1wn`** | **0x30** Vire clear pure 2/2 + KEY-RIGHT **0x31** pure 2/2 |
 | ✓ | **`rr-resv`** | **0x31** Vire clear pure 2/2 + free RIGHT **0x32** pure 2/2 |
 | ✓ | **`rr-tib8`** | **0x32** Zol+LikeLike clear pure 2/2 + stairs **0x60** `ADDR_LADDER` pure 2/2 |
-| tip | **`rr-05fz`** | Post-ladder: exit 0x60→0x32 + west 0x31 pure 2/2; map/Gleeok/TF residual |
+| tip | **`rr-rvae`** | Post-ladder map 0x21 assisted 2/2; natural key + Gleeok/TF residual |
+| partial | **`rr-05fz`** | exit_60 + west_31 pure 2/2; residual → rr-rvae |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -168,17 +171,24 @@ return. Module: `level4_dungeon.py`. Runner: `run_level4_rooms.py`
 `Level4Stepladder` idle **~150f** (item freeze) → clear 4× Keese → hold4 BFS
 exit mode-9 **0x60 → 0x32** play pure **2/2** (~765f) → checkpoint
 **`Level4PostLadder`**. Free LEFT BFS around pushed **0x68** → **0x31** pure
-**2/2** (~372f). Backtrack **0x31→0x30→0x40** live with ladder; 0x30 north still
-sealed; map/`ADDR_MAP&0x08` + Gleeok + TF `0x08` residual. Segments: `exit_60`,
-`west_31`. Evidence: `l4_05fz_exit60_exit_60.json`,
-`l4_05fz_west31_west_31.json`. **Not Clean STATUS.**
+**2/2** (~372f). Segments: `exit_60`, `west_31`. Evidence:
+`l4_05fz_exit60_exit_60.json`, `l4_05fz_west31_west_31.json`. **Not Clean STATUS.**
 
-**Next tip:** map / Gleeok / TF `0x08` residual under **`rr-05fz`** / epic
-**`rr-q3n`**. Traps: 0x30 y∈[128,208]; 0x31 hold4 BFS; 0x32 push stand detour
-around statues; stepladder needs **5 idle** preamble before clear (RNG); 0x60
-multi-grid BFS + goal-state restore; **post-ladder pedestal freeze ~100–150
-idle** before movement; exit BFS must settle through mode **4/6/7** scroll
-(180f insufficient — use ~400f). Parallel OW `rr-38p`.
+**L4 map (assisted LIVE 2/2, rr-rvae 2026-08-10):** from
+`Level4Room31PostLadder` (recon **key poke** if keys=0) LEFT → **0x30** →
+KEY-UP (ladder water + key) → **0x20** clear 5× Vire → state-BFS RIGHT →
+**0x21** (5× Gel `0x15` + RoomItemId **`0x17` map**). Gel thrash expands maze;
+hold6 BFS → **`ADDR_MAP & 0x08`** @~(208,181) ~17.8k f/trial. Checkpoint
+**`Level4Map`**. Segment: `map_21 --infinite-life`. Evidence:
+`l4_rvae_map21_map_21.json`. **Not Clean STATUS.** Natural key residual
+(post-ladder keys=0 after KEY-RIGHT 0x30→0x31).
+
+**Next tip:** natural key for map natural-entry; Gleeok + TF `0x08` under
+**`rr-rvae`** / epic **`rr-q3n`**. Traps: 0x30 free N sealed without key;
+KEY-UP **0x31** enters isolated **0x21 south pocket** (x≤176 — not map path);
+0x20 door bit R stays 0 after clear (east BFS/push x≈208); gels block maze
+until thrash; pedestal freeze ~100–150 idle; exit BFS settle mode 4/6/7 ~400f.
+Parallel OW `rr-38p`.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
@@ -197,5 +207,6 @@ TF is **0x3d UP of boss** (not east).
 Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
 `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft` /
 `Level3Boss` / `Level3Complete` / `Level3ExitOverworld` / `OW_L4Dock` /
-`Level4Entrance` / `Level4Stepladder` / `Level4PostLadder`.
+`Level4Entrance` / `Level4Stepladder` / `Level4PostLadder` /
+`Level4Room31PostLadder` / `Level4Map`.
 Use `--infinite-life` for first-pass; Clean STATUS only after full-game assist.
