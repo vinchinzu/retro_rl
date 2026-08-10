@@ -7,6 +7,7 @@ from super_metroid.routes.kpdr.wave import (
     play_bubble_to_farm,
     play_double_to_single_chamber,
     play_farm_to_speedway,
+    play_frog_save_to_business,
     play_single_to_bubble,
     play_speedway_to_frog_save,
     play_wave_to_double_chamber,
@@ -20,6 +21,8 @@ from super_metroid.routes.kpdr.wave.geometry import (
     DTS_FLOOR_Y_MIN,
     DTS_HOP_LAUNCH_X,
     DTS_SINGLE_SETTLE,
+    FTB_BUSINESS_SETTLE,
+    FTB_DOOR_X,
     FTS_DOOR_X,
     FTS_SPEEDWAY_SETTLE,
     SPEED_BOOSTER_MASK,
@@ -63,6 +66,10 @@ def test_speedway_to_frog_save_export_and_registry() -> None:
     assert get_segment("speedway_to_frog_save") is play_speedway_to_frog_save
 
 
+def test_frog_save_to_business_export_and_registry() -> None:
+    assert get_segment("frog_save_to_business") is play_frog_save_to_business
+
+
 def test_wave_return_geometry_constants() -> None:
     assert WAVE_BEAM_MASK == 0x0001
     assert WAVE_DOOR_X == 48
@@ -85,6 +92,8 @@ def test_wave_return_geometry_constants() -> None:
     assert FTS_SPEEDWAY_SETTLE >= 200
     assert STF_DOOR_X <= 50
     assert STF_FROG_SETTLE >= 200
+    assert FTB_DOOR_X <= 50
+    assert FTB_BUSINESS_SETTLE >= 200
 
 
 def test_has_wave_predicate() -> None:

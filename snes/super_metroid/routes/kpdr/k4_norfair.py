@@ -31,7 +31,6 @@ from super_metroid.routes.kpdr.to_bat_cave import (
 from super_metroid.routes.kpdr.k4_business_frog import (
     play_business_to_frog_save,
     play_farm_to_bubble,
-    play_frog_save_to_business,
     play_frog_save_to_speedway,
     play_speedway_to_farm,
 )
@@ -50,6 +49,7 @@ from super_metroid.routes.kpdr.k4_wave import (
     play_double_chamber_to_wave,
     play_double_to_single_chamber,
     play_farm_to_speedway,
+    play_frog_save_to_business,
     play_single_to_bubble,
     play_single_to_double_chamber,
     play_speedway_to_frog_save,
