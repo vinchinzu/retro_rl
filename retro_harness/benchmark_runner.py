@@ -1052,20 +1052,12 @@ def write_seed_robustness_report(
     path: str | Path,
     report: SeedRobustnessReport,
 ) -> Path:
-    """Write a canonical JSON artifact and return its path."""
+    """Write a canonical JSON artifact via atomic replace and return its path."""
     if not isinstance(report, SeedRobustnessReport):
         raise TypeError("report must be a SeedRobustnessReport")
-    record = report.to_record()
-    serialized = json.dumps(
-        record,
-        allow_nan=False,
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
-    report_path = Path(path)
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(serialized, encoding="utf-8")
-    return report_path
+    from retro_harness.seed_campaign import atomic_write_json
+
+    return atomic_write_json(path, report.to_record())
 
 
 def _validate_contract_for_case(
@@ -1385,3 +1377,25 @@ __all__ = [
     "write_seed_robustness_report",
     "zero_action_for_env",
 ]
+
+# Campaign runner re-exports (canonical home: retro_harness.seed_campaign).
+def __getattr__(name: str) -> Any:
+    if name in {
+        "SEED_CAMPAIGN_SCHEMA_VERSION",
+        "SeedCampaignContractMismatch",
+        "SeedCampaignError",
+        "SeedCampaignInfraError",
+        "SeedCampaignLedger",
+        "SeedCampaignResult",
+        "SeedCampaignRunner",
+        "SeedExecutionRow",
+        "SeedExecutionStatus",
+        "atomic_write_json",
+        "atomic_write_text",
+        "config_contract_digest",
+        "run_seed_campaign",
+    }:
+        import retro_harness.seed_campaign as _seed_campaign
+
+        return getattr(_seed_campaign, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

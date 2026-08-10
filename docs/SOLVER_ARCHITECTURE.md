@@ -271,7 +271,7 @@ Current audit (2026-08-09):
 | Emulator pool (`rr-gbd.16`) | Fake-tested | Snapshot is emulator-only; full wrapper/RNG/episode restore remains `rr-gbd.32` / `.34`. |
 | Capability planner + bindings + SolverSession | First real-game consumer | SM-rando real-ROM Landing→Pit vertical slice with recovery/replan. |
 | Resource/risk planner | Fake-tested | Key/missile/reliability golden fixtures; no game-owned planning consumer yet. |
-| Contracts + PolicyArtifact + benchmark audits | First real-game consumer | SM-rando vertical slice and audited Landing BC experiment; resumable multi-seed campaign remains `rr-gbd.33`. |
+| Contracts + PolicyArtifact + benchmark audits | First real-game consumer | SM-rando vertical slice and audited Landing BC experiment; resumable multi-seed campaign runner lands as `rr-gbd.33` (`SeedCampaignRunner`). |
 | EntryStateCorpus | First real-game consumer | 64-state SM-rando corpus; second predecessor trajectory is still required for stronger generalization evidence. |
 | Trajectory + counterexamples | First real-game consumer | SM-rando vertical and held-out BC trajectories; no second game consumer. |
 

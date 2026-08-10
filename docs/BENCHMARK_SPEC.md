@@ -288,6 +288,33 @@ failures retain their terminal milestone and failure mode. A report is an
 artifact of the stated contract, not permission to omit the per-seed ROM/start
 state or assist contract required by the rules above.
 
+### Resumable seed campaign runner
+
+Long multi-seed dry-runs use
+[`retro_harness.seed_campaign.SeedCampaignRunner`](../retro_harness/seed_campaign.py)
+(also re-exported from `retro_harness.benchmark`):
+
+- `policy_factory(seed)` builds the policy for each seed (no shared mutable
+  policy instance is assumed across seeds).
+- An atomic checkpoint **ledger** records completed seeds in published order.
+  Resume requires the ledger `contract_digest` to match the current
+  `SeedRobustnessConfig` (SHA-256 of the canonical config record). A contract
+  mismatch refuses resume.
+- Infrastructure failures (env/ROM/setup/runtime, and fail-closed claim
+  validation such as missing audit instrumentation) produce an ordered
+  `execution_status: "infra_error"` row with `failure_mode: "INFRA_ERROR"`.
+  Any `INFRA_ERROR` makes the campaign **non-claimable**; missing audits never
+  default to Clean.
+- Game success/failure still uses the normal seed-result schema.
+- Ledger and final campaign report writes use temp-file + `os.replace`.
+  Resume re-emits the frozen per-seed records so a continuous run and a
+  checkpointed resume are byte-identical for the same ordered outcomes.
+- `write_seed_robustness_report` is also atomic.
+
+A claimable campaign (`SeedCampaignResult.claimable is True`) can project a
+`SeedRobustnessReport` for publication. Non-claimable campaigns remain useful
+as engineering artifacts but must not be published as seed-robust evidence.
+
 ### Mod-robust clear (later)
 
 Same structure over a published set of **edited ROMs** (physics, rooms, or
