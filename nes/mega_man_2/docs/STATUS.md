@@ -73,40 +73,41 @@
 
 ## Post-s4 probe (2026-08-09, rr-54ui)
 
-**Not cleared.** Camera stays at 4; pure late RIGHT dies ~prog 1047–1073. Bird-boost press ~prog 1085–1086 still screen 4, airborne.
+**Not cleared.** No camera ≥ 5; no boss door. M3 screen-4 from AirScreen2 still GREEN.
 
-### Geometry (corrected)
+### Geometry (verified overnight)
 
 | Observation | Detail |
 |-------------|--------|
 | Baseline death | AirScreen2 + late 40/16 → die f≈519, prog≈1047, HP16, fallen |
 | AirScreen4.state | Mid-air (feet=0, sy≈89); freefall death ~17f — **do not start here** |
 | Last solid land | f≈437, scr=3, prog≈949, sx≈53, sy=84, HP16 → `AirFanPlatform` |
-| Pink head | **Goblin / Air Tikki** (standable head when spikes down / 5px corner), **not** an updraft fan |
-| Left of Goblin | Short platform → `AirLeftPlatform` (prog~902, sx~6); walk left continues to pit ~prog 792 |
-| “Ladder” bar | Visible left of Goblin; `tile_feet` never becomes 2 in Air Man path (not usable ladder state) |
-| Right of platform | Pipi / small cloud; collision bounce reaches min_sy≈23–26 with HP damage |
-| Jump height | A rising edge required; hold≥12 apex sy34; continuous A from load does not jump |
-| Best press | Bird-boost from right edge ~prog **1085–1086** scr4, still pit death |
+| Platform extent | **Grounded prog 937–984** (left fall walk~14; right fall walk~33, sx~41–88) |
+| Pink head | **Goblin / Air Tikki** obj slot14 type36 @~(39,49) — **not** updraft fan |
+| Goblin top land | Dense hop/wait grids (spike-cycle waits 0–200+, both sides): **0** feet=1 in prog (906,936) or sy&lt;82 |
+| Left of Goblin | `AirLeftPlatform` short ledge prog **902–905** only (~9f walk right then air) |
+| “Ladder” bar | Never `tile_feet==2` on this path |
+| Right of platform | Type35 eggs @y~84; Pipi bounce min_sy≈23–26 with damage |
+| Best press | Shoot+bird-boost ~prog **1086** scr4 min_sy~23, still pit (pure jump ~1064–1072) |
+| False saves | Pruned `AirGoblinHead*` / `AirPastFan*` (were left ledge or same-platform) |
 
-### Swept (2026-08-09 night)
+### Swept (2026-08-09 overnight)
 
-- Pure RIGHT period/hold from `AirFanPlatform` / AirScreen2 continue
-- Left cross over Goblin → left platform (stable); ladder seek (no feet=2)
-- Dense jump grids onto Goblin head / small clouds (0 elevated lands)
-- Edge wait for spawn; shoot-then-jump; bird-boost timing variants
-- No camera ≥ 5; no grounded land with sy&lt;82 past `AirFanPlatform`
+- Platform edge map; strict land criteria (prog≤935 goblin / prog≥988 past)
+- Goblin 5px + spike-cycle waits from fan + left; long hop only reaches left ledge
+- Pipi/edge waits; shoot-then-jump; adaptive post-bounce steer
+- No camera ≥ 5; no new grounded s4/s5 checkpoint
 
 ## Not done
 
-- Past screen 4 / boss door (Goblin head pixel land, Lightning Lord cloud ride, or bird-boost land)
+- Past screen 4 / boss door (true Goblin solid window still unfound; Lightning Lord not reached)
 - Full Robot Master stage clear (Air Man boss door / fight)
 - Natural-entry M4 from power-on through screen-2+
 - Stage select other masters / weapon routing
 
 ## Next
 
-1. Pixel-precise Goblin head land (5px toe / spikes-down window) or kill+ride Lightning Lord cloud.
-2. Controlled Pipi bounce → solid cloud land; save grounded s4/s5 checkpoint.
-3. Freeze frame recipe → AirScreen2→target 5 (3/3); then boss door.
-4. Natural-entry: power-on → screen-2+ without loading `Level1`.
+1. Re-check Goblin solidity (animation RAM / RTA 5px setup may need different approach X).
+2. Find Lightning Lord spawn / cloud ride past this island (may need earlier route fork).
+3. Controlled Pipi bounce → solid cloud if one exists off current trajectories.
+4. Only after grounded s4/s5: freeze recipe → AirScreen2→target 5 (3/3) → boss door.

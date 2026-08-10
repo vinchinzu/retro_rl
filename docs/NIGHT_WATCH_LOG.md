@@ -367,3 +367,14 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Continuous power-on RED on business_to_ice_gate floor climb after frog_save_to_business.
 - Pure floor→Gate dual 3219f×2 OK. No STATUS. Next: Super-directed continuous climb.
 
+### 2026-08-09T23:00 CDT — MM2 post-s4 overnight (rr-54ui open)
+- **Claimed** `rr-54ui`; stayed **OPEN** (no camera≥5 / boss door / clear).
+- Mapped `AirFanPlatform` solid **prog 937–984** (left fall walk~14, right walk~33).
+- Goblin obj slot14 type36 @~(39,49). Dense 5px + spike-cycle grids both sides:
+  **0** feet=1 lands in gap (906,936) or sy<82. Long hop → left ledge only.
+- `AirLeftPlatform` is short (prog 902–905). Best press still Pipi/shoot **prog~1086** min_sy~23 scr4 pit.
+- Pruned ~2400 false `AirGoblinHead*` / `AirPastFan*` probe states.
+- STATUS/plan/AGENTS/policy docstring updated; units 10/10; AirScreen2→4 smoke GREEN.
+- Next: Goblin solidity confirmation or Lightning Lord alternate entry.
+- No push.
+
