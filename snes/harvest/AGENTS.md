@@ -29,6 +29,11 @@ HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
   --state Y1_Day09_Harvest_Mode_Start \
   --out recordings/harvest_ship_5pm_money.json
 
+# Gate A multi-day successor: harvest phases + money>$100 (rr-y8n)
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_Day09_Harvest_Mode_Start --days 1 \
+  --out recordings/run_spring_gate_a_day09.json
+
 # Record task (F5) / tests
 uv run python -m harvest.runtime.harvest_bot play --state latest --record <name> --no-day-plan
 uv run python -m unittest tests.test_day_plan_sequences tests.test_task_progress -v

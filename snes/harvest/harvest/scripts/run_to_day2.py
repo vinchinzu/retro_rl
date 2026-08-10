@@ -347,7 +347,18 @@ def _summarize_journal(journal: list[dict]) -> dict:
     phase_no_work: dict[str, int] = {}
     phase_failure: dict[str, int] = {}
     water_deltas: list[dict] = []
+    establish_deltas: list[dict] = []
+    harvest_deltas: list[dict] = []
+    total_shipped = 0
+    total_harvested = 0
+    total_planted = 0
     for row in journal:
+        try:
+            total_shipped += int(row.get("shipped_count") or 0)
+            total_harvested += int(row.get("harvested_count") or 0)
+            total_planted += int(row.get("establish_planted") or 0)
+        except Exception:
+            pass
         for result in row.get("phase_results") or []:
             name = str(result.get("phase", "?"))
             status = str(result.get("status", ""))
@@ -368,6 +379,46 @@ def _summarize_journal(journal: list[dict]) -> dict:
                         "reason": reason,
                     }
                 )
+            if name == "CROP_ESTABLISH" and "planted=" in reason:
+                establish_deltas.append(
+                    {
+                        "plan_day": row.get("plan_day"),
+                        "status": status,
+                        "reason": reason,
+                    }
+                )
+            if name == "HARVEST_ROUTE":
+                harvest_deltas.append(
+                    {
+                        "plan_day": row.get("plan_day"),
+                        "status": status,
+                        "reason": reason,
+                        "shipped_count": result.get("shipped_count"),
+                        "harvested_count": result.get("harvested_count"),
+                    }
+                )
+    final_money = journal[-1].get("money") if journal else None
+    harvest_phases_present = bool(
+        phase_success.get("HARVEST_ROUTE") or harvest_deltas
+    )
+    # Count real plant deltas (planted=N with N>0), not merely phase presence.
+    if total_planted <= 0:
+        for row in establish_deltas:
+            reason = str(row.get("reason") or "")
+            if "planted=" not in reason:
+                continue
+            try:
+                n = int(reason.split("planted=")[1].split()[0].rstrip(","))
+            except Exception:
+                n = 0
+            if n > 0:
+                total_planted += n
+    establish_nonzero = total_planted > 0
+    # Gate A (rr-y8n): money growth + harvest phases on continuous soak.
+    try:
+        money_ok = final_money is not None and int(final_money) > 100
+    except Exception:
+        money_ok = False
     return {
         "overnights": len(journal),
         "phase_success_counts": phase_success,
@@ -375,7 +426,15 @@ def _summarize_journal(journal: list[dict]) -> dict:
         "phase_no_work_counts": phase_no_work,
         "phase_failure_counts": phase_failure,
         "crop_water_deltas": water_deltas,
-        "final_money": journal[-1].get("money") if journal else None,
+        "crop_establish_deltas": establish_deltas,
+        "harvest_deltas": harvest_deltas,
+        "total_shipped": total_shipped,
+        "total_harvested": total_harvested,
+        "total_planted": total_planted,
+        "final_money": final_money,
+        "harvest_phases_present": harvest_phases_present,
+        "crop_establish_nonzero": establish_nonzero,
+        "gate_a_economy_ok": bool(money_ok and harvest_phases_present),
     }
 
 
