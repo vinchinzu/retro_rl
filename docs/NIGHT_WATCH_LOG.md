@@ -1382,3 +1382,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Commits `9f62553`/`c8fe24b`: WJ no phase8; dual (91,587)p3; ice ladder scaffold.
 - Hellway RED. Re-spawned ice-ladder → Hellway dual manager.
 
+
+### 2026-08-10T07:55 CDT — MM2 first Yoku dual-green (rr-k1ea PARTIAL)
+- Commit `4a238be`: HeatScreen8 → first Yoku land 3/3; pin HeatScreen8Yoku.
+- Residual multi-level Yoku → Sniper → boss. Re-spawned chain manager.
+
