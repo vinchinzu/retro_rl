@@ -509,3 +509,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Tests: continuous tips + ice/wave scaffolds + segment contracts green
 - Optional ice demo video still open; next bead: K5 Alpha PB (`rr-dbu.8`)
 - No push
+
+### 2026-08-10T01:30 CDT — SM dual continuous Ice GREEN ★
+- **CLOSED** `rr-kxge`: dual continuous --to ice **148167f×2** room 0xA890 beams 0x1007.
+- DEFAULT tip **ice**; STATUS promoted. Climb cont-tuned 907 ladder. No deaths/loads.
+- Next product: `rr-dbu.8` K5 Alpha PB pure stack.
+
