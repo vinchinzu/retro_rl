@@ -1,15 +1,21 @@
-"""Level 4 Gleeok fight + HC + TF bit 0x08 (rr-rvae / rr-vdnc).
+"""Level 4 Gleeok fight + HC + TF bit 0x08 (rr-rvae / rr-vdnc / rr-gjey).
 
 Live facts (from ``Level4GleeokEnter``, room **0x13**)::
 
     - Body type ``0x43`` starts HP≈160; TYPE-only residual after head split.
     - Detached head type ``0x46`` appears mid-fight (do **not** chase — south
       stand on body clears residual faster and safer than head kite).
-    - Fireball residual ``0x56`` (dodge only when very close).
+    - Fireball residual ``0x56`` (dodge when close; **post-boss residual
+      kills** if you stand still — rr-gjey).
     - Clean policy: south stand ``(body.x, body.y+STAND_DY)`` face UP + A
       (rr-vdnc). Bombs do not damage Gleeok.
     - Boss dead when body type ``0x43`` absent; HC RoomItemId ``0x1A`` mid-room.
     - UP @x≈120 → TF room **0x03**; walk mid → ``ADDR_TRIFORCE & 0x08``.
+    - Health floor (lab poke from GleeokEnter): stock south-stand dual-green
+      at health≥107; 106 kills boss then residual fireball death unless
+      post-boss phase dodges; ≤105 dies mid-fight. Continuous Entrance→map
+      peels to ~98–100 → needs heart-safe path **and/or** low-HP fight care
+      (rr-gjey).
 
 Assisted first-pass dual-green 2/2 (~3649f). Clean dual from GleeokEnter
 (rr-vdnc south-stand). Not full-game Clean STATUS.
@@ -50,25 +56,35 @@ ROOM_L4_TRIFORCE = 0x03  # north of boss 0x13 after clear
 # Clean-safe south stand (rr-vdnc): dy=22 UP+A dual-green from GleeokEnter.
 STAND_DY = 22
 FIREBALL_DODGE_DIST = 14
-# Wider dodge when health depleted after long Clean compose (rr-zavx).
-FIREBALL_DODGE_DIST_LOW_HP = 28
-LOW_HP_THRESHOLD = 80  # ~5 hearts; scale dodge / approach care
+# Approach-only wider dodge when start health is depleted (rr-gjey). Do **not**
+# widen mid-fight dodge thr — that walks into body and breaks ≥107 Clean.
+FIREBALL_DODGE_DIST_LOW_HP = 22
+# Lab poke cliff (7 containers, full=0x6F=111): stock mid-fight dual-green at
+# start health ≥107. Below that, approach is more careful; post-boss always
+# dodges residual fireballs (rr-gjey).
+LOW_HP_THRESHOLD = 107
 FIGHT_MAX_FRAMES = 20000
 APPROACH_SOUTH_Y = 165
+# Post-boss HC hunt waypoints (mid + north band; residual fireball danger).
 HC_STANDS: tuple[tuple[int, int], ...] = (
     (120, 125),
     (124, 111),
     (112, 125),
     (128, 125),
+    (120, 117),
     (120, 141),
     (104, 133),
     (136, 133),
     (120, 109),
     (96, 141),
     (144, 141),
+    (120, 101),
     (120, 157),
     (80, 125),
     (160, 125),
+    (88, 133),
+    (152, 133),
+    (120, 93),
 )
 TF_STANDS: tuple[tuple[int, int], ...] = (
     (120, 141),
@@ -123,8 +139,18 @@ def gleeok_fireballs(snap: ZeldaSnapshot) -> list:
     ]
 
 
-def _fireball_dodge_dir(snap: ZeldaSnapshot, *, thr: int = FIREBALL_DODGE_DIST) -> str | None:
-    """Horizontal strafe away from nearest fireball if within ``thr``."""
+def _fireball_dodge_dir(
+    snap: ZeldaSnapshot,
+    *,
+    thr: int = FIREBALL_DODGE_DIST,
+    allow_vertical: bool = False,
+) -> str | None:
+    """Flee nearest fireball if within ``thr`` (manhattan).
+
+    Default is horizontal-only (south-stand mid-fight). Post-boss residual
+    approaches from S/N — set ``allow_vertical=True`` so we don't walk into
+    the ball while hunting HC (rr-gjey).
+    """
     balls = gleeok_fireballs(snap)
     if not balls:
         return None
@@ -135,9 +161,32 @@ def _fireball_dodge_dir(snap: ZeldaSnapshot, *, thr: int = FIREBALL_DODGE_DIST) 
     dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
     if dist > thr:
         return None
+    dx = nearest.x - snap.link_x
+    dy = nearest.y - snap.link_y
+    if allow_vertical and abs(dy) > abs(dx):
+        # Ball mainly N/S of Link. Stepping further on that axis often walks
+        # *into* a chasing fireball — prefer perpendicular (horizontal) first
+        # (rr-gjey post-boss residual).
+        if abs(dx) >= 2:
+            if dx >= 0:
+                return "LEFT" if snap.link_x > 56 else "RIGHT"
+            return "RIGHT" if snap.link_x < 200 else "LEFT"
+        # Aligned vertically: step toward room edge (away from center).
+        if snap.link_x >= 120:
+            return "RIGHT" if snap.link_x < 200 else "LEFT"
+        return "LEFT" if snap.link_x > 56 else "RIGHT"
     if nearest.x >= snap.link_x:
         return "LEFT" if snap.link_x > 56 else "RIGHT"
     return "RIGHT" if snap.link_x < 200 else "LEFT"
+
+
+def _nearest_fireball_dist(snap: ZeldaSnapshot) -> int | None:
+    balls = gleeok_fireballs(snap)
+    if not balls:
+        return None
+    return min(
+        abs(o.x - snap.link_x) + abs(o.y - snap.link_y) for o in balls
+    )
 
 
 def _south_stand_action(snap: ZeldaSnapshot, body, *, stand_dy: int = STAND_DY):
@@ -238,14 +287,19 @@ class Level4GleeokFightController:
             return result
 
         hc0 = snap0.heart_containers
+        start_health = int(snap0.health)
         last_body_hp: int | None = None
         last_filled: int | None = snap0.filled_hearts
         invuln = 0
         phase = "fight"
         self._approached = False
+        hc_hunt_i = 0
+        # Stock approach+mid-fight (rr-vdnc). Continuous path needs enter
+        # health ≥~108 (approach costs more than GleeokEnter lab). Post-boss
+        # residual fireball care is the rr-gjey harden (see phase hc/tf_exit).
         self.notes.append(
             f"policy=south_stand dy={self.stand_dy} "
-            f"fb_dodge<={self.fireball_dodge_dist}"
+            f"fb_dodge<={self.fireball_dodge_dist} start_hp={start_health}"
         )
 
         for frame in range(self.max_frames):
@@ -331,7 +385,8 @@ class Level4GleeokFightController:
                     self.boss_beaten = True
                     self.notes.append(
                         f"boss_dead f={frame} rad={snap.room_all_dead} "
-                        f"doors={snap.cur_opened_doors} heads={len(heads)}"
+                        f"doors={snap.cur_opened_doors} heads={len(heads)} "
+                        f"hp={snap.health}"
                     )
                     self.log.append(
                         {
@@ -340,13 +395,13 @@ class Level4GleeokFightController:
                             **room_fields(snap, ram),
                         }
                     )
+                    # rr-gjey: residual fireball 0x56 kills if we idle/goto
+                    # unprotected — go straight into active HC/exit care.
                     phase = "hc"
+                    hc_hunt_i = 0
                     continue
 
-                # Health-scaled dodge thr (long Clean compose arrives depleted).
                 dodge_thr = self.fireball_dodge_dist
-                if snap.health < LOW_HP_THRESHOLD:
-                    dodge_thr = max(dodge_thr, FIREBALL_DODGE_DIST_LOW_HP)
 
                 # Entry: drop south first (avoid left-band body contact), then
                 # align under body x before engaging stand. Dodge fireballs
@@ -360,13 +415,7 @@ class Level4GleeokFightController:
                             if assist is not None:
                                 assist.apply_env(env, frame=total[0])
                             continue
-                    # Low-HP: prefer deeper south band before closing.
-                    target_y = (
-                        APPROACH_SOUTH_Y + 16
-                        if snap.health < LOW_HP_THRESHOLD
-                        else APPROACH_SOUTH_Y
-                    )
-                    if snap.link_y < target_y:
+                    if snap.link_y < APPROACH_SOUTH_Y:
                         env.step(nes_action("DOWN"))
                         total[0] += 1
                         if assist is not None:
@@ -405,12 +454,8 @@ class Level4GleeokFightController:
                 if bodies:
                     # South stand on body for full fight — do not chase heads
                     # while residual body remains (rr-vdnc Clean).
-                    # Low-HP: stand slightly further south to reduce contact.
-                    stand_dy = self.stand_dy
-                    if snap.health < LOW_HP_THRESHOLD:
-                        stand_dy = max(stand_dy, 28)
                     act = _south_stand_action(
-                        snap, bodies[0], stand_dy=stand_dy
+                        snap, bodies[0], stand_dy=self.stand_dy
                     )
                     env.step(act)
                 elif heads:
@@ -440,48 +485,94 @@ class Level4GleeokFightController:
                 continue
 
             if phase == "hc":
-                # Mid-room dense walk; HC often collected on north exit path too.
-                for tx, ty in HC_STANDS:
-                    goto(env, assist, total, tx, ty, tol=4, max_f=200)
-                    s2 = read_snapshot(env.get_ram())
-                    if s2.heart_containers > hc0:
-                        self.hc_collected = True
+                # rr-gjey: residual 0x56 fireball approaches from south and
+                # kills filled=0 Link if we walk north into it. 2D flee while
+                # any ball is near; only hunt HC / exit once clear.
+                if snap.mode not in (PLAY_MODE, 5, 8):
+                    env.step(nes_idle_action())
+                    total[0] += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=total[0])
+                    continue
+                if snap.heart_containers > hc0:
+                    self.hc_collected = True
+                    self.notes.append(
+                        f"HC f={frame} {hc0}->{snap.heart_containers} "
+                        f"hp={snap.health}"
+                    )
+                    self.log.append(
+                        {
+                            "event": "hc",
+                            "frame": frame,
+                            "hc": snap.heart_containers,
+                            "health": snap.health,
+                        }
+                    )
+                    phase = "tf_exit"
+                    continue
+                fb_dist = _nearest_fireball_dist(snap)
+                # While ANY residual fireball exists, only lateral flee / hold —
+                # do not walk north into its path (rr-gjey).
+                if fb_dist is not None and invuln <= 0:
+                    dodge0 = _fireball_dodge_dir(
+                        snap, thr=200, allow_vertical=True
+                    )
+                    if dodge0 is not None:
+                        env.step(nes_action(dodge0))
+                    else:
+                        env.step(nes_idle_action())
+                    total[0] += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=total[0])
+                    hc_hunt_i += 1
+                    # Fireballs sometimes linger; after long evade, try exit.
+                    if hc_hunt_i > 400:
                         self.notes.append(
-                            f"HC at ({tx},{ty}) {hc0}->{s2.heart_containers}"
+                            "HC skip after fireball evade (UP path)"
                         )
-                        self.log.append(
-                            {
-                                "event": "hc",
-                                "xy": [tx, ty],
-                                "hc": s2.heart_containers,
-                            }
-                        )
-                        break
+                        phase = "tf_exit"
+                    continue
+                # Fireballs clear: short door-open wait, then waypoint hunt.
+                if hc_hunt_i < 20 and (snap.cur_opened_doors & 0x08) == 0:
+                    env.step(nes_idle_action())
+                    total[0] += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=total[0])
+                    hc_hunt_i += 1
+                    continue
+                tx, ty = HC_STANDS[hc_hunt_i // 28 % len(HC_STANDS)]
+                if abs(snap.link_x - tx) > 4 or abs(snap.link_y - ty) > 4:
+                    if abs(snap.link_y - ty) >= abs(snap.link_x - tx):
+                        d = "DOWN" if snap.link_y < ty else "UP"
+                    else:
+                        d = "RIGHT" if snap.link_x < tx else "LEFT"
+                    env.step(nes_action(d))
                 else:
-                    # Broader grid once.
-                    found = False
-                    for ty in range(100, 180, 12):
-                        for tx in range(64, 180, 12):
-                            goto(env, assist, total, tx, ty, tol=4, max_f=120)
-                            if (
-                                read_snapshot(env.get_ram()).heart_containers
-                                > hc0
-                            ):
-                                self.hc_collected = True
-                                self.notes.append(f"HC dense ({tx},{ty})")
-                                found = True
-                                break
-                        if found:
-                            break
-                    if not found:
-                        self.notes.append(
-                            "HC not mid-room yet (may collect on UP path)"
-                        )
-                phase = "tf_exit"
+                    env.step(nes_idle_action())
+                total[0] += 1
+                if assist is not None:
+                    assist.apply_env(env, frame=total[0])
+                hc_hunt_i += 1
+                if hc_hunt_i > 900:
+                    self.notes.append(
+                        "HC not mid-room yet (may collect on UP path)"
+                    )
+                    phase = "tf_exit"
                 continue
 
             if phase == "tf_exit":
-                idle(env, assist, total, 30)
+                # Do not idle long — residual fireball (rr-gjey).
+                dodge_e = _fireball_dodge_dir(
+                    snap, thr=48, allow_vertical=True
+                )
+                if dodge_e is not None and invuln <= 0:
+                    env.step(nes_action(dodge_e))
+                    total[0] += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=total[0])
+                    continue
+                # Brief settle only when fireballs are clear.
+                idle(env, assist, total, 4)
                 pr = exit_door(
                     env,
                     assist,
@@ -489,7 +580,7 @@ class Level4GleeokFightController:
                     "UP",
                     x_force=120,
                     y_force=93,
-                    push=PUSH_FRAMES + 80,
+                    push=PUSH_FRAMES + 100,
                 )
                 self.notes.append(
                     f"exit_up result={pr.get('result')} "
@@ -515,7 +606,6 @@ class Level4GleeokFightController:
                 ok_exit = False
                 for ax, ay in UP_APPROACHES:
                     env.em.set_state(st)
-                    idle(env, assist, total, 2)
                     pr2 = exit_door(
                         env,
                         assist,
@@ -523,7 +613,7 @@ class Level4GleeokFightController:
                         "UP",
                         x_force=ax,
                         y_force=ay,
-                        push=PUSH_FRAMES + 100,
+                        push=PUSH_FRAMES + 120,
                     )
                     a2 = pr2.get("after") or {}
                     if (

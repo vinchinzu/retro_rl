@@ -1,0 +1,39 @@
+{
+  "bead": "rr-gjey",
+  "dual_green": true,
+  "health_poke": 106,
+  "note": "Clean GleeokEnter with health poked to 106 dual (post-boss residual fireball dodge). Lab floor was 107 stock; post-boss fix unlocks 106.",
+  "ok": true,
+  "tag": "l4_gjey_gleeok_hp106",
+  "track": "clean",
+  "trials": [
+    {
+      "error": null,
+      "frames": 2142,
+      "notes": [
+        "policy=south_stand dy=22 fb_dodge<=14 start_hp=106",
+        "approach_south f=148 xy=(116,189) hp=105 dodge_thr=14",
+        "boss_dead f=1238 rad=1 doors=0 heads=0 hp=96",
+        "HC not mid-room yet (may collect on UP path)",
+        "exit_up result=room_change to=0x03"
+      ],
+      "ok": true,
+      "start_hp": 106,
+      "tf08": true
+    },
+    {
+      "error": null,
+      "frames": 2142,
+      "notes": [
+        "policy=south_stand dy=22 fb_dodge<=14 start_hp=106",
+        "approach_south f=148 xy=(116,189) hp=105 dodge_thr=14",
+        "boss_dead f=1238 rad=1 doors=0 heads=0 hp=96",
+        "HC not mid-room yet (may collect on UP path)",
+        "exit_up result=room_change to=0x03"
+      ],
+      "ok": true,
+      "start_hp": 106,
+      "tf08": true
+    }
+  ]
+}

@@ -292,24 +292,45 @@ before maze; skip-compass clear pose ~(72,125) was missing key) →
 `north_30`…`west_31` → `Level4Room31PostLadderNaturalKey` (ladder=1, keys=1,
 health≈103).
 
-**Continuous Entrance→TF Clean residual (same bead):** full compose runner
-wired (`run_level4_entrance_tf.py` without `--to-natural-key-only`) but
-**not dual-green**. Gleeok south-stand Clean needs **health ≥~108** at
-`Level4GleeokEnter` (lab: 108+ dual TF; ≤106 death or no_tf_exit). Pure
-spine ends NaturalKey **~103**; map_21 peels ~3; map→Gleeok BFS-first
-preserves most hearts but enter still ~98–100 → Clean fight death.
-Assisted continuous PostLadder→TF remains dual-green (rr-05fz). GleeokEnter-
-only Clean still dual (rr-vdnc / rr-zavx reg). **Not Clean STATUS.**
-Next tip: heart-safe residual (farm / lower-HP Gleeok policy / combat
-polish on clear_31) so enter Gleeok ≥108 after pure spine.
+**Continuous Entrance→TF Clean residual (rr-gjey PARTIAL 2026-08-10):** full
+compose runner wired (`run_level4_entrance_tf.py` without
+`--to-natural-key-only`) but **not dual-green** from natural health.
+
+Lab cliffs (7 containers, full health byte `0x6F=111`):
+
+| Start | Path | Floor | Notes |
+|-------|------|-------|-------|
+| `Level4GleeokEnter` poke | fight only | **≥106** dual TF | stock mid-fight; **post-boss residual fireball** must 2D-flee (idle/goto died at 106) |
+| `Level4Map` poke → path | continuous | **≥108** dual TF | approach costs more than GleeokEnter vestibule |
+| Natural spine | Entrance→NaturalKey | ends **~103** | peels: clear_30−2, clear_32−2, chain/key_40/clear_31/west −1 each |
+| Natural map_21 | PostLadder→Map | peels **~3** | `L4:0x31/0x30/0x20` one each (assist heatmap) |
+| Natural enter Gleeok | map→0x13 | **~98–100** | clear12 often −0..2; fight death mid-approach |
+
+**rr-gjey pins:** post-boss residual fireball care in
+`level4_boss_combat.py` (lateral flee while any `0x56` present; no long
+unprotected idle/goto). Evidence:
+
+- `l4_gjey_gleeok_clean_dual.json` — GleeokEnter full Clean dual (reg)
+- `l4_gjey_gleeok_hp106_dual.json` — GleeokEnter **poke 106** dual TF (floor drop)
+- `l4_gjey_map108_floor_dual.json` — Map **poke 108** → path → TF dual (continuous floor)
+- Continuous enter settle shortened (no 40f idle on vestibule; fireballs
+  inflate approach cost)
+
+Pure spine still ends ~103; natural enter ~98–100 **below continuous floor
+108**. Gel thrash does **not** reliably drop hearts. Heart-safe spine polish
+(clear_30/32/map peels) or mid-fight damage cut still open. Epic **rr-q3n**
+residual; **not Clean STATUS**. Assisted continuous PostLadder→TF remains
+dual-green (rr-05fz). GleeokEnter-only Clean dual remains green (rr-vdnc).
 
 ```bash
 # Clean dual skip-compass NaturalKey from Entrance (rr-zavx pin)
 uv run python nes/zelda_i/scripts/run_level4_entrance_tf.py \
   --to-natural-key-only --trials 2 --save-state --tag l4_zavx_natkey_dual
-# Full compose (spine + continuous TF; Clean dual still residual)
+# Full compose (spine + continuous TF; Clean dual still residual rr-gjey)
 uv run python nes/zelda_i/scripts/run_level4_entrance_tf.py \
-  --trials 2 --save-state --tag l4_zavx_entrance_tf
+  --trials 2 --save-state --tag l4_gjey_entrance_tf
+# Gleeok Clean reg + floor poke pins
+uv run python nes/zelda_i/scripts/run_level4_gleeok.py --trials 2 --tag l4_gjey_gleeok_clean
 ```
 
 **Traps (0x12→0x13):** after clear doors often L-only (raw=2); **bomb RIGHT and

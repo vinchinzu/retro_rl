@@ -781,6 +781,7 @@ ROOM_31_SPEC = DungeonRoomSpec(
         attack_phase=0,
         engage_attack_period=6,
         engage_attack_hold=3,
+        # No contact_backstep: 0x31 maze starves kills (rr-gjey tried).
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=ROOM_ITEM_NONE,
