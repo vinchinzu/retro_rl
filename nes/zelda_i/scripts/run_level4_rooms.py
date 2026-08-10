@@ -19,6 +19,8 @@ Segments (rr-5lu / rr-2ysf children)::
     key_right_31 (rr-n1wn)  0x30 KEY-RIGHT @y141 → 0x31 (5× Vire)
     clear_31     (rr-resv)  clear 5× Vire on 0x31 maze (opens RIGHT door)
     east_32      (rr-resv)  0x31 cleared → free RIGHT → 0x32
+    clear_32     (rr-tib8)  clear 2× Zol + 2× LikeLike on 0x32 (ignore 0x2b/0x68)
+    stepladder   (rr-tib8)  push left block → stairs 0x60 → ADDR_LADDER
 
 Live graph only — no walkthrough room hardcodes beyond recon.
 
@@ -36,6 +38,8 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_31 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment east_32 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_32 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment stepladder --trials 2 --save-state
 """
 
 # ruff: noqa: E402
@@ -86,6 +90,7 @@ from zelda_i.level4_dungeon import (
     level4_compass_route_success,
     level4_room_30_cleared,
     level4_room_31_cleared,
+    level4_room_32_cleared,
     level4_room_32_ready,
     level4_room_40_key_success,
     level4_room_40_ready,
@@ -95,6 +100,7 @@ from zelda_i.level4_dungeon import (
     level4_room_61_cleared,
     level4_room_61_ready,
     level4_room_62_ready,
+    level4_stepladder_success,
     make_bomb_61_north_controller,
     make_compass_62_controller,
     make_entry_up_controller,
@@ -105,13 +111,16 @@ from zelda_i.level4_dungeon import (
     make_key_right_31_controller,
     make_room_30_clear_controller,
     make_room_31_clear_controller,
+    make_room_32_clear_controller,
     make_room_40_key_controller,
     make_room_50_clear_controller,
+    make_stepladder_controller,
     level4_room_30_ready,
     level4_room_31_ready,
     ROOM_L4_EAST_31,
     ROOM_L4_EAST_32,
     ROOM_L4_NORTH_30,
+    ROOM_32_SPEC,
     make_room_51_key_controller,
     make_room_61_clear_controller,
     make_room_62_clear_controller,
@@ -139,6 +148,8 @@ SEGMENTS = (
     "key_right_31",
     "clear_31",
     "east_32",
+    "clear_32",
+    "stepladder",
 )
 
 _BEAD = {
@@ -159,6 +170,8 @@ _BEAD = {
     "key_right_31": "rr-n1wn",
     "clear_31": "rr-resv",
     "east_32": "rr-resv",
+    "clear_32": "rr-tib8",
+    "stepladder": "rr-tib8",
 }
 
 _DEFAULT_STATE = {
@@ -179,6 +192,8 @@ _DEFAULT_STATE = {
     "key_right_31": "Level4Room30Cleared",
     "clear_31": "Level4Room31",
     "east_32": "Level4Room31Cleared",
+    "clear_32": "Level4Room32",
+    "stepladder": "Level4Room32",
 }
 
 _CHECKPOINT = {
@@ -199,10 +214,15 @@ _CHECKPOINT = {
     "key_right_31": "Level4Room31",
     "clear_31": "Level4Room31Cleared",
     "east_32": "Level4Room32",
+    "clear_32": "Level4Room32Cleared",
+    "stepladder": "Level4Stepladder",
 }
 
 
 def _snap_fields(snap) -> dict[str, Any]:
+    from zelda_i.ram import ADDR_LADDER, read_u8
+
+    # snap has no ladder field; read from env RAM only when available via snap attrs.
     return {
         "mode": snap.mode,
         "level": snap.level,
@@ -577,6 +597,412 @@ def _follow_31_east_path(env, path: list[str], *, assist, frame0: int):
     return obs, frame, False
 
 
+def _scripted_60_ladder(env, *, assist, frame0: int):
+    """Settle NW on 0x60 then follow MAZE_60_TO_LADDER hold4 to pedestal."""
+    from zelda_i.level4_dungeon import (
+        LADDER_60_PICKUP_XY,
+        MAZE_60_HOLD,
+        MAZE_60_SPAWN_XY,
+        MAZE_60_TO_LADDER,
+        ROOM_L4_STEPLADDER,
+    )
+    from zelda_i.ram import ADDR_LADDER, read_u8
+
+    frame = frame0
+    obs = None
+    ladder0 = int(read_u8(env.get_ram(), ADDR_LADDER))
+
+    # Settle mode-16 → mode-9 NW spawn band.
+    for _ in range(200):
+        obs, *_ = env.step(nes_idle_action())
+        frame += 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame)
+        s = read_snapshot(env.get_ram())
+        if (
+            s.screen == ROOM_L4_STEPLADDER
+            and s.mode == 9
+            and s.link_x < 96
+            and s.link_y < 120
+            and not s.transitioning
+        ):
+            break
+
+    s = read_snapshot(env.get_ram())
+    if s.screen != ROOM_L4_STEPLADDER:
+        return obs, frame, False, {
+            "success": False,
+            "error": f"not_on_60_0x{s.screen:02x}",
+            "segment": "level4_scripted_ladder",
+        }
+
+    # Nudge toward spawn if needed.
+    sx, sy = MAZE_60_SPAWN_XY
+    for _ in range(80):
+        s = read_snapshot(env.get_ram())
+        if abs(s.link_x - sx) <= 12 and abs(s.link_y - sy) <= 20:
+            break
+        dx, dy = sx - s.link_x, sy - s.link_y
+        if abs(dx) > 4:
+            obs, *_ = env.step(nes_action("RIGHT" if dx > 0 else "LEFT"))
+        elif abs(dy) > 4:
+            obs, *_ = env.step(nes_action("DOWN" if dy > 0 else "UP"))
+        else:
+            break
+        frame += 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame)
+
+    # Follow live BFS path tokens.
+    for d in MAZE_60_TO_LADDER:
+        for _ in range(MAZE_60_HOLD):
+            obs, *_ = env.step(nes_action(d))
+            frame += 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
+            s = read_snapshot(env.get_ram())
+            if s.transitioning or s.mode in (4, 6, 7, 16):
+                for _ in range(40):
+                    obs, *_ = env.step(nes_idle_action())
+                    frame += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame)
+            if int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0:
+                return obs, frame, True, {
+                    "success": True,
+                    "frames": frame - frame0,
+                    "method": "path",
+                    "segment": "level4_scripted_ladder",
+                }
+
+    # Hunt pedestal.
+    tx, ty = LADDER_60_PICKUP_XY
+    for _ in range(200):
+        s = read_snapshot(env.get_ram())
+        if int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0:
+            return obs, frame, True, {
+                "success": True,
+                "frames": frame - frame0,
+                "method": "hunt",
+                "segment": "level4_scripted_ladder",
+            }
+        dx, dy = tx - s.link_x, ty - s.link_y
+        if abs(dy) > 6:
+            obs, *_ = env.step(nes_action("DOWN" if dy > 0 else "UP"))
+        elif abs(dx) > 4:
+            obs, *_ = env.step(nes_action("RIGHT" if dx > 0 else "LEFT"))
+        else:
+            obs, *_ = env.step(nes_idle_action())
+        frame += 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame)
+
+    return obs, frame, int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0, {
+        "success": int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0,
+        "frames": frame - frame0,
+        "final_xy": [
+            read_snapshot(env.get_ram()).link_x,
+            read_snapshot(env.get_ram()).link_y,
+        ],
+        "ladder": int(read_u8(env.get_ram(), ADDR_LADDER)),
+        "segment": "level4_scripted_ladder",
+    }
+
+
+def _push_and_enter_60(env, *, assist, frame0: int):
+
+    """Clear-room pose → push left block → stairs 0x60 (rr-tib8 live).
+
+    Returns (obs, frame, ok, meta).
+    """
+    from zelda_i.level4_dungeon import (
+        PUSH_32_DIR,
+        PUSH_32_HOLD,
+        PUSH_32_STAND,
+        ROOM_L4_EAST_32,
+        ROOM_L4_STEPLADDER,
+        STAIRS_32_APPROACH,
+        STAIRS_32_PUSH,
+        STAIRS_32_PUSH_FRAMES,
+    )
+
+    frame = frame0
+    obs = None
+
+    def _nav(tx: int, ty: int, n: int = 500) -> None:
+        nonlocal obs, frame
+        for _ in range(n):
+            s = read_snapshot(env.get_ram())
+            if s.screen != ROOM_L4_EAST_32:
+                return
+            # Detour around center statues when approaching from the north.
+            if s.link_y < ty - 6 and 72 <= s.link_x <= 168:
+                side = 40 if s.link_x <= 120 else 200
+                if abs(s.link_x - side) > 6:
+                    obs, *_ = env.step(
+                        nes_action("RIGHT" if s.link_x < side else "LEFT")
+                    )
+                    frame += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame)
+                    continue
+            dx, dy = tx - s.link_x, ty - s.link_y
+            if abs(dx) <= 3 and abs(dy) <= 3:
+                return
+            if abs(dy) > 3 and (abs(dx) <= 8 or abs(dy) >= abs(dx)):
+                obs, *_ = env.step(nes_action("DOWN" if dy > 0 else "UP"))
+            else:
+                obs, *_ = env.step(nes_action("RIGHT" if dx > 0 else "LEFT"))
+            frame += 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
+
+    # Settle after combat clear.
+    for _ in range(40):
+        obs, *_ = env.step(nes_idle_action())
+        frame += 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame)
+
+    # West aisle → push stand → hold LEFT.
+    _nav(40, PUSH_32_STAND[1])
+    _nav(PUSH_32_STAND[0], PUSH_32_STAND[1])
+    for _ in range(PUSH_32_HOLD):
+        obs, *_ = env.step(nes_action(PUSH_32_DIR))
+        frame += 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame)
+        s = read_snapshot(env.get_ram())
+        if s.screen == ROOM_L4_STEPLADDER or s.mode in (9, 16):
+            break
+
+    # NE approach → UP into stairs (live dual-green entry).
+    if read_snapshot(env.get_ram()).screen == ROOM_L4_EAST_32:
+        _nav(STAIRS_32_APPROACH[0], STAIRS_32_APPROACH[1], 500)
+        for _ in range(STAIRS_32_PUSH_FRAMES):
+            obs, *_ = env.step(nes_action(STAIRS_32_PUSH))
+            frame += 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
+            s = read_snapshot(env.get_ram())
+            if s.mode != PLAY_MODE or s.transitioning:
+                for _ in range(40):
+                    obs, *_ = env.step(nes_idle_action())
+                    frame += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame)
+                s = read_snapshot(env.get_ram())
+            if s.screen == ROOM_L4_STEPLADDER or s.mode in (9, 16):
+                break
+
+    s = read_snapshot(env.get_ram())
+    ok = s.screen == ROOM_L4_STEPLADDER or s.mode in (9, 16)
+    meta = {
+        "success": ok,
+        "frames": frame - frame0,
+        "final_xy": [s.link_x, s.link_y],
+        "final_room": f"0x{s.screen:02x}",
+        "final_mode": s.mode,
+        "segment": "level4_push_enter_0x60",
+        "push_stand": list(PUSH_32_STAND),
+        "stairs_approach": list(STAIRS_32_APPROACH),
+    }
+    return obs, frame, ok, meta
+
+
+def _bfs_60_to_ladder(env, *, assist, frame0: int, hold: int | None = None):
+
+    """Live BFS on mode-9 0x60 to ADDR_LADDER pickup (rr-tib8).
+
+    Tries several hold/quantize grids — entry-frame jitter changes the
+    walkable pocket under keese, so a single hold4/q4 pass can miss.
+    """
+    from collections import deque
+
+    from zelda_i.level4_dungeon import MAZE_60_HOLD, ROOM_L4_STEPLADDER
+    from zelda_i.ram import ADDR_LADDER, read_u8
+
+    em = env.unwrapped.em
+    dirs = ("UP", "DOWN", "LEFT", "RIGHT")
+
+    # Mode-16 scroll → mode-9; entry pose may be transient NE (~208,93)
+    # then resettles to NW spawn ~(48,80). Wait for stable mode-9 NW band.
+    for _ in range(180):
+        env.step(nes_idle_action())
+        if assist is not None:
+            assist.apply_env(env, frame=frame0)
+        frame0 += 1
+        s_settle = read_snapshot(env.get_ram())
+        if (
+            s_settle.screen == ROOM_L4_STEPLADDER
+            and s_settle.mode == 9
+            and s_settle.link_x < 96
+            and s_settle.link_y < 120
+            and not s_settle.transitioning
+        ):
+            break
+
+    start = read_snapshot(env.get_ram())
+    if start.screen != ROOM_L4_STEPLADDER:
+        return None, {
+            "error": f"not_on_60_0x{start.screen:02x}_m{start.mode}",
+            "success": False,
+        }
+
+    ladder0 = int(read_u8(env.get_ram(), ADDR_LADDER))
+    base_state = em.get_state()
+    hold_grid = (
+        [(hold, 4)]
+        if hold is not None
+        else [(MAZE_60_HOLD, 4), (6, 4), (4, 2), (3, 2), (8, 4), (2, 2)]
+    )
+
+    best_path: list[str] | None = None
+    goal_state = None
+    best_meta: dict = {
+        "start": [start.link_x, start.link_y],
+        "path_len": 0,
+        "n_cells": 0,
+        "expansions": 0,
+        "hold": hold_grid[0][0],
+        "cell_q": hold_grid[0][1],
+    }
+
+    for hold_i, qstep in hold_grid:
+        em.set_state(base_state)
+        for _ in range(3):
+            env.step(nes_idle_action())
+            if assist is not None:
+                assist.apply_env(env, frame=frame0)
+
+        def cell(x: int, y: int, q: int = qstep) -> tuple[int, int]:
+            return (x // q * q, y // q * q)
+
+        s0 = read_snapshot(env.get_ram())
+        start_c = cell(s0.link_x, s0.link_y)
+        cell_state = {start_c: em.get_state()}
+        parent: dict[tuple[int, int], tuple[tuple[int, int], str] | None] = {
+            start_c: None
+        }
+        q: deque[tuple[int, int]] = deque([start_c])
+        seen = {start_c}
+        expansions = 0
+        found: list[str] | None = None
+        found_state = None
+
+        while q and expansions < 24000 and found is None:
+            cur = q.popleft()
+            for d in dirs:
+                expansions += 1
+                em.set_state(cell_state[cur])
+                for _ in range(hold_i):
+                    env.step(nes_action(d))
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame0)
+                s = read_snapshot(env.get_ram())
+                if s.transitioning or s.mode in (4, 6, 7, 16):
+                    for _ in range(40):
+                        env.step(nes_idle_action())
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame0)
+                    s = read_snapshot(env.get_ram())
+                if int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0:
+                    path: list[str] = []
+                    node: tuple[int, int] | None = cur
+                    while node is not None and parent[node] is not None:
+                        prev, pd = parent[node]
+                        path.append(pd)
+                        node = prev
+                    path.reverse()
+                    path.append(d)
+                    found = path
+                    found_state = em.get_state()
+                    break
+                if s.screen != ROOM_L4_STEPLADDER or s.mode == 17:
+                    continue
+                nc = cell(s.link_x, s.link_y)
+                if nc in seen:
+                    continue
+                seen.add(nc)
+                cell_state[nc] = em.get_state()
+                parent[nc] = (cur, d)
+                q.append(nc)
+
+        best_meta = {
+            "hold": hold_i,
+            "cell_q": qstep,
+            "expansions": expansions,
+            "n_cells": len(seen),
+            "start": [s0.link_x, s0.link_y],
+            "path_len": len(found) if found else 0,
+        }
+        if found is not None and found_state is not None:
+            best_path = found
+            goal_state = found_state
+            break
+
+    if goal_state is not None:
+        em.set_state(goal_state)
+        for _ in range(5):
+            env.step(nes_idle_action())
+            if assist is not None:
+                assist.apply_env(env, frame=frame0)
+    else:
+        em.set_state(base_state)
+        for _ in range(5):
+            env.step(nes_idle_action())
+            if assist is not None:
+                assist.apply_env(env, frame=frame0)
+
+    meta = {
+        "success": best_path is not None
+        and int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0,
+        "ladder": int(read_u8(env.get_ram(), ADDR_LADDER)),
+        "segment": "level4_stepladder_bfs",
+        **best_meta,
+    }
+    return best_path, meta
+
+
+
+def _follow_60_ladder_path(env, path: list[str], *, assist, frame0: int):
+    """No-op follow when BFS already restored goal state with ADDR_LADDER.
+
+    Kept for API symmetry with east_32; success is ladder inventory.
+    """
+    from zelda_i.ram import ADDR_LADDER, read_u8
+
+    frame = frame0
+    obs = None
+    if int(read_u8(env.get_ram(), ADDR_LADDER)) > 0:
+        for _ in range(10):
+            obs, *_ = env.step(nes_idle_action())
+            frame += 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
+        return obs, frame, True
+    # Fallback: try replaying path tokens if goal state was not applied.
+    from zelda_i.level4_dungeon import MAZE_60_HOLD
+
+    ladder0 = int(read_u8(env.get_ram(), ADDR_LADDER))
+    for d in path:
+        for _ in range(MAZE_60_HOLD):
+            obs, *_ = env.step(nes_action(d))
+            frame += 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
+            s = read_snapshot(env.get_ram())
+            if s.transitioning or s.mode in (4, 6, 7, 16):
+                for _ in range(40):
+                    obs, *_ = env.step(nes_idle_action())
+                    frame += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame)
+            if int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0:
+                return obs, frame, True
+    return obs, frame, int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0
+
+
 def run_once(
     *,
     segment: str,
@@ -595,13 +1021,16 @@ def run_once(
     try:
         result = env.reset()
         obs = result[0] if isinstance(result, tuple) else result
-        obs, *_ = env.step(nes_idle_action())
-        if assist is not None:
-            assist.apply_env(env, frame=0)
+        # stepladder dual-green isolation used 5 idle frames pre-clear (RNG).
+        idle_n = 5 if segment == "stepladder" else 1
+        for i in range(idle_n):
+            obs, *_ = env.step(nes_idle_action())
+            if assist is not None:
+                assist.apply_env(env, frame=i)
 
         entry = read_snapshot(env.get_ram())
         entry_fields = _snap_fields(entry)
-        frame = 1
+        frame = idle_n
         ok = False
         error: str | None = None
 
@@ -1428,6 +1857,120 @@ def run_once(
                     ok = e32_ok and level4_room_32_ready(env.get_ram())
             else:
                 ok = False
+
+        elif segment == "clear_32":
+            # Level4Room32: clear 2× Zol + 2× LikeLike (ignore 0x2b / 0x68).
+            snap = read_snapshot(env.get_ram())
+            if snap.screen != ROOM_L4_EAST_32:
+                error = f"unsupported_start_0x{snap.screen:02x}"
+            ctl = make_room_32_clear_controller()
+            controllers["clear_32"] = ctl
+            if error is None:
+                if snap.screen == ROOM_L4_EAST_32:
+                    ctl.phase = DungeonPhase.FIGHT
+                obs, frame = _run_until(
+                    env,
+                    ctl,
+                    assist=assist,
+                    max_frames=ROOM_32_SPEC.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+            ok = (
+                error is None
+                and level4_room_32_cleared(env.get_ram())
+                and ctl.success
+            )
+
+        elif segment == "stepladder":
+            # From Level4Room32: clear → push left → stairs 0x60 → ADDR_LADDER.
+            # Clear+push+enter use the controller; basement uses live hold4 BFS
+            # (scripted path is spawn-relative; entry pose varies).
+            from zelda_i.level4_dungeon import (
+                MAZE_60_HOLD,
+                PUSH_32_DIR,
+                PUSH_32_HOLD,
+                PUSH_32_STAND,
+                ROOM_L4_STEPLADDER,
+                STAIRS_32_APPROACH,
+                STAIRS_32_PUSH,
+                STAIRS_32_PUSH_FRAMES,
+                StepladderPhase,
+            )
+
+            snap = read_snapshot(env.get_ram())
+            if snap.screen != ROOM_L4_EAST_32 and not level4_stepladder_success(
+                env.get_ram()
+            ):
+                error = f"unsupported_start_0x{snap.screen:02x}"
+
+            if error is None and not level4_stepladder_success(env.get_ram()):
+                # 1) Clear with raw loop (match dual-green isolation timing).
+                if not level4_room_32_cleared(env.get_ram()):
+                    clr = make_room_32_clear_controller()
+                    clr.phase = DungeonPhase.FIGHT
+                    controllers["clear_32"] = clr
+                    for _ in range(ROOM_32_SPEC.max_frames):
+                        snap = read_snapshot(env.get_ram())
+                        act = clr.step(snap)
+                        obs, *_ = env.step(act.action)
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                        if clr.success:
+                            break
+                    if not level4_room_32_cleared(env.get_ram()):
+                        error = "clear_32_failed"
+
+                # 2) Controller push + enter (stop on 0x60 / mode 9/16).
+                if error is None:
+                    ctl = make_stepladder_controller(clear_first=False)
+                    ctl.phase = StepladderPhase.ALIGN_PUSH
+                    controllers["stepladder_push"] = ctl
+                    for _ in range(15000):
+                        snap = read_snapshot(env.get_ram())
+                        act = ctl.step(snap)
+                        obs, *_ = env.step(act.action)
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                        if (
+                            snap.screen == ROOM_L4_STEPLADDER
+                            or snap.mode in (9, 16)
+                        ):
+                            break
+                        if ctl.phase.name in ("FAILED", "DONE"):
+                            break
+                    s = read_snapshot(env.get_ram())
+                    if s.screen != ROOM_L4_STEPLADDER and s.mode not in (9, 16):
+                        error = "stairs_enter_failed"
+                        controllers["stepladder_push_final"] = ctl.report()
+
+                # 3) Multi-grid BFS → ADDR_LADDER (goal-state restore).
+                if error is None and not level4_stepladder_success(env.get_ram()):
+                    path, bfs_meta = _bfs_60_to_ladder(
+                        env, assist=assist, frame0=frame
+                    )
+                    controllers["stepladder_bfs"] = bfs_meta
+                    if path is None or not bfs_meta.get("success"):
+                        error = "ladder_collect_failed"
+                    else:
+                        obs, frame, lad_ok = _follow_60_ladder_path(
+                            env, path, assist=assist, frame0=frame
+                        )
+                        controllers["stepladder"] = {
+                            "success": lad_ok,
+                            "path": path,
+                            "frames": frame,
+                            "segment": "level4_stepladder",
+                            "method": "bfs",
+                            "push_stand": list(PUSH_32_STAND),
+                            "stairs_approach": list(STAIRS_32_APPROACH),
+                        }
+                        if not lad_ok:
+                            error = "ladder_path_failed"
+
+            ok = error is None and level4_stepladder_success(env.get_ram())
 
         else:
             error = f"unknown_segment_{segment}"
