@@ -81,6 +81,11 @@ class FenceClearLoopTask(Task):
     max_failures: int = 3
     debug: bool = False
     debug_interval: int = 300
+    # When True (empty-can pond corridor): after one successful lift+local_drop
+    # the y=31 gap is open — return SUCCESS without requiring pond toss. ROM
+    # soft-blocks south transit while standing on the just-lifted gap tile with
+    # a false BFS path through (x,32); thrashing navigate_pond burns the day.
+    corridor_only: bool = False
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _pathfinder: Pathfinder = field(init=False)
@@ -122,6 +127,8 @@ class FenceClearLoopTask(Task):
         self._total_steps = 0
         self._failures = 0
         self._pond_hop_steps = 0
+        self._corridor_charge_done = False
+        self._local_drop_cycles = 0
         self.cleared_count = 0
         if self._toss_task is None:
             self._toss_task = RecordedTask.load(self.toss_task_name)
@@ -168,11 +175,29 @@ class FenceClearLoopTask(Task):
 
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         if input_lock != 1:
+            # Still need A/B mash to clear lock. corridor_only: arm local_drop
+            # so the moment lock clears we drop (not navigate_pond thrash).
+            if self.corridor_only and (
+                world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT
+            ):
+                if self._state not in ("local_drop",):
+                    self._state = "local_drop"
+                    self._steps_on_fence = 0
             action = make_action(a=True) if (self._steps_on_fence % 2 == 0) else make_action(b=True)
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason="input_lock")
 
         if self.max_fences is not None and self.cleared_count >= self.max_fences:
             return TaskResult(status=TaskStatus.SUCCESS)
+
+        # corridor_only: if stuck on scan while carrying, enter navigate_pond
+        # (which arms south-charge then local_drop). Do NOT steal verify_lift.
+        if (
+            self.corridor_only
+            and (world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT)
+            and self._state == "scan"
+        ):
+            self._state = "navigate_pond"
+            self._steps_on_fence = 0
 
         self._steps_on_fence += 1
         if self._steps_on_fence > self.max_steps_per_fence:
@@ -277,6 +302,73 @@ class FenceClearLoopTask(Task):
             current = self._navigator.current_tile
             best_pond = min(POND_TILES, key=lambda p: abs(p[0]-current[0]) + abs(p[1]-current[1]))
 
+            # Corridor-only (empty-can refill): skip pond toss thrash.
+            # ROM: while carrying on the gap tile, try a long south charge first
+            # (sometimes crosses); if still on y=31, local-drop (no face-up).
+            if self.corridor_only:
+                if current[1] == 31 and not getattr(self, "_corridor_charge_done", False):
+                    self._corridor_charge_done = True
+                    self._action_queue.clear()
+                    self._action_queue.extend(
+                        [make_action(down=True, b=True) for _ in range(100)]
+                    )
+                    self._action_queue.extend([make_action() for _ in range(10)])
+                    if self.debug:
+                        print(
+                            f"[FENCE] corridor_only: south charge while carrying "
+                            f"at {current}"
+                        )
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(self._action_queue.popleft()),
+                        reason="corridor_only south charge",
+                    )
+                if current[1] >= 32:
+                    # Crossed while carrying — count success, drop south of wall.
+                    if self.debug:
+                        print(f"[FENCE] corridor_only: crossed to {current}")
+                    self._state = "local_drop"
+                    self._steps_on_fence = 0
+                    self._pond_hop_steps = 0
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        reason="corridor_only drop south of wall",
+                    )
+                if self.debug:
+                    print(
+                        f"[FENCE] corridor_only: local drop at {current} "
+                        f"(skip pond toss thrash)"
+                    )
+                self._state = "local_drop"
+                self._steps_on_fence = 0
+                self._pond_hop_steps = 0
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    reason="corridor_only local drop",
+                )
+
+            # ROM trap: BFS invents a path through (x,32) after lift, but game
+            # physics soft-blocks south transit while standing on the gap tile.
+            # After short stasis on y=31, fall through to local_drop so the gap
+            # stays open for crop multi-hop (re-approach from y≤29 then charge).
+            if (
+                current[1] == 31
+                and self._navigator.stasis > 90
+            ):
+                if self.debug:
+                    print(
+                        f"[FENCE] gap-tile stasis at {current} "
+                        f"(stasis={self._navigator.stasis}); local drop"
+                    )
+                self._state = "local_drop"
+                self._steps_on_fence = 0
+                self._pond_hop_steps = 0
+                self._navigator.path = []
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    reason="local drop after gap soft-block",
+                )
+
             # We are at the pond if we are AT the gap tile
             if current == best_pond or self._navigator.at_tile(best_pond):
                 # Center on the toss tile
@@ -377,17 +469,48 @@ class FenceClearLoopTask(Task):
                 self._steps_on_fence = 0
                 if self.debug:
                     print(f"[FENCE] local drop complete cleared={self.cleared_count}")
+                # corridor_only: one (or max_fences) local drops open the gap —
+                # return SUCCESS without scanning more fences.
+                if self.corridor_only and (
+                    self.max_fences is None
+                    or self.cleared_count >= self.max_fences
+                ):
+                    return TaskResult(
+                        status=TaskStatus.SUCCESS,
+                        reason=f"corridor open cleared={self.cleared_count}",
+                    )
                 return TaskResult(status=TaskStatus.RUNNING, reason="local drop done")
             if not self._action_queue:
-                # Face south of the y=31 wall and throw; multi-face if first fails.
-                for face in ("down", "left", "right", "up"):
+                attempts = getattr(self, "_local_drop_cycles", 0)
+                # Prefer south/sideways first. After one failed cycle include up
+                # (crop drop uses up successfully). Never prefer up first —
+                # that seals y=29 re-approach.
+                if self.corridor_only and attempts == 0:
+                    faces = ("down", "left", "right")
+                else:
+                    faces = ("down", "left", "right", "up")
+                # corridor_only: if drop keeps failing, gap is already open from
+                # the lift — SUCCESS and let CropWaterTask finish the drop.
+                if self.corridor_only and attempts >= 2:
+                    self.cleared_count += 1
+                    if self.debug:
+                        print(
+                            f"[FENCE] corridor_only drop failed cycles={attempts}; "
+                            f"SUCCESS with gap open (still carrying)"
+                        )
+                    return TaskResult(
+                        status=TaskStatus.SUCCESS,
+                        reason="corridor open (drop deferred)",
+                    )
+                self._local_drop_cycles = attempts + 1
+                for face in faces:
                     self._action_queue.extend(
-                        [make_action(**{face: True}) for _ in range(8)]
+                        [make_action(**{face: True}) for _ in range(10)]
                     )
                     self._action_queue.extend(
-                        [make_action(**{face: True, "a": True}) for _ in range(12)]
+                        [make_action(**{face: True, "a": True}) for _ in range(18)]
                     )
-                    self._action_queue.extend([make_action() for _ in range(10)])
+                    self._action_queue.extend([make_action() for _ in range(12)])
             action = self._action_queue.popleft()
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 

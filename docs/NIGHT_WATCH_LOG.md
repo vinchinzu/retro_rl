@@ -460,3 +460,32 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Continuous 1× GREEN ice_r3 148192f room 0xA890 beams 0x1007. Dual flaky.
 - No STATUS. Next: dual continuous integrity 2/2.
 
+### 2026-08-10T00:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - harvest: `rr-3q27` Natural empty-can refill + return_home hang
+  - super_metroid: `rr-kxge` Dual continuous --to ice stabilize (single GREEN; dual flaky)
+  - zelda_i: `rr-tib8` L4 0x32 + `rr-o0nn` / `rr-5lu` stepladder residual
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Idle priority action:** mega_man_2 `rr-54ui` OPEN (not in_progress) — fan platform → boss
+- **Spawned manager (worktree):** mega_man_2 → claim `rr-54ui`
+  - subagent_id: `019fea0c-198d-7f41-ba10-f7763de25a80` (worktree isolation)
+- **Not spawned (busy):** harvest, super_metroid, zelda_i
+- **Not spawned:** solver rr-gbd.32 CLOSED; remaining gbd open P3/P4 sketches only
+- **Cap:** 3 busy + 1 MM2 = 4 / 6 lanes
+- Never push. Next tick: skip busy lanes; harvest tip stays empty-can until free.
+
+### 2026-08-10T00:20 CDT — harvest rr-3q27 empty-can (open; F9 sealed + gap residual)
+- **Claimed** `rr-3q27` (tip under rr-20w). Prefer Clean.
+- **ROM recon:** north F9 is **sealed** from west plant pocket (y=13–14 fence bar);
+  full BFS never reaches F9 stands; prior multihop was false manhattan progress.
+- **Code:** preferred multihop requires hop nearly-arrives (≤3); `FenceClearLoopTask.corridor_only`
+  local-drop (no pond-toss thrash); gap densify never charges south from y=31;
+  fence soft-timeout no longer aborts mid-carry; local_drop avoids north-first.
+- **Units:** 63 passed (`test_water_refill` + `test_crop_planter_logic`).
+- **ROM dry** `Y1_Test_Crops_Planted_Dry`: still **`can_peak=0`**
+  (`snes/harvest/recordings/empty_can_refill_probe.json`) — fence_att=1 gap=true
+  but soft-block on (13,31) gap transit / local-drop-while-carrying.
+- **Not closed** rr-3q27 (no natural fill GREEN). **rr-20w** remains open.
+- Next tip: carry-south cross of y=31 gap OR recorded `toss_fence_pond` from gap
+  OR reliable empty charge from (12,29) after south-side drop.
+- No push.
