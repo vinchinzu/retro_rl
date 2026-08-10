@@ -1,15 +1,18 @@
-"""Level 4 Gleeok fight + HC + TF bit 0x08 (rr-rvae dual-green).
+"""Level 4 Gleeok fight + HC + TF bit 0x08 (rr-rvae / rr-vdnc).
 
 Live facts (from ``Level4GleeokEnter``, room **0x13**)::
 
     - Body type ``0x43`` starts HP≈160; TYPE-only residual after head split.
-    - Detached head type ``0x46`` appears mid-fight (target heads when present).
-    - Fireball residual ``0x56`` (ignore for clear).
-    - Melee A-spam (no bomb requirement).
+    - Detached head type ``0x46`` appears mid-fight (do **not** chase — south
+      stand on body clears residual faster and safer than head kite).
+    - Fireball residual ``0x56`` (dodge only when very close).
+    - Clean policy: south stand ``(body.x, body.y+STAND_DY)`` face UP + A
+      (rr-vdnc). Bombs do not damage Gleeok.
     - Boss dead when body type ``0x43`` absent; HC RoomItemId ``0x1A`` mid-room.
     - UP @x≈120 → TF room **0x03**; walk mid → ``ADDR_TRIFORCE & 0x08``.
 
-Assisted first-pass dual-green 2/2 (~3649f). Not Clean STATUS.
+Assisted first-pass dual-green 2/2 (~3649f). Clean dual from GleeokEnter
+(rr-vdnc south-stand). Not full-game Clean STATUS.
 """
 
 from __future__ import annotations
@@ -41,11 +44,14 @@ from zelda_i.ram import (
 
 # Live companion head type during Gleeok fight (rr-rvae 2026-08-10).
 GLEEOK_HEAD_OBJECT_TYPE = 0x46
-GLEEOK_FIREBALL_TYPE = 0x56  # ignore
+GLEEOK_FIREBALL_TYPE = 0x56  # dodge when close; ignore for clear
 ROOM_L4_TRIFORCE = 0x03  # north of boss 0x13 after clear
 
-# Prefer body HP while heads absent; prefer heads when present.
+# Clean-safe south stand (rr-vdnc): dy=22 UP+A dual-green from GleeokEnter.
+STAND_DY = 22
+FIREBALL_DODGE_DIST = 14
 FIGHT_MAX_FRAMES = 20000
+APPROACH_SOUTH_Y = 165
 HC_STANDS: tuple[tuple[int, int], ...] = (
     (120, 125),
     (124, 111),
@@ -105,6 +111,45 @@ def gleeok_heads_live(snap: ZeldaSnapshot) -> list:
     ]
 
 
+def gleeok_fireballs(snap: ZeldaSnapshot) -> list:
+    """Fireball type 0x56 (contact hazard; not a clear target)."""
+    return [
+        o
+        for o in snap.objects
+        if 1 <= o.slot <= 12 and o.type_id == GLEEOK_FIREBALL_TYPE
+    ]
+
+
+def _fireball_dodge_dir(snap: ZeldaSnapshot, *, thr: int = FIREBALL_DODGE_DIST) -> str | None:
+    """Horizontal strafe away from nearest fireball if within ``thr``."""
+    balls = gleeok_fireballs(snap)
+    if not balls:
+        return None
+    nearest = min(
+        balls,
+        key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
+    )
+    dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+    if dist > thr:
+        return None
+    if nearest.x >= snap.link_x:
+        return "LEFT" if snap.link_x > 56 else "RIGHT"
+    return "RIGHT" if snap.link_x < 200 else "LEFT"
+
+
+def _south_stand_action(snap: ZeldaSnapshot, body, *, stand_dy: int = STAND_DY):
+    """Walk to (body.x, body.y+stand_dy) then face UP + A."""
+    sx = int(body.x)
+    sy = min(173, int(body.y) + stand_dy)
+    if abs(snap.link_x - sx) > 3 or abs(snap.link_y - sy) > 3:
+        if abs(snap.link_y - sy) >= abs(snap.link_x - sx):
+            face = "DOWN" if snap.link_y < sy else "UP"
+        else:
+            face = "RIGHT" if snap.link_x < sx else "LEFT"
+        return nes_action(face)
+    return nes_action("UP", "A")
+
+
 def level4_tf08(ram: Any) -> bool:
     return bool(int(read_u8(ram, ADDR_TRIFORCE)) & TF_BIT_L4)
 
@@ -128,10 +173,14 @@ class Level4GleeokFightController:
     """Melee Gleeok → HC → UP 0x03 → TF 0x08 from Level4GleeokEnter.
 
     Assisted dual-green 2/2 from ``Level4GleeokEnter`` (rr-rvae).
+    Clean dual via south-stand policy (rr-vdnc): hold south of body face UP+A;
+    do not chase detached heads while body residual remains.
     """
 
     tag: str = "l4_gleeok"
     max_frames: int = FIGHT_MAX_FRAMES
+    stand_dy: int = STAND_DY
+    fireball_dodge_dist: int = FIREBALL_DODGE_DIST
     success: bool = False
     boss_beaten: bool = False
     hc_collected: bool = False
@@ -141,6 +190,7 @@ class Level4GleeokFightController:
     notes: list[str] = field(default_factory=list)
     log: list[dict[str, Any]] = field(default_factory=list)
     fight_report: dict[str, Any] = field(default_factory=dict)
+    _approached: bool = field(default=False, repr=False)
 
     def report(self) -> dict[str, Any]:
         return {
@@ -154,6 +204,8 @@ class Level4GleeokFightController:
             "log_tail": self.log[-20:],
             "fight": self.fight_report,
             "segment": "level4_gleeok_fight_tf",
+            "policy": "south_stand",
+            "stand_dy": self.stand_dy,
             "target_room": f"0x{ROOM_L4_GLEEOK_13:02x}",
             "tf_room": f"0x{ROOM_L4_TRIFORCE:02x}",
             "tf_bit": f"0x{TF_BIT_L4:02x}",
@@ -184,12 +236,25 @@ class Level4GleeokFightController:
 
         hc0 = snap0.heart_containers
         last_body_hp: int | None = None
+        last_filled: int | None = snap0.filled_hearts
+        invuln = 0
         phase = "fight"
+        self._approached = False
+        self.notes.append(
+            f"policy=south_stand dy={self.stand_dy} "
+            f"fb_dodge<={self.fireball_dodge_dist}"
+        )
 
         for frame in range(self.max_frames):
             snap = read_snapshot(env.get_ram())
             ram = env.get_ram()
             self.frames = total[0]
+            filled = snap.filled_hearts
+            if last_filled is not None and filled < last_filled:
+                invuln = 48
+            last_filled = filled
+            if invuln > 0:
+                invuln -= 1
 
             if level4_tf08(ram):
                 self.tf08 = True
@@ -213,6 +278,8 @@ class Level4GleeokFightController:
                     "notes": list(self.notes),
                     "log": self.log[-40:],
                     "final": final,
+                    "policy": "south_stand",
+                    "stand_dy": self.stand_dy,
                 }
                 if final.get("heart_containers", 0) > hc0:
                     self.hc_collected = True
@@ -228,6 +295,7 @@ class Level4GleeokFightController:
                     "frames": frame,
                     "notes": list(self.notes),
                     "log": self.log[-20:],
+                    "policy": "south_stand",
                 }
                 self.fight_report = result
                 return result
@@ -260,7 +328,7 @@ class Level4GleeokFightController:
                     self.boss_beaten = True
                     self.notes.append(
                         f"boss_dead f={frame} rad={snap.room_all_dead} "
-                        f"doors={snap.cur_opened_doors}"
+                        f"doors={snap.cur_opened_doors} heads={len(heads)}"
                     )
                     self.log.append(
                         {
@@ -272,53 +340,74 @@ class Level4GleeokFightController:
                     phase = "hc"
                     continue
 
-                targets = heads if heads else bodies
-                if not targets:
+                # Entry: drop south first (avoid left-band body contact), then
+                # align under body x before engaging stand.
+                if not self._approached:
+                    if snap.link_y < APPROACH_SOUTH_Y:
+                        env.step(nes_action("DOWN"))
+                        total[0] += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=total[0])
+                        continue
+                    bx = bodies[0].x if bodies else 124
+                    if abs(snap.link_x - bx) > 8:
+                        env.step(
+                            nes_action(
+                                "RIGHT" if snap.link_x < bx else "LEFT"
+                            )
+                        )
+                        total[0] += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=total[0])
+                        continue
+                    self._approached = True
+                    self.notes.append(
+                        f"approach_south f={frame} xy=({snap.link_x},{snap.link_y})"
+                    )
+
+                # Tight fireball dodge (horizontal) when not invulnerable.
+                dodge = (
+                    None
+                    if invuln > 0
+                    else _fireball_dodge_dir(
+                        snap, thr=self.fireball_dodge_dist
+                    )
+                )
+                if dodge is not None:
+                    env.step(nes_action(dodge))
+                    total[0] += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=total[0])
+                    continue
+
+                if bodies:
+                    # South stand on body for full fight — do not chase heads
+                    # while residual body remains (rr-vdnc Clean).
+                    act = _south_stand_action(
+                        snap, bodies[0], stand_dy=self.stand_dy
+                    )
+                    env.step(act)
+                elif heads:
+                    # Body gone, heads linger: brief face-and-slash.
+                    nearest = min(
+                        heads,
+                        key=lambda o: abs(o.x - snap.link_x)
+                        + abs(o.y - snap.link_y),
+                    )
+                    dx = nearest.x - snap.link_x
+                    dy = nearest.y - snap.link_y
+                    if abs(dx) >= abs(dy):
+                        face = "RIGHT" if dx > 0 else "LEFT"
+                    else:
+                        face = "DOWN" if dy > 0 else "UP"
+                    env.step(nes_action(face, "A"))
+                else:
                     env.step(
                         nes_action(
                             ("UP", "RIGHT", "DOWN", "LEFT")[frame // 18 % 4],
                             "A",
                         )
                     )
-                else:
-                    nearest = min(
-                        targets,
-                        key=lambda o: abs(o.x - snap.link_x)
-                        + abs(o.y - snap.link_y),
-                    )
-                    dist = abs(nearest.x - snap.link_x) + abs(
-                        nearest.y - snap.link_y
-                    )
-                    dx = nearest.x - snap.link_x
-                    dy = nearest.y - snap.link_y
-                    if abs(dx) >= abs(dy):
-                        face = "RIGHT" if dx > 0 else "LEFT"
-                        circle = "DOWN" if (frame // 20) % 2 == 0 else "UP"
-                    else:
-                        face = "DOWN" if dy > 0 else "UP"
-                        circle = "RIGHT" if (frame // 20) % 2 == 0 else "LEFT"
-                    if dist > 30:
-                        act = (
-                            nes_action(face, "A")
-                            if frame % 2 == 0
-                            else nes_action(face)
-                        )
-                    elif dist > 10:
-                        act = nes_action(face, "A")
-                    else:
-                        back = {
-                            "RIGHT": "LEFT",
-                            "LEFT": "RIGHT",
-                            "UP": "DOWN",
-                            "DOWN": "UP",
-                        }[face]
-                        d = circle if frame % 3 else back
-                        act = (
-                            nes_action(d, "A")
-                            if frame % 2 == 0
-                            else nes_action(d)
-                        )
-                    env.step(act)
                 total[0] += 1
                 if assist is not None:
                     assist.apply_env(env, frame=total[0])
@@ -488,12 +577,15 @@ def make_gleeok_fight_controller(
 
 __all__ = [
     "FIGHT_MAX_FRAMES",
+    "FIREBALL_DODGE_DIST",
     "GLEEOK_FIREBALL_TYPE",
     "GLEEOK_HEAD_OBJECT_TYPE",
     "HC_STANDS",
     "Level4GleeokFightController",
     "ROOM_L4_TRIFORCE",
+    "STAND_DY",
     "TF_STANDS",
+    "gleeok_fireballs",
     "gleeok_heads_live",
     "gleeok_live",
     "level4_complete_success",
