@@ -160,7 +160,9 @@ used before any emulator integration:
 - `BindingCatalog.publication_edges` excludes unbound and below-natural-entry
   transitions. Parallel graph edges are independent because both bindings and
   evidence are keyed by edge ID, never only by source/target pair.
-- `retro_harness.solver.SolverSession` is the execution kernel: it checks a
+- `retro_harness.solver.SolverSession` is the execution kernel (implemented in
+  `solver_session`; immutable observation/spec/outcome/trace types live in
+  `solver_domain`; `solver` remains the public facade). It checks a
   `SkillSpec` observation requirement, dispatches the bound `SkillInstance`, emits
   actions until success/failure/timeout, validates observed progression and
   resource deltas, and replans after retryable failures. Its deterministic
