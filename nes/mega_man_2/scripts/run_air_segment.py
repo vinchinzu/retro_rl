@@ -1,18 +1,22 @@
-"""Clear Air Man early screens with hard timeout.
+"""Clear Air Man screens with hard timeout.
 
 Success: ``camera_x_screen`` ≥ ``--target-screen`` with health > 0 and not
 fallen, within ``--max-frames``.
 
-Verified (2026-08-08, Clean Bronze):
+Verified (Clean Bronze):
 
 - target 1 from ``Level1``: legacy ``AirScreen1Policy`` (~248f)
-- target 2 from ``Level1``: ``AirManPolicy`` (~521f, HP 22, 3/3)
+- target 2 from ``Level1``: ``AirManPolicy`` (~521f, HP 22, 3/3; 2026-08-08)
 - target 2 from ``AirLanded``: ``AirManPolicy(start=landed)`` (~225f, 3/3)
+- target 3 from ``AirScreen2``: ``AirManPolicy(start=screen2)`` (~241f, HP 20, 3/3; 2026-08-09)
+- target 4 from ``AirScreen2``: same (~502f, HP 16, 3/3)
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python nes/mega_man_2/scripts/run_air_segment.py --trials 3
 uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirLanded --trials 3
+uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirScreen2 --target-screen 3 --trials 3
+uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirScreen2 --target-screen 4 --trials 3
 ```
 """
 
@@ -56,7 +60,12 @@ def _make_policy(*, state_name: str, target_screen: int):
     """Pick policy for start state / target."""
     if target_screen <= 1:
         return AirScreen1Policy(target_camera_screen=target_screen)
-    start = "landed" if state_name.startswith("AirLanded") else "level1"
+    if state_name.startswith("AirScreen2"):
+        start = "screen2"
+    elif state_name.startswith("AirLanded"):
+        start = "landed"
+    else:
+        start = "level1"
     return AirManPolicy(target_camera_screen=target_screen, start=start)
 
 
@@ -101,7 +110,8 @@ def run_air_segment(
         "trial_reports": trial_reports,
         "notes": (
             "Air Man camera X screen ≥ target. "
-            "Level1→2 uses AirManPolicy (early 50/12, land jump, mid 50/12, gap@142)."
+            "Level1→2: AirManPolicy (early 50/12, land jump, mid 50/12, gap@142). "
+            "AirScreen2→3/4: start=screen2 (approach 45/16, fan hold 145–180, late 40/16)."
         ),
     }
     write_json_report(out / "air_segment.json", report)
