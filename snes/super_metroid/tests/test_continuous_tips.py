@@ -73,11 +73,14 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "bat_cave",
         "speed",
         "wave",
+        "ice",
     ]
     # Default tip is furthest STATUS-promoted integrity-green tip (Wave).
+    # Ice is composed (rr-dbu.7) but not STATUS-promoted without dual continuous.
     assert DEFAULT_CONTINUOUS_TIP == "wave"
     assert DEFAULT_CONTINUOUS_TIP in ids
     assert ids.index("speed") < ids.index("wave")
+    assert ids.index("wave") < ids.index("ice")
 
 
 def test_continuous_tips_align_with_tip_specs() -> None:
@@ -280,10 +283,11 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "bat_cave",
         "speed",
         "wave",
+        "ice",
     )
     assert tuple(s.tip_id for s in SUPER_TIP_SPECS) == expected_super
     # Unified table includes early + Super+.
-    for tip_id in ("morph", "supers", "red_tower", "bat_cave", "speed", "wave"):
+    for tip_id in ("morph", "supers", "red_tower", "bat_cave", "speed", "wave", "ice"):
         assert tip_id in TIP_BY_ID
         assert isinstance(TIP_BY_ID[tip_id], TipSpec)
     assert {s.tip_id for s in TIP_SPECS} >= set(expected_super) | {
@@ -321,6 +325,19 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "single_to_double_chamber",
         "double_chamber_to_wave",
     ]
+    assert SUPER_TIP_BY_ID["ice"].parent_tip_id == "wave"
+    assert SUPER_TIP_BY_ID["ice"].final_room == 0xA890
+    assert SUPER_TIP_BY_ID["ice"].success_outcome == "ice_collected"
+    assert [h.split_id for h in SUPER_TIP_BY_ID["ice"].hops] == [
+        "business_to_ice_gate",
+        "ice_gate_to_acid",
+        "ice_acid_to_snake",
+        "ice_snake_to_ice",
+    ]
+    # Catalog alias + default tip stays Wave (no STATUS promote of ice).
+    assert get_continuous_tip("ice_beam").tip_id == "ice"
+    assert get_continuous_tip("k4_11").tip_id == "ice"
+    assert DEFAULT_CONTINUOUS_TIP == "wave"
 
 
 def test_post_supers_aliases_and_hop_tables() -> None:
