@@ -132,19 +132,19 @@ Test crop fixtures (for growth / ship work):
    sealed** from west plant pocket by y=13–14 fence bar (full BFS never reaches
    F9 stands; manhattan hops to ~(21,23) were false positives). Multihop
    preferred edges now require hop *nearly arrives* (end within 3) so sealed
-   F9/FA no longer starve fence-open. `FenceClearLoopTask(corridor_only=True)`
-   arms local-drop (no pond-toss thrash); gap re-approach densify never charges
-   south from y=31; soft-timeout no longer aborts mid-carry when gap just opened.
-   **ROM dry-fixture still `can_peak=0`** (`recordings/empty_can_refill_probe.json`):
-   fence_att=1 + gap=true but south transit through single/double y=31 gap still
-   soft-blocks (player sticks on (13,31) y=505; local-drop while carrying on gap
-   often fails / input_lock). Next tip: **carry south charge that crosses**, or
-   recorded toss_fence_pond from gap, or drop south-of-wall then empty charge
-   from (12,29).
+   F9/FA no longer starve fence-open.
+   **2026-08-10 later (rr-3q27):** **Natural empty-can fill GREEN** on
+   `Y1_Test_Crops_Planted_Dry` Clean — `can_peak=20`, `refill_count=1`,
+   `watered=2/3` (`recordings/empty_can_refill_probe.json`, ~8k frames).
+   ROM path: corridor_only fence open → **east→south** wall cross (empty gap
+   charge soft-blocks on (13,31)) → **west→south-lip** from (28,32) soft-block
+   band → F0 stand `(32,34)` face up fill → water-return north charge.
+   Residual: return_home hang ~D5; water tile reliability (2/3); full
+   Inside_House multi-day (rr-20w). Parent **rr-20w** stays open.
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
-   **ROM with charged can OK** (Dry fixture + can=20 → 3 wet `0x55`); still
-   needs natural fill (item 2) for empty-can start without RAM poke.
+   **ROM natural empty-can fill OK** on dry fixture (`can_peak=20`); water
+   after fill partial (2/3 tiles) — return nav residual.
 4. ~~Multi-day growth from `Y1_Test_Crops_Planted_Watered`~~ — **done** (mature `0x60` at D8; journal water deltas).
 5. ~~Harvest + ship + post-5pm money assert (rr-53g)~~ — **CLOSED 2026-08-09 night** Clean:
    ```bash
