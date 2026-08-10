@@ -13,6 +13,7 @@ Wave return (rr-vqv3 stack, Phase B reverse):
 
 * ``wave_to_double`` — Wave → Double (rr-pd0i)
 * ``double_to_single`` — Double → Single return (rr-qpkd)
+* ``single_to_bubble`` — Single → Bubble return (rr-u0y8)
 
 Package layout
 --------------
@@ -25,6 +26,7 @@ Package layout
 * ``double_to_wave`` — K4.10 Super door + Wave chozo collect
 * ``wave_to_double`` — Wave return first hop (unblock Ice continuous prefix)
 * ``double_to_single`` — Double → Single return (Wave return stack hop 2)
+* ``single_to_bubble`` — Single → Bubble return (Wave return stack hop 3)
 
 Public API is also re-exported from :mod:`super_metroid.routes.kpdr.k4_wave`
 for stable registry / spine_hops / probe imports.
@@ -48,6 +50,9 @@ from super_metroid.routes.kpdr.wave.double_to_wave import (
     play_double_chamber_to_wave,
 )
 from super_metroid.routes.kpdr.wave.geometry import WAVE_BEAM_MASK
+from super_metroid.routes.kpdr.wave.single_to_bubble import (
+    play_single_to_bubble,
+)
 from super_metroid.routes.kpdr.wave.single_to_double import (
     play_single_to_double_chamber,
 )
@@ -62,6 +67,7 @@ __all__ = [
     "play_double_chamber_to_wave",
     "play_wave_to_double_chamber",
     "play_double_to_single_chamber",
+    "play_single_to_bubble",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",

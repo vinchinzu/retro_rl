@@ -104,6 +104,7 @@ from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_single_to_double_chamber,
     play_wave_to_double_chamber,
     play_double_to_single_chamber,
+    play_single_to_bubble,
 )
 from super_metroid.routes.kpdr.spazer import (  # noqa: E402
     play_below_spazer_climb,
@@ -545,6 +546,7 @@ def main() -> None:
             "double-chamber-to-wave",
             "wave-to-double-chamber",
             "double-to-single-chamber",
+            "single-to-bubble",
             "frog-save-to-speedway",
             "speedway-to-farm",
         ),
@@ -752,6 +754,7 @@ def main() -> None:
             "double-chamber-to-wave": play_double_chamber_to_wave,
             "wave-to-double-chamber": play_wave_to_double_chamber,
             "double-to-single-chamber": play_double_to_single_chamber,
+            "single-to-bubble": play_single_to_bubble,
             "frog-save-to-speedway": play_frog_save_to_speedway,
             "speedway-to-farm": play_speedway_to_farm,
         }[args.segment]
