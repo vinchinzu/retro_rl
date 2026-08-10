@@ -142,6 +142,22 @@ FTS_DOOR_FRAMES = 280
 FTS_SPEEDWAY_SETTLE = 280
 
 # ---------------------------------------------------------------------------
+# Speedway → Frog Save return (STF_*) — rr-05dp / Phase B hop 12
+# Source post_farm_to_speedway_pure ~(2008,139) Speedway **right** entry.
+# Human tape f9283–9707: B+LEFT dash through Boost Blocks → left blue door
+# into Frog Save ``0xB167`` settle **right** ~(200–240,139) (Speedway east).
+# Product loadout **requires Speed** (mid Boost Blocks).
+# ---------------------------------------------------------------------------
+STF_PIN_X = (1950, 2100)  # right entry after Farm leave
+STF_PIN_Y = (100, 180)
+STF_BOOST_BLOCK_X = 800  # stall without Speed (~x795 from left entry)
+STF_DOOR_X = 40
+STF_DOOR_Y = (120, 160)
+STF_LEAVE_FRAMES = 900
+STF_DOOR_FRAMES = 320
+STF_FROG_SETTLE = 280
+
+# ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM (DC_*)
 # Live (2026-08-06, rr-dbu.10): entry ~(61,139); upper hop → Kamer seat
 # x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200.
@@ -255,6 +271,24 @@ __all__ = [
     "BTF_DROP_FRAMES",
     "BTF_BOTTOM_FRAMES",
     "BTF_DOOR_FRAMES",
+    "SPEED_BOOSTER_MASK",
+    "FTS_PIN_X",
+    "FTS_PIN_Y",
+    "FTS_MID_HOP_X",
+    "FTS_DOOR_X",
+    "FTS_DOOR_Y",
+    "FTS_LEAVE_FRAMES",
+    "FTS_DOOR_FRAMES",
+    "FTS_SPEEDWAY_SETTLE",
+    "STF_PIN_X",
+    "STF_PIN_Y",
+    "STF_BOOST_BLOCK_X",
+    "STF_DOOR_X",
+    "STF_DOOR_Y",
+    "STF_LEAVE_FRAMES",
+    "STF_DOOR_FRAMES",
+    "STF_FROG_SETTLE",
+    "has_speed",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",
