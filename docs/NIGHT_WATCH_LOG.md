@@ -525,3 +525,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next tip: **`rr-05fz`** post-ladder residual (water/map/Gleeok/TF 0x08) under `rr-q3n`.
 - Units: `test_level4_dungeon.py` 9 passed. Commit only (no push).
 
+### 2026-08-10T01:45 CDT — zelda L4 Stepladder pure dual-green ★
+- **CLOSED** `rr-tib8`/`rr-o0nn`/`rr-5lu`: 0x32 clear 2/2 + 0x60 ADDR_LADDER 2/2.
+- Stairs push from clear pose; need 5 idle after reset (RNG trap). Next: `rr-05fz` post-ladder residual.
+
