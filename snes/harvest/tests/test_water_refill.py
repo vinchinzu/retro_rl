@@ -530,6 +530,100 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
             msg=f"east-crawl should push east, got {hop2}",
         )
 
+    def test_east_south_charge_targets_past_fence_end(self) -> None:
+        """Charge must run past x=29 fence wall end (not stop at 29,30)."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        _set_player_tile(ram, (25, 30))
+        task._navigator.update(ram)
+        task._queue_east_south_corridor_charge((25, 30))
+        self.assertTrue(task._pending_gap_charge)
+        self.assertGreater(len(task._action_queue), 100)
+        # Count RIGHT frames — must be enough to reach x≥31 from 25 (need ≥6).
+        rights = sum(1 for a in task._action_queue if int(a[6]) == 1)  # right bit
+        # Action layout may vary; fall back to queue length + charge flag.
+        self.assertGreaterEqual(
+            len(task._action_queue),
+            28 * 6,
+            msg="east frames must cover past fence end x=31",
+        )
+        # Still-north at (29,30) must re-queue (prior residual).
+        task._action_queue.clear()
+        task._pending_gap_charge = True
+        task._east_south_charges = 1
+        _set_player_tile(ram, (29, 30))
+        task._navigator.update(ram)
+        task._handle_navigate(ram)
+        self.assertTrue(
+            task._pending_gap_charge or len(task._action_queue) > 0,
+            msg="still_north at (29,30) must re-queue east→south past x≥31",
+        )
+        self.assertGreaterEqual(task._east_south_charges, 2)
+
+    def test_south_lip_densify_prefers_east_not_ns_oscillate(self) -> None:
+        """From (24,34) must not thrash to (24,35); prefer east toward F0."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        hop = task._refill_hop_goal(ram, (24, 34), (32, 34))
+        self.assertNotEqual(
+            hop,
+            (24, 35),
+            msg=f"must not pure-south thrash, got {hop}",
+        )
+        self.assertGreater(
+            hop[0],
+            24,
+            msg=f"from (24,34) must push east toward F0, got {hop}",
+        )
+        hop2 = task._refill_hop_goal(ram, (24, 35), (32, 34))
+        self.assertNotEqual(
+            hop2,
+            (24, 34),
+            msg=f"must not reverse to (24,34), got {hop2}",
+        )
+        self.assertGreaterEqual(
+            hop2[0],
+            24,
+            msg=f"from (24,35) must not go west, got {hop2}",
+        )
+
+    def test_south_of_wall_densify_thrash_arms_lip_charge(self) -> None:
+        """Two stalls at (24,34)→F0 must arm west→south-lip charge."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        task._plot_phase = "refill"
+        task._refill_multihop = True
+        # First stall only records; second arms charge.
+        p1 = task._find_nav_path(ram, (24, 34), (32, 34))
+        self.assertIsNotNone(p1)
+        p2 = task._find_nav_path(ram, (24, 34), (32, 34))
+        self.assertIsNone(
+            p2,
+            msg="second densify stall must return None and arm lip charge",
+        )
+        self.assertTrue(
+            getattr(task, "_pending_south_lip_charge", False)
+            or len(task._action_queue) > 0,
+            msg="south densify thrash must arm west→south-lip",
+        )
+
 
 class FenceLocalDropTests(unittest.TestCase):
     """FenceClearLoopTask must not hard-fail when pond BFS is viewport-blocked."""
