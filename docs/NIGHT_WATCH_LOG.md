@@ -122,3 +122,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Checkpoint AirFanPlatform (prog~949 scr3); pure late RIGHT pits ~1047.
 - Next: fan updraft/ladder from AirFanPlatform, not mid-air AirScreen4.
 
+### 2026-08-09T21:48 CDT — SM continuous --to ice compose closed
+- **CLOSED** `rr-dbu.7` compose wired (TipSpec/spine/catalog). No dual continuous STATUS.
+- Blocker: Wave tip ends 0xADDE; ice hops start Business 0xA7DE → next **rr-vqv3** Wave→Business pure return.
+
