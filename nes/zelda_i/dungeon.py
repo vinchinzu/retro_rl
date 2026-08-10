@@ -131,15 +131,26 @@ class DungeonRoomSpec:
     exit_routes: tuple[DoorRoute, ...] = ()
     max_frames: int = 6000
     level: int = 1
+    # Enemy types counted by presence even under TYPE_AND_HP (e.g. Vire split
+    # 0x1c has HP=0 while alive; slots 11–12 also hold live combatants).
+    type_only_enemy_types: tuple[int, ...] = ()
+    # Inclusive object-slot range (Zelda uses 1–12 for room combatants).
+    object_slot_max: int = 12
 
     def live_enemies(self, snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+        slot_max = max(1, int(self.object_slot_max))
         enemies = tuple(
             obj
             for obj in snap.objects
-            if 1 <= obj.slot <= 10 and obj.type_id in self.enemy_types
+            if 1 <= obj.slot <= slot_max and obj.type_id in self.enemy_types
         )
         if self.alive_rule is AliveRule.TYPE_AND_HP:
-            return tuple(obj for obj in enemies if obj.hp > 0)
+            type_only = frozenset(self.type_only_enemy_types)
+            return tuple(
+                obj
+                for obj in enemies
+                if obj.hp > 0 or obj.type_id in type_only
+            )
         return enemies
 
 
@@ -416,15 +427,16 @@ class GenericDungeonRoomController:
 
     def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.spec.reward.waypoints:
-            if self.waypoint_index >= len(self.spec.reward.waypoints):
-                return FrameAction(nes_idle_action(), "reward_wait")
+            n = len(self.spec.reward.waypoints)
+            # Loop waypoints until inventory success / timeout (fixed keys can sit
+            # off the first pass of a sparse hunt grid).
+            if self.waypoint_index >= n:
+                self.waypoint_index = 0
             tx, ty = self.spec.reward.waypoints[self.waypoint_index]
             dx = tx - snap.link_x
             dy = ty - snap.link_y
             if abs(dx) <= 2 and abs(dy) <= 2:
-                self.waypoint_index += 1
-                if self.waypoint_index >= len(self.spec.reward.waypoints):
-                    return FrameAction(nes_idle_action(), "reward_wait")
+                self.waypoint_index = (self.waypoint_index + 1) % n
                 tx, ty = self.spec.reward.waypoints[self.waypoint_index]
                 dx = tx - snap.link_x
                 dy = ty - snap.link_y

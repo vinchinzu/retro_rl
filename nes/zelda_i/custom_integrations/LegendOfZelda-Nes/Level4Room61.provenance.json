@@ -1,47 +1,50 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-10T02:11:37.815668+00:00",
+  "captured_at": "2026-08-10T02:24:13.853030+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
-    "bead": "rr-5lu",
-    "intervention_class": "survival",
-    "segment": "l4_room_0x61",
-    "track": "assisted"
+    "bead": "rr-zchy",
+    "intervention_class": "clean",
+    "segment": "l4_entry_up",
+    "track": "clean"
   },
   "schema_version": 1,
   "selected_trial": {
-    "clear_frame": 611,
-    "exits": {
-      "DOWN": null,
-      "LEFT": null,
-      "RIGHT": null,
-      "UP": null
+    "controllers": {
+      "entry_up": {
+        "frames": 251,
+        "notes": [
+          "align_x",
+          "push_up",
+          "entered_0x61"
+        ],
+        "phase": "DONE",
+        "segment": "level4_entry_up_0x71",
+        "success": true,
+        "target_room": "0x61"
+      }
     },
-    "post": {
-      "all_dead": 96,
+    "final": {
       "bombs": 9,
-      "doors": 0,
-      "item": "0x3",
+      "cur_opened_doors": 0,
+      "health": 111,
       "keys": 0,
       "level": 4,
-      "mask": 0,
       "mode": 5,
-      "objs": [],
-      "screen": "0x61",
-      "types": {},
-      "xy": [
-        115,
-        133
-      ]
+      "room": 97,
+      "room_all_dead": 0,
+      "room_hex": "0x61",
+      "room_item_id": 3,
+      "x": 120,
+      "y": 205
     },
-    "spawn_types": {
-      "0x12": 3,
-      "0x1c": 6
-    }
+    "frames": 252,
+    "ok": true,
+    "segment": "entry_up"
   },
   "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Entrance.state",
   "source_state_sha256": "c48a52bcf2742be226867999d63cbb2b167a48e3e01239b8d2f03d56a3d50e47",
-  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe967-7ee9-7f10-b91b-2795ff8302b6/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room61.state",
-  "state_sha256": "df98a1ac907b6f057c7e086993eda1bb8563124e32ab66f7d97b7e9206a0fe06"
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room61.state",
+  "state_sha256": "1e7fc8186c7d1c5f7b6e7a772d67adb9006019e33eb0c0ba137726a74066e3ce"
 }

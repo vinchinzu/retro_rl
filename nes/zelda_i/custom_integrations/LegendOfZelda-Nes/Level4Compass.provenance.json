@@ -1,0 +1,22 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T02:16:28.626949+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-5lu",
+    "intervention_class": "survival",
+    "segment": "l4_compass"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "keys": 0,
+    "room": "0x62",
+    "x": 48,
+    "y": 189
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4FirstKey.state",
+  "source_state_sha256": "e2ef274b7f7e911cd213081bc4de203f629250d52c5d6d817f8522b3633708dc",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Compass.state",
+  "state_sha256": "5800a155c6d44c9e2d93ba450e278688caedfd6a0a3cf8f0cbc4c09ed965c861"
+}

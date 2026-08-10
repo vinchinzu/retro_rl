@@ -38,6 +38,11 @@ uv run python -m zelda_i.tas.import_fm2 --summary-only
 
 # L4 entry (assisted; not Clean STATUS)
 uv run python zelda_i/scripts/run_level4_entry.py --infinite-life --trials 2 --save-state
+
+# L4 interior pure room segments (live IDs; not Clean STATUS promote)
+uv run python zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
+uv run python zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
+uv run python zelda_i/scripts/run_level4_rooms.py --segment chain_to_key --trials 2 --save-state
 ```
 
 ## Layout (pointers)
@@ -134,14 +139,16 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 `run_level4_entry.py --infinite-life --trials 2 --save-state`. Checkpoints
 **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**. **Not Clean STATUS.**
 
-**L4 interior (assisted LIVE partial, rr-5lu 2026-08-09):** from
+**L4 interior first rooms (pure LIVE 2/2, rr-5lu children 2026-08-10):** from
 `Level4Entrance` room **0x71** (empty) UP → **0x61** 3× Vire `0x12` (split
-`0x1c`) → **BOMB_UP** @(120,105) → **0x51** 8× Keese `0x1b` + key `0x19` →
-LEFT @y141 → **0x50** 5× Vire. Module: `level4_dungeon.py`. Evidence:
-`recordings/l4_recon.json`. **Not Clean STATUS.**
+`0x1c` slots 10–12) → **BOMB_UP** @(120,105) → **0x51** 8× Keese `0x1b` +
+key `0x19` (pickup ~136,149) → LEFT @y141 → **0x50** 5× Vire residual.
+Module: `level4_dungeon.py`. Runner: `run_level4_rooms.py`. Evidence:
+`recordings/l4_chain_key_pure_chain_to_key.json` (~1278f). Closed room beads
+`rr-zchy` / `rr-yr77` / `rr-h278` / `rr-wqdu`. **Not Clean STATUS.**
 
-**Next tip:** **`rr-5lu` residual** past 0x50 toward Stepladder / Gleeok /
-TF `0x08`. Epic `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
+**Next tip:** **`rr-2ysf` / `rr-5lu` residual** past 0x50 toward Stepladder /
+Gleeok / TF `0x08`. Epic `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.

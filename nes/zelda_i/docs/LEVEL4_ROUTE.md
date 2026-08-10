@@ -88,37 +88,51 @@ Checkpoints: **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**.
 
 ---
 
-## Interior (live partial — rr-5lu 2026-08-09)
+## Interior (live pure dual-green first rooms — rr-5lu 2026-08-09/10)
 
-**Assisted only.** Module: `level4_dungeon.py`. Evidence: `recordings/l4_recon.json`.
+Module: `level4_dungeon.py`. Runner:
+`scripts/run_level4_rooms.py`. Evidence: `recordings/l4_chain_key_pure_chain_to_key.json`
+(**2/2 pure** chain ~1278f; not Clean STATUS promote).
 
 ### Live graph (from `Level4Entrance`)
 
 ```
 0x71 entry (empty combat, item 0x03)
   --UP @ x≈120--> 0x61
-0x61: 3× Vire type **0x12** (HP 64) → sword split type **0x1c**
+0x61: 3× Vire type **0x12** (HP 64) → sword split type **0x1c** (slots 10–12)
   --BOMB_UP stand≈(120,105) face UP--> 0x51
-0x51: 8× Keese type **0x1b** (TYPE-only) + RoomItemId **0x19** key (keys 0→1)
+0x51: 8× Keese type **0x1b** (TYPE-only) + RoomItemId **0x19** key (keys 0→1 @~136,149)
   --LEFT @ y≈141--> 0x50
-0x50: 5× Vire **0x12** (exit recon only; clear residual)
+0x50: 5× Vire **0x12** (exit recon only; clear residual → Stepladder)
 ```
 
-| Room | Live? | Enemies | Item / notes |
-|------|-------|---------|--------------|
-| **0x71** | **live** | none | Empty mouth; free UP only (LEFT sealed) |
-| **0x61** | **live** | 3× `0x12` → split `0x1c` | Clear ~150–600f; bomb N → 0x51 |
-| **0x51** | **live** | 8× `0x1b` Keese | Key `0x19`; LEFT → 0x50 |
-| **0x50** | **live exit** | 5× `0x12` Vire | Tip residual beyond this |
+| Room | Live? | Enemies | Item / notes | Segment bead |
+|------|-------|---------|--------------|--------------|
+| **0x71** | **live pure 2/2** | none | Empty mouth; free UP only | `rr-zchy` |
+| **0x61** | **live pure 2/2** | 3× `0x12` → split `0x1c` | Clear ~295f; bomb N → 0x51 | `rr-yr77` / `rr-h278` |
+| **0x51** | **live pure 2/2** | 8× `0x1b` Keese | Key `0x19` pickup ~ (136,149) | `rr-wqdu` |
+| **0x50** | **live exit** | 5× `0x12` Vire | Tip residual beyond this | `rr-2ysf` |
+
+### Runner
+
+```bash
+# Pure dual-green room segments (no --infinite-life)
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment bomb_61 --from-state Level4Entrance --trials 2
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_51 --from-state Level4Entrance --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment chain_to_key --trials 2 --save-state
+```
 
 **Traps (live):**
 
 - Source “entry LEFT Keese key” is **wrong** on this seed/path — entry is empty; first key is bomb-N of Vires.
-- Vire split is type **`0x1c`**, not standard Keese `0x1b`.
+- Vire split is type **`0x1c`**, not standard Keese `0x1b`; HP stays 0 (type-only) and lands in slots **10–12**.
 - Free doorways often show `cur_opened_doors=0` / `open_doorway_mask=0` — do not require door bits for UP 0x71→0x61 or LEFT 0x51→0x50.
 - Bomb stand on 0x61: **(120, ~105)** face UP + B; wait blast then push UP.
+- Key item id is **0x19 from room entry** (not drop-after-clear); walk mid-room after Keese clear.
 
-Checkpoints (dev): `Level4Room61Cleared`, `Level4Room51Cleared` (assisted).
+Checkpoints (dev): `Level4Room61`, `Level4Room61Cleared`, `Level4FirstKey`.
 
 ### Source speed route (planning only — not emulator facts)
 
