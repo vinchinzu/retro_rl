@@ -12,6 +12,9 @@ from zelda_i.level4_dungeon import (
     KEY_61_EAST_Y,
     KEY_61_OPENS_TO,
     LEVEL4_COMPASS_BIT,
+    MAZE_50_HOLD,
+    MAZE_50_LONG_UP,
+    MAZE_50_TO_NORTH,
     MAZE_62_RETURN_WEST,
     MAZE_62_TO_COMPASS,
     MAZE_IN_HOLD,
@@ -21,6 +24,8 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_KEESE_KEY_51,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
+    ROOM_L4_ZOLS_40,
+    ROOM_40_SPEC,
     ROOM_50_SPEC,
     ROOM_51_SPEC,
     ROOM_61_SPEC,
@@ -28,11 +33,14 @@ from zelda_i.level4_dungeon import (
     ROOM_71_SPEC,
     ROOM_ITEM_COMPASS,
     VIRE_OBJECT_TYPE as L4_VIRE,
+    ZOL_OBJECT_TYPE,
     make_bomb_61_north_controller,
     make_compass_62_controller,
     make_entry_up_controller,
     make_key_right_62_controller,
     make_left_50_controller,
+    make_north_40_controller,
+    make_room_40_clear_controller,
     make_room_50_clear_controller,
     make_room_51_key_controller,
     make_room_61_clear_controller,
@@ -48,8 +56,10 @@ def test_live_room_ids() -> None:
     assert ROOM_L4_KEESE_KEY_51 == 0x51
     assert ROOM_L4_VIRES_50 == 0x50
     assert ROOM_L4_COMPASS_62 == 0x62
+    assert ROOM_L4_ZOLS_40 == 0x40
     assert L4_VIRE == VIRE_OBJECT_TYPE == 0x12
     assert VIRE_SPLIT_KEESE_TYPE == 0x1C
+    assert ZOL_OBJECT_TYPE == 0x13
     assert ROOM_ITEM_COMPASS == 0x16
     assert LEVEL4_COMPASS_BIT == 0x08
     assert KEY_61_EAST_Y == 141
@@ -59,6 +69,7 @@ def test_live_room_ids() -> None:
 def test_object_names() -> None:
     assert object_name(0x12) == "vire"
     assert object_name(0x1C) == "vire_split_keese"
+    assert object_name(0x13) == "zol"
 
 
 def test_bomb_wall_geometry() -> None:
@@ -80,11 +91,15 @@ def test_specs_register() -> None:
     assert ROOM_50_SPEC.expected_enemy_count == 5
     assert ROOM_62_SPEC.room_id == 0x62
     assert ROOM_62_SPEC.room_item_id == 0x16
+    assert ROOM_40_SPEC.room_id == 0x40
+    assert ROOM_40_SPEC.enemy_types[0] == ZOL_OBJECT_TYPE
+    assert ROOM_40_SPEC.room_item_id == 0x19
     assert ROOM_SPECS[0x71] is ROOM_71_SPEC
     assert ROOM_SPECS[0x61] is ROOM_61_SPEC
     assert ROOM_SPECS[0x51] is ROOM_51_SPEC
     assert ROOM_SPECS[0x50] is ROOM_50_SPEC
     assert ROOM_SPECS[0x62] is ROOM_62_SPEC
+    assert ROOM_SPECS[0x40] is ROOM_40_SPEC
 
 
 def test_factories() -> None:
@@ -109,6 +124,11 @@ def test_factories() -> None:
     compass = make_compass_62_controller()
     assert compass.max_frames > 0
     assert compass.phase.name == "MAZE_IN"
+    north = make_north_40_controller()
+    assert north.max_frames > 0
+    assert north.phase.name == "WAYPOINTS"
+    c40 = make_room_40_clear_controller()
+    assert c40.spec is ROOM_40_SPEC
 
 
 def test_maze_62_paths() -> None:
@@ -118,6 +138,19 @@ def test_maze_62_paths() -> None:
     assert "RIGHT" in MAZE_62_TO_COMPASS
     assert MAZE_62_RETURN_WEST[0] == "DOWN"
     assert MAZE_62_RETURN_WEST.count("LEFT") >= 10
+
+
+def test_maze_50_north_path() -> None:
+    from zelda_i.level4_dungeon import MAZE_50_WAYPOINTS
+
+    assert MAZE_50_HOLD == 6
+    assert MAZE_50_LONG_UP >= 100
+    assert MAZE_50_TO_NORTH[0] == "DOWN"
+    assert MAZE_50_TO_NORTH.count("UP") >= 10
+    assert MAZE_50_TO_NORTH.count("LEFT") >= 5
+    assert MAZE_50_WAYPOINTS[0][1] >= 170  # south first
+    assert MAZE_50_WAYPOINTS[-1][1] <= 72  # north band
+    assert make_north_40_controller().phase.name == "WAYPOINTS"
     assert COMPASS_PICKUP_XY == (136, 132)
 
 
@@ -133,15 +166,20 @@ def test_planning_interior_report() -> None:
     assert r["live_graph"]["0x51"]["LEFT"] == "0x50"
     assert r["live_graph"]["0x51"]["UP"] == "sealed"
     assert r["live_graph"]["0x51"]["RIGHT"] == "sealed"
-    assert r["live_graph"]["0x50"]["note"] == "dead_end_pocket_no_bomb_exit"
+    assert r["live_graph"]["0x50"]["UP_scripted"] == "0x40"
+    assert r["live_graph"]["0x40"]["DOWN"] == "0x50"
+    assert r["live_graph"]["0x40"]["enemies"]["0x13"] == 5
     assert r["live_graph"]["0x62"]["room_item"] == "0x16"
     assert r["live_graph"]["0x62"]["compass_bit"] == "0x8"
     assert r["segments"]["clear_vires_61"] == "rr-yr77"
     assert r["segments"]["clear_50"] == "rr-2ysf"
     assert r["segments"]["key_right_62"] == "rr-2ysf"
     assert r["segments"]["compass_62"] == "rr-9so0"
+    assert r["segments"]["north_40"] == "rr-xc3x"
     assert r["segments"]["stepladder_path"] == "rr-o0nn"
     assert r["post_compass"]["bead"] == "rr-o0nn"
-    assert "0x62" in r["post_compass"]["component"]
+    assert r["post_compass"]["first_outside"] == "0x40"
+    assert "0x62" in r["post_compass"]["early_component"]
     assert r["key_61_east"]["opens_to"] == "0x62"
     assert r["maze_62"]["pickup_xy"] == [136, 132]
+    assert r["maze_50_north"]["opens_to"] == "0x40"

@@ -10,16 +10,16 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     0x61: 3× Vire type ``0x12`` (HP 64) → wooden sword splits to type ``0x1c``
     0x61 --BOMB_UP stand≈(120,105) face UP--> 0x51
     0x51: 8× Keese type ``0x1b`` (TYPE-only) + RoomItemId ``0x19`` key
-    0x51 --LEFT @ y≈141--> 0x50 (5× Vire ``0x12``)  **dead-end pocket**
+    0x51 --LEFT @ y≈141--> 0x50 (5× Vire ``0x12``)
     0x51 --DOWN @ x≈120--> 0x61
     0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
     0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)
     0x62 --maze compass + return LEFT--> 0x61 (ADDR_COMPASS bit 0x08)
-    **Post-compass (rr-o0nn live):** component closed at
-    {0x71, 0x61, 0x51, 0x50, 0x62}. From Level4Compass: free/BOMB UP→0x51,
-    RIGHT re-enter 0x62 (no key), LEFT 0x51→0x50. 0x51 UP+RIGHT sealed
-    (key poke does not consume). 0x50 bomb denser N/no new exit. 0x62 bomb
-    exits none. No Vire key-farm drops. ADDR_LADDER residual.
+    **Post-compass expand (rr-xc3x live):** 0x50 is **not** a dead-end.
+    After clear, scripted north path → free UP into **0x40** (5× Zol ``0x13``
+    + RoomItemId ``0x19`` key). First room outside early component
+    {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT still sealed; 0x62 bomb
+    exits none. ADDR_LADDER residual (stepladder further north/east).
 
 Not Clean STATUS. Stepladder / Gleeok / TF ``0x08`` still residual.
 """
@@ -54,11 +54,13 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 ROOM_L4_ENTRY = LEVEL4_ENTRY_ROOM  # 0x71 — empty combat mouth
 ROOM_L4_VIRES_61 = 0x61  # north of entry; 3× Vire 0x12
 ROOM_L4_KEESE_KEY_51 = 0x51  # bomb-N of 0x61; 8× Keese + key 0x19
-ROOM_L4_VIRES_50 = 0x50  # west of 0x51; 5× Vire 0x12 (dead-end pocket)
+ROOM_L4_VIRES_50 = 0x50  # west of 0x51; 5× Vire 0x12 (north exit → 0x40)
 ROOM_L4_COMPASS_62 = 0x62  # KEY-RIGHT of 0x61; 5× Vire + compass 0x16 dark maze
+ROOM_L4_ZOLS_40 = 0x40  # north of 0x50; 5× Zol 0x13 + key 0x19 (rr-xc3x)
 
 VIRE_OBJECT_TYPE = 0x12  # live on 0x61/0x50/0x62; HP 64; sword splits → 0x1c
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # live split residual from Vire (not standard 0x1B)
+ZOL_OBJECT_TYPE = 0x13  # live on 0x40; HP 32
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16  # live room item on 0x62
 ROOM_ITEM_NONE = 0x03
@@ -139,6 +141,51 @@ MAZE_62_RETURN_WEST: tuple[str, ...] = (
     "LEFT",
 )
 COMPASS_PICKUP_XY = (136, 132)
+
+# 0x50 → 0x40 north (rr-xc3x live). Interior blocks block center+UP.
+# Prefer waypoint seek (robust to clear_50 end pose) then long UP.
+# Token path kept as fallback / docs (hold MAZE_50_HOLD from ≈(160,149)).
+MAZE_50_HOLD = 6
+MAZE_50_LONG_UP = 280
+MAZE_50_TO_NORTH: tuple[str, ...] = (
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "RIGHT",
+    "RIGHT",
+    "UP",
+    "UP",
+    "UP",
+    "LEFT",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+)
+# Live intermediate cells on successful BFS (tol ±8).
+MAZE_50_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (160, 181),
+    (112, 181),
+    (112, 120),
+    (128, 100),
+    (120, 72),
+    (120, 56),
+)
 
 _PATROL_MID: tuple[tuple[int, int], ...] = (
     (64, 109),
@@ -231,6 +278,28 @@ def level4_compass_route_success(ram: np.ndarray) -> bool:
         bool(snap.compass & LEVEL4_COMPASS_BIT)
         and level4_room_ready(snap, ROOM_L4_VIRES_61)
     )
+
+
+def level4_room_40_ready(ram: np.ndarray) -> bool:
+    return level4_room_ready(read_snapshot(ram), ROOM_L4_ZOLS_40)
+
+
+def level4_room_40_cleared(ram: np.ndarray) -> bool:
+    """0x40 Zols cleared (key pickup residual)."""
+    snap = read_snapshot(ram)
+    if not level4_room_ready(snap, ROOM_L4_ZOLS_40):
+        return False
+    live = ROOM_40_SPEC.live_enemies(snap)
+    return len(live) == 0 and snap.room_all_dead >= 20
+
+
+def level4_room_40_key_success(ram: np.ndarray) -> bool:
+    """Zols clear + ≥1 key on 0x40 (RoomItemId 0x19)."""
+    snap = read_snapshot(ram)
+    if not level4_room_ready(snap, ROOM_L4_ZOLS_40):
+        return False
+    live = ROOM_40_SPEC.live_enemies(snap)
+    return len(live) == 0 and snap.room_all_dead >= 20 and snap.keys >= 1
 
 
 # --- Specs (assisted geometry; not Clean promote) ---
@@ -338,7 +407,10 @@ ROOM_50_SPEC = DungeonRoomSpec(
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=ROOM_ITEM_NONE,
-    exit_routes=(DoorRoute("RIGHT", ((120, 141), (220, 141))),),
+    exit_routes=(
+        DoorRoute("RIGHT", ((120, 141), (220, 141))),
+        DoorRoute("UP", ((120, 80), (120, 56))),  # scripted north → 0x40
+    ),
     max_frames=20000,
     level=LEVEL4,
 )
@@ -368,11 +440,49 @@ ROOM_62_SPEC = DungeonRoomSpec(
     level=LEVEL4,
 )
 
+ROOM_40_SPEC = DungeonRoomSpec(
+    spec_id="level4_room40_zols_key",
+    source_room=ROOM_L4_VIRES_50,
+    room_id=ROOM_L4_ZOLS_40,
+    entry=DoorRoute("UP", ((120, 205), (120, 150))),
+    enemy_types=(ZOL_OBJECT_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_PATROL_MID,
+        engage_distance=64,
+        attack_phase=0,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.FIXED_INVENTORY,
+        inventory_field="keys",
+        target=(128, 141),
+        waypoints=(
+            (120, 141),
+            (136, 141),
+            (128, 125),
+            (128, 157),
+            (104, 141),
+            (152, 141),
+            (120, 109),
+            (120, 173),
+        ),
+    ),
+    room_item_id=ROOM_ITEM_SMALL_KEY,
+    exit_routes=(DoorRoute("DOWN", ((120, 189), (120, 205))),),
+    max_frames=16000,
+    level=LEVEL4,
+)
+
 register_room_spec(ROOM_71_SPEC)
 register_room_spec(ROOM_61_SPEC)
 register_room_spec(ROOM_51_SPEC)
 register_room_spec(ROOM_50_SPEC)
 register_room_spec(ROOM_62_SPEC)
+register_room_spec(ROOM_40_SPEC)
 
 
 class BombWall61North:
@@ -422,13 +532,23 @@ def make_room_51_key_controller() -> GenericDungeonRoomController:
 
 
 def make_room_50_clear_controller() -> GenericDungeonRoomController:
-    """Clear 0x50 pocket Vires (dead-end; stepladder is KEY-RIGHT 0x62)."""
+    """Clear 0x50 Vires (north exit → 0x40 after clear; rr-xc3x)."""
     return GenericDungeonRoomController(ROOM_50_SPEC)
 
 
 def make_room_62_clear_controller() -> GenericDungeonRoomController:
     """Clear 0x62 Vires (compass maze; pickup / exits residual)."""
     return GenericDungeonRoomController(ROOM_62_SPEC)
+
+
+def make_room_40_clear_controller() -> GenericDungeonRoomController:
+    """Clear 0x40 Zols (key pickup residual)."""
+    return GenericDungeonRoomController(ROOM_40_SPEC)
+
+
+def make_room_40_key_controller() -> GenericDungeonRoomController:
+    """Clear 0x40 Zols + collect key (FIXED_INVENTORY keys)."""
+    return GenericDungeonRoomController(ROOM_40_SPEC)
 
 
 # --- 0x51 free LEFT → 0x50 (rr-2ysf pocket) ---
@@ -793,6 +913,149 @@ def make_compass_62_controller() -> Level4Compass62Controller:
     return Level4Compass62Controller()
 
 
+# --- 0x50 cleared → north scripted → 0x40 (rr-xc3x) ---
+
+
+class North40Phase(Enum):
+    WAYPOINTS = auto()
+    PUSH_UP = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4North40Controller:
+    """From cleared 0x50: token path then long UP into 0x40.
+
+    Live (rr-xc3x): ``MAZE_50_TO_NORTH`` hold6 is reliable from the common
+    clear_50 end pose ≈(160,149). Interior blocks block center+UP.
+    """
+
+    max_frames: int = 10000
+    phase: North40Phase = North40Phase.WAYPOINTS  # WAYPOINTS = token path phase
+    frames: int = 0
+    phase_frames: int = 0
+    path_index: int = 0
+    hold_left: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    _last_xy: tuple[int, int] | None = None
+    _stall: int = 0
+
+    def _set_phase(self, phase: North40Phase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            self.path_index = 0
+            self.hold_left = 0
+            self._stall = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(North40Phase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def _entered_40(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL4
+            and snap.screen == ROOM_L4_ZOLS_40
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        xy = (int(snap.link_x), int(snap.link_y))
+        if self._last_xy == xy:
+            self._stall += 1
+        else:
+            self._stall = 0
+            self._last_xy = xy
+
+        if self.phase is North40Phase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is North40Phase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+
+        if self._entered_40(snap):
+            self.success = True
+            self._set_phase(North40Phase.DONE, "entered_0x40")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            if snap.screen in (ROOM_L4_VIRES_50, ROOM_L4_ZOLS_40):
+                return FrameAction(nes_action("UP"), "scroll_up")
+            return FrameAction(nes_idle_action(), f"wait_scroll_{snap.mode}")
+
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if snap.screen == ROOM_L4_ZOLS_40:
+            self.success = True
+            self._set_phase(North40Phase.DONE, "on_0x40")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.screen != ROOM_L4_VIRES_50:
+            return self._fail(f"wrong_room_0x{snap.screen:02x}")
+
+        # Early north-band boost: if already near door, just push UP.
+        if snap.link_y <= 80 and abs(snap.link_x - 120) <= 16:
+            self._set_phase(North40Phase.PUSH_UP, "near_north_band")
+            return FrameAction(nes_action("UP"), "push_up_north")
+
+        if self.phase is North40Phase.WAYPOINTS:
+            if self.path_index >= len(MAZE_50_TO_NORTH):
+                self._set_phase(North40Phase.PUSH_UP, "path_done")
+                return FrameAction(nes_action("UP"), "push_up_north")
+            direction = MAZE_50_TO_NORTH[self.path_index]
+            # If stalled on a wall, advance token early and try next.
+            if self._stall >= 18:
+                self.notes.append(f"stall_skip_{self.path_index}_{direction}")
+                self.path_index += 1
+                self.hold_left = 0
+                self._stall = 0
+                if self.path_index >= len(MAZE_50_TO_NORTH):
+                    self._set_phase(North40Phase.PUSH_UP, "path_done_stall")
+                    return FrameAction(nes_action("UP"), "push_up_north")
+                direction = MAZE_50_TO_NORTH[self.path_index]
+            self.hold_left += 1
+            if self.hold_left >= MAZE_50_HOLD:
+                self.path_index += 1
+                self.hold_left = 0
+            return FrameAction(nes_action(direction), f"maze50_{direction}")
+
+        if self.phase_frames >= MAZE_50_LONG_UP + 120:
+            return self._fail("push_up_timeout")
+        return FrameAction(nes_action("UP"), "push_up_north")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "path_index": self.path_index,
+            "segment": "level4_north_0x40",
+            "waypoints": [list(w) for w in MAZE_50_WAYPOINTS],
+            "maze_path": list(MAZE_50_TO_NORTH),
+            "hold": MAZE_50_HOLD,
+            "long_up": MAZE_50_LONG_UP,
+        }
+
+
+def make_north_40_controller() -> Level4North40Controller:
+    return Level4North40Controller()
+
+
 # --- 0x71 empty entry → UP → 0x61 (rr-zchy) ---
 
 
@@ -902,7 +1165,7 @@ def planning_interior_report() -> dict:
         "bead": "rr-5lu",
         "tip": "rr-o0nn",
         "track": "assisted",
-        "status": "interior_compass_live_stepladder_residual",
+        "status": "interior_0x40_live_stepladder_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -926,7 +1189,8 @@ def planning_interior_report() -> dict:
             hex(ROOM_L4_VIRES_50): {
                 "enemies": {"0x12": 5},
                 "RIGHT": hex(ROOM_L4_KEESE_KEY_51),
-                "note": "dead_end_pocket_no_bomb_exit",
+                "UP_scripted": hex(ROOM_L4_ZOLS_40),
+                "note": "north via MAZE_50_TO_NORTH hold6 + long UP (rr-xc3x)",
             },
             hex(ROOM_L4_COMPASS_62): {
                 "enemies": {"0x12": 5},
@@ -936,30 +1200,39 @@ def planning_interior_report() -> dict:
                 "pickup_xy": list(COMPASS_PICKUP_XY),
                 "note": "dark_maze_compass_live_return_west_no_bomb_exit",
             },
+            hex(ROOM_L4_ZOLS_40): {
+                "enemies": {"0x13": 5},
+                "room_item": hex(ROOM_ITEM_SMALL_KEY),
+                "DOWN": hex(ROOM_L4_VIRES_50),
+                "note": "first room outside early closed component (rr-xc3x)",
+            },
         },
         "post_compass": {
             "bead": "rr-o0nn",
+            "expand": "rr-xc3x",
             "start": "Level4Compass",
-            "component": [
+            "early_component": [
                 hex(ROOM_L4_ENTRY),
                 hex(ROOM_L4_VIRES_61),
                 hex(ROOM_L4_KEESE_KEY_51),
                 hex(ROOM_L4_VIRES_50),
                 hex(ROOM_L4_COMPASS_62),
             ],
+            "first_outside": hex(ROOM_L4_ZOLS_40),
             "keys_at_compass": 0,
             "ladder": 0,
             "evidence": [
+                "recordings/l4_xc3x_breakthrough.json",
                 "recordings/l4_o0nn_focus.json",
                 "recordings/l4_o0nn_prod.json",
-                "recordings/l4_o0nn_bombs.json",
-                "recordings/l4_o0nn_keypoke.json",
             ],
             "blocked": [
                 "0x51 UP/RIGHT sealed (not key)",
-                "0x50 bomb denser N no open",
                 "0x62 bomb exits none",
                 "no Vire key-farm drops (8 cycles)",
+            ],
+            "opened": [
+                "0x50 north scripted → 0x40 (Zols + key 0x19)",
             ],
         },
         "bomb_61_north": {
@@ -979,6 +1252,12 @@ def planning_interior_report() -> dict:
             "return_west": list(MAZE_62_RETURN_WEST),
             "pickup_xy": list(COMPASS_PICKUP_XY),
         },
+        "maze_50_north": {
+            "hold": MAZE_50_HOLD,
+            "long_up": MAZE_50_LONG_UP,
+            "path": list(MAZE_50_TO_NORTH),
+            "opens_to": hex(ROOM_L4_ZOLS_40),
+        },
         "segments": {
             "entry_up": "rr-zchy",
             "clear_vires_61": "rr-yr77",
@@ -988,11 +1267,12 @@ def planning_interior_report() -> dict:
             "key_right_62": "rr-2ysf",
             "clear_62": "rr-2ysf",
             "compass_62": "rr-9so0",
+            "north_40": "rr-xc3x",
             "stepladder_path": "rr-o0nn",
         },
         "not_yet": [
             "stepladder room / ADDR_LADDER",
-            "room outside closed post-compass component",
+            "0x40 key pure dual-green + further north/east",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
@@ -1019,14 +1299,22 @@ __all__ = [
     "Level4EntryUpController",
     "Level4KeyRight62Controller",
     "Level4Left50Controller",
+    "Level4North40Controller",
+    "MAZE_50_HOLD",
+    "MAZE_50_LONG_UP",
+    "MAZE_50_TO_NORTH",
     "MAZE_62_RETURN_WEST",
     "MAZE_62_TO_COMPASS",
     "MAZE_IN_HOLD",
     "MAZE_OUT_HOLD",
+    "North40Phase",
+    "ROOM_40_SPEC",
     "ROOM_50_SPEC",
     "ROOM_51_SPEC",
     "ROOM_61_SPEC",
     "ROOM_62_SPEC",
+    "ROOM_L4_ZOLS_40",
+    "ZOL_OBJECT_TYPE",
     "ROOM_71_SPEC",
     "ROOM_ITEM_COMPASS",
     "ROOM_L4_COMPASS_62",
@@ -1039,6 +1327,9 @@ __all__ = [
     "level4_compass_collected",
     "level4_compass_route_success",
     "level4_entry_ready",
+    "level4_room_40_cleared",
+    "level4_room_40_key_success",
+    "level4_room_40_ready",
     "level4_room_50_cleared",
     "level4_room_50_ready",
     "level4_room_51_key_success",
@@ -1053,6 +1344,9 @@ __all__ = [
     "make_entry_up_controller",
     "make_key_right_62_controller",
     "make_left_50_controller",
+    "make_north_40_controller",
+    "make_room_40_clear_controller",
+    "make_room_40_key_controller",
     "make_room_50_clear_controller",
     "make_room_51_key_controller",
     "make_room_61_clear_controller",
