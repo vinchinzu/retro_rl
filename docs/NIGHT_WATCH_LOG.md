@@ -335,3 +335,21 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Follow-up open: **rr-q8eq** 0x40 clear+key + next room toward ladder.
 - Tests: `test_level4_dungeon.py` 8 passed. Commit only (no push).
 
+### 2026-08-09T23:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - super_metroid: `rr-kxge` Dual continuous --to ice stabilize
+  - zelda_i: `rr-o0nn` L4 Compass→Stepladder + `rr-5lu` L4 pure residual
+  - mega_man_2: `rr-54ui` Air Man past screen 4
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Idle priority action:** harvest Gate B/rr-53g CLOSED → tip **rr-5in** Gate B full power-on Spring→Summer
+- **Spawned manager (worktree):** harvest → claim `rr-5in`
+  - subagent_id: `019fe9d5-97f7-7851-8bee-7bb396619e73` (worktree isolation)
+- **Not spawned (busy):** super_metroid, zelda_i, mega_man_2
+- **Not spawned (low tip / closed):** solver rr-gbd.32 CLOSED; remaining gbd open are P3/P4 sketches; alttp P3 only
+- **Cap:** 3 busy + 1 new harvest = 4 / 6 lanes
+- Never push. Next tick: if harvest still in_progress skip; else next idle tip.
+
+### 2026-08-09T23:45 CDT — zelda 0x50→0x40 breakthrough
+- **CLOSED** `rr-xc3x`: 0x50 N→0x40 (Zols 0x13 + key 0x19). Pure north_40 2/2 ~8254f.
+- Component was not a hard dead-end. ADDR_LADDER still 0. Next: clear 0x40 + key (rr-q8eq / rr-o0nn).
+
