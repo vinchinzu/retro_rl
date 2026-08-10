@@ -28,10 +28,11 @@ uv run pytest nes/mega_man_2/tests -q
 ## Next milestone
 
 Past screen 4 from `AirFanPlatform` island (prog 937–984) toward boss door.
-Gap to scr5 (~1280) is ~296px; pure jump only ~1065–1071. Type36 Goblin is
-**not** solid (damage enemy). Lightning Lord/cloud **never observed** (object
-types only 1/2/35/36 through death; night3+night4 forks). Need ROM/TAS spawn
-path or tilemap intermediate — not more goblin/pure-RIGHT grids. Then M4.
+Gap to scr5 (~1280) is ~296px; pure jump only ~1065–1071. Type36 Goblin/Air
+Tikki is **not** solid (indestructible damage; tiles carry the stand). Lightning
+Lord/cloud **never observed** (types only 1/2/35/36; night3–night5). Freefall
+tile sample past 984 = 0 solids. Need spawn-routine decode / TAS FM2 compare
+at prog≥1000 — not more goblin/pure-RIGHT/y84-edge grids. Then M4.
 
 ## Norms
 

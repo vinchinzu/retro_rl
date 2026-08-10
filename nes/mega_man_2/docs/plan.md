@@ -36,11 +36,17 @@ Map-match prog~950: goblin + stripe platform + Pipi (not Matasaburo E; no wind).
 
 ## Suggested next experiments
 
-1. **ROM enemy placement / TAS compare** at prog≥1000 — find why LL/cloud never
-   enters object table `$0400` under Clean play (spawn flags, scroll gates).
-2. Nametable/tile platforms past 984 under alternate camera/scroll states.
-3. Do **not** re-sweep goblin-solid or pure-RIGHT jump grids.
-4. Only then freeze AirScreen2→target 5 (3/3) and boss door.
+1. **Spawn-routine decode (primary)** — Mesen-trace or disassembly of enemy spawn:
+   identify Lightning Lord / cloud object type ID; dump Air Man per-screen enemy
+   list for scroll indices at prog≥1000; check gates (free slots, player Y band,
+   scroll direction, prior-enemy flags). Night5 ROM scan only found property
+   rows (types 0x22–0x25), not placement lists.
+2. **TAS FM2 compare** at equivalent camera/progress through section B (LL clouds).
+3. Optional: PPU nametable dump at prog 950 vs mid-gap (night5 freefall already
+   showed 0 collision tiles past 984 under player path).
+4. Do **not** re-sweep goblin-solid, pure-RIGHT jump grids, or y84 edge LL camps
+   (night3–night5 falsified).
+5. Only then freeze AirScreen2→target 5 (3/3) and boss door.
 
 ## Notes
 
