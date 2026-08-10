@@ -65,6 +65,7 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_gate_to_business,
 )
 from super_metroid.routes.kpdr.k5 import (
+    play_bat_to_red,
     play_below_to_bat,
     play_east_to_glass,
     play_glass_to_west,
@@ -255,6 +256,8 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "west_to_below": play_west_to_below,
     # K5 stack hop 9: Below Spazer → Bat Room (reverse of bat_to_below_spazer).
     "below_to_bat": play_below_to_bat,
+    # K5 stack hop 11: Bat Room → Red Tower bottom (reverse of red_tower_to_bat).
+    "bat_to_red": play_bat_to_red,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,
