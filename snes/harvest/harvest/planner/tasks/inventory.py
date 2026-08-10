@@ -67,6 +67,16 @@ GAME_STATE_FREE_MOVE_BIT = 0x4000
 # Outdoor house door / enter stand soft-lock pocket after control loss.
 HOUSE_FRONT_SOFTLOCK_Y_MIN = 400
 HOUSE_FRONT_SOFTLOCK_X_MAX = 160
+# event_flags_1f68 bits that must be set BEFORE first house→farm exit so the
+# ROM does not fire CODE_83CEAE morning intro (which softlocks free-move).
+# Causal A/B on town_day1_rest_end (2026-08-09): 0x00A1/0x00B1 keep free-move;
+# 0x0011/0x0031/0x0091 lose it. 0x0080 = dog owned (HM-Decomp bank_84).
+EVENT_1F68_TRUCK_BIT = 0x0001  # set by truck/day processing
+EVENT_1F68_MORNING_INTRO_DONE = 0x0020  # first outdoor morning CC 0x0C/0
+EVENT_1F68_DOG_OWNED = 0x0080
+EVENT_1F68_OUTDOOR_INTRO_MASK = (
+    EVENT_1F68_TRUCK_BIT | EVENT_1F68_MORNING_INTRO_DONE | EVENT_1F68_DOG_OWNED
+)  # 0x00A1
 
 # Re-export carry helpers for existing importers.
 __carry_exports__ = (
@@ -108,6 +118,22 @@ def farm_free_move_ready(ram: np.ndarray) -> bool:
     except Exception:
         return True
     return bool(flags & GAME_STATE_FREE_MOVE_BIT)
+
+
+def outdoor_intro_flags_ready(ram: np.ndarray) -> bool:
+    """True when event_flags_1f68 already has morning-intro + dog-owned bits.
+
+    House→farm with only truck prereqs (``0x0011``) fires ROM morning intro
+    (``CODE_83CEAE``): sets ``0x0020``, clears free-move, auto-walks to
+    house-front dialogue, never recovers (controller-only mash/name attempts
+    still → tilemap ``0x5F``). Pre-set ``0x00A1`` / Y1 ``0x00B1`` skips intro
+    and keeps free-move. ``house_size`` is not causal.
+    """
+    try:
+        flags = int(read_ram_value(ram, "event_flags_1f68", raw=True))
+    except Exception:
+        return True
+    return (flags & EVENT_1F68_OUTDOOR_INTRO_MASK) == EVENT_1F68_OUTDOOR_INTRO_MASK
 
 
 def farm_house_front_softlock(ram: np.ndarray) -> bool:
@@ -694,13 +720,20 @@ class ShedFetchItemTask(Task):
 
     def _control_lost_result(self, world: WorldState) -> TaskResult:
         gs = int(read_ram_value(world.ram, "game_state", raw=True))
+        try:
+            f68 = int(read_ram_value(world.ram, "event_flags_1f68", raw=True))
+        except Exception:
+            f68 = -1
         pos = get_pos_from_ram(world.ram)
+        intro = outdoor_intro_flags_ready(world.ram)
         return TaskResult(
             status=TaskStatus.FAILURE,
             reason=(
-                f"farm_control_lost gs=0x{gs:04X} pos=({pos.x},{pos.y}) "
-                f"(post-truck D1 ExitToFarm clears free-move bit 0x4000; "
-                f"auto-walk → house-front soft-lock → tilemap 0x5F)"
+                f"farm_control_lost gs=0x{gs:04X} f1f68=0x{f68:04X} "
+                f"intro_ok={intro} pos=({pos.x},{pos.y}) "
+                f"(post-truck D1 ExitToFarm: missing outdoor-intro flags "
+                f"0x00A1 fires CODE_83CEAE → free-move clear → house-front "
+                f"soft-lock → tilemap 0x5F; Y1 has 0x00B1)"
             ),
         )
 
@@ -1187,7 +1220,11 @@ __all__ = [
     "shed_farm_route_name",
     "shed_enter_transition",
     "farm_free_move_ready",
+    "outdoor_intro_flags_ready",
     "farm_house_front_softlock",
+    "EVENT_1F68_OUTDOOR_INTRO_MASK",
+    "EVENT_1F68_DOG_OWNED",
+    "EVENT_1F68_MORNING_INTRO_DONE",
     "load_recording_slice",
     "DeadlineCheckTask",
     "WaitUntilTimeTask",
