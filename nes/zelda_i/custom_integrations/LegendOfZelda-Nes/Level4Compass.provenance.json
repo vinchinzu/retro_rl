@@ -1,22 +1,114 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-10T02:16:28.626949+00:00",
+  "captured_at": "2026-08-10T03:06:19.591581+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
-    "bead": "rr-5lu",
-    "intervention_class": "survival",
-    "segment": "l4_compass"
+    "bead": "rr-9so0",
+    "intervention_class": "clean",
+    "segment": "l4_compass_62",
+    "track": "clean"
   },
   "schema_version": 1,
   "selected_trial": {
-    "keys": 0,
-    "room": "0x62",
-    "x": 48,
-    "y": 189
+    "controllers": {
+      "compass_62": {
+        "compass_at_frame": 90,
+        "frames": 470,
+        "maze_in": [
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "UP",
+          "UP",
+          "UP",
+          "RIGHT",
+          "UP",
+          "UP",
+          "UP"
+        ],
+        "maze_out": [
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "LEFT",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "LEFT",
+          "DOWN",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "UP",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "UP",
+          "LEFT",
+          "LEFT",
+          "UP",
+          "LEFT",
+          "UP",
+          "UP",
+          "UP",
+          "LEFT"
+        ],
+        "notes": [
+          "compass_bit_f90",
+          "got_compass",
+          "return_path_done",
+          "compass_and_0x61"
+        ],
+        "path_index": 0,
+        "phase": "DONE",
+        "pickup_xy": [
+          136,
+          132
+        ],
+        "segment": "level4_compass_0x62",
+        "success": true
+      }
+    },
+    "final": {
+      "bombs": 9,
+      "compass": 12,
+      "compass_l4": true,
+      "cur_opened_doors": 1,
+      "health": 110,
+      "keys": 0,
+      "level": 4,
+      "mode": 5,
+      "room": 97,
+      "room_all_dead": 0,
+      "room_hex": "0x61",
+      "room_item_id": 3,
+      "x": 224,
+      "y": 141
+    },
+    "frames": 471,
+    "ok": true,
+    "segment": "compass_62"
   },
-  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4FirstKey.state",
-  "source_state_sha256": "e2ef274b7f7e911cd213081bc4de203f629250d52c5d6d817f8522b3633708dc",
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room62Cleared.state",
+  "source_state_sha256": "b14a0be5d0abe4cdf7ac1f252341fbd669880b03ca6c9d1f402414be5b5b1d17",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Compass.state",
-  "state_sha256": "5800a155c6d44c9e2d93ba450e278688caedfd6a0a3cf8f0cbc4c09ed965c861"
+  "state_sha256": "9fa87ef821c2947bab53fd9bc7aa450cfc237b6302209cfbe262f45280941e3b"
 }

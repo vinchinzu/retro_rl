@@ -13,7 +13,9 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     0x51 --LEFT @ y≈141--> 0x50 (5× Vire ``0x12``)  **dead-end pocket**
     0x51 --DOWN @ x≈120--> 0x61
     0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
-    0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)  **Stepladder residual**
+    0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)
+    0x62 --maze compass + return LEFT--> 0x61 (ADDR_COMPASS bit 0x08)
+    **Stepladder residual** north of 0x61 / past 0x51 (live recon next)
 
 Not Clean STATUS. Stepladder / Gleeok / TF ``0x08`` still residual.
 """
@@ -70,6 +72,69 @@ KEY_61_OPENS_TO = ROOM_L4_COMPASS_62
 
 # Free LEFT 0x51 → 0x50.
 LEFT_51_Y = 141
+
+# Dark-maze 0x62 compass (rr-9so0 live BFS from Level4Room62Cleared).
+# Hold each token for MAZE_IN_HOLD / MAZE_OUT_HOLD frames. Pickup ~ (136,132).
+# After compass, corridor path back to west vestibule then LEFT → 0x61 play.
+MAZE_IN_HOLD = 6
+MAZE_OUT_HOLD = 4
+MAZE_62_TO_COMPASS: tuple[str, ...] = (
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "UP",
+    "UP",
+    "UP",
+    "RIGHT",
+    "UP",
+    "UP",
+    "UP",
+)
+MAZE_62_RETURN_WEST: tuple[str, ...] = (
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "LEFT",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "LEFT",
+    "DOWN",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "UP",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "UP",
+    "LEFT",
+    "LEFT",
+    "UP",
+    "LEFT",
+    "UP",
+    "UP",
+    "UP",
+    "LEFT",
+)
+COMPASS_PICKUP_XY = (136, 132)
 
 _PATROL_MID: tuple[tuple[int, int], ...] = (
     (64, 109),
@@ -153,6 +218,15 @@ def level4_compass_collected(ram: np.ndarray) -> bool:
     """L4 compass inventory bit set (ADDR_COMPASS & 0x08)."""
     snap = read_snapshot(ram)
     return bool(snap.compass & LEVEL4_COMPASS_BIT)
+
+
+def level4_compass_route_success(ram: np.ndarray) -> bool:
+    """Compass bit set and back on 0x61 play-ready (maze return complete)."""
+    snap = read_snapshot(ram)
+    return (
+        bool(snap.compass & LEVEL4_COMPASS_BIT)
+        and level4_room_ready(snap, ROOM_L4_VIRES_61)
+    )
 
 
 # --- Specs (assisted geometry; not Clean promote) ---
@@ -565,6 +639,156 @@ def make_key_right_62_controller(*, clear_vires: bool = True) -> Level4KeyRight6
     return Level4KeyRight62Controller(clear_vires=clear_vires)
 
 
+# --- 0x62 dark maze: compass + return LEFT → 0x61 (rr-9so0) ---
+
+
+class Compass62Phase(Enum):
+    MAZE_IN = auto()
+    MAZE_OUT = auto()
+    EXIT_LEFT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4Compass62Controller:
+    """From cleared 0x62: maze to compass pickup, return west, LEFT to 0x61.
+
+    Live (rr-9so0): hold scripted dirs (BFS) — open seek fails on maze walls.
+    Success: ``ADDR_COMPASS & 0x08`` and play-ready on 0x61.
+    """
+
+    max_frames: int = 12000
+    phase: Compass62Phase = Compass62Phase.MAZE_IN
+    frames: int = 0
+    phase_frames: int = 0
+    path_index: int = 0
+    hold_left: int = 0
+    success: bool = False
+    compass_at_frame: int | None = None
+    notes: list[str] = field(default_factory=list)
+
+    def _set_phase(self, phase: Compass62Phase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            self.path_index = 0
+            self.hold_left = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(Compass62Phase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if self.phase is Compass62Phase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is Compass62Phase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+
+        if (
+            bool(snap.compass & LEVEL4_COMPASS_BIT)
+            and snap.level == LEVEL4
+            and snap.screen == ROOM_L4_VIRES_61
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            self.success = True
+            self._set_phase(Compass62Phase.DONE, "compass_and_0x61")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+
+        # Scroll through door transitions while exiting west.
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            if self.phase is Compass62Phase.EXIT_LEFT or (
+                snap.screen in (ROOM_L4_COMPASS_62, ROOM_L4_VIRES_61)
+            ):
+                return FrameAction(nes_action("LEFT"), "scroll_left")
+            return FrameAction(nes_idle_action(), f"wait_scroll_{snap.mode}")
+
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if bool(snap.compass & LEVEL4_COMPASS_BIT) and self.compass_at_frame is None:
+            self.compass_at_frame = self.frames
+            self.notes.append(f"compass_bit_f{self.frames}")
+
+        if self.phase is Compass62Phase.MAZE_IN:
+            if snap.screen != ROOM_L4_COMPASS_62:
+                return self._fail(f"maze_in_wrong_room_0x{snap.screen:02x}")
+            if bool(snap.compass & LEVEL4_COMPASS_BIT):
+                self._set_phase(Compass62Phase.MAZE_OUT, "got_compass")
+                # fall through to MAZE_OUT this frame
+            else:
+                if self.path_index >= len(MAZE_62_TO_COMPASS):
+                    return self._fail("maze_in_path_exhausted_no_compass")
+                direction = MAZE_62_TO_COMPASS[self.path_index]
+                self.hold_left += 1
+                if self.hold_left >= MAZE_IN_HOLD:
+                    self.path_index += 1
+                    self.hold_left = 0
+                return FrameAction(nes_action(direction), f"maze_in_{direction}")
+
+        if self.phase is Compass62Phase.MAZE_OUT:
+            if snap.screen == ROOM_L4_VIRES_61:
+                self._set_phase(Compass62Phase.EXIT_LEFT, "already_0x61")
+            elif snap.screen != ROOM_L4_COMPASS_62:
+                return self._fail(f"maze_out_wrong_room_0x{snap.screen:02x}")
+            elif self.path_index >= len(MAZE_62_RETURN_WEST):
+                self._set_phase(Compass62Phase.EXIT_LEFT, "return_path_done")
+            else:
+                direction = MAZE_62_RETURN_WEST[self.path_index]
+                self.hold_left += 1
+                if self.hold_left >= MAZE_OUT_HOLD:
+                    self.path_index += 1
+                    self.hold_left = 0
+                return FrameAction(nes_action(direction), f"maze_out_{direction}")
+
+        # EXIT_LEFT: push west door / finish settle on 0x61
+        if snap.screen == ROOM_L4_VIRES_61 and snap.mode == PLAY_MODE:
+            if bool(snap.compass & LEVEL4_COMPASS_BIT) and not snap.transitioning:
+                self.success = True
+                self._set_phase(Compass62Phase.DONE, "settled_0x61")
+                return FrameAction(nes_idle_action(), "done")
+        if snap.screen not in (ROOM_L4_COMPASS_62, ROOM_L4_VIRES_61):
+            return self._fail(f"exit_wrong_room_0x{snap.screen:02x}")
+        # Align y≈141 when still in 0x62 vestibule, then LEFT.
+        if snap.screen == ROOM_L4_COMPASS_62 and abs(snap.link_y - KEY_61_EAST_Y) > 8:
+            return FrameAction(
+                nes_action("UP" if snap.link_y > KEY_61_EAST_Y else "DOWN"),
+                "align_exit_y",
+            )
+        return FrameAction(nes_action("LEFT"), "exit_left")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "compass_at_frame": self.compass_at_frame,
+            "path_index": self.path_index,
+            "segment": "level4_compass_0x62",
+            "maze_in": list(MAZE_62_TO_COMPASS),
+            "maze_out": list(MAZE_62_RETURN_WEST),
+            "pickup_xy": list(COMPASS_PICKUP_XY),
+        }
+
+
+def make_compass_62_controller() -> Level4Compass62Controller:
+    return Level4Compass62Controller()
+
+
 # --- 0x71 empty entry → UP → 0x61 (rr-zchy) ---
 
 
@@ -672,9 +896,9 @@ def planning_interior_report() -> dict:
     return {
         "level": LEVEL4,
         "bead": "rr-5lu",
-        "tip": "rr-2ysf",
+        "tip": "rr-9so0",
         "track": "assisted",
-        "status": "interior_partial_past_key",
+        "status": "interior_compass_live_stepladder_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -700,7 +924,9 @@ def planning_interior_report() -> dict:
                 "enemies": {"0x12": 5},
                 "room_item": hex(ROOM_ITEM_COMPASS),
                 "LEFT": hex(ROOM_L4_VIRES_61),
-                "note": "dark_maze_compass_stepladder_residual",
+                "compass_bit": hex(LEVEL4_COMPASS_BIT),
+                "pickup_xy": list(COMPASS_PICKUP_XY),
+                "note": "dark_maze_compass_live_return_west",
             },
         },
         "bomb_61_north": {
@@ -713,6 +939,13 @@ def planning_interior_report() -> dict:
             "opens_to": hex(KEY_61_OPENS_TO),
             "key_cost": 1,
         },
+        "maze_62": {
+            "in_hold": MAZE_IN_HOLD,
+            "out_hold": MAZE_OUT_HOLD,
+            "to_compass": list(MAZE_62_TO_COMPASS),
+            "return_west": list(MAZE_62_RETURN_WEST),
+            "pickup_xy": list(COMPASS_PICKUP_XY),
+        },
         "segments": {
             "entry_up": "rr-zchy",
             "clear_vires_61": "rr-yr77",
@@ -720,11 +953,13 @@ def planning_interior_report() -> dict:
             "keese_key_51": "rr-wqdu",
             "clear_50": "rr-2ysf",
             "key_right_62": "rr-2ysf",
-            "stepladder_path": "rr-2ysf",
+            "clear_62": "rr-2ysf",
+            "compass_62": "rr-9so0",
+            "stepladder_path": "rr-9so0",
         },
         "not_yet": [
-            "0x62 dark maze nav / compass dual-green",
             "stepladder room / ADDR_LADDER",
+            "rooms past 0x51 after compass",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
@@ -738,6 +973,8 @@ __all__ = [
     "BOMB_61_NORTH_STAND",
     "BOMB_61_OPENS_TO",
     "BombWall61North",
+    "COMPASS_PICKUP_XY",
+    "Compass62Phase",
     "DungeonPhase",
     "EntryUpPhase",
     "KEY_61_EAST_Y",
@@ -745,9 +982,14 @@ __all__ = [
     "KeyRight62Phase",
     "LEVEL4_COMPASS_BIT",
     "Left50Phase",
+    "Level4Compass62Controller",
     "Level4EntryUpController",
     "Level4KeyRight62Controller",
     "Level4Left50Controller",
+    "MAZE_62_RETURN_WEST",
+    "MAZE_62_TO_COMPASS",
+    "MAZE_IN_HOLD",
+    "MAZE_OUT_HOLD",
     "ROOM_50_SPEC",
     "ROOM_51_SPEC",
     "ROOM_61_SPEC",
@@ -762,6 +1004,7 @@ __all__ = [
     "VIRE_OBJECT_TYPE",
     "VIRE_SPLIT_KEESE_TYPE",
     "level4_compass_collected",
+    "level4_compass_route_success",
     "level4_entry_ready",
     "level4_room_50_cleared",
     "level4_room_50_ready",
@@ -773,6 +1016,7 @@ __all__ = [
     "level4_room_62_ready",
     "level4_room_ready",
     "make_bomb_61_north_controller",
+    "make_compass_62_controller",
     "make_entry_up_controller",
     "make_key_right_62_controller",
     "make_left_50_controller",
