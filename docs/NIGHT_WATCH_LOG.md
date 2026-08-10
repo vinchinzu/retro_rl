@@ -671,3 +671,19 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
   goblin-solid or pure-RIGHT grids.
 - No push
 
+### 2026-08-10T01:16 CDT — SM rr-e5i6 Gate→Business pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-e5i6** CLOSED: Pure Ice Gate → Business return (K5 hop 3)
+- **Evidence:** `ice-gate-to-business` dual pure **879f** ×2 exact, room `0xA7DE`
+  xy=(41,907) pose=25 from `post_ice_tutorial_to_gate_pure`
+- Controller: cleaned human RLE morph drop + tunnel roll RIGHT + Super door
+  pressure (tunnel-mouth thrash trimmed; accept mid-top Gate settle)
+- Export: `scratch/post_ice_gate_to_business_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–3 GREEN; Alpha PB open)
+- Next bead **rr-3gh9**: Business Super → Warehouse pure from new pin
+- Units: ice scaffold + docs green; no continuous / STATUS change
+- No push
+
+### 2026-08-10T01:16 CDT — SM K5 Gate→Business pure GREEN
+- **CLOSED** `rr-e5i6` dual pure 879f×2 room 0xA7DE. Stack hop0+1+2+3 GREEN.
+- Next: `rr-3gh9` Business→Warehouse. Parent rr-dbu.8 open.

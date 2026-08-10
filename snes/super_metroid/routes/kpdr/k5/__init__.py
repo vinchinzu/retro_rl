@@ -9,7 +9,7 @@ Ice return (package ``routes/kpdr/ice/`` — shared predecessor)::
       → Snake 0xA8B9              ✅ pure dual 538f ×2  (ice_to_snake)
         → Tutorial 0xA865         ✅ pure dual 2386f ×2 (ice_snake_to_tutorial)
           → Ice Gate 0xA815       ✅ pure dual 969f ×2  (ice_tutorial_to_gate)
-            → Business 0xA7DE     ⬜ next one-hop
+            → Business 0xA7DE     ✅ pure dual 879f ×2  (ice_gate_to_business)
 
 K5 reverse tunnels + Red climb (this package — implement when predecessor pure)::
 
