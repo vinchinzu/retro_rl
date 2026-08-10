@@ -300,3 +300,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-o0nn` open: live component {0x71,0x61,0x51,0x50,0x62} sealed; ADDR_LADDER=0.
 - Child `rr-xc3x`: expand past closed set toward Stepladder (TAS/FM2 room-id leads OK).
 
+### 2026-08-09T23:20 CDT — SM Wave→Business pure stack COMPLETE
+- **CLOSED** `rr-vsjy` 347f×2 Frog→Business floor + **`rr-vqv3` 7/7 dual pure GREEN**.
+- Unblocks continuous Ice compose (still NO STATUS without dual continuous green).
+- Note: Business settle is floor ~(216,1419); Ice Super needs climb/re-pin.
+
