@@ -631,3 +631,20 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next tip under rr-20w: live Inside_House multi-day water path after plant
   (day-plan CROP_WATER reliability), not fixture-only
 - No push
+
+### 2026-08-10T01:08 CDT — SM rr-81ek Tutorial→Gate pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-81ek** CLOSED: Pure Ice Tutorial → Gate return (K5 hop 2)
+- **Evidence:** `ice-tutorial-to-gate` dual pure **969f** ×2 exact, room `0xA815`
+  xy=(807,131) pose=81 from `post_ice_snake_to_tutorial_pure`
+- Controller: partial cleaned human RLE left→mid + double-DOWN morph tunnel
+  + Ice freeze + long spin gap + door pressure (no boyon thrash RLE)
+- Export: `scratch/post_ice_tutorial_to_gate_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–2 GREEN; Alpha PB open)
+- Next bead **rr-e5i6**: Gate → Business pure from new pin
+- Units: ice scaffold green; no continuous / STATUS change
+- No push
+
+### 2026-08-10T01:08 CDT — SM K5 Tutorial→Gate pure GREEN
+- **CLOSED** `rr-81ek` dual pure 969f×2 room 0xA815. Stack hop0+1+2 GREEN.
+- Next: `rr-e5i6` Gate→Business. Parent rr-dbu.8 open.

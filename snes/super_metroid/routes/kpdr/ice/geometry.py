@@ -16,6 +16,7 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_ICE_ACID,
     ROOM_ICE_GATE,
     ROOM_ICE_SNAKE,
+    ROOM_ICE_TUTORIAL,
 )
 from super_metroid.routes.rle import RleScript, load_rle_json
 
@@ -129,6 +130,37 @@ SNAKE_TO_TUTORIAL_DROP_FRAMES = 700
 SNAKE_TOP_TO_TUTORIAL_FRAMES = 500
 TUTORIAL_RETURN_SETTLE = 280
 
+# ---------------------------------------------------------------------------
+# Ice Tutorial → Gate return (0xA865 → 0xA815) — K5 stack hop 2
+# ---------------------------------------------------------------------------
+# Pure snake-to-tutorial handoff ~(39, 127) pose 81; tape Phase B hop 21.
+# Room is 2 screens (widthBlocks 32); right blue door block [31,7] → x≈494.
+# Platform bands from human ordinary path (re-solve; no thrash RLE):
+#   left shelf y≈139 → lower floor y≈195 → mid Boyon shelf y≈120–145
+#   → gap spin → door shelf y≈139 → Gate entry ~(494, 139).
+TUTORIAL_SHELF_Y = (120, 155)
+TUTORIAL_FLOOR_Y = (120, 160)  # door-height main shelves
+TUTORIAL_LOWER_Y = (180, 220)  # pit floor after first gap
+TUTORIAL_DOOR_X = 450
+TUTORIAL_DOOR_Y = (100, 175)
+TUTORIAL_TO_GATE_FRAMES = 2200
+GATE_RETURN_SETTLE = 280
+
+_TUTORIAL_TO_GATE_RLE_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "ice_tutorial_to_gate_rle.json"
+)
+TUTORIAL_TO_GATE_RLE: RleScript = load_rle_json(_TUTORIAL_TO_GATE_RLE_PATH)
+# First ~500f: left shelf → lower floor → mid structure lip (before morph tunnel).
+_mid_acc = 0
+_mid_runs: list[tuple[int, tuple[str, ...]]] = []
+for _n, _btns in TUTORIAL_TO_GATE_RLE:
+    if _mid_acc >= 500:
+        break
+    take = min(int(_n), 500 - _mid_acc)
+    _mid_runs.append((take, tuple(_btns)))
+    _mid_acc += take
+TUTORIAL_MID_RLE: RleScript = tuple(_mid_runs)
+
 
 def in_business(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_BUSINESS
@@ -144,6 +176,10 @@ def in_ice_acid(state: SuperMetroidState) -> bool:
 
 def in_ice_snake(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_ICE_SNAKE
+
+
+def in_ice_tutorial(state: SuperMetroidState) -> bool:
+    return int(state.room_id) == ROOM_ICE_TUTORIAL
 
 
 def on_snake_floor(state: SuperMetroidState) -> bool:
@@ -283,6 +319,15 @@ __all__ = [
     "SNAKE_TUTORIAL_DOOR_X",
     "SNAKE_TUTORIAL_DOOR_Y",
     "TUTORIAL_RETURN_SETTLE",
+    "TUTORIAL_SHELF_Y",
+    "TUTORIAL_FLOOR_Y",
+    "TUTORIAL_LOWER_Y",
+    "TUTORIAL_DOOR_X",
+    "TUTORIAL_DOOR_Y",
+    "TUTORIAL_TO_GATE_FRAMES",
+    "TUTORIAL_TO_GATE_RLE",
+    "TUTORIAL_MID_RLE",
+    "GATE_RETURN_SETTLE",
     "SNAKE_TUNNEL_EXIT_X",
     "SNAKE_TUNNEL_FLOOR_Y",
     "SNAKE_TUNNEL_FRAMES",
@@ -296,6 +341,7 @@ __all__ = [
     "in_ice_acid",
     "in_ice_gate",
     "in_ice_snake",
+    "in_ice_tutorial",
     "in_ice_super_band",
     "on_acid_floor",
     "on_ice_super_lip",
