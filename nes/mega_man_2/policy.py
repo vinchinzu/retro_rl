@@ -28,17 +28,19 @@ AirScreen2 late recipe (0-based ``i``):
 
 Post-screen-4 bottleneck (2026-08-09 probe, rr-54ui — open):
 
-- Last solid land under the screen2 recipe is ~f437 / prog 949 / sy 84
-  (checkpoint ``AirFanPlatform``). Pink head LEFT of platform is a **Goblin /
-  Air Tikki** (standable when spikes down / 5px corner), not an updraft fan.
-  ``AirLeftPlatform`` is grounded left of it (prog~902). Ladder bar never sets
-  ``tile_feet==2``. Pure RIGHT period pit-dies ~prog 1047–1073 (camera still 4).
-  Pipi bird-boost from right edge reaches min_sy~23–26 and prog~1085, still
-  airborne death. ``AirScreen4`` is mid-air freefall (~17f) — do not start there.
-- Variable jump height works (hold 1→~sy76 short hop; hold ≥12→apex sy34).
-  A needs a rising edge after load.
-- Next: Goblin-head pixel land, Lightning Lord cloud ride, or controlled Pipi
-  bounce onto solid cloud — not more late-period RIGHT tuning alone.
+- Last solid under screen2 recipe: ``AirFanPlatform`` (prog~949, sy84). Solid
+  extent mapped **prog 937–984** (left edge fall@walk~14; right edge@walk~33).
+  Pink head LEFT = **Goblin / Air Tikki** (obj slot14 type36 @sx~39,sy~49), not
+  an updraft fan. ``AirLeftPlatform`` is a short ledge left of it (prog~902–905
+  only). Ladder bar never ``tile_feet==2``.
+- Overnight (rr-54ui): dense 5px/spike-cycle hop grids from both platforms —
+  **0** feet=1 lands with prog in (906,936) or sy<82 (Goblin top never solid in
+  tested windows). Long hops clear Goblin → left ledge only. Pure RIGHT from
+  right edge dies ~prog 1064–1072 scr4; shoot+Pipi bird-boost min_sy~23
+  prog~1086 still pit. No camera≥5 / boss door. ``AirScreen4`` mid-air freefall.
+- A needs rising edge after load. Eggs/projectiles = type35 slots at y~84.
+- Next: alternate spawn timing / true spikes-down window not yet found; or
+  Lightning Lord section entry from a different approach — not more pure RIGHT.
 
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """
