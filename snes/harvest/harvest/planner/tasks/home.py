@@ -56,9 +56,13 @@ from harvest.planner.tasks.transitions import (
 # y=31 fence wall (x=11–29) blocks northbound return from south field after
 # water/CLEAR. East end (tile x≥30 → px≥480) clears the wall; west end is
 # x≤10 → px≤160. Never route mid-corridor x≈248 (tile 15) — that is solid fence.
+# East free lane must be *east of the pond* (tile x≥36 → px≥576). Using the
+# pond column (x=512 / tile 32) makes multi_nav lateral-align through water
+# (rr-5in D12 return_home stuck ~(854,527)→(774,521)).
 _FENCE_ROW_Y = FARM_POND_ACCESS_FENCE_ROW
 _FENCE_PX_Y = _FENCE_ROW_Y * 16  # 496
-_EAST_AROUND_FENCE_X = 512  # tile x=32, past pond / east of wall
+_EAST_AROUND_FENCE_X = 576  # tile x=36, east of pond + past fence wall
+_EAST_LANE_X_MAX = 640  # cap northbound lane; farther east is shipping scrub
 _WEST_AROUND_FENCE_X = 96   # tile x=6, west of wall
 
 # ── DayPlanTask ───────────────────────────────────────────────────
@@ -340,9 +344,11 @@ class ReturnHomeTask(Task):
         south_of_wall = cls._south_of_fence_wall(pos)
         gaps = cls._open_fence_gap_tiles(ram) if south_of_wall else []
 
-        if south_of_wall and pos.x < _WEST_AROUND_FENCE_X + 40:
-            # Already west of the fence wall — run north on the free side.
-            corridor_x = _WEST_AROUND_FENCE_X
+        if south_of_wall and pos.x < 176:
+            # West of the fence wall (tile x<11): run north on the free side.
+            # Prefer current x when already past the west corridor so we do not
+            # pull left into the SW rock pocket (D12 residual ~(122,518)).
+            corridor_x = min(max(pos.x, _WEST_AROUND_FENCE_X), 160)
             for y in (600, 520, 440):
                 if pos.y > y + 24:
                     stages.append(
@@ -353,8 +359,10 @@ class ReturnHomeTask(Task):
                             run_direction="up",
                         )
                     )
-        elif south_of_wall and gaps:
+        elif south_of_wall and gaps and pos.x < _EAST_AROUND_FENCE_X + 80:
             # Nearest open gap — approach from south then push north through.
+            # Skip gap routing when already far east of the pond (prefer free
+            # east lane; gap at x≈14 would force a long west crawl through water).
             gap_x = min(gaps, key=lambda x: abs(x * 16 + 8 - pos.x))
             gap_px = gap_x * 16 + 8
             if abs(pos.x - gap_px) > 20:
@@ -384,9 +392,13 @@ class ReturnHomeTask(Task):
             )
             corridor_x = gap_px
         elif south_of_wall:
-            # Mid-wall (x≈176–480): go east past fence end then north.
-            corridor_x = _EAST_AROUND_FENCE_X
-            if pos.x < corridor_x - 16:
+            # Past fence wall on the east free lane (east of pond), then north.
+            # If already east of the lane, north first at a capped east x — do
+            # not lateral-align onto the pond column while still at pond y.
+            if pos.x >= _EAST_AROUND_FENCE_X - 16:
+                corridor_x = min(max(pos.x, _EAST_AROUND_FENCE_X), _EAST_LANE_X_MAX)
+            else:
+                corridor_x = _EAST_AROUND_FENCE_X
                 stages.append(
                     Waypoint(
                         tilemap=0x00,
@@ -405,10 +417,34 @@ class ReturnHomeTask(Task):
                             run_direction="up",
                         )
                     )
+            # After clearing fence latitude at east x, slide west above the
+            # wall (y≈440) before the final door approach — avoids pond y.
+            if corridor_x > front.x + 40:
+                stages.append(
+                    Waypoint(
+                        tilemap=0x00,
+                        target_px=(min(corridor_x, front.x + 80), 440),
+                        radius=20,
+                        run_direction="left",
+                    )
+                )
         else:
             # North of fence but still deep south of door — mid-field open.
-            corridor_x = max(pos.x, front.x)
-            corridor_x = min(360, max(160, corridor_x))
+            # Far-east (post-water/CLEAR): slide west first above the wall.
+            if pos.x > _EAST_AROUND_FENCE_X + 40:
+                corridor_x = min(pos.x, _EAST_LANE_X_MAX)
+                stages.append(
+                    Waypoint(
+                        tilemap=0x00,
+                        target_px=(_EAST_AROUND_FENCE_X, min(pos.y, 460)),
+                        radius=22,
+                        run_direction="left",
+                    )
+                )
+                corridor_x = _EAST_AROUND_FENCE_X
+            else:
+                corridor_x = max(pos.x, front.x)
+                corridor_x = min(360, max(160, corridor_x))
             for y in (520, 460):
                 if pos.y > y + 32:
                     stages.append(
@@ -448,11 +484,15 @@ class ReturnHomeTask(Task):
         else:
             self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
 
-    def _queue_south_escape(self, *, long_east: bool = False) -> None:
+    def _queue_south_escape(
+        self, *, long_east: bool = False, far_east: bool = False
+    ) -> None:
         """Leave south-of-fence softlock for re-nav.
 
-        West of fence (x<176) or east (x≥480): charge north. Mid-wall: east
-        first. Mix A thrash so a blocking weed can be lifted.
+        West of fence (x<176) or east-of-pond (x≥576): charge north. Mid-wall:
+        east first. Far-east pond latitude: west toward free lane then north
+        (right-first makes the D12 thrash worse). Mix A thrash so a blocking
+        weed can be lifted.
         """
         # long_east used when pre-escape starts deep SW (unknown x at queue time).
         def _push(direction: str, frames: int) -> None:
@@ -462,7 +502,15 @@ class ReturnHomeTask(Task):
                     kwargs = {direction: True, "a": True}
                 self._action_queue.append(make_action(**kwargs))
 
-        if long_east:
+        if far_east:
+            # East of pond / shipping scrub: west onto free lane, then north.
+            _push("left", 90)
+            _push("up", 80)
+            _push("left", 70)
+            _push("up", 90)
+            _push("left", 40)
+            _push("up", 60)
+        elif long_east:
             # Prefer north-first then east: SW pocket is often already west of
             # the fence wall (tile x≤10) where north is the free path.
             _push("up", 80)
@@ -568,6 +616,27 @@ class ReturnHomeTask(Task):
                 status=TaskStatus.RUNNING,
                 action=ActionResult(self._action_queue.popleft()),
                 reason="pre-escape SW pocket",
+            )
+        # Far-east pond latitude after water (rr-5in D12 ~(854,527)): brief
+        # west+north thrash so multi_nav is not born lateral-aligning into water.
+        if (
+            not self._did_pre_escape
+            and self._south_of_fence_wall(pos)
+            and pos.x > _EAST_LANE_X_MAX + 40
+            and self._south_escape_attempts < self.south_escape_limit
+        ):
+            self._did_pre_escape = True
+            self._south_escape_attempts += 1
+            self._phase = "south_escape"
+            self._queue_south_escape(far_east=True)
+            print(
+                f"[RETURN_HOME] Pre-escape far-east pond pos=({pos.x},{pos.y}) "
+                f"before house approach"
+            )
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(self._action_queue.popleft()),
+                reason="pre-escape far-east pond",
             )
         waypoints = self._house_approach_waypoints(world.ram, front, pos)
         # Leave headroom for softlock fail → escape → second approach.
@@ -757,7 +826,11 @@ class ReturnHomeTask(Task):
             if self._phase == "nav_house_front":
                 pos = get_pos_from_ram(world.ram)
                 front = self._house_front_px(world.ram)
-                if abs(pos.x - front.x) <= 48 and abs(pos.y - front.y) <= 48:
+                dx = abs(pos.x - front.x)
+                dy = abs(pos.y - front.y)
+                # Generous near-door: D12 residual (118,486) is ~62px south of
+                # stand — prior 48px box hard-failed with no escape.
+                if dx <= 48 and dy <= 80:
                     print(
                         f"[RETURN_HOME] Nav failed near door "
                         f"pos=({pos.x},{pos.y}): {reason}; forcing enter"
@@ -768,16 +841,39 @@ class ReturnHomeTask(Task):
                         world,
                     )
                     return self._task.step(world)
-                # Deep south / SW pocket multi_nav timeout: B-run escape then
-                # densified re-nav (rr-5in: stuck ~(102,726) no BFS path).
+                # Mid-yard south of door (north of fence): simple re-nav north
+                # rather than B-run thrash that can re-enter the fence pocket.
                 if (
-                    self._deep_south_of_house(pos, front)
+                    not self._south_of_fence_wall(pos)
+                    and pos.y > front.y + 24
+                    and dx <= 80
+                    and self._offstand_corrections < 6
+                ):
+                    self._offstand_corrections += 1
+                    self._task = None
+                    print(
+                        f"[RETURN_HOME] Mid-yard re-nav after fail "
+                        f"pos=({pos.x},{pos.y}) "
+                        f"({self._offstand_corrections}/6): {reason}"
+                    )
+                    return self._nav_to_house_front(world, front)
+                # South-of-fence / far-from-door multi_nav timeout: B-run
+                # escape then densified re-nav. Prior deep_south-only gate
+                # missed D12 y=527 (just above front+120) and far-east pond.
+                door_far = dx + dy > 60
+                if (
+                    (
+                        self._deep_south_of_house(pos, front)
+                        or self._south_of_fence_wall(pos)
+                        or door_far
+                    )
                     and self._south_escape_attempts < self.south_escape_limit
                 ):
                     self._south_escape_attempts += 1
                     self._task = None
                     self._phase = "south_escape"
-                    self._queue_south_escape()
+                    far_east = pos.x > _EAST_AROUND_FENCE_X
+                    self._queue_south_escape(far_east=far_east)
                     print(
                         f"[RETURN_HOME] South softlock escape "
                         f"({self._south_escape_attempts}/"
@@ -793,13 +889,17 @@ class ReturnHomeTask(Task):
                 pos = get_pos_from_ram(world.ram)
                 front = self._house_front_px(world.ram)
                 if (
-                    self._deep_south_of_house(pos, front)
+                    (
+                        self._deep_south_of_house(pos, front)
+                        or self._south_of_fence_wall(pos)
+                    )
                     and self._south_escape_attempts < self.south_escape_limit
                 ):
                     self._south_escape_attempts += 1
                     self._task = None
                     self._phase = "south_escape"
-                    self._queue_south_escape()
+                    far_east = pos.x > _EAST_AROUND_FENCE_X
+                    self._queue_south_escape(far_east=far_east)
                     print(
                         f"[RETURN_HOME] South softlock escape (drop) "
                         f"({self._south_escape_attempts}/"
