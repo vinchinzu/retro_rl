@@ -2183,6 +2183,67 @@ class DayPlanSequenceTests(unittest.TestCase):
         self.assertIsInstance(task._task, EnsureCarryToolTask)
         self.assertEqual(task._task.tool_id, int(Tool.HOE))
 
+    def test_ensure_crop_seeds_swaps_hoe_off_selected_before_seed_fetch(self) -> None:
+        """Shelf A replaces selected; hoe must be backpack before seed grab (rr-6byj)."""
+        world = make_world(0x00)
+        world.ram[0x0921] = int(Tool.HOE)
+        world.ram[0x0923] = int(Tool.WATERING_CAN)
+        world.ram[0x092A] = 10
+        task = EnsureCropSeedsTask(seed_type="potato")
+
+        task.reset(world)
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "swap_preserve_hoe")
+        self.assertIsInstance(task._task, SwapCarrySlotsTask)
+
+    def test_ensure_crop_seeds_swaps_seed_off_selected_before_hoe_fetch(self) -> None:
+        """If seeds are already held and selected, preserve them before hoe shelf."""
+        world = make_world(0x00)
+        world.ram[0x0921] = 0x07  # potato selected
+        world.ram[0x0923] = int(Tool.WATERING_CAN)
+        world.ram[0x092A] = 10
+        task = EnsureCropSeedsTask(seed_type="potato")
+
+        task.reset(world)
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "swap_preserve_seed")
+        self.assertIsInstance(task._task, SwapCarrySlotsTask)
+
+    def test_ensure_crop_seeds_fetch_when_hoe_in_backpack(self) -> None:
+        """Hoe already in backpack → selected is disposable → go straight to seed route."""
+        world = make_world(0x00)
+        world.ram[0x0921] = int(Tool.WATERING_CAN)
+        world.ram[0x0923] = int(Tool.HOE)
+        world.ram[0x092A] = 10
+        task = EnsureCropSeedsTask(seed_type="potato")
+
+        task.reset(world)
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "fetch_seed")
+        self.assertIsInstance(task._task, ShedFetchItemTask)
+        self.assertEqual(task._task._phase, "route")
+        self.assertIsInstance(task._task._task, MultiMapNavTask)
+
+    def test_ensure_crop_seeds_caps_shed_trips_against_carry_thrash(self) -> None:
+        """Re-fetch loop must fail cleanly instead of multi_nav hang (rr-6byj)."""
+        world = make_world(0x00)
+        world.ram[0x0921] = 0x00
+        world.ram[0x0923] = 0x00
+        world.ram[0x092A] = 10
+        task = EnsureCropSeedsTask(seed_type="potato", max_shed_trips=2)
+        task.reset(world)
+        # Simulate prior trips without completing plant tools.
+        task._shed_trips = 2
+        result = task._start_next_phase(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("carry thrash", result.reason or "")
+
     def test_ensure_crop_seeds_uses_tool_shed_route_when_hoe_ready(self) -> None:
         world = make_world(0x00)
         world.ram[0x0921] = int(Tool.HOE)
@@ -2193,7 +2254,8 @@ class DayPlanSequenceTests(unittest.TestCase):
         task.reset(world)
         result = task.step(world)
 
-        # Stock on shelf and not in carry pair → shed fetch (no X-cycle).
+        # Hoe selected + empty backpack: no X-swap (empty cannot be selected);
+        # open backpack slot absorbs shelf item → go straight to seed route.
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task._phase, "fetch_seed")
         self.assertIsInstance(task._task, ShedFetchItemTask)

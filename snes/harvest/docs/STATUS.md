@@ -179,11 +179,19 @@ Test crop fixtures (for growth / ship work):
    - **GREEN:** power-on → TownDay1Handoff (peak talks + truck + outdoor dog intro + shed
      grass+can, `house_size=0`) → D2 farm; `mid_run_state_loads=0`, money $300
    - **Wired:** `run_to_day2 --power-on` auto-runs D1 handoff before multi-day
-   - **RED pins:** (1) first full-spring attempt sleep miss at bed (70,86) D7 after 5
-     overnights; (2) re-run hung on `ENSURE_CROP_SEEDS` multi_nav 1-waypoint S0D4 ~11:02
-     after seed spend ($100). Residual: `recordings/rr_5in_residual.json`
-   - Child beads: `rr-6byj` (ENSURE_CROP_SEEDS hang), `rr-m0wq` (sleep D7); empty-can
-     natural refill still under `rr-3q27` / parent `rr-20w`
+   - **RED pins (prior):** (1) sleep miss at bed (70,86) D7 after 5 overnights
+     (`rr-m0wq`); (2) `ENSURE_CROP_SEEDS` multi_nav 1-waypoint hang S0D4 ~11:02.
+     Residual: `recordings/rr_5in_residual.json`
+   - **2026-08-10 `rr-6byj` CLOSED (Clean):** hang was 2-slot **carry thrash** —
+     shelf A replaces **selected**; hoe grab then seed grab (or reverse) kept
+     re-entering `near_shed_to_shed` 1-wp multi_nav forever. Fix: X-swap so
+     keep-tool is backpack before shelf when both slots filled; skip swap when
+     backpack empty; `max_shed_trips` fail-clean; ENSURE_CROP_SEEDS/CAN optional.
+     Evidence: `recordings/rr_6byj_ensure_crop_seeds_probe.json` —
+     `Y1_After_Buy_Potato` → hoe+seeds ready, `multi_nav_starts=2`, `trips=2`,
+     SUCCESS ~2248f, `mid_run_state_loads=0`, `ram_writes=0`.
+   - Child residual: `rr-m0wq` (sleep D7); parent `rr-20w` / `rr-5in` full
+     power-on→Summer income still open (live multi-day plant→water path)
 6. ~~End-of-spring / continuous soak with **money > 100** + harvest phases (rr-y8n / Gate A)~~ — **CLOSED 2026-08-09 night** Clean multi-day successor:
    ```bash
    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
