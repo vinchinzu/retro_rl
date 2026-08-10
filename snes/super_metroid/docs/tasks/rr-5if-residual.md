@@ -1,46 +1,43 @@
 ## Residual — rr-5if Pure Snake → Ice PLM
 
 ### Result
-PARTIAL — 2WJ climb bands landed + controller scaffold; morph-tunnel entry RED
+GREEN — dual pure exact match **1756f** ×2 Ice PLM collect
 
 ### Files changed
-- `routes/kpdr/ice/geometry.py` — Snake climb/tunnel bands + `has_ice`
-- `routes/kpdr/ice/snake_to_ice.py` — pure hop scaffold (climb + tunnel attempt + PLM)
-- `routes/kpdr/ice/__init__.py`, `registry.py`, `scripts/probe/kpdr.py` — wire `ice_snake_to_ice`
+- `routes/kpdr/ice/geometry.py` — tunnel y band (365–395), false ledge y409, mid shelf
+- `routes/kpdr/ice/snake_to_ice.py` — 2WJ climb + morph-drop + mid-shelf human RLE recovery + PLM
 - `tests/test_k4_ice_scaffold.py` — unit bands + registry
 
 ### Verify paste
 ```bash
 uv run pytest snes/super_metroid/tests/test_k4_ice_scaffold.py -q
-# pure (tunnel RED — right column, too low):
+# → 6 passed
+
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure ice-snake-to-ice \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_acid_to_snake_pure.state
-# → RED room=0xA8B9 pose=30 x=219 y=553 frames=1623 (past wall, missed tunnel y~377)
+# → GREEN room=0xA890 xy=(187,120) frames=1756 beams=0x1007 (×2 exact)
 ```
 
 ### Acceptance
 - [x] 2WJ / platform-hop bands from pure handoff (not freeze ladder)
 - [x] Package under `routes/kpdr/ice/` (no Wave megafile)
-- [ ] Dual pure GREEN Snake → Ice PLM
-- [ ] Continuous tip (blocked on pure stack)
+- [x] Dual pure GREEN Snake → Ice PLM (**1756f** ×2, beams `0x1007`)
+- [ ] Continuous tip (blocked on pure stack compose `rr-dbu.7` / parent `rr-dbu.11`)
 
 ### Residual risks / findings
-1. **Climb GREEN path (live probe):** floor ~(216,651) → L1 y587 → L2 y523 → L3 y459 → L4 y395 → L5 y331 → L6 y267 → L7 y203 → top y139 via alternating platform hops (tape first-climb shape).
-2. **Center wall x=171** is solid at mid height from the left shaft. Morph at x=171 y~409 does not enter the tunnel.
-3. **Top cross** (y139) is the only clean way past the wall; shoot-down opens the right-column shelf (~y155 → y~270).
-4. **Morph tunnel** is on the right column at y~377 x≥200 (human successful roll f15425). Entry from right column after top cross is the remaining knob — not freeze thrash, not left-wall morph.
-5. Standing morph needs `ensure_morph` (double-tap DOWN); held DOWN only crouches.
+1. Climb GREEN: floor ~(216,651) → top y139 platform hops.
+2. Tunnel floor is **y=377 only**; false ledge **y~409** is a morph trap (must not treat as tunnel).
+3. Primary: morph-drop from right platform y267; recovery: mid-shelf ~(197,507) human RLE f15354–15470.
+4. End states: `scratch/post_ice_snake_to_ice_pure.state` (+ `_dual`).
 
 ### Next action (required)
-- **Next card ID:** rr-5if (continue) | knob: right-column morph tunnel entry
-- **One change:** From right platform ~y267 (post top cross + shoot-down), land the y~377 tunnel ledge and morph-roll to Ice door; then dual pure PLM collect
-- **Source state:** `scratch/post_ice_acid_to_snake_pure.state`
+- **Next card ID:** rr-dbu.11 (stack gate) / PLANNER — pure Ice stack complete for outbound PLM
+- **One change:** optional return path Snake→Tutorial→Gate; continuous compose only after planner
+- **Source state:** `scratch/post_ice_snake_to_ice_pure.state` (Ice PLM collected)
 
 ### Non-claims
-- Did not STATUS-promote / continuous `--to ice` / freeze ladder
-- Climb bands proven in live probe; full hop not dual-GREEN yet
+- Did not STATUS-promote continuous `--to ice`
+- Did not forge progression RAM / freeze ladder
 
 ### Probe pin
-- Climb isolation (live): room=0xA8B9 pose=9 x=120 y=139 (top after platform hops)
-- Pure hop RED: room=0xA8B9 pose=30 x=219 y=553 door_transition=0 frames=1623
-  (reached right column morph; tunnel band y~377 missed — fell low)
+- Dual GREEN: room=0xA890 pose=81 x=187 y=120 beams=0x1007 frames=1756 ×2

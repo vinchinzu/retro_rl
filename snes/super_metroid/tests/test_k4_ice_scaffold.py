@@ -133,3 +133,31 @@ def test_snake_climb_bands_and_ice_mask() -> None:
     assert has_ice(no_ice) is False  # type: ignore[arg-type]
     yes_ice = SimpleNamespace(collected_beams=0x1007)
     assert has_ice(yes_ice) is True  # type: ignore[arg-type]
+
+
+def test_snake_tunnel_excludes_false_ledge() -> None:
+    """Tunnel floor y~377 is not the morph trap ledge y~409."""
+    from super_metroid.routes.kpdr.ice.geometry import (
+        SNAKE_TUNNEL_Y,
+        on_snake_false_ledge,
+        on_snake_tunnel_band,
+    )
+
+    assert SNAKE_TUNNEL_Y[1] < 400
+    tunnel = SimpleNamespace(
+        room_id=ROOM_ICE_SNAKE,
+        samus_x=204,
+        samus_y=377,
+        velocity_y=0,
+        pose=30,
+    )
+    assert on_snake_tunnel_band(tunnel) is True  # type: ignore[arg-type]
+    false = SimpleNamespace(
+        room_id=ROOM_ICE_SNAKE,
+        samus_x=219,
+        samus_y=409,
+        velocity_y=0,
+        pose=30,
+    )
+    assert on_snake_tunnel_band(false) is False  # type: ignore[arg-type]
+    assert on_snake_false_ledge(false) is True  # type: ignore[arg-type]

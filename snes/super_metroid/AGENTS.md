@@ -33,8 +33,9 @@ helpers, ≤~500 lines/file — checklist in
 **136,361f** ×2, room `0xADDE`, beams `0x1005`, items `0x3105`).
 **History:** Speed **130,388f** ×2 and non-Spazer Bat Cave **122,304f** ×2
 remain valid previous tips.
-**Next:** Ice pure stack (`rr-dbu.11`) — Gate+Acid+Snake dual GREEN; next
-Snake→Ice PLM (`rr-5if`, prefer 2WJ). Do not invent Ice hops without tape.
+**Next:** Ice pure stack (`rr-dbu.11`) — Gate+Acid+Snake+**Ice PLM** dual GREEN
+(`rr-5if` 1756f ×2, beams `0x1007`). No continuous `--to ice` until compose
+(`rr-dbu.7`). Do not invent Ice hops without tape.
 
 **Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
 Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:
