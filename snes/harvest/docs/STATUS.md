@@ -174,13 +174,30 @@ Test crop fixtures (for growth / ship work):
    - **14 overnights** to Spring **D16**, money=$160, Clean mid_run=0
    - D12: Pre-escape far-east → south escape → sleep → D13 (not multi_nav die)
    - D13–D15 return_home all succeed; terminal **`reason=budget`** (not house nav)
-   - Residual **rr-qc9r**: CROP_WATER thrash D13–15 (`dry_crops=6 watered=0`)
-     burns frames so crops stay dry=6 / no ship / budget before Summer D1
+   - Residual was **rr-qc9r** (closed below).
+   **2026-08-10 (rr-qc9r CLOSED):** Late-spring **CROP_WATER thrash GREEN**.
+   Root: soft/south_far lip charges oscillated (25,34)↔(29,32) via trailing UP;
+   densify preferred pure-north (29,35)→(29,34) and direct 7-tile F0; near-F0
+   re-queued long RIGHT charges that overshot to (36,36); exhausted
+   `_south_lip_charges` left later tiles densify-only. Fixes in
+   `crop_planter.py`: pure-east south lip (no UP on y=34); soft LEFT brief;
+   densify short east hops require east gain; near-F0 multihop/act skip
+   re-charge; soft-reset charges on new refill; thrash arm skips near-F0.
+   Evidence Clean mid_run=0:
+   - Dry fixture: `can_peak=20`, `refill=1`, `watered=3`
+     (`recordings/empty_can_refill_probe.json`, ~10.7k f)
+   - Power-on `--end-of-spring`: **CROP_WATER success** D9 `watered=6 refills=1`,
+     D11+D13 `watered=6` each (no D13–15 dry=6 thrash); **HARVEST_ROUTE**
+     shipped≥5 → money **$160→$400**; **21 overnights** to Spring **D23**;
+     terminal `return_home timeout` (exit_to_farm) — not water/budget.
+     (`recordings/power_on_spring_to_summer.json`, ~300k f)
+   - Parent **rr-5in** residual: Summer D1 not reached (return_home D23) +
+     harvest ship timeouts; Gate B full still open.
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
    **ROM natural empty-can fill + 3/3 dry water OK** on dry fixture
    (`can_peak=20`, `watered=3`, `dry_end=[]`). **Power-on continuous refill
-   + water GREEN** D9–D11 (rr-5go9).
+   + water GREEN** D9–D13 late spring (rr-5go9 + rr-qc9r).
 4. ~~Multi-day growth from `Y1_Test_Crops_Planted_Watered`~~ — **done** (mature `0x60` at D8; journal water deltas).
 5. ~~Harvest + ship + post-5pm money assert (rr-53g)~~ — **CLOSED 2026-08-09 night** Clean:
    ```bash

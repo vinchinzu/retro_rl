@@ -2117,6 +2117,30 @@ class CropWaterTask(Task):
 
         player = self._navigator.current_tile
 
+        # rr-qc9r: after a failed refill tile, charge counters stay maxed so
+        # subsequent water tiles only densify-thrash. Soft-reset when not
+        # mid-scripted-charge so each empty-can attempt gets a fresh budget.
+        if (
+            not getattr(self, "_pending_south_lip_charge", False)
+            and not getattr(self, "_pending_gap_charge", False)
+            and not self._action_queue
+            and (
+                getattr(self, "_south_lip_charges", 0) >= 6
+                or getattr(self, "_east_south_charges", 0) >= 4
+            )
+        ):
+            print(
+                f"[CROP] Soft-reset refill charges at {player} "
+                f"(lip={getattr(self, '_south_lip_charges', 0)} "
+                f"es={getattr(self, '_east_south_charges', 0)})"
+            )
+            self._south_lip_charges = 0
+            self._east_south_charges = 0
+            self._refill_densify_stalls = 0
+            self._refill_densify_last = None
+            self._gap_south_tried = False
+            self._east_south_stuck_at = None
+
         def _full_path(start: Tuple[int, int], goal: Tuple[int, int]):
             return self._pathfinder.find_path(ram, start, goal)
 
@@ -2443,45 +2467,56 @@ class CropWaterTask(Task):
             self._action_queue.extend([make_action() for _ in range(8)])
         elif player[0] >= 27 and 32 <= player[1] <= 33:
             band = "soft"
-            # Soft-block band ~(28,32): RIGHT/DOWN often freeze.
-            # Dry fixture: LEFT then DOWN then RIGHT then UP to (32,34).
-            # Power-on rr-5go9: long LEFT + final UP at x<31 walks back through
-            # the open y=31 gap → (22,29) thrash. Prefer DOWN-first then RIGHT
-            # along y≈35 (below fence) so UP only fires after east progress.
+            # Soft-block band ~(28,32)/(29,32): RIGHT/DOWN often freeze.
+            # Power-on rr-qc9r: LEFT 36 + UP landed (25,34) then south_far UP
+            # climbed back to (29,32) — forever (25,34)↔(29,32) oscillation.
+            # Fix: DOWN off soft-block first (no long LEFT), pure RIGHT on
+            # y≥34 corridor. UP only after x≥31 and only if y>34.
+            self._action_queue.extend(
+                [make_action(down=True, b=True) for _ in range(100)]
+            )
+            self._action_queue.extend([make_action() for _ in range(6)])
+            # Brief LEFT wiggle only (soft-break) — not a west retreat.
+            self._action_queue.extend(
+                [make_action(left=True, b=True) for _ in range(12)]
+            )
+            self._action_queue.extend([make_action() for _ in range(3)])
             self._action_queue.extend(
                 [make_action(down=True, b=True) for _ in range(80)]
             )
-            self._action_queue.extend([make_action() for _ in range(6)])
-            # Soft-block break: brief left, then hard south+east on y≥34.
+            self._action_queue.extend([make_action() for _ in range(4)])
+            # Long east toward pond longitude (x≥32) on south lip.
             self._action_queue.extend(
-                [make_action(left=True, b=True) for _ in range(36)]
+                [make_action(right=True, b=True) for _ in range(280)]
+            )
+            self._action_queue.extend([make_action() for _ in range(6)])
+            # Walk-speed RIGHT if B-run soft-blocks mid-corridor.
+            self._action_queue.extend(
+                [make_action(right=True) for _ in range(60)]
             )
             self._action_queue.extend([make_action() for _ in range(4)])
             self._action_queue.extend(
-                [make_action(down=True, b=True) for _ in range(80)]
+                [make_action(right=True, b=True) for _ in range(80)]
+            )
+            self._action_queue.extend([make_action() for _ in range(6)])
+            # Tiny UP only after east progress is expected — re-queue if short.
+            # Cap 16: long UP re-enters y=31 gap or soft band (rr-5go9/qc9r).
+            self._action_queue.extend(
+                [make_action(up=True, b=True) for _ in range(16)]
             )
             self._action_queue.extend([make_action() for _ in range(4)])
-            # Long east toward pond longitude (x≥32). No long UP yet.
             self._action_queue.extend(
-                [make_action(right=True, b=True) for _ in range(220)]
-            )
-            self._action_queue.extend([make_action() for _ in range(6)])
-            # Cap UP ≤28 — completion re-queues if short; long UP re-enters gap.
-            self._action_queue.extend(
-                [make_action(up=True, b=True) for _ in range(28)]
-            )
-            self._action_queue.extend([make_action() for _ in range(6)])
-            self._action_queue.extend(
-                [make_action(right=True, b=True) for _ in range(40)]
+                [make_action(right=True, b=True) for _ in range(48)]
             )
             self._action_queue.extend([make_action() for _ in range(8)])
         elif player[0] <= 26 and player[1] >= 32:
             band = "south_far"
-            # Power-on ~(18,35)/(23,33): stay y≥34 while running east; cap UP
-            # so low-x climb cannot re-enter the open fence gap (rr-5go9).
+            # Power-on ~(18,35)/(23,33)/(25,34): stay y≥34 while running east.
+            # rr-qc9r: trailing UP 20 from y=34 climbed into soft (29,32).
+            # When already on lip y=34–36: pure RIGHT only — no UP.
             if player[1] < 34:
                 self._action_queue.extend(
-                    [make_action(down=True, b=True) for _ in range(60)]
+                    [make_action(down=True, b=True) for _ in range(80)]
                 )
                 self._action_queue.extend([make_action() for _ in range(4)])
             elif player[1] > 36:
@@ -2492,80 +2527,120 @@ class CropWaterTask(Task):
                     )
                     self._action_queue.extend([make_action() for _ in range(4)])
             need_east = max(0, 32 - player[0])
+            # Primary east corridor: long B-run + walk-speed recover.
             self._action_queue.extend(
-                [make_action(right=True, b=True) for _ in range(36 * max(need_east, 8))]
+                [make_action(right=True, b=True) for _ in range(40 * max(need_east, 8))]
             )
             self._action_queue.extend([make_action() for _ in range(6)])
-            self._action_queue.extend([make_action(down=True) for _ in range(12)])
+            self._action_queue.extend(
+                [make_action(right=True) for _ in range(80)]
+            )
+            self._action_queue.extend([make_action() for _ in range(4)])
+            self._action_queue.extend(
+                [make_action(right=True, b=True) for _ in range(120)]
+            )
+            self._action_queue.extend([make_action() for _ in range(6)])
+            # Tiny south wiggle only (not UP) to break soft edges at y=34.
+            if player[1] <= 34:
+                self._action_queue.extend(
+                    [make_action(down=True) for _ in range(12)]
+                )
+                self._action_queue.extend([make_action() for _ in range(3)])
             self._action_queue.extend(
                 [make_action(right=True, b=True) for _ in range(100)]
             )
-            self._action_queue.extend([make_action() for _ in range(6)])
-            self._action_queue.extend(
-                [make_action(up=True, b=True) for _ in range(20)]
-            )
-            self._action_queue.extend([make_action() for _ in range(6)])
-            self._action_queue.extend(
-                [make_action(right=True, b=True) for _ in range(60)]
-            )
             self._action_queue.extend([make_action() for _ in range(8)])
+            # UP only if we started deep south (y>36 was climbed above).
+            # Never UP when already on F0 latitude y=34–35.
         elif player[1] >= 34:
             band = "south"
-            # Deep south / mid-lip ~(29,35): pure RIGHT often soft-blocks
-            # (dry fixture residual). Wiggle S/N then east; cap UP at low x.
+            # South lip corridor x→32. rr-qc9r: UP at low x re-enters soft band;
+            # long pure RIGHT from (29,35) overshoots to (36,36). Scale RIGHT
+            # to remaining east only; near F0 (x≥28) use short bursts.
             if player[1] >= 38:
                 self._action_queue.extend(
                     [make_action(up=True, b=True) for _ in range(24 * min(player[1] - 35, 6))]
                 )
                 self._action_queue.extend([make_action() for _ in range(6)])
-            if 27 <= player[0] <= 30 and 34 <= player[1] <= 36:
-                # Soft-block strip near pond: south dip + east + short north.
+            if player[0] >= 32:
+                # x≥32: align y to 34 then act/multihop.
+                if player[1] > 34:
+                    self._action_queue.extend(
+                        [make_action(up=True, b=True) for _ in range(24 * min(player[1] - 34, 4))]
+                    )
+                elif player[1] < 34:
+                    self._action_queue.extend(
+                        [make_action(down=True, b=True) for _ in range(24 * min(34 - player[1], 3))]
+                    )
+                self._action_queue.extend([make_action() for _ in range(8)])
                 self._action_queue.extend(
-                    [make_action(down=True, b=True) for _ in range(40)]
+                    [make_action(right=True, b=True) for _ in range(16)]
+                )
+                self._action_queue.extend([make_action() for _ in range(6)])
+            elif player[0] >= 28:
+                # Near stand (~(28–31,34–35)): short east only, no long run.
+                need_east = max(32 - player[0], 1)
+                self._action_queue.extend(
+                    [make_action(right=True, b=True) for _ in range(28 * need_east)]
                 )
                 self._action_queue.extend([make_action() for _ in range(4)])
                 self._action_queue.extend(
-                    [make_action(right=True, b=True) for _ in range(160)]
+                    [make_action(right=True) for _ in range(24 * need_east)]
+                )
+                self._action_queue.extend([make_action() for _ in range(4)])
+                if player[1] > 34:
+                    self._action_queue.extend(
+                        [make_action(up=True, b=True) for _ in range(16)]
+                    )
+                    self._action_queue.extend([make_action() for _ in range(4)])
+                self._action_queue.extend(
+                    [make_action(right=True, b=True) for _ in range(20)]
+                )
+                self._action_queue.extend([make_action() for _ in range(6)])
+            else:
+                # Far west on lip (x≤27): longer east, but cap before overshoot.
+                need_east = max(32 - player[0], 3)
+                self._action_queue.extend(
+                    [make_action(right=True, b=True) for _ in range(36 * min(need_east, 6))]
                 )
                 self._action_queue.extend([make_action() for _ in range(4)])
                 self._action_queue.extend(
-                    [make_action(up=True, b=True) for _ in range(36)]
+                    [make_action(right=True) for _ in range(40)]
                 )
                 self._action_queue.extend([make_action() for _ in range(4)])
                 self._action_queue.extend(
                     [make_action(right=True, b=True) for _ in range(80)]
                 )
                 self._action_queue.extend([make_action() for _ in range(6)])
-            else:
-                if player[0] < 32:
+                if player[1] <= 35:
                     self._action_queue.extend(
-                        [make_action(right=True, b=True) for _ in range(32 * max(33 - player[0], 4))]
+                        [make_action(down=True) for _ in range(12)]
                     )
-                    self._action_queue.extend([make_action() for _ in range(4)])
-                up_frames = 48 if player[0] >= 30 else 24
-                self._action_queue.extend(
-                    [make_action(up=True, b=True) for _ in range(up_frames)]
-                )
-                self._action_queue.extend([make_action() for _ in range(8)])
-                self._action_queue.extend(
-                    [make_action(right=True, b=True) for _ in range(40)]
-                )
-                self._action_queue.extend([make_action() for _ in range(6)])
+                    self._action_queue.extend([make_action() for _ in range(3)])
+                    self._action_queue.extend(
+                        [make_action(right=True, b=True) for _ in range(48)]
+                    )
+                    self._action_queue.extend([make_action() for _ in range(6)])
         else:
             band = "generic"
             # y=32–33 mid: south then east (gap-safe). Avoid long LEFT to gap.
+            # No trailing UP — re-queue south/soft bands handle F0 latitude.
             if player[0] < 30:
+                self._action_queue.extend(
+                    [make_action(down=True, b=True) for _ in range(80)]
+                )
+                self._action_queue.extend([make_action() for _ in range(4)])
+                self._action_queue.extend(
+                    [make_action(right=True, b=True) for _ in range(40 * max(32 - player[0], 4))]
+                )
+                self._action_queue.extend([make_action() for _ in range(4)])
+            else:
                 self._action_queue.extend(
                     [make_action(down=True, b=True) for _ in range(60)]
                 )
                 self._action_queue.extend([make_action() for _ in range(4)])
                 self._action_queue.extend(
-                    [make_action(right=True, b=True) for _ in range(36 * max(32 - player[0], 4))]
-                )
-                self._action_queue.extend([make_action() for _ in range(4)])
-            else:
-                self._action_queue.extend(
-                    [make_action(right=True, b=True) for _ in range(80)]
+                    [make_action(right=True, b=True) for _ in range(160)]
                 )
                 self._action_queue.extend([make_action() for _ in range(4)])
             self._action_queue.extend(
@@ -2573,11 +2648,7 @@ class CropWaterTask(Task):
             )
             self._action_queue.extend([make_action() for _ in range(4)])
             self._action_queue.extend(
-                [make_action(right=True, b=True) for _ in range(120)]
-            )
-            self._action_queue.extend([make_action() for _ in range(6)])
-            self._action_queue.extend(
-                [make_action(up=True, b=True) for _ in range(24)]
+                [make_action(right=True, b=True) for _ in range(140)]
             )
             self._action_queue.extend([make_action() for _ in range(8)])
         self._pending_south_lip_charge = True
@@ -2807,9 +2878,20 @@ class CropWaterTask(Task):
         best_seen = getattr(self, "_refill_best_dist", dist_u)
 
         # Only accept the ultimate when a *true* short path exists.
+        # rr-qc9r: south of wall at x≤30, BFS invents 4–7 tile paths to F0
+        # that live physics never walks — force intermediate densify below
+        # whenever still west of stand on the south lip.
         full = self._pathfinder.find_path(ram, player, ultimate)
         if full is not None and len(full) <= hop_budget:
-            return ultimate
+            south_corridor_far = (
+                player[1] >= 33
+                and player[0] <= 30
+                and ultimate[0] >= 32
+                and ultimate[1] >= 33
+                and dist_u > 2
+            )
+            if not south_corridor_far:
+                return ultimate
 
         try:
             from harvest.maps.map_config import (
@@ -2898,6 +2980,94 @@ class CropWaterTask(Task):
             and player[0] <= 30
             and tile_dist(player, ultimate) > 1
         ):
+            # On soft-block ~(28,32): force SOUTH first (not west). rr-qc9r:
+            # west-first to (24,32) then densify landed the (25,34)↔(29,32)
+            # oscillation. Stay below fence and push east on y≥34.
+            if player[0] >= 27 and player[1] <= 33:
+                for wp in ((player[0], 34), (28, 34), (30, 34), (29, 35), (26, 34)):
+                    if wp == player:
+                        continue
+                    hop = self._pathfinder.find_path(
+                        ram, player, wp, max_steps=hop_budget + 2
+                    )
+                    if hop is not None and hop[-1] != player:
+                        end = hop[-1]
+                        if end[1] > player[1] or end[0] >= player[0]:
+                            print(
+                                f"[CROP] Pond soft-block (28,32) band: south/east "
+                                f"{player} → {wp} (end={end})"
+                            )
+                            return wp
+                forced_s = (min(player[0] + 2, 32), min(player[1] + 2, 35))
+                print(
+                    f"[CROP] Pond soft-block densify force south/east "
+                    f"{player} → {forced_s}"
+                )
+                return forced_s
+            # On y≥34 corridor: prefer short EAST hops over direct F0 / pure N/S.
+            # Power-on densify (25,34)→(32,34) is 7 tiles — viewport edge thrash.
+            # Dry residual: score preferred (29,35)→(29,34) pure-north (d=1)
+            # forever — must require east gain when west of stand (rr-qc9r).
+            if player[1] >= 34 and player[0] < 32:
+                # Cap intermediate hop to +4 east so we chain rather than
+                # leap the full remaining distance (viewport false paths).
+                max_east = min(player[0] + 4, 32)
+                near_east = [
+                    (min(player[0] + 3, max_east), 34),
+                    (min(player[0] + 2, max_east), 34),
+                    (min(player[0] + 4, max_east), 34),
+                    (min(player[0] + 3, max_east), player[1]),
+                    (min(player[0] + 2, max_east), player[1]),
+                    (min(player[0] + 4, max_east), player[1]),
+                    (min(player[0] + 3, max_east), 35),
+                    (min(30, max_east), 34) if player[0] < 30 else (31, 34),
+                    (min(31, max_east), 34) if player[0] < 31 else (32, 34),
+                ]
+                # Only allow ultimate F0 when already within 4 tiles.
+                if dist_u <= 4:
+                    near_east.extend([(32, 34), (32, 35), (31, 34)])
+                best_wp: Optional[Tuple[int, int]] = None
+                best_score: Optional[Tuple[int, int, int, int]] = None
+                for wp in near_east:
+                    if wp == player:
+                        continue
+                    d_to_wp = tile_dist(player, wp)
+                    if d_to_wp > hop_budget or d_to_wp > 5:
+                        continue
+                    # Must aim east of current x (no pure N/S / west).
+                    if wp[0] <= player[0]:
+                        continue
+                    # Cap east leap when far — chain intermediates.
+                    if wp[0] - player[0] > 4 and dist_u > 4:
+                        continue
+                    hop = self._pathfinder.find_path(
+                        ram, player, wp, max_steps=hop_budget + 2
+                    )
+                    if hop is None:
+                        continue
+                    end = hop[-1]
+                    if end == player or end[0] <= player[0]:
+                        continue
+                    if end[0] - player[0] > 4 and dist_u > 4:
+                        continue
+                    end_dist = tile_dist(end, ultimate)
+                    east_gain = end[0] - player[0]
+                    # Prefer: more east (within cap), closer to F0, short hop.
+                    score = (-east_gain, end_dist, d_to_wp, abs(end[1] - 34))
+                    if best_score is None or score < best_score:
+                        best_score = score
+                        best_wp = wp
+                if best_wp is not None:
+                    print(
+                        f"[CROP] South-lip densify {player} → {best_wp} "
+                        f"(east-prefer, ultimate={ultimate})"
+                    )
+                    return best_wp
+                forced = (min(player[0] + 3, 32), 34)
+                print(
+                    f"[CROP] South-lip densify fallback east {player} → {forced}"
+                )
+                return forced
             south_lip_crumbs: List[Tuple[int, int]] = [
                 # East-first corridor (avoid N/S thrash at fixed x=24).
                 (26, 35),
@@ -2915,23 +3085,8 @@ class CropWaterTask(Task):
                 (24, 33),
                 (24, 32),
             ]
-            # If on the soft-block tile, force west first.
-            if player[0] >= 27 and player[1] <= 33:
-                for wp in ((24, 32), (24, 33), (22, 32), (20, 32)):
-                    if wp == player:
-                        continue
-                    hop = self._pathfinder.find_path(
-                        ram, player, wp, max_steps=hop_budget + 2
-                    )
-                    if hop is not None:
-                        print(
-                            f"[CROP] Pond soft-block (28,32) band: west first "
-                            f"{player} → {wp}"
-                        )
-                        return wp
-                return (24, 32)
-            best_wp: Optional[Tuple[int, int]] = None
-            best_score: Optional[Tuple[int, int, int]] = None
+            best_wp = None
+            best_score = None
             for wp in south_lip_crumbs:
                 if wp == player:
                     continue
@@ -2974,7 +3129,7 @@ class CropWaterTask(Task):
                 return best_wp
             # BFS crumbs blocked (stale viewport): return scripted east target.
             if player[0] < 30:
-                forced = (min(player[0] + 4, 32), max(player[1], 35))
+                forced = (min(player[0] + 4, 32), max(player[1], 34))
                 print(
                     f"[CROP] South-lip densify fallback east {player} → {forced}"
                 )
@@ -3445,12 +3600,22 @@ class CropWaterTask(Task):
                 and (goal[0] >= 30 and goal[1] >= 30)
                 and getattr(self, "_east_south_charges", 0) < 6
             )
-            # Power-on residual: south of wall but densify (24,34)↔(24,35).
+            # Power-on residual: south of wall densify thrash (rr-qc9r).
+            # Near F0 (dist≤4 on lip): do NOT re-arm long lip charges — they
+            # overshoot / oscillate. Force short east densify only.
+            near_f0_start = (
+                start[1] >= 33
+                and 26 <= start[0] <= 31
+                and goal[0] >= 32
+                and goal[1] >= 33
+                and tile_dist(start, goal) <= 5
+            )
             south_thrash = (
                 start[1] >= 32
-                and start[0] <= 30
+                and start[0] <= 31
                 and goal[0] >= 30
                 and goal[1] >= 33
+                and not near_f0_start
                 and getattr(self, "_south_lip_charges", 0) < 8
             )
             # Power-on residual: east of pond densify (41,32)→(32,34) never moves.
@@ -3481,6 +3646,22 @@ class CropWaterTask(Task):
                     self._refill_densify_last = None
                     return None  # navigate drains charge queue
                 self._refill_densify_last = (start, goal)
+            elif near_f0_start:
+                # Near F0 densify stalls: reset stall counter so we keep
+                # trying east hops without scripted overshoot charges.
+                stalls = getattr(self, "_refill_densify_stalls", 0) + 1
+                self._refill_densify_stalls = stalls
+                self._refill_densify_last = (start, goal)
+                if stalls >= 6 and getattr(self, "_south_lip_charges", 0) < 4:
+                    # One short near-stand charge only.
+                    print(
+                        f"[CROP] Near-F0 densify stall at {start}; "
+                        f"short lip charge"
+                    )
+                    self._queue_west_south_lip_charge(start)
+                    self._refill_densify_stalls = 0
+                    self._refill_densify_last = None
+                    return None
             else:
                 self._refill_densify_stalls = 0
                 self._refill_densify_last = None
@@ -3727,10 +3908,12 @@ class CropWaterTask(Task):
                 self._queue_east_south_corridor_charge(player)
                 return None
             # Landed south but not at stand: script west→south-lip / east-to-F0.
+            # rr-qc9r: after corridor, prior water tiles may have exhausted
+            # charges — still arm if under raised cap so late spring refills.
             if (
                 player[1] >= 32
                 and tile_dist(player, (32, 34)) > 1
-                and getattr(self, "_south_lip_charges", 0) < 5
+                and getattr(self, "_south_lip_charges", 0) < 10
             ):
                 print(
                     f"[CROP] South-of-wall at {player}; "
@@ -3774,7 +3957,7 @@ class CropWaterTask(Task):
                 player[0] >= 36
                 and player[1] >= 32
                 and tile_dist(player, (32, 34)) > 1
-                and getattr(self, "_south_lip_charges", 0) < 8
+                and getattr(self, "_south_lip_charges", 0) < 12
             ):
                 print(
                     f"[CROP] South-lip east-of-pond at {player}; "
@@ -3802,9 +3985,32 @@ class CropWaterTask(Task):
                 )
                 if self._commit_multihop_main_pond(ram, self._water_level(ram)):
                     return None
+            # Near F0 on south lip (dist≤4, x~28–34, y≥33): multihop/act —
+            # do NOT re-queue long RIGHT charges that overshoot to (36,36)
+            # (dry fixture residual after soft charge lands ~(29,35)).
+            near_f0 = (
+                tile_dist(player, (32, 34)) <= 4
+                and player[1] >= 33
+                and 26 <= player[0] <= 35
+            )
+            if near_f0:
+                print(
+                    f"[CROP] South-lip near F0 at {player}; multi-hop/act "
+                    f"(skip re-charge thrash)"
+                )
+                if self._commit_multihop_main_pond(ram, self._water_level(ram)):
+                    if (
+                        self._refill_pond_tile is not None
+                        and tile_dist(player, self._refill_pond_tile) <= 1
+                    ):
+                        self._approach_tile = self._refill_pond_tile
+                        self._target_tile = self._refill_pond_tile
+                        self._state = "act"
+                        self._navigator.path = []
+                    return None
             # Still south short of stand: re-queue lip (position-banded).
-            # Gap-safe shorter charges need more re-queues (rr-5go9).
-            lip_cap = 8 if player[1] >= 38 else 7
+            # Cap 8 — higher caps + pure-east overshot past F0 (rr-qc9r dry).
+            lip_cap = 8 if player[1] >= 34 else 7
             if (
                 tile_dist(player, (32, 34)) > 1
                 and player[1] >= 32
@@ -4590,9 +4796,9 @@ class CropWaterTask(Task):
                     )
                 if (
                     player[1] >= 32
-                    and player[0] <= 30
+                    and player[0] <= 31
                     and pond_ok
-                    and getattr(self, "_south_lip_charges", 0) < 7
+                    and getattr(self, "_south_lip_charges", 0) < 12
                 ):
                     self._queue_west_south_lip_charge(player)
                     self._steps_on_target = 0

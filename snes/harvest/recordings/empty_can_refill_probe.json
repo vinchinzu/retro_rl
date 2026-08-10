@@ -1,9 +1,10 @@
 {
-  "frames": 12082,
+  "frames": 10663,
   "can_peak": 20,
   "watered": 3,
   "refill": 1,
+  "skipped": 2,
   "success": true,
   "reason": "planted=0 watered=3 skipped=2 refills=1 passes=3",
-  "refill_count": 1
+  "status": "SUCCESS"
 }
