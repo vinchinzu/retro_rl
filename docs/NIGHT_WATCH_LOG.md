@@ -1353,3 +1353,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Low alcove sx152 trap; human path climbs high on cam6 then over wall.
 - Residual **rr-k1ea** Sniper/Yoku→boss; spawned manager. No Item-1 yet (rr-809 open).
 
+
+### 2026-08-10T07:05 CDT — zelda rr-gjey CLOSED PARTIAL ★
+- Landed `9fa264a`: post-boss fireball flee; GleeokEnter floor ≥106 dual; map@108 dual.
+- Natural enter still ~98–100. Residual **rr-bxzj** heart-safe spine → spawned.
+- Not full-game STATUS (rr-q3n open).
+
