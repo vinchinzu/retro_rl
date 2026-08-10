@@ -1,0 +1,174 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T07:20:44.016200+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "segment": "l4_map_21",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "map_21": {
+        "frames": 17872,
+        "segment": "level4_map_21",
+        "success": true
+      },
+      "map_21_bfs": {
+        "cells": 228,
+        "exp": 898,
+        "hold": 6,
+        "path": [
+          "LEFT",
+          "LEFT",
+          "UP",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN"
+        ],
+        "path_len": 36,
+        "success": true
+      },
+      "map_21_clear20": {
+        "frames": 1990,
+        "success": true
+      },
+      "map_21_enter": {
+        "path": [
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "DOWN",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT"
+        ],
+        "success": true,
+        "xy": [
+          16,
+          141
+        ]
+      },
+      "map_21_gels": {
+        "frames": 15000,
+        "success": false
+      },
+      "map_21_key": {
+        "keys_after": 1,
+        "recon_poke": true
+      },
+      "map_21_key_up": {
+        "keys": 0,
+        "success": true,
+        "xy": [
+          120,
+          205
+        ]
+      },
+      "map_21_to_21_bfs": {
+        "cells": 684,
+        "exp": 2717,
+        "path_len": 36,
+        "success": true
+      },
+      "map_21_to_30": {
+        "dest": "0x30",
+        "exp": 560,
+        "hold": 4,
+        "n_cells": 563,
+        "path_len": 41,
+        "quant": 4,
+        "segment": "level4_room_exit_bfs",
+        "success": true
+      }
+    },
+    "final": {
+      "bombs": 8,
+      "compass": 12,
+      "compass_l4": true,
+      "cur_opened_doors": 0,
+      "health": 111,
+      "keys": 0,
+      "ladder": 1,
+      "level": 4,
+      "map": 8,
+      "map_l4": true,
+      "mode": 5,
+      "room": 33,
+      "room_all_dead": 0,
+      "room_hex": "0x21",
+      "room_item_id": 23,
+      "x": 208,
+      "y": 181
+    },
+    "frames": 17872,
+    "ok": true,
+    "segment": "map_21"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31PostLadder.state",
+  "source_state_sha256": "6d3b6e281096a94bde62665bb8db266dc873366010b344866ac84556c769e7bf",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Map.state",
+  "state_sha256": "cc5a87654af9bec9b45c74d194631bd920591f85ef91aeff7d36d5e0a7849c13"
+}

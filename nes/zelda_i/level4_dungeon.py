@@ -25,10 +25,13 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     outside early component {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT sealed;
     0x40 L/R sealed.
 
-**Post-ladder (rr-05fz live):** after ``ADDR_LADDER``, pedestal freezes ~100f;
-    clear 4× Keese, then hold4 BFS exits mode-9 **0x60 → 0x32** play. From
+**Post-ladder (rr-05fz / rr-rvae live):** after ``ADDR_LADDER``, pedestal freezes
+    ~100f; clear 4× Keese, then hold4 BFS exits mode-9 **0x60 → 0x32** play. From
     ``Level4PostLadder`` free LEFT (BFS around pushed block) → **0x31**.
-    Backtrack **0x31→0x30→0x40** live; map / Gleeok / TF ``0x08`` still residual.
+    Backtrack **0x31→0x30**; with ladder + **key**, KEY-UP **0x30→0x20** (5× Vire);
+    clear 0x20 → free/push RIGHT **0x21** (5× Gel + RoomItemId ``0x17`` map).
+    Gel thrash expands maze walkability; hold6 BFS → ``ADDR_MAP & 0x08`` @~(208,181).
+    Gleeok / TF ``0x08`` still residual.
 
 Not Clean STATUS. Gleeok / TF ``0x08`` still residual.
 """
@@ -68,17 +71,23 @@ ROOM_L4_COMPASS_62 = 0x62  # KEY-RIGHT of 0x61; 5× Vire + compass 0x16 dark maz
 ROOM_L4_ZOLS_40 = 0x40  # north of 0x50; 5× Zol 0x13 + key 0x19 (rr-xc3x)
 # Free RIGHT of cleared 0x31 → 0x32 (rr-resv). Stairs under left block → 0x60 (rr-tib8).
 ROOM_L4_STEPLADDER = 0x60  # mode-9 basement under 0x32; RoomItemId 0x0d → ADDR_LADDER
+# Post-ladder map branch (rr-rvae live 2026-08-10): KEY-UP 0x30 → 0x20 → RIGHT → 0x21 map.
+ROOM_L4_WATER_NORTH_20 = 0x20  # KEY-UP of 0x30 with ladder; 5× Vire 0x12
+ROOM_L4_MAP_21 = 0x21  # free RIGHT of cleared 0x20; 5× Gel 0x15 + map 0x17
 
 VIRE_OBJECT_TYPE = 0x12  # live on 0x61/0x50/0x62; HP 64; sword splits → 0x1c
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # live split residual from Vire (not standard 0x1B)
 ZOL_OBJECT_TYPE = 0x13  # live on 0x40/0x32; HP 32; wooden sword splits → gel 0x14
 GEL_SPLIT_OBJECT_TYPE = 0x14  # Zol split residual (HP stays 0 while alive)
+GEL_OBJECT_TYPE = 0x15  # live on map room 0x21 (rr-rvae); TYPE-only HP=0
 LIKE_LIKE_OBJECT_TYPE = 0x17  # live on 0x32; HP 144; avoid contact (shield loss)
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16  # live room item on 0x62
 ROOM_ITEM_STEPLADDER = 0x0D  # live on 0x60 stairs basement (rr-tib8)
+ROOM_ITEM_MAP = 0x17  # live room item on 0x21 (rr-rvae); ADDR_MAP bit 0x08
 ROOM_ITEM_NONE = 0x03
 LEVEL4_COMPASS_BIT = 0x08  # ADDR_COMPASS bit for dungeon level 4
+LEVEL4_MAP_BIT = 0x08  # ADDR_MAP bit for dungeon level 4
 
 # Bomb-north wall 0x61 → 0x51 (live stand ≈ y105, face UP).
 BOMB_61_NORTH_STAND = (120, 105)
@@ -1611,6 +1620,75 @@ def level4_west_31_success(ram: np.ndarray) -> bool:
     )
 
 
+# --- Map room 0x21 (rr-rvae live 2026-08-10) ---
+# Route: Level4Room31PostLadder → LEFT 0x30 → KEY-UP (keys≥1) → 0x20 clear Vires
+# → push RIGHT @x≈208 y≈141 → 0x21 west ~(16,141). Gels block maze until thrash;
+# hold6 multi-grid BFS → ADDR_MAP|0x08 @~(208,181).
+# Sample path from a common post-thrash pose (hold MAP_21_HOLD):
+MAP_21_HOLD = 6
+MAP_21_PICKUP_XY = (208, 181)
+MAP_21_SAMPLE_PATH: tuple[str, ...] = (
+    "LEFT",
+    "LEFT",
+    "UP",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+)
+# KEY-UP 0x30 north (ladder water cross + key door) → 0x20.
+KEY_30_NORTH_X = 120
+# East push out of cleared 0x20 → 0x21 (door bit R may stay 0; walk x≈208).
+RIGHT_20_STAND = (208, 141)
+
+
+def level4_map_success(ram: np.ndarray) -> bool:
+    """ADDR_MAP bit 0x08 set (L4 dungeon map collected)."""
+    from zelda_i.ram import ADDR_MAP, read_u8
+
+    return bool(int(read_u8(ram, ADDR_MAP)) & LEVEL4_MAP_BIT)
+
+
+def level4_map_room_success(ram: np.ndarray) -> bool:
+    """Map bit set and play-ready on 0x21 (map room)."""
+    snap = read_snapshot(ram)
+    return (
+        level4_map_success(ram)
+        and snap.level == LEVEL4
+        and snap.screen == ROOM_L4_MAP_21
+        and snap.mode in (PLAY_MODE, 5)
+    )
+
+
 # Live scripted key path after combat clear pose ≈(136–140, 164–165).
 # East-corridor route (rr-q8eq BFS): UP×2 RIGHT×5 UP×4 LEFT×5 hold6 → key ~(136,117).
 MAZE_40_KEY_HOLD = 6
@@ -2489,9 +2567,9 @@ def planning_interior_report() -> dict:
     return {
         "level": LEVEL4,
         "bead": "rr-5lu",
-        "tip": "rr-05fz",
-        "track": "pure",
-        "status": "post_ladder_exit_west_live_map_residual",
+        "tip": "rr-rvae",
+        "track": "assisted_map_first_pass",
+        "status": "post_ladder_map_live_gleeok_tf_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -2591,7 +2669,35 @@ def planning_interior_report() -> dict:
                 "LEFT_bfs": hex(ROOM_L4_EAST_31),
                 "note": (
                     "rr-05fz: free LEFT around pushed 0x68 block (WEST_31_SAMPLE_PATH); "
-                    "backtrack 0x31→0x30→0x40 live; 0x30 north still sealed; map/Gleeok residual"
+                    "backtrack 0x31→0x30; KEY-UP needs keys≥1 (rr-rvae map)"
+                ),
+            },
+            hex(ROOM_L4_NORTH_30) + "_post_ladder": {
+                "KEY_UP_with_ladder_key": hex(ROOM_L4_WATER_NORTH_20),
+                "note": (
+                    "rr-rvae: water tiles walkable with ladder; KEY-UP consumes 1 key → 0x20; "
+                    "free N without key still sealed; KEY-UP 0x31 → 0x21 south pocket isolated"
+                ),
+            },
+            hex(ROOM_L4_WATER_NORTH_20): {
+                "enemies": {"0x12": 5},
+                "DOWN": hex(ROOM_L4_NORTH_30),
+                "UP": hex(0x10),
+                "RIGHT_after_clear": hex(ROOM_L4_MAP_21),
+                "note": (
+                    "clear Vires (+split 0x1c); door bit R may stay 0 — push x≈208 y≈141 RIGHT → 0x21"
+                ),
+            },
+            hex(ROOM_L4_MAP_21): {
+                "enemies": {"0x15": 5},
+                "room_item": hex(ROOM_ITEM_MAP),
+                "LEFT": hex(ROOM_L4_WATER_NORTH_20),
+                "map_bit": hex(LEVEL4_MAP_BIT),
+                "pickup_xy": list(MAP_21_PICKUP_XY),
+                "note": (
+                    "rr-rvae assisted dual 2/2: gel thrash expands maze then hold6 BFS "
+                    "MAP_21_SAMPLE_PATH → ADDR_MAP|0x08 @~(208,181); south KEY-UP pocket "
+                    "from 0x31 is wall-isolated (x≤176)"
                 ),
             },
         },
@@ -2727,11 +2833,25 @@ def planning_interior_report() -> dict:
             "path_len": len(MAZE_60_TO_LADDER),
             "checkpoint": "Level4Stepladder",
         },
+        "map_21": {
+            "bead": "rr-rvae",
+            "room": hex(ROOM_L4_MAP_21),
+            "room_item": hex(ROOM_ITEM_MAP),
+            "map_bit": hex(LEVEL4_MAP_BIT),
+            "pickup_xy": list(MAP_21_PICKUP_XY),
+            "hold": MAP_21_HOLD,
+            "sample_path": list(MAP_21_SAMPLE_PATH),
+            "via": [hex(ROOM_L4_NORTH_30), hex(ROOM_L4_WATER_NORTH_20)],
+            "key_cost": 1,
+            "checkpoint": "Level4Map",
+            "track": "assisted_first_pass",
+            "evidence": "recordings/l4_rvae_map_final.json",
+        },
         "not_yet": [
+            "natural key for post-ladder KEY-UP (recon poke used for map dual)",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
-            "post-ladder water cross / map residual",
         ],
     }
 
@@ -2750,7 +2870,19 @@ __all__ = [
     "KEY_61_OPENS_TO",
     "KeyRight62Phase",
     "LEVEL4_COMPASS_BIT",
+    "LEVEL4_MAP_BIT",
     "Left50Phase",
+    "GEL_OBJECT_TYPE",
+    "MAP_21_HOLD",
+    "MAP_21_PICKUP_XY",
+    "MAP_21_SAMPLE_PATH",
+    "ROOM_ITEM_MAP",
+    "ROOM_L4_MAP_21",
+    "ROOM_L4_WATER_NORTH_20",
+    "RIGHT_20_STAND",
+    "KEY_30_NORTH_X",
+    "level4_map_success",
+    "level4_map_room_success",
     "Level4Compass62Controller",
     "Level4EntryUpController",
     "Level4KeyRight62Controller",
