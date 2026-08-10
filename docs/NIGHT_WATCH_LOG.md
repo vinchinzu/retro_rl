@@ -240,3 +240,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Policy docstring + STATUS/plan/AGENTS updated; units 10/10 pass.
 - Next: 5px Goblin head land or Lightning Lord cloud ride / controlled Pipi→cloud.
 - No push.
+
+### 2026-08-09T22:15 CDT — harvest Gate B CLOSED (rr-bhr)
+- **CLOSED** `rr-bhr` Power-on full D1→D2 shed on house_size=0 (Gate B).
+- Breakthrough: softlock tilemap `0x5F` is intentional **dog name entry** (`$099F=3`), not door glitch. Completing name `AAAA` sets dog-owned → `event_flags_1f68=0x00B1` and restores free-move `0x4000`.
+- Landed `CompleteOutdoorMorningIntroTask` (inventory.py); wired first in `_shed_starter_tools`.
+- ROM evidence:
+  - `snes/harvest/recordings/gate_b_dog_intro_shed.json` — rest_end → intro → grass+can (~4.8k f)
+  - `snes/harvest/recordings/gate_b_anneve_full_shed.json` — peak mask `0x3F`, D2, grass+can, free+intro, `mid_run_state_loads=0`, `ram_writes=0` (~17.6k f)
+- Unit tests: outdoor intro already-ready + name-entry presses + free-move helpers.
+- Docs: STATUS closed; town_day1_recon pure fix section.
+- Next tip: `rr-53g` Harvest + ship + post-5pm money assert (Gate B full spring income path).
+- No push.

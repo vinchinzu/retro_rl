@@ -146,6 +146,205 @@ def farm_house_front_softlock(ram: np.ndarray) -> bool:
     return pos.y >= HOUSE_FRONT_SOFTLOCK_Y_MIN and pos.x <= HOUSE_FRONT_SOFTLOCK_X_MAX
 
 
+# Dog-name entry (tilemap 0x5F) is the intentional end of CODE_83CEAE outdoor
+# morning intro. $099F=3 marks dog naming (HM-Decomp TODO: "name being asked").
+_NAME_TILEMAP = 0x5F
+_NAME_KIND_ADDR = 0x099F
+_NAME_CURSOR_ADDR = 0x0991
+_NAME_LENGTH_ADDR = 0x0994
+_NAME_KIND_DOG = 3
+_NAME_INPUT_COOLDOWN = 40
+_NAME_READY_SETTLE = 20
+
+
+def _raw_u8(ram: np.ndarray, address: int) -> int:
+    return int(ram[address]) if address < len(ram) else 0
+
+
+@dataclass
+class CompleteOutdoorMorningIntroTask(Task):
+    """Pure-complete D2 outdoor morning dog intro so free-move is restored.
+
+    After pure truck→sleep, first house→farm with ``event_flags_1f68=0x0011``
+    fires ``CODE_83CEAE``: ORA morning bit ``0x0020``, clear free-move, scripted
+    walk to house-front, dialogue, then dog **name entry** (tilemap ``0x5F``,
+    ``$099F=3``). Completing the name (deterministic ``AAAA``) sets dog-owned
+    ``0x0080`` (flags → ``0x00B1``) and restores free-move ``0x4000``.
+
+    Verified Clean 2026-08-09 from ``town_day1_rest_end`` (~3.5k frames after
+    ExitToFarm). No RAM writes. Idempotent when flags already ready + free.
+    """
+
+    name: str = "complete_outdoor_morning_intro"
+    timeout: int = 12_000
+    exit_timeout: int = 4000
+    tasks_dir: str = TASKS_DIR
+    dog_name_chars: int = 4  # AAAA — same deterministic short name as power-on
+
+    _step_count: int = field(default=0, init=False)
+    _last_input_step: int = field(default=-_NAME_INPUT_COOLDOWN, init=False)
+    _exit_task: Optional[Task] = field(default=None, init=False)
+    _name_submitted: bool = field(default=False, init=False)
+    _ready_frames: int = field(default=0, init=False)
+    _last_reason: str = field(default="start", init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._step_count = 0
+        self._last_input_step = -_NAME_INPUT_COOLDOWN
+        self._exit_task = None
+        self._name_submitted = False
+        self._ready_frames = 0
+        self._last_reason = "start"
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    @property
+    def phase_text(self) -> str:
+        if self._name_submitted:
+            return "INTRO_SETTLE"
+        if self._exit_task is not None:
+            return "INTRO_EXIT"
+        return "INTRO_OUTDOOR"
+
+    def _can_press(self) -> bool:
+        return self._step_count - self._last_input_step >= _NAME_INPUT_COOLDOWN
+
+    def _press(self, *, reason: str, **buttons: bool) -> TaskResult:
+        self._last_input_step = self._step_count
+        self._last_reason = reason
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action(**buttons)),
+            reason=reason,
+        )
+
+    def _idle(self, reason: str) -> TaskResult:
+        self._last_reason = reason
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=reason,
+        )
+
+    def _is_complete(self, ram: np.ndarray) -> bool:
+        return outdoor_intro_flags_ready(ram) and farm_free_move_ready(ram)
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._step_count += 1
+        ram = world.ram
+        if self._is_complete(ram):
+            # Already ready (Y1 / pre-set): succeed immediately.
+            # After dog-name submit: brief settle so free-move sticks.
+            if not self._name_submitted:
+                f68 = int(read_ram_value(ram, "event_flags_1f68", raw=True))
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason=(
+                        f"outdoor intro already ready f1f68=0x{f68:04X} "
+                        f"frames={self._step_count}"
+                    ),
+                )
+            self._ready_frames += 1
+            if self._ready_frames >= _NAME_READY_SETTLE:
+                f68 = int(read_ram_value(ram, "event_flags_1f68", raw=True))
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason=(
+                        f"outdoor intro complete f1f68=0x{f68:04X} "
+                        f"free-move frames={self._step_count}"
+                    ),
+                )
+            return self._idle("intro complete; free-move settle")
+        self._ready_frames = 0
+
+        if self._step_count > self.timeout:
+            f68 = -1
+            gs = -1
+            try:
+                f68 = int(read_ram_value(ram, "event_flags_1f68", raw=True))
+                gs = int(read_ram_value(ram, "game_state", raw=True))
+            except Exception:
+                pass
+            pos = get_pos_from_ram(ram)
+            tm = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"outdoor morning intro timeout f1f68=0x{f68:04X} gs=0x{gs:04X} "
+                    f"tm=0x{tm:02X} pos=({pos.x},{pos.y}) phase={self.phase_text} "
+                    f"last={self._last_reason}"
+                ),
+            )
+
+        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+        input_lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
+
+        # Still indoors: exit first (intro fires on house→farm).
+        if is_house_tilemap(tilemap) or (
+            not is_farm_tilemap(tilemap) and tilemap != _NAME_TILEMAP
+        ):
+            if self._exit_task is None:
+                self._exit_task = ExitToFarmTask(
+                    tasks_dir=self.tasks_dir,
+                    cutscene_mash_limit=300,
+                )
+                self._exit_task.reset(world)
+            result = self._exit_task.step(world)
+            if result.status == TaskStatus.FAILURE:
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"intro exit failed: {result.reason}",
+                )
+            if result.status == TaskStatus.SUCCESS:
+                self._exit_task = None
+                return self._idle("exit done; await outdoor intro")
+            self._last_reason = result.reason or "exiting to farm"
+            return result
+
+        # Dog name entry screen (intentional CODE_83CEAE outcome).
+        if tilemap == _NAME_TILEMAP and input_lock == 5:
+            name_len = _raw_u8(ram, _NAME_LENGTH_ADDR)
+            name_cursor = _raw_u8(ram, _NAME_CURSOR_ADDR)
+            if self._can_press():
+                if name_len < self.dog_name_chars:
+                    return self._press(
+                        reason=f"dog name char {name_len + 1}/{self.dog_name_chars}",
+                        a=True,
+                    )
+                if name_cursor == 0:
+                    # Same reversed-grid quirk as PowerOnStartTask.
+                    return self._press(reason="dog name move to OK", left=True)
+                if name_cursor == 40:
+                    return self._press(reason="dog name move to OK", up=True)
+                if name_cursor == 70:
+                    self._name_submitted = True
+                    return self._press(reason="confirm dog name AAAA", a=True)
+                return self._press(reason=f"dog name confirm cursor={name_cursor}", a=True)
+            return self._idle("dog name input cooldown")
+
+        # Dialogue (lock 2) or menus — mash A/B.
+        if input_lock in (0, 2, 4):
+            if self._can_press():
+                return self._press(reason=f"intro dialogue lock={input_lock}", a=True)
+            return self._idle(f"dialogue cooldown lock={input_lock}")
+
+        # Scripted walk / cutscene on farm without free-move: stay neutral so
+        # we do not fight auto-walk to house-front, occasional A for stalls.
+        if is_farm_tilemap(tilemap) and not farm_free_move_ready(ram):
+            if self._can_press() and (self._step_count % 90) < 3:
+                return self._press(reason="cutscene pulse A", a=True)
+            return self._idle("await scripted outdoor intro walk")
+
+        # Free-move but flags incomplete: rare; pulse A in case dog NPC talk.
+        if farm_free_move_ready(ram) and not outdoor_intro_flags_ready(ram):
+            if self._can_press() and (self._step_count % 120) < 3:
+                return self._press(reason="free-move wait dog bit", a=True)
+            return self._idle("free-move; waiting dog-owned bit")
+
+        return self._idle(self._last_reason or "outdoor intro settle")
+
+
 def shed_enter_transition(*, name: str, timeout: int) -> DirectionalTransitionTask:
     """Enter the tool shed from the outdoor door stand."""
     return DirectionalTransitionTask(
@@ -1222,6 +1421,7 @@ __all__ = [
     "farm_free_move_ready",
     "outdoor_intro_flags_ready",
     "farm_house_front_softlock",
+    "CompleteOutdoorMorningIntroTask",
     "EVENT_1F68_OUTDOOR_INTRO_MASK",
     "EVENT_1F68_DOG_OWNED",
     "EVENT_1F68_MORNING_INTRO_DONE",
