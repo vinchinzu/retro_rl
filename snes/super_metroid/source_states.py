@@ -231,7 +231,20 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         x_max=80,
         y_min=100,
         y_max=160,
-        poses=frozenset({1, 2, 9, 10, 75, 77, 81}),
+        # 81 air residual at export; 164/166 land settle on reload.
+        poses=frozenset({1, 2, 9, 10, 75, 77, 81, 164, 166}),
+    ),
+    SourceFingerprint(
+        "post_ice_tutorial_to_gate_pure",
+        "scratch/post_ice_tutorial_to_gate_pure.state",
+        0xA815,
+        use_for="Ice return pure handoff (rr-81ek tutorial-to-gate dual 969f); pure gate-to-business",
+        continuous_like=False,
+        x_min=450,
+        x_max=900,
+        y_min=100,
+        y_max=200,
+        poses=frozenset({1, 2, 9, 10, 75, 77, 81, 164, 166}),
     ),
     SourceFingerprint(
         "post_frog_continuous",

@@ -16,6 +16,7 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_snake_to_ice,
     play_ice_snake_to_tutorial,
     play_ice_to_snake,
+    play_ice_tutorial_to_gate,
 )
 from super_metroid.routes.kpdr.ice.geometry import (
     ACID_TO_SNAKE_RLE,
@@ -24,6 +25,8 @@ from super_metroid.routes.kpdr.ice.geometry import (
     SNAKE_L4_Y,
     SNAKE_TOP_Y,
     SNAKE_TUTORIAL_DOOR_X,
+    TUTORIAL_DOOR_X,
+    TUTORIAL_TO_GATE_RLE,
     has_ice,
     in_ice_super_band,
     on_acid_floor,
@@ -45,9 +48,13 @@ def test_business_to_ice_gate_export_and_registry() -> None:
     assert get_segment("ice_snake_to_ice") is play_ice_snake_to_ice
     assert get_segment("ice_to_snake") is play_ice_to_snake
     assert get_segment("ice_snake_to_tutorial") is play_ice_snake_to_tutorial
+    assert get_segment("ice_tutorial_to_gate") is play_ice_tutorial_to_gate
     assert ICE_LEAVE_DOOR_X == 40
     assert ICE_LEAVE_FRAMES >= 200
     assert SNAKE_TUTORIAL_DOOR_X >= 200
+    assert TUTORIAL_DOOR_X >= 400
+    assert len(TUTORIAL_TO_GATE_RLE) >= 20
+    assert sum(n for n, _ in TUTORIAL_TO_GATE_RLE) >= 500
 
 
 def test_acid_to_snake_rle_loaded() -> None:

@@ -92,6 +92,7 @@ from super_metroid.routes.kpdr.ice import (  # noqa: E402
     play_ice_snake_to_ice,
     play_ice_snake_to_tutorial,
     play_ice_to_snake,
+    play_ice_tutorial_to_gate,
 )
 from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_bat_cave_to_speed_hall,
@@ -542,6 +543,7 @@ def main() -> None:
             "ice-snake-to-ice",
             "ice-to-snake",
             "ice-snake-to-tutorial",
+            "ice-tutorial-to-gate",
             "cathedral-entrance-to-cathedral",
             "cathedral-to-rising-tide",
             "rising-tide-to-bubble",
@@ -756,6 +758,7 @@ def main() -> None:
             "ice-snake-to-ice": play_ice_snake_to_ice,
             "ice-to-snake": play_ice_to_snake,
             "ice-snake-to-tutorial": play_ice_snake_to_tutorial,
+            "ice-tutorial-to-gate": play_ice_tutorial_to_gate,
             "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
             "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
             "rising-tide-to-bubble": play_rising_tide_to_bubble,
