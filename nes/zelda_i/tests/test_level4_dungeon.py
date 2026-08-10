@@ -180,8 +180,10 @@ def test_live_room_ids() -> None:
         level4_triforce_stop,
     )
     from zelda_i.level4_boss_combat import (
+        FIREBALL_DODGE_DIST,
         GLEEOK_HEAD_OBJECT_TYPE as HEAD_BOSS,
         Level4GleeokFightController,
+        STAND_DY,
         level4_complete_success,
         level4_tf08,
         make_gleeok_fight_controller,
@@ -191,8 +193,11 @@ def test_live_room_ids() -> None:
     assert GLEEOK_HEAD_OBJECT_TYPE == HEAD_BOSS == 0x46
     assert ROOM_L4_TRIFORCE == 0x03
     assert LEVEL4_TRIFORCE_BIT == 0x08
+    assert STAND_DY == 22  # rr-vdnc Clean south-stand
+    assert FIREBALL_DODGE_DIST == 14
     ctl = make_gleeok_fight_controller(tag="unit")
     assert isinstance(ctl, Level4GleeokFightController)
+    assert ctl.stand_dy == STAND_DY
     ram = np.zeros(0x800, dtype=np.uint8)
     assert level4_complete_success(ram) is False
     assert level4_tf08(ram) is False

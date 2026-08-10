@@ -1117,6 +1117,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - SMB still permanently skipped.
 
 
+
 ### 2026-08-10T04:50 CDT — SM Red mid dual y1606 (rr-av5s PARTIAL)
 - Commit `ea5ad62`: bottom IBJ → tunnel→midplat → midplat IBJ dual **temp floor y1606**.
 - Do not climb_lower before IBJ. Frozen-ripper seats not solid.
@@ -1162,3 +1163,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Bead **rr-5in** left **in_progress** PARTIAL; no push
 - Next: rr-5go9 stabilize empty-can/refill densify on continuous power-on, then
   re-run `--end-of-spring` for Summer D1 + gate_b_full
+
+### 2026-08-10T04:50 CDT — zelda rr-vdnc CLOSED ★
+- **CLOSED** `rr-vdnc`: Clean continuous PostLadderNaturalKey → TF `0x08` dual-green 2/2 (no `--infinite-life`, key_poke=false) ~33.9kf.
+- Gleeok south-stand policy (`STAND_DY=22`, FB dodge≤14; no head chase). Evidence `l4_vdnc_clean_cont_tf.json`, `l4_vdnc_gleeok_clean_dual.json`.
+- Not full-game Clean STATUS. Parent epic `rr-q3n` residual remains compose/natural-entry.
+- SMB still permanently skipped.
