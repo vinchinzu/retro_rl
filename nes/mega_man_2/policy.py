@@ -29,14 +29,16 @@ AirScreen2 late recipe (0-based ``i``):
 Post-screen-4 bottleneck (2026-08-09 probe, rr-54ui — open):
 
 - Last solid land under the screen2 recipe is ~f437 / prog 949 / sy 84
-  (checkpoint ``AirFanPlatform``). Platform has a pink fan to the LEFT and a
-  cloud / ladder geometry toward screen 4; pure RIGHT+period jump overshoots
-  and pit-dies ~prog 1047–1073 (camera still 4). ``AirScreen4`` itself is
-  mid-air (feet=0) and falls in ~17f without a new recipe.
+  (checkpoint ``AirFanPlatform``). Pink head LEFT of platform is a **Goblin /
+  Air Tikki** (standable when spikes down / 5px corner), not an updraft fan.
+  ``AirLeftPlatform`` is grounded left of it (prog~902). Ladder bar never sets
+  ``tile_feet==2``. Pure RIGHT period pit-dies ~prog 1047–1073 (camera still 4).
+  Pipi bird-boost from right edge reaches min_sy~23–26 and prog~1085, still
+  airborne death. ``AirScreen4`` is mid-air freefall (~17f) — do not start there.
 - Variable jump height works (hold 1→~sy76 short hop; hold ≥12→apex sy34).
-- Fan-left / edge-jump / grounded-hop / late-period sweeps did not land past
-  that platform. Next work needs a fan-ride or ladder route, not more period
-  tuning alone.
+  A needs a rising edge after load.
+- Next: Goblin-head pixel land, Lightning Lord cloud ride, or controlled Pipi
+  bounce onto solid cloud — not more late-period RIGHT tuning alone.
 
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """
