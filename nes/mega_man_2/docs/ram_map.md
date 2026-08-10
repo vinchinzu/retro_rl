@@ -49,11 +49,17 @@ fceumm WRAM; Mega Man is index 0. Parallel arrays of 32 slots.
 | Addr | Name | Notes |
 |------|------|-------|
 | `$0400+i` | Object type (`aobject_pointer`) | Behavior/ID (see DECODE.md) |
-| `$0420+i` | Flags | bit7 = exist (`objects_exist`) |
+| `$0420+i` | Flags | bit7 exist, bit6 right, bit5 invis, bit4 appearing_block |
 | `$0440+i` | Object screen | Matches `zscreen_id` when on-camera |
 | `$0460+i` | Object X | Screen-relative |
 | `$04A0+i` | Object Y | Screen-relative |
+| `$04E0+i` | `aobject_tsa` | Appearing-block solid type **or** enemy AI timer (LL: countdown) |
+| `$0600/$0640+i` | Object X/Y speed | Signed motion |
 | `$0100+i` | `aenemies_flag` | Spawn/kill tracking |
 
-Air Man LL: type **`0x3E`** (and `0x3D` move). Goblin/Air Tikki: **`0x40`/`0x41`**.
-Pipi: **`0x37`**. Spawn list: stage bank objects_set (mapset + x + y + type).
+Flag constants (lsmmega/mm2 `constants/flags.asm`): `objects_exist=$80`,
+`objects_right=$40`, `objects_invisible=$20`, `objects_appearing_block=$10`.
+
+Air Man LL: type **`0x3E`** body + **`0x3D`** move/rider. On rider death: type **`6`**
+(`objects_killed`) ~12f. Empty body stays `0x3E`; `aobject_tsa` cycles as AI timer
+(not solid). Goblin/Air Tikki: **`0x40`/`0x41`**. Pipi: **`0x37`**.
