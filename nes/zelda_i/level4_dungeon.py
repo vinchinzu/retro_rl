@@ -1836,7 +1836,10 @@ def level4_map_room_success(ram: np.ndarray) -> bool:
 
 # Live scripted key path after combat clear pose ≈(136–140, 164–165).
 # East-corridor route (rr-q8eq BFS): UP×2 RIGHT×5 UP×4 LEFT×5 hold6 → key ~(136,117).
+# Clear pose varies (skip-compass combat often ends ~west mid); ALIGN to
+# ``KEY_40_PATH_ANCHOR`` before the maze so PATH is pose-stable (rr-zavx).
 MAZE_40_KEY_HOLD = 6
+KEY_40_PATH_ANCHOR = (136, 165)
 MAZE_40_TO_KEY: tuple[str, ...] = (
     "UP",
     "UP",
@@ -1859,6 +1862,7 @@ MAZE_40_TO_KEY: tuple[str, ...] = (
 
 class Key40Phase(Enum):
     FIGHT = auto()
+    ALIGN = auto()
     PATH = auto()
     HUNT = auto()
     DONE = auto()
@@ -1872,6 +1876,9 @@ class Level4Key40Controller:
     Live (rr-q8eq): wooden sword splits Zol→Gel; after clear, center-band key
     is not reachable via naive mid-room patrol (south pocket walls). Use
     ``MAZE_40_TO_KEY`` hold6 from the common clear pose.
+
+    rr-zavx: after clear, ALIGN to ``KEY_40_PATH_ANCHOR`` first — skip-compass
+    combat end pose ~(72,125) makes the maze path miss the key band.
     """
 
     max_frames: int = 25000
@@ -1885,6 +1892,15 @@ class Level4Key40Controller:
     notes: list[str] = field(default_factory=list)
     _clear: GenericDungeonRoomController = field(init=False, repr=False)
     _hunt_i: int = 0
+    _hunt_targets: tuple[tuple[int, int], ...] = (
+        (136, 117),
+        (120, 117),
+        KEY_40_PICKUP_XY,
+        (128, 117),
+        (112, 117),
+        (136, 125),
+        (120, 109),
+    )
 
     def __post_init__(self) -> None:
         self._clear = GenericDungeonRoomController(ROOM_40_SPEC)
@@ -1900,6 +1916,13 @@ class Level4Key40Controller:
     def _fail(self, note: str) -> FrameAction:
         self._set_phase(Key40Phase.FAILED, note)
         return FrameAction(nes_idle_action(), note)
+
+    def _walk_toward(self, snap: ZeldaSnapshot, tx: int, ty: int) -> str:
+        if abs(snap.link_x - tx) > 4:
+            return "RIGHT" if snap.link_x < tx else "LEFT"
+        if abs(snap.link_y - ty) > 4:
+            return "DOWN" if snap.link_y < ty else "UP"
+        return "UP"
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -1947,11 +1970,24 @@ class Level4Key40Controller:
                 not live
                 and self._clear.max_live_enemies >= ROOM_40_SPEC.expected_enemy_count
             ):
-                self._set_phase(Key40Phase.PATH, "room_cleared")
+                self._set_phase(Key40Phase.ALIGN, "room_cleared")
+            else:
+                return self._clear.step(snap)
+
+        if self.phase is Key40Phase.ALIGN:
+            ax, ay = KEY_40_PATH_ANCHOR
+            if abs(snap.link_x - ax) <= 6 and abs(snap.link_y - ay) <= 6:
+                self._set_phase(Key40Phase.PATH, "aligned_path_anchor")
+                self.path_index = 0
+                self.hold_left = 0
+            elif self.phase_frames >= 900:
+                # Give up on anchor; still try maze from current pose + hunt.
+                self._set_phase(Key40Phase.PATH, "align_timeout")
                 self.path_index = 0
                 self.hold_left = 0
             else:
-                return self._clear.step(snap)
+                d = self._walk_toward(snap, ax, ay)
+                return FrameAction(nes_action(d), f"align_{d}")
 
         if self.phase is Key40Phase.PATH:
             if self.path_index >= len(MAZE_40_TO_KEY):
@@ -1965,12 +2001,19 @@ class Level4Key40Controller:
                 return FrameAction(nes_action(direction), f"maze40_{direction}")
 
         if self.phase is Key40Phase.HUNT:
-            # Micro orbit around key band if path undershot.
-            orbit = ("LEFT", "UP", "RIGHT", "DOWN", "LEFT", "UP", "RIGHT", "DOWN")
-            if self.phase_frames >= 400:
+            # Walk key-band waypoints then orbit (pose-stable recovery).
+            if self.phase_frames >= 1200:
                 return self._fail("key_hunt_timeout")
-            direction = orbit[(self.phase_frames // 8) % len(orbit)]
-            return FrameAction(nes_action(direction), "key_hunt")
+            tgt_i = min(
+                self.phase_frames // 120, len(self._hunt_targets) - 1
+            )
+            tx, ty = self._hunt_targets[tgt_i]
+            if abs(snap.link_x - tx) > 5 or abs(snap.link_y - ty) > 5:
+                d = self._walk_toward(snap, tx, ty)
+            else:
+                orbit = ("LEFT", "UP", "RIGHT", "DOWN")
+                d = orbit[(self.phase_frames // 8) % len(orbit)]
+            return FrameAction(nes_action(d), "key_hunt")
 
         return FrameAction(nes_idle_action(), "idle")
 
@@ -1985,6 +2028,7 @@ class Level4Key40Controller:
             "segment": "level4_key_0x40",
             "maze_path": list(MAZE_40_TO_KEY),
             "hold": MAZE_40_KEY_HOLD,
+            "path_anchor": list(KEY_40_PATH_ANCHOR),
             "pickup_xy": list(KEY_40_PICKUP_XY),
             "clear": self._clear.report(),
         }
@@ -3178,6 +3222,7 @@ __all__ = [
     "Level4KeyRight62Controller",
     "Level4Left50Controller",
     "KEY_40_PICKUP_XY",
+    "KEY_40_PATH_ANCHOR",
     "Key40Phase",
     "Level4Key40Controller",
     "Level4North30Controller",

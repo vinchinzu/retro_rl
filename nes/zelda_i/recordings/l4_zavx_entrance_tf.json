@@ -1,0 +1,478 @@
+{
+  "bead": "rr-zavx",
+  "dual_green": false,
+  "from": "Level4Entrance",
+  "key_poke": false,
+  "note": "Lab checkpoint continuous from Level4Entrance; not full-game power-on STATUS. Skip-compass pure spine + Clean PostLadder\u2192TF.",
+  "ok": false,
+  "segment": "continuous_entrance_skip_compass_tf",
+  "tag": "l4_zavx_entrance_tf",
+  "to_natural_key_only": false,
+  "track": "clean",
+  "trials": [
+    {
+      "bead": "rr-zavx",
+      "compose": "entrance_skip_compass_to_tf",
+      "continuous_tf": {
+        "error": null,
+        "final": {
+          "bombs": 6,
+          "cur_opened_doors": 3,
+          "doors": {
+            "D": false,
+            "L": true,
+            "R": true,
+            "U": false,
+            "raw": 3
+          },
+          "health": 98,
+          "heart_containers": 7,
+          "keys": 0,
+          "level": 4,
+          "mode": 5,
+          "objects": [
+            {
+              "facing": 1,
+              "hp": 176,
+              "slot": 11,
+              "type": 104,
+              "type_name": "unknown_object_0x68",
+              "x": 112,
+              "y": 144
+            }
+          ],
+          "open_doorway_mask": 10,
+          "raft": 1,
+          "room_all_dead": 209,
+          "room_item_id": 3,
+          "room_item_name": "no_inventory_reward_observed",
+          "room_obj_count": 10,
+          "sc": "0x12",
+          "screen": 18,
+          "tf04": true,
+          "triforce": 4,
+          "type_counts": {
+            "0x68": 1
+          },
+          "type_names": {
+            "0x68": "unknown_object_0x68"
+          },
+          "x": 208,
+          "y": 149
+        },
+        "key_poke": false,
+        "map_ok": true,
+        "ok": false,
+        "tf08": false,
+        "total_frames": 28892
+      },
+      "error": "gleeok_enter_0x12",
+      "final": {
+        "bombs": 6,
+        "cur_opened_doors": 3,
+        "doors": {
+          "D": false,
+          "L": true,
+          "R": true,
+          "U": false,
+          "raw": 3
+        },
+        "health": 98,
+        "heart_containers": 7,
+        "keys": 0,
+        "level": 4,
+        "mode": 5,
+        "objects": [
+          {
+            "facing": 1,
+            "hp": 176,
+            "slot": 11,
+            "type": 104,
+            "type_name": "unknown_object_0x68",
+            "x": 112,
+            "y": 144
+          }
+        ],
+        "open_doorway_mask": 10,
+        "raft": 1,
+        "room_all_dead": 209,
+        "room_item_id": 3,
+        "room_item_name": "no_inventory_reward_observed",
+        "room_obj_count": 10,
+        "sc": "0x12",
+        "screen": 18,
+        "tf04": true,
+        "triforce": 4,
+        "type_counts": {
+          "0x68": 1
+        },
+        "type_names": {
+          "0x68": "unknown_object_0x68"
+        },
+        "x": 208,
+        "y": 149
+      },
+      "key_poke": false,
+      "natural_entry": false,
+      "ok": false,
+      "spine": {
+        "checkpoint": "Level4Room31PostLadderNaturalKey",
+        "error": null,
+        "final": {
+          "health": 103,
+          "keys": 1,
+          "ladder": 1,
+          "mode": 5,
+          "room": 49,
+          "room_hex": "0x31"
+        },
+        "frames": 45786,
+        "ok": true,
+        "segments": [
+          {
+            "error": null,
+            "frames": 1278,
+            "keys": 1,
+            "ok": true,
+            "room": "0x51",
+            "segment": "chain_to_key"
+          },
+          {
+            "error": null,
+            "frames": 3356,
+            "keys": 1,
+            "ok": true,
+            "room": "0x50",
+            "segment": "clear_50"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x40",
+            "segment": "north_40"
+          },
+          {
+            "error": null,
+            "frames": 5566,
+            "keys": 2,
+            "ok": true,
+            "room": "0x40",
+            "segment": "key_40"
+          },
+          {
+            "error": null,
+            "frames": 221,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "north_30"
+          },
+          {
+            "error": null,
+            "frames": 1239,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "clear_30"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "key_right_31"
+          },
+          {
+            "error": null,
+            "frames": 22665,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "clear_31"
+          },
+          {
+            "error": null,
+            "frames": 554,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "east_32"
+          },
+          {
+            "error": null,
+            "frames": 2306,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "clear_32"
+          },
+          {
+            "error": null,
+            "frames": 6637,
+            "keys": 1,
+            "ok": true,
+            "room": "0x60",
+            "segment": "stepladder"
+          },
+          {
+            "error": null,
+            "frames": 859,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "exit_60"
+          },
+          {
+            "error": null,
+            "frames": 367,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "west_31"
+          }
+        ]
+      },
+      "start_state": "Level4Entrance",
+      "tag": "l4_zavx_entrance_tf",
+      "tf08": false,
+      "total_frames": 74678,
+      "track": "clean",
+      "trial": 0
+    },
+    {
+      "bead": "rr-zavx",
+      "compose": "entrance_skip_compass_to_tf",
+      "continuous_tf": {
+        "error": null,
+        "final": {
+          "bombs": 6,
+          "cur_opened_doors": 3,
+          "doors": {
+            "D": false,
+            "L": true,
+            "R": true,
+            "U": false,
+            "raw": 3
+          },
+          "health": 98,
+          "heart_containers": 7,
+          "keys": 0,
+          "level": 4,
+          "mode": 5,
+          "objects": [
+            {
+              "facing": 1,
+              "hp": 176,
+              "slot": 11,
+              "type": 104,
+              "type_name": "unknown_object_0x68",
+              "x": 112,
+              "y": 144
+            }
+          ],
+          "open_doorway_mask": 10,
+          "raft": 1,
+          "room_all_dead": 209,
+          "room_item_id": 3,
+          "room_item_name": "no_inventory_reward_observed",
+          "room_obj_count": 10,
+          "sc": "0x12",
+          "screen": 18,
+          "tf04": true,
+          "triforce": 4,
+          "type_counts": {
+            "0x68": 1
+          },
+          "type_names": {
+            "0x68": "unknown_object_0x68"
+          },
+          "x": 208,
+          "y": 149
+        },
+        "key_poke": false,
+        "map_ok": true,
+        "ok": false,
+        "tf08": false,
+        "total_frames": 28892
+      },
+      "error": "gleeok_enter_0x12",
+      "final": {
+        "bombs": 6,
+        "cur_opened_doors": 3,
+        "doors": {
+          "D": false,
+          "L": true,
+          "R": true,
+          "U": false,
+          "raw": 3
+        },
+        "health": 98,
+        "heart_containers": 7,
+        "keys": 0,
+        "level": 4,
+        "mode": 5,
+        "objects": [
+          {
+            "facing": 1,
+            "hp": 176,
+            "slot": 11,
+            "type": 104,
+            "type_name": "unknown_object_0x68",
+            "x": 112,
+            "y": 144
+          }
+        ],
+        "open_doorway_mask": 10,
+        "raft": 1,
+        "room_all_dead": 209,
+        "room_item_id": 3,
+        "room_item_name": "no_inventory_reward_observed",
+        "room_obj_count": 10,
+        "sc": "0x12",
+        "screen": 18,
+        "tf04": true,
+        "triforce": 4,
+        "type_counts": {
+          "0x68": 1
+        },
+        "type_names": {
+          "0x68": "unknown_object_0x68"
+        },
+        "x": 208,
+        "y": 149
+      },
+      "key_poke": false,
+      "natural_entry": false,
+      "ok": false,
+      "spine": {
+        "checkpoint": "Level4Room31PostLadderNaturalKey",
+        "error": null,
+        "final": {
+          "health": 103,
+          "keys": 1,
+          "ladder": 1,
+          "mode": 5,
+          "room": 49,
+          "room_hex": "0x31"
+        },
+        "frames": 45786,
+        "ok": true,
+        "segments": [
+          {
+            "error": null,
+            "frames": 1278,
+            "keys": 1,
+            "ok": true,
+            "room": "0x51",
+            "segment": "chain_to_key"
+          },
+          {
+            "error": null,
+            "frames": 3356,
+            "keys": 1,
+            "ok": true,
+            "room": "0x50",
+            "segment": "clear_50"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x40",
+            "segment": "north_40"
+          },
+          {
+            "error": null,
+            "frames": 5566,
+            "keys": 2,
+            "ok": true,
+            "room": "0x40",
+            "segment": "key_40"
+          },
+          {
+            "error": null,
+            "frames": 221,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "north_30"
+          },
+          {
+            "error": null,
+            "frames": 1239,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "clear_30"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "key_right_31"
+          },
+          {
+            "error": null,
+            "frames": 22665,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "clear_31"
+          },
+          {
+            "error": null,
+            "frames": 554,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "east_32"
+          },
+          {
+            "error": null,
+            "frames": 2306,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "clear_32"
+          },
+          {
+            "error": null,
+            "frames": 6637,
+            "keys": 1,
+            "ok": true,
+            "room": "0x60",
+            "segment": "stepladder"
+          },
+          {
+            "error": null,
+            "frames": 859,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "exit_60"
+          },
+          {
+            "error": null,
+            "frames": 367,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "west_31"
+          }
+        ]
+      },
+      "start_state": "Level4Entrance",
+      "tag": "l4_zavx_entrance_tf",
+      "tf08": false,
+      "total_frames": 74678,
+      "track": "clean",
+      "trial": 1
+    }
+  ]
+}
