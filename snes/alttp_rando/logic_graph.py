@@ -62,8 +62,11 @@ def build_early_graph() -> RouteGraph:
             N_LINKS_HOUSE,
             N_UNCLE,
             edge_id="house_to_uncle",
-            verification="planned",
-            provenance="opening route skill in alttp",
+            verification="natural_entry",
+            provenance=(
+                "alttp opening skills from FirstPlay (wake/lamp/exit + "
+                "OW walk + castle_to_sword); binding in solver_bindings"
+            ),
         ),
         GraphEdge(
             N_UNCLE,

@@ -5,8 +5,8 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M1 |
-| Best verified result | JP 1.0 power-on → Link's House controllable (`FirstPlay.state`) |
-| Last verification | 2026-08-06 |
+| Best verified result | JP FirstPlay → uncle fighter sword (`house_to_uncle` natural_entry) |
+| Last verification | 2026-08-09 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
@@ -36,15 +36,28 @@ Program stack: `docs/SOLVER_ARCHITECTURE.md`.
 | Package `alttp_rando/` | done |
 | JP 1.0 ROM wiring | done (`setup_rom`) |
 | Seed package schema | done (offline fixture + `demo_seed`) |
-| Early logic graph | done (opening → Eastern tip, planned) |
+| Early logic graph | done (opening → Eastern tip; `house_to_uncle` natural_entry) |
 | Play/record spine | done (`./play` + MP4/JSON + F5) |
 | FirstPlay boot | **done** (M1) |
+| House → uncle skill bind | **done** (natural_entry; vanilla `alttp` opening skills) |
 | Patched seed ROM integration | open |
 | Seed generator (ALTTPR / API) | open |
 | Multi-seed S/T dry-run | open |
 
+## House → uncle (natural_entry)
+
+| Field | Value |
+|-------|-------|
+| Edge | `house_to_uncle` (`z3_links_house` → `z3_uncle_sword`) |
+| Skill | `z3.house_to_uncle.vanilla_opening` → `play_house_to_uncle` |
+| Predecessor | `FirstPlay` (M1 Link's House control, JP 1.0) |
+| Composition | wake + lamp + house exit + OW to castle + `castle_to_sword` |
+| Evidence | `recordings/house_to_uncle.json` + `.evidence.json` |
+| Intervention | Clean (0 progression writes; 1 predecessor state load) |
+| Last verification | 2026-08-09 |
+
 ## Next
 
-1. Bind opening graph edges to `alttp` natural-entry skills from FirstPlay.
-2. ALTTPR / patch fixture seed → same FirstPlay path.
-3. Multi-seed report via shared seed-robust harness (`rr-gbd.11`).
+1. ALTTPR / patch fixture seed → same FirstPlay path.
+2. Multi-seed opening S/T dry-run (`rr-gbd.26`) via shared harness.
+3. Bind next early-graph edges (`uncle_to_yard`, …) as skills clear.
