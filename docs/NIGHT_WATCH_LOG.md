@@ -1300,3 +1300,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Residual **rr-5in**: return_home after water + re-refill at (25,34) → Summer D1.
 - Spawned harvest manager on rr-5in residual.
 
+
+### 2026-08-10T06:10 CDT — harvest water + MM2 Heat mid ★
+- **CLOSED** `rr-5go9` water refill densify (`2cedeea`); residual rr-5in return_home D12 → Summer.
+- **CLOSED** `rr-808` PARTIAL: Heat dual-green screens 2–5 (`bc2d2fe`); residual rr-809 boss+Item-1.
+- Spawned harvest return_home/Summer + MM2 Heat boss managers.
+
