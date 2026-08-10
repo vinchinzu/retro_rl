@@ -13,6 +13,20 @@ Protocol:
 
 ## Ticks
 
+### 2026-08-10 night — mega_man_2 rr-f3nr PARTIAL (Heat→Item-1 dual-green)
+- Lane: mega_man_2 only (`nes/mega_man_2/`)
+- Claimed **rr-f3nr** (residual of rr-54ui PARTIAL)
+- **Path:** Heat→Air Item-1 scaffold (no cloud solid re-grid; no FCEUX human)
+- **Inventory:** no prior Heat states/policies; AirFan `weapons=$00`
+- **Dual-green:**
+  1. `Heat1` entry — stage select LEFT from Wily(0) → Heat(8)
+  2. Heat screen ≥1 — `HeatManPolicy` 3/3 ~244f HP24 from `Heat1`
+- Scripts: `boot_heat_probe.py`, `run_heat_segment.py`; doc `HEAT_ITEM1_PATH.md`
+- **CLOSED PARTIAL** rr-f3nr; residual **rr-808** (Heat mid) → **rr-809** (boss+Item-1)
+  → **rr-810** (Air+Item-1 cam≥5). FCEUX pin protocol documented.
+- Units: `nes/mega_man_2/tests` 13/13. Commit `1f1cfb3`. No push.
+- Next tip: **rr-808** Heat mid/late from `HeatScreen1`
+
 ### 2026-08-10 night — SM rr-av5s PARTIAL mid dual temp floor y1606
 - Lane: super_metroid only (`snes/super_metroid/`)
 - Claim kept **rr-av5s** Pure Red→Hellway (K5 hop 12)
