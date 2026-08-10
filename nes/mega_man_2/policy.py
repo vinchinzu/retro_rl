@@ -1,12 +1,13 @@
-"""Air Man stage policies for Mega Man 2 (NES).
+"""Stage policies for Mega Man 2 (NES).
 
 M3 isolated segments (Clean Bronze):
 
-- **Screen ≥ 1** from ``Level1``: periodic jump-run (legacy ``AirScreen1Policy``).
-- **Screen ≥ 2** from ``Level1`` or ``AirLanded``: multi-phase ``AirManPolicy``
+- **Air screen ≥ 1** from ``Level1``: periodic jump-run (legacy ``AirScreen1Policy``).
+- **Air screen ≥ 2** from ``Level1`` or ``AirLanded``: multi-phase ``AirManPolicy``
   (~521f from Level1, ~225f from AirLanded; 3/3; verified 2026-08-08).
-- **Screen ≥ 3 / ≥ 4** from ``AirScreen2``: late-stage ``AirManPolicy(start=screen2)``
+- **Air screen ≥ 3 / ≥ 4** from ``AirScreen2``: late-stage ``AirManPolicy(start=screen2)``
   (~241f → s3 HP20; ~502f → s4 HP16; 3/3; verified 2026-08-09).
+- **Heat screen ≥ 1** from ``Heat1``: ``HeatManPolicy`` period 50/12 (~243f; 2026-08-10).
 
 Level1 recipe (0-based frame index ``i``):
 
@@ -40,9 +41,9 @@ Post-screen-4 bottleneck (2026-08-09/10 probe, rr-54ui — open):
   body y≈32–36. Goblin **0x40** (was mislabeled type36).
 - rr-54ui PARTIAL: rider kill Clean; empty cloud solid never arms (body never
   LDA #$90; only appear-block AI does). Zero-mask force = global solid OK.
-  No Air-first Clean alt (Item-1 needs Heat; gap ~296px). Child rr-f3nr.
-- A needs rising edge after load. Pipi family 0x37–0x3C.
-- Next (rr-f3nr): FCEUX stick RAM pin or Heat→Air Item-1 → camera≥5.
+  No Air-first Clean alt (Item-1 needs Heat; gap ~296px).
+- rr-f3nr PARTIAL: Heat→Air Item-1 scaffold — Heat1 entry + HeatScreen1 dual
+  green; Heat clear / Item-1 / Air-with-Item-1 residual.
 
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """
@@ -75,6 +76,41 @@ def _run_buttons(*, jump: bool, shoot: bool) -> tuple[list[str], str]:
 @dataclass
 class AirScreen1Policy:
     """Periodic jump-run to clear Air Man screen 0 → screen 1 (legacy)."""
+
+    jump_period: int = 50
+    jump_hold: int = 12
+    shoot_period: int = 40
+    shoot_hold: int = 2
+    target_camera_screen: int = 1
+
+    def tick(
+        self,
+        *,
+        frame: int,
+        health: int,
+        camera_x_screen: int,
+        fallen: bool = False,
+    ) -> FrameAction:
+        """Choose one frame of controller input."""
+        if health <= 0 or fallen:
+            return FrameAction(nes_idle_action(), "dead")
+        if camera_x_screen >= self.target_camera_screen:
+            return FrameAction(nes_idle_action(), "clear_hold")
+
+        i = max(0, frame - 1)
+        jump = self.jump_period > 0 and (i % self.jump_period) < self.jump_hold
+        shoot = self.shoot_period > 0 and (i % self.shoot_period) < self.shoot_hold
+        buttons, reason = _run_buttons(jump=jump, shoot=shoot)
+        return FrameAction(nes_action(*buttons), reason)
+
+
+@dataclass
+class HeatManPolicy:
+    """Heat Man early route: periodic jump-run (Heat1 → camera screen ≥ 1).
+
+    Verified ~243f from ``Heat1`` (HP 24, prog 256; 2026-08-10). Deeper Heat
+    screens / boss / Item-1 unlock are residual under Heat→Air Item-1 chain.
+    """
 
     jump_period: int = 50
     jump_hold: int = 12
