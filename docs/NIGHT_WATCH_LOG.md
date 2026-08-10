@@ -889,3 +889,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Epic **rr-q3n** left open (TF 0x08). Parent **rr-05fz** open residual.
 - Units: test_level4_dungeon 10 passed. No push.
 - Next: natural key for map natural-entry; Gleeok + TF 0x08
+
+### 2026-08-10T04:00 CDT — zelda L4 map room PARTIAL
+- `rr-rvae` open: map_21 assisted 2/2 ~17872f Level4Map ADDR_MAP|0x08.
+- Path 0x31→0x30 KEY-UP→0x20→0x21. Next: Gleeok/TF from Level4Map.
+
