@@ -150,10 +150,25 @@ Test crop fixtures (for growth / ship work):
    `ram_writes=0` (`recordings/inside_house_3day_clean.json`); day-plan soft
    fails ENSURE_CAN / CROP_WATER on D3–D4 still residual under **rr-20w**.
    Parent **rr-20w** stays open for full Spring income.
+   **2026-08-10 (rr-5go9 CLOSED):** Power-on continuous **CROP_WATER refill densify
+   GREEN** after fence. Root: east→south stuck at (29,30) (RIGHT soft-edge) +
+   soft-band long UP re-entered gap + east-pond densify thrash. Fixes:
+   east-only/south-only corridor charge split; gap-south fallback after 3×
+   (29,30) thrash; gap-safe soft/south lip (cap UP at low x); east_pond y≥32
+   only; past-fence pure-south bail. Evidence:
+   - Dry fixture: `can_peak=20`, `refill=1`, `watered=3`
+     (`recordings/empty_can_refill_probe.json`, ~12k f)
+   - Power-on `--end-of-spring`: **CROP_WATER ×3 success** D9–D11
+     `watered=6` each, D9 `refills=1 can=20`; crop_survival **wet=2 dry=4**
+     (not stuck dry=6); overnights=10 money=$160 mid_run=0 Clean
+     (`recordings/power_on_spring_to_summer.json`). Terminal
+     `return_home multi_nav timeout` D12 (not water thrash) — residual under
+     **rr-5in** (Gate B Summer still open; re-refill can=2 thrash at ~(25,34)).
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
    **ROM natural empty-can fill + 3/3 dry water OK** on dry fixture
-   (`can_peak=20`, `watered=3`, `dry_end=[]`).
+   (`can_peak=20`, `watered=3`, `dry_end=[]`). **Power-on continuous refill
+   + water GREEN** D9–D11 (rr-5go9).
 4. ~~Multi-day growth from `Y1_Test_Crops_Planted_Watered`~~ — **done** (mature `0x60` at D8; journal water deltas).
 5. ~~Harvest + ship + post-5pm money assert (rr-53g)~~ — **CLOSED 2026-08-09 night** Clean:
    ```bash
