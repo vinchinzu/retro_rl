@@ -860,3 +860,18 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Do not re-run: goblin-solid, pure-RIGHT grids, y84 edge LL camps
 - No push
 - Next: claim rr-fpd6 (Mesen/disasm spawn or TAS compare)
+
+### 2026-08-10T02:16 CDT — SM rr-av5s Red→Hellway PARTIAL (K5 hop 12)
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Claimed **rr-av5s** Pure Red Tower → Hellway return (K5 hop 12)
+- **PARTIAL:** lower right-wall WJ from `post_ice_bat_to_red_pure` ~(216,2443)
+  reaches right-pocket ledge ~(225,2091). Mid/upper not dual green.
+- Wiring: `play_red_to_hellway`, `ROOM_HELLWAY=0xA2F7`, probe `red-to-hellway`,
+  geometry + human final-ascent RLE recon (desyncs from pure pin — enemy state)
+- Trap: pocket ceiling peaks ~y1964; apex LEFT-WJ free-falls; human RLE needs
+  thrash-warmed Red enemy state
+- Residual: `docs/tasks/rr-av5s-residual.md`; parent **rr-dbu.8** stays open
+  hop0–11 GREEN, hop12 PARTIAL
+- Units: kpdr_dev + controller_common 27 passed; no continuous / STATUS
+- Bead **rr-av5s** left **in_progress** (mid shaft next)
+- No push

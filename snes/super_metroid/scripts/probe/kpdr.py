@@ -100,6 +100,7 @@ from super_metroid.routes.kpdr.k5 import (  # noqa: E402
     play_below_to_bat,
     play_east_to_glass,
     play_glass_to_west,
+    play_red_to_hellway,
     play_warehouse_to_east,
     play_west_to_below,
 )
@@ -560,6 +561,7 @@ def main() -> None:
             "west-to-below",
             "below-to-bat",
             "bat-to-red",
+            "red-to-hellway",
             "cathedral-entrance-to-cathedral",
             "cathedral-to-rising-tide",
             "rising-tide-to-bubble",
@@ -782,6 +784,7 @@ def main() -> None:
             "west-to-below": play_west_to_below,
             "below-to-bat": play_below_to_bat,
             "bat-to-red": play_bat_to_red,
+            "red-to-hellway": play_red_to_hellway,
             "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
             "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
             "rising-tide-to-bubble": play_rising_tide_to_bubble,

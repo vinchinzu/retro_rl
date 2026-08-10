@@ -21,7 +21,7 @@ K5 reverse tunnels + Red climb (this package — implement when predecessor pure
               → Below Spazer 0xA408 ✅ pure dual (west_to_below; reverse below floor→west)
                 → Bat 0xA3DD      ✅ pure dual (below_to_bat; reverse bat_to_below_spazer)
                   → Red Tower 0xA253 ✅ pure dual (bat_to_red; reverse red_tower_to_bat)
-                    → Hellway 0xA2F7 ⬜ climb reverse of red upper/lower zigzag
+                    → Hellway 0xA2F7 ⬜ PARTIAL lower WJ→pocket ~(225,2091); mid open
                       → Caterpillar 0xA322 ⬜
                         → Alpha PB 0xA3AE PLM ⬜  (scaffold ``alpha_pb.py``)
 
@@ -36,6 +36,7 @@ from super_metroid.routes.kpdr.k5.bat_to_red import play_bat_to_red
 from super_metroid.routes.kpdr.k5.below_to_bat import play_below_to_bat
 from super_metroid.routes.kpdr.k5.east_to_glass import play_east_to_glass
 from super_metroid.routes.kpdr.k5.glass_to_west import play_glass_to_west
+from super_metroid.routes.kpdr.k5.red_to_hellway import play_red_to_hellway
 from super_metroid.routes.kpdr.k5.warehouse_to_east import play_warehouse_to_east
 from super_metroid.routes.kpdr.k5.west_to_below import play_west_to_below
 
@@ -44,6 +45,7 @@ __all__ = [
     "play_below_to_bat",
     "play_east_to_glass",
     "play_glass_to_west",
+    "play_red_to_hellway",
     "play_warehouse_to_east",
     "play_west_to_below",
 ]

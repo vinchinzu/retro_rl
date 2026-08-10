@@ -63,6 +63,7 @@ from super_metroid.routes.kpdr.room_ids import (  # noqa: F401
     ROOM_PINK_PB,
     ROOM_PIT,
     ROOM_RED_TOWER,
+    ROOM_HELLWAY,
     ROOM_RISING_TIDE,
     ROOM_SINGLE_CHAMBER,
     ROOM_SPAZER,

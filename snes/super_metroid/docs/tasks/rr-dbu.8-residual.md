@@ -21,7 +21,7 @@ K5 stack to Alpha PB PLM still open. Not continuous. No STATUS change.
 | 8 | West → Below | `0xCF54` → `0xA408` | **272f** ×2 ✅ | `play_west_to_below` (reverse below floor→west) |
 | 9 | Below → Bat | `0xA408` → `0xA3DD` | **485f** ×2 ✅ | `play_below_to_bat` (reverse bat_to_below_spazer) |
 | 11 | Bat → Red Tower | `0xA3DD` → `0xA253` | **718f** ×2 ✅ | `play_bat_to_red` (reverse red_tower_to_bat) |
-| 12 | Red → Hellway | `0xA253` → `0xA2F7` | ⬜ | long Red Tower climb (~7k human) |
+| 12 | Red → Hellway | `0xA253` → `0xA2F7` | ⬜ PARTIAL | lower WJ → pocket ~(225,2091); mid/upper open (rr-av5s) |
 | 13 | Hellway → Caterpillar | `0xA2F7` → `0xA322` | ⬜ | |
 | 14 | Caterpillar → Alpha PB PLM | `0xA322` → `0xA3AE` | ⬜ | first PB capacity |
 
@@ -64,8 +64,8 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bat-to-red \
 5. Tunnel reverses may reuse geometry of outbound red_stack but need natural-entry pure pins.
 
 ### Next action (required)
-- **Next card:** **rr-av5s** Pure Red Tower → Hellway return (K5 hop 12)
-- **One change:** pure Red `0xA253` bottom → Hellway `0xA2F7` climb reverse of red_tower_to_bat descent
+- **Next card:** **rr-av5s** Pure Red Tower → Hellway return (K5 hop 12) — PARTIAL
+- **One change:** mid shaft past right-pocket ceiling ~(225,2091) → tunnel y≤1880 → bomb floor → Hellway
 - **Source state:** `scratch/post_ice_bat_to_red_pure.state`
 
 ### Non-claims
