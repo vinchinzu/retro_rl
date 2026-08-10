@@ -15,6 +15,8 @@ Segments (rr-5lu / rr-2ysf children)::
     north_40     (rr-xc3x)  0x50 cleared → scripted N → 0x40 Zols+key
     key_40       (rr-q8eq)  clear 5× Zol 0x13 (+ gel 0x14) + key @~(120,117)
     north_30     (rr-q8eq)  0x40 cleared → free UP → 0x30 Vires
+    clear_30     (rr-n1wn)  clear 3× Vire 0x12 on 0x30 (ignore invuln 0x2b)
+    key_right_31 (rr-n1wn)  0x30 KEY-RIGHT @y141 → 0x31 (5× Vire)
 
 Live graph only — no walkthrough room hardcodes beyond recon.
 
@@ -28,6 +30,8 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_40 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_40 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_30 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_30 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --trials 2 --save-state
 """
 
 # ruff: noqa: E402
@@ -58,6 +62,7 @@ from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level4_dungeon import (
     BOMB_61_NORTH_STAND,
     LEVEL4_COMPASS_BIT,
+    ROOM_30_SPEC,
     ROOM_40_SPEC,
     ROOM_50_SPEC,
     ROOM_51_SPEC,
@@ -69,6 +74,7 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_VIRES_61,
     ROOM_L4_ZOLS_40,
     level4_compass_route_success,
+    level4_room_30_cleared,
     level4_room_40_key_success,
     level4_room_40_ready,
     level4_room_50_cleared,
@@ -84,9 +90,13 @@ from zelda_i.level4_dungeon import (
     make_left_50_controller,
     make_north_30_controller,
     make_north_40_controller,
+    make_key_right_31_controller,
+    make_room_30_clear_controller,
     make_room_40_key_controller,
     make_room_50_clear_controller,
     level4_room_30_ready,
+    level4_room_31_ready,
+    ROOM_L4_EAST_31,
     ROOM_L4_NORTH_30,
     make_room_51_key_controller,
     make_room_61_clear_controller,
@@ -111,6 +121,8 @@ SEGMENTS = (
     "north_40",
     "key_40",
     "north_30",
+    "clear_30",
+    "key_right_31",
 )
 
 _BEAD = {
@@ -127,6 +139,8 @@ _BEAD = {
     "north_40": "rr-xc3x",
     "key_40": "rr-q8eq",
     "north_30": "rr-q8eq",
+    "clear_30": "rr-n1wn",
+    "key_right_31": "rr-n1wn",
 }
 
 _DEFAULT_STATE = {
@@ -143,6 +157,8 @@ _DEFAULT_STATE = {
     "north_40": "Level4Compass",
     "key_40": "Level4Room40",
     "north_30": "Level4Room40Cleared",
+    "clear_30": "Level4Room30",
+    "key_right_31": "Level4Room30Cleared",
 }
 
 _CHECKPOINT = {
@@ -159,6 +175,8 @@ _CHECKPOINT = {
     "north_40": "Level4Room40",
     "key_40": "Level4Room40Cleared",
     "north_30": "Level4Room30",
+    "clear_30": "Level4Room30Cleared",
+    "key_right_31": "Level4Room31",
 }
 
 
@@ -1025,6 +1043,86 @@ def run_once(
                 )
             ok = error is None and level4_room_30_ready(env.get_ram()) and (
                 ctl.success or read_snapshot(env.get_ram()).screen == ROOM_L4_NORTH_30
+            )
+
+        elif segment == "clear_30":
+            # Level4Room30: clear 3× Vire 0x12 (ignore invuln 0x2b).
+            snap = read_snapshot(env.get_ram())
+            if snap.screen == ROOM_L4_ZOLS_40:
+                # Enter 0x30 first if started on cleared 0x40.
+                if not level4_room_40_key_success(env.get_ram()):
+                    key = make_room_40_key_controller()
+                    controllers["key_40"] = key
+                    obs, frame = _run_until(
+                        env,
+                        key,
+                        assist=assist,
+                        max_frames=key.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not level4_room_40_key_success(env.get_ram()):
+                        error = "key_40_failed"
+                if error is None:
+                    n30 = make_north_30_controller()
+                    controllers["north_30"] = n30
+                    obs, frame = _run_until(
+                        env,
+                        n30,
+                        assist=assist,
+                        max_frames=n30.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not level4_room_30_ready(env.get_ram()):
+                        error = "north_30_failed"
+            elif snap.screen != ROOM_L4_NORTH_30:
+                error = f"unsupported_start_0x{snap.screen:02x}"
+            ctl = make_room_30_clear_controller()
+            controllers["clear_30"] = ctl
+            if error is None:
+                obs, frame = _run_until(
+                    env,
+                    ctl,
+                    assist=assist,
+                    max_frames=ctl.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+            ok = error is None and level4_room_30_cleared(env.get_ram()) and ctl.success
+
+        elif segment == "key_right_31":
+            # Prefer Level4Room30Cleared (keys≥1); clear first if live Vires.
+            snap = read_snapshot(env.get_ram())
+            if snap.screen == ROOM_L4_ZOLS_40:
+                n30 = make_north_30_controller()
+                controllers["north_30"] = n30
+                obs, frame = _run_until(
+                    env,
+                    n30,
+                    assist=assist,
+                    max_frames=n30.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+                if not level4_room_30_ready(env.get_ram()):
+                    error = "north_30_failed"
+            elif snap.screen != ROOM_L4_NORTH_30 and snap.screen != ROOM_L4_EAST_31:
+                error = f"unsupported_start_0x{snap.screen:02x}"
+            # clear_vires=True handles precleared or live Vires on 0x30.
+            ctl = make_key_right_31_controller(clear_vires=True)
+            controllers["key_right_31"] = ctl
+            if error is None and read_snapshot(env.get_ram()).screen != ROOM_L4_EAST_31:
+                obs, frame = _run_until(
+                    env,
+                    ctl,
+                    assist=assist,
+                    max_frames=ctl.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+            ok = error is None and level4_room_31_ready(env.get_ram()) and (
+                ctl.success or read_snapshot(env.get_ram()).screen == ROOM_L4_EAST_31
             )
         else:
             error = f"unknown_segment_{segment}"
