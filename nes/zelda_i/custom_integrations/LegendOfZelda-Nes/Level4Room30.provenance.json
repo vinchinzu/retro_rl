@@ -1,0 +1,53 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T04:17:41.623204+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-q8eq",
+    "intervention_class": "clean",
+    "segment": "l4_north_30",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "north_30": {
+        "frames": 227,
+        "notes": [
+          "push_up",
+          "align_x",
+          "push_up",
+          "entered_0x30"
+        ],
+        "phase": "DONE",
+        "segment": "level4_north_0x30",
+        "success": true,
+        "target_room": "0x30"
+      }
+    },
+    "final": {
+      "bombs": 8,
+      "compass": 12,
+      "compass_l4": true,
+      "cur_opened_doors": 0,
+      "health": 109,
+      "keys": 1,
+      "level": 4,
+      "mode": 5,
+      "room": 48,
+      "room_all_dead": 0,
+      "room_hex": "0x30",
+      "room_item_id": 3,
+      "x": 120,
+      "y": 205
+    },
+    "frames": 228,
+    "ok": true,
+    "segment": "north_30"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40Cleared.state",
+  "source_state_sha256": "9a214fb0145a4111234cfdf2218fbf79bc464bd9d316841ab27766aa3b605b3b",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room30.state",
+  "state_sha256": "a1b35203a77c4ada2ed336c33542f090adae1a5b4d944f1c3acb5b4087bee040"
+}
