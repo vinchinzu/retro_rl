@@ -537,17 +537,28 @@ def build_day1_handoff_tasks(
 
     # Truck leave often cutscenes into the farmhouse (town_day1_rest). Soft-nav
     # to farm is optional; _TruckLeaveTask succeeds on non-town tilemap.
-    # Prefer rest-capture truck leave + sleep slice (arrive ~(688,360) then
-    # f9200→end: stand 715,421 → leave → house cutscene → bed → D2 morning).
-    # Ends settled at (136,120) house_size=0 so shed can ExitToFarm cleanly.
+    #
+    # Gate B (require_starter_tools): rest leave-only slice f9200→~9800 (path
+    # 0x0C), then GoToSleep owns D2 morning. Full f9200→end includes bed but
+    # post-truck house→farm still clears free-move (0x4000) — shed open.
+    # AnnEve oracle (soft shed): keep full rest truck+sleep slice.
     rest_path = __import__("os").path.join(TASKS_DIR, "town_day1_rest.json")
     truck_includes_sleep = False
     if __import__("os").path.isfile(rest_path):
-        truck_slice = load_recording_slice(
-            RecordingSliceSpec("town_day1_rest", start_frame=9200, end_frame=None),
-            TASKS_DIR,
-        )
-        truck_slice.name = "truck_leave_sleep_rest_slice"
+        if require_starter_tools:
+            truck_slice = load_recording_slice(
+                RecordingSliceSpec("town_day1_rest", start_frame=9200, end_frame=9800),
+                TASKS_DIR,
+            )
+            truck_slice.name = "truck_leave_rest_slice_no_sleep"
+            truck_includes_sleep = False
+        else:
+            truck_slice = load_recording_slice(
+                RecordingSliceSpec("town_day1_rest", start_frame=9200, end_frame=None),
+                TASKS_DIR,
+            )
+            truck_slice.name = "truck_leave_sleep_rest_slice"
+            truck_includes_sleep = True
         truck = SequenceTask(
             name="truck_leave",
             tasks=(
@@ -560,13 +571,17 @@ def build_day1_handoff_tasks(
                 truck_slice,
             ),
         )
-        truck_includes_sleep = True
     else:
         truck = SequenceTask(
             name="truck_leave",
             tasks=(
-                _nav("to_truck", _clone_route("d1_town_to_truck"), timeout=7000, settle=15),
-                _TruckLeaveTask(),
+                _nav(
+                    "to_truck_stand",
+                    _clone_route("d1_town_to_truck_stand"),
+                    timeout=8000,
+                    settle=20,
+                ),
+                _TruckLeaveTask(timeout=6000),
             ),
         )
 

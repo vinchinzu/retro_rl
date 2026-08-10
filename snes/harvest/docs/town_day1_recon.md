@@ -85,10 +85,11 @@ fit in the 2-slot carry pair when hands are empty). Verified from
 ### Gate B blocker (2026-08-09, rr-bhr)
 
 Pure Town_Gate / power-on path reaches peak mask `0x3F` and D2 morning bed
-`(136,120)` via composed talks + truck rest-slice. **Shed still fails:**
+`(136,120)` via composed talks + truck leave + `GoToSleep`. **Shed still fails:**
 
-1. `ExitToFarm` from that D2 bed reaches farm `(136,344)` but clears free-move
-   (`game_state` `0x4001 → 0x0001`).
+1. `ExitToFarm` / `leave_house_to_farm` from that D2 bed reaches farm mid-warp
+   `~(137,212)` then `(136,344)` but **clears free-move**
+   (`game_state` `0x4001 → 0x0001` / `0x0081`).
 2. Player is auto-walked south into house-enter stand `~(133,425)` with no
    horizontal control (all directions ignored / forced south).
 3. MultiMapNav then soft-locks → tilemap `0x5F` (was misattributed to
@@ -99,10 +100,17 @@ Pure Town_Gate / power-on path reaches peak mask `0x3F` and D2 morning bed
 5. Contrast: `Y1_Inside_House` outdoor keeps `gs=0x4001`,
    `event_flags_1f68=0x00B1` (truck path `0x0011`) and shed grass+can succeeds.
 
-`ShedFetchItemTask` now fails fast with `farm_control_lost` instead of
-walking into `0x5F`. **Next fix:** re-record pure-path truck+sleep so morning
-exit keeps free-move, or complete the morning cutscene/event flags that the
-AnnEve rest capture assumes.
+**Mitigations landed this session (still not acceptance):**
+
+- Gate B truck uses rest leave-only slice `f9200:9800` + `GoToSleep` (not full
+  rest sleep end).
+- `GoToSleep` waits for morning house settle before SUCCESS (no mid-wake handoff).
+- `ExitToFarm` / `ExitBuilding` push DOWN through farm mid-warp `y<330`.
+- `ShedFetchItemTask` fails fast with `farm_control_lost`.
+
+**Next fix:** complete morning cutscene / `event_flags_1f68` bits so house→farm
+keeps free-move (`0x00B1` vs truck `0x0011`), or re-record `leave_house_to_farm`
+from power-on D2 bed through a free-move outdoor stand (not mid-warp y=212).
 
 ## Automation status (2026-08-01)
 
