@@ -104,6 +104,19 @@ from retro_harness.snapshot import (
     restore_envelope,
     set_emulator_state,
 )
+from retro_harness.branch_rollout import (
+    BranchResult,
+    BranchSpec,
+    BranchStatus,
+    ROLLOUT_SCHEMA_VERSION,
+    RolloutAccounting,
+    RolloutError,
+    RolloutResult,
+    RolloutSpec,
+    branch_from_actions,
+    run_branch_rollouts,
+    run_branch_rollouts_on_pool,
+)
 from retro_harness.live_play import (
     play_game,
 )
@@ -260,6 +273,10 @@ __all__ = [
     "SnapshotError", "SnapshotIdentity", "SnapshotIdentityMismatch",
     "assert_envelope_compatible", "capture_envelope", "get_emulator_state",
     "identity_for", "restore_envelope", "set_emulator_state",
+    # Branch-rollout batches (rr-gbd.34)
+    "BranchResult", "BranchSpec", "BranchStatus", "ROLLOUT_SCHEMA_VERSION",
+    "RolloutAccounting", "RolloutError", "RolloutResult", "RolloutSpec",
+    "branch_from_actions", "run_branch_rollouts", "run_branch_rollouts_on_pool",
     # Recordings/logging
     "ensure_gzip_state", "append_jsonl", "iter_jsonl",
     "find_latest_recording", "find_latest_recording_from_manifest",
