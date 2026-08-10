@@ -161,12 +161,16 @@ class ReturnHomeTask(Task):
 
     name: str = "return_home"
     tasks_dir: str = TASKS_DIR
+    # Hard budget so multi-day soaks fail cleanly instead of hanging ~D5 when
+    # enter_house / hands-full / nav soft-stalls without terminal status.
+    timeout: int = 5500
 
     _phase: str = field(default="start", init=False)
     _task: Optional[Task] = field(default=None, init=False)
     _action_queue: deque = field(default_factory=deque, init=False)
     _drop_attempts: int = field(default=0, init=False)
     _enter_retries: int = field(default=0, init=False)
+    _total_steps: int = field(default=0, init=False)
 
     @staticmethod
     def _house_route_name(ram: np.ndarray) -> str:
@@ -226,6 +230,7 @@ class ReturnHomeTask(Task):
         self._action_queue.clear()
         self._drop_attempts = 0
         self._enter_retries = 0
+        self._total_steps = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -244,6 +249,8 @@ class ReturnHomeTask(Task):
         task.reset(world)
 
     def _nav_to_house_front(self, world: WorldState, front: Point) -> TaskResult:
+        # Cap child nav so outer timeout can fire; leave headroom for enter.
+        child_timeout = min(4000, max(800, self.timeout - self._total_steps - 400))
         self._activate(
             "nav_house_front",
             NavTask(
@@ -252,7 +259,7 @@ class ReturnHomeTask(Task):
                 radius=8,
                 soft_radius=14,
                 soft_stasis=45,
-                timeout=4000,
+                timeout=child_timeout,
             ),
             world,
         )
@@ -261,6 +268,7 @@ class ReturnHomeTask(Task):
     def _nav_to_drop_spot(self, world: WorldState, front: Point) -> TaskResult:
         """Walk south of the door so throws are not blocked by the house wall."""
         drop = Point(front.x, min(520, front.y + 48))
+        child_timeout = min(3000, max(600, self.timeout - self._total_steps - 400))
         self._activate(
             "nav_drop_spot",
             NavTask(
@@ -269,7 +277,7 @@ class ReturnHomeTask(Task):
                 radius=12,
                 soft_radius=20,
                 soft_stasis=40,
-                timeout=3000,
+                timeout=child_timeout,
             ),
             world,
         )
@@ -287,20 +295,22 @@ class ReturnHomeTask(Task):
         front = self._house_front_px(world.ram)
 
         if not hands_are_clear(world.ram):
-            # Move off the house wall before throwing when still near the door.
-            if abs(pos.x - front.x) <= 28 and pos.y <= front.y + 20 and self._drop_attempts < 2:
+            # Fence posts left over from pond-access open block house doors.
+            # Prefer walking south of the door before tossing when near the wall.
+            near_door = abs(pos.x - front.x) <= 40 and pos.y <= front.y + 24
+            if near_door and self._drop_attempts < 3:
                 print(
                     f"[RETURN_HOME] Moving south to drop held item "
                     f"pos=({pos.x},{pos.y})"
                 )
                 return self._nav_to_drop_spot(world, front)
-            if self._drop_attempts < 6:
+            if self._drop_attempts < 8:
                 self._drop_attempts += 1
                 self._phase = "drop_carried"
                 self._queue_drop_carried()
                 print(
                     f"[RETURN_HOME] Dropping carried item before house entry "
-                    f"({self._drop_attempts}/6)"
+                    f"({self._drop_attempts}/8)"
                 )
                 return TaskResult(
                     status=TaskStatus.RUNNING,
@@ -329,12 +339,13 @@ class ReturnHomeTask(Task):
         route_name = self._house_route_name(world.ram)
         route = ROUTES.get(route_name) or ROUTES.get("farm_to_house") or []
         if route and self._phase not in {"nav_house_front", "nav_drop_spot"}:
+            route_timeout = min(5000, max(1200, self.timeout - self._total_steps - 500))
             self._activate(
                 "nav_house_front",
                 MultiMapNavTask(
                     name="nav_house_front",
                     waypoints=list(route),
-                    timeout=7000,
+                    timeout=route_timeout,
                     initial_settle_frames=0,
                 ),
                 world,
@@ -343,6 +354,15 @@ class ReturnHomeTask(Task):
         return self._nav_to_house_front(world, front)
 
     def step(self, world: WorldState) -> TaskResult:
+        self._total_steps += 1
+        if self.timeout > 0 and self._total_steps > self.timeout:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"return_home timeout after {self._total_steps}f "
+                    f"phase={self._phase}"
+                ),
+            )
         if self._action_queue:
             return TaskResult(
                 status=TaskStatus.RUNNING,
@@ -371,6 +391,15 @@ class ReturnHomeTask(Task):
                     f"({self._enter_retries}/4): {reason}"
                 )
                 return self._start_next_phase(world)
+            # Nav failure with hands still full: drop then re-nav instead of die.
+            if self._phase in {"nav_house_front", "nav_drop_spot"} and not hands_are_clear(
+                world.ram
+            ):
+                self._task = None
+                self._phase = "start"
+                if self._drop_attempts < 8:
+                    print(f"[RETURN_HOME] Nav failed with hands full; drop then retry: {reason}")
+                    return self._start_next_phase(world)
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"{self._phase} failed: {reason}",

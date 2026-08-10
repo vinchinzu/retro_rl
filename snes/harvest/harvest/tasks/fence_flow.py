@@ -25,6 +25,7 @@ from harvest.tasks.farm_clearer import (
     get_tile_at,
     manhattan,
     ADDR_INPUT_LOCK,
+    VIEWPORT_HOP_TILES,
     WALKABLE_TILES,
     POND_CHARACTERISTIC_TILES,
 )
@@ -97,20 +98,18 @@ class FenceClearLoopTask(Task):
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
         self._navigator = Navigator(self._pathfinder)
-        # Add pond side/top fences as impassable barriers
-        # Block ONLY verified side/top barriers (6-tile model)
-        # Left: X=30-31, Right: X=34-35, Top: Y=29, Bottom: Y=34 (except gap 32-33)
+        # Pond-side barriers (6-tile model). Leave south lip approach open:
+        # (30,34)/(31,34) are the west approach to POND_TILES (32,34)/(33,34).
         self._pathfinder.no_go_tiles.update({
-            (30, 29), (31, 29), (32, 29), (33, 29), (34, 29), (35, 29), # Top
-            (30, 30), (30, 31), (30, 32), (30, 33), (30, 34), # Far Left
-            (31, 30), (31, 31), (31, 32), (31, 33), (31, 34), # Near Left
-            (34, 30), (34, 31), (34, 32), (34, 33), (34, 34), # Near Right
-            (35, 30), (35, 31), (35, 32), (35, 33), (35, 34), # Far Right
-            # Also block water tiles for routing
+            (30, 29), (31, 29), (32, 29), (33, 29), (34, 29), (35, 29),  # Top
+            (30, 30), (30, 31), (30, 32), (30, 33),  # Far Left (not y=34)
+            (31, 30), (31, 31), (31, 32), (31, 33),  # Near Left (not y=34)
+            (34, 30), (34, 31), (34, 32), (34, 33), (34, 34),  # Near Right
+            (35, 30), (35, 31), (35, 32), (35, 33), (35, 34),  # Far Right
+            # Water body — stands (32–33,34) remain walkable for toss
             (32, 31), (32, 32), (32, 33),
             (33, 31), (33, 32), (33, 33),
         })
-        # Note: (30, 34) and (31, 34) are left OPEN as the entrance
 
     def reset(self, world: WorldState) -> None:
         if os.getenv("FENCE_DEBUG", "").lower() in ("1", "true", "yes"):
@@ -122,6 +121,7 @@ class FenceClearLoopTask(Task):
         self._steps_on_fence = 0
         self._total_steps = 0
         self._failures = 0
+        self._pond_hop_steps = 0
         self.cleared_count = 0
         if self._toss_task is None:
             self._toss_task = RecordedTask.load(self.toss_task_name)
@@ -293,26 +293,103 @@ class FenceClearLoopTask(Task):
             # Pathfind to pond. CRITICAL: Treat the tile we just lifted AND the pond as WALKABLE
             # for pathfinding purposes so we can get a path to the boundary.
             overrides = {best_pond}
-            if self._current: overrides.add(self._current.tile)
-            
-            path = self._pathfinder.find_path(
-                world.ram, 
-                current, 
+            if self._current:
+                overrides.add(self._current.tile)
+            # Also treat the cleared gap row tile as walkable if still stale in RAM.
+            if self._current is not None:
+                gx, gy = self._current.tile
+                overrides.add((gx, gy))
+                overrides.add((gx, gy + 1))  # one step south through the wall gap
+
+            full_path = self._pathfinder.find_path(
+                world.ram,
+                current,
                 best_pond,
-                walkable_override=overrides
+                walkable_override=overrides,
             )
+            path = full_path
+            # Viewport trap: full BFS dies beyond ~16 tiles of live map data.
+            # Hop toward the pond only when the hop end is strictly closer —
+            # otherwise we thrash inside a fenced pocket forever.
+            if path is None:
+                hop = self._pathfinder.find_path(
+                    world.ram,
+                    current,
+                    best_pond,
+                    walkable_override=overrides,
+                    max_steps=VIEWPORT_HOP_TILES,
+                )
+                if hop:
+                    hop_end = hop[-1]
+                    cur_dist = abs(current[0] - best_pond[0]) + abs(
+                        current[1] - best_pond[1]
+                    )
+                    hop_dist = abs(hop_end[0] - best_pond[0]) + abs(
+                        hop_end[1] - best_pond[1]
+                    )
+                    if hop_dist < cur_dist:
+                        path = hop
+                        self._pond_hop_steps = getattr(self, "_pond_hop_steps", 0) + 1
+                    else:
+                        path = None
+                # Cap multi-hop attempts; corridor-open only needs the gap open.
+                # Real ROM may still need a few hops for viewport load toward pond.
+                if path is not None and getattr(self, "_pond_hop_steps", 0) > 6:
+                    path = None
 
             if path:
                 self._navigator.path = path
                 if self.debug and self._total_steps % self.debug_interval == 0:
-                    print(f"[FENCE] pond path len={len(path)} next={path[0]} target={best_pond} override={self._current.tile if self._current else None}")
+                    print(
+                        f"[FENCE] pond path len={len(path)} next={path[0]} "
+                        f"target={best_pond} override="
+                        f"{self._current.tile if self._current else None}"
+                    )
                 action = self._navigator.follow_path(world.ram)
-                if action is None: action = np.zeros(12, dtype=np.int32)
+                if action is None:
+                    action = np.zeros(12, dtype=np.int32)
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
-            else:
+
+            # Pond still unreachable (wall residue / viewport): drop locally so
+            # the lifted gap stays open for crop refill BFS. Corridor-open only
+            # needs ≥1 missing fence on y=31 — toss-into-pond is optional.
+            if self.debug:
+                print(
+                    f"[FENCE] pond {best_pond} unreachable from {current}; "
+                    f"local drop (gap open for refill)"
+                )
+            self._state = "local_drop"
+            self._steps_on_fence = 0
+            self._pond_hop_steps = 0
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                reason="local drop after pond unreachable",
+            )
+
+        if self._state == "local_drop":
+            # Place/throw the fence post nearby (prefer south) without pond path.
+            state_val = world.ram[ADDR_PLAYER_STATE]
+            if not (state_val & ACTION_CARRYING_BIT) and not self._action_queue:
+                self.cleared_count += 1
+                self._state = "scan"
+                self._current = None
+                self._approach_tile = None
+                self._steps_on_fence = 0
                 if self.debug:
-                    print(f"[FENCE] pond {best_pond} unreachable from {current} (current_target={self._current.tile if self._current else None})")
-                return TaskResult(status=TaskStatus.FAILURE, reason=f"pond {best_pond} unreachable")
+                    print(f"[FENCE] local drop complete cleared={self.cleared_count}")
+                return TaskResult(status=TaskStatus.RUNNING, reason="local drop done")
+            if not self._action_queue:
+                # Face south of the y=31 wall and throw; multi-face if first fails.
+                for face in ("down", "left", "right", "up"):
+                    self._action_queue.extend(
+                        [make_action(**{face: True}) for _ in range(8)]
+                    )
+                    self._action_queue.extend(
+                        [make_action(**{face: True, "a": True}) for _ in range(12)]
+                    )
+                    self._action_queue.extend([make_action() for _ in range(10)])
+            action = self._action_queue.popleft()
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
         if self._state == "lift":
             if not self._current:
