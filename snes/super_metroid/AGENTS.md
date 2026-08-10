@@ -33,16 +33,12 @@ helpers, ≤~500 lines/file — checklist in
 **136,361f** ×2, room `0xADDE`, beams `0x1005`, items `0x3105`).
 **History:** Speed **130,388f** ×2 and non-Spazer Bat Cave **122,304f** ×2
 remain valid previous tips.
-**Next:** Wave→Business pure return stack (`rr-vqv3`) — Wave→Double dual
-GREEN (`rr-pd0i` 560f×2); Double→Single dual GREEN (`rr-qpkd` 1101f×2);
-Single→Bubble dual GREEN (`rr-u0y8` 817f×2); Bubble→Farm dual GREEN
-(`rr-czg9` 1566f×2); Farm→Speedway dual GREEN (`rr-z13h` 329f×2);
-Speedway→Frog dual GREEN (`rr-05dp` 621f×2); next `rr-vsjy` Frog→Business
-(replace scaffold; source `post_speedway_to_frog_save_pure`).
-Ice pure stack **CLOSED** (`rr-dbu.11`); continuous `--to ice` **compose**
-wired (`rr-dbu.7`, TipSpec parent `wave`) — **not** STATUS-promoted without
-dual continuous green (room gap Wave→Business; residual
-`docs/tasks/rr-vqv3-residual.md`).
+**Next:** Wave→Business pure return stack (`rr-vqv3`) **CLOSED pure dual** —
+all 7 hops GREEN incl. Frog→Business (`rr-vsjy` 347f×2, Business floor
+~(216,1419)). Compose into continuous Ice prefix still open; Ice pure
+stack **CLOSED** (`rr-dbu.11`); continuous `--to ice` **compose** wired
+(`rr-dbu.7`, TipSpec parent `wave`) — **not** STATUS-promoted without dual
+continuous green (residual `docs/tasks/rr-vqv3-residual.md`).
 
 **Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
 Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:

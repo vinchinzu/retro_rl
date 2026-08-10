@@ -158,6 +158,22 @@ STF_DOOR_FRAMES = 320
 STF_FROG_SETTLE = 280
 
 # ---------------------------------------------------------------------------
+# Frog Save → Business return (FTB_*) — rr-vsjy / Phase B hop 13
+# Source post_speedway_to_frog_save_pure ~(216,122) Frog Save **right** entry.
+# Human tape f9708–9987: LEFT past save tube → left blue door into Business
+# ``0xA7DE`` settle **right** ~(20–80, floor y). Save tube blocks flat run —
+# Hi-Jump pulses clear both sides (mirror of play_frog_save_to_speedway).
+# ---------------------------------------------------------------------------
+FTB_PIN_X = (160, 280)  # right entry after Speedway leave
+FTB_PIN_Y = (100, 180)
+FTB_TUBE_X = (90, 160)  # central save-tube band (must clear with hops)
+FTB_DOOR_X = 40
+FTB_DOOR_Y = (120, 160)
+FTB_LEAVE_FRAMES = 500
+FTB_DOOR_FRAMES = 280
+FTB_BUSINESS_SETTLE = 280
+
+# ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM (DC_*)
 # Live (2026-08-06, rr-dbu.10): entry ~(61,139); upper hop → Kamer seat
 # x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200.
@@ -288,6 +304,14 @@ __all__ = [
     "STF_LEAVE_FRAMES",
     "STF_DOOR_FRAMES",
     "STF_FROG_SETTLE",
+    "FTB_PIN_X",
+    "FTB_PIN_Y",
+    "FTB_TUBE_X",
+    "FTB_DOOR_X",
+    "FTB_DOOR_Y",
+    "FTB_LEAVE_FRAMES",
+    "FTB_DOOR_FRAMES",
+    "FTB_BUSINESS_SETTLE",
     "has_speed",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",

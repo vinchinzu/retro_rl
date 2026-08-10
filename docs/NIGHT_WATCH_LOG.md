@@ -271,6 +271,14 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-05dp` dual pure 621f×2 (0xB106→0xB167). Stack 6/7.
 - Next: `rr-vsjy` Frog Save→Business to finish rr-vqv3.
 
+### 2026-08-09T23:20 CDT — super_metroid Frog→Business pure GREEN (stack complete)
+- **CLOSED** `rr-vsjy` dual pure **347f×2** Frog Save `0xB167`→Business `0xA7DE` floor ~(216,1419).
+- **CLOSED** parent `rr-vqv3` Wave→Business pure return stack (7/7 hops dual green).
+- Export: `scratch/post_frog_save_to_business_pure.state` (Business floor; Ice Super is mid-shaft).
+- Scaffold replaced: `play_frog_save_to_business` → `wave/frog_to_business.py`.
+- Tests: `test_k4_wave_return_scaffold.py` 10 passed. **No continuous Ice STATUS.** No push.
+- Next: compose Wave→Business return into continuous Ice prefix; dual continuous green required before STATUS.
+
 ### 2026-08-09T23:05 CDT — harvest ship money CLOSED
 - **CLOSED** `rr-53g`: shipped 24, wallet +1920 overnight after farm 5pm ShippingScene. Clean.
 - Next: `rr-y8n` end-of-spring soak Gate A.
