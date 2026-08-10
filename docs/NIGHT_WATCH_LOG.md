@@ -191,3 +191,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - SM production adapter: `RouteCommandPolicy` + vertical `InjectedFailurePolicy` subclass OneShot; multi-frame path owned by ScriptedSkillPolicy.
 - Tests: multi-step RUNNING→SUCCESS, mid-skill replan, hang rejection, one-shot double-step; facade exports. 16 solver + full sm_rando suite green.
 - Next free capacity: ready solver tips `rr-gbd.14` / `.15` (P3 L2/L3 sketches) or higher-priority non-smb product tips; L0 stack complete (.32+.34).
+
+### 2026-08-09T22:20 CDT — SkillPolicy lifecycle closed
+- **CLOSED** `rr-d03j`: ScriptedSkillPolicy multi-frame + OneShotSkillPolicy; RUNNING hang guard; SM adapters use OneShot.
+- Solver free capacity idle (L0 + SkillPolicy done; product lanes busy).
+
