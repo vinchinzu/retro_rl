@@ -15,8 +15,10 @@ M3 isolated segments (Clean Bronze):
 - **Heat screen ≥ 7 pre-boss** from ``HeatScreen5Ground``: ``start=screen5`` A-edge
   j1/LEFT/j2 + hop 9/gw3 (~293f cam7; 3/3; 2026-08-10).
 - **Heat cam ≥ 8 Sniper shaft** from ``HeatScreen7Mid``: ``start=screen7`` high-path
-  past sx152 wall → ladder → scroll_down (~587f; 3/3; 2026-08-10). Residual:
-  Sniper/Yoku → boss clear + Item-1 (rr-809 PARTIAL).
+  past sx152 wall → ladder → scroll_down (~587f; 3/3; 2026-08-10).
+- **HeatScreen8 first Yoku land** from ``HeatScreen8``: ``start=screen8`` LEFT10 +
+  A+LEFT14 → stand sx~168 sy~100 (~44f; 3/3; 2026-08-10). Residual: multi-level
+  Yoku chain → Sniper → boss door + Item-1 (rr-k1ea / rr-809 PARTIAL).
 
 Level1 recipe (0-based frame index ``i``):
 
@@ -131,9 +133,14 @@ class HeatManPolicy:
     - ``screen7`` (HeatScreen7Mid): high-path — LEFT back to cam6, climb sy~68,
       cross ABOVE sx152 wall into cam7, micro-hop to mapset7 ladder, DOWN
       scroll_down → camera ≥8 Sniper shaft (~587f; 3/3; 2026-08-10).
+    - ``screen8`` (HeatScreen8): first Yoku land — LEFT 10, idle 1, A+LEFT 14,
+      coast LEFT → stand sx~168 sy~100 (~44f; 3/3; 2026-08-10). Block solid
+      ~20f (fl $90→$A0). Then explore hops (residual multi-level / boss).
 
-    Residual: HeatScreen8 Sniper/Yoku → boss door + Item-1 unlock (rr-809 PARTIAL).
-    Low alcove sx152 is a dead-end; do not RIGHT-spam from HeatScreen7 floor.
+    Residual: HeatScreen8 multi-level Yoku → Sniper → boss door + Item-1
+    (rr-k1ea / rr-809 PARTIAL). Low alcove sx152 is a dead-end; do not
+    RIGHT-spam from HeatScreen7 floor. Do not jump straight up into upper
+    Yoku from below (bonks underside).
     """
 
     # early (Heat1 / HeatScreen1)
@@ -163,7 +170,7 @@ class HeatManPolicy:
     shoot_period: int = 40
     shoot_hold: int = 2
     target_camera_screen: int = 1
-    # early | screen2 | screen3 | screen4 | screen5 | screen7
+    # early | screen2 | screen3 | screen4 | screen5 | screen7 | screen8
     start: str = "early"
     # screen5 phase machine (mutated across ticks)
     _s5_phase: str = "idle"
@@ -191,6 +198,8 @@ class HeatManPolicy:
             return self._tick_screen5(frame=frame, tile_feet=tile_feet)
         if self.start == "screen7":
             return self._tick_screen7(frame=frame, tile_feet=tile_feet)
+        if self.start == "screen8":
+            return self._tick_screen8(frame=frame, tile_feet=tile_feet)
 
         i = max(0, frame - 1)
         jump = self._want_jump(i)
@@ -354,6 +363,43 @@ class HeatManPolicy:
             t += n
         return FrameAction(nes_action("DOWN"), "s7_down")
 
+    def _tick_screen8(self, *, frame: int, tile_feet: int) -> FrameAction:
+        """Frame script: first Yoku land then residual multi-level hops.
+
+        0-based ``i`` (verified 3/3 HeatScreen8 → sx~168 sy~100 ~44f):
+
+        - 0–9: LEFT (approach ledge edge)
+        - 10: idle (A rising edge)
+        - 11–24: A+LEFT 14 (jump onto Yoku at ~168,119)
+        - 25–44: LEFT coast to settle stand
+        - then: release + A+LEFT micro-hops (residual; upper block bonks from below)
+        """
+        i = max(0, frame - 1)
+        segs: list[tuple[tuple[str, ...], int, str]] = [
+            (("LEFT",), 10, "s8_approach"),
+            ((), 1, "s8_release"),
+            (("A", "LEFT"), 14, "s8_yoku_jump"),
+            (("LEFT",), 20, "s8_yoku_coast"),
+        ]
+        # residual: try leftward multi-level hops (not yet dual-green past first land)
+        for _ in range(12):
+            segs += [
+                ((), 3, "s8_hop_release"),
+                (("A", "LEFT"), 12, "s8_hop"),
+                (("LEFT",), 14, "s8_hop_coast"),
+                ((), 8, "s8_hop_idle"),
+            ]
+        segs.append((("LEFT",), 200, "s8_left"))
+
+        t = 0
+        for btns, n, reason in segs:
+            if i < t + n:
+                if not btns:
+                    return FrameAction(nes_idle_action(), reason)
+                return FrameAction(nes_action(*btns), reason)
+            t += n
+        return FrameAction(nes_action("LEFT"), "s8_left")
+
     def _want_jump(self, i: int) -> bool:
         if self.start == "screen2":
             if i < self.mid_until:
@@ -368,6 +414,10 @@ class HeatManPolicy:
     @staticmethod
     def start_for_state(state_name: str) -> str:
         """Map checkpoint name → recipe start mode."""
+        if state_name.startswith("HeatScreen8") or state_name.startswith(
+            "HeatS8"
+        ):
+            return "screen8"
         if state_name.startswith("HeatScreen7") or state_name.startswith(
             "HeatLadder"
         ) or state_name.startswith("HeatS7"):
