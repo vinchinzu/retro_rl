@@ -992,3 +992,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Bead **rr-6g7g** CLOSED; **rr-5in** still PARTIAL
 - No push
 - Next (rr-5in): stabilize house approach after water days + first potato ship for money>100
+
+### 2026-08-10T05:00 CDT — harvest hands-clear CLOSED
+- **CLOSED** `rr-6g7g`: open drop + multi-face toss; power-on 7 overnights past D7.
+- rr-5in residual: D9 nav_house_front multi_nav timeout; money=$100 Summer open.
+
