@@ -21,6 +21,7 @@ SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.make_boot
 
 uv run pytest snes/sm_rando/tests -q
 SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_vertical_slice
+SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_morph_policy
 SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.harvest_entry_corpus
 SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.evaluate_entry_corpus
 uv run python -c "from sm_rando.seed import ensure_demo_seed; print(ensure_demo_seed().directory)"
@@ -44,5 +45,5 @@ uv run python -c "from sm_rando.seed import ensure_demo_seed; print(ensure_demo_
 
 ## Immediate goal
 
-M1 boot (FirstPlay) is the gate. Next: bind ship→morph edge to a vanilla skill
-on multi-seed fixtures once generator ROMs land.
+Power-on → Morph Ball now has an `SMRando-Snes` policy product. Next: run the
+same boundary on patched multi-seed fixtures once generator ROMs land.
