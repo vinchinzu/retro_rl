@@ -60,7 +60,12 @@ def _make_policy(*, state_name: str, target_screen: int):
     """Pick policy for start state / target."""
     if target_screen <= 1:
         return AirScreen1Policy(target_camera_screen=target_screen)
-    if state_name.startswith("AirScreen2"):
+    # Late-stage frame recipes are indexed from AirScreen2; later checkpoints
+    # (AirScreen3/4 mid-air, AirFanPlatform grounded) reuse screen2 phases only
+    # as a starting point — post-s4 still needs a new recipe (see STATUS).
+    if state_name.startswith(
+        ("AirScreen2", "AirScreen3", "AirScreen4", "AirFanPlatform")
+    ):
         start = "screen2"
     elif state_name.startswith("AirLanded"):
         start = "landed"
