@@ -1,0 +1,95 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T02:25:14.226335+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-h278",
+    "intervention_class": "survival",
+    "segment": "l4_bomb_61",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "bomb_61": {
+        "bombs_after_place": 8,
+        "bombs_before_place": 9,
+        "clear": {
+          "clear_signal_seen": true,
+          "combat_frames": 294,
+          "frames": 295,
+          "initial_inventory": 0,
+          "last_live_enemies": 0,
+          "max_live_enemies": 6,
+          "notes": [
+            "room_cleared"
+          ],
+          "phase": "DONE",
+          "spec_id": "level4_room61_vires",
+          "success": true,
+          "tuning": {
+            "attack_phase": 0,
+            "engage_attack_hold": 3,
+            "engage_attack_period": 6,
+            "engage_distance": 72,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 2,
+            "patrol_attack_period": 12
+          }
+        },
+        "frames": 516,
+        "notes": [
+          "need_clear_0x61",
+          "cleared",
+          "at_bomb_stand",
+          "faced",
+          "placed_bomb",
+          "bomb_used_9->8",
+          "entered_0x51"
+        ],
+        "opens_to": "0x51",
+        "phase": "DONE",
+        "stand": [
+          120,
+          105
+        ],
+        "success": true,
+        "wall_room": "0x61"
+      },
+      "entry_up": {
+        "frames": 251,
+        "notes": [
+          "align_x",
+          "push_up",
+          "entered_0x61"
+        ],
+        "phase": "DONE",
+        "segment": "level4_entry_up_0x71",
+        "success": true,
+        "target_room": "0x61"
+      }
+    },
+    "final": {
+      "bombs": 8,
+      "cur_opened_doors": 0,
+      "health": 111,
+      "keys": 0,
+      "level": 4,
+      "mode": 5,
+      "room": 81,
+      "room_all_dead": 0,
+      "room_hex": "0x51",
+      "room_item_id": 25,
+      "x": 120,
+      "y": 205
+    },
+    "frames": 768,
+    "ok": true,
+    "segment": "bomb_61"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Entrance.state",
+  "source_state_sha256": "c48a52bcf2742be226867999d63cbb2b167a48e3e01239b8d2f03d56a3d50e47",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe977-3406-7431-9bcd-6a3d6a20ff75/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room51.state",
+  "state_sha256": "c53549bac20bcaac93496121d0e3f78c113e2d8cdffedb83f466acb44b654717"
+}
