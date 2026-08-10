@@ -38,19 +38,54 @@ from alttp.room_map import load_room_map
 # Shared with secret_entrance_clear.approach_south_chamber success y.
 ROOM_55_SOUTH_Y_MIN = 2850
 
-# Outdoor landing after secret-entrance stairs (measured 2026-07-30).
-COURTYARD_SECRET_POCKET_X = 2248
-COURTYARD_SECRET_POCKET_Y = 1755
+
+def _map_xy(
+    map_id: str,
+    *,
+    point: str | None = None,
+    door: str | None = None,
+    default: tuple[int, int],
+) -> tuple[int, int]:
+    """Load approach/point xy from map JSON (geometry authority)."""
+    try:
+        m = load_room_map(map_id)
+    except FileNotFoundError:
+        return default
+    if door is not None:
+        d = m.door(door)
+        if d is not None:
+            return d.approach_xy
+    if point is not None:
+        pt = m.point(point)
+        if pt is not None:
+            return pt.x, pt.y
+    return default
+
+
+# Outdoor landing after secret-entrance stairs (maps/room_55 landing / courtyard).
+COURTYARD_SECRET_POCKET_X, COURTYARD_SECRET_POCKET_Y = _map_xy(
+    "screen_1b_courtyard",
+    point="secret_stairs_pocket",
+    default=(2248, 1755),
+)
 COURTYARD_SECRET_POCKET_TOLERANCE = 48
 
-# South-chamber stairs alignment (trigger tier).
-STAIRS_ALIGN_X = 2672
-STAIRS_ALIGN_Y = 2916
+# South-chamber stairs alignment (trigger tier; maps/room_55.json).
+STAIRS_ALIGN_X, STAIRS_ALIGN_Y = _map_xy(
+    "room_55",
+    door="stairs_to_courtyard",
+    point="stairs_align",
+    default=(2672, 2916),
+)
 STAIRS_ALIGN_TOLERANCE = 6
 
-# Main castle door (measured 2026-07-30 from CastleMain exit + pocket entry).
-MAIN_DOOR_APPROACH_X = 2040
-MAIN_DOOR_APPROACH_Y = 1790
+# Main castle door (maps/screen_1b_courtyard.json main_door_to_0x61).
+MAIN_DOOR_APPROACH_X, MAIN_DOOR_APPROACH_Y = _map_xy(
+    "screen_1b_courtyard",
+    door="main_door_to_0x61",
+    point="main_door_approach",
+    default=(2040, 1790),
+)
 MAIN_DOOR_APPROACH_TOLERANCE = 24
 
 AnchorTier = str  # "route" | "approach" | "trigger"
@@ -264,9 +299,20 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             room_base_id=SECRET_PASSAGE_ROOM,
             require_indoors=True,
             require_fighter_sword=True,
-            position=PositionWindow(2680, 2925, 80, label="south_chamber"),
+            position=PositionWindow(
+                *_map_xy(
+                    "room_55",
+                    point="south_chamber",
+                    default=(2680, 2925),
+                ),
+                80,
+                label="south_chamber",
+            ),
             graph_node_id="room_55_south",
-            notes=("Guards chamber; LEFT×100 + DOWN×250 from uncle corridor.",),
+            notes=(
+                "Guards chamber; map path uncle_corridor_west → south_chamber "
+                "(room_engine; no open-loop macros).",
+            ),
         ),
         MultiTruthAnchor(
             anchor_id="HyruleCastle_SecretEntrance_StairsAlign",
@@ -281,9 +327,12 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
                 STAIRS_ALIGN_TOLERANCE,
                 label="stairs_align",
             ),
-            map_note="Off-center y≥2960 soft-locks indoors without transition",
+            map_note=(
+                "maps/room_55.json door stairs_to_courtyard; "
+                "off-center y≥2960 soft-locks indoors without transition"
+            ),
             graph_node_id="room_55_south",
-            notes=("Trigger: align then DOWN → outdoors pocket.",),
+            notes=("Trigger: room_engine path + DOWN push → outdoors pocket.",),
         ),
         MultiTruthAnchor(
             anchor_id="HyruleCastle_Courtyard_SecretStairsPocket",
@@ -340,10 +389,14 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
                 label="main_door_approach",
             ),
             graph_node_id="courtyard_secret_pocket",
-            map_note="Reverse-measured CastleMain exit ~(2040,1779); entry ~(2040,1790)",
+            map_note=(
+                "maps/screen_1b_courtyard.json door main_door_to_0x61; "
+                "reverse landing ~main_door_landing_reverse"
+            ),
             screenshot_hint="recordings/probe_courtyard_door/south_door/",
             notes=(
-                "Approach via south corridor y≈2024 then west to x≈2040 then north.",
+                "Approach via map path open_gardens → south_corridor → "
+                "main_door_approach (bush-cut locomotion).",
                 "Soldiers on the approach path — fight_nearby as needed.",
             ),
             _extra_match=lambda s: _outdoor_screen(s, HYRULE_CASTLE_SCREEN)
@@ -362,7 +415,9 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
                 16,
                 label="main_door_exact",
             ),
-            map_note="Hitbox: align x≈2040, hold UP → room 0x61",
+            map_note=(
+                "maps/screen_1b_courtyard.json; hitbox: align approach, hold UP → 0x61"
+            ),
             notes=(
                 "Trigger/hitbox — see docs/TRIGGER_HANDOFF.md.",
                 "Proven 2026-07-30 headless from pocket predecessor.",

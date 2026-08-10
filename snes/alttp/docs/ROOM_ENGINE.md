@@ -45,7 +45,8 @@ Skip: entire `main_hall_to_zelda.py` history, probe PNG dumps, unrelated docs.
 
 | Map | Room | Notes |
 |-----|------|--------|
-| `room_55` | 0x55 | Secret entrance (continuous stairs clear already scripted) |
+| `room_55` | 0x55 | Secret entrance; continuous clear via `stairs_to_courtyard` |
+| `screen_1b_courtyard` | outdoor 0x1B | Courtyard pocket → main door geometry (bush-cut still in segment) |
 | `room_61` | 0x61 | Main hall; west continuous prefix |
 | `room_60` | 0x60 | Main west; north→0x50 continuous prefix |
 | `room_50` | 0x50 | NW chamber; east→0x01 **natural_entry** (only forward exit) |
