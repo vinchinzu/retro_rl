@@ -6,14 +6,13 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-import pytest
-
 from retro_harness.actions import buttons
 from retro_harness.video import (
     FrameVideoWriter,
     VideoCaptureConfig,
     VideoRecorder,
     format_snes_buttons,
+    probe_video_evidence,
     render_button_footer,
     should_capture_frame,
 )
@@ -158,6 +157,7 @@ def test_video_recorder_start_gate_and_audio(tmp_path: Path) -> None:
     # csv=p=0 with codec_name,codec_type → "h264,video" / "aac,audio"
     assert any(line.endswith(",video") for line in codecs)
     assert any(line.endswith(",audio") for line in codecs)
+    assert probe_video_evidence(out, expected_frames=7)["frame_count_matches"] is True
 
 
 def test_high_quality_preset() -> None:
