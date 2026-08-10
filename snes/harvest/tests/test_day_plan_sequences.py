@@ -1434,6 +1434,36 @@ class DayPlanSequenceTests(unittest.TestCase):
         self.assertEqual(navigator.path, [])
         self.assertIn((14, 8), navigator.pathfinder.temp_blocked)
 
+    def test_farm_free_move_ready_and_house_front_softlock(self) -> None:
+        """Gate B: free-move bit 0x4000 distinguishes good outdoor from soft-lock."""
+        from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, live_wram_base
+        from harvest.planner.tasks.inventory import (
+            farm_free_move_ready,
+            farm_house_front_softlock,
+        )
+
+        world = make_world(0x00)
+        set_player_pos(world.ram, 136, 344)
+        # game_state u16 @ 0x00D2; base 0 for 0x20000 ram fixtures
+        lo = live_wram_base(world.ram) + 0x00D2
+        world.ram[lo] = 0x01
+        world.ram[lo + 1] = 0x40  # 0x4001 free-move
+        self.assertTrue(farm_free_move_ready(world.ram))
+        self.assertFalse(farm_house_front_softlock(world.ram))
+
+        world.ram[lo + 1] = 0x00  # 0x0001 control lost
+        set_player_pos(world.ram, 133, 425)
+        self.assertFalse(farm_free_move_ready(world.ram))
+        self.assertTrue(farm_house_front_softlock(world.ram))
+
+        # Live-size snapshot still resolves free-move via WRAM mirror.
+        live = make_time_world(0x00, day=2, hour=6, minute=0, live_offset=True)
+        set_player_pos(live.ram, 136, 344)
+        lo2 = LIVE_RAM_WRAM_OFFSET + 0x00D2
+        live.ram[lo2] = 0x01
+        live.ram[lo2 + 1] = 0x40
+        self.assertTrue(farm_free_move_ready(live.ram))
+
     def test_exit_to_farm_task_exits_shed_with_downward_transition(self) -> None:
         world = make_world(0x26)
         set_player_pos(world.ram, 8 * 16 + 8, 12 * 16 + 8)
