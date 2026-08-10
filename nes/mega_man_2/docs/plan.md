@@ -13,28 +13,30 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Bottleneck
 
-**Post-s4 gap: solid island prog 937–984 (`AirFanPlatform`); nothing solid past
-984 or on Goblin top in tested windows.**
+**Post-s4 gap: solid island prog 937–984 (`AirFanPlatform`); ~296px open pit to
+screen5 (prog 1280). One Mega Man jump only reaches ~1065–1071.**
 
 Screen2 late recipe clears camera screen 4 mid-air but never lands past the
-island. Pure RIGHT ~prog 1064–1072; shoot+Pipi boost ~1086 min_sy~23; still pit
+island. Pure RIGHT ~prog 1065–1071; shoot+Pipi boost ~1086 min_sy~23; still pit
 on screen 4. No camera ≥5.
 
-Geometry (verified 2026-08-09 overnight):
+Geometry (verified 2026-08-09/10):
 
-- Pink head = **Goblin / Air Tikki** (obj slot14 @~39,49), not updraft fan
-- Goblin top: dense spike-cycle hop grids → **0** feet=1 lands in gap zone
-- `AirLeftPlatform` = short left ledge prog 902–905 only
-- Ladder bar does not set `tile_feet==2`
-- Type35 eggs walk platform y~84; Pipi bounce damages and lifts, no land
-- Decorative clouds not solid under current trajectories
+- Solids are **tiles** (`tile_feet`/`tile_center`); type36 pink head is a
+  **damage enemy** (periodic teleport-hit), not a landable platform
+- “Standing on goblin” at AirScreen2 is a y=52 **tile** platform under/near the
+  sprite; hops onto type36 never set feet=1 elevated
+- `AirLeftPlatform` = short left ledge prog 902–905; leftward returns prior chain
+- Ladder bar never `tile_feet==2`; no wind; camera_y=0 through death
+- Type35 eggs/birds; freefall past 984 has **zero** tile hits
+- No Lightning Lord / new object types in 400–600f edge camp
 
 ## Suggested next experiments
 
-1. Confirm whether this Goblin is ever solid (RAM collision / known RTA setup).
-2. Lightning Lord entry — may require different earlier path, not this island.
-3. Pipi: kill then ride residual cloud if one exists; log object HP slots.
-4. Only then freeze AirScreen2→target 5 (3/3) and boss door.
+1. **Lightning Lord cloud spawn** — alternate earlier route timing (before full
+   y=84 descent); log object types while holding camera toward pit.
+2. Map-match: which stage segment is prog~950 (Pipi C vs Matasaburo E vs drop D).
+3. Only then freeze AirScreen2→target 5 (3/3) and boss door.
 
 ## Notes
 

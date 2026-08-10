@@ -529,3 +529,17 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-tib8`/`rr-o0nn`/`rr-5lu`: 0x32 clear 2/2 + 0x60 ADDR_LADDER 2/2.
 - Stairs push from clear pose; need 5 idle after reset (RNG trap). Next: `rr-05fz` post-ladder residual.
 
+### 2026-08-10T00:35 CDT — MM2 post-s4 overnight (rr-54ui open)
+- **Claimed** `rr-54ui`; stayed **OPEN** (no camera≥5 / boss door / clear).
+- **KEY CORRECTION:** type36 Goblin is **not solid** — platforms are tiles
+  (`tile_feet`/`tile_center`). Type36 = damage enemy (~111f teleport-hit cycle).
+  AirScreen2 “on goblin” is y=52 **tile** platform (walk past type36 x, feet=1).
+- Gap math: last solid prog **984** → scr5@**1280** ≈ **296px** open.
+  Pure jump max **~1065–1071**; Pipi boost still ~1086; freefall tiles past 984 = 0.
+- Swept: 1000+ phase/top-down goblin hops (0 elevated land); ladder UP never feet=2;
+  no wind; camera_y=0; edge camp 400–600f types only 1/35/36 (no Lightning Lord).
+- Evidence: `nes/mega_man_2/recordings/air_post4_night3/`. Units 10/10.
+- Docs: STATUS/plan/AGENTS/policy residual updated. False probe states pruned.
+- Next: Lightning Lord / intermediate cloud spawn via **earlier route fork**
+  (before full y=84 descent); map-match segment at prog~950.
+
