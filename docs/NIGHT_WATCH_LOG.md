@@ -139,3 +139,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-gbd.26` house→uncle SeedCampaignRunner dry S/T 3/3 claimable (vanilla fixtures).
 - Multi-seed dry stack complete: sm_rando 25 + smz3 13 + alttp 26 (all fixture/vanilla labeled).
 
+### 2026-08-09T21:55 CDT — SM Wave→Double pure GREEN
+- **rr-vqv3** in_progress: Wave→Business return stack.
+- First hop dual GREEN 560f×2 Wave→Double (0xADDE→0xADAD). Next: Double→Single.
+- **SMB re-parked** (rr-k0x reopened by stray work; closed again per human).
+

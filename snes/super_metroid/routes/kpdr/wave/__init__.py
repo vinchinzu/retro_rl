@@ -1,4 +1,4 @@
-"""K4 Wave branch pure controllers — Bubble → Single → Double → Wave.
+"""K4 Wave branch pure controllers — Bubble → Single → Double → Wave (+ return).
 
 K4.8 Bubble → Single Chamber (``0xAD5E``): post-Speed return Bubble top-right
 → drop shaft → middle-right blue door into Single left shaft.
@@ -9,6 +9,10 @@ floor platform y≈395 → missile red door (Second Top Right) into Double top.
 K4.10 Double Chamber → Wave Beam PLM (``0xADDE``): top-left pin → upper path
 → blue gate → right Super/missile door → Wave chozo collect (beam bit 0x0001).
 
+Wave return (rr-vqv3 stack, Phase B reverse) starts here:
+
+* ``wave_to_double`` — Wave → Double (rr-pd0i); further return hops TBD
+
 Package layout
 --------------
 * ``geometry`` — room-prefixed bands + seats + ``WAVE_BEAM_MASK`` / predicates
@@ -18,6 +22,7 @@ Package layout
 * ``single_to_double`` — K4.9
 * ``double_gate`` — K4.10 Kamer hop + blue gate open
 * ``double_to_wave`` — K4.10 Super door + Wave chozo collect
+* ``wave_to_double`` — Wave return first hop (unblock Ice continuous prefix)
 
 Public API is also re-exported from :mod:`super_metroid.routes.kpdr.k4_wave`
 for stable registry / spine_hops / probe imports.
@@ -41,12 +46,16 @@ from super_metroid.routes.kpdr.wave.geometry import WAVE_BEAM_MASK
 from super_metroid.routes.kpdr.wave.single_to_double import (
     play_single_to_double_chamber,
 )
+from super_metroid.routes.kpdr.wave.wave_to_double import (
+    play_wave_to_double_chamber,
+)
 
 __all__ = [
     "WAVE_BEAM_MASK",
     "play_bubble_to_single_chamber",
     "play_single_to_double_chamber",
     "play_double_chamber_to_wave",
+    "play_wave_to_double_chamber",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",

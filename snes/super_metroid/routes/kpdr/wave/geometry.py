@@ -20,6 +20,15 @@ from super_metroid.routes.kpdr.rooms import (
 WAVE_BEAM_MASK = 0x0001
 
 # ---------------------------------------------------------------------------
+# Wave → Double Chamber return (WR_*) — rr-pd0i / Phase B hop 8
+# Continuous tip / pure Wave successor ~(171,123) pose 137; left blue door
+# into Double top-right ~(18,139). Human leave clean window ~f5720–5908.
+# ---------------------------------------------------------------------------
+WAVE_DOOR_X = 48
+WAVE_LEAVE_FRAMES = 420
+WAVE_DOUBLE_SETTLE = 280
+
+# ---------------------------------------------------------------------------
 # K4.8 Bubble → Single Chamber (BSC_*)
 # Live pins from post_speed_return_to_bubble_pure + human Bubble→SC (2026-08-06).
 # Top settle ~(472,115); drop band x≈381; door sill ~(492,395).
@@ -114,6 +123,9 @@ def dc_on_sill(state: SuperMetroidState) -> bool:
 
 __all__ = [
     "WAVE_BEAM_MASK",
+    "WAVE_DOOR_X",
+    "WAVE_LEAVE_FRAMES",
+    "WAVE_DOUBLE_SETTLE",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",
