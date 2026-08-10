@@ -365,6 +365,18 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=180,
     ),
     SourceFingerprint(
+        "post_farm_to_speedway_pure",
+        "scratch/post_farm_to_speedway_pure.state",
+        0xB106,
+        use_for="speedway-to-frog-save return pure predecessor (Wave return stack; needs Speed)",
+        continuous_like=False,
+        # Speedway right entry after Farm left blue door (8-screen tunnel) ~(2000–2040,139).
+        x_min=1950,
+        x_max=2100,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
         "post_kihunter_to_zeela",
         "scratch/post_kihunter_to_zeela_return.state",
         0xA471,
