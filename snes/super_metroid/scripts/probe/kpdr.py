@@ -95,7 +95,10 @@ from super_metroid.routes.kpdr.ice import (  # noqa: E402
     play_ice_tutorial_to_gate,
     play_ice_gate_to_business,
 )
-from super_metroid.routes.kpdr.k5 import play_warehouse_to_east  # noqa: E402
+from super_metroid.routes.kpdr.k5 import (  # noqa: E402
+    play_east_to_glass,
+    play_warehouse_to_east,
+)
 from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_bat_cave_to_speed_hall,
     play_business_to_cathedral_entrance,
@@ -548,6 +551,7 @@ def main() -> None:
             "ice-tutorial-to-gate",
             "ice-gate-to-business",
             "warehouse-to-east",
+            "east-to-glass",
             "cathedral-entrance-to-cathedral",
             "cathedral-to-rising-tide",
             "rising-tide-to-bubble",
@@ -765,6 +769,7 @@ def main() -> None:
             "ice-tutorial-to-gate": play_ice_tutorial_to_gate,
             "ice-gate-to-business": play_ice_gate_to_business,
             "warehouse-to-east": play_warehouse_to_east,
+            "east-to-glass": play_east_to_glass,
             "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
             "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
             "rising-tide-to-bubble": play_rising_tide_to_bubble,

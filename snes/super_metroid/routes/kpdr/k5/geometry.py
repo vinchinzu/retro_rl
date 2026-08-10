@@ -20,10 +20,20 @@ EAST_RETURN_X_MAX = 280
 EAST_RETURN_Y_MIN = 100
 EAST_RETURN_Y_MAX = 450
 
+# East Tunnel 0xCF80 bottom-left blue door into Glass Tunnel 0xCEFB
+# (outbound ``play_glass_to_east`` runs RIGHT into East).
+# Tape: mid-floor x≈216 y≈395 LEFT-run to door x≤40.
+EAST_GLASS_DOOR_X = 40
+EAST_TO_GLASS_FRAMES = 600
+EAST_TO_GLASS_SETTLE = 260
+
 __all__ = [
+    "EAST_GLASS_DOOR_X",
     "EAST_RETURN_X_MAX",
     "EAST_RETURN_Y_MAX",
     "EAST_RETURN_Y_MIN",
+    "EAST_TO_GLASS_FRAMES",
+    "EAST_TO_GLASS_SETTLE",
     "WH_EAST_DOOR_X",
     "WH_ELEV_BAND_X_MAX",
     "WH_ELEV_BAND_Y_MAX",

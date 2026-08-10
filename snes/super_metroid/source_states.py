@@ -286,6 +286,19 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1, 2, 9, 10, 12, 25, 26}),
     ),
     SourceFingerprint(
+        "post_ice_east_to_glass_pure",
+        "scratch/post_ice_east_to_glass_pure.state",
+        0xCEFB,
+        use_for="K5 hop 6 pure handoff (rr-68ib east-to-glass dual 253f); pure glass→west reverse",
+        continuous_like=False,
+        x_min=150,
+        x_max=280,
+        y_min=350,
+        y_max=420,
+        # 12 = facing-left standing residual mid Glass floor after settle.
+        poses=frozenset({1, 2, 9, 10, 12, 25, 26}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,
