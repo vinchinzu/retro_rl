@@ -199,9 +199,14 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinit
 # Natural key (no recon poke) from skip-compass checkpoint
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 \
   --from-state Level4Room31PostLadderNaturalKey --infinite-life --no-key-poke --trials 2
-# Continuous natural PostLadder → TF 0x08
+# Continuous natural PostLadder → TF 0x08 (assisted first-pass)
 uv run python nes/zelda_i/scripts/run_level4_continuous_tf.py \
   --from-state Level4Room31PostLadderNaturalKey --infinite-life --trials 2 --save-state
+# Clean continuous (rr-vdnc dual-green; no assist)
+uv run python nes/zelda_i/scripts/run_level4_continuous_tf.py \
+  --from-state Level4Room31PostLadderNaturalKey --trials 2 --tag l4_vdnc_clean_cont_tf
+# Clean Gleeok-only smoke
+uv run python nes/zelda_i/scripts/run_level4_gleeok.py --trials 2 --tag l4_vdnc_gleeok_clean
 ```
 
 ### Post-ladder (rr-05fz pure + natural continuous 2026-08-10)
@@ -264,6 +269,18 @@ via **skip-compass** spare key (`Level4Room31PostLadderNaturalKey`, keys≥1,
 (~34.7k f). Evidence: `l4_05fz_map_natural_map_21.json`,
 `l4_05fz_postladder_cont_tf.json`, `l4_05fz_map_to_tf.json`. 0x01 Keese key
 still available after map BOMB_UP. **Not Clean STATUS** (assist still on).
+
+**Clean residual closed (rr-vdnc 2026-08-10):** continuous
+`Level4Room31PostLadderNaturalKey` → map no-poke → Gleeok → TF `0x08` **2/2
+Clean** (no `--infinite-life`, `key_poke=false`) ~33.9k f/trial. Gleeok south-stand
+policy: approach south y≥165, hold `(body.x, body.y+22)` face UP+A, fireball
+horizontal dodge only dist≤14; **do not chase** detached heads while body residual
+remains (head kite dies Clean; south stand clears faster/safer). Evidence:
+`l4_vdnc_clean_cont_tf.json` (dual_green, track=clean),
+`l4_vdnc_gleeok_clean_dual.json` (GleeokEnter-only Clean dual ~1.6k f). Runner:
+`run_level4_continuous_tf.py` **without** `--infinite-life`;
+`run_level4_gleeok.py` without assist. Module: `level4_boss_combat.py`
+(`STAND_DY=22`). **Not full-game Clean STATUS** (lab checkpoint continuous).
 
 **Traps (0x12→0x13):** after clear doors often L-only (raw=2); **bomb RIGHT and
 KEY-RIGHT do not open 0x13**; push block 0x68 LEFT first; naive y141 hold-RIGHT

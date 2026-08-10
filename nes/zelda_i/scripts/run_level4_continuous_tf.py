@@ -1,6 +1,7 @@
-"""Assisted continuous L4 residual: natural-key PostLadder → map → Gleeok → TF 0x08.
+"""Continuous L4 residual: natural-key PostLadder → map → Gleeok → TF 0x08.
 
-rr-05fz: skip-compass route leaves keys≥1 so KEY-UP needs **no recon poke**.
+rr-05fz assisted dual-green; **rr-vdnc Clean dual-green** (no ``--infinite-life``).
+Skip-compass route leaves keys≥1 so KEY-UP needs **no recon poke**.
 Default start ``Level4Room31PostLadderNaturalKey`` (ladder=1, keys≥1).
 
 Phases (live IDs only)::
@@ -8,12 +9,17 @@ Phases (live IDs only)::
     map_21 no-poke → Level4Map
     BOMB_UP 0x21 → 0x11
     RIGHT → 0x12 clear Vires → push 0x68 LEFT → PATH_12_TO_GLEEOK → 0x13
-    Gleeok melee → HC → UP 0x03 → tf&0x08
+    Gleeok south-stand melee → HC → UP 0x03 → tf&0x08
 
-Not Clean STATUS. Examples::
+Not full-game Clean STATUS. Examples::
 
+    # Assisted first-pass
     uv run python nes/zelda_i/scripts/run_level4_continuous_tf.py \\
         --infinite-life --trials 2 --save-state --tag l4_05fz_cont_tf
+
+    # Clean dual (rr-vdnc)
+    uv run python nes/zelda_i/scripts/run_level4_continuous_tf.py \\
+        --trials 2 --tag l4_vdnc_clean_cont_tf
 
     # Map-only residual (already dual-green natural key):
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 \\
@@ -661,7 +667,7 @@ def run_once(
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = {
         "ok": False,
-        "bead": "rr-05fz",
+        "bead": "rr-vdnc" if not infinite_life else "rr-05fz",
         "start_state": start_state,
         "track": "assisted" if infinite_life else "clean",
         "trial": trial_i,
@@ -727,7 +733,7 @@ def run_once(
                     GAME_DIR / "custom_integrations" / GAME / f"{map_state}.state"
                 ),
                 request={
-                    "bead": "rr-05fz",
+                    "bead": report["bead"],
                     "segment": "continuous_map_gleeok_tf",
                     "track": report["track"],
                     "natural_entry": False,
@@ -791,7 +797,7 @@ def main() -> int:
 
     dual = all(t.get("ok") and t.get("tf08") for t in trials) and len(trials) >= 2
     out = {
-        "bead": "rr-05fz",
+        "bead": "rr-vdnc" if not args.infinite_life else "rr-05fz",
         "segment": "continuous_natural_key_map_gleeok_tf",
         "from": args.from_state,
         "from_map": args.from_map,

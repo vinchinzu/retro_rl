@@ -58,8 +58,13 @@ uv run python zelda_i/scripts/run_level4_rooms.py --segment map_21 \
 # L4 continuous natural PostLadder → map → Gleeok → TF 0x08 (assisted)
 uv run python zelda_i/scripts/run_level4_continuous_tf.py \
   --from-state Level4Room31PostLadderNaturalKey --infinite-life --trials 2 --save-state
+# L4 continuous Clean dual (rr-vdnc; no --infinite-life)
+uv run python zelda_i/scripts/run_level4_continuous_tf.py \
+  --from-state Level4Room31PostLadderNaturalKey --trials 2 --tag l4_vdnc_clean_cont_tf
 # L4 Gleeok → TF 0x08 (assisted dual-green from Level4GleeokEnter)
 uv run python zelda_i/scripts/run_level4_gleeok.py --infinite-life --trials 2 --save-state
+# L4 Gleeok Clean dual (south-stand policy)
+uv run python zelda_i/scripts/run_level4_gleeok.py --trials 2 --tag l4_vdnc_gleeok_clean
 ```
 
 ## Layout (pointers)
@@ -110,7 +115,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: rr-vdnc Clean L4 continuous; parallel: rr-38p
+bd ready -l zelda_i   # tip: rr-q3n epic residual / rr-38p OW parallel
 ```
 
 | Order | Bead | Work |
@@ -128,6 +133,7 @@ bd ready -l zelda_i   # tip: rr-vdnc Clean L4 continuous; parallel: rr-38p
 | ✓ | **`rr-tib8`** | **0x32** Zol+LikeLike clear pure 2/2 + stairs **0x60** `ADDR_LADDER` pure 2/2 |
 | ✓ | **`rr-rvae`** | Map 2/2 + Gleeok enter + fight/HC/TF `0x08` dual-green |
 | ✓ | **`rr-05fz`** | Natural key KEY-UP + continuous PostLadder→TF dual-green |
+| ✓ | **`rr-vdnc`** | Clean continuous PostLadder→TF (south-stand Gleeok) |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -195,6 +201,13 @@ Gleeok fight → HC → TF **`0x08`** (~34.7k f/trial compose). Runner:
 `l4_05fz_postladder_cont_tf.json` (dual_green, key_poke=false). Also
 map-only continuous: `l4_05fz_map_to_tf.json`. **Not Clean STATUS.**
 
+**L4 continuous PostLadder→TF (Clean LIVE dual-green 2/2, rr-vdnc 2026-08-10):**
+same path **without** `--infinite-life`; Gleeok **south-stand**
+`(body.x, body.y+22)` UP+A + tight FB dodge (no head chase). ~33.9k f/trial.
+Evidence: `l4_vdnc_clean_cont_tf.json` (dual_green, track=clean,
+key_poke=false); Gleeok-only `l4_vdnc_gleeok_clean_dual.json`. **Not full-game
+Clean STATUS** (checkpoint continuous).
+
 **L4 map (assisted LIVE 2/2, rr-rvae 2026-08-10):** from
 `Level4Room31PostLadder` (recon **key poke** if keys=0) LEFT → **0x30** →
 KEY-UP (ladder water + key) → **0x20** clear 5× Vire → state-BFS RIGHT →
@@ -219,11 +232,11 @@ body **`0x43`** HP≈160; ignore fireball **`0x56`**) → boss dead → HC `0x1a
 `run_level4_gleeok.py --infinite-life --trials 2 --save-state`. Checkpoint
 **`Level4Complete`**. Evidence: `l4_rvae_gleeok_tf_dual.json`. **Not Clean STATUS.**
 
-**Next tip:** Clean harden L4 continuous (no `--infinite-life`) + epic
-**`rr-q3n`** STATUS residual; parallel OW **`rr-38p`**. Traps: skip compass to
-keep spare key for KEY-UP; 0x11→0x12 is **BOMB_RIGHT** stand~(192,141); naive
-y141 hold-RIGHT fails after 0x12 push (maze `PATH_12_TO_GLEEOK`); free N on
-0x30 sealed without key; KEY-UP **0x31** = isolated 0x21 south pocket.
+**Next tip:** epic **`rr-q3n`** compose residual / natural-entry STATUS path;
+parallel OW **`rr-38p`**. Traps: skip compass to keep spare key for KEY-UP;
+0x11→0x12 is **BOMB_RIGHT** stand~(192,141); naive y141 hold-RIGHT fails after
+0x12 push (maze `PATH_12_TO_GLEEOK`); Gleeok Clean = south-stand not head kite;
+free N on 0x30 sealed without key; KEY-UP **0x31** = isolated 0x21 south pocket.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
