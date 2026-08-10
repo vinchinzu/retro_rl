@@ -30,7 +30,7 @@
 | Package layout | Core at `alttp/` root; continuous trunk in `alttp/opening_route/`; `gauntlet/` + `romhack/` shells; see `docs/ARCHITECTURE.md` |
 | Escape capability graph | `alttp.opening_route.escape_graph` — continuous through **NW chamber 0x50**; **0x50→0x01** natural_entry; Zelda/Sanctuary planned |
 | Segment contract | continuous: `castle_to_sword`, `sword_to_secret_entrance_clear`, `pocket_to_main_hall`, `castle_dungeon_prefix`; `full_tip.run_to_verified_tip` composes them from power-on to `room_50`; Zelda path planned (not a live segment); escort planned |
-| Room engine | `maps/room_XX.json` + `opening_route.room_engine` + `scripts/room_engine.py` (`docs/ROOM_ENGINE.md`) |
+| Room engine | `maps/room_XX.json` + outdoor `screen_1b_courtyard.json` + `opening_route.room_engine` + `scripts/room_engine.py` (`docs/ROOM_ENGINE.md`); secret-entrance clear uses map edge `stairs_to_courtyard` |
 | Graph west exit | `room_61` → `room_60` **continuous** (`main_hall_west_to_0x60`) |
 | Dungeon prefix | `room_61` → `room_60` → `room_50` **continuous** (`castle_dungeon_prefix`, clean power-on) |
 | Room maps | `maps/room_{55,60,61,62,50,01,51,52,70,71,72,80,81,82}.json` |
@@ -94,7 +94,8 @@ Acceptance: `follower_indicator == 1`, then `in_sanctuary` (preferably natural c
 - Proven entry: face up, `A`×4, wait 20, `UP`×56 (min measured UP walk after A/wait: 40).
 - Uncle dialogue in secret entrance yields fighter sword without progression writes.
 - Post-sword hold-up-item (`$5D==21`) needs ~95 frames LEFT to dismiss.
-- South combat chamber (guards) at ~`(2680,2925)` via LEFT×100 + DOWN×250.
+- South combat chamber (guards) at ~`(2680,2925)` via map path
+  `uncle_corridor_west → south_chamber` (`maps/room_55.json` / room_engine).
 - **Secret-entrance clear:** align stairs ~`(2672,2916)` then DOWN → outdoors
   screen `0x1B` ~`(2248,1755)` (`left_secret_entrance`; `secret_entrance_clear`
   phase `secret_entrance_exited`). Screenshots: `recordings/probe_secret_exit/clear/`.

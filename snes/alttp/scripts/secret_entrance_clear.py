@@ -85,16 +85,20 @@ def main() -> int:
             exit_secret_entrance_stairs,
         )
 
-        phase_fns = [ensure_sword_control]
-        if not args.no_south:
-            phase_fns.append(approach_south_chamber)
-        if not args.no_exit:
-            phase_fns.append(exit_secret_entrance_stairs)
-        result = run_from_sword(
-            env,
-            source="state_load_dev",
-            phases=phase_fns,
-        )
+        # Default (no flags): room_engine map edge. Flags use phase subsets.
+        if not args.no_south and not args.no_exit:
+            result = run_from_sword(env, source="state_load_dev")
+        else:
+            phase_fns = [ensure_sword_control]
+            if not args.no_south:
+                phase_fns.append(approach_south_chamber)
+            if not args.no_exit:
+                phase_fns.append(exit_secret_entrance_stairs)
+            result = run_from_sword(
+                env,
+                source="state_load_dev",
+                phases=phase_fns,
+            )
         report = result.to_report()
         args.report.write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps(report, indent=2))

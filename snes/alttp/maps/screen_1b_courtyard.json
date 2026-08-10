@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "mapId": "screen_1b_courtyard",
+  "outdoors": true,
+  "screenId": 27,
+  "roomBaseId": 0,
+  "roomHex": "0x00",
+  "name": "Hyrule Castle courtyard (screen 0x1B)",
+  "measured": "2026-07-30",
+  "sourceState": "CourtyardSecretPocket",
+  "z3Label": "Hyrule Castle Courtyard",
+  "points": [
+    {
+      "label": "secret_stairs_pocket",
+      "xy": [2248, 1755],
+      "role": "spawn",
+      "notes": "Outdoor landing after room 0x55 stairs; UP re-enters stairs"
+    },
+    {
+      "label": "open_gardens",
+      "xy": [2180, 1910],
+      "role": "waypoint",
+      "notes": "Flower gardens after bush-cut S/W out of hedge pocket"
+    },
+    {
+      "label": "south_corridor",
+      "xy": [2100, 2024],
+      "role": "waypoint",
+      "notes": "Connecting corridor y≈2024 between east hedges and door axis"
+    },
+    {
+      "label": "main_door_approach",
+      "xy": [2040, 1790],
+      "role": "approach",
+      "notes": "Outdoor main door approach; HOLD UP → room 0x61"
+    },
+    {
+      "label": "main_door_landing_reverse",
+      "xy": [2040, 1779],
+      "role": "edge",
+      "notes": "Reverse-measured CastleMain outdoor landing"
+    }
+  ],
+  "doors": [
+    {
+      "label": "main_door_to_0x61",
+      "direction": "UP",
+      "toRoom": 97,
+      "outdoors": false,
+      "approachXy": [2040, 1790],
+      "landingXy": [760, 3520],
+      "role": "zelda_path",
+      "path": ["open_gardens", "south_corridor", "main_door_approach"],
+      "pathTolerances": {
+        "open_gardens": 48,
+        "south_corridor": 36,
+        "main_door_approach": 16,
+        "default": 20
+      },
+      "pushFrames": 240,
+      "notes": "Pocket→main hall continuous. Bush-cut required; walk-only stays boxed ~48×64 at pocket."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 140,
+    "attackDistance": 48,
+    "maxCycles": 250,
+    "skirmishMaxDistance": 100,
+    "skirmishPad": 16,
+    "skirmishMaxCycles": 120
+  },
+  "walkBbox": [1980, 1720, 2300, 2100],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Outdoor geometry authority for pocket_to_main_hall.",
+    "Bush-cutting is still required between waypoints (room_engine move alone is not enough).",
+    "Do not grow enter_main_door special cases — door approach/push live here.",
+    "Authority: maps/screen_1b_courtyard.json"
+  ]
+}

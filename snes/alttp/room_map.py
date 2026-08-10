@@ -180,9 +180,10 @@ class ClearPolicy:
 
 @dataclass
 class RoomMap:
-    """Static measured layout for one dungeon room base id.
+    """Static measured layout for a room or outdoor screen.
 
-    Loaded from ``alttp/maps/room_XX.json`` — single geometry authority.
+    Loaded from ``alttp/maps/room_XX.json`` or ``screen_*.json`` — single
+    geometry authority. Outdoor maps set ``outdoors=True`` + ``screen_id``.
     """
 
     room_base_id: int
@@ -195,7 +196,9 @@ class RoomMap:
     source_state: str = ""
     measured: str = ""
     hostiles_at_entry: tuple[dict[str, Any], ...] = ()
-    map_id: str = ""  # e.g. room_61
+    map_id: str = ""  # e.g. room_61 or screen_1b_courtyard
+    outdoors: bool = False
+    screen_id: int | None = None
 
     def point(self, label: str) -> RoomMapPoint | None:
         for p in self.points:
@@ -255,8 +258,15 @@ class RoomMap:
     def compact_summary(self) -> dict[str, Any]:
         """Small dict for agent context (avoid dumping full segment code)."""
         return {
-            "mapId": self.map_id or f"room_{self.room_base_id:02x}",
+            "mapId": self.map_id
+            or (
+                f"screen_{self.screen_id:02x}"
+                if self.outdoors and self.screen_id is not None
+                else f"room_{self.room_base_id:02x}"
+            ),
             "roomHex": f"0x{self.room_base_id & 0xFF:02X}",
+            "outdoors": self.outdoors,
+            "screenId": self.screen_id,
             "name": self.name,
             "sourceState": self.source_state,
             "doors": [
@@ -283,6 +293,9 @@ class RoomMap:
     def to_dict(self) -> dict[str, Any]:
         return {
             "schemaVersion": 1,
+            "mapId": self.map_id or None,
+            "outdoors": self.outdoors,
+            "screenId": self.screen_id,
             "roomBaseId": self.room_base_id,
             "roomHex": f"0x{self.room_base_id & 0xFF:02X}",
             "name": self.name,
@@ -306,9 +319,27 @@ class RoomMap:
         if walk is not None:
             walk_bbox = (int(walk[0]), int(walk[1]), int(walk[2]), int(walk[3]))
         room_id = int(data.get("roomBaseId", data.get("room_base_id", 0)))
+        outdoors = bool(data.get("outdoors", False))
+        screen_raw = data.get("screenId", data.get("screen_id"))
+        screen_id = None if screen_raw is None else int(screen_raw)
+        resolved_id = map_id or str(
+            data.get("mapId")
+            or (
+                f"screen_{screen_id:02x}"
+                if outdoors and screen_id is not None
+                else f"room_{room_id:02x}"
+            )
+        )
         return cls(
             room_base_id=room_id,
-            name=str(data.get("name") or f"room 0x{room_id:02X}"),
+            name=str(
+                data.get("name")
+                or (
+                    f"screen 0x{screen_id:02X}"
+                    if outdoors and screen_id is not None
+                    else f"room 0x{room_id:02X}"
+                )
+            ),
             points=points,
             doors=doors,
             clear_policy=ClearPolicy.from_dict(data.get("clearPolicy")),
@@ -317,18 +348,24 @@ class RoomMap:
             source_state=str(data.get("sourceState") or ""),
             measured=str(data.get("measured") or ""),
             hostiles_at_entry=tuple(data.get("hostilesAtEntry") or ()),
-            map_id=map_id or str(data.get("mapId") or f"room_{room_id:02x}"),
+            map_id=resolved_id,
+            outdoors=outdoors,
+            screen_id=screen_id,
         )
 
 
 def room_map_path(map_id: str, *, maps_dir: Path | None = None) -> Path:
-    """Resolve ``room_61`` / ``0x61`` / ``61`` → maps/room_61.json."""
+    """Resolve map id → JSON path under maps/.
+
+    Accepts ``room_61`` / ``0x61`` / ``61``, and outdoor ids like
+    ``screen_1b_courtyard`` (not forced under the ``room_`` prefix).
+    """
     raw = map_id.strip().lower().replace(".json", "")
     if raw.startswith("0x"):
         raw = f"room_{int(raw, 16):02x}"
     elif raw.isdigit():
         raw = f"room_{int(raw):02x}"
-    elif not raw.startswith("room_"):
+    elif not (raw.startswith("room_") or raw.startswith("screen_")):
         raw = f"room_{raw}"
     root = maps_dir if maps_dir is not None else MAPS_DIR
     return root / f"{raw}.json"
@@ -336,7 +373,7 @@ def room_map_path(map_id: str, *, maps_dir: Path | None = None) -> Path:
 
 @lru_cache(maxsize=32)
 def load_room_map(map_id: str) -> RoomMap:
-    """Load measured room map JSON (geometry authority). Cached by map_id."""
+    """Load measured room/screen map JSON (geometry authority). Cached by map_id."""
     return _load_room_map_uncached(map_id, maps_dir=None)
 
 
@@ -358,7 +395,12 @@ def list_room_maps(*, maps_dir: Path | None = None) -> list[str]:
     root = maps_dir or MAPS_DIR
     if not root.is_dir():
         return []
-    return sorted(p.stem for p in root.glob("room_*.json"))
+    stems = [
+        p.stem
+        for p in root.glob("*.json")
+        if p.stem.startswith(("room_", "screen_"))
+    ]
+    return sorted(stems)
 
 
 def save_room_map(room_map: RoomMap, path: Path | None = None) -> Path:

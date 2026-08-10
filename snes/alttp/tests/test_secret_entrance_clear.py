@@ -4,6 +4,18 @@ from __future__ import annotations
 
 import numpy as np
 
+from alttp.opening_route.secret_entrance_clear import (
+    MAP_ID,
+    STAIRS_ALIGN_X,
+    STAIRS_DOOR_LABEL,
+    approach_south_chamber,
+    ensure_sword_control,
+    evaluate_acceptance,
+    evaluate_diagnostics,
+    left_secret_entrance,
+    run_from_sword,
+    south_chamber_waypoints,
+)
 from alttp.ram import (
     DARK_WORLD_FLAG,
     EQUIP_SWORD,
@@ -20,16 +32,7 @@ from alttp.ram import (
     wram_index,
     zelda_rescued_accepted,
 )
-from alttp.opening_route.secret_entrance_clear import (
-    SWORD_TO_SOUTH_CHAMBER_SCRIPT,
-    STAIRS_ALIGN_X,
-    approach_south_chamber,
-    ensure_sword_control,
-    evaluate_acceptance,
-    evaluate_diagnostics,
-    left_secret_entrance,
-    run_from_sword,
-)
+from alttp.room_map import load_room_map
 
 
 def _ram(writes: dict[int, int], *, size: int = 0x20000) -> np.ndarray:
@@ -57,9 +60,23 @@ def _passage(**extra: int) -> dict[int, int]:
     return base
 
 
-def test_south_script_nonempty() -> None:
-    assert len(SWORD_TO_SOUTH_CHAMBER_SCRIPT) >= 2
-    assert all(frames > 0 for _, frames in SWORD_TO_SOUTH_CHAMBER_SCRIPT)
+def _set_xy(writes: dict[int, int], x: int, y: int) -> None:
+    writes[LINK_X] = x & 0xFF
+    writes[LINK_X + 1] = (x >> 8) & 0xFF
+    writes[LINK_Y] = y & 0xFF
+    writes[LINK_Y + 1] = (y >> 8) & 0xFF
+
+
+def test_map_stairs_door_path() -> None:
+    m = load_room_map(MAP_ID)
+    door = m.door(STAIRS_DOOR_LABEL)
+    assert door is not None
+    assert door.outdoors is True
+    assert "south_chamber" in door.path
+    assert "stairs_align" in door.path
+    wps = south_chamber_waypoints()
+    assert len(wps) >= 1
+    assert wps[-1].label == "south_chamber"
 
 
 def test_evaluate_acceptance_zelda() -> None:
@@ -87,6 +104,9 @@ def test_left_secret_entrance_outdoors() -> None:
 
 def test_stairs_align_constant() -> None:
     assert STAIRS_ALIGN_X == 2672
+    door = load_room_map(MAP_ID).door(STAIRS_DOOR_LABEL)
+    assert door is not None
+    assert door.approach_xy[0] == STAIRS_ALIGN_X
 
 
 def test_hold_up_flag_blocks_acceptance_clear() -> None:
@@ -110,36 +130,52 @@ class _FakeEm:
 
 
 class _FakeSwordEnv:
-    """Stays in passage with sword; moves y south after enough steps."""
+    """Simulates D-pad walking so map waypoints can be reached."""
+
+    # SNES multi-hot: UP=4 DOWN=5 LEFT=6 RIGHT=7
+    _UP, _DOWN, _LEFT, _RIGHT = 4, 5, 6, 7
 
     def __init__(self) -> None:
         self.em = _FakeEm()
         self.steps = 0
         self._writes = _passage()
+        self._x = 2803
+        self._y = 2680
 
     def get_ram(self) -> np.ndarray:
         return _ram(self._writes)
 
-    def step(self, _action: object) -> None:
+    def step(self, action: object) -> None:
         self.steps += 1
         # Clear hold-up immediately if present.
         self._writes[LINK_ACTION] = 0
-        if self.steps > 200:
-            y = 2925
-            self._writes[LINK_Y] = y & 0xFF
-            self._writes[LINK_Y + 1] = (y >> 8) & 0xFF
-            self._writes[LINK_X] = 2680 & 0xFF
-            self._writes[LINK_X + 1] = (2680 >> 8) & 0xFF
+        arr = np.asarray(action).reshape(-1)
+        step = 3
+        if len(arr) > self._LEFT and arr[self._LEFT] > 0:
+            self._x -= step
+        if len(arr) > self._RIGHT and arr[self._RIGHT] > 0:
+            self._x += step
+        if len(arr) > self._UP and arr[self._UP] > 0:
+            self._y -= step
+        if len(arr) > self._DOWN and arr[self._DOWN] > 0:
+            self._y += step
+        _set_xy(self._writes, self._x, self._y)
 
 
 class _FakeExitEnv(_FakeSwordEnv):
-    """After south chamber, later steps go outdoors (secret-entrance clear)."""
+    """After stairs approach, DOWN push transitions outdoors."""
 
-    def step(self, _action: object) -> None:
-        super().step(_action)
-        if self.steps > 500:
+    def step(self, action: object) -> None:
+        super().step(action)
+        arr = np.asarray(action).reshape(-1)
+        # Once near stairs_align and holding DOWN, leave the secret entrance.
+        near_stairs = abs(self._x - 2672) <= 12 and abs(self._y - 2916) <= 12
+        holding_down = len(arr) > self._DOWN and arr[self._DOWN] > 0
+        if near_stairs and holding_down and self.steps > 40:
             self._writes[INDOORS] = 0
             self._writes[MODULE] = 0x09
+            self._x, self._y = 2248, 1755
+            _set_xy(self._writes, self._x, self._y)
 
 
 def test_run_from_sword_controller_smoke() -> None:

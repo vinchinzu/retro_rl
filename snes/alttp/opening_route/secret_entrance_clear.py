@@ -8,24 +8,10 @@ follower/cell/sanctuary flags live under ``diagnostics``, not acceptance.
 Composes after ``castle_to_sword`` / ``FighterSword`` predecessor. Clean
 intervention only — no progression writes or door warps.
 
-Measured (headless, FighterSword / natural sword predecessor):
-
-- After fighter sword, Link is in ``kPlayerState_HoldUpItem`` ($5D==21);
-  dismiss with ~95 frames of LEFT before combat works.
-- Secret entrance (RAM base ``0x55``) is multi-screen. From uncle corridor
-  (~2803,2680): LEFT×100 + DOWN×250 reaches the south combat chamber
-  (~2680,2925) — the second chamber with guards after uncle.
-- From south chamber, align stairs at ~x=2672,y=2916 then walk DOWN:
-  transitions outdoors to castle grounds screen ``0x1B`` (~2248,1755).
-  That is the measured **secret-entrance clear** (room finished).
-- Misaligned further-south walks (~y≥2960 off-center) stay indoors in a
-  stair pocket without transitioning — soft-lock risk.
-- Outdoor landing is a tight hedge pocket (stairs re-entry is UP). Escape
-  to main door is ``pocket_to_main_hall`` (bush-cut S/W → south corridor →
-  door ~(2040,1790) → room 0x61).
-- Sprite type ``0x4B`` = soldiers; type ``0x73`` at uncle = non-combat corpse.
-- Green-platform chest is the secret-passage item location (not required
-  for the stairs exit).
+Geometry authority: ``maps/room_55.json`` door ``stairs_to_courtyard`` via
+:mod:`alttp.opening_route.room_engine`. Segment code is thin glue
+(hold-up dismiss + edge acceptance). Do not reintroduce open-loop
+``LEFT×100 + DOWN×250`` macros here.
 """
 
 from __future__ import annotations
@@ -33,13 +19,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from alttp import primitives
-from alttp.opening_route.anchors import (
-    ROOM_55_SOUTH_Y_MIN,
-    STAIRS_ALIGN_TOLERANCE,
-    STAIRS_ALIGN_X,
-    STAIRS_ALIGN_Y,
-)
+from alttp.opening_route.anchors import ROOM_55_SOUTH_Y_MIN
 from alttp.opening_route.castle_to_sword import dismiss_hold_up_item
+from alttp.opening_route.room_engine import (
+    at_door_destination,
+    in_room,
+    move_path_combat_aware,
+    run_room_edge,
+)
 from alttp.opening_route.runner import PhaseFn
 from alttp.ram import (
     SECRET_PASSAGE_ROOM,
@@ -48,19 +35,43 @@ from alttp.ram import (
     snapshot_to_diag,
     zelda_rescued_accepted,
 )
+from alttp.room_map import load_room_map
 from alttp.route_report import RoutePhaseResult, SegmentResult, segment_result_factory
-from alttp.startup import BootEnv, action_for, no_action, snapshot_env, step_frames
+from alttp.startup import BootEnv, snapshot_env
 
 _REPORT = segment_result_factory("alttp_secret_entrance_clear_report")
 
-# Re-export measured stairs constants (single source: anchors.py).
+MAP_ID = "room_55"
+STAIRS_DOOR_LABEL = "stairs_to_courtyard"
+ROOM = SECRET_PASSAGE_ROOM
+
+# Soft y cap: deeper south without stair alignment fails to transition.
+# Still used by approach helper diagnostics; geometry path is map authority.
+SOUTH_CHAMBER_Y_MAX = 2965
+
+
+def _stairs_door():
+    return load_room_map(MAP_ID).door(STAIRS_DOOR_LABEL)
+
+
+def _stairs_align_xy() -> tuple[int, int]:
+    door = _stairs_door()
+    if door is None:
+        return 2672, 2916
+    return door.approach_xy
+
+
+# Re-export measured stairs constants (map-backed; fallback for import stability).
+STAIRS_ALIGN_X, STAIRS_ALIGN_Y = _stairs_align_xy()
+STAIRS_ALIGN_TOLERANCE = 6
+
 __all__ = [
+    "MAP_ID",
+    "STAIRS_DOOR_LABEL",
     "STAIRS_ALIGN_TOLERANCE",
     "STAIRS_ALIGN_X",
     "STAIRS_ALIGN_Y",
     "SOUTH_CHAMBER_Y_MAX",
-    "STAIRS_EXIT_MAX_FRAMES",
-    "SWORD_TO_SOUTH_CHAMBER_SCRIPT",
     "approach_south_chamber",
     "ensure_sword_control",
     "evaluate_acceptance",
@@ -69,18 +80,8 @@ __all__ = [
     "left_secret_entrance",
     "run_from_state",
     "run_from_sword",
+    "south_chamber_waypoints",
 ]
-
-# Measured: uncle corridor → south combat chamber (stay above stair pocket).
-SWORD_TO_SOUTH_CHAMBER_SCRIPT: tuple[tuple[tuple[str, ...], int], ...] = (
-    (("LEFT",), 100),
-    (("DOWN",), 250),
-)
-
-# Soft y cap: deeper south without stair alignment fails to transition.
-SOUTH_CHAMBER_Y_MAX = 2965
-
-STAIRS_EXIT_MAX_FRAMES = 320
 
 
 def left_secret_entrance(snapshot: AlttpSnapshot) -> bool:
@@ -144,8 +145,37 @@ def ensure_sword_control(env: BootEnv) -> RoutePhaseResult:
     )
 
 
+def south_chamber_waypoints() -> list[primitives.Waypoint]:
+    """Map-backed waypoints from sword spawn corridor into south chamber."""
+    room_map = load_room_map(MAP_ID)
+    door = room_map.door(STAIRS_DOOR_LABEL)
+    if door is None:
+        return []
+    # Only walk as far as the south_chamber point (not stairs align).
+    wps: list[primitives.Waypoint] = []
+    for label in door.path:
+        if label == "stairs_align":
+            break
+        pt = room_map.point(label)
+        if pt is None:
+            continue
+        wps.append(
+            primitives.Waypoint(
+                pt.x,
+                pt.y,
+                tolerance=door.tolerance_for(label),
+                room=ROOM,
+                label=label,
+            )
+        )
+    return wps
+
+
 def approach_south_chamber(env: BootEnv) -> RoutePhaseResult:
-    """Walk from uncle corridor into the south multi-screen combat chamber."""
+    """Walk from uncle corridor into the south multi-screen combat chamber.
+
+    Uses map path waypoints (combat-aware), not open-loop frame macros.
+    """
     frames = 0
     settle = primitives.settle_control(env)
     frames += settle.frames
@@ -159,13 +189,35 @@ def approach_south_chamber(env: BootEnv) -> RoutePhaseResult:
             detail="not in secret entrance",
             diag=snapshot_to_diag(start),
         )
+    if start.link_y >= ROOM_55_SOUTH_Y_MIN:
+        return RoutePhaseResult(
+            phase="approach_south_chamber",
+            ok=True,
+            frames=frames,
+            snapshot=start,
+            detail=f"already south chamber xy=({start.link_x},{start.link_y})",
+            diag=snapshot_to_diag(start),
+        )
 
-    script = primitives.run_script(env, SWORD_TO_SOUTH_CHAMBER_SCRIPT)
-    frames += script.frames
+    room_map = load_room_map(MAP_ID)
+    wps = south_chamber_waypoints()
+    if not wps:
+        return RoutePhaseResult(
+            phase="approach_south_chamber",
+            ok=False,
+            frames=frames,
+            snapshot=start,
+            detail=f"no south-chamber path in {MAP_ID}",
+            diag=snapshot_to_diag(start),
+        )
+
+    path = move_path_combat_aware(
+        env, wps, room=ROOM, policy=room_map.clear_policy
+    )
+    frames += path.frames
     settle = primitives.settle_control(env)
     frames += settle.frames
     snap = settle.snapshot
-    # Success: still indoors secret entrance and clearly south of uncle y.
     ok = (
         snap.in_secret_passage
         and snap.link_y >= ROOM_55_SOUTH_Y_MIN
@@ -177,141 +229,123 @@ def approach_south_chamber(env: BootEnv) -> RoutePhaseResult:
         frames=frames,
         snapshot=snap,
         detail=(
-            f"south chamber (guards) xy=({snap.link_x},{snap.link_y})"
+            f"south chamber (map path) xy=({snap.link_x},{snap.link_y}) "
+            f"reason={path.reason}"
             if ok
-            else f"missed south chamber xy=({snap.link_x},{snap.link_y})"
+            else (
+                f"missed south chamber xy=({snap.link_x},{snap.link_y}) "
+                f"reason={path.reason}"
+            )
         ),
         diag=snapshot_to_diag(snap),
     )
 
 
 def exit_secret_entrance_stairs(env: BootEnv) -> RoutePhaseResult:
-    """Align south-chamber stairs and walk DOWN until outdoors.
-
-    Measured: x≈2672 at y≈2916, then DOWN. Off-center deep south soft-locks
-    indoors without transitioning.
-    """
-    frames = 0
-    settle = primitives.settle_control(env)
-    frames += settle.frames
-    start = settle.snapshot
-    if left_secret_entrance(start):
-        return RoutePhaseResult(
-            phase="exit_secret_entrance_stairs",
-            ok=True,
-            frames=frames,
-            snapshot=start,
-            detail="already left secret entrance",
-            diag=snapshot_to_diag(start),
-        )
-    if not start.in_secret_passage:
+    """Map-backed stairs exit via room_engine (``stairs_to_courtyard``)."""
+    door = _stairs_door()
+    if door is None:
+        snap = snapshot_env(env)
         return RoutePhaseResult(
             phase="exit_secret_entrance_stairs",
             ok=False,
-            frames=frames,
-            snapshot=start,
-            detail=f"not in secret entrance ({room_label(start.room_base_id)})",
-            diag=snapshot_to_diag(start),
+            frames=0,
+            snapshot=snap,
+            detail=f"door {STAIRS_DOOR_LABEL!r} missing from {MAP_ID}",
+            diag=snapshot_to_diag(snap),
         )
 
-    # Nudge north if already too deep (stair pocket without alignment).
-    if start.link_y > SOUTH_CHAMBER_Y_MAX:
-        up = primitives.run_script(env, ((("UP",), 40),))
-        frames += up.frames
-
-    align = primitives.move_to(
+    edge = run_room_edge(
         env,
-        primitives.Waypoint(
-            STAIRS_ALIGN_X,
-            STAIRS_ALIGN_Y,
-            tolerance=STAIRS_ALIGN_TOLERANCE,
-            room=SECRET_PASSAGE_ROOM,
-            label="stairs_align",
-        ),
-        max_frames=500,
+        MAP_ID,
+        STAIRS_DOOR_LABEL,
+        clear=True,
+        source="secret_entrance_clear",
+        notes=[
+            f"room_engine map={MAP_ID} door={STAIRS_DOOR_LABEL}",
+            "Geometry authority: maps/room_55.json",
+        ],
+        acceptance_fn=lambda s: {
+            "left_secret_entrance": left_secret_entrance(s),
+            "at_door_dest": at_door_destination(s, door),
+            "in_origin_room": in_room(s, ROOM),
+        },
     )
-    frames += align.frames
-    if left_secret_entrance(align.snapshot):
-        return RoutePhaseResult(
-            phase="exit_secret_entrance_stairs",
-            ok=True,
-            frames=frames,
-            snapshot=align.snapshot,
-            detail=(
-                f"left during align xy=({align.snapshot.link_x},"
-                f"{align.snapshot.link_y})"
-            ),
-            diag=snapshot_to_diag(align.snapshot),
-        )
-
-    # Walk down; wait through door transition modules.
-    walked = 0
-    while walked < STAIRS_EXIT_MAX_FRAMES:
-        step_frames(env, action_for("DOWN"), 2)
-        walked += 2
-        frames += 2
-        snap = snapshot_env(env)
-        if left_secret_entrance(snap):
-            # Settle outdoor control (mode 0x09 overworld; 0x10 is mid-transition).
-            for _ in range(120):
-                s2 = snapshot_env(env)
-                if s2.has_control and not s2.is_text_mode and not s2.indoors:
-                    break
-                step_frames(env, no_action(), 2)
-                frames += 2
-            snap = snapshot_env(env)
-            return RoutePhaseResult(
-                phase="exit_secret_entrance_stairs",
-                ok=True,
-                frames=frames,
-                snapshot=snap,
-                detail=(
-                    f"exited secret entrance → outdoors "
-                    f"screen=0x{snap.screen_id:02X} "
-                    f"xy=({snap.link_x},{snap.link_y})"
-                ),
-                diag=snapshot_to_diag(snap),
-            )
-        # Transition in progress: idle through submodule animation.
-        if snap.submodule != 0 or snap.game_mode not in (0x07, 0x09):
-            for _ in range(40):
-                step_frames(env, no_action(), 2)
-                frames += 2
-                snap = snapshot_env(env)
-                if left_secret_entrance(snap):
-                    for _ in range(120):
-                        s2 = snapshot_env(env)
-                        if s2.has_control and not s2.indoors:
-                            break
-                        step_frames(env, no_action(), 2)
-                        frames += 2
-                    snap = snapshot_env(env)
-                    return RoutePhaseResult(
-                        phase="exit_secret_entrance_stairs",
-                        ok=True,
-                        frames=frames,
-                        snapshot=snap,
-                        detail=(
-                            f"exited secret entrance (transition) "
-                            f"screen=0x{snap.screen_id:02X} "
-                            f"xy=({snap.link_x},{snap.link_y})"
-                        ),
-                        diag=snapshot_to_diag(snap),
-                    )
-                if snap.has_control and snap.in_secret_passage:
-                    break
-
-    snap = snapshot_env(env)
+    # Flatten room_engine phases into one stairs phase for segment reports
+    # when used as a standalone phase, but preserve detail.
+    snap = edge.snapshot
     return RoutePhaseResult(
         phase="exit_secret_entrance_stairs",
-        ok=False,
+        ok=edge.ok and left_secret_entrance(snap),
+        frames=edge.frames,
+        snapshot=snap,
+        detail=edge.blocker or (
+            f"exited secret entrance → outdoors "
+            f"screen=0x{snap.screen_id:02X} xy=({snap.link_x},{snap.link_y})"
+            if left_secret_entrance(snap)
+            else f"stairs exit incomplete: {edge.phase}"
+        ),
+        diag={
+            **snapshot_to_diag(snap),
+            "roomEnginePhase": edge.phase,
+            "roomEngineNotes": list(edge.notes),
+        },
+    )
+
+
+def _compose_room_engine_clear(
+    env: BootEnv,
+    *,
+    source: str,
+    pre_phases: list[RoutePhaseResult],
+    pre_frames: int,
+) -> SegmentResult:
+    """Hold-up clear then room_engine edge; merge into segment contract."""
+    door = _stairs_door()
+    edge = run_room_edge(
+        env,
+        MAP_ID,
+        STAIRS_DOOR_LABEL,
+        clear=True,
+        source=source,
+        notes=[
+            "Secret-entrance clear = stairs exit outdoors (screen 0x1B pocket).",
+            f"room_engine map={MAP_ID} door={STAIRS_DOOR_LABEL}",
+            "Next hop: pocket_to_main_hall (bush-cut → door → room 0x61).",
+            "Do not claim Zelda rescue until follower_indicator==1.",
+        ],
+        acceptance_fn=evaluate_acceptance,
+    )
+    frames = pre_frames + edge.frames
+    phases = list(pre_phases) + list(edge.phases)
+    snap = edge.snapshot
+    ok = edge.ok and left_secret_entrance(snap)
+    return _REPORT(
+        ok=ok,
+        phase="secret_entrance_exited" if ok else (edge.phase or "room_blocked"),
         frames=frames,
         snapshot=snap,
-        detail=(
-            f"stairs exit timeout xy=({snap.link_x},{snap.link_y}) "
-            f"room={room_label(snap.room_base_id)} indoors={snap.indoors}"
+        phases=phases,
+        source=source,
+        acceptance=evaluate_acceptance(snap),
+        diagnostics=evaluate_diagnostics(snap),
+        blocker=(
+            ""
+            if ok
+            else (
+                edge.blocker
+                or "still in secret entrance after room_engine stairs edge"
+            )
         ),
-        diag=snapshot_to_diag(snap),
+        notes=list(edge.notes)
+        + (
+            [
+                "Secret entrance finished (outdoors). Next: "
+                "pocket_to_main_hall → B1 → Zelda.",
+            ]
+            if ok
+            else []
+        ),
     )
 
 
@@ -323,6 +357,7 @@ SWORD_CLEAR_PHASES = (
 
 _SWORD_CLEAR_NOTES = (
     "Secret-entrance clear = stairs exit outdoors (screen 0x1B pocket).",
+    f"Geometry: maps/{MAP_ID}.json door {STAIRS_DOOR_LABEL} via room_engine.",
     "Next hop: pocket_to_main_hall (bush-cut → door → room 0x61).",
     "Do not claim Zelda rescue until follower_indicator==1.",
 )
@@ -336,30 +371,68 @@ def run_from_sword(
 ) -> SegmentResult:
     """Run post-sword secret-entrance clear assuming fighter sword obtained.
 
-    Default path: hold-up clear → south combat chamber → stairs exit outdoors.
+    Default path: hold-up clear → room_engine ``stairs_to_courtyard`` edge.
     Segment ``ok`` means ``left_secret_entrance`` only (not Zelda). Pass
-    ``phases`` to run a subset (replaces former try_south/try_exit flags).
+    ``phases`` to run a subset (e.g. ensure + approach for unit smokes).
     """
     from alttp.opening_route.runner import run_phases
 
-    phase_list = list(phases) if phases is not None else list(SWORD_CLEAR_PHASES)
-    return run_phases(
-        env,
-        phase_list,
-        evaluate_acceptance=evaluate_acceptance,
-        evaluate_diagnostics=evaluate_diagnostics,
-        success_when=left_secret_entrance,
-        source=source,
-        notes=_SWORD_CLEAR_NOTES,
-        success_phase="secret_entrance_exited",
-        success_notes=(
-            "Secret entrance finished (outdoors). Next: "
-            "pocket_to_main_hall → B1 → Zelda.",
-        ),
-        partial_blocker=(
-            "still in secret entrance after phases; stairs exit incomplete"
-        ),
-        result_factory=_REPORT,
+    if phases is not None:
+        return run_phases(
+            env,
+            list(phases),
+            evaluate_acceptance=evaluate_acceptance,
+            evaluate_diagnostics=evaluate_diagnostics,
+            success_when=left_secret_entrance,
+            source=source,
+            notes=_SWORD_CLEAR_NOTES,
+            success_phase="secret_entrance_exited",
+            success_notes=(
+                "Secret entrance finished (outdoors). Next: "
+                "pocket_to_main_hall → B1 → Zelda.",
+            ),
+            partial_blocker=(
+                "still in secret entrance after phases; stairs exit incomplete"
+            ),
+            result_factory=_REPORT,
+        )
+
+    # Default continuous path: hold-up then single room_engine edge.
+    frames = 0
+    pre_phases: list[RoutePhaseResult] = []
+    control = ensure_sword_control(env)
+    frames += control.frames
+    pre_phases.append(control)
+    if not control.ok:
+        snap = control.snapshot
+        return _REPORT(
+            ok=False,
+            phase=control.phase,
+            frames=frames,
+            snapshot=snap,
+            phases=pre_phases,
+            source=source,
+            acceptance=evaluate_acceptance(snap),
+            diagnostics=evaluate_diagnostics(snap),
+            blocker=control.detail or "ensure_sword_control failed",
+            notes=list(_SWORD_CLEAR_NOTES),
+        )
+    if left_secret_entrance(control.snapshot):
+        snap = control.snapshot
+        return _REPORT(
+            ok=True,
+            phase="secret_entrance_exited",
+            frames=frames,
+            snapshot=snap,
+            phases=pre_phases,
+            source=source,
+            acceptance=evaluate_acceptance(snap),
+            diagnostics=evaluate_diagnostics(snap),
+            notes=list(_SWORD_CLEAR_NOTES)
+            + ["Already outdoors before room_engine edge."],
+        )
+    return _compose_room_engine_clear(
+        env, source=source, pre_phases=pre_phases, pre_frames=frames
     )
 
 

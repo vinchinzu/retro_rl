@@ -24,10 +24,15 @@
       "approachXy": [2672, 2916],
       "landingXy": [2248, 1755],
       "role": "zelda_path",
-      "path": ["south_chamber", "stairs_align"],
-      "pathTolerances": {"south_chamber": 24, "default": 12},
-      "pushFrames": 200,
-      "notes": "Continuous secret-entrance clear; off-center deep south soft-locks"
+      "path": ["uncle_corridor_west", "south_chamber", "stairs_align"],
+      "pathTolerances": {
+        "uncle_corridor_west": 20,
+        "south_chamber": 28,
+        "stairs_align": 8,
+        "default": 12
+      },
+      "pushFrames": 320,
+      "notes": "Continuous secret-entrance clear via room_engine; off-center deep south soft-locks"
     }
   ],
   "clearPolicy": {
@@ -42,7 +47,8 @@
   "hostilesAtEntry": [],
   "notes": [
     "Multi-screen secret entrance (uncle + south combat + stairs).",
-    "Continuous spine already scripts this; map is geometry authority for agents.",
+    "Continuous spine uses room_engine edge stairs_to_courtyard (map authority).",
+    "Do not reintroduce open-loop LEFT×100+DOWN×250 in Python segments.",
     "Internal key/shutter path is alternate — not primary doors here.",
     "Authority: maps/room_55.json"
   ]
