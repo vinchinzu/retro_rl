@@ -35,11 +35,13 @@ Post-screen-4 bottleneck (2026-08-09/10 probe, rr-54ui — open):
   Ladder bar never ``tile_feet==2``. No wind; camera_y=0.
 - Gap to screen5 (prog 1280) ≈ **296px**; pure RIGHT jump max ~1065–1071;
   Pipi boost ~1086 still pit. Freefall tile sample past 984 = 0 solids.
-  1000+ goblin-top / phase hops: 0 elevated lands. Edge camp 400–600f: no new
-  object types (no Lightning Lord cloud observed).
+  1000+ goblin-top / phase hops: 0 elevated lands.
+- Object types Level1→death / all night4 forks: only **1 / 2 / 35 / 36**
+  (no Lightning Lord). High forks before y84, edge camps, slow waits, hybrid
+  Level1→screen2, WRAM novelty after prog800: still no new ``$0400`` types.
+  Map-match prog~950 = goblin+Pipi (not Matasaburo E).
 - A needs rising edge after load. Type35 = eggs/birds.
-- Next: Lightning Lord / intermediate object spawn (likely earlier route fork),
-  not more pure RIGHT from this island.
+- Next: ROM/TAS enemy placement or tilemap past 984 — not goblin/pure-RIGHT.
 
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """

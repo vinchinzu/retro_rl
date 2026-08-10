@@ -648,3 +648,26 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 ### 2026-08-10T01:08 CDT — SM K5 Tutorial→Gate pure GREEN
 - **CLOSED** `rr-81ek` dual pure 969f×2 room 0xA815. Stack hop0+1+2 GREEN.
 - Next: `rr-e5i6` Gate→Business. Parent rr-dbu.8 open.
+
+### 2026-08-10T02:30 CDT — MM2 rr-54ui Lightning Lord fork (OPEN residual)
+- Lane: mega_man_2 only (`nes/mega_man_2/`)
+- Bead **rr-54ui** IN_PROGRESS → remains **OPEN** (no camera≥5 / boss door)
+- Pursued tip: LL/cloud via earlier route fork + map-match prog~950
+- **Map-match:** prog~950 = goblin + stripe tile + Pipi (**not** Matasaburo E;
+  no wind / fan robots / camera_y / drop D). Gap >984 looks like open LL sky
+  but **no LL object ever**.
+- Object types Level1→death hybrid + all forks: only **{1, 2, 35, 36}**
+- Night4 sweeps (`recordings/air_post4_night4/` + RED_PIN.txt):
+  - High forks before y84 descent: max prog~947
+  - Descent interrupt UP/LEFT/hold: max~936
+  - 186 micro-hops from AirFan: **0** feet=1 past prog 984; best ~1073
+  - Edge void shoot 500f: no new types
+  - Slow late waits / shoot goblin / WRAM novelty after prog800: no new `$0400` types
+  - Smoke AirScreen2→4 still GREEN (502f)
+- Units: `nes/mega_man_2/tests` 10/10
+- Docs: STATUS/plan/AGENTS/policy residual updated
+- **Next tip:** ROM stage-enemy placement / TAS compare at prog≥1000 (why LL
+  never enters object table); or nametable platforms past 984. Do not re-run
+  goblin-solid or pure-RIGHT grids.
+- No push
+
