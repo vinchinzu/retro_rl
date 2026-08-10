@@ -168,6 +168,8 @@ ENSURE_WATERING_CAN_PHASE = PhaseSpec(
     "ENSURE_WATERING_CAN",
     "ensure_tool",
     {"tool_id": int(Tool.WATERING_CAN)},
+    # Optional: shelf miss must not recovery-loop the day (rr-6byj pattern).
+    failure_policy="optional",
     required_tools=("watering_can",),
     estimated_frames=2500,
     failure_modes=("shelf_miss", "carry_full", "wrong_house_size"),
@@ -176,6 +178,9 @@ ENSURE_WATERING_CAN_PHASE = PhaseSpec(
 ENSURE_CROP_SEEDS_PHASE = PhaseSpec(
     "ENSURE_CROP_SEEDS",
     "ensure_seed",
+    # Optional so a shed miss soft-skips plant phases instead of required
+    # recovery-retry hanging multi-day (rr-6byj multi_nav 1-wp loop).
+    failure_policy="optional",
     required_tools=("seed",),
     estimated_frames=2500,
     failure_modes=("bag_on_shelf_not_carry", "stock_zero", "carry_swap_lost_seed"),
