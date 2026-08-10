@@ -61,3 +61,22 @@ def test_air_man_landed_start() -> None:
     assert gap.reason.startswith("gap_jump")
     early = pol.tick(frame=10, health=26, camera_x_screen=1)
     assert early.reason in {"run", "run_jump", "run_shoot", "run_jump_shoot"}
+
+
+def test_air_man_screen2_phases() -> None:
+    pol = AirManPolicy(start="screen2", target_camera_screen=4)
+    # before approach: walk only (frame 1 → i=0)
+    walk = pol.tick(frame=1, health=22, camera_x_screen=2)
+    assert walk.reason in {"run", "run_shoot"}
+    # approach hop: frame 49 → i=48 opens jump window
+    approach = pol.tick(frame=49, health=22, camera_x_screen=2)
+    assert "jump" in approach.reason
+    # fan hold window: frame 146 → i=145
+    fan = pol.tick(frame=146, health=20, camera_x_screen=2)
+    assert fan.reason.startswith("fan_hold")
+    # late period after fan_end=180: frame 181 → i=180
+    late = pol.tick(frame=181, health=20, camera_x_screen=3)
+    assert late.reason.startswith("late_jump")
+    # clear at target
+    done = pol.tick(frame=500, health=16, camera_x_screen=4)
+    assert done.reason == "clear_hold"
