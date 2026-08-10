@@ -81,11 +81,13 @@ Gates observed:
 
 ## Residual for rr-54ui (not fpd6)
 
-- **Land on Thunder Chariot**: kill rider (HP low; buster) then stand on cloud
-  object (may not set `tile_feet==1`). Closest Clean jump: min_sy 34 @ ~28px
-  short of LL x — need longer hang / better apex X / shoot-then-land timing.
+- **Land on Thunder Chariot**: rider kill is **Clean** (pulse B on `0x3D`,
+  20→13→6→despawn). X gap closable to ~5–10px at Y-meet after kill, but
+  empty cloud still freefall (`ft=0`). Object-solid / feet-on-top geometry
+  residual — see `recordings/air_post4_cloud/RED_PIN.md`.
 - Then chain mapset 5–6 LLs → camera≥5 → boss door.
 
 ## Do not re-run
 
-Goblin-as-solid, pure-RIGHT grids without LL watch, “types only 35/36” camps.
+Goblin-as-solid, pure-RIGHT grids without LL watch, “types only 35/36” camps,
+hold-B without pulse.

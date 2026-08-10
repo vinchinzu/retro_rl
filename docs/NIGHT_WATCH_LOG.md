@@ -1116,3 +1116,23 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Spawned** zelda manager on **rr-vdnc** (worktree).
 - SMB still permanently skipped.
 
+
+### 2026-08-10T04:50 CDT — SM Red mid dual y1606 (rr-av5s PARTIAL)
+- Commit `ea5ad62`: bottom IBJ → tunnel→midplat → midplat IBJ dual **temp floor y1606**.
+- Do not climb_lower before IBJ. Frozen-ripper seats not solid.
+- Upper/Hellway still RED. **Re-spawned** SM manager for upper → Hellway dual.
+- Bead rr-av5s stays in_progress; parent rr-dbu.8 open.
+
+
+### 2026-08-10T05:10 CDT — mega_man_2 rr-54ui PARTIAL (cloud land)
+- Claimed `rr-54ui` (lane free). **Not closed** — no camera≥5 / no stand.
+- **Rider kill GREEN:** type `0x3D` pulsed B (period 3–8) 20→13→6→despawn.
+  Body `0x3E` remains; kill flash types 6+118.
+- **X residual improved:** fpd6 dx≈28 → Y-meet after kill **dx≈5–10** (still
+  freefall). Kill with dy≳20 co-sinks with cloud (gap frozen).
+- **Deeper residual:** empty Thunder Chariot object-solid stand not achieved
+  even at dx≈5, dy≈0. Next: `aobject_tsa` / flag 128→192 / feet-on-top.
+- Probes: `scripts/cloud_land_probe.py` + recordings `air_post4_cloud*` +
+  `RED_PIN.md`. Docs STATUS/plan/AGENTS/LL_SPAWN_DECODE updated.
+- Units: `pytest nes/mega_man_2/tests`. **No push.** Bead stays in_progress.
+- Next: object-solid decode then re-try stand → cam≥5.

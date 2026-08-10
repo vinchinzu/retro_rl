@@ -6,13 +6,13 @@
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
 | Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3) |
-| Last verification | 2026-08-10 (fpd6 LL decode) |
+| Last verification | 2026-08-10 (rr-54ui cloud land probe) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 open (LL spawns; cloud land residual)** |
+| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 open (rider kill OK; object-solid land residual)** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 |
@@ -28,7 +28,7 @@
 - **M3 screen-1:** camera ≥ 1 (~248f) via `AirScreen1Policy`
 - **M3 mid-stage:** camera ≥ 2 from `Level1` (~522f, HP 22, 3/3) and from `AirLanded` (~226f, 3/3)
 - **M3 late-stage (fans/gaps):** camera ≥ 3 and ≥ 4 from `AirScreen2` (3/3 each; 2026-08-09)
-- **Post-s4 (rr-54ui, open):** LL **does spawn** (0x3D/0x3E); cloud land residual; no camera ≥5 yet
+- **Post-s4 (rr-54ui, open):** LL spawns; **rider kill Clean** (0x3D pulse-B); cloud land still RED; no camera ≥5
 
 ## Segment metrics
 
@@ -140,19 +140,32 @@ Lightning Lord spawn **decoded + live-confirmed**:
 | Source | lsmmega/mm2 `airman_wily2_objects_set.asm` + live `ll_spawn_probe.py` |
 | Evidence | `docs/LL_SPAWN_DECODE.md`, `probe_*.json`, `summary.json` |
 
-Cloud altitude y≈32–36 matches pure-jump min_sy~34, but closest Clean approach
-~**28px short in X** (sx≈135 vs LL x≈163 @ prog~1031). No cloud land / camera≥5 yet.
+Cloud altitude y≈32–36 matches pure-jump min_sy~34. fpd6 closest Clean approach
+was ~**28px short in X**; **rr-54ui night closed X** (Y-meet after kill dx≈5–10)
+but still **no stand** — object-solid residual deeper than X gap.
+
+## rr-54ui cloud land (2026-08-10) — OPEN (partial)
+
+| Field | Value |
+|-------|-------|
+| Rider kill | **Yes** — `0x3D` HP 20→13→6→despawn via pulsed B (period 3–8) in air |
+| Body | `0x3E` stays; on kill flash types 6 + 118 |
+| Best Y-meet | dx≈5–10, \|dy\|≤4 after kill — still freefall `ft=0` |
+| Pitfall | Kill while dy≳20 → player+cloud sink same rate (gap frozen) |
+| Cam ≥5 | **No** |
+| Evidence | `recordings/air_post4_cloud/RED_PIN.md` + `cloud_land_*.json` / v2–v7 |
 
 ## Not done
 
-- Past screen 4 / boss door (**LL spawns; land on Thunder Chariot residual** — ~28px X short at apex)
+- Past screen 4 / boss door (**kill OK; Thunder Chariot object-solid stand residual**)
 - Full Robot Master stage clear (Air Man boss door / fight)
 - Natural-entry M4 from power-on through screen-2+
 - Stage select other masters / weapon routing
 
 ## Next
 
-1. **rr-54ui:** Clean land on first LL cloud (mapset4 y≈32–36): kill rider + stand
-   (object-solid; may not set `tile_feet==1`). Extend apex X ~+28px or shoot-land timing.
+1. **rr-54ui:** Decode empty-cloud solid (`aobject_tsa=$4E0`, flag 128→192, type 118);
+   stand from above with feet-on-top geometry (not sy==by alone). Probe:
+   `scripts/cloud_land_probe.py` + `recordings/air_post4_cloud/RED_PIN.md`.
 2. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
-3. Do **not** re-sweep goblin-solid or “LL never spawns” camps (falsified).
+3. Do **not** re-sweep goblin-solid, “LL never spawns”, or hold-B without pulse.
