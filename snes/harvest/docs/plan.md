@@ -55,7 +55,7 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 | Same-day water with charged can | **ROM OK**: `Y1_Test_Crops_Planted_Dry` + can=20 → 3/3 wet `0x55` |
 | Ship verify without instant money | **Fixed**: bin drop counts ship; money may settle at 5pm |
 | Empty-can natural refill | **Partial** — west-pocket **stages** via `(12,29)` then fence clear; ROM lifts 1 fence but toss/nav to pond still stalls; can stays 0 |
-| Multi-day growth → harvest → money > $100 | **Growth keep-alive done** — D2→D8 Clean waters daily; exit-to-farm shows 3 mature `0x60`. Harvest/ship + 5pm money still open. House end-state map is not farm metatiles (false “gone” earlier). |
+| Multi-day growth → harvest → money > $100 | **Growth keep-alive done**; **rr-53g harvest+ship+post-5pm money CLOSED** (Day09 $1260→$3180). Continuous spring soak with money>$100 still open (rr-y8n). |
 
 **Empty-can refill traps (ROM-mapped 2026-08-01):**
 
@@ -77,7 +77,7 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 - Natural empty-can refill (north stream + pond, not south-only); same-day water
   without RAM can poke.
 - ~~Multi-day growth from `Y1_Test_Crops_Planted_Watered` → mature potatoes.~~ **Done** (rr-3v9).
-- Harvest + ship route from mature keep-alive plot; **shipping money settles at 5pm** (save pre/post-5pm points).
+- ~~Harvest + ship + post-5pm money~~ — done (rr-53g); wire into continuous spring soak (rr-y8n).
 - Full spring soak with income growth, no mid-run loads.
 - Power-on → full D1 → D2 with shed pickups on real `house_size=0`.
 - Fix `CoopChoresTask` for multi-adult / multi-egg dynamic tiles (Spring 22 case).
