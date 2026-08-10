@@ -267,3 +267,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next: `rr-05dp` Pure Speedway→Frog Save (LEFT across 8-screen tunnel).
 - Tests: `test_k4_wave_return_scaffold.py` 8 passed. No push. No Ice STATUS.
 
+### 2026-08-09T23:00 CDT — SM Speedway→Frog pure GREEN
+- **CLOSED** `rr-05dp` dual pure 621f×2 (0xB106→0xB167). Stack 6/7.
+- Next: `rr-vsjy` Frog Save→Business to finish rr-vqv3.
+

@@ -16,6 +16,7 @@ Wave return (rr-vqv3 stack, Phase B reverse):
 * ``single_to_bubble`` — Single → Bubble return (rr-u0y8)
 * ``bubble_to_farm`` — Bubble → Upper Norfair Farm (rr-czg9)
 * ``farm_to_speedway`` — Farm → Frog Speedway (rr-z13h; needs Speed)
+* ``speedway_to_frog`` — Speedway → Frog Save (rr-05dp; needs Speed)
 
 Package layout
 --------------
@@ -31,6 +32,7 @@ Package layout
 * ``single_to_bubble`` — Single → Bubble return (Wave return stack hop 3)
 * ``bubble_to_farm`` — Bubble → Farm return (Wave return stack hop 4)
 * ``farm_to_speedway`` — Farm → Frog Speedway return (Wave return stack hop 5)
+* ``speedway_to_frog`` — Speedway → Frog Save return (Wave return stack hop 6)
 
 Public API is also re-exported from :mod:`super_metroid.routes.kpdr.k4_wave`
 for stable registry / spine_hops / probe imports.
@@ -66,6 +68,9 @@ from super_metroid.routes.kpdr.wave.single_to_bubble import (
 from super_metroid.routes.kpdr.wave.single_to_double import (
     play_single_to_double_chamber,
 )
+from super_metroid.routes.kpdr.wave.speedway_to_frog import (
+    play_speedway_to_frog_save,
+)
 from super_metroid.routes.kpdr.wave.wave_to_double import (
     play_wave_to_double_chamber,
 )
@@ -80,6 +85,7 @@ __all__ = [
     "play_single_to_bubble",
     "play_bubble_to_farm",
     "play_farm_to_speedway",
+    "play_speedway_to_frog_save",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",

@@ -377,6 +377,18 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=180,
     ),
     SourceFingerprint(
+        "post_speedway_to_frog_save_pure",
+        "scratch/post_speedway_to_frog_save_pure.state",
+        0xB167,
+        use_for="frog-save-to-business return pure predecessor (Wave return stack; rr-vsjy)",
+        continuous_like=False,
+        # Frog Save right entry after Speedway left leave ~(200–240,139).
+        x_min=160,
+        x_max=280,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
         "post_kihunter_to_zeela",
         "scratch/post_kihunter_to_zeela_return.state",
         0xA471,

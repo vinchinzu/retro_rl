@@ -8,6 +8,7 @@ from super_metroid.routes.kpdr.wave import (
     play_double_to_single_chamber,
     play_farm_to_speedway,
     play_single_to_bubble,
+    play_speedway_to_frog_save,
     play_wave_to_double_chamber,
 )
 from super_metroid.routes.kpdr.wave.geometry import (
@@ -26,6 +27,8 @@ from super_metroid.routes.kpdr.wave.geometry import (
     STB_DEEP_Y_MIN,
     STB_DOOR_X,
     STB_TOP_Y_MAX,
+    STF_DOOR_X,
+    STF_FROG_SETTLE,
     WAVE_BEAM_MASK,
     WAVE_DOOR_X,
     WAVE_DOUBLE_SETTLE,
@@ -56,6 +59,10 @@ def test_farm_to_speedway_export_and_registry() -> None:
     assert get_segment("farm_to_speedway") is play_farm_to_speedway
 
 
+def test_speedway_to_frog_save_export_and_registry() -> None:
+    assert get_segment("speedway_to_frog_save") is play_speedway_to_frog_save
+
+
 def test_wave_return_geometry_constants() -> None:
     assert WAVE_BEAM_MASK == 0x0001
     assert WAVE_DOOR_X == 48
@@ -76,6 +83,8 @@ def test_wave_return_geometry_constants() -> None:
     assert SPEED_BOOSTER_MASK == 0x2000
     assert FTS_DOOR_X <= 50
     assert FTS_SPEEDWAY_SETTLE >= 200
+    assert STF_DOOR_X <= 50
+    assert STF_FROG_SETTLE >= 200
 
 
 def test_has_wave_predicate() -> None:
