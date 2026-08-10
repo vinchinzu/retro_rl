@@ -1052,3 +1052,43 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-rvae`: Gleeok fight + HC + TF 0x08 dual-green 2/2 ~4286f from Level4GleeokEnter.
 - Checkpoint Level4Complete. Epic rr-q3n open for continuous residual (rr-05fz).
 
+
+### 2026-08-10 — SMB DONE (human reaffirm)
+- User: "drop the smb work.. lets call it done"
+- All `smb`-labeled beads already CLOSED/PARKED (incl. rr-k0x pure HL, hybrid/TAS frame-cuts).
+- Product stands: **M8 Clean** power-on natural_82. Pure HappyLee / stitchless / sub-5 tracks not resumed.
+- Night watch: **never spawn smb** for remainder of program unless human reopens explicitly.
+- No open smb processes; no open smb beads.
+
+### 2026-08-10T04:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - super_metroid: `rr-av5s` Red→Hellway hop12 + parent `rr-dbu.8` K5 Alpha stack
+  - zelda_i: `rr-05fz` L4 post-Stepladder continuous residual (Gleeok+TF dual-green CLOSED on rr-rvae)
+  - harvest: `rr-5in` Gate B full (hands-clear rr-6g7g CLOSED; D9 house nav residual)
+- **SKIP permanently:** smb / pure_hl (human reaffirmed DONE — never spawn)
+- **Idle priority action:** mega_man_2 `rr-54ui` — **rr-fpd6 CLOSED** LL types 0x3D/0x3E spawn; tip = land Thunder Chariot (~28px X short)
+- **Spawned manager (worktree):** mega_man_2 → claim `rr-54ui` (LL cloud land)
+  - subagent_id: `019feae7-b435-7d00-8a01-56b88386361c` (worktree isolation)
+- **Not spawned (busy):** super_metroid, zelda_i, harvest
+- **Not spawned:** solver gbd.32 closed; P3/P4 only
+- **Cap:** 3 busy + 1 MM2 = 4 / 6 lanes
+- Never push.
+
+### 2026-08-10T~night — zelda_i rr-05fz CLOSED (natural key + continuous TF)
+- Lane: zelda_i only (`nes/zelda_i/`)
+- Claimed **rr-05fz** residual after rr-rvae Gleeok/TF dual
+- **Natural key:** compass path leaves keys=0 at PostLadder (recon poke only).
+  **Skip-compass** from `Level4Room50Cleared` → 0x40 key (keys=2) → KEY-R 0x31
+  (keys=1) → stepladder → `Level4Room31PostLadderNaturalKey` (ladder=1, keys≥1)
+- **map_21 --no-key-poke** dual-green 2/2 ~16309f; `recon_poke=false`
+  Evidence: `recordings/l4_05fz_map_natural_map_21.json`
+- **Continuous PostLadder→TF** dual-green 2/2 ~34748f assisted, key_poke=false
+  Path: map → BOMB_UP 0x21→0x11 → BOMB_RIGHT 0x11→0x12 → clear → push 0x68
+  → PATH_12_TO_GLEEOK → Gleeok/HC/TF 0x08
+  Runner: `scripts/run_level4_continuous_tf.py`
+  Evidence: `recordings/l4_05fz_postladder_cont_tf.json` + `l4_05fz_map_to_tf.json`
+- Code: `run_level4_rooms.py` module-level imports fix + `--no-key-poke`; continuous runner
+- **CLOSED** `rr-05fz`. Epic **rr-q3n** still OPEN for Clean STATUS residual.
+- Units: test_level4_dungeon 10 passed. **No push.**
+- Next: Clean harden L4 continuous / parallel `rr-38p`
+

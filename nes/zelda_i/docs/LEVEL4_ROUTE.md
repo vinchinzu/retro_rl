@@ -196,9 +196,15 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment stepladder --tri
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinite-life --trials 2 --save-state
+# Natural key (no recon poke) from skip-compass checkpoint
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 \
+  --from-state Level4Room31PostLadderNaturalKey --infinite-life --no-key-poke --trials 2
+# Continuous natural PostLadder → TF 0x08
+uv run python nes/zelda_i/scripts/run_level4_continuous_tf.py \
+  --from-state Level4Room31PostLadderNaturalKey --infinite-life --trials 2 --save-state
 ```
 
-### Post-ladder (rr-05fz pure + rr-rvae map assisted 2026-08-10)
+### Post-ladder (rr-05fz pure + natural continuous 2026-08-10)
 
 Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
 ~(136,141)).
@@ -252,8 +258,12 @@ UP → **0x03** → mid walk → **`tf&0x08`**. Evidence:
 `scripts/run_level4_gleeok.py --infinite-life --trials 2 --save-state`.
 Checkpoint **`Level4Complete`**. Module: `level4_boss_combat.py`.
 
-**Residual:** natural-entry continuous PostLadder→TF; natural key:
-0x01 after map BOMB_UP (no recon poke). Evidence: `l4_rvae_right13_dual.json`.
+**Residual closed (rr-05fz assisted dual-green 2026-08-10):** natural KEY-UP
+via **skip-compass** spare key (`Level4Room31PostLadderNaturalKey`, keys≥1,
+`map_21 --no-key-poke` 2/2) + continuous PostLadder→map→Gleeok→TF 2/2
+(~34.7k f). Evidence: `l4_05fz_map_natural_map_21.json`,
+`l4_05fz_postladder_cont_tf.json`, `l4_05fz_map_to_tf.json`. 0x01 Keese key
+still available after map BOMB_UP. **Not Clean STATUS** (assist still on).
 
 **Traps (0x12→0x13):** after clear doors often L-only (raw=2); **bomb RIGHT and
 KEY-RIGHT do not open 0x13**; push block 0x68 LEFT first; naive y141 hold-RIGHT
