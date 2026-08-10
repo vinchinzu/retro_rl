@@ -837,3 +837,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Not spawned:** solver rr-gbd.32 CLOSED; remaining P3/P4 sketches
 - **Cap:** 3 busy + 1 MM2 = 4 / 6 lanes
 - Never push.
+
+### 2026-08-10T03:30 CDT — harvest rr-5in PARTIAL sparse water
+- Plant + sparse water detect GREEN; empty-can after sparse plant still RED (rr-o00y).
+- Next: post-charge y≥32 F0 fill path then re-run power-on end-of-spring.
+
