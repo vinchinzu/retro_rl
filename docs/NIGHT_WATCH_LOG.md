@@ -56,6 +56,11 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 
 ### 2026-08-09T21:15 CDT — mega_man_2 lane complete
 - **CLOSED** `rr-iyya` AirScreen2→s3 (~241f 3/3) and →s4 (~502f 3/3) via `AirManPolicy(start=screen2)`.
-- Opened follow-up `rr-1uaw` past screen 4 toward boss door.
-- Code merged from worktree to main; 10 tests pass. Free capacity → continue MM2 `rr-1uaw` or next idle tip.
+- Opened follow-up `rr-54ui` past screen 4 toward boss door.
+- Code merged from worktree to main; 10 tests pass. Free capacity → continue MM2 `rr-54ui` or next idle tip.
+
+### 2026-08-09T21:20 CDT — SMB lane DROPPED (human)
+- Killed SMB pure HL manager; discarded overnight pure_hl WIP.
+- Closed pure HL + open SMB TAS/frame-cut beads as parked (product **M8 Clean** stands).
+- Night watch: **never spawn smb** again this session.
 
