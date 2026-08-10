@@ -297,11 +297,36 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         "post_double_chamber_to_wave_pure",
         "scratch/post_double_chamber_to_wave_pure.state",
         0xADDE,
-        use_for="Wave pure successor / Ice branch predecessor",
+        use_for=(
+            "Wave pure successor / Ice branch predecessor "
+            "(STALE 2026-08-09: loads 0xADAD ~(923,311) — use dev_wave_collected)"
+        ),
         continuous_like=False,
         x_min=140,
         x_max=220,
         y_min=90,
+        y_max=180,
+    ),
+    SourceFingerprint(
+        "dev_wave_collected",
+        "scratch/dev_wave_collected.state",
+        0xADDE,
+        use_for="wave-to-double-chamber pure return / Wave tip handoff (chozo pin)",
+        continuous_like=False,
+        x_min=150,
+        x_max=200,
+        y_min=90,
+        y_max=150,
+    ),
+    SourceFingerprint(
+        "post_wave_to_double_chamber_pure",
+        "scratch/post_wave_to_double_chamber_pure.state",
+        0xADAD,
+        use_for="double-to-single return pure predecessor (Wave return stack)",
+        continuous_like=False,
+        x_min=900,
+        x_max=1050,
+        y_min=100,
         y_max=180,
     ),
     SourceFingerprint(
