@@ -46,16 +46,18 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product pure** | Snake → Ice PLM (prefer 2WJ; Gate+Acid+Snake dual GREEN) | `rr-5if` · done `rr-fg3` `rr-9t4` `rr-5cf` |
-| Product after Ice | tip ice → K5 → Moat approach | `rr-dbu.7` → `.8` → `.9` |
+| **★ Product compose** | Continuous `--to ice` after pure stack | `rr-dbu.7` (blocked only on planner compose) |
+| Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
+| Product after Ice tip | K5 → Moat approach | `rr-dbu.8` → `.9` |
 | Done | Human full tape 39,711f Wave+Ice+Moat | `rr-dbu.12` · [SM-SPEED-ICE-MOAT-HUMAN.md](tasks/SM-SPEED-ICE-MOAT-HUMAN.md) |
 | Optional | Policy consolidate; duck-type; Clean STATUS; speed start Spazer | P3 |
 | Parallel Clean | bombs/Torizo Clean **GREEN** 49,321f ×2 | polish `rr-3z8` |
 | Done | Wave continuous **136,361f** + hygiene Pass A/B essential | |
 
 **Critical path to credits:** human tape (`rr-dbu.12`) → Ice pure package
-(`rr-dbu.11`, `routes/kpdr/ice/`) → continuous ice → K5 → Moat natural entry
-→ Wrecked Ship → … → ending. **Do not invent Ice hops without tape.**
+(`rr-dbu.11` ✅, `routes/kpdr/ice/`) → continuous ice compose (`rr-dbu.7`) →
+K5 → Moat natural entry → Wrecked Ship → … → ending.
+**Do not STATUS-promote continuous Ice without dual continuous green.**
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);
 spore clean; Pass B.3 deep consolidate.

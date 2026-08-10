@@ -22,7 +22,8 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ice-snake-to-ice \
 - [x] 2WJ / platform-hop bands from pure handoff (not freeze ladder)
 - [x] Package under `routes/kpdr/ice/` (no Wave megafile)
 - [x] Dual pure GREEN Snake → Ice PLM (**1756f** ×2, beams `0x1007`)
-- [ ] Continuous tip (blocked on pure stack compose `rr-dbu.7` / parent `rr-dbu.11`)
+- [x] Parent stack gate `rr-dbu.11` CLOSED (outbound pure documented)
+- [ ] Continuous tip (compose only: `rr-dbu.7`; no STATUS without dual continuous green)
 
 ### Residual risks / findings
 1. Climb GREEN: floor ~(216,651) → top y139 platform hops.
@@ -31,8 +32,8 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ice-snake-to-ice \
 4. End states: `scratch/post_ice_snake_to_ice_pure.state` (+ `_dual`).
 
 ### Next action (required)
-- **Next card ID:** rr-dbu.11 (stack gate) / PLANNER — pure Ice stack complete for outbound PLM
-- **One change:** optional return path Snake→Tutorial→Gate; continuous compose only after planner
+- **Next card ID:** `rr-dbu.7` (compose continuous `--to ice`)
+- **One change:** tip wiring / graph / catalog only — no new Snake→Ice knobs
 - **Source state:** `scratch/post_ice_snake_to_ice_pure.state` (Ice PLM collected)
 
 ### Non-claims
