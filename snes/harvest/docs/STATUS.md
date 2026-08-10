@@ -161,9 +161,21 @@ Test crop fixtures (for growth / ship work):
    - Power-on `--end-of-spring`: **CROP_WATER ×3 success** D9–D11
      `watered=6` each, D9 `refills=1 can=20`; crop_survival **wet=2 dry=4**
      (not stuck dry=6); overnights=10 money=$160 mid_run=0 Clean
-     (`recordings/power_on_spring_to_summer.json`). Terminal
-     `return_home multi_nav timeout` D12 (not water thrash) — residual under
-     **rr-5in** (Gate B Summer still open; re-refill can=2 thrash at ~(25,34)).
+     (`recordings/power_on_spring_to_summer.json`). Prior terminal
+     `return_home multi_nav timeout` D12 — **cleared 2026-08-10** (below).
+   **2026-08-10 (rr-5in return_home GREEN / Gate B still PARTIAL):** D12
+   house approach after water/CLEAR no longer hard-fails. Root: densify used
+   pond column x=512 (lateral-align through water from ~(854,527)); mid-yard
+   (118,486) sat outside force-enter + escape gates. Fixes in `home.py`:
+   east free lane **x≥576** (east of pond); far-east pre-escape west+north;
+   west free side keeps near-player x; force enter y≤80; mid-yard re-nav;
+   south_of_fence / door_far escape. Evidence
+   `recordings/power_on_spring_to_summer.json`:
+   - **14 overnights** to Spring **D16**, money=$160, Clean mid_run=0
+   - D12: Pre-escape far-east → south escape → sleep → D13 (not multi_nav die)
+   - D13–D15 return_home all succeed; terminal **`reason=budget`** (not house nav)
+   - Residual **rr-qc9r**: CROP_WATER thrash D13–15 (`dry_crops=6 watered=0`)
+     burns frames so crops stay dry=6 / no ship / budget before Summer D1
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
    **ROM natural empty-can fill + 3/3 dry water OK** on dry fixture

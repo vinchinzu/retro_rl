@@ -3164,7 +3164,7 @@ class BuildDayPhasesTests(unittest.TestCase):
         self.assertGreaterEqual(len(task._task.waypoints), 2)
 
     def test_return_home_densifies_south_field_approach(self) -> None:
-        """rr-5in: mid-wall south of y=31 → east around wall (not x≈248)."""
+        """rr-5in: mid-wall south of y=31 → east of pond (not x≈248 or pond)."""
         world = make_date_world(0x00, season=0, day=9, hour=14)
         # Mid-wall x (under fence body); skip SW pre-escape (x≥200).
         set_player_pos(world.ram, 280, 620)
@@ -3179,12 +3179,115 @@ class BuildDayPhasesTests(unittest.TestCase):
         wps = task._task.waypoints
         self.assertGreaterEqual(len(wps), 3)
         self.assertEqual(wps[-1].target_px, (136, 424))
-        # East past fence end (tile x≥30 → px≥480); mid-wall x≈248 is solid fence.
-        self.assertGreaterEqual(wps[0].target_px[0], 480)
+        # East of pond free lane (tile x≥36 → px≥576); never pond column 512.
+        self.assertGreaterEqual(wps[0].target_px[0], 576)
         self.assertEqual(wps[0].run_direction, "right")
-        for wp in wps[:-2]:
+        for wp in wps:
             if wp.run_direction == "up":
-                self.assertGreaterEqual(wp.target_px[0], 480)
+                self.assertGreaterEqual(wp.target_px[0], 576)
+                # Must not lateral-align through pond body (x≈512).
+                self.assertNotEqual(wp.target_px[0], 512)
+
+    def test_return_home_far_east_pond_pre_escapes_before_approach(self) -> None:
+        """rr-5in D12: ~(854,527) after water — west+north pre-escape, not pond crawl."""
+        world = make_date_world(0x00, season=0, day=12, hour=18)
+        set_player_pos(world.ram, 854, 527)
+        task = ReturnHomeTask()
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "south_escape")
+        self.assertTrue(task._did_pre_escape)
+        self.assertIn("far-east", result.reason or "")
+
+    def test_return_home_far_east_densifies_north_of_pond_lane(self) -> None:
+        """After pre-escape flag, east free lane is east-of-pond then west above wall."""
+        world = make_date_world(0x00, season=0, day=12, hour=18)
+        set_player_pos(world.ram, 700, 520)
+        task = ReturnHomeTask()
+        task.reset(world)
+        task._did_pre_escape = True
+        task._south_escape_attempts = 1
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "nav_house_front")
+        self.assertIsInstance(task._task, MultiMapNavTask)
+        wps = task._task.waypoints
+        self.assertEqual(wps[-1].target_px, (136, 424))
+        # Northbound stages stay east of pond (x≥576), never 512.
+        up_xs = [wp.target_px[0] for wp in wps if wp.run_direction == "up"]
+        self.assertTrue(up_xs)
+        for x in up_xs:
+            self.assertGreaterEqual(x, 576)
+            self.assertLessEqual(x, 640)
+        # Eventually slides west above fence.
+        self.assertTrue(any(wp.run_direction == "left" for wp in wps))
+
+    def test_return_home_south_escape_on_fence_latitude_timeout(self) -> None:
+        """South-of-fence but not deep_south (y=527) still escapes on multi_nav fail."""
+        world = make_date_world(0x00, season=0, day=12, hour=18)
+        set_player_pos(world.ram, 774, 521)
+        task = ReturnHomeTask()
+        task.reset(world)
+        task._phase = "nav_house_front"
+        task._task = SimpleNamespace(
+            step=lambda _w: TaskResult(
+                status=TaskStatus.FAILURE, reason="multi_nav timeout"
+            )
+        )
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "south_escape")
+        self.assertEqual(task._south_escape_attempts, 1)
+        self.assertIn("south escape", result.reason or "")
+
+    def test_return_home_forces_enter_when_mid_yard_south_of_door(self) -> None:
+        """D12 residual (118,486): force enter instead of hard multi_nav fail."""
+        world = make_date_world(0x00, season=0, day=12, hour=18)
+        set_player_pos(world.ram, 118, 486)
+        task = ReturnHomeTask()
+        task.reset(world)
+        task._phase = "nav_house_front"
+        task._task = SimpleNamespace(
+            step=lambda _w: TaskResult(
+                status=TaskStatus.FAILURE, reason="multi_nav timeout"
+            )
+        )
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "enter_house")
+        self.assertIsInstance(task._task, DirectionalTransitionTask)
+
+    def test_return_home_west_of_fence_keeps_near_x_lane(self) -> None:
+        """West free side densify uses current x, not forced SW pocket x=96."""
+        world = make_date_world(0x00, season=0, day=12, hour=18)
+        set_player_pos(world.ram, 122, 518)
+        task = ReturnHomeTask()
+        task.reset(world)
+        task._did_pre_escape = True
+        task._south_escape_attempts = 1
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "nav_house_front")
+        self.assertIsInstance(task._task, MultiMapNavTask)
+        wps = task._task.waypoints
+        self.assertEqual(wps[-1].target_px, (136, 424))
+        # Northbound corridor stays near player x (not yanked to 96).
+        up_xs = [wp.target_px[0] for wp in wps if wp.run_direction == "up"]
+        self.assertTrue(up_xs)
+        for x in up_xs:
+            self.assertGreaterEqual(x, 110)
+            self.assertLessEqual(x, 160)
 
     def test_return_home_west_of_fence_runs_north(self) -> None:
         """West of fence wall (px x<176): densify north on free side, not east."""

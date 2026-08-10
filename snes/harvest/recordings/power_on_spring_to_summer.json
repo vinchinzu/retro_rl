@@ -72,14 +72,14 @@
   },
   "d1_handoff_frames": 20073,
   "boot_frames": 5755,
-  "planner_frames": 225479,
+  "planner_frames": 960000,
   "day_plan": "d1_handoff+end_of_spring",
   "days": null,
   "until_day": null,
   "until_season": null,
   "end_of_spring": true,
-  "frames": 251307,
-  "wall_seconds": 758.2,
+  "frames": 985828,
+  "wall_seconds": 2510.4,
   "start": {
     "season": 0,
     "day": 1,
@@ -91,16 +91,16 @@
   },
   "end": {
     "season": 0,
-    "day": 12,
+    "day": 16,
     "hour": 18,
-    "minute": 7,
+    "minute": 8,
     "tilemap": 0,
     "money": 160,
-    "stamina": 96
+    "stamina": 100
   },
-  "scene": "normal_map@farm/farm tilemap=0x00 pos=(774,521)",
+  "scene": "normal_map@farm/farm tilemap=0x00 pos=(406,486)",
   "morning_ready": true,
-  "days_completed": 10,
+  "days_completed": 14,
   "day_failures": [
     {
       "season": 0,
@@ -133,6 +133,30 @@
       "status": "failure",
       "reason": "required phase CROP_WATER failed after recovery: too many nav failures",
       "step": 77150
+    },
+    {
+      "season": 0,
+      "day": 13,
+      "phase": "plan_day",
+      "status": "failure",
+      "reason": "required phase CROP_WATER failed after recovery: water fail: dry_crops=6 watered=0 skipped=36 passes=3",
+      "step": 437720
+    },
+    {
+      "season": 0,
+      "day": 14,
+      "phase": "plan_day",
+      "status": "failure",
+      "reason": "required phase CROP_WATER failed after recovery: water fail: dry_crops=6 watered=0 skipped=36 passes=3",
+      "step": 648014
+    },
+    {
+      "season": 0,
+      "day": 15,
+      "phase": "plan_day",
+      "status": "failure",
+      "reason": "required phase CROP_WATER failed after recovery: water fail: dry_crops=6 watered=0 skipped=36 passes=3",
+      "step": 858259
     }
   ],
   "day_journal": [
@@ -771,21 +795,287 @@
       ],
       "deferred": [],
       "step": 126638
+    },
+    {
+      "plan_season": 0,
+      "plan_day": 12,
+      "end_season": 0,
+      "end_day": 13,
+      "overnights_completed": 11,
+      "sleep_reason": "day advanced; morning house ready",
+      "money": 160,
+      "shipping_money": 0,
+      "shipped_count": 0,
+      "harvested_count": 0,
+      "establish_planted": 0,
+      "planned_phases": [
+        "EXIT_TO_FARM",
+        "DYNAMIC_OUTDOOR_PLAN"
+      ],
+      "phase_results": [
+        {
+          "phase": "EXIT_TO_FARM",
+          "kind": "farm_building_exit",
+          "status": "success",
+          "reason": "tilemap=0x00",
+          "step": 526
+        },
+        {
+          "phase": "BUY_SEEDS_WINDOW",
+          "kind": "deadline",
+          "status": "success",
+          "reason": "before cutoff at 06:00",
+          "step": 528
+        },
+        {
+          "phase": "NAV_FARM_EXIT",
+          "kind": "farm_exit",
+          "status": "success",
+          "reason": "arrived",
+          "step": 696
+        },
+        {
+          "phase": "BUY_SEEDS",
+          "kind": "cross_map",
+          "status": "success",
+          "reason": "returned to origin map",
+          "step": 3069
+        },
+        {
+          "phase": "ENSURE_WATERING_CAN",
+          "kind": "ensure_tool",
+          "status": "success",
+          "reason": "tool 0x10 ready",
+          "step": 3070
+        },
+        {
+          "phase": "NAV_CROP",
+          "kind": "nav",
+          "status": "success",
+          "reason": "soft arrived dist=31 stasis=90",
+          "step": 5264
+        },
+        {
+          "phase": "CROP_WATER",
+          "kind": "crop",
+          "status": "success",
+          "reason": "planted=0 watered=2 skipped=24 passes=3",
+          "step": 90034
+        },
+        {
+          "phase": "CLEAR_FIELD",
+          "kind": "clear_field",
+          "status": "success",
+          "reason": "clear_budget cleared=17 remaining=740 lift_only",
+          "step": 93835
+        }
+      ],
+      "deferred": [],
+      "step": 228473
+    },
+    {
+      "plan_season": 0,
+      "plan_day": 13,
+      "end_season": 0,
+      "end_day": 14,
+      "overnights_completed": 12,
+      "sleep_reason": "day advanced; morning house ready",
+      "money": 160,
+      "shipping_money": 0,
+      "shipped_count": 0,
+      "harvested_count": 0,
+      "establish_planted": 0,
+      "planned_phases": [
+        "EXIT_TO_FARM",
+        "DYNAMIC_OUTDOOR_PLAN"
+      ],
+      "phase_results": [
+        {
+          "phase": "EXIT_TO_FARM",
+          "kind": "farm_building_exit",
+          "status": "success",
+          "reason": "tilemap=0x00",
+          "step": 526
+        },
+        {
+          "phase": "BUY_SEEDS_WINDOW",
+          "kind": "deadline",
+          "status": "success",
+          "reason": "before cutoff at 06:00",
+          "step": 528
+        },
+        {
+          "phase": "NAV_FARM_EXIT",
+          "kind": "farm_exit",
+          "status": "success",
+          "reason": "arrived",
+          "step": 696
+        },
+        {
+          "phase": "BUY_SEEDS",
+          "kind": "cross_map",
+          "status": "success",
+          "reason": "returned to origin map",
+          "step": 3069
+        },
+        {
+          "phase": "ENSURE_WATERING_CAN",
+          "kind": "ensure_tool",
+          "status": "success",
+          "reason": "tool 0x10 ready",
+          "step": 3070
+        },
+        {
+          "phase": "NAV_CROP",
+          "kind": "nav",
+          "status": "success",
+          "reason": "soft arrived dist=31 stasis=90",
+          "step": 5279
+        }
+      ],
+      "deferred": [],
+      "step": 438756
+    },
+    {
+      "plan_season": 0,
+      "plan_day": 14,
+      "end_season": 0,
+      "end_day": 15,
+      "overnights_completed": 13,
+      "sleep_reason": "day advanced; morning house ready",
+      "money": 160,
+      "shipping_money": 0,
+      "shipped_count": 0,
+      "harvested_count": 0,
+      "establish_planted": 0,
+      "planned_phases": [
+        "EXIT_TO_FARM",
+        "DYNAMIC_OUTDOOR_PLAN"
+      ],
+      "phase_results": [
+        {
+          "phase": "EXIT_TO_FARM",
+          "kind": "farm_building_exit",
+          "status": "success",
+          "reason": "tilemap=0x00",
+          "step": 505
+        },
+        {
+          "phase": "BUY_SEEDS_WINDOW",
+          "kind": "deadline",
+          "status": "success",
+          "reason": "before cutoff at 06:00",
+          "step": 507
+        },
+        {
+          "phase": "NAV_FARM_EXIT",
+          "kind": "farm_exit",
+          "status": "success",
+          "reason": "arrived",
+          "step": 655
+        },
+        {
+          "phase": "BUY_SEEDS",
+          "kind": "cross_map",
+          "status": "success",
+          "reason": "returned to origin map",
+          "step": 3007
+        },
+        {
+          "phase": "ENSURE_WATERING_CAN",
+          "kind": "ensure_tool",
+          "status": "success",
+          "reason": "tool 0x10 ready",
+          "step": 3008
+        },
+        {
+          "phase": "NAV_CROP",
+          "kind": "nav",
+          "status": "success",
+          "reason": "soft arrived dist=44 stasis=90",
+          "step": 5156
+        }
+      ],
+      "deferred": [],
+      "step": 649050
+    },
+    {
+      "plan_season": 0,
+      "plan_day": 15,
+      "end_season": 0,
+      "end_day": 16,
+      "overnights_completed": 14,
+      "sleep_reason": "day advanced; morning house ready",
+      "money": 160,
+      "shipping_money": 0,
+      "shipped_count": 0,
+      "harvested_count": 0,
+      "establish_planted": 0,
+      "planned_phases": [
+        "EXIT_TO_FARM",
+        "DYNAMIC_OUTDOOR_PLAN"
+      ],
+      "phase_results": [
+        {
+          "phase": "EXIT_TO_FARM",
+          "kind": "farm_building_exit",
+          "status": "success",
+          "reason": "tilemap=0x00",
+          "step": 504
+        },
+        {
+          "phase": "BUY_SEEDS_WINDOW",
+          "kind": "deadline",
+          "status": "success",
+          "reason": "before cutoff at 06:00",
+          "step": 506
+        },
+        {
+          "phase": "NAV_FARM_EXIT",
+          "kind": "farm_exit",
+          "status": "success",
+          "reason": "arrived",
+          "step": 654
+        },
+        {
+          "phase": "BUY_SEEDS",
+          "kind": "cross_map",
+          "status": "success",
+          "reason": "returned to origin map",
+          "step": 3006
+        },
+        {
+          "phase": "ENSURE_WATERING_CAN",
+          "kind": "ensure_tool",
+          "status": "success",
+          "reason": "tool 0x10 ready",
+          "step": 3007
+        },
+        {
+          "phase": "NAV_CROP",
+          "kind": "nav",
+          "status": "success",
+          "reason": "soft arrived dist=31 stasis=90",
+          "step": 5155
+        }
+      ],
+      "deferred": [],
+      "step": 859299
     }
   ],
   "journal_summary": {
-    "overnights": 10,
+    "overnights": 14,
     "phase_success_counts": {
-      "BUY_SEEDS_WINDOW": 6,
-      "CLEAR_FIELD": 10,
-      "EXIT_TO_FARM": 9,
-      "NAV_FARM_EXIT": 5,
-      "BUY_SEEDS": 5,
-      "NAV_CROP": 8,
+      "BUY_SEEDS_WINDOW": 10,
+      "CLEAR_FIELD": 11,
+      "EXIT_TO_FARM": 13,
+      "NAV_FARM_EXIT": 9,
+      "BUY_SEEDS": 9,
+      "NAV_CROP": 12,
       "ENSURE_CROP_SEEDS": 2,
       "CROP_ESTABLISH": 1,
-      "ENSURE_WATERING_CAN": 4,
-      "CROP_WATER": 3
+      "ENSURE_WATERING_CAN": 8,
+      "CROP_WATER": 4
     },
     "phase_skip_counts": {
       "ENSURE_CROP_SEEDS": 2
@@ -807,6 +1097,11 @@
         "plan_day": 11,
         "status": "success",
         "reason": "planted=0 watered=6 passes=1"
+      },
+      {
+        "plan_day": 12,
+        "status": "success",
+        "reason": "planted=0 watered=2 skipped=24 passes=3"
       }
     ],
     "crop_establish_deltas": [
@@ -830,13 +1125,13 @@
     "tilemap": 0,
     "crop": 6,
     "mature": 0,
-    "dry": 4,
-    "wet": 2,
+    "dry": 6,
+    "wet": 0,
     "samples": [
       [
         13,
         26,
-        93
+        94
       ],
       [
         14,
@@ -846,7 +1141,7 @@
       [
         13,
         27,
-        93
+        94
       ],
       [
         13,
@@ -871,8 +1166,8 @@
   "goal_reached": false,
   "money_gt_100": true,
   "gate_b_full_ok": false,
-  "reason": "return_home failed: nav_house_front failed: multi_nav timeout",
-  "terminal": true,
+  "reason": "budget",
+  "terminal": false,
   "mid_run_state_load": false,
   "clean_run": {
     "intervention_class": "Clean",
