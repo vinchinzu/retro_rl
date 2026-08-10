@@ -50,6 +50,8 @@ uv run python zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 
 uv run python zelda_i/scripts/run_level4_rooms.py --segment north_40 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment key_40 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment north_30 --trials 2 --save-state
+uv run python zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 --save-state
+uv run python zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
 ```
 
 ## Layout (pointers)
@@ -116,6 +118,7 @@ bd ready -l zelda_i   # tip: post-ladder L4 residual; parallel: rr-38p
 | ✓ | **`rr-n1wn`** | **0x30** Vire clear pure 2/2 + KEY-RIGHT **0x31** pure 2/2 |
 | ✓ | **`rr-resv`** | **0x31** Vire clear pure 2/2 + free RIGHT **0x32** pure 2/2 |
 | ✓ | **`rr-tib8`** | **0x32** Zol+LikeLike clear pure 2/2 + stairs **0x60** `ADDR_LADDER` pure 2/2 |
+| tip | **`rr-05fz`** | Post-ladder: exit 0x60→0x32 + west 0x31 pure 2/2; map/Gleeok/TF residual |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -161,10 +164,21 @@ return. Module: `level4_dungeon.py`. Runner: `run_level4_rooms.py`
 `l4_tib8_stepladder_stepladder.json`. Closed: `rr-zchy`…`rr-resv` /
 **`rr-tib8`** / **`rr-o0nn`**. **Not Clean STATUS.**
 
-**Next tip:** post-ladder L4 residual (water cross / map / Gleeok / TF `0x08`)
-under epic **`rr-q3n`**. Traps: 0x30 y∈[128,208]; 0x31 hold4 BFS; 0x32 push
-stand detour around statues; stepladder needs **5 idle** preamble before clear
-(RNG); 0x60 multi-grid BFS + goal-state restore. Parallel OW `rr-38p`.
+**L4 post-ladder (pure LIVE, rr-05fz partial 2026-08-10):** from
+`Level4Stepladder` idle **~150f** (item freeze) → clear 4× Keese → hold4 BFS
+exit mode-9 **0x60 → 0x32** play pure **2/2** (~765f) → checkpoint
+**`Level4PostLadder`**. Free LEFT BFS around pushed **0x68** → **0x31** pure
+**2/2** (~372f). Backtrack **0x31→0x30→0x40** live with ladder; 0x30 north still
+sealed; map/`ADDR_MAP&0x08` + Gleeok + TF `0x08` residual. Segments: `exit_60`,
+`west_31`. Evidence: `l4_05fz_exit60_exit_60.json`,
+`l4_05fz_west31_west_31.json`. **Not Clean STATUS.**
+
+**Next tip:** map / Gleeok / TF `0x08` residual under **`rr-05fz`** / epic
+**`rr-q3n`**. Traps: 0x30 y∈[128,208]; 0x31 hold4 BFS; 0x32 push stand detour
+around statues; stepladder needs **5 idle** preamble before clear (RNG); 0x60
+multi-grid BFS + goal-state restore; **post-ladder pedestal freeze ~100–150
+idle** before movement; exit BFS must settle through mode **4/6/7** scroll
+(180f insufficient — use ~400f). Parallel OW `rr-38p`.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
@@ -183,5 +197,5 @@ TF is **0x3d UP of boss** (not east).
 Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
 `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft` /
 `Level3Boss` / `Level3Complete` / `Level3ExitOverworld` / `OW_L4Dock` /
-`Level4Entrance`.
+`Level4Entrance` / `Level4Stepladder` / `Level4PostLadder`.
 Use `--infinite-life` for first-pass; Clean STATUS only after full-game assist.
