@@ -11,6 +11,7 @@ Segments (rr-5lu / rr-2ysf children)::
     key_right_62 (rr-2ysf)  0x61 KEY-RIGHT @y141 → 0x62 compass maze
     chain_to_62  (rr-2ysf)  FirstKey → DOWN 0x61 clear → KEY-RIGHT 0x62
     clear_62     (rr-2ysf)  clear 5× Vire on 0x62 (compass pickup residual)
+    compass_62   (rr-9so0)  dark maze → ADDR_COMPASS bit 0x08 → return 0x61
 
 Live graph only — no walkthrough room hardcodes beyond recon.
 
@@ -20,6 +21,7 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_50 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_62 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment chain_to_62 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 2 --save-state
 """
 
 # ruff: noqa: E402
@@ -49,6 +51,7 @@ from zelda_i.dungeon import DungeonPhase
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level4_dungeon import (
     BOMB_61_NORTH_STAND,
+    LEVEL4_COMPASS_BIT,
     ROOM_50_SPEC,
     ROOM_51_SPEC,
     ROOM_61_SPEC,
@@ -57,6 +60,7 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_KEESE_KEY_51,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
+    level4_compass_route_success,
     level4_room_50_cleared,
     level4_room_51_key_success,
     level4_room_51_ready,
@@ -64,6 +68,7 @@ from zelda_i.level4_dungeon import (
     level4_room_61_ready,
     level4_room_62_ready,
     make_bomb_61_north_controller,
+    make_compass_62_controller,
     make_entry_up_controller,
     make_key_right_62_controller,
     make_left_50_controller,
@@ -87,6 +92,7 @@ SEGMENTS = (
     "key_right_62",
     "chain_to_62",
     "clear_62",
+    "compass_62",
 )
 
 _BEAD = {
@@ -99,6 +105,7 @@ _BEAD = {
     "key_right_62": "rr-2ysf",
     "chain_to_62": "rr-2ysf",
     "clear_62": "rr-2ysf",
+    "compass_62": "rr-9so0",
 }
 
 _DEFAULT_STATE = {
@@ -111,6 +118,7 @@ _DEFAULT_STATE = {
     "key_right_62": "Level4FirstKey",
     "chain_to_62": "Level4FirstKey",
     "clear_62": "Level4Room62",
+    "compass_62": "Level4Room62Cleared",
 }
 
 _CHECKPOINT = {
@@ -123,6 +131,7 @@ _CHECKPOINT = {
     "key_right_62": "Level4Room62",
     "chain_to_62": "Level4Room62",
     "clear_62": "Level4Room62Cleared",
+    "compass_62": "Level4Compass",
 }
 
 
@@ -137,6 +146,8 @@ def _snap_fields(snap) -> dict[str, Any]:
         "keys": snap.keys,
         "bombs": snap.bombs,
         "health": snap.health,
+        "compass": snap.compass,
+        "compass_l4": bool(snap.compass & LEVEL4_COMPASS_BIT),
         "room_item_id": snap.room_item_id,
         "room_all_dead": snap.room_all_dead,
         "cur_opened_doors": snap.cur_opened_doors,
@@ -514,6 +525,76 @@ def run_once(
                     frame0=frame,
                 )
             ok = error is None and level4_room_62_cleared(env.get_ram())
+
+        elif segment == "compass_62":
+            snap = read_snapshot(env.get_ram())
+            if snap.screen != ROOM_L4_COMPASS_62:
+                # Prefer cleared 0x62; rebuild key-right if on 0x61/0x51.
+                if snap.screen == ROOM_L4_KEESE_KEY_51:
+                    for _ in range(1500):
+                        snap = read_snapshot(env.get_ram())
+                        if (
+                            snap.level == 4
+                            and snap.screen == ROOM_L4_VIRES_61
+                            and snap.mode == PLAY_MODE
+                            and not snap.transitioning
+                        ):
+                            break
+                        if snap.transitioning or snap.mode in (4, 6, 7):
+                            btn = "DOWN"
+                        elif abs(snap.link_x - 120) > 4:
+                            btn = "LEFT" if snap.link_x > 120 else "RIGHT"
+                        else:
+                            btn = "DOWN"
+                        obs, *_ = env.step(nes_action(btn))
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                if read_snapshot(env.get_ram()).screen == ROOM_L4_VIRES_61:
+                    kr = make_key_right_62_controller(clear_vires=True)
+                    controllers["key_right_62"] = kr
+                    obs, frame = _run_until(
+                        env,
+                        kr,
+                        assist=assist,
+                        max_frames=kr.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not kr.success:
+                        error = "key_right_62_failed"
+                    else:
+                        # Clear Vires so maze path is unobstructed.
+                        clr = make_room_62_clear_controller()
+                        clr.phase = DungeonPhase.FIGHT
+                        controllers["clear_62"] = clr
+                        obs, frame = _run_until(
+                            env,
+                            clr,
+                            assist=assist,
+                            max_frames=ROOM_62_SPEC.max_frames,
+                            done=_done_success,
+                            frame0=frame,
+                        )
+                        if not clr.success:
+                            error = "clear_62_failed"
+                elif read_snapshot(env.get_ram()).screen != ROOM_L4_COMPASS_62:
+                    error = (
+                        f"unsupported_start_0x"
+                        f"{read_snapshot(env.get_ram()).screen:02x}"
+                    )
+            ctl = make_compass_62_controller()
+            controllers["compass_62"] = ctl
+            if error is None:
+                obs, frame = _run_until(
+                    env,
+                    ctl,
+                    assist=assist,
+                    max_frames=ctl.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+            ok = error is None and level4_compass_route_success(env.get_ram()) and ctl.success
         else:
             error = f"unknown_segment_{segment}"
 
@@ -640,7 +721,12 @@ def main(argv: list[str] | None = None) -> int:
                 },
                 "0x51": {"LEFT": "0x50", "DOWN": "0x61", "enemies": "8x0x1b", "key": "0x19"},
                 "0x50": {"enemies": "5x0x12", "note": "dead_end_pocket"},
-                "0x62": {"enemies": "5x0x12", "item": "0x16_compass", "note": "dark_maze"},
+                "0x62": {
+                    "enemies": "5x0x12",
+                    "item": "0x16_compass",
+                    "compass_bit": "0x08",
+                    "note": "dark_maze_return_west",
+                },
             },
             "reports": reports,
         },

@@ -211,3 +211,17 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Next:** pure human/auto complete D2 dog intro then shed; do not claim acceptance without free outdoor + grass+can. Alternate progress: `rr-53g` harvest+ship 5pm.
 - No push.
 
+
+
+### 2026-08-09T22:08 CDT — zelda_i L4 0x62 compass maze pure dual-green
+- **CLOSED** `rr-9so0` (tip residual was noted as rr-7r24 pre-create): dark maze scripted path → `ADDR_COMPASS|0x08` @~(136,132) → return LEFT 0x61 (~471f pure 2/2).
+- Segment `compass_62` + `Level4Compass62Controller` + checkpoint `Level4Compass`.
+- Evidence: `nes/zelda_i/recordings/l4_compass62_pure_compass_62.json`.
+- Parent **`rr-5lu` still open**. Tip residual **`rr-o0nn`**: post-Compass → Stepladder (`ADDR_LADDER`); 0x51 key spent, UP blocked.
+- No push.
+
+### 2026-08-09T22:35 CDT — harvest Gate B outdoor-intro causal (open)
+- Free-move after ExitToFarm requires event_flags_1f68 ≥ 0x00A1 (dog owned 0x80 + morning 0x20 + truck 0x01).
+- Truck D2 is 0x0011; CODE_83CEAE dog-intro softlocks free-move. house_size not causal.
+- Landed outdoor_intro_flags_ready (e966d7c). Next: pure complete D2 outdoor dog intro then shed.
+
