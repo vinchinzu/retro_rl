@@ -95,8 +95,9 @@ Module: `level4_dungeon.py`. Runner:
 `recordings/l4_chain_key_pure_chain_to_key.json` (**2/2 pure** ~1278f),
 `recordings/l4_clear50_pure_clear_50.json` (**2/2 pure** ~2478f),
 `recordings/l4_keyright62_pure_key_right_62.json` (**2/2 pure** ~1133f),
-`recordings/l4_clear62_pure_clear_62.json` (**2/2 pure** ~11536f).
-Not Clean STATUS promote.
+`recordings/l4_clear62_pure_clear_62.json` (**2/2 pure** ~11536f),
+`recordings/l4_compass62_pure_compass_62.json` (**2/2 pure** ~471f,
+ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 
 ### Live graph (from `Level4Entrance`)
 
@@ -119,7 +120,7 @@ Not Clean STATUS promote.
 | **0x61** | **live pure 2/2** | 3× `0x12` → split `0x1c` | Clear ~295f; bomb N → 0x51; KEY-RIGHT → 0x62 | `rr-yr77` / `rr-h278` |
 | **0x51** | **live pure 2/2** | 8× `0x1b` Keese | Key `0x19` pickup ~ (136,149) | `rr-wqdu` |
 | **0x50** | **live pure 2/2** | 5× `0x12` Vire | Dead-end pocket; no progress exit | `rr-2ysf` |
-| **0x62** | **live pure enter+clear 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; maze nav / pickup residual | `rr-2ysf` |
+| **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
 
 ### Runner
 
@@ -134,6 +135,7 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_50 --trial
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_62 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment chain_to_62 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_62 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 2 --save-state
 ```
 
 **Traps (live):**
@@ -145,10 +147,16 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_62 --trial
 - Bomb stand on 0x61: **(120, ~105)** face UP + B; wait blast then push UP.
 - Key item id is **0x19 from room entry** (not drop-after-clear); walk mid-room after Keese clear.
 - KEY-RIGHT 0x61: hold **y≈141** RIGHT; keys 1→0; vestibule enter ~(16,141).
-- 0x62 is a **dark maze** — compass pickup + further exits residual (no free RIGHT/UP/DOWN found without maze path).
+- 0x62 **dark maze**: open seek fails; use scripted holds
+  (`MAZE_62_TO_COMPASS` hold6 → pickup ~(136,132) sets `ADDR_COMPASS|0x08`,
+  then `MAZE_62_RETURN_WEST` hold4 → LEFT scroll to 0x61). Center y=141 is
+  wall-blocked from the west door — must follow the return corridor.
+- Post-compass: only durable exit found is **LEFT→0x61**. No free/bomb east
+  exit from 0x62. Stepladder is residual **north of the early rooms** (source:
+  backtrack then UP), not deeper into 0x62.
 
 Checkpoints (dev): `Level4Room61`, `Level4Room61Cleared`, `Level4FirstKey`,
-`Level4Room50Cleared`, `Level4Room62`, `Level4Room62Cleared`.
+`Level4Room50Cleared`, `Level4Room62`, `Level4Room62Cleared`, `Level4Compass`.
 
 ### Source speed route (planning only past compass — not emulator facts)
 

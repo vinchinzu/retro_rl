@@ -1,4 +1,4 @@
-"""Unit tests for Level 4 live interior anchors (rr-5lu / rr-2ysf)."""
+"""Unit tests for Level 4 live interior anchors (rr-5lu / rr-2ysf / rr-9so0)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,14 @@ from zelda_i.level4_dungeon import (
     BOMB_61_NORTH_STAND,
     BOMB_61_OPENS_TO,
     BombWall61North,
+    COMPASS_PICKUP_XY,
     KEY_61_EAST_Y,
     KEY_61_OPENS_TO,
     LEVEL4_COMPASS_BIT,
+    MAZE_62_RETURN_WEST,
+    MAZE_62_TO_COMPASS,
+    MAZE_IN_HOLD,
+    MAZE_OUT_HOLD,
     ROOM_L4_COMPASS_62,
     ROOM_L4_ENTRY,
     ROOM_L4_KEESE_KEY_51,
@@ -24,6 +29,7 @@ from zelda_i.level4_dungeon import (
     ROOM_ITEM_COMPASS,
     VIRE_OBJECT_TYPE as L4_VIRE,
     make_bomb_61_north_controller,
+    make_compass_62_controller,
     make_entry_up_controller,
     make_key_right_62_controller,
     make_left_50_controller,
@@ -100,12 +106,25 @@ def test_factories() -> None:
     assert kr.clear_vires is True
     c62 = make_room_62_clear_controller()
     assert c62.spec is ROOM_62_SPEC
+    compass = make_compass_62_controller()
+    assert compass.max_frames > 0
+    assert compass.phase.name == "MAZE_IN"
+
+
+def test_maze_62_paths() -> None:
+    assert MAZE_IN_HOLD == 6
+    assert MAZE_OUT_HOLD == 4
+    assert MAZE_62_TO_COMPASS[0] == "DOWN"
+    assert "RIGHT" in MAZE_62_TO_COMPASS
+    assert MAZE_62_RETURN_WEST[0] == "DOWN"
+    assert MAZE_62_RETURN_WEST.count("LEFT") >= 10
+    assert COMPASS_PICKUP_XY == (136, 132)
 
 
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"
-    assert r["tip"] == "rr-2ysf"
+    assert r["tip"] == "rr-9so0"
     assert r["entry_room"] == "0x71"
     assert r["live_graph"]["0x71"]["UP"] == "0x61"
     assert r["live_graph"]["0x61"]["BOMB_UP"] == "0x51"
@@ -113,7 +132,10 @@ def test_planning_interior_report() -> None:
     assert r["live_graph"]["0x51"]["LEFT"] == "0x50"
     assert r["live_graph"]["0x50"]["note"] == "dead_end_pocket"
     assert r["live_graph"]["0x62"]["room_item"] == "0x16"
+    assert r["live_graph"]["0x62"]["compass_bit"] == "0x8"
     assert r["segments"]["clear_vires_61"] == "rr-yr77"
     assert r["segments"]["clear_50"] == "rr-2ysf"
     assert r["segments"]["key_right_62"] == "rr-2ysf"
+    assert r["segments"]["compass_62"] == "rr-9so0"
     assert r["key_61_east"]["opens_to"] == "0x62"
+    assert r["maze_62"]["pickup_xy"] == [136, 132]
