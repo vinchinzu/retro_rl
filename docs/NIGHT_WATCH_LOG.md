@@ -14,6 +14,21 @@ Protocol:
 ## Ticks
 
 
+
+### 2026-08-10 night — harvest rr-5in PARTIAL (sparse water + refill residual)
+- Lane: harvest only (`snes/harvest/`)
+- Claimed **rr-5in** Gate B full power-on→Summer income
+- **GREEN progress:**
+  - D1 handoff + multi-day sleep Clean (rr-m0wq holds)
+  - ENSURE_CROP_SEEDS plant path works (rr-6byj holds) — `planted=1` west pocket
+  - **Sparse water detect** fix: `detect_crop_resume_plots(min_count=1)` + singleton dry centers so dry_crops=2 enters WATER (was instant `water fail` with no plots)
+  - Densify thrash bail at ~(25,30) queues east→south corridor charge (incl. north-lip stand 33,30)
+- **RED residual:** empty-can never fills on live continuous — post-charge re-multihop thrash ~(29–31,29); `watered=0`; money stays $100
+- Child bead **rr-o00y** (P1 bug, discovered-from rr-5in)
+- Units: `tests.test_crop_planter_logic` + `tests.test_water_refill` green (`test_water_only_detects_sparse_partial_plant`)
+- Evidence: `snes/harvest/recordings/rr_5in_residual.json`, `power_on_spring_to_summer.log`
+- Parent **rr-20w** / **rr-5in** stay open; tip next: **rr-o00y** fill path then re-run `--power-on --end-of-spring`
+- No push
 ### 2026-08-10T01:52 CDT — SM rr-0ue1 Bat→Red pure dual GREEN
 - Lane: super_metroid only (`snes/super_metroid/`)
 - Bead **rr-0ue1** CLOSED: Pure Bat Room → Red Tower return (K5 hop 11)
@@ -808,3 +823,17 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next bead: Pure Bat → Red reverse (from new right-sill pin)
 - Units: kpdr_dev + source_states green; no continuous / STATUS
 - No push
+
+### 2026-08-10T02:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - super_metroid: `rr-av5s` Red→Hellway (K5 hop 12) + parent `rr-dbu.8` Alpha PB stack (hops 0–9+ GREEN)
+  - zelda_i: `rr-rvae` map+Gleeok+TF from Level4PostLadder (post-ladder exit pure landed)
+  - harvest: `rr-5in` Gate B full power-on Spring→Summer (`rr-3q27` CLOSED empty-can 3/3)
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Idle priority action:** mega_man_2 `rr-54ui` OPEN (night4 residual: TAS/ROM LL spawn or nametable past 984)
+- **Spawned manager (worktree):** mega_man_2 → claim `rr-54ui` (TAS/ROM analysis tip)
+  - subagent_id: `019fea79-f501-7d23-94c8-cb6c96cca41a` (worktree isolation)
+- **Not spawned (busy):** super_metroid, zelda_i, harvest
+- **Not spawned:** solver rr-gbd.32 CLOSED; remaining P3/P4 sketches
+- **Cap:** 3 busy + 1 MM2 = 4 / 6 lanes
+- Never push.
