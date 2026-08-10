@@ -118,6 +118,17 @@ ICE_LEAVE_DOOR_X = 40  # left blue door pressure band
 ICE_LEAVE_FRAMES = 480
 ICE_SNAKE_RETURN_SETTLE = 280
 
+# ---------------------------------------------------------------------------
+# Ice Snake → Tutorial return (0xA8B9 → 0xA865) — K5 stack hop 1
+# ---------------------------------------------------------------------------
+# Pure ice-to-snake handoff ~(472, 395) pose 10; tape Phase B hop 20.
+# Top-right blue door enter ~(236, 146). Prefer 2WJ climb (not freeze thrash).
+SNAKE_TUTORIAL_DOOR_X = 210
+SNAKE_TUTORIAL_DOOR_Y = (100, 175)
+SNAKE_TO_TUTORIAL_DROP_FRAMES = 700
+SNAKE_TOP_TO_TUTORIAL_FRAMES = 500
+TUTORIAL_RETURN_SETTLE = 280
+
 
 def in_business(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_BUSINESS
@@ -267,6 +278,11 @@ __all__ = [
     "SNAKE_MID_SHELF_Y",
     "SNAKE_TOP_X",
     "SNAKE_TOP_Y",
+    "SNAKE_TOP_TO_TUTORIAL_FRAMES",
+    "SNAKE_TO_TUTORIAL_DROP_FRAMES",
+    "SNAKE_TUTORIAL_DOOR_X",
+    "SNAKE_TUTORIAL_DOOR_Y",
+    "TUTORIAL_RETURN_SETTLE",
     "SNAKE_TUNNEL_EXIT_X",
     "SNAKE_TUNNEL_FLOOR_Y",
     "SNAKE_TUNNEL_FRAMES",

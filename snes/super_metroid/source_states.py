@@ -222,6 +222,18 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1, 2, 9, 10}),
     ),
     SourceFingerprint(
+        "post_ice_snake_to_tutorial_pure",
+        "scratch/post_ice_snake_to_tutorial_pure.state",
+        0xA865,
+        use_for="Ice return pure handoff (rr-bf29 snake-to-tutorial dual 2386f); pure tutorial-to-gate",
+        continuous_like=False,
+        x_min=20,
+        x_max=80,
+        y_min=100,
+        y_max=160,
+        poses=frozenset({1, 2, 9, 10, 75, 77, 81}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,
