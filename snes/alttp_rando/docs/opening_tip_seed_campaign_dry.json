@@ -1,0 +1,283 @@
+{
+  "claimable": true,
+  "config": {
+    "assist_contract_digest": null,
+    "assist_contract_path": null,
+    "assist_mode": null,
+    "budget": 8,
+    "budget_unit": "frames",
+    "generator": "alttp_rando.fixture",
+    "generator_version": "1",
+    "goal": "house_to_uncle",
+    "intervention_class": "Clean",
+    "logic": "noglitches",
+    "metadata": {
+      "edge": "house_to_uncle",
+      "mode": "dry",
+      "note": "Fixture seeds on the documented JP 1.0 vanilla FirstPlay substrate. Uncle sword at Link's Uncle (standard mode) is the seed-agnostic opening tip precondition. Path does not consult a spoiler oracle. Not shuffled-seed robustness until an ALTTPR generator/patch is wired.",
+      "package": "alttp_rando",
+      "rom_sha256": "794e040b02c7591b59ad8843b51e7c619b88f87cddc6083a8e7a4027b96a2271",
+      "rom_variant": "japanese_1.0",
+      "seed_source": "fixture",
+      "skill_id": "z3.house_to_uncle.vanilla_opening",
+      "spoiler_oracle": false,
+      "start_state": "FirstPlay",
+      "substrate": "vanilla",
+      "tip": "fighter_sword"
+    },
+    "policy_identity": {
+      "digest": "e7308919103f7e1ab48358aa14224bff5eef0c24cc988d060ef9445956768837",
+      "name": "unbound-policy"
+    },
+    "policy_identity_digest": "e7308919103f7e1ab48358aa14224bff5eef0c24cc988d060ef9445956768837",
+    "policy_identity_scope": "per-seed",
+    "runtime_observation_class": "Bronze",
+    "seed_count": 3,
+    "seeds": [
+      "1337",
+      "1338",
+      "1339"
+    ],
+    "start_identity": {
+      "digest": "3a781f013895512e9225346948ed0d3fea3e72ec6185b2a8baf9db33486b010f",
+      "start_state": "seed-set:alttp_rando.fixture:1:1337,1338,1339"
+    },
+    "start_identity_digest": "3a781f013895512e9225346948ed0d3fea3e72ec6185b2a8baf9db33486b010f",
+    "start_identity_scope": "per-seed",
+    "success_threshold": 2
+  },
+  "event": "seed_campaign_report",
+  "policy": "z3.house_to_uncle.vanilla_opening",
+  "schema_version": 1,
+  "seed_results": [
+    {
+      "assist_contract_digest": null,
+      "assist_contract_path": null,
+      "assist_mode": null,
+      "assists": {},
+      "attempt_audit": {
+        "assists": {},
+        "audit_capabilities": {
+          "observes_assists": true,
+          "observes_mid_run_loads": true,
+          "observes_ram_writes": true,
+          "provider": "alttp_rando.opening_tip_campaign.dry",
+          "schema_version": 1
+        },
+        "intervention_class": "Clean",
+        "mid_run_loads": 0,
+        "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+        "ram_writes": 0,
+        "runtime_observation_class": "Bronze",
+        "start_identity_digest": "117ced01a3e1e98a4c572eb9fe10173236c29e29238892fbf2e46300eda3dd57"
+      },
+      "contract": {
+        "assist_contract_digest": null,
+        "assist_contract_path": null,
+        "assist_mode": null,
+        "benchmark_id": "alttp_rando_opening_tip_1337",
+        "intervention_class": "Clean",
+        "metadata": {},
+        "objective": "house_to_uncle",
+        "policy_identity": {
+          "digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+          "metadata": {
+            "bytecode_sha256": null,
+            "fingerprint_kind": "source",
+            "implementation_kind": "class",
+            "implementation_module": "alttp_rando.opening_tip_campaign",
+            "implementation_qualname": "HouseToUncleCampaignPolicy",
+            "source_sha256": "fe1ce4ca052e96092427a82332ad35b4f6714254321c3a4fc35a46ca817c2b93"
+          },
+          "name": "z3.house_to_uncle.vanilla_opening",
+          "source": "alttp_rando.opening_tip_campaign:HouseToUncleCampaignPolicy",
+          "version": "implementation-v1"
+        },
+        "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+        "runtime_observation_class": "Bronze",
+        "start_identity": {
+          "digest": "117ced01a3e1e98a4c572eb9fe10173236c29e29238892fbf2e46300eda3dd57",
+          "metadata": {
+            "integration": "ALTTPRando-Snes",
+            "seed_name": "fixture_1337",
+            "seed_number": "1337",
+            "source": "fixture",
+            "start_state": "FirstPlay"
+          },
+          "rom_sha256": "794e040b02c7591b59ad8843b51e7c619b88f87cddc6083a8e7a4027b96a2271",
+          "start_state": "first_play_fixture_1337"
+        },
+        "start_identity_digest": "117ced01a3e1e98a4c572eb9fe10173236c29e29238892fbf2e46300eda3dd57"
+      },
+      "execution_status": "success",
+      "failure_mode": null,
+      "frames": 3,
+      "intervention_class": "Clean",
+      "mid_run_loads": 0,
+      "outcome": "success",
+      "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+      "ram_writes": 0,
+      "runtime_observation_class": "Bronze",
+      "seed": "1337",
+      "start_identity_digest": "117ced01a3e1e98a4c572eb9fe10173236c29e29238892fbf2e46300eda3dd57",
+      "success": true,
+      "terminal_milestone": "fighter_sword"
+    },
+    {
+      "assist_contract_digest": null,
+      "assist_contract_path": null,
+      "assist_mode": null,
+      "assists": {},
+      "attempt_audit": {
+        "assists": {},
+        "audit_capabilities": {
+          "observes_assists": true,
+          "observes_mid_run_loads": true,
+          "observes_ram_writes": true,
+          "provider": "alttp_rando.opening_tip_campaign.dry",
+          "schema_version": 1
+        },
+        "intervention_class": "Clean",
+        "mid_run_loads": 0,
+        "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+        "ram_writes": 0,
+        "runtime_observation_class": "Bronze",
+        "start_identity_digest": "67cafe126b591fbb9e3fe67e1f56909ec1bec467cac746c48cfc423467994af0"
+      },
+      "contract": {
+        "assist_contract_digest": null,
+        "assist_contract_path": null,
+        "assist_mode": null,
+        "benchmark_id": "alttp_rando_opening_tip_1338",
+        "intervention_class": "Clean",
+        "metadata": {},
+        "objective": "house_to_uncle",
+        "policy_identity": {
+          "digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+          "metadata": {
+            "bytecode_sha256": null,
+            "fingerprint_kind": "source",
+            "implementation_kind": "class",
+            "implementation_module": "alttp_rando.opening_tip_campaign",
+            "implementation_qualname": "HouseToUncleCampaignPolicy",
+            "source_sha256": "fe1ce4ca052e96092427a82332ad35b4f6714254321c3a4fc35a46ca817c2b93"
+          },
+          "name": "z3.house_to_uncle.vanilla_opening",
+          "source": "alttp_rando.opening_tip_campaign:HouseToUncleCampaignPolicy",
+          "version": "implementation-v1"
+        },
+        "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+        "runtime_observation_class": "Bronze",
+        "start_identity": {
+          "digest": "67cafe126b591fbb9e3fe67e1f56909ec1bec467cac746c48cfc423467994af0",
+          "metadata": {
+            "integration": "ALTTPRando-Snes",
+            "seed_name": "fixture_1338",
+            "seed_number": "1338",
+            "source": "fixture",
+            "start_state": "FirstPlay"
+          },
+          "rom_sha256": "794e040b02c7591b59ad8843b51e7c619b88f87cddc6083a8e7a4027b96a2271",
+          "start_state": "first_play_fixture_1338"
+        },
+        "start_identity_digest": "67cafe126b591fbb9e3fe67e1f56909ec1bec467cac746c48cfc423467994af0"
+      },
+      "execution_status": "success",
+      "failure_mode": null,
+      "frames": 3,
+      "intervention_class": "Clean",
+      "mid_run_loads": 0,
+      "outcome": "success",
+      "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+      "ram_writes": 0,
+      "runtime_observation_class": "Bronze",
+      "seed": "1338",
+      "start_identity_digest": "67cafe126b591fbb9e3fe67e1f56909ec1bec467cac746c48cfc423467994af0",
+      "success": true,
+      "terminal_milestone": "fighter_sword"
+    },
+    {
+      "assist_contract_digest": null,
+      "assist_contract_path": null,
+      "assist_mode": null,
+      "assists": {},
+      "attempt_audit": {
+        "assists": {},
+        "audit_capabilities": {
+          "observes_assists": true,
+          "observes_mid_run_loads": true,
+          "observes_ram_writes": true,
+          "provider": "alttp_rando.opening_tip_campaign.dry",
+          "schema_version": 1
+        },
+        "intervention_class": "Clean",
+        "mid_run_loads": 0,
+        "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+        "ram_writes": 0,
+        "runtime_observation_class": "Bronze",
+        "start_identity_digest": "b3914e3f9a8825b5fd93fb1a9ae4d3ae97d5d86c4373274fc1dce6c5e112a43f"
+      },
+      "contract": {
+        "assist_contract_digest": null,
+        "assist_contract_path": null,
+        "assist_mode": null,
+        "benchmark_id": "alttp_rando_opening_tip_1339",
+        "intervention_class": "Clean",
+        "metadata": {},
+        "objective": "house_to_uncle",
+        "policy_identity": {
+          "digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+          "metadata": {
+            "bytecode_sha256": null,
+            "fingerprint_kind": "source",
+            "implementation_kind": "class",
+            "implementation_module": "alttp_rando.opening_tip_campaign",
+            "implementation_qualname": "HouseToUncleCampaignPolicy",
+            "source_sha256": "fe1ce4ca052e96092427a82332ad35b4f6714254321c3a4fc35a46ca817c2b93"
+          },
+          "name": "z3.house_to_uncle.vanilla_opening",
+          "source": "alttp_rando.opening_tip_campaign:HouseToUncleCampaignPolicy",
+          "version": "implementation-v1"
+        },
+        "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+        "runtime_observation_class": "Bronze",
+        "start_identity": {
+          "digest": "b3914e3f9a8825b5fd93fb1a9ae4d3ae97d5d86c4373274fc1dce6c5e112a43f",
+          "metadata": {
+            "integration": "ALTTPRando-Snes",
+            "seed_name": "fixture_1339",
+            "seed_number": "1339",
+            "source": "fixture",
+            "start_state": "FirstPlay"
+          },
+          "rom_sha256": "794e040b02c7591b59ad8843b51e7c619b88f87cddc6083a8e7a4027b96a2271",
+          "start_state": "first_play_fixture_1339"
+        },
+        "start_identity_digest": "b3914e3f9a8825b5fd93fb1a9ae4d3ae97d5d86c4373274fc1dce6c5e112a43f"
+      },
+      "execution_status": "success",
+      "failure_mode": null,
+      "frames": 3,
+      "intervention_class": "Clean",
+      "mid_run_loads": 0,
+      "outcome": "success",
+      "policy_identity_digest": "06a1d26b41a948f2b23041e04177c8493767f616cb3f5700c1029fa00804066e",
+      "ram_writes": 0,
+      "runtime_observation_class": "Bronze",
+      "seed": "1339",
+      "start_identity_digest": "b3914e3f9a8825b5fd93fb1a9ae4d3ae97d5d86c4373274fc1dce6c5e112a43f",
+      "success": true,
+      "terminal_milestone": "fighter_sword"
+    }
+  ],
+  "seed_robustness_schema_version": 1,
+  "summary": {
+    "claimable": true,
+    "infra_errors": 0,
+    "required_successes": 2,
+    "seeds_successful": 3,
+    "seeds_total": 3,
+    "success_rate": 1.0,
+    "threshold_met": true
+  }
+}
