@@ -40,17 +40,38 @@ fpd6 residual was “~28px short in X at apex”. Clean progress:
   `air_post4_cloud_v5/dps_search.json`, `air_post4_cloud_v6/summary.json`,  
   `air_post4_cloud_v7/summary.json`.
 
+## Solid decode (2026-08-10 session) — still RED
+
+Probe: `scripts/cloud_solid_decode.py` → `recordings/air_post4_cloud_solid/`.
+708 Clean recipes + deep dumps + diagnostic pokes (poke = not Clean evidence).
+
+| Field | Decode |
+|-------|--------|
+| `aobject_tsa` ($4E0) | **AI timer**, not solid type. Counts down (~41→0) then resets; not `tsa.asm` block enum |
+| flag 128→192 | `objects_exist` → `exist\|objects_right` (facing). **Not** solid enable. Appearing-block bit `$10` never set on empty cloud |
+| type 6 | Confirmed `objects_killed` death anim on rider slot (~12f then free). |
+| type 118 | **Not observed** on kill path this session (prior “118 flash” likely misread). Enum = `objects_large_life_capsule` |
+| Body post-kill | Stays **`0x3E`**, HP 20, tsa cycles, `ys≈255` signed motion; **no** type→platform rewrite |
+| feet-on-top | With MM_H=24, **`feet_dy=0` + dx≤2** after kill achieved many times — still freefall `ft=0` |
+| Co-sink | After contact, player+cloud match vertical rate; `feet_dy` locks ≈−3…−4 |
+| Screen | Body often `scr=4` while cam still 3 at meet — possible collision gate |
+| Diagnostic poke | Place sy=by−24, zero yspeed: still falls through empty `0x3E` (suggests solid path inactive, or needs edge-cross descent the AI never arms) |
+
+### Geometry note
+
+At typical kill (sy≈34, by≈48): player **top** is above cloud, but feet (sy+24) are already through cloud volume. Jump apex min_sy~34 vs cloud y≈32–50 → almost no “clearly above then drop” window. One-way solid would need a thin surface cross while descending **relative to cloud**.
+
 ## Next experiments (do not re-run)
 
-**Do not:** goblin-solid, pure-RIGHT only, “LL never spawns”, hold-B spam without pulse.
+**Do not:** goblin-solid, pure-RIGHT only, “LL never spawns”, hold-B spam without pulse,
+re-grid feet_dy=0 alone (already closed as insufficient).
 
 **Do:**
 
-1. **Object-solid decode** — `aobject_tsa=$4E0`, flag bits after kill (128→192), type 118 role;  
-   stand pose: compare sy vs by when human/TAS is on cloud (likely feet offset, not sy==by).
-2. **Land window** — after kill, approach from **above** with feet-on-top geometry (sy ≈ by − sprite_h), not body-center align.
-3. Chain mapset 5–6 LLs once first cloud stand freezes a state.
-4. Freeze AirScreen2→5 (3/3) only after stand+ride advances cam.
+1. **Disasm body AI** (`objects_kaminari_goro` 0x3E) for platform/stand arm after child `0x3D` dies — when does solid arm?
+2. **TAS / human frame pin** — sy vs by, `$2C` status, body tsa/flag, cam scr when feet stick on empty cloud.
+3. **Screen-align** — ensure player+body same `aobject_screen` / cam≥4 before land window.
+4. Chain mapset 5–6 LLs only after first stand freezes a state.
 
 ## Smoke
 

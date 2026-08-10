@@ -38,11 +38,10 @@ Post-screen-4 bottleneck (2026-08-09/10 probe, rr-54ui — open):
   1000+ goblin-top / phase hops: 0 elevated lands.
 - LL **does spawn** (fpd6): types **0x3D/0x3E** mapset4 from prog~961;
   body y≈32–36. Goblin **0x40** (was mislabeled type36).
-- rr-54ui: **rider kill Clean** (pulse B on 0x3D); Y-meet after kill can
-  close X to ~5–10px but empty cloud still not solid under feet. Kill with
-  dy≳20 co-sinks with cloud. Night3–5 under-read `$0400`.
+- rr-54ui: **rider kill Clean** (pulse B on 0x3D); feet_dy=0 @ dx≤2 still
+  freefall. `aobject_tsa`=AI timer; flag 192=facing not solid. dy≳20 co-sinks.
 - A needs rising edge after load. Pipi family 0x37–0x3C.
-- Next (rr-54ui): object-solid stand decode + chain LLs → camera≥5.
+- Next (rr-54ui): body AI solid-arm / TAS pin / screen-align → camera≥5.
 
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """
