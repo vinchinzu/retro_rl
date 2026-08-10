@@ -61,6 +61,7 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_snake_to_ice,
     play_ice_snake_to_tutorial,
     play_ice_to_snake,
+    play_ice_tutorial_to_gate,
 )
 from super_metroid.routes.kpdr.k4_norfair import (
     play_bat_cave_to_speed_hall,
@@ -232,6 +233,8 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "ice_to_snake": play_ice_to_snake,
     # K5 stack hop 1: Snake mid-right → Tutorial (tape Phase B return hop 20).
     "ice_snake_to_tutorial": play_ice_snake_to_tutorial,
+    # K5 stack hop 2: Tutorial left → Ice Gate (tape Phase B return hop 21).
+    "ice_tutorial_to_gate": play_ice_tutorial_to_gate,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,
