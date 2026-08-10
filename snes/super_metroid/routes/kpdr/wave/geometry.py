@@ -104,6 +104,27 @@ STB_CLIMB_FRAMES = 1800
 STB_DOOR_FRAMES = 400
 
 # ---------------------------------------------------------------------------
+# Bubble → Upper Norfair Farm return (BTF_*) — rr-czg9 / Phase B hop 11
+# Source post_single_to_bubble_pure ~(472,395) right mid sill (node 6).
+# Human tape f7624–8952: LEFT+A climb to upper ~y155 → LEFT hop/drop morph
+# shaft → mid-low y531 → morph tunnels down-right → bottom y745–905 LEFT
+# through low ceiling → bottom-most left blue door (node 4) y907 → Farm
+# ``0xAF72`` settle right top ~(472–523,139).
+# ---------------------------------------------------------------------------
+BTF_MID_Y = (380, 420)  # pin / Single-door sill ~y395
+BTF_UPPER_Y = (130, 180)  # first upper land ~y155
+BTF_MID_LOW_Y = (500, 560)  # mid shaft land ~y531
+BTF_BOTTOM_Y_MIN = 700  # bottom morph zone
+BTF_BOTTOM_FLOOR_Y = (880, 950)  # bottom floor / door height ~y907
+BTF_DOOR_X = 40
+BTF_DOOR_Y = (880, 940)
+BTF_FARM_SETTLE = 280
+BTF_CLIMB_FRAMES = 500
+BTF_DROP_FRAMES = 900
+BTF_BOTTOM_FRAMES = 1600
+BTF_DOOR_FRAMES = 400
+
+# ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM (DC_*)
 # Live (2026-08-06, rr-dbu.10): entry ~(61,139); upper hop → Kamer seat
 # x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200.
@@ -201,6 +222,18 @@ __all__ = [
     "STB_DEEP_FRAMES",
     "STB_CLIMB_FRAMES",
     "STB_DOOR_FRAMES",
+    "BTF_MID_Y",
+    "BTF_UPPER_Y",
+    "BTF_MID_LOW_Y",
+    "BTF_BOTTOM_Y_MIN",
+    "BTF_BOTTOM_FLOOR_Y",
+    "BTF_DOOR_X",
+    "BTF_DOOR_Y",
+    "BTF_FARM_SETTLE",
+    "BTF_CLIMB_FRAMES",
+    "BTF_DROP_FRAMES",
+    "BTF_BOTTOM_FRAMES",
+    "BTF_DOOR_FRAMES",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",
