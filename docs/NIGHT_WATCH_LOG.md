@@ -944,3 +944,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Units: kpdr_dev + controller_common 27 passed; no continuous / STATUS
 - Bead **rr-av5s** left **in_progress** (mid from y1942 next)
 - No push
+
+### 2026-08-10T04:30 CDT — SM Red climb past pocket to y1942
+- `rr-av5s` PARTIAL: past pocket ceiling ~(219,1942). Mid/upper/Hellway still RED.
+- Next: freeze-ripper/HBJ from 1942 → tunnel y<=1880 → Hellway.
+
