@@ -842,3 +842,21 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Plant + sparse water detect GREEN; empty-can after sparse plant still RED (rr-o00y).
 - Next: post-charge y≥32 F0 fill path then re-run power-on end-of-spring.
 
+
+### 2026-08-10T~02:15 CDT — mega_man_2 rr-54ui night5 residual (OPEN)
+- Lane: mega_man_2 only (`nes/mega_man_2/`)
+- Claimed **rr-54ui** (was open; no other MM2 in_progress)
+- Pursued residual tip: ROM/TAS enemy placement + nametable past 984
+- **Result: still OPEN** — no camera≥5 / boss door / grounded past prog 984
+- Findings:
+  - Map-match: prog~950 pre-LL (A/late); gap after 984 = expected B/LL sky
+  - Type36 Air Tikki: indestructible; f420 64→128 teleport-hit; stands = tiles
+  - Freefall grid: max feet=1 prog **980**; **0** tile hits prog>984
+  - Types only {1,35,36} (shoot/edge/policy camp + WRAM novelty)
+  - ROM: property rows 0x22–0x25; no spawn-list decode yet
+- Smoke AirScreen2→4 GREEN 502f HP16; units 10/10
+- Child **rr-fpd6**: decode LL spawn / TAS FM2 at prog≥1000
+- Evidence: `nes/mega_man_2/recordings/air_post4_night5/` (+ RED_PIN.txt)
+- Do not re-run: goblin-solid, pure-RIGHT grids, y84 edge LL camps
+- No push
+- Next: claim rr-fpd6 (Mesen/disasm spawn or TAS compare)
