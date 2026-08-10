@@ -27,6 +27,17 @@ EAST_GLASS_DOOR_X = 40
 EAST_TO_GLASS_FRAMES = 600
 EAST_TO_GLASS_SETTLE = 260
 
+# Glass Tunnel 0xCEFB bottom-left blue door into West Tunnel 0xCF54
+# (outbound ``play_west_to_glass`` runs RIGHT into Glass).
+# Mirror of west_to_glass run/shoot/spin/hold/settle knobs; LEFT reverse.
+# Pure pin mid-floor ~(216,395) after east_to_glass; tape left-side ~(17,395).
+GLASS_WEST_DOOR_X = 40
+GLASS_TO_WEST_RUN = 80
+GLASS_TO_WEST_SHOOT = 5
+GLASS_TO_WEST_SPIN = 50
+GLASS_TO_WEST_HOLD = 300
+GLASS_TO_WEST_SETTLE = 260
+
 __all__ = [
     "EAST_GLASS_DOOR_X",
     "EAST_RETURN_X_MAX",
@@ -34,6 +45,12 @@ __all__ = [
     "EAST_RETURN_Y_MIN",
     "EAST_TO_GLASS_FRAMES",
     "EAST_TO_GLASS_SETTLE",
+    "GLASS_TO_WEST_HOLD",
+    "GLASS_TO_WEST_RUN",
+    "GLASS_TO_WEST_SETTLE",
+    "GLASS_TO_WEST_SHOOT",
+    "GLASS_TO_WEST_SPIN",
+    "GLASS_WEST_DOOR_X",
     "WH_EAST_DOOR_X",
     "WH_ELEV_BAND_X_MAX",
     "WH_ELEV_BAND_Y_MAX",
