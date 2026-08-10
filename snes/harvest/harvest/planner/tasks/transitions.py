@@ -90,33 +90,40 @@ def hands_are_clear(ram: np.ndarray) -> bool:
     return True
 
 
-def toss_held_actions(*, face: str = "down") -> List[np.ndarray]:
-    """Face away from a doorway and throw whatever is in hands.
+def toss_held_actions(*, face: str = "down", step_away: bool = False) -> List[np.ndarray]:
+    """Face a direction and throw whatever is in hands.
 
-    Matches farm-clearer and toss_* recordings: face, pause, face+A hold,
-    settle. A short walk in the throw direction helps when standing against
-    a wall (house door / fence edge).
+    Stationary face+A is the ROM-proven local drop (fence_flow corridor, crop
+    planter). Long B-walks before A often pin the player against walls/debris
+    or re-pickup the just-dropped stone (held 0x0D / weed 0x09) — that is what
+    left power-on soaks stuck at return_home with hands full after CLEAR_FIELD.
+    Optional short step-away is only for wall-hug door stands.
     """
     actions: List[np.ndarray] = []
-    actions.extend(make_action(**{face: True}) for _ in range(6))
+    # Face and settle before A so the throw direction is latched.
+    actions.extend(make_action(**{face: True}) for _ in range(10))
     actions.extend(make_action() for _ in range(4))
-    # Step into open ground so the throw is not blocked by the wall.
-    actions.extend(make_action(**{face: True, "b": True}) for _ in range(10))
-    actions.extend(make_action() for _ in range(4))
-    # Hold face+A like toss_bush_pond; plain A alone often fails mid-carry.
-    actions.extend(make_action(**{face: True, "a": True}) for _ in range(18))
-    actions.extend(make_action(a=True) for _ in range(10))
-    actions.extend(make_action() for _ in range(24))
-    actions.extend(make_action(**{face: True, "b": True}) for _ in range(8))
-    actions.extend(make_action() for _ in range(10))
+    if step_away:
+        # One short nudge into open ground (door/fence edge only).
+        actions.extend(make_action(**{face: True, "b": True}) for _ in range(6))
+        actions.extend(make_action() for _ in range(4))
+    # Hold face+A; plain A alone often fails mid-carry.
+    actions.extend(make_action(**{face: True, "a": True}) for _ in range(20))
+    actions.extend(make_action(a=True) for _ in range(8))
+    actions.extend(make_action() for _ in range(16))
     return actions
 
 
-def multi_face_toss_actions() -> List[np.ndarray]:
-    """Try each cardinal throw direction once — used before house entry."""
+def multi_face_toss_actions(*, prefer_south: bool = True) -> List[np.ndarray]:
+    """Try each cardinal throw direction once — used before house entry.
+
+    Prefer south/sides first so we do not seal a northern approach (fence y=31
+    residual). ``up`` last as a last-resort face.
+    """
     actions: List[np.ndarray] = []
-    for face in ("down", "left", "right", "up"):
-        actions.extend(toss_held_actions(face=face))
+    faces = ("down", "left", "right", "up") if prefer_south else ("down", "up", "left", "right")
+    for face in faces:
+        actions.extend(toss_held_actions(face=face, step_away=False))
     return actions
 
 
@@ -382,10 +389,15 @@ class DirectionalTransitionTask(Task):
         return action
 
     def _queue_clear_hands(self) -> None:
+        # First attempt: step away from the door then toss. Later: multi-face
+        # stationary (stones/weeds often refuse a single wall-facing throw).
         face = "down" if self.direction == "up" else "up"
         if self.direction in {"left", "right"}:
             face = "down"
-        self._action_queue.extend(toss_held_actions(face=face))
+        if self._hands_attempts <= 1:
+            self._action_queue.extend(toss_held_actions(face=face, step_away=True))
+        else:
+            self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
 
     def _overshot_door(self) -> bool:
         if self.overshoot_limit_px is None:
@@ -406,9 +418,23 @@ class DirectionalTransitionTask(Task):
         self._navigator.path = []
         self._navigator.stasis = 0
         self._pathfinder.temp_blocked.clear()
+        # Escape mid-wall clip on up-doors: strafe off the column then walk
+        # south. Pure down while embedded in the house sprite often no-ops
+        # (rr-6g7g residual y≈372), leaving soft-restand thrashing in place.
+        if self.direction == "up" and self.stand_tile is not None:
+            self._action_queue.extend(make_action(left=True) for _ in range(8))
+            self._action_queue.extend(make_action(down=True, b=True) for _ in range(28))
+            self._action_queue.extend(make_action(right=True) for _ in range(10))
+            self._action_queue.extend(make_action(down=True, b=True) for _ in range(20))
+            self._action_queue.extend(make_action() for _ in range(6))
 
     def _door_push_action(self) -> np.ndarray:
-        """Align to the door column/row, then press into the doorway."""
+        """Align to the door column/row, then press into the doorway.
+
+        Near the threshold, alternate walk (no B) with run. Blind B-hold can
+        overshoot the farmhouse door into a mid-wall clip at y≈372 without a
+        map change (rr-6g7g residual after hands-clear).
+        """
         pos = self._navigator.current_pos
         if self.door_align_px is not None:
             if self.direction in {"up", "down"}:
@@ -425,7 +451,9 @@ class DirectionalTransitionTask(Task):
                         up=pos.y > self.door_align_px,
                         b=True,
                     )
-        return make_action(**{self.direction: True, "b": True})
+        # Walk into the door most frames; brief run every 4th frame for speed.
+        use_run = (self._step_count % 4) == 0
+        return make_action(**{self.direction: True, "b": use_run})
 
     def _barn_exit_action(self) -> np.ndarray:
         pos = self._navigator.current_pos
@@ -603,13 +631,40 @@ class DirectionalTransitionTask(Task):
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._coop_exit_action()))
 
         if self.stand_tile is not None and not self._is_target_tilemap(tilemap):
-            if self._overshot_door():
+            # Only arm re-stand while in door-push mode. While correcting, keep
+            # walking (scripted south nudge and/or BFS) — do not re-clear path.
+            if self._stand_reached and self._overshot_door():
                 print(
                     f"[DOOR] Overshoot on {self.name} "
                     f"pos=({self._navigator.current_pos.x},{self._navigator.current_pos.y}); "
                     "re-standing"
                 )
                 self._reset_to_stand()
+            # Mid-wall pin above the outdoor stand without crossing the deep
+            # overshoot line (base house y≈360–380). Cooldown via stasis reset
+            # in _reset_to_stand so we do not thrash every frame at stasis=91.
+            elif (
+                self.direction == "up"
+                and self._stand_reached
+                and self._navigator.stasis > 120
+                and self.stand_tile is not None
+            ):
+                stand_y = self.stand_tile[1] * 16 + 8
+                if self._navigator.current_pos.y < stand_y - 48:
+                    print(
+                        f"[DOOR] Soft mid-wall restand on {self.name} "
+                        f"pos=({self._navigator.current_pos.x},"
+                        f"{self._navigator.current_pos.y}) stasis="
+                        f"{self._navigator.stasis}"
+                    )
+                    self._reset_to_stand()
+            # Drain scripted re-stand walk before BFS (queued by _reset_to_stand).
+            if self._action_queue:
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(self._action_queue.popleft()),
+                    reason="re-stand after overshoot",
+                )
             if not self._stand_reached:
                 action = self._navigate_to_tile(world.ram, self.stand_tile)
                 if action is not None:

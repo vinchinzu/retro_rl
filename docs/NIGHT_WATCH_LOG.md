@@ -971,3 +971,24 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-rvae` open: map dual-green; Gleeok room 0x13 type 0x43 entered once from 0x12.
 - Stabilize 0x12 RIGHT→0x13 dual-green; fight + TF 0x08 residual.
 
+
+### 2026-08-10T~03:20 CDT — harvest rr-6g7g CLOSED (return_home hands-clear)
+- Lane: harvest only (`snes/harvest/`)
+- Claimed **rr-6g7g** (rr-5in residual after rr-o00y fill GREEN)
+- **Result: CLOSED** — clear hands / toss before house entry on power-on water days
+- Fix:
+  - `ReturnHomeTask`: always relocate to open drop spot south of house when
+    hands full (was only near-door); multi-face stationary A-drop first
+  - `toss_held_actions`: stationary face+A (fence_flow proven); optional short
+    step-away only for wall-hug doors — long B-walk re-picked stones (`0x0D`)
+  - `FarmClearTask`: more drop attempts + multi-face before handing off held
+  - Door push: prefer walk into threshold (not blind B-hold) + mid-wall escape
+- Evidence: `recordings/power_on_spring_to_summer.json`
+  - **7 overnights** past former D7 hands-clear fail
+  - reason no longer `could not clear hands…`
+  - crop wet=2/alive; Clean mid_run_state_loads=0
+  - Residual on **rr-5in**: D9 `return_home failed: nav_house_front multi_nav timeout`, money=$100, Summer not reached
+- Units: `BuildDayPhasesTests` 65 OK (incl. hands-full drop-spot + toss tests)
+- Bead **rr-6g7g** CLOSED; **rr-5in** still PARTIAL
+- No push
+- Next (rr-5in): stabilize house approach after water days + first potato ship for money>100

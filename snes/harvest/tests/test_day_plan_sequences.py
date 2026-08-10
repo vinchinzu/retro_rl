@@ -3140,6 +3140,71 @@ class BuildDayPhasesTests(unittest.TestCase):
         self.assertEqual(task._task.door_align_px, 136)
         self.assertTrue(task._task.require_empty_hands)
 
+    def test_return_home_navs_to_drop_spot_when_hands_full_in_field(self) -> None:
+        """rr-6g7g: CLEAR_FIELD may finish holding a stone far from the house."""
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.core.ram_catalog import live_wram_base
+
+        world = make_date_world(0x00, season=0, day=7, hour=17)
+        set_player_pos(world.ram, 89, 726)
+        base = live_wram_base(world.ram)
+        world.ram[ADDR_HELD_ITEM + base] = 0x0D
+        world.ram[field_spec("player_state").address + base] = 0x03
+        task = ReturnHomeTask()
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "nav_drop_spot")
+        self.assertIsInstance(task._task, NavTask)
+        self.assertEqual(task._drop_spot_navs, 1)
+        # Open ground south of house front (136,424) → ~y=480
+        self.assertEqual(
+            (task._task.target_px.x, task._task.target_px.y),
+            (136, 480),
+        )
+
+    def test_return_home_tosses_at_drop_spot_when_hands_full(self) -> None:
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.core.ram_catalog import live_wram_base
+
+        world = make_date_world(0x00, season=0, day=7, hour=17)
+        set_player_pos(world.ram, 136, 480)
+        base = live_wram_base(world.ram)
+        world.ram[ADDR_HELD_ITEM + base] = 0x0D
+        world.ram[field_spec("player_state").address + base] = 0x03
+        task = ReturnHomeTask()
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(result.reason, "drop carried before house")
+        self.assertEqual(task._phase, "drop_carried")
+        self.assertEqual(task._drop_attempts, 1)
+        self.assertTrue(task._action_queue)
+
+    def test_return_home_fails_after_drop_budget_with_held_item(self) -> None:
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.core.ram_catalog import live_wram_base
+
+        world = make_date_world(0x00, season=0, day=7, hour=17)
+        set_player_pos(world.ram, 136, 480)
+        base = live_wram_base(world.ram)
+        world.ram[ADDR_HELD_ITEM + base] = 0x0D
+        world.ram[field_spec("player_state").address + base] = 0x03
+        task = ReturnHomeTask(drop_attempt_limit=2)
+        task.reset(world)
+        task._drop_spot_navs = 3  # skip relocate
+        task._drop_attempts = 2
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("could not clear hands before house entry", result.reason or "")
+        self.assertIn("held=0x0D", result.reason or "")
+
     def test_day_plan_expands_dynamic_outdoor_phase_from_live_farm_state(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=6)
         world.ram[ADDR_WEEKDAY + 0x4000] = 6

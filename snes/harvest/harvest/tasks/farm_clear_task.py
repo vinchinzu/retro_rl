@@ -160,7 +160,12 @@ class FarmClearTask(Task):
         return TileScanner().has_clearable_debris(ram)
 
     def _finish_or_drop(self, world: WorldState, reason: str) -> TaskResult:
-        """Do not hand a carried weed/rock to the next day-plan phase."""
+        """Do not hand a carried weed/rock to the next day-plan phase.
+
+        Prefer multi-face stationary A-drop (fence_flow proven). Still SUCCESS
+        with held after budget so the day can sleep — ReturnHomeTask then
+        relocates to open ground and retries (rr-6g7g).
+        """
         if self._drop_queue:
             return TaskResult(
                 status=TaskStatus.RUNNING,
@@ -169,7 +174,8 @@ class FarmClearTask(Task):
             )
         if hands_are_clear(world.ram):
             return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
-        if self._drop_attempts >= 4:
+        drop_limit = 6
+        if self._drop_attempts >= drop_limit:
             held = read_held_item(world.ram)
             print(
                 f"[CLEAR] Leaving clear with held=0x{held:02X} after drop attempts"
@@ -180,13 +186,15 @@ class FarmClearTask(Task):
             )
         self._drop_attempts += 1
         self._pending_finish_reason = reason
-        if self._drop_attempts <= 2:
-            self._drop_queue.extend(toss_held_actions(face="down"))
+        if self._drop_attempts == 1:
+            self._drop_queue.extend(toss_held_actions(face="down", step_away=True))
+            self._drop_queue.extend(multi_face_toss_actions(prefer_south=True))
         else:
-            self._drop_queue.extend(multi_face_toss_actions())
+            self._drop_queue.extend(multi_face_toss_actions(prefer_south=True))
         print(
             f"[CLEAR] Dropping held item before done "
-            f"({self._drop_attempts}/4 held=0x{read_held_item(world.ram):02X})"
+            f"({self._drop_attempts}/{drop_limit} "
+            f"held=0x{read_held_item(world.ram):02X})"
         )
         return TaskResult(
             status=TaskStatus.RUNNING,
