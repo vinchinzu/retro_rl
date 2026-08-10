@@ -178,3 +178,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Source: `post_wave_to_double_chamber_pure` ~(984,139); export `post_double_to_single_chamber_pure` ~(216,630).
 - Parent **`rr-vqv3` remains open** (Wave→Business stack; 5 hops left). No continuous Ice STATUS.
 - Next tip: `rr-u0y8` Single→Bubble return. Residual: `docs/tasks/rr-qpkd-residual.md`.
+
+### 2026-08-09T22:15 CDT — L0 branch rollouts closed
+- **CLOSED** `rr-gbd.34` RolloutSpec/Result + replay digest; widths 1≡4; exception isolates branch; SM width-1 rom smoke.
+- L0 stack: .32 certified snapshots + .34 branch batches. Free capacity → next solver/product tip.
+
