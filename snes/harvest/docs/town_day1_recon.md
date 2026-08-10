@@ -80,9 +80,29 @@ ROM-verified shelf stands (face up + A):
 
 `TownDay1HandoffTask` picks **grass then can** after the town sequence (both
 fit in the 2-slot carry pair when hands are empty). Verified from
-`house_size=0` morning house (`Y1_Inside_House`). The AnnEve / rest_end
-fixtures incorrectly have `house_size=2`, which breaks `ExitToFarm` (tilemap
-`0x5F`) — shed pickup is soft-optional on that path.
+`Y1_Inside_House` / `Y1_Front_House` (free-move `game_state & 0x4000`).
+
+### Gate B blocker (2026-08-09, rr-bhr)
+
+Pure Town_Gate / power-on path reaches peak mask `0x3F` and D2 morning bed
+`(136,120)` via composed talks + truck rest-slice. **Shed still fails:**
+
+1. `ExitToFarm` from that D2 bed reaches farm `(136,344)` but clears free-move
+   (`game_state` `0x4001 → 0x0001`).
+2. Player is auto-walked south into house-enter stand `~(133,425)` with no
+   horizontal control (all directions ignored / forced south).
+3. MultiMapNav then soft-locks → tilemap `0x5F` (was misattributed to
+   `house_size` remodel mismatch).
+4. `$0970` (`house_size` catalog) INC's during Ann talk (0→2) as a **dialogue
+   step counter**, not remodel level — Gate B correctly snapshots
+   `house_size_at_start` only.
+5. Contrast: `Y1_Inside_House` outdoor keeps `gs=0x4001`,
+   `event_flags_1f68=0x00B1` (truck path `0x0011`) and shed grass+can succeeds.
+
+`ShedFetchItemTask` now fails fast with `farm_control_lost` instead of
+walking into `0x5F`. **Next fix:** re-record pure-path truck+sleep so morning
+exit keeps free-move, or complete the morning cutscene/event flags that the
+AnnEve rest capture assumes.
 
 ## Automation status (2026-08-01)
 
