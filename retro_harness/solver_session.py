@@ -214,6 +214,14 @@ class SolverSession:
             step = instance.policy.step(current)
             if not isinstance(step, SkillStep):
                 raise TypeError("skill policy step must return SkillStep")
+            # RUNNING is multi-frame only: each tick must advance the env so
+            # timeout accounting cannot hang on action=None. Terminal signals
+            # may omit action (already-at-goal SUCCESS, pure failure, etc.).
+            if step.signal is SkillSignal.RUNNING and step.action is None:
+                raise ValueError(
+                    "SkillSignal.RUNNING requires a non-None action; "
+                    "emit an explicit noop to advance frames"
+                )
             if step.action is not None:
                 before_action = current
                 action_record = canonical_action_record(step.action)

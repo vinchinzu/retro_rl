@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from retro_harness.adventure import (
     BindingCatalog,
@@ -28,10 +28,10 @@ from retro_harness.contracts import contract_digest
 from retro_harness.identity import sha256_bytes, sha256_file
 from retro_harness.play_spine import RunManifest, utc_now_iso
 from retro_harness.solver import (
+    OneShotSkillPolicy,
     SkillInstance,
     SkillSignal,
     SkillStep,
-    SolverObservation,
     SolverSessionResult,
 )
 from retro_harness.trajectory import (
@@ -94,22 +94,16 @@ CONTRACT_BUNDLE_DIGEST = contract_digest(
 VerticalSliceBundle = SolverAdapterBundle
 
 
-class InjectedFailurePolicy:
+class InjectedFailurePolicy(OneShotSkillPolicy):
     """Deterministic experiment fault used to prove recovery replanning."""
 
-    def reset(
-        self,
-        observation: SolverObservation,
-        config: Mapping[str, Any],
-    ) -> None:
-        del observation, config
-
-    def step(self, observation: SolverObservation) -> SkillStep:
-        del observation
-        return SkillStep(
-            SkillSignal.RETRYABLE_FAILURE,
-            reason="injected landing-door desync",
-            recovery_hint="exclude_primary_and_replan",
+    def __init__(self) -> None:
+        super().__init__(
+            SkillStep(
+                SkillSignal.RETRYABLE_FAILURE,
+                reason="injected landing-door desync",
+                recovery_hint="exclude_primary_and_replan",
+            )
         )
 
 

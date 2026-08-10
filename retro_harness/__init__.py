@@ -189,7 +189,9 @@ from retro_harness.benchmark_runner import (
 )
 from retro_harness.solver import (
     ObservationRequirement,
+    OneShotSkillPolicy,
     ProgressionDelta,
+    ScriptedSkillPolicy,
     SkillInstance,
     SkillOutcome,
     SkillOutcomeStatus,
@@ -301,7 +303,8 @@ __all__ = [
     "BenchmarkTier", "BenchmarkCase", "BenchmarkAttemptResult", "BenchmarkRunResult",
     "IdlePolicy", "RandomPolicy", "run_benchmark", "zero_action_for_env",
     # Solver runtime
-    "ObservationRequirement", "ProgressionDelta", "SkillInstance", "SkillOutcome",
+    "ObservationRequirement", "OneShotSkillPolicy", "ProgressionDelta",
+    "ScriptedSkillPolicy", "SkillInstance", "SkillOutcome",
     "SkillOutcomeStatus", "SkillPolicy", "SkillSignal", "SkillSpec", "SkillStep",
     "SolverLifecycle", "SolverObservation", "SolverResultStatus", "SolverSession",
     "SolverSessionResult", "SolverActionEvent", "SolverTraceEvent",

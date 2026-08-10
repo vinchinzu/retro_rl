@@ -183,3 +183,11 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-gbd.34` RolloutSpec/Result + replay digest; widths 1≡4; exception isolates branch; SM width-1 rom smoke.
 - L0 stack: .32 certified snapshots + .34 branch batches. Free capacity → next solver/product tip.
 
+
+### 2026-08-09T21:57 CDT — solver SkillPolicy multi-step lifecycle (rr-d03j)
+- **CLOSED** `rr-d03j` Exercise multi-step SkillPolicy lifecycle (not API narrow).
+- Shared helpers: `retro_harness/skill_policies.py` — `ScriptedSkillPolicy` (RUNNING ticks) + `OneShotSkillPolicy` (macro terminal).
+- `SolverSession`: RUNNING with `action=None` now raises (prevents hang / false timeout).
+- SM production adapter: `RouteCommandPolicy` + vertical `InjectedFailurePolicy` subclass OneShot; multi-frame path owned by ScriptedSkillPolicy.
+- Tests: multi-step RUNNING→SUCCESS, mid-skill replan, hang rejection, one-shot double-step; facade exports. 16 solver + full sm_rando suite green.
+- Next free capacity: ready solver tips `rr-gbd.14` / `.15` (P3 L2/L3 sketches) or higher-priority non-smb product tips; L0 stack complete (.32+.34).
