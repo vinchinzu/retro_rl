@@ -1136,3 +1136,29 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
   `RED_PIN.md`. Docs STATUS/plan/AGENTS/LL_SPAWN_DECODE updated.
 - Units: `pytest nes/mega_man_2/tests`. **No push.** Bead stays in_progress.
 - Next: object-solid decode then re-try stand → cam≥5.
+
+### 2026-08-10T~04:40 CDT — harvest rr-5in house approach GREEN (Gate B still PARTIAL)
+- Lane: harvest only (`snes/harvest/`)
+- Claimed **rr-5in** (Gate B full power-on Spring→Summer income)
+- **Advance:** house approach after water/CLEAR **GREEN** (former D9 multi_nav fail)
+- Root: CLEAR finished south of **y=31 fence wall** (tiles x=11–29). Direct
+  multi_nav to door and mid-field densify (x≈248) hit solid fence / SW rock
+  pocket with no BFS path (~(102,726) / ~(118,678)).
+- Fix (Clean):
+  - `ReturnHomeTask`: densify east (x≥480) or west (x≤160) of fence, or through
+    confirmed open gap; SW pre-escape + multi softlock recovery; timeout 11k
+  - `FarmClearTask`: exit-staging B-run when finishing south of fence
+  - `FarmClearer`: north-bias target sort (avoid deep-south softlock)
+  - `MultiMapNavTask`: early softlock fail + stagnant thrash
+- Evidence: `recordings/power_on_spring_to_summer.json`
+  - **11 overnights** Spring D2→D13, money **$160** (`money_gt_100=true`)
+  - Clean `mid_run_state_load=false`; reason **budget** (not nav_house_front)
+  - Prior pin (D9 multi_nav / D8 SW softlock) cleared
+- **Still RED for Gate B full:** Summer D1 not reached; CROP_WATER fails D7+
+  (`refill exhausted` / dry=6 watered=0 densify stuck (23,28)→(27,28)); no
+  harvest/ship; burns frames into max_frames budget
+- Residual bead **rr-5go9** (blocks rr-5in): refill thrash after fence
+- Units: `BuildDayPhasesTests` 70 OK
+- Bead **rr-5in** left **in_progress** PARTIAL; no push
+- Next: rr-5go9 stabilize empty-can/refill densify on continuous power-on, then
+  re-run `--end-of-spring` for Summer D1 + gate_b_full
