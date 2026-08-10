@@ -12,6 +12,8 @@ M3 isolated segments (Clean Bronze):
 - **Heat screen ≥ 3** from ``HeatScreen2``: mid 60/14 → late 25/12 (~351f grounded; 2026-08-10).
 - **Heat screen ≥ 4** from ``HeatScreen3``: pillars 25/10 phase 10 (~181f grounded; 2026-08-10).
 - **Heat screen ≥ 5** from ``HeatScreen4``: late 20/12 phase 4 (~131f cam / ~320f grounded; 2026-08-10).
+- **Heat screen ≥ 7 pre-boss** from ``HeatScreen5Ground``: ``start=screen5`` A-edge
+  j1/LEFT/j2 + hop 9/gw3 (~305f cam7; 3/3; 2026-08-10). Boss door climb residual.
 
 Level1 recipe (0-based frame index ``i``):
 
@@ -121,8 +123,10 @@ class HeatManPolicy:
       → grounded screen ≥4 (~181f).
     - ``screen4`` (HeatScreen4): period 20/12 with ``jump_phase`` 4 → screen ≥5
       (~131f cam / ~320f grounded).
+    - ``screen5`` (HeatScreen5Ground): A-edge idle → j1 → LEFT → j2 → rising-edge
+      short hops (hold 9 / ground_wait 3) → camera ≥7 pre-boss (~305f; 2026-08-10).
 
-    Residual: late Heat / boss door / Item-1 unlock (rr-809).
+    Residual: HeatScreen7 vertical/boss door climb + Item-1 unlock (rr-809).
     """
 
     # early (Heat1 / HeatScreen1)
@@ -142,11 +146,24 @@ class HeatManPolicy:
     s4_period: int = 20
     s4_hold: int = 12
     s4_phase: int = 4
+    # screen5 pre-boss (stateful; needs tile_feet)
+    s5_idle: int = 2
+    s5_j1_hold: int = 20
+    s5_left: int = 4
+    s5_j2_hold: int = 24
+    s5_hop_hold: int = 9
+    s5_ground_wait: int = 3
     shoot_period: int = 40
     shoot_hold: int = 2
     target_camera_screen: int = 1
-    # early | screen2 | screen3 | screen4
+    # early | screen2 | screen3 | screen4 | screen5
     start: str = "early"
+    # screen5 phase machine (mutated across ticks)
+    _s5_phase: str = "idle"
+    _s5_pt: int = 0
+    _s5_a_down: bool = False
+    _s5_a_left: int = 0
+    _s5_gnd_run: int = 0
 
     def tick(
         self,
@@ -155,12 +172,16 @@ class HeatManPolicy:
         health: int,
         camera_x_screen: int,
         fallen: bool = False,
+        tile_feet: int = 0,
     ) -> FrameAction:
         """Choose one frame of controller input."""
         if health <= 0 or fallen:
             return FrameAction(nes_idle_action(), "dead")
         if camera_x_screen >= self.target_camera_screen:
             return FrameAction(nes_idle_action(), "clear_hold")
+
+        if self.start == "screen5":
+            return self._tick_screen5(frame=frame, tile_feet=tile_feet)
 
         i = max(0, frame - 1)
         jump = self._want_jump(i)
@@ -172,6 +193,107 @@ class HeatManPolicy:
             reason = "mid_jump" if not shoot else "mid_jump_shoot"
         elif jump and self.start in {"screen3", "screen4"}:
             reason = "pillar_jump" if not shoot else "pillar_jump_shoot"
+        return FrameAction(nes_action(*buttons), reason)
+
+    def _tick_screen5(self, *, frame: int, tile_feet: int) -> FrameAction:
+        """Stateful late Heat: gap hops into pre-boss (cam ≥7)."""
+        i = max(0, frame - 1)
+        shoot = self.shoot_period > 0 and (i % self.shoot_period) < self.shoot_hold
+        feet_gnd = tile_feet == 1
+        feet_ladder = tile_feet == 2
+        if feet_gnd:
+            self._s5_gnd_run += 1
+        else:
+            self._s5_gnd_run = 0
+
+        jump = False
+        go_left = False
+        go_up = False
+        reason = "run"
+
+        if self._s5_phase == "idle":
+            self._s5_pt += 1
+            if self._s5_pt >= self.s5_idle:
+                self._s5_phase = "j1"
+                self._s5_pt = 0
+            return FrameAction(nes_idle_action(), "s5_idle")
+        if self._s5_phase == "j1":
+            jump = self._s5_pt < self.s5_j1_hold
+            self._s5_pt += 1
+            if self._s5_pt >= self.s5_j1_hold:
+                self._s5_phase = "air1"
+                self._s5_pt = 0
+            reason = "s5_j1"
+        elif self._s5_phase == "air1":
+            if feet_gnd:
+                self._s5_phase = "left"
+                self._s5_pt = 0
+            reason = "s5_air1"
+        elif self._s5_phase == "left":
+            go_left = True
+            self._s5_pt += 1
+            if self._s5_pt >= self.s5_left:
+                self._s5_phase = "j2"
+                self._s5_pt = 0
+            reason = "s5_left"
+        elif self._s5_phase == "j2":
+            jump = self._s5_pt < self.s5_j2_hold
+            self._s5_pt += 1
+            if self._s5_pt >= self.s5_j2_hold:
+                self._s5_phase = "air2"
+                self._s5_pt = 0
+            reason = "s5_j2"
+        elif self._s5_phase == "air2":
+            if feet_gnd:
+                self._s5_phase = "hop"
+                self._s5_pt = 0
+                self._s5_a_down = False
+                self._s5_a_left = 0
+            reason = "s5_air2"
+        elif self._s5_phase == "hop":
+            if feet_ladder:
+                go_up = True
+                self._s5_a_down = False
+                reason = "s5_ladder"
+            elif self._s5_a_left > 0:
+                jump = True
+                self._s5_a_left -= 1
+                self._s5_a_down = True
+                reason = "s5_hop"
+            elif feet_gnd and self._s5_gnd_run >= self.s5_ground_wait:
+                if self._s5_a_down:
+                    # release one frame for rising edge
+                    self._s5_a_down = False
+                    jump = False
+                    reason = "s5_release"
+                else:
+                    jump = True
+                    self._s5_a_down = True
+                    self._s5_a_left = self.s5_hop_hold - 1
+                    reason = "s5_hop"
+            else:
+                self._s5_a_down = False
+                reason = "s5_run"
+        else:
+            reason = "s5_run"
+
+        if go_up:
+            buttons = ["UP"]
+            if shoot:
+                buttons.append("B")
+                reason = "s5_ladder_shoot"
+            return FrameAction(nes_action(*buttons), reason)
+        if go_left:
+            buttons = ["LEFT"]
+            if shoot:
+                buttons.append("B")
+            return FrameAction(nes_action(*buttons), reason)
+
+        buttons, base_reason = _run_buttons(jump=jump, shoot=shoot)
+        if jump:
+            reason = reason if reason.startswith("s5_") else base_reason
+        elif shoot and reason == "run":
+            reason = "run_shoot"
         return FrameAction(nes_action(*buttons), reason)
 
     def _want_jump(self, i: int) -> bool:
@@ -188,9 +310,11 @@ class HeatManPolicy:
     @staticmethod
     def start_for_state(state_name: str) -> str:
         """Map checkpoint name → recipe start mode."""
-        if state_name.startswith("HeatScreen4") or state_name.startswith(
-            "HeatScreen5"
-        ):
+        if state_name.startswith("HeatScreen5") or state_name.startswith(
+            "HeatScreen6"
+        ) or state_name.startswith("HeatScreen7"):
+            return "screen5"
+        if state_name.startswith("HeatScreen4"):
             return "screen4"
         if state_name.startswith("HeatScreen3"):
             return "screen3"
