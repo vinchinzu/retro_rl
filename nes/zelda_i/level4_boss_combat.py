@@ -50,6 +50,9 @@ ROOM_L4_TRIFORCE = 0x03  # north of boss 0x13 after clear
 # Clean-safe south stand (rr-vdnc): dy=22 UP+A dual-green from GleeokEnter.
 STAND_DY = 22
 FIREBALL_DODGE_DIST = 14
+# Wider dodge when health depleted after long Clean compose (rr-zavx).
+FIREBALL_DODGE_DIST_LOW_HP = 28
+LOW_HP_THRESHOLD = 80  # ~5 hearts; scale dodge / approach care
 FIGHT_MAX_FRAMES = 20000
 APPROACH_SOUTH_Y = 165
 HC_STANDS: tuple[tuple[int, int], ...] = (
@@ -340,10 +343,30 @@ class Level4GleeokFightController:
                     phase = "hc"
                     continue
 
+                # Health-scaled dodge thr (long Clean compose arrives depleted).
+                dodge_thr = self.fireball_dodge_dist
+                if snap.health < LOW_HP_THRESHOLD:
+                    dodge_thr = max(dodge_thr, FIREBALL_DODGE_DIST_LOW_HP)
+
                 # Entry: drop south first (avoid left-band body contact), then
-                # align under body x before engaging stand.
+                # align under body x before engaging stand. Dodge fireballs
+                # during approach (rr-zavx Clean death was approach-phase).
                 if not self._approached:
-                    if snap.link_y < APPROACH_SOUTH_Y:
+                    if invuln <= 0:
+                        dodge_a = _fireball_dodge_dir(snap, thr=dodge_thr)
+                        if dodge_a is not None:
+                            env.step(nes_action(dodge_a))
+                            total[0] += 1
+                            if assist is not None:
+                                assist.apply_env(env, frame=total[0])
+                            continue
+                    # Low-HP: prefer deeper south band before closing.
+                    target_y = (
+                        APPROACH_SOUTH_Y + 16
+                        if snap.health < LOW_HP_THRESHOLD
+                        else APPROACH_SOUTH_Y
+                    )
+                    if snap.link_y < target_y:
                         env.step(nes_action("DOWN"))
                         total[0] += 1
                         if assist is not None:
@@ -362,16 +385,15 @@ class Level4GleeokFightController:
                         continue
                     self._approached = True
                     self.notes.append(
-                        f"approach_south f={frame} xy=({snap.link_x},{snap.link_y})"
+                        f"approach_south f={frame} xy=({snap.link_x},{snap.link_y}) "
+                        f"hp={snap.health} dodge_thr={dodge_thr}"
                     )
 
                 # Tight fireball dodge (horizontal) when not invulnerable.
                 dodge = (
                     None
                     if invuln > 0
-                    else _fireball_dodge_dir(
-                        snap, thr=self.fireball_dodge_dist
-                    )
+                    else _fireball_dodge_dir(snap, thr=dodge_thr)
                 )
                 if dodge is not None:
                     env.step(nes_action(dodge))
@@ -383,8 +405,12 @@ class Level4GleeokFightController:
                 if bodies:
                     # South stand on body for full fight — do not chase heads
                     # while residual body remains (rr-vdnc Clean).
+                    # Low-HP: stand slightly further south to reduce contact.
+                    stand_dy = self.stand_dy
+                    if snap.health < LOW_HP_THRESHOLD:
+                        stand_dy = max(stand_dy, 28)
                     act = _south_stand_action(
-                        snap, bodies[0], stand_dy=self.stand_dy
+                        snap, bodies[0], stand_dy=stand_dy
                     )
                     env.step(act)
                 elif heads:

@@ -282,9 +282,40 @@ remains (head kite dies Clean; south stand clears faster/safer). Evidence:
 `run_level4_gleeok.py` without assist. Module: `level4_boss_combat.py`
 (`STAND_DY=22`). **Not full-game Clean STATUS** (lab checkpoint continuous).
 
+**Natural-entry compose PARTIAL (rr-zavx 2026-08-10):** Clean dual-green
+**Entrance → skip-compass NaturalKey** (no compass KEY-RIGHT; keys≥1 for
+map KEY-UP) **2/2** ~45.8k f/trial. Runner:
+`scripts/run_level4_entrance_tf.py --to-natural-key-only`. Evidence:
+`recordings/l4_zavx_natkey_dual.json`. Spine segments pure:
+`chain_to_key` → `clear_50` → `north_40` → `key_40` (ALIGN to path anchor
+before maze; skip-compass clear pose ~(72,125) was missing key) →
+`north_30`…`west_31` → `Level4Room31PostLadderNaturalKey` (ladder=1, keys=1,
+health≈103).
+
+**Continuous Entrance→TF Clean residual (same bead):** full compose runner
+wired (`run_level4_entrance_tf.py` without `--to-natural-key-only`) but
+**not dual-green**. Gleeok south-stand Clean needs **health ≥~108** at
+`Level4GleeokEnter` (lab: 108+ dual TF; ≤106 death or no_tf_exit). Pure
+spine ends NaturalKey **~103**; map_21 peels ~3; map→Gleeok BFS-first
+preserves most hearts but enter still ~98–100 → Clean fight death.
+Assisted continuous PostLadder→TF remains dual-green (rr-05fz). GleeokEnter-
+only Clean still dual (rr-vdnc / rr-zavx reg). **Not Clean STATUS.**
+Next tip: heart-safe residual (farm / lower-HP Gleeok policy / combat
+polish on clear_31) so enter Gleeok ≥108 after pure spine.
+
+```bash
+# Clean dual skip-compass NaturalKey from Entrance (rr-zavx pin)
+uv run python nes/zelda_i/scripts/run_level4_entrance_tf.py \
+  --to-natural-key-only --trials 2 --save-state --tag l4_zavx_natkey_dual
+# Full compose (spine + continuous TF; Clean dual still residual)
+uv run python nes/zelda_i/scripts/run_level4_entrance_tf.py \
+  --trials 2 --save-state --tag l4_zavx_entrance_tf
+```
+
 **Traps (0x12→0x13):** after clear doors often L-only (raw=2); **bomb RIGHT and
 KEY-RIGHT do not open 0x13**; push block 0x68 LEFT first; naive y141 hold-RIGHT
-fails (maze) — use `PATH_12_TO_GLEEOK` hold4.
+fails (maze) — use `PATH_12_TO_GLEEOK` hold4; if path sticks at east wall
+y≈149, align y141 + live BFS exit (rr-zavx).
 
 Probe: `scripts/probe_level4_map_gleeok.py --infinite-life --from-state Level4Map`.
 

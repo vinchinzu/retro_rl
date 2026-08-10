@@ -1,38 +1,27 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-10T08:56:09.089125+00:00",
+  "captured_at": "2026-08-10T10:14:40.988778+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
-    "allow_key_poke": true,
-    "bead": "rr-q8eq",
-    "intervention_class": "clean",
-    "segment": "l4_north_30",
+    "bead": "rr-zavx",
+    "segment": "l4_north_30_natural_key",
+    "skip_compass": true,
     "track": "clean"
   },
   "schema_version": 1,
   "selected_trial": {
-    "controllers": {
-      "north_30": {
-        "frames": 206,
-        "notes": [
-          "push_up",
-          "entered_0x30"
-        ],
-        "phase": "DONE",
-        "segment": "level4_north_0x30",
-        "success": true,
-        "target_room": "0x30"
-      }
-    },
     "final": {
-      "bombs": 9,
+      "bombs": 8,
       "compass": 4,
       "compass_l4": false,
       "cur_opened_doors": 0,
-      "health": 111,
+      "health": 109,
       "keys": 2,
+      "ladder": 0,
       "level": 4,
+      "map": 0,
+      "map_l4": false,
       "mode": 5,
       "room": 48,
       "room_all_dead": 0,
@@ -41,12 +30,12 @@
       "x": 120,
       "y": 205
     },
-    "frames": 207,
+    "frames": 221,
     "ok": true,
     "segment": "north_30"
   },
   "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40ClearedNaturalKey.state",
-  "source_state_sha256": "d5b1d65d96e3ee81d8cf135f65b7de64438ce7ed15ade8d519dc08d3c28130db",
+  "source_state_sha256": "154e23aba3cc202fbfe17b9f0c80e1fafeb36ee04c649cdc51b5ca2874754980",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room30NaturalKey.state",
-  "state_sha256": "3cf2944dbc3ab29a6fe03ce2447bdd8228aa95e1e9fd93de1e16a34c47642c88"
+  "state_sha256": "8898e8a5e540af2d951e77a58539dc0814a093f28dc925a815a47e8a1ebbe77e"
 }

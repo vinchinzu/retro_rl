@@ -1,41 +1,27 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-10T08:56:10.648676+00:00",
+  "captured_at": "2026-08-10T10:14:41.976136+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
-    "allow_key_poke": true,
-    "bead": "rr-n1wn",
-    "intervention_class": "clean",
-    "segment": "l4_key_right_31",
+    "bead": "rr-zavx",
+    "segment": "l4_key_right_31_natural_key",
+    "skip_compass": true,
     "track": "clean"
   },
   "schema_version": 1,
   "selected_trial": {
-    "controllers": {
-      "key_right_31": {
-        "frames": 327,
-        "key_y": 141,
-        "keys_before": 2,
-        "notes": [
-          "precleared_0x30",
-          "push_key_right",
-          "entered_0x31"
-        ],
-        "phase": "DONE",
-        "segment": "level4_key_right_0x31",
-        "success": true,
-        "target_room": "0x31"
-      }
-    },
     "final": {
-      "bombs": 9,
+      "bombs": 8,
       "compass": 4,
       "compass_l4": false,
       "cur_opened_doors": 2,
-      "health": 111,
+      "health": 107,
       "keys": 1,
+      "ladder": 0,
       "level": 4,
+      "map": 0,
+      "map_l4": false,
       "mode": 5,
       "room": 49,
       "room_all_dead": 0,
@@ -44,12 +30,12 @@
       "x": 16,
       "y": 141
     },
-    "frames": 328,
+    "frames": 369,
     "ok": true,
     "segment": "key_right_31"
   },
   "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room30ClearedNaturalKey.state",
-  "source_state_sha256": "df74662940d9bf58ab9309d9d3617b796775333c5d0e2536c6bc08606f5e285e",
+  "source_state_sha256": "ad8409d162cff2faad0b878d93b3cfec460a4d001cb4510099b73feb6f890313",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31NaturalKey.state",
-  "state_sha256": "3786c38075444c1580abc6b01ca6955134583bcfea1561cca0b9090e885fab56"
+  "state_sha256": "59fef4a040118a3d04a0b5d663d0955b30240df4729185e0c8a3fc3f7dc706d2"
 }

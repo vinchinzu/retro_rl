@@ -1,83 +1,18 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-10T08:59:04.215701+00:00",
+  "captured_at": "2026-08-10T10:17:37.002209+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
-    "allow_key_poke": true,
-    "bead": "rr-05fz",
-    "intervention_class": "clean",
-    "segment": "l4_west_31",
+    "bead": "rr-zavx",
+    "segment": "l4_west_31_natural_key",
+    "skip_compass": true,
     "track": "clean"
   },
   "schema_version": 1,
   "selected_trial": {
-    "controllers": {
-      "west_31": {
-        "frames": 367,
-        "hold": 4,
-        "path": [
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "UP",
-          "UP",
-          "UP",
-          "LEFT",
-          "UP",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "UP",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT",
-          "LEFT"
-        ],
-        "segment": "level4_west_31",
-        "success": true
-      },
-      "west_31_bfs": {
-        "dest": "0x31",
-        "exp": 795,
-        "hold": 4,
-        "n_cells": 799,
-        "path_len": 44,
-        "quant": 4,
-        "segment": "level4_room_exit_bfs",
-        "success": true
-      }
-    },
     "final": {
-      "bombs": 9,
+      "bombs": 8,
       "compass": 4,
       "compass_l4": false,
       "cur_opened_doors": 3,
@@ -100,7 +35,7 @@
     "segment": "west_31"
   },
   "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4PostLadderNaturalKey.state",
-  "source_state_sha256": "4c5192cc3ec4793ae726a58c8bbdacbc284366faf97599c30d46d5658e2eb99b",
+  "source_state_sha256": "df4ab2d3a92d0a9bd8dae9e55a1eb60755b3e5f0b270ff902058cf57de71b377",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31PostLadderNaturalKey.state",
-  "state_sha256": "3ef17e3978cffb2386b9b9f0ba462b57f3ac8512e8d6c6cc1bb6c0880d47ad9e"
+  "state_sha256": "f6eaf952ae8760fb2e6f1f42f7e5345e2e170a228f6174039096d56ecc8d5dc2"
 }

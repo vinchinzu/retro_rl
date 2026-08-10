@@ -1,0 +1,298 @@
+{
+  "bead": "rr-zavx",
+  "dual_green": true,
+  "from": "Level4Entrance",
+  "key_poke": false,
+  "note": "Lab checkpoint continuous from Level4Entrance; not full-game power-on STATUS. Skip-compass pure spine + Clean PostLadder\u2192TF.",
+  "ok": true,
+  "segment": "continuous_entrance_skip_compass_natural_key",
+  "tag": "l4_zavx_natkey_dual",
+  "to_natural_key_only": true,
+  "track": "clean",
+  "trials": [
+    {
+      "bead": "rr-zavx",
+      "checkpoint": "Level4Room31PostLadderNaturalKey",
+      "compose": "entrance_skip_compass_to_tf",
+      "final": {
+        "health": 103,
+        "keys": 1,
+        "ladder": 1,
+        "mode": 5,
+        "room": 49,
+        "room_hex": "0x31"
+      },
+      "key_poke": false,
+      "natural_entry": false,
+      "ok": true,
+      "spine": {
+        "checkpoint": "Level4Room31PostLadderNaturalKey",
+        "error": null,
+        "final": {
+          "health": 103,
+          "keys": 1,
+          "ladder": 1,
+          "mode": 5,
+          "room": 49,
+          "room_hex": "0x31"
+        },
+        "frames": 45786,
+        "ok": true,
+        "segments": [
+          {
+            "error": null,
+            "frames": 1278,
+            "keys": 1,
+            "ok": true,
+            "room": "0x51",
+            "segment": "chain_to_key"
+          },
+          {
+            "error": null,
+            "frames": 3356,
+            "keys": 1,
+            "ok": true,
+            "room": "0x50",
+            "segment": "clear_50"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x40",
+            "segment": "north_40"
+          },
+          {
+            "error": null,
+            "frames": 5566,
+            "keys": 2,
+            "ok": true,
+            "room": "0x40",
+            "segment": "key_40"
+          },
+          {
+            "error": null,
+            "frames": 221,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "north_30"
+          },
+          {
+            "error": null,
+            "frames": 1239,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "clear_30"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "key_right_31"
+          },
+          {
+            "error": null,
+            "frames": 22665,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "clear_31"
+          },
+          {
+            "error": null,
+            "frames": 554,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "east_32"
+          },
+          {
+            "error": null,
+            "frames": 2306,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "clear_32"
+          },
+          {
+            "error": null,
+            "frames": 6637,
+            "keys": 1,
+            "ok": true,
+            "room": "0x60",
+            "segment": "stepladder"
+          },
+          {
+            "error": null,
+            "frames": 859,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "exit_60"
+          },
+          {
+            "error": null,
+            "frames": 367,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "west_31"
+          }
+        ]
+      },
+      "start_state": "Level4Entrance",
+      "tag": "l4_zavx_natkey_dual",
+      "tf08": false,
+      "total_frames": 45786,
+      "track": "clean",
+      "trial": 0
+    },
+    {
+      "bead": "rr-zavx",
+      "checkpoint": "Level4Room31PostLadderNaturalKey",
+      "compose": "entrance_skip_compass_to_tf",
+      "final": {
+        "health": 103,
+        "keys": 1,
+        "ladder": 1,
+        "mode": 5,
+        "room": 49,
+        "room_hex": "0x31"
+      },
+      "key_poke": false,
+      "natural_entry": false,
+      "ok": true,
+      "spine": {
+        "checkpoint": "Level4Room31PostLadderNaturalKey",
+        "error": null,
+        "final": {
+          "health": 103,
+          "keys": 1,
+          "ladder": 1,
+          "mode": 5,
+          "room": 49,
+          "room_hex": "0x31"
+        },
+        "frames": 45786,
+        "ok": true,
+        "segments": [
+          {
+            "error": null,
+            "frames": 1278,
+            "keys": 1,
+            "ok": true,
+            "room": "0x51",
+            "segment": "chain_to_key"
+          },
+          {
+            "error": null,
+            "frames": 3356,
+            "keys": 1,
+            "ok": true,
+            "room": "0x50",
+            "segment": "clear_50"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x40",
+            "segment": "north_40"
+          },
+          {
+            "error": null,
+            "frames": 5566,
+            "keys": 2,
+            "ok": true,
+            "room": "0x40",
+            "segment": "key_40"
+          },
+          {
+            "error": null,
+            "frames": 221,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "north_30"
+          },
+          {
+            "error": null,
+            "frames": 1239,
+            "keys": 2,
+            "ok": true,
+            "room": "0x30",
+            "segment": "clear_30"
+          },
+          {
+            "error": null,
+            "frames": 369,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "key_right_31"
+          },
+          {
+            "error": null,
+            "frames": 22665,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "clear_31"
+          },
+          {
+            "error": null,
+            "frames": 554,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "east_32"
+          },
+          {
+            "error": null,
+            "frames": 2306,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "clear_32"
+          },
+          {
+            "error": null,
+            "frames": 6637,
+            "keys": 1,
+            "ok": true,
+            "room": "0x60",
+            "segment": "stepladder"
+          },
+          {
+            "error": null,
+            "frames": 859,
+            "keys": 1,
+            "ok": true,
+            "room": "0x32",
+            "segment": "exit_60"
+          },
+          {
+            "error": null,
+            "frames": 367,
+            "keys": 1,
+            "ok": true,
+            "room": "0x31",
+            "segment": "west_31"
+          }
+        ]
+      },
+      "start_state": "Level4Entrance",
+      "tag": "l4_zavx_natkey_dual",
+      "tf08": false,
+      "total_frames": 45786,
+      "track": "clean",
+      "trial": 1
+    }
+  ]
+}
