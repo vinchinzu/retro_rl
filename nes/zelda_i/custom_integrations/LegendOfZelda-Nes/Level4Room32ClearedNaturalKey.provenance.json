@@ -1,0 +1,64 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T08:56:27.563902+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "allow_key_poke": true,
+    "bead": "rr-tib8",
+    "intervention_class": "clean",
+    "segment": "l4_clear_32",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "clear_32": {
+        "clear_signal_seen": true,
+        "combat_frames": 6589,
+        "frames": 6590,
+        "initial_inventory": 0,
+        "last_live_enemies": 0,
+        "max_live_enemies": 4,
+        "notes": [
+          "room_cleared"
+        ],
+        "phase": "DONE",
+        "spec_id": "level4_room32_zol_likelike",
+        "success": true,
+        "tuning": {
+          "attack_phase": 4,
+          "engage_attack_hold": 3,
+          "engage_attack_period": 6,
+          "engage_distance": 56,
+          "engage_dominant_axis": false,
+          "patrol_attack_hold": 3,
+          "patrol_attack_period": 10
+        }
+      }
+    },
+    "final": {
+      "bombs": 9,
+      "compass": 4,
+      "compass_l4": false,
+      "cur_opened_doors": 0,
+      "health": 104,
+      "keys": 1,
+      "level": 4,
+      "mode": 5,
+      "room": 50,
+      "room_all_dead": 2,
+      "room_hex": "0x32",
+      "room_item_id": 3,
+      "x": 40,
+      "y": 116
+    },
+    "frames": 6591,
+    "ok": true,
+    "segment": "clear_32"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room32NaturalKey.state",
+  "source_state_sha256": "1fe87c8241e0e540c0b24bbdcdd7fd011e0a930d62e314fbfeeb42f78abda961",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room32ClearedNaturalKey.state",
+  "state_sha256": "3e78934e80b10e6c6b581e9265b92e214c529bdc47b7b80bff75fd8ed7b081aa"
+}
