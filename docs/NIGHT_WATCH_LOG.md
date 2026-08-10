@@ -13,6 +13,22 @@ Protocol:
 
 ## Ticks
 
+### 2026-08-10 night — SM rr-av5s PARTIAL mid dual temp floor y1606
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Claim kept **rr-av5s** Pure Red→Hellway (K5 hop 12)
+- **Progress (dual-stable):**
+  1. Bottom IBJ 18/30 c150 → tunnel peak ~y1820 (skip climb_lower-before-IBJ)
+  2. Tunnel seat → midplat hop → x171
+  3. Midplat IBJ → **temporary floor y1606 p49** ×2 exact
+- **Discovery:** human mid ledges = frozen rippers (not solid tiles)
+- **Still RED:** upper from y1600 lip → Hellway `0xA2F7`; no export
+- Controllers: `routes/kpdr/k5/red_to_hellway.py` phased mid + `_tunnel_to_midplat`
+- Residual: `snes/super_metroid/docs/tasks/rr-av5s-residual.md`
+- Parent **rr-dbu.8** open; no STATUS
+- Units: `tests/test_kpdr_dev.py` 8 passed
+- Next: open temp floor + upper WJ to Hellway dual green
+- No push
+
 ### 2026-08-10T~03:44 CDT — zelda_i rr-rvae CLOSED (Gleeok TF 0x08 dual-green)
 - Lane: zelda_i only (`nes/zelda_i/`)
 - Claim kept **rr-rvae** (map+Gleeok path already partial dual)
@@ -1091,4 +1107,12 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-05fz`. Epic **rr-q3n** still OPEN for Clean STATUS residual.
 - Units: test_level4_dungeon 10 passed. **No push.**
 - Next: Clean harden L4 continuous / parallel `rr-38p`
+
+
+### 2026-08-10T04:40 CDT — zelda rr-05fz CLOSED ★
+- **CLOSED** `rr-05fz`: natural KEY-UP (skip-compass NaturalKey) + continuous PostLadder→map→Gleeok→TF dual ~34.7kf assisted (`--no-key-poke`).
+- Commit `2da4435`. Not Clean STATUS.
+- Residual **rr-vdnc** Clean continuous without infinite-life → epic rr-q3n.
+- **Spawned** zelda manager on **rr-vdnc** (worktree).
+- SMB still permanently skipped.
 
