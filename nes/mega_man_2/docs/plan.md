@@ -13,27 +13,29 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Bottleneck
 
-**Post-s4: rider kill Clean; empty cloud stand still RED.** Island solid prog
-937–984. Pulse-B kills `0x3D`; feet_dy=0 @ dx≤2 still freefall. Solid decode:
-`aobject_tsa` timer, flag 192 facing — not solid bits. No camera ≥5 yet.
+**Post-s4: rider kill Clean; empty cloud stand still RED (engine residual).**
+Island solid prog 937–984. Pulse-B kills `0x3D`. Body AI has **no solid-arm**
+on rider death; appearing_block `$10` never set; force-place at cloud top still
+freefall under fceumm. No camera ≥5 yet.
 
 Geometry (verified 2026-08-09/10 + fpd6 + rr-54ui night):
 
 - Tile solids end prog 984; Air Tikki is **0x40** damage enemy (not landable)
-- LL **0x3D/0x3E** spawns ~prog 961; kill rider then stand (object-solid)
+- LL **0x3D/0x3E** spawns ~prog 961; kill rider then stand (object-solid expected)
 - Pulse B (period 3–8) required; hold-B under-fires
 - Kill with dy≳20 freezes gap (co-sink); kill near Y-meet still no `ft=1`
 - Placement ROM: lsmmega/mm2 `airman_wily2_objects_set.asm` idx5 mapset4 x=C0 y=20
+- Cloud top ≈ by−16 (OAM); kill window cam=3 vs body scr=4
 
 ## Suggested next experiments
 
-1. **Body AI solid-arm (primary, rr-54ui)** — disasm `objects_kaminari_goro`
-   after child `0x3D` dies; TAS pin when feet stick. Already ruled out:
-   `aobject_tsa` as solid type, flag 192 as solid bit, feet_dy=0 alone.
-   Evidence: `docs/CLOUD_LAND_RED_PIN.md`, `scripts/cloud_solid_decode.py`.
-2. Screen-align (player/body same scr, cam≥4) then relative-descent land.
-3. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
-4. Do **not** re-sweep goblin-solid, “LL absent”, hold-B only, or pure feet_dy grids.
+1. **Human/TAS frame pin (primary residual)** — when feet stick on empty cloud,
+   dump sy/by/`$2C`/body tsa/flag/cam. Diff vs freefall dumps in
+   `docs/CLOUD_LAND_RED_PIN.md` + `scripts/cloud_screen_align.py`.
+2. **Alternate path past s4** without cloud ride (if any Clean route exists).
+3. Chain mapset 5–6 LLs → camera ≥5 only after stand freezes a state.
+4. Do **not** re-sweep goblin-solid, “LL absent”, hold-B only, feet_dy grids,
+   screen-align-only, or solid pokes (fall_top/appear/flag08) already negative.
 
 ## Notes
 

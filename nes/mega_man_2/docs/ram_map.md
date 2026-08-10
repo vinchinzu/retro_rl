@@ -62,4 +62,12 @@ Flag constants (lsmmega/mm2 `constants/flags.asm`): `objects_exist=$80`,
 
 Air Man LL: type **`0x3E`** body + **`0x3D`** move/rider. On rider death: type **`6`**
 (`objects_killed`) ~12f. Empty body stays `0x3E`; `aobject_tsa` cycles as AI timer
-(not solid). Goblin/Air Tikki: **`0x40`/`0x41`**. Pipi: **`0x37`**.
+(not solid). Body AI (lsmmega bank14) has no solid-arm rewrite; appearing_block
+`$10` is the only decoded object-solid path and is never set on empty chariot.
+Cloud OAM top ≈ body y−16. Goblin/Air Tikki: **`0x40`/`0x41`**. Pipi: **`0x37`**.
+
+| Addr | Name | Notes |
+|------|------|-------|
+| `$002C` | `zmegaman_status` | Pose SM: 3/6/7 air/fall variants; no cloud-stand lock observed |
+| `$0110+i` | Body AI child index | LL body tracks child slot; not a solid enable |
+| `$0120+i` | Parent link | Rider stores body slot |
