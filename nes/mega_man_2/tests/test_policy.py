@@ -126,7 +126,10 @@ def test_heat_man_start_for_state() -> None:
     assert HeatManPolicy.start_for_state("HeatScreen4") == "screen4"
     assert HeatManPolicy.start_for_state("HeatScreen5Ground") == "screen5"
     assert HeatManPolicy.start_for_state("HeatScreen5") == "screen5"
-    assert HeatManPolicy.start_for_state("HeatScreen7") == "screen5"
+    assert HeatManPolicy.start_for_state("HeatScreen6") == "screen5"
+    assert HeatManPolicy.start_for_state("HeatScreen7") == "screen7"
+    assert HeatManPolicy.start_for_state("HeatScreen7Mid") == "screen7"
+    assert HeatManPolicy.start_for_state("HeatLadder") == "screen7"
 
 
 def test_heat_man_screen5_idle_then_j1() -> None:
@@ -145,4 +148,21 @@ def test_heat_man_screen5_idle_then_j1() -> None:
     ) == list(nes_action("RIGHT", "A", "B"))
     # clear hold
     done = pol.tick(frame=10, health=22, camera_x_screen=7, tile_feet=1)
+    assert done.reason == "clear_hold"
+
+
+def test_heat_man_screen7_left_then_climb() -> None:
+    pol = HeatManPolicy(start="screen7", target_camera_screen=8)
+    left = pol.tick(frame=1, health=22, camera_x_screen=7, tile_feet=1)
+    assert left.reason == "s7_left_off"
+    assert list(left.action) == list(nes_action("LEFT"))
+    # after 12 LEFT frames, climb A+LEFT
+    climb = pol.tick(frame=13, health=22, camera_x_screen=7, tile_feet=0)
+    assert climb.reason == "s7_climb"
+    assert list(climb.action) == list(nes_action("A", "LEFT"))
+    # ladder forces DOWN
+    lad = pol.tick(frame=50, health=18, camera_x_screen=7, tile_feet=2)
+    assert lad.reason == "s7_ladder_down"
+    assert list(lad.action) == list(nes_action("DOWN"))
+    done = pol.tick(frame=10, health=18, camera_x_screen=8, tile_feet=1)
     assert done.reason == "clear_hold"

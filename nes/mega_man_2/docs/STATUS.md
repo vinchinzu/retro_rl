@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
-| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat Man camera ≥ 7 pre-boss from `HeatScreen5Ground` (3/3) |
+| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat Man camera ≥ 8 Sniper shaft from `HeatScreen7Mid` (3/3) |
 | Last verification | 2026-08-10 (rr-809 Heat late dual-green cam ≥7) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
@@ -16,8 +16,8 @@
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 Air / ~926 Heat |
-| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen7`, `HeatScreen5Ground`, `HeatScreen7Mid` |
-| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4/s5) |
+| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen8`, `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatScreen7HighPast`, `HeatLadder`, `HeatScrollDown` |
+| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4/s5/s7) |
 | Evidence | [air_segment/](../recordings/air_segment/), [heat_boot/](../recordings/heat_boot/), [heat_segment/](../recordings/heat_segment/), [heat_s7_seg/](../recordings/heat_s7_seg/), [heat_s7_climb_residual/](../recordings/heat_s7_climb_residual/) |
 
 ## Done
@@ -193,10 +193,10 @@ Air-first cloud path blocked overnight; preferred alt = Heat→Air Item-1.
 | Stage-select decode | `$002A`: Wily=0, Air=2, Heat=8; password→select at Wily; LEFT→Heat |
 | Heat1 entry | **GREEN** — `boot_to_heat_man_script` + `boot_heat_probe.py` |
 | Heat screens 1–5 | **GREEN** — multi-phase `HeatManPolicy` (rr-808 PARTIAL) |
-| Heat clear / Item-1 | **Not done** — s7 wall-lock (sx152); ladder x192 unreachable; no boss_hp |
+| Heat clear / Item-1 | **Not done** — dual-green into Sniper shaft (cam8); boss door open |
 | Air + Item-1 past s4 | **Not done** |
 | FCEUX stick pin | Protocol only (`docs/HEAT_ITEM1_PATH.md`); no human run this session |
-| Evidence | `docs/HEAT_ITEM1_PATH.md`, `recordings/heat_boot/`, `heat_segment/`, `heat_s7_climb_residual/` |
+| Evidence | `docs/HEAT_ITEM1_PATH.md`, `recordings/heat_s7_route/`, `heat_s7_dual/`, `heat_s7_climb_residual/` |
 
 ### Heat Man segment metrics
 
@@ -233,29 +233,44 @@ Superseded for late path by rr-809 pre-boss dual-green; bead closed/partial as n
 
 | Field | Value |
 |-------|-------|
-| Dual-green | cam ≥7 from `HeatScreen5Ground` 3/3 ~293f (Clean Bronze) |
-| s7 climb | **Blocked** — wall sx152; mapset7 ladder x192 unreachable |
+| Dual-green s5→s7 | cam ≥7 from `HeatScreen5Ground` 3/3 ~293f |
+| Dual-green s7→s8 | cam ≥8 from `HeatScreen7Mid` 3/3 ~587f (high-path) |
+| s7 wall | **Solved** — high approach above sx152 column (not a clip) |
+| Ladder / scroll | `HeatLadder` → `HeatScrollDown` → `HeatScreen8` Sniper shaft |
 | Boss / Item-1 | **Not done** (no boss_hp, weapons/items still 0) |
-| Pin | `HeatScreen7Mid` sx152 sy124 under Telly |
-| Residual detail | `docs/HEAT_ITEM1_PATH.md` + `recordings/heat_s7_climb_residual/` |
-| Next | Past s7 wall → scroll_down shaft → boss clear → Item-1 pin |
+| Pins | `HeatScreen7HighPast`, `HeatLadder`, `HeatScreen8` |
+| Residual detail | `docs/HEAT_ITEM1_PATH.md` + `recordings/heat_s7_route/` |
+| Next | Sniper/Yoku from cam8 → boss door → clear → Item-1 pin |
+
+### HeatScreen7Mid → camera ≥8 (Sniper shaft)
+
+| Metric | Value |
+|--------|------:|
+| Frames | ~587 |
+| Final HP | 18 |
+| Camera screen | 8 |
+| Progress X | 2048 |
+| Trials | **3/3** |
+
+Policy `start=screen7`: LEFT off low alcove → 3× cam6 climb (A+LEFT24) → high
+cross A+RIGHT → micro-hops to ladder → DOWN scroll_down.
 
 ## Not done
 
 - Past Air screen 4 / boss door (**kill OK; cloud solid RED; Item-1 chain open**)
-- Heat Man s7 climb / boss door / boss clear + Item-1 unlock pin
+- Heat Man Sniper/Yoku / boss door / boss clear + Item-1 unlock pin
 - Air with Item-1 past camera ≥5
 - Full Robot Master stage clear
 - Natural-entry M4 from power-on through screen-2+
 
 ## Next
 
-1. **s7 climb past wall** — reach mapset7 ladder (x192+) or alt vertical entry;
-   dual-green into Sniper Armor shaft / boss door.
+1. **HeatScreen8 → boss door** — Sniper Armor + Yoku multi-level; dual-green into
+   boss room / clear.
 2. **Item-1 pin** — Heat clear → `$009B\|$01` + Atomic Fire `$009A\|$01` (**rr-809**).
 3. **Air + Item-1** — stage select to Air with items set; deploy platforms past s4
    (cam ≥5) (**rr-810**). Doc: `docs/HEAT_ITEM1_PATH.md`.
 4. Optional parallel: FCEUX/human empty-cloud RAM pin (protocol in HEAT_ITEM1_PATH).
 5. Do **not** re-sweep goblin-solid, LL-absent, hold-B only, feet_dy grids,
    screen-align-only, fall_top/appear/flag08, zero-mask global solid, or s7
-   RIGHT-wall hop-only / UP-DOWN feet=2 spam without a new route hypothesis.
+   **low-alcove** RIGHT-wall hop-only / UP-DOWN feet=2 spam (wall is high-path only).

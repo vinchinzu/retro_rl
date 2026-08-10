@@ -6,7 +6,7 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Next milestones
 
-1. **Heat boss door + Item-1** (rr-809 residual) — climb from `HeatScreen7`
+1. **Heat boss door + Item-1** (rr-809 residual) — from `HeatScreen8` Sniper/Yoku
    alcove → boss clear → pin Item-1 / Atomic Fire.
 2. **Air with Item-1 past s4** — **rr-810** (blocked until Item-1).
 3. **M4 natural-entry** — screen-2+ from power-on without warping to `Level1`.
@@ -25,7 +25,7 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Suggested next experiments
 
-1. HeatScreen7 climb past low ceiling / micro-ledge sy124 → boss door.
+1. HeatScreen8 Sniper Armor + Yoku multi-level → boss door (s7 high-path done).
 2. Heat boss clear + Item-1 unlock pin (`$009B\|$01`) — finish **rr-809**.
 3. Air Fan + Item-1 deploy past prog 984 → camera ≥5 — **rr-810**.
 4. Optional: FCEUX empty-cloud RAM pin (`docs/HEAT_ITEM1_PATH.md`).

@@ -34,6 +34,7 @@ Password → robot select lands on **Wily (0)**. `LEFT` → Heat (8). `UP` → A
 | Heat screen ≥4 | `start=screen3` pillars from `HeatScreen3` | GREEN 3/3 (~161f cam, ~181f gnd) |
 | Heat screen ≥5 | `start=screen4` from `HeatScreen4` | GREEN 3/3 (~131f cam, ~320f gnd) |
 | Heat screen ≥7 pre-boss | `start=screen5` from `HeatScreen5Ground` | GREEN 3/3 (~293f, HP22, prog1792) |
+| Heat cam ≥8 Sniper shaft | `start=screen7` from `HeatScreen7Mid` | GREEN 3/3 (~587f, HP18, prog2048) |
 
 Recipes (`HeatManPolicy`):
 
@@ -44,11 +45,21 @@ Recipes (`HeatManPolicy`):
 | `screen3` | HeatScreen3 | period 25 / hold 10 / phase 10 |
 | `screen4` | HeatScreen4 | period 20 / hold 12 / phase 4 |
 | `screen5` | HeatScreen5Ground | idle2 → j1/20 → LEFT4 → j2/24 → hop9/gw3 (A-edge) |
+| `screen7` | HeatScreen7Mid | high-path: LEFT off alcove → cam6 climb → high cross past sx152 → ladder DOWN → cam8 |
 
 **Screen5 notes:** mid-air `HeatScreen5` (cam-hit pin) freefalls into prog~1500 pit.
 Use grounded `HeatScreen5Ground` (LEFT-land ~prog 1462). Long jumps overshoot the
-sy=132 ledge; short hop hold 9 lands. Cam locks at prog 1792 (screen 7 wall /
-pre-boss alcove under low ceiling).
+sy=132 ledge; short hop hold 9 lands. Cam locks at prog 1792 (screen 7 **low
+alcove** under Telly — dead-end if you only RIGHT-spam).
+
+**Screen7 high-path (2026-08-10 breakthrough):** Low alcove wall at sx152 is solid
+only for **sy≥~96** (mapset7 collision column x160–191). Human/TAS path is not a
+clip: climb **left/high on cam6** (sy~68 platforms), cross **above** the column
+into cam7 (land ~sx168 sy84), then drop to mapset7 ladder TSA `$30`/`$31` at
+**x208–255 y192**, hold DOWN → `scroll_down` (`cam_st=$80`) → mapset8 Sniper
+shaft. Cites: StrategyWiki section C (platforms → Springers → ladder down);
+TMMN Heat stage (down ladder into Sniper Armor);
+`/tmp/mm2-disasm/stages/heatman_wily1/` scrolling + mapset7 TSA.
 
 Commands:
 
@@ -60,49 +71,44 @@ uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen2 --t
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen3 --target-screen 4 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen4 --target-screen 5 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen5Ground --target-screen 7 --trials 3
-# s7 climb residual (wall lock) — no target-screen past 7 yet
+uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen7Mid --target-screen 8 --trials 3
 ```
 
 Evidence: `recordings/heat_boot/`, `recordings/heat_segment/`, `heat_s7_seg/`,
-`heat_preboss/`, `heat_s7_midpin/`, `heat_s7_climb_residual/`.
-Pins (gitignored): `Heat1`, `HeatScreen1`–`HeatScreen7`, `HeatScreen5Ground`,
-`HeatScreen7Mid`.
+`heat_preboss/`, `heat_s7_midpin/`, `heat_s7_route/`, `heat_s7_dual/`,
+`heat_s7_climb_residual/`.
+Pins (gitignored): `Heat1`, `HeatScreen1`–`HeatScreen8`, `HeatScreen5Ground`,
+`HeatScreen7Mid`, `HeatScreen7HighPast`, `HeatLadder`, `HeatScrollDown`.
 
 ## Residual chain (not done)
 
-1. ~~**Heat late / pre-boss**~~ — dual-green cam ≥7 from `HeatScreen5Ground` (rr-809 PARTIAL)
-2. **Heat boss door climb** — s7 alcove wall-lock (see below); no boss_hp / Item-1 yet
-3. **Heat boss clear + Item-1 unlock pin** — post-Heat `items\|$01` + Atomic Fire
+1. ~~**Heat late / pre-boss**~~ — dual-green cam ≥7 from `HeatScreen5Ground`
+2. ~~**Heat s7 wall / ladder / scroll_down**~~ — dual-green cam ≥8 from `HeatScreen7Mid` (high-path)
+3. **Heat Sniper/Yoku → boss door** — from `HeatScreen8`; no boss_hp yet
+4. **Heat boss clear + Item-1 unlock pin** — post-Heat `items\|$01` + Atomic Fire
    `weapons\|$01`
-4. **Stage select → Air with Item-1** — weapons/items persist after Heat clear
-5. **Air Fan → Item-1 platforms past s4** — deploy Item-1 (weapon menu + B) at
+5. **Stage select → Air with Item-1** — weapons/items persist after Heat clear
+6. **Air Fan → Item-1 platforms past s4** — deploy Item-1 (weapon menu + B) at
    prog ~984; clear camera ≥5 Clean
-6. Optional: FCEUX human cloud-stand RAM pin (parallel residual; see below)
+7. Optional: FCEUX human cloud-stand RAM pin (parallel residual; see below)
 
-### HeatScreen7 climb residual (2026-08-10)
-
-Verified dual-green s5→s7 3/3. Pins: `HeatScreen7`, `HeatScreen7Mid`
-(sx152 sy124 under Telly). Evidence: `recordings/heat_s7_seg/`,
-`heat_s7_midpin/`, `heat_s7_climb_residual/residual.json`.
+### HeatScreen7 high-path (2026-08-10) — dual-green cam≥8
 
 | Fact | Detail |
 |------|--------|
-| Cam lock | prog **1792** (cam7 cam_x=0) |
-| Playable floor | sy148 sx **130–152** (white platform) |
-| Micro-ledge | sy**124** sx **140–152** under Telly (type36) |
-| Hard wall | sx **152** full jump-arc height — no damage-boost past |
-| Mapset7 ladder | TSA type2 tiles `$30`/`$31` at **x192–255 y192** (scroll_down exit) — unreachable past wall |
-| Scroll table | `scrolling_heatman_wily_00`: 7 right rooms then **scroll_down** → mapset8+ Sniper Armor shaft |
-| Stage map | Upper corridor ends at Telly ledge; multi-level + boss are **below/right** via vertical transition |
-| Telly | Chips HP while camping mid (~−4/60f); kills ~650f if only hopping |
+| Dual-green | cam ≥8 from `HeatScreen7Mid` **3/3 ~587f** HP18 prog2048 |
+| Low alcove trap | sx152 wall at **sy≥96** only; `HeatScreen7`/`Mid` pins are dead-end if RIGHT-only |
+| High cross | cam6 climb sy~68 → cam7 land ~sx168 sy84 (`HeatScreen7HighPast`) |
+| Ladder | first grab ~sx209 sy180 ft2 (`HeatLadder`); TSA `$30`/`$31` x208–255 y192 |
+| Scroll_down | `cam_st=$80`, `cam_y` rises; lands mapset8 (`HeatScreen8` sx216 sy148) |
+| Scroll table | `scrolling_heatman_wily_00`: `7\|scroll_down` then `0\|scroll_down` |
+| Human/TAS | StrategyWiki C + TMMN: down ladder into Sniper Armor (not wall-clip) |
 
-**Swept:** hop→mid grids; LEFT high (scrolls cam6); UP/DOWN never `tile_feet==2`;
-screen5 policy 700f on s7; random s5/s6/s7 2–3k frames 0 ladders; RIGHT wall
-probe + damage boost.
+**Swept (still dead — do not re-spam):** low alcove hop/UP-DOWN/damage-boost/RIGHT-only;
+screen5 policy 700f on s7 floor.
 
-**Next tip:** reach ladder past sx152 (clip/route?) or re-enter vertical shaft from
-an earlier drop; then Sniper Armor room → boss door → clear → Item-1 pin.
-Do not tip rr-810 until Item-1.
+**Next tip:** from `HeatScreen8` clear Sniper Armor + Yoku multi-level → boss door
+→ boss clear → Item-1 pin. Do not tip rr-810 until Item-1.
 
 ## FCEUX / human cloud-stand pin protocol
 

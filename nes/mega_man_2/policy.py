@@ -13,8 +13,10 @@ M3 isolated segments (Clean Bronze):
 - **Heat screen ≥ 4** from ``HeatScreen3``: pillars 25/10 phase 10 (~181f grounded; 2026-08-10).
 - **Heat screen ≥ 5** from ``HeatScreen4``: late 20/12 phase 4 (~131f cam / ~320f grounded; 2026-08-10).
 - **Heat screen ≥ 7 pre-boss** from ``HeatScreen5Ground``: ``start=screen5`` A-edge
-  j1/LEFT/j2 + hop 9/gw3 (~293f cam7; 3/3; 2026-08-10). s7 wall sx152 / ladder
-  x192 residual (rr-809 PARTIAL).
+  j1/LEFT/j2 + hop 9/gw3 (~293f cam7; 3/3; 2026-08-10).
+- **Heat cam ≥ 8 Sniper shaft** from ``HeatScreen7Mid``: ``start=screen7`` high-path
+  past sx152 wall → ladder → scroll_down (~587f; 3/3; 2026-08-10). Residual:
+  Sniper/Yoku → boss clear + Item-1 (rr-809 PARTIAL).
 
 Level1 recipe (0-based frame index ``i``):
 
@@ -126,9 +128,12 @@ class HeatManPolicy:
       (~131f cam / ~320f grounded).
     - ``screen5`` (HeatScreen5Ground): A-edge idle → j1 → LEFT → j2 → rising-edge
       short hops (hold 9 / ground_wait 3) → camera ≥7 pre-boss (~305f; 2026-08-10).
+    - ``screen7`` (HeatScreen7Mid): high-path — LEFT back to cam6, climb sy~68,
+      cross ABOVE sx152 wall into cam7, micro-hop to mapset7 ladder, DOWN
+      scroll_down → camera ≥8 Sniper shaft (~587f; 3/3; 2026-08-10).
 
-    Residual: HeatScreen7 wall sx152 → mapset7 ladder x192 (scroll_down) +
-    boss clear + Item-1 unlock (rr-809 PARTIAL).
+    Residual: HeatScreen8 Sniper/Yoku → boss door + Item-1 unlock (rr-809 PARTIAL).
+    Low alcove sx152 is a dead-end; do not RIGHT-spam from HeatScreen7 floor.
     """
 
     # early (Heat1 / HeatScreen1)
@@ -158,7 +163,7 @@ class HeatManPolicy:
     shoot_period: int = 40
     shoot_hold: int = 2
     target_camera_screen: int = 1
-    # early | screen2 | screen3 | screen4 | screen5
+    # early | screen2 | screen3 | screen4 | screen5 | screen7
     start: str = "early"
     # screen5 phase machine (mutated across ticks)
     _s5_phase: str = "idle"
@@ -184,6 +189,8 @@ class HeatManPolicy:
 
         if self.start == "screen5":
             return self._tick_screen5(frame=frame, tile_feet=tile_feet)
+        if self.start == "screen7":
+            return self._tick_screen7(frame=frame, tile_feet=tile_feet)
 
         i = max(0, frame - 1)
         jump = self._want_jump(i)
@@ -298,6 +305,55 @@ class HeatManPolicy:
             reason = "run_shoot"
         return FrameAction(nes_action(*buttons), reason)
 
+    def _tick_screen7(self, *, frame: int, tile_feet: int) -> FrameAction:
+        """Frame script: high-path past s7 wall → ladder → scroll_down cam≥8.
+
+        0-based index ``i`` windows (verified 3/3 from HeatScreen7Mid → cam8):
+
+        - 0–11: LEFT (drop off low alcove; may scroll cam6)
+        - 3× climb: A+LEFT 24 / LEFT 6 / idle 3
+        - A+RIGHT 30, RIGHT 40, A+RIGHT 16, RIGHT 60 (high cross past sx152)
+        - 4× micro: A+RIGHT 6 / RIGHT 25 / idle 15 → mapset7 ladder
+        - then DOWN (ladder / scroll_down); UP if already on ladder early
+        """
+        i = max(0, frame - 1)
+        if tile_feet == 2:
+            return FrameAction(nes_action("DOWN"), "s7_ladder_down")
+
+        # Build cumulative windows matching dual-green PLAN
+        segs: list[tuple[tuple[str, ...], int, str]] = [
+            (("LEFT",), 12, "s7_left_off"),
+        ]
+        for _ in range(3):
+            segs += [
+                (("A", "LEFT"), 24, "s7_climb"),
+                (("LEFT",), 6, "s7_climb_walk"),
+                ((), 3, "s7_climb_idle"),
+            ]
+        segs += [
+            (("A", "RIGHT"), 30, "s7_cross_ar0"),
+            (("RIGHT",), 40, "s7_cross_r1"),
+            (("A", "RIGHT"), 16, "s7_cross_ar1"),
+            (("RIGHT",), 60, "s7_cross_r2"),
+        ]
+        for _ in range(4):
+            segs += [
+                (("A", "RIGHT"), 6, "s7_micro_ar"),
+                (("RIGHT",), 25, "s7_micro_r"),
+                ((), 15, "s7_micro_idle"),
+            ]
+        # remainder: climb down
+        segs.append((("DOWN",), 500, "s7_down"))
+
+        t = 0
+        for btns, n, reason in segs:
+            if i < t + n:
+                if not btns:
+                    return FrameAction(nes_idle_action(), reason)
+                return FrameAction(nes_action(*btns), reason)
+            t += n
+        return FrameAction(nes_action("DOWN"), "s7_down")
+
     def _want_jump(self, i: int) -> bool:
         if self.start == "screen2":
             if i < self.mid_until:
@@ -312,9 +368,13 @@ class HeatManPolicy:
     @staticmethod
     def start_for_state(state_name: str) -> str:
         """Map checkpoint name → recipe start mode."""
+        if state_name.startswith("HeatScreen7") or state_name.startswith(
+            "HeatLadder"
+        ) or state_name.startswith("HeatS7"):
+            return "screen7"
         if state_name.startswith("HeatScreen5") or state_name.startswith(
             "HeatScreen6"
-        ) or state_name.startswith("HeatScreen7"):
+        ):
             return "screen5"
         if state_name.startswith("HeatScreen4"):
             return "screen4"

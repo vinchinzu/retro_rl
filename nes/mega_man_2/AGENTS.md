@@ -27,15 +27,17 @@ uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen2 --t
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen3 --target-screen 4 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen4 --target-screen 5 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen5Ground --target-screen 7 --trials 3
+uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen7Mid --target-screen 8 --trials 3
 uv run pytest nes/mega_man_2/tests -q
 ```
 
 ## Next milestone
 
 **Heat boss door + Item-1** (rr-809 PARTIAL): dual-green cam ≥7 from
-`HeatScreen5Ground` (~293f, 3/3). **s7 residual:** wall lock sx152 / prog1792;
-micro-ledge `HeatScreen7Mid` sy124 under Telly; mapset7 ladder at x192–255 y192
-(scroll_down) unreachable; no boss_hp / Item-1. Doc: `docs/HEAT_ITEM1_PATH.md`.
+`HeatScreen5Ground` (~293f, 3/3). **s7 high-path dual-green cam≥8** from
+`HeatScreen7Mid` (~587f, 3/3): LEFT→cam6 climb→cross above sx152 wall→ladder→
+scroll_down→`HeatScreen8` Sniper shaft. Low alcove sx152 is a dead-end (sy≥96
+column only). Residual: Sniper/Yoku→boss→Item-1. Doc: `docs/HEAT_ITEM1_PATH.md`.
 Cloud solid still RED; do not re-grid. Use `HeatScreen5Ground` (not mid-air
 `HeatScreen5`).
 
@@ -67,7 +69,8 @@ HEAT_ITEM1_PATH (external).
   `LEFT`→Heat, `UP`→Air. Items `$009B` bit `$01` = Item-1 (Heat clear).
 - Heat boot: `boot_to_heat_man_script` / `boot_heat_probe.py` → `Heat1`.
   Heat multi-phase: `HeatManPolicy(start=early|screen2|screen3|screen4|screen5)`
-  via `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`7`,
-  `HeatScreen5Ground`, `HeatScreen7Mid`. screen5 needs `tile_feet` (A-edge hops).
-  Death: `tile_feet==3` or lives drop (not only HP=0 / y≥200). s7: wall sx152;
+  via `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`8`,
+  `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatLadder`. screen5 needs `tile_feet`
+  (A-edge hops). screen7 = high-path frame script. Death: `tile_feet==3` or lives
+  drop (not only HP=0 / y≥200). s7 low alcove sx152 is trap;
   do not re-spam RIGHT/UP/DOWN without new route hypothesis.
