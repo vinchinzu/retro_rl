@@ -18,7 +18,7 @@ Return path (tape Phase B return; K5 predecessor)::
       → Ice Snake 0xA8B9         (ice_to_snake — this package)
         → Tutorial 0xA865        (snake_to_tutorial — this package)
           → Ice Gate 0xA815      (tutorial_to_gate — this package)
-            → Business 0xA7DE
+            → Business 0xA7DE    (gate_to_business — this package)
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from __future__ import annotations
 from super_metroid.routes.kpdr.ice.acid_to_snake import play_ice_acid_to_snake
 from super_metroid.routes.kpdr.ice.business_to_gate import play_business_to_ice_gate
 from super_metroid.routes.kpdr.ice.gate_to_acid import play_ice_gate_to_acid
+from super_metroid.routes.kpdr.ice.gate_to_business import play_ice_gate_to_business
 from super_metroid.routes.kpdr.ice.geometry import (
     ICE_BEAM_MASK,
     ICE_SUPER_DOOR_X,
@@ -61,6 +62,7 @@ __all__ = [
     "play_business_to_ice_gate",
     "play_ice_acid_to_snake",
     "play_ice_gate_to_acid",
+    "play_ice_gate_to_business",
     "play_ice_snake_to_ice",
     "play_ice_snake_to_tutorial",
     "play_ice_tutorial_to_gate",

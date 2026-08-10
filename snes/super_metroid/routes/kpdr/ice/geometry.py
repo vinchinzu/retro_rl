@@ -161,6 +161,25 @@ for _n, _btns in TUTORIAL_TO_GATE_RLE:
     _mid_acc += take
 TUTORIAL_MID_RLE: RleScript = tuple(_mid_runs)
 
+# ---------------------------------------------------------------------------
+# Ice Gate → Business return (0xA815 → 0xA7DE) — K5 stack hop 3
+# ---------------------------------------------------------------------------
+# Pure tutorial-to-gate handoff ~(807, 131) pose 81 mid-top (not door lip).
+# Tape Phase B hop 22: morph drop → tunnel y≈569 roll RIGHT → Super door
+# floor ~(1772, 651) → Business Super lip ~(39, 907).
+GATE_MID_TOP_X = (450, 900)
+GATE_MID_TOP_Y = (100, 200)
+GATE_TUNNEL_X = (860, 920)  # shaft / tunnel mouth column
+GATE_TUNNEL_Y = (555, 585)  # morph tunnel floor y≈569
+GATE_SUPER_DOOR_X = 1740  # right Super door pressure band
+GATE_TO_BUSINESS_FRAMES = 2200
+BUSINESS_RETURN_SETTLE = 280
+
+_GATE_TO_BUSINESS_RLE_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "ice_gate_to_business_rle.json"
+)
+GATE_TO_BUSINESS_RLE: RleScript = load_rle_json(_GATE_TO_BUSINESS_RLE_PATH)
+
 
 def in_business(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_BUSINESS
@@ -328,6 +347,14 @@ __all__ = [
     "TUTORIAL_TO_GATE_RLE",
     "TUTORIAL_MID_RLE",
     "GATE_RETURN_SETTLE",
+    "GATE_MID_TOP_X",
+    "GATE_MID_TOP_Y",
+    "GATE_TUNNEL_X",
+    "GATE_TUNNEL_Y",
+    "GATE_SUPER_DOOR_X",
+    "GATE_TO_BUSINESS_FRAMES",
+    "GATE_TO_BUSINESS_RLE",
+    "BUSINESS_RETURN_SETTLE",
     "SNAKE_TUNNEL_EXIT_X",
     "SNAKE_TUNNEL_FLOOR_Y",
     "SNAKE_TUNNEL_FRAMES",

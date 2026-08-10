@@ -247,6 +247,19 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1, 2, 9, 10, 75, 77, 81, 164, 166}),
     ),
     SourceFingerprint(
+        "post_ice_gate_to_business_pure",
+        "scratch/post_ice_gate_to_business_pure.state",
+        0xA7DE,
+        use_for="Ice return pure handoff (rr-e5i6 gate-to-business dual 879f); pure business-to-warehouse / K5 reverse",
+        continuous_like=False,
+        x_min=20,
+        x_max=100,
+        y_min=880,
+        y_max=960,
+        # 25 = turn residual on Super lip after settle; 1/2/9/10 standing.
+        poses=frozenset({1, 2, 9, 10, 25, 75, 77, 81, 164, 166}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,
