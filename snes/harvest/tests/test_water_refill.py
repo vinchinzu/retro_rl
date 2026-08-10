@@ -442,12 +442,23 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task.reset(world)
         task._navigator.update(ram)
         hop = task._refill_hop_goal(ram, (20, 30), (32, 34))
-        # North of wall: force post-gap south corridor, not north-lip crawl.
-        self.assertGreaterEqual(hop[1], 32, msg=f"expected south corridor hop, got {hop}")
+        # From y=30: densify one more tile north (y=29) before south charge —
+        # never crawl the north lip east on y=30.
+        self.assertLessEqual(
+            hop[1], 29, msg=f"from y=30 must re-seat north before charge, got {hop}"
+        )
         self.assertNotEqual(hop, (32, 34))
+        hop2 = task._refill_hop_goal(ram, (20, 29), (32, 34))
+        self.assertGreaterEqual(
+            hop2[1], 31, msg=f"from y=29 must charge gap/south, got {hop2}"
+        )
 
     def test_refill_hop_goal_from_gap_goes_south_not_north_lip(self) -> None:
-        """From cleared gap ~(13,31) must not densify to north-lip y=30 crawl."""
+        """From cleared gap ~(13,31): densify north; from y=29 charge south.
+
+        Standing ON the gap soft-blocks (13,31)→(13,32). Never densify south
+        from y=31. From y=29 charge toward y≥32 post-gap corridor.
+        """
         ram = _blank_ram()
         for ty in range(64):
             for tx in range(64):
@@ -460,8 +471,19 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task = CropWaterTask(work_mode="water")
         task.reset(world)
         task._navigator.update(ram)
-        hop = task._refill_hop_goal(ram, (13, 31), (32, 34))
-        self.assertGreaterEqual(hop[1], 32, msg=f"gap exit must go south, got {hop}")
+        hop1 = task._refill_hop_goal(ram, (13, 31), (32, 34))
+        self.assertLessEqual(
+            hop1[1],
+            30,
+            msg=f"from gap tile must re-approach north, got {hop1}",
+        )
+        hop2 = task._refill_hop_goal(ram, (13, 29), (32, 34))
+        self.assertGreaterEqual(
+            hop2[1],
+            31,
+            msg=f"from y=29 must charge gap/south, got {hop2}",
+        )
+        self.assertNotEqual(hop2[1], 30, msg="must not north-lip crawl")
 
 
 class FenceLocalDropTests(unittest.TestCase):
@@ -606,3 +628,61 @@ class KeepAliveClearOrderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FenceCorridorOnlyTests(unittest.TestCase):
+    """corridor_only FenceClearLoop must local-drop instead of pond thrash."""
+
+    def test_corridor_only_skips_navigate_pond_to_local_drop(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        _set_player_tile(ram, (13, 31))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=1, max_steps_per_fence=500, corridor_only=True
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(13, 31), tile_id=0x05)
+        task._navigator.update(ram)
+
+        # First step: south charge while carrying on gap tile.
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertTrue(
+            getattr(task, "_corridor_charge_done", False)
+            or task._state == "local_drop"
+            or len(task._action_queue) > 0
+            or result.reason
+            in (
+                "corridor_only south charge",
+                "corridor_only local drop",
+                "corridor_only drop south of wall",
+            ),
+            msg=f"state={task._state} reason={result.reason}",
+        )
+        # Drain charge queue then expect local_drop arm.
+        for _ in range(120):
+            result = task.step(world)
+            if task._state == "local_drop":
+                break
+        self.assertEqual(
+            task._state,
+            "local_drop",
+            msg=f"after charge must local_drop, got {task._state}",
+        )
