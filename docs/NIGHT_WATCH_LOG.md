@@ -1132,6 +1132,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 
 
 
+
+
 ### 2026-08-10T04:50 CDT — SM Red mid dual y1606 (rr-av5s PARTIAL)
 - Commit `ea5ad62`: bottom IBJ → tunnel→midplat → midplat IBJ dual **temp floor y1606**.
 - Do not climb_lower before IBJ. Frozen-ripper seats not solid.
@@ -1259,3 +1261,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Residual **rr-gjey**: Gleeok Clean needs hp≥~108; pure spine ends ~103 after map peel.
 - Spawned zelda manager on rr-gjey (heart-safe / lower-HP Gleeok).
 
+## 2026-08-10 rr-av5s PARTIAL — Red→Hellway past floor y1459
+
+- Dual mid floor y1606 + human RLE@850 dual ~(122,1459)p81
+- Hellway still RED; upper residual from p81 handoff
+- Keep rr-av5s in_progress
