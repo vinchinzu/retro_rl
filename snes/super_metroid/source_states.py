@@ -353,6 +353,18 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=450,
     ),
     SourceFingerprint(
+        "post_bubble_to_farm_pure",
+        "scratch/post_bubble_to_farm_pure.state",
+        0xAF72,
+        use_for="farm-to-speedway return pure predecessor (Wave return stack; needs Speed)",
+        continuous_like=False,
+        # Farm right-top settle after Bubble bottom-left leave ~(472–523,139).
+        x_min=400,
+        x_max=560,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
         "post_kihunter_to_zeela",
         "scratch/post_kihunter_to_zeela_return.state",
         0xA471,

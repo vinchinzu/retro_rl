@@ -252,3 +252,11 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Docs: STATUS closed; town_day1_recon pure fix section.
 - Next tip: `rr-53g` Harvest + ship + post-5pm money assert (Gate B full spring income path).
 - No push.
+
+### 2026-08-09T22:20 CDT — super_metroid Bubble→Farm pure GREEN
+- **CLOSED** `rr-czg9` dual pure **1566f×2** Bubble `0xACB3`→Farm `0xAF72` ~(472,139).
+- Export: `scratch/post_bubble_to_farm_pure.state` (Farm→Speedway predecessor).
+- Parent `rr-vqv3` remains open (4/7 hops dual green).
+- Next: `rr-z13h` Pure Farm→Speedway (needs Speed).
+- Tests: `test_k4_wave_return_scaffold.py` 6 passed. No push. No Ice STATUS.
+

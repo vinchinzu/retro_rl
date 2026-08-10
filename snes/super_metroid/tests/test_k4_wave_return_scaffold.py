@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from super_metroid.routes.kpdr import get_segment
 from super_metroid.routes.kpdr.wave import (
+    play_bubble_to_farm,
     play_double_to_single_chamber,
     play_single_to_bubble,
     play_wave_to_double_chamber,
 )
 from super_metroid.routes.kpdr.wave.geometry import (
+    BTF_DOOR_X,
+    BTF_FARM_SETTLE,
+    BTF_MID_Y,
+    BTF_UPPER_Y,
     DTS_DOOR_X,
     DTS_FLOOR_Y_MIN,
     DTS_HOP_LAUNCH_X,
@@ -38,6 +43,10 @@ def test_single_to_bubble_export_and_registry() -> None:
     assert get_segment("single_to_bubble") is play_single_to_bubble
 
 
+def test_bubble_to_farm_export_and_registry() -> None:
+    assert get_segment("bubble_to_farm") is play_bubble_to_farm
+
+
 def test_wave_return_geometry_constants() -> None:
     assert WAVE_BEAM_MASK == 0x0001
     assert WAVE_DOOR_X == 48
@@ -51,6 +60,10 @@ def test_wave_return_geometry_constants() -> None:
     assert STB_TOP_Y_MAX <= 180
     assert STB_DOOR_X <= 50
     assert STB_BUBBLE_SETTLE >= 200
+    assert BTF_MID_Y[0] >= 360
+    assert BTF_UPPER_Y[1] <= 200
+    assert BTF_DOOR_X <= 50
+    assert BTF_FARM_SETTLE >= 200
 
 
 def test_has_wave_predicate() -> None:
