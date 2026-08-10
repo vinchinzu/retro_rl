@@ -465,6 +465,8 @@ class FrameVideoWriter:
                 "copy",
                 "-c:a",
                 "aac",
+                "-af",
+                "apad",
                 "-b:a",
                 self.audio_bitrate,
                 "-shortest",
@@ -839,4 +841,3 @@ class CaptureSession:
         for _ in range(max(frames, 1)):
             obs = self.step(action)
         return obs
-

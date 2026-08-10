@@ -18,7 +18,7 @@ import numpy as np
 
 from retro_harness.actions import buttons, idle_action
 from retro_harness.adventure.hashutil import sha256_file
-from retro_harness.artifacts import clean_artifact_stem, recording_artifacts
+from retro_harness.artifacts import recording_artifacts
 from retro_harness.env import make_env
 from retro_harness.video import probe_video_evidence
 from super_metroid.door_kinematics import DoorKinematics
@@ -595,6 +595,7 @@ def run_continuous(
     play: PlayFn,
     assist: AssistLike,
     graph: RoomProgressionGraph,
+    env_factory: Callable[[], Any] | None = None,
     video_path: str | Path | None = None,
     video_config: VideoCaptureConfig | None = None,
     success_outcome: str = "ok",
@@ -611,7 +612,11 @@ def run_continuous(
     Route play always starts at power-on regardless of video trim.
     """
     config = video_config or VideoCaptureConfig()
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
+    env = (
+        env_factory()
+        if env_factory is not None
+        else make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
+    )
     writer: VideoRecorder | None = None
     splits: list[Split] = []
     segments: list[SegmentEvidence] = []
@@ -688,6 +693,7 @@ def finish_report(
     required_splits: tuple[str, ...],
     final_conditions: dict[str, bool],
     source_policy: str,
+    rom_path: str | Path = SHARED_ROM,
     report_path: str | Path | None,
     route_label: str,
     kind: str = "bombs",
@@ -763,7 +769,7 @@ def finish_report(
         progression_writes=assist.telemetry.progression_writes,
         video=result.video_evidence,
         source_policy=source_policy,
-        rom_sha256=sha256_file(SHARED_ROM),
+        rom_sha256=sha256_file(Path(rom_path)),
         start_state="power_on/retro.State.NONE",
         generated_at=datetime.now(timezone.utc).isoformat(),
     )

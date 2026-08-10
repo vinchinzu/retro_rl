@@ -53,6 +53,15 @@ controllers. The fail-closed contract, audit, solver trace, and failed outcome
 are retained in `recordings/vertical_slice.run.json`; exact macro actions and
 the recovered failure are also retained as canonical trajectories.
 
+The first end-to-end policy product runs the actual `SMRando-Snes` emulator
+integration from power-on through Morph Ball and writes package-owned video and
+integrity evidence. The current integration is still the documented vanilla
+substrate; this proves execution wiring, not patched-seed robustness.
+
+```bash
+SDL_VIDEODRIVER=dummy uv run python -m sm_rando.scripts.run_morph_policy
+```
+
 ## Natural-entry corpus
 
 `recordings/landing_entry_corpus.json` indexes 64 unique states produced by the
