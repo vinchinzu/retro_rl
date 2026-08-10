@@ -145,13 +145,17 @@ class EscapeHop:
         return PATH_PRIMARY
 
     def to_edge(self) -> GraphEdge:
-        edge_meta: dict[str, object] = {"path": self.path_tag(), **dict(self.meta)}
+        # Route-path tag wins over hop meta keys (do not put "path" in meta).
+        edge_meta: dict[str, object] = {**dict(self.meta), "path": self.path_tag()}
         return GraphEdge(
             source_id=self.source_id,
             target_id=self.target_id,
             edge_id=self.hop_id,
             direction=self.direction,
             requires=self.requires,
+            # Acquires feed L4 plan() / inventory_aware_path so uncle→sword
+            # grants fighter_sword to later gated edges.
+            acquires=self.acquires,
             verification=self.verification,
             provenance=self.provenance,
             meta=edge_meta,
@@ -211,7 +215,7 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         meta={
             "status_fact": "sword→south chamber",
             "map_id": "room_55",
-            "path": "uncle_corridor_west→south_chamber",
+            "map_path": "uncle_corridor_west→south_chamber",
         },
     ),
     # --- primary outdoor continuous path ------------------------------------

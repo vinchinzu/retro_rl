@@ -60,7 +60,7 @@ Layer 0  Deterministic parallel emulator pool (rollouts, save/load, speed)
 | Layer | Status in this repo | Ownership |
 |-------|---------------------|-----------|
 | **L1** Skills | ~90% of current work; strong across ~20 games | Per-game (`snes/*`, `nes/*`) |
-| **L4** Planner | Bounded capability planner has one real-game consumer; resource/risk extension is fake-tested | Shared — first consumer / extension fake-tested |
+| **L4** Planner | Bounded capability planner has SM Morph + ALTTP escape consumers (`plan()` dry runs); resource/risk extension is fake-tested | Shared — two real subgraphs offline |
 | **L3** Discovery | Super Metroid room-graph lessons; SMZ3 portal/world detect | Shared — incomplete |
 | **L2** Observation | Dev-time RAM maps + miner tooling; not runtime bootstrap | Shared — incomplete |
 | **L0** Emulator pool | Emulator-state-only pool; wrapper/RNG/episode snapshots remain open | Shared — fake-tested only |
@@ -173,6 +173,13 @@ used before any emulator integration:
   typed resource blockers. Risk cost uses smoothed success and duration
   statistics aggregated from retained `SkillOutcome` values. This extension
   is still **fake-tested** until a real game planner consumes it.
+
+**Real-game dry-run consumers (rr-gbd.12):**
+
+- Super Metroid Morph stage → `super_metroid.progression.l4_plan.plan_morph`
+  (Ceres → Morph Ball edges from `MORPH_GRAPH`)
+- ALTTP opening escape → `alttp.opening_route.l4_plan.plan_escape`
+  (grounds → continuous tip `room_50` with lamp + on-path sword acquire)
 
 ### Versioned environment/model contracts
 
