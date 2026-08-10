@@ -21,6 +21,12 @@ from super_metroid.routes.kpdr.k4_wave import (
     play_double_chamber_to_wave,
     play_single_to_double_chamber,
 )
+from super_metroid.routes.kpdr.ice import (
+    play_business_to_ice_gate,
+    play_ice_acid_to_snake,
+    play_ice_gate_to_acid,
+    play_ice_snake_to_ice,
+)
 from super_metroid.routes.kpdr.ghz_to_red import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
@@ -85,6 +91,10 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_RED_TOWER,
     ROOM_RISING_TIDE,
     ROOM_DOUBLE_CHAMBER,
+    ROOM_ICE,
+    ROOM_ICE_ACID,
+    ROOM_ICE_GATE,
+    ROOM_ICE_SNAKE,
     ROOM_SINGLE_CHAMBER,
     ROOM_SPEED,
     ROOM_SPEED_HALL,
@@ -112,6 +122,9 @@ from super_metroid.routes.kpdr.varia_return import (
 )
 from super_metroid.routes.kpdr.warehouse_stack import play_warehouse_to_business
 from super_metroid.routes.runtime import RouteSession
+
+# Post-Speed Boost Blocks (Ice Gate floor → Acid); matches progression stage caps.
+_K4_SPEED_CAPS = _K4_CAPS | frozenset({"speed_booster"})
 
 __all__ = [
     "POST_SUPERS_SPINE",
@@ -690,5 +703,57 @@ POST_SUPERS_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=_K4_CAPS | frozenset({"missiles"}),
         policy_id="kpdr_k4_wave",
+    ),
+    # --- ice (K4.11; Business Super → Gate → Acid → Snake → Ice PLM) ---
+    # Pure stack dual GREEN (rr-dbu.11). Continuous dual needs Wave→Business
+    # return pure (room gap: wave tip ends 0xADDE; ice hops start 0xA7DE).
+    # Compose wiring only — do not STATUS-promote without dual continuous green.
+    SpineHop(
+        "business_to_ice_gate",
+        play_business_to_ice_gate,
+        ROOM_BUSINESS,
+        ROOM_ICE_GATE,
+        "Ice Beam Gate Room",
+        "ice",
+        exit_direction="left",
+        entry_direction="right",
+        requires=_K4_CAPS | frozenset({"super_missiles"}),
+        policy_id="kpdr_k4_ice",
+    ),
+    SpineHop(
+        "ice_gate_to_acid",
+        play_ice_gate_to_acid,
+        ROOM_ICE_GATE,
+        ROOM_ICE_ACID,
+        "Ice Beam Acid Room",
+        "ice",
+        exit_direction="left",
+        entry_direction="right",
+        requires=_K4_SPEED_CAPS,
+        policy_id="kpdr_k4_ice",
+    ),
+    SpineHop(
+        "ice_acid_to_snake",
+        play_ice_acid_to_snake,
+        ROOM_ICE_ACID,
+        ROOM_ICE_SNAKE,
+        "Ice Beam Snake Room",
+        "ice",
+        exit_direction="left",
+        entry_direction="right",
+        requires=_K4_SPEED_CAPS,
+        policy_id="kpdr_k4_ice",
+    ),
+    SpineHop(
+        "ice_snake_to_ice",
+        play_ice_snake_to_ice,
+        ROOM_ICE_SNAKE,
+        ROOM_ICE,
+        "Ice Beam Room",
+        "ice",
+        exit_direction="right",
+        entry_direction="left",
+        requires=_K4_CAPS,
+        policy_id="kpdr_k4_ice",
     ),
 )

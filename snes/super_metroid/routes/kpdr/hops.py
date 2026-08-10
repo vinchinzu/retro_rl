@@ -63,6 +63,9 @@ __all__ = [
     "FROG_ONLY_HOPS",
     "FROG_SAVE_HOPS",
     "BAT_CAVE_ONLY_HOPS",
+    "SPEED_ONLY_HOPS",
+    "WAVE_ONLY_HOPS",
+    "ICE_ONLY_HOPS",
 ]
 
 
@@ -88,6 +91,7 @@ FROG_SAVE_HOPS: tuple[SpineHop, ...] = BUSINESS_RETURN_HOPS + FROG_ONLY_HOPS
 BAT_CAVE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("bat_cave")
 SPEED_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("speed")
 WAVE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("wave")
+ICE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("ice")
 
 _HOPS_BY_TIP: dict[str, tuple[SpineHop, ...]] = {
     "red_tower": RED_TOWER_HOPS,
@@ -102,6 +106,7 @@ _HOPS_BY_TIP: dict[str, tuple[SpineHop, ...]] = {
     "bat_cave": BAT_CAVE_ONLY_HOPS,
     "speed": SPEED_ONLY_HOPS,
     "wave": WAVE_ONLY_HOPS,
+    "ice": ICE_ONLY_HOPS,
 }
 
 

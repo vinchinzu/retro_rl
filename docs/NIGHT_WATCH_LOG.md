@@ -106,3 +106,13 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-gbd.13` portal→house SeedCampaignRunner dry S/T 3/3 claimable (fixture substrate).
 - Next free capacity: alttp_rando multi-seed `rr-gbd.26` if ready, else other tips.
 
+
+### 2026-08-09T21:40 CDT — SM continuous `--to ice` compose (rr-dbu.7)
+- **CLOSED** `rr-dbu.7` TipSpec/spine/catalog/graph compose for continuous `--to ice`.
+- Parent tip `wave`; hops Business→Gate→Acid→Snake→Ice PLM (pure stack greens).
+- Graph outbound Ice edges spine-emitted `continuous`; default CLI tip remains **`wave`**.
+- **Not** STATUS-promoted; **not** dual continuous green (room gap Wave `0xADDE` → Business `0xA7DE`).
+- Residual: `snes/super_metroid/docs/tasks/rr-dbu.7-residual.md`
+- Next: **`rr-vqv3`** Wave→Business pure return stack (unblock dual continuous Ice).
+- Units: 33 passed (`test_continuous_tips` + `test_k4_speed_branches` + `test_k4_ice_scaffold`).
+- No push.

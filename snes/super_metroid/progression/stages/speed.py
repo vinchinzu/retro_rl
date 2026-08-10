@@ -155,39 +155,9 @@ _BRANCH_EDGES = (
         "kpdr_k4_wave",
         "controller_dev",
     ),
-    # --- Ice branch from Business (after return) ---
-    DoorEdge(
-        "business_to_ice_gate",
-        ROOM_BUSINESS,
-        ROOM_ICE_GATE,
-        "left",
-        "right",
-        _K4_CAPS | frozenset({"super_missiles"}),
-        "kpdr_k4_ice",
-        "controller_dev",  # pure dual GREEN 894f ×2 (rr-fg3); no continuous tip yet
-    ),
-    # Tape entry path (rr-dbu.12): Gate → Acid → Snake (prefer 2WJ). Needs Speed
-    # for Gate floor Boost Blocks (pure dual GREEN rr-9t4).
-    DoorEdge(
-        "ice_gate_to_acid",
-        ROOM_ICE_GATE,
-        ROOM_ICE_ACID,
-        "left",
-        "right",
-        _K4_SPEED_CAPS,
-        "kpdr_k4_ice",
-        "controller_dev",  # pure dual GREEN 370f ×2 (rr-9t4)
-    ),
-    DoorEdge(
-        "ice_acid_to_snake",
-        ROOM_ICE_ACID,
-        ROOM_ICE_SNAKE,
-        "left",
-        "right",
-        _K4_SPEED_CAPS,
-        "kpdr_k4_ice",
-        "controller_dev",  # pure dual GREEN (rr-5cf); no continuous tip yet
-    ),
+    # Ice outbound (Business→Gate→Acid→Snake→Ice): spine-emitted continuous
+    # (tip ``ice``) via continuous_edges_for_tips — do not hand-author here.
+    # Pure dual GREEN stack rr-dbu.11; continuous dual still open (Wave return).
     # Return path only (Tutorial); outbound tape skips Tutorial on entry.
     DoorEdge(
         "ice_gate_to_tutorial",
@@ -209,21 +179,13 @@ _BRANCH_EDGES = (
         "kpdr_k4_ice",
         "unverified",
     ),
-    DoorEdge(
-        "ice_snake_to_ice",
-        ROOM_ICE_SNAKE,
-        ROOM_ICE,
-        "right",
-        "left",
-        _K4_CAPS,
-        "kpdr_k4_ice",
-        "unverified",
-    ),
 )
 
 EDGES = (
     _VARIA_EDGES
-    + continuous_edges_for_tips("business", "frog", "bat_cave", "speed", "wave")
+    + continuous_edges_for_tips(
+        "business", "frog", "bat_cave", "speed", "wave", "ice"
+    )
     + _BRANCH_EDGES
 )
 
