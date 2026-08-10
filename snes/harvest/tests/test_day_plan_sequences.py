@@ -1389,7 +1389,10 @@ class DayPlanSequenceTests(unittest.TestCase):
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertEqual(result.reason, "exit settle")
+        # Mid-warp outdoor (y < 330): hold down+B — neutral settle freezes control (rr-bhr).
+        self.assertEqual(result.reason, "exit mid-warp push")
+        self.assertIsNotNone(result.action)
+        self.assertEqual(int(result.action.action[5]), 1)  # down
 
         set_player_pos(world.ram, 137, 344)
         world.ram[player_state_addr] = 0x01
