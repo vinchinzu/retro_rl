@@ -465,6 +465,146 @@ def probe_8_3_continuous(
     return report
 
 
+
+def discover_leave_classes_8_2(
+    env,
+    fm2: list[list[int]],
+    st82,
+    *,
+    lives82: int,
+    si82_min: int,
+    si82_max: int,
+    si82_step: int = 2,
+    log: Callable[[str], None] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Scan pure FM2 8-2 starts for leave → 8-3 control phase classes.
+
+    Returns ``(all_hits, unique_by_leave82_timer)``. Pure HappyLee only.
+    """
+    hits: list[dict[str, Any]] = []
+    for si82 in range(si82_min, si82_max + 1, si82_step):
+        set_state(env, st82)
+        tr = probe_8_2_from_control(env, fm2, si82, start_lives=lives82)
+        if not tr.ok or tr.leave_frame is None:
+            continue
+        wait83, snap83 = idle_until(env, is_8_3_control)
+        if not is_8_3_control(snap83):
+            continue
+        fp = snap_fingerprint(snap83)
+        row = {
+            "si82": si82,
+            "leave82": int(tr.leave_frame),
+            "wait83": int(wait83),
+            "control_8_3_fp": fp,
+            "timer": int(fp.get("timer", snap83.timer)),
+            "player_x": int(fp.get("player_x", snap83.player_x)),
+        }
+        hits.append(row)
+        if log:
+            log(
+                f"  leave82 si={si82} leave={tr.leave_frame} wait83={wait83} "
+                f"t={row['timer']} x={row['player_x']}"
+            )
+
+    seen: set[tuple[int, int]] = set()
+    unique: list[dict[str, Any]] = []
+    for row in sorted(hits, key=lambda r: (r["leave82"], r["si82"])):
+        key = (int(row["leave82"]), int(row["timer"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(row)
+    return hits, unique
+
+
+def select_leave_fan(
+    unique: list[dict[str, Any]],
+    *,
+    top_leaves: int = 5,
+    default_si82: int | None = None,
+) -> list[dict[str, Any]]:
+    """Pick phase-diverse leave classes: fastest first, then slower diversity."""
+    if not unique:
+        return []
+    sorted_u = sorted(unique, key=lambda r: (r["leave82"], r["si82"]))
+    fan: list[dict[str, Any]] = list(sorted_u[: max(1, top_leaves)])
+    if default_si82 is not None:
+        for row in sorted_u:
+            if int(row["si82"]) == int(default_si82) and row not in fan:
+                fan.append(row)
+                break
+    for row in reversed(sorted_u):
+        if row not in fan and len(fan) < top_leaves + 2:
+            fan.append(row)
+    return fan
+
+
+def _gated_si_search(
+    env,
+    fm2: list[list[int]],
+    st83,
+    *,
+    lives83: int,
+    si_min: int,
+    si_max: int,
+    si_step: int,
+    lead_idles: tuple[int, ...],
+    max_play: int,
+    si82: int,
+    leave82: int,
+    wait83: int,
+    ctrl_fp: dict[str, int],
+    stop_on_hit: bool,
+    log: Callable[[str], None] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None, int]:
+    """Grid pure FM2 SI + lead at a fixed 8-3 control state. Pure inputs only."""
+    hits: list[dict[str, Any]] = []
+    best_prog: dict[str, Any] | None = None
+    n_trials = 0
+    for lead in lead_idles:
+        for si in range(si_min, si_max + 1, si_step):
+            n_trials += 1
+            set_state(env, st83)
+            for _ in range(lead):
+                env.step(IDLE)
+            tr = probe_8_3_from_control(
+                env, fm2, si, max_play=max_play, start_lives=lives83
+            )
+            row: dict[str, Any] = {
+                "si": si,
+                "lead": lead,
+                "si82": si82,
+                "leave82": leave82,
+                "wait83": wait83,
+                "leave": tr.leave_frame,
+                "death": tr.death,
+                "max_x": tr.max_x,
+                "exits": tr.exits,
+                "control_8_3_fp": ctrl_fp,
+            }
+            if tr.ok:
+                hits.append(row)
+                if log:
+                    log(
+                        f"  HIT gated si={si} lead={lead} leave={tr.leave_frame} "
+                        f"si82={si82} leave82={leave82}"
+                    )
+                if stop_on_hit:
+                    return hits, best_prog, n_trials
+            else:
+                improved = best_prog is None or (tr.max_x or 0) > (
+                    best_prog.get("max_x") or 0
+                )
+                if improved:
+                    best_prog = row
+                if log and (improved or n_trials % 25 == 0):
+                    log(
+                        f"  prog si={si} lead={lead} max_x={tr.max_x} "
+                        f"death={tr.death} n={n_trials} si82={si82} t={ctrl_fp.get('timer')}"
+                    )
+    return hits, best_prog, n_trials
+
+
 def search_pure_8_3(
     *,
     fm2_path: Path = PURE_HL_FM2,
@@ -476,6 +616,12 @@ def search_pure_8_3(
     si_step: int = 1,
     lead_idles: tuple[int, ...] = (0, 1, 2),
     max_play: int = 3500,
+    # Multi-leave 8-2 fan → re-gate 8-3 (phase classes by leave82/timer)
+    multi_leave: bool = False,
+    si82_min: int = 10840,
+    si82_max: int = 10940,
+    si82_step: int = 2,
+    top_leaves: int = 5,
     # Also try continuous from nearby 8-2 starts
     cont_si82_min: int | None = None,
     cont_si82_max: int | None = None,
@@ -484,12 +630,14 @@ def search_pure_8_3(
     progress: Callable[[str], None] | None = None,
     write_evidence: bool = True,
     export_on_hit: bool = True,
+    stop_on_hit: bool = True,
 ) -> dict[str, Any]:
     """Search pure HappyLee FM2 for 8-3 → 8-4 leave. Never writes hybrid paths.
 
-    Two modes combined:
+    Modes:
     1. **Gated**: HL…8-2 leave → idle → 8-3 control → grid SI + lead idle
-    2. **Continuous** (optional): from 8-2 control play FM2 without re-gate
+    2. **Multi-leave**: fan distinct 8-2 leave phase classes, re-gate each
+    3. **Continuous** (optional): from 8-2 control play FM2 without re-gate
     """
     from retro_harness.env import make_env
 
@@ -526,11 +674,16 @@ def search_pure_8_3(
         "no_hybrid": True,
         "no_flamexx": True,
         "no_natural_82": True,
+        "no_skill_macros": True,
         "si_8_1": start_8_1,
         "si_8_2_default": start_8_2,
         "leave_8_1": tr81.leave_frame,
         "wait_8_2": wait82,
         "ctrl_wait_8_1": pred.get("ctrl_wait_8_1"),
+        "multi_leave": multi_leave,
+        "leave_classes_82": [],
+        "unique_leave_classes": [],
+        "fan_classes": [],
         "gated_hits": [],
         "gated_best_progress": None,
         "cont_hits": [],
@@ -539,10 +692,17 @@ def search_pure_8_3(
         "gate_written": False,
     }
 
-    # --- Continuous from 8-2 (optional) ---
     if cont_si82_min is not None and cont_si82_max is not None:
-        cont_best = None
-        for si in range(cont_si82_min, cont_si82_max + 1, cont_si82_step):
+        cmin, cmax, cstep = cont_si82_min, cont_si82_max, cont_si82_step
+    elif multi_leave:
+        cmin, cmax, cstep = si82_min, si82_max, si82_step
+    else:
+        cmin = cmax = cstep = None  # type: ignore[assignment]
+
+    cont_best = None
+    if cmin is not None and cmax is not None:
+        log(f"pure_hl: continuous scan si82={cmin}..{cmax} step={cstep}")
+        for si in range(int(cmin), int(cmax) + 1, int(cstep)):
             set_state(env, st82)
             trial = probe_continuous_from_8_2(
                 env, fm2, si, start_lives=lives82, max_play=cont_max_play
@@ -565,87 +725,141 @@ def search_pure_8_3(
                 )
             ):
                 cont_best = trial
+            if trial.get("left_83") and stop_on_hit:
+                log(f"pure_hl: CONTINUOUS LEAVE 8-3 at si82={si}")
+                break
         report["cont_best"] = cont_best
         if cont_best and cont_best.get("left_83"):
             log(f"pure_hl: CONTINUOUS LEAVE 8-3 at si82={cont_best['si']}")
 
-    # --- Gated SI search ---
-    set_state(env, st82)
-    tr82 = probe_8_2_from_control(env, fm2, start_8_2, start_lives=lives82)
-    if not tr82.ok:
-        env.close()
-        report["error"] = "8_2_body_failed_for_gated"
-        report["probe_82"] = tr82.to_dict()
-        if write_evidence:
-            write_json(PURE_HL_EVIDENCE / "search_8_3.json", report)
-        return report
-
-    wait83, snap83 = idle_until(env, is_8_3_control)
-    if not is_8_3_control(snap83):
-        env.close()
-        report["error"] = "8_3_control_timeout"
-        report["wait83"] = wait83
-        if write_evidence:
-            write_json(PURE_HL_EVIDENCE / "search_8_3.json", report)
-        return report
-
-    lives83 = int(snap83.lives)
-    st83 = get_state(env)
-    report["wait_8_3"] = wait83
-    report["leave_8_2"] = tr82.leave_frame
-    report["control_8_3_fp"] = snap_fingerprint(snap83)
-    log(
-        f"pure_hl: 8-3 control wait83={wait83} leave82={tr82.leave_frame} "
-        f"t={snap83.timer} x={snap83.player_x}"
-    )
-
-    best_prog: dict[str, Any] | None = None
-    hits: list[dict[str, Any]] = []
-    n_trials = 0
-    for lead in lead_idles:
-        for si in range(si_min, si_max + 1, si_step):
-            n_trials += 1
-            set_state(env, st83)
-            for _ in range(lead):
-                env.step(IDLE)
-            tr = probe_8_3_from_control(
-                env, fm2, si, max_play=max_play, start_lives=lives83
-            )
-            row = {
-                "si": si,
-                "lead": lead,
-                "leave": tr.leave_frame,
-                "death": tr.death,
-                "max_x": tr.max_x,
-                "exits": tr.exits,
+    if multi_leave:
+        log(
+            f"pure_hl: multi-leave discover si82={si82_min}..{si82_max} "
+            f"step={si82_step}"
+        )
+        all_leaves, unique = discover_leave_classes_8_2(
+            env,
+            fm2,
+            st82,
+            lives82=lives82,
+            si82_min=si82_min,
+            si82_max=si82_max,
+            si82_step=si82_step,
+            log=log,
+        )
+        fan = select_leave_fan(
+            unique, top_leaves=top_leaves, default_si82=start_8_2
+        )
+        report["leave_classes_82"] = all_leaves
+        report["unique_leave_classes"] = unique
+        report["fan_classes"] = fan
+        log(
+            f"pure_hl: leave hits={len(all_leaves)} unique={len(unique)} "
+            f"fan={len(fan)}"
+        )
+        if not fan:
+            env.close()
+            report["error"] = "no_8_2_leave_classes"
+            if write_evidence:
+                write_json(PURE_HL_EVIDENCE / "search_8_3.json", report)
+            return report
+    else:
+        fan = [
+            {
+                "si82": start_8_2,
+                "leave82": None,
+                "wait83": None,
+                "control_8_3_fp": None,
+                "timer": None,
             }
-            if tr.ok:
-                hits.append(row)
-                log(f"  HIT gated si={si} lead={lead} leave={tr.leave_frame}")
-                if export_on_hit and report.get("exported") is None:
-                    # Export pure body only; open gate.
-                    exp = export_pure_8_3(
-                        start_idx=si,
-                        leave_frames=int(tr.leave_frame),
-                        lead_idle=lead,
-                        ctrl_fp=report["control_8_3_fp"],
-                        leave_8_2=int(tr82.leave_frame or 0),
-                        wait_8_3=wait83,
-                        verify=False,  # already just left
-                    )
-                    report["exported"] = exp
-                    report["gate_written"] = True
-            else:
-                improved = best_prog is None or (tr.max_x or 0) > (
-                    best_prog.get("max_x") or 0
+        ]
+        report["fan_classes"] = fan
+
+    hits: list[dict[str, Any]] = []
+    best_prog: dict[str, Any] | None = None
+    n_trials = 0
+    found = bool(cont_best and cont_best.get("left_83"))
+
+    for leave in fan:
+        if found and stop_on_hit:
+            break
+        si82 = int(leave["si82"])
+        log(
+            f"=== fan si82={si82} leave82={leave.get('leave82')} "
+            f"t={leave.get('timer')} ==="
+        )
+        set_state(env, st82)
+        tr82 = probe_8_2_from_control(env, fm2, si82, start_lives=lives82)
+        if not tr82.ok or tr82.leave_frame is None:
+            log(f"  8-2 body failed si82={si82}")
+            continue
+        wait83, snap83 = idle_until(env, is_8_3_control)
+        if not is_8_3_control(snap83):
+            log(f"  8-3 control timeout after leave82={tr82.leave_frame}")
+            continue
+        lives83 = int(snap83.lives)
+        st83 = get_state(env)
+        ctrl_fp = snap_fingerprint(snap83)
+        leave82 = int(tr82.leave_frame)
+        if report.get("control_8_3_fp") is None:
+            report["wait_8_3"] = wait83
+            report["leave_8_2"] = leave82
+            report["control_8_3_fp"] = ctrl_fp
+            report["si_8_2_used"] = si82
+        log(
+            f"  8-3 control wait83={wait83} leave82={leave82} "
+            f"t={snap83.timer} x={snap83.player_x}"
+        )
+
+        class_hits, class_best, class_n = _gated_si_search(
+            env,
+            fm2,
+            st83,
+            lives83=lives83,
+            si_min=si_min,
+            si_max=si_max,
+            si_step=si_step,
+            lead_idles=lead_idles,
+            max_play=max_play,
+            si82=si82,
+            leave82=leave82,
+            wait83=wait83,
+            ctrl_fp=ctrl_fp,
+            stop_on_hit=stop_on_hit,
+            log=log,
+        )
+        n_trials += class_n
+        hits.extend(class_hits)
+        if class_best is not None and (
+            best_prog is None
+            or (class_best.get("max_x") or 0) > (best_prog.get("max_x") or 0)
+        ):
+            best_prog = class_best
+
+        if class_hits:
+            found = True
+            hit = class_hits[0]
+            if export_on_hit and report.get("exported") is None:
+                exp = export_pure_8_3(
+                    start_idx=int(hit["si"]),
+                    leave_frames=int(hit["leave"]),
+                    lead_idle=int(hit["lead"]),
+                    ctrl_fp=ctrl_fp,
+                    leave_8_2=leave82,
+                    wait_8_3=wait83,
+                    start_8_2=si82,
+                    start_8_1=start_8_1,
+                    verify=True,
+                    verify_trials=2,
                 )
-                if improved:
-                    best_prog = row
-                if improved or n_trials % 25 == 0:
-                    log(
-                        f"  prog si={si} lead={lead} max_x={tr.max_x} "
-                        f"death={tr.death} n={n_trials}"
-                    )
+                report["exported"] = exp
+                report["gate_written"] = bool(exp.get("success"))
+                report["wait_8_3"] = wait83
+                report["leave_8_2"] = leave82
+                report["control_8_3_fp"] = ctrl_fp
+                report["si_8_2_used"] = si82
+            if stop_on_hit:
+                break
 
     env.close()
     report["gated_hits"] = hits
@@ -655,12 +869,33 @@ def search_pure_8_3(
     report["success"] = bool(hits) or bool(
         report.get("cont_best") and report["cont_best"].get("left_83")
     )
-    report["next"] = (
-        "pure 8-3 leave verified — 8-4 search now allowed (pure HL only)"
-        if report["success"]
-        else "still desynced — expand SI range / continuous / multi-leave 8-2; "
-        "do NOT start pure 8-4"
-    )
+    if (
+        report["success"]
+        and not hits
+        and report.get("cont_best")
+        and report["cont_best"].get("left_83")
+        and export_on_hit
+        and report.get("exported") is None
+    ):
+        report["continuous_leave_only"] = True
+        report["next"] = (
+            "continuous pure FM2 left 8-3 — export gated body from control "
+            "offset or promote continuous chain carefully; re-verify 2/2"
+        )
+    elif report["success"] and report.get("gate_written"):
+        report["next"] = (
+            "pure 8-3 leave verified — 8-4 search now allowed (pure HL only)"
+        )
+    elif report["success"]:
+        report["next"] = (
+            "gated leave hit — confirm gate_8_3_leave.json "
+            "verified_leave_8_4_control=true (2/2)"
+        )
+    else:
+        report["next"] = (
+            "still desynced — expand multi-leave SI82 / SI83 / leads / continuous; "
+            "do NOT start pure 8-4"
+        )
 
     if write_evidence:
         write_json(PURE_HL_EVIDENCE / "search_8_3.json", report)
@@ -675,13 +910,19 @@ def export_pure_8_3(
     ctrl_fp: dict[str, int] | None = None,
     leave_8_2: int | None = None,
     wait_8_3: int | None = None,
+    start_8_2: int = HL_8_2_FM2_START,
+    start_8_1: int = HL_8_1_FM2_START,
     fm2_path: Path = PURE_HL_FM2,
     verify: bool = True,
+    verify_trials: int = 2,
 ) -> dict[str, Any]:
-    """Write pure 8-3 seed + open gate. Paths only under models/pure_hl/."""
+    """Write pure 8-3 seed + open gate. Paths only under models/pure_hl/.
+
+    ``start_8_2`` must match the multi-leave class that produced the hit so
+    verify rebuilds the same 8-3 control phase (not the canonical default only).
+    """
     ensure_pure_dirs()
     fm2 = parse_fm2(fm2_path).frames
-    # Optional lead idle is NOT part of FM2 body; record as meta, body = pure FM2.
     frames = [list(f) for f in fm2[start_idx : start_idx + leave_frames]]
     if not frames:
         raise ValueError("empty pure 8-3 body")
@@ -702,8 +943,10 @@ def export_pure_8_3(
         "lead_idle_before_body": lead_idle,
         "leave_8_2": leave_8_2,
         "wait_8_3": wait_8_3,
+        "si_8_2": start_8_2,
+        "si_8_1": start_8_1,
         "control_8_3_fp": ctrl_fp,
-        "verified_leave_8_4_control": not verify,  # set after verify if needed
+        "verified_leave_8_4_control": not verify,
         "note": (
             "Pure HappyLee 8-3 body. Do not sanitize L+R. "
             "Gate opens only after leave to 8-4 control."
@@ -725,45 +968,73 @@ def export_pure_8_3(
         "fm2_start_index": start_idx,
         "leave_frames": leave_frames,
         "lead_idle_before_body": lead_idle,
+        "si_8_2": start_8_2,
+        "si_8_1": start_8_1,
         "seed": str(out),
         "control_8_3_fp": ctrl_fp,
         "leave_8_2": leave_8_2,
         "wait_8_3": wait_8_3,
         "8_4_blocked_until_gate": False if not verify else True,
+        "verify_trials": [],
     }
 
     if verify:
         from retro_harness.env import make_env
 
-        env = make_env(GAME_V0, "Level1_1", GAME_DIR, render_mode="rgb_array")
-        env.reset()
-        chain = build_pure_to_8_3_control(env, fm2)
-        if not chain.success:
-            env.close()
-            gate["verified_leave_8_4_control"] = False
-            gate["verify_error"] = chain.error
-            write_json(PURE_8_3_GATE, gate)
-            return {"success": False, "seed": str(out), "gate": gate, "error": chain.error}
+        n_ok = 0
+        for trial_i in range(max(1, verify_trials)):
+            env = make_env(GAME_V0, "Level1_1", GAME_DIR, render_mode="rgb_array")
+            env.reset()
+            chain = build_pure_to_8_3_control(
+                env, fm2, start_8_1=start_8_1, start_8_2=start_8_2
+            )
+            if not chain.success:
+                env.close()
+                gate["verify_trials"].append(
+                    {"trial": trial_i, "ok": False, "error": chain.error}
+                )
+                continue
 
-        for _ in range(lead_idle):
-            env.step(IDLE)
-        lives = int(read_snapshot(env.get_ram(), 0).lives)
-        tr = probe_8_3_from_control(
-            env, fm2, start_idx, max_play=leave_frames + 50, start_lives=lives
-        )
-        # Also confirm 8-4 control after leave
-        ok_leave = tr.ok
-        ok_84 = False
-        if ok_leave:
-            wait84, snap84 = idle_until(env, is_8_4_control, max_wait=400)
-            ok_84 = is_8_4_control(snap84)
-            gate["wait_8_4"] = wait84
-            gate["control_8_4_fp"] = snap_fingerprint(snap84) if ok_84 else None
-        env.close()
-        gate["verified_leave_8_4_control"] = bool(ok_leave and ok_84)
-        gate["probe_leave"] = tr.leave_frame
-        gate["probe_death"] = tr.death
-        gate["probe_max_x"] = tr.max_x
+            for _ in range(lead_idle):
+                env.step(IDLE)
+            lives = int(read_snapshot(env.get_ram(), 0).lives)
+            tr = probe_8_3_from_control(
+                env, fm2, start_idx, max_play=leave_frames + 50, start_lives=lives
+            )
+            ok_leave = tr.ok
+            ok_84 = False
+            wait84 = None
+            fp84 = None
+            if ok_leave:
+                wait84, snap84 = idle_until(env, is_8_4_control, max_wait=400)
+                ok_84 = is_8_4_control(snap84)
+                fp84 = snap_fingerprint(snap84) if ok_84 else None
+            env.close()
+            trial_ok = bool(ok_leave and ok_84)
+            if trial_ok:
+                n_ok += 1
+            gate["verify_trials"].append(
+                {
+                    "trial": trial_i,
+                    "ok": trial_ok,
+                    "leave": tr.leave_frame,
+                    "death": tr.death,
+                    "max_x": tr.max_x,
+                    "wait_8_4": wait84,
+                    "control_8_4_fp": fp84,
+                }
+            )
+            gate["probe_leave"] = tr.leave_frame
+            gate["probe_death"] = tr.death
+            gate["probe_max_x"] = tr.max_x
+            if ok_84:
+                gate["wait_8_4"] = wait84
+                gate["control_8_4_fp"] = fp84
+
+        gate["verified_leave_8_4_control"] = n_ok >= max(1, verify_trials)
+        gate["verify_n_ok"] = n_ok
+        gate["verify_n_trials"] = max(1, verify_trials)
+        gate["8_4_blocked_until_gate"] = not gate["verified_leave_8_4_control"]
 
     write_json(PURE_8_3_GATE, gate)
     write_json(PURE_HL_EVIDENCE / "export_8_3.json", {"seed": str(out), "gate": gate})

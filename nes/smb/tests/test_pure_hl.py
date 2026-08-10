@@ -50,3 +50,24 @@ def test_write_json_only_under_pure_hl(tmp_path, monkeypatch) -> None:
     assert out.exists()
     assert out.read_text(encoding="utf-8")
     out.unlink(missing_ok=True)
+
+
+def test_select_leave_fan_prefers_fast_and_default() -> None:
+    unique = [
+        {"si82": 10850, "leave82": 2210, "timer": 300},
+        {"si82": 10910, "leave82": 2209, "timer": 301},
+        {"si82": 10920, "leave82": 2220, "timer": 290},
+        {"si82": 10880, "leave82": 2250, "timer": 280},
+        {"si82": 10900, "leave82": 2300, "timer": 270},
+        {"si82": 10930, "leave82": 2400, "timer": 260},
+    ]
+    fan = ph.select_leave_fan(unique, top_leaves=3, default_si82=10910)
+    assert fan[0]["leave82"] == 2209  # fastest first
+    assert any(r["si82"] == 10910 for r in fan)
+    assert len(fan) >= 3
+    assert len(fan) <= 5
+
+
+def test_select_leave_fan_empty() -> None:
+    assert ph.select_leave_fan([]) == []
+
