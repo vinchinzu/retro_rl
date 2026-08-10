@@ -37,11 +37,12 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     bubbles ``0x40`` (dead-end). Map **BOMB_UP** stand≈(120,105) → **0x11**
     (type ``0x35`` cluster). From cleared 0x11: UP **0x01** Keese+key ``0x19``
     (natural key residual); RIGHT **0x12** 5× Vire + block ``0x68``; LEFT **0x10**.
-    From 0x12: UP **0x02** blade traps ``0x49`` (dead-end); **RIGHT→0x13** Gleeok
-    type ``0x43`` + HeartContainer ``0x1A`` (live enter once; stabilize residual).
-    TF ``0x08`` still open.
+    From 0x12: UP **0x02** blade traps ``0x49`` (dead-end). **RIGHT→0x13** Gleeok
+    type ``0x43`` + HeartContainer ``0x1A`` requires **push block 0x68 LEFT**
+    (doors 2→3 opens R bit) then maze hold4 path (not naive y141 hold-RIGHT).
+    Dual-green enter live (rr-rvae). TF ``0x08`` / fight residual.
 
-Not Clean STATUS. Gleeok enter stabilize + TF ``0x08`` residual.
+Not Clean STATUS. Gleeok fight + TF ``0x08`` residual.
 """
 
 from __future__ import annotations
@@ -89,7 +90,49 @@ ROOM_L4_MID_11 = 0x11  # BOMB_UP of map 0x21; type 0x35 cluster
 ROOM_L4_KEY_01 = 0x01  # free UP of 0x11; 8× Keese + key 0x19 (natural key)
 ROOM_L4_VIRES_12 = 0x12  # free/bomb RIGHT of 0x11; 5× Vire + block 0x68
 ROOM_L4_TRAPS_02 = 0x02  # free UP of 0x12; blade traps 0x49 dead-end
-ROOM_L4_GLEEOK_13 = 0x13  # east of 0x12; Gleeok type 0x43 + HC 0x1a (enter residual)
+ROOM_L4_GLEEOK_13 = 0x13  # east of 0x12; Gleeok type 0x43 + HC 0x1a
+
+# 0x12 → Gleeok: after Vire clear, push block 0x68 LEFT one tile → doors raw 2→3
+# (R bit). Naive hold-RIGHT fails (maze); use hold4 PATH_12_TO_GLEEOK (rr-rvae dual).
+PUSH_12_STAND = (112, 144)
+PUSH_12_DIR = "LEFT"
+PUSH_12_BLOCK_FROM = (96, 144)
+PUSH_12_BLOCK_TO = (80, 144)
+PUSH_12_HOLD = 70  # frames holding LEFT at stand
+RIGHT_12_HOLD = 4
+PATH_12_TO_GLEEOK: tuple[str, ...] = (
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "DOWN",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+)
 
 VIRE_OBJECT_TYPE = 0x12  # live on 0x61/0x50/0x62; HP 64; sword splits → 0x1c
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # live split residual from Vire (not standard 0x1B)
@@ -794,6 +837,37 @@ ROOM_32_SPEC = DungeonRoomSpec(
     level=LEVEL4,
 )
 
+# 0x12: 5× Vire + push block 0x68 (rr-rvae). Enter west ~(16,141) from 0x11.
+# After clear doors raw often 2 (L only / UP free via ODM). Push block LEFT
+# (96,144)→(80,144) opens R bit (doors 3). Scripted PATH_12_TO_GLEEOK → 0x13.
+ROOM_12_SPEC = DungeonRoomSpec(
+    spec_id="level4_room12_vires",
+    source_room=ROOM_L4_MID_11,
+    room_id=ROOM_L4_VIRES_12,
+    entry=DoorRoute("LEFT", ((16, 141), (48, 141))),
+    enemy_types=(VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    type_only_enemy_types=(VIRE_SPLIT_KEESE_TYPE,),
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_PATROL_MID,
+        engage_distance=72,
+        attack_phase=0,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=ROOM_ITEM_NONE,
+    exit_routes=(
+        DoorRoute("LEFT", ((40, 141), (16, 141))),
+        DoorRoute("UP", ((120, 93), (120, 72))),
+        # RIGHT after push block → 0x13 Gleeok (maze path, not free corridor).
+    ),
+    max_frames=25000,
+    level=LEVEL4,
+)
+
 register_room_spec(ROOM_71_SPEC)
 register_room_spec(ROOM_61_SPEC)
 register_room_spec(ROOM_51_SPEC)
@@ -803,6 +877,7 @@ register_room_spec(ROOM_40_SPEC)
 register_room_spec(ROOM_30_SPEC)
 register_room_spec(ROOM_31_SPEC)
 register_room_spec(ROOM_32_SPEC)
+register_room_spec(ROOM_12_SPEC)
 
 
 class BombWall61North:
@@ -1247,6 +1322,42 @@ def level4_room_32_cleared(ram: np.ndarray) -> bool:
 def make_room_32_clear_controller() -> GenericDungeonRoomController:
     """Clear 2× Zol + 2× LikeLike on 0x32 (ignore 0x2b/0x68; rr-tib8)."""
     return GenericDungeonRoomController(ROOM_32_SPEC)
+
+
+def level4_room_12_ready(ram: np.ndarray) -> bool:
+    return level4_room_ready(read_snapshot(ram), ROOM_L4_VIRES_12)
+
+
+def level4_room_12_cleared(ram: np.ndarray) -> bool:
+    """0x12 with no live Vire/split (block 0x68 ignored)."""
+    snap = read_snapshot(ram)
+    if not level4_room_ready(snap, ROOM_L4_VIRES_12):
+        return False
+    return len(ROOM_12_SPEC.live_enemies(snap)) == 0
+
+
+def level4_room_12_right_open(ram: np.ndarray) -> bool:
+    """0x12 cleared and RIGHT door bit set after block push (doors & 0x01)."""
+    if not level4_room_12_cleared(ram):
+        return False
+    snap = read_snapshot(ram)
+    return bool(snap.cur_opened_doors & 0x01)
+
+
+def level4_gleeok_enter_success(ram: np.ndarray) -> bool:
+    """Play-ready on Gleeok room 0x13 (boss may still be alive)."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL4
+        and snap.screen == ROOM_L4_GLEEOK_13
+        and snap.mode in (PLAY_MODE, 5)
+        and not snap.transitioning
+    )
+
+
+def make_room_12_clear_controller() -> GenericDungeonRoomController:
+    """Clear 0x12 Vires (settle_all_dead=0; ignore block 0x68; rr-rvae)."""
+    return GenericDungeonRoomController(ROOM_12_SPEC)
 
 
 class StepladderPhase(Enum):
@@ -2593,7 +2704,7 @@ def planning_interior_report() -> dict:
         "bead": "rr-5lu",
         "tip": "rr-rvae",
         "track": "assisted_map_first_pass",
-        "status": "gleeok_approach_live_enter_stabilize_tf_residual",
+        "status": "gleeok_enter_dual_green_fight_tf_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -2752,10 +2863,20 @@ def planning_interior_report() -> dict:
                 "enemies": {"0x12": 5, "0x68": 1},
                 "LEFT": hex(ROOM_L4_MID_11),
                 "UP": hex(ROOM_L4_TRAPS_02),
-                "RIGHT_to_gleeok": hex(ROOM_L4_GLEEOK_13),
+                "RIGHT_after_push_block": hex(ROOM_L4_GLEEOK_13),
+                "push_block": {
+                    "stand": list(PUSH_12_STAND),
+                    "dir": PUSH_12_DIR,
+                    "from": list(PUSH_12_BLOCK_FROM),
+                    "to": list(PUSH_12_BLOCK_TO),
+                    "doors_after": 3,
+                },
+                "path_hold": RIGHT_12_HOLD,
+                "path_len": len(PATH_12_TO_GLEEOK),
                 "note": (
-                    "rr-rvae: 5× Vire + push block 0x68; UP traps 0x02; "
-                    "RIGHT→0x13 Gleeok entered once (stabilize residual — shutter/bomb)"
+                    "rr-rvae dual-green: clear 5× Vire; push 0x68 LEFT "
+                    "(96,144)→(80,144) opens R bit doors 2→3; hold4 "
+                    "PATH_12_TO_GLEEOK plen31 → 0x13 (naive y141 hold-RIGHT fails)"
                 ),
             },
             hex(ROOM_L4_TRAPS_02): {
@@ -2767,9 +2888,10 @@ def planning_interior_report() -> dict:
                 "enemies": {"0x43": "gleeok"},
                 "room_item": hex(ROOM_ITEM_HEART_CONTAINER),
                 "LEFT": hex(ROOM_L4_VIRES_12),
+                "checkpoint": "Level4GleeokEnter",
                 "note": (
-                    "rr-rvae live sample + screenshot: Gleeok 2-head type 0x43, "
-                    "HC 0x1a SW; enter from 0x12 RIGHT residual; TF 0x08 open"
+                    "rr-rvae dual-green enter: Gleeok 2-head type 0x43 HP≈160, "
+                    "HC 0x1a; fight + TF 0x08 residual"
                 ),
             },
             hex(ROOM_L4_MANHANDLA_10): {
@@ -2931,9 +3053,26 @@ def planning_interior_report() -> dict:
             "track": "assisted_first_pass",
             "evidence": "recordings/l4_rvae_map_final.json",
         },
+        "right_13": {
+            "bead": "rr-rvae",
+            "from": hex(ROOM_L4_VIRES_12),
+            "to": hex(ROOM_L4_GLEEOK_13),
+            "push_stand": list(PUSH_12_STAND),
+            "push_dir": PUSH_12_DIR,
+            "block_from": list(PUSH_12_BLOCK_FROM),
+            "block_to": list(PUSH_12_BLOCK_TO),
+            "path_hold": RIGHT_12_HOLD,
+            "path": list(PATH_12_TO_GLEEOK),
+            "path_len": len(PATH_12_TO_GLEEOK),
+            "checkpoint_cleared": "Level4Room12Cleared",
+            "checkpoint_enter": "Level4GleeokEnter",
+            "track": "assisted_first_pass",
+            "dual_green": True,
+            "evidence": "recordings/l4_rvae_right13_dual.json",
+        },
         "not_yet": [
             "natural key for post-ladder KEY-UP (recon poke used for map dual)",
-            "Gleeok boss type",
+            "Gleeok fight + HC pickup dual-green",
             "TF bit 0x08 natural",
             "Clean promote",
         ],
@@ -2977,10 +3116,23 @@ __all__ = [
     "ROOM_L4_VIRES_12",
     "ROOM_L4_TRAPS_02",
     "ROOM_L4_GLEEOK_13",
+    "PUSH_12_STAND",
+    "PUSH_12_DIR",
+    "PUSH_12_BLOCK_FROM",
+    "PUSH_12_BLOCK_TO",
+    "PUSH_12_HOLD",
+    "RIGHT_12_HOLD",
+    "PATH_12_TO_GLEEOK",
+    "ROOM_12_SPEC",
     "RIGHT_20_STAND",
     "KEY_30_NORTH_X",
     "level4_map_success",
     "level4_map_room_success",
+    "level4_room_12_ready",
+    "level4_room_12_cleared",
+    "level4_room_12_right_open",
+    "level4_gleeok_enter_success",
+    "make_room_12_clear_controller",
     "Level4Compass62Controller",
     "Level4EntryUpController",
     "Level4KeyRight62Controller",

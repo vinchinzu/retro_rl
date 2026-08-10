@@ -118,12 +118,19 @@ def test_live_room_ids() -> None:
     assert MAP_21_PICKUP_XY == (208, 181)
     assert len(MAP_21_SAMPLE_PATH) >= 20
     assert RIGHT_20_STAND == (208, 141)
-    # Gleeok approach anchors (rr-rvae recon)
+    # Gleeok approach anchors (rr-rvae dual-green enter)
     from zelda_i.level4_dungeon import (
         BOMB_21_NORTH_STAND,
         BOMB_21_OPENS_TO,
         GLEEOK_OBJECT_TYPE,
         MID_11_OBJECT_TYPE,
+        PATH_12_TO_GLEEOK,
+        PUSH_12_BLOCK_FROM,
+        PUSH_12_BLOCK_TO,
+        PUSH_12_DIR,
+        PUSH_12_STAND,
+        RIGHT_12_HOLD,
+        ROOM_12_SPEC,
         ROOM_ITEM_HEART_CONTAINER,
         ROOM_L4_GLEEOK_13,
         ROOM_L4_KEY_01,
@@ -131,6 +138,7 @@ def test_live_room_ids() -> None:
         ROOM_L4_MID_11,
         ROOM_L4_TRAPS_02,
         ROOM_L4_VIRES_12,
+        make_room_12_clear_controller,
     )
 
     assert ROOM_L4_MID_11 == 0x11
@@ -144,10 +152,24 @@ def test_live_room_ids() -> None:
     assert GLEEOK_OBJECT_TYPE == 0x43
     assert MID_11_OBJECT_TYPE == 0x35
     assert ROOM_ITEM_HEART_CONTAINER == 0x1A
+    assert PUSH_12_STAND == (112, 144)
+    assert PUSH_12_DIR == "LEFT"
+    assert PUSH_12_BLOCK_FROM == (96, 144)
+    assert PUSH_12_BLOCK_TO == (80, 144)
+    assert RIGHT_12_HOLD == 4
+    assert len(PATH_12_TO_GLEEOK) == 31
+    assert PATH_12_TO_GLEEOK[0] == "RIGHT"
+    assert PATH_12_TO_GLEEOK[-1] == "RIGHT"
+    assert ROOM_12_SPEC.room_id == 0x12
+    assert ROOM_12_SPEC.expected_enemy_count == 5
+    clear12 = make_room_12_clear_controller()
+    assert clear12.spec is ROOM_12_SPEC
     rep = planning_interior_report()
-    assert rep["status"] == "gleeok_approach_live_enter_stabilize_tf_residual"
+    assert rep["status"] == "gleeok_enter_dual_green_fight_tf_residual"
     assert "0x13" in rep["live_graph"]
     assert rep["live_graph"]["0x21"]["BOMB_UP"] == "0x11"
+    assert rep["right_13"]["dual_green"] is True
+    assert rep["right_13"]["path_len"] == 31
 
 
 def test_map_success_predicates_false_on_zeros() -> None:
