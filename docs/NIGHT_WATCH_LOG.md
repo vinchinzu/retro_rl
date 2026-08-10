@@ -1176,3 +1176,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Created **rr-zavx** Z4.5 natural-entry Clean compose; spawned manager.
 - SMB permanently skipped.
 
+
+### 2026-08-10T05:00 CDT — MM2 rider kill GREEN (rr-54ui PARTIAL)
+- Commit `1220ebf`: pulsed-B rider kill; X closed; empty cloud object-solid residual.
+- Re-spawned MM2 manager for feet-on-top / aobject_tsa stand → cam≥5.
+- Zelda: rr-vdnc Clean dual CLOSED on main; tip rr-zavx natural-entry compose running.
+
