@@ -1,0 +1,21 @@
+{
+  "status": "TaskStatus.SUCCESS",
+  "task_status": "TaskStatus.SUCCESS",
+  "frames": 12304,
+  "wall_seconds": 25.6,
+  "watered": 3,
+  "refill_count": 1,
+  "can": 17,
+  "can_peak": 20,
+  "tile": [
+    13,
+    27
+  ],
+  "reason": "planted=0 watered=3 skipped=2 refills=1 passes=3",
+  "success": true,
+  "east_south_charges": 2,
+  "south_lip_charges": 7,
+  "fence_open_attempts": 1,
+  "skipped_water": 2,
+  "_plot_skipped": 0
+}
