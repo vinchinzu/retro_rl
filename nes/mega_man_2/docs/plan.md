@@ -13,28 +13,28 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Bottleneck
 
-**Post-s4 gap after last solid land (prog ~949 / `AirFanPlatform`).**
+**Post-s4 gap: solid island prog 937–984 (`AirFanPlatform`); nothing solid past
+984 or on Goblin top in tested windows.**
 
 Screen2 late recipe clears camera screen 4 mid-air but never lands past the
-Goblin platform. Pure RIGHT jump maxes ~prog 1073; Pipi bird-boost ~1085–1086,
-still pit death on screen 4.
+island. Pure RIGHT ~prog 1064–1072; shoot+Pipi boost ~1086 min_sy~23; still pit
+on screen 4. No camera ≥5.
 
-Geometry (verified 2026-08-09):
+Geometry (verified 2026-08-09 overnight):
 
-- Pink head is **Goblin / Air Tikki** (platform when spikes down / 5px corner),
-  not an updraft fan
-- `AirLeftPlatform` = grounded left of Goblin (prog~902)
-- Ladder bar does not set `tile_feet==2` on this path
-- Pipi to the right of platform: collision boost min_sy~23–26 with damage
-- Decorative small clouds not solid in hop grids
+- Pink head = **Goblin / Air Tikki** (obj slot14 @~39,49), not updraft fan
+- Goblin top: dense spike-cycle hop grids → **0** feet=1 lands in gap zone
+- `AirLeftPlatform` = short left ledge prog 902–905 only
+- Ladder bar does not set `tile_feet==2`
+- Type35 eggs walk platform y~84; Pipi bounce damages and lifts, no land
+- Decorative clouds not solid under current trajectories
 
 ## Suggested next experiments
 
-1. Start from `AirFanPlatform` (not mid-air AirScreen4).
-2. Pixel Goblin head land (RTA “5 pixel toe”) with spikes-down timing.
-3. Pipi: shoot first then land cloud, or angle bird-boost onto solid chariot.
-4. Lightning Lord section may be next after Goblins — kill and ride cloud.
-5. Only then extend continuous AirScreen2→boss-door 3/3 trials.
+1. Confirm whether this Goblin is ever solid (RAM collision / known RTA setup).
+2. Lightning Lord entry — may require different earlier path, not this island.
+3. Pipi: kill then ride residual cloud if one exists; log object HP slots.
+4. Only then freeze AirScreen2→target 5 (3/3) and boss door.
 
 ## Notes
 
