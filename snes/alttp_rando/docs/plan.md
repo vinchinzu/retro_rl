@@ -20,6 +20,7 @@ Single-game first — then transfer item-logic + discovery patterns to SMZ3.
 2. **Boot (M1)** — JP 1.0 power-on → `FirstPlay` controllable Link. *(done)*
 3. **Logic grounding** — expand graph from play + public ALTTPR logic notes.
 4. **Skill bind** — edges → vanilla opening / dungeon skills from FirstPlay.
+   (`house_to_uncle` natural_entry done 2026-08-09; next edges planned.)
 5. **Seed-robust early tip** — e.g. house → sanctuary or Eastern across T seeds.
 6. **Extend toward SMZ3** — shared L4 + seed-robust harness.
 
