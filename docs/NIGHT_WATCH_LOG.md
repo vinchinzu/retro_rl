@@ -704,3 +704,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next bead **rr-bw2w**: Warehouse → East Tunnel reverse
 - Units: kpdr_dev + source_states + ice scaffold + controller_common green; no continuous / STATUS
 - No push
+
+### 2026-08-10T01:29 CDT — SM rr-bw2w Warehouse→East pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-bw2w** CLOSED: Pure Warehouse → East Tunnel return (K5 hop 5)
+- **Evidence:** `warehouse-to-east` dual pure **285f** ×2 exact, room `0xCF80`
+  xy=(216,364) pose=26 from `post_ice_business_to_warehouse_pure` elev ~(37,139) p138
+- Controller: elev-band unmorph + LEFT blue door (reverse of east_to_warehouse)
+- Export: `scratch/post_ice_warehouse_to_east_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–5 GREEN; Alpha PB open)
+- Next bead **rr-68ib**: East Tunnel → Glass reverse
+- Units: kpdr_dev 8/8; no continuous / STATUS
+- No push
