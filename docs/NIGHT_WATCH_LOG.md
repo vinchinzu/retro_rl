@@ -393,3 +393,18 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-q8eq`: key_40 2/2 ~3345f; north_30 2/2 ~228f. ADDR_LADDER still 0.
 - Next tip `rr-n1wn`: 0x30 Vires clear + expand N/E toward ladder.
 
+
+### 2026-08-09T23:30 CDT — harvest rr-5in PARTIAL (power-on continuous)
+- **Claimed** `rr-5in` Gate B full power-on Spring→Summer with income.
+- **GREEN:** power-on → D1 handoff (talks+truck+dog intro+shed grass+can) → D2
+  Clean; `recordings/power_on_d1_handoff_d2.json` (25840f, $300, mid_run=0).
+- **Wired:** `run_to_day2 --power-on` auto TownDay1Handoff before multi-day
+  (`--no-d1-handoff` to skip). GoToSleep X-cycle + more attempts.
+- **RED residual (rr-5in stays OPEN):**
+  1. Full spring attempt 1: sleep miss bed (70,86) D7 after 5 overnights ($300)
+  2. Attempt 2: `ENSURE_CROP_SEEDS` multi_nav 1-wp hang S0D4 ~11:02 after buy ($100)
+- Children: **`rr-6byj`** ENSURE_CROP_SEEDS hang; **`rr-m0wq`** sleep D7.
+- Empty-can natural refill still **`rr-3q27`** (parallel; do not thrash crop_planter).
+- Evidence: `snes/harvest/recordings/rr_5in_residual.json`
+- Next tip: fix `rr-6byj` shed-seed equip hang, then re-run `--power-on --end-of-spring`.
+- No push.

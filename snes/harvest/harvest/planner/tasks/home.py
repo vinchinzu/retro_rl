@@ -449,12 +449,12 @@ class GoToSleepTask(Task):
 
     name: str = "go_to_sleep"
     tasks_dir: str = TASKS_DIR
-    timeout: int = 7200
-    sleep_attempt_limit: int = 6
+    timeout: int = 10000
+    sleep_attempt_limit: int = 10
     # Wait long enough for the overnight fade before assuming A missed.
-    sleep_verify_frames: int = 520
+    sleep_verify_frames: int = 640
     # Budget for the outdoor/return-home recovery before bed navigation.
-    return_home_timeout: int = 4500
+    return_home_timeout: int = 5500
 
     _phase: str = field(default="ensure_house", init=False)
     _step_count: int = field(default=0, init=False)
@@ -508,31 +508,49 @@ class GoToSleepTask(Task):
 
         Recording arrives facing left, then holds up at (70,86) before B/A.
         Facing left + A walks into the mattress and misses the sleep prompt.
+
+        Power-on continuous (rr-5in): carry often has grass seeds (0x0C) + can
+        after Gate B shed. X-cycle + extra B settle before A so the bed prompt
+        is not stolen by tool use. Late spring evenings (D7+) needed more than
+        6 attempts at the exact bed stand (70,86).
         """
         self._sleep_attempts += 1
         primary = self._sleep_face_for_tilemap(tilemap)
         # Later attempts try left without walking (face tap only).
-        face = primary if self._sleep_attempts < 5 else "left"
-        self._action_queue.extend(make_action(**{face: True}) for _ in range(24))
+        face = primary if self._sleep_attempts < 6 else "left"
+        # Put away / cycle tools — seeds+can in carry pair can steal A presses.
+        self._action_queue.extend(make_action(x=True) for _ in range(4))
+        self._action_queue.extend(make_action() for _ in range(10))
+        self._action_queue.extend(make_action(x=True) for _ in range(4))
+        self._action_queue.extend(make_action() for _ in range(12))
+        self._action_queue.extend(make_action(**{face: True}) for _ in range(28))
         self._action_queue.extend(make_action() for _ in range(40))
         # Recording taps B before the sleep A (closes tool/menu residue).
-        self._action_queue.extend(make_action(b=True) for _ in range(10))
-        self._action_queue.extend(make_action() for _ in range(18))
-        for _ in range(5):
-            self._action_queue.extend(make_action(a=True) for _ in range(12))
-            self._action_queue.extend(make_action() for _ in range(10))
+        self._action_queue.extend(make_action(b=True) for _ in range(14))
+        self._action_queue.extend(make_action() for _ in range(20))
+        for _ in range(6):
+            self._action_queue.extend(make_action(a=True) for _ in range(14))
+            self._action_queue.extend(make_action() for _ in range(12))
         self._action_queue.extend(make_action(b=True) for _ in range(8))
         self._action_queue.extend(make_action() for _ in range(10))
-        self._action_queue.extend(make_action(a=True) for _ in range(14))
+        self._action_queue.extend(make_action(a=True) for _ in range(16))
         self._action_queue.extend(make_action() for _ in range(24))
-        self._action_queue.extend(make_action(a=True) for _ in range(20))
-        self._action_queue.extend(make_action() for _ in range(160))
+        self._action_queue.extend(make_action(a=True) for _ in range(24))
+        self._action_queue.extend(make_action() for _ in range(180))
         if self._sleep_attempts >= 3 and face == "up":
             # One left-face A burst without movement if up-facing missed.
             self._action_queue.extend(make_action(left=True) for _ in range(12))
             self._action_queue.extend(make_action() for _ in range(8))
-            self._action_queue.extend(make_action(a=True) for _ in range(16))
-            self._action_queue.extend(make_action() for _ in range(90))
+            self._action_queue.extend(make_action(a=True) for _ in range(18))
+            self._action_queue.extend(make_action() for _ in range(100))
+        if self._sleep_attempts >= 7:
+            # Micro-nudge re-seat on bed stand then face-up A (pixel slip).
+            self._action_queue.extend(make_action(down=True) for _ in range(4))
+            self._action_queue.extend(make_action() for _ in range(6))
+            self._action_queue.extend(make_action(up=True) for _ in range(10))
+            self._action_queue.extend(make_action() for _ in range(12))
+            self._action_queue.extend(make_action(a=True) for _ in range(20))
+            self._action_queue.extend(make_action() for _ in range(120))
 
     @staticmethod
     def _bed_stand_for_tilemap(tilemap: int) -> Point:
