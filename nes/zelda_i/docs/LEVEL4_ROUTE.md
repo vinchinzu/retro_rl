@@ -218,10 +218,10 @@ Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
 | `west_31` pure 2/2 | `l4_05fz_west31_west_31.json` | ~372 | `Level4Room31PostLadder` |
 | `map_21` assisted 2/2 | `l4_rvae_map21_map_21.json` | ~17872 | `Level4Map` |
 
-### Gleeok approach from Level4Map (rr-rvae; enter dual-green 2026-08-10)
+### Gleeok approach from Level4Map (rr-rvae; enter + TF dual-green 2026-08-10)
 
 Live graph (maze BFS + bomb stands; assisted). **Gleeok enter dual-green;
-fight + TF residual.**
+melee + HC + TF `0x08` dual-green from `Level4GleeokEnter`.**
 
 ```
 0x21 map (Level4Map)
@@ -241,11 +241,18 @@ fight + TF residual.**
 | **0x01** | **live** | Keese + key `0x19` (keys 0→1 after clear) |
 | **0x12** | **live dual** | 5× Vire; push block LEFT opens R; `Level4Room12Cleared` |
 | **0x02** | **live** | traps only; DOWN→0x12 |
-| **0x13** | **live dual enter** | Gleeok `0x43` HP≈160 + HC; `Level4GleeokEnter` / `Level4Boss` |
+| **0x13** | **live dual enter + kill** | Gleeok `0x43` HP≈160 + head `0x46` + HC; UP → 0x03 TF |
 | **0x10** | **live** | Manhandla side path; UP→0x00 dead-end |
 | **0x00** | **live** | bubbles; only DOWN |
 
-**Residual:** Gleeok fight + HC dual-green; TF room + bit `0x08`. Natural key:
+**Live dual TF (rr-rvae 2026-08-10):** from `Level4GleeokEnter` melee A-spam
+(prefer head `0x46` when present) → boss dead ~3.6k f → HC containers+1 → free
+UP → **0x03** → mid walk → **`tf&0x08`**. Evidence:
+`recordings/l4_rvae_gleeok_tf_dual.json` (2/2 dual exact ~4.3k f). Runner:
+`scripts/run_level4_gleeok.py --infinite-life --trials 2 --save-state`.
+Checkpoint **`Level4Complete`**. Module: `level4_boss_combat.py`.
+
+**Residual:** natural-entry continuous PostLadder→TF; natural key:
 0x01 after map BOMB_UP (no recon poke). Evidence: `l4_rvae_right13_dual.json`.
 
 **Traps (0x12→0x13):** after clear doors often L-only (raw=2); **bomb RIGHT and
@@ -317,8 +324,9 @@ Room IDs **beyond 0x40** remain source-hypothesized until probed.
 | Gleeok (2 heads) | fireballs | E → TF `0x08` |
 
 **Key item:** Stepladder (`ADDR_LADDER`).
-**Boss:** Gleeok (2-head). Object type id **`0x43` live** (room **0x13**).
-**Triforce bit:** `0x08` (not yet collected live).
+**Boss:** Gleeok (2-head). Object type id **`0x43` live** (room **0x13**);
+detached head **`0x46`**; fireball **`0x56`**.
+**Triforce bit:** `0x08` **live dual-green** from `Level4GleeokEnter`.
 
 ### Policy notes
 
@@ -326,19 +334,22 @@ Room IDs **beyond 0x40** remain source-hypothesized until probed.
 - Keese 0x51: TYPE-only liveness (HP stays 0).
 - Like-Like (later): stay out of contact (Magical Shield loss).
 - Water tiles: after Stepladder, automatic on single-tile gaps.
-- Gleeok: melee A-spam; no bomb requirement (unlike Dodongo).
+- Gleeok: melee A-spam; prefer head `0x46` when present; body HP≈160 then
+  TYPE-only residual; no bomb requirement (unlike Dodongo). UP after clear →
+  TF room `0x03`.
 
 ---
 
 ## Boss / Triforce stop predicates (stubs)
 
 ```text
-level4_boss_cleared  — TBD: Gleeok absent + room_all_dead / heart drop
-level4_complete      — ADDR_TRIFORCE & 0x08  (and mode 18 fanfare settle)
+level4_boss_cleared  — body type 0x43 absent on 0x13 (heads/fireball residual ok)
+level4_complete      — ADDR_TRIFORCE & 0x08  (mode 18 fanfare settle live)
 ```
 
-Scaffold: `level4_triforce_stop(snap)` returns True only when
-`snap.triforce & 0x08` (inventory fact; not a route success claim).
+`level4_triforce_stop(snap)` / `level4_complete_success(ram)`: inventory bit
+`0x08` only (not a continuous natural-entry claim). Live dual-green from
+`Level4GleeokEnter` via `Level4GleeokFightController`.
 
 ---
 
@@ -361,9 +372,9 @@ Scaffold: `level4_triforce_stop(snap)` returns True only when
 | `Level4Room11` | BOMB_UP from map 0x21 | **live** (recon) |
 | `Level4Room12` | east of 0x11 Vires | **live** (recon) |
 | `Level4Room01` | north of 0x11 Keese+key | **live** (recon) |
-| `Level4Boss` | 0x13 Gleeok vestibule | partial (enter residual) |
-| `Level4BossCleared` | after Gleeok + HC | planned |
-| `Level4Complete` | `triforce & 0x08` | planned |
+| `Level4Boss` / `Level4GleeokEnter` | 0x13 Gleeok vestibule | **live** (enter dual) |
+| `Level4BossCleared` | after Gleeok (pre/post HC) | **live** (assisted) |
+| `Level4Complete` | `triforce & 0x08` mode 18 | **live** dual-green 2/2 |
 
 ---
 

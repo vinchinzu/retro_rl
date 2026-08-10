@@ -40,9 +40,10 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     From 0x12: UP **0x02** blade traps ``0x49`` (dead-end). **RIGHT→0x13** Gleeok
     type ``0x43`` + HeartContainer ``0x1A`` requires **push block 0x68 LEFT**
     (doors 2→3 opens R bit) then maze hold4 path (not naive y141 hold-RIGHT).
-    Dual-green enter live (rr-rvae). TF ``0x08`` / fight residual.
+    Dual-green enter live (rr-rvae). Gleeok melee + HC + TF ``0x08`` dual-green
+    from ``Level4GleeokEnter`` (``level4_boss_combat``; UP → TF room **0x03**).
 
-Not Clean STATUS. Gleeok fight + TF ``0x08`` residual.
+Not Clean STATUS (assisted first-pass). Natural continuous residual open.
 """
 
 from __future__ import annotations
@@ -142,6 +143,9 @@ GEL_OBJECT_TYPE = 0x15  # live on map room 0x21 (rr-rvae); TYPE-only HP=0
 LIKE_LIKE_OBJECT_TYPE = 0x17  # live on 0x32; HP 144; avoid contact (shield loss)
 MID_11_OBJECT_TYPE = 0x35  # live on 0x11 (rr-rvae); multi-slot cluster
 GLEEOK_OBJECT_TYPE = 0x43  # live on 0x13 boss (rr-rvae screenshot + sample)
+GLEEOK_HEAD_OBJECT_TYPE = 0x46  # detached head mid-fight (rr-rvae dual)
+GLEEOK_FIREBALL_TYPE = 0x56  # ignore; fireball residual during fight
+ROOM_L4_TRIFORCE = 0x03  # north of Gleeok 0x13 after clear → TF 0x08
 BLADE_TRAP_OBJECT_TYPE = 0x49  # live on 0x02 (rr-rvae)
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16  # live room item on 0x62
@@ -151,6 +155,7 @@ ROOM_ITEM_HEART_CONTAINER = 0x1A  # live on 0x13 with Gleeok
 ROOM_ITEM_NONE = 0x03
 LEVEL4_COMPASS_BIT = 0x08  # ADDR_COMPASS bit for dungeon level 4
 LEVEL4_MAP_BIT = 0x08  # ADDR_MAP bit for dungeon level 4
+LEVEL4_TRIFORCE_BIT = 0x08  # ADDR_TRIFORCE bit for dungeon level 4
 # Map bomb-north wall 0x21 → 0x11 (live stand ≈ y105, face UP).
 BOMB_21_NORTH_STAND = (120, 105)
 BOMB_21_NORTH_FACE = "UP"
@@ -1353,6 +1358,11 @@ def level4_gleeok_enter_success(ram: np.ndarray) -> bool:
         and snap.mode in (PLAY_MODE, 5)
         and not snap.transitioning
     )
+
+
+def level4_triforce_stop(snap: ZeldaSnapshot) -> bool:
+    """Inventory fact: ADDR_TRIFORCE & 0x08 (not a route success claim alone)."""
+    return bool(snap.triforce & LEVEL4_TRIFORCE_BIT)
 
 
 def make_room_12_clear_controller() -> GenericDungeonRoomController:
@@ -2704,7 +2714,7 @@ def planning_interior_report() -> dict:
         "bead": "rr-5lu",
         "tip": "rr-rvae",
         "track": "assisted_map_first_pass",
-        "status": "gleeok_enter_dual_green_fight_tf_residual",
+        "status": "gleeok_tf08_dual_green",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -2885,14 +2895,22 @@ def planning_interior_report() -> dict:
                 "note": "blade traps only; no other free exits (rr-rvae)",
             },
             hex(ROOM_L4_GLEEOK_13): {
-                "enemies": {"0x43": "gleeok"},
+                "enemies": {"0x43": "gleeok", "head": "0x46", "fireball": "0x56"},
                 "room_item": hex(ROOM_ITEM_HEART_CONTAINER),
                 "LEFT": hex(ROOM_L4_VIRES_12),
+                "UP_after_clear": hex(ROOM_L4_TRIFORCE),
                 "checkpoint": "Level4GleeokEnter",
+                "checkpoint_complete": "Level4Complete",
                 "note": (
-                    "rr-rvae dual-green enter: Gleeok 2-head type 0x43 HP≈160, "
-                    "HC 0x1a; fight + TF 0x08 residual"
+                    "rr-rvae dual-green: melee Gleeok 0x43 HP≈160 + head 0x46; "
+                    "HC 0x1a; UP → 0x03 TF bit 0x08 (~4.3k f dual)"
                 ),
+            },
+            hex(ROOM_L4_TRIFORCE): {
+                "DOWN": hex(ROOM_L4_GLEEOK_13),
+                "tf_bit": hex(LEVEL4_TRIFORCE_BIT),
+                "checkpoint": "Level4Complete",
+                "note": "rr-rvae dual-green TF pickup @~(120,141) → mode 18",
             },
             hex(ROOM_L4_MANHANDLA_10): {
                 "enemies": {"0x3c": "manhandla"},
@@ -3070,10 +3088,27 @@ def planning_interior_report() -> dict:
             "dual_green": True,
             "evidence": "recordings/l4_rvae_right13_dual.json",
         },
+        "gleeok_tf": {
+            "bead": "rr-rvae",
+            "from": "Level4GleeokEnter",
+            "room": hex(ROOM_L4_GLEEOK_13),
+            "boss_type": hex(GLEEOK_OBJECT_TYPE),
+            "head_type": hex(GLEEOK_HEAD_OBJECT_TYPE),
+            "fireball": hex(GLEEOK_FIREBALL_TYPE),
+            "hc": hex(ROOM_ITEM_HEART_CONTAINER),
+            "tf_room": hex(ROOM_L4_TRIFORCE),
+            "tf_bit": hex(LEVEL4_TRIFORCE_BIT),
+            "policy": "melee_A_prefer_heads_then_body",
+            "checkpoint": "Level4Complete",
+            "track": "assisted_first_pass",
+            "dual_green": True,
+            "evidence": "recordings/l4_rvae_gleeok_tf_dual.json",
+            "runner": "scripts/run_level4_gleeok.py",
+            "module": "level4_boss_combat.Level4GleeokFightController",
+        },
         "not_yet": [
             "natural key for post-ladder KEY-UP (recon poke used for map dual)",
-            "Gleeok fight + HC pickup dual-green",
-            "TF bit 0x08 natural",
+            "natural-entry continuous Level4PostLadder → TF",
             "Clean promote",
         ],
     }
@@ -3097,6 +3132,9 @@ __all__ = [
     "Left50Phase",
     "GEL_OBJECT_TYPE",
     "GLEEOK_OBJECT_TYPE",
+    "GLEEOK_HEAD_OBJECT_TYPE",
+    "GLEEOK_FIREBALL_TYPE",
+    "LEVEL4_TRIFORCE_BIT",
     "MID_11_OBJECT_TYPE",
     "BLADE_TRAP_OBJECT_TYPE",
     "BOMB_21_NORTH_STAND",
@@ -3116,6 +3154,7 @@ __all__ = [
     "ROOM_L4_VIRES_12",
     "ROOM_L4_TRAPS_02",
     "ROOM_L4_GLEEOK_13",
+    "ROOM_L4_TRIFORCE",
     "PUSH_12_STAND",
     "PUSH_12_DIR",
     "PUSH_12_BLOCK_FROM",
@@ -3132,6 +3171,7 @@ __all__ = [
     "level4_room_12_cleared",
     "level4_room_12_right_open",
     "level4_gleeok_enter_success",
+    "level4_triforce_stop",
     "make_room_12_clear_controller",
     "Level4Compass62Controller",
     "Level4EntryUpController",
