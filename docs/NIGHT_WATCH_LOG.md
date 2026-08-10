@@ -1293,3 +1293,10 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Hellway still RED. Re-spawned upper WJ/Hellway manager.
 - Do not bomb floor from below; do not force-unmorph from p81.
 
+
+### 2026-08-10T06:05 CDT — harvest rr-5go9 CLOSED ★
+- Commit `2cedeea`: CROP_WATER refill densify after fence GREEN (D9–D11 watered=6).
+- power-on: wet=2 dry=4, money=$160, overnights=10; fails D12 return_home multi_nav timeout.
+- Residual **rr-5in**: return_home after water + re-refill at (25,34) → Summer D1.
+- Spawned harvest manager on rr-5in residual.
+
