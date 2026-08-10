@@ -361,3 +361,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Continuous RED:** power-on return chain reaches Business f141870; fail `business_to_ice_gate` floor climb (1339→1227 / HJ exit). Report `snes/super_metroid/recordings/ice_r1.json`. Residual `snes/super_metroid/docs/tasks/rr-kxge-residual.md`.
 - **No continuous Ice STATUS.** Tests 55 passed (continuous tips + ice + wave return + path summary). No push.
 - Next: Super-directed continuous Business floor→Ice Super climb; dual continuous green before STATUS.
+
+### 2026-08-09T23:50 CDT — SM continuous Ice compose landed (open)
+- **rr-kxge** open: 11-hop ice tip compose Wave return + Ice pure LANDED (942f13f).
+- Continuous power-on RED on business_to_ice_gate floor climb after frog_save_to_business.
+- Pure floor→Gate dual 3219f×2 OK. No STATUS. Next: Super-directed continuous climb.
+
