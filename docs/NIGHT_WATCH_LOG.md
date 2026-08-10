@@ -64,3 +64,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Closed pure HL + open SMB TAS/frame-cut beads as parked (product **M8 Clean** stands).
 - Night watch: **never spawn smb** again this session.
 
+### 2026-08-09T21:22 CDT — sm_rando lane complete
+- **CLOSED** `rr-3f3e` Landing BC train/evaluate/report ownership split (7 tests).
+- No more ready sm_rando work; `rr-gbd.25` still blocked on `rr-gbd.33` harness.
+
