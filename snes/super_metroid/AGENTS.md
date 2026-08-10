@@ -29,16 +29,13 @@ helpers, ≤~500 lines/file — checklist in
 
 ## Immediate goal
 
-**Verified tip:** continuous power-on → Wave Beam (default `wave`,
-**136,361f** ×2, room `0xADDE`, beams `0x1005`, items `0x3105`).
-**History:** Speed **130,388f** ×2 and non-Spazer Bat Cave **122,304f** ×2
-remain valid previous tips.
-**Next:** Dual continuous `--to ice` stabilize (`rr-kxge`) — compose **LANDED**
-(11 hops). **Single** continuous GREEN once (`ice_r3` 148192f room `0xA890`
-beams `0x1007`); dual still flaky on Business floor climb (residual
-`docs/tasks/rr-kxge-residual.md`). Pure floor→Gate dual GREEN 3255f×2; elev
-891f. Ice pure stack **CLOSED** (`rr-dbu.11`); Wave→Business pure **CLOSED**
-(`rr-vqv3`). **Not** STATUS-promoted without dual continuous green.
+**Verified tip:** continuous power-on → Ice Beam (default `ice`,
+**148,167f** ×2, room `0xA890`, beams `0x1007`, items `0x3105`).
+**History:** Wave **136,361f** ×2, Speed **130,388f** ×2, and non-Spazer Bat
+Cave **122,304f** ×2 remain valid previous tips.
+**Next:** K5 Alpha PB pure (`rr-dbu.8`) / post-Ice KPDR; optional ice demo
+video. `rr-kxge` dual continuous **CLOSED** (Business floor climb harden +
+cont-tuned 907 ladder). Residual `docs/tasks/rr-kxge-residual.md`.
 
 **Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
 Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:
@@ -87,9 +84,10 @@ integrity flags, and the `.mp4` path** — not a pasted JSON body.
 From repo root (`snes/` on pythonpath → `import super_metroid` works).
 
 ```bash
-# Continuous default (wave) / named tips
+# Continuous default (ice) / named tips
 uv run python snes/super_metroid/scripts/record/continuous.py --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video  # previous tip
 uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video  # previous tip
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video
 

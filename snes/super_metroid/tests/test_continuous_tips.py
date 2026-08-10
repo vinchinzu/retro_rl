@@ -47,11 +47,11 @@ def _put_u16(ram: np.ndarray, address: int, value: int) -> None:
 
 
 def test_default_artifact_paths() -> None:
-    """Primary continuous tip is Wave Beam (KPDR K4.10)."""
+    """Primary continuous tip is Ice Beam (KPDR K4 Ice) after rr-kxge dual."""
     video, report = default_artifact_paths()
-    assert video.name == "wave.mp4"
-    assert report.name == "wave.json"
-    assert DEFAULT_CONTINUOUS_TIP == "wave"
+    assert video.name == "ice.mp4"
+    assert report.name == "ice.json"
+    assert DEFAULT_CONTINUOUS_TIP == "ice"
 
 
 def test_continuous_tips_chain_ends_at_default() -> None:
@@ -75,12 +75,12 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "wave",
         "ice",
     ]
-    # Default tip is furthest STATUS-promoted integrity-green tip (Wave).
-    # Ice is composed (rr-dbu.7) but not STATUS-promoted without dual continuous.
-    assert DEFAULT_CONTINUOUS_TIP == "wave"
+    # Default tip is furthest STATUS-promoted integrity-green tip (Ice).
+    assert DEFAULT_CONTINUOUS_TIP == "ice"
     assert DEFAULT_CONTINUOUS_TIP in ids
     assert ids.index("speed") < ids.index("wave")
     assert ids.index("wave") < ids.index("ice")
+    assert ids[-1] == DEFAULT_CONTINUOUS_TIP
 
 
 def test_continuous_tips_align_with_tip_specs() -> None:
@@ -342,10 +342,10 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "ice_acid_to_snake",
         "ice_snake_to_ice",
     ]
-    # Catalog alias + default tip stays Wave (no STATUS promote of ice).
+    # Catalog alias + default tip is Ice after rr-kxge dual continuous green.
     assert get_continuous_tip("ice_beam").tip_id == "ice"
     assert get_continuous_tip("k4_11").tip_id == "ice"
-    assert DEFAULT_CONTINUOUS_TIP == "wave"
+    assert DEFAULT_CONTINUOUS_TIP == "ice"
 
 
 def test_post_supers_aliases_and_hop_tables() -> None:

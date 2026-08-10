@@ -5,62 +5,60 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Continuous power-on → **Wave Beam collect** (KPDR K4.10) |
-| Last verification | 2026-08-06 |
+| Best verified result | Continuous power-on → **Ice Beam collect** (KPDR K4 Ice) |
+| Last verification | 2026-08-10 |
 | Runtime class | Bronze |
 | Intervention class | Resource-assisted |
 | Target | Continuous assisted power-on → ending/credits |
 | Current assists | Current energy on Zebes + naturally unlocked current ammo |
-| Default CLI tip | `wave` |
-| Acceptance | Natural Wave Room entry + Wave Beam PLM (`beams …\|0x0001`) under Spazer mainline |
-| Machine report | `recordings/wave.json` + `wave_dual.json` (**136,361f** each) |
+| Default CLI tip | `ice` |
+| Acceptance | Natural Ice Room entry + Ice Beam PLM (`beams …\|0x0002`) under Spazer mainline |
+| Machine report | `recordings/ice.json` + `ice_dual.json` (**148,167f** each) |
 | Save-state loads | 0 |
 | Progression / capacity writes | 0 |
 | Deaths | 0 |
-| Video | No-video dual verification (first video still open) |
+| Video | No-video dual verification (first ice video still open) |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
 | Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) |
 | Clean track (parallel) | Morph prefix clean @ **26,824f**; bombs/Torizo Clean **GREEN 49,321f** ×2 — [CLEAN_TRACK.md](CLEAN_TRACK.md); does **not** change this gate |
 
-## Current verified tip — Wave Beam (K4.10)
+## Current verified tip — Ice Beam (K4 Ice)
 
-Two matching `--to wave --no-video` runs (2026-08-06) reached ordinary Wave
-Room `0xADDE` with Wave Beam collected. Exact frame match both runs.
-Integrity green: known transitions (incl. post-Speed reverse), ordered splits,
-**0** loads / progression / capacity writes / deaths. Spazer mainline beams
-**`0x1005`** (Charge+Spazer+Wave).
+Two matching `--to ice --no-video` runs (2026-08-10, `rr-kxge`) reached ordinary
+Ice Beam Room `0xA890` with Ice Beam collected. Exact frame match both runs
+(**148,167f**). Integrity green: known transitions, ordered splits, **0** loads /
+progression / capacity writes / deaths. Spazer mainline beams **`0x1007`**
+(Charge+Spazer+Wave+Ice). Business floor climb hardened (cont-tuned 907 runup
+ladder + classic warehouse setup preserved).
 
 | Metric | Value |
 |--------|------:|
-| Total frames | **136,361** (~37.88 min @ 60 fps), ×2 |
-| Speed Hall → Speed split | 129,063 @ `0xAD1B` |
-| Speed return → Bubble | 132,057 @ `0xACB3` |
-| Bubble → Single | 132,338 @ `0xAD5E` |
-| Single → Double | 133,020 @ `0xADAD` |
-| Double → Wave | 136,005 @ `0xADDE` |
-| Final room | `0xADDE` ordinary gameplay |
-| Beams | **`0x1005`** (Charge+Spazer+Wave) |
+| Total frames | **148,167** (~41.16 min @ 60 fps), ×2 |
+| Wave → Double (return) | 136,851 @ `0xADAD` (prefix of ice tip delta) |
+| Frog Save → Business | 141,473 @ `0xA7DE` |
+| Business → Ice Gate | 145,230 @ `0xA815` |
+| Ice Snake → Ice | 147,799 @ `0xA890` |
+| Final room | `0xA890` ordinary gameplay |
+| Beams | **`0x1007`** (Charge+Spazer+Wave+Ice) |
 | Items | **`0x3105`** (includes Speed `0x2000`) |
-| Outcome | `wave_collected` |
-| Report | `recordings/wave.json` + `wave_dual.json` |
+| Outcome | `ice_collected` |
+| Report | `recordings/ice.json` + `ice_dual.json` (from `ice_dual_d` / `ice_dual_e`) |
 
-Previous tip (still valid prefix): Speed Booster `--to speed` **130,388f** ×2
-(`recordings/speed_spazer.json` + `_dual.json`, 2026-08-06, room `0xAD1B`,
-beams `0x1004`). Superseded as default CLI tip — not false.
+Previous tip (still valid prefix): Wave Beam `--to wave` **136,361f** ×2
+(`recordings/wave.json` + `wave_dual.json`, 2026-08-06, room `0xADDE`, beams
+`0x1005`). Superseded as default CLI tip — not false.
+
+Previous tip (still valid): Speed Booster `--to speed` **130,388f** ×2
+(`recordings/speed_spazer.json` + `_dual.json`, room `0xAD1B`, beams `0x1004`).
 
 Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: Dual continuous `--to ice` stabilize (`rr-kxge`) — compose **LANDED**
-(Wave→Business return + Ice pure on ice tip). Continuous power-on reaches
-Business via return then **RED** on floor→Super climb (residual
-[`tasks/rr-kxge-residual.md`](tasks/rr-kxge-residual.md)). Pure floor→Gate
-dual GREEN; elev pin still green. Wave→Business pure **CLOSED** (`rr-vqv3`);
-Ice pure **CLOSED** (`rr-dbu.11`). Default CLI tip remains **`wave`** — **not**
-STATUS-promoted continuous Ice without dual continuous green. Work:
-`bd ready -l super_metroid`.
+★ Next: K5 Alpha PB pure stack (`rr-dbu.8`) / post-Ice KPDR; optional ice demo
+video. Compose residual: [`tasks/rr-kxge-residual.md`](tasks/rr-kxge-residual.md)
+(**CLOSED** dual continuous). Work: `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
 
@@ -81,7 +79,8 @@ STATUS-promoted continuous Ice without dual continuous green. Work:
 | Frog Save | `frog` | 114,923 | K4.0 side tip |
 | Bat Cave | `bat_cave` | **122,304** | K4.4 previous default tip (non-Spazer dual) |
 | Speed Booster | `speed` | **130,388** | K4.5 previous default (Spazer dual) |
-| **Wave Beam** | **`wave`** | **136,361** | **K4.10 default tip** (Spazer dual exact match) |
+| Wave Beam | `wave` | **136,361** | K4.10 previous default (Spazer dual exact match) |
+| **Ice Beam** | **`ice`** | **148,167** | **K4 Ice default tip** (rr-kxge dual exact match) |
 
 All listed tips are integrity-green continuous (0 loads / progression / capacity).
 Detail and history: [routes/MILESTONES.md](routes/MILESTONES.md).
@@ -127,8 +126,9 @@ No Clean dual / STATUS primary claim.
 ## Reproduce
 
 ```bash
-uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --no-video   # default tip = wave
+uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --no-video   # default tip = ice
+uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video  # previous tip
 uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video  # previous tip
 uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video   # side tip
