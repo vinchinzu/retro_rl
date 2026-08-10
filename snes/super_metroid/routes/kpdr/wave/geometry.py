@@ -81,6 +81,29 @@ DTS_FLOOR_FRAMES = 900
 DTS_DOOR_FRAMES = 500
 
 # ---------------------------------------------------------------------------
+# Single → Bubble return (STB_*) — rr-u0y8 / Phase B hop 10
+# Source post_double_to_single_chamber_pure ~(216,630) deep shaft.
+# Human tape f6908–7496: deep LEFT → left-wall spin climbs through mid
+# platforms y523 → y395 → upper → top y139 left blue door → Bubble 0xACB3
+# settle ~(472–525,395) right sill (transition first-frame (19,139)).
+# ---------------------------------------------------------------------------
+STB_DEEP_Y_MIN = 580  # pure pin / post-door settle band
+STB_MID_LOW_Y = (500, 540)  # first land platform ~y523
+STB_FLOOR_Y = (380, 420)  # missile / mid door height ~y395
+STB_MID_HI_Y = (250, 290)  # mid platforms ~y267
+STB_UPPER_Y = (190, 230)  # upper ledge ~y213
+STB_TOP_Y_MAX = 160  # top shelf y139
+STB_WALL_X = 55  # left wall approach
+STB_MID_LOW_LAND_X = (45, 160)
+STB_FLOOR_LAND_X = (80, 160)
+STB_DOOR_X = 40  # top-left blue door push
+STB_DOOR_Y = (120, 160)
+STB_BUBBLE_SETTLE = 280
+STB_DEEP_FRAMES = 200
+STB_CLIMB_FRAMES = 1800
+STB_DOOR_FRAMES = 400
+
+# ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM (DC_*)
 # Live (2026-08-06, rr-dbu.10): entry ~(61,139); upper hop → Kamer seat
 # x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200.
@@ -163,6 +186,21 @@ __all__ = [
     "DTS_DROP_FRAMES",
     "DTS_FLOOR_FRAMES",
     "DTS_DOOR_FRAMES",
+    "STB_DEEP_Y_MIN",
+    "STB_MID_LOW_Y",
+    "STB_FLOOR_Y",
+    "STB_MID_HI_Y",
+    "STB_UPPER_Y",
+    "STB_TOP_Y_MAX",
+    "STB_WALL_X",
+    "STB_MID_LOW_LAND_X",
+    "STB_FLOOR_LAND_X",
+    "STB_DOOR_X",
+    "STB_DOOR_Y",
+    "STB_BUBBLE_SETTLE",
+    "STB_DEEP_FRAMES",
+    "STB_CLIMB_FRAMES",
+    "STB_DOOR_FRAMES",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",

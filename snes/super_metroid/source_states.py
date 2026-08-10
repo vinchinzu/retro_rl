@@ -342,6 +342,17 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=680,
     ),
     SourceFingerprint(
+        "post_single_to_bubble_pure",
+        "scratch/post_single_to_bubble_pure.state",
+        0xACB3,
+        use_for="bubble-to-farm return pure predecessor (Wave return stack)",
+        continuous_like=False,
+        x_min=400,
+        x_max=560,
+        y_min=350,
+        y_max=450,
+    ),
+    SourceFingerprint(
         "post_kihunter_to_zeela",
         "scratch/post_kihunter_to_zeela_return.state",
         0xA471,
