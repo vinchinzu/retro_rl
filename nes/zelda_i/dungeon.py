@@ -172,6 +172,7 @@ def ensure_default_specs() -> None:
     import zelda_i.level1_dungeon  # noqa: F401
     import zelda_i.level2_dungeon  # noqa: F401
     import zelda_i.level3_dungeon  # noqa: F401
+    import zelda_i.level4_dungeon  # noqa: F401
     import zelda_i.level5_dungeon  # noqa: F401
     import zelda_i.level6_dungeon  # noqa: F401
 
