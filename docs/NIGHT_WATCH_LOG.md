@@ -1203,3 +1203,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Cap:** 4 / 6 concurrent game lanes
 - Board notes: zelda rr-vdnc Clean TF dual CLOSED; harvest money>$100 / 11 overnights PARTIAL Summer; MM2 X closed residual feet-on-top.
 - Never push. Next tick: only free lanes.
+
+### 2026-08-10T05:15 CDT — MM2 solid decode PARTIAL (rr-54ui)
+- Commit `6f847c7`: aobject_tsa=AI timer; feet_dy=0 still freefall; body stays 0x3E.
+- Re-spawned MM2 for disasm kaminari_goro solid-arm + TAS pin + screen-align.
+- Rider kill remains GREEN. Stand/cam≥5 RED.
+
