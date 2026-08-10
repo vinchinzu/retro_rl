@@ -116,3 +116,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next: **`rr-vqv3`** Wave→Business pure return stack (unblock dual continuous Ice).
 - Units: 33 passed (`test_continuous_tips` + `test_k4_speed_branches` + `test_k4_ice_scaffold`).
 - No push.
+
+### 2026-08-09T21:45 CDT — MM2 post-s4 probe (open)
+- `rr-54ui` still open: no camera≥5 / boss door.
+- Checkpoint AirFanPlatform (prog~949 scr3); pure late RIGHT pits ~1047.
+- Next: fan updraft/ladder from AirFanPlatform, not mid-air AirScreen4.
+
