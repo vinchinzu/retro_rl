@@ -1,4 +1,4 @@
-"""Clear Heat Man mid screens with hard timeout.
+"""Clear Heat Man mid/late screens with hard timeout.
 
 Success: ``camera_x_screen`` ≥ ``--target-screen`` with health > 0 and not
 fallen, within ``--max-frames``. Recipe auto-selects from start state via
@@ -11,6 +11,7 @@ Verified (Clean Bronze, 2026-08-10):
 - target 3 from ``HeatScreen2``: mid 60/14 → 25/12 (~351f grounded)
 - target 4 from ``HeatScreen3``: pillars 25/10 ph10 (~181f grounded)
 - target 5 from ``HeatScreen4``: late 20/12 ph4 (~131f cam)
+- target 7 from ``HeatScreen5Ground``: screen5 j1/LEFT/j2 + hop 9/gw3 (~305f)
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
@@ -27,6 +28,9 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
   --state HeatScreen4 --target-screen 5 --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen5Ground --target-screen 7 --trials 3
 ```
 """
 
@@ -112,7 +116,8 @@ def run_heat_segment(
         "notes": (
             "Heat Man camera X screen ≥ target. "
             "Recipes: early 50/12; screen2 mid 60→25; screen3 pillars 25/10 ph10; "
-            "screen4 late 20/12 ph4. Item-1 / boss residual (rr-809)."
+            "screen4 late 20/12 ph4; screen5 j1/LEFT/j2 + hop 9/gw3 → cam≥7. "
+            "Boss door climb + Item-1 residual (rr-809)."
         ),
     }
     write_json_report(out / "heat_segment.json", report)
@@ -204,6 +209,7 @@ def _run_one(
             health=health,
             camera_x_screen=cam_scr,
             fallen=fallen,
+            tile_feet=tile_feet,
         )
         reasons[tick.reason] = reasons.get(tick.reason, 0) + 1
         obs, *_ = env.step(tick.action)

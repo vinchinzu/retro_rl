@@ -124,3 +124,25 @@ def test_heat_man_start_for_state() -> None:
     assert HeatManPolicy.start_for_state("HeatScreen2") == "screen2"
     assert HeatManPolicy.start_for_state("HeatScreen3_scr3_hp28") == "screen3"
     assert HeatManPolicy.start_for_state("HeatScreen4") == "screen4"
+    assert HeatManPolicy.start_for_state("HeatScreen5Ground") == "screen5"
+    assert HeatManPolicy.start_for_state("HeatScreen5") == "screen5"
+    assert HeatManPolicy.start_for_state("HeatScreen7") == "screen5"
+
+
+def test_heat_man_screen5_idle_then_j1() -> None:
+    pol = HeatManPolicy(start="screen5", target_camera_screen=7)
+    # idle frames release A for rising edge
+    idle = pol.tick(frame=1, health=26, camera_x_screen=5, tile_feet=1)
+    assert idle.reason == "s5_idle"
+    assert list(idle.action) == list(nes_idle_action())
+    idle2 = pol.tick(frame=2, health=26, camera_x_screen=5, tile_feet=1)
+    assert idle2.reason == "s5_idle"
+    # j1 window opens
+    j1 = pol.tick(frame=3, health=26, camera_x_screen=5, tile_feet=1)
+    assert j1.reason.startswith("s5_j1")
+    assert list(j1.action) == list(nes_action("RIGHT", "A")) or list(
+        j1.action
+    ) == list(nes_action("RIGHT", "A", "B"))
+    # clear hold
+    done = pol.tick(frame=10, health=22, camera_x_screen=7, tile_feet=1)
+    assert done.reason == "clear_hold"
