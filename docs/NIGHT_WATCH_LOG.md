@@ -572,3 +572,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Units: ice scaffold + docs green; no continuous / STATUS change (Ice tip remains)
 - No push
 
+### 2026-08-10T02:00 CDT — SM K5 first hop Ice→Snake GREEN
+- `rr-dbu.8` PARTIAL: ice-to-snake dual pure **538f×2** room 0xA8B9. Next `rr-bf29` Snake→Tutorial.
+- Also: harvest empty-can fill GREEN landed (ac78ec1) — check rr-3q27.
+
