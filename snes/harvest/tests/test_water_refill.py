@@ -155,7 +155,7 @@ class RefillSelectionTests(unittest.TestCase):
                 _set_tile(ram, tx, ty, 0xF0)
         _set_player_tile(ram, (20, 28))
         world = SimpleNamespace(ram=ram, info={}, obs=None)
-        task = CropWaterTask(work_mode="water", refill_bounds=(3, 14, 62, 60))
+        task = CropWaterTask(work_mode="water", refill_bounds=(3, 10, 62, 60))
         task.reset(world)
         # Seed a water step so refill has remaining work.
         task._water_steps = [((12, 25), (12, 26), "up")]
@@ -320,6 +320,148 @@ class SameDayEstablishWaterOrderTests(unittest.TestCase):
                 names.index("CROP_ESTABLISH"),
                 names.index("ENSURE_WATERING_CAN"),
             )
+
+
+class MultihopMainPondAfterGapTests(unittest.TestCase):
+    """After y=31 gap open, commit multi-hop F0 even without full BFS."""
+
+    def test_gap_open_commits_multihop_when_pond_outside_viewport(self) -> None:
+        """Simulates post-fence stall ~tile(25,30): gap open, pond far.
+
+        Full BFS to (32,34) fails because map beyond a pocket is solid (stale
+        viewport). Preferred edges also blocked. Must still commit multi-hop.
+        """
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[ADDR_TOOL] = 0x10
+        # Default solid — "stale" outside a local pocket (viewport model).
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0x05)
+        # Open walkable band north of wall + one gap through y=31.
+        for ty in range(28, 31):
+            for tx in range(20, 31):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        _set_tile(ram, 20, 31, 0xA1)  # single gap
+        # F0 pond water present but not path-connected in full BFS (stale east).
+        for ty in range(31, 34):
+            for tx in range(31, 35):
+                _set_tile(ram, tx, ty, 0xF0)
+        # North-lip stand cells exist as islands — solid barrier at x=31 models
+        # viewport-stale gap between west lip and pond (ROM stall ~(25,30)).
+        for tx in (32, 33, 34):
+            _set_tile(ram, tx, 30, 0xA1)
+        _set_tile(ram, 31, 30, 0x05)  # barrier: no full BFS to stands
+
+        player = (25, 30)
+        _set_player_tile(ram, player)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water", refill_bounds=(3, 10, 62, 60))
+        task.reset(world)
+        task._navigator.update(ram)
+        task._water_steps = [((12, 25), (12, 26), "up")]
+        task._water_index = 0
+        task._plot_phase = "water"
+        task._plots = [(12, 25)]
+        task._plot_index = 0
+        # Pretend we already spent a fence-open (gap is open).
+        task._fence_open_attempts = 1
+
+        # Precondition: full path to pond stands is None (viewport/stale).
+        self.assertIsNone(task._pathfinder.find_path(ram, player, (32, 34)))
+        self.assertIsNone(task._pathfinder.find_path(ram, player, (32, 30)))
+        self.assertTrue(task._pond_corridor_gap_open(ram))
+
+        task._start_refill(ram)
+
+        self.assertEqual(
+            task._plot_phase,
+            "refill",
+            msg=f"phase={task._plot_phase} state={task._state} "
+            f"stand={task._refill_pond_tile} exhausted={task._refill_exhausted}",
+        )
+        self.assertTrue(task._refill_multihop)
+        self.assertIsNotNone(task._refill_pond_tile)
+        assert task._refill_pond_tile is not None
+        self.assertIn(task._refill_pond_tile, {s for s, _ in FARM_MAIN_POND_STANDS})
+        self.assertEqual(task._state, "navigate")
+        self.assertFalse(task._refill_exhausted)
+        self.assertEqual(task._refill_pond_tile and task._refill_pond_tile[0] >= 30, True)
+
+    def test_fence_open_success_commits_multihop(self) -> None:
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[ADDR_TOOL] = 0x10
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        _set_tile(ram, 18, 31, 0xA1)  # gap
+        for ty in range(31, 34):
+            for tx in range(31, 35):
+                _set_tile(ram, tx, ty, 0xF0)
+        _set_player_tile(ram, (18, 30))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water", refill_bounds=(3, 10, 62, 60))
+        task.reset(world)
+        task._navigator.update(ram)
+        task._water_steps = [((12, 25), (12, 26), "up")]
+        task._water_index = 0
+        task._plots = [(12, 25)]
+        task._plot_index = 0
+        task._fence_open_attempts = 1
+        # Fake completed fence subtask.
+        task._fence_subtask = SimpleNamespace(
+            step=lambda w: SimpleNamespace(
+                status=TaskStatus.SUCCESS, reason="ok", action=None
+            ),
+            cleared_count=1,
+        )
+        task._state = "fence_open"
+        task._plot_phase = "open_pond"
+
+        result = task._handle_fence_open(world)
+        self.assertIsNone(result)
+        self.assertEqual(task._plot_phase, "refill")
+        self.assertTrue(task._refill_multihop)
+        self.assertIn(task._refill_pond_tile, {s for s, _ in FARM_MAIN_POND_STANDS})
+
+    def test_refill_hop_goal_densifies_toward_pond(self) -> None:
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (20, 30))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        hop = task._refill_hop_goal(ram, (20, 30), (32, 34))
+        # North of wall: force post-gap south corridor, not north-lip crawl.
+        self.assertGreaterEqual(hop[1], 32, msg=f"expected south corridor hop, got {hop}")
+        self.assertNotEqual(hop, (32, 34))
+
+    def test_refill_hop_goal_from_gap_goes_south_not_north_lip(self) -> None:
+        """From cleared gap ~(13,31) must not densify to north-lip y=30 crawl."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            if tx != 13:
+                _set_tile(ram, tx, 31, 0x05)
+        _set_player_tile(ram, (13, 31))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        hop = task._refill_hop_goal(ram, (13, 31), (32, 34))
+        self.assertGreaterEqual(hop[1], 32, msg=f"gap exit must go south, got {hop}")
 
 
 class FenceLocalDropTests(unittest.TestCase):

@@ -124,6 +124,43 @@ FARM_POND_ACCESS_STAGING_TILES: Tuple[Tuple[int, int], ...] = (
     (20, 30),
 )
 
+# Densified multi-hop chain after a y=31 gap opens. Viewport BFS only sees
+# ~7 tiles. ROM trap: north-lip y=30 east of x≈25 soft-blocks north and hits
+# 0xFF — do **not** crawl the north lip. After a gap opens, go **south**
+# through the wall then east on y≈32–34 to the south-lip F0 stands.
+FARM_POND_POST_GAP_CORRIDOR: Tuple[Tuple[int, int], ...] = (
+    # Through / just south of the y=31 gap (common clear at x≈12–15)
+    (12, 32),
+    (13, 32),
+    (14, 32),
+    (15, 32),
+    (16, 32),
+    (18, 32),
+    (20, 32),
+    (22, 32),
+    (24, 32),
+    (26, 32),
+    (28, 32),
+    (30, 32),
+    (30, 33),
+    (32, 33),
+    (32, 34),
+    (33, 34),
+)
+# North-lip crumbs only for when already south-of-gap routing fails.
+FARM_POND_MULTIHOP_WAYPOINTS: Tuple[Tuple[int, int], ...] = (
+    *FARM_POND_POST_GAP_CORRIDOR,
+    (15, 29),
+    (18, 30),
+    (20, 30),
+    (22, 30),
+    (24, 30),
+    (28, 29),
+    (28, 30),
+    (32, 30),
+    (33, 30),
+)
+
 # Explicit west-pocket → main-pond corridor for empty-can refill.
 # Prefer this route over generic water-edge search when the player is still
 # north of the y=31 fence wall in the early-spring plant pocket.

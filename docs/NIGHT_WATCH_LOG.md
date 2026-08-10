@@ -432,3 +432,12 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **ADDR_LADDER still 0.** Parents **rr-o0nn** / **rr-5lu** stay open.
 - Next tip: clear **0x32** + expand toward ladder (blocks rr-o0nn).
 - Units: `test_level4_dungeon.py` 9 passed. Commit only (no push).
+
+### 2026-08-09T23:47 CDT — harvest empty-can multi-hop F9 path (rr-3q27 open)
+- **Claimed** `rr-3q27` (tip under rr-20w; empty-can tip id not rr-jwju).
+- **Units:** multi-hop after gap, densify, carry-drop, F9 multihop when viewport-blocked; `CROP_WATER refill_bounds` **(3,10,62,60)** includes north F9 y=12. 262 tests OK (water_refill + crop_planter + day_phase + day_plan_sequences).
+- **ROM dry fixture** `Y1_Test_Crops_Planted_Dry`: still **`can_peak=0`** (`recordings/empty_can_refill_probe.json`).
+  - Root maps: (1) old bounds y_min=14 **excluded F9**; (2) single y=31 fence clear is **not** empty-handed south corridor; (3) plant soft-block thrash ~(13,27) blocks F9 climb; (4) mid-carry soft-timeout left hands full.
+- **Not closed** rr-3q27 (no natural fill GREEN). **rr-20w** remains open.
+- Next: recorded west-climb to F9 act, or finish FenceClearLoop carry→pond toss without soft-timeout.
+- No push.
