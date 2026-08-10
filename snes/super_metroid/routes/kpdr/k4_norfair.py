@@ -48,6 +48,7 @@ from super_metroid.routes.kpdr.k4_wave import (
     play_bubble_to_single_chamber,
     play_double_chamber_to_wave,
     play_double_to_single_chamber,
+    play_single_to_bubble,
     play_single_to_double_chamber,
     play_wave_to_double_chamber,
 )
@@ -110,6 +111,7 @@ __all__ = [
     "play_double_chamber_to_wave",
     "play_wave_to_double_chamber",
     "play_double_to_single_chamber",
+    "play_single_to_bubble",
     "play_rising_tide_to_bubble",
     "play_speed_hall_to_speed",
     "play_speed_return_to_bubble",
