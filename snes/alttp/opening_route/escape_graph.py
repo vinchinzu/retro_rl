@@ -205,12 +205,13 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         direction="south",
         requires=frozenset({CAP_FIGHTER_SWORD}),
         verification=VERIFICATION_CONTINUOUS,
-        provenance="secret_entrance_clear.SWORD_TO_SOUTH_CHAMBER_SCRIPT",
+        provenance="secret_entrance_clear.approach_south_chamber",
         goal="room_55_south_chamber",
         paths=_BOTH_PATHS,
         meta={
             "status_fact": "sword→south chamber",
-            "script": "LEFT×100 + DOWN×250",
+            "map_id": "room_55",
+            "path": "uncle_corridor_west→south_chamber",
         },
     ),
     # --- primary outdoor continuous path ------------------------------------
@@ -221,11 +222,13 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         direction="down",
         requires=frozenset({CAP_FIGHTER_SWORD}),
         verification=VERIFICATION_CONTINUOUS,
-        provenance="secret_entrance_clear.exit_secret_entrance_stairs",
+        provenance="secret_entrance_clear.run_from_sword",
         goal="secret_entrance_exited",
         paths=_PRIMARY_ONLY,
         meta={
             "status_fact": "secret-entrance clear (stairs → outdoors)",
+            "map_id": "room_55",
+            "door_label": "stairs_to_courtyard",
             "tier": "trigger",
         },
     ),
@@ -242,12 +245,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         meta={
             "status_fact": "pocket→main hall 0x61",
             "to_room_base_id": HYRULE_CASTLE_MAIN_HALL_ROOM,
-            "door_approach_xy": (2040, 1790),
-            "south_corridor_y": 2024,
+            "map_id": "screen_1b_courtyard",
+            "door_label": "main_door_to_0x61",
             "tier": "route+approach+trigger",
             "note": (
-                "Bush-cut S/W out of hedges; south corridor y≈2024; "
-                "west to x≈2040; north; UP into door."
+                "Bush-cut S/W out of hedges; map path open_gardens → "
+                "south_corridor → main_door_approach; UP into door."
             ),
         },
     ),
