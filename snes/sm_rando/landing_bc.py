@@ -1,4 +1,12 @@
-"""Held-out BC experiment for condition-robust Landing skill dispatch."""
+"""Held-out BC experiment for condition-robust Landing skill dispatch.
+
+Ownership boundaries (rr-3f3e):
+  train    — fit_landing_bc_model / train_landing_bc / load_landing_bc_model
+  evaluate — run_landing_bc_rom_evaluation (ROM + audited claims only)
+  report   — export_landing_bc_trajectories / package_landing_bc_report /
+             write_landing_bc_report
+Orchestrators: evaluate_landing_bc, run_landing_bc_experiment.
+"""
 
 from __future__ import annotations
 
@@ -75,6 +83,11 @@ TRAIN_FRACTION = 0.8
 SPLIT_SALT = "sm-landing-v1"
 FEATURE_INDICES = (5, 6)  # y integer and y subpixel from landing_entry_features
 FEATURE_SCALES = (1.0, 65536.0)
+
+
+# ---------------------------------------------------------------------------
+# Contracts + model (shared; train owns fitting, evaluate owns ROM use)
+# ---------------------------------------------------------------------------
 
 
 def build_landing_bc_contracts() -> ContractBundle:
@@ -167,6 +180,11 @@ def _record_observation(record: EntryStateRecord) -> np.ndarray:
     return landing_entry_features_from_metadata(record.metadata)
 
 
+# ---------------------------------------------------------------------------
+# TRAIN ownership — fitting and checkpoint packaging only
+# ---------------------------------------------------------------------------
+
+
 def fit_landing_bc_model(
     records: Sequence[EntryStateRecord],
     *,
@@ -211,6 +229,7 @@ def train_landing_bc(
     corpus_path: Path = LANDING_CORPUS_MANIFEST,
     checkpoint_path: Path = LANDING_BC_MODEL,
 ) -> tuple[LandingBCModel, dict[str, Any]]:
+    """Train-only: sealed train split fit + checkpoint/artifact write."""
     corpus = EntryStateCorpus.load(corpus_path)
     corpus_contracts = landing_corpus_contracts()
     if corpus.contract_bundle_digest != corpus_contracts.identity_digest:
@@ -278,37 +297,55 @@ def load_landing_bc_model(
     return LandingBCModel.from_record(record["model"]), record
 
 
-def _observation_record(values: np.ndarray, schema_digest: str) -> dict[str, Any]:
-    payload = [float(value) for value in values]
-    return {
-        "schema_digest": schema_digest,
-        "values": payload,
-        "identity_digest": contract_digest(
-            "landing-bc-observation-v1", {"values": payload}
-        ),
-    }
+# ---------------------------------------------------------------------------
+# EVALUATE ownership — ROM rollouts + owned Clean/Bronze audit gates
+# ---------------------------------------------------------------------------
 
 
-def _metrics(attempts: Sequence[Mapping[str, Any]], partition: str) -> dict[str, Any]:
-    rows = [value for value in attempts if value["partition"] == partition]
-    successes = sum(bool(value["success"]) for value in rows)
-    return {
-        "attempts": len(rows),
-        "successes": successes,
-        "success_rate": successes / len(rows),
-        "mean_predicted_wait": sum(int(value["predicted_wait"]) for value in rows)
-        / len(rows),
-        "mean_abs_wait_error": sum(abs(int(value["wait_error"])) for value in rows)
-        / len(rows),
-    }
+@dataclass(frozen=True, slots=True)
+class LandingBCTrajectoryCapture:
+    """ROM-side capture needed for later trajectory export (eval partition)."""
+
+    state_digest: str
+    before_values: tuple[float, ...]
+    after_values: tuple[float, ...]
+    after_state_digest: str
+    predicted_wait: int
+    frames: int
+    success: bool
+    failure: str | None
+    attempt: Mapping[str, Any]
 
 
-def evaluate_landing_bc(
+@dataclass(frozen=True, slots=True)
+class LandingBCEvalResult:
+    """Structured ROM evaluation result; no report packaging or trajectory IO."""
+
+    corpus_path: Path
+    checkpoint_path: Path
+    corpus_digest: str
+    contract_bundle_digest: str
+    observation_schema_digest: str
+    action_schema_digest: str
+    reward_schema_digest: str
+    policy_identity_digest: str
+    policy_artifact_digest: str
+    train_state_count: int
+    train_metrics: Mapping[str, Any]
+    attempts: tuple[dict[str, Any], ...]
+    eval_captures: tuple[LandingBCTrajectoryCapture, ...]
+
+
+def run_landing_bc_rom_evaluation(
     *,
     corpus_path: Path = LANDING_CORPUS_MANIFEST,
     checkpoint_path: Path = LANDING_BC_MODEL,
-    output_path: Path = LANDING_BC_REPORT,
-) -> dict[str, Any]:
+) -> LandingBCEvalResult:
+    """ROM evaluation only: load states, predict wait, play, audit claims.
+
+    Does not write trajectories or the experiment report. Preserves
+    metadata-v2 feature reconstruction and backend-owned Clean/Bronze gates.
+    """
     corpus = EntryStateCorpus.load(corpus_path)
     split = corpus.split(train_fraction=TRAIN_FRACTION, salt=SPLIT_SALT)
     model, checkpoint = load_landing_bc_model(checkpoint_path)
@@ -332,11 +369,20 @@ def evaluate_landing_bc(
         capabilities=AuditCapabilities.all("sm-rando-landing-bc-v2"),
     )
     attempts: list[dict[str, Any]] = []
-    trajectory_paths: list[str] = []
-    failure_library = CounterexampleLibrary(LANDING_BC_COUNTEREXAMPLES)
+    eval_captures: list[LandingBCTrajectoryCapture] = []
     try:
         env.reset()
         for record in corpus.records:
+            # metadata-v2 gate: corpus rows must expose versioned observation
+            # metadata so train-time fitting and eval-time checks stay aligned.
+            meta_version = int(
+                record.metadata.get("observation_metadata_version", 0)
+            )
+            if meta_version < 2:
+                raise ValueError(
+                    f"entry state {record.state_digest} lacks metadata-v2 "
+                    f"(observation_metadata_version={meta_version})"
+                )
             contract = EvaluationContract(
                 runtime_observation_class=RuntimeObservationClass.BRONZE,
                 intervention_class=InterventionClass.CLEAN,
@@ -400,98 +446,198 @@ def evaluate_landing_bc(
             if partition[record.state_digest] == "eval":
                 after_values = landing_entry_features(np.asarray(env.get_ram()))
                 after_state_digest = sha256_bytes(env.em.get_state())
-                trajectory = Trajectory(
-                    observation_schema_digest=contracts.observation.identity_digest,
-                    action_schema_digest=contracts.action.identity_digest,
-                    reward_schema_digest=contracts.reward.identity_digest,
-                    contract_bundle_digest=contracts.identity_digest,
-                    policy_identity_digest=policy_identity.identity_digest,
-                    steps=(
-                        TrajectoryStep(
-                            sequence=0,
-                            edge_id="landing_to_parlor_bc",
-                            skill_id="sm_rando.landing_wait_bc_v1",
-                            frame_start=0,
-                            frame_end=session.frame,
-                            applied_frames=max(1, session.frame),
-                            observation_before=_observation_record(
-                                before_values,
-                                contracts.observation.identity_digest,
-                            ),
-                            observation_after=_observation_record(
-                                after_values,
-                                contracts.observation.identity_digest,
-                            ),
-                            action={
-                                "type": "wait_then_dispatch",
-                                "value": {
-                                    "wait_frames": predicted_wait,
-                                    "skill": "play_landing_to_parlor",
-                                },
-                            },
-                            reward_components={
-                                "parlor_reached": float(success)
-                            },
-                            milestones=("parlor_reached",) if success else (),
-                            state_digest_before=record.state_digest,
-                            state_digest_after=after_state_digest,
-                        ),
-                    ),
-                    succeeded=success,
-                    terminal_reason="parlor_reached" if success else (failure or "miss"),
-                    milestones=(attempt,),
-                    provenance={
-                        "corpus_digest": corpus.identity_digest,
-                        "entry_state_digest": record.state_digest,
-                        "partition": "eval",
-                    },
-                    initial_observation_digest=_observation_record(
-                        before_values, contracts.observation.identity_digest
-                    )["identity_digest"],
-                    final_observation_digest=_observation_record(
-                        after_values, contracts.observation.identity_digest
-                    )["identity_digest"],
+                eval_captures.append(
+                    LandingBCTrajectoryCapture(
+                        state_digest=record.state_digest,
+                        before_values=tuple(float(v) for v in before_values),
+                        after_values=tuple(float(v) for v in after_values),
+                        after_state_digest=after_state_digest,
+                        predicted_wait=predicted_wait,
+                        frames=session.frame,
+                        success=success,
+                        failure=failure,
+                        attempt=attempt,
+                    )
                 )
-                path = LANDING_BC_TRAJECTORY_DIR / f"{record.state_digest}.json"
-                trajectory.write(path)
-                trajectory_paths.append(str(path.relative_to(REPO_ROOT)))
-                if not success:
-                    failure_library.add(trajectory)
     finally:
         env.close()
 
+    return LandingBCEvalResult(
+        corpus_path=corpus_path,
+        checkpoint_path=checkpoint_path,
+        corpus_digest=corpus.identity_digest,
+        contract_bundle_digest=contracts.identity_digest,
+        observation_schema_digest=contracts.observation.identity_digest,
+        action_schema_digest=contracts.action.identity_digest,
+        reward_schema_digest=contracts.reward.identity_digest,
+        policy_identity_digest=policy_identity.identity_digest,
+        policy_artifact_digest=artifact.identity_digest,
+        train_state_count=len(split.train),
+        train_metrics=dict(checkpoint["train_metrics"]),
+        attempts=tuple(attempts),
+        eval_captures=tuple(eval_captures),
+    )
+
+
+# ---------------------------------------------------------------------------
+# REPORT ownership — trajectories + experiment report packaging
+# ---------------------------------------------------------------------------
+
+
+def _observation_record(values: Sequence[float], schema_digest: str) -> dict[str, Any]:
+    payload = [float(value) for value in values]
+    return {
+        "schema_digest": schema_digest,
+        "values": payload,
+        "identity_digest": contract_digest(
+            "landing-bc-observation-v1", {"values": payload}
+        ),
+    }
+
+
+def partition_metrics(
+    attempts: Sequence[Mapping[str, Any]], partition: str
+) -> dict[str, Any]:
+    """Aggregate attempt rows for one sealed split partition."""
+    rows = [value for value in attempts if value["partition"] == partition]
+    if not rows:
+        return {
+            "attempts": 0,
+            "successes": 0,
+            "success_rate": 0.0,
+            "mean_predicted_wait": 0.0,
+            "mean_abs_wait_error": 0.0,
+        }
+    successes = sum(bool(value["success"]) for value in rows)
+    return {
+        "attempts": len(rows),
+        "successes": successes,
+        "success_rate": successes / len(rows),
+        "mean_predicted_wait": sum(int(value["predicted_wait"]) for value in rows)
+        / len(rows),
+        "mean_abs_wait_error": sum(abs(int(value["wait_error"])) for value in rows)
+        / len(rows),
+    }
+
+
+def build_landing_bc_trajectory(
+    capture: LandingBCTrajectoryCapture,
+    *,
+    eval_result: LandingBCEvalResult,
+) -> Trajectory:
+    """Build one eval Trajectory object from a ROM capture (no disk IO)."""
+    obs_digest = eval_result.observation_schema_digest
+    before = _observation_record(capture.before_values, obs_digest)
+    after = _observation_record(capture.after_values, obs_digest)
+    return Trajectory(
+        observation_schema_digest=obs_digest,
+        action_schema_digest=eval_result.action_schema_digest,
+        reward_schema_digest=eval_result.reward_schema_digest,
+        contract_bundle_digest=eval_result.contract_bundle_digest,
+        policy_identity_digest=eval_result.policy_identity_digest,
+        steps=(
+            TrajectoryStep(
+                sequence=0,
+                edge_id="landing_to_parlor_bc",
+                skill_id="sm_rando.landing_wait_bc_v1",
+                frame_start=0,
+                frame_end=capture.frames,
+                applied_frames=max(1, capture.frames),
+                observation_before=before,
+                observation_after=after,
+                action={
+                    "type": "wait_then_dispatch",
+                    "value": {
+                        "wait_frames": capture.predicted_wait,
+                        "skill": "play_landing_to_parlor",
+                    },
+                },
+                reward_components={"parlor_reached": float(capture.success)},
+                milestones=("parlor_reached",) if capture.success else (),
+                state_digest_before=capture.state_digest,
+                state_digest_after=capture.after_state_digest,
+            ),
+        ),
+        succeeded=capture.success,
+        terminal_reason=(
+            "parlor_reached" if capture.success else (capture.failure or "miss")
+        ),
+        milestones=(dict(capture.attempt),),
+        provenance={
+            "corpus_digest": eval_result.corpus_digest,
+            "entry_state_digest": capture.state_digest,
+            "partition": "eval",
+        },
+        initial_observation_digest=before["identity_digest"],
+        final_observation_digest=after["identity_digest"],
+    )
+
+
+def export_landing_bc_trajectories(
+    eval_result: LandingBCEvalResult,
+    *,
+    trajectory_dir: Path = LANDING_BC_TRAJECTORY_DIR,
+    counterexample_dir: Path = LANDING_BC_COUNTEREXAMPLES,
+) -> list[str]:
+    """Write eval trajectories and failure library; returns repo-relative paths."""
+    trajectory_dir.mkdir(parents=True, exist_ok=True)
+    failure_library = CounterexampleLibrary(counterexample_dir)
+    trajectory_paths: list[str] = []
+    for capture in eval_result.eval_captures:
+        trajectory = build_landing_bc_trajectory(capture, eval_result=eval_result)
+        path = trajectory_dir / f"{capture.state_digest}.json"
+        trajectory.write(path)
+        try:
+            trajectory_paths.append(str(path.resolve().relative_to(REPO_ROOT)))
+        except ValueError:
+            # Allow tmp-dir unit tests and off-repo dry runs.
+            trajectory_paths.append(str(path))
+        if not capture.success:
+            failure_library.add(trajectory)
+    return trajectory_paths
+
+
+def package_landing_bc_report(
+    eval_result: LandingBCEvalResult,
+    *,
+    eval_trajectories: Sequence[str],
+    baseline_report_path: Path = LANDING_BASELINE_REPORT,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    """Pure report packaging from an eval result + trajectory path list."""
     metrics = {
-        "train": _metrics(attempts, "train"),
-        "eval": _metrics(attempts, "eval"),
+        "train": partition_metrics(eval_result.attempts, "train"),
+        "eval": partition_metrics(eval_result.attempts, "eval"),
     }
     metrics["generalization_gap"] = (
         metrics["train"]["success_rate"] - metrics["eval"]["success_rate"]
     )
     baseline_eval_rate: float | None = None
-    if LANDING_BASELINE_REPORT.exists():
-        baseline = json.loads(LANDING_BASELINE_REPORT.read_text(encoding="utf-8"))
+    if baseline_report_path.exists():
+        baseline = json.loads(baseline_report_path.read_text(encoding="utf-8"))
         baseline_eval_rate = float(baseline["metrics"]["eval"]["success_rate"])
     beats_baseline = (
         baseline_eval_rate is not None
         and metrics["eval"]["success_rate"] > baseline_eval_rate
     )
-    report = {
+    stamp = generated_at or datetime.now(timezone.utc).isoformat()
+    return {
         "schema_version": 1,
         "experiment": "landing_wait_to_handoff_behavior_cloning",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "corpus_path": str(corpus_path.relative_to(REPO_ROOT)),
-        "corpus_digest": corpus.identity_digest,
-        "checkpoint_path": str(checkpoint_path.relative_to(REPO_ROOT)),
+        "generated_at": stamp,
+        "corpus_path": str(eval_result.corpus_path.relative_to(REPO_ROOT)),
+        "corpus_digest": eval_result.corpus_digest,
+        "checkpoint_path": str(eval_result.checkpoint_path.relative_to(REPO_ROOT)),
         "policy_artifact_path": str(
-            policy_artifact_path(checkpoint_path).relative_to(REPO_ROOT)
+            policy_artifact_path(eval_result.checkpoint_path).relative_to(REPO_ROOT)
         ),
-        "policy_artifact_digest": artifact.identity_digest,
-        "contract_bundle_digest": contracts.identity_digest,
+        "policy_artifact_digest": eval_result.policy_artifact_digest,
+        "contract_bundle_digest": eval_result.contract_bundle_digest,
         "training": {
             "partition": "train",
-            "states": len(split.train),
+            "states": eval_result.train_state_count,
             "eval_states_used_for_fit": 0,
-            "metrics": checkpoint["train_metrics"],
+            "metrics": dict(eval_result.train_metrics),
         },
         "metrics": metrics,
         "structured_baseline_eval_rate": baseline_eval_rate,
@@ -499,23 +645,56 @@ def evaluate_landing_bc(
         "intervention_class": "Clean",
         "runtime_observation_class": "Bronze",
         "trajectory_schema": "retro_harness.trajectory/v1",
-        "eval_trajectories": trajectory_paths,
-        "attempts": attempts,
+        "eval_trajectories": list(eval_trajectories),
+        "attempts": list(eval_result.attempts),
         "decision": (
             "candidate_only_not_deployed; replicate on new predecessor trajectories"
             if beats_baseline
             else "do_not_deploy; learned policy did not beat structured baseline"
         ),
     }
+
+
+def write_landing_bc_report(
+    report: Mapping[str, Any],
+    *,
+    output_path: Path = LANDING_BC_REPORT,
+) -> Path:
+    """Persist a packaged report JSON."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(report, allow_nan=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    return output_path
+
+
+# ---------------------------------------------------------------------------
+# Orchestrators
+# ---------------------------------------------------------------------------
+
+
+def evaluate_landing_bc(
+    *,
+    corpus_path: Path = LANDING_CORPUS_MANIFEST,
+    checkpoint_path: Path = LANDING_BC_MODEL,
+    output_path: Path = LANDING_BC_REPORT,
+) -> dict[str, Any]:
+    """Evaluate → export trajectories → package + write report."""
+    eval_result = run_landing_bc_rom_evaluation(
+        corpus_path=corpus_path,
+        checkpoint_path=checkpoint_path,
+    )
+    trajectory_paths = export_landing_bc_trajectories(eval_result)
+    report = package_landing_bc_report(
+        eval_result, eval_trajectories=trajectory_paths
+    )
+    write_landing_bc_report(report, output_path=output_path)
     return report
 
 
 def run_landing_bc_experiment() -> dict[str, Any]:
+    """Train ownership then evaluate/report ownership, end-to-end."""
     train_landing_bc()
     return evaluate_landing_bc()
 
@@ -525,11 +704,19 @@ __all__ = [
     "LANDING_BC_CONTRACTS",
     "LANDING_BC_MODEL",
     "LANDING_BC_REPORT",
+    "LandingBCEvalResult",
     "LandingBCModel",
+    "LandingBCTrajectoryCapture",
     "build_landing_bc_contracts",
+    "build_landing_bc_trajectory",
     "evaluate_landing_bc",
+    "export_landing_bc_trajectories",
     "fit_landing_bc_model",
     "load_landing_bc_model",
+    "package_landing_bc_report",
+    "partition_metrics",
     "run_landing_bc_experiment",
+    "run_landing_bc_rom_evaluation",
     "train_landing_bc",
+    "write_landing_bc_report",
 ]
