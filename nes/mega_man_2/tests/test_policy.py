@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mega_man_2.policy import AirManPolicy, AirScreen1Policy
+from mega_man_2.policy import AirManPolicy, AirScreen1Policy, HeatManPolicy
 from retro_harness.nes import nes_action, nes_idle_action
 
 
@@ -80,3 +80,17 @@ def test_air_man_screen2_phases() -> None:
     # clear at target
     done = pol.tick(frame=500, health=16, camera_x_screen=4)
     assert done.reason == "clear_hold"
+
+
+def test_heat_man_policy_jumps_and_clears() -> None:
+    pol = HeatManPolicy(target_camera_screen=1)
+    # frame 1 → i=0: jump + shoot windows open
+    t0 = pol.tick(frame=1, health=28, camera_x_screen=0)
+    assert t0.reason == "run_jump_shoot"
+    assert list(t0.action) == list(nes_action("RIGHT", "A", "B"))
+    # clear
+    done = pol.tick(frame=50, health=24, camera_x_screen=1)
+    assert done.reason == "clear_hold"
+    assert list(done.action) == list(nes_idle_action())
+    dead = pol.tick(frame=10, health=0, camera_x_screen=0)
+    assert dead.reason == "dead"

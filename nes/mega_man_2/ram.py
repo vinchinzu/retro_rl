@@ -27,8 +27,16 @@ ADDR_SHOOT_POSE_TIMER = 0x0036
 ADDR_IS_SHOOTING = 0x003D
 ADDR_INVULN_TIMER = 0x004B
 
-# Weapons / meta
+# Weapons / meta (Data Crystal)
 ADDR_WEAPONS = 0x009A  # bitfield of unlocked weapons / stages beaten
+# $009A bits: $01 Atomic Fire, $02 Air Shooter, $04 Leaf Shield, $08 Bubble Lead,
+#             $10 Quick Boomerang, $20 Time Stopper, $40 Metal Blade, $80 Crash Bomb
+ADDR_ITEMS = 0x009B  # unlocked items: $01 Item-1, $02 Item-2, $04 Item-3
+WEAPON_ATOMIC_FIRE = 0x01  # Heat Man clear
+WEAPON_AIR_SHOOTER = 0x02
+ITEM_1 = 0x01  # helicopter platforms (Heat clear)
+ITEM_2 = 0x02  # jet sled (Air clear)
+ITEM_3 = 0x04  # climbing platform (Flash clear)
 ADDR_E_TANKS = 0x00A7
 ADDR_LIVES = 0x00A8
 
@@ -115,10 +123,13 @@ def parse_game_state(ram: np.ndarray, frame: int = 0, obs_mean: float | None = N
         "tile_feet": read_u8(ram, ADDR_TILE_FEET),
         "invuln": read_u8(ram, ADDR_INVULN_TIMER),
         "weapons": read_u8(ram, ADDR_WEAPONS),
+        "items": read_u8(ram, ADDR_ITEMS),
         "boss_hp": read_u8(ram, ADDR_BOSS_HP),
         "e_tanks": read_u8(ram, ADDR_E_TANKS),
         "fallen": fallen,
         "is_shooting": read_u8(ram, ADDR_IS_SHOOTING),
+        "has_item1": bool(read_u8(ram, ADDR_ITEMS) & ITEM_1),
+        "has_atomic_fire": bool(read_u8(ram, ADDR_WEAPONS) & WEAPON_ATOMIC_FIRE),
     }
     if not ready:
         mode = GameMode.MENU

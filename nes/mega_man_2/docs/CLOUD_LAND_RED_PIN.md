@@ -154,14 +154,28 @@ Evidence: `recordings/air_post4_altpath/` (`appear_mask_probe.json`, `appear_mas
 re-grid feet_dy=0 alone, re-grid screen-align alone, re-poke fall_top/appear/flag08,
 re-grid zero-mask global solid, pure X-chase (already negative).
 
-**Do (rr-f3nr):**
+**Do (rr-f3nr residual):**
 
-1. **FCEUX/human RAM pin** — on a frame where feet **stick** on empty cloud, dump
-   sy/by/`$2C`/body fl/tsa/xs/ys/xsf/ysf/cam vs freefall dumps here.
-2. **Heat→Air Item-1 Clean segment** as alternate past s4 (new milestone; not Air-first).
+1. **Heat→Air Item-1 chain** — scaffold dual-green done (Heat1 + HeatScreen1);
+   residual = Heat clear → Item-1 pin → Air past s4. See `docs/HEAT_ITEM1_PATH.md`.
+2. **FCEUX/human RAM pin** (optional parallel) — protocol in HEAT_ITEM1_PATH;
+   dump sy/by/`$2C`/body fl/tsa/xs/ys/cam on real stick vs freefall dumps here.
 3. If human pin shows missing RAM/type arm: implement under Clean.
 4. Chain mapset 5–6 LLs only after first stand freezes a state.
 
+## rr-f3nr Heat scaffold (2026-08-10) — PARTIAL (preferred overnight path)
+
+| Milestone | Status |
+|-----------|--------|
+| Heat stage entry (`Heat1`) | **GREEN** — stage select LEFT from Wily → cursor 8 |
+| Heat screen ≥1 (`HeatScreen1`) | **GREEN** — `HeatManPolicy` ~243f |
+| Heat boss / Item-1 unlock | open |
+| Air + Item-1 past cam ≥5 | open |
+| FCEUX stick pin | protocol only (no external FCEUX this session) |
+
+No re-grid of cloud solid this session. Cam ≥5 still **not** met.
+
 ## Smoke
 
-AirScreen2 → target 4 still expected GREEN (~502f). Units: `uv run pytest nes/mega_man_2/tests -q`.
+AirScreen2 → target 4 still expected GREEN (~502f). Heat1 → target 1 GREEN (~243f).
+Units: `uv run pytest nes/mega_man_2/tests -q`.
