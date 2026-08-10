@@ -576,3 +576,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-dbu.8` PARTIAL: ice-to-snake dual pure **538f×2** room 0xA8B9. Next `rr-bf29` Snake→Tutorial.
 - Also: harvest empty-can fill GREEN landed (ac78ec1) — check rr-3q27.
 
+### 2026-08-10T02:05 CDT — harvest natural empty-can fill GREEN
+- `rr-3q27` open residual: can_peak=20 refill=1 watered=2 Clean (ac78ec1).
+- Path east→south + F0 south-lip. Next: return_home hang + 3/3 water + multi-day.
+
