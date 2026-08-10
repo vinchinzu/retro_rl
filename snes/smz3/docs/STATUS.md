@@ -5,10 +5,10 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M2 → M3 |
-| Best verified result | PortalSettled → Link's House interior + chest open (heart container on seed 1337) |
-| Last verification | 2026-07-30 |
+| Best verified result | PortalSettled → Link's House interior + chest open (heart container on seed 1337); multi-seed dry S/T claimable 3/3 |
+| Last verification | 2026-08-09 |
 | Runtime class | Bronze |
-| Intervention class | Clean SM path + missile **assist** for red door; Z3 outdoor flee-only (no sword) |
+| Intervention class | Clean SM path + missile **assist** for red door; Z3 outdoor flee-only (no sword); dry S/T = Clean synthetic |
 
 | Item | State |
 |------|--------|
@@ -26,14 +26,34 @@
 | Clean Z3 controllable via portal | **done** — idle ~300f after `$0F` → module `$09` OW screen `$35` |
 | Fortune Teller → Link's House (no sword) | **done** — `$35`→`$2D`→`$2C`, flee side-steps |
 | Enter Link's House + open chest | **done** — map path west-ramp → door; chest @ vanilla XY |
+| Multi-seed portal→house S/T dry-run | **done** 2026-08-09 — see below |
 | Dual-bot race + video | scaffold only |
 
 ## Solver flagship note
 
 SMZ3 is the combined-randomizer **proof target** for the program solver stack
 (vanilla SM + ALTTP skills → shared planner/discovery → seed-abstract S/T).
-Single-seed parlor→house is development evidence, **not** a seed-robust claim.
+Single-seed parlor→house is development evidence; the multi-seed dry report
+below is **fixture-substrate** harness evidence (not shuffled-seed robustness).
 See `docs/SOLVER_ARCHITECTURE.md` and `docs/BENCHMARK_SPEC.md` (seed-robustness).
+
+## Multi-seed portal→house (rr-gbd.13)
+
+| Field | Value |
+|-------|-------|
+| Goal | `portal_to_house` (PortalSettled → Link's House chest) |
+| Seeds (T) | fixture `1337` / `1338` / `1339` |
+| Threshold (S) | 2 of 3 (actual **3/3**) |
+| Claimable | yes (no INFRA_ERROR) |
+| Spoiler oracle | **false** (path is layout-fixed outdoor + morph-original settings) |
+| Substrate | **fixture** (offline packages; not shuffled combo ROMs) |
+| Intervention (dry) | Clean synthetic envs |
+| Live note | resource assist `missile_red_door` until natural morph→missiles |
+| Reports | `docs/portal_house_seed_campaign_dry.json` (committed); runtime `recordings/portal_house_seed_campaign.json` + classic projection |
+| CLI | `uv run python snes/smz3/scripts/run_portal_house_campaign.py --mode dry --publish-docs` |
+| Pattern | mirrors `sm_rando.early_tip_campaign` / `SeedCampaignRunner` |
+
+Not shuffled-seed robustness until a rando generator/patch is wired per seed.
 
 ## Current milestone
 
@@ -67,5 +87,6 @@ See `docs/SOLVER_ARCHITECTURE.md` and `docs/BENCHMARK_SPEC.md` (seed-robustness)
 ## Next
 
 1. Drop missile assist once natural morph → missiles is on the combo path.
-2. Dual-bot race harness on the same seed (use `quest` + graph).
-3. Longer Z3 outdoor / SM legs with video (uncle sword, etc.) as new edges.
+2. Live multi-seed portal→house (`--mode live`) once combo ROMs exist per fixture seed.
+3. Dual-bot race harness on the same seed (use `quest` + graph).
+4. Longer Z3 outdoor / SM legs with video (uncle sword, etc.) as new edges.

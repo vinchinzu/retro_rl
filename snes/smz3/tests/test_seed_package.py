@@ -66,3 +66,18 @@ def test_race_plan_scaffold(tmp_path: Path) -> None:
     assert d["bot_count"] == 2
     assert d["room_timeout_multiplier"] == 3.0
     assert d["hooks"]["status"] == "scaffold"
+
+
+def test_write_fixture_seed_offline(tmp_path: Path) -> None:
+    from smz3.seed import write_fixture_seed
+
+    pkg = write_fixture_seed(
+        seed_number="42",
+        name="fixture_42",
+        directory=tmp_path / "fixture_42",
+    )
+    assert pkg.seed_number == "42"
+    assert pkg.settings.get("morphlocation") == "original"
+    assert (pkg.directory / "meta.json").is_file()
+    loaded = SeedPackage.load(pkg.directory)
+    assert loaded.meta.get("source") == "fixture"

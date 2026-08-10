@@ -102,3 +102,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-gbd.25` ship→morph SeedCampaignRunner dry S/T 3/3 claimable (vanilla fixtures).
 - Unblocks `rr-gbd.13` SMZ3 multi-seed pattern. Live shuffled ROMs still open.
 
+### 2026-08-09T21:42 CDT — SMZ3 multi-seed dry-run closed
+- **CLOSED** `rr-gbd.13` portal→house SeedCampaignRunner dry S/T 3/3 claimable (fixture substrate).
+- Next free capacity: alttp_rando multi-seed `rr-gbd.26` if ready, else other tips.
+
