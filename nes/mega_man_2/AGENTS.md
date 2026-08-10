@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air s4 clear; post-s4 cloud RED; Heat dual-green through s5 (rr-808 PARTIAL) |
+| Status | Air s4 clear; post-s4 cloud RED; Heat dual-green cam ≥7 pre-boss (rr-809 PARTIAL) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -26,15 +26,17 @@ uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen1 --t
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen2 --target-screen 3 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen3 --target-screen 4 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen4 --target-screen 5 --trials 3
+uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen5Ground --target-screen 7 --trials 3
 uv run pytest nes/mega_man_2/tests -q
 ```
 
 ## Next milestone
 
-**Heat late → boss → Item-1** (rr-808 PARTIAL residual → rr-809): dual-green done
-through `HeatScreen5` (cam ≥5). Next: past prog~1500 death band / boss door, then
-Item-1 pin + Air deploy (rr-810). Doc: `docs/HEAT_ITEM1_PATH.md`. Cloud solid
-still RED; do not re-grid.
+**Heat boss door + Item-1** (rr-809 PARTIAL): dual-green cam ≥7 from
+`HeatScreen5Ground` (~293f). Residual: s7 alcove climb → boss clear → Item-1 /
+Atomic Fire pin; then Air deploy (rr-810). Doc: `docs/HEAT_ITEM1_PATH.md`.
+Cloud solid still RED; do not re-grid. Use `HeatScreen5Ground` (not mid-air
+`HeatScreen5`).
 
 Air post-s4 context: LL spawns mapset4 (`0x3D`/`0x3E`); rider kill Clean; empty
 cloud object-solid never arms. Gap ~296px. FCEUX stick pin protocol in
@@ -63,6 +65,7 @@ HEAT_ITEM1_PATH (external).
 - Stage select `$002A`: Wily=0, Air=2, Heat=8. Password→select at Wily;
   `LEFT`→Heat, `UP`→Air. Items `$009B` bit `$01` = Item-1 (Heat clear).
 - Heat boot: `boot_to_heat_man_script` / `boot_heat_probe.py` → `Heat1`.
-  Heat multi-phase: `HeatManPolicy(start=early|screen2|screen3|screen4)` via
-  `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`5`.
-  Death: `tile_feet==3` or lives drop (not only HP=0 / y≥200).
+  Heat multi-phase: `HeatManPolicy(start=early|screen2|screen3|screen4|screen5)`
+  via `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`7`,
+  `HeatScreen5Ground`. screen5 needs `tile_feet` (A-edge hops). Death:
+  `tile_feet==3` or lives drop (not only HP=0 / y≥200).

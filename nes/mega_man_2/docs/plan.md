@@ -6,26 +6,27 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Next milestones
 
-1. **Heat→Air Item-1 chain** (rr-f3nr residual) — Heat mid/boss → Item-1 → Air
-   past s4 with platforms (`docs/HEAT_ITEM1_PATH.md`).
-2. **Air Man deep late-stage** — cam ≥5 via Item-1 or cloud stand (if FCEUX pin).
+1. **Heat boss door + Item-1** (rr-809 residual) — climb from `HeatScreen7`
+   alcove → boss clear → pin Item-1 / Atomic Fire.
+2. **Air with Item-1 past s4** — **rr-810** (blocked until Item-1).
 3. **M4 natural-entry** — screen-2+ from power-on without warping to `Level1`.
 4. **Boss segment** — isolated Air Man boss from a door-entry state.
 5. **Stage chain** — stage select → clear → weapons → next master.
 
 ## Bottleneck
 
-**Post-s4 Air cloud solid RED; Heat mid dual-green through s5 (rr-808 PARTIAL);
-pre-boss / Item-1 still open.**
+**Post-s4 Air cloud solid RED; Heat dual-green through pre-boss cam ≥7
+(rr-809 PARTIAL); boss climb / Item-1 still open.**
 
 - Pulse-B kills `0x3D`; empty `0x3E` never arms appear; gap ~296px unjumpable
-- Heat screens 1–5 **GREEN**; death band ~prog 1500 on s5; boss / Item-1 open
+- Heat screens 1–7 **GREEN** (s5Ground → cam7); s7 alcove low ceiling / wall lock
+  prog 1792; no boss_hp yet
 - FCEUX human stick pin protocol documented (external)
 
 ## Suggested next experiments
 
-1. Heat late / pre-boss from `HeatScreen5` (ladder/vertical; past prog 1500).
-2. Heat boss clear + Item-1 unlock pin (`$009B\|$01`) — **rr-809**.
+1. HeatScreen7 climb past low ceiling / micro-ledge sy124 → boss door.
+2. Heat boss clear + Item-1 unlock pin (`$009B\|$01`) — finish **rr-809**.
 3. Air Fan + Item-1 deploy past prog 984 → camera ≥5 — **rr-810**.
 4. Optional: FCEUX empty-cloud RAM pin (`docs/HEAT_ITEM1_PATH.md`).
 5. Do **not** re-sweep goblin-solid, “LL absent”, hold-B only, feet_dy grids,
