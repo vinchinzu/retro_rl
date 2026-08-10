@@ -1,0 +1,139 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T02:14:00.379401+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-5lu",
+    "intervention_class": "survival",
+    "segment": "l4_0x51",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bead": "rr-5lu",
+    "checkpoint": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe967-7ee9-7f10-b91b-2795ff8302b6/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room51Cleared.state",
+    "exits_detail": {
+      "BOMB_RIGHT": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x51",
+        "xy": [
+          208,
+          141
+        ]
+      },
+      "BOMB_UP": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x51",
+        "xy": [
+          128,
+          93
+        ]
+      },
+      "DOWN": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x51",
+        "xy": [
+          128,
+          189
+        ]
+      },
+      "LEFT": {
+        "dest": "0x50",
+        "doors": 0,
+        "item": "0x3",
+        "keys": 1,
+        "objs": [
+          [
+            "0x12",
+            64,
+            64,
+            131
+          ],
+          [
+            "0x12",
+            64,
+            120,
+            173
+          ],
+          [
+            "0x12",
+            64,
+            88,
+            157
+          ],
+          [
+            "0x12",
+            64,
+            119,
+            141
+          ],
+          [
+            "0x12",
+            64,
+            128,
+            132
+          ]
+        ],
+        "ok": true,
+        "types": {
+          "0x12": 5
+        },
+        "xy": [
+          224,
+          141
+        ]
+      },
+      "RIGHT": {
+        "ok": false
+      },
+      "UP": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x51",
+        "xy": [
+          112,
+          93
+        ]
+      }
+    },
+    "ok": true,
+    "path": "0x71 --UP--> 0x61 (3x Vire 0x12 / split 0x1c) --BOMB_UP--> 0x51 (8x Keese 0x1b + key 0x19)",
+    "rooms": {
+      "0x51": {
+        "clear": 684,
+        "enemies": {
+          "0x1b": 8
+        },
+        "exits": {
+          "LEFT": "0x50"
+        },
+        "keys_after": 1
+      },
+      "0x61": {
+        "clear": 155,
+        "enemies": {
+          "0x12": 3,
+          "0x1c": "split"
+        },
+        "exits": {
+          "BOMB_UP": "0x51"
+        }
+      },
+      "0x71": {
+        "enemies": {},
+        "exits": {
+          "UP": "0x61"
+        }
+      }
+    },
+    "track": "assisted"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Entrance.state",
+  "source_state_sha256": "c48a52bcf2742be226867999d63cbb2b167a48e3e01239b8d2f03d56a3d50e47",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe967-7ee9-7f10-b91b-2795ff8302b6/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room51Cleared.state",
+  "state_sha256": "c7dbece7e29ef835e97e24e88969e656f9e3f7e083db4518a7a5d32dfcdf0690"
+}

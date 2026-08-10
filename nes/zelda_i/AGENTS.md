@@ -99,7 +99,7 @@ bd ready -l zelda_i   # tip leaf: rr-5lu L4 interior; parallel: rr-38p; Clean de
 | ✓ | **rr-vpl** / **rr-wmv** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
 | ✓ | **rr-k0w** | L4 planning scaffold (`level4_overworld`, plan-only probe) |
 | ✓ | **`rr-0fx`** | L4 live entry: dock **0x55** → island **0x45** → room **0x71** **2/2 assist** |
-| **1 TIP** | **`rr-5lu`** | L4 interior residual from `Level4Entrance` (Stepladder path) |
+| **1 TIP** | **`rr-5lu`** | L4 interior: LIVE 0x71→0x61→BOMB→0x51 key→0x50; Stepladder residual |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -134,9 +134,14 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 `run_level4_entry.py --infinite-life --trials 2 --save-state`. Checkpoints
 **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**. **Not Clean STATUS.**
 
-**Next tip:** **`rr-5lu` Z4.2** L4 interior from `Level4Entrance` (Stepladder).
-Epic container `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
-Not Clean promote.
+**L4 interior (assisted LIVE partial, rr-5lu 2026-08-09):** from
+`Level4Entrance` room **0x71** (empty) UP → **0x61** 3× Vire `0x12` (split
+`0x1c`) → **BOMB_UP** @(120,105) → **0x51** 8× Keese `0x1b` + key `0x19` →
+LEFT @y141 → **0x50** 5× Vire. Module: `level4_dungeon.py`. Evidence:
+`recordings/l4_recon.json`. **Not Clean STATUS.**
+
+**Next tip:** **`rr-5lu` residual** past 0x50 toward Stepladder / Gleeok /
+TF `0x08`. Epic `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.

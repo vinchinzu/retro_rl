@@ -1,0 +1,150 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T02:12:29.431301+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-5lu",
+    "intervention_class": "survival",
+    "segment": "l4_0x61_clear",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bead": "rr-5lu",
+    "clear_frame": 292,
+    "entry_room": "0x71",
+    "exits": {
+      "BOMB_LEFT": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x61",
+        "xy": [
+          32,
+          141
+        ]
+      },
+      "BOMB_RIGHT": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x61",
+        "xy": [
+          208,
+          141
+        ]
+      },
+      "BOMB_UP": {
+        "dest": "0x51",
+        "doors": 0,
+        "item": "0x19",
+        "keys": 0,
+        "objs": [
+          [
+            "0x1b",
+            0,
+            60,
+            177
+          ],
+          [
+            "0x1b",
+            0,
+            96,
+            168
+          ],
+          [
+            "0x1b",
+            0,
+            85,
+            141
+          ],
+          [
+            "0x1b",
+            0,
+            122,
+            103
+          ],
+          [
+            "0x1b",
+            0,
+            201,
+            93
+          ],
+          [
+            "0x1b",
+            0,
+            160,
+            180
+          ],
+          [
+            "0x1b",
+            0,
+            184,
+            117
+          ],
+          [
+            "0x1b",
+            0,
+            48,
+            117
+          ]
+        ],
+        "ok": true,
+        "types": {
+          "0x1b": 8
+        },
+        "xy": [
+          120,
+          205
+        ]
+      },
+      "DOWN": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x61",
+        "xy": [
+          112,
+          189
+        ]
+      },
+      "LEFT": {
+        "ok": false
+      },
+      "RIGHT": {
+        "ok": false
+      },
+      "UP": {
+        "doors": 0,
+        "ok": false,
+        "screen": "0x61",
+        "xy": [
+          112,
+          93
+        ]
+      }
+    },
+    "first_combat_room": "0x61",
+    "live_graph": {
+      "0x61": {
+        "BOMB_UP": "0x51"
+      },
+      "0x71": {
+        "UP": "0x61"
+      }
+    },
+    "notes": [
+      "0x71 empty entry mouth; free UP to 0x61",
+      "0x61: 3x type 0x12 (Vire) HP64 -> split type 0x1c (red keese residual)",
+      "item 0x03 no key on clear"
+    ],
+    "ok": true,
+    "spawn_types": {
+      "0x12": 3,
+      "0x1c": 6
+    },
+    "track": "assisted"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Entrance.state",
+  "source_state_sha256": "c48a52bcf2742be226867999d63cbb2b167a48e3e01239b8d2f03d56a3d50e47",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe967-7ee9-7f10-b91b-2795ff8302b6/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room61Cleared.state",
+  "state_sha256": "3bad3c50a59d7dc2a12e9a0fccfa4d4e0d29192b06a7b1d3051eae1c93a640f2"
+}
