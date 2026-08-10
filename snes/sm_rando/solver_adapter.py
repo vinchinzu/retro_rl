@@ -19,7 +19,7 @@ from retro_harness.adventure import (
     SkillBinding,
     plan,
 )
-from retro_harness.benchmark import PolicyIdentity
+from retro_harness.benchmark_claims import PolicyIdentity
 from retro_harness.contracts import ObservationContract, ObservationField
 from retro_harness.identity import canonical_json, sha256_bytes, sha256_file
 from retro_harness.solver import (
