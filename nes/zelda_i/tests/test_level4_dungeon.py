@@ -165,11 +165,44 @@ def test_live_room_ids() -> None:
     clear12 = make_room_12_clear_controller()
     assert clear12.spec is ROOM_12_SPEC
     rep = planning_interior_report()
-    assert rep["status"] == "gleeok_enter_dual_green_fight_tf_residual"
+    assert rep["status"] == "gleeok_tf08_dual_green"
     assert "0x13" in rep["live_graph"]
     assert rep["live_graph"]["0x21"]["BOMB_UP"] == "0x11"
     assert rep["right_13"]["dual_green"] is True
     assert rep["right_13"]["path_len"] == 31
+    assert rep["gleeok_tf"]["dual_green"] is True
+    assert rep["gleeok_tf"]["tf_bit"] == "0x8"
+    assert rep["gleeok_tf"]["tf_room"] == "0x3"
+    from zelda_i.level4_dungeon import (
+        GLEEOK_HEAD_OBJECT_TYPE,
+        LEVEL4_TRIFORCE_BIT,
+        ROOM_L4_TRIFORCE,
+        level4_triforce_stop,
+    )
+    from zelda_i.level4_boss_combat import (
+        GLEEOK_HEAD_OBJECT_TYPE as HEAD_BOSS,
+        Level4GleeokFightController,
+        level4_complete_success,
+        level4_tf08,
+        make_gleeok_fight_controller,
+    )
+    import numpy as np
+
+    assert GLEEOK_HEAD_OBJECT_TYPE == HEAD_BOSS == 0x46
+    assert ROOM_L4_TRIFORCE == 0x03
+    assert LEVEL4_TRIFORCE_BIT == 0x08
+    ctl = make_gleeok_fight_controller(tag="unit")
+    assert isinstance(ctl, Level4GleeokFightController)
+    ram = np.zeros(0x800, dtype=np.uint8)
+    assert level4_complete_success(ram) is False
+    assert level4_tf08(ram) is False
+    ram[0x0671] = 0x08
+    assert level4_tf08(ram) is True
+    assert level4_complete_success(ram) is True
+    from zelda_i.ram import read_snapshot
+
+    snap = read_snapshot(ram)
+    assert level4_triforce_stop(snap) is True
 
 
 def test_map_success_predicates_false_on_zeros() -> None:

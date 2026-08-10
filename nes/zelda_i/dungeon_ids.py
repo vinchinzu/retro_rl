@@ -29,11 +29,12 @@ OBJECT_NAMES: dict[int, str] = {
     0x2A: "stalfos",
     0x40: "bubble",
     0x43: "gleeok",  # L4 boss room 0x13 live rr-rvae (2-head)
+    0x46: "gleeok_head",  # L4 0x13 detached head mid-fight (rr-rvae dual)
     0x49: "blade_trap",  # L4 room 0x02 live rr-rvae
     0x4D: "old_man_or_npc",
     0x4e: "trap_or_fire_residual",
     0x55: "fireball_or_statue_projectile",  # L2 0x4f statues
-    0x56: "manhandla_projectile_residual",  # with 0x3c on L3 0x4d
+    0x56: "manhandla_projectile_residual",  # L3 Manhandla + L4 Gleeok fireball
     0x60: "green_rupee_drop",
 }
 
@@ -58,9 +59,10 @@ MANHANDLA_OBJECT_TYPE = 0x3C
 AQUAMENTUS_OBJECT_TYPE = 0x3D
 MOLDORM_OBJECT_TYPE = 0x41
 GLEEOK_OBJECT_TYPE = 0x43  # L4 0x13 live rr-rvae
+GLEEOK_HEAD_OBJECT_TYPE = 0x46  # L4 0x13 detached head (rr-rvae dual)
 BLADE_TRAP_OBJECT_TYPE = 0x49  # L4 0x02 live rr-rvae
 FIREBALL_OBJECT_TYPE = 0x55
-MANHANDLA_PROJECTILE_TYPE = 0x56
+MANHANDLA_PROJECTILE_TYPE = 0x56  # also Gleeok fireball residual
 
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",

@@ -1,0 +1,57 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T08:39:20.148849+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "segment": "gleeok_boss_cleared",
+    "track": "assisted",
+    "trial": 0
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "cur_opened_doors": 10,
+      "doors": {
+        "D": false,
+        "L": true,
+        "R": false,
+        "U": true,
+        "raw": 10
+      },
+      "health": 111,
+      "heart_containers": 7,
+      "keys": 0,
+      "level": 4,
+      "mode": 5,
+      "objects": [],
+      "open_doorway_mask": 0,
+      "raft": 1,
+      "room_all_dead": 24,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "sc": "0x13",
+      "screen": 19,
+      "tf04": true,
+      "triforce": 4,
+      "type_counts": {},
+      "type_names": {},
+      "x": 160,
+      "y": 165
+    },
+    "frames": 3646,
+    "hc_got": false,
+    "notes": [
+      "boss_dead f=3646 types={86: 1} rad=1 doors=0",
+      "HC miss dense"
+    ],
+    "ok": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4GleeokEnter.state",
+  "source_state_sha256": "de9883de1c6a1be21b2848ee20b723ee2d6788c7b8b5372e68cf1881c3242f5d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4BossCleared.state",
+  "state_sha256": "75fe38e8ea6ef53fd99245c47d36eaa220ea7b4ed8c8485b582e891514ffb50b"
+}

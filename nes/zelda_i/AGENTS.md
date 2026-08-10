@@ -54,6 +54,8 @@ uv run python zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 -
 uv run python zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
 # L4 map (assisted first-pass; recon key poke if keys=0 on checkpoint)
 uv run python zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinite-life --trials 2 --save-state
+# L4 Gleeok → TF 0x08 (assisted dual-green from Level4GleeokEnter)
+uv run python zelda_i/scripts/run_level4_gleeok.py --infinite-life --trials 2 --save-state
 ```
 
 ## Layout (pointers)
@@ -104,7 +106,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: post-ladder L4 residual; parallel: rr-38p
+bd ready -l zelda_i   # tip: rr-05fz natural continuous L4; parallel: rr-38p
 ```
 
 | Order | Bead | Work |
@@ -120,8 +122,8 @@ bd ready -l zelda_i   # tip: post-ladder L4 residual; parallel: rr-38p
 | ✓ | **`rr-n1wn`** | **0x30** Vire clear pure 2/2 + KEY-RIGHT **0x31** pure 2/2 |
 | ✓ | **`rr-resv`** | **0x31** Vire clear pure 2/2 + free RIGHT **0x32** pure 2/2 |
 | ✓ | **`rr-tib8`** | **0x32** Zol+LikeLike clear pure 2/2 + stairs **0x60** `ADDR_LADDER` pure 2/2 |
-| tip | **`rr-rvae`** | Map 2/2 + Gleeok enter dual-green; fight + TF `0x08` residual |
-| partial | **`rr-05fz`** | exit_60 + west_31 pure 2/2; residual → rr-rvae |
+| ✓ | **`rr-rvae`** | Map 2/2 + Gleeok enter + fight/HC/TF `0x08` dual-green |
+| partial | **`rr-05fz`** | exit_60 + west_31 pure 2/2; natural key residual |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -190,10 +192,20 @@ hold6 BFS → **`ADDR_MAP & 0x08`** @~(208,181) ~17.8k f/trial. Checkpoint
 **`Level4GleeokEnter`** / **`Level4Boss`**. Evidence:
 `l4_rvae_right13_dual.json`. **Not Clean STATUS.**
 
-**Next tip:** Gleeok fight + HC + TF `0x08` under **`rr-rvae`** / epic
-**`rr-q3n`**. Traps: naive y141 hold-RIGHT fails after push (maze path
-required); bomb/KEY-RIGHT do **not** open 0x13; free N on 0x30 sealed without
-key; KEY-UP **0x31** = isolated 0x21 south pocket. Parallel OW `rr-38p`.
+**L4 Gleeok → TF (assisted LIVE dual-green 2/2, rr-rvae 2026-08-10):** from
+`Level4GleeokEnter` melee A-spam (prefer head type **`0x46`** when present;
+body **`0x43`** HP≈160; ignore fireball **`0x56`**) → boss dead → HC `0x1a`
+(containers 7→8) → free UP → TF room **0x03** → walk mid → **`tf&0x08`**
+(~4.3k f/trial dual exact). Module: `level4_boss_combat.py`. Runner:
+`run_level4_gleeok.py --infinite-life --trials 2 --save-state`. Checkpoint
+**`Level4Complete`**. Evidence: `l4_rvae_gleeok_tf_dual.json`. **Not Clean STATUS.**
+
+**Next tip:** natural-entry continuous `Level4PostLadder`→TF (natural key for
+KEY-UP) + Clean harden; epic **`rr-q3n`**. Traps: naive y141 hold-RIGHT fails
+after 0x12 push (maze path required); bomb/KEY-RIGHT do **not** open 0x13;
+Gleeok TYPE-only late fight (HP may read 0 while body present); free N on 0x30
+sealed without key; KEY-UP **0x31** = isolated 0x21 south pocket. Parallel OW
+`rr-38p`.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
@@ -213,5 +225,6 @@ Checkpoints: `Level2Boom` / `Level2Complete` / `Level2ExitOverworld` /
 `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft` /
 `Level3Boss` / `Level3Complete` / `Level3ExitOverworld` / `OW_L4Dock` /
 `Level4Entrance` / `Level4Stepladder` / `Level4PostLadder` /
-`Level4Room31PostLadder` / `Level4Map`.
+`Level4Room31PostLadder` / `Level4Map` / `Level4GleeokEnter` /
+`Level4Complete`.
 Use `--infinite-life` for first-pass; Clean STATUS only after full-game assist.
