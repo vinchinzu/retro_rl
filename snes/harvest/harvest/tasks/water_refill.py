@@ -46,24 +46,37 @@ def select_main_pond_refill(
     *,
     bad_stands: Optional[set] = None,
 ) -> Optional[RefillTarget]:
-    """Pick the first pathable stand from FARM_MAIN_POND_STANDS.
+    """Pick the nearest pathable stand from FARM_MAIN_POND_STANDS.
 
     ``find_path(start, goal)`` should return a full path list ending at goal,
-    or None if unreachable.
+    or None if unreachable. After a y=31 fence gap open the player is often on
+    the *north* lip — preferring a fixed south-lip order then times out walking
+    around the pond body.
     """
     blocked = bad_stands or set()
-    for stand, face in farm_pond_refill_stands():
+    hits: List[Tuple[int, int, RefillTarget]] = []
+    for rank, (stand, face) in enumerate(farm_pond_refill_stands()):
         if stand in blocked:
             continue
         path = find_path(player, stand)
         if path is not None:
-            return RefillTarget(
-                stand=stand,
-                face=face,
-                source="main_pond_corridor",
-                pathable=True,
+            dist = abs(stand[0] - player[0]) + abs(stand[1] - player[1])
+            hits.append(
+                (
+                    dist,
+                    rank,
+                    RefillTarget(
+                        stand=stand,
+                        face=face,
+                        source="main_pond_corridor",
+                        pathable=True,
+                    ),
+                )
             )
-    return None
+    if not hits:
+        return None
+    hits.sort(key=lambda row: (row[0], row[1]))
+    return hits[0][2]
 
 
 def select_staging_stand(
