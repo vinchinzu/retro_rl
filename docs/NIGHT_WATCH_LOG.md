@@ -1372,3 +1372,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Not spawned:** solver gbd.32 CLOSED; SM oracle below pure stack tip
 - **Cap:** 3 busy + 1 zelda = 4 / 6 lanes
 - Never push.
+
+### 2026-08-10T07:20 CDT — harvest return_home D12 GREEN (rr-5in PARTIAL)
+- Commit `44ac361`: far-east pre-escape + east-of-pond densify; 14 overnights to D16.
+- Terminal budget not house-nav. Residual **rr-qc9r** CROP_WATER thrash D13–15 → spawned.
+
