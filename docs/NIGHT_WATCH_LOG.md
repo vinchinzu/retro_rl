@@ -692,3 +692,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-6byj`: shelf A replace thrash fixed; Clean hoe+seeds SUCCESS ~2248f.
 - Next tip: rr-m0wq sleep bed miss or rr-20w live plant→water residual.
 
+### 2026-08-10T01:25 CDT — SM rr-3gh9 Business→Warehouse pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-3gh9** CLOSED: Pure Business Super → Warehouse return (K5 hop 4)
+- **Evidence:** `business-to-warehouse` dual pure **10255f** ×2 exact, room `0xA6A1`
+  xy=(37,139) pose=138 from `post_ice_gate_to_business_pure` Super lip ~(41,907)
+- Controller adapt: Super/midshaft floor-fall first + Charge multi-attempt ladder
+  (classic 14→8 lead; cont-tuned 18/20/22 retries; mid-right re-anchor on recover)
+- Export: `scratch/post_ice_business_to_warehouse_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–4 GREEN; Alpha PB open)
+- Next bead **rr-bw2w**: Warehouse → East Tunnel reverse
+- Units: kpdr_dev + source_states + ice scaffold + controller_common green; no continuous / STATUS
+- No push
