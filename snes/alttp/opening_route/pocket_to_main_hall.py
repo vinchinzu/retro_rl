@@ -10,8 +10,11 @@ Measured 2026-07-30 headless from continuous tip ``courtyard_secret_pocket``
    door approach ~(2040, 1790).
 3. **Trigger** — align x≈2040, hold UP → indoors main hall room ``0x61``.
 
-Door outdoor landing reverse-measured from ``CastleMain`` exit:
-~(2040, 1779). UP re-enters stairs from the pocket (known trap).
+Geometry authority: ``maps/screen_1b_courtyard.json`` door
+``main_door_to_0x61``. Bush-cut locomotion remains here (room_engine
+walk-only cannot clear hedges); approach/trigger coords and corridor
+waypoints load from the map. Do not grow ``enter_main_door`` special
+cases or redeclare door xy in Python.
 
 Do not claim Zelda / Sanctuary from this hop alone.
 """
@@ -19,17 +22,9 @@ Do not claim Zelda / Sanctuary from this hop alone.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from functools import lru_cache
 
 from alttp import primitives
-from alttp.opening_route.anchors import (
-    COURTYARD_SECRET_POCKET_TOLERANCE,
-    COURTYARD_SECRET_POCKET_X,
-    COURTYARD_SECRET_POCKET_Y,
-    MAIN_DOOR_APPROACH_TOLERANCE,
-    MAIN_DOOR_APPROACH_X,
-    MAIN_DOOR_APPROACH_Y,
-)
 from alttp.opening_route.runner import PhaseFn
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
@@ -39,17 +34,48 @@ from alttp.ram import (
     room_label,
     snapshot_to_diag,
 )
+from alttp.room_map import KnownDoor, RoomMap, load_room_map
 from alttp.route_report import RoutePhaseResult, SegmentResult, segment_result_factory
 from alttp.startup import BootEnv, action_for, no_action, snapshot_env, step_frames
 
 _REPORT = segment_result_factory("alttp_pocket_to_main_hall_report")
 
+MAP_ID = "screen_1b_courtyard"
+MAIN_DOOR_LABEL = "main_door_to_0x61"
+
 # Open-courtyard / gardens window after pocket escape (route tier).
 COURTYARD_OPEN_Y_MIN = 1880
 COURTYARD_OPEN_X_MAX = 2220
 
-# Southern corridor that connects east hedge area to door axis (route).
-COURTYARD_SOUTH_CORRIDOR_Y = 2024
+
+@lru_cache(maxsize=1)
+def courtyard_map() -> RoomMap:
+    return load_room_map(MAP_ID)
+
+
+@lru_cache(maxsize=1)
+def main_door() -> KnownDoor:
+    door = courtyard_map().door(MAIN_DOOR_LABEL)
+    if door is None:
+        raise KeyError(f"door {MAIN_DOOR_LABEL!r} missing from {MAP_ID}")
+    return door
+
+
+def _map_point_xy(label: str, default: tuple[int, int]) -> tuple[int, int]:
+    pt = courtyard_map().point(label)
+    if pt is None:
+        return default
+    return pt.x, pt.y
+
+
+# Map-backed measured constants (fallbacks keep import stable if map edited).
+COURTYARD_SECRET_POCKET_X, COURTYARD_SECRET_POCKET_Y = _map_point_xy(
+    "secret_stairs_pocket", (2248, 1755)
+)
+COURTYARD_SECRET_POCKET_TOLERANCE = 48
+MAIN_DOOR_APPROACH_X, MAIN_DOOR_APPROACH_Y = main_door().approach_xy
+MAIN_DOOR_APPROACH_TOLERANCE = main_door().tolerance_for("main_door_approach", 24)
+COURTYARD_SOUTH_CORRIDOR_Y = _map_point_xy("south_corridor", (2100, 2024))[1]
 
 
 def cut_push(
@@ -346,7 +372,12 @@ def approach_main_door(env: BootEnv) -> RoutePhaseResult:
 
 
 def enter_main_door(env: BootEnv) -> RoutePhaseResult:
-    """Trigger tier: align door x and walk UP into room 0x61."""
+    """Trigger tier: align door approach from map and hold door direction."""
+    door = main_door()
+    ax, ay = door.approach_xy
+    push_dir = door.direction
+    push_limit = max(1, door.push_frames // 3)
+
     frames = 0
     settle = primitives.settle_control(env)
     frames += settle.frames
@@ -361,18 +392,18 @@ def enter_main_door(env: BootEnv) -> RoutePhaseResult:
             diag=snapshot_to_diag(start),
         )
 
-    # Align x to door.
+    # Align x to map door approach (geometry authority).
     for _ in range(50):
         snap = snapshot_env(env)
-        if abs(snap.link_x - MAIN_DOOR_APPROACH_X) <= 3:
+        if abs(snap.link_x - ax) <= 3:
             break
-        face = "RIGHT" if snap.link_x < MAIN_DOOR_APPROACH_X else "LEFT"
+        face = "RIGHT" if snap.link_x < ax else "LEFT"
         step_frames(env, action_for(face), 3)
         frames += 3
 
     for trial in range(8):
-        for _ in range(80):
-            step_frames(env, action_for("UP"), 3)
+        for _ in range(push_limit):
+            step_frames(env, action_for(push_dir), 3)
             frames += 3
             t_frames, snap = _settle_transition(env)
             frames += t_frames
@@ -386,10 +417,10 @@ def enter_main_door(env: BootEnv) -> RoutePhaseResult:
                     frames=frames,
                     snapshot=snap,
                     detail=(
-                        f"entered main hall room 0x61 "
+                        f"entered main hall room 0x61 via {door.label} "
                         f"xy=({snap.link_x},{snap.link_y})"
                     ),
-                    diag=snapshot_to_diag(snap),
+                    diag={**snapshot_to_diag(snap), "door": door.label},
                 )
             if _reentered_secret(snap):
                 # Wrong door (stairs) — back out and nudge.
@@ -399,7 +430,6 @@ def enter_main_door(env: BootEnv) -> RoutePhaseResult:
                 frames += sc.frames
                 break
             if snap.indoors:
-                # Unexpected indoor — report.
                 return RoutePhaseResult(
                     phase="enter_main_door",
                     ok=False,
@@ -410,7 +440,7 @@ def enter_main_door(env: BootEnv) -> RoutePhaseResult:
                     ),
                     diag=snapshot_to_diag(snap),
                 )
-        # Nudge x and retry.
+        # Nudge x and retry (minimal special case — coords still from map).
         step_frames(
             env,
             action_for("LEFT" if trial % 2 == 0 else "RIGHT"),
@@ -425,7 +455,7 @@ def enter_main_door(env: BootEnv) -> RoutePhaseResult:
         frames=frames,
         snapshot=snap,
         detail=(
-            f"door trigger timeout xy=({snap.link_x},{snap.link_y}) "
+            f"door trigger timeout ({door.label}) xy=({snap.link_x},{snap.link_y}) "
             f"indoors={snap.indoors}"
         ),
         diag=snapshot_to_diag(snap),
@@ -440,8 +470,8 @@ POCKET_PHASES = (
 
 _POCKET_NOTES = (
     "Pocket escape requires bush-cutting (walk-only stays boxed).",
-    "South corridor y≈2024 connects east hedges to door axis x≈2040.",
-    "Door trigger: align x≈2040, UP → room 0x61.",
+    f"Geometry: maps/{MAP_ID}.json door {MAIN_DOOR_LABEL}.",
+    "South corridor + door approach/push from map; bush-cut locomotion only.",
     "Do not claim Zelda until follower_indicator==1.",
 )
 
