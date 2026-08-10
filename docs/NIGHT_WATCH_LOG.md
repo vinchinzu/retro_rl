@@ -1335,3 +1335,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Hellway still RED. Re-spawned top-door→Hellway manager.
 - Do not thrash after y687 pin; do not force-unmorph p81.
 
+
+### 2026-08-10T06:55 CDT — MM2 Heat s7 wall-lock residual
+- Commit `770466b`: HeatScreen7Mid sx152; ladder x192+ unreachable; no boss/Item-1.
+- Re-spawned with **new route hypothesis only** (no hop spam).
+- Do not tip rr-810 until Item-1.
+
