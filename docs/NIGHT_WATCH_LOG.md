@@ -752,3 +752,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Child **rr-rvae** created for map+Gleeok+TF. **rr-05fz** left open until TF 0x08.
 - Evidence: `l4_05fz_exit60_exit_60.json`, `l4_05fz_west31_west_31.json`
 - No push. Next: map room from Level4PostLadder / rr-rvae
+
+### 2026-08-10T03:15 CDT — zelda post-ladder pure exit (open residual)
+- `rr-05fz` open: exit_60 2/2 ~765f; west_31 2/2 ~372f. Checkpoints Level4PostLadder.
+- Map/Gleeok/TF residual tip `rr-rvae`. Traps: 150f item freeze; BFS settle ~400f.
+

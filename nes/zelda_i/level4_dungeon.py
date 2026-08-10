@@ -25,6 +25,11 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     outside early component {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT sealed;
     0x40 L/R sealed.
 
+**Post-ladder (rr-05fz live):** after ``ADDR_LADDER``, pedestal freezes ~100f;
+    clear 4× Keese, then hold4 BFS exits mode-9 **0x60 → 0x32** play. From
+    ``Level4PostLadder`` free LEFT (BFS around pushed block) → **0x31**.
+    Backtrack **0x31→0x30→0x40** live; map / Gleeok / TF ``0x08`` still residual.
+
 Not Clean STATUS. Gleeok / TF ``0x08`` still residual.
 """
 
@@ -1479,6 +1484,133 @@ def level4_stepladder_success(ram: np.ndarray) -> bool:
     return int(read_u8(ram, ADDR_LADDER)) > 0
 
 
+# --- Post-ladder residual (rr-05fz live 2026-08-10) ---
+# Item-pickup freeze on Level4Stepladder: need idle before movement works.
+POST_LADDER_ITEM_SETTLE = 150
+# mode-9 0x60 exit: clear 4× Keese then hold4 multi-grid BFS → 0x32 play.
+# Live sample path from keese-clear pose ~(112,141) (rr-05fz):
+EXIT_60_HOLD = 4
+EXIT_60_SAMPLE_PATH: tuple[str, ...] = (
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "DOWN",
+    "RIGHT",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "UP",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+)
+# Post-ladder 0x32 → free LEFT to 0x31 (BFS around pushed 0x68 block; y≈141 west).
+WEST_31_HOLD = 4
+WEST_31_SAMPLE_PATH: tuple[str, ...] = (
+    "LEFT",
+    "LEFT",
+    "DOWN",
+    "DOWN",
+    "LEFT",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+)
+
+
+def level4_post_ladder_success(ram: np.ndarray) -> bool:
+    """On 0x32 play with ADDR_LADDER set (exited stepladder basement)."""
+    from zelda_i.ram import ADDR_LADDER, read_u8
+
+    snap = read_snapshot(ram)
+    return (
+        int(read_u8(ram, ADDR_LADDER)) > 0
+        and snap.level == LEVEL4
+        and snap.screen == ROOM_L4_EAST_32
+        and snap.mode in (PLAY_MODE, 5)
+    )
+
+
+def level4_west_31_success(ram: np.ndarray) -> bool:
+    """On 0x31 play with ADDR_LADDER (post-ladder backtrack west of 0x32)."""
+    from zelda_i.ram import ADDR_LADDER, read_u8
+
+    snap = read_snapshot(ram)
+    return (
+        int(read_u8(ram, ADDR_LADDER)) > 0
+        and snap.level == LEVEL4
+        and snap.screen == ROOM_L4_EAST_31
+        and snap.mode in (PLAY_MODE, 5)
+    )
+
+
 # Live scripted key path after combat clear pose ≈(136–140, 164–165).
 # East-corridor route (rr-q8eq BFS): UP×2 RIGHT×5 UP×4 LEFT×5 hold6 → key ~(136,117).
 MAZE_40_KEY_HOLD = 6
@@ -2357,9 +2489,9 @@ def planning_interior_report() -> dict:
     return {
         "level": LEVEL4,
         "bead": "rr-5lu",
-        "tip": "rr-tib8",
+        "tip": "rr-05fz",
         "track": "pure",
-        "status": "interior_0x32_clear_stepladder_live",
+        "status": "post_ladder_exit_west_live_map_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -2442,6 +2574,25 @@ def planning_interior_report() -> dict:
                 "pickup_xy": list(LADDER_60_PICKUP_XY),
                 "enemies": {"0x1b": 4},
                 "note": "stairs basement under 0x32; ADDR_LADDER on touch (rr-tib8)",
+                "exit": {
+                    "to": hex(ROOM_L4_EAST_32),
+                    "hold": EXIT_60_HOLD,
+                    "settle_idle": POST_LADDER_ITEM_SETTLE,
+                    "note": (
+                        "rr-05fz: item freeze ~100f; clear 4× Keese; hold4 BFS "
+                        "→ 0x32 play (sample EXIT_60_SAMPLE_PATH); settle through "
+                        "mode 4/6/7 scroll"
+                    ),
+                },
+            },
+            "post_ladder_0x32": {
+                "checkpoint": "Level4PostLadder",
+                "ladder": 1,
+                "LEFT_bfs": hex(ROOM_L4_EAST_31),
+                "note": (
+                    "rr-05fz: free LEFT around pushed 0x68 block (WEST_31_SAMPLE_PATH); "
+                    "backtrack 0x31→0x30→0x40 live; 0x30 north still sealed; map/Gleeok residual"
+                ),
             },
         },
         "post_compass": {
@@ -2664,6 +2815,13 @@ __all__ = [
     "level4_room_32_cleared",
     "level4_room_32_ready",
     "level4_stepladder_success",
+    "level4_post_ladder_success",
+    "level4_west_31_success",
+    "POST_LADDER_ITEM_SETTLE",
+    "EXIT_60_HOLD",
+    "EXIT_60_SAMPLE_PATH",
+    "WEST_31_HOLD",
+    "WEST_31_SAMPLE_PATH",
     "make_key_right_31_controller",
     "make_room_30_clear_controller",
     "make_room_31_clear_controller",
