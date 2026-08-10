@@ -40,9 +40,9 @@ Program stack: `docs/SOLVER_ARCHITECTURE.md`.
 | Play/record spine | done (`./play` + MP4/JSON + F5) |
 | FirstPlay boot | **done** (M1) |
 | House → uncle skill bind | **done** (natural_entry; vanilla `alttp` opening skills) |
+| Multi-seed opening S/T dry-run | **done** (fixture S=3/T=3 claimable; `substrate=vanilla`) |
 | Patched seed ROM integration | open |
 | Seed generator (ALTTPR / API) | open |
-| Multi-seed S/T dry-run | open |
 
 ## House → uncle (natural_entry)
 
@@ -56,8 +56,26 @@ Program stack: `docs/SOLVER_ARCHITECTURE.md`.
 | Intervention | Clean (0 progression writes; 1 predecessor state load) |
 | Last verification | 2026-08-09 |
 
+## Multi-seed opening tip (S/T dry-run)
+
+| Field | Value |
+|-------|-------|
+| Edge / goal | `house_to_uncle` |
+| Seeds | fixture `1337` / `1338` / `1339` |
+| S/T | **3/3** claimable (threshold 2) |
+| Mode | dry (audited synthetic); live path wired, needs ROM + FirstPlay |
+| Substrate | **vanilla** JP 1.0 FirstPlay (honest label; not shuffled ROMs) |
+| Seed source | fixture packages (`alttp_rando.fixture`) |
+| Spoiler oracle | false (seed-agnostic uncle-sword placement) |
+| Intervention | Clean |
+| Skill | `z3.house_to_uncle.vanilla_opening` |
+| Consumer | `alttp_rando.opening_tip_campaign` → `SeedCampaignRunner` |
+| Published report | `docs/opening_tip_seed_campaign_dry.json` |
+| CLI | `uv run python -m alttp_rando.scripts.run_opening_tip_campaign --mode dry --publish-docs` |
+| Last verification | 2026-08-09 |
+
 ## Next
 
-1. ALTTPR / patch fixture seed → same FirstPlay path.
-2. Multi-seed opening S/T dry-run (`rr-gbd.26`) via shared harness.
-3. Bind next early-graph edges (`uncle_to_yard`, …) as skills clear.
+1. ALTTPR / patch fixture seed → same FirstPlay path (unlock live multi-seed on real patches).
+2. Bind next early-graph edges (`uncle_to_yard`, …) as skills clear.
+3. Live multi-seed opening tip once generator/patch is wired (still fail-closed INFRA without ROM).

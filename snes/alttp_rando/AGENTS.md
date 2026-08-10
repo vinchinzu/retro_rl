@@ -39,6 +39,10 @@ uv run python -c "from alttp_rando.seed import ensure_test_seed; ensure_test_see
 
 # FirstPlay → uncle (natural-entry edge; writes report + evidence)
 SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.run_house_to_uncle
+
+# Multi-seed opening tip S/T dry-run (fixture seeds; publishes docs report)
+uv run python -m alttp_rando.scripts.run_opening_tip_campaign --mode dry --publish-docs
+uv run pytest snes/alttp_rando/tests/test_alttp_rando_opening_tip_campaign.py -q
 ```
 
 F5 in `./play` saves into `custom_integrations/ALTTPRando-Snes/`.
@@ -49,10 +53,12 @@ Recordings → `recordings/` (MP4 + JSON).
 - Do not symlink USA `zelda3.sfc` into this integration.
 - `FirstPlay` is post-intro control (Link's House), not name select.
 - Seed ROM / ALTTPR patch integration still open; demo uses JP vanilla.
+- Opening S/T dry-run is **substrate=vanilla** / **seed_source=fixture** —
+  not shuffled-seed robustness until a generator/patch is wired.
 - `house_to_uncle` is natural_entry; remaining early-graph edges stay planned
   until skills bind them.
 
 ## Immediate goal
 
-M1 boot ✓. `house_to_uncle` natural_entry ✓ (vanilla opening skills). Next:
-fixture/patched seed playable boot + multi-seed opening S/T dry-run.
+M1 boot ✓. `house_to_uncle` natural_entry ✓. Multi-seed opening S/T dry-run ✓
+(fixture 3/3 claimable). Next: ALTTPR patch fixture + next graph edges.
