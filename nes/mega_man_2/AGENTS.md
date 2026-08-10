@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air Man screen-2 clear (M3 isolated) |
+| Status | Air Man screen-4 clear from AirScreen2 (M3 isolated) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -18,13 +18,15 @@ uv run python nes/mega_man_2/scripts/setup_rom.py
 uv run python nes/mega_man_2/scripts/boot_probe.py
 uv run python nes/mega_man_2/scripts/run_air_segment.py --trials 3
 uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirLanded --trials 3
+uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirScreen2 --target-screen 3 --trials 3
+uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirScreen2 --target-screen 4 --trials 3
 uv run python nes/mega_man_2/scripts/run_air_segment.py --target-screen 1  # legacy
 uv run pytest nes/mega_man_2/tests -q
 ```
 
 ## Next milestone
 
-Extend Air Man past screen 2; then natural-entry (M4).
+Extend past screen 4 toward Air Man boss door; then natural-entry (M4).
 
 ## Norms
 
@@ -33,3 +35,4 @@ Extend Air Man past screen 2; then natural-entry (M4).
 - NES actions use `retro_harness.nes` (9-button fceumm layout).
 - Line length 88; type hints; `uv run pytest` for tests.
 - `AirScreen1` alone is mid-air over a pit — use `AirLanded` for grounded scr1.
+- `AirScreen2` uses `AirManPolicy(start="screen2")` (not level1/landed recipes).

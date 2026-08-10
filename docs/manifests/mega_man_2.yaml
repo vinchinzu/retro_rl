@@ -19,8 +19,9 @@ best_video: null
 assist_contract: null
 status_doc: nes/mega_man_2/docs/STATUS.md
 plan_doc: nes/mega_man_2/docs/plan.md
-last_verified: 2026-08-08
-blocker: Air Man past screen 2 / natural-entry M4
+last_verified: 2026-08-09
+blocker: Air Man past screen 4 toward boss / natural-entry M4
 notes: >-
-  M3: Air Man camera screen ≥2 from Level1 (~522f, 3/3) and AirLanded (~226f).
-  Next: deeper stage + natural-entry. Platform NES under roms/Nintendo/NES.
+  M3: Air Man ≥2 from Level1/AirLanded; ≥3/~241f and ≥4/~502f from AirScreen2
+  (start=screen2, 3/3). Next: past s4 toward boss + natural-entry.
+  Platform NES under roms/Nintendo/NES.
