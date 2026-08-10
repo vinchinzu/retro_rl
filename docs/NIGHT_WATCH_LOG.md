@@ -580,3 +580,16 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-3q27` open residual: can_peak=20 refill=1 watered=2 Clean (ac78ec1).
 - Path east→south + F0 south-lip. Next: return_home hang + 3/3 water + multi-day.
 
+
+### 2026-08-10T00:57 CDT — SM rr-bf29 Snake→Tutorial pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-bf29** CLOSED: Pure Ice Snake → Tutorial return (K5 hop 1)
+- **Evidence:** `ice-snake-to-tutorial` dual pure **2386f** ×2 exact, room `0xA865`
+  xy=(39,127) pose=81 from `post_ice_to_snake_pure`
+- Controller: drop Ice alcove → morph tunnel → floor → multi-attempt 2WJ climb
+  (reuse `_snake_platform_climb`; no freeze thrash RLE) → top-right Tutorial door
+- Export: `scratch/post_ice_snake_to_tutorial_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0+hop1 GREEN; Alpha PB open)
+- Next bead **rr-81ek**: Tutorial → Gate pure from new pin
+- Units: ice scaffold green; no continuous / STATUS change
+- No push
