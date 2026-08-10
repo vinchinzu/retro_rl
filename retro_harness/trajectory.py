@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from retro_harness.contracts import canonical_json, contract_digest
+from retro_harness.contracts import contract_digest
+from retro_harness.identity import (
+    canonical_json,
+    require_nonempty as _nonempty,
+    sha256_bytes,
+)
 from retro_harness.solver import (
     SkillOutcomeStatus,
     SolverActionEvent,
@@ -48,12 +52,6 @@ TRAJECTORY_SCHEMA_DIGEST = contract_digest(
 
 class TrajectoryError(ValueError):
     """Raised when experience data is malformed or fails identity checks."""
-
-
-def _nonempty(value: Any, name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise TrajectoryError(f"{name} must be a non-empty string")
-    return value.strip()
 
 
 def _mapping(value: Mapping[str, Any], name: str) -> dict[str, Any]:
@@ -413,7 +411,7 @@ class CounterexampleLibrary:
                 item.get("status") for item in trajectory.milestones
             ],
         }
-        return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()[:16]
+        return sha256_bytes(canonical_json(payload).encode("utf-8"))[:16]
 
     def add(self, trajectory: Trajectory, *, cluster: str | None = None) -> Path:
         if trajectory.succeeded:

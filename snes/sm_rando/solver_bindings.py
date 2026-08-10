@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -19,14 +18,14 @@ from retro_harness.solver import (
     ProgressionDelta,
     SkillSpec,
 )
+from retro_harness.identity import canonical_json, sha256_bytes, sha256_file
 from sm_rando.logic_graph import N_MORPH, N_SHIP
 from sm_rando.paths import RECORDINGS_DIR, REPO_ROOT
+from sm_rando.solver_adapter import OBSERVATION_SCHEMA_DIGEST
 from super_metroid.routes.kpdr.early_spine import play_ship_to_morph
 
 SHIP_TO_MORPH_EVIDENCE = RECORDINGS_DIR / "ship_to_morph.evidence.json"
-SM_RANDO_OBSERVATION_SCHEMA_DIGEST = hashlib.sha256(
-    b"sm-rando-solver-observation-v1"
-).hexdigest()
+SM_RANDO_OBSERVATION_SCHEMA_DIGEST = OBSERVATION_SCHEMA_DIGEST
 
 SHIP_TO_MORPH_SPEC = SkillSpec(
     skill_id="sm.ship_to_morph.vanilla_pure",
@@ -50,19 +49,11 @@ _SCAFFOLD_BINDING = SkillBinding(
     edge_id="ship_to_morph",
     skill_id=SHIP_TO_MORPH_SPEC.skill_id,
     dispatch_key=SHIP_TO_MORPH_SPEC.dispatch_key,
-    entry_contract_digest=(
+    entry_requirement_digest=(
         SHIP_TO_MORPH_SPEC.observation_requirement.identity_digest
     ),
-    exit_contract_digest=SHIP_TO_MORPH_SPEC.expected_delta.identity_digest,
+    progression_delta_digest=SHIP_TO_MORPH_SPEC.expected_delta.identity_digest,
 )
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _observation_digest(
@@ -81,8 +72,7 @@ def _observation_digest(
         "room_id": room_id,
         "schema_digest": SM_RANDO_OBSERVATION_SCHEMA_DIGEST,
     }
-    payload = json.dumps(record, separators=(",", ":"), sort_keys=True)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return sha256_bytes(canonical_json(record).encode("utf-8"))
 
 
 def _resolve_repo_path(value: Any) -> Path:
@@ -107,7 +97,7 @@ def load_ship_to_morph_evidence(
         raise ValueError("evidence edge_id mismatch")
 
     source_path = _resolve_repo_path(payload.get("source_report"))
-    source_sha256 = _sha256(source_path)
+    source_sha256 = sha256_file(source_path)
     if payload.get("source_report_sha256") != source_sha256:
         raise ValueError("source report digest mismatch")
     report = json.loads(source_path.read_text(encoding="utf-8"))

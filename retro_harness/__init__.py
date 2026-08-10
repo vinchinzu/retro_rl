@@ -130,18 +130,19 @@ from retro_harness.bot_runner import (
     TaskSequencer,
     TaskRepeater,
 )
-from retro_harness.benchmark import (
+from retro_harness.audit import (
     RuntimeObservationClass,
     InterventionClass,
-    StartIdentity,
-    PolicyIdentity,
-    PolicyArtifact,
-    PolicyArtifactError,
-    policy_identity_for,
-    EvaluationContract,
     AuditCapabilities,
     AttemptAudit,
     AuditedEnv,
+)
+from retro_harness.model_artifacts import PolicyArtifact, PolicyArtifactError
+from retro_harness.benchmark import (
+    StartIdentity,
+    PolicyIdentity,
+    policy_identity_for,
+    EvaluationContract,
     ClaimValidationError,
     validate_claim,
     BenchmarkTier,

@@ -144,18 +144,24 @@ used before any emulator integration:
   explicit `FOUND`, `UNREACHABLE`, or `BUDGET_EXHAUSTED` status, path/cost,
   final progression, expansion/pruning counts, and stable frontier blockers.
   The default hard gate is 500 expansions.
+- `plan()` and `resource_plan()` share that one search frontier, budget,
+  blocker, reconstruction, and dominance implementation. Resource/risk search
+  supplies only an extra state transition/cost adapter; a same-node state with
+  at least as many resources participates in the same dominance pruning.
 - `RouteGraph.inventory_aware_path` remains the compatibility adapter that
   returns only the least-cost edge sequence. `shortest_path` remains
   fixed-inventory BFS for callers that already supply a complete inventory.
-- `SkillBinding` binds a versioned dispatch key and entry/exit contract digests
-  to one explicit `edge_id`. `EdgeEvidence` promotes only through typed
+- `SkillBinding` binds a versioned dispatch key, entry requirement digest, and
+  progression-delta digest. These are solver skill identities, not ML/env
+  `ContractBundle` digests. Each binding belongs to one explicit `edge_id`.
+  `EdgeEvidence` promotes only through typed
   `ExecutionReadiness` values; natural-entry and higher evidence must link the
   predecessor exit observation digest to the target entry digest.
 - `BindingCatalog.publication_edges` excludes unbound and below-natural-entry
   transitions. Parallel graph edges are independent because both bindings and
   evidence are keyed by edge ID, never only by source/target pair.
 - `retro_harness.solver.SolverSession` is the execution kernel: it checks a
-  `SkillSpec` observation contract, dispatches the bound `SkillInstance`, emits
+  `SkillSpec` observation requirement, dispatches the bound `SkillInstance`, emits
   actions until success/failure/timeout, validates observed progression and
   resource deltas, and replans after retryable failures. Its deterministic
   trace carries lifecycle transitions, observations, outcomes, actions, and
@@ -183,6 +189,11 @@ dimension guess. `ContractBundle` binds five independently digestible records:
 has one. Learned checkpoints use a `PolicyArtifact` sidecar containing the four
 schema digests plus ROM, state, and core identities; loading fails if the
 checkpoint bytes, any schema, wrapper order, or environment identity differs.
+`retro_harness.identity` is the sole canonical-JSON/file-hash primitive;
+`retro_harness.model_artifacts` owns `PolicyArtifact` and its read/write
+helpers. `retro_harness.audit.AuditedEnv` owns intervention counters at the
+backend `data.set_value` and emulator `set_state` boundaries, so evidence
+consumers do not author zero counts themselves.
 The fighter PPO final-save/resume/eval path and platformer neuro checkpoint path
 are the first consumers. Neuro checkpoints embed the complete bundle and no
 longer silently resume a same-shaped but semantically different feature vector.

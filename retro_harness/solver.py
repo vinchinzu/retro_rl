@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Hashable, Iterable, Mapping, Protocol
@@ -15,28 +13,11 @@ from retro_harness.adventure.bindings import (
 )
 from retro_harness.adventure.planner import PlanResult, PlanStatus
 from retro_harness.benchmark import PolicyIdentity
-
-
-def _nonempty(value: Any, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{field_name} must be a non-empty string")
-    return value.strip()
-
-
-def _canonical_json(value: Any) -> str:
-    return json.dumps(
-        value,
-        allow_nan=False,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    )
-
-
-def _digest(kind: str, record: Mapping[str, Any]) -> str:
-    return hashlib.sha256(
-        _canonical_json({"kind": kind, **dict(record)}).encode("utf-8")
-    ).hexdigest()
+from retro_harness.identity import (
+    canonical_json as _canonical_json,
+    digest_record as _digest,
+    require_nonempty as _nonempty,
+)
 
 
 def _node_record(value: Hashable) -> dict[str, str]:
@@ -341,12 +322,15 @@ class SkillInstance:
         if self.binding.dispatch_key != self.spec.dispatch_key:
             raise ValueError("SkillBinding dispatch_key does not match SkillSpec")
         if (
-            self.binding.entry_contract_digest
+            self.binding.entry_requirement_digest
             != self.spec.observation_requirement.identity_digest
         ):
-            raise ValueError("SkillBinding entry contract does not match SkillSpec")
-        if self.binding.exit_contract_digest != self.spec.expected_delta.identity_digest:
-            raise ValueError("SkillBinding exit contract does not match SkillSpec")
+            raise ValueError("SkillBinding entry requirement does not match SkillSpec")
+        if (
+            self.binding.progression_delta_digest
+            != self.spec.expected_delta.identity_digest
+        ):
+            raise ValueError("SkillBinding progression delta does not match SkillSpec")
         if not isinstance(self.policy_identity, PolicyIdentity):
             raise TypeError("policy_identity must be a PolicyIdentity")
         object.__setattr__(self, "config", dict(self.config))

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from retro_harness.benchmark import AuditCapabilities, AttemptAudit
+from retro_harness.audit import AuditCapabilities, AttemptAudit
 from super_metroid.assist import AssistTelemetry
 
 

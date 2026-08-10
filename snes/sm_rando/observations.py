@@ -2,7 +2,25 @@
 
 from __future__ import annotations
 
+from typing import Any, Mapping
+
 import numpy as np
+
+LANDING_ENTRY_METADATA_VERSION = 2
+LANDING_ENTRY_FEATURE_KEYS = (
+    "room_id",
+    "game_state",
+    "door_transition",
+    "samus_x",
+    "samus_x_sub",
+    "samus_y",
+    "samus_y_sub",
+    "velocity_x",
+    "velocity_y",
+    "health",
+    "missiles",
+    "pose",
+)
 
 
 def _u16(ram: np.ndarray, address: int) -> int:
@@ -35,4 +53,28 @@ def landing_entry_features(
     )
 
 
-__all__ = ["landing_entry_features"]
+def landing_entry_features_from_metadata(
+    metadata: Mapping[str, Any],
+) -> np.ndarray:
+    """Apply the explicit v2 retained-metadata → observation migration."""
+    version = metadata.get("observation_metadata_version")
+    if version != LANDING_ENTRY_METADATA_VERSION:
+        raise ValueError(
+            "Landing entry metadata is not v2; re-harvest or run the explicit "
+            "state-backed metadata migration"
+        )
+    missing = [key for key in LANDING_ENTRY_FEATURE_KEYS if key not in metadata]
+    if missing:
+        raise ValueError(f"Landing entry metadata v2 lacks fields: {missing}")
+    return np.asarray(
+        tuple(metadata[key] for key in LANDING_ENTRY_FEATURE_KEYS),
+        dtype=np.float64,
+    )
+
+
+__all__ = [
+    "LANDING_ENTRY_FEATURE_KEYS",
+    "LANDING_ENTRY_METADATA_VERSION",
+    "landing_entry_features",
+    "landing_entry_features_from_metadata",
+]
