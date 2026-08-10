@@ -120,7 +120,7 @@ bd ready -l zelda_i   # tip: post-ladder L4 residual; parallel: rr-38p
 | ✓ | **`rr-n1wn`** | **0x30** Vire clear pure 2/2 + KEY-RIGHT **0x31** pure 2/2 |
 | ✓ | **`rr-resv`** | **0x31** Vire clear pure 2/2 + free RIGHT **0x32** pure 2/2 |
 | ✓ | **`rr-tib8`** | **0x32** Zol+LikeLike clear pure 2/2 + stairs **0x60** `ADDR_LADDER` pure 2/2 |
-| tip | **`rr-rvae`** | Post-ladder map 0x21 assisted 2/2; natural key + Gleeok/TF residual |
+| tip | **`rr-rvae`** | Map 2/2 + Gleeok approach live (0x11/12/13); stabilize 0x13 enter+TF |
 | partial | **`rr-05fz`** | exit_60 + west_31 pure 2/2; residual → rr-rvae |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
@@ -180,15 +180,22 @@ KEY-UP (ladder water + key) → **0x20** clear 5× Vire → state-BFS RIGHT →
 **0x21** (5× Gel `0x15` + RoomItemId **`0x17` map**). Gel thrash expands maze;
 hold6 BFS → **`ADDR_MAP & 0x08`** @~(208,181) ~17.8k f/trial. Checkpoint
 **`Level4Map`**. Segment: `map_21 --infinite-life`. Evidence:
-`l4_rvae_map21_map_21.json`. **Not Clean STATUS.** Natural key residual
-(post-ladder keys=0 after KEY-RIGHT 0x30→0x31).
+`l4_rvae_map21_map_21.json`. **Not Clean STATUS.**
 
-**Next tip:** natural key for map natural-entry; Gleeok + TF `0x08` under
-**`rr-rvae`** / epic **`rr-q3n`**. Traps: 0x30 free N sealed without key;
-KEY-UP **0x31** enters isolated **0x21 south pocket** (x≤176 — not map path);
-0x20 door bit R stays 0 after clear (east BFS/push x≈208); gels block maze
-until thrash; pedestal freeze ~100–150 idle; exit BFS settle mode 4/6/7 ~400f.
-Parallel OW `rr-38p`.
+**L4 Gleeok approach (LIVE recon rr-rvae 2026-08-10):** from `Level4Map`
+BOMB_UP@(120,105) → **0x11** (type `0x35`) → RIGHT **0x12** Vires →
+RIGHT **0x13** Gleeok type **`0x43`** + HC `0x1a` (entered once; stabilize
+residual). Side: 0x11 UP **0x01** Keese+key (natural key), 0x12 UP **0x02**
+traps dead-end, 0x20 UP **0x10** Manhandla → **0x00** bubbles dead-end.
+Evidence: `l4_rvae_gleeok_*.json`, `l4_rvae_push12_12b_RIGHT_0x13.png`;
+checkpoints `Level4Room11`/`12`/`01`/`02`/`10`/`00`. **Not Clean STATUS.**
+
+**Next tip:** stabilize dual-green **0x12→0x13** Gleeok enter + fight + TF
+`0x08` under **`rr-rvae`** / epic **`rr-q3n`**. Natural key: 0x01 after map
+bomb-N (optional pure map). Traps: 0x21 SE maze needs thrash+BFS; BOMB_UP map
+only after thrash coverage; 0x12 east shutter/bomb RIGHT not every clear from
+saved `Level4Room12`; 0x30 free N sealed without key; KEY-UP **0x31** =
+isolated **0x21 south pocket**. Parallel OW `rr-38p`.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
