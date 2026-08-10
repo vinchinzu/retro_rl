@@ -189,15 +189,22 @@ class DayPlanTask(Task):
     ) -> None:
         if spec is None:
             return
-        self._phase_results.append(
-            {
-                "phase": spec.phase,
-                "kind": getattr(spec.kind, "value", str(spec.kind)),
-                "status": status,
-                "reason": reason,
-                "step": int(self._step_count),
-            }
-        )
+        row: dict[str, object] = {
+            "phase": spec.phase,
+            "kind": getattr(spec.kind, "value", str(spec.kind)),
+            "status": status,
+            "reason": reason,
+            "step": int(self._step_count),
+        }
+        # rr-53g: surface harvest ship counts in the day journal when present.
+        task = self._current_task
+        if task is not None and hasattr(task, "shipped_count"):
+            try:
+                row["shipped_count"] = int(getattr(task, "shipped_count"))
+                row["harvested_count"] = int(getattr(task, "harvested_count", 0))
+            except Exception:
+                pass
+        self._phase_results.append(row)
 
     @property
     def phases(self) -> tuple[PhaseSpec, ...]:

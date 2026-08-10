@@ -81,7 +81,7 @@ Spring calendar still had **no harvest income** ($100 floor). Root causes and fi
 | Only 2 carry slots | Day plan plant pass (hoe+seeds) then can+water pass |
 | Plant establish | **ROM-verified 2026-08-01** from `Y1_After_Buy_Potato`: seeds+hoe → near-player fallback till → `planted=1`, dry `0x54` tiles, stock 1→0 |
 | Same-day water after plant | **ROM OK with charged can** (Dry→3×`0x55`); day-plan order unit-locked; **empty-can natural fill still open** |
-| Grow → harvest → ship → money > $100 | **Multi-day keep-alive + mature potatoes verified** (see above); harvest/ship + 5pm wallet assert still open |
+| Grow → harvest → ship → money > $100 | **Harvest+ship+post-5pm money CLOSED (rr-53g)** from Day09 mature fixture; keep-alive growth still separate; full spring money>$100 soak open (rr-y8n) |
 
 ROM smoke (2026-08-01 plant):
 ```text
@@ -127,9 +127,20 @@ Test crop fixtures (for growth / ship work):
    **ROM with charged can OK** (Dry fixture + can=20 → 3 wet `0x55`); still
    needs natural fill (item 2) for empty-can start without RAM poke.
 4. ~~Multi-day growth from `Y1_Test_Crops_Planted_Watered`~~ — **done** (mature `0x60` at D8; journal water deltas).
-5. Harvest + ship route from mature keep-alive plot; **bin drop no longer requires instant money** (code fix);
-   assert **wallet money rises after 5pm**. Save pre-5pm and post-5pm checkpoints.
-6. From `Y1_Inside_House`, multi-day soak with **money > 100** after first potato harvest window.
+5. ~~Harvest + ship + post-5pm money assert (rr-53g)~~ — **CLOSED 2026-08-09 night** Clean:
+   ```bash
+   HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
+     --state Y1_Day09_Harvest_Mode_Start \
+     --out recordings/harvest_ship_5pm_money.json
+   ```
+   - `HarvestTask` **shipped_count=24** / harvested=24 (bin drop; `shipping_money` 0→1920 same-day)
+   - Farm **5pm ShippingScene** (hour=17, stay tilemap < 4); wallet still flat pre-sleep
+   - Overnight settle: wallet **$1260 → $3180** (+1920); `shipping_money`→0
+   - Checkpoints: `Y1_Harvest_Ship_Pre5pm` / `Y1_Harvest_Ship_Post5pm` / `Y1_Harvest_Ship_PostSleep`
+   - Evidence: `recordings/harvest_ship_5pm_money.json` journal (`money_rose_after_5pm_window`)
+   - ROM: wallet `AddMoney` is overnight after 5pm scene — not instant at bin or cutscene
+   - Helpers: `harvest.core.shipping_credit`; day-plan phase journal records `shipped_count`
+6. From `Y1_Inside_House`, multi-day soak with **money > 100** after first potato harvest window (rr-y8n / Gate A).
 7. Optional: `HOT_SPRING_STAMINA` — **ROM natural-entry verified 2026-07-31**:
    farm drain → `farm_to_spa` → upper pond B+A bath (50→110+) → reverse
    `mountain_to_farm` → farm. Corridor debris-free (`mountain_spa_validate`).
@@ -156,7 +167,7 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 - Crop planner full-farm centers east of the x≈32 fence (e.g. 35,27) are often **unreachable** from the early-spring west pocket — establish uses near-player fallback till
 - Viewport hop nav must end at the hoe stand; remote centers skip all hoe tiles as `no path`
 - Empty watering can: ToolUsed early-outs at 0; fill is `ToolAnimationWateringCan` when `CheckToolSuccess` returns 2 (property `F0`/`F9`–`FD` → can=`0x14`). F1/F8/F2/F7 do **not** fill — never select them. Main F0 pond is primary; y=31 fence wall blocks west pocket until cleared.
-- **Shipping bin money is not instant** — bin drop clears carry immediately; wallet/shipping credit at **5pm** (HarvestTask counts drop without money delta)
+- **Shipping bin money is not instant** — bin drop bumps `shipping_money` only; farm **5pm** runs ShippingScene dialogue; wallet credit is **overnight** `AddMoney` (rr-53g verified $1260→$3180). Stay on farm (tilemap < 4) at hour 17.
 - `CLEAR_FIELD` morning budget ~3500f is intentional so seed shop is not starved
 - ROM SHA1 must match `rom.sha`
 - Stamina: tool use drains for real (`INFINITE_STAMINA` off by default). **Noon lunch** is a fixed +20 at 12:00 (decomp `HaveLunch`). Mid-route “+20 on mountain” is that pulse, not spa.
@@ -167,11 +178,11 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 | Metric | Current | Target |
 |--------|---------|--------|
 | Continuous days without mid-run load | 29 (spring calendar) | Full season + natural summer entry |
-| Money growth | Floor **$100** (no harvest income) | Money **> $100** after first potato harvest (~D+6) |
-| Plant / water / harvest counts | Plant path ROM-ok; water partial; harvest open | Non-zero planted/watered/harvested in phase journal |
+| Money growth | Day09 ship window **$1260→$3180** Clean (rr-53g); spring soak still $100 floor | Money **> $100** on continuous spring soak (rr-y8n) |
+| Plant / water / harvest counts | Plant/water keep-alive ok; harvest+ship 24/24 Day09 | Non-zero planted/watered/harvested on continuous soak |
 | Intervention class | Clean | Keep Clean |
 | Runtime class | Bronze | Bronze until route stable; then Silver workstream |
-| Frames to money > $100 | n/a | Measure on first closed crop loop |
+| Frames to money > $100 | Day09 ship soak ~30k frames (harvest+5pm+sleep) | Measure on continuous spring loop |
 | M-gate | M3 | M4 natural-entry summer; M5 domain depth |
 
 Planning-stack direction (skill composition, contracts, advisor apply gate):
@@ -197,4 +208,7 @@ income close-loop land.
 | `Y1_Test_Crops_Planted_Watered` | Same plot watered `0x55` — growth fixture |
 | `Y1_After_Till_Plant` | Reference tilled/planted field |
 | `Y1_After_Sleep` | Spring D3-ish morning |
-| `Y1_Day09_Harvest_Mode_Start` | Harvest/ship later; money from bin at **5pm** |
+| `Y1_Day09_Harvest_Mode_Start` | Mature potatoes harvest/ship fixture (rr-53g source) |
+| `Y1_Harvest_Ship_Pre5pm` | Post-bin-drop, pre-hour-17 (shipping_money up, wallet flat) |
+| `Y1_Harvest_Ship_Post5pm` | After farm ShippingScene at 17:00 (wallet still flat) |
+| `Y1_Harvest_Ship_PostSleep` | Next morning after wallet `AddMoney` settle |
