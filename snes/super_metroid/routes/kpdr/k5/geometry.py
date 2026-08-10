@@ -57,7 +57,43 @@ BELOW_BAT_DOOR_X = 40
 BELOW_TO_BAT_FRAMES = 2000
 BELOW_TO_BAT_SETTLE = 260
 
+# Bat Room 0xA3DD left blue door into Red Tower 0xA253 bottom
+# (outbound ``play_red_tower_to_bat`` runs RIGHT from Red bottom into Bat left;
+#  outbound ``play_bat_to_below_spazer`` runs RIGHT across platforms).
+# LEFT platform chain reverse of bat→below timings; pure pin right high sill
+# ~(472,139) p12 after below_to_bat.
+# Jump timings mirror bat_to_below high path in reverse order:
+#   outbound: run35+j60, run8+j20, j48  →  reverse: run+j48, run8+j20, run35+j60
+BAT_TO_RED_RUNUP1 = 12
+BAT_TO_RED_JUMP1 = 48
+BAT_TO_RED_LAND1 = 60
+BAT_TO_RED_RUNUP2 = 8
+BAT_TO_RED_JUMP2 = 20
+BAT_TO_RED_LAND2 = 80
+BAT_TO_RED_RUNUP3 = 20
+BAT_TO_RED_JUMP3 = 60
+BAT_TO_RED_LAND3 = 40
+BAT_TO_RED_EXIT_RUN = 20
+BAT_TO_RED_EXIT_SHOOT = 4
+BAT_TO_RED_EXIT_SPIN = 30
+BAT_TO_RED_EXIT_HOLD = 280
+BAT_TO_RED_EXIT_SETTLE = 360
+
 __all__ = [
+    "BAT_TO_RED_EXIT_HOLD",
+    "BAT_TO_RED_EXIT_RUN",
+    "BAT_TO_RED_EXIT_SETTLE",
+    "BAT_TO_RED_EXIT_SHOOT",
+    "BAT_TO_RED_EXIT_SPIN",
+    "BAT_TO_RED_JUMP1",
+    "BAT_TO_RED_JUMP2",
+    "BAT_TO_RED_JUMP3",
+    "BAT_TO_RED_LAND1",
+    "BAT_TO_RED_LAND2",
+    "BAT_TO_RED_LAND3",
+    "BAT_TO_RED_RUNUP1",
+    "BAT_TO_RED_RUNUP2",
+    "BAT_TO_RED_RUNUP3",
     "BELOW_BAT_DOOR_X",
     "BELOW_TO_BAT_FRAMES",
     "BELOW_TO_BAT_SETTLE",

@@ -14,6 +14,20 @@ Protocol:
 ## Ticks
 
 
+### 2026-08-10T01:52 CDT — SM rr-0ue1 Bat→Red pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-0ue1** CLOSED: Pure Bat Room → Red Tower return (K5 hop 11)
+- **Evidence:** `bat-to-red` dual pure **718f** ×2 exact, room `0xA253`
+  xy=(216,2443) pose=10 from `post_ice_below_to_bat_pure` ~(472,139) p12/42
+- Controller: LEFT platform chain reverse of bat_to_below + left door into Red bottom
+  (`play_bat_to_red`); reverse of red_tower_to_bat bottom exit
+- Export: `scratch/post_ice_bat_to_red_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–11 GREEN; Alpha PB open)
+- Next bead **rr-av5s**: Red → Hellway climb reverse
+- Units: kpdr_dev + source_states green; no continuous / STATUS
+- No push
+
+
 ### 2026-08-10T01:37 CDT — SM rr-85c4 Glass→West pure dual GREEN
 - Lane: super_metroid only (`snes/super_metroid/`)
 - Bead **rr-85c4** CLOSED: Pure Glass Tunnel → West Tunnel return (K5 hop 7)
