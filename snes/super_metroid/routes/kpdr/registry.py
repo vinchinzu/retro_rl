@@ -79,6 +79,7 @@ from super_metroid.routes.kpdr.k4_norfair import (
     play_wave_to_double_chamber,
     play_double_to_single_chamber,
     play_single_to_bubble,
+    play_bubble_to_farm,
 )
 from super_metroid.routes.kpdr.pb_door import (
     play_big_pink_enter_pb_door_from_sill,
@@ -213,6 +214,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "wave_to_double_chamber": play_wave_to_double_chamber,
     "double_to_single_chamber": play_double_to_single_chamber,
     "single_to_bubble": play_single_to_bubble,
+    "bubble_to_farm": play_bubble_to_farm,
     # K4.12: Business mid-left Super green → Ice Gate (tape-driven pure).
     "business_to_ice_gate": play_business_to_ice_gate,
     # K4.13: Ice Gate → Acid Room (tape entry path; skip Tutorial).
