@@ -39,6 +39,8 @@ seed (samus.link / optional local CLI)
 9. **Baselines** — room standard times from vanilla timers / human refs.
 10. **Seed-robust dry-run** — multi-seed S/T harness (shared solver benchmark);
     spoiler optional for oracle dev, not required for claimed solver runs.
+    *(fixture dry portal→house S/T done 2026-08-09 via `portal_house_campaign`;
+    live multi-seed + real generator still open.)*
 11. **Logic-graph planner hookup** — consume shared item-logic solver
     (`retro_harness.adventure` → L4) instead of hand routes per seed.
 12. **Race** — two bots, same seed, parallel sessions, video pair + report.

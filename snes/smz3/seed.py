@@ -286,3 +286,96 @@ def generate_test_seed(*, force: bool = False, build_rom: bool = True) -> SeedPa
 
 def load_seed(path: str | Path) -> SeedPackage:
     return SeedPackage.load(Path(path))
+
+
+def write_fixture_seed(
+    *,
+    seed_number: str = TEST_SEED_NUMBER,
+    name: str | None = None,
+    settings: Mapping[str, str] | None = None,
+    directory: Path | None = None,
+    locations: list[dict[str, Any]] | None = None,
+) -> SeedPackage:
+    """Write a deterministic offline fixture package (no samus.link / ROM build).
+
+    Used by multi-seed dry campaigns and unit tests. Packages are **not**
+    shuffled ROMs — they document settings + layout-fixed early tip metadata
+    until a real generator patch is wired per seed.
+    """
+    import base64
+    import struct
+
+    name = name or f"fixture_{_slugify(seed_number)}"
+    directory = Path(directory) if directory is not None else (SEEDS_DIR / name)
+    cfg = {
+        **DEFAULT_SETTINGS,
+        "seed": str(seed_number),
+        "swordlocation": "uncle",
+        "morphlocation": "original",
+        **dict(settings or {}),
+    }
+    if locations is None:
+        # Sphere-0 style entries for the documented early tip substrate.
+        locations = [
+            {
+                "location": "Morphing Ball",
+                "item": "Morphing Ball",
+                "area": "Crateria",
+            },
+            {
+                "location": "Link's House",
+                "item": "Heart Container",
+                "area": "Light World",
+            },
+        ]
+    spoiler = [
+        {
+            "Sphere 0": {
+                str(loc.get("location", "")): str(loc.get("item", ""))
+                for loc in locations[:2]
+            }
+        }
+    ]
+    # Tiny synthetic seed patch (not playable); dry campaigns never load it.
+    patch = struct.pack("<IH", 0x100, 4) + f"FIX{seed_number}".encode("ascii")[:8]
+    patch_b64 = base64.b64encode(patch).decode("ascii")
+    pkg = SeedPackage(
+        name=name,
+        directory=directory,
+        seed_number=str(seed_number),
+        hash_code=f"FIX {seed_number}",
+        url="",
+        guid=f"fixture-{seed_number}",
+        game_version="fixture",
+        settings=cfg,
+        spoiler=spoiler,
+        locations=list(locations),
+        patch_b64=patch_b64,
+        meta={
+            "created_at": _utc_now(),
+            "source": "fixture",
+            "note": (
+                "Offline fixture for seed-campaign dry-runs. Not a shuffled "
+                "combo ROM; early portal→house tip is layout-fixed."
+            ),
+        },
+    )
+    pkg.write()
+    return pkg
+
+
+def ensure_fixture_seed(
+    seed_number: str,
+    *,
+    directory: Path | None = None,
+) -> SeedPackage:
+    """Load an existing fixture package or write a default offline one."""
+    name = f"fixture_{_slugify(seed_number)}"
+    directory = Path(directory) if directory is not None else (SEEDS_DIR / name)
+    if (directory / "meta.json").is_file():
+        return SeedPackage.load(directory)
+    return write_fixture_seed(
+        seed_number=seed_number,
+        name=name,
+        directory=directory,
+    )

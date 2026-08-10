@@ -19,7 +19,8 @@ SDL_VIDEODRIVER=dummy uv run python smz3/scripts/probe_outdoor.py --video --save
 SDL_VIDEODRIVER=dummy uv run python smz3/scripts/probe_house.py --video --save-png
 
 uv run python smz3/scripts/play_portal.py --state PortalSettled
-uv run --frozen pytest smz3/tests -q
+uv run python snes/smz3/scripts/run_portal_house_campaign.py --mode dry --publish-docs
+uv run --frozen pytest snes/smz3/tests -q
 # Online seeds: uv sync --extra smz3
 ```
 
@@ -31,8 +32,11 @@ uv run --frozen pytest smz3/tests -q
 - Room timeout: **3×** baseline dwell → game over (`room_timeout.py`).
 - Interactive play: focus **pygame window** for ESC/Q (terminal ESC ignored).
 - Seeds/ROMs gitignored; packages under `seeds/`.
+- Multi-seed dry report is **fixture substrate** (not shuffled ROMs); spoiler
+  oracle stays off unless labeled. Live tip still uses missile red-door assist.
 
 ## Immediate goal
 
 Dual-bot race harness + video (`race.py` scaffold). Early quest path through
-house chest is verified; mature primitives stay in vanilla game folders.
+house chest is verified; multi-seed dry S/T is claimable on fixtures. Mature
+primitives stay in vanilla game folders.
