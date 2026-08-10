@@ -1324,3 +1324,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Residual: s7 alcove climb → boss + Item-1. Re-spawned boss climb manager.
 - Do not tip rr-810 until Item-1.
 
+
+### 2026-08-10T~session — SM rr-av5s PARTIAL upper y687
+- Period WJ dual end (171,687)p25 f11802 exact; peak ~y420; Hellway still RED.
+- Bead rr-av5s stays in_progress PARTIAL. No push.
+- Next: y420→top door y180 → dual green Hellway + export.
