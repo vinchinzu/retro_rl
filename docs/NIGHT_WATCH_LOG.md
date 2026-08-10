@@ -1247,3 +1247,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Child **rr-f3nr** ready: FCEUX stick pin OR Heat→Air Item-1 Clean segment.
 - Freeing Air-cloud thrash; spawn Heat→Air Item-1 exploration on rr-f3nr.
 
+
+### 2026-08-10T05:50 CDT — MM2 Heat→Item-1 scaffold ★ PARTIAL
+- **CLOSED** `rr-f3nr` PARTIAL: Heat1 + HeatScreen1 dual-green (`1f1cfb3`).
+- Chain: rr-808 mid/late → rr-809 boss+Item-1 → rr-810 Air+Item-1 cam≥5.
+- Spawned Heat mid/late manager on **rr-808**.
+
