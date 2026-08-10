@@ -5,20 +5,20 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
-| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat Man camera ≥ 5 from `HeatScreen4` (3/3) |
-| Last verification | 2026-08-10 (rr-808 Heat mid dual-green through s5) |
+| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat Man camera ≥ 7 pre-boss from `HeatScreen5Ground` (3/3) |
+| Last verification | 2026-08-10 (rr-809 Heat late dual-green cam ≥7) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **Air s4 clear; post-s4 cloud RED; Heat dual-green through screen 5 (rr-808 PARTIAL; pre-boss open)** |
+| Status | **Air s4 clear; post-s4 cloud RED; Heat dual-green through pre-boss cam ≥7 (rr-809 PARTIAL; boss/Item-1 open)** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 Air / ~926 Heat |
-| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen5` |
-| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4) |
-| Evidence | [air_segment/](../recordings/air_segment/), [heat_boot/](../recordings/heat_boot/), [heat_segment/](../recordings/heat_segment/) |
+| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen7`, `HeatScreen5Ground` |
+| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4/s5) |
+| Evidence | [air_segment/](../recordings/air_segment/), [heat_boot/](../recordings/heat_boot/), [heat_segment/](../recordings/heat_segment/), [heat_s7_seg/](../recordings/heat_s7_seg/) |
 
 ## Done
 
