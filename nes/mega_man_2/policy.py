@@ -26,21 +26,20 @@ AirScreen2 late recipe (0-based ``i``):
 3. ``i ≥ 180``: late period 40 / hold 16 through screens 3–4
 4. Hold clear when ``camera_x_screen ≥ target``
 
-Post-screen-4 bottleneck (2026-08-09 probe, rr-54ui — open):
+Post-screen-4 bottleneck (2026-08-09/10 probe, rr-54ui — open):
 
 - Last solid under screen2 recipe: ``AirFanPlatform`` (prog~949, sy84). Solid
-  extent mapped **prog 937–984** (left edge fall@walk~14; right edge@walk~33).
-  Pink head LEFT = **Goblin / Air Tikki** (obj slot14 type36 @sx~39,sy~49), not
-  an updraft fan. ``AirLeftPlatform`` is a short ledge left of it (prog~902–905
-  only). Ladder bar never ``tile_feet==2``.
-- Overnight (rr-54ui): dense 5px/spike-cycle hop grids from both platforms —
-  **0** feet=1 lands with prog in (906,936) or sy<82 (Goblin top never solid in
-  tested windows). Long hops clear Goblin → left ledge only. Pure RIGHT from
-  right edge dies ~prog 1064–1072 scr4; shoot+Pipi bird-boost min_sy~23
-  prog~1086 still pit. No camera≥5 / boss door. ``AirScreen4`` mid-air freefall.
-- A needs rising edge after load. Eggs/projectiles = type35 slots at y~84.
-- Next: alternate spawn timing / true spikes-down window not yet found; or
-  Lightning Lord section entry from a different approach — not more pure RIGHT.
+  extent **prog 937–984** (tiles: ``tile_feet``/``tile_center``). Pink head
+  LEFT = type36 damage enemy (slot14 @~39,49) — periodic teleport-hit when
+  inv=0; **not** landable. ``AirLeftPlatform`` short ledge prog~902–905.
+  Ladder bar never ``tile_feet==2``. No wind; camera_y=0.
+- Gap to screen5 (prog 1280) ≈ **296px**; pure RIGHT jump max ~1065–1071;
+  Pipi boost ~1086 still pit. Freefall tile sample past 984 = 0 solids.
+  1000+ goblin-top / phase hops: 0 elevated lands. Edge camp 400–600f: no new
+  object types (no Lightning Lord cloud observed).
+- A needs rising edge after load. Type35 = eggs/birds.
+- Next: Lightning Lord / intermediate object spawn (likely earlier route fork),
+  not more pure RIGHT from this island.
 
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """
