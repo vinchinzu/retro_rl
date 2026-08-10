@@ -116,7 +116,8 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 0x40: 5× Zol **0x13** → gel **0x14** + key **0x19** (east-corridor path)
 0x40 --free UP @x≈120--> **0x30**: 3× Vire + 2× invuln **0x2b**
 0x30 --clear (ignore 0x2b; north-band y≥128)--> KEY-RIGHT @y141 --> **0x31**
-0x31: 5× Vire **0x12**  **Stepladder residual**
+0x31 --clear maze Vires --> free RIGHT --> **0x32**
+0x32 --clear Zol+LikeLike --> push left block --> stairs **0x60** --> **ADDR_LADDER**
 ```
 
 | Room | Live? | Enemies | Item / notes | Segment bead |
@@ -128,7 +129,9 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
 | **0x40** | **live pure clear+key 2/2** | 5× `0x13` → `0x14` | Key path hold6 east corridor; free UP → 0x30 | `rr-xc3x` / `rr-q8eq` |
 | **0x30** | **live pure clear+KEY-R 2/2** | 3× `0x12` + 2× `0x2b` | Walkable y≥128; clear north-band UP; KEY-RIGHT → 0x31 | `rr-q8eq` / `rr-n1wn` |
-| **0x31** | **live pure enter 2/2** | 5× `0x12` Vire | East of 0x30; stepladder residual | `rr-n1wn` |
+| **0x31** | **live pure clear+RIGHT 2/2** | 5× `0x12` Vire | Maze; clear opens R; free RIGHT → 0x32 | `rr-n1wn` / `rr-resv` |
+| **0x32** | **live pure clear 2/2** | 2× `0x13` + 2× `0x17` | Ignore 0x2b/0x68; push left → stairs | `rr-tib8` |
+| **0x60** | **live pure ladder 2/2** | 4× `0x1b` Keese | mode-9 basement; RoomItemId `0x0d` → `ADDR_LADDER` | `rr-tib8` |
 
 ### Post-compass expand (rr-o0nn / rr-xc3x live 2026-08-10)
 
@@ -155,12 +158,17 @@ Early component was closed at `{0x71, 0x61, 0x51, 0x50, 0x62}` until **0x50 nort
 | 0x30 | **KEY-RIGHT @y141** | **0x31** | keys 1→0; 5× Vire (rr-n1wn) |
 | 0x30 | UP / LEFT / free RIGHT | **sealed** | live probe |
 | 0x31 | LEFT | 0x30 | free return after key door |
+| 0x31 | **RIGHT after clear** | **0x32** | doors 2→3; hold4 BFS east (rr-resv) |
+| 0x32 | LEFT | 0x31 | free return |
+| 0x32 | **push left block** | **0x60** stairs | mode-9 basement (rr-tib8) |
+| 0x32 | N/E/W free | **sealed** | live probe |
 
 Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 
-**ADDR_LADDER still 0.** Next: clear 0x31 + expand toward Stepladder
-(Like-Like stairs). Evidence: `recordings/l4_n1wn_clear30_clear_30.json`,
-`recordings/l4_n1wn_key31_key_right_31.json`, `recordings/l4_n1wn_30_exits.json`.
+**ADDR_LADDER = 1** after 0x60 pickup (rr-tib8 pure 2/2). Evidence:
+`recordings/l4_tib8_clear32_clear_32.json`,
+`recordings/l4_tib8_stepladder_stepladder.json`,
+`recordings/l4_resv_room32_recon.json`.
 
 ### Runner
 
@@ -181,6 +189,10 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_40 --trials 
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_30 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_30 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_31 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment east_32 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_32 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment stepladder --trials 2 --save-state
 ```
 
 **Traps (live):**
@@ -198,6 +210,11 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --t
   from north-band patrol face **UP**; ignore invuln **0x2b**. Free N/E/W sealed;
   KEY-RIGHT @y141 → **0x31** (rr-n1wn).
 - KEY-RIGHT 0x30: hold **y≈141** RIGHT; keys 1→0; enter 0x31 ~(16,141).
+- **0x32** clear Zol `0x13` + LikeLike `0x17` (ignore `0x2b`/`0x68`). Push stand
+  detour around center statues → LEFT push → NE approach ~(208,96) UP into
+  stairs. **0x60** mode-9: settle NW ~(48,77); multi-grid BFS + goal-state
+  restore for `ADDR_LADDER`. Stepladder segment needs **5 idle** frames before
+  clear (combat RNG).
 - 0x62 **dark maze**: open seek fails; use scripted holds
   (`MAZE_62_TO_COMPASS` hold6 → pickup ~(136,132) sets `ADDR_COMPASS|0x08`,
   then `MAZE_62_RETURN_WEST` hold4 → LEFT scroll to 0x61). Center y=141 is

@@ -100,7 +100,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip leaf: rr-o0nn post-0x32→ladder; parallel: rr-38p
+bd ready -l zelda_i   # tip: post-ladder L4 residual; parallel: rr-38p
 ```
 
 | Order | Bead | Work |
@@ -115,7 +115,7 @@ bd ready -l zelda_i   # tip leaf: rr-o0nn post-0x32→ladder; parallel: rr-38p
 | ✓ | **`rr-q8eq`** | **0x40** clear+key pure 2/2 + free UP **0x30** pure 2/2 |
 | ✓ | **`rr-n1wn`** | **0x30** Vire clear pure 2/2 + KEY-RIGHT **0x31** pure 2/2 |
 | ✓ | **`rr-resv`** | **0x31** Vire clear pure 2/2 + free RIGHT **0x32** pure 2/2 |
-| **1 TIP** | **`rr-o0nn`** / **`rr-5lu`** | L4 post-0x32 → Stepladder (`ADDR_LADDER`) residual |
+| ✓ | **`rr-tib8`** | **0x32** Zol+LikeLike clear pure 2/2 + stairs **0x60** `ADDR_LADDER` pure 2/2 |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -154,17 +154,17 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 **0x71** UP → **0x61** Vires → **BOMB_UP** → **0x51** Keese+key → LEFT **0x50**
 Vires → scripted N **0x40** clear Zol/gel+key → free UP **0x30** clear Vires
 (ignore invuln **0x2b**, north-band y≥128) → **KEY-RIGHT** **0x31** clear maze
-Vires (doors 2→3) → free RIGHT **0x32** (Zol+LikeLike); KEY-RIGHT **0x62**
-Compass maze + return. Module: `level4_dungeon.py`. Runner:
-`run_level4_rooms.py` (`--segment clear_31` / `east_32`). Evidence:
-`l4_resv_clear31_clear_31.json`, `l4_resv_east32_east_32.json`. Closed:
-`rr-zchy`…`rr-9so0` / **`rr-xc3x`** / **`rr-q8eq`** / **`rr-n1wn`** /
-**`rr-resv`**. **Not Clean STATUS.**
+Vires (doors 2→3) → free RIGHT **0x32** clear Zol+LikeLike → push left block →
+stairs **0x60** mode-9 → **`ADDR_LADDER`**. KEY-RIGHT **0x62** Compass maze +
+return. Module: `level4_dungeon.py`. Runner: `run_level4_rooms.py`
+(`--segment clear_32` / `stepladder`). Evidence: `l4_tib8_clear32_clear_32.json`,
+`l4_tib8_stepladder_stepladder.json`. Closed: `rr-zchy`…`rr-resv` /
+**`rr-tib8`** / **`rr-o0nn`**. **Not Clean STATUS.**
 
-**Next tip:** **`rr-o0nn`** post-0x32 → `ADDR_LADDER` (parent **`rr-5lu`**).
-Live outside through **0x32**; clear 0x32 + expand toward Stepladder.
-Traps: 0x30 walkable y∈[128,208] only; 0x31 maze needs hold4 BFS (not hold6/q8).
-Epic `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
+**Next tip:** post-ladder L4 residual (water cross / map / Gleeok / TF `0x08`)
+under epic **`rr-q3n`**. Traps: 0x30 y∈[128,208]; 0x31 hold4 BFS; 0x32 push
+stand detour around statues; stepladder needs **5 idle** preamble before clear
+(RNG); 0x60 multi-grid BFS + goal-state restore. Parallel OW `rr-38p`.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.

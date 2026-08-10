@@ -515,3 +515,13 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - DEFAULT tip **ice**; STATUS promoted. Climb cont-tuned 907 ladder. No deaths/loads.
 - Next product: `rr-dbu.8` K5 Alpha PB pure stack.
 
+### 2026-08-10T00:30 CDT — zelda_i L4 0x32 clear + Stepladder ADDR_LADDER CLOSED rr-tib8
+- **CLOSED** `rr-tib8`: 0x32 Zol+LikeLike pure **2/2** (~3141f) + stairs **0x60** → `ADDR_LADDER` pure **2/2** (~5328f).
+- Also closed parents **`rr-o0nn`** / **`rr-5lu`** (ladder advanced).
+- Live: ignore invuln `0x2b` + block `0x68`; push left @~(120,141) detour statues; NE ~(208,96) UP → mode-9 0x60; multi-grid BFS goal-state restore.
+- Trap: stepladder needs **5 idle** preamble before clear (1 idle → 48-cell BFS miss).
+- Segments: `clear_32`, `stepladder` in `run_level4_rooms.py`. Checkpoints `Level4Room32Cleared`, `Level4Stepladder`.
+- Evidence: `l4_tib8_clear32_clear_32.json`, `l4_tib8_stepladder_stepladder.json`.
+- Next tip: **`rr-05fz`** post-ladder residual (water/map/Gleeok/TF 0x08) under `rr-q3n`.
+- Units: `test_level4_dungeon.py` 9 passed. Commit only (no push).
+
