@@ -441,3 +441,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Not closed** rr-3q27 (no natural fill GREEN). **rr-20w** remains open.
 - Next: recorded west-climb to F9 act, or finish FenceClearLoop carry→pond toss without soft-timeout.
 - No push.
+
+### 2026-08-10T00:45 CDT — harvest multi-hop densify (open)
+- `rr-3q27` still open: F9 densify + refill_bounds y_min=10 + carry-drop (95de9f6).
+- Units green; ROM can_peak still 0 (plant soft-block / F9 west-climb residual).
+
