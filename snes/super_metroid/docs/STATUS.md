@@ -53,11 +53,13 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: Ice pure stack — Gate dual GREEN (`rr-fg3` 894f) + Gate→Acid dual GREEN
-(`rr-9t4` 370f ×2) + Acid→Snake dual GREEN (`rr-5cf` **652f** ×2) +
-**Snake → Ice PLM dual GREEN** (`rr-5if` **1756f** ×2, room `0xA890`, beams
-`0x1007`). Outbound pure PLM hops green; parent stack `rr-dbu.11` / continuous
-`--to ice` still blocked on compose (`rr-dbu.7`). Work: `bd ready -l super_metroid`.
+★ Next: continuous compose `--to ice` (`rr-dbu.7`) — **not** STATUS-promoted.
+Outbound Ice pure stack **CLOSED** (`rr-dbu.11`): Business→Gate (`rr-fg3` 894f)
++ Gate→Acid (`rr-9t4` 370f ×2) + Acid→Snake (`rr-5cf` **652f** ×2) +
+**Snake → Ice PLM** (`rr-5if` **1756f** ×2, room `0xA890`, beams `0x1007`).
+Serial pure re-verify GREEN 2026-08-09; residual
+[`tasks/rr-dbu.11-residual.md`](tasks/rr-dbu.11-residual.md). Work:
+`bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
 
