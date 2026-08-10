@@ -13,8 +13,10 @@ from harvest.core.carry import (
     ADDR_TOOL_BACKPACK,
     ADDR_TOOL_SELECTED,
     SEED_ITEM,
+    backpack_tool,
     seed_in_carry_pair,
     seed_item_id,
+    selected_tool,
     tool_in_carry_pair,
 )
 from harvest.core.tile_catalog import Tool
@@ -1275,6 +1277,11 @@ class EnsureCropSeedsTask(Task):
     Shop-bought bags sit on the tool-shed shelf until picked up with A. X only
     swaps the two carried slots — it never pulls shelf bags. For virgin plant
     work we also grab the hoe so CropWaterTask can till before seeding.
+
+    Shelf A replaces the **selected** slot. Grabbing seeds while the hoe is
+    selected (or hoe while seeds are selected) thrash-loops shed multi_nav
+    forever (rr-6byj). Before each shelf trip we X-swap so the keep-tool is in
+    the backpack and a disposable tool is selected.
     """
 
     name: str = "ensure_crop_seeds"
@@ -1283,15 +1290,19 @@ class EnsureCropSeedsTask(Task):
     nav_timeout: int = 4000
     enter_timeout: int = 1500
     ensure_hoe: bool = True
+    # Cap hoe/seed shed trips so a residual swap bug cannot hang the day plan.
+    max_shed_trips: int = 4
 
     _phase: str = field(default="start", init=False)
     _task: Optional[Task] = field(default=None, init=False)
     _failed_reason: str = field(default="", init=False)
+    _shed_trips: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "start"
         self._task = None
         self._failed_reason = ""
+        self._shed_trips = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -1324,8 +1335,39 @@ class EnsureCropSeedsTask(Task):
             return self._activate("exit_after_ready", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
         return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
 
+    def _maybe_swap_selected_off_keep(
+        self, world: WorldState, keep_id: int, phase: str
+    ) -> Optional[TaskResult]:
+        """If ``keep_id`` is selected and backpack holds a real disposable, swap.
+
+        Shelf equip replaces the **selected** slot when both carry slots are
+        filled. Keep the plant tool in the backpack so A only knocks out a
+        disposable. Skip when backpack is empty (0): X cannot select an empty
+        slot, and an open backpack slot can absorb the new shelf item without
+        displacing the keep-tool (ROM: ``Y1_After_Buy_Potato`` hoe then seeds).
+        """
+        sel = selected_tool(world.ram)
+        bp = backpack_tool(world.ram)
+        keep = int(keep_id)
+        if sel == keep and bp not in (0, keep):
+            return self._activate(phase, SwapCarrySlotsTask(), world)
+        return None
+
+    def _begin_shed_trip_or_fail(self, label: str) -> Optional[TaskResult]:
+        self._shed_trips += 1
+        if self._shed_trips > self.max_shed_trips:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"carry thrash after {self._shed_trips - 1} shed trips "
+                    f"({label}); cannot hold hoe+seeds in 2-slot pair"
+                ),
+            )
+        return None
+
     def _start_next_phase(self, world: WorldState) -> TaskResult:
         seed_item = self._seed_item()
+        hoe_id = int(Tool.HOE)
         stored = ram_seed_count(world.ram, self.seed_type)
 
         if self._plant_tools_ready(world.ram):
@@ -1339,12 +1381,23 @@ class EnsureCropSeedsTask(Task):
 
         # Hoe first so the 2-slot pair ends as seeds+hoe after the seed grab.
         # Nested ensure exits the shed itself.
-        if self.ensure_hoe and not tool_in_carry_pair(world.ram, int(Tool.HOE)):
+        if self.ensure_hoe and not tool_in_carry_pair(world.ram, hoe_id):
+            # If seeds are already selected, swap so the seed bag stays when
+            # the hoe shelf replaces the disposable selected slot.
+            if self._seeds_ready(world.ram):
+                swapped = self._maybe_swap_selected_off_keep(
+                    world, seed_item, "swap_preserve_seed"
+                )
+                if swapped is not None:
+                    return swapped
+            trip_fail = self._begin_shed_trip_or_fail("ensure_hoe")
+            if trip_fail is not None:
+                return trip_fail
             return self._activate(
                 "ensure_hoe",
                 EnsureCarryToolTask(
                     name=f"ensure_hoe_for_{self.seed_type}",
-                    tool_id=int(Tool.HOE),
+                    tool_id=hoe_id,
                     tasks_dir=self.tasks_dir,
                     nav_timeout=self.nav_timeout,
                     enter_timeout=self.enter_timeout,
@@ -1357,7 +1410,14 @@ class EnsureCropSeedsTask(Task):
             return self._finish_ready(world, f"seed tool 0x{seed_item:02X} ready")
 
         # Stock exists but bag is not carried: only the shelf can equip it.
-        # X never pulls shelf bags — go straight to shed fetch.
+        # Preserve hoe in backpack before seed shelf A (selected = disposable).
+        if self.ensure_hoe and tool_in_carry_pair(world.ram, hoe_id):
+            swapped = self._maybe_swap_selected_off_keep(
+                world, hoe_id, "swap_preserve_hoe"
+            )
+            if swapped is not None:
+                return swapped
+
         spec = self._shed_spec()
         if spec is None:
             return TaskResult(
@@ -1366,6 +1426,9 @@ class EnsureCropSeedsTask(Task):
                     f"seed stock={stored} but bag 0x{seed_item:02X} has no shed plan"
                 ),
             )
+        trip_fail = self._begin_shed_trip_or_fail("fetch_seed")
+        if trip_fail is not None:
+            return trip_fail
         return self._activate(
             "fetch_seed",
             ShedFetchItemTask(
@@ -1404,6 +1467,8 @@ class EnsureCropSeedsTask(Task):
             if tilemap == SHED_TILEMAP and self._phase not in {
                 "exit_after_failure",
                 "exit_after_ready",
+                "swap_preserve_seed",
+                "swap_preserve_hoe",
             }:
                 self._failed_reason = f"{self._phase} failed: {reason}"
                 return self._activate(
@@ -1425,7 +1490,7 @@ class EnsureCropSeedsTask(Task):
                 reason=self._failed_reason or "seed equip failed",
             )
 
-        # Nested fetch / ensure_hoe finished — re-evaluate readiness.
+        # Nested fetch / ensure_hoe / preserve-swap finished — re-evaluate.
         self._task = None
         return self._start_next_phase(world)
 

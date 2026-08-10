@@ -687,3 +687,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 ### 2026-08-10T01:16 CDT — SM K5 Gate→Business pure GREEN
 - **CLOSED** `rr-e5i6` dual pure 879f×2 room 0xA7DE. Stack hop0+1+2+3 GREEN.
 - Next: `rr-3gh9` Business→Warehouse. Parent rr-dbu.8 open.
+
+### 2026-08-10T02:50 CDT — harvest ENSURE_CROP_SEEDS hang CLOSED
+- **CLOSED** `rr-6byj`: shelf A replace thrash fixed; Clean hoe+seeds SUCCESS ~2248f.
+- Next tip: rr-m0wq sleep bed miss or rr-20w live plant→water residual.
+
