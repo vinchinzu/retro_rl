@@ -88,38 +88,60 @@ Checkpoints: **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**.
 
 ---
 
-## Interior (source speed route)
+## Interior (live partial — rr-5lu 2026-08-09)
 
-Room IDs beyond entry **0x71** unknown until interior probe (`rr-5lu`).
+**Assisted only.** Module: `level4_dungeon.py`. Evidence: `recordings/l4_recon.json`.
+
+### Live graph (from `Level4Entrance`)
+
+```
+0x71 entry (empty combat, item 0x03)
+  --UP @ x≈120--> 0x61
+0x61: 3× Vire type **0x12** (HP 64) → sword split type **0x1c**
+  --BOMB_UP stand≈(120,105) face UP--> 0x51
+0x51: 8× Keese type **0x1b** (TYPE-only) + RoomItemId **0x19** key (keys 0→1)
+  --LEFT @ y≈141--> 0x50
+0x50: 5× Vire **0x12** (exit recon only; clear residual)
+```
+
+| Room | Live? | Enemies | Item / notes |
+|------|-------|---------|--------------|
+| **0x71** | **live** | none | Empty mouth; free UP only (LEFT sealed) |
+| **0x61** | **live** | 3× `0x12` → split `0x1c` | Clear ~150–600f; bomb N → 0x51 |
+| **0x51** | **live** | 8× `0x1b` Keese | Key `0x19`; LEFT → 0x50 |
+| **0x50** | **live exit** | 5× `0x12` Vire | Tip residual beyond this |
+
+**Traps (live):**
+
+- Source “entry LEFT Keese key” is **wrong** on this seed/path — entry is empty; first key is bomb-N of Vires.
+- Vire split is type **`0x1c`**, not standard Keese `0x1b`.
+- Free doorways often show `cur_opened_doors=0` / `open_doorway_mask=0` — do not require door bits for UP 0x71→0x61 or LEFT 0x51→0x50.
+- Bomb stand on 0x61: **(120, ~105)** face UP + B; wait blast then push UP.
+
+Checkpoints (dev): `Level4Room61Cleared`, `Level4Room51Cleared` (assisted).
+
+### Source speed route (planning only — not emulator facts)
+
+Room IDs below **beyond 0x50** remain source-hypothesized until probed.
 
 | Step | Action (source) | Notes |
 |------|-----------------|-------|
-| Entry 0x71 | LEFT | 8 Keese → **key** |
-| Back E, N | Vires | Wooden sword splits Vire → red Keese; key RIGHT |
-| E | Dark maze | Candle; **Compass** |
-| Back W, N | key | then LEFT into dark ladder of rooms |
-| Dark chain N | keys / water block | North blocked by water until Stepladder |
-| E (key) | clear 5 Vire + Keese | open RIGHT; skip useless locked UP |
-| E | 2 Like-Like + 2 Zol | push **left block** → stairs → **Stepladder** |
-| Back W×2 | ladder over water | key locked north path |
-| E | Vires skippable | Map room; optional bomb N rupee room / shortcuts |
-| Side path | Manhandla (blocks) | bombs preferred; bomb reward |
-| Old Man | “Walk Into The Waterfall” | L5 clue |
-| Pre-boss | clear Vires + Keese, push left block | unlock boss door RIGHT |
-| Boss | **Gleeok (2 heads)** | fireballs unblockable; detached heads bounce |
-| E of boss | center of room | **Triforce shard 4** |
+| Past first key | dark maze / candle | Compass residual |
+| Dark chain N | water block | needs Stepladder |
+| Like-Like + Zol | push left block → stairs | **Stepladder** |
+| Gleeok (2 heads) | fireballs | E → TF `0x08` |
 
 **Key item:** Stepladder (`ADDR_LADDER`).
 **Boss:** Gleeok (2-head). Object type id **TBD live**.
 **Triforce bit:** `0x08`.
 
-### Policy notes (planning)
+### Policy notes
 
-- Vire: prefer avoid or accept Keese split; no special B-item.
-- Like-Like: stay out of contact (Magical Shield loss).
-- Water tiles: after Stepladder, automatic when walking single-tile gaps.
-- Gleeok: melee A-spam with movement; no bomb requirement (unlike Dodongo).
-- Dark rooms: equip candle on B; one flame per screen with Blue Candle.
+- Vire: wooden sword splits → `0x1c`; clear both generations.
+- Keese 0x51: TYPE-only liveness (HP stays 0).
+- Like-Like (later): stay out of contact (Magical Shield loss).
+- Water tiles: after Stepladder, automatic on single-tile gaps.
+- Gleeok: melee A-spam; no bomb requirement (unlike Dodongo).
 
 ---
 
