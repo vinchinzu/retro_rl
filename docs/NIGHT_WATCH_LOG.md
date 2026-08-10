@@ -1359,3 +1359,16 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Natural enter still ~98–100. Residual **rr-bxzj** heart-safe spine → spawned.
 - Not full-game STATUS (rr-q3n open).
 
+### 2026-08-10T07:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - super_metroid: `rr-av5s` Red→Hellway hop12 (upper WJ y687 PARTIAL) + parent `rr-dbu.8`
+  - harvest: `rr-5in` Gate B full (water densify CLOSED; return_home/Summer residual)
+  - mega_man_2: `rr-k1ea` HeatScreen8 Sniper/Yoku + `rr-809` boss+Item-1 + `rr-54ui` Air residual
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Idle priority action:** zelda_i free (`rr-gjey` CLOSED PARTIAL) → tip **rr-bxzj** heart-safe spine Gleeok≥108
+- **Spawned manager (worktree):** zelda_i → claim `rr-bxzj`
+  - subagent_id: `019feb8c-b284-73c0-bd7b-c530890e312d` (worktree isolation)
+- **Not spawned (busy):** super_metroid, harvest, mega_man_2
+- **Not spawned:** solver gbd.32 CLOSED; SM oracle below pure stack tip
+- **Cap:** 3 busy + 1 zelda = 4 / 6 lanes
+- Never push.
