@@ -1,0 +1,10 @@
+{
+  "attempts": 1,
+  "edge_id": "house_to_uncle",
+  "note": "Clean natural-entry clear from verified FirstPlay predecessor (JP 1.0 Link's House control) through vanilla alttp opening skills to uncle fighter sword. Patched-rando coverage open.",
+  "readiness": "NATURAL_ENTRY",
+  "schema_version": 1,
+  "source_report": "snes/alttp_rando/recordings/house_to_uncle.json",
+  "source_report_sha256": "d181036897c3c711e28d0d356300fc439d6d6cb92729c3b8ec1089cc9d6fb3b6",
+  "successes": 1
+}
