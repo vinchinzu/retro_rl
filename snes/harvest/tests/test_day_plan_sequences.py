@@ -2985,6 +2985,29 @@ class BuildDayPhasesTests(unittest.TestCase):
         self.assertEqual(task._task.overshoot_limit_px, 328)
         self.assertTrue(task._task.require_empty_hands)
 
+    def test_return_home_timeout_fails_cleanly(self) -> None:
+        """Outer budget prevents multi-day hang when enter/nav never terminates."""
+        world = make_date_world(0x00, season=0, day=13, hour=18)
+        set_player_pos(world.ram, 400, 500)
+        task = ReturnHomeTask(timeout=5)
+        task.reset(world)
+        # Child nav keeps RUNNING; outer timeout must still fire.
+        task._task = SimpleNamespace(
+            step=lambda _w: TaskResult(status=TaskStatus.RUNNING, reason="stuck nav")
+        )
+        task._phase = "nav_house_front"
+
+        result = None
+        for _ in range(12):
+            result = task.step(world)
+            if result.status != TaskStatus.RUNNING:
+                break
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("timeout", result.reason or "")
+
     def test_return_home_renavs_when_stuck_north_of_door_stand(self) -> None:
         """Mid-door tiles (~y=389) must walk south before pushing up."""
         world = make_date_world(0x00, season=0, day=13, hour=18)

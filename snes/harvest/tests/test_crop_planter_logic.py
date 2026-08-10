@@ -862,6 +862,69 @@ class CropPlanterLogicTests(unittest.TestCase):
         tiny[ADDR_WATER_LEVEL] = 11
         self.assertEqual(CropWaterTask._water_level(tiny), 11)
 
+    def test_start_refill_prefers_f9_before_fence_open(self) -> None:
+        """West pocket + sealed south: pathable north F9 must win over fence-open.
+
+        Empty-can natural refill used to burn the day on FenceClearLoopTask
+        before ever ranking preferred edges north of the wall. Seal the whole
+        y=31 row so main-pond BFS cannot sneak east around x=11–29.
+        """
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        # Full east-west barrier: main pond + south FC unreachable from pocket.
+        for tx in range(0, 64):
+            _set_tile(ram, tx, 31, 0x05)
+        # Track wall fences for corridor_needs_fence_open (x=11–29 subset).
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        # Main pond F0 south of barrier (unreachable).
+        for ty in range(32, 35):
+            for tx in range(31, 35):
+                _set_tile(ram, tx, ty, 0xF0)
+        # North spur F9 (preferred fill, north of wall, pathable).
+        _set_tile(ram, 26, 12, 0xF9)
+
+        player = (13, 27)
+        _set_player_tile(ram, player)
+        ram[ADDR_TOOL] = 0x10
+        ram[ADDR_WATER_LEVEL] = 0
+        ram[ADDR_INPUT_LOCK] = 1
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(refill_bounds=(3, 10, 62, 60), work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        task._plots = [(13, 25)]
+        task._plot_index = 0
+        task._plot_phase = "water"
+        task._water_steps = [((12, 24), (13, 25), "left")]
+        task._water_index = 0
+
+        # Precondition: main pond stands not full-pathable from player.
+        self.assertIsNone(
+            task._pathfinder.find_path(ram, player, (32, 34)),
+            msg="test map must block main pond full BFS",
+        )
+
+        task._start_refill(ram)
+
+        self.assertEqual(
+            task._plot_phase,
+            "refill",
+            msg=f"phase={task._plot_phase} state={task._state} stand={task._refill_pond_tile}",
+        )
+        self.assertNotEqual(task._state, "fence_open")
+        self.assertIsNone(task._fence_subtask)
+        self.assertIsNotNone(task._refill_pond_tile)
+        assert task._refill_pond_tile is not None
+        water = edge_water_tile_id(
+            ram, task._refill_pond_tile, task._refill_pond_face or "up"
+        )
+        self.assertEqual(water, 0xF9)
+        self.assertFalse(is_bad_refill_stand(task._refill_pond_tile))
+
 
 if __name__ == "__main__":
     unittest.main()
