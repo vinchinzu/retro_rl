@@ -255,6 +255,33 @@ class CropPlanterLogicTests(unittest.TestCase):
 
         self.assertEqual(plots, [(15, 35)])
 
+    def test_water_only_detects_sparse_partial_plant(self) -> None:
+        """rr-5in: 2 dry crop tiles must water — not instant water fail."""
+        ram = _blank_ram()
+        # Two dry potato-stage tiles (partial plant); below default min_count=4.
+        _set_tile(ram, 17, 29, 0x54)
+        _set_tile(ram, 16, 29, 0x54)
+        ram[ADDR_TOOL] = 0x10
+        ram[0x0923] = 0x00
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        # Full can so we attempt water rather than immediate refill thrash.
+        ram[0x0926] = 20
+        px, py = 17 * 16 + 8, 29 * 16 + 8
+        ram[ADDR_X] = px & 0xFF
+        ram[ADDR_X + 1] = (px >> 8) & 0xFF
+        ram[ADDR_Y] = py & 0xFF
+        ram[ADDR_Y + 1] = (py >> 8) & 0xFF
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water", bounds=(3, 14, 40, 50))
+        task.reset(world)
+
+        result = task.step(world)
+        # Must enter water work, not terminal-fail with dry_crops and no plots.
+        self.assertEqual(result.status, TaskStatus.RUNNING, msg=result.reason)
+        self.assertGreaterEqual(task._dry_crop_tiles_at_start, 2)
+        self.assertTrue(task._plots, msg="sparse dry tiles must yield water plots")
+
     def test_merge_plot_centers_keeps_far_supplemental_plots(self) -> None:
         merged = _merge_plot_centers(
             primary=[(13, 29), (17, 29)],

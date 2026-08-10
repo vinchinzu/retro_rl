@@ -1098,6 +1098,8 @@ class CropWaterTask(Task):
         self._pending_gap_charge = False
         self._pending_south_lip_charge = False
         self._east_south_charges = 0
+        self._refill_densify_stalls = 0
+        self._refill_densify_last = None
         self._water_north_returns = 0
         self._water_crop_walk_recoveries = 0
         self._water_step_retries = 0
@@ -1164,6 +1166,8 @@ class CropWaterTask(Task):
         self._pending_gap_charge = False
         self._pending_south_lip_charge = False
         self._east_south_charges = 0
+        self._refill_densify_stalls = 0
+        self._refill_densify_last = None
         self._water_north_returns = 0
         self._water_crop_walk_recoveries = 0
         self._gap_backed = False
@@ -1444,6 +1448,26 @@ class CropWaterTask(Task):
             self._plots = _merge_plot_centers(resume_plots, supplemental)
         else:
             self._plots = detect_plots(ram, self.bounds)
+        if not self._plots and self._is_water_only and self._dry_crop_tiles_at_start > 0:
+            # Partial plant (west-pocket tilled=2 / 1–3 crop tiles) misses the
+            # default resume min_count=4. Water keep-alive must still find those
+            # dry singles/pairs or every day ends water fail: dry_crops=N watered=0
+            # without attempting can/refill (rr-5in continuous residual).
+            sparse = detect_crop_resume_plots(ram, self.bounds, min_count=1)
+            if sparse:
+                print(
+                    f"[CROP] Sparse water plots (min_count=1): {sparse} "
+                    f"dry={self._dry_crop_tiles_at_start}"
+                )
+                self._plots = sparse
+            else:
+                singles = self._singleton_dry_crop_centers(ram)
+                if singles:
+                    print(
+                        f"[CROP] Singleton dry water targets: {singles} "
+                        f"dry={self._dry_crop_tiles_at_start}"
+                    )
+                    self._plots = singles
         if not self._plots:
             # Virgin soil: plan + hoe + plant instead of silently succeeding.
             # Water-only pass never opens new plots (no seeds/hoe in carry).
@@ -2966,6 +2990,31 @@ class CropWaterTask(Task):
         hop = VIEWPORT_HOP_TILES + 3 if self._plot_phase == "refill" else VIEWPORT_HOP_TILES
         nav_goal = goal
         if self._plot_phase == "refill" and getattr(self, "_refill_multihop", False):
+            # Soft-block thrash: densify (25,30)→(28,30) forever without moving.
+            # ROM path is scripted east→south corridor charge (rr-3q27 / rr-5in).
+            if (
+                start[1] <= 31
+                and 20 <= start[0] <= 28
+                # Main pond stands: (32,34) south lip OR (33,30) north lip.
+                and (goal[0] >= 30 and goal[1] >= 30)
+                and getattr(self, "_east_south_charges", 0) < 3
+            ):
+                stalls = getattr(self, "_refill_densify_stalls", 0) + 1
+                self._refill_densify_stalls = stalls
+                last = getattr(self, "_refill_densify_last", None)
+                if last == (start, goal) and stalls >= 2:
+                    print(
+                        f"[CROP] Densify thrash at {start}→F0 (n={stalls}); "
+                        f"east→south corridor charge"
+                    )
+                    self._queue_east_south_corridor_charge(start)
+                    self._refill_densify_stalls = 0
+                    self._refill_densify_last = None
+                    return None  # navigate drains charge queue
+                self._refill_densify_last = (start, goal)
+            else:
+                self._refill_densify_stalls = 0
+                self._refill_densify_last = None
             nav_goal = self._refill_hop_goal(ram, start, goal)
             if nav_goal != goal:
                 print(
@@ -3938,11 +3987,30 @@ class CropWaterTask(Task):
                 )
                 self._advance_hoe_step(world.ram)
             elif self._plot_phase == "refill":
+                player = self._navigator.current_tile
                 print(
-                    f"[CROP] Refill timed out at {self._navigator.current_tile} "
+                    f"[CROP] Refill timed out at {player} "
                     f"stand={self._refill_pond_tile} best_dist="
                     f"{getattr(self, '_refill_best_dist', '?')}"
                 )
+                # ~(25,30) densify thrash: scripted east→south before more multihop.
+                pond = self._refill_pond_tile
+                if (
+                    player[1] <= 31
+                    and 20 <= player[0] <= 28
+                    and (
+                        pond is None
+                        or (pond[0] >= 30 and pond[1] >= 30)
+                    )
+                    and getattr(self, "_east_south_charges", 0) < 3
+                ):
+                    self._queue_east_south_corridor_charge(player)
+                    self._steps_on_target = 0
+                    self._refill_densify_stalls = 0
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action()),
+                    )
                 # Soft: try multi-hop re-commit once more before blacklisting.
                 if (
                     getattr(self, "_refill_multihop", False)
