@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M1 |
-| Best verified result | Power-on → Landing → Parlor → Climb → Pit through SolverSession, including one recovery replan, on vanilla SM ROM |
+| Best verified result | Power-on → Morph Ball through the real `SMRando-Snes` emulator policy, on the vanilla substrate |
 | Last verification | 2026-08-09 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
@@ -30,6 +30,7 @@ Program stack: `docs/SOLVER_ARCHITECTURE.md`.
 | Play/record spine | done (`./play`, record default, F5 → package integration) |
 | Ship → Morph vanilla skill binding | natural-entry evidence (1/1 clean); patched-rando coverage still open |
 | Three-edge SolverSession slice | verified 2026-08-09: production adapter has three real edges; the experiment-only injected failure triggers one replan, then Landing/Parlor/Climb/Pit completes at frame 23,866. Backend-owned Clean audit retained in `recordings/vertical_slice.run.json`. |
+| First-item policy product | verified 2026-08-09: `SMRando-Snes` power-on → Morph Ball succeeds at frame 26,824 in room `0x9E9F`, with zero state loads, zero progression/resource writes, and exact 6,003-frame video evidence in `recordings/policy_to_morph.mp4`. Current ROM is the documented vanilla substrate. |
 | Landing EntryStateCorpus | 64 unique real predecessor states; 58 train / 6 held out; both parities, 64 Y positions, 2 subpixel phases. Metadata v2 includes pose reconstructed from each retained state; state blobs live under `custom_integrations/SMRando-Snes/entry_corpus/landing_v1/`. |
 | Structured Landing baseline | 0/58 train and 0/6 held-out from unsettled natural entry (gap 0.000); failures retained in `recordings/landing_entry_baseline.json` |
 | Landing timing BC experiment | 58/58 train and 6/6 held out; zero eval states used for fitting; backend-owned Clean/Bronze audits + six canonical eval trajectories retained. Candidate only—new predecessor trajectories required before deployment. |
