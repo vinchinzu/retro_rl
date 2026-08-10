@@ -139,12 +139,21 @@ Test crop fixtures (for growth / ship work):
    ROM path: corridor_only fence open → **east→south** wall cross (empty gap
    charge soft-blocks on (13,31)) → **west→south-lip** from (28,32) soft-block
    band → F0 stand `(32,34)` face up fill → water-return north charge.
-   Residual: return_home hang ~D5; water tile reliability (2/3); full
-   Inside_House multi-day (rr-20w). Parent **rr-20w** stays open.
+   **2026-08-10 tip close (rr-3q27):** **3/3 water GREEN** after residual
+   crop-walk recovery — dry fixture `can_peak=20`, `refill=1`, `watered=3`,
+   `dry_end=[]` (~9k frames). Root cause residual (12,26): reorder thrash +
+   mid-plot wet tiles not walkable during follow. Fixes: reorder cap 3/step;
+   residual crop-stand on wet neighbor with full 3x3 `extra_walkable`; no
+   temp_blocked when ≤2 from stand north of wall. **return_home** off-stand
+   re-nav capped (force enter / fail clean). Short Clean multi-day
+   `Y1_Inside_House --days 3` → 3 overnights, `mid_run_state_loads=0`,
+   `ram_writes=0` (`recordings/inside_house_3day_clean.json`); day-plan soft
+   fails ENSURE_CAN / CROP_WATER on D3–D4 still residual under **rr-20w**.
+   Parent **rr-20w** stays open for full Spring income.
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
-   **ROM natural empty-can fill OK** on dry fixture (`can_peak=20`); water
-   after fill partial (2/3 tiles) — return nav residual.
+   **ROM natural empty-can fill + 3/3 dry water OK** on dry fixture
+   (`can_peak=20`, `watered=3`, `dry_end=[]`).
 4. ~~Multi-day growth from `Y1_Test_Crops_Planted_Watered`~~ — **done** (mature `0x60` at D8; journal water deltas).
 5. ~~Harvest + ship + post-5pm money assert (rr-53g)~~ — **CLOSED 2026-08-09 night** Clean:
    ```bash

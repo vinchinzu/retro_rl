@@ -598,3 +598,36 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-bf29` dual pure 2386f×2 room 0xA865. Stack hop0+hop1 GREEN.
 - Next: `rr-81ek` Tutorial→Gate. Parent rr-dbu.8 open.
 
+### 2026-08-10T01:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - harvest: `rr-3q27` empty-can residual (fill GREEN landed; return_home/multi-day open)
+  - super_metroid: `rr-81ek` Tutorial→Gate + parent `rr-dbu.8` K5 Alpha PB stack
+  - zelda_i: `rr-05fz` L4 post-Stepladder (water/map/Gleeok/TF) — stepladder path advanced
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Idle priority action:** mega_man_2 `rr-54ui` OPEN again (prior manager finished; no camera≥5)
+- **Spawned manager (worktree):** mega_man_2 → claim `rr-54ui` (Lightning Lord / cloud fork tip)
+  - subagent_id: `019fea42-fe32-7473-8999-a0f6583be0b9` (worktree isolation)
+- **Not spawned (busy):** harvest, super_metroid, zelda_i
+- **Not spawned:** solver rr-gbd.32 CLOSED; P3/P4 sketches only
+- **Cap:** 3 busy + 1 MM2 = 4 / 6 lanes
+- Notes: SM K5 hop0+hop1 GREEN; dual Ice continuous still residual on earlier kxge line. Harvest can fill GREEN. Never push.
+
+### 2026-08-10T01:10 CDT — harvest rr-3q27 CLOSED (3/3 empty-can + return_home)
+- Lane: harvest only (`snes/harvest/`)
+- Bead **rr-3q27** CLOSED: Natural empty-can refill + return_home hang
+- **Evidence:**
+  - Dry fixture `Y1_Test_Crops_Planted_Dry`: `can_peak=20`, `refill=1`,
+    **`watered=3`**, `dry_end=[]` Clean (~9097f)
+    `recordings/empty_can_refill_probe.json`
+  - Short Clean multi-day `Y1_Inside_House --days 3`: overnights=3,
+    `mid_run_state_loads=0`, `ram_writes=0`, success goal reached
+    `recordings/inside_house_3day_clean.json`
+- **Code:** residual crop-walk recovery (wet-neighbor stand + full 3x3
+  extra_walkable); water reorder cap 3/step; no temp_blocked near stand
+  y≤30; return_home off-stand re-nav cap (force enter / fail clean)
+- Units: 64 passed (`test_water_refill` + `test_crop_planter_logic`)
+- Parent **rr-20w** stays OPEN (full Spring income; Inside_House D3–D4
+  ENSURE_CAN / CROP_WATER soft fails residual)
+- Next tip under rr-20w: live Inside_House multi-day water path after plant
+  (day-plan CROP_WATER reliability), not fixture-only
+- No push

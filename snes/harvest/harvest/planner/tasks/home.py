@@ -171,6 +171,11 @@ class ReturnHomeTask(Task):
     _drop_attempts: int = field(default=0, init=False)
     _enter_retries: int = field(default=0, init=False)
     _total_steps: int = field(default=0, init=False)
+    # Soft-success off-stand re-navs can thrash forever without terminal
+    # status if the door stand soft-radius keeps "succeeding" a few tiles
+    # away. Cap corrections so the outer timeout is not the only exit.
+    _offstand_corrections: int = field(default=0, init=False)
+    _best_door_dist: int = field(default=99999, init=False)
 
     @staticmethod
     def _house_route_name(ram: np.ndarray) -> str:
@@ -231,6 +236,8 @@ class ReturnHomeTask(Task):
         self._drop_attempts = 0
         self._enter_retries = 0
         self._total_steps = 0
+        self._offstand_corrections = 0
+        self._best_door_dist = 99999
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -331,8 +338,23 @@ class ReturnHomeTask(Task):
             )
             return self._nav_to_house_front(world, front)
 
+        door_dist = abs(pos.x - front.x) + abs(pos.y - front.y)
+        if door_dist < self._best_door_dist:
+            self._best_door_dist = door_dist
+
         at_stand = abs(pos.x - front.x) <= 16 and abs(pos.y - front.y) <= 16
         if at_stand:
+            self._activate("enter_house", self._house_enter_task(world), world)
+            return self._task.step(world)
+
+        # Near door but slightly off-stand after several corrections: push enter
+        # rather than re-nav forever (D5 hang residual).
+        near_door = abs(pos.x - front.x) <= 28 and abs(pos.y - front.y) <= 28
+        if near_door and self._offstand_corrections >= 3:
+            print(
+                f"[RETURN_HOME] Near door after {self._offstand_corrections} "
+                f"corrections pos=({pos.x},{pos.y}); forcing enter"
+            )
             self._activate("enter_house", self._house_enter_task(world), world)
             return self._task.step(world)
 
@@ -400,6 +422,22 @@ class ReturnHomeTask(Task):
                 if self._drop_attempts < 8:
                     print(f"[RETURN_HOME] Nav failed with hands full; drop then retry: {reason}")
                     return self._start_next_phase(world)
+            # Nav timed out but we are close to the door — attempt enter rather
+            # than hard-fail the multi-day (return_home hang residual ~D5).
+            if self._phase == "nav_house_front":
+                pos = get_pos_from_ram(world.ram)
+                front = self._house_front_px(world.ram)
+                if abs(pos.x - front.x) <= 48 and abs(pos.y - front.y) <= 48:
+                    print(
+                        f"[RETURN_HOME] Nav failed near door "
+                        f"pos=({pos.x},{pos.y}): {reason}; forcing enter"
+                    )
+                    self._activate(
+                        "enter_house",
+                        self._house_enter_task(world),
+                        world,
+                    )
+                    return self._task.step(world)
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"{self._phase} failed: {reason}",
@@ -415,9 +453,35 @@ class ReturnHomeTask(Task):
             pos = get_pos_from_ram(world.ram)
             front = self._house_front_px(world.ram)
             if abs(pos.x - front.x) > 20 or pos.y < front.y - 10:
+                self._offstand_corrections += 1
+                # After a few soft-successes off-stand, force enter if close
+                # enough, else re-nav with a hard cap.
+                near = abs(pos.x - front.x) <= 40 and abs(pos.y - front.y) <= 40
+                if near and self._offstand_corrections >= 3:
+                    print(
+                        f"[RETURN_HOME] Off-stand but near door "
+                        f"pos=({pos.x},{pos.y}) corrections="
+                        f"{self._offstand_corrections}; forcing enter"
+                    )
+                    self._activate(
+                        "enter_house",
+                        self._house_enter_task(world),
+                        world,
+                    )
+                    return self._task.step(world)
+                if self._offstand_corrections >= 6:
+                    return TaskResult(
+                        status=TaskStatus.FAILURE,
+                        reason=(
+                            f"nav_house_front off-stand loop "
+                            f"pos=({pos.x},{pos.y}) front=({front.x},{front.y}) "
+                            f"corrections={self._offstand_corrections}"
+                        ),
+                    )
                 print(
                     f"[RETURN_HOME] Nav finished off-stand pos=({pos.x},{pos.y}); "
-                    f"correcting to ({front.x},{front.y})"
+                    f"correcting to ({front.x},{front.y}) "
+                    f"({self._offstand_corrections}/6)"
                 )
                 return self._nav_to_house_front(world, front)
             self._activate(
