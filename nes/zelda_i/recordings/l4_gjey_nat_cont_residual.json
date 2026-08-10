@@ -1,0 +1,46 @@
+{
+  "bead": "rr-gjey",
+  "continuous_floor_map_poke": 108,
+  "dual_green": false,
+  "gleeok_enter_floor_poke": 106,
+  "key_poke": false,
+  "note": "Natural PostLadderNaturalKey continuous Clean residual: enter ~98-100, fight death. Floor pins elsewhere prove path+fight at 108/106.",
+  "ok": false,
+  "spine_natural_key_health": 103,
+  "tag": "l4_gjey_nat_cont",
+  "track": "clean",
+  "trials": [
+    {
+      "clear12_health": 98,
+      "enter_health": 98,
+      "error": null,
+      "fight_error": "death",
+      "fight_notes": [
+        "policy=south_stand dy=22 fb_dodge<=14 start_hp=98",
+        "approach_south f=451 xy=(116,189) hp=96 dodge_thr=14"
+      ],
+      "fight_ok": false,
+      "map_health": 100,
+      "map_ok": true,
+      "ok": false,
+      "tf08": false,
+      "total_frames": 21552
+    },
+    {
+      "clear12_health": 98,
+      "enter_health": 98,
+      "error": null,
+      "fight_error": "death",
+      "fight_notes": [
+        "policy=south_stand dy=22 fb_dodge<=14 start_hp=98",
+        "approach_south f=451 xy=(116,189) hp=96 dodge_thr=14"
+      ],
+      "fight_ok": false,
+      "map_health": 100,
+      "map_ok": true,
+      "ok": false,
+      "tf08": false,
+      "total_frames": 21552
+    }
+  ]
+}

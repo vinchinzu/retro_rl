@@ -193,7 +193,8 @@ def _bomb_north_21(env, assist, total: list[int]) -> dict[str, Any]:
     """BFS to bomb stand (thrash only if needed) → bomb UP → 0x11.
 
     Clean residual (rr-zavx): map pickup already expands much of the maze;
-    thrash-first burns hearts and Gleeok Clean needs health ≥~108.
+    thrash-first burns hearts and continuous Gleeok needs enter health ≥~107
+    (rr-gjey lab). Gel thrash does not reliably drop hearts.
     """
     sx, sy = BOMB_21_NORTH_STAND
     thr: dict[str, Any] | None = None
@@ -687,20 +688,32 @@ def run_from_map_to_tf(
                 total[0] += 1
                 if assist is not None:
                     assist.apply_env(env, frame=total[0])
-    idle(env, assist, total, 40)
+    # Scroll settle only — do not idle 40f on Gleeok vestibule (fireballs
+    # fill the room and double approach cost; rr-gjey Clean health floor).
+    for _ in range(12):
+        snap = read_snapshot(env.get_ram())
+        if (
+            snap.screen == ROOM_L4_GLEEOK_13
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            break
+        env.step(nes_idle_action())
+        total[0] += 1
+        if assist is not None:
+            assist.apply_env(env, frame=total[0])
     report["phases"]["enter_gleeok"] = {
         "ok": level4_gleeok_enter_success(env.get_ram()),
         "path_ok": path_ok,
         "bfs_path_len": len(bfs_path) if bfs_path else None,
         "final": room_fields(read_snapshot(env.get_ram()), env.get_ram()),
+        "health": read_snapshot(env.get_ram()).health,
     }
     if not level4_gleeok_enter_success(env.get_ram()):
         snap = read_snapshot(env.get_ram())
         report["error"] = f"gleeok_enter_0x{snap.screen:02x}"
         return report
 
-    # Brief settle after vestibule enter (scroll/invuln); then fight → TF.
-    idle(env, assist, total, 40)
     fight = Level4GleeokFightController(tag=f"{tag}_t{trial_i}")
     fr = fight.run(env, assist, total)
     report["phases"]["fight"] = {

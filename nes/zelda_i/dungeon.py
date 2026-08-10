@@ -84,6 +84,9 @@ class CombatTuning:
     patrol_attack_hold: int = 2
     attack_phase: int = 0
     tolerance: int = 6
+    # When >0 and enemy closer than this (manhattan), step away one beat
+    # before swinging (heart-safe Clean; rr-gjey L4 residual).
+    contact_backstep: int = 0
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -94,6 +97,8 @@ class CombatTuning:
         ):
             if period <= 0 or not 0 <= hold <= period:
                 raise ValueError("attack hold must be within a positive period")
+        if self.contact_backstep < 0:
+            raise ValueError("contact_backstep must be >= 0")
 
 
 @dataclass(frozen=True)
@@ -421,6 +426,21 @@ class GenericDungeonRoomController:
                 + abs(obj.y - snap.link_y),
             )
             distance = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+            back = self.spec.combat.contact_backstep
+            # Intermittent backstep (2/6 frames) so we still land sword hits
+            # while peeling contact damage (rr-gjey). Always-backstep starves kill.
+            if (
+                back > 0
+                and distance < back
+                and (self.combat_frames % 6) < 2
+            ):
+                dx = nearest.x - snap.link_x
+                dy = nearest.y - snap.link_y
+                if abs(dx) >= abs(dy):
+                    away = "LEFT" if dx > 0 else "RIGHT"
+                else:
+                    away = "UP" if dy > 0 else "DOWN"
+                return FrameAction(nes_action(away), "combat_backstep")
             if distance < self.spec.combat.engage_distance:
                 return self._engage(snap, nearest)
         return self._patrol(snap)
