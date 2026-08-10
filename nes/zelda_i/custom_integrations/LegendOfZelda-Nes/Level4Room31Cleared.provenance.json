@@ -1,0 +1,63 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T04:43:23.733450+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-resv",
+    "intervention_class": "clean",
+    "segment": "l4_clear_31",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "clear_31": {
+        "clear_signal_seen": true,
+        "combat_frames": 6863,
+        "frames": 6864,
+        "initial_inventory": 0,
+        "last_live_enemies": 0,
+        "max_live_enemies": 6,
+        "notes": [
+          "room_cleared"
+        ],
+        "phase": "DONE",
+        "spec_id": "level4_room31_vires",
+        "success": true,
+        "tuning": {
+          "attack_phase": 0,
+          "engage_attack_hold": 3,
+          "engage_attack_period": 6,
+          "engage_distance": 72,
+          "engage_dominant_axis": false,
+          "patrol_attack_hold": 2,
+          "patrol_attack_period": 12
+        }
+      }
+    },
+    "final": {
+      "bombs": 8,
+      "compass": 12,
+      "compass_l4": true,
+      "cur_opened_doors": 2,
+      "health": 107,
+      "keys": 0,
+      "level": 4,
+      "mode": 5,
+      "room": 49,
+      "room_all_dead": 2,
+      "room_hex": "0x31",
+      "room_item_id": 3,
+      "x": 128,
+      "y": 133
+    },
+    "frames": 6865,
+    "ok": true,
+    "segment": "clear_31"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31.state",
+  "source_state_sha256": "26b867886d7e80ac8bdf9fa518713e86582ac7760b153db733b3b45247c628dc",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31Cleared.state",
+  "state_sha256": "116d4be771de2396d8cd85ed6e1e4193ab7c9d6b08f3c3231d9c76eaa8214bbc"
+}

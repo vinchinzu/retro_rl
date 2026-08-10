@@ -212,7 +212,8 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --t
 
 Checkpoints (dev): `Level4Room61`, `Level4Room61Cleared`, `Level4FirstKey`,
 `Level4Room50Cleared`, `Level4Room62`, `Level4Room62Cleared`, `Level4Compass`,
-`Level4Room40`, `Level4Room40Cleared`, `Level4Room30`.
+`Level4Room40`, `Level4Room40Cleared`, `Level4Room30`, `Level4Room30Cleared`,
+`Level4Room31`, `Level4Room31Cleared`, `Level4Room32`.
 
 ### Source speed route (planning only past compass — not emulator facts)
 

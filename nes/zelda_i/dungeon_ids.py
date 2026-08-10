@@ -13,6 +13,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x14: "gel_or_zol_split_residual",  # L3 0x4b after wooden-sword hits
     0x15: "gel",
     0x16: "pols_voice",
+    0x17: "like_like",  # L4 0x32 live (rr-resv); avoid contact (shield loss)
     0x1B: "keese",
     0x1C: "vire_split_keese",  # L4 Vire split residual (live rr-5lu; not 0x1b)
     0x23: "wizzrobe_blue_walkthrough_correlated",
