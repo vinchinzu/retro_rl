@@ -218,10 +218,10 @@ Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
 | `west_31` pure 2/2 | `l4_05fz_west31_west_31.json` | ~372 | `Level4Room31PostLadder` |
 | `map_21` assisted 2/2 | `l4_rvae_map21_map_21.json` | ~17872 | `Level4Map` |
 
-### Gleeok approach from Level4Map (rr-rvae recon 2026-08-10)
+### Gleeok approach from Level4Map (rr-rvae; enter dual-green 2026-08-10)
 
-Live graph (maze BFS + bomb stands; assisted). **Gleeok enter stabilize + TF
-still residual.**
+Live graph (maze BFS + bomb stands; assisted). **Gleeok enter dual-green;
+fight + TF residual.**
 
 ```
 0x21 map (Level4Map)
@@ -230,7 +230,8 @@ still residual.**
        --UP--> 0x01 8× Keese + key 0x19  (natural key for map KEY-UP residual)
        --RIGHT--> 0x12 5× Vire + block 0x68
             --UP--> 0x02 blade traps 0x49 (dead-end)
-            --RIGHT--> 0x13 Gleeok type 0x43 + HC 0x1a  (enter once; stabilize residual)
+            --clear + push 0x68 LEFT @(112,144)--> doors 2→3
+            --hold4 PATH_12_TO_GLEEOK plen31 RIGHT--> 0x13 Gleeok 0x43 + HC 0x1a
        --LEFT--> 0x10 Manhandla
 ```
 
@@ -238,15 +239,18 @@ still residual.**
 |------|-------|-------|
 | **0x11** | **live** | BOMB_UP from map; type `0x35`; checkpoint `Level4Room11` |
 | **0x01** | **live** | Keese + key `0x19` (keys 0→1 after clear) |
-| **0x12** | **live** | 5× Vire; free UP→0x02; RIGHT→Gleeok residual |
+| **0x12** | **live dual** | 5× Vire; push block LEFT opens R; `Level4Room12Cleared` |
 | **0x02** | **live** | traps only; DOWN→0x12 |
-| **0x13** | **live once** | Gleeok `0x43` + HC; evidence `l4_rvae_push12_12b_RIGHT_0x13.png` |
+| **0x13** | **live dual enter** | Gleeok `0x43` HP≈160 + HC; `Level4GleeokEnter` / `Level4Boss` |
 | **0x10** | **live** | Manhandla side path; UP→0x00 dead-end |
 | **0x00** | **live** | bubbles; only DOWN |
 
-**Residual:** stable dual-green enter 0x12→0x13 (shutter/bomb RIGHT not yet
-repro every clear from `Level4Room12`); Gleeok fight policy; TF room + bit
-`0x08`. Natural key: 0x01 after map BOMB_UP (no recon poke).
+**Residual:** Gleeok fight + HC dual-green; TF room + bit `0x08`. Natural key:
+0x01 after map BOMB_UP (no recon poke). Evidence: `l4_rvae_right13_dual.json`.
+
+**Traps (0x12→0x13):** after clear doors often L-only (raw=2); **bomb RIGHT and
+KEY-RIGHT do not open 0x13**; push block 0x68 LEFT first; naive y141 hold-RIGHT
+fails (maze) — use `PATH_12_TO_GLEEOK` hold4.
 
 Probe: `scripts/probe_level4_map_gleeok.py --infinite-life --from-state Level4Map`.
 

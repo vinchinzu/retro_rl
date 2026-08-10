@@ -997,3 +997,19 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-6g7g`: open drop + multi-face toss; power-on 7 overnights past D7.
 - rr-5in residual: D9 nav_house_front multi_nav timeout; money=$100 Summer open.
 
+### 2026-08-10T~night — zelda_i L4 Gleeok enter dual-green (rr-rvae partial)
+- Lane: zelda_i only (`nes/zelda_i/`)
+- Claimed **rr-rvae** (in_progress): map dual-green already; stabilize 0x12→0x13
+- **Live fix:** after 0x12 Vire clear doors raw=2 (L only). Bomb/KEY-RIGHT fail.
+  Push block **0x68 LEFT** stand~(112,144) (96,144)→(80,144) opens R bit
+  doors 2→3. Naive y141 hold-RIGHT still fails (maze) — hold4
+  **PATH_12_TO_GLEEOK** plen31 → **0x13** Gleeok type **0x43** HP≈160 + HC 0x1a.
+- **Dual-green 2/2** assisted from `Level4Room12`. Checkpoints
+  **Level4Room12Cleared**, **Level4GleeokEnter**, **Level4Boss**.
+- Code: `ROOM_12_SPEC`, push geometry, `PATH_12_TO_GLEEOK`, factories/predicates
+  in `level4_dungeon.py`; tests + AGENTS/LEVEL4_ROUTE.
+- Evidence: `recordings/l4_rvae_right13_dual.json`
+- Residual: Gleeok fight + HC + TF `0x08` (epic **rr-q3n** open)
+- Units: test_level4_dungeon 10 passed. No push.
+- Next: Gleeok combat policy from Level4GleeokEnter dual-green
+
