@@ -19,8 +19,9 @@ and continuous promote. Executors take **one bead per session**.
 | Speed Booster (K4.5) | previous tip | **130,388f** ×2 Spazer dual (prefix) |
 | Spazer warehouse dual | prefix green | **89,416 + 90,904f** beams `0x1004` |
 | Clean bombs/Torizo | secondary GREEN | **49,321f** ×2 — [CLEAN_TRACK.md](../CLEAN_TRACK.md) |
-| ★ Product next | Wave→Business pure return → dual continuous **`--to ice`** | after `rr-dbu.7` compose |
+| ★ Product next | Dual continuous **`--to ice`** (Business floor climb) | `rr-kxge` · residual `rr-kxge-residual.md` |
 | Pure Ice stack | Outbound dual GREEN through PLM | `rr-dbu.11` **CLOSED** · residual `rr-dbu.11-residual.md` |
+| Wave→Business pure | 7/7 dual GREEN | `rr-vqv3` **CLOSED** |
 | Tape | Full Speed→Wave→Ice→Moat human | `rr-dbu.12` **GREEN** 39,711f |
 | Agent optional | consolidate · duck-type · Clean STATUS · speed start Spazer | P3 |
 
@@ -33,7 +34,9 @@ and continuous promote. Executors take **one bead per session**.
 ✅ Acid → Snake  ← rr-5cf dual GREEN 652f ×2
 ✅ Snake → Ice PLM (prefer 2WJ)  ← rr-5if dual GREEN 1756f ×2 beams 0x1007
 ✅ Ice pure stack gate  ← rr-dbu.11 (outbound pure complete; not continuous)
-▶  Continuous --to ice  ← rr-dbu.7 (compose only; no STATUS without dual continuous green)
+✅ Wave→Business pure return 7/7  ← rr-vqv3
+✅ Ice tip compose return+stack  ← rr-kxge compose (11 hops); pure floor→Gate 3219f×2
+▶  Dual continuous --to ice  ← rr-kxge (RED Business floor→Super climb; no STATUS)
 ⬜  K5 Alpha PB · Moat approach  ← rr-dbu.8 · rr-dbu.9
 ```
 
@@ -42,10 +45,12 @@ and continuous promote. Executors take **one bead per session**.
 ```text
 rr-dbu.12 (human tape)
   → rr-dbu.11 (Ice pure, routes/kpdr/ice/) ✅ CLOSED
-    → rr-dbu.7 (--to ice compose)
-      → rr-dbu.8 (K5)
-        → rr-dbu.9 (Moat approach → rr-hhj spark pin GREEN)
-          → Wrecked Ship … ending
+    → rr-dbu.7 (--to ice compose wire) ✅
+      → rr-vqv3 (Wave→Business pure return) ✅
+        → rr-kxge (dual continuous --to ice) ◀ climb residual
+          → rr-dbu.8 (K5)
+            → rr-dbu.9 (Moat approach → rr-hhj spark pin GREEN)
+              → Wrecked Ship … ending
 ```
 
 **Do not invent Ice hops without tape.** Hygiene Pass B does not block product.

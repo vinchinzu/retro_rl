@@ -328,7 +328,15 @@ def test_unified_tip_specs_cover_full_chain() -> None:
     assert SUPER_TIP_BY_ID["ice"].parent_tip_id == "wave"
     assert SUPER_TIP_BY_ID["ice"].final_room == 0xA890
     assert SUPER_TIP_BY_ID["ice"].success_outcome == "ice_collected"
+    # Wave→Business return (rr-vqv3) + Ice pure stack (rr-dbu.11); rr-kxge compose.
     assert [h.split_id for h in SUPER_TIP_BY_ID["ice"].hops] == [
+        "wave_to_double_chamber",
+        "double_to_single_chamber",
+        "single_to_bubble",
+        "bubble_to_farm",
+        "farm_to_speedway",
+        "speedway_to_frog_save",
+        "frog_save_to_business",
         "business_to_ice_gate",
         "ice_gate_to_acid",
         "ice_acid_to_snake",

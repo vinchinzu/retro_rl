@@ -46,8 +46,9 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | Wave→Business pure return → dual continuous `--to ice` | after `rr-dbu.7` compose (room gap) |
-| Done compose | TipSpec/spine/catalog `--to ice` (not dual green) | `rr-dbu.7` · residual `tasks/rr-dbu.7-residual.md` |
+| **★ Product next** | Dual continuous `--to ice` (Business floor→Super climb) | `rr-kxge` · residual `tasks/rr-kxge-residual.md` |
+| Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
+| Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
 | Product after Ice tip | K5 → Moat approach | `rr-dbu.8` → `.9` |
 | Done | Human full tape 39,711f Wave+Ice+Moat | `rr-dbu.12` · [SM-SPEED-ICE-MOAT-HUMAN.md](tasks/SM-SPEED-ICE-MOAT-HUMAN.md) |
@@ -56,9 +57,10 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 | Done | Wave continuous **136,361f** + hygiene Pass A/B essential | |
 
 **Critical path to credits:** human tape (`rr-dbu.12`) → Ice pure package
-(`rr-dbu.11` ✅, `routes/kpdr/ice/`) → continuous ice compose (`rr-dbu.7` ✅
-wire only) → Wave→Business pure return → dual continuous Ice → K5 → Moat
-natural entry → Wrecked Ship → … → ending.
+(`rr-dbu.11` ✅) → continuous ice compose (`rr-dbu.7` ✅) → Wave→Business
+pure return (`rr-vqv3` ✅) → dual continuous Ice (`rr-kxge` compose landed,
+continuous climb residual) → K5 → Moat natural entry → Wrecked Ship → …
+→ ending.
 **Do not STATUS-promote continuous Ice without dual continuous green.**
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);

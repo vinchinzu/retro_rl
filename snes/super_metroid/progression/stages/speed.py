@@ -74,19 +74,10 @@ ROOMS = _VARIA_ROOMS + (
 
 # Spine continuous Super+ product edges (business return, frog, bat_cave).
 # Warehouse→Business return reuses hijump-stage warehouse_to_business edge.
-# Hand-authored: reverse frog, Speedway shortcut, Speed/Wave/Ice branches.
+# Hand-authored: Speedway shortcut, Speed/Wave reverse, Ice Tutorial return.
+# frog_save_to_business: spine-emitted continuous on tip ``ice`` (rr-kxge /
+# Wave→Business pure return compose) — do not hand-author here.
 _BRANCH_EDGES = (
-    # Reverse so continuous tip at Frog can repath to Cathedral without warp.
-    DoorEdge(
-        "frog_save_to_business",
-        ROOM_FROG_SAVE,
-        ROOM_BUSINESS,
-        "left",
-        "right",
-        _K4_CAPS,
-        "kpdr_k4_speed",
-        "unverified",
-    ),
     # --- Post-Speed shortcut: Frog Speedway (Boost Blocks need Speed) ---
     DoorEdge(
         "frog_save_to_speedway",
@@ -155,10 +146,10 @@ _BRANCH_EDGES = (
         "kpdr_k4_wave",
         "controller_dev",
     ),
-    # Ice outbound (Business→Gate→Acid→Snake→Ice): spine-emitted continuous
+    # Ice outbound + Wave→Business return prefix: spine-emitted continuous
     # (tip ``ice``) via continuous_edges_for_tips — do not hand-author here.
-    # Pure dual GREEN stack rr-dbu.11; continuous dual still open (Wave return).
-    # Return path only (Tutorial); outbound tape skips Tutorial on entry.
+    # Pure dual GREEN rr-dbu.11 + rr-vqv3; continuous dual rr-kxge (no STATUS
+    # without dual continuous green). Tutorial return path only below.
     DoorEdge(
         "ice_gate_to_tutorial",
         ROOM_ICE_GATE,
