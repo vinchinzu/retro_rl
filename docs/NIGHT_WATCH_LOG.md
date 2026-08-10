@@ -910,3 +910,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next tip: rr-6g7g clear hands before house entry, re-run --end-of-spring
 - No push
 
+### 2026-08-10T04:15 CDT — harvest sparse plant fill CLOSED
+- **CLOSED** `rr-o00y`: power-on D5 REFILL can=20 watered=2/2; dry fixture watered=3.
+- rr-5in residual: hands-clear return_home D7 (rr-6g7g).
+
