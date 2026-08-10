@@ -255,6 +255,16 @@ class ExitBuildingTask(Task):
                     return TaskResult(status=TaskStatus.SUCCESS, reason=f"tilemap=0x{tilemap:02X}")
             else:
                 self._target_seen_frames = 0
+            # Mid-warp outdoor (y < 330): keep holding down. Neutral settle while
+            # player_state is still transitioning freezes control (rr-bhr).
+            if is_farm_tilemap(self.target_tilemap):
+                pos = self._navigator.current_pos
+                if pos.y < 330:
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(down=True, b=True)),
+                        reason="exit mid-warp push",
+                    )
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()), reason="exit settle")
         if not tilemaps_match(tilemap, self.target_tilemap):
             self._target_seen_frames = 0

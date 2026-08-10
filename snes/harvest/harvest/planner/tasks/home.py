@@ -438,6 +438,10 @@ class GoToSleepTask(Task):
     _start_day: int = field(default=0, init=False)
     _return_home: Optional[ReturnHomeTask] = field(default=None, init=False)
     _return_home_steps: int = field(default=0, init=False)
+    # After day advances, require a settled morning house before SUCCESS so
+    # callers (Gate B shed, multi-day planner) do not ExitToFarm mid-wake.
+    _morning_settle_frames: int = field(default=0, init=False)
+    morning_ready_frames: int = 45
 
     def reset(self, world: WorldState) -> None:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -450,6 +454,7 @@ class GoToSleepTask(Task):
         self._route_index = 0
         self._return_home = None
         self._return_home_steps = 0
+        self._morning_settle_frames = 0
         self._start_season, self._start_day = read_world_date(world.ram)
         if self._phase == "ensure_house":
             self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
@@ -654,13 +659,11 @@ class GoToSleepTask(Task):
         if scene_indicates_ending(scene):
             return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
 
-        if self._date_advanced(world.ram, self._start_season, self._start_day):
-            return TaskResult(status=TaskStatus.SUCCESS, reason="day advanced")
-
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         # Only the real overnight transition (tilemap 0x0F / time_running), not
         # the morning-wake coordinate heuristic used by the scene classifier.
         if tilemap == HOUSE_SLEEP_TRANSITION_TILEMAP or scene.reason == "sleep/wake transition":
+            self._morning_settle_frames = 0
             return dismiss_dialogue_result(
                 self._step_count,
                 buttons=("a", "b"),
@@ -673,6 +676,40 @@ class GoToSleepTask(Task):
                 buttons=("a", "b"),
                 pulse_every=1,
                 reason="bedtime cutscene",
+            )
+
+        # Day rolled: wait for controllable morning house (not mid-wake 0x0F).
+        # Early SUCCESS here caused Gate B ExitToFarm to hit door glitch 0x5F.
+        if self._date_advanced(world.ram, self._start_season, self._start_day):
+            input_lock = (
+                int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
+            )
+            pos = get_pos_from_ram(world.ram)
+            morning_house = is_house_tilemap(tilemap) and input_lock == 1 and not scene.needs_input_dismiss
+            # Wake coords sit near bed ~(70,86) then settle ~(136,120).
+            settled_xy = pos.y >= 100 or (
+                abs(pos.x - HOUSE_BED_STAND_PX.x) <= 24
+                and abs(pos.y - HOUSE_BED_STAND_PX.y) <= 24
+            )
+            if morning_house and settled_xy:
+                self._morning_settle_frames += 1
+                if self._morning_settle_frames >= self.morning_ready_frames:
+                    return TaskResult(
+                        status=TaskStatus.SUCCESS,
+                        reason="day advanced; morning house ready",
+                    )
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason=f"morning settle {self._morning_settle_frames}/{self.morning_ready_frames}",
+                )
+            self._morning_settle_frames = 0
+            if scene.needs_input_dismiss or input_lock != 1:
+                return dismiss_dialogue_result(self._step_count, reason="morning dismiss")
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action()),
+                reason=f"morning wait tm=0x{tilemap:02X} pos=({pos.x},{pos.y})",
             )
 
         if self._phase == "ensure_house":
