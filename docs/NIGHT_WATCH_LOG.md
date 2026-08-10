@@ -144,3 +144,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - First hop dual GREEN 560f×2 Wave→Double (0xADDE→0xADAD). Next: Double→Single.
 - **SMB re-parked** (rr-k0x reopened by stray work; closed again per human).
 
+
+### 2026-08-09T21:55 CDT — solver L0 certified snapshots (rr-gbd.32)
+- **CLOSED** `rr-gbd.32` SnapshotAdapter + SnapshotEnvelope (EMULATOR_ONLY vs CERTIFIED_FULL_ENV).
+- Worktree commits: `44c6edb` + beads `b50e4aa` under subagent-019fe98a… (not on main clone tip).
+- Pool: `save_snapshot` / `load_snapshot` / `fork_snapshot`; raw path uncertified.
+- Maturity: **real-ROM tested** (SM single-lane smoke). Next: **`rr-gbd.34`** branch-rollout batches.
+- No push.
+
+### 2026-08-09T21:58 CDT — L0 certified snapshots closed
+- **CLOSED** `rr-gbd.32` SnapshotAdapter/Envelope CERTIFIED_FULL_ENV; 100-step fake replay; identity fail-before-mutate; SM rom_smoke single-lane.
+- Next free capacity: `rr-gbd.34` branch-rollout batches over certified snapshots.
+
