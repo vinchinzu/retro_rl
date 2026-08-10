@@ -13,6 +13,24 @@ Protocol:
 
 ## Ticks
 
+
+### 2026-08-10 night — SM rr-av5s PARTIAL mid pocket-spin ~y1932
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Claim kept **rr-av5s** Pure Red→Hellway (K5 hop 12)
+- **Progress:**
+  - Lower past pocket ~(219,1942) holds (right-wall hard ceiling; pure-A gain 0)
+  - New mid primitive: **pocket spin** `B+LEFT+A` from ~(235,2091) → mid crouch
+    seat **~(174–183,1932–1942)** dual-stable (human-matched launch)
+  - Controllers: `_pocket_spin_mid` + mid climb prefers spin→IBJ over recatch thrash
+- **Still RED:** tunnel y≤1880 (~50px gap); morph from crouch lip falls through;
+  bottom IBJ 18/30 peaked y1799 once not dual-stable; Hellway not reached
+- Residual: `snes/super_metroid/docs/tasks/rr-av5s-residual.md`
+- Parent **rr-dbu.8** stays open; no STATUS / no export `post_ice_red_to_hellway_pure`
+- Units: `tests/test_kpdr_dev.py` 8 passed
+- Next: ledge-hop chain x≈185–203 (human y2255→1878) or stabilize IBJ through tunnel
+- No push
+
+
 ### 2026-08-10T~03:10 CDT — mega_man_2 rr-fpd6 CLOSED (LL spawn decode)
 - Lane: mega_man_2 only (`nes/mega_man_2/`)
 - Claimed **rr-fpd6** (no other MM2 in_progress)
