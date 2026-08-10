@@ -1377,3 +1377,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Commit `44ac361`: far-east pre-escape + east-of-pond densify; 14 overnights to D16.
 - Terminal budget not house-nav. Residual **rr-qc9r** CROP_WATER thrash D13–15 → spawned.
 
+
+### 2026-08-10T07:45 CDT — SM thin-seat dual y587 (rr-av5s PARTIAL)
+- Commits `9f62553`/`c8fe24b`: WJ no phase8; dual (91,587)p3; ice ladder scaffold.
+- Hellway RED. Re-spawned ice-ladder → Hellway dual manager.
+
