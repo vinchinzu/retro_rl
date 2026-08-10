@@ -1341,3 +1341,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Re-spawned with **new route hypothesis only** (no hop spam).
 - Do not tip rr-810 until Item-1.
 
+
+## 2026-08-10 mega_man_2 rr-809 PARTIAL — s7 high-path cam≥8
+- Dual-green HeatScreen7Mid → cam8 3/3 ~447f (ladder + scroll_down)
+- Low alcove sx152 is dead-end (solid sy≥96); high path cam6 climb → cross above wall
+- Pins: HeatLadder, HeatScreen8, HeatScreen7HighPast
+- Residual: Sniper/Yoku from HeatScreen8 → boss → Item-1
