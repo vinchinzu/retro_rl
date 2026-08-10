@@ -1227,3 +1227,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Re-spawned MM2 for **alternate Clean path past s4** (not more solid grids).
 - Pin: CLOUD_LAND_RED_PIN.md
 
+
+### 2026-08-10T05:40 CDT — MM2 park Air s4 residual (rr-54ui PARTIAL)
+- Landed `d423647`: no Clean Air-first past s4; cloud solid never arms; Item-1 needs Heat-first.
+- Child **rr-f3nr** ready: FCEUX stick pin OR Heat→Air Item-1 Clean segment.
+- Freeing Air-cloud thrash; spawn Heat→Air Item-1 exploration on rr-f3nr.
+
