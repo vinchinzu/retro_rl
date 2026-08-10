@@ -79,6 +79,26 @@ BAT_TO_RED_EXIT_SPIN = 30
 BAT_TO_RED_EXIT_HOLD = 280
 BAT_TO_RED_EXIT_SETTLE = 360
 
+# Red Tower 0xA253 bottom → Hellway 0xA2F7 top-right door (K5 hop 12).
+# Reverse of ``play_red_tower_to_bat`` descent bands (lower zigzag → tunnel →
+# temporary floor → upper zigzag → Bat right), climbed with Hi-Jump spin hops.
+# Pure pin bottom ~(216,2443) p10 after bat_to_red; Hellway door block [15,7]
+# ≈ top-right sill y≈139 x≳220.
+RED_BOTTOM_Y = 2440
+RED_LOWER_LIP_Y = 2090
+RED_TUNNEL_Y = 1880
+RED_FLOOR_Y = 1600
+RED_TOP_DOOR_Y = 180
+RED_TOP_DOOR_X = 220
+RED_ZIG_X_MIN = 45
+RED_ZIG_X_MAX = 220
+RED_CLIMB_FRAMES = 9000
+RED_TO_HELLWAY_EXIT_RUN = 24
+RED_TO_HELLWAY_EXIT_SHOOT = 4
+RED_TO_HELLWAY_EXIT_SPIN = 36
+RED_TO_HELLWAY_EXIT_HOLD = 320
+RED_TO_HELLWAY_EXIT_SETTLE = 360
+
 __all__ = [
     "BAT_TO_RED_EXIT_HOLD",
     "BAT_TO_RED_EXIT_RUN",
@@ -95,6 +115,20 @@ __all__ = [
     "BAT_TO_RED_RUNUP2",
     "BAT_TO_RED_RUNUP3",
     "BELOW_BAT_DOOR_X",
+    "RED_BOTTOM_Y",
+    "RED_CLIMB_FRAMES",
+    "RED_FLOOR_Y",
+    "RED_LOWER_LIP_Y",
+    "RED_TO_HELLWAY_EXIT_HOLD",
+    "RED_TO_HELLWAY_EXIT_RUN",
+    "RED_TO_HELLWAY_EXIT_SETTLE",
+    "RED_TO_HELLWAY_EXIT_SHOOT",
+    "RED_TO_HELLWAY_EXIT_SPIN",
+    "RED_TOP_DOOR_X",
+    "RED_TOP_DOOR_Y",
+    "RED_TUNNEL_Y",
+    "RED_ZIG_X_MAX",
+    "RED_ZIG_X_MIN",
     "BELOW_TO_BAT_FRAMES",
     "BELOW_TO_BAT_SETTLE",
     "EAST_GLASS_DOOR_X",
