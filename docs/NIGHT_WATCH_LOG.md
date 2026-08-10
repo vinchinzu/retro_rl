@@ -323,3 +323,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next tip: empty-can natural refill or power-on continuous spring (rr-5in).
 - No push.
 
+### 2026-08-09T23:05 CDT — zelda_i L4 expand CLOSED rr-xc3x
+- **CLOSED** `rr-xc3x`: first live room outside early post-compass component
+  `{0x71,0x61,0x51,0x50,0x62}` → **0x40** via 0x50 north (live BFS + long UP).
+- Live: 0x40 = 5× Zol `0x13` + RoomItemId `0x19` key; DOWN returns 0x50.
+- Pure segment `north_40` **2/2** from `Level4Compass` (~8254f); checkpoint
+  `Level4Room40` (+ provenance). Evidence: `recordings/l4_xc3x_*.json`.
+- Trap: 0x50 is **not** a dead-end; center+UP fails on interior blocks —
+  runner uses online BFS from clear_50 end pose (pose varies).
+- Parents **rr-o0nn** / **rr-5lu** stay open (`ADDR_LADDER` residual).
+- Follow-up open: **rr-q8eq** 0x40 clear+key + next room toward ladder.
+- Tests: `test_level4_dungeon.py` 8 passed. Commit only (no push).
+
