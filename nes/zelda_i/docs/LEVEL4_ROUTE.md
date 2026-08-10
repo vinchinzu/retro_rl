@@ -108,10 +108,12 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
   --BOMB_UP stand≈(120,105) face UP--> 0x51
 0x51: 8× Keese type **0x1b** (TYPE-only) + RoomItemId **0x19** key (keys 0→1 @~136,149)
   --LEFT @ y≈141--> 0x50
-0x50: 5× Vire **0x12**  **DEAD-END pocket** (RIGHT only back to 0x51)
+0x50: 5× Vire **0x12**  (RIGHT→0x51; scripted N→0x40)
 0x51 --DOWN @ x≈120--> 0x61
 0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
-0x62: 5× Vire + RoomItemId **0x16** Compass (dark maze)  **Stepladder residual**
+0x62: 5× Vire + RoomItemId **0x16** Compass (dark maze)
+0x50 --scripted N (MAZE_50_TO_NORTH hold6 + long UP)--> **0x40**
+0x40: 5× Zol type **0x13** + RoomItemId **0x19** key  **Stepladder residual**
 ```
 
 | Room | Live? | Enemies | Item / notes | Segment bead |
@@ -119,14 +121,15 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x71** | **live pure 2/2** | none | Empty mouth; free UP only | `rr-zchy` |
 | **0x61** | **live pure 2/2** | 3× `0x12` → split `0x1c` | Clear ~295f; bomb N → 0x51; KEY-RIGHT → 0x62 | `rr-yr77` / `rr-h278` |
 | **0x51** | **live pure 2/2** | 8× `0x1b` Keese | Key `0x19` pickup ~ (136,149) | `rr-wqdu` |
-| **0x50** | **live pure 2/2** | 5× `0x12` Vire | Dead-end pocket; no progress exit | `rr-2ysf` |
+| **0x50** | **live pure 2/2** | 5× `0x12` Vire | North via scripted path → 0x40 (not dead-end) | `rr-2ysf` / `rr-xc3x` |
 | **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
+| **0x40** | **live pure enter 3/3** | 5× `0x13` Zol | Key `0x19`; first outside early component | `rr-xc3x` |
 
-### Post-compass residual (rr-o0nn live recon 2026-08-10)
+### Post-compass expand (rr-o0nn / rr-xc3x live 2026-08-10)
 
 Start: **`Level4Compass`** (0x61, `ADDR_COMPASS|0x08`, keys=0, doors=1 RIGHT).
 
-**Live component is closed** — only rooms `{0x71, 0x61, 0x51, 0x50, 0x62}`:
+Early component was closed at `{0x71, 0x61, 0x51, 0x50, 0x62}` until **0x50 north** opened:
 
 | From | Exit | Dest | Notes |
 |------|------|------|-------|
@@ -137,12 +140,14 @@ Start: **`Level4Compass`** (0x61, `ADDR_COMPASS|0x08`, keys=0, doors=1 RIGHT).
 | 0x51 | DOWN | 0x61 | free |
 | 0x51 | **UP** | **sealed** | not a key door (keys poke does not consume) |
 | 0x51 | **RIGHT** | **sealed** | same |
-| 0x50 | RIGHT | 0x51 | only exit; denser bomb-N scan no open |
+| 0x50 | RIGHT | 0x51 | free |
+| 0x50 | **UP scripted** | **0x40** | `MAZE_50_TO_NORTH` hold6 + long UP; interior blocks block center+UP |
 | 0x62 | LEFT | 0x61 | only durable exit; bomb stands no open |
+| 0x40 | DOWN | 0x50 | free return |
 
-Also live-negative: Vire re-clear key farm (8 cycles) **no drops**; candle already 1 on fixtures (not the gate).
+Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 
-**ADDR_LADDER still 0.** Source walkthrough continues dark-chain N / KEY-RIGHT to Like-Like stairs — **no live room id yet** outside this component. Evidence: `recordings/l4_o0nn_*.json`.
+**ADDR_LADDER still 0.** Next live work: clear/pickup key on 0x40, continue north/east toward Stepladder (Like-Like stairs). Evidence: `recordings/l4_xc3x_breakthrough.json`.
 
 ### Runner
 
@@ -158,13 +163,15 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_62 --t
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment chain_to_62 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_62 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_40 --trials 2 --save-state
 ```
 
 **Traps (live):**
 
 - Source “entry LEFT Keese key” is **wrong** on this seed/path — entry is empty; first key is bomb-N of Vires.
-- **0x50 west of first key is a dead-end pocket** — not the Stepladder path.
-  Compass is KEY-RIGHT 0x61→0x62; post-compass component stays closed (rr-o0nn).
+- **0x50 is NOT a dead-end** — north exit to **0x40** needs scripted path
+  (`MAZE_50_TO_NORTH`); naive center+UP fails on interior blocks (rr-xc3x).
+  Compass remains KEY-RIGHT 0x61→0x62.
 - Vire split is type **`0x1c`**, not standard Keese `0x1b`; HP stays 0 (type-only) and lands in slots **10–12**.
 - Free doorways often show `cur_opened_doors=0` / `open_doorway_mask=0` — do not require door bits for UP 0x71→0x61 or LEFT 0x51→0x50.
 - Bomb stand on 0x61: **(120, ~105)** face UP + B; wait blast then push UP.
@@ -174,23 +181,23 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --tri
   (`MAZE_62_TO_COMPASS` hold6 → pickup ~(136,132) sets `ADDR_COMPASS|0x08`,
   then `MAZE_62_RETURN_WEST` hold4 → LEFT scroll to 0x61). Center y=141 is
   wall-blocked from the west door — must follow the return corridor.
-- Post-compass: only durable exit found is **LEFT→0x61**. No free/bomb east
-  exit from 0x62. Stepladder residual is **outside the closed early component**
-  (source: dark-chain N / Like-Like stairs) — 0x51 UP is **sealed**, not the
-  live next room.
+- Post-compass: 0x62 only durable exit is **LEFT→0x61**. Progress is **0x50 N→0x40**,
+  not 0x51 UP (sealed).
 - From `Level4Compass`: KEY-RIGHT door stays open (RIGHT re-enter 0x62, no key).
 
 Checkpoints (dev): `Level4Room61`, `Level4Room61Cleared`, `Level4FirstKey`,
-`Level4Room50Cleared`, `Level4Room62`, `Level4Room62Cleared`, `Level4Compass`.
+`Level4Room50Cleared`, `Level4Room62`, `Level4Room62Cleared`, `Level4Compass`,
+`Level4Room40`.
 
 ### Source speed route (planning only past compass — not emulator facts)
 
-Room IDs **beyond 0x62 maze** remain source-hypothesized until probed.
+Room IDs **beyond 0x40** remain source-hypothesized until probed.
 
 | Step | Action (source) | Notes |
 |------|-----------------|-------|
 | Past first key | KEY-RIGHT dark maze | **live** 0x62 Compass |
-| Dark chain N | water block | needs Stepladder |
+| Dark chain N | 0x50 N → 0x40 Zols+key | **live** rr-xc3x |
+| Dark chain N cont. | water block | needs Stepladder |
 | Like-Like + Zol | push left block → stairs | **Stepladder** |
 | Gleeok (2 heads) | fireballs | E → TF `0x08` |
 

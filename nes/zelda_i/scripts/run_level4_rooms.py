@@ -12,6 +12,7 @@ Segments (rr-5lu / rr-2ysf children)::
     chain_to_62  (rr-2ysf)  FirstKey → DOWN 0x61 clear → KEY-RIGHT 0x62
     clear_62     (rr-2ysf)  clear 5× Vire on 0x62 (compass pickup residual)
     compass_62   (rr-9so0)  dark maze → ADDR_COMPASS bit 0x08 → return 0x61
+    north_40     (rr-xc3x)  0x50 cleared → scripted N → 0x40 Zols+key
 
 Live graph only — no walkthrough room hardcodes beyond recon.
 
@@ -22,6 +23,7 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_62 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment chain_to_62 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_40 --trials 2 --save-state
 """
 
 # ruff: noqa: E402
@@ -52,6 +54,7 @@ from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level4_dungeon import (
     BOMB_61_NORTH_STAND,
     LEVEL4_COMPASS_BIT,
+    ROOM_40_SPEC,
     ROOM_50_SPEC,
     ROOM_51_SPEC,
     ROOM_61_SPEC,
@@ -60,7 +63,9 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_KEESE_KEY_51,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
+    ROOM_L4_ZOLS_40,
     level4_compass_route_success,
+    level4_room_40_ready,
     level4_room_50_cleared,
     level4_room_51_key_success,
     level4_room_51_ready,
@@ -72,6 +77,7 @@ from zelda_i.level4_dungeon import (
     make_entry_up_controller,
     make_key_right_62_controller,
     make_left_50_controller,
+    make_north_40_controller,
     make_room_50_clear_controller,
     make_room_51_key_controller,
     make_room_61_clear_controller,
@@ -93,6 +99,7 @@ SEGMENTS = (
     "chain_to_62",
     "clear_62",
     "compass_62",
+    "north_40",
 )
 
 _BEAD = {
@@ -106,6 +113,7 @@ _BEAD = {
     "chain_to_62": "rr-2ysf",
     "clear_62": "rr-2ysf",
     "compass_62": "rr-9so0",
+    "north_40": "rr-xc3x",
 }
 
 _DEFAULT_STATE = {
@@ -119,6 +127,7 @@ _DEFAULT_STATE = {
     "chain_to_62": "Level4FirstKey",
     "clear_62": "Level4Room62",
     "compass_62": "Level4Room62Cleared",
+    "north_40": "Level4Compass",
 }
 
 _CHECKPOINT = {
@@ -132,6 +141,7 @@ _CHECKPOINT = {
     "chain_to_62": "Level4Room62",
     "clear_62": "Level4Room62Cleared",
     "compass_62": "Level4Compass",
+    "north_40": "Level4Room40",
 }
 
 
@@ -182,6 +192,158 @@ def _run_until(
 
 def _done_success(controller) -> bool:
     return bool(getattr(controller, "success", False))
+
+
+def _bfs_50_to_north(env, *, assist, frame0: int, hold: int = 6, long_up: int = 220):
+    """Live BFS on 0x50 to a north-band cell that admits long-UP into 0x40."""
+    from collections import deque
+
+    from zelda_i.level4_dungeon import MAZE_50_HOLD, MAZE_50_LONG_UP, ROOM_L4_ZOLS_40
+
+    hold = MAZE_50_HOLD
+    long_up = MAZE_50_LONG_UP
+    em = env.unwrapped.em
+    dirs = ("UP", "DOWN", "LEFT", "RIGHT")
+
+    def cell(x: int, y: int, q: int = 8) -> tuple[int, int]:
+        return (x // q * q, y // q * q)
+
+    def snap_ok_40(s) -> bool:
+        return (
+            s.level == 4
+            and s.screen == ROOM_L4_ZOLS_40
+            and s.mode == PLAY_MODE
+            and not s.transitioning
+        )
+
+    start = read_snapshot(env.get_ram())
+    if start.screen != ROOM_L4_VIRES_50:
+        return None, {"error": f"not_on_50_0x{start.screen:02x}", "success": False}
+
+    start_c = cell(start.link_x, start.link_y)
+    cell_state = {start_c: em.get_state()}
+    parent: dict[tuple[int, int], tuple[tuple[int, int], str] | None] = {start_c: None}
+    q: deque[tuple[int, int]] = deque([start_c])
+    seen = {start_c}
+    best_path = None
+    expansions = 0
+
+    while q and expansions < 4000 and best_path is None:
+        cur = q.popleft()
+        for d in dirs:
+            expansions += 1
+            em.set_state(cell_state[cur])
+            for _ in range(hold):
+                env.step(nes_action(d))
+                if assist is not None:
+                    assist.apply_env(env, frame=frame0)
+            s = read_snapshot(env.get_ram())
+            if s.mode != PLAY_MODE or s.transitioning:
+                for _ in range(40):
+                    env.step(nes_idle_action())
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame0)
+                s = read_snapshot(env.get_ram())
+            if s.level != 4 or s.screen != ROOM_L4_VIRES_50 or s.mode != PLAY_MODE:
+                continue
+            nc = cell(s.link_x, s.link_y)
+            if nc in seen:
+                continue
+            seen.add(nc)
+            cell_state[nc] = em.get_state()
+            parent[nc] = (cur, d)
+            q.append(nc)
+            if nc[1] <= 80 and 96 <= nc[0] <= 144:
+                em.set_state(cell_state[nc])
+                for _ in range(long_up):
+                    env.step(nes_action("UP"))
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame0)
+                    s2 = read_snapshot(env.get_ram())
+                    if s2.mode != PLAY_MODE or s2.transitioning:
+                        for _ in range(40):
+                            env.step(nes_idle_action())
+                            if assist is not None:
+                                assist.apply_env(env, frame=frame0)
+                        s2 = read_snapshot(env.get_ram())
+                    if snap_ok_40(s2):
+                        path: list[str] = []
+                        p: tuple[int, int] | None = nc
+                        while p is not None and parent[p] is not None:
+                            prev, pd = parent[p]
+                            path.append(pd)
+                            p = prev
+                        path.reverse()
+                        best_path = path
+                        break
+                if best_path is not None:
+                    break
+
+    # Restore start pose for follower.
+    em.set_state(cell_state[start_c])
+    for _ in range(5):
+        env.step(nes_idle_action())
+        if assist is not None:
+            assist.apply_env(env, frame=frame0)
+
+    meta = {
+        "success": best_path is not None,
+        "expansions": expansions,
+        "n_cells": len(seen),
+        "start": [start.link_x, start.link_y],
+        "path_len": len(best_path) if best_path else 0,
+        "hold": hold,
+        "long_up": long_up,
+        "segment": "level4_north_0x40_bfs",
+    }
+    return best_path, meta
+
+
+def _follow_50_north_path(env, path: list[str], *, assist, frame0: int):
+    """Execute BFS path tokens then long UP into 0x40."""
+    from zelda_i.level4_dungeon import MAZE_50_HOLD, MAZE_50_LONG_UP, ROOM_L4_ZOLS_40
+
+    frame = frame0
+    obs = None
+    for d in path:
+        for _ in range(MAZE_50_HOLD):
+            obs, *_ = env.step(nes_action(d))
+            frame += 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
+            s = read_snapshot(env.get_ram())
+            if s.mode != PLAY_MODE or s.transitioning:
+                for _ in range(40):
+                    obs, *_ = env.step(nes_idle_action())
+                    frame += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame)
+    for _ in range(MAZE_50_LONG_UP + 80):
+        obs, *_ = env.step(nes_action("UP"))
+        frame += 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame)
+        s = read_snapshot(env.get_ram())
+        if s.mode != PLAY_MODE or s.transitioning:
+            for _ in range(50):
+                obs, *_ = env.step(nes_idle_action())
+                frame += 1
+                if assist is not None:
+                    assist.apply_env(env, frame=frame)
+            s = read_snapshot(env.get_ram())
+        if (
+            s.level == 4
+            and s.screen == ROOM_L4_ZOLS_40
+            and s.mode == PLAY_MODE
+            and not s.transitioning
+        ):
+            for _ in range(20):
+                obs, *_ = env.step(nes_idle_action())
+                frame += 1
+                if assist is not None:
+                    assist.apply_env(env, frame=frame)
+            return obs, frame, True
+    return obs, frame, False
 
 
 def run_once(
@@ -595,6 +757,110 @@ def run_once(
                     frame0=frame,
                 )
             ok = error is None and level4_compass_route_success(env.get_ram()) and ctl.success
+
+        elif segment == "north_40":
+            # Level4Compass → clear 61 → bomb/free UP 51 → LEFT 50 clear → N → 0x40
+            snap = read_snapshot(env.get_ram())
+            if snap.screen == ROOM_L4_VIRES_61 or snap.screen == ROOM_L4_ENTRY:
+                if snap.screen == ROOM_L4_ENTRY:
+                    up = make_entry_up_controller()
+                    controllers["entry_up"] = up
+                    obs, frame = _run_until(
+                        env,
+                        up,
+                        assist=assist,
+                        max_frames=up.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not up.success:
+                        error = "entry_up_failed"
+                if error is None:
+                    clr = make_room_61_clear_controller()
+                    if read_snapshot(env.get_ram()).screen == ROOM_L4_VIRES_61:
+                        clr.phase = DungeonPhase.FIGHT
+                    controllers["clear_61"] = clr
+                    obs, frame = _run_until(
+                        env,
+                        clr,
+                        assist=assist,
+                        max_frames=ROOM_61_SPEC.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not level4_room_61_cleared(env.get_ram()):
+                        error = "clear_61_failed"
+                if error is None:
+                    bomb = make_bomb_61_north_controller(clear_vires=False)
+                    controllers["bomb_61"] = bomb
+                    obs, frame = _run_until(
+                        env,
+                        bomb,
+                        assist=assist,
+                        max_frames=bomb.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not bomb.success:
+                        error = "bomb_61_failed"
+            snap = read_snapshot(env.get_ram())
+            if error is None and snap.screen == ROOM_L4_KEESE_KEY_51:
+                left = make_left_50_controller()
+                controllers["left_50"] = left
+                obs, frame = _run_until(
+                    env,
+                    left,
+                    assist=assist,
+                    max_frames=left.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+                if not left.success:
+                    error = "left_50_failed"
+            snap = read_snapshot(env.get_ram())
+            if error is None and snap.screen == ROOM_L4_VIRES_50:
+                if not level4_room_50_cleared(env.get_ram()):
+                    c50 = make_room_50_clear_controller()
+                    c50.phase = DungeonPhase.FIGHT
+                    controllers["clear_50"] = c50
+                    obs, frame = _run_until(
+                        env,
+                        c50,
+                        assist=assist,
+                        max_frames=ROOM_50_SPEC.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not c50.success:
+                        error = "clear_50_failed"
+            if error is None and read_snapshot(env.get_ram()).screen == ROOM_L4_VIRES_50:
+                # Online BFS from live pose (clear_50 end varies) then long UP.
+                path, bfs_meta = _bfs_50_to_north(env, assist=assist, frame0=frame)
+                controllers["north_40_bfs"] = bfs_meta
+                if path is None:
+                    error = "bfs_50_north_failed"
+                    ok = False
+                else:
+                    obs, frame, n40_ok = _follow_50_north_path(
+                        env, path, assist=assist, frame0=frame
+                    )
+                    controllers["north_40"] = {
+                        "success": n40_ok,
+                        "path": path,
+                        "frames": frame,
+                        "segment": "level4_north_0x40",
+                    }
+                    ok = n40_ok and level4_room_40_ready(env.get_ram())
+            elif error is None and read_snapshot(env.get_ram()).screen == ROOM_L4_ZOLS_40:
+                ok = True
+            elif error is None:
+                error = (
+                    f"unsupported_start_0x"
+                    f"{read_snapshot(env.get_ram()).screen:02x}"
+                )
+                ok = False
+            else:
+                ok = False
         else:
             error = f"unknown_segment_{segment}"
 
@@ -624,7 +890,11 @@ def run_once(
                         "frames": frame,
                         "final": final,
                         "controllers": {
-                            k: (v.report() if hasattr(v, "report") else {})
+                            k: (
+                                v.report()
+                                if hasattr(v, "report")
+                                else (v if isinstance(v, dict) else {})
+                            )
                             for k, v in controllers.items()
                         },
                     },
@@ -635,6 +905,13 @@ def run_once(
         screenshot = RECORDINGS_DIR / f"{tag}_{segment}.png"
         if obs is not None:
             save_rgb_png(obs, screenshot)
+
+        def _ctrl_rep(v: Any) -> dict[str, Any]:
+            if hasattr(v, "report"):
+                return v.report()
+            if isinstance(v, dict):
+                return v
+            return {}
 
         return {
             "ok": ok,
@@ -648,10 +925,7 @@ def run_once(
             "entry": entry_fields,
             "final": final,
             "frames": frame,
-            "controllers": {
-                k: (v.report() if hasattr(v, "report") else {})
-                for k, v in controllers.items()
-            },
+            "controllers": {k: _ctrl_rep(v) for k, v in controllers.items()},
             "assist": assist.report() if assist else None,
             "checkpoint": checkpoint,
             "provenance": provenance,

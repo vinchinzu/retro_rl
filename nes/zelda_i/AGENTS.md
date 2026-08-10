@@ -47,6 +47,7 @@ uv run python zelda_i/scripts/run_level4_rooms.py --segment clear_50 --trials 2 
 uv run python zelda_i/scripts/run_level4_rooms.py --segment key_right_62 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment clear_62 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 2 --save-state
+uv run python zelda_i/scripts/run_level4_rooms.py --segment north_40 --trials 2 --save-state
 ```
 
 ## Layout (pointers)
@@ -97,7 +98,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip leaf: rr-o0nn post-Compass→ladder; parallel: rr-38p
+bd ready -l zelda_i   # tip leaf: rr-o0nn post-0x40→ladder; parallel: rr-38p
 ```
 
 | Order | Bead | Work |
@@ -108,7 +109,8 @@ bd ready -l zelda_i   # tip leaf: rr-o0nn post-Compass→ladder; parallel: rr-38
 | ✓ | **rr-vpl** / **rr-wmv** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
 | ✓ | **rr-k0w** | L4 planning scaffold (`level4_overworld`, plan-only probe) |
 | ✓ | **`rr-0fx`** | L4 live entry: dock **0x55** → island **0x45** → room **0x71** **2/2 assist** |
-| **1 TIP** | **`rr-o0nn`** / **`rr-5lu`** | L4 post-Compass: component closed; ADDR_LADDER residual |
+| ✓ | **`rr-xc3x`** | First room outside early component: **0x50 N → 0x40** Zols+key |
+| **1 TIP** | **`rr-o0nn`** / **`rr-5lu`** | L4 post-0x40 → Stepladder (`ADDR_LADDER`) residual |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -143,21 +145,16 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 `run_level4_entry.py --infinite-life --trials 2 --save-state`. Checkpoints
 **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**. **Not Clean STATUS.**
 
-**L4 interior first rooms (pure LIVE 2/2, rr-5lu children 2026-08-10):** from
-`Level4Entrance` room **0x71** (empty) UP → **0x61** 3× Vire `0x12` (split
-`0x1c` slots 10–12) → **BOMB_UP** @(120,105) → **0x51** 8× Keese `0x1b` +
-key `0x19` (pickup ~136,149) → LEFT @y141 → **0x50** 5× Vire **dead-end**
-pocket; progress is **KEY-RIGHT** @y141 from 0x61 → **0x62** 5× Vire +
-Compass `0x16` dark maze pure (~471f) + return. Module: `level4_dungeon.py`.
-Runner: `run_level4_rooms.py`. Evidence includes
-`l4_compass62_pure_compass_62.json`. Closed: `rr-zchy` / `rr-yr77` /
-`rr-h278` / `rr-wqdu` / `rr-2ysf` / **`rr-9so0`**. Post-compass component
-closed (rr-o0nn recon). **Not Clean STATUS.**
+**L4 interior (pure LIVE, rr-5lu children 2026-08-10):** from `Level4Entrance`
+**0x71** UP → **0x61** Vires → **BOMB_UP** → **0x51** Keese+key → LEFT **0x50**
+Vires → scripted N **0x40** Zols+key (rr-xc3x); KEY-RIGHT **0x62** Compass maze
++ return. Module: `level4_dungeon.py`. Runner: `run_level4_rooms.py`
+(`--segment north_40`). Evidence: `l4_xc3x_breakthrough.json`. Closed:
+`rr-zchy`…`rr-9so0` / **`rr-xc3x`**. **Not Clean STATUS.**
 
-**Next tip:** **`rr-o0nn`** post-Compass → `ADDR_LADDER` (parent **`rr-5lu`**).
-Live: closed component `{0x71,0x61,0x51,0x50,0x62}`; 0x51 UP/RIGHT sealed;
-need room id **outside** that set. Epic `rr-q3n`; parallel OW `rr-38p`. Clean
-residual deferred.
+**Next tip:** **`rr-o0nn`** post-0x40 → `ADDR_LADDER` (parent **`rr-5lu`**).
+Live first outside room **0x40**; clear/key + continue N/E toward Stepladder.
+Epic `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
