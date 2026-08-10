@@ -203,14 +203,19 @@ Test crop fixtures (for growth / ship work):
     south_far lip (y≈32 east corridor) → F0 fill `can=20`, watered=2/2 D5;
     D6–D7 water holds. Dry fixture still `can_peak=20` watered=3.
     Evidence: `recordings/power_on_spring_to_summer.log` REFILL OK +
-    `recordings/rr_o00y_fill_green.json`. Parent **rr-5in** still PARTIAL:
-    run dies D7 `return_home failed: could not clear hands before house entry`
-    (money $100, Summer not reached; Clean mid_run_loads=0).
-  - **2026-08-10 night (rr-5in PARTIAL):** sparse plant water detect GREEN
-    (`min_count=1` / singleton dry centers; unit-locked). Live continuous still
-    **empty-can fill RED** after densify thrash→corridor charge (no fill;
-    watered=0; money=$100). Child **rr-o00y**. Residual:
-    `recordings/rr_5in_residual.json` + `power_on_spring_to_summer.log`.
+    `recordings/rr_o00y_fill_green.json`.
+  - **2026-08-10 night (rr-6g7g CLOSED):** return_home hands-clear after power-on
+    water days. Root: CLEAR_FIELD left held stone/weed (`0x0D`/`0x09`); in-place
+    field toss re-picked or failed. Fix: always nav to open drop south of house,
+    multi-face stationary A-drop (fence_flow proven); door push prefers walk over
+    blind B-hold. Evidence: `recordings/power_on_spring_to_summer.json` —
+    **7 overnights**, no `could not clear hands`, crops wet=2/alive, Clean
+    mid_run_loads=0. Parent **rr-5in** residual: dies D9
+    `nav_house_front failed: multi_nav timeout` (money $100, Summer not reached).
+  - **2026-08-10 night (rr-5in PARTIAL):** sparse plant water + empty-can fill
+    GREEN (rr-o00y); hands-clear GREEN (rr-6g7g). Still short of Summer D1
+    money>100. Residual: house approach multi_nav after water days + first
+    potato ship window.
 6. ~~End-of-spring / continuous soak with **money > 100** + harvest phases (rr-y8n / Gate A)~~ — **CLOSED 2026-08-09 night** Clean multi-day successor:
    ```bash
    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
