@@ -1,11 +1,11 @@
 ## Residual — rr-dbu.8 K5 Alpha PB pure stack
 
 ### Result
-PARTIAL — nine pure one-hop dual GREENs on Ice return + Business→Warehouse +
-Warehouse→East + East→Glass + Glass→West + West→Below (Ice→Snake, Snake→Tutorial,
-Tutorial→Gate, Gate→Business, Business→Warehouse, Warehouse→East, East→Glass,
-Glass→West, West→Below). Full K5 stack to Alpha PB PLM still open. Not continuous. No
-STATUS change.
+PARTIAL — ten pure one-hop dual GREENs on Ice return + Business→Warehouse +
+Warehouse→East + East→Glass + Glass→West + West→Below + Below→Bat (Ice→Snake,
+Snake→Tutorial, Tutorial→Gate, Gate→Business, Business→Warehouse, Warehouse→East,
+East→Glass, Glass→West, West→Below, Below→Bat). Full K5 stack to Alpha PB PLM
+still open. Not continuous. No STATUS change.
 
 ### One-hop map (tape Phase B return + Phase C)
 | Order | Hop | Rooms | Pure dual | Controller / note |
@@ -19,8 +19,8 @@ STATUS change.
 | 6 | East → Glass | `0xCF80` → `0xCEFB` | **253f** ×2 ✅ | `play_east_to_glass` (reverse glass_to_east) |
 | 7 | Glass → West | `0xCEFB` → `0xCF54` | **211f** ×2 ✅ | `play_glass_to_west` (reverse west_to_glass) |
 | 8 | West → Below | `0xCF54` → `0xA408` | **272f** ×2 ✅ | `play_west_to_below` (reverse below floor→west) |
-| 9–10 | tunnels reverse | Below→Bat | ⬜ | reverse of red_stack |
-| 11 | Bat → Red Tower | `0xA3DD` → `0xA253` | ⬜ | climb |
+| 9 | Below → Bat | `0xA408` → `0xA3DD` | **485f** ×2 ✅ | `play_below_to_bat` (reverse bat_to_below_spazer) |
+| 11 | Bat → Red Tower | `0xA3DD` → `0xA253` | ⬜ | reverse of red_tower_to_bat |
 | 12 | Red → Hellway | `0xA253` → `0xA2F7` | ⬜ | long Red Tower (~7k human) |
 | 13 | Hellway → Caterpillar | `0xA2F7` → `0xA322` | ⬜ | |
 | 14 | Caterpillar → Alpha PB PLM | `0xA322` → `0xA3AE` | ⬜ | first PB capacity |
@@ -28,16 +28,16 @@ STATUS change.
 Tape: `tasks/speed_to_wave_ice_moat_human.json` (rr-dbu.12). Packages:
 `routes/kpdr/ice/` (return) + `routes/kpdr/k5/` (outbound reverse).
 
-### Files changed (this hop: rr-abx5)
-- `routes/kpdr/k5/west_to_below.py` — LEFT run_shoot reverse of below floor→west
+### Files changed (this hop: rr-rp00)
+- `routes/kpdr/k5/below_to_bat.py` — LEFT floor reverse of bat_to_below_spazer door
 - source_states / SOURCE_STATES / k5 hop map / residual
 
 ### Verify paste
 ```bash
-uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-to-below \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_glass_to_west_pure.state \
-  --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_west_to_below_pure.state
-# → GREEN room=0xA408 xy=(472,393) frames=272 (×2 exact dual)
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure below-to-bat \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_west_to_below_pure.state \
+  --output snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_below_to_bat_pure.state
+# → GREEN room=0xA3DD xy=(472,139) frames=485 (×2 exact dual)
 ```
 
 ### Acceptance
@@ -50,6 +50,7 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-to-below \
 - [x] Seventh hop dual green (East→Glass return)
 - [x] Eighth hop dual green (Glass→West return)
 - [x] Ninth hop dual green (West→Below return)
+- [x] Tenth hop dual green (Below→Bat return)
 - [x] Package layout: return in `ice/`; K5 map under `k5/`
 - [ ] Full pure stack through Alpha PB PLM
 - [ ] Continuous tip / STATUS (planner only after dual continuous)
@@ -58,13 +59,13 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-to-below \
 1. Snake climb multi-attempt (L3 pin-sensitive) — OK dual but not single-pass.
 2. Business→Warehouse **10255f** — multi-attempt after Super fall; optimizable.
 3. Red Tower human stretch ~7k frames — prefer clean climb, not thrash RLE.
-4. Below pin right-floor ~(472,393) p82 — next reverse hop LEFT to Bat.
+4. Bat pin right high sill ~(472,139) p12 — next reverse hop LEFT to Red Tower.
 5. Tunnel reverses may reuse geometry of outbound red_stack but need natural-entry pure pins.
 
 ### Next action (required)
-- **Next card:** Pure Below Spazer → Bat Room return (K5 hop 9)
-- **One change:** pure Below `0xA408` → Bat `0xA3DD` reverse of bat_to_below_spazer
-- **Source state:** `scratch/post_ice_west_to_below_pure.state`
+- **Next card:** **rr-0ue1** Pure Bat Room → Red Tower return (K5 hop 11)
+- **One change:** pure Bat `0xA3DD` → Red `0xA253` reverse of red_tower_to_bat
+- **Source state:** `scratch/post_ice_below_to_bat_pure.state`
 
 ### Non-claims
 - Did not STATUS-promote continuous past Ice
@@ -81,3 +82,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-to-below \
 - Dual GREEN hop6: room=0xCEFB pose=12 x=216 y=395 frames=253 ×2
 - Dual GREEN hop7: room=0xCF54 pose=10 x=216 y=139 frames=211 ×2
 - Dual GREEN hop8: room=0xA408 pose=82 x=472 y=393 frames=272 ×2
+- Dual GREEN hop9: room=0xA3DD pose=12 x=472 y=139 frames=485 ×2
