@@ -1253,3 +1253,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Chain: rr-808 mid/late → rr-809 boss+Item-1 → rr-810 Air+Item-1 cam≥5.
 - Spawned Heat mid/late manager on **rr-808**.
 
+
+### 2026-08-10T05:55 CDT — zelda rr-zavx PARTIAL ★
+- **CLOSED** `rr-zavx` PARTIAL: Clean dual Entrance→skip-compass NaturalKey 2/2 ~45.8kf (`459a61b`).
+- Residual **rr-gjey**: Gleeok Clean needs hp≥~108; pure spine ends ~103 after map peel.
+- Spawned zelda manager on rr-gjey (heart-safe / lower-HP Gleeok).
+
