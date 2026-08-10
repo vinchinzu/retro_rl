@@ -3030,15 +3030,21 @@ class BuildDayPhasesTests(unittest.TestCase):
 
 class SleepAndPlannerTests(unittest.TestCase):
     def test_go_to_sleep_succeeds_once_date_advances(self) -> None:
-        task = GoToSleepTask()
+        task = GoToSleepTask(morning_ready_frames=3)
         start = make_date_world(0x15, season=0, day=12)
         task.reset(start)
 
         advanced = make_date_world(0x15, season=0, day=13)
-        result = task.step(advanced)
+        # Morning settle: wait for house-ready frames after day roll (Gate B).
+        result = None
+        for _ in range(5):
+            result = task.step(advanced)
+            if result.status != TaskStatus.RUNNING:
+                break
 
+        self.assertIsNotNone(result)
         self.assertEqual(result.status, TaskStatus.SUCCESS)
-        self.assertEqual(result.reason, "day advanced")
+        self.assertIn("day advanced", result.reason or "")
 
     def test_go_to_sleep_starts_return_home_when_outside_house(self) -> None:
         task = GoToSleepTask()

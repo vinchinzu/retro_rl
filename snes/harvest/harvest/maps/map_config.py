@@ -984,9 +984,18 @@ ROUTES: Dict[str, List[Waypoint]] = {
     # Align with town_day1_rest truck slice start (f≈9200 @ ~(688,357)).
     # Slice then walks to stand (715,421), leave dialog, east path 0x0C → house.
     "d1_town_to_truck": [
+        # Rest-slice lineup: recording f9200 walks the last yards to the shipper.
         Waypoint(tilemap=0x04, target_px=(600, 280), radius=16),
         Waypoint(tilemap=0x04, target_px=(688, 280), radius=14),
         Waypoint(tilemap=0x04, target_px=(688, 360), radius=10),
+    ],
+    # Pure _TruckLeaveTask stand (town_day1_rest engage ~(715,421)).
+    "d1_town_to_truck_stand": [
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(688, 360), radius=12),
+        Waypoint(tilemap=0x04, target_px=(700, 400), radius=12),
+        Waypoint(tilemap=0x04, target_px=(715, 421), radius=10),
     ],
     # Real opening gate is ~(712,424); east path exit still near x≈756.
     # Note: truck leave dialogue often cutscenes straight into the farmhouse
