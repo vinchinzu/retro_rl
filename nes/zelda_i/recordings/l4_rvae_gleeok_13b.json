@@ -1,0 +1,150 @@
+{
+  "bead": "rr-rvae",
+  "bfs": {
+    "0x02": {
+      "dir": "UP"
+    },
+    "0x11": {
+      "dir": "LEFT"
+    }
+  },
+  "error": "no_0x13",
+  "log": [
+    {
+      "doors": 2,
+      "try": "0x12",
+      "wait": 0
+    },
+    {
+      "doors": 2,
+      "try": "0x12",
+      "wait": 60
+    },
+    {
+      "doors": 2,
+      "try": "0x12",
+      "wait": 120
+    },
+    {
+      "doors": 2,
+      "try": "0x12",
+      "wait": 180
+    },
+    {
+      "doors": 2,
+      "try": "0x12",
+      "wait": 300
+    },
+    {
+      "doors": 2,
+      "try": "0x12",
+      "wait": 450
+    },
+    {
+      "doors": 2,
+      "try": "0x12",
+      "wait": 600
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        192,
+        141
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        200,
+        141
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        208,
+        141
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        192,
+        125
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        192,
+        157
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        184,
+        141
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        176,
+        141
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        192,
+        109
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        192,
+        173
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        200,
+        125
+      ]
+    },
+    {
+      "msg": "consumed=True",
+      "ok": false,
+      "sc": "0x12",
+      "stand": [
+        200,
+        157
+      ]
+    }
+  ],
+  "ok": false,
+  "tag": "l4_rvae_gleeok_13b"
+}

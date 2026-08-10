@@ -31,9 +31,17 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     Backtrack **0x31→0x30**; with ladder + **key**, KEY-UP **0x30→0x20** (5× Vire);
     clear 0x20 → free/push RIGHT **0x21** (5× Gel + RoomItemId ``0x17`` map).
     Gel thrash expands maze walkability; hold6 BFS → ``ADDR_MAP & 0x08`` @~(208,181).
-    Gleeok / TF ``0x08`` still residual.
 
-Not Clean STATUS. Gleeok / TF ``0x08`` still residual.
+**Gleeok approach (rr-rvae live recon 2026-08-10 from Level4Map):** maze BFS LEFT
+    **0x21→0x20**; free UP **0x20→0x10** Manhandla ``0x3c``; free UP **0x10→0x00**
+    bubbles ``0x40`` (dead-end). Map **BOMB_UP** stand≈(120,105) → **0x11**
+    (type ``0x35`` cluster). From cleared 0x11: UP **0x01** Keese+key ``0x19``
+    (natural key residual); RIGHT **0x12** 5× Vire + block ``0x68``; LEFT **0x10**.
+    From 0x12: UP **0x02** blade traps ``0x49`` (dead-end); **RIGHT→0x13** Gleeok
+    type ``0x43`` + HeartContainer ``0x1A`` (live enter once; stabilize residual).
+    TF ``0x08`` still open.
+
+Not Clean STATUS. Gleeok enter stabilize + TF ``0x08`` residual.
 """
 
 from __future__ import annotations
@@ -74,6 +82,14 @@ ROOM_L4_STEPLADDER = 0x60  # mode-9 basement under 0x32; RoomItemId 0x0d → ADD
 # Post-ladder map branch (rr-rvae live 2026-08-10): KEY-UP 0x30 → 0x20 → RIGHT → 0x21 map.
 ROOM_L4_WATER_NORTH_20 = 0x20  # KEY-UP of 0x30 with ladder; 5× Vire 0x12
 ROOM_L4_MAP_21 = 0x21  # free RIGHT of cleared 0x20; 5× Gel 0x15 + map 0x17
+# Gleeok approach from map (rr-rvae live recon 2026-08-10)
+ROOM_L4_MANHANDLA_10 = 0x10  # free UP of 0x20; Manhandla 0x3c (optional side)
+ROOM_L4_BUBBLES_00 = 0x00  # free UP of 0x10; bubbles 0x40 dead-end
+ROOM_L4_MID_11 = 0x11  # BOMB_UP of map 0x21; type 0x35 cluster
+ROOM_L4_KEY_01 = 0x01  # free UP of 0x11; 8× Keese + key 0x19 (natural key)
+ROOM_L4_VIRES_12 = 0x12  # free/bomb RIGHT of 0x11; 5× Vire + block 0x68
+ROOM_L4_TRAPS_02 = 0x02  # free UP of 0x12; blade traps 0x49 dead-end
+ROOM_L4_GLEEOK_13 = 0x13  # east of 0x12; Gleeok type 0x43 + HC 0x1a (enter residual)
 
 VIRE_OBJECT_TYPE = 0x12  # live on 0x61/0x50/0x62; HP 64; sword splits → 0x1c
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # live split residual from Vire (not standard 0x1B)
@@ -81,13 +97,21 @@ ZOL_OBJECT_TYPE = 0x13  # live on 0x40/0x32; HP 32; wooden sword splits → gel 
 GEL_SPLIT_OBJECT_TYPE = 0x14  # Zol split residual (HP stays 0 while alive)
 GEL_OBJECT_TYPE = 0x15  # live on map room 0x21 (rr-rvae); TYPE-only HP=0
 LIKE_LIKE_OBJECT_TYPE = 0x17  # live on 0x32; HP 144; avoid contact (shield loss)
+MID_11_OBJECT_TYPE = 0x35  # live on 0x11 (rr-rvae); multi-slot cluster
+GLEEOK_OBJECT_TYPE = 0x43  # live on 0x13 boss (rr-rvae screenshot + sample)
+BLADE_TRAP_OBJECT_TYPE = 0x49  # live on 0x02 (rr-rvae)
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16  # live room item on 0x62
 ROOM_ITEM_STEPLADDER = 0x0D  # live on 0x60 stairs basement (rr-tib8)
 ROOM_ITEM_MAP = 0x17  # live room item on 0x21 (rr-rvae); ADDR_MAP bit 0x08
+ROOM_ITEM_HEART_CONTAINER = 0x1A  # live on 0x13 with Gleeok
 ROOM_ITEM_NONE = 0x03
 LEVEL4_COMPASS_BIT = 0x08  # ADDR_COMPASS bit for dungeon level 4
 LEVEL4_MAP_BIT = 0x08  # ADDR_MAP bit for dungeon level 4
+# Map bomb-north wall 0x21 → 0x11 (live stand ≈ y105, face UP).
+BOMB_21_NORTH_STAND = (120, 105)
+BOMB_21_NORTH_FACE = "UP"
+BOMB_21_OPENS_TO = ROOM_L4_MID_11
 
 # Bomb-north wall 0x61 → 0x51 (live stand ≈ y105, face UP).
 BOMB_61_NORTH_STAND = (120, 105)
@@ -2569,7 +2593,7 @@ def planning_interior_report() -> dict:
         "bead": "rr-5lu",
         "tip": "rr-rvae",
         "track": "assisted_map_first_pass",
-        "status": "post_ladder_map_live_gleeok_tf_residual",
+        "status": "gleeok_approach_live_enter_stabilize_tf_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -2692,13 +2716,73 @@ def planning_interior_report() -> dict:
                 "enemies": {"0x15": 5},
                 "room_item": hex(ROOM_ITEM_MAP),
                 "LEFT": hex(ROOM_L4_WATER_NORTH_20),
+                "BOMB_UP": hex(ROOM_L4_MID_11),
                 "map_bit": hex(LEVEL4_MAP_BIT),
                 "pickup_xy": list(MAP_21_PICKUP_XY),
+                "bomb_up_stand": list(BOMB_21_NORTH_STAND),
                 "note": (
                     "rr-rvae assisted dual 2/2: gel thrash expands maze then hold6 BFS "
                     "MAP_21_SAMPLE_PATH → ADDR_MAP|0x08 @~(208,181); south KEY-UP pocket "
-                    "from 0x31 is wall-isolated (x≤176)"
+                    "from 0x31 is wall-isolated (x≤176); BOMB_UP@(120,105) → 0x11"
                 ),
+            },
+            hex(ROOM_L4_MID_11): {
+                "enemies": {"0x35": "multi"},
+                "DOWN": hex(ROOM_L4_MAP_21),
+                "UP": hex(ROOM_L4_KEY_01),
+                "RIGHT": hex(ROOM_L4_VIRES_12),
+                "LEFT": hex(ROOM_L4_MANHANDLA_10),
+                "note": (
+                    "rr-rvae: type 0x35 cluster; clear then free/bomb exits to "
+                    "0x01 key / 0x12 Vires / 0x10 Manhandla"
+                ),
+            },
+            hex(ROOM_L4_KEY_01): {
+                "enemies": {"0x1b": 8},
+                "room_item": hex(ROOM_ITEM_SMALL_KEY),
+                "DOWN": hex(ROOM_L4_MID_11),
+                "LEFT": hex(ROOM_L4_BUBBLES_00),
+                "RIGHT": hex(ROOM_L4_TRAPS_02),
+                "note": (
+                    "rr-rvae: Keese clear + RoomItemId 0x19 → keys≥1 natural key for "
+                    "map KEY-UP residual; free links to 0x00/0x02"
+                ),
+            },
+            hex(ROOM_L4_VIRES_12): {
+                "enemies": {"0x12": 5, "0x68": 1},
+                "LEFT": hex(ROOM_L4_MID_11),
+                "UP": hex(ROOM_L4_TRAPS_02),
+                "RIGHT_to_gleeok": hex(ROOM_L4_GLEEOK_13),
+                "note": (
+                    "rr-rvae: 5× Vire + push block 0x68; UP traps 0x02; "
+                    "RIGHT→0x13 Gleeok entered once (stabilize residual — shutter/bomb)"
+                ),
+            },
+            hex(ROOM_L4_TRAPS_02): {
+                "enemies": {"0x49": 6},
+                "DOWN": hex(ROOM_L4_VIRES_12),
+                "note": "blade traps only; no other free exits (rr-rvae)",
+            },
+            hex(ROOM_L4_GLEEOK_13): {
+                "enemies": {"0x43": "gleeok"},
+                "room_item": hex(ROOM_ITEM_HEART_CONTAINER),
+                "LEFT": hex(ROOM_L4_VIRES_12),
+                "note": (
+                    "rr-rvae live sample + screenshot: Gleeok 2-head type 0x43, "
+                    "HC 0x1a SW; enter from 0x12 RIGHT residual; TF 0x08 open"
+                ),
+            },
+            hex(ROOM_L4_MANHANDLA_10): {
+                "enemies": {"0x3c": "manhandla"},
+                "DOWN": hex(ROOM_L4_WATER_NORTH_20),
+                "UP": hex(ROOM_L4_BUBBLES_00),
+                "RIGHT": hex(ROOM_L4_MID_11),
+                "note": "optional side boss; free UP → 0x00 bubbles dead-end",
+            },
+            hex(ROOM_L4_BUBBLES_00): {
+                "enemies": {"0x40": 2, "0x4e": 1},
+                "DOWN": hex(ROOM_L4_MANHANDLA_10),
+                "note": "dead-end north of Manhandla (rr-rvae)",
             },
         },
         "post_compass": {
@@ -2873,12 +2957,26 @@ __all__ = [
     "LEVEL4_MAP_BIT",
     "Left50Phase",
     "GEL_OBJECT_TYPE",
+    "GLEEOK_OBJECT_TYPE",
+    "MID_11_OBJECT_TYPE",
+    "BLADE_TRAP_OBJECT_TYPE",
+    "BOMB_21_NORTH_STAND",
+    "BOMB_21_NORTH_FACE",
+    "BOMB_21_OPENS_TO",
     "MAP_21_HOLD",
     "MAP_21_PICKUP_XY",
     "MAP_21_SAMPLE_PATH",
     "ROOM_ITEM_MAP",
+    "ROOM_ITEM_HEART_CONTAINER",
     "ROOM_L4_MAP_21",
     "ROOM_L4_WATER_NORTH_20",
+    "ROOM_L4_MANHANDLA_10",
+    "ROOM_L4_BUBBLES_00",
+    "ROOM_L4_MID_11",
+    "ROOM_L4_KEY_01",
+    "ROOM_L4_VIRES_12",
+    "ROOM_L4_TRAPS_02",
+    "ROOM_L4_GLEEOK_13",
     "RIGHT_20_STAND",
     "KEY_30_NORTH_X",
     "level4_map_success",

@@ -1,0 +1,102 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T07:49:06.111081+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "segment": "l4_room_01",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "doors": 4,
+      "event": "ckpt",
+      "keys": 0,
+      "map": 8,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 1,
+          "type": 27,
+          "x": 128,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 2,
+          "type": 27,
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 3,
+          "type": 27,
+          "x": 48,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 4,
+          "type": 27,
+          "x": 128,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 5,
+          "type": 27,
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 6,
+          "type": 27,
+          "x": 48,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 7,
+          "type": 27,
+          "x": 128,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "name": "keese",
+          "slot": 8,
+          "type": 27,
+          "x": 192,
+          "y": 109
+        }
+      ],
+      "rad": 0,
+      "rin": "small_key",
+      "room_item": 25,
+      "sc": "0x01",
+      "tf": 4,
+      "xy": [
+        120,
+        189
+      ]
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fea8e-c663-7870-99a9-609011dddceb/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room11.state",
+  "source_state_sha256": "21b64475b3718338d4819650d5dff59c2cd16e02779bd700276f4b5f81792d8f",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fea8e-c663-7870-99a9-609011dddceb/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room01.state",
+  "state_sha256": "e4d1ac98288524a2993ea6537a1ee8f0605865498cbb60e08a522a4532a84b94"
+}
