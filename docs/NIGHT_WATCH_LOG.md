@@ -126,3 +126,11 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-dbu.7` compose wired (TipSpec/spine/catalog). No dual continuous STATUS.
 - Blocker: Wave tip ends 0xADDE; ice hops start Business 0xA7DE → next **rr-vqv3** Wave→Business pure return.
 
+
+### 2026-08-09T21:52 CDT — alttp_rando multi-seed opening S/T dry-run closed
+- **CLOSED** `rr-gbd.26` house→uncle SeedCampaignRunner dry S/T 3/3 claimable (substrate=vanilla, seed_source=fixture).
+- Consumer: `snes/alttp_rando/opening_tip_campaign.py` + `scripts/run_opening_tip_campaign.py`.
+- Published: `snes/alttp_rando/docs/opening_tip_seed_campaign_dry.json`.
+- Tests: 7 passed (`test_alttp_rando_opening_tip_campaign.py`). Fail-closed INFRA + non-vanilla uncle failure modes covered.
+- Not shuffled-seed robustness; live path fail-closed without ROM/FirstPlay.
+- Next free alttp_rando tip: ALTTPR patch fixture / next graph edges (no more ready gbd beads in this lane).
