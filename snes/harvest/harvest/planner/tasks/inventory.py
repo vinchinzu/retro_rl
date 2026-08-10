@@ -413,6 +413,20 @@ class ExitToFarmTask(Task):
                     reason=f"waiting through {scene.mode.value}",
                 )
             self._cutscene_mash_count = 0
+            # House→farm mid-warp: tilemap flips to farm with y≈212 while
+            # player_state still has the transition bit. Neutral wait freezes
+            # outdoor control (Gate B / power-on D2). Keep pushing south until
+            # coordinates settle near the door front (~344).
+            if is_farm_tilemap(tilemap):
+                from harvest.tasks.farm_clearer import get_pos_from_ram
+
+                pos_y = get_pos_from_ram(world.ram).y
+                if pos_y < 330:
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(down=True, b=True)),
+                        reason=f"finish farm mid-warp y={pos_y}",
+                    )
             return TaskResult(
                 status=TaskStatus.RUNNING,
                 action=ActionResult(make_action()),
