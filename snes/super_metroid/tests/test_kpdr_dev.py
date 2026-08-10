@@ -53,6 +53,7 @@ def test_kpdr_controller_exports() -> None:
         play_glass_to_west,
         play_warehouse_to_east,
         play_west_to_below,
+        play_bat_to_red,
         play_below_to_bat,
         play_ghz_to_noob,
         play_hijump_to_warehouse,
@@ -86,6 +87,7 @@ def test_kpdr_controller_exports() -> None:
     assert callable(play_warehouse_to_east)
     assert callable(play_west_to_below)
     assert callable(play_below_to_bat)
+    assert callable(play_bat_to_red)
     assert callable(play_red_tower_to_warehouse)
     assert callable(play_warehouse_wall_to_lower_lip)
     assert callable(play_warehouse_to_hijump)

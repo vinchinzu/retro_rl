@@ -334,7 +334,20 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         x_max=520,
         y_min=100,
         y_max=180,
-        # 12 = facing-left stand residual after Below door settle on right sill.
+        # 12 = facing-left stand; 42 = turn residual on reload; standing/run accepted.
+        poses=frozenset({1, 2, 9, 10, 12, 25, 26, 42, 81, 82}),
+    ),
+    SourceFingerprint(
+        "post_ice_bat_to_red_pure",
+        "scratch/post_ice_bat_to_red_pure.state",
+        0xA253,
+        use_for="K5 hop 11 pure handoff (rr-0ue1 bat-to-red dual 718f); pure Red→Hellway climb",
+        continuous_like=False,
+        x_min=150,
+        x_max=280,
+        y_min=2380,
+        y_max=2500,
+        # 10 = facing-left stand residual Red bottom after Bat left door settle.
         poses=frozenset({1, 2, 9, 10, 12, 25, 26, 81, 82}),
     ),
     SourceFingerprint(
