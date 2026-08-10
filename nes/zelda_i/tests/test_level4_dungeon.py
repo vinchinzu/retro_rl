@@ -124,18 +124,24 @@ def test_maze_62_paths() -> None:
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"
-    assert r["tip"] == "rr-9so0"
+    assert r["tip"] == "rr-o0nn"
     assert r["entry_room"] == "0x71"
     assert r["live_graph"]["0x71"]["UP"] == "0x61"
     assert r["live_graph"]["0x61"]["BOMB_UP"] == "0x51"
     assert r["live_graph"]["0x61"]["KEY_RIGHT"] == "0x62"
+    assert r["live_graph"]["0x61"]["RIGHT_reenter"] == "0x62"
     assert r["live_graph"]["0x51"]["LEFT"] == "0x50"
-    assert r["live_graph"]["0x50"]["note"] == "dead_end_pocket"
+    assert r["live_graph"]["0x51"]["UP"] == "sealed"
+    assert r["live_graph"]["0x51"]["RIGHT"] == "sealed"
+    assert r["live_graph"]["0x50"]["note"] == "dead_end_pocket_no_bomb_exit"
     assert r["live_graph"]["0x62"]["room_item"] == "0x16"
     assert r["live_graph"]["0x62"]["compass_bit"] == "0x8"
     assert r["segments"]["clear_vires_61"] == "rr-yr77"
     assert r["segments"]["clear_50"] == "rr-2ysf"
     assert r["segments"]["key_right_62"] == "rr-2ysf"
     assert r["segments"]["compass_62"] == "rr-9so0"
+    assert r["segments"]["stepladder_path"] == "rr-o0nn"
+    assert r["post_compass"]["bead"] == "rr-o0nn"
+    assert "0x62" in r["post_compass"]["component"]
     assert r["key_61_east"]["opens_to"] == "0x62"
     assert r["maze_62"]["pickup_xy"] == [136, 132]
