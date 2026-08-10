@@ -59,8 +59,8 @@ def _spec(edge_id, source, target, *, timeout=3):
         edge_id=edge_id,
         skill_id=spec.skill_id,
         dispatch_key=spec.dispatch_key,
-        entry_contract_digest=requirement.identity_digest,
-        exit_contract_digest=delta.identity_digest,
+        entry_requirement_digest=requirement.identity_digest,
+        progression_delta_digest=delta.identity_digest,
         readiness=ExecutionReadiness.NATURAL_ENTRY,
         evidence_digest=f"evidence:{edge_id}",
     )

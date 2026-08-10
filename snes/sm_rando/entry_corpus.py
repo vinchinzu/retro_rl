@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -12,8 +11,13 @@ from typing import Any
 import numpy as np
 
 from retro_harness.actions import idle_action
-from retro_harness.entry_states import EntryStateCorpus, EntryStateCorpusBuilder
+from retro_harness.entry_states import (
+    EntryStateCorpus,
+    EntryStateCorpusBuilder,
+    EntryStateRecord,
+)
 from retro_harness.env import make_env, write_state_bytes
+from retro_harness.identity import sha256_bytes, sha256_file
 from retro_harness.platformer.contracts import build_platformer_contracts
 from retro_harness.platformer.level_config import get_level_config
 from retro_harness.platformer.neuro.net import SMB_OUTPUT_BUTTONS
@@ -25,7 +29,10 @@ from sm_rando.paths import (
     REPO_ROOT,
     SHARED_SM_ROM,
 )
-from sm_rando.observations import landing_entry_features
+from sm_rando.observations import (
+    LANDING_ENTRY_METADATA_VERSION,
+    landing_entry_features,
+)
 from super_metroid.assist import UnlimitedAmmoAssist
 import super_metroid.platformer_levels  # noqa: F401 - registers SM levels
 import sm_rando.platformer_levels  # noqa: F401 - registers corpus training level
@@ -55,10 +62,10 @@ def landing_corpus_contracts():
 
 def _trajectory_digest() -> str:
     source = (
-        hashlib.sha256(SHARED_SM_ROM.read_bytes()).hexdigest()
+        sha256_file(SHARED_SM_ROM)
         + ":power_on:ceres_to_landing:MORPH_SPINE-v1"
     )
-    return hashlib.sha256(source.encode("utf-8")).hexdigest()
+    return sha256_bytes(source.encode("utf-8"))
 
 
 def harvest_landing_entry_corpus(
@@ -76,6 +83,7 @@ def harvest_landing_entry_corpus(
         contract_bundle_digest=contracts.identity_digest,
         observation_schema_digest=contracts.observation.identity_digest,
         metadata={
+            "observation_metadata_version": LANDING_ENTRY_METADATA_VERSION,
             "requested_count": count,
             "source": "power-on MORPH_SPINE[:3] predecessor",
             "intervention_class": "Clean",
@@ -121,6 +129,7 @@ def harvest_landing_entry_corpus(
                 source_trajectory_digest=trajectory_digest,
                 frame=state.frame,
                 metadata={
+                    "observation_metadata_version": LANDING_ENTRY_METADATA_VERSION,
                     "sample_index": index,
                     "frame_parity": state.frame % 2,
                     "room_id": state.room_id,
@@ -136,6 +145,7 @@ def harvest_landing_entry_corpus(
                     "velocity_y_sub": state.velocity_y_sub,
                     "health": state.health,
                     "missiles": state.missiles,
+                    "pose": state.pose,
                     "enemy0_hp": state.enemy0_hp,
                     "timing": {
                         "source_frame": state.frame,
@@ -186,6 +196,53 @@ def corpus_summary(corpus: EntryStateCorpus) -> dict[str, Any]:
         "game_states": sorted(game_states),
         "identity_digest": corpus.identity_digest,
     }
+
+
+def migrate_landing_entry_metadata_v1_to_v2(
+    path: Path = LANDING_CORPUS_MANIFEST,
+) -> EntryStateCorpus:
+    """Reconstruct the added pose field from each retained emulator state."""
+    corpus = EntryStateCorpus.load(path)
+    if all(
+        record.metadata.get("observation_metadata_version")
+        == LANDING_ENTRY_METADATA_VERSION
+        for record in corpus.records
+    ):
+        return corpus
+    env = make_env(GAME, "NONE", GAME_DIR, render_mode=None)
+    try:
+        env.reset()
+        migrated: list[EntryStateRecord] = []
+        for record in corpus.records:
+            env.em.set_state(corpus.state_bytes(record, root=REPO_ROOT))
+            features = landing_entry_features(np.asarray(env.get_ram()))
+            migrated.append(
+                replace(
+                    record,
+                    metadata={
+                        **dict(record.metadata),
+                        "observation_metadata_version": (
+                            LANDING_ENTRY_METADATA_VERSION
+                        ),
+                        "pose": int(features[11]),
+                    },
+                )
+            )
+        result = replace(
+            corpus,
+            records=tuple(migrated),
+            metadata={
+                **dict(corpus.metadata),
+                "observation_metadata_version": LANDING_ENTRY_METADATA_VERSION,
+                "metadata_migration": (
+                    "v1_to_v2_pose_reconstructed_from_retained_state"
+                ),
+            },
+        )
+        result.write(path)
+        return result
+    finally:
+        env.close()
 
 
 def evaluate_structured_landing_baseline(
@@ -282,4 +339,5 @@ __all__ = [
     "evaluate_structured_landing_baseline",
     "landing_corpus_contracts",
     "landing_entry_features",
+    "migrate_landing_entry_metadata_v1_to_v2",
 ]

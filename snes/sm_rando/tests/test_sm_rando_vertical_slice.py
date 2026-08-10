@@ -18,6 +18,7 @@ from sm_rando.vertical_slice import (
     build_vertical_slice_bundle,
     run_real_vertical_slice,
 )
+from sm_rando.solver_adapter import build_solver_adapter_bundle
 from super_metroid.routes.kpdr.room_ids import ROOM_LANDING_SITE, ROOM_PIT
 
 
@@ -31,6 +32,13 @@ def test_three_real_edges_are_natural_entry_and_use_vanilla_controllers() -> Non
             skill for skill in bundle.skills if skill.binding.edge_id == edge_id
         )
         assert instance.policy.command.runner.__module__.startswith("super_metroid.")
+
+
+def test_production_adapter_has_only_real_edges() -> None:
+    bundle = build_solver_adapter_bundle()
+
+    assert tuple(edge.edge_id for edge in bundle.graph.edges) == REAL_EDGE_IDS
+    assert bundle.bindings.binding_for(EDGE_INJECTED) is None
 
 
 def test_recorded_boundary_replay_exercises_failure_replan_and_real_commands() -> None:

@@ -29,6 +29,7 @@ def _record(index: int, landing_frame: int, y: int, y_sub: int) -> EntryStateRec
         observation_schema_digest="observation",
         contract_bundle_digest="bundle",
         metadata={
+            "observation_metadata_version": 2,
             "room_id": 0x91F8,
             "game_state": 8,
             "door_transition": 0,
@@ -40,6 +41,7 @@ def _record(index: int, landing_frame: int, y: int, y_sub: int) -> EntryStateRec
             "velocity_y": 0,
             "health": 99,
             "missiles": 0,
+            "pose": 0,
             "timing": {"landing_frame": landing_frame},
         },
     )

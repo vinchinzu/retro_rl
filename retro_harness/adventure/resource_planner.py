@@ -2,33 +2,24 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from heapq import heappop, heappush
-from itertools import count
 from math import isfinite, log
-from typing import Any, Hashable, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Protocol
 
 from retro_harness.adventure.graph import (
-    GraphCapability,
     GraphEdge,
-    _collect_node_checks,
-    _edge_acquires,
-    _edge_order_key,
-    _edge_requires,
 )
 from retro_harness.adventure.planner import (
-    FrontierBlocker,
     PlanRequest,
     PlanResult,
-    PlanStatus,
+    PlanSearchDimension,
     ResourceBlocker,
-    _canonical_json,
-    _checks_by_node,
+    SearchTransition,
+    search,
 )
-from retro_harness.adventure.progression import ProgressionState
+from retro_harness.identity import canonical_json, sha256_bytes
 
 
 class ResourceKind(str, Enum):
@@ -155,13 +146,25 @@ class SkillReliabilityStats:
         }
 
 
-def reliability_from_outcomes(outcomes: Iterable[Any]) -> tuple[SkillReliabilityStats, ...]:
-    """Aggregate shared ``SkillOutcome`` values without coupling import layers."""
-    grouped: dict[str, list[Any]] = defaultdict(list)
+class OutcomeStatusLike(Protocol):
+    value: str
+
+
+class SkillOutcomeLike(Protocol):
+    edge_id: str
+    status: OutcomeStatusLike
+    frames: int
+
+
+def reliability_from_outcomes(
+    outcomes: Iterable[SkillOutcomeLike],
+) -> tuple[SkillReliabilityStats, ...]:
+    """Aggregate outcomes through the adventure-layer event protocol."""
+    grouped: dict[str, list[SkillOutcomeLike]] = defaultdict(list)
     for outcome in outcomes:
-        edge_id = getattr(outcome, "edge_id", None)
-        status = getattr(getattr(outcome, "status", None), "value", None)
-        frames = getattr(outcome, "frames", None)
+        edge_id = outcome.edge_id
+        status = outcome.status.value
+        frames = outcome.frames
         if not isinstance(edge_id, str) or not isinstance(status, str):
             raise TypeError("outcomes must expose edge_id, status.value, and frames")
         if isinstance(frames, bool) or not isinstance(frames, int) or frames < 0:
@@ -172,7 +175,7 @@ def reliability_from_outcomes(outcomes: Iterable[Any]) -> tuple[SkillReliability
             edge_id=edge_id,
             attempts=len(values),
             successes=sum(
-                getattr(value.status, "value", None) == "success" for value in values
+                value.status.value == "success" for value in values
             ),
             mean_frames=sum(value.frames for value in values) / len(values),
         )
@@ -287,137 +290,66 @@ class ResourcePlanRequest:
 
     @property
     def identity_digest(self) -> str:
-        return hashlib.sha256(_canonical_json(self.to_record()).encode("utf-8")).hexdigest()
+        return sha256_bytes(canonical_json(self.to_record()).encode("utf-8"))
 
 
 ResourceTuple = tuple[float, ...]
-ResourceStateKey = tuple[Hashable, frozenset[GraphCapability], frozenset[str], ResourceTuple]
-PathKey = tuple[tuple[str, ...], ...]
+
+
+class _ResourceDimension(PlanSearchDimension):
+    """Resource/risk adapter for the shared progression search."""
+
+    risk_adjusted = True
+
+    def __init__(self, request: ResourcePlanRequest) -> None:
+        self.request = request
+        self.request_digest = request.identity_digest
+        self.specs = request.resources
+        self.names = tuple(spec.name for spec in self.specs)
+        self.initial_state: ResourceTuple = tuple(
+            request.initial_resources[name] for name in self.names
+        )
+        self.profiles = {value.edge_id: value for value in request.profiles}
+        self.reliability = {value.edge_id: value for value in request.reliability}
+
+    def transition(self, edge: GraphEdge, state: Any) -> SearchTransition:
+        values = tuple(float(value) for value in state)
+        available = dict(zip(self.names, values, strict=True))
+        profile = self.profiles.get(edge.edge_id, EdgeResourceProfile(edge.edge_id))
+        blockers = _resource_blockers(edge, profile, available, self.specs)
+        if blockers:
+            return SearchTransition(None, None, blockers)
+        next_available = _apply_profile(profile, available, self.specs)
+        next_state = tuple(next_available[name] for name in self.names)
+        cost = self.request.cost_model.edge_cost(
+            edge,
+            profile,
+            self.reliability.get(edge.edge_id),
+        )
+        return SearchTransition(next_state, cost)
+
+    def dominates(self, first: Any, second: Any) -> bool:
+        first_values = tuple(float(value) for value in first)
+        second_values = tuple(float(value) for value in second)
+        return all(
+            available >= required
+            for available, required in zip(
+                first_values,
+                second_values,
+                strict=True,
+            )
+        )
+
+    def state_record(self, state: Any) -> Mapping[str, float]:
+        values = tuple(float(value) for value in state)
+        return dict(zip(self.names, values, strict=True))
 
 
 def resource_plan(request: ResourcePlanRequest) -> PlanResult:
-    """Run deterministic bounded search over node, inventory, and resources."""
+    """Adapt a resource/risk request to the shared bounded search core."""
     if not isinstance(request, ResourcePlanRequest):
         raise TypeError("request must be ResourcePlanRequest")
-    base = request.plan_request
-    specs = request.resources
-    names = tuple(spec.name for spec in specs)
-    checks_by_node = _checks_by_node(base.checks)
-    initial_progression = _collect_node_checks(
-        ProgressionState(base.source_id, base.capabilities, base.collected_checks),
-        checks_by_node,
-        base.placements,
-    )
-    initial_values = tuple(request.initial_resources[name] for name in names)
-    initial_key: ResourceStateKey = (
-        initial_progression.node,
-        initial_progression.capabilities,
-        initial_progression.collected_checks,
-        initial_values,
-    )
-    best: dict[ResourceStateKey, tuple[float, PathKey]] = {initial_key: (0.0, ())}
-    parents: dict[ResourceStateKey, tuple[ResourceStateKey, GraphEdge]] = {}
-    sequence = count()
-    pending: list[tuple[float, PathKey, int, ResourceStateKey]] = [
-        (0.0, (), next(sequence), initial_key)
-    ]
-    outgoing: dict[Hashable, list[GraphEdge]] = defaultdict(list)
-    for edge in base.edges:
-        outgoing[edge.source_id].append(edge)
-    profiles = {value.edge_id: value for value in request.profiles}
-    reliability = {value.edge_id: value for value in request.reliability}
-    default_profiles = {
-        edge.edge_id: EdgeResourceProfile(edge.edge_id) for edge in base.edges
-    }
-    frontier_blockers: dict[str, FrontierBlocker] = {}
-    resource_blockers: dict[tuple[str, str], ResourceBlocker] = {}
-    expanded = 0
-    last_key = initial_key
-
-    while pending:
-        cost, path_key, _order, state_key = heappop(pending)
-        if best.get(state_key) != (cost, path_key):
-            continue
-        last_key = state_key
-        node, capabilities, collected_checks, values = state_key
-        progression = ProgressionState(node, capabilities, collected_checks)
-        if node == base.target_id:
-            path, trajectory = _reconstruct(state_key, parents, names)
-            return PlanResult(
-                PlanStatus.FOUND,
-                path,
-                cost,
-                progression,
-                expanded,
-                0,
-                tuple(frontier_blockers[key] for key in sorted(frontier_blockers)),
-                request.identity_digest,
-                trajectory,
-                tuple(resource_blockers[key] for key in sorted(resource_blockers)),
-                cost,
-            )
-        if expanded >= base.budget.max_expansions:
-            return _resource_result(
-                PlanStatus.BUDGET_EXHAUSTED,
-                request,
-                last_key,
-                expanded,
-                frontier_blockers,
-                resource_blockers,
-            )
-        expanded += 1
-        available = dict(zip(names, values, strict=True))
-        for edge in outgoing.get(node, ()):
-            if not _edge_requires(edge, capabilities):
-                frontier_blockers[edge.edge_id] = FrontierBlocker(
-                    edge.edge_id, edge.source_id, edge.target_id, edge.requires
-                )
-                continue
-            profile = profiles.get(edge.edge_id, default_profiles[edge.edge_id])
-            blocked = _resource_blockers(edge, profile, available, specs)
-            if blocked:
-                for item in blocked:
-                    resource_blockers[(item.edge_id, item.resource)] = item
-                continue
-            for name in names:
-                resource_blockers.pop((edge.edge_id, name), None)
-            next_available = _apply_profile(profile, available, specs)
-            next_progression = _collect_node_checks(
-                ProgressionState(
-                    edge.target_id,
-                    capabilities | _edge_acquires(edge),
-                    collected_checks,
-                ),
-                checks_by_node,
-                base.placements,
-            )
-            next_key: ResourceStateKey = (
-                next_progression.node,
-                next_progression.capabilities,
-                next_progression.collected_checks,
-                tuple(next_available[name] for name in names),
-            )
-            next_cost = cost + request.cost_model.edge_cost(
-                edge, profile, reliability.get(edge.edge_id)
-            )
-            next_path_key = path_key + (_edge_order_key(edge),)
-            if best.get(next_key, (float("inf"), ())) <= (next_cost, next_path_key):
-                continue
-            best[next_key] = (next_cost, next_path_key)
-            parents[next_key] = (state_key, edge)
-            heappush(
-                pending,
-                (next_cost, next_path_key, next(sequence), next_key),
-            )
-
-    return _resource_result(
-        PlanStatus.UNREACHABLE,
-        request,
-        last_key,
-        expanded,
-        frontier_blockers,
-        resource_blockers,
-    )
+    return search(request.plan_request, _ResourceDimension(request))
 
 
 def _resource_blockers(
@@ -462,54 +394,6 @@ def _apply_profile(
         )
         result[spec.name] = min(value, spec.maximum)
     return result
-
-
-def _reconstruct(
-    state_key: ResourceStateKey,
-    parents: Mapping[ResourceStateKey, tuple[ResourceStateKey, GraphEdge]],
-    names: tuple[str, ...],
-) -> tuple[tuple[GraphEdge, ...], tuple[Mapping[str, float], ...]]:
-    edges: list[GraphEdge] = []
-    states: list[ResourceStateKey] = [state_key]
-    cursor = state_key
-    while cursor in parents:
-        cursor, edge = parents[cursor]
-        edges.append(edge)
-        states.append(cursor)
-    edges.reverse()
-    states.reverse()
-    trajectory = tuple(
-        dict(zip(names, state[3], strict=True)) for state in states
-    )
-    return tuple(edges), trajectory
-
-
-def _resource_result(
-    status: PlanStatus,
-    request: ResourcePlanRequest,
-    state_key: ResourceStateKey,
-    expanded: int,
-    frontier_blockers: Mapping[str, FrontierBlocker],
-    resource_blockers: Mapping[tuple[str, str], ResourceBlocker],
-) -> PlanResult:
-    progression = ProgressionState(state_key[0], state_key[1], state_key[2])
-    return PlanResult(
-        status=status,
-        path=(),
-        total_cost=None,
-        final_progression=progression,
-        expanded_count=expanded,
-        dominated_pruned=0,
-        frontier_blockers=tuple(
-            frontier_blockers[key] for key in sorted(frontier_blockers)
-        ),
-        request_digest=request.identity_digest,
-        resource_trajectory=(),
-        resource_blockers=tuple(
-            resource_blockers[key] for key in sorted(resource_blockers)
-        ),
-        risk_adjusted_cost=None,
-    )
 
 
 __all__ = [

@@ -133,3 +133,25 @@ def test_resource_search_honors_base_expansion_budget() -> None:
 
     assert result.status is PlanStatus.BUDGET_EXHAUSTED
     assert result.expanded_count == 3
+
+
+def test_resource_rich_label_dominates_poor_same_node_label() -> None:
+    edges = (
+        GraphEdge("start", "hub", edge_id="a-rich"),
+        GraphEdge("start", "hub", edge_id="b-poor"),
+        GraphEdge("hub", "goal", edge_id="spend-key"),
+    )
+    result = resource_plan(
+        ResourcePlanRequest(
+            PlanRequest(edges, "start", "goal"),
+            resources=(ResourceSpec("keys", maximum=1),),
+            initial_resources={"keys": 0},
+            profiles=(
+                EdgeResourceProfile("a-rich", produces={"keys": 1}),
+                EdgeResourceProfile("spend-key", consumes={"keys": 1}),
+            ),
+        )
+    )
+
+    assert [edge.edge_id for edge in result.path] == ["a-rich", "spend-key"]
+    assert result.dominated_pruned == 1

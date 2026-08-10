@@ -7,12 +7,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "dd476fca1d2392fec99e69659bdb78995218fcf3d7c4f8a5171f155702349977"
@@ -25,26 +25,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "dd476fca1d2392fec99e69659bdb78995218fcf3d7c4f8a5171f155702349977",
@@ -71,12 +71,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "3a9655a312a322e18fcc06aa585f8d9ddc6a0d32630eac9375cb87999c2f0567"
@@ -89,26 +89,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "3a9655a312a322e18fcc06aa585f8d9ddc6a0d32630eac9375cb87999c2f0567",
@@ -135,12 +135,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "1ecf4d2c6f9bfc3dadd18f6fbe7c7808cf814b9d8f83cb323d5b12908f5f2692"
@@ -153,26 +153,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "1ecf4d2c6f9bfc3dadd18f6fbe7c7808cf814b9d8f83cb323d5b12908f5f2692",
@@ -199,12 +199,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "63dd3b3d69b0656c0adae940ec430f782a27a2efc312bc1fdc330cd85b4b9c3a"
@@ -217,26 +217,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "63dd3b3d69b0656c0adae940ec430f782a27a2efc312bc1fdc330cd85b4b9c3a",
@@ -263,12 +263,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "84903f55f24d3f76ea10c14031072974aa7abf9b9029f7ac9cc450fc73eb97eb"
@@ -281,26 +281,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "84903f55f24d3f76ea10c14031072974aa7abf9b9029f7ac9cc450fc73eb97eb",
@@ -327,12 +327,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "3b45d9e3952ef8e600c4fb3481be86171eb8ecc51a4b837f3a547894edd486af"
@@ -345,26 +345,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "3b45d9e3952ef8e600c4fb3481be86171eb8ecc51a4b837f3a547894edd486af",
@@ -391,12 +391,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "56d510465852590e2a74221a200b95d2be53a1555693b49a710305a9c0218702"
@@ -409,26 +409,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "56d510465852590e2a74221a200b95d2be53a1555693b49a710305a9c0218702",
@@ -455,12 +455,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "054b0e31e8c1f2e690b28564cd35f4069a61a24bd8f7b97aefcef38a8f034fdc"
@@ -473,26 +473,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "054b0e31e8c1f2e690b28564cd35f4069a61a24bd8f7b97aefcef38a8f034fdc",
@@ -519,12 +519,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "18b51c2f4e422ee82a10ac7827ffeb3b99bacce218e31e59a9149808ab1de77d"
@@ -537,26 +537,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "18b51c2f4e422ee82a10ac7827ffeb3b99bacce218e31e59a9149808ab1de77d",
@@ -583,12 +583,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "0220fcde37c4e28fd94af884f7daebfe208248389d62ef5a2836df7f11da8f0d"
@@ -601,26 +601,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "0220fcde37c4e28fd94af884f7daebfe208248389d62ef5a2836df7f11da8f0d",
@@ -647,12 +647,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "0b939b559b663261a7adf340ffcb1e63ff719af3d29a664e33471a0ba5b4a6ba"
@@ -665,26 +665,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "0b939b559b663261a7adf340ffcb1e63ff719af3d29a664e33471a0ba5b4a6ba",
@@ -711,12 +711,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "1b63a502213de1f3a608368d5a7b5ef39d6da2aec94f874c504df51df6407513"
@@ -729,26 +729,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "1b63a502213de1f3a608368d5a7b5ef39d6da2aec94f874c504df51df6407513",
@@ -775,12 +775,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "add109f5e573ff4b041e48f5cc7aee41a42898f2f2f8cc0c2feadb2b5c63bf8e"
@@ -793,26 +793,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "add109f5e573ff4b041e48f5cc7aee41a42898f2f2f8cc0c2feadb2b5c63bf8e",
@@ -839,12 +839,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "d63d98ae77c59b4bfcb5b7f4fce25536ae47333a5182826509dcbc79befcc4ee"
@@ -857,26 +857,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "d63d98ae77c59b4bfcb5b7f4fce25536ae47333a5182826509dcbc79befcc4ee",
@@ -903,12 +903,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "24a55fd6bab19b56f5976deb00bd4a872f753834cd0ca270fe0c49071c7c069b"
@@ -921,26 +921,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "24a55fd6bab19b56f5976deb00bd4a872f753834cd0ca270fe0c49071c7c069b",
@@ -967,12 +967,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "c9db58063cc2223f7fd4d7233bf2330f812b493a0cb71c2b7de719a035e9f775"
@@ -985,26 +985,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "c9db58063cc2223f7fd4d7233bf2330f812b493a0cb71c2b7de719a035e9f775",
@@ -1031,12 +1031,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "3f25414ce96990a2b4842523fce8aac8473e188a6cb3d4e720405b731f246961"
@@ -1049,26 +1049,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "3f25414ce96990a2b4842523fce8aac8473e188a6cb3d4e720405b731f246961",
@@ -1095,12 +1095,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "746d77f730582a5b7838647894a719976e2704690185433871dedea53c640926"
@@ -1113,26 +1113,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "746d77f730582a5b7838647894a719976e2704690185433871dedea53c640926",
@@ -1159,12 +1159,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "8664eca203defe4f0fb17f3a3de0430847dccd8848f189b5312366e77c16ea78"
@@ -1177,26 +1177,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "8664eca203defe4f0fb17f3a3de0430847dccd8848f189b5312366e77c16ea78",
@@ -1223,12 +1223,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "258fbaed641f7877513ab2b7299619666fd4bd056a4456f1669ef910bdef4daf"
@@ -1241,26 +1241,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "258fbaed641f7877513ab2b7299619666fd4bd056a4456f1669ef910bdef4daf",
@@ -1287,12 +1287,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "dae63e4151a15854a766dab51f98e1a48a4d990a39dc8d0e0f28b077e49974cf"
@@ -1305,26 +1305,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "eval"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "dae63e4151a15854a766dab51f98e1a48a4d990a39dc8d0e0f28b077e49974cf",
@@ -1351,12 +1351,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "3752b8d76b64595456842c09a50dbc72ff726bf3fa6641bbf081ca9af93389aa"
@@ -1369,26 +1369,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "3752b8d76b64595456842c09a50dbc72ff726bf3fa6641bbf081ca9af93389aa",
@@ -1415,12 +1415,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "89c43e64437e8b909bef8b96266b19dcbc8b098a62cb0b5da76582149e913459"
@@ -1433,26 +1433,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "89c43e64437e8b909bef8b96266b19dcbc8b098a62cb0b5da76582149e913459",
@@ -1479,12 +1479,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "621bfdf06573e1bdb8be98100a71cbf0f0a66c7ec6f87d21c463135cda6fc53b"
@@ -1497,26 +1497,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "621bfdf06573e1bdb8be98100a71cbf0f0a66c7ec6f87d21c463135cda6fc53b",
@@ -1543,12 +1543,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "d0fb64a75cd58035d8c3781b7bc5354c6455b6143e9f5b0d2bf838be1a86e462"
@@ -1561,26 +1561,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "eval"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "d0fb64a75cd58035d8c3781b7bc5354c6455b6143e9f5b0d2bf838be1a86e462",
@@ -1607,12 +1607,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "a04ebdba6a1a4c0cfe42af476c90db83a30d629a0b9e77be4224dd22ba53da74"
@@ -1625,26 +1625,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "a04ebdba6a1a4c0cfe42af476c90db83a30d629a0b9e77be4224dd22ba53da74",
@@ -1671,12 +1671,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "08ee15fa049008af0df9e906e0c6539390b956de95c2abe7203f46472f0e76d8"
@@ -1689,26 +1689,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "08ee15fa049008af0df9e906e0c6539390b956de95c2abe7203f46472f0e76d8",
@@ -1735,12 +1735,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "a0f715e154fbe755f3045b286d159ac71bfd4d86da8b9205734511cb2d9707c2"
@@ -1753,26 +1753,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "a0f715e154fbe755f3045b286d159ac71bfd4d86da8b9205734511cb2d9707c2",
@@ -1799,12 +1799,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "87f2f2702a4714b84301c0726c4fc3c1ace9b74ac5174abf8db4bf7ad0edd539"
@@ -1817,26 +1817,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "87f2f2702a4714b84301c0726c4fc3c1ace9b74ac5174abf8db4bf7ad0edd539",
@@ -1863,12 +1863,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "de3412a26bf41af31ae5b5dfb6d402fb0d89ed4d70a200c0f4b893bb5334d179"
@@ -1881,26 +1881,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "de3412a26bf41af31ae5b5dfb6d402fb0d89ed4d70a200c0f4b893bb5334d179",
@@ -1927,12 +1927,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "531690dc3fa4255f024cc5ab2809b2dc8a00f8fe6d7f3203199c1caff8f6a38e"
@@ -1945,26 +1945,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "531690dc3fa4255f024cc5ab2809b2dc8a00f8fe6d7f3203199c1caff8f6a38e",
@@ -1991,12 +1991,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "368b8fd8e914ea26f428713f0aa7d3e2403bee8416ed47be2256ae92e54ebb1a"
@@ -2009,26 +2009,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "368b8fd8e914ea26f428713f0aa7d3e2403bee8416ed47be2256ae92e54ebb1a",
@@ -2055,12 +2055,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "c5ad8db1ec656a137307857456cbefd63d10a68a4df8ba85693a8da58ea80fd6"
@@ -2073,26 +2073,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "eval"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "c5ad8db1ec656a137307857456cbefd63d10a68a4df8ba85693a8da58ea80fd6",
@@ -2119,12 +2119,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "fb61b6a8b5764a4e28d2b3fee386b01f639be511a9d3082fc59e104244d1c345"
@@ -2137,26 +2137,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "fb61b6a8b5764a4e28d2b3fee386b01f639be511a9d3082fc59e104244d1c345",
@@ -2183,12 +2183,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "e049c3f47b71afc8ec84234c93a9815fa5f9c2a53a0b84791f2893dd0b16fccb"
@@ -2201,26 +2201,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "e049c3f47b71afc8ec84234c93a9815fa5f9c2a53a0b84791f2893dd0b16fccb",
@@ -2247,12 +2247,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "fbe666514d4c46915f7e663b4edf85ea8515410738c95a146c09da64c6e16c7b"
@@ -2265,26 +2265,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "fbe666514d4c46915f7e663b4edf85ea8515410738c95a146c09da64c6e16c7b",
@@ -2311,12 +2311,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "30793d5faf4d85327d9d1e06b8476da2781fab96a93c82dca4d5c4f8122b5368"
@@ -2329,26 +2329,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "eval"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "30793d5faf4d85327d9d1e06b8476da2781fab96a93c82dca4d5c4f8122b5368",
@@ -2375,12 +2375,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "d237b709c9af4d8264e68a6a00ed3f1648e0c32f8c7b2910e0892633c889c88d"
@@ -2393,26 +2393,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "d237b709c9af4d8264e68a6a00ed3f1648e0c32f8c7b2910e0892633c889c88d",
@@ -2439,12 +2439,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "189b281b9bd24b0a6e811c7ca0c06101badda145fcd658048cafca7f41ec226f"
@@ -2457,26 +2457,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "189b281b9bd24b0a6e811c7ca0c06101badda145fcd658048cafca7f41ec226f",
@@ -2503,12 +2503,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "c745643bc259ec3b88bce3c38d7d4627df4b68a07bd527d670b1feff6ba4eff7"
@@ -2521,26 +2521,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "c745643bc259ec3b88bce3c38d7d4627df4b68a07bd527d670b1feff6ba4eff7",
@@ -2567,12 +2567,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "ec2a5c549845ca5c183080e7a3150e6d665624f7bd4b275a7be39610b2f8e9ae"
@@ -2585,26 +2585,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "ec2a5c549845ca5c183080e7a3150e6d665624f7bd4b275a7be39610b2f8e9ae",
@@ -2631,12 +2631,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "37c54afa811237bc8ee90880f16d8e299130267c1b76a42995baf27843acbf25"
@@ -2649,26 +2649,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "37c54afa811237bc8ee90880f16d8e299130267c1b76a42995baf27843acbf25",
@@ -2695,12 +2695,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "72d5db94410d3aa6f7e71518cebd91c82fd021a3ecd047a370f85e6347796960"
@@ -2713,26 +2713,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "72d5db94410d3aa6f7e71518cebd91c82fd021a3ecd047a370f85e6347796960",
@@ -2759,12 +2759,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "30956fedfcd5f7d3cb7b29bf3df769b339e00b4e7d829556542993b8fab9ca94"
@@ -2777,26 +2777,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "30956fedfcd5f7d3cb7b29bf3df769b339e00b4e7d829556542993b8fab9ca94",
@@ -2823,12 +2823,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "307017bcc2d30354d41cc30965db417d1f4730b91e871ebf1133c617b8774563"
@@ -2841,26 +2841,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "307017bcc2d30354d41cc30965db417d1f4730b91e871ebf1133c617b8774563",
@@ -2887,12 +2887,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "cc50bfc335b2ea6701ced98eb8eb3e24b50be777f2eaa3f4c53b8c1c71fd41f7"
@@ -2905,26 +2905,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "eval"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "cc50bfc335b2ea6701ced98eb8eb3e24b50be777f2eaa3f4c53b8c1c71fd41f7",
@@ -2951,12 +2951,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "2a39f21a89e6f2ff72290835bafe69e0387b971c5e16e1d2191e382fd5c5c979"
@@ -2969,26 +2969,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "2a39f21a89e6f2ff72290835bafe69e0387b971c5e16e1d2191e382fd5c5c979",
@@ -3015,12 +3015,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "54e223809d2a0bf9cd07cdb2a1dd37bd472009c09bb793d7e4b7bead6d9a698e"
@@ -3033,26 +3033,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "eval"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "54e223809d2a0bf9cd07cdb2a1dd37bd472009c09bb793d7e4b7bead6d9a698e",
@@ -3079,12 +3079,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "0e9a32308eb3cd996840e3c23e31ff03f4f0b1ef7a28dcb7abfd62b629d0cf1b"
@@ -3097,26 +3097,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "0e9a32308eb3cd996840e3c23e31ff03f4f0b1ef7a28dcb7abfd62b629d0cf1b",
@@ -3143,12 +3143,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "7353c9fa8d41aa147e356e1763b4d14d004b8097a944b34576a5f6cad7576474"
@@ -3161,26 +3161,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "7353c9fa8d41aa147e356e1763b4d14d004b8097a944b34576a5f6cad7576474",
@@ -3207,12 +3207,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "cf928319e805d5a047e828927446ba00739272229f6099a459049d5d0b263e28"
@@ -3225,26 +3225,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "cf928319e805d5a047e828927446ba00739272229f6099a459049d5d0b263e28",
@@ -3271,12 +3271,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "cf166bcb9a21bdbdbe57a84d85877891766079266b8424268ef46f7c6258ccb1"
@@ -3289,26 +3289,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "cf166bcb9a21bdbdbe57a84d85877891766079266b8424268ef46f7c6258ccb1",
@@ -3335,12 +3335,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "861c4fcc9a6801bbb56e75c6dbe0419d66149cb3c8f728c003ae4c45a4e5185b"
@@ -3353,26 +3353,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "861c4fcc9a6801bbb56e75c6dbe0419d66149cb3c8f728c003ae4c45a4e5185b",
@@ -3399,12 +3399,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "c0c38a5e693396023fe0a7b1de963517512d1acd2ea305584e23b134697b369b"
@@ -3417,26 +3417,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "c0c38a5e693396023fe0a7b1de963517512d1acd2ea305584e23b134697b369b",
@@ -3463,12 +3463,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "96e466f0de59e4203f32053c8877294131e9d8819f31e08fb2e3848528cb06b2"
@@ -3481,26 +3481,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "96e466f0de59e4203f32053c8877294131e9d8819f31e08fb2e3848528cb06b2",
@@ -3527,12 +3527,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "e3c07e92d035877c353580d957713b3b94b458d2bafada871c91960fda9fec7b"
@@ -3545,26 +3545,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "e3c07e92d035877c353580d957713b3b94b458d2bafada871c91960fda9fec7b",
@@ -3591,12 +3591,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "e4377cbf8bbf26a380627812238e3a416e51ea0e14dfd8a3eda481837685172b"
@@ -3609,26 +3609,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "e4377cbf8bbf26a380627812238e3a416e51ea0e14dfd8a3eda481837685172b",
@@ -3655,12 +3655,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "7708c5679ce9fe360a32de8def992c549cc0c5119caecc462683a9a6771fe9c5"
@@ -3673,26 +3673,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "7708c5679ce9fe360a32de8def992c549cc0c5119caecc462683a9a6771fe9c5",
@@ -3719,12 +3719,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "7a6a0e5d9a72be0ed8bed504509096f629859bce7dfce642a75069c4577b7be0"
@@ -3737,26 +3737,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "7a6a0e5d9a72be0ed8bed504509096f629859bce7dfce642a75069c4577b7be0",
@@ -3783,12 +3783,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "f5d9916c13ec10c99db16106480ff95abf4bcd61f7644bed3ca8f624c1517e15"
@@ -3801,26 +3801,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "f5d9916c13ec10c99db16106480ff95abf4bcd61f7644bed3ca8f624c1517e15",
@@ -3847,12 +3847,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "793123dd62dfaeaefaaa7575f4ef9714794c5e298b0438e019cace5051a38791"
@@ -3865,26 +3865,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "793123dd62dfaeaefaaa7575f4ef9714794c5e298b0438e019cace5051a38791",
@@ -3911,12 +3911,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "e8d3b3259abe314e6a08f878628c46836d646422030a68813d5c2d9a919cb667"
@@ -3929,26 +3929,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "e8d3b3259abe314e6a08f878628c46836d646422030a68813d5c2d9a919cb667",
@@ -3975,12 +3975,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "1eb9f9275c372ee6006871344595ec73aca3b8581f79770cf5613fb96fc28b42"
@@ -3993,26 +3993,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "1eb9f9275c372ee6006871344595ec73aca3b8581f79770cf5613fb96fc28b42",
@@ -4039,12 +4039,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "ed8944b11b27d3d5ce65a28ef54419d614451036a89528860f071430f61bb16b"
@@ -4057,26 +4057,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "train"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "ed8944b11b27d3d5ce65a28ef54419d614451036a89528860f071430f61bb16b",
@@ -4100,7 +4100,7 @@
   "beats_structured_baseline": true,
   "checkpoint_path": "snes/sm_rando/models/landing_wait_bc_v1.json",
   "contract_bundle_digest": "c3fabc5f88880f2d3487536a3ca7cabdeaf18caa3c41983fe382eff4e21410d6",
-  "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+  "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
   "corpus_path": "snes/sm_rando/recordings/landing_entry_corpus.json",
   "decision": "candidate_only_not_deployed; replicate on new predecessor trajectories",
   "eval_trajectories": [
@@ -4112,7 +4112,7 @@
     "snes/sm_rando/recordings/landing_wait_bc_trajectories/b8a073dce17addff8516213641478c0a1149e9a424bc3189ef9ca9e44a1007d3.json"
   ],
   "experiment": "landing_wait_to_handoff_behavior_cloning",
-  "generated_at": "2026-08-09T23:18:41.942033+00:00",
+  "generated_at": "2026-08-10T00:00:18.283820+00:00",
   "intervention_class": "Clean",
   "metrics": {
     "eval": {
@@ -4131,7 +4131,7 @@
       "successes": 58
     }
   },
-  "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+  "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
   "policy_artifact_path": "snes/sm_rando/models/landing_wait_bc_v1.json.artifact.json",
   "runtime_observation_class": "Bronze",
   "schema_version": 1,

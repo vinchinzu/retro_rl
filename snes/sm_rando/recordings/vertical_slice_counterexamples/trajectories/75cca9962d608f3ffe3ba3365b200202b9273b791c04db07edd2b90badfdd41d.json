@@ -1,13 +1,13 @@
 {
   "action_schema_digest": "c7d36eefb81e716af406f8a81026bf2b10ea8e086b3f834d6671ea4aa56d8997",
-  "contract_bundle_digest": "fef2acb987f5d76c9f8df53959618a966f2a0690a2e9853ec34548edb03d1ba2",
-  "final_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
-  "identity_digest": "9f03ff206c72809a5bce68ad4f61e452361e138eeab317e926da1be6f2b315d7",
-  "initial_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+  "contract_bundle_digest": "4e33ab0565ac99a51c1fb28390161abc0fd10903484b3cbc3847574d465a51c0",
+  "final_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
+  "identity_digest": "75cca9962d608f3ffe3ba3365b200202b9273b791c04db07edd2b90badfdd41d",
+  "initial_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
   "milestones": [
     {
       "edge_id": "landing_to_parlor_injected_failure",
-      "end_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+      "end_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
       "frames": 0,
       "observed_capability_delta": [],
       "observed_resource_delta": {
@@ -18,16 +18,16 @@
       "recovery_hint": "exclude_primary_and_replan",
       "replan": true,
       "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
-      "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+      "start_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
       "status": "retryable_failure"
     }
   ],
-  "observation_schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
-  "policy_identity_digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+  "observation_schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
+  "policy_identity_digest": "e9940827b2631a198df58ad0e9d16c370a3814274c39523c9c0881010083ae93",
   "provenance": {
     "game": "SMRando-Snes",
     "outcome_index": 0,
-    "parent_trajectory_digest": "03dfcc6c0c41d3251b161c21de9b9f0a430e9bc6b6b5367a164127f59dad677d",
+    "parent_trajectory_digest": "a8dcfc5c05d7649704a8c461d9b43434d54aba2a1f190acb409180e95b75d347",
     "recovery_hint": "exclude_primary_and_replan",
     "source": "SolverSession.failed-outcome"
   },
