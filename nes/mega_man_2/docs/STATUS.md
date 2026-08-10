@@ -157,6 +157,18 @@ but still **no stand** — object-solid residual deeper than X gap.
 | Cam ≥5 | **No** |
 | Evidence | `docs/CLOUD_LAND_RED_PIN.md`, `recordings/air_post4_cloud_solid/`, v2–v7 |
 
+### Disasm + screen-align (same night, later) — residual sharpened
+
+| Field | Value |
+|-------|-------|
+| Body AI (lsmmega `14_19`) | Spawns rider `0x3D`; **no solid-arm rewrite** when child dies |
+| Object solid path | Only decoded path = `appearing_block` flag `$10` — never on empty `0x3E` |
+| PRG | 4× `CMP #$3E` (AI only); 0× `CMP #$3D` — no type solid whitelist |
+| Cloud top | OAM y≈by−16; prior feet_dy=0 was body **center** not top |
+| Screen-align | Kill window cam=3 / body scr=4; cam=4 arrives with top_dy≈−19 |
+| Diag fall_top | top_dy≈+1 force-place still freefall (solid path inactive) |
+| Evidence | `scripts/cloud_screen_align.py`, `recordings/air_post4_screen_align/` |
+
 ## Not done
 
 - Past screen 4 / boss door (**kill OK; Thunder Chariot object-solid stand residual**)
@@ -166,8 +178,9 @@ but still **no stand** — object-solid residual deeper than X gap.
 
 ## Next
 
-1. **rr-54ui:** Disasm `objects_kaminari_goro` solid-arm after rider death; TAS pin
-   (sy/by/status/tsa when human stands). Screen-align cam/body scr. Probe:
-   `scripts/cloud_solid_decode.py` + `docs/CLOUD_LAND_RED_PIN.md`.
-2. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
-3. Do **not** re-sweep goblin-solid, “LL never spawns”, hold-B only, or feet_dy=0 grids alone.
+1. **rr-54ui residual tip:** Human/TAS frame pin where feet stick on empty cloud
+   (sy/by/`$2C`/body tsa/flag/cam). Or alternate Clean path past s4 without ride.
+   Docs: `docs/CLOUD_LAND_RED_PIN.md`. Do not re-grid solid alone.
+2. Chain mapset 5–6 LLs → camera ≥5 → boss door only after stand freezes a state.
+3. Do **not** re-sweep goblin-solid, “LL never spawns”, hold-B only, feet_dy=0 grids,
+   screen-align-only grids, or fall_top/appear/flag08 pokes.
