@@ -29,14 +29,18 @@ Geometry (verified 2026-08-09/10):
 - `AirLeftPlatform` = short left ledge prog 902–905; leftward returns prior chain
 - Ladder bar never `tile_feet==2`; no wind; camera_y=0 through death
 - Type35 eggs/birds; freefall past 984 has **zero** tile hits
-- No Lightning Lord / new object types in 400–600f edge camp
+- Object types Level1→death: only 1/2/35/36 — **no Lightning Lord** even after
+  high-path forks, edge camps, slow waits, Level1 hybrid (night4)
+
+Map-match prog~950: goblin + stripe platform + Pipi (not Matasaburo E; no wind).
 
 ## Suggested next experiments
 
-1. **Lightning Lord cloud spawn** — alternate earlier route timing (before full
-   y=84 descent); log object types while holding camera toward pit.
-2. Map-match: which stage segment is prog~950 (Pipi C vs Matasaburo E vs drop D).
-3. Only then freeze AirScreen2→target 5 (3/3) and boss door.
+1. **ROM enemy placement / TAS compare** at prog≥1000 — find why LL/cloud never
+   enters object table `$0400` under Clean play (spawn flags, scroll gates).
+2. Nametable/tile platforms past 984 under alternate camera/scroll states.
+3. Do **not** re-sweep goblin-solid or pure-RIGHT jump grids.
+4. Only then freeze AirScreen2→target 5 (3/3) and boss door.
 
 ## Notes
 
