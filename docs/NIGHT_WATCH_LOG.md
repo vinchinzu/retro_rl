@@ -446,3 +446,12 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-3q27` still open: F9 densify + refill_bounds y_min=10 + carry-drop (95de9f6).
 - Units green; ROM can_peak still 0 (plant soft-block / F9 west-climb residual).
 
+### 2026-08-10T00:30 CDT — SM rr-kxge continuous Ice single GREEN (dual flaky)
+- **Claimed** `rr-kxge` continuous Business floor→Ice Super climb stabilize.
+- Climb harden: `pos_1339` (84 pure / 90 cont), RIGHT-biased floor recover, HJ door recover, bound LEFT setup on cont retries, wave floor dumps.
+- **Pure** floor Business→Gate dual GREEN **3255f×2**; elev pin **891f**.
+- **Single continuous GREEN** `ice_r3.json` **148192f** room `0xA890` beams `0x1007` (Ice). Splits include business_to_ice_gate @145255 through ice_snake_to_ice.
+- **Dual continuous not stable** (r4/r5a/dual_a RED on floor climb). **No STATUS**. Default tip still `wave`.
+- Residual `snes/super_metroid/docs/tasks/rr-kxge-residual.md`. Tests 55 passed. Bead left open.
+- Next: dual continuous 2/2 integrity green before STATUS.
+
