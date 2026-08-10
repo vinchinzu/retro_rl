@@ -310,6 +310,34 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         aliases=("wave_beam", "k4_10", "k4.10"),
         supports_checkpoint=True,
     ),
+    TipSegment(
+        tip_id="ice",
+        parent_tip_id="wave",
+        graph_id="speed",
+        kind="ice",
+        success_outcome="ice_collected",
+        route_label="ice",
+        source_policy=(
+            "accepted Wave continuous + pure-green Business→Ice Gate→Acid→"
+            "Snake→Ice PLM controllers (rr-dbu.11 stack; routes/kpdr/ice/) + "
+            "phase-guarded resources. Wave→Business return pure still open "
+            "(room gap); continuous dual green not claimed."
+        ),
+        timing_source="ice",
+        entry_condition_key="natural_ice_room_entry",
+        ordinary_condition_key="post_ice_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Ice Beam (KPDR K4.11)",
+        description=(
+            "Wave tip through Business Super door, Ice Gate, Acid Room "
+            "(Speed Boost Blocks), Ice Snake (2WJ), and natural Ice Beam PLM "
+            "collect. Compose tip after pure dual Ice stack (rr-dbu.11 / "
+            "rr-dbu.7); not STATUS-promoted without dual continuous green."
+        ),
+        aliases=("ice_beam", "k4_11", "k4.11"),
+        supports_checkpoint=True,
+    ),
 )
 
 POST_SUPERS_TIP_ORDER: tuple[str, ...] = tuple(

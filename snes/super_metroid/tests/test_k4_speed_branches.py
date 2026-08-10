@@ -45,6 +45,7 @@ def test_k4_bubble_to_wave_edge_contract() -> None:
 
 def test_k4_business_to_ice_edge_contract() -> None:
     # Without Speed: graph still has Tutorial return path (no Acid Boost Blocks).
+    # Outbound Ice hops are spine-emitted continuous (tip ``ice`` compose).
     path = SPEED_GRAPH.shortest_path(0xA7DE, 0xA890, CAPS)
 
     assert path is not None
@@ -55,13 +56,13 @@ def test_k4_business_to_ice_edge_contract() -> None:
         "ice_snake_to_ice",
     ]
     assert [edge.verification for edge in path] == [
-        "controller_dev",
+        "continuous",  # spine tip ice (rr-dbu.7 compose)
         "unverified",
         "unverified",
-        "unverified",
+        "continuous",  # spine tip ice
     ]
 
-    # With Speed: tape entry Gate → Acid → Snake (rr-9t4 pure dual GREEN).
+    # With Speed: tape entry Gate → Acid → Snake (pure dual GREEN + compose).
     caps_speed = CAPS | frozenset({"speed_booster"})
     path_s = SPEED_GRAPH.shortest_path(0xA7DE, 0xA890, caps_speed)
     assert path_s is not None
@@ -71,12 +72,7 @@ def test_k4_business_to_ice_edge_contract() -> None:
         "ice_acid_to_snake",
         "ice_snake_to_ice",
     ]
-    assert [edge.verification for edge in path_s] == [
-        "controller_dev",
-        "controller_dev",
-        "controller_dev",  # rr-5cf Acid→Snake pure dual
-        "unverified",
-    ]
+    assert all(edge.verification == "continuous" for edge in path_s)
 
 
 def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
@@ -89,14 +85,15 @@ def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
     assert wave["all_continuous"] is True
     assert wave["blocking"] is None
     assert ice["reachable"] is True
+    # Without Speed, path uses Tutorial return edges (unverified) — blocks.
     assert ice["all_continuous"] is False
-    # Default floor is continuous; controller_dev Gate hop still blocks tip path.
-    assert ice["blocking"] == "business_to_ice_gate"
-    # Pure-gated through Gate once min_verification=controller_dev.
-    ice_pure = SPEED_GRAPH.path_summary(
-        0xA7DE, 0xA890, CAPS, min_verification="controller_dev"
-    )
-    assert ice_pure["blocking_edge_id"] == "ice_gate_to_tutorial"
+    assert ice["blocking"] == "ice_gate_to_tutorial"
+    # Speed path: all outbound Ice edges continuous (compose wiring).
+    caps_speed = CAPS | frozenset({"speed_booster"})
+    ice_speed = SPEED_GRAPH.path_verification(0xA7DE, 0xA890, caps_speed)
+    assert ice_speed["reachable"] is True
+    assert ice_speed["all_continuous"] is True
+    assert ice_speed["blocking"] is None
     # Speed Hall + collect are continuous spine product edges.
     assert speed["reachable"] is True
     assert speed["all_continuous"] is True

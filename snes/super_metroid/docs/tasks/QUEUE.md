@@ -19,7 +19,7 @@ and continuous promote. Executors take **one bead per session**.
 | Speed Booster (K4.5) | previous tip | **130,388f** ×2 Spazer dual (prefix) |
 | Spazer warehouse dual | prefix green | **89,416 + 90,904f** beams `0x1004` |
 | Clean bombs/Torizo | secondary GREEN | **49,321f** ×2 — [CLEAN_TRACK.md](../CLEAN_TRACK.md) |
-| ★ Product next | Compose continuous **`--to ice`** | `rr-dbu.7` (pure stack GREEN) |
+| ★ Product next | Wave→Business pure return → dual continuous **`--to ice`** | after `rr-dbu.7` compose |
 | Pure Ice stack | Outbound dual GREEN through PLM | `rr-dbu.11` **CLOSED** · residual `rr-dbu.11-residual.md` |
 | Tape | Full Speed→Wave→Ice→Moat human | `rr-dbu.12` **GREEN** 39,711f |
 | Agent optional | consolidate · duck-type · Clean STATUS · speed start Spazer | P3 |
