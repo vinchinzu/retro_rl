@@ -13,7 +13,8 @@ M3 isolated segments (Clean Bronze):
 - **Heat screen ≥ 4** from ``HeatScreen3``: pillars 25/10 phase 10 (~181f grounded; 2026-08-10).
 - **Heat screen ≥ 5** from ``HeatScreen4``: late 20/12 phase 4 (~131f cam / ~320f grounded; 2026-08-10).
 - **Heat screen ≥ 7 pre-boss** from ``HeatScreen5Ground``: ``start=screen5`` A-edge
-  j1/LEFT/j2 + hop 9/gw3 (~305f cam7; 3/3; 2026-08-10). Boss door climb residual.
+  j1/LEFT/j2 + hop 9/gw3 (~293f cam7; 3/3; 2026-08-10). s7 wall sx152 / ladder
+  x192 residual (rr-809 PARTIAL).
 
 Level1 recipe (0-based frame index ``i``):
 
@@ -126,7 +127,8 @@ class HeatManPolicy:
     - ``screen5`` (HeatScreen5Ground): A-edge idle → j1 → LEFT → j2 → rising-edge
       short hops (hold 9 / ground_wait 3) → camera ≥7 pre-boss (~305f; 2026-08-10).
 
-    Residual: HeatScreen7 vertical/boss door climb + Item-1 unlock (rr-809).
+    Residual: HeatScreen7 wall sx152 → mapset7 ladder x192 (scroll_down) +
+    boss clear + Item-1 unlock (rr-809 PARTIAL).
     """
 
     # early (Heat1 / HeatScreen1)

@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air s4 clear; post-s4 cloud RED; Heat dual-green cam ≥7 pre-boss (rr-809 PARTIAL) |
+| Status | Air s4 clear; post-s4 cloud RED; Heat cam≥7 dual-green; s7 wall-lock (rr-809 PARTIAL) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -33,8 +33,9 @@ uv run pytest nes/mega_man_2/tests -q
 ## Next milestone
 
 **Heat boss door + Item-1** (rr-809 PARTIAL): dual-green cam ≥7 from
-`HeatScreen5Ground` (~293f). Residual: s7 alcove climb → boss clear → Item-1 /
-Atomic Fire pin; then Air deploy (rr-810). Doc: `docs/HEAT_ITEM1_PATH.md`.
+`HeatScreen5Ground` (~293f, 3/3). **s7 residual:** wall lock sx152 / prog1792;
+micro-ledge `HeatScreen7Mid` sy124 under Telly; mapset7 ladder at x192–255 y192
+(scroll_down) unreachable; no boss_hp / Item-1. Doc: `docs/HEAT_ITEM1_PATH.md`.
 Cloud solid still RED; do not re-grid. Use `HeatScreen5Ground` (not mid-air
 `HeatScreen5`).
 
@@ -67,5 +68,6 @@ HEAT_ITEM1_PATH (external).
 - Heat boot: `boot_to_heat_man_script` / `boot_heat_probe.py` → `Heat1`.
   Heat multi-phase: `HeatManPolicy(start=early|screen2|screen3|screen4|screen5)`
   via `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`7`,
-  `HeatScreen5Ground`. screen5 needs `tile_feet` (A-edge hops). Death:
-  `tile_feet==3` or lives drop (not only HP=0 / y≥200).
+  `HeatScreen5Ground`, `HeatScreen7Mid`. screen5 needs `tile_feet` (A-edge hops).
+  Death: `tile_feet==3` or lives drop (not only HP=0 / y≥200). s7: wall sx152;
+  do not re-spam RIGHT/UP/DOWN without new route hypothesis.
