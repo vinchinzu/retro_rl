@@ -54,7 +54,7 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 | Day-plan establish → ensure can → water order | **Verified** (unit tests lock sequence + refill_bounds) |
 | Same-day water with charged can | **ROM OK**: `Y1_Test_Crops_Planted_Dry` + can=20 → 3/3 wet `0x55` |
 | Ship verify without instant money | **Fixed**: bin drop counts ship; money may settle at 5pm |
-| Empty-can natural refill | **ROM GREEN tip (rr-3q27)** — dry fixture `can_peak=20` + watered=2 Clean via east→south + west→south-lip F0. Residual: return_home hang, 3/3 water reliability, full Inside_House→Summer (rr-20w). |
+| Empty-can natural refill | **ROM GREEN closed (rr-3q27)** — dry fixture `can_peak=20` + watered=3 `dry_end=[]` Clean via east→south + F0 + residual crop-walk. return_home re-nav cap. Full Inside_House→Summer income still **rr-20w**. |
 | Multi-day growth → harvest → money > $100 | **Gate A CLOSED (rr-y8n)**: multi-day Day09 successor final_money=$3180, HARVEST+CROP_ESTABLISH, mid_run loads=0; farm 5pm wait wired. Full Inside_House→Summer still open (empty-can water / rr-20w). |
 
 **Empty-can refill traps (ROM-mapped 2026-08-01):**
