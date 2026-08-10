@@ -1,0 +1,59 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T02:07:50.954045+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-5lu",
+    "intervention_class": "survival",
+    "segment": "l4_entry_recon",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "clear_frame": null,
+    "doors_after": 8,
+    "exits": {
+      "DOWN": {
+        "dest": "ow_0x45",
+        "dir": "DOWN",
+        "xy": [
+          56,
+          85
+        ]
+      },
+      "LEFT": {
+        "dest": "ow_0x45",
+        "dir": "LEFT",
+        "xy": [
+          56,
+          85
+        ]
+      },
+      "RIGHT": {
+        "dest": "ow_0x45",
+        "dir": "RIGHT",
+        "xy": [
+          56,
+          85
+        ]
+      },
+      "UP": {
+        "dest": "ow_0x45",
+        "dir": "UP",
+        "xy": [
+          56,
+          85
+        ]
+      }
+    },
+    "ok": false,
+    "spawn_types": {
+      "0x1a": 1
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Entrance.state",
+  "source_state_sha256": "99b75712adf36fbdd6fee3fed27efd49fb7c410a3943b1e368d33d4b3c5fd3d7",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe967-7ee9-7f10-b91b-2795ff8302b6/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4EntrySample.state",
+  "state_sha256": "31e2d30e3142674365c10dafd1db558151f0ab4285187fd1e03529b4997d3fef"
+}

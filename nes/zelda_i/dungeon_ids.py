@@ -8,11 +8,13 @@ OBJECT_NAMES: dict[int, str] = {
     0x05: "goriya_blue_or_residual",  # L2 boom room 0x4f
     0x06: "goriya",
     0x0B: "darknut",  # L3 0x5b/0x59/0x69 live
+    0x12: "vire",  # L4 0x61/0x50 live (rr-5lu); HP64; sword splits → 0x1c
     0x13: "zol",
     0x14: "gel_or_zol_split_residual",  # L3 0x4b after wooden-sword hits
     0x15: "gel",
     0x16: "pols_voice",
     0x1B: "keese",
+    0x1C: "vire_split_keese",  # L4 Vire split residual (live rr-5lu; not 0x1b)
     0x23: "wizzrobe_blue_walkthrough_correlated",
     0x24: "wizzrobe_orange",
     0x27: "wallmaster",
@@ -37,10 +39,12 @@ OBJECT_NAMES: dict[int, str] = {
 GORIYA_BLUE_OBJECT_TYPE = 0x05
 GORIYA_OBJECT_TYPE = 0x06
 DARKNUT_OBJECT_TYPE = 0x0B
+VIRE_OBJECT_TYPE = 0x12  # L4 live rr-5lu
 ZOL_OBJECT_TYPE = 0x13
 GEL_SPLIT_OBJECT_TYPE = 0x14  # wooden-sword Zol split residual
 GEL_OBJECT_TYPE = 0x15
 KEESE_OBJECT_TYPE = 0x1B
+VIRE_SPLIT_KEESE_TYPE = 0x1C  # L4 Vire → red Keese-like split
 WIZZROBE_ORANGE_OBJECT_TYPE = 0x24
 WALLMASTER_OBJECT_TYPE = 0x27
 ROPE_OBJECT_TYPE = 0x28

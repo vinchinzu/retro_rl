@@ -72,3 +72,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-5if` dual pure 1756f×2 room 0xA890 beams 0x1007 (not continuous).
 - Next: `rr-dbu.11` Ice pure stack acceptance / compose.
 
+### 2026-08-09T21:28 CDT — zelda_i L4 live recon
+- `rr-5lu` still IN_PROGRESS (Stepladder residual).
+- Live graph: 0x71 empty → UP 0x61 Vires → BOMB_UP 0x51 Keese+key → LEFT 0x50.
+- Room beads: rr-zchy / rr-yr77 / rr-h278 / rr-wqdu / rr-2ysf. Tip next: pure Vires clear.
+
