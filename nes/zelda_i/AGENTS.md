@@ -46,6 +46,7 @@ uv run python zelda_i/scripts/run_level4_rooms.py --segment chain_to_key --trial
 uv run python zelda_i/scripts/run_level4_rooms.py --segment clear_50 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment key_right_62 --trials 2 --save-state
 uv run python zelda_i/scripts/run_level4_rooms.py --segment clear_62 --trials 2 --save-state
+uv run python zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 2 --save-state
 ```
 
 ## Layout (pointers)
