@@ -128,12 +128,19 @@ Test crop fixtures (for growth / ship work):
    pond BFS dies; refill mid-nav soft repath; return_home hard timeout 5500f;
    post-gap multi-hop densify + carry-drop; **CROP_WATER `refill_bounds` y_min
    14→10** so north **F9** ~(26,12) is in-bounds (was excluded → always fence).
+   **2026-08-10 night (rr-3q27):** ROM recon closed false F9 path — north **F9 is
+   sealed** from west plant pocket by y=13–14 fence bar (full BFS never reaches
+   F9 stands; manhattan hops to ~(21,23) were false positives). Multihop
+   preferred edges now require hop *nearly arrives* (end within 3) so sealed
+   F9/FA no longer starve fence-open. `FenceClearLoopTask(corridor_only=True)`
+   arms local-drop (no pond-toss thrash); gap re-approach densify never charges
+   south from y=31; soft-timeout no longer aborts mid-carry when gap just opened.
    **ROM dry-fixture still `can_peak=0`** (`recordings/empty_can_refill_probe.json`):
-   now multi-hops toward F9 `(25,13)` but plant-pocket soft-block thrash at
-   ~(13,27)/(12,29) prevents climb; single y=31 fence clear is **not** a
-   south-walkable corridor empty-handed (physics blocks gap transit; north-lip
-   soft-blocks at ~(25,30) / 0xFF). Next: recorded west-climb to F9 or
-   carry-to-pond toss completion without soft-timeout.
+   fence_att=1 + gap=true but south transit through single/double y=31 gap still
+   soft-blocks (player sticks on (13,31) y=505; local-drop while carrying on gap
+   often fails / input_lock). Next tip: **carry south charge that crosses**, or
+   recorded toss_fence_pond from gap, or drop south-of-wall then empty charge
+   from (12,29).
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
    **ROM with charged can OK** (Dry fixture + can=20 → 3 wet `0x55`); still
