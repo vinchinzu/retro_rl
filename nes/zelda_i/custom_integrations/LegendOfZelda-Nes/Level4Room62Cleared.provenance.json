@@ -1,0 +1,23 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T02:46:29.338091+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-2ysf",
+    "intervention_class": "clean",
+    "segment": "clear_62",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "compass": 4,
+    "frames": 11536,
+    "item": 22,
+    "ok": true
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe980-521b-76f1-b668-ae84728d7d75/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room62.state",
+  "source_state_sha256": "0d4e7ff3935cba7e1081ea193d67e1dc30cceda4c646e0f37368c9436d553e8f",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fe980-521b-76f1-b668-ae84728d7d75/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room62Cleared.state",
+  "state_sha256": "b14a0be5d0abe4cdf7ac1f252341fbd669880b03ca6c9d1f402414be5b5b1d17"
+}
