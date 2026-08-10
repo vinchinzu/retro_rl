@@ -1096,6 +1096,9 @@ class CropWaterTask(Task):
         self._pending_multihop_after_drop = False
         self._pending_gap_reseat = False
         self._pending_gap_charge = False
+        self._pending_south_lip_charge = False
+        self._east_south_charges = 0
+        self._water_north_returns = 0
         self._gap_backed = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
@@ -1157,6 +1160,9 @@ class CropWaterTask(Task):
         self._pending_multihop_after_drop = False
         self._pending_gap_reseat = False
         self._pending_gap_charge = False
+        self._pending_south_lip_charge = False
+        self._east_south_charges = 0
+        self._water_north_returns = 0
         self._gap_backed = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
@@ -2063,6 +2069,83 @@ class CropWaterTask(Task):
             self._action_queue.extend([make_action() for _ in range(8)])
         print("[CROP] Queued local drop (carrying blocks pond multi-hop)")
 
+    def _queue_east_south_corridor_charge(
+        self,
+        player: Optional[Tuple[int, int]] = None,
+    ) -> None:
+        """Scripted east-along-y30 then south — ROM-verified gap bypass.
+
+        Empty-handed south through y=31 gap soft-blocks on (13,31). From the
+        north lip, holding RIGHT to x≥28 then DOWN reaches y≥32 (probe K).
+        BFS densify alone sticks at ~(25,30) soft-block.
+        """
+        if player is None:
+            player = self._navigator.current_tile
+        self._action_queue.clear()
+        # Nudge off gap row if needed.
+        if player[1] >= 31:
+            self._action_queue.extend([make_action(up=True) for _ in range(20)])
+            self._action_queue.extend([make_action() for _ in range(6)])
+        # East run past the soft-block band at x≈25.
+        need_right = max(0, 29 - player[0])
+        self._action_queue.extend(
+            [make_action(right=True, b=True) for _ in range(24 * max(need_right, 6))]
+        )
+        self._action_queue.extend([make_action() for _ in range(8)])
+        # South through / past fence row end into pond band.
+        self._action_queue.extend(
+            [make_action(down=True, b=True) for _ in range(160)]
+        )
+        self._action_queue.extend([make_action() for _ in range(12)])
+        self._pending_gap_charge = True
+        self._east_south_charges = getattr(self, "_east_south_charges", 0) + 1
+        print(
+            f"[CROP] Queue east→south corridor charge from {player} "
+            f"(bypass y=31 gap soft-block) n={self._east_south_charges}"
+        )
+
+    def _queue_west_south_lip_charge(
+        self,
+        player: Optional[Tuple[int, int]] = None,
+    ) -> None:
+        """From (28,32) soft-block band: west then south corridor to F0 stand.
+
+        ROM: RIGHT/DOWN from (28,32) are dead; LEFT works. Waypoints
+        (24,34)→(29,36)→(32,36)→(32,34) then refill_action_sequence fills.
+        """
+        if player is None:
+            player = self._navigator.current_tile
+        self._action_queue.clear()
+        # West off the soft-block
+        self._action_queue.extend(
+            [make_action(left=True, b=True) for _ in range(100)]
+        )
+        self._action_queue.extend([make_action() for _ in range(6)])
+        # South
+        self._action_queue.extend(
+            [make_action(down=True, b=True) for _ in range(100)]
+        )
+        self._action_queue.extend([make_action() for _ in range(6)])
+        # East along y≈35–36 toward pond south lip
+        self._action_queue.extend(
+            [make_action(right=True, b=True) for _ in range(160)]
+        )
+        self._action_queue.extend([make_action() for _ in range(6)])
+        # North onto (32,34)
+        self._action_queue.extend(
+            [make_action(up=True, b=True) for _ in range(60)]
+        )
+        self._action_queue.extend([make_action() for _ in range(8)])
+        # Nudge right if short of x=32
+        self._action_queue.extend(
+            [make_action(right=True) for _ in range(20)]
+        )
+        self._action_queue.extend([make_action() for _ in range(8)])
+        self._pending_south_lip_charge = True
+        print(
+            f"[CROP] Queue west→south-lip charge from {player} toward F0 stand"
+        )
+
     def _ensure_hands_empty_for_refill(self, ram: np.ndarray) -> bool:
         """If carrying, queue drop and return True (caller should wait)."""
         if not self._player_carrying(ram):
@@ -2303,26 +2386,32 @@ class CropWaterTask(Task):
             )
             chain = post_gap
 
-        # ROM trap: multi-hop to main-pond south lip from north of y=31.
-        # Single cleared gap is NOT walkable while standing ON the gap tile
-        # (13,31)→(13,32) soft-blocks. NEVER densify south from y=31 — always
-        # re-approach from y≤29 then charge. Greedy east on y=30 hits 0xFF.
-        if player[1] <= 31 and ultimate[1] >= 32:
-            # On the gap row: force north backup (do not charge from here).
-            if player[1] == 31:
-                for wx, wy in (
-                    (player[0], 29),
-                    (player[0], 28),
-                    (player[0] - 1, 29),
-                    (player[0] + 1, 29),
-                    (12, 29),
-                    (13, 29),
-                    (14, 29),
-                    (player[0], 30),
-                ):
-                    if wx < 0 or wy < 0:
-                        continue
-                    wp = (wx, wy)
+        # ROM trap: after east→south wall cross, player often lands (28,32)
+        # where RIGHT/DOWN soft-block. BFS wants (29,32)→pond and thrash.
+        # Route WEST then south corridor: (24,32)→(24,35)→(29,36)→(32,34).
+        if (
+            player[1] >= 32
+            and ultimate[1] >= 33
+            and player[0] <= 30
+            and tile_dist(player, ultimate) > 1
+        ):
+            south_lip_crumbs: List[Tuple[int, int]] = [
+                (24, 32),
+                (24, 33),
+                (24, 34),
+                (24, 35),
+                (26, 35),
+                (28, 35),
+                (29, 36),
+                (30, 36),
+                (32, 36),
+                (32, 35),
+                (32, 34),
+                (33, 34),
+            ]
+            # If on the soft-block tile, force west first.
+            if player[0] >= 27 and player[1] <= 33:
+                for wp in ((24, 32), (24, 33), (22, 32), (20, 32)):
                     if wp == player:
                         continue
                     hop = self._pathfinder.find_path(
@@ -2330,59 +2419,87 @@ class CropWaterTask(Task):
                     )
                     if hop is not None:
                         print(
-                            f"[CROP] Gap re-approach north {player} → {wp} "
-                            f"(never charge south from y=31)"
+                            f"[CROP] Pond soft-block (28,32) band: west first "
+                            f"{player} → {wp}"
                         )
                         return wp
-                # No BFS north — still return a north target for free-walk.
-                return (player[0], 29)
+                return (24, 32)
+            for wp in south_lip_crumbs:
+                if wp == player:
+                    continue
+                d_to_wp = tile_dist(player, wp)
+                if d_to_wp > hop_budget + 4:
+                    continue
+                # Prefer crumbs that improve toward ultimate without re-entering
+                # the (28,32) east-lock.
+                if wp[0] >= 28 and wp[1] <= 33 and player[0] <= 27:
+                    continue
+                hop = self._pathfinder.find_path(
+                    ram, player, wp, max_steps=hop_budget + 4
+                )
+                if hop is None:
+                    continue
+                end = hop[-1]
+                if end == player:
+                    continue
+                if tile_dist(end, ultimate) < dist_u or end[1] > player[1]:
+                    print(
+                        f"[CROP] South-lip densify {player} → {wp} (end={end})"
+                    )
+                    return wp
 
-            # From y=30: one more tile north before charge (30→31 sticks).
-            if player[1] == 30:
+        # ROM trap: multi-hop to main-pond south lip from north of y=31.
+        # Empty-handed south through a y=31 gap soft-blocks on (13,31) y≈505
+        # (BFS invents (12,32) path that game physics rejects). NEVER densify
+        # south through the gap empty-handed.
+        #
+        # ROM-verified routes after gap open (Y1_Test_Crops_Planted_Dry):
+        #   1) Carry-south while holding a post (FenceClearLoop corridor_only)
+        #   2) East-crawl on y=30 to x≥28 then pure south (empty OK)
+        # Prefer (2) for post-drop multi-hop; never charge gap from y≤31 empty.
+        if player[1] <= 31 and ultimate[1] >= 32:
+            # East-crawl corridor: y=30 lip → x≥28 → y=32 → pond south lip.
+            east_crumbs: List[Tuple[int, int]] = [
+                (min(player[0] + 4, 28), min(player[1], 30)),
+                (20, min(player[1], 30)),
+                (24, 30),
+                (26, 30),
+                (28, 30),
+                (28, 32),
+                (30, 32),
+                (30, 33),
+                (32, 33),
+                (32, 34),
+            ]
+            # On the gap row y=31: step north/east off the soft-block tile first.
+            if player[1] == 31:
                 for wp in (
-                    (player[0], 29),
-                    (12, 29),
-                    (13, 29),
-                    (14, 29),
-                    (player[0], 28),
+                    (min(player[0] + 2, 28), 30),
+                    (player[0], 30),
+                    (player[0] + 1, 30),
+                    (player[0] - 1, 30),
+                    (20, 30),
+                    (24, 30),
+                    (28, 30),
                 ):
-                    if wp == player:
+                    if wp == player or wp[0] < 0 or wp[1] < 0:
                         continue
                     hop = self._pathfinder.find_path(
-                        ram, player, wp, max_steps=hop_budget
+                        ram, player, wp, max_steps=hop_budget + 2
                     )
                     if hop is not None:
+                        print(
+                            f"[CROP] Gap soft-block escape {player} → {wp} "
+                            f"(east-crawl, never south through gap)"
+                        )
                         return wp
-                return (player[0], 29)
+                return (min(player[0] + 3, 28), 30)
 
-            # From y≤29: charge south through nearest gap (prefer x=12–14).
-            if player[1] <= 29:
-                for wx in (12, 13, 14, player[0], 15, 11, 16):
-                    if wx < 11 or wx > 29:
-                        continue
-                    wp = (wx, 32)
-                    hop = self._pathfinder.find_path(
-                        ram, player, wp, max_steps=hop_budget + 4
-                    )
-                    if hop is None:
-                        continue
-                    end = hop[-1] if hop else player
-                    if end[1] >= 32:
-                        return wp
-                    # Partial progress onto/through gap is OK only from y≤29.
-                    if end[1] > player[1]:
-                        return wp
-
-            south_targets = [wp for wp in post_gap if wp[1] >= 32]
-            ordered = sorted(
-                south_targets,
-                key=lambda t: (
-                    0 if t[0] <= max(player[0] + 2, 16) else 1,
-                    tile_dist(player, t),
-                ),
-            )
-            for wp in ordered:
+            for wp in east_crumbs:
                 if wp == player:
+                    continue
+                # Only accept crumbs that improve toward ultimate or push east/south.
+                if wp[0] < player[0] and wp[1] <= player[1]:
                     continue
                 d_to_wp = tile_dist(player, wp)
                 if d_to_wp > hop_budget + 4:
@@ -2393,17 +2510,27 @@ class CropWaterTask(Task):
                 if hop is None:
                     continue
                 end = hop[-1] if hop else player
-                if end[1] >= 32 or tile_dist(end, wp) < d_to_wp:
+                # Reject hops that only walk onto the gap tile (y=31, x≈12–16).
+                if end[1] == 31 and end[0] <= 18:
+                    continue
+                if end[1] >= 32 or end[0] > player[0] or tile_dist(end, ultimate) < dist_u:
+                    print(
+                        f"[CROP] East-crawl densify {player} → {wp} "
+                        f"(end={end}, ultimate={ultimate})"
+                    )
                     return wp
-            for wx in (20, 18, 16, 15, 14, 13, 12):
+
+            # Fallback: walk east on current lip (never south through gap).
+            for wx in (28, 26, 24, 22, 20, 18):
                 wp = (wx, min(player[1], 30))
-                if wp == player:
+                if wp == player or wp[0] <= player[0]:
                     continue
                 hop = self._pathfinder.find_path(
-                    ram, player, wp, max_steps=hop_budget
+                    ram, player, wp, max_steps=hop_budget + 2
                 )
                 if hop is not None:
                     return wp
+            return (min(player[0] + 4, 28), min(player[1], 30))
 
         # North F9 multi-hop only when already north of the y=13 fence bar
         # (player y≤16) or east of it (x≥20). From west plant pocket F9 is
@@ -2628,37 +2755,33 @@ class CropWaterTask(Task):
             return result
         if status == TaskStatus.SUCCESS:
             cleared = getattr(task, "cleared_count", 0)
-            print(f"[CROP] Pond access open (cleared={cleared} fences); multi-hop F0")
+            player = self._navigator.current_tile
+            print(
+                f"[CROP] Pond access open (cleared={cleared} fences) "
+                f"at {player}; multi-hop F0"
+            )
             self._fence_subtask = None
-            # Must drop carried fence post before multi-hop (carry soft-locks
-            # south-through-gap movement on the dry fixture).
+            # Carry-south success: already south of wall with/without post.
+            if player[1] >= 32:
+                if self._ensure_hands_empty_for_refill(world.ram):
+                    self._pending_multihop_after_drop = True
+                    self._plot_phase = "refill"
+                    self._state = "navigate"
+                    return None
+                lvl = self._water_level(world.ram)
+                if self._commit_multihop_main_pond(world.ram, lvl):
+                    return None
+            # Still north: drop any post, then scripted east→south corridor
+            # (ROM: empty gap charge soft-blocks; pure right from ~x13 y30 to
+            # x≥28 then down crosses). Densify alone sticks at ~(25,30).
             if self._ensure_hands_empty_for_refill(world.ram):
                 self._pending_multihop_after_drop = True
                 self._plot_phase = "refill"
                 self._state = "navigate"
                 return None
-            # ROM: after local-drop on the gap tile (x,31) both south and short
-            # north BFS thrash. Queue a long UP walk to re-seat north of the
-            # wall (y≤29) before multi-hop south charge.
-            player = self._navigator.current_tile
-            if player[1] >= 31:
-                self._action_queue.clear()
-                self._action_queue.extend(
-                    [make_action(up=True) for _ in range(48)]
-                )
-                self._action_queue.extend([make_action() for _ in range(12)])
-                self._pending_gap_reseat = True
-                self._plot_phase = "refill"
-                self._state = "navigate"
-                print(
-                    f"[CROP] Queue gap re-seat UP from {player} before pond multi-hop"
-                )
-                return None
-            lvl = self._water_level(world.ram)
-            if self._commit_multihop_main_pond(world.ram, lvl):
-                return None
-            self._plot_phase = "water"
-            self._start_refill(world.ram)
+            self._queue_east_south_corridor_charge(player)
+            self._plot_phase = "refill"
+            self._state = "navigate"
             return None
         # Failure / blocked — try multi-hop if gap partial, else full search.
         print(f"[CROP] Fence open failed: {result.reason}; retrying refill search")
@@ -2856,64 +2979,87 @@ class CropWaterTask(Task):
                 return None  # step() drains queue
             self._pending_multihop_after_drop = False
             player = self._navigator.current_tile
-            if player[1] >= 31:
-                # Drop finished on gap tile — re-seat north before multi-hop.
-                self._action_queue.extend(
-                    [make_action(up=True) for _ in range(48)]
-                )
-                self._action_queue.extend([make_action() for _ in range(12)])
-                self._pending_gap_reseat = True
-                print(
-                    f"[CROP] Hands empty on gap {player}; queue UP re-seat"
-                )
+            if player[1] >= 32:
+                print(f"[CROP] Hands empty south of wall at {player}; multi-hop F0")
+                if self._commit_multihop_main_pond(ram, self._water_level(ram)):
+                    return None
+                self._plot_phase = "water"
+                self._start_refill(ram)
                 return None
-            print("[CROP] Hands empty after drop; multi-hop F0")
+            # Still north of wall — scripted east→south (not densify thrash).
+            print(
+                f"[CROP] Hands empty north of wall at {player}; "
+                f"east→south corridor charge"
+            )
+            self._queue_east_south_corridor_charge(player)
+            return None
+
+        # Drain N/E nudge after gap drop, then multi-hop.
+        if getattr(self, "_pending_gap_reseat", False):
+            if self._action_queue:
+                return None
+            self._pending_gap_reseat = False
+            player = self._navigator.current_tile
+            if player[1] < 32:
+                self._queue_east_south_corridor_charge(player)
+                return None
+            print(f"[CROP] Gap nudge done at {player}; multi-hop F0")
             if self._commit_multihop_main_pond(ram, self._water_level(ram)):
                 return None
             self._plot_phase = "water"
             self._start_refill(ram)
             return None
 
-        # Drain gap re-seat (UP off y=31) then scripted charge south through gap.
-        if getattr(self, "_pending_gap_reseat", False):
-            if self._action_queue:
-                return None
-            self._pending_gap_reseat = False
-            player = self._navigator.current_tile
-            # Scripted charge from y≤29 at x≈12–14 (ROM: pure down from y=29
-            # at x=12 crosses; (13,30)→(13,32) BFS re-sticks on the gap tile).
-            self._action_queue.clear()
-            target_x = 12
-            if player[0] > target_x:
-                self._action_queue.extend(
-                    [make_action(left=True) for _ in range(20 * (player[0] - target_x))]
-                )
-            elif player[0] < target_x:
-                self._action_queue.extend(
-                    [make_action(right=True) for _ in range(20 * (target_x - player[0]))]
-                )
-            self._action_queue.extend([make_action(up=True) for _ in range(48)])
-            self._action_queue.extend([make_action() for _ in range(10)])
-            self._action_queue.extend(
-                [make_action(down=True, b=True) for _ in range(140)]
-            )
-            self._action_queue.extend([make_action() for _ in range(12)])
-            self._pending_gap_charge = True
-            print(
-                f"[CROP] Gap re-seat done at {player}; queue scripted south charge"
-            )
-            return None
-
+        # East→south corridor charge (or legacy gap-charge) completion.
         if getattr(self, "_pending_gap_charge", False):
             if self._action_queue:
                 return None
             self._pending_gap_charge = False
             player = self._navigator.current_tile
-            print(f"[CROP] Gap charge done at {player}; multi-hop F0")
-            if player[1] < 32:
-                # Charge failed — fall back to densify multi-hop anyway.
-                print("[CROP] Gap charge did not reach y≥32; densify multi-hop")
+            print(
+                f"[CROP] Corridor charge done at {player}; multi-hop F0 "
+                f"(y={'ok' if player[1] >= 32 else 'still_north'})"
+            )
+            # If still stuck on the ~(25,30) soft-block, one more hard charge.
+            if (
+                player[1] <= 31
+                and player[0] < 28
+                and getattr(self, "_east_south_charges", 0) < 2
+            ):
+                print("[CROP] Still north/west; re-queue east→south charge")
+                self._queue_east_south_corridor_charge(player)
+                return None
+            # Landed on (28,32) soft-block band: script west then south-lip.
+            if player[1] >= 32 and player[0] >= 27 and player[0] <= 30:
+                print(
+                    f"[CROP] South-of-wall soft-block band at {player}; "
+                    f"queue west→south-lip to F0"
+                )
+                self._queue_west_south_lip_charge(player)
+                return None
             if self._commit_multihop_main_pond(ram, self._water_level(ram)):
+                return None
+            self._plot_phase = "water"
+            self._start_refill(ram)
+            return None
+
+        # West→south-lip charge completion (after (28,32) soft-block).
+        if getattr(self, "_pending_south_lip_charge", False):
+            if self._action_queue:
+                return None
+            self._pending_south_lip_charge = False
+            player = self._navigator.current_tile
+            print(f"[CROP] South-lip charge done at {player}; multi-hop/act F0")
+            if self._commit_multihop_main_pond(ram, self._water_level(ram)):
+                # If already on/near stand, snap to act.
+                if (
+                    self._refill_pond_tile is not None
+                    and tile_dist(player, self._refill_pond_tile) <= 1
+                ):
+                    self._approach_tile = self._refill_pond_tile
+                    self._target_tile = self._refill_pond_tile
+                    self._state = "act"
+                    self._navigator.path = []
                 return None
             self._plot_phase = "water"
             self._start_refill(ram)
@@ -2980,6 +3126,33 @@ class CropWaterTask(Task):
                 self._failures += 1
                 self._failed_tiles.add(self._target_tile)
                 if self._plot_phase == "water":
+                    # ROM: post-F0 return north through y=31 gap soft-blocks
+                    # pure-up from ~(13,33). Nudge right then up (lands y≤30).
+                    player = self._navigator.current_tile
+                    if (
+                        player[1] >= 32
+                        and self._approach_tile is not None
+                        and self._approach_tile[1] <= 30
+                        and not self._action_queue
+                        and getattr(self, "_water_north_returns", 0) < 2
+                    ):
+                        self._water_north_returns = (
+                            getattr(self, "_water_north_returns", 0) + 1
+                        )
+                        self._action_queue.extend(
+                            [make_action(right=True, b=True) for _ in range(40)]
+                        )
+                        self._action_queue.extend(
+                            [make_action(up=True, b=True) for _ in range(160)]
+                        )
+                        self._action_queue.extend([make_action() for _ in range(8)])
+                        self._navigator.stasis = 0
+                        self._navigator.path = []
+                        print(
+                            f"[CROP] Water return north charge from {player} "
+                            f"(n={self._water_north_returns})"
+                        )
+                        return None
                     if self._reprioritize_water_step(ram, reason="stuck nav"):
                         return None
                     self.skipped_water += 1
