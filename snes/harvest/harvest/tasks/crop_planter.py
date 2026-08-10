@@ -1099,6 +1099,8 @@ class CropWaterTask(Task):
         self._pending_south_lip_charge = False
         self._east_south_charges = 0
         self._water_north_returns = 0
+        self._water_crop_walk_recoveries = 0
+        self._water_step_retries = 0
         self._gap_backed = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
@@ -1163,6 +1165,7 @@ class CropWaterTask(Task):
         self._pending_south_lip_charge = False
         self._east_south_charges = 0
         self._water_north_returns = 0
+        self._water_crop_walk_recoveries = 0
         self._gap_backed = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
@@ -1685,12 +1688,21 @@ class CropWaterTask(Task):
         return set(plot_tiles(self._plots[self._plot_index], include_center=True))
 
     def _set_water_walkable(self) -> None:
-        """Allow only the current crop-tile stand, not the full 3x3 plot."""
+        """Allow crop stands; full 3x3 when residual crop-walk recovery is armed.
+
+        Intermediate wet tiles (0x55) must stay walkable while pathing onto a
+        residual stand (e.g. (13,26) for dry (12,26)) — otherwise follow_path
+        blocks mid-plot and re-adds temp_blocked.
+        """
         self._pathfinder.extra_walkable.clear()
-        if self._plot_phase != "water" or self._approach_tile is None:
+        if self._plot_phase != "water":
             return
-        if self._allow_crop_walkable and self._approach_tile in self._current_plot_tiles():
-            self._pathfinder.extra_walkable.add(self._approach_tile)
+        plot = self._current_plot_tiles()
+        if self._allow_crop_walkable and plot:
+            if getattr(self, "_water_crop_walk_recoveries", 0) > 0:
+                self._pathfinder.extra_walkable = set(plot)
+            elif self._approach_tile is not None and self._approach_tile in plot:
+                self._pathfinder.extra_walkable.add(self._approach_tile)
 
     def _advance_plot(self, ram: np.ndarray):
         """Move to the next plot, or trigger a re-scan pass, or finish."""
@@ -1735,9 +1747,12 @@ class CropWaterTask(Task):
     def _advance_water_step(self, ram: np.ndarray):
         """Move to the next water step, or finish the plot."""
         self._water_verify_retries = 0
+        self._water_step_retries = 0
         self._last_water_level_before = -1
         self._last_water_tile_before = -1
         self._water_index += 1
+        # Do not carry stasis blocks into the next stand attempt.
+        self._pathfinder.temp_blocked.clear()
         if self._water_index >= len(self._water_steps):
             # All tiles attempted — plot-level verification
             center = self._plots[self._plot_index]
@@ -1796,8 +1811,18 @@ class CropWaterTask(Task):
         plot_set = self._current_plot_tiles()
         best: Optional[Tuple[Tuple[int, int], str, int]] = None
         for stand, face in variants:
-            walkable_override = {stand} if self._allow_crop_walkable and stand in plot_set else None
-            path = self._pathfinder.find_path(ram, current_tile, stand, walkable_override=walkable_override)
+            # Residual recovery needs path *through* wet crop neighbors, not
+            # only the stand cell itself.
+            if self._allow_crop_walkable and plot_set:
+                walkable_override = set(plot_set)
+                walkable_override.add(stand)
+            elif self._allow_crop_walkable and stand in plot_set:
+                walkable_override = {stand}
+            else:
+                walkable_override = None
+            path = self._pathfinder.find_path(
+                ram, current_tile, stand, walkable_override=walkable_override
+            )
             if path is None:
                 continue
             # Strongly prefer perimeter/notch stands over standing on crops.
@@ -1808,6 +1833,122 @@ class CropWaterTask(Task):
             if best is None or candidate[2] < best[2]:
                 best = candidate
         return best
+
+    def _try_residual_crop_walk_recovery(self, ram: np.ndarray) -> bool:
+        """After partial water success, allow walking crop tiles for last dry.
+
+        Gate: plot watered, can spent, re-scan pass, or reorder-cap hit.
+        Residual (12,26) often needs stand on wet (13,26) face left.
+        """
+        if self._plot_phase != "water":
+            return False
+        # Never residual-act with an empty can (unit + ROM pass re-scan).
+        if self._water_level(ram) < 1:
+            return False
+        can_spent = (
+            self._pre_water_level >= 0
+            and self._water_level(ram) < self._pre_water_level
+        )
+        if (
+            self._plot_watered < 1
+            and self._pass_number < 2
+            and not can_spent
+            and getattr(self, "_water_step_retries", 0) < 3
+        ):
+            return False
+        if getattr(self, "_water_crop_walk_recoveries", 0) >= 3:
+            return False
+        self._water_crop_walk_recoveries = (
+            getattr(self, "_water_crop_walk_recoveries", 0) + 1
+        )
+        self._allow_crop_walkable = True
+        self._pathfinder.temp_blocked.clear()
+        if self._plot_index < len(self._plots):
+            self._pathfinder.extra_walkable = set(
+                plot_tiles(self._plots[self._plot_index], include_center=True)
+            )
+        player = self._navigator.current_tile
+        # Adjacent face-water when already next to residual dry.
+        if self._target_tile is not None and tile_dist(player, self._target_tile) == 1:
+            face = self._face_from_approach(player, self._target_tile)
+            self._approach_tile = player
+            self._face_direction = face
+            if self._water_index < len(self._water_steps):
+                self._water_steps[self._water_index] = (
+                    self._target_tile,
+                    player,
+                    face,
+                )
+            print(
+                f"[CROP] Residual adjacent water at {player} → "
+                f"{self._target_tile} face={face}"
+            )
+            self._state = "act"
+            self._navigator.path = []
+            self._steps_on_target = 0
+            return True
+        # Prefer stand on already-wet crop neighbor of residual dry.
+        if self._target_tile is not None:
+            for face, (dx, dy) in (
+                ("left", (1, 0)),
+                ("right", (-1, 0)),
+                ("up", (0, 1)),
+                ("down", (0, -1)),
+            ):
+                stand = (self._target_tile[0] + dx, self._target_tile[1] + dy)
+                if stand not in self._current_plot_tiles() and stand != player:
+                    continue
+                # Path with full plot walkable.
+                path = self._pathfinder.find_path(
+                    ram,
+                    player,
+                    stand,
+                    walkable_override=set(self._current_plot_tiles()) | {stand},
+                )
+                if path is not None or stand == player:
+                    self._approach_tile = stand
+                    self._face_direction = face
+                    if self._water_index < len(self._water_steps):
+                        self._water_steps[self._water_index] = (
+                            self._target_tile,
+                            stand,
+                            face,
+                        )
+                    if stand == player:
+                        print(
+                            f"[CROP] Residual act on plot stand {stand} "
+                            f"→ {self._target_tile} face={face}"
+                        )
+                        self._state = "act"
+                        self._navigator.path = []
+                        self._steps_on_target = 0
+                        return True
+                    print(
+                        f"[CROP] Residual crop-stand {stand} face={face} "
+                        f"for {self._target_tile}"
+                    )
+                    self._state = "navigate"
+                    self._navigator.path = path or []
+                    self._navigator.stasis = 0
+                    self._steps_on_target = 0
+                    return True
+        retargeted = self._retarget_current_water_step(
+            ram
+        ) or self._reorder_remaining_water_steps(ram)
+        if self._plot_index < len(self._plots):
+            self._pathfinder.extra_walkable |= set(
+                plot_tiles(self._plots[self._plot_index], include_center=True)
+            )
+        print(
+            f"[CROP] Residual crop-walk recovery "
+            f"n={self._water_crop_walk_recoveries} retarget={retargeted} "
+            f"target={self._target_tile} stand={self._approach_tile}"
+        )
+        self._state = "navigate"
+        self._navigator.path = []
+        self._navigator.stasis = 0
+        self._steps_on_target = 0
+        return True
 
     def _retarget_current_water_step(self, ram: np.ndarray) -> bool:
         if self._plot_phase != "water" or self._target_tile is None:
@@ -1848,11 +1989,18 @@ class CropWaterTask(Task):
         return changed
 
     def _reprioritize_water_step(self, ram: np.ndarray, *, reason: str) -> bool:
+        # Cap reorders on the same residual dry — thrash between (12,25)/(12,27)
+        # never advances and blocks residual crop-walk recovery.
+        retries = getattr(self, "_water_step_retries", 0)
+        if retries >= 3:
+            return False
         if not self._reorder_remaining_water_steps(ram):
             return False
+        self._water_step_retries = retries + 1
         print(
             f"[CROP] REORDER water tiles ({reason}) "
-            f"target={self._target_tile} stand={self._approach_tile} face={self._face_direction}"
+            f"target={self._target_tile} stand={self._approach_tile} "
+            f"face={self._face_direction} retry={self._water_step_retries}/3"
         )
         self._state = "navigate"
         self._navigator.path = []
@@ -3111,13 +3259,26 @@ class CropWaterTask(Task):
         if self._navigator.stasis > self.stasis_repath and self._navigator.path:
             # Refill multi-hop: do not permanently block the next east cell —
             # stasis on the north lip often means animation lock, not a wall.
-            if not (
-                self._plot_phase == "refill"
-                and getattr(self, "_refill_multihop", False)
+            # Water already in plant pocket (y≤30, ≤2 from stand): never block
+            # the notch/stand — that was the residual (12,26) failure mode
+            # (temp_blocked the only approach cell).
+            player_now = self._navigator.current_tile
+            water_near_stand = (
+                self._plot_phase == "water"
+                and self._approach_tile is not None
+                and player_now[1] <= 30
+                and tile_dist(player_now, self._approach_tile) <= 2
+            )
+            if (
+                (
+                    self._plot_phase == "refill"
+                    and getattr(self, "_refill_multihop", False)
+                )
+                or water_near_stand
             ):
-                self._pathfinder.temp_blocked.add(self._navigator.path[0])
-            else:
                 self._pathfinder.temp_blocked.clear()
+            else:
+                self._pathfinder.temp_blocked.add(self._navigator.path[0])
             path = self._find_nav_path(ram, self._navigator.current_tile, self._approach_tile)
             if path:
                 self._navigator.path = path
@@ -3153,7 +3314,46 @@ class CropWaterTask(Task):
                             f"(n={self._water_north_returns})"
                         )
                         return None
+                    # Near stand / target: snap face-water or repath without block.
+                    if (
+                        self._target_tile is not None
+                        and tile_dist(player, self._target_tile) == 1
+                    ):
+                        face = self._face_from_approach(player, self._target_tile)
+                        self._approach_tile = player
+                        self._face_direction = face
+                        if self._water_index < len(self._water_steps):
+                            self._water_steps[self._water_index] = (
+                                self._target_tile,
+                                player,
+                                face,
+                            )
+                        print(
+                            f"[CROP] Near-target water act at {player} → "
+                            f"{self._target_tile} face={face}"
+                        )
+                        self._state = "act"
+                        self._navigator.path = []
+                        self._navigator.stasis = 0
+                        return None
+                    if water_near_stand:
+                        # One more repath after clear; don't skip residual yet.
+                        self._pathfinder.temp_blocked.clear()
+                        path2 = self._find_nav_path(
+                            ram, player, self._approach_tile
+                        )
+                        if path2 is not None:
+                            self._navigator.path = path2
+                            self._navigator.stasis = 0
+                            return None
+                        # Force act if already on approach.
+                        if player == self._approach_tile:
+                            self._state = "act"
+                            self._navigator.path = []
+                            return None
                     if self._reprioritize_water_step(ram, reason="stuck nav"):
+                        return None
+                    if self._try_residual_crop_walk_recovery(ram):
                         return None
                     self.skipped_water += 1
                     self._plot_skipped += 1
@@ -3202,6 +3402,8 @@ class CropWaterTask(Task):
                 self._failures += 1
                 if self._plot_phase == "water":
                     if self._reprioritize_water_step(ram, reason="no path"):
+                        return None
+                    if self._try_residual_crop_walk_recovery(ram):
                         return None
                     self.skipped_water += 1
                     self._plot_skipped += 1
@@ -3721,6 +3923,10 @@ class CropWaterTask(Task):
             if self._plot_phase == "water":
                 if self._reprioritize_water_step(world.ram, reason="timeout"):
                     return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+                if self._try_residual_crop_walk_recovery(world.ram):
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, action=ActionResult(make_action())
+                    )
                 self.skipped_water += 1
                 self._plot_skipped += 1
                 print(f"[CROP] SKIP water tile {self._water_index + 1}/{len(self._water_steps)} (timeout) target={self._target_tile}")
