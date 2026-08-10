@@ -15,16 +15,17 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
     0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)
     0x62 --maze compass + return LEFT--> 0x61 (ADDR_COMPASS bit 0x08)
-    **Post-compass expand (rr-xc3x / rr-q8eq / rr-n1wn / rr-resv live):** 0x50 is
-    **not** a dead-end. Scripted north → **0x40** (5× Zol ``0x13`` → gel
+    **Post-compass expand (rr-xc3x / rr-q8eq / rr-n1wn / rr-resv / rr-tib8 live):**
+    0x50 is **not** a dead-end. Scripted north → **0x40** (5× Zol ``0x13`` → gel
     ``0x14`` + key ``0x19`` via east-corridor path). Free UP → **0x30**
     (3× Vire + 2× invuln ``0x2b``; ignore invuln for clear). KEY-RIGHT →
     **0x31** (5× Vire; maze interior). Clear opens RIGHT door (doors 2→3) →
-    free RIGHT → **0x32** (Zol/Like-Like residual). First rooms outside early
-    component {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT sealed; 0x40 L/R
-    sealed. ADDR_LADDER residual (stepladder further east of 0x32).
+    free RIGHT → **0x32** (2× Zol + 2× LikeLike). Clear + push left block →
+    stairs **0x60** mode-9 → **ADDR_LADDER** (RoomItemId ``0x0d``). First rooms
+    outside early component {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT sealed;
+    0x40 L/R sealed.
 
-Not Clean STATUS. Stepladder / Gleeok / TF ``0x08`` still residual.
+Not Clean STATUS. Gleeok / TF ``0x08`` still residual.
 """
 
 from __future__ import annotations
@@ -60,13 +61,17 @@ ROOM_L4_KEESE_KEY_51 = 0x51  # bomb-N of 0x61; 8× Keese + key 0x19
 ROOM_L4_VIRES_50 = 0x50  # west of 0x51; 5× Vire 0x12 (north exit → 0x40)
 ROOM_L4_COMPASS_62 = 0x62  # KEY-RIGHT of 0x61; 5× Vire + compass 0x16 dark maze
 ROOM_L4_ZOLS_40 = 0x40  # north of 0x50; 5× Zol 0x13 + key 0x19 (rr-xc3x)
+# Free RIGHT of cleared 0x31 → 0x32 (rr-resv). Stairs under left block → 0x60 (rr-tib8).
+ROOM_L4_STEPLADDER = 0x60  # mode-9 basement under 0x32; RoomItemId 0x0d → ADDR_LADDER
 
 VIRE_OBJECT_TYPE = 0x12  # live on 0x61/0x50/0x62; HP 64; sword splits → 0x1c
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # live split residual from Vire (not standard 0x1B)
-ZOL_OBJECT_TYPE = 0x13  # live on 0x40; HP 32; wooden sword splits → gel 0x14
+ZOL_OBJECT_TYPE = 0x13  # live on 0x40/0x32; HP 32; wooden sword splits → gel 0x14
 GEL_SPLIT_OBJECT_TYPE = 0x14  # Zol split residual (HP stays 0 while alive)
+LIKE_LIKE_OBJECT_TYPE = 0x17  # live on 0x32; HP 144; avoid contact (shield loss)
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16  # live room item on 0x62
+ROOM_ITEM_STEPLADDER = 0x0D  # live on 0x60 stairs basement (rr-tib8)
 ROOM_ITEM_NONE = 0x03
 LEVEL4_COMPASS_BIT = 0x08  # ADDR_COMPASS bit for dungeon level 4
 
@@ -456,8 +461,10 @@ ROOM_L4_NORTH_30 = 0x30
 ROOM_L4_EAST_31 = 0x31
 # Free RIGHT of cleared 0x31 → 0x32 (rr-resv live; doors open R on clear).
 ROOM_L4_EAST_32 = 0x32
-# Invuln movers on 0x30 (slots 1–2); never count as combat clear targets.
+# Invuln movers on 0x30/0x32 (slots 1–2); never count as combat clear targets.
 INVULN_MOVER_TYPE = 0x2B
+# Pushable block residual object on 0x32 (rr-tib8); not a combat target.
+BLOCK_OBJECT_TYPE = 0x68
 # Key-east door 0x30 → 0x31 (live: y≈141 hold RIGHT; keys 1→0).
 KEY_30_EAST_Y = 141
 KEY_30_EAST_Y_TOL = 4
@@ -468,6 +475,87 @@ MAZE_31_CELL_Q = 4
 MAZE_31_EAST_X_MIN = 200
 MAZE_31_EAST_Y = 136
 MAZE_31_EAST_Y_TOL = 16
+# 0x32: after clear, push left block LEFT @y≈141 then stairs → 0x60 (rr-tib8).
+PUSH_32_STAND = (120, 141)
+PUSH_32_DIR = "LEFT"
+PUSH_32_HOLD = 200
+# After push, walk to NE band then UP into stairs hole (live dual-green).
+STAIRS_32_APPROACH = (208, 96)
+STAIRS_32_PUSH = "UP"
+STAIRS_32_PUSH_FRAMES = 120
+# mode-9 0x60 spawn ~(48,77) → stepladder pedestal ~(136,141) hold4 BFS (rr-tib8).
+MAZE_60_HOLD = 4
+MAZE_60_SPAWN_XY = (48, 77)
+MAZE_60_SETTLE = 30
+MAZE_60_TO_LADDER: tuple[str, ...] = (
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "DOWN",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "RIGHT",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "LEFT",
+    "UP",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+)
+LADDER_60_PICKUP_XY = (136, 141)
 
 _PATROL_40: tuple[tuple[int, int], ...] = (
     (64, 109),
@@ -617,6 +705,57 @@ ROOM_31_SPEC = DungeonRoomSpec(
     level=LEVEL4,
 )
 
+# 0x32: 2× Zol + 2× LikeLike (rr-tib8). Enter west ~(16,141).
+# Ignore invuln 0x2b + block residual 0x68. Clear enables left-block push → stairs
+# mode-9 0x60 Stepladder (ADDR_LADDER). Free LEFT → 0x31; free N/E/W sealed.
+_PATROL_32: tuple[tuple[int, int], ...] = (
+    (48, 109),
+    (96, 109),
+    (144, 109),
+    (192, 109),
+    (192, 141),
+    (144, 141),
+    (96, 141),
+    (48, 141),
+    (48, 173),
+    (96, 173),
+    (144, 173),
+    (192, 173),
+    (120, 125),
+    (80, 157),
+    (160, 157),
+    (120, 189),
+)
+
+ROOM_32_SPEC = DungeonRoomSpec(
+    spec_id="level4_room32_zol_likelike",
+    source_room=ROOM_L4_EAST_31,
+    room_id=ROOM_L4_EAST_32,
+    entry=DoorRoute("RIGHT", ((16, 141), (48, 141))),
+    enemy_types=(ZOL_OBJECT_TYPE, GEL_SPLIT_OBJECT_TYPE, LIKE_LIKE_OBJECT_TYPE),
+    expected_enemy_count=4,  # 2 Zol + 2 LikeLike; gels mid-fight
+    alive_rule=AliveRule.TYPE_AND_HP,
+    type_only_enemy_types=(GEL_SPLIT_OBJECT_TYPE,),
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_PATROL_32,
+        engage_distance=56,
+        attack_phase=4,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
+    ),
+    # Invuln 0x2b + block 0x68 keep RoomAllDead noisy — clear = no live Zol/gel/LL.
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=ROOM_ITEM_NONE,
+    exit_routes=(
+        DoorRoute("LEFT", ((40, 141), (16, 141))),  # free return → 0x31
+    ),
+    max_frames=25000,
+    level=LEVEL4,
+)
+
 register_room_spec(ROOM_71_SPEC)
 register_room_spec(ROOM_61_SPEC)
 register_room_spec(ROOM_51_SPEC)
@@ -625,6 +764,7 @@ register_room_spec(ROOM_62_SPEC)
 register_room_spec(ROOM_40_SPEC)
 register_room_spec(ROOM_30_SPEC)
 register_room_spec(ROOM_31_SPEC)
+register_room_spec(ROOM_32_SPEC)
 
 
 class BombWall61North:
@@ -1051,6 +1191,292 @@ def make_room_31_clear_controller() -> GenericDungeonRoomController:
 
 def level4_room_32_ready(ram: np.ndarray) -> bool:
     return level4_room_ready(read_snapshot(ram), ROOM_L4_EAST_32)
+
+
+def level4_room_32_cleared(ram: np.ndarray) -> bool:
+    """0x32 Zol+LikeLike cleared (invuln 0x2b + block 0x68 residual OK).
+
+    RoomAllDead may lag with invuln movers; clear is live-enemy emptiness only.
+    After clear: free LEFT→0x31; push left block → stairs 0x60 Stepladder.
+    """
+    snap = read_snapshot(ram)
+    if not level4_room_ready(snap, ROOM_L4_EAST_32):
+        return False
+    live = ROOM_32_SPEC.live_enemies(snap)
+    return len(live) == 0
+
+
+def make_room_32_clear_controller() -> GenericDungeonRoomController:
+    """Clear 2× Zol + 2× LikeLike on 0x32 (ignore 0x2b/0x68; rr-tib8)."""
+    return GenericDungeonRoomController(ROOM_32_SPEC)
+
+
+class StepladderPhase(Enum):
+    CLEAR = auto()
+    ALIGN_PUSH = auto()
+    PUSH = auto()
+    APPROACH_STAIRS = auto()
+    ENTER_STAIRS = auto()
+    SETTLE_STAIRS = auto()
+    PATH = auto()
+    HUNT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4StepladderController:
+    """0x32 clear → push left block → stairs 0x60 → ADDR_LADDER (rr-tib8).
+
+    Live dual-green: stand ~(120,141) hold LEFT; approach ~(208,96) hold UP into
+    mode-9 0x60; follow ``MAZE_60_TO_LADDER`` hold4 to pedestal ~(136,141).
+    """
+
+    clear_first: bool = True
+    max_frames: int = 35000
+    phase: StepladderPhase = StepladderPhase.CLEAR
+    frames: int = 0
+    phase_frames: int = 0
+    path_index: int = 0
+    hold_left: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    _clear: GenericDungeonRoomController | None = field(default=None, repr=False)
+    _hunt_i: int = 0
+
+    def __post_init__(self) -> None:
+        if self.clear_first:
+            self._clear = GenericDungeonRoomController(ROOM_32_SPEC)
+            self._clear.phase = DungeonPhase.FIGHT
+        else:
+            self.phase = StepladderPhase.ALIGN_PUSH
+
+    def _set_phase(self, phase: StepladderPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(StepladderPhase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        # Controllers only get snap (no ADDR_LADDER field). Runner confirms
+        # ``level4_stepladder_success``; we mark success near pedestal after path.
+        self.frames += 1
+        self.phase_frames += 1
+
+        if self.phase is StepladderPhase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is StepladderPhase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            return FrameAction(nes_action("UP"), "scroll")
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+
+        if self.phase is StepladderPhase.CLEAR:
+            if snap.screen != ROOM_L4_EAST_32:
+                return self._fail(f"clear_wrong_room_0x{snap.screen:02x}")
+            assert self._clear is not None
+            live = ROOM_32_SPEC.live_enemies(snap)
+            if not live and (
+                self._clear.max_live_enemies >= 4
+                or self._clear.success
+                or self.phase_frames <= 2
+            ):
+                note = (
+                    "cleared_0x32"
+                    if self._clear.max_live_enemies >= 4 or self._clear.success
+                    else "precleared_0x32"
+                )
+                self._set_phase(StepladderPhase.ALIGN_PUSH, note)
+            else:
+                return self._clear.step(snap)
+
+        if self.phase is StepladderPhase.ALIGN_PUSH:
+            if snap.screen != ROOM_L4_EAST_32:
+                return self._fail(f"push_wrong_room_0x{snap.screen:02x}")
+            if snap.mode not in (PLAY_MODE, 5):
+                return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+            tx, ty = PUSH_32_STAND
+            # Statue/block solids around center x∈[80,160] y≈128 block straight
+            # south from the clear patrol band — detour west or east first.
+            if (
+                snap.link_y < ty - 6
+                and 72 <= snap.link_x <= 168
+                and abs(snap.link_x - tx) < 48
+            ):
+                # Prefer west aisle (also lines up for LEFT push).
+                side_x = 48 if snap.link_x <= 128 else 192
+                if abs(snap.link_x - side_x) > 6:
+                    return FrameAction(
+                        nes_action("RIGHT" if snap.link_x < side_x else "LEFT"),
+                        "push_detour_x",
+                    )
+                if abs(snap.link_y - ty) > 4:
+                    return FrameAction(
+                        nes_action("DOWN" if snap.link_y < ty else "UP"),
+                        "push_detour_y",
+                    )
+            dx, dy = tx - snap.link_x, ty - snap.link_y
+            if abs(dx) <= 4 and abs(dy) <= 4:
+                self._set_phase(StepladderPhase.PUSH, "at_push_stand")
+            elif abs(dy) > 4 and (abs(dx) <= 8 or abs(dy) >= abs(dx)):
+                return FrameAction(
+                    nes_action("DOWN" if dy > 0 else "UP"), "align_push_y"
+                )
+            else:
+                return FrameAction(
+                    nes_action("RIGHT" if dx > 0 else "LEFT"), "align_push_x"
+                )
+
+        if self.phase is StepladderPhase.PUSH:
+            if snap.screen != ROOM_L4_EAST_32:
+                if snap.screen == ROOM_L4_STEPLADDER or snap.mode == 9:
+                    self._set_phase(StepladderPhase.SETTLE_STAIRS, "stairs_mid_push")
+                    return FrameAction(nes_idle_action(), "stairs_mid_push")
+                return self._fail(f"push_left_room_0x{snap.screen:02x}")
+            if self.phase_frames >= PUSH_32_HOLD:
+                self._set_phase(StepladderPhase.APPROACH_STAIRS, "push_held")
+            else:
+                return FrameAction(nes_action(PUSH_32_DIR), "push_left_block")
+
+        if self.phase is StepladderPhase.APPROACH_STAIRS:
+            if snap.screen == ROOM_L4_STEPLADDER or snap.mode == 9:
+                self._set_phase(StepladderPhase.SETTLE_STAIRS, "entered_stairs")
+                return FrameAction(nes_idle_action(), "entered_stairs")
+            if snap.screen != ROOM_L4_EAST_32:
+                return self._fail(f"stairs_wrong_room_0x{snap.screen:02x}")
+            if snap.mode not in (PLAY_MODE, 5):
+                return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+            tx, ty = STAIRS_32_APPROACH
+            # After left-block push, route NE: prefer east aisle then north.
+            if snap.link_y > ty + 8 and snap.link_x < 180:
+                if snap.link_x < 176:
+                    return FrameAction(nes_action("RIGHT"), "stairs_east_first")
+                return FrameAction(nes_action("UP"), "stairs_north_aisle")
+            dx, dy = tx - snap.link_x, ty - snap.link_y
+            if abs(dx) <= 4 and abs(dy) <= 4:
+                self._set_phase(StepladderPhase.ENTER_STAIRS, "at_stairs_approach")
+            elif abs(dy) > 4 and (abs(dx) <= 12 or abs(dy) >= abs(dx)):
+                return FrameAction(
+                    nes_action("DOWN" if dy > 0 else "UP"), "stairs_align_y"
+                )
+            else:
+                return FrameAction(
+                    nes_action("RIGHT" if dx > 0 else "LEFT"), "stairs_align_x"
+                )
+
+        if self.phase is StepladderPhase.ENTER_STAIRS:
+            if snap.screen == ROOM_L4_STEPLADDER or snap.mode == 9:
+                self._set_phase(StepladderPhase.SETTLE_STAIRS, "entered_0x60")
+                return FrameAction(nes_idle_action(), "entered_0x60")
+            if self.phase_frames >= STAIRS_32_PUSH_FRAMES:
+                return self._fail("stairs_timeout")
+            return FrameAction(nes_action(STAIRS_32_PUSH), "enter_stairs_up")
+
+        if self.phase is StepladderPhase.SETTLE_STAIRS:
+            # Idle through mode-9 scroll; scripted path only from NW spawn band.
+            if snap.transitioning or snap.mode in (4, 6, 7):
+                return FrameAction(nes_idle_action(), "stairs_scroll_settle")
+            if snap.screen != ROOM_L4_STEPLADDER and snap.mode != 9:
+                return self._fail(f"settle_wrong_room_0x{snap.screen:02x}")
+            if self.phase_frames < MAZE_60_SETTLE:
+                return FrameAction(nes_idle_action(), "stairs_idle_settle")
+            sx, sy = MAZE_60_SPAWN_XY
+            if abs(snap.link_x - sx) <= 24 and abs(snap.link_y - sy) <= 32:
+                self._set_phase(StepladderPhase.PATH, "path_from_spawn")
+                self.path_index = 0
+                self.hold_left = 0
+                return FrameAction(nes_idle_action(), "path_from_spawn")
+            # Landed elsewhere in 0x60 — hunt pedestal directly (BFS path is
+            # spawn-relative).
+            self._set_phase(StepladderPhase.HUNT, "hunt_from_nonspawn")
+            return FrameAction(nes_idle_action(), "hunt_from_nonspawn")
+
+        if self.phase is StepladderPhase.PATH:
+            if snap.mode in (4, 6, 7) or snap.transitioning:
+                return FrameAction(nes_idle_action(), "path_settle")
+            # Stay in basement; if we fell back to 0x32, fail (need re-enter).
+            if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:
+                return self._fail("path_exited_to_0x32")
+            if snap.screen != ROOM_L4_STEPLADDER and snap.mode != 9:
+                return self._fail(f"path_wrong_room_0x{snap.screen:02x}")
+            if self.hold_left > 0:
+                self.hold_left -= 1
+                d = MAZE_60_TO_LADDER[
+                    min(self.path_index, len(MAZE_60_TO_LADDER) - 1)
+                ]
+                return FrameAction(nes_action(d), "path_hold")
+            if self.path_index >= len(MAZE_60_TO_LADDER):
+                self._set_phase(StepladderPhase.HUNT, "path_done")
+                return FrameAction(nes_idle_action(), "path_done")
+            d = MAZE_60_TO_LADDER[self.path_index]
+            self.path_index += 1
+            self.hold_left = MAZE_60_HOLD - 1
+            return FrameAction(nes_action(d), "path_step")
+
+        if self.phase is StepladderPhase.HUNT:
+            if snap.mode in (4, 6, 7) or snap.transitioning:
+                return FrameAction(nes_idle_action(), "hunt_settle")
+            if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:
+                return self._fail("hunt_exited_to_0x32")
+            tx, ty = LADDER_60_PICKUP_XY
+            dx, dy = tx - snap.link_x, ty - snap.link_y
+            if abs(dx) <= 6 and abs(dy) <= 6:
+                self._hunt_i += 1
+                if self._hunt_i > 20:
+                    self.success = True
+                    self._set_phase(StepladderPhase.DONE, "ladder_pedestal")
+                    return FrameAction(nes_idle_action(), "done")
+                return FrameAction(nes_idle_action(), "hunt_idle")
+            # Mode-9 basement is layered: north ledge → channel → pedestal.
+            # Prefer vertical first so we drop off the ledge before east-west.
+            if abs(dy) > 8:
+                return FrameAction(
+                    nes_action("DOWN" if dy > 0 else "UP"), "hunt_y_first"
+                )
+            if abs(dx) > 6:
+                return FrameAction(
+                    nes_action("RIGHT" if dx > 0 else "LEFT"), "hunt_x"
+                )
+            return FrameAction(nes_action("DOWN" if dy > 0 else "UP"), "hunt_y")
+
+        return FrameAction(nes_idle_action(), "idle")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "path_index": self.path_index,
+            "notes": list(self.notes),
+            "segment": "level4_stepladder",
+            "push_stand": list(PUSH_32_STAND),
+            "stairs_approach": list(STAIRS_32_APPROACH),
+            "ladder_xy": list(LADDER_60_PICKUP_XY),
+            "path_len": len(MAZE_60_TO_LADDER),
+        }
+
+
+def make_stepladder_controller(*, clear_first: bool = True) -> Level4StepladderController:
+    """0x32 → push left block → 0x60 → ADDR_LADDER (rr-tib8)."""
+    return Level4StepladderController(clear_first=clear_first)
+
+
+def level4_stepladder_success(ram: np.ndarray) -> bool:
+    """ADDR_LADDER inventory bit set (stepladder collected)."""
+    from zelda_i.ram import ADDR_LADDER, read_u8
+
+    return int(read_u8(ram, ADDR_LADDER)) > 0
 
 
 # Live scripted key path after combat clear pose ≈(136–140, 164–165).
@@ -1931,9 +2357,9 @@ def planning_interior_report() -> dict:
     return {
         "level": LEVEL4,
         "bead": "rr-5lu",
-        "tip": "rr-resv",
+        "tip": "rr-tib8",
         "track": "pure",
-        "status": "interior_0x31_clear_0x32_stepladder_residual",
+        "status": "interior_0x32_clear_stepladder_live",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -2003,15 +2429,24 @@ def planning_interior_report() -> dict:
             hex(ROOM_L4_EAST_32): {
                 "enemies": {"0x13": 2, "0x17": 2, "0x2b": 2, "0x68": 1},
                 "LEFT": hex(ROOM_L4_EAST_31),
+                "push_left_stairs": hex(ROOM_L4_STEPLADDER),
                 "note": (
-                    "live free-RIGHT of cleared 0x31 (rr-resv); "
-                    "Zol+LikeLike residual; stepladder residual"
+                    "live free-RIGHT of cleared 0x31 (rr-resv/rr-tib8); "
+                    "clear Zol+LikeLike (ignore 0x2b/0x68); push left block "
+                    "→ mode-9 0x60 Stepladder"
                 ),
+            },
+            hex(ROOM_L4_STEPLADDER): {
+                "mode": 9,
+                "room_item": hex(ROOM_ITEM_STEPLADDER),
+                "pickup_xy": list(LADDER_60_PICKUP_XY),
+                "enemies": {"0x1b": 4},
+                "note": "stairs basement under 0x32; ADDR_LADDER on touch (rr-tib8)",
             },
         },
         "post_compass": {
             "bead": "rr-o0nn",
-            "expand": "rr-resv",
+            "expand": "rr-tib8",
             "start": "Level4Compass",
             "early_component": [
                 hex(ROOM_L4_ENTRY),
@@ -2023,7 +2458,7 @@ def planning_interior_report() -> dict:
             "first_outside": hex(ROOM_L4_ZOLS_40),
             "next_outside": hex(ROOM_L4_NORTH_30),
             "keys_at_compass": 0,
-            "ladder": 0,
+            "ladder": 1,
             "evidence": [
                 "recordings/l4_xc3x_breakthrough.json",
                 "recordings/l4_q8eq_40_dense_bfs.json",
@@ -2031,12 +2466,15 @@ def planning_interior_report() -> dict:
                 "recordings/l4_n1wn_clear30_clear_30.json",
                 "recordings/l4_resv_31_bfs.json",
                 "recordings/l4_resv_room32_recon.json",
+                "recordings/l4_tib8_clear32_clear_32.json",
+                "recordings/l4_tib8_stepladder_stepladder.json",
             ],
             "blocked": [
                 "0x51 UP/RIGHT sealed (not key)",
                 "0x62 bomb exits none",
                 "0x40 LEFT/RIGHT sealed",
                 "0x31 N free sealed (maze)",
+                "0x32 free N/E/W sealed (only LEFT + stairs)",
                 "no Vire key-farm drops (8 cycles)",
             ],
             "opened": [
@@ -2045,6 +2483,7 @@ def planning_interior_report() -> dict:
                 "0x30 clear Vires (ignore 0x2b)",
                 "0x30 KEY-RIGHT @y141 → 0x31 (5× Vire)",
                 "0x31 clear Vires → free RIGHT → 0x32",
+                "0x32 clear Zol+LikeLike → push left → 0x60 ADDR_LADDER",
             ],
         },
         "bomb_61_north": {
@@ -2086,7 +2525,9 @@ def planning_interior_report() -> dict:
             "key_right_31": "rr-n1wn",
             "clear_31": "rr-resv",
             "east_32": "rr-resv",
-            "stepladder_path": "rr-o0nn",
+            "clear_32": "rr-tib8",
+            "stepladder": "rr-tib8",
+            "stepladder_path": "rr-tib8",
         },
         "key_40": {
             "pickup_xy": list(KEY_40_PICKUP_XY),
@@ -2118,12 +2559,28 @@ def planning_interior_report() -> dict:
             "opens_to": hex(ROOM_L4_EAST_32),
             "checkpoint": "Level4Room32",
         },
+        "clear_32": {
+            "enemies": {"0x13": 2, "0x17": 2, "ignore": ["0x2b", "0x68"]},
+            "settle_all_dead": 0,
+            "checkpoint": "Level4Room32Cleared",
+        },
+        "stepladder": {
+            "push_stand": list(PUSH_32_STAND),
+            "push_dir": PUSH_32_DIR,
+            "stairs_approach": list(STAIRS_32_APPROACH),
+            "stairs_room": hex(ROOM_L4_STEPLADDER),
+            "mode": 9,
+            "room_item": hex(ROOM_ITEM_STEPLADDER),
+            "pickup_xy": list(LADDER_60_PICKUP_XY),
+            "path_hold": MAZE_60_HOLD,
+            "path_len": len(MAZE_60_TO_LADDER),
+            "checkpoint": "Level4Stepladder",
+        },
         "not_yet": [
-            "stepladder room / ADDR_LADDER",
-            "0x32 clear + further expand toward ladder",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
+            "post-ladder water cross / map residual",
         ],
     }
 
@@ -2174,6 +2631,7 @@ __all__ = [
     "MAZE_31_HOLD",
     "ROOM_30_SPEC",
     "ROOM_31_SPEC",
+    "ROOM_32_SPEC",
     "ROOM_40_SPEC",
     "ROOM_50_SPEC",
     "ROOM_51_SPEC",
@@ -2182,19 +2640,38 @@ __all__ = [
     "ROOM_L4_EAST_31",
     "ROOM_L4_EAST_32",
     "ROOM_L4_NORTH_30",
+    "ROOM_L4_STEPLADDER",
     "ROOM_L4_ZOLS_40",
+    "BLOCK_OBJECT_TYPE",
     "GEL_SPLIT_OBJECT_TYPE",
     "INVULN_MOVER_TYPE",
+    "LIKE_LIKE_OBJECT_TYPE",
+    "LADDER_60_PICKUP_XY",
+    "MAZE_60_HOLD",
+    "MAZE_60_TO_LADDER",
+    "PUSH_32_DIR",
+    "PUSH_32_HOLD",
+    "PUSH_32_STAND",
+    "STAIRS_32_APPROACH",
+    "STAIRS_32_PUSH",
+    "STAIRS_32_PUSH_FRAMES",
+    "StepladderPhase",
+    "Level4StepladderController",
     "ZOL_OBJECT_TYPE",
     "level4_room_30_cleared",
     "level4_room_31_cleared",
     "level4_room_31_ready",
+    "level4_room_32_cleared",
     "level4_room_32_ready",
+    "level4_stepladder_success",
     "make_key_right_31_controller",
     "make_room_30_clear_controller",
     "make_room_31_clear_controller",
+    "make_room_32_clear_controller",
+    "make_stepladder_controller",
     "ROOM_71_SPEC",
     "ROOM_ITEM_COMPASS",
+    "ROOM_ITEM_STEPLADDER",
     "ROOM_L4_COMPASS_62",
     "ROOM_L4_ENTRY",
     "ROOM_L4_KEESE_KEY_51",
