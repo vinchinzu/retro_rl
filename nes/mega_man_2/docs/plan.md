@@ -14,8 +14,8 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 ## Bottleneck
 
 **Post-s4: rider kill Clean; empty cloud stand still RED.** Island solid prog
-937–984. LL spawns mapset4; pulse-B kills `0x3D` in air; Y-meet after kill
-reaches dx≈5–10 but freefall continues. No camera ≥5 yet.
+937–984. Pulse-B kills `0x3D`; feet_dy=0 @ dx≤2 still freefall. Solid decode:
+`aobject_tsa` timer, flag 192 facing — not solid bits. No camera ≥5 yet.
 
 Geometry (verified 2026-08-09/10 + fpd6 + rr-54ui night):
 
@@ -27,11 +27,13 @@ Geometry (verified 2026-08-09/10 + fpd6 + rr-54ui night):
 
 ## Suggested next experiments
 
-1. **Object-solid decode (primary, rr-54ui)** — `aobject_tsa=$4E0`, post-kill
-   flag/type 118, feet-on-top geometry vs sy==by. Evidence:
-   `recordings/air_post4_cloud/RED_PIN.md`. Probe: `scripts/cloud_land_probe.py`.
-2. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
-3. Do **not** re-sweep goblin-solid, “LL absent”, or hold-B only.
+1. **Body AI solid-arm (primary, rr-54ui)** — disasm `objects_kaminari_goro`
+   after child `0x3D` dies; TAS pin when feet stick. Already ruled out:
+   `aobject_tsa` as solid type, flag 192 as solid bit, feet_dy=0 alone.
+   Evidence: `docs/CLOUD_LAND_RED_PIN.md`, `scripts/cloud_solid_decode.py`.
+2. Screen-align (player/body same scr, cam≥4) then relative-descent land.
+3. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
+4. Do **not** re-sweep goblin-solid, “LL absent”, hold-B only, or pure feet_dy grids.
 
 ## Notes
 

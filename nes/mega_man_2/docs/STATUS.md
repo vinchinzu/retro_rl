@@ -149,11 +149,13 @@ but still **no stand** — object-solid residual deeper than X gap.
 | Field | Value |
 |-------|-------|
 | Rider kill | **Yes** — `0x3D` HP 20→13→6→despawn via pulsed B (period 3–8) in air |
-| Body | `0x3E` stays; on kill flash types 6 + 118 |
+| Body | `0x3E` stays; type 6 = `objects_killed` (~12f); type 118 **not** seen this session |
 | Best Y-meet | dx≈5–10, \|dy\|≤4 after kill — still freefall `ft=0` |
-| Pitfall | Kill while dy≳20 → player+cloud sink same rate (gap frozen) |
+| feet-on-top | **feet_dy=0 @ dx≤2** (MM_H=24) still freefall — residual ≠ X / ≠ feet align alone |
+| Solid decode | `aobject_tsa` = AI timer (not solid); flag 128→192 = facing `objects_right`; body never becomes platform type |
+| Pitfall | Co-sink (matched vertical rate) locks feet_dy≈−3…−4; kill high still no arm |
 | Cam ≥5 | **No** |
-| Evidence | `recordings/air_post4_cloud/RED_PIN.md` + `cloud_land_*.json` / v2–v7 |
+| Evidence | `docs/CLOUD_LAND_RED_PIN.md`, `recordings/air_post4_cloud_solid/`, v2–v7 |
 
 ## Not done
 
@@ -164,8 +166,8 @@ but still **no stand** — object-solid residual deeper than X gap.
 
 ## Next
 
-1. **rr-54ui:** Decode empty-cloud solid (`aobject_tsa=$4E0`, flag 128→192, type 118);
-   stand from above with feet-on-top geometry (not sy==by alone). Probe:
-   `scripts/cloud_land_probe.py` + `recordings/air_post4_cloud/RED_PIN.md`.
+1. **rr-54ui:** Disasm `objects_kaminari_goro` solid-arm after rider death; TAS pin
+   (sy/by/status/tsa when human stands). Screen-align cam/body scr. Probe:
+   `scripts/cloud_solid_decode.py` + `docs/CLOUD_LAND_RED_PIN.md`.
 2. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
-3. Do **not** re-sweep goblin-solid, “LL never spawns”, or hold-B without pulse.
+3. Do **not** re-sweep goblin-solid, “LL never spawns”, hold-B only, or feet_dy=0 grids alone.

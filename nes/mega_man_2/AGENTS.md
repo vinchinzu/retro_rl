@@ -30,8 +30,8 @@ uv run pytest nes/mega_man_2/tests -q
 Past screen 4 from `AirFanPlatform` (prog 937–984) toward boss door.
 **LL spawns** mapset4 (`0x3D`/`0x3E` ~prog 961; `docs/LL_SPAWN_DECODE.md`).
 **Rider kill Clean** (pulse B on `0x3D`). Residual: empty cloud **object-solid
-stand** (Y-meet dx≈5–10 still freefall). Probe: `scripts/cloud_land_probe.py`
-+ `recordings/air_post4_cloud/RED_PIN.md`. Then M4.
+stand** — feet_dy=0 @ dx≤2 still freefall; `aobject_tsa` is AI timer not solid.
+Probe: `scripts/cloud_solid_decode.py` + `docs/CLOUD_LAND_RED_PIN.md`. Then M4.
 
 ## Norms
 
@@ -49,4 +49,6 @@ stand** (Y-meet dx≈5–10 still freefall). Probe: `scripts/cloud_land_probe.py
 - Do not save type36-overlap or left-ledge hops as past-island checkpoints.
 - LL watch: `$0400` types **0x3D/0x3E** (not 35/36). Goblin is **0x40**.
 - Kill LL rider with **pulsed B** (period 3–8); hold-B under-fires. Body `0x3E`
-  stays after `0x3D` dies. Stand may not set `tile_feet==1`.
+  stays after `0x3D` dies (type 6 death anim ~12f). Stand may not set `tile_feet==1`.
+- Empty-cloud residual: not X alone, not feet_dy=0 alone. `aobject_tsa` countdown
+  ≠ solid; flag 192 = facing. Next = body AI solid-arm / TAS pin / screen-align.

@@ -1182,6 +1182,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Re-spawned MM2 manager for feet-on-top / aobject_tsa stand → cam≥5.
 - Zelda: rr-vdnc Clean dual CLOSED on main; tip rr-zavx natural-entry compose running.
 
+### 2026-08-10T~session — MM2 solid decode PARTIAL (rr-54ui still open)
+- `scripts/cloud_solid_decode.py` + `recordings/air_post4_cloud_solid/` (708 recipes).
+- **Decoded:** `aobject_tsa` = AI timer (not solid); flag 128→192 = `objects_right`
+  facing; type 6 = `objects_killed` (~12f); type 118 not seen; body stays `0x3E`.
+- **feet_dy=0 @ dx≤2** after kill still freefall; co-sink locks feet_dy≈−3…−4.
+- Diagnostic place-on-top poke still falls through (not Clean evidence).
+- Cam≥5 **no**. Bead **rr-54ui** stays in_progress PARTIAL. No push.
+- Next: disasm body AI solid-arm / TAS pin / screen-align.
+
 ### 2026-08-10T05:01 CDT — hourly watcher tick
 - **in_progress (busy lanes — no re-dispatch):**
   - super_metroid: `rr-av5s` Red→Hellway hop12 + parent `rr-dbu.8` K5 Alpha stack
