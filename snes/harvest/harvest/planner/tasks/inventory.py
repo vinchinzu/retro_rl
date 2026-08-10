@@ -50,7 +50,7 @@ from harvest.core.scene import (
     classify_scene_from_ram,
     scene_indicates_ending,
 )
-from harvest.core.ram_catalog import read_ram_u8
+from harvest.core.ram_catalog import read_ram_u8, read_ram_value
 from harvest.planner.tasks.navigation import MultiMapNavTask, NavTask
 from harvest.planner.tasks.transitions import (
     DirectionalTransitionTask,
@@ -59,6 +59,14 @@ from harvest.planner.tasks.transitions import (
     SHED_ENTER_OVERSHOOT_Y,
     SHED_ENTER_STAND_TILE,
 )
+
+# High byte of game_state (u16 @ 0x00D2): free on-foot outdoor control.
+# After pure D1 truck→sleep, ExitToFarm often clears this bit and the player
+# is auto-walked south into house-enter stand ~(133,425) then tilemap 0x5F.
+GAME_STATE_FREE_MOVE_BIT = 0x4000
+# Outdoor house door / enter stand soft-lock pocket after control loss.
+HOUSE_FRONT_SOFTLOCK_Y_MIN = 400
+HOUSE_FRONT_SOFTLOCK_X_MAX = 160
 
 # Re-export carry helpers for existing importers.
 __carry_exports__ = (
@@ -86,6 +94,30 @@ BARN_EXIT_DOOR_X = 8 * 16 + 8
 _DEFAULT_SHED_NAV_PX = (422, 474)
 _DEFAULT_SHED_NAV_RADIUS = 12
 _DEFAULT_SHED_FARM_ROUTE = "farm_to_shed"
+
+
+def farm_free_move_ready(ram: np.ndarray) -> bool:
+    """True when outdoor free-move bit is set (can steer to shed/field).
+
+    Verified 2026-08-09 (rr-bhr): ``Y1_Inside_House`` / ``Y1_Front_House`` exit
+    keep ``game_state & 0x4000``. Pure D1 truck→sleep then ExitToFarm clears it
+    (gs→0x0001) and auto-walks into the house-enter soft-lock.
+    """
+    try:
+        flags = int(read_ram_value(ram, "game_state", raw=True))
+    except Exception:
+        return True
+    return bool(flags & GAME_STATE_FREE_MOVE_BIT)
+
+
+def farm_house_front_softlock(ram: np.ndarray) -> bool:
+    """True when stuck in the post-truck house-front pocket without free move."""
+    if not is_farm_tilemap(int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0):
+        return False
+    if farm_free_move_ready(ram):
+        return False
+    pos = get_pos_from_ram(ram)
+    return pos.y >= HOUSE_FRONT_SOFTLOCK_Y_MIN and pos.x <= HOUSE_FRONT_SOFTLOCK_X_MAX
 
 
 def shed_enter_transition(*, name: str, timeout: int) -> DirectionalTransitionTask:
@@ -557,11 +589,13 @@ class ShedFetchItemTask(Task):
     _phase: str = field(default="start", init=False)
     _task: Optional[Task] = field(default=None, init=False)
     _failed_reason: str = field(default="", init=False)
+    _farm_frames: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "start"
         self._task = None
         self._failed_reason = ""
+        self._farm_frames = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -644,9 +678,31 @@ class ShedFetchItemTask(Task):
 
         return self._activate("exit_to_farm", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
 
+    def _control_lost_result(self, world: WorldState) -> TaskResult:
+        gs = int(read_ram_value(world.ram, "game_state", raw=True))
+        pos = get_pos_from_ram(world.ram)
+        return TaskResult(
+            status=TaskStatus.FAILURE,
+            reason=(
+                f"farm_control_lost gs=0x{gs:04X} pos=({pos.x},{pos.y}) "
+                f"(post-truck D1 ExitToFarm clears free-move bit 0x4000; "
+                f"auto-walk → house-front soft-lock → tilemap 0x5F)"
+            ),
+        )
+
     def step(self, world: WorldState) -> TaskResult:
         if self._task is None:
             return self._start_next_phase(world)
+
+        # While routing on farm after house exit, abort if free-move is gone.
+        if self._phase in {"route", "nav", "exit_to_farm"}:
+            tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+            if is_farm_tilemap(tilemap):
+                self._farm_frames += 1
+                if farm_house_front_softlock(world.ram) or (
+                    not farm_free_move_ready(world.ram) and self._farm_frames > 120
+                ):
+                    return self._control_lost_result(world)
 
         result = self._task.step(world)
         if result.status == TaskStatus.RUNNING:
@@ -693,6 +749,11 @@ class ShedFetchItemTask(Task):
             )
 
         if self._phase == "exit_to_farm":
+            if is_farm_tilemap(
+                int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+            ) and not farm_free_move_ready(world.ram):
+                # Do not start MultiMapNav without free-move — soft-locks to 0x5F.
+                return self._control_lost_result(world)
             self._task = None
             return self._start_next_phase(world)
 
@@ -1111,6 +1172,8 @@ __all__ = [
     "seed_in_carry_pair",
     "shed_farm_route_name",
     "shed_enter_transition",
+    "farm_free_move_ready",
+    "farm_house_front_softlock",
     "load_recording_slice",
     "DeadlineCheckTask",
     "WaitUntilTimeTask",

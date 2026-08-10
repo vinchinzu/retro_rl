@@ -158,7 +158,8 @@ SCALAR_FIELDS: tuple[RamFieldSpec, ...] = (
         "state",
         0,
         0xFFFF,
-        "Runtime flags; bit 0x0080 is carrying dog, bit 0x0800 is pickup/drop animation.",
+        "Runtime flags; bit 0x0080 carrying dog, 0x0800 pickup/drop anim, "
+        "0x4000 free on-foot outdoor control (cleared by bad post-truck ExitToFarm).",
         aliases=("player_state_flags",),
     ),
     RamFieldSpec("player_action", "Player Action", 0x00D4, "u8", "Runtime", "state", 0, 0xFF),
@@ -298,7 +299,21 @@ SCALAR_FIELDS: tuple[RamFieldSpec, ...] = (
     RamFieldSpec("cow_feed", "Cow Feed", 0x092C, "u8", "Farm & Inventory", "retro", 0, 99),
     RamFieldSpec("chicken_feed", "Chicken Feed", 0x092D, "u8", "Farm & Inventory", "retro", 0, 99),
     RamFieldSpec("power_berries", "Power Berries", 0x0976, "u8", "Farm & Inventory", "retro", 0, 10, data_key="power_berries"),
-    RamFieldSpec("house_size", "House Size", 0x0970, "u8", "Farm & Inventory", "retro", 0, 3, data_key="house_size"),
+    RamFieldSpec(
+        "house_size",
+        "House Size",
+        0x0970,
+        "u8",
+        "Farm & Inventory",
+        "retro",
+        0,
+        3,
+        # Decomp labels $0970 as "House Level?" but NPC talk scripts also INC/STZ
+        # it as a dialogue step counter (jumps 0→2 on Ann during D1). Do not treat
+        # mid-run values as remodel level; Gate B uses house_size_at_start only.
+        "Often a dialogue step counter mid-run; remodel level only at cold start.",
+        data_key="house_size",
+    ),
     RamFieldSpec("dog_map", "Dog Map", 0x11F30, "u8", "Animals", "decomp", 0, 0xFF),
     RamFieldSpec("horse_map", "Horse Map", 0x11F31, "u8", "Animals", "decomp", 0, 0xFF),
     RamFieldSpec(

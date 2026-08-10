@@ -160,3 +160,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-2ysf`: 0x50 dead-end; Stepladder path is KEY-RIGHT 0x61→0x62.
 - Pure 2/2 clear_50 / key_right_62 / clear_62. Next tip **rr-7r24** maze+compass+ladder.
 
+### 2026-08-09T22:10 CDT — harvest Gate B diagnosis (open)
+- `rr-bhr` still open: ExitToFarm drops free-move after pure truck→sleep; softlock → 0x5F.
+- Fail-fast `farm_control_lost` landed. Next: pure truck+sleep re-record keeping gs free-move.
+

@@ -105,11 +105,12 @@ Test crop fixtures (for growth / ship work):
 
 1. Close **power-on → full D1** without the AnnEve fixture (rr-bhr).
    **2026-08-07 progress:** composed pure talks from `--power-on` hit peak
-   mask `0x3F` (Ann|Eve|livestock|Nina|owner|Maria); truck leave via rest
-   slice `town_day1_rest` f9200→end reaches D2 morning. **Open:** required
-   shed grass+can — ExitToFarm after D2 still falls into tilemap `0x5F`
-   (same house_size mismatch trap as AnnEve). AnnEve rest path remains green
-   for mask→D2 with soft-optional shed. Details: [town_day1_recon.md](town_day1_recon.md).
+   mask `0x3F`; truck rest-slice reaches D2 morning. **2026-08-09 root cause:**
+   not house remodel — post-truck `ExitToFarm` clears free-move bit
+   (`game_state` `0x4001→0x0001`), auto-walks to house-front `~(133,425)`,
+   then soft-locks to tilemap `0x5F`. `Y1_Inside_House` shed grass+can still
+   ROM-OK. Fail-fast `farm_control_lost` landed; pure truck+sleep settle still
+   open. Details: [town_day1_recon.md](town_day1_recon.md).
 2. **Natural empty-can refill** to a CheckToolSuccess-valid tile (`F0`/`F9`–`FD`).
    **Mapped 2026-08-01**: main pond **F0** ~(31–34,31–33); human stand
    `(32,34)` face up (`go_to_water_source_end`); north lip `(33,30)` face down
