@@ -12,7 +12,7 @@ from retro_harness.adventure.bindings import (
     SkillBinding,
 )
 from retro_harness.adventure.planner import PlanResult, PlanStatus
-from retro_harness.benchmark import PolicyIdentity
+from retro_harness.benchmark_claims import PolicyIdentity
 from retro_harness.identity import (
     canonical_json as _canonical_json,
     digest_record as _digest,
