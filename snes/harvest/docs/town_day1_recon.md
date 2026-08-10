@@ -129,13 +129,21 @@ stays closed). So shed cannot be completed on D1 without truck either.
 - `ShedFetchItemTask` fails fast with `farm_control_lost` (+ `f1f68` / intro_ok)
 - Helpers: `farm_free_move_ready`, `outdoor_intro_flags_ready` (mask `0x00A1`)
 
-#### Next fix (pure)
+#### Pure fix (landed 2026-08-09 night)
 
-Human (or pure automation) must **complete D2 morning outdoor dog intro** so
-`event_flags_1f68` reaches ≥ `0x00A1` **with free-move restored**, then shed
-grass+can. Re-record from truck D2 bed through successful outdoor free-move
-stand — not mid-warp y=212, and not house-front softlock. RAM-poke of `0x00B1`
-is diagnosis-only (not Clean).
+`CompleteOutdoorMorningIntroTask` pure-completes the outdoor intro:
+
+1. `ExitToFarm` from D2 bed → ROM ORA `0x0020`, clear free-move, auto-walk south
+2. House-front dialogue (`lock=2`) — mash A
+3. **Dog name entry** tilemap `0x5F` / `$099F=3` / `lock=5` — deterministic
+   `AAAA` + OK (same reversed-grid path as `PowerOnStartTask`)
+4. Post-name dialogue → dog-owned `0x0080` (`f1f68→0x00B1`) → free-move
+   `0x4000` restored at house-front `~(136,424)`
+5. Then shed grass `(96,118)` + can `(96,168)` into carry
+
+Wired as first step of `_shed_starter_tools`. Evidence:
+`recordings/gate_b_dog_intro_shed.json`, `recordings/gate_b_anneve_full_shed.json`.
+RAM-poke of `0x00B1` remains diagnosis-only.
 
 ## Automation status (2026-08-01)
 

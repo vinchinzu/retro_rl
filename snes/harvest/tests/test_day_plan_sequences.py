@@ -1477,6 +1477,69 @@ class DayPlanSequenceTests(unittest.TestCase):
         world.ram[f68] = 0xB1
         self.assertTrue(outdoor_intro_flags_ready(world.ram))
 
+    def test_complete_outdoor_morning_intro_already_ready(self) -> None:
+        """Gate B: CompleteOutdoorMorningIntroTask no-ops when flags+free ready."""
+        from harvest.core.ram_catalog import live_wram_base
+        from harvest.planner.tasks.inventory import CompleteOutdoorMorningIntroTask
+
+        world = make_world(0x00)
+        set_player_pos(world.ram, 136, 424)
+        base = live_wram_base(world.ram)
+        world.ram[base + 0x00D2] = 0x01
+        world.ram[base + 0x00D3] = 0x40  # free-move
+        world.ram[base + 0x11F68] = 0xB1
+        world.ram[base + 0x11F69] = 0x00
+        task = CompleteOutdoorMorningIntroTask()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("already ready", result.reason or "")
+
+    def test_complete_outdoor_morning_intro_name_entry_presses(self) -> None:
+        """Gate B: dog name tilemap 0x5F uses PowerOn-style AAAA + OK path."""
+        from harvest.planner.tasks.inventory import CompleteOutdoorMorningIntroTask
+
+        world = make_world(0x5F)
+        # input_lock @ ADDR_INPUT_LOCK
+        world.ram[ADDR_INPUT_LOCK] = 5
+        world.ram[0x099F] = 3  # dog name kind
+        world.ram[0x0994] = 0  # name length
+        world.ram[0x0991] = 0  # cursor
+        # free-move off, intro incomplete
+        from harvest.core.ram_catalog import live_wram_base
+
+        base = live_wram_base(world.ram)
+        world.ram[base + 0x00D2] = 0x01
+        world.ram[base + 0x00D3] = 0x00
+        world.ram[base + 0x11F68] = 0x31
+        world.ram[base + 0x11F69] = 0x00
+
+        task = CompleteOutdoorMorningIntroTask()
+        task.reset(world)
+        r1 = task.step(world)
+        self.assertEqual(r1.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(r1.action)
+        self.assertIn("dog name char", r1.reason or "")
+
+        # After 4 chars, cursor 0 → LEFT toward OK
+        world.ram[0x0994] = 4
+        world.ram[0x0991] = 0
+        task._last_input_step = -100
+        r2 = task.step(world)
+        self.assertEqual(r2.status, TaskStatus.RUNNING)
+        self.assertIn("move to OK", r2.reason or "")
+
+        world.ram[0x0991] = 40
+        task._last_input_step = -100
+        r3 = task.step(world)
+        self.assertIn("move to OK", r3.reason or "")
+
+        world.ram[0x0991] = 70
+        task._last_input_step = -100
+        r4 = task.step(world)
+        self.assertIn("confirm dog name", r4.reason or "")
+        self.assertTrue(task._name_submitted)
+
     def test_exit_to_farm_task_exits_shed_with_downward_transition(self) -> None:
         world = make_world(0x26)
         set_player_pos(world.ram, 8 * 16 + 8, 12 * 16 + 8)
