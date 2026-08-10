@@ -17,7 +17,7 @@ K5 reverse tunnels + Red climb (this package — implement when predecessor pure
       → Warehouse 0xA6A1          ✅ pure dual 10255f ×2 (business_to_warehouse; Super fall+ladder)
         → East Tunnel 0xCF80      ✅ pure dual (warehouse_to_east; reverse east_to_warehouse)
           → Glass 0xCEFB          ✅ pure dual (east_to_glass; reverse glass_to_east)
-            → West Tunnel 0xCF54  ⬜ reverse of west_to_glass
+            → West Tunnel 0xCF54  ✅ pure dual (glass_to_west; reverse west_to_glass)
               → Below Spazer 0xA408 ⬜ reverse of below_spazer_to_west
                 → Bat 0xA3DD      ⬜ reverse of bat_to_below_spazer
                   → Red Tower 0xA253 ⬜ climb reverse of red_tower_to_bat
@@ -33,6 +33,7 @@ full pure stack greens.
 from __future__ import annotations
 
 from super_metroid.routes.kpdr.k5.east_to_glass import play_east_to_glass
+from super_metroid.routes.kpdr.k5.glass_to_west import play_glass_to_west
 from super_metroid.routes.kpdr.k5.warehouse_to_east import play_warehouse_to_east
 
-__all__ = ["play_east_to_glass", "play_warehouse_to_east"]
+__all__ = ["play_east_to_glass", "play_glass_to_west", "play_warehouse_to_east"]
