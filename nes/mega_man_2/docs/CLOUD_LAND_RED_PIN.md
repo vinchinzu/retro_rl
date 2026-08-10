@@ -114,20 +114,52 @@ decoded object-solid path and is never enabled on the chariot.
 | 3 | late fall / some ground-exit — **not** sustained cloud stand |
 | Never | status that freezes Y to body for ≥4f with `ft` or yvar lock |
 
+## Alt path + appear-mask session (2026-08-10) — still RED (PARTIAL)
+
+Acceptance still **not met** (`cam ≥ 5` no). Residual child: **rr-f3nr**.
+
+### Human / TAS routes (documented)
+
+| Route | Requirement | Air-first Clean? |
+|-------|-------------|------------------|
+| Kill LL → ride Thunder Chariot ×5 | Buster only | Intended; solid residual blocks it |
+| Item-1 platforms skip cloud waits | Heat first → Item-1 | **No** — `AirFanPlatform` weapons=`$00` |
+| Jump/damage-boost past gap | — | **No** — max prog ~1050–1070 class; gap ~296px |
+
+Sources: MMKB / StrategyWiki walkthroughs; TAS 2881S + megamanrta (Heat-before-Air + Item-1).
+
+### Appear-mask disasm pin (new)
+
+| Finding | Detail |
+|---------|--------|
+| Sole `LDA #$90 / STA flag,X` | appearing_block AI only (`14/14_23.bin`) |
+| `ORA #$10` in full PRG bins | **0×** |
+| Real appear setup | flag=`$90`, `ys` (`$640`)=`#$04`, xs/xsf from shifted pos, tsa=solid type |
+| Body `0x3E` | Never arms appear; stays exist/facing only |
+| Diag zero-mask force | flag\|`$10` + tsa=1 + xs=ys=xsf=ysf=0 → **global solid** under fceumm (ft=1, Y lock) — solid *path* works when configured |
+| Diag localized masks | tile16 / wide_y / 14_23-style after Clean kill → still freefall (wrong mask geometry and/or AI overwrite of speed regs) |
+
+### Engine residual (updated)
+
+1. Empty cloud after Clean rider kill never presents stand (prior RED pin).
+2. Only decoded object-solid path = appearing_block; body never configures it.
+3. fceumm **can** solid via appear when fully forced (zero masks) — residual is **arming/config**, not a total emulator solid blackout.
+4. No Air-first Clean alternate past s4 without cloud stand or external Item-1.
+
+Evidence: `recordings/air_post4_altpath/` (`appear_mask_probe.json`, `appear_mask_geom.json`, `altpath_summary.json`).
+
 ## Next experiments (do not re-run)
 
 **Do not:** goblin-solid, pure-RIGHT only, “LL never spawns”, hold-B spam without pulse,
-re-grid feet_dy=0 alone, re-grid screen-align alone, re-poke fall_top/appear/flag08
-(already negative).
+re-grid feet_dy=0 alone, re-grid screen-align alone, re-poke fall_top/appear/flag08,
+re-grid zero-mask global solid, pure X-chase (already negative).
 
-**Do:**
+**Do (rr-f3nr):**
 
-1. **Human/TAS frame pin** (primary remaining) — capture sy, by, `$2C`, body
-   tsa/flag/child, cam vs body scr on a frame where feet **stick** on empty cloud
-   (console or verified emulator). Compare to our freefall dumps.
-2. **Alternate path past s4 without cloud ride** — damage-boost / weapon / scroll
-   glitch / mapset skip if any Clean path exists (document if none).
-3. If human pin shows a missing RAM bit/type we never set: implement that arm under Clean.
+1. **FCEUX/human RAM pin** — on a frame where feet **stick** on empty cloud, dump
+   sy/by/`$2C`/body fl/tsa/xs/ys/xsf/ysf/cam vs freefall dumps here.
+2. **Heat→Air Item-1 Clean segment** as alternate past s4 (new milestone; not Air-first).
+3. If human pin shows missing RAM/type arm: implement under Clean.
 4. Chain mapset 5–6 LLs only after first stand freezes a state.
 
 ## Smoke

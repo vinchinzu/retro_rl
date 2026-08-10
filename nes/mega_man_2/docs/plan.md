@@ -13,30 +13,24 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Bottleneck
 
-**Post-s4: rider kill Clean; empty cloud stand still RED (engine residual).**
-Island solid prog 937–984. Pulse-B kills `0x3D`. Body AI has **no solid-arm**
-on rider death; appearing_block `$10` never set; force-place at cloud top still
-freefall under fceumm. No camera ≥5 yet.
+**Post-s4: rider kill Clean; empty cloud stand still RED (rr-54ui PARTIAL).**
+No camera ≥5. Residual child **rr-f3nr**.
 
-Geometry (verified 2026-08-09/10 + fpd6 + rr-54ui night):
-
-- Tile solids end prog 984; Air Tikki is **0x40** damage enemy (not landable)
-- LL **0x3D/0x3E** spawns ~prog 961; kill rider then stand (object-solid expected)
-- Pulse B (period 3–8) required; hold-B under-fires
-- Kill with dy≳20 freezes gap (co-sink); kill near Y-meet still no `ft=1`
-- Placement ROM: lsmmega/mm2 `airman_wily2_objects_set.asm` idx5 mapset4 x=C0 y=20
-- Cloud top ≈ by−16 (OAM); kill window cam=3 vs body scr=4
+- Pulse-B kills `0x3D`; body `0x3E` stays; appear `$10` never armed by body AI
+- Sole `LDA #$90` flag arm in PRG = Heat appearing_block AI (`14_23`)
+- Zero-mask appear force → global solid (fceumm path works); localized masks fail
+- **No Air-first Clean alt past s4**: Item-1 needs Heat (`weapons=$00` on Fan);
+  jump envelope cannot cover ~296px gap after prog 984
+- Human path = cloud ride ×5; TAS path = Item-1 skip (Heat-first)
 
 ## Suggested next experiments
 
-1. **Human/TAS frame pin (primary residual)** — when feet stick on empty cloud,
-   dump sy/by/`$2C`/body tsa/flag/cam. Diff vs freefall dumps in
-   `docs/CLOUD_LAND_RED_PIN.md` + `scripts/cloud_screen_align.py`.
-2. **Alternate path past s4** without cloud ride (if any Clean route exists).
+1. **rr-f3nr: FCEUX/human stick pin** — dump sy/by/`$2C`/body fl/tsa/xs/ys/cam
+   on a real empty-cloud stand vs freefall (`docs/CLOUD_LAND_RED_PIN.md`).
+2. **rr-f3nr: Heat→Air Item-1 Clean segment** as alternate past s4 milestone.
 3. Chain mapset 5–6 LLs → camera ≥5 only after stand freezes a state.
 4. Do **not** re-sweep goblin-solid, “LL absent”, hold-B only, feet_dy grids,
-   screen-align-only, or solid pokes (fall_top/appear/flag08) already negative.
-
+   screen-align-only, fall_top/appear/flag08, or zero-mask global solid.
 ## Notes
 
 - Platform: NES (fceumm via stable-retro custom integration).
