@@ -59,6 +59,28 @@ SC_DOOR_X = 220
 SC_DOUBLE_SETTLE = 320
 
 # ---------------------------------------------------------------------------
+# Double → Single Chamber return (DTS_*) — rr-qpkd / Phase B hop 9
+# Source post_wave_to_double_chamber_pure ~(984,139) Super ledge.
+# Human tape f6052–6752: LEFT hop off Super column → morph mid drop →
+# floor LEFT (morph tunnel ~x450–550) → gap hop → bottom-left blue door y395.
+# ---------------------------------------------------------------------------
+DTS_LEDGE_Y_MAX = 170
+DTS_HOP_LAUNCH_X = 950  # spin hop once left of this on high ledge
+DTS_MID_X = (760, 860)  # Super column mid platforms
+DTS_MID_Y = (220, 360)
+DTS_FLOOR_Y_MIN = 420
+DTS_FLOOR_Y = (430, 470)
+DTS_MORPH_TUNNEL_X = (440, 580)  # low ceiling; must morph-roll
+DTS_GAP_LAUNCH_X = 190  # floor spin hop toward left door past this
+DTS_DOOR_X = 40
+DTS_DOOR_Y = (380, 415)
+DTS_SINGLE_SETTLE = 280
+DTS_LEDGE_FRAMES = 200
+DTS_DROP_FRAMES = 700
+DTS_FLOOR_FRAMES = 900
+DTS_DOOR_FRAMES = 500
+
+# ---------------------------------------------------------------------------
 # K4.10 Double Chamber → Wave Beam PLM (DC_*)
 # Live (2026-08-06, rr-dbu.10): entry ~(61,139); upper hop → Kamer seat
 # x∈[370,375] y≤139; blue gate open = exact human tape buttons f4650–5200.
@@ -126,6 +148,21 @@ __all__ = [
     "WAVE_DOOR_X",
     "WAVE_LEAVE_FRAMES",
     "WAVE_DOUBLE_SETTLE",
+    "DTS_LEDGE_Y_MAX",
+    "DTS_HOP_LAUNCH_X",
+    "DTS_MID_X",
+    "DTS_MID_Y",
+    "DTS_FLOOR_Y_MIN",
+    "DTS_FLOOR_Y",
+    "DTS_MORPH_TUNNEL_X",
+    "DTS_GAP_LAUNCH_X",
+    "DTS_DOOR_X",
+    "DTS_DOOR_Y",
+    "DTS_SINGLE_SETTLE",
+    "DTS_LEDGE_FRAMES",
+    "DTS_DROP_FRAMES",
+    "DTS_FLOOR_FRAMES",
+    "DTS_DOOR_FRAMES",
     "ROOM_BUBBLE",
     "ROOM_SINGLE_CHAMBER",
     "ROOM_DOUBLE_CHAMBER",
