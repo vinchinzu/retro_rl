@@ -1221,3 +1221,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Probe: `scripts/cloud_screen_align.py` + `recordings/air_post4_screen_align/`.
 - Residual tip: human/TAS stick pin or alt path past s4 without cloud ride.
 - Bead stays in_progress PARTIAL. No push.
+
+### 2026-08-10T05:30 CDT — MM2 empty-cloud solid engine residual
+- Commit `d0162b2`: disasm body AI no solid-arm; screen-align 0/40 stand; fall_top poke still freefall.
+- Re-spawned MM2 for **alternate Clean path past s4** (not more solid grids).
+- Pin: CLOUD_LAND_RED_PIN.md
+
