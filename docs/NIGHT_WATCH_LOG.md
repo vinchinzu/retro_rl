@@ -225,3 +225,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Truck D2 is 0x0011; CODE_83CEAE dog-intro softlocks free-move. house_size not causal.
 - Landed outdoor_intro_flags_ready (e966d7c). Next: pure complete D2 outdoor dog intro then shed.
 
+### 2026-08-09T22:40 CDT — zelda L4 Compass pure dual-green
+- **CLOSED** `rr-9so0` 0x62 maze → Compass bit 0x08 ~471f 2/2; return LEFT→0x61.
+- Next tip: `rr-o0nn` post-Compass → Stepladder. Parent rr-5lu open.
+
