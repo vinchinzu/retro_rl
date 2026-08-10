@@ -1,7 +1,7 @@
 {
   "game": "SMRando-Snes",
   "package": "sm_rando",
-  "started_at": "2026-08-09T23:32:08Z",
+  "started_at": "2026-08-10T00:01:51Z",
   "seed": "vanilla-substrate",
   "seed_settings": {},
   "start_state": "power_on/retro.State.NONE",
@@ -9,28 +9,28 @@
   "milestones": [
     {
       "name": "landing_to_parlor_injected_failure",
-      "at": "2026-08-09T23:32:34Z",
+      "at": "2026-08-10T00:02:25Z",
       "frame": 23866,
       "status": "retryable_failure",
       "frames": 0
     },
     {
       "name": "landing_to_parlor_recovery",
-      "at": "2026-08-09T23:32:34Z",
+      "at": "2026-08-10T00:02:25Z",
       "frame": 23866,
       "status": "success",
       "frames": 476
     },
     {
       "name": "parlor_to_climb",
-      "at": "2026-08-09T23:32:34Z",
+      "at": "2026-08-10T00:02:25Z",
       "frame": 23866,
       "status": "success",
       "frames": 1019
     },
     {
       "name": "climb_to_pit",
-      "at": "2026-08-09T23:32:34Z",
+      "at": "2026-08-10T00:02:25Z",
       "frame": 23866,
       "status": "success",
       "frames": 823
@@ -41,7 +41,7 @@
   "outcome": "completed",
   "video_path": null,
   "meta": {
-    "schema_version": 1,
+    "schema_version": 2,
     "solver_result": {
       "status": "completed",
       "final_observation": {
@@ -50,7 +50,7 @@
           "type": "int",
           "repr": "38748"
         },
-        "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+        "schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
         "capabilities": [],
         "resources": {
           "energy": 99.0,
@@ -61,7 +61,7 @@
           "room_id": 38748,
           "door_transition": 1
         },
-        "identity_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3"
+        "identity_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2"
       },
       "outcomes": [
         {
@@ -69,8 +69,8 @@
           "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
           "status": "retryable_failure",
           "frames": 0,
-          "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
-          "end_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "start_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
+          "end_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "observed_capability_delta": [],
           "observed_resource_delta": {
             "energy": 0.0,
@@ -85,8 +85,8 @@
           "skill_id": "sm.vertical.landing_to_parlor_recovery",
           "status": "success",
           "frames": 476,
-          "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
-          "end_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "start_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
+          "end_observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
           "observed_capability_delta": [],
           "observed_resource_delta": {
             "energy": 0.0,
@@ -101,8 +101,8 @@
           "skill_id": "sm.vertical.parlor_to_climb",
           "status": "success",
           "frames": 1019,
-          "start_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
-          "end_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "start_observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
+          "end_observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
           "observed_capability_delta": [],
           "observed_resource_delta": {
             "energy": 0.0,
@@ -117,8 +117,8 @@
           "skill_id": "sm.vertical.climb_to_pit",
           "status": "success",
           "frames": 823,
-          "start_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
-          "end_observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "start_observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
+          "end_observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
           "observed_capability_delta": [],
           "observed_resource_delta": {
             "energy": 0.0,
@@ -133,7 +133,7 @@
         {
           "sequence": 0,
           "lifecycle": "planning",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": null,
           "skill_id": null,
           "policy_identity_digest": null,
@@ -144,7 +144,7 @@
         {
           "sequence": 1,
           "lifecycle": "planning",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": null,
           "skill_id": null,
           "policy_identity_digest": null,
@@ -234,7 +234,7 @@
         {
           "sequence": 2,
           "lifecycle": "dispatching",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": "landing_to_parlor_injected_failure",
           "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
           "policy_identity_digest": "146d7c279eb12fd7ced7d1c69956bced371ab53b185722a4267e75b1655a5421",
@@ -243,7 +243,7 @@
         {
           "sequence": 3,
           "lifecycle": "executing",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": "landing_to_parlor_injected_failure",
           "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
           "policy_identity_digest": "146d7c279eb12fd7ced7d1c69956bced371ab53b185722a4267e75b1655a5421",
@@ -252,7 +252,7 @@
         {
           "sequence": 4,
           "lifecycle": "validating",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": "landing_to_parlor_injected_failure",
           "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
           "policy_identity_digest": "146d7c279eb12fd7ced7d1c69956bced371ab53b185722a4267e75b1655a5421",
@@ -262,8 +262,8 @@
               "skill_id": "sm.vertical.landing_to_parlor_injected_failure",
               "status": "retryable_failure",
               "frames": 0,
-              "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
-              "end_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+              "start_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
+              "end_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
               "observed_capability_delta": [],
               "observed_resource_delta": {
                 "energy": 0.0,
@@ -278,7 +278,7 @@
         {
           "sequence": 5,
           "lifecycle": "replanning",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": null,
           "skill_id": null,
           "policy_identity_digest": null,
@@ -291,7 +291,7 @@
         {
           "sequence": 6,
           "lifecycle": "replanning",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": null,
           "skill_id": null,
           "policy_identity_digest": null,
@@ -381,7 +381,7 @@
         {
           "sequence": 7,
           "lifecycle": "dispatching",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": "landing_to_parlor_recovery",
           "skill_id": "sm.vertical.landing_to_parlor_recovery",
           "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
@@ -390,7 +390,7 @@
         {
           "sequence": 8,
           "lifecycle": "executing",
-          "observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
+          "observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
           "edge_id": "landing_to_parlor_recovery",
           "skill_id": "sm.vertical.landing_to_parlor_recovery",
           "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
@@ -399,13 +399,13 @@
         {
           "sequence": 9,
           "lifecycle": "executing",
-          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
           "edge_id": "landing_to_parlor_recovery",
           "skill_id": "sm.vertical.landing_to_parlor_recovery",
           "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
           "detail": {
             "action": {
-              "type": "sm_rando.vertical_slice.RouteSkillCommand",
+              "type": "sm_rando.solver_adapter.RouteSkillCommand",
               "value": {
                 "edge_id": "landing_to_parlor_recovery",
                 "runner": "super_metroid.routes.kpdr.early_spine.play_landing_to_parlor",
@@ -418,7 +418,7 @@
         {
           "sequence": 10,
           "lifecycle": "validating",
-          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
           "edge_id": "landing_to_parlor_recovery",
           "skill_id": "sm.vertical.landing_to_parlor_recovery",
           "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
@@ -427,7 +427,7 @@
         {
           "sequence": 11,
           "lifecycle": "validating",
-          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
           "edge_id": "landing_to_parlor_recovery",
           "skill_id": "sm.vertical.landing_to_parlor_recovery",
           "policy_identity_digest": "bcbcb6e286dca1dac2f82b95070bc9bcc793af9058776097b0743565b8a7687d",
@@ -437,8 +437,8 @@
               "skill_id": "sm.vertical.landing_to_parlor_recovery",
               "status": "success",
               "frames": 476,
-              "start_observation_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004",
-              "end_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+              "start_observation_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9",
+              "end_observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
               "observed_capability_delta": [],
               "observed_resource_delta": {
                 "energy": 0.0,
@@ -453,7 +453,7 @@
         {
           "sequence": 12,
           "lifecycle": "dispatching",
-          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
           "edge_id": "parlor_to_climb",
           "skill_id": "sm.vertical.parlor_to_climb",
           "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
@@ -462,7 +462,7 @@
         {
           "sequence": 13,
           "lifecycle": "executing",
-          "observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
+          "observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
           "edge_id": "parlor_to_climb",
           "skill_id": "sm.vertical.parlor_to_climb",
           "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
@@ -471,13 +471,13 @@
         {
           "sequence": 14,
           "lifecycle": "executing",
-          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
           "edge_id": "parlor_to_climb",
           "skill_id": "sm.vertical.parlor_to_climb",
           "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
           "detail": {
             "action": {
-              "type": "sm_rando.vertical_slice.RouteSkillCommand",
+              "type": "sm_rando.solver_adapter.RouteSkillCommand",
               "value": {
                 "edge_id": "parlor_to_climb",
                 "runner": "super_metroid.routes.kpdr.early_spine.play_parlor_to_climb",
@@ -490,7 +490,7 @@
         {
           "sequence": 15,
           "lifecycle": "validating",
-          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
           "edge_id": "parlor_to_climb",
           "skill_id": "sm.vertical.parlor_to_climb",
           "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
@@ -499,7 +499,7 @@
         {
           "sequence": 16,
           "lifecycle": "validating",
-          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
           "edge_id": "parlor_to_climb",
           "skill_id": "sm.vertical.parlor_to_climb",
           "policy_identity_digest": "89a7357df63d5ac0ef769e104b8d75a88075eadca2160a46906c702c6971cb21",
@@ -509,8 +509,8 @@
               "skill_id": "sm.vertical.parlor_to_climb",
               "status": "success",
               "frames": 1019,
-              "start_observation_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f",
-              "end_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+              "start_observation_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c",
+              "end_observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
               "observed_capability_delta": [],
               "observed_resource_delta": {
                 "energy": 0.0,
@@ -525,7 +525,7 @@
         {
           "sequence": 17,
           "lifecycle": "dispatching",
-          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
           "edge_id": "climb_to_pit",
           "skill_id": "sm.vertical.climb_to_pit",
           "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
@@ -534,7 +534,7 @@
         {
           "sequence": 18,
           "lifecycle": "executing",
-          "observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
+          "observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
           "edge_id": "climb_to_pit",
           "skill_id": "sm.vertical.climb_to_pit",
           "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
@@ -543,13 +543,13 @@
         {
           "sequence": 19,
           "lifecycle": "executing",
-          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
           "edge_id": "climb_to_pit",
           "skill_id": "sm.vertical.climb_to_pit",
           "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
           "detail": {
             "action": {
-              "type": "sm_rando.vertical_slice.RouteSkillCommand",
+              "type": "sm_rando.solver_adapter.RouteSkillCommand",
               "value": {
                 "edge_id": "climb_to_pit",
                 "runner": "super_metroid.routes.kpdr.early_spine.play_climb_to_pit",
@@ -562,7 +562,7 @@
         {
           "sequence": 20,
           "lifecycle": "validating",
-          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
           "edge_id": "climb_to_pit",
           "skill_id": "sm.vertical.climb_to_pit",
           "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
@@ -571,7 +571,7 @@
         {
           "sequence": 21,
           "lifecycle": "validating",
-          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
           "edge_id": "climb_to_pit",
           "skill_id": "sm.vertical.climb_to_pit",
           "policy_identity_digest": "8b3a75b712e26f2cd11efce01157f95fb671593f25307c44431ae0ca7cd88bfe",
@@ -581,8 +581,8 @@
               "skill_id": "sm.vertical.climb_to_pit",
               "status": "success",
               "frames": 823,
-              "start_observation_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88",
-              "end_observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+              "start_observation_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6",
+              "end_observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
               "observed_capability_delta": [],
               "observed_resource_delta": {
                 "energy": 0.0,
@@ -597,7 +597,7 @@
         {
           "sequence": 22,
           "lifecycle": "replanning",
-          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
           "edge_id": null,
           "skill_id": null,
           "policy_identity_digest": null,
@@ -610,7 +610,7 @@
         {
           "sequence": 23,
           "lifecycle": "replanning",
-          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
           "edge_id": null,
           "skill_id": null,
           "policy_identity_digest": null,
@@ -641,7 +641,7 @@
         {
           "sequence": 24,
           "lifecycle": "completed",
-          "observation_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3",
+          "observation_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2",
           "edge_id": null,
           "skill_id": null,
           "policy_identity_digest": null,
@@ -669,7 +669,7 @@
               "type": "int",
               "repr": "37368"
             },
-            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
             "capabilities": [],
             "resources": {
               "energy": 99.0,
@@ -680,7 +680,7 @@
               "room_id": 37368,
               "door_transition": 0
             },
-            "identity_digest": "197d50db3ae123649d4bdfb65b76f46ab4a884bf7b0f1cab92b2de3609e59004"
+            "identity_digest": "112a8aa5b617e2dab6631b3419b9c8e962beb1770f648441c3565a909aa5d8a9"
           },
           "observation_after": {
             "frame": 22024,
@@ -688,7 +688,7 @@
               "type": "int",
               "repr": "37629"
             },
-            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
             "capabilities": [],
             "resources": {
               "energy": 99.0,
@@ -699,10 +699,10 @@
               "room_id": 37629,
               "door_transition": 1
             },
-            "identity_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f"
+            "identity_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c"
           },
           "action": {
-            "type": "sm_rando.vertical_slice.RouteSkillCommand",
+            "type": "sm_rando.solver_adapter.RouteSkillCommand",
             "value": {
               "edge_id": "landing_to_parlor_recovery",
               "runner": "super_metroid.routes.kpdr.early_spine.play_landing_to_parlor",
@@ -724,7 +724,7 @@
               "type": "int",
               "repr": "37629"
             },
-            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
             "capabilities": [],
             "resources": {
               "energy": 99.0,
@@ -735,7 +735,7 @@
               "room_id": 37629,
               "door_transition": 1
             },
-            "identity_digest": "2c9f4bd6b36475b7ab13dc02d6b65c4519f1b54abb7cd12db7139d0953ba502f"
+            "identity_digest": "aa0b3425f76a859496d8e0d154969bb0505386b0ba651f9b675ec30866331e7c"
           },
           "observation_after": {
             "frame": 23043,
@@ -743,7 +743,7 @@
               "type": "int",
               "repr": "38586"
             },
-            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
             "capabilities": [],
             "resources": {
               "energy": 99.0,
@@ -754,10 +754,10 @@
               "room_id": 38586,
               "door_transition": 1
             },
-            "identity_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88"
+            "identity_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6"
           },
           "action": {
-            "type": "sm_rando.vertical_slice.RouteSkillCommand",
+            "type": "sm_rando.solver_adapter.RouteSkillCommand",
             "value": {
               "edge_id": "parlor_to_climb",
               "runner": "super_metroid.routes.kpdr.early_spine.play_parlor_to_climb",
@@ -779,7 +779,7 @@
               "type": "int",
               "repr": "38586"
             },
-            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
             "capabilities": [],
             "resources": {
               "energy": 99.0,
@@ -790,7 +790,7 @@
               "room_id": 38586,
               "door_transition": 1
             },
-            "identity_digest": "3ba2e54713ffb65738776a246c18e974a68b25dbf040f096654aa073e9957c88"
+            "identity_digest": "f235616b6c702e512cd9f03299c4fedbffc5b18943dce021ae86ad5906298ee6"
           },
           "observation_after": {
             "frame": 23866,
@@ -798,7 +798,7 @@
               "type": "int",
               "repr": "38748"
             },
-            "schema_digest": "754f8ed94085ebfbaf3138f4328254b83562cd1e18bd6971a9e79bef252ca0b2",
+            "schema_digest": "b6e8a76f8c13069baf324824a7ffd1fd4fee57f8cc66e524907f7f568d384ad7",
             "capabilities": [],
             "resources": {
               "energy": 99.0,
@@ -809,10 +809,10 @@
               "room_id": 38748,
               "door_transition": 1
             },
-            "identity_digest": "b34970b75b58dda2a709870650128ea67d7d3363abfccacba9aa3438b0010eb3"
+            "identity_digest": "8b43dc04147021afaeecd16de5c2bb9d9805d1fa41454a33c44915b5ba9318c2"
           },
           "action": {
-            "type": "sm_rando.vertical_slice.RouteSkillCommand",
+            "type": "sm_rando.solver_adapter.RouteSkillCommand",
             "value": {
               "edge_id": "climb_to_pit",
               "runner": "super_metroid.routes.kpdr.early_spine.play_climb_to_pit",
@@ -828,17 +828,17 @@
       "runtime_observation_class": "Bronze",
       "intervention_class": "Clean",
       "start_identity_digest": "6b981e6d6f3cf2612fc94e5581437f7adc31745b63b5861b22d35c4a711c3099",
-      "policy_identity_digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+      "policy_identity_digest": "e9940827b2631a198df58ad0e9d16c370a3814274c39523c9c0881010083ae93",
       "start_identity": {
         "start_state": "power_on_to_natural_landing",
         "digest": "6b981e6d6f3cf2612fc94e5581437f7adc31745b63b5861b22d35c4a711c3099",
         "rom_sha256": "12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72"
       },
       "policy_identity": {
-        "name": "sm_rando.vertical_slice",
-        "digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+        "name": "sm_rando.solver_adapter",
+        "digest": "e9940827b2631a198df58ad0e9d16c370a3814274c39523c9c0881010083ae93",
         "version": "1",
-        "source": "sm_rando.vertical_slice:build_solver_session",
+        "source": "sm_rando.solver_adapter:build_solver_session",
         "metadata": {
           "binding_count": 4
         }
@@ -855,10 +855,10 @@
       "runtime_observation_class": "Bronze",
       "intervention_class": "Clean",
       "start_identity_digest": "6b981e6d6f3cf2612fc94e5581437f7adc31745b63b5861b22d35c4a711c3099",
-      "policy_identity_digest": "327ec65a1241e37e1788d34201435f68ff50b8098e6af2c8ea57d0e41d640d60",
+      "policy_identity_digest": "e9940827b2631a198df58ad0e9d16c370a3814274c39523c9c0881010083ae93",
       "audit_capabilities": {
         "schema_version": 1,
-        "provider": "super_metroid.RouteSession.vertical-slice-v1",
+        "provider": "sm-rando.RouteSession.audit-v2",
         "observes_ram_writes": true,
         "observes_mid_run_loads": true,
         "observes_assists": true
@@ -872,15 +872,16 @@
       "climb_to_pit"
     ],
     "fault_edge": "landing_to_parlor_injected_failure",
+    "production_graph_edge_count": 3,
     "trajectory": {
       "path": "snes/sm_rando/recordings/vertical_slice.trajectory.json",
-      "identity_digest": "03dfcc6c0c41d3251b161c21de9b9f0a430e9bc6b6b5367a164127f59dad677d",
+      "identity_digest": "a8dcfc5c05d7649704a8c461d9b43434d54aba2a1f190acb409180e95b75d347",
       "schema_digest": "8df3c9d5b3d6c5c8e8922b35c58a5975f73ce2b514672b53484094953411a841",
       "steps": 3
     },
     "counterexamples": [
       {
-        "identity_digest": "9f03ff206c72809a5bce68ad4f61e452361e138eeab317e926da1be6f2b315d7",
+        "identity_digest": "75cca9962d608f3ffe3ba3365b200202b9273b791c04db07edd2b90badfdd41d",
         "terminal_reason": "injected landing-door desync",
         "steps": 0
       }

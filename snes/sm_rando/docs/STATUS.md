@@ -29,10 +29,10 @@ Program stack: `docs/SOLVER_ARCHITECTURE.md`.
 | Boot → FirstPlay | done (`make_boot`, Ceres `0xDF45`) |
 | Play/record spine | done (`./play`, record default, F5 → package integration) |
 | Ship → Morph vanilla skill binding | natural-entry evidence (1/1 clean); patched-rando coverage still open |
-| Three-edge SolverSession slice | verified 2026-08-09: natural power-on entry, injected failure → one replan → Landing/Parlor/Climb/Pit complete at frame 23,866; Clean audit in `recordings/vertical_slice.run.json` |
-| Landing EntryStateCorpus | 64 unique real predecessor states; 58 train / 6 held out; both parities, 64 Y positions, 2 subpixel phases; state blobs under `custom_integrations/SMRando-Snes/entry_corpus/landing_v1/` |
+| Three-edge SolverSession slice | verified 2026-08-09: production adapter has three real edges; the experiment-only injected failure triggers one replan, then Landing/Parlor/Climb/Pit completes at frame 23,866. Backend-owned Clean audit retained in `recordings/vertical_slice.run.json`. |
+| Landing EntryStateCorpus | 64 unique real predecessor states; 58 train / 6 held out; both parities, 64 Y positions, 2 subpixel phases. Metadata v2 includes pose reconstructed from each retained state; state blobs live under `custom_integrations/SMRando-Snes/entry_corpus/landing_v1/`. |
 | Structured Landing baseline | 0/58 train and 0/6 held-out from unsettled natural entry (gap 0.000); failures retained in `recordings/landing_entry_baseline.json` |
-| Landing timing BC experiment | 58/58 train and 6/6 held out; zero eval states used for fitting; Clean/Bronze audits + six canonical eval trajectories retained. Candidate only—new predecessor trajectories required before deployment. |
+| Landing timing BC experiment | 58/58 train and 6/6 held out; zero eval states used for fitting; backend-owned Clean/Bronze audits + six canonical eval trajectories retained. Candidate only—new predecessor trajectories required before deployment. |
 | Patched seed ROM / generator | open |
 | Multi-seed S/T dry-run | open |
 

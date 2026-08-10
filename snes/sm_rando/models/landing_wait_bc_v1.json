@@ -1,6 +1,6 @@
 {
   "corpus_contract_bundle_digest": "e3f5e7bc40e628112fb5bcd385252b3d503bb08367bae241002a875452a48091",
-  "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+  "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
   "expert_handoff_landing_frame": 496,
   "expert_source": "snes/sm_rando/recordings/vertical_slice.evidence.json",
   "model": {

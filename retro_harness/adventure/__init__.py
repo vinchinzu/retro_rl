@@ -42,7 +42,10 @@ from retro_harness.adventure.planner import (
     PlanResult,
     PlanStatus,
     ResourceBlocker,
+    SearchTransition,
+    PlanSearchDimension,
     plan,
+    search,
 )
 from retro_harness.adventure.resource_planner import (
     EdgeResourceProfile,
@@ -101,6 +104,8 @@ __all__ = [
     "PlanResult",
     "PlanStatus",
     "ResourceBlocker",
+    "SearchTransition",
+    "PlanSearchDimension",
     "EdgeResourceProfile",
     "ProgressionMilestone",
     "ResourceKind",
@@ -134,6 +139,7 @@ __all__ = [
     "manhattan",
     "normalize_capability",
     "plan",
+    "search",
     "reliability_from_outcomes",
     "resource_plan",
     "promote_edge_verification",
