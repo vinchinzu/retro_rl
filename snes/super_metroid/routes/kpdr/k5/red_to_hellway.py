@@ -7,16 +7,17 @@ into top-right Hellway door ``0xA2F7``.
 Hybrid pure (Hi-Jump held on K5 stack)::
 
   1. Accept Red bottom residual; clear Bat door lip (never RIGHT into 0xA3DD)
-  2. Right-wall WJ chain lower shaft → pocket / mid-right wall y≲2090
-  3. Right-wall re-catch cycles past pocket ceiling → y≲1960 open shaft
-  4. Double-bomb IBJ mid climb through tunnel band y≲1880 → temporary floor
-  5. Bomb-floor reverse + upper WJ zigzag → top-right door band
-  6. RIGHT into Hellway ordinary settle
+  2. Right-wall WJ chain lower shaft → pocket ~(225,2091)
+  3. Optional re-catch past pocket → right-wall hard ceiling ~y1942 (pure-A=0)
+  4. **Pocket spin** B+LEFT+A → mid crouch seat ~y1932 x≈175 (stable mid pin)
+  5. Double-bomb IBJ / tunnel morph through y≤1880 → temporary floor y≤1600
+  6. Bomb-floor reverse + upper WJ zigzag → top-right door band
+  7. RIGHT into Hellway ordinary settle
 
-Tape: ``tasks/speed_to_wave_ice_moat_human.json`` Phase C hop 29→30.
+Tape: ``tasks/speed_to_wave_ice_moat_human.json`` f23078–29947 (~6869f Red).
 Human thrash RLE desyncs from pure pin (enemy state); prefer clean climb.
-Right pocket ~(225,2091) is a **dead-end under ceiling** (A peaks ~y1964) —
-do not treat y≤2090 alone as lower-done.
+Right pocket ~(225,2091) is a **spin launch**, not climb-done. Right-wall
+~y1942 is a **hard ceiling** — leave via spin, not more recatch.
 """
 
 from __future__ import annotations
@@ -260,6 +261,63 @@ def _ibj_double(session: ControllerSession, label: str) -> SuperMetroidState:
     return session.state
 
 
+def _pocket_spin_mid(session: ControllerSession, label: str) -> SuperMetroidState:
+    """From right pocket ~(225,2091) or wall seat: B+LEFT+A spin into mid shaft.
+
+    Human + probe: dual-stable peak/seat ~y1932–1942 at x≈170–185 (crouch under
+    tunnel lip). Right-wall pure-A at y1942 gains 0 (hard ceiling) — must leave
+    via spin, not recatch thrash. Still ~50px short of RED_TUNNEL_Y=1880.
+    """
+    if not _in_red(session.state):
+        return session.state
+    _unmorph(session, label)
+    _kb(session, label)
+    # Stand from crouch if needed (pocket often pose 1/9/137).
+    for _ in range(14):
+        st = session.state
+        if int(st.pose) in _STAND:
+            break
+        hold(session, 1, "UP", reason=f"{label}_stand")
+    settle_hold(session, 3, reason=f"{label}_spin_s")
+    hold(session, 4, "LEFT", reason=f"{label}_face")
+    for f in range(56):
+        st = hold(session, 1, "B", "LEFT", "A", reason=f"{label}_spin")
+        if not _in_red(st):
+            return st
+        y = int(st.samus_y)
+        # Plateau on mid crouch seat / peak.
+        if f > 32 and int(st.velocity_y) <= 1 and y <= 1955:
+            break
+        if y <= RED_TUNNEL_Y:
+            break
+    for _ in range(16):
+        st = session.state
+        if not _in_red(st) or int(st.velocity_y) == 0:
+            break
+        hold(session, 1, reason=f"{label}_spin_land")
+    return session.state
+
+
+def _on_pocket_seat(state: SuperMetroidState) -> bool:
+    """Right-pocket dead-end ledge used as spin launch (not climb-done)."""
+    return (
+        _in_red(state)
+        and int(state.samus_x) >= 210
+        and RED_LOWER_LIP_Y - 40 <= int(state.samus_y) <= RED_LOWER_LIP_Y + 40
+        and int(state.velocity_y) == 0
+    )
+
+
+def _on_right_wall_ceiling(state: SuperMetroidState) -> bool:
+    """Hard right-wall ceiling seat ~y1942 (pure-A gain 0)."""
+    return (
+        _in_red(state)
+        and int(state.samus_x) >= 210
+        and 1925 <= int(state.samus_y) <= 1985
+        and int(state.velocity_y) == 0
+    )
+
+
 def _climb_lower(session: ControllerSession, label: str) -> SuperMetroidState:
     """Bottom → past pocket ceiling into open shaft y≲1960.
 
@@ -361,12 +419,21 @@ def _climb_lower(session: ControllerSession, label: str) -> SuperMetroidState:
 
 
 def _climb_mid(session: ControllerSession, label: str) -> SuperMetroidState:
-    """Open shaft y~1960 → tunnel + temporary floor to y<=RED_FLOOR_Y.
+    """Open shaft / pocket → tunnel y≤1880 → temporary floor y≤RED_FLOOR_Y.
 
-    Double-bomb IBJ through tunnel band, then reverse bomb-floor of
-    ``play_red_tower_to_bat``.
+    Probe path (rr-av5s night)::
+
+      1. Right-wall WJ / lower to **pocket** ~(225,2091) or wall ~y1942
+      2. **Pocket spin** B+LEFT+A → mid crouch seat ~y1932 x≈175 (dual-stable)
+      3. From mid / open shaft: double-bomb IBJ (18/30) — once peaked y1799
+         from bottom but not dual-stable; retry after re-pocket
+      4. Tunnel band: hop / IBJ → bomb-floor reverse of red_tower_to_bat
+
+    Traps: right-wall y1942 pure-A ceiling; shaft too wide for single WJ→left
+    latch; morph from y1932 crouch seat falls through thin lip.
     """
-    for attempt in range(80):
+    best_y = int(session.state.samus_y)
+    for attempt in range(100):
         st = session.state
         if _in_hellway(st):
             return st
@@ -377,6 +444,8 @@ def _climb_mid(session: ControllerSession, label: str) -> SuperMetroidState:
             )
         y = int(st.samus_y)
         x = int(st.samus_x)
+        if y < best_y:
+            best_y = y
         if y <= RED_FLOOR_Y - 20:
             return st
 
@@ -411,7 +480,7 @@ def _climb_mid(session: ControllerSession, label: str) -> SuperMetroidState:
                 )
             continue
 
-        # Tunnel / high mid: prefer standing hops if grounded, else IBJ.
+        # Tunnel / high mid: standing hops if grounded, else IBJ.
         if y <= RED_TUNNEL_Y + 40:
             if int(st.velocity_y) == 0 and int(st.pose) in _STAND:
                 _unmorph(session, label)
@@ -420,45 +489,69 @@ def _climb_mid(session: ControllerSession, label: str) -> SuperMetroidState:
                 hold(session, 14, d, "A", reason=f"{label}_tun_steer")
                 settle_hold(session, 12, reason=f"{label}_tun_land")
                 continue
-            # Light IBJ to gain the last tiles.
             _ibj_double(session, f"{label}_tun_ibj{attempt}")
             continue
 
-        # Below tunnel: prefer right-wall recatch if on/near right wall high,
-        # else double-bomb IBJ in open shaft (x≲200).
-        if x >= 210 and y <= RED_LOWER_LIP_Y + 80:
-            _right_wall_recatch(session, f"{label}_wall_rc{attempt}")
-            # Nudge left into open shaft for IBJ (keep y if possible).
-            hold(session, 4, "LEFT", reason=f"{label}_off")
-            if int(session.state.samus_x) >= 200:
-                hold(session, 6, "LEFT", "A", reason=f"{label}_nudge")
+        # Pocket seat or right-wall hard ceiling → spin into mid shaft.
+        if _on_pocket_seat(st) or _on_right_wall_ceiling(st):
+            _pocket_spin_mid(session, f"{label}_spin{attempt}")
+            st = session.state
+            if _in_red(st) and int(st.samus_y) <= RED_TUNNEL_Y + 20:
+                continue
+            # After spin: IBJ from mid crouch/open without unmorph thrash.
+            if _in_red(st) and int(st.samus_y) < RED_LOWER_LIP_Y:
+                # Stay morph-capable: crouch→morph only if not already mid-air.
+                if int(st.velocity_y) == 0 and int(st.pose) in (25, 26):
+                    hold(session, 1, "DOWN", reason=f"{label}_cmorph")
+                _ibj_double(session, f"{label}_postspin_ibj{attempt}")
+            continue
+
+        # Approach pocket from below mid (y 2110–2350): right-wall WJ.
+        if y > RED_LOWER_LIP_Y + 20:
+            _right_wall_wj_cycle(
+                session,
+                f"{label}_to_pocket{attempt}",
+                from_floor=False,
+            )
+            continue
+
+        # Open mid shaft x≲210 y≲2090: IBJ climb (bottom-path peaks ~1799 rare).
+        if x >= 210:
+            # Still on right wall below pocket lip — one recatch then spin next loop.
+            _right_wall_recatch(session, f"{label}_rc{attempt}")
+            hold(session, 3, "LEFT", reason=f"{label}_off")
+            continue
 
         _ibj_double(session, f"{label}_ibj{attempt}")
-
-        # If peaking into tunnel band, unmorph to try a seat/hop.
         st = session.state
         if _in_red(st) and int(st.samus_y) <= RED_TUNNEL_Y + 50:
-            _unmorph(session, label)
-            hold(session, 6, "A", reason=f"{label}_peak_catch")
+            # Do not unmorph under tunnel lip (standing bonks / falls).
+            if int(st.pose) not in (25, 26) and int(st.samus_y) <= RED_TUNNEL_Y:
+                _unmorph(session, label)
+                hold(session, 6, "A", reason=f"{label}_peak_catch")
 
-        # Bail mid early with a clean pin if we keep falling to floor.
-        if attempt > 20 and int(session.state.samus_y) >= RED_BOTTOM_Y - 40:
-            # One re-lower attempt then report stall at best effort.
+        # After many fails, re-pocket via lower WJ (best-effort; report best_y).
+        if attempt > 30 and int(session.state.samus_y) >= RED_BOTTOM_Y - 40:
             try:
                 _climb_lower(session, f"{label}_relower2")
             except TimeoutError:
-                pass
+                st = session.state
+                raise TimeoutError(
+                    f"{label}: mid climb stalled best_y={best_y} "
+                    f"y={st.samus_y} x={st.samus_x} p={st.pose}"
+                ) from None
             st = session.state
-            if int(st.samus_y) > RED_FLOOR_Y + 80:
+            if int(st.samus_y) > RED_FLOOR_Y + 80 and best_y > RED_TUNNEL_Y + 40:
                 raise TimeoutError(
                     f"{label}: mid climb stalled after re-lower "
-                    f"y={st.samus_y} x={st.samus_x} p={st.pose}"
+                    f"best_y={best_y} y={st.samus_y} x={st.samus_x} p={st.pose}"
                 )
 
     st = session.state
     if int(st.samus_y) > RED_FLOOR_Y + 120:
         raise TimeoutError(
-            f"{label}: mid climb stalled y={st.samus_y} x={st.samus_x} p={st.pose}"
+            f"{label}: mid climb stalled best_y={best_y} "
+            f"y={st.samus_y} x={st.samus_x} p={st.pose}"
         )
     return st
 
