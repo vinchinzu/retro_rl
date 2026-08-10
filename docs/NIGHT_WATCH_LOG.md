@@ -85,3 +85,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Unblocks **rr-gbd.25** sm_rando multi-seed early tip S/T dry-run (now ready P1).
 - Tests: 8 new campaign + full benchmark suite green (64 with docs).
 - Next: `rr-gbd.25` sm_rando multi-seed dry-run consumer (thin harness use).
+
+### 2026-08-09T21:30 CDT — solver harness complete
+- **CLOSED** `rr-gbd.33` SeedCampaignRunner (fail-closed, atomic ledger, resume byte-identical) — commit 4cfbebb.
+- Unblocks `rr-gbd.25` sm_rando multi-seed dry-run → next free lane.
+
