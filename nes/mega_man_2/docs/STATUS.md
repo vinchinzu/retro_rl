@@ -5,19 +5,19 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
-| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat Man screen ≥ 1 from `Heat1` |
-| Last verification | 2026-08-10 (rr-f3nr Heat→Item-1 scaffold) |
+| Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3); Heat Man camera ≥ 5 from `HeatScreen4` (3/3) |
+| Last verification | 2026-08-10 (rr-808 Heat mid dual-green through s5) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **Air s4 clear; post-s4 cloud RED; Heat→Item-1 dual-green scaffold (Heat1 + HeatScreen1)** |
+| Status | **Air s4 clear; post-s4 cloud RED; Heat dual-green through screen 5 (rr-808 PARTIAL; pre-boss open)** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 Air / ~926 Heat |
-| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1` |
-| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` (Heat1→s1 period 50/12) |
+| Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen5` |
+| Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4) |
 | Evidence | [air_segment/](../recordings/air_segment/), [heat_boot/](../recordings/heat_boot/), [heat_segment/](../recordings/heat_segment/) |
 
 ## Done
@@ -189,39 +189,53 @@ Air-first cloud path blocked overnight; preferred alt = Heat→Air Item-1.
 
 | Milestone | Result |
 |-----------|--------|
-| Inventory | No prior Heat states/policies; Air-only `weapons=$00` |
+| Inventory | Heat chain pinned `Heat1`…`HeatScreen5`; Air-only still `weapons=$00` |
 | Stage-select decode | `$002A`: Wily=0, Air=2, Heat=8; password→select at Wily; LEFT→Heat |
 | Heat1 entry | **GREEN** — `boot_to_heat_man_script` + `boot_heat_probe.py` |
-| Heat screen ≥1 | **GREEN** — `HeatManPolicy` ~243f HP24 from `Heat1` |
-| Heat clear / Item-1 | **Not done** |
+| Heat screens 1–5 | **GREEN** — multi-phase `HeatManPolicy` (rr-808 PARTIAL) |
+| Heat clear / Item-1 | **Not done** (pre-boss / boss residual) |
 | Air + Item-1 past s4 | **Not done** |
 | FCEUX stick pin | Protocol only (`docs/HEAT_ITEM1_PATH.md`); no human run this session |
 | Evidence | `docs/HEAT_ITEM1_PATH.md`, `recordings/heat_boot/`, `heat_segment/` |
 
 ### Heat Man segment metrics
 
-| Metric | Heat1 → camera screen ≥ 1 |
-|--------|--------------------------:|
-| Frames | ~244 |
-| Final HP | 24 (start 28) |
-| Camera screen | 1 |
-| Progress X | 256 |
-| Trials | **3/3** (`run_heat_segment.py`) |
+| Segment | Frames | HP | Cam | Prog | Trials |
+|---------|-------:|---:|----:|-----:|-------:|
+| Heat1 → screen ≥1 | ~244 | 24 | 1 | 256 | **3/3** |
+| HeatScreen1 → ≥2 | ~194 | 24 | 2 | 512 | **3/3** |
+| HeatScreen2 → ≥3 | ~302 | 28 | 3 | 768 | **3/3** |
+| HeatScreen3 → ≥4 | ~161 | 28 | 4 | 1024 | **3/3** |
+| HeatScreen4 → ≥5 | ~131 | 28 | 5 | 1280 | **3/3** |
+
+Grounded pins: `HeatScreen2` prog513, `HeatScreen3` prog819 sy116, `HeatScreen4`
+prog1110 sy148, `HeatScreen5` prog1473 sy124 (reload may show feet=0). Best late
+press from s4: prog ~1504–1507 then pit (not dual-green past s5).
+
+## rr-808 Heat mid/late (2026-08-10) — PARTIAL
+
+| Field | Value |
+|-------|-------|
+| Dual-green | Screens **2–5** from prior Heat pins (Clean Bronze) |
+| Policy | `HeatManPolicy` start early/screen2/screen3/screen4 |
+| Pre-boss / boss door | **Not reached** (death band ~prog 1500 on s5) |
+| Next | Late Heat from `HeatScreen5` → boss door; then **rr-809** Item-1 |
+| Evidence | `recordings/heat_segment/`, `heat_mid_*`, `heat_pillars/`, `heat_s5/` |
 
 ## Not done
 
 - Past Air screen 4 / boss door (**kill OK; cloud solid RED; Item-1 chain open**)
-- Heat Man mid/late + boss + Item-1 unlock pin
+- Heat Man late / pre-boss / boss + Item-1 unlock pin
 - Air with Item-1 past camera ≥5
 - Full Robot Master stage clear
 - Natural-entry M4 from power-on through screen-2+
 
 ## Next
 
-1. **Heat deeper** — mid-stage / boss from `HeatScreen1` (or re-boot `Heat1`).
-2. **Item-1 pin** — Heat clear → `$009B\|$01` + Atomic Fire `$009A\|$01`.
+1. **Heat late → boss** from `HeatScreen5` (or re-boot chain); dual-green door band.
+2. **Item-1 pin** — Heat clear → `$009B\|$01` + Atomic Fire `$009A\|$01` (**rr-809**).
 3. **Air + Item-1** — stage select to Air with items set; deploy platforms past s4
-   (cam ≥5). Doc: `docs/HEAT_ITEM1_PATH.md`.
+   (cam ≥5) (**rr-810**). Doc: `docs/HEAT_ITEM1_PATH.md`.
 4. Optional parallel: FCEUX/human empty-cloud RAM pin (protocol in HEAT_ITEM1_PATH).
 5. Do **not** re-sweep goblin-solid, LL-absent, hold-B only, feet_dy grids,
    screen-align-only, fall_top/appear/flag08, or zero-mask global solid.

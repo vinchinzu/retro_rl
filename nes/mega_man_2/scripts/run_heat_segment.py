@@ -1,15 +1,32 @@
-"""Clear Heat Man early screens with hard timeout.
+"""Clear Heat Man mid screens with hard timeout.
 
 Success: ``camera_x_screen`` ≥ ``--target-screen`` with health > 0 and not
-fallen, within ``--max-frames``.
+fallen, within ``--max-frames``. Recipe auto-selects from start state via
+``HeatManPolicy.start_for_state``.
 
 Verified (Clean Bronze, 2026-08-10):
 
-- target 1 from ``Heat1``: ``HeatManPolicy`` (~243f, HP 24)
+- target 1 from ``Heat1``: early 50/12 (~243f, HP 24)
+- target 2 from ``HeatScreen1``: early 50/12 (~194f, HP 24)
+- target 3 from ``HeatScreen2``: mid 60/14 → 25/12 (~351f grounded)
+- target 4 from ``HeatScreen3``: pillars 25/10 ph10 (~181f grounded)
+- target 5 from ``HeatScreen4``: late 20/12 ph4 (~131f cam)
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python nes/mega_man_2/scripts/run_heat_segment.py --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen1 --target-screen 2 --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen2 --target-screen 3 --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen3 --target-screen 4 --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen4 --target-screen 5 --trials 3
 ```
 """
 
@@ -33,6 +50,7 @@ from mega_man_2.ram import (
     ADDR_HEALTH,
     ADDR_ITEMS,
     ADDR_LIVES,
+    ADDR_TILE_FEET,
     ADDR_WEAPONS,
     camera_progress_x,
     is_fallen,
@@ -93,8 +111,8 @@ def run_heat_segment(
         "trial_reports": trial_reports,
         "notes": (
             "Heat Man camera X screen ≥ target. "
-            "Heat1→1: HeatManPolicy period 50/12. "
-            "Item-1 / Atomic Fire unlock residual (Heat clear)."
+            "Recipes: early 50/12; screen2 mid 60→25; screen3 pillars 25/10 ph10; "
+            "screen4 late 20/12 ph4. Item-1 / boss residual (rr-809)."
         ),
     }
     write_json_report(out / "heat_segment.json", report)
@@ -123,7 +141,11 @@ def _run_one(
     if isinstance(obs, tuple):
         obs = obs[0]
 
-    policy = HeatManPolicy(target_camera_screen=target_screen)
+    start_mode = HeatManPolicy.start_for_state(state_name)
+    policy = HeatManPolicy(
+        target_camera_screen=target_screen,
+        start=start_mode,
+    )
     reasons: dict[str, int] = {}
     screenshots: list[str] = []
     saved: list[str] = []
@@ -132,6 +154,7 @@ def _run_one(
     screenshots.append(png.name)
 
     start = parse_game_state(env.get_ram(), frame=0)
+    start_lives = int(start.lives)
     outcome = "timeout"
     final_health = start.health
     final_screen = int(start.extras.get("camera_x_screen", 0))
@@ -145,6 +168,7 @@ def _run_one(
         health = int(ram[ADDR_HEALTH])
         lives = int(ram[ADDR_LIVES])
         cam_scr = int(ram[ADDR_CAMERA_X_SCREEN])
+        tile_feet = int(ram[ADDR_TILE_FEET])
         fallen = is_fallen(ram)
         final_health = health
         final_screen = cam_scr
@@ -153,7 +177,8 @@ def _run_one(
         final_items = read_u8(ram, ADDR_ITEMS)
         end_frame = frame
 
-        if health == 0 or lives <= 0 or fallen:
+        # feet==3 is instadeath pose; lives drop = pit/respawn without HP=0
+        if health == 0 or lives <= 0 or lives < start_lives or fallen or tile_feet == 3:
             outcome = "death"
             png = save_rgb_png(obs, out / f"{prefix}_{frame:04d}_death.png")
             screenshots.append(png.name)
@@ -163,7 +188,8 @@ def _run_one(
             outcome = "success"
             png = save_rgb_png(obs, out / f"{prefix}_{frame:04d}_clear.png")
             screenshots.append(png.name)
-            if save_clear:
+            # Only persist grounded clears so mid-air cam-hits do not clobber pins
+            if save_clear and tile_feet == 1:
                 tag = f"HeatScreen{target_screen}"
                 path = save_state(env, GAME_DIR, GAME, tag)
                 saved.append(path.name)
@@ -187,7 +213,8 @@ def _run_one(
             screenshots.append(png.name)
             print(
                 f"t{trial} f={frame} scr={cam_scr} prog={final_progress} "
-                f"hp={health} sx={player_screen_x(ram)} sy={player_screen_y(ram)}"
+                f"hp={health} sx={player_screen_x(ram)} sy={player_screen_y(ram)} "
+                f"mode={start_mode}"
             )
 
     env.close()
@@ -204,6 +231,7 @@ def _run_one(
         "reasons": reasons,
         "saved_states": saved,
         "screenshots": screenshots,
+        "policy_start": start_mode,
         "start": {
             "health": start.health,
             "lives": start.lives,

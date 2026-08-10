@@ -94,3 +94,33 @@ def test_heat_man_policy_jumps_and_clears() -> None:
     assert list(done.action) == list(nes_idle_action())
     dead = pol.tick(frame=10, health=0, camera_x_screen=0)
     assert dead.reason == "dead"
+
+
+def test_heat_man_screen2_phases() -> None:
+    pol = HeatManPolicy(start="screen2", target_camera_screen=3)
+    # mid window: frame 1 → i=0 under mid_period 60 / hold 14
+    mid = pol.tick(frame=1, health=24, camera_x_screen=2)
+    assert mid.reason.startswith("mid_jump")
+    # late handoff after mid_until=260 → frame 261 → i=260
+    late = pol.tick(frame=261, health=28, camera_x_screen=2)
+    assert late.reason.startswith("late_jump")
+    done = pol.tick(frame=400, health=28, camera_x_screen=3)
+    assert done.reason == "clear_hold"
+
+
+def test_heat_man_screen3_pillar_phase() -> None:
+    pol = HeatManPolicy(start="screen3", target_camera_screen=4)
+    # i=0: (0+10)%25=10 >= hold 10 → no jump
+    walk = pol.tick(frame=1, health=28, camera_x_screen=3)
+    assert walk.reason in {"run", "run_shoot"}
+    # i=15: (15+10)%25=0 < 10 → jump
+    hop = pol.tick(frame=16, health=28, camera_x_screen=3)
+    assert hop.reason.startswith("pillar_jump")
+
+
+def test_heat_man_start_for_state() -> None:
+    assert HeatManPolicy.start_for_state("Heat1") == "early"
+    assert HeatManPolicy.start_for_state("HeatScreen1") == "early"
+    assert HeatManPolicy.start_for_state("HeatScreen2") == "screen2"
+    assert HeatManPolicy.start_for_state("HeatScreen3_scr3_hp28") == "screen3"
+    assert HeatManPolicy.start_for_state("HeatScreen4") == "screen4"
