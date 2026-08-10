@@ -1182,3 +1182,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Re-spawned MM2 manager for feet-on-top / aobject_tsa stand → cam≥5.
 - Zelda: rr-vdnc Clean dual CLOSED on main; tip rr-zavx natural-entry compose running.
 
+### 2026-08-10T05:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - super_metroid: `rr-av5s` Red→Hellway hop12 + parent `rr-dbu.8` K5 Alpha stack
+  - zelda_i: `rr-zavx` Z4.5 Clean compose dock→PostLadder→TF continuous
+  - harvest: `rr-5in` Gate B full + residual `rr-5go9` CROP_WATER refill thrash
+  - mega_man_2: `rr-54ui` LL cloud land (rider kill GREEN; empty chariot object-solid residual)
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Spawned managers:** none (all priority game lanes busy)
+- **Not spawned:** solver gbd.32 CLOSED; alttp P3 only; capacity 4/6 but rule = no dispatch when priority lanes full
+- **Cap:** 4 / 6 concurrent game lanes
+- Board notes: zelda rr-vdnc Clean TF dual CLOSED; harvest money>$100 / 11 overnights PARTIAL Summer; MM2 X closed residual feet-on-top.
+- Never push. Next tick: only free lanes.
