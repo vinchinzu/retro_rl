@@ -544,13 +544,20 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task._queue_east_south_corridor_charge((25, 30))
         self.assertTrue(task._pending_gap_charge)
         self.assertGreater(len(task._action_queue), 100)
-        # Count RIGHT frames — must be enough to reach x≥31 from 25 (need ≥6).
-        rights = sum(1 for a in task._action_queue if int(a[6]) == 1)  # right bit
-        # Action layout may vary; fall back to queue length + charge flag.
+        # East-only leg while x<31: long queue with RIGHT bursts + wiggle.
         self.assertGreaterEqual(
             len(task._action_queue),
             28 * 6,
             msg="east frames must cover past fence end x=31",
+        )
+        # snes_action layout: up=4 down=5 left=6 right=7
+        downs = sum(1 for a in task._action_queue if int(a[5]) == 1)
+        rights = sum(1 for a in task._action_queue if int(a[7]) == 1)
+        # Prefer RIGHT-heavy when still under fence wall.
+        self.assertGreater(
+            rights,
+            downs,
+            msg="east-only leg must prefer RIGHT over long DOWN into posts",
         )
         # Still-north at (29,30) must re-queue (prior residual).
         task._action_queue.clear()
@@ -564,6 +571,57 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
             msg="still_north at (29,30) must re-queue east→south past x≥31",
         )
         self.assertGreaterEqual(task._east_south_charges, 2)
+        # Past fence end: south-heavy charge.
+        task._action_queue.clear()
+        task._queue_east_south_corridor_charge((31, 30))
+        downs2 = sum(1 for a in task._action_queue if int(a[5]) == 1)
+        self.assertGreaterEqual(
+            downs2,
+            100,
+            msg="x≥31 charge must long-DOWN into pond band",
+        )
+
+    def test_soft_band_lip_charge_caps_up_avoids_gap(self) -> None:
+        """Soft band ~(29,32) must not long-UP back through open fence gap."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._queue_west_south_lip_charge((29, 32))
+        self.assertTrue(task._pending_south_lip_charge)
+        # snes_action: up=4 down=5 left=6 right=7
+        ups = sum(1 for a in task._action_queue if int(a[4]) == 1)
+        rights = sum(1 for a in task._action_queue if int(a[7]) == 1)
+        lefts = sum(1 for a in task._action_queue if int(a[6]) == 1)
+        downs = sum(1 for a in task._action_queue if int(a[5]) == 1)
+        # Gap-safe soft band: RIGHT-heavy, short LEFT, capped UP.
+        self.assertGreater(rights, lefts, msg="soft band must prefer RIGHT not long LEFT")
+        self.assertLessEqual(ups, 40, msg=f"UP must be capped (got {ups}) to avoid gap re-entry")
+        self.assertGreater(downs, 40, msg="soft band must DOWN first off soft-block")
+
+    def test_refill_hop_past_fence_end_forces_south(self) -> None:
+        """At (31,29) densify must push south, not self-hop thrash."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        hop = task._refill_hop_goal(ram, (31, 29), (32, 34))
+        self.assertNotEqual(hop, (31, 29), msg=f"must not self-hop, got {hop}")
+        self.assertGreaterEqual(
+            hop[1],
+            30,
+            msg=f"past fence end must densify south, got {hop}",
+        )
+        hop2 = task._refill_hop_goal(ram, (31, 30), (32, 34))
+        self.assertNotEqual(hop2, (31, 30), msg=f"must not self-hop at (31,30), got {hop2}")
+        self.assertGreaterEqual(hop2[1], 31, msg=f"must push south from (31,30), got {hop2}")
 
     def test_south_lip_densify_prefers_east_not_ns_oscillate(self) -> None:
         """From (24,34) must not thrash to (24,35); prefer east toward F0."""

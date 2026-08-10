@@ -13,6 +13,27 @@ Protocol:
 
 ## Ticks
 
+### 2026-08-10 night — harvest rr-5go9 CLOSED (CROP_WATER refill densify)
+- Lane: harvest only (`snes/harvest/`)
+- Claimed **rr-5go9** (blocks parent **rr-5in** Gate B full)
+- **Root:** after fence open, east→south stuck (29,30); soft-band UP re-entered
+  gap; east densify thrash (41,32); past-fence densify self-hop (31,29)
+- **Fixes** (`crop_planter.py`): east-only/south-only corridor legs; gap-south
+  fallback after 3× stuck (29,30); gap-safe soft/south lip (cap UP low x);
+  east_pond only y≥32; past-fence pure-south bail; densify west-step east of pond
+- **Evidence:**
+  - Dry fixture GREEN: can_peak=20 refill=1 watered=3
+    `recordings/empty_can_refill_probe.json`
+  - Power-on continuous: CROP_WATER success D9–D11 watered=6 each, D9
+    refills=1 can=20; crop wet=2 dry=4 alive; overnights=10 money=$160
+    mid_run=0 Clean `recordings/power_on_spring_to_summer.json`
+  - Terminal return_home multi_nav timeout D12 (not water thrash)
+- **CLOSED** rr-5go9. **rr-5in** remains open (Summer D1 + return_home residual)
+- Units: test_water_refill + test_crop_planter_logic 70; day_plan 201/202
+  (pre-existing directional_transition fail). No push.
+- Next tip: rr-5in return_home after water days / re-refill can=2 thrash
+
+
 ### 2026-08-10 night — mega_man_2 rr-f3nr PARTIAL (Heat→Item-1 dual-green)
 - Lane: mega_man_2 only (`nes/mega_man_2/`)
 - Claimed **rr-f3nr** (residual of rr-54ui PARTIAL)
