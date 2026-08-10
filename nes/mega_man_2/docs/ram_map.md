@@ -41,3 +41,19 @@ Progress helper: `camera_progress_x = screen * 256 + camera_x`.
 
 `is_level1_ready` in `ram.py`: health in `(0, 28]`, lives in `(0, 10)`, optional
 `obs_mean > 50` to reject dark title frames.
+
+## Object slots (fpd6)
+
+fceumm WRAM; Mega Man is index 0. Parallel arrays of 32 slots.
+
+| Addr | Name | Notes |
+|------|------|-------|
+| `$0400+i` | Object type (`aobject_pointer`) | Behavior/ID (see DECODE.md) |
+| `$0420+i` | Flags | bit7 = exist (`objects_exist`) |
+| `$0440+i` | Object screen | Matches `zscreen_id` when on-camera |
+| `$0460+i` | Object X | Screen-relative |
+| `$04A0+i` | Object Y | Screen-relative |
+| `$0100+i` | `aenemies_flag` | Spawn/kill tracking |
+
+Air Man LL: type **`0x3E`** (and `0x3D` move). Goblin/Air Tikki: **`0x40`/`0x41`**.
+Pipi: **`0x37`**. Spawn list: stage bank objects_set (mapset + x + y + type).
