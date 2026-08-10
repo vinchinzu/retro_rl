@@ -14,7 +14,7 @@ Ice return (package ``routes/kpdr/ice/`` — shared predecessor)::
 K5 reverse tunnels + Red climb (this package — implement when predecessor pure)::
 
     Business 0xA7DE
-      → Warehouse 0xA6A1          (reuse ``play_business_to_warehouse``)
+      → Warehouse 0xA6A1          ✅ pure dual 10255f ×2 (business_to_warehouse; Super fall+ladder)
         → East Tunnel 0xCF80      ⬜ reverse of east_to_warehouse
           → Glass 0xCEFB          ⬜ reverse of glass_to_east
             → West Tunnel 0xCF54  ⬜ reverse of west_to_glass

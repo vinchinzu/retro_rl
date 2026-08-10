@@ -525,21 +525,154 @@ def _fall_to_business_floor(session: ControllerSession) -> None:
     hold(session, 4, "LEFT", reason="business_floor_anchor_brake")
     hold(session, 15, reason="business_floor_recover_settle")
 
+def _on_business_elevator_platform(state: SuperMetroidState) -> bool:
+    return (
+        int(state.samus_y) == 683
+        and int(state.pose) in _STANDING
+        and int(state.velocity_y) == 0
+    )
+
+
+def _anchor_business_floor_midright(session: ControllerSession, *, label: str) -> None:
+    """Walk to floor band ~(170–230, ≥1405) before LEFT-heavy setup jumps.
+
+    Post-Ice Super fall often lands left of the classic pure pin; re-center so
+    open-loop LEFT/LEFT/RIGHT setup does not kiss the HJ door.
+    """
+    unmorph(session)
+    for _ in range(200):
+        st = session.state
+        if st.room_id != ROOM_BUSINESS:
+            raise TimeoutError(f"{label}: left Business during floor anchor: {st}")
+        x = int(st.samus_x)
+        y = int(st.samus_y)
+        grounded = int(st.velocity_y) == 0 and int(st.pose) in _STANDING
+        if y < 1350:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_anchor_air")
+            continue
+        if grounded and 170 <= x <= 230:
+            hold(session, 10, reason=f"{label}_anchor_settle")
+            return
+        if x < 170:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_anchor_r")
+        elif x > 230 and grounded:
+            if x > 80:
+                hold(session, 1, "LEFT", reason=f"{label}_anchor_l")
+            else:
+                hold(session, 1, "RIGHT", reason=f"{label}_anchor_bounce")
+        else:
+            hold(session, 1, reason=f"{label}_anchor_idle")
+    # Soft fail — climb may still clear from imperfect pin.
+
+
+def _climb_business_to_elevator(
+    session: ControllerSession,
+    *,
+    label: str = "business_climb",
+) -> None:
+    """Floor → elevator platform y683 with Charge-aware multi-attempt ladder.
+
+    Mirrors the Ice floor→elev attempt order (rr-kxge): Wave+/Charge loadouts
+    prefer longer 907 runups; pure pre-Charge keeps 8→14 / pos 84 first.
+    Classic warehouse continuous still first-hits runup 14/pos 84 (attempt 0 or
+    early row) — extra rows only fire after TimeoutError.
+    """
+    unmorph(session)
+    if session.state.room_id != ROOM_BUSINESS:
+        raise TimeoutError(f"{label}: not in Business: {session.state}")
+    if _on_business_elevator_platform(session.state):
+        return
+
+    y0 = int(session.state.samus_y)
+    midshaft = y0 < 1350 and not _on_business_elevator_platform(session.state)
+    # Super band / mid platforms: fall before open-loop floor→1339 setup.
+    # Re-anchor only after midshaft fall / retries — classic floor first-try
+    # must keep historical open-loop geometry (warehouse continuous frame-lock).
+    if midshaft:
+        _maybe_dump_climb_state(session, f"{label}_midshaft_before_fall")
+        _fall_to_business_floor(session)
+        _anchor_business_floor_midright(session, label=label)
+
+    beams = int(session.state.collected_beams)
+    has_charge = bool(beams & 0x1000)
+    # (runup_907, pos_1339, bound_floor_left)
+    # Always lead with classic 14 then 8 — warehouse continuous spine is
+    # frame-sensitive to first-try geometry (do not front-load cont 18/20).
+    attempts: list[tuple[int, int, bool]] = [
+        (14, 84, False),
+        (8, 84, False),
+    ]
+    if has_charge:
+        attempts.extend(
+            [
+                (18, 90, False),
+                (20, 90, False),
+                (22, 90, False),
+                (18, 90, True),
+                (20, 90, True),
+                (14, 84, True),
+            ]
+        )
+    else:
+        attempts.extend(
+            [
+                (18, 90, False),
+                (20, 90, False),
+                (18, 90, True),
+                (14, 84, True),
+            ]
+        )
+
+    last_err: TimeoutError | None = None
+    for i, (runup, pos_1339, bound) in enumerate(attempts):
+        try:
+            if i > 0:
+                if session.state.room_id != ROOM_BUSINESS:
+                    raise TimeoutError(
+                        f"{label}: left Business during climb retry: {session.state}"
+                    )
+                _fall_to_business_floor(session)
+                _anchor_business_floor_midright(session, label=f"{label}_retry{i}")
+            _business_high_jump_platforms(
+                session,
+                runup_907=runup,
+                pos_1339=pos_1339,
+                bound_floor_left=bound,
+            )
+            last_err = None
+            break
+        except TimeoutError as exc:
+            last_err = exc
+            _maybe_dump_climb_state(session, f"{label}_fail_{i}")
+            if session.state.room_id != ROOM_BUSINESS:
+                raise TimeoutError(
+                    f"{label}: left Business during climb: {session.state}"
+                ) from exc
+            continue
+    if last_err is not None:
+        raise last_err
+    if not _on_business_elevator_platform(session.state):
+        # Allow slight y drift on elevator pad (standing gate already in ladder).
+        if session.state.samus_y != 683 or session.state.pose not in _STANDING:
+            raise TimeoutError(
+                f"{label}: not on elevator platform: {session.state}"
+            )
+
+
 def play_business_to_warehouse(session: ControllerSession) -> SuperMetroidState:
-    """Hi-Jump-assisted Business Center climb and elevator to Warehouse."""
+    """Hi-Jump-assisted Business Center climb and elevator to Warehouse.
+
+    Floor start (classic pure / continuous): multi-attempt platform ladder.
+    Mid-shaft Super lip handoff (post-Ice pure ~(41,907) p25): fall to the
+    floor climb anchor first — the ladder assumes floor→y1339 setup.
+    Charge/Wave loadouts use cont-tuned 907 runups (rr-kxge ladder parity).
+    """
     require_room(session, ROOM_BUSINESS, "business_to_warehouse")
     if not session.state.collected_items & ITEM_HI_JUMP:
         raise RuntimeError(
             f"business_to_warehouse: Hi-Jump not collected: {session.state}"
         )
-    try:
-        # Continuous natural-entry: 14f run-up (verified continuous kraid_entry).
-        _business_high_jump_platforms(session, runup_907=14)
-    except TimeoutError:
-        # Pure probe prefers 8f; also a second continuous attempt from floor.
-        _maybe_dump_climb_state(session, "business_climb_retry_before")
-        _fall_to_business_floor(session)
-        _business_high_jump_platforms(session, runup_907=8)
+    _climb_business_to_elevator(session, label="business_to_warehouse")
     if session.state.samus_y != 683 or session.state.pose not in _STANDING:
         raise TimeoutError(
             f"business_to_warehouse: not on elevator platform: {session.state}"
