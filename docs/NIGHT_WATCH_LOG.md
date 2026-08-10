@@ -420,3 +420,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **ADDR_LADDER still 0.** Parents **rr-o0nn** / **rr-5lu** stay open.
 - Next tip: **`rr-resv`** clear 0x31 + expand toward ladder (blocks rr-o0nn).
 - Units: `test_level4_dungeon.py` 9 passed. Commit only (no push).
+
+### 2026-08-09T23:45 CDT — zelda_i L4 0x31 clear + RIGHT 0x32 CLOSED rr-resv
+- **CLOSED** `rr-resv`: 0x31 Vire clear pure **2/2** (~6865f) + free RIGHT → **0x32** pure **2/2** (~406f).
+- Live: 5× Vire `0x12` maze; clear opens doors **2→3** (RIGHT free). N free sealed.
+- East path: hold4/q4 BFS to x≥200 y≈136 then long RIGHT (hold6/q8 starves from clear pose).
+- 0x32 recon: 2× Zol `0x13`, 2× LikeLike `0x17`, 2× invuln `0x2b`, `0x68`; LEFT→0x31; **ADDR_LADDER=0**.
+- Segments: `clear_31`, `east_32` in `run_level4_rooms.py`. Checkpoints
+  `Level4Room31Cleared`, `Level4Room32`. Evidence: `l4_resv_clear31_*.json`,
+  `l4_resv_east32_*.json`, `l4_resv_31_bfs.json`, `l4_resv_room32_recon.json`.
+- **ADDR_LADDER still 0.** Parents **rr-o0nn** / **rr-5lu** stay open.
+- Next tip: clear **0x32** + expand toward ladder (blocks rr-o0nn).
+- Units: `test_level4_dungeon.py` 9 passed. Commit only (no push).

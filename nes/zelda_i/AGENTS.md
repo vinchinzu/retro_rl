@@ -100,7 +100,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip leaf: rr-o0nn post-0x31→ladder; parallel: rr-38p
+bd ready -l zelda_i   # tip leaf: rr-o0nn post-0x32→ladder; parallel: rr-38p
 ```
 
 | Order | Bead | Work |
@@ -114,7 +114,8 @@ bd ready -l zelda_i   # tip leaf: rr-o0nn post-0x31→ladder; parallel: rr-38p
 | ✓ | **`rr-xc3x`** | First room outside early component: **0x50 N → 0x40** Zols+key |
 | ✓ | **`rr-q8eq`** | **0x40** clear+key pure 2/2 + free UP **0x30** pure 2/2 |
 | ✓ | **`rr-n1wn`** | **0x30** Vire clear pure 2/2 + KEY-RIGHT **0x31** pure 2/2 |
-| **1 TIP** | **`rr-o0nn`** / **`rr-5lu`** | L4 post-0x31 → Stepladder (`ADDR_LADDER`) residual |
+| ✓ | **`rr-resv`** | **0x31** Vire clear pure 2/2 + free RIGHT **0x32** pure 2/2 |
+| **1 TIP** | **`rr-o0nn`** / **`rr-5lu`** | L4 post-0x32 → Stepladder (`ADDR_LADDER`) residual |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -152,16 +153,17 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 **L4 interior (pure LIVE, rr-5lu children 2026-08-10):** from `Level4Entrance`
 **0x71** UP → **0x61** Vires → **BOMB_UP** → **0x51** Keese+key → LEFT **0x50**
 Vires → scripted N **0x40** clear Zol/gel+key → free UP **0x30** clear Vires
-(ignore invuln **0x2b**, north-band y≥128) → **KEY-RIGHT** **0x31** (5× Vire);
-KEY-RIGHT **0x62** Compass maze + return. Module: `level4_dungeon.py`. Runner:
-`run_level4_rooms.py` (`--segment clear_30` / `key_right_31`). Evidence:
-`l4_n1wn_clear30_clear_30.json`, `l4_n1wn_key31_key_right_31.json`. Closed:
-`rr-zchy`…`rr-9so0` / **`rr-xc3x`** / **`rr-q8eq`** / **`rr-n1wn`**.
-**Not Clean STATUS.**
+(ignore invuln **0x2b**, north-band y≥128) → **KEY-RIGHT** **0x31** clear maze
+Vires (doors 2→3) → free RIGHT **0x32** (Zol+LikeLike); KEY-RIGHT **0x62**
+Compass maze + return. Module: `level4_dungeon.py`. Runner:
+`run_level4_rooms.py` (`--segment clear_31` / `east_32`). Evidence:
+`l4_resv_clear31_clear_31.json`, `l4_resv_east32_east_32.json`. Closed:
+`rr-zchy`…`rr-9so0` / **`rr-xc3x`** / **`rr-q8eq`** / **`rr-n1wn`** /
+**`rr-resv`**. **Not Clean STATUS.**
 
-**Next tip:** **`rr-o0nn`** post-0x31 → `ADDR_LADDER` (parent **`rr-5lu`**).
-Live outside **0x40** + **0x30** + **0x31**; clear 0x31 + expand toward Stepladder.
-Trap: 0x30 walkable band y∈[128,208] only — clear from north band face UP.
+**Next tip:** **`rr-o0nn`** post-0x32 → `ADDR_LADDER` (parent **`rr-5lu`**).
+Live outside through **0x32**; clear 0x32 + expand toward Stepladder.
+Traps: 0x30 walkable y∈[128,208] only; 0x31 maze needs hold4 BFS (not hold6/q8).
 Epic `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);

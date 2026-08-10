@@ -1,0 +1,109 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T04:44:47.972382+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-resv",
+    "intervention_class": "clean",
+    "segment": "l4_east_32",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "east_32": {
+        "frames": 406,
+        "path": [
+          "LEFT",
+          "LEFT",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "RIGHT",
+          "DOWN",
+          "RIGHT",
+          "DOWN",
+          "RIGHT",
+          "DOWN",
+          "RIGHT",
+          "DOWN",
+          "RIGHT",
+          "DOWN",
+          "RIGHT",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "RIGHT",
+          "UP"
+        ],
+        "segment": "level4_east_0x32",
+        "success": true
+      },
+      "east_32_bfs": {
+        "cell_q": 4,
+        "doors": 3,
+        "expansions": 821,
+        "hold": 4,
+        "max_x": 200,
+        "n_cells": 211,
+        "path_len": 43,
+        "segment": "level4_east_0x32_bfs",
+        "start": [
+          128,
+          133
+        ],
+        "success": true,
+        "target": [
+          200,
+          136
+        ]
+      }
+    },
+    "final": {
+      "bombs": 8,
+      "compass": 12,
+      "compass_l4": true,
+      "cur_opened_doors": 0,
+      "health": 107,
+      "keys": 0,
+      "level": 4,
+      "mode": 5,
+      "room": 50,
+      "room_all_dead": 0,
+      "room_hex": "0x32",
+      "room_item_id": 3,
+      "x": 16,
+      "y": 141
+    },
+    "frames": 406,
+    "ok": true,
+    "segment": "east_32"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31Cleared.state",
+  "source_state_sha256": "116d4be771de2396d8cd85ed6e1e4193ab7c9d6b08f3c3231d9c76eaa8214bbc",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room32.state",
+  "state_sha256": "c27a8b5395f08f6a8724eb0ea7b0afe738075b2c744736b0175b20434a248dc1"
+}
