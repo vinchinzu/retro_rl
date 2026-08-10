@@ -63,7 +63,7 @@ Layer 0  Deterministic parallel emulator pool (rollouts, save/load, speed)
 | **L4** Planner | Bounded capability planner has SM Morph + ALTTP escape consumers (`plan()` dry runs); resource/risk extension is fake-tested | Shared — two real subgraphs offline |
 | **L3** Discovery | Super Metroid room-graph lessons; SMZ3 portal/world detect | Shared — incomplete |
 | **L2** Observation | Dev-time RAM maps + miner tooling; not runtime bootstrap | Shared — incomplete |
-| **L0** Emulator pool | Certified full-env snapshots (`SnapshotAdapter`/`Envelope`); branch batches open (`rr-gbd.34`) | Shared — real-ROM tested (SM smoke) |
+| **L0** Emulator pool | Certified snapshots + branch-rollout batches (`RolloutSpec`/`Result`, widths 1≡N) | Shared — real-ROM tested (SM smoke) |
 
 **Strategic conclusion:** the hard bespoke work (L1) is largely done for many
 titles. Transfer value lives in **L0 + L2–L4**, which are mostly unbuilt and
@@ -268,7 +268,7 @@ Current audit (2026-08-09):
 
 | Subsystem | Highest rung | Evidence / remaining gate |
 |-----------|--------------|---------------------------|
-| Emulator pool (`rr-gbd.16` + certified snapshots `rr-gbd.32`) | Real-ROM tested | `SnapshotAdapter`/`SnapshotEnvelope` restore wrapper counters/cache/RNG; stable-retro Super Metroid smoke. Branch batches remain `rr-gbd.34`; second consumer still required for publication-ready. |
+| Emulator pool (`rr-gbd.16` + certified snapshots `rr-gbd.32` + branch batches `rr-gbd.34`) | Real-ROM tested | `SnapshotAdapter`/`SnapshotEnvelope` + `RolloutSpec`/`RolloutResult` with order-independent replay digests; width 1≡4; controller exceptions isolate branches. SM smoke covers certified restore + width-1 batch. Second independent game consumer still required for publication-ready. |
 | Capability planner + bindings + SolverSession | First real-game consumer | SM-rando real-ROM Landing→Pit vertical slice with recovery/replan. |
 | Resource/risk planner | Fake-tested | Key/missile/reliability golden fixtures; no game-owned planning consumer yet. |
 | Contracts + PolicyArtifact + benchmark audits | First real-game consumer | SM-rando vertical slice and audited Landing BC experiment; resumable multi-seed campaign runner lands as `rr-gbd.33` (`SeedCampaignRunner`). |

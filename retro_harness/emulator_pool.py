@@ -1,9 +1,8 @@
 """Deterministic parallel pool for emulator-backed environments.
 
-Maturity: **fake-tested + real-ROM smoke for certified snapshots** (rr-gbd.32).
-Branch-rollout batches remain rr-gbd.34.  Not publication-ready L0 until
-certified snapshots have a second independent game consumer and branch
-rollouts land.
+Maturity: **fake-tested + real-ROM smoke** for certified snapshots (rr-gbd.32)
+and branch-rollout batches (rr-gbd.34 via :mod:`retro_harness.branch_rollout`).
+Not publication-ready L0 until a second independent game consumer exists.
 
 Two snapshot surfaces:
 
@@ -43,6 +42,9 @@ from retro_harness.snapshot import (
     restore_envelope,
     set_emulator_state,
 )
+
+# Branch-rollout batch API lives in branch_rollout (avoids circular imports at
+# module load: branch_rollout imports EmulatorPool).
 
 
 EnvFactory: TypeAlias = Callable[[], Any]
