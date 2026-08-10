@@ -303,28 +303,14 @@ class FenceClearLoopTask(Task):
             best_pond = min(POND_TILES, key=lambda p: abs(p[0]-current[0]) + abs(p[1]-current[1]))
 
             # Corridor-only (empty-can refill): skip pond toss thrash.
-            # ROM: while carrying on the gap tile, try a long south charge first
-            # (sometimes crosses); if still on y=31, local-drop (no face-up).
+            # ROM (Y1_Test_Crops_Planted_Dry): empty-handed south through a
+            # y=31 gap soft-blocks on (13,31) y≈505. Carry-south after lift
+            # crosses: player often stands on y=30 approach after lift — must
+            # charge from y<=31 (not only y==31). Drop only after y>=32 or
+            # after the charge attempt fails.
             if self.corridor_only:
-                if current[1] == 31 and not getattr(self, "_corridor_charge_done", False):
-                    self._corridor_charge_done = True
-                    self._action_queue.clear()
-                    self._action_queue.extend(
-                        [make_action(down=True, b=True) for _ in range(100)]
-                    )
-                    self._action_queue.extend([make_action() for _ in range(10)])
-                    if self.debug:
-                        print(
-                            f"[FENCE] corridor_only: south charge while carrying "
-                            f"at {current}"
-                        )
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(self._action_queue.popleft()),
-                        reason="corridor_only south charge",
-                    )
                 if current[1] >= 32:
-                    # Crossed while carrying — count success, drop south of wall.
+                    # Crossed while carrying — drop south of wall, gap stays open.
                     if self.debug:
                         print(f"[FENCE] corridor_only: crossed to {current}")
                     self._state = "local_drop"
@@ -334,10 +320,34 @@ class FenceClearLoopTask(Task):
                         status=TaskStatus.RUNNING,
                         reason="corridor_only drop south of wall",
                     )
+                if current[1] <= 31 and not getattr(self, "_corridor_charge_done", False):
+                    self._corridor_charge_done = True
+                    self._action_queue.clear()
+                    # Face/align south then long B-run. ROM lift leaves player
+                    # on approach (x,30); charge from there crosses to y>=32.
+                    self._action_queue.extend(
+                        [make_action(down=True) for _ in range(12)]
+                    )
+                    self._action_queue.extend(
+                        [make_action(down=True, b=True) for _ in range(160)]
+                    )
+                    self._action_queue.extend([make_action() for _ in range(12)])
+                    if self.debug:
+                        print(
+                            f"[FENCE] corridor_only: carry-south charge "
+                            f"at {current}"
+                        )
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(self._action_queue.popleft()),
+                        reason="corridor_only south charge",
+                    )
+                # Charge already tried and still north of wall — local drop
+                # (gap open). CropWaterTask will east-crawl y=30→x≥28 then south.
                 if self.debug:
                     print(
                         f"[FENCE] corridor_only: local drop at {current} "
-                        f"(skip pond toss thrash)"
+                        f"after failed carry-south (gap open)"
                     )
                 self._state = "local_drop"
                 self._steps_on_fence = 0
