@@ -33,12 +33,13 @@ helpers, ≤~500 lines/file — checklist in
 **136,361f** ×2, room `0xADDE`, beams `0x1005`, items `0x3105`).
 **History:** Speed **130,388f** ×2 and non-Spazer Bat Cave **122,304f** ×2
 remain valid previous tips.
-**Next:** Wave→Business pure return stack (`rr-vqv3`) **CLOSED pure dual** —
-all 7 hops GREEN incl. Frog→Business (`rr-vsjy` 347f×2, Business floor
-~(216,1419)). Compose into continuous Ice prefix still open; Ice pure
-stack **CLOSED** (`rr-dbu.11`); continuous `--to ice` **compose** wired
-(`rr-dbu.7`, TipSpec parent `wave`) — **not** STATUS-promoted without dual
-continuous green (residual `docs/tasks/rr-vqv3-residual.md`).
+**Next:** Dual continuous `--to ice` stabilize (`rr-kxge`) — compose **LANDED**
+(Wave→Business return + Ice pure on ice tip; 11 hops). Continuous reaches
+Business via return chain then **RED** on Business floor→Super climb
+(residual `docs/tasks/rr-kxge-residual.md`). Pure floor→Gate dual GREEN
+3219f×2; elev pin still 891f. Ice pure stack **CLOSED** (`rr-dbu.11`);
+Wave→Business pure **CLOSED** (`rr-vqv3`). **Not** STATUS-promoted without
+dual continuous green.
 
 **Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
 Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:
