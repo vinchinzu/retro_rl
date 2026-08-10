@@ -389,6 +389,19 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=180,
     ),
     SourceFingerprint(
+        "post_frog_save_to_business_pure",
+        "scratch/post_frog_save_to_business_pure.state",
+        0xA7DE,
+        use_for="Wave→Business return stack tip / Ice pure predecessor (rr-vsjy dual)",
+        continuous_like=False,
+        # Business floor after Frog Save left leave (Frog door is floor-right;
+        # dual pin ~(216,1419) p12). Ice Super is mid-shaft — compose climbs.
+        x_min=160,
+        x_max=280,
+        y_min=1380,
+        y_max=1460,
+    ),
+    SourceFingerprint(
         "post_kihunter_to_zeela",
         "scratch/post_kihunter_to_zeela_return.state",
         0xA471,
