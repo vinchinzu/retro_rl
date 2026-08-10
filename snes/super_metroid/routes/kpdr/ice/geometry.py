@@ -89,16 +89,25 @@ SNAKE_L7_Y = (190, 220)
 SNAKE_TOP_Y = (120, 160)
 SNAKE_TOP_X = (80, 180)
 # Morph tunnel (right column, after top cross).
-SNAKE_TUNNEL_Y = (360, 420)
+# Human success (tape f15424–15463): morph pose 30 roll RIGHT y=377 x=204→323.
+# False ledge just below tunnel is y~409 — do NOT treat as tunnel floor.
+SNAKE_TUNNEL_Y = (365, 395)
+SNAKE_TUNNEL_FLOOR_Y = 377
+SNAKE_FALSE_LEDGE_Y = (400, 430)  # morph trap below tunnel mouth
 SNAKE_TUNNEL_X_MIN = 195
+SNAKE_TUNNEL_EXIT_X = 320  # past tunnel mouth into open right column
 SNAKE_WALL_X = 171  # left face of center structure (solid from left shaft)
-# Ice Beam room PLM.
+# Right-column mid shelf used for jump-up morph into tunnel (tape f15350).
+SNAKE_MID_SHELF_Y = (480, 540)
+SNAKE_MID_SHELF_X = (180, 230)
+# Ice Beam room PLM (chozo pedestal x≈187 after left settle).
 ICE_BEAM_MASK = 0x0002
 ICE_PLM_X = 187
 ICE_ROOM_SETTLE = 280
 SNAKE_CLIMB_FRAMES = 2500
-SNAKE_TUNNEL_FRAMES = 800
+SNAKE_TUNNEL_FRAMES = 900
 SNAKE_ICE_COLLECT_FRAMES = 500
+SNAKE_DOOR_X = 470  # Ice blue door pressure band on right of Snake
 
 
 def in_business(state: SuperMetroidState) -> bool:
@@ -142,11 +151,31 @@ def on_snake_top(state: SuperMetroidState) -> bool:
 
 
 def on_snake_tunnel_band(state: SuperMetroidState) -> bool:
-    """Right-side morph tunnel approach (past center wall)."""
+    """Right-side morph tunnel floor (y~377 only — not false ledge y409)."""
     if not in_ice_snake(state):
         return False
     x, y = int(state.samus_x), int(state.samus_y)
     return x >= SNAKE_TUNNEL_X_MIN and SNAKE_TUNNEL_Y[0] <= y <= SNAKE_TUNNEL_Y[1]
+
+
+def on_snake_false_ledge(state: SuperMetroidState) -> bool:
+    """Morph trap ledge just below tunnel mouth ~(x≥195, y~409)."""
+    if not in_ice_snake(state):
+        return False
+    x, y = int(state.samus_x), int(state.samus_y)
+    return x >= SNAKE_TUNNEL_X_MIN and SNAKE_FALSE_LEDGE_Y[0] <= y <= SNAKE_FALSE_LEDGE_Y[1]
+
+
+def on_snake_mid_shelf(state: SuperMetroidState) -> bool:
+    """Right-column mid shelf ~(197, 507) — jump-up morph launch pad."""
+    if not in_ice_snake(state):
+        return False
+    x, y = int(state.samus_x), int(state.samus_y)
+    if not (SNAKE_MID_SHELF_X[0] <= x <= SNAKE_MID_SHELF_X[1]):
+        return False
+    if not (SNAKE_MID_SHELF_Y[0] <= y <= SNAKE_MID_SHELF_Y[1]):
+        return False
+    return int(state.velocity_y) == 0
 
 
 def has_ice(state: SuperMetroidState) -> bool:
@@ -210,6 +239,8 @@ __all__ = [
     "ICE_SUPER_Y_MIN",
     "LEDGE_POSES",
     "SNAKE_CLIMB_FRAMES",
+    "SNAKE_DOOR_X",
+    "SNAKE_FALSE_LEDGE_Y",
     "SNAKE_HANDOFF_X",
     "SNAKE_HANDOFF_Y",
     "SNAKE_ICE_COLLECT_FRAMES",
@@ -220,8 +251,12 @@ __all__ = [
     "SNAKE_L5_Y",
     "SNAKE_L6_Y",
     "SNAKE_L7_Y",
+    "SNAKE_MID_SHELF_X",
+    "SNAKE_MID_SHELF_Y",
     "SNAKE_TOP_X",
     "SNAKE_TOP_Y",
+    "SNAKE_TUNNEL_EXIT_X",
+    "SNAKE_TUNNEL_FLOOR_Y",
     "SNAKE_TUNNEL_FRAMES",
     "SNAKE_TUNNEL_X_MIN",
     "SNAKE_TUNNEL_Y",
@@ -236,7 +271,9 @@ __all__ = [
     "in_ice_super_band",
     "on_acid_floor",
     "on_ice_super_lip",
+    "on_snake_false_ledge",
     "on_snake_floor",
+    "on_snake_mid_shelf",
     "on_snake_top",
     "on_snake_tunnel_band",
 ]

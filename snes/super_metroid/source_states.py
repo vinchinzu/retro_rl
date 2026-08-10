@@ -198,6 +198,18 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1, 2, 9, 10}),
     ),
     SourceFingerprint(
+        "post_ice_snake_to_ice_pure",
+        "scratch/post_ice_snake_to_ice_pure.state",
+        0xA890,
+        use_for="Ice PLM dual pure handoff (rr-5if, beams include Ice 0x0002)",
+        continuous_like=False,
+        x_min=160,
+        x_max=220,
+        y_min=100,
+        y_max=160,
+        poses=frozenset({1, 2, 9, 10, 75, 77, 81}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,
