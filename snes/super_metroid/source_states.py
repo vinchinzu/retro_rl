@@ -330,6 +330,18 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=180,
     ),
     SourceFingerprint(
+        "post_double_to_single_chamber_pure",
+        "scratch/post_double_to_single_chamber_pure.state",
+        0xAD5E,
+        use_for="single-to-bubble return pure predecessor (Wave return stack)",
+        continuous_like=False,
+        # Live dual pin (rr-qpkd): ~(216,630) after bottom-left door settle.
+        x_min=180,
+        x_max=260,
+        y_min=580,
+        y_max=680,
+    ),
+    SourceFingerprint(
         "post_kihunter_to_zeela",
         "scratch/post_kihunter_to_zeela_return.state",
         0xA471,

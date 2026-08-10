@@ -33,12 +33,12 @@ helpers, ≤~500 lines/file — checklist in
 **136,361f** ×2, room `0xADDE`, beams `0x1005`, items `0x3105`).
 **History:** Speed **130,388f** ×2 and non-Spazer Bat Cave **122,304f** ×2
 remain valid previous tips.
-**Next:** Wave→Business pure return stack (`rr-vqv3`) — first hop Wave→Double
-**dual GREEN** (`rr-pd0i` 560f×2); next `rr-wu5r` Double→Single return.
-Ice pure stack **CLOSED** (`rr-dbu.11`); continuous `--to ice` **compose**
-wired (`rr-dbu.7`, TipSpec parent `wave`) — **not** STATUS-promoted without
-dual continuous green (room gap Wave→Business; residual
-`docs/tasks/rr-vqv3-residual.md`).
+**Next:** Wave→Business pure return stack (`rr-vqv3`) — Wave→Double dual
+GREEN (`rr-pd0i` 560f×2); Double→Single dual GREEN (`rr-qpkd` 1101f×2);
+next `rr-u0y8` Single→Bubble return. Ice pure stack **CLOSED**
+(`rr-dbu.11`); continuous `--to ice` **compose** wired (`rr-dbu.7`, TipSpec
+parent `wave`) — **not** STATUS-promoted without dual continuous green
+(room gap Wave→Business; residual `docs/tasks/rr-vqv3-residual.md`).
 
 **Spazer mainline:** Charge + Spazer on continuous spine through Speed dual.
 Warehouse dual **89,416 + 90,904f** is a promoted prefix. Details:
