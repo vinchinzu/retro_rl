@@ -134,3 +134,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Tests: 7 passed (`test_alttp_rando_opening_tip_campaign.py`). Fail-closed INFRA + non-vanilla uncle failure modes covered.
 - Not shuffled-seed robustness; live path fail-closed without ROM/FirstPlay.
 - Next free alttp_rando tip: ALTTPR patch fixture / next graph edges (no more ready gbd beads in this lane).
+
+### 2026-08-09T21:50 CDT — alttp multi-seed dry-run closed
+- **CLOSED** `rr-gbd.26` house→uncle SeedCampaignRunner dry S/T 3/3 claimable (vanilla fixtures).
+- Multi-seed dry stack complete: sm_rando 25 + smz3 13 + alttp 26 (all fixture/vanilla labeled).
+
