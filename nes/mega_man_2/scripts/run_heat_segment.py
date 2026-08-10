@@ -13,6 +13,8 @@ Verified (Clean Bronze, 2026-08-10):
 - target 5 from ``HeatScreen4``: late 20/12 ph4 (~131f cam)
 - target 7 from ``HeatScreen5Ground``: screen5 j1/LEFT/j2 + hop 9/gw3 (~305f)
 - target 8 from ``HeatScreen7Mid``: screen7 high-path ladder/scroll_down (~587f)
+- from ``HeatScreen8``: screen8 first Yoku land sx~168 sy~100 (~44f; use
+  ``--yoku-land`` success); boss door residual (rr-k1ea PARTIAL)
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
@@ -35,6 +37,9 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
   --state HeatScreen7Mid --target-screen 8 --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen8 --yoku-land --trials 3
 ```
 """
 
@@ -88,6 +93,7 @@ def run_heat_segment(
     out_dir: Path | None = None,
     save_clear: bool = True,
     trials: int = 1,
+    yoku_land: bool = False,
 ) -> dict[str, Any]:
     """Load Heat checkpoint, run policy until screen target or fail."""
     configure_headless()
@@ -108,6 +114,7 @@ def run_heat_segment(
                 out=out,
                 save_clear=save_clear and trial == 1,
                 trial=trial,
+                yoku_land=yoku_land,
             )
         )
 
@@ -117,14 +124,16 @@ def run_heat_segment(
         "trials": trials,
         "successes": successes,
         "target_screen": target_screen,
+        "yoku_land": yoku_land,
         "start_state": state_name,
         "trial_reports": trial_reports,
         "notes": (
-            "Heat Man camera X screen ≥ target. "
+            "Heat Man camera X screen ≥ target (or --yoku-land sy≤105 stand). "
             "Recipes: early 50/12; screen2 mid 60→25; screen3 pillars 25/10 ph10; "
             "screen4 late 20/12 ph4; screen5 j1/LEFT/j2 + hop 9/gw3 → cam≥7; "
-            "screen7 high-path ladder → cam≥8 Sniper shaft. "
-            "Boss door + Item-1 residual (rr-809)."
+            "screen7 high-path ladder → cam≥8 Sniper shaft; "
+            "screen8 first Yoku land sx~168 sy~100. "
+            "Boss door + Item-1 residual (rr-k1ea / rr-809 PARTIAL)."
         ),
     }
     write_json_report(out / "heat_segment.json", report)
@@ -134,6 +143,7 @@ def run_heat_segment(
         f"{successes}/{trials} last_frames={last['frames']} "
         f"hp={last['final_health']} screen={last['final_camera_screen']} "
         f"prog={last['final_progress_x']} "
+        f"sx={last.get('final_sx', 0)} sy={last.get('final_sy', 0)} "
         f"wep={last.get('weapons', 0):02x} items={last.get('items', 0):02x}"
     )
     return report
@@ -147,6 +157,7 @@ def _run_one(
     out: Path,
     save_clear: bool,
     trial: int,
+    yoku_land: bool = False,
 ) -> dict[str, Any]:
     env = make_env(GAME, state_name, GAME_DIR, render_mode="rgb_array")
     obs = env.reset()
@@ -154,8 +165,10 @@ def _run_one(
         obs = obs[0]
 
     start_mode = HeatManPolicy.start_for_state(state_name)
+    # Yoku-land milestone: hold target high so clear_hold does not freeze early
+    policy_target = 99 if yoku_land else target_screen
     policy = HeatManPolicy(
-        target_camera_screen=target_screen,
+        target_camera_screen=policy_target,
         start=start_mode,
     )
     reasons: dict[str, int] = {}
@@ -173,7 +186,10 @@ def _run_one(
     final_progress = int(start.extras.get("progress_x", 0))
     final_weapons = int(start.extras.get("weapons", 0))
     final_items = int(start.extras.get("items", 0))
+    final_sx = int(start.extras.get("player_sx", 0))
+    final_sy = int(start.extras.get("player_sy", 0))
     end_frame = 0
+    yoku_stand_run = 0
 
     for frame in range(1, max_frames + 1):
         ram = env.get_ram()
@@ -183,6 +199,8 @@ def _run_one(
         tile_feet = int(ram[ADDR_TILE_FEET])
         cam_y = int(ram[ADDR_CAMERA_Y])
         cam_st = int(ram[ADDR_CAMERA_STATE])
+        sx = player_screen_x(ram)
+        sy = player_screen_y(ram)
         # sy≥200 is a pit heuristic; false-fires on ladder scroll_down (sy~228)
         # while tile_feet==2 or vertical camera is mid-transition.
         on_ladder = tile_feet == 2
@@ -193,6 +211,8 @@ def _run_one(
         final_progress = camera_progress_x(ram)
         final_weapons = read_u8(ram, ADDR_WEAPONS)
         final_items = read_u8(ram, ADDR_ITEMS)
+        final_sx = sx
+        final_sy = sy
         end_frame = frame
 
         # feet==3 is instadeath pose; lives drop = pit/respawn without HP=0
@@ -202,7 +222,28 @@ def _run_one(
             screenshots.append(png.name)
             break
 
-        if cam_scr >= target_screen:
+        # First Yoku land milestone (HeatScreen8): grounded sy≤105 for 3f
+        if yoku_land and tile_feet == 1 and sy <= 105:
+            yoku_stand_run += 1
+            if yoku_stand_run >= 3:
+                outcome = "success"
+                png = save_rgb_png(obs, out / f"{prefix}_{frame:04d}_yoku.png")
+                screenshots.append(png.name)
+                if save_clear:
+                    path = save_state(env, GAME_DIR, GAME, "HeatScreen8Yoku")
+                    saved.append(path.name)
+                    path2 = save_state(
+                        env,
+                        GAME_DIR,
+                        GAME,
+                        f"HeatScreen8Yoku_sx{sx}_sy{sy}_hp{health}",
+                    )
+                    saved.append(path2.name)
+                break
+        else:
+            yoku_stand_run = 0
+
+        if not yoku_land and cam_scr >= target_screen:
             outcome = "success"
             png = save_rgb_png(obs, out / f"{prefix}_{frame:04d}_clear.png")
             screenshots.append(png.name)
@@ -232,8 +273,7 @@ def _run_one(
             screenshots.append(png.name)
             print(
                 f"t{trial} f={frame} scr={cam_scr} prog={final_progress} "
-                f"hp={health} sx={player_screen_x(ram)} sy={player_screen_y(ram)} "
-                f"mode={start_mode}"
+                f"hp={health} sx={sx} sy={sy} mode={start_mode}"
             )
 
     env.close()
@@ -244,6 +284,8 @@ def _run_one(
         "final_health": final_health,
         "final_camera_screen": final_screen,
         "final_progress_x": final_progress,
+        "final_sx": final_sx,
+        "final_sy": final_sy,
         "weapons": final_weapons,
         "items": final_items,
         "frames": end_frame,
@@ -251,6 +293,7 @@ def _run_one(
         "saved_states": saved,
         "screenshots": screenshots,
         "policy_start": start_mode,
+        "yoku_land": yoku_land,
         "start": {
             "health": start.health,
             "lives": start.lives,
@@ -270,6 +313,11 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--no-save", action="store_true")
     parser.add_argument("--trials", type=int, default=1)
+    parser.add_argument(
+        "--yoku-land",
+        action="store_true",
+        help="Success = grounded Yoku stand sy≤105 (HeatScreen8 first land)",
+    )
     args = parser.parse_args()
     report = run_heat_segment(
         state_name=args.state,
@@ -278,6 +326,7 @@ def main() -> None:
         out_dir=args.out_dir,
         save_clear=not args.no_save,
         trials=args.trials,
+        yoku_land=args.yoku_land,
     )
     raise SystemExit(0 if report["success"] else 1)
 
