@@ -593,3 +593,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next bead **rr-81ek**: Tutorial → Gate pure from new pin
 - Units: ice scaffold green; no continuous / STATUS change
 - No push
+
+### 2026-08-10T02:20 CDT — SM K5 Snake→Tutorial pure GREEN
+- **CLOSED** `rr-bf29` dual pure 2386f×2 room 0xA865. Stack hop0+hop1 GREEN.
+- Next: `rr-81ek` Tutorial→Gate. Parent rr-dbu.8 open.
+
