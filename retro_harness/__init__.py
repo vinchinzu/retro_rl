@@ -86,6 +86,24 @@ from retro_harness.input_script import (
 )
 from retro_harness.runtime import reset_env, step_env
 from retro_harness.emulator_pool import EmulatorPool, PoolState
+from retro_harness.snapshot import (
+    AttributeSnapshotAdapter,
+    EmulatorOnlyAdapter,
+    PoolSnapshot,
+    SNAPSHOT_SCHEMA_VERSION,
+    SnapshotAdapter,
+    SnapshotCertification,
+    SnapshotEnvelope,
+    SnapshotError,
+    SnapshotIdentity,
+    SnapshotIdentityMismatch,
+    assert_envelope_compatible,
+    capture_envelope,
+    get_emulator_state,
+    identity_for,
+    restore_envelope,
+    set_emulator_state,
+)
 from retro_harness.live_play import (
     play_game,
 )
@@ -235,8 +253,13 @@ __all__ = [
     "GameSpec", "add_custom_integrations", "make_env", "get_available_states",
     "read_state_bytes", "reset_env", "save_state", "state_path", "step_env",
     "write_state_bytes", "play_game",
-    # Deterministic parallel rollouts
-    "EmulatorPool", "PoolState",
+    # Deterministic parallel rollouts / certified snapshots
+    "EmulatorPool", "PoolState", "PoolSnapshot",
+    "AttributeSnapshotAdapter", "EmulatorOnlyAdapter", "SNAPSHOT_SCHEMA_VERSION",
+    "SnapshotAdapter", "SnapshotCertification", "SnapshotEnvelope",
+    "SnapshotError", "SnapshotIdentity", "SnapshotIdentityMismatch",
+    "assert_envelope_compatible", "capture_envelope", "get_emulator_state",
+    "identity_for", "restore_envelope", "set_emulator_state",
     # Recordings/logging
     "ensure_gzip_state", "append_jsonl", "iter_jsonl",
     "find_latest_recording", "find_latest_recording_from_manifest",
