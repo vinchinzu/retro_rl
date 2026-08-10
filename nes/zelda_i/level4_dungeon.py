@@ -15,13 +15,14 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
     0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)
     0x62 --maze compass + return LEFT--> 0x61 (ADDR_COMPASS bit 0x08)
-    **Post-compass expand (rr-xc3x / rr-q8eq / rr-n1wn live):** 0x50 is
+    **Post-compass expand (rr-xc3x / rr-q8eq / rr-n1wn / rr-resv live):** 0x50 is
     **not** a dead-end. Scripted north → **0x40** (5× Zol ``0x13`` → gel
     ``0x14`` + key ``0x19`` via east-corridor path). Free UP → **0x30**
-    (3× Vire + 2× invuln ``0x2b``; ignore invuln for clear). First rooms
-    outside early component {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT
-    sealed; 0x40 L/R sealed. ADDR_LADDER residual (stepladder further
-    north/east of 0x30 after clear+exit probe).
+    (3× Vire + 2× invuln ``0x2b``; ignore invuln for clear). KEY-RIGHT →
+    **0x31** (5× Vire; maze interior). Clear opens RIGHT door (doors 2→3) →
+    free RIGHT → **0x32** (Zol/Like-Like residual). First rooms outside early
+    component {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT sealed; 0x40 L/R
+    sealed. ADDR_LADDER residual (stepladder further east of 0x32).
 
 Not Clean STATUS. Stepladder / Gleeok / TF ``0x08`` still residual.
 """
@@ -453,11 +454,20 @@ KEY_40_PICKUP_XY = (120, 117)
 ROOM_L4_NORTH_30 = 0x30
 # KEY-RIGHT of cleared 0x30 → 0x31 (5× Vire 0x12; rr-n1wn live).
 ROOM_L4_EAST_31 = 0x31
+# Free RIGHT of cleared 0x31 → 0x32 (rr-resv live; doors open R on clear).
+ROOM_L4_EAST_32 = 0x32
 # Invuln movers on 0x30 (slots 1–2); never count as combat clear targets.
 INVULN_MOVER_TYPE = 0x2B
 # Key-east door 0x30 → 0x31 (live: y≈141 hold RIGHT; keys 1→0).
 KEY_30_EAST_Y = 141
 KEY_30_EAST_Y_TOL = 4
+# 0x31 maze → east door band then free RIGHT (hold4 BFS; rr-resv).
+# hold=6/q=8 starves connectivity from clear pose ~(128,133); hold4/q4 reaches east.
+MAZE_31_HOLD = 4
+MAZE_31_CELL_Q = 4
+MAZE_31_EAST_X_MIN = 200
+MAZE_31_EAST_Y = 136
+MAZE_31_EAST_Y_TOL = 16
 
 _PATROL_40: tuple[tuple[int, int], ...] = (
     (64, 109),
@@ -572,9 +582,38 @@ ROOM_30_SPEC = DungeonRoomSpec(
     room_item_id=ROOM_ITEM_NONE,
     exit_routes=(
         DoorRoute("DOWN", ((120, 189), (120, 205))),
-        # N/E/W residual — probe after clear (rr-n1wn).
+        # KEY-RIGHT @y141 → 0x31 after clear (rr-n1wn).
     ),
     max_frames=20000,
+    level=LEVEL4,
+)
+
+# 0x31: 5× Vire maze (rr-resv). Enter west ~(16,141). Clear opens RIGHT door
+# (cur_opened_doors 2→3). Free N/W sealed from interior; free RIGHT → 0x32.
+# Maze walkable is non-rectangular (BFS ~79 cells); use hold6 path to east band.
+ROOM_31_SPEC = DungeonRoomSpec(
+    spec_id="level4_room31_vires",
+    source_room=ROOM_L4_NORTH_30,
+    room_id=ROOM_L4_EAST_31,
+    entry=DoorRoute("RIGHT", ((16, 141), (48, 141))),
+    enemy_types=(VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    type_only_enemy_types=(VIRE_SPLIT_KEESE_TYPE,),
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_PATROL_MID,
+        engage_distance=72,
+        attack_phase=0,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=ROOM_ITEM_NONE,
+    exit_routes=(
+        DoorRoute("RIGHT", ((200, 141), (224, 141))),  # free after clear → 0x32
+    ),
+    max_frames=25000,
     level=LEVEL4,
 )
 
@@ -585,6 +624,7 @@ register_room_spec(ROOM_50_SPEC)
 register_room_spec(ROOM_62_SPEC)
 register_room_spec(ROOM_40_SPEC)
 register_room_spec(ROOM_30_SPEC)
+register_room_spec(ROOM_31_SPEC)
 
 
 class BombWall61North:
@@ -989,6 +1029,28 @@ def make_key_right_31_controller(
 
 def level4_room_31_ready(ram: np.ndarray) -> bool:
     return level4_room_ready(read_snapshot(ram), ROOM_L4_EAST_31)
+
+
+def level4_room_31_cleared(ram: np.ndarray) -> bool:
+    """0x31 Vires+splits cleared (maze residual OK).
+
+    RoomAllDead may lag; clear is live-Vire emptiness only (settle_all_dead=0).
+    After clear, RIGHT door opens (doors bit R) for free exit → 0x32.
+    """
+    snap = read_snapshot(ram)
+    if not level4_room_ready(snap, ROOM_L4_EAST_31):
+        return False
+    live = ROOM_31_SPEC.live_enemies(snap)
+    return len(live) == 0
+
+
+def make_room_31_clear_controller() -> GenericDungeonRoomController:
+    """Clear 5× Vire on 0x31 maze (rr-resv)."""
+    return GenericDungeonRoomController(ROOM_31_SPEC)
+
+
+def level4_room_32_ready(ram: np.ndarray) -> bool:
+    return level4_room_ready(read_snapshot(ram), ROOM_L4_EAST_32)
 
 
 # Live scripted key path after combat clear pose ≈(136–140, 164–165).
@@ -1869,9 +1931,9 @@ def planning_interior_report() -> dict:
     return {
         "level": LEVEL4,
         "bead": "rr-5lu",
-        "tip": "rr-n1wn",
+        "tip": "rr-resv",
         "track": "pure",
-        "status": "interior_0x30_clear_stepladder_residual",
+        "status": "interior_0x31_clear_0x32_stepladder_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -1925,18 +1987,31 @@ def planning_interior_report() -> dict:
                 "RIGHT_free": "sealed",
                 "note": (
                     "clear Vires ignore invuln 0x2b (rr-n1wn); walkable y≥128; "
-                    "KEY-RIGHT@y141 → 0x31 (5× Vire); stepladder residual"
+                    "KEY-RIGHT@y141 → 0x31 (5× Vire)"
                 ),
             },
             hex(ROOM_L4_EAST_31): {
                 "enemies": {"0x12": 5},
                 "LEFT": hex(ROOM_L4_NORTH_30),
-                "note": "live KEY-RIGHT of 0x30 (rr-n1wn); stepladder residual",
+                "RIGHT_after_clear": hex(ROOM_L4_EAST_32),
+                "UP": "sealed",
+                "note": (
+                    "maze interior (rr-resv); clear opens doors 2→3 (R free); "
+                    "hold4 BFS east band → RIGHT → 0x32; N free sealed"
+                ),
+            },
+            hex(ROOM_L4_EAST_32): {
+                "enemies": {"0x13": 2, "0x17": 2, "0x2b": 2, "0x68": 1},
+                "LEFT": hex(ROOM_L4_EAST_31),
+                "note": (
+                    "live free-RIGHT of cleared 0x31 (rr-resv); "
+                    "Zol+LikeLike residual; stepladder residual"
+                ),
             },
         },
         "post_compass": {
             "bead": "rr-o0nn",
-            "expand": "rr-n1wn",
+            "expand": "rr-resv",
             "start": "Level4Compass",
             "early_component": [
                 hex(ROOM_L4_ENTRY),
@@ -1954,11 +2029,14 @@ def planning_interior_report() -> dict:
                 "recordings/l4_q8eq_40_dense_bfs.json",
                 "recordings/l4_q8eq_key40_key_40.json",
                 "recordings/l4_n1wn_clear30_clear_30.json",
+                "recordings/l4_resv_31_bfs.json",
+                "recordings/l4_resv_room32_recon.json",
             ],
             "blocked": [
                 "0x51 UP/RIGHT sealed (not key)",
                 "0x62 bomb exits none",
                 "0x40 LEFT/RIGHT sealed",
+                "0x31 N free sealed (maze)",
                 "no Vire key-farm drops (8 cycles)",
             ],
             "opened": [
@@ -1966,6 +2044,7 @@ def planning_interior_report() -> dict:
                 "0x40 clear+key → free UP → 0x30",
                 "0x30 clear Vires (ignore 0x2b)",
                 "0x30 KEY-RIGHT @y141 → 0x31 (5× Vire)",
+                "0x31 clear Vires → free RIGHT → 0x32",
             ],
         },
         "bomb_61_north": {
@@ -2005,6 +2084,8 @@ def planning_interior_report() -> dict:
             "north_30": "rr-q8eq",
             "clear_30": "rr-n1wn",
             "key_right_31": "rr-n1wn",
+            "clear_31": "rr-resv",
+            "east_32": "rr-resv",
             "stepladder_path": "rr-o0nn",
         },
         "key_40": {
@@ -2024,9 +2105,22 @@ def planning_interior_report() -> dict:
             "key_cost": 1,
             "checkpoint": "Level4Room31",
         },
+        "clear_31": {
+            "enemies": {"0x12": 5},
+            "settle_all_dead": 0,
+            "doors_after_clear": 3,
+            "checkpoint": "Level4Room31Cleared",
+        },
+        "east_32": {
+            "hold": MAZE_31_HOLD,
+            "east_x_min": MAZE_31_EAST_X_MIN,
+            "east_y": MAZE_31_EAST_Y,
+            "opens_to": hex(ROOM_L4_EAST_32),
+            "checkpoint": "Level4Room32",
+        },
         "not_yet": [
             "stepladder room / ADDR_LADDER",
-            "0x31 clear + further expand toward ladder",
+            "0x32 clear + further expand toward ladder",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
@@ -2073,22 +2167,32 @@ __all__ = [
     "KeyRight31Phase",
     "Level4Clear30Controller",
     "Level4KeyRight31Controller",
+    "MAZE_31_CELL_Q",
+    "MAZE_31_EAST_X_MIN",
+    "MAZE_31_EAST_Y",
+    "MAZE_31_EAST_Y_TOL",
+    "MAZE_31_HOLD",
     "ROOM_30_SPEC",
+    "ROOM_31_SPEC",
     "ROOM_40_SPEC",
     "ROOM_50_SPEC",
     "ROOM_51_SPEC",
     "ROOM_61_SPEC",
     "ROOM_62_SPEC",
     "ROOM_L4_EAST_31",
+    "ROOM_L4_EAST_32",
     "ROOM_L4_NORTH_30",
     "ROOM_L4_ZOLS_40",
     "GEL_SPLIT_OBJECT_TYPE",
     "INVULN_MOVER_TYPE",
     "ZOL_OBJECT_TYPE",
     "level4_room_30_cleared",
+    "level4_room_31_cleared",
     "level4_room_31_ready",
+    "level4_room_32_ready",
     "make_key_right_31_controller",
     "make_room_30_clear_controller",
+    "make_room_31_clear_controller",
     "ROOM_71_SPEC",
     "ROOM_ITEM_COMPASS",
     "ROOM_L4_COMPASS_62",
