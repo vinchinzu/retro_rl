@@ -770,3 +770,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-05fz` open: exit_60 2/2 ~765f; west_31 2/2 ~372f. Checkpoints Level4PostLadder.
 - Map/Gleeok/TF residual tip `rr-rvae`. Traps: 150f item freeze; BFS settle ~400f.
 
+
+### 2026-08-10T01:41 CDT — SM rr-abx5 West→Below pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-abx5** CLOSED: Pure West Tunnel → Below Spazer return (K5 hop 8)
+- **Evidence:** `west-to-below` dual pure **272f** ×2 exact, room `0xA408`
+  xy=(472,393) pose=82 from `post_ice_glass_to_west_pure` ~(216,139) p10
+- Controller: LEFT blue door run_shoot (reverse of below_spazer_floor_to_west)
+- Export: `scratch/post_ice_west_to_below_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–8 GREEN; Alpha PB open)
+- Next bead: Pure Below → Bat reverse (from new pin)
+- Units: kpdr_dev + source_states green; no continuous / STATUS
+- No push
