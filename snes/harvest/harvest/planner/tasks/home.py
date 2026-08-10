@@ -35,6 +35,7 @@ from harvest.planner.day_plan_status import (
 )
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask, NavTask
+from harvest.core.animal_status import read_held_item
 from harvest.planner.tasks.transitions import (
     DirectionalTransitionTask,
     HOUSE_ENTER_DOOR_X,
@@ -169,6 +170,7 @@ class ReturnHomeTask(Task):
     _task: Optional[Task] = field(default=None, init=False)
     _action_queue: deque = field(default_factory=deque, init=False)
     _drop_attempts: int = field(default=0, init=False)
+    _drop_spot_navs: int = field(default=0, init=False)
     _enter_retries: int = field(default=0, init=False)
     _total_steps: int = field(default=0, init=False)
     # Soft-success off-stand re-navs can thrash forever without terminal
@@ -176,6 +178,8 @@ class ReturnHomeTask(Task):
     # away. Cap corrections so the outer timeout is not the only exit.
     _offstand_corrections: int = field(default=0, init=False)
     _best_door_dist: int = field(default=99999, init=False)
+    # Hard budget for in-place toss cycles after relocating to open ground.
+    drop_attempt_limit: int = 10
 
     @staticmethod
     def _house_route_name(ram: np.ndarray) -> str:
@@ -234,6 +238,7 @@ class ReturnHomeTask(Task):
         self._task = None
         self._action_queue.clear()
         self._drop_attempts = 0
+        self._drop_spot_navs = 0
         self._enter_retries = 0
         self._total_steps = 0
         self._offstand_corrections = 0
@@ -242,13 +247,27 @@ class ReturnHomeTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return True
 
+    @staticmethod
+    def _drop_spot_px(front: Point) -> Point:
+        """Open ground south of the house door — not mid-field debris."""
+        return Point(front.x, min(520, front.y + 56))
+
+    def _at_drop_spot(self, pos: Point, front: Point) -> bool:
+        drop = self._drop_spot_px(front)
+        return abs(pos.x - drop.x) <= 28 and abs(pos.y - drop.y) <= 28
+
     def _queue_drop_carried(self) -> None:
-        """Toss held debris so building doors accept entry."""
-        # First attempts: throw away from the house. Later: try every face.
-        if self._drop_attempts <= 2:
-            self._action_queue.extend(toss_held_actions(face="down"))
+        """Toss held debris so building doors accept entry.
+
+        After CLEAR_FIELD leaves a stone/weed (held 0x0D/0x09), in-place field
+        tosses often fail or re-pickup. Prefer multi-face stationary at the
+        open drop spot; step-away only on the first cycle.
+        """
+        if self._drop_attempts <= 1:
+            self._action_queue.extend(toss_held_actions(face="down", step_away=True))
+            self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
         else:
-            self._action_queue.extend(multi_face_toss_actions())
+            self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
 
     def _activate(self, phase: str, task: Task, world: WorldState) -> None:
         self._phase = phase
@@ -274,15 +293,15 @@ class ReturnHomeTask(Task):
 
     def _nav_to_drop_spot(self, world: WorldState, front: Point) -> TaskResult:
         """Walk south of the door so throws are not blocked by the house wall."""
-        drop = Point(front.x, min(520, front.y + 48))
-        child_timeout = min(3000, max(600, self.timeout - self._total_steps - 400))
+        drop = self._drop_spot_px(front)
+        child_timeout = min(3500, max(800, self.timeout - self._total_steps - 400))
         self._activate(
             "nav_drop_spot",
             NavTask(
                 name="nav_drop_spot",
                 target_px=drop,
-                radius=12,
-                soft_radius=20,
+                radius=14,
+                soft_radius=22,
                 soft_stasis=40,
                 timeout=child_timeout,
             ),
@@ -302,22 +321,26 @@ class ReturnHomeTask(Task):
         front = self._house_front_px(world.ram)
 
         if not hands_are_clear(world.ram):
-            # Fence posts left over from pond-access open block house doors.
-            # Prefer walking south of the door before tossing when near the wall.
-            near_door = abs(pos.x - front.x) <= 40 and pos.y <= front.y + 24
-            if near_door and self._drop_attempts < 3:
+            # Always relocate to open ground south of the house before thrashing
+            # A-drops in a debris field (rr-6g7g: CLEAR leaves held=0x0D).
+            held = read_held_item(world.ram)
+            at_drop = self._at_drop_spot(pos, front)
+            if not at_drop and self._drop_spot_navs < 3:
+                self._drop_spot_navs += 1
                 print(
-                    f"[RETURN_HOME] Moving south to drop held item "
-                    f"pos=({pos.x},{pos.y})"
+                    f"[RETURN_HOME] Moving to open drop spot "
+                    f"pos=({pos.x},{pos.y}) held=0x{held:02X} "
+                    f"(nav {self._drop_spot_navs}/3)"
                 )
                 return self._nav_to_drop_spot(world, front)
-            if self._drop_attempts < 8:
+            if self._drop_attempts < self.drop_attempt_limit:
                 self._drop_attempts += 1
                 self._phase = "drop_carried"
                 self._queue_drop_carried()
                 print(
                     f"[RETURN_HOME] Dropping carried item before house entry "
-                    f"({self._drop_attempts}/8)"
+                    f"({self._drop_attempts}/{self.drop_attempt_limit} "
+                    f"held=0x{held:02X} at_drop={at_drop})"
                 )
                 return TaskResult(
                     status=TaskStatus.RUNNING,
@@ -326,7 +349,10 @@ class ReturnHomeTask(Task):
                 )
             return TaskResult(
                 status=TaskStatus.FAILURE,
-                reason="could not clear hands before house entry",
+                reason=(
+                    "could not clear hands before house entry "
+                    f"(held=0x{held:02X})"
+                ),
             )
 
         # Too far north of the outdoor stand: walk south before pushing up.
@@ -408,10 +434,38 @@ class ReturnHomeTask(Task):
                 # Hands still full — reset drop budget and try again.
                 if "hands not clear" in reason:
                     self._drop_attempts = 0
+                    self._drop_spot_navs = 0
                 print(
                     f"[RETURN_HOME] Retry house enter "
                     f"({self._enter_retries}/4): {reason}"
                 )
+                # Mid-wall pin (y≈372) after a timeout: strafe + walk south
+                # into open ground before re-approaching.
+                pos = get_pos_from_ram(world.ram)
+                front = self._house_front_px(world.ram)
+                held = read_held_item(world.ram)
+                print(
+                    f"[RETURN_HOME] Enter fail diagnostics "
+                    f"pos=({pos.x},{pos.y}) front=({front.x},{front.y}) "
+                    f"held=0x{held:02X} hands_clear={hands_are_clear(world.ram)}"
+                )
+                if pos.y < front.y - 16:
+                    self._action_queue.extend(make_action(left=True) for _ in range(10))
+                    self._action_queue.extend(
+                        make_action(down=True, b=True) for _ in range(40)
+                    )
+                    self._action_queue.extend(make_action(right=True) for _ in range(12))
+                    self._action_queue.extend(
+                        make_action(down=True, b=True) for _ in range(24)
+                    )
+                    self._action_queue.extend(make_action() for _ in range(8))
+                    self._phase = "drop_carried"
+                    self._offstand_corrections = 0
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(self._action_queue.popleft()),
+                        reason="south recovery after enter fail",
+                    )
                 return self._start_next_phase(world)
             # Nav failure with hands still full: drop then re-nav instead of die.
             if self._phase in {"nav_house_front", "nav_drop_spot"} and not hands_are_clear(
@@ -419,8 +473,11 @@ class ReturnHomeTask(Task):
             ):
                 self._task = None
                 self._phase = "start"
-                if self._drop_attempts < 8:
-                    print(f"[RETURN_HOME] Nav failed with hands full; drop then retry: {reason}")
+                if self._drop_attempts < self.drop_attempt_limit:
+                    print(
+                        f"[RETURN_HOME] Nav failed with hands full; "
+                        f"drop then retry: {reason}"
+                    )
                     return self._start_next_phase(world)
             # Nav timed out but we are close to the door — attempt enter rather
             # than hard-fail the multi-day (return_home hang residual ~D5).
