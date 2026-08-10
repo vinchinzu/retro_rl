@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -12,12 +11,14 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from retro_harness.actions import idle_action
-from retro_harness.benchmark import (
+from retro_harness.audit import (
     AuditCapabilities,
-    AttemptAudit,
-    EvaluationContract,
+    AuditedEnv,
     InterventionClass,
     RuntimeObservationClass,
+)
+from retro_harness.benchmark import (
+    EvaluationContract,
     StartIdentity,
     validate_claim,
 )
@@ -38,6 +39,7 @@ from retro_harness.model_artifacts import (
     policy_artifact_path,
     write_policy_artifact,
 )
+from retro_harness.identity import sha256_bytes, sha256_file
 from retro_harness.trajectory import (
     CounterexampleLibrary,
     Trajectory,
@@ -48,7 +50,10 @@ from sm_rando.entry_corpus import (
     LANDING_CORPUS_MANIFEST,
     landing_corpus_contracts,
 )
-from sm_rando.observations import landing_entry_features
+from sm_rando.observations import (
+    landing_entry_features,
+    landing_entry_features_from_metadata,
+)
 from sm_rando.paths import GAME, GAME_DIR, RECORDINGS_DIR, REPO_ROOT, SHARED_SM_ROM
 from super_metroid.assist import UnlimitedAmmoAssist
 from super_metroid.progression import MORPH_GRAPH
@@ -158,25 +163,8 @@ class LandingBCModel:
 
 
 def _record_observation(record: EntryStateRecord) -> np.ndarray:
-    """Contract-ordered features retained by the real RAM corpus harvester."""
-    metadata = record.metadata
-    return np.asarray(
-        (
-            metadata["room_id"],
-            metadata["game_state"],
-            metadata["door_transition"],
-            metadata["samus_x"],
-            metadata["samus_x_sub"],
-            metadata["samus_y"],
-            metadata["samus_y_sub"],
-            metadata["velocity_x"],
-            metadata["velocity_y"],
-            metadata["health"],
-            metadata["missiles"],
-            0,  # pose was added to the contract after this retained metadata row
-        ),
-        dtype=np.float64,
-    )
+    """Reconstruct features only through the versioned metadata mapping."""
+    return landing_entry_features_from_metadata(record.metadata)
 
 
 def fit_landing_bc_model(
@@ -338,33 +326,17 @@ def evaluate_landing_bc(
         record.state_digest: "train" for record in split.train
     }
     partition.update({record.state_digest: "eval" for record in split.eval})
-    rom_sha256 = hashlib.sha256(SHARED_SM_ROM.read_bytes()).hexdigest()
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode=None)
+    rom_sha256 = sha256_file(SHARED_SM_ROM)
+    env = AuditedEnv(
+        make_env(GAME, "NONE", GAME_DIR, render_mode=None),
+        capabilities=AuditCapabilities.all("sm-rando-landing-bc-v2"),
+    )
     attempts: list[dict[str, Any]] = []
     trajectory_paths: list[str] = []
     failure_library = CounterexampleLibrary(LANDING_BC_COUNTEREXAMPLES)
     try:
         env.reset()
         for record in corpus.records:
-            # This restore establishes the benchmark start; no load occurs after
-            # the policy begins, so the attempt's mid-run load count remains zero.
-            env.em.set_state(corpus.state_bytes(record, root=REPO_ROOT))
-            before_values = landing_entry_features(np.asarray(env.get_ram()))
-            predicted_wait = model.predict_wait(before_values)
-            session = RouteSession(
-                env,
-                writer=None,
-                assist=UnlimitedAmmoAssist(enabled=False),
-                graph=MORPH_GRAPH,
-            )
-            failure: str | None = None
-            try:
-                for _ in range(predicted_wait):
-                    session.step(idle_action(), "landing_bc_wait")
-                play_landing_to_parlor(session)
-            except Exception as exc:
-                failure = f"{type(exc).__name__}: {exc}"
-            success = failure is None and session.state.room_id == ROOM_PARLOR
             contract = EvaluationContract(
                 runtime_observation_class=RuntimeObservationClass.BRONZE,
                 intervention_class=InterventionClass.CLEAN,
@@ -381,16 +353,30 @@ def evaluate_landing_bc(
                     "partition": partition[record.state_digest],
                 },
             )
-            audit = AttemptAudit(
-                ram_writes=0,
-                mid_run_loads=0,
-                assists={},
+            env.load_start_state(
+                corpus.state_bytes(record, root=REPO_ROOT),
                 start_identity_digest=contract.start_identity.identity_digest,
                 policy_identity_digest=policy_identity.identity_digest,
                 runtime_observation_class=RuntimeObservationClass.BRONZE,
                 intervention_class=InterventionClass.CLEAN,
-                capabilities=AuditCapabilities.all("sm-rando-landing-bc-v1"),
             )
+            before_values = landing_entry_features(np.asarray(env.get_ram()))
+            predicted_wait = model.predict_wait(before_values)
+            session = RouteSession(
+                env,
+                writer=None,
+                assist=UnlimitedAmmoAssist(enabled=False),
+                graph=MORPH_GRAPH,
+            )
+            failure: str | None = None
+            try:
+                for _ in range(predicted_wait):
+                    session.step(idle_action(), "landing_bc_wait")
+                play_landing_to_parlor(session)
+            except Exception as exc:
+                failure = f"{type(exc).__name__}: {exc}"
+            success = failure is None and session.state.room_id == ROOM_PARLOR
+            audit = env.audit()
             validate_claim(contract, audit)
             expert_wait = EXPERT_HANDOFF_LANDING_FRAME - int(
                 record.metadata["timing"]["landing_frame"]
@@ -413,7 +399,7 @@ def evaluate_landing_bc(
 
             if partition[record.state_digest] == "eval":
                 after_values = landing_entry_features(np.asarray(env.get_ram()))
-                after_state_digest = hashlib.sha256(env.em.get_state()).hexdigest()
+                after_state_digest = sha256_bytes(env.em.get_state())
                 trajectory = Trajectory(
                     observation_schema_digest=contracts.observation.identity_digest,
                     action_schema_digest=contracts.action.identity_digest,

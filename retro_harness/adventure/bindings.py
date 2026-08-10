@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass, replace
 from enum import IntEnum
 from math import isfinite
 from typing import Any, Iterable
 
 from retro_harness.adventure.graph import GraphEdge
+from retro_harness.identity import (
+    digest_record as _digest_record,
+    require_nonempty as _nonempty,
+)
 
 
 class ExecutionReadiness(IntEnum):
@@ -28,23 +30,6 @@ def _require_readiness(value: Any, field_name: str) -> ExecutionReadiness:
     return value
 
 
-def _nonempty(value: Any, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{field_name} must be a non-empty string")
-    return value.strip()
-
-
-def _digest_record(kind: str, record: dict[str, Any]) -> str:
-    payload = json.dumps(
-        {"kind": kind, **record},
-        allow_nan=False,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
 @dataclass(frozen=True, slots=True)
 class SkillBinding:
     """Versioned dispatch binding for exactly one graph edge ID."""
@@ -52,8 +37,8 @@ class SkillBinding:
     edge_id: str
     skill_id: str
     dispatch_key: str
-    entry_contract_digest: str
-    exit_contract_digest: str
+    entry_requirement_digest: str
+    progression_delta_digest: str
     version: str = "1"
     readiness: ExecutionReadiness = ExecutionReadiness.SCAFFOLD
     evidence_digest: str | None = None
@@ -63,8 +48,8 @@ class SkillBinding:
             "edge_id",
             "skill_id",
             "dispatch_key",
-            "entry_contract_digest",
-            "exit_contract_digest",
+            "entry_requirement_digest",
+            "progression_delta_digest",
             "version",
         ):
             object.__setattr__(
@@ -92,8 +77,8 @@ class SkillBinding:
             "edge_id": self.edge_id,
             "skill_id": self.skill_id,
             "dispatch_key": self.dispatch_key,
-            "entry_contract_digest": self.entry_contract_digest,
-            "exit_contract_digest": self.exit_contract_digest,
+            "entry_requirement_digest": self.entry_requirement_digest,
+            "progression_delta_digest": self.progression_delta_digest,
             "version": self.version,
         }
 

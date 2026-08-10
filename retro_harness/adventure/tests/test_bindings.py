@@ -24,8 +24,8 @@ def _binding(edge_id: str) -> SkillBinding:
         edge_id=edge_id,
         skill_id=f"skill:{edge_id}",
         dispatch_key=f"dispatch:{edge_id}",
-        entry_contract_digest=f"entry:{edge_id}",
-        exit_contract_digest=f"exit:{edge_id}",
+        entry_requirement_digest=f"entry:{edge_id}",
+        progression_delta_digest=f"exit:{edge_id}",
     )
 
 
@@ -126,8 +126,8 @@ def test_readiness_does_not_accept_bare_verification_strings() -> None:
             edge_id="edge",
             skill_id="skill",
             dispatch_key="dispatch",
-            entry_contract_digest="entry",
-            exit_contract_digest="exit",
+            entry_requirement_digest="entry",
+            progression_delta_digest="exit",
             readiness="natural-entry",  # type: ignore[arg-type]
         )
 

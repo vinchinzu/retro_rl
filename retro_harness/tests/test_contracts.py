@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from retro_harness.benchmark import PolicyArtifactError
+from retro_harness.model_artifacts import PolicyArtifactError
 from retro_harness.contracts import (
     ActionContract,
     ContractBundle,

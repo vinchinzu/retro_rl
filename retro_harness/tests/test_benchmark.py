@@ -7,22 +7,23 @@ import tempfile
 import numpy as np
 import pytest
 
-from retro_harness.benchmark import (
+from retro_harness.audit import (
     AuditCapabilities,
     AuditedEnv,
     AttemptAudit,
+    InterventionClass,
+    RuntimeObservationClass,
+)
+from retro_harness.model_artifacts import PolicyArtifact, PolicyArtifactError
+from retro_harness.benchmark import (
     BenchmarkCase,
     BenchmarkTier,
     ClaimValidationError,
     EvaluationContract,
-    InterventionClass,
     IdlePolicy,
     PolicyIdentity,
-    PolicyArtifact,
-    PolicyArtifactError,
     policy_identity_for,
     RandomPolicy,
-    RuntimeObservationClass,
     SeedAttemptResult,
     SeedRobustnessConfig,
     SeedRobustnessReport,
@@ -267,6 +268,35 @@ def test_audited_env_emits_complete_dry_run_trail():
     assert audit.assists == {"health": 1}
     assert audit.capabilities.provider == "fixture-wrapper"
     env.close()
+
+
+def test_audited_env_owns_backend_write_and_state_load_boundaries():
+    class Data:
+        def set_value(self, key, value):
+            self.last_write = (key, value)
+
+    class Emulator:
+        def set_state(self, state):
+            self.state = state
+
+    backend = FakeEnv(success_after=1, audited=False)
+    backend.data = Data()
+    backend.em = Emulator()
+    env = AuditedEnv(
+        backend,
+        capabilities=AuditCapabilities.all("owned-boundary"),
+    )
+    env.reset()
+    env.data.set_value("health", 99)
+    env.em.set_state(b"mid-run")
+    assert env.audit().ram_writes == 1
+    assert env.audit().mid_run_loads == 1
+    assert env.audit().assists == {"data.set_value": 1}
+
+    env.load_start_state(b"next-start")
+    assert env.audit().ram_writes == 0
+    assert env.audit().mid_run_loads == 0
+    assert env.audit().assists == {}
 
 
 def test_policy_artifact_round_trip_rejects_weight_and_schema_mismatch(tmp_path):

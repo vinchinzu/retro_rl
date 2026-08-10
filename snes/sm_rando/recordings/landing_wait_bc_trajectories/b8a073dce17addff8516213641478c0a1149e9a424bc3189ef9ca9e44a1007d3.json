@@ -2,7 +2,7 @@
   "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
   "contract_bundle_digest": "c3fabc5f88880f2d3487536a3ca7cabdeaf18caa3c41983fe382eff4e21410d6",
   "final_observation_digest": "ba4f8df36fe62d6e45f5b2d57fc7a9288919eb8262cc5e110827f7b52f1a5a74",
-  "identity_digest": "4018c865cb6a0de8aa5dcafbce80527515f69577933b5894ac26a22ccaeca538",
+  "identity_digest": "9d0289eaa8059777c899a50e17c906c7c85d65dfd86885f911043ff9c291922b",
   "initial_observation_digest": "6b52f9b35596757ffc3122ea1e86ba267767e10053187e981298da819cec7c99",
   "milestones": [
     {
@@ -12,12 +12,12 @@
           "observes_assists": true,
           "observes_mid_run_loads": true,
           "observes_ram_writes": true,
-          "provider": "sm-rando-landing-bc-v1",
+          "provider": "sm-rando-landing-bc-v2",
           "schema_version": 1
         },
         "intervention_class": "Clean",
         "mid_run_loads": 0,
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "ram_writes": 0,
         "runtime_observation_class": "Bronze",
         "start_identity_digest": "54e223809d2a0bf9cd07cdb2a1dd37bd472009c09bb793d7e4b7bead6d9a698e"
@@ -30,26 +30,26 @@
         "benchmark_id": "sm_rando_landing_entry_bc_v1",
         "intervention_class": "Clean",
         "metadata": {
-          "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+          "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
           "partition": "eval"
         },
         "objective": "Reach Parlor from natural Landing entry distribution",
         "policy_identity": {
-          "digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+          "digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
           "metadata": {
             "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
-            "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+            "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
             "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-            "policy_artifact_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+            "policy_artifact_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
             "policy_kind": "learned",
             "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
             "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"
           },
           "name": "sm_rando.landing_wait_bc_v1",
-          "source": "checkpoint:sha256:e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+          "source": "checkpoint:sha256:73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
           "version": "policy-artifact-v1"
         },
-        "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+        "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
         "runtime_observation_class": "Bronze",
         "start_identity": {
           "digest": "54e223809d2a0bf9cd07cdb2a1dd37bd472009c09bb793d7e4b7bead6d9a698e",
@@ -71,9 +71,9 @@
     }
   ],
   "observation_schema_digest": "b71fe493b8d0402dfa7201f4196938ac82aefb65dff46c3c328ee71b74e8ecbb",
-  "policy_identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+  "policy_identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
   "provenance": {
-    "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+    "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
     "entry_state_digest": "b8a073dce17addff8516213641478c0a1149e9a424bc3189ef9ca9e44a1007d3",
     "partition": "eval"
   },

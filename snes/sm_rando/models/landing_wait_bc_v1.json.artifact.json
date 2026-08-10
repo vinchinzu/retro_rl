@@ -1,7 +1,7 @@
 {
   "action_schema_digest": "c1f40997a60b57a7d32e443d8bbc9871ded7f78c2a9351380a6dae6a2d0a86c6",
   "algorithm": "linear behavior cloning (expert handoff timing)",
-  "checkpoint_sha256": "e23ea2d055728dadf7b09f883b2eb16d4f06f0a065732b2a207102e8bea6c65b",
+  "checkpoint_sha256": "73183609f6a856c9ca3aee37d931e1e33f9be0effce971ac631a955111a31a0d",
   "core_identity_digest": "bc463440203183820fa38b768736d6ff7c23a3dd07ca87e09df62c0081eefd4e",
   "dependency_lock_sha256": "1f8a5f19d5b06225e25d8d15fc2944e66df7302587a6a5e61cc9fb68b0e652a4",
   "hyperparameters": {
@@ -12,10 +12,10 @@
     ],
     "ridge": 1e-08
   },
-  "identity_digest": "6f864987a3016fecf71d591eb6b74bea9a90d6b5dc38a6470a113c8f49b46375",
+  "identity_digest": "72ee4ac1acac3a2677207183b215d0b085a7181afbfe9fd116dfb143c9679b08",
   "metadata": {
     "contract_bundle_digest": "c3fabc5f88880f2d3487536a3ca7cabdeaf18caa3c41983fe382eff4e21410d6",
-    "corpus_digest": "defe49d3e84266447806aa33d88675177b06fe560a391874d5317187b927b423",
+    "corpus_digest": "55742681c9bfc51ed9f7a823afc03187ebc26b2021ed81db4315f23289b8197c",
     "environment_contract_digest": "c6cbf04c8e0254b975fc0e64a1fd66251b87c8cbfc0de9c61d25f9c8c4083711",
     "eval_examples_used_for_fit": 0,
     "training_examples": 58,
@@ -25,7 +25,7 @@
   "reward_schema_digest": "75e773b38fe6f6726098573e7f33a930c0f40391523690bb5c5ad8d565c3f327",
   "rom_identity_digest": "12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72",
   "schema_version": 1,
-  "source_commit": "1d18bb3adf8bf87ca8ddddac67af5258ba7182d0",
+  "source_commit": "45991c16a06fbc431723512f2a2c1a225992a32a",
   "state_identity_digest": "b7ffa6afdc9e10f305e6e74f3d22a9d685d18ca4261438d6031387e28e808a46",
   "training_seed": "deterministic-closed-form",
   "wrapper_schema_digest": "ab8c249261f2ee6f9cbe4df599145a9f02237ab0704a375c2a6b4a7d7d4cac9b"

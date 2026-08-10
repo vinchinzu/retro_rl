@@ -3,28 +3,21 @@
 from __future__ import annotations
 
 import gzip
-import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from retro_harness.contracts import canonical_json
+from retro_harness.identity import (
+    canonical_json,
+    require_nonempty as _nonempty,
+    sha256_bytes,
+)
 
 
 class EntryStateError(ValueError):
     """Raised when a corpus or retained state fails integrity checks."""
-
-
-def _nonempty(value: Any, name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise EntryStateError(f"{name} must be a non-empty string")
-    return value.strip()
-
-
-def _sha256_bytes(value: bytes) -> str:
-    return hashlib.sha256(value).hexdigest()
 
 
 def _read_state(path: Path) -> bytes:
@@ -182,7 +175,7 @@ class EntryStateCorpus:
 
     @property
     def identity_digest(self) -> str:
-        return hashlib.sha256(canonical_json(self.identity_record()).encode("utf-8")).hexdigest()
+        return sha256_bytes(canonical_json(self.identity_record()).encode("utf-8"))
 
     def identity_record(self) -> dict[str, Any]:
         return {
@@ -239,7 +232,7 @@ class EntryStateCorpus:
                 else record.state_digest
             )
             bucket = int(
-                hashlib.sha256(f"{salt}:{split_key}".encode("utf-8")).hexdigest()[:8],
+                sha256_bytes(f"{salt}:{split_key}".encode("utf-8"))[:8],
                 16,
             ) % 10_000
             (train if bucket < threshold else evaluation).append(record)
@@ -266,7 +259,7 @@ class EntryStateCorpus:
         except ValueError as exc:
             raise EntryStateError("state path escapes corpus root") from exc
         state = _read_state(path)
-        if _sha256_bytes(state) != record.state_digest:
+        if sha256_bytes(state) != record.state_digest:
             raise EntryStateError(f"state digest mismatch: {record.state_path}")
         return state
 
@@ -336,12 +329,12 @@ class EntryStateCorpusBuilder:
         frame: int,
         metadata: Mapping[str, Any] | None = None,
     ) -> EntryStateRecord:
-        state_digest = _sha256_bytes(state_bytes)
+        state_digest = sha256_bytes(state_bytes)
         if state_digest in self._records:
             raise EntryStateError("duplicate emulator state in corpus harvest")
         record = EntryStateRecord(
             state_digest=state_digest,
-            ram_snapshot_digest=_sha256_bytes(ram_snapshot),
+            ram_snapshot_digest=sha256_bytes(ram_snapshot),
             state_path=state_path,
             source_skill_id=source_skill_id,
             source_segment_id=source_segment_id,
