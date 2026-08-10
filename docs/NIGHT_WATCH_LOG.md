@@ -782,3 +782,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next bead: Pure Below → Bat reverse (from new pin)
 - Units: kpdr_dev + source_states green; no continuous / STATUS
 - No push
+
+### 2026-08-10T~02:00 CDT — SM rr-rp00 Below→Bat pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-rp00** CLOSED: Pure Below Spazer → Bat Room return (K5 hop 9)
+- **Evidence:** `below-to-bat` dual pure **485f** ×2 exact, room `0xA3DD`
+  xy=(472,139) pose=12 from `post_ice_west_to_below_pure` ~(472,393) p82
+- Controller: LEFT floor runner across Below (reverse of bat_to_below_spazer door)
+- Export: `scratch/post_ice_below_to_bat_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–9 GREEN; Alpha PB open)
+- Next bead: Pure Bat → Red reverse (from new right-sill pin)
+- Units: kpdr_dev + source_states green; no continuous / STATUS
+- No push

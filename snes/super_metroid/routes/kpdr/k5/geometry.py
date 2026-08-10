@@ -49,7 +49,18 @@ WEST_TO_BELOW_SPIN = 50
 WEST_TO_BELOW_HOLD = 300
 WEST_TO_BELOW_SETTLE = 260
 
+# Below Spazer 0xA408 left blue door into Bat Room 0xA3DD
+# (outbound ``play_bat_to_below_spazer`` runs RIGHT into Below from Bat).
+# Floor path reverse of below_spazer_floor_to_west (LEFT across water band).
+# Pure pin right-floor ~(472,393) p82 after west_to_below.
+BELOW_BAT_DOOR_X = 40
+BELOW_TO_BAT_FRAMES = 2000
+BELOW_TO_BAT_SETTLE = 260
+
 __all__ = [
+    "BELOW_BAT_DOOR_X",
+    "BELOW_TO_BAT_FRAMES",
+    "BELOW_TO_BAT_SETTLE",
     "EAST_GLASS_DOOR_X",
     "EAST_RETURN_X_MAX",
     "EAST_RETURN_Y_MAX",
