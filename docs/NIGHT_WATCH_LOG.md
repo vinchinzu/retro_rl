@@ -1048,3 +1048,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Units: test_level4_dungeon 10 passed. No push.
 - Next: Gleeok combat policy from Level4GleeokEnter dual-green
 
+### 2026-08-10T05:45 CDT — zelda L4 Gleeok + TF 0x08 dual-green ★
+- **CLOSED** `rr-rvae`: Gleeok fight + HC + TF 0x08 dual-green 2/2 ~4286f from Level4GleeokEnter.
+- Checkpoint Level4Complete. Epic rr-q3n open for continuous residual (rr-05fz).
+
