@@ -193,7 +193,36 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_31 --trial
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment east_32 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_32 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment stepladder --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
 ```
+
+### Post-ladder (rr-05fz live pure 2026-08-10)
+
+Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
+~(136,141)).
+
+```
+0x60 settle ~150f idle (item freeze) → clear 4× Keese 0x1b
+  → hold4 BFS exit → 0x32 play  (Level4PostLadder)
+0x32 free LEFT (BFS around pushed 0x68) → 0x31
+0x31 LEFT → 0x30 → DOWN → 0x40   (backtrack live; map residual)
+```
+
+| Segment | Evidence | Frames (typ.) | Checkpoint |
+|---------|----------|---------------|------------|
+| `exit_60` pure 2/2 | `l4_05fz_exit60_exit_60.json` | ~765 | `Level4PostLadder` |
+| `west_31` pure 2/2 | `l4_05fz_west31_west_31.json` | ~372 | `Level4Room31PostLadder` |
+
+**Traps (post-ladder live):**
+
+- Pedestal freeze: **~100–150 idle** after loading `Level4Stepladder` before
+  any movement (1–50 idle = stuck).
+- Exit BFS must **settle through mode 4/6/7** (~400f) — 180f leaves mode 4 on
+  dest room and false-negatives the exit.
+- Pushed block **0x68** blocks naive west door; use hold4 BFS path.
+- 0x30 north still sealed with ladder; water tiles expand walkability but do
+  not open a new north room from live probe. Map / Gleeok / TF residual.
 
 **Traps (live):**
 
@@ -282,7 +311,8 @@ Scaffold: `level4_triforce_stop(snap)` returns True only when
 | `Level4Room62` | KEY-RIGHT enter 0x62 vestibule | **live** |
 | `Level4Room62Cleared` | 0x62 Vires clear (compass residual) | **live** |
 | `Level4Compass` | after `ADDR_COMPASS & 0x08` | partial / residual |
-| `Level4Stepladder` | after `ADDR_LADDER` | planned |
+| `Level4Stepladder` | after `ADDR_LADDER` (mode-9 0x60) | **live** |
+| `Level4PostLadder` | exit 0x60 → 0x32 play ladder=1 | **live** |
 | `Level4BossCleared` | after Gleeok + HC | planned |
 | `Level4Complete` | `triforce & 0x08` | planned |
 

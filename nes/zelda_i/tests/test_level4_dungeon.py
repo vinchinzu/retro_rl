@@ -9,6 +9,8 @@ from zelda_i.level4_dungeon import (
     BOMB_61_OPENS_TO,
     BombWall61North,
     COMPASS_PICKUP_XY,
+    EXIT_60_HOLD,
+    EXIT_60_SAMPLE_PATH,
     GEL_SPLIT_OBJECT_TYPE,
     INVULN_MOVER_TYPE,
     KEY_30_EAST_Y,
@@ -28,6 +30,7 @@ from zelda_i.level4_dungeon import (
     MAZE_62_TO_COMPASS,
     MAZE_IN_HOLD,
     MAZE_OUT_HOLD,
+    POST_LADDER_ITEM_SETTLE,
     ROOM_L4_COMPASS_62,
     ROOM_L4_EAST_31,
     ROOM_L4_EAST_32,
@@ -57,6 +60,8 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_STEPLADDER,
     STAIRS_32_APPROACH,
     VIRE_OBJECT_TYPE as L4_VIRE,
+    WEST_31_HOLD,
+    WEST_31_SAMPLE_PATH,
     ZOL_OBJECT_TYPE,
     make_bomb_61_north_controller,
     make_compass_62_controller,
@@ -109,6 +114,13 @@ def test_live_room_ids() -> None:
     assert PUSH_32_DIR == "LEFT"
     assert STAIRS_32_APPROACH == (208, 96)
     assert LADDER_60_PICKUP_XY == (136, 141)
+    assert POST_LADDER_ITEM_SETTLE >= 100
+    assert EXIT_60_HOLD == 4
+    assert len(EXIT_60_SAMPLE_PATH) >= 40
+    assert WEST_31_HOLD == 4
+    assert len(WEST_31_SAMPLE_PATH) >= 10
+    assert EXIT_60_SAMPLE_PATH[0] == "RIGHT"
+    assert WEST_31_SAMPLE_PATH[0] == "LEFT"
 
 
 def test_object_names() -> None:
@@ -250,7 +262,7 @@ def test_maze_40_key_path() -> None:
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"
-    assert r["tip"] == "rr-tib8"
+    assert r["tip"] == "rr-05fz"
     assert r["entry_room"] == "0x71"
     assert r["live_graph"]["0x71"]["UP"] == "0x61"
     assert r["live_graph"]["0x61"]["BOMB_UP"] == "0x51"
