@@ -353,3 +353,11 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-xc3x`: 0x50 N→0x40 (Zols 0x13 + key 0x19). Pure north_40 2/2 ~8254f.
 - Component was not a hard dead-end. ADDR_LADDER still 0. Next: clear 0x40 + key (rr-q8eq / rr-o0nn).
 
+
+### 2026-08-09T23:10 CDT — SM dual continuous --to ice compose (rr-kxge)
+- **Claimed** `rr-kxge` (discovered-from rr-vqv3): dual continuous `--to ice` stabilize.
+- **COMPOSE LANDED:** Wave→Business return ×7 + Ice pure ×4 on ice tip spine (11 hops). Graph frog_save_to_business promoted continuous. Default tip still `wave`.
+- **Pure:** frog→business 355f×2 ~(209,1419); floor Business→Gate climb dual **3219f×2**; elev pin still **891f**.
+- **Continuous RED:** power-on return chain reaches Business f141870; fail `business_to_ice_gate` floor climb (1339→1227 / HJ exit). Report `snes/super_metroid/recordings/ice_r1.json`. Residual `snes/super_metroid/docs/tasks/rr-kxge-residual.md`.
+- **No continuous Ice STATUS.** Tests 55 passed (continuous tips + ice + wave return + path summary). No push.
+- Next: Super-directed continuous Business floor→Ice Super climb; dual continuous green before STATUS.

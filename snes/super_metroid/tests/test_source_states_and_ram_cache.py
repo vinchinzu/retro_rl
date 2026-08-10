@@ -130,10 +130,10 @@ def test_path_summary_unifies_pure_gate_and_path_verification() -> None:
         0xB167, 0xAD1B, caps, min_verification="controller_dev"
     )
     assert summary["reachable"] is True
-    assert summary["pure_gated"] is False
-    # From Frog tip: reverse to Business then Cathedral (Speedway is post-Speed).
-    assert summary["blocking_edge_id"] == "frog_save_to_business"
-    assert summary["blocking"]["edgeId"] == "frog_save_to_business"
+    # Frog→Business is spine continuous (ice tip Wave return compose, rr-kxge);
+    # Cathedral→Speed path is continuous product — pure gate clears.
+    assert summary["pure_gated"] is True
+    assert summary["blocking_edge_id"] is None
 
     # Continuous-prefer suggest matches legacy suggest_next_hops ranking.
     next_hops = SPEED_GRAPH.suggest_next_hops(0xB167, capabilities=caps)
@@ -143,7 +143,9 @@ def test_path_summary_unifies_pure_gate_and_path_verification() -> None:
         exclude_verifications=frozenset({"continuous"}),
     )
     assert pure == unified
-    assert next_hops[0].edge_id == pure[0].edge_id
+    # First next-hop is continuous frog→business; pure_work is speedway only.
+    assert next_hops[0].edge_id == "frog_save_to_business"
+    assert pure[0].edge_id == "frog_save_to_speedway"
 
 
 def test_state_cache_hits_same_frame() -> None:
@@ -229,18 +231,14 @@ def test_suggest_pure_work_and_pure_gate_after_frog_continuous_tip() -> None:
         }
     )
     pure = SPEED_GRAPH.suggest_pure_work(0xB167, capabilities=caps)
-    # Frog tip pure outs: reverse to Business (Cathedral repath) and optional Speedway.
-    assert {edge.edge_id for edge in pure} >= {
-        "frog_save_to_business",
-        "frog_save_to_speedway",
-    }
+    # Frog→Business is continuous (ice compose); pure residual is Speedway only.
+    assert {edge.edge_id for edge in pure} >= {"frog_save_to_speedway"}
+    assert "frog_save_to_business" not in {edge.edge_id for edge in pure}
 
     gate = SPEED_GRAPH.pure_gate(0xB167, 0xAD1B, caps)
     assert gate["reachable"] is True
-    assert gate["pure_gated"] is False
-    assert gate["blocking"] is not None
-    assert gate["blocking"]["edgeId"] == "frog_save_to_business"
-    assert gate["blocking"]["verification"] == "unverified"
+    assert gate["pure_gated"] is True
+    assert gate["blocking"] is None
 
     # Continuous-only gate from Kraid entry (edge continuous) should clear short hop.
     cont = SPEED_GRAPH.pure_gate(

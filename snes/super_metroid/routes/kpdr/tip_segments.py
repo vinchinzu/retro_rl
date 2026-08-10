@@ -318,10 +318,10 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         success_outcome="ice_collected",
         route_label="ice",
         source_policy=(
-            "accepted Wave continuous + pure-green Business→Ice Gate→Acid→"
-            "Snake→Ice PLM controllers (rr-dbu.11 stack; routes/kpdr/ice/) + "
-            "phase-guarded resources. Wave→Business return pure still open "
-            "(room gap); continuous dual green not claimed."
+            "accepted Wave continuous + pure-green Wave→Business return "
+            "(rr-vqv3) + Business→Ice Gate→Acid→Snake→Ice PLM (rr-dbu.11; "
+            "routes/kpdr/ice/) + phase-guarded resources. Continuous dual "
+            "green not claimed until rr-kxge probe evidence."
         ),
         timing_source="ice",
         entry_condition_key="natural_ice_room_entry",
@@ -330,10 +330,11 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         require_varia=True,
         display_name="Power-on → Ice Beam (KPDR K4.11)",
         description=(
-            "Wave tip through Business Super door, Ice Gate, Acid Room "
-            "(Speed Boost Blocks), Ice Snake (2WJ), and natural Ice Beam PLM "
-            "collect. Compose tip after pure dual Ice stack (rr-dbu.11 / "
-            "rr-dbu.7); not STATUS-promoted without dual continuous green."
+            "Wave tip through Wave→Business pure return, Business Super door "
+            "(floor settle climb/re-pin), Ice Gate, Acid Room (Speed Boost "
+            "Blocks), Ice Snake (2WJ), and natural Ice Beam PLM collect. "
+            "Compose after rr-vqv3 + rr-dbu.11; not STATUS-promoted without "
+            "dual continuous green."
         ),
         aliases=("ice_beam", "k4_11", "k4.11"),
         supports_checkpoint=True,

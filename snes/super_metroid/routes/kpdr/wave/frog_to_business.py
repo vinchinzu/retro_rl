@@ -195,12 +195,35 @@ def play_frog_save_to_business(session: ControllerSession) -> SuperMetroidState:
             f"frames={session.frame - start} min_x={min_x}{tube}"
         )
 
-    return wait_ordinary_room(
+    state = wait_ordinary_room(
         session,
         ROOM_BUSINESS,
         settle_frames=FTB_BUSINESS_SETTLE,
         label=label,
     )
+    # Continuous natural entry often lands floor-left (x≈20) near HJ door.
+    # Pure dual pin is ~(216,1419); re-center right so Ice Super climb setup
+    # does not LEFT-run into HJ shaft (rr-kxge continuous residual).
+    unmorph(session)
+    for _ in range(160):
+        st = session.state
+        if st.room_id != ROOM_BUSINESS:
+            break
+        x = int(st.samus_x)
+        y = int(st.samus_y)
+        # Floor band only — do not walk if still mid-shaft.
+        if y < 1350:
+            break
+        if 200 <= x <= 240 and int(st.velocity_y) == 0:
+            hold(session, 8, reason=f"{label}_business_floor_pin")
+            return session.state
+        if x < 200:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_business_floor_r")
+        elif x > 240:
+            hold(session, 1, "LEFT", reason=f"{label}_business_floor_l")
+        else:
+            hold(session, 1, reason=f"{label}_business_floor_idle")
+    return session.state
 
 
 __all__ = ["play_frog_save_to_business"]
