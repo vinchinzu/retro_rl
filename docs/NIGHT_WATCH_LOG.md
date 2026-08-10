@@ -914,3 +914,33 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-o00y`: power-on D5 REFILL can=20 watered=2/2; dry fixture watered=3.
 - rr-5in residual: hands-clear return_home D7 (rr-6g7g).
 
+### 2026-08-10T03:01 CDT — hourly watcher tick
+- **in_progress (busy lanes — no re-dispatch):**
+  - harvest: `rr-5in` Gate B full + residual `rr-6g7g` return_home hands-clear
+  - super_metroid: `rr-av5s` Red→Hellway hop12 + parent `rr-dbu.8` K5 Alpha stack
+  - zelda_i: `rr-rvae` map+Gleeok+TF (map_21 assisted dual-green landed; Gleeok/TF open)
+- **SKIP permanently:** smb / pure_hl (never spawn)
+- **Idle priority action:** mega_man_2 — parent `rr-54ui` open; tip **rr-fpd6** LL spawn/TAS decode prog≥1000
+- **Spawned manager (worktree):** mega_man_2 → claim `rr-fpd6`
+  - subagent_id: `019feab0-ba14-7612-9b6d-9fb9dc417594` (worktree isolation)
+- **Not spawned (busy):** harvest, super_metroid, zelda_i
+- **Not spawned:** solver rr-gbd.32 CLOSED; P3/P4 sketches only
+- **Cap:** 3 busy + 1 MM2 = 4 / 6 lanes
+- Notes: harvest fill GREEN (rr-o00y closed); zelda Level4Map assisted. Never push.
+
+### 2026-08-10T~03:05 CDT — SM rr-av5s Red→Hellway PARTIAL lower past pocket
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Claimed **rr-av5s** Pure Red Tower → Hellway return (K5 hop 12)
+- **PARTIAL advance:** lower climb past right-pocket dead-end
+  - From `post_ice_bat_to_red_pure` ~(206,2443): right-wall WJ + re-catch
+  - Lands open shaft **~(219,1942)** (~475f) — past pocket ~(225,2091) / A-ceiling ~y1964
+  - Export: `scratch/dev_red_lower_past_pocket.state`
+- **Still RED:** mid tunnel y≤1880 / bomb floor / upper / Hellway dual
+  - Full pure pin: room=0xA253 x=219 y=1942 frames≈7716 (mid stall)
+  - Traps: right-wall hard ceiling ~1942; shaft too wide for single-WJ left latch;
+    IBJ mid not dual-stable; Bat door abort on floor RIGHT spins
+- Controller: `routes/kpdr/k5/red_to_hellway.py` (lower recatch + mid IBJ shell)
+- Residual: `docs/tasks/rr-av5s-residual.md`; parent **rr-dbu.8** open hop12 PARTIAL
+- Units: kpdr_dev + controller_common 27 passed; no continuous / STATUS
+- Bead **rr-av5s** left **in_progress** (mid from y1942 next)
+- No push
