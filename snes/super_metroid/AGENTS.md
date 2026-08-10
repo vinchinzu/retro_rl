@@ -36,8 +36,9 @@ remain valid previous tips.
 **Next:** Wave→Business pure return stack (`rr-vqv3`) — Wave→Double dual
 GREEN (`rr-pd0i` 560f×2); Double→Single dual GREEN (`rr-qpkd` 1101f×2);
 Single→Bubble dual GREEN (`rr-u0y8` 817f×2); Bubble→Farm dual GREEN
-(`rr-czg9` 1566f×2); Farm→Speedway dual GREEN (`rr-z13h` 329f×2); next
-`rr-05dp` Speedway→Frog (needs Speed; RIGHT→LEFT tunnel).
+(`rr-czg9` 1566f×2); Farm→Speedway dual GREEN (`rr-z13h` 329f×2);
+Speedway→Frog dual GREEN (`rr-05dp` 621f×2); next `rr-vsjy` Frog→Business
+(replace scaffold; source `post_speedway_to_frog_save_pure`).
 Ice pure stack **CLOSED** (`rr-dbu.11`); continuous `--to ice` **compose**
 wired (`rr-dbu.7`, TipSpec parent `wave`) — **not** STATUS-promoted without
 dual continuous green (room gap Wave→Business; residual

@@ -107,6 +107,7 @@ from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_single_to_bubble,
     play_bubble_to_farm,
     play_farm_to_speedway,
+    play_speedway_to_frog_save,
 )
 from super_metroid.routes.kpdr.spazer import (  # noqa: E402
     play_below_spazer_climb,
@@ -551,6 +552,7 @@ def main() -> None:
             "single-to-bubble",
             "bubble-to-farm",
             "farm-to-speedway",
+            "speedway-to-frog-save",
             "frog-save-to-speedway",
             "speedway-to-farm",
         ),
@@ -761,6 +763,7 @@ def main() -> None:
             "single-to-bubble": play_single_to_bubble,
             "bubble-to-farm": play_bubble_to_farm,
             "farm-to-speedway": play_farm_to_speedway,
+            "speedway-to-frog-save": play_speedway_to_frog_save,
             "frog-save-to-speedway": play_frog_save_to_speedway,
             "speedway-to-farm": play_speedway_to_farm,
         }[args.segment]
