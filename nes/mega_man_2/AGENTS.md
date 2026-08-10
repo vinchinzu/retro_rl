@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air Man screen-4 clear from AirScreen2 (M3); post-s4 open |
+| Status | Air Man screen-4 clear from AirScreen2 (M3); post-s4 open (Goblin/Pipi) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -27,7 +27,8 @@ uv run pytest nes/mega_man_2/tests -q
 
 ## Next milestone
 
-Past screen 4 from `AirFanPlatform` (fan/ladder) toward boss door; then natural-entry (M4).
+Past screen 4 from `AirFanPlatform` (Goblin head / Pipi boost / Lightning Lord
+cloud) toward boss door; then natural-entry (M4).
 
 ## Norms
 
@@ -38,4 +39,6 @@ Past screen 4 from `AirFanPlatform` (fan/ladder) toward boss door; then natural-
 - `AirScreen1` alone is mid-air over a pit — use `AirLanded` for grounded scr1.
 - `AirScreen2` uses `AirManPolicy(start="screen2")` (not level1/landed recipes).
 - `AirScreen3` / `AirScreen4` are mid-air clear snaps — use `AirFanPlatform` for
-  grounded post-s3 iteration (prog~949, fan on left).
+  grounded post-s3 iteration (prog~949). Pink head = Goblin (not updraft fan).
+- `AirLeftPlatform` = grounded left of Goblin (prog~902). Ladder bar ≠ feet=2.
+- Jump needs A rising edge after load; continuous A from frame 1 does not jump.

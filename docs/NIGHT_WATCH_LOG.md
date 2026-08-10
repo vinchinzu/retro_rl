@@ -229,3 +229,14 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-9so0` 0x62 maze → Compass bit 0x08 ~471f 2/2; return LEFT→0x61.
 - Next tip: `rr-o0nn` post-Compass → Stepladder. Parent rr-5lu open.
 
+
+### 2026-08-09T22:11 CDT — MM2 post-s4 overnight probe (rr-54ui open)
+- **Claimed** `rr-54ui` in_progress; stayed open (no camera≥5 / boss door).
+- Started from **AirFanPlatform** (grounded scr3 prog949), not mid-air AirScreen4.
+- Corrected geometry: pink head = **Goblin/Air Tikki** (not updraft fan); ladder bar never feet=2.
+- New checkpoint **AirLeftPlatform** (prog~902 left of Goblin); temp probe states pruned.
+- Bird (Pipi) bounce: min_sy~23–26 with damage; best press **prog~1085–1086** scr4 still pit.
+- Dense Goblin-head / cloud hop grids: 0 elevated lands (sy&lt;82).
+- Policy docstring + STATUS/plan/AGENTS updated; units 10/10 pass.
+- Next: 5px Goblin head land or Lightning Lord cloud ride / controlled Pipi→cloud.
+- No push.
