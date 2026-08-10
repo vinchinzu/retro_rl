@@ -93,7 +93,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip leaf: rr-5lu L4 interior; parallel: rr-38p; Clean deferred
+bd ready -l zelda_i   # tip leaf: rr-2ysf L4 0x62→Stepladder; parallel: rr-38p
 ```
 
 | Order | Bead | Work |
@@ -104,7 +104,8 @@ bd ready -l zelda_i   # tip leaf: rr-5lu L4 interior; parallel: rr-38p; Clean de
 | ✓ | **rr-vpl** / **rr-wmv** | Manhandla + TF `0x04` **2/2 assisted** from `Level3Raft` |
 | ✓ | **rr-k0w** | L4 planning scaffold (`level4_overworld`, plan-only probe) |
 | ✓ | **`rr-0fx`** | L4 live entry: dock **0x55** → island **0x45** → room **0x71** **2/2 assist** |
-| **1 TIP** | **`rr-5lu`** | L4 interior: LIVE 0x71→0x61→BOMB→0x51 key→0x50; Stepladder residual |
+| ✓ | **`rr-5lu`** children | L4 first rooms pure: 0x71→0x61 bomb→0x51 key |
+| **1 TIP** | **`rr-2ysf`** | L4 KEY-RIGHT 0x61→**0x62** dark maze → Stepladder residual |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -142,13 +143,15 @@ raw=10 → UP **0x4d** Manhandla **`0x3c`** bomb kill → HC → UP **0x3d** TF
 **L4 interior first rooms (pure LIVE 2/2, rr-5lu children 2026-08-10):** from
 `Level4Entrance` room **0x71** (empty) UP → **0x61** 3× Vire `0x12` (split
 `0x1c` slots 10–12) → **BOMB_UP** @(120,105) → **0x51** 8× Keese `0x1b` +
-key `0x19` (pickup ~136,149) → LEFT @y141 → **0x50** 5× Vire residual.
+key `0x19` (pickup ~136,149). Optional LEFT → **0x50** side pocket (RIGHT
+**seals after clear** — not stepladder spine). With key, **KEY-RIGHT** from
+0x61 → **0x62** compass/dark maze (assisted entry live; maze residual).
 Module: `level4_dungeon.py`. Runner: `run_level4_rooms.py`. Evidence:
 `recordings/l4_chain_key_pure_chain_to_key.json` (~1278f). Closed room beads
 `rr-zchy` / `rr-yr77` / `rr-h278` / `rr-wqdu`. **Not Clean STATUS.**
 
-**Next tip:** **`rr-2ysf` / `rr-5lu` residual** past 0x50 toward Stepladder /
-Gleeok / TF `0x08`. Epic `rr-q3n`; parallel OW `rr-38p`. Clean residual deferred.
+**Next tip:** **`rr-2ysf`** — 0x61 KEY-RIGHT → **0x62** dark maze → Stepladder
+(`ADDR_LADDER`) → Gleeok / TF `0x08`. Epic `rr-q3n`; parallel OW `rr-38p`.
 
 **Traps (L4 OW entry):** 0x63 east only **y∈[145,155]** (y=141 bush stick);
 dock 0x55 raft only **x≈128**; free 0x73 east edge before UP.
