@@ -6,9 +6,13 @@ from mega_man_2.ram import (
     ADDR_CAMERA_X,
     ADDR_CAMERA_X_SCREEN,
     ADDR_HEALTH,
+    ADDR_ITEMS,
     ADDR_LIVES,
     ADDR_PLAYER_X,
     ADDR_PLAYER_Y,
+    ADDR_WEAPONS,
+    ITEM_1,
+    WEAPON_ATOMIC_FIRE,
     camera_progress_x,
     is_fallen,
     is_level1_ready,
@@ -58,3 +62,16 @@ def test_screen_progress() -> None:
     ram[ADDR_CAMERA_X_SCREEN] = 1
     ram[ADDR_CAMERA_X] = 12
     assert camera_progress_x(ram) == 256 + 12
+
+
+def test_items_and_weapons_extras() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_HEALTH] = 28
+    ram[ADDR_LIVES] = 3
+    ram[ADDR_WEAPONS] = WEAPON_ATOMIC_FIRE  # Heat clear
+    ram[ADDR_ITEMS] = ITEM_1
+    state = parse_game_state(ram, frame=1, obs_mean=100.0)
+    assert state.extras["weapons"] == WEAPON_ATOMIC_FIRE
+    assert state.extras["items"] == ITEM_1
+    assert state.extras["has_item1"] is True
+    assert state.extras["has_atomic_fire"] is True

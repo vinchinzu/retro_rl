@@ -6,30 +6,28 @@ Advance from M3 (Air Man late-stage isolated) toward a verified continuous clear
 
 ## Next milestones
 
-1. **Air Man deep late-stage** — clear past screen 4 toward boss door.
-2. **M4 natural-entry** — screen-2+ from power-on without warping to `Level1`.
-3. **Boss segment** — isolated Air Man boss from a door-entry state.
-4. **Stage chain** — stage select → clear → weapons → next master.
+1. **Heat→Air Item-1 chain** (rr-f3nr residual) — Heat mid/boss → Item-1 → Air
+   past s4 with platforms (`docs/HEAT_ITEM1_PATH.md`).
+2. **Air Man deep late-stage** — cam ≥5 via Item-1 or cloud stand (if FCEUX pin).
+3. **M4 natural-entry** — screen-2+ from power-on without warping to `Level1`.
+4. **Boss segment** — isolated Air Man boss from a door-entry state.
+5. **Stage chain** — stage select → clear → weapons → next master.
 
 ## Bottleneck
 
-**Post-s4: rider kill Clean; empty cloud stand still RED (rr-54ui PARTIAL).**
-No camera ≥5. Residual child **rr-f3nr**.
+**Post-s4 Air cloud solid RED; Heat→Item-1 dual-green scaffold only (rr-f3nr PARTIAL).**
 
-- Pulse-B kills `0x3D`; body `0x3E` stays; appear `$10` never armed by body AI
-- Sole `LDA #$90` flag arm in PRG = Heat appearing_block AI (`14_23`)
-- Zero-mask appear force → global solid (fceumm path works); localized masks fail
-- **No Air-first Clean alt past s4**: Item-1 needs Heat (`weapons=$00` on Fan);
-  jump envelope cannot cover ~296px gap after prog 984
-- Human path = cloud ride ×5; TAS path = Item-1 skip (Heat-first)
+- Pulse-B kills `0x3D`; empty `0x3E` never arms appear; gap ~296px unjumpable
+- Heat1 + HeatScreen1 **GREEN**; Heat clear / Item-1 / Air-with-Item-1 open
+- FCEUX human stick pin protocol documented (external)
 
 ## Suggested next experiments
 
-1. **rr-f3nr: FCEUX/human stick pin** — dump sy/by/`$2C`/body fl/tsa/xs/ys/cam
-   on a real empty-cloud stand vs freefall (`docs/CLOUD_LAND_RED_PIN.md`).
-2. **rr-f3nr: Heat→Air Item-1 Clean segment** as alternate past s4 milestone.
-3. Chain mapset 5–6 LLs → camera ≥5 only after stand freezes a state.
-4. Do **not** re-sweep goblin-solid, “LL absent”, hold-B only, feet_dy grids,
+1. Heat mid-stage / boss from `HeatScreen1` (or `Heat1` re-boot).
+2. Item-1 unlock pin post-Heat (`$009B\|$01`).
+3. Air Fan + Item-1 deploy past prog 984 → camera ≥5.
+4. Optional: FCEUX empty-cloud RAM pin (`docs/HEAT_ITEM1_PATH.md`).
+5. Do **not** re-sweep goblin-solid, “LL absent”, hold-B only, feet_dy grids,
    screen-align-only, fall_top/appear/flag08, or zero-mask global solid.
 ## Notes
 
