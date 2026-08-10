@@ -54,3 +54,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Free capacity → spawn **sm_rando** manager for `rr-3f3e` (only ready) / prep toward `rr-gbd.25` when harness unblocks.
 - Still busy: SM `rr-5if`, smb `rr-k0x`, harvest `rr-bhr`, zelda `rr-5lu`, mm2 `rr-iyya`.
 
+### 2026-08-09T21:15 CDT — mega_man_2 lane complete
+- **CLOSED** `rr-iyya` AirScreen2→s3 (~241f 3/3) and →s4 (~502f 3/3) via `AirManPolicy(start=screen2)`.
+- Opened follow-up `rr-1uaw` past screen 4 toward boss door.
+- Code merged from worktree to main; 10 tests pass. Free capacity → continue MM2 `rr-1uaw` or next idle tip.
+
