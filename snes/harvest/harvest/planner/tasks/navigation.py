@@ -444,6 +444,9 @@ class MultiMapNavTask(Task):
     _exit_walk_frames: int = field(default=0, init=False)
     _no_path_frames: int = field(default=0, init=False)
     _initial_settle: int = field(default=0, init=False)
+    # Stagnant no-path recovery (SW farm pocket after CLEAR → house).
+    _stuck_anchor: Optional[Tuple[int, int]] = field(default=None, init=False)
+    _stuck_frames: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
@@ -459,6 +462,8 @@ class MultiMapNavTask(Task):
         self._exit_walk_frames = 0
         self._no_path_frames = 0
         self._initial_settle = 0
+        self._stuck_anchor = None
+        self._stuck_frames = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -479,6 +484,8 @@ class MultiMapNavTask(Task):
         self._settle_frames = 0
         self._exit_walk_frames = 0
         self._no_path_frames = 0
+        self._stuck_anchor = None
+        self._stuck_frames = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -791,16 +798,29 @@ class MultiMapNavTask(Task):
                 self._navigator.path = path
                 self._navigator.stasis = 0
                 self._no_path_frames = 0
+                self._stuck_anchor = None
+                self._stuck_frames = 0
             else:
                 # BFS failed — walk toward waypoint as fallback.
                 # Cycle between primary and perpendicular directions
                 # when stuck (stasis high) to navigate around obstacles.
                 self._no_path_frames += 1
-                if self._no_path_frames == 1 or self._no_path_frames % 300 == 0:
-                    cur = self._navigator.current_pos
-                    print(f"[MULTI_NAV] No BFS path from ({cur.x},{cur.y}), "
-                          f"fallback walk (frame {self._no_path_frames})")
                 cur = self._navigator.current_pos
+                anchor = (cur.x // 8 * 8, cur.y // 8 * 8)
+                if self._stuck_anchor == anchor:
+                    self._stuck_frames += 1
+                else:
+                    self._stuck_anchor = anchor
+                    self._stuck_frames = 0
+                if self._no_path_frames == 1 or self._no_path_frames % 300 == 0:
+                    print(f"[MULTI_NAV] No BFS path from ({cur.x},{cur.y}), "
+                          f"fallback walk (frame {self._no_path_frames} "
+                          f"stuck={self._stuck_frames})")
+                # Prolonged pin with zero progress: clear temp blocks and
+                # force a longer east/north thrash (farm SW pocket after CLEAR).
+                if self._stuck_frames > 0 and self._stuck_frames % 120 == 0:
+                    self._pathfinder.temp_blocked.clear()
+                    self._navigator.stasis = 0
                 dx = wp.target_px[0] - cur.x
                 dy = wp.target_px[1] - cur.y
                 final = (wp.target_px[0] // TILE_SIZE, wp.target_px[1] // TILE_SIZE)
@@ -809,6 +829,26 @@ class MultiMapNavTask(Task):
                     return TaskResult(
                         status=TaskStatus.RUNNING,
                         action=ActionResult(make_action(**{loaded_direction: True, "b": True})),
+                    )
+                # Stagnant softlock thrash: prefer right then up (leave SW farm).
+                if self._stuck_frames >= 45:
+                    # Fail early so ReturnHome can B-run escape / densify
+                    # instead of burning the full multi_nav timeout in a pocket.
+                    if self._stuck_frames >= 420:
+                        cur = self._navigator.current_pos
+                        return TaskResult(
+                            status=TaskStatus.FAILURE,
+                            reason=(
+                                f"multi_nav softlock pos=({cur.x},{cur.y}) "
+                                f"stuck={self._stuck_frames}"
+                            ),
+                        )
+                    phase = (self._stuck_frames // 30) % 4
+                    stuck_dirs = ("right", "up", "left", "down")
+                    direction = stuck_dirs[phase]
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(**{direction: True, "b": True})),
                     )
                 # Primary direction toward target
                 if abs(dx) >= abs(dy):

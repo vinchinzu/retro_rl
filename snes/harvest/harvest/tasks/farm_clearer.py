@@ -912,7 +912,11 @@ class FarmClearer:
     def _sort_targets_cluster(
         self, targets: List[Target], player_pos: Point
     ) -> List[Target]:
-        """Nearest-neighbor with row serpentine bias for short field tours."""
+        """Nearest-neighbor with north bias so day-plan clear stays returnable.
+
+        Prefer targets north of / near the y=31 fence; deep-south debris
+        (y>38) is a softlock trap for return_home after water days (rr-5in).
+        """
         remaining = list(targets)
         ordered: List[Target] = []
         cur = player_pos
@@ -920,6 +924,7 @@ class FarmClearer:
         while remaining:
             remaining.sort(
                 key=lambda t: (
+                    2 if t.tile[1] > 40 else (1 if t.tile[1] > 32 else 0),
                     manhattan(t.pos, cur),
                     t.tile[1],
                     t.tile[0] * row_dir,

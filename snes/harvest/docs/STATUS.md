@@ -216,6 +216,17 @@ Test crop fixtures (for growth / ship work):
     GREEN (rr-o00y); hands-clear GREEN (rr-6g7g). Still short of Summer D1
     money>100. Residual: house approach multi_nav after water days + first
     potato ship window.
+  - **2026-08-10 night (rr-5in house approach GREEN / still PARTIAL Gate B):**
+    Root of D9 `nav_house_front multi_nav timeout`: CLEAR ends south of the
+    **y=31 fence wall** (x=11–29). Mid-wall densify + SW rock pocket had no
+    BFS path. Fix: densified approach east (x≥480) or west (x≤160) of fence
+    (or open gap when wall confirmed); CLEAR exit-staging + SW pre-escape;
+    MultiMapNav early softlock fail. Evidence:
+    `recordings/power_on_spring_to_summer.json` — **11 overnights** to Spring
+    D13, **money=$160** (`money_gt_100=true`), Clean mid_run_loads=0; dies
+    `reason=budget` (not house nav). Residual **rr-5go9**: CROP_WATER refill
+    thrash fails (dry=6 watered=0 east-crawl densify stuck) so crops never
+    mature/ship and frame budget ends before Summer D1.
 6. ~~End-of-spring / continuous soak with **money > 100** + harvest phases (rr-y8n / Gate A)~~ — **CLOSED 2026-08-09 night** Clean multi-day successor:
    ```bash
    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
