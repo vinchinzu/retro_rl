@@ -6,13 +6,13 @@
 |-------|-------|
 | Current maturity | M3 (isolated segment) |
 | Best verified result | Air Man camera screen ≥ 4 from `AirScreen2` (3/3) |
-| Last verification | 2026-08-10 (night5) |
+| Last verification | 2026-08-10 (fpd6 LL decode) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 blocked (~296px pit; LL never spawns)** |
+| Status | **isolated Air Man screen-4 clear (from AirScreen2); post-s4 open (LL spawns; cloud land residual)** |
 | Integration | `MegaMan2-Nes` |
 | ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Ready frame (probe) | ~1204 |
@@ -28,7 +28,7 @@
 - **M3 screen-1:** camera ≥ 1 (~248f) via `AirScreen1Policy`
 - **M3 mid-stage:** camera ≥ 2 from `Level1` (~522f, HP 22, 3/3) and from `AirLanded` (~226f, 3/3)
 - **M3 late-stage (fans/gaps):** camera ≥ 3 and ≥ 4 from `AirScreen2` (3/3 each; 2026-08-09)
-- **Post-s4 probe (rr-54ui, open):** type36 not solid; ~296px pit; no camera ≥5 / boss door yet
+- **Post-s4 (rr-54ui, open):** LL **does spawn** (0x3D/0x3E); cloud land residual; no camera ≥5 yet
 
 ## Segment metrics
 
@@ -104,9 +104,10 @@
 | 514 AirScreen2 | y52 tile + type36 goblin + Pipi | Goblin chain (A / late) |
 | 629 | y68 short stripe platform between goblins | Still goblin hops |
 | 689–984 | y84 stripe platforms + goblin + Pipi | **Not** Matasaburo E (no wind, no fan robots) |
-| >984 pit | Open sky; objects stay 1/35/36 only | Suspected LL (B) sky — **LL never spawns** |
+| >984 pit | Open sky; first LL body at y≈32–36 | **Section B LL sky — LL spawns (rr-fpd6)** |
 
-Object types seen Level1→death hybrid: **{1, 2, 35, 36}** only (2 early-only). No Kaminari Goro / cloud type.
+Object types (corrected 2026-08-10 fpd6): goblin **0x40**, pipi **0x37**, LL **0x3D/0x3E**, plus low IDs/projectiles.
+Night3–5 “only 1/2/35/36” was under-read of `$0400`.
 
 ### Swept (2026-08-09 + 08-10 overnight ×3)
 
@@ -127,18 +128,31 @@ Object types seen Level1→death hybrid: **{1, 2, 35, 36}** only (2 early-only).
 - No camera ≥ 5; no new grounded s4/s5 checkpoint
 - Evidence: `recordings/air_post4_night3/`, `night4/`, `night5/` (+ RED_PIN.txt)
 
+## rr-fpd6 decode (2026-08-10) — CLOSED
+
+Lightning Lord spawn **decoded + live-confirmed**:
+
+| Field | Value |
+|-------|-------|
+| Type IDs | `0x3E` `objects_kaminari_goro` (+ `0x3D` move, `0x3F` bolt) |
+| First placement | mapset **4**, x=`0xC0`, y=`0x20` (ROM objects_set) |
+| Live spawn | prog **~961** (still scr3 cam_x~193) → slots with t=61/62, obj scr=4 |
+| Source | lsmmega/mm2 `airman_wily2_objects_set.asm` + live `ll_spawn_probe.py` |
+| Evidence | `docs/LL_SPAWN_DECODE.md`, `probe_*.json`, `summary.json` |
+
+Cloud altitude y≈32–36 matches pure-jump min_sy~34, but closest Clean approach
+~**28px short in X** (sx≈135 vs LL x≈163 @ prog~1031). No cloud land / camera≥5 yet.
+
 ## Not done
 
-- Past screen 4 / boss door (**intermediate solid missing** for ~296px gap; Lightning Lord cloud **never observed** under Clean play)
+- Past screen 4 / boss door (**LL spawns; land on Thunder Chariot residual** — ~28px X short at apex)
 - Full Robot Master stage clear (Air Man boss door / fight)
 - Natural-entry M4 from power-on through screen-2+
 - Stage select other masters / weapon routing
 
 ## Next
 
-1. **Spawn-routine decode** — Mesen-trace / disassembly: LL object type ID + Air Man
-   per-screen enemy list at scroll covering prog≥1000 (gates: slots, Y band, flags).
-2. **TAS FM2 compare** at equivalent camera/progress through section B.
-3. Optional PPU nametable dump at prog 950 vs mid-gap (hidden offscreen tiles).
-4. Do **not** re-sweep goblin-solid, pure-RIGHT grids, or y84 edge LL camps.
-5. Only after grounded s4/s5: freeze recipe → AirScreen2→target 5 (3/3) → boss door.
+1. **rr-54ui:** Clean land on first LL cloud (mapset4 y≈32–36): kill rider + stand
+   (object-solid; may not set `tile_feet==1`). Extend apex X ~+28px or shoot-land timing.
+2. Chain mapset 5–6 LLs → camera ≥5 → boss door; freeze AirScreen2→5 (3/3).
+3. Do **not** re-sweep goblin-solid or “LL never spawns” camps (falsified).

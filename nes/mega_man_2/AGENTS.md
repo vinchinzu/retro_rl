@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air Man screen-4 clear from AirScreen2 (M3); post-s4 open (~296px pit) |
+| Status | Air Man screen-4 clear from AirScreen2 (M3); LL spawns (cloud land residual) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -27,12 +27,11 @@ uv run pytest nes/mega_man_2/tests -q
 
 ## Next milestone
 
-Past screen 4 from `AirFanPlatform` island (prog 937–984) toward boss door.
-Gap to scr5 (~1280) is ~296px; pure jump only ~1065–1071. Type36 Goblin/Air
-Tikki is **not** solid (indestructible damage; tiles carry the stand). Lightning
-Lord/cloud **never observed** (types only 1/2/35/36; night3–night5). Freefall
-tile sample past 984 = 0 solids. Need spawn-routine decode / TAS FM2 compare
-at prog≥1000 — not more goblin/pure-RIGHT/y84-edge grids. Then M4.
+Past screen 4 from `AirFanPlatform` (prog 937–984) toward boss door.
+**LL spawns** at mapset4: types `0x3D`/`0x3E` from prog~961 (see
+`docs/LL_SPAWN_DECODE.md`). Air Tikki is **0x40** (not landable).
+Residual: Clean **cloud land** (~28px X short at apex y≈34). Probe:
+`scripts/ll_spawn_probe.py`. Then M4.
 
 ## Norms
 
@@ -48,3 +47,4 @@ at prog≥1000 — not more goblin/pure-RIGHT/y84-edge grids. Then M4.
 - `AirLeftPlatform` = short left ledge (prog~902–905). Ladder bar ≠ feet=2.
 - Jump needs A rising edge after load; continuous A from frame 1 does not jump.
 - Do not save type36-overlap or left-ledge hops as past-island checkpoints.
+- LL watch: `$0400` types **0x3D/0x3E** (not 35/36). Goblin is **0x40**.
