@@ -8,6 +8,10 @@ M3 isolated segments (Clean Bronze):
 - **Air screen ≥ 3 / ≥ 4** from ``AirScreen2``: late-stage ``AirManPolicy(start=screen2)``
   (~241f → s3 HP20; ~502f → s4 HP16; 3/3; verified 2026-08-09).
 - **Heat screen ≥ 1** from ``Heat1``: ``HeatManPolicy`` period 50/12 (~243f; 2026-08-10).
+- **Heat screen ≥ 2** from ``HeatScreen1``: same early recipe (~194f; 2026-08-10).
+- **Heat screen ≥ 3** from ``HeatScreen2``: mid 60/14 → late 25/12 (~351f grounded; 2026-08-10).
+- **Heat screen ≥ 4** from ``HeatScreen3``: pillars 25/10 phase 10 (~181f grounded; 2026-08-10).
+- **Heat screen ≥ 5** from ``HeatScreen4``: late 20/12 phase 4 (~131f cam / ~320f grounded; 2026-08-10).
 
 Level1 recipe (0-based frame index ``i``):
 
@@ -106,17 +110,43 @@ class AirScreen1Policy:
 
 @dataclass
 class HeatManPolicy:
-    """Heat Man early route: periodic jump-run (Heat1 → camera screen ≥ 1).
+    """Multi-phase Heat Man route (Clean Bronze mid-stage).
 
-    Verified ~243f from ``Heat1`` (HP 24, prog 256; 2026-08-10). Deeper Heat
-    screens / boss / Item-1 unlock are residual under Heat→Air Item-1 chain.
+    Start modes (0-based frame index ``i``):
+
+    - ``early`` (Heat1 / HeatScreen1): period 50/12 → screen ≥1 / ≥2.
+    - ``screen2`` (HeatScreen2): period 60/14 until ``mid_until``, then 25/12
+      → grounded screen ≥3 (~351f).
+    - ``screen3`` (HeatScreen3 pillars): period 25/10 with ``jump_phase`` 10
+      → grounded screen ≥4 (~181f).
+    - ``screen4`` (HeatScreen4): period 20/12 with ``jump_phase`` 4 → screen ≥5
+      (~131f cam / ~320f grounded).
+
+    Residual: late Heat / boss door / Item-1 unlock (rr-809).
     """
 
+    # early (Heat1 / HeatScreen1)
     jump_period: int = 50
     jump_hold: int = 12
+    # screen2 mid → late handoff
+    mid_until: int = 260
+    mid_period: int = 60
+    mid_hold: int = 14
+    late_period: int = 25
+    late_hold: int = 12
+    # screen3 pillars
+    s3_period: int = 25
+    s3_hold: int = 10
+    s3_phase: int = 10
+    # screen4 late
+    s4_period: int = 20
+    s4_hold: int = 12
+    s4_phase: int = 4
     shoot_period: int = 40
     shoot_hold: int = 2
     target_camera_screen: int = 1
+    # early | screen2 | screen3 | screen4
+    start: str = "early"
 
     def tick(
         self,
@@ -133,10 +163,40 @@ class HeatManPolicy:
             return FrameAction(nes_idle_action(), "clear_hold")
 
         i = max(0, frame - 1)
-        jump = self.jump_period > 0 and (i % self.jump_period) < self.jump_hold
+        jump = self._want_jump(i)
         shoot = self.shoot_period > 0 and (i % self.shoot_period) < self.shoot_hold
         buttons, reason = _run_buttons(jump=jump, shoot=shoot)
+        if jump and self.start == "screen2" and i >= self.mid_until:
+            reason = "late_jump" if not shoot else "late_jump_shoot"
+        elif jump and self.start == "screen2":
+            reason = "mid_jump" if not shoot else "mid_jump_shoot"
+        elif jump and self.start in {"screen3", "screen4"}:
+            reason = "pillar_jump" if not shoot else "pillar_jump_shoot"
         return FrameAction(nes_action(*buttons), reason)
+
+    def _want_jump(self, i: int) -> bool:
+        if self.start == "screen2":
+            if i < self.mid_until:
+                return (i % self.mid_period) < self.mid_hold
+            return (i % self.late_period) < self.late_hold
+        if self.start == "screen3":
+            return ((i + self.s3_phase) % self.s3_period) < self.s3_hold
+        if self.start == "screen4":
+            return ((i + self.s4_phase) % self.s4_period) < self.s4_hold
+        return self.jump_period > 0 and (i % self.jump_period) < self.jump_hold
+
+    @staticmethod
+    def start_for_state(state_name: str) -> str:
+        """Map checkpoint name → recipe start mode."""
+        if state_name.startswith("HeatScreen4") or state_name.startswith(
+            "HeatScreen5"
+        ):
+            return "screen4"
+        if state_name.startswith("HeatScreen3"):
+            return "screen3"
+        if state_name.startswith("HeatScreen2"):
+            return "screen2"
+        return "early"
 
 
 @dataclass
