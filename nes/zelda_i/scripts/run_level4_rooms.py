@@ -2117,12 +2117,14 @@ def run_once(
             # From Level4Room32: clear → push left → stairs 0x60 → ADDR_LADDER.
             # Clear+push+enter use the controller; basement uses live hold4 BFS
             # (scripted path is spawn-relative; entry pose varies).
+            # NOTE: do not re-import ROOM_L4_STEPLADDER here — a local import
+            # makes the name function-local for all of run_once and breaks
+            # exit_60 (UnboundLocalError). Module-level import is enough.
             from zelda_i.level4_dungeon import (
                 MAZE_60_HOLD,
                 PUSH_32_DIR,
                 PUSH_32_HOLD,
                 PUSH_32_STAND,
-                ROOM_L4_STEPLADDER,
                 STAIRS_32_APPROACH,
                 STAIRS_32_PUSH,
                 STAIRS_32_PUSH_FRAMES,

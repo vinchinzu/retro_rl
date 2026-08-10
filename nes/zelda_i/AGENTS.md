@@ -61,6 +61,11 @@ uv run python zelda_i/scripts/run_level4_continuous_tf.py \
 # L4 continuous Clean dual (rr-vdnc; no --infinite-life)
 uv run python zelda_i/scripts/run_level4_continuous_tf.py \
   --from-state Level4Room31PostLadderNaturalKey --trials 2 --tag l4_vdnc_clean_cont_tf
+# L4 Clean dual skip-compass NaturalKey from Entrance (rr-zavx pin)
+uv run python zelda_i/scripts/run_level4_entrance_tf.py \
+  --to-natural-key-only --trials 2 --save-state --tag l4_zavx_natkey_dual
+# L4 full compose Entrance→TF (Clean dual residual: Gleeok needs hp≥~108)
+uv run python zelda_i/scripts/run_level4_entrance_tf.py --trials 2 --tag l4_zavx_entrance_tf
 # L4 Gleeok → TF 0x08 (assisted dual-green from Level4GleeokEnter)
 uv run python zelda_i/scripts/run_level4_gleeok.py --infinite-life --trials 2 --save-state
 # L4 Gleeok Clean dual (south-stand policy)
@@ -134,6 +139,7 @@ bd ready -l zelda_i   # tip: rr-q3n epic residual / rr-38p OW parallel
 | ✓ | **`rr-rvae`** | Map 2/2 + Gleeok enter + fight/HC/TF `0x08` dual-green |
 | ✓ | **`rr-05fz`** | Natural key KEY-UP + continuous PostLadder→TF dual-green |
 | ✓ | **`rr-vdnc`** | Clean continuous PostLadder→TF (south-stand Gleeok) |
+| ✓/∂ | **`rr-zavx`** | Clean dual Entrance→NaturalKey; continuous TF health residual |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -207,6 +213,14 @@ same path **without** `--infinite-life`; Gleeok **south-stand**
 Evidence: `l4_vdnc_clean_cont_tf.json` (dual_green, track=clean,
 key_poke=false); Gleeok-only `l4_vdnc_gleeok_clean_dual.json`. **Not full-game
 Clean STATUS** (checkpoint continuous).
+
+**L4 natural-entry compose (PARTIAL rr-zavx 2026-08-10):** Clean dual-green
+**Level4Entrance → skip-compass → Level4Room31PostLadderNaturalKey** 2/2
+(~45.8k f; keys=1 ladder=1). Runner: `run_level4_entrance_tf.py
+--to-natural-key-only`. Evidence: `l4_zavx_natkey_dual.json`. Full
+Entrance→TF Clean continuous still residual: Gleeok south-stand needs
+health ≥~108 at enter; pure spine ends ~103. **Not Clean STATUS.** Epic
+`rr-q3n` residual: power-on STATUS still separate.
 
 **L4 map (assisted LIVE 2/2, rr-rvae 2026-08-10):** from
 `Level4Room31PostLadder` (recon **key poke** if keys=0) LEFT → **0x30** →

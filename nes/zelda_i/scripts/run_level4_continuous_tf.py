@@ -190,13 +190,20 @@ def _bfs_to_xy(env, sx: int, sy: int, *, hold: int = 4, quant: int = 4) -> bool:
 
 
 def _bomb_north_21(env, assist, total: list[int]) -> dict[str, Any]:
-    """Thrash maze → BFS to stand → bomb UP → 0x11."""
+    """BFS to bomb stand (thrash only if needed) → bomb UP → 0x11.
+
+    Clean residual (rr-zavx): map pickup already expands much of the maze;
+    thrash-first burns hearts and Gleeok Clean needs health ≥~108.
+    """
     sx, sy = BOMB_21_NORTH_STAND
-    thr = _thrash_room(env, assist, total, ROOM_L4_MAP_21, max_frames=8000)
+    thr: dict[str, Any] | None = None
     ok_stand = _bfs_to_xy(env, sx, sy)
     if not ok_stand:
+        thr = _thrash_room(env, assist, total, ROOM_L4_MAP_21, max_frames=5000)
+        ok_stand = _bfs_to_xy(env, sx, sy)
+    if not ok_stand:
         # second thrash expand + retry
-        thr2 = _thrash_room(env, assist, total, ROOM_L4_MAP_21, max_frames=6000)
+        thr2 = _thrash_room(env, assist, total, ROOM_L4_MAP_21, max_frames=5000)
         thr = {"first": thr, "second": thr2}
         ok_stand = _bfs_to_xy(env, sx, sy)
     if not ok_stand:
@@ -427,12 +434,19 @@ def run_from_map_to_tf(
         report["error"] = f"bomb21_dest_0x{snap.screen:02x}"
         return report
 
-    # BOMB_RIGHT 0x11 → 0x12 (live stand ~(192,141); not free door)
-    thr11 = _thrash_room(env, assist, total, ROOM_L4_MID_11, max_frames=10000)
+    # BOMB_RIGHT 0x11 → 0x12 (live stand ~(192,141); not free door).
+    # Prefer BFS before thrash to preserve Clean hearts (rr-zavx).
     sx12, sy12 = 192, 141
+    thr11: dict[str, Any] | None = None
     ok_stand = _bfs_to_xy(env, sx12, sy12)
     if not ok_stand:
-        thr11 = {"a": thr11, "b": _thrash_room(env, assist, total, ROOM_L4_MID_11, max_frames=6000)}
+        thr11 = _thrash_room(env, assist, total, ROOM_L4_MID_11, max_frames=6000)
+        ok_stand = _bfs_to_xy(env, sx12, sy12)
+    if not ok_stand:
+        thr11 = {
+            "a": thr11,
+            "b": _thrash_room(env, assist, total, ROOM_L4_MID_11, max_frames=6000),
+        }
         ok_stand = _bfs_to_xy(env, sx12, sy12)
     if not ok_stand:
         report["error"] = "bomb12_stand_unreachable"
@@ -488,13 +502,14 @@ def run_from_map_to_tf(
         return report
     idle(env, assist, total, 20)
 
-    # Clear 0x12 Vires by thrash (TYPE presence; ignore block 0x68)
+    # Clear 0x12 Vires (TYPE presence; ignore block 0x68). Cap thrash so
+    # Clean hearts survive for Gleeok (south-stand needs ~108+ health).
     idle(env, assist, total, 40)
-    thr12 = _thrash_room(env, assist, total, ROOM_L4_VIRES_12, max_frames=20000)
+    thr12 = _thrash_room(env, assist, total, ROOM_L4_VIRES_12, max_frames=12000)
     # require no type 0x12/0x1c for a settle window
     clear_ok = False
     dead_streak = 0
-    for _ in range(120):
+    for _ in range(200):
         snap = read_snapshot(env.get_ram())
         live = [
             o
@@ -503,18 +518,28 @@ def run_from_map_to_tf(
         ]
         if live:
             dead_streak = 0
-            # keep thrashing nearest
+            # keep thrashing nearest; brief backstep if overlapping
             tgt = min(
                 live,
                 key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
             )
+            dist = abs(tgt.x - snap.link_x) + abs(tgt.y - snap.link_y)
             dx, dy = tgt.x - snap.link_x, tgt.y - snap.link_y
-            d = (
-                ("RIGHT" if dx > 0 else "LEFT")
-                if abs(dx) >= abs(dy)
-                else ("DOWN" if dy > 0 else "UP")
-            )
-            env.step(nes_action(d, "A"))
+            if dist < 12 and assist is None:
+                # Clean: step away one beat then slash (contact damage piles).
+                d = (
+                    ("LEFT" if dx > 0 else "RIGHT")
+                    if abs(dx) >= abs(dy)
+                    else ("UP" if dy > 0 else "DOWN")
+                )
+                env.step(nes_action(d))
+            else:
+                d = (
+                    ("RIGHT" if dx > 0 else "LEFT")
+                    if abs(dx) >= abs(dy)
+                    else ("DOWN" if dy > 0 else "UP")
+                )
+                env.step(nes_action(d, "A"))
         else:
             dead_streak += 1
             env.step(nes_idle_action())
@@ -529,6 +554,7 @@ def run_from_map_to_tf(
         "thrash": thr12,
         "dead_streak": dead_streak,
         "predicate": level4_room_12_cleared(env.get_ram()),
+        "health_after": read_snapshot(env.get_ram()).health,
     }
     if not clear_ok:
         report["error"] = "clear12_failed"
@@ -611,25 +637,61 @@ def run_from_map_to_tf(
         total[0] += 1
         if assist is not None:
             assist.apply_env(env, frame=total[0])
+    # Align mid door band y≈141 — PATH + free RIGHT scroll need center band
+    # (post-clear thrash can leave y≈149 and stick on east wall, rr-zavx).
+    for _ in range(80):
+        snap = read_snapshot(env.get_ram())
+        if abs(snap.link_y - 141) <= 4:
+            break
+        env.step(nes_action("DOWN" if snap.link_y < 141 else "UP"))
+        total[0] += 1
+        if assist is not None:
+            assist.apply_env(env, frame=total[0])
     # PATH_12_TO_GLEEOK hold4
     path_ok = _follow(
         env, list(PATH_12_TO_GLEEOK), 4, assist, total, ROOM_L4_GLEEOK_13
     )
+    bfs_path = None
     if not path_ok:
-        # settle scroll / retry hold RIGHT band
-        for _ in range(250):
+        # settle scroll / retry hold RIGHT at y141
+        for _ in range(80):
+            snap = read_snapshot(env.get_ram())
+            if abs(snap.link_y - 141) > 4:
+                env.step(nes_action("DOWN" if snap.link_y < 141 else "UP"))
+            else:
+                env.step(nes_action("RIGHT"))
+            total[0] += 1
+            if assist is not None:
+                assist.apply_env(env, frame=total[0])
             snap = read_snapshot(env.get_ram())
             if snap.screen == ROOM_L4_GLEEOK_13 and snap.mode == PLAY_MODE:
                 path_ok = True
                 break
-            env.step(nes_action("RIGHT"))
-            total[0] += 1
-            if assist is not None:
-                assist.apply_env(env, frame=total[0])
+    if not path_ok and not level4_gleeok_enter_success(env.get_ram()):
+        # Live BFS exit 0x12 → 0x13 (maze; pose-stable after push).
+        bfs_path = _bfs_exit(env, ROOM_L4_GLEEOK_13, assist, total, hold=4)
+        if bfs_path:
+            path_ok = _follow(
+                env, bfs_path, 4, assist, total, ROOM_L4_GLEEOK_13
+            )
+        if not path_ok:
+            for _ in range(200):
+                snap = read_snapshot(env.get_ram())
+                if snap.screen == ROOM_L4_GLEEOK_13 and snap.mode == PLAY_MODE:
+                    path_ok = True
+                    break
+                if abs(snap.link_y - 141) > 4:
+                    env.step(nes_action("DOWN" if snap.link_y < 141 else "UP"))
+                else:
+                    env.step(nes_action("RIGHT"))
+                total[0] += 1
+                if assist is not None:
+                    assist.apply_env(env, frame=total[0])
     idle(env, assist, total, 40)
     report["phases"]["enter_gleeok"] = {
         "ok": level4_gleeok_enter_success(env.get_ram()),
         "path_ok": path_ok,
+        "bfs_path_len": len(bfs_path) if bfs_path else None,
         "final": room_fields(read_snapshot(env.get_ram()), env.get_ram()),
     }
     if not level4_gleeok_enter_success(env.get_ram()):
@@ -637,7 +699,8 @@ def run_from_map_to_tf(
         report["error"] = f"gleeok_enter_0x{snap.screen:02x}"
         return report
 
-    # Fight → TF
+    # Brief settle after vestibule enter (scroll/invuln); then fight → TF.
+    idle(env, assist, total, 40)
     fight = Level4GleeokFightController(tag=f"{tag}_t{trial_i}")
     fr = fight.run(env, assist, total)
     report["phases"]["fight"] = {
@@ -679,11 +742,13 @@ def run_once(
     # Compose dual-env: map segment dual already proven; then map→TF dual.
     map_state = start_state
     if not from_map:
+        # Save Level4Map every trial so dual gleeok phase reloads *this*
+        # trial's map (not a stale prior checkpoint).
         map_rep = r4.run_once(
             segment="map_21",
             start_state=start_state,
             infinite_life=infinite_life,
-            save_checkpoint=(trial_i == 0 and save_checkpoint),
+            save_checkpoint=save_checkpoint,
             tag=f"{tag}_map_t{trial_i}",
             allow_key_poke=False,
         )

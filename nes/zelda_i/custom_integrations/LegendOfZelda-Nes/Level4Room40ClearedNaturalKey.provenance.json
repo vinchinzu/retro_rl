@@ -1,0 +1,41 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T10:14:40.852371+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-zavx",
+    "segment": "l4_key_40_natural_key",
+    "skip_compass": true,
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 8,
+      "compass": 4,
+      "compass_l4": false,
+      "cur_opened_doors": 0,
+      "health": 109,
+      "keys": 2,
+      "ladder": 0,
+      "level": 4,
+      "map": 0,
+      "map_l4": false,
+      "mode": 5,
+      "room": 64,
+      "room_all_dead": 45,
+      "room_hex": "0x40",
+      "room_item_id": 25,
+      "x": 136,
+      "y": 117
+    },
+    "frames": 5566,
+    "ok": true,
+    "segment": "key_40"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40NaturalKey.state",
+  "source_state_sha256": "9d5ac06cdfe89df4c04c62b777aebf3f4bbc4692b8693415262563e1ce76bf2b",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40ClearedNaturalKey.state",
+  "state_sha256": "154e23aba3cc202fbfe17b9f0c80e1fafeb36ee04c649cdc51b5ca2874754980"
+}

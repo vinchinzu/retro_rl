@@ -1,64 +1,41 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-10T08:56:27.563902+00:00",
+  "captured_at": "2026-08-10T10:14:58.277543+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
-    "allow_key_poke": true,
-    "bead": "rr-tib8",
-    "intervention_class": "clean",
-    "segment": "l4_clear_32",
+    "bead": "rr-zavx",
+    "segment": "l4_clear_32_natural_key",
+    "skip_compass": true,
     "track": "clean"
   },
   "schema_version": 1,
   "selected_trial": {
-    "controllers": {
-      "clear_32": {
-        "clear_signal_seen": true,
-        "combat_frames": 6589,
-        "frames": 6590,
-        "initial_inventory": 0,
-        "last_live_enemies": 0,
-        "max_live_enemies": 4,
-        "notes": [
-          "room_cleared"
-        ],
-        "phase": "DONE",
-        "spec_id": "level4_room32_zol_likelike",
-        "success": true,
-        "tuning": {
-          "attack_phase": 4,
-          "engage_attack_hold": 3,
-          "engage_attack_period": 6,
-          "engage_distance": 56,
-          "engage_dominant_axis": false,
-          "patrol_attack_hold": 3,
-          "patrol_attack_period": 10
-        }
-      }
-    },
     "final": {
-      "bombs": 9,
+      "bombs": 8,
       "compass": 4,
       "compass_l4": false,
       "cur_opened_doors": 0,
       "health": 104,
       "keys": 1,
+      "ladder": 0,
       "level": 4,
+      "map": 0,
+      "map_l4": false,
       "mode": 5,
       "room": 50,
-      "room_all_dead": 2,
+      "room_all_dead": 0,
       "room_hex": "0x32",
       "room_item_id": 3,
-      "x": 40,
-      "y": 116
+      "x": 73,
+      "y": 125
     },
-    "frames": 6591,
+    "frames": 2306,
     "ok": true,
     "segment": "clear_32"
   },
   "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room32NaturalKey.state",
-  "source_state_sha256": "1fe87c8241e0e540c0b24bbdcdd7fd011e0a930d62e314fbfeeb42f78abda961",
+  "source_state_sha256": "48cde5474f90601e8f392ffcdb67d318edb83b40bcf5060b5e0581b3ca15523b",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room32ClearedNaturalKey.state",
-  "state_sha256": "3e78934e80b10e6c6b581e9265b92e214c529bdc47b7b80bff75fd8ed7b081aa"
+  "state_sha256": "cb2a99bdef7787073d378507190a1c083c2f7ee5ad8865b884737e2d4672bf02"
 }

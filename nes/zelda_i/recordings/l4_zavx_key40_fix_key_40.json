@@ -1,0 +1,274 @@
+{
+  "bead": "rr-q8eq",
+  "intervention_class": "clean",
+  "live_graph": {
+    "0x50": {
+      "enemies": "5x0x12",
+      "note": "dead_end_pocket"
+    },
+    "0x51": {
+      "DOWN": "0x61",
+      "LEFT": "0x50",
+      "enemies": "8x0x1b",
+      "key": "0x19"
+    },
+    "0x61": {
+      "BOMB_UP": "0x51",
+      "KEY_RIGHT": "0x62",
+      "enemies": "3x0x12\u21920x1c"
+    },
+    "0x62": {
+      "compass_bit": "0x08",
+      "enemies": "5x0x12",
+      "item": "0x16_compass",
+      "note": "dark_maze_return_west"
+    },
+    "0x71": {
+      "UP": "0x61"
+    }
+  },
+  "natural_entry": false,
+  "parent": "rr-5lu",
+  "reports": [
+    {
+      "allow_key_poke": true,
+      "assist": null,
+      "bead": "rr-q8eq",
+      "bomb_stand": [
+        120,
+        105
+      ],
+      "checkpoint": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40Cleared.state",
+      "controllers": {
+        "key_40": {
+          "clear": {
+            "clear_signal_seen": false,
+            "combat_frames": 5521,
+            "frames": 5521,
+            "initial_inventory": 1,
+            "last_live_enemies": 1,
+            "max_live_enemies": 6,
+            "notes": [],
+            "phase": "FIGHT",
+            "spec_id": "level4_room40_zols_key",
+            "success": false,
+            "tuning": {
+              "attack_phase": 4,
+              "engage_attack_hold": 3,
+              "engage_attack_period": 6,
+              "engage_distance": 56,
+              "engage_dominant_axis": false,
+              "patrol_attack_hold": 3,
+              "patrol_attack_period": 10
+            }
+          },
+          "frames": 5565,
+          "hold": 6,
+          "keys_before": 1,
+          "maze_path": [
+            "UP",
+            "UP",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "UP",
+            "UP",
+            "UP",
+            "UP",
+            "LEFT",
+            "LEFT",
+            "LEFT",
+            "LEFT",
+            "LEFT"
+          ],
+          "notes": [
+            "room_cleared",
+            "key_collected"
+          ],
+          "path_anchor": [
+            136,
+            165
+          ],
+          "path_index": 0,
+          "phase": "DONE",
+          "pickup_xy": [
+            120,
+            117
+          ],
+          "segment": "level4_key_0x40",
+          "success": true
+        }
+      },
+      "entry": {
+        "bombs": 8,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 110,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 64,
+        "room_all_dead": 0,
+        "room_hex": "0x40",
+        "room_item_id": 25,
+        "x": 120,
+        "y": 205
+      },
+      "error": null,
+      "final": {
+        "bombs": 8,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 109,
+        "keys": 2,
+        "ladder": 0,
+        "level": 4,
+        "map": 0,
+        "map_l4": false,
+        "mode": 5,
+        "room": 64,
+        "room_all_dead": 45,
+        "room_hex": "0x40",
+        "room_item_id": 25,
+        "x": 136,
+        "y": 117
+      },
+      "frames": 5566,
+      "infinite_life": false,
+      "intervention_class": "clean",
+      "ok": true,
+      "provenance": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40Cleared.provenance.json",
+      "screenshot": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/l4_zavx_key40_fix_t0_key_40.png",
+      "segment": "key_40",
+      "start_state": "Level4Room40",
+      "track": "clean"
+    },
+    {
+      "allow_key_poke": true,
+      "assist": null,
+      "bead": "rr-q8eq",
+      "bomb_stand": [
+        120,
+        105
+      ],
+      "checkpoint": null,
+      "controllers": {
+        "key_40": {
+          "clear": {
+            "clear_signal_seen": false,
+            "combat_frames": 5521,
+            "frames": 5521,
+            "initial_inventory": 1,
+            "last_live_enemies": 1,
+            "max_live_enemies": 6,
+            "notes": [],
+            "phase": "FIGHT",
+            "spec_id": "level4_room40_zols_key",
+            "success": false,
+            "tuning": {
+              "attack_phase": 4,
+              "engage_attack_hold": 3,
+              "engage_attack_period": 6,
+              "engage_distance": 56,
+              "engage_dominant_axis": false,
+              "patrol_attack_hold": 3,
+              "patrol_attack_period": 10
+            }
+          },
+          "frames": 5565,
+          "hold": 6,
+          "keys_before": 1,
+          "maze_path": [
+            "UP",
+            "UP",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "UP",
+            "UP",
+            "UP",
+            "UP",
+            "LEFT",
+            "LEFT",
+            "LEFT",
+            "LEFT",
+            "LEFT"
+          ],
+          "notes": [
+            "room_cleared",
+            "key_collected"
+          ],
+          "path_anchor": [
+            136,
+            165
+          ],
+          "path_index": 0,
+          "phase": "DONE",
+          "pickup_xy": [
+            120,
+            117
+          ],
+          "segment": "level4_key_0x40",
+          "success": true
+        }
+      },
+      "entry": {
+        "bombs": 8,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 110,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 64,
+        "room_all_dead": 0,
+        "room_hex": "0x40",
+        "room_item_id": 25,
+        "x": 120,
+        "y": 205
+      },
+      "error": null,
+      "final": {
+        "bombs": 8,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 109,
+        "keys": 2,
+        "ladder": 0,
+        "level": 4,
+        "map": 0,
+        "map_l4": false,
+        "mode": 5,
+        "room": 64,
+        "room_all_dead": 45,
+        "room_hex": "0x40",
+        "room_item_id": 25,
+        "x": 136,
+        "y": 117
+      },
+      "frames": 5566,
+      "infinite_life": false,
+      "intervention_class": "clean",
+      "ok": true,
+      "provenance": null,
+      "screenshot": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/l4_zavx_key40_fix_t1_key_40.png",
+      "segment": "key_40",
+      "start_state": "Level4Room40",
+      "track": "clean"
+    }
+  ],
+  "runtime_class": "bronze",
+  "segment": "key_40",
+  "start_state": "Level4Room40",
+  "successes": 2,
+  "track": "clean",
+  "trials": 2
+}
