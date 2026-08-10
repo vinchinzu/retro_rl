@@ -13,6 +13,19 @@ Protocol:
 
 ## Ticks
 
+
+### 2026-08-10T01:37 CDT — SM rr-85c4 Glass→West pure dual GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-85c4** CLOSED: Pure Glass Tunnel → West Tunnel return (K5 hop 7)
+- **Evidence:** `glass-to-west` dual pure **211f** ×2 exact, room `0xCF54`
+  xy=(216,139) pose=10 from `post_ice_east_to_glass_pure` ~(216,395) p12
+- Controller: LEFT `play_run_shoot_exit` (reverse of west_to_glass RIGHT)
+- Export: `scratch/post_ice_glass_to_west_pure.state` (+ dual)
+- Parent **rr-dbu.8** stays IN_PROGRESS PARTIAL (hop0–7 GREEN; Alpha PB open)
+- Next bead **rr-abx5**: West → Below Spazer reverse
+- Units: kpdr_dev + source_states green; no continuous / STATUS
+- No push
+
 ### 2026-08-09T21:00 CDT — bootstrap
 - Scheduler: hourly task `019fe966cf19` created (session + durable)
 - Lanes to launch: super_metroid, smb, harvest, zelda_i, alttp_rando, mega_man_2
