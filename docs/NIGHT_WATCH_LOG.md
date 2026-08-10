@@ -156,3 +156,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-gbd.32` SnapshotAdapter/Envelope CERTIFIED_FULL_ENV; 100-step fake replay; identity fail-before-mutate; SM rom_smoke single-lane.
 - Next free capacity: `rr-gbd.34` branch-rollout batches over certified snapshots.
 
+### 2026-08-09T22:05 CDT — zelda KEY-RIGHT 0x62 pure dual-green
+- **CLOSED** `rr-2ysf`: 0x50 dead-end; Stepladder path is KEY-RIGHT 0x61→0x62.
+- Pure 2/2 clear_50 / key_right_62 / clear_62. Next tip **rr-7r24** maze+compass+ladder.
+
