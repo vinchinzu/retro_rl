@@ -24,6 +24,13 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
   --out recordings/run_spring_month.json \
   --save-end-state Y1_Summer_D1_Morning
 
+# Power-on continuous (rr-5in): D1 handoff auto + multi-day
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --until-day 2 \
+  --out recordings/power_on_d1_handoff_d2.json
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --end-of-spring \
+  --out recordings/power_on_spring_to_summer.json
+# --no-d1-handoff disables auto town talks+shed after power-on
+
 # Harvest + ship + post-5pm wallet credit (rr-53g)
 HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
   --state Y1_Day09_Harvest_Mode_Start \

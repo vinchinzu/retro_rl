@@ -5,19 +5,19 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | **M3** (calendar multi-day); crop economy still short of M4 domain |
-| Best verified result | Gate A multi-day Day09: harvest 24 + plant 6 + wallet **$1260→$3180** Clean; calendar spring month (29 overnights) still calendar-only from Inside_House |
-| Last verification | 2026-08-09 (rr-y8n Gate A); power-on bootstrap 2026-08-01 |
+| Best verified result | Gate A multi-day Day09: harvest 24 + plant 6 + wallet **$1260→$3180** Clean; power-on→D2 handoff+shed Clean (rr-5in partial) |
+| Last verification | 2026-08-09 (rr-5in power-on D2; rr-y8n Gate A) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 | Field | Value |
 |-------|-------|
-| Status | **Gate A economy closed** (multi-day harvest income); full Inside_House→Summer income still open |
+| Status | **Gate A economy closed**; power-on→D2 continuous Clean; full power-on→Summer income still open |
 | Integration | `HarvestMoon-Snes` |
 | ROM | `roms/Harvest Moon.sfc` via `retro_setup` (SHA1 gate) |
-| Start contract | Clean power-on → new diary → Spring D1 07:00 town gate; M3 soak remains a separate D2 fixture run |
+| Start contract | Clean power-on → new diary → Spring D1 07:00 town gate; multi-day via `--power-on` auto D1 handoff |
 | Completion contract | Campaign (multi-year farm / marriage / ending) — TBD |
-| Evidence | `recordings/run_spring_gate_a_day09.json` (Gate A); `recordings/harvest_ship_5pm_money.json` (rr-53g); calendar `recordings/run_spring_month.json` |
+| Evidence | `recordings/power_on_d1_handoff_d2.json` (rr-5in D2); `recordings/run_spring_gate_a_day09.json` (Gate A); `recordings/rr_5in_residual.json` |
 
 ## Done
 
@@ -147,6 +147,22 @@ Test crop fixtures (for growth / ship work):
    - Evidence: `recordings/harvest_ship_5pm_money.json` journal (`money_rose_after_5pm_window`)
    - ROM: wallet `AddMoney` is overnight after 5pm scene — not instant at bin or cutscene
    - Helpers: `harvest.core.shipping_credit`; day-plan phase journal records `shipped_count`
+6b. **Power-on continuous Spring→Summer with income (rr-5in)** — **PARTIAL 2026-08-09 night**:
+   ```bash
+   HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --until-day 2 \
+     --out recordings/power_on_d1_handoff_d2.json
+   # Full claim (still RED residual):
+   HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --end-of-spring \
+     --out recordings/power_on_spring_to_summer.json
+   ```
+   - **GREEN:** power-on → TownDay1Handoff (peak talks + truck + outdoor dog intro + shed
+     grass+can, `house_size=0`) → D2 farm; `mid_run_state_loads=0`, money $300
+   - **Wired:** `run_to_day2 --power-on` auto-runs D1 handoff before multi-day
+   - **RED pins:** (1) first full-spring attempt sleep miss at bed (70,86) D7 after 5
+     overnights; (2) re-run hung on `ENSURE_CROP_SEEDS` multi_nav 1-waypoint S0D4 ~11:02
+     after seed spend ($100). Residual: `recordings/rr_5in_residual.json`
+   - Child beads: `rr-6byj` (ENSURE_CROP_SEEDS hang), `rr-m0wq` (sleep D7); empty-can
+     natural refill still under `rr-3q27` / parent `rr-20w`
 6. ~~End-of-spring / continuous soak with **money > 100** + harvest phases (rr-y8n / Gate A)~~ — **CLOSED 2026-08-09 night** Clean multi-day successor:
    ```bash
    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \

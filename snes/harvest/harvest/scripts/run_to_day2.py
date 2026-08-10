@@ -43,6 +43,7 @@ from harvest.planner.day_plan import DayPlanTask, MultiDayPlannerTask, PHASE_SEQ
 from harvest.runtime.power_on import PowerOnStartTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.town_day1_handoff import TownDay1HandoffTask
 
 
 def _configure_headless() -> None:
@@ -168,6 +169,16 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "Boot with no save state, create a new diary, and hand off from "
             "the controllable Spring day-1 opening. Overrides --state."
+        ),
+    )
+    p.add_argument(
+        "--d1-handoff",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "After power-on (or any Spring D1 town start), run TownDay1Handoff "
+            "(talks+truck+shed+sleep→D2) before multi-day. Default: on for "
+            "--power-on, off otherwise. Use --no-d1-handoff to disable."
         ),
     )
     p.add_argument(
@@ -582,12 +593,122 @@ def main() -> int:
         start_day = start_fields["day"]
         start_key = (start_season, start_day)
 
+        # Gate B full / rr-5in: power-on lands Spring D1 town; multi-day alone
+        # cannot do six talks + truck + shed + sleep. Run TownDay1Handoff first.
+        if args.d1_handoff is None:
+            do_d1_handoff = bool(
+                args.power_on and start_season == 0 and start_day == 1
+            )
+        else:
+            do_d1_handoff = bool(args.d1_handoff)
+
+        d1_handoff_report: dict[str, object] | None = None
+        d1_handoff_frames = 0
+        if do_d1_handoff and not args.day_plan:
+            handoff = TownDay1HandoffTask(
+                include_sleep=True,
+                pick_starter_tools=True,
+                # auto: house_size==0 → require grass+can (power-on Gate B)
+                require_starter_tools=None,
+            )
+            handoff.reset(world)
+            print(
+                "[RUN] D1 handoff: talks + truck + outdoor intro + shed + sleep → D2",
+                flush=True,
+            )
+            handoff_start = frames
+            handoff_budget = min(int(handoff.timeout), max(30_000, args.max_frames // 3))
+            while frames - handoff_start < handoff_budget:
+                world = _world(env, frames)
+                hr = handoff.step(world)
+                if hr.status == TaskStatus.SUCCESS:
+                    d1_handoff_report = handoff.summary(world)
+                    d1_handoff_report["status"] = "success"
+                    d1_handoff_frames = frames - handoff_start
+                    print(
+                        f"[RUN] D1 handoff OK after {d1_handoff_frames} frames: "
+                        f"S{d1_handoff_report.get('season')}D{d1_handoff_report.get('day')} "
+                        f"grass={d1_handoff_report.get('has_grass_seeds')} "
+                        f"can={d1_handoff_report.get('has_watering_can')}",
+                        flush=True,
+                    )
+                    break
+                if hr.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                    d1_handoff_report = handoff.summary(world)
+                    d1_handoff_report["status"] = hr.status.value
+                    d1_handoff_report["failure"] = hr.reason or hr.status.value
+                    d1_handoff_frames = frames - handoff_start
+                    report = {
+                        "state": None if args.power_on else args.state,
+                        "power_on": power_on_report,
+                        "d1_handoff": d1_handoff_report,
+                        "d1_handoff_frames": d1_handoff_frames,
+                        "boot_frames": boot_frames,
+                        "success": False,
+                        "reason": f"d1_handoff: {hr.reason or hr.status.value}",
+                        "mid_run_state_load": False,
+                        "clean_run": {
+                            "intervention_class": "Clean",
+                            "initial_state_loads": 0 if args.power_on else 1,
+                            "mid_run_state_loads": 0,
+                            "ram_writes": 0,
+                            "infinite_stamina": False,
+                            "source_state": str(source_state) if source_state else None,
+                            "source_state_sha256": source_state_sha256,
+                        },
+                    }
+                    args.out.parent.mkdir(parents=True, exist_ok=True)
+                    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+                    print(json.dumps(report, indent=2), flush=True)
+                    return 2
+                action = hr.action.action if hr.action is not None else make_action()
+                step = env.step(action)
+                if video is not None:
+                    video.write(step[0])
+                frames += 1
+            else:
+                world = _world(env, frames)
+                d1_handoff_report = handoff.summary(world)
+                d1_handoff_report["status"] = "failure"
+                d1_handoff_report["failure"] = "d1 handoff frame budget exhausted"
+                d1_handoff_frames = frames - handoff_start
+                report = {
+                    "state": None if args.power_on else args.state,
+                    "power_on": power_on_report,
+                    "d1_handoff": d1_handoff_report,
+                    "d1_handoff_frames": d1_handoff_frames,
+                    "boot_frames": boot_frames,
+                    "success": False,
+                    "reason": "d1 handoff frame budget exhausted",
+                    "mid_run_state_load": False,
+                    "clean_run": {
+                        "intervention_class": "Clean",
+                        "initial_state_loads": 0 if args.power_on else 1,
+                        "mid_run_state_loads": 0,
+                        "ram_writes": 0,
+                        "infinite_stamina": False,
+                        "source_state": str(source_state) if source_state else None,
+                        "source_state_sha256": source_state_sha256,
+                    },
+                }
+                args.out.parent.mkdir(parents=True, exist_ok=True)
+                args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+                print(json.dumps(report, indent=2), flush=True)
+                return 2
+
+            # Re-sample date after D1→D2 so multi-day plan builds from D2 morning.
+            world = _world(env, frames)
+            # Keep start_key as power-on D1 for continuous claim goal checks;
+            # multi-day internal date is live from RAM on reset.
+
         task = _build_task(args, start_season)
         task.reset(world)
 
         plan_label = args.day_plan or (
             "end_of_spring" if args.end_of_spring else "auto_multi_day"
         )
+        if do_d1_handoff:
+            plan_label = f"d1_handoff+{plan_label}"
         print(
             f"[RUN] state={'power_on' if args.power_on else args.state} plan={plan_label} "
             f"start=S{start_season}D{start_day} "
@@ -598,8 +719,12 @@ def main() -> int:
 
         reason = "budget"
         terminal = False
-        last_logged_day = start_key
+        # Multi-day budget is independent of handoff frames already spent.
         planner_start_frame = frames
+        last_logged_day = (
+            int(read_ram_value(world.ram, "season")),
+            int(read_ram_value(world.ram, "day")),
+        )
         while frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
             result = task.step(world)
@@ -709,9 +834,17 @@ def main() -> int:
         # Crop keep-alive evidence (rr-3v9): only valid on farm metatile maps.
         crop_survival = _crop_survival_report(world.ram)
 
+        js = _summarize_journal(journal)
+        final_money = end_fields.get("money")
+        try:
+            money_ok = final_money is not None and int(final_money) > 100
+        except Exception:
+            money_ok = False
         report = {
             "state": None if args.power_on else args.state,
             "power_on": power_on_report,
+            "d1_handoff": d1_handoff_report,
+            "d1_handoff_frames": d1_handoff_frames,
             "boot_frames": boot_frames,
             "planner_frames": frames - planner_start_frame,
             "day_plan": plan_label,
@@ -728,11 +861,18 @@ def main() -> int:
             "days_completed": days_completed,
             "day_failures": list(getattr(task, "day_failures", ()) or ()),
             "day_journal": journal,
-            "journal_summary": _summarize_journal(journal),
+            "journal_summary": js,
             "crop_survival": crop_survival,
             "success": success,
             "advanced": advanced,
             "goal_reached": goal,
+            "money_gt_100": bool(money_ok),
+            "gate_b_full_ok": bool(
+                success
+                and args.power_on
+                and money_ok
+                and end_key > (0, 30)
+            ),
             "reason": ("goal reached" if success else reason),
             "terminal": terminal,
             "mid_run_state_load": False,
