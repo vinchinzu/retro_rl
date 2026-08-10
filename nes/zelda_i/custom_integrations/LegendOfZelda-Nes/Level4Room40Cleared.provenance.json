@@ -1,0 +1,96 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T04:17:35.862141+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-q8eq",
+    "intervention_class": "clean",
+    "segment": "l4_key_40",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "key_40": {
+        "clear": {
+          "clear_signal_seen": false,
+          "combat_frames": 3247,
+          "frames": 3247,
+          "initial_inventory": 0,
+          "last_live_enemies": 1,
+          "max_live_enemies": 6,
+          "notes": [],
+          "phase": "FIGHT",
+          "spec_id": "level4_room40_zols_key",
+          "success": false,
+          "tuning": {
+            "attack_phase": 4,
+            "engage_attack_hold": 3,
+            "engage_attack_period": 6,
+            "engage_distance": 56,
+            "engage_dominant_axis": false,
+            "patrol_attack_hold": 3,
+            "patrol_attack_period": 10
+          }
+        },
+        "frames": 3344,
+        "hold": 6,
+        "keys_before": 0,
+        "maze_path": [
+          "UP",
+          "UP",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "RIGHT",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT"
+        ],
+        "notes": [
+          "room_cleared",
+          "key_collected"
+        ],
+        "path_index": 16,
+        "phase": "DONE",
+        "pickup_xy": [
+          120,
+          117
+        ],
+        "segment": "level4_key_0x40",
+        "success": true
+      }
+    },
+    "final": {
+      "bombs": 8,
+      "compass": 12,
+      "compass_l4": true,
+      "cur_opened_doors": 0,
+      "health": 109,
+      "keys": 1,
+      "level": 4,
+      "mode": 5,
+      "room": 64,
+      "room_all_dead": 98,
+      "room_hex": "0x40",
+      "room_item_id": 25,
+      "x": 136,
+      "y": 125
+    },
+    "frames": 3345,
+    "ok": true,
+    "segment": "key_40"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40.state",
+  "source_state_sha256": "72ea7d2a6ef551b43106bca2bc8e179269bd971371940abb8d9f472fd378c6b7",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room40Cleared.state",
+  "state_sha256": "9a214fb0145a4111234cfdf2218fbf79bc464bd9d316841ab27766aa3b605b3b"
+}
