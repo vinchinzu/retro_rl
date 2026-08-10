@@ -288,3 +288,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Parent **`rr-5lu` remains open**. No pure Stepladder segment yet. No push.
 - Evidence: `nes/zelda_i/recordings/l4_o0nn_{focus,prod,bombs,keypoke}.json`.
 
+### 2026-08-09T23:15 CDT — zelda post-compass closed component
+- `rr-o0nn` open: live component {0x71,0x61,0x51,0x50,0x62} sealed; ADDR_LADDER=0.
+- Child `rr-xc3x`: expand past closed set toward Stepladder (TAS/FM2 room-id leads OK).
+
