@@ -1329,3 +1329,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Period WJ dual end (171,687)p25 f11802 exact; peak ~y420; Hellway still RED.
 - Bead rr-av5s stays in_progress PARTIAL. No push.
 - Next: y420→top door y180 → dual green Hellway + export.
+
+### 2026-08-10T06:50 CDT — SM upper WJ dual y687 (rr-av5s PARTIAL)
+- Commit `9caf235`: period WJ dual end (171,687)p25 f11802; peak ~y420.
+- Hellway still RED. Re-spawned top-door→Hellway manager.
+- Do not thrash after y687 pin; do not force-unmorph p81.
+
