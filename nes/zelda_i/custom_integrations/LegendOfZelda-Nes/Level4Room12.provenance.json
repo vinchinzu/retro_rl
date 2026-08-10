@@ -1,0 +1,86 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T07:49:39.164253+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "segment": "l4_room_12",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "doors": 2,
+      "event": "ckpt",
+      "keys": 0,
+      "map": 8,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 0,
+          "name": "vire",
+          "slot": 1,
+          "type": 18,
+          "x": 160,
+          "y": 125
+        },
+        {
+          "hp": 0,
+          "name": "vire",
+          "slot": 2,
+          "type": 18,
+          "x": 160,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "name": "vire",
+          "slot": 3,
+          "type": 18,
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "name": "vire",
+          "slot": 4,
+          "type": 18,
+          "x": 192,
+          "y": 173
+        },
+        {
+          "hp": 0,
+          "name": "vire",
+          "slot": 5,
+          "type": 18,
+          "x": 208,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "name": "unknown_object_0x68",
+          "slot": 11,
+          "type": 104,
+          "x": 96,
+          "y": 144
+        }
+      ],
+      "rad": 0,
+      "rin": "no_inventory_reward_observed",
+      "room_item": 3,
+      "sc": "0x12",
+      "tf": 4,
+      "xy": [
+        32,
+        141
+      ]
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fea8e-c663-7870-99a9-609011dddceb/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room11.state",
+  "source_state_sha256": "21b64475b3718338d4819650d5dff59c2cd16e02779bd700276f4b5f81792d8f",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fea8e-c663-7870-99a9-609011dddceb/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room12.state",
+  "state_sha256": "142d51df795e1925557b8173b0bb15af4da69c07a967433c1608f8c03ef0561d"
+}
