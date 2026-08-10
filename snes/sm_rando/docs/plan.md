@@ -21,7 +21,8 @@ world — then transfer patterns to SMZ3.
 2. **Boot (M1)** — power-on vanilla ROM → FirstPlay (Ceres). *(done; patched seeds next)*
 3. **Logic grounding** — expand graph; probe transitions under controlled inventories.
 4. **Skill bind** — each edge owns a vanilla (or synthesized) skill policy.
-5. **Seed-robust early tip** — e.g. ship → morph → bombs across T seeds.
+5. **Seed-robust early tip** — ship → morph across T fixture seeds via
+   `SeedCampaignRunner` dry-run *(done 2026-08-09; live/patched next)*.
 6. **Extend toward SMZ3** — shared L4 planner + seed-robust harness.
 
 ## Play spine (speed + fun)
