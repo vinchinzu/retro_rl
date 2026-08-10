@@ -96,23 +96,40 @@
 | Gap math | Screen5 @ prog 1280; last solid 984 → **~296px** open. One jump covers ~75–90px only |
 | False saves | Pruned `AirGoblin*`, `AirPast*`, `AirHigh*`, `AirFurtherLeft*` probe states |
 
-### Swept (2026-08-09 + 08-10 overnight)
+### Map-match (2026-08-10 night4)
 
-- Platform edge map; Goblin 5px + spike-cycle + top-down phase hops; ladder UP grids
+| Progress | Visual / objects | Wiki section guess |
+|----------|------------------|--------------------|
+| 0–200 | Long platforms, type2 early, then Pipi35 | Stage start / pre-goblin |
+| 514 AirScreen2 | y52 tile + type36 goblin + Pipi | Goblin chain (A / late) |
+| 629 | y68 short stripe platform between goblins | Still goblin hops |
+| 689–984 | y84 stripe platforms + goblin + Pipi | **Not** Matasaburo E (no wind, no fan robots) |
+| >984 pit | Open sky; objects stay 1/35/36 only | Suspected LL (B) sky — **LL never spawns** |
+
+Object types seen Level1→death hybrid: **{1, 2, 35, 36}** only (2 early-only). No Kaminari Goro / cloud type.
+
+### Swept (2026-08-09 + 08-10 overnight ×2)
+
+- Platform edge map; Goblin 5px + phase-cycle + top-down phase hops; ladder UP grids
 - Pipi/edge waits; shoot-spam; damage-boost; high-path period variants from AirScreen2
 - Right-edge camp 400f + idle 600f spawn watch (types stay 1/35/36 only)
+- **Night4 (LL fork tip):** high forks before y84 descent; descent interrupts;
+  AirFan gap micro-hops (186, 0 land >984); edge void shoot 500f; slow late waits;
+  Level1 hybrid→screen2 death ~1029; WRAM novelty after prog800 — **no new 0x400 types**
 - No camera ≥ 5; no new grounded s4/s5 checkpoint
-- Evidence: `recordings/air_post4_night3/` (phase shots, envelopes, JSON summaries)
+- Evidence: `recordings/air_post4_night3/`, `recordings/air_post4_night4/` (+ RED_PIN.txt)
 
 ## Not done
 
-- Past screen 4 / boss door (**intermediate solid missing** for ~296px gap; Lightning Lord cloud not observed)
+- Past screen 4 / boss door (**intermediate solid missing** for ~296px gap; Lightning Lord cloud **never observed** under Clean play)
 - Full Robot Master stage clear (Air Man boss door / fight)
 - Natural-entry M4 from power-on through screen-2+
 - Stage select other masters / weapon routing
 
 ## Next
 
-1. **Lightning Lord / cloud object** — identify spawn trigger earlier in route (may need fork before y=84 chain); watch object types while alive past prog ~800 with alternate timings.
-2. Map-match: which stage segment is prog~950 (Pipi C vs Matasaburo E vs drop D).
+1. **ROM / TAS spawn path** — Air Man stage enemy placement data or human TAS compare
+   at prog≥1000 (why LL/cloud never enter object table 0x400).
+2. Nametable/tile platforms past 984 that may load only under specific scroll/camera
+   state (not more pure-RIGHT / goblin-solid grids).
 3. Only after grounded s4/s5: freeze recipe → AirScreen2→target 5 (3/3) → boss door.

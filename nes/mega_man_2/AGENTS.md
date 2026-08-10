@@ -29,8 +29,9 @@ uv run pytest nes/mega_man_2/tests -q
 
 Past screen 4 from `AirFanPlatform` island (prog 937–984) toward boss door.
 Gap to scr5 (~1280) is ~296px; pure jump only ~1065–1071. Type36 Goblin is
-**not** solid (damage enemy). Need intermediate (Lightning Lord cloud / other).
-Then natural-entry (M4).
+**not** solid (damage enemy). Lightning Lord/cloud **never observed** (object
+types only 1/2/35/36 through death; night3+night4 forks). Need ROM/TAS spawn
+path or tilemap intermediate — not more goblin/pure-RIGHT grids. Then M4.
 
 ## Norms
 
