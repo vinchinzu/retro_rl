@@ -1007,6 +1007,10 @@ class CropWaterTask(Task):
     _refill_exhausted: bool = field(default=False, init=False)  # no more refill sources available
     _fence_subtask: Optional[object] = field(default=None, init=False)
     _fence_open_attempts: int = field(default=0, init=False)
+    _refill_nav_failures: int = field(default=0, init=False)
+    _refill_multihop: bool = field(default=False, init=False)
+    _refill_best_dist: int = field(default=999, init=False)
+    _pending_multihop_after_drop: bool = field(default=False, init=False)
 
     # Water verification
     _pre_water_level: int = field(default=-1, init=False)  # water level before watering action
@@ -1087,6 +1091,9 @@ class CropWaterTask(Task):
         self._bad_refill_tiles = set()
         self._refill_exhausted = False
         self._refill_nav_failures = 0
+        self._refill_multihop = False
+        self._refill_best_dist = 999
+        self._pending_multihop_after_drop = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
         self._pond_staged = False
@@ -1142,6 +1149,9 @@ class CropWaterTask(Task):
         self._bad_refill_tiles = set()
         self._refill_exhausted = False
         self._refill_nav_failures = 0
+        self._refill_multihop = False
+        self._refill_best_dist = 999
+        self._pending_multihop_after_drop = False
         self._fence_subtask = None
         self._fence_open_attempts = 0
         self._pond_staged = False
@@ -1985,7 +1995,22 @@ class CropWaterTask(Task):
             )
             return
 
-        # 3) No preferred edge reachable — open y=31 corridor for main pond.
+        # 2b) Multi-hop preferred edges (esp. north F9) when full/exact-hop
+        # reachability fails under viewport. Dry fixture has F9 at ~(26,12)
+        # but full BFS from west pocket is None — without this we burn the day
+        # on y=31 fence toss that cannot south-transit empty-handed.
+        if self._commit_multihop_preferred_edge(ram, current_lvl):
+            return
+
+        # 3) Corridor gap already open but full BFS still fails under viewport
+        # staleness — multi-hop to F0 *before* spending another fence-open.
+        # ROM trap: after local_drop gap at ~(25,30), preferred edges and full
+        # pond BFS are still false; a second FenceClearLoopTask burns the day.
+        if self._pond_corridor_gap_open(ram) or self._fence_open_attempts > 0:
+            if self._commit_multihop_main_pond(ram, current_lvl):
+                return
+
+        # 4) Wall still sealed — open y=31 corridor for main pond.
         if blocking and corridor_needs_fence_open(
             player,
             _full_path,
@@ -1997,7 +2022,7 @@ class CropWaterTask(Task):
         elif blocking and self._try_open_pond_access(ram, list(blocking)):
             return
 
-        # 4) Exhaust — nothing preferred pathable and fence open declined.
+        # 5) Exhaust — nothing preferred pathable and fence open declined.
         self._refill_exhausted = True
         remaining = len(self._water_steps) - self._water_index
         print(
@@ -2010,6 +2035,386 @@ class CropWaterTask(Task):
         self._water_index = len(self._water_steps)
         self._advance_water_step(ram)
 
+    def _player_carrying(self, ram: np.ndarray) -> bool:
+        """True when player is carrying a liftable (fence/bush/rock)."""
+        try:
+            from harvest.tasks.fence_flow import ACTION_CARRYING_BIT, ADDR_PLAYER_STATE
+        except Exception:
+            ACTION_CARRYING_BIT = 0x02
+            ADDR_PLAYER_STATE = 0xD2
+        if ADDR_PLAYER_STATE >= len(ram):
+            return False
+        return bool(int(ram[ADDR_PLAYER_STATE]) & ACTION_CARRYING_BIT)
+
+    def _queue_local_drop(self) -> None:
+        """Queue a multi-face local drop so multi-hop can walk after fence open."""
+        self._action_queue.clear()
+        for face in ("down", "left", "right", "up"):
+            self._action_queue.extend([make_action(**{face: True}) for _ in range(6)])
+            self._action_queue.extend(
+                [make_action(**{face: True, "a": True}) for _ in range(12)]
+            )
+            self._action_queue.extend([make_action() for _ in range(8)])
+        print("[CROP] Queued local drop (carrying blocks pond multi-hop)")
+
+    def _ensure_hands_empty_for_refill(self, ram: np.ndarray) -> bool:
+        """If carrying, queue drop and return True (caller should wait)."""
+        if not self._player_carrying(ram):
+            return False
+        if self._action_queue:
+            return True
+        self._queue_local_drop()
+        return True
+
+    def _pond_corridor_gap_open(self, ram: np.ndarray) -> bool:
+        """True when the y=31 wall has a usable gap (not sealed, not unknown).
+
+        Partial wall (some posts remain, ≥1 missing) is the common post-
+        FenceClearLoopTask state. A completely empty fence row is only treated
+        as open after we actually ran fence-open — otherwise blank unit maps
+        with 0 fences would falsely multi-hop-commit to F0 stands.
+        """
+        try:
+            from harvest.maps.map_config import FARM_POND_ACCESS_FENCE_X_RANGE
+
+            x0, x1 = FARM_POND_ACCESS_FENCE_X_RANGE
+            full = (x1 - x0) + 1
+        except Exception:
+            full = 19
+        n = len(pond_access_blocking_fences(ram))
+        if 0 < n < full:
+            return True
+        if n == 0 and getattr(self, "_fence_open_attempts", 0) > 0:
+            return True
+        return False
+
+    def _commit_multihop_preferred_edge(
+        self,
+        ram: np.ndarray,
+        current_lvl: int,
+    ) -> bool:
+        """Multi-hop to a preferred fill edge when exact path is viewport-false.
+
+        Prioritize north-band F9 (and other preferred water north of y=25) so
+        empty-can refill from the west plant pocket does not require the y=31
+        fence corridor. Returns True if a stand was committed.
+        """
+        player = self._navigator.current_tile
+        edges = find_pond_edges(
+            ram,
+            self.refill_bounds or self.bounds,
+            water_tiles=REFILL_PREFERRED_WATER_TILES,
+            exclude_bad_stands=True,
+        )
+        if self._bad_refill_tiles:
+            edges = [(t, f) for t, f in edges if t not in self._bad_refill_tiles]
+        edges = [(t, f) for t, f in edges if not is_bad_refill_stand(t)]
+        edges = [
+            (t, f)
+            for t, f in edges
+            if edge_water_tile_id(ram, t, f) in REFILL_PREFERRED_WATER_TILES
+        ]
+        if not edges:
+            return False
+
+        # Prefer F9/near-pocket north stands (x≤35, y≤20) before distant FA/FB.
+        def sort_key(edge: Tuple[Tuple[int, int], str]) -> Tuple[int, int, int]:
+            tile, face = edge
+            wid = edge_water_tile_id(ram, tile, face)
+            # 0=F9 near, 1=other north preferred, 2=south FC, 3=far east FA/FB
+            if wid == 0xF9 or (tile[1] <= 20 and tile[0] <= 35):
+                rank = 0
+            elif tile[1] <= 25:
+                rank = 1
+            elif tile[1] >= 45:
+                rank = 2
+            else:
+                rank = 3
+            dist = abs(tile[0] - player[0]) + abs(tile[1] - player[1])
+            return (rank, dist, wid if wid >= 0 else 999)
+
+        edges = sorted(edges, key=sort_key)
+        hop_budget = VIEWPORT_HOP_TILES + 5
+        # Prefer committing even without hop proof for near F9 — densify will
+        # close; hop oracle is unreliable from the plant soft-block pocket.
+        for tile, face in edges[:24]:
+            if is_main_pond_stand(tile):
+                continue
+            wid = edge_water_tile_id(ram, tile, face)
+            full = self._pathfinder.find_path(ram, player, tile)
+            if full is not None:
+                self._commit_refill_nav(
+                    ram,
+                    tile,
+                    face,
+                    current_lvl,
+                    source="preferred_edge_multihop",
+                    water_id=wid,
+                    multihop=len(full) > VIEWPORT_HOP_TILES,
+                )
+                return True
+            hop = self._pathfinder.find_path(
+                ram, player, tile, max_steps=hop_budget
+            )
+            hop_ok = False
+            if hop is not None:
+                end = hop[-1] if hop else player
+                hop_ok = tile_dist(end, tile) < tile_dist(player, tile) or end == tile
+            # Near F9: commit without hop proof (plant-pocket soft-block makes
+            # hop oracle return west/south nonsense).
+            near_f9 = wid == 0xF9 or (tile[1] <= 16 and tile[0] <= 30)
+            if hop_ok or near_f9:
+                print(
+                    f"[CROP] Multi-hop preferred edge ({tile[0]},{tile[1]}) "
+                    f"face={face} water=0x{wid:02X} hop_ok={hop_ok}"
+                )
+                self._commit_refill_nav(
+                    ram,
+                    tile,
+                    face,
+                    current_lvl,
+                    source="preferred_edge_multihop",
+                    water_id=wid,
+                    multihop=True,
+                )
+                return True
+        return False
+
+    def _commit_multihop_main_pond(
+        self,
+        ram: np.ndarray,
+        current_lvl: int,
+    ) -> bool:
+        """Commit to a main-pond F0 stand for multi-hop navigate after gap open.
+
+        True full-path reachability is often false under live viewport even
+        when the y=31 wall has a gap — partial hops + densified north-lip
+        waypoints close the distance. Prefer north-lip stands when the player
+        is still on y≤30 (post-fence-open stall ~tile 25,30).
+        """
+        player = self._navigator.current_tile
+        try:
+            from harvest.maps.map_config import farm_pond_refill_stands
+            stands = list(farm_pond_refill_stands())
+        except Exception:
+            stands = [((32, 34), "up"), ((33, 30), "down"), ((32, 30), "down")]
+
+        candidates = [
+            (s, f)
+            for s, f in stands
+            if s not in self._bad_refill_tiles and not is_bad_refill_stand(s)
+        ]
+        if not candidates:
+            candidates = [(s, f) for s, f in stands if not is_bad_refill_stand(s)]
+        if not candidates:
+            return False
+
+        # Drop stands that are non-walkable on the live map (dry fixture often
+        # has 0x05 fence residue on north-lip (32,30)/(34,30)).
+        walkable_cands: List[Tuple[Tuple[int, int], str]] = []
+        for s, f in candidates:
+            tid = int(get_tile_at(ram, s[0], s[1]))
+            if tid in WALKABLE_TILES or tid in (0xA0, 0xA1, 0xA8, 0x01, 0x02, 0x07):
+                walkable_cands.append((s, f))
+            elif s == player:
+                walkable_cands.append((s, f))
+        if walkable_cands:
+            candidates = walkable_cands
+
+        # After gap open: prefer south-lip stands (32/33,34). North-lip crawl
+        # soft-blocks at ~(25,30) (can't walk north around 0xFF).
+        south = [(s, f) for s, f in candidates if s[1] >= 33]
+        if south:
+            candidates = south
+
+        candidates.sort(
+            key=lambda sf: abs(sf[0][0] - player[0]) + abs(sf[0][1] - player[1])
+        )
+        stand, face = candidates[0]
+        wid = edge_water_tile_id(ram, stand, face)
+        # Stale viewport often returns 0 / dirt far from pond; still commit.
+        if wid in REFILL_NONFILL_WATER_TILES:
+            for alt_stand, alt_face in candidates[1:]:
+                alt_wid = edge_water_tile_id(ram, alt_stand, alt_face)
+                if alt_wid not in REFILL_NONFILL_WATER_TILES:
+                    stand, face, wid = alt_stand, alt_face, alt_wid
+                    break
+
+        water_id = wid if wid in REFILL_PREFERRED_WATER_TILES else 0xF0
+        self._commit_refill_nav(
+            ram,
+            stand,
+            face,
+            current_lvl,
+            source="main_pond_multihop",
+            water_id=water_id,
+            multihop=True,
+        )
+        return True
+
+    def _refill_hop_goal(
+        self,
+        ram: np.ndarray,
+        player: Tuple[int, int],
+        ultimate: Tuple[int, int],
+    ) -> Tuple[int, int]:
+        """Densify multi-hop refill: nearest corridor waypoint that closes dist.
+
+        Without intermediates, hop-toward F0 from ~(25,30) stalls when the
+        next live walkable cell is not strictly closer in raw BFS (viewport
+        dirt IDs / fence residue). Named north-lip chain keeps progress.
+
+        Monotonic: never pick a waypoint farther from the ultimate stand than
+        the best distance already achieved — that was the (24,30)→(15,30)
+        thrash on the dry fixture.
+        """
+        dist_u = tile_dist(player, ultimate)
+        hop_budget = VIEWPORT_HOP_TILES + 3
+        best_seen = getattr(self, "_refill_best_dist", dist_u)
+
+        # Only accept the ultimate when a *true* short path exists.
+        full = self._pathfinder.find_path(ram, player, ultimate)
+        if full is not None and len(full) <= hop_budget:
+            return ultimate
+
+        try:
+            from harvest.maps.map_config import (
+                FARM_POND_MULTIHOP_WAYPOINTS,
+                FARM_POND_POST_GAP_CORRIDOR,
+            )
+            post_gap = FARM_POND_POST_GAP_CORRIDOR
+            chain = FARM_POND_MULTIHOP_WAYPOINTS
+        except Exception:
+            post_gap = (
+                (13, 32),
+                (16, 32),
+                (20, 32),
+                (24, 32),
+                (28, 32),
+                (32, 34),
+            )
+            chain = post_gap
+
+        # ROM trap: multi-hop to main-pond south lip from north of y=31.
+        # Greedy east along y=30 soft-blocks at ~(25,30). Force post-gap
+        # south corridor only when the ultimate stand is the pond (y≥30),
+        # not when multi-hopping to north F9.
+        if player[1] <= 31 and ultimate[1] >= 30:
+            south_targets = [wp for wp in post_gap if wp[1] >= 32]
+            ordered = sorted(
+                south_targets,
+                key=lambda t: (
+                    0 if t[0] <= max(player[0] + 2, 16) else 1,
+                    tile_dist(player, t),
+                ),
+            )
+            for wp in ordered:
+                if wp == player:
+                    continue
+                d_to_wp = tile_dist(player, wp)
+                if d_to_wp > hop_budget + 4:
+                    continue
+                hop = self._pathfinder.find_path(
+                    ram, player, wp, max_steps=hop_budget + 4
+                )
+                if hop is None:
+                    continue
+                end = hop[-1] if hop else player
+                if end[1] >= 32 or tile_dist(end, wp) < d_to_wp:
+                    return wp
+            for wx in (20, 18, 16, 15, 14, 13, 12):
+                wp = (wx, min(player[1], 30))
+                if wp == player:
+                    continue
+                hop = self._pathfinder.find_path(
+                    ram, player, wp, max_steps=hop_budget
+                )
+                if hop is not None:
+                    return wp
+
+        # North F9 multi-hop: plant pocket soft-blocks pure-north/NW from
+        # ~(13,27). Must stage west (12,29) first — even if farther from F9 —
+        # then climb north on x≈12 and cut east to the spur.
+        if ultimate[1] <= 25:
+            # Escape plant soft-block only from the plant pocket interior
+            # (y≥27). Once on staging (12,28–29) climb north — do not thrash
+            # between staging tiles.
+            # Plant center is x≈13–15; x=12 is the west climb corridor — once
+            # there, only climb north (never re-stage south to y=29).
+            if player[1] >= 27 and 13 <= player[0] <= 16:
+                for wp in ((12, 29), (11, 28), (12, 28), (12, 27)):
+                    if wp == player:
+                        continue
+                    hop = self._pathfinder.find_path(
+                        ram, player, wp, max_steps=hop_budget + 2
+                    )
+                    if hop is not None:
+                        return wp
+            north_crumbs: List[Tuple[int, int]] = [
+                (12, 26),
+                (12, 24),
+                (12, 22),
+                (12, 20),
+                (12, 18),
+                (12, 16),
+                (14, 14),
+                (18, 13),
+                (20, 13),
+                (22, 13),
+                (player[0], max(ultimate[1], player[1] - 4)),
+                (min(ultimate[0], player[0] + 3), max(ultimate[1], player[1] - 3)),
+                (min(ultimate[0], player[0] + 5), ultimate[1] + 2),
+                (ultimate[0] - 1, ultimate[1]),
+                ultimate,
+            ]
+            for wp in north_crumbs:
+                if wp == player or wp[0] < 0 or wp[1] < 0:
+                    continue
+                hop = self._pathfinder.find_path(
+                    ram, player, wp, max_steps=hop_budget + 2
+                )
+                if hop is None:
+                    continue
+                end = hop[-1]
+                # Accept progress north or closer to F9.
+                if end[1] < player[1] or tile_dist(end, ultimate) < dist_u:
+                    return wp
+
+        # Default: next breadcrumb closer to ultimate (south corridor first).
+        best: Optional[Tuple[int, int]] = None
+        best_goal_dist = dist_u
+        best_wp_dist = 999
+        progress_cap = min(dist_u, best_seen + 1)
+        for wp in chain:
+            if wp == player:
+                continue
+            d_to_goal = tile_dist(wp, ultimate)
+            if d_to_goal >= progress_cap:
+                continue
+            d_to_wp = tile_dist(player, wp)
+            if d_to_wp > hop_budget or d_to_wp < 1:
+                continue
+            hop = self._pathfinder.find_path(
+                ram, player, wp, max_steps=hop_budget
+            )
+            if hop is None:
+                continue
+            end = hop[-1] if hop else player
+            if tile_dist(end, ultimate) >= dist_u:
+                continue
+            if (
+                best is None
+                or d_to_wp < best_wp_dist
+                or (d_to_wp == best_wp_dist and d_to_goal < best_goal_dist)
+            ):
+                best = wp
+                best_goal_dist = d_to_goal
+                best_wp_dist = d_to_wp
+
+        if best is not None:
+            return best
+        return ultimate
+
     def _commit_refill_nav(
         self,
         ram: np.ndarray,
@@ -2019,6 +2424,7 @@ class CropWaterTask(Task):
         *,
         source: str,
         water_id: int = 0xF0,
+        multihop: bool = False,
     ) -> None:
         """Begin navigate/act for a chosen refill stand."""
         player = self._navigator.current_tile
@@ -2034,11 +2440,14 @@ class CropWaterTask(Task):
         self._navigator.path = []
         self._steps_on_target = 0
         dist = abs(stand[0] - player[0]) + abs(stand[1] - player[1])
+        # Multi-hop when far or after fence-gap (viewport cannot full-BFS).
+        self._refill_multihop = bool(multihop) or dist > VIEWPORT_HOP_TILES
+        self._refill_best_dist = dist
         band = refill_stand_band(stand)
         print(
             f"[CROP] Refill at ({stand[0]},{stand[1]}) facing {face} "
             f"water=0x{water_id:02X} source={source} dist={dist} band={band} "
-            f"can={current_lvl}"
+            f"can={current_lvl} multihop={self._refill_multihop}"
         )
 
     def _pond_access_staging_tiles(self) -> Tuple[Tuple[int, int], ...]:
@@ -2143,6 +2552,8 @@ class CropWaterTask(Task):
         self._plot_phase = "open_pond"
         self._state = "fence_open"
         self._navigator.path = []
+        # Fence subtask must not inherit stage/water steps_on_target budget.
+        self._steps_on_target = 0
         return True
 
     def _handle_fence_open(self, world: WorldState) -> Optional[TaskResult]:
@@ -2159,14 +2570,33 @@ class CropWaterTask(Task):
             return result
         if status == TaskStatus.SUCCESS:
             cleared = getattr(task, "cleared_count", 0)
-            print(f"[CROP] Pond access open (cleared={cleared} fences); resuming refill")
+            print(f"[CROP] Pond access open (cleared={cleared} fences); multi-hop F0")
             self._fence_subtask = None
+            # Must drop carried fence post before multi-hop (carry soft-locks
+            # south-through-gap movement on the dry fixture).
+            if self._ensure_hands_empty_for_refill(world.ram):
+                self._pending_multihop_after_drop = True
+                self._plot_phase = "refill"
+                self._state = "navigate"
+                return None
+            lvl = self._water_level(world.ram)
+            if self._commit_multihop_main_pond(world.ram, lvl):
+                return None
             self._plot_phase = "water"
             self._start_refill(world.ram)
             return None
-        # Failure / blocked — try refill once more (maybe partial open) then give up.
+        # Failure / blocked — try multi-hop if gap partial, else full search.
         print(f"[CROP] Fence open failed: {result.reason}; retrying refill search")
         self._fence_subtask = None
+        if self._ensure_hands_empty_for_refill(world.ram):
+            self._pending_multihop_after_drop = True
+            self._plot_phase = "refill"
+            self._state = "navigate"
+            return None
+        lvl = self._water_level(world.ram)
+        if self._pond_corridor_gap_open(world.ram):
+            if self._commit_multihop_main_pond(world.ram, lvl):
+                return None
         self._plot_phase = "water"
         self._start_refill(world.ram)
         return None
@@ -2186,13 +2616,46 @@ class CropWaterTask(Task):
         """
         # Refill stands are often 15–25 tiles from west plots after fence open;
         # allow a longer hop so multi-hop can keep closing without false exhaust.
+        # Densify intermediate goals so hop-toward does not thrash at ~(25,30).
         hop = VIEWPORT_HOP_TILES + 3 if self._plot_phase == "refill" else VIEWPORT_HOP_TILES
-        return self._pathfinder.find_path(
+        nav_goal = goal
+        if self._plot_phase == "refill" and getattr(self, "_refill_multihop", False):
+            nav_goal = self._refill_hop_goal(ram, start, goal)
+            if nav_goal != goal:
+                print(
+                    f"[CROP] Refill densify hop {start} → {nav_goal} "
+                    f"(ultimate={goal})"
+                )
+        path = self._pathfinder.find_path(
             ram,
             start,
-            goal,
+            nav_goal,
             max_steps=hop,
         )
+        # Reject regressive truncated hops (long west-around routes).
+        if (
+            path
+            and self._plot_phase == "refill"
+            and getattr(self, "_refill_multihop", False)
+        ):
+            end = path[-1]
+            if tile_dist(end, goal) >= tile_dist(start, goal) and end != goal:
+                # Try an explicit densify target once more.
+                alt = self._refill_hop_goal(ram, start, goal)
+                if alt != nav_goal and alt != start:
+                    alt_path = self._pathfinder.find_path(
+                        ram, start, alt, max_steps=hop
+                    )
+                    if alt_path and tile_dist(alt_path[-1], goal) < tile_dist(
+                        start, goal
+                    ):
+                        print(
+                            f"[CROP] Refill reject regressive hop end={end}; "
+                            f"using densify {alt}"
+                        )
+                        return alt_path
+                return None
+        return path
 
     def _recover_refill_nav(self, ram: np.ndarray, *, reason: str) -> None:
         """Recover from mid-refill path loss without hard-exhausting once.
@@ -2223,17 +2686,66 @@ class CropWaterTask(Task):
                 self._state = "act"
                 self._navigator.path = []
                 self._steps_on_target = 0
+                self._refill_multihop = False
                 return
 
-        if self._refill_pond_tile is not None:
+        # Track multi-hop progress: if we closed distance, soft-retry without
+        # blacklisting the ultimate F0 stand (viewport hop thrash otherwise).
+        ultimate = self._refill_pond_tile or self._approach_tile
+        if ultimate is not None:
+            cur_dist = tile_dist(player, ultimate)
+            best = getattr(self, "_refill_best_dist", 999)
+            if cur_dist < best:
+                self._refill_best_dist = cur_dist
+                print(
+                    f"[CROP] Refill multi-hop progress dist {best}→{cur_dist} "
+                    f"at {player} ({reason}); repath"
+                )
+                self._state = "navigate"
+                self._navigator.path = []
+                self._navigator.stasis = 0
+                self._pathfinder.temp_blocked.clear()
+                return
+
+        # Multi-hop densify soft retry before burning a failure slot.
+        if getattr(self, "_refill_multihop", False) and ultimate is not None:
+            hop_goal = self._refill_hop_goal(ram, player, ultimate)
+            if hop_goal != ultimate and hop_goal != player:
+                path = self._pathfinder.find_path(
+                    ram,
+                    player,
+                    hop_goal,
+                    max_steps=VIEWPORT_HOP_TILES + 3,
+                )
+                if path:
+                    print(
+                        f"[CROP] Refill densify recover → {hop_goal} "
+                        f"from {player} ({reason})"
+                    )
+                    self._navigator.path = path
+                    self._navigator.stasis = 0
+                    self._state = "navigate"
+                    return
+
+        # Only blacklist non-progress failures; keep main pond stands longer.
+        if self._refill_pond_tile is not None and not is_main_pond_stand(
+            self._refill_pond_tile
+        ):
             self._bad_refill_tiles.add(self._refill_pond_tile)
+        elif self._refill_pond_tile is not None:
+            # Main pond: only blacklist after repeated no-progress stalls.
+            fails = getattr(self, "_refill_nav_failures", 0)
+            if fails >= 3:
+                self._bad_refill_tiles.add(self._refill_pond_tile)
+
         self._refill_nav_failures = getattr(self, "_refill_nav_failures", 0) + 1
-        if self._refill_nav_failures >= 5:
+        if self._refill_nav_failures >= 8:
             print(
                 f"[CROP] Refill nav failed {self._refill_nav_failures}x "
                 f"({reason}); exhausting"
             )
             self._refill_exhausted = True
+            self._refill_multihop = False
             self._plot_phase = "water"
             self._set_water_walkable()
             if self._water_index < len(self._water_steps):
@@ -2250,12 +2762,40 @@ class CropWaterTask(Task):
             return
 
         print(
-            f"[CROP] Refill repath {self._refill_nav_failures}/5 after {reason} "
-            f"(bad={self._refill_pond_tile})"
+            f"[CROP] Refill repath {self._refill_nav_failures}/8 after {reason} "
+            f"(stand={self._refill_pond_tile} pos={player})"
         )
+        # Prefer re-commit multi-hop to nearest remaining stand over full search
+        # which may re-enter fence-open when wall residue remains.
+        if self._pond_corridor_gap_open(ram) or self._fence_open_attempts > 0:
+            if self._commit_multihop_main_pond(ram, self._water_level(ram)):
+                return
         self._start_refill(ram)
 
     def _handle_navigate(self, ram: np.ndarray) -> Optional[TaskResult]:
+        # Finish local drop before multi-hop after fence open.
+        if getattr(self, "_pending_multihop_after_drop", False):
+            if self._player_carrying(ram):
+                if not self._action_queue:
+                    self._queue_local_drop()
+                return None  # step() drains queue
+            self._pending_multihop_after_drop = False
+            print("[CROP] Hands empty after drop; multi-hop F0")
+            if self._commit_multihop_main_pond(ram, self._water_level(ram)):
+                return None
+            self._plot_phase = "water"
+            self._start_refill(ram)
+            return None
+
+        # Mid-refill: if we somehow started carrying, drop before walking.
+        if (
+            self._plot_phase == "refill"
+            and self._player_carrying(ram)
+            and not self._action_queue
+        ):
+            self._queue_local_drop()
+            return None
+
         if self._target_tile is None or self._approach_tile is None:
             self._state = "detect"
             return None
@@ -2270,10 +2810,36 @@ class CropWaterTask(Task):
         if self._navigator.current_tile == self._approach_tile:
             self._state = "center"
             return None
+        # Refill multi-hop: adjacent to stand is enough to act (center tolerance).
+        if (
+            self._plot_phase == "refill"
+            and self._approach_tile is not None
+            and tile_dist(self._navigator.current_tile, self._approach_tile) <= 1
+        ):
+            self._state = "center"
+            return None
+
+        # Track multi-hop progress toward the ultimate refill stand.
+        if self._plot_phase == "refill" and self._approach_tile is not None:
+            d = tile_dist(self._navigator.current_tile, self._approach_tile)
+            if d < getattr(self, "_refill_best_dist", 999):
+                self._refill_best_dist = d
+                # Progress resets the per-target timeout so multi-hop F0 can
+                # cross ~20 tiles without false "Refill timed out".
+                self._steps_on_target = 0
+                self._pathfinder.temp_blocked.clear()
 
         # Stuck recovery
         if self._navigator.stasis > self.stasis_repath and self._navigator.path:
-            self._pathfinder.temp_blocked.add(self._navigator.path[0])
+            # Refill multi-hop: do not permanently block the next east cell —
+            # stasis on the north lip often means animation lock, not a wall.
+            if not (
+                self._plot_phase == "refill"
+                and getattr(self, "_refill_multihop", False)
+            ):
+                self._pathfinder.temp_blocked.add(self._navigator.path[0])
+            else:
+                self._pathfinder.temp_blocked.clear()
             path = self._find_nav_path(ram, self._navigator.current_tile, self._approach_tile)
             if path:
                 self._navigator.path = path
@@ -2785,8 +3351,61 @@ class CropWaterTask(Task):
                   f"pos={cur} plot={self._plot_index}/{len(self._plots)} "
                   f"planted={self.planted_count} watered={self.watered_count} can={self._water_level(world.ram)}")
 
-        # Timeout per target
-        if self._steps_on_target > self.max_steps_per_target and self._target_tile is not None:
+        # Timeout per target. Multi-hop refill gets a longer budget (corridor
+        # from west pocket is 15–25 tiles + fence open overhead). Fence-open /
+        # stage_pond own their own subtask budgets — do not abort them via
+        # crop per-target timeout (that was resetting to detect mid-clear).
+        if self._plot_phase in ("open_pond", "stage_pond", "fence_open"):
+            # Soft-cap fence thrash. If a gap is already open, bail early to
+            # multi-hop south corridor instead of sitting on the post 4k frames.
+            fence_budget = (
+                900
+                if self._pond_corridor_gap_open(world.ram)
+                else max(self.max_steps_per_target * 3, 3600)
+            )
+            if self._steps_on_target > fence_budget:
+                print(
+                    f"[CROP] Fence/stage soft-timeout phase={self._plot_phase} "
+                    f"budget={fence_budget}; forcing multi-hop or refill search"
+                )
+                self._fence_subtask = None
+                self._steps_on_target = 0
+                # Drop carried post first — multi-hop while carrying soft-locks
+                # south-through-gap at the cleared fence tile.
+                if self._ensure_hands_empty_for_refill(world.ram):
+                    self._pending_multihop_after_drop = True
+                    self._plot_phase = "refill"
+                    self._state = "navigate"
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(self._action_queue.popleft()),
+                    )
+                if self._pond_corridor_gap_open(world.ram) or self._fence_open_attempts > 0:
+                    if self._commit_multihop_main_pond(
+                        world.ram, self._water_level(world.ram)
+                    ):
+                        return TaskResult(
+                            status=TaskStatus.RUNNING,
+                            action=ActionResult(make_action()),
+                        )
+                self._plot_phase = "water"
+                self._start_refill(world.ram)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                )
+            # Fall through to normal step handling without target timeout.
+            pass
+        refill_budget = (
+            max(self.max_steps_per_target * 3, 3600)
+            if self._plot_phase == "refill"
+            else self.max_steps_per_target
+        )
+        if (
+            self._plot_phase not in ("open_pond", "stage_pond", "fence_open")
+            and self._steps_on_target > refill_budget
+            and self._target_tile is not None
+        ):
             self._failed_tiles.add(self._target_tile)
             self._failures += 1
             self._action_queue.clear()
@@ -2804,11 +3423,36 @@ class CropWaterTask(Task):
                 )
                 self._advance_hoe_step(world.ram)
             elif self._plot_phase == "refill":
-                print("[CROP] Refill timed out, marking bad")
-                if self._refill_pond_tile:
+                print(
+                    f"[CROP] Refill timed out at {self._navigator.current_tile} "
+                    f"stand={self._refill_pond_tile} best_dist="
+                    f"{getattr(self, '_refill_best_dist', '?')}"
+                )
+                # Soft: try multi-hop re-commit once more before blacklisting.
+                if (
+                    getattr(self, "_refill_multihop", False)
+                    and getattr(self, "_refill_nav_failures", 0) < 6
+                    and (
+                        self._pond_corridor_gap_open(world.ram)
+                        or self._fence_open_attempts > 0
+                    )
+                ):
+                    self._refill_nav_failures = getattr(self, "_refill_nav_failures", 0) + 1
+                    self._steps_on_target = 0
+                    if self._commit_multihop_main_pond(
+                        world.ram, self._water_level(world.ram)
+                    ):
+                        return TaskResult(
+                            status=TaskStatus.RUNNING,
+                            action=ActionResult(make_action()),
+                        )
+                if self._refill_pond_tile and not is_main_pond_stand(
+                    self._refill_pond_tile
+                ):
                     self._bad_refill_tiles.add(self._refill_pond_tile)
                 # Navigate back to current water step
                 self._plot_phase = "water"
+                self._refill_multihop = False
                 self._set_water_walkable()
                 if self._water_index < len(self._water_steps):
                     target, stand, face = self._water_steps[self._water_index]

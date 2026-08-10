@@ -623,7 +623,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         _set_tile(ram, 14, 49, 0xFC)
         _set_tile(ram, 14, 48, 0xA1)
 
-        all_edges = find_pond_edges(ram, (3, 14, 62, 60), water_tiles=REFILL_WATER_TILES)
+        all_edges = find_pond_edges(ram, (3, 10, 62, 60), water_tiles=REFILL_WATER_TILES)
         stands = {t for t, _f in all_edges}
         self.assertIn((18, 23), stands)
         self.assertIn((9, 28), stands)
@@ -631,7 +631,7 @@ class CropPlanterLogicTests(unittest.TestCase):
 
         good_edges = find_pond_edges(
             ram,
-            (3, 14, 62, 60),
+            (3, 10, 62, 60),
             water_tiles=REFILL_WATER_TILES,
             exclude_bad_stands=True,
         )
@@ -665,7 +665,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_WATER_LEVEL] = 0
 
         world = SimpleNamespace(ram=ram, info={}, obs=None)
-        task = CropWaterTask(refill_bounds=(3, 14, 62, 60))
+        task = CropWaterTask(refill_bounds=(3, 10, 62, 60))
         task.reset(world)
         task._navigator.update(ram)
         task._plots = [(5, 35)]
@@ -705,7 +705,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_WATER_LEVEL] = 0
 
         world = SimpleNamespace(ram=ram, info={}, obs=None)
-        task = CropWaterTask(refill_bounds=(3, 14, 62, 60))
+        task = CropWaterTask(refill_bounds=(3, 10, 62, 60))
         task.reset(world)
         task._navigator.update(ram)
         task._plots = [(13, 35)]
@@ -739,7 +739,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_WATER_LEVEL] = 0
 
         world = SimpleNamespace(ram=ram, info={}, obs=None)
-        task = CropWaterTask(refill_bounds=(3, 14, 62, 60))
+        task = CropWaterTask(refill_bounds=(3, 10, 62, 60))
         task.reset(world)
         task._navigator.update(ram)
         task._plots = [(5, 35)]
@@ -788,7 +788,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_WATER_LEVEL] = 0
 
         world = SimpleNamespace(ram=ram, info={}, obs=None)
-        task = CropWaterTask(refill_bounds=(3, 14, 62, 60), work_mode="water")
+        task = CropWaterTask(refill_bounds=(3, 10, 62, 60), work_mode="water")
         task.reset(world)
         task._navigator.update(ram)
         fences = pond_access_blocking_fences(ram)
@@ -823,7 +823,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_INPUT_LOCK] = 1
 
         world = SimpleNamespace(ram=ram, info={}, obs=None)
-        task = CropWaterTask(refill_bounds=(3, 14, 62, 60), work_mode="water")
+        task = CropWaterTask(refill_bounds=(3, 10, 62, 60), work_mode="water")
         task.reset(world)
         task._navigator.update(ram)
         task._plots = [(13, 25)]
@@ -861,6 +861,65 @@ class CropPlanterLogicTests(unittest.TestCase):
         tiny = _blank_ram()
         tiny[ADDR_WATER_LEVEL] = 11
         self.assertEqual(CropWaterTask._water_level(tiny), 11)
+
+    def test_start_refill_multihop_f9_when_full_path_viewport_blocked(self) -> None:
+        """F9 north of pocket must multi-hop-commit even if full BFS is None.
+
+        Models dry-fixture ROM: F9 at ~(26,12) exists but live viewport cannot
+        full-path from (13,27). Must not fall through to fence-open.
+        """
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        # Solid everything, then open only a local pocket around the player so
+        # hop-toward F9 improves dist but full BFS cannot reach the stand.
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0x05)
+        for ty in range(24, 30):
+            for tx in range(10, 18):
+                _set_tile(ram, tx, ty, 0xA1)
+        # F9 island far north (not connected).
+        for ty in range(10, 14):
+            for tx in range(24, 28):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 26, 12, 0xF9)
+
+        player = (13, 27)
+        _set_player_tile(ram, player)
+        ram[ADDR_TOOL] = 0x10
+        ram[ADDR_WATER_LEVEL] = 0
+        ram[ADDR_INPUT_LOCK] = 1
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(refill_bounds=(3, 10, 62, 60), work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        task._plots = [(13, 25)]
+        task._plot_index = 0
+        task._plot_phase = "water"
+        task._water_steps = [((12, 24), (13, 25), "left")]
+        task._water_index = 0
+
+        # Full path to F9 stand blocked.
+        self.assertIsNone(task._pathfinder.find_path(ram, player, (25, 12)))
+
+        task._start_refill(ram)
+
+        self.assertEqual(
+            task._plot_phase,
+            "refill",
+            msg=f"phase={task._plot_phase} state={task._state} stand={task._refill_pond_tile}",
+        )
+        self.assertNotEqual(task._state, "fence_open")
+        self.assertIsNone(task._fence_subtask)
+        self.assertTrue(task._refill_multihop)
+        assert task._refill_pond_tile is not None
+        water = edge_water_tile_id(
+            ram, task._refill_pond_tile, task._refill_pond_face or "up"
+        )
+        self.assertEqual(water, 0xF9)
 
     def test_start_refill_prefers_f9_before_fence_open(self) -> None:
         """West pocket + sealed south: pathable north F9 must win over fence-open.

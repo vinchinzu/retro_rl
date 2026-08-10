@@ -116,8 +116,8 @@ class DayPhaseRegistryTests(unittest.TestCase):
         self.assertEqual(establish.work_mode, "establish")
         self.assertEqual(water.work_mode, "water")
         # North stream (y~16-22) + south pond; south-only left early west plants dry.
-        self.assertEqual(water.refill_bounds, (3, 14, 62, 60))
-        self.assertEqual(CROP_WATER_PHASE.params.get("refill_bounds"), (3, 14, 62, 60))
+        self.assertEqual(water.refill_bounds, (3, 10, 62, 60))
+        self.assertEqual(CROP_WATER_PHASE.params.get("refill_bounds"), (3, 10, 62, 60))
         self.assertEqual(CROP_WATER_PHASE.params.get("work_mode"), "water")
 
     def test_hot_spring_builder(self) -> None:

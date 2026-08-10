@@ -277,7 +277,7 @@ class DayPlanSequenceTests(unittest.TestCase):
             ["farm_building_exit", "ensure_tool", "nav", "crop"],
         )
         self.assertEqual(phases[2].params["target_px"], (248, 472))
-        self.assertEqual(phases[3].params["refill_bounds"], (3, 14, 62, 60))
+        self.assertEqual(phases[3].params["refill_bounds"], (3, 10, 62, 60))
 
     def test_harvest_sequence_uses_trimmed_recording_only(self) -> None:
         phases = PHASE_SEQUENCES["harvest"]
@@ -2462,7 +2462,7 @@ class BuildDayPhasesTests(unittest.TestCase):
 
         water = phases[water_idx]
         self.assertEqual(water.params.get("work_mode"), "water")
-        self.assertEqual(water.params.get("refill_bounds"), (3, 14, 62, 60))
+        self.assertEqual(water.params.get("refill_bounds"), (3, 10, 62, 60))
 
         establish = phases[establish_idx]
         self.assertEqual(establish.params.get("work_mode"), "establish")
@@ -2501,7 +2501,7 @@ class BuildDayPhasesTests(unittest.TestCase):
         self.assertIn("CROP_WATER", names)
         water = phases[names.index("CROP_WATER")]
         self.assertEqual(water.params.get("work_mode"), "water")
-        self.assertEqual(water.params.get("refill_bounds"), (3, 14, 62, 60))
+        self.assertEqual(water.params.get("refill_bounds"), (3, 10, 62, 60))
 
     def test_rainy_day_skips_water_only_crop_phase(self) -> None:
         phases = build_day_phases(None, hour=16, has_waterable=True, is_rainy=True)
