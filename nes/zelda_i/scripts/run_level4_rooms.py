@@ -17,6 +17,8 @@ Segments (rr-5lu / rr-2ysf children)::
     north_30     (rr-q8eq)  0x40 cleared → free UP → 0x30 Vires
     clear_30     (rr-n1wn)  clear 3× Vire 0x12 on 0x30 (ignore invuln 0x2b)
     key_right_31 (rr-n1wn)  0x30 KEY-RIGHT @y141 → 0x31 (5× Vire)
+    clear_31     (rr-resv)  clear 5× Vire on 0x31 maze (opens RIGHT door)
+    east_32      (rr-resv)  0x31 cleared → free RIGHT → 0x32
 
 Live graph only — no walkthrough room hardcodes beyond recon.
 
@@ -32,6 +34,8 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_30 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_30 --trials 2 --save-state
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_31 --trials 2 --save-state
+    uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment east_32 --trials 2 --save-state
 """
 
 # ruff: noqa: E402
@@ -62,7 +66,13 @@ from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level4_dungeon import (
     BOMB_61_NORTH_STAND,
     LEVEL4_COMPASS_BIT,
+    MAZE_31_CELL_Q,
+    MAZE_31_EAST_X_MIN,
+    MAZE_31_EAST_Y,
+    MAZE_31_EAST_Y_TOL,
+    MAZE_31_HOLD,
     ROOM_30_SPEC,
+    ROOM_31_SPEC,
     ROOM_40_SPEC,
     ROOM_50_SPEC,
     ROOM_51_SPEC,
@@ -75,6 +85,8 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_ZOLS_40,
     level4_compass_route_success,
     level4_room_30_cleared,
+    level4_room_31_cleared,
+    level4_room_32_ready,
     level4_room_40_key_success,
     level4_room_40_ready,
     level4_room_50_cleared,
@@ -92,11 +104,13 @@ from zelda_i.level4_dungeon import (
     make_north_40_controller,
     make_key_right_31_controller,
     make_room_30_clear_controller,
+    make_room_31_clear_controller,
     make_room_40_key_controller,
     make_room_50_clear_controller,
     level4_room_30_ready,
     level4_room_31_ready,
     ROOM_L4_EAST_31,
+    ROOM_L4_EAST_32,
     ROOM_L4_NORTH_30,
     make_room_51_key_controller,
     make_room_61_clear_controller,
@@ -123,6 +137,8 @@ SEGMENTS = (
     "north_30",
     "clear_30",
     "key_right_31",
+    "clear_31",
+    "east_32",
 )
 
 _BEAD = {
@@ -141,6 +157,8 @@ _BEAD = {
     "north_30": "rr-q8eq",
     "clear_30": "rr-n1wn",
     "key_right_31": "rr-n1wn",
+    "clear_31": "rr-resv",
+    "east_32": "rr-resv",
 }
 
 _DEFAULT_STATE = {
@@ -159,6 +177,8 @@ _DEFAULT_STATE = {
     "north_30": "Level4Room40Cleared",
     "clear_30": "Level4Room30",
     "key_right_31": "Level4Room30Cleared",
+    "clear_31": "Level4Room31",
+    "east_32": "Level4Room31Cleared",
 }
 
 _CHECKPOINT = {
@@ -177,6 +197,8 @@ _CHECKPOINT = {
     "north_30": "Level4Room30",
     "clear_30": "Level4Room30Cleared",
     "key_right_31": "Level4Room31",
+    "clear_31": "Level4Room31Cleared",
+    "east_32": "Level4Room32",
 }
 
 
@@ -369,6 +391,180 @@ def _follow_50_north_path(env, path: list[str], *, assist, frame0: int):
         if (
             s.level == 4
             and s.screen == ROOM_L4_ZOLS_40
+            and s.mode == PLAY_MODE
+            and not s.transitioning
+        ):
+            for _ in range(20):
+                obs, *_ = env.step(nes_idle_action())
+                frame += 1
+                if assist is not None:
+                    assist.apply_env(env, frame=frame)
+            return obs, frame, True
+    return obs, frame, False
+
+
+def _bfs_31_to_east(env, *, assist, frame0: int, hold: int | None = None):
+    """Live BFS on cleared 0x31 maze to east door band (free RIGHT → 0x32)."""
+    from collections import deque
+
+    hold = MAZE_31_HOLD if hold is None else hold
+    qstep = MAZE_31_CELL_Q
+    em = env.unwrapped.em
+    dirs = ("UP", "DOWN", "LEFT", "RIGHT")
+
+    def cell(x: int, y: int, q: int = qstep) -> tuple[int, int]:
+        return (x // q * q, y // q * q)
+
+    # Door R opens a few frames after clear (doors 2→3); settle first.
+    for _ in range(20):
+        s0 = read_snapshot(env.get_ram())
+        if s0.cur_opened_doors & 0x01:  # RIGHT bit
+            break
+        env.step(nes_idle_action())
+        if assist is not None:
+            assist.apply_env(env, frame=frame0)
+        frame0 += 1
+
+    start = read_snapshot(env.get_ram())
+    if start.screen != ROOM_L4_EAST_31:
+        return None, {
+            "error": f"not_on_31_0x{start.screen:02x}",
+            "success": False,
+            "doors": start.cur_opened_doors,
+        }
+
+    start_c = cell(start.link_x, start.link_y)
+    cell_state = {start_c: em.get_state()}
+    parent: dict[tuple[int, int], tuple[tuple[int, int], str] | None] = {
+        start_c: None
+    }
+    q: deque[tuple[int, int]] = deque([start_c])
+    seen = {start_c}
+    best_path: list[str] | None = None
+    best_target: tuple[int, int] | None = None
+    expansions = 0
+
+    while q and expansions < 12000 and best_path is None:
+        cur = q.popleft()
+        for d in dirs:
+            expansions += 1
+            em.set_state(cell_state[cur])
+            for _ in range(hold):
+                env.step(nes_action(d))
+                if assist is not None:
+                    assist.apply_env(env, frame=frame0)
+            s = read_snapshot(env.get_ram())
+            if s.mode != PLAY_MODE or s.transitioning:
+                for _ in range(40):
+                    env.step(nes_idle_action())
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame0)
+                s = read_snapshot(env.get_ram())
+            if s.screen != ROOM_L4_EAST_31 or s.mode != PLAY_MODE:
+                continue
+            c = cell(s.link_x, s.link_y)
+            if c not in seen:
+                seen.add(c)
+                parent[c] = (cur, d)
+                cell_state[c] = em.get_state()
+                q.append(c)
+                # East door band: x large, y near mid door.
+                if (
+                    c[0] >= MAZE_31_EAST_X_MIN
+                    and abs(c[1] - MAZE_31_EAST_Y) <= MAZE_31_EAST_Y_TOL
+                ):
+                    path: list[str] = []
+                    node = c
+                    while parent[node] is not None:
+                        prev, pd = parent[node]
+                        path.append(pd)
+                        node = prev
+                    path.reverse()
+                    best_path = path
+                    best_target = c
+                    break
+
+    em.set_state(cell_state[start_c])
+    for _ in range(5):
+        env.step(nes_idle_action())
+        if assist is not None:
+            assist.apply_env(env, frame=frame0)
+
+    meta = {
+        "success": best_path is not None,
+        "expansions": expansions,
+        "n_cells": len(seen),
+        "start": [start.link_x, start.link_y],
+        "path_len": len(best_path) if best_path else 0,
+        "target": list(best_target) if best_target else None,
+        "hold": hold,
+        "cell_q": qstep,
+        "doors": start.cur_opened_doors,
+        "max_x": max((c[0] for c in seen), default=0),
+        "segment": "level4_east_0x32_bfs",
+    }
+    return best_path, meta
+
+
+def _follow_31_east_path(env, path: list[str], *, assist, frame0: int):
+    """Execute BFS path tokens then long RIGHT into 0x32."""
+    frame = frame0
+    obs = None
+    for d in path:
+        for _ in range(MAZE_31_HOLD):
+            obs, *_ = env.step(nes_action(d))
+            frame += 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
+            s = read_snapshot(env.get_ram())
+            if s.mode != PLAY_MODE or s.transitioning:
+                for _ in range(40):
+                    obs, *_ = env.step(nes_idle_action())
+                    frame += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame)
+    for _ in range(200):
+        obs, *_ = env.step(nes_action("RIGHT"))
+        frame += 1
+        if assist is not None:
+            assist.apply_env(env, frame=frame)
+        s = read_snapshot(env.get_ram())
+        if s.transitioning or s.mode in (4, 6, 7) or s.screen != ROOM_L4_EAST_31:
+            # Hold RIGHT through scroll settle.
+            for _ in range(80):
+                obs, *_ = env.step(nes_action("RIGHT"))
+                frame += 1
+                if assist is not None:
+                    assist.apply_env(env, frame=frame)
+                s = read_snapshot(env.get_ram())
+                if (
+                    s.level == 4
+                    and s.screen == ROOM_L4_EAST_32
+                    and s.mode == PLAY_MODE
+                    and not s.transitioning
+                ):
+                    for _ in range(20):
+                        obs, *_ = env.step(nes_idle_action())
+                        frame += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=frame)
+                    return obs, frame, True
+            s = read_snapshot(env.get_ram())
+            if (
+                s.level == 4
+                and s.screen == ROOM_L4_EAST_32
+                and s.mode == PLAY_MODE
+                and not s.transitioning
+            ):
+                for _ in range(20):
+                    obs, *_ = env.step(nes_idle_action())
+                    frame += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=frame)
+                return obs, frame, True
+        if (
+            s.level == 4
+            and s.screen == ROOM_L4_EAST_32
             and s.mode == PLAY_MODE
             and not s.transitioning
         ):
@@ -1124,6 +1320,115 @@ def run_once(
             ok = error is None and level4_room_31_ready(env.get_ram()) and (
                 ctl.success or read_snapshot(env.get_ram()).screen == ROOM_L4_EAST_31
             )
+
+        elif segment == "clear_31":
+            # Level4Room31: clear 5× Vire 0x12 on maze (opens RIGHT door).
+            snap = read_snapshot(env.get_ram())
+            if snap.screen == ROOM_L4_NORTH_30:
+                kr = make_key_right_31_controller(clear_vires=True)
+                controllers["key_right_31"] = kr
+                obs, frame = _run_until(
+                    env,
+                    kr,
+                    assist=assist,
+                    max_frames=kr.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+                if not level4_room_31_ready(env.get_ram()):
+                    error = "key_right_31_failed"
+            elif snap.screen != ROOM_L4_EAST_31:
+                error = f"unsupported_start_0x{snap.screen:02x}"
+            ctl = make_room_31_clear_controller()
+            controllers["clear_31"] = ctl
+            if error is None:
+                snap = read_snapshot(env.get_ram())
+                if snap.screen == ROOM_L4_EAST_31:
+                    ctl.phase = DungeonPhase.FIGHT
+                obs, frame = _run_until(
+                    env,
+                    ctl,
+                    assist=assist,
+                    max_frames=ROOM_31_SPEC.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+            ok = (
+                error is None
+                and level4_room_31_cleared(env.get_ram())
+                and ctl.success
+            )
+
+        elif segment == "east_32":
+            # Prefer Level4Room31Cleared; clear first if live Vires.
+            snap = read_snapshot(env.get_ram())
+            if snap.screen == ROOM_L4_EAST_31 and not level4_room_31_cleared(
+                env.get_ram()
+            ):
+                clr = make_room_31_clear_controller()
+                clr.phase = DungeonPhase.FIGHT
+                controllers["clear_31"] = clr
+                obs, frame = _run_until(
+                    env,
+                    clr,
+                    assist=assist,
+                    max_frames=ROOM_31_SPEC.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+                if not level4_room_31_cleared(env.get_ram()):
+                    error = "clear_31_failed"
+            elif snap.screen == ROOM_L4_NORTH_30:
+                kr = make_key_right_31_controller(clear_vires=True)
+                controllers["key_right_31"] = kr
+                obs, frame = _run_until(
+                    env,
+                    kr,
+                    assist=assist,
+                    max_frames=kr.max_frames,
+                    done=_done_success,
+                    frame0=frame,
+                )
+                if not level4_room_31_ready(env.get_ram()):
+                    error = "key_right_31_failed"
+                else:
+                    clr = make_room_31_clear_controller()
+                    clr.phase = DungeonPhase.FIGHT
+                    controllers["clear_31"] = clr
+                    obs, frame = _run_until(
+                        env,
+                        clr,
+                        assist=assist,
+                        max_frames=ROOM_31_SPEC.max_frames,
+                        done=_done_success,
+                        frame0=frame,
+                    )
+                    if not level4_room_31_cleared(env.get_ram()):
+                        error = "clear_31_failed"
+            elif snap.screen != ROOM_L4_EAST_31 and snap.screen != ROOM_L4_EAST_32:
+                error = f"unsupported_start_0x{snap.screen:02x}"
+            if error is None and read_snapshot(env.get_ram()).screen == ROOM_L4_EAST_32:
+                ok = True
+            elif error is None and read_snapshot(env.get_ram()).screen == ROOM_L4_EAST_31:
+                path, bfs_meta = _bfs_31_to_east(env, assist=assist, frame0=frame)
+                controllers["east_32_bfs"] = bfs_meta
+                if path is None:
+                    error = "bfs_31_east_failed"
+                    ok = False
+                else:
+                    obs, frame, e32_ok = _follow_31_east_path(
+                        env, path, assist=assist, frame0=frame
+                    )
+                    controllers["east_32"] = {
+                        "success": e32_ok,
+                        "path": path,
+                        "frames": frame,
+                        "segment": "level4_east_0x32",
+                    }
+                    ok = e32_ok and level4_room_32_ready(env.get_ram())
+            else:
+                ok = False
+
         else:
             error = f"unknown_segment_{segment}"
 
