@@ -17,8 +17,9 @@ from super_metroid.routes.segment import (
 )
 
 
-def test_default_continuous_tip_is_verified_wave() -> None:
-    assert DEFAULT_CONTINUOUS_TIP == "wave"
+def test_default_continuous_tip_is_verified_ice() -> None:
+    assert DEFAULT_CONTINUOUS_TIP == "ice"
+    assert get_continuous_tip("ice").tip_id == "ice"
     assert get_continuous_tip("wave").tip_id == "wave"
     assert get_continuous_tip("speed").tip_id == "speed"
     assert get_continuous_tip("k4_5").tip_id == "speed"

@@ -495,3 +495,17 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - ROM: fence opens then soft-block (13,31) gap transit. can_peak still 0.
 - Next: south gap cross / south local-drop / toss_fence_pond segment.
 
+
+### 2026-08-10T00:25 CDT — super_metroid rr-kxge dual continuous Ice GREEN
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-kxge** CLOSED: Dual continuous `--to ice` stabilize
+- **Evidence:** `ice_dual_d` + `ice_dual_e` → `ice.json` / `ice_dual.json`
+  **148,167f** ×2 exact match, room `0xA890`, beams `0x1007`, outcome
+  `ice_collected`, integrity 0 loads/prog/capacity/deaths
+- Climb harden: cont-tuned 907 runup ladder (18/20/22 @ pos90) for Charge
+  loadout; classic warehouse setup preserved (bound=False); safe re-center
+  only on Ice retries; pure floor→Gate still 3255f×2; elev 891f
+- STATUS program gate + `DEFAULT_CONTINUOUS_TIP = ice`; AGENTS immediate goal
+- Tests: continuous tips + ice/wave scaffolds + segment contracts green
+- Optional ice demo video still open; next bead: K5 Alpha PB (`rr-dbu.8`)
+- No push
