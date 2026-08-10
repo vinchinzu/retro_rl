@@ -296,6 +296,15 @@ class SkillStep:
 
 
 class SkillPolicy(Protocol):
+    """Per-edge controller driven by :class:`~retro_harness.solver_session.SolverSession`.
+
+    Multi-frame skills emit :attr:`SkillSignal.RUNNING` with a non-None action
+    each tick, then a terminal signal. Macro one-shot adapters (e.g. SM route
+    controllers that run a whole edge inside ``apply_action``) may emit a single
+    terminal step after ``reset``. Shared helpers live in
+    :mod:`retro_harness.skill_policies`.
+    """
+
     def reset(
         self,
         observation: SolverObservation,
