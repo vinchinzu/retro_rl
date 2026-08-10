@@ -260,3 +260,10 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next: `rr-z13h` Pure Farm→Speedway (needs Speed).
 - Tests: `test_k4_wave_return_scaffold.py` 6 passed. No push. No Ice STATUS.
 
+### 2026-08-09T22:50 CDT — super_metroid Farm→Speedway pure GREEN
+- **CLOSED** `rr-z13h` dual pure **329f×2** Farm `0xAF72`→Speedway `0xB106` ~(2008,139) right entry.
+- Export: `scratch/post_farm_to_speedway_pure.state` (Speedway→Frog predecessor; needs Speed for Boost Blocks).
+- Parent `rr-vqv3` remains open (5/7 hops dual green).
+- Next: `rr-05dp` Pure Speedway→Frog Save (LEFT across 8-screen tunnel).
+- Tests: `test_k4_wave_return_scaffold.py` 8 passed. No push. No Ice STATUS.
+

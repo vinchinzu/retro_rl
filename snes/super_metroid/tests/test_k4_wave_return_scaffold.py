@@ -6,6 +6,7 @@ from super_metroid.routes.kpdr import get_segment
 from super_metroid.routes.kpdr.wave import (
     play_bubble_to_farm,
     play_double_to_single_chamber,
+    play_farm_to_speedway,
     play_single_to_bubble,
     play_wave_to_double_chamber,
 )
@@ -18,6 +19,9 @@ from super_metroid.routes.kpdr.wave.geometry import (
     DTS_FLOOR_Y_MIN,
     DTS_HOP_LAUNCH_X,
     DTS_SINGLE_SETTLE,
+    FTS_DOOR_X,
+    FTS_SPEEDWAY_SETTLE,
+    SPEED_BOOSTER_MASK,
     STB_BUBBLE_SETTLE,
     STB_DEEP_Y_MIN,
     STB_DOOR_X,
@@ -26,6 +30,7 @@ from super_metroid.routes.kpdr.wave.geometry import (
     WAVE_DOOR_X,
     WAVE_DOUBLE_SETTLE,
     WAVE_LEAVE_FRAMES,
+    has_speed,
     has_wave,
 )
 from types import SimpleNamespace
@@ -47,6 +52,10 @@ def test_bubble_to_farm_export_and_registry() -> None:
     assert get_segment("bubble_to_farm") is play_bubble_to_farm
 
 
+def test_farm_to_speedway_export_and_registry() -> None:
+    assert get_segment("farm_to_speedway") is play_farm_to_speedway
+
+
 def test_wave_return_geometry_constants() -> None:
     assert WAVE_BEAM_MASK == 0x0001
     assert WAVE_DOOR_X == 48
@@ -64,6 +73,9 @@ def test_wave_return_geometry_constants() -> None:
     assert BTF_UPPER_Y[1] <= 200
     assert BTF_DOOR_X <= 50
     assert BTF_FARM_SETTLE >= 200
+    assert SPEED_BOOSTER_MASK == 0x2000
+    assert FTS_DOOR_X <= 50
+    assert FTS_SPEEDWAY_SETTLE >= 200
 
 
 def test_has_wave_predicate() -> None:
@@ -71,3 +83,11 @@ def test_has_wave_predicate() -> None:
     no = SimpleNamespace(collected_beams=0x1004)
     assert has_wave(yes) is True  # type: ignore[arg-type]
     assert has_wave(no) is False  # type: ignore[arg-type]
+
+
+def test_has_speed_predicate() -> None:
+    # Product post-Speed items often 0x3105 (= Speed|Bombs|HJ|Morph|Varia).
+    yes = SimpleNamespace(collected_items=0x3105)
+    no = SimpleNamespace(collected_items=0x1105)  # no Speed bit 0x2000
+    assert has_speed(yes) is True  # type: ignore[arg-type]
+    assert has_speed(no) is False  # type: ignore[arg-type]
