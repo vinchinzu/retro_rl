@@ -389,3 +389,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next tip: **`rr-n1wn`** clear 0x30 + expand N/E (parent `rr-o0nn` / `rr-5lu` open until ladder).
 - Evidence: `l4_q8eq_key40_pure_key_40.json`, `l4_q8eq_north30_north_30.json`.
 
+### 2026-08-10T00:05 CDT — zelda 0x40 key + UP 0x30 pure
+- **CLOSED** `rr-q8eq`: key_40 2/2 ~3345f; north_30 2/2 ~228f. ADDR_LADDER still 0.
+- Next tip `rr-n1wn`: 0x30 Vires clear + expand N/E toward ladder.
+
