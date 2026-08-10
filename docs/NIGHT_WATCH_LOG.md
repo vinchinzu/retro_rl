@@ -13,6 +13,24 @@ Protocol:
 
 ## Ticks
 
+### 2026-08-10T~03:10 CDT — mega_man_2 rr-fpd6 CLOSED (LL spawn decode)
+- Lane: mega_man_2 only (`nes/mega_man_2/`)
+- Claimed **rr-fpd6** (no other MM2 in_progress)
+- **Result: CLOSED** — Lightning Lord spawn decoded + live-confirmed
+- Findings:
+  - Type IDs: **0x3E** `objects_kaminari_goro` (+ **0x3D** move, **0x3F** bolt)
+  - Goblin/Air Tikki is **0x40** (night3–5 “type36” misread of `$0400`)
+  - ROM placement (lsmmega/mm2): mapset **4**, x=`0xC0`, y=`0x20` first LL
+  - Live: LL enters slots at prog **~961** (scr3 cam_x~193) under Clean play
+  - Cloud y≈32–36; pure-jump min_sy~34 reaches altitude but **~28px short in X**
+  - No camera≥5 / cloud land yet — residual stays on parent **rr-54ui**
+- Evidence: `nes/mega_man_2/docs/LL_SPAWN_DECODE.md`, probe_*.json
+- Script: `nes/mega_man_2/scripts/ll_spawn_probe.py`
+- Units: mega_man_2 tests 10/10; test_docs 8/8
+- No push
+- Next (rr-54ui): Clean land on first LL cloud (kill rider + stand), chain mapset 5–6
+
+
 
 
 ### 2026-08-10 night — harvest rr-5in PARTIAL (sparse water + refill residual)
