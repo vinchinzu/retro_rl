@@ -103,15 +103,17 @@ Test crop fixtures (for growth / ship work):
 
 ## Next acceptance
 
-1. Close **power-on → full D1** without the AnnEve fixture (rr-bhr).
-   **2026-08-09:** pure talks peak `0x3F`; truck leave + sleep → D2 bed OK.
-   **Root cause (causal A/B):** house→farm with `event_flags_1f68=0x0011` fires
-   ROM morning dog-intro (`CODE_83CEAE`); free-move bit `0x4000` clears and
-   never recovers → door `~(133,425)` → `0x5F`. Y1 `0x00B1` / min `0x00A1`
-   skips intro and keeps free-move. `house_size` not causal. D1 farm without
-   truck cannot leave town. **Open:** pure complete outdoor intro (dog owned
-   `0x0080` + intro `0x0020`) then shed grass+can. Fail-fast
-   `farm_control_lost`. Details: [town_day1_recon.md](town_day1_recon.md).
+1. ~~Close **power-on → full D1** without the AnnEve fixture (rr-bhr).~~
+   **CLOSED 2026-08-09 night:** pure talks peak `0x3F`; truck leave + sleep →
+   D2 bed; outdoor dog intro pure-completes (name `AAAA` on tilemap `0x5F`,
+   `$099F=3`) → `event_flags_1f68=0x00B1` + free-move `0x4000`; shed grass+can
+   into carry. Evidence: `recordings/gate_b_anneve_full_shed.json` (peak
+   `0x3F`, D2, grass+can, `mid_run_state_loads=0`, `ram_writes=0`);
+   `recordings/gate_b_dog_intro_shed.json` (rest_end → intro → shed).
+   **Root cause:** house→farm with `0x0011` fires `CODE_83CEAE`; free-move
+   clears until dog name entry finishes (not permanent softlock). `house_size`
+   not causal. Task: `CompleteOutdoorMorningIntroTask` before shed in
+   `_shed_starter_tools`. Details: [town_day1_recon.md](town_day1_recon.md).
 2. **Natural empty-can refill** to a CheckToolSuccess-valid tile (`F0`/`F9`–`FD`).
    **Mapped 2026-08-01**: main pond **F0** ~(31–34,31–33); human stand
    `(32,34)` face up (`go_to_water_source_end`); north lip `(33,30)` face down
