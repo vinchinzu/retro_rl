@@ -489,3 +489,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Next tip: carry-south cross of y=31 gap OR recorded `toss_fence_pond` from gap
   OR reliable empty charge from (12,29) after south-side drop.
 - No push.
+
+### 2026-08-10T01:15 CDT — harvest F9 sealed; gap soft-block residual
+- `rr-3q27` open (c00bbfa): F9 false multihop sealed; corridor_only fence path.
+- ROM: fence opens then soft-block (13,31) gap transit. can_peak still 0.
+- Next: south gap cross / south local-drop / toss_fence_pond segment.
+
