@@ -1318,3 +1318,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **Cap:** 4 / 6 concurrent game lanes
 - Board: Heat→Item-1 chain scaffolding; Air cloud solid path falsified → Heat-first route.
 - Never push. Next tick: only free lanes.
+
+### 2026-08-10T06:20 CDT — MM2 Heat pre-boss cam≥7 (rr-809 PARTIAL)
+- Commit `40d1a04`: HeatScreen5Ground→cam7 dual 3/3 prog1792; pins s5g/s6/s7.
+- Residual: s7 alcove climb → boss + Item-1. Re-spawned boss climb manager.
+- Do not tip rr-810 until Item-1.
+
