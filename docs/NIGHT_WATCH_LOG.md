@@ -1392,3 +1392,14 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Commit `0205c5b`: CROP_WATER D9/11/13 watered=6; money=$400 ship≥5; 21 ovn D23 Clean.
 - Residual **rr-ws8h** return_home exit_to_farm timeout → spawned. Gate B still open.
 
+
+### 2026-08-10T07:35 CDT — NIGHT WATCH STOPPED (human wrap)
+- Human: wrap up and stop. Killed live managers + hourly scheduler `019fe966cf19`.
+- **SMB** permanently parked (M8 Clean stands). No push this session.
+- Product still **in_progress** (honest residual — do not invent closes):
+  - super_metroid **rr-av5s** PARTIAL thin-seat (91,587) + ice ladder → Hellway RED; parent **rr-dbu.8**
+  - zelda_i **rr-bxzj** heart-safe spine (after rr-gjey fireball floor; Entrance→TF residual)
+  - harvest **rr-ws8h** / **rr-5in** Gate B: water GREEN $400 21 ovn; return_home exit_to_farm residual
+  - mega_man_2 **rr-k1ea**/**rr-809** first Yoku dual; multi-Yoku→boss+Item-1 residual; **rr-54ui** Air cloud solid parked engine residual
+- Next human session: `bd ready` → pick one product tip; no auto-dispatch.
+
