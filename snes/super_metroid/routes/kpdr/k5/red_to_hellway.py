@@ -11,13 +11,14 @@ Hybrid pure (Hi-Jump held on K5 stack)::
      (do **not** climb_lower first — desyncs IBJ)
   3. Tunnel seat → midplat hop → midplat IBJ dual temporary floor ~y1606
   4. Human ascent RLE first 850f from floor → dual past temp floor ~(122,1459)
-  5. Adaptive Hi-Jump / wall-jump zigzag residual → top-right door band
-  6. RIGHT into Hellway ordinary settle
+     p81 (mid-air peak — not solid; do not force-unmorph)
+  5. Spin-left seat ~(37,1499) → alternating period WJ phases dual ~y420
+  6. Residual → top-right door band → RIGHT into Hellway ordinary settle
 
 Tape: ``tasks/speed_to_wave_ice_moat_human.json`` f23078–29947 (~6869f Red).
 Human mid "platforms" y2255/2159/2023 are **frozen rippers** (Ice held) —
 not solid tiles. Temp floor is bombable from above (outbound); climb arrives
-on/under lip via IBJ then uses human-matched open-loop to clear upper bands.
+on/under lip via IBJ then uses human-matched open-loop + period WJ upper.
 """
 
 from __future__ import annotations
@@ -38,7 +39,6 @@ from super_metroid.routes.controller_common import (
 )
 from super_metroid.routes.kpdr.k5.geometry import (
     RED_BOTTOM_Y,
-    RED_CLIMB_FRAMES,
     RED_FLOOR_Y,
     RED_LOWER_LIP_Y,
     RED_TO_HELLWAY_EXIT_HOLD,
@@ -49,8 +49,6 @@ from super_metroid.routes.kpdr.k5.geometry import (
     RED_TOP_DOOR_X,
     RED_TOP_DOOR_Y,
     RED_TUNNEL_Y,
-    RED_ZIG_X_MAX,
-    RED_ZIG_X_MIN,
 )
 from super_metroid.routes.kpdr.rooms import ROOM_HELLWAY, ROOM_RED_TOWER
 from super_metroid.routes.rle import RleScript, load_rle_json, play_script
@@ -72,10 +70,29 @@ _RWJ_BACK = 36
 _DATA = Path(__file__).resolve().parents[1] / "data"
 # Human ascent open-loop — first 850f dual-stable from live climb_mid floor
 # pin ~(171,1606): peaks past temp floor to ~(122,1459) p81.
+# Remainder of the tape desyncs from pure Bat→Red enemy/block state.
 _HUMAN_ASCENT_FULL: RleScript = load_rle_json(
     _DATA / "red_to_hellway_human_ascent.json"
 )
 _HUMAN_FLOOR_FRAMES = 850
+
+# Upper shaft alternating period WJ (probe dual to ~y420). period/into/flip
+# match spazer-style open-loop latch; short phases switch walls before stall.
+_UPPER_WJ_PERIOD = 16
+_UPPER_WJ_INTO = 6
+_UPPER_WJ_FLIP = 8
+# (side, frames, stop_y) — dual-stable D-chain from left seat y1499.
+_UPPER_WJ_PHASES: tuple[tuple[str, int, int], ...] = (
+    ("LEFT", 600, 1200),
+    ("RIGHT", 800, 1050),
+    ("LEFT", 800, 900),
+    ("RIGHT", 800, 750),
+    ("LEFT", 800, 600),
+    ("RIGHT", 800, 450),
+    ("LEFT", 800, 300),
+    ("RIGHT", 800, 200),
+    ("LEFT", 800, 150),
+)
 
 
 def _slice_rle(runs: RleScript, n_frames: int) -> RleScript:
@@ -666,17 +683,98 @@ def _play_upper_rle(
     )
 
 
+def _seat_left_after_handoff(
+    session: ControllerSession, label: str
+) -> SuperMetroidState:
+    """From mid-air handoff ~(122,1459) p81: spin-left onto left ledge y1499.
+
+    Dual pin is **not** solid — falls through unless immediately steered. Do
+    **not** force UP-unmorph pose 81/82 (taller hitbox drops ~100px).
+    """
+    if not _in_red(session.state):
+        return session.state
+    for _ in range(90):
+        st = session.state
+        if not _in_red(st):
+            return st
+        if (
+            int(st.velocity_y) == 0
+            and int(st.samus_x) <= 50
+            and 1480 <= int(st.samus_y) <= 1520
+        ):
+            break
+        # True morph only.
+        if int(st.pose) in (29, 30, 31, 32):
+            hold(session, 1, "UP", reason=f"{label}_u")
+            continue
+        hold(session, 1, "LEFT", "B", "A", reason=f"{label}_seat_spin")
+    settle_hold(session, 8, reason=f"{label}_seat_s")
+    # Crouch 138 / turn → stand (not pose 81).
+    for _ in range(20):
+        st = session.state
+        if not _in_red(st):
+            return st
+        if int(st.pose) in (1, 2):
+            break
+        if int(st.pose) in (29, 30, 31, 32, 137, 138, 9, 10):
+            hold(session, 1, "UP", reason=f"{label}_stand")
+        else:
+            break
+    settle_hold(session, 4, reason=f"{label}_seat_s2")
+    return session.state
+
+
+def _period_wj(
+    session: ControllerSession,
+    label: str,
+    *,
+    side: str,
+    frames: int,
+    stop_y: int | None = None,
+    period: int = _UPPER_WJ_PERIOD,
+    into: int = _UPPER_WJ_INTO,
+    flip: int = _UPPER_WJ_FLIP,
+) -> SuperMetroidState:
+    """Open-loop period wall-jump on one wall (into / flip / spin)."""
+    opp = "RIGHT" if side == "LEFT" else "LEFT"
+    for i in range(frames):
+        st = session.state
+        if _in_hellway(st) or not _in_red(st):
+            return st
+        y = int(st.samus_y)
+        if stop_y is not None and y <= stop_y:
+            return st
+        if y <= RED_TOP_DOOR_Y + 25:
+            return st
+        if y >= RED_BOTTOM_Y - 80:
+            return st
+        # True morph only — never force-unmorph 81/82 mid-climb.
+        if int(st.pose) in (29, 30, 31, 32):
+            hold(session, 1, "UP", reason=f"{label}_u")
+            continue
+        ph = i % period
+        if ph < into:
+            hold(session, 1, side, "A", reason=f"{label}_into")
+        elif ph < into + flip:
+            hold(session, 1, opp, "A", reason=f"{label}_flip")
+        else:
+            hold(session, 1, opp, "B", "A", reason=f"{label}_spin")
+    return session.state
+
+
 def _climb_upper(session: ControllerSession, label: str) -> SuperMetroidState:
     """Temporary floor ~y1600 → top door band.
 
-    Dual open-loop (rr-av5s)::
+    Dual path (rr-av5s)::
 
       1. Human ascent RLE first 850f from live climb_mid floor ~(171,1606)
-         → dual peak past temp floor ~(122,1459) p81
-      2. Adaptive Hi-Jump / wall-jump zigzag residual → top door / Hellway
+         → dual peak past temp floor ~(122,1459) p81 (mid-air, not solid)
+      2. Spin-left seat onto left ledge ~(37,1499) — no force-unmorph p81
+      3. Alternating period WJ phases (D-chain) dual-stable to ~y420
+      4. Bounded residual toward top door / Hellway
 
-    Do **not** bomb-open the temp floor from below (falls through). Do **not**
-    force-unmorph pose 81/82 at the dual handoff (taller hitbox falls).
+    Do **not** bomb-open the temp floor from below. Do **not** force-unmorph
+    pose 81/82 at the dual handoff. Human RLE past 850 desyncs from pure pin.
     """
     st0 = session.state
     if not _in_red(st0):
@@ -690,99 +788,74 @@ def _climb_upper(session: ControllerSession, label: str) -> SuperMetroidState:
         if not _in_red(session.state):
             return session.state
 
-    # --- Phase B: adaptive zigzag / WJ to top door (bounded residual) ---
-    # Pose 81/82 at handoff are spin/morph-air — do not UP-unmorph them.
-    # Budget is intentional: full RED_CLIMB_FRAMES thrashes for minutes when
-    # upper is still RED; fail fast with best pin for the next one-change.
-    _UPPER_ADAPT_FRAMES = 2400
-    direction = "LEFT" if int(session.state.samus_x) > 128 else "RIGHT"
+    # --- Phase B: left ledge seat (handoff is mid-air peak) ---
+    y_h = int(session.state.samus_y)
+    if y_h <= 1550 and y_h >= 1300:
+        _seat_left_after_handoff(session, f"{label}_seat")
+        if _in_hellway(session.state) or not _in_red(session.state):
+            return session.state
+
+    # --- Phase C: alternating period WJ (dual ~y420) ---
+    if int(session.state.samus_y) > RED_TOP_DOOR_Y + 40:
+        # Launch into left wall from seat.
+        hold(session, 3, "LEFT", "B", reason=f"{label}_wj_run")
+        for _ in range(12):
+            st = hold(session, 1, "LEFT", "B", "A", reason=f"{label}_wj_j")
+            if _in_hellway(st) or not _in_red(st):
+                return st
+            if int(st.samus_y) <= RED_TOP_DOOR_Y + 40:
+                return st
+        for i, (side, frames, stop_y) in enumerate(_UPPER_WJ_PHASES):
+            _period_wj(
+                session,
+                f"{label}_pwj{i}",
+                side=side,
+                frames=frames,
+                stop_y=stop_y,
+            )
+            st = session.state
+            if _in_hellway(st) or not _in_red(st):
+                return st
+            if int(st.samus_y) <= RED_TOP_DOOR_Y + 40:
+                return st
+
+    # --- Phase D: residual only when already near top door band ---
+    # Full adaptive thrash after the dual ~y420 pin *loses* height (falls to
+    # ~y1275). Leave the dual pin for the next one-change when still deep.
+    if int(session.state.samus_y) > RED_TOP_DOOR_Y + 100:
+        return session.state
+
     best_y = int(session.state.samus_y)
     last_best = 0
-    rehuman = 0
-    for frame in range(_UPPER_ADAPT_FRAMES):
+    side = "LEFT" if int(session.state.samus_x) > 128 else "RIGHT"
+    for frame in range(1200):
         st = session.state
-        if _in_hellway(st):
-            return st
-        if not _in_red(st):
-            # Bat door / wrong exit — do not raise mid-hop; hand off to exit.
+        if _in_hellway(st) or not _in_red(st):
             return st
         y = int(st.samus_y)
         x = int(st.samus_x)
         if y < best_y:
             best_y = y
             last_best = frame
-        if y <= RED_TOP_DOOR_Y + 30 and int(st.velocity_y) == 0:
+        if y <= RED_TOP_DOOR_Y + 30:
             return st
-        if y <= RED_TOP_DOOR_Y:
-            return st
-
-        # Bat door abort on deep fall.
         if y >= RED_BOTTOM_Y - 100 and x >= 210:
             hold(session, 8, "LEFT", reason=f"{label}_bat")
             continue
-
-        _kb(session, label, prefer=direction)
-
-        # True morph only (not 81/82 handoff poses).
         if int(st.pose) in (29, 30, 31, 32):
             hold(session, 1, "UP", reason=f"{label}_u")
             continue
-
-        # Stall recovery.
-        if frame - last_best > 700:
+        if frame - last_best > 350:
+            side = "RIGHT" if side == "LEFT" else "LEFT"
             last_best = frame
-            if y >= RED_FLOOR_Y + 50 and rehuman < 1:
-                rehuman += 1
-                _play_upper_rle(
-                    session, _HUMAN_FLOOR_RLE, f"{label}_rehuman"
-                )
-                continue
-            if y >= RED_FLOOR_Y + 50:
-                # Upper residual: stop thrashing; leave pin for next card.
-                break
-            for _ in range(6):
-                hold(session, 1, "UP", "X", reason=f"{label}_shot")
-            direction = "RIGHT" if x < 128 else "LEFT"
-            hold(session, 4, direction, "B", reason=f"{label}_run")
-            for _ in range(40):
-                hold(session, 1, direction, "B", "A", reason=f"{label}_hj")
-            continue
-
-        if x >= 205:
-            hold(session, 1, "LEFT", reason=f"{label}_face")
-            for _ in range(16):
-                hold(session, 1, "LEFT", "A", reason=f"{label}_wj")
-            for _ in range(10):
-                hold(session, 1, "LEFT", "B", "A", reason=f"{label}_out")
-            direction = "RIGHT"
-            continue
-        if x <= 50:
-            hold(session, 1, "RIGHT", reason=f"{label}_face")
-            for _ in range(16):
-                hold(session, 1, "RIGHT", "A", reason=f"{label}_wj")
-            for _ in range(10):
-                hold(session, 1, "RIGHT", "B", "A", reason=f"{label}_out")
-            direction = "LEFT"
-            continue
-
-        if int(st.velocity_y) == 0 and int(st.pose) in _STAND:
-            hold(session, 2, direction, reason=f"{label}_face2")
-            for _ in range(32):
-                hold(session, 1, direction, "B", "A", reason=f"{label}_hj2")
-            continue
-
-        if x >= RED_ZIG_X_MAX:
-            direction = "LEFT"
-        elif x <= RED_ZIG_X_MIN:
-            direction = "RIGHT"
-
-        phase = frame % 28
-        if phase < 16:
-            hold(session, 1, direction, "B", "A", reason=f"{label}_spin")
-        elif phase < 22:
-            hold(session, 1, direction, "B", reason=f"{label}_run2")
+        opp = "RIGHT" if side == "LEFT" else "LEFT"
+        ph = frame % _UPPER_WJ_PERIOD
+        if ph < _UPPER_WJ_INTO:
+            hold(session, 1, side, "A", reason=f"{label}_res_i")
+        elif ph < _UPPER_WJ_INTO + _UPPER_WJ_FLIP:
+            hold(session, 1, opp, "A", reason=f"{label}_res_f")
         else:
-            hold(session, 1, direction, reason=f"{label}_walk")
+            hold(session, 1, opp, "B", "A", reason=f"{label}_res_s")
 
     return session.state
 
@@ -823,7 +896,9 @@ def play_red_to_hellway(session: ControllerSession) -> SuperMetroidState:
     if not _in_red(session.state):
         raise TimeoutError(f"{label}: left Red unexpectedly: {session.state}")
 
-    _unmorph(session, label)
+    # True morph only before exit — never force-unmorph pose 81/82 residual.
+    if int(session.state.pose) in (29, 30, 31, 32):
+        _unmorph(session, label)
     # Only reclimb when already in the upper door band (avoid full RLE thrash).
     if RED_TOP_DOOR_Y < int(session.state.samus_y) <= RED_TOP_DOOR_Y + 100:
         _climb_upper(session, f"{label}_reclimb")
@@ -834,6 +909,15 @@ def play_red_to_hellway(session: ControllerSession) -> SuperMetroidState:
                 settle_frames=RED_TO_HELLWAY_EXIT_SETTLE,
                 label=label,
             )
+
+    # Exit only from the top door band — mid-shaft RIGHT thrash desyncs residual.
+    if int(session.state.samus_y) > RED_TOP_DOOR_Y + 120:
+        st = session.state
+        raise TimeoutError(
+            f"{label}: upper residual room=0x{int(st.room_id):04X} "
+            f"xy=({st.samus_x},{st.samus_y}) p={st.pose} "
+            f"(need y≤{RED_TOP_DOOR_Y + 120} for Hellway exit)"
+        )
 
     for _ in range(100):
         st = session.state

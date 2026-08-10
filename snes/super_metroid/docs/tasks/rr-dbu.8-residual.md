@@ -21,7 +21,7 @@ K5 stack to Alpha PB PLM still open. Not continuous. No STATUS change.
 | 8 | West → Below | `0xCF54` → `0xA408` | **272f** ×2 ✅ | `play_west_to_below` (reverse below floor→west) |
 | 9 | Below → Bat | `0xA408` → `0xA3DD` | **485f** ×2 ✅ | `play_below_to_bat` (reverse bat_to_below_spazer) |
 | 11 | Bat → Red Tower | `0xA3DD` → `0xA253` | **718f** ×2 ✅ | `play_bat_to_red` (reverse red_tower_to_bat) |
-| 12 | Red → Hellway | `0xA253` → `0xA2F7` | ⬜ PARTIAL | lower past pocket ~(219,1942); mid IBJ/upper open (rr-av5s) |
+| 12 | Red → Hellway | `0xA253` → `0xA2F7` | ⬜ PARTIAL | upper dual end ~(171,687); y420→door residual (rr-av5s) |
 | 13 | Hellway → Caterpillar | `0xA2F7` → `0xA322` | ⬜ | |
 | 14 | Caterpillar → Alpha PB PLM | `0xA322` → `0xA3AE` | ⬜ | first PB capacity |
 
@@ -65,8 +65,8 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bat-to-red \
 
 ### Next action (required)
 - **Next card:** **rr-av5s** Pure Red Tower → Hellway return (K5 hop 12) — PARTIAL
-- **One change:** mid from y≈1942 past right-wall ceiling → tunnel y≤1880 → bomb floor → Hellway
-- **Source state:** `scratch/dev_red_lower_past_pocket.state` or `post_ice_bat_to_red_pure`
+- **One change:** from dual upper ~(171,687) / peak ~y420 → top door y180 → Hellway dual green
+- **Source state:** `post_ice_bat_to_red_pure` (live mid+human850+period WJ)
 
 ### Non-claims
 - Did not STATUS-promote continuous past Ice
