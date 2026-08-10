@@ -1266,3 +1266,9 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Dual mid floor y1606 + human RLE@850 dual ~(122,1459)p81
 - Hellway still RED; upper residual from p81 handoff
 - Keep rr-av5s in_progress
+
+### 2026-08-10T06:00 CDT — SM past temp floor dual y1459 (rr-av5s PARTIAL)
+- Landed `0e46ed4`: human RLE 850f from y1606 → dual ~(122,1459)p81.
+- Hellway still RED. Re-spawned upper WJ/Hellway manager.
+- Do not bomb floor from below; do not force-unmorph from p81.
+
