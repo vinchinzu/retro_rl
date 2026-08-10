@@ -130,6 +130,9 @@ def test_heat_man_start_for_state() -> None:
     assert HeatManPolicy.start_for_state("HeatScreen7") == "screen7"
     assert HeatManPolicy.start_for_state("HeatScreen7Mid") == "screen7"
     assert HeatManPolicy.start_for_state("HeatLadder") == "screen7"
+    assert HeatManPolicy.start_for_state("HeatScreen8") == "screen8"
+    assert HeatManPolicy.start_for_state("HeatScreen8Yoku") == "screen8"
+    assert HeatManPolicy.start_for_state("HeatS8Left_88_148") == "screen8"
 
 
 def test_heat_man_screen5_idle_then_j1() -> None:
@@ -166,3 +169,19 @@ def test_heat_man_screen7_left_then_climb() -> None:
     assert list(lad.action) == list(nes_action("DOWN"))
     done = pol.tick(frame=10, health=18, camera_x_screen=8, tile_feet=1)
     assert done.reason == "clear_hold"
+
+
+def test_heat_man_screen8_yoku_approach() -> None:
+    pol = HeatManPolicy(start="screen8", target_camera_screen=99)
+    # frames 1–10 → i=0..9 LEFT approach
+    left = pol.tick(frame=1, health=18, camera_x_screen=8, tile_feet=1)
+    assert left.reason == "s8_approach"
+    assert list(left.action) == list(nes_action("LEFT"))
+    # frame 11 → i=10 idle release
+    rel = pol.tick(frame=11, health=18, camera_x_screen=8, tile_feet=1)
+    assert rel.reason == "s8_release"
+    assert list(rel.action) == list(nes_idle_action())
+    # frame 12 → i=11 A+LEFT yoku jump
+    hop = pol.tick(frame=12, health=18, camera_x_screen=8, tile_feet=1)
+    assert hop.reason == "s8_yoku_jump"
+    assert list(hop.action) == list(nes_action("A", "LEFT"))
