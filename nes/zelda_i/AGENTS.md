@@ -140,6 +140,7 @@ bd ready -l zelda_i   # tip: rr-q3n epic residual / rr-38p OW parallel
 | ✓ | **`rr-05fz`** | Natural key KEY-UP + continuous PostLadder→TF dual-green |
 | ✓ | **`rr-vdnc`** | Clean continuous PostLadder→TF (south-stand Gleeok) |
 | ✓/∂ | **`rr-zavx`** | Clean dual Entrance→NaturalKey; continuous TF health residual |
+| ∂ | **`rr-gjey`** | Gleeok post-boss fireball floor 106; natural enter ~98–100 still short of continuous 108 |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 

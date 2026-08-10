@@ -1,0 +1,108 @@
+{
+  "bead": "rr-gjey",
+  "dual_green": true,
+  "health_poke": 108,
+  "natural_entry": false,
+  "note": "Clean map\u2192TF with Level4Map health poked to 108 (lab floor pin; not natural). Proves continuous path+post-boss fix dual-green at continuous floor.",
+  "ok": true,
+  "tag": "l4_gjey_map108_floor",
+  "track": "clean",
+  "trials": [
+    {
+      "error": null,
+      "ok": true,
+      "phases_summary": {
+        "bomb21": {
+          "error": null,
+          "health": null,
+          "notes": [],
+          "ok": true
+        },
+        "clear12": {
+          "error": null,
+          "health": 108,
+          "notes": [],
+          "ok": true
+        },
+        "enter_gleeok": {
+          "error": null,
+          "health": 108,
+          "notes": [],
+          "ok": true
+        },
+        "fight": {
+          "error": null,
+          "health": 102,
+          "notes": [
+            "policy=south_stand dy=22 fb_dodge<=14 start_hp=108",
+            "approach_south f=425 xy=(116,189) hp=106 dodge_thr=14",
+            "boss_dead f=1308 rad=1 doors=0 heads=0 hp=97"
+          ],
+          "ok": true
+        },
+        "push12": {
+          "error": null,
+          "health": null,
+          "notes": [],
+          "ok": true
+        },
+        "to_12": {
+          "error": null,
+          "health": null,
+          "notes": [],
+          "ok": true
+        }
+      },
+      "start_hp_poke": 108,
+      "tf08": true
+    },
+    {
+      "error": null,
+      "ok": true,
+      "phases_summary": {
+        "bomb21": {
+          "error": null,
+          "health": null,
+          "notes": [],
+          "ok": true
+        },
+        "clear12": {
+          "error": null,
+          "health": 108,
+          "notes": [],
+          "ok": true
+        },
+        "enter_gleeok": {
+          "error": null,
+          "health": 108,
+          "notes": [],
+          "ok": true
+        },
+        "fight": {
+          "error": null,
+          "health": 102,
+          "notes": [
+            "policy=south_stand dy=22 fb_dodge<=14 start_hp=108",
+            "approach_south f=425 xy=(116,189) hp=106 dodge_thr=14",
+            "boss_dead f=1308 rad=1 doors=0 heads=0 hp=97"
+          ],
+          "ok": true
+        },
+        "push12": {
+          "error": null,
+          "health": null,
+          "notes": [],
+          "ok": true
+        },
+        "to_12": {
+          "error": null,
+          "health": null,
+          "notes": [],
+          "ok": true
+        }
+      },
+      "start_hp_poke": 108,
+      "tf08": true
+    }
+  ]
+}
