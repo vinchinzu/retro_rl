@@ -1,9 +1,10 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-10T07:20:44.016200+00:00",
+  "captured_at": "2026-08-10T09:20:33.548988+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
+    "allow_key_poke": false,
     "bead": "rr-rvae",
     "intervention_class": "survival",
     "segment": "l4_map_21",
@@ -13,17 +14,15 @@
   "selected_trial": {
     "controllers": {
       "map_21": {
-        "frames": 17872,
+        "frames": 16309,
         "segment": "level4_map_21",
         "success": true
       },
       "map_21_bfs": {
-        "cells": 228,
-        "exp": 898,
+        "cells": 273,
+        "exp": 1082,
         "hold": 6,
         "path": [
-          "LEFT",
-          "LEFT",
           "UP",
           "RIGHT",
           "RIGHT",
@@ -59,11 +58,11 @@
           "DOWN",
           "DOWN"
         ],
-        "path_len": 36,
+        "path_len": 34,
         "success": true
       },
       "map_21_clear20": {
-        "frames": 1990,
+        "frames": 451,
         "success": true
       },
       "map_21_enter": {
@@ -77,7 +76,6 @@
           "RIGHT",
           "RIGHT",
           "RIGHT",
-          "DOWN",
           "RIGHT",
           "RIGHT",
           "RIGHT",
@@ -89,11 +87,6 @@
           "RIGHT",
           "RIGHT",
           "RIGHT",
-          "RIGHT",
-          "RIGHT",
-          "RIGHT",
-          "DOWN",
-          "DOWN",
           "DOWN",
           "DOWN",
           "DOWN",
@@ -116,8 +109,9 @@
         "success": false
       },
       "map_21_key": {
+        "allow_key_poke": false,
         "keys_after": 1,
-        "recon_poke": true
+        "recon_poke": false
       },
       "map_21_key_up": {
         "keys": 0,
@@ -128,26 +122,26 @@
         ]
       },
       "map_21_to_21_bfs": {
-        "cells": 684,
-        "exp": 2717,
-        "path_len": 36,
+        "cells": 672,
+        "exp": 2665,
+        "path_len": 30,
         "success": true
       },
       "map_21_to_30": {
         "dest": "0x30",
-        "exp": 560,
+        "exp": 567,
         "hold": 4,
-        "n_cells": 563,
-        "path_len": 41,
+        "n_cells": 568,
+        "path_len": 44,
         "quant": 4,
         "segment": "level4_room_exit_bfs",
         "success": true
       }
     },
     "final": {
-      "bombs": 8,
-      "compass": 12,
-      "compass_l4": true,
+      "bombs": 9,
+      "compass": 4,
+      "compass_l4": false,
       "cur_opened_doors": 0,
       "health": 111,
       "keys": 0,
@@ -163,12 +157,12 @@
       "x": 208,
       "y": 181
     },
-    "frames": 17872,
+    "frames": 16309,
     "ok": true,
     "segment": "map_21"
   },
-  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31PostLadder.state",
-  "source_state_sha256": "6d3b6e281096a94bde62665bb8db266dc873366010b344866ac84556c769e7bf",
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room31PostLadderNaturalKey.state",
+  "source_state_sha256": "3ef17e3978cffb2386b9b9f0ba462b57f3ac8512e8d6c6cc1bb6c0880d47ad9e",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Map.state",
-  "state_sha256": "cc5a87654af9bec9b45c74d194631bd920591f85ef91aeff7d36d5e0a7849c13"
+  "state_sha256": "0370ef921d689537c3c66d0954028ed3e8b9b77aa16b1ed0a68135bd4f518578"
 }
