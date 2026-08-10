@@ -894,3 +894,19 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-rvae` open: map_21 assisted 2/2 ~17872f Level4Map ADDR_MAP|0x08.
 - Path 0x31→0x30 KEY-UP→0x20→0x21. Next: Gleeok/TF from Level4Map.
 
+### 2026-08-10T~02:35 CDT — harvest rr-o00y CLOSED (empty-can fill GREEN)
+- Lane: harvest only (`snes/harvest/`)
+- Bead **rr-o00y** CLOSED: Empty-can refill thrash after sparse plant
+- **Evidence:**
+  - Dry fixture: `can_peak=20`, `refill=1`, `watered=3` (~10k f)
+  - Power-on continuous: D5 `REFILL OK can=20`, watered=2/2 sparse plant;
+    D6–D7 water holds (`recordings/power_on_spring_to_summer.log`)
+  - Residual JSON: `snes/harvest/recordings/rr_o00y_fill_green.json`
+- **Code:** east→south past fence end x≥31; west→south-lip bands
+  (soft/south_far/south/east_pond); south densify east-prefer + thrash bail
+- Units: 68 passed (`test_water_refill` + `test_crop_planter_logic`)
+- Parent **rr-5in** PARTIAL: fill GREEN; dies D7 `return_home` hands-clear
+  (money $100). Residual **rr-6g7g**
+- Next tip: rr-6g7g clear hands before house entry, re-run --end-of-spring
+- No push
+
