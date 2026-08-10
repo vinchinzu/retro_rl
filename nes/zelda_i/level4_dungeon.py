@@ -15,12 +15,13 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
     0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)
     0x62 --maze compass + return LEFT--> 0x61 (ADDR_COMPASS bit 0x08)
-    **Post-compass expand (rr-xc3x / rr-q8eq live):** 0x50 is **not** a
-    dead-end. Scripted north → **0x40** (5× Zol ``0x13`` → gel ``0x14`` +
-    key ``0x19`` via east-corridor path). Free UP → **0x30** (3× Vire +
-    2× invuln ``0x2b``). First rooms outside early component
-    {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT sealed; 0x40 L/R sealed.
-    ADDR_LADDER residual (stepladder further north/east of 0x30).
+    **Post-compass expand (rr-xc3x / rr-q8eq / rr-n1wn live):** 0x50 is
+    **not** a dead-end. Scripted north → **0x40** (5× Zol ``0x13`` → gel
+    ``0x14`` + key ``0x19`` via east-corridor path). Free UP → **0x30**
+    (3× Vire + 2× invuln ``0x2b``; ignore invuln for clear). First rooms
+    outside early component {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT
+    sealed; 0x40 L/R sealed. ADDR_LADDER residual (stepladder further
+    north/east of 0x30 after clear+exit probe).
 
 Not Clean STATUS. Stepladder / Gleeok / TF ``0x08`` still residual.
 """
@@ -450,6 +451,13 @@ ROOM_62_SPEC = DungeonRoomSpec(
 KEY_40_PICKUP_XY = (120, 117)
 # North free exit after clear → 0x30 (3× Vire 0x12 + 2× invuln 0x2b residual).
 ROOM_L4_NORTH_30 = 0x30
+# KEY-RIGHT of cleared 0x30 → 0x31 (5× Vire 0x12; rr-n1wn live).
+ROOM_L4_EAST_31 = 0x31
+# Invuln movers on 0x30 (slots 1–2); never count as combat clear targets.
+INVULN_MOVER_TYPE = 0x2B
+# Key-east door 0x30 → 0x31 (live: y≈141 hold RIGHT; keys 1→0).
+KEY_30_EAST_Y = 141
+KEY_30_EAST_Y_TOL = 4
 
 _PATROL_40: tuple[tuple[int, int], ...] = (
     (64, 109),
@@ -520,12 +528,63 @@ ROOM_40_SPEC = DungeonRoomSpec(
     level=LEVEL4,
 )
 
+# 0x30: 3× Vire + 2× invuln 0x2b (ignore invuln; rr-n1wn).
+# Live geometry: Link walkable band is y∈[128,208] only (solid north wall at
+# y≈128). Vires fly above and into the band — clear from north-band patrol
+# with Y-first engage (face UP into flyers). RoomAllDead may stay 0/low while
+# 0x2b remains — settle on Vire emptiness only.
+_PATROL_30: tuple[tuple[int, int], ...] = (
+    (40, 133),
+    (80, 133),
+    (120, 133),
+    (160, 133),
+    (200, 133),
+    (160, 141),
+    (120, 141),
+    (80, 141),
+    (48, 149),
+    (192, 149),
+    (120, 157),
+    (64, 165),
+    (176, 165),
+)
+
+ROOM_30_SPEC = DungeonRoomSpec(
+    spec_id="level4_room30_vires",
+    source_room=ROOM_L4_ZOLS_40,
+    room_id=ROOM_L4_NORTH_30,
+    entry=DoorRoute("UP", ((120, 205), (120, 150))),
+    enemy_types=(VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE),
+    expected_enemy_count=3,  # Vires; split increases mid-fight; ignore 0x2b
+    alive_rule=AliveRule.TYPE_AND_HP,
+    type_only_enemy_types=(VIRE_SPLIT_KEESE_TYPE,),
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_PATROL_30,
+        engage_distance=96,  # reach flyers when they dip into north band
+        engage_dominant_axis=True,  # face UP/DOWN first (Vires above wall)
+        attack_phase=0,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    # Invuln residuals keep RoomAllDead from settling — clear = no live Vire/split.
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=ROOM_ITEM_NONE,
+    exit_routes=(
+        DoorRoute("DOWN", ((120, 189), (120, 205))),
+        # N/E/W residual — probe after clear (rr-n1wn).
+    ),
+    max_frames=20000,
+    level=LEVEL4,
+)
+
 register_room_spec(ROOM_71_SPEC)
 register_room_spec(ROOM_61_SPEC)
 register_room_spec(ROOM_51_SPEC)
 register_room_spec(ROOM_50_SPEC)
 register_room_spec(ROOM_62_SPEC)
 register_room_spec(ROOM_40_SPEC)
+register_room_spec(ROOM_30_SPEC)
 
 
 class BombWall61North:
@@ -587,6 +646,349 @@ def make_room_62_clear_controller() -> GenericDungeonRoomController:
 def make_room_40_clear_controller() -> GenericDungeonRoomController:
     """Clear 0x40 Zols+gels (key pickup residual)."""
     return GenericDungeonRoomController(ROOM_40_SPEC)
+
+
+def level4_room_30_cleared(ram: np.ndarray) -> bool:
+    """0x30 Vires+splits cleared (invuln 0x2b residual OK).
+
+    RoomAllDead often stays 0 with invuln movers present, so clear is
+    live-Vire emptiness only (settle_all_dead=0).
+    """
+    snap = read_snapshot(ram)
+    if not level4_room_ready(snap, ROOM_L4_NORTH_30):
+        return False
+    live = ROOM_30_SPEC.live_enemies(snap)
+    return len(live) == 0
+
+
+# --- 0x30 Vire clear from north band (rr-n1wn) ---
+
+# Link cannot walk north of y≈128 (solid wall). Vires fly above and dip into
+# the walkable band — clear by east-west patrol on the north band facing UP.
+_NORTH_BAND_Y = 133
+_NORTH_BAND_Y_MAX = 148
+_CLEAR30_PATROL_X: tuple[int, ...] = (40, 80, 120, 160, 200, 160, 120, 80)
+
+
+class Clear30Phase(Enum):
+    TO_BAND = auto()
+    FIGHT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4Clear30Controller:
+    """Clear 3× Vire on 0x30 from the north walkable band (ignore 0x2b).
+
+    Live (rr-n1wn): walkable cells y∈[128,208]; flyers above wall need UP
+    slashes when they share x or dip into the band. Generic mid-room chase
+    starves damage.
+    """
+
+    max_frames: int = 20000
+    phase: Clear30Phase = Clear30Phase.TO_BAND
+    frames: int = 0
+    phase_frames: int = 0
+    combat_frames: int = 0
+    patrol_index: int = 0
+    max_live_enemies: int = 0
+    last_live_enemies: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def _set_phase(self, phase: Clear30Phase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(Clear30Phase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def _live(self, snap: ZeldaSnapshot) -> tuple:
+        return ROOM_30_SPEC.live_enemies(snap)
+
+    def _swing(self, direction: str, reason: str) -> FrameAction:
+        # period 6 hold 3 — same as ROOM_30_SPEC combat tuning
+        if (self.combat_frames % 6) < 3:
+            return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
+        return FrameAction(nes_action(direction), reason)
+
+    def _fight_step(self, snap: ZeldaSnapshot) -> FrameAction:
+        from zelda_i.combat import should_swing_at
+
+        self.combat_frames += 1
+        live = self._live(snap)
+        self.last_live_enemies = len(live)
+        self.max_live_enemies = max(self.max_live_enemies, len(live))
+
+        if (
+            not live
+            and self.max_live_enemies >= ROOM_30_SPEC.expected_enemy_count
+        ):
+            self.success = True
+            self._set_phase(Clear30Phase.DONE, "room_cleared")
+            return FrameAction(nes_idle_action(), "done")
+
+        if not live:
+            # Seen empty before expected count — keep patrolling briefly.
+            return FrameAction(nes_action("UP"), "wait_spawn")
+
+        # Prefer targets in/near the walkable band; else any Vire for x-align.
+        band = [o for o in live if o.y >= 112]
+        targets = band if band else list(live)
+        nearest = min(
+            targets,
+            key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
+        )
+        dx = nearest.x - snap.link_x
+        dy = nearest.y - snap.link_y
+
+        # Stay on north band.
+        if snap.link_y > _NORTH_BAND_Y_MAX:
+            return FrameAction(nes_action("UP"), "return_north_band")
+
+        # Flyer above: face UP and slash when roughly under them.
+        above = nearest.y < snap.link_y - 6
+        if above and abs(dx) <= 28:
+            return self._swing("UP", "slash_up_flyer")
+        if above and abs(dx) > 8:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+            # Keep a light UP bias so we don't drift south while aligning.
+            if snap.link_y > _NORTH_BAND_Y + 4:
+                return FrameAction(nes_action("UP"), "reband_while_align")
+            return FrameAction(nes_action(direction), "align_x_flyer")
+
+        # Target in band: close then slash.
+        if abs(dy) > 10 and nearest.y >= 112:
+            direction = "DOWN" if dy > 0 else "UP"
+        elif abs(dx) > 8:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "UP" if above or abs(dy) <= 10 else (
+                "DOWN" if dy > 0 else "UP"
+            )
+
+        if should_swing_at(
+            snap.link_x, snap.link_y, direction, (nearest,)
+        ) or (abs(dx) <= 16 and abs(dy) <= 28):
+            return self._swing(direction, "engage")
+
+        # No close target — east-west patrol on the band.
+        tx = _CLEAR30_PATROL_X[self.patrol_index % len(_CLEAR30_PATROL_X)]
+        if abs(snap.link_x - tx) <= 6:
+            self.patrol_index += 1
+            tx = _CLEAR30_PATROL_X[self.patrol_index % len(_CLEAR30_PATROL_X)]
+        if snap.link_y > _NORTH_BAND_Y + 6:
+            return FrameAction(nes_action("UP"), "patrol_reband")
+        direction = "RIGHT" if snap.link_x < tx else "LEFT"
+        return FrameAction(nes_action(direction), "patrol_band")
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if self.phase is Clear30Phase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is Clear30Phase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            return FrameAction(nes_action("UP"), "scroll")
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != ROOM_L4_NORTH_30:
+            return self._fail(f"wrong_room_0x{snap.screen:02x}")
+
+        live = self._live(snap)
+        self.last_live_enemies = len(live)
+        self.max_live_enemies = max(self.max_live_enemies, len(live))
+        if (
+            not live
+            and self.max_live_enemies >= ROOM_30_SPEC.expected_enemy_count
+        ):
+            self.success = True
+            self._set_phase(Clear30Phase.DONE, "room_cleared")
+            return FrameAction(nes_idle_action(), "done")
+
+        if self.phase is Clear30Phase.TO_BAND:
+            if snap.link_y <= _NORTH_BAND_Y_MAX and abs(snap.link_x - 120) <= 40:
+                self._set_phase(Clear30Phase.FIGHT, "on_north_band")
+            else:
+                if abs(snap.link_x - 120) > 6 and snap.link_y > 160:
+                    return FrameAction(
+                        nes_action("RIGHT" if snap.link_x < 120 else "LEFT"),
+                        "center_x_south",
+                    )
+                if snap.link_y > _NORTH_BAND_Y:
+                    return FrameAction(nes_action("UP"), "walk_north_band")
+                self._set_phase(Clear30Phase.FIGHT, "on_north_band")
+
+        return self._fight_step(snap)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "combat_frames": self.combat_frames,
+            "max_live_enemies": self.max_live_enemies,
+            "last_live_enemies": self.last_live_enemies,
+            "notes": list(self.notes),
+            "segment": "level4_clear_0x30",
+            "patrol_x": list(_CLEAR30_PATROL_X),
+            "north_band_y": _NORTH_BAND_Y,
+        }
+
+
+def make_room_30_clear_controller() -> Level4Clear30Controller:
+    """Clear 0x30 Vires from north band (ignore invuln 0x2b; rr-n1wn)."""
+    return Level4Clear30Controller()
+
+
+class KeyRight31Phase(Enum):
+    CLEAR = auto()
+    ALIGN = auto()
+    PUSH = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4KeyRight31Controller:
+    """From 0x30 with ≥1 key: optional clear Vires, then KEY-RIGHT into 0x31.
+
+    Live (rr-n1wn): hold RIGHT @ y≈141; keys 1→0; enter west door ~(16,141).
+    0x31 has 5× Vire ``0x12``. Free N/E/W sealed; KEY-LEFT none; DOWN→0x40.
+    """
+
+    clear_vires: bool = True
+    max_frames: int = 25000
+    phase: KeyRight31Phase = KeyRight31Phase.CLEAR
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    keys_before: int | None = None
+    notes: list[str] = field(default_factory=list)
+    _clear: Level4Clear30Controller | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.clear_vires:
+            self._clear = Level4Clear30Controller()
+        else:
+            self.phase = KeyRight31Phase.ALIGN
+
+    def _set_phase(self, phase: KeyRight31Phase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(KeyRight31Phase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if self.phase is KeyRight31Phase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is KeyRight31Phase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+
+        if (
+            snap.level == LEVEL4
+            and snap.screen == ROOM_L4_EAST_31
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            self.success = True
+            self._set_phase(KeyRight31Phase.DONE, "entered_0x31")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            return FrameAction(nes_action("RIGHT"), "scroll_right")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if self.phase is KeyRight31Phase.CLEAR:
+            if snap.screen != ROOM_L4_NORTH_30:
+                return self._fail(f"clear_wrong_room_0x{snap.screen:02x}")
+            assert self._clear is not None
+            live = ROOM_30_SPEC.live_enemies(snap)
+            # Pre-cleared checkpoint (Level4Room30Cleared) or fight just finished.
+            if not live and (
+                self._clear.max_live_enemies >= 3
+                or self._clear.success
+                or self.phase_frames <= 2
+            ):
+                self.keys_before = snap.keys
+                note = (
+                    "cleared_0x30"
+                    if self._clear.max_live_enemies >= 3 or self._clear.success
+                    else "precleared_0x30"
+                )
+                self._set_phase(KeyRight31Phase.ALIGN, note)
+            else:
+                return self._clear.step(snap)
+
+        if snap.screen not in (ROOM_L4_NORTH_30, ROOM_L4_EAST_31):
+            return self._fail(f"wrong_room_0x{snap.screen:02x}")
+
+        if self.keys_before is None:
+            self.keys_before = snap.keys
+        if self.keys_before is not None and self.keys_before < 1 and snap.keys < 1:
+            return self._fail("no_keys")
+
+        if abs(snap.link_y - KEY_30_EAST_Y) > KEY_30_EAST_Y_TOL:
+            self._set_phase(KeyRight31Phase.ALIGN, "align_y")
+            return FrameAction(
+                nes_action("UP" if snap.link_y > KEY_30_EAST_Y else "DOWN"),
+                "align_y",
+            )
+        self._set_phase(KeyRight31Phase.PUSH, "push_key_right")
+        return FrameAction(nes_action("RIGHT"), "push_key_right")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "segment": "level4_key_right_0x31",
+            "target_room": f"0x{ROOM_L4_EAST_31:02x}",
+            "key_y": KEY_30_EAST_Y,
+            "keys_before": self.keys_before,
+        }
+
+
+def make_key_right_31_controller(
+    *, clear_vires: bool = True
+) -> Level4KeyRight31Controller:
+    """0x30 → KEY-RIGHT @y141 → 0x31 (5× Vire). Optionally clear Vires first."""
+    return Level4KeyRight31Controller(clear_vires=clear_vires)
+
+
+def level4_room_31_ready(ram: np.ndarray) -> bool:
+    return level4_room_ready(read_snapshot(ram), ROOM_L4_EAST_31)
 
 
 # Live scripted key path after combat clear pose ≈(136–140, 164–165).
@@ -1467,9 +1869,9 @@ def planning_interior_report() -> dict:
     return {
         "level": LEVEL4,
         "bead": "rr-5lu",
-        "tip": "rr-o0nn",
-        "track": "assisted",
-        "status": "interior_0x40_live_stepladder_residual",
+        "tip": "rr-n1wn",
+        "track": "pure",
+        "status": "interior_0x30_clear_stepladder_residual",
         "date": "2026-08-10",
         "entry_room": hex(ROOM_L4_ENTRY),
         "live_graph": {
@@ -1517,12 +1919,24 @@ def planning_interior_report() -> dict:
             hex(ROOM_L4_NORTH_30): {
                 "enemies": {"0x12": 3, "0x2b": 2},
                 "DOWN": hex(ROOM_L4_ZOLS_40),
-                "note": "live enter after 0x40 clear (rr-q8eq); stepladder residual",
+                "KEY_RIGHT": hex(ROOM_L4_EAST_31),
+                "UP": "sealed",
+                "LEFT": "sealed",
+                "RIGHT_free": "sealed",
+                "note": (
+                    "clear Vires ignore invuln 0x2b (rr-n1wn); walkable y≥128; "
+                    "KEY-RIGHT@y141 → 0x31 (5× Vire); stepladder residual"
+                ),
+            },
+            hex(ROOM_L4_EAST_31): {
+                "enemies": {"0x12": 5},
+                "LEFT": hex(ROOM_L4_NORTH_30),
+                "note": "live KEY-RIGHT of 0x30 (rr-n1wn); stepladder residual",
             },
         },
         "post_compass": {
             "bead": "rr-o0nn",
-            "expand": "rr-q8eq",
+            "expand": "rr-n1wn",
             "start": "Level4Compass",
             "early_component": [
                 hex(ROOM_L4_ENTRY),
@@ -1539,6 +1953,7 @@ def planning_interior_report() -> dict:
                 "recordings/l4_xc3x_breakthrough.json",
                 "recordings/l4_q8eq_40_dense_bfs.json",
                 "recordings/l4_q8eq_key40_key_40.json",
+                "recordings/l4_n1wn_clear30_clear_30.json",
             ],
             "blocked": [
                 "0x51 UP/RIGHT sealed (not key)",
@@ -1549,6 +1964,8 @@ def planning_interior_report() -> dict:
             "opened": [
                 "0x50 north scripted → 0x40 (Zols + key 0x19)",
                 "0x40 clear+key → free UP → 0x30",
+                "0x30 clear Vires (ignore 0x2b)",
+                "0x30 KEY-RIGHT @y141 → 0x31 (5× Vire)",
             ],
         },
         "bomb_61_north": {
@@ -1586,6 +2003,8 @@ def planning_interior_report() -> dict:
             "north_40": "rr-xc3x",
             "key_40": "rr-q8eq",
             "north_30": "rr-q8eq",
+            "clear_30": "rr-n1wn",
+            "key_right_31": "rr-n1wn",
             "stepladder_path": "rr-o0nn",
         },
         "key_40": {
@@ -1593,9 +2012,21 @@ def planning_interior_report() -> dict:
             "gel_split": hex(GEL_SPLIT_OBJECT_TYPE),
             "opens_north": hex(ROOM_L4_NORTH_30),
         },
+        "clear_30": {
+            "enemies": {"0x12": 3, "ignore": "0x2b"},
+            "settle_all_dead": 0,
+            "walkable_y_min": 128,
+            "checkpoint": "Level4Room30Cleared",
+        },
+        "key_right_31": {
+            "y": KEY_30_EAST_Y,
+            "opens_to": hex(ROOM_L4_EAST_31),
+            "key_cost": 1,
+            "checkpoint": "Level4Room31",
+        },
         "not_yet": [
             "stepladder room / ADDR_LADDER",
-            "0x30 clear + further N/E toward ladder",
+            "0x31 clear + further expand toward ladder",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
@@ -1638,15 +2069,26 @@ __all__ = [
     "MAZE_OUT_HOLD",
     "North30Phase",
     "North40Phase",
+    "KEY_30_EAST_Y",
+    "KeyRight31Phase",
+    "Level4Clear30Controller",
+    "Level4KeyRight31Controller",
+    "ROOM_30_SPEC",
     "ROOM_40_SPEC",
     "ROOM_50_SPEC",
     "ROOM_51_SPEC",
     "ROOM_61_SPEC",
     "ROOM_62_SPEC",
+    "ROOM_L4_EAST_31",
     "ROOM_L4_NORTH_30",
     "ROOM_L4_ZOLS_40",
     "GEL_SPLIT_OBJECT_TYPE",
+    "INVULN_MOVER_TYPE",
     "ZOL_OBJECT_TYPE",
+    "level4_room_30_cleared",
+    "level4_room_31_ready",
+    "make_key_right_31_controller",
+    "make_room_30_clear_controller",
     "ROOM_71_SPEC",
     "ROOM_ITEM_COMPASS",
     "ROOM_L4_COMPASS_62",

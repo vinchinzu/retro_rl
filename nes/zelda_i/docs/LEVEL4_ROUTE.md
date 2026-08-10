@@ -114,7 +114,9 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 0x62: 5× Vire + RoomItemId **0x16** Compass (dark maze)
 0x50 --scripted N (MAZE_50_TO_NORTH hold6 + long UP)--> **0x40**
 0x40: 5× Zol **0x13** → gel **0x14** + key **0x19** (east-corridor path)
-0x40 --free UP @x≈120--> **0x30**: 3× Vire + 2× invuln **0x2b**  **Stepladder residual**
+0x40 --free UP @x≈120--> **0x30**: 3× Vire + 2× invuln **0x2b**
+0x30 --clear (ignore 0x2b; north-band y≥128)--> KEY-RIGHT @y141 --> **0x31**
+0x31: 5× Vire **0x12**  **Stepladder residual**
 ```
 
 | Room | Live? | Enemies | Item / notes | Segment bead |
@@ -125,7 +127,8 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x50** | **live pure 2/2** | 5× `0x12` Vire | North via scripted path → 0x40 (not dead-end) | `rr-2ysf` / `rr-xc3x` |
 | **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
 | **0x40** | **live pure clear+key 2/2** | 5× `0x13` → `0x14` | Key path hold6 east corridor; free UP → 0x30 | `rr-xc3x` / `rr-q8eq` |
-| **0x30** | **live pure enter 2/2** | 3× `0x12` + 2× `0x2b` | North of 0x40; stepladder residual | `rr-q8eq` |
+| **0x30** | **live pure clear+KEY-R 2/2** | 3× `0x12` + 2× `0x2b` | Walkable y≥128; clear north-band UP; KEY-RIGHT → 0x31 | `rr-q8eq` / `rr-n1wn` |
+| **0x31** | **live pure enter 2/2** | 5× `0x12` Vire | East of 0x30; stepladder residual | `rr-n1wn` |
 
 ### Post-compass expand (rr-o0nn / rr-xc3x live 2026-08-10)
 
@@ -149,12 +152,15 @@ Early component was closed at `{0x71, 0x61, 0x51, 0x50, 0x62}` until **0x50 nort
 | 0x40 | **UP free** | **0x30** | after clear; x≈120 (rr-q8eq) |
 | 0x40 | LEFT/RIGHT | **sealed** | live probe |
 | 0x30 | DOWN | 0x40 | free return |
+| 0x30 | **KEY-RIGHT @y141** | **0x31** | keys 1→0; 5× Vire (rr-n1wn) |
+| 0x30 | UP / LEFT / free RIGHT | **sealed** | live probe |
+| 0x31 | LEFT | 0x30 | free return after key door |
 
 Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 
-**ADDR_LADDER still 0.** Next: clear 0x30 + expand N/E toward Stepladder
-(Like-Like stairs). Evidence: `recordings/l4_q8eq_key40_pure_key_40.json`,
-`recordings/l4_q8eq_north30_north_30.json`.
+**ADDR_LADDER still 0.** Next: clear 0x31 + expand toward Stepladder
+(Like-Like stairs). Evidence: `recordings/l4_n1wn_clear30_clear_30.json`,
+`recordings/l4_n1wn_key31_key_right_31.json`, `recordings/l4_n1wn_30_exits.json`.
 
 ### Runner
 
@@ -173,6 +179,8 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --tri
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_40 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_40 --trials 2 --save-state
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_30 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_30 --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --trials 2 --save-state
 ```
 
 **Traps (live):**
@@ -186,6 +194,10 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_30 --trial
 - Bomb stand on 0x61: **(120, ~105)** face UP + B; wait blast then push UP.
 - Key item id is **0x19 from room entry** (not drop-after-clear); walk mid-room after Keese clear.
 - KEY-RIGHT 0x61: hold **y≈141** RIGHT; keys 1→0; vestibule enter ~(16,141).
+- **0x30** walkable band **y∈[128,208]** only (solid north wall). Clear Vires
+  from north-band patrol face **UP**; ignore invuln **0x2b**. Free N/E/W sealed;
+  KEY-RIGHT @y141 → **0x31** (rr-n1wn).
+- KEY-RIGHT 0x30: hold **y≈141** RIGHT; keys 1→0; enter 0x31 ~(16,141).
 - 0x62 **dark maze**: open seek fails; use scripted holds
   (`MAZE_62_TO_COMPASS` hold6 → pickup ~(136,132) sets `ADDR_COMPASS|0x08`,
   then `MAZE_62_RETURN_WEST` hold4 → LEFT scroll to 0x61). Center y=141 is

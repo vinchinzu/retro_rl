@@ -10,6 +10,8 @@ from zelda_i.level4_dungeon import (
     BombWall61North,
     COMPASS_PICKUP_XY,
     GEL_SPLIT_OBJECT_TYPE,
+    INVULN_MOVER_TYPE,
+    KEY_30_EAST_Y,
     KEY_40_PICKUP_XY,
     KEY_61_EAST_Y,
     KEY_61_OPENS_TO,
@@ -24,12 +26,14 @@ from zelda_i.level4_dungeon import (
     MAZE_IN_HOLD,
     MAZE_OUT_HOLD,
     ROOM_L4_COMPASS_62,
+    ROOM_L4_EAST_31,
     ROOM_L4_ENTRY,
     ROOM_L4_KEESE_KEY_51,
     ROOM_L4_NORTH_30,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
     ROOM_L4_ZOLS_40,
+    ROOM_30_SPEC,
     ROOM_40_SPEC,
     ROOM_50_SPEC,
     ROOM_51_SPEC,
@@ -42,10 +46,12 @@ from zelda_i.level4_dungeon import (
     make_bomb_61_north_controller,
     make_compass_62_controller,
     make_entry_up_controller,
+    make_key_right_31_controller,
     make_key_right_62_controller,
     make_left_50_controller,
     make_north_30_controller,
     make_north_40_controller,
+    make_room_30_clear_controller,
     make_room_40_clear_controller,
     make_room_40_key_controller,
     make_room_50_clear_controller,
@@ -65,14 +71,17 @@ def test_live_room_ids() -> None:
     assert ROOM_L4_COMPASS_62 == 0x62
     assert ROOM_L4_ZOLS_40 == 0x40
     assert ROOM_L4_NORTH_30 == 0x30
+    assert ROOM_L4_EAST_31 == 0x31
     assert L4_VIRE == VIRE_OBJECT_TYPE == 0x12
     assert VIRE_SPLIT_KEESE_TYPE == 0x1C
     assert ZOL_OBJECT_TYPE == 0x13
     assert GEL_SPLIT_OBJECT_TYPE == 0x14
+    assert INVULN_MOVER_TYPE == 0x2B
     assert ROOM_ITEM_COMPASS == 0x16
     assert LEVEL4_COMPASS_BIT == 0x08
     assert KEY_61_EAST_Y == 141
     assert KEY_61_OPENS_TO == 0x62
+    assert KEY_30_EAST_Y == 141
     assert KEY_40_PICKUP_XY == (120, 117)
 
 
@@ -108,12 +117,17 @@ def test_specs_register() -> None:
     assert GEL_SPLIT_OBJECT_TYPE in ROOM_40_SPEC.type_only_enemy_types
     assert ROOM_40_SPEC.room_item_id == 0x19
     assert ROOM_40_SPEC.reward.settle_all_dead == 0
+    assert ROOM_30_SPEC.room_id == 0x30
+    assert ROOM_30_SPEC.expected_enemy_count == 3
+    assert ROOM_30_SPEC.reward.settle_all_dead == 0
+    assert INVULN_MOVER_TYPE not in ROOM_30_SPEC.enemy_types
     assert ROOM_SPECS[0x71] is ROOM_71_SPEC
     assert ROOM_SPECS[0x61] is ROOM_61_SPEC
     assert ROOM_SPECS[0x51] is ROOM_51_SPEC
     assert ROOM_SPECS[0x50] is ROOM_50_SPEC
     assert ROOM_SPECS[0x62] is ROOM_62_SPEC
     assert ROOM_SPECS[0x40] is ROOM_40_SPEC
+    assert ROOM_SPECS[0x30] is ROOM_30_SPEC
 
 
 def test_factories() -> None:
@@ -149,6 +163,12 @@ def test_factories() -> None:
     n30 = make_north_30_controller()
     assert n30.max_frames > 0
     assert n30.phase.name == "ALIGN"
+    c30 = make_room_30_clear_controller()
+    assert c30.max_frames > 0
+    assert c30.phase.name == "TO_BAND"
+    kr31 = make_key_right_31_controller(clear_vires=True)
+    assert kr31.clear_vires is True
+    assert kr31.phase.name == "CLEAR"
 
 
 def test_maze_62_paths() -> None:
@@ -186,7 +206,7 @@ def test_maze_40_key_path() -> None:
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"
-    assert r["tip"] == "rr-o0nn"
+    assert r["tip"] == "rr-n1wn"
     assert r["entry_room"] == "0x71"
     assert r["live_graph"]["0x71"]["UP"] == "0x61"
     assert r["live_graph"]["0x61"]["BOMB_UP"] == "0x51"
@@ -200,6 +220,8 @@ def test_planning_interior_report() -> None:
     assert r["live_graph"]["0x40"]["UP"] == "0x30"
     assert r["live_graph"]["0x40"]["enemies"]["0x13"] == 5
     assert r["live_graph"]["0x30"]["DOWN"] == "0x40"
+    assert r["live_graph"]["0x30"]["KEY_RIGHT"] == "0x31"
+    assert r["live_graph"]["0x31"]["enemies"]["0x12"] == 5
     assert r["live_graph"]["0x62"]["room_item"] == "0x16"
     assert r["live_graph"]["0x62"]["compass_bit"] == "0x8"
     assert r["segments"]["clear_vires_61"] == "rr-yr77"
@@ -209,6 +231,8 @@ def test_planning_interior_report() -> None:
     assert r["segments"]["north_40"] == "rr-xc3x"
     assert r["segments"]["key_40"] == "rr-q8eq"
     assert r["segments"]["north_30"] == "rr-q8eq"
+    assert r["segments"]["clear_30"] == "rr-n1wn"
+    assert r["segments"]["key_right_31"] == "rr-n1wn"
     assert r["segments"]["stepladder_path"] == "rr-o0nn"
     assert r["post_compass"]["bead"] == "rr-o0nn"
     assert r["post_compass"]["first_outside"] == "0x40"
@@ -218,3 +242,5 @@ def test_planning_interior_report() -> None:
     assert r["maze_62"]["pickup_xy"] == [136, 132]
     assert r["maze_50_north"]["opens_to"] == "0x40"
     assert r["key_40"]["opens_north"] == "0x30"
+    assert r["key_right_31"]["opens_to"] == "0x31"
+    assert r["key_right_31"]["y"] == 141

@@ -408,3 +408,15 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Evidence: `snes/harvest/recordings/rr_5in_residual.json`
 - Next tip: fix `rr-6byj` shed-seed equip hang, then re-run `--power-on --end-of-spring`.
 - No push.
+
+### 2026-08-09T23:30 CDT — zelda_i L4 0x30 clear + KEY-RIGHT 0x31 CLOSED rr-n1wn
+- **CLOSED** `rr-n1wn`: 0x30 Vire clear pure **2/2** (~2016f) + KEY-RIGHT → **0x31** pure **2/2** (~348f).
+- Live: 3× Vire `0x12` + 2× invuln `0x2b` (ignore for clear). Walkable band **y∈[128,208]** only —
+  north-band patrol face UP (generic mid-room chase starves damage).
+- Exit probe: free N/E/W sealed; DOWN→0x40; **KEY-RIGHT @y141** keys1→0 → **0x31** (5× Vire).
+- Segments: `clear_30`, `key_right_31` in `run_level4_rooms.py`. Checkpoints
+  `Level4Room30Cleared`, `Level4Room31`. Evidence: `l4_n1wn_clear30_*.json`,
+  `l4_n1wn_key31_*.json`, `l4_n1wn_30_exits.json`.
+- **ADDR_LADDER still 0.** Parents **rr-o0nn** / **rr-5lu** stay open.
+- Next tip: **`rr-resv`** clear 0x31 + expand toward ladder (blocks rr-o0nn).
+- Units: `test_level4_dungeon.py` 9 passed. Commit only (no push).
