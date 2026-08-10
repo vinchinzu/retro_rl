@@ -23,11 +23,13 @@ OBJECT_NAMES: dict[int, str] = {
     0x30: "gibdo",
     0x2B: "invuln_mover_residual",  # L3 0x49/0x5d HP240; sword/bomb no dmg (not Manhandla)
     0x32: "dodongo",  # L2 boss room 0x0e (live rr-n5i 2026-08-07)
-    0x3C: "manhandla",  # L3 room 0x4d assisted kill 2/2 (rr-vpl 2026-08-07)
+    0x35: "l4_mid_11_cluster",  # L4 room 0x11 live rr-rvae
+    0x3C: "manhandla",  # L3 room 0x4d assisted kill 2/2 (rr-vpl 2026-08-07); L4 0x10
     0x3D: "aquamentus",
     0x2A: "stalfos",
     0x40: "bubble",
-    0x49: "blade_trap_walkthrough_correlated",
+    0x43: "gleeok",  # L4 boss room 0x13 live rr-rvae (2-head)
+    0x49: "blade_trap",  # L4 room 0x02 live rr-rvae
     0x4D: "old_man_or_npc",
     0x4e: "trap_or_fire_residual",
     0x55: "fireball_or_statue_projectile",  # L2 0x4f statues
@@ -51,9 +53,12 @@ WALLMASTER_OBJECT_TYPE = 0x27
 ROPE_OBJECT_TYPE = 0x28
 INVULN_MOVER_OBJECT_TYPE = 0x2B
 DODONGO_OBJECT_TYPE = 0x32
+L4_MID_11_OBJECT_TYPE = 0x35  # L4 0x11 live rr-rvae
 MANHANDLA_OBJECT_TYPE = 0x3C
 AQUAMENTUS_OBJECT_TYPE = 0x3D
 MOLDORM_OBJECT_TYPE = 0x41
+GLEEOK_OBJECT_TYPE = 0x43  # L4 0x13 live rr-rvae
+BLADE_TRAP_OBJECT_TYPE = 0x49  # L4 0x02 live rr-rvae
 FIREBALL_OBJECT_TYPE = 0x55
 MANHANDLA_PROJECTILE_TYPE = 0x56
 

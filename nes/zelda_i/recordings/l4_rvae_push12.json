@@ -1,0 +1,394 @@
+{
+  "bead": "rr-rvae",
+  "edge_unique": [
+    "0x12-LEFT->0x11",
+    "0x12-RIGHT->0x13",
+    "0x12-UP->0x02"
+  ],
+  "edges": [
+    {
+      "dir": "RIGHT",
+      "from": "0x12",
+      "kind": "bomb",
+      "stand": [
+        192,
+        141
+      ],
+      "to": "0x13"
+    },
+    {
+      "dir": "RIGHT",
+      "from": "0x12",
+      "kind": "bomb",
+      "stand": [
+        176,
+        141
+      ],
+      "to": "0x13"
+    },
+    {
+      "dir": "UP",
+      "from": "0x12",
+      "kind": "bomb",
+      "stand": [
+        120,
+        105
+      ],
+      "to": "0x02"
+    },
+    {
+      "dir": "LEFT",
+      "from": "0x12",
+      "kind": "bomb",
+      "stand": [
+        48,
+        141
+      ],
+      "to": "0x11"
+    }
+  ],
+  "final": {
+    "bombs": 7,
+    "doors": 4,
+    "event": "final",
+    "keys": 1,
+    "map": 8,
+    "mode": 5,
+    "objs": [
+      {
+        "hp": 64,
+        "name": "unknown_object_0x5f",
+        "slot": 11,
+        "type": 95,
+        "x": 144,
+        "y": 160
+      }
+    ],
+    "rad": 4,
+    "rin": "small_key",
+    "room_item": 25,
+    "sc": "0x01",
+    "tf": 4,
+    "xy": [
+      144,
+      157
+    ]
+  },
+  "ok": true,
+  "phases": {
+    "bfs01": {
+      "cells": 543,
+      "exits": {
+        "0x02": {
+          "dir": "RIGHT",
+          "hold": 4,
+          "plen": 24
+        },
+        "0x11": {
+          "dir": "DOWN",
+          "hold": 4,
+          "plen": 17
+        }
+      }
+    },
+    "bfs12": {
+      "cells": 779,
+      "exits": {
+        "0x02": {
+          "dir": "UP",
+          "hold": 4,
+          "plen": 19
+        },
+        "0x11": {
+          "dir": "LEFT",
+          "hold": 4,
+          "plen": 12
+        },
+        "0x13": {
+          "dir": "RIGHT",
+          "hold": 4,
+          "plen": 31
+        }
+      }
+    },
+    "key01": {
+      "keys0": 0,
+      "keys1": 1
+    },
+    "push12": [
+      {
+        "block": [
+          [
+            80,
+            144
+          ]
+        ],
+        "face": "LEFT",
+        "ok": false,
+        "stand": [
+          112,
+          144
+        ],
+        "xy": [
+          96,
+          141
+        ]
+      },
+      {
+        "block": [
+          [
+            112,
+            144
+          ]
+        ],
+        "face": "RIGHT",
+        "ok": false,
+        "stand": [
+          80,
+          144
+        ],
+        "xy": [
+          96,
+          141
+        ]
+      },
+      {
+        "face": "UP",
+        "ok": false,
+        "skip": "far",
+        "stand": [
+          96,
+          160
+        ]
+      },
+      {
+        "block": [
+          [
+            96,
+            160
+          ]
+        ],
+        "face": "DOWN",
+        "ok": false,
+        "stand": [
+          96,
+          128
+        ],
+        "xy": [
+          96,
+          141
+        ]
+      },
+      {
+        "block": [
+          [
+            80,
+            144
+          ]
+        ],
+        "face": "LEFT",
+        "ok": false,
+        "stand": [
+          120,
+          144
+        ],
+        "xy": [
+          96,
+          141
+        ]
+      },
+      {
+        "block": [
+          [
+            96,
+            144
+          ]
+        ],
+        "face": "LEFT",
+        "ok": false,
+        "stand": [
+          112,
+          136
+        ],
+        "xy": [
+          112,
+          133
+        ]
+      },
+      {
+        "block": [
+          [
+            96,
+            144
+          ]
+        ],
+        "face": "LEFT",
+        "ok": false,
+        "stand": [
+          112,
+          152
+        ],
+        "xy": [
+          32,
+          149
+        ]
+      },
+      {
+        "face": "UP",
+        "ok": false,
+        "skip": "far",
+        "stand": [
+          88,
+          160
+        ]
+      },
+      {
+        "face": "UP",
+        "ok": false,
+        "skip": "far",
+        "stand": [
+          104,
+          160
+        ]
+      },
+      {
+        "face": "UP",
+        "ok": false,
+        "skip": "far",
+        "stand": [
+          96,
+          168
+        ]
+      }
+    ]
+  },
+  "rooms": {
+    "0x01_key": {
+      "bombs": 7,
+      "doors": 4,
+      "event": "key",
+      "keys": 1,
+      "map": 8,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 64,
+          "name": "unknown_object_0x5f",
+          "slot": 11,
+          "type": 95,
+          "x": 144,
+          "y": 160
+        }
+      ],
+      "rad": 2,
+      "rin": "small_key",
+      "room_item": 25,
+      "sc": "0x01",
+      "tf": 4,
+      "xy": [
+        144,
+        157
+      ]
+    },
+    "0x02_bomb12": {
+      "bombs": 6,
+      "doors": 0,
+      "event": "b",
+      "keys": 0,
+      "map": 8,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 0,
+          "name": "blade_trap_walkthrough_correlated",
+          "slot": 1,
+          "type": 73,
+          "x": 128,
+          "y": 141
+        }
+      ],
+      "rad": 0,
+      "rin": "no_inventory_reward_observed",
+      "room_item": 3,
+      "sc": "0x02",
+      "tf": 4,
+      "xy": [
+        120,
+        205
+      ]
+    },
+    "0x11_bomb12": {
+      "bombs": 6,
+      "doors": 5,
+      "event": "b",
+      "keys": 0,
+      "map": 8,
+      "mode": 5,
+      "objs": [],
+      "rad": 0,
+      "rin": "no_inventory_reward_observed",
+      "room_item": 3,
+      "sc": "0x11",
+      "tf": 4,
+      "xy": [
+        208,
+        141
+      ]
+    },
+    "0x12_cleared": {
+      "bombs": 7,
+      "doors": 2,
+      "event": "c12",
+      "keys": 0,
+      "map": 8,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 176,
+          "name": "unknown_object_0x68",
+          "slot": 11,
+          "type": 104,
+          "x": 96,
+          "y": 144
+        }
+      ],
+      "rad": 2,
+      "rin": "no_inventory_reward_observed",
+      "room_item": 3,
+      "sc": "0x12",
+      "tf": 4,
+      "xy": [
+        136,
+        93
+      ]
+    },
+    "0x13_bomb12": {
+      "bombs": 6,
+      "doors": 2,
+      "event": "b",
+      "keys": 0,
+      "map": 8,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 0,
+          "name": "unknown_object_0x43",
+          "slot": 1,
+          "type": 67,
+          "x": 160,
+          "y": 125
+        }
+      ],
+      "rad": 0,
+      "rin": "heart_container",
+      "room_item": 26,
+      "sc": "0x13",
+      "tf": 4,
+      "xy": [
+        32,
+        141
+      ]
+    }
+  },
+  "tag": "l4_rvae_push12"
+}

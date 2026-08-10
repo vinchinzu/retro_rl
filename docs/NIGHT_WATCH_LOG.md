@@ -967,3 +967,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-av5s` PARTIAL: past pocket ceiling ~(219,1942). Mid/upper/Hellway still RED.
 - Next: freeze-ripper/HBJ from 1942 → tunnel y<=1880 → Hellway.
 
+### 2026-08-10T04:45 CDT — zelda Gleeok approach live (partial)
+- `rr-rvae` open: map dual-green; Gleeok room 0x13 type 0x43 entered once from 0x12.
+- Stabilize 0x12 RIGHT→0x13 dual-green; fight + TF 0x08 residual.
+

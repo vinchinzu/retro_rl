@@ -1,0 +1,100 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T07:41:10.707372+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "segment": "l4_room_00",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "edges": [
+      {
+        "dir": "LEFT",
+        "from": "0x21",
+        "to": "0x20"
+      },
+      {
+        "dir": "DOWN",
+        "from": "0x20",
+        "kind": "door_bfs",
+        "plen": 15,
+        "to": "0x30"
+      },
+      {
+        "dir": "UP",
+        "from": "0x20",
+        "kind": "door_bfs",
+        "plen": 16,
+        "to": "0x10"
+      },
+      {
+        "dir": "RIGHT",
+        "from": "0x20",
+        "kind": "door_bfs",
+        "plen": 22,
+        "to": "0x21"
+      },
+      {
+        "dir": "UP",
+        "from": "0x20",
+        "to": "0x10"
+      },
+      {
+        "dir": "UP",
+        "from": "0x10",
+        "kind": "door_bfs",
+        "plen": 8,
+        "to": "0x00"
+      },
+      {
+        "dir": "DOWN",
+        "from": "0x10",
+        "kind": "door_bfs",
+        "plen": 16,
+        "to": "0x20"
+      },
+      {
+        "dir": "UP",
+        "from": "0x10",
+        "to": "0x00"
+      }
+    ],
+    "final": {
+      "bombs": 7,
+      "doors": 0,
+      "event": "ckpt00",
+      "keys": 0,
+      "lv": 4,
+      "map": 8,
+      "mask": 0,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 0,
+          "name": "trap_or_fire_residual",
+          "slot": 1,
+          "type": 78,
+          "x": 160,
+          "y": 93
+        }
+      ],
+      "rad": 0,
+      "room_item": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "sc": "0x00",
+      "tf": 4,
+      "xy": [
+        120,
+        205
+      ]
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Map.state",
+  "source_state_sha256": "cc5a87654af9bec9b45c74d194631bd920591f85ef91aeff7d36d5e0a7849c13",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fea8e-c663-7870-99a9-609011dddceb/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room00.state",
+  "state_sha256": "6c67476eb0248840bb9a96aac256171f7a3db3847e684fa73fac82912b07b651"
+}

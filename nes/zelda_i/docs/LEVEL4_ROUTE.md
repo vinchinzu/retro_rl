@@ -218,6 +218,38 @@ Start: **`Level4Stepladder`** (mode 9 room **0x60**, `ADDR_LADDER=1`, pedestal
 | `west_31` pure 2/2 | `l4_05fz_west31_west_31.json` | ~372 | `Level4Room31PostLadder` |
 | `map_21` assisted 2/2 | `l4_rvae_map21_map_21.json` | ~17872 | `Level4Map` |
 
+### Gleeok approach from Level4Map (rr-rvae recon 2026-08-10)
+
+Live graph (maze BFS + bomb stands; assisted). **Gleeok enter stabilize + TF
+still residual.**
+
+```
+0x21 map (Level4Map)
+  --maze BFS LEFT--> 0x20 --free UP--> 0x10 Manhandla 0x3c --UP--> 0x00 bubbles (dead-end)
+  --BOMB_UP @(120,105)--> 0x11 type 0x35 cluster
+       --UP--> 0x01 8× Keese + key 0x19  (natural key for map KEY-UP residual)
+       --RIGHT--> 0x12 5× Vire + block 0x68
+            --UP--> 0x02 blade traps 0x49 (dead-end)
+            --RIGHT--> 0x13 Gleeok type 0x43 + HC 0x1a  (enter once; stabilize residual)
+       --LEFT--> 0x10 Manhandla
+```
+
+| Room | Live? | Notes |
+|------|-------|-------|
+| **0x11** | **live** | BOMB_UP from map; type `0x35`; checkpoint `Level4Room11` |
+| **0x01** | **live** | Keese + key `0x19` (keys 0→1 after clear) |
+| **0x12** | **live** | 5× Vire; free UP→0x02; RIGHT→Gleeok residual |
+| **0x02** | **live** | traps only; DOWN→0x12 |
+| **0x13** | **live once** | Gleeok `0x43` + HC; evidence `l4_rvae_push12_12b_RIGHT_0x13.png` |
+| **0x10** | **live** | Manhandla side path; UP→0x00 dead-end |
+| **0x00** | **live** | bubbles; only DOWN |
+
+**Residual:** stable dual-green enter 0x12→0x13 (shutter/bomb RIGHT not yet
+repro every clear from `Level4Room12`); Gleeok fight policy; TF room + bit
+`0x08`. Natural key: 0x01 after map BOMB_UP (no recon poke).
+
+Probe: `scripts/probe_level4_map_gleeok.py --infinite-life --from-state Level4Map`.
+
 **Traps (post-ladder live):**
 
 - Pedestal freeze: **~100–150 idle** after loading `Level4Stepladder` before
@@ -281,8 +313,8 @@ Room IDs **beyond 0x40** remain source-hypothesized until probed.
 | Gleeok (2 heads) | fireballs | E → TF `0x08` |
 
 **Key item:** Stepladder (`ADDR_LADDER`).
-**Boss:** Gleeok (2-head). Object type id **TBD live**.
-**Triforce bit:** `0x08`.
+**Boss:** Gleeok (2-head). Object type id **`0x43` live** (room **0x13**).
+**Triforce bit:** `0x08` (not yet collected live).
 
 ### Policy notes
 
@@ -322,6 +354,10 @@ Scaffold: `level4_triforce_stop(snap)` returns True only when
 | `Level4PostLadder` | exit 0x60 → 0x32 play ladder=1 | **live** |
 | `Level4Room31PostLadder` | west of PostLadder on 0x31 | **live** |
 | `Level4Map` | `ADDR_MAP & 0x08` on 0x21 | **live** (assisted) |
+| `Level4Room11` | BOMB_UP from map 0x21 | **live** (recon) |
+| `Level4Room12` | east of 0x11 Vires | **live** (recon) |
+| `Level4Room01` | north of 0x11 Keese+key | **live** (recon) |
+| `Level4Boss` | 0x13 Gleeok vestibule | partial (enter residual) |
 | `Level4BossCleared` | after Gleeok + HC | planned |
 | `Level4Complete` | `triforce & 0x08` | planned |
 

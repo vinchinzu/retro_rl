@@ -1,0 +1,46 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T07:50:21.000387+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-rvae",
+    "intervention_class": "survival",
+    "segment": "l4_room_10",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "doors": 1,
+      "event": "ckpt",
+      "keys": 0,
+      "map": 8,
+      "mode": 5,
+      "objs": [
+        {
+          "hp": 0,
+          "name": "manhandla",
+          "slot": 1,
+          "type": 60,
+          "x": 80,
+          "y": 157
+        }
+      ],
+      "rad": 0,
+      "rin": "no_inventory_reward_observed",
+      "room_item": 3,
+      "sc": "0x10",
+      "tf": 4,
+      "xy": [
+        208,
+        141
+      ]
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fea8e-c663-7870-99a9-609011dddceb/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room11.state",
+  "source_state_sha256": "21b64475b3718338d4819650d5dff59c2cd16e02779bd700276f4b5f81792d8f",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-019fea8e-c663-7870-99a9-609011dddceb/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room10.state",
+  "state_sha256": "75797c8ed588f974ceea099670bc7a5d317264332218164bb92fcb16528bb2ba"
+}

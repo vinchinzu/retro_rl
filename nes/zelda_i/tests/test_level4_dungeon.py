@@ -118,6 +118,36 @@ def test_live_room_ids() -> None:
     assert MAP_21_PICKUP_XY == (208, 181)
     assert len(MAP_21_SAMPLE_PATH) >= 20
     assert RIGHT_20_STAND == (208, 141)
+    # Gleeok approach anchors (rr-rvae recon)
+    from zelda_i.level4_dungeon import (
+        BOMB_21_NORTH_STAND,
+        BOMB_21_OPENS_TO,
+        GLEEOK_OBJECT_TYPE,
+        MID_11_OBJECT_TYPE,
+        ROOM_ITEM_HEART_CONTAINER,
+        ROOM_L4_GLEEOK_13,
+        ROOM_L4_KEY_01,
+        ROOM_L4_MANHANDLA_10,
+        ROOM_L4_MID_11,
+        ROOM_L4_TRAPS_02,
+        ROOM_L4_VIRES_12,
+    )
+
+    assert ROOM_L4_MID_11 == 0x11
+    assert ROOM_L4_KEY_01 == 0x01
+    assert ROOM_L4_VIRES_12 == 0x12
+    assert ROOM_L4_TRAPS_02 == 0x02
+    assert ROOM_L4_GLEEOK_13 == 0x13
+    assert ROOM_L4_MANHANDLA_10 == 0x10
+    assert BOMB_21_OPENS_TO == 0x11
+    assert BOMB_21_NORTH_STAND == (120, 105)
+    assert GLEEOK_OBJECT_TYPE == 0x43
+    assert MID_11_OBJECT_TYPE == 0x35
+    assert ROOM_ITEM_HEART_CONTAINER == 0x1A
+    rep = planning_interior_report()
+    assert rep["status"] == "gleeok_approach_live_enter_stabilize_tf_residual"
+    assert "0x13" in rep["live_graph"]
+    assert rep["live_graph"]["0x21"]["BOMB_UP"] == "0x11"
 
 
 def test_map_success_predicates_false_on_zeros() -> None:
