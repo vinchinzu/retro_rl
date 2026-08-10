@@ -130,7 +130,7 @@ class ContinuousTip:
 
 # Verified continuous tip (M5): Wave Beam (K4.10) dual exact match 136,361f
 # (Spazer mainline, beams 0x1005). Speed 130,388f remains a valid prefix tip.
-DEFAULT_CONTINUOUS_TIP = "wave"
+DEFAULT_CONTINUOUS_TIP = "ice"
 
 # Live views — mutated in place by :func:`rebuild_from_tip_specs` so importers
 # that bound the name early still see post-registration tips.

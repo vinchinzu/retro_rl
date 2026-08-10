@@ -332,17 +332,20 @@ def _right_biased_floor_recover(session: ControllerSession, label: str) -> None:
 def _climb_business_floor_to_elevator(session: ControllerSession, label: str) -> None:
     """Business floor / below-Super → elevator platform (then drop to Super).
 
-    Attempt order (rr-kxge continuous Ice stabilize):
-    1. Pure dual first try — runup 8 / pos_1339=84
-    2. Pure 907 retry — runup 14 / pos 84 after RIGHT-biased recover
-    3–4. Continuous 1227/907 — pos_1339=90, runup 8 then 14
-    5–6. Extra continuous attempts after HJ door recover
+    Attempt order (rr-kxge continuous Ice stabilize, offline grid):
+    1–2. Continuous-tuned 907 runup 18–20 / pos_1339=90 (wave floor pin)
+    3–4. Pure dual ladder — runup 8 then 14 / pos 84 after RIGHT-biased recover
+    5–6. Extra continuous 22/90 and 16/88
+    Door lip always soft-bound inside business_climb setup; ``bound_floor_left``
+    for earlier RIGHT bias on cont-tuned rows.
     """
     unmorph(session)
     if session.state.room_id != ROOM_BUSINESS:
         raise TimeoutError(f"{label}: not in Business for floor climb: {session.state}")
     _anchor_business_floor_for_climb(session, label)
     beams = int(session.state.collected_beams)
+    # Only dump when not already a named diagnostic fail pin — avoid clobbering
+    # a good continuous floor capture mid-retry (rr-kxge overnight).
     dump = (
         "business_floor_pre_ice_climb_wave"
         if beams & 0x1000
@@ -350,16 +353,34 @@ def _climb_business_floor_to_elevator(session: ControllerSession, label: str) ->
     )
     _maybe_dump_climb_state(session, dump)
 
-    attempts: list[tuple[int, int]] = [
-        (8, 84),
-        (14, 84),
-        (8, 90),
-        (14, 90),
-        (8, 90),
-        (14, 90),
-    ]
+    # (runup_907, pos_1339, bound_floor_left)
+    # Charge (0x1000) marks continuous Wave+ loadout — prefer cont-tuned 907
+    # runups first with classic setup (bound=False) so first-try can clear.
+    # Safe re-centering setup (bound=True) only on later retries after recover.
+    # Pre-Charge pure Ice pins keep the dual-green 8→14/84 classic ladder.
+    has_charge = bool(beams & 0x1000)
+    if has_charge:
+        attempts: list[tuple[int, int, bool]] = [
+            (18, 90, False),
+            (20, 90, False),
+            (14, 84, False),
+            (22, 90, False),
+            (18, 90, True),
+            (20, 90, True),
+            (14, 84, True),
+            (16, 88, True),
+        ]
+    else:
+        attempts = [
+            (8, 84, False),
+            (14, 84, False),
+            (18, 90, False),
+            (20, 90, False),
+            (18, 90, True),
+            (20, 90, True),
+        ]
     last_err: TimeoutError | None = None
-    for i, (runup, pos_1339) in enumerate(attempts):
+    for i, (runup, pos_1339, bound) in enumerate(attempts):
         try:
             if i > 0:
                 if session.state.room_id == ROOM_HJ_SHAFT:
@@ -377,8 +398,7 @@ def _climb_business_floor_to_elevator(session: ControllerSession, label: str) ->
                 session,
                 runup_907=runup,
                 pos_1339=pos_1339,
-                # Bound LEFT setup only on continuous-tuned pos≈90 retries.
-                bound_floor_left=(pos_1339 >= 90),
+                bound_floor_left=bound,
             )
             last_err = None
             break
@@ -387,7 +407,7 @@ def _climb_business_floor_to_elevator(session: ControllerSession, label: str) ->
             _maybe_dump_climb_state(session, f"business_ice_climb_fail_{i}")
             if session.state.room_id == ROOM_HJ_SHAFT:
                 if not _recover_hj_door_to_business(session, label):
-                    # Keep trying remaining attempts only if we get back.
+                    # Stay in loop — next attempt pre-check re-tries recover.
                     continue
                 continue
             if session.state.room_id != ROOM_BUSINESS:

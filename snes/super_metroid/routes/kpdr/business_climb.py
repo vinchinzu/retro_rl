@@ -69,6 +69,139 @@ def _wait_standing_y(
         hold(session, 1, reason=reason)
     raise TimeoutError(f"{reason}: expected y={y}: {session.state}")
 
+def _on_business_1339(state: SuperMetroidState) -> bool:
+    return (
+        int(state.samus_y) == 1339
+        and int(state.pose) in _STANDING
+        and int(state.velocity_y) == 0
+    )
+
+
+def _recenter_business_floor(session: ControllerSession, *, label: str) -> None:
+    """Walk to mid-right floor band before LEFT-heavy setup (avoid HJ door)."""
+    unmorph(session)
+    for _ in range(160):
+        st = session.state
+        if st.room_id != ROOM_BUSINESS:
+            raise TimeoutError(f"{label}: left Business while recentering: {st}")
+        x = int(st.samus_x)
+        y = int(st.samus_y)
+        grounded = int(st.velocity_y) == 0 and int(st.pose) in _STANDING
+        if y < 1350:
+            # Mid-air / mid-platform — let gravity settle; bias RIGHT away from door.
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_recenter_air")
+            continue
+        if grounded and 170 <= x <= 230:
+            hold(session, 8, reason=f"{label}_recenter_settle")
+            return
+        if x < 170:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_recenter_r")
+        elif x > 230 and grounded:
+            hold(session, 1, "LEFT", reason=f"{label}_recenter_l")
+        else:
+            hold(session, 1, reason=f"{label}_recenter_idle")
+    # Soft fail — setup may still work from imperfect pin.
+
+
+def _setup_business_to_1339(
+    session: ControllerSession,
+    *,
+    bound_floor_left: bool = True,
+    attempts: int = 4,
+) -> None:
+    """Floor / mid → standing y1339 without kissing the left HJ door.
+
+    Continuous Ice natural entry is enemy-noisy: open-loop LEFT+B+A from a
+    left-biased pin exits into ``0xAA41``. Always soft-bound the door lip
+    (x≲48 on the floor band) and re-center between attempts. ``bound_floor_left``
+    adds an earlier RIGHT bias (x≲72) used by continuous Ice retries.
+    """
+    unmorph(session)
+    if _on_business_1339(session.state):
+        return
+
+    door_x = 48
+    soft_x = 72 if bound_floor_left else door_x
+
+    for attempt in range(attempts):
+        if session.state.room_id != ROOM_BUSINESS:
+            raise TimeoutError(
+                f"business_climb_setup: left Business: {session.state}"
+            )
+        # Mid-right start keeps the second LEFT from eating the HJ door.
+        if int(session.state.samus_y) >= 1350:
+            _recenter_business_floor(session, label="business_climb_setup")
+
+        for direction in ("LEFT", "LEFT", "RIGHT"):
+            hold(session, 12, reason="business_climb_release")
+            for _ in range(85):
+                st = session.state
+                if st.room_id != ROOM_BUSINESS:
+                    raise TimeoutError(
+                        f"business_climb_setup: left Business: {session.state}"
+                    )
+                x = int(st.samus_x)
+                y = int(st.samus_y)
+                # Never hold LEFT into the HJ door band on the lower screens.
+                if direction == "LEFT" and y >= 1280 and x <= soft_x:
+                    hold(
+                        session,
+                        1,
+                        "RIGHT",
+                        "B",
+                        "A",
+                        reason="business_climb_setup_bound",
+                    )
+                elif direction == "LEFT" and y >= 1350 and x <= door_x + 8:
+                    hold(
+                        session,
+                        1,
+                        "RIGHT",
+                        "B",
+                        reason="business_climb_setup_door",
+                    )
+                else:
+                    hold(
+                        session,
+                        1,
+                        direction,
+                        "B",
+                        "A",
+                        reason="business_climb_setup",
+                    )
+            if session.state.room_id != ROOM_BUSINESS:
+                raise TimeoutError(
+                    f"business_climb_setup: left Business: {session.state}"
+                )
+            hold(session, 30, reason="business_climb_setup_land")
+            if session.state.room_id != ROOM_BUSINESS:
+                raise TimeoutError(
+                    f"business_climb_setup_land: left Business: {session.state}"
+                )
+            if _on_business_1339(session.state):
+                return
+
+        if _on_business_1339(session.state):
+            return
+        # Knocked or missed — drop / re-center and retry the trio.
+        if int(session.state.samus_y) < 1350:
+            for _ in range(90):
+                st = session.state
+                if st.room_id != ROOM_BUSINESS:
+                    raise TimeoutError(
+                        f"business_climb_setup: left Business: {session.state}"
+                    )
+                if int(st.samus_y) >= 1405 and int(st.velocity_y) == 0:
+                    break
+                hold(session, 1, "RIGHT", "B", reason="business_climb_setup_drop")
+        hold(session, 10, reason="business_climb_setup_retry_pause")
+
+    if not _on_business_1339(session.state):
+        raise TimeoutError(
+            f"business_climb_setup: failed to reach y1339: {session.state}"
+        )
+
+
 def _business_high_jump_platforms(
     session: ControllerSession,
     *,
@@ -79,28 +212,28 @@ def _business_high_jump_platforms(
     """Bottom Business Center floor → center elevator (Hi-Jump route).
 
     ``runup_907``: RIGHT+B frames before the 987→907 hop. Continuous natural
-    entry needs 14; pure probe prefers 8 (used on floor re-climb fallback).
+    entry often needs 14–20; pure probe prefers 8 then 14 on retry.
 
-    ``pos_1339``: LEFT walk target on y1339 before 1227 hop (pure=84;
-    continuous Ice floor pin needs ~90 — rr-kxge offline grid).
+    ``pos_1339``: LEFT walk target on y1339 before 1227 hop (pure≈84;
+    continuous Ice floor pin often prefers ≈90 — rr-kxge offline grid).
 
-    ``bound_floor_left``: when True, soft-bound LEFT setup near the HJ door
-    (continuous Ice retries only — pure open-loop stays unbound).
+    ``bound_floor_left``: earlier RIGHT bias during setup (continuous Ice).
+    Door lip is always soft-bound regardless.
     """
-    # Four setup jumps land on the first left platform (~y=1339).
-    # If already standing there (pure mid-climb states), skip the open-loop setup.
+    # Setup jumps land on the first left platform (~y=1339).
+    # IMPORTANT: default (bound_floor_left=False) must keep the classic open-loop
+    # LEFT/LEFT/RIGHT timing — warehouse continuous spine is frame-locked to it.
+    # Safe/re-centering setup is only for continuous Ice floor retries.
     unmorph(session)
-    already = (
-        session.state.samus_y == 1339
-        and session.state.pose in _STANDING
-        and session.state.velocity_y == 0
-    )
+    already = _on_business_1339(session.state)
     if not already:
-        for direction in ("LEFT", "LEFT", "RIGHT"):
-            hold(session, 12, reason="business_climb_release")
-            if not bound_floor_left:
-                hold(session, 85, direction, "B", "A", reason="business_climb_setup")
-            else:
+        if bound_floor_left:
+            _setup_business_to_1339(session, bound_floor_left=True)
+        else:
+            # Classic open-loop (warehouse spine). Minimal door lip guard only:
+            # never hold LEFT at x≤40 on the floor band — earlier frames unchanged.
+            for direction in ("LEFT", "LEFT", "RIGHT"):
+                hold(session, 12, reason="business_climb_release")
                 for _ in range(85):
                     st = session.state
                     if st.room_id != ROOM_BUSINESS:
@@ -109,8 +242,8 @@ def _business_high_jump_platforms(
                         )
                     if (
                         direction == "LEFT"
-                        and int(st.samus_y) >= 1300
-                        and int(st.samus_x) <= 80
+                        and int(st.samus_y) >= 1350
+                        and int(st.samus_x) <= 40
                     ):
                         hold(
                             session,
@@ -118,7 +251,7 @@ def _business_high_jump_platforms(
                             "RIGHT",
                             "B",
                             "A",
-                            reason="business_climb_setup_bound",
+                            reason="business_climb_setup_door",
                         )
                     else:
                         hold(
@@ -129,20 +262,20 @@ def _business_high_jump_platforms(
                             "A",
                             reason="business_climb_setup",
                         )
-            if session.state.room_id != ROOM_BUSINESS:
-                raise TimeoutError(
-                    f"business_climb_setup: left Business: {session.state}"
-                )
-            hold(session, 30, reason="business_climb_setup_land")
-            if session.state.room_id != ROOM_BUSINESS:
-                raise TimeoutError(
-                    f"business_climb_setup_land: left Business: {session.state}"
-                )
+                if session.state.room_id != ROOM_BUSINESS:
+                    raise TimeoutError(
+                        f"business_climb_setup: left Business: {session.state}"
+                    )
+                hold(session, 30, reason="business_climb_setup_land")
+                if session.state.room_id != ROOM_BUSINESS:
+                    raise TimeoutError(
+                        f"business_climb_setup_land: left Business: {session.state}"
+                    )
 
     # y1339 → y1227.
     # Continuous failure mode: walk left while not grounded → lip fall (pose 41)
-    # so A never charges. Gate on standing; pure needs ~x84 for the LEFT+A arc,
-    # but stop at 86 if the second-climb path is edgy after floor recover.
+    # so A never charges. Gate on standing. Prejump x band ~78–90 is the
+    # working window (pos=84 overshoots to ~76 on colder continuous pins).
     unmorph(session)
     hold(session, 12, reason="business_1339_settle")
     _wait_standing_y(session, 1339, timeout=60, reason="business_1339_ground")
@@ -154,20 +287,45 @@ def _business_high_jump_platforms(
             hold(session, 1, reason="business_1339_replant")
             if session.state.samus_y != 1339:
                 # Walked off — re-setup first platform and re-enter this hop.
-                unmorph(session)
-                for direction in ("LEFT", "LEFT", "RIGHT"):
-                    hold(session, 12, reason="business_climb_release")
-                    hold(
-                        session, 85, direction, "B", "A", reason="business_climb_setup"
+                if bound_floor_left:
+                    _setup_business_to_1339(
+                        session, bound_floor_left=True, attempts=3
                     )
-                    hold(session, 30, reason="business_climb_setup_land")
+                else:
+                    unmorph(session)
+                    for direction in ("LEFT", "LEFT", "RIGHT"):
+                        hold(session, 12, reason="business_climb_release")
+                        hold(
+                            session,
+                            85,
+                            direction,
+                            "B",
+                            "A",
+                            reason="business_climb_setup",
+                        )
+                        hold(session, 30, reason="business_climb_setup_land")
                 _wait_standing_y(
                     session, 1339, timeout=60, reason="business_1339_ground_retry"
                 )
                 break
             continue
         hold(session, 1, "LEFT", reason="business_1339_position")
-    hold(session, 4, "RIGHT", reason="business_1339_brake")
+    # Classic pure/warehouse: 4f RIGHT brake. Continuous Ice: shorter brake +
+    # nudge so prejump x stays in the 78–90 working band.
+    if bound_floor_left:
+        hold(session, 3, "RIGHT", reason="business_1339_brake")
+        for _ in range(12):
+            x = int(session.state.samus_x)
+            if session.state.samus_y != 1339 or session.state.pose not in _STANDING:
+                break
+            if 78 <= x <= 90:
+                break
+            if x < 78:
+                hold(session, 1, "RIGHT", reason="business_1339_nudge_r")
+            else:
+                break
+    else:
+        hold(session, 4, "RIGHT", reason="business_1339_brake")
     hold(session, 8, reason="business_1339_release")
     _wait_standing_y(session, 1339, timeout=40, reason="business_1339_prejump")
     for frame in range(120):
