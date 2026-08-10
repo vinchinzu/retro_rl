@@ -26,6 +26,18 @@ AirScreen2 late recipe (0-based ``i``):
 3. ``i ≥ 180``: late period 40 / hold 16 through screens 3–4
 4. Hold clear when ``camera_x_screen ≥ target``
 
+Post-screen-4 bottleneck (2026-08-09 probe, rr-54ui — open):
+
+- Last solid land under the screen2 recipe is ~f437 / prog 949 / sy 84
+  (checkpoint ``AirFanPlatform``). Platform has a pink fan to the LEFT and a
+  cloud / ladder geometry toward screen 4; pure RIGHT+period jump overshoots
+  and pit-dies ~prog 1047–1073 (camera still 4). ``AirScreen4`` itself is
+  mid-air (feet=0) and falls in ~17f without a new recipe.
+- Variable jump height works (hold 1→~sy76 short hop; hold ≥12→apex sy34).
+- Fan-left / edge-jump / grounded-hop / late-period sweeps did not land past
+  that platform. Next work needs a fan-ride or ladder route, not more period
+  tuning alone.
+
 NES buttons: B=shoot, A=jump (fceumm 9-button layout).
 """
 
