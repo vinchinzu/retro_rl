@@ -28,6 +28,7 @@ from harvest.maps.map_config import ROUTES, Waypoint
 from harvest.planner.tasks.home import GoToSleepTask
 from harvest.planner.day_plan_status import TASKS_DIR
 from harvest.planner.tasks.inventory import (
+    CompleteOutdoorMorningIntroTask,
     EnsureCarryToolTask,
     RecordingSliceSpec,
     SHED_SEED_SPECS,
@@ -388,14 +389,20 @@ def _shed_starter_tools(*, exit_when_done: bool = True, required: bool = True) -
     0x08). Stock ``grass_seeds`` is already 1; equipping requires a shelf A.
     Carry only holds two slots — order is grass then can so both stay ready.
 
+    Gate B pure path: after truck→D2 bed, first house→farm fires outdoor dog
+    intro (``CODE_83CEAE``). ``CompleteOutdoorMorningIntroTask`` names the dog
+    (``AAAA``) so ``event_flags_1f68`` reaches ``0x00B1`` and free-move returns
+    before shed nav. Y1 fixtures already have intro flags — task no-ops.
+
     Verified from ``house_size=0`` morning house. Some D1 fixtures incorrectly
-    have ``house_size=2`` (AnnEve / rest_end), which breaks ExitToFarm — set
-    ``required=False`` to soft-continue the handoff in that case.
+    have ``house_size=2`` (AnnEve / rest_end); set ``required=False`` to
+    soft-continue the handoff when shed is optional.
     """
     grass_shelf = SHED_SEED_SPECS["grass"]
     seq = SequenceTask(
         name="shed_starter_tools",
         tasks=(
+            CompleteOutdoorMorningIntroTask(name="outdoor_morning_intro"),
             ShedFetchItemTask(
                 name="pick_grass_seeds",
                 item_id=seed_item_id("grass"),
@@ -709,16 +716,15 @@ def build_day1_handoff_tasks(
         # Rest truck+sleep / leave+GoToSleep ends D2 morning at bed (136,120).
         # 2026-08-09 (rr-bhr): ExitToFarm from truck D2 bed fires ROM morning
         # intro when event_flags_1f68 lacks 0x00A1 (Y1 has 0x00B1). Free-move
-        # bit 0x4000 clears permanently → house-front softlock → 0x5F.
-        # house_size not causal. Need pure outdoor dog-intro completion, then
-        # shed (ShedFetchItemTask farm_control_lost fail-fast).
+        # clears until dog name entry completes → flags 0x00B1 + free-move.
+        # house_size not causal. CompleteOutdoorMorningIntroTask (in shed seq)
+        # pure-completes dog name AAAA then shed grass+can.
         if include_sleep and not truck_includes_sleep:
             parts.append(GoToSleepTask(name="sleep_to_d2", timeout=12000))
         if pick_starter_tools:
             # Free grass bag + watering can into carry after D2 morning settle.
             # Required when house_size_at_start==0 (power-on / Gate B). Soft-
-            # optional otherwise (AnnEve fixtures). ShedFetchItemTask now fails
-            # fast with farm_control_lost instead of walking into 0x5F.
+            # optional otherwise (AnnEve fixtures). Outdoor intro runs first.
             parts.append(
                 _shed_starter_tools(
                     exit_when_done=True,
