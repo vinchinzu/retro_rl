@@ -382,3 +382,10 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - `rr-jwju` open under rr-20w: F9-before-fence, pond reachability, fence local_drop, return_home timeout 5500f.
 - Units green; ROM natural fill still can_peak=0 (stall ~tile 25,30). Next: multi-hop F0 act densify.
 
+### 2026-08-09T23:20 CDT — zelda L4 0x40 key + 0x30 enter
+- **CLOSED** `rr-q8eq`: 0x40 Zol/gel clear + key pure 2/2 (~3345f); free UP→**0x30** pure 2/2 (~228f).
+- Live: gel split 0x14 type-only; key via `MAZE_40_TO_KEY` hold6 east corridor ~(136,117); L/R sealed.
+- Checkpoints: `Level4Room40Cleared`, `Level4Room30`. ADDR_LADDER still 0.
+- Next tip: **`rr-n1wn`** clear 0x30 + expand N/E (parent `rr-o0nn` / `rr-5lu` open until ladder).
+- Evidence: `l4_q8eq_key40_pure_key_40.json`, `l4_q8eq_north30_north_30.json`.
+

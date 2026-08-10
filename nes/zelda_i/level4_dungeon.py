@@ -15,11 +15,12 @@ Live path from ``Level4Entrance`` (room **0x71**)::
     0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
     0x62: 5× Vire + RoomItemId ``0x16`` Compass (dark maze)
     0x62 --maze compass + return LEFT--> 0x61 (ADDR_COMPASS bit 0x08)
-    **Post-compass expand (rr-xc3x live):** 0x50 is **not** a dead-end.
-    After clear, scripted north path → free UP into **0x40** (5× Zol ``0x13``
-    + RoomItemId ``0x19`` key). First room outside early component
-    {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT still sealed; 0x62 bomb
-    exits none. ADDR_LADDER residual (stepladder further north/east).
+    **Post-compass expand (rr-xc3x / rr-q8eq live):** 0x50 is **not** a
+    dead-end. Scripted north → **0x40** (5× Zol ``0x13`` → gel ``0x14`` +
+    key ``0x19`` via east-corridor path). Free UP → **0x30** (3× Vire +
+    2× invuln ``0x2b``). First rooms outside early component
+    {0x71, 0x61, 0x51, 0x50, 0x62}. 0x51 UP/RIGHT sealed; 0x40 L/R sealed.
+    ADDR_LADDER residual (stepladder further north/east of 0x30).
 
 Not Clean STATUS. Stepladder / Gleeok / TF ``0x08`` still residual.
 """
@@ -60,7 +61,8 @@ ROOM_L4_ZOLS_40 = 0x40  # north of 0x50; 5× Zol 0x13 + key 0x19 (rr-xc3x)
 
 VIRE_OBJECT_TYPE = 0x12  # live on 0x61/0x50/0x62; HP 64; sword splits → 0x1c
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # live split residual from Vire (not standard 0x1B)
-ZOL_OBJECT_TYPE = 0x13  # live on 0x40; HP 32
+ZOL_OBJECT_TYPE = 0x13  # live on 0x40; HP 32; wooden sword splits → gel 0x14
+GEL_SPLIT_OBJECT_TYPE = 0x14  # Zol split residual (HP stays 0 while alive)
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16  # live room item on 0x62
 ROOM_ITEM_NONE = 0x03
@@ -285,21 +287,25 @@ def level4_room_40_ready(ram: np.ndarray) -> bool:
 
 
 def level4_room_40_cleared(ram: np.ndarray) -> bool:
-    """0x40 Zols cleared (key pickup residual)."""
+    """0x40 Zols+gels cleared (key pickup residual).
+
+    RoomAllDead often stays 0 after wooden-sword Zol→Gel splits (type-only
+    residuals), so clear is live-enemy emptiness only (settle_all_dead=0).
+    """
     snap = read_snapshot(ram)
     if not level4_room_ready(snap, ROOM_L4_ZOLS_40):
         return False
     live = ROOM_40_SPEC.live_enemies(snap)
-    return len(live) == 0 and snap.room_all_dead >= 20
+    return len(live) == 0
 
 
 def level4_room_40_key_success(ram: np.ndarray) -> bool:
-    """Zols clear + ≥1 key on 0x40 (RoomItemId 0x19)."""
+    """Zols+gels clear + ≥1 key on 0x40 (RoomItemId 0x19)."""
     snap = read_snapshot(ram)
     if not level4_room_ready(snap, ROOM_L4_ZOLS_40):
         return False
     live = ROOM_40_SPEC.live_enemies(snap)
-    return len(live) == 0 and snap.room_all_dead >= 20 and snap.keys >= 1
+    return len(live) == 0 and snap.keys >= 1
 
 
 # --- Specs (assisted geometry; not Clean promote) ---
@@ -440,40 +446,77 @@ ROOM_62_SPEC = DungeonRoomSpec(
     level=LEVEL4,
 )
 
+# Live key pickup after full Zol+Gel clear (rr-q8eq dense BFS): ~(120, 117).
+KEY_40_PICKUP_XY = (120, 117)
+# North free exit after clear → 0x30 (3× Vire 0x12 + 2× invuln 0x2b residual).
+ROOM_L4_NORTH_30 = 0x30
+
+_PATROL_40: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (120, 109),
+    (176, 109),
+    (176, 141),
+    (176, 173),
+    (120, 173),
+    (64, 173),
+    (64, 141),
+    (120, 141),
+    (96, 117),
+    (144, 117),
+    (120, 93),
+    (80, 157),
+    (160, 157),
+)
+
 ROOM_40_SPEC = DungeonRoomSpec(
     spec_id="level4_room40_zols_key",
     source_room=ROOM_L4_VIRES_50,
     room_id=ROOM_L4_ZOLS_40,
     entry=DoorRoute("UP", ((120, 205), (120, 150))),
-    enemy_types=(ZOL_OBJECT_TYPE,),
+    # Wooden sword splits Zol 0x13 → Gel 0x14 (HP=0 while alive).
+    enemy_types=(ZOL_OBJECT_TYPE, GEL_SPLIT_OBJECT_TYPE),
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
+    type_only_enemy_types=(GEL_SPLIT_OBJECT_TYPE,),
     object_slot_max=12,
     combat=CombatTuning(
-        patrol=_PATROL_MID,
-        engage_distance=64,
-        attack_phase=0,
+        patrol=_PATROL_40,
+        engage_distance=56,
+        attack_phase=4,
         engage_attack_period=6,
         engage_attack_hold=3,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        target=(128, 141),
+        # RoomAllDead often stays 0 with gel residuals — settle on live empty.
+        settle_all_dead=0,
+        target=KEY_40_PICKUP_XY,
         waypoints=(
-            (120, 141),
-            (136, 141),
-            (128, 125),
-            (128, 157),
-            (104, 141),
-            (152, 141),
+            (120, 117),
+            (112, 117),
+            (128, 117),
             (120, 109),
-            (120, 173),
+            (120, 125),
+            (104, 117),
+            (136, 117),
+            (120, 101),
+            (96, 125),
+            (144, 125),
+            (80, 117),
+            (160, 117),
+            (120, 141),
+            (120, 93),
         ),
     ),
     room_item_id=ROOM_ITEM_SMALL_KEY,
-    exit_routes=(DoorRoute("DOWN", ((120, 189), (120, 205))),),
-    max_frames=16000,
+    exit_routes=(
+        DoorRoute("DOWN", ((120, 189), (120, 205))),
+        DoorRoute("UP", ((120, 80), (120, 56))),  # free N → 0x30 after clear
+    ),
+    max_frames=20000,
     level=LEVEL4,
 )
 
@@ -542,13 +585,169 @@ def make_room_62_clear_controller() -> GenericDungeonRoomController:
 
 
 def make_room_40_clear_controller() -> GenericDungeonRoomController:
-    """Clear 0x40 Zols (key pickup residual)."""
+    """Clear 0x40 Zols+gels (key pickup residual)."""
     return GenericDungeonRoomController(ROOM_40_SPEC)
 
 
-def make_room_40_key_controller() -> GenericDungeonRoomController:
-    """Clear 0x40 Zols + collect key (FIXED_INVENTORY keys)."""
-    return GenericDungeonRoomController(ROOM_40_SPEC)
+# Live scripted key path after combat clear pose ≈(136–140, 164–165).
+# East-corridor route (rr-q8eq BFS): UP×2 RIGHT×5 UP×4 LEFT×5 hold6 → key ~(136,117).
+MAZE_40_KEY_HOLD = 6
+MAZE_40_TO_KEY: tuple[str, ...] = (
+    "UP",
+    "UP",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "RIGHT",
+    "UP",
+    "UP",
+    "UP",
+    "UP",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+    "LEFT",
+)
+
+
+class Key40Phase(Enum):
+    FIGHT = auto()
+    PATH = auto()
+    HUNT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4Key40Controller:
+    """Clear 0x40 Zols+gels then scripted path to RoomItemId 0x19 key.
+
+    Live (rr-q8eq): wooden sword splits Zol→Gel; after clear, center-band key
+    is not reachable via naive mid-room patrol (south pocket walls). Use
+    ``MAZE_40_TO_KEY`` hold6 from the common clear pose.
+    """
+
+    max_frames: int = 25000
+    phase: Key40Phase = Key40Phase.FIGHT
+    frames: int = 0
+    phase_frames: int = 0
+    path_index: int = 0
+    hold_left: int = 0
+    success: bool = False
+    keys_before: int | None = None
+    notes: list[str] = field(default_factory=list)
+    _clear: GenericDungeonRoomController = field(init=False, repr=False)
+    _hunt_i: int = 0
+
+    def __post_init__(self) -> None:
+        self._clear = GenericDungeonRoomController(ROOM_40_SPEC)
+        self._clear.phase = DungeonPhase.FIGHT
+
+    def _set_phase(self, phase: Key40Phase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(Key40Phase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if self.phase is Key40Phase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is Key40Phase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+
+        if self.keys_before is None and snap.screen == ROOM_L4_ZOLS_40:
+            self.keys_before = snap.keys
+
+        if (
+            snap.level == LEVEL4
+            and snap.screen == ROOM_L4_ZOLS_40
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and self.keys_before is not None
+            and snap.keys > self.keys_before
+            and len(ROOM_40_SPEC.live_enemies(snap)) == 0
+        ):
+            self.success = True
+            self._set_phase(Key40Phase.DONE, "key_collected")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            return FrameAction(nes_idle_action(), f"wait_scroll_{snap.mode}")
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != ROOM_L4_ZOLS_40:
+            return self._fail(f"wrong_room_0x{snap.screen:02x}")
+
+        if self.phase is Key40Phase.FIGHT:
+            live = ROOM_40_SPEC.live_enemies(snap)
+            if (
+                not live
+                and self._clear.max_live_enemies >= ROOM_40_SPEC.expected_enemy_count
+            ):
+                self._set_phase(Key40Phase.PATH, "room_cleared")
+                self.path_index = 0
+                self.hold_left = 0
+            else:
+                return self._clear.step(snap)
+
+        if self.phase is Key40Phase.PATH:
+            if self.path_index >= len(MAZE_40_TO_KEY):
+                self._set_phase(Key40Phase.HUNT, "path_done")
+            else:
+                direction = MAZE_40_TO_KEY[self.path_index]
+                self.hold_left += 1
+                if self.hold_left >= MAZE_40_KEY_HOLD:
+                    self.path_index += 1
+                    self.hold_left = 0
+                return FrameAction(nes_action(direction), f"maze40_{direction}")
+
+        if self.phase is Key40Phase.HUNT:
+            # Micro orbit around key band if path undershot.
+            orbit = ("LEFT", "UP", "RIGHT", "DOWN", "LEFT", "UP", "RIGHT", "DOWN")
+            if self.phase_frames >= 400:
+                return self._fail("key_hunt_timeout")
+            direction = orbit[(self.phase_frames // 8) % len(orbit)]
+            return FrameAction(nes_action(direction), "key_hunt")
+
+        return FrameAction(nes_idle_action(), "idle")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "path_index": self.path_index,
+            "keys_before": self.keys_before,
+            "segment": "level4_key_0x40",
+            "maze_path": list(MAZE_40_TO_KEY),
+            "hold": MAZE_40_KEY_HOLD,
+            "pickup_xy": list(KEY_40_PICKUP_XY),
+            "clear": self._clear.report(),
+        }
+
+
+def make_room_40_key_controller() -> Level4Key40Controller:
+    """Clear 0x40 Zols+gels + collect key via scripted east-corridor path."""
+    return Level4Key40Controller()
 
 
 # --- 0x51 free LEFT → 0x50 (rr-2ysf pocket) ---
@@ -1056,6 +1255,111 @@ def make_north_40_controller() -> Level4North40Controller:
     return Level4North40Controller()
 
 
+# --- 0x40 cleared+key → free UP → 0x30 (rr-q8eq) ---
+
+
+class North30Phase(Enum):
+    ALIGN = auto()
+    PUSH = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4North30Controller:
+    """From cleared 0x40: center x≈120, push UP into 0x30 play-ready.
+
+    Live (rr-q8eq dense BFS): free north from north-band y≤68 @ x≈120.
+    0x30 has 3× Vire ``0x12`` + 2× invuln residual ``0x2b``.
+    """
+
+    max_frames: int = 4000
+    phase: North30Phase = North30Phase.ALIGN
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def _set_phase(self, phase: North30Phase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(North30Phase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def _entered_30(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL4
+            and snap.screen == ROOM_L4_NORTH_30
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+
+        if self.phase is North30Phase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is North30Phase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+
+        if self._entered_30(snap):
+            self.success = True
+            self._set_phase(North30Phase.DONE, "entered_0x30")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            return FrameAction(nes_action("UP"), "scroll_up")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if snap.screen == ROOM_L4_NORTH_30:
+            self.success = True
+            self._set_phase(North30Phase.DONE, "on_0x30")
+            return FrameAction(nes_idle_action(), "done")
+
+        if snap.screen != ROOM_L4_ZOLS_40:
+            return self._fail(f"wrong_room_0x{snap.screen:02x}")
+
+        if abs(snap.link_x - 120) > 6:
+            self._set_phase(North30Phase.ALIGN, "align_x")
+            return FrameAction(
+                nes_action("RIGHT" if snap.link_x < 120 else "LEFT"),
+                "align_x",
+            )
+        self._set_phase(North30Phase.PUSH, "push_up")
+        return FrameAction(nes_action("UP"), "push_up_north")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "segment": "level4_north_0x30",
+            "target_room": f"0x{ROOM_L4_NORTH_30:02x}",
+        }
+
+
+def make_north_30_controller() -> Level4North30Controller:
+    return Level4North30Controller()
+
+
+def level4_room_30_ready(ram: np.ndarray) -> bool:
+    return level4_room_ready(read_snapshot(ram), ROOM_L4_NORTH_30)
+
+
 # --- 0x71 empty entry → UP → 0x61 (rr-zchy) ---
 
 
@@ -1201,15 +1505,24 @@ def planning_interior_report() -> dict:
                 "note": "dark_maze_compass_live_return_west_no_bomb_exit",
             },
             hex(ROOM_L4_ZOLS_40): {
-                "enemies": {"0x13": 5},
+                "enemies": {"0x13": 5, "split": "0x14"},
                 "room_item": hex(ROOM_ITEM_SMALL_KEY),
+                "key_pickup_xy": list(KEY_40_PICKUP_XY),
                 "DOWN": hex(ROOM_L4_VIRES_50),
-                "note": "first room outside early closed component (rr-xc3x)",
+                "UP": hex(ROOM_L4_NORTH_30),
+                "LEFT": "sealed",
+                "RIGHT": "sealed",
+                "note": "first outside early component; clear+key then free UP (rr-q8eq)",
+            },
+            hex(ROOM_L4_NORTH_30): {
+                "enemies": {"0x12": 3, "0x2b": 2},
+                "DOWN": hex(ROOM_L4_ZOLS_40),
+                "note": "live enter after 0x40 clear (rr-q8eq); stepladder residual",
             },
         },
         "post_compass": {
             "bead": "rr-o0nn",
-            "expand": "rr-xc3x",
+            "expand": "rr-q8eq",
             "start": "Level4Compass",
             "early_component": [
                 hex(ROOM_L4_ENTRY),
@@ -1219,20 +1532,23 @@ def planning_interior_report() -> dict:
                 hex(ROOM_L4_COMPASS_62),
             ],
             "first_outside": hex(ROOM_L4_ZOLS_40),
+            "next_outside": hex(ROOM_L4_NORTH_30),
             "keys_at_compass": 0,
             "ladder": 0,
             "evidence": [
                 "recordings/l4_xc3x_breakthrough.json",
-                "recordings/l4_o0nn_focus.json",
-                "recordings/l4_o0nn_prod.json",
+                "recordings/l4_q8eq_40_dense_bfs.json",
+                "recordings/l4_q8eq_key40_key_40.json",
             ],
             "blocked": [
                 "0x51 UP/RIGHT sealed (not key)",
                 "0x62 bomb exits none",
+                "0x40 LEFT/RIGHT sealed",
                 "no Vire key-farm drops (8 cycles)",
             ],
             "opened": [
                 "0x50 north scripted → 0x40 (Zols + key 0x19)",
+                "0x40 clear+key → free UP → 0x30",
             ],
         },
         "bomb_61_north": {
@@ -1268,11 +1584,18 @@ def planning_interior_report() -> dict:
             "clear_62": "rr-2ysf",
             "compass_62": "rr-9so0",
             "north_40": "rr-xc3x",
+            "key_40": "rr-q8eq",
+            "north_30": "rr-q8eq",
             "stepladder_path": "rr-o0nn",
+        },
+        "key_40": {
+            "pickup_xy": list(KEY_40_PICKUP_XY),
+            "gel_split": hex(GEL_SPLIT_OBJECT_TYPE),
+            "opens_north": hex(ROOM_L4_NORTH_30),
         },
         "not_yet": [
             "stepladder room / ADDR_LADDER",
-            "0x40 key pure dual-green + further north/east",
+            "0x30 clear + further N/E toward ladder",
             "Gleeok boss type",
             "TF bit 0x08 natural",
             "Clean promote",
@@ -1299,7 +1622,13 @@ __all__ = [
     "Level4EntryUpController",
     "Level4KeyRight62Controller",
     "Level4Left50Controller",
+    "KEY_40_PICKUP_XY",
+    "Key40Phase",
+    "Level4Key40Controller",
+    "Level4North30Controller",
     "Level4North40Controller",
+    "MAZE_40_KEY_HOLD",
+    "MAZE_40_TO_KEY",
     "MAZE_50_HOLD",
     "MAZE_50_LONG_UP",
     "MAZE_50_TO_NORTH",
@@ -1307,13 +1636,16 @@ __all__ = [
     "MAZE_62_TO_COMPASS",
     "MAZE_IN_HOLD",
     "MAZE_OUT_HOLD",
+    "North30Phase",
     "North40Phase",
     "ROOM_40_SPEC",
     "ROOM_50_SPEC",
     "ROOM_51_SPEC",
     "ROOM_61_SPEC",
     "ROOM_62_SPEC",
+    "ROOM_L4_NORTH_30",
     "ROOM_L4_ZOLS_40",
+    "GEL_SPLIT_OBJECT_TYPE",
     "ZOL_OBJECT_TYPE",
     "ROOM_71_SPEC",
     "ROOM_ITEM_COMPASS",
@@ -1327,6 +1659,7 @@ __all__ = [
     "level4_compass_collected",
     "level4_compass_route_success",
     "level4_entry_ready",
+    "level4_room_30_ready",
     "level4_room_40_cleared",
     "level4_room_40_key_success",
     "level4_room_40_ready",
@@ -1344,6 +1677,7 @@ __all__ = [
     "make_entry_up_controller",
     "make_key_right_62_controller",
     "make_left_50_controller",
+    "make_north_30_controller",
     "make_north_40_controller",
     "make_room_40_clear_controller",
     "make_room_40_key_controller",
