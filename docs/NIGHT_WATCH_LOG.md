@@ -77,3 +77,11 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Live graph: 0x71 empty → UP 0x61 Vires → BOMB_UP 0x51 Keese+key → LEFT 0x50.
 - Room beads: rr-zchy / rr-yr77 / rr-h278 / rr-wqdu / rr-2ysf. Tip next: pure Vires clear.
 
+
+### 2026-08-09T21:19 CDT — solver/meta lane (rr-gbd.33)
+- **CLOSED** `rr-gbd.33` Benchmark: fail-closed resumable seed campaign runner.
+- Added `retro_harness/seed_campaign.py`: `SeedCampaignRunner`, `SeedExecutionStatus`, atomic ledger (`os.replace`), `policy_factory(seed)`.
+- Acceptance: INFRA_ERROR ordered rows → non-claimable; resume byte-identical; contract mismatch refuses resume; missing audit ≠ Clean.
+- Unblocks **rr-gbd.25** sm_rando multi-seed early tip S/T dry-run (now ready P1).
+- Tests: 8 new campaign + full benchmark suite green (64 with docs).
+- Next: `rr-gbd.25` sm_rando multi-seed dry-run consumer (thin harness use).
