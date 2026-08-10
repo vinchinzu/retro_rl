@@ -21,10 +21,12 @@ status_doc: snes/sm_rando/docs/STATUS.md
 plan_doc: snes/sm_rando/docs/plan.md
 last_verified: 2026-08-09
 blocker: >-
-  M1 real-ROM SolverSession vertical slice and held-out Landing BC candidate
-  done; real shuffled seed ROM / generator still open; prove multi-seed S/T next
+  M1 real-ROM SolverSession vertical slice, held-out Landing BC candidate, and
+  multi-seed early tip S/T dry-run (fixture seeds, vanilla substrate) done; real
+  shuffled seed ROM / generator still open for live multi-seed claims
 notes: >-
   Single-game SM rando solver ground (simpler than SMZ3). Reuses super_metroid
   skills; real three-edge recovery/replan slice, versioned contracts,
   EntryStateCorpus, canonical trajectories, audited BC candidate, demo seed
-  fixture, and coarse item-logic graph.
+  fixture, coarse item-logic graph, and SeedCampaignRunner multi-seed S/T dry-run
+  (ship→morph, 3/3 claimable fixtures).
