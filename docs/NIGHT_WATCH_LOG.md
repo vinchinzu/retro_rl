@@ -1387,3 +1387,8 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Commit `4a238be`: HeatScreen8 → first Yoku land 3/3; pin HeatScreen8Yoku.
 - Residual multi-level Yoku → Sniper → boss. Re-spawned chain manager.
 
+
+### 2026-08-10T07:35 CDT — harvest late water GREEN ★ (rr-qc9r CLOSED)
+- Commit `0205c5b`: CROP_WATER D9/11/13 watered=6; money=$400 ship≥5; 21 ovn D23 Clean.
+- Residual **rr-ws8h** return_home exit_to_farm timeout → spawned. Gate B still open.
+
