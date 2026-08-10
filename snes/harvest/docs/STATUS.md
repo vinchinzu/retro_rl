@@ -198,6 +198,14 @@ Test crop fixtures (for growth / ship work):
      6/6 overnights first-try (incl. D7→D8), `mid_run_state_loads=0`,
      `ram_writes=0`, Clean.
    - Parent residual: `rr-20w` / `rr-5in` full power-on→Summer income still open
+  - **2026-08-10 night (rr-o00y CLOSED):** Empty-can refill after sparse plant
+    **GREEN** on power-on continuous. Path: fence open south at (18,35) →
+    south_far lip (y≈32 east corridor) → F0 fill `can=20`, watered=2/2 D5;
+    D6–D7 water holds. Dry fixture still `can_peak=20` watered=3.
+    Evidence: `recordings/power_on_spring_to_summer.log` REFILL OK +
+    `recordings/rr_o00y_fill_green.json`. Parent **rr-5in** still PARTIAL:
+    run dies D7 `return_home failed: could not clear hands before house entry`
+    (money $100, Summer not reached; Clean mid_run_loads=0).
   - **2026-08-10 night (rr-5in PARTIAL):** sparse plant water detect GREEN
     (`min_count=1` / singleton dry centers; unit-locked). Live continuous still
     **empty-can fill RED** after densify thrash→corridor charge (no fill;
