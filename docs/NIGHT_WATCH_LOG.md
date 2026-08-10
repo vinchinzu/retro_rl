@@ -495,6 +495,22 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - ROM: fence opens then soft-block (13,31) gap transit. can_peak still 0.
 - Next: south gap cross / south local-drop / toss_fence_pond segment.
 
+### 2026-08-10T02:30 CDT — harvest rr-3q27 natural empty-can GREEN (tip)
+- **Claimed** `rr-3q27` (keep under rr-20w). Prefer Clean.
+- **ROM dry** `Y1_Test_Crops_Planted_Dry`: **`can_peak=20`**, `refill_count=1`,
+  `watered=2`, TaskStatus.SUCCESS (`recordings/empty_can_refill_probe.json`,
+  ~7992f, wall ~16s). No RAM poke.
+- **Route (ROM-mapped):** empty gap charge soft-blocks (13,31); east→south on
+  y=30→x≈28 then south to (28,32); (28,32) RIGHT/DOWN dead — west→south-lip
+  waypoints to F0 `(32,34)` face-up fill; post-fill water-return north charge.
+- **Code:** `FenceClearLoop` carry-south from y≤31; CropWater east→south charge,
+  west→south-lip charge, east-crawl densify (no empty gap south), water north
+  return. Probe script `harvest.scripts.gap_transit_probe` kept for recon.
+- **Units:** 64 passed (`test_water_refill` + `test_crop_planter_logic`).
+- **Not closed** rr-3q27 (return_home hang residual; 2/3 water). **rr-20w** open.
+- Next tip: return_home stabilize + 3/3 dry water / short Inside_House multi-day.
+- No push.
+
 
 ### 2026-08-10T00:25 CDT — super_metroid rr-kxge dual continuous Ice GREEN
 - Lane: super_metroid only (`snes/super_metroid/`)
@@ -542,4 +558,17 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - Docs: STATUS/plan/AGENTS/policy residual updated. False probe states pruned.
 - Next: Lightning Lord / intermediate cloud spawn via **earlier route fork**
   (before full y=84 descent); map-match segment at prog~950.
+
+
+### 2026-08-10T01:45 CDT — SM rr-dbu.8 K5 pure stack PARTIAL (Ice→Snake dual)
+- Lane: super_metroid only (`snes/super_metroid/`)
+- Bead **rr-dbu.8** IN_PROGRESS (PARTIAL, not closed): K5 Alpha PB pure stack
+- **First hop GREEN dual:** `ice-to-snake` **538f** ×2 exact, room `0xA8B9`
+  xy=(472,395) pose=10 from `post_ice_snake_to_ice_pure`
+- Package: `routes/kpdr/ice/ice_to_snake.py` + leave geometry; `routes/kpdr/k5/`
+  hop map (return + reverse tunnels + Red→Alpha tape table)
+- Child bead **rr-bf29** OPEN: Snake → Tutorial pure (next one-hop)
+- Residual: `docs/tasks/rr-dbu.8-residual.md`
+- Units: ice scaffold + docs green; no continuous / STATUS change (Ice tip remains)
+- No push
 

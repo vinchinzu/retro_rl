@@ -109,6 +109,15 @@ SNAKE_TUNNEL_FRAMES = 900
 SNAKE_ICE_COLLECT_FRAMES = 500
 SNAKE_DOOR_X = 470  # Ice blue door pressure band on right of Snake
 
+# ---------------------------------------------------------------------------
+# Ice Beam Room return leave (0xA890 → Snake 0xA8B9) — K5 stack hop 0 / return
+# ---------------------------------------------------------------------------
+# Pure PLM handoff ~(187, 120) pose 81; human leave shelf y≈139, left blue door.
+# Tape Phase B return hop 19 (f16366–16491 clean leave; avoid thrash f16277–16365).
+ICE_LEAVE_DOOR_X = 40  # left blue door pressure band
+ICE_LEAVE_FRAMES = 480
+ICE_SNAKE_RETURN_SETTLE = 280
+
 
 def in_business(state: SuperMetroidState) -> bool:
     return int(state.room_id) == ROOM_BUSINESS
@@ -231,8 +240,11 @@ __all__ = [
     "ICE_APPROACH_Y",
     "ICE_BEAM_MASK",
     "ICE_GATE_SETTLE_FRAMES",
+    "ICE_LEAVE_DOOR_X",
+    "ICE_LEAVE_FRAMES",
     "ICE_PLM_X",
     "ICE_ROOM_SETTLE",
+    "ICE_SNAKE_RETURN_SETTLE",
     "ICE_SUPER_DOOR_X",
     "ICE_SUPER_LIP_X_MAX",
     "ICE_SUPER_Y_MAX",
