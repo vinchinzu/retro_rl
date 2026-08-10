@@ -90,3 +90,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-gbd.33` SeedCampaignRunner (fail-closed, atomic ledger, resume byte-identical) — commit 4cfbebb.
 - Unblocks `rr-gbd.25` sm_rando multi-seed dry-run → next free lane.
 
+### 2026-08-09T21:32 CDT — SM Ice pure stack closed
+- **CLOSED** `rr-dbu.11` outbound dual GREEN (Business→Gate→Acid→Snake→Ice PLM). Residual doc on main.
+- Next product tip: `rr-dbu.7` continuous `--to ice` compose only (no STATUS without dual continuous green).
+
