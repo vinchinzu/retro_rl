@@ -72,16 +72,32 @@ from retro_harness.segment_runner import (
     write_json_report,
 )
 from zelda_i.assist import UnlimitedHealthAssist
-from zelda_i.dungeon import DungeonPhase
+from zelda_i.dungeon import (
+    AliveRule,
+    CombatTuning,
+    DoorRoute,
+    DungeonPhase,
+    DungeonRoomSpec,
+    GenericDungeonRoomController,
+    RewardKind,
+    RewardSpec,
+)
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level4_dungeon import (
     BOMB_61_NORTH_STAND,
+    EXIT_60_HOLD,
+    EXIT_60_SAMPLE_PATH,
+    GEL_OBJECT_TYPE,
+    KEY_30_NORTH_X,
     LEVEL4_COMPASS_BIT,
+    MAP_21_HOLD,
+    MAP_21_SAMPLE_PATH,
     MAZE_31_CELL_Q,
     MAZE_31_EAST_X_MIN,
     MAZE_31_EAST_Y,
     MAZE_31_EAST_Y_TOL,
     MAZE_31_HOLD,
+    RIGHT_20_STAND,
     ROOM_30_SPEC,
     ROOM_31_SPEC,
     ROOM_40_SPEC,
@@ -91,9 +107,16 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_COMPASS_62,
     ROOM_L4_ENTRY,
     ROOM_L4_KEESE_KEY_51,
+    ROOM_L4_MAP_21,
+    ROOM_L4_STEPLADDER,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
+    ROOM_L4_WATER_NORTH_20,
     ROOM_L4_ZOLS_40,
+    VIRE_OBJECT_TYPE,
+    VIRE_SPLIT_KEESE_TYPE,
+    WEST_31_HOLD,
+    WEST_31_SAMPLE_PATH,
     level4_compass_route_success,
     level4_room_30_cleared,
     level4_room_31_cleared,
@@ -139,7 +162,7 @@ from zelda_i.level4_dungeon import (
     ROOM_62_SPEC,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.ram import ADDR_LADDER, ADDR_MAP, PLAY_MODE, read_snapshot, read_u8
 
 SEGMENTS = (
     "entry_up",
@@ -1209,6 +1232,7 @@ def run_once(
     infinite_life: bool,
     save_checkpoint: bool,
     tag: str,
+    allow_key_poke: bool = True,
 ) -> dict[str, Any]:
     configure_headless()
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -2181,13 +2205,6 @@ def run_once(
 
         elif segment == "exit_60":
             # Level4Stepladder mode-9 → clear Keese → BFS → 0x32 play (rr-05fz).
-            from zelda_i.level4_dungeon import (
-                EXIT_60_HOLD,
-                EXIT_60_SAMPLE_PATH,
-                ROOM_L4_STEPLADDER,
-            )
-            from zelda_i.ram import ADDR_LADDER, read_u8
-
             snap = read_snapshot(env.get_ram())
             if int(read_u8(env.get_ram(), ADDR_LADDER)) <= 0:
                 error = "no_ladder"
@@ -2263,9 +2280,6 @@ def run_once(
 
         elif segment == "west_31":
             # Level4PostLadder 0x32 → BFS LEFT → 0x31 with ladder (rr-05fz).
-            from zelda_i.level4_dungeon import WEST_31_HOLD, WEST_31_SAMPLE_PATH
-            from zelda_i.ram import ADDR_LADDER, read_u8
-
             snap = read_snapshot(env.get_ram())
             if int(read_u8(env.get_ram(), ADDR_LADDER)) <= 0:
                 error = "no_ladder"
@@ -2307,32 +2321,11 @@ def run_once(
             ok = error is None and level4_west_31_success(env.get_ram())
 
         elif segment == "map_21":
-            # rr-rvae: 0x31 → 0x30 KEY-UP → 0x20 clear → RIGHT 0x21 → map bit.
-            # Assisted first-pass (use --infinite-life). Recon key poke if keys=0.
+            # rr-rvae / rr-05fz: 0x31 → 0x30 KEY-UP → 0x20 clear → RIGHT 0x21 map.
+            # Assisted first-pass (--infinite-life). Default recon key poke if
+            # keys=0 (compass path spent both). Use allow_key_poke=False for
+            # natural-key residual (skip-compass route leaves keys≥1).
             from collections import deque
-
-            from zelda_i.dungeon import (
-                AliveRule,
-                CombatTuning,
-                DoorRoute,
-                DungeonRoomSpec,
-                GenericDungeonRoomController,
-                RewardKind,
-                RewardSpec,
-            )
-            from zelda_i.level4_dungeon import (
-                GEL_OBJECT_TYPE,
-                KEY_30_NORTH_X,
-                MAP_21_HOLD,
-                MAP_21_SAMPLE_PATH,
-                RIGHT_20_STAND,
-                ROOM_L4_MAP_21,
-                ROOM_L4_NORTH_30,
-                ROOM_L4_WATER_NORTH_20,
-                VIRE_OBJECT_TYPE,
-                VIRE_SPLIT_KEESE_TYPE,
-            )
-            from zelda_i.ram import ADDR_LADDER, ADDR_KEYS, read_u8
 
             snap = read_snapshot(env.get_ram())
             if int(read_u8(env.get_ram(), ADDR_LADDER)) <= 0:
@@ -2342,14 +2335,18 @@ def run_once(
             else:
                 recon_key = False
                 if snap.keys < 1:
-                    # RECON-ONLY: post-ladder checkpoints have keys=0 (spent on 0x30 KEY-R).
-                    try:
-                        env.unwrapped.data.set_value("keys", 1)
-                        recon_key = True
-                    except Exception as exc:  # noqa: BLE001
-                        error = f"key_poke_fail:{exc!r}"
+                    if allow_key_poke:
+                        # RECON-ONLY: Level4Room31PostLadder (compass path) keys=0.
+                        try:
+                            env.unwrapped.data.set_value("keys", 1)
+                            recon_key = True
+                        except Exception as exc:  # noqa: BLE001
+                            error = f"key_poke_fail:{exc!r}"
+                    else:
+                        error = "no_keys_natural_key_required"
                 controllers["map_21_key"] = {
                     "recon_poke": recon_key,
+                    "allow_key_poke": allow_key_poke,
                     "keys_after": int(read_snapshot(env.get_ram()).keys),
                 }
 
@@ -2734,8 +2731,6 @@ def run_once(
         snap = read_snapshot(env.get_ram())
         final = _snap_fields(snap)
         try:
-            from zelda_i.ram import ADDR_LADDER, ADDR_MAP, read_u8
-
             final["ladder"] = int(read_u8(env.get_ram(), ADDR_LADDER))
             final["map"] = int(read_u8(env.get_ram(), ADDR_MAP))
             final["map_l4"] = bool(int(read_u8(env.get_ram(), ADDR_MAP)) & 0x08)
@@ -2758,6 +2753,7 @@ def run_once(
                         "segment": f"l4_{segment}",
                         "track": track,
                         "intervention_class": "survival" if infinite_life else "clean",
+                        "allow_key_poke": allow_key_poke,
                     },
                     selected_trial={
                         "ok": ok,
@@ -2796,6 +2792,7 @@ def run_once(
             "intervention_class": "survival" if infinite_life else "clean",
             "start_state": start_state,
             "infinite_life": infinite_life,
+            "allow_key_poke": allow_key_poke,
             "error": error,
             "entry": entry_fields,
             "final": final,
@@ -2819,6 +2816,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--save-state", action="store_true")
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--tag", default="l4_rooms")
+    parser.add_argument(
+        "--no-key-poke",
+        action="store_true",
+        help="map_21: refuse recon keys poke (natural-key residual rr-05fz)",
+    )
     args = parser.parse_args(argv)
 
     start = args.from_state or _DEFAULT_STATE[args.segment]
@@ -2831,6 +2833,7 @@ def main(argv: list[str] | None = None) -> int:
             infinite_life=args.infinite_life,
             save_checkpoint=args.save_state and i == 0,
             tag=tag,
+            allow_key_poke=not args.no_key_poke,
         )
         reports.append(r)
         final = r.get("final") or {}

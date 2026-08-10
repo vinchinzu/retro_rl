@@ -3107,8 +3107,8 @@ def planning_interior_report() -> dict:
             "module": "level4_boss_combat.Level4GleeokFightController",
         },
         "not_yet": [
-            "natural key for post-ladder KEY-UP (recon poke used for map dual)",
-            "natural-entry continuous Level4PostLadder → TF",
+            "rr-05fz CLOSED: skip-compass NaturalKey checkpoint + map_21 --no-key-poke dual",
+            "rr-05fz CLOSED: continuous PostLadderNaturalKey → TF dual (assisted; not Clean)",
             "Clean promote",
         ],
     }

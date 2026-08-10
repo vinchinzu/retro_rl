@@ -1,0 +1,166 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-10T08:56:29.728904+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "allow_key_poke": true,
+    "bead": "rr-tib8",
+    "intervention_class": "clean",
+    "segment": "l4_stepladder",
+    "track": "clean"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "controllers": {
+      "stepladder": {
+        "frames": 2480,
+        "method": "bfs",
+        "path": [
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "DOWN",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "RIGHT",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "UP",
+          "LEFT",
+          "UP",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT",
+          "LEFT"
+        ],
+        "push_stand": [
+          120,
+          141
+        ],
+        "segment": "level4_stepladder",
+        "stairs_approach": [
+          208,
+          96
+        ],
+        "success": true
+      },
+      "stepladder_bfs": {
+        "cell_q": 4,
+        "expansions": 387,
+        "hold": 4,
+        "ladder": 1,
+        "n_cells": 98,
+        "path_len": 70,
+        "segment": "level4_stepladder_bfs",
+        "start": [
+          48,
+          69
+        ],
+        "success": true
+      },
+      "stepladder_push": {
+        "frames": 2465,
+        "ladder_xy": [
+          136,
+          141
+        ],
+        "notes": [
+          "at_push_stand",
+          "push_held",
+          "at_stairs_approach"
+        ],
+        "path_index": 0,
+        "path_len": 66,
+        "phase": "ENTER_STAIRS",
+        "push_stand": [
+          120,
+          141
+        ],
+        "segment": "level4_stepladder",
+        "stairs_approach": [
+          208,
+          96
+        ],
+        "success": false
+      }
+    },
+    "final": {
+      "bombs": 9,
+      "compass": 4,
+      "compass_l4": false,
+      "cur_opened_doors": 0,
+      "health": 104,
+      "keys": 1,
+      "level": 4,
+      "mode": 9,
+      "room": 96,
+      "room_all_dead": 0,
+      "room_hex": "0x60",
+      "room_item_id": 13,
+      "x": 136,
+      "y": 141
+    },
+    "frames": 2480,
+    "ok": true,
+    "segment": "stepladder"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Room32ClearedNaturalKey.state",
+  "source_state_sha256": "3e78934e80b10e6c6b581e9265b92e214c529bdc47b7b80bff75fd8ed7b081aa",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4StepladderNaturalKey.state",
+  "state_sha256": "91d9a8d38a19c43ee468ef47ec6e04163d8d989b3da6cd823a80007acb4023cc"
+}

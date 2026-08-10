@@ -1,0 +1,514 @@
+{
+  "bead": "rr-rvae",
+  "intervention_class": "survival",
+  "live_graph": {
+    "0x50": {
+      "enemies": "5x0x12",
+      "note": "dead_end_pocket"
+    },
+    "0x51": {
+      "DOWN": "0x61",
+      "LEFT": "0x50",
+      "enemies": "8x0x1b",
+      "key": "0x19"
+    },
+    "0x61": {
+      "BOMB_UP": "0x51",
+      "KEY_RIGHT": "0x62",
+      "enemies": "3x0x12\u21920x1c"
+    },
+    "0x62": {
+      "compass_bit": "0x08",
+      "enemies": "5x0x12",
+      "item": "0x16_compass",
+      "note": "dark_maze_return_west"
+    },
+    "0x71": {
+      "UP": "0x61"
+    }
+  },
+  "natural_entry": false,
+  "parent": "rr-5lu",
+  "reports": [
+    {
+      "allow_key_poke": false,
+      "assist": {
+        "capacity_writes": 0,
+        "class": "survival",
+        "damage_by_location": {
+          "L4:0x21": 1,
+          "L4:0x30": 1,
+          "L4:0x31": 1
+        },
+        "damage_events": 3,
+        "damage_samples": [
+          {
+            "amount": 1,
+            "frame": 100,
+            "level": 4,
+            "link_x": 88,
+            "link_y": 133,
+            "location": "L4:0x31",
+            "screen": 49,
+            "screen_hex": "0x31"
+          },
+          {
+            "amount": 1,
+            "frame": 518,
+            "level": 4,
+            "link_x": 120,
+            "link_y": 101,
+            "location": "L4:0x30",
+            "screen": 48,
+            "screen_hex": "0x30"
+          },
+          {
+            "amount": 1,
+            "frame": 1839,
+            "level": 4,
+            "link_x": 25,
+            "link_y": 141,
+            "location": "L4:0x21",
+            "screen": 33,
+            "screen_hex": "0x21"
+          }
+        ],
+        "deaths": 0,
+        "enabled": true,
+        "health": {
+          "first_active_frame": 0,
+          "restored": 11,
+          "writes": 4
+        },
+        "kind": "unlimited_health",
+        "maximum_single_frame_damage": 1,
+        "progression_writes": 0,
+        "suspended_phase_frames": {
+          "menu_or_boot": 82,
+          "transition": 323
+        },
+        "total_damage": 3
+      },
+      "bead": "rr-rvae",
+      "bomb_stand": [
+        120,
+        105
+      ],
+      "checkpoint": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Map.state",
+      "controllers": {
+        "map_21": {
+          "frames": 16309,
+          "segment": "level4_map_21",
+          "success": true
+        },
+        "map_21_bfs": {
+          "cells": 273,
+          "exp": 1082,
+          "hold": 6,
+          "path": [
+            "UP",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN"
+          ],
+          "path_len": 34,
+          "success": true
+        },
+        "map_21_clear20": {
+          "frames": 451,
+          "success": true
+        },
+        "map_21_enter": {
+          "path": [
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT"
+          ],
+          "success": true,
+          "xy": [
+            16,
+            141
+          ]
+        },
+        "map_21_gels": {
+          "frames": 15000,
+          "success": false
+        },
+        "map_21_key": {
+          "allow_key_poke": false,
+          "keys_after": 1,
+          "recon_poke": false
+        },
+        "map_21_key_up": {
+          "keys": 0,
+          "success": true,
+          "xy": [
+            120,
+            205
+          ]
+        },
+        "map_21_to_21_bfs": {
+          "cells": 672,
+          "exp": 2665,
+          "path_len": 30,
+          "success": true
+        },
+        "map_21_to_30": {
+          "dest": "0x30",
+          "exp": 567,
+          "hold": 4,
+          "n_cells": 568,
+          "path_len": 44,
+          "quant": 4,
+          "segment": "level4_room_exit_bfs",
+          "success": true
+        }
+      },
+      "entry": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 3,
+        "health": 111,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 49,
+        "room_all_dead": 0,
+        "room_hex": "0x31",
+        "room_item_id": 3,
+        "x": 208,
+        "y": 141
+      },
+      "error": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 111,
+        "keys": 0,
+        "ladder": 1,
+        "level": 4,
+        "map": 8,
+        "map_l4": true,
+        "mode": 5,
+        "room": 33,
+        "room_all_dead": 0,
+        "room_hex": "0x21",
+        "room_item_id": 23,
+        "x": 208,
+        "y": 181
+      },
+      "frames": 16309,
+      "infinite_life": true,
+      "intervention_class": "survival",
+      "ok": true,
+      "provenance": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Map.provenance.json",
+      "screenshot": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/l4_05fz_map_natural_t0_map_21.png",
+      "segment": "map_21",
+      "start_state": "Level4Room31PostLadderNaturalKey",
+      "track": "assisted"
+    },
+    {
+      "allow_key_poke": false,
+      "assist": {
+        "capacity_writes": 0,
+        "class": "survival",
+        "damage_by_location": {
+          "L4:0x21": 1,
+          "L4:0x30": 1,
+          "L4:0x31": 1
+        },
+        "damage_events": 3,
+        "damage_samples": [
+          {
+            "amount": 1,
+            "frame": 100,
+            "level": 4,
+            "link_x": 88,
+            "link_y": 133,
+            "location": "L4:0x31",
+            "screen": 49,
+            "screen_hex": "0x31"
+          },
+          {
+            "amount": 1,
+            "frame": 518,
+            "level": 4,
+            "link_x": 120,
+            "link_y": 101,
+            "location": "L4:0x30",
+            "screen": 48,
+            "screen_hex": "0x30"
+          },
+          {
+            "amount": 1,
+            "frame": 1839,
+            "level": 4,
+            "link_x": 25,
+            "link_y": 141,
+            "location": "L4:0x21",
+            "screen": 33,
+            "screen_hex": "0x21"
+          }
+        ],
+        "deaths": 0,
+        "enabled": true,
+        "health": {
+          "first_active_frame": 0,
+          "restored": 11,
+          "writes": 4
+        },
+        "kind": "unlimited_health",
+        "maximum_single_frame_damage": 1,
+        "progression_writes": 0,
+        "suspended_phase_frames": {
+          "menu_or_boot": 82,
+          "transition": 323
+        },
+        "total_damage": 3
+      },
+      "bead": "rr-rvae",
+      "bomb_stand": [
+        120,
+        105
+      ],
+      "checkpoint": null,
+      "controllers": {
+        "map_21": {
+          "frames": 16309,
+          "segment": "level4_map_21",
+          "success": true
+        },
+        "map_21_bfs": {
+          "cells": 273,
+          "exp": 1082,
+          "hold": 6,
+          "path": [
+            "UP",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "DOWN"
+          ],
+          "path_len": 34,
+          "success": true
+        },
+        "map_21_clear20": {
+          "frames": 451,
+          "success": true
+        },
+        "map_21_enter": {
+          "path": [
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "DOWN",
+            "DOWN",
+            "DOWN",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT",
+            "RIGHT"
+          ],
+          "success": true,
+          "xy": [
+            16,
+            141
+          ]
+        },
+        "map_21_gels": {
+          "frames": 15000,
+          "success": false
+        },
+        "map_21_key": {
+          "allow_key_poke": false,
+          "keys_after": 1,
+          "recon_poke": false
+        },
+        "map_21_key_up": {
+          "keys": 0,
+          "success": true,
+          "xy": [
+            120,
+            205
+          ]
+        },
+        "map_21_to_21_bfs": {
+          "cells": 672,
+          "exp": 2665,
+          "path_len": 30,
+          "success": true
+        },
+        "map_21_to_30": {
+          "dest": "0x30",
+          "exp": 567,
+          "hold": 4,
+          "n_cells": 568,
+          "path_len": 44,
+          "quant": 4,
+          "segment": "level4_room_exit_bfs",
+          "success": true
+        }
+      },
+      "entry": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 3,
+        "health": 111,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 49,
+        "room_all_dead": 0,
+        "room_hex": "0x31",
+        "room_item_id": 3,
+        "x": 208,
+        "y": 141
+      },
+      "error": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 111,
+        "keys": 0,
+        "ladder": 1,
+        "level": 4,
+        "map": 8,
+        "map_l4": true,
+        "mode": 5,
+        "room": 33,
+        "room_all_dead": 0,
+        "room_hex": "0x21",
+        "room_item_id": 23,
+        "x": 208,
+        "y": 181
+      },
+      "frames": 16309,
+      "infinite_life": true,
+      "intervention_class": "survival",
+      "ok": true,
+      "provenance": null,
+      "screenshot": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/l4_05fz_map_natural_t1_map_21.png",
+      "segment": "map_21",
+      "start_state": "Level4Room31PostLadderNaturalKey",
+      "track": "assisted"
+    }
+  ],
+  "runtime_class": "bronze",
+  "segment": "map_21",
+  "start_state": "Level4Room31PostLadderNaturalKey",
+  "successes": 2,
+  "track": "assisted",
+  "trials": 2
+}

@@ -1,0 +1,210 @@
+{
+  "bead": "rr-05fz",
+  "ok": true,
+  "reports": [
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 111,
+        "keys": 2,
+        "level": 4,
+        "mode": 5,
+        "room": 48,
+        "room_all_dead": 0,
+        "room_hex": "0x30",
+        "room_item_id": 3,
+        "x": 120,
+        "y": 205
+      },
+      "frames": 207,
+      "ok": true,
+      "seg": "north_30"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 111,
+        "keys": 2,
+        "level": 4,
+        "mode": 5,
+        "room": 48,
+        "room_all_dead": 2,
+        "room_hex": "0x30",
+        "room_item_id": 3,
+        "x": 112,
+        "y": 133
+      },
+      "frames": 2414,
+      "ok": true,
+      "seg": "clear_30"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 2,
+        "health": 111,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 49,
+        "room_all_dead": 0,
+        "room_hex": "0x31",
+        "room_item_id": 3,
+        "x": 16,
+        "y": 141
+      },
+      "frames": 328,
+      "ok": true,
+      "seg": "key_right_31"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 2,
+        "health": 109,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 49,
+        "room_all_dead": 2,
+        "room_hex": "0x31",
+        "room_item_id": 3,
+        "x": 48,
+        "y": 111
+      },
+      "frames": 21007,
+      "ok": true,
+      "seg": "clear_31"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 109,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 50,
+        "room_all_dead": 0,
+        "room_hex": "0x32",
+        "room_item_id": 3,
+        "x": 16,
+        "y": 141
+      },
+      "frames": 554,
+      "ok": true,
+      "seg": "east_32"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 104,
+        "keys": 1,
+        "level": 4,
+        "mode": 5,
+        "room": 50,
+        "room_all_dead": 2,
+        "room_hex": "0x32",
+        "room_item_id": 3,
+        "x": 40,
+        "y": 116
+      },
+      "frames": 6591,
+      "ok": true,
+      "seg": "clear_32"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 104,
+        "keys": 1,
+        "level": 4,
+        "mode": 9,
+        "room": 96,
+        "room_all_dead": 0,
+        "room_hex": "0x60",
+        "room_item_id": 13,
+        "x": 136,
+        "y": 141
+      },
+      "frames": 2480,
+      "ok": true,
+      "seg": "stepladder"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 0,
+        "health": 104,
+        "keys": 1,
+        "ladder": 1,
+        "level": 4,
+        "map": 0,
+        "map_l4": false,
+        "mode": 5,
+        "room": 50,
+        "room_all_dead": 0,
+        "room_hex": "0x32",
+        "room_item_id": 3,
+        "x": 192,
+        "y": 189
+      },
+      "frames": 674,
+      "ok": true,
+      "seg": "exit_60"
+    },
+    {
+      "err": null,
+      "final": {
+        "bombs": 9,
+        "compass": 4,
+        "compass_l4": false,
+        "cur_opened_doors": 3,
+        "health": 103,
+        "keys": 1,
+        "ladder": 1,
+        "level": 4,
+        "map": 0,
+        "map_l4": false,
+        "mode": 5,
+        "room": 49,
+        "room_all_dead": 0,
+        "room_hex": "0x31",
+        "room_item_id": 3,
+        "x": 208,
+        "y": 141
+      },
+      "frames": 367,
+      "ok": true,
+      "seg": "west_31"
+    }
+  ]
+}

@@ -1,0 +1,478 @@
+{
+  "bead": "rr-05fz",
+  "dual_green": true,
+  "from": "Level4Map",
+  "from_map": true,
+  "key_poke": false,
+  "ok": true,
+  "segment": "continuous_natural_key_map_gleeok_tf",
+  "tag": "l4_05fz_map_to_tf",
+  "track": "assisted",
+  "trials": [
+    {
+      "bead": "rr-05fz",
+      "checkpoint": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Complete.state",
+      "final": {
+        "bombs": 7,
+        "cur_opened_doors": 0,
+        "doors": {
+          "D": false,
+          "L": false,
+          "R": false,
+          "U": false,
+          "raw": 0
+        },
+        "health": 116,
+        "heart_containers": 8,
+        "keys": 0,
+        "level": 4,
+        "mode": 18,
+        "objects": [],
+        "open_doorway_mask": 0,
+        "raft": 1,
+        "room_all_dead": 71,
+        "room_item_id": 27,
+        "room_item_name": "triforce_or_residual_room_item",
+        "room_obj_count": 3,
+        "sc": "0x03",
+        "screen": 3,
+        "tf04": true,
+        "triforce": 12,
+        "type_counts": {},
+        "type_names": {},
+        "x": 120,
+        "y": 149
+      },
+      "gleeok_path": {
+        "final": {
+          "bombs": 7,
+          "cur_opened_doors": 0,
+          "doors": {
+            "D": false,
+            "L": false,
+            "R": false,
+            "U": false,
+            "raw": 0
+          },
+          "health": 116,
+          "heart_containers": 8,
+          "keys": 0,
+          "level": 4,
+          "mode": 18,
+          "objects": [],
+          "open_doorway_mask": 0,
+          "raft": 1,
+          "room_all_dead": 71,
+          "room_item_id": 27,
+          "room_item_name": "triforce_or_residual_room_item",
+          "room_obj_count": 3,
+          "sc": "0x03",
+          "screen": 3,
+          "tf04": true,
+          "triforce": 12,
+          "type_counts": {},
+          "type_names": {},
+          "x": 120,
+          "y": 149
+        },
+        "ok": true,
+        "phases": {
+          "bomb21": {
+            "bombs0": 9,
+            "bombs1": 8,
+            "dest": "0x11",
+            "ok": true,
+            "thrash": {
+              "frames": 8000,
+              "ok": true,
+              "success": false
+            },
+            "xy": [
+              120,
+              213
+            ]
+          },
+          "clear12": {
+            "dead_streak": 25,
+            "ok": true,
+            "predicate": true,
+            "thrash": {
+              "frames": 3471,
+              "ok": true,
+              "success": true
+            }
+          },
+          "enter_gleeok": {
+            "final": {
+              "bombs": 7,
+              "cur_opened_doors": 0,
+              "doors": {
+                "D": false,
+                "L": false,
+                "R": false,
+                "U": false,
+                "raw": 0
+              },
+              "health": 111,
+              "heart_containers": 7,
+              "keys": 0,
+              "level": 4,
+              "mode": 5,
+              "objects": [
+                {
+                  "facing": 0,
+                  "hp": 160,
+                  "slot": 1,
+                  "type": 67,
+                  "type_name": "gleeok",
+                  "x": 124,
+                  "y": 111
+                },
+                {
+                  "facing": 0,
+                  "hp": 0,
+                  "slot": 11,
+                  "type": 86,
+                  "type_name": "manhandla_projectile_residual",
+                  "x": 118,
+                  "y": 141
+                }
+              ],
+              "open_doorway_mask": 0,
+              "raft": 1,
+              "room_all_dead": 0,
+              "room_item_id": 26,
+              "room_item_name": "heart_container",
+              "room_obj_count": 1,
+              "sc": "0x13",
+              "screen": 19,
+              "tf04": true,
+              "triforce": 4,
+              "type_counts": {
+                "0x43": 1,
+                "0x56": 1
+              },
+              "type_names": {
+                "0x43": "gleeok",
+                "0x56": "manhandla_projectile_residual"
+              },
+              "x": 32,
+              "y": 141
+            },
+            "ok": true,
+            "path_ok": true
+          },
+          "fight": {
+            "error": null,
+            "final": {
+              "bombs": 7,
+              "cur_opened_doors": 0,
+              "doors": {
+                "D": false,
+                "L": false,
+                "R": false,
+                "U": false,
+                "raw": 0
+              },
+              "health": 116,
+              "heart_containers": 8,
+              "keys": 0,
+              "level": 4,
+              "mode": 18,
+              "objects": [],
+              "open_doorway_mask": 0,
+              "raft": 1,
+              "room_all_dead": 71,
+              "room_item_id": 27,
+              "room_item_name": "triforce_or_residual_room_item",
+              "room_obj_count": 3,
+              "sc": "0x03",
+              "screen": 3,
+              "tf04": true,
+              "triforce": 12,
+              "type_counts": {},
+              "type_names": {},
+              "x": 120,
+              "y": 149
+            },
+            "frames": 1850,
+            "notes": [
+              "boss_dead f=1846 rad=1 doors=0",
+              "HC not mid-room yet (may collect on UP path)",
+              "exit_up result=room_change to=0x03",
+              "entered TF room 0x03",
+              "TF at (120,141)",
+              "tf08 frame=1850"
+            ],
+            "ok": true,
+            "tf08": true
+          },
+          "push12": {
+            "doors": 3,
+            "doors0": 3,
+            "ok": true,
+            "xy": [
+              108,
+              141
+            ]
+          },
+          "to_12": {
+            "dest": "0x12",
+            "ok": true,
+            "stand": [
+              192,
+              141
+            ],
+            "thrash": {
+              "frames": 386,
+              "ok": true,
+              "success": true
+            }
+          }
+        },
+        "tf08": true
+      },
+      "key_poke": false,
+      "natural_entry": false,
+      "ok": true,
+      "start_state": "Level4Map",
+      "tag": "l4_05fz_map_to_tf",
+      "tf08": true,
+      "total_frames": 18439,
+      "track": "assisted",
+      "trial": 0
+    },
+    {
+      "bead": "rr-05fz",
+      "final": {
+        "bombs": 7,
+        "cur_opened_doors": 0,
+        "doors": {
+          "D": false,
+          "L": false,
+          "R": false,
+          "U": false,
+          "raw": 0
+        },
+        "health": 116,
+        "heart_containers": 8,
+        "keys": 0,
+        "level": 4,
+        "mode": 18,
+        "objects": [],
+        "open_doorway_mask": 0,
+        "raft": 1,
+        "room_all_dead": 71,
+        "room_item_id": 27,
+        "room_item_name": "triforce_or_residual_room_item",
+        "room_obj_count": 3,
+        "sc": "0x03",
+        "screen": 3,
+        "tf04": true,
+        "triforce": 12,
+        "type_counts": {},
+        "type_names": {},
+        "x": 120,
+        "y": 149
+      },
+      "gleeok_path": {
+        "final": {
+          "bombs": 7,
+          "cur_opened_doors": 0,
+          "doors": {
+            "D": false,
+            "L": false,
+            "R": false,
+            "U": false,
+            "raw": 0
+          },
+          "health": 116,
+          "heart_containers": 8,
+          "keys": 0,
+          "level": 4,
+          "mode": 18,
+          "objects": [],
+          "open_doorway_mask": 0,
+          "raft": 1,
+          "room_all_dead": 71,
+          "room_item_id": 27,
+          "room_item_name": "triforce_or_residual_room_item",
+          "room_obj_count": 3,
+          "sc": "0x03",
+          "screen": 3,
+          "tf04": true,
+          "triforce": 12,
+          "type_counts": {},
+          "type_names": {},
+          "x": 120,
+          "y": 149
+        },
+        "ok": true,
+        "phases": {
+          "bomb21": {
+            "bombs0": 9,
+            "bombs1": 8,
+            "dest": "0x11",
+            "ok": true,
+            "thrash": {
+              "frames": 8000,
+              "ok": true,
+              "success": false
+            },
+            "xy": [
+              120,
+              213
+            ]
+          },
+          "clear12": {
+            "dead_streak": 25,
+            "ok": true,
+            "predicate": true,
+            "thrash": {
+              "frames": 3471,
+              "ok": true,
+              "success": true
+            }
+          },
+          "enter_gleeok": {
+            "final": {
+              "bombs": 7,
+              "cur_opened_doors": 0,
+              "doors": {
+                "D": false,
+                "L": false,
+                "R": false,
+                "U": false,
+                "raw": 0
+              },
+              "health": 111,
+              "heart_containers": 7,
+              "keys": 0,
+              "level": 4,
+              "mode": 5,
+              "objects": [
+                {
+                  "facing": 0,
+                  "hp": 160,
+                  "slot": 1,
+                  "type": 67,
+                  "type_name": "gleeok",
+                  "x": 124,
+                  "y": 111
+                },
+                {
+                  "facing": 0,
+                  "hp": 0,
+                  "slot": 11,
+                  "type": 86,
+                  "type_name": "manhandla_projectile_residual",
+                  "x": 118,
+                  "y": 141
+                }
+              ],
+              "open_doorway_mask": 0,
+              "raft": 1,
+              "room_all_dead": 0,
+              "room_item_id": 26,
+              "room_item_name": "heart_container",
+              "room_obj_count": 1,
+              "sc": "0x13",
+              "screen": 19,
+              "tf04": true,
+              "triforce": 4,
+              "type_counts": {
+                "0x43": 1,
+                "0x56": 1
+              },
+              "type_names": {
+                "0x43": "gleeok",
+                "0x56": "manhandla_projectile_residual"
+              },
+              "x": 32,
+              "y": 141
+            },
+            "ok": true,
+            "path_ok": true
+          },
+          "fight": {
+            "error": null,
+            "final": {
+              "bombs": 7,
+              "cur_opened_doors": 0,
+              "doors": {
+                "D": false,
+                "L": false,
+                "R": false,
+                "U": false,
+                "raw": 0
+              },
+              "health": 116,
+              "heart_containers": 8,
+              "keys": 0,
+              "level": 4,
+              "mode": 18,
+              "objects": [],
+              "open_doorway_mask": 0,
+              "raft": 1,
+              "room_all_dead": 71,
+              "room_item_id": 27,
+              "room_item_name": "triforce_or_residual_room_item",
+              "room_obj_count": 3,
+              "sc": "0x03",
+              "screen": 3,
+              "tf04": true,
+              "triforce": 12,
+              "type_counts": {},
+              "type_names": {},
+              "x": 120,
+              "y": 149
+            },
+            "frames": 1850,
+            "notes": [
+              "boss_dead f=1846 rad=1 doors=0",
+              "HC not mid-room yet (may collect on UP path)",
+              "exit_up result=room_change to=0x03",
+              "entered TF room 0x03",
+              "TF at (120,141)",
+              "tf08 frame=1850"
+            ],
+            "ok": true,
+            "tf08": true
+          },
+          "push12": {
+            "doors": 3,
+            "doors0": 3,
+            "ok": true,
+            "xy": [
+              108,
+              141
+            ]
+          },
+          "to_12": {
+            "dest": "0x12",
+            "ok": true,
+            "stand": [
+              192,
+              141
+            ],
+            "thrash": {
+              "frames": 386,
+              "ok": true,
+              "success": true
+            }
+          }
+        },
+        "tf08": true
+      },
+      "key_poke": false,
+      "natural_entry": false,
+      "ok": true,
+      "start_state": "Level4Map",
+      "tag": "l4_05fz_map_to_tf",
+      "tf08": true,
+      "total_frames": 18439,
+      "track": "assisted",
+      "trial": 1
+    }
+  ]
+}
