@@ -169,6 +169,20 @@ but still **no stand** — object-solid residual deeper than X gap.
 | Diag fall_top | top_dy≈+1 force-place still freefall (solid path inactive) |
 | Evidence | `scripts/cloud_screen_align.py`, `recordings/air_post4_screen_align/` |
 
+### Alt path + appear-mask (2026-08-10) — still OPEN (PARTIAL)
+
+| Field | Value |
+|-------|-------|
+| Cam ≥5 | **No** |
+| Human path | Cloud ride ×5 after kill (walkthroughs) |
+| TAS alt | Item-1 (Heat-first) — `weapons=$00` on AirFan → not Air-first Clean |
+| Jump skip | **No** — gap ~296px after prog 984 |
+| Appear arm | Sole `LDA #$90` = appear-block AI `14_23`; body never arms |
+| Zero-mask force | Global solid under fceumm (path works when configured) |
+| Localized masks | Still freefall after kill |
+| Residual child | **rr-f3nr** (FCEUX stick pin or Heat→Air Item-1) |
+| Evidence | `docs/CLOUD_LAND_RED_PIN.md`, `recordings/air_post4_altpath/` |
+
 ## Not done
 
 - Past screen 4 / boss door (**kill OK; Thunder Chariot object-solid stand residual**)
@@ -178,9 +192,10 @@ but still **no stand** — object-solid residual deeper than X gap.
 
 ## Next
 
-1. **rr-54ui residual tip:** Human/TAS frame pin where feet stick on empty cloud
-   (sy/by/`$2C`/body tsa/flag/cam). Or alternate Clean path past s4 without ride.
-   Docs: `docs/CLOUD_LAND_RED_PIN.md`. Do not re-grid solid alone.
+1. **rr-f3nr (residual of rr-54ui PARTIAL):** FCEUX/human RAM pin on empty-cloud
+   stick (sy/by/`$2C`/body fl/tsa/xs/ys/cam), **or** Heat→Air Item-1 Clean
+   segment past s4. No Air-first Clean skip found (weapons=$00; gap ~296px).
+   Docs: `docs/CLOUD_LAND_RED_PIN.md` altpath section. Do not re-grid solid alone.
 2. Chain mapset 5–6 LLs → camera ≥5 → boss door only after stand freezes a state.
 3. Do **not** re-sweep goblin-solid, “LL never spawns”, hold-B only, feet_dy=0 grids,
-   screen-align-only grids, or fall_top/appear/flag08 pokes.
+   screen-align-only grids, fall_top/appear/flag08, or zero-mask global solid.

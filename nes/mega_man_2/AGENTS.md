@@ -30,9 +30,10 @@ uv run pytest nes/mega_man_2/tests -q
 Past screen 4 from `AirFanPlatform` (prog 937–984) toward boss door.
 **LL spawns** mapset4 (`0x3D`/`0x3E` ~prog 961; `docs/LL_SPAWN_DECODE.md`).
 **Rider kill Clean** (pulse B on `0x3D`). Residual: empty cloud **object-solid
-never arms** under fceumm (body AI no solid rewrite; appear `$10` never set;
-fall_top poke top_dy≈1 still freefall). Probe: `scripts/cloud_screen_align.py`
-+ `docs/CLOUD_LAND_RED_PIN.md`. Next: human/TAS stick pin or alt path past s4.
+never arms** (body never `LDA #$90`; sole appear-arm is Heat appearing_block AI).
+Zero-mask force proves fceumm solid path works; no Air-first Clean skip (Item-1
+needs Heat; gap ~296px). Docs: `CLOUD_LAND_RED_PIN.md`. Child **rr-f3nr**:
+FCEUX/human stick RAM pin or Heat→Air Item-1 segment.
 
 ## Norms
 
@@ -52,5 +53,6 @@ fall_top poke top_dy≈1 still freefall). Probe: `scripts/cloud_screen_align.py`
 - Kill LL rider with **pulsed B** (period 3–8); hold-B under-fires. Body `0x3E`
   stays after `0x3D` dies (type 6 death anim ~12f). Stand may not set `tile_feet==1`.
 - Empty-cloud residual: not X, not feet_dy=0, not screen-align alone. Body AI
-  (lsmmega `14_19`) has no solid-arm on kill; appear `$10` never set. Next =
-  human/TAS stick pin or alternate path past s4 without cloud ride.
+  never arms appear (`LDA #$90` only in appear-block AI). Zero-mask force =
+  global solid (path OK). No Air-first Clean alt (Item-1 needs Heat). Next =
+  rr-f3nr FCEUX stick pin or Heat→Air Item-1.
