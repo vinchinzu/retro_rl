@@ -60,23 +60,49 @@ uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen2 --t
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen3 --target-screen 4 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen4 --target-screen 5 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen5Ground --target-screen 7 --trials 3
+# s7 climb residual (wall lock) — no target-screen past 7 yet
 ```
 
 Evidence: `recordings/heat_boot/`, `recordings/heat_segment/`, `heat_s7_seg/`,
-`heat_preboss/`.
-Pins (gitignored): `Heat1`, `HeatScreen1`–`HeatScreen7`, `HeatScreen5Ground`.
+`heat_preboss/`, `heat_s7_midpin/`, `heat_s7_climb_residual/`.
+Pins (gitignored): `Heat1`, `HeatScreen1`–`HeatScreen7`, `HeatScreen5Ground`,
+`HeatScreen7Mid`.
 
 ## Residual chain (not done)
 
 1. ~~**Heat late / pre-boss**~~ — dual-green cam ≥7 from `HeatScreen5Ground` (rr-809 PARTIAL)
-2. **Heat boss door climb** — s7 alcove under low ceiling; sy=124 micro-ledge only;
-   no vertical cam / boss_hp yet; climb residual
+2. **Heat boss door climb** — s7 alcove wall-lock (see below); no boss_hp / Item-1 yet
 3. **Heat boss clear + Item-1 unlock pin** — post-Heat `items\|$01` + Atomic Fire
    `weapons\|$01`
 4. **Stage select → Air with Item-1** — weapons/items persist after Heat clear
 5. **Air Fan → Item-1 platforms past s4** — deploy Item-1 (weapon menu + B) at
    prog ~984; clear camera ≥5 Clean
 6. Optional: FCEUX human cloud-stand RAM pin (parallel residual; see below)
+
+### HeatScreen7 climb residual (2026-08-10)
+
+Verified dual-green s5→s7 3/3. Pins: `HeatScreen7`, `HeatScreen7Mid`
+(sx152 sy124 under Telly). Evidence: `recordings/heat_s7_seg/`,
+`heat_s7_midpin/`, `heat_s7_climb_residual/residual.json`.
+
+| Fact | Detail |
+|------|--------|
+| Cam lock | prog **1792** (cam7 cam_x=0) |
+| Playable floor | sy148 sx **130–152** (white platform) |
+| Micro-ledge | sy**124** sx **140–152** under Telly (type36) |
+| Hard wall | sx **152** full jump-arc height — no damage-boost past |
+| Mapset7 ladder | TSA type2 tiles `$30`/`$31` at **x192–255 y192** (scroll_down exit) — unreachable past wall |
+| Scroll table | `scrolling_heatman_wily_00`: 7 right rooms then **scroll_down** → mapset8+ Sniper Armor shaft |
+| Stage map | Upper corridor ends at Telly ledge; multi-level + boss are **below/right** via vertical transition |
+| Telly | Chips HP while camping mid (~−4/60f); kills ~650f if only hopping |
+
+**Swept:** hop→mid grids; LEFT high (scrolls cam6); UP/DOWN never `tile_feet==2`;
+screen5 policy 700f on s7; random s5/s6/s7 2–3k frames 0 ladders; RIGHT wall
+probe + damage boost.
+
+**Next tip:** reach ladder past sx152 (clip/route?) or re-enter vertical shaft from
+an earlier drop; then Sniper Armor room → boss door → clear → Item-1 pin.
+Do not tip rr-810 until Item-1.
 
 ## FCEUX / human cloud-stand pin protocol
 

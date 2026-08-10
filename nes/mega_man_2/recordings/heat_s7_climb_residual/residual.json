@@ -1,0 +1,30 @@
+{
+  "date": "2026-08-10",
+  "bead": "rr-809",
+  "status": "PARTIAL",
+  "verified": {
+    "dual_green_s5_to_s7": "3/3 ~293f HP22 prog1792 from HeatScreen5Ground",
+    "HeatScreen7_start": "cam7 prog1792 sx135 sy148 ft1 HP22 inv high",
+    "HeatScreen7Mid_pin": "sx152 sy124 ft1 grounded micro-ledge under Telly"
+  },
+  "geometry": {
+    "cam_lock_prog": 1792,
+    "wall_sx": 152,
+    "mid_ledge": "sy124 sx140-152 under Telly (type36)",
+    "floor": "sy148 sx130-152 white platform",
+    "mapset7_ladder": "TSA type2 at tiles 0x30/0x31 cols6-7 y192 (world x192-255) \u2014 unreachable past wall",
+    "scroll_next": "heat scrolling_00: after 7 right rooms \u2192 scroll_down (mapset8+)",
+    "stage_map": "upper corridor ends at Telly ledge; multi-level Sniper Armor room is below/right via vertical transition"
+  },
+  "swept": [
+    "hop grids to mid ledge (hold 8-20)",
+    "left high platforms (scrolls back cam6; sy108/116 on prior screens)",
+    "UP/DOWN spam floor and mid \u2014 never tile_feet==2",
+    "right wall full-height collision at sx152 (jump arc also blocked)",
+    "damage-boost RIGHT through Telly \u2014 no pass",
+    "screen5 policy 700f on s7 \u2014 dies to Telly chip, no cam_y/boss",
+    "random explore s5/s6/s7 2-3k frames \u2014 0 ladders"
+  ],
+  "residual": "Reach past sx152 wall to mapset7 ladder (x192+) OR alternate vertical entry \u2192 Sniper Armor shaft \u2192 boss door \u2192 Heat clear \u2192 Item-1 $009B bit1 + Atomic Fire $009A bit1",
+  "do_not": "re-grid Air cloud solid; tip rr-810 before Item-1"
+}
