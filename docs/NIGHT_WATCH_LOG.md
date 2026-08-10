@@ -68,3 +68,7 @@ Hourly re-dispatch: scheduler task 019fe966cf19 (1h, durable). Cap 6 lanes. No p
 - **CLOSED** `rr-3f3e` Landing BC train/evaluate/report ownership split (7 tests).
 - No more ready sm_rando work; `rr-gbd.25` still blocked on `rr-gbd.33` harness.
 
+### 2026-08-09T21:25 CDT — super_metroid Ice PLM GREEN
+- **CLOSED** `rr-5if` dual pure 1756f×2 room 0xA890 beams 0x1007 (not continuous).
+- Next: `rr-dbu.11` Ice pure stack acceptance / compose.
+
