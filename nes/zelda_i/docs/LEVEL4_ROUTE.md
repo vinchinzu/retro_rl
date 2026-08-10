@@ -122,6 +122,28 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x50** | **live pure 2/2** | 5× `0x12` Vire | Dead-end pocket; no progress exit | `rr-2ysf` |
 | **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
 
+### Post-compass residual (rr-o0nn live recon 2026-08-10)
+
+Start: **`Level4Compass`** (0x61, `ADDR_COMPASS|0x08`, keys=0, doors=1 RIGHT).
+
+**Live component is closed** — only rooms `{0x71, 0x61, 0x51, 0x50, 0x62}`:
+
+| From | Exit | Dest | Notes |
+|------|------|------|-------|
+| 0x61 | free/BOMB UP | 0x51 | hole still open post-compass |
+| 0x61 | RIGHT | 0x62 | re-enter without key (door bit stays) |
+| 0x61 | DOWN | 0x71 | free |
+| 0x51 | LEFT @y141 | 0x50 | free |
+| 0x51 | DOWN | 0x61 | free |
+| 0x51 | **UP** | **sealed** | not a key door (keys poke does not consume) |
+| 0x51 | **RIGHT** | **sealed** | same |
+| 0x50 | RIGHT | 0x51 | only exit; denser bomb-N scan no open |
+| 0x62 | LEFT | 0x61 | only durable exit; bomb stands no open |
+
+Also live-negative: Vire re-clear key farm (8 cycles) **no drops**; candle already 1 on fixtures (not the gate).
+
+**ADDR_LADDER still 0.** Source walkthrough continues dark-chain N / KEY-RIGHT to Like-Like stairs — **no live room id yet** outside this component. Evidence: `recordings/l4_o0nn_*.json`.
+
 ### Runner
 
 ```bash
@@ -141,7 +163,8 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --tri
 **Traps (live):**
 
 - Source “entry LEFT Keese key” is **wrong** on this seed/path — entry is empty; first key is bomb-N of Vires.
-- **0x50 west of first key is a dead-end pocket** — Stepladder path is **KEY-RIGHT 0x61→0x62**, not west.
+- **0x50 west of first key is a dead-end pocket** — not the Stepladder path.
+  Compass is KEY-RIGHT 0x61→0x62; post-compass component stays closed (rr-o0nn).
 - Vire split is type **`0x1c`**, not standard Keese `0x1b`; HP stays 0 (type-only) and lands in slots **10–12**.
 - Free doorways often show `cur_opened_doors=0` / `open_doorway_mask=0` — do not require door bits for UP 0x71→0x61 or LEFT 0x51→0x50.
 - Bomb stand on 0x61: **(120, ~105)** face UP + B; wait blast then push UP.
@@ -152,8 +175,10 @@ uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --tri
   then `MAZE_62_RETURN_WEST` hold4 → LEFT scroll to 0x61). Center y=141 is
   wall-blocked from the west door — must follow the return corridor.
 - Post-compass: only durable exit found is **LEFT→0x61**. No free/bomb east
-  exit from 0x62. Stepladder is residual **north of the early rooms** (source:
-  backtrack then UP), not deeper into 0x62.
+  exit from 0x62. Stepladder residual is **outside the closed early component**
+  (source: dark-chain N / Like-Like stairs) — 0x51 UP is **sealed**, not the
+  live next room.
+- From `Level4Compass`: KEY-RIGHT door stays open (RIGHT re-enter 0x62, no key).
 
 Checkpoints (dev): `Level4Room61`, `Level4Room61Cleared`, `Level4FirstKey`,
 `Level4Room50Cleared`, `Level4Room62`, `Level4Room62Cleared`, `Level4Compass`.
