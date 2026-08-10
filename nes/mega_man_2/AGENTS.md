@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air Man screen-4 clear from AirScreen2 (M3); LL rider kill OK; cloud stand residual |
+| Status | Air Man screen-4 clear from AirScreen2 (M3); LL kill OK; cloud solid residual (disasm) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -30,8 +30,9 @@ uv run pytest nes/mega_man_2/tests -q
 Past screen 4 from `AirFanPlatform` (prog 937–984) toward boss door.
 **LL spawns** mapset4 (`0x3D`/`0x3E` ~prog 961; `docs/LL_SPAWN_DECODE.md`).
 **Rider kill Clean** (pulse B on `0x3D`). Residual: empty cloud **object-solid
-stand** — feet_dy=0 @ dx≤2 still freefall; `aobject_tsa` is AI timer not solid.
-Probe: `scripts/cloud_solid_decode.py` + `docs/CLOUD_LAND_RED_PIN.md`. Then M4.
+never arms** under fceumm (body AI no solid rewrite; appear `$10` never set;
+fall_top poke top_dy≈1 still freefall). Probe: `scripts/cloud_screen_align.py`
++ `docs/CLOUD_LAND_RED_PIN.md`. Next: human/TAS stick pin or alt path past s4.
 
 ## Norms
 
@@ -50,5 +51,6 @@ Probe: `scripts/cloud_solid_decode.py` + `docs/CLOUD_LAND_RED_PIN.md`. Then M4.
 - LL watch: `$0400` types **0x3D/0x3E** (not 35/36). Goblin is **0x40**.
 - Kill LL rider with **pulsed B** (period 3–8); hold-B under-fires. Body `0x3E`
   stays after `0x3D` dies (type 6 death anim ~12f). Stand may not set `tile_feet==1`.
-- Empty-cloud residual: not X alone, not feet_dy=0 alone. `aobject_tsa` countdown
-  ≠ solid; flag 192 = facing. Next = body AI solid-arm / TAS pin / screen-align.
+- Empty-cloud residual: not X, not feet_dy=0, not screen-align alone. Body AI
+  (lsmmega `14_19`) has no solid-arm on kill; appear `$10` never set. Next =
+  human/TAS stick pin or alternate path past s4 without cloud ride.

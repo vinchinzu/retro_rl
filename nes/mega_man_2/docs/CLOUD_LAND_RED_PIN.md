@@ -61,16 +61,73 @@ Probe: `scripts/cloud_solid_decode.py` → `recordings/air_post4_cloud_solid/`.
 
 At typical kill (sy≈34, by≈48): player **top** is above cloud, but feet (sy+24) are already through cloud volume. Jump apex min_sy~34 vs cloud y≈32–50 → almost no “clearly above then drop” window. One-way solid would need a thin surface cross while descending **relative to cloud**.
 
+## Disasm + screen-align session (2026-08-10) — still RED
+
+Probe: `scripts/cloud_screen_align.py` → `recordings/air_post4_screen_align/`
+(247 Clean recipes + focused pin_diag; 40+ kills, 0 stand, 0 cam≥5).
+
+### Body AI (`objects_kaminari_goro` 0x3E) — lsmmega bank14 `14_19.bin`
+
+| Finding | Detail |
+|---------|--------|
+| Spawn | Body AI `LDA #$3D / JSR $F159` creates rider child; stores parent link `$0120` |
+| Rider attach | Rider AI: if parent type==`$3E` and exist, lock y=`by-0x14`, same x/screen |
+| On rider death | **No type rewrite, no solid flag arm** in body AI — body stays `0x3E` HP20 |
+| Flag bit `$08` | Body sets/clears AI phase bit (`ORA #$08` / `AND #$F7`) — **not** solid |
+| Appearing-block solid | Engine solid for objects uses `objects_appearing_block=$10` (`appearing_block.asm`) — **never set** on live empty cloud |
+| Full PRG scan | Only **4×** `CMP #$3E` (AI/timer only); **0×** `CMP #$3D` — no type-whitelist solid path |
+| OAM geometry | `oamcoord_3e` spans y=−16…+16 around body y → cloud **top ≈ by−16** |
+
+### Screen-align live pin
+
+| Metric | Result |
+|--------|--------|
+| Kill contact window | Almost always **cam=3, body scr=4** (misaligned) |
+| Best cloud-top approach | `top_dy≈−8` (feet already through estimated top) @ dx≈12, cam3 |
+| When cam finally 4 | `top_dy≈−19` — already deep through cloud volume |
+| Same-scr + empty body | Still freefall `ft=0`, status 3/6/7 air — **no Y lock** |
+| Higher hang 40–56 | Does not create clean above-top then drop window |
+
+### Diagnostic pokes (not Clean; prove solid path inactive)
+
+Via fceumm state WRAM poke (base offset 93):
+
+| Poke | Result |
+|------|--------|
+| `fall_top` place feet near by−16, zero yspeed | **top_dy≈+1 achieved** — still freefall, no stand |
+| `fall_center` place feet near by | still freefall (prior session) |
+| Force body flag `\|$08` (AI bit) | no stand |
+| Force body flag `\|$10` (appearing_block) | no stand under our contact window |
+
+**Engine residual (precise):** Under fceumm/stable-retro Clean play, empty
+`0x3E` after rider kill does **not** present a working object-solid / stand path
+in any tested geometry (center, top band, same-screen, force-place above top).
+Body AI has no post-kill solid arm. Appearing-block collision is the only
+decoded object-solid path and is never enabled on the chariot.
+
+### Status $2C during contact
+
+| Value | When seen |
+|-------|-----------|
+| 6 | freefall / air (typical kill+meet) |
+| 7 | brief air variant |
+| 3 | late fall / some ground-exit — **not** sustained cloud stand |
+| Never | status that freezes Y to body for ≥4f with `ft` or yvar lock |
+
 ## Next experiments (do not re-run)
 
 **Do not:** goblin-solid, pure-RIGHT only, “LL never spawns”, hold-B spam without pulse,
-re-grid feet_dy=0 alone (already closed as insufficient).
+re-grid feet_dy=0 alone, re-grid screen-align alone, re-poke fall_top/appear/flag08
+(already negative).
 
 **Do:**
 
-1. **Disasm body AI** (`objects_kaminari_goro` 0x3E) for platform/stand arm after child `0x3D` dies — when does solid arm?
-2. **TAS / human frame pin** — sy vs by, `$2C` status, body tsa/flag, cam scr when feet stick on empty cloud.
-3. **Screen-align** — ensure player+body same `aobject_screen` / cam≥4 before land window.
+1. **Human/TAS frame pin** (primary remaining) — capture sy, by, `$2C`, body
+   tsa/flag/child, cam vs body scr on a frame where feet **stick** on empty cloud
+   (console or verified emulator). Compare to our freefall dumps.
+2. **Alternate path past s4 without cloud ride** — damage-boost / weapon / scroll
+   glitch / mapset skip if any Clean path exists (document if none).
+3. If human pin shows a missing RAM bit/type we never set: implement that arm under Clean.
 4. Chain mapset 5–6 LLs only after first stand freezes a state.
 
 ## Smoke
