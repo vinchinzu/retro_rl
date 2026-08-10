@@ -601,6 +601,129 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         self.assertGreater(rights, lefts, msg="soft band must prefer RIGHT not long LEFT")
         self.assertLessEqual(ups, 40, msg=f"UP must be capped (got {ups}) to avoid gap re-entry")
         self.assertGreater(downs, 40, msg="soft band must DOWN first off soft-block")
+        # rr-qc9r: LEFT must stay brief so we don't land (25,34) then thrash.
+        self.assertLessEqual(lefts, 20, msg=f"LEFT must be brief wiggle (got {lefts})")
+
+    def test_south_far_lip_charge_no_up_on_y34(self) -> None:
+        """From (25,34) pure east — no UP that re-enters soft (29,32)."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._queue_west_south_lip_charge((25, 34))
+        self.assertTrue(task._pending_south_lip_charge)
+        ups = sum(1 for a in task._action_queue if int(a[4]) == 1)
+        rights = sum(1 for a in task._action_queue if int(a[7]) == 1)
+        downs = sum(1 for a in task._action_queue if int(a[5]) == 1)
+        self.assertGreater(rights, 100, msg="south_far/south on y=34 must long RIGHT")
+        self.assertEqual(ups, 0, msg=f"y=34 charge must not UP into soft band (got {ups})")
+        # Optional brief DOWN soft-break only.
+        self.assertLessEqual(downs, 30, msg=f"y=34 should not long-DOWN (got {downs})")
+
+    def test_refill_hop_from_25_34_short_east_not_direct_f0(self) -> None:
+        """Densify (25,34)→F0 must hop +3/+4 east, not direct 7-tile thrash."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        hop = task._refill_hop_goal(ram, (25, 34), (32, 34))
+        self.assertNotEqual(
+            hop,
+            (32, 34),
+            msg=f"must not densify direct 7-tile F0, got {hop}",
+        )
+        self.assertGreater(
+            hop[0],
+            25,
+            msg=f"must push east from (25,34), got {hop}",
+        )
+        self.assertLessEqual(
+            hop[0] - 25,
+            5,
+            msg=f"east hop should be short intermediate, got {hop}",
+        )
+        self.assertGreaterEqual(hop[1], 34, msg=f"must stay on south lip, got {hop}")
+
+    def test_soft_block_densify_south_east_not_west(self) -> None:
+        """From (29,32) densify south/east toward F0 — not west to (24,32)."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        task._navigator.update(ram)
+        hop = task._refill_hop_goal(ram, (29, 32), (32, 34))
+        self.assertNotEqual(hop[0], 24, msg=f"must not force west first, got {hop}")
+        self.assertTrue(
+            hop[1] > 32 or hop[0] >= 29,
+            msg=f"soft-block densify must south/east, got {hop}",
+        )
+
+    def test_south_lip_near_f0_commits_multihop_not_recharge(self) -> None:
+        """At (29,35) after lip charge, multihop/act — not another RIGHT overshoot."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for ty in range(31, 34):
+            for tx in range(31, 35):
+                _set_tile(ram, tx, ty, 0xF0)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water")
+        task.reset(world)
+        _set_player_tile(ram, (29, 35))
+        task._navigator.update(ram)
+        task._pending_south_lip_charge = True
+        task._south_lip_charges = 2
+        task._fence_open_attempts = 1
+        task._handle_navigate(ram)
+        # Must not re-arm another long lip charge from near F0.
+        self.assertLessEqual(
+            task._south_lip_charges,
+            2,
+            msg="near F0 must not re-queue lip charge",
+        )
+        self.assertFalse(
+            getattr(task, "_pending_south_lip_charge", False),
+            msg="pending lip charge must clear at near F0",
+        )
+        self.assertTrue(
+            task._refill_multihop or task._state == "act",
+            msg="near F0 must commit multihop/act",
+        )
+
+    def test_start_refill_soft_resets_exhausted_charges(self) -> None:
+        """Exhausted lip charges soft-reset so next empty-can attempt can arm."""
+        ram = _blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for ty in range(31, 34):
+            for tx in range(31, 35):
+                _set_tile(ram, tx, ty, 0xF0)
+        _set_player_tile(ram, (14, 27))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water", refill_bounds=(3, 10, 62, 60))
+        task.reset(world)
+        task._navigator.update(ram)
+        task._south_lip_charges = 9
+        task._east_south_charges = 5
+        task._start_refill(ram)
+        self.assertEqual(
+            task._south_lip_charges,
+            0,
+            msg="exhausted lip charges must soft-reset on new refill",
+        )
+        self.assertEqual(task._east_south_charges, 0)
 
     def test_refill_hop_past_fence_end_forces_south(self) -> None:
         """At (31,29) densify must push south, not self-hop thrash."""
@@ -643,6 +766,12 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
             hop[0],
             24,
             msg=f"from (24,34) must push east toward F0, got {hop}",
+        )
+        # Short intermediate hop — not direct (32,34) 8-tile thrash.
+        self.assertLessEqual(
+            hop[0] - 24,
+            5,
+            msg=f"should densify short east hop, got {hop}",
         )
         hop2 = task._refill_hop_goal(ram, (24, 35), (32, 34))
         self.assertNotEqual(
