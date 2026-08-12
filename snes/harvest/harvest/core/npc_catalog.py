@@ -562,6 +562,28 @@ def text_records() -> tuple[TextRecord, ...]:
     return tuple(rows)
 
 
+def text_record_for_id(text_id: int) -> TextRecord | None:
+    tid = int(text_id)
+    for record in text_records():
+        if record.text_id == tid:
+            return record
+    return None
+
+
+def search_text_records(query: str, *, limit: int = 12) -> list[TextRecord]:
+    needle = query.strip().lower()
+    if not needle:
+        return []
+    hits: list[TextRecord] = []
+    for record in text_records():
+        hay = f"{record.text} {record.text_label} {record.pointer_label}".lower()
+        if needle in hay:
+            hits.append(record)
+            if len(hits) >= limit:
+                break
+    return hits
+
+
 def dialogue_catalog(*, npc: str | None = None, compact: bool = False) -> dict:
     npc_filter = npc.lower() if npc else None
     records = [
