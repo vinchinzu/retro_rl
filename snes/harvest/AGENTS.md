@@ -35,6 +35,13 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --end-of-spri
   --out recordings/power_on_spring_to_summer.json
 # --no-d1-handoff disables auto town talks+shed after power-on
 
+# First mountain berry from Spring D2 house (reactive path segments)
+HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+  --state Y1_Inside_House --screenshot recordings/mountain_grape_stand.png
+# Ground-grape pick + Don't eat (rr-14xx)
+HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+  --state Y1_Inside_House --pick --screenshot recordings/mountain_grape_kept.png
+
 # Harvest + ship + post-5pm wallet credit (rr-53g)
 HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
   --state Y1_Day09_Harvest_Mode_Start \
@@ -83,30 +90,20 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 [docs/plan.md](docs/plan.md) · [docs/CODE_QUALITY_REVIEW.md](docs/CODE_QUALITY_REVIEW.md) ·
 [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md) · [docs/town_day1_recon.md](docs/town_day1_recon.md)
 
-## Structure rule (from 2026-08-10 review + structure pass)
+## Structure rule (1k LOC + no mono thrash)
 
-Do **not** grow `crop_planter.py` / `home.py` / `cow_task.py` mono FSMs with
-new thrash `if`s. Land residuals as extracted modules:
+Soft max **~1000 LOC / file** (repo Working Norms). Do **not** grow monofiles
+with residual thrash `if`s — extract a module or data rule first.
 
 | Concern | Module(s) |
 |---------|-----------|
-| Pond charges / hop densify / thrash rules | `pond_policy`, `pond_charges`, `pond_hop`, `pond_thrash` (barrel `pond_corridor`) |
-| Plot/water pure geometry | `crop_geometry` |
-| Crop dual-FSM enums / work modes | `crop_fsm` (`CropState`, `PlotPhase`) |
-| Crop hoe/plant arms | `crop_establish` |
-| Crop water-step + residual recovery | `crop_water_ops` |
-| Crop can-refill / pond access thrash | `crop_refill` |
-| Crop multi-phase navigate / stuck | `crop_navigate` |
-| House approach zones | `home_approach` |
-| Return-home failure policy | `home_recover` |
-| Pathfinding | `tasks/nav` (not `farm_clearer`) |
-| Tile scan / tool helpers | `tasks/farm_ops` (not `farm_clearer`) |
-| Inventory/shed/exit | `inventory_shed` / `inventory_exit` / `inventory_time` |
-| Cow stands / care actions | `cow_geometry` / `cow_care` |
-| Cow phase mixins / enum | `cow_fsm`, `cow_talk_ops`, `cow_brush_ops`, `cow_milk_ops`, `cow_feed_ops`, `cow_exit_ops` |
-| Day-plan sequence tests | `tests/test_day_plan_{crop,home,coop,power_on,common}.py` (+ helpers) |
+| MultNav | `multi_nav` (not `navigation.py`) |
+| Pond / crop thrash | `pond_*`, `crop_{establish,water_ops,refill*,navigate,detect,act_verify,step}` |
+| Home | `home_return`, `home_sleep`, `home_approach`, `home_recover` |
+| Coop / cow | `coop_{layout,feed_ops,egg_ops}`, `cow_*` |
+| Maps / routes | `map_config` facade + `map_types` / `farm_pond` / `map_routes` |
+| Day plan | `day_plan_orchestrator`, `multi_day_planner`, `day_phase_{catalog,berry,chicken,cow}` |
+| D1 / ROM / editor | `town_day1_*`, `rom_*` / `save_state_io` / `map_render`, `editor_*` |
 
 Prefer skill composition (`tasks/skills.py`) over new phase machines.
-Production: `CoopChoresTask` feed_nav + ship_nav far approach use
-`coop_nav_to_feed_bin_skill` / `coop_nav_to_shipping_bin_skill` (host navigate).
-Gate board: `docs/MILESTONES.md`.
+Gate board: `docs/MILESTONES.md` · structure debt: `docs/CODE_QUALITY_REVIEW.md`.
