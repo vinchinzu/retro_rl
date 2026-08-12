@@ -309,6 +309,8 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 
 ## Traps
 
+- First mountain grape is a **ground spawn** at the x=20 stand `~(326,409)` tile `(20,25)` (west stump/rock to the east). Not the carpenter 2×2 plants. Walk the tape corridor (land → east gap, never A on Gotz `0x025B` ~(31,37) → west loop → stand). A on the grape pixel sets `held=0x03` and opens Eat / Don't eat — **Down then A to keep**. Mash-A eats it. Mountain dialogue with `held=0` is Gotz.
+  **Pickup GREEN 2026-08-12** (`rr-14xx`): `Y1_Inside_House` → stand 1650f, keep grape **1913f / 31.88s**, `held=0x03` lock=1, no talk. Shot `recordings/mountain_grape_kept.png`.
 - Viewport BFS; sleep bed pixel + face up; doors reject held items
 - Multi-day owns return/sleep (`include_end_day=False` on day task)
 - Scene wake coordinates: house `y < 100` until settle ~(136,120)
