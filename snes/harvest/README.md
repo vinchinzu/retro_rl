@@ -92,6 +92,7 @@ manual overrides.
 ## Program specs
 
 - Status / maturity gate: [docs/STATUS.md](docs/STATUS.md)
+- Interact without a new tape: [docs/INTERACT.md](docs/INTERACT.md)
 - Plan (future work): [docs/plan.md](docs/plan.md)
 - Planning stack (skills, contracts, advisor): [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md)
 - RAM map: [docs/ram_map.md](docs/ram_map.md)
