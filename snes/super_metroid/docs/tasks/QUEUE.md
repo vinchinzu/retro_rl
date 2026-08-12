@@ -2,6 +2,10 @@
 
 **Source of truth for ready work:** monorepo beads —
 
+Living-run hop-compose → AP: epic **`rr-4nli`** · board
+`tasks/PRODUCT_CHAIN_HOP_BOARD.json` · residual
+[`rr-4nli-residual.md`](rr-4nli-residual.md). Next: **s2 hop 10 Parlor**.
+
 ```bash
 bd ready -l super_metroid
 bd show <id>
@@ -59,10 +63,11 @@ rr-dbu.12 (human tape)
 
 | Doc / script | Role |
 |--------------|------|
-| [SHINE_PRACTICE.md](SHINE_PRACTICE.md) | **Index** — LS drill, Moat pure, West Ocean pure, follow-ups |
+| [SHINE_PRACTICE.md](SHINE_PRACTICE.md) | **Index** — LS drill, Moat pure, WO→WS pure, follow-ups |
 | `scripts/probe/shine_practice.py` | `drill` / `human` / `diagnose` / `demo` |
 | `scripts/probe/moat_spark_watch.py` | Moat pure → `post_moat_west_ocean_spark.state` |
-| `scripts/probe/west_ocean_spark.py` | Edge spark → `0xC98E` (not green WS yet) |
+| `scripts/probe/west_ocean_spark.py` | **Product** `pure-ws` → `0xCA08` pin; edge `pure` → bowling |
+| `scripts/record/guided_human.py` | `--from ws-entrance` ship free-record from product pin |
 
 ## Process pointers
 
