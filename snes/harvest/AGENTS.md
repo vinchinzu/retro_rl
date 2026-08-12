@@ -42,6 +42,10 @@ HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
 HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
   --state Y1_Inside_House --pick --screenshot recordings/mountain_grape_kept.png
 
+# Classify a pick/talk from an existing tape or a live pin (do not re-record)
+uv run python -m harvest.scripts.interact_scan tape mountain_grape_stand
+uv run python -m harvest.scripts.interact_scan search grape
+
 # Harvest + ship + post-5pm wallet credit (rr-53g)
 HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
   --state Y1_Day09_Harvest_Mode_Start \
@@ -78,6 +82,9 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 
 - Viewport BFS is ~16×14 tiles; hop targets ≤7 tiles or use `densify_waypoints`.
 - Walkable tile IDs come from **recordings**, not static save-state dumps.
+- Interact: scan an existing tape / UnlinkedText before recording. Face-walk
+  is movement. Item box with held forage is Eat/Don't eat, not Gotz. See
+  [docs/INTERACT.md](docs/INTERACT.md).
 - Tasks must not import `day_plan` / orchestrator (circular); shared facts live
   in `ram_catalog` / `tile_catalog` / `map_config`.
 - Prefer skill composition (`tasks/skills.py`) over new phase machines.
@@ -87,7 +94,8 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 ## Pointers
 
 [docs/STATUS.md](docs/STATUS.md) · [docs/MILESTONES.md](docs/MILESTONES.md) ·
-[docs/plan.md](docs/plan.md) · [docs/CODE_QUALITY_REVIEW.md](docs/CODE_QUALITY_REVIEW.md) ·
+[docs/plan.md](docs/plan.md) · [docs/INTERACT.md](docs/INTERACT.md) ·
+[docs/CODE_QUALITY_REVIEW.md](docs/CODE_QUALITY_REVIEW.md) ·
 [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md) · [docs/town_day1_recon.md](docs/town_day1_recon.md)
 
 ## Structure rule (1k LOC + no mono thrash)
