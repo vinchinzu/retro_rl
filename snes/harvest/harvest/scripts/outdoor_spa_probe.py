@@ -31,7 +31,7 @@ from harvest.core.ram_catalog import read_ram_value
 from harvest.maps.map_config import ROUTES
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.runtime.retro_setup import make_harvest_env
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 from harvest.tasks.hot_spring import MOUNTAIN_TILEMAP, read_player_action, read_stamina
 
 DEFAULT_STATE = "latest_backup_sunday_go_to_mountain_20260427_152011"

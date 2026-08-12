@@ -36,7 +36,7 @@ from harvest.planner.tasks.inventory import (
     load_recording_slice,
 )
 from harvest.planner.tasks.navigation import MultiMapNavTask
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 from harvest.tasks.primitives import (
     dismiss_dialogue_result,
     drain_action_queue,
@@ -110,7 +110,11 @@ class WaitForMaskBitTask(Task):
                     )
             else:
                 self._clear_frames = 0
-                return dismiss_dialogue_result(self._step_count, reason="clear after bit set")
+                return dismiss_dialogue_result(
+                    self._step_count,
+                    pulse_every=1,
+                    reason="clear after bit set",
+                )
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
         if self._step_count > self.timeout:
@@ -119,7 +123,11 @@ class WaitForMaskBitTask(Task):
                 reason=f"mask bit 0x{self.bit:02X} not set after {self.timeout}f "
                 f"(mask=0x{read_mask(world.ram):02X})",
             )
-        return dismiss_dialogue_result(self._step_count, reason=f"talk bit 0x{self.bit:02X}")
+        return dismiss_dialogue_result(
+            self._step_count,
+            pulse_every=1,
+            reason=f"talk bit 0x{self.bit:02X}",
+        )
 
 
 @dataclass
@@ -164,7 +172,7 @@ class PressAUntilBitOrTimeout(Task):
     bit: int = 0
     face: Optional[str] = None
     attempts: int = 4
-    attempt_timeout: int = 220
+    attempt_timeout: int = 140  # was 220 — talks felt sluggish live
     required: bool = True
 
     _step_count: int = field(default=0, init=False)
@@ -187,10 +195,10 @@ class PressAUntilBitOrTimeout(Task):
         self._queue.extend(
             press_a_sequence(
                 self.face,
-                face_frames=3 if self.face else 0,
-                pre_press_settle_frames=4,
-                hold_frames=20,
-                settle_frames=10,
+                face_frames=2 if self.face else 0,
+                pre_press_settle_frames=2,
+                hold_frames=10,
+                settle_frames=4,
             )
         )
 

@@ -20,6 +20,7 @@ class PhaseKind(StrEnum):
     CROSS_MAP = "cross_map"
     DIRECTIONAL_TRANSITION = "directional_transition"
     MULTI_NAV = "multi_nav"
+    BERRY_SHIP = "berry_ship"
     ENSURE_TOOL = "ensure_tool"
     ENSURE_ANIMAL_TOOLS = "ensure_animal_tools"
     ENSURE_SEED = "ensure_seed"
@@ -27,6 +28,7 @@ class PhaseKind(StrEnum):
     WAIT_UNTIL_TIME = "wait_until_time"
     HARVEST = "harvest"
     CLEAR_FIELD = "clear_field"
+    FENCE_CLEAR = "fence_clear"
     COOP_CHORES = "coop_chores"
     COW_CHORES = "cow_chores"
     COW_PURCHASE = "cow_purchase"
@@ -51,10 +53,12 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.RECORDED_TRANSITION,
         PhaseKind.CROSS_MAP,
         PhaseKind.MULTI_NAV,
+        PhaseKind.BERRY_SHIP,
         PhaseKind.ENSURE_TOOL,
         PhaseKind.ENSURE_ANIMAL_TOOLS,
         PhaseKind.ENSURE_SEED,
         PhaseKind.CLEAR_FIELD,
+        PhaseKind.FENCE_CLEAR,
         PhaseKind.COW_PURCHASE,
         PhaseKind.EVE_TALK_LOOP,
         PhaseKind.HOT_SPRING,
@@ -309,7 +313,9 @@ class PhaseSpec:
 class DayPlannerPolicy:
     berry_cutoff_hour: int = 15
     berry_exit_cutoff_hour: int = 14
-    buy_seed_hour: int = 6
+    # Flower-shop seed buy window (planning start hour). Berries ship by 15:00;
+    # keep shop open long enough that a morning berry run can still buy after.
+    buy_seed_hour: int = 12
     late_water_hour: int = 17
     include_chickens: bool = True
     include_cows: bool = True
@@ -317,7 +323,9 @@ class DayPlannerPolicy:
     include_field_clear: bool = True
     include_watering: bool = True
     include_planting: bool = True
-    include_berry_run: bool = False
+    # Early-spring money: mountain berries + ship. Default on so D2+ does not
+    # thrash CLEAR_FIELD all day with empty pockets (live power-on feedback).
+    include_berry_run: bool = True
     include_shop_run: bool = True
     include_end_day: bool = True
     include_chicken_sales: bool = True

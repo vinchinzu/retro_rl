@@ -1,8 +1,11 @@
 """
 Farm clearing module - Phase-based debris clearing with tool management.
+
+Navigation primitives live in ``harvest.tasks.nav``; tile-scan / tool helpers
+live in ``harvest.tasks.farm_ops``. Both are re-exported here for backward
+compatibility.
 """
 
-from dataclasses import dataclass
 from typing import Optional, List, Dict, Tuple, Set
 from collections import deque
 import os
@@ -10,42 +13,50 @@ import json
 
 import numpy as np
 
-from retro_harness.actions import action_names, snes_action
-
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
-    ADDR_MAP,
     ADDR_STAMINA,
-    ADDR_TILEMAP,
-    ADDR_TOOL,
-    ADDR_X,
-    ADDR_Y,
     CLEARABLE_DEBRIS_TYPES,
-    DEBRIS_TOOL,
-    FARM_WALKABLE,
     LARGE_ROCK_TL,
     LARGE_ROCK_TILES,
-    LIFTABLE_TILES,
     MAP_WIDTH,
-    POND_CHARACTERISTIC_TILES,
-    STALE_TILE_IDS,
     STUMP_TL,
     STUMP_TILES,
     TILE_SIZE,
     TILE_TO_DEBRIS,
     DebrisType,
     Tool,
-    debris_footprint,
-    get_tile_at as _catalog_get_tile_at,
-    is_multitile_debris_anchor,
+)
+
+# Nav primitives — re-exported so existing importers keep working.
+from harvest.tasks.nav import (  # noqa: F401
+    VIEWPORT_HOP_TILES,
+    WALKABLE_TILES,
+    Navigator,
+    Pathfinder,
+    Point,
+    get_pos_from_ram,
+    get_tile_at,
+    make_action,
+    manhattan,
+    tile_dist,
+)
+
+# Tile-scan / tool helpers — re-exported for backward compatibility.
+from harvest.tasks.farm_ops import (  # noqa: F401
+    Target,
+    TileScanner,
+    ToolManager,
+    action_to_names,
+    use_tool,
+    use_tool_facing,
+    cycle_tool,
 )
 
 
 # =============================================================================
 # CONSTANTS
 # =============================================================================
-
-WALKABLE_TILES = FARM_WALKABLE
 
 # Hard obstacles first so pathing opens up, then cheap lifts.
 DEFAULT_PRIORITY: List[DebrisType] = [
@@ -55,579 +66,8 @@ DEFAULT_PRIORITY: List[DebrisType] = [
     DebrisType.WEED,
 ]
 
-# SNES only loads ~16x14 tiles; BFS beyond this sees stale 0x72/0xFF.
-VIEWPORT_HOP_TILES = 7
 # Hammer/axe hits cost 2 stamina; stop before a multi-hit cannot finish.
 MIN_CLEAR_STAMINA = 4
-
-
-# =============================================================================
-# DATA
-# =============================================================================
-
-@dataclass
-class Point:
-    x: int
-    y: int
-
-    def __eq__(self, other):
-        return isinstance(other, Point) and self.x == other.x and self.y == other.y
-
-    def __hash__(self):
-        return hash((self.x, self.y))
-
-
-@dataclass
-class Target:
-    tile: Tuple[int, int]
-    pos: Point
-    debris_type: DebrisType
-    tile_id: int
-
-    @property
-    def is_liftable(self) -> bool:
-        return self.tile_id in LIFTABLE_TILES
-
-    @property
-    def required_tool(self) -> Optional[Tool]:
-        return DEBRIS_TOOL.get(self.debris_type)
-
-    @property
-    def required_hits(self) -> int:
-        # Base tools need 6 consecutive hits on stump / large rock.
-        if self.debris_type == DebrisType.ROCK or self.debris_type == DebrisType.STUMP:
-            return 6
-        return 1
-
-    @property
-    def footprint(self) -> Tuple[Tuple[int, int], ...]:
-        return debris_footprint(self.tile, self.tile_id)
-
-
-# =============================================================================
-# UTILITIES
-# =============================================================================
-
-def make_action(**buttons) -> np.ndarray:
-    """Compatibility wrapper around the shared named-button builder."""
-
-    return snes_action(dtype=np.int32, **buttons)
-
-
-def action_to_names(action: np.ndarray) -> str:
-    pressed = tuple(name.lower() for name in action_names(action))
-    return "+".join(pressed) if pressed else "none"
-
-
-def use_tool(frames: int = 20, cooldown: int = 10) -> List[np.ndarray]:
-    """
-    Use tool with proper timing.
-    - frames: Number of frames to hold Y button
-    - cooldown: Number of idle frames after tool use to let animation complete
-    """
-    actions = [make_action(y=True) for _ in range(frames)]
-    actions.extend([make_action() for _ in range(cooldown)])
-    return actions
-
-
-def use_tool_facing(direction: str, frames: int = 20, cooldown: int = 10) -> List[np.ndarray]:
-    """
-    Use tool while keeping a facing direction without combining direction+Y.
-    This avoids unintended movement if the target tile becomes walkable mid-sequence.
-    """
-    actions: List[np.ndarray] = []
-    # Re-face briefly to stabilize direction, but never with Y held.
-    actions.append(make_action(**{direction: True}))
-    actions.append(make_action())
-    actions.extend([make_action(y=True) for _ in range(frames)])
-    actions.extend([make_action() for _ in range(cooldown)])
-    return actions
-
-
-def cycle_tool() -> List[np.ndarray]:
-    return [make_action(x=True)] + [make_action() for _ in range(5)]
-
-
-def get_pos_from_ram(ram: np.ndarray) -> Point:
-    if ADDR_X + 1 < len(ram) and ADDR_Y + 1 < len(ram):
-        x = int(ram[ADDR_X]) + (int(ram[ADDR_X + 1]) << 8)
-        y = int(ram[ADDR_Y]) + (int(ram[ADDR_Y + 1]) << 8)
-        return Point(x, y)
-    return Point(0, 0)
-
-
-def get_tile_at(ram: np.ndarray, tx: int, ty: int) -> int:
-    return _catalog_get_tile_at(ram, tx, ty)
-
-
-def manhattan(p1: Point, p2: Point) -> int:
-    return abs(p1.x - p2.x) + abs(p1.y - p2.y)
-
-
-def tile_dist(t1: Tuple[int, int], t2: Tuple[int, int]) -> int:
-    return abs(t1[0] - t2[0]) + abs(t1[1] - t2[1])
-
-
-# =============================================================================
-# SCANNER
-# =============================================================================
-
-class TileScanner:
-    def __init__(self):
-        self.debris_map = TILE_TO_DEBRIS.copy()
-        self.frame_count = 0
-
-    def scan(
-        self,
-        ram: np.ndarray,
-        bounds: Optional[Tuple[int, int, int, int]] = None,
-        *,
-        types: Optional[Set[DebrisType]] = None,
-    ) -> List[Target]:
-        """Scan farm metatiles for debris.
-
-        2x2 stump/large-rock objects emit a single target at the top-left
-        cell so the clearer does not thrash four tiles of one boulder.
-        """
-        self.frame_count += 1
-        if ADDR_MAP >= len(ram):
-            return []
-
-        # Save-state loaders may hand back ``bytes``; normalize for numpy ops.
-        # ``np.asarray(bytes_slice)`` becomes a 0-d object in NumPy 2 — use
-        # frombuffer on a memoryview instead.
-        if isinstance(ram, np.ndarray):
-            ram_arr = ram
-        else:
-            ram_arr = np.frombuffer(memoryview(ram), dtype=np.uint8)
-
-        end = min(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, len(ram_arr))
-        map_data = ram_arr[ADDR_MAP:end]
-        if map_data.size == 0:
-            return []
-
-        mask = np.isin(map_data, list(self.debris_map.keys()))
-        indices = np.flatnonzero(mask)
-
-        targets: List[Target] = []
-        for idx in indices:
-            tile_id = int(map_data[idx])
-            debris = self.debris_map.get(tile_id)
-            if debris is None:
-                continue
-            if types is not None and debris not in types:
-                continue
-
-            ty, tx = divmod(int(idx), MAP_WIDTH)
-            if bounds and not (
-                bounds[0] <= tx <= bounds[2] and bounds[1] <= ty <= bounds[3]
-            ):
-                continue
-
-            # Collapse 2x2 families to their top-left anchor only.
-            if tile_id in STUMP_TILES | LARGE_ROCK_TILES:
-                if not is_multitile_debris_anchor(tile_id):
-                    continue
-
-            targets.append(
-                Target(
-                    tile=(tx, ty),
-                    pos=Point(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
-                    debris_type=debris,
-                    tile_id=tile_id,
-                )
-            )
-
-        if (
-            os.getenv("FENCE_DEBUG") == "1"
-            and targets
-            and self.frame_count % 300 == 0
-        ):
-            top = targets[0]
-            print(
-                f"[SCANNER] Found {len(targets)} targets. "
-                f"Top: {top.debris_type.name} at {top.tile}"
-            )
-
-        return targets
-
-    def has_clearable_debris(
-        self,
-        ram: np.ndarray,
-        bounds: Optional[Tuple[int, int, int, int]] = None,
-    ) -> bool:
-        """True when any weed/stone/rock/stump remains in bounds."""
-        return bool(
-            self.scan(ram, bounds, types=set(CLEARABLE_DEBRIS_TYPES))
-        )
-
-
-# =============================================================================
-# PATHFINDER
-# =============================================================================
-
-class Pathfinder:
-    def __init__(self, scanner: TileScanner, walkable_tiles: Optional[Set[int]] = None):
-        self.scanner = scanner
-        self.walkable_tiles = walkable_tiles if walkable_tiles is not None else WALKABLE_TILES
-        self._dynamic_walkable_tiles = walkable_tiles is None
-        self.no_go_tiles: Set[Tuple[int, int]] = set()
-        self.temp_blocked: Set[Tuple[int, int]] = set()
-        self.extra_walkable: Set[Tuple[int, int]] = set()  # tiles treated as walkable (e.g. crop tiles)
-
-    def base_walkable_tiles(self, ram: np.ndarray) -> Set[int]:
-        if not self._dynamic_walkable_tiles:
-            return self.walkable_tiles
-        try:
-            from harvest.maps.map_config import get_walkable_tiles
-
-            tilemap_id = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0x00
-            return get_walkable_tiles(tilemap_id)
-        except Exception:
-            return self.walkable_tiles
-
-    def base_no_go_tiles(self, ram: np.ndarray) -> Set[Tuple[int, int]]:
-        try:
-            from harvest.maps.map_config import get_no_go_tiles
-
-            tilemap_id = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0x00
-            return set(get_no_go_tiles(tilemap_id))
-        except Exception:
-            return set()
-
-    def is_walkable(self, ram: np.ndarray, tx: int, ty: int, walkable_override: Optional[Set[int]] = None, current_pos: Optional[Tuple[int, int]] = None) -> bool:
-        # Always allow moving from current tile
-        if current_pos and (tx, ty) == current_pos:
-            return True
-
-        if (tx, ty) in self.no_go_tiles or (tx, ty) in self.base_no_go_tiles(ram) or (tx, ty) in self.temp_blocked:
-            return False
-        tile_id = get_tile_at(ram, tx, ty)
-        if tile_id in self.base_walkable_tiles(ram):
-            return True
-        if (tx, ty) in self.extra_walkable:
-            return True
-        if walkable_override and (tx, ty) in walkable_override:
-            return True
-        return False
-
-    def find_path(
-        self,
-        ram: np.ndarray,
-        start: Tuple[int, int],
-        goal: Tuple[int, int],
-        walkable_override: Optional[Set[int]] = None,
-        *,
-        max_steps: Optional[int] = None,
-    ) -> Optional[List[Tuple[int, int]]]:
-        if start == goal:
-            return []
-
-        queue = deque([start])
-        came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {
-            start: None
-        }
-
-        while queue:
-            cx, cy = queue.popleft()
-            if (cx, cy) == goal:
-                break
-
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nx, ny = cx + dx, cy + dy
-                if (
-                    0 <= nx < MAP_WIDTH
-                    and 0 <= ny < MAP_WIDTH
-                    and (nx, ny) not in came_from
-                ):
-                    is_goal = (nx, ny) == goal
-                    if (
-                        is_goal
-                        and walkable_override
-                        and (nx, ny) in walkable_override
-                    ):
-                        came_from[(nx, ny)] = (cx, cy)
-                        continue
-
-                    if self.is_walkable(
-                        ram,
-                        nx,
-                        ny,
-                        walkable_override=walkable_override,
-                        current_pos=start,
-                    ):
-                        came_from[(nx, ny)] = (cx, cy)
-                        queue.append((nx, ny))
-
-        if goal not in came_from:
-            # Live SNES maps go stale outside the viewport, so a full path to a
-            # distant goal often cannot be closed. Fall back to a hop toward it.
-            if max_steps is not None and max_steps > 0:
-                return self.find_hop_toward(
-                    ram,
-                    start,
-                    goal,
-                    walkable_override=walkable_override,
-                    max_steps=max_steps,
-                )
-            return None
-
-        path: List[Tuple[int, int]] = []
-        cur = goal
-        while cur != start:
-            path.append(cur)
-            cur = came_from[cur]  # type: ignore[assignment]
-        path.reverse()
-        if max_steps is not None and len(path) > max_steps:
-            return path[:max_steps]
-        return path
-
-    def find_hop_toward(
-        self,
-        ram: np.ndarray,
-        start: Tuple[int, int],
-        goal: Tuple[int, int],
-        walkable_override: Optional[Set[int]] = None,
-        *,
-        max_steps: int = VIEWPORT_HOP_TILES,
-    ) -> Optional[List[Tuple[int, int]]]:
-        """BFS within ``max_steps``; return a path to the closest reached tile."""
-        if start == goal:
-            return []
-        if max_steps <= 0:
-            return None
-
-        queue: deque[Tuple[Tuple[int, int], int]] = deque([(start, 0)])
-        came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {start: None}
-        best = start
-        best_dist = manhattan(
-            Point(start[0] * TILE_SIZE + 8, start[1] * TILE_SIZE + 8),
-            Point(goal[0] * TILE_SIZE + 8, goal[1] * TILE_SIZE + 8),
-        )
-
-        while queue:
-            (cx, cy), depth = queue.popleft()
-            if depth >= max_steps:
-                continue
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nx, ny = cx + dx, cy + dy
-                if not (0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH):
-                    continue
-                if (nx, ny) in came_from:
-                    continue
-                if not self.is_walkable(
-                    ram,
-                    nx,
-                    ny,
-                    walkable_override=walkable_override,
-                    current_pos=start,
-                ):
-                    continue
-                came_from[(nx, ny)] = (cx, cy)
-                queue.append(((nx, ny), depth + 1))
-                dist = manhattan(
-                    Point(nx * TILE_SIZE + 8, ny * TILE_SIZE + 8),
-                    Point(goal[0] * TILE_SIZE + 8, goal[1] * TILE_SIZE + 8),
-                )
-                if dist < best_dist:
-                    best = (nx, ny)
-                    best_dist = dist
-
-        if best == start:
-            return None
-
-        path: List[Tuple[int, int]] = []
-        cur: Optional[Tuple[int, int]] = best
-        while cur is not None and cur != start:
-            path.append(cur)
-            cur = came_from[cur]
-        path.reverse()
-        return path or None
-
-    def find_approach(
-        self,
-        ram: np.ndarray,
-        target: Tuple[int, int],
-        player_pos: Point,
-        walkable_override: Optional[Set[int]] = None,
-        footprint: Optional[Tuple[Tuple[int, int], ...]] = None,
-    ) -> Optional[Tuple[int, int]]:
-        best, best_dist = None, None
-        cells = footprint if footprint else (target,)
-        occupied = set(cells)
-        for tx, ty in cells:
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                ax, ay = tx + dx, ty + dy
-                if (ax, ay) in occupied:
-                    continue
-                if (
-                    0 <= ax < MAP_WIDTH
-                    and 0 <= ay < MAP_WIDTH
-                    and self.is_walkable(
-                        ram, ax, ay, walkable_override=walkable_override
-                    )
-                ):
-                    dist = manhattan(
-                        Point(ax * TILE_SIZE + 8, ay * TILE_SIZE + 8),
-                        player_pos,
-                    )
-                    if best_dist is None or dist < best_dist:
-                        best, best_dist = (ax, ay), dist
-        return best
-
-    def find_nearest_walkable(self, ram: np.ndarray, target: Tuple[int, int], max_radius: int = 4, walkable_override: Optional[Set[int]] = None) -> Optional[Tuple[int, int]]:
-        tx, ty = target
-        if self.is_walkable(ram, tx, ty, walkable_override=walkable_override):
-            return (tx, ty)
-        for radius in range(1, max_radius + 1):
-            for dy in range(-radius, radius + 1):
-                for dx in range(-radius, radius + 1):
-                    if abs(dx) + abs(dy) != radius:
-                        continue
-                    ax, ay = tx + dx, ty + dy
-                    if 0 <= ax < MAP_WIDTH and 0 <= ay < MAP_WIDTH and self.is_walkable(ram, ax, ay, walkable_override=walkable_override):
-                        return (ax, ay)
-        return None
-
-
-# =============================================================================
-# NAVIGATOR
-# =============================================================================
-
-class Navigator:
-    def __init__(self, pathfinder: Pathfinder):
-        self.pathfinder = pathfinder
-        self.current_pos = Point(0, 0)
-        self.path: List[Tuple[int, int]] = []
-        self.stasis = 0
-
-    def update(self, ram: np.ndarray):
-        new_pos = get_pos_from_ram(ram)
-        new_tile = (new_pos.x // TILE_SIZE, new_pos.y // TILE_SIZE)
-        old_tile = (self.current_pos.x // TILE_SIZE, self.current_pos.y // TILE_SIZE)
-        # Reset stasis only on tile-level movement, not 1px oscillation
-        self.stasis = 0 if new_tile != old_tile else self.stasis + 1
-        self.current_pos = new_pos
-
-    @property
-    def current_tile(self) -> Tuple[int, int]:
-        return (self.current_pos.x // TILE_SIZE, self.current_pos.y // TILE_SIZE)
-
-    def at_tile(self, tile: Tuple[int, int], tolerance: int = 2) -> bool:
-        target = Point(tile[0] * TILE_SIZE + 8, tile[1] * TILE_SIZE + 8)
-        return abs(self.current_pos.x - target.x) <= tolerance and abs(self.current_pos.y - target.y) <= tolerance
-
-    def center_on_tile(self, tile: Tuple[int, int], tolerance: int = 1) -> Optional[np.ndarray]:
-        """Micro-adjust to be centered on the given tile."""
-        tgt_x = tile[0] * TILE_SIZE + 8
-        tgt_y = tile[1] * TILE_SIZE + 8
-        
-        dx = tgt_x - self.current_pos.x
-        dy = tgt_y - self.current_pos.y
-        
-        if abs(dx) < tolerance and abs(dy) < tolerance:
-            return None
-            
-        action = np.zeros(12, dtype=np.int32)
-        # We don't hold B (run) for micro-centering to avoid overshooting
-        # Move along the dominant axis only to avoid diagonal drift.
-        if abs(dx) >= abs(dy) and abs(dx) >= tolerance:
-            action[7] = 1 if dx > 0 else 0  # Right
-            action[6] = 1 if dx < 0 else 0  # Left
-        elif abs(dy) >= tolerance:
-            action[5] = 1 if dy > 0 else 0  # Down
-            action[4] = 1 if dy < 0 else 0  # Up
-            
-        return action
-
-    def follow_path(self, ram: np.ndarray) -> Optional[np.ndarray]:
-        while self.path and self.current_tile == self.path[0]:
-            self.path.pop(0)
-
-        if not self.path:
-            return None
-
-        next_tile = self.path[0]
-        curr_tile = self.current_tile
-
-        # If first path tile is not adjacent (> 1 tile away on either axis),
-        # the path is stale (e.g. centering overshoot moved us far away).
-        # Clear and let BFS recompute from our actual position.
-        dx_gap = abs(next_tile[0] - curr_tile[0])
-        dy_gap = abs(next_tile[1] - curr_tile[1])
-        if dx_gap > 1 or dy_gap > 1:
-            self.path = []
-            self.stasis = 0
-            return None
-
-        tgt_x = curr_tile[0] * TILE_SIZE + 8
-        tgt_y = curr_tile[1] * TILE_SIZE + 8
-
-        dx_next = next_tile[0] - curr_tile[0]
-        dy_next = next_tile[1] - curr_tile[1]
-        
-        # PROACTIVE CENTERING:
-        # If we are moving horizontally, we MUST be vertically centered (Y).
-        # If we are moving vertically, we MUST be horizontally centered (X).
-        # Use tolerance=3 to avoid 1px oscillation that causes infinite stasis loops.
-        # If centering has been stuck (stasis > 30), skip it entirely.
-        # PROACTIVE CENTERING:
-        # If we are moving horizontally, we MUST be vertically centered (Y).
-        # If we are moving vertically, we MUST be horizontally centered (X).
-        # Tolerance=3 avoids 1px oscillation. Skip if stuck (stasis>30) to
-        # let the bot push through rather than centering forever.
-        CENTER_TOL = 3
-        if self.stasis < 30:
-            if dx_next != 0 and abs(self.current_pos.y - tgt_y) >= CENTER_TOL:
-                return self.center_on_tile(curr_tile, tolerance=CENTER_TOL)
-            if dy_next != 0 and abs(self.current_pos.x - tgt_x) >= CENTER_TOL:
-                return self.center_on_tile(curr_tile, tolerance=CENTER_TOL)
-
-        if not self.pathfinder.is_walkable(ram, *next_tile, current_pos=curr_tile):
-            val = get_tile_at(ram, *next_tile)
-            if val in STALE_TILE_IDS:
-                self.path = []
-                self.stasis = 0
-                return None
-            # Log more clearly why we are blocked
-            print(f"[NAVIGATOR] Blocked! tile={next_tile} id=0x{val:02X} walkable={val in self.pathfinder.base_walkable_tiles(ram)} temp_blocked={next_tile in self.pathfinder.temp_blocked} no_go={next_tile in self.pathfinder.no_go_tiles}")
-            self.pathfinder.temp_blocked.add(next_tile)
-            self.path = []
-            self.stasis = 0
-            return None
-
-        direction = 'right' if dx_next > 0 else 'left' if dx_next < 0 else 'down' if dy_next > 0 else 'up'
-        action = make_action(**{direction: True, 'b': True})
-        
-        if os.getenv("FENCE_DEBUG") == "1" and self.stasis > 0 and self.stasis % 60 == 0:
-            print(f"[NAV] pos=({self.current_pos.x},{self.current_pos.y}) next={next_tile} target=({tgt_x},{tgt_y}) dir={direction} stasis={self.stasis} path_len={len(self.path)}")
-            import sys; sys.stdout.flush()
-            
-        return action
-
-
-# =============================================================================
-# TOOL MANAGER
-# =============================================================================
-
-class ToolManager:
-    def __init__(self):
-        self.current = 0
-        self.seen: Set[int] = set()
-        self.start_id: Optional[int] = None
-
-    def update(self, ram: np.ndarray):
-        self.current = int(ram[ADDR_TOOL]) if ADDR_TOOL < len(ram) else 0
-
-    def start_search(self):
-        self.start_id = self.current
-        self.seen = {self.current}
-
-    def record(self):
-        self.seen.add(self.current)
-
-    def cycle_complete(self) -> bool:
-        return self.start_id is not None and self.current == self.start_id and len(self.seen) > 1
 
 
 # =============================================================================
@@ -1227,18 +667,36 @@ class FarmClearer:
         if self._pending_lift_verify is not None:
             verify_tile = self._pending_lift_verify
             self._pending_lift_verify = None
+            lift_key = (
+                verify_tile[0],
+                verify_tile[1],
+                int(get_tile_at(ram, *verify_tile)),
+            )
             if TILE_TO_DEBRIS.get(get_tile_at(ram, *verify_tile)) is None:
                 if verify_tile not in self.tiles_cleared:
                     self.tiles_cleared.add(verify_tile)
                     self.cleared_count += 1
-                # Toss immediately so we do not block house/shop doors later.
-                self.action_queue.extend([make_action(down=True) for _ in range(2)])
+                # Face open ground (away from the debris cell) before tossing so
+                # the rock does not land back on the same tile and thrash (D3).
+                face = self._face_dir(verify_tile, player)  # from tile → player
+                if face not in {"up", "down", "left", "right"}:
+                    face = "down"
+                self.action_queue.extend([make_action(**{face: True}) for _ in range(2)])
                 self.action_queue.extend([make_action() for _ in range(2)])
                 self.action_queue.extend([make_action(a=True) for _ in range(12)])
                 self.action_queue.extend([make_action() for _ in range(12)])
-            else:
-                print(f"[CLEARER] Lift did not clear {verify_tile}")
+                # Do not re-target this cell this clear pass — toss often
+                # re-deposits the same rock one tile over / back.
                 self.failed_tiles.add(verify_tile)
+            else:
+                attempts = self.tile_attempts.get(lift_key, 0) + 1
+                self.tile_attempts[lift_key] = attempts
+                print(
+                    f"[CLEARER] Lift did not clear {verify_tile} "
+                    f"(attempt {attempts}/2)"
+                )
+                if attempts >= 2:
+                    self.failed_tiles.add(verify_tile)
             self.current_target = None
             self.clearing_start_frame = 0
             return "scanning"
@@ -1257,9 +715,24 @@ class FarmClearer:
                 self.action_queue.append(center_action)
                 return None
 
-        # Lift check
+        # Lift check — cap attempts so unliftable / re-deposited stones stop thrashing.
         if self._should_lift(self.current_target):
-            print(f"[CLEARER] Lifting {self.current_target.debris_type.name}")
+            lift_key = (target[0], target[1], int(self.current_target.tile_id))
+            attempts = self.tile_attempts.get(lift_key, 0)
+            if attempts >= 2 or target in self.failed_tiles:
+                print(
+                    f"[CLEARER] Skipping lift thrash at {target} "
+                    f"({self.current_target.debris_type.name})"
+                )
+                self.failed_tiles.add(target)
+                self.current_target = None
+                self.clearing_start_frame = 0
+                return "scanning"
+            self.tile_attempts[lift_key] = attempts + 1
+            print(
+                f"[CLEARER] Lifting {self.current_target.debris_type.name} "
+                f"at {target} (attempt {attempts + 1}/2)"
+            )
             direction = self._face_dir(player, target)
             self.action_queue.extend(
                 [make_action(**{direction: True}) for _ in range(3)]

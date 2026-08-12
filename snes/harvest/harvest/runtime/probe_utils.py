@@ -9,7 +9,12 @@ import numpy as np
 
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import task_progress_snapshot
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, TILE_SIZE, get_pos_from_ram, get_tile_at
+from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.tasks.nav import (
+    TILE_SIZE,
+    get_pos_from_ram,
+    get_tile_at,
+)
 from harvest.runtime.recording_trace import pressed_buttons
 
 

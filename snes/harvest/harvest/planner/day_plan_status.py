@@ -9,7 +9,9 @@ import numpy as np
 from harvest.paths import TASKS_DIR as PROJECT_TASKS_DIR
 from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, tile_needs_watering
 from harvest.core.tile_catalog import CLEARABLE_DEBRIS_TYPES
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, TileScanner, get_tile_at
+from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.tasks.nav import get_tile_at
+from harvest.tasks.farm_ops import TileScanner
 from harvest.tasks.harvest_task import live_harvestable_crop_tiles, state_harvestable_crop_tiles
 from harvest.core.animal_status import (
     ADDR_CHICKEN_COUNT,

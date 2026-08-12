@@ -14,19 +14,21 @@ import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, is_crop_tile, is_mature_crop_tile
-from harvest.tasks.farm_clearer import (
-    ADDR_INPUT_LOCK,
+from harvest.core.tile_catalog import ADDR_INPUT_LOCK
+from harvest.tasks.nav import (
     MAP_WIDTH,
     TILE_SIZE,
     WALKABLE_TILES,
     Navigator,
     Pathfinder,
     Point,
-    TileScanner,
     get_pos_from_ram,
     get_tile_at,
     make_action,
 )
+from harvest.tasks.farm_ops import TileScanner
+
+from harvest.core.animal_status import read_held_item
 from harvest.core.harvest_state import HarvestStateDocument
 from harvest.core.ram_catalog import field_spec, live_wram_base, read_ram_u24
 
@@ -40,6 +42,25 @@ SHIP_FALLBACKS: Tuple[Tuple[Tuple[int, int], str], ...] = (
     ((11, 30), "left"),
     ((8, 32), "up"),
 )
+# CLEAR_FIELD / lift debris IDs (not shippable). Shipping bin rejects these and
+# HARVEST_ROUTE used to thrash ship_verify until timeout (rr-9xyy D15/D16).
+DEBRIS_HELD_ITEMS = frozenset(
+    {
+        0x03,  # weed (tile id often mirrors held)
+        0x04,  # small stone
+        0x05,
+        0x06,
+        0x09,  # stump / large weed carry
+        0x0A,
+        0x0B,
+        0x0C,
+        0x0D,  # large rock (power-on CLEAR residual)
+        0x0E,
+        0x0F,
+        0x10,
+    }
+)
+CLEAR_HANDS_ATTEMPT_LIMIT = 4
 
 
 def is_carrying(ram: np.ndarray) -> bool:
@@ -47,8 +68,36 @@ def is_carrying(ram: np.ndarray) -> bool:
     return bool(int(ram[idx]) & ACTION_CARRYING_BIT) if idx < len(ram) else False
 
 
+def is_debris_held(ram: np.ndarray) -> bool:
+    """True when hands hold clear-field debris (not a crop for the shipping bin)."""
+    held = int(read_held_item(ram))
+    return held in DEBRIS_HELD_ITEMS
+
+
 def read_shipping_money(ram: np.ndarray) -> int:
     return read_ram_u24(ram, ADDR_SHIPPING_MONEY) * 10
+
+
+def _toss_held_actions(*, face: str = "down", step_away: bool = False) -> List[np.ndarray]:
+    """Local drop sequence (mirrors transitions.toss_held_actions; no planner import)."""
+    actions: List[np.ndarray] = []
+    actions.extend(make_action(**{face: True}) for _ in range(10))
+    actions.extend(make_action() for _ in range(4))
+    if step_away:
+        actions.extend(make_action(**{face: True, "b": True}) for _ in range(6))
+        actions.extend(make_action() for _ in range(4))
+    actions.extend(make_action(**{face: True, "a": True}) for _ in range(20))
+    actions.extend(make_action(a=True) for _ in range(8))
+    actions.extend(make_action() for _ in range(16))
+    return actions
+
+
+def _multi_face_toss_actions(*, prefer_south: bool = True) -> List[np.ndarray]:
+    faces = ("down", "left", "right", "up") if prefer_south else ("down", "up", "left", "right")
+    actions: List[np.ndarray] = []
+    for face in faces:
+        actions.extend(_toss_held_actions(face=face, step_away=False))
+    return actions
 
 
 def is_ripe_crop_tile(tile_id: int) -> bool:
@@ -315,6 +364,7 @@ class HarvestTask(Task):
     _initial_target_count: int = field(default=0, init=False)
     _unreachable_count: int = field(default=0, init=False)
     _active_group: Optional[int] = field(default=None, init=False)
+    _clear_hands_attempts: int = field(default=0, init=False)
     harvested_count: int = field(default=0, init=False)
     shipped_count: int = field(default=0, init=False)
     skipped_count: int = field(default=0, init=False)
@@ -335,6 +385,7 @@ class HarvestTask(Task):
         self._initial_target_count = 0
         self._unreachable_count = 0
         self._active_group = None
+        self._clear_hands_attempts = 0
         self.harvested_count = 0
         self.shipped_count = 0
         self.skipped_count = 0
@@ -349,6 +400,45 @@ class HarvestTask(Task):
 
         self._pathfinder.extra_walkable = {step.stand for step in self._steps}
         print(f"[HARVEST] Detected {len(self._steps)} ripe crop targets from live map")
+
+    def _crop_ship_pending(self) -> bool:
+        """True after a successful pick that still needs a bin drop."""
+        return self.harvested_count > self.shipped_count
+
+    def _should_ship_carry(self, ram: np.ndarray) -> bool:
+        """Ship crop carries; never treat CLEAR debris as bin cargo (rr-9xyy)."""
+        if not is_carrying(ram):
+            return False
+        if is_debris_held(ram):
+            return False
+        if self._crop_ship_pending():
+            return True
+        # Non-debris held item (crop) without counter — still try the bin.
+        return int(read_held_item(ram)) != 0
+
+    def _should_clear_hands(self, ram: np.ndarray) -> bool:
+        """Drop debris (or stuck empty-id carry) before picking ripe crops."""
+        if not is_carrying(ram):
+            return False
+        if is_debris_held(ram):
+            return True
+        # Carry bit with no held id after failed ship: free hands for picks.
+        return int(read_held_item(ram)) == 0 and not self._crop_ship_pending()
+
+    def _begin_clear_hands(self, ram: np.ndarray, *, reason: str) -> None:
+        held = int(read_held_item(ram))
+        self._clear_navigation_state()
+        self._action_queue.clear()
+        self._clear_hands_attempts += 1
+        if self._clear_hands_attempts <= 1:
+            self._action_queue.extend(_toss_held_actions(face="down", step_away=True))
+        else:
+            self._action_queue.extend(_multi_face_toss_actions(prefer_south=True))
+        self._phase = "clear_hands"
+        print(
+            f"[HARVEST] Clear hands before harvest "
+            f"(held=0x{held:02X} attempt={self._clear_hands_attempts} {reason})"
+        )
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -527,10 +617,40 @@ class HarvestTask(Task):
         if action is not None:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
+        if self._phase == "clear_hands":
+            if not carrying and int(read_held_item(world.ram)) == 0:
+                self._clear_hands_attempts = 0
+                self._phase = "select"
+                return TaskResult(status=TaskStatus.RUNNING)
+            if self._clear_hands_attempts >= CLEAR_HANDS_ATTEMPT_LIMIT:
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=(
+                        f"clear hands timeout held=0x{int(read_held_item(world.ram)):02X} "
+                        f"attempts={self._clear_hands_attempts}"
+                    ),
+                )
+            self._begin_clear_hands(world.ram, reason="retry")
+            action = self._pop_action()
+            if action is not None:
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
         if self._phase == "select":
             if carrying:
-                self._clear_navigation_state()
-                self._phase = "ship_nav"
+                if self._should_clear_hands(world.ram):
+                    # Debris left by CLEAR_FIELD (held=0x0D) is not bin-shippable.
+                    self._begin_clear_hands(world.ram, reason="non_crop_carry")
+                    action = self._pop_action()
+                    if action is not None:
+                        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+                    return TaskResult(status=TaskStatus.RUNNING)
+                if self._should_ship_carry(world.ram):
+                    self._clear_navigation_state()
+                    self._phase = "ship_nav"
+                else:
+                    # Carry animation in progress — wait one frame.
+                    return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             else:
                 self._current = self._choose_next_step()
                 if self._current is None:
@@ -632,6 +752,13 @@ class HarvestTask(Task):
             self._verify_count += 1
             if self._verify_count > 20:
                 if self._try_next_ship_option(world.ram):
+                    return TaskResult(status=TaskStatus.RUNNING)
+                # Defense in depth: debris misrouted into ship_verify → toss, not fail.
+                if not self._crop_ship_pending() or is_debris_held(world.ram):
+                    self._begin_clear_hands(world.ram, reason="ship_verify_debris")
+                    action = self._pop_action()
+                    if action is not None:
+                        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
                     return TaskResult(status=TaskStatus.RUNNING)
                 return TaskResult(status=TaskStatus.FAILURE, reason="ship verify timeout")
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))

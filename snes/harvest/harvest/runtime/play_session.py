@@ -36,15 +36,18 @@ from harvest.runtime.probe_utils import DEFAULT_WATCH_FIELDS, event_row, snapsho
 from harvest.runtime.recording_trace import recording_trace_entry, summarize_recording
 from harvest.runtime.retro_setup import backup_mutable_start_state, make_harvest_env
 from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, CropWaterTask, tile_needs_watering
-from harvest.tasks.farm_clearer import (
+from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_TILEMAP,
-    TILE_SIZE,
     Tool,
+)
+from harvest.tasks.nav import (
+    TILE_SIZE,
     get_pos_from_ram,
     make_action,
     Point,
 )
+
 from harvest.tasks.harvest_task import HarvestTask, live_harvestable_crop_tiles
 from retro_harness import SNES_BUTTON_NAMES, WorldState, sanitize_action
 
@@ -343,7 +346,7 @@ class PlaySession:
     def _crop_waterable_count(self, ram: np.ndarray, skip_tiles: Optional[set] = None) -> int:
         left, top, right, bottom = DEFAULT_CROP_BOUNDS
         count = 0
-        from harvest.tasks.farm_clearer import get_tile_at
+        from harvest.tasks.nav import get_tile_at
 
         if skip_tiles is None:
             state_name = getattr(self.bot, "auto_day_plan_state_name", None)
@@ -387,6 +390,17 @@ class PlaySession:
         return f"{name} (0x{tilemap:02X})"
 
     def _active_task_lines(self, ram: np.ndarray) -> List[str]:
+        if getattr(self.bot, "power_on_enabled", False) and not getattr(self.bot, "power_on_done", True):
+            task = getattr(self.bot, "power_on_task", None)
+            if task is not None and getattr(self.bot, "power_on_started", False):
+                return [f"Power-on: {task.phase_text}", task.progress_text]
+            return ["Power-on: waiting"]
+        if getattr(self.bot, "d1_handoff_enabled", False) and not getattr(self.bot, "d1_handoff_done", True):
+            task = getattr(self.bot, "d1_handoff_task", None)
+            if task is not None and getattr(self.bot, "d1_handoff_started", False):
+                snap = task.progress_snapshot()
+                return [f"D1 handoff: {snap.phase_text or 'running'}", f"step={snap.step_count}"]
+            return ["D1 handoff: waiting"]
         if self.bot.day_plan_enabled and self.bot.day_plan_started and not self.bot.day_plan_done:
             dp = self.bot.day_plan_task
             lines = [f"Plan: {dp.phase_text}", dp.progress_text]
@@ -426,10 +440,12 @@ class PlaySession:
         active_btns = " ".join(btn_names[i] for i, v in enumerate(action) if v > 0)
         self._note_task_state_for_hud()
         ready_count, waterable_count = self._cached_hud_crop_counts(ram)
+        speed = getattr(self, "_display_speed", 1.0)
 
         lines = [
             "HARVEST",
             f"Mode {self.mode.upper()}",
+            f"Speed {speed:g}x [ ]",
             f"{game_state.date_str}",
             f"{game_state.time_str}",
             f"Loc {self._location_text(ram)}",
@@ -580,12 +596,17 @@ class PlaySession:
         joystick = init_controller()
 
         print(f"\n[HARVEST BOT] mode={self.mode.upper()}", end="")
+        if self.initial_state is None and getattr(self.bot, "power_on_enabled", False):
+            print(" power-on", end="")
+        elif self.initial_state:
+            print(f" state={self.initial_state}", end="")
         if self.record_name:
             print(f" record={self.record_name}", end="")
         if self.ram_patches:
             patch_text = ", ".join(f"{patch.field}={patch.value}" for patch in self.ram_patches)
             print(f" ram_set=[{patch_text}]", end="")
         print()
+        print("[CONTROLS] [ ] = speed down/up | TAB = turbo | L+R+SELECT = human/bot | ESC = quit")
 
         running = True
         game_state = GameState(info, env.get_ram())
@@ -598,7 +619,9 @@ class PlaySession:
         quick_save = None
         ram_search_candidates = None  # set of addresses from last search
         speed_levels = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0]
-        speed_idx = 2
+        # Start a notch above realtime so power-on boot is watchable without waiting.
+        speed_idx = 4  # 4.0x
+        self._display_speed = speed_levels[speed_idx]
 
         while running:
             if screen:
@@ -707,12 +730,16 @@ class PlaySession:
                                         print(f"  0x{addr:04X} ({kind}) = [{cur_bytes}]")
                                     if not surviving:
                                         print("  (none — try F2 again with the current value)")
-                        elif event.key == pygame.K_LEFTBRACKET:
+                        elif event.key in (pygame.K_LEFTBRACKET, pygame.K_COMMA, pygame.K_MINUS):
+                            # [ , - all slow down (comma/minus as layout fallbacks)
                             speed_idx = max(0, speed_idx - 1)
-                            print(f"[SPEED] {speed_levels[speed_idx]}x")
-                        elif event.key == pygame.K_RIGHTBRACKET:
+                            self._display_speed = speed_levels[speed_idx]
+                            print(f"[SPEED] {speed_levels[speed_idx]}x", flush=True)
+                        elif event.key in (pygame.K_RIGHTBRACKET, pygame.K_PERIOD, pygame.K_EQUALS, pygame.K_PLUS):
+                            # ] . = + all speed up
                             speed_idx = min(len(speed_levels) - 1, speed_idx + 1)
-                            print(f"[SPEED] {speed_levels[speed_idx]}x")
+                            self._display_speed = speed_levels[speed_idx]
+                            print(f"[SPEED] {speed_levels[speed_idx]}x", flush=True)
                         elif event.key == pygame.K_F1 and self.record_name:
                             print("[REC] F1 save is supported as an alias; use F5 for new recordings.")
                             self._save_recording(env, game_state)
@@ -749,6 +776,7 @@ class PlaySession:
             self._note_task_state_for_hud()
 
             speed = speed_levels[speed_idx]
+            self._display_speed = speed
             turbo_mode = self.mode == 'bot' and speed > 4.0
             fast_forward = (keys[pygame.K_TAB] if screen else True) or turbo_mode
             render_this_frame = bool(
@@ -819,7 +847,19 @@ class PlaySession:
                 last_day = game_state.day
 
             if self.frame_count % 300 == 0:
-                if self.bot.day_plan_enabled and not self.bot.day_plan_done:
+                if getattr(self.bot, "power_on_enabled", False) and not getattr(self.bot, "power_on_done", True):
+                    task = getattr(self.bot, "power_on_task", None)
+                    phase = task.phase_text if task is not None else "power-on"
+                    print(f"[BOT] f={self.frame_count} {phase} speed={speed:g}x")
+                elif getattr(self.bot, "d1_handoff_enabled", False) and not getattr(self.bot, "d1_handoff_done", True):
+                    task = getattr(self.bot, "d1_handoff_task", None)
+                    phase = (
+                        task.progress_snapshot().phase_text
+                        if task is not None
+                        else "d1-handoff"
+                    )
+                    print(f"[BOT] f={self.frame_count} D1 handoff {phase} speed={speed:g}x")
+                elif self.bot.day_plan_enabled and not self.bot.day_plan_done:
                     dp = self.bot.day_plan_task
                     print(f"[BOT] f={self.frame_count} day_plan {dp.phase_text} {dp.progress_text}")
                 elif self.bot.crop_enabled and not self.bot.crop_task_done:

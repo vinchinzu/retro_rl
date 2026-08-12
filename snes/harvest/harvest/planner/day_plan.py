@@ -253,13 +253,13 @@ from harvest.tasks.eve_loop_task import (
     romance_points_for_hearts,
 )
 
-from harvest.tasks.farm_clearer import (
+from harvest.tasks.nav import Point, make_action
+from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_TILEMAP,
-    Point,
     Tool,
-    make_action,
 )
+
 
 from retro_harness import (
     ActionResult,

@@ -1,0 +1,39 @@
+{
+  "bizhawk_validation_status": "blocked",
+  "checkpoints": [
+    {
+      "description": "Planned slot; no emulator state has been generated.",
+      "frame": null,
+      "name": "level1_start",
+      "state_artifact_path": "custom_integrations/SuperMarioBros2-Nes/checkpoints/level1_start.state",
+      "status": "planned"
+    },
+    {
+      "description": "Planned slot; no emulator state has been generated.",
+      "frame": null,
+      "name": "level1_control",
+      "state_artifact_path": "custom_integrations/SuperMarioBros2-Nes/checkpoints/level1_control.state",
+      "status": "planned"
+    },
+    {
+      "description": "Planned slot; no emulator state has been generated.",
+      "frame": null,
+      "name": "level1_goal",
+      "state_artifact_path": "custom_integrations/SuperMarioBros2-Nes/checkpoints/level1_goal.state",
+      "status": "planned"
+    }
+  ],
+  "game": "Super Mario Bros. 2 (NES)",
+  "level": "1-1",
+  "movie_format": "fm2",
+  "movie_hash": "dd1d66dd7b517f0d5fef76800a124449ff3465e79904ec523164ccc63e40da84",
+  "movie_hash_algorithm": "sha256",
+  "movie_path": "tas/ref/tasvideos_1724_warps.fm2",
+  "rom_hash": "6ca47e9da206914730895e45fef4f7393e59772c1c80e9b9befc1a01d7ecf724",
+  "rom_hash_algorithm": "sha256",
+  "rom_path": "roms/Super Mario Bros. 2.nes",
+  "schema_version": 1,
+  "source_core": "FCEUX 0.98.28 (movie header emuVersion 9828)",
+  "source_emulator": "FCEUX",
+  "source_url": "https://tasvideos.org/1724M?handler=Download"
+}

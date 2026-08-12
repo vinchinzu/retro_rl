@@ -18,7 +18,7 @@ from retro_harness.input_script import (
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import SceneLocation, SceneMode, classify_scene_from_ram
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 
 ButtonName = str
 QueuedActions = deque[np.ndarray]

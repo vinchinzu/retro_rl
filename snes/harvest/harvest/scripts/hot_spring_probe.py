@@ -35,7 +35,11 @@ from harvest.core.ram_catalog import read_ram_value
 from harvest.planner.day_plan_status import is_farm_tilemap
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.runtime.retro_setup import make_harvest_env
-from harvest.tasks.farm_clearer import make_action, use_tool, cycle_tool
+from harvest.tasks.nav import make_action
+from harvest.tasks.farm_ops import (
+    use_tool,
+    cycle_tool,
+)
 from harvest.tasks.hot_spring import (
     HotSpringStaminaTask,
     SPA_TILEMAP,

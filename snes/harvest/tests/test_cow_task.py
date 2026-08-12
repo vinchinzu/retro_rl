@@ -47,7 +47,14 @@ from harvest.tasks.cow_task import (
     CowChoresTask,
 )
 from harvest.core.animal_status import ADDR_FED_COWS_FLAGS, COW_STATUS_BABY_FLAG
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_TILEMAP, ADDR_X, ADDR_Y, make_action
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_MAP,
+    ADDR_TILEMAP,
+    ADDR_X,
+    ADDR_Y,
+)
+from harvest.tasks.nav import make_action
 from harvest.core.ram_catalog import COW_SLOT_BASE, COW_SLOT_SIZE
 from retro_harness import TaskStatus
 
