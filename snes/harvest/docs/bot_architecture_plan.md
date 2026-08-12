@@ -52,7 +52,7 @@ PLANNING_STACK for skill composition, contracts, and advisor policy.
 | `tasks/primitives.py` (sequence, press-and-verify, RAM wait, retry) | Done |
 | `tasks/skills.py` (`NavSkill`, interact, coop/farm/talk factories) | Boundary done |
 | `TaskContract` + `evaluate_task_contract` | Done; production crop/coop/sleep wired |
-| Domain mono FSMs (coop ~1.3k, cow ~2.4k, crop_planter ~2.3k, D1 handoff ~0.9k) | Still production path |
+| Domain mono FSMs (coop ~1.3k, cow ~2.4k, crop_planter **~3.3k** (+ crop_geometry/pond_*), D1 handoff ~1.1k, home ~1.5k) | Still production path; see CODE_QUALITY_REVIEW |
 | Full skill extraction + multi-adult coop | Open |
 
 Each autonomous task should declare (via phase contract and/or task docs):

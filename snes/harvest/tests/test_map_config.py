@@ -4,7 +4,16 @@ import unittest
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import ADDR_MAP, ADDR_TILEMAP, MAP_WIDTH, Pathfinder, TileScanner, WALKABLE_TILES
+from harvest.core.tile_catalog import (
+    ADDR_MAP,
+    ADDR_TILEMAP,
+)
+from harvest.tasks.nav import (
+    MAP_WIDTH,
+    Pathfinder,
+    WALKABLE_TILES,
+)
+from harvest.tasks.farm_clearer import TileScanner
 from harvest.maps.map_config import (
     FARM_WALKABLE,
     ROUTES,
@@ -48,6 +57,34 @@ class FarmWalkableTests(unittest.TestCase):
         # Last hop returns toward farm via path east exit.
         self.assertEqual(route[-1].tilemap, 0x0C)
         self.assertTrue(route[-1].is_exit)
+
+    def test_berry_routes_start_south_and_repeat_from_bin(self) -> None:
+        first = ROUTES["berry_ship"]
+        repeat = ROUTES["berry_ship_repeat"]
+
+        self.assertGreaterEqual(first[0].target_px[1] // 16, 35)
+        self.assertEqual(first[0].target_px[0] // 16, 27)
+        self.assertEqual(repeat[0].target_px, (55 * 16 + 8, 60 * 16 + 8))
+        self.assertEqual(first[-1].target_px, (61 * 16 + 8, 60 * 16 + 8))
+        self.assertEqual(repeat[-1].target_px, (61 * 16 + 8, 60 * 16 + 8))
+        weed_gate_actions = [
+            wp
+            for wp in first
+            if wp.action_on_arrive == "press_a"
+            and wp.action_face == "up"
+            and wp.target_px[0] // 16 == 37
+        ]
+        self.assertEqual(
+            [wp.target_px[1] // 16 for wp in weed_gate_actions],
+            [60, 59],
+        )
+
+    def test_south_farm_return_crosses_fence_at_west_end(self) -> None:
+        route = ROUTES["farm_south_to_west_gate"]
+        first_north = next(wp for wp in route if wp.target_px[1] < 31 * 16)
+
+        self.assertLess(first_north.target_px[0] // 16, 11)
+        self.assertEqual(route[-1].target_px, (40, 424))
 
     def test_map_registry_has_named_landmarks(self) -> None:
         self.assertEqual(get_map_name(0x15), "house")

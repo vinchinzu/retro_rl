@@ -30,11 +30,26 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from harvest.runtime import harvest_bot as hb
-from harvest.tasks.farm_clearer import (
-    Point, Tool, DebrisType, TileScanner,
-    ADDR_X, ADDR_Y, ADDR_TOOL, ADDR_TILEMAP, ADDR_MAP, ADDR_INPUT_LOCK,
-    TILE_SIZE, MAP_WIDTH, use_tool,
+from harvest.core.tile_catalog import (
+    Tool,
+    DebrisType,
+    ADDR_X,
+    ADDR_Y,
+    ADDR_TOOL,
+    ADDR_TILEMAP,
+    ADDR_MAP,
+    ADDR_INPUT_LOCK,
 )
+from harvest.tasks.nav import (
+    Point,
+    TILE_SIZE,
+    MAP_WIDTH,
+)
+from harvest.tasks.farm_clearer import (
+    TileScanner,
+    use_tool,
+)
+
 from harvest.runtime.task_recorder import Task
 from retro_harness import TaskStatus
 from harvest.tasks.grass_planter import (
@@ -493,7 +508,8 @@ def test_nav_to_shed() -> TestResult:
     ram = env.get_ram()
 
     # Test that pathfinding can find a path from player to shed
-    from harvest.tasks.farm_clearer import TileScanner, Pathfinder, Navigator, get_pos_from_ram
+    from harvest.tasks.farm_clearer import TileScanner
+    from harvest.tasks.nav import Pathfinder, Navigator, get_pos_from_ram
     scanner = TileScanner()
     pathfinder = Pathfinder(scanner)
     navigator = Navigator(pathfinder)
@@ -525,7 +541,8 @@ def test_nav_deep_field_to_shed() -> TestResult:
     ram = env.get_ram()
 
     # Test that pathfinding can find a path
-    from harvest.tasks.farm_clearer import TileScanner, Pathfinder, Navigator, get_pos_from_ram
+    from harvest.tasks.farm_clearer import TileScanner
+    from harvest.tasks.nav import Pathfinder, Navigator, get_pos_from_ram
     scanner = TileScanner()
     pathfinder = Pathfinder(scanner)
     navigator = Navigator(pathfinder)
@@ -1014,7 +1031,7 @@ def test_day_plan_nav_phase() -> TestResult:
 def test_map_config_registry() -> TestResult:
     """Verify farm config exists in MAP_REGISTRY, walkable tiles match farm_clearer."""
     from harvest.maps.map_config import MAP_REGISTRY, FARM_WALKABLE, get_walkable_tiles
-    from harvest.tasks.farm_clearer import WALKABLE_TILES
+    from harvest.tasks.nav import WALKABLE_TILES
 
     if 0x00 not in MAP_REGISTRY:
         return TestResult("L10 map config registry", "FAIL", "farm (0x00) missing from MAP_REGISTRY")
@@ -1043,7 +1060,8 @@ def test_map_config_registry() -> TestResult:
 
 def test_pathfinder_walkable_injection() -> TestResult:
     """Verify Pathfinder uses injected walkable_tiles set."""
-    from harvest.tasks.farm_clearer import Pathfinder, TileScanner, WALKABLE_TILES
+    from harvest.tasks.farm_clearer import TileScanner
+    from harvest.tasks.nav import Pathfinder, WALKABLE_TILES
 
     scanner = TileScanner()
 

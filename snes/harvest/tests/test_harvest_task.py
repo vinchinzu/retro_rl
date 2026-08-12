@@ -6,7 +6,14 @@ from unittest.mock import patch
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_X, ADDR_Y, MAP_WIDTH
+from harvest.core.animal_status import ADDR_ITEM_ON_HAND
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_MAP,
+    ADDR_X,
+    ADDR_Y,
+)
+from harvest.tasks.nav import MAP_WIDTH
 from harvest.tasks.harvest_task import (
     ACTION_CARRYING_BIT,
     ADDR_PLAYER_STATE,
@@ -21,9 +28,17 @@ from harvest.tasks.harvest_task import (
 )
 from retro_harness import TaskStatus
 
+# Large-rock residual left by CLEAR_FIELD on power-on soaks (rr-9xyy).
+HELD_LARGE_ROCK = 0x0D
+
 
 def _set_tile(ram: np.ndarray, tx: int, ty: int, tile_id: int) -> None:
     ram[ADDR_MAP + ty * MAP_WIDTH + tx] = tile_id
+
+
+def _set_carry(ram: np.ndarray, held: int = 0) -> None:
+    ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+    ram[ADDR_ITEM_ON_HAND] = held & 0xFF
 
 
 class _FakeDocument:
@@ -334,6 +349,68 @@ class HarvestTaskTests(unittest.TestCase):
 
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("incomplete harvest", result.reason)
+
+    def test_select_clears_debris_carry_instead_of_shipping(self) -> None:
+        """rr-9xyy: CLEAR leftover rock must not enter ship_verify."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        _set_carry(ram, HELD_LARGE_ROCK)
+        task = HarvestTask()
+        task._phase = "select"
+        task._steps = [HarvestStep(target=(13, 26), stand=(12, 26), face="right")]
+        task._initial_target_count = 1
+
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "clear_hands")
+        self.assertGreater(len(task._action_queue), 0)
+        self.assertEqual(task.shipped_count, 0)
+
+    def test_select_ships_when_crop_pick_is_pending(self) -> None:
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        _set_carry(ram, 0x12)  # non-debris crop-like held id
+        task = HarvestTask()
+        task._phase = "select"
+        task.harvested_count = 1
+        task.shipped_count = 0
+
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "ship_nav")
+
+    def test_ship_verify_timeout_clears_debris_instead_of_failing(self) -> None:
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        _set_carry(ram, HELD_LARGE_ROCK)
+        ram[ADDR_INPUT_LOCK] = 1
+        task = HarvestTask()
+        task._phase = "ship_verify"
+        task._verify_count = 21
+        task._ship_options = [((11, 30), "left")]
+        task._ship_option_index = 0  # exhausted after try_next
+
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "clear_hands")
+        self.assertNotEqual(result.reason or "", "ship verify timeout")
+
+    def test_ship_verify_timeout_still_fails_for_pending_crop(self) -> None:
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        _set_carry(ram, 0x12)
+        ram[ADDR_INPUT_LOCK] = 1
+        task = HarvestTask()
+        task._phase = "ship_verify"
+        task._verify_count = 21
+        task.harvested_count = 1
+        task.shipped_count = 0
+        task._ship_options = [((11, 30), "left")]
+        task._ship_option_index = 0
+
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertEqual(result.reason, "ship verify timeout")
 
     def test_harvest_choose_next_finishes_active_plot_group_first(self) -> None:
         task = HarvestTask()

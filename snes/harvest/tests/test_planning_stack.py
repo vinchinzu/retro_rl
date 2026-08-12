@@ -32,8 +32,11 @@ from harvest.planner.local_llm import (
 )
 from harvest.tasks.primitives import TaskSequence
 from harvest.tasks.skills import (
+    NavigateUntilArrivedSkill,
+    NavSkill,
     PressAInteractSkill,
     coop_nav_to_feed_bin_skill,
+    coop_nav_to_shipping_bin_skill,
     farm_nav_to_shipping_bin_skill,
     sequence_skills,
     talk_press_skill,
@@ -280,6 +283,7 @@ class SkillCompositionTests(unittest.TestCase):
     def test_skill_factories_bind_named_targets(self) -> None:
         feed = coop_nav_to_feed_bin_skill()
         self.assertEqual(feed.name, "coop_nav_feed_bin")
+        self.assertIsInstance(feed, NavSkill)
         self.assertEqual(feed.target_px, (2 * 16 + 8, 6 * 16 + 8))
 
         ship = farm_nav_to_shipping_bin_skill()
@@ -289,6 +293,33 @@ class SkillCompositionTests(unittest.TestCase):
         talk = talk_press_skill(name="d1_ann", face="left")
         self.assertEqual(talk.name, "d1_ann")
         self.assertEqual(talk.face, "left")
+
+    def test_coop_nav_factories_accept_host_navigate(self) -> None:
+        """Production CoopChoresTask passes navigate= for specialized routing."""
+        steps = {"n": 0}
+
+        def navigate(world) -> np.ndarray | None:
+            steps["n"] += 1
+            if steps["n"] < 2:
+                return np.zeros(12, dtype=np.int32)
+            return None
+
+        world = _world()
+        feed = coop_nav_to_feed_bin_skill(navigate=navigate)
+        self.assertIsInstance(feed, NavigateUntilArrivedSkill)
+        self.assertEqual(feed.name, "coop_nav_feed_bin")
+        feed.reset(world)
+        r1 = feed.step(world)
+        self.assertEqual(r1.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(r1.action)
+        r2 = feed.step(world)
+        self.assertEqual(r2.status, TaskStatus.SUCCESS)
+
+        ship = coop_nav_to_shipping_bin_skill(navigate=lambda _w: None)
+        self.assertIsInstance(ship, NavigateUntilArrivedSkill)
+        self.assertEqual(ship.name, "coop_nav_ship_bin")
+        ship.reset(world)
+        self.assertEqual(ship.step(world).status, TaskStatus.SUCCESS)
 
 
 class AdvisorApplyTests(unittest.TestCase):

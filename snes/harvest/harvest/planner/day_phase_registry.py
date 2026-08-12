@@ -45,8 +45,10 @@ from harvest.tasks.cow_task import CowChoresTask
 from harvest.tasks.crop_planter import CropWaterTask
 from harvest.tasks.eve_loop_task import EveTalkLoopTask
 from harvest.tasks.farm_clear_task import FarmClearTask
-from harvest.tasks.farm_clearer import Point, Tool
+from harvest.tasks.nav import Point
+from harvest.core.tile_catalog import Tool
 from harvest.tasks.harvest_task import HarvestTask, crop_nav_target_px, live_harvestable_crop_tiles
+from harvest.tasks.berry_ship import BerryShipTask
 from harvest.tasks.recorded_task import RecordedTask
 
 PhaseTaskBuilder = Callable[["TaskBuildContext", PhaseSpec, WorldState], Optional[Task]]
@@ -283,6 +285,22 @@ def _build_multi_nav(
     )
 
 
+def _build_berry_ship(
+    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
+) -> Optional[Task]:
+    route_name = spec.params.get("route", "")
+    waypoints = ROUTES.get(route_name, [])
+    if not waypoints:
+        print(f"[DAY_PLAN] Unknown berry route: {route_name}")
+        return None
+    return BerryShipTask(
+        name=f"berry_ship_{spec.phase.lower()}",
+        waypoints=list(waypoints),
+        timeout=spec.params.get("timeout", 18000),
+        initial_settle_frames=spec.params.get("initial_settle_frames", 20),
+    )
+
+
 def _build_ensure_tool(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -350,6 +368,20 @@ def _build_clear_field(
         tasks_dir=ctx.tasks_dir,
         fetch_tools=spec.params.get("fetch_tools", True),
         timeout=spec.params.get("timeout", 120000),
+    )
+
+
+def _build_fence_clear(
+    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
+) -> Task:
+    """Open y=31 fence gap so south-farm routes (berry, pond) can BFS."""
+    from harvest.tasks.fence_flow import FenceClearLoopTask
+
+    return FenceClearLoopTask(
+        name=f"fence_clear_{spec.phase.lower()}",
+        max_fences=spec.params.get("max_fences", 2),
+        corridor_only=bool(spec.params.get("corridor_only", True)),
+        max_steps_per_fence=int(spec.params.get("timeout", 8000)),
     )
 
 
@@ -451,6 +483,7 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.CROSS_MAP: _build_cross_map,
     PhaseKind.DIRECTIONAL_TRANSITION: _build_directional_transition,
     PhaseKind.MULTI_NAV: _build_multi_nav,
+    PhaseKind.BERRY_SHIP: _build_berry_ship,
     PhaseKind.ENSURE_TOOL: _build_ensure_tool,
     PhaseKind.ENSURE_ANIMAL_TOOLS: _build_ensure_animal_tools,
     PhaseKind.ENSURE_SEED: _build_ensure_seed,
@@ -458,6 +491,7 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.WAIT_UNTIL_TIME: _build_wait_until_time,
     PhaseKind.HARVEST: _build_harvest,
     PhaseKind.CLEAR_FIELD: _build_clear_field,
+    PhaseKind.FENCE_CLEAR: _build_fence_clear,
     PhaseKind.COOP_CHORES: _build_coop_chores,
     PhaseKind.COW_CHORES: _build_cow_chores,
     PhaseKind.EVE_TALK_LOOP: _build_eve_talk_loop,

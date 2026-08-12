@@ -11,7 +11,15 @@ from harvest.runtime.harvest_bot import AutoClearBot, PlaySession, ADDR_INPUT_LO
 from harvest.runtime.rom_tools import parse_save_state, resolve_state_path
 from harvest.tasks.crop_planter import ADDR_TOOL_BACKPACK, CropWaterTask, SEED_ITEM
 from harvest.planner.day_plan import ADDR_DAY, ADDR_HOUR, ADDR_SEASON
-from harvest.tasks.farm_clearer import ADDR_MAP, ADDR_TILEMAP, ADDR_TOOL, ADDR_X, ADDR_Y, MAP_WIDTH, Tool
+from harvest.core.tile_catalog import (
+    ADDR_MAP,
+    ADDR_TILEMAP,
+    ADDR_TOOL,
+    ADDR_X,
+    ADDR_Y,
+    Tool,
+)
+from harvest.tasks.nav import MAP_WIDTH
 from retro_harness import TaskResult, TaskStatus
 from harvest.core.tile_catalog import FRESH_TILLED
 

@@ -42,7 +42,7 @@ from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
 from harvest.planner.day_plan import DayPlanTask, MultiDayPlannerTask, PHASE_SEQUENCES
 from harvest.runtime.power_on import PowerOnStartTask
 from harvest.runtime.retro_setup import make_harvest_env
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 from harvest.tasks.town_day1_handoff import TownDay1HandoffTask
 
 
@@ -453,7 +453,7 @@ def _crop_survival_report(ram: np.ndarray) -> dict:
     """Farm crop tile counts when the farm map is loaded; else map-not-farm note."""
     from harvest.planner.day_plan_status import is_farm_tilemap
     from harvest.tasks.crop_planter import count_crop_survival
-    from harvest.tasks.farm_clearer import ADDR_TILEMAP
+    from harvest.core.tile_catalog import ADDR_TILEMAP
 
     tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else -1
     if not is_farm_tilemap(tilemap):

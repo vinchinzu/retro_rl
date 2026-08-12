@@ -25,7 +25,11 @@ ROOT_DIR = SCRIPT_DIR.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, ADDR_TOOL, get_pos_from_ram
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    ADDR_TOOL,
+)
+from harvest.tasks.nav import get_pos_from_ram
 from harvest.core.harvest_state import SCALAR_FIELDS, SCALAR_FIELDS_BY_KEY, WEATHER_CODES
 
 

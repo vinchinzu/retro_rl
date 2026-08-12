@@ -24,7 +24,12 @@ from retro_harness import TaskStatus, WorldState
 
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.tasks.crop_planter import CropWaterTask, pond_access_blocking_fences
-from harvest.tasks.farm_clearer import TILE_SIZE, get_pos_from_ram, get_tile_at, make_action
+from harvest.tasks.nav import (
+    TILE_SIZE,
+    get_pos_from_ram,
+    get_tile_at,
+    make_action,
+)
 from harvest.tasks.fence_flow import (
     ACTION_CARRYING_BIT,
     ADDR_PLAYER_STATE,

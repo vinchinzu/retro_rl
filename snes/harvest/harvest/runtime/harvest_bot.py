@@ -26,11 +26,12 @@ from harvest.runtime.autoplay_bot import AutoClearBot
 from harvest.runtime.game_state import GameState
 from harvest.runtime.play_session import PlaySession
 from harvest.runtime.retro_setup import register_harvest_integration
-from harvest.tasks.farm_clearer import (
+from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_TILEMAP,
-    parse_priority_list,
 )
+from harvest.tasks.farm_clearer import parse_priority_list
+
 
 SCRIPT_DIR = os.fspath(PROJECT_DIR)
 STATES_DIR = os.path.join(os.fspath(CUSTOM_INTEGRATIONS_DIR), "HarvestMoon-Snes")
@@ -81,6 +82,16 @@ def main() -> None:
 
     play = subparsers.add_parser("play")
     play.add_argument("--state", type=str)
+    play.add_argument(
+        "--power-on",
+        action="store_true",
+        help="Clean boot: title → new diary → Spring D1 (no save-state load)",
+    )
+    play.add_argument(
+        "--no-d1-handoff",
+        action="store_true",
+        help="With --power-on, skip D1 town talks/shed/sleep handoff",
+    )
     play.add_argument("--scale", type=int, default=2)
     play.add_argument("--hud-width", type=int, default=176)
     play.add_argument("--autoplay", action="store_true")
@@ -218,6 +229,8 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "play":
+        if args.power_on and args.state:
+            parser.error("--power-on cannot be combined with --state")
         try:
             day_plan_name = resolve_day_plan_name(args.day_plan, args.resume_water, args.state)
         except ValueError as exc:
@@ -280,9 +293,11 @@ def main() -> None:
             multi_day_until_season=until_season,
             multi_day_count=args.days,
             eve_target_hearts=args.eve_target_hearts,
+            power_on=bool(args.power_on),
+            d1_handoff=False if args.no_d1_handoff else (True if args.power_on else None),
         )
         PlaySession(
-            state=args.state,
+            state=None if args.power_on else args.state,
             scale=args.scale,
             bot=bot,
             autoplay=args.autoplay,
