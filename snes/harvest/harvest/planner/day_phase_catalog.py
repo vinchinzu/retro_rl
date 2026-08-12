@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from harvest.tasks.farm_clearer import Tool
+from harvest.core.tile_catalog import Tool
 from harvest.planner.day_plan_status import FARM_TILEMAP
 from harvest.planner.day_phase_types import PhaseSpec
 
@@ -37,7 +37,9 @@ LEAVE_HOUSE_TO_FARM_PHASE = PhaseSpec(
 NAV_FARM_EXIT_PHASE = PhaseSpec(
     "NAV_FARM_EXIT",
     "farm_exit",
-    {"target_px": (40, 424), "radius": 12, "timeout": 3000},
+    # West gate approach for town/shop. Timeout must cover south-farm → west
+    # (post berry ship at bin) with BFS hops; 3k was a pure B-run thrash budget.
+    {"target_px": (40, 424), "radius": 16, "timeout": 10000},
     failure_policy="optional",
 )
 
@@ -112,11 +114,65 @@ def buy_seeds_phase(
 GET_BERRIES_AND_SHIP_PHASE = PhaseSpec(
     "GET_BERRIES_AND_SHIP",
     "recorded",
-    # Shipping bin cutoff: berries must be in the bin before 17:00 (5 PM)
-    # or the shipper has already collected for the day and no payment posts.
+    # Legacy blind recording — prefer SHIP_BERRY_* multi_nav on the farm.
+    # Kept for named sequences / tests that still reference the phase name.
     {"task_name": "get_two_berries_and_ship_after_farm_exit"},
     failure_policy="optional",
 )
+
+# y=31 fence (x≈11–29) seals house north-pocket from south berry bush.
+# Corridor-only lift opens ≥1 gap so berry_ship BFS can go south (not thrash
+# into the wall at ~(336,486)).
+OPEN_FENCE_GAP_PHASE = PhaseSpec(
+    "OPEN_FENCE_GAP",
+    "fence_clear",
+    {
+        # Berry route only needs the carry-south crossing; it never returns
+        # through the gap. One wall post avoids a second north-side re-entry.
+        "max_fences": 1,
+        "corridor_only": True,
+        "timeout": 8000,
+    },
+    failure_policy="optional",
+    required_maps=(0x00,),
+    estimated_frames=4000,
+    failure_modes=("no_fence", "lift_fail", "timeout"),
+)
+
+# Farm forage bush ~(585,920) → shipping bin ~(1001,969). Wild berries are ON
+# the farm south of the fence (not mountain / not west exit).
+SHIP_BERRY_PHASE = PhaseSpec(
+    "SHIP_BERRY",
+    "berry_ship",
+    {"route": "berry_ship", "timeout": 18000, "initial_settle_frames": 20},
+    failure_policy="optional",
+    required_maps=(0x00,),
+    estimated_frames=10000,
+    failure_modes=("bush_unreachable", "bin_path_fail", "fence_sealed", "no_berry_tile"),
+)
+
+
+def ship_berry_phases(*, count: int = 2, open_fence: bool = True) -> list[PhaseSpec]:
+    """Fence-gap (if needed) then multi_nav berry_ship loops to the bin."""
+    n = max(1, int(count))
+    contract = SHIP_BERRY_PHASE.contract
+    phases: list[PhaseSpec] = []
+    if open_fence:
+        phases.append(OPEN_FENCE_GAP_PHASE)
+    for i in range(1, n + 1):
+        params = dict(SHIP_BERRY_PHASE.params)
+        if i > 1:
+            params["route"] = "berry_ship_repeat"
+        phases.append(
+            PhaseSpec(
+                f"SHIP_BERRY_{i}" if n > 1 else "SHIP_BERRY",
+                SHIP_BERRY_PHASE.kind,
+                params,
+                failure_policy=SHIP_BERRY_PHASE.failure_policy,
+                contract=contract,
+            )
+        )
+    return phases
 
 NAV_CROP_PHASE = PhaseSpec(
     "NAV_CROP",
@@ -151,7 +207,8 @@ HARVEST_ROUTE_PHASE = PhaseSpec(
 CLEAR_FIELD_PHASE = PhaseSpec(
     "CLEAR_FIELD",
     "clear_field",
-    # Short morning slice only — seed shop closes early and must not be starved.
+    # Day clear is for crop-path keep-alive only. Empty early-spring days defer
+    # bush/weed lift thrash to the evening after the 5pm shipping window.
     {"timeout": 3500},
     failure_policy="optional",
     required_maps=(0x00,),
@@ -930,6 +987,10 @@ OPTIONAL_MONEY_PHASES = frozenset({
     "EXIT_FARM_WEST",
     "BERRY_RECORDING_WINDOW",
     "GET_BERRIES_AND_SHIP",
+    "OPEN_FENCE_GAP",
+    "SHIP_BERRY",
+    "SHIP_BERRY_1",
+    "SHIP_BERRY_2",
 })
 
 # Phases whose success marks the day ready for return-home/sleep.
@@ -950,6 +1011,9 @@ __all__ = [
     "BUY_SEEDS_PHASE",
     "buy_seeds_phase",
     "GET_BERRIES_AND_SHIP_PHASE",
+    "OPEN_FENCE_GAP_PHASE",
+    "SHIP_BERRY_PHASE",
+    "ship_berry_phases",
     "NAV_CROP_PHASE",
     "HARVEST_ROUTE_PHASE",
     "DYNAMIC_OUTDOOR_PLAN_PHASE",

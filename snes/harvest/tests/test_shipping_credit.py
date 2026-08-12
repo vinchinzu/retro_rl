@@ -17,7 +17,10 @@ from harvest.core.shipping_credit import (
 )
 from harvest.planner.tasks.inventory import FarmShippingWaitTask
 from harvest.scripts.run_to_day2 import _summarize_journal
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_TILEMAP
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_TILEMAP,
+)
 
 
 class ShippingCreditTests(unittest.TestCase):

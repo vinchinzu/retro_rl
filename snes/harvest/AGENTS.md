@@ -8,6 +8,10 @@ Package `harvest` (disk: `snes/harvest/`; nested import root). Repo-wide rules:
 ```bash
 ./run_bot.sh play --autoplay --state latest
 
+# Live power-on with bot (window + [ ] speed): title → D1 handoff → multi-day
+uv run python -m harvest.runtime.harvest_bot play --autoplay --power-on --end-of-spring
+# --no-d1-handoff skips town talks/shed/sleep after power-on
+
 # Boot / power-on (clean diary → Spring D1 07:00 town)
 uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
 HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on \
@@ -75,5 +79,34 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 
 ## Pointers
 
-[docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
+[docs/STATUS.md](docs/STATUS.md) · [docs/MILESTONES.md](docs/MILESTONES.md) ·
+[docs/plan.md](docs/plan.md) · [docs/CODE_QUALITY_REVIEW.md](docs/CODE_QUALITY_REVIEW.md) ·
 [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md) · [docs/town_day1_recon.md](docs/town_day1_recon.md)
+
+## Structure rule (from 2026-08-10 review + structure pass)
+
+Do **not** grow `crop_planter.py` / `home.py` / `cow_task.py` mono FSMs with
+new thrash `if`s. Land residuals as extracted modules:
+
+| Concern | Module(s) |
+|---------|-----------|
+| Pond charges / hop densify / thrash rules | `pond_policy`, `pond_charges`, `pond_hop`, `pond_thrash` (barrel `pond_corridor`) |
+| Plot/water pure geometry | `crop_geometry` |
+| Crop dual-FSM enums / work modes | `crop_fsm` (`CropState`, `PlotPhase`) |
+| Crop hoe/plant arms | `crop_establish` |
+| Crop water-step + residual recovery | `crop_water_ops` |
+| Crop can-refill / pond access thrash | `crop_refill` |
+| Crop multi-phase navigate / stuck | `crop_navigate` |
+| House approach zones | `home_approach` |
+| Return-home failure policy | `home_recover` |
+| Pathfinding | `tasks/nav` (not `farm_clearer`) |
+| Tile scan / tool helpers | `tasks/farm_ops` (not `farm_clearer`) |
+| Inventory/shed/exit | `inventory_shed` / `inventory_exit` / `inventory_time` |
+| Cow stands / care actions | `cow_geometry` / `cow_care` |
+| Cow phase mixins / enum | `cow_fsm`, `cow_talk_ops`, `cow_brush_ops`, `cow_milk_ops`, `cow_feed_ops`, `cow_exit_ops` |
+| Day-plan sequence tests | `tests/test_day_plan_{crop,home,coop,power_on,common}.py` (+ helpers) |
+
+Prefer skill composition (`tasks/skills.py`) over new phase machines.
+Production: `CoopChoresTask` feed_nav + ship_nav far approach use
+`coop_nav_to_feed_bin_skill` / `coop_nav_to_shipping_bin_skill` (host navigate).
+Gate board: `docs/MILESTONES.md`.

@@ -41,14 +41,15 @@ from harvest.planner.day_plan import (
     ADDR_CHICKEN_COUNT,
     CHICKEN_PHASES,
 )
-from harvest.tasks.farm_clearer import (
+from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_MAP,
     ADDR_TILEMAP,
     ADDR_X,
     ADDR_Y,
-    MAP_WIDTH,
 )
+from harvest.tasks.nav import MAP_WIDTH
+
 from harvest.tasks.harvest_task import ADDR_SHIPPING_MONEY
 from harvest.core.animal_status import ram_needs_chicken_chores
 from harvest.core.npc_catalog import GOBJ_INITIALIZED, GOBJ_STRUCT_BASE, GOBJ_STRUCT_STRIDE
@@ -763,6 +764,9 @@ class CoopChoresTaskTests(unittest.TestCase):
         self.assertIsNotNone(result.action)
         self.assertTrue(task._navigator.path)
         self.assertEqual(task._navigator.path[-1], SHIP_BIN_STAND)
+        # Far approach uses coop_nav_to_shipping_bin_skill
+        self.assertIsNotNone(task._active_skill)
+        self.assertEqual(task._active_skill.name, "coop_nav_ship_bin")
 
     def test_ship_nav_from_lower_right_corner_avoids_bin_corner_dead_edge(self):
         ram = _make_coop_ram(
@@ -923,6 +927,13 @@ class CoopChoresTaskTests(unittest.TestCase):
         self.assertEqual(int(result.action.action[4]), 1)
         self.assertEqual(int(result.action.action[6]), 0)
         self.assertEqual(task._left_top_route_points[:2], ((8, 6), (4, 5)))
+        # Production path: feed_nav steps coop_nav_to_feed_bin_skill
+        self.assertIsNotNone(task._active_skill)
+        self.assertEqual(task._active_skill.name, "coop_nav_feed_bin")
+        snap = task.progress_snapshot()
+        self.assertEqual(snap.phase_text, "feed_nav")
+        self.assertIsNotNone(snap.child)
+        self.assertEqual(snap.child.task_name, "coop_nav_feed_bin")
 
     def test_feed_nav_recovers_from_lower_left_coop_corner(self):
         ram = _make_coop_ram(adults=2, hay=50, egg_available=True, player_tile=(2, 12))
@@ -936,6 +947,8 @@ class CoopChoresTaskTests(unittest.TestCase):
         self.assertEqual(int(result.action.action[7]), 1)
         self.assertEqual(int(result.action.action[4]), 0)
         self.assertEqual(task._left_top_route_points[:2], ((8, 12), (8, 6)))
+        self.assertIsNotNone(task._active_skill)
+        self.assertEqual(task._active_skill.name, "coop_nav_feed_bin")
 
     def test_coop_navigation_strictly_centers_before_vertical_step(self):
         ram = _make_coop_ram(adults=0, egg_available=False, player_tile=(2, 12))

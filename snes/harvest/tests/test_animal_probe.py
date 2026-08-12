@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 
 from harvest.core.animal_probe import BARN_TILEMAP, animal_blocker_tiles_from_slots, cow_slot_snapshots, cow_tiles_from_slots
-from harvest.tasks.farm_clearer import ADDR_TILEMAP
+from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.core.ram_catalog import COW_SLOT_BASE, COW_SLOT_SIZE
 
 

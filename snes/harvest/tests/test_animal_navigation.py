@@ -11,7 +11,7 @@ from harvest.tasks.animal_navigation import (
     fallback_action,
     find_path_around_blockers,
 )
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 
 
 class _WalkablePathfinder:

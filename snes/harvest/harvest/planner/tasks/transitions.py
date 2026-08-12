@@ -9,16 +9,19 @@ from typing import Deque, List, Optional, Tuple
 import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
-from harvest.tasks.farm_clearer import (
-    TileScanner,
+from harvest.tasks.nav import (
     Pathfinder,
     Navigator,
     make_action,
     get_pos_from_ram,
     tile_dist,
+)
+from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     ADDR_INPUT_LOCK,
 )
+from harvest.tasks.farm_ops import TileScanner
+
 from harvest.tasks.primitives import dismiss_dialogue_result
 from harvest.core.animal_status import read_held_item
 from harvest.core.ram_catalog import field_spec, live_wram_base, read_ram_u8

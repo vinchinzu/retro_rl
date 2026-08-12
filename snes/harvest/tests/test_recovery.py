@@ -8,7 +8,7 @@ import numpy as np
 from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
 from harvest.core.recovery import RecoveryTask
 from harvest.planner.day_plan import ActionResult, TaskResult, TaskStatus
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 
 
 def _live_base(ram: np.ndarray) -> int:

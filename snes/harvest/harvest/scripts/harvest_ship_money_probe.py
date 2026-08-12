@@ -52,7 +52,10 @@ from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.tasks.home import GoToSleepTask, ReturnHomeTask
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.runtime.retro_setup import make_harvest_env
-from harvest.tasks.farm_clearer import get_pos_from_ram, make_action
+from harvest.tasks.nav import (
+    get_pos_from_ram,
+    make_action,
+)
 from harvest.tasks.harvest_task import HarvestTask, read_shipping_money
 
 # Day09 harvest fixture: dense mature potatoes near the shipping bin (Clean

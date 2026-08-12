@@ -21,25 +21,30 @@ import numpy as np
 
 from harvest.runtime.retro_setup import make_harvest_env
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
-from harvest.tasks.farm_clearer import (
-    TileScanner,
+from harvest.core.tile_catalog import (
+    Tool,
+    ADDR_TOOL,
+    ADDR_INPUT_LOCK,
+)
+from harvest.tasks.nav import (
     Pathfinder,
     Navigator,
-    ToolManager,
-    Tool,
     Point,
     make_action,
-    use_tool,
-    cycle_tool,
     get_tile_at,
     manhattan,
     tile_dist,
     TILE_SIZE,
     MAP_WIDTH,
-    ADDR_TOOL,
-    ADDR_INPUT_LOCK,
     WALKABLE_TILES,
 )
+from harvest.tasks.farm_clearer import (
+    TileScanner,
+    ToolManager,
+    use_tool,
+    cycle_tool,
+)
+
 
 
 # =============================================================================

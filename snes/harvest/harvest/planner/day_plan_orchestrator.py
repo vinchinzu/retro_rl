@@ -15,7 +15,11 @@ from harvest.core.scene import (
     scene_indicates_ending,
 )
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, Point, Tool, make_action
+from harvest.tasks.nav import Point, make_action
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    Tool,
+)
 from harvest.tasks.primitives import dismiss_dialogue_result
 from harvest.planner.day_phase_types import PhaseKind, PhaseSpec, SKIP_MAP_LOCK_KINDS
 from harvest.planner.day_plan_phases import (

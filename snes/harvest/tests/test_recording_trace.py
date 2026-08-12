@@ -4,7 +4,13 @@ import unittest
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_TILEMAP, ADDR_X, ADDR_Y
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_MAP,
+    ADDR_TILEMAP,
+    ADDR_X,
+    ADDR_Y,
+)
 from harvest.core.npc_catalog import GOBJ_INITIALIZED, GOBJ_STRUCT_BASE, GOBJ_STRUCT_STRIDE
 from harvest.core.ram_catalog import CHICKEN_SLOT_BASE, CHICKEN_SLOT_SIZE
 from harvest.runtime.recording_trace import recording_trace_entry, summarize_recording

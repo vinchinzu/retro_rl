@@ -13,7 +13,11 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import MAP_WIDTH, Pathfinder, make_action
+from harvest.tasks.nav import (
+    MAP_WIDTH,
+    Pathfinder,
+    make_action,
+)
 
 
 Tile = Tuple[int, int]

@@ -224,24 +224,59 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   (`scripts/probe/shine_practice.py` human/drill/demo; store trap documented)
 - [x] West Ocean edge-turn-hop pure → mid-right door `0xC98E` (Bowling)
   — [tasks/SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md) / `west_ocean_spark.py pure`
-  (**not** green WS `0xCA08`; free-place spit bootstrap)
-- [ ] Natural climb onto West Ocean dry spit (replace place bootstrap)
-- [ ] West Ocean → green Super WS `0xCA08` by play (underwater / Super select)
+  (practice only; free-place spit bootstrap)
+- [x] West Ocean over-ocean spark → green Super WS `0xCA08` pure
+  — `west_ocean_spark.py pure-ws` / `play_west_ocean_over_ocean_spark`
+  (natural Moat handoff ~(49,1163); stutter dual-green; pin
+  `scratch/post_west_ocean_ws_spark.state`; **not** continuous STATUS)
+- [x] Product WS pin + human record setup (`--from ws-entrance` /
+  `practice_takes --segment ws-entrance`) for ship free-record
+- [x] Human Gravity path + tail pin Caterpillar `0xA322` items `0x3125`
+  (`scratch/post_gravity_caterpillar.state`; `--from post-gravity`)
+- [ ] Natural climb onto West Ocean dry spit (only if reusing edge-bowling path)
 - [ ] Moat → West Ocean → Wrecked Ship by play (compose + natural-entry)
-- [ ] Natural Phantoon entry → fight → Gravity
+- [ ] Natural Phantoon entry → fight → Gravity (continuous compose)
+- [x] Grapple side-trek + Maridia free-record from post-gravity pin
+  (`tasks/maridia_grapple_human.json` 44039f → Main Street trace end;
+  Grapple ~f24720 items `0x7125`; hops extract offline;
+  Main Street **binary end pin LOST** — re-lock with anchors from
+  `--from post-grapple`; see `docs/tasks/SM-MARIDIA-GRAPPLE-HUMAN.md`)
+- [x] Anti-desync human recording: live room/item anchors + F6 + end fingerprint
+  (`human_tape.py` / `guided_human` default ON / `extract_human_tape.py`)
+- [x] Re-lock Main Street pin from post-grapple with anchors + F6
+  (`tasks/maridia_main_street_human` **14170f**, end `0xCFC9` ~(391,1979)
+  items `0x7125`, pin `scratch/post_grapple_main_street.state`, end_fp OK;
+  `--from main-street`)
+- [x] Fix room_enter anchor swallow during door_transition (`human_tape.py`)
 - [ ] Continuous tips only after natural doorway entry
 
 ### K7 — Maridia
 
-- [ ] Tube break → Botwoon → Draygon → Space Jump (natural entry each)
+- [x] Human Main Street → Botwoon → Draygon → Space Jump free-record
+  (`tasks/maridia_botwoon_path_human` **58670f**, SJ @ f52049 items `0x7325`,
+  pins `post_space_jump` / `post_draygon_precious`; shape only — sloppy grapple;
+  `docs/tasks/SM-MARIDIA-BOTWOON-HUMAN.md`)
+- [ ] Tube / Everest / Botwoon / Draygon pure + continuous (natural entry each)
+  (human start: `--from main-street`; post-SJ: `--from post-space-jump`)
 
 ### K8 — Lower Norfair / Ridley
 
-- [ ] LN entry → Ridley natural entry + fight
+- [x] Human post-SJ → Spring + Plasma → LN Main Hall free-record
+  (`tasks/post_sj_exit_human` **80368f**, end `0xB236` ~(1152,648) items
+  `0x7327` beams `0x100F`; pin `post_ln_main_hall` / `--from main-hall`;
+  `docs/tasks/SM-POST-SJ-EXIT-HUMAN.md`)
+- [x] Human Main Hall → Screw → Ridley → Landing Site free-record
+  (`tasks/post-main-hall` **121220f**, Screw f10857 items `0x732F`, Ridley
+  Norfair bit 6→7, end `0x91F8` ~(1152,1088); pins `post_bosses_landing_site`
+  / `post_screw_attack` / `post_ridley_tank`; `--from post-bosses`;
+  `docs/tasks/SM-POST-MAIN-HALL-HUMAN.md`)
+- [ ] LN pure geometry + Ridley combat natural-entry (shape from human tape)
 
 ### K9 — Tourian / MB / Escape / Credits
 
-- [ ] G4 statues → Tourian → Mother Brain (zebetites, phases)
+- [ ] Human G4 statues → Tourian → Mother Brain free-record
+  (start: `--from post-bosses`)
+- [ ] G4 statues → Tourian → Mother Brain pure + continuous (zebetites, phases)
 - [ ] Escape timer + geometry + ship / ending-credits evidence (M8)
 
 Boss order and phase rules: [BOSS_PIPELINE.md](BOSS_PIPELINE.md). Template:

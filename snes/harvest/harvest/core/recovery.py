@@ -8,7 +8,7 @@ from typing import Callable, Optional, Sequence
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.scene import Scene, SceneLocation, SceneMode, classify_scene_from_ram
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 from harvest.tasks.primitives import dismiss_dialogue_result
 
 

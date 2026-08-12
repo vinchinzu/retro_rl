@@ -54,7 +54,7 @@ Manifest count: **38**.
 | `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Super → farming → Big Pink main continuous; pure PB sill approach + maze bridges; then path board hops |
 | `nes/zelda_i` / The Legend of Zelda | graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | walk 0x4A → Level 2 door 0x3C (overworld health) |
 | `nes/zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
-| `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | same-day water + harvest/ship income (money still ~$100 floor); planning stack skill composition in progress |
+| `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | Gate B continuous (rr-5in): power-on → Summer D1 + income; tip return_home late-spring timeout (rr-ws8h) + ship-verify residual; crop_planter mono ~4.9k arch tax (rr-ds3)  |
 | `snes/alttp_rando` / A Link to the Past Randomizer | top_down_navigation, metroidvania_navigation | P7 | scaffolded | M1 | bronze | clean | no | M1 FirstPlay (Link's House) on JP 1.0; ./play records; ALTTPR patch + multi-seed next |
 | `snes/sm_rando` / Super Metroid Randomizer | metroidvania_navigation | P7 | playable_boot | M1 | bronze | clean | no | M1 real-ROM SolverSession vertical slice, held-out Landing BC candidate, and multi-seed early tip S/T dry-run (fixture seeds, vanilla substrate) done; real shuffled seed ROM / generator still open for live multi-seed claims |
 

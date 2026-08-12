@@ -9,17 +9,20 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
-from harvest.tasks.farm_clearer import (
+from harvest.tasks.nav import (
     Point,
-    TileScanner,
     Pathfinder,
     Navigator,
     make_action,
     get_pos_from_ram,
-    ADDR_TILEMAP,
-    ADDR_INPUT_LOCK,
     MAP_WIDTH,
 )
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    ADDR_INPUT_LOCK,
+)
+from harvest.tasks.farm_ops import TileScanner
+
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.maps.map_config import ROUTES, get_walkable_tiles
 from harvest.core.animal_probe import chicken_slot_snapshots

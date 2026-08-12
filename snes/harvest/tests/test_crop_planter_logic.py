@@ -35,7 +35,15 @@ from harvest.tasks.crop_planter import (
     watering_can_in_carry_pair,
     _merge_plot_centers,
 )
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_TILEMAP, ADDR_TOOL, ADDR_X, ADDR_Y, MAP_WIDTH
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_MAP,
+    ADDR_TILEMAP,
+    ADDR_TOOL,
+    ADDR_X,
+    ADDR_Y,
+)
+from harvest.tasks.nav import MAP_WIDTH
 from retro_harness import TaskStatus
 
 

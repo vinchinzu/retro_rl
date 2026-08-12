@@ -130,12 +130,45 @@ uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk --segment-id k2_s
 
 # Shinespark practice (Landing Site) + K6 Moat/West pure — see docs/tasks/SHINE_PRACTICE.md
 # Store trap: releasing RIGHT (B alone/idle) dumps echoes 4→0 in 1f; DOWN while still holding RIGHT.
+# Short charge: magic-frame dash (NTSC 25/50/70/85) or stutter — charge_mode full|short|stutter
 uv run python snes/super_metroid/scripts/probe/shine_practice.py drill
 uv run python snes/super_metroid/scripts/probe/shine_practice.py human --series ls_edge_v1
 uv run python snes/super_metroid/scripts/probe/moat_spark_watch.py pure
+# Product WO → green Super WS 0xCA08 (natural Moat handoff; stutter charge)
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch-ws
+# Edge bowling practice (0xC98E; not product WS)
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py short-charge --mode stutter
+# Human record: optional WO practice, or ship free-record from product WS pin
 uv run python snes/super_metroid/scripts/record/guided_human.py --from west-ocean --name west_ocean_ws_human
+uv run python snes/super_metroid/scripts/record/guided_human.py --from ws-entrance --name ws_ship_human
+uv run python snes/super_metroid/scripts/record/practice_takes.py --segment ws-entrance --series ws_ship_v1
+# Bot-beat Phantoon from human entry end → post_phantoon_defeated pin
+uv run python snes/super_metroid/scripts/probe/phantoon_combat.py strategy --state ws_ship_human_end
+uv run python snes/super_metroid/scripts/record/guided_human.py --from post-phantoon --name gravity_path_human --no-guide
+# Post-Gravity Caterpillar tail (0xA322 items 0x3125) → Grapple + Maridia free-record
+uv run python snes/super_metroid/scripts/record/guided_human.py --from post-gravity --name maridia_grapple_human --no-guide
+# Post-Grapple (items 0x7125) → Maridia Main Street; F6 mid-run pins, anchors ON by default
+uv run python snes/super_metroid/scripts/record/guided_human.py --from post-grapple --name maridia_main_street_human --no-guide
+# Main Street locked pin → deeper Maridia / Botwoon free-record
+uv run python snes/super_metroid/scripts/record/guided_human.py --from main-street --name maridia_botwoon_path_human --no-guide
+# Post-Space Jump (0xD9AA items 0x7325) or post-Draygon Precious — next segment
+uv run python snes/super_metroid/scripts/record/guided_human.py --from post-space-jump --name post_sj_exit_human --no-guide
+uv run python snes/super_metroid/scripts/record/guided_human.py --from post-draygon --name maridia_exit_human --no-guide
+# LN Main Hall (items 0x7327 beams 0x100F) → Ridley / Screw free-record
+uv run python snes/super_metroid/scripts/record/guided_human.py --from main-hall --name post-main-hall --no-guide
+# Post-boss Landing Site (items 0x732F, all 4 bosses) → G4 / Tourian free-record
+uv run python snes/super_metroid/scripts/record/guided_human.py --from post-bosses --name g4_tourian_human --no-guide
+# Offline hop inventory / end-pin verify (never full-tape open-loop replay)
+uv run python snes/super_metroid/scripts/tools/extract_human_tape.py \
+  snes/super_metroid/tasks/post-main-hall.json --summary
 ```
+
+**Human long takes:** live room/item anchors + F6 pins under `tasks/<name>_anchors/`.
+Do not open-loop replay multi-minute tapes to recover states (desync). See
+[`docs/tasks/SM-MARIDIA-GRAPPLE-HUMAN.md`](docs/tasks/SM-MARIDIA-GRAPPLE-HUMAN.md).
+
 
 
 ## Dev traps
@@ -157,6 +190,10 @@ uv run python snes/super_metroid/scripts/record/guided_human.py --from west-ocea
   (VOD swaps A/B). After echoes=4, press DOWN **while still holding RIGHT**
   (`DOWN+RIGHT+B` ok). Idle or **B alone** dumps echoes **4→0 in one frame** —
   then crouch never arms `$0A68`. Drill: `shine_practice.py drill`.
+  **Short charge:** boost counter ticks only on magic frames (NTSC 25/50/70/85)
+  while dash+forward held — spark still full speed after store. Stutter prefix
+  ≈141–156 px on LS/WO spit. Skill: `charge_until_boost(..., mode="stutter")`.
+  WO pure GREEN with `--charge-mode short|stutter`; Moat hop still needs `full`.
   Full notes: `docs/tasks/SHINE_PRACTICE.md`.
 - **Ceres elev escape:** Falling→elev mid-transition can still read **y≈139**;
   ordinary **gs=8 remaps to bottom y≈651**. Ledge pin **y=571** (pose 2 or

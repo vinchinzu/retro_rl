@@ -6,7 +6,8 @@ from typing import Iterable
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, TILE_SIZE
+from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.tasks.nav import TILE_SIZE
 from harvest.core.ram_catalog import CHICKEN_SLOT_COUNT, COW_SLOT_COUNT, read_animal_slot_field
 
 

@@ -51,20 +51,26 @@ from harvest.core.animal_status import (
 )
 from harvest.maps.map_config import find_landmark
 from harvest.core.npc_catalog import game_objects
-from harvest.tasks.farm_clearer import (
-    ADDR_TILEMAP,
+from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.tasks.nav import (
     MAP_WIDTH,
     Navigator,
     Pathfinder,
-    TileScanner,
     make_action,
     get_pos_from_ram,
     get_tile_at,
     TILE_SIZE,
 )
+from harvest.tasks.farm_clearer import TileScanner
+
+from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.tasks.animal_navigation import align_to_pixel, fallback_action, find_path_around_blockers
 from harvest.tasks.primitives import press_a_sequence
+from harvest.tasks.skills import (
+    coop_nav_to_feed_bin_skill,
+    coop_nav_to_shipping_bin_skill,
+)
 
 # ── Coop interior layout (tilemap 0x28) ─────────────────────────
 # Positions discovered via coop_chores / coop_sell_egg recording traces.
@@ -226,6 +232,8 @@ class CoopChoresTask(Task):
     _action_queue: Deque[np.ndarray] = field(default_factory=deque, init=False)
     _step_count: int = field(default=0, init=False)
     _verify_count: int = field(default=0, init=False)
+    # Active skill for feed_nav / ship_nav far approach (skills.py factories).
+    _active_skill: Optional[Task] = field(default=None, init=False)
 
     # Counters tracked during the task
     _adult_count: int = field(default=0, init=False)
@@ -263,6 +271,7 @@ class CoopChoresTask(Task):
         self._step_count = 0
         self._verify_count = 0
         self._action_queue.clear()
+        self._active_skill = None
         self._navigator.path = []
         self._navigator.stasis = 0
         self._pathfinder.temp_blocked.clear()
@@ -318,6 +327,7 @@ class CoopChoresTask(Task):
 
     def resume_after_hotswap(self, world: WorldState) -> None:
         self._action_queue.clear()
+        self._active_skill = None
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -332,6 +342,46 @@ class CoopChoresTask(Task):
             f"ship={'Y' if self.egg_shipped else 'N'} "
             f"incub={'Y' if self.egg_incubated else 'N'}"
         )
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        child = task_progress_snapshot(self._active_skill)
+        return ProgressSnapshot(
+            task_name=self.name,
+            phase_text=self._phase,
+            step_count=self._step_count,
+            details=(
+                ("fed", self.fed_count),
+                ("adults", self._adult_count),
+                ("egg", self.egg_collected),
+                ("ship", self.egg_shipped),
+                ("incub", self.egg_incubated),
+            ),
+            child=child,
+        )
+
+    def _step_nav_skill(
+        self,
+        world: WorldState,
+        *,
+        skill_name: str,
+        make_skill,
+    ) -> Optional[TaskResult]:
+        """Step a host-backed nav skill.
+
+        Returns RUNNING/FAILURE results to bubble up, or None when arrived
+        (skill SUCCESS) so the caller can advance the phase.
+        """
+        if self._active_skill is None or self._active_skill.name != skill_name:
+            skill = make_skill()
+            skill.reset(world)
+            self._active_skill = skill
+        result = self._active_skill.step(world)
+        if result.status == TaskStatus.SUCCESS:
+            self._active_skill = None
+            return None
+        if result.status == TaskStatus.FAILURE:
+            self._active_skill = None
+        return result
 
     # ── Action helpers ───────────────────────────────────────────
 
@@ -931,13 +981,24 @@ class CoopChoresTask(Task):
 
         if self._phase == "feed_nav":
             if self._fed_count_now(world.ram) >= self._adult_count:
+                self._active_skill = None
                 return self._advance_after_feed(world.ram)
             if read_item_on_hand(world.ram) == ITEM_CHICKEN_FEED:
+                self._active_skill = None
                 self._phase = "feed_place_nav"
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-            action = self._navigate_to_left_top_goal(world.ram, FEED_BIN_STAND)
-            if action is not None:
-                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+            # Production path: skills.py factory + host left-top aisle routing.
+            skill_result = self._step_nav_skill(
+                world,
+                skill_name="coop_nav_feed_bin",
+                make_skill=lambda: coop_nav_to_feed_bin_skill(
+                    navigate=lambda w: self._navigate_to_left_top_goal(
+                        w.ram, FEED_BIN_STAND
+                    ),
+                ),
+            )
+            if skill_result is not None:
+                return skill_result
             self._hay_before = read_hay_count(world.ram)
             self._phase = "feed_act"
 
@@ -1188,14 +1249,24 @@ class CoopChoresTask(Task):
 
         if self._phase == "ship_nav":
             if not self._near_ship_lane():
-                action = self._navigate_to_ship_stand(world.ram)
-                if action is not None:
-                    return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+                # Far approach via skills.py factory; pixel lane stays host-owned.
+                skill_result = self._step_nav_skill(
+                    world,
+                    skill_name="coop_nav_ship_bin",
+                    make_skill=lambda: coop_nav_to_shipping_bin_skill(
+                        navigate=lambda w: self._navigate_to_ship_stand(w.ram),
+                    ),
+                )
+                if skill_result is not None:
+                    return skill_result
+            elif self._active_skill is not None and self._active_skill.name == "coop_nav_ship_bin":
+                self._active_skill = None
             action = self._ship_pixel_action()
             if action is not None:
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
             current = self._navigator.current_tile
             if current == SHIP_BIN_INTERACT_STAND:
+                self._active_skill = None
                 self._ship_money_before = read_shipping_money(world.ram)
                 self._queue_press_a(
                     SHIP_BIN_FACE,
@@ -1212,6 +1283,7 @@ class CoopChoresTask(Task):
             action = self._navigate_to_tile(world.ram, SHIP_BIN_STAND)
             if action is not None:
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+            self._active_skill = None
             self._ship_money_before = read_shipping_money(world.ram)
             self._queue_press_a(
                 SHIP_BIN_FACE,

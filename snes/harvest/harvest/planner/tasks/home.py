@@ -9,27 +9,26 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
-from harvest.tasks.farm_clearer import (
+from harvest.tasks.nav import (
     Point,
     make_action,
     get_pos_from_ram,
+)
+from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     ADDR_INPUT_LOCK,
 )
+
 from harvest.maps.map_config import (
-    FARM_POND_ACCESS_FENCE_ROW,
-    FARM_POND_ACCESS_FENCE_X_RANGE,
     ROUTES,
     Waypoint,
 )
-from harvest.core.ram_catalog import field_spec, read_ram_u16
+from harvest.core.ram_catalog import field_spec, read_ram_u16, read_ram_value
 from harvest.core.scene import (
     SceneMode,
     classify_scene_from_ram,
     scene_indicates_ending,
 )
-from harvest.core.tile_catalog import FENCE
-from harvest.tasks.farm_clearer import get_tile_at
 from harvest.tasks.primitives import dismiss_dialogue_result, drain_action_queue
 from harvest.planner.day_plan_status import (
     TASKS_DIR,
@@ -39,6 +38,20 @@ from harvest.planner.day_plan_status import (
     read_world_date,
     is_farm_tilemap,
     is_house_tilemap,
+)
+from harvest.planner.tasks.home_approach import (
+    EAST_AROUND_FENCE_X,
+    build_house_approach_waypoints,
+    deep_south_of_house,
+    far_east_of_pond_lane,
+    south_of_fence_wall,
+)
+from harvest.planner.tasks.home_recover import (
+    RecoverDecision,
+    RecoverKind,
+    decide_child_failure,
+    enter_fail_south_recovery_actions,
+    exit_to_farm_recover_actions,
 )
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask, NavTask
@@ -53,18 +66,6 @@ from harvest.planner.tasks.transitions import (
     toss_held_actions,
 )
 
-# y=31 fence wall (x=11–29) blocks northbound return from south field after
-# water/CLEAR. East end (tile x≥30 → px≥480) clears the wall; west end is
-# x≤10 → px≤160. Never route mid-corridor x≈248 (tile 15) — that is solid fence.
-# East free lane must be *east of the pond* (tile x≥36 → px≥576). Using the
-# pond column (x=512 / tile 32) makes multi_nav lateral-align through water
-# (rr-5in D12 return_home stuck ~(854,527)→(774,521)).
-_FENCE_ROW_Y = FARM_POND_ACCESS_FENCE_ROW
-_FENCE_PX_Y = _FENCE_ROW_Y * 16  # 496
-_EAST_AROUND_FENCE_X = 576  # tile x=36, east of pond + past fence wall
-_EAST_LANE_X_MAX = 640  # cap northbound lane; farther east is shipping scrub
-_WEST_AROUND_FENCE_X = 96   # tile x=6, west of wall
-
 # ── DayPlanTask ───────────────────────────────────────────────────
 
 # Return-home routes live in map_config and are selected by upgrade state; these
@@ -74,7 +75,10 @@ HOUSE_DOOR_FRONT_PX = Point(136, 424)
 HOUSE_BED_STAND_PX = Point(70, 86)
 HOUSE_L2_BED_STAND_PX = Point(294, 102)
 HOUSE_SLEEP_TRANSITION_TILEMAP = 0x0F
-HOUSE_BED_STAND_TOLERANCE = 1
+# Tight column for bed A (go_to_sleep recording stand x=70). Tolerance 4
+# accepted x=74 and burned 12 evening attempts with no day advance (Gate B).
+# Allow ±2 for face-up micro-slip without accepting the loose column.
+HOUSE_BED_STAND_TOLERANCE = 2
 HOUSE_L2_BED_STAND_TOLERANCE = 2
 HOUSE_BED_ROUTE_LOWER: List[Tuple[Point, str, int, bool]] = [
     (Point(98, 200), "y", 4, True),
@@ -191,7 +195,11 @@ class ReturnHomeTask(Task):
     _action_queue: deque = field(default_factory=deque, init=False)
     _drop_attempts: int = field(default=0, init=False)
     _drop_spot_navs: int = field(default=0, init=False)
+    _drop_same_held: int = field(default=0, init=False)
+    _drop_last_held: int = field(default=-1, init=False)
+    _drop_deep_relocated: bool = field(default=False, init=False)
     _enter_retries: int = field(default=0, init=False)
+    _exit_to_farm_retries: int = field(default=0, init=False)
     _total_steps: int = field(default=0, init=False)
     # Soft-success off-stand re-navs can thrash forever without terminal
     # status if the door stand soft-radius keeps "succeeding" a few tiles
@@ -199,11 +207,18 @@ class ReturnHomeTask(Task):
     _offstand_corrections: int = field(default=0, init=False)
     _best_door_dist: int = field(default=99999, init=False)
     # Hard budget for in-place toss cycles after relocating to open ground.
-    drop_attempt_limit: int = 10
+    # Keep well under outer timeout: each multi-face cycle is ~250f and prior
+    # nav/escape already burned frames (power-on D19 drop_carried@0x0F).
+    drop_attempt_limit: int = 6
+    # Same held id across this many cycles → hard-fail (stuck rock fragment).
+    drop_stuck_held_limit: int = 4
+    # rr-uru1: ExitToFarm dialogue/unknown-map thrash budget before hard fail.
+    exit_to_farm_retry_limit: int = 3
     # SW debris softlock escape + densified re-nav budget (rr-5in D9).
+    # Shared by pre-escape and post-nav recover — not a one-shot flag so a
+    # later drop→south-of-fence approach can still pre-escape (D19 residual).
     _south_escape_attempts: int = field(default=0, init=False)
     south_escape_limit: int = 4
-    _did_pre_escape: bool = field(default=False, init=False)
 
     @staticmethod
     def _house_route_name(ram: np.ndarray) -> str:
@@ -263,226 +278,82 @@ class ReturnHomeTask(Task):
         self._action_queue.clear()
         self._drop_attempts = 0
         self._drop_spot_navs = 0
+        self._drop_same_held = 0
+        self._drop_last_held = -1
+        self._drop_deep_relocated = False
         self._enter_retries = 0
+        self._exit_to_farm_retries = 0
         self._total_steps = 0
         self._offstand_corrections = 0
         self._best_door_dist = 99999
         self._south_escape_attempts = 0
-        self._did_pre_escape = False
 
     def can_start(self, world: WorldState) -> bool:
         return True
 
     @staticmethod
-    def _drop_spot_px(front: Point) -> Point:
-        """Open ground south of the house door — not mid-field debris."""
+    def _drop_spot_px(front: Point, *, deep: bool = False) -> Point:
+        """Open ground south of the house door — not mid-field debris.
+
+        ``deep`` is a second tier further south used when primary drop thrash
+        leaves the same held rock fragment (power-on held=0x0F residual).
+        """
+        if deep:
+            return Point(front.x, min(560, front.y + 112))
         return Point(front.x, min(520, front.y + 56))
 
     def _at_drop_spot(self, pos: Point, front: Point) -> bool:
-        drop = self._drop_spot_px(front)
+        drop = self._drop_spot_px(front, deep=self._drop_deep_relocated)
         return abs(pos.x - drop.x) <= 28 and abs(pos.y - drop.y) <= 28
-
-    @staticmethod
-    def _deep_south_of_house(pos: Point, front: Point) -> bool:
-        """True when CLEAR left us far south of the door (viewport-BFS risk)."""
-        return pos.y > front.y + 120
-
-    @staticmethod
-    def _south_of_fence_wall(pos: Point) -> bool:
-        """South of the y=31 plant-pocket fence wall (px y≥~504)."""
-        return pos.y >= _FENCE_PX_Y + 8
-
-    @staticmethod
-    def _open_fence_gap_tiles(ram: np.ndarray) -> List[int]:
-        """x tiles on fence row that are open gaps (require confirmed wall).
-
-        Only trust gaps when at least one solid fence is visible on the row —
-        empty/stale unit-test RAM would otherwise treat every tile as a gap and
-        route through mid-wall x≈11–15.
-        """
-        x0, x1 = FARM_POND_ACCESS_FENCE_X_RANGE
-        fences: List[int] = []
-        gaps: List[int] = []
-        for x in range(x0, x1 + 1):
-            try:
-                tid = int(get_tile_at(ram, x, _FENCE_ROW_Y))
-            except Exception:
-                continue
-            if tid == FENCE:
-                fences.append(x)
-            elif tid not in {0x72, 0x75, 0x76, 0xFF, 0x00}:
-                # Non-stale, non-empty open tile — candidate gap.
-                gaps.append(x)
-            elif tid == 0x00 and fences:
-                # Untilled soil after lift counts once wall is confirmed.
-                gaps.append(x)
-        if not fences:
-            return []
-        return gaps
 
     @classmethod
     def _house_approach_waypoints(
         cls, ram: np.ndarray, front: Point, pos: Point
     ) -> List[Waypoint]:
-        """Route farm→door, densifying when south of house / fence wall.
-
-        Direct multi_nav to (136,424) from south-of-fence (y≥496) has no path
-        through the solid y=31 wall (x=11–29). Prefer:
-        1) open gap on the fence row if water/CLEAR already cut one, else
-        2) east around the wall (x≥480 / tile 30+), then north, then to door.
-        Never densify mid-wall x≈248 (tile 15) — that is the fence body.
-        """
+        """Densified farm→door waypoints (geometry in home_approach)."""
         route_name = cls._house_route_name(ram)
         base = list(ROUTES.get(route_name) or ROUTES.get("farm_to_house") or [])
-        if not base:
-            base = [Waypoint(tilemap=0x00, target_px=(front.x, front.y), radius=12)]
+        return build_house_approach_waypoints(base, front, pos, ram)
 
-        if not cls._deep_south_of_house(pos, front) and not cls._south_of_fence_wall(pos):
-            return base
+    def _read_tilemap(self, world: WorldState) -> int:
+        return int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
 
-        stages: List[Waypoint] = []
-        south_of_wall = cls._south_of_fence_wall(pos)
-        gaps = cls._open_fence_gap_tiles(ram) if south_of_wall else []
-
-        if south_of_wall and pos.x < 176:
-            # West of the fence wall (tile x<11): run north on the free side.
-            # Prefer current x when already past the west corridor so we do not
-            # pull left into the SW rock pocket (D12 residual ~(122,518)).
-            corridor_x = min(max(pos.x, _WEST_AROUND_FENCE_X), 160)
-            for y in (600, 520, 440):
-                if pos.y > y + 24:
-                    stages.append(
-                        Waypoint(
-                            tilemap=0x00,
-                            target_px=(corridor_x, y),
-                            radius=22,
-                            run_direction="up",
-                        )
-                    )
-        elif south_of_wall and gaps and pos.x < _EAST_AROUND_FENCE_X + 80:
-            # Nearest open gap — approach from south then push north through.
-            # Skip gap routing when already far east of the pond (prefer free
-            # east lane; gap at x≈14 would force a long west crawl through water).
-            gap_x = min(gaps, key=lambda x: abs(x * 16 + 8 - pos.x))
-            gap_px = gap_x * 16 + 8
-            if abs(pos.x - gap_px) > 20:
-                stages.append(
-                    Waypoint(
-                        tilemap=0x00,
-                        target_px=(gap_px, min(pos.y, _FENCE_PX_Y + 48)),
-                        radius=20,
-                        run_direction="right" if pos.x < gap_px else "left",
-                    )
-                )
-            stages.append(
-                Waypoint(
-                    tilemap=0x00,
-                    target_px=(gap_px, _FENCE_PX_Y + 24),
-                    radius=16,
-                    run_direction="up",
-                )
-            )
-            stages.append(
-                Waypoint(
-                    tilemap=0x00,
-                    target_px=(gap_px, _FENCE_PX_Y - 24),
-                    radius=16,
-                    run_direction="up",
-                )
-            )
-            corridor_x = gap_px
-        elif south_of_wall:
-            # Past fence wall on the east free lane (east of pond), then north.
-            # If already east of the lane, north first at a capped east x — do
-            # not lateral-align onto the pond column while still at pond y.
-            if pos.x >= _EAST_AROUND_FENCE_X - 16:
-                corridor_x = min(max(pos.x, _EAST_AROUND_FENCE_X), _EAST_LANE_X_MAX)
-            else:
-                corridor_x = _EAST_AROUND_FENCE_X
-                stages.append(
-                    Waypoint(
-                        tilemap=0x00,
-                        target_px=(corridor_x, min(pos.y, 720)),
-                        radius=24,
-                        run_direction="right",
-                    )
-                )
-            for y in (600, 520, 440):
-                if pos.y > y + 24:
-                    stages.append(
-                        Waypoint(
-                            tilemap=0x00,
-                            target_px=(corridor_x, y),
-                            radius=22,
-                            run_direction="up",
-                        )
-                    )
-            # After clearing fence latitude at east x, slide west above the
-            # wall (y≈440) before the final door approach — avoids pond y.
-            if corridor_x > front.x + 40:
-                stages.append(
-                    Waypoint(
-                        tilemap=0x00,
-                        target_px=(min(corridor_x, front.x + 80), 440),
-                        radius=20,
-                        run_direction="left",
-                    )
-                )
-        else:
-            # North of fence but still deep south of door — mid-field open.
-            # Far-east (post-water/CLEAR): slide west first above the wall.
-            if pos.x > _EAST_AROUND_FENCE_X + 40:
-                corridor_x = min(pos.x, _EAST_LANE_X_MAX)
-                stages.append(
-                    Waypoint(
-                        tilemap=0x00,
-                        target_px=(_EAST_AROUND_FENCE_X, min(pos.y, 460)),
-                        radius=22,
-                        run_direction="left",
-                    )
-                )
-                corridor_x = _EAST_AROUND_FENCE_X
-            else:
-                corridor_x = max(pos.x, front.x)
-                corridor_x = min(360, max(160, corridor_x))
-            for y in (520, 460):
-                if pos.y > y + 32:
-                    stages.append(
-                        Waypoint(
-                            tilemap=0x00,
-                            target_px=(corridor_x, y),
-                            radius=18,
-                            run_direction="up",
-                        )
-                    )
-
-        # From north-of-fence latitude, slide to door x then stand.
-        approach_y = max(front.y + 40, _FENCE_PX_Y - 40)
-        if abs(corridor_x - front.x) > 20 or stages:
-            stages.append(
-                Waypoint(
-                    tilemap=0x00,
-                    target_px=(front.x, approach_y),
-                    radius=16,
-                )
-            )
-        stages.append(
-            Waypoint(tilemap=0x00, target_px=(front.x, front.y), radius=12)
+    def _house_arrival_success(
+        self, tilemap: int, *, via: str
+    ) -> Optional[TaskResult]:
+        """SUCCESS when already on a house tilemap (any phase / timeout)."""
+        if not is_house_tilemap(tilemap):
+            return None
+        return TaskResult(
+            status=TaskStatus.SUCCESS,
+            reason=(
+                f"already in house tilemap=0x{tilemap:02X} "
+                f"phase={self._phase} via={via}"
+            ),
         )
-        return stages
 
     def _queue_drop_carried(self) -> None:
         """Toss held debris so building doors accept entry.
 
-        After CLEAR_FIELD leaves a stone/weed (held 0x0D/0x09), in-place field
-        tosses often fail or re-pickup. Prefer multi-face stationary at the
-        open drop spot; step-away only on the first cycle.
+        After CLEAR_FIELD leaves a stone/weed (held 0x0D/0x09/0x0F rock
+        fragment), in-place field tosses often fail or re-pickup. Prefer
+        multi-face stationary at the open drop spot; later cycles use shorter
+        step-away tosses so the outer timeout can still hard-fail cleanly.
         """
-        if self._drop_attempts <= 1:
+        n = self._drop_attempts
+        if n <= 1:
             self._action_queue.extend(toss_held_actions(face="down", step_away=True))
             self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
-        else:
+        elif n <= 3:
+            # Full multi-face without the expensive first-cycle step-away.
             self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
+        else:
+            # Stuck debris (power-on held=0x0F): short step-away per face,
+            # skip pure-up which re-seals toward the house wall.
+            for face in ("down", "left", "right"):
+                self._action_queue.extend(
+                    toss_held_actions(face=face, step_away=True)
+                )
 
     def _queue_south_escape(
         self, *, long_east: bool = False, far_east: bool = False
@@ -555,10 +426,10 @@ class ReturnHomeTask(Task):
         From deep south, use densified multi_nav (same as house approach) so
         we are not stuck with single-point NavTask in the SW pocket.
         """
-        drop = self._drop_spot_px(front)
+        drop = self._drop_spot_px(front, deep=self._drop_deep_relocated)
         pos = get_pos_from_ram(world.ram)
         child_timeout = min(4000, max(800, self.timeout - self._total_steps - 400))
-        if self._deep_south_of_house(pos, front):
+        if deep_south_of_house(pos, front):
             # Approach via corridor then finish at drop (not door stand).
             wps = self._house_approach_waypoints(world.ram, front, pos)
             # Replace final door stand with drop spot.
@@ -593,59 +464,123 @@ class ReturnHomeTask(Task):
         )
         return self._task.step(world)
 
+    def _queue_short_east_north(self) -> None:
+        """Compact east→north charge when outer timeout is almost gone.
+
+        Shorter than full south_escape (~370f vs ~500f+) so a late D19
+        residual after drop can still clear the y=31 wall.
+        """
+        for i in range(50):
+            kwargs = {"right": True, "b": True}
+            if i % 16 == 0:
+                kwargs = {"right": True, "a": True}
+            self._action_queue.append(make_action(**kwargs))
+        for i in range(70):
+            kwargs = {"up": True, "b": True}
+            if i % 16 == 0:
+                kwargs = {"up": True, "a": True}
+            self._action_queue.append(make_action(**kwargs))
+        self._action_queue.extend(make_action() for _ in range(6))
+
     def _start_house_approach(self, world: WorldState, front: Point) -> TaskResult:
         """Activate multi_nav (densified from south) or simple NavTask."""
         pos = get_pos_from_ram(world.ram)
-        # SW rock pocket after CLEAR: pre-escape east before multi_nav so we
-        # do not burn the whole child timeout stuck at x≈40 y≥650 (rr-5in D8).
+        remaining = self.timeout - self._total_steps if self.timeout > 0 else 99999
+        # Low budget south of fence: last-ditch short charge, else fail clean.
+        # Power-on D19: drop thrash leaves ~(153,518) with ~1.1k frames left —
+        # too little for multi_nav, but enough for a compact east→north.
         if (
-            not self._did_pre_escape
-            and self._south_of_fence_wall(pos)
-            and pos.x < 200
-            and self._south_escape_attempts < self.south_escape_limit
+            south_of_fence_wall(pos)
+            and remaining < 2500
+            and abs(pos.x - front.x) + abs(pos.y - front.y) > 80
         ):
-            self._did_pre_escape = True
+            if (
+                remaining >= 700
+                and pos.x < EAST_AROUND_FENCE_X - 16
+                and self._south_escape_attempts < self.south_escape_limit + 1
+            ):
+                self._south_escape_attempts += 1
+                self._phase = "south_escape"
+                self._queue_short_east_north()
+                print(
+                    f"[RETURN_HOME] Low-budget east→north pos=({pos.x},{pos.y}) "
+                    f"remaining={remaining}f"
+                )
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(self._action_queue.popleft()),
+                    reason="low-budget east-north charge",
+                )
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"return_home budget exhausted south of fence "
+                    f"pos=({pos.x},{pos.y}) remaining={remaining}f"
+                ),
+            )
+        # South of y=31 wall off the free northbound lane: scripted escape
+        # *before* multi_nav when geometry is hostile.
+        #
+        # Always pre-escape SW pocket + far-east pond thrash zones.
+        # Mid-south (x≈150–500) only after drop thrash or a prior escape this
+        # return_home — unconditional mid-south pre-escape burned ~3× frames
+        # per day and hit the end-of-spring planner budget at D12.
+        far_east = far_east_of_pond_lane(pos)
+        sw_pocket = pos.x < 200
+        mid_south = (
+            not far_east
+            and not sw_pocket
+            and pos.x < EAST_AROUND_FENCE_X - 32
+        )
+        mid_south_armed = (
+            mid_south
+            and (
+                self._south_escape_attempts > 0
+                or self._drop_attempts > 0
+                or self._drop_deep_relocated
+            )
+        )
+        need_pre_escape = (
+            south_of_fence_wall(pos)
+            and self._south_escape_attempts < self.south_escape_limit
+            and remaining > 1200
+            and (far_east or sw_pocket or mid_south_armed)
+        )
+        if need_pre_escape:
             self._south_escape_attempts += 1
             self._phase = "south_escape"
-            self._queue_south_escape(long_east=True)
+            if far_east:
+                self._queue_south_escape(far_east=True)
+                label = "far-east pond"
+            elif sw_pocket:
+                self._queue_south_escape(long_east=True)
+                label = "SW pocket"
+            else:
+                # Mid-corridor after drop/fail: east then north.
+                self._queue_south_escape(long_east=False)
+                label = "mid-south fence"
             print(
-                f"[RETURN_HOME] Pre-escape SW pocket pos=({pos.x},{pos.y}) "
-                f"before house approach"
+                f"[RETURN_HOME] Pre-escape {label} pos=({pos.x},{pos.y}) "
+                f"before house approach "
+                f"({self._south_escape_attempts}/{self.south_escape_limit})"
             )
             return TaskResult(
                 status=TaskStatus.RUNNING,
                 action=ActionResult(self._action_queue.popleft()),
-                reason="pre-escape SW pocket",
-            )
-        # Far-east pond latitude after water (rr-5in D12 ~(854,527)): brief
-        # west+north thrash so multi_nav is not born lateral-aligning into water.
-        if (
-            not self._did_pre_escape
-            and self._south_of_fence_wall(pos)
-            and pos.x > _EAST_LANE_X_MAX + 40
-            and self._south_escape_attempts < self.south_escape_limit
-        ):
-            self._did_pre_escape = True
-            self._south_escape_attempts += 1
-            self._phase = "south_escape"
-            self._queue_south_escape(far_east=True)
-            print(
-                f"[RETURN_HOME] Pre-escape far-east pond pos=({pos.x},{pos.y}) "
-                f"before house approach"
-            )
-            return TaskResult(
-                status=TaskStatus.RUNNING,
-                action=ActionResult(self._action_queue.popleft()),
-                reason="pre-escape far-east pond",
+                reason=f"pre-escape {label}",
             )
         waypoints = self._house_approach_waypoints(world.ram, front, pos)
-        # Leave headroom for softlock fail → escape → second approach.
-        route_timeout = min(5000, max(1000, self.timeout - self._total_steps - 2500))
+        # Cap child nav so drop/escape recovery still has budget after a long
+        # first approach (power-on D19 burned ~8k on the opening multi_nav).
+        route_timeout = min(3500, max(800, remaining - 4000))
+        if remaining < 5000:
+            route_timeout = min(route_timeout, max(600, remaining - 1500))
         print(
             f"[RETURN_HOME] House approach from ({pos.x},{pos.y}) → "
             f"({front.x},{front.y}) wps={len(waypoints)} "
-            f"deep_south={self._deep_south_of_house(pos, front)} "
-            f"south_of_fence={self._south_of_fence_wall(pos)}"
+            f"deep_south={deep_south_of_house(pos, front)} "
+            f"south_of_fence={south_of_fence_wall(pos)} "
+            f"route_timeout={route_timeout}"
         )
         self._activate(
             "nav_house_front",
@@ -660,9 +595,10 @@ class ReturnHomeTask(Task):
         return self._task.step(world)
 
     def _start_next_phase(self, world: WorldState) -> TaskResult:
-        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
-        if is_house_tilemap(tilemap):
-            return TaskResult(status=TaskStatus.SUCCESS, reason=f"tilemap=0x{tilemap:02X}")
+        tilemap = self._read_tilemap(world)
+        arrived = self._house_arrival_success(tilemap, via="start_next_phase")
+        if arrived is not None:
+            return arrived
         if not is_farm_tilemap(tilemap):
             self._activate("exit_to_farm", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
             return self._task.step(world)
@@ -673,7 +609,7 @@ class ReturnHomeTask(Task):
         if not hands_are_clear(world.ram):
             # Always relocate to open ground south of the house before thrashing
             # A-drops in a debris field (rr-6g7g: CLEAR leaves held=0x0D).
-            held = read_held_item(world.ram)
+            held = int(read_held_item(world.ram))
             at_drop = self._at_drop_spot(pos, front)
             if not at_drop and self._drop_spot_navs < 3:
                 self._drop_spot_navs += 1
@@ -683,6 +619,59 @@ class ReturnHomeTask(Task):
                     f"(nav {self._drop_spot_navs}/3)"
                 )
                 return self._nav_to_drop_spot(world, front)
+            # Stuck same held id (power-on D19 rock fragment 0x0F): do not burn
+            # the full outer timeout on multi-face thrash.
+            if held == self._drop_last_held:
+                self._drop_same_held += 1
+            else:
+                self._drop_same_held = 1
+                self._drop_last_held = held
+            # After a couple same-held thrash cycles at the primary drop, try a
+            # deeper south stand once (debris re-pickup / soft-block at y≈480).
+            if (
+                self._drop_same_held >= 2
+                and not self._drop_deep_relocated
+                and self._drop_spot_navs < 5
+            ):
+                self._drop_deep_relocated = True
+                self._drop_spot_navs += 1
+                deep = self._drop_spot_px(front, deep=True)
+                print(
+                    f"[RETURN_HOME] Deep drop relocate held=0x{held:02X} "
+                    f"→ ({deep.x},{deep.y}) after same_held="
+                    f"{self._drop_same_held}"
+                )
+                child_timeout = min(
+                    2500, max(600, self.timeout - self._total_steps - 400)
+                )
+                self._activate(
+                    "nav_drop_spot",
+                    MultiMapNavTask(
+                        name="nav_drop_spot_deep",
+                        waypoints=[
+                            Waypoint(
+                                tilemap=FARM_TILEMAP,
+                                target_px=(deep.x, deep.y),
+                                radius=16,
+                            )
+                        ],
+                        timeout=child_timeout,
+                    ),
+                    world,
+                )
+                return self._task.step(world)
+            if (
+                self._drop_same_held >= self.drop_stuck_held_limit
+                or self._drop_attempts >= self.drop_attempt_limit
+            ):
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=(
+                        "could not clear hands before house entry "
+                        f"(held=0x{held:02X} attempts={self._drop_attempts} "
+                        f"same_held={self._drop_same_held})"
+                    ),
+                )
             if self._drop_attempts < self.drop_attempt_limit:
                 self._drop_attempts += 1
                 self._phase = "drop_carried"
@@ -690,7 +679,8 @@ class ReturnHomeTask(Task):
                 print(
                     f"[RETURN_HOME] Dropping carried item before house entry "
                     f"({self._drop_attempts}/{self.drop_attempt_limit} "
-                    f"held=0x{held:02X} at_drop={at_drop})"
+                    f"held=0x{held:02X} at_drop={at_drop} "
+                    f"same_held={self._drop_same_held})"
                 )
                 return TaskResult(
                     status=TaskStatus.RUNNING,
@@ -738,14 +728,152 @@ class ReturnHomeTask(Task):
             return self._start_house_approach(world, front)
         return self._nav_to_house_front(world, front)
 
+    def _apply_recover(
+        self,
+        decision: RecoverDecision,
+        world: WorldState,
+        pos: Point,
+        front: Point,
+        reason: str,
+    ) -> TaskResult:
+        """Apply a home_recover decision (counters, queues, prints, re-entry)."""
+        kind = decision.kind
+        if kind == RecoverKind.QUEUE_EXIT_MASH:
+            self._task = None
+            self._exit_to_farm_retries += 1
+            print(
+                f"[RETURN_HOME] ExitToFarm recover "
+                f"({self._exit_to_farm_retries}/"
+                f"{self.exit_to_farm_retry_limit}): {reason}"
+            )
+            self._action_queue.extend(exit_to_farm_recover_actions())
+            self._phase = "exit_to_farm_recover"
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(self._action_queue.popleft()),
+                reason="exit_to_farm recover mash",
+            )
+        if kind == RecoverKind.FAIL_EXIT:
+            self._task = None
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"exit_to_farm failed after retries: {reason}",
+            )
+        if kind in {RecoverKind.RETRY_ENTER_SOUTH, RecoverKind.RETRY_ENTER_RESTART}:
+            self._enter_retries += 1
+            self._task = None
+            self._phase = "start"
+            if decision.hands_not_clear or "hands not clear" in reason:
+                self._drop_attempts = 0
+                self._drop_spot_navs = 0
+            print(
+                f"[RETURN_HOME] Retry house enter "
+                f"({self._enter_retries}/4): {reason}"
+            )
+            held = read_held_item(world.ram)
+            print(
+                f"[RETURN_HOME] Enter fail diagnostics "
+                f"pos=({pos.x},{pos.y}) front=({front.x},{front.y}) "
+                f"held=0x{held:02X} hands_clear={hands_are_clear(world.ram)}"
+            )
+            if kind == RecoverKind.RETRY_ENTER_SOUTH:
+                actions = enter_fail_south_recovery_actions(pos, front)
+                if actions:
+                    self._action_queue.extend(actions)
+                    self._phase = "drop_carried"
+                    self._offstand_corrections = 0
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(self._action_queue.popleft()),
+                        reason="south recovery after enter fail",
+                    )
+            return self._start_next_phase(world)
+        if kind == RecoverKind.RETRY_DROP_THEN_NAV:
+            self._task = None
+            self._phase = "start"
+            print(
+                f"[RETURN_HOME] Nav failed with hands full; "
+                f"drop then retry: {reason}"
+            )
+            return self._start_next_phase(world)
+        if kind == RecoverKind.FORCE_ENTER:
+            print(
+                f"[RETURN_HOME] Nav failed near door "
+                f"pos=({pos.x},{pos.y}): {reason}; forcing enter"
+            )
+            self._activate(
+                "enter_house",
+                self._house_enter_task(world),
+                world,
+            )
+            return self._task.step(world)
+        if kind == RecoverKind.MID_YARD_RENAV:
+            self._offstand_corrections += 1
+            self._task = None
+            print(
+                f"[RETURN_HOME] Mid-yard re-nav after fail "
+                f"pos=({pos.x},{pos.y}) "
+                f"({self._offstand_corrections}/6): {reason}"
+            )
+            return self._nav_to_house_front(world, front)
+        if kind == RecoverKind.SOUTH_ESCAPE:
+            self._south_escape_attempts += 1
+            self._task = None
+            self._phase = "south_escape"
+            self._queue_south_escape(far_east=decision.far_east)
+            if decision.escape_from_drop:
+                print(
+                    f"[RETURN_HOME] South softlock escape (drop) "
+                    f"({self._south_escape_attempts}/"
+                    f"{self.south_escape_limit}) pos=({pos.x},{pos.y}): "
+                    f"{reason}"
+                )
+                escape_reason = "south escape after drop-spot nav fail"
+            else:
+                print(
+                    f"[RETURN_HOME] South softlock escape "
+                    f"({self._south_escape_attempts}/"
+                    f"{self.south_escape_limit}) pos=({pos.x},{pos.y}): "
+                    f"{reason}"
+                )
+                escape_reason = "south escape after house nav fail"
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(self._action_queue.popleft()),
+                reason=escape_reason,
+            )
+        # HARD_FAIL
+        if decision.clear_task:
+            self._task = None
+        if decision.set_phase is not None:
+            self._phase = decision.set_phase
+        return TaskResult(
+            status=TaskStatus.FAILURE,
+            reason=f"{self._phase} failed: {reason}",
+        )
+
     def step(self, world: WorldState) -> TaskResult:
         self._total_steps += 1
+        tilemap = self._read_tilemap(world)
+        # House arrival short-circuit: already inside is SUCCESS in any phase
+        # (rr-ws8h: exit_to_farm child could run until hard timeout while house).
+        arrived = self._house_arrival_success(tilemap, via="step")
+        if arrived is not None:
+            return arrived
         if self.timeout > 0 and self._total_steps > self.timeout:
+            # Defense in depth: re-check house on the timeout path as well.
+            arrived = self._house_arrival_success(tilemap, via="timeout")
+            if arrived is not None:
+                return arrived
+            held = int(read_held_item(world.ram))
+            held_note = ""
+            if self._phase == "drop_carried" or not hands_are_clear(world.ram):
+                held_note = f" held=0x{held:02X}"
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=(
                     f"return_home timeout after {self._total_steps}f "
-                    f"phase={self._phase}"
+                    f"phase={self._phase}{held_note}"
                 ),
             )
         if self._action_queue:
@@ -755,6 +883,11 @@ class ReturnHomeTask(Task):
             )
         if self._phase == "drop_carried":
             self._task = None
+            return self._start_next_phase(world)
+        if self._phase == "exit_to_farm_recover":
+            # Mash queue drained; re-run exit_to_farm / farm approach.
+            self._task = None
+            self._phase = "start"
             return self._start_next_phase(world)
         if self._phase == "south_escape":
             # Escape B-run finished; densified re-nav from new position.
@@ -767,154 +900,26 @@ class ReturnHomeTask(Task):
         result = self._task.step(world)
         if result.status == TaskStatus.RUNNING:
             return result
-        if result.status == TaskStatus.FAILURE:
+        if result.status in {TaskStatus.FAILURE, TaskStatus.BLOCKED}:
             reason = result.reason or "unknown"
-            if self._phase == "enter_house" and self._enter_retries < 4:
-                self._enter_retries += 1
-                self._task = None
-                self._phase = "start"
-                # Hands still full — reset drop budget and try again.
-                if "hands not clear" in reason:
-                    self._drop_attempts = 0
-                    self._drop_spot_navs = 0
-                print(
-                    f"[RETURN_HOME] Retry house enter "
-                    f"({self._enter_retries}/4): {reason}"
-                )
-                # Mid-wall pin (y≈372) after a timeout: strafe + walk south
-                # into open ground before re-approaching.
-                pos = get_pos_from_ram(world.ram)
-                front = self._house_front_px(world.ram)
-                held = read_held_item(world.ram)
-                print(
-                    f"[RETURN_HOME] Enter fail diagnostics "
-                    f"pos=({pos.x},{pos.y}) front=({front.x},{front.y}) "
-                    f"held=0x{held:02X} hands_clear={hands_are_clear(world.ram)}"
-                )
-                if pos.y < front.y - 16:
-                    self._action_queue.extend(make_action(left=True) for _ in range(10))
-                    self._action_queue.extend(
-                        make_action(down=True, b=True) for _ in range(40)
-                    )
-                    self._action_queue.extend(make_action(right=True) for _ in range(12))
-                    self._action_queue.extend(
-                        make_action(down=True, b=True) for _ in range(24)
-                    )
-                    self._action_queue.extend(make_action() for _ in range(8))
-                    self._phase = "drop_carried"
-                    self._offstand_corrections = 0
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(self._action_queue.popleft()),
-                        reason="south recovery after enter fail",
-                    )
-                return self._start_next_phase(world)
-            # Nav failure with hands still full: drop then re-nav instead of die.
-            if self._phase in {"nav_house_front", "nav_drop_spot"} and not hands_are_clear(
-                world.ram
-            ):
-                self._task = None
-                self._phase = "start"
-                if self._drop_attempts < self.drop_attempt_limit:
-                    print(
-                        f"[RETURN_HOME] Nav failed with hands full; "
-                        f"drop then retry: {reason}"
-                    )
-                    return self._start_next_phase(world)
-            # Nav timed out but we are close to the door — attempt enter rather
-            # than hard-fail the multi-day (return_home hang residual ~D5).
-            if self._phase == "nav_house_front":
-                pos = get_pos_from_ram(world.ram)
-                front = self._house_front_px(world.ram)
-                dx = abs(pos.x - front.x)
-                dy = abs(pos.y - front.y)
-                # Generous near-door: D12 residual (118,486) is ~62px south of
-                # stand — prior 48px box hard-failed with no escape.
-                if dx <= 48 and dy <= 80:
-                    print(
-                        f"[RETURN_HOME] Nav failed near door "
-                        f"pos=({pos.x},{pos.y}): {reason}; forcing enter"
-                    )
-                    self._activate(
-                        "enter_house",
-                        self._house_enter_task(world),
-                        world,
-                    )
-                    return self._task.step(world)
-                # Mid-yard south of door (north of fence): simple re-nav north
-                # rather than B-run thrash that can re-enter the fence pocket.
-                if (
-                    not self._south_of_fence_wall(pos)
-                    and pos.y > front.y + 24
-                    and dx <= 80
-                    and self._offstand_corrections < 6
-                ):
-                    self._offstand_corrections += 1
-                    self._task = None
-                    print(
-                        f"[RETURN_HOME] Mid-yard re-nav after fail "
-                        f"pos=({pos.x},{pos.y}) "
-                        f"({self._offstand_corrections}/6): {reason}"
-                    )
-                    return self._nav_to_house_front(world, front)
-                # South-of-fence / far-from-door multi_nav timeout: B-run
-                # escape then densified re-nav. Prior deep_south-only gate
-                # missed D12 y=527 (just above front+120) and far-east pond.
-                door_far = dx + dy > 60
-                if (
-                    (
-                        self._deep_south_of_house(pos, front)
-                        or self._south_of_fence_wall(pos)
-                        or door_far
-                    )
-                    and self._south_escape_attempts < self.south_escape_limit
-                ):
-                    self._south_escape_attempts += 1
-                    self._task = None
-                    self._phase = "south_escape"
-                    far_east = pos.x > _EAST_AROUND_FENCE_X
-                    self._queue_south_escape(far_east=far_east)
-                    print(
-                        f"[RETURN_HOME] South softlock escape "
-                        f"({self._south_escape_attempts}/"
-                        f"{self.south_escape_limit}) pos=({pos.x},{pos.y}): "
-                        f"{reason}"
-                    )
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(self._action_queue.popleft()),
-                        reason="south escape after house nav fail",
-                    )
-            if self._phase == "nav_drop_spot":
-                pos = get_pos_from_ram(world.ram)
-                front = self._house_front_px(world.ram)
-                if (
-                    (
-                        self._deep_south_of_house(pos, front)
-                        or self._south_of_fence_wall(pos)
-                    )
-                    and self._south_escape_attempts < self.south_escape_limit
-                ):
-                    self._south_escape_attempts += 1
-                    self._task = None
-                    self._phase = "south_escape"
-                    far_east = pos.x > _EAST_AROUND_FENCE_X
-                    self._queue_south_escape(far_east=far_east)
-                    print(
-                        f"[RETURN_HOME] South softlock escape (drop) "
-                        f"({self._south_escape_attempts}/"
-                        f"{self.south_escape_limit}) pos=({pos.x},{pos.y}): "
-                        f"{reason}"
-                    )
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(self._action_queue.popleft()),
-                        reason="south escape after drop-spot nav fail",
-                    )
-            return TaskResult(
-                status=TaskStatus.FAILURE,
-                reason=f"{self._phase} failed: {reason}",
+            pos = get_pos_from_ram(world.ram)
+            front = self._house_front_px(world.ram)
+            decision = decide_child_failure(
+                phase=self._phase,
+                pos=pos,
+                front=front,
+                reason=reason,
+                hands_clear=hands_are_clear(world.ram),
+                exit_to_farm_retries=self._exit_to_farm_retries,
+                exit_to_farm_retry_limit=self.exit_to_farm_retry_limit,
+                enter_retries=self._enter_retries,
+                drop_attempts=self._drop_attempts,
+                drop_attempt_limit=self.drop_attempt_limit,
+                offstand_corrections=self._offstand_corrections,
+                south_escape_attempts=self._south_escape_attempts,
+                south_escape_limit=self.south_escape_limit,
             )
+            return self._apply_recover(decision, world, pos, front, reason)
 
         if self._phase == "exit_to_farm":
             self._task = None
@@ -929,7 +934,10 @@ class ReturnHomeTask(Task):
                 self._offstand_corrections += 1
                 # After a few soft-successes off-stand, force enter if close
                 # enough, else re-nav with a hard cap.
-                near = abs(pos.x - front.x) <= 40 and abs(pos.y - front.y) <= 40
+                # Gate B D5: (190,423) vs (136,424) is lateral-near (dx=54).
+                dx = abs(pos.x - front.x)
+                dy = abs(pos.y - front.y)
+                near = (dx <= 40 and dy <= 40) or (dx <= 72 and dy <= 24)
                 if near and self._offstand_corrections >= 3:
                     print(
                         f"[RETURN_HOME] Off-stand but near door "
@@ -964,9 +972,10 @@ class ReturnHomeTask(Task):
             )
             return self._task.step(world)
         if self._phase == "enter_house":
-            tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
-            if is_house_tilemap(tilemap):
-                return TaskResult(status=TaskStatus.SUCCESS, reason="entered house")
+            tilemap = self._read_tilemap(world)
+            arrived = self._house_arrival_success(tilemap, via="enter_house")
+            if arrived is not None:
+                return arrived
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"expected house tilemap, got 0x{tilemap:02X}",
@@ -986,7 +995,8 @@ class GoToSleepTask(Task):
 
     name: str = "go_to_sleep"
     tasks_dir: str = TASKS_DIR
-    timeout: int = 12000
+    # Headroom for early return_home (midday) → idle until evening + bed A.
+    timeout: int = 24000
     sleep_attempt_limit: int = 12
     # Wait long enough for the overnight fade before assuming A missed.
     # Overnight confirm + fade can exceed ~10s; do not re-mash mid-fade.
@@ -994,6 +1004,9 @@ class GoToSleepTask(Task):
     # Budget for the outdoor/return-home recovery before bed navigation.
     # Match ReturnHomeTask default (south-of-fence densified approach).
     return_home_timeout: int = 11000
+    # ROM rejects bed A until evening. Outdoor wait advances the clock
+    # (house idle freezes time). Prefer 18 — hour 17 still no-op'd on D4 soak.
+    earliest_sleep_hour: int = 18
 
     _phase: str = field(default="ensure_house", init=False)
     _step_count: int = field(default=0, init=False)
@@ -1012,6 +1025,8 @@ class GoToSleepTask(Task):
     morning_ready_frames: int = 45
     # Hands-full at bed: toss once before the first sleep A (doors already toss).
     _tossed_before_sleep: bool = field(default=False, init=False)
+    # Midday end-day: house clock freezes; exit and idle outdoors until evening.
+    _exit_for_evening: Optional[ExitToFarmTask] = field(default=None, init=False)
 
     def reset(self, world: WorldState) -> None:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -1026,6 +1041,7 @@ class GoToSleepTask(Task):
         self._return_home_steps = 0
         self._morning_settle_frames = 0
         self._tossed_before_sleep = False
+        self._exit_for_evening = None
         self._start_season, self._start_day = read_world_date(world.ram)
         if self._phase == "ensure_house":
             self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
@@ -1059,47 +1075,43 @@ class GoToSleepTask(Task):
         Yes/No sleep confirm. Keep face-up only, B only *before* the first A
         of each attempt, then A-only until verify timeout.
 
-        Gate B carry (grass seeds + can): brief X settle once early so A is
-        not eaten by a tool swing, then re-face up.
+        Gate B D5 residual: long queues + left/right re-seat shoved to x=73
+        (off-bed thrash) and burned the outer 12k timeout before day advanced.
+        Keep attempts short; only vertical re-seat; no lateral walk.
         """
         self._sleep_attempts += 1
         face = self._sleep_face_for_tilemap(tilemap)
         n = self._sleep_attempts
 
         # Tool settle only on early attempts — X mid-confirm is noise.
-        if n <= 3:
-            self._action_queue.extend(make_action(x=True) for _ in range(3))
-            self._action_queue.extend(make_action() for _ in range(10))
-
-        # Late attempts: micro re-seat on the bed stand (pixel slip / shove).
-        if n >= 4:
-            self._action_queue.extend(make_action(down=True) for _ in range(3))
+        if n <= 2:
+            self._action_queue.extend(make_action(x=True) for _ in range(2))
             self._action_queue.extend(make_action() for _ in range(6))
-            # Alternate x column slightly then return (still face-up for A).
-            if n % 2 == 0:
-                self._action_queue.extend(make_action(right=True) for _ in range(3))
-            else:
-                self._action_queue.extend(make_action(left=True) for _ in range(3))
-            self._action_queue.extend(make_action() for _ in range(4))
-            self._action_queue.extend(make_action(up=True) for _ in range(12))
-            self._action_queue.extend(make_action() for _ in range(8))
 
-        # Long face-up hold against the mattress (recording ~20–30f continuous).
-        self._action_queue.extend(make_action(**{face: True}) for _ in range(36))
-        self._action_queue.extend(make_action() for _ in range(48))
-        # Single B settle *before* any A (closes tool residue / menus).
-        self._action_queue.extend(make_action(b=True) for _ in range(12))
-        self._action_queue.extend(make_action() for _ in range(24))
-        # Re-assert face up after B (B can leave facing stale).
-        self._action_queue.extend(make_action(**{face: True}) for _ in range(16))
+        # Late attempts: vertical re-seat only (never left/right — slides off
+        # the 1–4px bed stand into empty air).
+        if n >= 3:
+            self._action_queue.extend(make_action(down=True) for _ in range(2))
+            self._action_queue.extend(make_action() for _ in range(4))
+            self._action_queue.extend(make_action(up=True) for _ in range(10))
+            self._action_queue.extend(make_action() for _ in range(6))
+
+        # Face-up hold against the mattress.
+        self._action_queue.extend(make_action(**{face: True}) for _ in range(24))
         self._action_queue.extend(make_action() for _ in range(20))
+        # Single B settle *before* any A (closes tool residue / menus).
+        self._action_queue.extend(make_action(b=True) for _ in range(8))
+        self._action_queue.extend(make_action() for _ in range(12))
+        # Re-assert face up after B (B can leave facing stale).
+        self._action_queue.extend(make_action(**{face: True}) for _ in range(12))
+        self._action_queue.extend(make_action() for _ in range(10))
         # A-only bursts — never B here (B selects No on the sleep confirm).
-        bursts = 8 if n < 6 else 10
+        bursts = 6 if n < 5 else 8
         for _ in range(bursts):
-            self._action_queue.extend(make_action(a=True) for _ in range(16))
-            self._action_queue.extend(make_action() for _ in range(14))
+            self._action_queue.extend(make_action(a=True) for _ in range(12))
+            self._action_queue.extend(make_action() for _ in range(10))
         # Wait for overnight fade / dialogue without canceling.
-        self._action_queue.extend(make_action() for _ in range(220))
+        self._action_queue.extend(make_action() for _ in range(120))
 
     @staticmethod
     def _bed_stand_for_tilemap(tilemap: int) -> Point:
@@ -1246,6 +1258,72 @@ class GoToSleepTask(Task):
             )
         return result
 
+    def _step_wait_evening(
+        self,
+        world: WorldState,
+        *,
+        tilemap: int,
+        hour: int,
+        scene,
+    ) -> TaskResult:
+        """Advance the day clock outdoors until bed A can work.
+
+        Indoor idle freezes time (Gate B D2 soak stuck at 11:05). Exit house,
+        idle on farm until ``earliest_sleep_hour``, then re-enter via ensure_house.
+        """
+        self._action_queue.clear()
+        self._verify_count = 0
+        self._sleep_attempts = 0
+        if scene.needs_input_dismiss:
+            return dismiss_dialogue_result(
+                self._step_count,
+                buttons=("a", "b"),
+                pulse_every=1,
+                reason=f"evening-wait dismiss hour={hour}",
+            )
+        if is_house_tilemap(tilemap):
+            if self._exit_for_evening is None:
+                print(
+                    f"[SLEEP] Pre-evening: exit house to advance clock "
+                    f"(hour={hour} need>={self.earliest_sleep_hour})"
+                )
+                self._exit_for_evening = ExitToFarmTask(tasks_dir=self.tasks_dir)
+                self._exit_for_evening.reset(world)
+            result = self._exit_for_evening.step(world)
+            if result.status == TaskStatus.SUCCESS:
+                self._exit_for_evening = None
+                print(f"[SLEEP] Pre-evening: on farm; idling until hour>={self.earliest_sleep_hour}")
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason=f"evening outdoor wait hour={hour}",
+                )
+            if result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                # Retry exit; do not hard-fail the whole sleep yet.
+                self._exit_for_evening = ExitToFarmTask(tasks_dir=self.tasks_dir)
+                self._exit_for_evening.reset(world)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason=f"evening exit retry: {result.reason or 'fail'}",
+                )
+            return result
+        # Outdoor: neutral frames advance the clock. Do NOT B-run into fences —
+        # live soak stuck mashing B+down against the house south wall for 10k+
+        # frames with zero progress (power-on watch feedback).
+        self._exit_for_evening = None
+        if self._step_count % 300 == 1:
+            pos = get_pos_from_ram(world.ram)
+            print(
+                f"[SLEEP] Outdoor evening wait hour={hour}/"
+                f"{self.earliest_sleep_hour} pos=({pos.x},{pos.y})"
+            )
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=f"evening outdoor wait hour={hour}",
+        )
+
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         if self._step_count > self.timeout:
@@ -1308,6 +1386,12 @@ class GoToSleepTask(Task):
                 reason=f"morning wait tm=0x{tilemap:02X} pos=({pos.x},{pos.y})",
             )
 
+        hour = int(read_ram_value(world.ram, "hour"))
+        # Midday end-day: bed A is a no-op and house time freezes (Gate B soak).
+        # Exit outdoors and idle until evening — farm clock advances.
+        if hour < self.earliest_sleep_hour:
+            return self._step_wait_evening(world, tilemap=tilemap, hour=hour, scene=scene)
+
         if self._phase == "ensure_house":
             return self._step_ensure_house(world)
 
@@ -1344,14 +1428,18 @@ class GoToSleepTask(Task):
 
         if self._phase == "nav_bed":
             if at_bed:
-                # Hands-full blocks some house interactions; toss once away
-                # from the mattress before the first A (south into open floor).
-                if not self._tossed_before_sleep and not hands_are_clear(world.ram):
+                # Hands-full blocks bed A; re-toss every approach (not only once)
+                # so CLEAR debris re-pickup cannot stick across retries.
+                if not hands_are_clear(world.ram):
                     self._tossed_before_sleep = True
                     self._action_queue.extend(toss_held_actions(face="down"))
                     self._route = []
                     self._route_index = 0
-                    print("[SLEEP] Tossing held item before bed interaction")
+                    held = int(read_held_item(world.ram))
+                    print(
+                        f"[SLEEP] Tossing held item before bed interaction "
+                        f"held=0x{held:02X}"
+                    )
                     queued = drain_action_queue(self._action_queue)
                     if queued is not None:
                         return queued
@@ -1371,10 +1459,11 @@ class GoToSleepTask(Task):
                         f"pos=({pos.x},{pos.y}) attempts={self._sleep_attempts}"
                     ),
                 )
+            held = int(read_held_item(world.ram))
             print(
                 f"[SLEEP] Attempt {self._sleep_attempts + 1}/"
                 f"{self.sleep_attempt_limit} at bed pos=({pos.x},{pos.y}) "
-                f"tm=0x{tilemap:02X}"
+                f"tm=0x{tilemap:02X} held=0x{held:02X} hour={hour}"
             )
             self._queue_sleep_attempt(tilemap)
             self._phase = "sleep_verify"

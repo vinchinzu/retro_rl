@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import Tool
+from harvest.core.tile_catalog import Tool
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec, day_planner_policy_for_season
 from harvest.planner.world_probe import WorldProbe
 from harvest.planner.day_plan_status import (
@@ -31,6 +31,8 @@ from harvest.planner.day_phase_catalog import (
     BUY_SEEDS_PHASE,
     buy_seeds_phase,
     GET_BERRIES_AND_SHIP_PHASE,
+    SHIP_BERRY_PHASE,
+    ship_berry_phases,
     NAV_CROP_PHASE,
     HARVEST_ROUTE_PHASE,
     CLEAR_FIELD_PHASE,
@@ -158,6 +160,27 @@ def _chicken_sale_phases(
     ]
 
 
+def _seed_purchase_cost_g(season: int, day: int) -> int:
+    """Gold cost of today's seasonal seed bag (0 when no plantable crop)."""
+    from harvest.planner.crop_planner import CROP_SPECS, resolve_seed_type_for_date
+
+    name = resolve_seed_type_for_date(season, day)
+    if not name:
+        return 0
+    crop = CROP_SPECS.get(name)
+    return int(crop.seed_cost_g) if crop is not None else 0
+
+
+def _can_afford_seed_purchase(money: Optional[int], season: int, day: int) -> bool:
+    """True when wallet is unknown (tests) or covers the seasonal seed bag."""
+    if money is None:
+        return True
+    cost = _seed_purchase_cost_g(season, day)
+    if cost <= 0:
+        return False
+    return int(money) >= cost
+
+
 def _berry_run_phases(
     *,
     is_sunday: bool,
@@ -166,15 +189,41 @@ def _berry_run_phases(
     policy: DayPlannerPolicy,
     season: int = 0,
     day: int = 1,
+    money: Optional[int] = None,
 ) -> List[PhaseSpec]:
-    """Build early money phases when a berry/shop route is available."""
+    """Build early money / seed-shop phases when the hour window allows.
+
+    Priority within this list (Spring D2 empty-farm path):
+    1. Mountain berry pick + ship (must hit bin before the 5pm window)
+    2. Seed shop only when the wallet covers the bag (potato $200)
+
+    Berry runs used to require ``sunday or has_seeds``, which left weekday
+    no-seed mornings with only CLEAR_FIELD thrash. Enable berry whenever the
+    policy says so and the hour is open.
+    """
     from harvest.planner.crop_planner import (
         seed_purchase_recording_for_season,
         should_buy_seeds_for_date,
     )
 
-    if hour >= policy.berry_cutoff_hour:
+    if hour >= policy.berry_cutoff_hour and hour > policy.buy_seed_hour:
         return []
+
+    phases: List[PhaseSpec] = []
+
+    # Berries first: farm forage bush → bin before 5pm. Stay on farm (do NOT
+    # EXIT_FARM_WEST + blind recording — that false-greens and leaves the
+    # player mid-path so seed buy thrash-fails).
+    if policy.include_berry_run and hour < policy.berry_cutoff_hour:
+        phases.append(
+            PhaseSpec(
+                "BERRY_RUN_WINDOW",
+                "deadline",
+                {"latest_hour": policy.berry_exit_cutoff_hour, "latest_minute": 0},
+                failure_policy="optional",
+            )
+        )
+        phases.extend(ship_berry_phases(count=2))
 
     can_buy = (
         policy.include_shop_run
@@ -183,6 +232,7 @@ def _berry_run_phases(
         and not has_seeds
         and hour <= policy.buy_seed_hour
         and should_buy_seeds_for_date(season, day)
+        and _can_afford_seed_purchase(money, season, day)
     )
     if can_buy:
         recording = (
@@ -190,39 +240,46 @@ def _berry_run_phases(
             or seed_purchase_recording_for_season(season)
             or "buy_potato_seeds"
         )
-        return [
-            PhaseSpec(
-                "BUY_SEEDS_WINDOW",
-                "deadline",
-                {"latest_hour": policy.buy_seed_hour + 1, "latest_minute": 0},
-                failure_policy="optional",
-            ),
-            NAV_FARM_EXIT_PHASE,
-            buy_seeds_phase(recording_name=recording),
-        ]
+        phases.extend(
+            [
+                PhaseSpec(
+                    "BUY_SEEDS_WINDOW",
+                    "deadline",
+                    {"latest_hour": policy.buy_seed_hour + 1, "latest_minute": 0},
+                    failure_policy="optional",
+                ),
+                NAV_FARM_EXIT_PHASE,
+                buy_seeds_phase(recording_name=recording),
+            ]
+        )
 
-    if not policy.include_berry_run:
+    return phases
+
+
+def _evening_field_clear_phases(
+    *,
+    has_debris: bool,
+    late_day: bool,
+    policy: DayPlannerPolicy,
+) -> List[PhaseSpec]:
+    """Bush/weed/rock clear only after the shipping window (evening).
+
+    Daytime CLEAR thrash was starving berry ship + seed buy on Spring D2.
+    """
+    if not late_day or not policy.include_field_clear or not has_debris:
         return []
-
-    if is_sunday or has_seeds:
-        return [
-            PhaseSpec(
-                "BERRY_RUN_WINDOW",
-                "deadline",
-                {"latest_hour": policy.berry_exit_cutoff_hour, "latest_minute": 0},
-                failure_policy="optional",
-            ),
-            EXIT_FARM_WEST_PHASE,
-            PhaseSpec(
-                "BERRY_RECORDING_WINDOW",
-                "deadline",
-                {"latest_hour": policy.berry_cutoff_hour, "latest_minute": 0},
-                failure_policy="optional",
-            ),
-            GET_BERRIES_AND_SHIP_PHASE,
-        ]
-
-    return []
+    # Longer budget than the old 3500f morning slice — evening has no shop race.
+    return [
+        PhaseSpec(
+            "CLEAR_FIELD",
+            "clear_field",
+            {"timeout": 15000},
+            failure_policy="optional",
+            required_maps=(0x00,),
+            estimated_frames=15000,
+            failure_modes=("timeout_budget", "tool_missing", "stamina_low"),
+        )
+    ]
 
 
 def crop_establish_phases() -> List[PhaseSpec]:
@@ -295,6 +352,7 @@ def build_day_phases(
     has_debris: Optional[bool] = None,
     should_buy_cow: Optional[bool] = None,
     is_rainy: Optional[bool] = None,
+    money: Optional[int] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble a day's phase list dynamically from state inspection.
@@ -333,6 +391,8 @@ def build_day_phases(
             has_debris = probe.has_farm_debris()
         if is_rainy is None:
             is_rainy = probe.is_rainy()
+        if money is None:
+            money = probe.money()
 
     # Fill remaining defaults
     if weekday is None:
@@ -374,6 +434,7 @@ def build_day_phases(
         policy=policy,
         season=season,
         day=day,
+        money=money,
     )
 
     buy_cow_first = (
@@ -388,7 +449,6 @@ def build_day_phases(
     else:
         phases.append(EXIT_TO_FARM_PHASE)
 
-    # Time-critical seed shop before field clear — clear can burn past 7am.
     seed_buy_phases = [
         phase
         for phase in berry_phases
@@ -397,11 +457,10 @@ def build_day_phases(
     other_berry_phases = [
         phase for phase in berry_phases if phase not in seed_buy_phases
     ]
-    if seed_buy_phases:
-        phases.extend(seed_buy_phases)
 
-    # Field wipe is valuable early, but must not starve crop keep-alive water.
-    # When dry crops already exist, defer CLEAR until after the water pass.
+    # Field wipe is valuable, but day CLEAR thrash starves berry ship on empty
+    # Spring mornings. Bushes/weeds only clear in the evening after shipping.
+    # When dry crops already exist, still defer any day clear until after water.
     defer_field_clear = bool(
         policy.include_field_clear
         and has_debris
@@ -410,7 +469,33 @@ def build_day_phases(
         and not is_rainy
         and policy.include_watering
     )
-    if policy.include_field_clear and has_debris and not late_day and not defer_field_clear:
+    # Empty early-spring day: berries (+ optional seed buy) before chores.
+    berry_before_clear = bool(
+        not late_day
+        and other_berry_phases
+        and not has_waterable
+        and not has_harvest
+        and not has_chickens
+        and not has_cows
+    )
+    if berry_before_clear:
+        # Berries ship first, then potato seeds only if wallet can pay.
+        phases.extend(other_berry_phases)
+        phases.extend(seed_buy_phases)
+    elif seed_buy_phases:
+        # Keep-alive farm: still buy seeds early so plant/water is not starved.
+        phases.extend(seed_buy_phases)
+
+    # Daytime clear only when crops need pathing and we are not on the empty
+    # berry-first path. Weed/bush lift thrash is evening-only on D2 empty days.
+    day_clear = bool(
+        policy.include_field_clear
+        and has_debris
+        and not late_day
+        and not defer_field_clear
+        and not berry_before_clear
+    )
+    if day_clear:
         phases.append(CLEAR_FIELD_PHASE)
 
     if policy.include_cows and has_cows and not late_day and not buy_cow_first:
@@ -454,17 +539,28 @@ def build_day_phases(
         )
     )
 
-    # 3b. Deferred field clear after keep-alive water (rr-3v9).
-    if defer_field_clear:
+    # 3b. Deferred field clear after keep-alive water (rr-3v9) — day path only
+    # when crops claimed the morning (not empty berry days).
+    if defer_field_clear and not berry_before_clear:
         phases.append(CLEAR_FIELD_PHASE)
 
-    # 4. Early money route, only after required animal/crop work.
-    if not late_day:
+    # 4. Early money route after animals/crops (or skipped if already first).
+    if not late_day and not berry_before_clear:
         phases.extend(other_berry_phases)
+        # Seeds already placed early on keep-alive path when applicable.
 
-    if policy.include_end_day and late_day:
-        phases.append(RETURN_HOME_PHASE)
-        phases.append(GO_TO_SLEEP_PHASE)
+    # Evening: bush/debris clear after the 5pm shipping window, then sleep.
+    if late_day:
+        phases.extend(
+            _evening_field_clear_phases(
+                has_debris=has_debris,
+                late_day=True,
+                policy=policy,
+            )
+        )
+        if policy.include_end_day:
+            phases.append(RETURN_HOME_PHASE)
+            phases.append(GO_TO_SLEEP_PHASE)
 
     return phases
 
@@ -480,6 +576,7 @@ def build_outdoor_day_phases(
     is_rainy: bool = False,
     season: int = 0,
     day: int = 1,
+    money: Optional[int] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble the outdoor portion of the day's work from current farm state."""
@@ -493,6 +590,7 @@ def build_outdoor_day_phases(
         policy=policy,
         season=season,
         day=day,
+        money=money,
     )
     phases: List[PhaseSpec] = []
 
@@ -505,11 +603,8 @@ def build_outdoor_day_phases(
         phase for phase in berry_phases if phase not in seed_buy_phases
     ]
 
-    # Buy seeds before clearing so the 7am shop window is not burned.
-    if seed_buy_phases:
-        phases.extend(seed_buy_phases)
-
-    # Keep-alive water before field wipe when dry crops already exist (rr-3v9).
+    # Early money (berries) before optional field wipe when nothing needs
+    # keep-alive water. Full day clear burns the shipping window on bush thrash.
     defer_field_clear = bool(
         policy.include_field_clear
         and has_debris
@@ -518,7 +613,26 @@ def build_outdoor_day_phases(
         and not is_rainy
         and policy.include_watering
     )
-    if policy.include_field_clear and has_debris and not late_day and not defer_field_clear:
+    berry_before_clear = bool(
+        not late_day
+        and other_berry_phases
+        and not has_waterable
+        and not has_harvest
+    )
+    if berry_before_clear:
+        phases.extend(other_berry_phases)
+        phases.extend(seed_buy_phases)
+    elif seed_buy_phases:
+        phases.extend(seed_buy_phases)
+
+    day_clear = bool(
+        policy.include_field_clear
+        and has_debris
+        and not late_day
+        and not defer_field_clear
+        and not berry_before_clear
+    )
+    if day_clear:
         phases.append(CLEAR_FIELD_PHASE)
 
     if policy.include_harvest and has_harvest and not late_day:
@@ -536,15 +650,24 @@ def build_outdoor_day_phases(
         )
     )
 
-    if defer_field_clear:
+    if defer_field_clear and not berry_before_clear:
         phases.append(CLEAR_FIELD_PHASE)
 
-    if not late_day:
+    # Berries after crop work when keep-alive / harvest claimed the morning.
+    if not late_day and not berry_before_clear:
         phases.extend(other_berry_phases)
 
-    if policy.include_end_day and late_day:
-        phases.append(RETURN_HOME_PHASE)
-        phases.append(GO_TO_SLEEP_PHASE)
+    if late_day:
+        phases.extend(
+            _evening_field_clear_phases(
+                has_debris=has_debris,
+                late_day=True,
+                policy=policy,
+            )
+        )
+        if policy.include_end_day:
+            phases.append(RETURN_HOME_PHASE)
+            phases.append(GO_TO_SLEEP_PHASE)
 
     return phases
 
@@ -569,6 +692,7 @@ def build_outdoor_day_phases_from_ram(
         is_rainy=probe.is_rainy(),
         season=season,
         day=day,
+        money=probe.money(),
         policy=policy,
     )
 

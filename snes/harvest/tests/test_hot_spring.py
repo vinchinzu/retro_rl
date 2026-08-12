@@ -8,7 +8,12 @@ from types import SimpleNamespace
 import numpy as np
 
 from harvest.core.ram_catalog import field_spec
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, ADDR_X, ADDR_Y, ADDR_INPUT_LOCK
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    ADDR_X,
+    ADDR_Y,
+    ADDR_INPUT_LOCK,
+)
 from harvest.core.tile_catalog import MOUNTAIN_WALKABLE
 from harvest.maps.map_config import ROUTES, slice_route_from_position
 from harvest.tasks.hot_spring import (

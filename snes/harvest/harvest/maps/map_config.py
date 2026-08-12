@@ -1046,14 +1046,115 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x00, target_px=(80, 424), radius=20),
     ],
     "berry_ship": [
-        # 1. Navigate to berry bush area and pick berry
-        Waypoint(tilemap=0x00, target_px=(585, 920), radius=16,
-                 action_on_arrive="press_a", action_face="left",
-                 action_frames=10, action_cooldown=30),
-        # 2. Navigate to shipping bin and ship
-        Waypoint(tilemap=0x00, target_px=(1001, 969), radius=16,
-                 action_on_arrive="press_a", action_face="right",
-                 action_frames=10, action_cooldown=30),
+        # OPEN_FENCE_GAP can finish on the soft-collision gap tile. BerryShipTask
+        # first takes the verified east-past-wall/south charge, so this route
+        # begins where that escape lands instead of walking back into the wall.
+        # The escape commonly lands ~(28,32), west of the pond. Step down-left
+        # around the live weeds at (28,33)/(29,32), not east into pond water.
+        Waypoint(tilemap=0x00, target_px=(27 * 16 + 8, 35 * 16 + 8), radius=16),
+        Waypoint(tilemap=0x00, target_px=(28 * 16 + 8, 39 * 16 + 8), radius=14),
+        # Live D2 has a 2x2 rock at ~(27–28,45–46). Detour west, descend,
+        # then rejoin east instead of selecting the rock as a waypoint.
+        Waypoint(tilemap=0x00, target_px=(25 * 16 + 8, 44 * 16 + 8), radius=14),
+        Waypoint(tilemap=0x00, target_px=(25 * 16 + 8, 50 * 16 + 8), radius=14),
+        Waypoint(tilemap=0x00, target_px=(31 * 16 + 8, 51 * 16 + 8), radius=14),
+        # The live D2 berry pocket is disconnected by weeds at (37,59) and
+        # (37,58). Stop on clean path and lift/throw each gate before advancing;
+        # MultiNav must never classify a live weed as travel ground.
+        Waypoint(tilemap=0x00, target_px=(35 * 16 + 8, 60 * 16 + 8), radius=14),
+        Waypoint(
+            tilemap=0x00, target_px=(37 * 16 + 8, 60 * 16 + 8), radius=8,
+            action_on_arrive="press_a", action_face="up",
+            action_frames=20, action_cooldown=30,
+        ),
+        Waypoint(
+            tilemap=0x00, target_px=(37 * 16 + 8, 60 * 16 + 8), radius=8,
+            action_on_arrive="press_a", action_face="right",
+            action_frames=20, action_cooldown=30,
+        ),
+        Waypoint(
+            tilemap=0x00, target_px=(37 * 16 + 8, 59 * 16 + 8), radius=8,
+            action_on_arrive="press_a", action_face="up",
+            action_frames=20, action_cooldown=30,
+        ),
+        Waypoint(
+            tilemap=0x00, target_px=(37 * 16 + 8, 59 * 16 + 8), radius=8,
+            action_on_arrive="press_a", action_face="right",
+            action_frames=20, action_cooldown=30,
+        ),
+        Waypoint(tilemap=0x00, target_px=(37 * 16 + 8, 58 * 16 + 8), radius=8),
+        # Pick berry.
+        Waypoint(
+            tilemap=0x00,
+            # Bush occupies (36,57); interact from the clear east stand.
+            target_px=(37 * 16 + 8, 57 * 16 + 8),
+            radius=12,
+            action_on_arrive="press_a",
+            action_face="left",
+            action_frames=10,
+            action_cooldown=30,
+        ),
+        # Leave through the two freshly cleared weed cells.
+        Waypoint(tilemap=0x00, target_px=(37 * 16 + 8, 58 * 16 + 8), radius=8),
+        Waypoint(tilemap=0x00, target_px=(37 * 16 + 8, 60 * 16 + 8), radius=12),
+        # Ship at bin tile(62,60) ~(1001,969).
+        Waypoint(tilemap=0x00, target_px=(48 * 16 + 8, 58 * 16 + 8), radius=16),
+        Waypoint(tilemap=0x00, target_px=(55 * 16 + 8, 60 * 16 + 8), radius=16),
+        Waypoint(
+            tilemap=0x00,
+            # Bin occupies (62,60); stand one tile west and face right.
+            target_px=(61 * 16 + 8, 60 * 16 + 8),
+            radius=12,
+            action_on_arrive="press_a",
+            action_face="right",
+            action_frames=10,
+            action_cooldown=30,
+        ),
+    ],
+    "berry_ship_repeat": [
+        # Second forage starts at the shipping bin. Retrace only the clear
+        # south-field lane; never revisit the fence-opening approach.
+        Waypoint(tilemap=0x00, target_px=(55 * 16 + 8, 60 * 16 + 8), radius=16),
+        Waypoint(tilemap=0x00, target_px=(48 * 16 + 8, 60 * 16 + 8), radius=16),
+        Waypoint(tilemap=0x00, target_px=(37 * 16 + 8, 60 * 16 + 8), radius=12),
+        Waypoint(tilemap=0x00, target_px=(37 * 16 + 8, 58 * 16 + 8), radius=8),
+        Waypoint(
+            tilemap=0x00,
+            target_px=(37 * 16 + 8, 57 * 16 + 8),
+            radius=12,
+            action_on_arrive="press_a",
+            action_face="left",
+            action_frames=10,
+            action_cooldown=30,
+        ),
+        Waypoint(tilemap=0x00, target_px=(37 * 16 + 8, 58 * 16 + 8), radius=8),
+        Waypoint(tilemap=0x00, target_px=(37 * 16 + 8, 60 * 16 + 8), radius=12),
+        Waypoint(tilemap=0x00, target_px=(48 * 16 + 8, 60 * 16 + 8), radius=16),
+        Waypoint(tilemap=0x00, target_px=(55 * 16 + 8, 60 * 16 + 8), radius=16),
+        Waypoint(
+            tilemap=0x00,
+            target_px=(61 * 16 + 8, 60 * 16 + 8),
+            radius=12,
+            action_on_arrive="press_a",
+            action_face="right",
+            action_frames=10,
+            action_cooldown=30,
+        ),
+    ],
+    "farm_south_to_west_gate": [
+        # Shipping-bin / berry-field return. Stay south of the long y=31
+        # fence until x<11, then turn north into the west gate corridor.
+        Waypoint(tilemap=0x00, target_px=(55 * 16 + 8, 60 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(48 * 16 + 8, 58 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(41 * 16 + 8, 54 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(34 * 16 + 8, 49 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(28 * 16 + 8, 43 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(21 * 16 + 8, 38 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(14 * 16 + 8, 35 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(8 * 16 + 8, 35 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(6 * 16 + 8, 30 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(3 * 16 + 8, 27 * 16 + 8), radius=18),
+        Waypoint(tilemap=0x00, target_px=(40, 424), radius=16),
     ],
     "farm_to_shed": [
         # Morning route from the house frontage to the shed.  Match the

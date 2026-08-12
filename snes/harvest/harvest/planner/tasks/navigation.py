@@ -4,22 +4,28 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
-from harvest.tasks.farm_clearer import (
+from harvest.tasks.nav import (
     Point,
-    TileScanner,
     Pathfinder,
     Navigator,
     make_action,
     get_tile_at,
-    ADDR_TILEMAP,
-    ADDR_INPUT_LOCK,
     TILE_SIZE,
 )
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    ADDR_INPUT_LOCK,
+    DebrisType,
+    FENCE,
+    WEED,
+)
+from harvest.tasks.farm_ops import TileScanner
+
 from harvest.maps.map_config import Waypoint, get_walkable_tiles
 from harvest.core.scene import classify_scene_from_ram
 from harvest.tasks.primitives import (
@@ -29,6 +35,19 @@ from harvest.tasks.primitives import (
 )
 from harvest.tasks.recorded_task import RecordedTask
 from harvest.planner.day_plan_status import TASKS_DIR, tilemaps_match
+
+# Directions we refuse to B-charge into (solid / "bush thrash" tiles).
+_DIR_DELTA = {
+    "up": (0, -1),
+    "down": (0, 1),
+    "left": (-1, 0),
+    "right": (1, 0),
+}
+
+
+def _neighbor_tile(tx: int, ty: int, direction: str) -> Tuple[int, int]:
+    dx, dy = _DIR_DELTA[direction]
+    return tx + dx, ty + dy
 
 
 def _nav_needs_menu_dismiss(ram: np.ndarray, step_count: int) -> Optional[TaskResult]:
@@ -447,6 +466,7 @@ class MultiMapNavTask(Task):
     # Stagnant no-path recovery (SW farm pocket after CLEAR → house).
     _stuck_anchor: Optional[Tuple[int, int]] = field(default=None, init=False)
     _stuck_frames: int = field(default=0, init=False)
+    _farm_weed_blocks: Set[Tuple[int, int]] = field(default_factory=set, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
@@ -464,6 +484,7 @@ class MultiMapNavTask(Task):
         self._initial_settle = 0
         self._stuck_anchor = None
         self._stuck_frames = 0
+        self._farm_weed_blocks.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -486,6 +507,7 @@ class MultiMapNavTask(Task):
         self._no_path_frames = 0
         self._stuck_anchor = None
         self._stuck_frames = 0
+        self._farm_weed_blocks.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -497,6 +519,28 @@ class MultiMapNavTask(Task):
         self._pathfinder = Pathfinder(self._scanner, walkable_tiles=set(walkable))
         self._navigator = Navigator(self._pathfinder)
         self._navigator.stasis = 0
+        self._farm_weed_blocks.clear()
+
+    def _sync_farm_weed_blocks(self, ram: np.ndarray, tilemap: int) -> None:
+        """Keep farm weeds out of BFS, not only blind fallback charges.
+
+        Weed metatiles are ROM-walkable, so the shared Pathfinder correctly
+        accepts them for tasks that intentionally clear debris. MultiNav is a
+        travel skill, however: walking onto a weed pins movement against the
+        object. Maintain a task-local dynamic no-go set whenever BFS replans.
+        """
+        self._pathfinder.no_go_tiles.difference_update(self._farm_weed_blocks)
+        self._farm_weed_blocks.clear()
+        if not tilemaps_match(tilemap, 0x00):
+            return
+        self._farm_weed_blocks = {
+            target.tile
+            for target in self._scanner.scan(
+                ram,
+                types={DebrisType.WEED},
+            )
+        }
+        self._pathfinder.no_go_tiles.update(self._farm_weed_blocks)
 
     def _current_wp(self) -> Optional[Waypoint]:
         if self._wp_index < len(self.waypoints):
@@ -535,6 +579,51 @@ class MultiMapNavTask(Task):
             cy = int(cy * scale)
         return (cur[0] + cx, cur[1] + cy)
 
+    def _tile_blocks_charge(self, ram: np.ndarray, tx: int, ty: int) -> bool:
+        """True when charging into this tile wastes frames (fence/solid/bush)."""
+        if not (0 <= tx < 64 and 0 <= ty < 64):
+            return True
+        if not self._pathfinder.is_walkable(ram, tx, ty):
+            return True
+        tid = int(get_tile_at(ram, tx, ty))
+        # Weeds are walkable in ROM but thrash-look like bushes; refuse
+        # blind charges into them (BFS may still path onto weed dirt).
+        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+        if tilemaps_match(tilemap, 0x00) and tid in {FENCE, WEED}:
+            return True
+        return False
+
+    def _safe_walk_action(
+        self,
+        ram: np.ndarray,
+        preferred: str,
+        *,
+        secondary: Optional[str] = None,
+        allow_detour: bool = False,
+    ) -> Optional[np.ndarray]:
+        """Hold B+dir only if the next tile is not a solid/bush thrash cell.
+
+        Returns None when the requested axes are blocked — caller must idle,
+        replan, or fail, never B-run into walls. ``allow_detour`` is reserved
+        for callers with no route-level directional constraint.
+        """
+        cur = self._navigator.current_tile
+        order: List[str] = []
+        candidates = (
+            (preferred, secondary, "down", "right", "left", "up")
+            if allow_detour
+            else (preferred, secondary)
+        )
+        for d in candidates:
+            if d and d not in order:
+                order.append(d)
+        for direction in order:
+            nx, ny = _neighbor_tile(cur[0], cur[1], direction)
+            if self._tile_blocks_charge(ram, nx, ny):
+                continue
+            return make_action(**{direction: True, "b": True})
+        return None
+
     def _advance_waypoint(self) -> None:
         """Move to next waypoint."""
         self._wp_index += 1
@@ -571,10 +660,16 @@ class MultiMapNavTask(Task):
                 dx = wp.target_px[0] - cur.x
                 dy = wp.target_px[1] - cur.y
                 if abs(dx) >= abs(dy):
-                    direction = "right" if dx > 0 else "left"
+                    primary = "right" if dx > 0 else "left"
+                    secondary = "down" if dy > 0 else "up"
                 else:
-                    direction = "down" if dy > 0 else "up"
-                action = make_action(**{direction: True, "b": True})
+                    primary = "down" if dy > 0 else "up"
+                    secondary = "right" if dx > 0 else "left"
+                action = self._safe_walk_action(
+                    world.ram, primary, secondary=secondary
+                )
+                if action is None:
+                    action = make_action()
             else:
                 action = make_action()
             if self._initial_settle == SETTLE_FRAMES:
@@ -734,12 +829,18 @@ class MultiMapNavTask(Task):
             d = wp.run_direction
             if d in {"left", "right"} and abs(cur.y - wp.target_px[1]) > wp.radius:
                 align = "down" if wp.target_px[1] > cur.y else "up"
-                return TaskResult(status=TaskStatus.RUNNING,
-                                  action=ActionResult(make_action(**{align: True, "b": True})))
+                safe = self._safe_walk_action(world.ram, align)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(safe if safe is not None else make_action()),
+                )
             if d in {"up", "down"} and abs(cur.x - wp.target_px[0]) > wp.radius:
                 align = "right" if wp.target_px[0] > cur.x else "left"
-                return TaskResult(status=TaskStatus.RUNNING,
-                                  action=ActionResult(make_action(**{align: True, "b": True})))
+                safe = self._safe_walk_action(world.ram, align)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(safe if safe is not None else make_action()),
+                )
             overshot = False
             if d == "down" and cur.y > wp.target_px[1] + wp.radius:
                 overshot = True
@@ -752,14 +853,14 @@ class MultiMapNavTask(Task):
             if overshot:
                 self._advance_waypoint()
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-            return TaskResult(status=TaskStatus.RUNNING,
-                              action=ActionResult(make_action(**{d: True, "b": True})))
+            safe = self._safe_walk_action(world.ram, d)
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(safe if safe is not None else make_action()),
+            )
 
         # Close-range direct walk: when within ~5 tiles, walk directly toward
-        # the target without BFS. Bypasses stale-tile issues in RAM.
-        # Skip for exit waypoints (need BFS to approach the exit properly).
-        # If stasis is high (>40), fall through to BFS which has better
-        # stuck recovery (4-direction cycling, temp_blocked tiles).
+        # the target without BFS — but NEVER into fence/weed/solid tiles.
         if not wp.is_exit:
             cur = self._navigator.current_pos
             dx_close = abs(wp.target_px[0] - cur.x)
@@ -774,9 +875,15 @@ class MultiMapNavTask(Task):
                 else:
                     primary = "down" if dy > 0 else "up"
                     secondary = "right" if dx > 0 else "left"
-                direction = primary if stasis < 20 else secondary
-                return TaskResult(status=TaskStatus.RUNNING,
-                                  action=ActionResult(make_action(**{direction: True, "b": True})))
+                preferred = primary if stasis < 20 else secondary
+                safe = self._safe_walk_action(
+                    world.ram, preferred, secondary=secondary
+                )
+                if safe is not None:
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, action=ActionResult(safe)
+                    )
+                # All neighbors blocked at close range → BFS / fail, no thrash.
 
         # Stuck recovery
         if self._navigator.stasis > 180 and self._navigator.path:
@@ -786,6 +893,7 @@ class MultiMapNavTask(Task):
 
         # BFS path (viewport-aware hopping)
         if not self._navigator.path:
+            self._sync_farm_weed_blocks(world.ram, tilemap)
             hop = self._hop_target(wp)
             goal = self._pathfinder.find_nearest_walkable(world.ram, hop, max_radius=4)
             if goal is None:
@@ -801,78 +909,76 @@ class MultiMapNavTask(Task):
                 self._stuck_anchor = None
                 self._stuck_frames = 0
             else:
-                # BFS failed — walk toward waypoint as fallback.
-                # Cycle between primary and perpendicular directions
-                # when stuck (stasis high) to navigate around obstacles.
+                # BFS failed. Safe walk only — never B-run into fence/bushes.
                 self._no_path_frames += 1
                 cur = self._navigator.current_pos
-                anchor = (cur.x // 8 * 8, cur.y // 8 * 8)
-                if self._stuck_anchor == anchor:
+                anchor = (cur.x, cur.y)
+                if self._stuck_anchor is not None and max(
+                    abs(cur.x - self._stuck_anchor[0]),
+                    abs(cur.y - self._stuck_anchor[1]),
+                ) < 8:
                     self._stuck_frames += 1
                 else:
                     self._stuck_anchor = anchor
                     self._stuck_frames = 0
                 if self._no_path_frames == 1 or self._no_path_frames % 300 == 0:
-                    print(f"[MULTI_NAV] No BFS path from ({cur.x},{cur.y}), "
-                          f"fallback walk (frame {self._no_path_frames} "
-                          f"stuck={self._stuck_frames})")
-                # Prolonged pin with zero progress: clear temp blocks and
-                # force a longer east/north thrash (farm SW pocket after CLEAR).
+                    tx, ty = self._navigator.current_tile
+                    neighbor_ids = {
+                        direction: int(get_tile_at(world.ram, *_neighbor_tile(tx, ty, direction)))
+                        for direction in ("up", "down", "left", "right")
+                    }
+                    print(
+                        f"[MULTI_NAV] No BFS path from ({cur.x},{cur.y}) "
+                        f"toward {wp.target_px}; safe walk only "
+                        f"(frame {self._no_path_frames} stuck={self._stuck_frames} "
+                        f"neighbors={neighbor_ids})"
+                    )
                 if self._stuck_frames > 0 and self._stuck_frames % 120 == 0:
                     self._pathfinder.temp_blocked.clear()
                     self._navigator.stasis = 0
+                # Fail fast when sealed (e.g. y=31 fence) — do not thrash.
+                if self._stuck_frames >= 90:
+                    return TaskResult(
+                        status=TaskStatus.FAILURE,
+                        reason=(
+                            f"no_path sealed pos=({cur.x},{cur.y}) "
+                            f"target={wp.target_px} stuck={self._stuck_frames}"
+                        ),
+                    )
                 dx = wp.target_px[0] - cur.x
                 dy = wp.target_px[1] - cur.y
                 final = (wp.target_px[0] // TILE_SIZE, wp.target_px[1] // TILE_SIZE)
-                loaded_direction = find_loaded_direction(world.ram, self._navigator.current_tile, final)
-                if get_tile_at(world.ram, *self._navigator.current_tile) in STALE_TILE_IDS and loaded_direction is not None:
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(make_action(**{loaded_direction: True, "b": True})),
-                    )
-                # Stagnant softlock thrash: prefer right then up (leave SW farm).
-                if self._stuck_frames >= 45:
-                    # Fail early so ReturnHome can B-run escape / densify
-                    # instead of burning the full multi_nav timeout in a pocket.
-                    if self._stuck_frames >= 420:
-                        cur = self._navigator.current_pos
+                loaded_direction = find_loaded_direction(
+                    world.ram, self._navigator.current_tile, final
+                )
+                if (
+                    get_tile_at(world.ram, *self._navigator.current_tile) in STALE_TILE_IDS
+                    and loaded_direction is not None
+                ):
+                    safe = self._safe_walk_action(world.ram, loaded_direction)
+                    if safe is not None:
                         return TaskResult(
-                            status=TaskStatus.FAILURE,
-                            reason=(
-                                f"multi_nav softlock pos=({cur.x},{cur.y}) "
-                                f"stuck={self._stuck_frames}"
-                            ),
+                            status=TaskStatus.RUNNING, action=ActionResult(safe)
                         )
-                    phase = (self._stuck_frames // 30) % 4
-                    stuck_dirs = ("right", "up", "left", "down")
-                    direction = stuck_dirs[phase]
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(make_action(**{direction: True, "b": True})),
-                    )
-                # Primary direction toward target
                 if abs(dx) >= abs(dy):
                     primary = "right" if dx > 0 else "left"
                     secondary = "down" if dy > 0 else "up"
                 else:
                     primary = "down" if dy > 0 else "up"
                     secondary = "right" if dx > 0 else "left"
-                # If stuck, cycle through directions every 30 frames
-                stasis = self._navigator.stasis
-                if stasis < 30:
-                    direction = primary
-                elif stasis < 60:
-                    direction = secondary
-                elif stasis < 90:
-                    # Opposite of primary
-                    opposites = {"up": "down", "down": "up", "left": "right", "right": "left"}
-                    direction = opposites[primary]
-                else:
-                    # Opposite of secondary
-                    opposites = {"up": "down", "down": "up", "left": "right", "right": "left"}
-                    direction = opposites[secondary]
-                return TaskResult(status=TaskStatus.RUNNING,
-                                  action=ActionResult(make_action(**{direction: True, "b": True})))
+                safe = self._safe_walk_action(
+                    world.ram, primary, secondary=secondary
+                )
+                if safe is not None:
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, action=ActionResult(safe)
+                    )
+                # Completely boxed in by solids — idle (0 thrash frames).
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason="no_safe_step",
+                )
 
         action = self._navigator.follow_path(world.ram)
         if action is not None:

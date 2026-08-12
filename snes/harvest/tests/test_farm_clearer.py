@@ -21,20 +21,25 @@ from harvest.core.tile_catalog import (
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind
 from harvest.planner.day_plan_phases import PHASE_SEQUENCES, build_day_phases
 from harvest.tasks.farm_clear_task import FarmClearTask
-from harvest.tasks.farm_clearer import (
+from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_TILEMAP,
     ADDR_TOOL,
     ADDR_X,
     ADDR_Y,
-    DEFAULT_PRIORITY,
-    FarmClearer,
-    Point,
-    Target,
-    TileScanner,
     Tool,
+)
+from harvest.tasks.nav import (
+    Point,
     VIEWPORT_HOP_TILES,
 )
+from harvest.tasks.farm_clearer import (
+    DEFAULT_PRIORITY,
+    FarmClearer,
+    Target,
+    TileScanner,
+)
+
 from retro_harness import TaskStatus, WorldState
 
 
@@ -242,6 +247,28 @@ class TestFarmClearerSelection(unittest.TestCase):
         self.assertEqual(nxt, "clearing")
         assert clearer.current_target is not None
         self.assertEqual(clearer.current_target.debris_type, DebrisType.ROCK)
+
+    def test_failed_stone_lift_stops_adjacent_thrash(self) -> None:
+        """Unclearable adjacent stone must not lift forever (Spring D3 thrash)."""
+        ram = _make_farm_ram(player_tile=(10, 10), tool=int(Tool.WATERING_CAN))
+        _set_tile(ram, 11, 10, STONE)
+        clearer = FarmClearer(priority=[DebrisType.STONE, DebrisType.WEED])
+        clearer.startup_done = True
+        clearer.prefer_lift_for_stones = True
+        clearer.tools_missing = True
+        clearer.state = "scanning"
+        clearer.max_scan_misses = 5
+
+        for _ in range(250):
+            _set_player(ram, (10, 10))
+            ram[ADDR_INPUT_LOCK] = 1
+            _set_tile(ram, 11, 10, STONE)  # never actually clears
+            clearer.tick(ram)
+            if clearer.state == "complete":
+                break
+
+        self.assertIn((11, 10), clearer.failed_tiles)
+        self.assertEqual(clearer.state, "complete")
 
     def test_hit_count_does_not_mark_cleared_until_tile_gone(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10), tool=int(Tool.AXE))
