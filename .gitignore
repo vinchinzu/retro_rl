@@ -96,6 +96,14 @@ roms/
 !snes/super_metroid/tas/**/*.py
 !snes/super_metroid/tas/**/__init__.py
 !snes/super_metroid/tas/README.md
+# SMW TAS import/oracle tooling; source movies and generated replay evidence stay ignored.
+!snes/SMW/tas/
+!snes/SMW/tas/**/*.py
+!snes/SMW/tas/**/__init__.py
+!snes/SMW/tas/**/*.lua
+!snes/SMW/tas/**/*.sh
+!snes/SMW/tas/README.md
+snes/SMW/tas/ref/
 # Zelda I TAS import (Lord Tom any% / chatterbox all-items); keep *.fm2 ignored
 !nes/zelda_i/tas/
 !nes/zelda_i/tas/**/*.py
@@ -219,6 +227,18 @@ harvest/tasks/
 !**/super_metroid/maps/README.md
 # Human frame dumps / end states under package tasks/ (not docs/tasks cards)
 **/super_metroid/tasks/**
+# Private human free-records / takes (pads, anchors, segment archives).
+# The human_tape *library* (Python) stays trackable — only recording dumps are private.
+**/recordings/human_tasks/
+**/*_human_anchors/
+**/*_human_seeds/
+**/*_human_segments/
+**/*_segments/
+**/routes/**/*human*.json
+**/routes/**/data/*human*
+# Keep the Super Metroid human_tape package (code only)
+!**/super_metroid/human_tape/
+!**/super_metroid/human_tape/**/*.py
 **/super_metroid/refs/sm-json-data/
 # YouTube reference VODs + frame/button extracts (local only; large media)
 **/super_metroid/refs/yt_reference/

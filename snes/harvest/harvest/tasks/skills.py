@@ -4,6 +4,10 @@ Domain tasks (coop, cow, harvest) should become thin composers of skills that
 implement the same Task protocol. Skills keep ProgressSnapshot trees precise
 for stall detection and make recording → autonomous extraction easier.
 
+**Production path (wired):** ``CoopChoresTask`` feed_nav + ship_nav (far
+approach) step ``coop_nav_to_feed_bin_skill`` / ``coop_nav_to_shipping_bin_skill``
+with a host ``navigate`` callable so specialized coop routing is preserved.
+
 Prefer these over growing another 50–100 KB phase-machine file. See
 ``docs/PLANNING_STACK.md``.
 """
@@ -12,15 +16,15 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 
-from retro_harness import Task, TaskResult, TaskStatus, WorldState
+from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.planner.tasks.navigation import NavTask
-from harvest.tasks.farm_clearer import Point
+from harvest.tasks.nav import Point
 from harvest.tasks.primitives import (
     PressAndVerifyTask,
     QueuedActions,
@@ -30,6 +34,9 @@ from harvest.tasks.primitives import (
     drain_action_queue,
     press_a_sequence,
 )
+
+# Host navigate: return a button array while moving, None when arrived.
+NavigateFn = Callable[[WorldState], Optional[np.ndarray]]
 
 # Re-export composition primitives under the skills namespace.
 SequenceSkill = TaskSequence
@@ -81,6 +88,58 @@ class NavSkill(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         return self._nav.step(world)
+
+
+@dataclass
+class NavigateUntilArrivedSkill(Task):
+    """Host-backed nav skill: call ``navigate(world)`` until it returns None.
+
+    Used when a domain task owns specialized pathfinding (chicken blockers,
+    false-open columns, left-top aisle routes) but still wants the skill
+    protocol for progress trees and composition. Factories accept an optional
+    ``navigate`` callable and return this instead of generic ``NavSkill``.
+    """
+
+    name: str = "navigate_until_arrived"
+    navigate: Optional[NavigateFn] = None
+    timeout: int = 900
+
+    _step_count: int = field(default=0, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._step_count = 0
+
+    def can_start(self, world: WorldState) -> bool:
+        return self.navigate is not None
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        return ProgressSnapshot(
+            task_name=self.name,
+            phase_text="navigate",
+            step_count=self._step_count,
+            details=(("host_navigate", self.navigate is not None),),
+        )
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._step_count += 1
+        if self.navigate is None:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"{self.name} missing navigate",
+            )
+        if self._step_count > self.timeout:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"{self.name} timeout",
+            )
+        action = self.navigate(world)
+        if action is not None:
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(action),
+                reason=f"{self.name} moving",
+            )
+        return TaskResult(status=TaskStatus.SUCCESS, reason=f"{self.name} arrived")
 
 
 @dataclass
@@ -170,16 +229,30 @@ def sequence_skills(name: str, *skills: Task, idle_between: bool = True) -> Skil
 
 
 # ── Domain skill factories ────────────────────────────────────────────
-# These pin skill *boundaries* for composition. Production domain tasks
-# (CoopChoresTask, HarvestTask, …) remain the live path until each skill
-# is fully extracted + replay-covered. Prefer factories over growing mono
-# phase machines — see docs/PLANNING_STACK.md.
+# Pin skill *boundaries* for composition. Coop feed_nav / ship_nav far
+# approach already call these with a host ``navigate`` (specialized routing).
+# Generic ``NavSkill`` (no navigate) remains for open-map / unit targets.
+# Prefer factories over growing mono phase machines — see PLANNING_STACK.
 
 
-def coop_nav_to_feed_bin_skill(*, timeout: int = 900) -> NavSkill:
-    """Navigate to the coop feed-bin stand tile (2, 6) in pixel space."""
+def coop_nav_to_feed_bin_skill(
+    *,
+    timeout: int = 900,
+    navigate: Optional[NavigateFn] = None,
+) -> Union[NavSkill, NavigateUntilArrivedSkill]:
+    """Navigate to the coop feed-bin stand tile (2, 6) in pixel space.
+
+    Pass ``navigate`` from ``CoopChoresTask`` to keep chicken/false-open routing.
+    """
+    if navigate is not None:
+        return NavigateUntilArrivedSkill(
+            name="coop_nav_feed_bin",
+            navigate=navigate,
+            timeout=timeout,
+        )
+
     from harvest.tasks.coop_task import FEED_BIN_STAND
-    from harvest.tasks.farm_clearer import TILE_SIZE
+    from harvest.tasks.nav import TILE_SIZE
 
     tx, ty = FEED_BIN_STAND
     return NavSkill(
@@ -195,10 +268,25 @@ def coop_press_feed_skill(*, face: str = "left") -> PressAInteractSkill:
     return PressAInteractSkill(name="coop_press_feed", face=face)
 
 
-def coop_nav_to_shipping_bin_skill(*, timeout: int = 900) -> NavSkill:
-    """Navigate to the coop shipping-bin stand (egg ship path)."""
+def coop_nav_to_shipping_bin_skill(
+    *,
+    timeout: int = 900,
+    navigate: Optional[NavigateFn] = None,
+) -> Union[NavSkill, NavigateUntilArrivedSkill]:
+    """Navigate to the coop shipping-bin stand (egg ship path).
+
+    Pass ``navigate`` from ``CoopChoresTask`` for lane/corner routing; pixel
+    slide + press remain on the host after this skill reports arrived.
+    """
+    if navigate is not None:
+        return NavigateUntilArrivedSkill(
+            name="coop_nav_ship_bin",
+            navigate=navigate,
+            timeout=timeout,
+        )
+
     from harvest.tasks.coop_task import SHIP_BIN_STAND
-    from harvest.tasks.farm_clearer import TILE_SIZE
+    from harvest.tasks.nav import TILE_SIZE
 
     tx, ty = SHIP_BIN_STAND
     return NavSkill(
@@ -259,7 +347,7 @@ def talk_press_skill(
 def farm_nav_to_pond_refill_skill(*, timeout: int = 2400) -> NavSkill:
     """Navigate to the primary main-pond F0 refill stand (map_config corridor)."""
     from harvest.maps.map_config import farm_pond_refill_primary_stand
-    from harvest.tasks.farm_clearer import TILE_SIZE
+    from harvest.tasks.nav import TILE_SIZE
 
     stand, _face = farm_pond_refill_primary_stand()
     tx, ty = stand
@@ -282,6 +370,8 @@ def farm_pond_refill_face() -> str:
 __all__ = [
     "InteractSkill",
     "NavSkill",
+    "NavigateFn",
+    "NavigateUntilArrivedSkill",
     "PressAInteractSkill",
     "SequenceSkill",
     "SkillSequence",

@@ -11,15 +11,16 @@ uv run python -m SMW -l smw_yoshi_island_1 hillclimb --seed <recording.json>
 uv run python -m SMW -l smw_yoshi_island_1 watch --actions <best.json>
 ```
 
-The repo currently has no local SMW ROM, so emulator-backed verification is
-blocked until `SMW/roms/smw.sfc` or a stable-retro imported ROM is present.
+The local USA ROM is installed at `snes/SMW/roms/smw.sfc` with SHA1
+`6b47bb75d16514b6a476aa0c73a683a2a4c18765`. BizHawk replay status and TAS
+source roles are tracked in [STATUS.md](STATUS.md).
 
 ## Phase 1 - Autoplay Foundation
 
 - [x] Create `SMW/` workspace.
 - [x] Add custom stable-retro integration metadata and expanded RAM fields.
 - [x] Register initial stable-retro level states in `retro_harness.platformer`.
-- [ ] Add local ROM symlink and verify SHA1.
+- [x] Install the local ROM and verify SHA1.
 - [ ] Smoke-test `uv run python -m SMW -l smw_yoshi_island_1 play`.
 - [ ] Record one clean human completion.
 - [ ] Verify replay headlessly and save trace JSON.

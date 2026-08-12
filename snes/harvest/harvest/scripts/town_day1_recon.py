@@ -63,7 +63,7 @@ from harvest.core.scene import classify_scene_from_ram
 from harvest.runtime.power_on import PowerOnStartTask
 from harvest.runtime.recording_trace import recording_trace_entry, summarize_recording
 from harvest.runtime.retro_setup import make_harvest_env
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 
 # ---------------------------------------------------------------------------
 # Recon facts (docs/town_day1_recon.md)

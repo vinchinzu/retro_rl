@@ -4,7 +4,14 @@ import unittest
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_TILEMAP, ADDR_X, ADDR_Y, MAP_WIDTH
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_MAP,
+    ADDR_TILEMAP,
+    ADDR_X,
+    ADDR_Y,
+)
+from harvest.tasks.nav import MAP_WIDTH
 from harvest.core.carry import ADDR_TOOL_BACKPACK, ADDR_TOOL_SELECTED
 from harvest.core.tile_catalog import Tool
 from harvest.planner.day_phase_catalog import CROP_ESTABLISH_PHASE

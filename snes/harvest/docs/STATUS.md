@@ -4,20 +4,21 @@
 
 | Field | Value |
 |-------|-------|
-| Current maturity | **M3** (calendar multi-day); crop economy still short of M4 domain |
-| Best verified result | Gate A multi-day Day09: harvest 24 + plant 6 + wallet **$1260→$3180** Clean; power-on→D2 handoff+shed Clean (rr-5in partial) |
-| Last verification | 2026-08-09 (rr-5in power-on D2; rr-y8n Gate A) |
+| Current maturity | **M3** (calendar multi-day); Gate A economy closed; Gate B continuous open |
+| Best verified result | Gate A Day09 **$1260→$3180** Clean; ship probe re-verified same delta; power-on continuous **21 ovn / money $400** (terminal return_home D23 pre-fix); empty-can 3/3 fixture GREEN |
+| Last verification | 2026-08-10 (Gate B soak v6: **21 ovn** past prior D23 0x08 hang; sleep outdoor-evening wait; tip **CROP_WATER refill + NAV_CROP freeze**) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
+| Gate board | [MILESTONES.md](MILESTONES.md) · structure debt [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md) |
 
 | Field | Value |
 |-------|-------|
-| Status | **Gate A economy closed**; power-on→D2 continuous Clean; full power-on→Summer income still open |
+| Status | **Gate A closed**; empty-can mostly closed; **ship verify closed** (`rr-9xyy`); **ExitToFarm 0x08 residual closed** (`rr-uru1` — sticky dismiss + soak past D23); Gate B tip = **CROP_WATER refill + income** (`rr-5in`) |
 | Integration | `HarvestMoon-Snes` |
 | ROM | `roms/Harvest Moon.sfc` via `retro_setup` (SHA1 gate) |
 | Start contract | Clean power-on → new diary → Spring D1 07:00 town gate; multi-day via `--power-on` auto D1 handoff |
 | Completion contract | Campaign (multi-year farm / marriage / ending) — TBD |
-| Evidence | `recordings/power_on_d1_handoff_d2.json` (rr-5in D2); `recordings/run_spring_gate_a_day09.json` (Gate A); `recordings/rr_5in_residual.json` |
+| Evidence | `recordings/rr_9xyy_ship_money_day09.json`; `recordings/power_on_spring_to_summer.json`; `recordings/run_spring_gate_a_day09.json`; `recordings/empty_can_refill_probe.json` |
 
 ## Done
 
@@ -193,6 +194,13 @@ Test crop fixtures (for growth / ship work):
      (`recordings/power_on_spring_to_summer.json`, ~300k f)
    - Parent **rr-5in** residual: Summer D1 not reached (return_home D23) +
      harvest ship timeouts; Gate B full still open.
+   **2026-08-10 (rr-ws8h CLOSED unit):** `return_home` no longer hard-fails
+   `timeout phase=exit_to_farm` while already on house tilemap. Fix:
+   house-arrival short-circuit every `step` (+ timeout defense) and approach
+   geometry extracted to `planner/tasks/home_approach.py`. Unit-locked mid-
+   phase exit_to_farm + timeout-on-house SUCCESS. Full power-on soak residual
+   stays under **rr-5in**; ship verify **closed** (**rr-9xyy**); ExitToFarm
+   dialogue residual **rr-uru1**.
 3. Same-day water after plant: day-plan order
    `CROP_ESTABLISH` → `ENSURE_WATERING_CAN` → `CROP_WATER` is unit-locked.
    **ROM natural empty-can fill + 3/3 dry water OK** on dry fixture
@@ -327,7 +335,8 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 | Frames to money > $100 | Day09 ship soak ~30k frames (harvest+5pm+sleep) | Measure on continuous spring loop |
 | M-gate | M3 | M4 natural-entry summer; M5 domain depth |
 
-Planning-stack direction (skill composition, contracts, advisor apply gate):
+Gate board: [MILESTONES.md](MILESTONES.md). Structure debt:
+[CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md). Planning-stack direction:
 [PLANNING_STACK.md](PLANNING_STACK.md). Layer ownership:
 [bot_architecture_plan.md](bot_architecture_plan.md). Future work: [plan.md](plan.md).
 

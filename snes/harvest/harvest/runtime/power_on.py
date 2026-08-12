@@ -20,7 +20,7 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import classify_scene_from_ram
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 
 
 # These are title/name-screen scratch registers, not persistent game facts.

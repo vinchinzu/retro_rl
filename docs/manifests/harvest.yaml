@@ -15,18 +15,18 @@ transfer_value: high
 ending_definition: published multi-year / marriage / farm objective (contract TBD)
 start_contract: power_on_new_game
 completion_contract: campaign_objective
-best_manifest: snes/harvest/recordings/run_spring_month.json
+best_manifest: snes/harvest/recordings/power_on_spring_to_summer.json
 best_video: null
 assist_contract: null
 status_doc: snes/harvest/docs/STATUS.md
 plan_doc: snes/harvest/docs/plan.md
-last_verified: 2026-08-01
-blocker: same-day water + harvest/ship income (money still ~$100 floor); planning stack skill composition in progress
+last_verified: 2026-08-10
+blocker: >
+  Gate B continuous (rr-5in): power-on → Summer D1 + income; tip return_home
+  late-spring timeout (rr-ws8h) + ship-verify residual; crop_planter mono ~4.9k
+  arch tax (rr-ds3)
 notes: >
-  Clean power-on bootstrap verified 2026-08-01: title → START → fresh diary →
-  Spring D1 07:00 town gate, no save-state load or RAM write
-  (recordings/power_on_boot_probe.json). Natural D1 town→farm→D2 remains open.
-  Spring calendar soak verified 2026-07-28: Y1_Inside_House Spring D2 → Summer
-  D1 morning, 29 overnights, no mid-run state load
-  (recordings/run_spring_month.json). Plant path ROM-verified; water after plant
-  and harvest→ship still open. Pioneer planning trunk (docs/PLANNING_STACK.md).
+  Gate A closed (Day09 multi-day money growth). Empty-can natural mostly closed.
+  Power-on→D2 shed Clean (rr-bhr). Power-on continuous PARTIAL: ~21 overnights,
+  money $400, terminal return_home (recordings/power_on_spring_to_summer.json).
+  Pioneer planning trunk; structure debt docs/CODE_QUALITY_REVIEW.md + MILESTONES.md.

@@ -29,15 +29,23 @@ DayPlanTask (orchestrator)
 | **Planner** | Phase catalog + registry builders, decision/advisor, `local_llm.py` | Stable; advisor advisory by default; gated apply for optional reorder/append |
 | **Contracts** (`TaskContract` on `PhaseSpec`) | Soft preconditions for advisors/tests/probes | **Wired** on crop establish/water, harvest, coop, ensure tools, exit/sleep, hot spring; `evaluate_task_contract` + `preflight_phase_contract` / `tool_tags_from_ram`; day-plan probe emits soft preflight events; builders do **not** hard-abort on fail yet |
 | **Primitives** (`tasks/primitives.py`) | `TaskSequence`, `PressAndVerifyTask`, `RamCondition`, `RetryTask` | Prefer composing these over new 50–100 KB phase machines |
-| **Skills** (`tasks/skills.py`) | `NavSkill`, interact helpers, coop/farm/talk factories | Boundary factories exist; production coop/cow/harvest still mono FSMs |
-| **Pathfinding** | `Pathfinder` / `Navigator` in `farm_clearer` | Viewport-limited BFS; `densify_waypoints` for long same-map hops |
+| **Skills** (`tasks/skills.py`) | `NavSkill`, `NavigateUntilArrivedSkill`, interact helpers, coop/farm/talk factories | **Wired:** `CoopChoresTask` feed_nav + ship_nav far approach step `coop_nav_*_skill(navigate=…)`; cow/harvest still mono |
+| **Pathfinding** | `Pathfinder` / `Navigator` in `tasks/nav.py` (`farm_clearer` re-exports) | Viewport-limited BFS; `densify_waypoints` for long same-map hops |
 | **Observation** | `WorldSnapshot` + `WorldContext` cache | Prefer batched reads over re-inspecting RAM every sub-step |
 | **Scene / recovery** | `core/scene.py`, `core/recovery.py` | Classifies maps/dialogue/locks/endings; morning stability gate |
 
-**State of the art (see STATUS):** M3 verified (Spring D2 → Summer D1 continuous,
-~29 overnights, Clean/Bronze). Crop plant path ROM-ok; water refill flaky; money
-stuck ~$100 (no harvest income). Power-on → D1 town gate clean; D1 handoff
-auto via rest recording; natural power-on→D2 + shed on `house_size=0` still open.
+**State of the art (see STATUS + MILESTONES, 2026-08-10):** M3 calendar verified;
+Gate A economy closed (Day09 multi-day money growth); natural empty-can mostly
+closed; power-on→D2 shed Clean (`rr-bhr`); ship debris residual closed
+(`rr-9xyy`); return_home house short-circuit unit-closed (`rr-ws8h`). Gate B
+continuous still open — tip ExitToFarm dialogue residual (`rr-uru1`) + full
+power-on re-soak (`rr-5in`).
+**Arch debt (2026-08-10 structure pass):** `crop_planter.py` ~1.16k after
+navigate extract (mixins: refill/water_ops/establish/navigate + `crop_fsm`
+enums) — line bar met; dual-FSM skill rewrite still optional residual.
+`pond_*` + `crop_geometry` + `home_recover` + inventory split + nav promote
+landed. Skills layer: coop feed/ship nav wired; cow/crop still under-consumed.
+See [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
 
 ## Design principles
 
@@ -76,7 +84,7 @@ CoopChoresTask ≈ TaskSequence(
 | `TaskSequence` / `RetryTask` | Done + `progress_snapshot` | `tasks/primitives.py` |
 | `PressAndVerifyTask` / `RamCondition` | Done | `tasks/primitives.py` |
 | `NavSkill` / interact helpers | Thin wrappers | `tasks/skills.py` |
-| Coop feed/ship nav factories | Done (boundary) | `tasks/skills.py` |
+| Coop feed/ship nav factories | **Production** on feed_nav / ship_nav far approach | `tasks/skills.py` + `coop_task.py` |
 | Farm ship + talk factories | Done (boundary) | `tasks/skills.py` |
 | `Pathfinder` / `Navigator` | Exists; promote later | `tasks/farm_clearer.py` |
 | `RecoveryTask` | Exists | `core/recovery.py` |
@@ -182,13 +190,13 @@ Program ROADMAP places Harvest under longer-term Phase 6. Because infrastructure
 is already strong (M3 continuous calendar, planner, editor, recordings), treat
 Harvest as the **planning trunk** and pull domain depth forward:
 
-1. **Immediate** — same-day water after plant; harvest + ship; money > $100;
-   multi-adult coop fix; power-on D1 close.
-2. **M4** — natural-entry summer from `Y1_Summer_D1_Morning`; Sunday/festival;
-   hot-spring stamina gate in day plan.
-3. **M5** — cow/barn chores; rainy-day ordering; multi-seed; gifts; stamina/tools.
+1. **Immediate** — Gate B (`rr-uru1` ExitToFarm residual → `rr-5in` soak); crop mono extract
+   (`rr-ds3`) on any further water work; Pathfinder out of `farm_clearer`.
+2. **M4** — natural-entry summer from `Y1_Summer_D1_Morning`; Sunday/festival
+   (`rr-1vc`); hot-spring stamina gate (`rr-pzw`).
+3. **M5** — cow/barn extract; rainy-day ordering; multi-seed; gifts; stamina/tools.
 4. **Campaign** — multi-year planner; hierarchical day → week/season goals;
-   power-on → full Spring 1; Bronze → Silver observation once the route is stable.
+   Bronze → Silver observation once the route is stable.
 
 Success metrics live in [STATUS.md](STATUS.md). Concrete next tasks in
 [plan.md](plan.md).

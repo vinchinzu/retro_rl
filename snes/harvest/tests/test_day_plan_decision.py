@@ -26,7 +26,16 @@ from harvest.planner.day_plan_decision import (
 from harvest.planner.local_llm import apply_advisor_patch
 
 
-def _ram(*, tilemap: int = 0x00, weekday: int = 1, hour: int = 6, minute: int = 0) -> np.ndarray:
+def _ram(
+    *,
+    tilemap: int = 0x00,
+    weekday: int = 1,
+    hour: int = 6,
+    minute: int = 0,
+    money: int = 300,
+) -> np.ndarray:
+    from harvest.core.ram_catalog import field_spec
+
     ram = np.zeros(0x24000, dtype=np.uint8)
     ram[ADDR_TILEMAP] = tilemap
     base = LIVE_RAM_WRAM_OFFSET
@@ -34,6 +43,12 @@ def _ram(*, tilemap: int = 0x00, weekday: int = 1, hour: int = 6, minute: int = 
     ram[ADDR_WEEKDAY + base] = weekday
     ram[ADDR_HOUR + base] = hour
     ram[ADDR_MINUTE + base] = minute
+    # Display gold is storage*10 (potato bag costs 200).
+    money_spec = field_spec("money")
+    storage = money_spec.to_storage(money)
+    money_addr = money_spec.address + base
+    for i, byte in enumerate(int(storage).to_bytes(3, "little")):
+        ram[money_addr + i] = byte
     return ram
 
 

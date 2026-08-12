@@ -214,7 +214,7 @@ class HarvestEditorBridgeRuntime(EditorBridgeRuntime):
 
     def _autoplay_warmup_action(self, ram: np.ndarray) -> list[int] | None:
         from harvest.runtime.harvest_bot import ADDR_INPUT_LOCK
-        from harvest.tasks.farm_clearer import make_action
+        from harvest.tasks.nav import make_action
 
         input_lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
         if self._autoplay_cancel_until_clear:

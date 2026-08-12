@@ -117,7 +117,8 @@ harvest/core/task_progress.py    - ProgressSnapshot (autoplay stall watchdog)
 harvest/tasks/coop_task.py       - CoopChoresTask (feed/egg/incubate/ship, scales to 12)
 harvest/tasks/harvest_task.py    - HarvestTask (pick ripe crops + ship)
 harvest/tasks/crop_planter.py    - CropWaterTask (plant seeds + water)
-harvest/tasks/farm_clearer.py    - FarmClearer + pathfinding (BFS, Navigator, Pathfinder)
+harvest/tasks/nav.py             - Pathfinder / Navigator / Point (BFS pathing)
+harvest/tasks/farm_clearer.py    - FarmClearer + TileScanner (re-exports nav)
 harvest/maps/map_config.py       - Walkable tiles, map registry, named routes
 harvest/core/harvest_state.py    - HarvestStateDocument (persistent tile layer)
 harvest/runtime/rom_tools.py     - Save state parsing, VRAM/ROM inspection

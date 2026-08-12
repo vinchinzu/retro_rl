@@ -21,14 +21,17 @@ from harvest.planner.tasks.transitions import (
     multi_face_toss_actions,
     toss_held_actions,
 )
-from harvest.tasks.farm_clearer import (
-    DebrisType,
-    FarmClearer,
+from harvest.core.tile_catalog import DebrisType
+from harvest.tasks.nav import (
     Point,
-    TileScanner,
     get_pos_from_ram,
     make_action,
 )
+from harvest.tasks.farm_clearer import (
+    FarmClearer,
+    TileScanner,
+)
+
 
 # y=31 fence wall px — clear finishing south of this leaves return_home stuck
 # in the SW rock pocket (rr-5in D8). Walk east past the wall end first.

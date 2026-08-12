@@ -15,7 +15,15 @@ from harvest.maps.map_config import (
     player_in_west_plant_pocket,
 )
 from harvest.tasks.crop_planter import CropWaterTask
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_MAP, ADDR_TILEMAP, ADDR_TOOL, ADDR_X, ADDR_Y, MAP_WIDTH
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_MAP,
+    ADDR_TILEMAP,
+    ADDR_TOOL,
+    ADDR_X,
+    ADDR_Y,
+)
+from harvest.tasks.nav import MAP_WIDTH
 from harvest.tasks.skills import farm_nav_to_pond_refill_skill, farm_pond_refill_face
 from harvest.tasks.water_refill import (
     corridor_needs_fence_open,
@@ -430,7 +438,7 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         self.assertEqual(task._plot_phase, "refill")
         # Still north of wall: scripted east→south charge is armed before multihop.
         self.assertTrue(
-            getattr(task, "_pending_gap_charge", False)
+            getattr(task._corridor, "pending_gap_charge", False)
             or task._refill_multihop
             or len(task._action_queue) > 0,
             msg="must arm east→south charge or multihop after fence open",
@@ -439,17 +447,17 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task._action_queue.clear()
         _set_player_tile(ram, (28, 32))
         task._navigator.update(ram)
-        task._pending_gap_charge = True
+        task._corridor.pending_gap_charge = True
         task._handle_navigate(ram)
         self.assertTrue(
-            getattr(task, "_pending_south_lip_charge", False)
+            getattr(task._corridor, "pending_south_lip_charge", False)
             or task._refill_multihop
             or len(task._action_queue) > 0,
             msg="(28,32) band must arm west→south-lip or multihop",
         )
         # Simulate arriving at stand after lip charge.
         task._action_queue.clear()
-        task._pending_south_lip_charge = True
+        task._corridor.pending_south_lip_charge = True
         _set_player_tile(ram, (32, 34))
         task._navigator.update(ram)
         task._handle_navigate(ram)
@@ -542,7 +550,7 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         _set_player_tile(ram, (25, 30))
         task._navigator.update(ram)
         task._queue_east_south_corridor_charge((25, 30))
-        self.assertTrue(task._pending_gap_charge)
+        self.assertTrue(task._corridor.pending_gap_charge)
         self.assertGreater(len(task._action_queue), 100)
         # East-only leg while x<31: long queue with RIGHT bursts + wiggle.
         self.assertGreaterEqual(
@@ -561,16 +569,16 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         )
         # Still-north at (29,30) must re-queue (prior residual).
         task._action_queue.clear()
-        task._pending_gap_charge = True
-        task._east_south_charges = 1
+        task._corridor.pending_gap_charge = True
+        task._corridor.east_south_charges = 1
         _set_player_tile(ram, (29, 30))
         task._navigator.update(ram)
         task._handle_navigate(ram)
         self.assertTrue(
-            task._pending_gap_charge or len(task._action_queue) > 0,
+            task._corridor.pending_gap_charge or len(task._action_queue) > 0,
             msg="still_north at (29,30) must re-queue east→south past x≥31",
         )
-        self.assertGreaterEqual(task._east_south_charges, 2)
+        self.assertGreaterEqual(task._corridor.east_south_charges, 2)
         # Past fence end: south-heavy charge.
         task._action_queue.clear()
         task._queue_east_south_corridor_charge((31, 30))
@@ -591,7 +599,7 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task = CropWaterTask(work_mode="water")
         task.reset(world)
         task._queue_west_south_lip_charge((29, 32))
-        self.assertTrue(task._pending_south_lip_charge)
+        self.assertTrue(task._corridor.pending_south_lip_charge)
         # snes_action: up=4 down=5 left=6 right=7
         ups = sum(1 for a in task._action_queue if int(a[4]) == 1)
         rights = sum(1 for a in task._action_queue if int(a[7]) == 1)
@@ -614,7 +622,7 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task = CropWaterTask(work_mode="water")
         task.reset(world)
         task._queue_west_south_lip_charge((25, 34))
-        self.assertTrue(task._pending_south_lip_charge)
+        self.assertTrue(task._corridor.pending_south_lip_charge)
         ups = sum(1 for a in task._action_queue if int(a[4]) == 1)
         rights = sum(1 for a in task._action_queue if int(a[7]) == 1)
         downs = sum(1 for a in task._action_queue if int(a[5]) == 1)
@@ -682,18 +690,18 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task.reset(world)
         _set_player_tile(ram, (29, 35))
         task._navigator.update(ram)
-        task._pending_south_lip_charge = True
-        task._south_lip_charges = 2
+        task._corridor.pending_south_lip_charge = True
+        task._corridor.south_lip_charges = 2
         task._fence_open_attempts = 1
         task._handle_navigate(ram)
         # Must not re-arm another long lip charge from near F0.
         self.assertLessEqual(
-            task._south_lip_charges,
+            task._corridor.south_lip_charges,
             2,
             msg="near F0 must not re-queue lip charge",
         )
         self.assertFalse(
-            getattr(task, "_pending_south_lip_charge", False),
+            getattr(task._corridor, "pending_south_lip_charge", False),
             msg="pending lip charge must clear at near F0",
         )
         self.assertTrue(
@@ -715,15 +723,15 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         task = CropWaterTask(work_mode="water", refill_bounds=(3, 10, 62, 60))
         task.reset(world)
         task._navigator.update(ram)
-        task._south_lip_charges = 9
-        task._east_south_charges = 5
+        task._corridor.south_lip_charges = 9
+        task._corridor.east_south_charges = 5
         task._start_refill(ram)
         self.assertEqual(
-            task._south_lip_charges,
+            task._corridor.south_lip_charges,
             0,
             msg="exhausted lip charges must soft-reset on new refill",
         )
-        self.assertEqual(task._east_south_charges, 0)
+        self.assertEqual(task._corridor.east_south_charges, 0)
 
     def test_refill_hop_past_fence_end_forces_south(self) -> None:
         """At (31,29) densify must push south, not self-hop thrash."""
@@ -806,9 +814,183 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
             msg="second densify stall must return None and arm lip charge",
         )
         self.assertTrue(
-            getattr(task, "_pending_south_lip_charge", False)
+            getattr(task._corridor, "pending_south_lip_charge", False)
             or len(task._action_queue) > 0,
             msg="south densify thrash must arm west→south-lip",
+        )
+
+
+class CorridorThrashRulesTests(unittest.TestCase):
+    """Pure densify-thrash match/priority/fire (no emulator)."""
+
+    def test_past_fence_north_fires_immediate_east_south(self) -> None:
+        from harvest.tasks.pond_thrash import (
+            ThrashChargeKind,
+            ThrashCounters,
+            evaluate_corridor_thrash,
+            match_thrash_rule,
+        )
+
+        c = ThrashCounters()
+        rule = match_thrash_rule((31, 29), (32, 34), c)
+        self.assertIsNotNone(rule)
+        self.assertEqual(rule.name, "past_fence_north")
+        r = evaluate_corridor_thrash((31, 29), (32, 34), c)
+        self.assertTrue(r.fire_charge)
+        self.assertEqual(r.charge, ThrashChargeKind.EAST_SOUTH)
+        self.assertIn("Past-fence north", r.log)
+        self.assertEqual(r.refill_densify_stalls, 0)
+
+    def test_south_thrash_stalls_then_west_lip(self) -> None:
+        from harvest.tasks.pond_thrash import (
+            ThrashChargeKind,
+            ThrashCounters,
+            evaluate_corridor_thrash,
+            match_thrash_rule,
+        )
+
+        start, goal = (24, 34), (32, 34)
+        c0 = ThrashCounters()
+        self.assertEqual(match_thrash_rule(start, goal, c0).name, "south_thrash")
+        r1 = evaluate_corridor_thrash(start, goal, c0)
+        self.assertFalse(r1.fire_charge)
+        self.assertEqual(r1.refill_densify_stalls, 1)
+        self.assertEqual(r1.refill_densify_last, (start, goal))
+
+        c1 = ThrashCounters(
+            refill_densify_stalls=r1.refill_densify_stalls,
+            refill_densify_last=r1.refill_densify_last,
+        )
+        r2 = evaluate_corridor_thrash(start, goal, c1)
+        self.assertTrue(r2.fire_charge)
+        self.assertEqual(r2.charge, ThrashChargeKind.WEST_SOUTH_LIP)
+        self.assertIn("west→south-lip", r2.log)
+        self.assertEqual(r2.refill_densify_stalls, 0)
+
+    def test_near_f0_beats_south_thrash_and_needs_six_stalls(self) -> None:
+        from harvest.tasks.pond_thrash import (
+            ThrashChargeKind,
+            ThrashCounters,
+            evaluate_corridor_thrash,
+            match_thrash_rule,
+        )
+
+        # (28,34)→(32,34): dist=4, in near-F0 band (not south_thrash).
+        start, goal = (28, 34), (32, 34)
+        c = ThrashCounters()
+        self.assertEqual(match_thrash_rule(start, goal, c).name, "near_f0")
+
+        stalls = 0
+        last = None
+        for n in range(1, 6):
+            r = evaluate_corridor_thrash(
+                start,
+                goal,
+                ThrashCounters(
+                    refill_densify_stalls=stalls,
+                    refill_densify_last=last,
+                ),
+            )
+            self.assertFalse(r.fire_charge, msg=f"must not fire at stall {n}")
+            stalls = r.refill_densify_stalls
+            last = r.refill_densify_last
+            self.assertEqual(stalls, n)
+
+        r6 = evaluate_corridor_thrash(
+            start,
+            goal,
+            ThrashCounters(
+                refill_densify_stalls=stalls,
+                refill_densify_last=last,
+            ),
+        )
+        self.assertTrue(r6.fire_charge)
+        self.assertEqual(r6.charge, ThrashChargeKind.WEST_SOUTH_LIP)
+        self.assertIn("Near-F0", r6.log)
+
+    def test_north_thrash_priority_over_unrelated_and_east_south_charge(self) -> None:
+        from harvest.tasks.pond_thrash import (
+            ThrashChargeKind,
+            ThrashCounters,
+            evaluate_corridor_thrash,
+            match_thrash_rule,
+        )
+
+        start, goal = (25, 30), (32, 34)
+        self.assertEqual(
+            match_thrash_rule(start, goal, ThrashCounters()).name,
+            "north_thrash",
+        )
+        r1 = evaluate_corridor_thrash(start, goal, ThrashCounters())
+        r2 = evaluate_corridor_thrash(
+            start,
+            goal,
+            ThrashCounters(
+                refill_densify_stalls=r1.refill_densify_stalls,
+                refill_densify_last=r1.refill_densify_last,
+            ),
+        )
+        self.assertTrue(r2.fire_charge)
+        self.assertEqual(r2.charge, ThrashChargeKind.EAST_SOUTH)
+        self.assertIn("east→south", r2.log)
+
+    def test_east_thrash_match_and_no_match_resets(self) -> None:
+        from harvest.tasks.pond_thrash import (
+            ThrashChargeKind,
+            ThrashCounters,
+            evaluate_corridor_thrash,
+            match_thrash_rule,
+        )
+
+        start, goal = (41, 32), (32, 34)
+        self.assertEqual(
+            match_thrash_rule(start, goal, ThrashCounters()).name,
+            "east_thrash",
+        )
+        r1 = evaluate_corridor_thrash(start, goal, ThrashCounters())
+        r2 = evaluate_corridor_thrash(
+            start,
+            goal,
+            ThrashCounters(
+                refill_densify_stalls=r1.refill_densify_stalls,
+                refill_densify_last=r1.refill_densify_last,
+            ),
+        )
+        self.assertTrue(r2.fire_charge)
+        self.assertEqual(r2.charge, ThrashChargeKind.WEST_SOUTH_LIP)
+
+        # Far from thrash regions: clear stalls.
+        clear = evaluate_corridor_thrash(
+            (10, 20),
+            (12, 20),
+            ThrashCounters(refill_densify_stalls=3, refill_densify_last=(start, goal)),
+        )
+        self.assertFalse(clear.fire_charge)
+        self.assertIsNone(clear.rule_name)
+        self.assertEqual(clear.refill_densify_stalls, 0)
+        self.assertIsNone(clear.refill_densify_last)
+
+    def test_charge_caps_suppress_match(self) -> None:
+        from harvest.tasks.pond_thrash import (
+            ThrashCounters,
+            match_thrash_rule,
+        )
+
+        # east_south exhausted → past-fence / north no longer match.
+        self.assertIsNone(
+            match_thrash_rule(
+                (31, 29),
+                (32, 34),
+                ThrashCounters(east_south_charges=6),
+            )
+        )
+        # south_lip exhausted → south thrash off.
+        self.assertIsNone(
+            match_thrash_rule(
+                (24, 34),
+                (32, 34),
+                ThrashCounters(south_lip_charges=8),
+            )
         )
 
 
@@ -886,6 +1068,32 @@ class FenceLocalDropTests(unittest.TestCase):
         self.assertEqual(task.cleared_count, 1)
         self.assertEqual(task._state, "scan")
 
+    def test_corridor_drop_does_not_succeed_with_stale_held_item(self) -> None:
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.tasks.fence_flow import ADDR_PLAYER_STATE, FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        _set_player_tile(ram, (15, 32))
+        # Carry animation can clear a frame before held-item RAM. The corridor
+        # is not usable for berry pickup until both signals agree.
+        ram[ADDR_PLAYER_STATE] = 0
+        ram[ADDR_HELD_ITEM] = 0x0D
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=1, corridor_only=True)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "local_drop"
+        task._navigator.update(ram)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.cleared_count, 0)
+        self.assertGreater(len(task._action_queue), 0)
+
 
 class KeepAliveClearOrderTests(unittest.TestCase):
     """CLEAR_FIELD must not starve crop keep-alive water (rr-3v9)."""
@@ -908,7 +1116,7 @@ class KeepAliveClearOrderTests(unittest.TestCase):
         self.assertLess(names.index("CROP_WATER"), names.index("CLEAR_FIELD"))
         self.assertLess(names.index("ENSURE_WATERING_CAN"), names.index("CLEAR_FIELD"))
 
-    def test_outdoor_clear_before_water_when_no_crops(self) -> None:
+    def test_outdoor_empty_morning_defers_clear_until_after_berry_window(self) -> None:
         from harvest.planner.day_plan_phases import build_outdoor_day_phases
 
         phases = build_outdoor_day_phases(
@@ -921,7 +1129,8 @@ class KeepAliveClearOrderTests(unittest.TestCase):
             is_rainy=False,
         )
         names = [p.phase for p in phases]
-        self.assertIn("CLEAR_FIELD", names)
+        self.assertIn("SHIP_BERRY_1", names)
+        self.assertNotIn("CLEAR_FIELD", names)
         self.assertNotIn("CROP_WATER", names)
 
     def test_full_day_water_before_clear_when_dry_crops(self) -> None:
@@ -958,6 +1167,37 @@ if __name__ == "__main__":
 
 class FenceCorridorOnlyTests(unittest.TestCase):
     """corridor_only FenceClearLoop must local-drop instead of pond thrash."""
+
+    def test_corridor_only_targets_y31_wall_not_nearest_decorative_fence(self) -> None:
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 2, 21, 0x05)   # closer, but not pond-access wall
+        _set_tile(ram, 11, 31, 0x05)  # intended corridor fence
+        _set_player_tile(ram, (3, 21))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=1, max_steps_per_fence=500, corridor_only=True
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+
+        result = task.step(world)
+        # Corridor mode first stages west; simulate arrival, then scan.
+        if task._state == "stage_corridor":
+            self.assertIsNotNone(task._corridor_stage)
+            _set_player_tile(ram, task._corridor_stage)
+            task.step(world)
+            result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._current)
+        self.assertEqual(task._current.tile, (11, 31))
 
     def test_corridor_only_carry_south_from_y30(self) -> None:
         """ROM: after lift player is often on y=30; charge must still fire."""
@@ -1050,7 +1290,7 @@ class FenceCorridorOnlyTests(unittest.TestCase):
             msg="corridor_only must attempt carry-south before local_drop",
         )
         # Drain charge queue then expect local_drop arm (still north in unit).
-        for _ in range(200):
+        for _ in range(700):
             result = task.step(world)
             if task._state == "local_drop":
                 break

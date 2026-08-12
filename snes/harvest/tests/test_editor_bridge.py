@@ -12,7 +12,7 @@ from harvest.runtime.editor_bridge import (
     build_snapshot,
     read_env_wram,
 )
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK
+from harvest.core.tile_catalog import ADDR_INPUT_LOCK
 from retro_harness.controls import SNES_BUTTON_NAMES
 
 

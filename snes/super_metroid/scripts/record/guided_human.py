@@ -63,20 +63,53 @@ uv run python snes/super_metroid/scripts/record/guided_human.py \\
   --from double-chamber --route double-chamber-to-wave \\
   --name dc_missile_wave_take01 --no-guide
 
-# K6: post-Moat shinespark West Ocean → WS (pure pin after yesterday's spark).
+# K6: post-Moat handoff (optional human WO practice; product pure-ws is GREEN).
 # Multi-take: practice_takes.py --segment west-ocean-to-ws
 uv run python snes/super_metroid/scripts/record/guided_human.py \\
   --from west-ocean --route west-ocean-to-ws --name west_ocean_to_ws_human
+
+# K6: Wrecked Ship Entrance after pure over-ocean spark (product pin 0xCA08).
+# Prefer this for ship free-record / Phantoon approach human tape.
+# Multi-take: practice_takes.py --segment ws-entrance --series ws_ship_v1
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from ws-entrance --route ws-entrance --name ws_ship_human
+
+# Post-Phantoon (bot fight from human entry → boss bit; Gravity path next)
+uv run python snes/super_metroid/scripts/probe/phantoon_combat.py strategy \\
+  --state ws_ship_human_end --save-state
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from post-phantoon --name gravity_path_human --no-guide
+
+# Post-Gravity tail (Caterpillar 0xA322, items 0x3125) — Grapple side-trek + Maridia
+# Pin from gravity_path_human end (return via Moat→elev after Gravity chozo).
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from post-gravity --name maridia_grapple_human --no-guide
+uv run python snes/super_metroid/scripts/record/practice_takes.py \\
+  --segment post-gravity --series maridia_grapple_v1 --no-guide
+
+# Post-Grapple Beam → Maridia free-record (prefer F6 pins mid-run on long takes)
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from post-grapple --name maridia_main_street_human --no-guide
+
+# Offline hop inventory + end-pin verify (never open-loop full-tape replay)
+uv run python snes/super_metroid/scripts/tools/extract_human_tape.py \\
+  snes/super_metroid/tasks/maridia_grapple_human.json --summary
 
 # List start presets / routes
 uv run python snes/super_metroid/scripts/record/guided_human.py --list
 ```
 
 Controls (PlaySession defaults + recording):
-  F5 / F1  Save recording + end state, exit
+  F5 / F1  Save recording + end state + anchors index, exit
+  F6       Dump **manual pin** mid-run (does not stop) — next-phase locks
   ESC / Q  Cancel without saving
-  [ ]      Speed · TAB turbo · F1–F4 checkpoints
+  [ ]      Speed · TAB turbo
   Unlimited energy/ammo assists on by default (human practice only)
+
+**Anti-desync anchors (default ON):** room enter + item-bit change write gzip
+``.state`` under ``tasks/<name>_anchors/`` + index ``tasks/<name>_anchors.json``.
+Do not open-loop replay multi-minute tapes to recover pins — use live anchors.
+``--no-anchors`` disables dumps (short takes only).
 """
 
 from __future__ import annotations
@@ -107,6 +140,7 @@ from retro_harness.task_recording import (  # noqa: E402
     summarize_position_trace,
 )
 from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
+from super_metroid.human_tape import AnchorRecorder, fingerprint  # noqa: E402
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR, RECORDINGS_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state  # noqa: E402
 from super_metroid.routes.kpdr.guide_paths import (  # noqa: E402
@@ -261,7 +295,7 @@ START_PRESETS: dict[str, tuple[str, str]] = {
     # K6: West Ocean after pure Moat shinespark (rr-hhj handoff).
     "west-ocean": (
         "scratch/post_moat_west_ocean_spark.state",
-        "West Ocean 0x93FE post-Moat spark ~(49,1163) items 0x3105 — WS human",
+        "West Ocean 0x93FE post-Moat spark ~(49,1163) items 0x3105 — optional human WO",
     ),
     "post-moat": (
         "scratch/post_moat_west_ocean_spark.state",
@@ -274,6 +308,200 @@ START_PRESETS: dict[str, tuple[str, str]] = {
     "moat-spark": (
         "scratch/post_moat_west_ocean_spark.state",
         "Alias of west-ocean (spark already done; start in West Ocean)",
+    ),
+    # K6: Wrecked Ship Entrance after product over-ocean spark (rr-navh pin).
+    "ws-entrance": (
+        "scratch/post_west_ocean_ws_spark.state",
+        "WS Entrance 0xCA08 post over-ocean spark ~(57,139) gs=8 — ship human",
+    ),
+    "post-west-ocean": (
+        "scratch/post_west_ocean_ws_spark.state",
+        "Alias of ws-entrance (after pure WO → green Super)",
+    ),
+    "post-wo-ws": (
+        "scratch/post_west_ocean_ws_spark.state",
+        "Alias of ws-entrance",
+    ),
+    "post-ws-spark": (
+        "scratch/post_west_ocean_ws_spark.state",
+        "Alias of ws-entrance",
+    ),
+    "wrecked-ship": (
+        "scratch/post_west_ocean_ws_spark.state",
+        "Alias of ws-entrance (Wrecked Ship start pin)",
+    ),
+    # K6: Phantoon defeated (bot Super spray from human entry; WS boss bit 0).
+    "post-phantoon": (
+        "scratch/post_phantoon_defeated.state",
+        "Phantoon room 0xCD13 after defeat ~(177,187) boss_ws bit0 — Gravity path",
+    ),
+    "phantoon-defeated": (
+        "scratch/post_phantoon_defeated.state",
+        "Alias of post-phantoon",
+    ),
+    "post-phant": (
+        "scratch/post_phantoon_defeated.state",
+        "Alias of post-phantoon",
+    ),
+    # K6 tail: post-Gravity return to Red elev (Caterpillar) for Grapple / Maridia.
+    # From gravity_path_human F5 end — NOT the Gravity chozo room.
+    "post-gravity": (
+        "scratch/post_gravity_caterpillar.state",
+        "Caterpillar 0xA322 ~(70,1419) Gravity items 0x3125 — Grapple/Maridia human",
+    ),
+    "post-gravity-caterpillar": (
+        "scratch/post_gravity_caterpillar.state",
+        "Alias of post-gravity (red elev shaft after Gravity return)",
+    ),
+    "gravity": (
+        "scratch/post_gravity_caterpillar.state",
+        "Alias of post-gravity",
+    ),
+    "gravity-caterpillar": (
+        "scratch/post_gravity_caterpillar.state",
+        "Alias of post-gravity",
+    ),
+    "maridia-start": (
+        "scratch/post_gravity_caterpillar.state",
+        "Alias of post-gravity (Maridia + Grapple free-record start)",
+    ),
+    # Post-Grapple Beam room / tutorial sill (items 0x7125 Grapple+Gravity).
+    # Prefer live F6/F5 anchors from a new take; this is a recovered assist-replay pin.
+    "post-grapple": (
+        "scratch/post_grapple_beam_human.state",
+        "Post-Grapple Tutorial 1 0xAC00 ~(236,121) items 0x7125 — Maridia free-record",
+    ),
+    "post-grapple-beam": (
+        "scratch/post_grapple_beam_human.state",
+        "Alias of post-grapple",
+    ),
+    "grapple": (
+        "scratch/post_grapple_beam_human.state",
+        "Alias of post-grapple",
+    ),
+    # Post-Grapple Main Street (maridia_main_street_human F5; items 0x7125).
+    "main-street": (
+        "scratch/post_grapple_main_street.state",
+        "Main Street 0xCFC9 ~(391,1979) Grapple+Gravity 0x7125 — Maridia next",
+    ),
+    "post-main-street": (
+        "scratch/post_grapple_main_street.state",
+        "Alias of main-street",
+    ),
+    "post-grapple-main-street": (
+        "scratch/post_grapple_main_street.state",
+        "Alias of main-street",
+    ),
+    "maridia": (
+        "scratch/post_grapple_main_street.state",
+        "Alias of main-street (Maridia entry free-record)",
+    ),
+    # Post-Space Jump (maridia_botwoon_path_human item_delta f52049; items 0x7325).
+    "post-space-jump": (
+        "scratch/post_space_jump.state",
+        "Space Jump Room 0xD9AA ~(85,155) items 0x7325 — next segment after SJ",
+    ),
+    "space-jump": (
+        "scratch/post_space_jump.state",
+        "Alias of post-space-jump",
+    ),
+    "post-sj": (
+        "scratch/post_space_jump.state",
+        "Alias of post-space-jump",
+    ),
+    # Precious Room after Draygon+SJ return (F5 end of maridia_botwoon_path_human).
+    "post-draygon": (
+        "scratch/post_draygon_precious.state",
+        "Precious 0xD78F ~(55,651) Draygon+SJ items 0x7325 — Maridia exit / next",
+    ),
+    "precious": (
+        "scratch/post_draygon_precious.state",
+        "Alias of post-draygon",
+    ),
+    "post-draygon-precious": (
+        "scratch/post_draygon_precious.state",
+        "Alias of post-draygon",
+    ),
+    "post-space-jump-precious": (
+        "scratch/post_space_jump_precious.state",
+        "Precious 0xD78F first return after SJ collect (earlier than F5 end)",
+    ),
+    # Spring Ball (post_sj_exit_human item_delta; items 0x7327).
+    "post-spring-ball": (
+        "scratch/post_spring_ball.state",
+        "Spring Ball Room 0xD6D0 ~(379,362) items 0x7327 — after Shaktool",
+    ),
+    "spring-ball": (
+        "scratch/post_spring_ball.state",
+        "Alias of post-spring-ball",
+    ),
+    # Lower Norfair Main Hall (post_sj_exit F5; way to Ridley / Golden Torizo).
+    "main-hall": (
+        "scratch/post_ln_main_hall.state",
+        "LN Main Hall 0xB236 ~(1152,648) items 0x7327 beams 0x100F — Ridley/GT",
+    ),
+    "ln-main-hall": (
+        "scratch/post_ln_main_hall.state",
+        "Alias of main-hall",
+    ),
+    "post-ln-main-hall": (
+        "scratch/post_ln_main_hall.state",
+        "Alias of main-hall",
+    ),
+    "lower-norfair": (
+        "scratch/post_ln_main_hall.state",
+        "Alias of main-hall (LN entry free-record)",
+    ),
+    "ln-elev-save": (
+        "scratch/post_ln_elevator_save.state",
+        "LN Elevator Save 0xB1BB ~(200,139) items 0x7327 — before Main Hall",
+    ),
+    # Screw Attack (post-main-hall item_delta f10857; items 0x732F).
+    "post-screw": (
+        "scratch/post_screw_attack.state",
+        "Screw Attack 0xB6C1 ~(171,667) items 0x732F — after collect",
+    ),
+    "screw-attack": (
+        "scratch/post_screw_attack.state",
+        "Alias of post-screw",
+    ),
+    "post-screw-attack": (
+        "scratch/post_screw_attack.state",
+        "Alias of post-screw",
+    ),
+    # Ridley tank after fight (boss Norfair bit set; energy tank room).
+    "post-ridley": (
+        "scratch/post_ridley_tank.state",
+        "Ridley Tank 0xB698 ~(216,143) items 0x732F Ridley bit — post fight",
+    ),
+    "ridley-tank": (
+        "scratch/post_ridley_tank.state",
+        "Alias of post-ridley",
+    ),
+    "post-ridley-tank": (
+        "scratch/post_ridley_tank.state",
+        "Alias of post-ridley",
+    ),
+    "post-ridley-farming": (
+        "scratch/post_ridley_farming.state",
+        "LN Farming 0xB37A ~(50,142) after leaving Ridley — exit path",
+    ),
+    # All four bosses + Screw; Landing Site ship (Tourian / G4 next).
+    "post-bosses": (
+        "scratch/post_bosses_landing_site.state",
+        "Landing Site 0x91F8 ~(1152,1088) items 0x732F all bosses — G4/Tourian",
+    ),
+    "landing-site-post-bosses": (
+        "scratch/post_bosses_landing_site.state",
+        "Alias of post-bosses",
+    ),
+    "post-bosses-landing": (
+        "scratch/post_bosses_landing_site.state",
+        "Alias of post-bosses",
+    ),
+    "post-ridley-landing": (
+        "scratch/post_bosses_landing_site.state",
+        "Alias of post-bosses (human end after Ridley return)",
     ),
 }
 
@@ -322,6 +550,9 @@ def _trace_row(env, frame: int, action) -> dict[str, object]:
         "selected": int(state.selected_item),
         "door_transition": int(state.door_transition),
         "phase": state.phase.value if hasattr(state.phase, "value") else str(state.phase),
+        # Inventory on every row so item-delta / extract works without full RAM.
+        "items": int(state.collected_items),
+        "beams": int(state.collected_beams),
     }
 
 
@@ -376,6 +607,11 @@ def main() -> int:
         default=TASKS_DIR,
         help=f"Task JSON directory (default: {TASKS_DIR})",
     )
+    parser.add_argument(
+        "--no-anchors",
+        action="store_true",
+        help="Disable live room/item gzip anchors (not recommended for long takes)",
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -425,6 +661,64 @@ def main() -> int:
             "moat-spark",
         ):
             args.route = "west-ocean-to-ws"
+        elif args.start in (
+            "ws-entrance",
+            "post-west-ocean",
+            "post-wo-ws",
+            "post-ws-spark",
+            "wrecked-ship",
+        ):
+            args.route = "ws-entrance"
+        elif args.start in (
+            "post-phantoon",
+            "phantoon-defeated",
+            "post-phant",
+        ):
+            # Gravity free-record; no dedicated guide polyline yet.
+            args.route = "ws-entrance"
+            args.no_guide = True
+        elif args.start in (
+            "post-gravity",
+            "post-gravity-caterpillar",
+            "gravity",
+            "gravity-caterpillar",
+            "maridia-start",
+            "post-grapple",
+            "post-grapple-beam",
+            "grapple",
+            "main-street",
+            "post-main-street",
+            "post-grapple-main-street",
+            "maridia",
+            "post-space-jump",
+            "space-jump",
+            "post-sj",
+            "post-draygon",
+            "precious",
+            "post-draygon-precious",
+            "post-space-jump-precious",
+            "post-spring-ball",
+            "spring-ball",
+            "main-hall",
+            "ln-main-hall",
+            "post-ln-main-hall",
+            "lower-norfair",
+            "ln-elev-save",
+            "post-screw",
+            "screw-attack",
+            "post-screw-attack",
+            "post-ridley",
+            "ridley-tank",
+            "post-ridley-tank",
+            "post-ridley-farming",
+            "post-bosses",
+            "landing-site-post-bosses",
+            "post-bosses-landing",
+            "post-ridley-landing",
+        ):
+            # Grapple / Maridia / LN / post-boss free-record; guide off.
+            args.route = "ws-entrance"
+            args.no_guide = True
         else:
             args.route = "cathedral-to-bat"
 
@@ -445,6 +739,13 @@ def main() -> int:
         out_dir / f"{task_name}_end.state",
         SCRATCH / f"{task_name}_end.state",
     ]
+    anchors_dir = out_dir / f"{task_name}_anchors"
+    anchors_index_path = out_dir / f"{task_name}_anchors.json"
+    anchor_rec = AnchorRecorder(
+        task_name=task_name,
+        anchors_dir=anchors_dir,
+        enabled=not args.no_anchors,
+    )
 
     route_guides = ROUTE_PRESETS[args.route]
     route_room_ids = {g.room_id for g in route_guides}
@@ -493,6 +794,9 @@ def main() -> int:
         "nearest": None,
         "cam_x": 0,
         "cam_y": 0,
+        "items": 0,
+        "anchors": 0,
+        "last_anchor": "",
     }
     saved = {"ok": False}
 
@@ -503,11 +807,13 @@ def main() -> int:
         # Assist after human step (same pattern as pure probe sessions).
         st = parse_env_state(env, frame=frame, mode="nav")
         assist.apply(env.data, st)
-        row = _trace_row(env, frame - 1 if frame > 0 else 0, action)
+        row_frame = frame - 1 if frame > 0 else 0
+        row = _trace_row(env, row_frame, action)
         task.append_frame(action, trace_row=row)
         live["room"] = row["room"]
         live["x"] = row["x"]
         live["y"] = row["y"]
+        live["items"] = row.get("items", 0)
         ram = env.get_ram()
         live["cam_x"] = _u16(ram, ADDR_CAMERA_X)
         live["cam_y"] = _u16(ram, ADDR_CAMERA_Y)
@@ -518,14 +824,33 @@ def main() -> int:
         else:
             live["guide_name"] = ""
             live["nearest"] = None
+        # Live anchors: room enter + item-bit change (never rely on full-tape replay).
+        new_anchors = anchor_rec.on_frame(env=env, st=st, frame=row_frame)
+        if new_anchors:
+            live["anchors"] = len(anchor_rec.anchors)
+            live["last_anchor"] = new_anchors[-1].get("kind", "")
+            for a in new_anchors:
+                print(
+                    f"[ANCHOR] {a['kind']} f{a['frame']} {a['room']} "
+                    f"xy={a['xy']} items={a.get('items', '?')}",
+                    flush=True,
+                )
 
     def on_hud(info) -> list[str]:
         del info
         room = int(live["room"] or 0)
+        items = int(live.get("items") or 0)
         lines = [
-            f"[REC] {task_name}  F5=save  ESC=cancel",
-            f"room=0x{room:04X}  xy=({live['x']},{live['y']})  frames={len(task.frames)}",
+            f"[REC] {task_name}  F5=save  F6=pin  ESC=cancel",
+            (
+                f"room=0x{room:04X}  xy=({live['x']},{live['y']})  "
+                f"frames={len(task.frames)}  items=0x{items:04X}"
+            ),
         ]
+        if anchor_rec.enabled:
+            lines.append(
+                f"anchors={live.get('anchors', 0)}  last={live.get('last_anchor') or '-'}"
+            )
         guides = _guides_for_active_room(room)
         if guides:
             names = " + ".join(g.name for g in guides)
@@ -595,11 +920,27 @@ def main() -> int:
 
     def on_key_down(key: int) -> bool:
         # F5/F1: finalize recording (PlaySession F5 normally only quicksaves).
+        # F6: manual mid-run pin (next-phase lock without ending the take).
         import pygame
 
         if key in (pygame.K_F5, pygame.K_F1):
             _finalize(save=True)
             session.running = False
+            return True
+        if key == pygame.K_F6:
+            st = parse_env_state(env, mode="nav")
+            frame = max(0, len(task.frames) - 1)
+            fp = anchor_rec.manual_pin(env=env, st=st, frame=frame)
+            if fp is not None:
+                live["anchors"] = len(anchor_rec.anchors)
+                live["last_anchor"] = "manual"
+                print(
+                    f"[ANCHOR] manual f{fp['frame']} {fp['room']} "
+                    f"xy={fp['xy']} items={fp.get('items', '?')} → {fp.get('path')}",
+                    flush=True,
+                )
+            else:
+                print("[ANCHOR] manual dump skipped (--no-anchors)", flush=True)
             return True
         if key in (pygame.K_ESCAPE, pygame.K_q):
             print("[REC] cancelled")
@@ -617,6 +958,32 @@ def main() -> int:
             task.end_state_data = env.em.get_state()
         except Exception as exc:
             print(f"[REC] end-state capture failed: {exc}")
+        # End fingerprint — detect later overwrites / desynced "recovered" pins.
+        try:
+            end_st = parse_env_state(env, mode="full")
+            end_fp = fingerprint(
+                frame=max(0, len(task.frames) - 1),
+                room_id=int(end_st.room_id),
+                x=int(end_st.samus_x),
+                y=int(end_st.samus_y),
+                pose=int(end_st.pose),
+                items=int(end_st.collected_items),
+                beams=int(end_st.collected_beams),
+                energy=int(end_st.health),
+                kind="end",
+            )
+            task.metadata["end_fingerprint"] = end_fp
+            # Also dump end as an anchor for hop extract.
+            if anchor_rec.enabled:
+                anchor_rec.dump(
+                    env=env,
+                    st=end_st,
+                    frame=max(0, len(task.frames) - 1),
+                    kind="end",
+                    label="end",
+                )
+        except Exception as exc:
+            print(f"[REC] end fingerprint failed: {exc}")
         task.metadata.update(
             summarize_position_trace(frames=task.frames, trace=task.trace, room_key="room")
         )
@@ -625,8 +992,23 @@ def main() -> int:
             "unlimited_ammo": not args.no_assist,
             "telemetry": assist.telemetry.to_dict() if hasattr(assist, "telemetry") else {},
         }
+        task.metadata["anchors"] = {
+            "enabled": anchor_rec.enabled,
+            "count": len(anchor_rec.anchors),
+            "dir": str(anchors_dir) if anchor_rec.enabled else None,
+            "index": str(anchors_index_path) if anchor_rec.enabled else None,
+        }
         task.recorded_at = datetime.now().isoformat()
         task.save(task_path, end_state_paths=end_state_paths)
+        if anchor_rec.enabled:
+            anchor_rec.write_index(
+                anchors_index_path,
+                extra={
+                    "task_json": str(task_path),
+                    "end_fingerprint": task.metadata.get("end_fingerprint"),
+                    "frame_count": len(task.frames),
+                },
+            )
         # Mirror a lightweight pointer under recordings/ for discoverability.
         rec_ptr = RECORDINGS_DIR / "human_tasks" / f"{task_name}.json"
         try:
@@ -640,6 +1022,16 @@ def main() -> int:
         print(f"[REC] saved {task_path} ({len(task.frames)} frames)")
         for p in end_state_paths:
             print(f"[REC] end state → {p}")
+        if end_fp := task.metadata.get("end_fingerprint"):
+            print(
+                f"[REC] end pin {end_fp.get('room')} xy={end_fp.get('xy')} "
+                f"items={end_fp.get('items')} grapple={end_fp.get('grapple')}"
+            )
+        if anchor_rec.enabled:
+            print(
+                f"[REC] anchors → {anchors_index_path} "
+                f"({len(anchor_rec.anchors)} dumps under {anchors_dir.name}/)"
+            )
 
     session = PlaySession(
         env,
@@ -737,8 +1129,14 @@ def main() -> int:
     print(f"GUIDED HUMAN RECORD  route={args.route}")
     print(f"  start: {state_path}")
     print(f"  task:  {task_path}")
-    print(f"  guide: {'ON' if not args.no_guide else 'OFF'}  assist={'OFF' if args.no_assist else 'ON'}")
-    print("  F5/F1 = save recording · ESC/Q = cancel")
+    print(
+        f"  guide: {'ON' if not args.no_guide else 'OFF'}  "
+        f"assist={'OFF' if args.no_assist else 'ON'}  "
+        f"anchors={'OFF' if args.no_anchors else 'ON'}"
+    )
+    if not args.no_anchors:
+        print(f"  anchors dir: {anchors_dir}")
+    print("  F5/F1 = save · F6 = manual pin · ESC/Q = cancel")
     print("=" * 60)
 
     _ps_mod.reset_env = _reset_then_boot

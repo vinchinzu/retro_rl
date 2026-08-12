@@ -13,7 +13,7 @@ import numpy as np
 from retro_harness import TaskStatus, WorldState
 
 from harvest.planner.day_plan_tasks import GoToSleepTask, ReturnHomeTask
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 from harvest.core.ram_catalog import LiveRamEditor, parse_ram_patches, read_ram_value
 from harvest.runtime.retro_setup import STATES_DIR, make_harvest_env
 

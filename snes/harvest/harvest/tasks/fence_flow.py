@@ -14,21 +14,32 @@ import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.tasks.recorded_task import RecordedTask
-from harvest.tasks.farm_clearer import (
-    TileScanner,
+from harvest.core.tile_catalog import (
+    DebrisType,
+    ADDR_INPUT_LOCK,
+    POND_CHARACTERISTIC_TILES,
+)
+from harvest.core.animal_status import read_held_item
+from harvest.tasks.nav import (
     Pathfinder,
     Navigator,
-    DebrisType,
-    Target,
     make_action,
     TILE_SIZE,
     get_tile_at,
     manhattan,
-    ADDR_INPUT_LOCK,
     VIEWPORT_HOP_TILES,
     WALKABLE_TILES,
-    POND_CHARACTERISTIC_TILES,
 )
+from harvest.tasks.farm_ops import (
+    TileScanner,
+    Target,
+)
+from harvest.maps.map_config import (
+    FARM_POND_ACCESS_FENCE_ROW,
+    FARM_POND_ACCESS_FENCE_X_RANGE,
+    FARM_POND_ACCESS_STAGING_TILES,
+)
+
 
 # Main F0 pond south lip (same as map_config pond_edge / go_to_water_source).
 POND_TILES = [(32, 34), (33, 34)]
@@ -99,6 +110,8 @@ class FenceClearLoopTask(Task):
     _total_steps: int = 0
     _failures: int = 0
     cleared_count: int = 0
+    _corridor_staged: bool = field(default=False, init=False)
+    _corridor_stage: Optional[tuple[int, int]] = field(default=None, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -130,6 +143,8 @@ class FenceClearLoopTask(Task):
         self._corridor_charge_done = False
         self._local_drop_cycles = 0
         self.cleared_count = 0
+        self._corridor_staged = False
+        self._corridor_stage = None
         if self._toss_task is None:
             self._toss_task = RecordedTask.load(self.toss_task_name)
             # Warn but don't fallback (User requested no fallback hacks)
@@ -213,6 +228,98 @@ class FenceClearLoopTask(Task):
         if self._action_queue:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._action_queue.popleft()))
 
+        # Natural house-front entry lands around (13,27). Pure south from that
+        # tile is a ROM soft-block even though the metatile is walkable. Stage
+        # west first, then approach the wall from its north-west corner.
+        if (
+            self.corridor_only
+            and not self._corridor_staged
+            and self._state == "scan"
+            and self._navigator.current_tile[1] < FARM_POND_ACCESS_FENCE_ROW
+        ):
+            # Weeds are ROM-walkable but physically pin travel. Block them for
+            # both staging and fence approaches.
+            weed_tiles = {
+                target.tile
+                for target in self._scanner.scan(
+                    world.ram,
+                    types={DebrisType.WEED},
+                )
+            }
+            self._pathfinder.no_go_tiles.update(weed_tiles)
+            player = self._navigator.current_tile
+            candidates = sorted(
+                FARM_POND_ACCESS_STAGING_TILES,
+                key=lambda tile: abs(tile[0] - player[0]) + abs(tile[1] - player[1]),
+            )
+            stage = self._corridor_stage
+            path = None
+            if stage is None:
+                for candidate in candidates:
+                    candidate_path = self._pathfinder.find_path(
+                        world.ram,
+                        player,
+                        candidate,
+                    )
+                    if candidate_path is not None:
+                        stage = candidate
+                        path = candidate_path
+                        self._corridor_stage = candidate
+                        break
+            else:
+                path = self._pathfinder.find_path(world.ram, player, stage)
+
+            if stage is not None and self._navigator.at_tile(stage):
+                self._corridor_staged = True
+                self._navigator.path = []
+            elif stage is not None and path:
+                self._navigator.path = path
+                self._state = "stage_corridor"
+                if self.debug:
+                    print(
+                        f"[FENCE] corridor stage {self._navigator.current_tile} "
+                        f"→ {stage}"
+                    )
+
+        if self._state == "stage_corridor":
+            stage = self._corridor_stage
+            if stage is None:
+                self._state = "scan"
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason="corridor stage unavailable",
+                )
+            if self._navigator.at_tile(stage):
+                self._corridor_staged = True
+                self._navigator.path = []
+                self._state = "scan"
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason="corridor staged west",
+                )
+            if self._navigator.current_tile == stage:
+                action = self._navigator.center_on_tile(stage, tolerance=2)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(action if action is not None else make_action()),
+                    reason="centering corridor stage",
+                )
+            action = self._navigator.follow_path(world.ram)
+            if action is None:
+                self._navigator.path = self._pathfinder.find_path(
+                    world.ram,
+                    self._navigator.current_tile,
+                    stage,
+                ) or []
+                action = self._navigator.follow_path(world.ram)
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(action if action is not None else make_action()),
+                reason="staging west of corridor",
+            )
+
         if self._state == "scan":
             # Check if we are already carrying something
             if (world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT):
@@ -221,12 +328,43 @@ class FenceClearLoopTask(Task):
                 return TaskResult(status=TaskStatus.RUNNING)
 
             targets = [t for t in self._scanner.scan(world.ram) if t.debris_type == DebrisType.FENCE]
+            if self.corridor_only:
+                self._pathfinder.no_go_tiles.update(
+                    target.tile
+                    for target in self._scanner.scan(
+                        world.ram,
+                        types={DebrisType.WEED},
+                    )
+                )
+                row = FARM_POND_ACCESS_FENCE_ROW
+                x_min, x_max = FARM_POND_ACCESS_FENCE_X_RANGE
+                # The corridor contract is specific: lift the y=31 wall.
+                # Without this filter the nearest-fence policy clears a post
+                # beside the house, then repeatedly re-lifts its own south-field
+                # drop while the actual wall remains sealed.
+                targets = [
+                    target
+                    for target in targets
+                    if target.tile[1] == row and x_min <= target.tile[0] <= x_max
+                ]
             if not targets:
-                return TaskResult(status=TaskStatus.SUCCESS, reason="no fences found")
+                reason = "corridor already open" if self.corridor_only else "no fences found"
+                return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
             targets.sort(key=lambda t: manhattan(t.pos, self._navigator.current_pos))
             picked = False
             for target in targets:
-                approach = self._pathfinder.find_approach(world.ram, target.tile, self._navigator.current_pos)
+                if self.corridor_only:
+                    # Always lift from north of the y=31 wall. A generic nearest
+                    # approach can choose the sealed south side.
+                    approach = (target.tile[0], target.tile[1] - 1)
+                    if not self._pathfinder.is_walkable(world.ram, *approach):
+                        approach = None
+                else:
+                    approach = self._pathfinder.find_approach(
+                        world.ram,
+                        target.tile,
+                        self._navigator.current_pos,
+                    )
                 if approach is None:
                     if self.debug:
                         print(f"[FENCE] skip target {target.tile}: no approach")
@@ -331,6 +469,22 @@ class FenceClearLoopTask(Task):
                     self._action_queue.extend(
                         [make_action(down=True, b=True) for _ in range(160)]
                     )
+                    # A straight charge stops on the gap tile in this ROM.
+                    # Brief lateral wiggles while continuing south break the
+                    # soft collision without walking into neighboring posts.
+                    for _ in range(4):
+                        self._action_queue.extend(
+                            [make_action(down=True, b=True) for _ in range(36)]
+                        )
+                        self._action_queue.extend(
+                            [make_action(left=True) for _ in range(5)]
+                        )
+                        self._action_queue.extend(
+                            [make_action(down=True, b=True) for _ in range(36)]
+                        )
+                        self._action_queue.extend(
+                            [make_action(right=True) for _ in range(5)]
+                        )
                     self._action_queue.extend([make_action() for _ in range(12)])
                     if self.debug:
                         print(
@@ -471,7 +625,11 @@ class FenceClearLoopTask(Task):
         if self._state == "local_drop":
             # Place/throw the fence post nearby (prefer south) without pond path.
             state_val = world.ram[ADDR_PLAYER_STATE]
-            if not (state_val & ACTION_CARRYING_BIT) and not self._action_queue:
+            if (
+                not (state_val & ACTION_CARRYING_BIT)
+                and read_held_item(world.ram) == 0
+                and not self._action_queue
+            ):
                 self.cleared_count += 1
                 self._state = "scan"
                 self._current = None
@@ -495,32 +653,36 @@ class FenceClearLoopTask(Task):
                 # Prefer south/sideways first. After one failed cycle include up
                 # (crop drop uses up successfully). Never prefer up first —
                 # that seals y=29 re-approach.
-                if self.corridor_only and attempts == 0:
+                current = self._navigator.current_tile
+                if self.corridor_only and current[1] <= 31:
+                    # At the gap, dropping south reseals the only exit cell.
+                    faces = ("left", "right", "up")
+                elif self.corridor_only and attempts == 0:
                     faces = ("down", "left", "right")
                 else:
                     faces = ("down", "left", "right", "up")
-                # corridor_only: if drop keeps failing, gap is already open from
-                # the lift — SUCCESS and let CropWaterTask finish the drop.
-                if self.corridor_only and attempts >= 2:
-                    self.cleared_count += 1
-                    if self.debug:
-                        print(
-                            f"[FENCE] corridor_only drop failed cycles={attempts}; "
-                            f"SUCCESS with gap open (still carrying)"
-                        )
+                # A berry cannot be picked with debris still in hand. Never
+                # report an open corridor as successful until both carry RAM
+                # signals are clear.
+                if self.corridor_only and attempts >= 6:
                     return TaskResult(
-                        status=TaskStatus.SUCCESS,
-                        reason="corridor open (drop deferred)",
+                        status=TaskStatus.FAILURE,
+                        reason=(
+                            "corridor open but hands not clear "
+                            f"held=0x{read_held_item(world.ram):02X}"
+                        ),
                     )
                 self._local_drop_cycles = attempts + 1
                 for face in faces:
                     self._action_queue.extend(
                         [make_action(**{face: True}) for _ in range(10)]
                     )
+                    self._action_queue.extend([make_action() for _ in range(4)])
                     self._action_queue.extend(
-                        [make_action(**{face: True, "a": True}) for _ in range(18)]
+                        [make_action(**{face: True, "a": True}) for _ in range(20)]
                     )
-                    self._action_queue.extend([make_action() for _ in range(12)])
+                    self._action_queue.extend([make_action(a=True) for _ in range(8)])
+                    self._action_queue.extend([make_action() for _ in range(16)])
             action = self._action_queue.popleft()
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 

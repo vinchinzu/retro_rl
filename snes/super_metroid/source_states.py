@@ -655,6 +655,241 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         0xA6A1,
         use_for="warehouse-hijump-kraid",
     ),
+    # K6 Moat / West Ocean / WS (shine path; pure dual GREEN product)
+    SourceFingerprint(
+        "post_moat_west_ocean_spark",
+        "scratch/post_moat_west_ocean_spark.state",
+        0x93FE,
+        use_for="west-ocean pure-ws / west_ocean_over_ocean_spark / human west-ocean-to-ws",
+        x_min=30,
+        x_max=80,
+        y_min=1140,
+        y_max=1185,
+    ),
+    SourceFingerprint(
+        "post_west_ocean_ws_spark",
+        "scratch/post_west_ocean_ws_spark.state",
+        0xCA08,
+        use_for="ws-entrance human / ship free-record after pure-ws; not continuous tip",
+        x_min=40,
+        x_max=90,
+        y_min=120,
+        y_max=160,
+    ),
+    SourceFingerprint(
+        "ws_ship_human_end",
+        "scratch/ws_ship_human_end.state",
+        0xCD13,
+        use_for="phantoon_combat strategy entry (human ship tape end)",
+        continuous_like=False,
+        x_min=150,
+        x_max=280,
+        y_min=160,
+        y_max=220,
+    ),
+    SourceFingerprint(
+        "post_phantoon_defeated",
+        "scratch/post_phantoon_defeated.state",
+        0xCD13,
+        use_for="post-phantoon human / Gravity path; WS boss bit 0 set",
+        continuous_like=False,
+        x_min=140,
+        x_max=220,
+        y_min=160,
+        y_max=220,
+    ),
+    SourceFingerprint(
+        "post_gravity_caterpillar",
+        "scratch/post_gravity_caterpillar.state",
+        0xA322,
+        use_for=(
+            "post-gravity human / Grapple side-trek + Maridia; "
+            "tail of gravity_path_human (not Gravity chozo)"
+        ),
+        continuous_like=False,
+        x_min=40,
+        x_max=120,
+        y_min=1380,
+        y_max=1460,
+    ),
+    SourceFingerprint(
+        "post_grapple_beam_human",
+        "scratch/post_grapple_beam_human.state",
+        0xAC00,  # dumps at leave of Grapple Beam; boot settles into Tutorial 1
+        use_for=(
+            "post-Grapple human / Maridia return free-record "
+            "(--from post-grapple); items 0x7125; not continuous tip"
+        ),
+        continuous_like=False,
+        x_min=100,
+        x_max=400,
+        y_min=80,
+        y_max=200,
+    ),
+    SourceFingerprint(
+        "post_crocomire_farming_human",
+        "scratch/post_crocomire_farming_human.state",
+        0xAA82,
+        use_for="post-Croc farm pin from maridia_grapple_human assist-sync replay",
+        continuous_like=False,
+        x_min=0,
+        x_max=80,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
+        "post_grapple_main_street",
+        "scratch/post_grapple_main_street.state",
+        0xCFC9,
+        use_for=(
+            "post-Grapple Main Street human end (items 0x7125); "
+            "Maridia next / Botwoon free-record; --from main-street"
+        ),
+        continuous_like=False,
+        x_min=350,
+        x_max=450,
+        y_min=1900,
+        y_max=2050,
+    ),
+    SourceFingerprint(
+        "post_grapple_croc_escape_human",
+        "scratch/post_grapple_croc_escape_human.state",
+        0xAA0E,
+        use_for="F6 pin mid maridia_main_street_human (Croc Escape before Business)",
+        continuous_like=False,
+        x_min=180,
+        x_max=250,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
+        "post_space_jump",
+        "scratch/post_space_jump.state",
+        0xD9AA,
+        use_for=(
+            "post-Space Jump collect (items 0x7325); primary next-segment start "
+            "after maridia_botwoon_path_human; --from post-space-jump"
+        ),
+        continuous_like=False,
+        x_min=50,
+        x_max=150,
+        y_min=120,
+        y_max=200,
+    ),
+    SourceFingerprint(
+        "post_space_jump_precious",
+        "scratch/post_space_jump_precious.state",
+        0xD78F,
+        use_for="Precious Room first return after SJ (items 0x7325)",
+        continuous_like=False,
+        x_min=30,
+        x_max=80,
+        y_min=620,
+        y_max=700,
+    ),
+    SourceFingerprint(
+        "post_draygon_precious",
+        "scratch/post_draygon_precious.state",
+        0xD78F,
+        use_for=(
+            "post-Draygon+SJ Precious F5 end of maridia_botwoon_path_human; "
+            "--from post-draygon"
+        ),
+        continuous_like=False,
+        x_min=40,
+        x_max=80,
+        y_min=620,
+        y_max=700,
+    ),
+    SourceFingerprint(
+        "post_spring_ball",
+        "scratch/post_spring_ball.state",
+        0xD6D0,
+        use_for="Spring Ball collect (items 0x7327); --from post-spring-ball",
+        continuous_like=False,
+        x_min=340,
+        x_max=420,
+        y_min=320,
+        y_max=400,
+    ),
+    SourceFingerprint(
+        "post_ln_main_hall",
+        "scratch/post_ln_main_hall.state",
+        0xB236,
+        use_for=(
+            "LN Main Hall human end (items 0x7327 beams 0x100F); "
+            "Ridley / Golden Torizo free-record; --from main-hall"
+        ),
+        continuous_like=False,
+        x_min=1100,
+        x_max=1200,
+        y_min=600,
+        y_max=700,
+    ),
+    SourceFingerprint(
+        "post_ln_elevator_save",
+        "scratch/post_ln_elevator_save.state",
+        0xB1BB,
+        use_for="LN Elevator Save before Main Hall; items 0x7327",
+        continuous_like=False,
+        x_min=160,
+        x_max=240,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
+        "post_screw_attack",
+        "scratch/post_screw_attack.state",
+        0xB6C1,
+        use_for=(
+            "Screw Attack collect (items 0x732F); item_delta f10857 of "
+            "post-main-hall; --from post-screw"
+        ),
+        continuous_like=False,
+        x_min=140,
+        x_max=210,
+        y_min=640,
+        y_max=700,
+    ),
+    SourceFingerprint(
+        "post_ridley_tank",
+        "scratch/post_ridley_tank.state",
+        0xB698,
+        use_for=(
+            "Ridley Tank after fight (Norfair boss bit set, items 0x732F); "
+            "--from post-ridley"
+        ),
+        continuous_like=False,
+        x_min=180,
+        x_max=260,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
+        "post_ridley_farming",
+        "scratch/post_ridley_farming.state",
+        0xB37A,
+        use_for="LN Farming after leaving Ridley; exit path; --from post-ridley-farming",
+        continuous_like=False,
+        x_min=30,
+        x_max=80,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
+        "post_bosses_landing_site",
+        "scratch/post_bosses_landing_site.state",
+        0x91F8,
+        use_for=(
+            "Landing Site post-Ridley return (all 4 bosses, Screw items 0x732F); "
+            "G4 statues / Tourian free-record; --from post-bosses"
+        ),
+        continuous_like=False,
+        x_min=1100,
+        x_max=1200,
+        y_min=1050,
+        y_max=1150,
+    ),
     # Dev / topology (not continuous evidence)
     SourceFingerprint(
         "dev_kpdr_kraid_entry",

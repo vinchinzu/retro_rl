@@ -24,15 +24,20 @@ from harvest.planner.day_plan import (
 from harvest.planner.local_llm import build_local_llm_plan_advisor_from_env
 from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
 from harvest.runtime.bot_input import env_flag
+from harvest.runtime.power_on import PowerOnStartTask
 from harvest.tasks.crop_planter import CropWaterTask, DEFAULT_CROP_BOUNDS
 from harvest.tasks.farm_clear_task import FarmClearTask
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, DebrisType
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    DebrisType,
+)
 from harvest.tasks.fence_flow import FenceClearLoopTask
 from harvest.tasks.grass_planter import (
     DEFAULT_BOUNDS as GRASS_DEFAULT_BOUNDS,
     DEFAULT_NO_GO_RECTS as GRASS_DEFAULT_NO_GO,
     GrassPlantTask,
 )
+from harvest.tasks.town_day1_handoff import TownDay1HandoffTask
 
 TASKS_DIR = os.fspath(PROJECT_TASKS_DIR)
 
@@ -58,6 +63,8 @@ class AutoClearBot:
         multi_day_until_season: Optional[int] = None,
         multi_day_count: Optional[int] = None,
         eve_target_hearts: int = 10,
+        power_on: bool = False,
+        d1_handoff: Optional[bool] = None,
     ):
         self.clear_task = FarmClearTask(
             priority=priority,
@@ -131,6 +138,28 @@ class AutoClearBot:
         self._day_plan_start_date: Optional[tuple[int, int]] = None
         self._pending_auto_day_plan_rebuild = False
         self._pending_auto_day_plan_settle_frames = 0
+
+        # Clean power-on bootstrap (title → new diary → Spring D1 town).
+        # Mirrors harvest.scripts.run_to_day2 --power-on for live viewing.
+        self.power_on_enabled = bool(power_on)
+        self.power_on_task = PowerOnStartTask() if self.power_on_enabled else None
+        self.power_on_started = False
+        self.power_on_done = not self.power_on_enabled
+        # Default: after power-on, run D1 town talks + shed + sleep → D2.
+        if d1_handoff is None:
+            d1_handoff = self.power_on_enabled
+        self.d1_handoff_enabled = bool(d1_handoff)
+        self.d1_handoff_task = (
+            TownDay1HandoffTask(
+                include_sleep=True,
+                pick_starter_tools=True,
+                require_starter_tools=None,  # auto: house_size==0 → grass+can
+            )
+            if self.d1_handoff_enabled
+            else None
+        )
+        self.d1_handoff_started = False
+        self.d1_handoff_done = not self.d1_handoff_enabled
 
         # Skip startup tasks in day plan mode
         if day_plan_enabled:
@@ -320,6 +349,16 @@ class AutoClearBot:
         return True
 
     def get_goal_text(self) -> str:
+        if self.power_on_enabled and not self.power_on_done:
+            if self.power_on_started and self.power_on_task is not None:
+                return f"Goal: {self.power_on_task.phase_text}"
+            return "Goal: power-on (waiting)"
+        if self.d1_handoff_enabled and not self.d1_handoff_done:
+            if self.d1_handoff_started and self.d1_handoff_task is not None:
+                snap = self.d1_handoff_task.progress_snapshot()
+                phase = snap.phase_text or "running"
+                return f"Goal: D1 handoff {phase}"
+            return "Goal: D1 handoff (waiting)"
         if self.day_plan_enabled and not self.day_plan_done:
             if self.day_plan_started:
                 return f"Goal: day plan {self.day_plan_task.phase_text} ({self.day_plan_task.progress_text})"
@@ -351,6 +390,59 @@ class AutoClearBot:
         self.frame_count += 1
         ram = self.env.get_ram()
         world = WorldState(frame=self.frame_count, ram=ram, info={}, obs=obs)
+
+        # Clean power-on: title → START → new diary → Spring D1 town gate.
+        if self.power_on_enabled and not self.power_on_done and self.power_on_task is not None:
+            if not self.power_on_started:
+                self.power_on_task.reset(world)
+                self.power_on_started = True
+                print("[BOT] Power-on: title -> START -> new diary -> Spring D1")
+            result = self.power_on_task.step(world)
+            if result.action is not None:
+                return result.action.action
+            if result.status == TaskStatus.SUCCESS:
+                print(
+                    f"[BOT] Power-on complete ({self.power_on_task.progress_text}): "
+                    f"{self.power_on_task.phase_text}"
+                )
+                self.power_on_done = True
+                # Rebuild day plan from live Spring D1 RAM once controllable.
+                if self.day_plan_enabled and not self.day_plan_started:
+                    self._configure_day_plan(self.day_plan_sequence_name)
+            elif result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                reason = result.reason or result.status.value
+                print(f"[BOT] Power-on stopped ({reason})")
+                self.power_on_done = True
+                self.disable(f"Power-on stopped ({reason})")
+            return np.zeros(12, dtype=np.int32)
+
+        # Gate B / rr-5in: six talks + truck + outdoor intro + shed + sleep → D2.
+        if self.d1_handoff_enabled and not self.d1_handoff_done and self.d1_handoff_task is not None:
+            if not self.d1_handoff_started:
+                if self.d1_handoff_task.can_start(world):
+                    self.d1_handoff_task.reset(world)
+                    self.d1_handoff_started = True
+                    print("[BOT] D1 handoff: talks + truck + shed + sleep -> D2")
+                else:
+                    print("[BOT] D1 handoff: cannot start (skipping)")
+                    self.d1_handoff_done = True
+            if self.d1_handoff_started and not self.d1_handoff_done:
+                result = self.d1_handoff_task.step(world)
+                if result.action is not None:
+                    return result.action.action
+                if result.status == TaskStatus.SUCCESS:
+                    phase = self.d1_handoff_task.progress_snapshot().phase_text or "done"
+                    print(f"[BOT] D1 handoff complete ({phase})")
+                    self.d1_handoff_done = True
+                    # Multi-day / auto plan must re-scan from D2 morning RAM.
+                    if self.day_plan_enabled and not self.day_plan_started:
+                        self._configure_day_plan(self.day_plan_sequence_name)
+                elif result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                    reason = result.reason or result.status.value
+                    print(f"[BOT] D1 handoff stopped ({reason})")
+                    self.d1_handoff_done = True
+                    self.disable(f"D1 handoff stopped ({reason})")
+                return np.zeros(12, dtype=np.int32)
 
         if self.fence_task_enabled and not self.fence_task_done:
             if not self.fence_task_started:

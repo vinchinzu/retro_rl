@@ -8,7 +8,7 @@ from retro_harness import TaskStatus, WorldState
 
 from harvest.core.ram_catalog import field_spec
 from harvest.runtime.power_on import PowerOnStartTask
-from harvest.tasks.farm_clearer import make_action
+from harvest.tasks.nav import make_action
 
 
 def make_world(*, tilemap: int, input_lock: int, day: int = 0, hour: int = 0) -> WorldState:

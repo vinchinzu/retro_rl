@@ -37,7 +37,12 @@ from harvest.maps.map_config import ROUTES, slice_route_from_position
 from harvest.planner.day_plan_status import TASKS_DIR, is_farm_tilemap
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, ADDR_X, ADDR_Y, make_action
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    ADDR_X,
+    ADDR_Y,
+)
+from harvest.tasks.nav import make_action
 from harvest.tasks.primitives import dismiss_dialogue_result, drain_action_queue
 
 # Outdoor mountain map — spa stays on this tilemap (no interior transition).

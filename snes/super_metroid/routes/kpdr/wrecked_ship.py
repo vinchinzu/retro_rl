@@ -1,15 +1,21 @@
-"""Development-only Wrecked Ship approach scaffold.
+"""Wrecked Ship approach controllers (K6).
 
-K6 currently has only dev-warp entry evidence.  These bounded placeholders
-define the room-by-room controller surface for the future pure geometry pass;
-they do not own emulator state, warp Samus, or write progression/boss RAM.
+West Ocean → WS entrance is **pure** via over-ocean shinespark
+(:func:`super_metroid.routes.kpdr.west_ocean.play_west_ocean_to_ws`).
+Moat → West Ocean pure lives on :mod:`super_metroid.routes.kpdr.moat`.
+Post-entry ship rooms remain scaffold placeholders until pure geometry.
 """
 
 from __future__ import annotations
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import hold, require_room
+from super_metroid.routes.kpdr import west_ocean as _west_ocean
 from super_metroid.routes.runtime import ControllerSession
+
+# Product pure: over-ocean spark + Super open (re-exported for WS callers).
+play_west_ocean_to_ws = _west_ocean.play_west_ocean_to_ws
+play_west_ocean_over_ocean_spark = _west_ocean.play_west_ocean_over_ocean_spark
 
 
 ROOM_MOAT = 0x95FF
@@ -47,22 +53,15 @@ def _scaffold_exit(
 
 
 def play_moat_to_west_ocean(session: ControllerSession) -> SuperMetroidState:
-    """Scaffold Moat ``0x95FF`` -> West Ocean ``0x93FE``."""
+    """Scaffold Moat ``0x95FF`` -> West Ocean ``0x93FE``.
+
+    Prefer pure :func:`super_metroid.routes.kpdr.moat.play_moat_shinespark`.
+    """
     return _scaffold_exit(
         session,
         entry_room=ROOM_MOAT,
         target_room=ROOM_WEST_OCEAN,
         label="moat_to_west_ocean",
-    )
-
-
-def play_west_ocean_to_ws(session: ControllerSession) -> SuperMetroidState:
-    """Scaffold West Ocean ``0x93FE`` -> WS entrance ``0xCA08``."""
-    return _scaffold_exit(
-        session,
-        entry_room=ROOM_WEST_OCEAN,
-        target_room=ROOM_WS_ENTRANCE,
-        label="west_ocean_to_ws",
     )
 
 
@@ -104,6 +103,7 @@ __all__ = [
     "ROOM_WS_BASEMENT",
     "ROOM_PHANTOON",
     "play_moat_to_west_ocean",
+    "play_west_ocean_over_ocean_spark",
     "play_west_ocean_to_ws",
     "play_ws_entrance_to_main",
     "play_ws_main_to_basement",

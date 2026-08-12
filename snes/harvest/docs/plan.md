@@ -1,36 +1,50 @@
 # Plan — Harvest Moon (SNES)
 
 Future work only. Proven facts live in [STATUS.md](STATUS.md).
+Gate board: [MILESTONES.md](MILESTONES.md).
+Structure debt: [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
 Structure / API direction: [PLANNING_STACK.md](PLANNING_STACK.md).
 Layer ownership: [bot_architecture_plan.md](bot_architecture_plan.md).
 
 ## Bottleneck
 
-**Spring calendar multi-day is ROM-verified** (D2 → Summer D1), but it is a
-separate D2 fixture run. Clean power-on reaches D1 town gate; D1 handoff to D2
-works via Ann|Eve + rest recording (peak mask `0x3F`), not yet as a pure
-power-on→D2 continuous claim. After that (or in parallel), same-day water
-reliability and **grow → harvest → ship** remain open so money rises above the
-post-seed $100 floor. Details: [town_day1_recon.md](town_day1_recon.md).
+**Tip (2026-08-10):** Gate B continuous — power-on → Summer D1 with income
+(`rr-5in`). **`rr-ws8h` CLOSED (unit)** house short-circuit; **`rr-9xyy`
+CLOSED** (CLEAR debris no longer ship_verify thrash). Remaining soak residual:
+ExitToFarm stuck on dialogue tilemap `0x08` (D23 pre-fix soak) + full Clean
+re-soak for Gate B claim.
 
-## Product backlog (from AGENTS slim)
+**Already closed (do not re-open as bottleneck):**
 
-- Power-on → full D1 → D2 with shed grass+can on `house_size=0` (no AnnEve).
-- Extract coop feed/collect/ship into `tasks/skills.py`; Spring 22 multi-adult /
-  dynamic egg tiles before daily plan restore.
-- Gift delivery (carry egg to NPC) once town nav is solid.
-- Expand `build_day_phases()` for summer/fall crop rotations.
+- Gate A multi-day economy (Day09 successor money $1260→$3180) — `rr-y8n`
+- Ship debris → bin thrash (`rr-9xyy`) — clear_hands before pick
+- Natural empty-can fill + thrash stabilizations — `rr-3q27` + kids
+- Power-on full D1→D2 shed on `house_size=0` — `rr-bhr`
+- Spring calendar shell D2→Summer (fixture, no income) — historical soak
+
+**Architecture tax on the tip path:** `crop_planter.py` ~4.18k lines
+(`rr-ds3` slices 1–2); further water/refill patches must extract modules, not grow the mono.
+Details: [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
+
+## Product backlog
+
+- Close Gate B (ExitToFarm 0x08 residual → power-on soak `rr-5in` / epic `rr-20w`).
+- Day-plan soft fails ENSURE_CAN / CROP_WATER after plant (if still red post-B).
+- Extract coop feed/collect/ship (`rr-rbk`); cow mono extract (bead).
+- Hot-spring stamina gate in day plan (`rr-pzw`).
+- Festival/Sunday/rain ordering (`rr-1vc` / Gate C).
+- Gift delivery (carry egg to NPC); summer/fall crop rotations.
+- M4 natural-entry summer from `Y1_Summer_D1_Morning`.
+- Thin D1 handoff (A6) over Nav+Talk skills — product path green, structure open.
 
 ## Next acceptance tests
 
-1. From clean power-on, complete six D1 talks + truck + shed grass/can
-   (`house_size=0`) + sleep → D2 without the AnnEve fixture.
-2. From `Y1_After_Buy_Potato` (or live day plan): plant + **natural** water same day
-   (no RAM can poke).
-3. From `Y1_Test_Crops_Planted_Watered` (or live plant): ~6 days growth → harvest
-   → ship; assert **money rises after 5pm**.
-4. From `Y1_Inside_House`, 10-day or `--end-of-spring` soak with money > 100
-   after first potato harvest window; no mid-run state load.
+1. ~~Power-on D1→D2 shed `house_size=0`~~ — closed (`rr-bhr`).
+2. ~~Natural empty-can + same-day water fixture~~ — closed (`rr-3q27` / thrash kids).
+3. ~~Gate A multi-day money > 100 + harvest~~ — closed (`rr-y8n`).
+4. **Gate B:** `run_to_day2 --power-on --end-of-spring` → Summer D1, money > 100,
+   Clean, no mid-run load (`rr-5in`).
+5. Optional after B: rainy/festival phase order (`rr-1vc`); spa when stam low (`rr-pzw`).
 
 ## Architecture track (planning trunk)
 
@@ -40,12 +54,14 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 |----------|------|-------|
 | Done | A1 Phase contracts on crop/coop/sleep/hot-spring | `evaluate_task_contract` + catalog wiring |
 | Done | A2 Skill boundary factories | feed/ship/talk/farm bin in `tasks/skills.py` |
-| Partial | A3 Crop close-loop acceptance | See A3 progress below |
-| Next | A4 Coop skill composition + multi-adult fix | Stop growing `coop_task.py` |
+| Partial | A3 Crop close-loop acceptance | Gate A closed; Gate B continuous open |
+| **Now** | **Crop mono extract (`rr-ds3`)** | `crop_planter` ~4.9k — P1 arch tax (review) |
+| **Now** | **Pathfinder promote (`rr-fjbk`)** | Out of `farm_clearer` |
+| Next | A4 Coop skill composition + multi-adult fix | `rr-rbk` — stop growing `coop_task.py` |
 | Done | A5 Contract preflight in day-plan probe | Soft notes when map/tool mismatch |
-| Later | A6 D1 skill routes from power-on | Thin handoff over Nav+Talk skills |
-| Later | A7 Festival + rainy-day distillation | Phase ordering from recordings |
-| Later | A8 Promote Pathfinder / primitives | After second consumer |
+| Later | A6 D1 skill routes from power-on | `rr-7js5` — product path green; structure open |
+| Later | A7 Festival + rainy-day distillation | `rr-1vc` |
+| Later | A8 Promote Pathfinder / primitives shared | After second game consumer |
 
 ### A3 progress (2026-08-01 subagent push)
 

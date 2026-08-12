@@ -7,7 +7,7 @@ from typing import Callable, Optional, Tuple
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import ADDR_TILEMAP
+from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.planner.day_plan_status import (
     _read_state_ram,
     count_chicken_slots,
@@ -161,6 +161,18 @@ class WorldProbe:
     def should_buy_cow(self) -> bool:
         ram = self._require_ram()
         return False if ram is None else ram_should_buy_cow(ram)
+
+    def money(self) -> Optional[int]:
+        """Wallet gold, or None when no RAM is available."""
+        from harvest.core.ram_catalog import read_ram_value
+
+        ram = self._require_ram()
+        if ram is None:
+            return None
+        try:
+            return int(read_ram_value(ram, "money"))
+        except Exception:
+            return None
 
 
 __all__ = ["StateRamLoader", "WorldProbe"]

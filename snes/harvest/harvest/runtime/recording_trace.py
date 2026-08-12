@@ -14,7 +14,8 @@ from typing import Iterable, Sequence
 import numpy as np
 
 from harvest.core.animal_probe import BARN_TILEMAP, COOP_TILEMAP, chicken_slot_snapshots, cow_slot_snapshots
-from harvest.tasks.farm_clearer import ADDR_TILEMAP, get_pos_from_ram
+from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.tasks.nav import get_pos_from_ram
 from harvest.maps.map_config import get_map_name
 from harvest.core.npc_catalog import game_objects
 from harvest.core.ram_catalog import read_ram_value

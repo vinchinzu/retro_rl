@@ -35,15 +35,18 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import stable_retro as retro
 
-from harvest.tasks.farm_clearer import (
+from harvest.core.tile_catalog import (
     ADDR_MAP,
     ADDR_TILEMAP,
     ADDR_X,
     ADDR_Y,
+)
+from harvest.tasks.nav import (
     MAP_WIDTH,
     TILE_SIZE,
     get_tile_at,
 )
+
 
 INTEGRATION_PATH = os.path.join(HARVEST_DIR, "custom_integrations")
 STATES_DIR = os.path.join(INTEGRATION_PATH, "HarvestMoon-Snes")
@@ -194,7 +197,7 @@ def interactive_mode(state: str):
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("monospace", 12)
 
-    from harvest.tasks.farm_clearer import make_action
+    from harvest.tasks.nav import make_action
     from retro_harness import keyboard_action
 
     prev_tilemap = None

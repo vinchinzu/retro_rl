@@ -8,7 +8,14 @@ from typing import List, Tuple
 
 import numpy as np
 
-from harvest.tasks.farm_clearer import ADDR_INPUT_LOCK, ADDR_TILEMAP, get_pos_from_ram, make_action
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_TILEMAP,
+)
+from harvest.tasks.nav import (
+    get_pos_from_ram,
+    make_action,
+)
 from harvest.core.npc_catalog import ROMANCE_HEART_THRESHOLDS, game_objects, romance_points_for_hearts
 from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_u16
 from harvest.tasks.recorded_task import RecordedTask
