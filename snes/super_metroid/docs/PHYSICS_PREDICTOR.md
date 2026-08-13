@@ -18,6 +18,22 @@ motion paths offline:
 3. **Hop optimization:** genetic/hill-climbing search over input tapes
 4. **TAS development:** fast candidate filtering before emulator validation
 
+### Important: Predictor vs Emulator Ground Truth
+
+**StubPredictor and MiniStep are for search speed only, not ground truth.**
+
+- **Planning phase**: Use predictor for fast candidate evaluation and filtering
+- **Validation phase**: Run winning inputs on real emulator (stable-retro / SMEDIT snes9x)
+- **Conflict resolution**: If predictor and emulator disagree, **emulator wins**
+- **Room-clear claims**: Require emulator validation path (skip/xfail without ROM in CI is fine)
+
+This separation allows fast offline planning while ensuring production trajectories are emulator-verified.
+
+**Workflow:**
+1. Search with predictor (filter 1000s of candidates quickly)
+2. Validate top candidates on emulator (ground truth)
+3. Only claim room-clear after emulator success
+
 ## Architecture
 
 ```
@@ -101,17 +117,23 @@ trajectory = predictor.predict(start, inputs)
 
 ### SmRevClient (external)
 
-Client stub for `sm_rev` MiniStep-based physics predictor:
+Client for `sm_rev_predict` MiniStep-based physics predictor:
 
 - **Transport:** Subprocess stdin/stdout JSON (current implementation)
-- Calls external `sm_rev predict` binary via subprocess
-- Gracefully skips if binary not available (for tests/CI)
-- Environment: `SM_REV_PATH` env var or `sm_rev` in PATH
+- Calls external `sm_rev_predict` binary via subprocess
+- Gracefully raises RuntimeError if binary not available (CI stays green)
+- Environment: `SM_REV_PATH` env var or `sm_rev_predict` in PATH
+- **Search speed only**: NOT ground truth - winners require emulator validation
 
 ```python
 from super_metroid.physics_sim import SmRevClient
 
-predictor = SmRevClient(binary_path="/path/to/sm_rev")
+# Use sm_rev_predict from PATH or SM_REV_PATH
+predictor = SmRevClient()
+trajectory = predictor.predict(start, inputs)
+
+# Or specify path explicitly
+predictor = SmRevClient(binary_path="/path/to/sm_rev_predict")
 trajectory = predictor.predict(start, inputs)
 ```
 
