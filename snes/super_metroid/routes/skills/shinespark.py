@@ -24,6 +24,20 @@ Verified facts (Moat residual + Landing Site practice)
   while armed.
 * Store-from-pose: pose 9 ok; spin poses 25/166 + DOWN wipe echoes / fail arm.
 
+Short charge (boost-counter vs velocity dual-track)
+---------------------------------------------------
+Speed Booster tracks (1) horizontal velocity from continuous dash+forward and
+(2) a **boost counter** that only increments on run-animation "magic frames"
+while dash+forward are held. Echoes appear at boost-counter 4; a stored
+shinespark then travels at **full** spark speed even if velocity was near
+walking.
+
+* NTSC magic dash frames (forward held from 0): 25, 50, 70, 85.
+  On 85, dash+DOWN can store in the same frame.
+* PAL magic dash frames: 20, 40, 60, 70 (store on 70).
+* Stutter-walk before the first magic frame shortens runway further
+  (NTSC min ≈163.2 px; PAL ≈157.7 px) — see :func:`short_charge_plan`.
+
 Addresses: :data:`super_metroid.ram.ADDR_SHINESPARK_TIMER` (``$0A68``),
 :data:`super_metroid.ram.ADDR_SPEED_COUNTER` (``$0B3E``),
 :data:`super_metroid.ram.ADDR_SPEED_FLAG` (``$0B3C``).
@@ -41,11 +55,26 @@ from super_metroid.ram import (
     parse_env_state,
 )
 from super_metroid.routes.runtime import hold
+from super_metroid.routes.skills.shinespark_plans import (
+    Direction,
+    NTSC_MAGIC_DASH_FRAMES,
+    NTSC_SHORT_CHARGE_FRAMES,
+    NTSC_STUTTER_FULL_STOP_PX,
+    NTSC_STUTTER_MIN_PX,
+    PAL_MAGIC_DASH_FRAMES,
+    PAL_SHORT_CHARGE_FRAMES,
+    PAL_STUTTER_MIN_PX,
+    Region,
+    magic_dash_frames,
+    short_charge_plan,
+    stutter_dash_mask,
+    stutter_forward_mask,
+)
 
 if TYPE_CHECKING:
     from super_metroid.routes.runtime import ControllerSession
 
-Direction = Literal["LEFT", "RIGHT"]
+ChargeMode = Literal["full", "short", "stutter"]
 
 # ---------------------------------------------------------------------------
 # Constants / thresholds
@@ -80,6 +109,7 @@ STORE_WIPE_POSES: frozenset[int] = frozenset({25, 26, 27, 28, 166, 167})
 # Knockback — do not treat as charge/store success.
 KNOCKBACK_POSES: frozenset[int] = frozenset({137, 138})
 
+# Short-charge constants / plan builders: see shinespark_plans (re-exported).
 
 # ---------------------------------------------------------------------------
 # WRAM read helpers
@@ -167,8 +197,171 @@ def store_pose_ok(pose: int) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Charge / store / activate
+# Short-charge execution (plans from shinespark_plans)
 # ---------------------------------------------------------------------------
+
+
+def charge_by_plan(
+    session: ControllerSession,
+    plan: Sequence[Sequence[str]],
+    *,
+    require_grounded: bool = True,
+    label: str = "short_charge",
+    stop_on_boost: bool = True,
+) -> dict[str, Any]:
+    """Execute a frame-perfect button plan; optionally stop at echoes≥4.
+
+    Returns the same shape as :func:`charge_until_boost` plus ``plan_len``,
+    ``mode`` tags, ``start_x`` / ``end_x`` / ``delta_x``, and ``buttons_log``
+    (compact: only frames that pressed dash or DOWN).
+    """
+    first_echo: dict[str, Any] | None = None
+    boost_row: dict[str, Any] | None = None
+    start_frame = int(session.frame)
+    start_x = int(session.state.samus_x)
+    buttons_log: list[dict[str, Any]] = []
+    dash_frames: list[int] = []
+
+    for i, btns in enumerate(plan):
+        st = session.state
+        try:
+            echoes = session_spark_wram(session)["speed_echoes"]
+        except AttributeError:
+            echoes = int(getattr(st, "speed_counter", 0))
+
+        if first_echo is None and echoes >= 1:
+            first_echo = _snap(session)
+
+        grounded = int(st.velocity_y) == 0 if require_grounded else True
+        boosting = bool(getattr(st, "speed_boosting", echoes >= ECHOES_FULL))
+        if stop_on_boost and boosting and grounded and int(st.pose) not in KNOCKBACK_POSES:
+            boost_row = _snap(session)
+            end_x = int(st.samus_x)
+            return {
+                "ok": True,
+                "frames": i,
+                "elapsed": int(session.frame) - start_frame,
+                "direction": "RIGHT" if "RIGHT" in (plan[0] if plan else ()) else "LEFT",
+                "first_echo": first_echo,
+                "boost": boost_row,
+                "plan_len": len(plan),
+                "start_x": start_x,
+                "end_x": end_x,
+                "delta_x": end_x - start_x,
+                "dash_frames": dash_frames,
+                "buttons_log": buttons_log,
+                "early_stop": True,
+            }
+
+        btn_t = tuple(btns)
+        hold(session, 1, *btn_t, reason=f"{label}_{i}")
+        # Log interesting presses (dash / store)
+        interesting = [b for b in btn_t if b in ("B", "Y", "DOWN") or b == "A"]
+        # Prefer tracking harness dash B
+        if any(b in btn_t for b in ("B", "Y")):
+            dash_frames.append(i)
+        if interesting or i in (0, len(plan) - 1):
+            buttons_log.append({"f": i, "buttons": list(btn_t)})
+
+    # Final observation after last step
+    st = session.state
+    try:
+        echoes = session_spark_wram(session)["speed_echoes"]
+    except AttributeError:
+        echoes = int(getattr(st, "speed_counter", 0))
+    grounded = int(st.velocity_y) == 0 if require_grounded else True
+    boosting = bool(getattr(st, "speed_boosting", echoes >= ECHOES_FULL))
+    end_x = int(st.samus_x)
+    if first_echo is None and echoes >= 1:
+        first_echo = _snap(session)
+    ok = boosting and grounded and int(st.pose) not in KNOCKBACK_POSES
+    out: dict[str, Any] = {
+        "ok": ok,
+        "frames": len(plan),
+        "elapsed": int(session.frame) - start_frame,
+        "direction": next(
+            (b for b in (plan[0] if plan else ()) if b in ("LEFT", "RIGHT")),
+            "RIGHT",
+        ),
+        "first_echo": first_echo,
+        "boost": _snap(session) if ok else _snap(session),
+        "plan_len": len(plan),
+        "start_x": start_x,
+        "end_x": end_x,
+        "delta_x": end_x - start_x,
+        "dash_frames": dash_frames,
+        "buttons_log": buttons_log,
+        "early_stop": False,
+    }
+    if not ok:
+        out["error"] = (
+            f"short charge plan finished without echoes≥4 "
+            f"(echoes={echoes} grounded={grounded} pose={int(st.pose)})"
+        )
+    return out
+
+
+def short_charge_until_boost(
+    session: ControllerSession,
+    direction: Direction = "RIGHT",
+    *,
+    region: Region = "NTSC",
+    stutter: bool = False,
+    store_on_last: bool = False,
+    dash_button: str = "B",
+    require_grounded: bool = True,
+    stop_on_boost: bool = True,
+    label: str = "short_charge",
+) -> dict[str, Any]:
+    """Magic-frame short charge (optional stutter prefix).
+
+    Holds forward continuously (or stutter pattern) and presses dash only on
+    boost-counter check frames. Full echoes unlock a full-speed shinespark
+    store even at near-walking velocity — key for short Moat / West Ocean
+    runways.
+
+    See module docstring and :func:`short_charge_plan`.
+    """
+    plan = short_charge_plan(
+        region,
+        stutter=stutter,
+        store_on_last=store_on_last,
+        direction=direction,
+        dash_button=dash_button,
+    )
+    # When storing on the final magic frame, run the full plan (do not early-stop
+    # after the 3rd boost tick or DOWN never fires).
+    effective_stop = False if store_on_last else stop_on_boost
+    report = charge_by_plan(
+        session,
+        plan,
+        require_grounded=require_grounded,
+        label=label,
+        stop_on_boost=effective_stop,
+    )
+    report["region"] = region
+    report["stutter"] = stutter
+    report["store_on_last"] = store_on_last
+    report["mode"] = "stutter" if stutter else "short"
+    report["magic_frames"] = list(magic_dash_frames(region))
+    if store_on_last:
+        try:
+            w = session_spark_wram(session)
+            timer = w["spark_timer"]
+            echoes = w["speed_echoes"]
+        except AttributeError:
+            timer = int(getattr(session.state, "shinespark_timer", 0))
+            echoes = int(getattr(session.state, "speed_counter", 0))
+        report["store_armed"] = timer > 0
+        report["spark_timer"] = timer
+        # Store often replaces the blue-suit flag; treat armed timer as success.
+        if timer > 0:
+            report["ok"] = True
+            report.pop("error", None)
+        elif echoes >= ECHOES_FULL:
+            report["ok"] = True
+            report.pop("error", None)
+    return report
 
 
 def charge_until_boost(
@@ -180,16 +373,37 @@ def charge_until_boost(
     require_grounded: bool = True,
     extra_buttons: Sequence[str] = (),
     label: str = "charge",
+    mode: ChargeMode = "full",
+    region: Region = "NTSC",
+    store_on_last: bool = False,
 ) -> dict[str, Any]:
-    """Hold ``direction``+dash until grounded full echoes (``speed_boosting``).
+    """Charge until grounded full echoes (``speed_boosting``).
+
+    ``mode``:
+      * ``full`` — continuous ``direction``+dash (classic ~90f runway).
+      * ``short`` — magic-frame dash only (NTSC 25/50/70/85).
+      * ``stutter`` — stutter-walk prefix + short charge (min ~163 px NTSC).
 
     Returns a report with ``ok``, ``frames``, ``first_echo``, ``boost``
     snapshots (via ``session.env`` when present; otherwise thin state dicts).
     """
+    if mode in ("short", "stutter"):
+        return short_charge_until_boost(
+            session,
+            direction,
+            region=region,
+            stutter=(mode == "stutter"),
+            store_on_last=store_on_last,
+            dash_button=dash_button,
+            require_grounded=require_grounded,
+            label=label,
+        )
+
     dir_btn = "LEFT" if direction == "LEFT" else "RIGHT"
     first_echo: dict[str, Any] | None = None
     boost_row: dict[str, Any] | None = None
     start_frame = int(session.frame)
+    start_x = int(session.state.samus_x)
 
     for i in range(budget):
         st = session.state
@@ -207,6 +421,7 @@ def charge_until_boost(
         boosting = bool(getattr(st, "speed_boosting", echoes >= ECHOES_FULL))
         if boosting and grounded and int(st.pose) not in KNOCKBACK_POSES:
             boost_row = _snap(session)
+            end_x = int(st.samus_x)
             return {
                 "ok": True,
                 "frames": i,
@@ -214,6 +429,10 @@ def charge_until_boost(
                 "direction": dir_btn,
                 "first_echo": first_echo,
                 "boost": boost_row,
+                "mode": "full",
+                "start_x": start_x,
+                "end_x": end_x,
+                "delta_x": end_x - start_x,
             }
 
         hold(
@@ -225,6 +444,7 @@ def charge_until_boost(
             reason=f"{label}_run",
         )
 
+    end_x = int(session.state.samus_x)
     return {
         "ok": False,
         "frames": budget,
@@ -232,6 +452,10 @@ def charge_until_boost(
         "direction": dir_btn,
         "first_echo": first_echo,
         "boost": _snap(session),
+        "mode": "full",
+        "start_x": start_x,
+        "end_x": end_x,
+        "delta_x": end_x - start_x,
         "error": "never reached speed_boosting (echoes≥4)",
     }
 
@@ -538,24 +762,50 @@ def charge_store_activate(
     aim_buttons: Sequence[str] = ("RIGHT",),
     travel_budget: int = 200,
     label: str = "spark",
+    charge_mode: ChargeMode = "full",
+    region: Region = "NTSC",
+    store_on_last_magic: bool = False,
 ) -> dict[str, Any]:
-    """Full pipeline: charge → crouch-store → optional idle → activate+travel."""
-    report: dict[str, Any] = {"label": label}
+    """Full pipeline: charge → crouch-store → optional idle → activate+travel.
+
+    ``charge_mode`` ``short`` / ``stutter`` uses magic-frame dash (see
+    :func:`short_charge_until_boost`). When ``store_on_last_magic`` is True with
+    a short mode, DOWN is pressed on the final magic frame; a separate
+    crouch-store is skipped if ``$0A68`` is already armed.
+    """
+    report: dict[str, Any] = {"label": label, "charge_mode": charge_mode}
     report["charge"] = charge_until_boost(
-        session, direction, budget=charge_budget, label=f"{label}_charge"
+        session,
+        direction,
+        budget=charge_budget,
+        label=f"{label}_charge",
+        mode=charge_mode,
+        region=region,
+        store_on_last=store_on_last_magic and charge_mode in ("short", "stutter"),
     )
     if not report["charge"].get("ok"):
         report["ok"] = False
         report["error"] = report["charge"].get("error")
         return report
 
-    report["store"] = crouch_store(
-        session, max_frames=store_max_frames, label=f"{label}_store"
-    )
-    if not report["store"].get("ok"):
-        report["ok"] = False
-        report["error"] = report["store"].get("error")
-        return report
+    already_armed = bool(report["charge"].get("store_armed"))
+    if already_armed:
+        report["store"] = {
+            "ok": True,
+            "armed": report["charge"].get("boost"),
+            "peak_timer_during_store": int(report["charge"].get("spark_timer") or 0),
+            "after": _snap(session),
+            "start_pose": int(session.state.pose),
+            "via": "store_on_last_magic",
+        }
+    else:
+        report["store"] = crouch_store(
+            session, max_frames=store_max_frames, label=f"{label}_store"
+        )
+        if not report["store"].get("ok"):
+            report["ok"] = False
+            report["error"] = report["store"].get("error")
+            return report
 
     if idle_after_store > 0:
         report["window"] = wait_store_window(
@@ -622,11 +872,24 @@ __all__ = [
     "STORE_OK_POSES",
     "STORE_WIPE_POSES",
     "KNOCKBACK_POSES",
+    "NTSC_MAGIC_DASH_FRAMES",
+    "PAL_MAGIC_DASH_FRAMES",
+    "NTSC_STUTTER_MIN_PX",
+    "PAL_STUTTER_MIN_PX",
+    "NTSC_STUTTER_FULL_STOP_PX",
+    "NTSC_SHORT_CHARGE_FRAMES",
+    "PAL_SHORT_CHARGE_FRAMES",
     "read_spark_wram",
     "spark_snapshot",
     "session_spark_wram",
     "is_spark_pose",
     "store_pose_ok",
+    "magic_dash_frames",
+    "stutter_forward_mask",
+    "stutter_dash_mask",
+    "short_charge_plan",
+    "charge_by_plan",
+    "short_charge_until_boost",
     "charge_until_boost",
     "crouch_store",
     "wait_store_window",

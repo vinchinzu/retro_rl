@@ -14,6 +14,11 @@ from retro_harness.platformer.actions import (
     action_index_to_buttons,
 )
 from retro_harness.platformer.evaluator import Evaluator, EvalResult
+from retro_harness.platformer.frame_save import (
+    INDEX_MUTATION_WEIGHTS,
+    accept_candidate,
+    resolve_frame_save_mode,
+)
 
 
 def hillclimb(
@@ -24,14 +29,26 @@ def hillclimb(
     verbose: bool = True,
     render_interval: int = 0,
     render_scale: int = 3,
+    *,
+    require_completion: bool | None = None,
+    prefer_trim: bool | None = None,
 ) -> tuple[list[int], EvalResult]:
-    """Local search refinement on an action sequence.
+    """Local search refinement on an action-index sequence.
+
+    Prefers **raw-button** hillclimb when the seed has faithful controller
+    input (see ``cmd_hillclimb`` / ``hillclimb_raw``). This path mutates
+    discrete action-table indices and is lossy for human pad recordings.
 
     Tries small perturbations and keeps improvements. Strategies:
-    1. Single frame change (50%)
-    2. Swap two adjacent frames (15%)
-    3. Shift a segment by 1 frame (15%)
-    4. Change a short run of frames (20%)
+    1. Single frame change (40%, or 20% when prefer_trim)
+    2. Delete 1-3 frames (trim) — only when prefer_trim or seed completes
+    3. Swap two adjacent frames
+    4. Shift a segment by 1 frame (insert duplicate / drop one)
+    5. Change a short run of frames
+
+    Candidates are always evaluated with ``early_terminate=False`` so fitness
+    is comparable to the seed baseline (stall kill would otherwise reject
+    slower-but-completing routes unfairly).
 
     Args:
         actions: Starting action sequence.
@@ -39,6 +56,10 @@ def hillclimb(
         max_iterations: Max improvement attempts.
         output_dir: Directory for saving results.
         verbose: Print progress.
+        require_completion: If True, never accept a non-completing candidate.
+            ``None`` (default) auto-enables when the seed itself completes.
+        prefer_trim: Bias mutations toward frame deletion (for finished seeds).
+            ``None`` (default) auto-enables when the seed itself completes.
 
     Returns:
         (best_actions, best_result)
@@ -54,19 +75,31 @@ def hillclimb(
     best_result = evaluator.evaluate(best_actions, early_terminate=False)
     best_fitness = best_result.fitness
 
+    mode = resolve_frame_save_mode(
+        best_result.completed, prefer_trim, require_completion
+    )
+    prefer_trim = mode.prefer_trim
+    require_completion = mode.require_completion
+
     if verbose:
         print(f"[HILL] Starting fitness: {best_fitness:.1f}")
-        print(f"[HILL] Completed: {best_result.completed}, frames: {best_result.total_frames}")
+        print(
+            f"[HILL] Completed: {best_result.completed}, "
+            f"frames: {best_result.total_frames}, "
+            f"require_completion={require_completion}, prefer_trim={prefer_trim}"
+        )
+
+    if require_completion and not best_result.completed:
+        if verbose:
+            print("[HILL] Seed does not complete; refusing require_completion run.")
+        return best_actions, best_result
 
     improvements = 0
     start_time = time.time()
 
     for iteration in range(max_iterations):
-        strategy = random.choices(
-            ["single", "swap", "shift", "run_change"],
-            weights=[50, 15, 15, 20],
-            k=1,
-        )[0]
+        strategies, weights = INDEX_MUTATION_WEIGHTS[prefer_trim]
+        strategy = random.choices(strategies, weights=weights, k=1)[0]
 
         candidate = list(best_actions)
         n = len(candidate)
@@ -76,6 +109,11 @@ def hillclimb(
         if strategy == "single":
             pos = random.randint(0, n - 1)
             candidate[pos] = random.randint(0, num_actions - 1)
+
+        elif strategy == "delete":
+            del_len = random.randint(1, min(3, n // 4))
+            pos = random.randint(0, n - del_len)
+            del candidate[pos : pos + del_len]
 
         elif strategy == "swap":
             pos = random.randint(0, n - 2)
@@ -96,9 +134,12 @@ def hillclimb(
             for i in range(run_len):
                 candidate[pos + i] = new_action
 
-        result = evaluator.evaluate(candidate)
+        # Match seed baseline: never stall-kill mid-episode.
+        result = evaluator.evaluate(candidate, early_terminate=False)
 
-        if result.fitness > best_fitness:
+        if accept_candidate(
+            best_result, result, require_completion=require_completion
+        ):
             best_actions = candidate
             best_result = result
             best_fitness = result.fitness
@@ -121,7 +162,10 @@ def hillclimb(
                     f"[HILL] checkpoint iter={iteration} "
                     f"improvements={improvements} elapsed={elapsed:.1f}s"
                 )
-            _save_hillclimb(best_actions, best_result, iteration, output_dir, evaluator)
+            # Checkpoint JSON only — skip screenshot (full re-eval cost).
+            _save_hillclimb(
+                best_actions, best_result, iteration, output_dir, evaluator=None
+            )
 
         if render_interval > 0 and iteration > 0 and iteration % render_interval == 0:
             _render_best(config, best_actions, iteration, best_fitness, render_scale)

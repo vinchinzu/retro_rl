@@ -2,11 +2,14 @@
 
 Prefer running domain modules directly:
 
-- ``tests.test_day_plan_crop``
-- ``tests.test_day_plan_home``
+- ``tests.test_day_plan_crop_sequences`` / ``tests.test_day_plan_crop_phases``
+  (shim: ``tests.test_day_plan_crop``)
+- ``tests.test_day_plan_home_sequences`` / ``tests.test_day_plan_home_return``
+  (shim: ``tests.test_day_plan_home``)
 - ``tests.test_day_plan_coop``
 - ``tests.test_day_plan_power_on``
 - ``tests.test_day_plan_common``
+- ``tests.test_day_plan_common_nav``
 
 Shared fixtures live in ``day_plan_test_helpers`` (same directory).
 
@@ -44,6 +47,7 @@ from day_plan_test_helpers import (  # noqa: E402, F401
 
 _DOMAIN_MODULES = (
     "tests.test_day_plan_common",
+    "tests.test_day_plan_common_nav",
     "tests.test_day_plan_crop",
     "tests.test_day_plan_home",
     "tests.test_day_plan_coop",
@@ -67,10 +71,26 @@ def __getattr__(name: str):
     aliases = {
         "DayPlanSequenceCommonTests": ("tests.test_day_plan_common", "DayPlanSequenceCommonTests"),
         "BuildDayPhasesCommonTests": ("tests.test_day_plan_common", "BuildDayPhasesCommonTests"),
-        "DayPlanSequenceCropTests": ("tests.test_day_plan_crop", "DayPlanSequenceCropTests"),
-        "BuildDayPhasesCropTests": ("tests.test_day_plan_crop", "BuildDayPhasesCropTests"),
-        "DayPlanSequenceHomeTests": ("tests.test_day_plan_home", "DayPlanSequenceHomeTests"),
-        "BuildDayPhasesHomeTests": ("tests.test_day_plan_home", "BuildDayPhasesHomeTests"),
+        "DayPlanSequenceCommonNavTests": (
+            "tests.test_day_plan_common_nav",
+            "DayPlanSequenceCommonNavTests",
+        ),
+        "DayPlanSequenceCropTests": (
+            "tests.test_day_plan_crop_sequences",
+            "DayPlanSequenceCropTests",
+        ),
+        "BuildDayPhasesCropTests": (
+            "tests.test_day_plan_crop_phases",
+            "BuildDayPhasesCropTests",
+        ),
+        "DayPlanSequenceHomeTests": (
+            "tests.test_day_plan_home_sequences",
+            "DayPlanSequenceHomeTests",
+        ),
+        "BuildDayPhasesHomeTests": (
+            "tests.test_day_plan_home_return",
+            "BuildDayPhasesHomeTests",
+        ),
         "DayPlanSequenceCoopTests": ("tests.test_day_plan_coop", "DayPlanSequenceCoopTests"),
         "BuildDayPhasesCoopTests": ("tests.test_day_plan_coop", "BuildDayPhasesCoopTests"),
         "DayPlanSequencePowerOnTests": ("tests.test_day_plan_power_on", "DayPlanSequencePowerOnTests"),

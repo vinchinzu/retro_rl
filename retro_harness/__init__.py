@@ -17,8 +17,12 @@ from retro_harness.controls import (
     SNES_BUTTON_NAME_TO_INDEX,
     SNES_BUTTON_NAMES,
     SNES_DOWN,
+    SNES_DPAD_LEFT,
+    SNES_DPAD_RIGHT,
     SNES_L,
     SNES_LEFT,
+    SNES_SHOULDER_L,
+    SNES_SHOULDER_R,
     SNES_R,
     SNES_RIGHT,
     SNES_SELECT,
@@ -56,7 +60,9 @@ from retro_harness.env import (
     add_custom_integrations,
     make_env,
     get_available_states,
+    read_custom_state_bytes,
     read_state_bytes,
+    resync_custom_state,
     save_state,
     state_path,
     write_state_bytes,
@@ -247,7 +253,8 @@ from retro_harness.mission_control import (
 
 __all__ = [
     # Controls
-    "SNES_A", "SNES_B", "SNES_DOWN", "SNES_L", "SNES_LEFT",
+    "SNES_A", "SNES_B", "SNES_DOWN", "SNES_DPAD_LEFT", "SNES_DPAD_RIGHT",
+    "SNES_L", "SNES_LEFT", "SNES_SHOULDER_L", "SNES_SHOULDER_R",
     "SNES_R", "SNES_RIGHT", "SNES_SELECT", "SNES_START",
     "SNES_UP", "SNES_X", "SNES_Y", "SNES_BUTTON_NAME_TO_INDEX", "SNES_BUTTON_NAMES", "CONTROLLER_MAP",
     "controller_action", "controller_debug_snapshot", "describe_input_mapping", "describe_controller",
@@ -266,7 +273,8 @@ __all__ = [
     "run_startup", "snes_action",
     # Env
     "GameSpec", "add_custom_integrations", "make_env", "get_available_states",
-    "read_state_bytes", "reset_env", "save_state", "state_path", "step_env",
+    "read_custom_state_bytes", "read_state_bytes", "resync_custom_state",
+    "reset_env", "save_state", "state_path", "step_env",
     "write_state_bytes", "play_game",
     # Deterministic parallel rollouts / certified snapshots
     "EmulatorPool", "PoolState", "PoolSnapshot",

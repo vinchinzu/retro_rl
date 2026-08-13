@@ -4,12 +4,27 @@
 **Product (green Super WS ``0xCA08``):** ocean-floor stutter charge → spark →
 Super open from Moat handoff ``~(49,1163)``.
 
+**Compose chain (Kihunter/Moat → WO → WS):** ``chain-ws`` runs
+:func:`~super_metroid.routes.kpdr.wrecked_ship.play_moat_to_ws` then saves the
+WS pin for ship free-record / Phantoon.
+
 **Practice (Bowling ``0xC98E``):** spit edge store→hop→spark (VOD recipe).
 
 ```bash
 # Product pure — natural Moat handoff → 0xCA08 (no free-place)
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws --charge-mode short
+
+# Compose: Kihunter/Moat pre-spark pin → Moat spark → over-ocean → WS pin
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws \\
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/alpha_pb_to_moat_human_end.state
+
+# Then human ship free-record → Phantoon approach
+uv run python snes/super_metroid/scripts/record/guided_human.py \\
+  --from ws-entrance --name ws_ship_human
+uv run python snes/super_metroid/scripts/record/practice_takes.py \\
+  --segment ws-entrance --series ws_ship_v1
 
 # Headed product watch (prefer for attempt review)
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch-ws
@@ -24,7 +39,8 @@ uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py short-charge --mode stutter
 ```
 
-Default source: ``scratch/post_moat_west_ocean_spark.state``.
+Default source (pure-ws): ``scratch/post_moat_west_ocean_spark.state``.
+Default source (chain-ws): ``scratch/post_kihunter_pre_moat_spark.state``.
 Product out pin: ``scratch/post_west_ocean_ws_spark.state``.
 See ``docs/tasks/SHINE_PRACTICE.md``.
 """
@@ -52,13 +68,26 @@ from super_metroid.dev.common import place_samus, save_dev_state  # noqa: E402
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state, write_wram_u16  # noqa: E402
 from super_metroid.routes.kpdr import west_ocean as wo  # noqa: E402
+from super_metroid.routes.kpdr import wrecked_ship as ws  # noqa: E402
 from super_metroid.routes.skills import shinespark as spark  # noqa: E402
 
 SCRATCH = INTEGRATION_DIR / "scratch"
 DEFAULT_SOURCE = SCRATCH / "post_moat_west_ocean_spark.state"
+DEFAULT_CHAIN_SOURCE_CANDIDATES = (
+    SCRATCH / "post_kihunter_pre_moat_spark.state",
+    SCRATCH / "alpha_pb_to_moat_human_end.state",
+    SCRATCH / "post_moat_west_ocean_spark.state",
+)
 DEFAULT_OUT = SCRATCH / "post_west_ocean_door_spark.state"  # bowling edge pure
 DEFAULT_WS_OUT = SCRATCH / "post_west_ocean_ws_spark.state"  # product 0xCA08
 DEBUG = Path("snes/super_metroid/debug/west_ocean_spark")
+
+
+def default_chain_source() -> Path:
+    for p in DEFAULT_CHAIN_SOURCE_CANDIDATES:
+        if p.is_file():
+            return p
+    return DEFAULT_CHAIN_SOURCE_CANDIDATES[0]
 
 
 class _Sess:
@@ -543,6 +572,82 @@ def cmd_pure_ws(args: argparse.Namespace) -> int:
         env.close()
 
 
+def cmd_chain_ws(args: argparse.Namespace) -> int:
+    """Headless Moat spark + over-ocean spark → WS pin for Phantoon recording.
+
+    Loads Kihunter pre-spark, Moat standing handoff, or West Ocean Moat-exit
+    pin; runs :func:`play_moat_to_ws`; saves ``post_west_ocean_ws_spark.state``.
+    """
+    source = Path(args.source or default_chain_source())
+    if not source.is_file():
+        print(f"missing source: {source}", file=sys.stderr)
+        return 2
+    env, sess = boot(
+        source,
+        place_spit=False,
+        assist=not args.no_assist,
+    )
+    boot_snap = spark.spark_snapshot(env, 0)
+    print(
+        f"boot room=0x{sess.state.room_id:04X} xy=({sess.state.samus_x},{sess.state.samus_y}) "
+        f"pose={sess.state.pose} path=moat_to_ws source={source.name}"
+    )
+    try:
+        st = ws.play_moat_to_ws(
+            sess,
+            moat_charge_mode=args.moat_charge_mode,
+            wo_charge_mode=args.wo_charge_mode,
+        )
+        ok = (
+            st.room_id == wo.ROOM_WS_ENTRANCE
+            and st.game_state == 8
+            and st.door_transition == 0
+        )
+        flag = "GREEN" if ok else "AMBER"
+        print(
+            f"{flag} room=0x{st.room_id:04X} xy=({st.samus_x},{st.samus_y}) "
+            f"pose={st.pose} gs={st.game_state} dt={st.door_transition} "
+            f"frames={sess.frame} moat={args.moat_charge_mode} "
+            f"wo={args.wo_charge_mode}"
+        )
+        out = Path(args.out or DEFAULT_WS_OUT)
+        save_dev_state(env, out)
+        print(f"saved {out}")
+        print(
+            "recording handoff: "
+            "uv run python snes/super_metroid/scripts/record/guided_human.py "
+            "--from ws-entrance --name ws_ship_human"
+        )
+        DEBUG.mkdir(parents=True, exist_ok=True)
+        (DEBUG / "chain_ws.json").write_text(
+            json.dumps(
+                {
+                    "boot": boot_snap,
+                    "final": spark.spark_snapshot(env, sess.frame),
+                    "frames": sess.frame,
+                    "ok": ok,
+                    "source": str(source),
+                    "params": {
+                        "moat_charge_mode": args.moat_charge_mode,
+                        "wo_charge_mode": args.wo_charge_mode,
+                        "path": "moat_to_ws",
+                        "target": "0xCA08",
+                        "recording": "ws-entrance / practice_takes ws-entrance",
+                    },
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        return 0 if st.room_id == wo.ROOM_WS_ENTRANCE else 1
+    except Exception as exc:  # noqa: BLE001
+        print(f"RED {exc}")
+        print(f"pin {spark.spark_snapshot(env, sess.frame)}")
+        return 1
+    finally:
+        env.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -605,6 +710,35 @@ def main(argv: list[str] | None = None) -> int:
     )
     _add_ws_common(p_ws)
     p_ws.set_defaults(func=cmd_pure_ws)
+
+    p_chain = sub.add_parser(
+        "chain-ws",
+        help=(
+            "Compose Moat spark + over-ocean → WS pin "
+            "(Kihunter/Moat/WO → 0xCA08; recording handoff)"
+        ),
+    )
+    p_chain.add_argument(
+        "--source",
+        type=Path,
+        default=None,
+        help="Default: post_kihunter_pre_moat_spark (or alpha_pb Moat end)",
+    )
+    p_chain.add_argument("--out", type=Path, default=None)
+    p_chain.add_argument("--no-assist", action="store_true")
+    p_chain.add_argument(
+        "--moat-charge-mode",
+        choices=("full", "short", "stutter"),
+        default="full",
+        help="Moat hop product charge (default full)",
+    )
+    p_chain.add_argument(
+        "--wo-charge-mode",
+        choices=("full", "short", "stutter"),
+        default="stutter",
+        help="West Ocean over-ocean charge (default stutter)",
+    )
+    p_chain.set_defaults(func=cmd_chain_ws)
 
     p3 = sub.add_parser(
         "short-charge",

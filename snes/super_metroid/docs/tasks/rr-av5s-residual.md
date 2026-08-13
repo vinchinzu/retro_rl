@@ -1,8 +1,15 @@
 ## Residual — rr-av5s Pure Red Tower → Hellway return (K5 hop 12)
 
 ### Result
-PARTIAL — **thin-seat dual after period WJ + ice-ladder attempt**. From
+PARTIAL — **first enemy-aware Ice/WJ checkpoint GREEN**, plus the earlier
+thin-seat dual after period WJ + ice-ladder attempt. From
 `post_ice_bat_to_red_pure` ~(206,2443):
+
+0. New checkpoint policy: bottom floor → freeze lowest Ripper → consecutive
+   WJ → grounded `lower_ripper_1` **y2351**, dual exact and GREEN over 31 patrol
+   phases total (`0..240f`, step 8), **230–414f at 408–636 FPS**. Probe-only
+   (not wired into product `RoomAutopilot` — red climb is human/probe until a
+   verified reactive policy exists); `lower_ripper_1→2` remains planned.
 
 1. Morph + double-bomb **IBJ 18/30 c150** from pure bottom → dual tunnel peak
    **~y1820**
@@ -18,6 +25,12 @@ PARTIAL — **thin-seat dual after period WJ + ice-ladder attempt**. From
 Not dual green Hellway. No STATUS. Parent **rr-dbu.8** stays open.
 
 ### Files changed
+- `routes/kpdr/k5/red_ice_climb.py` — live enemy sensor + first checkpoint
+  runner for probe scripts (not product AP)
+- `routes/kpdr/data/red_tower_ice_checkpoint_plan.json` — full checkpoint /
+  recovery tree; only edge 01 is marked verified
+- `scripts/probe/red_ice_climb.py` — natural dual + patrol-phase sweep
+- `scripts/export/red_ice_route_plan.py` — deterministic full-room and edge PNGs
 - `routes/kpdr/k5/red_to_hellway.py` — drop WJ phase8 (falls y687); thin-seat
   land; Ice ripper ladder helpers (freeze + high hop, no ground-morph); residual
   thrash only when already near door
@@ -50,6 +63,9 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure red-to-hellway \
 
 ### Acceptance
 - [x] Segment wired + ROOM_HELLWAY
+- [x] Bottom → first frozen lower Ripper: live phase track + consecutive WJ,
+  dual exact and 31-phase GREEN
+- [ ] First → second frozen lower Ripper (next checkpoint edge)
 - [x] Lower / pocket / spin (prior)
 - [x] Bottom IBJ dual tunnel peak ~y1820
 - [x] Tunnel→midplat dual

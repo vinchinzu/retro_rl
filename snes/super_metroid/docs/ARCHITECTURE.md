@@ -30,7 +30,8 @@ combat/*.py                               boss fight policies (after natural ent
 policy.py + policies/**                   JSON raw-button PolicySegments
         │
 progression/                              RoomNode / DoorEdge / milestones / graphs
-ram.py + door_kinematics.py + assist.py   state parse, door speed/pos, assists
+ram.py + door_kinematics.py + takeoff.py + assist.py
+                                          state parse, door/in-room kinematics, assists
         │
 rooms/*                                   isolated practice (EntryContract, queue)
 dev/*                                     door-warp topology (developmentOnly)
@@ -58,6 +59,8 @@ legacy/*                                  frozen vision/RL remnants
 | `DoorEdge.verification` | `unverified` / `controller_dev` / `continuous` |
 | `ProgressCondition` / `ProgressionMilestone` | Live RAM stop predicates |
 | `door_kinematics.DoorKinematics` | Leave/entry speed, position, pose, speed-booster charge, shine timer |
+| `door_kinematics.DoorKinematicsRequirement` | Band matcher for doors **and** in-room takeoffs (`min_abs_momentum`, facing, x/x_sub) |
+| `takeoff.TakeoffWindow` / `PlatformHop` | When to jump from a platform. Import from `super_metroid.takeoff` only. Hop `side` is D-pad `LEFT`/`RIGHT`; arm-pump is shoulder `L`/`R` (`shoulder_pump_button`). Do not invent a second hop type in a probe |
 | `ObservedTransition.leave/entry_kinematics` | Continuous hop snapshots (TAS door tech) |
 | Staged graphs | `START_TO_MORPH` ⊂ … ⊂ `START_TO_VARIA` ⊂ `START_TO_SPEED` (Business return + K4 scaffold) |
 | `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`ice`) |

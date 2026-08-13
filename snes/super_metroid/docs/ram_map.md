@@ -35,8 +35,10 @@ Addresses are WRAM offsets.
 
 Door leave/entry kinematics (speed + position + pose through transitions) are
 first-class on `SuperMetroidState` and `door_kinematics.DoorKinematics`.
-Continuous `RouteSession` attaches leave/entry snapshots on each
-`ObservedTransition`. See `door_kinematics.py` and ARCHITECTURE.
+In-room takeoff windows reuse the same `DoorKinematicsRequirement` matcher
+via `takeoff.TakeoffWindow` (x / x_sub / `|momentum|` / facing). Continuous
+`RouteSession` attaches leave/entry snapshots on each
+`ObservedTransition`. See `door_kinematics.py`, `takeoff.py`, and ARCHITECTURE.
 | Current/max energy | `0x09C2/0x09C4 u16` | Route-verified | natural Ceres damage; Terminator Energy Tank changes max `99 → 199`; assist writes current only on Zebes |
 | Reserve current/max | `0x09D6/0x09D4 u16` | Source-confirmed | zero throughout accepted prefix |
 | Death/game over | `0x0998 = 19–26,29,35–37` | Source-confirmed | source enum; no death in accepted prefix |

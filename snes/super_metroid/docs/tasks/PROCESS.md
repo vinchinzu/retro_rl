@@ -106,6 +106,9 @@ Do not land the next multi-hop tip (e.g. Ice pure) as another megafile.
 - [ ] **Shared helpers only** — `play_script`, `escape_knockback`,
       `wait_ordinary_room`, `require_room` (and package `helpers` that wrap
       them). No private reimplementation of settle / knockback / script play.
+      In-room jumps use `takeoff.TakeoffWindow` / `PlatformHop` (backed by
+      `DoorKinematicsRequirement`) — not a per-room hop dataclass and not
+      N-frame runup recipes.
 - [ ] **Size cap** — file under ~500 lines or split before the next knob;
       never grow past **1k** without a package split first.
 

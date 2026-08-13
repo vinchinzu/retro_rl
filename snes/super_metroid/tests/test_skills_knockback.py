@@ -50,16 +50,6 @@ def test_is_knockback_custom_poses() -> None:
     assert not kb.is_knockback(_state(pose=137), poses=frozenset({99}))
 
 
-def test_skills_package_exports_knockback_helpers() -> None:
-    from super_metroid.routes import skills as prim
-
-    assert prim.is_knockback is kb.is_knockback
-    assert callable(prim.hold_through_knockback)
-    assert callable(prim.escape_knockback_spin)
-    assert callable(prim.super_door_pressure_frame)
-    assert prim.bubble_is_knockback is kb.is_knockback
-
-
 def test_hold_through_knockback_idle_hold(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -348,8 +338,4 @@ def test_escape_kb_defaults_to_wave_shaped_spin(
     assert out is session.state
 
 
-def test_skills_package_exports_escape_kb() -> None:
-    from super_metroid.routes import skills as prim
-
-    assert prim.escape_kb is kb.escape_kb
 

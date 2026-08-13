@@ -49,6 +49,7 @@ from harvest.tasks.nav import Point
 from harvest.core.tile_catalog import Tool
 from harvest.tasks.harvest_task import HarvestTask, crop_nav_target_px, live_harvestable_crop_tiles
 from harvest.tasks.berry_ship import BerryShipTask
+from harvest.tasks.mountain_berry import MountainBerryTask
 from harvest.tasks.recorded_task import RecordedTask
 
 PhaseTaskBuilder = Callable[["TaskBuildContext", PhaseSpec, WorldState], Optional[Task]]
@@ -285,6 +286,18 @@ def _build_multi_nav(
     )
 
 
+def _build_mountain_berry(
+    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
+) -> Task:
+    return MountainBerryTask(
+        name=f"mountain_berry_{spec.phase.lower()}",
+        timeout=spec.params.get("timeout", 12_000),
+        nav_timeout=spec.params.get("nav_timeout", 6_000),
+        pick_attempts=spec.params.get("pick_attempts", 0),
+        approach_only=spec.params.get("approach_only", True),
+    )
+
+
 def _build_berry_ship(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Optional[Task]:
@@ -484,6 +497,7 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.DIRECTIONAL_TRANSITION: _build_directional_transition,
     PhaseKind.MULTI_NAV: _build_multi_nav,
     PhaseKind.BERRY_SHIP: _build_berry_ship,
+    PhaseKind.MOUNTAIN_BERRY: _build_mountain_berry,
     PhaseKind.ENSURE_TOOL: _build_ensure_tool,
     PhaseKind.ENSURE_ANIMAL_TOOLS: _build_ensure_animal_tools,
     PhaseKind.ENSURE_SEED: _build_ensure_seed,

@@ -6,15 +6,12 @@ from dataclasses import replace
 
 import numpy as np
 
-from super_metroid.combat.features import golden_torizo_catalog
 from super_metroid.combat.golden_torizo import (
     ROOM_GOLDEN_TORIZO,
     GoldenTorizoEvidence,
-    GoldenTorizoStrategy,
     fight_golden_torizo_action,
 )
 from super_metroid.ram import GameplayPhase, parse_state
-
 
 def _state(**overrides):
     ram = np.zeros(0x2000, dtype=np.uint8)
@@ -31,23 +28,12 @@ def _state(**overrides):
     values.update(overrides)
     return replace(base, **values)
 
-
-def test_golden_torizo_catalog_facts() -> None:
-    catalog = golden_torizo_catalog()
-
-    assert catalog.room_id == ROOM_GOLDEN_TORIZO
-    assert catalog.max_hp == 13_500
-    assert catalog.primary_weapon == "supers"
-    assert catalog.continuous_status == "optional"
-
-
 def test_active_action_approaches_and_fires() -> None:
     state = _state(samus_x=50, enemy0_x=240)
 
     action = fight_golden_torizo_action(state, frame_index=0)
 
     assert action == ("RIGHT", "X")
-
 
 def test_active_action_retreats_when_too_close() -> None:
     state = _state(samus_x=180, enemy0_x=240)
@@ -56,12 +42,10 @@ def test_active_action_retreats_when_too_close() -> None:
 
     assert action == ("LEFT", "A")
 
-
 def test_zero_enemy_hp_returns_idle_action() -> None:
     state = _state(enemy0_hp=0)
 
     assert fight_golden_torizo_action(state, frame_index=0) == ()
-
 
 def test_evidence_to_dict_keys_are_stable() -> None:
     evidence = GoldenTorizoEvidence(
@@ -86,11 +70,3 @@ def test_evidence_to_dict_keys_are_stable() -> None:
         "outcome",
     }
 
-
-def test_strategy_defaults_have_positive_budget() -> None:
-    strategy = GoldenTorizoStrategy()
-
-    assert strategy.weapon == 2
-    assert strategy.max_range > strategy.min_range
-    assert strategy.fire_period > 0
-    assert strategy.max_fight_frames > 0

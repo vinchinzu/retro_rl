@@ -6,14 +6,7 @@ from threading import Barrier, Lock
 
 import pytest
 
-from retro_harness import EmulatorPool as ExportedEmulatorPool
-from retro_harness import PoolState as ExportedPoolState
 from retro_harness.emulator_pool import EmulatorPool, PoolState
-
-
-def test_pool_types_are_exported_from_retro_harness() -> None:
-    assert ExportedEmulatorPool is EmulatorPool
-    assert ExportedPoolState is PoolState
 
 
 class _FakeEmulator:

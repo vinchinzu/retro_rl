@@ -22,6 +22,15 @@ STANDING_POSES = frozenset({1, 2, 9, 10, 25, 26, 27, 28, 37, 38, 137, 138})
 POSE_KNOCKBACK = frozenset({137, 138})
 POSE_STAND_LEFT = frozenset({2, 10})
 POSE_STAND_RIGHT = frozenset({1, 9})
+# Broader locomotion / air families (aim-up/down included). Facing for
+# takeoff windows is WRAM $0A1E, not these sets.
+FACE_LEFT_POSES = frozenset({2, 6, 8, 10})
+FACE_RIGHT_POSES = frozenset({1, 5, 7, 9})
+STAND_LOCOMOTION_POSES = frozenset({1, 2, 5, 6, 7, 8, 9, 10})
+CROUCH_POSES = frozenset({37, 38, 39, 40, 41, 42})
+SPIN_POSES = frozenset({25, 26, 27, 28})
+LAND_POSES = frozenset({163, 164, 165, 166, 167})
+GUN_JUMP_POSES = frozenset({47, 48, 81, 82, 83, 84})
 
 
 class GeometryPolicy(Protocol):
@@ -366,6 +375,13 @@ __all__ = [
     "POSE_KNOCKBACK",
     "POSE_STAND_LEFT",
     "POSE_STAND_RIGHT",
+    "FACE_LEFT_POSES",
+    "FACE_RIGHT_POSES",
+    "STAND_LOCOMOTION_POSES",
+    "CROUCH_POSES",
+    "SPIN_POSES",
+    "LAND_POSES",
+    "GUN_JUMP_POSES",
     "BubblePhaseStop",
     "BubbleTrack",
     "ClimbTrack",

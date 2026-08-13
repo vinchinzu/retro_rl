@@ -41,6 +41,12 @@ SNES_BUTTON_NAMES = (
     "R",
 )
 
+# Wire names: D-pad is LEFT/RIGHT; shoulders are L/R. Never use L for walk.
+SNES_DPAD_LEFT = "LEFT"
+SNES_DPAD_RIGHT = "RIGHT"
+SNES_SHOULDER_L = "L"
+SNES_SHOULDER_R = "R"
+
 # Canonical button-name parser for task JSON, probes, and debug tooling.
 # Semantic convention for project scripts:
 # - A = select / confirm

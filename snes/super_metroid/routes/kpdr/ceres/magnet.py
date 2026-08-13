@@ -7,8 +7,8 @@ from super_metroid.routes.kpdr.ceres.arm_pump import (
     _ceres_arm_pump_step,
     _ceres_clear_knockback,
     _ceres_enemy_near,
-    _ceres_is_knockback,
 )
+from super_metroid.routes.skills.knockback import is_knockback
 from super_metroid.routes.kpdr.ceres.geometry import _CERES_MAGNET_EXIT_Y
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
@@ -36,7 +36,7 @@ def _ceres_magnet_step(
         return _ceres_magnet_reached_falling(session.state)
     if int(st.room_id) != ROOM_CERES_MAGNET:
         return False
-    if _ceres_is_knockback(st):
+    if is_knockback(st):
         # Full spin-escape — single LEFT never leaves pose 137/138.
         _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
         return _ceres_magnet_reached_falling(session.state)
@@ -68,7 +68,7 @@ def _ceres_reactive_magnet_escape(session: RouteSession) -> None:
     else:
         raise TimeoutError(f"ceres magnet ordinary missed: {session.state}")
 
-    if _ceres_is_knockback(session.state):
+    if is_knockback(session.state):
         _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
 
     # If already on exit band, skip climb and run out.
@@ -79,7 +79,7 @@ def _ceres_reactive_magnet_escape(session: RouteSession) -> None:
                 return
             if st.room_id != ROOM_CERES_MAGNET and st.room_id != ROOM_CERES_FALLING:
                 break
-            if _ceres_is_knockback(st):
+            if is_knockback(st):
                 _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
                 continue
             if _ceres_enemy_near(st, dx=40, dy=30):
@@ -141,7 +141,7 @@ def _ceres_reactive_magnet_escape(session: RouteSession) -> None:
         if st.game_state in (9, 11) and st.room_id == ROOM_CERES_FALLING:
             session.step(buttons("LEFT"), "ceres_magnet_exit_trans")
             continue
-        if _ceres_is_knockback(st):
+        if is_knockback(st):
             _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
             continue
         # Mid platform: need height still — hop up rather than wall-walk.
@@ -190,7 +190,7 @@ def _ceres_reactive_falling(session: RouteSession) -> None:
             last_x = x
         else:
             stagnant += 1
-        if _ceres_is_knockback(st):
+        if is_knockback(st):
             # One spin-escape, then resume walk — no multi-second i-frame loop.
             _ceres_clear_knockback(session, "LEFT", reason="ceres_falling")
             last_x = int(session.state.samus_x)

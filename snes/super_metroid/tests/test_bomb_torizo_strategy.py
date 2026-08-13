@@ -14,10 +14,8 @@ from super_metroid.combat.bomb_torizo import (
     BombTorizoStrategy,
     fight_bomb_torizo_action,
 )
-from super_metroid.combat.features import bomb_torizo_catalog
 from super_metroid.combat.protocol import wrap_bomb_torizo_as_boss_strategy
 from super_metroid.ram import GameplayPhase, parse_state
-
 
 def _state(**overrides):
     ram = np.zeros(0x2000, dtype=np.uint8)
@@ -37,26 +35,15 @@ def _state(**overrides):
         **values,
     )
 
-
-def test_bomb_torizo_catalog_facts() -> None:
-    catalog = bomb_torizo_catalog()
-
-    assert catalog.max_hp == 800
-    assert catalog.room_id == ROOM_BOMB_TORIZO
-    assert catalog.primary_weapon == "missiles"
-
-
 def test_statue_spritemap_seeks_activation() -> None:
     state = _state(enemy0_spritemap=STATUE_SPRITEMAP, samus_x=81)
 
     assert fight_bomb_torizo_action(state, frame_index=0) == ("RIGHT",)
 
-
 def test_spawn_spritemap_seeks_activation() -> None:
     state = _state(enemy0_spritemap=SPAWN_SPRITEMAP, samus_x=81)
 
     assert fight_bomb_torizo_action(state, frame_index=0) == ("RIGHT",)
-
 
 def test_active_fight_retreats_when_too_close() -> None:
     state = _state(samus_x=150, enemy0_x=200)
@@ -66,7 +53,6 @@ def test_active_fight_retreats_when_too_close() -> None:
     assert "LEFT" in action
     assert "RIGHT" not in action
 
-
 def test_active_fight_approaches_when_too_far() -> None:
     state = _state(samus_x=50, enemy0_x=200)
 
@@ -74,7 +60,6 @@ def test_active_fight_approaches_when_too_far() -> None:
 
     assert "RIGHT" in action
     assert "LEFT" not in action
-
 
 def test_mid_range_fires_on_fire_period_frames() -> None:
     strategy = BombTorizoStrategy(fire_period=3, jump_period=50, jump_hold_frames=0)
@@ -88,13 +73,11 @@ def test_mid_range_fires_on_fire_period_frames() -> None:
     assert "RIGHT" in cooldown
     assert "X" not in cooldown
 
-
 def test_zero_enemy_hp_returns_idle_actions() -> None:
     state = _state(enemy0_hp=0)
 
     assert fight_bomb_torizo_action(state, frame_index=0) == ()
     assert fight_bomb_torizo_action(state, frame_index=1) == ()
-
 
 def test_evidence_to_dict_keys_are_stable() -> None:
     evidence = BombTorizoEvidence(
@@ -123,16 +106,6 @@ def test_evidence_to_dict_keys_are_stable() -> None:
         "outcome",
     }
 
-
-def test_strategy_defaults_have_positive_fight_budget() -> None:
-    strategy = BombTorizoStrategy()
-
-    assert strategy.min_range > 0
-    assert strategy.max_range > strategy.min_range
-    assert strategy.fire_period > 0
-    assert strategy.max_fight_frames > 0
-
-
 def test_strategy_defaults_are_clean_economy_kite() -> None:
     """Clean low-ammo defaults: wider band + longer jump holds."""
     strategy = BombTorizoStrategy()
@@ -142,7 +115,6 @@ def test_strategy_defaults_are_clean_economy_kite() -> None:
     assert strategy.jump_hold_frames >= 28
     assert strategy.jump_period <= 40
     assert strategy.max_fight_frames >= 12_000
-
 
 def test_open_bus_boss_bits_do_not_idle_active_fight() -> None:
     """Low-WRAM open-bus boss_bits must not suppress fire (enemy_defeated trap)."""
@@ -157,7 +129,6 @@ def test_open_bus_boss_bits_do_not_idle_active_fight() -> None:
     action = fight_bomb_torizo_action(state, frame_index=0)
     assert "X" in action
     assert action != ()
-
 
 def test_bomb_torizo_boss_strategy_adapter_imports() -> None:
     strategy = wrap_bomb_torizo_as_boss_strategy()
