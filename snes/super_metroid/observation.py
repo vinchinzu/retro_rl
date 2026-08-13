@@ -80,26 +80,26 @@ class Observation:
     frame_counter_1: int | None
     frame_counter_2: int | None
 
-    # Oσ+ (optional): enemy energy / i-frames
-    enemy_energy: int = 0
-    invulnerability_timer: int = 0
+    # Oσ+ (optional): enemy energy / i-frames — None when unobserved
+    enemy_energy: int | None = None
+    invulnerability_timer: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Export to dict, omitting zero optional fields."""
+        """Export to dict, omitting None/zero optional fields."""
         result = asdict(self)
-        # Omit Oσ+ fields when zero
-        if result["enemy_energy"] == 0:
-            del result["enemy_energy"]
-        if result["invulnerability_timer"] == 0:
-            del result["invulnerability_timer"]
+        # Omit Oσ+ fields when None or zero
+        if result.get("enemy_energy") in (None, 0):
+            result.pop("enemy_energy", None)
+        if result.get("invulnerability_timer") in (None, 0):
+            result.pop("invulnerability_timer", None)
         return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Observation:
         """Restore from dict with optional field defaults."""
         data_copy = dict(data)
-        data_copy.setdefault("enemy_energy", 0)
-        data_copy.setdefault("invulnerability_timer", 0)
+        data_copy.setdefault("enemy_energy", None)
+        data_copy.setdefault("invulnerability_timer", None)
         return cls(**data_copy)
 
 
@@ -111,7 +111,7 @@ def observation_from_sim_state(state: Any) -> Observation:
 
     Returns:
         Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
-        sm_rev --load-state hydrates $09C2/$1842/$09DA). Oσ+ fields zero.
+        sm_rev --load-state hydrates $09C2/$1842/$09DA). Oσ+ fields None.
     """
     return Observation(
         frame=state.frame,
@@ -132,8 +132,8 @@ def observation_from_sim_state(state: Any) -> Observation:
         energy=None,  # Unobserved in SimState (until sm_rev --load-state)
         frame_counter_1=None,  # Unobserved in SimState
         frame_counter_2=None,  # Unobserved in SimState
-        enemy_energy=0,  # Not tracked in SimState
-        invulnerability_timer=0,  # Not tracked in SimState
+        enemy_energy=None,  # Not tracked in SimState
+        invulnerability_timer=None,  # Not tracked in SimState
     )
 
 
@@ -145,7 +145,7 @@ def observation_from_trajectory_frame(frame: Any) -> Observation:
 
     Returns:
         Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
-        sm_rev --load-state). Oσ+ fields zero.
+        sm_rev --load-state). Oσ+ fields None.
     """
     return Observation(
         frame=frame.frame,
@@ -166,6 +166,6 @@ def observation_from_trajectory_frame(frame: Any) -> Observation:
         energy=None,  # Unobserved in TrajectoryFrame
         frame_counter_1=None,  # Unobserved in TrajectoryFrame
         frame_counter_2=None,  # Unobserved in TrajectoryFrame
-        enemy_energy=0,  # Not tracked in TrajectoryFrame
-        invulnerability_timer=0,  # Not tracked in TrajectoryFrame
+        enemy_energy=None,  # Not tracked in TrajectoryFrame
+        invulnerability_timer=None,  # Not tracked in TrajectoryFrame
     )
