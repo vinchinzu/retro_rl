@@ -28,18 +28,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from retro_harness.env import make_env, read_state_bytes  # noqa: E402
-from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
-from super_metroid.combat.features import kraid_catalog  # noqa: E402
-from super_metroid.combat.kraid import (  # noqa: E402
+from super_metroid.assist import UnlimitedResourcesAssist
+from super_metroid.combat.features import kraid_catalog
+from super_metroid.combat.kraid import (
     ROOM_KRAID,
     VARIA_MASK,
     KraidStrategy,
@@ -48,8 +41,13 @@ from super_metroid.combat.kraid import (  # noqa: E402
     play_kraid_fight,
     play_kraid_fight_to_varia,
 )
-from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR, SCRATCH_STATE_DIR  # noqa: E402
-from super_metroid.ram import parse_state  # noqa: E402
+from super_metroid.combat.probe import (
+    ProbeSession,
+    open_state_env,
+    resolve_named_state,
+    write_json_report,
+)
+from super_metroid.paths import INTEGRATION_DIR, SCRATCH_STATE_DIR
 
 # Preferred doorway entry for KPDR K3 iteration (controller-composed).
 DEFAULT_ENTRY_STATE = SCRATCH_STATE_DIR / "eye_hj_kraid_entry.state"
@@ -66,65 +64,19 @@ _NAMED_STATES: dict[str, Path] = {
 }
 
 
-class _Session:
-    """Minimal ControllerSession for combat probes."""
-
-    def __init__(self, env: object, assist: UnlimitedResourcesAssist) -> None:
-        self.env = env
-        self.assist = assist
-        self.frame = 0
-        self.action_reasons: Counter[str] = Counter()
-        self.state = parse_state(env.get_ram(), frame=0)  # type: ignore[attr-defined]
-
-    def step(self, action, reason: str):
-        self.env.step(action)  # type: ignore[attr-defined]
-        self.frame += 1
-        self.state = parse_state(self.env.get_ram(), frame=self.frame)  # type: ignore[attr-defined]
-        self.assist.apply(self.env.data, self.state)  # type: ignore[attr-defined]
-        self.action_reasons[reason] += 1
-        return self.state
-
-
 def _resolve_state(name: str) -> Path:
-    key = name.strip()
-    if key in _NAMED_STATES:
-        return _NAMED_STATES[key]
-    path = Path(key)
-    if path.suffix == ".state" or "/" in key or path.exists():
-        if not path.is_absolute():
-            for candidate in (
-                path,
-                GAME_DIR / path,
-                INTEGRATION_DIR / path.name,
-                SCRATCH_STATE_DIR / path.name,
-            ):
-                if candidate.exists():
-                    return candidate
-        return path
-    # Named integration state without .state suffix.
-    candidate = INTEGRATION_DIR / f"{key}.state"
-    if candidate.exists():
-        return candidate
-    scratch = SCRATCH_STATE_DIR / f"{key}.state"
-    if scratch.exists():
-        return scratch
-    return path
+    return resolve_named_state(name, _NAMED_STATES)
 
 
 def _open_env(state_path: Path):
-    if not state_path.exists():
-        raise FileNotFoundError(
-            f"Kraid entry state not found: {state_path}\n"
+    return open_state_env(
+        state_path,
+        settle=2,
+        missing_hint=(
             "Compose with: kpdr.py pure warehouse-hijump-kraid "
             "(writes scratch/eye_hj_kraid_entry.state)"
-        )
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-    env.reset()
-    env.em.set_state(read_state_bytes(state_path))
-    # Settle two frames so RAM is coherent after load.
-    for _ in range(2):
-        env.step([0] * 12)
-    return env, str(state_path)
+        ),
+    )
 
 
 def cmd_strategy(args: argparse.Namespace) -> int:
@@ -133,7 +85,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
     env, loaded = _open_env(state_path)
     assist = UnlimitedResourcesAssist()
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         if session.state.room_id != ROOM_KRAID:
             report = {
                 "command": "strategy",
@@ -143,7 +95,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
                 "room_id_hex": f"0x{session.state.room_id:04X}",
                 "notes": "Load a Kraid-room entry state (0xA59F), not Eye Door.",
             }
-            print(json.dumps(report, indent=2))
+            write_json_report(report)
             return 1
 
         entry = {
@@ -200,11 +152,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
                 "evidence until composed on the power-on KPDR prefix."
             ),
         }
-        text = json.dumps(report, indent=2)
-        print(text)
-        if args.report is not None:
-            args.report.parent.mkdir(parents=True, exist_ok=True)
-            args.report.write_text(text + "\n", encoding="utf-8")
+        write_json_report(report, args.report)
         return 0 if report["success"] else 1
     finally:
         env.close()
@@ -217,7 +165,7 @@ def cmd_varia(args: argparse.Namespace) -> int:
     env, loaded = _open_env(state_path)
     assist = UnlimitedResourcesAssist()
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         if session.state.room_id != ROOM_KRAID:
             report = {
                 "command": "varia",
@@ -227,7 +175,7 @@ def cmd_varia(args: argparse.Namespace) -> int:
                 "room_id_hex": f"0x{session.state.room_id:04X}",
                 "notes": "Load a Kraid-room entry state (0xA59F).",
             }
-            print(json.dumps(report, indent=2))
+            write_json_report(report)
             return 1
 
         entry = {
@@ -283,11 +231,7 @@ def cmd_varia(args: argparse.Namespace) -> int:
                 "on the power-on KPDR prefix after play_eye_to_kraid."
             ),
         }
-        text = json.dumps(report, indent=2)
-        print(text)
-        if args.report is not None:
-            args.report.parent.mkdir(parents=True, exist_ok=True)
-            args.report.write_text(text + "\n", encoding="utf-8")
+        write_json_report(report, args.report)
         if args.save_state is not None and success:
             args.save_state.parent.mkdir(parents=True, exist_ok=True)
             args.save_state.write_bytes(env.em.get_state())

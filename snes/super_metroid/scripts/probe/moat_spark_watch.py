@@ -49,10 +49,6 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES = Path(__file__).resolve().parents[3]
-for _p in (ROOT, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.actions import buttons, idle_action  # noqa: E402
 from retro_harness.env import make_env, read_state_bytes  # noqa: E402
@@ -66,12 +62,7 @@ from retro_harness.video import (  # noqa: E402
 from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
 from super_metroid.dev.common import save_dev_state  # noqa: E402
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR  # noqa: E402
-from super_metroid.ram import (  # noqa: E402
-    ADDR_SHINESPARK_TIMER,
-    ADDR_SPEED_COUNTER,
-    ADDR_SPEED_FLAG,
-    parse_env_state,
-)
+from super_metroid.ram import parse_env_state
 from super_metroid.routes.kpdr.moat import (  # noqa: E402
     ROOM_KIHUNTER,
     ROOM_MOAT,
@@ -110,43 +101,8 @@ def default_source() -> Path:
     return DEFAULT_SOURCE_CANDIDATES[-1]
 
 
-def _u16(ram, addr: int) -> int:
-    return int(ram[addr]) | (int(ram[addr + 1]) << 8)
-
-
-def spark_wram(env) -> dict[str, int]:
-    """Raw shine/speed words from WRAM (not just parsed hi-byte)."""
-    ram = env.get_ram()
-    sc_word = _u16(ram, ADDR_SPEED_COUNTER)
-    return {
-        "spark_timer": _u16(ram, ADDR_SHINESPARK_TIMER),  # $0A68
-        "speed_flag": _u16(ram, ADDR_SPEED_FLAG),  # $0B3C
-        "speed_counter_word": sc_word,  # $0B3E lo=anim hi=echoes
-        "speed_echoes": (sc_word >> 8) & 0xFF,
-        "speed_anim": sc_word & 0xFF,
-    }
-
-
-def snap(env, frame: int = 0) -> dict[str, Any]:
-    st = parse_env_state(env, frame=frame, mode="nav")
-    w = spark_wram(env)
-    return {
-        "frame": frame,
-        "room": st.room_id,
-        "room_hex": f"0x{st.room_id:04X}",
-        "x": st.samus_x,
-        "y": st.samus_y,
-        "pose": st.pose,
-        "facing": st.facing,
-        "vx": st.velocity_x,
-        "vy": st.velocity_y,
-        "gs": st.game_state,
-        "door_trans": st.door_transition,
-        "health": st.health,
-        **w,
-        "speed_boosting": st.speed_boosting,
-        "shinesparking": st.shinesparking,
-    }
+spark_wram = spark_skill.read_spark_wram
+snap = spark_skill.spark_snapshot
 
 
 class _Sess:
