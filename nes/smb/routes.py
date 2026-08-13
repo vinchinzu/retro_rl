@@ -29,7 +29,14 @@ class ExitDestination:
     def matches(self, snap: Any) -> bool:
         if int(getattr(snap, "world")) != self.world - 1:
             return False
-        if int(getattr(snap, "level")) != self.level - 1:
+        # Prefer LevelNumber ($075C) so 1-2 / 4-2 underground (AreaNumber++)
+        # is not treated as the next stage. Hand-built snaps without
+        # dash_level / level_number keep using AreaNumber.
+        level = getattr(snap, "dash_level", None)
+        if level is None:
+            raw = getattr(snap, "level_number", None)
+            level = raw if raw is not None else getattr(snap, "level")
+        if int(level) != self.level - 1:
             return False
         return not self.ending or int(getattr(snap, "oper_mode")) == 2
 

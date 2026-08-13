@@ -103,7 +103,7 @@ def level_control_gate(exit_seg: ExitSegment) -> StateGate:
     def _matches(snap: SmbSnapshot) -> bool:
         return (
             snap.world == exit_seg.world - 1
-            and snap.level == exit_seg.level - 1
+            and snap.dash_level == exit_seg.level - 1
             and snap.oper_mode == 1
             and snap.player_state in (7, 8)
             and not snap.dying

@@ -10,6 +10,11 @@ uv run python smb/scripts/setup_rom.py
 uv run python smb/scripts/boot_probe.py
 uv run python -m pytest smb/tests -q
 
+# 32-exit human tape (Super Metroid-style ./play)
+./play smb                         # power-on → all_exits_v1
+./play smb 4-1 all_exits_v1        # continue from stage pin
+./play smb --list                  # F5=save  F6=pin  ESC=cancel
+
 # Clean power-on → ending (3/3 baseline)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.run_warp_finish --mode poweron --trials 3
@@ -74,7 +79,9 @@ uv run python -m smb.scripts.parse_human_recording \
 - Power-on: **exactly** 350 boot frames + **16** idle, then seed.
 - Level1_1 continuous: **exactly 14** idle after `Level1_1` (different phase).
 - Natural 1-1 alone: idle **1** after readiness (`NATURAL_SETTLE_FRAMES`).
-- World 4 = `world` index **3**. Underground `level_id=2` ≠ completion.
+- World 4 = `world` index **3**. Underground `level_id=2` ≠ completion
+  (`$0760` AreaNumber; 32-exit clock uses `$075C` LevelNumber so 1-2 UG
+  is not 1-3).
 - Ending = World 8-4 + `oper_mode=2`, held 120 idle frames (success gate).
   Recordings hold **780f** post-ending through Peach + thank-you text
   (`--peach-hold-frames`; do not cut on Bowser-drop alone).
@@ -91,8 +98,9 @@ uv run python -m smb.scripts.parse_human_recording \
 
 ## Layout (pointers)
 
-`ram.py` / `obs.py` / `policy.py` · `reactive_12|late|route.py` ·
-`scripts/run_warp_finish.py` · `rle_windows.py` ·
+`./play smb` (`scripts/play.py`, 32-exit tape) · `ram.py` / `obs.py` /
+`policy.py` · `reactive_12|late|route.py` · `scripts/run_warp_finish.py` ·
+`rle_windows.py` ·
 `tas/` (adapt: `stages` StageSpec table, `slice` probe/export, `chain` reach/verify,
 `replay` to_action9/idle_until, `fm2` import; residual `pipeline` 1-1 hill-climb) ·
 `scripts/import_fm2.py` · `scripts/tas_1_1.py` · `scripts/polish_1_2_ug.py` ·
