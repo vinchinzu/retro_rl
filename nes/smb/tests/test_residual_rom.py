@@ -33,9 +33,10 @@ pytestmark = [
 
 _SHORT_TAPES = ("idle", "walk", "jump", "run_jump")
 _LAND_TAPES = ("jump_to_land", "run_jump_to_land")
+_AIR_X_TAPES = ("run_then_jump",)
 
 
-@pytest.mark.parametrize("name", _SHORT_TAPES + _LAND_TAPES)
+@pytest.mark.parametrize("name", _SHORT_TAPES + _LAND_TAPES + _AIR_X_TAPES)
 def test_segment_produces_measured_profile(name: str) -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -50,7 +51,7 @@ def test_segment_produces_measured_profile(name: str) -> None:
 def test_short_tapes_hold_pixels_and_subpixels() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    for name in _SHORT_TAPES + _LAND_TAPES:
+    for name in _SHORT_TAPES + _LAND_TAPES + _AIR_X_TAPES:
         result = measure_segment(name, run_emulator=True)
         assert result.profile.fd_pi is None, name
         assert result.profile.fd_sigma is None, name
