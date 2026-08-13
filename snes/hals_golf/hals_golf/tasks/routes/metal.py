@@ -11,30 +11,11 @@ and the ``METAL_STROKE_*`` memory constants whenever a clear improves.
 
 from __future__ import annotations
 
-# Amateur pars (duplicated here so metal diagnostics need only this module).
-METAL_STROKE_PARS: tuple[int, ...] = (
-    4,
-    4,
-    5,
-    3,
-    4,
-    4,
-    5,
-    4,
-    3,
-    4,
-    5,
-    4,
-    3,
-    4,
-    4,
-    5,
-    3,
-    4,
-)
+from hals_golf.tasks.routes.tables import AMATEUR_PARS
 
-# Best recorded metal stroke-play scores (per-hole upgrades through 2026-07-21).
-# Full-course clear still pending; front-12 + back-nine singles below.
+# Same card as Amateur; re-exported so metal diagnostics can import one module.
+METAL_STROKE_PARS = AMATEUR_PARS
+
 # Best recorded metal stroke-play scores (per-hole upgrades through 2026-07-21).
 # Verified Title→course_complete (2026-07-21 video): total=70, card below with
 # H4=6 / H10=7 as the live over-par holes.

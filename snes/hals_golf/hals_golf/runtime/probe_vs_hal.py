@@ -19,20 +19,12 @@ from hals_golf.core.ram import (
     read_u16_le,
     read_u8,
 )
-from hals_golf.core.scene import is_command_screen
+from hals_golf.core.scene import is_command_screen, mean_rgb
 from hals_golf.paths import DEBUG_FRAMES_DIR, GAME, PROJECT_DIR
 from hals_golf.runtime.retro_setup import register_golf_integration
 from retro_harness.env import make_env, save_state
 
 OUT = DEBUG_FRAMES_DIR / "vs_hal"
-
-
-def _mean_rgb(obs: np.ndarray) -> tuple[float, float, float]:
-    return (
-        float(np.mean(obs[:, :, 0])),
-        float(np.mean(obs[:, :, 1])),
-        float(np.mean(obs[:, :, 2])),
-    )
 
 
 def _dump(obs: np.ndarray, name: str) -> None:
@@ -75,7 +67,7 @@ def probe_cursor_positions() -> list[dict]:
             row = {
                 "downs": downs,
                 "frame": name,
-                "rgb": list(_mean_rgb(obs)),
+                "rgb": list(mean_rgb(obs)),
                 "ram": _ram_info(env.get_ram(), obs),
             }
             rows.append(row)
@@ -142,7 +134,7 @@ def probe_confirm_path(downs: int, max_frames: int = 2500) -> dict:
                         f"[PROBE] d={downs} f={frame_i} "
                         f"hole={info_row['hole']} stroke={info_row['stroke']} "
                         f"rest={info_row['rest']} cmd={info_row['cmd']} "
-                        f"rgb={_mean_rgb(obs)}"
+                        f"rgb={mean_rgb(obs)}"
                     )
             if info_row["cmd"] and info_row["hole"] == 1 and command_at is None:
                 command_at = frame_i
