@@ -8,6 +8,7 @@ enemies, or collision.
 X kinematics were fitted to a live Level1_1 RAM trace:
 - 16-bit speed ``(velocity_x, x_force)`` with first-kick ``0x0130``, then
   walk ``+0x98`` / run ``+0xE4``
+- no L/R uses smbdis ``FrictionData`` ``$98`` unless ``|vx| >= $21`` (``$D0``)
 - position subpixel ``$0400`` advances by ``velocity_x << 4``
 - in air (including the takeoff frame), walk tables unless
   ``|velocity_x| >= 0x19`` (already running)
@@ -33,7 +34,9 @@ from smb.observation import DEFAULT_GROUND_Y, Observation
 
 __all__ = [
     "AIR_RUN_KEEP",
+    "BRAKE_FAST",
     "JUMP_FORCE_DOWN",
+    "RUN_SPEED_LATCH",
     "JUMP_FORCE_UP",
     "JUMP_SPEED",
     "JUMP_Y_SPEED",
@@ -63,6 +66,10 @@ FIRST_KICK = 0x0130
 WALK_MAX = 0x18
 RUN_MAX = 0x28
 AIR_RUN_KEEP = 0x19
+# smbdis X_Physics $00 / FrictionData: no L/R uses $98 unless |vx| >= $21
+# or RunningSpeed (latched by GetPlayerAnimSpeed when |vx| >= $1C).
+BRAKE_FAST = 0x21
+RUN_SPEED_LATCH = 0x1C
 # smbdis JumpMForceData / FallMForceData / PlayerYSpdData (land 0–4).
 JUMP_FORCE_UP = (0x20, 0x20, 0x1E, 0x28, 0x28)
 JUMP_FORCE_DOWN = (0x70, 0x70, 0x60, 0x90, 0x90)
@@ -163,6 +170,25 @@ def _air_uses_walk_tables(obs: Observation, jump: bool) -> bool:
     return in_air and abs(int(obs.velocity_x)) < AIR_RUN_KEEP
 
 
+def _brake_adder(obs: Observation) -> int:
+    """smbdis FrictionData[$00]: $98 unless RunningSpeed or |vx| >= $21."""
+    if obs.running_speed or abs(int(obs.velocity_x)) >= BRAKE_FAST:
+        return FRICTION
+    return WALK_ACCEL
+
+
+def _next_running_speed(obs: Observation, x_dir: int, jump: bool) -> int:
+    """smbdis GetPlayerAnimSpeed: latch |vx| when >= $1C; only on ground."""
+    if (not obs.on_ground) or _leaving_ground(obs, jump):
+        return int(obs.running_speed)
+    abs_vx = abs(int(obs.velocity_x))
+    if abs_vx >= RUN_SPEED_LATCH:
+        return abs_vx
+    if x_dir != 0:
+        return 0
+    return int(obs.running_speed)
+
+
 def _update_x_speed(
     obs: Observation, x_dir: int, run: bool, jump: bool
 ) -> tuple[int, int, int]:
@@ -185,9 +211,9 @@ def _update_x_speed(
             speed_16 -= RUN_ACCEL if run else WALK_ACCEL
         speed_16 = _clamp_speed(speed_16, run)
     elif speed_16 > 0:
-        speed_16 = max(0, speed_16 - FRICTION)
+        speed_16 = max(0, speed_16 - _brake_adder(obs))
     elif speed_16 < 0:
-        speed_16 = min(0, speed_16 + FRICTION)
+        speed_16 = min(0, speed_16 + _brake_adder(obs))
     velocity_x, x_force = _unpack_speed(speed_16)
     return velocity_x, x_force, facing
 
@@ -279,6 +305,7 @@ def step(obs: Observation, action: Sequence[int]) -> Observation:
     x_dir, run, jump = decode_action(action)
     velocity_x, x_force, facing = _update_x_speed(obs, x_dir, run, jump)
     x, sub_x = _advance_x(obs.x, obs.sub_x, velocity_x)
+    running_speed = _next_running_speed(obs, x_dir, jump)
 
     on_ground = obs.on_ground
     y = obs.y
@@ -337,6 +364,7 @@ def step(obs: Observation, action: Sequence[int]) -> Observation:
         facing=facing,
         on_ground=on_ground,
         x_force=x_force,
+        running_speed=running_speed,
         a_held=jump,
         ground_y=obs.ground_y if obs.ground_y else DEFAULT_GROUND_Y,
         vertical_force=vertical_force,

@@ -23,6 +23,7 @@ not ground truth. Emulator replay is authoritative.
 | `frame_counter` | `$0009` | u8 | lag | desynced tape index |
 | `on_ground` | `$001D==0` | flag | field | air is `1` |
 | `x_force` | `$0705` | u8 | stepper | `Player_X_MoveForce` |
+| `running_speed` | `$0703` | u8 | stepper | `RunningSpeed`; no-L/R `$D0` if set |
 | `y_move_force` | `$0433` | u8 | stepper | `Player_Y_MoveForce` |
 | `vertical_force` | `$0709` | u8 | stepper | rising / current gravity |
 | `vertical_force_down` | `$070A` | u8 | stepper | fall gravity |
@@ -48,6 +49,8 @@ Short Level1_1 tapes in `smb.residual_harness.SEGMENTS`:
 | `run_then_jump` | 16 RIGHT+B + 4 A + 16 RIGHT+B | takeoff-frame air X |
 | `run24_then_jump` | 24 RIGHT+B + 4 A + 16 RIGHT+B | InitJS \|vx\| band 2 |
 | `run32_then_jump` | 32 RIGHT+B + 4 A + 16 RIGHT+B | InitJS \|vx\| band 4 |
+| `walk_then_idle` | 16 RIGHT + 16 idle | brake `$98` |
+| `run_then_idle` | 32 RIGHT+B + 16 idle | RunningSpeed → brake `$D0` |
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -134,13 +137,23 @@ Land bands (smbdis `JumpMForceData` / `FallMForceData` / `PlayerYSpdData`):
 `≥$1C` → `$28/$90/-5`. 24f run takeoff `|vx|=21` uses `$1E` (not `$20`);
 32f run `|vx|=28` uses `vy=-5`. Swim indices 5–6 not modeled.
 
-Sibling leftovers (not this stub): air walk-max wipes `xf` (16+4+40 tape
-fdσ=42 after land); LEFT first-kick fdσ=1; brake after RIGHT uses `$98`
-not `FRICTION $D0` (fdσ=19).
+After `rr-is5b` (smbdis `FrictionData` / `GetPlayerAnimSpeed` RunningSpeed):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| walk_then_idle | 33 | `(—, —, —, —)` | — | — |
+| run_then_idle | 49 | `(—, —, —, —)` | — | — |
+
+No L/R uses `$98` unless `RunningSpeed` (latched on ground when `|vx|≥$1C`,
+one frame later) or `|vx|≥$21` (then `$D0`). Walk-then-idle was the
+fdσ=19 leftover; run-then-idle needs the latch (first idle `$98`, next `$D0`).
+
+Sibling leftovers (not that stub): air walk-max wipes `xf` (16+4+40 tape
+fdσ=42 after land); LEFT first-kick fdσ=1.
 
 ## Modules
 
 - `smb.observation` — RAM → structured obs
-- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X + InitJS `|vx|` tables)
+- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X + InitJS `|vx|` tables + brake `$98`/`$D0`)
 - `smb.residual` — `compute_residual_profile`
 - `smb.residual_harness` — stepper + fceumm + `R(τ)`
