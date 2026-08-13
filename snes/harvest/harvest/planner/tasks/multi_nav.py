@@ -67,6 +67,9 @@ class MultiMapNavTask(Task):
     waypoints: List[Waypoint] = field(default_factory=list)
     timeout: int = 8000
     initial_settle_frames: int = 60
+    # Cargo routes (egg/crop/forage already in hand) must fail closed at a
+    # blocked corridor.  Opportunistic lift/throw would throw the cargo away.
+    allow_opportunistic_clear: bool = True
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _pathfinder: Pathfinder = field(init=False)
@@ -581,8 +584,19 @@ class MultiMapNavTask(Task):
                     self._navigator.path = []
                     self._navigator.stasis = 0
                     self._pathfinder.temp_blocked.clear()
+                    # Some exits flip tilemap just outside their waypoint
+                    # radius.  Rebuild for the new map and re-run the short
+                    # coordinate/tile settle before moving toward its first
+                    # waypoint; otherwise stale origin coordinates can walk
+                    # straight back through the transition.
+                    self._rebuild_pathfinder(tilemap)
+                    self._initial_settle = 0
                     wp = self._current_wp()
-                    break
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action()),
+                        reason="relocalized after map transition",
+                    )
             if wp is not None and not self._waypoint_tilemap_matches(tilemap, wp):
                 return TaskResult(
                     status=TaskStatus.FAILURE,
@@ -602,6 +616,13 @@ class MultiMapNavTask(Task):
         # ── Phase: exit_settle ──
         if self._phase == "exit_settle":
             self._settle_frames += 1
+            if self._settle_frames <= int(wp.exit_push_frames):
+                direction = wp.exit_direction or "left"
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(**{direction: True})),
+                    reason=f"push into destination {direction}",
+                )
             if self._settle_frames >= 30:
                 # Rebuild pathfinder for new map
                 self._rebuild_pathfinder(tilemap)
@@ -624,7 +645,7 @@ class MultiMapNavTask(Task):
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             # Timeout: give up after 500 frames of walking toward exit
             if self._exit_walk_frames > 500:
-                print(f"[MULTI_NAV] Exit walk timeout (500 frames)")
+                print("[MULTI_NAV] Exit walk timeout (500 frames)")
                 self._advance_waypoint()
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             direction = wp.exit_direction or "left"
@@ -791,7 +812,13 @@ class MultiMapNavTask(Task):
                 # Tile progress: allow more opportunistic clears later on route.
                 if self._lift_throw_attempts > 0:
                     self._lift_throw_attempts = max(0, self._lift_throw_attempts - 1)
-            pin_limit = 120 if held_now != 0 else 240
+            pin_limit = (
+                300
+                if held_now != 0 and not self.allow_opportunistic_clear
+                else 120
+                if held_now != 0
+                else 240
+            )
             if self._soft_solid_pin_frames >= pin_limit:
                 return TaskResult(
                     status=TaskStatus.FAILURE,
@@ -877,7 +904,11 @@ class MultiMapNavTask(Task):
                 # Soft-solid gate: if a liftable weed/stone blocks progress toward
                 # the waypoint, lift+throw it instead of sealing (live weed layout
                 # differs from static route dumps every morning).
-                if self._stuck_frames >= 30 and self._stuck_frames < 90:
+                if (
+                    self.allow_opportunistic_clear
+                    and self._stuck_frames >= 30
+                    and self._stuck_frames < 90
+                ):
                     gate = self._liftable_gate_toward(world.ram, wp)
                     if gate is not None and self._lift_throw_attempts < 4:
                         face, target, tid = gate

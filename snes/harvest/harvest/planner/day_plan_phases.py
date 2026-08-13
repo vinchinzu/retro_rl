@@ -14,8 +14,6 @@ from harvest.planner.day_plan_status import (
     ADDR_TOOL_SELECTED,
     BARN_TILEMAP,
     COOP_TILEMAP,
-    FARM_TILEMAP,
-    HOUSE_TILEMAP,
     is_farm_tilemap,
     is_house_tilemap,
     SUNDAY_WEEKDAY,
@@ -31,7 +29,7 @@ from harvest.planner.day_phase_catalog import (
     BUY_SEEDS_PHASE,
     buy_seeds_phase,
     GET_BERRIES_AND_SHIP_PHASE,
-    SHIP_BERRY_PHASE,
+    MOUNTAIN_BERRY_PHASE,
     ship_berry_phases,
     NAV_CROP_PHASE,
     HARVEST_ROUTE_PHASE,
@@ -211,9 +209,8 @@ def _berry_run_phases(
 
     phases: List[PhaseSpec] = []
 
-    # Berries first: farm forage bush → bin before 5pm. Stay on farm (do NOT
-    # EXIT_FARM_WEST + blind recording — that false-greens and leaves the
-    # player mid-path so seed buy thrash-fails).
+    # Spring D2 takes the now-verified mountain grape round trip. Later days
+    # retain the farm-bush loop until that separate residual is retired.
     if policy.include_berry_run and hour < policy.berry_cutoff_hour:
         phases.append(
             PhaseSpec(
@@ -223,7 +220,10 @@ def _berry_run_phases(
                 failure_policy="optional",
             )
         )
-        phases.extend(ship_berry_phases(count=2))
+        if season == 0 and day == 2:
+            phases.append(MOUNTAIN_BERRY_PHASE)
+        else:
+            phases.extend(ship_berry_phases(count=2))
 
     can_buy = (
         policy.include_shop_run

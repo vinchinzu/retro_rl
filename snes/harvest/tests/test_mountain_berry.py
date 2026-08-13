@@ -25,6 +25,8 @@ from harvest.tasks.mountain_berry import (
     is_mountain_forage,
     on_grape_pixel,
 )
+from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask, ROUTE_NAME
+from harvest.tasks.harvest_task import ADDR_SHIPPING_MONEY
 from retro_harness import TaskStatus
 
 from day_plan_test_helpers import make_transition_world, set_player_pos
@@ -170,6 +172,36 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertIn("MOUNTAIN_BERRY", names)
         self.assertEqual(MOUNTAIN_BERRY_PHASE.kind, PhaseKind.MOUNTAIN_BERRY)
         self.assertEqual(BERRY_NAV_SEGMENTS[0], "farm_to_path")
+        self.assertTrue(MOUNTAIN_BERRY_PHASE.params["ship"])
+
+    def test_grape_return_route_reverses_safe_approach_and_ends_at_real_bin(self) -> None:
+        route = ROUTES[ROUTE_NAME]
+        self.assertEqual(route[0].target_px, (326, 409))
+        mountain_exit = next(wp for wp in route if wp.is_exit and wp.tilemap == 0x10)
+        self.assertEqual(mountain_exit.exit_direction, "down")
+        path_exit = next(wp for wp in route if wp.is_exit and wp.tilemap == 0x0C)
+        self.assertEqual(path_exit.exit_direction, "right")
+        self.assertEqual(route[-1].tilemap, 0x00)
+        self.assertEqual(route[-1].target_px, (8 * 16 + 8, 28 * 16 + 8))
+        self.assertEqual(route[-1].action_on_arrive, "press_a")
+        self.assertEqual(route[-1].action_face, "down")
+
+    def test_grape_ship_postcondition_requires_empty_hands_and_shipping_delta(self) -> None:
+        world = make_transition_world(0x00, current_tile=(61, 60))
+        set_player_pos(world.ram, 61 * 16 + 8, 60 * 16 + 8)
+        world.ram[ADDR_HELD] = 0x03
+        task = MountainGrapeShipTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "return_to_bin")
+        self.assertFalse(task._child.allow_opportunistic_clear)
+
+        task._phase = "verify"
+        task._child = None
+        world.ram[ADDR_HELD] = 0
+        world.ram[ADDR_SHIPPING_MONEY] = 6
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("0->60", result.reason or "")
 
 
 if __name__ == "__main__":

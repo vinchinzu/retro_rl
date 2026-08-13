@@ -49,4 +49,6 @@ class Waypoint(NamedTuple):
     is_exit: bool = False                   # True = walk off map after arriving
     exit_direction: Optional[str] = None
     run_direction: Optional[str] = None     # "up"/"down"/"left"/"right" — skip BFS, just run
-
+    # Keep walking inward briefly after a tilemap flip.  Some outdoor exits
+    # expose the destination tilemap before its coordinates/tile window settle.
+    exit_push_frames: int = 0

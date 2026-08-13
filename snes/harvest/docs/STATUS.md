@@ -311,6 +311,7 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 
 - First mountain grape is a **ground spawn** at the x=20 stand `~(326,409)` tile `(20,25)` (west stump/rock to the east). Not the carpenter 2×2 plants. Walk the tape corridor (land → east gap, never A on Gotz `0x025B` ~(31,37) → west loop → stand). A on the grape pixel sets `held=0x03` and opens Eat / Don't eat — **Down then A to keep**. Mash-A eats it. Mountain dialogue with `held=0` is Gotz.
   **Pickup GREEN 2026-08-12** (`rr-14xx`): `Y1_Inside_House` → stand 1650f, keep grape **1913f / 31.88s**, `held=0x03` lock=1, no talk. Shot `recordings/mountain_grape_kept.png`.
+  **Spring D2 GREEN 2026-08-13** (`rr-nn3x`): natural `Y1_Inside_House` → mountain pick/keep → reverse corridor → farm F2 bin north stand `(8,28)` face down; `shipping_money` **0→150** at 3658f. Full auto D2 then bought potato seeds, waited through the 5pm shipping scene, slept, and settled Spring D3 06:00 with wallet **$300→$450** at 10293f. Clean: one initial state load, no mid-run loads, RAM writes, or infinite stamina. Evidence: `recordings/rr_nn3x_spring_d2_full_day.json`.
 - Viewport BFS; sleep bed pixel + face up; doors reject held items
 - Multi-day owns return/sleep (`include_end_day=False` on day task)
 - Scene wake coordinates: house `y < 100` until settle ~(136,120)
