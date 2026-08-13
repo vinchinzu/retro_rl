@@ -39,25 +39,8 @@ def _default_start_state() -> SimState:
 
     Simple grounded state for smoke testing without ROM/state file.
     """
-    return SimState(
-        frame=0,
-        room_id=0x91F8,  # Landing Site
-        samus_x=400,
-        samus_y=200,
-        samus_x_sub=0,
-        samus_y_sub=0,
-        velocity_x=0,
-        velocity_y=0,
-        velocity_x_sub=0,
-        velocity_y_sub=0,
-        momentum_x=0,
-        momentum_x_sub=0,
-        pose=0,
-        facing=0x08,  # Right
-        movement_type=0,  # Grounded
-        speed_counter=0,
-        speed_flag=0,
-        shinespark_timer=0,
+    return SimState.grounded(
+        samus_x=400, samus_y=200, room_id=0x91F8
     )
 
 

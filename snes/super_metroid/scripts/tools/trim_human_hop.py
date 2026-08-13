@@ -23,10 +23,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, _SNES_IMPORT_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from super_metroid.human_tape import load_room_hops, load_room_names  # noqa: E402
 from super_metroid.human_tape.trim import (  # noqa: E402

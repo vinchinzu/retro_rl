@@ -8,14 +8,9 @@ import json
 import os
 from pathlib import Path
 import shutil
-import sys
 import zipfile
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 from super_metroid.paths import (  # noqa: E402
     EARLY_POLICY_DIR,
     GAME_DIR,

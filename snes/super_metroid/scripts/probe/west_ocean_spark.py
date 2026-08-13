@@ -54,10 +54,6 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES = Path(__file__).resolve().parents[3]
-for _p in (ROOT, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.env import make_env, read_state_bytes  # noqa: E402

@@ -12,15 +12,10 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 DEFAULT_CSV = ROOT / "snes" / "super_metroid" / "docs" / "routes" / "KPDR_TRACKER.csv"
 DEFAULT_JSON = ROOT / "snes" / "super_metroid" / "maps" / "kpdr_tracker.json"
 DEFAULT_MD = ROOT / "snes" / "super_metroid" / "docs" / "routes" / "KPDR_TRACKER.md"

@@ -18,7 +18,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
 SM = ROOT / "snes" / "super_metroid"
 QUEUE_CSV = SM / "docs" / "routes" / "ROOM_WORK_QUEUE.csv"
 TASKS_DIR = SM / "docs" / "tasks"

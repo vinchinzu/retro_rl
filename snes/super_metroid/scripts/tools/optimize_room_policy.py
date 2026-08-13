@@ -30,10 +30,6 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 ROOT = Path(__file__).resolve().parents[4]
-SNES_ROOT = Path(__file__).resolve().parents[3]
-for candidate in (ROOT, SNES_ROOT):
-    if str(candidate) not in sys.path:
-        sys.path.insert(0, str(candidate))
 
 from super_metroid.paths import GAME_DIR  # noqa: E402
 from super_metroid.reactive_policy import ReactiveRoomPolicy  # noqa: E402

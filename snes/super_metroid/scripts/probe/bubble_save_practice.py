@@ -48,10 +48,6 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES = Path(__file__).resolve().parents[3]
-for _p in (ROOT, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.controls import SNES_BUTTON_NAME_TO_INDEX  # noqa: E402
