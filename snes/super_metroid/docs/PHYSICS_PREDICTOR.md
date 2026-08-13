@@ -34,6 +34,16 @@ This separation allows fast offline planning while ensuring production trajector
 2. Validate top candidates on emulator (ground truth)
 3. Only claim room-clear after emulator success
 
+### Roles and Certification
+
+**MiniStep is a wind tunnel** for trajectory search — fast, approximate physics for filtering candidates.
+
+**Legality check is SuperMetroidEnv** (stable-retro emulator) — ground truth for room-clear claims.
+
+**BK2 and LSMV are tape formats** (`tas/bk2.py`, `tas/lsmv.py`) used for TAS movie import/replay — 
+they are NOT MiniStep-certified and should not be assumed to match MiniStep predictions without 
+emulator validation. Use them for movie replay and annotation, not as physics predictor input.
+
 ## Architecture
 
 ```
