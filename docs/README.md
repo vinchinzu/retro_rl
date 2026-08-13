@@ -13,6 +13,7 @@
 | [FULL_RUN_PROCESS.md](FULL_RUN_PROCESS.md) | Segment → continuous clear process |
 | [GAME_SELECTION_NOTES.md](GAME_SELECTION_NOTES.md) | Candidate / hard-game research notes |
 | [REPO_HYGIENE.md](REPO_HYGIENE.md) | Agent-context budget and cleanup backlog |
+| [BEADS.md](BEADS.md) | bd / beads issue-tracking rules |
 | [ADDING_GAMES.md](ADDING_GAMES.md) | How to onboard a new title |
 
 Regenerate the matrix after editing manifests:

@@ -13,11 +13,11 @@ Classic arm-pump: dir+B with L↔R angle spam (``runway_dash`` period-2).
 from __future__ import annotations
 
 from retro_harness.actions import buttons
-from super_metroid.routes.kpdr.ceres.geometry import (
-    _CERES_ARM_PUMP_PERIOD,
-    _CERES_KB_POSES,
-)
+from super_metroid.ram import GS_ORDINARY
+from super_metroid.routes.kpdr.ceres.geometry import _CERES_ARM_PUMP_PERIOD
 from super_metroid.routes.runtime import ActionSpan, RouteSession
+from super_metroid.routes.skills.knockback import is_knockback
+from super_metroid.takeoff import shoulder_pump_button
 
 
 def _arm_pump_dash_spans(
@@ -32,15 +32,11 @@ def _arm_pump_dash_spans(
     out: list[ActionSpan] = []
     i = 0
     while i < frames:
-        ang = "L" if ((i // period) % 2) == 0 else "R"
+        ang = shoulder_pump_button(i, period)
         chunk = min(period, frames - i)
         out.append(ActionSpan((direction, "B", ang), chunk, reason))
         i += chunk
     return out
-
-
-def _ceres_is_knockback(state) -> bool:
-    return int(state.pose) in _CERES_KB_POSES
 
 
 def _ceres_enemy_near(state, *, dx: int = 48, dy: int = 40) -> bool:
@@ -68,17 +64,16 @@ def _ceres_arm_pump_step(
     """One frame of classic L↔R arm-pump (optional A).
 
     Only angle-spam when already running (speed_flag or momentum). Bare dir+B
-    while accelerating — L/R alone can freeze Samus in aim poses (e.g. 207).
+    while accelerating — shoulder L/R alone can freeze Samus in aim poses
+    (e.g. 207). ``direction`` is D-pad LEFT/RIGHT.
     """
     period = max(1, period)
     st = session.state
     running = force_pump or int(st.speed_flag) != 0 or abs(int(st.momentum_x)) >= 1
     if running and not jump:
-        ang = "L" if (i // period) % 2 == 0 else "R"
-        names: tuple[str, ...] = (direction, "B", ang)
+        names: tuple[str, ...] = (direction, "B", shoulder_pump_button(i, period))
     elif jump and running:
-        ang = "L" if (i // period) % 2 == 0 else "R"
-        names = (direction, "B", ang, "A")
+        names = (direction, "B", shoulder_pump_button(i, period), "A")
     elif jump:
         names = (direction, "B", "A")
     else:
@@ -95,7 +90,7 @@ def _ceres_clear_knockback(
 ) -> None:
     """Spin-escape knockback using WRAM pose (no fixed open-loop restore)."""
     for i in range(max_frames):
-        if not _ceres_is_knockback(session.state):
+        if not is_knockback(session.state):
             return
         # Short run then spin in travel direction.
         if i < 6:
@@ -134,7 +129,7 @@ def _ceres_arm_pump_until(
         st = session.state
         if done(st):
             return i
-        if recover_knockback and _ceres_is_knockback(st):
+        if recover_knockback and is_knockback(st):
             _ceres_clear_knockback(session, direction, reason=reason)
             last_x = int(session.state.samus_x)
             stagnant = 0
@@ -170,7 +165,7 @@ def _ceres_wait_ordinary(
     session: RouteSession, room_id: int, *, reason: str, timeout: int = 200
 ) -> None:
     session.wait_until(
-        lambda s: s.room_id == room_id and s.game_state == 8,
+        lambda s: s.room_id == room_id and s.game_state == GS_ORDINARY,
         timeout=timeout,
         reason=reason,
     )
@@ -178,7 +173,6 @@ def _ceres_wait_ordinary(
 
 __all__ = [
     "_arm_pump_dash_spans",
-    "_ceres_is_knockback",
     "_ceres_enemy_near",
     "_ceres_arm_pump_step",
     "_ceres_clear_knockback",

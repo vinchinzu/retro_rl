@@ -36,23 +36,30 @@ Harvest is a **strong planning trunk with a collapsing hot-path implementation**
 
 | Path | ~Lines | Notes |
 |------|------:|-------|
-| `harvest/tasks/cow_task.py` | **1262** | was 2057; `step` 618→~81 via `cow_*_ops` mixins + `CowPhase` |
-| `harvest/planner/tasks/home.py` | 1455 | Active tip `rr-ws8h`; approach/recover extracted |
-| `harvest/tasks/coop_task.py` | 1372 | feed_nav/ship_nav **wired to skills** (`rr-h280`); multi-adult still `rr-rbk` |
-| `harvest/tasks/crop_planter.py` | 1166 | Typed dual-FSM + dispatch tables (`rr-7f54`); still not skill-composer |
-| `harvest/tasks/crop_refill.py` | 1156 | Thrash geometry → `pond_thrash` rules (`rr-e6fw`) |
-| `harvest/maps/map_config.py` | 1212 | Routes + landmarks + pond + D1 |
-| `harvest/planner/day_plan_orchestrator.py` | 1126 | OK-ish for orchestrator |
-| `harvest/tasks/town_day1_handoff.py` | 1062 | A6 structure open (`rr-7js5`) |
-| `harvest/tasks/farm_clearer.py` | **922** | was 1110+; nav in `nav.py`, scan/tools in `farm_ops` |
-| `harvest/tasks/farm_ops.py` | 231 | **New** — TileScanner / ToolManager / use_tool* |
-| `harvest/tasks/pond_thrash.py` | 372 | **New** — declarative corridor thrash rules |
-| `harvest/tasks/skills.py` | 389 | Production coop nav path consumes factories |
-| `tests/test_day_plan_sequences.py` | **86** | Shim; domains split to `test_day_plan_{crop,home,coop,power_on,common}` |
-| `harvest/tools/editor_app.py` | 1993 | Tooling; lower product urgency |
-| `harvest/runtime/rom_tools.py` | 1606 | ROM model; acceptably modular |
+| `harvest/planner/tasks/home.py` | **63** | Facade; `home_return` / `home_sleep` / approach / recover |
+| `harvest/tasks/coop_task.py` | **506** | + `coop_layout` / `coop_feed_ops` / `coop_egg_ops` |
+| `harvest/tasks/cow_task.py` | **374** | + `cow_slots` / `cow_target` / `cow_nav_ops` + prior `cow_*_ops` |
+| `harvest/maps/map_config.py` | **501** | Facade; `map_types` / `farm_pond` / `map_routes` |
+| `harvest/tasks/crop_planter.py` | **423** | + `crop_detect` / `crop_act_verify` / `crop_step` |
+| `harvest/tasks/crop_refill.py` | **432** | + `crop_refill_pond` / `crop_refill_verify` |
+| `harvest/planner/day_plan_orchestrator.py` | **584** | `MultiDayPlannerTask` → `multi_day_planner.py` |
+| `harvest/planner/day_phase_catalog.py` | **654** | + `day_phase_{berry,chicken,cow}` |
+| `harvest/tasks/town_day1_handoff.py` | **139** | + `town_day1_tasks` / `town_day1_build` |
+| `harvest/planner/tasks/multi_nav.py` | **~941** | Soft solids / lift_throw / fail-closed seal |
+| `harvest/planner/tasks/navigation.py` | **~453** | NavTask + recorded transitions; MultNav re-export |
+| `harvest/runtime/rom_tools.py` | **389** | Facade; `rom_model` / `rom_parse` / `save_state_io` / `map_render` |
+| `harvest/tools/editor_app.py` | **610** | + `editor_canvas` / `editor_panels` / `editor_farm_twin` |
+| `harvest/scripts/town_day1_recon.py` | **213** | + `town_day1_recon_{lib,cmds}` |
+| `harvest/tasks/farm_clearer.py` | **955** | under bar; nav in `nav.py` |
+| `harvest/runtime/play_session.py` | **997** | under bar (headroom tight) |
 
-**Rule (from PLANNING_STACK):** do not grow new monofile thrash arms; land residuals as modules or data rules.
+**2026-08-11 structure pass:** all production **and test** modules previously
+≥1000 LOC extracted under soft max. Largest remaining ~997
+(`play_session.py`). Full suite green after extract (~1233 unittest cases).
+
+**Rule (AGENTS + PLANNING_STACK):** soft max **~1000 LOC / file**. Do not grow
+monofile thrash arms; land residuals as modules or data rules. MultNav travel
+policy residuals → helpers under `multi_nav*` (not back into `navigation.py`).
 
 ---
 

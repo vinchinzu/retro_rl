@@ -89,6 +89,10 @@ report = timer.report(source="my_run")
 Core module: `super_metroid/room_timer.py`.
 Tests: `super_metroid/tests/test_room_timer.py` (no ROM).
 
+**Fold-up (item / boss / segment PBs)** and hop skill bank (optimize one room
+without full-run resync): [RUN_TIMING_AND_SKILL_BANK.md](RUN_TIMING_AND_SKILL_BANK.md).
+Canonical room names: Map Rando / `maps/maprando_room_names.json`.
+
 ## What is ignored / abandoned
 
 | Event | Behavior |

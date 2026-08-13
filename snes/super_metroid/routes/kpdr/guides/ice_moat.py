@@ -102,9 +102,9 @@ GUIDE_MOAT = RoomGuide(
     ),
 )
 
-# West Ocean (0x93FE): post-Moat spark lower-left entry → lower green Super
-# door to Wrecked Ship. Waypoints are coarse (8×6 room); refine after first
-# human tape. Pin: scratch/post_moat_west_ocean_spark.state ~(49,1163).
+# West Ocean (0x93FE): post-Moat spark lower-left → ocean-floor charge → green
+# Super door to Wrecked Ship. Product pure lands Super lip ~(2011,1163).
+# Pin: scratch/post_moat_west_ocean_spark.state ~(49,1163).
 GUIDE_WEST_OCEAN = RoomGuide(
     room_id=ROOM_WEST_OCEAN,
     name="West Ocean",
@@ -115,17 +115,19 @@ GUIDE_WEST_OCEAN = RoomGuide(
         (700, 1179, "lower-mid"),
         (1200, 1179, "lower-right-run"),
         (1700, 1163, "pre-green"),
-        (2010, 1163, "green-super-ws"),  # lower bottom-right → 0xCA08
+        (2010, 1163, "green-super-ws"),  # product spark land → 0xCA08
     ),
 )
 
-# Wrecked Ship Entrance (0xCA08): free-play after green door; coarse center.
+# Wrecked Ship Entrance (0xCA08): product pure pin ~(57,139) gs=8 after
+# over-ocean spark. Coarse center for ship free-record.
+# Pin: scratch/post_west_ocean_ws_spark.state
 GUIDE_WS_ENTRANCE = RoomGuide(
     room_id=ROOM_WS_ENTRANCE,
     name="Wrecked Ship Entrance",
     color=_C["ws"],
     points=_pts(
-        (40, 180, "west-door"),
+        (57, 139, "wo-entry"),  # pure-ws settle
         (200, 180, "mid"),
         (360, 180, "ship-shaft"),
     ),

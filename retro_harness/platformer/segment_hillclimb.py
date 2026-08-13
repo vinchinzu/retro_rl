@@ -19,6 +19,10 @@ from typing import Any
 import numpy as np
 
 from retro_harness.platformer.evaluator import EvalResult, Evaluator
+from retro_harness.platformer.frame_save import (
+    SEGMENT_MUTATION_WEIGHTS,
+    accept_candidate,
+)
 from retro_harness.platformer.frame_tools import clone_frames, find_button_hold_stalls
 
 
@@ -111,25 +115,7 @@ def _mutate_window(
         return candidate, "noop"
 
     # Prefer delete when optimizing a completed TAS for frame saves.
-    if prefer_trim:
-        weights = {
-            "delete": 40,
-            "trim_hold": 25,
-            "shift_edge": 15,
-            "toggle": 10,
-            "copy_run": 5,
-            "insert": 5,
-        }
-    else:
-        weights = {
-            "toggle": 30,
-            "delete": 20,
-            "shift_edge": 20,
-            "copy_run": 15,
-            "insert": 15,
-            "trim_hold": 0,
-        }
-
+    weights = SEGMENT_MUTATION_WEIGHTS[prefer_trim]
     strategies = [k for k, w in weights.items() if w > 0]
     probs = [weights[k] for k in strategies]
     strategy = random.choices(strategies, weights=probs, k=1)[0]
@@ -280,22 +266,9 @@ def segment_hillclimb_raw(
             # If length before lo changed (shouldn't), rebuild.
             result = checkpoint.evaluate_suffix(candidate, early_terminate=False)
 
-        accept = False
-        if require_completion:
-            if result.completed and (
-                not best_result.completed
-                or result.total_frames < best_result.total_frames
-                or (
-                    result.total_frames == best_result.total_frames
-                    and result.fitness > best_fitness
-                )
-            ):
-                accept = True
-        else:
-            if result.fitness > best_fitness:
-                accept = True
-
-        if accept:
+        if accept_candidate(
+            best_result, result, require_completion=require_completion
+        ):
             best = candidate
             best_result = result
             best_fitness = result.fitness

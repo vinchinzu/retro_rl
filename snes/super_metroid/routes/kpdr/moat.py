@@ -4,6 +4,11 @@ Natural source: ``scratch/speed_with_spazer_human_end.state`` (or promoted
 ``scratch/post_kihunter_pre_moat_spark.state``) — Speed + HJ + Varia + PBs,
 beams Charge+Wave+Ice+Spazer, standing in Crateria Kihunter ``0x948C``.
 
+Also accepts **Moat standing** handoffs (e.g. human ``alpha_pb_to_moat`` end):
+leave Moat → open Kihunter→Moat blue door (stay in room) → clear → left pin
+→ same charge/store/spark as the product pin. Door must stay open for the
+spark to pass x≈748; walking through the shell after open re-closes it.
+
 Harness buttons (canonical — do not swap for VOD A/B labels):
 
 * **B = dash / speed-charge**, **A = jump / shine-activate**, **DOWN = store**.
@@ -12,12 +17,14 @@ Harness buttons (canonical — do not swap for VOD A/B labels):
 
 Phases (bot / pure — verified hop path from pin):
 
-1. **Clear** flying Kihunters so knockback cannot cancel store.
-2. **Runway** — left floor band; charge start off both doors.
-3. **Charge** — grounded ``RIGHT+B`` to sc≥4 pose 9 (trench x≈503 y≈178 OK).
-4. **Store** — DOWN from pose 9 arms $0A68. Do **not** store from spin
+1. **(Optional Moat)** leave left door → open Moat shell without entering.
+2. **Clear** flying Kihunters so knockback cannot cancel store.
+3. **Runway / pre-spark pin** — product left floor ~(39,139); full charge
+   needs x≲100 so sc≥4 before the x555 trap.
+4. **Charge** — grounded ``RIGHT+B`` to sc≥4 pose 9 (trench x≈503 y≈178 OK).
+5. **Store** — DOWN from pose 9 arms $0A68. Do **not** store from spin
    pose 25/166 (DOWN crouches but wipes echoes without arming).
-5. **Hop-unspin-activate** — stand → micro-run (leave crouch) →
+6. **Hop-unspin-activate** — stand → micro-run (leave crouch) →
    ``RIGHT+B+A`` spin over x555 → UP mid-air → horizontal spark pose 201
    into Moat at y≈115–122 → jam ~x475 → after spark dies, ``RIGHT+X``
    opens blue door into West Ocean ``0x93FE``.
@@ -30,7 +37,10 @@ from __future__ import annotations
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import hold, require_room, select_weapon
 from super_metroid.routes.runtime import ControllerSession
+from super_metroid.routes.skills.door_exit import beam_open_door
 from super_metroid.routes.skills.knockback import escape_knockback_spin, is_knockback
+from super_metroid.routes.skills import shinespark as spark
+from super_metroid.routes.skills.shinespark import ChargeMode
 
 ROOM_KIHUNTER = 0x948C
 ROOM_MOAT = 0x95FF
@@ -48,6 +58,8 @@ _KIHUNTER_HP_MAX = 120
 
 _CLEAR_BUDGET = 2400
 _RUNWAY_BUDGET = 700
+_LEAVE_MOAT_BUDGET = 1500
+_OPEN_MOAT_DOOR_SHOTS = 24
 _CHARGE_BUDGET = 500
 _STORE_FRAMES = 18
 # Hop-unspin-activate band (verified pure from post_kihunter_pre_moat_spark)
@@ -59,6 +71,10 @@ _SPARK_ACTIVATE = 16
 _SPARK_TRAVEL = 700
 _TOTAL_OK_ROOMS = frozenset({ROOM_KIHUNTER, ROOM_MOAT, ROOM_WEST_OCEAN})
 _SPARK_POSES = frozenset({199, 200, 201, 202})
+# Product pre-spark pin ~(39,139). Must start charge left enough that sc≥4
+# store lands ~x530 — not on the x555 trap (store-at-555 kills the hop).
+_PRE_SPARK_PIN_X = (28, 50)
+_PRE_SPARK_PIN_Y_MAX = 200
 
 
 def _u16(ram, addr: int) -> int:
@@ -160,6 +176,127 @@ def avoid_kihunter_doors(
         hold(session, 1, "LEFT", reason=f"{label}_avoid_moat")
         return True
     return False
+
+
+def play_leave_moat_to_kihunter(session: ControllerSession) -> SuperMetroidState:
+    """Leave Moat ``0x95FF`` left door into Crateria Kihunter ``0x948C``.
+
+    Human / natural handoffs often stand in Moat after walking in. Blue door
+    needs LEFT+X pulse at the left lip (same pattern as other beam doors).
+    Lands near the right lip of Kihunter ~(728,139).
+    """
+    require_room(session, ROOM_MOAT, "leave_moat")
+    label = "leave_moat"
+    for frame in range(_LEAVE_MOAT_BUDGET):
+        st = session.state
+        if (
+            st.room_id == ROOM_KIHUNTER
+            and st.game_state == 8
+            and st.door_transition == 0
+        ):
+            return st
+        if st.room_id == ROOM_MOAT:
+            if st.samus_x < 100:
+                if frame % 8 < 5:
+                    hold(session, 1, "LEFT", "X", reason=f"{label}_door")
+                else:
+                    hold(session, 1, "LEFT", reason=f"{label}_push")
+            else:
+                hold(session, 1, "LEFT", "B", reason=f"{label}_walk")
+        else:
+            hold(session, 1, reason=f"{label}_transition")
+    raise TimeoutError(f"{label}: never reached Kihunter 0x948C: {session.state}")
+
+
+def play_open_kihunter_moat_door(session: ControllerSession) -> SuperMetroidState:
+    """Open the Kihunter→Moat blue door **without walking through**.
+
+    Spark travel dies on a closed shell at x≈731; product pin already has the
+    door open. After leave, open from the right lip, stay in ``0x948C`` — do
+    **not** probe-enter Moat (re-entry re-closes the shell).
+    """
+    require_room(session, ROOM_KIHUNTER, "open_moat_door")
+    select_weapon(session, 0)
+    label = "open_moat_door"
+    # Align off the transition lip (~640–680) so beams hit the shell.
+    for _ in range(50):
+        st = session.state
+        if st.room_id != ROOM_KIHUNTER:
+            raise TimeoutError(f"{label}: left Kihunter: {st}")
+        if 640 <= st.samus_x <= 680:
+            break
+        hold(
+            session,
+            1,
+            "LEFT" if st.samus_x > 680 else "RIGHT",
+            reason=f"{label}_align",
+        )
+    hold(session, 12, "RIGHT", reason=f"{label}_face")
+    hold(session, 8, reason=f"{label}_face_release")
+    beam_open_door(
+        session,
+        label=label,
+        shots=_OPEN_MOAT_DOOR_SHOTS,
+        shot_frames=2,
+        fuse_frames=7,
+    )
+    # Abort if a shot pushed us into the transition — pull left, stay put.
+    for _ in range(40):
+        st = session.state
+        if st.room_id == ROOM_KIHUNTER and st.door_transition == 0:
+            if st.samus_x < 700:
+                break
+            hold(session, 1, "LEFT", reason=f"{label}_safe")
+            continue
+        if st.room_id == ROOM_MOAT or st.door_transition != 0:
+            hold(session, 1, "LEFT", reason=f"{label}_abort_enter")
+            if st.room_id == ROOM_MOAT and st.door_transition == 0:
+                return play_leave_moat_to_kihunter(session)
+    if session.state.room_id != ROOM_KIHUNTER:
+        raise TimeoutError(f"{label}: not in Kihunter after open: {session.state}")
+    return session.state
+
+
+def play_kihunter_pre_spark_pin(session: ControllerSession) -> SuperMetroidState:
+    """Plant on the product left charge pin ~(39,139), face RIGHT.
+
+    Full-runway charge from mid-room (x≈140–200) only reaches sc=3 before the
+    x555 trap. Product pure uses x≲100 so store lands ~x530 before the hop.
+    """
+    require_room(session, ROOM_KIHUNTER, "kihunter_pre_spark_pin")
+    label = "kihunter_pre_spark_pin"
+    lo, hi = _PRE_SPARK_PIN_X
+    for _ in range(_RUNWAY_BUDGET):
+        st = session.state
+        if st.room_id != ROOM_KIHUNTER:
+            raise TimeoutError(f"{label}: left room: {st}")
+        if st.door_transition != 0:
+            hold(session, 1, "RIGHT", reason=f"{label}_door_trans")
+            continue
+        if is_knockback(st):
+            escape_knockback_spin(
+                session,
+                prefer_dir="RIGHT",
+                run_frames=4,
+                spin_frames=12,
+                label=label,
+            )
+            continue
+        if (
+            lo <= st.samus_x <= hi
+            and st.samus_y <= _PRE_SPARK_PIN_Y_MAX
+            and st.velocity_y == 0
+        ):
+            hold(session, 8, reason=f"{label}_settle")
+            hold(session, 6, "RIGHT", reason=f"{label}_face")
+            hold(session, 6, reason=f"{label}_face_settle")
+            return session.state
+        # Tube lip: never hold LEFT under x≈28 (walk through Tube).
+        if st.samus_x < lo:
+            hold(session, 1, "RIGHT", reason=f"{label}_too_left")
+        else:
+            hold(session, 1, "LEFT", reason=f"{label}_left")
+    raise TimeoutError(f"{label}: never reached left pin: {session.state}")
 
 
 def play_clear_kihunter_room(session: ControllerSession) -> SuperMetroidState:
@@ -282,10 +419,59 @@ def play_kihunter_left_runway(session: ControllerSession) -> SuperMetroidState:
     raise TimeoutError(f"{label}: never reached left runway: {session.state}")
 
 
-def play_kihunter_charge_store(session: ControllerSession) -> SuperMetroidState:
-    """Ground-charge Speed Booster (RIGHT+B dash) and crouch-store."""
+def play_kihunter_charge_store(
+    session: ControllerSession,
+    *,
+    charge_mode: ChargeMode = "full",
+) -> SuperMetroidState:
+    """Ground-charge Speed Booster and crouch-store.
+
+    ``charge_mode``:
+      * ``full`` — continuous RIGHT+B (classic long runway; product default).
+      * ``short`` / ``stutter`` — magic-frame short charge (see
+        :mod:`super_metroid.routes.skills.shinespark`); useful when the left
+        runway is cramped. Mid-room x555 trap hop is only used in ``full``.
+    """
     require_room(session, ROOM_KIHUNTER, "kihunter_charge")
     label = "kihunter_charge"
+
+    if charge_mode in ("short", "stutter"):
+        # Short charge needs a clear grounded stretch; knockback mid-plan fails
+        # the plan — escape once then re-run the full short plan.
+        for attempt in range(3):
+            if is_knockback(session.state):
+                hold(session, 20, reason=f"{label}_kb_idle")
+                if is_knockback(session.state):
+                    escape_knockback_spin(
+                        session,
+                        prefer_dir="LEFT",
+                        run_frames=6,
+                        spin_frames=14,
+                        label=label,
+                        run_with=("B",),
+                        spin_with=("B", "A"),
+                    )
+            charge = spark.short_charge_until_boost(
+                session,
+                "RIGHT",
+                stutter=(charge_mode == "stutter"),
+                store_on_last=False,
+                label=f"{label}_{charge_mode}",
+            )
+            st = session.state
+            if st.room_id != ROOM_KIHUNTER:
+                return st
+            if charge.get("ok") and st.velocity_y == 0 and st.samus_y >= 170:
+                for _ in range(_STORE_FRAMES):
+                    hold(session, 1, "DOWN", reason=f"{label}_store")
+                return session.state
+            # Failed or bad y — step left and retry
+            hold(session, 12, "LEFT", reason=f"{label}_retry_left")
+        raise TimeoutError(
+            f"{label}: short-charge store failed ({charge_mode}): "
+            f"last={charge} state={session.state}"
+        )
+
     for frame in range(_CHARGE_BUDGET):
         st = session.state
         if st.room_id != ROOM_KIHUNTER:
@@ -335,22 +521,53 @@ def play_moat_shinespark(
     session: ControllerSession,
     *,
     skip_clear: bool = False,
+    charge_mode: ChargeMode = "full",
+    from_moat: bool | None = None,
 ) -> SuperMetroidState:
     """Clear → charge-store → hop-unspin-activate → Moat → West Ocean.
 
     Store-first trench charge, then micro-run + spin hop over the x555 wall,
     UP mid-air (often arms pose 199), horizontal spark into Moat, then after
     spark dies at the ~x475 wall walk RIGHT+X to open the blue door.
+
+    ``charge_mode`` defaults to continuous full run; ``short`` / ``stutter``
+    use magic-frame short charge for tighter runways (see shinespark skill).
+
+    When ``session`` is in Moat (or ``from_moat=True``), reuses leave + open
+    door (stay) before clear — natural human Moat end → West Ocean.
     """
-    require_room(session, ROOM_KIHUNTER, "moat_spark")
-    if not skip_clear:
-        play_clear_kihunter_room(session)
-    # Left pin (x≲100, already clear) charges in place with pure RIGHT+B
-    # (same as probe). Runway walk from mid-room; do not pre-walk without B.
+    st = session.state
+    need_moat_setup = from_moat if from_moat is not None else st.room_id == ROOM_MOAT
+    if need_moat_setup:
+        if st.room_id == ROOM_MOAT:
+            play_leave_moat_to_kihunter(session)
+        require_room(session, ROOM_KIHUNTER, "moat_spark")
+        # Open shell while still on the right lip; do not walk through.
+        play_open_kihunter_moat_door(session)
+    else:
+        require_room(session, ROOM_KIHUNTER, "moat_spark")
+
+    env = _session_env(session)
+    if not skip_clear and air_enemies_alive(env):
+        # Residual air after door-open beam spam: one RIGHT re-seed + retry.
+        try:
+            play_clear_kihunter_room(session)
+        except TimeoutError:
+            hold(session, 30, "RIGHT", reason="kihunter_clear_retry_right")
+            play_clear_kihunter_room(session)
+        if air_enemies_alive(env):
+            hold(session, 40, "RIGHT", "X", reason="kihunter_clear_retry_shot")
+            play_clear_kihunter_room(session)
+    # Product left pin (x≲100) charges in place with pure RIGHT+B.
+    # Mid-room uses pre-spark pin so sc≥4 before the x555 trap.
     st0 = session.state
-    if not (st0.samus_x < 100 and st0.samus_y <= 180 and st0.velocity_y == 0):
-        play_kihunter_left_runway(session)
-    play_kihunter_charge_store(session)
+    if not (
+        st0.samus_x < 100
+        and st0.samus_y <= _PRE_SPARK_PIN_Y_MAX
+        and st0.velocity_y == 0
+    ):
+        play_kihunter_pre_spark_pin(session)
+    play_kihunter_charge_store(session, charge_mode=charge_mode)
 
     label = "moat_spark"
     # Leave crouch-store (pose 39) — idle alone does not stand; need RIGHT+B.
@@ -401,22 +618,14 @@ def play_moat_shinespark(
 
 
 def play_moat_cross(session: ControllerSession) -> SuperMetroidState:
-    """Entry for pure registry / scaffold: full Kihunter→Moat spark path.
+    """Full Moat spark path from Kihunter **or** Moat standing handoff.
 
-    If already in Moat (legacy callers), attempt a short in-room spark/push.
+    Moat start: leave → open door (stay) → clear → left pin → spark
+    (see :func:`play_moat_shinespark`). Kihunter start: clear → pin → spark.
     """
     st = session.state
-    if st.room_id == ROOM_KIHUNTER:
+    if st.room_id in (ROOM_KIHUNTER, ROOM_MOAT):
         return play_moat_shinespark(session)
-    if st.room_id == ROOM_MOAT:
-        require_room(session, ROOM_MOAT, "moat_cross")
-        for attempt in range(3):
-            hold(session, 80, "RIGHT", "B", reason=f"moat_inroom_charge_{attempt}")
-            hold(session, 12, "DOWN", reason=f"moat_inroom_store_{attempt}")
-            hold(session, 120, "RIGHT", "A", reason=f"moat_inroom_spark_{attempt}")
-            if session.state.room_id == ROOM_WEST_OCEAN:
-                return session.state
-        raise TimeoutError(f"moat_cross: stuck in Moat: {session.state}")
     raise TimeoutError(
         f"moat_cross: expected Kihunter 0x948C or Moat 0x95FF, got 0x{st.room_id:04X}"
     )
@@ -434,6 +643,9 @@ __all__ = [
     "play_clear_kihunter_room",
     "play_kihunter_charge_store",
     "play_kihunter_left_runway",
+    "play_kihunter_pre_spark_pin",
+    "play_leave_moat_to_kihunter",
     "play_moat_cross",
     "play_moat_shinespark",
+    "play_open_kihunter_moat_door",
 ]

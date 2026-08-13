@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from super_metroid.routes.kpdr import get_segment
 from super_metroid.routes.kpdr.wave import (
     play_bubble_to_farm,
@@ -39,38 +41,24 @@ from super_metroid.routes.kpdr.wave.geometry import (
     has_speed,
     has_wave,
 )
-from types import SimpleNamespace
+
+_WAVE_RETURN_SEGMENTS = (
+    ("wave_to_double_chamber", play_wave_to_double_chamber),
+    ("double_to_single_chamber", play_double_to_single_chamber),
+    ("single_to_bubble", play_single_to_bubble),
+    ("bubble_to_farm", play_bubble_to_farm),
+    ("farm_to_speedway", play_farm_to_speedway),
+    ("speedway_to_frog_save", play_speedway_to_frog_save),
+    ("frog_save_to_business", play_frog_save_to_business),
+)
 
 
-def test_wave_to_double_export_and_registry() -> None:
-    assert get_segment("wave_to_double_chamber") is play_wave_to_double_chamber
+def test_wave_return_segments_registered() -> None:
+    for segment_id, controller in _WAVE_RETURN_SEGMENTS:
+        assert get_segment(segment_id) is controller
 
 
-def test_double_to_single_export_and_registry() -> None:
-    assert get_segment("double_to_single_chamber") is play_double_to_single_chamber
-
-
-def test_single_to_bubble_export_and_registry() -> None:
-    assert get_segment("single_to_bubble") is play_single_to_bubble
-
-
-def test_bubble_to_farm_export_and_registry() -> None:
-    assert get_segment("bubble_to_farm") is play_bubble_to_farm
-
-
-def test_farm_to_speedway_export_and_registry() -> None:
-    assert get_segment("farm_to_speedway") is play_farm_to_speedway
-
-
-def test_speedway_to_frog_save_export_and_registry() -> None:
-    assert get_segment("speedway_to_frog_save") is play_speedway_to_frog_save
-
-
-def test_frog_save_to_business_export_and_registry() -> None:
-    assert get_segment("frog_save_to_business") is play_frog_save_to_business
-
-
-def test_wave_return_geometry_constants() -> None:
+def test_wave_return_geometry_and_predicates() -> None:
     assert WAVE_BEAM_MASK == 0x0001
     assert WAVE_DOOR_X == 48
     assert WAVE_LEAVE_FRAMES >= 300
@@ -95,17 +83,8 @@ def test_wave_return_geometry_constants() -> None:
     assert FTB_DOOR_X <= 50
     assert FTB_BUSINESS_SETTLE >= 200
 
-
-def test_has_wave_predicate() -> None:
-    yes = SimpleNamespace(collected_beams=0x1005)
-    no = SimpleNamespace(collected_beams=0x1004)
-    assert has_wave(yes) is True  # type: ignore[arg-type]
-    assert has_wave(no) is False  # type: ignore[arg-type]
-
-
-def test_has_speed_predicate() -> None:
+    assert has_wave(SimpleNamespace(collected_beams=0x1005)) is True  # type: ignore[arg-type]
+    assert has_wave(SimpleNamespace(collected_beams=0x1004)) is False  # type: ignore[arg-type]
     # Product post-Speed items often 0x3105 (= Speed|Bombs|HJ|Morph|Varia).
-    yes = SimpleNamespace(collected_items=0x3105)
-    no = SimpleNamespace(collected_items=0x1105)  # no Speed bit 0x2000
-    assert has_speed(yes) is True  # type: ignore[arg-type]
-    assert has_speed(no) is False  # type: ignore[arg-type]
+    assert has_speed(SimpleNamespace(collected_items=0x3105)) is True  # type: ignore[arg-type]
+    assert has_speed(SimpleNamespace(collected_items=0x1105)) is False  # type: ignore[arg-type]

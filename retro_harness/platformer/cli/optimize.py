@@ -198,40 +198,56 @@ def _parse_window(spec: str | None) -> tuple[int, int] | None:
     return int(left), int(right)
 
 
-def cmd_hillclimb_raw(args: argparse.Namespace) -> None:
-    """Hill climb with raw button mutation (no lossy action-index conversion)."""
+def _cli_frame_save_flags(
+    args: argparse.Namespace,
+) -> tuple[bool | None, bool | None]:
+    """Map CLI flags to ``(prefer_trim, require_completion)``.
+
+    Explicit ``--prefer-trim`` / ``--no-prefer-trim`` and
+    ``--require-completion`` / ``--allow-incomplete`` win; otherwise ``None``
+    lets the engine auto-enable from seed completion.
+    """
+    if getattr(args, "prefer_trim", False):
+        prefer_trim: bool | None = True
+    elif getattr(args, "no_prefer_trim", False):
+        prefer_trim = False
+    else:
+        prefer_trim = None
+
+    if getattr(args, "require_completion", False):
+        require_completion: bool | None = True
+    elif getattr(args, "allow_incomplete", False):
+        require_completion = False
+    else:
+        require_completion = None
+
+    return prefer_trim, require_completion
+
+
+def _run_raw_hillclimb(
+    args: argparse.Namespace,
+    raw: list[list[int]],
+    *,
+    seed_path: Path,
+) -> None:
+    """Shared raw-button hillclimb runner used by hillclimb / hillclimb-raw."""
     from retro_harness.platformer.hillclimb_raw import hillclimb_raw
-    from retro_harness.platformer.bk2_extract import load_raw_buttons
 
     config = _resolve_config(args)
     start_state = getattr(args, "state", None)
-    seed_path = Path(args.seed)
-    if not seed_path.exists():
-        print(f"Error: seed file not found: {seed_path}")
-        return
-
-    raw = load_raw_buttons(seed_path)
-    if raw is None:
-        print(f"Error: no raw_buttons in {seed_path}")
-        return
-
     window = _parse_window(getattr(args, "window", None))
-    prefer_trim = bool(getattr(args, "prefer_trim", False))
-    require_completion = bool(getattr(args, "require_completion", False))
+    prefer_trim, require_completion = _cli_frame_save_flags(args)
 
     print(f"Seed: {len(raw)} raw frames from {seed_path}")
     print(f"Level: {config.display_name}")
     if start_state:
         print(f"State override: {start_state}")
-    if args.entry_corpus:
-        print(f"Entry corpus (train split): {args.entry_corpus}")
     if window:
         print(f"Window: [{window[0]}:{window[1]}]")
-    if prefer_trim or require_completion:
-        print(
-            f"Frame-save mode: prefer_trim={prefer_trim} "
-            f"require_completion={require_completion}"
-        )
+    print(
+        f"Frame-save mode: prefer_trim={prefer_trim} "
+        f"require_completion={require_completion} (None=auto from seed)"
+    )
 
     output_dir = Path(args.output_dir) if args.output_dir else config.runs_dir
     evaluator = Evaluator(config, start_state=start_state)
@@ -246,19 +262,33 @@ def cmd_hillclimb_raw(args: argparse.Namespace) -> None:
         require_completion=require_completion,
     )
 
-    out_name = (
-        "segment_hillclimb_best.json"
-        if (window or prefer_trim or require_completion)
-        else "hillclimb_raw_best.json"
-    )
-    # segment engine always writes segment_hillclimb_best.json; classic writes hillclimb_raw_best
-    saved = output_dir / out_name
+    # segment engine writes segment_hillclimb_best.json; classic writes hillclimb_raw_best
+    saved = output_dir / "segment_hillclimb_best.json"
     if not saved.exists():
         saved = output_dir / "hillclimb_raw_best.json"
-    if not saved.exists():
-        saved = output_dir / "segment_hillclimb_best.json"
-    print(f"\nSaved best to {saved} ({len(best_raw)} frames, completed={best_result.completed})")
+    print(
+        f"\nSaved best to {saved} "
+        f"({len(best_raw)} frames, clear={best_result.total_frames}, "
+        f"completed={best_result.completed})"
+    )
     evaluator.close()
+
+
+def cmd_hillclimb_raw(args: argparse.Namespace) -> None:
+    """Hill climb with raw button mutation (thin alias for scripts)."""
+    from retro_harness.platformer.bk2_extract import load_raw_buttons
+
+    seed_path = Path(args.seed)
+    if not seed_path.exists():
+        print(f"Error: seed file not found: {seed_path}")
+        return
+
+    raw = load_raw_buttons(seed_path)
+    if raw is None:
+        print(f"Error: no raw_buttons in {seed_path}")
+        return
+
+    _run_raw_hillclimb(args, raw, seed_path=seed_path)
 
 
 def cmd_analyze_seed(args: argparse.Namespace) -> None:
@@ -441,8 +471,11 @@ def cmd_segment_hillclimb(args: argparse.Namespace) -> None:
 
 
 def cmd_hillclimb(args: argparse.Namespace) -> None:
-    """Run hill climbing refinement on an action sequence."""
-    from retro_harness.platformer.hillclimb import hillclimb
+    """Run hill climbing refinement.
+
+    Detects seed shape: raw pad seeds call ``hillclimb_raw`` with explicit
+    kwargs; index seeds (or ``--force-index``) call ``hillclimb``.
+    """
     from retro_harness.platformer.bk2_extract import load_raw_buttons
 
     config = _resolve_config(args)
@@ -452,16 +485,33 @@ def cmd_hillclimb(args: argparse.Namespace) -> None:
         print(f"Error: seed file not found: {seed_path}")
         return
 
-    # Prefer raw buttons if available (faithful replay)
+    force_index = bool(getattr(args, "force_index", False))
     raw = load_raw_buttons(seed_path)
-    if raw is not None:
-        # Convert raw buttons to action indices for hill climbing
-        # (hill climber mutates action indices, not raw buttons)
+
+    if raw is not None and not force_index:
+        print(
+            f"Seed has raw_buttons ({len(raw)} frames) — using raw-button hillclimb "
+            f"(action-index mapping is lossy for pad recordings)."
+        )
+        print("Pass --force-index to mutate discrete action-table indices instead.")
+        _run_raw_hillclimb(args, raw, seed_path=seed_path)
+        return
+
+    from retro_harness.platformer.hillclimb import hillclimb
+
+    if raw is not None and force_index:
         seed_actions = [
             buttons_to_action_index(frame, action_table=_get_action_table(config))
             for frame in raw
         ]
-        print(f"Seed: {len(seed_actions)} frames (from raw buttons) from {seed_path}")
+        print(
+            f"Seed: {len(seed_actions)} frames (raw→index, --force-index) "
+            f"from {seed_path}"
+        )
+        print(
+            "Warning: index mapping may desync human pad seeds; "
+            "prefer hillclimb-raw for controller recordings."
+        )
     else:
         seed_actions = load_actions(seed_path)
         print(f"Seed: {len(seed_actions)} frames from {seed_path}")
@@ -469,6 +519,7 @@ def cmd_hillclimb(args: argparse.Namespace) -> None:
     if start_state:
         print(f"State override: {start_state}")
 
+    prefer_trim, require_completion = _cli_frame_save_flags(args)
     output_dir = Path(args.output_dir) if args.output_dir else config.runs_dir
     evaluator = Evaluator(config, start_state=start_state)
 
@@ -479,6 +530,8 @@ def cmd_hillclimb(args: argparse.Namespace) -> None:
         output_dir=output_dir,
         render_interval=args.render,
         render_scale=args.scale,
+        prefer_trim=prefer_trim,
+        require_completion=require_completion,
     )
 
     final_path = output_dir / "hillclimb_best_final.json"

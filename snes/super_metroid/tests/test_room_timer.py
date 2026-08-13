@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from super_metroid.ram import GameplayPhase
 from super_metroid.room_timer import (
+    NTSC_FPS,
     DiscontinuityReason,
     RoomTimer,
     TimingSnapshot,
+    format_segment_time,
     is_settled_ordinary,
     rank_visits,
     run_offline,
@@ -403,3 +405,11 @@ def test_rank_visits_orders_by_room_frames() -> None:
     assert ranked[0]["room_frames"] == 80
     assert ranked[1]["room_id"] == 0x96BA
     assert ranked[1]["room_frames"] == 30
+
+
+def test_format_segment_time_frames_and_seconds() -> None:
+    timing = format_segment_time(1803)
+    assert timing["frames"] == 1803
+    assert timing["ntsc_fps"] == NTSC_FPS
+    assert abs(float(timing["seconds"]) - 1803 / NTSC_FPS) < 0.001
+    assert str(timing["clock"]).count(":") == 1

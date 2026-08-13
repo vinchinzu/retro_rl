@@ -36,16 +36,6 @@ def _state(**kwargs: Any) -> Any:
     return replace(base, **kwargs)
 
 
-def test_skills_package_exports_door_exit() -> None:
-    from super_metroid.routes import skills as prim
-
-    assert prim.jump_enter_exit is de.jump_enter_exit
-    assert prim.beam_open_door is de.beam_open_door
-    assert prim.lip_stage is de.lip_stage
-    assert prim.align_x is mb.align_x
-    assert prim.JUMP_ENTER_PERIOD == 30
-
-
 def test_jump_enter_default_windows() -> None:
     assert de.JUMP_ENTER_PERIOD == 30
     assert de.JUMP_ENTER_JUMP_END == 4

@@ -8,6 +8,7 @@ from super_metroid.routes.kpdr.ceres.arm_pump import (
     _ceres_arm_pump_until,
     _ceres_wait_ordinary,
 )
+from super_metroid.routes.skills.knockback import is_knockback
 from super_metroid.routes.kpdr.ceres.elev_escape import _ceres_reactive_elev_climb
 from super_metroid.routes.kpdr.ceres.magnet import (
     _ceres_reactive_falling,
@@ -83,13 +84,8 @@ def _ceres_escape_spans() -> list[ActionSpan]:
     return [ActionSpan(names, frames, reason) for names, frames, reason in raw]
 
 
-def play_ceres_outbound_to_ridley(session: RouteSession) -> None:
-    """Ceres elevator → Ridley + natural countdown (classic L↔R arm-pump).
-
-    Elev→Scientist keeps product geometry with arm-pump injected on RIGHT+B
-    holds. Scientist→Flat→Ridley is room-gated arm-pump (drops ~600f of product
-    idle+dash pad). Escape re-solves reactively — never restore product reverse.
-    """
+def play_ceres_to_ridley_door(session: RouteSession) -> None:
+    """Ceres elevator → Ridley room ordinary settle (no fight)."""
     session.spans(_ceres_outbound_to_scientist_spans())
     # Scientist → Flat → Ridley: classic L↔R room-gated run.
     if session.state.room_id != ROOM_CERES_RIDLEY:
@@ -104,14 +100,32 @@ def play_ceres_outbound_to_ridley(session: RouteSession) -> None:
     _ceres_wait_ordinary(
         session, ROOM_CERES_RIDLEY, reason="ceres_ridley_door", timeout=200
     )
-    # Natural Ridley damage + countdown (energy assist suspended on Ceres).
-    session.wait_until(
-        lambda state: state.room_id == ROOM_CERES_RIDLEY
-        and state.timer_type == 3
-        and state.health <= 27,
-        timeout=6_000,
-        reason="ceres_ridley_natural_countdown",
+
+
+def play_ceres_outbound_to_ridley(session: RouteSession) -> None:
+    """Ceres elevator → Ridley + countdown (classic L↔R arm-pump).
+
+    Elev→Scientist keeps product geometry with arm-pump injected on RIGHT+B
+    holds. Scientist→Flat→Ridley is room-gated arm-pump (drops ~600f of product
+    idle+dash pad). Fight body is tail-tank :func:`play_ceres_ridley_fight`.
+    Escape re-solves magnet / falling / elev reactively.
+    """
+    play_ceres_to_ridley_door(session)
+    # Late import: combat.__init__ → progression → early_spine → this module.
+    from super_metroid.combat.ceres_ridley import (
+        CeresRidleyStrategy,
+        play_ceres_ridley_fight,
+        require_ceres_ridley_countdown,
     )
+
+    # Energy assist is already suspended on Ceres.
+    evidence = play_ceres_ridley_fight(session, strategy=CeresRidleyStrategy())
+    require_ceres_ridley_countdown(evidence)
+    # Tail-tank often ends in KB (pose 137/138). Escape LEFT+A needs standing.
+    for _ in range(40):
+        if not is_knockback(session.state):
+            break
+        session.step(idle_action(), "ceres_ridley_settle")
 
 
 def play_ceres_escape_to_landing(session: RouteSession) -> None:
@@ -157,6 +171,7 @@ def play_ceres_escape_to_landing(session: RouteSession) -> None:
 __all__ = [
     "_ceres_outbound_to_scientist_spans",
     "_ceres_escape_spans",
+    "play_ceres_to_ridley_door",
     "play_ceres_outbound_to_ridley",
     "play_ceres_escape_to_landing",
 ]

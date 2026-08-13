@@ -37,6 +37,21 @@ from super_metroid.ram import GameplayPhase, SuperMetroidState, phase_for_game_s
 
 # Game state 8 is ordinary controllable gameplay (see docs/ram_map.md).
 _ORDINARY_GAME_STATE = 8
+# SNES NTSC master clock used on plan.md improvement tables.
+NTSC_FPS = 60.0988
+
+
+def format_segment_time(frames: int) -> dict[str, object]:
+    """Frames + NTSC seconds + tracker clock. Required on every room bench."""
+    from super_metroid.human_tape.kpdr_splits import fmt_tracker
+
+    n = max(0, int(frames))
+    return {
+        "frames": n,
+        "seconds": round(n / NTSC_FPS, 3),
+        "clock": fmt_tracker(n),
+        "ntsc_fps": NTSC_FPS,
+    }
 
 
 class DiscontinuityReason(str, Enum):

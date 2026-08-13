@@ -116,8 +116,31 @@ def _smw_level(
 
 _smw_level("smw_yoshi_island_1", "Super Mario World - Yoshi's Island 1", "YoshiIsland1", "yi1", "smw_yi1")
 _smw_level("smw_yoshi_island_2", "Super Mario World - Yoshi's Island 2", "YoshiIsland2", "yi2", "smw_yi2")
-_smw_level("smw_yoshi_island_3", "Super Mario World - Yoshi's Island 3", "YoshiIsland3", "yi3", "smw_yi3")
+# YI3 goal is ~camera 5100 / player X ~5280; keep min progress high so mid-level
+# map transitions cannot look like clears even if lives gating ever regresses.
+_smw_level(
+    "smw_yoshi_island_3",
+    "Super Mario World - Yoshi's Island 3",
+    "YoshiIsland3",
+    "yi3",
+    "smw_yi3",
+    completion_min_progress=4500.0,
+)
 _smw_level("smw_yoshi_island_4", "Super Mario World - Yoshi's Island 4", "YoshiIsland4", "yi4", "smw_yi4")
+
+# Custom state: outdoor castle door entry after natural YI2→YI4 chain
+# (trans 0x25). Rebuild with ``uv run python -m SMW chain-yi``. Do NOT use
+# package YI4 alone — that path closes the castle and opens DP1 (trans 0x15).
+# Interior (fences+lava) is later in the level; outdoor door is the true start.
+_smw_level(
+    "smw_iggys_castle",
+    "Super Mario World - Iggy's Castle",
+    "IggysCastle",
+    "iggy",
+    "smw_iggy",
+    "castle",
+    completion_min_progress=800.0,  # multi-room; raise after first clean clear
+)
 
 _smw_level("smw_donut_plains_1", "Super Mario World - Donut Plains 1", "DonutPlains1", "dp1", "smw_dp1")
 _smw_level("smw_donut_plains_2", "Super Mario World - Donut Plains 2", "DonutPlains2", "dp2", "smw_dp2")
@@ -143,3 +166,38 @@ _smw_level("smw_forest_5", "Super Mario World - Forest 5", "Forest5", "forest5",
 _smw_level("smw_chocolate_island_1", "Super Mario World - Chocolate Island 1", "ChocolateIsland1", "ci1", "smw_ci1")
 _smw_level("smw_chocolate_island_2", "Super Mario World - Chocolate Island 2", "ChocolateIsland2", "ci2", "smw_ci2")
 _smw_level("smw_chocolate_island_3", "Super Mario World - Chocolate Island 3", "ChocolateIsland3", "ci3", "smw_ci3")
+
+
+# -- Yoshi Island early route (YI2→YI3→YI4 natural entry; Iggy state via chain-yi) --
+from retro_harness.platformer.route import RouteConfig, RouteSegment, register_route
+
+register_route(
+    RouteConfig(
+        route_id="smw_yoshi_island",
+        display_name="Super Mario World Yoshi Island (YI2→Iggy)",
+        segments=[
+            RouteSegment(
+                "smw_yoshi_island_2",
+                label="YI2",
+                recording="recording_001.json",  # human + idle pad to overworld
+            ),
+            RouteSegment(
+                "smw_yoshi_island_3",
+                label="YI3",
+                recording="recording_001.json",  # hillclimb best; works on chained entry
+            ),
+            RouteSegment(
+                "smw_yoshi_island_4",
+                label="YI4",
+                recording="recording_004_chained_clear.json",  # natural entry (Chained_YoshiIsland4)
+            ),
+            RouteSegment(
+                "smw_iggys_castle",
+                label="Iggy",
+                recording="recording_001_clear.json",  # natural IggysCastle entry
+            ),
+        ],
+    ),
+    "smw_yi",
+    "yi_chain",
+)

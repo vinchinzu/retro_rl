@@ -30,11 +30,15 @@ from super_metroid.human_tape.rta_clock import (
 from super_metroid.rooms.canonical_names import room_name
 from super_metroid.hop_id import make_hop_key
 from super_metroid.human_tape.anchors import parse_items_value as parse_items
+from super_metroid.human_tape.kpdr_splits import (
+    build_kpdr_split_rows,
+    format_kpdr_split_table,
+)
 
 BOARD_SCHEMA = 1
 BOARD_KIND = "super_metroid_pb_board"
 
-# First-entry milestone labels for the product-line summary.
+# First-entry milestone labels for the product-line summary (full KPDR-ish).
 _MILESTONES: tuple[tuple[int, str], ...] = (
     (0xDF45, "Ceres Elevator"),
     (0x91F8, "Landing Site"),
@@ -48,6 +52,29 @@ _MILESTONES: tuple[tuple[int, str], ...] = (
     (0xA9E5, "Hi Jump"),
     (0xA59F, "Kraid"),
     (0xA6E2, "Varia"),
+    (0xAD1B, "Speed Booster"),
+    (0xB07A, "Bat Cave"),
+    (0xADDE, "Wave"),
+    (0xA890, "Ice Beam"),
+    (0xA3AE, "Alpha Power Bomb"),
+    (0x95FF, "The Moat"),
+    (0xCA08, "Wrecked Ship Entrance"),
+    (0xCD13, "Phantoon"),
+    (0xCE40, "Gravity Suit Room"),
+    (0xAC2B, "Grapple Beam Room"),
+    (0xCFC9, "Main Street"),
+    (0xD95E, "Botwoon"),
+    (0xDA60, "Draygon"),
+    (0xD9AA, "Space Jump Room"),
+    (0xD2AA, "Plasma Room"),
+    (0xB283, "Golden Torizo"),
+    (0xB6C1, "Screw Attack"),
+    (0xB62B, "Metal Pirates"),
+    (0xB32E, "Ridley"),
+    (0xB698, "Ridley Tank"),
+    (0xA66A, "Statues Room"),
+    (0xDAAE, "Tourian First Room"),
+    (0xDD58, "Mother Brain"),
 )
 
 
@@ -473,6 +500,72 @@ def build_product_room_timeline(
     return timeline, rta, notes
 
 
+def milestone_hits(
+    timeline: Sequence[Mapping[str, Any]],
+    *,
+    total_frames: int,
+) -> list[dict[str, Any]]:
+    """First-entry milestone rows on the product line, plus END."""
+    seen: set[int] = set()
+    want = {rid: label for rid, label in _MILESTONES}
+    hits: list[dict[str, Any]] = []
+    for row in timeline:
+        rid = int(row.get("room_id") or 0)
+        if rid in want and rid not in seen:
+            seen.add(rid)
+            hits.append(
+                {
+                    "room_id": rid,
+                    "label": want[rid],
+                    "frame": int(row.get("abs_entry") or 0),
+                    "source": str(row.get("source") or ""),
+                }
+            )
+    hits.append(
+        {
+            "room_id": 0,
+            "label": "END (product total)",
+            "frame": int(total_frames),
+            "source": "live",
+        }
+    )
+    return hits
+
+
+def segment_splits(
+    hits: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Consecutive milestone deltas (Ceres → Morph, Morph → Bombs, …)."""
+    out: list[dict[str, Any]] = []
+    prev: Mapping[str, Any] | None = None
+    for hit in hits:
+        if prev is not None:
+            start = int(prev.get("frame") or 0)
+            end = int(hit.get("frame") or 0)
+            out.append(
+                {
+                    "from": str(prev.get("label") or ""),
+                    "to": str(hit.get("label") or ""),
+                    "start_frame": start,
+                    "end_frame": end,
+                    "frames": max(0, end - start),
+                    "grade": "EST",
+                }
+            )
+        prev = hit
+    return out
+
+
+def hop_pb_map(board: PbBoard) -> dict[str, int]:
+    """hop_key → best dwell across all ingested samples."""
+    out: dict[str, int] = {}
+    for key in board.hops:
+        st = board.hop_stats(key)
+        if st is not None:
+            out[key] = st.pb
+    return out
+
+
 def _pace_mark(dwell: int, st: HopStats | None) -> str:
     """★ PB · ✓ ≤avg+0.5σ or ≤1.1×PB · ~ ≤avg+1.5σ · ✗ slower."""
     if st is None:
@@ -503,7 +596,10 @@ def format_pb_board_table(
     """Human-readable PB table with PB / avg / sd / Δ."""
     lines: list[str] = []
     lines.append("=" * 108)
-    lines.append(f"PB BOARD  ·  {board.task}  ·  product RTA {fmt_time(total_frames)} ({total_frames}f)")
+    lines.append(
+        f"PB BOARD  ·  {board.task}  ·  product RTA {fmt_time(total_frames)} "
+        f"({total_frames}f)  ·  EST (assisted · no credits)"
+    )
     n_hops = len(board.hops)
     n_samp = sum(len(h.get("samples") or []) for h in board.hops.values())
     lines.append(
@@ -555,20 +651,34 @@ def format_pb_board_table(
     if max_rooms is not None and len(timeline) > max_rooms:
         lines.append(f"  … {len(timeline) - max_rooms} more rooms")
 
-    # Milestones
+    hits = milestone_hits(timeline, total_frames=total_frames)
+    splits = segment_splits(hits)
+    kpdr_rows = build_kpdr_split_rows(timeline, hop_pb=hop_pb_map(board))
+    lines.append(
+        format_kpdr_split_table(
+            kpdr_rows, product_frames=total_frames, grade="EST"
+        )
+    )
+
+    lines.append("-" * 108)
+    lines.append("SEGMENTS (first-entry → next)  ·  EST = assisted / incomplete")
+    lines.append(f"{'SPLIT':>10} {'CUM':>10}  {'GR':>3}  SEGMENT")
+    for seg in splits:
+        lines.append(
+            f"{fmt_time(int(seg['frames'])):>10} "
+            f"{fmt_time(int(seg['end_frame'])):>10}  "
+            f"{str(seg['grade']):>3}  "
+            f"{seg['from']} → {seg['to']}"
+        )
+
     lines.append("-" * 108)
     lines.append("MILESTONES (first entry on product line)")
     lines.append(f"{'RTA':>10}  MILESTONE")
-    seen: set[int] = set()
-    want = {rid: label for rid, label in _MILESTONES}
-    for row in timeline:
-        rid = int(row.get("room_id") or 0)
-        if rid in want and rid not in seen:
-            seen.add(rid)
-            lines.append(f"{fmt_time(int(row.get('abs_entry') or 0)):>10}  {want[rid]}")
-    lines.append(f"{fmt_time(total_frames):>10}  END (product total)")
+    for hit in hits:
+        lines.append(f"{fmt_time(int(hit['frame'])):>10}  {hit['label']}")
     lines.append("-" * 108)
     lines.append("ok: ★=PB  ✓=near avg/PB  ~=soft  ✗=slow  ·  Δ vs board history (all runs)")
+    lines.append("grade: EST = not Clean (assist energy/ammo and/or no natural credits)")
     lines.append("=" * 108)
     return "\n".join(lines)
 
@@ -606,14 +716,11 @@ def materialize_pb_board(
         if s not in seen_src:
             seen_src.append(s)
     run_id = f"product:{'+'.join(seen_src)}:{total}"
-    milestones: dict[str, int] = {}
-    seen_m: set[int] = set()
-    for row in timeline:
-        rid = int(row.get("room_id") or 0)
-        for mid, label in _MILESTONES:
-            if rid == mid and mid not in seen_m:
-                seen_m.add(mid)
-                milestones[label] = int(row.get("abs_entry") or 0)
+    hits = milestone_hits(timeline, total_frames=total)
+    splits = segment_splits(hits)
+    milestones: dict[str, int] = {
+        str(h["label"]): int(h["frame"]) for h in hits if int(h.get("room_id") or 0)
+    }
     board.add_run(
         run_id=run_id,
         total_frames=total,
@@ -634,10 +741,30 @@ def materialize_pb_board(
             "total_frames": total,
             "total_time": fmt_time(total),
             "source": "pb_board",
-            "segments": seen_src,
+            "chain": seen_src,
+            "grade": "EST",
+            "grade_note": (
+                "assisted energy/ammo; MB1/MB2/Ship spliced from "
+                "g4_tourian_human_bb + g4_tourian_human_mb (±10s)"
+            ),
+            "kpdr_splits": [
+                r.to_dict()
+                for r in build_kpdr_split_rows(timeline, hop_pb=hop_pb_map(board))
+            ],
             "milestones": [
                 {"label": k, "frame": v, "time": fmt_time(v)}
                 for k, v in milestones.items()
+            ],
+            "segments": [
+                {
+                    "from": s["from"],
+                    "to": s["to"],
+                    "frames": int(s["frames"]),
+                    "split": fmt_time(int(s["frames"])),
+                    "cum": fmt_time(int(s["end_frame"])),
+                    "grade": s["grade"],
+                }
+                for s in splits
             ],
             "room_splits": [
                 {

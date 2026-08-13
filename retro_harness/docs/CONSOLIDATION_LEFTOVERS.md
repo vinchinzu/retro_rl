@@ -65,8 +65,8 @@ Live architecture: [TOOLSET.md](TOOLSET.md). Hygiene board: [docs/REPO_HYGIENE.m
 1. **`platformer/neuro/train.py` (~642 lines)**  
    Split further only if GA grows (net/train already separated).
 
-2. **`editor/gui_emulator_panel.py` (~1227 lines)**  
-   Decompose on next editor feature; do not grow.
+2. **`editor/gui_emulator_panel.py`**  
+   **partial** — split recording mixin + pure `emulator_loop` / `transcribe` helpers (panel now ~770 LOC). Remaining: Qt session/bridge lifecycle + HUD still panel-local; PlaySession still owns pygame I/O (shares turbo preview helper only).
 
 3. **`adventure` capability aliases are Metroid-shaped**  
    Fine for Metroid-family graphs; do not grow Zelda item aliases into the same map without namespacing.

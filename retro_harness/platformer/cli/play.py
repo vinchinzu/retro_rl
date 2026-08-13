@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from pathlib import Path
 
 from retro_harness.platformer.actions import (
     action_index_to_buttons,
@@ -15,6 +14,40 @@ from retro_harness.platformer.bk2_extract import save_actions
 from retro_harness.platformer.cli.helpers import _get_action_table, _resolve_config
 
 
+def _require_playable_state(config, start_state: str) -> None:
+    """Fail with a clear message when a custom start state file is missing."""
+    if not start_state or start_state in ("NONE", "none"):
+        return
+    from pathlib import Path
+
+    from retro_harness.env import add_custom_integrations, state_path
+
+    custom = Path(state_path(config.game_dir, config.game_name, start_state))
+    if custom.is_file():
+        return
+    # Fall back to stable-retro / registered integrations.
+    try:
+        import stable_retro as retro
+
+        add_custom_integrations(config.game_dir)
+        resolved = retro.data.get_file_path(
+            config.game_name,
+            f"{start_state}.state",
+            inttype=retro.data.Integrations.ALL,
+        )
+        if resolved:
+            return
+    except Exception:
+        pass
+    raise SystemExit(
+        f"Missing start state {start_state!r} for {config.level_id}.\n"
+        f"  Expected custom file: {custom}\n"
+        f"  Capture with: uv run python -m <game> capture-state "
+        f"--from <anchor> --name {start_state}\n"
+        f"  (SMW Iggy: capture-state --from NONE — package YI4 does not open the castle path.)"
+    )
+
+
 def cmd_play(args: argparse.Namespace) -> None:
     """Play a level manually while recording inputs as action indices."""
     import numpy as np
@@ -22,14 +55,19 @@ def cmd_play(args: argparse.Namespace) -> None:
     config = _resolve_config(args)
     action_table = _get_action_table(config)
     start_state = getattr(args, "state", None) or config.start_state
+    _require_playable_state(config, start_state)
 
-    from retro_harness.env import make_env
+    from retro_harness.env import make_env, read_custom_state_bytes
 
     env = make_env(
         game=config.game_name,
         state=start_state,
         game_dir=config.game_dir,
         render_mode="rgb_array",
+    )
+    # Custom *.state: re-apply after PlaySession reset (drop free frame).
+    resync_bytes = read_custom_state_bytes(
+        config.game_dir, config.game_name, start_state
     )
 
     from retro_harness.play_session import PlaySession
@@ -179,6 +217,7 @@ def cmd_play(args: argparse.Namespace) -> None:
         game=config.game_name,
         scale=args.scale,
         title=f"RECORD: {config.display_name}",
+        resync_state_bytes=resync_bytes,
     )
     session.on_step = on_step
     session.on_hud = on_hud
@@ -270,5 +309,6 @@ def cmd_play(args: argparse.Namespace) -> None:
     print(f"\nNext steps:")
     print(f"  Verify:    uv run python -m retro_harness.platformer -l {config.level_id} verify --actions {output_path}")
     print(f"  Hillclimb: uv run python -m retro_harness.platformer -l {config.level_id} hillclimb --seed {output_path}")
+    print(f"  (uses raw_buttons automatically; pass --force-index only for table-index GA seeds)")
 
 

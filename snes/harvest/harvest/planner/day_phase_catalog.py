@@ -1,4 +1,12 @@
-"""Static phase specs and named phase sequences."""
+"""Static phase specs and named phase sequences.
+
+Domain builders live in sibling modules and are re-exported here so existing
+imports (`from harvest.planner.day_phase_catalog import …`) keep working:
+
+- ``day_phase_berry`` — berry forage / ship
+- ``day_phase_chicken`` — coop chores + chicken sale
+- ``day_phase_cow`` — barn cow primitives
+"""
 
 from __future__ import annotations
 
@@ -7,6 +15,54 @@ from typing import Dict, List
 from harvest.core.tile_catalog import Tool
 from harvest.planner.day_plan_status import FARM_TILEMAP
 from harvest.planner.day_phase_types import PhaseSpec
+
+# Domain modules (re-exported below; no cycle — they only import PhaseSpec).
+from harvest.planner.day_phase_berry import (  # noqa: F401
+    BERRY_CUTOFF_HOUR,
+    GET_BERRIES_AND_SHIP_PHASE,
+    MOUNTAIN_BERRY_PHASE,
+    MOUNTAIN_BERRY_PHASES,
+    OPEN_FENCE_GAP_PHASE,
+    OPTIONAL_BERRY_PHASES,
+    SHIP_BERRY_PHASE,
+    ship_berry_phases,
+)
+from harvest.planner.day_phase_chicken import (  # noqa: F401
+    CHICKEN_AFTER_BARN_PHASES,
+    CHICKEN_PHASES,
+    CHICKEN_SALE_BATCH_DROP_POINTS,
+    COOP_CHORES_PHASE,
+    COOP_CURRENT_PHASES,
+    COOP_GIFT_PHASE,
+    DROP_CHICKEN_FOR_SALE_PHASE,
+    ENTER_COOP_FOR_CHICKEN_SALE_PHASE,
+    ENTER_COOP_PHASE,
+    EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE_PHASE,
+    EXIT_COOP_FOR_CHICKEN_SALE_PHASE,
+    EXIT_COOP_PHASE,
+    NAV_BARN_TO_COOP_PHASE,
+    NAV_TO_ANIMAL_SHOP_FOR_CHICKEN_SALE_PHASE,
+    NAV_TO_COOP_FOR_CHICKEN_SALE_PHASE,
+    NAV_TO_COOP_PHASE,
+    OPTIONAL_CHICKEN_SALE_PHASES,
+    PICKUP_CHICKEN_FOR_SALE_PHASE,
+    REQUEST_CHICKEN_SALE_PHASE,
+    RETURN_FARM_AFTER_CHICKEN_SALE_PHASE,
+    SELL_CHICKEN_PHASE,
+    SELL_CHICKEN_TEST_PHASES,
+    SELL_THREE_CHICKENS_BATCH_TEST_PHASES,
+    SELL_THREE_CHICKENS_TEST_PHASES,
+    chicken_sale_batch_phases,
+    chicken_sale_cycle_phases,
+    chicken_sale_stage_phases,
+)
+from harvest.planner.day_phase_cow import (  # noqa: F401
+    BARN_CURRENT_COW_PHASES,
+    COW_CHORES_PHASE,
+    ENTER_BARN_PHASE,
+    EXIT_BARN_PHASE,
+    NAV_TO_BARN_PHASE,
+)
 
 EXIT_HOUSE_PHASE = PhaseSpec(
     "EXIT_HOUSE",
@@ -110,69 +166,6 @@ def buy_seeds_phase(
         params,
         failure_policy=BUY_SEEDS_PHASE.failure_policy,
     )
-
-GET_BERRIES_AND_SHIP_PHASE = PhaseSpec(
-    "GET_BERRIES_AND_SHIP",
-    "recorded",
-    # Legacy blind recording — prefer SHIP_BERRY_* multi_nav on the farm.
-    # Kept for named sequences / tests that still reference the phase name.
-    {"task_name": "get_two_berries_and_ship_after_farm_exit"},
-    failure_policy="optional",
-)
-
-# y=31 fence (x≈11–29) seals house north-pocket from south berry bush.
-# Corridor-only lift opens ≥1 gap so berry_ship BFS can go south (not thrash
-# into the wall at ~(336,486)).
-OPEN_FENCE_GAP_PHASE = PhaseSpec(
-    "OPEN_FENCE_GAP",
-    "fence_clear",
-    {
-        # Berry route only needs the carry-south crossing; it never returns
-        # through the gap. One wall post avoids a second north-side re-entry.
-        "max_fences": 1,
-        "corridor_only": True,
-        "timeout": 8000,
-    },
-    failure_policy="optional",
-    required_maps=(0x00,),
-    estimated_frames=4000,
-    failure_modes=("no_fence", "lift_fail", "timeout"),
-)
-
-# Farm forage bush ~(585,920) → shipping bin ~(1001,969). Wild berries are ON
-# the farm south of the fence (not mountain / not west exit).
-SHIP_BERRY_PHASE = PhaseSpec(
-    "SHIP_BERRY",
-    "berry_ship",
-    {"route": "berry_ship", "timeout": 18000, "initial_settle_frames": 20},
-    failure_policy="optional",
-    required_maps=(0x00,),
-    estimated_frames=10000,
-    failure_modes=("bush_unreachable", "bin_path_fail", "fence_sealed", "no_berry_tile"),
-)
-
-
-def ship_berry_phases(*, count: int = 2, open_fence: bool = True) -> list[PhaseSpec]:
-    """Fence-gap (if needed) then multi_nav berry_ship loops to the bin."""
-    n = max(1, int(count))
-    contract = SHIP_BERRY_PHASE.contract
-    phases: list[PhaseSpec] = []
-    if open_fence:
-        phases.append(OPEN_FENCE_GAP_PHASE)
-    for i in range(1, n + 1):
-        params = dict(SHIP_BERRY_PHASE.params)
-        if i > 1:
-            params["route"] = "berry_ship_repeat"
-        phases.append(
-            PhaseSpec(
-                f"SHIP_BERRY_{i}" if n > 1 else "SHIP_BERRY",
-                SHIP_BERRY_PHASE.kind,
-                params,
-                failure_policy=SHIP_BERRY_PHASE.failure_policy,
-                contract=contract,
-            )
-        )
-    return phases
 
 NAV_CROP_PHASE = PhaseSpec(
     "NAV_CROP",
@@ -365,396 +358,12 @@ EVE_TALK_LOOP_PHASE = PhaseSpec(
     {"task_name": "talk_eve_loop", "target_hearts": 10},
 )
 
-# ── Chicken coop phases ──
-
-NAV_TO_COOP_PHASE = PhaseSpec(
-    "NAV_TO_COOP",
-    "multi_nav",
-    {"route": "farm_to_coop", "timeout": 5000},
-)
-
-NAV_BARN_TO_COOP_PHASE = PhaseSpec(
-    "NAV_TO_COOP",
-    "multi_nav",
-    {"route": "barn_to_coop", "timeout": 2500, "initial_settle_frames": 0},
-)
-
-ENTER_COOP_PHASE = PhaseSpec(
-    "ENTER_COOP",
-    "directional_transition",
-    {
-        "direction": "up",
-        "origin_tilemap": 0x00,
-        "target_tilemap": 0x28,
-        "timeout": 900,
-        "stand_tile": (28, 22),
-        "stand_tolerance": 0,
-        "target_stand_tile": (8, 12),
-        "target_stand_tolerance": 1,
-        "settle_frames": 60,
-        "door_align_px": 28 * 16 + 8,
-        "overshoot_limit_px": 330,
-        "require_empty_hands": True,
-    },
-)
-
-COOP_CHORES_PHASE = PhaseSpec(
-    "COOP_CHORES",
-    "coop_chores",
-    {"egg_mode": "auto"},
-    required_maps=(0x28,),
-    estimated_frames=4000,
-    failure_modes=("feed_timeout", "egg_stuck", "multi_adult", "dynamic_egg_tile"),
-)
-
-# Gift variant — exit coop holding the egg for delivery to an NPC.
-COOP_GIFT_PHASE = PhaseSpec(
-    "COOP_GIFT",
-    "coop_chores",
-    {"egg_mode": "gift"},
-    required_maps=(0x28,),
-    estimated_frames=4000,
-    failure_modes=("feed_timeout", "egg_stuck", "gift_exit_fail"),
-)
-
-EXIT_COOP_PHASE = PhaseSpec(
-    "EXIT_COOP",
-    "directional_transition",
-    {
-        "direction": "down",
-        "origin_tilemap": 0x28,
-        "target_tilemap": 0x00,
-        "timeout": 1500,
-        "stand_tile": (8, 12),
-        "stand_tolerance": 1,
-        "door_align_px": 8 * 16 + 8,
-        "settle_frames": 5,
-    },
-)
-
-CHICKEN_PHASES: List[PhaseSpec] = [
-    NAV_TO_COOP_PHASE,
-    ENTER_COOP_PHASE,
-    COOP_CHORES_PHASE,
-    EXIT_COOP_PHASE,
-]
-
-CHICKEN_AFTER_BARN_PHASES: List[PhaseSpec] = [
-    NAV_BARN_TO_COOP_PHASE,
-    ENTER_COOP_PHASE,
-    COOP_CHORES_PHASE,
-    EXIT_COOP_PHASE,
-]
-
-COOP_CURRENT_PHASES: List[PhaseSpec] = [
-    COOP_CHORES_PHASE,
-    EXIT_COOP_PHASE,
-]
-
-NAV_TO_COOP_FOR_CHICKEN_SALE_PHASE = PhaseSpec(
-    "NAV_TO_COOP_FOR_SALE",
-    "multi_nav",
-    {"route": "farm_to_coop_sale", "timeout": 5000, "initial_settle_frames": 0},
-    failure_policy="optional",
-)
-
-ENTER_COOP_FOR_CHICKEN_SALE_PHASE = PhaseSpec(
-    "ENTER_COOP_FOR_SALE",
-    "directional_transition",
-    dict(ENTER_COOP_PHASE.params),
-    failure_policy="optional",
-)
-
-PICKUP_CHICKEN_FOR_SALE_PHASE = PhaseSpec(
-    "PICKUP_CHICKEN_FOR_SALE",
-    "pickup_chicken",
-    {"timeout": 1800},
-    failure_policy="optional",
-)
-
-EXIT_COOP_FOR_CHICKEN_SALE_PHASE = PhaseSpec(
-    "EXIT_COOP_FOR_SALE",
-    "directional_transition",
-    dict(EXIT_COOP_PHASE.params),
-    failure_policy="optional",
-)
-
-DROP_CHICKEN_FOR_SALE_PHASE = PhaseSpec(
-    "DROP_CHICKEN_FOR_SALE",
-    "drop_chicken",
-    {"target_px": (60, 480), "radius": 2, "timeout": 3000},
-    failure_policy="optional",
-)
-
-SELL_CHICKEN_PHASE = PhaseSpec(
-    "SELL_CHICKEN",
-    "chicken_sale_event",
-    {"standby_px": (62, 448), "payout_px": (146, 457), "timeout": 18000},
-    failure_policy="optional",
-)
-
-NAV_TO_ANIMAL_SHOP_FOR_CHICKEN_SALE_PHASE = PhaseSpec(
-    "NAV_TO_ANIMAL_SHOP_FOR_SALE",
-    "multi_nav",
-    {"route": "farm_to_animal_shop_counter_sale", "timeout": 9000, "initial_settle_frames": 0},
-    failure_policy="optional",
-)
-
-REQUEST_CHICKEN_SALE_PHASE = PhaseSpec(
-    "REQUEST_CHICKEN_SALE",
-    "chicken_sale_request",
-    {"task_name": "sell_chicken", "start_frame": 2863, "end_frame": 3297},
-    failure_policy="optional",
-)
-
-EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE_PHASE = PhaseSpec(
-    "EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE",
-    "multi_nav",
-    {"route": "animal_shop_to_town", "timeout": 3000},
-    failure_policy="optional",
-)
-
-WAIT_BEFORE_CHICKEN_PICKUP_RETURN_PHASE = PhaseSpec(
-    "WAIT_BEFORE_CHICKEN_PICKUP_RETURN",
-    "wait_until_time",
-    {"target_hour": 12, "target_minute": 10, "timeout": 5000},
-    failure_policy="optional",
-)
-
-RETURN_FARM_AFTER_CHICKEN_SALE_PHASE = PhaseSpec(
-    "RETURN_FARM_AFTER_CHICKEN_SALE",
-    "multi_nav",
-    {"route": "town_to_farm_west_gate_sale", "timeout": 7000, "initial_settle_frames": 0},
-    failure_policy="optional",
-)
-
-CHICKEN_SALE_BATCH_DROP_POINTS: List[tuple[int, int]] = [
-    (60, 480),
-    (60, 480),
-    (60, 480),
-]
-
-
-def chicken_sale_stage_phases(
-    *,
-    suffix: str = "",
-    failure_policy: str = "optional",
-    drop_target_px: tuple[int, int] = (60, 480),
-) -> List[PhaseSpec]:
-    suffix_text = f"_{suffix}" if suffix else ""
-    return [
-        PhaseSpec(
-            f"NAV_TO_COOP_FOR_SALE{suffix_text}",
-            "multi_nav",
-            dict(NAV_TO_COOP_FOR_CHICKEN_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        ),
-        PhaseSpec(
-            f"ENTER_COOP_FOR_SALE{suffix_text}",
-            "directional_transition",
-            dict(ENTER_COOP_FOR_CHICKEN_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        ),
-        PhaseSpec(
-            f"PICKUP_CHICKEN_FOR_SALE{suffix_text}",
-            "pickup_chicken",
-            dict(PICKUP_CHICKEN_FOR_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        ),
-        PhaseSpec(
-            f"EXIT_COOP_FOR_SALE{suffix_text}",
-            "directional_transition",
-            dict(EXIT_COOP_FOR_CHICKEN_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        ),
-        PhaseSpec(
-            f"DROP_CHICKEN_FOR_SALE{suffix_text}",
-            "drop_chicken",
-            {**DROP_CHICKEN_FOR_SALE_PHASE.params, "target_px": drop_target_px},
-            failure_policy=failure_policy,
-        ),
-    ]
-
-
-def chicken_sale_cycle_phases(
-    *,
-    suffix: str = "",
-    failure_policy: str = "optional",
-    wait_before_return: bool = True,
-) -> List[PhaseSpec]:
-    suffix_text = f"_{suffix}" if suffix else ""
-    phases = [
-        *chicken_sale_stage_phases(suffix=suffix, failure_policy=failure_policy),
-        PhaseSpec(
-            f"NAV_TO_ANIMAL_SHOP_FOR_SALE{suffix_text}",
-            "multi_nav",
-            dict(NAV_TO_ANIMAL_SHOP_FOR_CHICKEN_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        ),
-        PhaseSpec(
-            f"REQUEST_CHICKEN_SALE{suffix_text}",
-            "chicken_sale_request",
-            dict(REQUEST_CHICKEN_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        ),
-        PhaseSpec(
-            f"EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE{suffix_text}",
-            "multi_nav",
-            dict(EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        ),
-    ]
-    if wait_before_return:
-        phases.append(
-            PhaseSpec(
-                f"WAIT_BEFORE_CHICKEN_PICKUP_RETURN{suffix_text}",
-                "wait_until_time",
-                dict(WAIT_BEFORE_CHICKEN_PICKUP_RETURN_PHASE.params),
-                failure_policy=failure_policy,
-            )
-        )
-    phases.extend(
-        [
-            PhaseSpec(
-                f"RETURN_FARM_AFTER_CHICKEN_SALE{suffix_text}",
-                "multi_nav",
-                dict(RETURN_FARM_AFTER_CHICKEN_SALE_PHASE.params),
-                failure_policy=failure_policy,
-            ),
-            PhaseSpec(
-                f"SELL_CHICKEN{suffix_text}",
-                "chicken_sale_event",
-                dict(SELL_CHICKEN_PHASE.params),
-                failure_policy=failure_policy,
-            ),
-        ]
-    )
-    return phases
-
-
-def chicken_sale_batch_phases(
-    *,
-    count: int = 3,
-    suffix: str = "",
-    failure_policy: str = "optional",
-) -> List[PhaseSpec]:
-    suffix_text = f"_{suffix}" if suffix else ""
-    phases: List[PhaseSpec] = []
-    for index in range(count):
-        drop_target = CHICKEN_SALE_BATCH_DROP_POINTS[min(index, len(CHICKEN_SALE_BATCH_DROP_POINTS) - 1)]
-        stage_suffix = f"{suffix_text[1:]}_STAGE_{index + 1}" if suffix_text else f"STAGE_{index + 1}"
-        phases.extend(
-            chicken_sale_stage_phases(
-                suffix=stage_suffix,
-                failure_policy=failure_policy,
-                drop_target_px=drop_target,
-            )
-        )
-    phases.append(
-        PhaseSpec(
-            f"NAV_TO_ANIMAL_SHOP_FOR_SALE{suffix_text}",
-            "multi_nav",
-            dict(NAV_TO_ANIMAL_SHOP_FOR_CHICKEN_SALE_PHASE.params),
-            failure_policy=failure_policy,
-        )
-    )
-    for index in range(count):
-        phases.append(
-            PhaseSpec(
-                f"REQUEST_CHICKEN_SALE{suffix_text}_{index + 1}",
-                "chicken_sale_request",
-                dict(REQUEST_CHICKEN_SALE_PHASE.params),
-                failure_policy=failure_policy,
-            )
-        )
-    phases.extend(
-        [
-            PhaseSpec(
-                f"EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE{suffix_text}",
-                "multi_nav",
-                dict(EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE_PHASE.params),
-                failure_policy=failure_policy,
-            ),
-            PhaseSpec(
-                f"RETURN_FARM_AFTER_CHICKEN_SALE{suffix_text}",
-                "multi_nav",
-                dict(RETURN_FARM_AFTER_CHICKEN_SALE_PHASE.params),
-                failure_policy=failure_policy,
-            ),
-            PhaseSpec(
-                f"SELL_CHICKEN{suffix_text}",
-                "chicken_sale_event",
-                {
-                    **SELL_CHICKEN_PHASE.params,
-                    "event_hour": 0,
-                    "target_sales": count,
-                    "timeout": 24000,
-                },
-                failure_policy=failure_policy,
-            ),
-        ]
-    )
-    return phases
-
-
-# ── Barn cow phases ──
-
-NAV_TO_BARN_PHASE = PhaseSpec(
-    "NAV_TO_BARN",
-    "multi_nav",
-    {"route": "farm_to_barn", "timeout": 10000},
-)
-
-ENTER_BARN_PHASE = PhaseSpec(
-    "ENTER_BARN",
-    "directional_transition",
-    {
-        "direction": "up",
-        "origin_tilemap": 0x00,
-        "target_tilemap": 0x27,
-        "timeout": 900,
-        "stand_tile": (20, 22),
-        "stand_tolerance": 0,
-        "target_stand_tile": (8, 22),
-        "target_stand_tolerance": 1,
-        "settle_frames": 45,
-        "door_align_px": 20 * 16 + 8,
-        "overshoot_limit_px": 330,
-        "require_empty_hands": True,
-    },
-)
-
-COW_CHORES_PHASE = PhaseSpec(
-    "COW_CHORES",
-    "cow_chores",
-    {"talk": True, "brush": True, "milk": True, "feed": True},
-)
-
-EXIT_BARN_PHASE = PhaseSpec(
-    "EXIT_BARN",
-    "directional_transition",
-    {
-        "direction": "down",
-        "origin_tilemap": 0x27,
-        "target_tilemap": 0x00,
-        "timeout": 1800,
-        "stand_tile": (8, 22),
-        "stand_tolerance": 1,
-        "door_align_px": 8 * 16 + 8,
-        "settle_frames": 5,
-    },
-)
-
+# Composed cow sequences (need EXIT_TO_FARM / ENSURE_ANIMAL_TOOLS from this module).
 COW_PHASES: List[PhaseSpec] = [
     ENSURE_ANIMAL_TOOLS_PHASE,
     EXIT_TO_FARM_PHASE,
     NAV_TO_BARN_PHASE,
     ENTER_BARN_PHASE,
-    COW_CHORES_PHASE,
-    EXIT_BARN_PHASE,
-]
-
-BARN_CURRENT_COW_PHASES: List[PhaseSpec] = [
     COW_CHORES_PHASE,
     EXIT_BARN_PHASE,
 ]
@@ -907,28 +516,6 @@ EVE_TALK_LOOP_PHASES: List[PhaseSpec] = [
     EVE_TALK_LOOP_PHASE,
 ]
 
-SELL_CHICKEN_TEST_PHASES: List[PhaseSpec] = chicken_sale_cycle_phases(
-    suffix="TEST",
-    failure_policy="required",
-    wait_before_return=False,
-)
-
-SELL_THREE_CHICKENS_TEST_PHASES: List[PhaseSpec] = [
-    phase
-    for cycle in range(1, 4)
-    for phase in chicken_sale_cycle_phases(
-        suffix=f"TEST_{cycle}",
-        failure_policy="required",
-        wait_before_return=False,
-    )
-]
-
-SELL_THREE_CHICKENS_BATCH_TEST_PHASES: List[PhaseSpec] = chicken_sale_batch_phases(
-    count=3,
-    suffix="BATCH_TEST",
-    failure_policy="required",
-)
-
 PHASE_SEQUENCES: Dict[str, List[PhaseSpec]] = {
     "day1": DAY1_PHASES,
     "boot_to_day2": BOOT_TO_DAY2_PHASES,
@@ -943,15 +530,16 @@ PHASE_SEQUENCES: Dict[str, List[PhaseSpec]] = {
     "sell_three_chickens_test": SELL_THREE_CHICKENS_TEST_PHASES,
     "sell_three_chickens_batch_test": SELL_THREE_CHICKENS_BATCH_TEST_PHASES,
     "eve_loop": EVE_TALK_LOOP_PHASES,
+    "mountain_berry": MOUNTAIN_BERRY_PHASES,
 }
 
 # Backwards compat alias
 PHASE_SEQUENCE = DAY1_PHASES
 
 
-# ── Dynamic day plan builder ─────────────────────────────────────
+# ── Dynamic day plan constants ───────────────────────────────────
 #
-# Priority order:
+# Priority order (documented for orchestrator / day_plan_phases consumers):
 #   1. Exit building (always)
 #   2. Buy the first cow when affordable
 #   3. Barn cow chores (if cows need feed/attention)
@@ -960,8 +548,7 @@ PHASE_SEQUENCE = DAY1_PHASES
 #   6. Ensure watering can/seeds + crop work
 #   7. Berry/shop money route (if still early enough for round trip)
 
-BERRY_CUTOFF_HOUR = 15  # latest hour to start a berry run
-OPTIONAL_MONEY_PHASES = frozenset({
+OPTIONAL_SHOP_PHASES = frozenset({
     "BUY_SEEDS_WINDOW",
     "NAV_FARM_EXIT",
     "BUY_SEEDS",
@@ -970,28 +557,10 @@ OPTIONAL_MONEY_PHASES = frozenset({
     "GET_AXE",
     "GET_SICKLE",
     "LEAVE_HOUSE_MACRO",
-    "SELL_CHICKEN_WINDOW",
-    "NAV_SELL_CHICKEN_START",
-    "NAV_TO_COOP_FOR_SALE",
-    "ENTER_COOP_FOR_SALE",
-    "PICKUP_CHICKEN_FOR_SALE",
-    "EXIT_COOP_FOR_SALE",
-    "DROP_CHICKEN_FOR_SALE",
-    "NAV_TO_ANIMAL_SHOP_FOR_SALE",
-    "REQUEST_CHICKEN_SALE",
-    "EXIT_ANIMAL_SHOP_AFTER_CHICKEN_SALE",
-    "RETURN_FARM_AFTER_CHICKEN_SALE",
-    "SELL_CHICKEN",
-    "BERRY_RUN_WINDOW",
-    "LEAVE_FARM_WEST",
-    "EXIT_FARM_WEST",
-    "BERRY_RECORDING_WINDOW",
-    "GET_BERRIES_AND_SHIP",
-    "OPEN_FENCE_GAP",
-    "SHIP_BERRY",
-    "SHIP_BERRY_1",
-    "SHIP_BERRY_2",
 })
+OPTIONAL_MONEY_PHASES = (
+    OPTIONAL_BERRY_PHASES | OPTIONAL_SHOP_PHASES | OPTIONAL_CHICKEN_SALE_PHASES
+)
 
 # Phases whose success marks the day ready for return-home/sleep.
 GO_HOME_TRIGGER_PHASES = frozenset({
@@ -1013,6 +582,8 @@ __all__ = [
     "GET_BERRIES_AND_SHIP_PHASE",
     "OPEN_FENCE_GAP_PHASE",
     "SHIP_BERRY_PHASE",
+    "MOUNTAIN_BERRY_PHASE",
+    "MOUNTAIN_BERRY_PHASES",
     "ship_berry_phases",
     "NAV_CROP_PHASE",
     "HARVEST_ROUTE_PHASE",
@@ -1080,6 +651,9 @@ __all__ = [
     "PHASE_SEQUENCES",
     "PHASE_SEQUENCE",
     "BERRY_CUTOFF_HOUR",
+    "OPTIONAL_BERRY_PHASES",
+    "OPTIONAL_SHOP_PHASES",
+    "OPTIONAL_CHICKEN_SALE_PHASES",
     "OPTIONAL_MONEY_PHASES",
     "GO_HOME_TRIGGER_PHASES",
 ]

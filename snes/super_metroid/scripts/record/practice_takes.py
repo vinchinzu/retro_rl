@@ -35,9 +35,26 @@ uv run python snes/super_metroid/scripts/record/practice_takes.py \\
 # Single take only (same as guided_human with auto name)
 uv run python snes/super_metroid/scripts/record/practice_takes.py --max 1
 
-# K6 West Ocean post-spark → Wrecked Ship (multi-take for bot building)
+# K6 West Ocean post-Moat → WS (optional human; product pure-ws is GREEN)
 uv run python snes/super_metroid/scripts/record/practice_takes.py \\
   --segment west-ocean-to-ws --series west_ocean_ws_v1
+
+# K6 WS Entrance after pure over-ocean / chain-ws → ship free-record → Phantoon
+# Refresh pin: west_ocean_spark.py chain-ws  (or pure-ws)
+uv run python snes/super_metroid/scripts/record/practice_takes.py \\
+  --segment ws-entrance --series ws_ship_v1
+
+# Post-Gravity Caterpillar → Grapple side-trek + Maridia free-record
+uv run python snes/super_metroid/scripts/record/practice_takes.py \\
+  --segment post-gravity --series maridia_grapple_v1 --no-guide
+
+# K5 Red Tower → Hellway multi-take (rr-av5s). F5 in Hellway / ESC end series.
+# Rank takes: scripts/tools/rank_red_climb_takes.py
+uv run python snes/super_metroid/scripts/record/practice_takes.py \\
+  --segment red-to-hellway --series red_climb_v1
+# Live human Red enter (warehouse_to_red_human room_enter f2012):
+uv run python snes/super_metroid/scripts/record/practice_takes.py \\
+  --segment red-to-hellway-human --series red_climb_human_v1
 ```
 
 Controls (inside each take — same as guided_human):
@@ -153,11 +170,201 @@ SEGMENTS: dict[str, Segment] = {
         start="west-ocean",
         route="west-ocean-to-ws",
         description=(
-            "West Ocean post-Moat shinespark (0x93FE ~(49,1163)) → lower green "
-            "Super door → Wrecked Ship Entrance. Pure spark pin; human for WS bot."
+            "West Ocean post-Moat handoff (0x93FE ~(49,1163)) → green Super → "
+            "WS 0xCA08. Optional human practice; product pure-ws is dual GREEN."
         ),
         pure_hop=None,
         pure_source_rel="scratch/post_moat_west_ocean_spark.state",
+        no_guide_default=False,
+    ),
+    "ws-entrance": Segment(
+        key="ws-entrance",
+        start="ws-entrance",
+        route="ws-entrance",
+        description=(
+            "Wrecked Ship Entrance after pure over-ocean / chain-ws "
+            "(0xCA08 ~(57,139) gs=8) → ship rooms free-record for Phantoon approach. "
+            "Refresh pin: west_ocean_spark.py chain-ws (Kihunter/Moat→WO→WS)."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_west_ocean_ws_spark.state",
+        no_guide_default=False,
+    ),
+    "moat-to-ws": Segment(
+        key="moat-to-ws",
+        start="pre-moat",
+        route="west-ocean-to-ws",
+        description=(
+            "Kihunter pre-spark (or use bot chain-ws) → Moat spark → WO → WS. "
+            "Human free-record full path; prefer bot chain-ws then ws-entrance segment."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_kihunter_pre_moat_spark.state",
+        no_guide_default=True,
+    ),
+    "post-gravity": Segment(
+        key="post-gravity",
+        start="post-gravity",
+        route="ws-entrance",  # placeholder; guide off by default
+        description=(
+            "Caterpillar 0xA322 post-Gravity return (items 0x3125) → Grapple "
+            "side-trek (Red/Crocomire) and/or Maridia free-record."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_gravity_caterpillar.state",
+        no_guide_default=True,
+    ),
+    "post-grapple": Segment(
+        key="post-grapple",
+        start="post-grapple",
+        route="ws-entrance",
+        description=(
+            "Post-Grapple Beam (items 0x7125) → Croc Escape → Business → "
+            "Main Street free-record. Anchors ON; F6 for next-phase pins."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_grapple_beam_human.state",
+        no_guide_default=True,
+    ),
+    "main-street": Segment(
+        key="main-street",
+        start="main-street",
+        route="ws-entrance",
+        description=(
+            "Main Street 0xCFC9 ~(394,1979) items 0x7125 → Maridia "
+            "(Mt Everest / Botwoon path) free-record."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/full_start_v1_main_street.state",
+        no_guide_default=True,
+    ),
+    "golden-torizo": Segment(
+        key="golden-torizo",
+        start="golden-torizo",
+        route="ws-entrance",
+        description=(
+            "Golden Torizo 0xB283 left door (items 0x7325 beams 0x100F) → "
+            "fight / Screw / Ridley free-record."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/full_start_v1_golden_torizo.state",
+        no_guide_default=True,
+    ),
+    "metal-pirates": Segment(
+        key="metal-pirates",
+        start="metal-pirates",
+        route="ws-entrance",
+        description=(
+            "Metal Pirates 0xB62B right door (items 0x732F Screw) → "
+            "clear / Ridley free-record."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/full_start_v1_metal_pirates.state",
+        no_guide_default=True,
+    ),
+    "post-ridley": Segment(
+        key="post-ridley",
+        start="post-ridley",
+        route="ws-entrance",
+        description=(
+            "Ridley Tank 0xB698 post fight + tank (items 0x732F) → "
+            "LN exit / G4 free-record."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/full_start_v1_ridley.state",
+        no_guide_default=True,
+    ),
+    "plasma-beam": Segment(
+        key="plasma-beam",
+        start="plasma-beam",
+        route="ws-entrance",
+        description=(
+            "Plasma Room 0xD2AA post-collect (items 0x7325 beams 0x100F) → "
+            "leave / LN free-record."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/full_start_v1_plasma.state",
+        no_guide_default=True,
+    ),
+    "post-space-jump": Segment(
+        key="post-space-jump",
+        start="post-space-jump",
+        route="ws-entrance",
+        description=(
+            "Space Jump Room 0xD9AA after collect (items 0x7325) → next "
+            "segment free-record (Maridia exit / LN / Plasma path)."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_space_jump.state",
+        no_guide_default=True,
+    ),
+    "post-draygon": Segment(
+        key="post-draygon",
+        start="post-draygon",
+        route="ws-entrance",
+        description=(
+            "Precious Room 0xD78F post-Draygon+SJ (items 0x7325) F5 end of "
+            "maridia_botwoon_path_human."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_draygon_precious.state",
+        no_guide_default=True,
+    ),
+    "main-hall": Segment(
+        key="main-hall",
+        start="main-hall",
+        route="ws-entrance",
+        description=(
+            "LN Main Hall 0xB236 ~(1152,648) items 0x7327 beams 0x100F → "
+            "Ridley / Golden Torizo free-record."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_ln_main_hall.state",
+        no_guide_default=True,
+    ),
+    # K5 Red Tower climb — multi-take from pure Bat→Red dual pin (rr-av5s).
+    "red-to-hellway": Segment(
+        key="red-to-hellway",
+        start="red-bottom",
+        route="ws-entrance",  # placeholder; guide off
+        description=(
+            "Red Tower bottom 0xA253 pure pin ~(216,2443) → clean climb → "
+            "Hellway 0xA2F7. F6 mid seats; F5 in Hellway. Arbitrary takes for "
+            "splice board (not open-loop frame concat)."
+        ),
+        pure_hop="red-to-hellway",
+        pure_source_rel="scratch/post_ice_bat_to_red_pure.state",
+        no_guide_default=True,
+    ),
+    # Same climb from live human room_enter (warehouse_to_red chain parity).
+    "red-to-hellway-human": Segment(
+        key="red-to-hellway-human",
+        start=(
+            "snes/super_metroid/tasks/warehouse_to_red_human_anchors/"
+            "f002012_enter_0xA253_0xA253.state"
+        ),
+        route="ws-entrance",
+        description=(
+            "Red enter from warehouse_to_red_human live anchor f2012 "
+            "~(216,2443) → Hellway. Prefer when matching human chain enemy phase."
+        ),
+        pure_hop=None,
+        pure_source_rel=None,
+        no_guide_default=True,
+    ),
+    # Bubble Save station → leave RIGHT → save-runway WJ climb (Phase D).
+    # Prefer live timing gym: scripts/probe/bubble_save_practice.py
+    "bubble-save": Segment(
+        key="bubble-save",
+        start="bubble-save",
+        route="ws-entrance",  # free-record; guide shows Bubble path if present
+        description=(
+            "Bubble Save 0xB0DD ~(96,152) items 0x1105 → leave RIGHT → "
+            "Bubble runway walljump climb. For EARLY/LATE frames_off feedback "
+            "use bubble_save_practice.py instead of this multi-take wrapper."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/bubble_save.state",
         no_guide_default=False,
     ),
 }
@@ -287,15 +494,17 @@ def _run_one_take(
     no_guide: bool,
     no_assist: bool,
     scale: int,
+    start_override: str | None = None,
 ) -> int:
     """Invoke guided_human for one take. Return process exit code."""
+    start = start_override or seg.start
     cmd = [
         "uv",
         "run",
         "python",
         str(GUIDED),
         "--from",
-        seg.start,
+        start,
         "--route",
         seg.route,
         "--name",
@@ -313,9 +522,12 @@ def _run_one_take(
     print("=" * 60)
     print(f"TAKE  {take_name}")
     print(f"  segment: {seg.key} — {seg.description}")
-    print(f"  start={seg.start}  route={seg.route}")
+    print(f"  start={start}  route={seg.route}")
     print(f"  out: {out_dir / (take_name + '.json')}")
     print("  F5/F1 = save take · ESC/Q = cancel take & end series")
+    if seg.key.startswith("red-to-hellway"):
+        print("  Red climb: F6 thin seat + ice tiers · F5 in Hellway 0xA2F7")
+        print("  Fail mid-climb → ESC (no save) or F5 only if useful mid pin")
     print("=" * 60)
     return subprocess.run(cmd, cwd=str(ROOT)).returncode
 
@@ -388,6 +600,15 @@ def main() -> int:
         default=TASKS_DIR,
         help=f"Root for series folders (default: {TASKS_DIR})",
     )
+    parser.add_argument(
+        "--from",
+        dest="start_override",
+        default=None,
+        help=(
+            "Override segment start pin (preset name, stem, or path). "
+            "Use to boot any Red enter / mid F6 for more climb attempts."
+        ),
+    )
     args = parser.parse_args()
 
     if args.list_segments:
@@ -431,16 +652,25 @@ def main() -> int:
     print(f"  dir:     {series_dir}")
     print(f"  first:   take{take_i:02d}  max this session: {args.max}")
     print(f"  guide:   {'OFF' if no_guide else 'ON'}  assist={'OFF' if args.no_assist else 'ON'}")
+    if args.start_override:
+        print(f"  --from:  {args.start_override}  (overrides segment start)")
     print()
-    print("Recipe (dc-missile-wave / Spazer) — reference take04:")
-    print("  P1 purple hop upper y≲180 → gate seat ~(379,139)")
-    print("     FALL: red path floor → climb → reseat P2 (do not Super from floor)")
-    print("  P2 open gate → past ~(480,139)")
-    print("  P3 missile ~x494 free RIGHT+B ~400f past x≥510 (take04 free=406f)")
-    print("  P4 runway ~x437 → dash edge ~600")
-    print("  P5 launch peak y≈60 → door WJ → Super → Wave 0xADDE → F5")
-    print("  paths: routes/kpdr/data/dc_missile_wave_take04_paths.json")
-    print("  ref:   tasks/dc_missile_v1/dc_missile_v1_take04.json")
+    if seg.key.startswith("red-to-hellway"):
+        print("Recipe (Red → Hellway, rr-av5s) — see docs/tasks/RED_CLIMB_HUMAN.md:")
+        print("  Boot Red bottom ~(216,2443). Climb clean; F6: midplat, thin seat")
+        print("  ~(91,587), ice tiers y495/391/295/207, Hellway enter → F5.")
+        print("  ESC = discard take (reload next). Rank: rank_red_climb_takes.py")
+        print("  Splice = pick best take + hop-replay from live anchors, NOT RLE concat.")
+    else:
+        print("Recipe (dc-missile-wave / Spazer) — reference take04:")
+        print("  P1 purple hop upper y≲180 → gate seat ~(379,139)")
+        print("     FALL: red path floor → climb → reseat P2 (do not Super from floor)")
+        print("  P2 open gate → past ~(480,139)")
+        print("  P3 missile ~x494 free RIGHT+B ~400f past x≥510 (take04 free=406f)")
+        print("  P4 runway ~x437 → dash edge ~600")
+        print("  P5 launch peak y≈60 → door WJ → Super → Wave 0xADDE → F5")
+        print("  paths: routes/kpdr/data/dc_missile_wave_take04_paths.json")
+        print("  ref:   tasks/dc_missile_v1/dc_missile_v1_take04.json")
     print()
 
     saved = 0
@@ -453,6 +683,7 @@ def main() -> int:
             no_guide=no_guide,
             no_assist=args.no_assist,
             scale=args.scale,
+            start_override=args.start_override,
         )
         task_path = series_dir / f"{take_name}.json"
         if task_path.is_file():

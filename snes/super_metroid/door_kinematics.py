@@ -218,6 +218,9 @@ class DoorKinematicsRequirement:
     velocity_x_range: tuple[int, int] | None = None
     velocity_y_range: tuple[int, int] | None = None
     momentum_x_range: tuple[int, int] | None = None
+    # Unsigned speed in either facing. Takeoff windows use this; a signed
+    # momentum_x_range cannot say "|mx| >= N".
+    min_abs_momentum: int | None = None
     speed_counter_min: int | None = None
     speed_counter_max: int | None = None
     speed_bands: frozenset[SpeedBand] = frozenset()
@@ -268,6 +271,13 @@ class DoorKinematicsRequirement:
         ):
             failures.append(
                 f"momentum_x {snap.momentum_x} outside {self.momentum_x_range}"
+            )
+        if (
+            self.min_abs_momentum is not None
+            and abs(snap.momentum_x) < self.min_abs_momentum
+        ):
+            failures.append(
+                f"|momentum_x| {abs(snap.momentum_x)} < {self.min_abs_momentum}"
             )
         if (
             self.speed_counter_min is not None
@@ -339,6 +349,8 @@ class DoorKinematicsRequirement:
             payload["velocityYRange"] = list(self.velocity_y_range)
         if self.momentum_x_range is not None:
             payload["momentumXRange"] = list(self.momentum_x_range)
+        if self.min_abs_momentum is not None:
+            payload["minAbsMomentum"] = self.min_abs_momentum
         if self.speed_counter_min is not None:
             payload["speedCounterMin"] = self.speed_counter_min
         if self.speed_counter_max is not None:
@@ -393,6 +405,15 @@ class DoorKinematicsRequirement:
             velocity_x_range=_range("velocityXRange") or _range("velocity_x_range"),
             velocity_y_range=_range("velocityYRange") or _range("velocity_y_range"),
             momentum_x_range=_range("momentumXRange") or _range("momentum_x_range"),
+            min_abs_momentum=(
+                int(raw["minAbsMomentum"])
+                if raw.get("minAbsMomentum") is not None
+                else (
+                    int(raw["min_abs_momentum"])
+                    if raw.get("min_abs_momentum") is not None
+                    else None
+                )
+            ),
             speed_counter_min=(
                 int(raw["speedCounterMin"])
                 if raw.get("speedCounterMin") is not None

@@ -31,17 +31,19 @@
     },
     {
       "id": "iggys_castle",
-      "level": null,
+      "level": "smw_iggys_castle",
       "state": "IggysCastle",
       "exit": "normal",
-      "anchor_status": "missing"
+      "anchor_status": "missing",
+      "notes": "Prior extract from yi4 recording_002 @3591 was Donut Plains 1 (trans 0x15), not Iggy. Package YI4 standalone clear does not open castle path. Recapture via natural YI1–4 entry or capture-state --from NONE."
     },
     {
       "id": "donut_plains_1",
       "level": "smw_donut_plains_1",
       "state": "DonutPlains1",
       "exit": "secret",
-      "anchor_status": "available"
+      "anchor_status": "available",
+      "notes": "Builtin outdoor DP1 is trans 0x15. Chained outdoor entry from rec002 saved as DonutPlains1_from_yi4_rec002; mid-pipe room as DonutPlains1_chained (trans 0x0A)."
     },
     {
       "id": "donut_secret_1",

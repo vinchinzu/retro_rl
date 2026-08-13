@@ -77,8 +77,8 @@ uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen7Mid 
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen8 --yoku-land --trials 3
 ```
 
-Evidence: `recordings/heat_boot/`, `recordings/heat_segment/`, `heat_s7_seg/`,
-`heat_preboss/`, `heat_s7_midpin/`, `heat_s7_route/`, `heat_s7_dual/`,
+Evidence: `recordings/heat_segment/`, `heat_s7_seg/`, `heat_preboss/`,
+`heat_s7_midpin/`, `heat_s7_route/`, `heat_s7_dual/`,
 `heat_s7_climb_residual/`, `heat_s8_yoku_land/`, `heat_s8_route/`.
 Pins (gitignored): `Heat1`, `HeatScreen1`–`HeatScreen8`, `HeatScreen5Ground`,
 `HeatScreen7Mid`, `HeatScreen7HighPast`, `HeatLadder`, `HeatScrollDown`,

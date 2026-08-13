@@ -1,0 +1,236 @@
+{
+  "command": "pin",
+  "hop_key": "0xDF45:0xDF8D->0x91F8:0x0000",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_elev_enter.state",
+  "success": true,
+  "error": null,
+  "landings": [
+    {
+      "frame": 1,
+      "x": 202,
+      "y": 651,
+      "pose": 10
+    },
+    {
+      "frame": 77,
+      "x": 115,
+      "y": 571,
+      "pose": 165
+    }
+  ],
+  "ledge": {
+    "room_id_hex": "0xDF45",
+    "samus_x": 60,
+    "samus_y": 571,
+    "pose": 10,
+    "health": 19,
+    "game_state": 8,
+    "timer_type": 6,
+    "escape_timer_seconds": 56,
+    "enemy0_x": 232,
+    "enemy0_y": 631,
+    "enemy0_hp": 40,
+    "num_enemies": 13,
+    "velocity_y": 0
+  },
+  "center": {
+    "room_id_hex": "0xDF45",
+    "samus_x": 130,
+    "samus_y": 475,
+    "pose": 166,
+    "health": 19,
+    "game_state": 8,
+    "timer_type": 6,
+    "escape_timer_seconds": 55,
+    "enemy0_x": 232,
+    "enemy0_y": 631,
+    "enemy0_hp": 40,
+    "num_enemies": 13,
+    "velocity_y": 0
+  },
+  "best_to_475": [
+    {
+      "side": "RIGHT",
+      "runup": 0,
+      "hold": 40,
+      "peak_x": 102,
+      "peak_y": 462,
+      "land": {
+        "x": 130,
+        "y": 475,
+        "pose": 166,
+        "i": 61
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 4,
+      "hold": 40,
+      "peak_x": 101,
+      "peak_y": 462,
+      "land": {
+        "x": 129,
+        "y": 475,
+        "pose": 166,
+        "i": 65
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 8,
+      "hold": 40,
+      "peak_x": 107,
+      "peak_y": 462,
+      "land": {
+        "x": 137,
+        "y": 475,
+        "pose": 166,
+        "i": 69
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 12,
+      "hold": 40,
+      "peak_x": 110,
+      "peak_y": 462,
+      "land": {
+        "x": 139,
+        "y": 475,
+        "pose": 166,
+        "i": 73
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 16,
+      "hold": 40,
+      "peak_x": 110,
+      "peak_y": 462,
+      "land": {
+        "x": 139,
+        "y": 475,
+        "pose": 166,
+        "i": 77
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 0,
+      "hold": 32,
+      "peak_x": 91,
+      "peak_y": 471,
+      "land": {
+        "x": 114,
+        "y": 475,
+        "pose": 166,
+        "i": 49
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 4,
+      "hold": 32,
+      "peak_x": 90,
+      "peak_y": 471,
+      "land": {
+        "x": 113,
+        "y": 475,
+        "pose": 166,
+        "i": 53
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 8,
+      "hold": 32,
+      "peak_x": 96,
+      "peak_y": 471,
+      "land": {
+        "x": 120,
+        "y": 475,
+        "pose": 166,
+        "i": 57
+      }
+    }
+  ],
+  "best_above_475": [
+    {
+      "side": "RIGHT",
+      "runup": 4,
+      "hold": 40,
+      "peak_x": 180,
+      "peak_y": 363,
+      "land": {
+        "x": 180,
+        "y": 363,
+        "pose": 166,
+        "i": 56
+      }
+    },
+    {
+      "side": "RIGHT",
+      "runup": 8,
+      "hold": 40,
+      "peak_x": 180,
+      "peak_y": 363,
+      "land": {
+        "x": 180,
+        "y": 363,
+        "pose": 166,
+        "i": 60
+      }
+    },
+    {
+      "side": "LEFT",
+      "runup": 4,
+      "hold": 40,
+      "peak_x": 82,
+      "peak_y": 366,
+      "land": null
+    },
+    {
+      "side": "RIGHT",
+      "runup": 4,
+      "hold": 32,
+      "peak_x": 155,
+      "peak_y": 375,
+      "land": null
+    },
+    {
+      "side": "RIGHT",
+      "runup": 8,
+      "hold": 32,
+      "peak_x": 155,
+      "peak_y": 375,
+      "land": null
+    },
+    {
+      "side": "LEFT",
+      "runup": 4,
+      "hold": 32,
+      "peak_x": 93,
+      "peak_y": 375,
+      "land": null
+    },
+    {
+      "side": "RIGHT",
+      "runup": 4,
+      "hold": 24,
+      "peak_x": 155,
+      "peak_y": 391,
+      "land": null
+    },
+    {
+      "side": "RIGHT",
+      "runup": 8,
+      "hold": 24,
+      "peak_x": 155,
+      "peak_y": 391,
+      "land": null
+    }
+  ],
+  "n_landed_475": 10,
+  "n_landed_next": 2,
+  "notes": "Geometry pin from first planted 571 land. Ceres Station clock starts at first elev control."
+}

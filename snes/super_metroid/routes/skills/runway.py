@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol
 
 from super_metroid.routes.controller_common import WallJumpTiming, hold
+from super_metroid.takeoff import shoulder_pump_button
 from super_metroid.routes.skills.geometry import (
     ClimbTrack,
     POSE_KNOCKBACK,
@@ -337,7 +338,7 @@ def runway_dash(
     arm_period: int | None = None,
     direction: str = "RIGHT",
 ) -> None:
-    """Ground dash with optional arm-pump (L/R angle spam)."""
+    """Ground dash with optional arm-pump (shoulder L/R angle spam)."""
     pol = policy if policy is not None else _default_policy()
     label = track.label
     n = pol.SAVE_RUN_FRAMES if frames is None else frames
@@ -347,7 +348,7 @@ def runway_dash(
     )
     for i in range(n):
         if pump:
-            ang: AngleSide = "L" if (i // period) % 2 == 0 else "R"
+            ang: AngleSide = shoulder_pump_button(i, period)
             state = hold(
                 session, 1, direction, "B", ang, reason=f"{label}_run_ap"
             )

@@ -703,7 +703,7 @@ MORPH_MILESTONES: tuple[ProgressionMilestone, ...] = (
         "Natural Ceres countdown",
         ProgressCondition(room_id=ROOM_CERES_RIDLEY, game_states=frozenset({8})),
         timeout_frames=7_000,
-        policy_id="ceres_ridley_wait",
+        policy_id="ceres_ridley_tail_tank",
     ),
     ProgressionMilestone(
         "zebes_landing",

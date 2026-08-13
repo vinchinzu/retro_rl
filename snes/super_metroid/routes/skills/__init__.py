@@ -5,6 +5,10 @@ Skills take :class:`~super_metroid.routes.runtime.ControllerSession` plus a
 :mod:`super_metroid.routes.skills.policies`, not in skill bodies.
 
 Product hops compose skills — e.g. :mod:`super_metroid.routes.kpdr.to_bat_cave`.
+
+Map Rando tech builders (Basic/Medium room-opt primitives) live in
+:mod:`super_metroid.routes.skills.basic_moves` and the registry
+:mod:`super_metroid.routes.skills.builders` (see ``docs/TECH_TREE.md``).
 """
 
 from __future__ import annotations
@@ -39,6 +43,13 @@ from super_metroid.routes.skills.geometry import (
     POSE_KNOCKBACK,
     POSE_STAND_LEFT,
     POSE_STAND_RIGHT,
+    FACE_LEFT_POSES,
+    FACE_RIGHT_POSES,
+    STAND_LOCOMOTION_POSES,
+    CROUCH_POSES,
+    SPIN_POSES,
+    LAND_POSES,
+    GUN_JUMP_POSES,
     BubblePhaseStop,
     BubbleTrack,
     ClimbTrack,
@@ -93,6 +104,7 @@ from super_metroid.routes.skills.walljump import (
 )
 from super_metroid.routes.skills.shinespark import (
     ECHOES_FULL,
+    NTSC_MAGIC_DASH_FRAMES,
     SPARK_POSES,
     TYPICAL_ARM_TIMER,
     activate_shinespark,
@@ -100,8 +112,24 @@ from super_metroid.routes.skills.shinespark import (
     charge_until_boost,
     crouch_store,
     read_spark_wram,
+    short_charge_plan,
+    short_charge_until_boost,
     store_then_spin_unspin_activate,
     wait_store_window,
+)
+from super_metroid.routes.skills.basic_moves import (
+    crouch_jump,
+    dash,
+    down_grab,
+    mid_air_morph,
+    speedy_jump,
+    stop_on_a_dime,
+)
+from super_metroid.routes.skills.builders import (
+    BUILDER_SKILLS,
+    builder_gap_report,
+    builder_skill,
+    list_builder_skills,
 )
 
 # Historical bubble_* skill names (stable for tests / scripts mid-migration).
@@ -155,6 +183,13 @@ __all__ = [
     "POSE_KNOCKBACK",
     "POSE_STAND_LEFT",
     "POSE_STAND_RIGHT",
+    "FACE_LEFT_POSES",
+    "FACE_RIGHT_POSES",
+    "STAND_LOCOMOTION_POSES",
+    "CROUCH_POSES",
+    "SPIN_POSES",
+    "LAND_POSES",
+    "GUN_JUMP_POSES",
     "BubblePhaseStop",
     "BubbleTrack",
     "ClimbTrack",
@@ -213,15 +248,28 @@ __all__ = [
     "morph_roll_to_window",
     "morph_upper_plant",
     "ECHOES_FULL",
+    "NTSC_MAGIC_DASH_FRAMES",
     "SPARK_POSES",
     "TYPICAL_ARM_TIMER",
     "read_spark_wram",
     "charge_until_boost",
+    "short_charge_plan",
+    "short_charge_until_boost",
     "crouch_store",
     "wait_store_window",
     "activate_shinespark",
     "store_then_spin_unspin_activate",
     "charge_store_activate",
+    "crouch_jump",
+    "dash",
+    "down_grab",
+    "mid_air_morph",
+    "speedy_jump",
+    "stop_on_a_dime",
+    "BUILDER_SKILLS",
+    "builder_gap_report",
+    "builder_skill",
+    "list_builder_skills",
     "HIJUMP_WALLJUMP_VY0",
     "REGULAR_WALLJUMP_VY0",
     "DAMAGE_BOOST_HX",

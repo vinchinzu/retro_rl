@@ -106,6 +106,22 @@ def test_door_kinematics_requirement_speed_and_position() -> None:
         require_door_kinematics(bad, req, label="unit")
 
 
+def test_min_abs_momentum_is_unsigned() -> None:
+    state = replace(
+        parse_state(np.zeros(0x10000, dtype=np.uint8)),
+        momentum_x=-3,
+        facing=FACING_LEFT,
+    )
+    req = DoorKinematicsRequirement(min_abs_momentum=2)
+    assert req.matches(state)
+    assert not DoorKinematicsRequirement(min_abs_momentum=4).matches(state)
+    raw = req.to_dict()
+    assert raw["minAbsMomentum"] == 2
+    restored = DoorKinematicsRequirement.from_dict(raw)
+    assert restored is not None
+    assert restored.min_abs_momentum == 2
+
+
 def test_state_requirement_kinematics_fields() -> None:
     state = replace(
         parse_state(np.zeros(0x10000, dtype=np.uint8)),

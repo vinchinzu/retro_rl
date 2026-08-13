@@ -9,7 +9,7 @@ endgame—not resource conservation.
 ### Unlimited energy
 
 - During ordinary controllable gameplay, restore current energy to the
-  naturally available maximum.
+  naturally available maximum (see **refill policy** below).
 - Do not increase maximum energy or grant Energy Tanks.
 - Observe and count natural damage before restoring it.
 - Do not revive a completed death transition.
@@ -18,13 +18,47 @@ endgame—not resource conservation.
 - Suspend the refill throughout Ceres ordinary gameplay: Ridley's natural
   damage must reach the evacuation-countdown threshold. Energy refill begins
   only after the run reaches Zebes.
+- Suspend the refill during energy-drain scripts:
+  - Metroid latch (Big Boy): pose `$E8`, movement `$15`/`$1B`, or baby-Metroid
+    (HP `$7FFF`) stuck within ~48px of Samus.
+  - Mother Brain rainbow / stun: pose `$54` (rainbow drain), `$E9`/`$EB`,
+    movement `$0A` (plus latch poses above).
+  Refill mid-drain softlocks gray-door release and the MB baby-Metroid cutscene.
 
 ### Unlimited ammo
 
 - Refill only ammo types that have been naturally unlocked.
-- Refill current ammo only up to its naturally collected capacity.
+- Refill current ammo only up to its naturally collected capacity
+  (see **refill policy** below).
 - A zero capacity means the ammo type is still locked and must remain zero.
 - Do not grant Missiles, Super Missiles, Power Bombs, or capacity upgrades.
+
+### Refill policy (`refill_when`)
+
+Two policies share the same write guards; only the **when** differs:
+
+| Policy | Behavior | Default for |
+|--------|----------|-------------|
+| `always` | Restore whenever current &lt; capacity (energy: while still alive) | Continuous / product bots |
+| `at_zero` | Ammo: only at **0**. Energy: at **0** or ≤ floor (40) — death-save before death phase latches | Human `./play` practice |
+
+Energy under `at_zero` uses a low floor (`AT_ZERO_ENERGY_FLOOR = 40`), not
+only exact zero. Boss one-shots (e.g. Phantoon flame, GT 40-chip) often jump
+ordinary → death game-state in one tick without a usable `health==0` ordinary
+frame, so a pure zero energy policy never tops up (`energy_restored=0` while
+ammo still works). Death / game-over phase still never revives a completed
+death transition.
+
+Metroid-latch / MB-rainbow energy suspend is **Tourian-only** (plus baby-
+Metroid proximity). Movement `$0A` is ordinary knockback in LN/GT — matching
+it globally holds the refill for 180f after every hit and looks like the
+health boost is off.
+
+Telemetry per resource: `restored`, `writes`, and **`top_ups`** (discrete
+empty/floor→full events). Practice goal: drive `top_ups` down by taking less
+damage and firing fewer shots / farming less. Human record: `./play` uses
+`at_zero`; `--assist-full` restores the continuous-style always top-up;
+`--no-assist` is fully clean.
 
 The implementation should be a separate assist controller, not scattered
 `set_value` calls in route policy.

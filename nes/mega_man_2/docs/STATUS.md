@@ -18,7 +18,7 @@
 | Ready frame (probe) | ~1204 Air / ~926 Heat |
 | Checkpoints | Air: `Level1`, `AirLanded`, `AirScreen2`–`4`, `AirFanPlatform`, `AirLeftPlatform`. Heat: `Heat1`, `HeatScreen1`–`HeatScreen8`, `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatScreen7HighPast`, `HeatLadder`, `HeatScrollDown`, `HeatScreen8Yoku` |
 | Policy | `AirManPolicy` (mid/late); `HeatManPolicy` multi-phase (early/s2/s3/s4/s5/s7/s8) |
-| Evidence | [air_segment/](../recordings/air_segment/), [heat_boot/](../recordings/heat_boot/), [heat_segment/](../recordings/heat_segment/), [heat_s7_seg/](../recordings/heat_s7_seg/), [heat_s8_yoku_land/](../recordings/heat_s8_yoku_land/) |
+| Evidence | [air_segment/](../recordings/air_segment/), [heat_segment/](../recordings/heat_segment/), [heat_s7_seg/](../recordings/heat_s7_seg/), [heat_s8_yoku_land/](../recordings/heat_s8_yoku_land/) |
 
 ## Done
 

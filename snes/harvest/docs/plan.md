@@ -22,9 +22,17 @@ re-soak for Gate B claim.
 - Power-on full D1→D2 shed on `house_size=0` — `rr-bhr`
 - Spring calendar shell D2→Summer (fixture, no income) — historical soak
 
-**Architecture tax on the tip path:** `crop_planter.py` ~4.18k lines
-(`rr-ds3` slices 1–2); further water/refill patches must extract modules, not grow the mono.
-Details: [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
+**Architecture tax on the tip path:** keep monofiles under ~1000 LOC (AGENTS).
+`MultiMapNavTask` extracted to `multi_nav.py` (was `navigation.py` 1.3k mono).
+Further MultNav residuals (forage interact, corridor densify) land as helpers,
+not thrash `if`s in the MultNav step machine. Details:
+[CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
+
+**Money-route residual (`rr-zmss`):** live shipping_money stays 0 — forage
+interact still open (debris field north of bush seals path; need confirmed
+held-item / bush interact). Berry fail no longer cascade-skips BUY_SEEDS
+(optional phases split). MultNav fail-closed seal ~90 stuck frames instead of
+day-long thrash.
 
 ## Product backlog
 

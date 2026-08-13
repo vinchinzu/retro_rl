@@ -1,11 +1,16 @@
-"""Compatibility facade for benchmark claims, runners, and reports.
+"""Benchmark claims, runners, and seed-robustness reports.
 
-Canonical claim ownership lives in :mod:`retro_harness.benchmark_claims`;
-execution and report serialization live in
-:mod:`retro_harness.benchmark_runner`.
+Compatibility shims keep the historical import paths working:
+
+* :mod:`retro_harness.benchmark_claims`
+* :mod:`retro_harness.benchmark_runner`
 """
 
-from retro_harness.benchmark_claims import (
+from __future__ import annotations
+
+from typing import Any
+
+from retro_harness.benchmark.claims import (
     ClaimValidationError,
     EvaluationContract,
     PolicyIdentity,
@@ -13,7 +18,7 @@ from retro_harness.benchmark_claims import (
     policy_identity_for,
     validate_claim,
 )
-from retro_harness.benchmark_runner import (
+from retro_harness.benchmark.runner import (
     BenchmarkAttemptResult,
     BenchmarkCase,
     BenchmarkPolicy,
@@ -30,21 +35,6 @@ from retro_harness.benchmark_runner import (
     run_seed_robustness,
     write_seed_robustness_report,
     zero_action_for_env,
-)
-from retro_harness.seed_campaign import (
-    SEED_CAMPAIGN_SCHEMA_VERSION,
-    SeedCampaignContractMismatch,
-    SeedCampaignError,
-    SeedCampaignInfraError,
-    SeedCampaignLedger,
-    SeedCampaignResult,
-    SeedCampaignRunner,
-    SeedExecutionRow,
-    SeedExecutionStatus,
-    atomic_write_json,
-    atomic_write_text,
-    config_contract_digest,
-    run_seed_campaign,
 )
 
 __all__ = [
@@ -84,3 +74,27 @@ __all__ = [
     "write_seed_robustness_report",
     "zero_action_for_env",
 ]
+
+_CAMPAIGN_EXPORTS = {
+    "SEED_CAMPAIGN_SCHEMA_VERSION",
+    "SeedCampaignContractMismatch",
+    "SeedCampaignError",
+    "SeedCampaignInfraError",
+    "SeedCampaignLedger",
+    "SeedCampaignResult",
+    "SeedCampaignRunner",
+    "SeedExecutionRow",
+    "SeedExecutionStatus",
+    "atomic_write_json",
+    "atomic_write_text",
+    "config_contract_digest",
+    "run_seed_campaign",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _CAMPAIGN_EXPORTS:
+        import retro_harness.seed_campaign as _seed_campaign
+
+        return getattr(_seed_campaign, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

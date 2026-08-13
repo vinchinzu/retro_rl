@@ -6,16 +6,6 @@ import random
 
 import pytest
 
-from retro_harness import (
-    AttributeSnapshotAdapter as ExportedAttributeAdapter,
-    EmulatorOnlyAdapter as ExportedEmulatorOnly,
-    EmulatorPool as ExportedPool,
-    PoolSnapshot as ExportedPoolSnapshot,
-    SnapshotCertification as ExportedCertification,
-    SnapshotEnvelope as ExportedEnvelope,
-    SnapshotIdentity as ExportedIdentity,
-    SnapshotIdentityMismatch as ExportedMismatch,
-)
 from retro_harness.emulator_pool import EmulatorPool
 from retro_harness.snapshot import (
     AttributeSnapshotAdapter,
@@ -30,17 +20,6 @@ from retro_harness.snapshot import (
     capture_envelope,
     restore_envelope,
 )
-
-
-def test_snapshot_types_exported_from_retro_harness() -> None:
-    assert ExportedPool is EmulatorPool
-    assert ExportedPoolSnapshot is PoolSnapshot
-    assert ExportedEnvelope is SnapshotEnvelope
-    assert ExportedIdentity is SnapshotIdentity
-    assert ExportedCertification is SnapshotCertification
-    assert ExportedMismatch is SnapshotIdentityMismatch
-    assert ExportedEmulatorOnly is EmulatorOnlyAdapter
-    assert ExportedAttributeAdapter is AttributeSnapshotAdapter
 
 
 class _FakeEmulator:

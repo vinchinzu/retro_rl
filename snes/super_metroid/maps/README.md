@@ -17,6 +17,14 @@
 - `room_problems.json` assigns one canonical development problem to every
   editor room, including entry/exit endpoints, capability gates, static
   collision waypoints, queues, and expected practice artifacts.
+- `maprando_room_catalog.json` / `maprando_room_names.json` — Map Rando /
+  sm-json-data canonical room names (261 rooms). Rebuild:
+  `uv run python snes/super_metroid/scripts/export/maprando_catalog.py`
+  (see `docs/RUN_TIMING_AND_SKILL_BANK.md`).
+- `maprando_tech_catalog.json` — full Map Rando tech tree (~242 skills) with
+  difficulty tiers + bot builder status. Rebuild:
+  `uv run python snes/super_metroid/scripts/export/maprando_tech_catalog.py --summary --builders`
+  (see `docs/TECH_TREE.md`).
 - `legacy/world_map.json` is the previous project's room-name/ID catalog.
 - `legacy/full_game_route.json` is an unverified objective-level full-game
   research route.

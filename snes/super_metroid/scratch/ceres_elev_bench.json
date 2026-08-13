@@ -1,0 +1,38 @@
+{
+  "command": "bench",
+  "hop_key": "0xDF45:0xDF8D->0x91F8:0x0000",
+  "state": "custom_integrations/SuperMetroid-Snes/scratch/ceres_elev_enter.state",
+  "ntsc_fps": 60.0988,
+  "before": {
+    "policy": "product_shaft_phase_0_14",
+    "success": false,
+    "timing": {
+      "frames": 2213,
+      "seconds": 36.823,
+      "clock": "00:36.88",
+      "ntsc_fps": 60.0988
+    },
+    "best_y": 532,
+    "notes": "Open-loop s2–s10 + idle 0/14. Timeout on tail-tank countdown phase."
+  },
+  "after": {
+    "policy": "platform_hop",
+    "success": false,
+    "timing": {
+      "frames": 1506,
+      "seconds": 25.059,
+      "clock": "00:25.10",
+      "ntsc_fps": 60.0988
+    },
+    "best_y": 412,
+    "notes": "Spin-hop 571 → 475 center land; third platform not yet."
+  },
+  "delta": {
+    "frames": -707,
+    "seconds": -11.764,
+    "clock": "-00:11.78",
+    "ntsc_fps": 60.0988
+  },
+  "winner": null,
+  "notes": "Same elev enter pin after tail-tank. Neither policy ships. Negative delta = after dies sooner/higher. wiki Ceres Elevator Room: platform hop."
+}

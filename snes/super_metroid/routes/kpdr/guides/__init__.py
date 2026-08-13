@@ -28,10 +28,14 @@ Runbook: ``docs/tasks/SM-SPEED-ICE-MOAT-HUMAN.md``. Partial legacy tape
 ``tasks/speed_to_ice_moat_human.json`` stops in Double Chamber — do not treat
 as full-path evidence.
 
-K6 **West Ocean post-Moat spark** human free-record: start
-``scratch/post_moat_west_ocean_spark.state`` (room ``0x93FE`` after pure Moat
-shinespark), route ``west-ocean-to-ws``. Coarse lower-path waypoints until
-human tape refines them.
+K6 **West Ocean → WS** product pure is dual GREEN
+(``play_west_ocean_over_ocean_spark`` / ``pure-ws``). Human free-record:
+
+* Optional WO practice: start ``scratch/post_moat_west_ocean_spark.state``
+  (``0x93FE``), route ``west-ocean-to-ws``.
+* **Ship work:** start ``scratch/post_west_ocean_ws_spark.state`` (``0xCA08``
+  ~(57,139) gs=8), route ``ws-entrance``. Multi-take:
+  ``practice_takes.py --segment ws-entrance``.
 """
 
 from __future__ import annotations
@@ -200,8 +204,7 @@ ROUTE_PRESETS: dict[str, tuple[RoomGuide, ...]] = {
         GUIDE_ICE_SNAKE,
         GUIDE_ICE_ROOM,
     ),
-    # K6: post-Moat shinespark West Ocean → Wrecked Ship (human free-record).
-    # Pure Moat spark is pin-only (rr-hhj); this is the next human tape.
+    # K6: post-Moat handoff West Ocean → Wrecked Ship (optional human; pure GREEN).
     "west-ocean-to-ws": (
         GUIDE_WEST_OCEAN,
         GUIDE_WS_ENTRANCE,
@@ -210,6 +213,9 @@ ROUTE_PRESETS: dict[str, tuple[RoomGuide, ...]] = {
         GUIDE_WEST_OCEAN,
         GUIDE_WS_ENTRANCE,
     ),
+    # K6: product WS pin after over-ocean spark — ship free-record start.
+    "ws-entrance": (GUIDE_WS_ENTRANCE,),
+    "wrecked-ship": (GUIDE_WS_ENTRANCE,),
 }
 
 
