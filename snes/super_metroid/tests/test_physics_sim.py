@@ -762,7 +762,7 @@ class TestGoldenFixtures:
             "frames": [".......r....", "b......r...."],
             "trace": [
                 {"frame": 1, "x": 102, "y": 200, "roomId": 37368},
-                {"frame": 2, "x": 104, "y": 200, "roomId": 37368},
+                {"frame": 2, "x": 104, "y": 195, "roomId": 37368},  # y=195 (jump)
             ],
         }
 
@@ -794,10 +794,15 @@ class TestGoldenFixtures:
         assert internal_result["frames"] == expected_internal["frames"]
         assert internal_result["inputs"] == expected_internal["inputs"]
 
-        # Validate smedit-tas-1 format matches fixture
+        # Validate smedit-tas-1 format matches fixture (compare wire keys only)
         smedit_result = traj.to_smedit_tas(
             start_state_name="LandingSite", rom_sha1=None
         )
         expected_smedit = fixture["response_smedit_tas_1"]
 
-        assert smedit_result == expected_smedit
+        # Compare only wire protocol keys (fixture has "description" for docs)
+        assert smedit_result["format"] == expected_smedit["format"]
+        assert smedit_result["meta"] == expected_smedit["meta"]
+        assert smedit_result["buttonOrder"] == expected_smedit["buttonOrder"]
+        assert smedit_result["frames"] == expected_smedit["frames"]
+        assert smedit_result["trace"] == expected_smedit["trace"]
