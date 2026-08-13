@@ -13,15 +13,17 @@ import numpy as np
 from retro_harness.ram_state import GameMode, GameState
 
 # Player / pose
-ADDR_PLAYER_STATE = 0x000E  # 0x08 walking, 0x0B dying, etc.
+ADDR_PLAYER_STATE = 0x000E  # GameEngineSubroutine: 0x08 walking, 0x0B dying, etc.
+ADDR_PLAYER_MOTION = 0x001D  # 0=grounded, 1=air / jump (smbdis Player_State)
 ADDR_PLAYER_FACING = 0x0033  # 1=right, 2=left
-ADDR_X_SPEED = 0x0057  # signed player horizontal speed (subpixels/frame scale)
+ADDR_X_SPEED = 0x0057  # signed player horizontal speed (pixels/frame high byte)
 ADDR_X_PAGE = 0x006D  # 256-pixel page
 ADDR_PLAYER_X = 0x0086  # offset within page (legacy name)
 ADDR_Y_SPEED = 0x009F  # signed player vertical speed
 ADDR_PLAYER_Y = 0x00CE
 ADDR_PLAYER_SCREEN_X = 0x03AD  # on-screen X
 ADDR_PLAYER_STATUS = 0x0756  # 0=small, 1=big, 2=fire
+ADDR_X_FORCE = 0x0705  # low byte of 16-bit X speed (accel accumulator)
 
 # Camera / scroll
 ADDR_SCREEN_PAGE = 0x071A  # screen edge page
