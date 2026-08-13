@@ -25,20 +25,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass
-from collections import Counter
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from retro_harness.actions import idle_action  # noqa: E402
-from retro_harness.env import make_env, read_state_bytes, write_state_bytes  # noqa: E402
-from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
-from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR  # noqa: E402
-from super_metroid.dev.common import place_samus  # noqa: E402
+from retro_harness.actions import idle_action
+from retro_harness.env import make_env, read_state_bytes, write_state_bytes
+from super_metroid.assist import UnlimitedResourcesAssist
+from super_metroid.combat.probe import ProbeSession
+from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR
+from super_metroid.dev.common import place_samus
 from super_metroid.routes.kpdr import (  # noqa: E402
     play_big_pink_bomb_to_walkway_edge,
     play_big_pink_clear_super_block,
@@ -57,26 +51,7 @@ from super_metroid.routes.kpdr import (  # noqa: E402
     play_super_room_collect,
     play_super_room_to_farming,
 )
-from super_metroid.ram import parse_state, write_wram_u16  # noqa: E402
-
-
-@dataclass
-class _Session:
-    env: object
-    assist: UnlimitedResourcesAssist
-    frame: int = 0
-
-    def __post_init__(self) -> None:
-        self.action_reasons: Counter[str] = Counter()
-        self.state = parse_state(self.env.get_ram(), frame=0)
-
-    def step(self, action, reason: str):
-        self.env.step(action)
-        self.frame += 1
-        self.state = parse_state(self.env.get_ram(), frame=self.frame)
-        self.assist.apply(self.env.data, self.state)
-        self.action_reasons[reason] += 1
-        return self.state
+from super_metroid.ram import write_wram_u16
 
 
 def main() -> None:
@@ -149,13 +124,13 @@ def main() -> None:
 
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     assist = UnlimitedResourcesAssist()
-    session: _Session | None = None
+    session: ProbeSession | None = None
     try:
         env.reset()
         env.em.set_state(read_state_bytes(args.source))
         for _ in range(5):
             env.step(idle_action())
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         result: dict[str, object] = {"developmentOnly": True}
 
         if args.to == "tunnel-west":

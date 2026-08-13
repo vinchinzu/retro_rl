@@ -9,7 +9,6 @@ uv run python snes/super_metroid/scripts/setup_rom.py
 uv run python snes/super_metroid/scripts/export/spore_spawn_plan.py
 uv run python snes/super_metroid/scripts/export/progression_map.py
 uv run python snes/super_metroid/scripts/record/continuous.py --to spore
-uv run python snes/super_metroid/scripts/verify/start_to_spore_spawn.py
 ```
 
 Use `--no-video` for a dry machine-report run. Current-energy and

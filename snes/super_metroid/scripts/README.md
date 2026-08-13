@@ -5,7 +5,6 @@
 | `record/` | Continuous power-on recordings (baselines) + guided human demos |
 | `verify/` | Offline report / graph checks on recordings |
 | `probe/` | Daily/dev CLIs (KPDR pure, bosses, route warps, room timer, post-Spore) |
-| `probe/archive/` | **Finished recon one-offs** (Bubble/Kraid/Parlor/shaft). Not continuous evidence — see `probe/archive/README.md` |
 | `export/` | Regenerate maps / path board / plans |
 | `room/` | Room-problem practice runner |
 | `scaffold_tip.py` | Pure-first tip extension scaffold (controller stub + residual + checklist) |

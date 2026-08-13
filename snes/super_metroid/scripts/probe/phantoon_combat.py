@@ -21,37 +21,30 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get("_SNES_IMPORT_ROOT", ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from retro_harness.env import make_env, read_state_bytes  # noqa: E402
-from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
-from super_metroid.combat.features import phantoon_catalog  # noqa: E402
-from super_metroid.combat.phantoon import (  # noqa: E402
+from super_metroid.assist import UnlimitedResourcesAssist
+from super_metroid.combat.features import phantoon_catalog
+from super_metroid.combat.phantoon import (
     ROOM_PHANTOON,
     WEAPON_SUPERS,
     PhantoonStrategy,
     play_phantoon_fight,
 )
-from super_metroid.dev.common import save_dev_state  # noqa: E402
-from super_metroid.dev.phantoon_dev import (  # noqa: E402
+from super_metroid.combat.probe import (
+    ProbeSession,
+    open_state_env,
+    resolve_named_state,
+    write_json_report,
+)
+from super_metroid.dev.common import save_dev_state
+from super_metroid.dev.phantoon_dev import (
     PHANTOON_DEFEATED_STATE,
     PHANTOON_ENTRY_STATE,
     phantoon_defeated,
     wrecked_ship_boss_bits,
 )
-from super_metroid.paths import (  # noqa: E402
-    GAME,
-    GAME_DIR,
-    INTEGRATION_DIR,
-    SCRATCH_STATE_DIR,
-)
-from super_metroid.ram import parse_state  # noqa: E402
+from super_metroid.paths import GAME_DIR, SCRATCH_STATE_DIR
 
 DEFAULT_ENTRY = SCRATCH_STATE_DIR / "ws_ship_human_end.state"
 DEFAULT_OUT = SCRATCH_STATE_DIR / "post_phantoon_defeated.state"
@@ -66,65 +59,18 @@ _NAMED_STATES: dict[str, Path] = {
 }
 
 
-class _Session:
-    """Minimal ControllerSession for combat probes."""
-
-    def __init__(self, env: object, assist: UnlimitedResourcesAssist) -> None:
-        self.env = env
-        self.assist = assist
-        self.frame = 0
-        self.action_reasons: Counter[str] = Counter()
-        self.state = parse_state(env.get_ram(), frame=0)  # type: ignore[attr-defined]
-
-    def step(self, action, reason: str):
-        self.env.step(action)  # type: ignore[attr-defined]
-        self.frame += 1
-        self.state = parse_state(self.env.get_ram(), frame=self.frame)  # type: ignore[attr-defined]
-        self.assist.apply(self.env.data, self.state)  # type: ignore[attr-defined]
-        self.action_reasons[reason] += 1
-        return self.state
-
-
 def _resolve_state(name: str) -> Path:
-    key = name.strip()
-    if key in _NAMED_STATES:
-        return _NAMED_STATES[key]
-    path = Path(key)
-    if path.suffix == ".state" or "/" in key or path.exists():
-        if not path.is_absolute():
-            for candidate in (
-                path,
-                GAME_DIR / path,
-                INTEGRATION_DIR / path.name,
-                SCRATCH_STATE_DIR / path.name,
-                GAME_DIR / "tasks" / path.name,
-            ):
-                if candidate.exists():
-                    return candidate
-        return path
-    for candidate in (
-        SCRATCH_STATE_DIR / f"{key}.state",
-        INTEGRATION_DIR / f"{key}.state",
-        GAME_DIR / "tasks" / f"{key}.state",
-    ):
-        if candidate.exists():
-            return candidate
-    return path
+    return resolve_named_state(name, _NAMED_STATES)
 
 
 def _open_env(state_path: Path):
-    if not state_path.exists():
-        raise FileNotFoundError(
-            f"Phantoon entry state not found: {state_path}\n"
+    return open_state_env(
+        state_path,
+        missing_hint=(
             "Record ship path: guided_human.py --from ws-entrance --name ws_ship_human\n"
             "Or use --state entry for dev_phantoon_entry."
-        )
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-    env.reset()
-    env.em.set_state(read_state_bytes(state_path))
-    for _ in range(4):
-        env.step([0] * 12)
-    return env, str(state_path)
+        ),
+    )
 
 
 def cmd_strategy(args: argparse.Namespace) -> int:
@@ -133,7 +79,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
     env, loaded = _open_env(state_path)
     assist = UnlimitedResourcesAssist()
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         if session.state.room_id != ROOM_PHANTOON:
             report = {
                 "command": "strategy",
@@ -143,7 +89,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
                 "room_id_hex": f"0x{session.state.room_id:04X}",
                 "notes": "Load a Phantoon-room entry state (0xCD13).",
             }
-            print(json.dumps(report, indent=2))
+            write_json_report(report)
             return 1
 
         entry = {
@@ -225,11 +171,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
                 "WS boss bit 0. Not continuous evidence until natural ship compose."
             ),
         }
-        text = json.dumps(report, indent=2)
-        print(text)
-        if args.report is not None:
-            args.report.parent.mkdir(parents=True, exist_ok=True)
-            args.report.write_text(text + "\n", encoding="utf-8")
+        write_json_report(report, args.report)
         return 0 if success else 1
     finally:
         env.close()

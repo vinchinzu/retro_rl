@@ -9,7 +9,6 @@ uv run python snes/super_metroid/scripts/setup_rom.py
 uv run python snes/super_metroid/scripts/import_legacy_assets.py
 uv run python snes/super_metroid/scripts/export/progression_map.py
 uv run python snes/super_metroid/scripts/record/continuous.py --to bombs --no-video
-uv run python snes/super_metroid/scripts/verify/start_to_bombs.py
 ```
 
 Use `--no-video` on the recorder for a dry machine-report run. Unlimited ammo

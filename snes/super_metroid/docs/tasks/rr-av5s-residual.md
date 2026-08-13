@@ -36,7 +36,7 @@ Not dual green Hellway. No STATUS. Parent **rr-dbu.8** stays open.
   thrash only when already near door
 - `routes/kpdr/data/red_to_hellway_human_top.json` — human top hop RLE extract
   (dev reference; open-loop desyncs from pure enemy phase)
-- `scripts/probe/red_top_gap_probe.py` — upper/peak capture + recipe sweep (dev)
+- Red upper/peak recipe sweep probe deleted; use `red_ice_climb.py` + product residual
 
 ### Geometry discoveries
 - Period WJ dual peaks **~y420** (89,420); phase8 LEFT stop=150 **loses** height

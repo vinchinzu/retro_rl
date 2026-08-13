@@ -33,10 +33,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES = Path(__file__).resolve().parents[3]
-for _p in (ROOT, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from super_metroid.paths import GAME_DIR  # noqa: E402
 

@@ -6,14 +6,9 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import sys
 
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 from super_metroid.paths import (  # noqa: E402
     FULL_ROOM_GRAPH_PATH,
     ROOM_PROBLEMS_PATH,

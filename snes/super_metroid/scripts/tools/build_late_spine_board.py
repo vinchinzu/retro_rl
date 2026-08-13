@@ -15,20 +15,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
 _GAME = Path(__file__).resolve().parents[2]
 _TASKS = _GAME / "tasks"
-for _p in (ROOT, _SNES_IMPORT_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
-from super_metroid.human_tape import extract_tape  # noqa: E402
+from super_metroid.human_tape import extract_tape
 
 # Boss / fight rooms: mode=combat. Big Boy is optional combat (long dwell).
 COMBAT_ROOM_IDS: frozenset[int] = frozenset(

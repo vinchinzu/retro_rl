@@ -23,15 +23,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import sys
 import urllib.request
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _SNES_IMPORT_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from super_metroid.paths import (  # noqa: E402
     SHARED_PRACTICE_ROM,

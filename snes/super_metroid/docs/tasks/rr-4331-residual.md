@@ -65,7 +65,7 @@ Ceres Station (first elev control → Landing), product `morph.json`:
 ### Residual risks
 - Live climb still short-hops off 571 (peak y=524) and sails off the ledge
 - Shared window is the contract; the 571→475 numbers still miss the land
-- Window GA (`ceres_elev_ga.py`) not run this session
+- Window GA was a one-off probe (deleted); tune `CERES_ELEV_HOPS` instead
 
 ### Next action (required)
 - **Next card ID:** rr-4331 (same) — finish elev leave from the pin

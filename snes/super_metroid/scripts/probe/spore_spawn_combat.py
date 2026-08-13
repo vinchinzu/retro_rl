@@ -17,21 +17,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from collections import Counter
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get("_SNES_IMPORT_ROOT", ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.env import make_env, read_state_bytes  # noqa: E402
-from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
-from super_metroid.combat.features import spore_spawn_catalog  # noqa: E402
-from super_metroid.combat.primitives import ensure_weapon  # noqa: E402
-from super_metroid.combat.spore_spawn import (  # noqa: E402
+from super_metroid.assist import UnlimitedResourcesAssist
+from super_metroid.combat.features import spore_spawn_catalog
+from super_metroid.combat.primitives import ensure_weapon
+from super_metroid.combat.probe import (
+    ProbeSession,
+    open_state_env,
+    resolve_named_state,
+    write_json_report,
+)
+from super_metroid.combat.spore_spawn import (
     LEDGE_Y_MIN,
     ROOM_SPORE_SPAWN,
     WEAPON_MISSILES,
@@ -43,9 +40,9 @@ from super_metroid.combat.spore_spawn import (  # noqa: E402
     play_spore_spawn_fight,
     seated,
 )
-from super_metroid.routes.controller_common import is_morph, unmorph  # noqa: E402
-from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR, SCRATCH_STATE_DIR  # noqa: E402
-from super_metroid.ram import parse_state, read_bank7e_wram  # noqa: E402
+from super_metroid.routes.controller_common import is_morph, unmorph
+from super_metroid.paths import GAME_DIR, SCRATCH_STATE_DIR
+from super_metroid.ram import read_bank7e_wram
 
 DEFAULT_ENTRY = (
     GAME_DIR / "tasks" / "full_start_v1_anchors" / "f015374_enter_0x9DC7_0x9DC7.state"
@@ -59,66 +56,15 @@ _NAMED_STATES: dict[str, Path] = {
 }
 
 
-class _Session:
-    """Minimal ControllerSession for combat probes."""
-
-    def __init__(self, env: object, assist: UnlimitedResourcesAssist) -> None:
-        self.env = env
-        self.assist = assist
-        self.frame = 0
-        self.action_reasons: Counter[str] = Counter()
-        self.state = parse_state(env.get_ram(), frame=0)  # type: ignore[attr-defined]
-
-    def step(self, action, reason: str):
-        self.env.step(action)  # type: ignore[attr-defined]
-        self.frame += 1
-        self.state = parse_state(self.env.get_ram(), frame=self.frame)  # type: ignore[attr-defined]
-        self.assist.apply(self.env.data, self.state)  # type: ignore[attr-defined]
-        self.action_reasons[reason] += 1
-        return self.state
-
-
 def _resolve_state(name: str) -> Path:
-    key = name.strip()
-    if key in _NAMED_STATES:
-        return _NAMED_STATES[key]
-    path = Path(key)
-    if path.suffix == ".state" or "/" in key or path.exists():
-        if not path.is_absolute():
-            for candidate in (
-                path,
-                GAME_DIR / path,
-                INTEGRATION_DIR / path.name,
-                SCRATCH_STATE_DIR / path.name,
-                GAME_DIR / "tasks" / path.name,
-                DEFAULT_ENTRY.parent / path.name,
-            ):
-                if candidate.exists():
-                    return candidate
-        return path
-    for candidate in (
-        SCRATCH_STATE_DIR / f"{key}.state",
-        INTEGRATION_DIR / f"{key}.state",
-        GAME_DIR / "tasks" / f"{key}.state",
-        DEFAULT_ENTRY.parent / f"{key}.state",
-    ):
-        if candidate.exists():
-            return candidate
-    return path
+    return resolve_named_state(name, _NAMED_STATES, extra_dirs=(DEFAULT_ENTRY.parent,))
 
 
 def _open_env(state_path: Path):
-    if not state_path.exists():
-        raise FileNotFoundError(f"Spore Spawn entry state not found: {state_path}")
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-    env.reset()
-    env.em.set_state(read_state_bytes(state_path))
-    for _ in range(4):
-        env.step([0] * 12)
-    return env, str(state_path)
+    return open_state_env(state_path, missing_hint="Spore Spawn entry state missing")
 
 
-def _snapshot(session: _Session) -> dict[str, object]:
+def _snapshot(session: ProbeSession) -> dict[str, object]:
     st = session.state
     return {
         "room_id_hex": f"0x{st.room_id:04X}",
@@ -140,7 +86,7 @@ def _snapshot(session: _Session) -> dict[str, object]:
     }
 
 
-def _wait_open_window(session: _Session, *, timeout: int) -> bool:
+def _wait_open_window(session: ProbeSession, *, timeout: int) -> bool:
     """Leave the seat on the first right-side open so we can close during the windup."""
     for _ in range(timeout):
         st = session.state
@@ -152,7 +98,7 @@ def _wait_open_window(session: _Session, *, timeout: int) -> bool:
     return mouth_open(session.state) and session.state.enemy0_x >= 120
 
 
-def _wait_window_closed(session: _Session, *, timeout: int = 400) -> None:
+def _wait_window_closed(session: ProbeSession, *, timeout: int = 400) -> None:
     """Idle until the just-fired open has left (avoid re-entering the same window)."""
     for _ in range(timeout):
         st = session.state
@@ -161,7 +107,7 @@ def _wait_window_closed(session: _Session, *, timeout: int = 400) -> None:
         session.step([0] * 12, "spore_wait_close")
 
 
-def _row(session: _Session, reason: str) -> dict[str, object]:
+def _row(session: ProbeSession, reason: str) -> dict[str, object]:
     st = session.state
     return {
         "frame": session.frame,
@@ -178,7 +124,7 @@ def _row(session: _Session, reason: str) -> dict[str, object]:
     }
 
 
-def _fire_trace(session: _Session) -> dict[str, object]:
+def _fire_trace(session: ProbeSession) -> dict[str, object]:
     """Wrap session.step for one window: min y, missile spends, HP chips."""
     min_y = session.state.samus_y
     min_y_xy = (session.state.samus_x, session.state.samus_y)
@@ -223,7 +169,7 @@ def _fire_trace(session: _Session) -> dict[str, object]:
     }
 
 
-def _one_window(session: _Session, *, wait: int) -> dict[str, object]:
+def _one_window(session: ProbeSession, *, wait: int) -> dict[str, object]:
     """Seat if needed, wait for the right-side open, fire, return the report."""
     strategy = SporeSpawnStrategy()
     if not seated(session.state):
@@ -300,7 +246,7 @@ def cmd_window(args: argparse.Namespace) -> int:
     env, loaded = _open_env(state_path)
     assist = UnlimitedResourcesAssist(unlimited_energy=False, unlimited_ammo=False)
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         entry = _snapshot(session)
         for _ in range(3):
             if seated(session.state):
@@ -411,7 +357,7 @@ def cmd_scan_drops(args: argparse.Namespace) -> int:
     env, loaded = _open_env(state_path)
     assist = UnlimitedResourcesAssist(unlimited_energy=False, unlimited_ammo=False)
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         _go_to_seat(session, SporeSpawnStrategy())
         from super_metroid.routes.controller_common import is_morph, unmorph
         from super_metroid.routes.runtime import hold
@@ -496,7 +442,7 @@ def cmd_scan_drops(args: argparse.Namespace) -> int:
         env.close()
 
 
-def _seat_once(session: _Session, *, hop_a: int) -> dict[str, object]:
+def _seat_once(session: ProbeSession, *, hop_a: int) -> dict[str, object]:
     """Walk to the hop band, short-hop, drift; return path + seated flag."""
     from super_metroid.routes.controller_common import ensure_morph, is_morph
     from super_metroid.routes.runtime import hold
@@ -582,7 +528,7 @@ def cmd_tune_hop(args: argparse.Namespace) -> int:
             env.em.set_state(pin)
             for _ in range(4):
                 env.step([0] * 12)
-            session = _Session(env, assist)
+            session = ProbeSession(env, assist)
             trials.append(_seat_once(session, hop_a=hop_a))
         report = {
             "command": "tune-hop",
@@ -602,7 +548,7 @@ def cmd_dump(args: argparse.Namespace) -> int:
     env, loaded = _open_env(state_path)
     assist = UnlimitedResourcesAssist(unlimited_energy=False, unlimited_ammo=False)
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         report = {
             "command": "dump",
             "state": loaded,
@@ -628,7 +574,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
         unlimited_ammo=args.assist,
     )
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         if session.state.room_id != ROOM_SPORE_SPAWN:
             print(
                 json.dumps(
