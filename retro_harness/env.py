@@ -38,6 +38,49 @@ def read_state_bytes(path: str | Path) -> bytes:
     return gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw
 
 
+def read_custom_state_bytes(
+    game_dir: str | Path,
+    game: str,
+    state_name: str | None,
+) -> bytes | None:
+    """Load custom-integration ``*.state`` bytes, or None if not applicable.
+
+    No-ops for missing / ``NONE`` / ``none`` names and absent files. Corrupt or
+    unreadable files return None (``OSError`` / ``EOFError`` only); other errors
+    propagate.
+    """
+    if not state_name or state_name in ("NONE", "none"):
+        return None
+    path = state_path(game_dir, game, state_name)
+    if not path.is_file():
+        return None
+    try:
+        return read_state_bytes(path)
+    except (OSError, EOFError):
+        return None
+
+
+def resync_custom_state(
+    env: Any,
+    game_dir: str | Path,
+    game: str,
+    state_name: str | None,
+) -> bool:
+    """Re-apply a custom start state after reset to drop the free frame.
+
+    stable-retro advances one blank frame on load/reset. Built-in package
+    states are fine (play + verify both see it), but mid-session extracts used
+    as custom start states need a re-apply so exact replays match.
+
+    Returns True when state bytes were loaded and applied via ``env.em.set_state``.
+    """
+    data = read_custom_state_bytes(game_dir, game, state_name)
+    if data is None:
+        return False
+    env.em.set_state(data)
+    return True
+
+
 def write_state_bytes(path: str | Path, state_data: bytes) -> Path:
     """Write emulator state bytes in the repository's gzip state format."""
 

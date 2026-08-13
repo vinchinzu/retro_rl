@@ -1,0 +1,153 @@
+{
+  "command": "bench",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_ridley_enter.state",
+  "before": {
+    "policy": "wait",
+    "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_ridley_enter.state",
+    "success": true,
+    "entry": {
+      "room_id_hex": "0xE0B5",
+      "samus_x": 53,
+      "samus_y": 142,
+      "pose": 41,
+      "health": 99,
+      "max_health": 99,
+      "timer_type": 0,
+      "escape_timer_seconds": 0,
+      "enemy0_x": 186,
+      "enemy0_y": 169,
+      "enemy0_hp": 32767,
+      "enemy0_spritemap": "0xE983",
+      "invuln": 0,
+      "knockback_timer": 0,
+      "game_state": 8
+    },
+    "fight": {
+      "start_frame": 0,
+      "end_frame": 3212,
+      "action_frames": 3212,
+      "seconds": 53.445,
+      "clock": "00:53.53",
+      "ntsc_fps": 60.0988,
+      "policy": "wait",
+      "start_health": 99,
+      "end_health": 23,
+      "hits": 8,
+      "hit_frames": [
+        1105,
+        1310,
+        1422,
+        1604,
+        1805,
+        2026,
+        2407,
+        2593
+      ],
+      "timer_type": 3,
+      "escape_timer_seconds": 0,
+      "final_x": 53,
+      "final_y": 187,
+      "outcome": "ceres_ridley_countdown"
+    },
+    "final": {
+      "room_id_hex": "0xE0B5",
+      "samus_x": 53,
+      "samus_y": 187,
+      "pose": 1,
+      "health": 23,
+      "max_health": 99,
+      "timer_type": 3,
+      "escape_timer_seconds": 0,
+      "enemy0_x": 224,
+      "enemy0_y": 65344,
+      "enemy0_hp": 32767,
+      "enemy0_spritemap": "0xE983",
+      "invuln": 0,
+      "knockback_timer": 0,
+      "game_state": 8
+    },
+    "timing": {
+      "frames": 3212,
+      "seconds": 53.445,
+      "clock": "00:53.53",
+      "ntsc_fps": 60.0988
+    }
+  },
+  "after": {
+    "policy": "tail_tank",
+    "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_ridley_enter.state",
+    "success": true,
+    "entry": {
+      "room_id_hex": "0xE0B5",
+      "samus_x": 53,
+      "samus_y": 142,
+      "pose": 41,
+      "health": 99,
+      "max_health": 99,
+      "timer_type": 0,
+      "escape_timer_seconds": 0,
+      "enemy0_x": 186,
+      "enemy0_y": 169,
+      "enemy0_hp": 32767,
+      "enemy0_spritemap": "0xE983",
+      "invuln": 0,
+      "knockback_timer": 0,
+      "game_state": 8
+    },
+    "fight": {
+      "start_frame": 0,
+      "end_frame": 1936,
+      "action_frames": 1936,
+      "seconds": 32.214,
+      "clock": "00:32.27",
+      "ntsc_fps": 60.0988,
+      "policy": "tail_tank",
+      "start_health": 99,
+      "end_health": 24,
+      "hits": 5,
+      "hit_frames": [
+        606,
+        702,
+        798,
+        901,
+        1302
+      ],
+      "timer_type": 3,
+      "escape_timer_seconds": 0,
+      "final_x": 200,
+      "final_y": 187,
+      "outcome": "ceres_ridley_countdown"
+    },
+    "final": {
+      "room_id_hex": "0xE0B5",
+      "samus_x": 200,
+      "samus_y": 187,
+      "pose": 1,
+      "health": 24,
+      "max_health": 99,
+      "timer_type": 3,
+      "escape_timer_seconds": 0,
+      "enemy0_x": 172,
+      "enemy0_y": 65344,
+      "enemy0_hp": 32767,
+      "enemy0_spritemap": "0xE983",
+      "invuln": 0,
+      "knockback_timer": 0,
+      "game_state": 8
+    },
+    "timing": {
+      "frames": 1936,
+      "seconds": 32.214,
+      "clock": "00:32.27",
+      "ntsc_fps": 60.0988
+    }
+  },
+  "delta": {
+    "frames": -1276,
+    "seconds": -21.232,
+    "clock": "-00:21.27",
+    "ntsc_fps": 60.0988
+  },
+  "winner": "tail_tank",
+  "notes": "Same enter pin. Negative delta = tail_tank is faster. wiki.supermetroid.run/Ridley#Ceres_Station: five tail hits."
+}

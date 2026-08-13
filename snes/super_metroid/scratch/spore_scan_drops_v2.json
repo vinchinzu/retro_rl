@@ -1,0 +1,42 @@
+{
+  "command": "scan-drops",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/full_start_v1_anchors/f015374_enter_0x9DC7_0x9DC7.state",
+  "opened": true,
+  "fire": {
+    "shots": 2,
+    "min_y": 583,
+    "min_y_xy": [
+      210,
+      583
+    ],
+    "climbed": false
+  },
+  "baseline_missiles": 8,
+  "final_missiles": 8,
+  "hits": [],
+  "hit_count": 0,
+  "collected": 0,
+  "seen_proj_ids": [
+    "0xDE6C",
+    "0xDE7A",
+    "0xDE88"
+  ],
+  "final": {
+    "room_id_hex": "0x9DC7",
+    "samus_x": 21,
+    "samus_y": 683,
+    "pose": 42,
+    "health": 75,
+    "missiles": 8,
+    "max_missiles": 10,
+    "selected_item": 1,
+    "enemy0_hp": 760,
+    "enemy0_x": 70,
+    "enemy0_y": 589,
+    "enemy0_spritemap": "0xEE6F",
+    "mouth_open": false,
+    "seated": false,
+    "phase": "ordinary_gameplay",
+    "pickups": []
+  }
+}

@@ -497,8 +497,20 @@ def save_raw_seed(
 
 
 def load_raw_frames(path: Path | str) -> list[list[int]]:
-    """Load raw button frames from a recording / hillclimb JSON."""
+    """Load raw button frames from a recording / hillclimb JSON.
+
+    Resolves companion ``*_raw.json`` (same convention as
+    :func:`retro_harness.platformer.bk2_extract.load_raw_buttons`) so play
+    recordings that split indices and raw pads still load for trim/analyze.
+    """
     path = Path(path)
+    # Companion raw file first (manual play writes recording_N.json + _raw.json)
+    raw_path = path.with_name(path.stem + "_raw.json")
+    if raw_path.exists():
+        data = json.loads(raw_path.read_text(encoding="utf-8"))
+        if "raw_buttons" in data:
+            return clone_frames(data["raw_buttons"])
+
     data = json.loads(path.read_text(encoding="utf-8"))
     if "raw_buttons" in data:
         return clone_frames(data["raw_buttons"])
@@ -510,7 +522,8 @@ def load_raw_frames(path: Path | str) -> list[list[int]]:
         return frames
     if "actions" in data:
         raise ValueError(
-            f"{path} has action indices only; convert with action_index_to_buttons first"
+            f"{path} has action indices only and no companion "
+            f"{raw_path.name}; re-record with play or pass the _raw.json"
         )
     raise ValueError(f"no raw_buttons/segments in {path}")
 

@@ -79,10 +79,19 @@ from super_metroid.human_tape.product_chain import (
     format_board_summary,
     write_product_chain_board,
 )
+from super_metroid.human_tape.kpdr_splits import (
+    KPDR_ANY_SPLITS,
+    MB_ESCAPE_TAIL,
+    build_kpdr_split_rows,
+    format_kpdr_split_table,
+    fmt_tracker,
+)
 from super_metroid.human_tape.pb_board import (
     PbBoard,
     format_pb_board_table,
     materialize_pb_board,
+    milestone_hits,
+    segment_splits,
     pb_board_path,
 )
 from super_metroid.human_tape.rta_clock import (
@@ -137,8 +146,14 @@ __all__ = [
     "lockstep_scan",
     "match_anchor",
     "materialize_lockstep_mid",
+    "KPDR_ANY_SPLITS",
+    "MB_ESCAPE_TAIL",
+    "build_kpdr_split_rows",
+    "format_kpdr_split_table",
+    "fmt_tracker",
     "materialize_pb_board",
     "materialize_stitch",
+    "milestone_hits",
     "parse_items_value",
     "parse_room_id",
     "pb_board_path",
@@ -154,6 +169,7 @@ __all__ = [
     "rezero_report_to_ceres",
     "rta_fmt_time",
     "run_hop_replay",
+    "segment_splits",
     "segments_dir_for",
     "settle_room_hops",
     "stitch_task_anchors",

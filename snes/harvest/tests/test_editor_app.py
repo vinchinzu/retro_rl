@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor, QImage, QPixmap
 from PySide6.QtWidgets import QApplication
 
 import harvest.tools.editor_app as editor_app
+import harvest.tools.editor_canvas as editor_canvas
 from harvest.core.npc_catalog import GOBJ_INITIALIZED, GOBJ_STRUCT_BASE, GOBJ_STRUCT_STRIDE
 from harvest.tools.editor_app import (
     ADDR_MAP,
@@ -234,8 +235,10 @@ class EditorWindowSnapshotTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self._cache_tmp = tempfile.TemporaryDirectory()
-        self._old_twin_cache_dir = editor_app.TWIN_CACHE_DIR
-        editor_app.TWIN_CACHE_DIR = Path(self._cache_tmp.name)
+        self._old_twin_cache_dir = editor_canvas.TWIN_CACHE_DIR
+        cache_dir = Path(self._cache_tmp.name)
+        editor_canvas.TWIN_CACHE_DIR = cache_dir
+        editor_app.TWIN_CACHE_DIR = cache_dir
 
     def tearDown(self) -> None:
         if hasattr(self, "_window"):
@@ -244,6 +247,7 @@ class EditorWindowSnapshotTests(unittest.TestCase):
             self._window._emu_panel.close_session()
             self._window.close()
             self.app.processEvents()
+        editor_canvas.TWIN_CACHE_DIR = self._old_twin_cache_dir
         editor_app.TWIN_CACHE_DIR = self._old_twin_cache_dir
         self._cache_tmp.cleanup()
 
@@ -383,8 +387,10 @@ class EditorWindowEmulatorTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self._cache_tmp = tempfile.TemporaryDirectory()
-        self._old_twin_cache_dir = editor_app.TWIN_CACHE_DIR
-        editor_app.TWIN_CACHE_DIR = Path(self._cache_tmp.name)
+        self._old_twin_cache_dir = editor_canvas.TWIN_CACHE_DIR
+        cache_dir = Path(self._cache_tmp.name)
+        editor_canvas.TWIN_CACHE_DIR = cache_dir
+        editor_app.TWIN_CACHE_DIR = cache_dir
 
     def tearDown(self) -> None:
         if hasattr(self, "_window"):
@@ -393,6 +399,7 @@ class EditorWindowEmulatorTests(unittest.TestCase):
             self._window._emu_panel.close_session()
             self._window.close()
             self.app.processEvents()
+        editor_canvas.TWIN_CACHE_DIR = self._old_twin_cache_dir
         editor_app.TWIN_CACHE_DIR = self._old_twin_cache_dir
         self._cache_tmp.cleanup()
 

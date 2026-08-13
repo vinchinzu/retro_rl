@@ -37,7 +37,10 @@ class PhantoonStrategy:
     jump_period: int = 48
     fire_period: int = 3
     max_fight_frames: int = 12_000
-    weapon: int = WEAPON_MISSILES
+    # After body HP 0, wait this many frames for Wrecked Ship boss bit 0.
+    boss_bit_grace_frames: int = 1_200
+    # Supers land reliable open-eye damage from human entry pins.
+    weapon: int = WEAPON_SUPERS
 
 
 @dataclass(frozen=True)
@@ -125,11 +128,15 @@ def play_phantoon_fight(
     session: ControllerSession,
     *,
     strategy: PhantoonStrategy = PhantoonStrategy(),
+    require_boss_bit: bool = True,
 ) -> PhantoonEvidence:
-    """Fight Phantoon until HP zero, the boss bit, or a bounded timeout.
+    """Fight Phantoon until HP zero + boss bit (or body-only / timeout).
 
     The session must already be in room ``0xCD13``. This is developmentOnly
     evidence until the room is reached naturally from the continuous chain.
+
+    After body HP hits 0, continue idling through the death animation until
+    Wrecked Ship boss bit 0 sets (or ``boss_bit_grace_frames`` elapses).
     """
     catalog = phantoon_catalog()
     start = session.frame
@@ -156,14 +163,24 @@ def play_phantoon_fight(
         if boss_defeated_in_state(state, catalog):
             boss_bit_frame = session.frame
             break
-        if body_zero_frame is not None:
-            break
 
-        names = fight_phantoon_action(state, index, strategy)
-        if names:
-            hold(session, 1, *names, reason="fight_phantoon")
+        body_dead = body_zero_frame is not None
+        if body_dead:
+            # Death anim: idle until boss bit (do not early-exit on HP 0 alone).
+            if (
+                require_boss_bit
+                and session.frame - body_zero_frame > strategy.boss_bit_grace_frames
+            ):
+                break
+            if not require_boss_bit:
+                break
+            hold(session, 1, reason="phantoon_death_anim")
         else:
-            hold(session, 1, reason="fight_phantoon_idle")
+            names = fight_phantoon_action(state, index, strategy)
+            if names:
+                hold(session, 1, *names, reason="fight_phantoon")
+            else:
+                hold(session, 1, reason="fight_phantoon_idle")
 
         post = session.state
         next_phase = phantoon_phase(post)
@@ -179,7 +196,6 @@ def play_phantoon_fight(
             min_hp = 0
         if boss_bit_frame is None and boss_defeated_in_state(post, catalog):
             boss_bit_frame = session.frame
-        if boss_bit_frame is not None or body_zero_frame is not None:
             break
         prev_hp = hp
 

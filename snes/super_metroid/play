@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# Human free-record (guided_human). Full buttons + anchors + materialize + bank.
+# Default: true power-on (title/intro → Ceres → Zebes), name full_start_v1.
+#
+# Product path: record segments → hop bodies → dual-green hop-replay --promote-bank
+# → skill bank → hill-climb one hop → compose pin→body → autopilot skills.
+#
+# Usage (from snes/super_metroid/):
+#   ./play                         # power-on → full_start_v1
+#   ./play morph                   # Morph item seam (0x0004) — continue full_start_v1
+#   ./play bomb                    # Bombs item seam (0x1004) — continue post-BT
+#   ./play supers                  # Spore Super pack seam — continue post-SS
+#   ./play hj                      # Hi Jump item seam (0x1104) — continue post-HJ
+#   ./play --cut-pause [task]      # drop pause-menu freeze + trailing idle, reseam
+#   ./play morph full_start_v1     # same (archives prior full_start_v1 first)
+#   ./play resume                  # Big Pink pin; archives prior full_start_v1 tape
+#   ./play varia full_start_v1     # Varia pickup pin — continue the full run
+#   ./play bubble-human full_start_v1  # Bubble Mountain end (items 0x1105)
+#   ./play bubble-save full_start_v1   # Bubble Save 0xB0DD (items 0x1105)
+#   ./play bat-cave full_start_v1      # Bat Cave after Bubble climb — continue
+#   ./play wave full_start_v1          # Wave collect 0xADDE — continue to Ice
+#   ./play alpha-pb full_start_v1      # Alpha PB 0xA3AE — continue to Moat/WS
+#   ./play gravity full_start_v1       # Gravity Suit Room 0xCE40 (0x3125) — leave/return
+#   ./play post-gravity full_start_v1  # Caterpillar after Gravity return — Grapple/Maridia
+#   ./play grapple full_start_v1       # Grapple Beam Room 0xAC2B (0x7125) — leave/return
+#   ./play main-street full_start_v1   # Main Street 0xCFC9 (0x7125) — continue Maridia
+#   ./play plasma-beam full_start_v1   # Plasma Room 0xD2AA beams 0x100F — continue post-Plasma
+#   ./play gt full_start_v1            # Golden Torizo 0xB283 left door (0x7325 / 0x100F)
+#   ./play metal-pirates full_start_v1 # Metal Pirates 0xB62B right door (0x732F / Screw)
+#   ./play post-ridley full_start_v1   # Ridley Tank 0xB698 post fight + tank (0x732F)
+#   # WJ gym: scripts/probe/bubble_save_practice.py
+#   # DC→Wave gym (re-stitch later): practice_takes --segment dc-missile-wave
+#   ./play parlor my_take          # custom start + task name under tasks/
+#   ./play --pb full_start_v1          # RTA/PB board (timing stitch of segments)
+#   ./play --list                  # start presets + routes
+#   ./play --pb [task]             # persistent PB board (avg/sd/Δ + product RTA)
+#   ./play --compose [task]        # hop-compose from live pins (dual green)
+#   ./play --replay-hop [task] [N] # dual-green hop-replay (default last hop)
+#
+# Timer: any% KPDR from first Ceres control (not title). Segment seams keep the
+# full-run clock via archived power-on → morph → bomb joins.
+#
+# F5 / F1     save recording + materialize + hop bodies + bank + exit
+# F6          mid-run pin (does not stop)
+# SELECT+R2   checkpoint save (bare R2 ignored) — re-pin mid attempt
+# SELECT+L2   checkpoint load (bare L2 ignored) — boot pin seeded as CP1
+# ` / L+R+SELECT  toggle reactive room autopilot from the current live frame
+# ESC / Q     cancel without saving (drops this segment — F5 keeps stitchable tape)
+#
+# Assist (practice): ammo top-up at 0; energy at 0 or ≤40 (death-save floor).
+#   Extra args pass through (e.g. --assist-full, --no-assist).
+#
+# Same --name archives prior take under tasks/<name>_segments/sN/ (immutable).
+set -euo pipefail
+
+GAME="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$GAME/../.." && pwd)"
+cd "$ROOT"
+
+DEFAULT_START="start"       # power-on (no savestate)
+DEFAULT_NAME="full_start_v1"
+
+if [[ "${1:-}" == "--list" || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  exec uv run python snes/super_metroid/scripts/record/guided_human.py "$@"
+fi
+
+if [[ "${1:-}" == "--pb" || "${1:-}" == "--table" ]]; then
+  TASK="${2:-$DEFAULT_NAME}"
+  TASK_PATH="snes/super_metroid/tasks/${TASK}.json"
+  if [[ ! -f "$TASK_PATH" && -f "$TASK" ]]; then
+    TASK_PATH="$TASK"
+  fi
+  # Persistent PB board: all segment samples → PB/avg/sd/Δ; product RTA chain.
+  exec uv run python -c "
+from super_metroid.human_tape.pb_board import materialize_pb_board
+materialize_pb_board('$TASK_PATH', write=True, print_table=True)
+"
+fi
+
+if [[ "${1:-}" == "--compose" ]]; then
+  TASK="${2:-$DEFAULT_NAME}"
+  TASK_PATH="snes/super_metroid/tasks/${TASK}.json"
+  if [[ ! -f "$TASK_PATH" && -f "$TASK" ]]; then
+    TASK_PATH="$TASK"
+  fi
+  shift
+  shift || true
+  exec uv run python snes/super_metroid/scripts/tools/compose_human_hops.py \
+    "$TASK_PATH" --dual "$@"
+fi
+
+if [[ "${1:-}" == "--replay-hop" || "${1:-}" == "--replay" ]]; then
+  TASK="${2:-$DEFAULT_NAME}"
+  HOP="${3:-}"
+  TASK_PATH="snes/super_metroid/tasks/${TASK}.json"
+  if [[ ! -f "$TASK_PATH" && -f "$TASK" ]]; then
+    TASK_PATH="$TASK"
+  fi
+  if [[ -z "$HOP" ]]; then
+    # Default: last hop (e.g. Bomb Torizo on morph→bombs take)
+    exec uv run python snes/super_metroid/scripts/tools/replay_human_hop.py \
+      "$TASK_PATH" --dual --promote-bank
+  fi
+  exec uv run python snes/super_metroid/scripts/tools/replay_human_hop.py \
+    "$TASK_PATH" --hop "$HOP" --dual --promote-bank
+fi
+
+if [[ "${1:-}" == "--cut-pause" || "${1:-}" == "--cut" ]]; then
+  TASK="${2:-$DEFAULT_NAME}"
+  shift
+  shift || true
+  # Remaining args passed through (--pin supers, --dry-run, --bank, …)
+  exec uv run python snes/super_metroid/scripts/tools/cut_pause_tape.py \
+    "$TASK" "$@"
+fi
+
+START="$DEFAULT_START"
+NAME="$DEFAULT_NAME"
+EXTRA=()
+
+if [[ $# -ge 1 && "${1:0:1}" != "-" ]]; then
+  START="$1"
+  shift
+fi
+if [[ $# -ge 1 && "${1:0:1}" != "-" ]]; then
+  NAME="$1"
+  shift
+fi
+EXTRA=("$@")
+
+echo "[play] --from $START --name $NAME --no-guide --bank${EXTRA[*]:+ ${EXTRA[*]}}"
+exec uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from "$START" \
+  --name "$NAME" \
+  --no-guide \
+  --bank \
+  "${EXTRA[@]}"

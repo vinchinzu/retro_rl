@@ -659,171 +659,23 @@ def run_seed_campaign(
 def _config_from_record(record: dict[str, Any]) -> SeedRobustnessConfig:
     """Rebuild a SeedRobustnessConfig from its serialized record.
 
-    Only the fields required for digest equality and resume ordering are
-    restored. Identity objects are reconstructed from digests so a resumed
-    campaign continues to bind the same published contract.
+    Delegates to :meth:`SeedRobustnessConfig.from_record`, which prefers an
+    embedded ``contract`` and only falls back to flat identity fields for
+    legacy ledgers that omit it.
     """
-    from retro_harness.benchmark_claims import StartIdentity
-    from retro_harness.audit import RuntimeObservationClass
-
-    seeds = record.get("seeds")
-    if not isinstance(seeds, (list, tuple)) or not seeds:
-        raise SeedCampaignError("ledger config.seeds must be a non-empty sequence")
-    start_identity = None
-    start_record = record.get("start_identity")
-    if isinstance(start_record, dict) and record.get("start_identity_scope") == "shared":
-        start_identity = StartIdentity(
-            str(start_record.get("start_state", "ledger-start")),
-            digest=start_record.get("digest") or record.get("start_identity_digest"),
-            rom_sha256=start_record.get("rom_sha256"),
-            state_sha256=start_record.get("state_sha256"),
-            metadata=start_record.get("metadata") or {},
-        )
-    policy_identity = None
-    policy_record = record.get("policy_identity")
-    if isinstance(policy_record, dict) and record.get("policy_identity_scope") == "shared":
-        policy_identity = PolicyIdentity(
-            str(policy_record.get("name", "ledger-policy")),
-            digest=policy_record.get("digest") or record.get("policy_identity_digest"),
-            version=policy_record.get("version"),
-            source=policy_record.get("source"),
-            metadata=policy_record.get("metadata") or {},
-        )
-    contract = None
-    contract_record = record.get("contract")
-    if isinstance(contract_record, dict):
-        # Prefer the embedded full contract when present.
-        from retro_harness.benchmark_claims import EvaluationContract as EC
-
-        c_start = contract_record.get("start_identity") or {}
-        c_policy = contract_record.get("policy_identity") or {}
-        contract = EC(
-            runtime_observation_class=contract_record.get("runtime_observation_class"),
-            intervention_class=contract_record.get("intervention_class"),
-            start_identity=StartIdentity(
-                str(c_start.get("start_state", "contract-start")),
-                digest=c_start.get("digest")
-                or contract_record.get("start_identity_digest"),
-                rom_sha256=c_start.get("rom_sha256"),
-                state_sha256=c_start.get("state_sha256"),
-                metadata=c_start.get("metadata") or {},
-            ),
-            policy_identity=PolicyIdentity(
-                str(c_policy.get("name", "contract-policy")),
-                digest=c_policy.get("digest")
-                or contract_record.get("policy_identity_digest"),
-                version=c_policy.get("version"),
-                source=c_policy.get("source"),
-                metadata=c_policy.get("metadata") or {},
-            ),
-            benchmark_id=str(contract_record.get("benchmark_id", "")),
-            objective=str(contract_record.get("objective", "")),
-            assist_contract_path=contract_record.get("assist_contract_path"),
-            assist_contract_digest=contract_record.get("assist_contract_digest"),
-            assist_mode=contract_record.get("assist_mode"),
-            metadata=contract_record.get("metadata") or {},
-        )
-    return SeedRobustnessConfig(
-        generator=str(record["generator"]),
-        generator_version=str(record["generator_version"]),
-        logic=str(record["logic"]),
-        goal=str(record["goal"]),
-        seeds=tuple(seeds),
-        budget=int(record["budget"]),
-        success_threshold=int(record["success_threshold"]),
-        runtime_observation_class=RuntimeObservationClass.from_value(
-            record["runtime_observation_class"]
-        ),
-        intervention_class=InterventionClass.from_value(record["intervention_class"]),
-        metadata=dict(record.get("metadata") or {}),
-        start_identity=start_identity,
-        policy_identity=policy_identity,
-        assist_contract_path=record.get("assist_contract_path"),
-        assist_contract_digest=record.get("assist_contract_digest"),
-        assist_mode=record.get("assist_mode"),
-        contract=contract,
-    )
+    try:
+        return SeedRobustnessConfig.from_record(record)
+    except (TypeError, ValueError, KeyError) as exc:
+        raise SeedCampaignError(str(exc)) from exc
 
 
 def _seed_result_from_record(record: dict[str, Any]) -> SeedAttemptResult:
     """Rehydrate a SeedAttemptResult from a ledger/campaign row."""
-    from retro_harness.audit import RuntimeObservationClass
-    from retro_harness.benchmark_claims import StartIdentity
+    try:
+        return SeedAttemptResult.from_record(record)
+    except (TypeError, ValueError, KeyError) as exc:
+        raise SeedCampaignError(str(exc)) from exc
 
-    audit_record = record.get("attempt_audit")
-    audit = None
-    if isinstance(audit_record, dict):
-        from retro_harness.audit import AuditCapabilities
-
-        caps = audit_record.get("audit_capabilities")
-        capabilities = (
-            AuditCapabilities.from_value(caps) if caps is not None else None
-        )
-        audit = AttemptAudit(
-            ram_writes=audit_record.get("ram_writes"),
-            mid_run_loads=audit_record.get("mid_run_loads"),
-            assists=audit_record.get("assists"),
-            start_identity_digest=audit_record.get("start_identity_digest"),
-            policy_identity_digest=audit_record.get("policy_identity_digest"),
-            runtime_observation_class=audit_record.get("runtime_observation_class"),
-            intervention_class=audit_record.get("intervention_class"),
-            capabilities=capabilities,
-        )
-    contract = None
-    contract_record = record.get("contract")
-    if isinstance(contract_record, dict):
-        c_start = contract_record.get("start_identity") or {}
-        c_policy = contract_record.get("policy_identity") or {}
-        contract = EvaluationContract(
-            runtime_observation_class=contract_record.get("runtime_observation_class"),
-            intervention_class=contract_record.get("intervention_class"),
-            start_identity=StartIdentity(
-                str(c_start.get("start_state", f"seed:{record.get('seed')}")),
-                digest=c_start.get("digest")
-                or contract_record.get("start_identity_digest"),
-            ),
-            policy_identity=PolicyIdentity(
-                str(c_policy.get("name", "seed-policy")),
-                digest=c_policy.get("digest")
-                or contract_record.get("policy_identity_digest"),
-                version=c_policy.get("version"),
-                source=c_policy.get("source"),
-                metadata=c_policy.get("metadata") or {},
-            ),
-            benchmark_id=str(contract_record.get("benchmark_id", "")),
-            objective=str(contract_record.get("objective", "")),
-            assist_contract_path=contract_record.get("assist_contract_path"),
-            assist_contract_digest=contract_record.get("assist_contract_digest"),
-            assist_mode=contract_record.get("assist_mode"),
-            metadata=contract_record.get("metadata") or {},
-        )
-    return SeedAttemptResult(
-        seed=record["seed"],
-        success=bool(record.get("success")),
-        frames=int(record.get("frames", 0)),
-        terminal_milestone=record.get("terminal_milestone"),
-        failure_mode=record.get("failure_mode"),
-        assists=record.get("assists") or {},
-        runtime_observation_class=RuntimeObservationClass.from_value(
-            record.get("runtime_observation_class", "Bronze")
-        ),
-        intervention_class=InterventionClass.from_value(
-            record.get("intervention_class", "Clean")
-        ),
-        start_identity_digest=record.get("start_identity_digest"),
-        policy_identity_digest=record.get("policy_identity_digest"),
-        assist_contract_path=record.get("assist_contract_path"),
-        assist_contract_digest=record.get("assist_contract_digest"),
-        assist_mode=record.get("assist_mode"),
-        ram_writes=record.get("ram_writes")
-        if record.get("ram_writes") is not None
-        else 0,
-        mid_run_loads=record.get("mid_run_loads")
-        if record.get("mid_run_loads") is not None
-        else 0,
-        attempt_audit=audit,
-        contract=contract,
-    )
 
 
 __all__ = [

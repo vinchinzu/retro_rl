@@ -12,6 +12,8 @@ a side tip only. ★ Next pure: **Speed return → Bubble** (`rr-g4i`).
 continuous fold; 100% board scaffold
 ([routes/TRACK_100.md](routes/TRACK_100.md)).
 
+**Practice ROM + repertoire** (preset menus/saves): [PRACTICE_ROM.md](PRACTICE_ROM.md).
+
 ## Top-level status board
 
 | Mark | Meaning |

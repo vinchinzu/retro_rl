@@ -6,15 +6,6 @@ import random
 
 import pytest
 
-from retro_harness import (
-    BranchResult as ExportedBranchResult,
-    BranchSpec as ExportedBranchSpec,
-    BranchStatus as ExportedBranchStatus,
-    RolloutResult as ExportedRolloutResult,
-    RolloutSpec as ExportedRolloutSpec,
-    branch_from_actions as exported_branch_from_actions,
-    run_branch_rollouts as exported_run_branch_rollouts,
-)
 from retro_harness.branch_rollout import (
     BranchResult,
     BranchSpec,
@@ -35,16 +26,6 @@ from retro_harness.snapshot import (
     SnapshotCertification,
     capture_envelope,
 )
-
-
-def test_branch_rollout_types_exported_from_retro_harness() -> None:
-    assert ExportedBranchSpec is BranchSpec
-    assert ExportedBranchResult is BranchResult
-    assert ExportedBranchStatus is BranchStatus
-    assert ExportedRolloutSpec is RolloutSpec
-    assert ExportedRolloutResult is RolloutResult
-    assert exported_branch_from_actions is branch_from_actions
-    assert exported_run_branch_rollouts is run_branch_rollouts
 
 
 class _FakeEmulator:

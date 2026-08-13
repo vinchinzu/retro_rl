@@ -655,7 +655,25 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         0xA6A1,
         use_for="warehouse-hijump-kraid",
     ),
-    # K6 Moat / West Ocean / WS (shine path; pure dual GREEN product)
+    # K6 Moat / West Ocean / WS (shine path; pure dual GREEN product + chain-ws)
+    SourceFingerprint(
+        "post_kihunter_pre_moat_spark",
+        "scratch/post_kihunter_pre_moat_spark.state",
+        0x948C,
+        use_for="moat pure / chain-ws / pre-moat human; not continuous tip",
+        continuous_like=False,
+        x_min=20,
+        x_max=120,
+        y_min=100,
+        y_max=220,
+    ),
+    SourceFingerprint(
+        "alpha_pb_to_moat_human_end",
+        "scratch/alpha_pb_to_moat_human_end.state",
+        0x95FF,
+        use_for="moat standing handoff for chain-ws (leave+open+spark); dual green with product pin",
+        continuous_like=False,
+    ),
     SourceFingerprint(
         "post_moat_west_ocean_spark",
         "scratch/post_moat_west_ocean_spark.state",
@@ -670,7 +688,7 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         "post_west_ocean_ws_spark",
         "scratch/post_west_ocean_ws_spark.state",
         0xCA08,
-        use_for="ws-entrance human / ship free-record after pure-ws; not continuous tip",
+        use_for="ws-entrance human / ship free-record after pure-ws or chain-ws; Phantoon path",
         x_min=40,
         x_max=90,
         y_min=120,
@@ -742,7 +760,21 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         "scratch/post_grapple_main_street.state",
         0xCFC9,
         use_for=(
-            "post-Grapple Main Street human end (items 0x7125); "
+            "standalone maridia_main_street_human F5 (items 0x7125); "
+            "not the living full_start_v1 seam"
+        ),
+        continuous_like=False,
+        x_min=350,
+        x_max=450,
+        y_min=1900,
+        y_max=2050,
+    ),
+    SourceFingerprint(
+        "full_start_v1_main_street",
+        "scratch/full_start_v1_main_street.state",
+        0xCFC9,
+        use_for=(
+            "full_start_v1 Grapple→Main Street F5 (items 0x7125); "
             "Maridia next / Botwoon free-record; --from main-street"
         ),
         continuous_like=False,
@@ -761,6 +793,48 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         x_max=250,
         y_min=100,
         y_max=180,
+    ),
+    SourceFingerprint(
+        "full_start_v1_golden_torizo",
+        "scratch/full_start_v1_golden_torizo.state",
+        0xB283,
+        use_for=(
+            "full_start_v1 Golden Torizo room enter (items 0x7325 beams 0x100F); "
+            "left door, GT full HP; --from golden-torizo / ./play gt"
+        ),
+        continuous_like=False,
+        x_min=20,
+        x_max=80,
+        y_min=100,
+        y_max=180,
+    ),
+    SourceFingerprint(
+        "full_start_v1_metal_pirates",
+        "scratch/full_start_v1_metal_pirates.state",
+        0xB62B,
+        use_for=(
+            "full_start_v1 Metal Pirates right door (items 0x732F beams 0x100F); "
+            "Screw on, both pirates alive; --from metal-pirates / ./play metal-pirates"
+        ),
+        continuous_like=False,
+        x_min=680,
+        x_max=760,
+        y_min=140,
+        y_max=200,
+    ),
+    SourceFingerprint(
+        "full_start_v1_plasma",
+        "scratch/full_start_v1_plasma.state",
+        0xD2AA,
+        use_for=(
+            "full_start_v1 Plasma Room F5 (items 0x7325 beams 0x100F); "
+            "post-Plasma leave / LN next; --from plasma-beam"
+        ),
+        continuous_like=False,
+        x_min=350,
+        x_max=450,
+        y_min=580,
+        y_max=700,
     ),
     SourceFingerprint(
         "post_space_jump",
@@ -852,12 +926,26 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         y_max=700,
     ),
     SourceFingerprint(
+        "full_start_v1_ridley",
+        "scratch/full_start_v1_ridley.state",
+        0xB698,
+        use_for=(
+            "full_start_v1 Ridley Tank after fight + tank (items 0x732F, "
+            "Norfair boss bit); --from post-ridley / ./play post-ridley"
+        ),
+        continuous_like=False,
+        x_min=190,
+        x_max=250,
+        y_min=150,
+        y_max=220,
+    ),
+    SourceFingerprint(
         "post_ridley_tank",
         "scratch/post_ridley_tank.state",
         0xB698,
         use_for=(
-            "Ridley Tank after fight (Norfair boss bit set, items 0x732F); "
-            "--from post-ridley"
+            "older post-main-hall Ridley Tank pin (items 0x732F Ridley bit); "
+            "product seam is full_start_v1_ridley"
         ),
         continuous_like=False,
         x_min=180,

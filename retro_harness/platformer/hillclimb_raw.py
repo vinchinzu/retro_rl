@@ -23,6 +23,11 @@ from pathlib import Path
 import numpy as np
 
 from retro_harness.platformer.evaluator import Evaluator, EvalResult
+from retro_harness.platformer.frame_save import (
+    RAW_MUTATION_WEIGHTS,
+    accept_candidate,
+    resolve_frame_save_mode,
+)
 
 
 def hillclimb_raw(
@@ -33,19 +38,32 @@ def hillclimb_raw(
     verbose: bool = True,
     *,
     window: tuple[int, int] | None = None,
-    prefer_trim: bool = False,
-    require_completion: bool = False,
+    prefer_trim: bool | None = None,
+    require_completion: bool | None = None,
     use_segment_engine: bool | None = None,
 ) -> tuple[list[list[int]], EvalResult]:
     """Hill climb on raw button arrays (NES 9 / SNES 12).
 
+    This is the correct path for human controller recordings: mutations stay
+    in button space and do not pass through a lossy action table.
+
     Returns (best_raw_buttons, best_result).
 
-    Optional *window*, *prefer_trim*, and *require_completion* route through
+    When *prefer_trim* / *require_completion* are left as ``None``, a finishing
+    seed auto-enables both (frame-save mode). Optional *window* or either flag
+    routes through
     :func:`retro_harness.platformer.segment_hillclimb.segment_hillclimb_raw` for
-    checkpoint-accelerated, frame-save-biased search. Pass
-    ``use_segment_engine=True`` to force that path even without a window.
+    checkpoint-accelerated search. Pass ``use_segment_engine=True`` to force
+    that path even without a window.
     """
+    # Cheap baseline so auto defaults match seed quality.
+    baseline = evaluator.evaluate(raw_buttons, early_terminate=False)
+    mode = resolve_frame_save_mode(
+        baseline.completed, prefer_trim, require_completion
+    )
+    prefer_trim = mode.prefer_trim
+    require_completion = mode.require_completion
+
     if use_segment_engine is None:
         use_segment_engine = bool(
             window is not None or prefer_trim or require_completion
@@ -53,6 +71,13 @@ def hillclimb_raw(
     if use_segment_engine:
         from retro_harness.platformer.segment_hillclimb import segment_hillclimb_raw
 
+        if verbose:
+            print(
+                f"[RAW-HILL] segment engine "
+                f"(prefer_trim={prefer_trim}, require_completion={require_completion}, "
+                f"window={window})"
+            )
+        # segment_hillclimb re-evaluates the seed; that is fine (deterministic).
         return segment_hillclimb_raw(
             raw_buttons,
             evaluator,
@@ -69,7 +94,7 @@ def hillclimb_raw(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     best = [list(f) for f in raw_buttons]
-    best_result = evaluator.evaluate(best, early_terminate=False)
+    best_result = baseline
     best_fitness = best_result.fitness
     button_count = max((len(f) for f in best), default=12)
 
@@ -82,6 +107,11 @@ def hillclimb_raw(
         print("[RAW-HILL] ERROR: seed has zero/negative fitness. Cannot optimize.")
         return best, best_result
 
+    if require_completion and not best_result.completed:
+        if verbose:
+            print("[RAW-HILL] Seed does not complete; refusing require_completion run.")
+        return best, best_result
+
     improvements = 0
     start_time = time.time()
 
@@ -91,11 +121,8 @@ def hillclimb_raw(
         if n < 10:
             break
 
-        strategy = random.choices(
-            ["toggle", "delete", "shift_edge", "copy_run", "insert"],
-            weights=[30, 20, 20, 15, 15],
-            k=1,
-        )[0]
+        strategies, weights = RAW_MUTATION_WEIGHTS[prefer_trim]
+        strategy = random.choices(strategies, weights=weights, k=1)[0]
 
         if strategy == "toggle":
             # Toggle 1-3 random buttons in a single frame
@@ -154,7 +181,9 @@ def hillclimb_raw(
 
         result = evaluator.evaluate(candidate, early_terminate=False)
 
-        if result.fitness > best_fitness:
+        if accept_candidate(
+            best_result, result, require_completion=require_completion
+        ):
             best = candidate
             best_result = result
             best_fitness = result.fitness

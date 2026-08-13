@@ -87,7 +87,7 @@ and early skirmishes on natural packs + collected capacity (10 missiles).
 |------:|-----------|-----|------------------------|--------|
 | 1 | Power-on → Morph (clean) | `--to morph --clean` | `morph_clean` | **GREEN** 27,074f (prefix on bombs path now hits **26,824f**) |
 | 2 | Power-on → **Bomb Torizo exit (clean)** | `--to bombs --clean` | `bombs_clean` | **GREEN** **49,321f** ×2 (2026-08-06) |
-| 3 | → Spore exit (clean) | `--to spore --clean` | `spore_clean` | parked until stab/status |
+| 3 | → Spore exit (clean) | `--to spore --clean` | `spore_clean` | parked — no-assist fight policy in `combat/spore_spawn.py`; residual `docs/tasks/SPORE_NOASSIST.md` |
 | … | Later prefixes only after prior clean green | … | `*_clean` | parked |
 
 **Clean bombs (2026-08-06, `bombs_clean.json` + reverify):** dual integrity

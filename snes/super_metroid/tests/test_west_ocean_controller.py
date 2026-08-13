@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from super_metroid.routes.kpdr import west_ocean as wo
 from super_metroid.routes.kpdr import wrecked_ship as ws
+from super_metroid.routes.kpdr.guides import ROUTE_PRESETS
+from super_metroid.source_states import get_source
 
 
 def test_west_ocean_rooms_and_exports() -> None:
@@ -28,3 +30,30 @@ def test_wrecked_ship_reexports_product_ws() -> None:
     assert ws.play_west_ocean_to_ws is wo.play_west_ocean_to_ws
     assert ws.play_west_ocean_over_ocean_spark is wo.play_west_ocean_over_ocean_spark
     assert callable(ws.play_west_ocean_to_ws)
+
+
+def test_ws_recording_routes_and_source_catalog() -> None:
+    """Product WS pin + human record routes are wired after pure-ws / chain-ws."""
+    assert "west-ocean-to-ws" in ROUTE_PRESETS
+    assert "ws-entrance" in ROUTE_PRESETS
+    ws_guides = ROUTE_PRESETS["ws-entrance"]
+    assert len(ws_guides) == 1
+    assert ws_guides[0].room_id == 0xCA08
+
+    pre = get_source("post_kihunter_pre_moat_spark")
+    assert pre.room_id == 0x948C
+
+    moat_pin = get_source("post_moat_west_ocean_spark")
+    assert moat_pin.room_id == 0x93FE
+    assert moat_pin.relative_path.endswith("post_moat_west_ocean_spark.state")
+
+    ws_pin = get_source("post_west_ocean_ws_spark")
+    assert ws_pin.room_id == 0xCA08
+    assert ws_pin.relative_path.endswith("post_west_ocean_ws_spark.state")
+
+    assert callable(ws.play_moat_to_ws)
+    assert callable(ws.play_moat_to_west_ocean)
+
+    grav = get_source("post_gravity_caterpillar")
+    assert grav.room_id == 0xA322
+    assert grav.relative_path.endswith("post_gravity_caterpillar.state")

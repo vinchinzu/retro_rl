@@ -70,16 +70,10 @@ def _state(
     )
 
 
-def test_room_constant() -> None:
+def test_spazer_surface_and_wiring() -> None:
     assert spazer.ROOM_SPAZER == 0xA447
-
-
-def test_spazer_beam_mask() -> None:
     assert SPAZER_BEAM_MASK == 0x0004
     assert geometry.SPAZER_BEAM_MASK == 0x0004
-
-
-def test_public_exports() -> None:
     for name in (
         "play_below_spazer_to_spazer",
         "play_below_spazer_climb",
@@ -93,8 +87,6 @@ def test_public_exports() -> None:
     ):
         assert name in spazer.__all__
         assert callable(getattr(spazer, name))
-    assert callable(play_below_spazer_floor_to_west)
-    assert callable(red_stack.play_below_spazer_floor_to_west)
     assert red_stack.play_below_spazer_floor_to_west is play_below_spazer_floor_to_west
 
 

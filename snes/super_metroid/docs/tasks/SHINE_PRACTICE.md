@@ -11,13 +11,15 @@ compose with predecessor stack.
 |--------|------|
 | `scripts/probe/shine_practice.py` | **Landing Site human gym** — multi-take record + diagnose; **store drill** |
 | `scripts/probe/moat_spark_watch.py` | Kihunter → Moat pure hop/spark (GREEN) |
-| `scripts/probe/west_ocean_spark.py` | **Product** `pure-ws` / `watch-ws` → `0xCA08`; edge `pure`/`watch` → bowling |
+| `scripts/probe/west_ocean_spark.py` | **Product** `pure-ws` / `watch-ws` → `0xCA08`; **`chain-ws`** Moat+WO compose → WS pin; edge `pure`/`watch` → bowling |
 | `scripts/probe/landing_shine_practice.py` | Dual-track measure / bootstrap LS pin / diagonal proof |
+| `scripts/probe/record_pure_chain.py` | `--preset moat-to-ws` video debug of compose |
 | `routes/skills/shinespark.py` | Shared charge / store / activate skill surface |
 | `routes/kpdr/moat.py` | `play_moat_shinespark` |
 | `routes/kpdr/west_ocean.py` | `play_west_ocean_over_ocean_spark` (product), `play_west_ocean_edge_spark` |
-| `scripts/record/guided_human.py` | `--from west-ocean` free-record toward WS |
-| `scripts/record/practice_takes.py` | `--segment west-ocean-to-ws` multi-take |
+| `routes/kpdr/wrecked_ship.py` | `play_moat_to_ws` compose → `0xCA08` |
+| `scripts/record/guided_human.py` | `--from west-ocean` · `--from ws-entrance` (Phantoon ship) · `--from pre-moat` |
+| `scripts/record/practice_takes.py` | `--segment west-ocean-to-ws` · `--segment ws-entrance` · `--segment moat-to-ws` |
 
 Also listed in `AGENTS.md` (Commands) and `scripts/README.md`.
 
@@ -162,10 +164,16 @@ handoff — **no free-place**, **no bottom swim as primary**.
 
 ```bash
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws
-# GREEN room=0xCA08 ~(57,139) gs=8  charge=stutter ~627f
+# GREEN room=0xCA08 ~(57,139) gs=8  charge=stutter ~627f  (dual ×2)
 # saved scratch/post_west_ocean_ws_spark.state
 
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch-ws
+
+# Human free-record from product WS pin (ship rooms / Phantoon approach)
+uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from ws-entrance --route ws-entrance --name ws_ship_human
+uv run python snes/super_metroid/scripts/record/practice_takes.py \
+  --segment ws-entrance --series ws_ship_v1
 ```
 
 | Fact | Value |
@@ -178,7 +186,48 @@ uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch-ws
 | Settle | **`0xCA08`** ~(57,139) gs=8 |
 | Controller | `play_west_ocean_over_ocean_spark` / `play_west_ocean_to_ws` |
 
-Do **not** STATUS-promote until continuous compose (Kihunter→Moat→WO→WS).
+Do **not** STATUS-promote until continuous power-on compose (K5→Moat approach + this chain).
+
+## Moat → West Ocean → WS compose (`chain-ws`)
+
+Room-dispatch product path for continuous-style natural entry from standing
+pins (not power-on continuous tip yet):
+
+| Step | Controller | Charge |
+|------|------------|--------|
+| Kihunter/Moat → WO | `play_moat_to_west_ocean` / `play_moat_shinespark` | **full** |
+| WO → WS `0xCA08` | `play_west_ocean_to_ws` | **stutter** |
+| Compose | `play_moat_to_ws` | both |
+
+```bash
+# Product pin or human Moat end → save post_west_ocean_ws_spark.state
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/alpha_pb_to_moat_human_end.state
+
+# Video debug of same hops
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset moat-to-ws
+
+# Ship free-record → Phantoon approach (refresh pin with chain-ws first)
+uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from ws-entrance --name ws_ship_human
+uv run python snes/super_metroid/scripts/record/practice_takes.py \
+  --segment ws-entrance --series ws_ship_v1
+
+# Bot Phantoon from human ship end, then Gravity free-record
+uv run python snes/super_metroid/scripts/probe/phantoon_combat.py strategy \
+  --state ws_ship_human_end --save-state
+uv run python snes/super_metroid/scripts/record/guided_human.py \
+  --from post-phantoon --name gravity_path_human --no-guide
+```
+
+| Source | Result (2026-08-10 dual) |
+|--------|--------------------------|
+| `scratch/post_kihunter_pre_moat_spark.state` | **GREEN** `0xCA08` ~(57,139) gs=8 ×2 (~1348f) |
+| `scratch/alpha_pb_to_moat_human_end.state` | **GREEN** `0xCA08` ~(57,139) gs=8 ×2 (~4435f leave+clear) |
+| `scratch/post_moat_west_ocean_spark.state` | over-ocean only (same as `pure-ws`) |
+
+Not continuous STATUS — pin compose only. Recording handoff: `--from ws-entrance`.
 
 ## West Ocean edge spark (GREEN pure, bowling practice only)
 

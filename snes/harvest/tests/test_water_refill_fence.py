@@ -1,0 +1,265 @@
+"""Unit tests for fence local-drop and corridor_only pond access."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+import unittest
+from types import SimpleNamespace
+
+# Path-stable import of sibling helpers (works under unittest and pytest importlib mode).
+_TESTS_DIR = Path(__file__).resolve().parent
+if str(_TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TESTS_DIR))
+from water_refill_helpers import (
+    _blank_ram,
+    _set_player_tile,
+    _set_tile,
+)
+
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_TILEMAP,
+)
+from retro_harness import TaskStatus
+
+
+class FenceLocalDropTests(unittest.TestCase):
+    """FenceClearLoopTask must not hard-fail when pond BFS is viewport-blocked."""
+
+    def test_navigate_pond_falls_back_to_local_drop(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        # Wall of solid tiles — no path to pond stands.
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0x05)
+        # Tiny open cell around player.
+        for ty in range(28, 31):
+            for tx in range(14, 17):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (15, 29))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=1, max_steps_per_fence=200)
+        # Avoid loading recorded toss task from disk.
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(15, 31), tile_id=0x05)
+        task._navigator.update(ram)
+
+        # Hop may improve manhattan inside the pocket once; then local_drop.
+        final_state = None
+        for _ in range(8):
+            result = task.step(world)
+            final_state = task._state
+            if final_state == "local_drop":
+                break
+            # Simulate walk along hop without leaving the pocket.
+            task._navigator.update(ram)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(final_state, "local_drop")
+
+    def test_local_drop_clears_when_hands_empty(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(20, 40):
+            for tx in range(10, 40):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (15, 29))
+        # Not carrying — local_drop should count as cleared.
+        ram[ADDR_PLAYER_STATE] = 0
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=2, max_steps_per_fence=200)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "local_drop"
+        task._navigator.update(ram)
+
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.cleared_count, 1)
+        self.assertEqual(task._state, "scan")
+
+    def test_corridor_drop_does_not_succeed_with_stale_held_item(self) -> None:
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.tasks.fence_flow import ADDR_PLAYER_STATE, FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        _set_player_tile(ram, (15, 32))
+        # Carry animation can clear a frame before held-item RAM. The corridor
+        # is not usable for berry pickup until both signals agree.
+        ram[ADDR_PLAYER_STATE] = 0
+        ram[ADDR_HELD_ITEM] = 0x0D
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=1, corridor_only=True)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "local_drop"
+        task._navigator.update(ram)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.cleared_count, 0)
+        self.assertGreater(len(task._action_queue), 0)
+
+
+class FenceCorridorOnlyTests(unittest.TestCase):
+    """corridor_only FenceClearLoop must local-drop instead of pond thrash."""
+
+    def test_corridor_only_targets_y31_wall_not_nearest_decorative_fence(self) -> None:
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 2, 21, 0x05)   # closer, but not pond-access wall
+        _set_tile(ram, 11, 31, 0x05)  # intended corridor fence
+        _set_player_tile(ram, (3, 21))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=1, max_steps_per_fence=500, corridor_only=True
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+
+        result = task.step(world)
+        # Corridor mode first stages west; simulate arrival, then scan.
+        if task._state == "stage_corridor":
+            self.assertIsNotNone(task._corridor_stage)
+            _set_player_tile(ram, task._corridor_stage)
+            task.step(world)
+            result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._current)
+        self.assertEqual(task._current.tile, (11, 31))
+
+    def test_corridor_only_carry_south_from_y30(self) -> None:
+        """ROM: after lift player is often on y=30; charge must still fire."""
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        _set_player_tile(ram, (13, 30))  # approach tile after lift
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=1, max_steps_per_fence=500, corridor_only=True
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(13, 31), tile_id=0x05)
+        task._navigator.update(ram)
+
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertTrue(
+            getattr(task, "_corridor_charge_done", False),
+            msg="must carry-south charge from y=30, not immediate local_drop",
+        )
+        self.assertNotEqual(
+            task._state,
+            "local_drop",
+            msg="must not local_drop before carry-south charge on y=30",
+        )
+
+    def test_corridor_only_skips_navigate_pond_to_local_drop(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        for tx in range(11, 30):
+            _set_tile(ram, tx, 31, 0x05)
+        _set_player_tile(ram, (13, 31))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=1, max_steps_per_fence=500, corridor_only=True
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(13, 31), tile_id=0x05)
+        task._navigator.update(ram)
+
+        # First step: carry-south charge from y<=31 (not only y==31).
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertTrue(
+            getattr(task, "_corridor_charge_done", False)
+            or task._state == "local_drop"
+            or len(task._action_queue) > 0
+            or result.reason
+            in (
+                "corridor_only south charge",
+                "corridor_only local drop",
+                "corridor_only drop south of wall",
+            ),
+            msg=f"state={task._state} reason={result.reason}",
+        )
+        self.assertTrue(
+            getattr(task, "_corridor_charge_done", False)
+            or result.reason == "corridor_only south charge"
+            or len(task._action_queue) > 0,
+            msg="corridor_only must attempt carry-south before local_drop",
+        )
+        # Drain charge queue then expect local_drop arm (still north in unit).
+        for _ in range(700):
+            result = task.step(world)
+            if task._state == "local_drop":
+                break
+        self.assertEqual(
+            task._state,
+            "local_drop",
+            msg=f"after charge must local_drop, got {task._state}",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

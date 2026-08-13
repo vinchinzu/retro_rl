@@ -38,40 +38,24 @@ def _state(**kwargs: Any) -> Any:
     return replace(base, **kwargs)
 
 
-def test_varia_to_kraid_controller_importable() -> None:
-    from super_metroid.routes.kpdr import get_segment, play_varia_to_kraid
-    from super_metroid.routes.kpdr.varia_return import play_varia_to_kraid as direct
-
-    assert play_varia_to_kraid is direct
-    assert get_segment("varia_to_kraid") is play_varia_to_kraid
-
-
-def test_kraid_to_eye_return_controller_importable() -> None:
-    from super_metroid.routes.kpdr import get_segment, play_kraid_to_eye_return
+def test_kraid_return_segments_registered() -> None:
+    from super_metroid.routes.kpdr import from_kraid, get_segment, play_kraid_to_eye_return, play_varia_to_kraid
     from super_metroid.routes.kpdr.varia_return import (
-        play_kraid_to_eye_return as direct,
+        play_kraid_to_eye_return as eye_direct,
+        play_varia_to_kraid as varia_direct,
     )
 
-    assert play_kraid_to_eye_return is direct
+    assert play_varia_to_kraid is varia_direct
+    assert get_segment("varia_to_kraid") is play_varia_to_kraid
+    assert play_kraid_to_eye_return is eye_direct
     assert get_segment("kraid_to_eye_return") is play_kraid_to_eye_return
-
-
-@pytest.mark.parametrize(
-    ("segment_id", "name"),
-    [
+    for segment_id, name in (
         ("eye_to_baby_return", "play_eye_to_baby_return"),
         ("baby_to_kihunter_return", "play_baby_to_kihunter_return"),
         ("kihunter_to_zeela_return", "play_kihunter_to_zeela_return"),
         ("zeela_to_warehouse_return", "play_zeela_to_warehouse_return"),
-    ],
-)
-def test_kraid_return_controller_importable(segment_id: str, name: str) -> None:
-    from super_metroid.routes.kpdr import get_segment
-    from super_metroid.routes.kpdr import from_kraid
-
-    controller = getattr(from_kraid, name)
-    assert callable(controller)
-    assert get_segment(segment_id) is controller
+    ):
+        assert get_segment(segment_id) is getattr(from_kraid, name)
 
 
 def test_require_state_reports_failures() -> None:

@@ -105,7 +105,12 @@ def _resolve_link(source: Path, target: str) -> Path | None:
     cleaned = target.split("#", 1)[0].strip()
     if not cleaned:
         return None
-    return (source.parent / cleaned).resolve()
+    resolved = (source.parent / cleaned).resolve()
+    # Probe media under recordings/ is gitignored and machine-local; STATUS
+    # cites those paths as evidence labels, not durable schema requirements.
+    if "recordings" in resolved.parts:
+        return None
+    return resolved
 
 
 @pytest.fixture(scope="module")

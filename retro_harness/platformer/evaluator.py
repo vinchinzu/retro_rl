@@ -18,7 +18,7 @@ from retro_harness.platformer.actions import (
 )
 from retro_harness.platformer.level_config import LevelConfig
 from retro_harness.platformer.progress import ProgressTracker, make_progress_tracker
-from retro_harness.env import make_env
+from retro_harness.env import make_env, resync_custom_state
 from retro_harness.ram_state import RAMSchema
 
 
@@ -81,6 +81,10 @@ class Evaluator:
                 render_mode="rgb_array",
             )
             self._env.reset()
+            # Drop stable-retro's free frame for custom integration start states.
+            resync_custom_state(
+                self._env, self.config.game_dir, self.config.game_name, state
+            )
             self._cached_state = self._env.em.get_state()
             ram = self._env.get_ram()
             self._initial_values = self._read_ram(ram)
@@ -298,7 +302,16 @@ class Evaluator:
                              or level_id in self.config.completion_level_ids)
                         and level_id not in self.config.completion_exclude_ids
                     )
-                    if is_real_completion:
+                    # Death often flips game_mode into overworld/map values while
+                    # lives drop. That must not score as a goal clear (SMW pit
+                    # death → mode 0x0B is the common false positive).
+                    lives_dropped = (
+                        self._initial_values is not None
+                        and "lives" in values
+                        and "lives" in self._initial_values
+                        and values["lives"] < self._initial_values["lives"]
+                    )
+                    if is_real_completion and not lives_dropped:
                         # Debounce: verify level_id change persists
                         debounce = self.config.completion_debounce_frames
                         if debounce > 0:

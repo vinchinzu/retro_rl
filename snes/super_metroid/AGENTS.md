@@ -18,7 +18,9 @@ Shared process: [`docs/FULL_RUN_PROCESS.md`](../../docs/FULL_RUN_PROCESS.md).
 | `routes/kpdr/spazer/` | **Gold-standard** multi-hop package (mirror for new tips) |
 | `tas/` | Sniq any%/100% movies + `snes12_rle` slices + harness replay/annotate (`tas/README.md`, `docs/TAS_ADAPT.md`) |
 | `scripts/record/`, `probe/`, `export/` | Daily CLIs |
+| `maps/maprando_room_*.json`, `maps/maprando_tech_catalog.json`, `run_splits.py`, `skill_bank.py`, `materialize.py` | Map Rando names + tech tree/builders + room PBs + hop bank ([docs/RUN_TIMING_AND_SKILL_BANK.md](docs/RUN_TIMING_AND_SKILL_BANK.md), [docs/TECH_TREE.md](docs/TECH_TREE.md)) |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
+| `practice_repertoire.py`, `maps/practice_repertoire.json` | Practice-hack preset spine: human demos, policy tune/graduate, stitch, AP recovery |
 | `docs/` | STATUS, plan, routes, tasks, contracts |
 
 
@@ -84,6 +86,13 @@ integrity flags, and the `.mp4` path** — not a pasted JSON body.
 From repo root (`snes/` on pythonpath → `import super_metroid` works).
 
 ```bash
+# Practice ROM + repertoire spine (human + bot policy/stitch/AP recovery)
+uv run python snes/super_metroid/scripts/setup_practice_rom.py
+uv run python -m super_metroid.practice_repertoire --route          # stitch order
+uv run python -m super_metroid.practice_repertoire --policy-board   # tune/graduate
+uv run python -m super_metroid.practice_repertoire --recovery 0x9E9F --items 0x0004
+# docs/PRACTICE_ROM.md
+
 # Continuous default (ice) / named tips
 uv run python snes/super_metroid/scripts/record/continuous.py --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
@@ -137,6 +146,9 @@ uv run python snes/super_metroid/scripts/probe/moat_spark_watch.py pure
 # Product WO → green Super WS 0xCA08 (natural Moat handoff; stutter charge)
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch-ws
+# Compose Kihunter/Moat → Moat spark → over-ocean → WS pin (then ship record)
+uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset moat-to-ws
 # Edge bowling practice (0xC98E; not product WS)
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py short-charge --mode stutter
@@ -147,6 +159,23 @@ uv run python snes/super_metroid/scripts/record/practice_takes.py --segment ws-e
 # Bot-beat Phantoon from human entry end → post_phantoon_defeated pin
 uv run python snes/super_metroid/scripts/probe/phantoon_combat.py strategy --state ws_ship_human_end
 uv run python snes/super_metroid/scripts/record/guided_human.py --from post-phantoon --name gravity_path_human --no-guide
+# Bubble Save practice (0xB0DD items 0x1105) — live EARLY/LATE walljump frames_off
+# SELECT+L2 reload pin (CP1 seeded) · SELECT+R2 mid seat · R hard reset · F5 take
+uv run python snes/super_metroid/scripts/probe/bubble_save_practice.py
+./snes/super_metroid/play bubble-save full_start_v1   # free-record Save → climb
+./snes/super_metroid/play bat-cave full_start_v1      # continue after Bat 0xB07A
+./snes/super_metroid/play wave full_start_v1          # Wave 0xADDE beams 0x1005 → Ice
+./snes/super_metroid/play alpha-pb full_start_v1      # Alpha PB → Moat / Phantoon
+./snes/super_metroid/play grapple full_start_v1       # Grapple 0xAC2B (0x7125) → Main Street
+./snes/super_metroid/play main-street full_start_v1   # Main Street 0xCFC9 (0x7125) → Maridia
+./snes/super_metroid/play plasma-beam full_start_v1   # Plasma Room 0xD2AA (0x7325 / beams 0x100F)
+./snes/super_metroid/play gt full_start_v1            # Golden Torizo 0xB283 left door (0x7325 / 0x100F)
+./snes/super_metroid/play metal-pirates full_start_v1 # Metal Pirates 0xB62B right door (0x732F / Screw)
+./snes/super_metroid/play post-ridley full_start_v1   # Ridley Tank 0xB698 post fight + tank (0x732F)
+./snes/super_metroid/play --pb full_start_v1          # RTA board (segment timing stitch)
+# DC→Wave re-stitch practice (docs/tasks/DC_MISSILE_WAVE_HUMAN.md)
+uv run python snes/super_metroid/scripts/record/practice_takes.py \
+  --segment dc-missile-wave --series wave_dc_v1
 # Post-Gravity Caterpillar tail (0xA322 items 0x3125) → Grapple + Maridia free-record
 uv run python snes/super_metroid/scripts/record/guided_human.py --from post-gravity --name maridia_grapple_human --no-guide
 # Post-Grapple (items 0x7125) → Maridia Main Street; F6 mid-run pins, anchors ON by default
@@ -160,14 +189,27 @@ uv run python snes/super_metroid/scripts/record/guided_human.py --from post-dray
 uv run python snes/super_metroid/scripts/record/guided_human.py --from main-hall --name post-main-hall --no-guide
 # Post-boss Landing Site (items 0x732F, all 4 bosses) → G4 / Tourian free-record
 uv run python snes/super_metroid/scripts/record/guided_human.py --from post-bosses --name g4_tourian_human --no-guide
-# Offline hop inventory / end-pin verify (never full-tape open-loop replay)
+# Offline hop inventory + hop bodies + bank candidates
 uv run python snes/super_metroid/scripts/tools/extract_human_tape.py \
-  snes/super_metroid/tasks/post-main-hall.json --summary
+  snes/super_metroid/tasks/post-main-hall.json --materialize --bank --summary
+# Hop open-loop from live pin; multi-hop compose (pin→body chain)
+uv run python snes/super_metroid/scripts/tools/replay_human_hop.py \
+  snes/super_metroid/tasks/full_start_v1.json --hop 0 --dual
+uv run python snes/super_metroid/scripts/tools/compose_human_hops.py \
+  snes/super_metroid/tasks/full_start_v1.json --dual
+# Free-record wrapper (archives prior take; materialize + bank on F5)
+./snes/super_metroid/play
+./snes/super_metroid/play --compose full_start_v1
 ```
 
-**Human long takes:** live room/item anchors + F6 pins under `tasks/<name>_anchors/`.
-Do not open-loop replay multi-minute tapes to recover states (desync). See
-[`docs/tasks/SM-MARIDIA-GRAPPLE-HUMAN.md`](docs/tasks/SM-MARIDIA-GRAPPLE-HUMAN.md).
+**Human long takes:** full button tape + live room/item anchors + F6 pins under
+`tasks/<name>_anchors/`. F5 runs `materialize_take` (settled hops, hop bodies
+under `*_hops/`, `*_run_timing.json`) unless `--no-materialize`. Reusing
+`--name` archives prior tape to `tasks/<name>_segments/sN/`. Open-loop unit is
+**hop from live pin** (or hop-compose chain); do not invent mid pins via
+multi-minute full-tape replay. Library: `super_metroid.human_tape` +
+`materialize`. Pipeline: [`docs/tasks/HUMAN_TAPE_PIPELINE.md`](docs/tasks/HUMAN_TAPE_PIPELINE.md);
+board: `tasks/LATE_SPINE_HOP_BOARD.json` via `scripts/tools/build_late_spine_board.py`.
 
 
 
@@ -180,11 +222,16 @@ Do not open-loop replay multi-minute tapes to recover states (desync). See
 - Clean runs: `*_clean` stems only; never overwrite assisted `recordings/<tip>.json`.
 - Prefer room/door/inventory progress vectors over coordinate-only watchdogs.
 - Morph bombs are **X** while morph (not A).
+- **D-pad vs shoulders:** `LEFT`/`RIGHT` walk; `L`/`R` are shoulders (aim /
+  arm-pump). Never use `L` as a hop side. Constants:
+  `SNES_DPAD_LEFT` / `SNES_SHOULDER_L` in `retro_harness.controls`.
 - **Door entry speed/position matter** for TAS tech (speed-boost carry, shine,
   mockball, subpixel). Continuous transitions record
   `leave_kinematics` / `entry_kinematics`; use
   `door_kinematics.DoorKinematicsRequirement` or `StateRequirement` velocity/
-  speed fields. Practice doorway bootstrap **zeros** momentum — never treat
+  speed fields. In-room jumps use `takeoff.TakeoffWindow` / `PlatformHop`
+  (same matcher) — do not invent a per-room hop type or N-frame runup.
+  Practice doorway bootstrap **zeros** momentum — never treat
   those fixtures as natural leave-speed evidence.
 - **Shinespark store:** harness **B**=dash, **A**=activate, **DOWN**=store
   (VOD swaps A/B). After echoes=4, press DOWN **while still holding RIGHT**
@@ -198,8 +245,9 @@ Do not open-loop replay multi-minute tapes to recover states (desync). See
 - **Ceres elev escape:** Falling→elev mid-transition can still read **y≈139**;
   ordinary **gs=8 remaps to bottom y≈651**. Ledge pin **y=571** (pose 2 or
   137/138 left seat) — walk LEFT on ledge. Product shaft s2–s10 is
-  **debris-phase** sensitive (TAS boot same pin, needs idle 14); use
-  `_ceres_product_shaft_with_phase` — no hop thrash. Top: walk right to
+  **debris-phase** sensitive. Product fight is tail-tank (not wait). Elev
+  shaft is a platform hop (`elev_escape.CeresShaftClimb`) — not the old
+  phase-idle s2–s10 tape. Top: walk right to
   **pose 137 @ x211 y171**, LEFT+A 38 + LEFT to pad **x≈145 y75** → gs 32.
   BB elev: `$0E16` elev flag toggles/frame — product parity 1 first, then
   parity 0 / reactive. Notes: [`docs/plan.md`](docs/plan.md) § Ceres arm-pump.

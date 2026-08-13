@@ -30,14 +30,13 @@ Spit-edge bowling (prior)
 
 from __future__ import annotations
 
-from typing import Literal, Sequence
+from typing import Sequence
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import hold, require_room, select_weapon
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills import shinespark as spark
-
-ChargeMode = Literal["full", "short", "stutter"]
+from super_metroid.routes.skills.shinespark import ChargeMode
 
 
 ROOM_WEST_OCEAN = 0x93FE

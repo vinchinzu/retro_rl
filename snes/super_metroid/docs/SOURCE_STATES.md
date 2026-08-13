@@ -4,6 +4,10 @@ Continuous-like pure entry states for executor cards. Prefer these over
 ad-hoc warps. All paths are under
 `custom_integrations/SuperMetroid-Snes/` unless noted.
 
+Practice-hack **repertoire** (category preset menus/saves) lives separately:
+[`PRACTICE_ROM.md`](PRACTICE_ROM.md) · `maps/practice_repertoire.json` ·
+`practice_repertoire.py`. Product pure cards still name rows in this file.
+
 **Rules**
 
 - Pure geometry cards must name **exact path + expected room id**.
@@ -234,16 +238,19 @@ uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no
 | post-Gravity Grapple/Maridia human | `0xA322` Caterpillar | **pin:** `scratch/post_gravity_caterpillar.state` ~(70,1419) items `0x3125` (Gravity + Phantoon bit); tail of `tasks/gravity_path_human` after chozo return via Moat→elev — **not** Gravity room | SM-SRC-GRAV-TAIL |
 | post-Grapple Beam human | `0xAC00` Grapple Tutorial 1 (leave of Beam) | **pin:** `scratch/post_grapple_beam_human.state` ~(236,121) items `0x7125` (Grapple+Gravity); assist-sync replay of `tasks/maridia_grapple_human` @ f25954; `--from post-grapple` | SM-SRC-GRAPPLE |
 | post-Croc farm human | `0xAA82` Post Crocomire Farming | **pin:** `scratch/post_crocomire_farming_human.state` items `0x3125`; assist-sync @ f16757 after Croc fight | SM-SRC-CROC-FARM |
-| post-Grapple Main Street | `0xCFC9` Main Street | **pin:** `scratch/post_grapple_main_street.state` ~(391,1979) pose 2 items `0x7125` beams `0x1007`; F5 of `tasks/maridia_main_street_human` (14170f, end_fp verified); `--from main-street` | SM-SRC-MAIN-STREET |
+| post-Grapple Main Street | `0xCFC9` Main Street | **living pin:** `scratch/full_start_v1_main_street.state` ~(394,1979) items `0x7125`; F5 of `full_start_v1` Grapple→MS (13909f); **`--from main-street`** / `./play main-street`. Older standalone: `scratch/post_grapple_main_street.state` (`maridia_main_street_human`) | SM-SRC-MAIN-STREET |
 | post-Grapple Croc Escape F6 | `0xAA0E` Crocomire Escape | **pin:** `scratch/post_grapple_croc_escape_human.state` ~(211,139); F6 mid `maridia_main_street_human` | SM-SRC-CROC-ESC |
 | post-Space Jump | `0xD9AA` Space Jump Room | **pin:** `scratch/post_space_jump.state` ~(85,155) p138 items **`0x7325`** (SJ+Grapple+Gravity); item_delta f52049 of `maridia_botwoon_path_human`; **`--from post-space-jump`** | SM-SRC-SJ |
+| post-Plasma Beam | `0xD2AA` Plasma Room | **living pin:** `scratch/full_start_v1_plasma.state` ~(395,635) p207 items `0x7325` beams **`0x100F`**; F5 of `full_start_v1` SJ→Plasma (13875f); **`--from plasma-beam`** / `./play plasma-beam` | SM-SRC-PLASMA |
+| Golden Torizo room enter | `0xB283` Golden Torizo's Room | **living pin:** `scratch/full_start_v1_golden_torizo.state` left door ~(39,139) p9 items `0x7325` beams `0x100F` energy 219/299 GT full 13500; room-enter of `full_start_v1` Plasma→GT (not the death F5 at ~(140,139)); **`--from golden-torizo`** / `./play gt` | SM-SRC-GT |
+| Metal Pirates | `0xB62B` Metal Pirates Room | **living pin:** `scratch/full_start_v1_metal_pirates.state` right door ~(725,171) p2 items **`0x732F`** (Screw) beams `0x100F` energy 79/299; both pirates alive; F5 of `full_start_v1` GT→MP; **`--from metal-pirates`** / `./play metal-pirates` | SM-SRC-MP |
 | post-Draygon Precious | `0xD78F` The Precious Room | **pin:** `scratch/post_draygon_precious.state` ~(55,651) p1 items `0x7325`; F5 end same take; `--from post-draygon` | SM-SRC-DRAYGON |
 | post-SJ Precious return | `0xD78F` | **pin:** `scratch/post_space_jump_precious.state` first return after SJ collect | SM-SRC-SJ-PREC |
 | post-Spring Ball | `0xD6D0` Spring Ball Room | **pin:** `scratch/post_spring_ball.state` ~(379,362) items **`0x7327`**; item_delta of `post_sj_exit_human`; `--from post-spring-ball` | SM-SRC-SPRING |
 | LN Main Hall | `0xB236` Main Hall | **pin:** `scratch/post_ln_main_hall.state` ~(1152,648) items `0x7327` beams **`0x100F`** (Plasma); F5 of `post_sj_exit_human`; **`--from main-hall`** for Ridley/GT | SM-SRC-LN-HALL |
 | LN Elev Save | `0xB1BB` | **pin:** `scratch/post_ln_elevator_save.state` ~(200,139); before Main Hall | SM-SRC-LN-SAVE |
 | post-Screw Attack | `0xB6C1` Screw Attack Room | **pin:** `scratch/post_screw_attack.state` ~(171,667) items **`0x732F`**; item_delta f10857 of `post-main-hall`; `--from post-screw` | SM-SRC-SCREW |
-| post-Ridley Tank | `0xB698` | **pin:** `scratch/post_ridley_tank.state` ~(216,143) items `0x732F` Ridley bit; `--from post-ridley` | SM-SRC-RIDLEY |
+| post-Ridley Tank | `0xB698` Ridley Tank Room | **living pin:** `scratch/full_start_v1_ridley.state` ~(220,185) p123 items **`0x732F`** energy 399/399 Norfair Ridley bit; F5 of `full_start_v1` MP→Ridley after tank; **`--from post-ridley`** / `./play post-ridley`. Older standalone: `scratch/post_ridley_tank.state` ~(216,139) | SM-SRC-RIDLEY |
 | post-Ridley Farming | `0xB37A` | **pin:** `scratch/post_ridley_farming.state` ~(50,142); leave Ridley exit path | SM-SRC-RIDLEY-EXIT |
 | post-bosses Landing Site | `0x91F8` Landing Site | **pin:** `scratch/post_bosses_landing_site.state` ~(1152,1088) p155 items **`0x732F`** all 4 bosses; F5 end of `post-main-hall`; **`--from post-bosses`** for G4/Tourian | SM-SRC-G4 |
 | Landing Site shine practice | `0x91F8` | `scratch/landing_site_speed_practice.state` ~(899,1163) items `0x3105` (not escape `0xF32F`) | `shine_practice.py` drill/human |

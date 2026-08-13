@@ -1,8 +1,14 @@
 """Wrecked Ship approach controllers (K6).
 
-West Ocean → WS entrance is **pure** via over-ocean shinespark
-(:func:`super_metroid.routes.kpdr.west_ocean.play_west_ocean_to_ws`).
-Moat → West Ocean pure lives on :mod:`super_metroid.routes.kpdr.moat`.
+Product pure shine chain (compose, natural-entry when sources allow)
+--------------------------------------------------------------------
+1. **Kihunter / Moat → West Ocean** — :func:`play_moat_to_west_ocean`
+   (leave + open door stay + clear + left pin + hop spark).
+2. **West Ocean → WS entrance** — :func:`play_west_ocean_to_ws`
+   (ocean-floor stutter spark + green Super).
+3. **Compose** — :func:`play_moat_to_ws` runs both; lands ``0xCA08`` for
+   ship free-record / Phantoon approach (``guided_human --from ws-entrance``).
+
 Post-entry ship rooms remain scaffold placeholders until pure geometry.
 """
 
@@ -12,12 +18,14 @@ from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import hold, require_room
 from super_metroid.routes.kpdr import west_ocean as _west_ocean
 from super_metroid.routes.runtime import ControllerSession
+from super_metroid.routes.skills.shinespark import ChargeMode
 
 # Product pure: over-ocean spark + Super open (re-exported for WS callers).
 play_west_ocean_to_ws = _west_ocean.play_west_ocean_to_ws
 play_west_ocean_over_ocean_spark = _west_ocean.play_west_ocean_over_ocean_spark
 
 
+ROOM_KIHUNTER = 0x948C
 ROOM_MOAT = 0x95FF
 ROOM_WEST_OCEAN = 0x93FE
 ROOM_WS_ENTRANCE = 0xCA08
@@ -52,16 +60,69 @@ def _scaffold_exit(
     )
 
 
-def play_moat_to_west_ocean(session: ControllerSession) -> SuperMetroidState:
-    """Scaffold Moat ``0x95FF`` -> West Ocean ``0x93FE``.
+def play_moat_to_west_ocean(
+    session: ControllerSession,
+    *,
+    charge_mode: ChargeMode = "full",
+) -> SuperMetroidState:
+    """Moat ``0x95FF`` (or Kihunter) → West Ocean via pure shinespark.
 
-    Prefer pure :func:`super_metroid.routes.kpdr.moat.play_moat_shinespark`.
+    Delegates to :func:`super_metroid.routes.kpdr.moat.play_moat_shinespark`
+    (leave Moat → open door stay → clear → left pin → spark). Product charge
+    is continuous ``full``; ``short``/``stutter`` are for cramped runways only.
     """
-    return _scaffold_exit(
-        session,
-        entry_room=ROOM_MOAT,
-        target_room=ROOM_WEST_OCEAN,
-        label="moat_to_west_ocean",
+    from super_metroid.routes.kpdr.moat import play_moat_shinespark
+
+    st = session.state
+    if st.room_id not in (ROOM_KIHUNTER, ROOM_MOAT):
+        raise TimeoutError(
+            f"moat_to_west_ocean: expected Kihunter 0x948C or Moat 0x95FF, "
+            f"got 0x{st.room_id:04X}"
+        )
+    return play_moat_shinespark(session, charge_mode=charge_mode)
+
+
+def play_moat_to_ws(
+    session: ControllerSession,
+    *,
+    moat_charge_mode: ChargeMode = "full",
+    wo_charge_mode: ChargeMode = "stutter",
+    label: str = "moat_to_ws",
+) -> SuperMetroidState:
+    """Compose product shine path: Kihunter/Moat → West Ocean → WS ``0xCA08``.
+
+    Room-dispatch for continuous-style natural entry:
+
+    * ``0x948C`` / ``0x95FF`` — Moat spark (full charge product) then over-ocean
+    * ``0x93FE`` — over-ocean only (already at Moat handoff)
+    * ``0xCA08`` — already in WS entrance (no-op settle)
+
+    Dual pure green from product pin and human Moat end; pin-only until full
+    continuous power-on compose. Handoff for ship free-record / Phantoon:
+
+    ``guided_human --from ws-entrance`` / ``practice_takes --segment ws-entrance``.
+    """
+    st = session.state
+    if st.room_id == ROOM_WS_ENTRANCE:
+        if st.door_transition == 0 and st.game_state == 8:
+            return st
+        hold(session, 12, reason=f"{label}_ws_settle")
+        return session.state
+
+    if st.room_id in (ROOM_KIHUNTER, ROOM_MOAT):
+        play_moat_to_west_ocean(session, charge_mode=moat_charge_mode)
+        st = session.state
+
+    if st.room_id == ROOM_WEST_OCEAN:
+        return play_west_ocean_to_ws(
+            session,
+            charge_mode=wo_charge_mode,
+            label=f"{label}_wo",
+        )
+
+    raise TimeoutError(
+        f"{label}: expected Kihunter/Moat/West Ocean/WS entrance, "
+        f"got 0x{st.room_id:04X} xy=({st.samus_x},{st.samus_y})"
     )
 
 
@@ -96,6 +157,7 @@ def play_ws_basement_to_phantoon(session: ControllerSession) -> SuperMetroidStat
 
 
 __all__ = [
+    "ROOM_KIHUNTER",
     "ROOM_MOAT",
     "ROOM_WEST_OCEAN",
     "ROOM_WS_ENTRANCE",
@@ -103,6 +165,7 @@ __all__ = [
     "ROOM_WS_BASEMENT",
     "ROOM_PHANTOON",
     "play_moat_to_west_ocean",
+    "play_moat_to_ws",
     "play_west_ocean_over_ocean_spark",
     "play_west_ocean_to_ws",
     "play_ws_entrance_to_main",

@@ -232,6 +232,24 @@ def wrap_kraid_as_boss_strategy() -> CallableBossStrategy:
     )
 
 
+def wrap_ceres_ridley_as_boss_strategy() -> CallableBossStrategy:
+    """Ceres Ridley tail-tank (countdown start is the win)."""
+    from super_metroid.combat.ceres_ridley import (
+        ROOM_CERES_RIDLEY,
+        play_ceres_ridley_fight,
+    )
+    from super_metroid.combat.features import ceres_ridley_catalog
+
+    return _wrap_simple_fight(
+        boss_id="ceres_ridley",
+        room_id=ROOM_CERES_RIDLEY,
+        catalog_fn=ceres_ridley_catalog,
+        play_fn=play_ceres_ridley_fight,
+        success=lambda r: r.outcome == "ceres_ridley_countdown",
+        boss_defeated=lambda r: r.outcome == "ceres_ridley_countdown",
+    )
+
+
 def wrap_bomb_torizo_as_boss_strategy() -> CallableBossStrategy:
     """Bomb Torizo fight as a BossStrategy (activation expected)."""
     from super_metroid.combat.bomb_torizo import (
@@ -247,6 +265,24 @@ def wrap_bomb_torizo_as_boss_strategy() -> CallableBossStrategy:
         play_fn=play_bomb_torizo_fight,
         success=lambda r: r.outcome == "bomb_torizo_defeated"
         or (r.final_enemy_hp == 0 and r.defeat_frame is not None),
+    )
+
+
+def wrap_spore_spawn_as_boss_strategy() -> CallableBossStrategy:
+    """Spore Spawn left-ledge missile policy (Clean / no-assist)."""
+    from super_metroid.combat.features import spore_spawn_catalog
+    from super_metroid.combat.spore_spawn import (
+        ROOM_SPORE_SPAWN,
+        play_spore_spawn_fight,
+    )
+
+    return _wrap_simple_fight(
+        boss_id="spore_spawn",
+        room_id=ROOM_SPORE_SPAWN,
+        catalog_fn=spore_spawn_catalog,
+        play_fn=play_spore_spawn_fight,
+        success=lambda r: r.outcome == "spore_spawn_defeated",
+        boss_defeated=lambda r: r.defeat_frame is not None,
     )
 
 

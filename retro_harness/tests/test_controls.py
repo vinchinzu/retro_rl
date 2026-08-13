@@ -159,6 +159,10 @@ def test_parse_snes_button_label_uses_shared_name_map():
     assert parse_snes_button_label("idle") == ("IDLE",)
     assert SNES_BUTTON_NAME_TO_INDEX["A"] == SNES_A
     assert SNES_BUTTON_NAME_TO_INDEX["B"] == SNES_B
+    assert SNES_BUTTON_NAME_TO_INDEX["LEFT"] == SNES_LEFT
+    assert SNES_BUTTON_NAME_TO_INDEX["L"] == SNES_L
+    assert SNES_BUTTON_NAME_TO_INDEX["LEFT"] != SNES_BUTTON_NAME_TO_INDEX["L"]
+    assert SNES_BUTTON_NAME_TO_INDEX["RIGHT"] != SNES_BUTTON_NAME_TO_INDEX["R"]
 
 
 def test_action_from_snes_button_names_builds_expected_action():

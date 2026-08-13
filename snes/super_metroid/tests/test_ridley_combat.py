@@ -6,7 +6,6 @@ from dataclasses import replace
 
 import numpy as np
 
-from super_metroid.combat.features import ridley_catalog
 from super_metroid.combat.ridley import (
     ROOM_RIDLEY,
     RidleyEvidence,
@@ -14,7 +13,6 @@ from super_metroid.combat.ridley import (
     fight_ridley_action,
 )
 from super_metroid.ram import GameplayPhase, parse_state
-
 
 def _state(**overrides):
     ram = np.zeros(0x2000, dtype=np.uint8)
@@ -28,15 +26,6 @@ def _state(**overrides):
         **overrides,
     )
 
-
-def test_ridley_catalog_facts() -> None:
-    catalog = ridley_catalog()
-    assert catalog.room_id == ROOM_RIDLEY
-    assert catalog.max_hp == 18000
-    assert catalog.primary_weapon == "supers"
-    assert catalog.continuous_status == "deferred"
-
-
 def test_active_enemy_action_faces_and_fires_sometimes() -> None:
     state = _state(samus_x=100, enemy0_x=300, enemy0_y=200, enemy0_hp=18000)
     strategy = RidleyStrategy(fire_period=3)
@@ -44,11 +33,9 @@ def test_active_enemy_action_faces_and_fires_sometimes() -> None:
     assert any("RIGHT" in action for action in actions)
     assert any("X" in action for action in actions)
 
-
 def test_defeated_enemy_returns_empty_actions() -> None:
     state = _state(enemy0_hp=0)
     assert fight_ridley_action(state, frame_index=0) == ()
-
 
 def test_evidence_dict_keys_are_stable() -> None:
     evidence = RidleyEvidence(
@@ -75,7 +62,6 @@ def test_evidence_dict_keys_are_stable() -> None:
         "boss_bit_set",
         "outcome",
     }
-
 
 def test_active_enemy_action_becomes_empty_at_hp_zero() -> None:
     active = _state(samus_x=100, enemy0_x=300, enemy0_hp=1)

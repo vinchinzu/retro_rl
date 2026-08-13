@@ -39,6 +39,36 @@ from retro_harness.platformer.cli.watch import (
 )
 
 
+
+def _add_frame_save_args(parser: argparse.ArgumentParser, *, raw_only: bool = False) -> None:
+    """Shared frame-save / window flags for hillclimb and hillclimb-raw."""
+    if raw_only:
+        window_help = "Raw path only: mutate START:END (segment engine)"
+        prefer_help = "Raw path: force frame-deletion bias"
+        no_prefer_help = "Raw path: disable auto frame-deletion bias"
+        require_help = "Raw path: force completion gating"
+        allow_help = "Raw path: allow non-completing acceptances"
+    else:
+        window_help = (
+            "Only mutate START:END (enables checkpoint-accelerated segment engine)"
+        )
+        prefer_help = (
+            "Force frame-deletion / hold shortening bias "
+            "(default: auto if seed clears)"
+        )
+        no_prefer_help = "Disable auto frame-deletion bias"
+        require_help = "Force completion gating (default: auto if seed clears)"
+        allow_help = "Allow accepting non-completing candidates"
+
+    parser.add_argument("--window", help=window_help)
+    parser.add_argument("--prefer-trim", action="store_true", help=prefer_help)
+    parser.add_argument("--no-prefer-trim", action="store_true", help=no_prefer_help)
+    parser.add_argument(
+        "--require-completion", action="store_true", help=require_help
+    )
+    parser.add_argument("--allow-incomplete", action="store_true", help=allow_help)
+
+
 def main(default_level: str | None = None) -> None:
     """Build and run the CLI parser.
 
@@ -96,36 +126,32 @@ def main(default_level: str | None = None) -> None:
                             metavar="N", help="Render best every N gens (default: every gen)")
     p_optimize.add_argument("--state", help="Override start state")
 
-    # hillclimb
-    p_hill = sub.add_parser("hillclimb", help="Run hill climbing refinement")
+    # hillclimb — routes to raw-button path when seed has raw_buttons
+    p_hill = sub.add_parser(
+        "hillclimb",
+        help="Hill climb a seed (raw-button path when raw_buttons present)",
+    )
     p_hill.add_argument("--seed", required=True, help="Path to seed actions JSON")
-    p_hill.add_argument("--iterations", type=int, default=5000)
+    p_hill.add_argument("--iterations", type=int, default=2000)
     p_hill.add_argument("--output-dir", help="Output directory")
     p_hill.add_argument("--render", type=int, nargs="?", const=100, default=0,
                         metavar="N", help="Render best every N iterations (default: every 100)")
     p_hill.add_argument("--scale", type=int, default=3, help="Render scale")
     p_hill.add_argument("--state", help="Override start state")
+    p_hill.add_argument(
+        "--force-index",
+        action="store_true",
+        help="Mutate action-table indices even when raw_buttons exist (lossy)",
+    )
+    _add_frame_save_args(p_hill, raw_only=True)
 
     # hillclimb-raw (raw button mutation, no lossy action-index conversion)
     p_hraw = sub.add_parser("hillclimb-raw", help="Hill climb with raw button mutation")
     p_hraw.add_argument("--seed", required=True, help="Path to seed JSON with raw_buttons")
-    p_hraw.add_argument("--iterations", type=int, default=1000)
+    p_hraw.add_argument("--iterations", type=int, default=2000)
     p_hraw.add_argument("--output-dir", help="Output directory")
     p_hraw.add_argument("--state", help="Override start state")
-    p_hraw.add_argument(
-        "--window",
-        help="Only mutate START:END (enables checkpoint-accelerated segment engine)",
-    )
-    p_hraw.add_argument(
-        "--prefer-trim",
-        action="store_true",
-        help="Bias mutations toward frame deletion / hold shortening",
-    )
-    p_hraw.add_argument(
-        "--require-completion",
-        action="store_true",
-        help="Never accept a candidate that fails to complete",
-    )
+    _add_frame_save_args(p_hraw)
 
     # analyze-seed (static + optional live eval)
     p_an = sub.add_parser(

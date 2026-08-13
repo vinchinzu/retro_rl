@@ -125,6 +125,28 @@ BOMB_TORIZO_INACTIVE_SPRITEMAPS = frozenset({0x87D0, 0x804F})
 # Single source of truth for static boss facts (sm-json-data + live probes).
 # Call sites keep ``*_catalog()`` names; they return frozen entries from here.
 _BOSS_TABLE: tuple[BossCatalogEntry, ...] = (
+    # Ceres Ridley is not a traditional HP fight: escape starts at energy < 30.
+    # max_hp=100 is the slower "100 strikes" alternate (wiki); product uses tail tank.
+    BossCatalogEntry(
+        name="Ceres Ridley",
+        room_id=0xE0B5,
+        max_hp=100,
+        width=80,
+        height=90,
+        contact_damage=16,
+        primary_weapon="contact",
+        boss_id="ceres_ridley",
+        secondary_weapon="beam",
+        max_enemy_slots=4,
+        closeout="Ceres escape timer + reverse rooms → Landing Site",
+        recommended_loadout="Power Suit; tank 5 tail hits (do not shoot 100×)",
+        kpdr_priority=-1,
+        continuous_status="continuous",
+        notes=(
+            "wiki.supermetroid.run/Ridley#Ceres_Station: leave when energy < 30. "
+            "Five first-frame tail hits at the right wall is the RTA policy."
+        ),
+    ),
     BossCatalogEntry(
         name="Bomb Torizo",
         room_id=0x9804,
@@ -379,6 +401,11 @@ def list_boss_catalog(
 
 
 # Thin wrappers — preserve public ``*_catalog()`` names for existing imports.
+def ceres_ridley_catalog() -> BossCatalogEntry:
+    """Ceres Ridley (Baby Ridley). Escape starts at energy < 30."""
+    return get_boss_catalog("ceres_ridley")
+
+
 def bomb_torizo_catalog() -> BossCatalogEntry:
     """Bomb Torizo facts from sm-json-data bosses catalog."""
     return get_boss_catalog("bomb_torizo")

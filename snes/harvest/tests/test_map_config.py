@@ -67,17 +67,19 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertEqual(repeat[0].target_px, (55 * 16 + 8, 60 * 16 + 8))
         self.assertEqual(first[-1].target_px, (61 * 16 + 8, 60 * 16 + 8))
         self.assertEqual(repeat[-1].target_px, (61 * 16 + 8, 60 * 16 + 8))
-        weed_gate_actions = [
-            wp
-            for wp in first
-            if wp.action_on_arrive == "press_a"
-            and wp.action_face == "up"
-            and wp.target_px[0] // 16 == 37
-        ]
-        self.assertEqual(
-            [wp.target_px[1] // 16 for wp in weed_gate_actions],
-            [60, 59],
-        )
+        # North-of-bush approach — no south weed lift_throw thrash.
+        self.assertFalse(any(wp.action_on_arrive == "lift_throw" for wp in first))
+        self.assertFalse(any(wp.action_on_arrive == "lift_throw" for wp in repeat))
+        stand_tiles = {(wp.target_px[0] // 16, wp.target_px[1] // 16) for wp in first}
+        self.assertNotIn((37, 58), stand_tiles)
+        self.assertNotIn((37, 59), stand_tiles)
+        self.assertNotIn((36, 58), stand_tiles)
+        # Pocket entry visits (36,54)/(36,56) then pick at (37,57).
+        self.assertIn((36, 54), stand_tiles)
+        self.assertIn((36, 56), stand_tiles)
+        pick = next(wp for wp in first if wp.action_on_arrive == "press_a" and wp.action_face == "left")
+        self.assertEqual(pick.target_px[0] // 16, 37)
+        self.assertEqual(pick.target_px[1] // 16, 57)
 
     def test_south_farm_return_crosses_fence_at_west_end(self) -> None:
         route = ROUTES["farm_south_to_west_gate"]
@@ -85,6 +87,10 @@ class FarmWalkableTests(unittest.TestCase):
 
         self.assertLess(first_north.target_px[0] // 16, 11)
         self.assertEqual(route[-1].target_px, (40, 424))
+        # Prefer the y=60 path corridor so post-berry exit does not thrash
+        # diagonally through south-field debris.
+        early = [wp.target_px[1] // 16 for wp in route[:4]]
+        self.assertTrue(all(y >= 58 for y in early), early)
 
     def test_map_registry_has_named_landmarks(self) -> None:
         self.assertEqual(get_map_name(0x15), "house")
@@ -190,9 +196,17 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertIn("mountain_entry_to_fish_power_berry_spots", ROUTES)
         self.assertIn("farm_to_spa", ROUTES)
         self.assertIn("mountain_entry_to_outdoor_spa", ROUTES)
+        self.assertIn("farm_to_path", ROUTES)
+        self.assertIn("path_to_town", ROUTES)
+        self.assertIn("path_to_mountain", ROUTES)
         self.assertEqual(ROUTES["farm_to_mountain"][0].tilemap, 0x00)
         self.assertTrue(ROUTES["farm_to_mountain"][-1].is_exit)
         self.assertEqual(ROUTES["farm_to_mountain"][-1].target_px, (132, 30))
+        self.assertEqual(ROUTES["farm_to_path"][-1].target_px, (132, 128))
+        self.assertEqual(
+            ROUTES["farm_to_town"],
+            list(ROUTES["farm_to_path"]) + list(ROUTES["path_to_town"]),
+        )
         self.assertEqual(ROUTES["mountain_entry_to_fish_power_berry_spots"][-1].target_px, (686, 411))
         self.assertEqual(ROUTES["farm_to_spa"][-1].target_px, (619, 201))
         self.assertEqual(ROUTES["mountain_entry_to_outdoor_spa"][-1].target_px, (619, 201))

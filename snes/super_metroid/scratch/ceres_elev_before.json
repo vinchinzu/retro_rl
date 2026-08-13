@@ -1,0 +1,46 @@
+{
+  "command": "strategy",
+  "hop_key": "0xDF45:0xDF8D->0x91F8:0x0000",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_elev_enter.state",
+  "success": false,
+  "entry": {
+    "room_id_hex": "0xDF45",
+    "samus_x": 204,
+    "samus_y": 651,
+    "pose": 10,
+    "health": 19,
+    "game_state": 8,
+    "timer_type": 6,
+    "escape_timer_seconds": 57,
+    "enemy0_x": 232,
+    "enemy0_y": 631,
+    "enemy0_hp": 40,
+    "num_enemies": 13,
+    "velocity_y": 0
+  },
+  "final": {
+    "room_id_hex": "0xDF45",
+    "samus_x": 55,
+    "samus_y": 630,
+    "pose": 82,
+    "health": 19,
+    "game_state": 8,
+    "timer_type": 6,
+    "escape_timer_seconds": 3,
+    "enemy0_x": 232,
+    "enemy0_y": 631,
+    "enemy0_hp": 40,
+    "num_enemies": 13,
+    "velocity_y": 0
+  },
+  "error": "TimeoutError: ceres elev climb timed out best_y=532: SuperMetroidState(frame=2213, game_state=8, phase=<GameplayPhase.ORDINARY_GAMEPLAY: 'ordinary_gameplay'>, room_id=57157, area_index=6, door_transition=0, transition_direction=1, samus_x=55, samus_y=630, velocity_x=0, velocity_y=0, pose=82, health=19, max_health=99, reserve_health=0, max_reserve_health=0, missiles=0, max_missiles=0, super_missiles=0, max_super_missiles=0, power_bombs=0, max_power_bombs=0, selected_item=0, equipped_items=0, collected_items=0, equipped_beams=0, collected_beams=0, timer_type=6, escape_timer_frames=20, escape_timer_seconds=3, escape_timer_minutes=0, num_enemies=13, enemies_killed=0, enemy0_x=232, enemy0_y=631, enemy0_hp=40, enemy0_spritemap=63777, event_flags=(152, 67, 153, 71, 152, 67, 153, 67), boss_bits=(152, 67, 153, 67, 152, 71, 153, 71), door_def_ptr=43864, samus_x_sub=0, samus_y_sub=61440, velocity_x_sub=0, velocity_y_sub=64512, momentum_x=1, momentum_x_sub=16384, speed_counter=0, speed_flag=0, vertical_direction=2, facing=4, movement_type=2, shinespark_timer=0)",
+  "timing": {
+    "frames": 2213,
+    "seconds": 36.823,
+    "clock": "00:36.88",
+    "ntsc_fps": 60.0988
+  },
+  "best_y": 630,
+  "left_elev": false,
+  "ship_band": false
+}

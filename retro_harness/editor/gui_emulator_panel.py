@@ -3,26 +3,16 @@
 from __future__ import annotations
 
 import base64
-from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
-import json
-import os
 from pathlib import Path
-import shlex
-import shutil
-import subprocess
-import sys
 import time
-import wave
 
-from PySide6.QtCore import QBuffer, QIODevice, Qt, QTimer, Signal, QCoreApplication
+from PySide6.QtCore import Qt, QTimer, Signal, QCoreApplication
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -31,21 +21,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-try:
-    from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
-except Exception:  # pragma: no cover - depends on host Qt multimedia install
-    QAudioFormat = None  # type: ignore[assignment]
-    QAudioSource = None  # type: ignore[assignment]
-    QMediaDevices = None  # type: ignore[assignment]
-
 from retro_harness.editor.bridge_worker import BridgeController, BridgeReply
-from retro_harness.editor.recording import (
-    append_recording_marker as _core_append_recording_marker,
-    append_recording_segment as _core_append_recording_segment,
-    safe_recording_slug,
+from retro_harness.editor.emulator_loop import (
+    EmulatorSpeedController,
+    FrameTimingTracker,
+    after_step_wram_flags,
+    should_include_wram,
 )
+from retro_harness.editor.gui_emulator_recording import EmulatorRecordingMixin
 from retro_harness.editor.snapshot import snapshot_frame_counter, snapshot_int, snapshot_without_frame
-from retro_harness.editor.util import frame_budget_ms_for_speed
 
 HudLinesFn = Callable[[dict[str, object], str | None], list[str]]
 RamTagsSummaryFn = Callable[[object | None], str]
@@ -85,7 +69,7 @@ class EmulatorPanelConfig:
     unthrottled_speed_threshold: float = 8.0
 
 
-class EmbeddedEmulatorPanelBase(QWidget):
+class EmbeddedEmulatorPanelBase(EmulatorRecordingMixin, QWidget):
     """Bridge-driven emulator frame, controls, recording, and HUD overlay."""
 
     snapshot_received = Signal(dict)
@@ -118,20 +102,22 @@ class EmbeddedEmulatorPanelBase(QWidget):
         self._step_started = 0.0
         self._last_step_repeat = 1
         self._last_step_action: list[int] = []
-        self._turbo_step_counter = 0
-        self._speed_index = self._cfg.default_speed_index
-        self._target_frame_ms = frame_budget_ms_for_speed(
-            self._cfg.speed_levels[self._speed_index],
+        self._speed = EmulatorSpeedController(
+            levels=self._cfg.speed_levels,
+            default_index=self._cfg.default_speed_index,
             base_frame_ms=self._cfg.base_frame_ms,
+            speed_uses_frame_repeat=self._cfg.speed_uses_frame_repeat,
+            skip_frame_when_turbo=self._cfg.skip_frame_when_turbo,
+            turbo_speed_threshold=self._cfg.turbo_speed_threshold,
+            turbo_frame_preview_interval=self._cfg.turbo_frame_preview_interval,
+            unthrottled_speed_threshold=self._cfg.unthrottled_speed_threshold,
         )
-        self._fps_samples: deque[float] = deque(maxlen=30)
-        self._last_frame_ms = 0.0
-        self._last_bridge_step_ms = 0.0
-        self._last_frame_bytes: bytes | None = None
+        self._timing = FrameTimingTracker()
         self._keys_pressed: set[int] = set()
         self._room_label: str | None = None
         self._last_snapshot: dict[str, object] | None = None
         self._last_frame_pixmap: QPixmap | None = None
+        self._last_frame_bytes: bytes | None = None
         self._recording = False
         self._recording_name = ""
         self._recording_segments: list[dict[str, object]] = []
@@ -142,7 +128,7 @@ class EmbeddedEmulatorPanelBase(QWidget):
         self._last_recording_path: Path | None = None
         self._ram_recording = False
         self._mic_audio = None
-        self._mic_buffer: QBuffer | None = None
+        self._mic_buffer = None
         self._mic_format = None
         self._mic_started_at_frame = 0
         self._last_wram_sync_frame = -1
@@ -198,6 +184,9 @@ class EmbeddedEmulatorPanelBase(QWidget):
         self.run_script_button.clicked.connect(self.run_script_dialog)
         self.run_script_button.setEnabled(False)
         automation_row.addWidget(self.run_script_button)
+        self.autoplay_button = QPushButton("Autoplay")
+        self.autoplay_button.setEnabled(False)
+        automation_row.addWidget(self.autoplay_button)
         layout.addLayout(automation_row)
 
         record_name_row = QHBoxLayout()
@@ -229,53 +218,27 @@ class EmbeddedEmulatorPanelBase(QWidget):
         record_action_row.addWidget(self.run_last_recording_button)
         layout.addLayout(record_action_row)
 
+        follow_row = QHBoxLayout()
         self.follow_check = QCheckBox(self._cfg.follow_checkbox_label)
         self.follow_check.setChecked(True)
-        layout.addWidget(self.follow_check)
-
+        follow_row.addWidget(self.follow_check)
         self.overlay_check = QCheckBox("HUD overlay")
-        self.overlay_check.setChecked(False)
-        self.overlay_check.toggled.connect(self._rerender_last_snapshot)
-        layout.addWidget(self.overlay_check)
+        self.overlay_check.setChecked(True)
+        self.overlay_check.toggled.connect(lambda _checked: self._rerender_last_snapshot())
+        follow_row.addWidget(self.overlay_check)
+        follow_row.addStretch(1)
+        layout.addLayout(follow_row)
 
         self.fps_label = QLabel("FPS —")
-        self.fps_label.setStyleSheet("color: #6cf; font-size: 11px; font-family: monospace;")
         layout.addWidget(self.fps_label)
-
         self.status_label = QLabel("Disconnected")
-        self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("color: #888; font-size: 11px;")
         layout.addWidget(self.status_label)
+
         self._populate_state_combo()
         QTimer.singleShot(0, self._warm_bridge)
 
     def _env(self, suffix: str) -> str:
         return f"{self._cfg.env_prefix}_{suffix}"
-
-    def _append_recording_segment(
-        self,
-        segments: list[dict[str, object]],
-        action: list[int],
-        frames: int,
-    ) -> None:
-        _core_append_recording_segment(
-            segments,
-            action,
-            frames,
-            button_order=self._cfg.button_order,
-            idle_label=self._cfg.idle_label,
-        )
-
-    def _append_recording_marker(
-        self,
-        segments: list[dict[str, object]],
-        label: str,
-    ) -> dict[str, object]:
-        return _core_append_recording_marker(
-            segments,
-            label,
-            idle_label=self._cfg.idle_label,
-        )
 
     def _on_bridge_disconnect(self, message: str) -> None:
         self._set_running(False)
@@ -351,60 +314,38 @@ class EmbeddedEmulatorPanelBase(QWidget):
         return None
 
     def _step_include_wram(self) -> bool:
-        if not self._cfg.include_wram_when_stepping:
-            return False
-        if self._force_wram_next_step:
-            return True
-        interval = self._cfg.wram_sync_interval_frames
-        if interval <= 0:
-            return True
         snapshot = self._last_snapshot
-        if snapshot is None:
-            return True
-        frame = snapshot_frame_counter(snapshot)
-        if frame <= 0 or self._last_wram_sync_frame < 0:
-            return True
-        synced_tilemap = self._synced_tilemap_id()
-        tilemap_id = snapshot_int(snapshot, "tilemapId")
-        if (
-            synced_tilemap is not None
-            and tilemap_id is not None
-            and tilemap_id != synced_tilemap
-        ):
-            return True
-        return frame - self._last_wram_sync_frame >= interval
+        frame = snapshot_frame_counter(snapshot) if snapshot is not None else 0
+        tilemap_id = snapshot_int(snapshot, "tilemapId") if snapshot is not None else None
+        return should_include_wram(
+            include_wram_when_stepping=self._cfg.include_wram_when_stepping,
+            force_wram_next_step=self._force_wram_next_step,
+            wram_sync_interval_frames=self._cfg.wram_sync_interval_frames,
+            frame=frame,
+            last_wram_sync_frame=self._last_wram_sync_frame,
+            synced_tilemap=self._synced_tilemap_id(),
+            tilemap_id=tilemap_id,
+        )
 
     def _step_include_frame(self) -> bool:
-        speed = self.current_speed_multiplier()
-        if speed < self._cfg.turbo_speed_threshold:
-            return True
-        if not self._cfg.skip_frame_when_turbo:
-            return True
-        interval = max(1, int(self._cfg.turbo_frame_preview_interval))
-        self._turbo_step_counter += 1
-        return self._turbo_step_counter % interval == 0
+        return self._speed.should_include_frame()
 
     def _step_delay_ms(self, *, repeat: int, frame_ms: float) -> int:
-        speed = self.current_speed_multiplier()
-        if speed >= self._cfg.unthrottled_speed_threshold:
-            return 0
-        target_tick_ms = self._cfg.base_frame_ms if repeat > 1 else self._target_frame_ms
-        return max(0, target_tick_ms - int(frame_ms))
+        return self._speed.delay_ms(repeat=repeat, frame_ms=frame_ms)
 
     def _after_step_snapshot(self, snapshot: dict[str, object]) -> None:
-        if snapshot.get("wramBase64") or snapshot.get("wramRaw"):
-            self._last_wram_sync_frame = snapshot_frame_counter(snapshot)
-            self._force_wram_next_step = False
+        new_sync, force_next = after_step_wram_flags(
+            snapshot,
+            wram_sync_interval_frames=self._cfg.wram_sync_interval_frames,
+            synced_tilemap=self._synced_tilemap_id(),
+            tilemap_id=snapshot_int(snapshot, "tilemapId"),
+            frame=snapshot_frame_counter(snapshot),
+        )
+        if new_sync is not None:
+            self._last_wram_sync_frame = new_sync
+            self._force_wram_next_step = force_next
             return
-        if self._cfg.wram_sync_interval_frames <= 0:
-            return
-        synced_tilemap = self._synced_tilemap_id()
-        tilemap_id = snapshot_int(snapshot, "tilemapId")
-        if (
-            synced_tilemap is not None
-            and tilemap_id is not None
-            and tilemap_id != synced_tilemap
-        ):
+        if force_next:
             self._force_wram_next_step = True
 
     def set_room_label(self, room_label: str | None) -> None:
@@ -468,6 +409,18 @@ class EmbeddedEmulatorPanelBase(QWidget):
         self.run_last_recording_button.setEnabled(self._last_recording_path is not None)
         self.status_label.setText("Disconnected")
 
+    def _enable_session_controls(self) -> None:
+        self.start_button.setEnabled(False)
+        self.stop_button.setEnabled(True)
+        self.hot_save_button.setEnabled(True)
+        self.load_save_button.setEnabled(True)
+        self.capture_button.setEnabled(True)
+        self.ram_record_button.setEnabled(True)
+        self.run_script_button.setEnabled(True)
+        self.record_button.setEnabled(True)
+        self.mic_button.setEnabled(True)
+        self.run_last_recording_button.setEnabled(self._last_recording_path is not None)
+
     def start_rom(self, rom_path: Path) -> None:
         self.start_bridge()
         state_file = self.selected_state_file()
@@ -480,16 +433,7 @@ class EmbeddedEmulatorPanelBase(QWidget):
         if response and response.get("ok"):
             self._set_running(True)
             self._schedule_next_step(0)
-            self.start_button.setEnabled(False)
-            self.stop_button.setEnabled(True)
-            self.hot_save_button.setEnabled(True)
-            self.load_save_button.setEnabled(True)
-            self.capture_button.setEnabled(True)
-            self.ram_record_button.setEnabled(True)
-            self.run_script_button.setEnabled(True)
-            self.record_button.setEnabled(True)
-            self.mic_button.setEnabled(True)
-            self.run_last_recording_button.setEnabled(self._last_recording_path is not None)
+            self._enable_session_controls()
             self.frame_label.setFocus()
             self.status_label.setText(str(response.get("message") or "Running"))
 
@@ -504,16 +448,7 @@ class EmbeddedEmulatorPanelBase(QWidget):
         if response and response.get("ok"):
             self._set_running(True)
             self._schedule_next_step(0)
-            self.start_button.setEnabled(False)
-            self.stop_button.setEnabled(True)
-            self.hot_save_button.setEnabled(True)
-            self.load_save_button.setEnabled(True)
-            self.capture_button.setEnabled(True)
-            self.ram_record_button.setEnabled(True)
-            self.run_script_button.setEnabled(True)
-            self.record_button.setEnabled(True)
-            self.mic_button.setEnabled(True)
-            self.run_last_recording_button.setEnabled(self._last_recording_path is not None)
+            self._enable_session_controls()
             self.frame_label.setFocus()
             self.status_label.setText(str(response.get("message") or "Running"))
 
@@ -552,43 +487,31 @@ class EmbeddedEmulatorPanelBase(QWidget):
         self.status_label.setText("Session closed")
 
     def current_speed_multiplier(self) -> float:
-        return float(self._cfg.speed_levels[self._speed_index])
+        return self._speed.multiplier
 
     def _reset_speed(self) -> None:
-        self._speed_index = self._cfg.default_speed_index
-        self._apply_speed_index()
-
-    def _apply_speed_index(self) -> None:
-        self._target_frame_ms = frame_budget_ms_for_speed(
-            self._cfg.speed_levels[self._speed_index],
-            base_frame_ms=self._cfg.base_frame_ms,
-        )
+        self._speed.reset()
 
     def decrease_speed(self) -> bool:
-        if self._speed_index <= 0:
+        if not self._speed.decrease():
             return False
-        self._speed_index -= 1
-        self._apply_speed_index()
         self._notify_speed_change()
         return True
 
     def increase_speed(self) -> bool:
-        if self._speed_index >= len(self._cfg.speed_levels) - 1:
+        if not self._speed.increase():
             return False
-        self._speed_index += 1
-        self._apply_speed_index()
         self._notify_speed_change()
         return True
 
     def _notify_speed_change(self) -> None:
-        self._turbo_step_counter = 0
-        speed = self.current_speed_multiplier()
-        label = f"{speed:g}x" if speed != int(speed) else f"{int(speed)}x"
-        self.status_label.setText(f"Speed {label}  ([ slower  ] faster)")
-        if self._last_frame_ms > 0:
+        self.status_label.setText(
+            f"Speed {self._speed.label()}  ([ slower  ] faster)"
+        )
+        if self._timing.last_frame_ms > 0:
             self._record_frame_timing(
-                self._last_frame_ms,
-                bridge_step_ms=self._last_bridge_step_ms or None,
+                self._timing.last_frame_ms,
+                bridge_step_ms=self._timing.last_bridge_step_ms or None,
             )
 
     def _cancel_step_loop(self) -> None:
@@ -657,27 +580,15 @@ class EmbeddedEmulatorPanelBase(QWidget):
         *,
         bridge_step_ms: float | None = None,
     ) -> None:
-        self._last_frame_ms = frame_ms
         if bridge_step_ms is not None:
-            self._last_bridge_step_ms = bridge_step_ms
-        if frame_ms > 0:
-            self._fps_samples.append(1000.0 / frame_ms)
-        avg_fps = sum(self._fps_samples) / len(self._fps_samples) if self._fps_samples else 0.0
-        bridge_text = (
-            f"  bridge {self._last_bridge_step_ms:.0f}ms"
-            if self._last_bridge_step_ms > 0
-            else ""
-        )
-        speed = self.current_speed_multiplier()
-        speed_label = f"{speed:g}x" if speed != int(speed) else f"{int(speed)}x"
-        mode_bits: list[str] = [speed_label]
-        if self._ram_recording:
-            mode_bits.append("RAM rec")
-        if self._recording:
-            mode_bits.append("script rec")
-        mode_text = f"  [{' | '.join(mode_bits)}]"
+            self._timing.last_bridge_step_ms = bridge_step_ms
         self.fps_label.setText(
-            f"FPS {avg_fps:4.1f}  frame {frame_ms:4.0f}ms{bridge_text}{mode_text}"
+            self._timing.status_text(
+                frame_ms=frame_ms,
+                speed=self.current_speed_multiplier(),
+                ram_recording=self._ram_recording,
+                script_recording=self._recording,
+            )
         )
 
     def _set_running(self, running: bool) -> None:
@@ -759,373 +670,6 @@ class EmbeddedEmulatorPanelBase(QWidget):
             return
         self._send_command("capture", prefix="editor_capture", includeFrame=True)
 
-    def toggle_ram_recording(self) -> None:
-        if not self._running:
-            return
-        label = safe_recording_slug(self.recording_name_edit.text() or "editor_ram")
-        response = self._send_command(
-            "toggle_ram_recording",
-            label=label,
-            includeFrame=False,
-        )
-        if not isinstance(response, dict) or not response.get("ok"):
-            return
-        self._ram_recording = bool(response.get("ramRecording"))
-        self.ram_record_button.setText("Stop RAM" if self._ram_recording else "RAM Rec")
-        message = str(response.get("message") or "")
-        summary = response.get("ramRecordingSummary")
-        if isinstance(summary, dict) and self._format_ram_tags is not None:
-            tagged = self._format_ram_tags(summary.get("taggedChanges"))
-            if tagged:
-                message = f"{message} | {tagged}"
-        if message:
-            self.status_label.setText(message)
-
-    def run_script_dialog(self) -> None:
-        if not self._running:
-            return
-        path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Run Emulator Script",
-            "",
-            "JSON scripts (*.json);;All files (*)",
-        )
-        if not path:
-            return
-        try:
-            script, segments = self._script_segments_from_file(Path(path))
-        except Exception as exc:
-            self.status_label.setText(f"Error: {exc}")
-            return
-        prefix = str(script.get("name") or Path(path).stem)
-        state_file = str(script.get("stateFile")) if script.get("stateFile") else None
-        self._run_script_segments(
-            segments,
-            prefix,
-            bool(script.get("captureEachSegment", False)),
-            state_file=state_file,
-        )
-
-    def _run_script_segments(
-        self,
-        segments: list[dict[str, object]],
-        prefix: str,
-        capture_each_segment: bool,
-        *,
-        state_file: str | None = None,
-    ) -> None:
-        if state_file:
-            response = self._send_command("start_session", stateFile=state_file, includeFrame=True)
-            if not isinstance(response, dict) or not response.get("ok"):
-                return
-        self._send_command(
-            "run_script",
-            segments=segments,
-            prefix=prefix,
-            captureEachSegment=capture_each_segment,
-            includeFrame=True,
-        )
-
-    def toggle_recording(self) -> None:
-        if not self._running:
-            return
-        if self._recording:
-            self._recording = False
-            self.record_button.setText("Record")
-            self.mark_button.setEnabled(False)
-            self.save_recording_button.setEnabled(bool(self._recording_segments))
-            self.status_label.setText(f"Recording stopped: {self._recording_frames} frames")
-            return
-        self._recording_name = safe_recording_slug(
-            self.recording_name_edit.text() or "editor_recording"
-        )
-        self._recording_segments = []
-        self._recording_markers = []
-        self._recording_frames = 0
-        self._recording_start_capture = None
-        self._recording_selected_state_file = self.selected_state_file()
-        response = self._send_command(
-            "capture",
-            prefix=f"{self._recording_name}_record_start_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            includeFrame=False,
-        )
-        if not isinstance(response, dict) or not response.get("ok") or not isinstance(response.get("capture"), dict):
-            self.status_label.setText("Recording start checkpoint failed")
-            return
-        self._recording_start_capture = response["capture"]
-        self._recording = True
-        self.record_button.setText("Stop Rec")
-        self.mark_button.setEnabled(True)
-        self.save_recording_button.setEnabled(False)
-        self.status_label.setText(f"Recording {self._recording_name} from checkpoint")
-
-    def mark_recording(self) -> None:
-        if not self._running:
-            return
-        label = safe_recording_slug(
-            self.recording_name_edit.text() or f"mark_{len(self._recording_markers) + 1:02d}"
-        )
-        marker_segment = self._append_recording_marker(self._recording_segments, label)
-        marker: dict[str, object] = {
-            "frame": self._recording_frames,
-            "label": label,
-            "segmentIndex": len(self._recording_segments) - 1,
-        }
-        if self._last_snapshot is not None:
-            marker["snapshot"] = self._compact_snapshot(self._last_snapshot)
-        prefix = f"{self._recording_name or 'editor_recording'}_{label}_{self._recording_frames:05d}"
-        response = self._send_command("capture", prefix=prefix, includeFrame=False)
-        if isinstance(response, dict) and isinstance(response.get("capture"), dict):
-            marker["capture"] = response["capture"]
-            marker_segment["capturePrefix"] = response["capture"].get("prefix")
-        self._recording_markers.append(marker)
-        self.save_recording_button.setEnabled(True)
-        self.status_label.setText(f"Marked {label} at frame {self._recording_frames}")
-
-    def toggle_mic_annotation(self) -> None:
-        if not self._running:
-            return
-        if self._mic_audio is not None:
-            self.stop_mic_annotation()
-            return
-        if not self._recording:
-            self.toggle_recording()
-            if not self._recording:
-                return
-        if QAudioFormat is None or QAudioSource is None or QMediaDevices is None:
-            self.status_label.setText("Qt multimedia audio input is unavailable")
-            return
-        device = QMediaDevices.defaultAudioInput()
-        if device.isNull():
-            self.status_label.setText("No microphone input device found")
-            return
-        audio_format = QAudioFormat()
-        audio_format.setSampleRate(16000)
-        audio_format.setChannelCount(1)
-        audio_format.setSampleFormat(QAudioFormat.SampleFormat.Int16)
-        if not device.isFormatSupported(audio_format):
-            audio_format = device.preferredFormat()
-        self._mic_buffer = QBuffer(self)
-        self._mic_buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-        self._mic_audio = QAudioSource(device, audio_format, self)
-        self._mic_audio.start(self._mic_buffer)
-        self._mic_format = audio_format
-        self._mic_started_at_frame = self._recording_frames
-        self.mic_button.setText("Stop Mic")
-        self.status_label.setText("Mic annotation recording")
-
-    def stop_mic_annotation(self) -> None:
-        if self._mic_audio is None or self._mic_buffer is None or self._mic_format is None:
-            self._stop_mic_without_marker()
-            return
-        self._mic_audio.stop()
-        self._mic_buffer.close()
-        raw = bytes(self._mic_buffer.data())
-        audio_format = self._mic_format
-        self._stop_mic_without_marker()
-        if not raw:
-            self.status_label.setText("Mic annotation was empty")
-            return
-        label = safe_recording_slug(
-            self.recording_name_edit.text() or f"voice_{len(self._recording_markers) + 1:02d}"
-        )
-        audio_dir = self._cfg.default_recording_dir / "audio"
-        audio_dir.mkdir(parents=True, exist_ok=True)
-        audio_path = audio_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{label}.wav"
-        with wave.open(str(audio_path), "wb") as handle:
-            handle.setnchannels(int(audio_format.channelCount()))
-            handle.setsampwidth(max(1, int(audio_format.bytesPerSample())))
-            handle.setframerate(int(audio_format.sampleRate()))
-            handle.writeframes(raw)
-        transcript = self._transcribe_audio(audio_path)
-        marker_segment = self._append_recording_marker(self._recording_segments, label)
-        marker: dict[str, object] = {
-            "frame": self._recording_frames,
-            "startFrame": self._mic_started_at_frame,
-            "label": label,
-            "segmentIndex": len(self._recording_segments) - 1,
-            "audio": str(audio_path),
-            "transcription": transcript,
-        }
-        if transcript.get("text"):
-            marker_segment["voiceText"] = transcript["text"]
-        if self._last_snapshot is not None:
-            marker["snapshot"] = self._compact_snapshot(self._last_snapshot)
-        response = self._send_command(
-            "capture",
-            prefix=f"{self._recording_name or 'editor_recording'}_{label}_voice",
-            includeFrame=False,
-        )
-        if isinstance(response, dict) and isinstance(response.get("capture"), dict):
-            marker["capture"] = response["capture"]
-            marker_segment["capturePrefix"] = response["capture"].get("prefix")
-        self._recording_markers.append(marker)
-        self.save_recording_button.setEnabled(True)
-        summary = transcript.get("text") or transcript.get("status") or "saved"
-        self.status_label.setText(f"Voice note {label}: {summary}")
-
-    def _stop_mic_without_marker(self) -> None:
-        if self._mic_audio is not None:
-            try:
-                self._mic_audio.stop()
-            except Exception:
-                pass
-        if self._mic_buffer is not None and self._mic_buffer.isOpen():
-            self._mic_buffer.close()
-        self._mic_audio = None
-        self._mic_buffer = None
-        self._mic_format = None
-        self.mic_button.setText("Mic Note")
-
-    def _transcribe_audio(self, audio_path: Path) -> dict[str, object]:
-        command = os.environ.get(self._env("TRANSCRIBE_CMD"), "").strip()
-        if command:
-            try:
-                result = subprocess.run(
-                    [*shlex.split(command), str(audio_path)],
-                    cwd=str(self._cfg.project_root),
-                    text=True,
-                    capture_output=True,
-                    timeout=120,
-                    check=False,
-                )
-            except Exception as exc:
-                return {"status": "error", "text": "", "error": str(exc), "command": command}
-            text = result.stdout.strip()
-            return {
-                "status": "ok" if result.returncode == 0 else "error",
-                "text": text,
-                "command": command,
-                "returnCode": result.returncode,
-                "stderr": result.stderr.strip(),
-            }
-
-        whisper = shutil.which("whisper")
-        if whisper is None:
-            prefix = self._cfg.env_prefix
-            return {
-                "status": "not_configured",
-                "text": "",
-                "hint": (
-                    f"Install the whisper CLI or set {prefix}_TRANSCRIBE_CMD to a command "
-                    "that accepts the WAV path."
-                ),
-            }
-        output_dir = self._cfg.default_recording_dir / "transcripts"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        device = os.environ.get(self._env("WHISPER_DEVICE")) or (
-            "cuda" if shutil.which("nvidia-smi") else "cpu"
-        )
-        command_args = [
-            whisper,
-            str(audio_path),
-            "--model",
-            os.environ.get(self._env("WHISPER_MODEL"), "turbo"),
-            "--device",
-            device,
-            "--language",
-            os.environ.get(self._env("WHISPER_LANGUAGE"), "en"),
-            "--output_format",
-            "json",
-            "--output_dir",
-            str(output_dir),
-            "--verbose",
-            "False",
-        ]
-        try:
-            result = subprocess.run(
-                command_args,
-                cwd=str(self._cfg.project_root),
-                text=True,
-                capture_output=True,
-                timeout=int(os.environ.get(self._env("WHISPER_TIMEOUT"), "300")),
-                check=False,
-            )
-        except Exception as exc:
-            return {"status": "error", "text": "", "error": str(exc), "engine": "whisper"}
-        transcript_path = output_dir / f"{audio_path.stem}.json"
-        transcript: dict[str, object] = {}
-        if transcript_path.is_file():
-            try:
-                transcript = json.loads(transcript_path.read_text(encoding="utf-8"))
-            except Exception:
-                transcript = {}
-        text = str(transcript.get("text") or "").strip()
-        return {
-            "status": "ok" if result.returncode == 0 else "error",
-            "text": text,
-            "segments": transcript.get("segments", []),
-            "engine": "whisper",
-            "device": device,
-            "command": " ".join(shlex.quote(arg) for arg in command_args),
-            "returnCode": result.returncode,
-            "stderr": result.stderr.strip(),
-            "transcriptPath": str(transcript_path) if transcript_path.is_file() else None,
-        }
-
-    def save_recording(self) -> None:
-        if self._recording:
-            self.toggle_recording()
-        if not self._recording_segments:
-            self.status_label.setText("No recording segments to save")
-            return
-        self._cfg.default_recording_dir.mkdir(parents=True, exist_ok=True)
-        name = self._recording_name or safe_recording_slug(
-            self.recording_name_edit.text() or "editor_recording"
-        )
-        path = self._cfg.default_recording_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{name}.json"
-        start_state_file = None
-        if isinstance(self._recording_start_capture, dict):
-            paths = self._recording_start_capture.get("paths")
-            if isinstance(paths, dict) and isinstance(paths.get("state"), str):
-                start_state_file = paths["state"]
-        bridge_module = self._cfg.headless_bridge_module or self._cfg.bridge_module
-        data = {
-            "format": self._cfg.recording_format,
-            "version": self._cfg.recording_version,
-            "tool": self._cfg.recording_tool,
-            "name": name,
-            "recordedAt": datetime.now().isoformat(timespec="seconds"),
-            "buttonOrder": list(self._cfg.button_order),
-            "stateFile": start_state_file or self._recording_selected_state_file or self.selected_state_file(),
-            "selectedStateFile": self._recording_selected_state_file,
-            "startCapture": self._recording_start_capture,
-            "roomLabel": self._room_label,
-            "totalFrames": self._recording_frames,
-            "segments": self._recording_segments,
-            "markers": self._recording_markers,
-            "lastSnapshot": self._compact_snapshot(self._last_snapshot) if self._last_snapshot else None,
-            "captureEachSegment": False,
-            "aiUse": {
-                "description": f"Replay with {bridge_module} run_script to reproduce labeled emulator states.",
-                "headlessCommand": (
-                    f"PYTHONPATH=. uv run --project .. python -m {bridge_module} --script {path}"
-                ),
-            },
-        }
-        path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        self._last_recording_path = path
-        self.run_last_recording_button.setEnabled(True)
-        self.status_label.setText(f"Saved recording {path.name}")
-
-    def run_last_recording(self) -> None:
-        if not self._running or self._last_recording_path is None:
-            return
-        try:
-            script, segments = self._script_segments_from_file(self._last_recording_path)
-        except Exception as exc:
-            self.status_label.setText(f"Error: {exc}")
-            return
-        prefix = str(script.get("name") or self._last_recording_path.stem)
-        state_file = str(script.get("stateFile")) if script.get("stateFile") else None
-        self._run_script_segments(segments, prefix, False, state_file=state_file)
-
-    def _compact_snapshot(self, snapshot: dict[str, object]) -> dict[str, object]:
-        keys = self._cfg.compact_snapshot_keys
-        if not keys:
-            return dict(snapshot)
-        return {key: snapshot.get(key) for key in keys if key in snapshot}
-
     def _render_frame(self, snapshot: dict[str, object]) -> None:
         raw = snapshot.get("frameRgb24Raw")
         if raw is None:
@@ -1195,10 +739,7 @@ class EmbeddedEmulatorPanelBase(QWidget):
         for key, button_index in self._cfg.key_to_button.items():
             if key in self._keys_pressed:
                 action[button_index] = 1
-        speed = self.current_speed_multiplier()
-        repeat = 1
-        if self._cfg.speed_uses_frame_repeat and speed >= 2.0:
-            repeat = max(1, int(round(speed)))
+        repeat = self._speed.step_repeat()
         self._last_step_repeat = repeat
         self._last_step_action = action
         self._step_started = time.perf_counter()
