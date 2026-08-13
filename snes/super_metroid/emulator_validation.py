@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from retro_harness.actions import indexed_action
-from retro_harness.env import GameSpec, resync_custom_state
+from retro_harness.env import GameSpec
 
 from super_metroid.observation import Observation
 from super_metroid.paths import GAME_DIR
@@ -100,8 +100,8 @@ def observation_from_env(env: Any) -> Observation:
         
     Note:
         invulnerability_timer ($18A8) and frame_counter_1/2 ($1842/$09DA)
-        are not yet in SuperMetroidState. These fields remain None/0 until
-        parse_env_state is extended.
+        are not yet in SuperMetroidState. These fields remain None (unobserved)
+        until parse_env_state is extended. Honest None, not fake zero.
     """
     state = parse_env_state(env, mode="full")
 
@@ -125,7 +125,7 @@ def observation_from_env(env: Any) -> Observation:
         frame_counter_1=None,  # Not yet in SuperMetroidState
         frame_counter_2=None,  # Not yet in SuperMetroidState
         enemy_energy=state.enemy0_hp,  # Oσ+: $0F8C via enemy0_hp
-        invulnerability_timer=0,  # Not yet in SuperMetroidState
+        invulnerability_timer=None,  # Not yet in SuperMetroidState (unobserved)
     )
 
 
@@ -195,14 +195,10 @@ def validate_trajectory_on_emulator(
         env = game_spec.make_env(state=None)
         env.reset()
         
-        # Load the custom state
+        # Load the state - read and set directly, no resync lookup
         from retro_harness.env import read_state_bytes
         state_data = read_state_bytes(start_path)
         env.em.set_state(state_data)
-        
-        # Resync to drop free frame (if this is a custom state)
-        state_name = start_path.stem
-        resync_custom_state(env, GAME_DIR, "SuperMetroid-Snes", state_name)
         
     except Exception as e:
         return EmulatorValidationResult(
@@ -217,6 +213,10 @@ def validate_trajectory_on_emulator(
     # Collect emulator observations for residual profiling
     emu_observations: list[Observation] = []
     
+    # Frame 0: pre-step observation (corresponding start for Mini --load-state)
+    if mini_observations is not None:
+        emu_observations.append(observation_from_env(env))
+    
     # Execute input sequence on emulator
     frames_executed = 0
     for i, frame_input in enumerate(inputs):
@@ -226,7 +226,7 @@ def validate_trajectory_on_emulator(
             env.step(action)
             frames_executed = i + 1
             
-            # Collect observation for residual profiling
+            # Collect post-step observation (frames 1..N)
             if mini_observations is not None:
                 emu_observations.append(observation_from_env(env))
                 
