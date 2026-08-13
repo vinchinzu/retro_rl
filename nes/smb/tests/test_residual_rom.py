@@ -31,7 +31,11 @@ pytestmark = [
 ]
 
 
-@pytest.mark.parametrize("name", ("idle", "walk", "jump", "run_jump"))
+_SHORT_TAPES = ("idle", "walk", "jump", "run_jump")
+_LAND_TAPES = ("jump_to_land", "run_jump_to_land")
+
+
+@pytest.mark.parametrize("name", _SHORT_TAPES + _LAND_TAPES)
 def test_segment_produces_measured_profile(name: str) -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -43,22 +47,11 @@ def test_segment_produces_measured_profile(name: str) -> None:
     assert result.approx_obs[0].y == result.emu_obs[0].y
 
 
-def test_idle_and_walk_hold_pixels() -> None:
+def test_short_tapes_hold_pixels_and_subpixels() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    idle = measure_segment("idle", run_emulator=True)
-    walk = measure_segment("walk", run_emulator=True)
-    assert idle.profile.fd_pi is None
-    assert walk.profile.fd_pi is None
-    assert walk.profile.fd_sigma is None
-    assert idle.profile.can_keep_as_search_model() is True
-    assert walk.profile.can_keep_as_search_model() is True
-
-
-def test_jump_breaks_subpixels_before_pixels() -> None:
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    result = measure_segment("jump", run_emulator=True)
-    assert result.profile.fd_sigma == 5
-    assert result.profile.fd_pi == 7
-    assert result.profile.first_diff_field == "subpixels"
+    for name in _SHORT_TAPES + _LAND_TAPES:
+        result = measure_segment(name, run_emulator=True)
+        assert result.profile.fd_pi is None, name
+        assert result.profile.fd_sigma is None, name
+        assert result.profile.can_keep_as_search_model() is True, name
