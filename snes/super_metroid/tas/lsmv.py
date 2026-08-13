@@ -21,7 +21,7 @@ import io
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any
 
 from retro_harness.actions import SNES_ACTION_SIZE
 from retro_harness.controls import SNES_BUTTON_NAMES
@@ -162,8 +162,3 @@ def parse_lsmv(path: Path | str) -> LsmvMovie:
         raw_p1=raw_p1,
         resets=resets,
     )
-
-
-def lsmv_to_snes12_frames(path: Path | str) -> list[list[int]]:
-    """Convenience: path → list of 12-int SNES frames."""
-    return parse_lsmv(path).frames

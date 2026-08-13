@@ -206,5 +206,5 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure below-spazer-climb \
 | sm-json `Below Spazer.json` | link 1→4 `canWallJump`; 4→3 bombs |
 | `docs/routes/TRACK_100.md` | 100% board / Spazer insert policy |
 | `docs/SOURCE_STATES.md` | `post_below_spazer_for_spazer_pure` |
-| `routes/kpdr/guide_paths.py` | `early-spazer` presets |
+| `routes/kpdr/guides/` | `early-spazer` presets |
 | `routes/kpdr/spazer/` | pure door/collect/return + climb/drop (package) |

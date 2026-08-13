@@ -15,8 +15,8 @@ another clone runner pair.
 ``play_*`` / ``run_*``. Report type is :class:`ContinuousRunReport` only.
 
 Named hop tables live on :mod:`super_metroid.routes.kpdr.hops` (not re-exported
-here). Super+ ``play_<tip>`` / ``run_<tip>`` aliases are still bound on this
-module for segment registry / scripts.
+here). Super+ tips go through ``play_tip`` / ``run_tip`` / ``run_to`` — no
+per-tip module aliases.
 """
 
 from __future__ import annotations
@@ -28,9 +28,6 @@ from super_metroid.routes.early_continuous import (
     CONTROLLER_PATH,
     EARLY_TIP_BY_ID,
     EARLY_TIP_SPECS,
-    KPDR_SUPER_ROOM_PATH,
-    SPORE_CONTROLLER_PATH,
-    early_prefix_conditions,
     play_bombs,
     play_morph,
     play_spore,
@@ -52,13 +49,11 @@ from super_metroid.routes.catalog import (
     list_continuous_tips,
     register_continuous_segments,
 )
-from super_metroid.routes.post_supers_aliases import install_post_supers_aliases
 from super_metroid.routes.runtime import (
     ROUTE_PLAN_PATH,
     ActionSpan,
     ContinuousRunReport,
     ProgressEvent,
-    RouteSession,
     Split,
     default_artifacts,
     resolve_clean_resources,
@@ -223,32 +218,29 @@ def run_to(
     return run_to_tip(resolved.tip_id, **kwargs)
 
 
-# Super+ play_<tip> / run_<tip> on this module (thin aliases for segment
-# registry / scripts; prefer run_to / play_tip. Not in __all__).
-_POST_SUPERS_ALIASES = install_post_supers_aliases(
-    globals(),
-    SUPER_TIP_BY_ID,
-    play_spec=play_tip,
-    run_spec=run_tip,
-)
+def _play_tip_bound(tip_id: str):
+    """Bind ``play_tip`` to one Super+ tip id for the segment registry."""
+
+    def _play(session: object, splits: list[object], segments_list: list[object]) -> object:
+        return play_tip(tip_id, session, splits, segments_list)
+
+    _play.__name__ = f"play_{tip_id}"
+    _play.__qualname__ = f"play_{tip_id}"
+    return _play
 
 
 def _continuous_segment_registry() -> dict[str, object]:
     """Tip-id → play callable from the unified TipSpec table."""
-    segments: dict[str, object] = {}
-    segments["run_to"] = run_to
-    # Public play_* wrappers for early tips; Super+ aliases for the rest.
-    _early_play = {
+    segments: dict[str, object] = {
+        "run_to": run_to,
         "morph": play_morph,
         "bombs": play_bombs,
         "spore": play_spore,
         "supers": play_supers,
     }
     for tip_id in TIP_BY_ID:
-        if tip_id in _early_play:
-            segments[tip_id] = _early_play[tip_id]
-        else:
-            segments[tip_id] = _POST_SUPERS_ALIASES[f"play_{tip_id}"]
+        if tip_id not in segments:
+            segments[tip_id] = _play_tip_bound(tip_id)
     return segments
 
 

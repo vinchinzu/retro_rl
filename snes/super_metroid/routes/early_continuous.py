@@ -55,7 +55,7 @@ from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
 
 _THIS = Path(__file__)
 KPDR_PACKAGE_PATH = _THIS.parent / "kpdr"
-# Real controller body under kpdr/ (shim remains at routes/spore_spawn_controller.py).
+# Real controller body under kpdr/spore_spawn.py.
 SPORE_CONTROLLER_PATH = KPDR_PACKAGE_PATH / "spore_spawn.py"
 KPDR_SUPER_ROOM_PATH = KPDR_PACKAGE_PATH / "super_collect.py"
 # Historical CONTROLLER_PATH name → Super-collect implementation (shim deleted).

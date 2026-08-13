@@ -280,7 +280,7 @@ def test_consecutive_walljumps_with_gap(
 
 def test_parlor_chimney_uses_shared_walljump_skill() -> None:
     """Post-Torizo Parlor left climb is a named consecutive_walljumps consumer."""
-    from super_metroid.routes import spore_spawn_controller as ssc
+    from super_metroid.routes.kpdr import spore_spawn as ssc
 
     assert len(ssc._PARLOR_CHIMNEY_WJ) == 8
     assert ssc._PARLOR_CHIMNEY_WJ[0].into == "RIGHT"

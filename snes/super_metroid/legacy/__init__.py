@@ -6,8 +6,7 @@ Active product path is scripted continuous KPDR (`routes/`, `combat/` feature
 strategies, hash-pinned early policies). Vision BC is parked until gold; see
 ``docs/research/LEGACY_MODEL_REUSE.md`` and ``docs/ARCHITECTURE.md``.
 
-Compat shims at ``super_metroid.models`` and ``super_metroid.visual_models``
-re-export these modules for existing tests only.
+Import from ``super_metroid.legacy.models`` / ``legacy.visual_models``.
 """
 
 from __future__ import annotations

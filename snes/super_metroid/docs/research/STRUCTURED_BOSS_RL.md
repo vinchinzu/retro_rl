@@ -18,7 +18,7 @@ Hard spots should instead:
 1. **Know the fight** — RAM positions, HP, spritemap, invuln timers, catalog
    hitbox sizes (`sm-json-data` dims).
 2. **Code a strategy controller** — Spore Spawn is the template
-   (`routes/spore_spawn_controller.py`: vulnerable spritemaps + aim + fire).
+   (`routes/kpdr/spore_spawn.py`: vulnerable spritemaps + aim + fire).
 3. **Optionally RL-refine** on the structured feature vector (not pixels) to
    cut frames and damage while staying deterministic enough for continuous
    promotion.
