@@ -18,7 +18,7 @@ bank stores entry fingerprints so hill-climb stays single-hop (see
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 from super_metroid.human_tape.anchors import anchor_rows, parse_room_id
 from super_metroid.rooms.canonical_names import load_canonical_names, room_name
@@ -490,18 +490,6 @@ def fold_named_segments(
             )
         )
     return out
-
-
-def events_from_item_frames(
-    item_frames: Sequence[tuple[int, str]],
-    *,
-    room_id: int = 0,
-) -> list[TimingEvent]:
-    """Helper: [(frame, label), ...] → item_delta events."""
-    return [
-        TimingEvent(frame=int(f), kind="item_delta", room_id=room_id, label=str(label))
-        for f, label in item_frames
-    ]
 
 
 def _parse_room_field(row: Mapping[str, Any]) -> int:

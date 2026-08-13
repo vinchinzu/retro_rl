@@ -42,7 +42,7 @@ from super_metroid.routes.kpdr.k4_cathedral import (
 from super_metroid.routes.kpdr.k4_rising_tide import (
     play_rising_tide_to_bubble,
 )
-from super_metroid.routes.kpdr.k4_wave import (
+from super_metroid.routes.kpdr.wave import (
     WAVE_BEAM_MASK,
     play_bubble_to_farm,
     play_bubble_to_single_chamber,

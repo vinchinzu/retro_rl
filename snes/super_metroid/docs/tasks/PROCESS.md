@@ -136,7 +136,7 @@ doc.
 
 - `routes/kpdr/business_climb.py`
 - `routes/kpdr/hijump_return.py` (and HJ gray-door knobs)
-- `routes/spore_spawn_controller.py` / spore fight dwell knobs
+- `routes/kpdr/spore_spawn.py` / spore fight dwell knobs
 - geometry on `routes/kpdr/varia_return.py`
 - `routes/continuous.py`, `docs/STATUS.md` (planner only)
 - also serialize: `progression.py`, `catalog.py` when tip-wiring

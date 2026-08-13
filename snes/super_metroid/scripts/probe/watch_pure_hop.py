@@ -44,7 +44,7 @@ from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
 from super_metroid.dev.common import boot_from_state, make_dev_env  # noqa: E402
 from super_metroid.paths import GAME, GAME_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state  # noqa: E402
-from super_metroid.routes.kpdr.k4_wave import (  # noqa: E402
+from super_metroid.routes.kpdr.wave import (  # noqa: E402
     play_bubble_to_single_chamber,
     play_double_chamber_to_wave,
     play_single_to_double_chamber,

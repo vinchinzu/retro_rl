@@ -14,10 +14,9 @@ Sources
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from super_metroid.paths import GAME_DIR
 from super_metroid.tas.bk2 import parse_bk2
@@ -283,59 +282,6 @@ def export_slice(
     out = out_path or (SLICE_DIR / f"{spec.id}.json")
     write_snes12_rle_seed(out, payload)
     return payload
-
-
-def export_all_slices(
-    *,
-    only_tags: set[str] | None = None,
-    skip_full: bool = False,
-    progress: Callable[[str], None] | None = None,
-) -> dict[str, Path]:
-    """Export catalog slices; cache full-movie parses per path."""
-    cache: dict[Path, list[list[int]]] = {}
-    written: dict[str, Path] = {}
-    for sid, spec in SLICE_CATALOG.items():
-        if skip_full and "full" in spec.tags and sid.endswith("_full"):
-            # still export short fulls (contest); skip huge ones
-            if spec.end is None and (spec.start == 0) and "contest" not in spec.tags:
-                if progress:
-                    progress(f"skip full {sid}")
-                continue
-        if only_tags is not None and not only_tags.intersection(spec.tags):
-            continue
-        if not spec.movie.exists():
-            if progress:
-                progress(f"missing {spec.movie}")
-            continue
-        if spec.movie not in cache:
-            if progress:
-                progress(f"parse {spec.movie.name}")
-            cache[spec.movie] = load_movie_frames(spec.movie, spec.kind)
-        if progress:
-            progress(f"export {sid}")
-        export_slice(spec, frames=cache[spec.movie])
-        written[sid] = SLICE_DIR / f"{sid}.json"
-    # manifest
-    manifest = {
-        "slices": {
-            sid: {
-                "path": f"slices/{sid}.json",
-                "movie": str(spec.movie.relative_to(GAME_DIR)).replace("\\", "/"),
-                "start": spec.start,
-                "end": spec.end,
-                "tags": list(spec.tags),
-                "source": spec.source,
-                "notes": spec.notes,
-            }
-            for sid, spec in SLICE_CATALOG.items()
-            if sid in written
-        }
-    }
-    SLICE_DIR.mkdir(parents=True, exist_ok=True)
-    (SLICE_DIR / "manifest.json").write_text(
-        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-    )
-    return written
 
 
 def finish_slice_ids() -> list[str]:

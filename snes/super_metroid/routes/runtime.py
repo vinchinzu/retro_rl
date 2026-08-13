@@ -462,16 +462,6 @@ def route_plan_evidence(plan_path: Path = ROUTE_PLAN_PATH) -> dict[str, object]:
     return evidence
 
 
-def module_source_evidence(*paths: Path) -> dict[str, object]:
-    return {
-        path.stem: {
-            "path": str(path.resolve()),
-            "sha256": sha256_file(path),
-        }
-        for path in paths
-    }
-
-
 def splits_ordered(splits: list[Split], required: tuple[str, ...]) -> bool:
     frames = {split.split_id: split.frame for split in splits}
     return all(

@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("torch")
 
-from super_metroid.visual_models import LegacyBCPolicy
+from super_metroid.legacy.visual_models import LegacyBCPolicy
 
 
 @pytest.mark.parametrize(

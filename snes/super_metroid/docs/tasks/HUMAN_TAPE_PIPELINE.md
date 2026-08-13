@@ -41,8 +41,7 @@ Library lives under `snes/super_metroid/human_tape/`:
 | `trim` | offline idle/retry hop trim |
 | `stitch` | multi-session **timing** stitch (RTA clock; not button concat) |
 
-Prefer `from super_metroid.human_tape import …` (or submodules). Flat shims
-`human_tape_replay` / `human_tape_trim` re-export for older imports.
+Prefer `from super_metroid.human_tape import …` (or submodules).
 
 ## Glossary
 
@@ -308,4 +307,4 @@ bead owns dual-green evidence under game process docs.
   `SM-MARIDIA-BOTWOON-HUMAN.md`, `SM-MARIDIA-GRAPPLE-HUMAN.md`
 - Process: [`PROCESS.md`](PROCESS.md)
 - Package: `super_metroid.human_tape` (`anchors` / `hops` / `replay` /
-  `midpoints` / `trim`); shims `human_tape_replay` / `human_tape_trim`
+  `midpoints` / `trim`)
