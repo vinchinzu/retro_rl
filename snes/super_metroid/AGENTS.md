@@ -21,6 +21,7 @@ Shared process: [`docs/FULL_RUN_PROCESS.md`](../../docs/FULL_RUN_PROCESS.md).
 | `maps/maprando_room_*.json`, `maps/maprando_tech_catalog.json`, `run_splits.py`, `skill_bank.py`, `materialize.py` | Map Rando names + tech tree/builders + room PBs + hop bank ([docs/RUN_TIMING_AND_SKILL_BANK.md](docs/RUN_TIMING_AND_SKILL_BANK.md), [docs/TECH_TREE.md](docs/TECH_TREE.md)) |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
 | `practice_repertoire.py`, `maps/practice_repertoire.json` | Practice-hack preset spine: human demos, policy tune/graduate, stitch, AP recovery |
+| `physics_sim.py`, `scripts/tools/predict_trajectory.py` | Physics predictor client for trajectory prediction (sm_rev integration stub; [`docs/PHYSICS_PREDICTOR.md`](docs/PHYSICS_PREDICTOR.md)) |
 | `docs/` | STATUS, plan, routes, tasks, contracts |
 
 
@@ -200,6 +201,11 @@ uv run python snes/super_metroid/scripts/tools/compose_human_hops.py \
 # Free-record wrapper (archives prior take; materialize + bank on F5)
 ./snes/super_metroid/play
 ./snes/super_metroid/play --compose full_start_v1
+
+# Physics trajectory predictor (stub for testing; sm_rev integration planned)
+uv run python snes/super_metroid/scripts/tools/predict_trajectory.py --frames 60 --predictor stub --summary
+uv run python snes/super_metroid/scripts/tools/predict_trajectory.py --frames 120 --predictor stub --output trajectory.json
+# docs/PHYSICS_PREDICTOR.md
 ```
 
 **Human long takes:** full button tape + live room/item anchors + F6 pins under
