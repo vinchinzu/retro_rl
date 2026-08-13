@@ -117,17 +117,23 @@ trajectory = predictor.predict(start, inputs)
 
 ### SmRevClient (external)
 
-Client stub for `sm_rev` MiniStep-based physics predictor:
+Client for `sm_rev_predict` MiniStep-based physics predictor:
 
 - **Transport:** Subprocess stdin/stdout JSON (current implementation)
-- Calls external `sm_rev predict` binary via subprocess
-- Gracefully skips if binary not available (for tests/CI)
-- Environment: `SM_REV_PATH` env var or `sm_rev` in PATH
+- Calls external `sm_rev_predict` binary via subprocess
+- Gracefully raises RuntimeError if binary not available (CI stays green)
+- Environment: `SM_REV_PATH` env var or `sm_rev_predict` in PATH
+- **Search speed only**: NOT ground truth - winners require emulator validation
 
 ```python
 from super_metroid.physics_sim import SmRevClient
 
-predictor = SmRevClient(binary_path="/path/to/sm_rev")
+# Use sm_rev_predict from PATH or SM_REV_PATH
+predictor = SmRevClient()
+trajectory = predictor.predict(start, inputs)
+
+# Or specify path explicitly
+predictor = SmRevClient(binary_path="/path/to/sm_rev_predict")
 trajectory = predictor.predict(start, inputs)
 ```
 
