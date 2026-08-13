@@ -98,7 +98,7 @@ trajectory = predictor.predict(start, inputs)
 
 Client stub for `sm_rev` MiniStep-based physics predictor:
 
-- **Transport:** Subprocess stdin/stdout JSON only (no HTTP/network)
+- **Transport:** Subprocess stdin/stdout JSON (current implementation)
 - Calls external `sm_rev predict` binary via subprocess
 - Gracefully skips if binary not available (for tests/CI)
 - Environment: `SM_REV_PATH` env var or `sm_rev` in PATH
@@ -110,11 +110,30 @@ predictor = SmRevClient(binary_path="/path/to/sm_rev")
 trajectory = predictor.predict(start, inputs)
 ```
 
-**sm_rev wire protocol:**
+**sm_rev wire protocol (subprocess stdin/stdout):**
+
+Currently speaks `Trajectory.to_dict()` internal format over subprocess:
+
 ```bash
-echo '{"start": {...}, "inputs": [...]}' | sm_rev predict
-# → {"start": {...}, "frames": [...], "predictor": "sm_rev@..."}
+# Request: SimState + inputs
+echo '{
+  "start": {"frame": 0, "room_id": 37368, "samus_x": 100, ...},
+  "inputs": [{"buttons": 128}, {"buttons": 129}]
+}' | sm_rev predict
+
+# Response: Trajectory.to_dict() format
+{
+  "predictor": "sm_rev@...",
+  "start": {"frame": 0, "room_id": 37368, ...},
+  "frames": [{"frame": 1, "room_id": 37368, "samus_x": 102, ...}],
+  "inputs": [{"buttons": 128}, {"buttons": 129}]
+}
 ```
+
+**Future transport:** sm_rev may migrate to HTTP API while keeping JSON
+keys stable. Golden fixtures in `tests/fixtures/predict_request_response.json`
+define the contract; either transport (subprocess or HTTP) can reuse these
+fixtures.
 
 **sm_rev integration:** The `vinchinzu/sm_rev` sibling repository provides
 a MiniStep-based physics kernel. Once available, `SmRevClient` will call
@@ -217,17 +236,35 @@ Raw `Trajectory.to_dict()` with snake_case fields for debugging and test fixture
 The `vinchinzu/sm_rev` sibling repository provides a MiniStep-based Super
 Metroid physics kernel for accurate frame-by-frame prediction.
 
-### Expected API
+### Wire Protocol
+
+**Current transport:** Subprocess stdin/stdout JSON using `Trajectory.to_dict()` format
 
 ```bash
-# sm_rev predict CLI (conceptual)
+# Request: {"start": SimState, "inputs": [FrameInput, ...]}
 echo '{"start": {...}, "inputs": [...]}' | sm_rev predict
-# → {"start": {...}, "frames": [...], "predictor": "sm_rev@..."}
+
+# Response: Trajectory.to_dict() format
+{
+  "predictor": "sm_rev@...",
+  "start": {...},
+  "frames": [{...}, ...],
+  "inputs": [{...}, ...]
+}
 ```
+
+**Golden fixtures:** `tests/fixtures/predict_request_response.json` defines
+the wire contract. JSON keys are stable; transport may migrate from subprocess
+to HTTP without breaking contract.
+
+**Future transport:** sm_rev may add HTTP API (`SM_REV_URL`) while keeping
+JSON schema unchanged. SmRevClient will detect available transport and use
+the fastest option.
 
 ### Integration Status
 
 - **Protocol defined:** `SmRevClient` ready to call external binary
+- **Transport:** Subprocess stdin/stdout (HTTP may be added)
 - **sm_rev availability:** Not yet published; design allows graceful skip
 - **Environment:** `SM_REV_PATH` env var or `sm_rev` in PATH
 - **Fallback:** Tests use `StubPredictor` by default (no ROM required)

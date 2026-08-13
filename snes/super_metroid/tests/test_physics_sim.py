@@ -7,6 +7,7 @@ Validates protocol contract and data structure serialization.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -766,3 +767,37 @@ class TestGoldenFixtures:
         }
 
         assert result == expected
+
+    def test_golden_fixture_file(self) -> None:
+        """Validate against checked-in golden fixture (wire contract)."""
+        fixture_path = (
+            Path(__file__).parent / "fixtures" / "predict_request_response.json"
+        )
+        with fixture_path.open("r") as f:
+            fixture = json.load(f)
+
+        # Extract request
+        request = fixture["request"]
+        start = SimState.from_dict(request["start"])
+        inputs = [FrameInput.from_dict(inp) for inp in request["inputs"]]
+
+        # Predict with StubPredictor
+        pred = StubPredictor(name="test-stub")
+        traj = pred.predict(start, inputs)
+
+        # Validate internal format matches fixture
+        internal_result = traj.to_dict()
+        expected_internal = fixture["response_internal"]
+
+        # Check structure (allow predictor name variation)
+        assert internal_result["start"] == expected_internal["start"]
+        assert internal_result["frames"] == expected_internal["frames"]
+        assert internal_result["inputs"] == expected_internal["inputs"]
+
+        # Validate smedit-tas-1 format matches fixture
+        smedit_result = traj.to_smedit_tas(
+            start_state_name="LandingSite", rom_sha1=None
+        )
+        expected_smedit = fixture["response_smedit_tas_1"]
+
+        assert smedit_result == expected_smedit
