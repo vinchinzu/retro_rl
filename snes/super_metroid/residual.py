@@ -214,7 +214,8 @@ def compute_residual_profile(
         e = emu_obs[i]
 
         # Check O† (death/energy) — separate from Oπ
-        if fd_dagger is None:
+        # Skip if Mini energy is unobserved (None)
+        if fd_dagger is None and m.energy is not None:
             if m.energy != e.energy or (m.energy == 0) != (e.energy == 0):
                 fd_dagger = i
                 if first_diff_field is None:
@@ -244,30 +245,38 @@ def compute_residual_profile(
             # If Oπ broke, Oσ also broke
             if fd_pi is not None:
                 fd_sigma = fd_pi
-            # Check subpixels
+            # Check subpixels (only pixels/subpixels set fd_σ)
             elif m.sub_x != e.sub_x or m.sub_y != e.sub_y:
                 fd_sigma = i
                 first_diff_field = "subpixels"
                 cause = DivergenceCause.COLLISION
-            # Check frame counters (lag detection)
-            elif m.frame_counter_1 != e.frame_counter_1 or m.frame_counter_2 != e.frame_counter_2:
-                fd_sigma = i
+
+        # Tag lag if frame counters diverge (but don't set fd_σ unless pixels/subpixels broke)
+        # Lag: stop scoring later kinematics (desynced tape index)
+        if (
+            cause != DivergenceCause.LAG
+            and m.frame_counter_1 is not None
+            and (m.frame_counter_1 != e.frame_counter_1 or m.frame_counter_2 != e.frame_counter_2)
+        ):
+            if first_diff_field is None:
                 first_diff_field = "frame_counter"
-                cause = DivergenceCause.LAG
-            # Check velocity (speeds live in first-differing-field)
-            elif (
-                m.velocity_x != e.velocity_x
-                or m.velocity_y != e.velocity_y
-                or m.velocity_x_sub != e.velocity_x_sub
-                or m.velocity_y_sub != e.velocity_y_sub
-            ):
-                fd_sigma = i
-                first_diff_field = "velocity"
+            cause = DivergenceCause.LAG
+
+        # Tag velocity/momentum divergence in first_diff_field (don't set fd_σ)
+        # Speeds live only in first_diff_field, not Oσ break
+        if first_diff_field is None and (
+            m.velocity_x != e.velocity_x
+            or m.velocity_y != e.velocity_y
+            or m.velocity_x_sub != e.velocity_x_sub
+            or m.velocity_y_sub != e.velocity_y_sub
+        ):
+            first_diff_field = "velocity"
+            if cause is None:
                 cause = DivergenceCause.VELOCITY
-            # Check momentum (speeds live in first-differing-field)
-            elif m.momentum_x != e.momentum_x or m.momentum_x_sub != e.momentum_x_sub:
-                fd_sigma = i
-                first_diff_field = "momentum"
+
+        if first_diff_field is None and (m.momentum_x != e.momentum_x or m.momentum_x_sub != e.momentum_x_sub):
+            first_diff_field = "momentum"
+            if cause is None:
                 cause = DivergenceCause.VELOCITY
 
         # Check Oσ+ (Oσ plus enemy energy / i-frames)

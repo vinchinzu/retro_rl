@@ -73,12 +73,12 @@ class Observation:
     speed_counter: int
     speed_flag: int
 
-    # O† (separate): energy/death
-    energy: int
+    # O† (separate): energy/death — None when Mini does not track
+    energy: int | None
 
-    # Lag detection
-    frame_counter_1: int
-    frame_counter_2: int
+    # Lag detection — None when Mini does not track
+    frame_counter_1: int | None
+    frame_counter_2: int | None
 
     # Oσ+ (optional): enemy energy / i-frames
     enemy_energy: int = 0
@@ -110,8 +110,8 @@ def observation_from_sim_state(state: Any) -> Observation:
         state: SimState or compatible object with required fields
 
     Returns:
-        Observation with Oπ/Oσ fields. Oσ+ fields (enemy_energy/i-frame) zero
-        since MiniStep does not track them.
+        Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
+        sm_rev --load-state hydrates $09C2/$1842/$09DA). Oσ+ fields zero.
     """
     return Observation(
         frame=state.frame,
@@ -129,9 +129,9 @@ def observation_from_sim_state(state: Any) -> Observation:
         momentum_x_sub=state.momentum_x_sub,
         speed_counter=state.speed_counter,
         speed_flag=state.speed_flag,
-        energy=0,  # Not tracked in SimState
-        frame_counter_1=0,  # Not tracked in SimState
-        frame_counter_2=0,  # Not tracked in SimState
+        energy=None,  # Unobserved in SimState (until sm_rev --load-state)
+        frame_counter_1=None,  # Unobserved in SimState
+        frame_counter_2=None,  # Unobserved in SimState
         enemy_energy=0,  # Not tracked in SimState
         invulnerability_timer=0,  # Not tracked in SimState
     )
@@ -144,7 +144,8 @@ def observation_from_trajectory_frame(frame: Any) -> Observation:
         frame: TrajectoryFrame or compatible object with required fields
 
     Returns:
-        Observation with Oπ/Oσ/Oσ+ fields. Oσ+ fields zero when not available.
+        Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
+        sm_rev --load-state). Oσ+ fields zero.
     """
     return Observation(
         frame=frame.frame,
@@ -162,9 +163,9 @@ def observation_from_trajectory_frame(frame: Any) -> Observation:
         momentum_x_sub=frame.momentum_x_sub,
         speed_counter=frame.speed_counter,
         speed_flag=frame.speed_flag,
-        energy=0,  # Not tracked in TrajectoryFrame
-        frame_counter_1=0,  # Not tracked in TrajectoryFrame
-        frame_counter_2=0,  # Not tracked in TrajectoryFrame
+        energy=None,  # Unobserved in TrajectoryFrame
+        frame_counter_1=None,  # Unobserved in TrajectoryFrame
+        frame_counter_2=None,  # Unobserved in TrajectoryFrame
         enemy_energy=0,  # Not tracked in TrajectoryFrame
         invulnerability_timer=0,  # Not tracked in TrajectoryFrame
     )

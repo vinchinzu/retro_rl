@@ -202,8 +202,10 @@ class TestObservation:
         assert obs.velocity_y == -3
         assert obs.speed_counter == 3
         assert obs.speed_flag == 1
-        # SimState does not track O† or Oσ+
-        assert obs.energy == 0
+        # SimState does not track O† or Oσ+ (unobserved)
+        assert obs.energy is None
+        assert obs.frame_counter_1 is None
+        assert obs.frame_counter_2 is None
         assert obs.enemy_energy == 0
         assert obs.invulnerability_timer == 0
 
@@ -238,8 +240,10 @@ class TestObservation:
         assert obs.sub_x == 1000
         assert obs.sub_y == 2000
         assert obs.speed_counter == 2
-        # TrajectoryFrame does not track O† or Oσ+
-        assert obs.energy == 0
+        # TrajectoryFrame does not track O† or Oσ+ (unobserved)
+        assert obs.energy is None
+        assert obs.frame_counter_1 is None
+        assert obs.frame_counter_2 is None
         assert obs.enemy_energy == 0
 
 
@@ -510,7 +514,12 @@ class TestComputeResidualProfile:
         assert profile.should_hard_reject() is True
 
     def test_lag_desync_tag(self) -> None:
-        """$1842/$09DA diverge → tag `lag`, stop scoring kinematics."""
+        """$1842/$09DA diverge → tag `lag`, stop scoring kinematics.
+        
+        When both lag counters AND subpixels diverge, fd_sigma is set (Oσ broke),
+        cause is LAG (lag takes priority), but first_diff_field is "subpixels"
+        (checked first in code order).
+        """
         mini_obs = [
             Observation(
                 frame=i,
@@ -534,16 +543,16 @@ class TestComputeResidualProfile:
             )
             for i in range(10)
         ]
-        # Emulator frame counter desyncs at frame 3
+        # Emulator frame counter AND subpixel desync at frame 3
         emu_obs = [
-            obs if i < 3 else Observation(**{**obs.to_dict(), "frame_counter_1": i + 1})
+            obs if i < 3 else Observation(**{**obs.to_dict(), "frame_counter_1": i + 1, "sub_x": 1000})
             for i, obs in enumerate(mini_obs)
         ]
         profile = compute_residual_profile(mini_obs, emu_obs)
         assert profile.fd_pi is None  # Oπ holds (pixels/pose/room agree)
-        assert profile.fd_sigma == 3  # Oσ broke (frame counter diverged)
-        assert profile.cause == DivergenceCause.LAG
-        assert profile.first_diff_field == "frame_counter"
+        assert profile.fd_sigma == 3  # Oσ broke (subpixels diverged)
+        assert profile.cause == DivergenceCause.LAG  # Lag takes priority
+        assert profile.first_diff_field == "subpixels"  # Subpixels checked first
         assert profile.tag_lag_desync() is True
 
     def test_pixel_divergence_pi_break(self) -> None:
@@ -656,3 +665,122 @@ class TestComputeResidualProfile:
         assert profile.fd_pi is None  # Oπ holds
         assert profile.fd_sigma is None  # Oσ holds
         assert profile.fd_sigma_plus == 2  # Oσ+ broke (enemy energy)
+
+    def test_velocity_only_divergence_no_sigma_break(self) -> None:
+        """Velocity divergence sets first_diff_field, NOT fd_σ.
+        
+        Speeds live only in first-differing-field (cause VELOCITY), not Oσ break.
+        """
+        mini_obs = [
+            Observation(
+                frame=i,
+                x=100 + i,
+                y=200,
+                pose=0,
+                room=0x91F8,
+                sub_x=0,
+                sub_y=0,
+                velocity_x=1,
+                velocity_y=0,
+                velocity_x_sub=0,
+                velocity_y_sub=0,
+                momentum_x=1,
+                momentum_x_sub=0,
+                speed_counter=0,
+                speed_flag=0,
+                energy=99,
+                frame_counter_1=i,
+                frame_counter_2=i,
+            )
+            for i in range(10)
+        ]
+        # Emulator velocity diverges at frame 3 (pixels/subpixels still agree)
+        emu_obs = [
+            obs if i < 3 else Observation(**{**obs.to_dict(), "velocity_x": 2})
+            for i, obs in enumerate(mini_obs)
+        ]
+        profile = compute_residual_profile(mini_obs, emu_obs)
+        assert profile.fd_pi is None  # Oπ holds (pixels/pose/room agree)
+        assert profile.fd_sigma is None  # Oσ holds (subpixels agree, speeds don't set fd_σ)
+        assert profile.first_diff_field == "velocity"
+        assert profile.cause == DivergenceCause.VELOCITY
+
+    def test_mini_energy_unset_vs_emu_energy_no_dagger_break(self) -> None:
+        """Mini energy=None (unobserved) vs Emu energy=99 → fd_† None.
+        
+        Until sm_rev --load-state hydrates $09C2, treat missing Mini energy as
+        unobserved — skip comparison, don't set fd_†.
+        """
+        mini_obs = [
+            Observation(
+                frame=i,
+                x=100 + i,
+                y=200,
+                pose=0,
+                room=0x91F8,
+                sub_x=0,
+                sub_y=0,
+                velocity_x=1,
+                velocity_y=0,
+                velocity_x_sub=0,
+                velocity_y_sub=0,
+                momentum_x=1,
+                momentum_x_sub=0,
+                speed_counter=0,
+                speed_flag=0,
+                energy=None,  # Unobserved in Mini
+                frame_counter_1=None,
+                frame_counter_2=None,
+            )
+            for i in range(10)
+        ]
+        # Emulator has energy=99 (Mini unobserved)
+        emu_obs = [
+            Observation(**{**obs.to_dict(), "energy": 99, "frame_counter_1": i, "frame_counter_2": i})
+            for i, obs in enumerate(mini_obs)
+        ]
+        profile = compute_residual_profile(mini_obs, emu_obs)
+        assert profile.fd_dagger is None  # O† comparison skipped (Mini unobserved)
+        assert profile.fd_pi is None  # Oπ holds
+        assert profile.fd_sigma is None  # Oσ holds
+
+    def test_lag_counters_diverge_no_sigma_break_unless_pixels_diverge(self) -> None:
+        """$1842/$09DA diverge → cause LAG, but fd_σ None unless pixels/subpixels broke.
+        
+        Lag: stop scoring later kinematics (desynced tape index), but lag alone
+        doesn't set fd_σ — only pixels/subpixels set fd_σ.
+        """
+        mini_obs = [
+            Observation(
+                frame=i,
+                x=100 + i,
+                y=200,
+                pose=0,
+                room=0x91F8,
+                sub_x=0,
+                sub_y=0,
+                velocity_x=1,
+                velocity_y=0,
+                velocity_x_sub=0,
+                velocity_y_sub=0,
+                momentum_x=1,
+                momentum_x_sub=0,
+                speed_counter=0,
+                speed_flag=0,
+                energy=99,
+                frame_counter_1=i,
+                frame_counter_2=i,
+            )
+            for i in range(10)
+        ]
+        # Emulator frame counter desyncs at frame 3 (pixels/subpixels still agree)
+        emu_obs = [
+            obs if i < 3 else Observation(**{**obs.to_dict(), "frame_counter_1": i + 1})
+            for i, obs in enumerate(mini_obs)
+        ]
+        profile = compute_residual_profile(mini_obs, emu_obs)
+        assert profile.fd_pi is None  # Oπ holds (pixels/pose/room agree)
+        assert profile.fd_sigma is None  # Oσ holds (lag alone doesn't set fd_σ)
+        assert profile.cause == DivergenceCause.LAG
+        assert profile.first_diff_field == "frame_counter"
+        assert profile.tag_lag_desync() is True
