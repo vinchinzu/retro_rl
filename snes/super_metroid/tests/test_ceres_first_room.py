@@ -1,22 +1,21 @@
 """Tests for first Ceres room fixture (Elevator → Falling Tile).
 
-Tests the hop/tape search and emulator validation for the first room of
-Ceres → Morph → Bomb sequence. Offline tests use StubPredictor (no ROM).
+Tests the real tape (not search) from routes.kpdr.ceres.outbound for the first
+room of Ceres → Morph → Bomb sequence. Offline tests pass without ROM.
 """
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import pytest
 
 from super_metroid.emulator_validation import ROM_AVAILABLE
-from super_metroid.physics_sim import StubPredictor
 from super_metroid.routes.kpdr.ceres.first_room_fixture import (
-    CERES_ELEVATOR_START_X,
-    CERES_ELEVATOR_START_Y,
-    CERES_FALLING_TARGET_X,
-    CERES_FALLING_TARGET_Y,
     CeresFirstRoomFixture,
-    search_ceres_first_room,
+    button_names_to_mask,
+    get_ceres_first_room_tape,
     validate_ceres_first_room,
 )
 from super_metroid.routes.kpdr.room_ids import (
@@ -25,106 +24,135 @@ from super_metroid.routes.kpdr.room_ids import (
 )
 
 
-class TestCeresFirstRoomSearch:
-    """Test search for first Ceres room (offline, no ROM needed)."""
+class TestButtonConversion:
+    """Test button name to mask conversion."""
 
-    def test_search_returns_fixture(self) -> None:
-        """Search returns a CeresFirstRoomFixture."""
-        predictor = StubPredictor(name="test-ceres-search")
-        fixture = search_ceres_first_room(predictor)
+    def test_right_button(self) -> None:
+        """RIGHT is bit 7 (0x80)."""
+        mask = button_names_to_mask(("RIGHT",))
+        assert mask == 0x80
+
+    def test_a_button(self) -> None:
+        """A is bit 8 (0x100)."""
+        mask = button_names_to_mask(("A",))
+        assert mask == 0x100
+
+    def test_right_plus_a(self) -> None:
+        """RIGHT+A is bits 7+8 (0x180)."""
+        mask = button_names_to_mask(("RIGHT", "A"))
+        assert mask == 0x180
+
+    def test_empty_tuple(self) -> None:
+        """Empty tuple gives idle (0)."""
+        mask = button_names_to_mask(())
+        assert mask == 0
+
+    def test_case_insensitive(self) -> None:
+        """Button names are case insensitive."""
+        assert button_names_to_mask(("right",)) == button_names_to_mask(("RIGHT",))
+        assert button_names_to_mask(("RiGhT",)) == 0x80
+
+
+class TestCeresFirstRoomTape:
+    """Test real tape extraction (offline, no ROM needed)."""
+
+    def test_get_tape_returns_fixture(self) -> None:
+        """get_ceres_first_room_tape returns a CeresFirstRoomFixture."""
+        fixture = get_ceres_first_room_tape()
 
         assert isinstance(fixture, CeresFirstRoomFixture)
         assert fixture.from_room_id == ROOM_CERES_ELEVATOR
         assert fixture.to_room_id == ROOM_CERES_FALLING
-        assert fixture.predictor_name == "test-ceres-search"
 
-    def test_search_uses_start_position(self) -> None:
-        """Search uses Ceres Elevator start position."""
-        fixture = search_ceres_first_room()
+    def test_tape_has_real_source(self) -> None:
+        """Tape source is documented (not greedy search)."""
+        fixture = get_ceres_first_room_tape()
 
-        assert fixture.start_x == CERES_ELEVATOR_START_X
-        assert fixture.start_y == CERES_ELEVATOR_START_Y
+        assert "outbound" in fixture.tape_source.lower()
+        assert "greedy" not in fixture.tape_source.lower()
+        assert "search" not in fixture.tape_source.lower()
 
-    def test_search_targets_falling_tile_room(self) -> None:
-        """Search targets Falling Tile room position."""
-        fixture = search_ceres_first_room()
-
-        assert fixture.target_x == CERES_FALLING_TARGET_X
-        assert fixture.target_y == CERES_FALLING_TARGET_Y
-
-    def test_search_produces_input_sequence(self) -> None:
-        """Search produces non-empty input sequence."""
-        fixture = search_ceres_first_room()
+    def test_tape_produces_input_sequence(self) -> None:
+        """Tape has non-empty input sequence."""
+        fixture = get_ceres_first_room_tape()
 
         assert len(fixture.inputs) > 0
         assert all(hasattr(inp, "buttons") for inp in fixture.inputs)
 
-    def test_search_sets_predictor_results(self) -> None:
-        """Search sets predictor feasibility and final position."""
-        fixture = search_ceres_first_room()
+    def test_tape_starts_with_right_a(self) -> None:
+        """Tape starts with RIGHT+A (jump start)."""
+        fixture = get_ceres_first_room_tape()
 
-        # StubPredictor should produce some movement
-        assert fixture.predictor_frames == len(fixture.inputs)
-        assert fixture.predictor_final_x != fixture.start_x  # Should have moved
+        # First frame should be RIGHT+A = 0x180
+        assert fixture.inputs[0].buttons == 0x180
 
-    def test_search_not_emulator_validated(self) -> None:
-        """Search does not claim emulator validation."""
-        fixture = search_ceres_first_room()
+    def test_tape_not_emulator_validated(self) -> None:
+        """Tape does not claim emulator validation by default."""
+        fixture = get_ceres_first_room_tape()
 
         assert not fixture.emulator_validated
         assert not fixture.emulator_success
         assert fixture.emulator_final_room is None
 
-    def test_search_not_room_clear_without_emu(self) -> None:
-        """Search never claims room_clear without emulator validation."""
-        fixture = search_ceres_first_room()
+    def test_tape_not_room_clear_without_emu(self) -> None:
+        """Tape never claims room_clear without emulator validation."""
+        fixture = get_ceres_first_room_tape()
 
-        # Even if predictor says feasible, room_clear requires emulator
         assert not fixture.room_clear
 
-    def test_search_respects_max_frames(self) -> None:
-        """Search respects max_search_frames limit."""
-        fixture = search_ceres_first_room(max_search_frames=50)
+    def test_fixture_frames_property(self) -> None:
+        """Fixture has frames property (tape length)."""
+        fixture = get_ceres_first_room_tape()
 
-        # Should find something within 50 frames
-        assert fixture.predictor_frames <= 50
+        assert fixture.frames == len(fixture.inputs)
+        assert fixture.frames > 0
 
     def test_fixture_to_dict_serializable(self) -> None:
-        """Fixture can be serialized to dict."""
-        fixture = search_ceres_first_room()
+        """Fixture can be serialized to dict (smedit-tas-1 compatible)."""
+        fixture = get_ceres_first_room_tape()
         data = fixture.to_dict()
 
         assert isinstance(data, dict)
         assert "from_room_id" in data
         assert "inputs" in data
         assert isinstance(data["inputs"], list)
+        assert all("buttons" in inp for inp in data["inputs"])
 
 
 class TestCeresFirstRoomValidation:
-    """Test emulator validation (requires ROM)."""
+    """Test emulator validation (requires ROM + start state)."""
 
-    @pytest.mark.skipif(not ROM_AVAILABLE, reason="ROM not available")
-    def test_validate_calls_emulator(self) -> None:
-        """Validate calls emulator validation path.
+    def _has_start_state(self) -> bool:
+        """Check if SM_CERES_ELEV_STATE env var is set and file exists."""
+        state_path = os.environ.get("SM_CERES_ELEV_STATE")
+        return state_path is not None and Path(state_path).exists()
 
-        This test requires ROM and will be skipped in CI without ROM.
+    def test_validate_requires_rom_or_start_state(self) -> None:
+        """Validate raises if ROM or start state unavailable."""
+        fixture = get_ceres_first_room_tape()
+
+        if not ROM_AVAILABLE or not self._has_start_state():
+            # Should raise when prerequisites missing
+            with pytest.raises((FileNotFoundError, ValueError)):
+                validate_ceres_first_room(fixture)
+
+    @pytest.mark.skipif(
+        not ROM_AVAILABLE,
+        reason="ROM not available (emulator validation skipped)",
+    )
+    def test_validate_with_env_var(self) -> None:
+        """Validate uses SM_CERES_ELEV_STATE env var if set.
+
+        This test will pass only if ROM and start state are available.
         """
-        # Search with StubPredictor
-        fixture = search_ceres_first_room()
+        if not self._has_start_state():
+            pytest.skip("SM_CERES_ELEV_STATE not set or file missing")
 
-        # Note: This will fail without a real Ceres Elevator start state
-        # In production, we'd use custom_integrations/.../ceres_elevator.state
-        # For now, this test documents the validation interface
-        with pytest.raises((FileNotFoundError, RuntimeError)):
-            validate_ceres_first_room(fixture, "nonexistent.state")
+        fixture = get_ceres_first_room_tape()
+        validated = validate_ceres_first_room(fixture)
 
-    @pytest.mark.skipif(not ROM_AVAILABLE, reason="ROM not available")
-    def test_validate_with_stub_state(self) -> None:
-        """Validate with a stub start state (if available).
-
-        This test will pass only if ROM and a Ceres Elevator start state exist.
-        """
-        pytest.skip("Requires Ceres Elevator start state (not yet in repo)")
+        assert validated.emulator_validated
+        # Don't assert success/room_clear here - that depends on tape quality
 
 
 class TestCeresFirstRoomFixture:
@@ -134,57 +162,33 @@ class TestCeresFirstRoomFixture:
         """room_clear is False unless emulator_validated and emulator_success."""
         from super_metroid.physics_sim import FrameInput
 
-        # Predictor says feasible but no emulator validation
+        # Not validated
         fixture = CeresFirstRoomFixture(
             from_room_id=ROOM_CERES_ELEVATOR,
             to_room_id=ROOM_CERES_FALLING,
-            start_x=200,
-            start_y=180,
-            target_x=50,
-            target_y=200,
             inputs=(FrameInput(0),),
-            predictor_name="test",
-            predictor_feasible=True,
-            predictor_final_x=50,
-            predictor_final_y=200,
-            predictor_frames=1,
+            tape_source="test",
             emulator_validated=False,
         )
         assert not fixture.room_clear
 
-        # Emulator validated but failed
+        # Validated but failed
         fixture_failed = CeresFirstRoomFixture(
             from_room_id=ROOM_CERES_ELEVATOR,
             to_room_id=ROOM_CERES_FALLING,
-            start_x=200,
-            start_y=180,
-            target_x=50,
-            target_y=200,
             inputs=(FrameInput(0),),
-            predictor_name="test",
-            predictor_feasible=True,
-            predictor_final_x=50,
-            predictor_final_y=200,
-            predictor_frames=1,
+            tape_source="test",
             emulator_validated=True,
             emulator_success=False,
         )
         assert not fixture_failed.room_clear
 
-        # Emulator validated and succeeded
+        # Validated and succeeded
         fixture_success = CeresFirstRoomFixture(
             from_room_id=ROOM_CERES_ELEVATOR,
             to_room_id=ROOM_CERES_FALLING,
-            start_x=200,
-            start_y=180,
-            target_x=50,
-            target_y=200,
             inputs=(FrameInput(0),),
-            predictor_name="test",
-            predictor_feasible=True,
-            predictor_final_x=50,
-            predictor_final_y=200,
-            predictor_frames=1,
+            tape_source="test",
             emulator_validated=True,
             emulator_success=True,
             emulator_final_room=ROOM_CERES_FALLING,

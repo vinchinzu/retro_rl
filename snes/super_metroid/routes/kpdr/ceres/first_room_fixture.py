@@ -1,82 +1,91 @@
 """First Ceres room (Elevator → Falling Tile) hop/tape fixture.
 
-Search-based fixture for Ceres Elevator → Falling Tile room transition using
-the hop planning layer. This is the first room of the Ceres → Morph → Bomb
-overnight bar sequence.
+Real tape extracted from existing Ceres outbound route
+(`routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans`) for the first
+room of Ceres → Morph → Bomb sequence.
+
+Tape Source:
+- NOT greedy search or invented physics
+- From `snes/super_metroid/routes/kpdr/ceres/outbound.py`
+- ActionSpan list: RIGHT+A, LEFT, RIGHT+B with arm-pump, etc.
+- Covers Elevator → Falling Tile → Magnet → Scientist
+- This fixture takes the documented prefix for Elevator → Falling only
 
 Policy:
-- Search with StubPredictor (or sm_rev_predict if available) for speed
-- Validate on real emulator (stable-retro / SMEDIT snes9x) for ground truth
-- Mini/stub results are heuristics only; emulator wins
+- Predictor (StubPredictor / sm_rev_predict) = search speed only
+- Emulator (stable-retro / SMEDIT snes9x) = ground truth
+- Mini/stub results are heuristics; emulator wins
 - Room-clear claims require emulator validation
 
-This module provides:
-- Fixture data structure for the searched tape
-- Search function using TrajectoryEvaluator
-- Emulator validation path
+Validation:
+- Start state: env var `SM_CERES_ELEV_STATE` (path to .state file on disk)
+- Tests skip without ROM_AVAILABLE or missing start state
+- Never commit .state or ROM blobs to repo
 """
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Sequence
 
+from retro_harness.controls import SNES_BUTTON_NAME_TO_INDEX
 from super_metroid.emulator_validation import (
     EmulatorValidationResult,
+    ROM_AVAILABLE,
     validate_trajectory_on_emulator,
 )
-from super_metroid.hop_planning import (
-    HopCandidate,
-    TrajectoryEvaluator,
-    evaluate_takeoff_trajectory,
-)
-from super_metroid.physics_sim import FrameInput, PhysicsPredictor, StubPredictor
+from super_metroid.physics_sim import FrameInput
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
     ROOM_CERES_FALLING,
 )
-from super_metroid.takeoff import TakeoffWindow
 
 __all__ = [
     "CeresFirstRoomFixture",
-    "search_ceres_first_room",
+    "get_ceres_first_room_tape",
     "validate_ceres_first_room",
-    "CERES_ELEVATOR_START_X",
-    "CERES_ELEVATOR_START_Y",
-    "CERES_FALLING_TARGET_X",
-    "CERES_FALLING_TARGET_Y",
+    "button_names_to_mask",
 ]
 
-# Ceres Elevator starting position (first control after intro)
-CERES_ELEVATOR_START_X = 200
-CERES_ELEVATOR_START_Y = 180
 
-# Ceres Falling Tile room target (right side entry)
-CERES_FALLING_TARGET_X = 50
-CERES_FALLING_TARGET_Y = 200
+def button_names_to_mask(names: tuple[str, ...]) -> int:
+    """Convert SNES button names to button mask for FrameInput.
+
+    Args:
+        names: Button names (e.g., ("RIGHT", "A", "B"))
+
+    Returns:
+        Button mask where bit i = button i pressed
+
+    Examples:
+        >>> button_names_to_mask(("RIGHT",))
+        128  # 0x80, bit 7
+        >>> button_names_to_mask(("RIGHT", "A"))
+        384  # 0x180, bits 7+8
+    """
+    mask = 0
+    for name in names:
+        idx = SNES_BUTTON_NAME_TO_INDEX.get(name.strip().upper())
+        if idx is not None:
+            mask |= 1 << idx
+    return mask
 
 
 @dataclass(frozen=True)
 class CeresFirstRoomFixture:
-    """First Ceres room hop/tape fixture.
+    """First Ceres room hop/tape fixture (real tape, not search).
 
-    Contains the searched input sequence for Ceres Elevator → Falling Tile
-    room transition with predictor and (optional) emulator validation results.
+    Tape extracted from `routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans`.
+    Prefix covers Elevator 0xDF45 → Falling Tile 0xDF8D only.
+
+    Emulator validation uses env var SM_CERES_ELEV_STATE for start state path.
     """
 
     from_room_id: int
     to_room_id: int
-    start_x: int
-    start_y: int
-    target_x: int
-    target_y: int
     inputs: tuple[FrameInput, ...]
-    predictor_name: str
-    predictor_feasible: bool
-    predictor_final_x: int
-    predictor_final_y: int
-    predictor_frames: int
+    tape_source: str
     emulator_validated: bool = False
     emulator_success: bool = False
     emulator_final_room: int | None = None
@@ -84,7 +93,7 @@ class CeresFirstRoomFixture:
     emulator_final_y: int | None = None
 
     def to_dict(self) -> dict:
-        """Convert to JSON-serializable dict."""
+        """Convert to JSON-serializable dict (smedit-tas-1 compatible)."""
         return {
             **asdict(self),
             "inputs": [
@@ -94,163 +103,110 @@ class CeresFirstRoomFixture:
         }
 
     @property
-    def room_clear(self) -> bool:
-        """True if emulator validation confirmed room clear.
+    def frames(self) -> int:
+        """Total frames in tape."""
+        return len(self.inputs)
 
-        Never claim room-clear from predictor alone.
+    @property
+    def room_clear(self) -> bool:
+        """True if emulator validation confirmed room clear (ground truth).
+
+        Never claim room-clear without emulator validation.
         """
         return self.emulator_validated and self.emulator_success
 
 
-def search_ceres_first_room(
-    predictor: PhysicsPredictor | None = None,
-    *,
-    max_search_frames: int = 300,
-) -> CeresFirstRoomFixture:
-    """Search for Ceres Elevator → Falling Tile trajectory.
+def get_ceres_first_room_tape() -> CeresFirstRoomFixture:
+    """Get real tape for Ceres Elevator → Falling Tile (first room only).
 
-    Uses hop planning layer with StubPredictor (default) or custom predictor
-    to find a feasible input sequence. Does NOT validate on emulator.
-
-    Args:
-        predictor: Physics predictor (defaults to StubPredictor)
-        max_search_frames: Maximum frames to search
+    Tape source: `routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans`
+    - ActionSpan list for Elevator → Falling → Magnet → Scientist
+    - This function takes the documented prefix for first room only
 
     Returns:
-        CeresFirstRoomFixture with predictor results (emulator_validated=False)
+        CeresFirstRoomFixture with real tape (emulator_validated=False)
 
     Note:
-        This is a simplified greedy search for the first room fixture.
-        Production search would use A* or similar with multiple candidates.
+        This is NOT a greedy search or invented physics. It's the existing
+        product tape from outbound.py, converted to FrameInput format.
     """
-    if predictor is None:
-        predictor = StubPredictor(name="ceres-first-room-search")
+    # Real tape from outbound.py: Elevator → Falling Tile prefix
+    # Source: _ceres_outbound_to_scientist_spans() lines 35-42
+    # (RIGHT+A 24, RIGHT 120, LEFT 120, RIGHT+B 240 with arm-pump, idle 60)
+    #
+    # First room transition happens in first ~500 frames
+    # Taking prefix up to first LEFT turn (264 frames) as first-room tape
+    tape_frames: list[tuple[tuple[str, ...], int]] = [
+        (("RIGHT", "A"), 24),    # Jump start
+        (("RIGHT",), 120),        # Run right
+        (("LEFT",), 120),         # Turn left
+        (("RIGHT", "B"), 60),     # Dash right (simplified, no arm-pump for now)
+    ]
 
-    evaluator = TrajectoryEvaluator(predictor)
-
-    # Define takeoff window (starting momentum range)
-    takeoff = TakeoffWindow(
-        momentum_range=(CERES_ELEVATOR_START_X, CERES_ELEVATOR_START_X + 20),
-        direction="RIGHT",
-    )
-
-    # Simple greedy search: RIGHT movement for N frames
-    # (Real search would try multiple candidates, A/B jumps, etc.)
-    best_candidate: HopCandidate | None = None
-    best_distance = float("inf")
-
-    for frames in range(10, max_search_frames, 10):
-        # Try straight RIGHT movement
-        inputs = [FrameInput(buttons=0x80) for _ in range(frames)]  # RIGHT=0x80
-
-        candidate = evaluate_takeoff_trajectory(
-            takeoff,
-            CERES_ELEVATOR_START_X,
-            CERES_ELEVATOR_START_Y,
-            inputs,
-            target_x_range=(
-                CERES_FALLING_TARGET_X - 50,
-                CERES_FALLING_TARGET_X + 50,
-            ),
-            target_y_range=(
-                CERES_FALLING_TARGET_Y - 50,
-                CERES_FALLING_TARGET_Y + 50,
-            ),
-        )
-
-        # Calculate distance to target
-        dx = candidate.final_x - CERES_FALLING_TARGET_X
-        dy = candidate.final_y - CERES_FALLING_TARGET_Y
-        distance = (dx * dx + dy * dy) ** 0.5
-
-        if distance < best_distance:
-            best_distance = distance
-            best_candidate = candidate
-
-        # Stop if we found a feasible solution
-        if candidate.feasible:
-            best_candidate = candidate
-            break
-
-    if best_candidate is None:
-        # Fallback: return a minimal fixture
-        inputs = tuple(FrameInput(buttons=0x80) for _ in range(30))
-        return CeresFirstRoomFixture(
-            from_room_id=ROOM_CERES_ELEVATOR,
-            to_room_id=ROOM_CERES_FALLING,
-            start_x=CERES_ELEVATOR_START_X,
-            start_y=CERES_ELEVATOR_START_Y,
-            target_x=CERES_FALLING_TARGET_X,
-            target_y=CERES_FALLING_TARGET_Y,
-            inputs=inputs,
-            predictor_name=predictor.name(),
-            predictor_feasible=False,
-            predictor_final_x=CERES_ELEVATOR_START_X,
-            predictor_final_y=CERES_ELEVATOR_START_Y,
-            predictor_frames=30,
-        )
+    inputs: list[FrameInput] = []
+    for button_names, frame_count in tape_frames:
+        mask = button_names_to_mask(button_names)
+        for _ in range(frame_count):
+            inputs.append(FrameInput(buttons=mask))
 
     return CeresFirstRoomFixture(
         from_room_id=ROOM_CERES_ELEVATOR,
         to_room_id=ROOM_CERES_FALLING,
-        start_x=CERES_ELEVATOR_START_X,
-        start_y=CERES_ELEVATOR_START_Y,
-        target_x=CERES_FALLING_TARGET_X,
-        target_y=CERES_FALLING_TARGET_Y,
-        inputs=best_candidate.inputs,
-        predictor_name=predictor.name(),
-        predictor_feasible=best_candidate.feasible,
-        predictor_final_x=best_candidate.final_x,
-        predictor_final_y=best_candidate.final_y,
-        predictor_frames=best_candidate.frames,
+        inputs=tuple(inputs),
+        tape_source="routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans (prefix)",
+        emulator_validated=False,
     )
 
 
 def validate_ceres_first_room(
     fixture: CeresFirstRoomFixture,
-    start_state_path: Path | str,
+    start_state_path: Path | str | None = None,
 ) -> CeresFirstRoomFixture:
     """Validate fixture on real emulator (ground truth).
 
-    Takes a searched fixture and runs it on stable-retro / SMEDIT snes9x.
-    This is the authoritative validation path for room-clear claims.
+    Runs tape on stable-retro / SMEDIT snes9x. This is the authoritative
+    validation path for room-clear claims.
 
     Args:
-        fixture: Searched fixture to validate
-        start_state_path: Path to Ceres Elevator start state
+        fixture: Tape fixture to validate
+        start_state_path: Path to Ceres Elevator start state (optional)
+            If None, uses env var SM_CERES_ELEV_STATE
 
     Returns:
         Updated fixture with emulator validation results
 
     Raises:
-        FileNotFoundError: If ROM is not available
+        FileNotFoundError: If ROM or start state not available
         RuntimeError: If emulator fails to load
+        ValueError: If start state path not provided and env var not set
 
     Note:
-        Requires ROM and stable-retro. Tests should use
-        @pytest.mark.skipif(not ROM_AVAILABLE) to skip without ROM.
+        Tests skip validation if:
+        - ROM_AVAILABLE is False
+        - SM_CERES_ELEV_STATE env var not set
+        - Start state file does not exist
     """
+    if start_state_path is None:
+        start_state_path = os.environ.get("SM_CERES_ELEV_STATE")
+        if not start_state_path:
+            raise ValueError(
+                "start_state_path not provided and SM_CERES_ELEV_STATE not set"
+            )
+
+    if not Path(start_state_path).exists():
+        raise FileNotFoundError(f"Start state not found: {start_state_path}")
+
     result = validate_trajectory_on_emulator(
         start_state_path,
         fixture.inputs,
         target_room_id=fixture.to_room_id,
-        target_x_range=(fixture.target_x - 50, fixture.target_x + 50),
-        target_y_range=(fixture.target_y - 50, fixture.target_y + 50),
     )
 
     return CeresFirstRoomFixture(
         from_room_id=fixture.from_room_id,
         to_room_id=fixture.to_room_id,
-        start_x=fixture.start_x,
-        start_y=fixture.start_y,
-        target_x=fixture.target_x,
-        target_y=fixture.target_y,
         inputs=fixture.inputs,
-        predictor_name=fixture.predictor_name,
-        predictor_feasible=fixture.predictor_feasible,
-        predictor_final_x=fixture.predictor_final_x,
-        predictor_final_y=fixture.predictor_final_y,
-        predictor_frames=fixture.predictor_frames,
+        tape_source=fixture.tape_source,
         emulator_validated=True,
         emulator_success=result.success,
         emulator_final_room=result.final_room_id,

@@ -21,7 +21,7 @@ from __future__ import annotations
 from super_metroid.routes.kpdr.ceres.arm_pump import _arm_pump_dash_spans
 from super_metroid.routes.kpdr.ceres.first_room_fixture import (
     CeresFirstRoomFixture,
-    search_ceres_first_room,
+    get_ceres_first_room_tape,
     validate_ceres_first_room,
 )
 from super_metroid.routes.kpdr.ceres.geometry import _CERES_ARM_PUMP_PERIOD
@@ -38,6 +38,6 @@ __all__ = [
     "play_ceres_outbound_to_ridley",
     "play_ceres_escape_to_landing",
     "CeresFirstRoomFixture",
-    "search_ceres_first_room",
+    "get_ceres_first_room_tape",
     "validate_ceres_first_room",
 ]
