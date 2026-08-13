@@ -47,6 +47,8 @@ SEGMENTS: dict[str, tuple[tuple[int, ...], ...]] = {
     "walk": tuple(press("RIGHT") for _ in range(24)),
     "jump": tuple(press("A") for _ in range(4)) + tuple(idle_action() for _ in range(20)),
     "run_jump": tuple(press("RIGHT", "B", "A") for _ in range(30)),
+    "jump_to_land": tuple(press("A") for _ in range(4)) + tuple(idle_action() for _ in range(28)),
+    "run_jump_to_land": tuple(press("RIGHT", "B", "A") for _ in range(60)),
 }
 
 

@@ -21,6 +21,7 @@ from smb.ram import (
     ADDR_ENEMY_FLAG,
     ADDR_ENEMY_TYPE,
     ADDR_FRAME_COUNTER,
+    ADDR_JUMP_ORIGIN_Y,
     ADDR_LEVEL,
     ADDR_LIVES,
     ADDR_OPER_MODE,
@@ -30,8 +31,11 @@ from smb.ram import (
     ADDR_PLAYER_X_FRAC,
     ADDR_PLAYER_Y,
     ADDR_PLAYER_Y_FRAC,
+    ADDR_VERTICAL_FORCE,
+    ADDR_VERTICAL_FORCE_DOWN,
     ADDR_WORLD,
     ADDR_X_FORCE,
+    ADDR_Y_MOVE_FORCE,
     PLAYER_STATE_DYING,
     is_dying,
     player_x,
@@ -96,6 +100,9 @@ class Observation:
     a_held: bool = False
     ground_y: int = DEFAULT_GROUND_Y
     vertical_force: int = 0
+    vertical_force_down: int = 0x70
+    y_move_force: int = 0
+    jump_origin_y: int = DEFAULT_GROUND_Y
     oper_mode: int = 1
     timer: int = 400
 
@@ -142,6 +149,9 @@ def level1_start_obs(*, frame: int = 0) -> Observation:
         a_held=False,
         ground_y=DEFAULT_GROUND_Y,
         vertical_force=0,
+        vertical_force_down=0x70,
+        y_move_force=0,
+        jump_origin_y=DEFAULT_GROUND_Y,
         oper_mode=1,
         timer=400,
     )
@@ -188,7 +198,10 @@ def observation_from_ram(
         x_force=int(ram[ADDR_X_FORCE]),
         a_held=bool(a_held),
         ground_y=floor,
-        vertical_force=0 if on_ground else 0x20,
+        vertical_force=int(ram[ADDR_VERTICAL_FORCE]),
+        vertical_force_down=int(ram[ADDR_VERTICAL_FORCE_DOWN]),
+        y_move_force=int(ram[ADDR_Y_MOVE_FORCE]),
+        jump_origin_y=int(ram[ADDR_JUMP_ORIGIN_Y]) or floor,
         oper_mode=oper_mode,
         timer=timer_value(ram),
     )

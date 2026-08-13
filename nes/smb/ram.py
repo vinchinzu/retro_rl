@@ -23,7 +23,11 @@ ADDR_Y_SPEED = 0x009F  # signed player vertical speed
 ADDR_PLAYER_Y = 0x00CE
 ADDR_PLAYER_SCREEN_X = 0x03AD  # on-screen X
 ADDR_PLAYER_STATUS = 0x0756  # 0=small, 1=big, 2=fire
-ADDR_X_FORCE = 0x0705  # low byte of 16-bit X speed (accel accumulator)
+ADDR_X_FORCE = 0x0705  # Player_X_MoveForce; 16-bit X-speed low byte
+ADDR_Y_MOVE_FORCE = 0x0433  # Player_Y_MoveForce; gravity accumulator
+ADDR_JUMP_ORIGIN_Y = 0x0708  # Y pixel at takeoff (A-release threshold)
+ADDR_VERTICAL_FORCE = 0x0709  # rising / current gravity added to $0433
+ADDR_VERTICAL_FORCE_DOWN = 0x070A  # fall gravity; copied into $0709 on A-release
 
 # Camera / scroll
 ADDR_SCREEN_PAGE = 0x071A  # screen edge page
@@ -51,7 +55,7 @@ ADDR_ENEMY_Y = 0x00CF  # +slot
 # Subpixel / frame phase (handoff fingerprints; readable on fceumm)
 ADDR_FRAME_COUNTER = 0x0009  # free-running frame counter
 ADDR_PLAYER_X_FRAC = 0x0400  # player X fractional subpixel
-ADDR_PLAYER_Y_FRAC = 0x0416  # player Y fractional subpixel
+ADDR_PLAYER_Y_FRAC = 0x0416  # Player_YMF_Dummy; Y position frac (Oσ)
 
 # Common enemy type ids (smbdis / GameResources)
 ENEMY_TYPE_HAMMER_BRO = 0x05
