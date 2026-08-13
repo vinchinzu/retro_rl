@@ -54,6 +54,17 @@ SEGMENTS: dict[str, tuple[tuple[int, ...], ...]] = {
         + tuple(press("RIGHT", "B", "A") for _ in range(4))
         + tuple(press("RIGHT", "B") for _ in range(16))
     ),
+    # |vx| bands 2 and 4 at takeoff (smbdis InitJS $10/$1C).
+    "run24_then_jump": (
+        tuple(press("RIGHT", "B") for _ in range(24))
+        + tuple(press("RIGHT", "B", "A") for _ in range(4))
+        + tuple(press("RIGHT", "B") for _ in range(16))
+    ),
+    "run32_then_jump": (
+        tuple(press("RIGHT", "B") for _ in range(32))
+        + tuple(press("RIGHT", "B", "A") for _ in range(4))
+        + tuple(press("RIGHT", "B") for _ in range(16))
+    ),
 }
 
 

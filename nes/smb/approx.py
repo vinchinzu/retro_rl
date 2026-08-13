@@ -19,6 +19,10 @@ Y is smbdis ``ImposeGravity`` + ``JumpSwimSub`` A-release:
 - after a 1px rise, A-release copies ``$070A`` into ``$0709``
 - land snaps pixel Y and zeros ``velocity_y`` / ``$0433``; keep ``$0416``
   (YMF dummy) and leftover ``$0709``
+
+Takeoff (smbdis ``InitJS``) indexes ``JumpMForceData`` / ``FallMForceData`` /
+``PlayerYSpdData`` from ``|$0700|`` (``Player_XSpeedAbsolute`` ≈ ``|vx|``).
+Land bands only; swim indices 5–6 are not modeled.
 """
 
 from __future__ import annotations
@@ -29,16 +33,21 @@ from smb.observation import DEFAULT_GROUND_Y, Observation
 
 __all__ = [
     "AIR_RUN_KEEP",
+    "JUMP_FORCE_DOWN",
+    "JUMP_FORCE_UP",
     "JUMP_SPEED",
+    "JUMP_Y_SPEED",
     "RUN_ACCEL",
     "RUN_MAX",
     "WALK_ACCEL",
     "WALK_MAX",
     "decode_action",
     "idle_action",
+    "jump_table_index",
     "press",
     "rollout",
     "step",
+    "takeoff_vertical",
 ]
 
 # NES 9-slot: [B, null, Select, Start, Up, Down, Left, Right, A]
@@ -54,9 +63,14 @@ FIRST_KICK = 0x0130
 WALK_MAX = 0x18
 RUN_MAX = 0x28
 AIR_RUN_KEEP = 0x19
-JUMP_SPEED = -4
-GRAVITY_HOLD_STEP = 0x20
-GRAVITY_FALL = 0x70
+# smbdis JumpMForceData / FallMForceData / PlayerYSpdData (land 0–4).
+JUMP_FORCE_UP = (0x20, 0x20, 0x1E, 0x28, 0x28)
+JUMP_FORCE_DOWN = (0x70, 0x70, 0x60, 0x90, 0x90)
+JUMP_Y_SPEED = (-4, -4, -4, -5, -5)
+JUMP_ABS_VX = (0x09, 0x10, 0x19, 0x1C)
+JUMP_SPEED = JUMP_Y_SPEED[0]
+GRAVITY_HOLD_STEP = JUMP_FORCE_UP[0]
+GRAVITY_FALL = JUMP_FORCE_DOWN[0]
 MAX_FALL = 4
 PIT_Y = 240
 DIFF_TO_HALT_JUMP = 1
@@ -116,6 +130,26 @@ def _clamp_speed(speed_16: int, run: bool) -> int:
     if speed_16 < -limit:
         return -limit
     return speed_16
+
+
+def jump_table_index(velocity_x: int) -> int:
+    """smbdis InitJS land index from ``Player_XSpeedAbsolute`` (≈ ``|vx|``)."""
+    speed = abs(int(velocity_x))
+    for index, limit in enumerate(JUMP_ABS_VX):
+        if speed < limit:
+            return index
+    return len(JUMP_ABS_VX)
+
+
+def takeoff_vertical(velocity_x: int) -> tuple[int, int, int, int]:
+    """Return ``(vy, VerticalForce, VerticalForceDown, Y_MoveForce)`` at takeoff."""
+    index = jump_table_index(velocity_x)
+    return (
+        JUMP_Y_SPEED[index],
+        JUMP_FORCE_UP[index],
+        JUMP_FORCE_DOWN[index],
+        0,
+    )
 
 
 def _leaving_ground(obs: Observation, jump: bool) -> bool:
@@ -256,10 +290,11 @@ def step(obs: Observation, action: Sequence[int]) -> Observation:
     jump_origin_y = obs.jump_origin_y
     if on_ground and jump and not obs.a_held:
         jump_origin_y = obs.y
-        vertical_force = GRAVITY_HOLD_STEP
-        vertical_force_down = GRAVITY_FALL
+        velocity_y, vertical_force, vertical_force_down, y_move_force = takeoff_vertical(
+            obs.velocity_x
+        )
         y, sub_y, velocity_y, y_move_force = _impose_gravity(
-            obs.y, 0, JUMP_SPEED, 0, vertical_force
+            obs.y, 0, velocity_y, y_move_force, vertical_force
         )
         on_ground = False
     elif not on_ground:
