@@ -142,6 +142,8 @@
     "button_encoding": "Button masks: LEFT=0x40 (bit 6), RIGHT=0x80 (bit 7), B=0x01 (bit 0)",
     "wire_protocol": "SmRevClient subprocess uses response_internal format (Trajectory.to_dict)",
     "smedit_export": "SMEDIT route panel consumes response_smedit_tas_1 format",
-    "transport": "Current: subprocess stdin/stdout JSON. Future: may migrate to HTTP while keeping JSON keys stable"
+    "transport": "Current: subprocess stdin/stdout JSON. Future: may migrate to HTTP while keeping JSON keys stable",
+    "frames_format": "frames[] are 12-char mnemonics (native format), encoded from button masks on write",
+    "roomId_meaning": "trace[].roomId is room header pointer (WRAM $079B / SimState.room_id), NOT door ID. Door transitions show as roomId changing between trace points."
   }
 }

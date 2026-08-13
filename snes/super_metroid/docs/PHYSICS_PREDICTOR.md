@@ -197,8 +197,10 @@ Route panel native format for trajectory preview and route planning:
 - `format`: Always `"smedit-tas-1"`
 - `meta`: Game name, start state name, ROM SHA1 (null in stub/CI)
 - `buttonOrder`: 12-button order (matches retro_harness.controls)
-- `frames`: 12-char mnemonics (`.` = released, letter = pressed)
+- `frames`: 12-char mnemonics (`.` = released, letter = pressed) — native format encoded from button masks
 - `trace`: Sparse frames with x/y required, subX/subY/pose/roomId optional
+  - **roomId**: Room header pointer (WRAM $079B), NOT door ID. Door transitions show as roomId changing.
+  - Extra kinematics fields ignored by route planner (forward compatibility)
 
 **Consumed by:** SMEDIT route panel for trajectory overlay and interactive editing
 

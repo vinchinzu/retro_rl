@@ -257,6 +257,13 @@ class Trajectory:
         Returns:
             smedit-tas-1 format dict with format, meta, buttonOrder, frames, trace
 
+        Notes:
+            - frames[]: 12-char mnemonics encoded from button masks (native format)
+            - trace[].roomId: Room header pointer (WRAM $079B), NOT door ID.
+              Door transitions show as roomId changing between trace points.
+            - Extra kinematics fields (subX, subY, pose, etc.) are optional;
+              route planner ignores unknown keys.
+
         Example:
             >>> trajectory.to_smedit_tas(start_state_name="LandingSite", trace_stride=10)
             {
@@ -268,7 +275,7 @@ class Trajectory:
               },
               "buttonOrder": ["B", "Y", "Select", "Start", "Up", "Down", "Left", "Right", "A", "X", "L", "R"],
               "frames": ["............", "b......r...."],
-              "trace": [{"frame": 0, "x": 184, "y": 312}]
+              "trace": [{"frame": 0, "x": 184, "y": 312, "roomId": 37368}]
             }
         """
         # Encode inputs to mnemonic frames
