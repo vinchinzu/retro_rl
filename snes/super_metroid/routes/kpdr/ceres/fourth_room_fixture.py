@@ -1,21 +1,22 @@
-"""Fourth Ceres room (Scientist → Flat) room-gated fixture.
+"""Fourth Ceres room (Scientist → Ridley) room-gated fixture.
 
-This fixture represents the room-gated arm-pump from Scientist 0xE021 → Flat
-0xE06B. Unlike rooms 1-3, there is no fixed tape in the source code for this
-segment. The product code (`routes.kpdr.ceres.outbound.play_ceres_to_ridley_door`)
-treats Scientist→Flat→Ridley as one continuous room-gated arm-pump (line 90-99).
+This fixture represents the room-gated arm-pump from Scientist 0xE021 → Ridley
+0xE0B5 using the product helper `_ceres_arm_pump_until` from arm_pump.py.
 
-Tape Source:
-- Room-gated behavior from `_ceres_arm_pump_until` in arm_pump.py
-- Product code stops at Ridley (0xE0B5), not Flat
-- Reason "ceres_out_flat_band" suggests Flat is part of a continuous band
-- This fixture estimates Scientist→Flat segment using same arm-pump pattern
+Unlike rooms 1-3 which have fixed tape extracted from
+`_ceres_outbound_to_scientist_spans`, this segment is **room-gated** with
+variable length. Product code (`routes.kpdr.ceres.outbound.play_ceres_to_ridley_door`
+lines 91-99) uses `_ceres_arm_pump_until` with `done=lambda s: s.room_id == ROOM_CERES_RIDLEY`.
+
+Flat 0xE06B is passed through but not a stop point in the product helper.
+The done condition checks for Ridley 0xE0B5.
 
 Implementation:
-- RIGHT direction with classic L↔R arm-pump (period=2)
-- Estimated ~300 frames based on typical room-gated behavior
-- Uses `_arm_pump_dash_spans` helper (same as product code)
-- Not extracted from fixed tape; represents adaptive room-gated behavior
+- Calls `_ceres_arm_pump_until` with product parameters
+- Direction: RIGHT, max_frames: 900, stuck_jump_after: 40
+- Reason: "ceres_out_flat_band" (same as product)
+- Done: room_id == ROOM_CERES_RIDLEY (same as product)
+- Variable frame count depending on entry conditions
 
 Policy:
 - Predictor (StubPredictor / sm_rev_predict) = search speed only
@@ -28,94 +29,51 @@ Validation:
 - Never commit .state or ROM blobs to repo
 
 Note:
-    Product tape treats Scientist→Flat→Ridley as one continuous segment.
-    This fixture creates an artificial stop at Flat for modular testing.
+    This is NOT a fixed tape. It invokes the product helper `_ceres_arm_pump_until`.
+    Frame count is variable and determined by room-gated adaptive behavior.
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
-from retro_harness.controls import SNES_BUTTON_NAME_TO_INDEX
-from super_metroid.emulator_validation import (
-    EmulatorValidationResult,
-    ROM_AVAILABLE,
-    validate_trajectory_on_emulator,
-)
-from super_metroid.physics_sim import FrameInput
-from super_metroid.routes.kpdr.ceres.arm_pump import _arm_pump_dash_spans
+from super_metroid.emulator_validation import ROM_AVAILABLE
+from super_metroid.routes.kpdr.ceres.arm_pump import _ceres_arm_pump_until
 from super_metroid.routes.kpdr.room_ids import (
-    ROOM_CERES_FLAT,
+    ROOM_CERES_RIDLEY,
     ROOM_CERES_SCIENTIST,
 )
+from super_metroid.routes.runtime import RouteSession
 
 __all__ = [
     "CeresFourthRoomFixture",
-    "get_ceres_fourth_room_tape",
-    "validate_ceres_fourth_room",
-    "button_names_to_mask",
+    "play_ceres_fourth_room",
+    "validate_ceres_fourth_room_emulator",
 ]
-
-
-def button_names_to_mask(names: tuple[str, ...]) -> int:
-    """Convert SNES button names to button mask for FrameInput.
-
-    Args:
-        names: Button names (e.g., ("RIGHT", "A", "B"))
-
-    Returns:
-        Button mask where bit i = button i pressed
-
-    Examples:
-        >>> button_names_to_mask(("RIGHT",))
-        128  # 0x80, bit 7
-        >>> button_names_to_mask(("RIGHT", "B"))
-        129  # 0x81, bits 7+0
-    """
-    mask = 0
-    for name in names:
-        idx = SNES_BUTTON_NAME_TO_INDEX.get(name.strip().upper())
-        if idx is not None:
-            mask |= 1 << idx
-    return mask
 
 
 @dataclass(frozen=True)
 class CeresFourthRoomFixture:
-    """Fourth Ceres room fixture (room-gated, not fixed tape).
+    """Fourth Ceres room fixture (room-gated, variable length).
 
-    Represents Scientist 0xE021 → Flat 0xE06B using classic arm-pump pattern.
-    Product code treats this as part of continuous Scientist→Flat→Ridley band.
+    Represents Scientist 0xE021 → Ridley 0xE0B5 using product helper
+    `_ceres_arm_pump_until`. Frame count is variable; done condition checks
+    for ROOM_CERES_RIDLEY.
 
     Emulator validation uses env var SM_CERES_SCIENTIST_STATE for start state.
     """
 
     from_room_id: int
     to_room_id: int
-    inputs: tuple[FrameInput, ...]
-    tape_source: str
+    frames_consumed: int
+    helper_source: str
     emulator_validated: bool = False
     emulator_success: bool = False
     emulator_final_room: int | None = None
     emulator_final_x: int | None = None
     emulator_final_y: int | None = None
-
-    def to_dict(self) -> dict:
-        """Convert to JSON-serializable dict (smedit-tas-1 compatible)."""
-        return {
-            **asdict(self),
-            "inputs": [
-                {"buttons": inp.buttons, "frame": i}
-                for i, inp in enumerate(self.inputs)
-            ],
-        }
-
-    @property
-    def frames(self) -> int:
-        """Total frames in tape."""
-        return len(self.inputs)
 
     @property
     def room_clear(self) -> bool:
@@ -126,76 +84,79 @@ class CeresFourthRoomFixture:
         return self.emulator_validated and self.emulator_success
 
 
-def get_ceres_fourth_room_tape() -> CeresFourthRoomFixture:
-    """Get tape for Ceres Scientist → Flat (room-gated arm-pump pattern).
+def play_ceres_fourth_room(session: RouteSession) -> CeresFourthRoomFixture:
+    """Play Ceres Scientist → Ridley using product helper (room-gated).
 
-    This tape represents the room-gated behavior from product code's
-    `_ceres_arm_pump_until` call (outbound.py lines 92-99). Product stops at
-    Ridley; this fixture stops at Flat for modular room testing.
+    Invokes `_ceres_arm_pump_until` with the same parameters as
+    `routes.kpdr.ceres.outbound.play_ceres_to_ridley_door` (lines 92-99):
+    - Direction: RIGHT
+    - Max frames: 900
+    - Done: room_id == ROOM_CERES_RIDLEY
+    - Stuck jump after: 40
+    - Reason: "ceres_out_flat_band"
 
-    Estimated frame count (~300) based on:
-    - Product comment: Scientist→Flat→Ridley drops ~600f of old tape
-    - Max frames allowed: 900
-    - Typical single-room arm-pump: 100-400 frames
+    Args:
+        session: RouteSession starting at Scientist 0xE021
 
     Returns:
-        CeresFourthRoomFixture with estimated tape (emulator_validated=False)
+        CeresFourthRoomFixture with frames_consumed from helper
+
+    Raises:
+        TimeoutError: If Ridley room not reached within max_frames
 
     Note:
-        This is NOT extracted from fixed product tape. Product uses room-gated
-        `_ceres_arm_pump_until(done=lambda s: s.room_id == ROOM_CERES_RIDLEY)`.
-        Frame count is estimated; emulator validation determines actual success.
+        This is NOT a fixed tape. Frame count is variable depending on entry
+        conditions. The helper is adaptive and room-gated.
     """
-    # Estimated frame count for Scientist → Flat segment
-    # Product code: "drops ~600f" for full Scientist→Ridley
-    # This fixture: ~300 frames for Scientist→Flat (roughly half)
-    estimated_frames = 300
+    if session.state.room_id != ROOM_CERES_SCIENTIST:
+        raise ValueError(
+            f"Expected to start at Scientist 0x{ROOM_CERES_SCIENTIST:X}, "
+            f"got room 0x{session.state.room_id:X}"
+        )
 
-    inputs: list[FrameInput] = []
-
-    # Classic RIGHT+B arm-pump with L↔R pattern (same as product)
-    arm_pump_spans = _arm_pump_dash_spans(
-        "RIGHT", estimated_frames, "ceres_fourth_room"
+    # Product helper call (same as play_ceres_to_ridley_door)
+    frames = _ceres_arm_pump_until(
+        session,
+        "RIGHT",
+        reason="ceres_out_flat_band",
+        max_frames=900,
+        done=lambda s: s.room_id == ROOM_CERES_RIDLEY,
+        stuck_jump_after=40,
     )
-    for span in arm_pump_spans:
-        mask = button_names_to_mask(span.names)
-        for _ in range(span.frames):
-            inputs.append(FrameInput(buttons=mask))
 
     return CeresFourthRoomFixture(
         from_room_id=ROOM_CERES_SCIENTIST,
-        to_room_id=ROOM_CERES_FLAT,
-        inputs=tuple(inputs),
-        tape_source=(
-            "room-gated arm-pump pattern (estimated 300f) — product code "
-            "treats Scientist→Flat→Ridley as continuous segment in "
-            "routes.kpdr.ceres.outbound.play_ceres_to_ridley_door"
+        to_room_id=ROOM_CERES_RIDLEY,
+        frames_consumed=frames,
+        helper_source=(
+            "_ceres_arm_pump_until from routes.kpdr.ceres.arm_pump "
+            "(same parameters as play_ceres_to_ridley_door)"
         ),
         emulator_validated=False,
     )
 
 
-def validate_ceres_fourth_room(
-    fixture: CeresFourthRoomFixture,
+def validate_ceres_fourth_room_emulator(
     start_state_path: Path | str | None = None,
 ) -> CeresFourthRoomFixture:
-    """Validate fixture on real emulator (ground truth).
+    """Validate fourth room on real emulator (ground truth).
 
-    Runs tape on stable-retro / SMEDIT snes9x. This is the authoritative
-    validation path for room-clear claims.
+    Runs `play_ceres_fourth_room` on stable-retro / SMEDIT snes9x from
+    Scientist start state. This is the authoritative validation path for
+    room-clear claims.
 
     Args:
-        fixture: Tape fixture to validate
         start_state_path: Path to Ceres Scientist start state (optional)
             If None, uses env var SM_CERES_SCIENTIST_STATE
 
     Returns:
-        Updated fixture with emulator validation results
+        CeresFourthRoomFixture with emulator validation results
 
     Raises:
         FileNotFoundError: If ROM or start state not available
         RuntimeError: If emulator fails to load
         ValueError: If start state path not provided and env var not set
+        TimeoutError: If Ridley room not reached within max_frames
 
     Note:
         Tests skip validation if:
@@ -211,23 +172,37 @@ def validate_ceres_fourth_room(
                 "SM_CERES_SCIENTIST_STATE not set"
             )
 
-    if not Path(start_state_path).exists():
+    start_state_path = Path(start_state_path)
+    if not start_state_path.exists():
         raise FileNotFoundError(f"Start state not found: {start_state_path}")
 
-    result = validate_trajectory_on_emulator(
-        start_state_path,
-        fixture.inputs,
-        target_room_id=fixture.to_room_id,
-    )
+    # Create session and run helper
+    from super_metroid.routes.continuous import make_super_metroid_session
+
+    session = make_super_metroid_session(state_path=start_state_path)
+    initial_room = session.state.room_id
+
+    try:
+        fixture = play_ceres_fourth_room(session)
+        success = session.state.room_id == ROOM_CERES_RIDLEY
+    except TimeoutError:
+        success = False
+        fixture = CeresFourthRoomFixture(
+            from_room_id=ROOM_CERES_SCIENTIST,
+            to_room_id=ROOM_CERES_RIDLEY,
+            frames_consumed=0,
+            helper_source="timeout",
+            emulator_validated=False,
+        )
 
     return CeresFourthRoomFixture(
         from_room_id=fixture.from_room_id,
         to_room_id=fixture.to_room_id,
-        inputs=fixture.inputs,
-        tape_source=fixture.tape_source,
+        frames_consumed=fixture.frames_consumed,
+        helper_source=fixture.helper_source,
         emulator_validated=True,
-        emulator_success=result.success,
-        emulator_final_room=result.final_room_id,
-        emulator_final_x=result.final_x,
-        emulator_final_y=result.final_y,
+        emulator_success=success,
+        emulator_final_room=session.state.room_id,
+        emulator_final_x=int(session.state.samus_x),
+        emulator_final_y=int(session.state.samus_y),
     )

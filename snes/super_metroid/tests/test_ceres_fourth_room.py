@@ -1,193 +1,108 @@
-"""Tests for fourth Ceres room fixture (Scientist → Flat).
+"""Tests for fourth Ceres room fixture (Scientist → Ridley).
 
-Tests the room-gated arm-pump pattern from routes.kpdr.ceres.outbound for the
-fourth room of Ceres → Morph → Bomb sequence. Offline tests pass without ROM.
+Tests the room-gated helper call from routes.kpdr.ceres.arm_pump for the
+fourth room segment. This invokes `_ceres_arm_pump_until` with product
+parameters, not a fixed tape. Offline tests verify helper wiring without ROM.
 
 Note:
-    Product code treats Scientist→Flat→Ridley as one continuous arm-pump.
-    This fixture creates an artificial stop at Flat for modular testing.
+    Product code uses `_ceres_arm_pump_until(done=lambda s: s.room_id == ROOM_CERES_RIDLEY)`.
+    Frame count is variable; done condition checks for Ridley 0xE0B5.
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 
 from super_metroid.emulator_validation import ROM_AVAILABLE
-from super_metroid.routes.kpdr.ceres.arm_pump import _arm_pump_dash_spans
 from super_metroid.routes.kpdr.ceres.fourth_room_fixture import (
     CeresFourthRoomFixture,
-    button_names_to_mask,
-    get_ceres_fourth_room_tape,
-    validate_ceres_fourth_room,
+    play_ceres_fourth_room,
+    validate_ceres_fourth_room_emulator,
 )
 from super_metroid.routes.kpdr.room_ids import (
-    ROOM_CERES_FLAT,
+    ROOM_CERES_RIDLEY,
     ROOM_CERES_SCIENTIST,
 )
 
 
-class TestButtonConversion:
-    """Test button name to mask conversion."""
+class TestCeresFourthRoomHelper:
+    """Test helper invocation (offline, no ROM needed)."""
 
-    def test_right_button(self) -> None:
-        """RIGHT is bit 7 (0x80)."""
-        mask = button_names_to_mask(("RIGHT",))
-        assert mask == 0x80
+    def test_play_invokes_arm_pump_until(self) -> None:
+        """play_ceres_fourth_room invokes _ceres_arm_pump_until with product params."""
+        # Mock session at Scientist room
+        mock_session = Mock()
+        mock_session.state.room_id = ROOM_CERES_SCIENTIST
 
-    def test_b_button(self) -> None:
-        """B is bit 0 (0x01)."""
-        mask = button_names_to_mask(("B",))
-        assert mask == 0x01
+        with patch(
+            "super_metroid.routes.kpdr.ceres.fourth_room_fixture._ceres_arm_pump_until",
+            return_value=123,
+        ) as mock_helper:
+            fixture = play_ceres_fourth_room(mock_session)
 
-    def test_l_button(self) -> None:
-        """L is bit 10 (0x400)."""
-        mask = button_names_to_mask(("L",))
-        assert mask == 0x400
+            # Verify helper was called with product parameters
+            mock_helper.assert_called_once()
+            call_args = mock_helper.call_args
+            assert call_args[0][0] is mock_session  # session
+            assert call_args[0][1] == "RIGHT"  # direction
+            assert call_args[1]["reason"] == "ceres_out_flat_band"
+            assert call_args[1]["max_frames"] == 900
+            assert call_args[1]["stuck_jump_after"] == 40
+            assert "done" in call_args[1]
 
-    def test_r_button(self) -> None:
-        """R is bit 11 (0x800)."""
-        mask = button_names_to_mask(("R",))
-        assert mask == 0x800
+            # Verify done condition checks for Ridley
+            done_fn = call_args[1]["done"]
+            mock_state_ridley = Mock()
+            mock_state_ridley.room_id = ROOM_CERES_RIDLEY
+            assert done_fn(mock_state_ridley) is True
 
-    def test_right_plus_b(self) -> None:
-        """RIGHT+B is bits 7+0 (0x81)."""
-        mask = button_names_to_mask(("RIGHT", "B"))
-        assert mask == 0x81
+            mock_state_scientist = Mock()
+            mock_state_scientist.room_id = ROOM_CERES_SCIENTIST
+            assert done_fn(mock_state_scientist) is False
 
-    def test_right_plus_b_plus_l(self) -> None:
-        """RIGHT+B+L is bits 7+0+10 (0x481)."""
-        mask = button_names_to_mask(("RIGHT", "B", "L"))
-        assert mask == 0x481
+    def test_play_returns_fixture_with_frames(self) -> None:
+        """play_ceres_fourth_room returns fixture with frames_consumed."""
+        mock_session = Mock()
+        mock_session.state.room_id = ROOM_CERES_SCIENTIST
 
-    def test_right_plus_b_plus_r(self) -> None:
-        """RIGHT+B+R is bits 7+0+11 (0x881)."""
-        mask = button_names_to_mask(("RIGHT", "B", "R"))
-        assert mask == 0x881
+        with patch(
+            "super_metroid.routes.kpdr.ceres.fourth_room_fixture._ceres_arm_pump_until",
+            return_value=456,
+        ):
+            fixture = play_ceres_fourth_room(mock_session)
 
-    def test_empty_tuple(self) -> None:
-        """Empty tuple gives idle (0)."""
-        mask = button_names_to_mask(())
-        assert mask == 0
+            assert isinstance(fixture, CeresFourthRoomFixture)
+            assert fixture.from_room_id == ROOM_CERES_SCIENTIST
+            assert fixture.to_room_id == ROOM_CERES_RIDLEY
+            assert fixture.frames_consumed == 456
+            assert "_ceres_arm_pump_until" in fixture.helper_source
 
-    def test_case_insensitive(self) -> None:
-        """Button names are case insensitive."""
-        assert button_names_to_mask(("right",)) == button_names_to_mask(
-            ("RIGHT",)
-        )
-        assert button_names_to_mask(("RiGhT",)) == 0x80
+    def test_play_raises_if_not_at_scientist(self) -> None:
+        """play_ceres_fourth_room raises if not starting at Scientist."""
+        mock_session = Mock()
+        mock_session.state.room_id = 0xDEAD  # Wrong room
 
+        with pytest.raises(ValueError, match="Expected to start at Scientist"):
+            play_ceres_fourth_room(mock_session)
 
-class TestCeresFourthRoomTape:
-    """Test tape generation (offline, no ROM needed)."""
+    def test_helper_source_mentions_arm_pump_until(self) -> None:
+        """Fixture helper_source is grep-able for _ceres_arm_pump_until."""
+        mock_session = Mock()
+        mock_session.state.room_id = ROOM_CERES_SCIENTIST
 
-    def test_get_tape_returns_fixture(self) -> None:
-        """get_ceres_fourth_room_tape returns a CeresFourthRoomFixture."""
-        fixture = get_ceres_fourth_room_tape()
+        with patch(
+            "super_metroid.routes.kpdr.ceres.fourth_room_fixture._ceres_arm_pump_until",
+            return_value=100,
+        ):
+            fixture = play_ceres_fourth_room(mock_session)
 
-        assert isinstance(fixture, CeresFourthRoomFixture)
-        assert fixture.from_room_id == ROOM_CERES_SCIENTIST
-        assert fixture.to_room_id == ROOM_CERES_FLAT
-
-    def test_tape_source_documents_room_gated(self) -> None:
-        """Tape source documents room-gated behavior (not fixed tape)."""
-        fixture = get_ceres_fourth_room_tape()
-
-        source_lower = fixture.tape_source.lower()
-        assert "room-gated" in source_lower or "room gated" in source_lower
-        assert "continuous" in source_lower
-        # Should NOT claim to be extracted from fixed tape
-        assert "exact" not in source_lower
-
-    def test_tape_produces_input_sequence(self) -> None:
-        """Tape has non-empty input sequence."""
-        fixture = get_ceres_fourth_room_tape()
-
-        assert len(fixture.inputs) > 0
-        assert all(hasattr(inp, "buttons") for inp in fixture.inputs)
-
-    def test_tape_estimated_frame_count(self) -> None:
-        """Tape has estimated frame count (~300 frames).
-
-        Product comment: Scientist→Flat→Ridley drops ~600f total.
-        This fixture: ~300 frames for Scientist→Flat (roughly half).
-        Actual frame count determined by emulator validation.
-        """
-        fixture = get_ceres_fourth_room_tape()
-
-        # Estimated 300 frames (not exact; room-gated behavior)
-        assert fixture.frames == 300
-        assert len(fixture.inputs) == 300
-
-    def test_tape_uses_arm_pump_pattern(self) -> None:
-        """Tape uses classic L↔R arm-pump pattern (RIGHT+B with shoulders).
-
-        All frames should match _arm_pump_dash_spans("RIGHT", 300, ...) output.
-        """
-        fixture = get_ceres_fourth_room_tape()
-
-        # Get expected arm-pump expansion from the actual helper
-        arm_pump_spans = _arm_pump_dash_spans("RIGHT", 300, "test")
-
-        # Verify tape matches helper output frame-by-frame
-        tape_idx = 0
-        for span in arm_pump_spans:
-            expected_mask = button_names_to_mask(span.names)
-            for _ in range(span.frames):
-                assert (
-                    fixture.inputs[tape_idx].buttons == expected_mask
-                ), f"Frame {tape_idx} mismatch: got 0x{fixture.inputs[tape_idx].buttons:03X}, expected 0x{expected_mask:03X} for {span.names}"
-                tape_idx += 1
-
-        # Verify we consumed all frames
-        assert tape_idx == 300
-
-    def test_tape_starts_with_right_b(self) -> None:
-        """Tape starts with RIGHT+B arm-pump (should include L or R shoulder)."""
-        fixture = get_ceres_fourth_room_tape()
-
-        # First frame should be RIGHT+B + shoulder (L=0x400 or R=0x800)
-        first_button = fixture.inputs[0].buttons
-        # RIGHT (0x80) + B (0x01) = 0x81 base
-        # Plus L (0x400) → 0x481 or R (0x800) → 0x881
-        assert first_button in (0x481, 0x881), (
-            f"First frame should be RIGHT+B+L (0x481) or RIGHT+B+R (0x881), "
-            f"got 0x{first_button:03X}"
-        )
-
-    def test_tape_not_emulator_validated(self) -> None:
-        """Tape does not claim emulator validation by default."""
-        fixture = get_ceres_fourth_room_tape()
-
-        assert not fixture.emulator_validated
-        assert not fixture.emulator_success
-        assert fixture.emulator_final_room is None
-
-    def test_tape_not_room_clear_without_emu(self) -> None:
-        """Tape never claims room_clear without emulator validation."""
-        fixture = get_ceres_fourth_room_tape()
-
-        assert not fixture.room_clear
-
-    def test_fixture_frames_property(self) -> None:
-        """Fixture has frames property (tape length)."""
-        fixture = get_ceres_fourth_room_tape()
-
-        assert fixture.frames == len(fixture.inputs)
-        assert fixture.frames > 0
-
-    def test_fixture_to_dict_serializable(self) -> None:
-        """Fixture can be serialized to dict (smedit-tas-1 compatible)."""
-        fixture = get_ceres_fourth_room_tape()
-        data = fixture.to_dict()
-
-        assert isinstance(data, dict)
-        assert "from_room_id" in data
-        assert "inputs" in data
-        assert isinstance(data["inputs"], list)
-        assert all("buttons" in inp for inp in data["inputs"])
+            # Grep-able: fixture documents the helper it uses
+            assert "_ceres_arm_pump_until" in fixture.helper_source
+            assert "arm_pump" in fixture.helper_source.lower()
 
 
 class TestCeresFourthRoomValidation:
@@ -198,14 +113,11 @@ class TestCeresFourthRoomValidation:
         state_path = os.environ.get("SM_CERES_SCIENTIST_STATE")
         return state_path is not None and Path(state_path).exists()
 
-    def test_validate_requires_rom_or_start_state(self) -> None:
-        """Validate raises if ROM or start state unavailable."""
-        fixture = get_ceres_fourth_room_tape()
-
-        if not ROM_AVAILABLE or not self._has_start_state():
-            # Should raise when prerequisites missing
+    def test_validate_requires_start_state(self) -> None:
+        """Validate raises if start state unavailable."""
+        if not self._has_start_state():
             with pytest.raises((FileNotFoundError, ValueError)):
-                validate_ceres_fourth_room(fixture)
+                validate_ceres_fourth_room_emulator()
 
     @pytest.mark.skipif(
         not ROM_AVAILABLE,
@@ -219,10 +131,11 @@ class TestCeresFourthRoomValidation:
         if not self._has_start_state():
             pytest.skip("SM_CERES_SCIENTIST_STATE not set or file missing")
 
-        fixture = get_ceres_fourth_room_tape()
-        validated = validate_ceres_fourth_room(fixture)
+        validated = validate_ceres_fourth_room_emulator()
 
         assert validated.emulator_validated
+        # Frame count is variable; don't assert specific value
+        assert validated.frames_consumed >= 0
 
 
 class TestCeresFourthRoomFixture:
@@ -230,14 +143,12 @@ class TestCeresFourthRoomFixture:
 
     def test_room_clear_requires_emulator_success(self) -> None:
         """room_clear is False unless emulator_validated and emulator_success."""
-        from super_metroid.physics_sim import FrameInput
-
         # Not validated
         fixture = CeresFourthRoomFixture(
             from_room_id=ROOM_CERES_SCIENTIST,
-            to_room_id=ROOM_CERES_FLAT,
-            inputs=(FrameInput(0),),
-            tape_source="test",
+            to_room_id=ROOM_CERES_RIDLEY,
+            frames_consumed=100,
+            helper_source="test",
             emulator_validated=False,
         )
         assert not fixture.room_clear
@@ -245,9 +156,9 @@ class TestCeresFourthRoomFixture:
         # Validated but failed
         fixture_failed = CeresFourthRoomFixture(
             from_room_id=ROOM_CERES_SCIENTIST,
-            to_room_id=ROOM_CERES_FLAT,
-            inputs=(FrameInput(0),),
-            tape_source="test",
+            to_room_id=ROOM_CERES_RIDLEY,
+            frames_consumed=100,
+            helper_source="test",
             emulator_validated=True,
             emulator_success=False,
         )
@@ -256,11 +167,44 @@ class TestCeresFourthRoomFixture:
         # Validated and succeeded
         fixture_success = CeresFourthRoomFixture(
             from_room_id=ROOM_CERES_SCIENTIST,
-            to_room_id=ROOM_CERES_FLAT,
-            inputs=(FrameInput(0),),
-            tape_source="test",
+            to_room_id=ROOM_CERES_RIDLEY,
+            frames_consumed=100,
+            helper_source="test",
             emulator_validated=True,
             emulator_success=True,
-            emulator_final_room=ROOM_CERES_FLAT,
+            emulator_final_room=ROOM_CERES_RIDLEY,
         )
         assert fixture_success.room_clear
+
+    def test_fixture_boundary_is_scientist_to_ridley(self) -> None:
+        """Fixture boundary is Scientist → Ridley, not Scientist → Flat."""
+        fixture = CeresFourthRoomFixture(
+            from_room_id=ROOM_CERES_SCIENTIST,
+            to_room_id=ROOM_CERES_RIDLEY,
+            frames_consumed=200,
+            helper_source="test",
+        )
+
+        assert fixture.from_room_id == ROOM_CERES_SCIENTIST
+        assert fixture.to_room_id == ROOM_CERES_RIDLEY
+        # Product done condition checks for Ridley, not Flat
+
+    def test_frames_consumed_is_variable(self) -> None:
+        """frames_consumed records actual helper result (variable)."""
+        fixture_a = CeresFourthRoomFixture(
+            from_room_id=ROOM_CERES_SCIENTIST,
+            to_room_id=ROOM_CERES_RIDLEY,
+            frames_consumed=150,
+            helper_source="test",
+        )
+
+        fixture_b = CeresFourthRoomFixture(
+            from_room_id=ROOM_CERES_SCIENTIST,
+            to_room_id=ROOM_CERES_RIDLEY,
+            frames_consumed=250,
+            helper_source="test",
+        )
+
+        # Frame count varies by entry conditions
+        assert fixture_a.frames_consumed != fixture_b.frames_consumed
+        # Don't assert fixed value; room-gated behavior is adaptive
