@@ -5,13 +5,16 @@ the 1-1 autobot segment.
 
 ```text
 ADDR_PLAYER_STATE   = 0x000E  # 0x08 walk/stand, 0x0B dying
+ADDR_PLAYER_MOTION  = 0x001D  # 0=grounded, 1=air (smbdis Player_State)
 ADDR_PLAYER_FACING  = 0x0033  # 1=right, 2=left
-ADDR_X_SPEED        = 0x0057  # signed horizontal speed
+ADDR_X_SPEED        = 0x0057  # signed horizontal speed (high byte)
 ADDR_X_PAGE         = 0x006D  # 256-pixel horizontal page
 ADDR_PLAYER_X       = 0x0086  # offset within page
 ADDR_Y_SPEED        = 0x009F  # signed vertical speed
 ADDR_PLAYER_Y       = 0x00CE
 ADDR_PLAYER_SCREEN_X= 0x03AD  # on-screen X
+ADDR_PLAYER_X_FRAC  = 0x0400  # X position subpixel (Oσ)
+ADDR_PLAYER_Y_FRAC  = 0x0416  # Y position subpixel (Oσ)
 ADDR_AREA_POINTER   = 0x0750  # venue within multi-area levels (8-4)
 ADDR_PLAYER_STATUS  = 0x0756  # 0=small, 1=big, 2=fire
 ADDR_LIVES          = 0x075A
@@ -19,12 +22,39 @@ ADDR_LEVEL_LO       = 0x075C
 ADDR_WORLD          = 0x075F  # 0-indexed world
 ADDR_LEVEL          = 0x0760  # 0-indexed level within world
 ADDR_OPER_MODE      = 0x0770  # 0=demo/title, 1=playing, 2=end, 3=game over
+ADDR_X_FORCE        = 0x0705  # 16-bit X-speed low byte (stepper; not lattice)
 ADDR_SCREEN_PAGE    = 0x071A  # camera page
 ADDR_SCREEN_X       = 0x071C  # camera left X within page
 ADDR_TIMER_HUNDREDS = 0x07F8  # 4 at level start (400)
 ADDR_TIMER_TENS     = 0x07F9
 ADDR_TIMER_ONES     = 0x07FA
+ADDR_FRAME_COUNTER  = 0x0009  # free-running; lag tag
 ```
+
+## Residual lattice
+
+Shared observation used by `smb.observation` / `smb.residual` (same discipline
+as Super Metroid `R(τ)`). Speeds are first-differing-field only, not a second σ+.
+
+| Name | RAM | Width | Lattice | Notes |
+|------|-----|-------|---------|-------|
+| `x` | `$006D` + `$0086` | u16 | Oπ | `page * 256 + offset` |
+| `y` | `$00CE` | u8 | Oπ | 0 = top; floor ≈ 176 on 1-1 |
+| `pose` | `$000E` | u8 | Oπ | `0x08` normal, `0x0B` dying, `0x04` flagpole |
+| `room` | `$075F`, `$0760`, `$0750` | packed | Oπ | `(world<<16) \| (level<<8) \| area_pointer` |
+| `sub_x` | `$0400` | u8 | Oσ | X **position** subpixel (not velocity) |
+| `sub_y` | `$0416` | u8 | Oσ | Y **position** subpixel |
+| `enemy0_active` | `$000F` | u8 | Oσ+ | first enemy slot flag |
+| `enemy0_type` | `$0016` | u8 | Oσ+ | first enemy slot type |
+| `energy` | `$075A` | u8 | O† | lives (SMB analog of SM energy) |
+| `dead` | `$000E` / `$0770` / `y` | flag | O† | dying, game over, or `y ≥ 240` |
+| `velocity_x` | `$0057` | s8 | field | first-diff only |
+| `velocity_y` | `$009F` | s8 | field | first-diff only |
+| `frame_counter` | `$0009` | u8 | lag | stop scoring later kinematics |
+| `on_ground` | `$001D == 0` | flag | field | air/jump is `1` |
+| `x_force` | `$0705` | u8 | stepper | 16-bit X-speed low byte |
+
+See `docs/RESIDUAL.md` for planner rules and the first measurement segments.
 
 ## Computed
 
