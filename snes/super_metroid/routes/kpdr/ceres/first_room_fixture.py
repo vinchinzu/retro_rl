@@ -36,6 +36,7 @@ from super_metroid.emulator_validation import (
     validate_trajectory_on_emulator,
 )
 from super_metroid.physics_sim import FrameInput
+from super_metroid.routes.kpdr.ceres.arm_pump import _arm_pump_dash_spans
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
     ROOM_CERES_FALLING,
@@ -155,17 +156,14 @@ def get_ceres_first_room_tape() -> CeresFirstRoomFixture:
     for _ in range(120):
         inputs.append(FrameInput(buttons=mask))
 
-    # Span 4: RIGHT+B, 240 frames with arm-pump expansion (period=2)
-    # _arm_pump_dash_spans expands to: RIGHT+B+L (2f), RIGHT+B+R (2f), ...
-    # 240 frames = 120 spans of 2 frames each
-    # shoulder_pump_button(i, 2): i=0→L, i=2→R, i=4→L, i=6→R, ...
-    for i in range(0, 240, 2):
-        # Determine shoulder button (L or R) based on position
-        shoulder = "L" if (i // 2) % 2 == 0 else "R"
-        mask = button_names_to_mask(("RIGHT", "B", shoulder))
-        # Each chunk is 2 frames (or less if at end)
-        chunk = min(2, 240 - i)
-        for _ in range(chunk):
+    # Span 4: RIGHT+B, 240 frames with arm-pump expansion
+    # Call the actual helper from arm_pump.py (same as outbound uses)
+    arm_pump_spans = _arm_pump_dash_spans("RIGHT", 240, "ceres_first_room")
+    for span in arm_pump_spans:
+        # span.names is tuple of button names (e.g., ("RIGHT", "B", "L"))
+        # span.frames is number of frames for this span
+        mask = button_names_to_mask(span.names)
+        for _ in range(span.frames):
             inputs.append(FrameInput(buttons=mask))
 
     # Span 5: idle, 60 frames
