@@ -179,6 +179,7 @@ class TrajectoryFrame:
     """Samus state at one frame of a predicted trajectory.
 
     Includes full kinematics plus relevant RAM state for route analysis.
+    Optional enemies list for damage-boost routing and SMEDIT overlay.
     """
 
     frame: int
@@ -199,13 +200,22 @@ class TrajectoryFrame:
     speed_counter: int
     speed_flag: int
     shinespark_timer: int
+    enemies: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        result = asdict(self)
+        # Omit enemies when empty (not required)
+        if not result["enemies"]:
+            del result["enemies"]
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TrajectoryFrame:
-        return cls(**data)
+        # enemies is optional, defaults to empty tuple
+        enemies_data = data.get("enemies", [])
+        data_copy = dict(data)
+        data_copy["enemies"] = tuple(enemies_data)
+        return cls(**data_copy)
 
 
 @dataclass(frozen=True)
@@ -261,6 +271,9 @@ class Trajectory:
             - frames[]: 12-char mnemonics encoded from button masks (native format)
             - trace[].roomId: Room header pointer (WRAM $079B), NOT door ID.
               Door transitions show as roomId changing between trace points.
+            - trace[].enemies: Optional list for SMEDIT overlay and damage-boost
+              routing. Omitted when empty. Point structure: {id/slot, x, y, hp?}.
+              Used for Ceres→Morph→Bomb damage-boost routing once sm_rev fills it.
             - Extra kinematics fields (subX, subY, pose, etc.) are optional;
               route planner ignores unknown keys.
 
@@ -298,6 +311,9 @@ class Trajectory:
                 if traj_frame.pose != 0:
                     entry["pose"] = traj_frame.pose
                 entry["roomId"] = traj_frame.room_id
+                # Optional enemies list for damage-boost routing / SMEDIT overlay
+                if traj_frame.enemies:
+                    entry["enemies"] = [dict(e) for e in traj_frame.enemies]
                 trace.append(entry)
 
         return {

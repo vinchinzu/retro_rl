@@ -198,9 +198,13 @@ Route panel native format for trajectory preview and route planning:
 - `meta`: Game name, start state name, ROM SHA1 (null in stub/CI)
 - `buttonOrder`: 12-button order (matches retro_harness.controls)
 - `frames`: 12-char mnemonics (`.` = released, letter = pressed) — native format encoded from button masks
-- `trace`: Sparse frames with x/y required, subX/subY/pose/roomId optional
+- `trace`: Sparse frames with x/y required, other fields optional
   - **roomId**: Room header pointer (WRAM $079B), NOT door ID. Door transitions show as roomId changing.
-  - Extra kinematics fields ignored by route planner (forward compatibility)
+  - **enemies**: Optional list for SMEDIT overlay and damage-boost routing. Omitted when empty.
+    Point structure: `{id/slot, x, y, hp?}` with extra fields OK.
+    Used for Ceres→Morph→Bomb damage-boost routing once sm_rev fills it.
+  - **subX/subY/pose**: Optional kinematics fields
+  - Extra fields ignored by route planner (forward compatibility)
 
 **Consumed by:** SMEDIT route panel for trajectory overlay and interactive editing
 

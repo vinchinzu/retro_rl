@@ -144,6 +144,7 @@
     "smedit_export": "SMEDIT route panel consumes response_smedit_tas_1 format",
     "transport": "Current: subprocess stdin/stdout JSON. Future: may migrate to HTTP while keeping JSON keys stable",
     "frames_format": "frames[] are 12-char mnemonics (native format), encoded from button masks on write",
-    "roomId_meaning": "trace[].roomId is room header pointer (WRAM $079B / SimState.room_id), NOT door ID. Door transitions show as roomId changing between trace points."
+    "roomId_meaning": "trace[].roomId is room header pointer (WRAM $079B / SimState.room_id), NOT door ID. Door transitions show as roomId changing between trace points.",
+    "enemies_field": "Optional trace[].enemies list for SMEDIT overlay and damage-boost routing. Omitted when empty (not required). Point: {id/slot, x, y, hp?}. StubPredictor omits this field."
   }
 }
