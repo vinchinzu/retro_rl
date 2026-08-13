@@ -45,6 +45,7 @@ Short Level1_1 tapes in `smb.residual_harness.SEGMENTS`:
 | `run_jump` | 30 RIGHT+B+A | air control + run accel |
 | `jump_to_land` | 4 A + 28 idle | standing jump through land + settle |
 | `run_jump_to_land` | 60 RIGHT+B+A | run-jump through land |
+| `run_then_jump` | 16 RIGHT+B + 4 A + 16 RIGHT+B | takeoff-frame air X |
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -96,15 +97,31 @@ Landing snaps pixel Y and zeros `velocity_y` / `$0433`. ImposeGravity leftover
 `$0709` stays at `0x70`. Land-then-walk / land-then-run / land-then-rejump
 also hold. Short tapes still land before f25 / f53, so they never saw this.
 
-Next break is **takeoff-frame air X**, not another Y stub. 16f RIGHT+B then A:
-fdσ=18, fdπ=25 — the leave-ground frame still applies grounded run `$E4`
-(`xf` 140→112); emu already uses walk `$98` (`xf` 140→36). Grounded leftovers
-(not that stub): LEFT first-kick fdσ=1; brake after RIGHT uses `$98` not
-`FRICTION $D0` (fdσ=19).
+After `rr-kez8` (takeoff-frame air X: leave-ground uses walk `$98` unless
+`|vx|≥0x19`):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| idle | 25 | `(—, —, —, —)` | — | — |
+| walk | 25 | `(—, —, —, —)` | — | — |
+| jump | 25 | `(—, —, —, —)` | — | — |
+| run_jump | 31 | `(—, —, —, —)` | — | — |
+| jump_to_land | 33 | `(—, —, —, —)` | — | — |
+| run_jump_to_land | 61 | `(—, —, —, —)` | — | — |
+| run_then_jump | 37 | `(—, —, —, —)` | — | — |
+
+16f RIGHT+B then A: takeoff `xf` 140→36 (walk `$98`), not 140→112 (run `$E4`).
+Walk-then-jump and a skid-jump (RIGHT+B then LEFT+A) also hold.
+
+Next break is **jump tables from `|vx|`**, not another air-X order stub. 24f
+RIGHT+B then A: fdσ=26 — takeoff `vf` is `$1E` not `$20` (`sub_y` 32 vs 30).
+32f run then A: fdπ=33, `vy=-5` vs `-4`, `vf=$28`. Sibling leftovers (not that
+stub): air walk-max wipes `xf` (longer 16+4+40 tape fdσ=42 after land); LEFT
+first-kick fdσ=1; brake after RIGHT uses `$98` not `FRICTION $D0` (fdσ=19).
 
 ## Modules
 
 - `smb.observation` — RAM → structured obs
-- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF)
+- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X)
 - `smb.residual` — `compute_residual_profile`
 - `smb.residual_harness` — stepper + fceumm + `R(τ)`

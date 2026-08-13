@@ -31,7 +31,7 @@ def main() -> int:
     parser.add_argument(
         "--out",
         type=Path,
-        default=RECORDINGS_DIR / "residual" / "level1_1_land_ymf.json",
+        default=RECORDINGS_DIR / "residual" / "level1_1_takeoff_airx.json",
         help="write the report JSON here",
     )
     args = parser.parse_args()

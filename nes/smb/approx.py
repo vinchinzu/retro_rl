@@ -1,14 +1,16 @@
 """Thin pure approximate SMB stepper (flat ground only).
 
 ``step(obs, action) -> obs`` is deterministic and has no emulator dependency.
-It models grounded walk/run, A-edge jump, A-release gravity, and air X
-tables. No slopes, pipes, enemies, or collision.
+It models grounded walk/run, A-edge jump, A-release gravity, air X
+tables (including the takeoff frame), and land YMF. No slopes, pipes,
+enemies, or collision.
 
 X kinematics were fitted to a live Level1_1 RAM trace:
 - 16-bit speed ``(velocity_x, x_force)`` with first-kick ``0x0130``, then
   walk ``+0x98`` / run ``+0xE4``
 - position subpixel ``$0400`` advances by ``velocity_x << 4``
-- in air, walk tables unless ``|velocity_x| >= 0x19`` (already running)
+- in air (including the takeoff frame), walk tables unless
+  ``|velocity_x| >= 0x19`` (already running)
 
 Y is smbdis ``ImposeGravity`` + ``JumpSwimSub`` A-release:
 - ``$0416`` (YMF dummy) += ``$0433`` (Y move-force); carry into Y
@@ -116,13 +118,21 @@ def _clamp_speed(speed_16: int, run: bool) -> int:
     return speed_16
 
 
-def _air_uses_walk_tables(obs: Observation) -> bool:
+def _leaving_ground(obs: Observation, jump: bool) -> bool:
+    """A-edge takeoff: X_Physics already sees air this frame."""
+    return bool(obs.on_ground and jump and not obs.a_held)
+
+
+def _air_uses_walk_tables(obs: Observation, jump: bool) -> bool:
     """Air X uses walk accel/max until already at run speed (smbdis X_Physics)."""
-    return (not obs.on_ground) and abs(int(obs.velocity_x)) < AIR_RUN_KEEP
+    in_air = (not obs.on_ground) or _leaving_ground(obs, jump)
+    return in_air and abs(int(obs.velocity_x)) < AIR_RUN_KEEP
 
 
-def _update_x_speed(obs: Observation, x_dir: int, run: bool) -> tuple[int, int, int]:
-    if _air_uses_walk_tables(obs):
+def _update_x_speed(
+    obs: Observation, x_dir: int, run: bool, jump: bool
+) -> tuple[int, int, int]:
+    if _air_uses_walk_tables(obs, jump):
         run = False
     speed_16 = _pack_speed(obs.velocity_x, obs.x_force)
     facing = obs.facing
@@ -233,7 +243,7 @@ def _step_air(
 def step(obs: Observation, action: Sequence[int]) -> Observation:
     """Advance one frame. Pure: no RAM, no I/O, no RNG."""
     x_dir, run, jump = decode_action(action)
-    velocity_x, x_force, facing = _update_x_speed(obs, x_dir, run)
+    velocity_x, x_force, facing = _update_x_speed(obs, x_dir, run, jump)
     x, sub_x = _advance_x(obs.x, obs.sub_x, velocity_x)
 
     on_ground = obs.on_ground
