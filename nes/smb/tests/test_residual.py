@@ -6,10 +6,14 @@ import numpy as np
 
 from smb.approx import (
     AIR_RUN_KEEP,
+    BRAKE_FAST,
+    FRICTION,
     JUMP_FORCE_DOWN,
     JUMP_FORCE_UP,
     JUMP_SPEED,
     JUMP_Y_SPEED,
+    RUN_SPEED_LATCH,
+    WALK_ACCEL,
     WALK_MAX,
     idle_action,
     jump_table_index,
@@ -57,6 +61,10 @@ def _obs(**overrides: object) -> Observation:
     data = base.to_dict()
     data.update(overrides)
     return Observation.from_dict(data)
+
+
+def _pack_for_test(obs: Observation) -> int:
+    return (int(obs.velocity_x) << 8) | (int(obs.x_force) & 0xFF)
 
 
 def test_pack_room_roundtrip() -> None:
@@ -269,6 +277,25 @@ def test_run24_then_jump_uses_mid_run_table() -> None:
     assert frames[26].sub_y == 0x1E
 
 
+def test_brake_uses_walk_friction_until_fast() -> None:
+    """No L/R: $98 unless |vx| >= $21 (smbdis FrictionData / ChkRFast)."""
+    start = level1_start_obs()
+    walked = rollout(start, [press("RIGHT")] * 16)
+    assert walked[-1].velocity_x < BRAKE_FAST
+    first_idle = step(walked[-1], idle_action())
+    expected = max(0, _pack_for_test(walked[-1]) - WALK_ACCEL)
+    assert _pack_for_test(first_idle) == expected
+    assert first_idle.x_force != (walked[-1].x_force - FRICTION) & 0xFF
+
+    fast = _obs(velocity_x=0x22, x_force=0x10, facing=1)
+    nxt = step(fast, idle_action())
+    assert _pack_for_test(nxt) == _pack_for_test(fast) - FRICTION
+
+    latched = _obs(velocity_x=RUN_SPEED_LATCH, x_force=0x34, facing=1, running_speed=RUN_SPEED_LATCH)
+    braked = step(latched, idle_action())
+    assert _pack_for_test(braked) == _pack_for_test(latched) - FRICTION
+
+
 def test_run32_then_jump_uses_fast_run_table() -> None:
     """32f RIGHT+B → |vx|=28 → InitJS index 4 (vy=-5, vf=$28)."""
     start = level1_start_obs()
@@ -415,3 +442,26 @@ def test_measure_segment_offline_run24_and_run32() -> None:
     assert mid.approx_obs[25].vertical_force == 0x1E
     assert fast.approx_obs[33].velocity_y == -5
     assert fast.approx_obs[33].vertical_force == 0x28
+
+
+def test_measure_segment_offline_walk_then_idle() -> None:
+    result = measure_segment("walk_then_idle", run_emulator=False)
+    assert result.horizon == 33
+    last_walk = result.approx_obs[16]
+    first_idle = result.approx_obs[17]
+    assert last_walk.velocity_x > 0
+    assert _pack_for_test(first_idle) == _pack_for_test(last_walk) - WALK_ACCEL
+
+
+def test_run_then_idle_latches_running_speed_one_frame_late() -> None:
+    """32f run: first idle still $98; GetPlayerAnimSpeed then latches → $D0."""
+    start = level1_start_obs()
+    frames = rollout(start, [press("RIGHT", "B")] * 32 + [idle_action()] * 2)
+    last_run = frames[32]
+    first_idle = frames[33]
+    second_idle = frames[34]
+    assert last_run.velocity_x == RUN_SPEED_LATCH
+    assert last_run.running_speed == 0
+    assert first_idle.running_speed == RUN_SPEED_LATCH
+    assert _pack_for_test(first_idle) == _pack_for_test(last_run) - WALK_ACCEL
+    assert _pack_for_test(second_idle) == _pack_for_test(first_idle) - FRICTION

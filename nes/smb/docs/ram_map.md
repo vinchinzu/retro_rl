@@ -26,6 +26,7 @@ ADDR_LEVEL_LO       = 0x075C
 ADDR_WORLD          = 0x075F  # 0-indexed world
 ADDR_LEVEL          = 0x0760  # 0-indexed level within world
 ADDR_OPER_MODE      = 0x0770  # 0=demo/title, 1=playing, 2=end, 3=game over
+ADDR_RUNNING_SPEED  = 0x0703  # RunningSpeed; latched |vx| when >= $1C
 ADDR_X_FORCE        = 0x0705  # Player_X_MoveForce; 16-bit X-speed low byte
 ADDR_SCREEN_PAGE    = 0x071A  # camera page
 ADDR_SCREEN_X       = 0x071C  # camera left X within page
@@ -57,6 +58,7 @@ as Super Metroid `R(Ï„)`). Speeds are first-differing-field only, not a second Ï
 | `frame_counter` | `$0009` | u8 | lag | stop scoring later kinematics |
 | `on_ground` | `$001D == 0` | flag | field | air/jump is `1` |
 | `x_force` | `$0705` | u8 | stepper | `Player_X_MoveForce` |
+| `running_speed` | `$0703` | u8 | stepper | `RunningSpeed`; brake `$D0` if set |
 | `y_move_force` | `$0433` | u8 | stepper | `Player_Y_MoveForce` |
 | `vertical_force` | `$0709` | u8 | stepper | rising / current gravity |
 | `vertical_force_down` | `$070A` | u8 | stepper | fall gravity |

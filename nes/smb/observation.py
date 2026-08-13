@@ -31,6 +31,7 @@ from smb.ram import (
     ADDR_PLAYER_X_FRAC,
     ADDR_PLAYER_Y,
     ADDR_PLAYER_Y_FRAC,
+    ADDR_RUNNING_SPEED,
     ADDR_VERTICAL_FORCE,
     ADDR_VERTICAL_FORCE_DOWN,
     ADDR_WORLD,
@@ -97,6 +98,7 @@ class Observation:
     facing: int = 1
     on_ground: bool = True
     x_force: int = 0
+    running_speed: int = 0
     a_held: bool = False
     ground_y: int = DEFAULT_GROUND_Y
     vertical_force: int = 0
@@ -146,6 +148,7 @@ def level1_start_obs(*, frame: int = 0) -> Observation:
         facing=1,
         on_ground=True,
         x_force=0,
+        running_speed=0,
         a_held=False,
         ground_y=DEFAULT_GROUND_Y,
         vertical_force=0,
@@ -196,6 +199,7 @@ def observation_from_ram(
         facing=int(ram[ADDR_PLAYER_FACING]),
         on_ground=on_ground,
         x_force=int(ram[ADDR_X_FORCE]),
+        running_speed=int(ram[ADDR_RUNNING_SPEED]),
         a_held=bool(a_held),
         ground_y=floor,
         vertical_force=int(ram[ADDR_VERTICAL_FORCE]),
