@@ -47,6 +47,8 @@ from harvest.tasks.mountain_berry import (
     is_mountain_forage,
     nearby_tile_scan,
 )
+from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask
+from harvest.tasks.harvest_task import read_shipping_money
 from harvest.tasks.nav import get_pos_from_ram, make_action
 from harvest.tasks.recorded_task import RecordedTask
 
@@ -73,6 +75,11 @@ def _parse_args() -> argparse.Namespace:
         "--pick",
         action="store_true",
         help="A-pick the ground grape and keep it (Don't eat). Default is stand only.",
+    )
+    p.add_argument(
+        "--ship",
+        action="store_true",
+        help="Natural D2 route: pick/keep the grape, return to the farm, and ship it.",
     )
     p.add_argument(
         "--out",
@@ -107,6 +114,7 @@ def _snap(ram, frame: int, *, phase: str = "", extra: dict | None = None) -> dic
         "held_item": held,
         "held_hex": f"0x{held:02X}",
         "held_name": held_forage_name(held) or "",
+        "shipping_money": int(read_shipping_money(ram)),
         "hour": int(read_ram_value(ram, "hour")),
         "minute": int(read_ram_value(ram, "minute")),
         "input_lock": int(read_ram_value(ram, "input_lock")),
@@ -196,11 +204,19 @@ def _save_png(obs, path: Path) -> None:
 
 def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -> dict:
     ram = env.get_ram()
-    task = MountainBerryTask(
-        timeout=args.timeout,
-        approach_only=not args.pick,
-        pick_attempts=3 if args.pick else 0,
-    )
+    if args.ship:
+        task = MountainGrapeShipTask(
+            timeout=args.timeout,
+            pick_timeout=min(args.timeout, 12_000),
+            nav_timeout=min(args.timeout, 12_000),
+            pick_attempts=3,
+        )
+    else:
+        task = MountainBerryTask(
+            timeout=args.timeout,
+            approach_only=not args.pick,
+            pick_attempts=3 if args.pick else 0,
+        )
     world = WorldState(frame=0, ram=ram, info={}, obs=None)
     task.reset(world)
     start = _snap(ram, 0, phase=task.phase_text)
@@ -212,6 +228,9 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
     status = TaskStatus.RUNNING
     reason = "start"
     obs = None
+    picked_seen = is_mountain_forage(int(read_held_item(ram)))
+    kept_seen = picked_seen and int(read_ram_value(ram, "input_lock")) == 1
+    shipping_peak = int(read_shipping_money(ram))
 
     print(f"[BERRY] start map={start['map']} pos=({start['x']},{start['y']}) phase={last_phase}")
     while frame < args.timeout and status == TaskStatus.RUNNING:
@@ -229,6 +248,12 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
             video.write(obs)
         frame += 1
         ram = env.get_ram()
+        held_now = int(read_held_item(ram))
+        shipping_peak = max(shipping_peak, int(read_shipping_money(ram)))
+        if is_mountain_forage(held_now):
+            picked_seen = True
+            if int(read_ram_value(ram, "input_lock")) == 1:
+                kept_seen = True
         phase = task.phase_text
         tilemap = int(read_ram_value(ram, "tilemap"))
         if phase != last_phase or tilemap != last_map:
@@ -241,7 +266,7 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
             )
             last_phase = phase
             last_map = tilemap
-        if is_mountain_forage(int(read_held_item(ram))) and not args.pick:
+        if is_mountain_forage(held_now) and not args.pick and not args.ship:
             break
         if frame % 400 == 0:
             snap = _snap(ram, frame, phase=phase)
@@ -274,14 +299,23 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
         and abs(int(end["x"]) - GRAPE_STAND_PX[0]) <= 24
         and abs(int(end["y"]) - GRAPE_STAND_PX[1]) <= 24
     )
-    picked = is_mountain_forage(held)
-    kept = picked and lock == 1
-    if args.pick:
+    picked = picked_seen or is_mountain_forage(held)
+    kept = kept_seen or (is_mountain_forage(held) and lock == 1)
+    shipped = (
+        args.ship
+        and held == 0
+        and int(end["shipping_money"]) > int(start["shipping_money"])
+        and status == TaskStatus.SUCCESS
+    )
+    if args.ship:
+        success = shipped
+    elif args.pick:
         success = kept
     else:
         success = reached
     print(
-        f"[BERRY] end reached={reached} picked={picked} kept={kept} frames={frame} "
+        f"[BERRY] end reached={reached} picked={picked} kept={kept} shipped={shipped} "
+        f"frames={frame} shipping={start['shipping_money']}->{end['shipping_money']} "
         f"held=0x{held:02X} ({end['held_name'] or 'none'}) lock={lock} map={end['map']} "
         f"pos=({end['x']},{end['y']})"
     )
@@ -301,7 +335,9 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
         "reached_stand": reached,
         "picked": picked,
         "kept": kept,
-        "pick_verified": bool(args.pick and kept),
+        "shipped": shipped,
+        "shipping_peak": shipping_peak,
+        "pick_verified": bool((args.pick or args.ship) and kept),
         "frames": frame,
         "seconds": round(frame / 60.0, 3),
         "status": status.value,

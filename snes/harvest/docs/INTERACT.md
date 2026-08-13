@@ -12,6 +12,9 @@ object class → Gotz talk → ban A → ignore a tape that already had `held=0x
    # no trace? replay once:
    HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
      --mode replay --task get_berry
+   # Natural Spring D2 pick, keep, return, and verified farm-bin drop:
+   HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+     --state Y1_Inside_House --ship
    ```
    First `held_item` change **is** the pick. Read the ±80 frames of buttons
    (A / Down). That is the protocol.
