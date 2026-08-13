@@ -116,9 +116,9 @@ SMB addresses. Thin flat-ground `step(obs, action)` for walk / jump / gravity.
 - Code: `observation.py`, `approx.py`, `residual.py`, `residual_harness.py`
 - Measure: `uv run python -m smb.scripts.measure_residual`
 
-Jump tables from |vx| (smbdis InitJS) done. Next: grounded left/brake
-(`$98` vs `$D0`) and air walk-max wiping `xf`, then SMW using the same
-observation/residual shape.
+Jump tables from |vx| (smbdis InitJS) and brake `$98`/`$D0` (RunningSpeed)
+done. Next: LEFT first-kick and air walk-max wiping `xf`, then SMW using
+the same observation/residual shape.
 
 ### C — Optional follow-ons
 

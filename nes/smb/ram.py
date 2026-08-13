@@ -23,6 +23,7 @@ ADDR_Y_SPEED = 0x009F  # signed player vertical speed
 ADDR_PLAYER_Y = 0x00CE
 ADDR_PLAYER_SCREEN_X = 0x03AD  # on-screen X
 ADDR_PLAYER_STATUS = 0x0756  # 0=small, 1=big, 2=fire
+ADDR_RUNNING_SPEED = 0x0703  # RunningSpeed; latched |vx| when >= $1C
 ADDR_X_FORCE = 0x0705  # Player_X_MoveForce; 16-bit X-speed low byte
 ADDR_Y_MOVE_FORCE = 0x0433  # Player_Y_MoveForce; gravity accumulator
 ADDR_JUMP_ORIGIN_Y = 0x0708  # Y pixel at takeoff (A-release threshold)
