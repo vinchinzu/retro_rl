@@ -117,43 +117,68 @@ class CeresFirstRoomFixture:
 
 
 def get_ceres_first_room_tape() -> CeresFirstRoomFixture:
-    """Get real tape for Ceres Elevator → Falling Tile (first room only).
+    """Get real tape for Ceres Elevator → Falling Tile (EXACT prefix).
 
     Tape source: `routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans`
-    - ActionSpan list for Elevator → Falling → Magnet → Scientist
-    - This function takes the documented prefix for first room only
+    - EXACT prefix through first dash (lines 35-39)
+    - RIGHT+B 240 frames expanded via `_arm_pump_dash_spans` (period=2, L↔R)
+    - Idle 60 frames after dash
 
     Returns:
         CeresFirstRoomFixture with real tape (emulator_validated=False)
 
     Note:
-        This is NOT a greedy search or invented physics. It's the existing
-        product tape from outbound.py, converted to FrameInput format.
+        This is the EXACT product tape with full arm-pump expansion, not
+        a shortened sketch. Frame count must match expanding the raw spans.
     """
-    # Real tape from outbound.py: Elevator → Falling Tile prefix
-    # Source: _ceres_outbound_to_scientist_spans() lines 35-42
-    # (RIGHT+A 24, RIGHT 120, LEFT 120, RIGHT+B 240 with arm-pump, idle 60)
-    #
-    # First room transition happens in first ~500 frames
-    # Taking prefix up to first LEFT turn (264 frames) as first-room tape
-    tape_frames: list[tuple[tuple[str, ...], int]] = [
-        (("RIGHT", "A"), 24),    # Jump start
-        (("RIGHT",), 120),        # Run right
-        (("LEFT",), 120),         # Turn left
-        (("RIGHT", "B"), 60),     # Dash right (simplified, no arm-pump for now)
-    ]
+    # EXACT raw prefix from _ceres_outbound_to_scientist_spans (lines 35-39):
+    # (("RIGHT", "A"), 24, False),
+    # (("RIGHT",), 120, False),
+    # (("LEFT",), 120, False),
+    # (("RIGHT", "B"), 240, True),  # MUST expand via _arm_pump_dash_spans
+    # ((), 60, False),
 
     inputs: list[FrameInput] = []
-    for button_names, frame_count in tape_frames:
-        mask = button_names_to_mask(button_names)
-        for _ in range(frame_count):
+
+    # Span 1: RIGHT+A, 24 frames
+    mask = button_names_to_mask(("RIGHT", "A"))
+    for _ in range(24):
+        inputs.append(FrameInput(buttons=mask))
+
+    # Span 2: RIGHT, 120 frames
+    mask = button_names_to_mask(("RIGHT",))
+    for _ in range(120):
+        inputs.append(FrameInput(buttons=mask))
+
+    # Span 3: LEFT, 120 frames
+    mask = button_names_to_mask(("LEFT",))
+    for _ in range(120):
+        inputs.append(FrameInput(buttons=mask))
+
+    # Span 4: RIGHT+B, 240 frames with arm-pump expansion (period=2)
+    # _arm_pump_dash_spans expands to: RIGHT+B+L (2f), RIGHT+B+R (2f), ...
+    # 240 frames = 120 spans of 2 frames each
+    # shoulder_pump_button(i, 2): i=0→L, i=2→R, i=4→L, i=6→R, ...
+    for i in range(0, 240, 2):
+        # Determine shoulder button (L or R) based on position
+        shoulder = "L" if (i // 2) % 2 == 0 else "R"
+        mask = button_names_to_mask(("RIGHT", "B", shoulder))
+        # Each chunk is 2 frames (or less if at end)
+        chunk = min(2, 240 - i)
+        for _ in range(chunk):
             inputs.append(FrameInput(buttons=mask))
 
+    # Span 5: idle, 60 frames
+    mask = button_names_to_mask(())
+    for _ in range(60):
+        inputs.append(FrameInput(buttons=mask))
+
+    # Total: 24 + 120 + 120 + 240 + 60 = 564 frames
     return CeresFirstRoomFixture(
         from_room_id=ROOM_CERES_ELEVATOR,
         to_room_id=ROOM_CERES_FALLING,
         inputs=tuple(inputs),
-        tape_source="routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans (prefix)",
+        tape_source="routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans (EXACT prefix, 564 frames)",
         emulator_validated=False,
     )
 

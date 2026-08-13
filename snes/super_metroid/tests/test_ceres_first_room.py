@@ -80,11 +80,60 @@ class TestCeresFirstRoomTape:
         assert all(hasattr(inp, "buttons") for inp in fixture.inputs)
 
     def test_tape_starts_with_right_a(self) -> None:
-        """Tape starts with RIGHT+A (jump start)."""
+        """Tape starts with RIGHT+A (jump start) for 24 frames."""
         fixture = get_ceres_first_room_tape()
 
-        # First frame should be RIGHT+A = 0x180
+        # First 24 frames should be RIGHT+A = 0x180
         assert fixture.inputs[0].buttons == 0x180
+        assert all(inp.buttons == 0x180 for inp in fixture.inputs[:24])
+
+    def test_tape_exact_frame_count(self) -> None:
+        """Tape has EXACT frame count matching product spans.
+
+        Raw spans: RIGHT+A 24, RIGHT 120, LEFT 120, RIGHT+B 240 (arm-pump), idle 60
+        Total: 564 frames
+        """
+        fixture = get_ceres_first_room_tape()
+
+        assert fixture.frames == 564
+        assert len(fixture.inputs) == 564
+
+    def test_tape_arm_pump_expansion(self) -> None:
+        """RIGHT+B 240 frames expands with L↔R arm-pump (period=2).
+
+        Frames 264-503 (240 frames after RIGHT+A 24, RIGHT 120, LEFT 120):
+        - Frames 264-265: RIGHT+B+L (0x481)
+        - Frames 266-267: RIGHT+B+R (0x881)
+        - Frames 268-269: RIGHT+B+L (0x481)
+        - ... (120 spans of 2 frames each)
+        """
+        fixture = get_ceres_first_room_tape()
+
+        # RIGHT+B section starts at frame 264 (after 24+120+120)
+        arm_pump_start = 24 + 120 + 120
+        arm_pump_end = arm_pump_start + 240
+
+        # Check first few arm-pump spans
+        # RIGHT+B+L: RIGHT (0x80) + B (0x01) + L (0x400) = 0x481
+        # RIGHT+B+R: RIGHT (0x80) + B (0x01) + R (0x800) = 0x881
+        assert fixture.inputs[arm_pump_start].buttons == 0x481  # L
+        assert fixture.inputs[arm_pump_start + 1].buttons == 0x481  # L
+        assert fixture.inputs[arm_pump_start + 2].buttons == 0x881  # R
+        assert fixture.inputs[arm_pump_start + 3].buttons == 0x881  # R
+        assert fixture.inputs[arm_pump_start + 4].buttons == 0x481  # L
+        assert fixture.inputs[arm_pump_start + 5].buttons == 0x481  # L
+
+        # Check arm-pump section length
+        arm_pump_frames = fixture.inputs[arm_pump_start:arm_pump_end]
+        assert len(arm_pump_frames) == 240
+
+    def test_tape_ends_with_idle(self) -> None:
+        """Tape ends with 60 frames of idle (all buttons released)."""
+        fixture = get_ceres_first_room_tape()
+
+        # Last 60 frames should be idle (0x000)
+        idle_start = 24 + 120 + 120 + 240
+        assert all(inp.buttons == 0 for inp in fixture.inputs[idle_start:])
 
     def test_tape_not_emulator_validated(self) -> None:
         """Tape does not claim emulator validation by default."""
