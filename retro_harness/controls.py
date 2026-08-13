@@ -57,6 +57,12 @@ SNES_BUTTON_NAME_TO_INDEX = {
 }
 SNES_BUTTON_NAME_TO_INDEX["IDLE"] = None
 
+def _press(action: list[int], index: int) -> None:
+    """Set ``action[index]`` when the slot exists (NES is 9, SNES is 12)."""
+    if 0 <= index < len(action):
+        action[index] = 1
+
+
 # NES Button Map (fceumm): [B, null, Select, Start, Up, Down, Left, Right, A]
 # Index 1 is unused in stable-retro's NES core layout.
 NES_B = 0
@@ -412,33 +418,33 @@ def _apply_controller_action(
     if joystick.get_numhats() > 0:
         hat = joystick.get_hat(0)
         if hat[0] < 0:
-            action[offset + SNES_LEFT] = 1
+            _press(action, offset + SNES_LEFT)
         if hat[0] > 0:
-            action[offset + SNES_RIGHT] = 1
+            _press(action, offset + SNES_RIGHT)
         if hat[1] > 0:
-            action[offset + SNES_UP] = 1
+            _press(action, offset + SNES_UP)
         if hat[1] < 0:
-            action[offset + SNES_DOWN] = 1
+            _press(action, offset + SNES_DOWN)
 
     # D-pad via analog stick
     if joystick.get_numaxes() >= 2:
         axis_x = joystick.get_axis(0)
         axis_y = joystick.get_axis(1)
         if axis_x < -deadzone:
-            action[offset + SNES_LEFT] = 1
+            _press(action, offset + SNES_LEFT)
         if axis_x > deadzone:
-            action[offset + SNES_RIGHT] = 1
+            _press(action, offset + SNES_RIGHT)
         if axis_y < -deadzone:
-            action[offset + SNES_UP] = 1
+            _press(action, offset + SNES_UP)
         if axis_y > deadzone:
-            action[offset + SNES_DOWN] = 1
+            _press(action, offset + SNES_DOWN)
 
     # D-pad via buttons on controllers that do not expose hats.
     active_dpad_button_map = _resolved_dpad_button_map(joystick, dpad_button_map)
     if active_dpad_button_map:
         for joy_btn, snes_btn in active_dpad_button_map.items():
             if joy_btn < joystick.get_numbuttons() and joystick.get_button(joy_btn):
-                action[offset + snes_btn] = 1
+                _press(action, offset + snes_btn)
 
     # Buttons
     active_map = _resolved_controller_map(controller_map)
@@ -451,7 +457,7 @@ def _apply_controller_action(
                 target = start_action_index
             elif snes_btn == SNES_SELECT and select_action_index is not None:
                 target = select_action_index
-            action[offset + target] = 1
+            _press(action, offset + target)
     for joy_btn, snes_btn in fallback_map.items():
         if joy_btn < joystick.get_numbuttons() and joystick.get_button(joy_btn):
             target = snes_btn
@@ -459,20 +465,20 @@ def _apply_controller_action(
                 target = start_action_index
             elif snes_btn == SNES_SELECT and select_action_index is not None:
                 target = select_action_index
-            action[offset + target] = 1
+            _press(action, offset + target)
     if start_override is not None:
         if start_override < joystick.get_numbuttons() and joystick.get_button(start_override):
             target = start_action_index if start_action_index is not None else SNES_START
-            action[offset + target] = 1
+            _press(action, offset + target)
     if select_override is not None:
         if select_override < joystick.get_numbuttons() and joystick.get_button(select_override):
             target = select_action_index if select_action_index is not None else SNES_SELECT
-            action[offset + target] = 1
+            _press(action, offset + target)
     if axis_map:
         for axis_idx, snes_btn in axis_map.items():
             if axis_idx < joystick.get_numaxes():
                 if joystick.get_axis(axis_idx) > deadzone:
-                    action[offset + snes_btn] = 1
+                    _press(action, offset + snes_btn)
 
 
 def controller_action(
@@ -523,33 +529,33 @@ def keyboard_action(
     - Shift: Select
     """
     if keys[pygame.K_RIGHT]:
-        action[SNES_RIGHT] = 1
+        _press(action, SNES_RIGHT)
     if keys[pygame.K_LEFT]:
-        action[SNES_LEFT] = 1
+        _press(action, SNES_LEFT)
     if keys[pygame.K_DOWN]:
-        action[SNES_DOWN] = 1
+        _press(action, SNES_DOWN)
     if keys[pygame.K_UP]:
-        action[SNES_UP] = 1
+        _press(action, SNES_UP)
 
     if keys[pygame.K_RETURN]:
         start_idx = start_action_index if start_action_index is not None else SNES_START
-        action[start_idx] = 1
+        _press(action, start_idx)
     if keys[pygame.K_RSHIFT] or keys[pygame.K_LSHIFT]:
         select_idx = select_action_index if select_action_index is not None else SNES_SELECT
-        action[select_idx] = 1
+        _press(action, select_idx)
 
     if keys[pygame.K_z]:
-        action[SNES_B] = 1
+        _press(action, SNES_B)
     if keys[pygame.K_c]:
-        action[SNES_A] = 1
+        _press(action, SNES_A)
     if keys[pygame.K_x]:
-        action[SNES_Y] = 1
+        _press(action, SNES_Y)
     if keys[pygame.K_v]:
-        action[SNES_X] = 1
+        _press(action, SNES_X)
     if keys[pygame.K_a] or keys[pygame.K_q]:
-        action[SNES_L] = 1
+        _press(action, SNES_L)
     if keys[pygame.K_s] or keys[pygame.K_w]:
-        action[SNES_R] = 1
+        _press(action, SNES_R)
 
 
 def sanitize_action_offset(action: list[int], offset: int = 0) -> None:

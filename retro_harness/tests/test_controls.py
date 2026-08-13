@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from retro_harness.controls import (
+    NES_ACTION_SIZE,
     SNES_A,
     SNES_B,
     SNES_BUTTON_NAME_TO_INDEX,
@@ -94,6 +95,28 @@ def test_controller_action_auto_maps_dpad_buttons_when_no_hat():
     assert action[SNES_RIGHT] == 1
     assert action[SNES_START] == 0
     assert action[SNES_SELECT] == 0
+
+
+def test_controller_action_ignores_snes_only_buttons_on_nes_action():
+    """SELECT+L2/R2 and X must not crash ./play smb (NES action is 9 slots)."""
+    joy = _FakeJoystick(buttons={3, 4, 5, 6})  # X, L, R, Select
+    action = [0] * NES_ACTION_SIZE
+
+    controller_action(joy, action)
+
+    assert len(action) == NES_ACTION_SIZE
+    assert action[SNES_SELECT] == 1
+    assert action[SNES_A] == 0
+
+
+def test_keyboard_action_ignores_snes_only_keys_on_nes_action():
+    keys = _FakeKeys({"v", "a", "s", "z"})
+    action = [0] * NES_ACTION_SIZE
+
+    keyboard_action(keys, action, _FakePygame)
+
+    assert len(action) == NES_ACTION_SIZE
+    assert action[SNES_B] == 1
 
 
 def test_controller_action_does_not_map_l3_as_start_by_default():

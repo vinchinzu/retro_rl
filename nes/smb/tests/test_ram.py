@@ -4,6 +4,7 @@ import numpy as np
 
 from smb.ram import (
     ADDR_LEVEL,
+    ADDR_LEVEL_LO,
     ADDR_LIVES,
     ADDR_OPER_MODE,
     ADDR_WORLD,
@@ -34,6 +35,17 @@ def test_player_x_combines_page_and_offset() -> None:
     assert player_x(ram) == 3 * 256 + 40
     snap = read_snapshot(ram)
     assert snap.player_x == 808
+
+
+def test_level_number_is_dash_not_area() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_WORLD] = 0
+    ram[ADDR_LEVEL] = 2  # 1-2 underground AreaNumber
+    ram[ADDR_LEVEL_LO] = 1  # still 1-2
+    snap = read_snapshot(ram)
+    assert snap.level == 2
+    assert snap.dash_level == 1
+    assert snap.level_number == 1
 
 
 def test_dying_state() -> None:

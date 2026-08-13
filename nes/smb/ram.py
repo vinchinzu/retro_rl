@@ -36,9 +36,9 @@ ADDR_SCREEN_X = 0x071C  # screen left X within page
 
 # Progress / HUD
 ADDR_LIVES = 0x075A
-ADDR_LEVEL_LO = 0x075C  # area number used by some loaders
+ADDR_LEVEL_LO = 0x075C  # smbdis LevelNumber (dash 0-3); stable through 1-2/4-2 UG
 ADDR_AREA_POINTER = 0x0750
-ADDR_LEVEL = 0x0760  # 0-indexed level within world
+ADDR_LEVEL = 0x0760  # smbdis AreaNumber; 1-2 UG increments this (aliases as 1-3)
 ADDR_WORLD = 0x075F  # 0-indexed world
 ADDR_OPER_MODE = 0x0770  # 0=demo/title, 1=playing, 2=end, 3=game over
 ADDR_TIMER_HUNDREDS = 0x07F8  # 4 at level start (400)
@@ -153,6 +153,9 @@ class SmbSnapshot:
     screen_x: int
     player_screen_x: int
     in_air: bool
+    # smbdis LevelNumber ($075C). None in hand-built test snaps → fall back to
+    # ``level`` (AreaNumber). 1-2 / 4-2 underground increments AreaNumber only.
+    level_number: int | None = None
 
     @property
     def playing(self) -> bool:
@@ -169,6 +172,13 @@ class SmbSnapshot:
     @property
     def grounded(self) -> bool:
         return not self.in_air
+
+    @property
+    def dash_level(self) -> int:
+        """0-indexed stage dash (the ``3`` in ``1-3``). Ignores UG area flips."""
+        if self.level_number is None:
+            return int(self.level)
+        return int(self.level_number)
 
 
 def player_x(ram: np.ndarray) -> int:
@@ -207,6 +217,7 @@ def read_snapshot(ram: np.ndarray, frame: int = 0) -> SmbSnapshot:
     x_off = int(ram[ADDR_PLAYER_X])
     world = int(ram[ADDR_WORLD])
     level = int(ram[ADDR_LEVEL])
+    level_number = int(ram[ADDR_LEVEL_LO])
     return SmbSnapshot(
         frame=frame,
         player_state=int(ram[ADDR_PLAYER_STATE]),
@@ -218,6 +229,7 @@ def read_snapshot(ram: np.ndarray, frame: int = 0) -> SmbSnapshot:
         world=world,
         level=level,
         level_id=world * 4 + level,
+        level_number=level_number,
         oper_mode=int(ram[ADDR_OPER_MODE]),
         player_power=int(ram[ADDR_PLAYER_STATUS]),
         timer_hundreds=int(ram[ADDR_TIMER_HUNDREDS]),
@@ -371,6 +383,7 @@ def parse_game_state(ram: np.ndarray, frame: int = 0, obs_mean: float | None = N
         "x_offset": snap.x_offset,
         "lives": snap.lives,
         "level_lo": int(ram[ADDR_LEVEL_LO]),
+        "level_number": snap.dash_level,
         "level": snap.level,
         "world": snap.world,
         "level_id": snap.level_id,
