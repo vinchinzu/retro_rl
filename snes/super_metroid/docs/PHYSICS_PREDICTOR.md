@@ -18,6 +18,22 @@ motion paths offline:
 3. **Hop optimization:** genetic/hill-climbing search over input tapes
 4. **TAS development:** fast candidate filtering before emulator validation
 
+### Important: Predictor vs Emulator Ground Truth
+
+**StubPredictor and MiniStep are for search speed only, not ground truth.**
+
+- **Planning phase**: Use predictor for fast candidate evaluation and filtering
+- **Validation phase**: Run winning inputs on real emulator (stable-retro / SMEDIT snes9x)
+- **Conflict resolution**: If predictor and emulator disagree, **emulator wins**
+- **Room-clear claims**: Require emulator validation path (skip/xfail without ROM in CI is fine)
+
+This separation allows fast offline planning while ensuring production trajectories are emulator-verified.
+
+**Workflow:**
+1. Search with predictor (filter 1000s of candidates quickly)
+2. Validate top candidates on emulator (ground truth)
+3. Only claim room-clear after emulator success
+
 ## Architecture
 
 ```
