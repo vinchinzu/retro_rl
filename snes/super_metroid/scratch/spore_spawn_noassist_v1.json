@@ -1,0 +1,84 @@
+{
+  "command": "strategy",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/full_start_v1_anchors/f015374_enter_0x9DC7_0x9DC7.state",
+  "success": false,
+  "assist_enabled": false,
+  "entry": {
+    "room_id_hex": "0x9DC7",
+    "samus_x": 137,
+    "samus_y": 714,
+    "pose": 81,
+    "health": 199,
+    "missiles": 10,
+    "max_missiles": 10,
+    "selected_item": 0,
+    "enemy0_hp": 960,
+    "enemy0_x": 128,
+    "enemy0_y": 496,
+    "enemy0_spritemap": "0xEE6F",
+    "mouth_open": false,
+    "seated": false,
+    "phase": "ordinary_gameplay",
+    "pickups": []
+  },
+  "fight": {
+    "start_frame": 0,
+    "activation_seen": true,
+    "defeat_frame": null,
+    "boss_bit_frame": null,
+    "end_frame": 5722,
+    "peak_hp": 960,
+    "min_enemy_hp": 960,
+    "action_frames": 5722,
+    "final_enemy_hp": 960,
+    "shots_fired": 0,
+    "farm_frames": 0,
+    "windows": 0,
+    "outcome": "died",
+    "vulnerable_spritemaps": [
+      61121,
+      61245,
+      61263,
+      61281
+    ]
+  },
+  "reasons": {
+    "select_weapon": 1,
+    "select_weapon_settle": 25,
+    "spore_floor_left": 29,
+    "spore_ledge_hop": 5658,
+    "spore_ledge_left": 9
+  },
+  "assist": {
+    "energy_restored": 0,
+    "energy_writes": 0,
+    "missile_writes": 0,
+    "maximum_single_frame_damage": 12,
+    "deaths": 1
+  },
+  "final": {
+    "room_id_hex": "0x9DC7",
+    "samus_x": 53,
+    "samus_y": 715,
+    "pose": 84,
+    "health": 0,
+    "missiles": 10,
+    "max_missiles": 10,
+    "selected_item": 1,
+    "enemy0_hp": 960,
+    "enemy0_x": 74,
+    "enemy0_y": 666,
+    "enemy0_spritemap": "0xEE6F",
+    "mouth_open": false,
+    "seated": false,
+    "phase": "death_or_game_over",
+    "pickups": []
+  },
+  "saved_state": null,
+  "catalog": {
+    "name": "Spore Spawn",
+    "max_hp": 960
+  },
+  "method": "left_ledge_two_missile",
+  "notes": "Human-tape seat (x=21 y=697 morph) + 2 missiles per open eye. No resource writes unless --assist."
+}

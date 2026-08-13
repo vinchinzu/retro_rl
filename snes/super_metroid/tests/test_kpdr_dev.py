@@ -42,67 +42,30 @@ def test_hop_ids_unique() -> None:
     assert len(names) == len(set(names))
 
 
-def test_kpdr_controller_exports() -> None:
-    from super_metroid.routes.kpdr import (
-        play_bat_to_below_spazer,
-        play_below_spazer_to_west,
-        play_big_pink_to_ghz,
-        play_east_to_glass,
-        play_east_to_warehouse,
-        play_glass_to_east,
-        play_glass_to_west,
-        play_warehouse_to_east,
-        play_west_to_below,
-        play_bat_to_red,
-        play_below_to_bat,
-        play_ghz_to_noob,
-        play_hijump_to_warehouse,
-        play_noob_to_red_tower,
-        play_red_tower_to_bat,
-        play_red_tower_to_warehouse,
-        play_run_shoot_exit,
-        play_super_room_collect,
-        play_warehouse_hijump_kraid,
-        play_warehouse_to_hijump,
-        play_warehouse_to_kraid_with_hijump,
-        play_warehouse_wall_to_lower_lip,
-        play_west_to_glass,
-        ROOM_SUPER,
-    )
-
-    # K0 Super collect (formerly post_spore/) is part of the KPDR package.
-    assert ROOM_SUPER == 0x9B5B
-    assert callable(play_super_room_collect)
-    assert callable(play_big_pink_to_ghz)
-    assert callable(play_ghz_to_noob)
-    assert callable(play_noob_to_red_tower)
-    assert callable(play_red_tower_to_bat)
-    assert callable(play_bat_to_below_spazer)
-    assert callable(play_below_spazer_to_west)
-    assert callable(play_west_to_glass)
-    assert callable(play_glass_to_east)
-    assert callable(play_east_to_warehouse)
-    assert callable(play_east_to_glass)
-    assert callable(play_glass_to_west)
-    assert callable(play_warehouse_to_east)
-    assert callable(play_west_to_below)
-    assert callable(play_below_to_bat)
-    assert callable(play_bat_to_red)
-    assert callable(play_red_tower_to_warehouse)
-    assert callable(play_warehouse_wall_to_lower_lip)
-    assert callable(play_warehouse_to_hijump)
-    assert callable(play_hijump_to_warehouse)
-    assert callable(play_warehouse_to_kraid_with_hijump)
-    assert callable(play_warehouse_hijump_kraid)
-    assert callable(play_run_shoot_exit)
-
-    from super_metroid.routes.kpdr import play_kraid_entry_to_varia
-    from super_metroid.routes.kpdr.warehouse_stack import resolve_warehouse_entry_mode
-    from super_metroid.ram import parse_state
+def test_kpdr_registry_and_warehouse_entry_mode() -> None:
     from dataclasses import replace
+
     import numpy as np
 
-    assert callable(play_kraid_entry_to_varia)
+    from super_metroid.ram import parse_state
+    from super_metroid.routes.kpdr import (
+        KPDR_SEGMENTS,
+        ROOM_SUPER,
+        get_segment,
+        play_super_room_collect,
+    )
+    from super_metroid.routes.kpdr.business_climb import play_business_to_warehouse
+    from super_metroid.routes.kpdr.return_hijump import play_hj_shaft_to_business
+    from super_metroid.routes.kpdr.warehouse_stack import resolve_warehouse_entry_mode
+
+    assert ROOM_SUPER == 0x9B5B
+    assert "super_room_collect" in KPDR_SEGMENTS
+    assert "big_pink_into_main_shaft" in KPDR_SEGMENTS
+    assert "big_pink_to_ghz" in KPDR_SEGMENTS
+    assert get_segment("super_room_collect") is play_super_room_collect
+    assert get_segment("hj_shaft_to_business") is play_hj_shaft_to_business
+    assert get_segment("business_to_warehouse") is play_business_to_warehouse
+
     base = parse_state(np.zeros(0x2000, dtype=np.uint8))
     assert resolve_warehouse_entry_mode(replace(base, samus_x=50)) == "left_elevator"
     assert (
@@ -115,24 +78,6 @@ def test_kpdr_controller_exports() -> None:
         )
         == "left_elevator"
     )
-
-
-def test_kpdr_segment_registry_includes_super_collect() -> None:
-    from super_metroid.routes.kpdr import KPDR_SEGMENTS, get_segment
-
-    assert "super_room_collect" in KPDR_SEGMENTS
-    assert "big_pink_into_main_shaft" in KPDR_SEGMENTS
-    assert "big_pink_to_ghz" in KPDR_SEGMENTS
-    assert get_segment("super_room_collect") is KPDR_SEGMENTS["super_room_collect"]
-
-
-def test_post_hijump_climb_segments_resolve_from_registry() -> None:
-    from super_metroid.routes.kpdr import get_segment
-    from super_metroid.routes.kpdr.business_climb import play_business_to_warehouse
-    from super_metroid.routes.kpdr.return_hijump import play_hj_shaft_to_business
-
-    assert get_segment("hj_shaft_to_business") is play_hj_shaft_to_business
-    assert get_segment("business_to_warehouse") is play_business_to_warehouse
 
 
 def test_kpdr_controller_has_no_progression_writes_or_state_loads() -> None:

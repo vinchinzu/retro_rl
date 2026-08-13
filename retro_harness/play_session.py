@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 
+from retro_harness.emulator_session import should_preview_turbo_frame
 from retro_harness.runtime import reset_env, step_env
 
 if TYPE_CHECKING:
@@ -42,6 +43,7 @@ _TURBO_RENDER_INTERVAL = 8
 _HUD_LINE_HEIGHT = 18
 _HUD_FONT_SIZE = 16
 _HUD_COLOR = (255, 255, 0)
+_HUD_COLOR_MINIMAL = (220, 220, 220)  # soft white — less visual noise than yellow
 _HUD_MARGIN = 4
 
 
@@ -70,10 +72,12 @@ class PlaySession:
         action_size: int = 12,
         base_fps: int = 60,
         initial_speed: float = 1.0,
+        resync_state_bytes: Optional[bytes] = None,
     ):
         self.env = env
         self.game_dir = game_dir
         self.game = game
+        self.resync_state_bytes = resync_state_bytes
         self.scale = scale
         self.title = title or game or "retro_harness"
         self.action_size = action_size
@@ -118,12 +122,17 @@ class PlaySession:
         self._joystick = None
         self._joystick_instance_id = None
 
-        # Trigger state for save/load (L2/R2)
+        # Trigger state for save/load (SELECT+L2 / SELECT+R2 — bare L2/R2 ignored)
         self._lt_was_pressed: bool = False
         self._rt_was_pressed: bool = False
         self._trigger_lt_axis: int = 2   # SDL: LT axis (Xbox-style)
         self._trigger_rt_axis: int = 5   # SDL: RT axis (Xbox-style)
         self._trigger_threshold: float = 0.3
+        self._select_button: int = 6     # SDL: Back/Select (Xbox-style)
+        self.quiet_checkpoints: bool = False
+        # When True: skip built-in F#/speed/FPS/mode line; only game on_hud lines.
+        # Use soft-white text instead of bright yellow for free-record sessions.
+        self.hud_minimal: bool = False
 
         # Hooks -- all optional, defaults do nothing
         self.on_hud: Callable[[dict], list[str]] = lambda info: []
@@ -201,19 +210,30 @@ class PlaySession:
         """
         state = self.env.em.get_state()
         self._checkpoint_slots[slot] = (state, self._frame_count)
-        print(f"[CHECKPOINT {slot}] saved at frame {self._frame_count}")
+        if not self.quiet_checkpoints:
+            print(f"[CHECKPOINT {slot}] saved at frame {self._frame_count}")
         return self._frame_count
 
     def load_checkpoint(self, slot: int) -> int | None:
         """Load a checkpoint slot. Returns the frame count at save time, or None."""
         if slot not in self._checkpoint_slots:
-            print(f"[CHECKPOINT {slot}] empty")
+            if not self.quiet_checkpoints:
+                print(f"[CHECKPOINT {slot}] empty")
             return None
         state, frame = self._checkpoint_slots[slot]
         self.env.em.set_state(state)
         self._frame_count = frame
-        print(f"[CHECKPOINT {slot}] loaded (frame {frame})")
+        if not self.quiet_checkpoints:
+            print(f"[CHECKPOINT {slot}] loaded (frame {frame})")
         return frame
+
+    def _apply_resync(self, obs):
+        """Re-apply custom start state after reset (drop free frame)."""
+        if not self.resync_state_bytes:
+            return obs
+        self.env.em.set_state(self.resync_state_bytes)
+        getter = getattr(self.env.em, "get_screen", None)
+        return getter() if getter is not None else obs
 
     def set_bot(self, bot_fn: Optional[Callable]) -> None:
         """Set or change the bot function."""
@@ -229,6 +249,7 @@ class PlaySession:
 
         # Get initial observation
         obs, info = reset_env(self.env)
+        obs = self._apply_resync(obs)
         self._last_obs = obs
         self._last_info = info
         h, w = obs.shape[:2]
@@ -304,7 +325,7 @@ class PlaySession:
                 self._set_bot_active(not self._bot_active)
                 self._hotswap_cooldown = 30
 
-            # --- Controller triggers (L2=load, R2=save checkpoint 1) ---
+            # --- Controller triggers (SELECT+L2=load, SELECT+R2=save slot 1) ---
             self._poll_triggers()
 
             # --- Input ---
@@ -324,7 +345,7 @@ class PlaySession:
 
             # --- Render ---
             if not self._headless:
-                if not self._turbo or self._frame_count % _TURBO_RENDER_INTERVAL == 0:
+                if should_preview_turbo_frame(self._frame_count, turbo=self._turbo, interval=_TURBO_RENDER_INTERVAL):
                     layout = self._render_frame(pg, obs)
                     if layout is not None:
                         layout["info"] = info
@@ -345,7 +366,7 @@ class PlaySession:
             if done:
                 self.on_reset()
                 obs, info = reset_env(self.env)
-                self._last_obs = obs
+                self._last_obs = self._apply_resync(obs)
                 self._last_info = info
 
     def _render_frame(self, pg, obs: ndarray) -> dict | None:
@@ -382,16 +403,22 @@ class PlaySession:
 
         lines: list[str] = []
 
-        # Built-in status line
-        speed_str = "TURBO" if self._turbo else f"{self._speed:.2g}x"
-        mode_str = "BOT" if self._bot_active else "HUMAN"
-        lines.append(f"F{self._frame_count} | {speed_str} | {self._measured_fps:.1f} FPS | {mode_str}")
-        lines.extend(self._mission_lines())
+        if not self.hud_minimal:
+            # Built-in status line (verbose debug)
+            speed_str = "TURBO" if self._turbo else f"{self._speed:.2g}x"
+            mode_str = "BOT" if self._bot_active else "HUMAN"
+            lines.append(
+                f"F{self._frame_count} | {speed_str} | {self._measured_fps:.1f} FPS | {mode_str}"
+            )
+            lines.extend(self._mission_lines())
 
         # Game-specific lines from hook
         game_lines = self.on_hud(info)
         if game_lines:
             lines.extend(game_lines)
+
+        if not lines:
+            return
 
         # Position HUD relative to game image area
         win_w, win_h = self._screen.get_size()
@@ -401,9 +428,13 @@ class PlaySession:
         x_off = (win_w - int(game_w * scale)) // 2
         y_off = (win_h - int(game_h * scale)) // 2
 
+        color = _HUD_COLOR_MINIMAL if self.hud_minimal else _HUD_COLOR
         for i, line in enumerate(lines):
-            text_surf = self._font.render(line, True, _HUD_COLOR)
-            self._screen.blit(text_surf, (x_off + _HUD_MARGIN, y_off + _HUD_MARGIN + i * _HUD_LINE_HEIGHT))
+            text_surf = self._font.render(line, True, color)
+            self._screen.blit(
+                text_surf,
+                (x_off + _HUD_MARGIN, y_off + _HUD_MARGIN + i * _HUD_LINE_HEIGHT),
+            )
 
     def _gather_action(self, pg, keyboard_action, controller_action, sanitize_action):
         action = [0] * self.action_size
@@ -527,26 +558,37 @@ class PlaySession:
         except Exception:
             return False
 
+    def _select_held(self) -> bool:
+        """True when controller Select/Back is held (gates L2/R2 checkpoints)."""
+        if self._joystick is None:
+            return False
+        try:
+            nb = self._joystick.get_numbuttons()
+            if self._select_button < nb and self._joystick.get_button(self._select_button):
+                return True
+        except Exception:
+            return False
+        return False
+
     def _poll_triggers(self) -> None:
-        """Check L2/R2 trigger axes for save/load checkpoint 1."""
+        """SELECT+L2 load / SELECT+R2 save checkpoint 1 (bare L2/R2 ignored)."""
         if self._joystick is None:
             return
         num_axes = self._joystick.get_numaxes()
         th = self._trigger_threshold
+        select = self._select_held()
 
-        # L2 (load)
+        # L2 (load) — requires Select held to avoid fat-finger rewinds
         if self._trigger_lt_axis < num_axes:
-            lt = self._joystick.get_axis(self._trigger_lt_axis)
-            lt_now = lt > th
-            if lt_now and not self._lt_was_pressed:
+            lt_now = self._joystick.get_axis(self._trigger_lt_axis) > th
+            if lt_now and not self._lt_was_pressed and select:
                 self.on_trigger_load(1)
             self._lt_was_pressed = lt_now
 
-        # R2 (save)
+        # R2 (save) — requires Select held
         if self._trigger_rt_axis < num_axes:
-            rt = self._joystick.get_axis(self._trigger_rt_axis)
-            rt_now = rt > th
-            if rt_now and not self._rt_was_pressed:
+            rt_now = self._joystick.get_axis(self._trigger_rt_axis) > th
+            if rt_now and not self._rt_was_pressed and select:
                 self.on_trigger_save(1)
             self._rt_was_pressed = rt_now
 
@@ -590,5 +632,6 @@ class PlaySession:
             self._set_bot_active(not self._bot_active)
         elif key == pg.K_r:
             self.on_reset()
-            self._last_obs, self._last_info = reset_env(self.env)
+            obs, info = reset_env(self.env)
+            self._last_obs, self._last_info = self._apply_resync(obs), info
             print("[RESET]")

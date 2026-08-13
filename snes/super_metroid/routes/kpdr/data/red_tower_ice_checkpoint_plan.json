@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "kind": "super_metroid_checkpoint_room_plan",
+  "planId": "red_tower_ice_climb",
+  "routeId": "kpdr",
+  "roomId": 41555,
+  "roomIdHex": "0xA253",
+  "fromRoomId": 41949,
+  "fromRoomIdHex": "0xA3DD",
+  "exitRoomId": 41719,
+  "exitRoomIdHex": "0xA2F7",
+  "equipment": {
+    "requiredEquippedItems": "0x0100",
+    "requiredEquippedBeams": "0x0002",
+    "label": "Hi-Jump + Ice"
+  },
+  "objective": "Bottom-right Bat entry to top-right Hellway through stable in-room checkpoints",
+  "checkpoints": [
+    {"id": "bottom_floor", "kind": "solid", "x": [48, 220], "y": [2435, 2450], "status": "verified_natural_entry"},
+    {"id": "lower_ripper_1", "kind": "frozen_enemy", "x": [55, 175], "y": [2335, 2360], "enemyY": 2376, "status": "verified_phase_sweep"},
+    {"id": "lower_ripper_2", "kind": "frozen_enemy", "x": [55, 205], "y": [2238, 2270], "enemyY": 2280, "status": "planned"},
+    {"id": "lower_ripper_3", "kind": "frozen_enemy", "x": [55, 205], "y": [2142, 2174], "enemyY": 2184, "status": "planned"},
+    {"id": "lower_ripper_4", "kind": "frozen_enemy", "x": [55, 205], "y": [2006, 2038], "enemyY": 2048, "status": "planned"},
+    {"id": "tunnel_floor", "kind": "solid", "x": [80, 195], "y": [1870, 1895], "status": "observed_human"},
+    {"id": "bomb_ledge", "kind": "solid_or_breakable", "x": [145, 190], "y": [1740, 1780], "status": "observed_human"},
+    {"id": "mid_floor", "kind": "temporary_floor", "x": [105, 185], "y": [1590, 1620], "status": "verified_existing_controller"},
+    {"id": "mid_platform_1", "kind": "solid", "x": [130, 185], "y": [1375, 1400], "status": "observed_human"},
+    {"id": "mid_platform_2", "kind": "solid", "x": [190, 220], "y": [1260, 1290], "status": "observed_human"},
+    {"id": "mid_platform_3", "kind": "solid", "x": [125, 185], "y": [1150, 1175], "status": "observed_human"},
+    {"id": "mid_platform_4", "kind": "solid", "x": [145, 190], "y": [1005, 1035], "status": "observed_human"},
+    {"id": "mid_platform_5", "kind": "solid", "x": [85, 135], "y": [860, 890], "status": "observed_human"},
+    {"id": "mid_platform_6", "kind": "solid", "x": [115, 165], "y": [715, 745], "status": "observed_human"},
+    {"id": "thin_seat", "kind": "solid", "x": [70, 110], "y": [575, 600], "status": "verified_existing_controller"},
+    {"id": "upper_ripper_1", "kind": "frozen_enemy", "x": [70, 180], "y": [478, 512], "enemyY": 520, "status": "verified_isolated"},
+    {"id": "upper_ripper_2", "kind": "frozen_enemy", "x": [65, 180], "y": [374, 408], "enemyY": 416, "status": "planned"},
+    {"id": "upper_ripper_3", "kind": "frozen_enemy", "x": [65, 180], "y": [278, 312], "enemyY": 320, "status": "planned"},
+    {"id": "upper_ripper_4", "kind": "frozen_enemy", "x": [65, 180], "y": [190, 224], "enemyY": 232, "status": "planned"},
+    {"id": "hellway_sill", "kind": "solid_exit", "x": [190, 240], "y": [125, 155], "status": "observed_human"}
+  ],
+  "edges": [
+    {
+      "id": "bottom_to_lower_ripper_1",
+      "from": "bottom_floor",
+      "to": "lower_ripper_1",
+      "executor": "red_tower_ice_bottom_to_ripper1",
+      "technique": ["live_enemy_track", "ice_freeze", "consecutive_walljump", "frozen_enemy_land"],
+      "status": "verified_phase_sweep",
+      "verification": {"naturalRuns": 2, "phaseOffsets": 31, "policyFrames": [230, 414], "measuredFps": [408, 636]}
+    },
+    {"id": "lower_ripper_1_to_2", "from": "lower_ripper_1", "to": "lower_ripper_2", "technique": ["refresh_support_or_fast_shot", "walljump"], "status": "planned"},
+    {"id": "lower_ripper_2_to_3", "from": "lower_ripper_2", "to": "lower_ripper_3", "technique": ["ice_freeze", "walljump"], "status": "planned"},
+    {"id": "lower_ripper_3_to_4", "from": "lower_ripper_3", "to": "lower_ripper_4", "technique": ["ice_freeze", "walljump"], "status": "planned"},
+    {"id": "lower_ripper_4_to_tunnel", "from": "lower_ripper_4", "to": "tunnel_floor", "technique": ["spin_jump", "walljump"], "status": "planned"},
+    {"id": "tunnel_to_mid_floor", "from": "tunnel_floor", "to": "mid_floor", "via": ["bomb_ledge"], "technique": ["bomb_block_clear", "walljump"], "status": "planned"},
+    {"id": "mid_floor_to_thin_seat", "from": "mid_floor", "to": "thin_seat", "via": ["mid_platform_1", "mid_platform_2", "mid_platform_3", "mid_platform_4", "mid_platform_5", "mid_platform_6"], "technique": ["checkpointed_walljump"], "status": "planned"},
+    {"id": "thin_seat_to_hellway", "from": "thin_seat", "to": "hellway_sill", "via": ["upper_ripper_1", "upper_ripper_2", "upper_ripper_3", "upper_ripper_4"], "technique": ["ice_platform_chain"], "status": "planned"}
+  ],
+  "recovery": [
+    {"from": ["lower_ripper_1", "lower_ripper_2", "lower_ripper_3", "lower_ripper_4"], "to": "bottom_floor", "condition": "fall_below_support"},
+    {"from": ["mid_platform_1", "mid_platform_2", "mid_platform_3", "mid_platform_4", "mid_platform_5", "mid_platform_6"], "to": "mid_floor", "condition": "fall_below_1500"},
+    {"from": ["upper_ripper_1", "upper_ripper_2", "upper_ripper_3", "upper_ripper_4"], "to": "thin_seat", "condition": "fall_below_560"}
+  ]
+}

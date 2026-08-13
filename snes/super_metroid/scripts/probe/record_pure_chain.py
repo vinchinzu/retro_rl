@@ -20,6 +20,10 @@ uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset cha
 
 # Same path as continuous big_pink_to_ghz hop (Charge detour → GHZ)
 uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset big-pink-to-ghz
+
+# K6 product shine chain: Kihunter pre-spark → Moat spark → over-ocean → WS
+# (video debug; then guided_human --from ws-entrance for Phantoon ship tape)
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset moat-to-ws
 ```
 """
 
@@ -52,6 +56,10 @@ from super_metroid.routes.kpdr.pink_to_ghz import play_big_pink_to_ghz  # noqa: 
 from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
     BubblePhaseStop,
     play_bubble_to_bat_cave,
+)
+from super_metroid.routes.kpdr.wrecked_ship import (  # noqa: E402
+    play_moat_to_west_ocean,
+    play_west_ocean_to_ws,
 )
 from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_business_to_cathedral_entrance,
@@ -228,6 +236,13 @@ BIG_PINK_TO_GHZ: tuple[tuple[str, PlayFn], ...] = (
     ("big-pink-to-ghz", play_big_pink_to_ghz),
 )
 
+# K6 product shine: Moat spark → West Ocean over-ocean → green Super WS.
+# Source pin only (not continuous STATUS); WS pin feeds Phantoon ship record.
+MOAT_TO_WS: tuple[tuple[str, PlayFn], ...] = (
+    ("moat-to-west-ocean", play_moat_to_west_ocean),
+    ("west-ocean-to-ws", play_west_ocean_to_ws),
+)
+
 # Named integration anchors (not scratch) preferred when continuous-like pure
 # sources are not yet cataloged for this room.
 _BIG_PINK_MAIN = INTEGRATION_DIR / "dev_b1_bigpink_main_controller.state"
@@ -257,6 +272,11 @@ PRESETS: dict[str, tuple[Path, tuple[tuple[str, PlayFn], ...], str]] = {
         _BIG_PINK_MAIN,
         BIG_PINK_TO_GHZ,
         "big_pink_to_ghz_debug",
+    ),
+    "moat-to-ws": (
+        SCRATCH / "post_kihunter_pre_moat_spark.state",
+        MOAT_TO_WS,
+        "moat_to_ws_debug",
     ),
 }
 

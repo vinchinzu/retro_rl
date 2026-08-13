@@ -1,115 +1,22 @@
 #!/usr/bin/env python3
-"""Human path recorder with on-screen route guide (Cathedral spine default).
+"""Human path recorder with optional on-screen route guide.
 
-Loads a pure/continuous scratch source, draws the KPDR guide polyline in the
-current room (camera-projected), and records human inputs + position trace to
-``super_metroid/tasks/<name>.json`` for faster pure-controller iteration.
-
-Harvest-style task JSON lives in shared :mod:`retro_harness.task_recording`;
-the guide overlay uses :mod:`retro_harness.path_overlay`.
+Records SNES-12 frames + position trace + live anchors to
+``tasks/<name>.json``. Product entry: ``./play`` (power-on / resume / varia).
 
 ```bash
-# Cathedral left lip → Rising Tide → Bubble → Bat (default)
-uv run python snes/super_metroid/scripts/record/guided_human.py
-
-# Named task + route preset
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --name cathedral_to_bat_v1 --route cathedral-to-bat
-
-# Start at Bubble (CATH-04 pure source)
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from bubble --route bubble-to-bat --name bubble_human
-
-# Post-Torizo Parlor — Flyway door → Alcatraz LEFT wall-jump shaft (guide on)
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from parlor --route parlor-left --name parlor_left_human
-
-# Post-supers Big Pink — Charge collect + ordinary return (skill source)
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from big-pink --route charge-collect-return --name charge_human
-
-# Same start, continue through GHZ green door
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from big-pink --route big-pink-to-ghz --name charge_to_ghz_human
-
-# Early Spazer — from Charge (Big Pink), play natural into Below Spazer climb.
-# Prefer this over --from below-spazer (scratch pin can be corrupted / unplayable).
-# Guide OFF recommended for Spazer (overlay messes camera/play).
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from big-pink --route early-spazer --name spazer_from_charge_human --no-guide
-
-# Post-Spazer clean TOP-MID drop (preferred — skip climb/bomb thrash).
-# Pure return handoff ~(380,155) beams 0x1004; do NOT RIGHT into Super.
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from post-spazer-return --route spazer-top-drop --name spazer_top_drop_human --no-guide
-
-# Or start in Spazer Room post-collect, human-return + clean drop in one take.
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from post-spazer --route spazer-return-drop --name spazer_return_drop_human --no-guide
-
-# Post-Speed Wave→Ice→Moat human re-record (rr-dbu.12). Default route for
-# --from speed is speed-to-ice-moat. Do NOT overwrite speed_to_ice_moat_human
-# (misnamed partial); use a new --name. Min acceptance: reach Ice 0xA890.
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from speed --route speed-to-ice-moat --name speed_to_wave_ice_moat_human
-
-# Wave-only take (stop after Wave chozo; F5)
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from speed --route speed-to-wave --name speed_to_wave_human
-
-# Spazer Double Chamber missile ledge → Super → Wave (cont-like leave, beams 0x1004).
-# Multi-take practice loop: scripts/record/practice_takes.py --segment dc-missile-wave
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from double-chamber --route double-chamber-to-wave \\
-  --name dc_missile_wave_take01 --no-guide
-
-# K6: post-Moat handoff (optional human WO practice; product pure-ws is GREEN).
-# Multi-take: practice_takes.py --segment west-ocean-to-ws
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from west-ocean --route west-ocean-to-ws --name west_ocean_to_ws_human
-
-# K6: Wrecked Ship Entrance after pure over-ocean spark (product pin 0xCA08).
-# Prefer this for ship free-record / Phantoon approach human tape.
-# Multi-take: practice_takes.py --segment ws-entrance --series ws_ship_v1
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from ws-entrance --route ws-entrance --name ws_ship_human
-
-# Post-Phantoon (bot fight from human entry → boss bit; Gravity path next)
-uv run python snes/super_metroid/scripts/probe/phantoon_combat.py strategy \\
-  --state ws_ship_human_end --save-state
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from post-phantoon --name gravity_path_human --no-guide
-
-# Post-Gravity tail (Caterpillar 0xA322, items 0x3125) — Grapple side-trek + Maridia
-# Pin from gravity_path_human end (return via Moat→elev after Gravity chozo).
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from post-gravity --name maridia_grapple_human --no-guide
-uv run python snes/super_metroid/scripts/record/practice_takes.py \\
-  --segment post-gravity --series maridia_grapple_v1 --no-guide
-
-# Post-Grapple Beam → Maridia free-record (prefer F6 pins mid-run on long takes)
-uv run python snes/super_metroid/scripts/record/guided_human.py \\
-  --from post-grapple --name maridia_main_street_human --no-guide
-
-# Offline hop inventory + end-pin verify (never open-loop full-tape replay)
-uv run python snes/super_metroid/scripts/tools/extract_human_tape.py \\
-  snes/super_metroid/tasks/maridia_grapple_human.json --summary
-
-# List start presets / routes
+./snes/super_metroid/play                         # power-on full_start_v1
+./snes/super_metroid/play resume full_start_v1    # archives prior take first
 uv run python snes/super_metroid/scripts/record/guided_human.py --list
+uv run python snes/super_metroid/scripts/tools/replay_human_hop.py \\
+  snes/super_metroid/tasks/full_start_v1.json --hop 0 --dual --promote-bank
 ```
 
-Controls (PlaySession defaults + recording):
-  F5 / F1  Save recording + end state + anchors index, exit
-  F6       Dump **manual pin** mid-run (does not stop) — next-phase locks
-  ESC / Q  Cancel without saving
-  [ ]      Speed · TAB turbo
-  Unlimited energy/ammo assists on by default (human practice only)
-
-**Anti-desync anchors (default ON):** room enter + item-bit change write gzip
-``.state`` under ``tasks/<name>_anchors/`` + index ``tasks/<name>_anchors.json``.
-Do not open-loop replay multi-minute tapes to recover pins — use live anchors.
-``--no-anchors`` disables dumps (short takes only).
+Controls: ` toggles autopilot · controller L+R+Select toggles autopilot ·
+F5/F1 save + materialize · F6 manual pin · ESC/Q cancel.
+Reusing ``--name`` archives prior tape + hop bodies under
+``tasks/<name>_segments/sN/``. Start presets: ``super_metroid.start_presets``.
+Pipeline: ``docs/tasks/HUMAN_TAPE_PIPELINE.md``.
 """
 
 from __future__ import annotations
@@ -118,6 +25,7 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[4]
 _SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
@@ -141,11 +49,43 @@ from retro_harness.task_recording import (  # noqa: E402
 )
 from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
 from super_metroid.human_tape import AnchorRecorder, fingerprint  # noqa: E402
+from super_metroid.human_tape.anchors import parse_room_id  # noqa: E402
+from super_metroid.human_tape.rta_clock import (  # noqa: E402
+    fmt_time as rta_fmt_time,
+    resolve_rta_clock,
+)
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR, RECORDINGS_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state  # noqa: E402
+from super_metroid.rooms.canonical_names import (  # noqa: E402
+    load_canonical_names,
+    room_name,
+)
 from super_metroid.routes.kpdr.guide_paths import (  # noqa: E402
     ROUTE_PRESETS,
     guide_for_room,
+)
+
+# Start presets live in start_presets.py (keeps this CLI under 1k lines).
+from super_metroid.start_presets import (  # noqa: E402
+    POWER_ON_STARTS,
+    START_PRESETS,
+)
+
+# Durable item-seam pins (not overwritten by the next segment's F5 end dump).
+_DURABLE_SEAM_PINS: tuple[tuple[int, str, int, str], ...] = (
+    # items_mask_required, stem under scratch/, preferred_room, label
+    (0x0004, "full_start_v1_morph", 0x9E9F, "Morph"),
+    (0x1000, "full_start_v1_bomb", 0x9804, "Bombs"),
+    (0x0100, "full_start_v1_hj", 0xA9E5, "HiJump"),
+    (0x0001, "full_start_v1_varia", 0xA6E2, "Varia"),
+    # Grapple bit 0x4000: collect room vs long return end (pref_room disambiguates).
+    (0x4000, "full_start_v1_grapple", 0xAC2B, "Grapple"),
+    (0x4000, "full_start_v1_main_street", 0xCFC9, "MainStreet"),
+)
+
+# Beam-bit seams (Plasma is collected_beams 0x0008, not an item bit).
+_DURABLE_BEAM_SEAM_PINS: tuple[tuple[int, str, int, str], ...] = (
+    (0x0008, "full_start_v1_plasma", 0xD2AA, "Plasma"),
 )
 
 # Layer 1 camera scroll (WRAM) — same as place_samus in dev/common.py.
@@ -155,362 +95,18 @@ ADDR_CAMERA_Y = 0x0915
 SCRATCH = INTEGRATION_DIR / "scratch"
 TASKS_DIR = GAME_DIR / "tasks"
 
-# Start presets: short name → relative state under SuperMetroid-Snes/
-START_PRESETS: dict[str, tuple[str, str]] = {
-    "cathedral": (
-        "scratch/post_cathedral_entrance_to_cathedral_pure.state",
-        "Cathedral left lip (CATH-02 pure successor)",
-    ),
-    "cathedral-entrance": (
-        "scratch/post_business_to_cathedral_entrance_pure.state",
-        "Cathedral Entrance left lip (CATH-01 pure successor)",
-    ),
-    "rising-tide": (
-        "scratch/post_cathedral_to_rising_tide_pure.state",
-        "Rising Tide left entry (CATH-03 pure successor)",
-    ),
-    "bubble": (
-        "scratch/post_rising_tide_to_bubble_pure.state",
-        "Bubble Mountain entry (CATH-04 pure source)",
-    ),
-    "business": (
-        "scratch/post_business_continuous.state",
-        "Business Center continuous tip",
-    ),
-    "parlor": (
-        "scratch/post_torizo_parlor_continuous.state",
-        "Post-Bomb-Torizo Parlor at Flyway door (~968,651) — left climb demo",
-    ),
-    "post-torizo": (
-        "scratch/post_torizo_parlor_continuous.state",
-        "Alias of parlor (post-BT Flyway door pin)",
-    ),
-    # Post-supers K1 Charge detour (main shaft, no Charge yet, 5 supers).
-    "big-pink": (
-        "dev_b1_bigpink_main_controller.state",
-        "Big Pink main shaft (~746,1465) post-supers — Charge collect+return",
-    ),
-    "charge": (
-        "dev_b1_bigpink_main_controller.state",
-        "Alias of big-pink (Charge Chozo detour start)",
-    ),
-    # Early Spazer (K2.2): prefer Charge Big Pink start (play natural into climb).
-    # Below Spazer scratch pins are often unplayable/corrupt for human demos.
-    "charge-to-spazer": (
-        "dev_b1_bigpink_main_controller.state",
-        "Big Pink main shaft post-supers — collect Charge, then play to Spazer WJ",
-    ),
-    # Below Spazer pins (prefer charge-to-spazer / big-pink for human record).
-    "below-spazer": (
-        "scratch/post_below_spazer_with_charge_continuous.state",
-        "Below Spazer left entry (~49,395) Charge continuous — often corrupt for human",
-    ),
-    "spazer": (
-        "scratch/post_below_spazer_with_charge_continuous.state",
-        "Alias of below-spazer (prefer charge-to-spazer for human record)",
-    ),
-    "early-spazer": (
-        "scratch/post_below_spazer_with_charge_continuous.state",
-        "Alias of below-spazer (prefer charge-to-spazer for human record)",
-    ),
-    # Legacy power-only pin (no Charge) for practice without K1 detour.
-    "below-spazer-no-charge": (
-        "scratch/post_below_spazer_for_spazer_pure.state",
-        "Below Spazer left entry beams 0x0000 — power-only practice",
-    ),
-    # Post-Spazer pure pins — clean TOP-MID human drop (skip bomb-gap thrash).
-    "post-spazer": (
-        "scratch/post_spazer_collect_pure.state",
-        "Spazer Room post-collect ~(171,171) beams 0x1004 — return + drop",
-    ),
-    "post-spazer-collect": (
-        "scratch/post_spazer_collect_pure.state",
-        "Alias of post-spazer (Chozo floor after Spazer grab)",
-    ),
-    "post-spazer-return": (
-        "scratch/post_spazer_return_pure.state",
-        "Below Spazer top handoff ~(380,155) beams 0x1004 — clean top→mid only",
-    ),
-    "spazer-return": (
-        "scratch/post_spazer_return_pure.state",
-        "Alias of post-spazer-return (pure return handoff)",
-    ),
-    # Warehouse after Charge+Spazer mainline detour (continuous-like pure chain).
-    "warehouse-spazer": (
-        "scratch/post_warehouse_with_spazer_continuous.state",
-        "Warehouse 0xA6A1 beams 0x1004 Charge+Spazer — post mainline K2.2",
-    ),
-    "warehouse-with-spazer": (
-        "scratch/post_warehouse_with_spazer_continuous.state",
-        "Alias of warehouse-spazer",
-    ),
-    # Speed Hall left lip — right before Speed Booster room/collect; beams 0x1004.
-    "speed-hall": (
-        "scratch/post_speed_hall_pre_speed_with_spazer.state",
-        "Speed Hall 0xACF0 pre-Speed, beams 0x1004 Charge+Spazer (no Speed bit)",
-    ),
-    "pre-speed": (
-        "scratch/post_speed_hall_pre_speed_with_spazer.state",
-        "Alias of speed-hall — right before Speed Booster",
-    ),
-    "pre-speed-spazer": (
-        "scratch/post_speed_hall_pre_speed_with_spazer.state",
-        "Alias of speed-hall",
-    ),
-    # Post-Speed Booster pure collect — human Wave/Ice/Moat free-record start.
-    "speed": (
-        "scratch/post_speed_collected.state",
-        "Speed Booster Room post-collect ~(169,123) items 0x3105 — Wave/Ice/Moat human",
-    ),
-    "post-speed": (
-        "scratch/post_speed_collected.state",
-        "Alias of speed (post Speed Booster chozo, standing facing exit)",
-    ),
-    "speed-collected": (
-        "scratch/post_speed_collected.state",
-        "Alias of speed (named save point after pure speed-hall-to-speed)",
-    ),
-    # Double Chamber leave — Spazer missile ledge → Super → Wave practice.
-    # Prefer continuous-like (beams 0x1004) for bot parity; pure is beams=0.
-    "double-chamber": (
-        "scratch/post_single_to_double_chamber_continuous_like.state",
-        "Double Chamber leave ~(39,139) Spazer cont-like beams 0x1004 — missile free+Wave",
-    ),
-    "dc": (
-        "scratch/post_single_to_double_chamber_continuous_like.state",
-        "Alias of double-chamber (Spazer cont-like leave)",
-    ),
-    "dc-cont": (
-        "scratch/post_single_to_double_chamber_continuous_like.state",
-        "Alias of double-chamber continuous-like",
-    ),
-    "dc-pure": (
-        "scratch/post_single_to_double_chamber_pure.state",
-        "Double Chamber leave pure predecessor (often beams 0 — not Spazer mainline)",
-    ),
-    "dc-post-missiles": (
-        "scratch/dev_dc_post_missiles.state",
-        "Double Chamber past-gate post-missile pin — runway/Super only practice",
-    ),
-    # K6: West Ocean after pure Moat shinespark (rr-hhj handoff).
-    "west-ocean": (
-        "scratch/post_moat_west_ocean_spark.state",
-        "West Ocean 0x93FE post-Moat spark ~(49,1163) items 0x3105 — optional human WO",
-    ),
-    "post-moat": (
-        "scratch/post_moat_west_ocean_spark.state",
-        "Alias of west-ocean (after pure store→hop→spark + blue door)",
-    ),
-    "post-moat-spark": (
-        "scratch/post_moat_west_ocean_spark.state",
-        "Alias of west-ocean",
-    ),
-    "moat-spark": (
-        "scratch/post_moat_west_ocean_spark.state",
-        "Alias of west-ocean (spark already done; start in West Ocean)",
-    ),
-    # K6: Wrecked Ship Entrance after product over-ocean spark (rr-navh pin).
-    "ws-entrance": (
-        "scratch/post_west_ocean_ws_spark.state",
-        "WS Entrance 0xCA08 post over-ocean spark ~(57,139) gs=8 — ship human",
-    ),
-    "post-west-ocean": (
-        "scratch/post_west_ocean_ws_spark.state",
-        "Alias of ws-entrance (after pure WO → green Super)",
-    ),
-    "post-wo-ws": (
-        "scratch/post_west_ocean_ws_spark.state",
-        "Alias of ws-entrance",
-    ),
-    "post-ws-spark": (
-        "scratch/post_west_ocean_ws_spark.state",
-        "Alias of ws-entrance",
-    ),
-    "wrecked-ship": (
-        "scratch/post_west_ocean_ws_spark.state",
-        "Alias of ws-entrance (Wrecked Ship start pin)",
-    ),
-    # K6: Phantoon defeated (bot Super spray from human entry; WS boss bit 0).
-    "post-phantoon": (
-        "scratch/post_phantoon_defeated.state",
-        "Phantoon room 0xCD13 after defeat ~(177,187) boss_ws bit0 — Gravity path",
-    ),
-    "phantoon-defeated": (
-        "scratch/post_phantoon_defeated.state",
-        "Alias of post-phantoon",
-    ),
-    "post-phant": (
-        "scratch/post_phantoon_defeated.state",
-        "Alias of post-phantoon",
-    ),
-    # K6 tail: post-Gravity return to Red elev (Caterpillar) for Grapple / Maridia.
-    # From gravity_path_human F5 end — NOT the Gravity chozo room.
-    "post-gravity": (
-        "scratch/post_gravity_caterpillar.state",
-        "Caterpillar 0xA322 ~(70,1419) Gravity items 0x3125 — Grapple/Maridia human",
-    ),
-    "post-gravity-caterpillar": (
-        "scratch/post_gravity_caterpillar.state",
-        "Alias of post-gravity (red elev shaft after Gravity return)",
-    ),
-    "gravity": (
-        "scratch/post_gravity_caterpillar.state",
-        "Alias of post-gravity",
-    ),
-    "gravity-caterpillar": (
-        "scratch/post_gravity_caterpillar.state",
-        "Alias of post-gravity",
-    ),
-    "maridia-start": (
-        "scratch/post_gravity_caterpillar.state",
-        "Alias of post-gravity (Maridia + Grapple free-record start)",
-    ),
-    # Post-Grapple Beam room / tutorial sill (items 0x7125 Grapple+Gravity).
-    # Prefer live F6/F5 anchors from a new take; this is a recovered assist-replay pin.
-    "post-grapple": (
-        "scratch/post_grapple_beam_human.state",
-        "Post-Grapple Tutorial 1 0xAC00 ~(236,121) items 0x7125 — Maridia free-record",
-    ),
-    "post-grapple-beam": (
-        "scratch/post_grapple_beam_human.state",
-        "Alias of post-grapple",
-    ),
-    "grapple": (
-        "scratch/post_grapple_beam_human.state",
-        "Alias of post-grapple",
-    ),
-    # Post-Grapple Main Street (maridia_main_street_human F5; items 0x7125).
-    "main-street": (
-        "scratch/post_grapple_main_street.state",
-        "Main Street 0xCFC9 ~(391,1979) Grapple+Gravity 0x7125 — Maridia next",
-    ),
-    "post-main-street": (
-        "scratch/post_grapple_main_street.state",
-        "Alias of main-street",
-    ),
-    "post-grapple-main-street": (
-        "scratch/post_grapple_main_street.state",
-        "Alias of main-street",
-    ),
-    "maridia": (
-        "scratch/post_grapple_main_street.state",
-        "Alias of main-street (Maridia entry free-record)",
-    ),
-    # Post-Space Jump (maridia_botwoon_path_human item_delta f52049; items 0x7325).
-    "post-space-jump": (
-        "scratch/post_space_jump.state",
-        "Space Jump Room 0xD9AA ~(85,155) items 0x7325 — next segment after SJ",
-    ),
-    "space-jump": (
-        "scratch/post_space_jump.state",
-        "Alias of post-space-jump",
-    ),
-    "post-sj": (
-        "scratch/post_space_jump.state",
-        "Alias of post-space-jump",
-    ),
-    # Precious Room after Draygon+SJ return (F5 end of maridia_botwoon_path_human).
-    "post-draygon": (
-        "scratch/post_draygon_precious.state",
-        "Precious 0xD78F ~(55,651) Draygon+SJ items 0x7325 — Maridia exit / next",
-    ),
-    "precious": (
-        "scratch/post_draygon_precious.state",
-        "Alias of post-draygon",
-    ),
-    "post-draygon-precious": (
-        "scratch/post_draygon_precious.state",
-        "Alias of post-draygon",
-    ),
-    "post-space-jump-precious": (
-        "scratch/post_space_jump_precious.state",
-        "Precious 0xD78F first return after SJ collect (earlier than F5 end)",
-    ),
-    # Spring Ball (post_sj_exit_human item_delta; items 0x7327).
-    "post-spring-ball": (
-        "scratch/post_spring_ball.state",
-        "Spring Ball Room 0xD6D0 ~(379,362) items 0x7327 — after Shaktool",
-    ),
-    "spring-ball": (
-        "scratch/post_spring_ball.state",
-        "Alias of post-spring-ball",
-    ),
-    # Lower Norfair Main Hall (post_sj_exit F5; way to Ridley / Golden Torizo).
-    "main-hall": (
-        "scratch/post_ln_main_hall.state",
-        "LN Main Hall 0xB236 ~(1152,648) items 0x7327 beams 0x100F — Ridley/GT",
-    ),
-    "ln-main-hall": (
-        "scratch/post_ln_main_hall.state",
-        "Alias of main-hall",
-    ),
-    "post-ln-main-hall": (
-        "scratch/post_ln_main_hall.state",
-        "Alias of main-hall",
-    ),
-    "lower-norfair": (
-        "scratch/post_ln_main_hall.state",
-        "Alias of main-hall (LN entry free-record)",
-    ),
-    "ln-elev-save": (
-        "scratch/post_ln_elevator_save.state",
-        "LN Elevator Save 0xB1BB ~(200,139) items 0x7327 — before Main Hall",
-    ),
-    # Screw Attack (post-main-hall item_delta f10857; items 0x732F).
-    "post-screw": (
-        "scratch/post_screw_attack.state",
-        "Screw Attack 0xB6C1 ~(171,667) items 0x732F — after collect",
-    ),
-    "screw-attack": (
-        "scratch/post_screw_attack.state",
-        "Alias of post-screw",
-    ),
-    "post-screw-attack": (
-        "scratch/post_screw_attack.state",
-        "Alias of post-screw",
-    ),
-    # Ridley tank after fight (boss Norfair bit set; energy tank room).
-    "post-ridley": (
-        "scratch/post_ridley_tank.state",
-        "Ridley Tank 0xB698 ~(216,143) items 0x732F Ridley bit — post fight",
-    ),
-    "ridley-tank": (
-        "scratch/post_ridley_tank.state",
-        "Alias of post-ridley",
-    ),
-    "post-ridley-tank": (
-        "scratch/post_ridley_tank.state",
-        "Alias of post-ridley",
-    ),
-    "post-ridley-farming": (
-        "scratch/post_ridley_farming.state",
-        "LN Farming 0xB37A ~(50,142) after leaving Ridley — exit path",
-    ),
-    # All four bosses + Screw; Landing Site ship (Tourian / G4 next).
-    "post-bosses": (
-        "scratch/post_bosses_landing_site.state",
-        "Landing Site 0x91F8 ~(1152,1088) items 0x732F all bosses — G4/Tourian",
-    ),
-    "landing-site-post-bosses": (
-        "scratch/post_bosses_landing_site.state",
-        "Alias of post-bosses",
-    ),
-    "post-bosses-landing": (
-        "scratch/post_bosses_landing_site.state",
-        "Alias of post-bosses",
-    ),
-    "post-ridley-landing": (
-        "scratch/post_bosses_landing_site.state",
-        "Alias of post-bosses (human end after Ridley return)",
-    ),
-}
-
 
 def _u16(ram, addr: int) -> int:
     return int(ram[addr]) | (int(ram[addr + 1]) << 8)
 
 
+def _is_power_on(arg: str) -> bool:
+    return arg in POWER_ON_STARTS
+
+
 def _resolve_state(arg: str) -> Path:
+    if _is_power_on(arg):
+        raise ValueError(f"power-on start has no state file ({arg})")
     if arg in START_PRESETS:
         rel, _ = START_PRESETS[arg]
         return INTEGRATION_DIR / rel
@@ -556,6 +152,84 @@ def _trace_row(env, frame: int, action) -> dict[str, object]:
     }
 
 
+def _fmt_time(frames: int) -> str:
+    """60fps wall-time label: m:ss.mmm"""
+    return rta_fmt_time(frames)
+
+
+def _parse_items_field(raw: Any) -> int:
+    if raw is None:
+        return 0
+    if isinstance(raw, int):
+        return int(raw)
+    try:
+        return int(str(raw), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _write_durable_seam_pins(
+    env,
+    *,
+    end_fp: Mapping[str, Any] | None,
+    state_bytes: bytes | None,
+) -> list[str]:
+    """Copy end state to durable scratch + tasks pins for known item seams."""
+    written: list[str] = []
+    blob = state_bytes
+    if blob is None:
+        try:
+            blob = env.em.get_state()
+        except Exception:
+            return written
+    items = 0
+    beams = 0
+    room = 0
+    if end_fp:
+        items = _parse_items_field(end_fp.get("items"))
+        beams = _parse_items_field(end_fp.get("beams"))
+        room = parse_room_id(end_fp.get("room")) or 0
+    if not items or not beams:
+        try:
+            st = parse_env_state(env, mode="nav")
+            items = items or int(st.collected_items)
+            beams = beams or int(st.collected_beams)
+            room = room or int(st.room_id)
+        except Exception:
+            if not items and not beams:
+                return written
+
+    def _dump(stem: str, label: str) -> None:
+        for dest in (SCRATCH / f"{stem}.state", TASKS_DIR / f"{stem}.state"):
+            try:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(blob)
+                written.append(f"{label}→{dest}")
+            except OSError as exc:
+                written.append(f"{label} FAIL {dest}: {exc}")
+
+    SCRATCH.mkdir(parents=True, exist_ok=True)
+    for mask, stem, pref_room, label in _DURABLE_SEAM_PINS:
+        if not (items & mask):
+            continue
+        # Only write when we are in the chozo / collect room (or room unknown).
+        if pref_room and room and int(room) != int(pref_room):
+            continue
+        _dump(stem, label)
+    for mask, stem, pref_room, label in _DURABLE_BEAM_SEAM_PINS:
+        if not (beams & mask):
+            continue
+        if pref_room and room and int(room) != int(pref_room):
+            continue
+        _dump(stem, label)
+    return written
+
+
+def _room_label(room_id: int, names: dict[int, str]) -> str:
+    rid = int(room_id)
+    return f"{room_name(rid, names=names)} (0x{rid:04X})"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -564,10 +238,11 @@ def main() -> int:
     parser.add_argument(
         "--from",
         dest="start",
-        default="cathedral",
+        default="start",
         help=(
-            "Start preset name or path/stem "
-            f"(presets: {', '.join(START_PRESETS)}; default: cathedral)"
+            "Start preset name, path/stem, or power-on alias "
+            f"(power-on: {', '.join(sorted(POWER_ON_STARTS))}; "
+            f"presets: {', '.join(START_PRESETS)}; default: start)"
         ),
     )
     parser.add_argument(
@@ -592,9 +267,32 @@ def main() -> int:
         help="Disable unlimited energy/ammo (harder practice)",
     )
     parser.add_argument(
+        "--assist-full",
+        action="store_true",
+        help=(
+            "Always top up energy/ammo (product continuous). "
+            "Default practice assist only tops up at 0 and counts top_ups."
+        ),
+    )
+    parser.add_argument(
         "--no-guide",
         action="store_true",
         help="Record without drawing the route line",
+    )
+    parser.add_argument(
+        "--no-autopilot",
+        action="store_true",
+        help="Do not load the human-hot-swappable reactive room autopilot",
+    )
+    parser.add_argument(
+        "--autopilot-candidates",
+        action="store_true",
+        help="Allow unverified candidate room policies (development only)",
+    )
+    parser.add_argument(
+        "--autopilot-policy-dir",
+        type=Path,
+        help="Override policies/reactive_rooms lookup directory",
     )
     parser.add_argument(
         "--list",
@@ -612,10 +310,35 @@ def main() -> int:
         action="store_true",
         help="Disable live room/item gzip anchors (not recommended for long takes)",
     )
+    parser.add_argument(
+        "--no-materialize",
+        action="store_true",
+        help=(
+            "Skip post-save materialize (settled hops + *_run_timing.json). "
+            "Default ON so each take gets room-split timing structure."
+        ),
+    )
+    parser.add_argument(
+        "--bank",
+        action="store_true",
+        help="With materialize: merge hop records into recordings/skill_bank/bank.json",
+    )
+    parser.add_argument(
+        "--no-archive",
+        action="store_true",
+        help=(
+            "If tasks/<name>.json already exists, overwrite without archiving "
+            "to tasks/<name>_segments/sN/ (default: archive prior tape first)"
+        ),
+    )
     args = parser.parse_args()
 
     if args.list:
         print("Start presets:")
+        print(
+            f"  {'start':22s} [OK] power-on (no savestate) — intro/title → Ceres → Zebes"
+        )
+        print(f"    aliases: {', '.join(sorted(POWER_ON_STARTS))}")
         for key, (rel, desc) in START_PRESETS.items():
             path = INTEGRATION_DIR / rel
             mark = "OK" if path.is_file() else "MISSING"
@@ -627,9 +350,48 @@ def main() -> int:
             print(f"  {key:22s} {rooms}")
         return 0
 
+    power_on = _is_power_on(args.start)
+
     # Sensible default route from start pin.
     if args.route is None:
-        if args.start in ("parlor", "post-torizo"):
+        if power_on:
+            # Full free-record from title; no guide polyline for the whole game.
+            args.route = "cathedral-to-bat"
+            args.no_guide = True
+        elif args.start in (
+            "morph",
+            "post-morph",
+            "morph-ball",
+            "full-start-morph",
+            "bomb",
+            "bombs",
+            "post-bomb",
+            "post-bombs",
+            "bomb-torizo",
+            "full-start-bomb",
+            "supers",
+            "super",
+            "super-missile",
+            "spore-super",
+            "post-supers",
+            "full-start-supers",
+            "resume",
+            "full-start-pink",
+        ):
+            # Item-seam free-record; guide polylines off (minimum overlay).
+            args.route = "cathedral-to-bat"
+            args.no_guide = True
+        elif args.start in (
+            "varia",
+            "post-varia",
+            "varia-pickup",
+            "varia-end",
+            "bubble-human",
+            "full-start-bubble",
+        ):
+            args.route = "cathedral-to-bat"
+            args.no_guide = True
+        elif args.start in ("parlor", "post-torizo"):
             args.route = "parlor-left"
         elif args.start in ("big-pink", "charge"):
             args.route = "charge-collect-return"
@@ -646,6 +408,14 @@ def main() -> int:
             args.route = "spazer-return-drop"
         elif args.start in ("speed", "post-speed", "speed-collected"):
             args.route = "speed-to-ice-moat"
+        elif args.start in ("ice", "post-ice", "ice-collect"):
+            # Free-record Ice return; guide polyline is Speed-forward — off by default.
+            args.route = "speed-to-ice-moat"
+            args.no_guide = True
+        elif args.start in ("red-bottom", "red-tower", "post-ice-red"):
+            # Free-record Red climb; no dedicated guide polyline.
+            args.route = "ws-entrance"
+            args.no_guide = True
         elif args.start in (
             "double-chamber",
             "dc",
@@ -654,6 +424,16 @@ def main() -> int:
             "dc-post-missiles",
         ):
             args.route = "double-chamber-to-wave"
+        elif args.start in (
+            "pre-moat",
+            "kihunter-pre-moat",
+            "pre-moat-spark",
+            "moat-end",
+            "alpha-pb-moat-end",
+        ):
+            # Free-record Moat→WO→ship (prefer bot chain-ws then --from ws-entrance).
+            args.route = "west-ocean-to-ws"
+            args.no_guide = True
         elif args.start in (
             "west-ocean",
             "post-moat",
@@ -689,7 +469,23 @@ def main() -> int:
             "main-street",
             "post-main-street",
             "post-grapple-main-street",
+            "full-start-main-street",
             "maridia",
+            "plasma-beam",
+            "plasma",
+            "post-plasma",
+            "plasma-room",
+            "full-start-plasma",
+            "golden-torizo",
+            "gt",
+            "gt-entry",
+            "golden-torizo-entry",
+            "full-start-gt",
+            "metal-pirates",
+            "metal-pirate",
+            "pirates",
+            "mp",
+            "full-start-metal-pirates",
             "post-space-jump",
             "space-jump",
             "post-sj",
@@ -710,6 +506,8 @@ def main() -> int:
             "post-ridley",
             "ridley-tank",
             "post-ridley-tank",
+            "full-start-ridley",
+            "full-start-post-ridley",
             "post-ridley-farming",
             "post-bosses",
             "landing-site-post-bosses",
@@ -722,19 +520,49 @@ def main() -> int:
         else:
             args.route = "cathedral-to-bat"
 
-    try:
-        state_path = _resolve_state(args.start)
-    except FileNotFoundError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
-    if not state_path.is_file():
-        print(f"ERROR: state missing: {state_path}", file=sys.stderr)
-        return 1
+    state_path: Path | None = None
+    state_bytes: bytes | None = None
+    if not power_on:
+        try:
+            state_path = _resolve_state(args.start)
+        except FileNotFoundError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        if not state_path.is_file():
+            print(f"ERROR: state missing: {state_path}", file=sys.stderr)
+            return 1
+        state_bytes = read_state_bytes(state_path)
 
     task_name = args.name or f"guided_{args.route}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     task_path = out_dir / f"{task_name}.json"
+    # Immutable segment archive: reusing --name no longer destroys prior buttons.
+    if task_path.is_file() and not args.no_archive:
+        try:
+            from super_metroid.human_tape.segment_archive import archive_existing_take
+
+            archived = archive_existing_take(task_path)
+            if archived is not None:
+                print(
+                    f"[REC] archived previous take → {archived} "
+                    f"(tape.json + join.json; anchors stay under {task_name}_anchors/)",
+                    flush=True,
+                )
+        except Exception as exc:  # noqa: BLE001 — never block record
+            print(f"[REC] archive previous take failed (continuing): {exc}", flush=True)
+
+    # Full-run RTA offset (Ceres first control → now). After archive so prior
+    # segment is included when continuing full_start_v1 item seams.
+    rta_clock = resolve_rta_clock(task_path, include_live_tape=False)
+    if power_on:
+        # During power-on the live clock starts at 0; Ceres zero is applied once
+        # we see the Ceres Elevator boot/enter (see _print_anchor). Until then
+        # show local frames only (title/menu not in any% RTA).
+        rta_offset = 0
+    else:
+        rta_offset = int(rta_clock.offset_frames)
+    rta_ceres_zero_live: list[int | None] = [None]  # mutable for power-on
     end_state_paths = [
         out_dir / f"{task_name}_end.state",
         SCRATCH / f"{task_name}_end.state",
@@ -766,26 +594,41 @@ def main() -> int:
         gs = _guides_for_active_room(room_id)
         return gs[0] if gs else None
 
-    state_bytes = read_state_bytes(state_path)
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
 
+    # Practice default: only top up energy/ammo at 0 (skill metric = top_ups).
+    # Product continuous still uses refill_when="always" elsewhere.
+    assist_refill = "always" if args.assist_full else "at_zero"
     assist = UnlimitedResourcesAssist(
         unlimited_energy=not args.no_assist,
         unlimited_ammo=not args.no_assist,
+        refill_when=assist_refill,  # type: ignore[arg-type]
     )
+    live_topups = {"energy": 0, "ammo": 0, "last_print": 0}
+    if power_on:
+        start_label = "power_on"
+    elif state_path is not None and state_path.is_relative_to(INTEGRATION_DIR):
+        start_label = str(state_path.relative_to(INTEGRATION_DIR))
+    else:
+        start_label = str(state_path) if state_path is not None else "power_on"
     task = RecordedTask(
         name=task_name,
-        start_state=str(state_path.relative_to(INTEGRATION_DIR))
-        if state_path.is_relative_to(INTEGRATION_DIR)
-        else str(state_path),
+        start_state=start_label,
     )
     task.metadata["route"] = args.route
     task.metadata["guide_rooms"] = [
         {"room_id": f"0x{g.room_id:04X}", "name": g.name, "points": len(g.points)}
         for g in route_guides
     ]
-    task.metadata["source_path"] = str(state_path)
+    task.metadata["source_path"] = start_label
+    task.metadata["power_on"] = power_on
+    task.metadata["rta_clock"] = {
+        **rta_clock.to_dict(),
+        "session_offset_frames": int(rta_offset),
+        "zero": "ceres_first_control",
+    }
 
+    room_names = load_canonical_names()
     live: dict[str, object] = {
         "room": 0,
         "x": 0,
@@ -797,8 +640,71 @@ def main() -> int:
         "items": 0,
         "anchors": 0,
         "last_anchor": "",
+        "last_enter_frame": None,
+        "last_enter_name": "",
+        "split_delta": "",
     }
     saved = {"ok": False}
+    autopilot_box: dict[str, Any] = {}
+
+    def _rta_frames(local_fr: int) -> int:
+        """Full-run frames from Ceres first control (any% KPDR clock)."""
+        if power_on:
+            # Title/menu hold at 0:00 until first Ceres Elevator control.
+            if rta_ceres_zero_live[0] is None:
+                return 0
+            return max(0, int(local_fr) - int(rta_ceres_zero_live[0]))
+        return max(0, int(rta_offset) + max(0, int(local_fr)))
+
+    def _print_anchor(a: dict) -> None:
+        kind = str(a.get("kind") or "?")
+        fr = int(a.get("frame") or 0)
+        rid = parse_room_id(a.get("room")) or 0
+        label = _room_label(rid, room_names)
+        items = a.get("items", "?")
+        xy = a.get("xy", "?")
+        # Power-on: latch Ceres Elevator as RTA t=0 (first control).
+        if (
+            power_on
+            and rta_ceres_zero_live[0] is None
+            and rid == 0xDF45
+            and kind in ("boot", "room_enter", "enter")
+        ):
+            rta_ceres_zero_live[0] = fr
+            print(
+                f"[RTA] Ceres control zero @ local f{fr} "
+                f"(any% clock starts here)",
+                flush=True,
+            )
+        t = _fmt_time(_rta_frames(fr))
+        if kind == "room_enter":
+            prev_f = live.get("last_enter_frame")
+            if isinstance(prev_f, int):
+                split = _fmt_time(fr - prev_f)
+                prev_n = live.get("last_enter_name") or "?"
+                print(
+                    f"[ROOM] {label}  t={t} (f{fr})  split=+{split} from {prev_n}  "
+                    f"xy={xy}  items={items}",
+                    flush=True,
+                )
+            else:
+                print(
+                    f"[ROOM] {label}  t={t} (f{fr})  xy={xy}  items={items}",
+                    flush=True,
+                )
+            live["last_enter_frame"] = fr
+            live["last_enter_name"] = room_name(rid, names=room_names)
+            live["split_delta"] = ""
+        elif kind == "item_delta":
+            print(
+                f"[ITEM] {label}  t={t} (f{fr})  items={items}  xy={xy}",
+                flush=True,
+            )
+        else:
+            print(
+                f"[ANCHOR] {kind}  {label}  t={t} (f{fr})  xy={xy}  items={items}",
+                flush=True,
+            )
 
     def on_step(obs, reward, done, info) -> None:
         del obs, reward, done, info
@@ -807,6 +713,26 @@ def main() -> int:
         # Assist after human step (same pattern as pure probe sessions).
         st = parse_env_state(env, frame=frame, mode="nav")
         assist.apply(env.data, st)
+        # Live top-up tally (at_zero practice handicap skill metric).
+        if not args.no_assist:
+            e_tu = int(assist.telemetry.energy.top_ups)
+            a_tu = sum(int(c.top_ups) for c in assist.telemetry.ammo.values())
+            total_tu = e_tu + a_tu
+            if total_tu > int(live_topups["last_print"]):
+                kinds = []
+                if e_tu > int(live_topups["energy"]):
+                    kinds.append("energy")
+                if a_tu > int(live_topups["ammo"]):
+                    kinds.append("ammo")
+                print(
+                    f"[TOPUP] {'+'.join(kinds) or 'resource'}  "
+                    f"total={total_tu}  energy={e_tu}  ammo={a_tu}  "
+                    f"t={_fmt_time(_rta_frames(frame - 1 if frame > 0 else 0))}",
+                    flush=True,
+                )
+                live_topups["energy"] = e_tu
+                live_topups["ammo"] = a_tu
+                live_topups["last_print"] = total_tu
         row_frame = frame - 1 if frame > 0 else 0
         row = _trace_row(env, row_frame, action)
         task.append_frame(action, trace_row=row)
@@ -830,48 +756,28 @@ def main() -> int:
             live["anchors"] = len(anchor_rec.anchors)
             live["last_anchor"] = new_anchors[-1].get("kind", "")
             for a in new_anchors:
-                print(
-                    f"[ANCHOR] {a['kind']} f{a['frame']} {a['room']} "
-                    f"xy={a['xy']} items={a.get('items', '?')}",
-                    flush=True,
-                )
+                _print_anchor(a)
 
     def on_hud(info) -> list[str]:
         del info
         room = int(live["room"] or 0)
         items = int(live.get("items") or 0)
-        lines = [
-            f"[REC] {task_name}  F5=save  F6=pin  ESC=cancel",
-            (
-                f"room=0x{room:04X}  xy=({live['x']},{live['y']})  "
-                f"frames={len(task.frames)}  items=0x{items:04X}"
-            ),
-        ]
-        if anchor_rec.enabled:
-            lines.append(
-                f"anchors={live.get('anchors', 0)}  last={live.get('last_anchor') or '-'}"
-            )
-        guides = _guides_for_active_room(room)
-        if guides:
-            names = " + ".join(g.name for g in guides)
-            lines.append(f"guide: {names}  wp={live['nearest']}")
-            # Phase hint for Double Chamber take04 practice.
-            if room == 0xADAD:
-                x, y = int(live["x"] or 0), int(live["y"] or 0)
-                if y >= 300:
-                    lines.append("FALLBACK: red path → floor climb → reseat P2")
-                elif x < 370:
-                    lines.append("phase P1 hop (stay y≲180; purple main)")
-                elif x < 480:
-                    lines.append("phase P2 gate seat/open")
-                elif x < 520:
-                    lines.append("phase P3 missile free RIGHT past 510")
-                elif x < 650:
-                    lines.append("phase P4 runway ~437 → edge 600")
-                else:
-                    lines.append("phase P5 launch / Super sill")
-        else:
-            lines.append("guide: (no polyline for this room)")
+        n = len(task.frames)
+        # Minimum overlay: one line — RTA from Ceres + room + items + top-ups.
+        # (PlaySession.hud_minimal also drops the yellow F#/FPS banner.)
+        line = (
+            f"t={_fmt_time(_rta_frames(n))}  "
+            f"{_room_label(room, room_names)}  "
+            f"({live['x']},{live['y']})  items=0x{items:04X}"
+        )
+        if not args.no_assist:
+            e_tu = int(assist.telemetry.energy.top_ups)
+            a_tu = sum(int(c.top_ups) for c in assist.telemetry.ammo.values())
+            line += f"  topups={e_tu + a_tu}(e{e_tu}/a{a_tu})"
+        lines = [line]
+        autopilot = autopilot_box.get("bot")
+        if session.bot_active and autopilot is not None:
+            lines.append(autopilot.mission_status().summary())
         return lines
 
     def on_overlay(pg, ctx) -> None:
@@ -934,19 +840,60 @@ def main() -> int:
             if fp is not None:
                 live["anchors"] = len(anchor_rec.anchors)
                 live["last_anchor"] = "manual"
+                rid = parse_room_id(fp.get("room")) or int(st.room_id)
                 print(
-                    f"[ANCHOR] manual f{fp['frame']} {fp['room']} "
+                    f"[PIN] {_room_label(rid, room_names)}  t={_fmt_time(frame)} (f{frame})  "
                     f"xy={fp['xy']} items={fp.get('items', '?')} → {fp.get('path')}",
                     flush=True,
                 )
             else:
-                print("[ANCHOR] manual dump skipped (--no-anchors)", flush=True)
+                print("[PIN] skipped (--no-anchors)", flush=True)
             return True
         if key in (pygame.K_ESCAPE, pygame.K_q):
-            print("[REC] cancelled")
+            n = len(task.frames)
+            if n > 0:
+                print(
+                    f"[REC] cancelled — dropping {n} frames of button tape. "
+                    f"F5 to save a stitchable segment; ESC only if this take is trash.",
+                    flush=True,
+                )
+            else:
+                print("[REC] cancelled", flush=True)
             session.running = False
             return True
         return False
+
+    def on_trigger_save(slot: int) -> None:
+        frame = session.save_checkpoint(slot)
+        st = parse_env_state(env, mode="nav")
+        print(
+            f"[CP SAVE {slot}] {_room_label(int(st.room_id), room_names)}  "
+            f"t={_fmt_time(frame)} (f{frame})  xy=({int(st.samus_x)},{int(st.samus_y)})  "
+            f"items=0x{int(st.collected_items):04X}",
+            flush=True,
+        )
+
+    def on_trigger_load(slot: int) -> None:
+        frame = session.load_checkpoint(slot)
+        if frame is None:
+            print(f"[CP LOAD {slot}] empty", flush=True)
+            return
+        # Keep recording aligned with emulator after rewind.
+        if len(task.frames) > frame:
+            del task.frames[frame:]
+        if len(task.trace) > frame:
+            del task.trace[frame:]
+        st = parse_env_state(env, mode="nav")
+        live["room"] = int(st.room_id)
+        live["x"] = int(st.samus_x)
+        live["y"] = int(st.samus_y)
+        live["items"] = int(st.collected_items)
+        print(
+            f"[CP LOAD {slot}] {_room_label(int(st.room_id), room_names)}  "
+            f"t={_fmt_time(frame)} (f{frame})  xy=({int(st.samus_x)},{int(st.samus_y)})  "
+            f"tape truncated to {len(task.frames)}f",
+            flush=True,
+        )
 
     def _finalize(*, save: bool) -> None:
         if not save or saved["ok"]:
@@ -990,6 +937,7 @@ def main() -> int:
         task.metadata["assist"] = {
             "unlimited_energy": not args.no_assist,
             "unlimited_ammo": not args.no_assist,
+            "refill_when": assist_refill if not args.no_assist else "off",
             "telemetry": assist.telemetry.to_dict() if hasattr(assist, "telemetry") else {},
         }
         task.metadata["anchors"] = {
@@ -1020,18 +968,75 @@ def main() -> int:
             pass
         saved["ok"] = True
         print(f"[REC] saved {task_path} ({len(task.frames)} frames)")
+        if not args.no_assist:
+            tel = assist.telemetry
+            e_tu = int(tel.energy.top_ups)
+            a_tu = sum(int(c.top_ups) for c in tel.ammo.values())
+            print(
+                f"[REC] assist refill={assist_refill}  "
+                f"top_ups={e_tu + a_tu} (energy={e_tu} ammo={a_tu})  "
+                f"energy_restored={int(tel.energy.restored)}  "
+                f"max_hit={int(tel.maximum_single_frame_damage)}",
+                flush=True,
+            )
         for p in end_state_paths:
             print(f"[REC] end state → {p}")
-        if end_fp := task.metadata.get("end_fingerprint"):
+        end_fp = task.metadata.get("end_fingerprint")
+        if end_fp:
             print(
                 f"[REC] end pin {end_fp.get('room')} xy={end_fp.get('xy')} "
                 f"items={end_fp.get('items')} grapple={end_fp.get('grapple')}"
             )
+            local_end = int(end_fp.get("frame") or max(0, len(task.frames) - 1))
+            print(
+                f"[REC] RTA t={_fmt_time(_rta_frames(local_end))} "
+                f"(Ceres-zero any%; local f{local_end})",
+                flush=True,
+            )
+        # Durable item-seam pins (./play morph / ./play bomb / ./play varia).
+        try:
+            pin_notes = _write_durable_seam_pins(
+                env,
+                end_fp=end_fp if isinstance(end_fp, Mapping) else None,
+                state_bytes=getattr(task, "end_state_data", None),
+            )
+            for note in pin_notes:
+                print(f"[REC] durable pin {note}", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[REC] durable pin write failed: {exc}", flush=True)
         if anchor_rec.enabled:
             print(
                 f"[REC] anchors → {anchors_index_path} "
                 f"({len(anchor_rec.anchors)} dumps under {anchors_dir.name}/)"
             )
+        # Thin post-process: one library call (do not grow timing logic here).
+        if not args.no_materialize:
+            try:
+                from super_metroid.materialize import materialize_take
+
+                mat = materialize_take(
+                    task_path,
+                    write=True,
+                    write_extract=True,
+                    write_run_timing=True,
+                    merge_bank=bool(args.bank),
+                    stitch=True,
+                    stitch_print_table=False,
+                )
+                if mat.run_timing_path:
+                    print(f"[REC] run_timing → {mat.run_timing_path}")
+                if mat.extract_path:
+                    print(f"[REC] extract → {mat.extract_path}")
+                if mat.bank_path:
+                    print(f"[REC] skill_bank → {mat.bank_path}")
+                summ = (mat.run_timing or {}).get("summary") or {}
+                print(
+                    f"[REC] materialize rooms={summ.get('room_visits')} "
+                    f"items={summ.get('item_splits')} bosses={summ.get('boss_splits')} "
+                    f"bank={len(mat.bank_records)}"
+                )
+            except Exception as exc:
+                print(f"[REC] materialize failed (take still saved): {exc}", flush=True)
 
     session = PlaySession(
         env,
@@ -1043,11 +1048,31 @@ def main() -> int:
         action_size=12,
         base_fps=60,
     )
+    session.quiet_checkpoints = True
+    # Soft-white one-line HUD (no yellow FPS banner / guide polylines by default).
+    session.hud_minimal = True
     session.on_step = on_step
     session.on_hud = on_hud
     session.on_overlay = on_overlay
     session.on_key_down = on_key_down
+    session.on_trigger_save = on_trigger_save
+    session.on_trigger_load = on_trigger_load
     session.on_close = lambda: None
+    if not args.no_autopilot:
+        from super_metroid.autopilot import RoomAutopilot
+
+        autopilot = RoomAutopilot(
+            env,
+            policy_dir=args.autopilot_policy_dir
+            if args.autopilot_policy_dir is not None
+            else GAME_DIR / "policies" / "reactive_rooms",
+            allow_candidates=args.autopilot_candidates,
+        )
+        autopilot_box["bot"] = autopilot
+        # set_bot intentionally leaves this human-controlled until the toggle.
+        session.set_bot(autopilot)
+    # Closed over by _reset_then_boot for SELECT+L2 pin seed after env.reset.
+    session_box: dict[str, Any] = {"s": session}
 
     def _seed_live_from_env() -> None:
         boot = parse_env_state(env, mode="nav")
@@ -1067,35 +1092,43 @@ def main() -> int:
             live["guide_name"] = ""
             live["nearest"] = None
 
-    # PlaySession.run() always env.reset() first — re-inject cathedral source
-    # after that reset so we actually start on the chosen pure state.
+    # PlaySession.run() always env.reset() first — re-inject savestate after
+    # that reset (unless power-on: leave pure cold boot / title).
     import retro_harness.play_session as _ps_mod
 
     _orig_reset = _ps_mod.reset_env
 
     def _reset_then_boot(e):
         obs, info = _orig_reset(e)
-        e.em.set_state(state_bytes)
-        # Settle door transition / pose fully (Below Spazer needs ~12f for pose 1).
-        settle = (
-            16
-            if args.start
-            in (
-                "below-spazer",
-                "spazer",
-                "early-spazer",
-                "post-spazer-return",
-                "spazer-return",
+        if state_bytes is not None:
+            e.em.set_state(state_bytes)
+            # Settle door transition / pose fully (Below Spazer needs ~12f for pose 1).
+            settle = (
+                16
+                if args.start
+                in (
+                    "below-spazer",
+                    "spazer",
+                    "early-spazer",
+                    "post-spazer-return",
+                    "spazer-return",
+                )
+                else 8
             )
-            else 8
-        )
-        for _ in range(settle):
-            obs, _r, _t, _tr, info = step_env(e, idle_action())
+            for _ in range(settle):
+                obs, _r, _t, _tr, info = step_env(e, idle_action())
         _seed_live_from_env()
-        boot_bits = (
-            f"[BOOT] room=0x{int(live['room']):04X} "
-            f"xy=({live['x']},{live['y']}) from {state_path.name}"
-        )
+        if power_on:
+            boot_bits = (
+                f"[BOOT] power-on (title/intro) room=0x{int(live['room']):04X} "
+                f"xy=({live['x']},{live['y']}) — mash through menus into Ceres"
+            )
+        else:
+            assert state_path is not None
+            boot_bits = (
+                f"[BOOT] room=0x{int(live['room']):04X} "
+                f"xy=({live['x']},{live['y']}) from {state_path.name}"
+            )
         if args.start in ("below-spazer", "spazer", "early-spazer"):
             boot_bits += " | Below Spazer pin — keep x>=40 (left door=Bat trap)"
         elif args.start in ("post-spazer-return", "spazer-return"):
@@ -1122,21 +1155,63 @@ def main() -> int:
                 " | DC missile ledge: gate → pack ~x492 free RIGHT past 510 → "
                 "runway ~x425 → dash edge 600 → Super → Wave; F5 when Wave held"
             )
+        elif args.start in (
+            "bubble-save",
+            "bubble-save-room",
+            "full-start-bubble-save",
+        ):
+            boot_bits += (
+                " | Bubble Save 0xB0DD — leave RIGHT → runway WJ climb; "
+                "SELECT+L2 reloads pin (CP1 seeded); live grades: "
+                "bubble_save_practice.py"
+            )
         print(boot_bits)
+        # Seed checkpoint slot 1 with the boot pin so SELECT+L2 works immediately
+        # (no need to SELECT+R2 first for practice reloads).
+        if state_bytes is not None and session_box.get("s") is not None:
+            try:
+                session_box["s"].save_checkpoint(1)
+                print(
+                    "[CP1] boot pin seeded — SELECT+L2 reloads start",
+                    flush=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[CP1] seed skipped: {exc}", flush=True)
         return obs, info
 
     print("=" * 60)
     print(f"GUIDED HUMAN RECORD  route={args.route}")
-    print(f"  start: {state_path}")
+    print(f"  start: {start_label}")
     print(f"  task:  {task_path}")
+    if args.no_assist:
+        assist_label = "OFF"
+    elif assist_refill == "at_zero":
+        assist_label = "ON@0 (ammo@0 · energy≤40)"
+    else:
+        assist_label = "ON full"
     print(
         f"  guide: {'ON' if not args.no_guide else 'OFF'}  "
-        f"assist={'OFF' if args.no_assist else 'ON'}  "
+        f"assist={assist_label}  "
         f"anchors={'OFF' if args.no_anchors else 'ON'}"
     )
+    print(
+        "  checkpoints: SELECT+R2 save · SELECT+L2 load "
+        "(bare L2/R2 ignored; F2-F4 / Shift+F2-F4 still work; F1=F5=save take)"
+    )
+    if not args.no_autopilot:
+        print("  autopilot: ` or controller L+R+Select toggles at any live frame")
     if not args.no_anchors:
         print(f"  anchors dir: {anchors_dir}")
-    print("  F5/F1 = save · F6 = manual pin · ESC/Q = cancel")
+    if power_on:
+        print("  RTA: any% from first Ceres control (title/menu excluded)")
+    else:
+        print(
+            f"  RTA: t0 offset={_fmt_time(rta_offset)} (f{rta_offset}) "
+            f"from Ceres · starts at {_fmt_time(rta_offset)}"
+        )
+        for note in rta_clock.notes[:6]:
+            print(f"    · {note}")
+    print("  HUD: minimal (one line) · F5/F1=save · F6=pin · ESC/Q=cancel")
     print("=" * 60)
 
     _ps_mod.reset_env = _reset_then_boot

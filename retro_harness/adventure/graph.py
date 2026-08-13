@@ -11,9 +11,6 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from heapq import heappop, heappush
-from itertools import count
-from math import isfinite
 from typing import Hashable, Iterable, Mapping, TypeAlias
 
 from retro_harness.adventure.progression import (
@@ -24,7 +21,6 @@ from retro_harness.adventure.progression import (
     ProgressionState,
     Requirement,
     SeedPlacement,
-    coerce_placement,
 )
 
 NodeId = Hashable
@@ -396,115 +392,35 @@ def progression_plan(
     capabilities: Iterable[GraphCapability] = frozenset(),
     collected_checks: Iterable[str] = frozenset(),
 ) -> tuple[tuple[GraphEdge, ...], ProgressionState] | None:
-    """Plan over monotonic capabilities and item-check collection state.
+    """Compatibility shim over canonical :func:`retro_harness.adventure.planner.plan`.
 
-    A check at the current node is collected before outgoing edges are
-    expanded.  The returned state is post-collection at the target.  This is
-    intentionally a small deterministic search surface; bounded planner
-    budgets and richer result reporting belong to a later layer.
+    Preserves the historical ``(path, final_state) | None`` return shape used by
+    game loaders.  Bounded search, dominance pruning, and explainable results
+    live only in the planner module.
     """
-    graph_edges = tuple(edges)
-    graph_checks = tuple(checks)
-    placement = coerce_placement(placements)
-    checks_by_node: dict[NodeId, tuple[ItemCheck, ...]] = defaultdict(tuple)
-    grouped: dict[NodeId, list[ItemCheck]] = defaultdict(list)
-    seen_check_ids: set[str] = set()
-    for check in graph_checks:
-        if check.check_id in seen_check_ids:
-            raise ValueError(f"duplicate item check ID: {check.check_id!r}")
-        seen_check_ids.add(check.check_id)
-        grouped[check.node_id].append(check)
-    for node_id, node_checks in grouped.items():
-        checks_by_node[node_id] = tuple(
-            sorted(node_checks, key=lambda check: check.check_id)
+    from retro_harness.adventure.planner import PlanRequest, PlanStatus, plan
+
+    try:
+        result = plan(
+            PlanRequest(
+                edges,
+                source_id,
+                target_id,
+                checks=checks,
+                placements=placements,
+                capabilities=capabilities,
+                collected_checks=collected_checks,
+            )
         )
-    for edge in graph_edges:
-        if not isfinite(edge.cost) or edge.cost < 0:
+    except ValueError as exc:
+        if "finite, non-negative" in str(exc):
             raise ValueError(
                 "progression plan requires finite, non-negative edge costs"
-            )
-
-    initial = ProgressionState(
-        source_id,
-        _normalize_graph_capabilities(capabilities),
-        collected_checks,
-    )
-    initial = _collect_node_checks(initial, checks_by_node, placement)
-    if source_id == target_id:
-        return (), initial
-
-    outgoing: dict[NodeId, list[GraphEdge]] = defaultdict(list)
-    for edge in graph_edges:
-        outgoing[edge.source_id].append(edge)
-    for candidates in outgoing.values():
-        candidates.sort(key=_edge_order_key)
-
-    State = tuple[NodeId, frozenset[GraphCapability], frozenset[str]]
-    PathKey = tuple[tuple[str, ...], ...]
-    initial_state: State = (
-        initial.node,
-        initial.capabilities,
-        initial.collected_checks,
-    )
-    best: dict[State, tuple[float, PathKey]] = {initial_state: (0.0, ())}
-    parent: dict[State, tuple[State, GraphEdge]] = {}
-    sequence = count()
-    pending: list[
-        tuple[float, PathKey, int, NodeId, frozenset[GraphCapability], frozenset[str]]
-    ] = [(0.0, (), next(sequence), *initial_state)]
-
-    while pending:
-        cost, path_key, _sequence, node_id, current_caps, current_checks = heappop(
-            pending
-        )
-        state_key: State = (node_id, current_caps, current_checks)
-        if best.get(state_key) != (cost, path_key):
-            continue
-        if node_id == target_id:
-            path: list[GraphEdge] = []
-            cursor = state_key
-            while cursor in parent:
-                previous, edge = parent[cursor]
-                path.append(edge)
-                cursor = previous
-            final_state = ProgressionState(
-                node_id,
-                current_caps,
-                current_checks,
-            )
-            return tuple(reversed(path)), final_state
-
-        for edge in outgoing.get(node_id, ()):
-            if not _edge_requires(edge, current_caps):
-                continue
-            next_state = ProgressionState(
-                edge.target_id,
-                current_caps | _edge_acquires(edge),
-                current_checks,
-            )
-            next_state = _collect_node_checks(next_state, checks_by_node, placement)
-            next_key: State = (
-                next_state.node,
-                next_state.capabilities,
-                next_state.collected_checks,
-            )
-            next_cost = cost + edge.cost
-            next_path_key = path_key + (_edge_order_key(edge),)
-            next_rank = (next_cost, next_path_key)
-            if next_key in best and next_rank >= best[next_key]:
-                continue
-            best[next_key] = next_rank
-            parent[next_key] = (state_key, edge)
-            heappush(
-                pending,
-                (
-                    next_cost,
-                    next_path_key,
-                    next(sequence),
-                    *next_key,
-                ),
-            )
-    return None
+            ) from exc
+        raise
+    if result.status is not PlanStatus.FOUND:
+        return None
+    return result.path, result.final_progression
 
 
 def progression_path(
@@ -640,7 +556,7 @@ class RouteGraph:
         collected_checks: Iterable[str] = frozenset(),
         max_expansions: int = 500,
     ):
-        """Return the bounded explainable planner result for this graph."""
+        """Compatibility shim over canonical :func:`retro_harness.adventure.planner.plan`."""
         from retro_harness.adventure.planner import (
             PlanBudget,
             PlanRequest,

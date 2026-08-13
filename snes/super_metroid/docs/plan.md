@@ -100,6 +100,27 @@ do not blind-restore product open-loop. Speed every section; re-pin tails.
 | TAS boot → ridley (probe) | 13,671 | **−2,510** vs 16,181 | **−41.8 s** | Outbound holds after settle |
 | TAS boot full morph dual | **27,494** ×2 | **+670** vs product | **+11.1 s** | Elev GREEN; BB elev + morph reseed cost |
 
+### Improvement table — Ceres Ridley fight (same enter pin)
+
+Public RTA: [wiki Ridley § Ceres Station](https://wiki.supermetroid.run/Ridley#Ceres_Station) — escape starts at energy **< 30**; five tail hits at the right wall. Probe: `scripts/probe/ceres_ridley_combat.py bench`. Seconds @ 60.0988.
+
+| Policy | Frames | Seconds | Clock | Hits | Notes |
+|--------|-------:|--------:|------:|-----:|-------|
+| wait (left-door idle) | 3,212 | 53.445 | 00:53.53 | 8 | Previous product (`ceres_ridley_natural_countdown`) |
+| **tail_tank** | **1,936** | **32.214** | **00:32.27** | 5–6 | Right wall; first hit f606; countdown same pin |
+| Δ | **−1,276** | **−21.232** | −00:21.27 | | Same `ceres_ridley_enter.state` |
+
+**Tail-tank is product** (flag removed). Same-pin fight bench is still
+`scratch/ceres_ridley_bench.json`. Elev hop from the tail-tank leave pin
+(`0xDF45:0xDF8D->0x91F8:0x0000`, `ceres_elev_enter.state`) is the open
+card: takeoff windows live in ``takeoff.PlatformHop`` (shared, every room),
+not a Ceres-only hop type and not frame hillclimb. Pin seats 571 / 475 /
+363; live climb still no ship.
+KPDR Ceres Station goal is **1:35** from first elev control. Do not
+STATUS-promote from the pin bench. Probe:
+`scripts/probe/ceres_elev_escape.py`. Residual:
+`docs/tasks/rr-4331-residual.md`.
+
 ### Elev re-pin findings (`rr-14u`, 2026-08-07)
 
 | Fact | Detail |
@@ -125,7 +146,8 @@ do not blind-restore product open-loop. Speed every section; re-pin tails.
 
 ### STATUS / next
 
-- **Shipped:** elev phase search (`_ceres_product_shaft_with_phase`), BB elev parity
+- **Shipped:** tail-tank Ceres Ridley on the spine; elev platform-hop body
+  (center 475 land; ship leave still open). BB elev parity
   retry + reactive board, morph seed pad-return reseed; falling timeout 700f.
 - **Product stays legacy 26,824.** TAS path dual-green but **+670f** from BB elev
   seed misses + morph reseed — reclaim before `_BOOT_STYLE = "tas"` / STATUS promote.
@@ -234,8 +256,13 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
 - [x] Human Gravity path + tail pin Caterpillar `0xA322` items `0x3125`
   (`scratch/post_gravity_caterpillar.state`; `--from post-gravity`)
 - [ ] Natural climb onto West Ocean dry spit (only if reusing edge-bowling path)
-- [ ] Moat → West Ocean → Wrecked Ship by play (compose + natural-entry)
-- [ ] Natural Phantoon entry → fight → Gravity (continuous compose)
+- [x] Moat → West Ocean → Wrecked Ship pure compose (`play_moat_to_ws` /
+  `west_ocean_spark.py chain-ws` / `record_pure_chain --preset moat-to-ws`;
+  dual pin sources; **pin-only** — not power-on continuous STATUS)
+- [x] Compose wired to Phantoon ship recording (`--from ws-entrance` after
+  `chain-ws`; `phantoon_combat` ← `ws_ship_human_end` ← Gravity free-record)
+- [ ] Natural Phantoon entry → fight → Gravity (continuous power-on compose)
+
 - [x] Grapple side-trek + Maridia free-record from post-gravity pin
   (`tasks/maridia_grapple_human.json` 44039f → Main Street trace end;
   Grapple ~f24720 items `0x7125`; hops extract offline;
@@ -257,7 +284,8 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   pins `post_space_jump` / `post_draygon_precious`; shape only — sloppy grapple;
   `docs/tasks/SM-MARIDIA-BOTWOON-HUMAN.md`)
 - [ ] Tube / Everest / Botwoon / Draygon pure + continuous (natural entry each)
-  (human start: `--from main-street`; post-SJ: `--from post-space-jump`)
+  (human start: `--from main-street`; post-SJ: `--from post-space-jump`;
+  post-Plasma: `--from plasma-beam` / `scratch/full_start_v1_plasma.state`)
 
 ### K8 — Lower Norfair / Ridley
 

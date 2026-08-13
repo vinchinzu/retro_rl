@@ -1,0 +1,30 @@
+{
+  "command": "capture",
+  "success": true,
+  "saved_state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_ridley_enter.state",
+  "entry": {
+    "room_id_hex": "0xE0B5",
+    "samus_x": 39,
+    "samus_y": 139,
+    "pose": 17,
+    "health": 99,
+    "max_health": 99,
+    "timer_type": 0,
+    "escape_timer_seconds": 0,
+    "enemy0_x": 186,
+    "enemy0_y": 169,
+    "enemy0_hp": 32767,
+    "enemy0_spritemap": "0xE983",
+    "invuln": 0,
+    "knockback_timer": 0,
+    "game_state": 8
+  },
+  "frame": 12965,
+  "timing": {
+    "frames": 12965,
+    "seconds": 215.728,
+    "clock": "03:36.08",
+    "ntsc_fps": 60.0988
+  },
+  "notes": "Power-on \u2192 Ridley ordinary settle. Fight not played."
+}

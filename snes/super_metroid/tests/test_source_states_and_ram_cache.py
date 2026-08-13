@@ -210,6 +210,61 @@ def test_validate_fingerprint_room_mismatch() -> None:
     assert ok.ok is True
 
 
+def test_full_start_v1_main_street_catalog() -> None:
+    row = get_source("full_start_v1_main_street")
+    assert row.room_id == 0xCFC9
+    assert row.relative_path == "scratch/full_start_v1_main_street.state"
+    ranked = suggest_sources_for_room(
+        0xCFC9, segment_hint="main-street", continuous_like_only=False
+    )
+    assert ranked
+    assert ranked[0].source_id == "full_start_v1_main_street"
+
+
+def test_full_start_v1_golden_torizo_catalog() -> None:
+    row = get_source("full_start_v1_golden_torizo")
+    assert row.room_id == 0xB283
+    assert row.relative_path == "scratch/full_start_v1_golden_torizo.state"
+    ranked = suggest_sources_for_room(
+        0xB283, segment_hint="golden-torizo", continuous_like_only=False
+    )
+    assert ranked
+    assert ranked[0].source_id == "full_start_v1_golden_torizo"
+
+
+def test_full_start_v1_metal_pirates_catalog() -> None:
+    row = get_source("full_start_v1_metal_pirates")
+    assert row.room_id == 0xB62B
+    assert row.relative_path == "scratch/full_start_v1_metal_pirates.state"
+    ranked = suggest_sources_for_room(
+        0xB62B, segment_hint="metal-pirates", continuous_like_only=False
+    )
+    assert ranked
+    assert ranked[0].source_id == "full_start_v1_metal_pirates"
+
+
+def test_full_start_v1_ridley_catalog() -> None:
+    row = get_source("full_start_v1_ridley")
+    assert row.room_id == 0xB698
+    assert row.relative_path == "scratch/full_start_v1_ridley.state"
+    ranked = suggest_sources_for_room(
+        0xB698, segment_hint="post-ridley", continuous_like_only=False
+    )
+    assert ranked
+    assert ranked[0].source_id == "full_start_v1_ridley"
+
+
+def test_full_start_v1_plasma_catalog() -> None:
+    row = get_source("full_start_v1_plasma")
+    assert row.room_id == 0xD2AA
+    assert row.relative_path == "scratch/full_start_v1_plasma.state"
+    ranked = suggest_sources_for_room(
+        0xD2AA, segment_hint="plasma-beam", continuous_like_only=False
+    )
+    assert ranked
+    assert ranked[0].source_id == "full_start_v1_plasma"
+
+
 def test_match_source_by_path_suffix() -> None:
     path = Path("scratch/post_varia_collected.state")
     row = match_source_by_path(path)

@@ -81,6 +81,131 @@ def test_constants_importable() -> None:
     assert not spark.is_spark_pose(9)
     assert spark.store_pose_ok(9)
     assert not spark.store_pose_ok(25)
+    assert spark.NTSC_MAGIC_DASH_FRAMES == (25, 50, 70, 85)
+    assert spark.PAL_MAGIC_DASH_FRAMES == (20, 40, 60, 70)
+    assert spark.NTSC_SHORT_CHARGE_FRAMES == 86
+    assert spark.PAL_SHORT_CHARGE_FRAMES == 71
+
+
+def test_short_charge_plan_ntsc_simple() -> None:
+    plan = spark.short_charge_plan("NTSC", stutter=False, store_on_last=False)
+    assert len(plan) == 86
+    # Non-magic: forward only
+    assert plan[0] == ("RIGHT",)
+    assert plan[24] == ("RIGHT",)
+    assert plan[26] == ("RIGHT",)
+    # Magic dash frames
+    for f in (25, 50, 70, 85):
+        assert plan[f] == ("RIGHT", "B"), f"magic frame {f}: {plan[f]}"
+    # store_on_last adds DOWN only on final magic
+    plan_s = spark.short_charge_plan("NTSC", store_on_last=True)
+    assert plan_s[85] == ("RIGHT", "B", "DOWN")
+    assert plan_s[70] == ("RIGHT", "B")
+
+
+def test_short_charge_plan_ntsc_stutter() -> None:
+    plan = spark.short_charge_plan("NTSC", stutter=True)
+    assert len(plan) == 86
+    # 3 F, rel, 4 F, … then F+B×3, B-only, then magic 25
+    assert plan[0] == ("RIGHT",)
+    assert plan[1] == ("RIGHT",)
+    assert plan[2] == ("RIGHT",)
+    assert plan[3] == ()  # release
+    assert plan[4] == ("RIGHT",)
+    # frames 21–23: F+B; 24: B only
+    assert plan[21] == ("RIGHT", "B")
+    assert plan[22] == ("RIGHT", "B")
+    assert plan[23] == ("RIGHT", "B")
+    assert plan[24] == ("B",)
+    assert plan[25] == ("RIGHT", "B")
+    # mid non-magic after first boost tick
+    assert plan[30] == ("RIGHT",)
+    assert plan[50] == ("RIGHT", "B")
+    fwd = spark.stutter_forward_mask("NTSC")
+    assert len(fwd) == 25
+    assert fwd.count(False) == 5  # four mid releases + final F release
+
+
+def test_short_charge_plan_pal() -> None:
+    plan = spark.short_charge_plan("PAL", stutter=False)
+    assert len(plan) == 71
+    for f in (20, 40, 60, 70):
+        assert "B" in plan[f]
+    plan_st = spark.short_charge_plan("PAL", stutter=True, store_on_last=True)
+    assert len(plan_st) == 71
+    assert plan_st[70] == ("RIGHT", "B", "DOWN")
+    assert len(spark.stutter_forward_mask("PAL")) == 20
+
+
+def test_short_charge_until_boost_presses_magic_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fake session: echoes hit 4 after the 4th magic dash frame executes."""
+    session = _FakeSession(
+        _state(pose=9, velocity_y=0, speed_counter=0, samus_x=100, frame=0),
+    )
+    pressed: list[tuple[int, tuple[str, ...]]] = []
+    magic_hits = 0
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        nonlocal magic_hits
+        for _ in range(frames):
+            pressed.append((sess.frame, buttons))
+            sess.step(np.zeros(12, dtype=np.int8), reason)
+            if "B" in buttons:
+                magic_hits += 1
+                # After 4 dash presses, full echoes
+                if magic_hits >= 4:
+                    sess.state = replace(
+                        sess.state,
+                        speed_counter=4,
+                        pose=9,
+                        velocity_y=0,
+                        samus_x=sess.state.samus_x + 1,
+                        frame=sess.frame,
+                    )
+                else:
+                    sess.state = replace(
+                        sess.state,
+                        speed_counter=magic_hits,
+                        samus_x=sess.state.samus_x + 1,
+                        frame=sess.frame,
+                    )
+            else:
+                sess.state = replace(
+                    sess.state,
+                    samus_x=sess.state.samus_x + 1,
+                    frame=sess.frame,
+                )
+        return sess.state
+
+    monkeypatch.setattr(spark, "hold", _hold)
+    out = spark.short_charge_until_boost(session, "RIGHT", stutter=False)
+    assert out["ok"] is True
+    assert out["mode"] == "short"
+    assert magic_hits == 4
+    # Only magic frames press B (no stutter prefix dash)
+    b_frames = [f for f, btns in pressed if "B" in btns]
+    assert b_frames == [25, 50, 70, 85]
+    assert out["dash_frames"] == [25, 50, 70, 85]
+
+
+def test_charge_until_boost_mode_short_dispatches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: dict[str, Any] = {}
+
+    def _fake_short(session: Any, direction: str = "RIGHT", **kwargs: Any) -> dict:
+        called["direction"] = direction
+        called["kwargs"] = kwargs
+        return {"ok": True, "frames": 86, "mode": "short"}
+
+    monkeypatch.setattr(spark, "short_charge_until_boost", _fake_short)
+    session = _FakeSession(_state(pose=9, velocity_y=0, speed_counter=0, frame=0))
+    out = spark.charge_until_boost(session, "LEFT", mode="stutter")
+    assert out["ok"] is True
+    assert called["direction"] == "LEFT"
+    assert called["kwargs"]["stutter"] is True
 
 
 def test_read_spark_wram() -> None:

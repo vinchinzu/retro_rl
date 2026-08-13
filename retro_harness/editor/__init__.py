@@ -66,6 +66,12 @@ from retro_harness.editor.util import (
     frame_budget_ms_for_speed,
     int_value,
 )
+from retro_harness.emulator_session import (
+    EmulatorSpeedController,
+    FrameTimingTracker,
+    format_speed_label,
+    should_preview_turbo_frame,
+)
 
 __all__ = [
     "BridgeController",
@@ -92,7 +98,11 @@ __all__ = [
     "draw_layer_marker",
     "emit_stdio_response",
     "fill_rect",
+    "EmulatorSpeedController",
+    "FrameTimingTracker",
+    "format_speed_label",
     "frame_budget_ms_for_speed",
+    "should_preview_turbo_frame",
     "int_value",
     "json_response",
     "normalize_script_segment",

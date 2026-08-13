@@ -77,6 +77,11 @@ ADDR_KNOCKBACK_TIMER = 0x18AA
 FACING_LEFT = 0x04
 FACING_RIGHT = 0x08
 
+# Game-state enum ($0998). Controllers use these — do not re-encode in rooms.
+GS_ORDINARY = 8
+GS_DEAD = frozenset({26, 36})  # Samus dying / game over (fail-fast)
+GS_CERES_LEAVE = frozenset({32, 33, 34})  # Ceres success / Zebes load
+
 # stable-retro maps bank $7E WRAM as a 128 KiB block at this base.
 SNES_WRAM_BANK = 0x7E0000
 
@@ -127,7 +132,7 @@ def phase_for_game_state(game_state: int, door_transition: int = 0) -> GameplayP
     """Map the source-defined game-state enum to an assist phase."""
     if game_state in {0, 1, 2, 3, 4, 5, 6, 30, 31, 40, 41, 42, 43, 44}:
         return GameplayPhase.BOOT_OR_MENU
-    if game_state == 8:
+    if game_state == GS_ORDINARY:
         if door_transition:
             return GameplayPhase.ROOM_TRANSITION
         return GameplayPhase.ORDINARY_GAMEPLAY
