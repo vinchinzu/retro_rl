@@ -88,7 +88,7 @@ Do **not** without new pin evidence:
 - **Promoted** to `controller_common`: `WallJumpTiming`, `is_wall_latch`,
   `walljump_once`, `consecutive_walljumps` (canonical skill surface)
 - **Second consumer:** post-Torizo Parlor Alcatraz left climb
-  (`spore_spawn_controller.play_parlor_to_main_shaft` →
+  (`kpdr.spore_spawn.play_parlor_to_main_shaft` →
   `consecutive_walljumps` / `_PARLOR_CHIMNEY_WJ`)
 - Bubble wrappers (`bubble_walljump_once`, …) call shared `walljump_once`
   with track `stop_when`

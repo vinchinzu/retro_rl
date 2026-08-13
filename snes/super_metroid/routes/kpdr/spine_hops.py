@@ -16,7 +16,7 @@ from super_metroid.routes.kpdr.to_speed import (
     play_speed_hall_to_speed,
 )
 from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble
-from super_metroid.routes.kpdr.k4_wave import (
+from super_metroid.routes.kpdr.wave import (
     play_bubble_to_farm,
     play_bubble_to_single_chamber,
     play_double_chamber_to_wave,

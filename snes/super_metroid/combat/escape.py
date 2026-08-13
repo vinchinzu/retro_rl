@@ -88,21 +88,6 @@ def play_escape_room_1(session: Any, *, timeout_frames: int = 1_800) -> dict[str
     return _play_escape_room_stub(session, ROOM_ESCAPE_1, timeout_frames)
 
 
-def play_escape_room_2(session: Any, *, timeout_frames: int = 1_800) -> dict[str, object]:
-    """Deferred bounded stub for Tourian escape room 2."""
-    return _play_escape_room_stub(session, ROOM_ESCAPE_2, timeout_frames)
-
-
-def play_escape_room_3(session: Any, *, timeout_frames: int = 1_800) -> dict[str, object]:
-    """Deferred bounded stub for Tourian escape room 3."""
-    return _play_escape_room_stub(session, ROOM_ESCAPE_3, timeout_frames)
-
-
-def play_escape_room_4(session: Any, *, timeout_frames: int = 1_800) -> dict[str, object]:
-    """Deferred bounded stub for Tourian escape room 4."""
-    return _play_escape_room_stub(session, ROOM_ESCAPE_4, timeout_frames)
-
-
 def _play_escape_room_stub(
     session: Any, room_id: int, timeout_frames: int
 ) -> dict[str, object]:

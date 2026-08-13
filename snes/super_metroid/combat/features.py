@@ -412,7 +412,7 @@ def bomb_torizo_catalog() -> BossCatalogEntry:
 
 
 def spore_spawn_catalog() -> BossCatalogEntry:
-    """Spore Spawn (continuous controller in routes/spore_spawn_controller)."""
+    """Spore Spawn (continuous controller in routes/kpdr/spore_spawn)."""
     return get_boss_catalog("spore_spawn")
 
 

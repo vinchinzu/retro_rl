@@ -359,12 +359,3 @@ def resolve_rta_clock(
             "or be 0 until a power-on segment is archived"
         )
     return info
-
-
-def rezero_frames_to_ceres(
-    frames: Sequence[int],
-    ceres_zero: int,
-) -> list[int]:
-    """Subtract *ceres_zero* from absolute power-on frames (clamp at 0)."""
-    z = int(ceres_zero)
-    return [max(0, int(f) - z) for f in frames]

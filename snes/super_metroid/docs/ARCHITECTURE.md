@@ -169,7 +169,7 @@ verification; continuous tips never import sm-json path planning.
 | Feature-vector boss scaffolding in `combat/` | Imported vision BC/PPO under `models/imported/` |
 | Continuous JSON policies in `policies/early_game/` | Vision BC parked until gold |
 
-Top-level `models.py` / `visual_models.py` are **compat shims** only.
+Import frozen vision adapters from `legacy/` only.
 Do not add new imports of legacy vision policies into continuous routes.
 
 ### Tooling / editor

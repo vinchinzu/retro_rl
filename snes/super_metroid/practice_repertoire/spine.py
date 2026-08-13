@@ -15,10 +15,7 @@ from super_metroid.practice_repertoire.catalog import (
     sessions,
 )
 
-try:
-    from super_metroid.hop_id import make_hop_key
-except ImportError:
-    from super_metroid.skill_bank import make_hop_key
+from super_metroid.hop_id import make_hop_key
 
 # Map practice-hack session ids → guided_human start presets / living pins.
 # Prefer full_start_v1 item seams so demos, policies, and route edges share lineage.

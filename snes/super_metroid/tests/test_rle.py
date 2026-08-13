@@ -108,7 +108,7 @@ def test_k4_wave_loads_gate_open_from_data() -> None:
     # Must resolve under data/ (not an inlined paste-only constant).
     assert wave_scripts._GATE_OPEN_RLE_PATH.name == "double_chamber_gate_open_rle.json"
     assert wave_scripts._GATE_OPEN_RLE_PATH.is_file()
-    # No inlined private paste on the thin k4_wave facade.
-    from super_metroid.routes.kpdr import k4_wave
+    # Gate RLE lives in wave.scripts only — not inlined on the hop modules.
+    from super_metroid.routes.kpdr.wave import double_gate
 
-    assert not hasattr(k4_wave, "_HUMAN_GATE_OPEN_RLE")
+    assert not hasattr(double_gate, "_HUMAN_GATE_OPEN_RLE")

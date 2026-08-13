@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from super_metroid.human_tape_trim import (
+from super_metroid.human_tape.trim import (
     COMBAT_ROOM_IDS,
     export_trimmed_seed,
     find_retry_loop_cuts,

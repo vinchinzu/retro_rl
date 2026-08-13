@@ -1004,14 +1004,6 @@ def get_source(source_id: str) -> SourceFingerprint:
     return _BY_ID[source_id]
 
 
-def list_sources(
-    *, continuous_like_only: bool = False
-) -> tuple[SourceFingerprint, ...]:
-    if continuous_like_only:
-        return tuple(s for s in SOURCE_CATALOG if s.continuous_like)
-    return SOURCE_CATALOG
-
-
 def suggest_sources_for_room(
     room_id: int,
     *,

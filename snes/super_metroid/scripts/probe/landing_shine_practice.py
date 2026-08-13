@@ -80,20 +80,6 @@ DEFAULT_DIAGONAL_VIDEO = Path(
     "snes/super_metroid/recordings/landing_site_diagonal_shine_proof.mp4"
 )
 
-DEFAULT_SOURCE_CANDIDATES = (
-    DEFAULT_PIN,
-    PRE_MOAT_SOURCE,
-    SCRATCH / "speed_with_spazer_human_end.state",
-)
-
-
-def default_source() -> Path:
-    for p in DEFAULT_SOURCE_CANDIDATES:
-        if p.is_file():
-            return p
-    return DEFAULT_PIN
-
-
 # ---------------------------------------------------------------------------
 # Minimal session (ControllerSession + env for spark WRAM)
 # ---------------------------------------------------------------------------

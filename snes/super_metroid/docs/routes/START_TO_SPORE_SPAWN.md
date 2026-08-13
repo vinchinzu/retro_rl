@@ -61,7 +61,7 @@ matches the typed progression graph.
 
 ## Controller policy
 
-`spore_spawn_controller.py` emits controller input only. It checks natural
+`routes/kpdr/spore_spawn.py` emits controller input only. It checks natural
 room, capability, coordinate, Energy Tank, enemy-clear, boss-activation, HP,
 and exit boundaries. Big Pink and the post-boss shaft use finite map-guided
 controller sequences found in the development emulator. Spore combat floor-
