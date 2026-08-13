@@ -101,14 +101,8 @@ tape used assist so missiles stayed 15.
 
 ## Probe scratch
 
-```bash
-uv run python snes/super_metroid/scripts/probe/dc_gate_plm_recon.py \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_single_to_double_chamber_pure.state \
-  --mode place-seat --no-assist
-```
-
-Logs max x, pose, selected, missiles/supers (drain truth if `--no-assist`),
-and door/nav snapshot fields. Does **not** edit product controller.
+One-off `dc_gate_plm_recon.py` was deleted after the gate recon. Product
+controller is `routes/kpdr/k4_wave.py`; do not resurrect the scratch probe.
 
 ## Recommended single experiment (controller agent)
 

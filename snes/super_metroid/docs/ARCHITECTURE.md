@@ -46,7 +46,6 @@ legacy/*                                  frozen vision/RL remnants
 | `routes/early_continuous.py` | Morph→supers play/run (seeds + policies) |
 | `routes/catalog.py` | `ContinuousTip`, split tuples, `NamedRoute` |
 | `scripts/record/continuous.py` | One CLI for all continuous tips (`--to`) |
-| `scripts/verify/` | Replay/verify accepted baselines |
 | `scripts/probe/` | Dev probes (KPDR pure, kraid combat, route tour) |
 | `scripts/export/` | Path board, KPDR tracker, room queue, graphs |
 | `scripts/room/run_problem.py` | Isolated room practice bootstrap/run |

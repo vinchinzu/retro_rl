@@ -23,39 +23,30 @@ uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py bench
 from __future__ import annotations
 
 import argparse
-import json
-import sys
-from collections import Counter
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get("_SNES_IMPORT_ROOT", ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.env import make_env, read_state_bytes  # noqa: E402
-from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
-from super_metroid.combat.ceres_ridley import (  # noqa: E402
+from retro_harness.env import make_env
+from super_metroid.assist import UnlimitedResourcesAssist
+from super_metroid.combat.ceres_ridley import (
     ROOM_CERES_RIDLEY,
     CeresRidleyStrategy,
     play_ceres_ridley_fight,
 )
-from super_metroid.combat.features import ceres_ridley_catalog  # noqa: E402
-from super_metroid.dev.common import save_dev_state  # noqa: E402
-from super_metroid.paths import GAME, GAME_DIR, SCRATCH_STATE_DIR  # noqa: E402
-from super_metroid.progression import MORPH_GRAPH  # noqa: E402
-from super_metroid.ram import (  # noqa: E402
-    ADDR_INVINCIBILITY_TIMER,
-    ADDR_KNOCKBACK_TIMER,
-    parse_state,
+from super_metroid.combat.features import ceres_ridley_catalog
+from super_metroid.combat.probe import (
+    ProbeSession,
+    open_state_env,
+    resolve_named_state,
+    write_json_report,
 )
-from super_metroid.room_timer import format_segment_time  # noqa: E402
-from super_metroid.routes.kpdr.ceres.outbound import (  # noqa: E402
-    play_ceres_to_ridley_door,
-)
-from super_metroid.routes.kpdr.early_spine import play_boot_to_ceres  # noqa: E402
-from super_metroid.routes.runtime import RouteSession  # noqa: E402
+from super_metroid.dev.common import save_dev_state
+from super_metroid.paths import GAME, GAME_DIR, SCRATCH_STATE_DIR
+from super_metroid.progression import MORPH_GRAPH
+from super_metroid.ram import ADDR_INVINCIBILITY_TIMER, ADDR_KNOCKBACK_TIMER
+from super_metroid.room_timer import format_segment_time
+from super_metroid.routes.kpdr.ceres.outbound import play_ceres_to_ridley_door
+from super_metroid.routes.kpdr.early_spine import play_boot_to_ceres
+from super_metroid.routes.runtime import RouteSession
 
 DEFAULT_ENTRY = SCRATCH_STATE_DIR / "ceres_ridley_enter.state"
 DEFAULT_REPORT = (
@@ -69,65 +60,19 @@ _NAMED_STATES: dict[str, Path] = {
 }
 
 
-class _Session:
-    """Minimal ControllerSession for pin-local fight probes."""
-
-    def __init__(self, env: object, assist: UnlimitedResourcesAssist) -> None:
-        self.env = env
-        self.assist = assist
-        self.frame = 0
-        self.action_reasons: Counter[str] = Counter()
-        self.state = parse_state(env.get_ram(), frame=0)  # type: ignore[attr-defined]
-
-    def step(self, action, reason: str):
-        self.env.step(action)  # type: ignore[attr-defined]
-        self.frame += 1
-        self.state = parse_state(self.env.get_ram(), frame=self.frame)  # type: ignore[attr-defined]
-        self.assist.apply(self.env.data, self.state)  # type: ignore[attr-defined]
-        self.action_reasons[reason] += 1
-        return self.state
-
-
 def _u16(ram, addr: int) -> int:
     return int(ram[addr]) | (int(ram[addr + 1]) << 8)
 
 
 def _resolve_state(name: str) -> Path:
-    key = name.strip()
-    if key in _NAMED_STATES:
-        return _NAMED_STATES[key]
-    path = Path(key)
-    if path.suffix == ".state" or "/" in key or path.exists():
-        if not path.is_absolute():
-            for candidate in (
-                path,
-                GAME_DIR / path,
-                SCRATCH_STATE_DIR / path.name,
-            ):
-                if candidate.exists():
-                    return candidate
-        return path
-    for candidate in (
-        SCRATCH_STATE_DIR / f"{key}.state",
-        GAME_DIR / "tasks" / f"{key}.state",
-    ):
-        if candidate.exists():
-            return candidate
-    return path
+    return resolve_named_state(name, _NAMED_STATES)
 
 
 def _open_env(state_path: Path):
-    if not state_path.exists():
-        raise FileNotFoundError(
-            f"Ceres Ridley enter pin not found: {state_path}\n"
-            "Capture first: ceres_ridley_combat.py capture"
-        )
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-    env.reset()
-    env.em.set_state(read_state_bytes(state_path))
-    for _ in range(4):
-        env.step([0] * 12)
-    return env, str(state_path)
+    return open_state_env(
+        state_path,
+        missing_hint="Capture first: ceres_ridley_combat.py capture",
+    )
 
 
 def _snapshot(session, extra: dict | None = None) -> dict[str, object]:
@@ -161,11 +106,7 @@ def _snapshot(session, extra: dict | None = None) -> dict[str, object]:
 
 
 def _print_report(report: dict, path: Path | None) -> None:
-    text = json.dumps(report, indent=2)
-    print(text)
-    if path is not None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text + "\n", encoding="utf-8")
+    write_json_report(report, path)
 
 
 def cmd_capture(args: argparse.Namespace) -> int:
@@ -207,7 +148,7 @@ def cmd_dump(args: argparse.Namespace) -> int:
     env, loaded = _open_env(_resolve_state(args.state))
     assist = UnlimitedResourcesAssist()
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         samples: list[dict[str, object]] = []
         last_health = session.state.health
         for i in range(args.frames):
@@ -236,7 +177,7 @@ def cmd_dump(args: argparse.Namespace) -> int:
 
 def _run_policy(env, policy: str, max_frames: int):
     assist = UnlimitedResourcesAssist()
-    session = _Session(env, assist)
+    session = ProbeSession(env, assist)
     if session.state.room_id != ROOM_CERES_RIDLEY:
         return session, None, {
             "success": False,

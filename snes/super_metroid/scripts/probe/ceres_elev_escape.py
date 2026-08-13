@@ -17,42 +17,35 @@ uv run python snes/super_metroid/scripts/probe/ceres_elev_escape.py bench
 from __future__ import annotations
 
 import argparse
-import json
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get("_SNES_IMPORT_ROOT", ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.actions import buttons, idle_action  # noqa: E402
-from retro_harness.env import make_env, read_state_bytes  # noqa: E402
-from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
-from super_metroid.combat.ceres_ridley import (  # noqa: E402
+from retro_harness.actions import buttons, idle_action
+from retro_harness.env import make_env
+from super_metroid.assist import UnlimitedResourcesAssist
+from super_metroid.combat.probe import open_state_env, write_json_report
+from super_metroid.combat.ceres_ridley import (
     CeresRidleyStrategy,
     play_ceres_ridley_fight,
 )
-from super_metroid.dev.common import save_dev_state  # noqa: E402
-from super_metroid.hop_id import make_hop_key  # noqa: E402
-from super_metroid.paths import GAME, GAME_DIR, SCRATCH_STATE_DIR  # noqa: E402
-from super_metroid.progression import MORPH_GRAPH  # noqa: E402
-from super_metroid.room_timer import format_segment_time  # noqa: E402
-from super_metroid.routes.kpdr.ceres.arm_pump import (  # noqa: E402
+from super_metroid.dev.common import save_dev_state
+from super_metroid.hop_id import make_hop_key
+from super_metroid.paths import GAME, GAME_DIR, SCRATCH_STATE_DIR
+from super_metroid.progression import MORPH_GRAPH
+from super_metroid.room_timer import format_segment_time
+from super_metroid.routes.kpdr.ceres.arm_pump import (
     _ceres_arm_pump_until,
 )
-from super_metroid.routes.skills.knockback import is_knockback  # noqa: E402
-from super_metroid.routes.kpdr.ceres.elev_escape import (  # noqa: E402
+from super_metroid.routes.skills.knockback import is_knockback
+from super_metroid.routes.kpdr.ceres.elev_escape import (
     _ceres_elev_leaving,
     _ceres_elev_ship_band,
     _ceres_reactive_elev_climb,
 )
-from super_metroid.routes.kpdr.ceres.magnet import (  # noqa: E402
+from super_metroid.routes.kpdr.ceres.magnet import (
     _ceres_reactive_falling,
     _ceres_reactive_magnet_escape,
 )
-from super_metroid.routes.kpdr.room_ids import (  # noqa: E402
+from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
     ROOM_CERES_FALLING,
     ROOM_CERES_MAGNET,
@@ -73,17 +66,10 @@ HOP_KEY = make_hop_key(
 
 
 def _open_env(state_path: Path):
-    if not state_path.exists():
-        raise FileNotFoundError(
-            f"Ceres elev enter pin not found: {state_path}\n"
-            "Capture first: ceres_elev_escape.py capture"
-        )
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-    env.reset()
-    env.em.set_state(read_state_bytes(state_path))
-    for _ in range(4):
-        env.step([0] * 12)
-    return env, str(state_path)
+    return open_state_env(
+        state_path,
+        missing_hint="Capture first: ceres_elev_escape.py capture",
+    )
 
 
 def _session(env) -> RouteSession:
@@ -115,11 +101,7 @@ def _snapshot(session: RouteSession, extra: dict | None = None) -> dict[str, obj
 
 
 def _print_report(report: dict, path: Path | None) -> None:
-    text = json.dumps(report, indent=2)
-    print(text)
-    if path is not None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text + "\n", encoding="utf-8")
+    write_json_report(report, path)
 
 
 def _play_tail_tank_to_elev(session: RouteSession) -> None:

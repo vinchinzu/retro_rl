@@ -30,17 +30,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from retro_harness.env import make_env, read_state_bytes  # noqa: E402
-from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
-from super_metroid.combat import (  # noqa: E402
+from super_metroid.assist import UnlimitedResourcesAssist
+from super_metroid.combat import (
     DEFAULT_NATURAL_ACTIVE_STATE,
     BombTorizoStrategy,
     capture_natural_bomb_torizo_activation,
@@ -48,27 +41,8 @@ from super_metroid.combat import (  # noqa: E402
     bomb_torizo_catalog,
     play_bomb_torizo_fight,
 )
-from super_metroid.paths import GAME, GAME_DIR, MODELS_DIR, SCRATCH_STATE_DIR  # noqa: E402
-from super_metroid.ram import parse_state  # noqa: E402
-
-
-class _Session:
-    """Minimal ControllerSession for combat probes."""
-
-    def __init__(self, env: object, assist: UnlimitedResourcesAssist) -> None:
-        self.env = env
-        self.assist = assist
-        self.frame = 0
-        self.action_reasons: Counter[str] = Counter()
-        self.state = parse_state(env.get_ram(), frame=0)  # type: ignore[attr-defined]
-
-    def step(self, action, reason: str):
-        self.env.step(action)  # type: ignore[attr-defined]
-        self.frame += 1
-        self.state = parse_state(self.env.get_ram(), frame=self.frame)  # type: ignore[attr-defined]
-        self.assist.apply(self.env.data, self.state)  # type: ignore[attr-defined]
-        self.action_reasons[reason] += 1
-        return self.state
+from super_metroid.combat.probe import ProbeSession, open_state_env, write_json_report
+from super_metroid.paths import GAME_DIR, MODELS_DIR, SCRATCH_STATE_DIR
 
 
 def _resolve_state(name: str) -> str | Path:
@@ -80,36 +54,17 @@ def _resolve_state(name: str) -> str | Path:
     return name
 
 
-def _open_env(state: str | Path):
-    if isinstance(state, Path) or (
-        isinstance(state, str) and (state.endswith(".state") or "/" in str(state))
-    ):
-        path = Path(state)
-        if not path.is_absolute():
-            for candidate in (path, GAME_DIR / path, SCRATCH_STATE_DIR / path.name):
-                if candidate.exists():
-                    path = candidate
-                    break
-        env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-        env.reset()
-        if not path.exists():
-            raise FileNotFoundError(
-                f"state not found: {path} (capture with capture-natural first)"
-            )
-        env.em.set_state(read_state_bytes(path))
-        return env, str(path)
-    env = make_env(GAME, str(state), GAME_DIR, render_mode="rgb_array")
-    env.reset()
-    return env, str(state)
-
-
 def cmd_strategy(args: argparse.Namespace) -> int:
     catalog = bomb_torizo_catalog()
     state_spec = _resolve_state(args.state)
-    env, loaded = _open_env(state_spec)
+    env, loaded = open_state_env(
+        state_spec,
+        settle=0,
+        missing_hint="capture with capture-natural first",
+    )
     assist = UnlimitedResourcesAssist()
     try:
-        session = _Session(env, assist)
+        session = ProbeSession(env, assist)
         entry = features_from_state(session.state, catalog)
         evidence = play_bomb_torizo_fight(
             session,
@@ -142,11 +97,7 @@ def cmd_strategy(args: argparse.Namespace) -> int:
                 "on continuous route until natural-entry hybrid is proven."
             ),
         }
-        text = json.dumps(report, indent=2)
-        print(text)
-        if args.report is not None:
-            args.report.parent.mkdir(parents=True, exist_ok=True)
-            args.report.write_text(text + "\n", encoding="utf-8")
+        write_json_report(report, args.report)
         return 0 if report["success"] else 1
     finally:
         env.close()

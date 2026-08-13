@@ -37,10 +37,6 @@ from pathlib import Path
 from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[4]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[3]
-for _p in (ROOT, globals().get("_SNES_IMPORT_ROOT", ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.video import VideoCaptureConfig, VideoRecorder  # noqa: E402
 from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
