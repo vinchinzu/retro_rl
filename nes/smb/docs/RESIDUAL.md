@@ -51,6 +51,8 @@ Short Level1_1 tapes in `smb.residual_harness.SEGMENTS`:
 | `run32_then_jump` | 32 RIGHT+B + 4 A + 16 RIGHT+B | InitJS \|vx\| band 4 |
 | `walk_then_idle` | 16 RIGHT + 16 idle | brake `$98` |
 | `run_then_idle` | 32 RIGHT+B + 16 idle | RunningSpeed → brake `$D0` |
+| `walk_left` | 24 LEFT | LEFT first-kick `$FED0` |
+| `run_then_jump_long` | 16+4+40 RIGHT+B(+A) | air walk-max keeps `xf` |
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -148,12 +150,28 @@ No L/R uses `$98` unless `RunningSpeed` (latched on ground when `|vx|≥$1C`,
 one frame later) or `|vx|≥$21` (then `$D0`). Walk-then-idle was the
 fdσ=19 leftover; run-then-idle needs the latch (first idle `$98`, next `$D0`).
 
-Sibling leftovers (not that stub): air walk-max wipes `xf` (16+4+40 tape
-fdσ=42 after land); LEFT first-kick fdσ=1.
+After `rr-8pvn` (smbdis `ImposeFriction` 16-bit subtract; LEFT is not `-$0130`):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| walk_left | 25 | `(—, —, —, —)` | — | — |
+
+At rest `Player_MovingDir=0` ≠ facing, so the adder doubles (`$98<<1=$0130`).
+RIGHT adds → `$0130`. LEFT subtracts → `$FED0` (`vx=-2`, `xf=$D0`), then
+walk `$98`. Sign-magnitude `-$0130` was `vx=-1` / `xf=$30` (fdσ=1).
+
+After `rr-pwdj` (clamp snaps `vx` only; leftover `$0705` stays):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| run_then_jump_long | 61 | `(—, —, —, —)` | — | — |
+
+Air walk-max `$18` at f32 keeps `xf=12` (then 164, 60, …). Wiping `xf` to 0
+held pixels until land; fdσ=42 on the 16+4+40 tape.
 
 ## Modules
 
 - `smb.observation` — RAM → structured obs
-- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X + InitJS `|vx|` tables + brake `$98`/`$D0`)
+- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X + InitJS `|vx|` tables + brake `$98`/`$D0` + LEFT two's-complement kick + walk-max keeps `xf`)
 - `smb.residual` — `compute_residual_profile`
 - `smb.residual_harness` — stepper + fceumm + `R(τ)`

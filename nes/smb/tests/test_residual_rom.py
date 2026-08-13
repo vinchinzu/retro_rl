@@ -36,10 +36,19 @@ _LAND_TAPES = ("jump_to_land", "run_jump_to_land")
 _AIR_X_TAPES = ("run_then_jump",)
 _JUMP_TABLE_TAPES = ("run24_then_jump", "run32_then_jump")
 _BRAKE_TAPES = ("walk_then_idle", "run_then_idle")
+_LEFT_TAPES = ("walk_left",)
+_AIR_XF_TAPES = ("run_then_jump_long",)
 
 
 @pytest.mark.parametrize(
-    "name", _SHORT_TAPES + _LAND_TAPES + _AIR_X_TAPES + _JUMP_TABLE_TAPES + _BRAKE_TAPES
+    "name",
+    _SHORT_TAPES
+    + _LAND_TAPES
+    + _AIR_X_TAPES
+    + _JUMP_TABLE_TAPES
+    + _BRAKE_TAPES
+    + _LEFT_TAPES
+    + _AIR_XF_TAPES,
 )
 def test_segment_produces_measured_profile(name: str) -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -55,7 +64,15 @@ def test_segment_produces_measured_profile(name: str) -> None:
 def test_short_tapes_hold_pixels_and_subpixels() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    for name in _SHORT_TAPES + _LAND_TAPES + _AIR_X_TAPES + _JUMP_TABLE_TAPES + _BRAKE_TAPES:
+    for name in (
+        _SHORT_TAPES
+        + _LAND_TAPES
+        + _AIR_X_TAPES
+        + _JUMP_TABLE_TAPES
+        + _BRAKE_TAPES
+        + _LEFT_TAPES
+        + _AIR_XF_TAPES
+    ):
         result = measure_segment(name, run_emulator=True)
         assert result.profile.fd_pi is None, name
         assert result.profile.fd_sigma is None, name
