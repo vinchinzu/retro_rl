@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-import numpy as np
+from unittest.mock import Mock
+
 import pytest
 
 from super_metroid.emulator_validation import (
+    ROM_AVAILABLE,
     _buttons_mask_to_action,
     observation_from_env,
+    validate_trajectory_on_emulator,
 )
 from super_metroid.observation import Observation
 from super_metroid.physics_sim import FrameInput
+from super_metroid.ram import SuperMetroidState, GameplayPhase
 
 
 class TestButtonConversion:
@@ -57,63 +61,120 @@ class TestButtonConversion:
 class TestObservationFromEnv:
     """Test observation extraction from emulator."""
 
-    def test_observation_structure(self) -> None:
-        """Test Observation structure and field access (offline test)."""
-        # Create an Observation directly to test the structure
-        obs = Observation(
+    def test_observation_from_mocked_parse_env_state(self, monkeypatch) -> None:
+        """Test observation_from_env calls parse_env_state and maps fields."""
+        # Create a mock SuperMetroidState
+        mock_state = SuperMetroidState(
             frame=100,
-            x=336,
-            y=160,
-            pose=1,
-            room=0x9191,
-            sub_x=0x80,
-            sub_y=0x40,
+            game_state=8,
+            phase=GameplayPhase.ORDINARY_GAMEPLAY,
+            room_id=0x9191,
+            area_index=0,
+            door_transition=0,
+            transition_direction=0,
+            samus_x=336,
+            samus_y=160,
             velocity_x=0,
             velocity_y=0,
+            pose=1,
+            health=99,  # This should map to energy
+            max_health=99,
+            reserve_health=0,
+            max_reserve_health=0,
+            missiles=0,
+            max_missiles=0,
+            super_missiles=0,
+            max_super_missiles=0,
+            power_bombs=0,
+            max_power_bombs=0,
+            selected_item=0,
+            equipped_items=0,
+            collected_items=0,
+            equipped_beams=0,
+            collected_beams=0,
+            timer_type=0,
+            escape_timer_frames=0,
+            escape_timer_seconds=0,
+            escape_timer_minutes=0,
+            num_enemies=0,
+            enemies_killed=0,
+            enemy0_x=0,
+            enemy0_y=0,
+            enemy0_hp=32,  # This should map to enemy_energy
+            enemy0_spritemap=0,
+            event_flags=(0, 0, 0, 0, 0, 0, 0, 0),
+            boss_bits=(0, 0, 0, 0, 0, 0, 0, 0),
+            samus_x_sub=0x80,
+            samus_y_sub=0x40,
             velocity_x_sub=0,
             velocity_y_sub=0,
             momentum_x=0,
             momentum_x_sub=0,
             speed_counter=0,
             speed_flag=0,
-            energy=99,
-            frame_counter_1=None,  # Not yet in SuperMetroidState
-            frame_counter_2=None,  # Not yet in SuperMetroidState
-            enemy_energy=0x20,
-            invulnerability_timer=0,  # Not yet in SuperMetroidState
         )
 
-        # Test Oπ fields
+        # Mock parse_env_state to return our mock state
+        def mock_parse_env_state(env, mode="full"):
+            return mock_state
+
+        import super_metroid.emulator_validation as emu_val
+        monkeypatch.setattr(emu_val, "parse_env_state", mock_parse_env_state)
+
+        # Create a fake env (doesn't matter what it is since parse_env_state is mocked)
+        fake_env = Mock()
+
+        # Call observation_from_env
+        obs = observation_from_env(fake_env)
+
+        # Verify Oπ fields
         assert obs.x == 336
         assert obs.y == 160
         assert obs.pose == 1
         assert obs.room == 0x9191
 
-        # Test Oσ fields
+        # Verify Oσ fields
         assert obs.sub_x == 0x80
         assert obs.sub_y == 0x40
 
-        # Test O† fields
+        # Verify O† field: energy comes from state.health
         assert obs.energy == 99
 
-        # Test lag detection fields (not yet in SuperMetroidState)
+        # Verify Oσ+: enemy_energy comes from state.enemy0_hp
+        assert obs.enemy_energy == 32
+
+        # Verify unobserved fields are None
         assert obs.frame_counter_1 is None
         assert obs.frame_counter_2 is None
-
-        # Test Oσ+ fields
-        assert obs.enemy_energy == 0x20
-        assert obs.invulnerability_timer == 0
+        assert obs.invulnerability_timer is None
 
 
 class TestEmulatorValidationIntegration:
     """Integration tests requiring ROM (skipped without ROM)."""
 
+    def test_no_rom_raises_file_not_found(self, monkeypatch, tmp_path) -> None:
+        """Test that validation raises FileNotFoundError when ROM unavailable."""
+        # Mock ROM_AVAILABLE to False
+        import super_metroid.emulator_validation as emu_val
+        monkeypatch.setattr(emu_val, "ROM_AVAILABLE", False)
+
+        # Create a dummy state file
+        state_file = tmp_path / "test.state"
+        state_file.write_bytes(b"dummy")
+
+        # Should raise FileNotFoundError
+        with pytest.raises(FileNotFoundError, match="ROM not available"):
+            validate_trajectory_on_emulator(
+                state_file,
+                [FrameInput(buttons=0)],
+            )
+
     @pytest.mark.skipif(
-        True,  # Always skip for now - requires ROM and state setup
+        not ROM_AVAILABLE,
         reason="Requires ROM and state file setup",
     )
     def test_validate_trajectory_basic(self) -> None:
-        """Test basic trajectory validation (placeholder)."""
+        """Test basic trajectory validation (placeholder for ROM tests)."""
         # This would test the full validate_trajectory_on_emulator flow
         # Skipped because it requires:
         # 1. ROM in roms/ directory
