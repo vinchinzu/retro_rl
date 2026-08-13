@@ -188,6 +188,24 @@ def test_air_x_uses_walk_tables_until_run_speed() -> None:
     assert AIR_RUN_KEEP == 0x19
 
 
+def test_takeoff_frame_uses_air_x() -> None:
+    """16f run then A: leave-ground frame adds walk $98, not run $E4 (live 1-1)."""
+    start = level1_start_obs()
+    frames = rollout(
+        start,
+        [press("RIGHT", "B")] * 16 + [press("RIGHT", "B", "A")] * 4,
+    )
+    last_ground = frames[16]
+    takeoff = frames[17]
+    assert last_ground.on_ground is True
+    assert last_ground.velocity_x == 14
+    assert last_ground.x_force == 140
+    assert takeoff.on_ground is False
+    assert takeoff.velocity_x == 15
+    assert takeoff.x_force == 36
+    assert takeoff.y == start.y + JUMP_SPEED
+
+
 def test_stepper_does_not_mutate_start() -> None:
     start = level1_start_obs()
     before = start.to_dict()
@@ -299,3 +317,12 @@ def test_measure_segment_offline_jump_to_land() -> None:
     assert land.y == 176
     assert land.sub_y == 128
     assert land.vertical_force == 0x70
+
+
+def test_measure_segment_offline_run_then_jump() -> None:
+    result = measure_segment("run_then_jump", run_emulator=False)
+    assert result.profile.unmeasured is True
+    assert result.horizon == 37
+    assert result.approx_obs[16].on_ground is True
+    assert result.approx_obs[17].on_ground is False
+    assert result.approx_obs[17].x_force == 36
