@@ -13,8 +13,12 @@ ADDR_PLAYER_X       = 0x0086  # offset within page
 ADDR_Y_SPEED        = 0x009F  # signed vertical speed
 ADDR_PLAYER_Y       = 0x00CE
 ADDR_PLAYER_SCREEN_X= 0x03AD  # on-screen X
-ADDR_PLAYER_X_FRAC  = 0x0400  # X position subpixel (Oσ)
-ADDR_PLAYER_Y_FRAC  = 0x0416  # Y position subpixel (Oσ)
+ADDR_PLAYER_X_FRAC  = 0x0400  # SprObject_X_MoveForce; X position frac (Oσ)
+ADDR_PLAYER_Y_FRAC  = 0x0416  # Player_YMF_Dummy; Y position frac (Oσ)
+ADDR_Y_MOVE_FORCE   = 0x0433  # Player_Y_MoveForce; gravity accumulator
+ADDR_JUMP_ORIGIN_Y  = 0x0708  # Y pixel at takeoff
+ADDR_VERTICAL_FORCE = 0x0709  # rising / current gravity
+ADDR_VERTICAL_FORCE_DOWN = 0x070A  # fall gravity (A-release copy)
 ADDR_AREA_POINTER   = 0x0750  # venue within multi-area levels (8-4)
 ADDR_PLAYER_STATUS  = 0x0756  # 0=small, 1=big, 2=fire
 ADDR_LIVES          = 0x075A
@@ -22,7 +26,7 @@ ADDR_LEVEL_LO       = 0x075C
 ADDR_WORLD          = 0x075F  # 0-indexed world
 ADDR_LEVEL          = 0x0760  # 0-indexed level within world
 ADDR_OPER_MODE      = 0x0770  # 0=demo/title, 1=playing, 2=end, 3=game over
-ADDR_X_FORCE        = 0x0705  # 16-bit X-speed low byte (stepper; not lattice)
+ADDR_X_FORCE        = 0x0705  # Player_X_MoveForce; 16-bit X-speed low byte
 ADDR_SCREEN_PAGE    = 0x071A  # camera page
 ADDR_SCREEN_X       = 0x071C  # camera left X within page
 ADDR_TIMER_HUNDREDS = 0x07F8  # 4 at level start (400)
@@ -52,7 +56,11 @@ as Super Metroid `R(τ)`). Speeds are first-differing-field only, not a second �
 | `velocity_y` | `$009F` | s8 | field | first-diff only |
 | `frame_counter` | `$0009` | u8 | lag | stop scoring later kinematics |
 | `on_ground` | `$001D == 0` | flag | field | air/jump is `1` |
-| `x_force` | `$0705` | u8 | stepper | 16-bit X-speed low byte |
+| `x_force` | `$0705` | u8 | stepper | `Player_X_MoveForce` |
+| `y_move_force` | `$0433` | u8 | stepper | `Player_Y_MoveForce` |
+| `vertical_force` | `$0709` | u8 | stepper | rising / current gravity |
+| `vertical_force_down` | `$070A` | u8 | stepper | fall gravity |
+| `jump_origin_y` | `$0708` | u8 | stepper | A-release height gate |
 
 See `docs/RESIDUAL.md` for planner rules and the first measurement segments.
 

@@ -1,13 +1,22 @@
 """Thin pure approximate SMB stepper (flat ground only).
 
 ``step(obs, action) -> obs`` is deterministic and has no emulator dependency.
-It models grounded walk/run, A-edge jump, and rising/falling gravity. No
-slopes, pipes, enemies, or collision.
+It models grounded walk/run, A-edge jump, A-release gravity, and air X
+tables. No slopes, pipes, enemies, or collision.
 
 X kinematics were fitted to a live Level1_1 RAM trace:
 - 16-bit speed ``(velocity_x, x_force)`` with first-kick ``0x0130``, then
   walk ``+0x98`` / run ``+0xE4``
 - position subpixel ``$0400`` advances by ``velocity_x << 4``
+- in air, walk tables unless ``|velocity_x| >= 0x19`` (already running)
+
+Y is smbdis ``ImposeGravity`` + ``JumpSwimSub`` A-release:
+- ``$0416`` (YMF dummy) += ``$0433`` (Y move-force); carry into Y
+- Y += ``velocity_y`` + that carry
+- ``$0433`` += ``$0709`` (VerticalForce); carry into ``velocity_y``
+- after a 1px rise, A-release copies ``$070A`` into ``$0709``
+- land snaps pixel Y and zeros ``velocity_y`` / ``$0433``; keep ``$0416``
+  (YMF dummy) and leftover ``$0709``
 """
 
 from __future__ import annotations
@@ -17,6 +26,7 @@ from collections.abc import Sequence
 from smb.observation import DEFAULT_GROUND_Y, Observation
 
 __all__ = [
+    "AIR_RUN_KEEP",
     "JUMP_SPEED",
     "RUN_ACCEL",
     "RUN_MAX",
@@ -41,11 +51,13 @@ FRICTION = 0xD0
 FIRST_KICK = 0x0130
 WALK_MAX = 0x18
 RUN_MAX = 0x28
+AIR_RUN_KEEP = 0x19
 JUMP_SPEED = -4
 GRAVITY_HOLD_STEP = 0x20
 GRAVITY_FALL = 0x70
 MAX_FALL = 4
 PIT_Y = 240
+DIFF_TO_HALT_JUMP = 1
 
 
 def idle_action() -> tuple[int, ...]:
@@ -104,7 +116,14 @@ def _clamp_speed(speed_16: int, run: bool) -> int:
     return speed_16
 
 
+def _air_uses_walk_tables(obs: Observation) -> bool:
+    """Air X uses walk accel/max until already at run speed (smbdis X_Physics)."""
+    return (not obs.on_ground) and abs(int(obs.velocity_x)) < AIR_RUN_KEEP
+
+
 def _update_x_speed(obs: Observation, x_dir: int, run: bool) -> tuple[int, int, int]:
+    if _air_uses_walk_tables(obs):
+        run = False
     speed_16 = _pack_speed(obs.velocity_x, obs.x_force)
     facing = obs.facing
     if x_dir > 0:
@@ -136,31 +155,79 @@ def _advance_x(x: int, sub_x: int, velocity_x: int) -> tuple[int, int]:
     return total >> 8, total & 0xFF
 
 
-def _step_air(obs: Observation, jump: bool) -> tuple[int, int, int, int, bool]:
-    """Return y, sub_y, velocity_y, vertical_force, on_ground."""
-    y = obs.y + obs.velocity_y
-    sub_y = obs.sub_y
-    velocity_y = obs.velocity_y
-    vertical_force = obs.vertical_force
-    if jump and velocity_y < 0:
-        add = vertical_force if vertical_force else GRAVITY_HOLD_STEP
-        vertical_force = min(add + GRAVITY_HOLD_STEP, 0xA0)
-    else:
-        add = GRAVITY_FALL
-        vertical_force = GRAVITY_FALL
-    sub_y += add
-    if sub_y >= 256:
-        y += 1
-        sub_y -= 256
-        velocity_y = min(velocity_y + 1, MAX_FALL)
+def _select_vertical_force(obs: Observation, jump: bool) -> int:
+    """JumpSwimSub: keep rising VF while A is held; else copy VerticalForceDown."""
+    rising = obs.vertical_force if obs.vertical_force else GRAVITY_HOLD_STEP
+    falling = obs.vertical_force_down if obs.vertical_force_down else GRAVITY_FALL
+    if obs.velocity_y >= 0:
+        return falling
+    a_held_continuous = jump and obs.a_held
+    if a_held_continuous:
+        return rising
+    if (int(obs.jump_origin_y) - int(obs.y)) >= DIFF_TO_HALT_JUMP:
+        return falling
+    return rising
+
+
+def _impose_gravity(
+    y: int,
+    sub_y: int,
+    velocity_y: int,
+    y_move_force: int,
+    vertical_force: int,
+) -> tuple[int, int, int, int]:
+    """smbdis ImposeGravity for the player (downward force only, max fall 4)."""
+    sub_total = (int(sub_y) & 0xFF) + (int(y_move_force) & 0xFF)
+    sub_y = sub_total & 0xFF
+    y = int(y) + int(velocity_y) + (1 if sub_total >= 256 else 0)
+    force_total = (int(y_move_force) & 0xFF) + (int(vertical_force) & 0xFF)
+    y_move_force = force_total & 0xFF
+    velocity_y = int(velocity_y) + (1 if force_total >= 256 else 0)
+    if velocity_y >= MAX_FALL and y_move_force >= 0x80:
+        velocity_y = MAX_FALL
+        y_move_force = 0
+    return y, sub_y, velocity_y, y_move_force
+
+
+def _land_if_needed(
+    y: int,
+    sub_y: int,
+    velocity_y: int,
+    y_move_force: int,
+    vertical_force: int,
+    ground_y: int,
+) -> tuple[int, int, int, int, int, bool]:
     on_ground = False
-    if y >= obs.ground_y and velocity_y >= 0:
-        y = obs.ground_y
-        sub_y = 0
+    if y >= ground_y and velocity_y >= 0:
+        y = ground_y
+        # Game does not wipe Player_YMF_Dummy ($0416) or VerticalForce ($0709).
         velocity_y = 0
-        vertical_force = 0
+        y_move_force = 0
         on_ground = True
-    return y, sub_y, velocity_y, vertical_force, on_ground
+    return y, sub_y, velocity_y, y_move_force, vertical_force, on_ground
+
+
+def _step_air(
+    obs: Observation, jump: bool
+) -> tuple[int, int, int, int, int, int, bool]:
+    """Return y, sub_y, velocity_y, vertical_force, y_move_force, vfd, on_ground."""
+    vertical_force = _select_vertical_force(obs, jump)
+    vertical_force_down = obs.vertical_force_down if obs.vertical_force_down else GRAVITY_FALL
+    y, sub_y, velocity_y, y_move_force = _impose_gravity(
+        obs.y, obs.sub_y, obs.velocity_y, obs.y_move_force, vertical_force
+    )
+    y, sub_y, velocity_y, y_move_force, vertical_force, on_ground = _land_if_needed(
+        y, sub_y, velocity_y, y_move_force, vertical_force, obs.ground_y
+    )
+    return (
+        y,
+        sub_y,
+        velocity_y,
+        vertical_force,
+        y_move_force,
+        vertical_force_down,
+        on_ground,
+    )
 
 
 def step(obs: Observation, action: Sequence[int]) -> Observation:
@@ -174,15 +241,27 @@ def step(obs: Observation, action: Sequence[int]) -> Observation:
     sub_y = obs.sub_y
     velocity_y = obs.velocity_y
     vertical_force = obs.vertical_force
+    vertical_force_down = obs.vertical_force_down if obs.vertical_force_down else GRAVITY_FALL
+    y_move_force = obs.y_move_force
+    jump_origin_y = obs.jump_origin_y
     if on_ground and jump and not obs.a_held:
-        velocity_y = JUMP_SPEED
-        on_ground = False
-        y = obs.y + JUMP_SPEED
-        sub_y = 0
+        jump_origin_y = obs.y
         vertical_force = GRAVITY_HOLD_STEP
+        vertical_force_down = GRAVITY_FALL
+        y, sub_y, velocity_y, y_move_force = _impose_gravity(
+            obs.y, 0, JUMP_SPEED, 0, vertical_force
+        )
+        on_ground = False
     elif not on_ground:
-        y, sub_y, velocity_y, vertical_force, on_ground = _step_air(obs, jump)
-        # Air still uses the just-updated horizontal speed / position above.
+        (
+            y,
+            sub_y,
+            velocity_y,
+            vertical_force,
+            y_move_force,
+            vertical_force_down,
+            on_ground,
+        ) = _step_air(obs, jump)
 
     pose = obs.pose
     dead = obs.dead
@@ -216,6 +295,9 @@ def step(obs: Observation, action: Sequence[int]) -> Observation:
         a_held=jump,
         ground_y=obs.ground_y if obs.ground_y else DEFAULT_GROUND_Y,
         vertical_force=vertical_force,
+        vertical_force_down=vertical_force_down,
+        y_move_force=y_move_force,
+        jump_origin_y=jump_origin_y,
         oper_mode=obs.oper_mode,
         timer=obs.timer,
     )
