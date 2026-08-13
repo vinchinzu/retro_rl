@@ -453,6 +453,17 @@ def test_measure_segment_offline_walk_then_idle() -> None:
     assert _pack_for_test(first_idle) == _pack_for_test(last_walk) - WALK_ACCEL
 
 
+def test_measure_segment_offline_walk_left_and_air_xf() -> None:
+    left = measure_segment("walk_left", run_emulator=False)
+    long_jump = measure_segment("run_then_jump_long", run_emulator=False)
+    assert left.horizon == 25
+    assert left.approx_obs[1].velocity_x == -2
+    assert left.approx_obs[1].x_force == 0xD0
+    assert long_jump.horizon == 61
+    assert long_jump.approx_obs[32].velocity_x == WALK_MAX
+    assert long_jump.approx_obs[32].x_force == 12
+
+
 def test_run_then_idle_latches_running_speed_one_frame_late() -> None:
     """32f run: first idle still $98; GetPlayerAnimSpeed then latches → $D0."""
     start = level1_start_obs()
@@ -465,3 +476,47 @@ def test_run_then_idle_latches_running_speed_one_frame_late() -> None:
     assert first_idle.running_speed == RUN_SPEED_LATCH
     assert _pack_for_test(first_idle) == _pack_for_test(last_run) - WALK_ACCEL
     assert _pack_for_test(second_idle) == _pack_for_test(first_idle) - FRICTION
+
+
+def test_left_first_kick_subtracts_adder() -> None:
+    """From rest, LEFT is 0 - $0130 = $FED0 (vx=-2), not a mirrored -$0130."""
+    start = level1_start_obs()
+    frames = rollout(start, [press("LEFT")] * 4)
+    first = frames[1]
+    assert first.velocity_x == -2
+    assert first.x_force == 0xD0
+    assert first.x == start.x - 1
+    assert first.sub_x == 0xE0
+    assert first.facing == 2
+    second = frames[2]
+    assert second.velocity_x == -2
+    assert second.x_force == 0x38
+    assert second.sub_x == 0xC0
+    run = step(start, press("LEFT", "B"))
+    assert run.velocity_x == -2
+    assert run.x_force == 0xD0
+
+
+def test_air_walk_max_keeps_x_force() -> None:
+    """Hitting walk max $18 snaps vx only; leftover xf keeps accumulating."""
+    start = level1_start_obs()
+    frames = rollout(
+        start,
+        [press("RIGHT", "B")] * 16
+        + [press("RIGHT", "B", "A")] * 4
+        + [press("RIGHT", "B")] * 22,
+    )
+    pre = frames[31]
+    hit = frames[32]
+    nxt = frames[33]
+    assert pre.velocity_x == 23
+    assert pre.x_force == 116
+    assert hit.on_ground is False
+    assert hit.velocity_x == WALK_MAX
+    assert hit.x_force == 12
+    assert nxt.velocity_x == WALK_MAX
+    assert nxt.x_force == 164
+    land = frames[41]
+    assert land.on_ground is True
+    assert land.velocity_x == WALK_MAX
+    assert land.x_force == 100
