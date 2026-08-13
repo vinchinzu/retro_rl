@@ -422,19 +422,28 @@ class TestStubPredictor:
 
 
 class TestSmRevClient:
-    """Test SmRevClient stub (graceful unavailable handling)."""
+    """Test SmRevClient (graceful unavailable handling)."""
 
     def test_protocol_compliance(self) -> None:
         client = SmRevClient()
         assert isinstance(client, PhysicsPredictor)
 
     def test_name(self) -> None:
-        client = SmRevClient(binary_path="/path/to/sm_rev")
-        assert "sm_rev" in client.name()
+        client = SmRevClient(binary_path="/path/to/sm_rev_predict")
+        assert "sm_rev_predict" in client.name()
 
-    def test_predict_unavailable(self) -> None:
-        """Should raise when sm_rev binary is not available."""
-        client = SmRevClient(binary_path="/nonexistent/sm_rev")
+    def test_default_binary_name(self) -> None:
+        """Default binary should be sm_rev_predict."""
+        client = SmRevClient()
+        # Should use sm_rev_predict by default
+        assert "sm_rev_predict" in str(client._binary)
+
+    def test_predict_unavailable_raises_runtime_error(self) -> None:
+        """Should raise RuntimeError when sm_rev_predict binary is not available.
+        
+        This test proves CI stays green without the binary (graceful failure).
+        """
+        client = SmRevClient(binary_path="/nonexistent/sm_rev_predict")
         start = SimState(
             frame=0,
             room_id=0x91F8,
@@ -457,6 +466,7 @@ class TestSmRevClient:
         )
         inputs = [FrameInput(buttons=0)]
 
+        # Should raise RuntimeError, not crash tests
         with pytest.raises(RuntimeError, match="not available"):
             client.predict(start, inputs)
 
