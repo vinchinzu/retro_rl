@@ -44,6 +44,33 @@ This separation allows fast offline planning while ensuring production trajector
 they are NOT MiniStep-certified and should not be assumed to match MiniStep predictions without 
 emulator validation. Use them for movie replay and annotation, not as physics predictor input.
 
+### Observation Lattice (Bob's Locked Spec)
+
+Residual profiling uses a locked observation lattice to measure where MiniStep diverges from SuperMetroidEnv:
+
+**Observation levels (coarsest to finest):**
+- **Oπ (coarsest):** `($0AF6, $0AFA, $0A1C, $079B)` — pixels x/y, pose, room
+- **Oσ:** Oπ plus `($0AF8, $0AFC)` — subpixels
+- **Oσ+:** Oσ plus optional `($0F8C, $18A8)` — enemy energy / i-frames
+- **O† (separate):** `($09C2, dead)` — energy/death, NOT a coarsening of Oπ
+
+**Speeds** `($0B2C/$0B2E/$0B42/$0B44)` velocity/momentum live in first-differing-field tags, not a second σ+.
+
+**Residual profile R(τ):**
+- **fd_π:** first pixel/pose/room disagreement (Oπ break) — NOT "inputs diverge"
+- **fd_σ:** first fd_π or subpixel disagreement (Oσ break)
+- **fd_σ+:** first fd_σ or enemy energy/i-frame disagreement (Oσ+ break)
+- **fd_†:** first energy/death disagreement (O† break, separate)
+
+**Planner rules:**
+- **residual ≥ Oπ on horizon** (fd_π is None) → keep Mini/Stub as **search** model (NOT room_clear)
+- **Oσ broke, Oπ holds** (fd_σ not None, fd_π is None) → emu spot-check (`validate_trajectory_on_emulator`)
+- **$079B or O† break** (fd_π with ROOM cause, or fd_† not None) → hard-reject
+- **$1842/$09DA diverge** → tag `lag`, stop scoring later kinematics (desynced tape index)
+- **room_clear only from SuperMetroidEnv** — MiniStep/StubPredictor never certify room_clear
+
+See `snes/super_metroid/observation.py` and `snes/super_metroid/residual.py` for implementation.
+
 ## Architecture
 
 ```

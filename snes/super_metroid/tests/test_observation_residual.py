@@ -1,11 +1,12 @@
 """Tests for observation tuple and residual profiling.
 
-Pure offline tests — no ROM required. Validates:
-- Observation round-trip from SimState
-- Residual helper on synthetic traces
-- Hard-reject rules ($079B, death)
-- Lag desync detection
-- Oπ-agree/Oσ-disagree → spot_check
+Pure offline tests — no ROM required. Validates Bob's locked observation lattice:
+- Oπ (coarsest): pixels x/y, pose, room
+- Oσ: Oπ plus subpixels
+- Oσ+: Oσ plus optional enemy energy / i-frames
+- O† (separate): energy/death
+
+fd_π is first pixel/pose/room disagreement, NOT "inputs diverge."
 """
 
 from __future__ import annotations
@@ -26,14 +27,15 @@ from super_metroid.residual import (
 
 
 class TestObservation:
-    """Test Observation dataclass and conversions."""
+    """Test Observation dataclass per Bob's locked lattice."""
 
     def test_create_minimal(self) -> None:
         obs = Observation(
             frame=100,
-            room=0x91F8,
             x=400,
             y=200,
+            pose=0,
+            room=0x91F8,
             sub_x=0,
             sub_y=0,
             velocity_x=0,
@@ -42,25 +44,30 @@ class TestObservation:
             velocity_y_sub=0,
             momentum_x=0,
             momentum_x_sub=0,
-            pose=0,
             speed_counter=0,
             speed_flag=0,
             energy=100,
             frame_counter_1=1000,
             frame_counter_2=500,
         )
-        assert obs.frame == 100
-        assert obs.room == 0x91F8
+        # Oπ fields
         assert obs.x == 400
         assert obs.y == 200
+        assert obs.pose == 0
+        assert obs.room == 0x91F8
+        # Oσ fields
+        assert obs.sub_x == 0
+        assert obs.sub_y == 0
+        # O† fields
         assert obs.energy == 100
 
-    def test_to_dict_omits_empty_optional_fields(self) -> None:
+    def test_to_dict_omits_zero_optional_fields(self) -> None:
         obs = Observation(
             frame=100,
-            room=0x91F8,
             x=400,
             y=200,
+            pose=0,
+            room=0x91F8,
             sub_x=0,
             sub_y=0,
             velocity_x=0,
@@ -69,7 +76,6 @@ class TestObservation:
             velocity_y_sub=0,
             momentum_x=0,
             momentum_x_sub=0,
-            pose=0,
             speed_counter=0,
             speed_flag=0,
             energy=100,
@@ -77,17 +83,17 @@ class TestObservation:
             frame_counter_2=500,
         )
         data = obs.to_dict()
-        # Optional fields should be omitted when empty/zero
-        assert "enemies" not in data
+        # Oσ+ fields should be omitted when zero
+        assert "enemy_energy" not in data
         assert "invulnerability_timer" not in data
-        assert "knockback_timer" not in data
 
     def test_to_dict_includes_present_optional_fields(self) -> None:
         obs = Observation(
             frame=100,
-            room=0x91F8,
             x=400,
             y=200,
+            pose=0,
+            room=0x91F8,
             sub_x=0,
             sub_y=0,
             velocity_x=0,
@@ -96,28 +102,26 @@ class TestObservation:
             velocity_y_sub=0,
             momentum_x=0,
             momentum_x_sub=0,
-            pose=0,
             speed_counter=0,
             speed_flag=0,
             energy=100,
             frame_counter_1=1000,
             frame_counter_2=500,
-            enemies=({"id": 1, "x": 100, "y": 200},),
+            enemy_energy=50,
             invulnerability_timer=60,
-            knockback_timer=10,
         )
         data = obs.to_dict()
-        # Optional fields should be present
-        assert data["enemies"] == ({"id": 1, "x": 100, "y": 200},)
+        # Oσ+ fields should be present
+        assert data["enemy_energy"] == 50
         assert data["invulnerability_timer"] == 60
-        assert data["knockback_timer"] == 10
 
     def test_from_dict_roundtrip(self) -> None:
         obs = Observation(
             frame=100,
-            room=0x91F8,
             x=400,
             y=200,
+            pose=1,
+            room=0x91F8,
             sub_x=32768,
             sub_y=16384,
             velocity_x=2,
@@ -126,15 +130,13 @@ class TestObservation:
             velocity_y_sub=2000,
             momentum_x=5,
             momentum_x_sub=8192,
-            pose=1,
             speed_counter=3,
             speed_flag=1,
             energy=99,
             frame_counter_1=5000,
             frame_counter_2=2500,
-            enemies=({"id": 1, "x": 100, "y": 200},),
+            enemy_energy=50,
             invulnerability_timer=60,
-            knockback_timer=10,
         )
         data = obs.to_dict()
         restored = Observation.from_dict(data)
@@ -143,9 +145,10 @@ class TestObservation:
     def test_from_dict_with_missing_optional_fields(self) -> None:
         data = {
             "frame": 100,
-            "room": 0x91F8,
             "x": 400,
             "y": 200,
+            "pose": 0,
+            "room": 0x91F8,
             "sub_x": 0,
             "sub_y": 0,
             "velocity_x": 0,
@@ -154,7 +157,6 @@ class TestObservation:
             "velocity_y_sub": 0,
             "momentum_x": 0,
             "momentum_x_sub": 0,
-            "pose": 0,
             "speed_counter": 0,
             "speed_flag": 0,
             "energy": 100,
@@ -162,9 +164,8 @@ class TestObservation:
             "frame_counter_2": 500,
         }
         obs = Observation.from_dict(data)
-        assert obs.enemies == ()
+        assert obs.enemy_energy == 0
         assert obs.invulnerability_timer == 0
-        assert obs.knockback_timer == 0
 
     def test_from_sim_state(self) -> None:
         state = SimState(
@@ -188,23 +189,22 @@ class TestObservation:
             shinespark_timer=0,
         )
         obs = observation_from_sim_state(state)
-        assert obs.frame == 100
-        assert obs.room == 0x91F8
+        # Oπ fields
         assert obs.x == 400
         assert obs.y == 200
+        assert obs.pose == 1
+        assert obs.room == 0x91F8
+        # Oσ fields
         assert obs.sub_x == 32768
         assert obs.sub_y == 16384
+        # Speeds
         assert obs.velocity_x == 2
         assert obs.velocity_y == -3
-        assert obs.pose == 1
         assert obs.speed_counter == 3
         assert obs.speed_flag == 1
-        # SimState does not track energy/frame_counters
+        # SimState does not track O† or Oσ+
         assert obs.energy == 0
-        assert obs.frame_counter_1 == 0
-        assert obs.frame_counter_2 == 0
-        # SimState does not track enemies/i-frames
-        assert obs.enemies == ()
+        assert obs.enemy_energy == 0
         assert obs.invulnerability_timer == 0
 
     def test_from_trajectory_frame(self) -> None:
@@ -227,43 +227,41 @@ class TestObservation:
             speed_counter=2,
             speed_flag=0,
             shinespark_timer=0,
-            enemies=({"id": 1, "x": 100, "y": 200},),
         )
         obs = observation_from_trajectory_frame(frame)
-        assert obs.frame == 10
-        assert obs.room == 0x91F8
+        # Oπ fields
         assert obs.x == 450
         assert obs.y == 180
+        assert obs.pose == 1
+        assert obs.room == 0x91F8
+        # Oσ fields
         assert obs.sub_x == 1000
         assert obs.sub_y == 2000
-        assert obs.pose == 1
         assert obs.speed_counter == 2
-        # TrajectoryFrame does not track energy/frame_counters
+        # TrajectoryFrame does not track O† or Oσ+
         assert obs.energy == 0
-        assert obs.frame_counter_1 == 0
-        # TrajectoryFrame tracks enemies
-        assert obs.enemies == ({"id": 1, "x": 100, "y": 200},)
+        assert obs.enemy_energy == 0
 
 
 class TestResidualProfile:
-    """Test ResidualProfile dataclass."""
+    """Test ResidualProfile per Bob's locked lattice."""
 
     def test_create_unmeasured(self) -> None:
         profile = ResidualProfile.unmeasured_profile()
         assert profile.unmeasured is True
+        assert profile.fd_pi is None
         assert profile.fd_sigma is None
         assert profile.fd_sigma_plus is None
-        assert profile.fd_pi is None
         assert profile.fd_dagger is None
 
     def test_to_dict_roundtrip(self) -> None:
         profile = ResidualProfile(
-            fd_sigma_plus=None,
-            fd_sigma=10,
             fd_pi=None,
+            fd_sigma=10,
+            fd_sigma_plus=10,
             fd_dagger=None,
             cause=DivergenceCause.COLLISION,
-            first_diff_field="position",
+            first_diff_field="subpixels",
             unmeasured=False,
         )
         data = profile.to_dict()
@@ -271,21 +269,23 @@ class TestResidualProfile:
         assert restored == profile
 
     def test_should_hard_reject_room_divergence(self) -> None:
+        """Room ($079B) is part of Oπ — hard-reject on Oπ break."""
         profile = ResidualProfile(
-            fd_sigma_plus=None,
+            fd_pi=5,
             fd_sigma=5,
-            fd_pi=None,
+            fd_sigma_plus=5,
             fd_dagger=None,
-            cause=DivergenceCause.DOOR,
+            cause=DivergenceCause.ROOM,
             first_diff_field="room",
         )
         assert profile.should_hard_reject() is True
 
     def test_should_hard_reject_death_divergence(self) -> None:
+        """O† (death) is separate — hard-reject on O† break."""
         profile = ResidualProfile(
-            fd_sigma_plus=None,
-            fd_sigma=None,
             fd_pi=None,
+            fd_sigma=None,
+            fd_sigma_plus=None,
             fd_dagger=8,
             cause=None,
             first_diff_field=None,
@@ -293,67 +293,68 @@ class TestResidualProfile:
         assert profile.should_hard_reject() is True
 
     def test_should_not_hard_reject_collision(self) -> None:
+        """Subpixel collision (Oσ break, Oπ holds) is not hard-reject."""
         profile = ResidualProfile(
-            fd_sigma_plus=None,
-            fd_sigma=10,
             fd_pi=None,
+            fd_sigma=10,
+            fd_sigma_plus=10,
             fd_dagger=None,
             cause=DivergenceCause.COLLISION,
-            first_diff_field="position",
+            first_diff_field="subpixels",
         )
         assert profile.should_hard_reject() is False
 
     def test_needs_emulator_spot_check(self) -> None:
-        """Oσ broke, Oπ holds → emu spot-check."""
+        """Oσ broke, Oπ holds (subpixels diverge, pixels/pose/room agree) → spot-check."""
         profile = ResidualProfile(
-            fd_sigma_plus=None,
-            fd_sigma=10,
             fd_pi=None,
+            fd_sigma=10,
+            fd_sigma_plus=10,
             fd_dagger=None,
             cause=DivergenceCause.COLLISION,
-            first_diff_field="position",
+            first_diff_field="subpixels",
         )
         assert profile.needs_emulator_spot_check() is True
 
     def test_no_spot_check_when_hard_reject(self) -> None:
         profile = ResidualProfile(
-            fd_sigma_plus=None,
+            fd_pi=5,
             fd_sigma=5,
-            fd_pi=None,
+            fd_sigma_plus=5,
             fd_dagger=None,
-            cause=DivergenceCause.DOOR,
+            cause=DivergenceCause.ROOM,
             first_diff_field="room",
         )
         assert profile.needs_emulator_spot_check() is False
 
     def test_can_keep_as_search_model_when_pi_holds(self) -> None:
-        """Oπ holds for horizon → keep as search model."""
+        """Oπ holds for horizon (pixels/pose/room agree) → keep as search model."""
         profile = ResidualProfile(
-            fd_sigma_plus=None,
-            fd_sigma=10,
             fd_pi=None,
+            fd_sigma=10,
+            fd_sigma_plus=10,
             fd_dagger=None,
             cause=DivergenceCause.COLLISION,
-            first_diff_field="position",
+            first_diff_field="subpixels",
         )
         assert profile.can_keep_as_search_model() is True
 
     def test_cannot_keep_as_search_model_when_hard_reject(self) -> None:
         profile = ResidualProfile(
-            fd_sigma_plus=None,
+            fd_pi=5,
             fd_sigma=5,
-            fd_pi=None,
+            fd_sigma_plus=5,
             fd_dagger=None,
-            cause=DivergenceCause.DOOR,
+            cause=DivergenceCause.ROOM,
             first_diff_field="room",
         )
         assert profile.can_keep_as_search_model() is False
 
     def test_tag_lag_desync(self) -> None:
         profile = ResidualProfile(
-            fd_sigma_plus=None,
-            fd_sigma=3,
             fd_pi=None,
+            fd_sigma=3,
+            fd_sigma_plus=3,
             fd_dagger=None,
             cause=DivergenceCause.LAG,
             first_diff_field="frame_counter",
@@ -362,27 +363,28 @@ class TestResidualProfile:
 
     def test_no_lag_desync_on_collision(self) -> None:
         profile = ResidualProfile(
-            fd_sigma_plus=None,
-            fd_sigma=10,
             fd_pi=None,
+            fd_sigma=10,
+            fd_sigma_plus=10,
             fd_dagger=None,
             cause=DivergenceCause.COLLISION,
-            first_diff_field="position",
+            first_diff_field="subpixels",
         )
         assert profile.tag_lag_desync() is False
 
 
 class TestComputeResidualProfile:
-    """Test compute_residual_profile on synthetic traces."""
+    """Test compute_residual_profile per Bob's locked lattice."""
 
     def test_unmeasured_when_emu_obs_is_none(self) -> None:
         """When emu_obs is None, return unmeasured profile."""
         mini_obs = [
             Observation(
                 frame=i,
-                room=0x91F8,
                 x=100 + i,
                 y=200,
+                pose=0,
+                room=0x91F8,
                 sub_x=0,
                 sub_y=0,
                 velocity_x=1,
@@ -391,7 +393,6 @@ class TestComputeResidualProfile:
                 velocity_y_sub=0,
                 momentum_x=1,
                 momentum_x_sub=0,
-                pose=0,
                 speed_counter=0,
                 speed_flag=0,
                 energy=99,
@@ -402,16 +403,17 @@ class TestComputeResidualProfile:
         ]
         profile = compute_residual_profile(mini_obs, None)
         assert profile.unmeasured is True
-        assert profile.fd_sigma is None
+        assert profile.fd_pi is None
 
     def test_agree_for_horizon(self) -> None:
         """When Mini and Emu agree for horizon, fd fields are None."""
         obs_list = [
             Observation(
                 frame=i,
-                room=0x91F8,
                 x=100 + i,
                 y=200,
+                pose=0,
+                room=0x91F8,
                 sub_x=0,
                 sub_y=0,
                 velocity_x=1,
@@ -420,7 +422,6 @@ class TestComputeResidualProfile:
                 velocity_y_sub=0,
                 momentum_x=1,
                 momentum_x_sub=0,
-                pose=0,
                 speed_counter=0,
                 speed_flag=0,
                 energy=99,
@@ -431,18 +432,20 @@ class TestComputeResidualProfile:
         ]
         profile = compute_residual_profile(obs_list, obs_list)
         assert profile.unmeasured is False
+        assert profile.fd_pi is None
         assert profile.fd_sigma is None
         assert profile.fd_sigma_plus is None
         assert profile.fd_dagger is None
 
     def test_room_divergence_hard_reject(self) -> None:
-        """$079B divergence → hard-reject."""
+        """Room ($079B) is part of Oπ — fd_pi set on room divergence."""
         mini_obs = [
             Observation(
                 frame=i,
-                room=0x91F8,
                 x=100 + i,
                 y=200,
+                pose=0,
+                room=0x91F8,
                 sub_x=0,
                 sub_y=0,
                 velocity_x=1,
@@ -451,7 +454,6 @@ class TestComputeResidualProfile:
                 velocity_y_sub=0,
                 momentum_x=1,
                 momentum_x_sub=0,
-                pose=0,
                 speed_counter=0,
                 speed_flag=0,
                 energy=99,
@@ -462,23 +464,26 @@ class TestComputeResidualProfile:
         ]
         # Emulator transitions to different room at frame 5
         emu_obs = [
-            obs if i < 5 else obs.to_dict() and Observation(**{**obs.to_dict(), "room": 0xA000})
+            obs if i < 5 else Observation(**{**obs.to_dict(), "room": 0xA000})
             for i, obs in enumerate(mini_obs)
         ]
         profile = compute_residual_profile(mini_obs, emu_obs)
-        assert profile.fd_sigma == 5
-        assert profile.cause == DivergenceCause.DOOR
+        assert profile.fd_pi == 5  # Oπ broke (room)
+        assert profile.fd_sigma == 5  # Oσ also broke (Oσ includes Oπ)
+        assert profile.fd_sigma_plus == 5  # Oσ+ also broke (Oσ+ includes Oσ)
+        assert profile.cause == DivergenceCause.ROOM
         assert profile.first_diff_field == "room"
         assert profile.should_hard_reject() is True
 
     def test_death_divergence_hard_reject(self) -> None:
-        """O† (death / $09C2=0) → hard-reject."""
+        """O† (death / $09C2=0) is separate — hard-reject on O† break."""
         mini_obs = [
             Observation(
                 frame=i,
-                room=0x91F8,
                 x=100 + i,
                 y=200,
+                pose=0,
+                room=0x91F8,
                 sub_x=0,
                 sub_y=0,
                 velocity_x=1,
@@ -487,7 +492,6 @@ class TestComputeResidualProfile:
                 velocity_y_sub=0,
                 momentum_x=1,
                 momentum_x_sub=0,
-                pose=0,
                 speed_counter=0,
                 speed_flag=0,
                 energy=99,
@@ -506,13 +510,14 @@ class TestComputeResidualProfile:
         assert profile.should_hard_reject() is True
 
     def test_lag_desync_tag(self) -> None:
-        """$1842/$09DA diverge → tag `lag`, stop scoring later kinematics."""
+        """$1842/$09DA diverge → tag `lag`, stop scoring kinematics."""
         mini_obs = [
             Observation(
                 frame=i,
-                room=0x91F8,
                 x=100 + i,
                 y=200,
+                pose=0,
+                room=0x91F8,
                 sub_x=0,
                 sub_y=0,
                 velocity_x=1,
@@ -521,7 +526,6 @@ class TestComputeResidualProfile:
                 velocity_y_sub=0,
                 momentum_x=1,
                 momentum_x_sub=0,
-                pose=0,
                 speed_counter=0,
                 speed_flag=0,
                 energy=99,
@@ -536,19 +540,21 @@ class TestComputeResidualProfile:
             for i, obs in enumerate(mini_obs)
         ]
         profile = compute_residual_profile(mini_obs, emu_obs)
-        assert profile.fd_sigma == 3
+        assert profile.fd_pi is None  # Oπ holds (pixels/pose/room agree)
+        assert profile.fd_sigma == 3  # Oσ broke (frame counter diverged)
         assert profile.cause == DivergenceCause.LAG
         assert profile.first_diff_field == "frame_counter"
         assert profile.tag_lag_desync() is True
 
-    def test_collision_divergence_spot_check(self) -> None:
-        """Oσ broke (position), Oπ holds → emu spot_check."""
+    def test_pixel_divergence_pi_break(self) -> None:
+        """Pixels x/y are part of Oπ — fd_pi set on pixel divergence."""
         mini_obs = [
             Observation(
                 frame=i,
-                room=0x91F8,
                 x=100 + i,
                 y=200,
+                pose=0,
+                room=0x91F8,
                 sub_x=0,
                 sub_y=0,
                 velocity_x=1,
@@ -557,7 +563,6 @@ class TestComputeResidualProfile:
                 velocity_y_sub=0,
                 momentum_x=1,
                 momentum_x_sub=0,
-                pose=0,
                 speed_counter=0,
                 speed_flag=0,
                 energy=99,
@@ -566,26 +571,26 @@ class TestComputeResidualProfile:
             )
             for i in range(10)
         ]
-        # Emulator position diverges at frame 4
+        # Emulator pixels diverge at frame 4
         emu_obs = [
             obs if i < 4 else Observation(**{**obs.to_dict(), "x": 100 + i + 1})
             for i, obs in enumerate(mini_obs)
         ]
         profile = compute_residual_profile(mini_obs, emu_obs)
-        assert profile.fd_sigma == 4
+        assert profile.fd_pi == 4  # Oπ broke (pixels)
+        assert profile.fd_sigma == 4  # Oσ also broke
         assert profile.cause == DivergenceCause.COLLISION
-        assert profile.first_diff_field == "position"
-        assert profile.needs_emulator_spot_check() is True
-        assert profile.can_keep_as_search_model() is True  # Oπ holds
+        assert profile.first_diff_field == "pixels"
 
-    def test_knockback_divergence_sigma_plus(self) -> None:
-        """Enemies/i-frames diverge → fd_σ+."""
+    def test_subpixel_divergence_sigma_break_pi_holds(self) -> None:
+        """Subpixels are Oσ (not Oπ) — Oσ broke, Oπ holds → spot_check."""
         mini_obs = [
             Observation(
                 frame=i,
-                room=0x91F8,
                 x=100 + i,
                 y=200,
+                pose=0,
+                room=0x91F8,
                 sub_x=0,
                 sub_y=0,
                 velocity_x=1,
@@ -594,22 +599,60 @@ class TestComputeResidualProfile:
                 velocity_y_sub=0,
                 momentum_x=1,
                 momentum_x_sub=0,
-                pose=0,
                 speed_counter=0,
                 speed_flag=0,
                 energy=99,
                 frame_counter_1=i,
                 frame_counter_2=i,
-                invulnerability_timer=0,
             )
             for i in range(10)
         ]
-        # Emulator i-frame timer kicks in at frame 2
+        # Emulator subpixels diverge at frame 4
         emu_obs = [
-            obs if i < 2 else Observation(**{**obs.to_dict(), "invulnerability_timer": 60})
+            obs if i < 4 else Observation(**{**obs.to_dict(), "sub_x": 1000})
             for i, obs in enumerate(mini_obs)
         ]
         profile = compute_residual_profile(mini_obs, emu_obs)
-        assert profile.fd_sigma_plus == 2
-        assert profile.cause == DivergenceCause.KNOCKBACK
-        assert profile.first_diff_field == "invulnerability"
+        assert profile.fd_pi is None  # Oπ holds (pixels/pose/room agree)
+        assert profile.fd_sigma == 4  # Oσ broke (subpixels diverged)
+        assert profile.fd_sigma_plus == 4  # Oσ+ also broke
+        assert profile.cause == DivergenceCause.COLLISION
+        assert profile.first_diff_field == "subpixels"
+        assert profile.needs_emulator_spot_check() is True
+        assert profile.can_keep_as_search_model() is True  # Oπ holds
+
+    def test_enemy_energy_divergence_sigma_plus(self) -> None:
+        """Enemy energy is Oσ+ — fd_σ+ set when enemy energy diverges."""
+        mini_obs = [
+            Observation(
+                frame=i,
+                x=100 + i,
+                y=200,
+                pose=0,
+                room=0x91F8,
+                sub_x=0,
+                sub_y=0,
+                velocity_x=1,
+                velocity_y=0,
+                velocity_x_sub=0,
+                velocity_y_sub=0,
+                momentum_x=1,
+                momentum_x_sub=0,
+                speed_counter=0,
+                speed_flag=0,
+                energy=99,
+                frame_counter_1=i,
+                frame_counter_2=i,
+                enemy_energy=0,
+            )
+            for i in range(10)
+        ]
+        # Emulator enemy energy kicks in at frame 2
+        emu_obs = [
+            obs if i < 2 else Observation(**{**obs.to_dict(), "enemy_energy": 50})
+            for i, obs in enumerate(mini_obs)
+        ]
+        profile = compute_residual_profile(mini_obs, emu_obs)
+        assert profile.fd_pi is None  # Oπ holds
+        assert profile.fd_sigma is None  # Oσ holds
+        assert profile.fd_sigma_plus == 2  # Oσ+ broke (enemy energy)

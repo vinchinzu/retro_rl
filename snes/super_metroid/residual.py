@@ -1,18 +1,22 @@
 """Residual profiling for physics sim vs emulator validation.
 
 Records R(τ) = (fd_σ+, fd_σ, fd_π, fd_†) — first-difference frames where
-MiniStep trajectory diverges from SuperMetroidEnv replay. Enables:
-- Spotting collision / lag / knockback mismatches
-- Keeping MiniStep as search model when Oπ holds for horizon
-- Hard-rejecting room/death divergence
-- Emulator spot-checks when Oσ breaks but Oπ holds
+MiniStep trajectory diverges from SuperMetroidEnv replay.
 
-Rules (from task):
+Bob's locked observation lattice:
+- Oπ (coarsest): ($0AF6, $0AFA, $0A1C, $079B) pixels x/y, pose, room
+- Oσ: Oπ plus ($0AF8, $0AFC) subpixels
+- Oσ+: Oσ plus optional ($0F8C, $18A8) enemy energy / i-frames
+- O† (separate): ($09C2, dead) energy/death
+
+fd_π is first pixel/pose/room disagreement, NOT "inputs diverge."
+
+Planner rules:
 - residual ≥ Oπ on horizon → keep Mini/Stub as **search** model (NOT room_clear)
 - Oσ broke, Oπ holds → emu spot-check (`validate_trajectory_on_emulator`)
-- $079B or O† (death / $09C2) → hard-reject
-- $1842/$09DA diverge → tag `lag`, stop scoring later kinematics (desynced tape index)
-- room_clear only from `validate_trajectory_on_emulator` (E = SuperMetroidEnv, not SMEDIT snes9x)
+- $079B or O† (death / $09C2) → hard-reject (Oπ or O† break)
+- $1842/$09DA diverge → tag `lag`, stop scoring later kinematics
+- room_clear only from `validate_trajectory_on_emulator` (E = SuperMetroidEnv)
 
 **Until sm_rev --load-state is available, do not fake fd frames** — emit
 "unmeasured" / omit fd, never invented numbers.
@@ -34,12 +38,15 @@ __all__ = [
 
 
 class DivergenceCause(Enum):
-    """Probable cause tag for first WRAM field difference."""
+    """Probable cause tag for first WRAM field difference.
+    
+    Speeds ($0B2C/$0B2E/$0B42/$0B44) live in first-differing-field tags.
+    """
 
     COLLISION = "collision"
     LAG = "lag"
-    DOOR = "door"
-    KNOCKBACK = "knockback"
+    ROOM = "room"
+    VELOCITY = "velocity"
     OTHER = "other"
 
 
@@ -47,20 +54,21 @@ class DivergenceCause(Enum):
 class ResidualProfile:
     """Residual R(τ) profile for Mini/Stub vs SuperMetroidEnv trajectory.
 
-    Records first-difference frames for each observation level:
-    - fd_σ+: enemies/i-frames diverge
-    - fd_σ: core kinematics diverge (x/y/vel/pose/room/energy)
-    - fd_π: inputs diverge (should never happen for same tape)
-    - fd_†: death/energy=0 diverge
+    Records first-difference frames for Bob's locked observation lattice:
+    - fd_π: pixels x/y, pose, room diverge (Oπ break)
+    - fd_σ: fd_π or subpixels diverge (Oσ break)
+    - fd_σ+: fd_σ or enemy energy / i-frames diverge (Oσ+ break)
+    - fd_†: energy/death diverge (O† break, separate from Oπ)
 
     When fd is None, that level agrees for the entire horizon or is unmeasured.
+    fd_π is first pixel/pose/room disagreement, NOT "inputs diverge."
     """
 
     # First-difference frames (None = agrees for horizon or unmeasured)
-    fd_sigma_plus: int | None
-    fd_sigma: int | None
-    fd_pi: int | None
-    fd_dagger: int | None
+    fd_pi: int | None  # Oπ: pixels x/y, pose, room
+    fd_sigma: int | None  # Oσ: Oπ plus subpixels
+    fd_sigma_plus: int | None  # Oσ+: Oσ plus enemy energy / i-frames
+    fd_dagger: int | None  # O†: energy/death (separate)
 
     # Probable cause + first differing field (when fd_sigma is not None)
     cause: DivergenceCause | None
@@ -71,9 +79,9 @@ class ResidualProfile:
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
-            "fd_sigma_plus": self.fd_sigma_plus,
-            "fd_sigma": self.fd_sigma,
             "fd_pi": self.fd_pi,
+            "fd_sigma": self.fd_sigma,
+            "fd_sigma_plus": self.fd_sigma_plus,
             "fd_dagger": self.fd_dagger,
             "unmeasured": self.unmeasured,
         }
@@ -91,9 +99,9 @@ class ResidualProfile:
             else None
         )
         return cls(
-            fd_sigma_plus=data["fd_sigma_plus"],
-            fd_sigma=data["fd_sigma"],
             fd_pi=data["fd_pi"],
+            fd_sigma=data["fd_sigma"],
+            fd_sigma_plus=data["fd_sigma_plus"],
             fd_dagger=data["fd_dagger"],
             cause=cause,
             first_diff_field=data.get("first_diff_field"),
@@ -104,9 +112,9 @@ class ResidualProfile:
     def unmeasured_profile(cls) -> ResidualProfile:
         """Return unmeasured profile (start cannot be loaded on both sides)."""
         return cls(
-            fd_sigma_plus=None,
-            fd_sigma=None,
             fd_pi=None,
+            fd_sigma=None,
+            fd_sigma_plus=None,
             fd_dagger=None,
             cause=None,
             first_diff_field=None,
@@ -117,12 +125,12 @@ class ResidualProfile:
         """Return True if trajectory should be hard-rejected.
 
         Hard-reject when:
-        - Room ($079B) diverged (fd_sigma is not None and cause is DOOR)
+        - Room ($079B) diverged (fd_pi is not None and cause is ROOM)
         - Death/energy diverged (fd_dagger is not None)
         """
         if self.fd_dagger is not None:
             return True
-        if self.fd_sigma is not None and self.cause is DivergenceCause.DOOR:
+        if self.fd_pi is not None and self.cause is DivergenceCause.ROOM:
             return True
         return False
 
@@ -131,7 +139,7 @@ class ResidualProfile:
 
         Spot-check when:
         - Oσ broke (fd_sigma is not None)
-        - Oπ holds (fd_pi is None)
+        - Oπ holds (fd_pi is None) — pixels/pose/room agree
         - Not hard-rejected
         """
         if self.unmeasured:
@@ -144,7 +152,7 @@ class ResidualProfile:
         """Return True if Mini/Stub can be kept as search model.
 
         Keep as search model when:
-        - Oπ holds for horizon (fd_pi is None)
+        - Oπ holds for horizon (fd_pi is None) — pixels/pose/room agree
         - Not hard-rejected
 
         Note: This does NOT mean room_clear — that requires emulator validation.
@@ -169,6 +177,12 @@ def compute_residual_profile(
 ) -> ResidualProfile:
     """Compute residual profile R(τ) between Mini/Stub and emulator trajectories.
 
+    Uses Bob's locked observation lattice:
+    - fd_π: first pixel/pose/room disagreement (Oπ break)
+    - fd_σ: first fd_π or subpixel disagreement (Oσ break)
+    - fd_σ+: first fd_σ or enemy energy/i-frame disagreement (Oσ+ break)
+    - fd_†: first energy/death disagreement (O† break, separate)
+
     Args:
         mini_obs: Observations from MiniStep/Stub predictor
         emu_obs: Observations from emulator replay, or None when unmeasured
@@ -187,11 +201,11 @@ def compute_residual_profile(
     if horizon == 0:
         return ResidualProfile.unmeasured_profile()
 
-    # Find first-difference frames
-    fd_sigma_plus: int | None = None
-    fd_sigma: int | None = None
-    fd_pi: int | None = None
-    fd_dagger: int | None = None
+    # Find first-difference frames per Bob's locked lattice
+    fd_pi: int | None = None  # Oπ: pixels x/y, pose, room
+    fd_sigma: int | None = None  # Oσ: Oπ plus subpixels
+    fd_sigma_plus: int | None = None  # Oσ+: Oσ plus enemy energy / i-frames
+    fd_dagger: int | None = None  # O†: energy/death (separate)
     cause: DivergenceCause | None = None
     first_diff_field: str | None = None
 
@@ -199,7 +213,7 @@ def compute_residual_profile(
         m = mini_obs[i]
         e = emu_obs[i]
 
-        # Check O† (death/energy)
+        # Check O† (death/energy) — separate from Oπ
         if fd_dagger is None:
             if m.energy != e.energy or (m.energy == 0) != (e.energy == 0):
                 fd_dagger = i
@@ -207,28 +221,40 @@ def compute_residual_profile(
                     first_diff_field = "energy"
                     cause = DivergenceCause.OTHER
 
-        # Check Oσ (core kinematics)
-        if fd_sigma is None:
+        # Check Oπ (pixels x/y, pose, room) — coarsest level
+        if fd_pi is None:
             # Check room first (high priority for hard-reject)
             if m.room != e.room:
-                fd_sigma = i
+                fd_pi = i
                 first_diff_field = "room"
-                cause = DivergenceCause.DOOR
+                cause = DivergenceCause.ROOM
+            # Check pixels x/y
+            elif m.x != e.x or m.y != e.y:
+                fd_pi = i
+                first_diff_field = "pixels"
+                cause = DivergenceCause.COLLISION
+            # Check pose
+            elif m.pose != e.pose:
+                fd_pi = i
+                first_diff_field = "pose"
+                cause = DivergenceCause.OTHER
+
+        # Check Oσ (Oπ plus subpixels)
+        if fd_sigma is None:
+            # If Oπ broke, Oσ also broke
+            if fd_pi is not None:
+                fd_sigma = fd_pi
+            # Check subpixels
+            elif m.sub_x != e.sub_x or m.sub_y != e.sub_y:
+                fd_sigma = i
+                first_diff_field = "subpixels"
+                cause = DivergenceCause.COLLISION
             # Check frame counters (lag detection)
             elif m.frame_counter_1 != e.frame_counter_1 or m.frame_counter_2 != e.frame_counter_2:
                 fd_sigma = i
                 first_diff_field = "frame_counter"
                 cause = DivergenceCause.LAG
-            # Check position
-            elif m.x != e.x or m.y != e.y:
-                fd_sigma = i
-                first_diff_field = "position"
-                cause = DivergenceCause.COLLISION
-            elif m.sub_x != e.sub_x or m.sub_y != e.sub_y:
-                fd_sigma = i
-                first_diff_field = "subpixel"
-                cause = DivergenceCause.COLLISION
-            # Check velocity
+            # Check velocity (speeds live in first-differing-field)
             elif (
                 m.velocity_x != e.velocity_x
                 or m.velocity_y != e.velocity_y
@@ -237,43 +263,32 @@ def compute_residual_profile(
             ):
                 fd_sigma = i
                 first_diff_field = "velocity"
-                cause = DivergenceCause.COLLISION
-            # Check momentum
+                cause = DivergenceCause.VELOCITY
+            # Check momentum (speeds live in first-differing-field)
             elif m.momentum_x != e.momentum_x or m.momentum_x_sub != e.momentum_x_sub:
                 fd_sigma = i
                 first_diff_field = "momentum"
-                cause = DivergenceCause.COLLISION
-            # Check pose
-            elif m.pose != e.pose:
-                fd_sigma = i
-                first_diff_field = "pose"
-                cause = DivergenceCause.OTHER
+                cause = DivergenceCause.VELOCITY
 
-        # Check Oσ+ (enemies/i-frames)
+        # Check Oσ+ (Oσ plus enemy energy / i-frames)
         if fd_sigma_plus is None:
-            # Check i-frame timers
-            if (
-                m.invulnerability_timer != e.invulnerability_timer
-                or m.knockback_timer != e.knockback_timer
+            # If Oσ broke, Oσ+ also broke
+            if fd_sigma is not None:
+                fd_sigma_plus = fd_sigma
+            # Check enemy energy / i-frames
+            elif (
+                m.enemy_energy != e.enemy_energy
+                or m.invulnerability_timer != e.invulnerability_timer
             ):
                 fd_sigma_plus = i
                 if first_diff_field is None:
-                    first_diff_field = "invulnerability"
-                    cause = DivergenceCause.KNOCKBACK
-            # Check enemy count
-            elif len(m.enemies) != len(e.enemies):
-                fd_sigma_plus = i
-                if first_diff_field is None:
-                    first_diff_field = "enemy_count"
+                    first_diff_field = "enemy_energy_or_invulnerability"
                     cause = DivergenceCause.OTHER
 
-        # Note: fd_pi (input divergence) not checked here — requires separate
-        # input tape comparison. Should never happen for same tape.
-
     return ResidualProfile(
-        fd_sigma_plus=fd_sigma_plus,
-        fd_sigma=fd_sigma,
         fd_pi=fd_pi,
+        fd_sigma=fd_sigma,
+        fd_sigma_plus=fd_sigma_plus,
         fd_dagger=fd_dagger,
         cause=cause,
         first_diff_field=first_diff_field,
