@@ -6,6 +6,17 @@ This document describes how hop and takeoff planning uses `PhysicsPredictor` for
 
 The physics predictor enables route planning to evaluate hop candidates **without full emulation**. Planners query predicted trajectories to assess feasibility, optimize input sequences, and validate kinematics constraints.
 
+### Important: Predictor vs Emulator Ground Truth
+
+**StubPredictor and MiniStep are for search speed only, not ground truth.**
+
+- **Planning phase**: Use predictor for fast candidate evaluation
+- **Validation phase**: Run winning inputs on real emulator (stable-retro / SMEDIT snes9x)
+- **Conflict resolution**: If predictor and emulator disagree, **emulator wins**
+- **Room-clear claims**: Require emulator validation path (skip/xfail without ROM in CI is fine)
+
+This separation allows fast offline planning while ensuring production trajectories are emulator-verified.
+
 ## Architecture
 
 ```
@@ -99,6 +110,28 @@ uv run pytest snes/super_metroid/tests/test_physics_sim.py -v
 3. Custom predictors can be injected
 4. Door kinematics → trajectory conversion works
 
+**These tests validate the planning layer only**, not physics accuracy.
+
+### Emulator Validation (Ground Truth)
+
+Room-clear claims require emulator validation:
+
+```python
+# 1. Plan with predictor (fast search)
+evaluator = TrajectoryEvaluator(StubPredictor())
+candidate = evaluator.evaluate_hop(takeoff, start, inputs)
+
+if candidate.feasible:
+    # 2. Validate on real emulator (ground truth)
+    result = run_on_emulator(candidate.inputs)
+    if result.success:
+        print("Room clear: emulator-verified")
+    else:
+        print("Predictor was wrong, discard candidate")
+```
+
+**Emulator validation tests** can use `pytest.mark.skipif(not ROM_AVAILABLE)` or `xfail` to pass in CI without ROM.
+
 ### Production Predictors
 
 When `SM_REV_PATH` is available:
@@ -106,7 +139,7 @@ When `SM_REV_PATH` is available:
 ```python
 from super_metroid.physics_sim import load_predictor
 
-# Auto-detect backend
+# Auto-detect backend (still needs emulator validation)
 predictor = load_predictor("sm_rev")  # Uses SM_REV_PATH env var
 evaluator = TrajectoryEvaluator(predictor)
 ```
@@ -151,10 +184,11 @@ trajectory = evaluator.evaluate_door_transition(door_leave_kin, inputs)
 
 ### StubPredictor (Default)
 
-- **Purpose**: Offline testing, CI, development
+- **Purpose**: Fast search, offline testing, CI
 - **Physics**: Simplified (linear motion, fake gravity)
 - **Deterministic**: Yes (same inputs → same trajectory)
 - **ROM required**: No
+- **Ground truth**: ❌ No - for search speed only
 
 ```python
 from super_metroid.physics_sim import StubPredictor
@@ -162,12 +196,17 @@ from super_metroid.physics_sim import StubPredictor
 predictor = StubPredictor(name="test")
 ```
 
+**Use for**: Candidate filtering, unit tests, CI without ROM
+
+**Do not use for**: Final validation, room-clear claims
+
 ### SmRevClient (Production)
 
-- **Purpose**: Accurate Super Metroid physics
-- **Physics**: MiniStep-based (frame-perfect)
+- **Purpose**: Better physics approximation for search
+- **Physics**: MiniStep-based (closer to SM, but still approximate)
 - **Backend**: External `sm_rev` binary (subprocess)
 - **ROM required**: Yes (sm_rev needs ROM)
+- **Ground truth**: ❌ No - still needs emulator validation
 
 ```python
 from super_metroid.physics_sim import SmRevClient
@@ -177,12 +216,30 @@ predictor = SmRevClient()  # Uses SM_REV_PATH env var
 predictor = SmRevClient(binary_path="/path/to/sm_rev")
 ```
 
+**Use for**: Better search heuristics than StubPredictor
+
+**Do not use for**: Final validation without emulator confirmation
+
+### Emulator (Ground Truth)
+
+- **Purpose**: Final validation, room-clear claims
+- **Physics**: Real Super Metroid (stable-retro / SMEDIT snes9x)
+- **Deterministic**: Yes (real game physics)
+- **ROM required**: Yes
+- **Ground truth**: ✅ Yes - authoritative
+
+**Use for**: All production claims, room-clear validation
+
+**Conflict resolution**: When predictor and emulator disagree, emulator wins.
+
 ## Design Principles
 
 1. **Protocol-based**: `PhysicsPredictor` is an ABC; new backends just implement `predict()`
 2. **Test-first**: All planning tests work offline with `StubPredictor`
 3. **Layered**: Planning imports `hop_planning`, not `physics_sim` directly
 4. **Trajectory as data**: Results are `Trajectory` dataclasses (serializable, inspectable)
+5. **Search vs validation split**: Predictor for fast search, emulator for ground truth
+6. **Emulator authority**: When predictor and emulator disagree, emulator wins
 
 ## Future Extensions
 
@@ -230,10 +287,33 @@ if feasible:
 
 ## CI / Test Requirements
 
+### Unit Tests (Always Run)
+
 - **Offline tests only**: No ROM, no sm_rev binary
 - **Fast**: StubPredictor is deterministic and instant
 - **Coverage**: Proves predictor is called and results are used
 - **No mocks**: Use real `StubPredictor` (builder pattern)
+
+### Emulator Validation Tests (ROM Required)
+
+- **Mark with**: `@pytest.mark.skipif(not ROM_AVAILABLE)` or `@pytest.mark.xfail`
+- **Purpose**: Validate winning candidates on real emulator
+- **Ground truth**: Emulator result is authoritative
+- **CI**: Can skip/xfail without ROM
+
+Example:
+
+```python
+import pytest
+from super_metroid.emulator import ROM_AVAILABLE, run_on_emulator
+
+@pytest.mark.skipif(not ROM_AVAILABLE, reason="ROM not available")
+def test_ceres_morph_room_clear():
+    """Validate Ceres→Morph trajectory on real emulator."""
+    candidate = plan_ceres_to_morph()  # Uses predictor
+    result = run_on_emulator(candidate.inputs)  # Ground truth
+    assert result.room_id == MORPH_ROOM_ID
+```
 
 ## Questions / Support
 
