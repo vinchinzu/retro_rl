@@ -474,28 +474,31 @@ class StubPredictor(PhysicsPredictor):
 
 
 class SmRevClient(PhysicsPredictor):
-    """Client stub for sm_rev external predict binary/library.
+    """Client for sm_rev_predict external physics predictor.
 
-    Calls sm_rev MiniStep-based physics predictor when available.
-    Gracefully skips if sm_rev binary is not found (for tests/CI).
+    Calls sm_rev MiniStep-based physics predictor for better search heuristics.
+    Gracefully raises RuntimeError if binary not available (CI stays green).
+
+    IMPORTANT: sm_rev/MiniStep is for search speed only, NOT ground truth.
+    Final validation requires emulator (stable-retro / SMEDIT snes9x).
 
     Environment:
-        SM_REV_PATH: Path to sm_rev predict binary (default: sm_rev in PATH)
+        SM_REV_PATH: Path to sm_rev_predict binary (default: sm_rev_predict in PATH)
     """
 
     def __init__(self, binary_path: str | Path | None = None) -> None:
         """Initialize sm_rev client.
 
         Args:
-            binary_path: Path to sm_rev predict binary, or None to use
-                        SM_REV_PATH env var or 'sm_rev' in PATH
+            binary_path: Path to sm_rev_predict binary, or None to use
+                        SM_REV_PATH env var or 'sm_rev_predict' in PATH
         """
         if binary_path is None:
-            binary_path = os.environ.get("SM_REV_PATH", "sm_rev")
-        self._binary = Path(binary_path)
+            binary_path = os.environ.get("SM_REV_PATH", "sm_rev_predict")
+        self._binary = Path(binary_path) if isinstance(binary_path, str) else binary_path
 
     def _is_available(self) -> bool:
-        """Check if sm_rev binary is available."""
+        """Check if sm_rev_predict binary is available."""
         try:
             result = subprocess.run(
                 [str(self._binary), "--version"],
@@ -510,26 +513,40 @@ class SmRevClient(PhysicsPredictor):
     def predict(
         self, start: SimState, inputs: Sequence[FrameInput]
     ) -> Trajectory:
-        """Predict trajectory using sm_rev external binary.
+        """Predict trajectory using sm_rev_predict external binary.
+
+        Note: sm_rev/MiniStep is for search speed only, NOT ground truth.
+        Winners must be validated on emulator (stable-retro / SMEDIT snes9x).
 
         Raises:
-            RuntimeError: If sm_rev binary is not available or fails
+            RuntimeError: If sm_rev_predict binary is not available or fails
         """
         if not self._is_available():
             raise RuntimeError(
-                f"sm_rev binary not available at {self._binary}. "
-                "Set SM_REV_PATH env var or ensure sm_rev is in PATH."
+                f"sm_rev_predict binary not available at {self._binary}. "
+                "Set SM_REV_PATH env var or ensure sm_rev_predict is in PATH."
             )
 
-        # Prepare input JSON for sm_rev
+        # Prepare input JSON for sm_rev_predict
         request = {
             "start": start.to_dict(),
             "inputs": [inp.to_dict() for inp in inputs],
         }
 
+        # Invoke binary (with or without 'predict' subcommand)
+        # sm_rev_predict accepts both `sm_rev_predict` and `sm_rev_predict predict`
+        binary_name = self._binary.name if hasattr(self._binary, 'name') else str(self._binary)
+        
+        # If binary is named sm_rev_predict, invoke without subcommand
+        # Otherwise include 'predict' subcommand for compatibility
+        if 'sm_rev_predict' in binary_name:
+            cmd = [str(self._binary)]
+        else:
+            cmd = [str(self._binary), "predict"]
+
         try:
             result = subprocess.run(
-                [str(self._binary), "predict"],
+                cmd,
                 input=json.dumps(request).encode(),
                 capture_output=True,
                 timeout=30,
@@ -539,13 +556,13 @@ class SmRevClient(PhysicsPredictor):
             return Trajectory.from_dict(response)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
-                f"sm_rev predict failed: {e.stderr.decode()}"
+                f"sm_rev_predict failed: {e.stderr.decode()}"
             ) from e
         except (subprocess.TimeoutExpired, json.JSONDecodeError) as e:
-            raise RuntimeError(f"sm_rev communication failed: {e}") from e
+            raise RuntimeError(f"sm_rev_predict communication failed: {e}") from e
 
     def name(self) -> str:
-        return f"sm_rev@{self._binary}"
+        return f"sm_rev_predict@{self._binary}"
 
 
 def load_predictor(
