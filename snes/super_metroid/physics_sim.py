@@ -37,7 +37,65 @@ __all__ = [
     "StubPredictor",
     "SmRevClient",
     "load_predictor",
+    "encode_frame_mnemonic",
+    "decode_frame_mnemonic",
 ]
+
+# SNES button order for smedit-tas-1 format (matches retro_harness.controls)
+# [B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R]
+_BUTTON_ORDER = ["B", "Y", "Select", "Start", "Up", "Down", "Left", "Right", "A", "X", "L", "R"]
+_BUTTON_MNEMONICS = ["b", "y", "s", "S", "u", "d", "l", "r", "a", "x", "L", "R"]
+
+
+def encode_frame_mnemonic(buttons: int) -> str:
+    """Encode button mask to 12-char mnemonic for smedit-tas-1 format.
+
+    Button order: B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R
+    Mnemonic: lowercase/char for pressed, '.' for released
+
+    Args:
+        buttons: Button mask (bit i = button i pressed)
+
+    Returns:
+        12-character mnemonic string (e.g., "b......r...." for B+RIGHT)
+
+    Examples:
+        >>> encode_frame_mnemonic(0)  # All released
+        '............'
+        >>> encode_frame_mnemonic(1)  # B pressed
+        'b...........'
+        >>> encode_frame_mnemonic(0x81)  # B + RIGHT (bits 0 and 7)
+        'b......r....'
+    """
+    chars = []
+    for i in range(12):
+        if buttons & (1 << i):
+            chars.append(_BUTTON_MNEMONICS[i])
+        else:
+            chars.append(".")
+    return "".join(chars)
+
+
+def decode_frame_mnemonic(mnemonic: str) -> int:
+    """Decode 12-char mnemonic to button mask.
+
+    Args:
+        mnemonic: 12-character mnemonic string
+
+    Returns:
+        Button mask (bit i = button i pressed)
+
+    Raises:
+        ValueError: If mnemonic length is not 12
+    """
+    if len(mnemonic) != 12:
+        raise ValueError(f"Mnemonic must be 12 chars, got {len(mnemonic)}")
+
+    buttons = 0
+    for i, char in enumerate(mnemonic):
+        if char != ".":
+            buttons |= 1 << i
+    return buttons
 
 
 @dataclass(frozen=True)
@@ -124,6 +182,7 @@ class TrajectoryFrame:
     """
 
     frame: int
+    room_id: int
     samus_x: int
     samus_y: int
     samus_x_sub: int
@@ -159,12 +218,14 @@ class Trajectory:
     start: SimState
     frames: tuple[TrajectoryFrame, ...]
     predictor: str
+    inputs: tuple[FrameInput, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "start": self.start.to_dict(),
             "frames": [f.to_dict() for f in self.frames],
             "predictor": self.predictor,
+            "inputs": [inp.to_dict() for inp in self.inputs] if self.inputs else [],
         }
 
     @classmethod
@@ -173,7 +234,76 @@ class Trajectory:
             start=SimState.from_dict(data["start"]),
             frames=tuple(TrajectoryFrame.from_dict(f) for f in data["frames"]),
             predictor=data["predictor"],
+            inputs=tuple(FrameInput.from_dict(inp) for inp in data.get("inputs", [])),
         )
+
+    def to_smedit_tas(
+        self,
+        *,
+        start_state_name: str = "ZebesStart",
+        rom_sha1: str | None = None,
+        trace_stride: int = 1,
+    ) -> dict[str, Any]:
+        """Export trajectory as SMEDIT TasMovie format (smedit-tas-1).
+
+        Compatible with SMEDIT route panel for trajectory preview and
+        route planning workflows.
+
+        Args:
+            start_state_name: Human-readable start state name
+            rom_sha1: ROM SHA1 hash (None for stub/CI without ROM)
+            trace_stride: Include trace entry every N frames (1 = every frame)
+
+        Returns:
+            smedit-tas-1 format dict with format, meta, buttonOrder, frames, trace
+
+        Example:
+            >>> trajectory.to_smedit_tas(start_state_name="LandingSite", trace_stride=10)
+            {
+              "format": "smedit-tas-1",
+              "meta": {
+                "gameName": "SuperMetroid-Snes",
+                "startState": "LandingSite",
+                "romSha1": null
+              },
+              "buttonOrder": ["B", "Y", "Select", "Start", "Up", "Down", "Left", "Right", "A", "X", "L", "R"],
+              "frames": ["............", "b......r...."],
+              "trace": [{"frame": 0, "x": 184, "y": 312}]
+            }
+        """
+        # Encode inputs to mnemonic frames
+        frame_mnemonics = [encode_frame_mnemonic(inp.buttons) for inp in self.inputs]
+
+        # Build sparse trace with required x/y and optional fields
+        trace = []
+        for i, traj_frame in enumerate(self.frames):
+            if i % trace_stride == 0:
+                entry: dict[str, Any] = {
+                    "frame": traj_frame.frame,
+                    "x": traj_frame.samus_x,
+                    "y": traj_frame.samus_y,
+                }
+                # Optional fields when available
+                if traj_frame.samus_x_sub != 0:
+                    entry["subX"] = traj_frame.samus_x_sub
+                if traj_frame.samus_y_sub != 0:
+                    entry["subY"] = traj_frame.samus_y_sub
+                if traj_frame.pose != 0:
+                    entry["pose"] = traj_frame.pose
+                entry["roomId"] = traj_frame.room_id
+                trace.append(entry)
+
+        return {
+            "format": "smedit-tas-1",
+            "meta": {
+                "gameName": "SuperMetroid-Snes",
+                "startState": start_state_name,
+                "romSha1": rom_sha1,
+            },
+            "buttonOrder": _BUTTON_ORDER,
+            "frames": frame_mnemonics,
+            "trace": trace,
+        }
 
 
 class PhysicsPredictor(ABC):
@@ -226,7 +356,13 @@ class StubPredictor(PhysicsPredictor):
     def predict(
         self, start: SimState, inputs: Sequence[FrameInput]
     ) -> Trajectory:
-        """Predict with simple deterministic fake physics."""
+        """Predict with simple deterministic fake physics.
+        
+        Button masks (bit positions):
+        - B=0 (0x01), Y=1 (0x02), Select=2 (0x04), Start=3 (0x08)
+        - Up=4 (0x10), Down=5 (0x20), Left=6 (0x40), Right=7 (0x80)
+        - A=8 (0x100), X=9 (0x200), L=10 (0x400), R=11 (0x800)
+        """
         frames: list[TrajectoryFrame] = []
         x, y = start.samus_x, start.samus_y
         x_sub, y_sub = start.samus_x_sub, start.samus_y_sub
@@ -252,16 +388,17 @@ class StubPredictor(PhysicsPredictor):
                     vy_sub = vy_sub % 65536
 
             # Apply fake horizontal input response
-            if inp.buttons & 0x80:  # LEFT
+            # LEFT = bit 6 (0x40), RIGHT = bit 7 (0x80)
+            if inp.buttons & 0x40:  # LEFT
                 vx = -2
                 facing = 0x04
-            elif inp.buttons & 0x40:  # RIGHT
+            elif inp.buttons & 0x80:  # RIGHT
                 vx = 2
                 facing = 0x08
             else:
                 vx = 0
 
-            # Apply fake jump
+            # Apply fake jump (B = bit 0, 0x01)
             if inp.buttons & 0x01:  # B (jump)
                 if movement == 0:  # grounded
                     vy = -5
@@ -295,6 +432,7 @@ class StubPredictor(PhysicsPredictor):
             frames.append(
                 TrajectoryFrame(
                     frame=start.frame + i + 1,
+                    room_id=start.room_id,
                     samus_x=x,
                     samus_y=y,
                     samus_x_sub=x_sub,
@@ -315,7 +453,10 @@ class StubPredictor(PhysicsPredictor):
             )
 
         return Trajectory(
-            start=start, frames=tuple(frames), predictor=self._name
+            start=start,
+            frames=tuple(frames),
+            predictor=self._name,
+            inputs=tuple(inputs),
         )
 
     def name(self) -> str:

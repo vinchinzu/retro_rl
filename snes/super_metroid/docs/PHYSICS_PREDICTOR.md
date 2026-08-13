@@ -98,6 +98,7 @@ trajectory = predictor.predict(start, inputs)
 
 Client stub for `sm_rev` MiniStep-based physics predictor:
 
+- **Transport:** Subprocess stdin/stdout JSON only (no HTTP/network)
 - Calls external `sm_rev predict` binary via subprocess
 - Gracefully skips if binary not available (for tests/CI)
 - Environment: `SM_REV_PATH` env var or `sm_rev` in PATH
@@ -109,6 +110,12 @@ predictor = SmRevClient(binary_path="/path/to/sm_rev")
 trajectory = predictor.predict(start, inputs)
 ```
 
+**sm_rev wire protocol:**
+```bash
+echo '{"start": {...}, "inputs": [...]}' | sm_rev predict
+# → {"start": {...}, "frames": [...], "predictor": "sm_rev@..."}
+```
+
 **sm_rev integration:** The `vinchinzu/sm_rev` sibling repository provides
 a MiniStep-based physics kernel. Once available, `SmRevClient` will call
 its `predict` CLI for frame-by-frame trajectory prediction.
@@ -118,13 +125,17 @@ its `predict` CLI for frame-by-frame trajectory prediction.
 `scripts/tools/predict_trajectory.py` demonstrates trajectory prediction:
 
 ```bash
-# Use stub predictor with synthetic inputs
+# Use stub predictor with synthetic inputs (smedit-tas-1 format by default)
 uv run python snes/super_metroid/scripts/tools/predict_trajectory.py \
   --frames 60 --predictor stub
 
-# Write trajectory JSON
+# Write smedit-tas-1 format for route panel
 uv run python snes/super_metroid/scripts/tools/predict_trajectory.py \
   --frames 120 --predictor stub --output trajectory.json
+
+# Internal format for debugging
+uv run python snes/super_metroid/scripts/tools/predict_trajectory.py \
+  --frames 60 --predictor stub --format internal
 
 # Print summary
 uv run python snes/super_metroid/scripts/tools/predict_trajectory.py \
@@ -136,11 +147,51 @@ SM_REV_PATH=/path/to/sm_rev uv run python \
   --frames 60 --predictor sm_rev
 ```
 
+**Output formats:**
+- `smedit-tas-1` (default): SMEDIT TasMovie format for route panel consumption
+- `internal`: Raw Trajectory.to_dict() with snake_case fields for debugging
+
+## Output Formats
+
+### smedit-tas-1 (SMEDIT TasMovie)
+
+Route panel native format for trajectory preview and route planning:
+
+```json
+{
+  "format": "smedit-tas-1",
+  "meta": {
+    "gameName": "SuperMetroid-Snes",
+    "startState": "LandingSite",
+    "romSha1": null
+  },
+  "buttonOrder": ["B", "Y", "Select", "Start", "Up", "Down", "Left", "Right", "A", "X", "L", "R"],
+  "frames": ["............", ".......r....", "b......r...."],
+  "trace": [
+    {"frame": 0, "x": 100, "y": 200, "roomId": 37368},
+    {"frame": 2, "x": 104, "y": 200, "subX": 0, "subY": 0, "pose": 0, "roomId": 37368}
+  ]
+}
+```
+
+**Schema:**
+- `format`: Always `"smedit-tas-1"`
+- `meta`: Game name, start state name, ROM SHA1 (null in stub/CI)
+- `buttonOrder`: 12-button order (matches retro_harness.controls)
+- `frames`: 12-char mnemonics (`.` = released, letter = pressed)
+- `trace`: Sparse frames with x/y required, subX/subY/pose/roomId optional
+
+**Consumed by:** SMEDIT route panel for trajectory overlay and interactive editing
+
+### internal (Debug)
+
+Raw `Trajectory.to_dict()` with snake_case fields for debugging and test fixtures.
+
 ## Integration Points
 
 ### Current Consumers
 
-None yet — protocol scaffolded for future integration.
+**SMEDIT route panel:** Consumes `smedit-tas-1` format for trajectory preview
 
 ### Planned Consumers
 
@@ -148,7 +199,7 @@ None yet — protocol scaffolded for future integration.
    - Evaluate hop candidates by predicted landing position
    - Filter infeasible input sequences before emulator validation
 
-2. **SMEDIT route panel:** Live trajectory preview
+2. **SMEDIT route panel:** Enhanced live trajectory preview
    - Visualize predicted path overlaid on room geometry
    - Adjust input tape interactively with instant feedback
 

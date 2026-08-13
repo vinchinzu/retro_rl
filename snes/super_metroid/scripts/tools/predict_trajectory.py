@@ -65,14 +65,16 @@ def _synthetic_inputs(num_frames: int) -> list[FrameInput]:
     """Generate synthetic input sequence for testing.
 
     Creates a simple walk-right + jump pattern for demonstration.
+    
+    Button masks: LEFT=0x40 (bit 6), RIGHT=0x80 (bit 7), B=0x01 (bit 0)
     """
     inputs: list[FrameInput] = []
     for i in range(num_frames):
         buttons = 0
-        # Hold RIGHT for movement
+        # Hold RIGHT for movement (bit 7 = 0x80)
         if i < num_frames - 10:
-            buttons |= 0x40  # RIGHT
-        # Jump on frames 10, 30, 50
+            buttons |= 0x80  # RIGHT
+        # Jump on frames 10, 30, 50 (B = bit 0 = 0x01)
         if i in (10, 30, 50):
             buttons |= 0x01  # B (jump)
         inputs.append(FrameInput(buttons=buttons))
@@ -137,6 +139,23 @@ def main() -> int:
         help="Write trajectory JSON to file (default: stdout)",
     )
     parser.add_argument(
+        "--format",
+        choices=["internal", "smedit-tas-1"],
+        default="smedit-tas-1",
+        help="Output format (default: smedit-tas-1 for route panel)",
+    )
+    parser.add_argument(
+        "--start-state-name",
+        default="ZebesStart",
+        help="Start state name for smedit-tas-1 format (default: ZebesStart)",
+    )
+    parser.add_argument(
+        "--trace-stride",
+        type=int,
+        default=1,
+        help="Include trace entry every N frames (default: 1)",
+    )
+    parser.add_argument(
         "--summary",
         action="store_true",
         help="Print summary instead of full trajectory",
@@ -178,7 +197,16 @@ def main() -> int:
     if args.summary:
         _print_summary(trajectory)
     else:
-        output = json.dumps(trajectory.to_dict(), indent=2)
+        if args.format == "smedit-tas-1":
+            output_dict = trajectory.to_smedit_tas(
+                start_state_name=args.start_state_name,
+                rom_sha1=None,  # No ROM in CLI mode
+                trace_stride=args.trace_stride,
+            )
+        else:  # internal
+            output_dict = trajectory.to_dict()
+
+        output = json.dumps(output_dict, indent=2)
         if args.output:
             args.output.write_text(output)
             print(f"Wrote trajectory to {args.output}", file=sys.stderr)

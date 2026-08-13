@@ -18,6 +18,8 @@ from super_metroid.physics_sim import (
     StubPredictor,
     Trajectory,
     TrajectoryFrame,
+    decode_frame_mnemonic,
+    encode_frame_mnemonic,
     load_predictor,
 )
 
@@ -124,6 +126,7 @@ class TestTrajectoryFrame:
     def test_create(self) -> None:
         frame = TrajectoryFrame(
             frame=10,
+            room_id=0x91F8,
             samus_x=450,
             samus_y=180,
             samus_x_sub=0,
@@ -142,12 +145,14 @@ class TestTrajectoryFrame:
             shinespark_timer=0,
         )
         assert frame.frame == 10
+        assert frame.room_id == 0x91F8
         assert frame.samus_x == 450
         assert frame.velocity_x == 2
 
     def test_to_dict_roundtrip(self) -> None:
         frame = TrajectoryFrame(
             frame=10,
+            room_id=0x91F8,
             samus_x=450,
             samus_y=180,
             samus_x_sub=1000,
@@ -223,6 +228,7 @@ class TestTrajectory:
         frames = (
             TrajectoryFrame(
                 frame=1,
+                room_id=0x91F8,
                 samus_x=102,
                 samus_y=100,
                 samus_x_sub=0,
@@ -287,7 +293,8 @@ class TestStubPredictor:
         assert len(traj.frames) == 0
         assert traj.predictor == "stub"
 
-    def test_predict_simple_motion(self) -> None:
+    def test_predict_right_movement(self) -> None:
+        """RIGHT (0x80) should move +x."""
         pred = StubPredictor()
         start = SimState(
             frame=0,
@@ -309,7 +316,7 @@ class TestStubPredictor:
             speed_flag=0,
             shinespark_timer=0,
         )
-        inputs = [FrameInput(buttons=0x40) for _ in range(10)]  # Hold RIGHT
+        inputs = [FrameInput(buttons=0x80) for _ in range(10)]  # Hold RIGHT
         traj = pred.predict(start, inputs)
 
         assert len(traj.frames) == 10
@@ -318,6 +325,40 @@ class TestStubPredictor:
         # Frame numbers should increment
         assert traj.frames[0].frame == 1
         assert traj.frames[-1].frame == 10
+        # Room ID preserved
+        assert all(f.room_id == 0x91F8 for f in traj.frames)
+
+    def test_predict_left_movement(self) -> None:
+        """LEFT (0x40) should move -x."""
+        pred = StubPredictor()
+        start = SimState(
+            frame=0,
+            room_id=0x91F8,
+            samus_x=100,
+            samus_y=200,
+            samus_x_sub=0,
+            samus_y_sub=0,
+            velocity_x=0,
+            velocity_y=0,
+            velocity_x_sub=0,
+            velocity_y_sub=0,
+            momentum_x=0,
+            momentum_x_sub=0,
+            pose=0,
+            facing=8,
+            movement_type=0,
+            speed_counter=0,
+            speed_flag=0,
+            shinespark_timer=0,
+        )
+        inputs = [FrameInput(buttons=0x40) for _ in range(10)]  # Hold LEFT
+        traj = pred.predict(start, inputs)
+
+        assert len(traj.frames) == 10
+        # Should move left (fake physics)
+        assert traj.frames[-1].samus_x < start.samus_x
+        # Room ID preserved
+        assert all(f.room_id == 0x91F8 for f in traj.frames)
 
     def test_predict_deterministic(self) -> None:
         """Same inputs should produce same trajectory."""
@@ -439,3 +480,289 @@ class TestLoadPredictor:
     def test_load_unknown(self) -> None:
         with pytest.raises(ValueError, match="Unknown predictor backend"):
             load_predictor("nonexistent")
+
+
+class TestFrameMnemonic:
+    """Test frame mnemonic encoding/decoding."""
+
+    def test_encode_all_released(self) -> None:
+        assert encode_frame_mnemonic(0) == "............"
+
+    def test_encode_b_only(self) -> None:
+        assert encode_frame_mnemonic(0x01) == "b..........."
+
+    def test_encode_left(self) -> None:
+        # LEFT = bit 6 = 0x40
+        assert encode_frame_mnemonic(0x40) == "......l....."
+
+    def test_encode_right(self) -> None:
+        # RIGHT = bit 7 = 0x80
+        assert encode_frame_mnemonic(0x80) == ".......r...."
+
+    def test_encode_b_and_right(self) -> None:
+        # B (0x01) + RIGHT (0x80) = 0x81
+        assert encode_frame_mnemonic(0x81) == "b......r...."
+
+    def test_encode_all_buttons(self) -> None:
+        # All 12 buttons pressed
+        assert encode_frame_mnemonic(0xFFF) == "bysSSudlraxLR"
+
+    def test_decode_all_released(self) -> None:
+        assert decode_frame_mnemonic("............") == 0
+
+    def test_decode_b_only(self) -> None:
+        assert decode_frame_mnemonic("b...........") == 0x01
+
+    def test_decode_left(self) -> None:
+        assert decode_frame_mnemonic("......l.....") == 0x40
+
+    def test_decode_right(self) -> None:
+        assert decode_frame_mnemonic(".......r....") == 0x80
+
+    def test_decode_b_and_right(self) -> None:
+        assert decode_frame_mnemonic("b......r....") == 0x81
+
+    def test_roundtrip(self) -> None:
+        for buttons in [0, 0x01, 0x40, 0x80, 0x81, 0xFFF]:
+            mnemonic = encode_frame_mnemonic(buttons)
+            decoded = decode_frame_mnemonic(mnemonic)
+            assert decoded == buttons
+
+    def test_decode_invalid_length(self) -> None:
+        with pytest.raises(ValueError, match="must be 12 chars"):
+            decode_frame_mnemonic("short")
+
+
+class TestSmeditTasExport:
+    """Test smedit-tas-1 export format."""
+
+    def test_export_basic_structure(self) -> None:
+        pred = StubPredictor()
+        start = SimState(
+            frame=0,
+            room_id=0x91F8,
+            samus_x=100,
+            samus_y=200,
+            samus_x_sub=0,
+            samus_y_sub=0,
+            velocity_x=0,
+            velocity_y=0,
+            velocity_x_sub=0,
+            velocity_y_sub=0,
+            momentum_x=0,
+            momentum_x_sub=0,
+            pose=0,
+            facing=8,
+            movement_type=0,
+            speed_counter=0,
+            speed_flag=0,
+            shinespark_timer=0,
+        )
+        inputs = [FrameInput(buttons=0x80), FrameInput(buttons=0x81)]
+        traj = pred.predict(start, inputs)
+
+        result = traj.to_smedit_tas(start_state_name="TestStart")
+
+        assert result["format"] == "smedit-tas-1"
+        assert result["meta"]["gameName"] == "SuperMetroid-Snes"
+        assert result["meta"]["startState"] == "TestStart"
+        assert result["meta"]["romSha1"] is None
+        assert result["buttonOrder"] == [
+            "B",
+            "Y",
+            "Select",
+            "Start",
+            "Up",
+            "Down",
+            "Left",
+            "Right",
+            "A",
+            "X",
+            "L",
+            "R",
+        ]
+        assert len(result["frames"]) == 2
+        assert result["frames"][0] == ".......r...."  # RIGHT only
+        assert result["frames"][1] == "b......r...."  # B + RIGHT
+        assert len(result["trace"]) == 2
+
+    def test_export_trace_fields(self) -> None:
+        pred = StubPredictor()
+        start = SimState(
+            frame=0,
+            room_id=0x91F8,
+            samus_x=100,
+            samus_y=200,
+            samus_x_sub=0,
+            samus_y_sub=0,
+            velocity_x=0,
+            velocity_y=0,
+            velocity_x_sub=0,
+            velocity_y_sub=0,
+            momentum_x=0,
+            momentum_x_sub=0,
+            pose=0,
+            facing=8,
+            movement_type=0,
+            speed_counter=0,
+            speed_flag=0,
+            shinespark_timer=0,
+        )
+        inputs = [FrameInput(buttons=0x80)]
+        traj = pred.predict(start, inputs)
+
+        result = traj.to_smedit_tas()
+
+        trace = result["trace"]
+        assert len(trace) == 1
+        assert trace[0]["frame"] == 1
+        assert trace[0]["x"] == 102  # Moved right by 2
+        assert trace[0]["y"] == 200
+        assert trace[0]["roomId"] == 0x91F8
+
+    def test_export_trace_stride(self) -> None:
+        pred = StubPredictor()
+        start = SimState(
+            frame=0,
+            room_id=0x91F8,
+            samus_x=100,
+            samus_y=200,
+            samus_x_sub=0,
+            samus_y_sub=0,
+            velocity_x=0,
+            velocity_y=0,
+            velocity_x_sub=0,
+            velocity_y_sub=0,
+            momentum_x=0,
+            momentum_x_sub=0,
+            pose=0,
+            facing=8,
+            movement_type=0,
+            speed_counter=0,
+            speed_flag=0,
+            shinespark_timer=0,
+        )
+        inputs = [FrameInput(buttons=0x80) for _ in range(10)]
+        traj = pred.predict(start, inputs)
+
+        result = traj.to_smedit_tas(trace_stride=5)
+
+        # Should have frames 0 and 5 (indices 0, 5 with stride 5)
+        assert len(result["trace"]) == 2
+        assert result["trace"][0]["frame"] == 1
+        assert result["trace"][1]["frame"] == 6
+
+
+class TestGoldenFixtures:
+    """Test against golden request/response fixtures."""
+
+    def test_golden_internal_format(self) -> None:
+        """Golden fixture for internal Trajectory.to_dict() format."""
+        pred = StubPredictor(name="test-stub")
+        start = SimState(
+            frame=0,
+            room_id=0x91F8,
+            samus_x=100,
+            samus_y=200,
+            samus_x_sub=0,
+            samus_y_sub=0,
+            velocity_x=0,
+            velocity_y=0,
+            velocity_x_sub=0,
+            velocity_y_sub=0,
+            momentum_x=0,
+            momentum_x_sub=0,
+            pose=0,
+            facing=8,
+            movement_type=0,
+            speed_counter=0,
+            speed_flag=0,
+            shinespark_timer=0,
+        )
+        inputs = [FrameInput(buttons=0x80), FrameInput(buttons=0x81)]
+        traj = pred.predict(start, inputs)
+
+        result = traj.to_dict()
+
+        # Verify structure
+        assert result["predictor"] == "test-stub"
+        assert "start" in result
+        assert "frames" in result
+        assert "inputs" in result
+
+        # Verify start state
+        assert result["start"]["room_id"] == 0x91F8
+        assert result["start"]["samus_x"] == 100
+        assert result["start"]["samus_y"] == 200
+
+        # Verify frames
+        assert len(result["frames"]) == 2
+        assert result["frames"][0]["frame"] == 1
+        assert result["frames"][0]["room_id"] == 0x91F8
+        assert result["frames"][0]["samus_x"] == 102  # Moved right
+        assert result["frames"][1]["frame"] == 2
+        assert result["frames"][1]["samus_x"] == 104
+
+        # Verify inputs
+        assert len(result["inputs"]) == 2
+        assert result["inputs"][0]["buttons"] == 0x80
+        assert result["inputs"][1]["buttons"] == 0x81
+
+    def test_golden_smedit_tas_format(self) -> None:
+        """Golden fixture for smedit-tas-1 format."""
+        pred = StubPredictor(name="test-stub")
+        start = SimState(
+            frame=0,
+            room_id=0x91F8,
+            samus_x=100,
+            samus_y=200,
+            samus_x_sub=0,
+            samus_y_sub=0,
+            velocity_x=0,
+            velocity_y=0,
+            velocity_x_sub=0,
+            velocity_y_sub=0,
+            momentum_x=0,
+            momentum_x_sub=0,
+            pose=0,
+            facing=8,
+            movement_type=0,
+            speed_counter=0,
+            speed_flag=0,
+            shinespark_timer=0,
+        )
+        inputs = [FrameInput(buttons=0x80), FrameInput(buttons=0x81)]
+        traj = pred.predict(start, inputs)
+
+        result = traj.to_smedit_tas(start_state_name="LandingSite", rom_sha1=None)
+
+        # Verify exact golden structure
+        expected = {
+            "format": "smedit-tas-1",
+            "meta": {
+                "gameName": "SuperMetroid-Snes",
+                "startState": "LandingSite",
+                "romSha1": None,
+            },
+            "buttonOrder": [
+                "B",
+                "Y",
+                "Select",
+                "Start",
+                "Up",
+                "Down",
+                "Left",
+                "Right",
+                "A",
+                "X",
+                "L",
+                "R",
+            ],
+            "frames": [".......r....", "b......r...."],
+            "trace": [
+                {"frame": 1, "x": 102, "y": 200, "roomId": 37368},
+                {"frame": 2, "x": 104, "y": 200, "roomId": 37368},
+            ],
+        }
+
+        assert result == expected
