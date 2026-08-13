@@ -50,6 +50,7 @@ from harvest.core.tile_catalog import Tool
 from harvest.tasks.harvest_task import HarvestTask, crop_nav_target_px, live_harvestable_crop_tiles
 from harvest.tasks.berry_ship import BerryShipTask
 from harvest.tasks.mountain_berry import MountainBerryTask
+from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask
 from harvest.tasks.recorded_task import RecordedTask
 
 PhaseTaskBuilder = Callable[["TaskBuildContext", PhaseSpec, WorldState], Optional[Task]]
@@ -289,6 +290,14 @@ def _build_multi_nav(
 def _build_mountain_berry(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
+    if spec.params.get("ship", False):
+        return MountainGrapeShipTask(
+            name=f"mountain_grape_ship_{spec.phase.lower()}",
+            timeout=spec.params.get("timeout", 20_000),
+            pick_timeout=spec.params.get("pick_timeout", 12_000),
+            nav_timeout=spec.params.get("nav_timeout", 12_000),
+            pick_attempts=spec.params.get("pick_attempts", 3),
+        )
     return MountainBerryTask(
         name=f"mountain_berry_{spec.phase.lower()}",
         timeout=spec.params.get("timeout", 12_000),

@@ -248,6 +248,16 @@ _PATH_TOWN_EXIT = Waypoint(
 _PATH_MOUNTAIN_EXIT = Waypoint(
     tilemap=0x0C, target_px=(132, 30), radius=10, is_exit=True, exit_direction="up"
 )
+_PATH_FARM_EXIT = Waypoint(
+    tilemap=0x0C,
+    target_px=(244, 128),
+    # Live return crosses the right boundary around y≈102 before reaching the
+    # nominal y=128 center.  A wider arrival radius arms exit_walk first.
+    radius=32,
+    is_exit=True,
+    exit_direction="right",
+    exit_push_frames=18,
+)
 
 _FARM_TO_PATH: List[Waypoint] = [
     _FARM_WEST_EXIT,
@@ -284,6 +294,37 @@ _MOUNTAIN_ENTRY_TO_FIRST_BERRY: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(326, 409), radius=10),
 ]
 
+# First ground grape → south mountain exit. This is the exact recorded-safe
+# approach in reverse, followed by the transition lip.  Do not reuse the
+# outdoor-spa return here: its first waypoint sends the grape stand north-east
+# through an unrelated ridge/carpenter corridor.
+_FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = list(
+    reversed(_MOUNTAIN_ENTRY_TO_FIRST_BERRY)
+) + [
+    Waypoint(
+        tilemap=0x10,
+        target_px=(312, 744),
+        radius=16,
+        is_exit=True,
+        exit_direction="down",
+    ),
+]
+
+# The bin is the F2 pocket at x=8–9/y=29–30.  From the west-gate entry the
+# north stand (8,28), facing down, is reachable without clearing cargo.  The
+# historical forage route's (61,60) is ordinary ground.
+_FARM_WEST_GATE_TO_SHIPPING_BIN: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x00,
+        target_px=(8 * 16 + 8, 28 * 16 + 8),
+        radius=1,
+        action_on_arrive="press_a",
+        action_face="down",
+        action_frames=28,
+        action_cooldown=36,
+    ),
+]
+
 
 def compose_routes(*parts: Sequence[Waypoint]) -> List[Waypoint]:
     """Concatenate named hops. Callers own the live MultNav, not a tape."""
@@ -305,16 +346,10 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
     "farm_to_path": list(_FARM_TO_PATH),
     "path_to_town": list(_PATH_TO_TOWN),
     "path_to_mountain": list(_PATH_TO_MOUNTAIN),
-    "path_to_farm": [
-        Waypoint(
-            tilemap=0x0C,
-            target_px=(244, 128),
-            radius=12,
-            is_exit=True,
-            exit_direction="right",
-        ),
-    ],
+    "path_to_farm": [_PATH_FARM_EXIT],
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    "first_berry_to_mountain_exit": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT),
+    "farm_west_gate_to_shipping_bin": list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
 }
 
 
@@ -345,6 +380,10 @@ ROUTES: Dict[str, List[Waypoint]] = {
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
     "farm_to_first_mountain_berry": list(_FARM_TO_MOUNTAIN_GATE)
     + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    "first_mountain_berry_to_shipping_bin": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
+    + list(SEGMENTS["path_to_farm"])
+    + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
+    + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
     # Early-game town loop: enter town, touch shop + church fronts, then leave.
     # Completing this route is the planner's "ready to go home" signal on day 1.
     "town_explore": [
@@ -685,7 +724,7 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x00, target_px=(329, 360), radius=18),
     ],
     "path_to_farm": [
-        Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
+        _PATH_FARM_EXIT,
     ],
     "farm_to_mountain": list(_FARM_TO_MOUNTAIN_GATE),
     # Mountain entry (south) → upper outdoor hot spring (0xF7 pond).
@@ -782,4 +821,3 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
     ],
 }
-
