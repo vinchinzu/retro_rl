@@ -21,7 +21,7 @@ from retro_harness.env import GameSpec, resync_custom_state
 from super_metroid.observation import Observation
 from super_metroid.paths import GAME_DIR
 from super_metroid.physics_sim import FrameInput
-from super_metroid.ram import parse_env_state, read_wram_u16, read_wram_u8
+from super_metroid.ram import parse_env_state
 from super_metroid.residual import ResidualProfile, compute_residual_profile
 
 __all__ = [
@@ -84,27 +84,26 @@ class EmulatorValidationResult:
 def observation_from_env(env: Any) -> Observation:
     """Extract Observation from emulator (RetroEnv from GameSpec.make_env()).
 
-    Reads Oπ/Oσ/Oσ+/O† fields from emulator RAM:
+    Wraps parse_env_state to extract Oπ/Oσ/Oσ+/O† fields:
     - Oπ: pixels x/y ($0AF6, $0AFA), pose ($0A1C), room ($079B)
     - Oσ: Oπ plus subpixels ($0AF8, $0AFC)
-    - Oσ+: Oσ plus enemy energy ($0F8C) / i-frames ($18A8)
-    - O†: energy ($09C2)
-    - Lag: frame counters ($1842, $09DA)
+    - Oσ+: Oσ plus enemy energy ($0F8C via enemy0_hp)
+    - O†: energy ($09C2 via health)
+    - Lag: frame counters not yet in SuperMetroidState (None for now)
     - Speeds: velocity/momentum for first-differing-field
 
     Args:
         env: RetroEnv from GameSpec.make_env()
 
     Returns:
-        Observation with all fields populated from emulator RAM
+        Observation with all available fields from parse_env_state
+        
+    Note:
+        invulnerability_timer ($18A8) and frame_counter_1/2 ($1842/$09DA)
+        are not yet in SuperMetroidState. These fields remain None/0 until
+        parse_env_state is extended.
     """
     state = parse_env_state(env, mode="full")
-    
-    # Peek lag counters and enemy/invuln fields for Oσ+
-    enemy_energy = read_wram_u16(env, 0x0F8C)
-    invuln_timer = read_wram_u16(env, 0x18A8)
-    frame_counter_1 = read_wram_u8(env, 0x1842)
-    frame_counter_2 = read_wram_u16(env, 0x09DA)
 
     return Observation(
         frame=state.frame,
@@ -122,11 +121,11 @@ def observation_from_env(env: Any) -> Observation:
         momentum_x_sub=state.momentum_x_sub,
         speed_counter=state.speed_counter,
         speed_flag=state.speed_flag,
-        energy=state.health,
-        frame_counter_1=frame_counter_1,
-        frame_counter_2=frame_counter_2,
-        enemy_energy=enemy_energy,
-        invulnerability_timer=invuln_timer,
+        energy=state.health,  # Emu observes $09C2
+        frame_counter_1=None,  # Not yet in SuperMetroidState
+        frame_counter_2=None,  # Not yet in SuperMetroidState
+        enemy_energy=state.enemy0_hp,  # Oσ+: $0F8C via enemy0_hp
+        invulnerability_timer=0,  # Not yet in SuperMetroidState
     )
 
 
