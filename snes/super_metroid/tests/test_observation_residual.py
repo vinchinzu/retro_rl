@@ -784,3 +784,44 @@ class TestComputeResidualProfile:
         assert profile.cause == DivergenceCause.LAG
         assert profile.first_diff_field == "frame_counter"
         assert profile.tag_lag_desync() is True
+
+    def test_lag_breaks_loop_ignores_later_pixel_divergence(self) -> None:
+        """Lag at frame i, then later pixels differ → fd_π/fd_σ None (loop broke).
+        
+        When lag detected, BREAK loop — do not keep filling fd_π/fd_σ from later
+        frames on desynced tape index.
+        """
+        mini_obs = [
+            Observation(
+                frame=i,
+                x=100 + i,
+                y=200,
+                pose=0,
+                room=0x91F8,
+                sub_x=0,
+                sub_y=0,
+                velocity_x=1,
+                velocity_y=0,
+                velocity_x_sub=0,
+                velocity_y_sub=0,
+                momentum_x=1,
+                momentum_x_sub=0,
+                speed_counter=0,
+                speed_flag=0,
+                energy=99,
+                frame_counter_1=i,
+                frame_counter_2=i,
+            )
+            for i in range(10)
+        ]
+        # Lag at frame 3, pixels diverge at frame 5 (desynced tape)
+        emu_obs = [
+            obs if i < 3 else Observation(**{**obs.to_dict(), "frame_counter_1": i + 1, "x": 100 + i + 10 if i >= 5 else obs.x})
+            for i, obs in enumerate(mini_obs)
+        ]
+        profile = compute_residual_profile(mini_obs, emu_obs)
+        # Loop broke at frame 3 (lag), so frame 5 pixel divergence not seen
+        assert profile.fd_pi is None  # Loop broke before frame 5
+        assert profile.fd_sigma is None  # Loop broke before frame 5
+        assert profile.cause == DivergenceCause.LAG
+        assert profile.first_diff_field == "frame_counter"

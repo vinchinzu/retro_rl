@@ -252,7 +252,7 @@ def compute_residual_profile(
                 cause = DivergenceCause.COLLISION
 
         # Tag lag if frame counters diverge (but don't set fd_σ unless pixels/subpixels broke)
-        # Lag: stop scoring later kinematics (desynced tape index)
+        # Lag: stop scoring later kinematics (desynced tape index) — BREAK LOOP
         if (
             cause != DivergenceCause.LAG
             and m.frame_counter_1 is not None
@@ -261,6 +261,8 @@ def compute_residual_profile(
             if first_diff_field is None:
                 first_diff_field = "frame_counter"
             cause = DivergenceCause.LAG
+            # Break: do not keep filling fd_π/fd_σ from later frames on desynced tape
+            break
 
         # Tag velocity/momentum divergence in first_diff_field (don't set fd_σ)
         # Speeds live only in first_diff_field, not Oσ break
