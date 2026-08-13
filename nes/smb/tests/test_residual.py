@@ -4,7 +4,20 @@ from __future__ import annotations
 
 import numpy as np
 
-from smb.approx import AIR_RUN_KEEP, JUMP_SPEED, WALK_MAX, idle_action, press, rollout, step
+from smb.approx import (
+    AIR_RUN_KEEP,
+    JUMP_FORCE_DOWN,
+    JUMP_FORCE_UP,
+    JUMP_SPEED,
+    JUMP_Y_SPEED,
+    WALK_MAX,
+    idle_action,
+    jump_table_index,
+    press,
+    rollout,
+    step,
+    takeoff_vertical,
+)
 from smb.observation import (
     Observation,
     level1_start_obs,
@@ -206,6 +219,72 @@ def test_takeoff_frame_uses_air_x() -> None:
     assert takeoff.y == start.y + JUMP_SPEED
 
 
+def test_jump_tables_from_abs_vx() -> None:
+    """smbdis InitJS land bands — no live tape per threshold."""
+    cases = (
+        (0, 0),
+        (8, 0),
+        (9, 1),
+        (15, 1),
+        (16, 2),
+        (24, 2),
+        (25, 3),
+        (27, 3),
+        (28, 4),
+        (40, 4),
+        (-21, 2),
+    )
+    for velocity_x, index in cases:
+        assert jump_table_index(velocity_x) == index, velocity_x
+        vy, vf, vfd, ymf = takeoff_vertical(velocity_x)
+        assert (vy, vf, vfd, ymf) == (
+            JUMP_Y_SPEED[index],
+            JUMP_FORCE_UP[index],
+            JUMP_FORCE_DOWN[index],
+            0,
+        ), velocity_x
+        takeoff = step(_obs(velocity_x=velocity_x), press("A"))
+        assert takeoff.on_ground is False
+        assert takeoff.velocity_y == vy
+        assert takeoff.vertical_force == vf
+        assert takeoff.vertical_force_down == vfd
+        assert takeoff.y == 176 + vy
+
+
+def test_run24_then_jump_uses_mid_run_table() -> None:
+    """24f RIGHT+B → |vx|=21 → InitJS index 2 (vf=$1E, not $20)."""
+    start = level1_start_obs()
+    frames = rollout(start, [press("RIGHT", "B")] * 24 + [press("RIGHT", "B", "A")] * 2)
+    last_ground = frames[24]
+    takeoff = frames[25]
+    assert last_ground.on_ground is True
+    assert last_ground.velocity_x == 21
+    assert jump_table_index(last_ground.velocity_x) == 2
+    assert takeoff.on_ground is False
+    assert takeoff.velocity_y == -4
+    assert takeoff.vertical_force == 0x1E
+    assert takeoff.vertical_force_down == 0x60
+    assert takeoff.sub_y == 0
+    assert takeoff.y_move_force == 0x1E
+    assert frames[26].sub_y == 0x1E
+
+
+def test_run32_then_jump_uses_fast_run_table() -> None:
+    """32f RIGHT+B → |vx|=28 → InitJS index 4 (vy=-5, vf=$28)."""
+    start = level1_start_obs()
+    frames = rollout(start, [press("RIGHT", "B")] * 32 + [press("RIGHT", "B", "A")])
+    last_ground = frames[32]
+    takeoff = frames[33]
+    assert last_ground.on_ground is True
+    assert last_ground.velocity_x == 28
+    assert jump_table_index(last_ground.velocity_x) == 4
+    assert takeoff.on_ground is False
+    assert takeoff.velocity_y == -5
+    assert takeoff.vertical_force == 0x28
+    assert takeoff.vertical_force_down == 0x90
+    assert takeoff.y == start.y - 5
+
+
 def test_stepper_does_not_mutate_start() -> None:
     start = level1_start_obs()
     before = start.to_dict()
@@ -326,3 +405,13 @@ def test_measure_segment_offline_run_then_jump() -> None:
     assert result.approx_obs[16].on_ground is True
     assert result.approx_obs[17].on_ground is False
     assert result.approx_obs[17].x_force == 36
+
+
+def test_measure_segment_offline_run24_and_run32() -> None:
+    mid = measure_segment("run24_then_jump", run_emulator=False)
+    fast = measure_segment("run32_then_jump", run_emulator=False)
+    assert mid.horizon == 45
+    assert fast.horizon == 53
+    assert mid.approx_obs[25].vertical_force == 0x1E
+    assert fast.approx_obs[33].velocity_y == -5
+    assert fast.approx_obs[33].vertical_force == 0x28

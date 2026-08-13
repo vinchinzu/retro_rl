@@ -46,6 +46,8 @@ Short Level1_1 tapes in `smb.residual_harness.SEGMENTS`:
 | `jump_to_land` | 4 A + 28 idle | standing jump through land + settle |
 | `run_jump_to_land` | 60 RIGHT+B+A | run-jump through land |
 | `run_then_jump` | 16 RIGHT+B + 4 A + 16 RIGHT+B | takeoff-frame air X |
+| `run24_then_jump` | 24 RIGHT+B + 4 A + 16 RIGHT+B | InitJS \|vx\| band 2 |
+| `run32_then_jump` | 32 RIGHT+B + 4 A + 16 RIGHT+B | InitJS \|vx\| band 4 |
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -113,15 +115,32 @@ After `rr-kez8` (takeoff-frame air X: leave-ground uses walk `$98` unless
 16f RIGHT+B then A: takeoff `xf` 140→36 (walk `$98`), not 140→112 (run `$E4`).
 Walk-then-jump and a skid-jump (RIGHT+B then LEFT+A) also hold.
 
-Next break is **jump tables from `|vx|`**, not another air-X order stub. 24f
-RIGHT+B then A: fdσ=26 — takeoff `vf` is `$1E` not `$20` (`sub_y` 32 vs 30).
-32f run then A: fdπ=33, `vy=-5` vs `-4`, `vf=$28`. Sibling leftovers (not that
-stub): air walk-max wipes `xf` (longer 16+4+40 tape fdσ=42 after land); LEFT
-first-kick fdσ=1; brake after RIGHT uses `$98` not `FRICTION $D0` (fdσ=19).
+After `rr-8ptm` (smbdis `InitJS` jump tables from `|vx|` at takeoff):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| idle | 25 | `(—, —, —, —)` | — | — |
+| walk | 25 | `(—, —, —, —)` | — | — |
+| jump | 25 | `(—, —, —, —)` | — | — |
+| run_jump | 31 | `(—, —, —, —)` | — | — |
+| jump_to_land | 33 | `(—, —, —, —)` | — | — |
+| run_jump_to_land | 61 | `(—, —, —, —)` | — | — |
+| run_then_jump | 37 | `(—, —, —, —)` | — | — |
+| run24_then_jump | 45 | `(—, —, —, —)` | — | — |
+| run32_then_jump | 53 | `(—, —, —, —)` | — | — |
+
+Land bands (smbdis `JumpMForceData` / `FallMForceData` / `PlayerYSpdData`):
+`|vx|<9` → `$20/$70/-4`; `<$10` same; `<$19` → `$1E/$60/-4`; `<$1C` and
+`≥$1C` → `$28/$90/-5`. 24f run takeoff `|vx|=21` uses `$1E` (not `$20`);
+32f run `|vx|=28` uses `vy=-5`. Swim indices 5–6 not modeled.
+
+Sibling leftovers (not this stub): air walk-max wipes `xf` (16+4+40 tape
+fdσ=42 after land); LEFT first-kick fdσ=1; brake after RIGHT uses `$98`
+not `FRICTION $D0` (fdσ=19).
 
 ## Modules
 
 - `smb.observation` — RAM → structured obs
-- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X)
+- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X + InitJS `|vx|` tables)
 - `smb.residual` — `compute_residual_profile`
 - `smb.residual_harness` — stepper + fceumm + `R(τ)`
