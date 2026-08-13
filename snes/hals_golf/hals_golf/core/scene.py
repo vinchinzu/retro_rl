@@ -19,6 +19,15 @@ class SceneDecision:
     reason: str
 
 
+def mean_rgb(obs: np.ndarray) -> tuple[float, float, float]:
+    """Mean R/G/B used by probes and the coarse scene classifier."""
+    return (
+        float(np.mean(obs[:, :, 0])),
+        float(np.mean(obs[:, :, 1])),
+        float(np.mean(obs[:, :, 2])),
+    )
+
+
 def _mean_brightness(obs: np.ndarray | None) -> float:
     if obs is None or obs.size == 0:
         return 0.0

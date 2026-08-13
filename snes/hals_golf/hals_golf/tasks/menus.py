@@ -58,6 +58,17 @@ class Difficulty(Enum):
     TOURNAMENT = auto()
 
 
+def _taps(
+    button: str,
+    count: int,
+    *,
+    hold: int = 2,
+    gap: int = 8,
+) -> tuple[tuple[str, int], ...]:
+    """Repeat a hold/idle tap without triggering key repeat."""
+    return sum((((button, hold), ("IDLE", gap)) for _ in range(count)), ())
+
+
 def _difficulty_select(difficulty: Difficulty) -> tuple[tuple[str, int], ...]:
     """Difficulty-screen taps: Amateur confirms directly; Pro/Tournament drop."""
     if difficulty is Difficulty.AMATEUR:
@@ -68,21 +79,16 @@ def _difficulty_select(difficulty: Difficulty) -> tuple[tuple[str, int], ...]:
         downs = 2
     else:
         raise ValueError(f"unsupported difficulty: {difficulty!r}")
-    return (
-        *sum([(("DOWN", 2), ("IDLE", 10)) for _ in range(downs)], ()),
-        ("START", 4),
-    )
+    return (*_taps("DOWN", downs, gap=10), ("START", 4))
 
 
 def _club_ok_nav() -> tuple[tuple[str, int], ...]:
-    downs = sum([(("DOWN", 2), ("IDLE", 5)) for _ in range(30)], ())
-    rights = sum([(("RIGHT", 2), ("IDLE", 5)) for _ in range(10)], ())
-    return downs + rights
+    return _taps("DOWN", 30, gap=5) + _taps("RIGHT", 10, gap=5)
 
 
 def _name_taps(button: str, count: int) -> tuple[tuple[str, int], ...]:
     """Move one name-editor cell per tap without triggering key repeat."""
-    return sum([((button, 2), ("IDLE", 8)) for _ in range(count)], ())
+    return _taps(button, count)
 
 
 def _metal_play_name_nav() -> tuple[tuple[str, int], ...]:
@@ -128,6 +134,20 @@ def _metal_play_name_nav() -> tuple[tuple[str, int], ...]:
     )
 
 
+def _after_name_to_command(*, use_metal: bool) -> tuple[tuple[str, int], ...]:
+    """Shared Name → Clubs → flyover skip → hole-1 command menu."""
+    return (
+        *(_metal_play_name_nav() if use_metal else (("START", 4),)),
+        # password OK animates more slowly than an empty-name START
+        ("IDLE", 320 if use_metal else 160),
+        *_club_ok_nav(),
+        ("START", 4),
+        ("IDLE", 516),  # course flyover reaches its skippable point
+        ("B", 3),  # skip Hole 1 flyover
+        ("IDLE", 200),  # settle at SHOT/GREEN/HOLE command menu
+    )
+
+
 def title_to_stroke_play_frames(
     *,
     club_set: ClubSet = ClubSet.STANDARD,
@@ -144,16 +164,7 @@ def title_to_stroke_play_frames(
             ("IDLE", 120),  # Players → Difficulty
             *_difficulty_select(difficulty),
             ("IDLE", 180),  # Name editor animates in slowly
-            *(_metal_play_name_nav() if use_metal else (("START", 4),)),
-            (
-                "IDLE",
-                320 if use_metal else 160,
-            ),  # password OK animates more slowly than an empty-name START
-            *_club_ok_nav(),
-            ("START", 4),
-            ("IDLE", 516),  # course flyover reaches its skippable point
-            ("B", 3),       # skip Hole 1 flyover
-            ("IDLE", 200),  # settle at SHOT/GREEN/HOLE command menu
+            *_after_name_to_command(use_metal=use_metal),
         ]
     )
 
@@ -188,16 +199,7 @@ def title_to_vs_hal_frames(
             ("IDLE", 120),  # → Difficulty (Players skipped)
             *_difficulty_select(difficulty),
             ("IDLE", 180),  # → Name
-            *(_metal_play_name_nav() if use_metal else (("START", 4),)),
-            (
-                "IDLE",
-                320 if use_metal else 160,
-            ),  # password OK animates more slowly than an empty-name START
-            *_club_ok_nav(),
-            ("START", 4),
-            ("IDLE", 516),
-            ("B", 3),
-            ("IDLE", 200),
+            *_after_name_to_command(use_metal=use_metal),
         ]
     )
 

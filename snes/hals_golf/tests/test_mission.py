@@ -26,6 +26,7 @@ from hals_golf.tasks.menus import (
     title_to_vs_hal_amateur_frames,
     title_to_vs_hal_frames,
 )
+from hals_golf.tasks.scorecard import ScorecardBook
 from hals_golf.tasks.mission import (
     COMMAND_STALL_FRAMES,
     FUTILE_SHOT_LIMIT,
@@ -72,6 +73,20 @@ def _world(
         },
         obs=_command_obs() if command else np.zeros((224, 256, 3), dtype=np.uint8),
     )
+
+
+def test_scorecard_book_records_match_and_stroke_totals() -> None:
+    book = ScorecardBook()
+    book.record(4, 1)
+    book.record(3, 2, opponent=4)
+    book.record(5, 3, opponent=5)
+    assert book.total == 12
+    assert book.match_lead == 1
+    card = book.as_dict([4, 4, 5])
+    assert card["holes"] == [4, 3, 5]
+    assert card["to_par"] == -1
+    assert card["holes_won"] == 1
+    assert card["holes_tied"] == 1
 
 
 def test_shot_task_reaches_success() -> None:
@@ -1491,11 +1506,11 @@ def test_vs_hal_match_won_at_twelve_hole_boundary() -> None:
     mission.reset(world)
     # The game ends VS HAL after Hole 12 even though stroke play has 18.
     mission._holes_completed = 12
-    mission._holes_won = 3
-    mission._holes_lost = 2
-    mission._holes_tied = 7
-    mission._hole_scores = [4] * 12
-    mission._hole_score_numbers = list(range(1, 13))
+    mission._card.holes_won = 3
+    mission._card.holes_lost = 2
+    mission._card.holes_tied = 7
+    mission._card.holes = [4] * 12
+    mission._card.hole_numbers = list(range(1, 13))
     mission._last_hole = 13
     mission._phase = MissionPhase.PLAY_HOLE
     mission._shot = None
@@ -1517,7 +1532,7 @@ def test_vs_hal_records_opponent_hole_score() -> None:
     mission._peak_strokes_this_hole = 4
     mission._strokes_this_hole = 4
     mission._record_hole_score(world)
-    assert mission._hole_scores == [4]
-    assert mission._opponent_hole_scores == [5]
-    assert mission._holes_won == 1
+    assert mission._card.holes == [4]
+    assert mission._card.opponent_holes == [5]
+    assert mission._card.holes_won == 1
     assert mission.match_lead() == 1

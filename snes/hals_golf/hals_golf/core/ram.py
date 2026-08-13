@@ -112,10 +112,35 @@ def read_rest_distance(ram: np.ndarray, info: dict[str, Any] | None = None) -> i
 
 def read_aim_offset(ram: np.ndarray, info: dict[str, Any] | None = None) -> int:
     """Return the raw red aim-offset byte."""
-    info = info or {}
-    if "aim_offset" in info:
-        return int(info["aim_offset"])
-    return read_u8(ram, WRAM_AIM_OFFSET)
+    return _info_or_u8(ram, info, "aim_offset", WRAM_AIM_OFFSET)
+
+
+def _info_or_u8(
+    ram: np.ndarray,
+    info: dict[str, Any] | None,
+    key: str,
+    offset: int,
+) -> int:
+    if info is not None and key in info:
+        return int(info[key])
+    return read_u8(ram, offset)
+
+
+def read_stroke_count(
+    ram: np.ndarray, info: dict[str, Any] | None = None
+) -> int:
+    """Return the current hole's stroke byte."""
+    return _info_or_u8(ram, info, "stroke_count", WRAM_STROKE_COUNT)
+
+
+def read_lie_type(ram: np.ndarray, info: dict[str, Any] | None = None) -> int:
+    """Return the surface under the ball."""
+    return _info_or_u8(ram, info, "lie_type", WRAM_LIE_TYPE)
+
+
+def read_opponent_strokes(ram: np.ndarray) -> int:
+    """Return Hal's companion stroke byte (VS HAL / match play)."""
+    return read_u8(ram, WRAM_OPPONENT_STROKE_COUNT)
 
 
 def snapshot_from_ram(
@@ -126,10 +151,10 @@ def snapshot_from_ram(
 ) -> GolfSnapshot:
     """Build a golf snapshot from emulator RAM."""
     info = info or {}
-    stroke = int(info.get("stroke_count", read_u8(ram, WRAM_STROKE_COUNT)))
+    stroke = read_stroke_count(ram, info)
     hole = read_hole_number(ram, info)
     rest = read_rest_distance(ram, info)
-    lie = int(info.get("lie_type", read_u8(ram, WRAM_LIE_TYPE)))
+    lie = read_lie_type(ram, info)
     aim_offset = read_aim_offset(ram, info)
     return GolfSnapshot(
         stroke_count=stroke,
