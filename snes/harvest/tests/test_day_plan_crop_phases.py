@@ -251,7 +251,7 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         self.assertNotIn("CLEAR_FIELD", names)
 
     def test_spring_d2_empty_berries_then_potato_if_money(self) -> None:
-        """Spring D2: berries ship first, then potato seeds when wallet can pay."""
+        """Spring D2: mountain grape ships first, then seeds when affordable."""
         rich = build_day_phases(
             None,
             weekday=2,
@@ -267,12 +267,12 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
             money=300,
         )
         rich_names = self._phase_names(rich)
-        self.assertIn("OPEN_FENCE_GAP", rich_names)
-        self.assertIn("SHIP_BERRY_1", rich_names)
+        self.assertIn("MOUNTAIN_BERRY", rich_names)
+        self.assertNotIn("OPEN_FENCE_GAP", rich_names)
+        self.assertNotIn("SHIP_BERRY_1", rich_names)
         self.assertIn("BUY_SEEDS", rich_names)
-        self.assertLess(rich_names.index("OPEN_FENCE_GAP"), rich_names.index("SHIP_BERRY_1"))
         self.assertLess(
-            rich_names.index("SHIP_BERRY_1"),
+            rich_names.index("MOUNTAIN_BERRY"),
             rich_names.index("BUY_SEEDS"),
         )
         self.assertNotIn("CLEAR_FIELD", rich_names)
@@ -292,7 +292,8 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
             money=100,
         )
         poor_names = self._phase_names(poor)
-        self.assertIn("SHIP_BERRY_1", poor_names)
+        self.assertIn("MOUNTAIN_BERRY", poor_names)
+        self.assertNotIn("SHIP_BERRY_1", poor_names)
         self.assertNotIn("BUY_SEEDS", poor_names)
         self.assertNotIn("CLEAR_FIELD", poor_names)
 

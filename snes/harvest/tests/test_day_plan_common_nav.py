@@ -312,6 +312,52 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertEqual(first.status, TaskStatus.RUNNING)
         self.assertEqual(result.status, TaskStatus.SUCCESS)
 
+    def test_multi_nav_relocalization_restarts_destination_settle(self) -> None:
+        origin = make_transition_world(0x0C, current_tile=(15, 8))
+        landed = make_transition_world(0x00, current_tile=(15, 6))
+        task = MultiMapNavTask(
+            waypoints=[
+                Waypoint(tilemap=0x0C, target_px=(244, 128)),
+                Waypoint(tilemap=0x00, target_px=(80, 424)),
+            ],
+            initial_settle_frames=5,
+        )
+        task.reset(origin)
+        task._initial_settle = task.initial_settle_frames
+
+        result = task.step(landed)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(result.reason, "relocalized after map transition")
+        self.assertEqual(task._wp_index, 1)
+        self.assertEqual(task._initial_settle, 0)
+
+    def test_multi_nav_exit_can_push_into_destination_before_settle(self) -> None:
+        origin = make_transition_world(0x0C, current_tile=(15, 8))
+        landed = make_transition_world(0x00, current_tile=(15, 6))
+        task = MultiMapNavTask(
+            waypoints=[
+                Waypoint(
+                    tilemap=0x0C,
+                    target_px=(244, 128),
+                    is_exit=True,
+                    exit_direction="right",
+                    exit_push_frames=2,
+                )
+            ],
+            initial_settle_frames=0,
+        )
+        task.reset(origin)
+        task._phase = "exit_settle"
+
+        first = task.step(landed)
+        second = task.step(landed)
+        third = task.step(landed)
+
+        self.assertEqual(int(first.action.action[7]), 1)
+        self.assertEqual(int(second.action.action[7]), 1)
+        self.assertEqual(int(third.action.action.sum()), 0)
+
     def test_directional_transition_does_not_recenter_after_stand_reached(self) -> None:
         world = make_transition_world(0x00, current_tile=(8, 12))
         task = DirectionalTransitionTask(

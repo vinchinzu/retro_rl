@@ -41,6 +41,9 @@ HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
 # Ground-grape pick + Don't eat (rr-14xx)
 HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
   --state Y1_Inside_House --pick --screenshot recordings/mountain_grape_kept.png
+# Full Spring D2 pick/keep/return/bin route (rr-nn3x)
+HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+  --state Y1_Inside_House --ship --out recordings/mountain_grape_ship.json
 
 # Classify a pick/talk from an existing tape or a live pin (do not re-record)
 uv run python -m harvest.scripts.interact_scan tape mountain_grape_stand

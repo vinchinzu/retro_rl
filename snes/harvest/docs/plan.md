@@ -28,10 +28,11 @@ Further MultNav residuals (forage interact, corridor densify) land as helpers,
 not thrash `if`s in the MultNav step machine. Details:
 [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
 
-**Money-route residual (`rr-zmss`):** live shipping_money stays 0 — forage
-interact still open (debris field north of bush seals path; need confirmed
-held-item / bush interact). Berry fail no longer cascade-skips BUY_SEEDS
-(optional phases split). MultNav fail-closed seal ~90 stuck frames instead of
+**Farm-bush residual (`rr-zmss`):** that legacy route still leaves
+`shipping_money=0` (debris field north of the bush seals the interact). Spring
+D2 no longer depends on it: the natural mountain-grape route ships for 150G,
+then reaches BUY_SEEDS and Spring D3 Clean. Keep the bush issue scoped to later
+repeat-forage days. MultNav fail-closed seal ~90 stuck frames instead of
 day-long thrash.
 
 ## Product backlog
