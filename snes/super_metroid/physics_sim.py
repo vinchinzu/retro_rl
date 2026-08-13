@@ -427,22 +427,9 @@ class StubPredictor(PhysicsPredictor):
                     vy = -5
                     movement = 1
 
-            # Update position
-            x_sub += vx_sub + (vx * 256) if vx != 0 else 0
-            if x_sub >= 65536:
-                x += x_sub // 65536
-                x_sub = x_sub % 65536
-            elif x_sub < 0:
-                x -= (-x_sub // 65536) + 1
-                x_sub = 65536 + (x_sub % 65536)
-
-            y_sub += vy_sub + (vy * 256) if vy != 0 else 0
-            if y_sub >= 65536:
-                y += y_sub // 65536
-                y_sub = y_sub % 65536
-            elif y_sub < 0:
-                y -= (-y_sub // 65536) + 1
-                y_sub = 65536 + (y_sub % 65536)
+            # Update position (simple pixel-per-frame for stub)
+            x += vx
+            y += vy
 
             # Fake ground collision at y=200
             if y >= 200 and vy > 0:

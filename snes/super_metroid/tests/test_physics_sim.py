@@ -505,8 +505,8 @@ class TestFrameMnemonic:
         assert encode_frame_mnemonic(0x81) == "b......r...."
 
     def test_encode_all_buttons(self) -> None:
-        # All 12 buttons pressed
-        assert encode_frame_mnemonic(0xFFF) == "bysSSudlraxLR"
+        # All 12 buttons pressed (12 chars, not 13)
+        assert encode_frame_mnemonic(0xFFF) == "bysSudlraxLR"
 
     def test_decode_all_released(self) -> None:
         assert decode_frame_mnemonic("............") == 0
@@ -609,7 +609,7 @@ class TestSmeditTasExport:
             speed_flag=0,
             shinespark_timer=0,
         )
-        inputs = [FrameInput(buttons=0x80)]
+        inputs = [FrameInput(buttons=0x80)]  # RIGHT
         traj = pred.predict(start, inputs)
 
         result = traj.to_smedit_tas()
@@ -617,7 +617,7 @@ class TestSmeditTasExport:
         trace = result["trace"]
         assert len(trace) == 1
         assert trace[0]["frame"] == 1
-        assert trace[0]["x"] == 102  # Moved right by 2
+        assert trace[0]["x"] == 102  # Moved right by 2 pixels
         assert trace[0]["y"] == 200
         assert trace[0]["roomId"] == 0x91F8
 
