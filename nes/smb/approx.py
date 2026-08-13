@@ -5,9 +5,12 @@ It models grounded walk/run, A-edge jump, A-release gravity, air X
 tables (including the takeoff frame), and land YMF. No slopes, pipes,
 enemies, or collision.
 
-X kinematics were fitted to a live Level1_1 RAM trace:
-- 16-bit speed ``(velocity_x, x_force)`` with first-kick ``0x0130``, then
-  walk ``+0x98`` / run ``+0xE4``
+X kinematics follow smbdis ``ImposeFriction`` on a 16-bit two's-complement
+``(Player_X_Speed, Player_X_MoveForce)`` word:
+- at rest, facing ≠ moving doubles the adder (``$98 << 1`` → first-kick ``$0130``)
+- RIGHT adds the adder; LEFT subtracts it (``0 - $0130`` → ``$FED0``, not ``-$0130``)
+- then walk ``$98`` / run ``$E4``
+- clamp snaps only the high byte (``MaximumRight/LeftSpeed``); leftover ``xf`` stays
 - no L/R uses smbdis ``FrictionData`` ``$98`` unless ``|vx| >= $21`` (``$D0``)
 - position subpixel ``$0400`` advances by ``velocity_x << 4``
 - in air (including the takeoff frame), walk tables unless
@@ -62,6 +65,7 @@ _IDX_A = 8
 WALK_ACCEL = 0x98
 RUN_ACCEL = 0xE4
 FRICTION = 0xD0
+# Rest + facing ≠ moving doubles FrictionData[$00] ($98 << 1). LEFT subtracts.
 FIRST_KICK = 0x0130
 WALK_MAX = 0x18
 RUN_MAX = 0x28
@@ -117,26 +121,26 @@ def decode_action(action: Sequence[int]) -> tuple[int, bool, bool]:
 
 
 def _pack_speed(velocity_x: int, x_force: int) -> int:
-    force = int(x_force) & 0xFF
-    if velocity_x < 0:
-        return -(((-int(velocity_x)) << 8) | force)
-    return (int(velocity_x) << 8) | force
+    """Unsigned 16-bit word: ``Player_X_Speed`` high, ``Player_X_MoveForce`` low."""
+    return ((int(velocity_x) & 0xFF) << 8) | (int(x_force) & 0xFF)
 
 
 def _unpack_speed(speed_16: int) -> tuple[int, int]:
-    if speed_16 < 0:
-        magnitude = -speed_16
-        return -(magnitude >> 8), magnitude & 0xFF
-    return speed_16 >> 8, speed_16 & 0xFF
+    word = int(speed_16) & 0xFFFF
+    vx_u = word >> 8
+    velocity_x = vx_u - 256 if vx_u >= 128 else vx_u
+    return velocity_x, word & 0xFF
 
 
 def _clamp_speed(speed_16: int, run: bool) -> int:
-    limit = (RUN_MAX if run else WALK_MAX) << 8
-    if speed_16 > limit:
-        return limit
-    if speed_16 < -limit:
-        return -limit
-    return speed_16
+    """Snap ``vx`` to ±max; keep leftover ``xf`` (smbdis does not wipe ``$0705``)."""
+    velocity_x, x_force = _unpack_speed(speed_16)
+    limit = RUN_MAX if run else WALK_MAX
+    if velocity_x >= limit:
+        velocity_x = limit
+    elif velocity_x < -limit:
+        velocity_x = -limit
+    return _pack_speed(velocity_x, x_force)
 
 
 def jump_table_index(velocity_x: int) -> int:
@@ -189,6 +193,18 @@ def _next_running_speed(obs: Observation, x_dir: int, jump: bool) -> int:
     return int(obs.running_speed)
 
 
+def _apply_brake(speed_16: int, adder: int) -> int:
+    """Add/sub friction; snap through zero (no L/R does not reverse)."""
+    velocity_x, _x_force = _unpack_speed(speed_16)
+    if velocity_x > 0:
+        nxt = (speed_16 - adder) & 0xFFFF
+        return 0 if _unpack_speed(nxt)[0] < 0 else nxt
+    if velocity_x < 0:
+        nxt = (speed_16 + adder) & 0xFFFF
+        return 0 if _unpack_speed(nxt)[0] > 0 else nxt
+    return speed_16
+
+
 def _update_x_speed(
     obs: Observation, x_dir: int, run: bool, jump: bool
 ) -> tuple[int, int, int]:
@@ -196,24 +212,15 @@ def _update_x_speed(
         run = False
     speed_16 = _pack_speed(obs.velocity_x, obs.x_force)
     facing = obs.facing
+    adder = FIRST_KICK if speed_16 == 0 else (RUN_ACCEL if run else WALK_ACCEL)
     if x_dir > 0:
         facing = 1
-        if speed_16 == 0:
-            speed_16 = FIRST_KICK
-        else:
-            speed_16 += RUN_ACCEL if run else WALK_ACCEL
-        speed_16 = _clamp_speed(speed_16, run)
+        speed_16 = _clamp_speed((speed_16 + adder) & 0xFFFF, run)
     elif x_dir < 0:
         facing = 2
-        if speed_16 == 0:
-            speed_16 = -FIRST_KICK
-        else:
-            speed_16 -= RUN_ACCEL if run else WALK_ACCEL
-        speed_16 = _clamp_speed(speed_16, run)
-    elif speed_16 > 0:
-        speed_16 = max(0, speed_16 - _brake_adder(obs))
-    elif speed_16 < 0:
-        speed_16 = min(0, speed_16 + _brake_adder(obs))
+        speed_16 = _clamp_speed((speed_16 - adder) & 0xFFFF, run)
+    else:
+        speed_16 = _apply_brake(speed_16, _brake_adder(obs))
     velocity_x, x_force = _unpack_speed(speed_16)
     return velocity_x, x_force, facing
 

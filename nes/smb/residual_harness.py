@@ -71,6 +71,13 @@ SEGMENTS: dict[str, tuple[tuple[int, ...], ...]] = {
     "run_then_idle": tuple(press("RIGHT", "B") for _ in range(32)) + tuple(
         idle_action() for _ in range(16)
     ),
+    "walk_left": tuple(press("LEFT") for _ in range(24)),
+    # Air walk-max ($18) keeps leftover xf; land then re-accel (rr-pwdj).
+    "run_then_jump_long": (
+        tuple(press("RIGHT", "B") for _ in range(16))
+        + tuple(press("RIGHT", "B", "A") for _ in range(4))
+        + tuple(press("RIGHT", "B") for _ in range(40))
+    ),
 }
 
 
