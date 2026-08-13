@@ -382,7 +382,7 @@ ram/assist → combat) are correct. Planner-serial when touching
 - [x] Remove thin helper aliases (`_hold = hold`) from KPDR segment modules
 - [x] Rename room-named KPDR segments to hop names (`pink_to_ghz`, `red_stack`, `to_kraid`, …)
 - [x] De-nest progression stage tables (`progression/stages/`)
-- [x] Continuous `*RunReport` aliases removed; Super+ tip aliases in `post_supers_aliases.py`
+- [x] Continuous `*RunReport` aliases removed; Super+ tips via `play_tip` / `run_to` only
 
 ### Graph first-class
 

@@ -7,14 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from super_metroid.human_tape import fingerprint, write_gzip_state
-from super_metroid.human_tape_replay import (
+from super_metroid.human_tape import (
     check_hop_green,
+    fingerprint,
     frame_action,
     match_anchor,
     propose_trace_midpoints,
     resolve_anchor_path,
     resolve_hop_slice,
+    write_gzip_state,
 )
 
 

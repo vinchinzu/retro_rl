@@ -182,8 +182,3 @@ def parse_bk2(path: Path | str) -> Bk2Movie:
         frames=frames,
         raw_p1=raw_p1,
     )
-
-
-def bk2_to_snes12_frames(path: Path | str) -> list[list[int]]:
-    """Convenience: path → list of 12-int SNES frames."""
-    return parse_bk2(path).frames

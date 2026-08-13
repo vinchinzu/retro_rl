@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from super_metroid.combat.features import ceres_ridley_catalog
 from super_metroid.ram import (
     ADDR_INVINCIBILITY_TIMER,
     ADDR_KNOCKBACK_TIMER,
@@ -297,8 +296,3 @@ def play_ceres_ridley_fight(
         final_y=int(end_state.samus_y),
         outcome=outcome,
     )
-
-
-def ceres_ridley_catalog_entry():
-    """Catalog accessor used by the BossStrategy wrapper."""
-    return ceres_ridley_catalog()

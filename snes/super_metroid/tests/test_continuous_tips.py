@@ -349,16 +349,19 @@ def test_unified_tip_specs_cover_full_chain() -> None:
 
 
 def test_post_supers_aliases_and_hop_tables() -> None:
-    """Super+ play/run aliases bind on continuous; hop tables live on hops."""
+    """Super+ tips go through play_tip; hop tables live on hops."""
     from super_metroid.routes import continuous as cont
     from super_metroid.routes.catalog import CONTINUOUS_SEGMENTS
     from super_metroid.routes.kpdr import hops as hop_mod
-    from super_metroid.routes.post_supers_aliases import build_post_supers_aliases
     from super_metroid.routes.tips import TipSpec
 
-    assert callable(cont.play_red_tower)
-    assert callable(cont.run_bat_cave)
-    assert cont.play_warehouse is CONTINUOUS_SEGMENTS["warehouse"]
+    assert callable(CONTINUOUS_SEGMENTS["warehouse"])
+    assert callable(CONTINUOUS_SEGMENTS["red_tower"])
+    assert CONTINUOUS_SEGMENTS["warehouse"].__name__ == "play_warehouse"
+    # No per-tip play_/run_ aliases on the continuous module.
+    assert not hasattr(cont, "play_red_tower")
+    assert not hasattr(cont, "run_bat_cave")
+    assert not hasattr(cont, "play_warehouse")
     # Hop tables are owned by hops.py (not re-exported from continuous).
     assert not hasattr(cont, "WAREHOUSE_HOPS")
     assert not hasattr(cont, "BAT_CAVE_ONLY_HOPS")
@@ -368,18 +371,6 @@ def test_post_supers_aliases_and_hop_tables() -> None:
     assert isinstance(hop_mod.WAREHOUSE_HOPS[0], hop_mod.SpineHop)
     assert hop_mod.SUPER_TIP_BY_ID["warehouse"].hops is hop_mod.WAREHOUSE_HOPS
     assert all(isinstance(s, TipSpec) for s in hop_mod.SUPER_TIP_SPECS)
-    # Bind lives outside continuous; tip ids still drive the name set.
-    built = build_post_supers_aliases(
-        ("red_tower", "bat_cave"),
-        play_spec=lambda *a, **k: None,
-        run_spec=lambda *a, **k: None,
-    )
-    assert set(built) == {
-        "play_red_tower",
-        "run_red_tower",
-        "play_bat_cave",
-        "run_bat_cave",
-    }
 
 
 def test_post_supers_report_kind_keeps_evidence_fields() -> None:

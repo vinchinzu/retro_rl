@@ -112,10 +112,6 @@ def air_enemies_alive(env) -> bool:
     return bool(list_air_enemies(env))
 
 
-def air_enemy_count(env) -> int:
-    return len(list_air_enemies(env))
-
-
 def _session_env(session: ControllerSession):
     env = getattr(session, "env", None)
     if env is None:

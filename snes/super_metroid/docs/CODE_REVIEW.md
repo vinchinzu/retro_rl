@@ -1,6 +1,6 @@
 # Code review: `snes/super_metroid/`
 
-**Date:** 2026-08-04 (wave: residual implementation via sub-agents)  
+**Date:** 2026-08-12 (condensation: shims / unused helpers)  
 **Scope:** package health / maintainability (strict code-quality bar)  
 **Verdict:** **pass**
 
@@ -22,6 +22,26 @@ Tests: **397 passed, 1 skipped**.
 | room_graph under 1k | **pass** — **509** + topology 337 + pathfind 140 |
 | Report schema / boss catalog | **pass** |
 | Historical alias freeze | **pass** — RouteHop / EarlyTipSpec / PostSupersTipSpec gone |
+
+---
+
+## Condensation wave (2026-08-12)
+
+Deleted import-only shims and unused helpers. Product controllers / combat /
+autopilot / practice paths untouched.
+
+| Deleted | Why |
+|---------|-----|
+| `models.py`, `visual_models.py` | Top-level re-exports of `legacy/` |
+| `human_tape_replay.py`, `human_tape_trim.py` | Re-exports of `human_tape` |
+| `routes/spore_spawn_controller.py` | Re-export of `kpdr.spore_spawn` |
+| `routes/post_supers_aliases.py` | Generated `play_<tip>` / `run_<tip>` on `continuous` — unused outside tests |
+| `routes/kpdr/k4_wave.py` | Re-export of `kpdr.wave` |
+| `routes/kpdr/guide_paths.py` | Re-export of `kpdr.guides` |
+
+Also removed unused helpers (`list_sources`, `events_from_item_frames`,
+`module_source_evidence`, `ceres_ridley_catalog_entry`, `air_enemy_count`,
+`export_all_slices`, TAS one-line converters, unused escape-room stubs).
 
 ---
 
@@ -83,9 +103,8 @@ Public imports via `room_graph` unchanged.
 
 ## Optional later (non-blocking)
 
-1. Drop Super+ `play_<tip>` / `run_<tip>` module aliases when scripts stop using them
-2. Further thin NamedRoute if harness consumers never need identity milestones
-3. Stronger typing on `TipPlayResult.boss` / `super_collect` (protocol or unions)
+1. Further thin NamedRoute if harness consumers never need identity milestones
+2. Stronger typing on `TipPlayResult.boss` / `super_collect` (protocol or unions)
 
 ---
 

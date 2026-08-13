@@ -36,8 +36,7 @@ Package layout
 * ``speedway_to_frog`` — Speedway → Frog Save return (Wave return stack hop 6)
 * ``frog_to_business`` — Frog Save → Business return (Wave return stack hop 7)
 
-Public API is also re-exported from :mod:`super_metroid.routes.kpdr.k4_wave`
-for stable registry / spine_hops / probe imports.
+Import hop callables from this package (or ``k4_norfair`` for the K4 barrel).
 """
 
 from __future__ import annotations

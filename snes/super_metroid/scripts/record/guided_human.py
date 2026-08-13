@@ -60,7 +60,7 @@ from super_metroid.rooms.canonical_names import (  # noqa: E402
     load_canonical_names,
     room_name,
 )
-from super_metroid.routes.kpdr.guide_paths import (  # noqa: E402
+from super_metroid.routes.kpdr.guides import (  # noqa: E402
     ROUTE_PRESETS,
     guide_for_room,
 )
