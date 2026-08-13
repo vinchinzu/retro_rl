@@ -5,6 +5,8 @@ Ground truth validation: run winning trajectories on real emulator
 
 This module provides the validation path required for room-clear claims.
 Predictor is for search speed only; emulator is authoritative.
+
+Tag E = SuperMetroidEnv (product name for RetroEnv-based validation, not a class).
 """
 
 from __future__ import annotations
@@ -80,7 +82,7 @@ class EmulatorValidationResult:
 
 
 def observation_from_env(env: Any) -> Observation:
-    """Extract Observation from SuperMetroidEnv (RetroEnv).
+    """Extract Observation from emulator (RetroEnv from GameSpec.make_env()).
 
     Reads Oπ/Oσ/Oσ+/O† fields from emulator RAM:
     - Oπ: pixels x/y ($0AF6, $0AFA), pose ($0A1C), room ($079B)
