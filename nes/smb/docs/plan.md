@@ -116,8 +116,8 @@ SMB addresses. Thin flat-ground `step(obs, action)` for walk / jump / gravity.
 - Code: `observation.py`, `approx.py`, `residual.py`, `residual_harness.py`
 - Measure: `uv run python -m smb.scripts.measure_residual`
 
-Next: takeoff-frame air X (run then jump), then grounded left/brake, then SMW
-using the same observation/residual shape.
+Next: jump tables from |vx| (run24/run32 then A), then grounded left/brake,
+then SMW using the same observation/residual shape.
 
 ### C — Optional follow-ons
 
