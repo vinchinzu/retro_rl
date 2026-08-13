@@ -121,10 +121,11 @@ def get_ceres_second_room_tape() -> CeresSecondRoomFixture:
     """Get real tape for Ceres Falling Tile → Magnet Stairs (EXACT prefix).
 
     Tape source: `routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans`
-    - EXACT prefix through room 2 (lines 41-58 in outbound.py)
+    - EXACT prefix through room 2 (lines 41-52 in outbound.py)
     - Continues after room 1's 564 frames
+    - RIGHT-ward continuation only (stops before LEFT 120 scientist approach)
     - RIGHT+B spans expanded via `_arm_pump_dash_spans` (period=2, L↔R)
-    - Multiple RIGHT+B pump spans at 24 and 96 frames
+    - Two RIGHT+B pump spans at 24 frames each
 
     Returns:
         CeresSecondRoomFixture with real tape (emulator_validated=False)
@@ -133,7 +134,8 @@ def get_ceres_second_room_tape() -> CeresSecondRoomFixture:
         This is the EXACT product tape with full arm-pump expansion, not
         a shortened sketch. Frame count must match expanding the raw spans.
     """
-    # EXACT raw prefix from _ceres_outbound_to_scientist_spans (lines 41-58):
+    # EXACT raw prefix from _ceres_outbound_to_scientist_spans (lines 41-52):
+    # Stops BEFORE (("LEFT",), 120, False) on line 54
     # (("RIGHT",), 24, False),
     # (("RIGHT", "B"), 24, True),
     # (("RIGHT", "B", "A"), 24, False),
@@ -147,9 +149,6 @@ def get_ceres_second_room_tape() -> CeresSecondRoomFixture:
     # (("RIGHT",), 24, False),
     # ((), 140, False),
     # (("RIGHT",), 160, False),
-    # (("LEFT",), 120, False),
-    # (("RIGHT", "B"), 96, True),
-    # ((), 24, False),
 
     inputs: list[FrameInput] = []
 
@@ -207,29 +206,12 @@ def get_ceres_second_room_tape() -> CeresSecondRoomFixture:
     for _ in range(160):
         inputs.append(FrameInput(buttons=mask))
 
-    # Span 14: LEFT, 120 frames
-    mask = button_names_to_mask(("LEFT",))
-    for _ in range(120):
-        inputs.append(FrameInput(buttons=mask))
-
-    # Span 15: RIGHT+B, 96 frames with arm-pump expansion
-    arm_pump_spans = _arm_pump_dash_spans("RIGHT", 96, "ceres_second_room")
-    for span in arm_pump_spans:
-        mask = button_names_to_mask(span.names)
-        for _ in range(span.frames):
-            inputs.append(FrameInput(buttons=mask))
-
-    # Span 16: idle, 24 frames
-    mask = button_names_to_mask(())
-    for _ in range(24):
-        inputs.append(FrameInput(buttons=mask))
-
-    # Total: 24 + 24 + 24 + 24 + 96 + 24 + 12 + 24 + 140 + 160 + 120 + 96 + 24 = 792 frames
+    # Total: 24 + 24 + 24 + 24 + 96 + 24 + 12 + 24 + 140 + 160 = 552 frames
     return CeresSecondRoomFixture(
         from_room_id=ROOM_CERES_FALLING,
         to_room_id=ROOM_CERES_MAGNET,
         inputs=tuple(inputs),
-        tape_source="routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans (EXACT prefix, 792 frames)",
+        tape_source="routes.kpdr.ceres.outbound._ceres_outbound_to_scientist_spans (EXACT prefix, 552 frames)",
         emulator_validated=False,
     )
 

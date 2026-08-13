@@ -101,17 +101,17 @@ class TestCeresSecondRoomTape:
     def test_tape_exact_frame_count(self) -> None:
         """Tape has EXACT frame count matching product spans.
 
-        Raw spans:
+        Raw spans (lines 41-52, stops BEFORE LEFT 120):
         RIGHT 24, RIGHT+B 24 (arm-pump), RIGHT+B+A 24, RIGHT+A 24,
         RIGHT 24×4=96, RIGHT+B 24 (arm-pump), idle 12, RIGHT 24,
-        idle 140, RIGHT 160, LEFT 120, RIGHT+B 96 (arm-pump), idle 24
+        idle 140, RIGHT 160
 
-        Total: 24 + 24 + 24 + 24 + 96 + 24 + 12 + 24 + 140 + 160 + 120 + 96 + 24 = 792 frames
+        Total: 24 + 24 + 24 + 24 + 96 + 24 + 12 + 24 + 140 + 160 = 552 frames
         """
         fixture = get_ceres_second_room_tape()
 
-        assert fixture.frames == 792
-        assert len(fixture.inputs) == 792
+        assert fixture.frames == 552
+        assert len(fixture.inputs) == 552
 
     def test_tape_arm_pump_first_span_matches_helper(self) -> None:
         """First RIGHT+B 24 frames (span 2) matches _arm_pump_dash_spans output.
@@ -167,37 +167,16 @@ class TestCeresSecondRoomTape:
 
         assert tape_idx == arm_pump_end
 
-    def test_tape_arm_pump_third_span_matches_helper(self) -> None:
-        """Third RIGHT+B 96 frames matches _arm_pump_dash_spans output.
+    def test_tape_only_two_arm_pump_spans(self) -> None:
+        """Tape contains exactly two arm-pump spans (24f each), no 96f span.
 
-        This is the final arm-pump span (span 15) at offset
-        24+24+24+24+96+24+12+24+140+160+120=672 frames.
+        Room 2 stops before the LEFT 120 scientist approach, so the
+        RIGHT+B 96 span is not included.
         """
         fixture = get_ceres_second_room_tape()
 
-        # Get expected arm-pump expansion for 96 frames
-        arm_pump_spans = _arm_pump_dash_spans("RIGHT", 96, "test")
-
-        # Third RIGHT+B section starts at frame 672
-        arm_pump_start = 672
-        arm_pump_end = arm_pump_start + 96
-
-        # Verify tape matches helper output
-        tape_idx = arm_pump_start
-        for span in arm_pump_spans:
-            expected_mask = button_names_to_mask(span.names)
-            for _ in range(span.frames):
-                assert (
-                    fixture.inputs[tape_idx].buttons == expected_mask
-                ), f"Frame {tape_idx} mismatch: got 0x{fixture.inputs[tape_idx].buttons:03X}, expected 0x{expected_mask:03X} for {span.names}"
-                tape_idx += 1
-
-        # Verify we consumed exactly 96 frames
-        assert tape_idx == arm_pump_end
-
-        # Check arm-pump section length
-        arm_pump_frames = fixture.inputs[arm_pump_start:arm_pump_end]
-        assert len(arm_pump_frames) == 96
+        # Total should be 552, not 792 (which would include LEFT 120 + RIGHT+B 96 + idle 24)
+        assert fixture.frames == 552
 
     def test_tape_right_b_a_span(self) -> None:
         """Tape contains RIGHT+B+A for 24 frames (span 3)."""
@@ -212,24 +191,21 @@ class TestCeresSecondRoomTape:
             inp.buttons == 0x181 for inp in fixture.inputs[span_start:span_end]
         )
 
-    def test_tape_left_span(self) -> None:
-        """Tape contains LEFT for 120 frames (span 14)."""
+    def test_tape_no_left_span(self) -> None:
+        """Tape does NOT contain LEFT span (room 2 stops before scientist approach)."""
         fixture = get_ceres_second_room_tape()
 
-        # LEFT span starts at frame 552 (24+24+24+24+96+24+12+24+140+160)
         # LEFT = 0x40
-        span_start = 552
-        span_end = span_start + 120
+        # Verify no LEFT inputs in the entire tape
+        assert not any(inp.buttons == 0x40 for inp in fixture.inputs)
 
-        assert all(inp.buttons == 0x40 for inp in fixture.inputs[span_start:span_end])
-
-    def test_tape_ends_with_idle(self) -> None:
-        """Tape ends with 24 frames of idle (all buttons released)."""
+    def test_tape_ends_with_right(self) -> None:
+        """Tape ends with RIGHT 160 frames (span 13)."""
         fixture = get_ceres_second_room_tape()
 
-        # Last 24 frames should be idle (0x000)
-        idle_start = 768  # 792 - 24
-        assert all(inp.buttons == 0 for inp in fixture.inputs[idle_start:])
+        # Last 160 frames should be RIGHT (0x80)
+        right_start = 392  # 552 - 160
+        assert all(inp.buttons == 0x80 for inp in fixture.inputs[right_start:])
 
     def test_tape_not_emulator_validated(self) -> None:
         """Tape does not claim emulator validation by default."""
