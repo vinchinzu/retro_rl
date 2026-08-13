@@ -80,9 +80,13 @@ Complete prediction result:
 
 Deterministic fake physics for offline tests:
 
-- Simple linear motion with gravity
-- Not accurate Super Metroid physics
-- Useful for protocol contract tests, CLI smoke tests, route planning unit
+- **Intentionally simplified:** Not accurate Super Metroid physics
+- **Physics model:** Direct pixel-per-frame movement (`x += vx`, `y += vy`)
+  - B jump sets `vy = -5`, then `y += vy` (e.g., 200 - 5 = 195)
+  - LEFT/RIGHT sets `vx = ±2`, then `x += vx`
+  - Simple ground collision at y=200
+- **Not MiniStep:** Golden fixtures reflect StubPredictor behavior, not MiniStep/sm_rev
+- **Use for:** Protocol contract tests, CLI smoke tests, route planning unit
   tests without ROM
 
 ```python
@@ -90,8 +94,9 @@ from super_metroid.physics_sim import StubPredictor, SimState, FrameInput
 
 predictor = StubPredictor(name="test")
 start = SimState(frame=0, room_id=0x91F8, samus_x=100, samus_y=200, ...)
-inputs = [FrameInput(buttons=0x40) for _ in range(60)]  # Hold RIGHT
+inputs = [FrameInput(buttons=0x40) for _ in range(60)]  # Hold LEFT
 trajectory = predictor.predict(start, inputs)
+# Frame 1: x=98 (100-2), y=200 (grounded)
 ```
 
 ### SmRevClient (external)
