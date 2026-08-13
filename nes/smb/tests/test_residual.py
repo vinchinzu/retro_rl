@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from smb.approx import JUMP_SPEED, idle_action, press, rollout, step
+from smb.approx import AIR_RUN_KEEP, JUMP_SPEED, WALK_MAX, idle_action, press, rollout, step
 from smb.observation import (
     Observation,
     level1_start_obs,
@@ -116,14 +116,76 @@ def test_walk_is_deterministic_and_rightward() -> None:
 
 def test_jump_leaves_ground_then_lands() -> None:
     start = level1_start_obs()
-    frames = rollout(start, [press("A")] * 4 + [idle_action()] * 20)
+    frames = rollout(start, [press("A")] * 4 + [idle_action()] * 40)
     assert frames[1].y == start.y + JUMP_SPEED
     assert frames[1].on_ground is False
     assert frames[1].velocity_y == JUMP_SPEED
+    assert frames[1].y_move_force == 0x20
+    assert frames[1].jump_origin_y == start.y
     assert min(frame.y for frame in frames) < start.y
     assert frames[-1].on_ground is True
     assert frames[-1].y == start.ground_y
     assert frames[-1].velocity_y == 0
+    assert frames[-1].sub_y == 128
+    assert frames[-1].vertical_force == 0x70
+
+
+def test_jump_a_release_matches_level1_trace() -> None:
+    """Standing 4-A then idle: ImposeGravity + A-release VF copy (live 1-1)."""
+    start = level1_start_obs()
+    frames = rollout(start, [press("A")] * 4 + [idle_action()] * 4)
+    expected = (
+        # f, y, sub_y, vy, y_move_force, vertical_force
+        (0, 176, 0, 0, 0, 0),
+        (1, 172, 0, -4, 32, 32),
+        (2, 168, 32, -4, 64, 32),
+        (3, 164, 96, -4, 96, 32),
+        (4, 160, 192, -4, 128, 32),
+        (5, 157, 64, -4, 240, 112),
+        (6, 154, 48, -3, 96, 112),
+        (7, 151, 144, -3, 208, 112),
+        (8, 149, 96, -2, 64, 112),
+    )
+    for frame, y, sub_y, vy, ymf, vf in expected:
+        obs = frames[frame]
+        assert (obs.y, obs.sub_y, obs.velocity_y, obs.y_move_force, obs.vertical_force) == (
+            y,
+            sub_y,
+            vy,
+            ymf,
+            vf,
+        ), f"f{frame}"
+
+
+def test_land_keeps_ymf_dummy() -> None:
+    """Standing 4-A then idle: land snaps y, keeps $0416 leftover (live 1-1)."""
+    start = level1_start_obs()
+    frames = rollout(start, [press("A")] * 4 + [idle_action()] * 28)
+    land = frames[25]
+    assert land.on_ground is True
+    assert land.y == start.ground_y
+    assert land.sub_y == 128
+    assert land.velocity_y == 0
+    assert land.y_move_force == 0
+    assert land.vertical_force == 0x70
+    assert frames[24].on_ground is False
+    assert frames[30].sub_y == 128
+    assert frames[30].on_ground is True
+
+
+def test_air_x_uses_walk_tables_until_run_speed() -> None:
+    start = level1_start_obs()
+    air = rollout(start, [press("RIGHT", "B", "A")] * 8)
+    grounded_run = rollout(start, [press("RIGHT", "B")] * 8)
+    assert air[1].velocity_x == 1
+    assert air[1].x_force == 48
+    assert air[2].velocity_x == 1
+    assert air[2].x_force == 200
+    assert air[2].sub_x == 32
+    assert grounded_run[2].velocity_x == 2
+    assert grounded_run[2].x_force == 20
+    assert all(frame.velocity_x <= WALK_MAX for frame in air)
+    assert AIR_RUN_KEEP == 0x19
 
 
 def test_stepper_does_not_mutate_start() -> None:
@@ -226,3 +288,14 @@ def test_measure_segment_offline_walk() -> None:
     assert result.approx_obs[0].x == 40
     assert result.approx_obs[-1].x >= 40
     assert result.horizon == 25
+
+
+def test_measure_segment_offline_jump_to_land() -> None:
+    result = measure_segment("jump_to_land", run_emulator=False)
+    assert result.profile.unmeasured is True
+    assert result.horizon == 33
+    land = result.approx_obs[25]
+    assert land.on_ground is True
+    assert land.y == 176
+    assert land.sub_y == 128
+    assert land.vertical_force == 0x70

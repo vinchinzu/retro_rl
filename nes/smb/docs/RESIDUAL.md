@@ -22,7 +22,11 @@ not ground truth. Emulator replay is authoritative.
 | `velocity_y` | `$009F` | s8 | field | first-diff only |
 | `frame_counter` | `$0009` | u8 | lag | desynced tape index |
 | `on_ground` | `$001D==0` | flag | field | air is `1` |
-| `x_force` | `$0705` | u8 | stepper | 16-bit X-speed low byte |
+| `x_force` | `$0705` | u8 | stepper | `Player_X_MoveForce` |
+| `y_move_force` | `$0433` | u8 | stepper | `Player_Y_MoveForce` |
+| `vertical_force` | `$0709` | u8 | stepper | rising / current gravity |
+| `vertical_force_down` | `$070A` | u8 | stepper | fall gravity |
+| `jump_origin_y` | `$0708` | u8 | stepper | A-release height gate |
 
 `R(τ) = (fd_σ+, fd_σ, fd_π, fd_†)`. `None` means that level held for the horizon.
 
@@ -37,8 +41,10 @@ Short Level1_1 tapes in `smb.residual_harness.SEGMENTS`:
 |---------|-------|-----|
 | `idle` | 24 none | control: physics should hold |
 | `walk` | 24 RIGHT | grounded accel + subpixel |
-| `jump` | 4 A + 20 idle | takeoff / gravity / land |
+| `jump` | 4 A + 20 idle | takeoff / gravity (lands at f25) |
 | `run_jump` | 30 RIGHT+B+A | air control + run accel |
+| `jump_to_land` | 4 A + 28 idle | standing jump through land + settle |
+| `run_jump_to_land` | 60 RIGHT+B+A | run-jump through land |
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -58,12 +64,47 @@ First live Level1_1 pass (2026-08-13, fceumm `Level1_1.state`):
 Walk holds Oπ and Oσ for the whole 24-input tape (x 40→51, xs=14). A longer
 RIGHT hold still matches pixels/subpixels out to 80f; at 120f only Oσ+ breaks
 (`enemy0` spawn, fdσ+=96) — the physics residual still holds. Jump first
-breaks `$0416` at f5 (`sub_y` 48 vs 64) then pixels at f7. Run-jump is the next
-stub: air X accel is slower than grounded walk/run.
+broke `$0416` at f5 (`sub_y` 48 vs 64) then pixels at f7. Run-jump used
+grounded run accel in air.
+
+After `rr-ep6l` (A-release `ImposeGravity` + air walk tables unless `|vx|≥0x19`):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| idle | 25 | `(—, —, —, —)` | — | — |
+| walk | 25 | `(—, —, —, —)` | — | — |
+| jump | 25 | `(—, —, —, —)` | — | — |
+| run_jump | 31 | `(—, —, —, —)` | — | — |
+
+Gravity-only (before air X) already moved jump to a full hold; run-jump stayed
+`(2, 2, 6, —)` on `$0400` until air X used walk `$98`/`$18`. Grounded walk,
+grounded run (30f), and a short walk-jump also hold.
+
+After `rr-phwv` (land keeps `$0416` / leftover `$0709`; do not snap `sub_y` to 0):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| idle | 25 | `(—, —, —, —)` | — | — |
+| walk | 25 | `(—, —, —, —)` | — | — |
+| jump | 25 | `(—, —, —, —)` | — | — |
+| run_jump | 31 | `(—, —, —, —)` | — | — |
+| jump_to_land | 33 | `(—, —, —, —)` | — | — |
+| run_jump_to_land | 61 | `(—, —, —, —)` | — | — |
+
+Landing snaps pixel Y and zeros `velocity_y` / `$0433`. ImposeGravity leftover
+`$0416` stays (`128` on the standing 4-A land, `64` on the 60f run-jump) and
+`$0709` stays at `0x70`. Land-then-walk / land-then-run / land-then-rejump
+also hold. Short tapes still land before f25 / f53, so they never saw this.
+
+Next break is **takeoff-frame air X**, not another Y stub. 16f RIGHT+B then A:
+fdσ=18, fdπ=25 — the leave-ground frame still applies grounded run `$E4`
+(`xf` 140→112); emu already uses walk `$98` (`xf` 140→36). Grounded leftovers
+(not that stub): LEFT first-kick fdσ=1; brake after RIGHT uses `$98` not
+`FRICTION $D0` (fdσ=19).
 
 ## Modules
 
 - `smb.observation` — RAM → structured obs
-- `smb.approx.step` — pure `obs, action → obs` (flat ground only)
+- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF)
 - `smb.residual` — `compute_residual_profile`
 - `smb.residual_harness` — stepper + fceumm + `R(τ)`
