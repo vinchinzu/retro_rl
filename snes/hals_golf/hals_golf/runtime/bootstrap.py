@@ -12,6 +12,7 @@ from PIL import Image
 
 from hals_golf.core.actions import idle, press_named
 from hals_golf.core.ram import WRAM_STROKE_COUNT, read_u8
+from hals_golf.core.scene import mean_rgb
 from hals_golf.paths import DEBUG_FRAMES_DIR, GAME, GAME_DIR, PROJECT_DIR
 from hals_golf.runtime.retro_setup import register_golf_integration
 from hals_golf.tasks.menus import cold_boot_from_none_frames
@@ -26,14 +27,6 @@ def _save_frame(obs: np.ndarray, path: Path) -> None:
 def _ram_fingerprint(ram: np.ndarray, sample: int = 64) -> list[int]:
     idx = np.linspace(0, len(ram) - 1, sample, dtype=int)
     return [int(ram[i]) for i in idx]
-
-
-def _mean_rgb(obs: np.ndarray) -> tuple[float, float, float]:
-    return (
-        float(np.mean(obs[:, :, 0])),
-        float(np.mean(obs[:, :, 1])),
-        float(np.mean(obs[:, :, 2])),
-    )
 
 
 def run_cold_boot_probe(*, frames: int = 1400, save_prefix: str = "probe") -> dict:
@@ -69,7 +62,7 @@ def run_cold_boot_probe(*, frames: int = 1400, save_prefix: str = "probe") -> di
             ram = env.get_ram()
             stroke = read_u8(ram, WRAM_STROKE_COUNT)
             stroke_hist[stroke] += 1
-            r, g, b = _mean_rgb(obs)
+            r, g, b = mean_rgb(obs)
 
             # Title / mode select: green field background.
             if not title_saved and g > 40 and g > r + 8 and frame_i > 300:

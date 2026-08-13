@@ -13,6 +13,10 @@ from hals_golf.tasks.routes.pro import (
     PRO_HOLE_PUTT_PLANS,
     PRO_HOLE_SHOT_PLANS,
 )
+from hals_golf.tasks.routes.rest_bands import (
+    REST_BAND_OVERRIDES,
+    RestBandOverride,
+)
 from hals_golf.tasks.routes.tables import (
     AMATEUR_PARS,
     HOLE_CLUB_PLANS,
@@ -40,6 +44,8 @@ __all__ = [
     "PRO_HOLE_CLUB_PLANS",
     "PRO_HOLE_PUTT_PLANS",
     "PRO_HOLE_SHOT_PLANS",
+    "REST_BAND_OVERRIDES",
+    "RestBandOverride",
     "VS_HAL_HOLE_CLUB_PLANS",
     "VS_HAL_HOLE_PUTT_PLANS",
     "VS_HAL_HOLE_SHOT_PLANS",

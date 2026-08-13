@@ -11,15 +11,56 @@ from typing import Any
 
 import numpy as np
 
-from hals_golf.paths import PROJECT_DIR
-
-RECORDINGS_DIR = PROJECT_DIR / "recordings"
+from hals_golf.paths import RECORDINGS_DIR
 
 
 def default_video_path(prefix: str = "clear") -> Path:
     """Return a timestamped path under ``hals_golf/recordings/``."""
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return RECORDINGS_DIR / f"{prefix}_{stamp}.mp4"
+
+
+def open_cli_video(
+    video_arg: str | None,
+    *,
+    prefix: str,
+    obs_shape: tuple[int, ...],
+    scale: int,
+    fps: int = 60,
+    audio_rate: int | None = None,
+) -> FrameVideoWriter | None:
+    """Create a FrameVideoWriter when ``--video`` is enabled."""
+    path = resolve_video_path(video_arg, prefix=prefix)
+    if path is None:
+        return None
+    height, width = int(obs_shape[0]), int(obs_shape[1])
+    writer = FrameVideoWriter(
+        path,
+        width=width,
+        height=height,
+        fps=fps,
+        scale=max(1, scale),
+        audio_rate=audio_rate,
+    )
+    audio = f" stereo-s16le@{audio_rate}Hz" if audio_rate is not None else ""
+    print(
+        f"[VIDEO] recording -> {writer.path} "
+        f"({width}x{height} @{fps}fps scale={scale}{audio})"
+    )
+    return writer
+
+
+def close_cli_video(writer: FrameVideoWriter | None) -> None:
+    """Finalize a CLI recording and print a one-line summary."""
+    if writer is None:
+        return
+    path = writer.close()
+    seconds = writer.frames_written / max(1, writer.fps)
+    size_mb = path.stat().st_size / (1024 * 1024) if path.exists() else 0.0
+    print(
+        f"[VIDEO] wrote {path} frames={writer.frames_written} "
+        f"duration={seconds:.1f}s size={size_mb:.1f}MB"
+    )
 
 
 def resolve_video_path(value: str | None, *, prefix: str) -> Path | None:

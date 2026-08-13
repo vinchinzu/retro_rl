@@ -32,31 +32,11 @@ from hals_golf.core.actions import (
 )
 from hals_golf.core.ram import (
     LIE_PUTTING_GREEN,
-    WRAM_LIE_TYPE,
-    WRAM_REST_DISTANCE,
-    WRAM_STROKE_COUNT,
-    read_u16_le,
-    read_u8,
+    read_lie_type,
+    read_rest_distance,
+    read_stroke_count,
 )
 from hals_golf.core.scene import is_command_screen
-
-
-def _stroke_count(world: WorldState) -> int:
-    if "stroke_count" in world.info:
-        return int(world.info["stroke_count"])
-    return read_u8(world.ram, WRAM_STROKE_COUNT)
-
-
-def _rest_distance(world: WorldState) -> int:
-    if "rest_distance" in world.info:
-        return int(world.info["rest_distance"])
-    return read_u16_le(world.ram, WRAM_REST_DISTANCE)
-
-
-def _lie_type(world: WorldState) -> int:
-    if "lie_type" in world.info:
-        return int(world.info["lie_type"])
-    return read_u8(world.ram, WRAM_LIE_TYPE)
 
 
 def _flight_settled(
@@ -75,12 +55,55 @@ def _flight_settled(
     """
     if not require_rest_change:
         return True
-    rest_now = _rest_distance(world)
+    rest_now = read_rest_distance(world.ram, world.info)
     if rest_now != start_rest or rest_now == 0:
         return True
-    if _stroke_count(world) == start_strokes:
+    if read_stroke_count(world.ram, world.info) == start_strokes:
         return False
     return start_lie == LIE_PUTTING_GREEN
+
+
+def _flight_result(
+    world: WorldState,
+    *,
+    flight_elapsed: int,
+    flight_wait: int,
+    require_rest_change: bool,
+    complete_on_rest_zero: bool,
+    start_rest: int,
+    start_strokes: int,
+    start_lie: int,
+) -> TaskResult | None:
+    """Return a terminal WAIT_FLIGHT result, or None to keep idling."""
+    if (
+        complete_on_rest_zero
+        and flight_elapsed >= 120
+        and read_rest_distance(world.ram, world.info) == 0
+    ):
+        return TaskResult(status=TaskStatus.SUCCESS)
+    rest_ok = _flight_settled(
+        require_rest_change=require_rest_change,
+        start_rest=start_rest,
+        start_strokes=start_strokes,
+        start_lie=start_lie,
+        world=world,
+    )
+    cmd_ready = (
+        flight_elapsed >= 120
+        and is_command_screen(world.obs)
+        and rest_ok
+    )
+    timed_out = flight_elapsed >= flight_wait and (
+        not require_rest_change or rest_ok
+    )
+    if cmd_ready or timed_out:
+        return TaskResult(status=TaskStatus.SUCCESS)
+    if require_rest_change and flight_elapsed + 1 >= flight_wait + 480:
+        return TaskResult(
+            status=TaskStatus.FAILURE,
+            action=ActionResult(action=idle(), reason="rest_unchanged"),
+        )
+    return None
 
 
 class ShotPhase(Enum):
@@ -132,9 +155,9 @@ class ShotTask:
         self._phase = ShotPhase.OPEN_SHOT
         self._wait = 0
         self._queue = []
-        self._start_strokes = _stroke_count(world)
-        self._start_rest = _rest_distance(world)
-        self._start_lie = _lie_type(world)
+        self._start_strokes = read_stroke_count(world.ram, world.info)
+        self._start_rest = read_rest_distance(world.ram, world.info)
+        self._start_lie = read_lie_type(world.ram, world.info)
         self._flight_elapsed = 0
         downs = [("DOWN", 2), ("IDLE", 8)] * max(0, self.cursor_downs)
         self._queue = named_script(
@@ -213,45 +236,34 @@ class ShotTask:
             # starts Hal's turn instead.  Waiting for the normal command/
             # timeout gate lets Hal's REST changes masquerade as another one
             # of our shots, so finish as soon as the cup has held the ball.
-            if (
-                self.complete_on_rest_zero
-                and self._flight_elapsed >= 120
-                and _rest_distance(world) == 0
-            ):
-                self._phase = ShotPhase.DONE
-                return TaskResult(status=TaskStatus.SUCCESS)
-            rest_ok = _flight_settled(
+            flight = _flight_result(
+                world,
+                flight_elapsed=self._flight_elapsed,
+                flight_wait=self.flight_wait,
                 require_rest_change=self.require_rest_change,
+                complete_on_rest_zero=self.complete_on_rest_zero,
                 start_rest=self._start_rest,
                 start_strokes=self._start_strokes,
                 start_lie=self._start_lie,
-                world=world,
             )
-            cmd_ready = (
-                self._flight_elapsed >= 120
-                and is_command_screen(world.obs)
-                and rest_ok
-            )
-            timed_out = self._flight_elapsed >= self.flight_wait and (
-                not self.require_rest_change or rest_ok
-            )
-            if cmd_ready or timed_out:
-                self._phase = ShotPhase.DONE
-            else:
-                self._flight_elapsed += 1
-                # Soft escape: give up so the mission can nudge aim/power
-                # instead of looping identical chips forever.
-                if (
-                    self.require_rest_change
-                    and self._flight_elapsed >= self.flight_wait + 480
-                ):
+            if flight is not None:
+                if flight.status == TaskStatus.FAILURE:
+                    self._flight_elapsed += 1
                     return TaskResult(
                         status=TaskStatus.FAILURE,
-                        action=ActionResult(
-                            action=idle(), reason="rest_unchanged"
-                        ),
+                        action=flight.action,
                         meta={"phase": self._phase.name},
                     )
+                self._phase = ShotPhase.DONE
+                # Hole-outs report success this frame; command/timeout
+                # settle waits until the next step hits DONE.
+                if (
+                    self.complete_on_rest_zero
+                    and read_rest_distance(world.ram, world.info) == 0
+                ):
+                    return flight
+            else:
+                self._flight_elapsed += 1
         elif self._phase == ShotPhase.DONE:
             return TaskResult(status=TaskStatus.SUCCESS)
 
@@ -292,9 +304,9 @@ class PuttTask:
         self._phase = "prepare"
         self._wait = 0
         self._flight_elapsed = 0
-        self._start_rest = _rest_distance(world)
-        self._start_strokes = _stroke_count(world)
-        self._start_lie = _lie_type(world)
+        self._start_rest = read_rest_distance(world.ram, world.info)
+        self._start_strokes = read_stroke_count(world.ram, world.info)
+        self._start_lie = read_lie_type(world.ram, world.info)
         # On the green: command -> aim -> ball/putter -> meter. The meter then
         # uses two clicks (start and power), unlike a full swing's three.
         self._queue = named_script([("B", 3), ("IDLE", 55)])
@@ -337,40 +349,21 @@ class PuttTask:
             # Hole-outs transition directly to the opponent/result sequence
             # and never restore our command panel.  Report success before
             # Hal's subsequent ball movement can be attributed to this putt.
-            if (
-                self.complete_on_rest_zero
-                and self._flight_elapsed >= 120
-                and _rest_distance(world) == 0
-            ):
-                return TaskResult(status=TaskStatus.SUCCESS)
-            rest_ok = _flight_settled(
+            flight = _flight_result(
+                world,
+                flight_elapsed=self._flight_elapsed,
+                flight_wait=self.flight_wait,
                 require_rest_change=self.require_rest_change,
+                complete_on_rest_zero=self.complete_on_rest_zero,
                 start_rest=self._start_rest,
                 start_strokes=self._start_strokes,
                 start_lie=self._start_lie,
-                world=world,
             )
-            cmd_ready = (
-                self._flight_elapsed >= 120
-                and is_command_screen(world.obs)
-                and rest_ok
-            )
-            timed_out = self._flight_elapsed >= self.flight_wait and (
-                not self.require_rest_change or rest_ok
-            )
-            if cmd_ready or timed_out:
-                return TaskResult(status=TaskStatus.SUCCESS)
+            if flight is not None:
+                if flight.status != TaskStatus.SUCCESS:
+                    self._flight_elapsed += 1
+                return flight
             self._flight_elapsed += 1
-            if (
-                self.require_rest_change
-                and self._flight_elapsed >= self.flight_wait + 480
-            ):
-                return TaskResult(
-                    status=TaskStatus.FAILURE,
-                    action=ActionResult(
-                        action=idle(), reason="rest_unchanged"
-                    ),
-                )
             return TaskResult(
                 status=TaskStatus.RUNNING,
                 action=ActionResult(action=idle(), reason=self._phase),
