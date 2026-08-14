@@ -16,19 +16,10 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level2_complete.py --infinite-life --trials 2 --save-state
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = _REPO_ROOT / "nes"
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.env import make_env, save_state
 from retro_harness.nes import nes_idle_action
@@ -50,7 +41,6 @@ from zelda_i.level2_boss_path import (
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_TRIFORCE, read_snapshot, read_u8
-
 
 def run_once(
     *,
@@ -205,7 +195,6 @@ def run_once(
     finally:
         env.close()
 
-
 def _fail(env, timeline, tag, track, reason: str) -> dict:
     s = read_snapshot(env.get_ram())
     out = {
@@ -226,7 +215,6 @@ def _fail(env, timeline, tag, track, reason: str) -> dict:
     except Exception:
         pass
     return out
-
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
@@ -287,7 +275,6 @@ def main() -> None:
             ],
         },
     )
-
 
 if __name__ == "__main__":
     main()

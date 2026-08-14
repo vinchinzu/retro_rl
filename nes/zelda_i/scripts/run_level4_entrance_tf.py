@@ -21,21 +21,12 @@ Examples::
         --from-state Level4Room50Cleared --trials 2 --tag l4_zavx_from50_tf
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
 import shutil
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = _REPO_ROOT / "nes"
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.env import make_env, save_state
 from retro_harness.nes import nes_idle_action
@@ -93,10 +84,8 @@ _FROM_STATE_SKIP_UNTIL: dict[str, str] = {
     "Level4Room31PostLadder": "",
 }
 
-
 def _state_path(name: str) -> Path:
     return GAME_DIR / "custom_integrations" / GAME / f"{name}.state"
-
 
 def _copy_checkpoint(src_name: str, dst_name: str) -> str | None:
     """Copy a just-saved segment checkpoint to the NaturalKey name."""
@@ -106,7 +95,6 @@ def _copy_checkpoint(src_name: str, dst_name: str) -> str | None:
     dst = _state_path(dst_name)
     shutil.copy2(src, dst)
     return str(dst)
-
 
 def _spine_from(start_state: str) -> list[tuple[str, str, str]]:
     first = _FROM_STATE_SKIP_UNTIL.get(start_state)
@@ -123,7 +111,6 @@ def _spine_from(start_state: str) -> list[tuple[str, str, str]]:
         if seen:
             out.append((seg, default_start, ckpt))
     return out
-
 
 def run_natural_key_spine(
     *,
@@ -282,7 +269,6 @@ def run_natural_key_spine(
     finally:
         env.close()
 
-
 def run_once(
     *,
     start_state: str,
@@ -376,7 +362,6 @@ def run_once(
         )
     return report
 
-
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--from-state", default="Level4Entrance")
@@ -451,7 +436,6 @@ def main() -> int:
     write_json_report(path, out)
     print(f"wrote {path} dual={dual} ok={out['ok']}", flush=True)
     return 0 if out["ok"] else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

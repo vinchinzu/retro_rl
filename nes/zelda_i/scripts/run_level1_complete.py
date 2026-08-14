@@ -13,8 +13,6 @@ Examples::
       --natural-entry --video --trials 1
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
@@ -24,11 +22,7 @@ from pathlib import Path
 
 import numpy as np
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -68,12 +62,10 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR, ROOM_TIMINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.room_timer import RoomTimer, bottleneck_visits
 
-
 def default_video_path(*, natural_entry: bool) -> Path:
     """Default showcase path for the Clean Level 1 tip."""
     label = "natural" if natural_entry else "isolated"
     return RECORDINGS_DIR / f"level1_complete_{label}.mp4"
-
 
 def _write_intro(
     writer: VideoRecorder,
@@ -112,7 +104,6 @@ def _write_intro(
     for i in range(hold_frames):
         writer.write(card, audio=silent, frame_index=-(hold_frames - i))
     return hold_frames
-
 
 def _finish_stages(*, natural_entry: bool):
     room33 = ROOM_33_SPEC
@@ -213,7 +204,6 @@ def _finish_stages(*, natural_entry: bool):
         ),
     )
 
-
 def run_once(
     *,
     natural_entry: bool = False,
@@ -234,8 +224,7 @@ def run_once(
     writer: VideoRecorder | None = None
     intro_written = 0
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
 
         on_frame = None
         if video_path is not None:
@@ -401,7 +390,6 @@ def run_once(
                 pass
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--natural-entry", action="store_true")
@@ -558,7 +546,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"room_timing={timing_out}")
     return 0 if all(report["ok"] for report in reports) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

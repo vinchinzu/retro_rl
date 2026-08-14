@@ -12,21 +12,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
-from pathlib import Path
-
-_REPO = Path(__file__).resolve().parents[3]
-_SNES = _REPO / "snes"
-for _p in (_REPO, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
 
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -117,7 +107,6 @@ def main(argv: list[str] | None = None) -> int:
     if result.png_path:
         print(f"PNG: {result.png_path}")
     return 0 if result.ok else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

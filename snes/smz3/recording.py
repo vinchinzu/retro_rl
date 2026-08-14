@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from retro_harness.env import reset_obs
 from retro_harness.video import FrameVideoWriter
 
 
@@ -27,10 +28,9 @@ class RecordingEnv:
         self.last_obs: np.ndarray | None = None
 
     def reset(self, *args: Any, **kwargs: Any) -> Any:
-        result = self._env.reset(*args, **kwargs)
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, info = reset_obs(self._env)
         self._maybe_write(obs)
-        return result
+        return obs, info
 
     def step(self, action: Any) -> Any:
         result = self._env.step(action)

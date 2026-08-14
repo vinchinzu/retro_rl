@@ -18,13 +18,8 @@ Evidence: ``recordings/sodom_upy_finish/``, ``Stage2_Clear.state``.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from final_fight.ram import (
@@ -58,7 +53,6 @@ _GRAB_CYCLE: tuple[list[int], ...] = (
     buttons("B", "Y"),
 )
 
-
 def _boss(ram: Any) -> dict[str, int]:
     return {
         "st": read_u8(ram, BOSS_BASE + OFF_STATUS),
@@ -71,13 +65,11 @@ def _boss(ram: Any) -> dict[str, int]:
         "gs": read_u8(ram, ADDR_GAME_STATUS),
     }
 
-
 def _is_boss_kill(b: dict[str, int], *, hits: int) -> bool:
     """True when Sodom HP underflow / zero after damage."""
     if b["hp"] > 200:
         return True
     return b["st"] == 3 and b["hp"] == 0 and hits > 0
-
 
 def run_upy_kill(
     *,
@@ -260,7 +252,6 @@ def run_upy_kill(
     )
     return report
 
-
 def run_drawn_mid_chip(
     *,
     state_name: str = "Boss2_Drawn",
@@ -416,7 +407,6 @@ def run_drawn_mid_chip(
     )
     return report
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -439,7 +429,6 @@ def main() -> None:
             flee_frames=args.flee,
             out_dir=args.out_dir,
         )
-
 
 if __name__ == "__main__":
     main()

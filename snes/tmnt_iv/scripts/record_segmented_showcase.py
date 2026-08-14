@@ -12,7 +12,6 @@ import argparse
 import json
 import shutil
 import subprocess
-import sys
 import textwrap
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -21,17 +20,12 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import get_available_states, make_env
+from retro_harness.env import get_available_states, make_env, reset_obs
 from retro_harness.actions import idle_action
 from retro_harness.segment_runner import configure_headless
 from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import ADDR_EVENT, parse_game_state, read_u8
-
 
 @dataclass(frozen=True)
 class ShowcaseClip:
@@ -42,7 +36,6 @@ class ShowcaseClip:
     max_frames: int
     stop: str = "fixed"
     note: str = "Development checkpoint cut"
-
 
 def showcase_clips() -> tuple[ShowcaseClip, ...]:
     """Return the stage-ordered, normal-difficulty completion reel."""
@@ -89,7 +82,6 @@ def showcase_clips() -> tuple[ShowcaseClip, ...]:
             "Normal-difficulty ending sequence",
         ),
     )
-
 
 class _VideoWriter:
     """Small ffmpeg RGB pipe used only by this game-local artifact script."""
@@ -168,7 +160,6 @@ class _VideoWriter:
             raise RuntimeError(stderr.decode("utf-8", errors="replace"))
         return self.path
 
-
 def _title_card(width: int, height: int, lines: list[str]) -> np.ndarray:
     """Render a compact disclosure/stage card at emulator resolution."""
     image = Image.new("RGB", (width, height), (5, 8, 18))
@@ -192,7 +183,6 @@ def _title_card(width: int, height: int, lines: list[str]) -> np.ndarray:
         y += 8
     return np.asarray(image, dtype=np.uint8)
 
-
 def _should_stop(
     clip: ShowcaseClip,
     *,
@@ -208,7 +198,6 @@ def _should_stop(
     if clip.stop == "normal_ending":
         return saw_ending and state.mode.name == "TITLE"
     return False
-
 
 def record_showcase(
     output: Path,
@@ -256,8 +245,7 @@ def record_showcase(
             heals = 0
             saw_ending = False
             try:
-                result = env.reset()
-                obs = result[0] if isinstance(result, tuple) else result
+                obs, _ = reset_obs(env)
                 start = parse_game_state(env.get_ram())
                 start_stage = start.stage
                 writer.write(obs)
@@ -324,7 +312,6 @@ def record_showcase(
     manifest["manifest"] = str(manifest_path)
     return manifest
 
-
 def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -354,7 +341,6 @@ def main() -> None:
     )
     print(f"video={args.output.resolve()}")
     print(f"manifest={manifest['manifest']}")
-
 
 if __name__ == "__main__":
     main()

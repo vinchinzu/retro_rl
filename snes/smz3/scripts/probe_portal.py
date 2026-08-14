@@ -19,11 +19,6 @@ import argparse
 import json
 import os
 import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from retro_harness.env import save_state  # noqa: E402
 from smz3.boot import make_boot_env  # noqa: E402
@@ -38,7 +33,6 @@ from smz3.portal_route import (  # noqa: E402
 )
 from smz3.portals import early_portal, room_name  # noqa: E402
 from smz3.ram import snapshot_env  # noqa: E402
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -201,7 +195,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.ok else 2
     finally:
         env.close()
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

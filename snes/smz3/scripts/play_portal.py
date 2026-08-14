@@ -37,10 +37,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 # Prefer a real display for interactive play; headless only when asked.
 if "SDL_VIDEODRIVER" not in os.environ and os.environ.get("HEADLESS", "").lower() not in (
     "1",
@@ -65,12 +61,10 @@ from smz3.portal_route import (  # noqa: E402
 from smz3.ram import snapshot_env  # noqa: E402
 from smz3.world import detect_world  # noqa: E402
 
-
 def _stop_for_state(state_name: str) -> str:
     if state_name == PORTAL_RESIDUE_STATE:
         return STOP_AFTER_PORTAL
     return STOP_AT_RED_DOOR
-
 
 def _refresh_state(state_name: str, *, missile_assist: bool) -> Path:
     """Drive power-on → checkpoint and write the named save state."""
@@ -131,7 +125,6 @@ def _refresh_state(state_name: str, *, missile_assist: bool) -> Path:
             else:
                 os.environ["SDL_VIDEODRIVER"] = "x11"
 
-
 def _write_recording(
     path: Path,
     *,
@@ -166,7 +159,6 @@ def _write_recording(
     }
     path.write_text(json.dumps(payload, indent=2) + "\n")
     print(f"[record] {path} ({len(raw_buttons)} frames)")
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -422,7 +414,6 @@ def main(argv: list[str] | None = None) -> int:
         )
     session.run()
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

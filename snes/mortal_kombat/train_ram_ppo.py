@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
 from functools import partial
 from pathlib import Path
 
@@ -24,8 +23,6 @@ import torch
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -44,7 +41,6 @@ from retro_harness.fighters.train_ppo import (
     TrainConfig,
 )
 
-
 class RamTrainConfig:
     """Hyperparameters tuned for small RAM observations."""
 
@@ -62,7 +58,6 @@ class RamTrainConfig:
     FRAME_SKIP = 4
     CHECKPOINT_FREQ = 100_000
     NET_ARCH = dict(pi=[256, 128], vf=[256, 128])
-
 
 def _make_env_fn(
     game_id: str,
@@ -85,12 +80,10 @@ def _make_env_fn(
 
     return _init
 
-
 def _resolve_features(name: str):
     if name == "v1":
         return MK1_RAM_FEATURES_V1
     return MK1_RAM_FEATURES
-
 
 def train(args: argparse.Namespace) -> None:
     # MLP policies train faster on CPU (SB3 recommendation for non-CNN).
@@ -189,7 +182,6 @@ def train(args: argparse.Namespace) -> None:
     print(f"\nTraining complete. Model saved to {final_path}")
     env.close()
 
-
 def evaluate(args: argparse.Namespace) -> None:
     """Headless eval loop for a RAM-trained model."""
     game_config = get_game_config(args.game)
@@ -248,7 +240,6 @@ def evaluate(args: argparse.Namespace) -> None:
     rate = wins / max(1, wins + losses)
     print(f"Eval: {wins}W / {losses}L over {episodes} episodes ({rate:.1%})")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="MK1 RAM-vector PPO trainer")
     parser.add_argument("--game", default="mk1", help="Game alias (default: mk1)")
@@ -295,7 +286,6 @@ def main() -> None:
         evaluate(args)
     else:
         train(args)
-
 
 if __name__ == "__main__":
     main()

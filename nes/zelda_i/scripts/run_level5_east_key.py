@@ -17,21 +17,15 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level5_east_key.py --from-state Level5Entrance --poke-doors --infinite-life
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]  # monorepo root
 _NES_ROOT = Path(__file__).resolve().parents[2]  # nes/
-for _p in (_REPO_ROOT, _NES_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -60,7 +54,6 @@ from zelda_i.ram import (
     read_snapshot,
 )
 
-
 def _ensure_door_vars(env) -> None:
     for name, addr in (
         ("doors", ADDR_CUR_OPENED_DOORS),
@@ -71,13 +64,11 @@ def _ensure_door_vars(env) -> None:
         except Exception:
             pass
 
-
 def _poke_doors_open(env) -> None:
     """Recon residual: force all door bits open (not Clean)."""
     _ensure_door_vars(env)
     env.data.set_value("doors", 0x0F)
     env.data.set_value("mask", 0x0F)
-
 
 def _enter_77_from_entry(env, *, assist, max_frames: int = 2500, poke_doors: bool) -> bool:
     """Assisted/recon path into 0x77. Returns True if room-ready on 0x77."""
@@ -124,7 +115,6 @@ def _enter_77_from_entry(env, *, assist, max_frames: int = 2500, poke_doors: boo
         env.step(act)
     return False
 
-
 def run_once(
     *,
     tag: str = "level5_east_key",
@@ -139,8 +129,7 @@ def run_once(
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     controller = make_pols_voice_controller()
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -252,7 +241,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=1)
@@ -322,7 +310,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {output}")
     return 0 if all(report["ok"] for report in reports) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

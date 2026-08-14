@@ -24,7 +24,6 @@ import hashlib
 import json
 import shutil
 import subprocess
-import sys
 import wave
 from collections import Counter
 from dataclasses import asdict, dataclass, field
@@ -35,11 +34,7 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state  # noqa: E402
+from retro_harness.env import make_env, reset_obs, save_state  # noqa: E402
 from retro_harness.controls import SNES_START  # noqa: E402
 from retro_harness.actions import buttons, idle_action  # noqa: E402
 from retro_harness.ram_state import GameMode, GameState  # noqa: E402
@@ -110,7 +105,6 @@ _BOOT_ACTIONS: dict[int, tuple[str, ...]] = {
     1490: ("START",),
 }
 
-
 @dataclass
 class StageSplit:
     """First playable frame for one stage byte."""
@@ -119,7 +113,6 @@ class StageSplit:
     name: str
     frame: int
     elapsed_seconds: float
-
 
 @dataclass
 class RunMetrics:
@@ -141,7 +134,6 @@ class RunMetrics:
     stage_splits: list[StageSplit] = field(default_factory=list)
     action_reasons: Counter[str] = field(default_factory=Counter)
     damage_by_stage: dict[int, int] = field(default_factory=dict)
-
 
 class CreditsTracker:
     """Recognize the complete Hard staff/cast roll and final Splinter scene."""
@@ -193,7 +185,6 @@ class CreditsTracker:
             >= metrics.final_scene_start_frame + _FINAL_SCENE_SETTLE_FRAMES
         ):
             metrics.credits_complete_frame = frame
-
 
 class NativeCapture:
     """Stream RGB video and native emulator PCM, then mux an MP4."""
@@ -348,14 +339,6 @@ class NativeCapture:
                 self._video.kill()
 
 
-def _reset(env: Any) -> tuple[np.ndarray, dict[str, Any]]:
-    """Normalize Gymnasium and classic Retro reset results."""
-    result = env.reset()
-    if isinstance(result, tuple) and len(result) == 2:
-        return np.asarray(result[0]), result[1]
-    return np.asarray(result), {}
-
-
 def _format_duration(seconds: float) -> str:
     """Format an elapsed duration as HH:MM:SS.mmm."""
     millis = max(0, int(round(seconds * 1000)))
@@ -364,19 +347,16 @@ def _format_duration(seconds: float) -> str:
     secs, millis = divmod(remainder, 1000)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
 
-
 def _boot_action(frame: int) -> list[int]:
     """Return the scheduled real-menu input for one power-on frame."""
     names = _BOOT_ACTIONS.get(frame)
     return buttons(*names) if names else idle_action()
-
 
 def _short_clock(frame: int, fps: float) -> str:
     """Return MM:SS for the persistent footer."""
     seconds = int(frame / fps)
     minutes, secs = divmod(seconds, 60)
     return f"{minutes:02d}:{secs:02d}"
-
 
 def _render_frame(
     obs: np.ndarray,
@@ -471,7 +451,6 @@ def _render_frame(
         y += 17 if current_font is title else 13
     return np.asarray(Image.alpha_composite(pil_image.convert("RGBA"), overlay).convert("RGB"))
 
-
 def _rom_sha256() -> tuple[str, str]:
     """Return the local ROM filename and digest for reproducibility."""
     roms = sorted(path for path in ROMS_DIR.iterdir() if path.is_file())
@@ -481,7 +460,6 @@ def _rom_sha256() -> tuple[str, str]:
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     return path.name, digest
 
-
 def _file_sha256(path: Path) -> str:
     """Hash an artifact without retaining it in memory."""
     hasher = hashlib.sha256()
@@ -489,7 +467,6 @@ def _file_sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             hasher.update(block)
     return hasher.hexdigest()
-
 
 def _probe_video(path: Path) -> dict[str, Any]:
     """Return ffprobe stream/container data for the finished MP4."""
@@ -510,7 +487,6 @@ def _probe_video(path: Path) -> dict[str, Any]:
     )
     return json.loads(result.stdout)
 
-
 def _metrics_dict(metrics: RunMetrics, *, fps: float) -> dict[str, Any]:
     """Convert metrics to JSON-friendly values with readable timestamps."""
     payload = asdict(metrics)
@@ -523,7 +499,6 @@ def _metrics_dict(metrics: RunMetrics, *, fps: float) -> dict[str, Any]:
     if start is not None:
         payload["credits_start_seconds"] = start / fps
     return payload
-
 
 def assist_integrity(
     metrics: RunMetrics,
@@ -545,12 +520,10 @@ def assist_integrity(
         )
     return flags
 
-
 def evaluate_clean_integrity(metrics: RunMetrics) -> tuple[bool, dict[str, bool]]:
     """Return (ok, flags) requiring zero e-HP and zero iframe frames."""
     flags = assist_integrity(metrics, require_clean_assists=True)
     return bool(flags.get("clean_assists_zero")), flags
-
 
 def run_full_hard(
     *,
@@ -581,7 +554,7 @@ def run_full_hard(
     credits = CreditsTracker()
     capture: NativeCapture | None = None
     succeeded = False
-    obs, _info = _reset(env)
+    obs, _info = reset_obs(env)
     fps = float(env.em.get_screen_rate())
     audio_rate = int(env.em.get_audio_rate())
     height, width = obs.shape[:2]
@@ -951,7 +924,6 @@ def run_full_hard(
         if not succeeded and not dry_run:
             print("capture did not reach a verified completion", flush=True)
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1008,7 +980,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
 def resolve_cli_paths(
     *,
     output: Path | None,
@@ -1024,7 +995,6 @@ def resolve_cli_paths(
         output if output is not None else default_video,
         report if report is not None else default_report,
     )
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
@@ -1054,7 +1024,6 @@ def main(argv: list[str] | None = None) -> int:
         require_clean_assists=clean,
     )
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

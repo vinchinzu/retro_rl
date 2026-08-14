@@ -20,17 +20,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from great_waldo_search.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from great_waldo_search.scene_advance import (
@@ -53,21 +48,18 @@ from great_waldo_search.targets import (
     WALDO_POINTS,
     score_u16,
 )
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.actions import buttons_multi, idle_action_multi
 from retro_harness.video import CaptureSession, FooterLabels, FrameVideoWriter
 from retro_harness.video import FOOTER_HEIGHT, short_clock
 from retro_harness.segment_runner import configure_headless
 from retro_harness.showcase import title_card_with_footer
 
-
 class SoftLayoutError(RuntimeError):
     """Scene3–5 assist landed on the soft/clock layout."""
 
-
 class BootError(RuntimeError):
     """Title boot never reached a search HUD."""
-
 
 def _metrics(env: object) -> dict[str, int]:
     ram = np.asarray(env.get_ram(), dtype=np.uint8)  # type: ignore[attr-defined]
@@ -77,7 +69,6 @@ def _metrics(env: object) -> dict[str, int]:
         "y": int(ram[CURSOR_Y_ADDR]),
     }
 
-
 def _to_multi(action: list[int]) -> list[int]:
     """Pad a 12-button P1 action to a 24-button two-player vector."""
     if len(action) == 24:
@@ -86,10 +77,8 @@ def _to_multi(action: list[int]) -> list[int]:
         raise ValueError(f"unexpected action length: {len(action)}")
     return list(action) + [0] * 12
 
-
 def _boot_script_multi() -> list[list[int]]:
     return [_to_multi(frame) for frame in build_boot_script()]
-
 
 def _adapt_recipe(recipe: SceneRecipe, score_before: int) -> SceneRecipe:
     """Retarget absolute score gates to the live carry score."""
@@ -101,7 +90,6 @@ def _adapt_recipe(recipe: SceneRecipe, score_before: int) -> SceneRecipe:
         scroll_score=scroll_floor,
         clear_score=clear_floor,
     )
-
 
 def _footer_for_scene(
     env: object,
@@ -123,7 +111,6 @@ def _footer_for_scene(
         ),
     )
 
-
 def _run_boot(session: CaptureSession, env: object) -> dict[str, Any]:
     script = _boot_script_multi()
     for action in script:
@@ -137,7 +124,6 @@ def _run_boot(session: CaptureSession, env: object) -> dict[str, Any]:
     if not looks_like_search_scene(np.asarray(obs)):
         raise BootError("boot did not reach Scene1 search HUD")
     return {"boot_frames": session.frame, "metrics": _metrics(env)}
-
 
 def _run_scene(
     session: CaptureSession,
@@ -170,7 +156,6 @@ def _run_scene(
     summary["assist_probe_frames"] = used_probe
     return summary
 
-
 def run_full_game(
     *,
     output: Path,
@@ -200,8 +185,7 @@ def run_full_game(
         scene_reports: list[dict[str, Any]] = []
         current_scene = 0
         try:
-            result = env.reset()
-            obs = result[0] if isinstance(result, tuple) else result
+            obs, _ = reset_obs(env)
             if not dry_run:
                 writer = FrameVideoWriter(
                     output,
@@ -342,7 +326,6 @@ def run_full_game(
         f"full run failed after {max_attempts} attempts: {last_error}"
     )
 
-
 class _NullSink:
     """Discard frames during dry-run policy checks."""
 
@@ -351,7 +334,6 @@ class _NullSink:
     def write(self, frame: np.ndarray) -> None:
         del frame
         self.frames_written += 1
-
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -368,7 +350,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-attempts", type=int, default=8)
     return parser
 
-
 def main(argv: list[str] | None = None) -> int:
     """CLI entry for continuous Waldo full-run capture."""
     args = _build_parser().parse_args(argv)
@@ -383,7 +364,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(json.dumps({k: manifest[k] for k in manifest if k != "scenes"}, indent=2))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

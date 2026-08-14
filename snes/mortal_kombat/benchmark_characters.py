@@ -10,7 +10,6 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import torch
 from stable_baselines3 import PPO
@@ -26,7 +25,6 @@ FRAME_SKIP = 4
 FRAME_STACK = 4
 CHARACTERS = ["LiuKang", "Sonya", "JohnnyCage", "Kano", "Raiden", "SubZero", "Scorpion"]
 MATCHES_PER_CHAR = 10
-
 
 def build_env(config, state):
     """Build environment for testing."""
@@ -60,7 +58,6 @@ def build_env(config, state):
     env = FrameStack(env, n_frames=FRAME_STACK)
     return env
 
-
 def test_character(model, config, char_name, num_matches, state_prefix="Fight", deterministic=True):
     """Run N matches for a character, return win/loss counts."""
     state_name = f"{state_prefix}_{char_name}"
@@ -90,7 +87,6 @@ def test_character(model, config, char_name, num_matches, state_prefix="Fight", 
 
     env.close()
     return wins, losses
-
 
 def main():
     import argparse
@@ -176,7 +172,6 @@ def main():
     overall_rate = total_wins / (total_wins + total_losses) * 100
     print(f"{'OVERALL':<15} {total_wins:<8} {total_losses:<8} {overall_rate:>6.0f}%")
     print("=" * 70)
-
 
 if __name__ == "__main__":
     sys.exit(main())

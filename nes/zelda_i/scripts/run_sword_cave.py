@@ -12,20 +12,11 @@ Examples::
     uv run python zelda_i/scripts/run_sword_cave.py --trials 3
 """
 
-# Script execution adds the repository root before importing local packages.
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -41,7 +32,6 @@ from zelda_i.sword_cave import (
     sword_segment_success,
 )
 
-
 def run_once(
     *,
     natural_entry: bool = False,
@@ -53,8 +43,7 @@ def run_once(
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     controller = SwordCaveController()
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         boot_frames = 0
         if natural_entry:
             obs, boot_frames = boot_to_ready(env)
@@ -109,7 +98,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -149,7 +137,6 @@ def main(argv: list[str] | None = None) -> int:
     write_json_report(out, payload)
     print(f"wrote {out}")
     return 0 if all(r["ok"] for r in reports) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

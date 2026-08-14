@@ -13,8 +13,6 @@ import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from utils.capture_task_ram import (
     BUTTON_NAMES,
@@ -31,9 +29,7 @@ from utils.capture_task_ram import (
     write_capture_output,
 )
 
-
 BUTTON_IDS = {name.lower(): idx for idx, name in BUTTON_NAMES.items()}
-
 
 @dataclass(frozen=True)
 class OverrideWindow:
@@ -41,7 +37,6 @@ class OverrideWindow:
     start_frame: int
     end_frame: int
     buttons: tuple[str, ...]
-
 
 def parse_override_spec(text: str) -> OverrideWindow:
     try:
@@ -83,7 +78,6 @@ def parse_override_spec(text: str) -> OverrideWindow:
         buttons=buttons,
     )
 
-
 def build_branch_frames(
     all_frames: list[list[int]],
     anchor_frame: int,
@@ -105,13 +99,11 @@ def build_branch_frames(
             frames[idx] = new_frame
     return frames
 
-
 def final_value(summary: dict[str, object], label: str) -> int | None:
     for row in summary.get("watch_summary", []):
         if row["label"] == label:
             return row["final"]
     return None
-
 
 def compare_branch_rams(
     baseline_name: str,
@@ -145,7 +137,6 @@ def compare_branch_rams(
             }
         )
     return rows
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Probe dialogue branches from a task anchor")
@@ -232,7 +223,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="How many scan-summary addresses to keep per branch",
     )
     return parser
-
 
 def main() -> int:
     parser = build_parser()
@@ -370,7 +360,6 @@ def main() -> int:
             f"dialog_windows={branch['dialog_windows']}"
         )
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

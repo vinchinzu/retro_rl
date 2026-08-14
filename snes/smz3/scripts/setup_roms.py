@@ -14,10 +14,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from smz3.paths import (  # noqa: E402
     LOCAL_SM_ROM,
     LOCAL_Z3_ROM,
@@ -40,7 +36,6 @@ _Z3_JP_CANDIDATES = (
     REPO_ROOT / "roms" / "Zelda no Densetsu - Kamigami no Triforce (Japan).sfc",
 )
 
-
 def _link(shared: Path, local: Path) -> None:
     if not shared.is_file():
         raise FileNotFoundError(f"Missing shared ROM: {shared}")
@@ -52,7 +47,6 @@ def _link(shared: Path, local: Path) -> None:
         local.unlink()
     local.symlink_to(shared)
     print(f"Linked: {local} -> {shared}")
-
 
 def _ensure_shared_z3_jp() -> Path | None:
     """Return path to validated JP ROM, creating ``roms/zelda3_jp.sfc`` if needed."""
@@ -79,7 +73,6 @@ def _ensure_shared_z3_jp() -> Path | None:
         print(f"Linked: {SHARED_Z3_JP_ROM} -> {rel}")
         return SHARED_Z3_JP_ROM
     return None
-
 
 def main() -> int:
     us_hint = _REPO_ROOT / "roms" / "zelda3.sfc"
@@ -139,7 +132,6 @@ def main() -> int:
             print(f"Removed stale non-JP link: {stale}")
     print("SMZ3 vanilla ROMs ready (combo ROM built per seed).")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

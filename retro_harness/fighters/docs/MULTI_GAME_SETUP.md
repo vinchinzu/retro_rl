@@ -12,9 +12,7 @@ Successfully applied the MK1 multi-character training learnings to three additio
 #### Python Scripts
 - `manual_state_creator.py` - Manual state creation with TAB turbo mode
 - `train_multi_character.py` - Multi-character training (Phase 1)
-- `validate_states.py` - Validate all save states (symlinked from MK1)
-- `validate_single_state.py` - Validate individual states (symlinked from MK1)
-- `watch.py` - Watch trained agent play (symlinked from MK1)
+- Canonical impl is `retro_harness.fighters.{watch,validate_states}`; per-game `watch.py` / `validate_states.py` / `validate_single_state.py` are thin wrappers.
 
 #### Shell Scripts (All Executable)
 - `train_multichar.sh` - Start fresh multi-character training
@@ -193,9 +191,9 @@ Before training can begin, each game needs:
 mortal_kombat_ii/
 ├── manual_state_creator.py          # Create states manually
 ├── train_multi_character.py         # Multi-char training script
-├── validate_states.py               # Validate all states (symlink)
-├── validate_single_state.py         # Validate one state (symlink)
-├── watch.py                         # Watch agent (symlink)
+├── validate_states.py               # Thin wrapper → retro_harness.fighters
+├── validate_single_state.py         # Thin wrapper → retro_harness.fighters
+├── watch.py                         # Thin wrapper → retro_harness.fighters
 ├── train_multichar.sh               # Training launcher
 ├── validate_states.sh               # Validation wrapper
 ├── watch.sh                         # Watch wrapper

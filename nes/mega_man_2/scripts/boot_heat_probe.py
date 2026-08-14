@@ -9,14 +9,6 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from mega_man_2.menus import boot_to_heat_man_script
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
@@ -26,14 +18,13 @@ from mega_man_2.ram import (
     parse_game_state,
     read_u8,
 )
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
 
 STABLE_FRAMES = 20
 MIN_FRAME = 600
 POST_READY_WAIT = 150
-
 
 def run_probe(*, save_heat1: bool = True, walk_frames: int = 40) -> int:
     """Reach Heat Man stage, verify readiness past READY, save checkpoint."""
@@ -42,8 +33,7 @@ def run_probe(*, save_heat1: bool = True, walk_frames: int = 40) -> int:
     out.mkdir(parents=True, exist_ok=True)
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         frame = 0
         stable = 0
         for scripted in boot_to_heat_man_script():
@@ -91,7 +81,6 @@ def run_probe(*, save_heat1: bool = True, walk_frames: int = 40) -> int:
     finally:
         env.close()
 
-
 def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -101,7 +90,6 @@ def main() -> None:
     raise SystemExit(
         run_probe(save_heat1=not args.no_save, walk_frames=args.walk_frames)
     )
-
 
 if __name__ == "__main__":
     main()

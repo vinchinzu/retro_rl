@@ -20,7 +20,6 @@ from PIL import Image
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import torch
 from stable_baselines3 import PPO

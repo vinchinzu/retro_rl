@@ -22,7 +22,6 @@ Manual controls (when override is active):
 """
 
 import os
-import sys
 import time
 from pathlib import Path
 from collections import deque
@@ -40,7 +39,6 @@ from stable_baselines3 import PPO
 # Set up paths
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import stable_retro as retro
 from retro_harness.fighters.game_configs import get_game_config

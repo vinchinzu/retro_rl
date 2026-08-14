@@ -19,11 +19,8 @@ from typing import Iterable
 import numpy as np
 import stable_retro as retro
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
@@ -31,7 +28,6 @@ from harvest.core.tile_catalog import (
 )
 from harvest.tasks.nav import get_pos_from_ram
 from harvest.core.harvest_state import SCALAR_FIELDS, SCALAR_FIELDS_BY_KEY, WEATHER_CODES
-
 
 INTEGRATION_PATH = ROOT_DIR / "custom_integrations"
 TASKS_DIR = ROOT_DIR / "tasks"
@@ -88,10 +84,8 @@ DEFAULT_SCAN_RANGES = (
 
 STATE_TO_ENV_ADDR_OFFSET = 0x4000
 
-
 def parse_address(text: str) -> int:
     return int(text, 0)
-
 
 def parse_range(text: str) -> tuple[int, int]:
     start_text, end_text = text.split(":", 1)
@@ -101,11 +95,9 @@ def parse_range(text: str) -> tuple[int, int]:
         raise ValueError(f"Invalid range {text!r}: end before start")
     return start, end
 
-
 def state_addr_to_env_addr(addr: int) -> int:
     """Translate save-state/editor addresses to env.get_ram() addresses."""
     return addr + STATE_TO_ENV_ADDR_OFFSET if addr >= 0x10000 else addr
-
 
 def parse_watch_args(values: list[str]) -> dict[int, str]:
     watches = dict(DEFAULT_WATCHES)
@@ -118,7 +110,6 @@ def parse_watch_args(values: list[str]) -> dict[int, str]:
             watches[addr] = f"addr_{addr:04X}"
     return dict(sorted(watches.items()))
 
-
 def parse_watch_field_args(values: list[str], watches: dict[int, str] | None = None) -> dict[int, str]:
     resolved = dict(DEFAULT_WATCHES if watches is None else watches)
     for key in values:
@@ -127,7 +118,6 @@ def parse_watch_field_args(values: list[str], watches: dict[int, str] | None = N
             raise ValueError(f"Unknown scalar field {key!r}")
         resolved[state_addr_to_env_addr(spec.address)] = spec.key
     return dict(sorted(resolved.items()))
-
 
 def parse_watch_section_args(values: list[str], watches: dict[int, str] | None = None) -> dict[int, str]:
     resolved = dict(DEFAULT_WATCHES if watches is None else watches)
@@ -141,7 +131,6 @@ def parse_watch_section_args(values: list[str], watches: dict[int, str] | None =
                 continue
             resolved[state_addr_to_env_addr(spec.address)] = spec.key
     return dict(sorted(resolved.items()))
-
 
 def coalesce_frame_windows(frames: Iterable[int]) -> list[dict[str, int]]:
     ordered = sorted(frames)
@@ -160,10 +149,8 @@ def coalesce_frame_windows(frames: Iterable[int]) -> list[dict[str, int]]:
     windows.append({"start": start, "end": end, "length": end - start + 1})
     return windows
 
-
 def pressed_buttons(frame: list[int]) -> list[str]:
     return [name for idx, name in BUTTON_NAMES.items() if idx < len(frame) and frame[idx]]
-
 
 def coalesce_action_runs(frames: list[list[int]], frame_offset: int = 0) -> list[dict[str, object]]:
     runs: list[dict[str, object]] = []
@@ -215,24 +202,20 @@ def coalesce_action_runs(frames: list[list[int]], frame_offset: int = 0) -> list
         )
     return runs
 
-
 def read_u24(ram: np.ndarray, addr: int) -> int:
     if addr + 2 >= len(ram):
         return 0
     return int(ram[addr]) | (int(ram[addr + 1]) << 8) | (int(ram[addr + 2]) << 16)
-
 
 def read_u16(ram: np.ndarray, addr: int) -> int:
     if addr + 1 >= len(ram):
         return 0
     return int(ram[addr]) | (int(ram[addr + 1]) << 8)
 
-
 def value_at(ram: np.ndarray, addr: int) -> int | None:
     if addr >= len(ram):
         return None
     return int(ram[addr])
-
 
 def watch_value(ram: np.ndarray, addr: int, label: str) -> int | None:
     """Read a watched value, decoding named scalar fields with their real width."""
@@ -251,12 +234,10 @@ def watch_value(ram: np.ndarray, addr: int, label: str) -> int | None:
         return value
     return value_at(ram, addr)
 
-
 def weather_label(code: int | None) -> str | None:
     if code is None:
         return None
     return WEATHER_CODES.get(code, f"{code} unknown")
-
 
 def snapshot_from_ram(ram: np.ndarray) -> dict[str, object]:
     pos = get_pos_from_ram(ram)
@@ -279,7 +260,6 @@ def snapshot_from_ram(ram: np.ndarray) -> dict[str, object]:
         "money": read_u24(ram, 0x15F04) * 10,
     }
 
-
 def make_env(state: str):
     retro.data.Integrations.add_custom_path(str(INTEGRATION_PATH.resolve()))
     return retro.make(
@@ -290,12 +270,10 @@ def make_env(state: str):
         render_mode="rgb_array",
     )
 
-
 def load_task(task_name: str) -> dict[str, object]:
     path = TASKS_DIR / f"{task_name}.json"
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
-
 
 def capture_frames(
     env,
@@ -398,7 +376,6 @@ def capture_frames(
     }
     return summary, trace_rows
 
-
 def write_capture_output(
     out_dir: Path,
     summary: dict[str, object],
@@ -416,7 +393,6 @@ def write_capture_output(
     summary_path = out_dir / "summary.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary_path, trace_path
-
 
 def summarize_watch(
     addr: int,
@@ -437,7 +413,6 @@ def summarize_watch(
         "changed_frame_count": len(changed_frames),
         "change_windows": coalesce_frame_windows(changed_frames),
     }
-
 
 def summarize_scan(
     base_ram: np.ndarray,
@@ -472,7 +447,6 @@ def summarize_scan(
         reverse=True,
     )
     return rows[:top_n]
-
 
 def capture_task(
     task_name: str,
@@ -513,7 +487,6 @@ def capture_task(
     summary["task_name"] = task_name
     summary["state_name"] = state_name
     return write_capture_output(out_dir=out_dir, summary=summary, trace_rows=trace_rows)
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Replay a task and save a focused RAM trace")
@@ -587,7 +560,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -624,7 +596,6 @@ def main() -> int:
     print(f"[RAM_CAPTURE] Summary -> {summary_path}")
     print(f"[RAM_CAPTURE] Trace   -> {trace_path}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -29,13 +29,8 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from final_fight.ram import (
@@ -60,7 +55,6 @@ from retro_harness.segment_runner import (
 
 DEFAULT_STATE = "Stage3_Area1_hp50_L1_cam2560"
 
-
 def _snap(env: Any) -> tuple[Any, dict[str, int] | None, list[dict[str, int]], list[dict[str, int]]]:
     ram = env.get_ram()
     state = parse_game_state(ram)
@@ -82,7 +76,6 @@ def _snap(env: Any) -> tuple[Any, dict[str, int] | None, list[dict[str, int]], l
     enemy = max(living, key=lambda e: e["hp"]) if living else None
     return state, enemy, living, ghosts
 
-
 def _face_y_action(
     frame: int,
     enemy: dict[str, int] | None,
@@ -103,7 +96,6 @@ def _face_y_action(
     if frame % 12 < 2:
         return buttons("Y"), "y", faced
     return idle_action(), "gap", faced
-
 
 def run_area1_probe(
     *,
@@ -344,7 +336,6 @@ def run_area1_probe(
     env.close()
     return report
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=DEFAULT_STATE)
@@ -381,7 +372,6 @@ def main() -> None:
         force_enemy_hp=args.force_enemy_hp,
         out_dir=args.out_dir,
     )
-
 
 if __name__ == "__main__":
     main()

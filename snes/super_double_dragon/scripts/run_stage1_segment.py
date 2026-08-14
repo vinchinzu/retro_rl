@@ -1,16 +1,9 @@
 """Run the aggressive Mission 1 policy until the first combat lock clears."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from retro_harness.env import get_available_states, make_env, save_state
 from retro_harness.actions import idle_action
@@ -31,7 +24,6 @@ from super_double_dragon.paths import (
 )
 from super_double_dragon.policy import Stage1Policy
 from super_double_dragon.ram import parse_game_state
-
 
 def run_stage1_segment(
     *,
@@ -99,7 +91,6 @@ def run_stage1_segment(
     finally:
         env.close()
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-frames", type=int, default=9000)
@@ -122,7 +113,6 @@ def main() -> int:
     if report.get("saved_states"):
         print("states: " + ", ".join(report["saved_states"]))
     return 0 if report["success"] else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

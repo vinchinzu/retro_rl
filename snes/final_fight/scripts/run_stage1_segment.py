@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR, STAGE1_STATE
 from final_fight.policy import Stage1Policy
 from final_fight.ram import parse_game_state
-from retro_harness.env import get_available_states, make_env, save_state
+from retro_harness.env import get_available_states, make_env, reset_obs, save_state
 from retro_harness.actions import idle_action
 from retro_harness.ram_state import GameMode, GameState
 from retro_harness.segment_runner import (
@@ -25,14 +20,6 @@ from retro_harness.segment_runner import (
     snapshot_state,
     write_json_report,
 )
-
-
-def _reset(env: Any) -> tuple[Any, dict[str, Any]]:
-    """Normalize gymnasium vs classic retro reset return."""
-    result = env.reset()
-    if isinstance(result, tuple) and len(result) == 2:
-        return result[0], result[1]
-    return result, {}
 
 
 def run_stage1_segment(
@@ -73,7 +60,7 @@ def run_stage1_segment(
     healthy_unlock_saved = False
     start_cam = 0
     try:
-        obs, _info = _reset(env)
+        obs, _info = reset_obs(env)
         state = parse_game_state(env.get_ram(), frame=0)
         tracker.begin(state)
         start_snap = snapshot_state(state)
@@ -213,7 +200,6 @@ def run_stage1_segment(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-frames", type=int, default=12000)
@@ -242,7 +228,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override recordings directory",
     )
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry for the Stage1 multi-wave segment runner."""
@@ -282,7 +267,6 @@ def main(argv: list[str] | None = None) -> int:
         report.get("waves_cleared", 0)
     ) > 0
     return 0 if ok else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

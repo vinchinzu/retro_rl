@@ -30,6 +30,16 @@ class FrameAction:
     reason: str = ""
 
 
+@dataclass(frozen=True)
+class PeriodPulse:
+    """Inclusive-exclusive slot window on a repeating ``frame % period`` cycle."""
+
+    start: int
+    stop: int
+    action: Sequence[int]
+    reason: str
+
+
 class PrimitiveKind(Enum):
     """Common labels for fixed-duration controller primitives."""
 
@@ -361,11 +371,61 @@ def attack(duration: int = 4, button: str = "Y") -> ControllerPrimitive:
     return ControllerPrimitive(PrimitiveKind.ATTACK, duration, (button,), "attack")
 
 
+def mash_button(
+    button: str = "START",
+    *,
+    pulses: int = 3,
+    hold: int = 8,
+    gap: int = 20,
+    hold_reason: str | None = None,
+    wait_reason: str = "wait",
+) -> list[FrameAction]:
+    """Produce button pulses used by title screens and character confirm."""
+
+    pressed = snes_action(button)
+    hold_label = hold_reason if hold_reason is not None else button.lower()
+    idle = idle_action()
+    out: list[FrameAction] = []
+    for _ in range(max(0, pulses)):
+        out.extend(FrameAction(list(pressed), hold_label) for _ in range(max(0, hold)))
+        out.extend(FrameAction(list(idle), wait_reason) for _ in range(max(0, gap)))
+    return out
+
+
 def mash_start(pulses: int = 3, hold: int = 8, gap: int = 20) -> list[FrameAction]:
     """Produce START pulses used by title screens and simple menu advances."""
 
-    steps = [input_step("START", hold=hold, wait=gap) for _ in range(pulses)]
-    return list(iter_input_steps(steps))
+    return mash_button("START", pulses=pulses, hold=hold, gap=gap)
+
+
+def idle_frames(count: int, reason: str = "wait") -> list[FrameAction]:
+    """Hold idle for ``count`` frames with a diagnostic reason."""
+
+    idle = idle_action()
+    return [FrameAction(list(idle), reason) for _ in range(max(0, count))]
+
+
+def period_script(
+    *,
+    max_frames: int,
+    period: int,
+    pulses: Sequence[PeriodPulse],
+    idle: Sequence[int],
+    idle_reason: str = "boot_wait",
+    start_frame: int = 1,
+) -> Iterator[FrameAction]:
+    """Yield max_frames of idle except pulse windows on a repeating period."""
+
+    if period <= 0:
+        raise ValueError("period must be > 0")
+    for frame in range(start_frame, start_frame + max_frames):
+        slot = frame % period
+        for pulse in pulses:
+            if pulse.start <= slot < pulse.stop:
+                yield FrameAction(list(pulse.action), pulse.reason)
+                break
+        else:
+            yield FrameAction(list(idle), idle_reason)
 
 
 __all__ = [
@@ -373,6 +433,7 @@ __all__ = [
     "FrameAction",
     "InputStep",
     "NOOP_TOKENS",
+    "PeriodPulse",
     "PrimitiveKind",
     "ScriptResult",
     "StartupPlan",
@@ -381,6 +442,7 @@ __all__ = [
     "iter_input_steps",
     "mash_start",
     "parse_input_script",
+    "period_script",
     "press_button_sequence",
     "repeat_action",
     "run_input_steps",

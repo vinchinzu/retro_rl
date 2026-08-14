@@ -4,12 +4,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 
@@ -37,12 +31,10 @@ from retro_harness.ram_state import (
     snapshot,
 )
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def _print_known(ram: np.ndarray) -> None:
     state = parse_game_state(ram)
@@ -63,7 +55,6 @@ def _print_known(ram: np.ndarray) -> None:
         f"  boss: status={read_u8(ram, BOSS_BASE + OFF_STATUS)} "
         f"hp={read_u8(ram, BOSS_BASE + OFF_HP)}"
     )
-
 
 def run_probe(*, frames_walk: int = 45, frames_attack: int = 30) -> int:
     """Load Stage1 when available; otherwise fresh boot and sample RAM."""
@@ -107,7 +98,6 @@ def run_probe(*, frames_walk: int = 45, frames_attack: int = 30) -> int:
     finally:
         env.close()
 
-
 def main() -> None:
     """CLI entry for the RAM probe."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -120,7 +110,6 @@ def main() -> None:
             frames_attack=args.attack_frames,
         )
     )
-
 
 if __name__ == "__main__":
     main()

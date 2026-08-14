@@ -14,12 +14,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 from PIL import Image
@@ -39,12 +33,10 @@ from retro_harness.env import make_env, save_state
 from retro_harness.actions import buttons_multi, idle_action_multi
 from retro_harness.cursor import CursorPose, CursorTarget, step_toward_target
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def _idle(env: object, frames: int) -> np.ndarray:
     obs = None
@@ -54,7 +46,6 @@ def _idle(env: object, frames: int) -> np.ndarray:
         )  # type: ignore[attr-defined]
     assert obs is not None
     return np.asarray(obs)
-
 
 def _drive(env: object, target: CursorTarget, frames: int = 800) -> CursorPose:
     for _ in range(frames):
@@ -69,7 +60,6 @@ def _drive(env: object, target: CursorTarget, frames: int = 800) -> CursorPose:
     ram = np.asarray(env.get_ram(), dtype=np.uint8)  # type: ignore[attr-defined]
     return CursorPose(int(ram[CURSOR_X_ADDR]), int(ram[CURSOR_Y_ADDR]))
 
-
 def _metrics(env: object) -> dict[str, int]:
     ram = np.asarray(env.get_ram(), dtype=np.uint8)  # type: ignore[attr-defined]
     return {
@@ -79,7 +69,6 @@ def _metrics(env: object) -> dict[str, int]:
         "y": int(ram[CURSOR_Y_ADDR]),
         "c3": int(ram[0x00C3]),
     }
-
 
 def _settle(env: object) -> tuple[dict[str, int], bool, np.ndarray]:
     obs = _idle(env, 100)
@@ -91,11 +80,9 @@ def _settle(env: object) -> tuple[dict[str, int], bool, np.ndarray]:
         obs = _idle(env, 8)
     return last, len(set(samples)) == 1, obs
 
-
 def _click_a(env: object, hold: int = 6) -> None:
     for _ in range(hold):
         env.step(buttons_multi(p1=("A",)))  # type: ignore[attr-defined]
-
 
 def clear_scene1(
     *,
@@ -180,7 +167,6 @@ def clear_scene1(
     print(json.dumps(summary, indent=2))
     return summary
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--p2a-frames", type=int, default=300)
@@ -189,7 +175,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--waldo-y", type=int, default=28)
     parser.add_argument("--no-save", action="store_true")
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI for Scene1 clear recipe."""
@@ -202,7 +187,6 @@ def main(argv: list[str] | None = None) -> int:
         save_states=not args.no_save,
     )
     return 0 if summary.get("cleared") else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

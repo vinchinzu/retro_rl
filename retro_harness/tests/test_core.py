@@ -10,6 +10,22 @@ from retro_harness.ram_state import EnemyState, GameMode, GameState
 from retro_harness.input_script import FrameAction, mash_start, walk_right
 from retro_harness.ram_state import candidates_increasing, diff_changed, snapshot
 from retro_harness.bot_runner import StuckDetector, WatchdogEvent
+from retro_harness.env import reset_obs
+
+
+class _ClassicReset:
+    def reset(self):
+        return "obs"
+
+
+class _GymnasiumReset:
+    def reset(self):
+        return "obs", {"ok": True}
+
+
+def test_reset_obs_classic_and_gymnasium() -> None:
+    assert reset_obs(_ClassicReset()) == ("obs", {})
+    assert reset_obs(_GymnasiumReset()) == ("obs", {"ok": True})
 
 
 def test_idle_and_buttons() -> None:

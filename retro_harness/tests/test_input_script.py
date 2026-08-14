@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from retro_harness.actions import idle_action, snes_action
 from retro_harness.input_script import (
     InputStep,
+    PeriodPulse,
     StartupPlan,
+    idle_frames,
     iter_input_steps,
+    mash_button,
+    mash_start,
     parse_input_script,
+    period_script,
     press_button_sequence,
     run_startup,
 )
@@ -133,6 +139,74 @@ def test_run_startup_returns_reset_ready_without_stepping() -> None:
     assert env.actions == []
 
 
+def test_period_script_pulses_slots_on_repeating_period() -> None:
+    start = snes_action("START")
+    idle = idle_action()
+    frames = list(
+        period_script(
+            max_frames=10,
+            period=5,
+            pulses=(PeriodPulse(1, 3, start, "boot_start"),),
+            idle=idle,
+        )
+    )
+
+    assert len(frames) == 10
+    for frame_no, frame in enumerate(frames, start=1):
+        if 1 <= (frame_no % 5) < 3:
+            assert frame.action == start
+            assert frame.reason == "boot_start"
+        else:
+            assert frame.action == idle
+            assert frame.reason == "boot_wait"
+
+
+def test_period_script_overlapping_pulses_first_wins() -> None:
+    start = snes_action("START")
+    confirm = snes_action("A")
+    frames = list(
+        period_script(
+            max_frames=5,
+            period=5,
+            pulses=(
+                PeriodPulse(1, 4, start, "boot_start"),
+                PeriodPulse(2, 5, confirm, "boot_confirm"),
+            ),
+            idle=idle_action(),
+        )
+    )
+
+    assert [frame.reason for frame in frames] == [
+        "boot_start",
+        "boot_start",
+        "boot_start",
+        "boot_confirm",
+        "boot_wait",
+    ]
+    assert frames[1].action == start
+    assert frames[3].action == confirm
+
+
+def test_period_script_default_range_matches_one_based_inclusive() -> None:
+    start = snes_action("START")
+    frames = list(
+        period_script(
+            max_frames=3,
+            period=10,
+            pulses=(PeriodPulse(1, 2, start, "boot_start"),),
+            idle=idle_action(),
+            start_frame=1,
+        )
+    )
+
+    # range(1, max_frames + 1): first yielded frame is 1, last is max_frames.
+    assert len(frames) == 3
+    assert frames[0].action == start
+    assert frames[0].reason == "boot_start"
+    assert frames[1].reason == "boot_wait"
+    assert frames[2].reason == "boot_wait"
+
+
 def test_press_button_sequence_is_shared_numpy_neutral_primitive() -> None:
     actions = press_button_sequence(
         "A",
@@ -148,3 +222,27 @@ def test_press_button_sequence_is_shared_numpy_neutral_primitive() -> None:
     assert actions[0][4] == 1
     assert actions[2][4] == 1 and actions[2][8] == 1
     assert sum(actions[-1]) == 0
+
+
+def test_mash_button_keeps_custom_reasons() -> None:
+    frames = mash_button(
+        "START",
+        pulses=2,
+        hold=2,
+        gap=1,
+        hold_reason="char_confirm",
+        wait_reason="char_wait",
+    )
+    assert [f.reason for f in frames] == [
+        "char_confirm",
+        "char_confirm",
+        "char_wait",
+        "char_confirm",
+        "char_confirm",
+        "char_wait",
+    ]
+    start = mash_start(pulses=1, hold=1, gap=1)
+    assert [f.reason for f in start] == ["start", "wait"]
+    idle = idle_frames(2, "post_title_idle")
+    assert [f.reason for f in idle] == ["post_title_idle", "post_title_idle"]
+    assert all(sum(f.action) == 0 for f in idle)

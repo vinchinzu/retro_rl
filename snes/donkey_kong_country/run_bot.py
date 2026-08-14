@@ -15,8 +15,6 @@ import re
 # Ensure retro_harness is importable
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 import stable_retro as retro
 from retro_harness import (
@@ -68,7 +66,6 @@ RAM_POS_Y = 0x00B6
 RAM_ACTION_DK = 0x10D3
 RAM_ACTION_DIDDY = 0x10D5
 
-
 def _parse_start_overrides(count: int) -> list[Optional[int]]:
     """Parse per-controller Start button overrides.
 
@@ -92,7 +89,6 @@ def _parse_start_overrides(count: int) -> list[Optional[int]]:
         except ValueError:
             overrides[i] = None
     return overrides
-
 
 def _parse_select_overrides(count: int) -> list[Optional[int]]:
     """Parse per-controller Select button overrides.
@@ -118,7 +114,6 @@ def _parse_select_overrides(count: int) -> list[Optional[int]]:
             overrides[i] = None
     return overrides
 
-
 def _parse_swap_xy(count: int) -> list[bool]:
     """Parse per-controller X/Y swap flags.
 
@@ -136,7 +131,6 @@ def _parse_swap_xy(count: int) -> list[bool]:
         flags[i] = parts[i] in ("1", "true", "yes", "on")
     return flags
 
-
 def _parse_players(default_players: int) -> int:
     if not DEFAULT_PLAYERS:
         return default_players
@@ -149,7 +143,6 @@ def _parse_players(default_players: int) -> int:
         return default_players
     return max(1, min(2, value))
 
-
 def _parse_flag(value: str, default: bool = False) -> bool:
     if value is None:
         return default
@@ -157,7 +150,6 @@ def _parse_flag(value: str, default: bool = False) -> bool:
     if not text:
         return default
     return text in ("1", "true", "yes", "on")
-
 
 def _env_button_index(env, name: str) -> Optional[int]:
     buttons = getattr(env, "buttons", None)
@@ -168,7 +160,6 @@ def _env_button_index(env, name: str) -> Optional[int]:
         if str(btn).upper() == target:
             return idx
     return None
-
 
 def _parse_int(value: str, default: int) -> int:
     if value is None:
@@ -181,7 +172,6 @@ def _parse_int(value: str, default: int) -> int:
     except ValueError:
         return default
 
-
 def _parse_level_id_offset() -> int:
     if not DEFAULT_LEVEL_ID_OFFSET:
         return RAM_LEVEL_ID
@@ -190,7 +180,6 @@ def _parse_level_id_offset() -> int:
         return int(value, 16) if value.startswith("0x") else int(value, 10)
     except ValueError:
         return RAM_LEVEL_ID
-
 
 def _parse_level_id_candidates(primary_offset: int) -> list[int]:
     parts = [p.strip() for p in DEFAULT_LEVEL_ID_CANDIDATES.split(",") if p.strip()]
@@ -211,7 +200,6 @@ def _parse_level_id_candidates(primary_offset: int) -> list[int]:
         unique.append(off)
     return unique
 
-
 def _swap_xy_map() -> dict[int, int]:
     """Return controller map with X/Y swapped."""
     return {
@@ -225,14 +213,12 @@ def _swap_xy_map() -> dict[int, int]:
         7: 3,   # Start -> Start
     }
 
-
 def _axis_map_for_controller(index: int) -> Optional[dict[int, int]]:
     """Default axis-to-button mapping for misreported controllers."""
     if index == 1:
         # Some Xbox pads report Y on triggers; map triggers to SNES X (after swap).
         return {2: SNES_X, 5: SNES_X}
     return None
-
 
 def _ensure_pygame():
     try:
@@ -242,7 +228,6 @@ def _ensure_pygame():
         print("Run: cd .. && ./setup.sh")
         sys.exit(1)
     return pygame
-
 
 def _load_best_times(path: Path) -> dict[str, float]:
     if not path.exists():
@@ -256,16 +241,13 @@ def _load_best_times(path: Path) -> dict[str, float]:
         return {}
     return {}
 
-
 def _save_best_times(path: Path, data: dict[str, float]) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
-
 
 def _format_time(seconds: float) -> str:
     minutes = int(seconds // 60)
     sec = seconds - minutes * 60
     return f"{minutes:02d}:{sec:05.2f}"
-
 
 def _append_run_log(
     path: Path,
@@ -309,17 +291,14 @@ def _append_run_log(
     }
     append_jsonl(path, entry)
 
-
 def _infer_level_name_from_state(state: str) -> str | None:
     if "JungleHijinks" in state or "JungleHijinx" in state:
         return "Jungle Hijinks"
     return None
 
-
 def _split_camel_case(value: str) -> str:
     spaced = re.sub(r"(?<!^)(?=[A-Z])", " ", value)
     return spaced.replace("_", " ").strip()
-
 
 def _extract_level_name_from_state_name(state: str) -> str | None:
     parts = state.replace("\\", "/").split("/")[-1].split(".")
@@ -333,7 +312,6 @@ def _extract_level_name_from_state_name(state: str) -> str | None:
     if not level_name:
         return None
     return _split_camel_case(level_name)
-
 
 def _load_level_names(path: Path) -> dict[int, str]:
     if not path.exists():
@@ -360,11 +338,9 @@ def _load_level_names(path: Path) -> dict[int, str]:
             names[level_id] = value
     return names
 
-
 def _save_level_names(path: Path, names: dict[int, str]) -> None:
     data = {f"0x{level_id:02X}": name for level_id, name in sorted(names.items())}
     path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
-
 
 def _bootstrap_level_names_from_states(
     *,
@@ -399,7 +375,6 @@ def _bootstrap_level_names_from_states(
     if names:
         _save_level_names(level_names_path, names)
     return names
-
 
 def play_game(
     game: str,
@@ -1068,7 +1043,6 @@ def play_game(
             reason="quit",
         )
 
-
 def _save_state(env, game_dir: Path, game: str, name: str):
     """Save current emulator state."""
     try:
@@ -1078,7 +1052,6 @@ def _save_state(env, game_dir: Path, game: str, name: str):
         print(f"Also saved to {save_path}")
     except Exception as e:
         print(f"Could not save state: {e}")
-
 
 def list_states(game: str):
     """List available save states for the game."""
@@ -1093,7 +1066,6 @@ def list_states(game: str):
     for state in states:
         print(f"  {state}")
 
-
 def sync_level_names(game: str) -> None:
     names = _bootstrap_level_names_from_states(
         game=game,
@@ -1106,7 +1078,6 @@ def sync_level_names(game: str) -> None:
     print("Level names:")
     for level_id in sorted(names.keys()):
         print(f"  0x{level_id:02X}({level_id}) {names[level_id]}")
-
 
 def run_headless_tests(test_name: str) -> None:
     """Run headless unit tests."""
@@ -1133,7 +1104,6 @@ def run_headless_tests(test_name: str) -> None:
 
     if not result.wasSuccessful():
         sys.exit(1)
-
 
 def replay_movie(
     bk2_path: Path,
@@ -1232,7 +1202,6 @@ def replay_movie(
         print(f"[REPLAY] level_start=0x{first_level_id:02X}({first_level_id})")
     if last_level_id is not None:
         print(f"[REPLAY] level_last=0x{last_level_id:02X}({last_level_id})")
-
 
 def replay_splits(
     replay_path: Path,
@@ -1385,7 +1354,6 @@ def replay_splits(
         )
     print(f"[REPLAY] split log appended to {out_log}")
 
-
 def replay_splits_all(
     recordings_dir: Path,
     *,
@@ -1424,7 +1392,6 @@ def replay_splits_all(
             out_log=out_log,
             run_id=run_id,
         )
-
 
 def summarize_splits(path: Path) -> None:
     entries = iter_jsonl(path)
@@ -1471,7 +1438,6 @@ def summarize_splits(path: Path) -> None:
         spread = max(all_times) - min(all_times)
         print(f"  ALL n={len(all_times)} avg={avg:.2f} std={stdev:.2f} spread={spread:.2f}")
 
-
 def refresh_best_times_from_log(log_path: Path, *, best_path: Path) -> None:
     entries = iter_jsonl(log_path)
     if not entries:
@@ -1499,7 +1465,6 @@ def refresh_best_times_from_log(log_path: Path, *, best_path: Path) -> None:
         return
     _save_best_times(best_path, best_times)
     print(f"Wrote best times to {best_path}")
-
 
 def refresh_best_times_from_log_with_min(
     log_path: Path,
@@ -1550,7 +1515,6 @@ def refresh_best_times_from_log_with_min(
         return
     _save_best_times(best_path, best_times)
     print(f"Wrote best times to {best_path}")
-
 
 def print_split_table(
     log_path: Path,
@@ -1611,7 +1575,6 @@ def print_split_table(
         name_text = f"{name} " if name else ""
         level_key = f"0x{row['level_id']:02X}({row['level_id']})"
         print(f"  {name_text}{level_key} {row['elapsed']:.2f}s run={row['run_id']}")
-
 
 def main():
     from retro_harness import add_custom_integrations
@@ -1889,7 +1852,6 @@ def main():
             practice=getattr(args, "practice", False),
             label=getattr(args, "label", None),
         )
-
 
 if __name__ == "__main__":
     main()

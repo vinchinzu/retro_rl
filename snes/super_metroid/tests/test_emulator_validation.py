@@ -30,11 +30,23 @@ class TestEmulatorValidationResult:
             final_x=400,
             final_y=200,
             frames_executed=60,
+            checked_room_id=0x91F8,
         )
         assert result.success
         assert result.room_clear
         assert result.final_room_id == 0x91F8
         assert result.reason == ""
+
+    def test_success_without_room_check_is_not_room_clear(self) -> None:
+        result = EmulatorValidationResult(
+            success=True,
+            final_room_id=0x91F8,
+            final_x=400,
+            final_y=200,
+            frames_executed=60,
+        )
+        assert result.success
+        assert not result.room_clear
 
     def test_failure_result(self) -> None:
         result = EmulatorValidationResult(

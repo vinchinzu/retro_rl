@@ -3,14 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.actions import buttons, idle_action
 from retro_harness.ram_state import GameMode
 from retro_harness.segment_runner import configure_headless, save_rgb_png
@@ -27,7 +21,6 @@ from tmnt_iv.ram import (
     read_u8,
 )
 
-
 def _entered_stage(menu: int, hp: int, lives: int, event: int) -> bool:
     """True once menus are done and Stage 1 gameplay RAM is live."""
     return (
@@ -36,7 +29,6 @@ def _entered_stage(menu: int, hp: int, lives: int, event: int) -> bool:
         and lives >= 1
         and event >= 0x0A
     )
-
 
 def run_probe(
     *,
@@ -49,8 +41,7 @@ def run_probe(
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         script = list(boot_to_stage1_script())
         script_i = 0
         in_stage = False
@@ -140,7 +131,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main() -> None:
     """CLI entry for the boot probe."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -157,7 +147,6 @@ def main() -> None:
             save_stage1=not args.no_save,
         )
     )
-
 
 if __name__ == "__main__":
     main()

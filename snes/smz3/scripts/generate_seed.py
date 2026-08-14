@@ -11,15 +11,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from smz3.seed import generate_seed, generate_test_seed  # noqa: E402
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -94,7 +88,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("ROM: not built")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

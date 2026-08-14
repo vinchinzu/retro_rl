@@ -42,7 +42,6 @@ model workflows.
 
 ## RAM Watch / Analysis Tools
 - RAM correlation recorder/analyzer: harvest `utils/find_ram.py`
-- Additional RAM scan/dump tooling: harvest `utils/scan_ram*.py`, `dump_ram_more.py`
 
 ## Training / Model Structure
 - Observation wrappers + reward shaping: super_metroid env / train scripts

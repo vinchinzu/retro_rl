@@ -25,7 +25,6 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import pytest
@@ -51,7 +50,6 @@ STAGES = [
     ("ShangTsung",  "Shang Tsung"),
 ]
 
-
 def build_env(config, game_dir, state, *, ram: bool = False):
     """Build wrapped environment for model evaluation."""
     fight_config = FightingGameConfig(
@@ -69,7 +67,6 @@ def build_env(config, game_dir, state, *, ram: bool = False):
         config=fight_config,
         ram=ram,
     )
-
 
 def test_stage(model, config, game_dir, state_name, attempts=5, deterministic=True, ram=False):
     """Test a single stage, return (wins, losses, avg_frames)."""
@@ -104,7 +101,6 @@ def test_stage(model, config, game_dir, state_name, attempts=5, deterministic=Tr
 
     avg_frames = np.mean(frame_counts) if frame_counts else 0
     return wins, losses, avg_frames
-
 
 def main():
     import argparse
@@ -224,7 +220,6 @@ def main():
         print(f"\n  Estimated full-clear probability: {chain_prob:.1%}")
     else:
         print(f"\n  Full clear impossible until all stages have >0% win rate")
-
 
 if __name__ == "__main__":
     main()

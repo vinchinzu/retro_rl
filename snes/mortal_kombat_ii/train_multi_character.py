@@ -27,7 +27,6 @@ from pathlib import Path
 # Add parent directory to path
 SCRIPT_DIR = Path(__file__).parent
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 from retro_harness.fighters import train_ppo
 from retro_harness.fighters.fighting_env import make_fighting_env

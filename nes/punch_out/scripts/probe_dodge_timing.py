@@ -10,13 +10,7 @@ Also tests pure idle (block) and continuous hold.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from punch_out.paths import GAME, GAME_DIR
 from punch_out.policy import ATTACK_ACTS
@@ -35,14 +29,12 @@ from retro_harness.env import make_env
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import configure_headless
 
-
 def advance(env, action, n=1):
     obs = None
     for _ in range(n):
         step = env.step(action)
         obs = step[0] if isinstance(step, tuple) else step
     return obs
-
 
 def reach_post_kd1(env):
     """From Match1 reset, taunt-counter to KD1, return when opp rises."""
@@ -80,7 +72,6 @@ def reach_post_kd1(env):
         advance(env, nes_action("LEFT") if _ % 12 < 3 else nes_idle_action())
     return False
 
-
 def wait_attack_start(env, max_frames=3000):
     """Idle until act enters attack set; return (pset, act, timer) snapshot."""
     prev = -1
@@ -96,7 +87,6 @@ def wait_attack_start(env, max_frames=3000):
         prev = act
         advance(env, nes_idle_action())
     return None
-
 
 def try_dodge_recipe(
     env,
@@ -137,7 +127,6 @@ def try_dodge_recipe(
         "pset": int(ram[ADDR_OPP_PATTERN_SET]),
         "act": int(ram[ADDR_OPP_ACTION]),
     }
-
 
 def main() -> None:
     configure_headless()
@@ -203,7 +192,6 @@ def main() -> None:
                 )
     finally:
         env.close()
-
 
 if __name__ == "__main__":
     main()

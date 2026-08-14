@@ -28,15 +28,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from retro_harness.actions import buttons, idle_action  # noqa: E402
 from retro_harness.ram_state import GameState  # noqa: E402
 from retro_harness.input_script import FrameAction  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
-from retro_harness.env import make_env  # noqa: E402
+from retro_harness.env import make_env, reset_obs  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR  # noqa: E402
 from tmnt_iv.ram import parse_game_state  # noqa: E402
 
@@ -49,18 +45,15 @@ _EMERGENCY_HP_THRESHOLD = 16
 _EMERGENCY_HP_RESTORE = 80
 _FULL_HEAL_HP = 96
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
-
 
 def _slash_enemy(state: GameState):
     return next(
         (e for e in state.living_enemies if e.kind == _SLASH_CHAR),
         None,
     )
-
 
 def _geom(state: GameState, slash) -> tuple[int, int, int, str, str, int, int]:
     """dx, dy, adx, toward, away, status, iframes."""
@@ -73,7 +66,6 @@ def _geom(state: GameState, slash) -> tuple[int, int, int, str, str, int, int]:
     iframes = int(state.extras.get("iframes", 0))
     return dx, dy, adx, toward, away, status, iframes
 
-
 def _offscreen_park(state: GameState, slash) -> FrameAction | None:
     """Hold mid-lane when Slash is parked off the right edge."""
     if slash.x <= 256:
@@ -84,7 +76,6 @@ def _offscreen_park(state: GameState, slash) -> FrameAction | None:
         return FrameAction(action=buttons("RIGHT"), reason="slash_park_right")
     return FrameAction(action=idle_action(), reason="slash_park_wait")
 
-
 def _align_y(state: GameState, dy: int) -> FrameAction | None:
     if abs(dy) <= 10:
         return None
@@ -93,17 +84,14 @@ def _align_y(state: GameState, dy: int) -> FrameAction | None:
         reason="slash_align",
     )
 
-
 def _assert_no_a(action: list[int] | Any) -> None:
     # SNES action layout: B Y SELECT START UP DOWN LEFT RIGHT A X L R
     if int(action[8]) != 0:
         raise RuntimeError("forbidden A press in Slash pattern lab")
 
-
 # ---------------------------------------------------------------------------
 # Controllers
 # ---------------------------------------------------------------------------
-
 
 class SlashPattern(ABC):
     """One named scripted controller."""
@@ -117,7 +105,6 @@ class SlashPattern(ABC):
     @abstractmethod
     def next(self, state: GameState) -> FrameAction:
         """Return the next frame action (never A)."""
-
 
 class ClassicThrash(SlashPattern):
     """Approach 42 → jump-cross B+toward 22f → toward+Y 36f. No dodge."""
@@ -171,7 +158,6 @@ class ClassicThrash(SlashPattern):
             action=buttons(toward, "Y"), reason="slash_back_attack"
         )
 
-
 class ThrashFleeSpin(SlashPattern):
     """Classic thrash + flee only on status 0xEE when adx < 48."""
 
@@ -204,7 +190,6 @@ class ThrashFleeSpin(SlashPattern):
                 action=buttons("B", away), reason="slash_dodge"
             )
         return self._thrash.next(state)
-
 
 class StatusAware(SlashPattern):
     """Flee 0xEE; mash toward+Y on punish statuses when close; else standoff 70."""
@@ -271,7 +256,6 @@ class StatusAware(SlashPattern):
             )
         return FrameAction(action=buttons(toward), reason="slash_hold")
 
-
 class IframeAggressive(SlashPattern):
     """When player iframes > 0 always mash; else thrash + flee spin."""
 
@@ -310,7 +294,6 @@ class IframeAggressive(SlashPattern):
                 action=buttons(toward, "Y"), reason="slash_iframe_mash"
             )
         return self._base.next(state)
-
 
 class JumpSlashPunish(SlashPattern):
     """Jump-slash (B+Y toward) only on punish statuses; otherwise kite."""
@@ -373,7 +356,6 @@ class JumpSlashPunish(SlashPattern):
                 action=buttons(toward), reason="slash_close_in"
             )
         return FrameAction(action=idle_action(), reason="slash_wait_window")
-
 
 class HybridWhiplash(SlashPattern):
     """Hybrid: iframe mash + punish stick + thrash cross only mid-HP + flee spin.
@@ -486,7 +468,6 @@ class HybridWhiplash(SlashPattern):
             action=buttons(toward, "Y"), reason="slash_back_attack"
         )
 
-
 class HybridStickAndMove(SlashPattern):
     """Alternate hybrid: standoff until punish/spin-end, then sticky thrash.
 
@@ -575,7 +556,6 @@ class HybridStickAndMove(SlashPattern):
             )
         return FrameAction(action=idle_action(), reason="slash_hold")
 
-
 PATTERNS: dict[str, Callable[[], SlashPattern]] = {
     ClassicThrash.name: ClassicThrash,
     ThrashFleeSpin.name: ThrashFleeSpin,
@@ -586,11 +566,9 @@ PATTERNS: dict[str, Callable[[], SlashPattern]] = {
     HybridStickAndMove.name: HybridStickAndMove,
 }
 
-
 # ---------------------------------------------------------------------------
 # Trial runner
 # ---------------------------------------------------------------------------
-
 
 @dataclass
 class TrialResult:
@@ -629,12 +607,6 @@ class TrialResult:
         return self.dmg_taken / bd
 
 
-def _reset(env: Any) -> None:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return
-
-
 def run_trial(
     *,
     pattern: SlashPattern,
@@ -653,7 +625,7 @@ def run_trial(
     configure_headless()
     env = make_env(GAME, state_name, GAME_DIR, render_mode="rgb_array")
     pattern.reset()
-    _reset(env)
+    reset_obs(env)
     start = parse_game_state(env.get_ram(), frame=0)
     prev_hp = start.health if 0 < start.health <= 0x60 else None
     prev_lives = start.lives
@@ -794,7 +766,6 @@ def run_trial(
         description=pattern.description,
     )
 
-
 def _score(r: TrialResult) -> tuple:
     """Rank key: clear first, then less damage, fewer frames, fewer heals."""
     cleared = r.outcome in {"cleared", "stage_advance", "boss_down"}
@@ -815,7 +786,6 @@ def _score(r: TrialResult) -> tuple:
         -r.heals,
     )
 
-
 def _print_result(r: TrialResult) -> None:
     print(
         f"[{r.pattern}/{r.heal_mode}] outcome={r.outcome} "
@@ -827,7 +797,6 @@ def _print_result(r: TrialResult) -> None:
     if r.top_reasons:
         brief = ", ".join(f"{k}:{v}" for k, v in r.top_reasons[:5])
         print(f"  reasons: {brief}")
-
 
 def _markdown_table(results: list[TrialResult]) -> str:
     lines = [
@@ -844,7 +813,6 @@ def _markdown_table(results: list[TrialResult]) -> str:
             f"{r.dmg_per_boss_hp:.2f} |"
         )
     return "\n".join(lines)
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -949,7 +917,6 @@ def main(argv: list[str] | None = None) -> int:
     ):
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

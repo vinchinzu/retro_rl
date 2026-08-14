@@ -16,7 +16,6 @@ Controls:
 """
 
 import os
-import sys
 import gzip
 import time
 import numpy as np
@@ -28,13 +27,8 @@ os.environ.setdefault('SDL_VIDEODRIVER', 'x11')
 os.environ['SDL_SOFTWARE_RENDERER'] = '1'
 os.environ['SDL_AUDIODRIVER'] = 'dummy'
 
-# utils/ is one level below harvest/, which is one level below retro_rl/
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # utils/
 HARVEST_DIR = os.path.dirname(SCRIPT_DIR)  # harvest/
-ROOT_DIR = os.path.dirname(HARVEST_DIR)  # retro_rl/
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
-
 INTEGRATION_PATH = os.path.join(HARVEST_DIR, "custom_integrations")
 STATES_DIR = os.path.join(INTEGRATION_PATH, "HarvestMoon-Snes")
 
@@ -47,19 +41,15 @@ from retro_harness import (
     SNES_L, SNES_R, SNES_A, SNES_B, SNES_Y, SNES_X,
 )
 
-
 # Wrappers for retro_harness (different signatures)
 def init_controller():
     return _init_controller(pygame)
 
-
 def get_controller_action(joystick, action):
     controller_action(joystick, action)
 
-
 def get_keyboard_action(keys, action):
     keyboard_action(keys, action, pygame)
-
 
 def print_controls(joystick=None):
     """Print RAM finder controls."""
@@ -69,9 +59,7 @@ def print_controls(joystick=None):
     print("  Movement: Arrows/D-Pad")
     print("  R: Toggle Recording | A: Analyze | F5: Save | ESC: Exit")
 
-
 retro.data.Integrations.add_custom_path(INTEGRATION_PATH)
-
 
 class Recorder:
     def __init__(self):
@@ -110,7 +98,6 @@ class Recorder:
 
         self.data_ram.append(ram.copy())
         self.data_input.append((dx, dy, dt))
-
 
 def analyze_correlation(recorder: Recorder):
     """Find addresses that correlate with movement."""
@@ -223,7 +210,6 @@ def analyze_correlation(recorder: Recorder):
 
     print("="*60)
 
-
 def main():
     pygame.init()
 
@@ -326,7 +312,6 @@ def main():
 
     env.close()
     pygame.quit()
-
 
 if __name__ == "__main__":
     main()

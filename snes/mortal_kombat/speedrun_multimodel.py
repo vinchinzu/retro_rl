@@ -23,7 +23,6 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import torch
@@ -57,7 +56,6 @@ STAGE_MODELS = {
     "Goro":        "mk1_goro_ppo_final.zip",
 }
 
-
 def build_env(config, game_dir, state, *, ram: bool = False):
     fight_config = FightingGameConfig(
         max_health=config.max_health,
@@ -73,7 +71,6 @@ def build_env(config, game_dir, state, *, ram: bool = False):
         config=fight_config,
         ram=ram,
     )
-
 
 def play_match(model, config, game_dir, state_name, *, ram: bool = False):
     """Play a single match. Returns (won: bool, frames: int)."""
@@ -96,7 +93,6 @@ def play_match(model, config, game_dir, state_name, *, ram: bool = False):
     env.close()
     return won, frames
 
-
 def resolve_models(model_dir, general_path):
     """Resolve per-stage model paths. Returns dict of stage_prefix -> model_path."""
     stage_model_paths = {}
@@ -112,7 +108,6 @@ def resolve_models(model_dir, general_path):
             stage_model_paths[prefix] = general_path
     return stage_model_paths
 
-
 def load_models(stage_model_paths, device):
     """Load models, caching by path so shared models are only loaded once."""
     cache = {}
@@ -124,7 +119,6 @@ def load_models(stage_model_paths, device):
             cache[path_str] = PPO.load(path_str, device=device)
         stage_models[prefix] = cache[path_str]
     return stage_models
-
 
 def test_per_stage(stage_models, stage_model_paths, config, game_dir, char, attempts, *, ram=False):
     """Test each stage independently. Returns list of (prefix, display_name, win_rate, wins, losses, avg_frames)."""
@@ -164,7 +158,6 @@ def test_per_stage(stage_models, stage_model_paths, config, game_dir, char, atte
         print(f"{display_name:<25} {model_label:<35} {win_rate:>5.0%} {wins:>4} {losses:>4} {avg_frames:>7.0f}{marker}")
 
     return results
-
 
 def simulate_tournaments(stage_models, config, game_dir, char, n_tournaments, *, ram=False):
     """Simulate N full tournament runs, chaining through all stages."""
@@ -223,7 +216,6 @@ def simulate_tournaments(stage_models, config, game_dir, char, n_tournaments, *,
         print(f"Average attempts per clear: {n_tournaments/clears:.0f}")
 
     return clears
-
 
 def main():
     import argparse
@@ -312,7 +304,6 @@ def main():
         simulate_tournaments(
             stage_models, config, game_dir, args.char, args.tournament, ram=args.ram
         )
-
 
 if __name__ == "__main__":
     main()

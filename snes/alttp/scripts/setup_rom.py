@@ -3,18 +3,11 @@
 from __future__ import annotations
 
 import hashlib
-import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 from alttp.paths import GAME_DIR, INTEGRATION_DIR, ROMS_DIR, REPO_ROOT
 
 EXPECTED_SHA1 = "6d4f10a8b10e10dbe624cb23cf03b88bb8252973"
-
 
 def main() -> None:
     """Symlink roms/zelda3.sfc into the game integration."""
@@ -44,7 +37,6 @@ def main() -> None:
     sha_path.write_text(f"{EXPECTED_SHA1}\n", encoding="utf-8")
     print(f"ROM ready: {rom_link} -> {shared}")
     print(f"Game dir: {GAME_DIR}")
-
 
 if __name__ == "__main__":
     main()

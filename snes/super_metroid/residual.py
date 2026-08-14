@@ -76,6 +76,8 @@ class ResidualProfile:
 
     # Unmeasured flag (set when start cannot be loaded on both sides)
     unmeasured: bool = False
+    # Orthogonal to cause: room desync must still hard-reject if lag also fires.
+    lag: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -84,6 +86,7 @@ class ResidualProfile:
             "fd_sigma_plus": self.fd_sigma_plus,
             "fd_dagger": self.fd_dagger,
             "unmeasured": self.unmeasured,
+            "lag": self.lag,
         }
         if self.cause is not None:
             result["cause"] = self.cause.value
@@ -106,6 +109,7 @@ class ResidualProfile:
             cause=cause,
             first_diff_field=data.get("first_diff_field"),
             unmeasured=data.get("unmeasured", False),
+            lag=bool(data.get("lag", False)),
         )
 
     @classmethod
@@ -119,18 +123,16 @@ class ResidualProfile:
             cause=None,
             first_diff_field=None,
             unmeasured=True,
+            lag=False,
         )
 
     def should_hard_reject(self) -> bool:
-        """Return True if trajectory should be hard-rejected.
-
-        Hard-reject when:
-        - Room ($079B) diverged (fd_pi is not None and cause is ROOM)
-        - Death/energy diverged (fd_dagger is not None)
-        """
+        """Hard-reject on death/energy or a $079B room break (not last-write cause)."""
         if self.fd_dagger is not None:
             return True
-        if self.fd_pi is not None and self.cause is DivergenceCause.ROOM:
+        if self.fd_pi is not None and (
+            self.cause is DivergenceCause.ROOM or self.first_diff_field == "room"
+        ):
             return True
         return False
 
@@ -164,11 +166,8 @@ class ResidualProfile:
         return self.fd_pi is None
 
     def tag_lag_desync(self) -> bool:
-        """Return True if lag desync detected (frame counters diverged).
-
-        When true, stop scoring later kinematics (desynced tape index).
-        """
-        return self.cause is DivergenceCause.LAG
+        """True when frame counters diverged (stop scoring later kinematics)."""
+        return self.lag or self.cause is DivergenceCause.LAG
 
 
 def compute_residual_profile(
@@ -208,6 +207,7 @@ def compute_residual_profile(
     fd_dagger: int | None = None  # O†: energy/death (separate)
     cause: DivergenceCause | None = None
     first_diff_field: str | None = None
+    lag = False
 
     for i in range(horizon):
         m = mini_obs[i]
@@ -251,17 +251,19 @@ def compute_residual_profile(
                 first_diff_field = "subpixels"
                 cause = DivergenceCause.COLLISION
 
-        # Tag lag if frame counters diverge (but don't set fd_σ unless pixels/subpixels broke)
-        # Lag: stop scoring later kinematics (desynced tape index) — BREAK LOOP
+        # Lag is orthogonal to ROOM/Oπ: tag it, then stop scoring later frames.
         if (
-            cause != DivergenceCause.LAG
-            and m.frame_counter_1 is not None
+            m.frame_counter_1 is not None
             and (m.frame_counter_1 != e.frame_counter_1 or m.frame_counter_2 != e.frame_counter_2)
         ):
             if first_diff_field is None:
                 first_diff_field = "frame_counter"
-            cause = DivergenceCause.LAG
-            # Break: do not keep filling fd_π/fd_σ from later frames on desynced tape
+            if cause is not DivergenceCause.ROOM:
+                cause = DivergenceCause.LAG
+            # Lattice: Oσ+ includes Oσ — fill before abandoning the horizon.
+            if fd_sigma is not None and fd_sigma_plus is None:
+                fd_sigma_plus = fd_sigma
+            lag = True
             break
 
         # Tag velocity/momentum divergence in first_diff_field (don't set fd_σ)
@@ -304,4 +306,5 @@ def compute_residual_profile(
         cause=cause,
         first_diff_field=first_diff_field,
         unmeasured=False,
+        lag=lag,
     )

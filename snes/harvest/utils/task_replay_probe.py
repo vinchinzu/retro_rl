@@ -20,10 +20,6 @@ import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -34,14 +30,11 @@ from harvest.runtime.probe_utils import event_row, parse_field_list, snapshot_fr
 from harvest.runtime.recording_trace import pressed_buttons
 from harvest.runtime.retro_setup import register_harvest_integration
 
-
 TASKS_DIR = SCRIPT_DIR / "tasks"
-
 
 def _json_write(handle, row: dict[str, object]) -> None:
     handle.write(json.dumps(row, sort_keys=True) + "\n")
     handle.flush()
-
 
 def _load_task(task_name: str) -> dict[str, object]:
     path = Path(task_name)
@@ -49,7 +42,6 @@ def _load_task(task_name: str) -> dict[str, object]:
         path = TASKS_DIR / f"{task_name}.json"
     with path.open(encoding="utf-8") as handle:
         return json.load(handle)
-
 
 def _nearby_input_context(history: Sequence[dict[str, object]]) -> dict[str, object]:
     last_a = None
@@ -66,7 +58,6 @@ def _nearby_input_context(history: Sequence[dict[str, object]]) -> dict[str, obj
         "last_a": last_a,
         "last_move": last_move,
     }
-
 
 def run_probe(args: argparse.Namespace) -> int:
     fields = parse_field_list(args.watch)
@@ -136,7 +127,6 @@ def run_probe(args: argparse.Namespace) -> int:
             out_handle.close()
         env.close()
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Replay a recorded task headlessly and emit RAM/action diagnostics.")
     parser.add_argument("task", help="Task name or JSON path")
@@ -149,7 +139,6 @@ def main() -> int:
     parser.add_argument("--out", help="Write JSONL to path instead of stdout")
     args = parser.parse_args()
     return run_probe(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

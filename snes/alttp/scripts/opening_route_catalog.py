@@ -10,25 +10,20 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from alttp.opening_route.data import (  # noqa: E402
+from alttp.opening_route.data import (
     DEFAULT_ARTIFACT,
     OpeningCheckpoint,
     opening_checkpoints,
 )
-from alttp.opening_route.validate import (  # noqa: E402
+from alttp.opening_route.validate import (
     build_catalog_artifact,
     correlate_boot_report,
     load_and_validate,
     validate_against_z3,
     write_artifact,
 )
-from alttp.paths import Z3_JSON_DATA_PIN  # noqa: E402
-from alttp.z3_json_data import (  # noqa: E402
+from alttp.paths import Z3_JSON_DATA_PIN
+from alttp.z3_json_data import (
     Z3JsonData,
     Z3JsonDataError,
     Z3JsonDataNotFoundError,
@@ -45,11 +40,9 @@ def _load_boot_report(path: Path | None) -> dict[str, Any] | None:
         raise ValueError(f"boot report must be a JSON object: {path}")
     return payload
 
-
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-
 
 def _cmd_status(args: argparse.Namespace) -> int:
     status = source_status(args.root)
@@ -82,7 +75,6 @@ def _cmd_status(args: argparse.Namespace) -> int:
             + ", ".join(validation.connections_optional_missing)
         )
     return 0 if validation.required_ok else 3
-
 
 def _cmd_validate(args: argparse.Namespace) -> int:
     try:
@@ -117,7 +109,6 @@ def _cmd_validate(args: argparse.Namespace) -> int:
             if r.ok:
                 print(f"  [ok] {r.kind}: {r.name}")
     return 0 if validation.required_ok else 3
-
 
 def _cmd_emit(args: argparse.Namespace) -> int:
     try:
@@ -157,7 +148,6 @@ def _cmd_emit(args: argparse.Namespace) -> int:
         return 3
     return 0
 
-
 def _cmd_list_checkpoints(args: argparse.Namespace) -> int:
     for cp in opening_checkpoints():
         print(f"{cp.id:28s}  role={cp.role:18s}  {cp.label}")
@@ -169,7 +159,6 @@ def _cmd_list_checkpoints(args: argparse.Namespace) -> int:
                 req = "required" if c.required else "optional"
                 print(f"  conn[{req}]: {c.origin} -> {c.destination}")
     return 0
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -238,12 +227,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     return parser
 
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     return int(args.func(args))
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

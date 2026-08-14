@@ -25,7 +25,6 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import torch
@@ -64,7 +63,6 @@ MATCH4_OPPONENTS = {
     "SubZero": "LiuKang", "Scorpion": "LiuKang",
 }
 
-
 def build_raw_env(config, game_dir, state_name):
     """Build environment that returns RGB frames for recording."""
     retro.data.Integrations.add_custom_path(str(game_dir / "custom_integrations"))
@@ -94,7 +92,6 @@ def build_raw_env(config, game_dir, state_name):
     env = DiscreteAction(env, config.actions)
     env = FrameStack(env, n_frames=4)
     return env, base_env
-
 
 def record_match(model, config, game_dir, state_name, output_path, max_frames=3000):
     """Record a single match to a video file using ffmpeg pipe."""
@@ -155,7 +152,6 @@ def record_match(model, config, game_dir, state_name, output_path, max_frames=30
 
     return won, frames_written
 
-
 def pick_matches(level=None, state_dir=None):
     """Pick 9 matches ensuring all 7 characters appear at least once."""
     matches = []
@@ -206,12 +202,10 @@ def pick_matches(level=None, state_dir=None):
     random.shuffle(matches)
     return matches[:9]
 
-
 def get_opponent(char, level):
     """Get the opponent name for a character at a given level."""
     mapping = {1: MATCH1_OPPONENTS, 2: MATCH2_OPPONENTS, 3: MATCH3_OPPONENTS, 4: MATCH4_OPPONENTS}
     return mapping.get(level, {}).get(char, "???")
-
 
 def stitch_montage(video_files, results, output_path, speed=2.0, max_mb=None):
     """Stitch 9 videos into a 3x3 grid with tint + labels.
@@ -305,7 +299,6 @@ def stitch_montage(video_files, results, output_path, speed=2.0, max_mb=None):
 
     return True
 
-
 def main():
     parser = argparse.ArgumentParser(description="Record MK1 match montage")
     parser.add_argument("--model", type=str, default=None, help="Model path")
@@ -392,7 +385,6 @@ def main():
             pass
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

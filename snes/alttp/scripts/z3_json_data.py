@@ -8,13 +8,8 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from alttp.paths import Z3_JSON_DATA_DIR  # noqa: E402
-from alttp.z3_json_data import (  # noqa: E402
+from alttp.paths import Z3_JSON_DATA_DIR
+from alttp.z3_json_data import (
     Z3JsonData,
     Z3JsonDataError,
     Z3JsonDataNotFoundError,
@@ -47,10 +42,8 @@ def _print_status(status: Z3SourceStatus) -> int:
         return 2
     return 0
 
-
 def _cmd_status(args: argparse.Namespace) -> int:
     return _print_status(source_status(args.root))
-
 
 def _cmd_validate(args: argparse.Namespace) -> int:
     try:
@@ -67,14 +60,12 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     print(f"pin:      {Z3_JSON_DATA_PIN}")
     return 0
 
-
 def _load_or_exit(root: Path | None) -> Z3JsonData:
     try:
         return Z3JsonData.load(root)
     except Z3JsonDataError as exc:
         print(exc, file=sys.stderr)
         raise SystemExit(1) from exc
-
 
 def _cmd_list_regions(args: argparse.Namespace) -> int:
     data = _load_or_exit(args.root)
@@ -93,7 +84,6 @@ def _cmd_list_regions(args: argparse.Namespace) -> int:
     print(f"# {len(rooms)} room(s)", file=sys.stderr)
     return 0
 
-
 def _cmd_list_connections(args: argparse.Namespace) -> int:
     data = _load_or_exit(args.root)
     if args.query:
@@ -111,7 +101,6 @@ def _cmd_list_connections(args: argparse.Namespace) -> int:
     print(f"# {len(conns)} connection(s)", file=sys.stderr)
     return 0
 
-
 def _cmd_list_items(args: argparse.Namespace) -> int:
     data = _load_or_exit(args.root)
     items = data.find_items(args.query) if args.query else list(data.items)
@@ -120,7 +109,6 @@ def _cmd_list_items(args: argparse.Namespace) -> int:
         print(f"{item.category:16s}  {item.name}{data_s}")
     print(f"# {len(items)} item(s)", file=sys.stderr)
     return 0
-
 
 def _cmd_list_enemies(args: argparse.Namespace) -> int:
     data = _load_or_exit(args.root)
@@ -131,7 +119,6 @@ def _cmd_list_enemies(args: argparse.Namespace) -> int:
         print(f"{enemy.id:4d}  {names}{hp}")
     print(f"# {len(enemies)} enemy/ies", file=sys.stderr)
     return 0
-
 
 def _cmd_show_room(args: argparse.Namespace) -> int:
     data = _load_or_exit(args.root)
@@ -167,7 +154,6 @@ def _cmd_show_room(args: argparse.Namespace) -> int:
                 )
         print()
     return 0
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -231,12 +217,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     return parser
 
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     return int(args.func(args))
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

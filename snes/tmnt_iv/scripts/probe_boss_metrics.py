@@ -10,15 +10,9 @@ run and the slash_pattern_lab trial runner:
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env  # noqa: E402
+from retro_harness.env import make_env, reset_obs  # noqa: E402
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR  # noqa: E402
@@ -27,12 +21,6 @@ from tmnt_iv.ram import parse_game_state  # noqa: E402
 
 _EMERGENCY_HP_THRESHOLD = 16
 _EMERGENCY_HP_RESTORE = 80
-
-
-def _reset(env: Any) -> None:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return
 
 
 def run_probe(
@@ -51,7 +39,7 @@ def run_probe(
     configure_headless()
     env = make_env(GAME, state_name, GAME_DIR, render_mode="rgb_array")
     policy = Stage1Policy()
-    _reset(env)
+    reset_obs(env)
     start = parse_game_state(env.get_ram(), frame=0)
     prev_hp = start.health if 0 < start.health <= 0x60 else None
     prev_lives = start.lives
@@ -147,7 +135,6 @@ def run_probe(
         "top_reasons": top,
     }
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("state", help="save state name")
@@ -173,7 +160,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(report)
     return 0 if report["outcome"] not in {"life_loss", "forbidden_a"} else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

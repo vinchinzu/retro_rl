@@ -11,27 +11,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from alttp.opening_route.full_tip import run_to_verified_tip  # noqa: E402
-from alttp.paths import RECORDINGS_DIR  # noqa: E402
-from alttp.startup import build_boot_env  # noqa: E402
-
+from alttp.opening_route.full_tip import run_to_verified_tip
+from alttp.paths import RECORDINGS_DIR
+from alttp.startup import build_boot_env
 
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -69,7 +61,6 @@ def main(argv: list[str] | None = None) -> int:
         f"tip={result.tip_node} blocker={result.blocker!r}"
     )
     return 0 if result.ok else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

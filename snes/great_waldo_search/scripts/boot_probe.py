@@ -10,12 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 from PIL import Image
@@ -24,17 +19,14 @@ from great_waldo_search.paths import GAME, GAME_DIR, INTEGRATION_DIR, RECORDINGS
 from retro_harness.env import make_env, save_state
 from retro_harness.actions import buttons, idle_action
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
 
-
 def _save_png(obs: np.ndarray, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(obs).save(path)
-
 
 def _mean_rgb(obs: np.ndarray) -> tuple[float, float, float]:
     return (
@@ -43,10 +35,8 @@ def _mean_rgb(obs: np.ndarray) -> tuple[float, float, float]:
         float(np.mean(obs[:, :, 2])),
     )
 
-
 def _rgb_std(obs: np.ndarray) -> float:
     return float(np.std(obs.astype(np.float32)))
-
 
 def _black_fraction(obs: np.ndarray) -> float:
     return float(
@@ -54,7 +44,6 @@ def _black_fraction(obs: np.ndarray) -> float:
             (obs[:, :, 0] < 8) & (obs[:, :, 1] < 8) & (obs[:, :, 2] < 8)
         )
     )
-
 
 def looks_like_search_scene(obs: np.ndarray) -> bool:
     """Detect a search illustration with bottom HUD (not logo/menu orbs)."""
@@ -64,7 +53,6 @@ def looks_like_search_scene(obs: np.ndarray) -> bool:
     hud_mean = float(np.mean(hud))
     # Search scenes are busy, mostly non-black, with a mid-gray status bar.
     return black < 0.2 and std > 50.0 and 50.0 < hud_mean < 170.0
-
 
 def build_boot_script() -> list[list[int]]:
     """Frame script: logos → title START → NORMAL → START into Scene1.
@@ -84,7 +72,6 @@ def build_boot_script() -> list[list[int]]:
         frames.extend([idle_action()] * 80)
     frames.extend([idle_action()] * 60)
     return frames
-
 
 def run_boot_probe(
     *,
@@ -179,20 +166,17 @@ def run_boot_probe(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--frames", type=int, default=1400)
     parser.add_argument("--no-scene1", action="store_true")
     return parser
 
-
 def main(argv: list[str] | None = None) -> int:
     """CLI entry for the headless boot probe."""
     args = _build_parser().parse_args(argv)
     run_boot_probe(frames=args.frames, save_scene1=not args.no_scene1)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -11,14 +11,9 @@ alone do not kill. Front Y @dx37 whiffs. Dual often spawns during JD.
 from __future__ import annotations
 
 import argparse
-import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from final_fight.ram import (
@@ -31,7 +26,7 @@ from final_fight.ram import (
     read_u8,
     read_u16le,
 )
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.actions import buttons, idle_action
 from retro_harness.segment_runner import configure_headless, write_json_report
 
@@ -42,12 +37,6 @@ DEFAULT_STATES: tuple[str, ...] = (
     "Stage2_Area2_1v1_p54_e28_cam3969",
     "Stage2_Area2_1v1_p54_e69_cam3900",
 )
-
-
-def _reset(env: Any) -> None:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return
 
 
 def _snap(env: Any) -> dict[str, Any]:
@@ -89,15 +78,12 @@ def _snap(env: Any) -> dict[str, Any]:
         "living_count": len(state.living_enemies),
     }
 
-
 def _hold(env: Any, action: list[int], frames: int) -> None:
     for _ in range(frames):
         env.step(action)
 
-
 def _idle(env: Any, frames: int) -> None:
     _hold(env, idle_action(), frames)
-
 
 def _geo(env: Any) -> dict[str, int]:
     s = _snap(env)
@@ -110,7 +96,6 @@ def _geo(env: Any) -> dict[str, int]:
         "php": int(s["health"]),
     }
 
-
 def _align_y(env: Any, frames: int = 40) -> None:
     for _ in range(frames):
         s = _snap(env)
@@ -120,7 +105,6 @@ def _align_y(env: Any, frames: int = 40) -> None:
         if abs(dy) <= 4:
             return
         env.step(buttons("UP") if dy > 0 else buttons("DOWN"))
-
 
 def _close_to(
     env: Any,
@@ -154,7 +138,6 @@ def _close_to(
             away = "RIGHT"
         env.step(buttons(away))
 
-
 def _recipe_face_y(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
     _close_to(env, target_adx=32)
@@ -164,14 +147,12 @@ def _recipe_face_y(env: Any, _g0: dict[str, int]) -> None:
         _hold(env, buttons(toward, "Y"), 2)
         _idle(env, 6)
 
-
 def _recipe_bare_y(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
     _close_to(env, target_adx=32)
     for _ in range(8):
         _hold(env, buttons("Y"), 2)
         _idle(env, 6)
-
 
 def _recipe_throw_toward(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
@@ -182,7 +163,6 @@ def _recipe_throw_toward(env: Any, _g0: dict[str, int]) -> None:
         _hold(env, buttons(toward, "Y"), 3)
         _idle(env, 8)
 
-
 def _recipe_throw_away(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
     _close_to(env, target_adx=14)
@@ -192,7 +172,6 @@ def _recipe_throw_away(env: Any, _g0: dict[str, int]) -> None:
         _hold(env, buttons(away, "Y"), 3)
         _idle(env, 8)
 
-
 def _recipe_throw_up(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
     _close_to(env, target_adx=14)
@@ -200,14 +179,12 @@ def _recipe_throw_up(env: Any, _g0: dict[str, int]) -> None:
         _hold(env, buttons("UP", "Y"), 3)
         _idle(env, 8)
 
-
 def _recipe_throw_down(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
     _close_to(env, target_adx=14)
     for _ in range(10):
         _hold(env, buttons("DOWN", "Y"), 3)
         _idle(env, 8)
-
 
 def _recipe_jump_kick(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
@@ -219,7 +196,6 @@ def _recipe_jump_kick(env: Any, _g0: dict[str, int]) -> None:
         _hold(env, buttons("Y"), 2)
         _idle(env, 10)
 
-
 def _recipe_b_y(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
     _close_to(env, target_adx=40)
@@ -228,7 +204,6 @@ def _recipe_b_y(env: Any, _g0: dict[str, int]) -> None:
         toward = "RIGHT" if int(s["dx"]) > 0 else "LEFT"
         _hold(env, buttons("B", toward, "Y"), 3)
         _idle(env, 10)
-
 
 def _recipe_x(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
@@ -239,7 +214,6 @@ def _recipe_x(env: Any, _g0: dict[str, int]) -> None:
         _hold(env, buttons(toward, "X"), 2)
         _idle(env, 6)
 
-
 def _recipe_a(env: Any, _g0: dict[str, int]) -> None:
     _align_y(env)
     _close_to(env, target_adx=32)
@@ -248,7 +222,6 @@ def _recipe_a(env: Any, _g0: dict[str, int]) -> None:
         toward = "RIGHT" if int(s["dx"]) > 0 else "LEFT"
         _hold(env, buttons(toward, "A"), 2)
         _idle(env, 6)
-
 
 def _recipe_wait_standup_y(env: Any, _g0: dict[str, int]) -> None:
     """Idle for knockdown recovery, then face-Y spam."""
@@ -260,7 +233,6 @@ def _recipe_wait_standup_y(env: Any, _g0: dict[str, int]) -> None:
         toward = "RIGHT" if int(s["dx"]) > 0 else "LEFT"
         _hold(env, buttons(toward, "Y"), 2)
         _idle(env, 6)
-
 
 def _recipe_behind_face_y(env: Any, _g0: dict[str, int]) -> None:
     """JD past into behind, then LEFT+Y (known ~7/hit chip)."""
@@ -274,7 +246,6 @@ def _recipe_behind_face_y(env: Any, _g0: dict[str, int]) -> None:
             continue
         _hold(env, buttons("LEFT", "Y"), 2)
         _idle(env, 5)
-
 
 def _recipe_grab_mash(env: Any, _g0: dict[str, int]) -> None:
     """Walk into grab range and mash toward+Y / away+Y / UP+Y."""
@@ -292,7 +263,6 @@ def _recipe_grab_mash(env: Any, _g0: dict[str, int]) -> None:
             combo = ("UP", "Y")
         _hold(env, buttons(*combo), 3)
         _idle(env, 5)
-
 
 def _recipe_jd90_toward_y(env: Any, g0: dict[str, int]) -> None:
     """Confirmed crumb kill: 90f B+RIGHT then grounded toward+Y.
@@ -327,7 +297,6 @@ def _recipe_jd90_toward_y(env: Any, g0: dict[str, int]) -> None:
         _hold(env, buttons(toward, "Y"), 2)
         _idle(env, 6)
 
-
 RECIPES: Sequence[tuple[str, RecipeFn]] = (
     ("jd90_toward_y", _recipe_jd90_toward_y),
     ("face_y", _recipe_face_y),
@@ -344,7 +313,6 @@ RECIPES: Sequence[tuple[str, RecipeFn]] = (
     ("behind_face_y", _recipe_behind_face_y),
     ("grab_mash", _recipe_grab_mash),
 )
-
 
 def run_probe(
     *,
@@ -368,7 +336,7 @@ def run_probe(
                 GAME, state_name, GAME_DIR, render_mode="rgb_array"
             )
             try:
-                _reset(env)
+                reset_obs(env)
                 g0 = _geo(env)
                 if g0["hp"] <= 0 or g0["hp"] > 80:
                     trials.append(
@@ -480,7 +448,6 @@ def run_probe(
     report["report_path"] = str(path)
     return report
 
-
 def main(argv: list[str] | None = None) -> int:
     """CLI for Area2 leftover damage instrumentation."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -529,7 +496,6 @@ def main(argv: list[str] | None = None) -> int:
             )
     print(f"report={report['report_path']}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

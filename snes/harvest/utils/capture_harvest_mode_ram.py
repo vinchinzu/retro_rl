@@ -12,14 +12,10 @@ import json
 import sys
 from pathlib import Path
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from utils.capture_task_ram import capture_task, parse_watch_args, parse_watch_field_args
-
 
 DEFAULT_TASK = "harvest"
 DEFAULT_STATE = "Y1_Day09_Harvest_Mode_Start"
@@ -45,7 +41,6 @@ DEFAULT_SCAN_RANGES = [
     (0x0900, 0x099F),
     (0x15F00, 0x15F1F),
 ]
-
 
 def derive_harvest_metrics(summary: dict[str, object]) -> dict[str, object]:
     row = next(
@@ -79,7 +74,6 @@ def derive_harvest_metrics(summary: dict[str, object]) -> dict[str, object]:
         "estimated_deposit_count": estimated_deposit_count,
     }
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Capture RAM for the trimmed harvest-mode route")
     parser.add_argument("--task", default=DEFAULT_TASK)
@@ -88,7 +82,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--end-frame", type=int, default=DEFAULT_END_FRAME)
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     return parser
-
 
 def main() -> None:
     args = build_parser().parse_args()
@@ -118,7 +111,6 @@ def main() -> None:
     print(f"[HARVEST_RAM] Trace   -> {trace_path}")
     if metrics:
         print(f"[HARVEST_RAM] Metrics -> {json.dumps(metrics, sort_keys=True)}")
-
 
 if __name__ == "__main__":
     main()

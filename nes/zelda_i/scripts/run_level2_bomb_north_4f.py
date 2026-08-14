@@ -14,21 +14,11 @@ Examples::
         --infinite-life --trials 1 --save-state
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _NES_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -48,7 +38,6 @@ from zelda_i.ram import read_snapshot, read_u8
 
 ADDR_SELECTED_ITEM = 0x0656
 
-
 def run_once(
     *,
     tag: str = "level2_bomb_north_4f",
@@ -62,8 +51,7 @@ def run_once(
     controller = make_post_boom_bomb_north_controller()
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         entry = read_snapshot(env.get_ram())
         entry_sel = read_u8(env.get_ram(), ADDR_SELECTED_ITEM)
@@ -139,7 +127,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--from-state", default="Level2Boom")
@@ -183,7 +170,6 @@ def main() -> None:
     print(f"wrote {out} ({ok_n}/{len(trials)})")
     if ok_n < len(trials):
         raise SystemExit(1)
-
 
 if __name__ == "__main__":
     main()

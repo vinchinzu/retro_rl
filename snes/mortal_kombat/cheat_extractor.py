@@ -23,7 +23,6 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import stable_retro as retro
@@ -48,7 +47,6 @@ TOURNAMENT = [
     ("ShangTsung",  "Shang Tsung",  False),
 ]
 
-
 def create_env(config, game_dir, state_name):
     """Create a raw (unwrapped) retro environment."""
     retro.data.Integrations.add_custom_path(str(game_dir / "custom_integrations"))
@@ -61,13 +59,11 @@ def create_env(config, game_dir, state_name):
     )
     return env
 
-
 def step_noop(env, n=1):
     """Step with no input."""
     noop = np.zeros(12, dtype=np.int8)
     for _ in range(n):
         env.step(noop)
-
 
 def step_start(env, n=4):
     """Press START button."""
@@ -76,7 +72,6 @@ def step_start(env, n=4):
     for _ in range(n):
         env.step(buttons)
 
-
 def read_state(env):
     """Read health and timer from RAM."""
     return {
@@ -84,7 +79,6 @@ def read_state(env):
         "enemy_health": env.data.lookup_value("enemy_health"),
         "timer": env.data.lookup_value("timer"),
     }
-
 
 def kill_enemy(env):
     """Win the current round by setting enemy HP low and timer low.
@@ -116,7 +110,6 @@ def kill_enemy(env):
         if timer == 0 and ehp <= 1:
             step_noop(env, 120)  # Let round-end animation play
             return
-
 
 def wait_for_health_reset(env, max_frames=6000, require_enemy_full=True,
                           no_press_frames=0):
@@ -161,7 +154,6 @@ def wait_for_health_reset(env, max_frames=6000, require_enemy_full=True,
                     break
     return False
 
-
 def win_match(env, verbose=True):
     """Win a standard match (best of 3 rounds) via health cheat."""
     # Round 1
@@ -185,7 +177,6 @@ def win_match(env, verbose=True):
         print("KO! MATCH WIN!", flush=True)
 
     return True
-
 
 def win_endurance_match(env, config, game_dir, char, prefix, verbose=True):
     """Win an endurance match (2 opponents, each best-of-3).
@@ -230,7 +221,6 @@ def win_endurance_match(env, config, game_dir, char, prefix, verbose=True):
 
     return True
 
-
 def save_state(env, config, game_dir, state_name):
     """Save current emulator state to disk."""
     state_data = env.em.get_state()
@@ -238,7 +228,6 @@ def save_state(env, config, game_dir, state_name):
     with gzip.open(save_path, "wb") as f:
         f.write(state_data)
     return save_path
-
 
 def find_start_index(start_from):
     """Find tournament index for a given prefix."""
@@ -249,7 +238,6 @@ def find_start_index(start_from):
             return i
     print(f"ERROR: Unknown stage '{start_from}'. Valid: {[p for p,_,_ in TOURNAMENT]}")
     sys.exit(1)
-
 
 def extract_tournament(char, config, game_dir, start_from=None, scan_ram=False):
     """Extract states for one character through the full tournament."""
@@ -354,7 +342,6 @@ def extract_tournament(char, config, game_dir, start_from=None, scan_ram=False):
     env.close()
     return extracted
 
-
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Extract MK1 tournament states via RAM cheats")
@@ -396,7 +383,6 @@ def main():
             print(f"  {char}: {len(states)} new states - {', '.join(states)}")
         else:
             print(f"  {char}: FAILED or no new states")
-
 
 if __name__ == "__main__":
     main()

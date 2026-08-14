@@ -27,21 +27,12 @@ Examples::
         --via-4e --from-state Level2_5E --infinite-life --trials 1
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _NES_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -72,18 +63,15 @@ from zelda_i.ram import (
     read_u8,
 )
 
-
 def _act(env, direction: str | None, *buttons: str) -> None:
     if direction is None and not buttons:
         env.step(nes_idle_action())
     else:
         env.step(nes_action(direction, *buttons) if direction else nes_action(*buttons))
 
-
 def _idle(env, n: int = 1) -> None:
     for _ in range(n):
         env.step(nes_idle_action())
-
 
 def _run_controller(env, controller, max_frames: int, assist=None, frame0: int = 0):
     obs = None
@@ -103,7 +91,6 @@ def _run_controller(env, controller, max_frames: int, assist=None, frame0: int =
         if getattr(controller, "phase", None) is BoomBombNorthPhase.DONE:
             break
     return obs
-
 
 def _enter_4e_from_5e(env, assist=None) -> bool:
     """Free UP from 0x5e mid → 0x4e."""
@@ -127,7 +114,6 @@ def _enter_4e_from_5e(env, assist=None) -> bool:
     s = snap()
     return s.screen == 0x4E and s.mode == PLAY_MODE
 
-
 def _enter_4f_from_4e(env, assist=None) -> bool:
     """Key RIGHT y≈141 from 0x4e → 0x4f (consumes 1 key)."""
 
@@ -150,7 +136,6 @@ def _enter_4f_from_4e(env, assist=None) -> bool:
     s = snap()
     return s.screen == 0x4F and s.mode == PLAY_MODE
 
-
 def run_once(
     *,
     tag: str = "level2_magic_boomerang",
@@ -172,8 +157,7 @@ def run_once(
     path = "via_4e" if via_4e else "bomb_5f"
 
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -369,7 +353,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=1)
@@ -462,7 +445,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {output} successes={successes}/{args.trials}")
     return 0 if successes == args.trials else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

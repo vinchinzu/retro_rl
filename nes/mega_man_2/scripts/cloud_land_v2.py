@@ -9,13 +9,8 @@ Prior grid closed X to ~7px but at sy~96 (too low). This probe:
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_REPO), str(_NES)]
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.ram import (
@@ -43,7 +38,6 @@ ADDR_ENEMY_HP = 0x06C0  # base; slot i often at 0x06C0+i
 LL_TYPES = {0x3D, 0x3E, 0x3F}
 LL_BODY = 0x3E
 
-
 def snap_ll(ram) -> list[dict[str, Any]]:
     out = []
     for i in range(32):
@@ -66,11 +60,9 @@ def snap_ll(ram) -> list[dict[str, Any]]:
         )
     return out
 
-
 def body(lls):
     bs = [o for o in lls if o["t"] == LL_BODY]
     return bs[0] if bs else (lls[0] if lls else None)
-
 
 def meta(ram):
     return {
@@ -84,7 +76,6 @@ def meta(ram):
         "inv": int(ram[ADDR_INVULN_TIMER]),
         "fallen": is_fallen(ram),
     }
-
 
 def run_one(params: dict[str, Any], out: Path, shots: bool = False) -> dict[str, Any]:
     env = make_env(GAME, "AirFanPlatform", GAME_DIR, render_mode="rgb_array")
@@ -337,7 +328,6 @@ def run_one(params: dict[str, Any], out: Path, shots: bool = False) -> dict[str,
         "log_near": [x for x in log if x.get("dx") is not None and abs(x["dx"]) <= 30][:10],
     }
 
-
 def main():
     configure_headless()
     out = RECORDINGS_DIR / "air_post4_cloud_v2"
@@ -513,7 +503,6 @@ def main():
             t["best"],
             flush=True,
         )
-
 
 if __name__ == "__main__":
     main()

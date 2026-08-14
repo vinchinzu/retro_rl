@@ -17,10 +17,6 @@ import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = SCRIPT_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -40,11 +36,9 @@ from harvest.runtime.probe_utils import (
 )
 from harvest.runtime.retro_setup import register_harvest_integration
 
-
 def _json_write(handle, row: dict[str, object]) -> None:
     handle.write(json.dumps(row, sort_keys=True) + "\n")
     handle.flush()
-
 
 def _current_phase_key(bot: AutoClearBot) -> tuple[object, ...]:
     if not bot.day_plan_started:
@@ -56,7 +50,6 @@ def _current_phase_key(bot: AutoClearBot) -> tuple[object, ...]:
         task.__class__.__name__ if task is not None else None,
         getattr(task, "_phase", None),
     )
-
 
 def _planned_contract_summary(bot: AutoClearBot, ram) -> list[dict[str, object]]:
     """Soft-evaluate contracts for the planned (not runtime-spliced) phase list."""
@@ -82,7 +75,6 @@ def _planned_contract_summary(bot: AutoClearBot, ram) -> list[dict[str, object]]
             }
         )
     return summary
-
 
 def run_probe(args: argparse.Namespace) -> int:
     fields = parse_field_list(args.watch)
@@ -292,7 +284,6 @@ def run_probe(args: argparse.Namespace) -> int:
             out_handle.close()
         env.close()
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a headless autonomous day-plan probe and emit JSONL diagnostics.")
     parser.add_argument("--state", default="latest", help="Start save state")
@@ -306,7 +297,6 @@ def main() -> int:
     parser.add_argument("--out", help="Write JSONL to path instead of stdout")
     args = parser.parse_args()
     return run_probe(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

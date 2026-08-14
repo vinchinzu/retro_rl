@@ -17,6 +17,19 @@ from retro_harness.contracts import ContractBundle
 import stable_retro as retro
 
 
+def reset_obs(env: Any) -> tuple[Any, dict[str, Any]]:
+    """Normalize gymnasium vs classic retro ``env.reset()`` to ``(obs, info)``.
+
+    Gymnasium returns ``(obs, info)``. Older stable-retro returns ``obs`` only.
+    Callers used to recopy this unwrap in every boot/probe loop.
+    """
+    result = env.reset()
+    if isinstance(result, tuple) and len(result) == 2:
+        info = result[1] if isinstance(result[1], dict) else {}
+        return result[0], info
+    return result, {}
+
+
 def integration_dir(game_dir: str | Path, game: str | None = None) -> Path:
     """Return a game's custom integration root or one integration directory."""
 
@@ -387,4 +400,5 @@ __all__ = [
     "integration_link_name",
     "link_rom_into_integration",
     "setup_game_rom",
+    "reset_obs",
 ]

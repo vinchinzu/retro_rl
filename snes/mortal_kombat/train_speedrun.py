@@ -37,7 +37,6 @@ import numpy as np
 
 SCRIPT_DIR = Path(__file__).parent
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 from stable_baselines3.common.callbacks import BaseCallback
 from retro_harness.fighters import train_ppo
@@ -48,7 +47,6 @@ from speedrun_curriculum import CURRICULUM_TIERS, get_liukang_tiers
 CHARACTERS = ["LiuKang", "Sonya", "JohnnyCage", "Kano", "Raiden", "SubZero", "Scorpion"]
 
 GENERAL_WEIGHT = 0.15  # Weight for non-LiuKang general preservation
-
 
 def discover_states(curriculum: str = "full"):
     """Auto-discover all available states."""
@@ -75,7 +73,6 @@ def discover_states(curriculum: str = "full"):
             general_states.append(state_name)
 
     return liukang_tiers, general_states
-
 
 class SpeedrunMetrics(BaseCallback):
     """Track fight metrics with per-tier reporting."""
@@ -159,7 +156,6 @@ class SpeedrunMetrics(BaseCallback):
             print(f"  Best so far: {best['win_rate']:.1%} at step {best['step']:,}")
 
         print(f"{'='*70}\n")
-
 
 def main():
     import argparse
@@ -374,7 +370,6 @@ def main():
         print(f"\nRegistered {final_name} in model registry.")
     except Exception as e:
         print(f"\nWarning: Could not register model: {e}")
-
 
 if __name__ == '__main__':
     main()
