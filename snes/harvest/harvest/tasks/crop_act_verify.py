@@ -222,9 +222,20 @@ class CropActVerifyMixin:
             self._state = CropState.CENTER
             return None
 
+        # d2_farm_plant: spent seed bag leaves selected=0 with can in backpack.
+        # One X selects it — do not wait for a full cycle or declare missing.
+        if self._tool_mgr.needs_swap(wanted):
+            if self.debug:
+                print(
+                    f"[CROP] Swap to 0x{wanted:02X} "
+                    f"(selected=0x{current:02X} backpack=0x{self._tool_mgr.backpack:02X})"
+                )
+            self._action_queue.extend(cycle_tool())
+            return None
+
         self._tool_mgr.record()
 
-        if self._tool_mgr.cycle_complete():
+        if self._tool_mgr.cycle_complete() and not self._tool_mgr.has(wanted):
             if self._plot_phase == PlotPhase.PLANT:
                 center = self._plots[self._plot_index] if self._plot_index < len(self._plots) else None
                 print(f"[CROP] Seed tool 0x{wanted:02X} not found, skipping plant plot at {center}")

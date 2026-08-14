@@ -12,7 +12,8 @@ Layer ownership: [bot_architecture_plan.md](bot_architecture_plan.md).
 (`rr-5in`). D2 grape+shop compose **closed** (`rr-zmss`). Return-home /
 ExitToFarm `0x08` / ship kids **closed**. Remaining soak residual:
 `rr-3ae8` CROP_WATER refill exhausted + `rr-yuel` NAV_CROP hang (D23) +
-same-day plant after D2 buy (`rr-20w.1`: pocket `CLEAR_PLOT` walks in, then live watch pinned on a west-pocket bush/held weed at ~(13,27) for ~1500f+; shed bag-into-carry + stump still residual).
+`rr-rzpd` sparse one-cell CROP_WATER skip after the now-GREEN D2 same-day
+clear/hoe/plant (`rr-20w.1`).
 
 **Already closed (do not re-open as bottleneck):**
 
@@ -20,6 +21,7 @@ same-day plant after D2 buy (`rr-20w.1`: pocket `CLEAR_PLOT` walks in, then live
 - Ship debris → bin thrash (`rr-9xyy`) — clear_hands before pick
 - Natural empty-can fill + thrash stabilizations — `rr-3q27` + kids
 - Power-on full D1→D2 shed on `house_size=0` — `rr-bhr`
+- Same-day D2 grape→shop→clear→hoe→plant — `rr-20w.1`
 - Spring calendar shell D2→Summer (fixture, no income) — historical soak
 
 **Architecture tax on the tip path:** keep monofiles under ~1000 LOC (AGENTS).
@@ -36,7 +38,6 @@ Clean (`rr-zmss`). Keep the bush issue scoped to later repeat-forage days.
 ## Product backlog
 
 - Close Gate B (CROP_WATER refill `rr-3ae8` → power-on soak `rr-5in` / epic `rr-20w`).
-- Same-day plant after D2 `BUY_SEEDS` (splice lands; live tip is west-pocket bush/held-weed pin then shed bag-into-carry).
 - Day-plan soft fails ENSURE_CAN / CROP_WATER after plant (if still red post-B).
 - Extract coop feed/collect/ship (`rr-rbk`); cow mono extract (bead).
 - Hot-spring stamina gate in day plan (`rr-pzw`).

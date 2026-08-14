@@ -464,6 +464,9 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
 
         for _ in range(13):
             task.step(make_world(0x26))
+        intermediate = make_world(0x00)
+        set_player_pos(intermediate.ram, 424, 392)
+        self.assertEqual(task.step(intermediate).status, TaskStatus.RUNNING)
         target = make_world(0x00)
         set_player_pos(target.ram, 422, 489)
         for _ in range(4):

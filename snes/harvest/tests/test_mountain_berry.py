@@ -11,7 +11,15 @@ if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
 from harvest.core.ram_catalog import field_spec
-from harvest.maps.map_config import ROUTES, SEGMENTS, compose_routes, find_landmark, segment_waypoints
+from harvest.maps.map_config import (
+    ROUTES,
+    SEGMENTS,
+    compose_routes,
+    find_landmark,
+    path_coords_leaked,
+    segment_waypoints,
+    slice_route_from_position,
+)
 from harvest.planner.day_phase_catalog import MOUNTAIN_BERRY_PHASE, PHASE_SEQUENCES
 from harvest.planner.day_phase_types import PhaseKind
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK
@@ -40,8 +48,12 @@ class PathSegmentTests(unittest.TestCase):
     def test_town_and_mountain_share_farm_to_path(self) -> None:
         shared = SEGMENTS["farm_to_path"]
         self.assertEqual(shared[0].tilemap, 0x00)
-        self.assertTrue(shared[0].is_exit)
-        self.assertEqual(shared[0].exit_direction, "left")
+        self.assertEqual(shared[0].target_px, (137, 375))
+        self.assertFalse(shared[0].is_exit)
+        self.assertEqual(shared[1].target_px, (136, 424))
+        farm_exit = next(wp for wp in shared if wp.is_exit)
+        self.assertEqual(farm_exit.target_px, (40, 424))
+        self.assertEqual(farm_exit.exit_direction, "left")
         self.assertEqual(shared[-1].tilemap, 0x0C)
         self.assertEqual(shared[-1].target_px, (132, 128))
 
@@ -56,11 +68,33 @@ class PathSegmentTests(unittest.TestCase):
 
     def test_path_to_town_and_mountain_diverge_at_crossroads(self) -> None:
         self.assertEqual(SEGMENTS["path_to_town"][-1].exit_direction, "left")
+        self.assertEqual(SEGMENTS["path_to_mountain"][0].target_px, (132, 128))
         self.assertEqual(SEGMENTS["path_to_mountain"][-1].exit_direction, "up")
+        self.assertEqual(SEGMENTS["path_to_farm"][0].target_px, (132, 128))
+        self.assertEqual(SEGMENTS["path_to_farm"][-1].exit_direction, "right")
         self.assertNotEqual(
             SEGMENTS["path_to_town"][-1].target_px,
             SEGMENTS["path_to_mountain"][-1].target_px,
         )
+
+    def test_leaked_path_coords_start_at_crossroads(self) -> None:
+        self.assertTrue(path_coords_leaked(10, 422))
+        self.assertTrue(path_coords_leaked(314, 740))
+        self.assertFalse(path_coords_leaked(232, 128))
+        self.assertFalse(path_coords_leaked(132, 30))
+        for name, leaked in (
+            ("path_to_mountain", (10, 422)),
+            ("path_to_farm", (314, 740)),
+        ):
+            sliced = slice_route_from_position(
+                list(SEGMENTS[name]), leaked[0], leaked[1], tilemap=0x0C
+            )
+            self.assertEqual(sliced[0].target_px, (132, 128), name)
+        ship = slice_route_from_position(
+            list(ROUTES[ROUTE_NAME]), 314, 740, tilemap=0x0C
+        )
+        self.assertEqual(ship[0].target_px, (132, 128))
+        self.assertEqual(ship[-1].target_px, (136, 456))
 
     def test_compose_routes_matches_named_full_route(self) -> None:
         composed = compose_routes(

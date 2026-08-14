@@ -347,13 +347,20 @@ class Navigator:
         self.current_pos = Point(0, 0)
         self.path: List[Tuple[int, int]] = []
         self.stasis = 0
+        self._center_dir: Optional[str] = None
+        self._center_flips: int = 0
 
     def update(self, ram: np.ndarray):
         new_pos = get_pos_from_ram(ram)
         new_tile = (new_pos.x // TILE_SIZE, new_pos.y // TILE_SIZE)
         old_tile = (self.current_pos.x // TILE_SIZE, self.current_pos.y // TILE_SIZE)
         # Reset stasis only on tile-level movement, not 1px oscillation
-        self.stasis = 0 if new_tile != old_tile else self.stasis + 1
+        if new_tile != old_tile:
+            self.stasis = 0
+            self._center_dir = None
+            self._center_flips = 0
+        else:
+            self.stasis += 1
         self.current_pos = new_pos
 
     @property
@@ -379,13 +386,25 @@ class Navigator:
         # We don't hold B (run) for micro-centering to avoid overshooting
         # Move along the dominant axis only to avoid diagonal drift.
         if abs(dx) >= abs(dy) and abs(dx) >= tolerance:
+            direction = "right" if dx > 0 else "left"
             action[7] = 1 if dx > 0 else 0  # Right
             action[6] = 1 if dx < 0 else 0  # Left
         elif abs(dy) >= tolerance:
+            direction = "down" if dy > 0 else "up"
             action[5] = 1 if dy > 0 else 0  # Down
             action[4] = 1 if dy < 0 else 0  # Up
-
+        else:
+            return None
+        self._note_center_dir(direction)
         return action
+
+    def _note_center_dir(self, direction: str) -> None:
+        opposite = {"left": "right", "right": "left", "up": "down", "down": "up"}
+        if self._center_dir is not None and opposite.get(self._center_dir) == direction:
+            self._center_flips += 1
+        elif self._center_dir != direction:
+            self._center_flips = 0
+        self._center_dir = direction
 
     def follow_path(self, ram: np.ndarray) -> Optional[np.ndarray]:
         while self.path and self.current_tile == self.path[0]:
@@ -416,10 +435,12 @@ class Navigator:
         # PROACTIVE CENTERING:
         # If we are moving horizontally, we MUST be vertically centered (Y).
         # If we are moving vertically, we MUST be horizontally centered (X).
-        # Tolerance=3 avoids 1px oscillation. Skip if stuck (stasis>30) to
-        # let the bot push through rather than centering forever.
+        # Tolerance=3 avoids 1px oscillation. Skip if stuck (stasis>30) or if
+        # left/right (or up/down) centering has already flipped — that is the
+        # in-place L/R glitch against a fence/stump.
         CENTER_TOL = 3
-        if self.stasis < 30:
+        CENTER_FLIP_LIMIT = 4
+        if self.stasis < 30 and self._center_flips < CENTER_FLIP_LIMIT:
             if dx_next != 0 and abs(self.current_pos.y - tgt_y) >= CENTER_TOL:
                 return self.center_on_tile(curr_tile, tolerance=CENTER_TOL)
             if dy_next != 0 and abs(self.current_pos.x - tgt_x) >= CENTER_TOL:

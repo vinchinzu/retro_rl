@@ -15,6 +15,7 @@ import numpy as np
 
 from retro_harness.actions import action_names
 
+from harvest.core.carry import backpack_tool
 from harvest.core.tile_catalog import (
     ADDR_MAP,
     ADDR_TOOL,
@@ -212,13 +213,25 @@ class TileScanner:
 # =============================================================================
 
 class ToolManager:
+    """Selected + backpack two-slot carry.
+
+    X swaps the pair (``d2_farm_plant``: after the seed bag spends, selected
+    goes 0 and the can sits in the backpack — one X selects it). ``current``
+    stays the selected slot so existing ``== wanted`` checks still work.
+    """
+
     def __init__(self):
         self.current = 0
+        self.backpack = 0
         self.seen: Set[int] = set()
         self.start_id: Optional[int] = None
 
     def update(self, ram: np.ndarray):
         self.current = int(ram[ADDR_TOOL]) if ADDR_TOOL < len(ram) else 0
+        try:
+            self.backpack = int(backpack_tool(ram))
+        except Exception:
+            self.backpack = 0
 
     def start_search(self):
         self.start_id = self.current
@@ -226,6 +239,14 @@ class ToolManager:
 
     def record(self):
         self.seen.add(self.current)
+
+    def has(self, tool_id: int) -> bool:
+        wanted = int(tool_id)
+        return self.current == wanted or self.backpack == wanted
+
+    def needs_swap(self, tool_id: int) -> bool:
+        wanted = int(tool_id)
+        return self.current != wanted and self.backpack == wanted
 
     def cycle_complete(self) -> bool:
         return self.start_id is not None and self.current == self.start_id and len(self.seen) > 1

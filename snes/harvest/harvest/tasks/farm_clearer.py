@@ -53,6 +53,13 @@ from harvest.tasks.farm_ops import (  # noqa: F401
     use_tool_facing,
     cycle_tool,
 )
+from harvest.tasks.farm_toss import (
+    FenceJumpTossSkill,
+    in_place_toss_actions,
+    needs_south_fence_drop,
+    start_fence_jump_skill,
+    step_fence_jump_skill,
+)
 
 
 # =============================================================================
@@ -124,6 +131,7 @@ class FarmClearer:
         self.suppress_move_frames = 0
         self._pending_lift_verify: Optional[Tuple[int, int]] = None
         self._toss_before_lift = 0
+        self._toss_skill: Optional[FenceJumpTossSkill] = None
         self._init_no_go()
 
     def _init_no_go(self):
@@ -553,6 +561,13 @@ class FarmClearer:
             return "complete"
         return None
 
+    def _queue_held_toss(self, ram, player, held: int, *, face: str = "down") -> None:
+        if needs_south_fence_drop(player, held):
+            self.action_queue.clear()
+            self._toss_skill = start_fence_jump_skill(frame=self.frame_count, ram=ram)
+            return
+        self.action_queue.extend(in_place_toss_actions(face=face))
+
     def _replan_nav_hop(self, ram: np.ndarray) -> Optional[str]:
         """Plan a viewport-limited hop toward the current approach tile."""
         if not self.current_target or not self.approach_tile:
@@ -684,15 +699,11 @@ class FarmClearer:
                 if verify_tile not in self.tiles_cleared:
                     self.tiles_cleared.add(verify_tile)
                     self.cleared_count += 1
-                # Face open ground (away from the debris cell) before tossing so
-                # the rock does not land back on the same tile and thrash (D3).
-                face = self._face_dir(verify_tile, player)  # from tile → player
+                held = read_held_item(ram)
+                face = self._face_dir(verify_tile, player)
                 if face not in {"up", "down", "left", "right"}:
                     face = "down"
-                self.action_queue.extend([make_action(**{face: True}) for _ in range(2)])
-                self.action_queue.extend([make_action() for _ in range(2)])
-                self.action_queue.extend([make_action(a=True) for _ in range(12)])
-                self.action_queue.extend([make_action() for _ in range(12)])
+                self._queue_held_toss(ram, player, held, face=face)
                 # Do not re-target this cell this clear pass — toss often
                 # re-deposits the same rock one tile over / back.
                 self.failed_tiles.add(verify_tile)
@@ -739,11 +750,7 @@ class FarmClearer:
                     self._toss_before_lift = 0
                     return "scanning"
                 print(f"[CLEARER] Toss held=0x{held:02X} before next lift")
-                face = "down"
-                self.action_queue.extend([make_action(**{face: True}) for _ in range(2)])
-                self.action_queue.extend([make_action() for _ in range(2)])
-                self.action_queue.extend([make_action(a=True) for _ in range(12)])
-                self.action_queue.extend([make_action() for _ in range(12)])
+                self._queue_held_toss(ram, player, held, face="down")
                 return None
             self._toss_before_lift = 0
             lift_key = (target[0], target[1], int(self.current_target.tile_id))
@@ -916,6 +923,12 @@ class FarmClearer:
 
         if self.task_queue:
             return self._emit_action(self.task_queue.popleft(), "task")
+
+        self._toss_skill, toss_action = step_fence_jump_skill(
+            self._toss_skill, ram, frame=self.frame_count
+        )
+        if toss_action is not None:
+            return self._emit_action(toss_action, "fence_jump")
 
         if self.action_queue:
             return self._emit_action(self.action_queue.popleft(), "queue")

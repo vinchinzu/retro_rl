@@ -61,12 +61,14 @@ from harvest.maps.farm_pond import (
     farm_pond_refill_stands,
     player_in_west_plant_pocket,
     WEST_PLANT_POCKET_BOUNDS,
+    WEST_POCKET_PLANT_CENTER,
 )
 from harvest.maps.map_routes import (
     ROUTES,
     SEGMENTS,
     compose_routes,
     densify_waypoints,
+    path_coords_leaked,
     segment_waypoints,
     slice_route_from_position,
 )
@@ -507,6 +509,7 @@ __all__ = [
     "farm_pond_refill_stands",
     "player_in_west_plant_pocket",
     "WEST_PLANT_POCKET_BOUNDS",
+    "WEST_POCKET_PLANT_CENTER",
     "FARM_WATER_POCKETS",
     "FARM_TILEMAP_IDS",
     "FARM_TILEMAP_NAMES",
@@ -524,5 +527,6 @@ __all__ = [
     "compose_routes",
     "segment_waypoints",
     "slice_route_from_position",
+    "path_coords_leaked",
     "densify_waypoints",
 ]

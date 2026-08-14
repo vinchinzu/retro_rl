@@ -286,6 +286,7 @@ def _build_directional_transition(
         overshoot_limit_px=spec.params.get("overshoot_limit_px"),
         require_empty_hands=spec.params.get("require_empty_hands", False),
         clear_hands_limit=spec.params.get("clear_hands_limit", 4),
+        walk_into_door=spec.params.get("walk_into_door", False),
     )
 
 
@@ -476,6 +477,11 @@ def _build_eve_talk_loop(
 def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
     refill_bounds = spec.params.get("refill_bounds")
     work_mode = spec.params.get("work_mode", "full")
+    # First plant: reactive hoe/plant 1 cell. No tape replay.
+    if spec.phase == "CROP_ESTABLISH" or str(work_mode) == "establish":
+        from harvest.tasks.skills import farm_pocket_plant_skill
+
+        return farm_pocket_plant_skill(seed_type=ctx.seed_type, include_water=False)
     skip_water_tiles = set(live_harvestable_crop_tiles(world.ram, ctx.state_name))
     return CropWaterTask(
         seed_type=ctx.seed_type,

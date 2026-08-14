@@ -12,19 +12,32 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.animal_status import read_held_item
 from harvest.core.task_progress import ProgressSnapshot
-from harvest.core.tile_catalog import ADDR_TILEMAP, CLEARABLE_DEBRIS_TYPES
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    CLEARABLE_DEBRIS_TYPES,
+    STALE_TILE_IDS,
+    TILE_TO_DEBRIS,
+)
 from harvest.maps.map_config import FARM_POND_ACCESS_FENCE_ROW
+from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
 from harvest.paths import TASKS_DIR as PROJECT_TASKS_DIR
-from harvest.planner.day_plan_status import FARM_TILEMAP, is_farm_tilemap
+from harvest.planner.day_plan_status import (
+    FARM_TILEMAP,
+    is_farm_tilemap,
+    is_house_tilemap,
+)
 from harvest.planner.tasks.transitions import (
     hands_are_clear,
     multi_face_toss_actions,
     toss_held_actions,
 )
+from harvest.tasks.farm_toss import FenceJumpTossSkill, needs_south_fence_drop
 from harvest.core.tile_catalog import DebrisType
 from harvest.tasks.nav import (
     Point,
+    TILE_SIZE,
     get_pos_from_ram,
+    get_tile_at,
     make_action,
 )
 from harvest.tasks.farm_clearer import (
@@ -67,6 +80,12 @@ class FarmClearTask(Task):
     _pending_finish_reason: str = field(default="", init=False)
     _staging_queue: Deque[np.ndarray] = field(default_factory=deque, init=False)
     _did_south_staging: bool = field(default=False, init=False)
+    _toss_skill: Optional[FenceJumpTossSkill] = field(default=None, init=False)
+    _exit_nav: Optional[Task] = field(default=None, init=False)
+    # Pocket clear (farm_bounds set): do not trust an empty scan from the
+    # shop-return / west-gate pin. Walk into the yard first so (13,28) loads.
+    _approach: Optional[Task] = field(default=None, init=False)
+    _pocket_arrived: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
         self._clearer = FarmClearer(priority=self.priority)
@@ -165,6 +184,10 @@ class FarmClearTask(Task):
         self._pending_finish_reason = ""
         self._staging_queue.clear()
         self._did_south_staging = False
+        self._toss_skill = None
+        self._approach = None
+        self._exit_nav = None
+        self._pocket_arrived = False
 
     def _scan_bounds(self) -> Optional[Tuple[int, int, int, int]]:
         return self.farm_bounds or self._clearer._locked_bounds or self._clearer.farm_bounds
@@ -174,10 +197,147 @@ class FarmClearTask(Task):
             ram, self._scan_bounds(), types=set(CLEARABLE_DEBRIS_TYPES)
         )
 
+    def _player_tile(self, ram) -> Tuple[int, int]:
+        pos = get_pos_from_ram(ram)
+        return (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
+
+    def _in_pocket(self, ram) -> bool:
+        bounds = self.farm_bounds
+        if bounds is None:
+            return True
+        tx, ty = self._player_tile(ram)
+        if not (bounds[0] <= tx <= bounds[2] and bounds[1] <= ty <= bounds[3]):
+            return False
+        # West-fence (3,28) is in the box but not the plant stand. Ready only
+        # near (13,28) so we do not scan-and-wander from the west wall.
+        cx, cy = WEST_POCKET_PLANT_CENTER
+        return abs(tx - cx) <= 3 and abs(ty - cy) <= 2
+
+    def _pocket_tiles_ready(self, ram) -> bool:
+        """False while the plant-notch 5x5 is still stale 0x72 (gate viewport)."""
+        cx, cy = WEST_POCKET_PLANT_CENTER
+        stale = 0
+        for dy in range(-2, 3):
+            for dx in range(-2, 3):
+                if int(get_tile_at(ram, cx + dx, cy + dy)) in STALE_TILE_IDS:
+                    stale += 1
+        return stale < 8
+
+    def _pocket_is_ready(self, world: WorldState) -> bool:
+        ram = world.ram
+        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+        return (
+            is_farm_tilemap(tilemap)
+            and self._in_pocket(ram)
+            and self._pocket_tiles_ready(ram)
+        )
+
+    def _plant_notch_is_clear(self, ram) -> bool:
+        """The one-cell D2 establish skill only needs its stand cleared."""
+        if self.farm_bounds is None or not self._pocket_arrived:
+            return False
+        cx, cy = WEST_POCKET_PLANT_CENTER
+        tile_id = int(get_tile_at(ram, cx, cy))
+        return (
+            tile_id not in STALE_TILE_IDS
+            and tile_id not in TILE_TO_DEBRIS
+            and hands_are_clear(ram)
+        )
+
+    def _pocket_stand_px(self) -> Point:
+        # (13,28) is the weed notch after shop. Stand on the untilled west
+        # neighbor so BFS does not have to target the bush tile itself.
+        cx, cy = WEST_POCKET_PLANT_CENTER
+        return Point((cx - 1) * TILE_SIZE + 8, cy * TILE_SIZE + 8)
+
+    def _make_pocket_approach(self, world: WorldState) -> Task:
+        from harvest.maps.map_config import SEGMENTS, slice_route_from_position
+        from harvest.planner.tasks.inventory_exit import ExitToFarmTask
+        from harvest.planner.tasks.multi_nav import MultiMapNavTask
+        from harvest.planner.tasks.navigation import NavTask
+
+        ram = world.ram
+        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+        if is_farm_tilemap(tilemap):
+            stand = self._pocket_stand_px()
+            return NavTask(
+                name="nav_clear_plot_pocket",
+                target_px=stand,
+                radius=14,
+                timeout=3500,
+            )
+        if is_house_tilemap(tilemap):
+            return ExitToFarmTask(tasks_dir=self.tasks_dir)
+        hops = list(SEGMENTS.get("path_to_farm", []))
+        if tilemap == 0x04:
+            hops = list(SEGMENTS.get("town_shop_to_path", [])) + hops
+        elif tilemap == 0x1C:
+            hops = (
+                list(SEGMENTS.get("shop_to_town", []))
+                + list(SEGMENTS.get("town_shop_to_path", []))
+                + hops
+            )
+        pos = get_pos_from_ram(ram)
+        sliced = slice_route_from_position(hops, pos.x, pos.y, tilemap=tilemap)
+        return MultiMapNavTask(
+            name="nav_clear_plot_farm",
+            waypoints=sliced or hops,
+            timeout=4000,
+            initial_settle_frames=8,
+        )
+
+    def _step_pocket_approach(self, world: WorldState) -> Optional[TaskResult]:
+        """Walk into the west plant pocket before trusting an empty scan."""
+        if self.farm_bounds is None or self._pocket_arrived:
+            return None
+        if self._pocket_is_ready(world):
+            if not self._pocket_arrived:
+                pos = get_pos_from_ram(world.ram)
+                print(
+                    f"[CLEAR] Pocket ready pos=({pos.x},{pos.y}) "
+                    f"tile={self._player_tile(world.ram)}"
+                )
+            self._pocket_arrived = True
+            self._approach = None
+            return None
+        if self._approach is None:
+            self._approach = self._make_pocket_approach(world)
+            self._approach.reset(world)
+            pos = get_pos_from_ram(world.ram)
+            tilemap = (
+                int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+            )
+            print(
+                f"[CLEAR] Approach plant pocket via {self._approach.name} "
+                f"tm=0x{tilemap:02X} pos=({pos.x},{pos.y})"
+            )
+        result = self._approach.step(world)
+        if result.status == TaskStatus.RUNNING:
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=result.action,
+                reason=result.reason or "approach plant pocket",
+            )
+        self._approach = None
+        if self._pocket_is_ready(world):
+            self._pocket_arrived = True
+            return None
+        # Hop finished (farm gate) but the notch is still off-screen — next
+        # frame starts the in-pocket NavTask.
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason="approach plant pocket",
+        )
+
     def can_start(self, world: WorldState) -> bool:
         ram = world.ram
         if ram is None or ADDR_TILEMAP >= len(ram):
             return False
+        # Pocket clear after shop: the west-gate / path scan is empty because
+        # (13,28) is still stale. Always start and walk in before scanning.
+        if self.farm_bounds is not None:
+            return True
         tilemap = int(ram[ADDR_TILEMAP])
         if not is_farm_tilemap(tilemap) and tilemap != FARM_TILEMAP:
             # Allow house/shed startup tool fetches; clearer handles map travel
@@ -186,47 +346,47 @@ class FarmClearTask(Task):
             return True
         return TileScanner().has_clearable_debris(ram, self._scan_bounds())
 
-    def _queue_south_exit_staging(self, world: WorldState) -> None:
-        """Leave south-of-fence pocket for return_home.
+    def _exit_stand_px(self, pos: Point) -> Tuple[Point, str]:
+        """North-of-fence stand. Never cycle left/right in place."""
+        if pos.x < 176:
+            return Point(4 * TILE_SIZE + 8, 27 * TILE_SIZE + 8), "north (west of fence)"
+        return (
+            Point(30 * TILE_SIZE + 8, 27 * TILE_SIZE + 8),
+            "north (east of fence)" if pos.x >= _EAST_STAGING_X else "east past fence then north",
+        )
 
-        Fence wall is only tiles x=11–29. West of it (px < 176) or east of it
-        (px ≥ 480) can run north; mid-wall must go east first. SW rock pockets
-        also need brief A thrash + direction cycles when B-run alone stalls.
-        """
+    def _queue_south_exit_staging(self, world: WorldState) -> None:
+        """Leave south-of-fence pocket via BFS, not a left/right thrash cycle."""
+        from harvest.planner.tasks.navigation import NavTask
+
         pos = get_pos_from_ram(world.ram)
-        west_of_wall = pos.x < 176
-        east_of_wall = pos.x >= _EAST_STAGING_X
-        if west_of_wall:
-            route = "north (west of fence)"
-        elif east_of_wall:
-            route = "north (east of fence)"
-        else:
-            route = "east past fence then north"
+        stand, route = self._exit_stand_px(pos)
         print(
             f"[CLEAR] Exit-staging from south pocket "
             f"pos=({pos.x},{pos.y}) → {route}"
         )
+        self._exit_nav = NavTask(
+            name="nav_clear_exit_north",
+            target_px=stand,
+            radius=16,
+            timeout=2500,
+        )
+        self._exit_nav.reset(world)
 
-        def _thrash_cardinal(primary: str, frames: int = 100) -> None:
-            dirs = (primary, "right", "left", "up", "down")
-            for i in range(frames):
-                d = dirs[(i // 18) % len(dirs)] if i >= 36 else primary
-                kwargs = {d: True, "b": True}
-                # Occasional A to lift a blocking weed/stone while moving.
-                if i % 22 == 0:
-                    kwargs = {d: True, "a": True}
-                self._staging_queue.append(make_action(**kwargs))
-
-        if west_of_wall or east_of_wall:
-            _thrash_cardinal("up", 140)
-            _thrash_cardinal("right" if west_of_wall else "left", 40)
-            _thrash_cardinal("up", 100)
-        else:
-            _thrash_cardinal("right", 160)
-            _thrash_cardinal("up", 60)
-            _thrash_cardinal("right", 80)
-            _thrash_cardinal("up", 100)
-        self._staging_queue.extend(make_action() for _ in range(6))
+    def _step_exit_nav(self, world: WorldState) -> Optional[TaskResult]:
+        if self._exit_nav is None:
+            return None
+        result = self._exit_nav.step(world)
+        if result.status == TaskStatus.RUNNING:
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=result.action,
+                reason=result.reason or "clear exit-staging south pocket",
+            )
+        self._exit_nav = None
+        reason = self._pending_finish_reason or "clear exit-staging south pocket"
+        self._pending_finish_reason = ""
+        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
 
     def _maybe_stage_then_success(
         self, world: WorldState, reason: str
@@ -240,11 +400,9 @@ class FarmClearTask(Task):
                 self._did_south_staging = True
                 self._pending_finish_reason = reason
                 self._queue_south_exit_staging(world)
-                return TaskResult(
-                    status=TaskStatus.RUNNING,
-                    action=ActionResult(self._staging_queue.popleft()),
-                    reason="clear exit-staging south pocket",
-                )
+                stepped = self._step_exit_nav(world)
+                if stepped is not None:
+                    return stepped
         return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
 
     def _finish_or_drop(self, world: WorldState, reason: str) -> TaskResult:
@@ -256,6 +414,13 @@ class FarmClearTask(Task):
         When finishing south of the y=31 fence wall, B-run east first so
         return_home is not born in the SW rock pocket (rr-5in D8).
         """
+        if self._toss_skill is not None:
+            result = self._toss_skill.step(world)
+            if result.status == TaskStatus.RUNNING:
+                return result
+            self._toss_skill = None
+            if hands_are_clear(world.ram):
+                return self._maybe_stage_then_success(world, reason)
         if self._drop_queue:
             return TaskResult(
                 status=TaskStatus.RUNNING,
@@ -282,6 +447,13 @@ class FarmClearTask(Task):
             )
         self._drop_attempts += 1
         self._pending_finish_reason = reason
+        held = read_held_item(world.ram)
+        pos = get_pos_from_ram(world.ram)
+        tile = (pos.x // 16, pos.y // 16)
+        if self._drop_attempts == 1 and needs_south_fence_drop(tile, held):
+            self._toss_skill = FenceJumpTossSkill()
+            self._toss_skill.reset(world)
+            return self._toss_skill.step(world)
         if self._drop_attempts == 1:
             self._drop_queue.extend(toss_held_actions(face="down", step_away=True))
             self._drop_queue.extend(multi_face_toss_actions(prefer_south=True))
@@ -300,6 +472,11 @@ class FarmClearTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+        if self._toss_skill is not None:
+            result = self._toss_skill.step(world)
+            if result.status == TaskStatus.RUNNING:
+                return result
+            self._toss_skill = None
         if self._drop_queue:
             return TaskResult(
                 status=TaskStatus.RUNNING,
@@ -312,12 +489,31 @@ class FarmClearTask(Task):
                 action=ActionResult(self._staging_queue.popleft()),
                 reason="clear exit-staging south pocket",
             )
+        exited = self._step_exit_nav(world)
+        if exited is not None:
+            return exited
         if self._pending_finish_reason and not hands_are_clear(world.ram):
             return self._finish_or_drop(world, self._pending_finish_reason)
         if self._pending_finish_reason and hands_are_clear(world.ram):
             reason = self._pending_finish_reason
             self._pending_finish_reason = ""
             return self._maybe_stage_then_success(world, reason)
+
+        approached = self._step_pocket_approach(world)
+        if approached is not None:
+            return approached
+
+        # CLEAR_PLOT feeds a composed one-cell hoe/plant skill at (13,28).
+        # Hand off as soon as that stand and our hands are clear instead of
+        # roaming the full (3,14)-(28,30) viewport for thousands of frames.
+        if self._plant_notch_is_clear(world.ram):
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=(
+                    f"field_clear plant_notch_clear "
+                    f"cleared={self._clearer.cleared_count}"
+                ),
+            )
 
         if self._step_count > self.timeout:
             remaining = self._remaining_debris(world.ram)
@@ -349,6 +545,10 @@ class FarmClearTask(Task):
                         f"remaining={len(remaining)}{lift_note}"
                     ),
                 )
+            if self.farm_bounds is not None and not self._pocket_arrived:
+                retry = self._step_pocket_approach(world)
+                if retry is not None:
+                    return retry
             return self._finish_or_drop(
                 world,
                 f"field_clear cleared={self._clearer.cleared_count}{lift_note}",

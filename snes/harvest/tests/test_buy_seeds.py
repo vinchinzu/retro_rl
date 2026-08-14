@@ -91,6 +91,8 @@ class ShopRouteTests(unittest.TestCase):
         self.assertEqual(first_shop_return_segment(0x1C), "shop_to_town")
         self.assertEqual(first_shop_return_segment(0x04), "town_shop_to_path")
         self.assertEqual(first_shop_return_segment(0x0C), "path_to_farm")
+        self.assertEqual(SEGMENTS["path_to_farm"][0].target_px, (132, 128))
+        self.assertEqual(SEGMENTS["path_to_farm"][-1].exit_direction, "right")
 
 
 class PurchaseCloseTests(unittest.TestCase):

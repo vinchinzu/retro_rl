@@ -367,6 +367,113 @@ def farm_pond_refill_face() -> str:
     return face
 
 
+def farm_fence_jump_toss_skill(*, timeout: int = 300):
+    """Toss toward RAM-confirmed open ground; escape only when boxed in."""
+    from harvest.tasks.farm_toss import FenceJumpTossSkill
+
+    return FenceJumpTossSkill(timeout=timeout)
+
+
+def farm_select_carry_skill(tool_id: int, *, timeout: int = 90):
+    """X-swap until ``tool_id`` is selected."""
+    from harvest.tasks.crop_skills import SelectCarrySkill
+
+    return SelectCarrySkill(
+        name=f"select_carry_0x{int(tool_id):02X}",
+        wanted=int(tool_id),
+        timeout=timeout,
+    )
+
+
+def farm_nav_pocket_plant_skill(*, timeout: int = 1800) -> NavSkill:
+    """Stand on the tape plant notch (13, 28)."""
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.nav import TILE_SIZE
+
+    tx, ty = WEST_POCKET_PLANT_CENTER
+    return NavSkill(
+        name="nav_pocket_plant",
+        target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
+        radius=8,
+        timeout=timeout,
+    )
+
+
+def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 1800) -> NavSkill:
+    """Stand one tile south and face up to hoe the plant notch."""
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.nav import TILE_SIZE
+
+    tx, ty = WEST_POCKET_PLANT_CENTER
+    return NavSkill(
+        name="nav_pocket_hoe_stand",
+        target_px=(tx * TILE_SIZE + 8, (ty + 1) * TILE_SIZE + 8),
+        radius=6,
+        timeout=timeout,
+    )
+
+
+def farm_hoe_tile_skill(*, timeout: int = 240):
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.crop_skills import hoe_until_tilled_skill
+
+    return hoe_until_tilled_skill(
+        target_tile=WEST_POCKET_PLANT_CENTER,
+        face="up",
+        timeout=timeout,
+    )
+
+
+def farm_plant_tile_skill(*, seed_type: str = "potato", timeout: int = 240):
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.crop_skills import plant_until_crop_skill
+
+    return plant_until_crop_skill(
+        seed_type=seed_type,
+        target_tile=WEST_POCKET_PLANT_CENTER,
+        timeout=timeout,
+    )
+
+
+def farm_water_one_skill(*, timeout: int = 240):
+    from harvest.tasks.crop_skills import water_until_wet_skill
+
+    return water_until_wet_skill(timeout=timeout)
+
+
+def farm_pocket_plant_skill(
+    *,
+    seed_type: str = "potato",
+    include_water: bool = False,
+    timeout: int = 4000,
+):
+    """Reactive hoe → plant (optional water 1 cell). No tape replay.
+
+    Carry must already hold hoe+seeds (establish pass). Water is a later
+    can-pass unless ``include_water`` and the can is in the pair.
+    """
+    from harvest.core.carry import seed_item_id
+    from harvest.core.tile_catalog import Tool
+
+    skills: list = [
+        farm_fence_jump_toss_skill(),
+        farm_select_carry_skill(int(Tool.HOE)),
+        farm_nav_pocket_hoe_stand_skill(),
+        farm_hoe_tile_skill(),
+        farm_nav_pocket_plant_skill(),
+        farm_select_carry_skill(seed_item_id(seed_type)),
+        farm_plant_tile_skill(seed_type=seed_type),
+    ]
+    if include_water:
+        skills.extend(
+            [
+                farm_select_carry_skill(int(Tool.WATERING_CAN)),
+                farm_water_one_skill(),
+            ]
+        )
+    return sequence_skills("pocket_plant_cell", *skills, idle_between=True)
+
+
 __all__ = [
     "InteractSkill",
     "NavSkill",
@@ -381,9 +488,17 @@ __all__ = [
     "coop_press_feed_skill",
     "coop_press_ship_skill",
     "farm_nav_to_pond_refill_skill",
+    "farm_fence_jump_toss_skill",
+    "farm_hoe_tile_skill",
+    "farm_nav_pocket_hoe_stand_skill",
+    "farm_nav_pocket_plant_skill",
     "farm_nav_to_shipping_bin_skill",
+    "farm_plant_tile_skill",
+    "farm_pocket_plant_skill",
     "farm_pond_refill_face",
     "farm_press_ship_skill",
+    "farm_select_carry_skill",
+    "farm_water_one_skill",
     "sequence_skills",
     "talk_press_skill",
 ]

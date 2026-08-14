@@ -13,7 +13,7 @@ from types import SimpleNamespace
 _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
-from crop_planter_test_helpers import blank_ram, set_tile
+from crop_planter_test_helpers import blank_ram, set_player_tile, set_tile
 
 from harvest.tasks.crop_planter import (
     CropWaterTask,
@@ -543,6 +543,23 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertFalse(task._refill_exhausted)
         self.assertEqual(task._steps_on_target, 0)
         self.assertEqual(task._water_steps, [])
+
+    def test_west_pocket_prefers_tape_plant_center(self) -> None:
+        ram = blank_ram()
+        for ty in range(64):
+            for tx in range(64):
+                set_tile(ram, tx, ty, 0xA1)
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                set_tile(ram, 13 + dx, 28 + dy, 0x01)
+        set_player_tile(ram, (5, 28))
+        ram[ADDR_TILEMAP] = 0x00
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="establish", seed_type="potato")
+        task.reset(world)
+        task._navigator.update(ram)
+        self.assertEqual(task._west_pocket_plant_center(ram, (5, 28)), (13, 28))
+        self.assertEqual(task._plan_new_plot_centers(ram), [(13, 28)])
 
 
 if __name__ == "__main__":

@@ -85,6 +85,10 @@ class MultiMapNavTask(Task):
     # Stagnant no-path recovery (SW farm pocket after CLEAR → house).
     _stuck_anchor: Optional[Tuple[int, int]] = field(default=None, init=False)
     _stuck_frames: int = field(default=0, init=False)
+    # Tile-stasis misses L/R wiggle across a tile boundary (stasis resets).
+    _pixel_anchor: Optional[Tuple[int, int]] = field(default=None, init=False)
+    _pixel_stuck: int = field(default=0, init=False)
+    _pixel_replans: int = field(default=0, init=False)
     _farm_soft_blocks: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     _entity_blocks: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     _lift_throw_attempts: int = field(default=0, init=False)
@@ -106,6 +110,9 @@ class MultiMapNavTask(Task):
         self._initial_settle = 0
         self._stuck_anchor = None
         self._stuck_frames = 0
+        self._pixel_anchor = None
+        self._pixel_stuck = 0
+        self._pixel_replans = 0
         self._farm_soft_blocks.clear()
         self._entity_blocks.clear()
         self._lift_throw_attempts = 0
@@ -132,6 +139,9 @@ class MultiMapNavTask(Task):
         self._no_path_frames = 0
         self._stuck_anchor = None
         self._stuck_frames = 0
+        self._pixel_anchor = None
+        self._pixel_stuck = 0
+        self._pixel_replans = 0
         self._farm_soft_blocks.clear()
         self._entity_blocks.clear()
         self._lift_throw_attempts = 0
@@ -507,6 +517,47 @@ class MultiMapNavTask(Task):
             return make_action(**{direction: True, "b": True})
         return None
 
+    def _update_pixel_stuck(self) -> None:
+        """Count frames with no real movement. Tile-stasis misses L/R wiggle."""
+        if self._phase != "nav":
+            return
+        cur = self._navigator.current_pos
+        anchor = self._pixel_anchor
+        if (
+            anchor is not None
+            and max(abs(cur.x - anchor[0]), abs(cur.y - anchor[1])) < 4
+        ):
+            self._pixel_stuck += 1
+        else:
+            self._pixel_anchor = (cur.x, cur.y)
+            self._pixel_stuck = 0
+            self._pixel_replans = 0
+
+    def _pixel_stuck_replan(self) -> Optional[TaskResult]:
+        """Break an in-place left/right pin instead of burning the timeout."""
+        if self._pixel_stuck < 48:
+            return None
+        cur = self._navigator.current_pos
+        if self._navigator.path:
+            self._pathfinder.temp_blocked.add(self._navigator.path[0])
+            self._navigator.path = []
+        self._navigator.stasis = 0
+        self._pixel_stuck = 0
+        self._pixel_replans += 1
+        print(
+            f"[MULTI_NAV] Pixel-stuck pos=({cur.x},{cur.y}) "
+            f"replans={self._pixel_replans} — skip L/R center"
+        )
+        if self._pixel_replans >= 4:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"pixel_stuck pos=({cur.x},{cur.y}) "
+                    f"replans={self._pixel_replans}"
+                ),
+            )
+        return None
+
     def _advance_waypoint(self) -> None:
         """Move to next waypoint."""
         self._wp_index += 1
@@ -517,6 +568,9 @@ class MultiMapNavTask(Task):
         self._pathfinder.temp_blocked.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
+        self._pixel_anchor = None
+        self._pixel_stuck = 0
+        self._pixel_replans = 0
         wp = self._current_wp()
         if wp:
             print(f"[MULTI_NAV] Waypoint {self._wp_index + 1}/{len(self.waypoints)}"
@@ -525,6 +579,7 @@ class MultiMapNavTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
         self._step_count += 1
+        self._update_pixel_stuck()
 
         if self._step_count > self.timeout:
             return TaskResult(status=TaskStatus.FAILURE, reason="multi_nav timeout")
@@ -781,7 +836,12 @@ class MultiMapNavTask(Task):
             dx_close = abs(wp.target_px[0] - cur.x)
             dy_close = abs(wp.target_px[1] - cur.y)
             stasis = self._navigator.stasis
-            if dx_close <= 80 and dy_close <= 80 and stasis < 40:  # ~5 tiles
+            if (
+                dx_close <= 80
+                and dy_close <= 80
+                and stasis < 40
+                and self._pixel_stuck < 20
+            ):  # ~5 tiles; bail if L/R pin
                 dx = wp.target_px[0] - cur.x
                 dy = wp.target_px[1] - cur.y
                 if abs(dx) >= abs(dy):
@@ -799,6 +859,10 @@ class MultiMapNavTask(Task):
                         status=TaskStatus.RUNNING, action=ActionResult(safe)
                     )
                 # All neighbors blocked at close range → BFS / fail, no thrash.
+
+        stuck = self._pixel_stuck_replan()
+        if stuck is not None:
+            return stuck
 
         # Stuck recovery — also replan around entities that walked onto the path.
         if self._navigator.stasis > 90 and self._navigator.path:
