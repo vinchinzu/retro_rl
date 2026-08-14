@@ -7,11 +7,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from smb.approx import idle_action, press, rollout
-from smb.observation import Observation, level1_start_obs, observation_from_ram
-from smb.residual import ResidualProfile, compute_residual_profile, format_profile
+from retro_harness.controls import NES_A
 
-_IDX_A = 8
+from smb.approx import idle_action, press, rollout
+from smb.observation import (
+    Observation,
+    PlayerPhysics,
+    World,
+    level1_start,
+    player_from_ram,
+    world_from_player,
+)
+from smb.residual import ResidualProfile, compute_residual_profile, format_profile
 
 __all__ = [
     "ROM_AVAILABLE",
@@ -78,6 +85,13 @@ SEGMENTS: dict[str, tuple[tuple[int, ...], ...]] = {
         + tuple(press("RIGHT", "B", "A") for _ in range(4))
         + tuple(press("RIGHT", "B") for _ in range(40))
     ),
+    # Land leftover $0416=128 then A: InitJS wipes YMF dummy (rr-cjxz).
+    "land_then_rejump": (
+        tuple(press("A") for _ in range(4))
+        + tuple(idle_action() for _ in range(21))
+        + tuple(press("A") for _ in range(4))
+        + tuple(idle_action() for _ in range(16))
+    ),
 }
 
 
@@ -93,17 +107,19 @@ def segment_actions(name: str) -> tuple[tuple[int, ...], ...]:
 class SegmentResult:
     name: str
     profile: ResidualProfile
-    approx_obs: list[Observation]
-    emu_obs: list[Observation] | None
+    approx_obs: list[PlayerPhysics]
+    emu_obs: list[PlayerPhysics] | None
     horizon: int
+    world: World
 
     def summary(self) -> str:
-        return f"{self.name:10s}  {format_profile(self.profile)}"
+        return f"{self.name:16s}  {format_profile(self.profile)}"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "horizon": self.horizon,
+            "world": {"ground_y": self.world.ground_y},
             "profile": self.profile.to_dict(),
             "summary": self.summary(),
         }
@@ -113,7 +129,7 @@ def replay_on_emulator(
     actions: Sequence[Sequence[int]],
     *,
     state_name: str = "Level1_1",
-) -> list[Observation]:
+) -> list[PlayerPhysics]:
     """Step ``actions`` on fceumm and return start + one observation per frame."""
     import os
 
@@ -128,33 +144,29 @@ def replay_on_emulator(
     env = make_env(GAME_V0, state_name, GAME_DIR, render_mode="rgb_array")
     try:
         env.reset()
-        frames = [observation_from_ram(env.get_ram(), 0)]
-        a_held = False
-        ground_y = frames[0].ground_y
+        frames = [player_from_ram(env.get_ram(), 0)]
         for i, action in enumerate(actions):
             env.step(np.asarray(action, dtype=np.int8))
-            a_held = bool(list(action)[_IDX_A] if len(action) > _IDX_A else 0)
-            frames.append(
-                observation_from_ram(
-                    env.get_ram(),
-                    i + 1,
-                    a_held=a_held,
-                    ground_y=ground_y,
-                )
-            )
+            a_held = bool(list(action)[NES_A] if len(action) > NES_A else 0)
+            frames.append(player_from_ram(env.get_ram(), i + 1, a_held=a_held))
         return frames
     finally:
         env.close()
+
+
+def _as_lattice(frames: Sequence[PlayerPhysics]) -> list[Observation]:
+    return [frame.as_observation() for frame in frames]
 
 
 def measure_segment(
     name: str,
     actions: Sequence[Sequence[int]] | None = None,
     *,
-    start: Observation | None = None,
-    emu_obs: list[Observation] | None = None,
+    start: PlayerPhysics | None = None,
+    emu_obs: list[PlayerPhysics] | None = None,
     run_emulator: bool = True,
     state_name: str = "Level1_1",
+    world: World | None = None,
 ) -> SegmentResult:
     """Roll the pure stepper (and optionally the emulator) and compute R(τ)."""
     tape = tuple(tuple(int(v) for v in frame) for frame in (actions or segment_actions(name)))
@@ -166,10 +178,12 @@ def measure_segment(
             live_emu = replay_on_emulator(tape, state_name=state_name)
 
     if start is None:
-        start = live_emu[0] if live_emu else level1_start_obs()
+        start = live_emu[0] if live_emu else level1_start()
+    floor = world if world is not None else world_from_player(start)
 
-    approx_obs = rollout(start, tape)
-    profile = compute_residual_profile(approx_obs, live_emu)
+    approx_obs = rollout(start, tape, floor)
+    emu_lattice = _as_lattice(live_emu) if live_emu is not None else None
+    profile = compute_residual_profile(_as_lattice(approx_obs), emu_lattice)
     horizon = min(len(approx_obs), len(live_emu or approx_obs))
     return SegmentResult(
         name=name,
@@ -177,6 +191,7 @@ def measure_segment(
         approx_obs=approx_obs,
         emu_obs=live_emu,
         horizon=horizon,
+        world=floor,
     )
 
 

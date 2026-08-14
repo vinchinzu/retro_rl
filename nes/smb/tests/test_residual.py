@@ -23,10 +23,14 @@ from smb.approx import (
     takeoff_vertical,
 )
 from smb.observation import (
+    DEFAULT_GROUND_Y,
     Observation,
+    PlayerPhysics,
+    level1_start,
     level1_start_obs,
     observation_from_ram,
     pack_room,
+    player_from_ram,
     unpack_room,
 )
 from smb.ram import (
@@ -57,10 +61,15 @@ def _blank_ram() -> np.ndarray:
 
 
 def _obs(**overrides: object) -> Observation:
-    base = level1_start_obs()
-    data = base.to_dict()
+    data = level1_start_obs().to_dict()
     data.update(overrides)
     return Observation.from_dict(data)
+
+
+def _player(**overrides: object) -> PlayerPhysics:
+    data = level1_start().to_dict()
+    data.update(overrides)
+    return PlayerPhysics.from_dict(data)
 
 
 def _pack_for_test(obs: Observation) -> int:
@@ -87,17 +96,20 @@ def test_observation_from_ram_level1_shape() -> None:
     ram[ADDR_AREA_POINTER] = 194
     ram[ADDR_LIVES] = 2
     ram[ADDR_PLAYER_MOTION] = 0
+    player = player_from_ram(ram, frame=3)
     obs = observation_from_ram(ram, frame=3)
-    assert obs.x == 40
-    assert obs.y == 176
-    assert obs.pose == 0x08
-    assert obs.room == pack_room(0, 0, 194)
-    assert obs.sub_x == 16
-    assert obs.velocity_x == 4
-    assert obs.on_ground is True
-    assert obs.energy == 2
-    assert obs.dead is False
-    assert obs.frame == 3
+    assert player.x == 40
+    assert player.y == 176
+    assert player.pose == 0x08
+    assert player.room == pack_room(0, 0, 194)
+    assert player.sub_x == 16
+    assert player.velocity_x == 4
+    assert player.on_ground is True
+    assert player.energy == 2
+    assert player.dead is False
+    assert player.frame == 3
+    assert obs == player.as_observation()
+    assert not hasattr(obs, "on_ground")
 
 
 def test_observation_from_ram_air_and_death() -> None:
@@ -106,14 +118,14 @@ def test_observation_from_ram_air_and_death() -> None:
     ram[ADDR_PLAYER_Y] = 200
     ram[ADDR_PLAYER_MOTION] = 1
     ram[ADDR_Y_SPEED] = 4
-    obs = observation_from_ram(ram)
-    assert obs.dead is True
-    assert obs.on_ground is False
-    assert obs.velocity_y == 4
+    player = player_from_ram(ram)
+    assert player.dead is True
+    assert player.on_ground is False
+    assert player.velocity_y == 4
 
 
 def test_idle_is_identity_on_ground() -> None:
-    start = level1_start_obs()
+    start = level1_start()
     nxt = step(start, idle_action())
     assert nxt.x == start.x
     assert nxt.y == start.y
@@ -125,7 +137,7 @@ def test_idle_is_identity_on_ground() -> None:
 
 
 def test_walk_is_deterministic_and_rightward() -> None:
-    start = level1_start_obs()
+    start = level1_start()
     a = rollout(start, [press("RIGHT")] * 8)
     b = rollout(start, [press("RIGHT")] * 8)
     assert [obs.to_dict() for obs in a] == [obs.to_dict() for obs in b]
@@ -136,7 +148,7 @@ def test_walk_is_deterministic_and_rightward() -> None:
 
 
 def test_jump_leaves_ground_then_lands() -> None:
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(start, [press("A")] * 4 + [idle_action()] * 40)
     assert frames[1].y == start.y + JUMP_SPEED
     assert frames[1].on_ground is False
@@ -145,7 +157,7 @@ def test_jump_leaves_ground_then_lands() -> None:
     assert frames[1].jump_origin_y == start.y
     assert min(frame.y for frame in frames) < start.y
     assert frames[-1].on_ground is True
-    assert frames[-1].y == start.ground_y
+    assert frames[-1].y == DEFAULT_GROUND_Y
     assert frames[-1].velocity_y == 0
     assert frames[-1].sub_y == 128
     assert frames[-1].vertical_force == 0x70
@@ -153,7 +165,7 @@ def test_jump_leaves_ground_then_lands() -> None:
 
 def test_jump_a_release_matches_level1_trace() -> None:
     """Standing 4-A then idle: ImposeGravity + A-release VF copy (live 1-1)."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(start, [press("A")] * 4 + [idle_action()] * 4)
     expected = (
         # f, y, sub_y, vy, y_move_force, vertical_force
@@ -180,11 +192,11 @@ def test_jump_a_release_matches_level1_trace() -> None:
 
 def test_land_keeps_ymf_dummy() -> None:
     """Standing 4-A then idle: land snaps y, keeps $0416 leftover (live 1-1)."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(start, [press("A")] * 4 + [idle_action()] * 28)
     land = frames[25]
     assert land.on_ground is True
-    assert land.y == start.ground_y
+    assert land.y == DEFAULT_GROUND_Y
     assert land.sub_y == 128
     assert land.velocity_y == 0
     assert land.y_move_force == 0
@@ -195,7 +207,7 @@ def test_land_keeps_ymf_dummy() -> None:
 
 
 def test_air_x_uses_walk_tables_until_run_speed() -> None:
-    start = level1_start_obs()
+    start = level1_start()
     air = rollout(start, [press("RIGHT", "B", "A")] * 8)
     grounded_run = rollout(start, [press("RIGHT", "B")] * 8)
     assert air[1].velocity_x == 1
@@ -211,7 +223,7 @@ def test_air_x_uses_walk_tables_until_run_speed() -> None:
 
 def test_takeoff_frame_uses_air_x() -> None:
     """16f run then A: leave-ground frame adds walk $98, not run $E4 (live 1-1)."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(
         start,
         [press("RIGHT", "B")] * 16 + [press("RIGHT", "B", "A")] * 4,
@@ -251,7 +263,7 @@ def test_jump_tables_from_abs_vx() -> None:
             JUMP_FORCE_DOWN[index],
             0,
         ), velocity_x
-        takeoff = step(_obs(velocity_x=velocity_x), press("A"))
+        takeoff = step(_player(velocity_x=velocity_x), press("A"))
         assert takeoff.on_ground is False
         assert takeoff.velocity_y == vy
         assert takeoff.vertical_force == vf
@@ -261,7 +273,7 @@ def test_jump_tables_from_abs_vx() -> None:
 
 def test_run24_then_jump_uses_mid_run_table() -> None:
     """24f RIGHT+B → |vx|=21 → InitJS index 2 (vf=$1E, not $20)."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(start, [press("RIGHT", "B")] * 24 + [press("RIGHT", "B", "A")] * 2)
     last_ground = frames[24]
     takeoff = frames[25]
@@ -279,7 +291,7 @@ def test_run24_then_jump_uses_mid_run_table() -> None:
 
 def test_brake_uses_walk_friction_until_fast() -> None:
     """No L/R: $98 unless |vx| >= $21 (smbdis FrictionData / ChkRFast)."""
-    start = level1_start_obs()
+    start = level1_start()
     walked = rollout(start, [press("RIGHT")] * 16)
     assert walked[-1].velocity_x < BRAKE_FAST
     first_idle = step(walked[-1], idle_action())
@@ -287,18 +299,18 @@ def test_brake_uses_walk_friction_until_fast() -> None:
     assert _pack_for_test(first_idle) == expected
     assert first_idle.x_force != (walked[-1].x_force - FRICTION) & 0xFF
 
-    fast = _obs(velocity_x=0x22, x_force=0x10, facing=1)
+    fast = _player(velocity_x=0x22, x_force=0x10, facing=1)
     nxt = step(fast, idle_action())
     assert _pack_for_test(nxt) == _pack_for_test(fast) - FRICTION
 
-    latched = _obs(velocity_x=RUN_SPEED_LATCH, x_force=0x34, facing=1, running_speed=RUN_SPEED_LATCH)
+    latched = _player(velocity_x=RUN_SPEED_LATCH, x_force=0x34, facing=1, running_speed=RUN_SPEED_LATCH)
     braked = step(latched, idle_action())
     assert _pack_for_test(braked) == _pack_for_test(latched) - FRICTION
 
 
 def test_run32_then_jump_uses_fast_run_table() -> None:
     """32f RIGHT+B → |vx|=28 → InitJS index 4 (vy=-5, vf=$28)."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(start, [press("RIGHT", "B")] * 32 + [press("RIGHT", "B", "A")])
     last_ground = frames[32]
     takeoff = frames[33]
@@ -313,14 +325,14 @@ def test_run32_then_jump_uses_fast_run_table() -> None:
 
 
 def test_stepper_does_not_mutate_start() -> None:
-    start = level1_start_obs()
+    start = level1_start()
     before = start.to_dict()
     step(start, press("RIGHT", "A"))
     assert start.to_dict() == before
 
 
 def test_residual_unmeasured_and_agree() -> None:
-    frames = rollout(level1_start_obs(), [press("RIGHT")] * 5)
+    frames = rollout(level1_start(), [press("RIGHT")] * 5)
     assert compute_residual_profile(frames, None).unmeasured is True
     profile = compute_residual_profile(frames, frames)
     assert profile.fd_pi is None
@@ -466,7 +478,7 @@ def test_measure_segment_offline_walk_left_and_air_xf() -> None:
 
 def test_run_then_idle_latches_running_speed_one_frame_late() -> None:
     """32f run: first idle still $98; GetPlayerAnimSpeed then latches → $D0."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(start, [press("RIGHT", "B")] * 32 + [idle_action()] * 2)
     last_run = frames[32]
     first_idle = frames[33]
@@ -480,7 +492,7 @@ def test_run_then_idle_latches_running_speed_one_frame_late() -> None:
 
 def test_left_first_kick_subtracts_adder() -> None:
     """From rest, LEFT is 0 - $0130 = $FED0 (vx=-2), not a mirrored -$0130."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(start, [press("LEFT")] * 4)
     first = frames[1]
     assert first.velocity_x == -2
@@ -499,7 +511,7 @@ def test_left_first_kick_subtracts_adder() -> None:
 
 def test_air_walk_max_keeps_x_force() -> None:
     """Hitting walk max $18 snaps vx only; leftover xf keeps accumulating."""
-    start = level1_start_obs()
+    start = level1_start()
     frames = rollout(
         start,
         [press("RIGHT", "B")] * 16
@@ -520,3 +532,31 @@ def test_air_walk_max_keeps_x_force() -> None:
     assert land.on_ground is True
     assert land.velocity_x == WALK_MAX
     assert land.x_force == 100
+
+
+def test_land_then_rejump_initjs_zeros_ymf_dummy() -> None:
+    """Land keeps leftover $0416; InitJS wipes it before the next ImposeGravity."""
+    start = level1_start()
+    frames = rollout(
+        start,
+        [press("A")] * 4 + [idle_action()] * 21 + [press("A")] * 2,
+    )
+    land = frames[25]
+    takeoff = frames[26]
+    assert land.on_ground is True
+    assert land.sub_y == 128
+    assert land.y_move_force == 0
+    assert takeoff.on_ground is False
+    assert takeoff.sub_y == 0
+    assert takeoff.y_move_force == takeoff.vertical_force
+    assert takeoff.y == land.y + takeoff.velocity_y
+
+
+def test_measure_segment_offline_land_then_rejump() -> None:
+    result = measure_segment("land_then_rejump", run_emulator=False)
+    assert result.horizon == 46
+    assert result.world.ground_y == DEFAULT_GROUND_Y
+    assert result.approx_obs[25].on_ground is True
+    assert result.approx_obs[25].sub_y == 128
+    assert result.approx_obs[26].on_ground is False
+    assert result.approx_obs[26].sub_y == 0
