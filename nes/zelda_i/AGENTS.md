@@ -70,6 +70,16 @@ uv run python zelda_i/scripts/run_level4_entrance_tf.py --trials 2 --tag l4_zavx
 uv run python zelda_i/scripts/run_level4_gleeok.py --infinite-life --trials 2 --save-state
 # L4 Gleeok Clean dual (south-stand policy)
 uv run python zelda_i/scripts/run_level4_gleeok.py --trials 2 --tag l4_vdnc_gleeok_clean
+
+# L4 complete → L5 entry, preserving Raft/Stepladder/bombs/TF (assisted)
+uv run python zelda_i/scripts/run_l4_to_l5.py \
+  --infinite-life --save-state --trials 1 --tag l4_to_l5_assisted
+# L5 entry → clear 0x66 + first key (assisted)
+uv run python zelda_i/scripts/run_level5_clear66.py \
+  --from-state Level5EntranceFromL4 --infinite-life --save-state --trials 1
+# Current L5 tip: 0x66 key → south 0x76 → east key door 0x77
+uv run python zelda_i/scripts/run_level5_east_key.py \
+  --from-state Level5Cleared66 --keep-keys --infinite-life --save-state --trials 1
 ```
 
 ## Layout (pointers)
@@ -116,6 +126,13 @@ from damage heatmaps. Do not block tip progress on combat polish.
 - After triforce: idle mode 18 (~704f) → OW 0x37; do not reload
   `Level1Complete` mid-fanfare. L2 prefix: `37→38→48→58→59→49→4A`; never 0x79.
 - Lab checkpoints are dev fixtures until natural-entry runner passes same spec.
+- Old `Level5Entrance` came from early `At4A` and lacks the Raft, Stepladder,
+  bombs, and earlier TF bits. Use `Level5EntranceFromL4` for route work.
+- L5 `0x76→0x77` is a key door: clear north room `0x66` first. Its fixed key
+  can leave Link on the horizontal-river ladder at x≈56,y≈117; finish DOWN
+  before horizontal alignment. Never use `--poke-doors` for a route claim.
+- Lost Hills entry from `0x1C` settles on the east ledge x≈240,y≈141; alternate
+  short LEFT/DOWN bursts before the four consecutive UP wraps.
 
 ## Next
 
