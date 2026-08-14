@@ -8,35 +8,31 @@ route graph.
 
 Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
 
-## Next pass — Level 5 east key (2026-08-14)
+## Next pass — work backward from Ganon to the final Patra (2026-08-14)
 
-Verified assisted stopping point (Survival refill only; not Clean STATUS):
+Verified recon endpoint (explicit fixture; not Clean or Survival route STATUS):
 
-- `Level4Complete` → real overworld return `0x45` → Lost Hills → settled L5
-  entry `0x76`: **1/1**, 5,031 path frames. Inventory stayed bombs=7,
-  Raft=1, Stepladder=1, Triforce=`0x0c`; assist reported zero progression and
-  capacity writes. Runner: `scripts/run_l4_to_l5.py`; checkpoint:
-  `Level5EntranceFromL4`.
-- `Level5EntranceFromL4` → north `0x66` → clear three Gibdos → fixed key:
-  **1/1**, 1,254 frames, keys 0→1. Runner: `scripts/run_level5_clear66.py`;
-  checkpoint: `Level5Cleared66`.
+- `Level9BeforeGanonReconFixture` room `0x52` → Ganon `0x42` → Zelda `0x32`
+  → rolling credits → final page: **1/1**, Ganon/Zelda/ending controller green.
+- Live anchors: Ganon type `0x3E`; sword HP cycle
+  `F0→B0→70→30→brown`; brown is nonzero `ObjState`; Silver Arrow sets
+  `LastBossDefeated ($0672)`; ending update submodes 3/4 are credits/final.
+- Runner/evidence: `scripts/run_level9_ganon.py`,
+  `recordings/l9_ganon_credits_recon.json`; preserved start/end states and
+  provenance sidecars are listed in `LEVEL9_ROUTE.md`.
 
-Do not rerun those predecessors first. Resume with exactly one diagnostic run:
+Next, create a room-entry fixture for **uncleared** final-Patra room `0x52`
+with the same disclosed full inventory, then defeat type `0x47` using only
+controller input. The accepted segment must naturally make the north door bit
+`0x08` appear and transition into the already-green Ganon controller. Do not
+remove object slots or write room/door state in that run. Keep the full
+inventory labeled fixture-only, so the result is useful backward geometry but
+still not a route promotion.
 
-```bash
-uv run python nes/zelda_i/scripts/run_level5_east_key.py \
-  --from-state Level5Cleared66 --keep-keys --infinite-life --save-state --trials 1
-```
-
-The last attempt returned `0x66→0x76` with keys=1, then stalled before `0x77`.
-The runner now emits `prefix_trail` samples every 250 frames; inspect those and
-`recordings/l5_east_key_t0_isolated.png` before changing geometry. Expected
-route: finish the `0x66` ladder crossing DOWN, align x≈120, exit SOUTH to
-`0x76`, approach the east wall on y≈157, align to door channel y≈141, then
-RIGHT through the key door. Predecessors keep keys by default; `--keep-keys`
-is optional explicit safety. Do not poke doors or keys, add random jitter, or
-write inventory. After this is green, continue serially toward the Whistle; do
-not detour into the known `0x67` Bubble residual.
+After the Patra→credits composition is green, move the start one real room
+farther backward and repeat. The forward L5 boundary remains preserved at
+`Level5Cleared66`; do not discard or rewrite that work while the requested
+backward pass is active.
 
 ## Strategy (finish easy → then tune)
 
@@ -61,18 +57,20 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Next milestones
 
-1. **L5 tip (serial)** — east key → Whistle → Digdogger → `triforce & 0x10`.
-2. **Later dungeons** — continue L6–L8 under Survival assist before returning
-   to Clean combat hardening.
+1. **L9 backward tip** — final Patra `0x52` natural combat → proven Ganon/
+   Zelda/credits suffix, then move one room farther backward.
+2. **Forward route (preserved)** — L5 east key → Whistle → Digdogger →
+   `triforce & 0x10`, then L6–L8 under Survival assist.
 3. **M6 route graph** — compose the assisted checkpoint chain into reusable
    route legs, then run a continuous dry run.
 4. **M7–M8** — verified full-game capture (assisted first, Clean later).
 
 ## Bottleneck
 
-**L5 east key geometry** is the current serial boundary. The predecessor chain
-through L4 and the first `0x66` key are verified; the next pass starts from
-`Level5Cleared66` and must use the new sampled trace instead of broad probes.
+**Final Patra combat in Level 9 room `0x52`** is the active backward boundary.
+The suffix from its north door through the final ending page is verified; the
+next pass must earn that north door with controller input. The L5 east key is
+the paused forward boundary, not erased or superseded as route evidence.
 
 ## Video / watchability (2026-08-06)
 
