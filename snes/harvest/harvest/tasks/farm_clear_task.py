@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, List, Optional
+from typing import Deque, List, Optional, Tuple
 
 import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
@@ -57,6 +57,7 @@ class FarmClearTask(Task):
     fetch_tools: bool = True
     prefer_lift_for_weeds: bool = True
     prefer_lift_for_stones: bool = False
+    farm_bounds: Optional[Tuple[int, int, int, int]] = None
 
     _clearer: FarmClearer = field(init=False, repr=False)
     _step_count: int = field(default=0, init=False)
@@ -76,13 +77,16 @@ class FarmClearTask(Task):
         self._clearer.configure(
             prefer_lift_for_weeds=self.prefer_lift_for_weeds,
             prefer_lift_for_stones=self.prefer_lift_for_stones,
+            farm_bounds=self.farm_bounds,
         )
         if self.fetch_tools:
             self._register_default_tool_startup()
         else:
-            # No shed/tool recordings — skip inventory cycle startup.
+            # No shed/tool recordings — lift weeds/stones only.
             self._clearer.startup_done = True
             self._clearer._tool_scan_done = True
+            self._clearer.tools_missing = True
+            self._clearer._enable_lift_only_mode([])
 
     def _register_default_tool_startup(self) -> None:
         # Position-locked get_hammer/get_axe recordings only work from their
@@ -162,6 +166,14 @@ class FarmClearTask(Task):
         self._staging_queue.clear()
         self._did_south_staging = False
 
+    def _scan_bounds(self) -> Optional[Tuple[int, int, int, int]]:
+        return self.farm_bounds or self._clearer._locked_bounds or self._clearer.farm_bounds
+
+    def _remaining_debris(self, ram) -> list:
+        return TileScanner().scan(
+            ram, self._scan_bounds(), types=set(CLEARABLE_DEBRIS_TYPES)
+        )
+
     def can_start(self, world: WorldState) -> bool:
         ram = world.ram
         if ram is None or ADDR_TILEMAP >= len(ram):
@@ -172,7 +184,7 @@ class FarmClearTask(Task):
             # via recordings. Debris presence is checked from farm RAM when on
             # farm; off-farm we still allow start so tools can be fetched.
             return True
-        return TileScanner().has_clearable_debris(ram)
+        return TileScanner().has_clearable_debris(ram, self._scan_bounds())
 
     def _queue_south_exit_staging(self, world: WorldState) -> None:
         """Leave south-of-fence pocket for return_home.
@@ -308,9 +320,7 @@ class FarmClearTask(Task):
             return self._maybe_stage_then_success(world, reason)
 
         if self._step_count > self.timeout:
-            remaining = TileScanner().scan(
-                world.ram, types=set(CLEARABLE_DEBRIS_TYPES)
-            )
+            remaining = self._remaining_debris(world.ram)
             lift_note = " lift_only" if self._clearer.tools_missing else ""
             return self._finish_or_drop(
                 world,
@@ -327,9 +337,7 @@ class FarmClearTask(Task):
                     world,
                     f"stamina_low cleared={self._clearer.cleared_count}",
                 )
-            remaining = TileScanner().scan(
-                world.ram, types=set(CLEARABLE_DEBRIS_TYPES)
-            )
+            remaining = self._remaining_debris(world.ram)
             lift_note = (
                 " lift_only" if self._clearer.tools_missing else ""
             )
