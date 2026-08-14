@@ -1,9 +1,9 @@
 """Thin pure approximate SMB stepper (flat ground only).
 
-``step(obs, action) -> obs`` is deterministic and has no emulator dependency.
-It models grounded walk/run, A-edge jump, A-release gravity, air X
-tables (including the takeoff frame), and land YMF. No slopes, pipes,
-enemies, or collision.
+``step(player, action, world) -> player`` is deterministic and has no
+emulator dependency. It models grounded walk/run, A-edge jump, A-release
+gravity, air X tables (including the takeoff frame), and land YMF. No
+slopes, pipes, enemies, or collision.
 
 X kinematics follow smbdis ``ImposeFriction`` on a 16-bit two's-complement
 ``(Player_X_Speed, Player_X_MoveForce)`` word:
@@ -23,6 +23,7 @@ Y is smbdis ``ImposeGravity`` + ``JumpSwimSub`` A-release:
 - after a 1px rise, A-release copies ``$070A`` into ``$0709``
 - land snaps pixel Y and zeros ``velocity_y`` / ``$0433``; keep ``$0416``
   (YMF dummy) and leftover ``$0709``
+- takeoff zeros ``$0416`` (InitJS wipes YMF dummy; land does not)
 
 Takeoff (smbdis ``InitJS``) indexes ``JumpMForceData`` / ``FallMForceData`` /
 ``PlayerYSpdData`` from ``|$0700|`` (``Player_XSpeedAbsolute`` ≈ ``|vx|``).
@@ -32,8 +33,11 @@ Land bands only; swim indices 5–6 are not modeled.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Literal
 
-from smb.observation import DEFAULT_GROUND_Y, Observation
+from retro_harness.nes import nes_action, nes_idle_action
+
+from smb.observation import FLAT_1_1, PlayerPhysics, World
 
 __all__ = [
     "AIR_RUN_KEEP",
@@ -56,11 +60,7 @@ __all__ = [
     "takeoff_vertical",
 ]
 
-# NES 9-slot: [B, null, Select, Start, Up, Down, Left, Right, A]
-_IDX_B = 0
-_IDX_LEFT = 6
-_IDX_RIGHT = 7
-_IDX_A = 8
+Phase = Literal["ground", "takeoff", "air"]
 
 WALK_ACCEL = 0x98
 RUN_ACCEL = 0xE4
@@ -80,44 +80,34 @@ JUMP_FORCE_DOWN = (0x70, 0x70, 0x60, 0x90, 0x90)
 JUMP_Y_SPEED = (-4, -4, -4, -5, -5)
 JUMP_ABS_VX = (0x09, 0x10, 0x19, 0x1C)
 JUMP_SPEED = JUMP_Y_SPEED[0]
-GRAVITY_HOLD_STEP = JUMP_FORCE_UP[0]
-GRAVITY_FALL = JUMP_FORCE_DOWN[0]
 MAX_FALL = 4
 PIT_Y = 240
 DIFF_TO_HALT_JUMP = 1
 
 
 def idle_action() -> tuple[int, ...]:
-    return (0,) * 9
+    return tuple(int(v) for v in nes_idle_action())
 
 
 def press(*buttons: str) -> tuple[int, ...]:
     """Build a 9-slot NES action from button names (B, A, LEFT, RIGHT, …)."""
-    action = [0] * 9
-    names = {name.strip().upper() for name in buttons}
-    if "B" in names:
-        action[_IDX_B] = 1
-    if "LEFT" in names:
-        action[_IDX_LEFT] = 1
-    if "RIGHT" in names:
-        action[_IDX_RIGHT] = 1
-    if "A" in names:
-        action[_IDX_A] = 1
-    return tuple(action)
+    return tuple(int(v) for v in nes_action(*buttons))
 
 
 def decode_action(action: Sequence[int]) -> tuple[int, bool, bool]:
     """Return ``(x_dir, run, jump)`` with x_dir in {-1, 0, +1}."""
+    from retro_harness.controls import NES_A, NES_B, NES_LEFT, NES_RIGHT
+
     buttons = list(action) + [0] * 9
-    left = bool(buttons[_IDX_LEFT])
-    right = bool(buttons[_IDX_RIGHT])
+    left = bool(buttons[NES_LEFT])
+    right = bool(buttons[NES_RIGHT])
     if left and not right:
         x_dir = -1
     elif right and not left:
         x_dir = 1
     else:
         x_dir = 0
-    return x_dir, bool(buttons[_IDX_B]), bool(buttons[_IDX_A])
+    return x_dir, bool(buttons[NES_B]), bool(buttons[NES_A])
 
 
 def _pack_speed(velocity_x: int, x_force: int) -> int:
@@ -163,34 +153,37 @@ def takeoff_vertical(velocity_x: int) -> tuple[int, int, int, int]:
     )
 
 
-def _leaving_ground(obs: Observation, jump: bool) -> bool:
-    """A-edge takeoff: X_Physics already sees air this frame."""
-    return bool(obs.on_ground and jump and not obs.a_held)
+def _phase(player: PlayerPhysics, jump: bool) -> Phase:
+    """This frame's motion mode. Takeoff is already air for X_Physics."""
+    if player.on_ground and jump and not player.a_held:
+        return "takeoff"
+    if not player.on_ground:
+        return "air"
+    return "ground"
 
 
-def _air_uses_walk_tables(obs: Observation, jump: bool) -> bool:
+def _air_uses_walk_tables(player: PlayerPhysics, jump: bool) -> bool:
     """Air X uses walk accel/max until already at run speed (smbdis X_Physics)."""
-    in_air = (not obs.on_ground) or _leaving_ground(obs, jump)
-    return in_air and abs(int(obs.velocity_x)) < AIR_RUN_KEEP
+    return _phase(player, jump) != "ground" and abs(int(player.velocity_x)) < AIR_RUN_KEEP
 
 
-def _brake_adder(obs: Observation) -> int:
+def _brake_adder(player: PlayerPhysics) -> int:
     """smbdis FrictionData[$00]: $98 unless RunningSpeed or |vx| >= $21."""
-    if obs.running_speed or abs(int(obs.velocity_x)) >= BRAKE_FAST:
+    if player.running_speed or abs(int(player.velocity_x)) >= BRAKE_FAST:
         return FRICTION
     return WALK_ACCEL
 
 
-def _next_running_speed(obs: Observation, x_dir: int, jump: bool) -> int:
+def _next_running_speed(player: PlayerPhysics, x_dir: int, jump: bool) -> int:
     """smbdis GetPlayerAnimSpeed: latch |vx| when >= $1C; only on ground."""
-    if (not obs.on_ground) or _leaving_ground(obs, jump):
-        return int(obs.running_speed)
-    abs_vx = abs(int(obs.velocity_x))
+    if _phase(player, jump) != "ground":
+        return int(player.running_speed)
+    abs_vx = abs(int(player.velocity_x))
     if abs_vx >= RUN_SPEED_LATCH:
         return abs_vx
     if x_dir != 0:
         return 0
-    return int(obs.running_speed)
+    return int(player.running_speed)
 
 
 def _apply_brake(speed_16: int, adder: int) -> int:
@@ -206,12 +199,12 @@ def _apply_brake(speed_16: int, adder: int) -> int:
 
 
 def _update_x_speed(
-    obs: Observation, x_dir: int, run: bool, jump: bool
+    player: PlayerPhysics, x_dir: int, run: bool, jump: bool
 ) -> tuple[int, int, int]:
-    if _air_uses_walk_tables(obs, jump):
+    if _air_uses_walk_tables(player, jump):
         run = False
-    speed_16 = _pack_speed(obs.velocity_x, obs.x_force)
-    facing = obs.facing
+    speed_16 = _pack_speed(player.velocity_x, player.x_force)
+    facing = player.facing
     adder = FIRST_KICK if speed_16 == 0 else (RUN_ACCEL if run else WALK_ACCEL)
     if x_dir > 0:
         facing = 1
@@ -220,7 +213,7 @@ def _update_x_speed(
         facing = 2
         speed_16 = _clamp_speed((speed_16 - adder) & 0xFFFF, run)
     else:
-        speed_16 = _apply_brake(speed_16, _brake_adder(obs))
+        speed_16 = _apply_brake(speed_16, _brake_adder(player))
     velocity_x, x_force = _unpack_speed(speed_16)
     return velocity_x, x_force, facing
 
@@ -232,16 +225,16 @@ def _advance_x(x: int, sub_x: int, velocity_x: int) -> tuple[int, int]:
     return total >> 8, total & 0xFF
 
 
-def _select_vertical_force(obs: Observation, jump: bool) -> int:
+def _select_vertical_force(player: PlayerPhysics, jump: bool) -> int:
     """JumpSwimSub: keep rising VF while A is held; else copy VerticalForceDown."""
-    rising = obs.vertical_force if obs.vertical_force else GRAVITY_HOLD_STEP
-    falling = obs.vertical_force_down if obs.vertical_force_down else GRAVITY_FALL
-    if obs.velocity_y >= 0:
+    rising = int(player.vertical_force)
+    falling = int(player.vertical_force_down)
+    if player.velocity_y >= 0:
         return falling
-    a_held_continuous = jump and obs.a_held
+    a_held_continuous = jump and player.a_held
     if a_held_continuous:
         return rising
-    if (int(obs.jump_origin_y) - int(obs.y)) >= DIFF_TO_HALT_JUMP:
+    if (int(player.jump_origin_y) - int(player.y)) >= DIFF_TO_HALT_JUMP:
         return falling
     return rising
 
@@ -271,9 +264,8 @@ def _land_if_needed(
     sub_y: int,
     velocity_y: int,
     y_move_force: int,
-    vertical_force: int,
     ground_y: int,
-) -> tuple[int, int, int, int, int, bool]:
+) -> tuple[int, int, int, int, bool]:
     on_ground = False
     if y >= ground_y and velocity_y >= 0:
         y = ground_y
@@ -281,20 +273,20 @@ def _land_if_needed(
         velocity_y = 0
         y_move_force = 0
         on_ground = True
-    return y, sub_y, velocity_y, y_move_force, vertical_force, on_ground
+    return y, sub_y, velocity_y, y_move_force, on_ground
 
 
 def _step_air(
-    obs: Observation, jump: bool
+    player: PlayerPhysics, jump: bool, world: World
 ) -> tuple[int, int, int, int, int, int, bool]:
     """Return y, sub_y, velocity_y, vertical_force, y_move_force, vfd, on_ground."""
-    vertical_force = _select_vertical_force(obs, jump)
-    vertical_force_down = obs.vertical_force_down if obs.vertical_force_down else GRAVITY_FALL
+    vertical_force = _select_vertical_force(player, jump)
+    vertical_force_down = int(player.vertical_force_down)
     y, sub_y, velocity_y, y_move_force = _impose_gravity(
-        obs.y, obs.sub_y, obs.velocity_y, obs.y_move_force, vertical_force
+        player.y, player.sub_y, player.velocity_y, player.y_move_force, vertical_force
     )
-    y, sub_y, velocity_y, y_move_force, vertical_force, on_ground = _land_if_needed(
-        y, sub_y, velocity_y, y_move_force, vertical_force, obs.ground_y
+    y, sub_y, velocity_y, y_move_force, on_ground = _land_if_needed(
+        y, sub_y, velocity_y, y_move_force, world.ground_y
     )
     return (
         y,
@@ -307,31 +299,37 @@ def _step_air(
     )
 
 
-def step(obs: Observation, action: Sequence[int]) -> Observation:
+def step(
+    player: PlayerPhysics,
+    action: Sequence[int],
+    world: World | None = None,
+) -> PlayerPhysics:
     """Advance one frame. Pure: no RAM, no I/O, no RNG."""
+    floor = world if world is not None else FLAT_1_1
     x_dir, run, jump = decode_action(action)
-    velocity_x, x_force, facing = _update_x_speed(obs, x_dir, run, jump)
-    x, sub_x = _advance_x(obs.x, obs.sub_x, velocity_x)
-    running_speed = _next_running_speed(obs, x_dir, jump)
+    velocity_x, x_force, facing = _update_x_speed(player, x_dir, run, jump)
+    x, sub_x = _advance_x(player.x, player.sub_x, velocity_x)
+    running_speed = _next_running_speed(player, x_dir, jump)
+    phase = _phase(player, jump)
 
-    on_ground = obs.on_ground
-    y = obs.y
-    sub_y = obs.sub_y
-    velocity_y = obs.velocity_y
-    vertical_force = obs.vertical_force
-    vertical_force_down = obs.vertical_force_down if obs.vertical_force_down else GRAVITY_FALL
-    y_move_force = obs.y_move_force
-    jump_origin_y = obs.jump_origin_y
-    if on_ground and jump and not obs.a_held:
-        jump_origin_y = obs.y
+    on_ground = player.on_ground
+    y = player.y
+    sub_y = player.sub_y
+    velocity_y = player.velocity_y
+    vertical_force = player.vertical_force
+    vertical_force_down = player.vertical_force_down
+    y_move_force = player.y_move_force
+    jump_origin_y = player.jump_origin_y
+    if phase == "takeoff":
+        jump_origin_y = player.y
         velocity_y, vertical_force, vertical_force_down, y_move_force = takeoff_vertical(
-            obs.velocity_x
+            player.velocity_x
         )
         y, sub_y, velocity_y, y_move_force = _impose_gravity(
-            obs.y, 0, velocity_y, y_move_force, vertical_force
+            player.y, 0, velocity_y, y_move_force, vertical_force
         )
         on_ground = False
-    elif not on_ground:
+    elif phase == "air":
         (
             y,
             sub_y,
@@ -340,54 +338,58 @@ def step(obs: Observation, action: Sequence[int]) -> Observation:
             y_move_force,
             vertical_force_down,
             on_ground,
-        ) = _step_air(obs, jump)
+        ) = _step_air(player, jump, floor)
 
-    pose = obs.pose
-    dead = obs.dead
+    pose = player.pose
+    dead = player.dead
     if y >= PIT_Y:
         dead = True
         pose = 0x0B
         y = min(y, 255)
 
-    frame_counter = obs.frame_counter
+    frame_counter = player.frame_counter
     if frame_counter is not None:
         frame_counter = (int(frame_counter) + 1) & 0xFF
 
-    return Observation(
-        frame=obs.frame + 1,
+    return PlayerPhysics(
+        frame=player.frame + 1,
         x=x,
         y=y,
         pose=pose,
-        room=obs.room,
+        room=player.room,
         sub_x=sub_x,
         sub_y=sub_y,
         velocity_x=velocity_x,
         velocity_y=velocity_y,
-        energy=obs.energy,
+        energy=player.energy,
         dead=dead,
         frame_counter=frame_counter,
-        enemy0_active=obs.enemy0_active,
-        enemy0_type=obs.enemy0_type,
+        enemy0_active=player.enemy0_active,
+        enemy0_type=player.enemy0_type,
         facing=facing,
         on_ground=on_ground,
         x_force=x_force,
         running_speed=running_speed,
         a_held=jump,
-        ground_y=obs.ground_y if obs.ground_y else DEFAULT_GROUND_Y,
         vertical_force=vertical_force,
         vertical_force_down=vertical_force_down,
         y_move_force=y_move_force,
         jump_origin_y=jump_origin_y,
-        oper_mode=obs.oper_mode,
-        timer=obs.timer,
+        oper_mode=player.oper_mode,
+        timer=player.timer,
     )
 
 
-def rollout(start: Observation, actions: Sequence[Sequence[int]]) -> list[Observation]:
+def rollout(
+    start: PlayerPhysics,
+    actions: Sequence[Sequence[int]],
+    world: World | None = None,
+) -> list[PlayerPhysics]:
     """Return ``[start, step(start, a0), …]`` (length ``len(actions)+1``)."""
+    floor = world if world is not None else FLAT_1_1
     frames = [start]
     current = start
     for action in actions:
-        current = step(current, action)
+        current = step(current, action, floor)
         frames.append(current)
     return frames

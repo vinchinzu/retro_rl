@@ -53,6 +53,7 @@ Short Level1_1 tapes in `smb.residual_harness.SEGMENTS`:
 | `run_then_idle` | 32 RIGHT+B + 16 idle | RunningSpeed → brake `$D0` |
 | `walk_left` | 24 LEFT | LEFT first-kick `$FED0` |
 | `run_then_jump_long` | 16+4+40 RIGHT+B(+A) | air walk-max keeps `xf` |
+| `land_then_rejump` | 4 A + 21 idle + 4 A + 16 idle | InitJS zeros leftover `$0416` |
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -169,9 +170,21 @@ After `rr-pwdj` (clamp snaps `vx` only; leftover `$0705` stays):
 Air walk-max `$18` at f32 keeps `xf=12` (then 164, 60, …). Wiping `xf` to 0
 held pixels until land; fdσ=42 on the 16+4+40 tape.
 
+After `rr-cjxz` (Observation is lattice-only; `step` takes `PlayerPhysics` +
+`World`; `land_then_rejump` proves InitJS zeros `$0416`):
+
+| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
+|---------|--------:|------------------------------|-------------|-------|
+| land_then_rejump | 46 | `(—, —, —, —)` | — | — |
+
+Standing 4-A lands at f25 with `$0416=128`. Next A-edge wipes it to 0
+(emu takeoff `sub_y=0`, same as a rest jump). Keeping leftover broke fdσ=26.
+`R(τ)` compare lives in `retro_harness.residual`; SMB/SM pass a `LatticeSpec`.
+
 ## Modules
 
-- `smb.observation` — RAM → structured obs
-- `smb.approx.step` — pure `obs, action → obs` (flat ground + A-release + air X + land YMF + takeoff air X + InitJS `|vx|` tables + brake `$98`/`$D0` + LEFT two's-complement kick + walk-max keeps `xf`)
-- `smb.residual` — `compute_residual_profile`
+- `smb.observation` — RAM → `Observation` (lattice) / `PlayerPhysics` / `World`
+- `smb.approx.step` — pure `player, action, world → player`
+- `smb.residual` — `SMB_LATTICE` + `compute_residual_profile`
+- `retro_harness.residual` — shared `ResidualProfile` / lattice scan
 - `smb.residual_harness` — stepper + fceumm + `R(τ)`

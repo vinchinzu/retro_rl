@@ -38,6 +38,7 @@ _JUMP_TABLE_TAPES = ("run24_then_jump", "run32_then_jump")
 _BRAKE_TAPES = ("walk_then_idle", "run_then_idle")
 _LEFT_TAPES = ("walk_left",)
 _AIR_XF_TAPES = ("run_then_jump_long",)
+_REJUMP_TAPES = ("land_then_rejump",)
 
 
 @pytest.mark.parametrize(
@@ -48,7 +49,8 @@ _AIR_XF_TAPES = ("run_then_jump_long",)
     + _JUMP_TABLE_TAPES
     + _BRAKE_TAPES
     + _LEFT_TAPES
-    + _AIR_XF_TAPES,
+    + _AIR_XF_TAPES
+    + _REJUMP_TAPES,
 )
 def test_segment_produces_measured_profile(name: str) -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -72,6 +74,7 @@ def test_short_tapes_hold_pixels_and_subpixels() -> None:
         + _BRAKE_TAPES
         + _LEFT_TAPES
         + _AIR_XF_TAPES
+        + _REJUMP_TAPES
     ):
         result = measure_segment(name, run_emulator=True)
         assert result.profile.fd_pi is None, name

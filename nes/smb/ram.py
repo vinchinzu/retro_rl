@@ -106,10 +106,21 @@ def screen_left_x(ram: np.ndarray) -> int:
     return int(ram[ADDR_SCREEN_PAGE]) * 256 + int(ram[ADDR_SCREEN_X])
 
 
+def player_on_ground(ram: np.ndarray) -> bool:
+    """Physics grounded bit: smbdis Player_State ($001D) == 0.
+
+    Distinct from :func:`is_in_air`, which uses ``y_speed`` plus pose filters
+    for the policy observation. The stepper / residual lattice use this bit
+    so the apex frame (``vy=0`` still airborne) stays in air.
+    """
+    return int(ram[ADDR_PLAYER_MOTION]) == 0
+
+
 def is_in_air(ram: np.ndarray) -> bool:
     """True when vertical speed is nonzero or player is not in a grounded state.
 
     Vertical speed is the primary signal; player_state filters dying / pipes.
+    Not the physics bit — see :func:`player_on_ground`.
     """
     state = int(ram[ADDR_PLAYER_STATE])
     if state == PLAYER_STATE_DYING:

@@ -38,8 +38,10 @@ ADDR_FRAME_COUNTER  = 0x0009  # free-running; lag tag
 
 ## Residual lattice
 
-Shared observation used by `smb.observation` / `smb.residual` (same discipline
-as Super Metroid `R(τ)`). Speeds are first-differing-field only, not a second σ+.
+`Observation` is the RAM-readable lattice. Stepper state is `PlayerPhysics`
+(`a_held` is tape memory). Floor is `World.ground_y`, not a player field.
+Physics grounded is `$001D == 0` (`player_on_ground`); policy `is_in_air`
+still uses `y_speed`. Speeds are first-differing-field only, not a second σ+.
 
 | Name | RAM | Width | Lattice | Notes |
 |------|-----|-------|---------|-------|
@@ -56,13 +58,15 @@ as Super Metroid `R(τ)`). Speeds are first-differing-field only, not a second �
 | `velocity_x` | `$0057` | s8 | field | first-diff only |
 | `velocity_y` | `$009F` | s8 | field | first-diff only |
 | `frame_counter` | `$0009` | u8 | lag | stop scoring later kinematics |
-| `on_ground` | `$001D == 0` | flag | field | air/jump is `1` |
-| `x_force` | `$0705` | u8 | stepper | `Player_X_MoveForce` |
-| `running_speed` | `$0703` | u8 | stepper | `RunningSpeed`; brake `$D0` if set |
-| `y_move_force` | `$0433` | u8 | stepper | `Player_Y_MoveForce` |
-| `vertical_force` | `$0709` | u8 | stepper | rising / current gravity |
-| `vertical_force_down` | `$070A` | u8 | stepper | fall gravity |
-| `jump_origin_y` | `$0708` | u8 | stepper | A-release height gate |
+| `on_ground` | `$001D == 0` | flag | physics | `player_on_ground`; air/jump is `1` |
+| `x_force` | `$0705` | u8 | physics | `Player_X_MoveForce` |
+| `running_speed` | `$0703` | u8 | physics | `RunningSpeed`; brake `$D0` if set |
+| `y_move_force` | `$0433` | u8 | physics | `Player_Y_MoveForce` |
+| `vertical_force` | `$0709` | u8 | physics | rising / current gravity |
+| `vertical_force_down` | `$070A` | u8 | physics | fall gravity |
+| `jump_origin_y` | `$0708` | u8 | physics | A-release height gate |
+| `a_held` | (tape) | flag | physics | not RAM; previous-frame A |
+| `ground_y` | — | u8 | world | flat floor; not on the player |
 
 See `docs/RESIDUAL.md` for planner rules and the first measurement segments.
 
