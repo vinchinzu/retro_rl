@@ -13,7 +13,9 @@ from retro_harness.ram_state import GameMode, GameState
 
 # --- Core engine ---
 ADDR_LEVEL = 0x0010  # 0 = overworld; 1-9 = dungeon
+ADDR_IS_UPDATING_MODE = 0x0011  # 0=mode init, nonzero=ordinary update loop
 ADDR_MODE = 0x0012  # 5=play, 6/7=scroll, 11=cave/underworld play, 16=cave enter
+ADDR_SUBMODE = 0x0013  # mode-local phase; ending uses 3=credits, 4=final screen
 ADDR_DIALOG_TIMER = 0x0029
 ADDR_LINK_X = 0x0070
 ADDR_LINK_Y = 0x0084
@@ -32,6 +34,7 @@ ADDR_OBJ_TYPE = 0x034F  # 16 slots
 ADDR_OBJ_HP = 0x0485  # 13 gameplay slots used by the engine
 
 # --- Inventory / progress (file slot mirrored in WRAM) ---
+ADDR_SELECTED_ITEM = 0x0656  # B-item slot: 1=bombs, 2=arrows, 4=candle
 ADDR_SWORD = 0x0657  # 0=none, 1=wooden, 2=white, 3=magical
 ADDR_BOMBS = 0x0658
 ADDR_ARROWS = 0x0659
@@ -59,6 +62,7 @@ ADDR_TRIFORCE = 0x0671
 ADDR_BOOMERANG = 0x0674  # wooden; 0=false, 1=true
 ADDR_MAGIC_BOOMERANG = 0x0675  # magical full-screen; 0=false, 1=true
 ADDR_MAGIC_SHIELD = 0x0676
+ADDR_MAX_BOMBS = 0x067C
 
 # Overworld start + first milestones
 SCREEN_START = 0x77
@@ -115,6 +119,8 @@ class ZeldaSnapshot:
     # Defaults keep older ZeldaSnapshot(...) test constructors working.
     boomerang: int = 0
     magical_boomerang: int = 0
+    submode: int = 0
+    is_updating_mode: int = 0
 
     @property
     def overworld(self) -> bool:
@@ -208,6 +214,8 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         objects=objects,
         boomerang=read_u8(ram, ADDR_BOOMERANG),
         magical_boomerang=read_u8(ram, ADDR_MAGIC_BOOMERANG),
+        submode=read_u8(ram, ADDR_SUBMODE),
+        is_updating_mode=read_u8(ram, ADDR_IS_UPDATING_MODE),
     )
 
 

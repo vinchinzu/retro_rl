@@ -28,8 +28,23 @@
 
 Both runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
-power-on STATUS promotions. Current boundary: return `0x66→0x76`, then open
-the east key door to `0x77`; see `docs/plan.md` for the exact next command.
+power-on STATUS promotions. The paused forward boundary is return
+`0x66→0x76`, then open the east key door to `0x77`; the active backward pass
+is documented below and in `docs/plan.md`.
+
+## Backward endgame recon (fixture-only; does not change either gate)
+
+| Segment | Result | Evidence |
+|---------|--------|----------|
+| Fully loaded final-Patra room `0x52` → Ganon `0x42` → Zelda `0x32` → credits/final page | **1/1**; Ganon type `0x3E`, brown ObjState nonzero, Silver Arrow kill sets `$0672=1`; rolling credits at frame 3,395, final page at 4,595 | `l9_ganon_credits_recon.json`; `Level9BeforeGanonReconFixture`; `Level9CreditsReconFixture`; `Level9FinalScreenReconFixture` |
+
+This backwards-development proof deliberately composes the full inventory,
+clears the final Patra object slots, opens its north door, and optionally uses
+the Survival health refill. The report and state provenance enumerate those
+writes and set `route_eligible=false`. It proves the Ganon/Zelda/ending
+controller and stop predicates, **not** a Survival-assisted or Clean Level 9
+route. Next backward boundary: clear the real final Patra in `0x52` using only
+controller input from a room-entry recon fixture; see [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md).
 
 ## Verified segments
 

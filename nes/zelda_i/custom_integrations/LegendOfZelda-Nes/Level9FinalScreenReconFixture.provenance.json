@@ -1,0 +1,338 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T16:17:15.845570+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.1",
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1622,
+        "address_hex": "0x0656",
+        "name": "selected_item_silver_arrows",
+        "value": 2
+      },
+      {
+        "address": 1623,
+        "address_hex": "0x0657",
+        "name": "magical_sword",
+        "value": 3
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "name": "bombs",
+        "value": 16
+      },
+      {
+        "address": 1625,
+        "address_hex": "0x0659",
+        "name": "silver_arrows",
+        "value": 2
+      },
+      {
+        "address": 1626,
+        "address_hex": "0x065A",
+        "name": "bow",
+        "value": 1
+      },
+      {
+        "address": 1627,
+        "address_hex": "0x065B",
+        "name": "red_candle",
+        "value": 2
+      },
+      {
+        "address": 1628,
+        "address_hex": "0x065C",
+        "name": "whistle",
+        "value": 1
+      },
+      {
+        "address": 1629,
+        "address_hex": "0x065D",
+        "name": "food",
+        "value": 1
+      },
+      {
+        "address": 1630,
+        "address_hex": "0x065E",
+        "name": "red_potion",
+        "value": 2
+      },
+      {
+        "address": 1631,
+        "address_hex": "0x065F",
+        "name": "magic_rod",
+        "value": 1
+      },
+      {
+        "address": 1632,
+        "address_hex": "0x0660",
+        "name": "raft",
+        "value": 1
+      },
+      {
+        "address": 1633,
+        "address_hex": "0x0661",
+        "name": "book",
+        "value": 1
+      },
+      {
+        "address": 1634,
+        "address_hex": "0x0662",
+        "name": "red_ring",
+        "value": 2
+      },
+      {
+        "address": 1635,
+        "address_hex": "0x0663",
+        "name": "ladder",
+        "value": 1
+      },
+      {
+        "address": 1636,
+        "address_hex": "0x0664",
+        "name": "magic_key",
+        "value": 1
+      },
+      {
+        "address": 1637,
+        "address_hex": "0x0665",
+        "name": "bracelet",
+        "value": 1
+      },
+      {
+        "address": 1638,
+        "address_hex": "0x0666",
+        "name": "letter",
+        "value": 1
+      },
+      {
+        "address": 1645,
+        "address_hex": "0x066D",
+        "name": "rupees",
+        "value": 255
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "name": "keys",
+        "value": 9
+      },
+      {
+        "address": 1647,
+        "address_hex": "0x066F",
+        "name": "health_16_full",
+        "value": 255
+      },
+      {
+        "address": 1649,
+        "address_hex": "0x0671",
+        "name": "triforce_all_8",
+        "value": 255
+      },
+      {
+        "address": 1652,
+        "address_hex": "0x0674",
+        "name": "wood_boomerang",
+        "value": 1
+      },
+      {
+        "address": 1653,
+        "address_hex": "0x0675",
+        "name": "magic_boomerang",
+        "value": 1
+      },
+      {
+        "address": 1654,
+        "address_hex": "0x0676",
+        "name": "magic_shield",
+        "value": 1
+      },
+      {
+        "address": 1660,
+        "address_hex": "0x067C",
+        "name": "max_bombs",
+        "value": 16
+      },
+      {
+        "address": 16,
+        "address_hex": "0x0010",
+        "name": "loader_level",
+        "value": 9
+      },
+      {
+        "address": 18,
+        "address_hex": "0x0012",
+        "name": "loader_mode",
+        "value": 5
+      },
+      {
+        "address": 235,
+        "address_hex": "0x00EB",
+        "name": "loader_current_room",
+        "value": 98
+      },
+      {
+        "address": 236,
+        "address_hex": "0x00EC",
+        "name": "loader_next_room",
+        "value": 82
+      },
+      {
+        "address_hex": [
+          "0x0070",
+          "0x0084"
+        ],
+        "addresses": [
+          112,
+          132
+        ],
+        "name": "loader_link_position",
+        "values": [
+          120,
+          88
+        ]
+      },
+      {
+        "address_hex": [
+          "0x00EE",
+          "0x033F"
+        ],
+        "addresses": [
+          238,
+          831
+        ],
+        "name": "loader_door_staging",
+        "values": [
+          15,
+          15
+        ]
+      },
+      {
+        "address_range": "0x0350..0x035B",
+        "name": "clear_final_patra_object_slots",
+        "value": 0
+      },
+      {
+        "address": 846,
+        "address_hex": "0x034E",
+        "name": "clear_room_object_count",
+        "value": 0
+      },
+      {
+        "address": 845,
+        "address_hex": "0x034D",
+        "name": "mark_room_all_dead",
+        "value": 1
+      },
+      {
+        "addresses": [
+          238,
+          831
+        ],
+        "name": "open_north_door",
+        "value_or": 8
+      },
+      {
+        "address_hex": [
+          "0x0070",
+          "0x0084"
+        ],
+        "addresses": [
+          112,
+          132
+        ],
+        "name": "final_link_position",
+        "values": [
+          120,
+          88
+        ]
+      }
+    ],
+    "phase": "final_press_start_screen",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "frame": 4685,
+    "ok": true,
+    "state": {
+      "bombs": 16,
+      "cur_opened_doors": 0,
+      "facing": 2,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 19,
+      "mode_name": "unknown_mode_19",
+      "next_room": 50,
+      "objects": [
+        {
+          "hp": 240,
+          "slot": 1,
+          "state": 1,
+          "type_id": 55,
+          "type_name": "unknown_object_0x37",
+          "x": 120,
+          "y": 136
+        },
+        {
+          "hp": 16,
+          "slot": 2,
+          "state": 0,
+          "type_id": 62,
+          "type_name": "unknown_object_0x3e",
+          "x": 120,
+          "y": 136
+        },
+        {
+          "hp": 16,
+          "slot": 3,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 112,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "slot": 4,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 128,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "slot": 5,
+          "state": 0,
+          "type_id": 63,
+          "type_name": "unknown_object_0x3f",
+          "x": 144,
+          "y": 181
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 50,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 1,
+      "rupees": 250,
+      "submode": 4,
+      "triforce": 255,
+      "x": 136,
+      "y": 136
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9BeforeGanonReconFixture.state",
+  "source_state_sha256": "811a45b76c15c8e4b627122f230146af9e4e2947889c27493f20c9cb53132664",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9FinalScreenReconFixture.state",
+  "state_sha256": "4147a55b7ac55f0392ad873ea4d5df99e552d6886af16dff813e820909ed51be"
+}
