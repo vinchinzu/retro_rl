@@ -37,7 +37,6 @@ from zelda_i.level9_ganon import (
     LEVEL9,
     ROOM_BEFORE_GANON,
     ROOM_GANON,
-    ROOM_ZELDA,
     credits_rolling,
     final_ending_screen,
     ganon_defeated,
@@ -46,6 +45,8 @@ from zelda_i.level9_ganon import (
     in_room_before_ganon,
     in_zelda_room,
 )
+from zelda_i.level9_patra import PATRA_EYE_COUNT, final_patra_live, patra_eyes
+from zelda_i.level9_path import final_patra_to_ganon_step
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -155,7 +156,10 @@ def _idle(
     return obs
 
 
-def _fixture_write_rows() -> list[dict[str, Any]]:
+def _fixture_write_rows(
+    *,
+    clear_final_patra: bool = True,
+) -> list[dict[str, Any]]:
     rows = [
         {
             "name": name,
@@ -206,39 +210,44 @@ def _fixture_write_rows() -> list[dict[str, Any]]:
                 "address_hex": ["0x00EE", "0x033F"],
                 "values": [0x0F, 0x0F],
             },
-            {
-                "name": "clear_final_patra_object_slots",
-                "address_range": "0x0350..0x035B",
-                "value": 0,
-            },
-            {
-                "name": "clear_room_object_count",
-                "address": ADDR_ROOM_OBJ_COUNT,
-                "address_hex": "0x034E",
-                "value": 0,
-            },
-            {
-                "name": "mark_room_all_dead",
-                "address": ADDR_ROOM_ALL_DEAD,
-                "address_hex": "0x034D",
-                "value": 1,
-            },
-            {
-                "name": "open_north_door",
-                "addresses": [
-                    ADDR_CUR_OPENED_DOORS,
-                    ADDR_OPEN_DOORWAY_MASK,
-                ],
-                "value_or": NORTH_DOOR,
-            },
-            {
-                "name": "final_link_position",
-                "addresses": [ADDR_LINK_X, ADDR_LINK_Y],
-                "address_hex": ["0x0070", "0x0084"],
-                "values": [0x78, 0x58],
-            },
         ]
     )
+    if clear_final_patra:
+        rows.extend(
+            [
+                {
+                    "name": "clear_final_patra_object_slots",
+                    "address_range": "0x0350..0x035B",
+                    "value": 0,
+                },
+                {
+                    "name": "clear_room_object_count",
+                    "address": ADDR_ROOM_OBJ_COUNT,
+                    "address_hex": "0x034E",
+                    "value": 0,
+                },
+                {
+                    "name": "mark_room_all_dead",
+                    "address": ADDR_ROOM_ALL_DEAD,
+                    "address_hex": "0x034D",
+                    "value": 1,
+                },
+                {
+                    "name": "open_north_door",
+                    "addresses": [
+                        ADDR_CUR_OPENED_DOORS,
+                        ADDR_OPEN_DOORWAY_MASK,
+                    ],
+                    "value_or": NORTH_DOOR,
+                },
+                {
+                    "name": "final_link_position",
+                    "addresses": [ADDR_LINK_X, ADDR_LINK_Y],
+                    "address_hex": ["0x0070", "0x0084"],
+                    "values": [0x78, 0x58],
+                },
+            ]
+        )
     return rows
 
 
@@ -249,13 +258,14 @@ def _write_provenance(
     phase: str,
     result: dict[str, Any],
     fixture_writes: list[dict[str, Any]],
+    bead: str = BEAD,
 ) -> None:
     source = state_path(GAME_DIR, GAME, source_state)
     write_state_provenance(
         path,
         source_state_path=source if source.exists() else None,
         request={
-            "bead": BEAD,
+            "bead": bead,
             "phase": phase,
             "track": "recon_fixture",
             "route_eligible": False,
@@ -275,6 +285,7 @@ def _save_checkpoint(
     phase: str,
     result: dict[str, Any],
     fixture_writes: list[dict[str, Any]],
+    bead: str = BEAD,
 ) -> Path:
     path = save_state(env, GAME_DIR, GAME, name)
     _write_provenance(
@@ -283,25 +294,37 @@ def _save_checkpoint(
         phase=phase,
         result=result,
         fixture_writes=fixture_writes,
+        bead=bead,
     )
     return path
 
 
-def build_fixture(*, tag: str = "l9_before_ganon_fixture") -> dict[str, Any]:
-    """Compose and verify the fully loaded room-0x52 checkpoint."""
+def build_fixture(
+    *,
+    tag: str = "l9_before_ganon_fixture",
+    fixture_name: str = FIXTURE_NAME,
+    clear_final_patra: bool = True,
+    bead: str = BEAD,
+) -> dict[str, Any]:
+    """Compose and verify a fully loaded room-0x52 recon checkpoint.
+
+    ``clear_final_patra=False`` preserves the live body and all eight eyes,
+    producing the controller-input boundary used by ``rr-sz8.2``.
+    """
     configure_headless()
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
     env = make_env(GAME, FIXTURE_SOURCE, GAME_DIR, render_mode="rgb_array")
     total = [0]
-    writes = _fixture_write_rows()
+    writes = _fixture_write_rows(clear_final_patra=clear_final_patra)
     report: dict[str, Any] = {
         "ok": False,
-        "bead": BEAD,
+        "bead": bead,
         "track": "recon_fixture",
         "route_eligible": False,
         "fixture_only": True,
         "source_state": FIXTURE_SOURCE,
-        "checkpoint": FIXTURE_NAME,
+        "checkpoint": fixture_name,
+        "final_patra_fixture_cleared": clear_final_patra,
         "fixture_writes": writes,
     }
     try:
@@ -334,50 +357,69 @@ def build_fixture(*, tag: str = "l9_before_ganon_fixture") -> dict[str, Any]:
             report["final"] = compact_snapshot(read_snapshot(env.get_ram()))
             return report
 
-        # Fixture-only skip of the final Patra; this is the exact boundary the
-        # user requested, not a claim that the room was naturally cleared.
-        for slot in range(1, 13):
-            _assign(env, ADDR_OBJ_TYPE + slot, 0)
-        _assign(env, ADDR_ROOM_OBJ_COUNT, 0)
-        _assign(env, ADDR_ROOM_ALL_DEAD, 1)
-        _assign(
-            env,
-            ADDR_CUR_OPENED_DOORS,
-            read_snapshot(env.get_ram()).cur_opened_doors | NORTH_DOOR,
-        )
-        _assign(
-            env,
-            ADDR_OPEN_DOORWAY_MASK,
-            read_snapshot(env.get_ram()).open_doorway_mask | NORTH_DOOR,
-        )
-        obs = _idle(env, 30, assist=None, total=total)
-        _assign(env, ADDR_LINK_X, 0x78)
-        _assign(env, ADDR_LINK_Y, 0x58)
-        obs = _step(env, nes_idle_action(), assist=None, total=total)
+        if clear_final_patra:
+            # Fixture-only skip retained for the already-proven Ganon suffix.
+            for slot in range(1, 13):
+                _assign(env, ADDR_OBJ_TYPE + slot, 0)
+            _assign(env, ADDR_ROOM_OBJ_COUNT, 0)
+            _assign(env, ADDR_ROOM_ALL_DEAD, 1)
+            _assign(
+                env,
+                ADDR_CUR_OPENED_DOORS,
+                read_snapshot(env.get_ram()).cur_opened_doors | NORTH_DOOR,
+            )
+            _assign(
+                env,
+                ADDR_OPEN_DOORWAY_MASK,
+                read_snapshot(env.get_ram()).open_doorway_mask | NORTH_DOOR,
+            )
+            obs = _idle(env, 30, assist=None, total=total)
+            _assign(env, ADDR_LINK_X, 0x78)
+            _assign(env, ADDR_LINK_Y, 0x58)
+            obs = _step(env, nes_idle_action(), assist=None, total=total)
+        else:
+            # Let all eight eyes finish spawning before preserving the state.
+            obs = _idle(env, 15, assist=None, total=total)
 
         before = read_snapshot(env.get_ram())
-        report["before_ganon"] = compact_snapshot(before)
-        report["ok"] = bool(
-            in_room_before_ganon(before)
-            and not any(obj.type_id for obj in before.objects[1:])
-            and before.cur_opened_doors & NORTH_DOOR
-        )
+        report["room_entry"] = compact_snapshot(before)
+        if clear_final_patra:
+            report["before_ganon"] = compact_snapshot(before)
+            report["ok"] = bool(
+                in_room_before_ganon(before)
+                and not any(obj.type_id for obj in before.objects[1:])
+                and before.cur_opened_doors & NORTH_DOOR
+            )
+        else:
+            report["ok"] = bool(
+                final_patra_live(before)
+                and len(patra_eyes(before)) == PATRA_EYE_COUNT
+                and not before.cur_opened_doors & NORTH_DOOR
+                and not before.open_doorway_mask & NORTH_DOOR
+            )
         screenshot = RECORDINGS_DIR / f"{tag}.png"
         save_rgb_png(obs, screenshot)
         report["screenshot"] = str(screenshot)
         if report["ok"]:
             path = _save_checkpoint(
                 env,
-                FIXTURE_NAME,
+                fixture_name,
                 source_state=FIXTURE_SOURCE,
-                phase="fully_loaded_room_before_ganon",
+                phase=(
+                    "fully_loaded_room_before_ganon"
+                    if clear_final_patra
+                    else "fully_loaded_final_patra_room_entry"
+                ),
                 result={
                     "ok": True,
                     "room": ROOM_BEFORE_GANON,
-                    "north_door_open": True,
+                    "north_door_open": clear_final_patra,
+                    "final_patra_live": not clear_final_patra,
+                    "patra_eye_count": len(patra_eyes(before)),
                     "frames": total[0],
                 },
                 fixture_writes=writes,
+                bead=bead,
             )
             report["checkpoint_path"] = str(path)
         return report
@@ -403,11 +445,15 @@ def _enter_ganon(
     for _ in range(900):
         snap = read_snapshot(env.get_ram())
         ram = env.get_ram()
-        if in_ganon_fight(snap) and int(ram[ADDR_GANON_SCENE_PHASE]) == GANON_SCENE_FIGHT:
+        if (
+            in_ganon_fight(snap)
+            and int(ram[ADDR_GANON_SCENE_PHASE]) == GANON_SCENE_FIGHT
+        ):
             return obs, True
+        frame_action = final_patra_to_ganon_step(snap)
         obs = _step(
             env,
-            nes_idle_action() if snap.screen == ROOM_GANON else nes_action("UP"),
+            frame_action.action,
             assist=assist,
             total=total,
         )
@@ -480,9 +526,7 @@ def _rescue_zelda(
             direction = "UP"
         # Pulse A through the two guard fires; release frames allow movement.
         action = (
-            nes_action(direction, "A")
-            if frame % 12 == 0
-            else nes_action(direction)
+            nes_action(direction, "A") if frame % 12 == 0 else nes_action(direction)
         )
         obs = _step(env, action, assist=assist, total=total)
     return obs, False

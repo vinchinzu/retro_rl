@@ -58,6 +58,13 @@ Level 9 ending stops must also require `ADDR_IS_UPDATING_MODE != 0` because
 initialization reuses the same submode values: update submode 3 is rolling
 staff credits and update submode 4 is the final Press Start page.
 
+Final Patra room `0x52` uses body type `0x47` in slot 1 (initial HP `0xB0`)
+and eight orbiting-eye objects type `0x25` in slots 2–9 (initial HP `0x60`).
+With the Magical Sword, live HP steps are eyes `60→20→dead` and exposed body
+`B0→70→30→dead`. Natural completion raises the north bit `0x08` in
+`ADDR_CUR_OPENED_DOORS`; `ADDR_OPEN_DOORWAY_MASK` remained zero at the sampled
+clear boundary and is not the stop predicate.
+
 Screen/room hop timing (`room_timer.py`) treats mode **5** as settled play and
 modes **6/7/16** (plus cave **11**) as non-destination transition noise. See
 [ROOM_TIMER.md](ROOM_TIMER.md).

@@ -81,10 +81,10 @@ uv run python zelda_i/scripts/run_level5_clear66.py \
 uv run python zelda_i/scripts/run_level5_east_key.py \
   --from-state Level5Cleared66 --keep-keys --infinite-life --save-state --trials 1
 
-# L9 backward recon: compose disclosed pre-Ganon fixture → credits/final page
-uv run python zelda_i/scripts/run_level9_ganon.py \
-  --build-fixture --from-state Level9BeforeGanonReconFixture \
-  --infinite-life --save-state --trials 1 --tag l9_ganon_credits_recon
+# L9 backward recon: live final Patra → Ganon → credits/final page (repo root)
+uv run python nes/zelda_i/scripts/run_level9_patra.py \
+  --build-fixture --from-state Level9FinalPatraReconFixture \
+  --infinite-life --save-state --trials 2 --tag l9_patra_credits_recon
 ```
 
 ## Layout (pointers)
@@ -100,6 +100,7 @@ uv run python zelda_i/scripts/run_level9_ganon.py \
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*` factories) |
 | `level3_path.py` | L3 door micros / west-key / north chain (no raft re-export) |
 | `level5_path.py` | L5 door/nav (`level5_east_key_step`); specs stay in `level5_dungeon` |
+| `level9_patra.py`, `level9_path.py` | Final-Patra combat + earned north-door micro |
 | `level3_raft_path.py` | L3 Raft path (canonical; shim via `level3_dungeon`) |
 | `level*_boss_*.py`, `dungeon_ops.py` | Boss chains + shared door/clear ops |
 | `level2_puzzles.py` | BombWall / KeyDoor geometry catalog |
@@ -140,12 +141,15 @@ from damage heatmaps. Do not block tip progress on combat polish.
   the east-key runner has no poke flag.
 - Lost Hills entry from `0x1C` settles on the east ledge x≈240,y≈141; alternate
   short LEFT/DOWN bursts before the four consecutive UP wraps.
+- L9 final Patra `0x52`: body `0x47` + 8 eyes `0x25`; follow a stand 30 px
+  south of the body and pulse UP+A. Natural clear can leave Link x≈112, which
+  sticks at the north wall; recenter x≈120 before UP into Ganon `0x42`.
 
 ## Next
 
 ```bash
 bd ready -l zelda_i
-bd show rr-sz8.2  # next backward pass; parent L9 epic is still L8-gated
+bd show rr-sz8.3  # candidate room 0x62 → proven Patra/credits suffix
 ```
 
 | Order | Bead | Work |
@@ -167,7 +171,8 @@ bd show rr-sz8.2  # next backward pass; parent L9 epic is still L8-gated
 | ✓/∂ | **`rr-zavx`** | Clean dual Entrance→NaturalKey; continuous TF health residual |
 | ∂ | **`rr-gjey`** | Gleeok post-boss fireball floor 106; natural enter ~98–100 still short of continuous 108 |
 | paused forward | **`rr-28p`** | Assisted L5 east key `0x66→0x76→0x77`, then Whistle → Digdogger → TF `0x10` |
-| now | **`rr-sz8` children** | L9 backward pass: Ganon/Zelda/credits suffix green; next earn final-Patra `0x52` north door |
+| ✓ | **`rr-sz8.1` / `rr-sz8.2`** | L9 Ganon suffix + live final Patra `0x52` → final page **2/2 recon** |
+| now | **`rr-sz8.3`** | Inspect candidate predecessor `0x62`, then compose into live Patra/credits suffix |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
