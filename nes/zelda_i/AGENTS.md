@@ -80,6 +80,11 @@ uv run python zelda_i/scripts/run_level5_clear66.py \
 # Current L5 tip: 0x66 key → south 0x76 → east key door 0x77
 uv run python zelda_i/scripts/run_level5_east_key.py \
   --from-state Level5Cleared66 --keep-keys --infinite-life --save-state --trials 1
+
+# L9 backward recon: compose disclosed pre-Ganon fixture → credits/final page
+uv run python zelda_i/scripts/run_level9_ganon.py \
+  --build-fixture --from-state Level9BeforeGanonReconFixture \
+  --infinite-life --save-state --trials 1 --tag l9_ganon_credits_recon
 ```
 
 ## Layout (pointers)
@@ -139,7 +144,8 @@ from damage heatmaps. Do not block tip progress on combat polish.
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: rr-28p L5 east key / rr-38p OW parallel
+bd ready -l zelda_i
+bd show rr-sz8.2  # next backward pass; parent L9 epic is still L8-gated
 ```
 
 | Order | Bead | Work |
@@ -160,7 +166,8 @@ bd ready -l zelda_i   # tip: rr-28p L5 east key / rr-38p OW parallel
 | ✓ | **`rr-vdnc`** | Clean continuous PostLadder→TF (south-stand Gleeok) |
 | ✓/∂ | **`rr-zavx`** | Clean dual Entrance→NaturalKey; continuous TF health residual |
 | ∂ | **`rr-gjey`** | Gleeok post-boss fireball floor 106; natural enter ~98–100 still short of continuous 108 |
-| now | **`rr-28p`** | Assisted L5 east key `0x66→0x76→0x77`, then Whistle → Digdogger → TF `0x10` |
+| paused forward | **`rr-28p`** | Assisted L5 east key `0x66→0x76→0x77`, then Whistle → Digdogger → TF `0x10` |
+| now | **`rr-sz8` children** | L9 backward pass: Ganon/Zelda/credits suffix green; next earn final-Patra `0x52` north door |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 

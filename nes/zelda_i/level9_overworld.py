@@ -1,8 +1,8 @@
-"""Level 9 (Death Mountain) overworld scaffold — planning only.
+"""Level 9 (Death Mountain) overworld anchors and entry capability gates.
 
 Gated by full Triforce (``ADDR_TRIFORCE == 0xFF``) for interior progress.
-Bomb-rock OW screen can be mapped earlier. Screen ids are **source
-hypotheses**.
+Bomb-rock OW screen can be mapped earlier.  Spectacle Rock and the entrance
+room are live; the natural interior route remains future work.
 
 See ``docs/LEVEL9_ROUTE.md``.
 """
@@ -11,6 +11,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from zelda_i.level9_ganon import (
+    ADDR_GANON_OBJ_PHASE_BASE,
+    GANON_BROWN_STATE,
+    OBJ_GANON,
+    ROOM_GANON,
+    credits_rolling,
+    final_ending_screen,
+)
 from zelda_i.overworld import ScreenHop
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -26,6 +34,7 @@ from zelda_i.anchors import FULL_TRIFORCE, SCREEN_LEVEL9_ROCK_HYP
 SOURCE_HYPOTHESIS = True
 SCREEN_LEVEL9_POTION_NEAR_HYP = 0x04  # one left (source)
 LEVEL9 = 9
+ROOM_LEVEL9_ENTRY = 0x76
 # Source / Data Crystal style values (confirm live).
 RING_RED_PLANNED = 2
 ARROWS_SILVER_PLANNED = 2
@@ -94,19 +103,17 @@ def level9_dungeon_play(snap: ZeldaSnapshot) -> bool:
     return snap.level == LEVEL9 and snap.mode == PLAY_MODE
 
 
-def level9_entry_stop(_snap: ZeldaSnapshot) -> bool:
-    """Placeholder until live entry room id exists."""
-    return False
+def level9_entry_stop(snap: ZeldaSnapshot) -> bool:
+    return level9_dungeon_play(snap) and snap.screen == ROOM_LEVEL9_ENTRY
 
 
-def level9_overworld_stop(_snap: ZeldaSnapshot) -> bool:
-    """Placeholder rock-door stop — False until live."""
-    return False
+def level9_overworld_stop(snap: ZeldaSnapshot) -> bool:
+    return on_level9_rock_hyp(snap)
 
 
-def level9_ending_stop(_snap: ZeldaSnapshot) -> bool:
-    """Credits / Zelda stop — always False until mode/room evidence exists."""
-    return False
+def level9_ending_stop(snap: ZeldaSnapshot) -> bool:
+    """True once the update loop reaches rolling credits or its final page."""
+    return credits_rolling(snap) or final_ending_screen(snap)
 
 
 def level9_ganon_planning_notes() -> dict[str, Any]:
@@ -114,9 +121,11 @@ def level9_ganon_planning_notes() -> dict[str, Any]:
         "policy": "stun Ganon (sword) until brown, then Silver Arrow on B",
         "silver_arrows_ram": hex(ADDR_ARROWS),
         "silver_arrows_value_planned": ARROWS_SILVER_PLANNED,
-        "object_type_id": None,
-        "brown_state_ram": None,
-        "live_verified": False,
+        "object_type_id": OBJ_GANON,
+        "brown_state_ram": hex(0x00AC),
+        "brown_state_initial": GANON_BROWN_STATE,
+        "dying_phase_base": hex(ADDR_GANON_OBJ_PHASE_BASE),
+        "live_verified": True,
     }
 
 
@@ -124,7 +133,7 @@ def planning_report() -> dict[str, Any]:
     return {
         "level": LEVEL9,
         "name": "Death Mountain",
-        "status": "planning",
+        "status": "backward_recon_live_natural_route_pending",
         "source_hypothesis": SOURCE_HYPOTHESIS,
         "required_entry_caps": sorted(required_caps_for_entry()),
         "required_ganon_caps": sorted(required_caps_for_ganon()),
@@ -142,13 +151,13 @@ def planning_report() -> dict[str, Any]:
             {"target": hex(h.target), "dir": h.direction} for h in LEVEL9_ROCK_HOPS
         ],
         "ganon": level9_ganon_planning_notes(),
-        "ending_stop": "unverified_stub",
+        "ending_stop": "mode=0x13, updating!=0, submode=3 credits or 4 final",
         "live": {
-            "rock_screen": None,
-            "entry_room": None,
+            "rock_screen": SCREEN_LEVEL9_ROCK_HYP,
+            "entry_room": ROOM_LEVEL9_ENTRY,
             "red_ring_room": None,
             "silver_arrow_room": None,
-            "ganon_room": None,
+            "ganon_room": ROOM_GANON,
         },
         "docs": "nes/zelda_i/docs/LEVEL9_ROUTE.md",
     }

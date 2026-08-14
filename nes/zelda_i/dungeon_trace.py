@@ -12,7 +12,7 @@ from typing import Any, Iterable
 import numpy as np
 
 from retro_harness.adventure.hashutil import sha256_file
-from retro_harness.nes import NES_BUTTON_NAMES
+from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.ram_state import diff_changed
 from zelda_i.dungeon_ids import (
     mode_name,
@@ -28,8 +28,8 @@ def action_button_names(action: Iterable[int]) -> list[str]:
     values = list(action)
     return [
         name
-        for index, name in enumerate(NES_BUTTON_NAMES)
-        if index < len(values) and values[index]
+        for name, index in NES_BUTTON_NAME_TO_INDEX.items()
+        if index is not None and index < len(values) and values[index]
     ]
 
 
@@ -38,6 +38,8 @@ def compact_snapshot(snap: ZeldaSnapshot) -> dict[str, Any]:
     return {
         "mode": snap.mode,
         "mode_name": mode_name(snap.mode),
+        "submode": snap.submode,
+        "is_updating_mode": snap.is_updating_mode,
         "level": snap.level,
         "room": snap.screen,
         "next_room": snap.next_screen,
