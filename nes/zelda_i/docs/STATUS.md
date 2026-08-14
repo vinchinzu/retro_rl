@@ -241,8 +241,8 @@ heart-starvation before the maze, not a single misaligned hop to tweak.
 
 ## Not done
 
-- L3 Manji → Raft → Manhandla → TF `0x04` (assist tip; west key/north pure green)
-- Clean residual L2/L3 after full-game assist pass
+- L5 remainder (Whistle → Digdogger → TF `0x10`) then L6–L9 under assist
+- Clean residual after full-game assist pass
 - Natural-entry continuous power-on chain (deferred under assist-first)
 - Full eight-dungeon/Ganon route graph
 - Broader overworld bomb / white-sword chain
@@ -260,7 +260,7 @@ is STATUS-promoted yet**. Process: `docs/tasks/PROCESS.md`. Work: `bd ready -l z
 
 ## Next
 
-1. **Tip:** L3 Manji assist — Raft + Manhandla + TF `0x04`
-   (`bd ready -l zelda_i`; epic `rr-wmv` / residual `rr-vpl`).
-2. Chain assisted multi-dungeon (L3→L4…) before Clean combat harden.
+1. **Tip:** L5 east key (`0x66→0x76→0x77`) under Survival assist — `rr-28p`;
+   exact command in `docs/plan.md`.
+2. Then Whistle → Digdogger → TF `0x10` (still assisted; not Clean STATUS).
 3. Clean residual only after full-game assist pass (`rr-4oz`).

@@ -16,20 +16,26 @@ and the existing earned-capacity health refill.
    issue.
 3. Start from the real predecessor checkpoint. Record level, room, mode, x/y,
    keys, bombs, items, heart containers, and Triforce bits before acting.
+   Predecessor inventory is sacred: do not default-zero keys or poke doors on a
+   route runner. Isolated combat fixtures (`L5_Room_77`) may zero keys; route
+   checkpoints may not.
 4. Use `--infinite-life` for first-pass route and puzzle work. Require the
    assist report to show `progression_writes=0` and `capacity_writes=0`.
+   Survival ≠ poke: `--infinite-life` is the only assisted write. Door, key, or
+   inventory pokes are recon and cannot write route checkpoints.
 
 ## Run a screenshot-first loop
 
-1. Form one geometry hypothesis from the last screenshot, sampled RAM trail,
-   and—when helpful—an external map or walkthrough. Treat external material as
-   a hypothesis until the emulator confirms it.
-2. Express navigation as a pure one-frame policy in the owning module. Give
-   actions semantic reasons and add unit tests for boundary coordinates.
+1. Form one geometry hypothesis from the last PNG plus sampled RAM. Treat a
+   walkthrough or TAS as a hypothesis, never as proof.
+2. Put one-frame door/nav policy in `level*_path.py` (follow
+   `level3_path.west_door_step`). `level*_dungeon.py` stays specs + stop
+   predicates. Scripts do not grow path loops. Give actions semantic reasons
+   and add unit tests for boundary coordinates.
 3. Run one emulator trial. Save a screenshot on every room/screen transition,
    the final frame, and a compact sample every roughly 250 stuck frames.
 4. On failure, inspect the final screenshot and the last coordinate/reason
-   samples before editing. Change one hypothesis, then rerun.
+   samples before editing. Change one thing, then rerun.
 5. Never add random jitter, silently extend timeouts, or repeat an unchanged
    policy. Never poke keys, doors, bombs, inventory, or progression for a route
    claim. If a poke is explicitly needed for recon, label and isolate it.
@@ -48,7 +54,9 @@ and the existing earned-capacity health refill.
 ## Stop cleanly
 
 Update `docs/plan.md` with the exact next command, expected transitions, last
-observed failure, and evidence paths. Put only verified facts plus the single
+observed failure, and evidence paths. After a verified segment, also refresh
+the Next sections in `AGENTS.md` and `docs/STATUS.md`. If `LEVELN_ROUTE.md`
+still says poke, that is a bug. Put only verified facts plus the single
 program maturity gate in `docs/STATUS.md`. Run the narrow tests, update the
 active bead, `bd sync`, and commit code with `.beads/issues.jsonl`. Do not push
 unless requested.

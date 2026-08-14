@@ -46,7 +46,7 @@ sword are optional for the **door** itself; bracelet warp shortens OW only.
 
 | Room id | Live enemies / notes | Doors / items |
 |---------|----------------------|---------------|
-| **0x76** entry | No combat objects at settle; `room_obj_count=3` (statues) | North open → **0x66**; south exits OW; **east → 0x77** (Pols Voice) **not natural-open** from `Level5Entrance` (`doors=0x00`). Mid-room blocks pure RIGHT @ y≈141 (stuck x≈128, tile≈181); y≈149–157 reaches wall x≈208. Keys alone do not open. Door-open residual (RAM poke `cur_opened_doors`/`mask`) required for live entry today |
+| **0x76** entry | No combat objects at settle; `room_obj_count=3` (statues) | North open → **0x66**; south exits OW; **east → 0x77** is a **key door**. Mid-room blocks pure RIGHT @ y≈141 (stuck x≈128, tile≈181); y≈149–157 reaches wall x≈208. Clear north **0x66** first (3× Gibdo + fixed key), return south, approach wall y≈157, channel y≈141, RIGHT. Route fixtures: `Level5EntranceFromL4` then `Level5Cleared66`. Old `Level5Entrance` (At4A) lacks Raft/Stepladder/bombs/TF — do not use it for route work |
 | **0x66** | **3× type 0x30** Gibdo, **HP=112**, `AliveRule.TYPE_AND_HP` | Pre-clear `doors=0`; after clear **`doors=0x08`** → east free to **0x67**; DOWN → 0x76; UP/LEFT blocked natural (dark-room / west key residual) |
 | **0x67** (E of 0x66) | **2× type 0x40** Bubble (HP=240, **sword-immune**) + **1× type 0x4e** (hp0 residual) | Settle `doors=0x02` (LEFT only) → back to 0x66; R/U/D solid. **Dead-end graph node** — no clear pure |
 | **0x77** (E of 0x76) | **5× type 0x16** Pols Voice, **HP=160**, `TYPE_AND_HP` | `room_item_id=0x19` small key; doors=0 on settle. Combat pure from `L5_Room_77` **2/2** (~5.3k frames) with backstep controller |
@@ -68,14 +68,15 @@ sword are optional for the **door** itself; bracelet warp shortens OW only.
 
 - Spec: `level5_dungeon.ROOM_66_SPEC` / stop `level5_room_66_cleared`
 - Controller: `GenericDungeonRoomController` (import-only from `dungeon`)
-- Start: `L5_Room_66` (in-room) or chain north from `Level5Entrance` (0x76)
+- Start: `L5_Room_66` (in-room) or chain north from `Level5EntranceFromL4` (0x76)
 - Track: **Clean** isolated (no health write); ~2k frames in-room, ~4k from entrance
 - Object confirm: type **0x30**, spawn HP **112**, expected count **3**
 - Doors after clear: **`cur_opened_doors=0x08`** → east open to 0x67
 
 ```bash
 uv run python nes/zelda_i/scripts/run_level5_clear66.py --trials 2
-uv run python nes/zelda_i/scripts/run_level5_clear66.py --from-entrance --save-state --trials 1
+uv run python nes/zelda_i/scripts/run_level5_clear66.py \
+  --from-state Level5EntranceFromL4 --infinite-life --save-state --trials 1
 ```
 
 ### Graph pure: 0x66 → 0x67 (bead `rr-87a`)
@@ -92,28 +93,35 @@ uv run python nes/zelda_i/scripts/run_level5_east67.py --trials 2
 uv run python nes/zelda_i/scripts/run_level5_east67.py --save-state
 ```
 
-### Pure (room-ready): 0x77 Pols Voice + key (bead `rr-076`)
+### Route: 0x66 → 0x76 → east key 0x77
 
-- Spec: `ROOM_77_SPEC` / stop `level5_room_77_key_success`
+East `0x76→0x77` is a **key door**. Policy: `level5_path.level5_east_key_step`.
+Spec/stop stay in `level5_dungeon` (`ROOM_77_SPEC` / `level5_room_77_key_success`).
+Do not detour **0x67** (Bubble dead-end residual).
+
+Start: **`Level5Cleared66`** (from `Level5EntranceFromL4` / `Level4Complete`).
+`--keep-keys` is optional explicit safety (predecessors keep keys by default).
+
+```bash
+uv run python nes/zelda_i/scripts/run_level5_east_key.py \
+  --from-state Level5Cleared66 --infinite-life --save-state --trials 1
+```
+
+### Isolated combat: 0x77 Pols Voice + key (bead `rr-076`)
+
 - Controller: `Level5PolsVoiceController` (backstep when stuck close)
-- Start: **`L5_Room_77`** (room-ready; runner forces keys=0 for FIXED_INVENTORY)
-- Entry from `Level5Entrance` east: **PARTIAL** door residual (`--poke-doors` recon)
+- Start: **`L5_Room_77`** (room-ready; keys forced 0 **only** for this isolated fixture)
 - Object: type **0x16**, HP **160**, count **5**; key RoomItemId **0x19**
 - Live 2/2 isolated ~5.3k frames (infinite-life optional for recon)
 
 ```bash
-# Combat pure from in-room checkpoint
 uv run python nes/zelda_i/scripts/run_level5_east_key.py --trials 2 --infinite-life
 uv run python nes/zelda_i/scripts/run_level5_east_key.py --save-state --infinite-life
-
-# Recon entry (not Clean): poke doors open then clear
-uv run python nes/zelda_i/scripts/run_level5_east_key.py \
-  --from-state Level5Entrance --poke-doors --infinite-life --trials 1
 ```
 
 Source route (not all live-mapped yet):
 
-- RIGHT Pols Voice + key (live room **0x77**; door open residual)
+- RIGHT Pols Voice + key (live room **0x77**; key door after 0x66)
 - UP Gibdo dark rooms → key; optional bomb skip past Dodongos
 - Map; Zol key; Gibdo bombs; Blue Darknuts → staircase
 - LEFT Darknuts → staircase → **Whistle**
@@ -129,13 +137,14 @@ Source route (not all live-mapped yet):
 
 | State | Provenance |
 |-------|------------|
-| `Level5Entrance.state` | Assisted settle room 0x76 ~(120,205); sword=1; no inventory/TF poke |
+| `Level5Entrance.state` | Old At4A settle 0x76; lacks Raft/Stepladder/bombs/TF — do not use for route |
+| `Level5EntranceFromL4.state` | From `Level4Complete`; Raft/Stepladder/bombs/TF `0x0c` preserved |
 | `OW_1B_LostHills.state` | On 0x1B after pocket free (dev fixture) |
 | `OW_0B_L5Door.state` | Door screen before enter (dev fixture) |
 | `L5_Room_66.state` | North of entry after walk (assisted) |
 | `Level5Cleared66.state` | Clean pure clear of 0x66; doors=0x08; east free → 0x67 |
 | `L5_Room_67.state` | East residual Bubbles; doors=0x02 |
-| `L5_Room_77.state` | Pols Voice room-ready (door residual entry) |
+| `L5_Room_77.state` | Isolated Pols Voice room-ready (keys forced 0 OK for this fixture) |
 | `Level5EastKey.state` | 0x77 cleared + keys≥1 |
 | `L5_Room_65.state` | West of 0x66 via forced doors (PARTIAL) |
 | `L5_Room_55.state` | North of 0x65 via forced doors (PARTIAL) |
@@ -165,14 +174,13 @@ uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_0B_L5Door \
 - `recordings/l5_east_key_*.json` / `l5_pols_2of2.json` — Pols Voice key trials
 - `recordings/l5_entrance.png`, `l5_0b_door.png`, `l5_1b_free.png`, `l5_room_66.png`,
   `l5_room67.png`, `l5_room_77.png`, `l5_east_key.png`
-- Modules: `level5_overworld.py`, `level5_dungeon.py`,
+- Modules: `level5_overworld.py`, `level5_dungeon.py`, `level5_path.py`,
   `scripts/run_level5_clear66.py`, `scripts/run_level5_east67.py`,
   `scripts/run_level5_east_key.py`, `scripts/probe_level5_entry.py`
 
 ## Next
 
-- Solve natural **0x76 east door** open (no RAM poke) — key door timing / dungeon
-  flag residual; then natural-entry 0x76 → 0x77 key pure
-- Natural west/north from 0x66 (candle equip on B, bomb walls, key use on west)
-- Whistle item room; Digdogger policy
-- Natural-entry from real predecessor (no assist) when tip reaches L5
+- Assisted tip: east key `0x66→0x76→0x77` (exact command in `docs/plan.md`);
+  then Whistle → Digdogger → TF `0x10`
+- Natural west/north from 0x66 (candle / bomb walls); do not detour 0x67
+- Natural-entry (no assist) after the assisted tip lands

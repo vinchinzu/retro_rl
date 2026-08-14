@@ -1,7 +1,7 @@
 """Clear Level 5 room 0x77 (5× Pols Voice) and collect its key.
 
-Default start: ``L5_Room_77`` (already in room; keys forced 0 at load if needed
-via inventory — runner expects keys=0 at room-ready for FIXED_INVENTORY).
+Default start: ``L5_Room_77`` (already in room; keys forced 0 at load for
+isolated FIXED_INVENTORY). Predecessor states keep keys.
 
 The natural route first clears 0x66 for a key, returns south to 0x76, then
 opens the east key door.  ``Level5Cleared66`` is the route-ready predecessor;
@@ -11,16 +11,16 @@ Stop: ``level5_room_77_key_success`` (keys≥1, no live type 0x16).
 
 Examples::
 
-    uv run python nes/zelda_i/scripts/run_level5_east_key.py --trials 2
-    uv run python nes/zelda_i/scripts/run_level5_east_key.py --save-state
-    uv run python nes/zelda_i/scripts/run_level5_east_key.py --infinite-life --trials 2
     uv run python nes/zelda_i/scripts/run_level5_east_key.py \
-        --from-state Level5Cleared66 --keep-keys --infinite-life --save-state
+        --from-state Level5Cleared66 --infinite-life --save-state --trials 1
+    uv run python nes/zelda_i/scripts/run_level5_east_key.py --trials 2
+    uv run python nes/zelda_i/scripts/run_level5_east_key.py --infinite-life --trials 2
 """
 
 from __future__ import annotations
 
 import argparse
+
 from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
@@ -37,50 +37,28 @@ from zelda_i.level5_dungeon import (
     ROOM_L5_ENTRY,
     ROOM_L5_POLS_77,
     ROOM_L5_GIBDO_66,
-    level5_east_key_step,
     level5_room_77_key_success,
     make_pols_voice_controller,
 )
+from zelda_i.level5_path import level5_east_key_step, should_force_keys_zero
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from zelda_i.ram import (
-    ADDR_CUR_OPENED_DOORS,
-    ADDR_KEYS,
-    ADDR_OPEN_DOORWAY_MASK,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
 
 
-def _ensure_door_vars(env) -> None:
-    for name, addr in (
-        ("doors", ADDR_CUR_OPENED_DOORS),
-        ("mask", ADDR_OPEN_DOORWAY_MASK),
-    ):
-        try:
-            env.data.set_variable(name, {"address": addr, "type": "|u1"})
-        except Exception:
-            pass
-
-
-def _poke_doors_open(env) -> None:
-    """Recon residual: force all door bits open (not Clean)."""
-    _ensure_door_vars(env)
-    env.data.set_value("doors", 0x0F)
-    env.data.set_value("mask", 0x0F)
+def _track_labels(infinite_life: bool) -> tuple[str, str]:
+    if infinite_life:
+        return "assisted", "survival"
+    return "clean", "clean"
 
 
 def _enter_77_from_entry(
-    env, *, assist, max_frames: int = 2500, poke_doors: bool
+    env, *, assist, max_frames: int = 2500
 ) -> tuple[bool, object | None, list[dict]]:
     """Deterministically route 0x66→0x76→0x77 and retain a transition trail."""
-    if poke_doors:
-        _poke_doors_open(env)
     obs = None
     trail: list[dict] = []
     last_room = read_snapshot(env.get_ram()).screen
     for frame in range(max_frames):
-        if poke_doors and frame % 5 == 0:
-            _poke_doors_open(env)
         if assist is not None:
             assist.apply_env(env, frame=frame)
         snap = read_snapshot(env.get_ram())
@@ -89,10 +67,10 @@ def _enter_77_from_entry(
             and snap.screen == ROOM_L5_POLS_77
             and snap.mode == PLAY_MODE
         ):
-            for _ in range(40):
+            for settle in range(40):
                 obs, *_ = env.step(nes_idle_action())
                 if assist is not None:
-                    assist.apply_env(env, frame=0)
+                    assist.apply_env(env, frame=frame + 1 + settle)
             return True, obs, trail
         action = level5_east_key_step(snap)
         obs, *_ = env.step(action.action)
@@ -134,20 +112,24 @@ def run_once(
     save_checkpoint: bool = False,
     start_state: str = "L5_Room_77",
     infinite_life: bool = False,
-    poke_doors: bool = False,
-    force_keys_zero: bool = True,
+    keep_keys: bool = False,
+    force_keys_zero: bool = False,
 ) -> dict:
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     controller = make_pols_voice_controller()
+    track, intervention_class = _track_labels(infinite_life)
     try:
         obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
 
-        if force_keys_zero:
+        zero_keys = should_force_keys_zero(
+            start_state, keep_keys=keep_keys, force_keys_zero=force_keys_zero
+        )
+        if zero_keys:
             env.data.set_value("keys", 0)
 
         entry = read_snapshot(env.get_ram())
@@ -155,19 +137,22 @@ def run_once(
         prefix_trail: list[dict] = []
         if entry.screen in (ROOM_L5_GIBDO_66, ROOM_L5_ENTRY):
             prefix_ok, prefix_obs, prefix_trail = _enter_77_from_entry(
-                env, assist=assist, poke_doors=poke_doors
+                env, assist=assist
             )
             if prefix_obs is not None:
                 obs = prefix_obs
             if not prefix_ok:
                 screenshot = RECORDINGS_DIR / f"{tag}_isolated.png"
                 save_rgb_png(obs, screenshot)
+                fail_snap = read_snapshot(env.get_ram())
                 return {
                     "ok": False,
-                    "track": "assisted" if (infinite_life or poke_doors) else "clean",
+                    "track": track,
+                    "intervention_class": intervention_class,
                     "start_state": start_state,
                     "prefix_ok": False,
                     "prefix_trail": prefix_trail,
+                    "force_keys_zero": zero_keys,
                     "entry": {
                         "room": entry.screen,
                         "x": entry.link_x,
@@ -177,14 +162,14 @@ def run_once(
                     },
                     "controller": controller.report(),
                     "final": {
-                        "room": read_snapshot(env.get_ram()).screen,
-                        "keys": read_snapshot(env.get_ram()).keys,
-                        "x": read_snapshot(env.get_ram()).link_x,
-                        "y": read_snapshot(env.get_ram()).link_y,
-                        "mode": read_snapshot(env.get_ram()).mode,
+                        "room": fail_snap.screen,
+                        "keys": fail_snap.keys,
+                        "x": fail_snap.link_x,
+                        "y": fail_snap.link_y,
+                        "mode": fail_snap.mode,
                     },
                     "screenshot": str(screenshot),
-                    "note": "east_door_residual_failed",
+                    "note": "east_key_prefix_failed",
                 }
 
         for frame in range(ROOM_77_SPEC.max_frames):
@@ -211,11 +196,8 @@ def run_once(
                     ),
                     request={
                         "segment": "level5_east_key",
-                        "predecessor_entry": (
-                            start_state != "L5_Room_77" and not poke_doors
-                        ),
+                        "predecessor_entry": start_state != "L5_Room_77",
                         "start_state": start_state,
-                        "poke_doors": poke_doors,
                     },
                     selected_trial=controller.report(),
                     natural_entry=False,
@@ -224,22 +206,20 @@ def run_once(
         screenshot = RECORDINGS_DIR / f"{tag}_isolated.png"
         save_rgb_png(obs, screenshot)
         live = len(ROOM_77_SPEC.live_enemies(snap))
-        track = "assisted" if (infinite_life or poke_doors) else "clean"
         return {
             "ok": ok,
             "track": track,
+            "intervention_class": intervention_class,
             "start_state": start_state,
             "prefix_ok": prefix_ok,
             "prefix_trail": prefix_trail,
-            "poke_doors": poke_doors,
+            "force_keys_zero": zero_keys,
             "entry": {
                 "room": entry.screen,
                 "x": entry.link_x,
                 "y": entry.link_y,
                 "doors": entry.cur_opened_doors,
-                "keys": int(env.get_ram()[ADDR_KEYS])
-                if force_keys_zero
-                else entry.keys,
+                "keys": entry.keys,
             },
             "controller": controller.report(),
             "final": {
@@ -271,7 +251,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--from-state",
         default="L5_Room_77",
-        help="Default L5_Room_77; Level5Entrance needs --poke-doors",
+        help="Default L5_Room_77 (isolated); Level5Cleared66 is the route predecessor.",
     )
     parser.add_argument(
         "--infinite-life",
@@ -279,14 +259,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Survival assist (ASSIST_CONTRACT). Not Clean STATUS.",
     )
     parser.add_argument(
-        "--poke-doors",
-        action="store_true",
-        help="Force cur_opened_doors/mask open to enter 0x77 from 0x76 (recon).",
-    )
-    parser.add_argument(
         "--keep-keys",
         action="store_true",
-        help="Do not force keys=0 at start (default forces 0 for key pickup).",
+        help="Never force keys to 0 (safety; default already keeps keys on predecessors).",
+    )
+    parser.add_argument(
+        "--force-keys-zero",
+        action="store_true",
+        help="Force keys=0 at load (isolated FIXED_INVENTORY). Off by default on predecessors.",
     )
     args = parser.parse_args(argv)
 
@@ -296,8 +276,8 @@ def main(argv: list[str] | None = None) -> int:
             save_checkpoint=args.save_state and trial == 0,
             start_state=args.from_state,
             infinite_life=args.infinite_life,
-            poke_doors=args.poke_doors,
-            force_keys_zero=not args.keep_keys,
+            keep_keys=args.keep_keys,
+            force_keys_zero=args.force_keys_zero,
         )
         for trial in range(args.trials)
     ]
@@ -311,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
             f"phase={report['controller'].get('phase')}"
         )
 
-    track = "assisted" if (args.infinite_life or args.poke_doors) else "clean"
+    track, intervention_class = _track_labels(args.infinite_life)
     output = RECORDINGS_DIR / f"l5_east_key_{track}.json"
     write_json_report(
         output,
@@ -319,9 +299,8 @@ def main(argv: list[str] | None = None) -> int:
             "segment": "level5_east_key",
             "start_state": args.from_state,
             "runtime_class": "bronze",
-            "intervention_class": track,
+            "intervention_class": intervention_class,
             "track": track,
-            "poke_doors": args.poke_doors,
             "trials": args.trials,
             "successes": sum(report["ok"] for report in reports),
             "stop_predicate": "level5_room_77_key_success",

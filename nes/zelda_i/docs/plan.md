@@ -33,9 +33,10 @@ The runner now emits `prefix_trail` samples every 250 frames; inspect those and
 `recordings/l5_east_key_t0_isolated.png` before changing geometry. Expected
 route: finish the `0x66` ladder crossing DOWN, align x≈120, exit SOUTH to
 `0x76`, approach the east wall on y≈157, align to door channel y≈141, then
-RIGHT through the key door. Do not use `--poke-doors`, random jitter, or key
-writes. After this is green, continue serially toward the Whistle; do not
-detour into the known `0x67` Bubble residual.
+RIGHT through the key door. Predecessors keep keys by default; `--keep-keys`
+is optional explicit safety. Do not poke doors or keys, add random jitter, or
+write inventory. After this is green, continue serially toward the Whistle; do
+not detour into the known `0x67` Bubble residual.
 
 ## Strategy (finish easy → then tune)
 
