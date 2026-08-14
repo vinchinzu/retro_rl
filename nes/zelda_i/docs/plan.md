@@ -8,31 +8,42 @@ route graph.
 
 Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
 
-## Next pass — work backward from Ganon to the final Patra (2026-08-14)
+## Next pass — move backward from final Patra to candidate room 0x62 (2026-08-14)
 
 Verified recon endpoint (explicit fixture; not Clean or Survival route STATUS):
 
-- `Level9BeforeGanonReconFixture` room `0x52` → Ganon `0x42` → Zelda `0x32`
-  → rolling credits → final page: **1/1**, Ganon/Zelda/ending controller green.
-- Live anchors: Ganon type `0x3E`; sword HP cycle
-  `F0→B0→70→30→brown`; brown is nonzero `ObjState`; Silver Arrow sets
-  `LastBossDefeated ($0672)`; ending update submodes 3/4 are credits/final.
-- Runner/evidence: `scripts/run_level9_ganon.py`,
-  `recordings/l9_ganon_credits_recon.json`; preserved start/end states and
-  provenance sidecars are listed in `LEVEL9_ROUTE.md`.
+- `Level9FinalPatraReconFixture` starts with live body type `0x47` HP `0xB0`
+  plus eight orbiting eyes type `0x25` HP `0x60`, and both north-door fields
+  closed. The south-stand controller naturally removes all eyes and the body,
+  then the engine raises `CurOpenedDoors & 0x08`.
+- `0x52` → Ganon `0x42` → Zelda `0x32` → rolling credits → final page is
+  **2/2 exact** in one emulator session: Patra clears at controller frame
+  1,883, credits begin at total frame 5,342, final page at 6,542.
+- The Patra segment preserves the fixture inventory. Runtime controller writes
+  are object/room/door/inventory/progression/capacity = 0; Survival restores
+  four filled-heart units (two in Patra, two in Ganon), with zero deaths.
+- Runner/evidence: `scripts/run_level9_patra.py`,
+  `recordings/l9_patra_credits_recon.json`; checkpoints and screenshot names
+  are listed in `LEVEL9_ROUTE.md`.
 
-Next, create a room-entry fixture for **uncleared** final-Patra room `0x52`
-with the same disclosed full inventory, then defeat type `0x47` using only
-controller input. The accepted segment must naturally make the north door bit
-`0x08` appear and transition into the already-green Ganon controller. Do not
-remove object slots or write room/door state in that run. Keep the full
-inventory labeled fixture-only, so the result is useful backward geometry but
-still not a route promotion.
+Next, inspect the **candidate southern predecessor room `0x62`** under
+`rr-sz8.3`. Use the game room loader to materialize its untouched contents,
+record a room-entry screenshot/RAM snapshot, solve its live door contract with
+controller input, then naturally enter `0x52` and reuse the proven Patra suffix.
+Treat `0x62` as a geometry hypothesis until the live transition confirms it;
+do not clear objects or write room/door state in the accepted run.
 
-After the Patra→credits composition is green, move the start one real room
-farther backward and repeat. The forward L5 boundary remains preserved at
-`Level5Cleared66`; do not discard or rewrite that work while the requested
-backward pass is active.
+Exact handoff command from the repository root:
+
+```bash
+bd show rr-sz8.3
+uv run python nes/zelda_i/scripts/run_level9_patra.py \
+  --from-state Level9FinalPatraReconFixture --infinite-life \
+  --save-state --trials 2 --tag l9_patra_credits_recon
+```
+
+The second command replays the accepted suffix while the `0x62` fixture/probe
+is added. The forward L5 boundary remains preserved at `Level5Cleared66`.
 
 ## Strategy (finish easy → then tune)
 
@@ -57,8 +68,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Next milestones
 
-1. **L9 backward tip** — final Patra `0x52` natural combat → proven Ganon/
-   Zelda/credits suffix, then move one room farther backward.
+1. **L9 backward tip** — inspect/solve candidate predecessor `0x62`, naturally
+   enter final Patra `0x52`, then reuse the 2/2 Patra→credits suffix.
 2. **Forward route (preserved)** — L5 east key → Whistle → Digdogger →
    `triforce & 0x10`, then L6–L8 under Survival assist.
 3. **M6 route graph** — compose the assisted checkpoint chain into reusable
@@ -67,10 +78,11 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Bottleneck
 
-**Final Patra combat in Level 9 room `0x52`** is the active backward boundary.
-The suffix from its north door through the final ending page is verified; the
-next pass must earn that north door with controller input. The L5 east key is
-the paused forward boundary, not erased or superseded as route evidence.
+**Candidate predecessor room `0x62`** is the active backward boundary. Final
+Patra `0x52` through the final ending page is verified 2/2 with controller
+input after the disclosed start fixture. The next pass must live-verify 0x62's
+contents and earn its transition into 0x52. The L5 east key is the paused
+forward boundary, not erased or superseded as route evidence.
 
 ## Video / watchability (2026-08-06)
 
