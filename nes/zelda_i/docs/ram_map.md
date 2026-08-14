@@ -5,7 +5,9 @@ instrumentation and the sword-cave segment.
 
 ```text
 ADDR_LEVEL          = 0x0010  # 0 = overworld; 1-9 = dungeon
+ADDR_IS_UPDATING_MODE=0x0011  # 0=mode initialization, nonzero=update loop
 ADDR_MODE           = 0x0012  # 5=play, 6/7=scroll, 11=cave play, 16=cave enter
+ADDR_SUBMODE        = 0x0013  # mode-local phase (see Level 9 ending note)
 ADDR_DIALOG_TIMER   = 0x0029  # dialog countdown
 ADDR_LINK_X         = 0x0070  # 0..240 screen X
 ADDR_LINK_Y         = 0x0084  # ~61..221 screen Y
@@ -22,6 +24,7 @@ ADDR_ROOM_OBJ_COUNT     = 0x034E
 ADDR_OBJ_TYPE           = 0x034F  # 16 object slots
 ADDR_OBJ_HP             = 0x0485  # gameplay object HP slots
 
+ADDR_SELECTED_ITEM  = 0x0656  # B slot: 1=bombs, 2=arrows, 4=candle
 ADDR_SWORD          = 0x0657  # 0=none, 1=wooden, 2=white, 3=magical
 ADDR_BOMBS          = 0x0658
 ADDR_RUPEES         = 0x066D
@@ -32,6 +35,7 @@ ADDR_TRIFORCE       = 0x0671
 ADDR_BOOMERANG      = 0x0674  # wooden; 0=false, 1=true
 ADDR_MAGIC_BOOMERANG= 0x0675  # magical; overrides wooden when set
 ADDR_MAGIC_SHIELD   = 0x0676
+ADDR_MAX_BOMBS      = 0x067C
 ```
 
 Survival assist (opt-in only): `zelda_i.assist.UnlimitedHealthAssist` writes
@@ -48,6 +52,11 @@ Survival assist (opt-in only): `zelda_i.assist.UnlimitedHealthAssist` writes
 | 16 | Cave enter animation |
 | 17 | Link death |
 | 18 | Triforce collection / dungeon-complete animation |
+| 19 (`0x13`) | Zelda ending / credits |
+
+Level 9 ending stops must also require `ADDR_IS_UPDATING_MODE != 0` because
+initialization reuses the same submode values: update submode 3 is rolling
+staff credits and update submode 4 is the final Press Start page.
 
 Screen/room hop timing (`room_timer.py`) treats mode **5** as settled play and
 modes **6/7/16** (plus cave **11**) as non-destination transition noise. See
