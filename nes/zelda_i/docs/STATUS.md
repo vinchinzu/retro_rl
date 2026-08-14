@@ -37,14 +37,18 @@ is documented below and in `docs/plan.md`.
 | Segment | Result | Evidence |
 |---------|--------|----------|
 | Fully loaded final-Patra room `0x52` → Ganon `0x42` → Zelda `0x32` → credits/final page | **1/1**; Ganon type `0x3E`, brown ObjState nonzero, Silver Arrow kill sets `$0672=1`; rolling credits at frame 3,395, final page at 4,595 | `l9_ganon_credits_recon.json`; `Level9BeforeGanonReconFixture`; `Level9CreditsReconFixture`; `Level9FinalScreenReconFixture` |
+| Live final Patra `0x52` → naturally earned north door → same Ganon/Zelda/ending suffix | **2/2 exact**; body `0x47` HP `0xB0`, 8 eyes `0x25` HP `0x60`; Patra clear 1,883f, credits 5,342f, final page 6,542f; inventory preserved through Patra, runtime controller writes 0 | `l9_patra_credits_recon.json`; `Level9FinalPatraReconFixture`; `Level9FinalPatraClearedReconFixture`; `Level9PatraFinalScreenReconFixture` |
 
-This backwards-development proof deliberately composes the full inventory,
-clears the final Patra object slots, opens its north door, and optionally uses
-the Survival health refill. The report and state provenance enumerate those
-writes and set `route_eligible=false`. It proves the Ganon/Zelda/ending
-controller and stop predicates, **not** a Survival-assisted or Clean Level 9
-route. Next backward boundary: clear the real final Patra in `0x52` using only
-controller input from a room-entry recon fixture; see [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md).
+Both backwards-development proofs compose the full inventory and room-loader
+setup before their start state, so they remain `route_eligible=false`. The new
+Patra run does **not** inherit the earlier object-removal or north-door writes:
+after reset it uses controller input only, naturally raises door bit `0x08`,
+and continues without another state load. Survival restores four heart units
+per trial (two in `0x52`, two in `0x42`) with zero deaths and zero progression/
+capacity writes. This proves the final-Patra/Ganon/Zelda/ending suffix, **not**
+a Survival-assisted or Clean Level 9 route. Next backward boundary: inspect
+candidate predecessor room `0x62` under `rr-sz8.3`; see
+[LEVEL9_ROUTE.md](LEVEL9_ROUTE.md).
 
 ## Verified segments
 
@@ -275,7 +279,9 @@ is STATUS-promoted yet**. Process: `docs/tasks/PROCESS.md`. Work: `bd ready -l z
 
 ## Next
 
-1. **Tip:** L5 east key (`0x66→0x76→0x77`) under Survival assist — `rr-28p`;
-   exact command in `docs/plan.md`.
-2. Then Whistle → Digdogger → TF `0x10` (still assisted; not Clean STATUS).
+1. **Active backward tip:** candidate Level 9 room `0x62` → live final Patra
+   `0x52` → proven credits suffix — `rr-sz8.3`; exact command and evidence
+   boundary in `docs/plan.md`.
+2. **Paused forward tip:** L5 east key (`0x66→0x76→0x77`) under Survival
+   assist — `rr-28p`, then Whistle → Digdogger → TF `0x10`.
 3. Clean residual only after full-game assist pass (`rr-4oz`).
