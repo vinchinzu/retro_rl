@@ -1,11 +1,11 @@
-"""Isolated pure: clear Level 5 room 0x77 (5× Pols Voice) + collect key.
+"""Clear Level 5 room 0x77 (5× Pols Voice) and collect its key.
 
 Default start: ``L5_Room_77`` (already in room; keys forced 0 at load if needed
 via inventory — runner expects keys=0 at room-ready for FIXED_INVENTORY).
 
-Natural east door from ``Level5Entrance`` is **PARTIAL** (doors=0; wall at
-x≈208 does not scroll without door-open residual). Use ``L5_Room_77`` for
-combat pure, or ``--poke-doors`` recon from entrance (not Clean STATUS).
+The natural route first clears 0x66 for a key, returns south to 0x76, then
+opens the east key door.  ``Level5Cleared66`` is the route-ready predecessor;
+``Level5Entrance`` has zero keys and cannot open this door.
 
 Stop: ``level5_room_77_key_success`` (keys≥1, no live type 0x16).
 
@@ -14,19 +14,15 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level5_east_key.py --trials 2
     uv run python nes/zelda_i/scripts/run_level5_east_key.py --save-state
     uv run python nes/zelda_i/scripts/run_level5_east_key.py --infinite-life --trials 2
-    uv run python nes/zelda_i/scripts/run_level5_east_key.py --from-state Level5Entrance --poke-doors --infinite-life
+    uv run python nes/zelda_i/scripts/run_level5_east_key.py \
+        --from-state Level5Cleared66 --keep-keys --infinite-life --save-state
 """
 
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]  # monorepo root
-_NES_ROOT = Path(__file__).resolve().parents[2]  # nes/
-
 from retro_harness.env import make_env, reset_obs, save_state
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
@@ -36,12 +32,12 @@ from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.dungeon import DungeonPhase
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level5_dungeon import (
-    EAST_DOOR_APPROACH_Y,
-    EAST_DOOR_CHANNEL_Y,
     POLS_VOICE_OBJECT_TYPE,
     ROOM_77_SPEC,
     ROOM_L5_ENTRY,
     ROOM_L5_POLS_77,
+    ROOM_L5_GIBDO_66,
+    level5_east_key_step,
     level5_room_77_key_success,
     make_pols_voice_controller,
 )
@@ -54,6 +50,7 @@ from zelda_i.ram import (
     read_snapshot,
 )
 
+
 def _ensure_door_vars(env) -> None:
     for name, addr in (
         ("doors", ADDR_CUR_OPENED_DOORS),
@@ -64,19 +61,23 @@ def _ensure_door_vars(env) -> None:
         except Exception:
             pass
 
+
 def _poke_doors_open(env) -> None:
     """Recon residual: force all door bits open (not Clean)."""
     _ensure_door_vars(env)
     env.data.set_value("doors", 0x0F)
     env.data.set_value("mask", 0x0F)
 
-def _enter_77_from_entry(env, *, assist, max_frames: int = 2500, poke_doors: bool) -> bool:
-    """Assisted/recon path into 0x77. Returns True if room-ready on 0x77."""
-    import random
 
+def _enter_77_from_entry(
+    env, *, assist, max_frames: int = 2500, poke_doors: bool
+) -> tuple[bool, object | None, list[dict]]:
+    """Deterministically route 0x66→0x76→0x77 and retain a transition trail."""
     if poke_doors:
         _poke_doors_open(env)
-    # Leave south mouth then random-walk with RIGHT bias while doors open.
+    obs = None
+    trail: list[dict] = []
+    last_room = read_snapshot(env.get_ram()).screen
     for frame in range(max_frames):
         if poke_doors and frame % 5 == 0:
             _poke_doors_open(env)
@@ -89,31 +90,43 @@ def _enter_77_from_entry(env, *, assist, max_frames: int = 2500, poke_doors: boo
             and snap.mode == PLAY_MODE
         ):
             for _ in range(40):
-                env.step(nes_idle_action())
+                obs, *_ = env.step(nes_idle_action())
                 if assist is not None:
                     assist.apply_env(env, frame=0)
-            return True
-        if snap.link_y > 185:
-            act = nes_action("UP")
-        elif snap.link_x < 180:
-            if abs(snap.link_y - EAST_DOOR_APPROACH_Y) > 3:
-                act = nes_action(
-                    "UP" if snap.link_y > EAST_DOOR_APPROACH_Y else "DOWN"
-                )
-            else:
-                act = nes_action("RIGHT")
-        else:
-            if abs(snap.link_y - EAST_DOOR_CHANNEL_Y) > 3:
-                act = nes_action(
-                    "UP" if snap.link_y > EAST_DOOR_CHANNEL_Y else "DOWN"
-                )
-            else:
-                act = nes_action("RIGHT")
-        # occasional jitter to reproduce door-scroll residual
-        if frame % 40 == 0 and snap.link_x > 160:
-            act = nes_action(random.choice(["UP", "DOWN", "RIGHT"]))
-        env.step(act)
-    return False
+            return True, obs, trail
+        action = level5_east_key_step(snap)
+        obs, *_ = env.step(action.action)
+        after = read_snapshot(env.get_ram())
+        if frame % 250 == 0:
+            trail.append(
+                {
+                    "event": "sample",
+                    "frame": frame + 1,
+                    "room": after.screen,
+                    "room_hex": f"0x{after.screen:02x}",
+                    "mode": after.mode,
+                    "x": after.link_x,
+                    "y": after.link_y,
+                    "keys": after.keys,
+                    "reason": action.reason,
+                }
+            )
+        if after.screen != last_room:
+            trail.append(
+                {
+                    "event": "transition",
+                    "frame": frame + 1,
+                    "room": after.screen,
+                    "room_hex": f"0x{after.screen:02x}",
+                    "mode": after.mode,
+                    "x": after.link_x,
+                    "y": after.link_y,
+                    "keys": after.keys,
+                }
+            )
+            last_room = after.screen
+    return False, obs, trail
+
 
 def run_once(
     *,
@@ -139,10 +152,13 @@ def run_once(
 
         entry = read_snapshot(env.get_ram())
         prefix_ok = True
-        if entry.screen == ROOM_L5_ENTRY and entry.mode == PLAY_MODE:
-            prefix_ok = _enter_77_from_entry(
+        prefix_trail: list[dict] = []
+        if entry.screen in (ROOM_L5_GIBDO_66, ROOM_L5_ENTRY):
+            prefix_ok, prefix_obs, prefix_trail = _enter_77_from_entry(
                 env, assist=assist, poke_doors=poke_doors
             )
+            if prefix_obs is not None:
+                obs = prefix_obs
             if not prefix_ok:
                 screenshot = RECORDINGS_DIR / f"{tag}_isolated.png"
                 save_rgb_png(obs, screenshot)
@@ -151,6 +167,7 @@ def run_once(
                     "track": "assisted" if (infinite_life or poke_doors) else "clean",
                     "start_state": start_state,
                     "prefix_ok": False,
+                    "prefix_trail": prefix_trail,
                     "entry": {
                         "room": entry.screen,
                         "x": entry.link_x,
@@ -162,6 +179,9 @@ def run_once(
                     "final": {
                         "room": read_snapshot(env.get_ram()).screen,
                         "keys": read_snapshot(env.get_ram()).keys,
+                        "x": read_snapshot(env.get_ram()).link_x,
+                        "y": read_snapshot(env.get_ram()).link_y,
+                        "mode": read_snapshot(env.get_ram()).mode,
                     },
                     "screenshot": str(screenshot),
                     "note": "east_door_residual_failed",
@@ -187,14 +207,13 @@ def run_once(
                 write_state_provenance(
                     checkpoint_path,
                     source_state_path=(
-                        GAME_DIR
-                        / "custom_integrations"
-                        / GAME
-                        / f"{start_state}.state"
+                        GAME_DIR / "custom_integrations" / GAME / f"{start_state}.state"
                     ),
                     request={
                         "segment": "level5_east_key",
-                        "natural_entry": False,
+                        "predecessor_entry": (
+                            start_state != "L5_Room_77" and not poke_doors
+                        ),
                         "start_state": start_state,
                         "poke_doors": poke_doors,
                     },
@@ -211,13 +230,16 @@ def run_once(
             "track": track,
             "start_state": start_state,
             "prefix_ok": prefix_ok,
+            "prefix_trail": prefix_trail,
             "poke_doors": poke_doors,
             "entry": {
                 "room": entry.screen,
                 "x": entry.link_x,
                 "y": entry.link_y,
                 "doors": entry.cur_opened_doors,
-                "keys": int(env.get_ram()[ADDR_KEYS]) if force_keys_zero else entry.keys,
+                "keys": int(env.get_ram()[ADDR_KEYS])
+                if force_keys_zero
+                else entry.keys,
             },
             "controller": controller.report(),
             "final": {
@@ -240,6 +262,7 @@ def run_once(
         }
     finally:
         env.close()
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -310,6 +333,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {output}")
     return 0 if all(report["ok"] for report in reports) else 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

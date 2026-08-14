@@ -1,4 +1,4 @@
-"""Isolated pure: clear Level 5 room 0x66 (3× type 0x30 Gibdo) from entry.
+"""Clear Level 5 room 0x66 (3× Gibdo) from an entry checkpoint.
 
 Default start: ``L5_Room_66`` (already in room, south mouth).
 ``--from-entrance`` / ``Level5Entrance``: walk north from 0x76 then clear.
@@ -10,6 +10,8 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level5_clear66.py --trials 2
     uv run python nes/zelda_i/scripts/run_level5_clear66.py --from-entrance --save-state
     uv run python nes/zelda_i/scripts/run_level5_clear66.py --from-state Level5Entrance --trials 2
+    uv run python nes/zelda_i/scripts/run_level5_clear66.py \
+        --from-state Level5EntranceFromL4 --infinite-life --save-state
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from retro_harness.segment_runner import (
     save_rgb_png,
     write_json_report,
 )
+from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.dungeon import DungeonPhase, GenericDungeonRoomController
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level5_dungeon import (
@@ -33,21 +36,28 @@ from zelda_i.level5_dungeon import (
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 
+
 def run_once(
     *,
     tag: str = "level5_clear66",
     save_checkpoint: bool = False,
     start_state: str = "L5_Room_66",
+    infinite_life: bool = False,
 ) -> dict:
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     controller = GenericDungeonRoomController(ROOM_66_SPEC)
+    assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     try:
         obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
+        if assist is not None:
+            assist.apply_env(env, frame=0)
         entry = read_snapshot(env.get_ram())
 
-        for _ in range(ROOM_66_SPEC.max_frames):
+        for frame in range(ROOM_66_SPEC.max_frames):
+            if assist is not None:
+                assist.apply_env(env, frame=frame)
             action = controller.step(read_snapshot(env.get_ram()))
             obs, *_ = env.step(action.action)
             if controller.success or controller.phase is DungeonPhase.FAILED:
@@ -65,15 +75,13 @@ def run_once(
                 write_state_provenance(
                     checkpoint_path,
                     source_state_path=(
-                        GAME_DIR
-                        / "custom_integrations"
-                        / GAME
-                        / f"{start_state}.state"
+                        GAME_DIR / "custom_integrations" / GAME / f"{start_state}.state"
                     ),
                     request={
                         "segment": "level5_clear66",
-                        "natural_entry": False,
+                        "predecessor_entry": start_state != "L5_Room_66",
                         "start_state": start_state,
+                        "track": "assisted" if infinite_life else "clean",
                     },
                     selected_trial=controller.report(),
                     natural_entry=False,
@@ -84,7 +92,9 @@ def run_once(
         live_gibdos = len(ROOM_66_SPEC.live_enemies(snap))
         return {
             "ok": ok,
-            "natural_entry": False,
+            "natural_entry": start_state != "L5_Room_66",
+            "track": "assisted" if infinite_life else "clean",
+            "intervention_class": "survival" if infinite_life else "clean",
             "start_state": start_state,
             "entry": {
                 "room": entry.screen,
@@ -122,9 +132,11 @@ def run_once(
             "checkpoint": checkpoint,
             "provenance": provenance,
             "screenshot": str(screenshot),
+            "assist": assist.report() if assist else None,
         }
     finally:
         env.close()
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -140,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Start from Level5Entrance (0x76) and walk north into 0x66",
     )
+    parser.add_argument(
+        "--infinite-life",
+        action="store_true",
+        help="Refill earned heart capacity (Survival assist; no progression writes).",
+    )
     args = parser.parse_args(argv)
 
     if args.from_state is not None:
@@ -154,6 +171,7 @@ def main(argv: list[str] | None = None) -> int:
             tag=f"l5_clear66_t{trial}",
             save_checkpoint=args.save_state and trial == 0,
             start_state=start_state,
+            infinite_life=args.infinite_life,
         )
         for trial in range(args.trials)
     ]
@@ -169,17 +187,22 @@ def main(argv: list[str] | None = None) -> int:
             f"phase={report['controller']['phase']}"
         )
 
-    tag_suffix = "entrance" if start_state == "Level5Entrance" else "isolated"
-    output = RECORDINGS_DIR / f"l5_clear66_{tag_suffix}.json"
+    tag_suffix = "entrance" if start_state.startswith("Level5Entrance") else "isolated"
+    track = "assisted" if args.infinite_life else "clean"
+    output = RECORDINGS_DIR / (
+        f"l5_clear66_{tag_suffix}_{track}.json"
+        if args.infinite_life
+        else f"l5_clear66_{tag_suffix}.json"
+    )
     write_json_report(
         output,
         {
             "segment": "level5_clear66",
-            "natural_entry": False,
+            "natural_entry": start_state != "L5_Room_66",
             "start_state": start_state,
             "runtime_class": "bronze",
-            "intervention_class": "clean",
-            "track": "clean",
+            "intervention_class": "survival" if args.infinite_life else "clean",
+            "track": track,
             "trials": args.trials,
             "successes": sum(report["ok"] for report in reports),
             "stop_predicate": "level5_room_66_cleared",
@@ -191,6 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {output}")
     return 0 if all(report["ok"] for report in reports) else 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
