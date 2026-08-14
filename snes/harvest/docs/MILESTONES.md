@@ -35,7 +35,7 @@ Future work narrative: [plan.md](plan.md).
 
 ## Ready order (agents)
 
-1. **Same-day plant after D2 buy (`rr-20w.1`)** — pocket `CLEAR_PLOT` then hoe→swap→plant→swap→water. Residual: toss held debris, bag not in carry, stump left.
+1. **Same-day plant after D2 buy (`rr-20w.1`)** — pocket `CLEAR_PLOT` then hoe→swap→plant→swap→water. Walk-in to `(13,28)` landed (live watch ready at `(13,26)`). Residual: **bush/held-weed pin** at ~(13,27) (~1500f+ toss/timeout; plant never started); then shed bag-into-carry; stump.
 2. **`rr-3ae8` / `rr-5in`** — Gate B re-soak after CROP_WATER refill exhaust (power-on continuous; money>$100 to Summer).
 3. **`rr-rzpd`** — day-plan ENSURE_CAN/CROP_WATER soft fails after plant (related water path).
 4. `rr-rbk` / `rr-pzw` / `rr-1vc` after Gate B or in parallel if tip blocked on long soak only.
