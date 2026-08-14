@@ -25,7 +25,12 @@ from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.scene import SceneMode, classify_scene_from_ram
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, MOUNTAIN_WALKABLE, tile_label
-from harvest.maps.map_config import SEGMENTS, segment_waypoints, slice_route_from_position
+from harvest.maps.map_config import (
+    SEGMENTS,
+    path_coords_leaked,
+    segment_waypoints,
+    slice_route_from_position,
+)
 from harvest.tasks.nav import get_pos_from_ram, get_tile_at, make_action
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.tasks.inventory import ExitToFarmTask
@@ -332,6 +337,9 @@ class MountainBerryTask(Task):
         # North-edge spawn (y≈10) is still the map transition. Manhattan
         # would skip the south-land hops and send us through Gotz.
         if name == "mountain_entry_to_first_berry" and int(pos.y) < 80:
+            sliced = hops
+        elif tilemap == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y):
+            # Farm/mountain pixels linger on 0x0C. Do not skip the plaza.
             sliced = hops
         else:
             sliced = slice_route_from_position(hops, pos.x, pos.y, tilemap=tilemap)

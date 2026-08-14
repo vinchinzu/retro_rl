@@ -10,6 +10,7 @@ from harvest.maps.map_config import (
     farm_pond_refill_primary_stand,
     player_in_west_plant_pocket,
     WEST_PLANT_POCKET_BOUNDS,
+    WEST_POCKET_PLANT_CENTER,
 )
 from harvest.tasks.skills import farm_nav_to_pond_refill_skill, farm_pond_refill_face
 
@@ -34,6 +35,8 @@ class PondCorridorConfigTests(unittest.TestCase):
         x0, y0, x1, y1 = WEST_PLANT_POCKET_BOUNDS
         self.assertEqual((x0, y0, x1, y1), (3, 14, 28, 30))
         self.assertTrue(x0 <= 15 <= x1 and y0 <= 29 <= y1)
+        self.assertEqual(WEST_POCKET_PLANT_CENTER, (13, 28))
+        self.assertTrue(x0 <= 13 <= x1 and y0 <= 28 <= y1)
 
     def test_pond_nav_skill_targets_primary_stand(self) -> None:
         skill = farm_nav_to_pond_refill_skill()

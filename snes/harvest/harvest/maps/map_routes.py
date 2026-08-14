@@ -8,6 +8,18 @@ from typing import Dict, List, Optional, Sequence
 from harvest.core.tile_catalog import TILE_SIZE
 from harvest.maps.map_types import Waypoint
 
+# Path 0x0C is a ~16x10-tile fork. Farm (y~422) and mountain (y~740)
+# pixels leak across the transition; Manhattan then prefers a later
+# exit over the plaza center.
+PATH_TILEMAP_ID = 0x0C
+PATH_ONMAP_MAX_X = 280
+PATH_ONMAP_MAX_Y = 200
+
+
+def path_coords_leaked(px: int, py: int) -> bool:
+    """True when (px, py) is not a real path-0x0C stand."""
+    return px < 0 or py < 0 or px > PATH_ONMAP_MAX_X or py > PATH_ONMAP_MAX_Y
+
 
 def slice_route_from_position(
     waypoints: List[Waypoint],
@@ -22,9 +34,17 @@ def slice_route_from_position(
     stand, spa lip, west climb), forcing the south entry first walks away
     from the goal. Pick the closest same-map waypoint and continue from there
     (or the previous hop if we are slightly past it).
+
+    Leaked 0x0C coords must start at the first path hop (crossroads), not
+    a later exit. Mountain north-edge y<80 is handled by callers (Gotz).
     """
     if not waypoints:
         return []
+    if tilemap == PATH_TILEMAP_ID and path_coords_leaked(px, py):
+        for i, wp in enumerate(waypoints):
+            if wp.tilemap == PATH_TILEMAP_ID:
+                return list(waypoints[i:])
+        return list(waypoints)
     best_i = 0
     best_d = None
     for i, wp in enumerate(waypoints):
@@ -259,13 +279,21 @@ _PATH_FARM_EXIT = Waypoint(
     exit_push_frames=18,
 )
 
+# L1 house front ~(136,344) BFS-cuts the NW ledge toward the west
+# gate. Drop south first (farm_to_shed stand), then the F0-door dirt
+# at gate y, then west — not the house NW corner or the paddock
+# north fence at ~(80,392).
 _FARM_TO_PATH: List[Waypoint] = [
+    Waypoint(tilemap=0x00, target_px=(137, 375), radius=12),
+    Waypoint(tilemap=0x00, target_px=(136, 424), radius=12),
     _FARM_WEST_EXIT,
     _PATH_FARM_GATE,
     _PATH_CROSSROADS,
 ]
 _PATH_TO_TOWN: List[Waypoint] = [_PATH_TOWN_EXIT]
-_PATH_TO_MOUNTAIN: List[Waypoint] = [_PATH_MOUNTAIN_EXIT]
+# Already on 0x0C: plaza center first, then the north exit. Do not
+# BFS-diagonal from the east landing / leaked farm y toward (132,30).
+_PATH_TO_MOUNTAIN: List[Waypoint] = [_PATH_CROSSROADS, _PATH_MOUNTAIN_EXIT]
 # Seed-shop town gate: stand on the open face, not (0,8)/(1,8) doorframe hugs.
 _PATH_TO_TOWN_SHOP: List[Waypoint] = [
     Waypoint(
@@ -429,7 +457,9 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
     "path_to_town": list(_PATH_TO_TOWN),
     "path_to_town_shop": list(_PATH_TO_TOWN_SHOP),
     "path_to_mountain": list(_PATH_TO_MOUNTAIN),
-    "path_to_farm": [_PATH_FARM_EXIT],
+    # Plaza first so a mountain-north or leaked landing does not hug
+    # the east fence on the way to the farm exit.
+    "path_to_farm": [_PATH_CROSSROADS, _PATH_FARM_EXIT],
     "town_to_shop_door": list(_TOWN_TO_SHOP_DOOR),
     "shop_to_counter": list(_SHOP_TO_COUNTER),
     "shop_to_town": list(_SHOP_TO_TOWN),
@@ -779,12 +809,17 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x00, target_px=(424, 489), radius=12),
     ],
     "field_to_shed": [
-        # From the harvest shipping stand, avoid pushing left through the bin.
+        # From the harvest shipping stand, stay south of the well/stump at
+        # y=504 then step to the door. A y=489 run_direction=right B-charges
+        # the stump and left/right-thrashes (live D2 ENSURE_WATERING_CAN).
         Waypoint(tilemap=0x00, target_px=(344, 504), radius=12),
-        Waypoint(tilemap=0x00, target_px=(424, 489), radius=12, run_direction="right"),
+        Waypoint(tilemap=0x00, target_px=(400, 504), radius=12),
+        Waypoint(tilemap=0x00, target_px=(424, 489), radius=12),
     ],
     "near_shed_to_shed": [
-        Waypoint(tilemap=0x00, target_px=(424, 489), radius=12, run_direction="up"),
+        # Stop on the threshold; DirectionalTransition owns the walk-in.
+        # run_direction=up B-charged the jamb and clipped (live D2 shed door).
+        Waypoint(tilemap=0x00, target_px=(424, 489), radius=12),
     ],
     "farm_to_coop": [
         # Route from the house frontage to the coop approach.  Use BFS here:
@@ -816,9 +851,7 @@ ROUTES: Dict[str, List[Waypoint]] = {
         # Stop just below the barn threshold.  ENTER_BARN handles the transition.
         Waypoint(tilemap=0x00, target_px=(329, 360), radius=18),
     ],
-    "path_to_farm": [
-        _PATH_FARM_EXIT,
-    ],
+    "path_to_farm": [_PATH_CROSSROADS, _PATH_FARM_EXIT],
     "farm_to_mountain": list(_FARM_TO_MOUNTAIN_GATE),
     # Mountain entry (south) → upper outdoor hot spring (0xF7 pond).
     # Path: SE bottom → fish area → west mid y~470 → west climb → east mid

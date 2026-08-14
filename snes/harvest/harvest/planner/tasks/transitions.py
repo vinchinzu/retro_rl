@@ -320,6 +320,9 @@ class DirectionalTransitionTask(Task):
     overshoot_limit_px: Optional[int] = None
     require_empty_hands: bool = False
     clear_hands_limit: int = 4
+    # Shed (and similar tight frames): walk the column, never B-run. Holding
+    # B every frame at 2x clips into the doorjamb and then left/right-thrashes.
+    walk_into_door: bool = False
 
     _step_count: int = field(default=0, init=False)
     _target_seen_frames: int = field(default=0, init=False)
@@ -436,24 +439,32 @@ class DirectionalTransitionTask(Task):
 
         Near the threshold, alternate walk (no B) with run. Blind B-hold can
         overshoot the farmhouse door into a mid-wall clip at y≈372 without a
-        map change (rr-6g7g residual after hands-clear).
+        map change (rr-6g7g residual after hands-clear). Shed doors also clip
+        when B is held every frame at 2x — ``walk_into_door`` is walk+idle only.
         """
         pos = self._navigator.current_pos
+        run = not self.walk_into_door
         if self.door_align_px is not None:
             if self.direction in {"up", "down"}:
                 if abs(pos.x - self.door_align_px) > self.door_align_tolerance:
                     return make_action(
                         right=pos.x < self.door_align_px,
                         left=pos.x > self.door_align_px,
-                        b=True,
+                        b=run,
                     )
             else:
                 if abs(pos.y - self.door_align_px) > self.door_align_tolerance:
                     return make_action(
                         down=pos.y < self.door_align_px,
                         up=pos.y > self.door_align_px,
-                        b=True,
+                        b=run,
                     )
+        if self.walk_into_door:
+            # 8 walk / 4 idle so the ROM can accept the threshold. Continuous
+            # Up (or B+dir) at 2x embeds in the shed jamb.
+            if (self._step_count % 12) >= 8:
+                return make_action()
+            return make_action(**{self.direction: True})
         # Walk into the door most frames; brief run every 4th frame for speed.
         use_run = (self._step_count % 4) == 0
         return make_action(**{self.direction: True, "b": use_run})

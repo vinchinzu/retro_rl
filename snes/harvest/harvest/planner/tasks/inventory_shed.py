@@ -80,6 +80,7 @@ def shed_enter_transition(*, name: str, timeout: int) -> DirectionalTransitionTa
         door_align_px=SHED_ENTER_DOOR_X,
         overshoot_limit_px=SHED_ENTER_OVERSHOOT_Y,
         require_empty_hands=True,
+        walk_into_door=True,
     )
 
 
@@ -165,7 +166,9 @@ def shed_farm_route_name(ram: np.ndarray, default_route: Optional[str]) -> Optio
         return "upper_farm_to_shed"
     if tile[0] >= 23 and tile[1] >= 29:
         return "near_shed_to_shed"
-    if tile[1] >= 29:
+    # y=29–30 is still the plant pocket (north of the y=31 fence). field_to_shed
+    # first hop (344,504) walks into that wall and left/right-thrashes.
+    if tile[1] >= 32:
         return "field_to_shed"
     return default_route
 

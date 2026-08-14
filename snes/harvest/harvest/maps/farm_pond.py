@@ -121,6 +121,10 @@ def player_in_west_plant_pocket(tile: Tuple[int, int]) -> bool:
 # Inclusive (x_min, y_min, x_max, y_max).
 WEST_PLANT_POCKET_BOUNDS: Tuple[int, int, int, int] = (3, 14, 28, 30)
 
+# Hoe/plant stand from ``d2_farm_plant``: 8 potatoes around (13,28), bag spent
+# at that notch (0x07→0x54). Prefer this over DEFAULT_START_TILE (15,29).
+WEST_POCKET_PLANT_CENTER: Tuple[int, int] = (13, 28)
+
 
 # Named water pockets: (name, water_tile_id, fills_can, sample_cells)
 FARM_WATER_POCKETS: Tuple[Tuple[str, int, bool, Tuple[Tuple[int, int], ...]], ...] = (

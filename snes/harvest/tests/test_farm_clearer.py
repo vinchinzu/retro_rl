@@ -175,6 +175,106 @@ class TestPocketClearTask(unittest.TestCase):
         self.assertTrue(task.prefer_lift_for_stones)
         self.assertEqual(task.clearer.priority, [DebrisType.WEED, DebrisType.STONE])
 
+    def test_pocket_clear_does_not_succeed_off_farm(self) -> None:
+        ram = _make_farm_ram(player_tile=(2, 26), tool=0)
+        ram[ADDR_TILEMAP] = 0x0C
+        _set_tile(ram, 13, 28, WEED)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            farm_bounds=(3, 14, 28, 30),
+            prefer_lift_for_weeds=True,
+            prefer_lift_for_stones=True,
+            timeout=7000,
+        )
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("approach", (result.reason or "").lower())
+        self.assertFalse(task._pocket_arrived)
+
+    def test_pocket_clear_does_not_succeed_from_west_gate(self) -> None:
+        ram = _make_farm_ram(player_tile=(2, 26), tool=0)
+        _set_tile(ram, 13, 28, WEED)
+        _set_tile(ram, 14, 27, WEED)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            farm_bounds=(3, 14, 28, 30),
+            timeout=7000,
+        )
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertFalse(task._pocket_arrived)
+        self.assertNotIn("field_clear", result.reason or "")
+
+    def test_pocket_clear_can_start_when_gate_scan_is_empty(self) -> None:
+        ram = _make_farm_ram(player_tile=(2, 26), tool=0)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=False, farm_bounds=(3, 14, 28, 30))
+        self.assertTrue(task.can_start(world))
+
+    def test_pocket_clear_does_not_ready_at_west_fence(self) -> None:
+        ram = _make_farm_ram(player_tile=(3, 28), tool=0)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            farm_bounds=(3, 14, 28, 30),
+            timeout=7000,
+        )
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertFalse(task._pocket_arrived)
+        self.assertIn("approach", (result.reason or "").lower())
+
+    def test_south_exit_staging_navs_instead_of_leftright_thrash(self) -> None:
+        ram = _make_farm_ram(player_tile=(4, 33), tool=0)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=False, farm_bounds=(3, 14, 28, 30))
+        task.reset(world)
+        task._pocket_arrived = True
+        result = task._maybe_stage_then_success(world, "partial_clear")
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._exit_nav)
+        self.assertEqual(len(task._staging_queue), 0)
+        lefts = sum(1 for act in task._staging_queue if int(act[6]) == 1)
+        rights = sum(1 for act in task._staging_queue if int(act[7]) == 1)
+        self.assertEqual(lefts, 0)
+        self.assertEqual(rights, 0)
+
+    def test_pocket_clear_succeeds_when_already_in_clean_pocket(self) -> None:
+        ram = _make_farm_ram(player_tile=(12, 28), tool=0)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            farm_bounds=(3, 14, 28, 30),
+            timeout=7000,
+        )
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("field_clear", result.reason or "")
+        self.assertTrue(task._pocket_arrived)
+
+    def test_pocket_clear_hands_off_with_unrelated_debris_remaining(self) -> None:
+        ram = _make_farm_ram(player_tile=(12, 28), tool=0)
+        _set_tile(ram, 20, 15, WEED)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            farm_bounds=(3, 14, 28, 30),
+            timeout=7000,
+        )
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("plant_notch_clear", result.reason or "")
+        self.assertEqual(ram[ADDR_MAP + 15 * MAP_WIDTH + 20], WEED)
+
 
 class TestFarmClearerSelection(unittest.TestCase):
     def test_cluster_sort_prefers_nearby_then_row_order(self) -> None:

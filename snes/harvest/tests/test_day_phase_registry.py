@@ -97,9 +97,8 @@ class DayPhaseRegistryTests(unittest.TestCase):
             PhaseSpec("CROP_WATER", PhaseKind.CROP, {"work_mode": "water"}),
             world,
         )
-        self.assertIsInstance(establish, CropWaterTask)
+        self.assertEqual(establish.name, "pocket_plant_cell")
         self.assertIsInstance(water, CropWaterTask)
-        self.assertEqual(establish.work_mode, "establish")
         self.assertEqual(water.work_mode, "water")
 
     def test_crop_builder_wires_catalog_water_params(self) -> None:
@@ -111,9 +110,8 @@ class DayPhaseRegistryTests(unittest.TestCase):
         establish = DayTaskFactory().make_task(CROP_ESTABLISH_PHASE, world)
         water = DayTaskFactory().make_task(CROP_WATER_PHASE, world)
 
-        self.assertIsInstance(establish, CropWaterTask)
+        self.assertEqual(establish.name, "pocket_plant_cell")
         self.assertIsInstance(water, CropWaterTask)
-        self.assertEqual(establish.work_mode, "establish")
         self.assertEqual(water.work_mode, "water")
         # North stream (y~16-22) + south pond; south-only left early west plants dry.
         self.assertEqual(water.refill_bounds, (3, 10, 62, 60))

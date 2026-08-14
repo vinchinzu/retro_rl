@@ -116,6 +116,7 @@ class CropEstablishMixin:
 
     def _act_hoe(self, ram: np.ndarray) -> Optional[TaskResult]:
         """Hoe one untilled ring tile for the current planned plot."""
+        self._tool_mgr.update(ram)
         if self._tool_mgr.current != int(Tool.HOE):
             self._tool_mgr.start_search()
             self._state = CropState.TOOL_SWITCH
@@ -134,6 +135,7 @@ class CropEstablishMixin:
     def _act_plant(self, ram: np.ndarray) -> Optional[TaskResult]:
         """Plant seeds at current plot center."""
         seed_item = SEED_ITEM.get(self.seed_type, SEED_ITEM["potato"])
+        self._tool_mgr.update(ram)
         if self._tool_mgr.current != seed_item:
             self._tool_mgr.start_search()
             self._state = CropState.TOOL_SWITCH
@@ -181,6 +183,10 @@ class CropEstablishMixin:
 
         season, day = read_world_date(ram)
         start = self._navigator.current_tile
+        pocket = self._west_pocket_plant_center(ram, start)
+        if pocket is not None:
+            print(f"[CROP] West-pocket plant center {pocket} (d2_farm_plant)")
+            return [pocket]
         preferred = DEFAULT_START_TILE
         # Prefer player-local first so BFS can reach hoe stands after NAV_CROP.
         # Preferred-field / full-farm plans often pick east of the x=32 fence
@@ -256,6 +262,40 @@ class CropEstablishMixin:
             print("[CROP] Crop planner found no placeable plots")
         return centers
 
+    def _west_pocket_plant_center(
+        self,
+        ram: np.ndarray,
+        start: Tuple[int, int],
+    ) -> Optional[Tuple[int, int]]:
+        """Tape center (13,28) when the player is in the west plant pocket."""
+        try:
+            from harvest.maps.farm_pond import (
+                WEST_POCKET_PLANT_CENTER,
+                player_in_west_plant_pocket,
+            )
+        except Exception:
+            return None
+        if not player_in_west_plant_pocket(start):
+            return None
+        center = WEST_POCKET_PLANT_CENTER
+        if center in self._rejected_plan_centers:
+            return None
+        tillable = 0
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                tid = get_tile_at(ram, center[0] + dx, center[1] + dy)
+                if tid in TILLABLE_TILES or tid in {
+                    0x00,
+                    0x01,
+                    0x02,
+                    FRESH_TILLED,
+                    WATERED_TILLED,
+                }:
+                    tillable += 1
+        if tillable < 6:
+            return None
+        return center
+
     def _fallback_local_till_center(
         self,
         ram: np.ndarray,
@@ -319,7 +359,19 @@ class CropEstablishMixin:
                         if not path or path[-1] != center:
                             continue
                 dist = abs(cx - px) + abs(cy - py)
-                key = (dist, -tillable, cy, cx)
+                pocket_bias = 0
+                try:
+                    from harvest.maps.farm_pond import (
+                        WEST_POCKET_PLANT_CENTER,
+                        player_in_west_plant_pocket,
+                    )
+
+                    if player_in_west_plant_pocket(start):
+                        ax, ay = WEST_POCKET_PLANT_CENTER
+                        pocket_bias = abs(cx - ax) + abs(cy - ay)
+                except Exception:
+                    pocket_bias = 0
+                key = (pocket_bias, dist, -tillable, cy, cx)
                 if best_key is None or key < best_key:
                     best_key = key
                     best = center
