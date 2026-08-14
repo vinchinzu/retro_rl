@@ -94,6 +94,7 @@ uv run python zelda_i/scripts/run_level5_east_key.py \
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*` factories) |
 | `level3_path.py` | L3 door micros / west-key / north chain (no raft re-export) |
+| `level5_path.py` | L5 door/nav (`level5_east_key_step`); specs stay in `level5_dungeon` |
 | `level3_raft_path.py` | L3 Raft path (canonical; shim via `level3_dungeon`) |
 | `level*_boss_*.py`, `dungeon_ops.py` | Boss chains + shared door/clear ops |
 | `level2_puzzles.py` | BombWall / KeyDoor geometry catalog |
@@ -130,14 +131,15 @@ from damage heatmaps. Do not block tip progress on combat polish.
   bombs, and earlier TF bits. Use `Level5EntranceFromL4` for route work.
 - L5 `0x76→0x77` is a key door: clear north room `0x66` first. Its fixed key
   can leave Link on the horizontal-river ladder at x≈56,y≈117; finish DOWN
-  before horizontal alignment. Never use `--poke-doors` for a route claim.
+  before horizontal alignment. Do not poke doors or keys for a route claim;
+  the east-key runner has no poke flag.
 - Lost Hills entry from `0x1C` settles on the east ledge x≈240,y≈141; alternate
   short LEFT/DOWN bursts before the four consecutive UP wraps.
 
 ## Next
 
 ```bash
-bd ready -l zelda_i   # tip: rr-q3n epic residual / rr-38p OW parallel
+bd ready -l zelda_i   # tip: rr-28p L5 east key / rr-38p OW parallel
 ```
 
 | Order | Bead | Work |
@@ -158,6 +160,7 @@ bd ready -l zelda_i   # tip: rr-q3n epic residual / rr-38p OW parallel
 | ✓ | **`rr-vdnc`** | Clean continuous PostLadder→TF (south-stand Gleeok) |
 | ✓/∂ | **`rr-zavx`** | Clean dual Entrance→NaturalKey; continuous TF health residual |
 | ∂ | **`rr-gjey`** | Gleeok post-boss fireball floor 106; natural enter ~98–100 still short of continuous 108 |
+| now | **`rr-28p`** | Assisted L5 east key `0x66→0x76→0x77`, then Whistle → Digdogger → TF `0x10` |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 
@@ -264,8 +267,9 @@ body **`0x43`** HP≈160; ignore fireball **`0x56`**) → boss dead → HC `0x1a
 `run_level4_gleeok.py --infinite-life --trials 2 --save-state`. Checkpoint
 **`Level4Complete`**. Evidence: `l4_rvae_gleeok_tf_dual.json`. **Not Clean STATUS.**
 
-**Next tip:** epic **`rr-q3n`** compose residual / natural-entry STATUS path;
-parallel OW **`rr-38p`**. Traps: skip compass to keep spare key for KEY-UP;
+**Next tip:** **`rr-28p`** assisted L5 east key `0x66→0x76→0x77`, then Whistle
+→ Digdogger → TF `0x10`. Exact command in `docs/plan.md`. Parallel OW
+**`rr-38p`**. Later Clean residual **`rr-4oz`**. Traps: skip compass to keep spare key for KEY-UP;
 0x11→0x12 is **BOMB_RIGHT** stand~(192,141); naive y141 hold-RIGHT fails after
 0x12 push (maze `PATH_12_TO_GLEEOK`); Gleeok Clean = south-stand not head kite;
 free N on 0x30 sealed without key; KEY-UP **0x31** = isolated 0x21 south pocket.

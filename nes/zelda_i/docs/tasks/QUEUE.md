@@ -54,7 +54,7 @@ Claim one tip leaf: `bd update rr-5lu --status in_progress`.
 | **rr-65w** | **2/2 Clean** L3 north to 0x5b Darknuts |
 | **rr-vpl** tip | Raft **2/2** + Manhandla→TF **2/2 assisted** (`run_level3_to_boss.py` / `Level3Complete`) |
 | **rr-miy** | **2/2 assisted** L6 west wizzrobes 0x78 |
-| **rr-87a** / **rr-076** | L5 graph PARTIAL (0x67 dead-end; Pols door residual) |
+| **rr-87a** / **rr-076** | L5 0x67 Bubble dead-end; 0x77 isolated combat 2/2; route east key is `rr-28p` |
 | **rr-iri** / **rr-ccx** / **rr-q8a** | OW hops + candle shop 0x5E; burn residual |
 
 ## Parallel wave results (2026-08-06)
@@ -90,16 +90,16 @@ Door traps burned:
 ## Next beads (tip + ready)
 
 ```bash
-bd ready -l zelda_i   # tip: rr-5lu; parallel: rr-38p
+bd ready -l zelda_i   # tip: rr-28p L5 east key; parallel: rr-38p
 ```
 
 | Bead | Role | Start / notes |
 |------|------|---------------|
 | **`rr-0fx` Z4.1** | ✓ live L4 entry | dock `0x55` island `0x45` room `0x71`; `run_level4_entry.py` |
-| **`rr-5lu` Z4.2** | **TIP** interior | from `Level4Entrance`; first rooms + stepladder |
+| **`rr-28p` Z5.4** | **TIP** assisted L5 east key | `0x66→0x76→0x77`; then Whistle → Digdogger → TF `0x10` |
 | **`rr-38p` ZOW.1** | parallel free | white sword + candle + bomb bag |
-| **`rr-q3n`** | L4 epic container | more children after interior recon |
-| Deferred P4 | `rr-28p` L5 TF, `rr-d6v` L6 TF, `rr-4oz` Clean L2, `rr-yhr` bracelet/mag sword | blocked on tip |
+| **`rr-q3n`** | L4 epic residual | Clean/natural-entry compose; not the serial tip |
+| Later | `rr-d6v` L6 TF, `rr-4oz` Clean residual, `rr-yhr` bracelet/mag sword | after assist tip |
 
 ### Closed wave history (keep for evidence)
 
