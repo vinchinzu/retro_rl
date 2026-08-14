@@ -12,7 +12,7 @@ Layer ownership: [bot_architecture_plan.md](bot_architecture_plan.md).
 (`rr-5in`). D2 grape+shop compose **closed** (`rr-zmss`). Return-home /
 ExitToFarm `0x08` / ship kids **closed**. Remaining soak residual:
 `rr-3ae8` CROP_WATER refill exhausted + `rr-yuel` NAV_CROP hang (D23) +
-same-day plant after D2 buy (`rr-20w.1`: splice live; shed fetch + seed `0x07` not in carry).
+same-day plant after D2 buy (`rr-20w.1`: pocket `CLEAR_PLOT` + hoe/plant/water splice live; toss-held + shed bag-into-carry still residual).
 
 **Already closed (do not re-open as bottleneck):**
 

@@ -60,6 +60,7 @@ from harvest.maps.farm_pond import (
     farm_pond_refill_primary_stand,
     farm_pond_refill_stands,
     player_in_west_plant_pocket,
+    WEST_PLANT_POCKET_BOUNDS,
 )
 from harvest.maps.map_routes import (
     ROUTES,
@@ -505,6 +506,7 @@ __all__ = [
     "farm_pond_refill_primary_stand",
     "farm_pond_refill_stands",
     "player_in_west_plant_pocket",
+    "WEST_PLANT_POCKET_BOUNDS",
     "FARM_WATER_POCKETS",
     "FARM_TILEMAP_IDS",
     "FARM_TILEMAP_NAMES",

@@ -139,6 +139,42 @@ class TestTileScanner(unittest.TestCase):
         self.assertEqual(len(targets), 1)
         self.assertEqual(targets[0].debris_type, DebrisType.STUMP)
 
+    def test_scan_respects_pocket_bounds(self) -> None:
+        ram = _make_farm_ram()
+        _set_tile(ram, 16, 20, WEED)
+        _set_tile(ram, 16, 40, STONE)
+        pocket = (3, 14, 28, 30)
+        tiles = {t.tile for t in TileScanner().scan(ram, pocket)}
+        self.assertIn((16, 20), tiles)
+        self.assertNotIn((16, 40), tiles)
+
+
+class TestPocketClearTask(unittest.TestCase):
+    def test_locked_bounds_do_not_expand_to_south_farm(self) -> None:
+        ram = _make_farm_ram(player_tile=(16, 20))
+        _set_tile(ram, 16, 20, WEED)
+        _set_tile(ram, 16, 40, STONE)
+        clearer = FarmClearer()
+        clearer.configure(farm_bounds=(3, 14, 28, 30))
+        clearer.navigator.update(ram)
+        self.assertEqual(clearer._locked_bounds, (3, 14, 28, 30))
+        nxt = clearer._handle_scanning(ram)
+        self.assertEqual(clearer.farm_bounds, (3, 14, 28, 30))
+        self.assertEqual(clearer._locked_bounds, (3, 14, 28, 30))
+        self.assertIn(nxt, ("navigating", "clearing", "scanning"))
+
+    def test_factory_passes_pocket_bounds(self) -> None:
+        from harvest.planner.day_plan_phases import pocket_clear_phase
+        from harvest.planner.day_task_factory import DayTaskFactory
+
+        world = WorldState(frame=0, ram=_make_farm_ram(), info={}, obs=None)
+        task = DayTaskFactory().make_task(pocket_clear_phase(), world)
+        self.assertIsInstance(task, FarmClearTask)
+        self.assertEqual(task.farm_bounds, (3, 14, 28, 30))
+        self.assertFalse(task.fetch_tools)
+        self.assertTrue(task.prefer_lift_for_stones)
+        self.assertEqual(task.clearer.priority, [DebrisType.WEED, DebrisType.STONE])
+
 
 class TestFarmClearerSelection(unittest.TestCase):
     def test_cluster_sort_prefers_nearby_then_row_order(self) -> None:

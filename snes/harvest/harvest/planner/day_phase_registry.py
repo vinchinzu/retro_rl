@@ -403,11 +403,24 @@ def _build_harvest(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -
 def _build_clear_field(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
+    bounds = spec.params.get("farm_bounds")
+    if bounds is not None:
+        bounds = tuple(int(v) for v in bounds)
+    raw_priority = spec.params.get("priority")
+    priority = None
+    if raw_priority:
+        from harvest.core.tile_catalog import DebrisType
+
+        priority = [DebrisType[str(name).upper()] for name in raw_priority]
     return FarmClearTask(
         name=f"clear_field_{spec.phase.lower()}",
         tasks_dir=ctx.tasks_dir,
         fetch_tools=spec.params.get("fetch_tools", True),
         timeout=spec.params.get("timeout", 120000),
+        prefer_lift_for_weeds=spec.params.get("prefer_lift_for_weeds", True),
+        prefer_lift_for_stones=spec.params.get("prefer_lift_for_stones", False),
+        farm_bounds=bounds,
+        priority=priority,
     )
 
 

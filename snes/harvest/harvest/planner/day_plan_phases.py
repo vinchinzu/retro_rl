@@ -294,6 +294,41 @@ def crop_establish_phases() -> List[PhaseSpec]:
     ]
 
 
+def pocket_clear_phase() -> PhaseSpec:
+    """Lift weeds/stones inside the y=31 fence so hoe stands have a BFS path."""
+    from harvest.maps.map_config import WEST_PLANT_POCKET_BOUNDS
+
+    return PhaseSpec(
+        "CLEAR_PLOT",
+        "clear_field",
+        {
+            "timeout": 7000,
+            "fetch_tools": False,
+            "prefer_lift_for_weeds": True,
+            "prefer_lift_for_stones": True,
+            "farm_bounds": WEST_PLANT_POCKET_BOUNDS,
+            "priority": ["weed", "stone"],
+        },
+        failure_policy="optional",
+        required_maps=(0x00,),
+        estimated_frames=5000,
+        failure_modes=("timeout_budget", "pocket_sealed"),
+    )
+
+
+def pocket_plant_phases() -> List[PhaseSpec]:
+    """Pocket clear → hoe/plant → can/water. No plant recordings.
+
+    Whole-farm CLEAR is 800+ targets and starves hoe. The west pocket is
+    the D2 plant yard; crop FSM already tool-switches hoe → seeds → can.
+    """
+    return [
+        pocket_clear_phase(),
+        *crop_establish_phases(),
+        *crop_water_phases(include_nav=False),
+    ]
+
+
 def crop_water_phases(*, include_nav: bool = True) -> List[PhaseSpec]:
     """Water pass: ensure can, optional field nav, water established crops."""
     phases: List[PhaseSpec] = [ENSURE_WATERING_CAN_PHASE]
@@ -954,6 +989,8 @@ __all__ = [
     "auto_day_phases",
     "crop_establish_phases",
     "crop_water_phases",
+    "pocket_clear_phase",
+    "pocket_plant_phases",
     "build_day_phases",
     "build_outdoor_day_phases",
     "build_outdoor_day_phases_from_ram",

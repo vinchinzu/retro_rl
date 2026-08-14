@@ -51,6 +51,9 @@ uv run python -m harvest.scripts.interact_scan search grape
 # Seed shop: nav shop_door + RAM buy (not a day tape)
 HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
   --state Y1_Inside_House --out recordings/buy_seeds_d2_probe.json
+# West-pocket weeds/stones (inside y=31 fence; lift only, no plant tape)
+HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
+  --state Y1_Inside_House --out recordings/pocket_clear_probe.json
 
 # Harvest + ship + post-5pm wallet credit (rr-53g)
 HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
