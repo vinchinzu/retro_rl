@@ -12,6 +12,7 @@ _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 from day_plan_test_helpers import (
+    make_date_world,
     make_transition_world,
     make_world,
     set_player_pos,
@@ -26,8 +27,12 @@ import numpy as np
 from harvest.planner.day_plan import (
     ADDR_HOUR,
     ADDR_MINUTE,
+    ADDR_POTATO_SEEDS,
     ADDR_WEEKDAY,
     ActionResult,
+    BUY_SEEDS_PHASE,
+    CLEAR_FIELD_PHASE,
+    DayPlannerPolicy,
     DayPlanTask,
     EnsureCarryToolTask,
     EnsureCropSeedsTask,
@@ -47,6 +52,7 @@ from harvest.planner.day_plan import (
     auto_day_plan_name_for_weekday,
     make_action,
 )
+from harvest.core.ram_catalog import live_wram_base
 from harvest.planner.day_task_factory import DayTaskFactory
 from harvest.planner.world_probe import WorldProbe
 from harvest.core.tile_catalog import (
@@ -222,6 +228,91 @@ class DayPlanSequenceCropTests(unittest.TestCase):
             ["HARVEST_ROUTE", "BERRY_RUN_WINDOW", "EXIT_FARM_WEST"],
         )
         self.assertTrue(all(item.reason == "incomplete harvest" for item in plan.deferred_plans))
+
+    def test_buy_seeds_success_splices_same_day_plant(self) -> None:
+        """rr-20w.1: morning outdoor plan is frozen before the bag exists."""
+
+        class InstantBuy:
+            def reset(self, world) -> None:
+                return None
+
+            def can_start(self, world) -> bool:
+                return True
+
+            def step(self, world) -> TaskResult:
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason="bought potato_seeds 0->1 money 300->100",
+                )
+
+        class HoldTask:
+            def reset(self, world) -> None:
+                return None
+
+            def can_start(self, world) -> bool:
+                return True
+
+            def step(self, world) -> TaskResult:
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+        class TestPlan(DayPlanTask):
+            def __init__(self) -> None:
+                super().__init__(
+                    phase_sequence=[BUY_SEEDS_PHASE, CLEAR_FIELD_PHASE],
+                    policy=DayPlannerPolicy(include_end_day=False),
+                )
+
+            def _make_task(self, spec, world):
+                if spec.phase == "BUY_SEEDS":
+                    return InstantBuy()
+                return HoldTask()
+
+        world = make_date_world(0x00, season=0, day=2, hour=12)
+        world.ram[ADDR_POTATO_SEEDS + live_wram_base(world.ram)] = 1
+        plan = TestPlan()
+        plan.reset(world)
+        result = plan.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        names = [phase.phase for phase in plan._schedule.active]
+        self.assertEqual(
+            names[:4],
+            ["BUY_SEEDS", "ENSURE_CROP_SEEDS", "NAV_CROP", "CROP_ESTABLISH"],
+        )
+        self.assertLess(names.index("CROP_ESTABLISH"), names.index("CLEAR_FIELD"))
+        self.assertEqual(plan.phase_text, "ENSURE_CROP_SEEDS")
+        spliced = plan._schedule.active[1:4]
+        self.assertTrue(all(phase.failure_policy == "optional" for phase in spliced))
+
+    def test_buy_seeds_does_not_splice_plant_without_bag(self) -> None:
+        class InstantBuy:
+            def reset(self, world) -> None:
+                return None
+
+            def can_start(self, world) -> bool:
+                return True
+
+            def step(self, world) -> TaskResult:
+                return TaskResult(status=TaskStatus.SUCCESS, reason="shop miss")
+
+        class TestPlan(DayPlanTask):
+            def __init__(self) -> None:
+                super().__init__(
+                    phase_sequence=[BUY_SEEDS_PHASE, CLEAR_FIELD_PHASE],
+                    policy=DayPlannerPolicy(include_end_day=False),
+                )
+
+            def _make_task(self, spec, world):
+                if spec.phase == "BUY_SEEDS":
+                    return InstantBuy()
+                return None
+
+        world = make_date_world(0x00, season=0, day=2, hour=12)
+        plan = TestPlan()
+        plan.reset(world)
+        plan.step(world)
+        names = [phase.phase for phase in plan._schedule.active]
+        self.assertEqual(names, ["BUY_SEEDS", "CLEAR_FIELD"])
 
     def test_day_plan_retries_crop_water_with_targeted_watering_can_recovery(self) -> None:
         class MissingWateringCanTask:

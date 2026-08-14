@@ -122,6 +122,15 @@ class PurchaseCloseTests(unittest.TestCase):
         self.assertEqual(summer.kind, "cross_map")
         self.assertEqual(summer.params["recording_start"], 0)
 
+    def test_day_plan_factory_builds_buy_seeds_task(self) -> None:
+        """rr-zmss: D2 BUY_SEEDS must be nav+RAM, not CrossMap origin-return."""
+        from harvest.planner.day_task_factory import DayTaskFactory
+
+        world = make_world(0x00)
+        task = DayTaskFactory().make_task(BUY_SEEDS_PHASE, world)
+        self.assertIsInstance(task, BuySeedsTask)
+        self.assertNotIsInstance(task, CrossMapRecordedTask)
+
 
 class CrossMapShopRejectTests(unittest.TestCase):
     def test_origin_return_without_shop_is_miss(self) -> None:
