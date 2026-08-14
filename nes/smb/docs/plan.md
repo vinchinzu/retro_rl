@@ -110,14 +110,17 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
 ### D — Residual observation + approximate stepper (2026-08-13)
 
 Scaffold only (not a route-clear claim). Same `R(τ)` lattice as Super Metroid,
-SMB addresses. Thin flat-ground `step(obs, action)` for walk / jump / gravity.
+SMB addresses. Thin flat-ground `step(player, action, world)`.
 
 - Map + rules: `docs/RESIDUAL.md`
-- Code: `observation.py`, `approx.py`, `residual.py`, `residual_harness.py`
+- Code: `observation.py` (`Observation` / `PlayerPhysics` / `World`),
+  `approx.py`, `residual.py`, `residual_harness.py`
+- Shared compare: `retro_harness.residual` (`LatticeSpec`)
 - Measure: `uv run python -m smb.scripts.measure_residual`
 
-Jump tables, brake `$98`/`$D0`, LEFT first-kick (`$FED0`), and air walk-max
-keeping `xf` done. Next: SMW using the same observation/residual shape.
+Jump tables, brake `$98`/`$D0`, LEFT first-kick (`$FED0`), air walk-max
+keeping `xf`, and InitJS wipe of `$0416` done. Next: collision as a
+`World` query; SMW reuses `retro_harness.residual`.
 
 ### C — Optional follow-ons
 
