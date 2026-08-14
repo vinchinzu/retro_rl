@@ -52,3 +52,6 @@ class Waypoint(NamedTuple):
     # Keep walking inward briefly after a tilemap flip.  Some outdoor exits
     # expose the destination tilemap before its coordinates/tile window settle.
     exit_push_frames: int = 0
+    # Hold run_direction into unwalkable tiles (mountain cliff drop). BFS
+    # and _safe_walk_action treat the lip as solid; the ROM jump is the path.
+    force_run: bool = False

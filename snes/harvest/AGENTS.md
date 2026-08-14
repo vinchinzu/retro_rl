@@ -48,6 +48,9 @@ HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
 # Classify a pick/talk from an existing tape or a live pin (do not re-record)
 uv run python -m harvest.scripts.interact_scan tape mountain_grape_stand
 uv run python -m harvest.scripts.interact_scan search grape
+# Seed shop: nav shop_door + RAM buy (not a day tape)
+HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
+  --state Y1_Inside_House --out recordings/buy_seeds_d2_probe.json
 
 # Harvest + ship + post-5pm wallet credit (rr-53g)
 HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
@@ -100,6 +103,8 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 [docs/plan.md](docs/plan.md) · [docs/INTERACT.md](docs/INTERACT.md) ·
 [docs/CODE_QUALITY_REVIEW.md](docs/CODE_QUALITY_REVIEW.md) ·
 [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md) · [docs/town_day1_recon.md](docs/town_day1_recon.md)
+
+Skills (repo `.grok/skills/`): `harvest-interact` · `harvest-route` · `harvest-shop`
 
 ## Structure rule (1k LOC + no mono thrash)
 

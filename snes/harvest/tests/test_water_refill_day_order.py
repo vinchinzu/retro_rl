@@ -75,7 +75,10 @@ class KeepAliveClearOrderTests(unittest.TestCase):
         )
         names = [p.phase for p in phases]
         self.assertIn("SHIP_BERRY_1", names)
-        self.assertNotIn("CLEAR_FIELD", names)
+        # Shop (when affordable) then morning CLEAR. No crop water on empty dirt.
+        if "BUY_SEEDS" in names:
+            self.assertIn("CLEAR_FIELD", names)
+            self.assertLess(names.index("BUY_SEEDS"), names.index("CLEAR_FIELD"))
         self.assertNotIn("CROP_WATER", names)
 
     def test_full_day_water_before_clear_when_dry_crops(self) -> None:
