@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_action
 from zelda_i.dungeon import (
     AliveRule,
     CombatTuning,
@@ -74,13 +74,6 @@ ROOM_66_EAST_DOOR_BIT = 0x08
 ROOM_67_WEST_DOOR_BIT = 0x02
 # 0x65 settles with east doorway open back to 0x66 (when entered west).
 ROOM_65_EAST_DOOR_BIT = 0x01
-
-# Entry 0x76 east approach: mid-room blocks pure RIGHT @ y≈141 (x≈128).
-# Path around statues at y≈149–157 reaches east wall x≈208; door still closed
-# natural (doors=0). When open, channel y≈141 for the scroll.
-EAST_DOOR_APPROACH_Y = 157
-EAST_DOOR_CHANNEL_Y = 141
-EAST_DOOR_WALL_X = 200
 
 # Stalfos-style room sweep; engage tighter for multi-hit Gibdos.
 _ROOM_66_PATROL: tuple[tuple[int, int], ...] = (
@@ -185,10 +178,11 @@ ROOM_77_SPEC = DungeonRoomSpec(
     room_id=ROOM_L5_POLS_77,
     entry=DoorRoute(
         "RIGHT",
+        # Approach geometry lives in level5_path.EAST_DOOR_* .
         (
-            (120, EAST_DOOR_APPROACH_Y),
-            (EAST_DOOR_WALL_X, EAST_DOOR_APPROACH_Y),
-            (EAST_DOOR_WALL_X, EAST_DOOR_CHANNEL_Y),
+            (120, 157),
+            (200, 157),
+            (200, 141),
         ),
     ),
     enemy_types=(POLS_VOICE_OBJECT_TYPE,),
@@ -308,55 +302,6 @@ def level5_room_77_key_success(ram: np.ndarray) -> bool:
     FIXED_INVENTORY stop: inventory + liveness only (RoomAllDead may lag).
     """
     return inventory_reward_success(ram, ROOM_77_SPEC, min_value=1)
-
-
-def level5_east_key_step(snap: ZeldaSnapshot) -> FrameAction:
-    """Deterministic 0x66→0x76→key door→0x77 navigation policy.
-
-    Room 0x66 supplies the key.  Return through its south door, leave the
-    0x76 north/south mouth, approach the east wall on y≈157, then move to the
-    door channel y≈141 without stepping back into the center statues.
-    """
-    if snap.level != LEVEL_5:
-        return FrameAction(nes_idle_action(), "east_key_wait_level5")
-    if snap.screen == ROOM_L5_POLS_77 and snap.mode == PLAY_MODE:
-        return FrameAction(nes_idle_action(), "east_key_arrived")
-
-    if snap.screen == ROOM_L5_GIBDO_66:
-        if snap.transitioning:
-            return FrameAction(nes_action("DOWN"), "east_key_south_scroll")
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), "east_key_wait_66")
-        # The fixed key can be collected while Link is still standing on the
-        # Stepladder across the horizontal river. Finish the crossing before
-        # horizontal alignment; sideways input is locked on the ladder tile.
-        if snap.link_y < 141:
-            return FrameAction(nes_action("DOWN"), "east_key_finish_ladder")
-        if abs(snap.link_x - 120) > 4:
-            direction = "LEFT" if snap.link_x > 120 else "RIGHT"
-            return FrameAction(nes_action(direction), "east_key_align_south_x")
-        return FrameAction(nes_action("DOWN"), "east_key_return_76")
-
-    if snap.screen == ROOM_L5_ENTRY:
-        if snap.transitioning:
-            return FrameAction(nes_action("RIGHT"), "east_key_east_scroll")
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), "east_key_wait_76")
-        if snap.link_y > 185:
-            return FrameAction(nes_action("UP"), "east_key_leave_south_mouth")
-        if snap.link_x < EAST_DOOR_WALL_X - 4:
-            if abs(snap.link_y - EAST_DOOR_APPROACH_Y) > 3:
-                direction = "UP" if snap.link_y > EAST_DOOR_APPROACH_Y else "DOWN"
-                return FrameAction(nes_action(direction), "east_key_align_approach_y")
-            return FrameAction(nes_action("RIGHT"), "east_key_approach_wall")
-        if abs(snap.link_y - EAST_DOOR_CHANNEL_Y) > 3:
-            direction = "UP" if snap.link_y > EAST_DOOR_CHANNEL_Y else "DOWN"
-            return FrameAction(nes_action(direction), "east_key_align_channel_y")
-        return FrameAction(nes_action("RIGHT"), "east_key_unlock_77")
-
-    return FrameAction(
-        nes_idle_action(), f"east_key_unexpected_room_0x{snap.screen:02x}"
-    )
 
 
 def level5_in_room_65(ram: np.ndarray) -> bool:
@@ -526,9 +471,6 @@ __all__ = [
     "ROOM_66_EAST_DOOR_BIT",
     "ROOM_67_WEST_DOOR_BIT",
     "ROOM_65_EAST_DOOR_BIT",
-    "EAST_DOOR_APPROACH_Y",
-    "EAST_DOOR_CHANNEL_Y",
-    "EAST_DOOR_WALL_X",
     "ROOM_66_SPEC",
     "ROOM_67_SPEC",
     "ROOM_77_SPEC",
@@ -539,7 +481,6 @@ __all__ = [
     "level5_room_67_arrived",
     "level5_in_room_77",
     "level5_room_77_key_success",
-    "level5_east_key_step",
     "level5_in_room_65",
     "Level5PolsVoiceController",
     "Level5East67Controller",

@@ -6,7 +6,6 @@ import numpy as np
 
 from zelda_i.level5_dungeon import (
     BUBBLE_OBJECT_TYPE,
-    EAST_DOOR_APPROACH_Y,
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
     POLS_VOICE_OBJECT_TYPE,
@@ -25,7 +24,6 @@ from zelda_i.level5_dungeon import (
     level5_in_room_66,
     level5_in_room_67,
     level5_in_room_77,
-    level5_east_key_step,
     level5_room_66_cleared,
     level5_room_67_arrived,
     level5_room_77_key_success,
@@ -92,7 +90,6 @@ def test_room_ids_and_specs() -> None:
     assert ROOM_77_SPEC.enemy_types == (POLS_VOICE_OBJECT_TYPE,)
     assert ROOM_77_SPEC.expected_enemy_count == 5
     assert ROOM_77_SPEC.room_item_id == ROOM_ITEM_SMALL_KEY
-    assert EAST_DOOR_APPROACH_Y == 157
 
 
 def test_room_66_cleared_predicate() -> None:
@@ -184,24 +181,3 @@ def test_pols_controller_constructs() -> None:
     ctrl = Level5PolsVoiceController(spec=ROOM_77_SPEC)
     assert ctrl.spec.room_id == ROOM_L5_POLS_77
     assert ctrl.spec.enemy_types == (POLS_VOICE_OBJECT_TYPE,)
-
-
-def test_east_key_route_returns_south_from_cleared_66() -> None:
-    snap = read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=56, y=117, keys=1))
-    action = level5_east_key_step(snap)
-    assert action.reason == "east_key_finish_ladder"
-    off_ladder = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=56, y=149, keys=1))
-    )
-    assert off_ladder.reason == "east_key_align_south_x"
-
-
-def test_east_key_route_uses_wall_before_door_channel() -> None:
-    approach = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=180, y=157, keys=1))
-    )
-    channel = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=200, y=157, keys=1))
-    )
-    assert approach.reason == "east_key_approach_wall"
-    assert channel.reason == "east_key_align_channel_y"
