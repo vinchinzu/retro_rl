@@ -669,6 +669,10 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertIn((354, 489), [waypoint.target_px for waypoint in ROUTES["farm_to_shed"]])
         self.assertNotIn((456, 424), [waypoint.target_px for waypoint in ROUTES["farm_to_shed"]])
         self.assertNotIn((456, 489), [waypoint.target_px for waypoint in ROUTES["farm_to_shed"]])
+        # Field/near approaches must not B-run the stump line or the door.
+        self.assertIn((400, 504), [waypoint.target_px for waypoint in ROUTES["field_to_shed"]])
+        self.assertTrue(all(wp.run_direction is None for wp in ROUTES["field_to_shed"]))
+        self.assertTrue(all(wp.run_direction is None for wp in ROUTES["near_shed_to_shed"]))
 
     def test_shed_fetch_exits_shed_when_item_missing_after_shelf(self) -> None:
         class DoneTask:
