@@ -26,4 +26,5 @@ and run the scan commands there before any new `tasks/*.json` recording.
    first held tick.
 
 Do not record house→item. Record a corridor only after live BFS from the
-land tile has no gap.
+land tile has no gap — then use [harvest-route](../harvest-route/SKILL.md).
+Shop doors: [harvest-shop](../harvest-shop/SKILL.md).

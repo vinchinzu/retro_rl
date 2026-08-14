@@ -266,6 +266,75 @@ _FARM_TO_PATH: List[Waypoint] = [
 ]
 _PATH_TO_TOWN: List[Waypoint] = [_PATH_TOWN_EXIT]
 _PATH_TO_MOUNTAIN: List[Waypoint] = [_PATH_MOUNTAIN_EXIT]
+# Seed-shop town gate: stand on the open face, not (0,8)/(1,8) doorframe hugs.
+_PATH_TO_TOWN_SHOP: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(40, 128),
+        radius=8,
+        is_exit=True,
+        exit_direction="left",
+    ),
+]
+# shop_door landmark tile (37,13) → (600,216). Do not stand on (37,14).
+_SHOP_DOOR_PX = (37 * 16 + 8, 13 * 16 + 8)
+_TOWN_TO_SHOP_DOOR: List[Waypoint] = [
+    # buy_potato_seeds_d2: east road is sealed west of ~x=684. Open face
+    # just inside the gate (not 46,26 / 47,26 hugs), north at x=684, west
+    # on y=288, then the shop column to shop_door (37,13).
+    Waypoint(tilemap=0x04, target_px=(728, 424), radius=18),
+    Waypoint(tilemap=0x04, target_px=(692, 424), radius=14, run_direction="left"),
+    Waypoint(tilemap=0x04, target_px=(684, 400), radius=14, run_direction="up"),
+    Waypoint(tilemap=0x04, target_px=(684, 340), radius=14, run_direction="up"),
+    Waypoint(tilemap=0x04, target_px=(684, 288), radius=10),
+    Waypoint(tilemap=0x04, target_px=(640, 288), radius=12),
+    Waypoint(tilemap=0x04, target_px=(608, 288), radius=10),
+    # Tape stand south of the shop (37,17). Walk up through the door
+    # from here — a (601,246) stand pins on the porch.
+    Waypoint(
+        tilemap=0x04,
+        target_px=(602, 274),
+        radius=10,
+        is_exit=True,
+        exit_direction="up",
+    ),
+]
+# buy_potato_seeds_d2 clerk A-stand (182,342) tile (11,21) face up.
+_SEED_CLERK_PX = (182, 342)
+_SHOP_TO_COUNTER: List[Waypoint] = [
+    Waypoint(tilemap=0x1C, target_px=_SEED_CLERK_PX, radius=4),
+]
+# Shop exit open face is (8,28); (8,29) is the doorframe stasis tile.
+_SHOP_TO_TOWN: List[Waypoint] = [
+    Waypoint(tilemap=0x1C, target_px=_SEED_CLERK_PX, radius=10),
+    Waypoint(tilemap=0x1C, target_px=(154, 400), radius=14),
+    Waypoint(
+        tilemap=0x1C,
+        target_px=(8 * 16 + 8, 28 * 16 + 8),
+        radius=8,
+        is_exit=True,
+        exit_direction="down",
+    ),
+]
+# After shop, walk the square to the east gate open face — not (46,26)/(47,26).
+_TOWN_SHOP_TO_PATH: List[Waypoint] = [
+    # Shop exit lands on the doorface ~(601,232). Step south to the plaza
+    # first — standing on (37,14) and pathing east seals.
+    Waypoint(tilemap=0x04, target_px=(602, 274), radius=12),
+    Waypoint(tilemap=0x04, target_px=(608, 288), radius=12),
+    Waypoint(tilemap=0x04, target_px=(640, 288), radius=14, run_direction="right"),
+    Waypoint(tilemap=0x04, target_px=(684, 288), radius=12),
+    Waypoint(tilemap=0x04, target_px=(684, 340), radius=14, run_direction="down"),
+    Waypoint(tilemap=0x04, target_px=(684, 400), radius=14, run_direction="down"),
+    Waypoint(tilemap=0x04, target_px=(692, 424), radius=14),
+    Waypoint(
+        tilemap=0x04,
+        target_px=(728, 424),
+        radius=12,
+        is_exit=True,
+        exit_direction="right",
+    ),
+]
 _FARM_TO_MOUNTAIN_GATE: List[Waypoint] = list(_FARM_TO_PATH) + list(_PATH_TO_MOUNTAIN)
 
 # mountain_grape_stand tape (Y1_Inside_House): transition settles on the
@@ -294,13 +363,26 @@ _MOUNTAIN_ENTRY_TO_FIRST_BERRY: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(326, 409), radius=10),
 ]
 
-# First ground grape → south mountain exit. This is the exact recorded-safe
-# approach in reverse, followed by the transition lip.  Do not reuse the
-# outdoor-spa return here: its first waypoint sends the grape stand north-east
-# through an unrelated ridge/carpenter corridor.
-_FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = list(
-    reversed(_MOUNTAIN_ENTRY_TO_FIRST_BERRY)
-) + [
+# First ground grape → south mountain exit. The inbound corridor cannot
+# climb the x=20 cliff under the grape, but the return can jump it onto
+# the mid terrace ~(328, 568). A second cliff still blocks due-south from
+# that ledge to the land tile, so finish on the recorded east/south dirt.
+# Do not reuse the outdoor-spa return here (wrong ridge).
+_FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = [
+    Waypoint(tilemap=0x10, target_px=(326, 409), radius=10),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(328, 568),
+        radius=24,
+        run_direction="down",
+        force_run=True,
+    ),
+    Waypoint(tilemap=0x10, target_px=(392, 568), radius=16),
+    Waypoint(tilemap=0x10, target_px=(472, 600), radius=16),
+    Waypoint(tilemap=0x10, target_px=(520, 632), radius=16),
+    Waypoint(tilemap=0x10, target_px=(520, 712), radius=16),
+    Waypoint(tilemap=0x10, target_px=(424, 712), radius=16),
+    Waypoint(tilemap=0x10, target_px=(328, 728), radius=20),
     Waypoint(
         tilemap=0x10,
         target_px=(312, 744),
@@ -345,8 +427,13 @@ def segment_waypoints(*names: str) -> List[Waypoint]:
 SEGMENTS: Dict[str, List[Waypoint]] = {
     "farm_to_path": list(_FARM_TO_PATH),
     "path_to_town": list(_PATH_TO_TOWN),
+    "path_to_town_shop": list(_PATH_TO_TOWN_SHOP),
     "path_to_mountain": list(_PATH_TO_MOUNTAIN),
     "path_to_farm": [_PATH_FARM_EXIT],
+    "town_to_shop_door": list(_TOWN_TO_SHOP_DOOR),
+    "shop_to_counter": list(_SHOP_TO_COUNTER),
+    "shop_to_town": list(_SHOP_TO_TOWN),
+    "town_shop_to_path": list(_TOWN_SHOP_TO_PATH),
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
     "first_berry_to_mountain_exit": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT),
     "farm_west_gate_to_shipping_bin": list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
@@ -377,6 +464,12 @@ ROUTES: Dict[str, List[Waypoint]] = {
     # Shared farm→crossroads + west exit. Same hops as farm_to_path + path_to_town.
     "farm_to_town": list(_FARM_TO_PATH) + list(_PATH_TO_TOWN),
     "go_to_town": list(_FARM_TO_PATH) + list(_PATH_TO_TOWN),
+    "farm_to_shop_door": list(_FARM_TO_PATH)
+    + list(_PATH_TO_TOWN_SHOP)
+    + list(_TOWN_TO_SHOP_DOOR),
+    "shop_to_farm": list(_SHOP_TO_TOWN)
+    + list(_TOWN_SHOP_TO_PATH)
+    + [_PATH_FARM_EXIT],
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
     "farm_to_first_mountain_berry": list(_FARM_TO_MOUNTAIN_GATE)
     + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),

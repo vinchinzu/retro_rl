@@ -116,6 +116,87 @@ GRAPE_STAND_PX = (326, 409)
 GRAPE_STAND_TILE = (20, 25)
 GRAPE_STAND_RADIUS = 16
 GRAPE_STAND_NUDGE = 3
+# Harvest play-session clock. Report frames as source of truth.
+SEGMENT_FPS = 60.0
+
+
+def format_segment_time(frames: int | None) -> dict:
+    """Frame split used by mountain corridor benches."""
+    if frames is None:
+        return {"frames": None, "seconds": None, "clock": None}
+    n = max(0, int(frames))
+    seconds = n / SEGMENT_FPS
+    minutes = int(seconds // 60)
+    return {
+        "frames": n,
+        "seconds": round(seconds, 3),
+        "clock": f"{minutes:02d}:{seconds % 60:05.2f}",
+    }
+
+
+def mountain_corridor_segments(samples: Sequence[dict]) -> dict:
+    """Measure mountain land → grape and grape → mountain exit.
+
+    ``samples`` are time-ordered snapshots with ``frame``, ``tilemap``,
+    ``x``, ``y``, and optional ``held_item``. Pick/keep time between the
+    two hops is reported separately and is not part of either corridor.
+    """
+    enter = None
+    grape = None
+    leave_stand = None
+    mountain_exit = None
+    for row in samples:
+        frame = int(row.get("frame", 0))
+        tilemap = int(row.get("tilemap", -1))
+        x = int(row.get("x", 0))
+        y = int(row.get("y", 0))
+        held = int(row.get("held_item", 0))
+        at_stand = (
+            tilemap == MOUNTAIN_TILEMAP
+            and abs(x - GRAPE_STAND_PX[0]) <= GRAPE_STAND_RADIUS
+            and abs(y - GRAPE_STAND_PX[1]) <= GRAPE_STAND_RADIUS
+        )
+        if enter is None and tilemap == MOUNTAIN_TILEMAP:
+            enter = frame
+        if grape is None and at_stand:
+            grape = frame
+        if (
+            leave_stand is None
+            and grape is not None
+            and tilemap == MOUNTAIN_TILEMAP
+            and is_mountain_forage(held)
+            and not at_stand
+        ):
+            leave_stand = frame
+        if (
+            mountain_exit is None
+            and grape is not None
+            and tilemap == PATH_TILEMAP
+        ):
+            mountain_exit = frame
+    inbound = (grape - enter) if enter is not None and grape is not None else None
+    outbound_start = leave_stand if leave_stand is not None else grape
+    outbound = (
+        (mountain_exit - outbound_start)
+        if outbound_start is not None and mountain_exit is not None
+        else None
+    )
+    pick = (
+        (leave_stand - grape)
+        if grape is not None and leave_stand is not None
+        else None
+    )
+    return {
+        "mountain_entry_to_grape": format_segment_time(inbound),
+        "grape_to_mountain_exit": format_segment_time(outbound),
+        "pick_keep": format_segment_time(pick),
+        "marks": {
+            "mountain_enter": enter,
+            "grape_stand": grape,
+            "leave_stand": leave_stand,
+            "mountain_exit": mountain_exit,
+        },
+    }
 
 
 def nearby_tile_scan(ram, *, radius: int = 3) -> list[dict]:
@@ -539,4 +620,7 @@ __all__ = [
     "go_to_town_waypoints",
     "nearby_tile_scan",
     "on_grape_pixel",
+    "format_segment_time",
+    "mountain_corridor_segments",
+    "SEGMENT_FPS",
 ]
