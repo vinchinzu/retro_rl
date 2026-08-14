@@ -46,15 +46,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.policy import HeatManPolicy
@@ -83,7 +76,6 @@ from retro_harness.segment_runner import (
 
 DEFAULT_STATE = "Heat1"
 DEFAULT_TARGET_SCREEN = 1
-
 
 def run_heat_segment(
     *,
@@ -147,7 +139,6 @@ def run_heat_segment(
         f"wep={last.get('weapons', 0):02x} items={last.get('items', 0):02x}"
     )
     return report
-
 
 def _run_one(
     *,
@@ -304,7 +295,6 @@ def _run_one(
         },
     }
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=DEFAULT_STATE)
@@ -329,7 +319,6 @@ def main() -> None:
         yoku_land=args.yoku_land,
     )
     raise SystemExit(0 if report["success"] else 1)
-
 
 if __name__ == "__main__":
     main()

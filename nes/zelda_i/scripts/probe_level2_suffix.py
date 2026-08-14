@@ -14,19 +14,11 @@ Examples::
     uv run python zelda_i/scripts/probe_level2_suffix.py --infinite-life --enter-dungeon
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -48,7 +40,6 @@ from zelda_i.level2_overworld import (
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
-
 
 def _snapshot_dict(snap) -> dict:
     objs = [
@@ -79,7 +70,6 @@ def _snapshot_dict(snap) -> dict:
         "objects": objs,
     }
 
-
 def _run_nav_loop(env, obs, nav, *, max_frames, assist, trail, tag, stop_pred=None):
     """Step nav until success/fail/death/max_frames. Mutates trail; returns obs."""
     frames = 0
@@ -106,7 +96,6 @@ def _run_nav_loop(env, obs, nav, *, max_frames, assist, trail, tag, stop_pred=No
             break
     return obs, frames
 
-
 def run_probe(
     *,
     start_state: str,
@@ -128,8 +117,7 @@ def run_probe(
         corridor_clear_frames = 0
     track = "assisted" if infinite_life else "clean"
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -330,7 +318,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--from-state", default="Level1ExitOverworld")
@@ -426,7 +413,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"notes={rep['notes']}")
     print(f"report={out}")
     return 0 if rep["ok"] else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

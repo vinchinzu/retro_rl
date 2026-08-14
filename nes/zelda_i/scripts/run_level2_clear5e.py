@@ -17,22 +17,13 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level2_clear5e.py --save-state --trials 2
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
 # monorepo root (…/retro_rl); also expose nes/ for package imports.
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _NES_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -49,15 +40,12 @@ from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
 
-
 def _act(env, direction: str | None) -> None:
     env.step(nes_action(direction) if direction else nes_idle_action())
-
 
 def _idle(env, n: int = 1) -> None:
     for _ in range(n):
         env.step(nes_idle_action())
-
 
 def _run_controller(env, controller, max_frames: int):
     obs = None
@@ -67,7 +55,6 @@ def _run_controller(env, controller, max_frames: int):
         if controller.success or controller.phase is DungeonPhase.FAILED:
             break
     return obs
-
 
 def _enter_5e_key_door(env) -> bool:
     """0x5f key-LEFT: align y≈141 mid-x → pure LEFT through key door.
@@ -111,7 +98,6 @@ def _enter_5e_key_door(env) -> bool:
     s = snap()
     return s.screen == 0x5E and s.mode == PLAY_MODE
 
-
 def run_once(
     *,
     tag: str = "level2_clear5e",
@@ -123,8 +109,7 @@ def run_once(
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     controller = GenericDungeonRoomController(ROOM_5E_SPEC)
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         entry = read_snapshot(env.get_ram())
 
@@ -225,7 +210,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=1)
@@ -288,7 +272,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {output}")
     return 0 if all(report.get("ok") for report in reports) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

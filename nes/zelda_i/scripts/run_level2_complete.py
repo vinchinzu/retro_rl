@@ -14,24 +14,13 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level2_complete.py --from-state Level2_0E --trials 1
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = _REPO_ROOT / "nes"
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.segment_runner import write_json_report
 from zelda_i.paths import RECORDINGS_DIR
 from zelda_i.scripts.run_level2_dodongo import run_once
-
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
@@ -99,7 +88,6 @@ def main() -> None:
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
     write_json_report(RECORDINGS_DIR / f"{args.tag}.json", payload)
     write_json_report(RECORDINGS_DIR / f"{args.tag}_summary.json", payload)
-
 
 if __name__ == "__main__":
     main()

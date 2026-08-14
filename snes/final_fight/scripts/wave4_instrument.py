@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 
@@ -22,7 +17,7 @@ from final_fight.ram import (
     parse_game_state,
     read_u16le,
 )
-from retro_harness.env import get_available_states, make_env
+from retro_harness.env import get_available_states, make_env, reset_obs
 from retro_harness.actions import idle_action
 from retro_harness.ram_state import GameMode
 from retro_harness.segment_runner import (
@@ -34,12 +29,6 @@ from retro_harness.segment_runner import (
 
 # Entity jump Y sits at base+0x0A (body Y at +0x0D); delta hints airborne.
 _OFF_JUMP_Y = 0x0A
-
-
-def _reset(env: Any) -> None:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return
 
 
 def _jump_y_snapshot(
@@ -65,7 +54,6 @@ def _jump_y_snapshot(
             else int(abs(enemy_jump - enemy_body) > 2)
         ),
     }
-
 
 def _wave_hp_table(
     waves: list[dict[str, Any]],
@@ -109,7 +97,6 @@ def _wave_hp_table(
         )
     return rows
 
-
 def run_wave4_instrument(
     *,
     state_name: str = "Stage1_Room1_Healthy",
@@ -140,7 +127,7 @@ def run_wave4_instrument(
     focus_reasons: dict[str, int] = {}
     screenshots: list[str] = []
     try:
-        _reset(env)
+        reset_obs(env)
         state = parse_game_state(env.get_ram(), frame=0)
         tracker.begin(state)
         prev_hp = state.health
@@ -377,7 +364,6 @@ def run_wave4_instrument(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default="Stage1_Room1_Healthy")
@@ -388,7 +374,6 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
     )
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI for wave 3–4 HP/life instrumentation."""
@@ -446,7 +431,6 @@ def main(argv: list[str] | None = None) -> int:
         print("  HEAL none (no food pickup observed)")
     print(f"report={args.out_dir or RECORDINGS_DIR / 'wave4_instrument'}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

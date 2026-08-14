@@ -11,12 +11,7 @@ import hashlib
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from smz3.paths import INTEGRATION_DIR, TEST_SEED_DIR  # noqa: E402
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -50,12 +45,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"rom.sha = {digest}")
     return 0
 
-
 def os_relpath(target: Path, start: Path) -> str:
     import os
 
     return os.path.relpath(target, start)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

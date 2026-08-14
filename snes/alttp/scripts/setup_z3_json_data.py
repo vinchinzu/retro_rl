@@ -13,23 +13,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from alttp.paths import (  # noqa: E402
+from alttp.paths import (
     Z3_JSON_DATA_DIR,
     Z3_JSON_DATA_PIN,
     Z3_JSON_DATA_REPO,
 )
-from alttp.z3_json_data import validate_source_shape  # noqa: E402
-
+from alttp.z3_json_data import validate_source_shape
 
 def _run(cmd: list[str], *, cwd: Path | None = None) -> None:
     print("+", " ".join(cmd))
     subprocess.run(cmd, cwd=cwd, check=True)
-
 
 def _git_head(dest: Path) -> str:
     out = subprocess.check_output(
@@ -39,10 +32,8 @@ def _git_head(dest: Path) -> str:
     )
     return out.strip()
 
-
 def _revision_matches(head: str, revision: str) -> bool:
     return head == revision or head.startswith(revision) or revision.startswith(head)
-
 
 def _fetch_and_checkout(worktree: Path, revision: str) -> str:
     """Fetch *revision* into an existing git worktree and check it out."""
@@ -57,7 +48,6 @@ def _fetch_and_checkout(worktree: Path, revision: str) -> str:
     _run(["git", "fetch", "origin", revision], cwd=worktree)
     _run(["git", "checkout", "--force", revision], cwd=worktree)
     return _git_head(worktree)
-
 
 def _clone_pinned(dest: Path, repo: str, revision: str) -> str:
     """Create *dest* checked out at *revision*."""
@@ -78,7 +68,6 @@ def _clone_pinned(dest: Path, repo: str, revision: str) -> str:
     _run(["git", "clone", repo, str(dest)])
     _run(["git", "checkout", "--force", revision], cwd=dest)
     return _git_head(dest)
-
 
 def setup(
     *,
@@ -113,7 +102,6 @@ def setup(
     validate_source_shape(dest)
     print("shape checks: OK")
     return dest.resolve()
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -155,7 +143,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"setup failed: {exc}", file=sys.stderr)
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

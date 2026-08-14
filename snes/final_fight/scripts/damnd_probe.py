@@ -11,13 +11,8 @@ Evidence: HP deltas in ``damnd_probe.json`` + PNGs under ``--out-dir``.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 
@@ -35,7 +30,7 @@ from final_fight.ram import (
     read_u8,
     read_u16le,
 )
-from retro_harness.env import get_available_states, make_env, save_state
+from retro_harness.env import get_available_states, make_env, reset_obs, save_state
 from retro_harness.actions import idle_action
 from retro_harness.ram_state import GameMode
 from retro_harness.segment_runner import (
@@ -45,13 +40,6 @@ from retro_harness.segment_runner import (
 )
 
 
-def _reset(env: Any) -> Any:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return result[0]
-    return result
-
-
 def _boss_raw(ram: np.ndarray) -> dict[str, int]:
     return {
         "status": read_u8(ram, BOSS_BASE + OFF_STATUS),
@@ -59,7 +47,6 @@ def _boss_raw(ram: np.ndarray) -> dict[str, int]:
         "y": read_u16le(ram, BOSS_BASE + OFF_Y),
         "hp": read_u8(ram, BOSS_BASE + OFF_HP),
     }
-
 
 def _enemy_slots(ram: np.ndarray) -> list[dict[str, int]]:
     slots: list[dict[str, int]] = []
@@ -76,7 +63,6 @@ def _enemy_slots(ram: np.ndarray) -> list[dict[str, int]]:
     boss = _boss_raw(ram)
     slots.append({"slot": 3, **boss})
     return slots
-
 
 def run_damnd_probe(
     *,
@@ -117,7 +103,7 @@ def run_damnd_probe(
     frame_i = 0
 
     try:
-        obs = _reset(env)
+        obs, _ = reset_obs(env)
         ram = env.get_ram()
         state = parse_game_state(ram, frame=0)
         start_player_hp = state.health
@@ -403,7 +389,6 @@ def run_damnd_probe(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default="Boss")
@@ -415,7 +400,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Do not write Stage1_Clear.state on success",
     )
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI for Damnd door/fight instrumentation."""
@@ -451,7 +435,6 @@ def main(argv: list[str] | None = None) -> int:
         )
     print(f"report={report.get('report_path')}")
     return 0 if report.get("success") else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

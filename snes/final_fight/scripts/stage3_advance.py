@@ -9,15 +9,10 @@ clear-round → **Break Car bonus** (``round=06``) → open West Side
 from __future__ import annotations
 
 import argparse
-import sys
 from enum import Enum
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from final_fight.policy import Stage1Policy
@@ -40,7 +35,7 @@ from final_fight.ram import (
     read_u8,
     read_u16le,
 )
-from retro_harness.env import get_available_states, make_env, save_state
+from retro_harness.env import get_available_states, make_env, reset_obs, save_state
 from retro_harness.actions import buttons, idle_action
 from retro_harness.ram_state import GameMode, GameState
 from retro_harness.segment_runner import (
@@ -60,7 +55,6 @@ WEST_CAM_LO = 630
 WEST_CAM_HI = 720
 STATE_DIR = GAME_DIR / "custom_integrations" / "FinalFight-Snes"
 
-
 class W5Tactic(Enum):
     """Post-w4 dual 142+96 finish recipes (not pure alt60_3 chip)."""
 
@@ -69,7 +63,6 @@ class W5Tactic(Enum):
     BAIT = "bait"
     KICK = "kick"
     SPLIT = "split"
-
 
 def _maybe_save_state(
     env: Any,
@@ -90,7 +83,6 @@ def _maybe_save_state(
         saved_states.append(path.name)
     return True
 
-
 def _west_wave_offset(state_name: str, *, has_living: bool) -> int:
     """Segment-local wave index offset for Mid/Clear resumes."""
     if "Clear_w5" in state_name or "Mid_w6" in state_name:
@@ -107,7 +99,6 @@ def _west_wave_offset(state_name: str, *, has_living: bool) -> int:
         # Empty Mid_p31 is post-clear; Mid_p66 still in wave2.
         return 2 if not has_living else 1
     return 0
-
 
 def _west_pack_target(
     living: list[Any],
@@ -152,7 +143,6 @@ def _west_pack_target(
         key=lambda e: (e.health, abs(e.x - player_x)),
     )
 
-
 def _lane_vert(target_y: int, player_y: int) -> str:
     """D-pad toward target depth.
 
@@ -161,7 +151,6 @@ def _lane_vert(target_y: int, player_y: int) -> str:
     Guy on the wrong lane for West Side duals.
     """
     return "UP" if target_y > player_y else "DOWN"
-
 
 def _pack_with_spawns(
     living: list[Any], spawn_l: list[dict[str, int]]
@@ -183,11 +172,9 @@ def _pack_with_spawns(
         )
     return pack
 
-
 def _entity_status(entity: Any) -> int:
     """Combat status byte (``animation``); default drawn/fighting."""
     return int(getattr(entity, "animation", 3))
-
 
 def _w5_setup_walk_frames(state_name: str, mid_tag: str) -> int:
     """Forced walk-past only from entry / Clear_w4 / fresh dual mid.
@@ -205,7 +192,6 @@ def _w5_setup_walk_frames(state_name: str, mid_tag: str) -> int:
     ):
         return 0
     return 55
-
 
 def _w5_dual_action(
     *,
@@ -394,13 +380,6 @@ def _w5_dual_action(
     return buttons("B", "LEFT"), "west_pack_jd"
 
 
-def _reset(env: Any) -> Any:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return result[0]
-    return result
-
-
 def _snap_ram(ram: Any) -> dict[str, int]:
     return {
         "game_status": read_u8(ram, ADDR_GAME_STATUS),
@@ -411,7 +390,6 @@ def _snap_ram(ram: Any) -> dict[str, int]:
         "boss_hp": read_u8(ram, BOSS_BASE + OFF_HP),
         "boss_dead_flag": read_u8(ram, ADDR_BOSS_DEAD_FLAG),
     }
-
 
 def _living_brief(ram: Any, cam: int, px: int) -> list[dict[str, int]]:
     out: list[dict[str, int]] = []
@@ -432,7 +410,6 @@ def _living_brief(ram: Any, cam: int, px: int) -> list[dict[str, int]]:
                 }
             )
     return out
-
 
 def _spawn_living_brief(
     ram: Any, cam: int, px: int
@@ -457,7 +434,6 @@ def _spawn_living_brief(
             )
     return out
 
-
 def _is_engage_ready(
     state: GameState, enemies: list[dict[str, int]]
 ) -> bool:
@@ -472,7 +448,6 @@ def _is_engage_ready(
     nearest = min(enemies, key=lambda e: abs(e["dx"]))
     sx = state.player_x - state.camera_x
     return abs(nearest["dx"]) <= ENGAGE_DX and 40 <= sx <= 180
-
 
 def _advance_action(
     status: int,
@@ -510,7 +485,6 @@ def _advance_action(
         return buttons("RIGHT")
     return idle_action()
 
-
 def run_stage3_advance(
     *,
     state_name: str = "Stage2_Clear",
@@ -546,7 +520,7 @@ def run_stage3_advance(
     screenshots: list[str] = []
     saved_states: list[str] = []
     heal_used: int | None = None
-    obs = _reset(env)
+    obs, _ = reset_obs(env)
     ram = env.get_ram()
     state = parse_game_state(ram, frame=0)
     start = {**snapshot_state(state), **_snap_ram(ram)}
@@ -1747,7 +1721,6 @@ def run_stage3_advance(
     print(f"outcome={outcome} saved={saved_states}")
     return report
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default="Stage2_Clear")
@@ -1806,7 +1779,6 @@ def main() -> None:
         w5_tactic=W5Tactic(args.w5_tactic),
         heal_hp=args.heal_hp,
     )
-
 
 if __name__ == "__main__":
     main()

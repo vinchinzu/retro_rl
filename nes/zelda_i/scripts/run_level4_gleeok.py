@@ -9,22 +9,13 @@ Examples::
         --infinite-life --trials 2 --save-state --tag l4_rvae_gleeok_tf
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = _REPO_ROOT / "nes"
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -42,7 +33,6 @@ from zelda_i.level4_dungeon import ROOM_L4_GLEEOK_13
 from zelda_i.level4_overworld import LEVEL4
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
-
 
 def _provenance(
     path: Path,
@@ -70,7 +60,6 @@ def _provenance(
         selected_trial=trial,
         natural_entry=False,
     )
-
 
 def run_once(
     *,
@@ -102,8 +91,7 @@ def run_once(
         "notes": [],
     }
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         for i in range(3):
             obs, *_ = env.step(nes_idle_action())
             total[0] += 1
@@ -182,7 +170,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -252,7 +239,6 @@ def main() -> int:
     write_json_report(out, report)
     print("DUAL", dual, "→", out)
     return 0 if (dual or (len(trials) == 1 and trials[0].get("ok"))) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

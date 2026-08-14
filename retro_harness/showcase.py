@@ -12,7 +12,7 @@ from typing import Any, Protocol
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from retro_harness.env import get_available_states, make_env
+from retro_harness.env import get_available_states, make_env, reset_obs
 from retro_harness.ladder import REPO_ROOT, entry_for
 from retro_harness.video import CaptureSession, FooterLabels, FrameVideoWriter
 from retro_harness.video import FOOTER_HEIGHT
@@ -169,8 +169,7 @@ def record_showcase(
                 players=game.players if game.players > 1 else None,
             )
             try:
-                result = env.reset()
-                obs = result[0] if isinstance(result, tuple) else result
+                obs, _ = reset_obs(env)
 
                 def footer(
                     active_env: object,

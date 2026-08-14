@@ -40,7 +40,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import numpy as np
 
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.segment_runner import configure_headless, write_json_report
 from retro_harness.youtube_intro import DEFAULT_INTRO_FRAMES, project_intro_lines
 from smb.paths import GAME_DIR, GAME_V0, MODELS_DIR, RECORDINGS_DIR
@@ -207,8 +207,7 @@ def record_happylee(
 
     configure_headless()
     env = make_env(GAME_V0, "Level1_1", GAME_DIR, render_mode="rgb_array")
-    result = env.reset()
-    obs = result[0] if isinstance(result, tuple) else result
+    obs, _ = reset_obs(env)
 
     video: _VideoWriter | None = None
     audio_rate = _env_audio_rate(env) if record_audio else None
@@ -517,8 +516,7 @@ def record_hybrid_ending(
     frames = expand_nes9_rle(load_nes9_rle_seed(seed_path))
     configure_headless()
     env = make_env(GAME_V0, "Level1_1", GAME_DIR, render_mode="rgb_array")
-    result = env.reset()
-    obs = result[0] if isinstance(result, tuple) else result
+    obs, _ = reset_obs(env)
     if obs is None:
         obs = env.render()
     h, w = int(obs.shape[0]), int(obs.shape[1])

@@ -39,7 +39,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from super_metroid.emulator_validation import ROM_AVAILABLE
 from super_metroid.routes.kpdr.ceres.arm_pump import _ceres_arm_pump_until
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_RIDLEY,
@@ -176,33 +175,41 @@ def validate_ceres_fourth_room_emulator(
     if not start_state_path.exists():
         raise FileNotFoundError(f"Start state not found: {start_state_path}")
 
-    # Create session and run helper
-    from super_metroid.routes.continuous import make_super_metroid_session
+    from super_metroid.assist import UnlimitedResourcesAssist
+    from super_metroid.dev.common import make_dev_env
+    from super_metroid.progression import MORPH_GRAPH
+    from super_metroid.routes.runtime import RouteSession
+    from retro_harness.env import read_state_bytes
 
-    session = make_super_metroid_session(state_path=start_state_path)
-    initial_room = session.state.room_id
-
+    env = make_dev_env()
     try:
-        fixture = play_ceres_fourth_room(session)
-        success = session.state.room_id == ROOM_CERES_RIDLEY
-    except TimeoutError:
-        success = False
-        fixture = CeresFourthRoomFixture(
-            from_room_id=ROOM_CERES_SCIENTIST,
-            to_room_id=ROOM_CERES_RIDLEY,
-            frames_consumed=0,
-            helper_source="timeout",
-            emulator_validated=False,
+        env.reset()
+        env.em.set_state(read_state_bytes(start_state_path))
+        session = RouteSession(
+            env, writer=None, assist=UnlimitedResourcesAssist(), graph=MORPH_GRAPH
         )
-
-    return CeresFourthRoomFixture(
-        from_room_id=fixture.from_room_id,
-        to_room_id=fixture.to_room_id,
-        frames_consumed=fixture.frames_consumed,
-        helper_source=fixture.helper_source,
-        emulator_validated=True,
-        emulator_success=success,
-        emulator_final_room=session.state.room_id,
-        emulator_final_x=int(session.state.samus_x),
-        emulator_final_y=int(session.state.samus_y),
-    )
+        try:
+            fixture = play_ceres_fourth_room(session)
+            success = session.state.room_id == ROOM_CERES_RIDLEY
+        except TimeoutError:
+            success = False
+            fixture = CeresFourthRoomFixture(
+                from_room_id=ROOM_CERES_SCIENTIST,
+                to_room_id=ROOM_CERES_RIDLEY,
+                frames_consumed=0,
+                helper_source="timeout",
+                emulator_validated=False,
+            )
+        return CeresFourthRoomFixture(
+            from_room_id=fixture.from_room_id,
+            to_room_id=fixture.to_room_id,
+            frames_consumed=fixture.frames_consumed,
+            helper_source=fixture.helper_source,
+            emulator_validated=True,
+            emulator_success=success,
+            emulator_final_room=session.state.room_id,
+            emulator_final_x=int(session.state.samus_x),
+            emulator_final_y=int(session.state.samus_y),
+        )
+    finally:
+        env.close()

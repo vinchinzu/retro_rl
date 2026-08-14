@@ -16,28 +16,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from alttp.opening_route.main_hall_to_zelda import run_from_main_hall  # noqa: E402
-from alttp.paths import RECORDINGS_DIR  # noqa: E402
-from alttp.room_map import load_room_map  # noqa: E402
-from alttp.room_sense import overlay_from_env  # noqa: E402
-from alttp.startup import build_boot_env  # noqa: E402
-from alttp.primitives import settle_control  # noqa: E402
-
+from alttp.opening_route.main_hall_to_zelda import run_from_main_hall
+from alttp.paths import RECORDINGS_DIR
+from alttp.room_map import load_room_map
+from alttp.room_sense import overlay_from_env
+from alttp.startup import build_boot_env
+from alttp.primitives import settle_control
 
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-
 
 def main(argv: list[str] | None = None) -> int:
     _configure_headless()
@@ -109,7 +101,6 @@ def main(argv: list[str] | None = None) -> int:
     if result.phase == "left_main_hall_west":
         return 0
     return 0 if result.ok else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

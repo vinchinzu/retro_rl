@@ -34,8 +34,8 @@ geometry only (`docs/ASSIST_CONTRACT.md`).
 
 | Agent | Own (create/edit) | Do **not** touch |
 |-------|-------------------|------------------|
-| L3 | `docs/LEVEL3_ROUTE.md`, `level3_overworld.py`, `scripts/probe_level3_entry.py`, `Level3*.state` | L2 modules, STATUS |
-| L4 | `docs/LEVEL4_ROUTE.md`, `level4_overworld.py`, `scripts/probe_level4_entry.py` | same |
+| L3 | `docs/LEVEL3_ROUTE.md`, `level3_overworld.py`, `scripts/run_l2_to_l3.py`, `Level3*.state` | L2 modules, STATUS |
+| L4 | `docs/LEVEL4_ROUTE.md`, `level4_overworld.py`, `scripts/run_level4_entry.py` | same |
 | L5 | `docs/LEVEL5_ROUTE.md`, `level5_overworld.py`, `scripts/probe_level5_entry.py` | same |
 | L6 | `docs/LEVEL6_ROUTE.md`, `level6_overworld.py`, `scripts/probe_level6_entry.py` | same |
 | L7 | `docs/LEVEL7_ROUTE.md`, `level7_overworld.py` | same |

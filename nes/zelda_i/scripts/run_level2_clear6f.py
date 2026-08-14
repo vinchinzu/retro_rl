@@ -15,19 +15,11 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level2_clear6f.py --save-state --trials 2
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -46,7 +38,6 @@ from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
 
-
 def _run_controller(env, controller, max_frames: int):
     obs = None
     for _ in range(max_frames):
@@ -56,15 +47,12 @@ def _run_controller(env, controller, max_frames: int):
             break
     return obs
 
-
 def _act(env, direction: str | None) -> None:
     env.step(nes_action(direction) if direction else nes_idle_action())
-
 
 def _idle(env, n: int = 1) -> None:
     for _ in range(n):
         env.step(nes_idle_action())
-
 
 def _nav_east_key_to_6e(env) -> bool:
     """Level2EastKey (0x7e) → free 0x7d → 0x6d → 0x6e west entry."""
@@ -113,7 +101,6 @@ def _nav_east_key_to_6e(env) -> bool:
             _act(env, "DOWN" if s.link_y < 141 else "UP")
     return snap().screen == 0x6E and snap().mode == PLAY_MODE
 
-
 def _clear_6e_keep_mid(env) -> GenericDungeonRoomController:
     """Clear 3 ropes without parking in west/north alcoves."""
     controller = GenericDungeonRoomController(ROOM_6E_SPEC)
@@ -135,7 +122,6 @@ def _clear_6e_keep_mid(env) -> GenericDungeonRoomController:
         if controller.success or controller.phase is DungeonPhase.FAILED:
             break
     return controller
-
 
 def _enter_6f_key_door(env) -> bool:
     """0x6e key-RIGHT: band y≈113 → wall x≥200 → vertical y≈141 → pure RIGHT.
@@ -204,7 +190,6 @@ def _enter_6f_key_door(env) -> bool:
             _act(env, "RIGHT")
     return snap().screen == 0x6F and snap().mode == PLAY_MODE
 
-
 def run_once(
     *,
     tag: str = "level2_clear6f",
@@ -216,8 +201,7 @@ def run_once(
     clear6e: GenericDungeonRoomController | None = None
     controller = GenericDungeonRoomController(ROOM_6F_SPEC)
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         entry = read_snapshot(env.get_ram())
 
@@ -333,7 +317,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=1)
@@ -390,7 +373,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {output}")
     return 0 if all(report.get("ok") for report in reports) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -20,6 +20,7 @@ import numpy as np
 
 from retro_harness.env import (
     make_env,
+    reset_obs,
     state_path,
     write_state_bytes,
 )
@@ -152,8 +153,7 @@ def run_lab_trial(request: TrialRequest) -> dict[str, Any]:
     clear_ram: np.ndarray | None = None
     state_bytes: bytes | None = None
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         start_ram = ram_snapshot(env.get_ram())
 
@@ -288,8 +288,7 @@ def _drive_exit(
     entered = False
     play_frames = 0
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         env.em.set_state(state_data)
         obs, *_ = env.step(nes_idle_action())
         for frame in range(max_frames):

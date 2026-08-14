@@ -23,15 +23,8 @@ uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirScreen2 --tar
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.policy import AirManPolicy, AirScreen1Policy
@@ -55,7 +48,6 @@ from retro_harness.segment_runner import (
 DEFAULT_STATE = "Level1"
 DEFAULT_TARGET_SCREEN = 2
 
-
 def _make_policy(*, state_name: str, target_screen: int):
     """Pick policy for start state / target."""
     if target_screen <= 1:
@@ -72,7 +64,6 @@ def _make_policy(*, state_name: str, target_screen: int):
     else:
         start = "level1"
     return AirManPolicy(target_camera_screen=target_screen, start=start)
-
 
 def run_air_segment(
     *,
@@ -128,7 +119,6 @@ def run_air_segment(
         f"prog={last['final_progress_x']}"
     )
     return report
-
 
 def _run_one(
     *,
@@ -227,7 +217,6 @@ def _run_one(
         },
     }
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=DEFAULT_STATE)
@@ -246,7 +235,6 @@ def main() -> None:
         trials=args.trials,
     )
     raise SystemExit(0 if report["success"] else 1)
-
 
 if __name__ == "__main__":
     main()

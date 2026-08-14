@@ -18,14 +18,8 @@ import os
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-
 
 def cmd_list(_: argparse.Namespace) -> int:
     from alttp.room_sense import list_room_maps, load_room_map
@@ -42,7 +36,6 @@ def cmd_list(_: argparse.Namespace) -> int:
         if m.source_state:
             print(f"             state: {m.source_state}")
     return 0
-
 
 def cmd_show(args: argparse.Namespace) -> int:
     from alttp.room_sense import load_room_map
@@ -68,7 +61,6 @@ def cmd_show(args: argparse.Namespace) -> int:
     for n in s.get("notes") or []:
         print(f"  note: {n}")
     return 0
-
 
 def cmd_run(args: argparse.Namespace) -> int:
     _configure_headless()
@@ -160,7 +152,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     # Isolated edge: ok=True means door destination reached.
     return 0 if result.ok else 1
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -185,7 +176,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return int(args.func(args))
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

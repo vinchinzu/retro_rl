@@ -22,7 +22,6 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import stable_retro as retro
@@ -63,7 +62,6 @@ P2_HEALTH_GETRAM_ADDR = 0x50AB  # get_ram() index
 P1_HEALTH_PAR_ADDR = 0x7E2EFC  # SNES bus address for WRAM 0x2EFC
 P2_HEALTH_PAR_ADDR = 0x7E30AA  # SNES bus address for WRAM 0x30AA
 
-
 def create_env(config, game_dir, state_name):
     """Create a raw (unwrapped) retro environment."""
     retro.data.Integrations.add_custom_path(str(game_dir / "custom_integrations"))
@@ -76,13 +74,11 @@ def create_env(config, game_dir, state_name):
     )
     return env
 
-
 def step_noop(env, n=1):
     """Step with no input."""
     noop = np.zeros(12, dtype=np.int8)
     for _ in range(n):
         env.step(noop)
-
 
 def step_start(env, n=4):
     """Press START button."""
@@ -91,7 +87,6 @@ def step_start(env, n=4):
     for _ in range(n):
         env.step(buttons)
 
-
 def read_health(env):
     """Read health from RAM directly."""
     ram = env.unwrapped.get_ram()
@@ -99,7 +94,6 @@ def read_health(env):
         "health": int(ram[P1_HEALTH_GETRAM_ADDR]),
         "enemy_health": int(ram[P2_HEALTH_GETRAM_ADDR]),
     }
-
 
 def set_health_cheats(env, p1_hp, p2_hp):
     """Set health values via Pro Action Replay cheat codes."""
@@ -110,7 +104,6 @@ def set_health_cheats(env, p1_hp, p2_hp):
     p2_cheat = f"{P2_HEALTH_PAR_ADDR:06X}:{p2_hp:02X}"
     env.em.add_cheat(p1_cheat)
     env.em.add_cheat(p2_cheat)
-
 
 def kill_enemy(env):
     """Win the current round by setting enemy HP low."""
@@ -134,7 +127,6 @@ def kill_enemy(env):
     
     # Clear cheats if timeout
     env.em.clear_cheats()
-
 
 def wait_for_health_reset(env, max_frames=6000, require_enemy_full=True,
                           no_press_frames=0):
@@ -167,7 +159,6 @@ def wait_for_health_reset(env, max_frames=6000, require_enemy_full=True,
                     break
     return False
 
-
 def win_match(env, verbose=True):
     """Win a standard match (best of 3 rounds) via health cheat."""
     # Round 1
@@ -192,7 +183,6 @@ def win_match(env, verbose=True):
 
     return True
 
-
 def save_state(env, config, game_dir, state_name):
     """Save current emulator state to disk."""
     state_data = env.em.get_state()
@@ -200,7 +190,6 @@ def save_state(env, config, game_dir, state_name):
     with gzip.open(save_path, "wb") as f:
         f.write(state_data)
     return save_path
-
 
 def find_start_index(start_from):
     """Find tournament index for a given prefix."""
@@ -211,7 +200,6 @@ def find_start_index(start_from):
             return i
     print(f"ERROR: Unknown stage '{start_from}'. Valid: {[p for p,_,_ in TOURNAMENT]}")
     sys.exit(1)
-
 
 def extract_tournament(char, config, game_dir, start_from=None):
     """Extract states for one character through the full tournament."""
@@ -274,7 +262,6 @@ def extract_tournament(char, config, game_dir, start_from=None):
     env.close()
     return extracted
 
-
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Extract MK2 tournament states via RAM cheats")
@@ -319,7 +306,6 @@ def main():
             print(f"  {char}: FAILED or no new states")
     
     print(f"\nTotal: {total_states} states extracted")
-
 
 if __name__ == "__main__":
     main()

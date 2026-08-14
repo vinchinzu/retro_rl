@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from retro_harness.game_layout import game_paths
 
-GAME_DIR = Path(__file__).resolve().parent
-GAME = "JoeAndMac-Snes"
-RECORDINGS_DIR = GAME_DIR / "recordings"
+_paths = game_paths(__file__, "JoeAndMac-Snes")
+GAME_DIR = _paths.game_dir
+REPO_ROOT = _paths.repo_root
+INTEGRATION = _paths.integration
+GAME = INTEGRATION
+INTEGRATION_DIR = _paths.integration_dir
+RECORDINGS_DIR = _paths.recordings_dir
+ROMS_DIR = _paths.roms_dir
+DOCS_DIR = _paths.docs_dir
 STAGE1_STATE = "Stage1"

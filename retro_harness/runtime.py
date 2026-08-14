@@ -8,10 +8,9 @@ from typing import Any
 def reset_env(env: Any) -> tuple[Any, dict[str, Any]]:
     """Reset an environment and normalize old/new API return values."""
 
-    result = env.reset()
-    if isinstance(result, tuple) and len(result) == 2:
-        return result[0], result[1] if isinstance(result[1], dict) else {}
-    return result, {}
+    from retro_harness.env import reset_obs
+
+    return reset_obs(env)
 
 
 def step_env(

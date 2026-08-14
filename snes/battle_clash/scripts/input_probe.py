@@ -2,26 +2,17 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from battle_clash.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.actions import buttons, idle_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
-
 
 def run_probe() -> int:
     """Boot the title and report whether cursor/light-gun injection exists."""
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         for frame in range(1, 601):
             slot = frame % 240
             if 20 <= slot < 30:
@@ -50,7 +41,6 @@ def run_probe() -> int:
         return 0 if not cursor_methods else 1
     finally:
         env.close()
-
 
 if __name__ == "__main__":
     raise SystemExit(run_probe())

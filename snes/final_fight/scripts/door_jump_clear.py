@@ -12,13 +12,8 @@ Stage1_Clear with HP tables in the JSON report.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from final_fight.ram import (
@@ -54,7 +49,6 @@ DAMND_PUNCH_HI = 40
 # 20f often leaves HP10; 60f clears at full HP40 from PostThug5.
 DAMND_DRAW_KITE = 60
 
-
 def _living(ram: Any, cam: int) -> list[dict[str, int]]:
     es: list[dict[str, int]] = []
     for i, base in enumerate(ENEMY_BASES):
@@ -65,7 +59,6 @@ def _living(ram: Any, cam: int) -> list[dict[str, int]]:
         if status == 3 and 0 < hp <= 128 and cam - 128 <= x <= cam + 320:
             es.append({"slot": i, "hp": hp, "x": x, "y": y})
     return es
-
 
 def _nearest_ghost(
     ram: Any, cam: int, px: int
@@ -82,7 +75,6 @@ def _nearest_ghost(
             if best is None or d < best[0]:
                 best = (d, x, y, x - px, hp)
     return best
-
 
 def _fight_action(
     *,
@@ -132,7 +124,6 @@ def _fight_action(
         return buttons("LEFT"), "park", punch_cd
     return idle_action(), "bait", punch_cd
 
-
 def _damnd_action(
     *,
     px: int,
@@ -162,7 +153,6 @@ def _damnd_action(
     act = buttons("RIGHT") if dx > 0 else buttons("LEFT")
     return act, "b_close"
 
-
 def _ghost_action(
     *,
     zero: tuple[int, int, int, int, int],
@@ -176,7 +166,6 @@ def _ghost_action(
     if (z_phase % 8) < 3:
         return buttons("Y"), "z_punch", z_phase + 1
     return idle_action(), "z_gap", z_phase + 1
-
 
 def run_door_jump_clear(
     *,
@@ -215,7 +204,6 @@ def run_door_jump_clear(
     write_json_report(out / "door_jump_clear.json", best)
     return best
 
-
 def _score(report: dict[str, Any]) -> tuple[int, int, int, int]:
     end = report["end_player_hp"]
     end_ok = 0 if end > 128 or end <= 0 else end
@@ -226,7 +214,6 @@ def _score(report: dict[str, Any]) -> tuple[int, int, int, int]:
         end_ok,
     )
 
-
 def _kill_offset(state_name: str) -> int:
     for n in (5, 4, 3, 2, 1):
         if f"PostThug{n}" in state_name:
@@ -234,7 +221,6 @@ def _kill_offset(state_name: str) -> int:
     if state_name == "Boss_Drawn":
         return 5
     return 0
-
 
 def _one_trial(
     *,
@@ -601,7 +587,6 @@ def _one_trial(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default="Boss_ThugMid")
@@ -609,7 +594,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--out-dir", type=Path, default=None)
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI for jump-dash door clear."""
@@ -636,7 +620,6 @@ def main(argv: list[str] | None = None) -> int:
     for hit in report["boss_hits"][:12]:
         print(f"  boss {hit}")
     return 0 if report.get("success") else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

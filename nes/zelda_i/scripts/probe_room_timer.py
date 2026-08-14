@@ -23,19 +23,11 @@ uv run python zelda_i/scripts/probe_room_timer.py self-check
 ```
 """
 
-# Script execution adds the repository root before importing local packages.
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from zelda_i.paths import GAME, GAME_DIR, ROOM_TIMINGS_DIR
 from zelda_i.room_timer import (
@@ -45,17 +37,14 @@ from zelda_i.room_timer import (
     snapshots_from_json,
 )
 
-
 def _default_output(name: str) -> Path:
     ROOM_TIMINGS_DIR.mkdir(parents=True, exist_ok=True)
     return ROOM_TIMINGS_DIR / name
-
 
 def _write_report(path: Path, report: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {path} ({report.get('visit_count', 0)} visits)")
-
 
 def cmd_offline(args: argparse.Namespace) -> int:
     raw = json.loads(Path(args.input).read_text(encoding="utf-8"))
@@ -67,9 +56,8 @@ def cmd_offline(args: argparse.Namespace) -> int:
     _write_report(out, report)
     return 0
 
-
 def cmd_session(args: argparse.Namespace) -> int:
-    from retro_harness.env import make_env
+    from retro_harness.env import make_env, reset_obs
     from retro_harness.nes import nes_idle_action
     from retro_harness.segment_runner import configure_headless
     from zelda_i.ram import read_snapshot
@@ -77,8 +65,7 @@ def cmd_session(args: argparse.Namespace) -> int:
     configure_headless()
     env = make_env(GAME, args.state, GAME_DIR, render_mode="rgb_array")
     try:
-        result = env.reset()
-        _obs = result[0] if isinstance(result, tuple) else result
+        _obs, _ = reset_obs(env)
         # One idle settle step so RAM reflects post-load play.
         for _ in range(max(1, args.settle)):
             env.step(nes_idle_action())
@@ -113,7 +100,6 @@ def cmd_session(args: argparse.Namespace) -> int:
     _write_report(out, report)
     return 0
 
-
 def cmd_self_check(_args: argparse.Namespace) -> int:
     """Import/syntax smoke without ROM: synthetic two-screen hop."""
     samples = [
@@ -135,7 +121,6 @@ def cmd_self_check(_args: argparse.Namespace) -> int:
         json.dumps({"visit_count": 1, "location_frames": 50, "dwell_frames": 11}),
     )
     return 0
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -175,7 +160,6 @@ def main() -> None:
 
     args = parser.parse_args()
     raise SystemExit(args.func(args))
-
 
 if __name__ == "__main__":
     main()

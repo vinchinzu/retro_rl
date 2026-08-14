@@ -22,17 +22,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import get_available_states, make_env, save_state
+from retro_harness.env import get_available_states, make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -58,7 +53,6 @@ MIN_BOOT_FRAME = 200
 # settle=0 and 2 die at first pit (~x=676).
 NATURAL_SETTLE_FRAMES = 1
 
-
 def _boot_to_ready(env) -> tuple[object, int]:
     frame = 0
     obs = None
@@ -75,7 +69,6 @@ def _boot_to_ready(env) -> tuple[object, int]:
             return obs, frame
     return obs, frame
 
-
 def _settle(env, n: int) -> object:
     """Hold idle for ``n`` frames after boot ready (natural-entry phase align)."""
     obs = None
@@ -86,7 +79,6 @@ def _settle(env, n: int) -> object:
     for _ in range(n):
         obs, *_ = env.step(idle)
     return obs
-
 
 def run_1_1(
     *,
@@ -118,8 +110,7 @@ def run_1_1(
         action_size=int(env.action_space.shape[0]),
     )
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         boot_frames = 0
         settle_frames = 0
         if natural_entry:
@@ -230,7 +221,6 @@ def run_1_1(
     finally:
         env.close()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=DEFAULT_STATE, help="Start state name")
@@ -281,7 +271,6 @@ def main() -> None:
     if args.trials > 1:
         print(f"trials {ok}/{args.trials} success")
     raise SystemExit(0 if ok == args.trials else 1)
-
 
 if __name__ == "__main__":
     main()

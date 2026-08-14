@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Game play dispatcher. Same shape as snes/super_metroid/play:
+#   ./play smb                         # SMB 32-exit free-record
+#   ./play smb 4-1 all_exits_v1
+#   ./play sm                          # Super Metroid guided_human
+#   ./play sm morph full_start_v1
+#   ./play --list
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+usage() {
+  cat <<'EOF'
+Usage: ./play <game> [start] [name] [args...]
+
+Games:
+  smb              Super Mario Bros. 32-exit free-record
+  sm, super_metroid
+  alttp-rando, alttp_rando
+  sm-rando, sm_rando
+
+Examples:
+  ./play smb
+  ./play smb 4-1 all_exits_v1
+  ./play smb --list
+  ./play sm morph full_start_v1
+EOF
+}
+
+if [[ $# -lt 1 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ "${1:-}" == "--list" ]]; then
+  echo "smb              nes/smb/play              32-exit free-record"
+  echo "sm               snes/super_metroid/play   guided_human"
+  echo "alttp-rando      snes/alttp_rando/play     FirstPlay + record"
+  echo "sm-rando         snes/sm_rando/play        FirstPlay + record"
+  exit 0
+fi
+
+GAME="$1"
+shift
+
+case "$GAME" in
+  smb|mario|smb1)
+    exec "$ROOT/nes/smb/play" "$@"
+    ;;
+  sm|super_metroid|super-metroid)
+    exec "$ROOT/snes/super_metroid/play" "$@"
+    ;;
+  alttp-rando|alttp_rando|alttpr)
+    exec "$ROOT/snes/alttp_rando/play" "$@"
+    ;;
+  sm-rando|sm_rando|smr)
+    exec "$ROOT/snes/sm_rando/play" "$@"
+    ;;
+  *)
+    echo "Unknown game: $GAME" >&2
+    echo "Try: ./play --list" >&2
+    exit 1
+    ;;
+esac

@@ -7,7 +7,8 @@ Package layout
 * ``magnet`` — Magnet Stairs + Falling Tile reverse
 * ``elev_escape`` — elev shaft climb → ship leave
 * ``outbound`` — play_ceres_outbound_to_ridley / play_ceres_escape_to_landing
-* ``first_room_fixture`` — searched hop/tape for first Ceres room (Elevator → Falling)
+* ``room_tape`` — rooms 1–3 as slices of the product outbound prefix
+* ``first_room_fixture`` / ``second_room_fixture`` / ``third_room_fixture`` — thin aliases
 
 Takeoff types live in ``super_metroid.takeoff``. Knockback lives in
 ``routes.skills.knockback``. Import those from the owning module.
