@@ -49,6 +49,7 @@ from harvest.tasks.nav import Point
 from harvest.core.tile_catalog import Tool
 from harvest.tasks.harvest_task import HarvestTask, crop_nav_target_px, live_harvestable_crop_tiles
 from harvest.tasks.berry_ship import BerryShipTask
+from harvest.tasks.buy_seeds import BuySeedsTask
 from harvest.tasks.mountain_berry import MountainBerryTask
 from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask
 from harvest.tasks.recorded_task import RecordedTask
@@ -236,15 +237,32 @@ def _build_recorded_transition(
 def _build_cross_map(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
+    recording_name = spec.params.get("recording_name", "")
+    stock_field = spec.params.get("stock_field", "")
+    if not stock_field and "potato" in str(recording_name):
+        stock_field = "potato_seeds"
     return CrossMapRecordedTask(
         name=f"cross_map_{spec.phase}",
         exit_direction=spec.params.get("exit_direction", "left"),
-        recording_name=spec.params.get("recording_name", ""),
+        recording_name=recording_name,
         recording_start=spec.params.get("recording_start", 0),
         origin_tilemap=spec.params.get("origin_tilemap", 0x00),
         tasks_dir=ctx.tasks_dir,
         timeout=spec.params.get("timeout", 5000),
         continue_after_return=spec.params.get("continue_after_return", 0),
+        stock_field=stock_field,
+        require_purchase=bool(stock_field),
+    )
+
+
+def _build_shop_buy(
+    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
+) -> Task:
+    return BuySeedsTask(
+        name=f"shop_buy_{spec.phase.lower()}",
+        timeout=spec.params.get("timeout", 14_000),
+        nav_timeout=spec.params.get("nav_timeout", 6_000),
+        stock_field=spec.params.get("stock_field", "potato_seeds"),
     )
 
 
@@ -503,6 +521,7 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.CHICKEN_SALE_EVENT: _build_chicken_sale_event,
     PhaseKind.RECORDED_TRANSITION: _build_recorded_transition,
     PhaseKind.CROSS_MAP: _build_cross_map,
+    PhaseKind.SHOP_BUY: _build_shop_buy,
     PhaseKind.DIRECTIONAL_TRANSITION: _build_directional_transition,
     PhaseKind.MULTI_NAV: _build_multi_nav,
     PhaseKind.BERRY_SHIP: _build_berry_ship,

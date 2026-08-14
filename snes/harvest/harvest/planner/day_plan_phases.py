@@ -482,6 +482,10 @@ def build_day_phases(
         # Berries ship first, then potato seeds only if wallet can pay.
         phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
+        # Shop hop used to starve morning CLEAR. After a real buy we are back
+        # on the farm with time left — clear before go-home.
+        if seed_buy_phases and has_debris and policy.include_field_clear:
+            phases.append(CLEAR_FIELD_PHASE)
     elif seed_buy_phases:
         # Keep-alive farm: still buy seeds early so plant/water is not starved.
         phases.extend(seed_buy_phases)
@@ -622,6 +626,8 @@ def build_outdoor_day_phases(
     if berry_before_clear:
         phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
+        if seed_buy_phases and has_debris and policy.include_field_clear:
+            phases.append(CLEAR_FIELD_PHASE)
     elif seed_buy_phases:
         phases.extend(seed_buy_phases)
 

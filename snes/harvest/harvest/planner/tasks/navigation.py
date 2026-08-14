@@ -327,23 +327,66 @@ class CrossMapRecordedTask(Task):
     timeout: int = 5000
     min_replay_before_return: int = 100
     continue_after_return: int = 0  # extra frames to play after return detection
+    stock_field: str = ""
+    require_purchase: bool = False
 
     _phase: str = field(default="exit", init=False)
     _step_count: int = field(default=0, init=False)
     _frames: list = field(default_factory=list, init=False)
     _frame_idx: int = field(default=0, init=False)
     _return_frame: int = field(default=0, init=False)
+    _stock_before: int = field(default=0, init=False)
+    _money_before: int = field(default=0, init=False)
+    _seen_shop: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
         self._phase = "exit"
         self._frame_idx = 0
         self._return_frame = 0
+        self._seen_shop = False
+        from harvest.core.ram_catalog import read_ram_value
+
+        if self.stock_field:
+            try:
+                self._stock_before = int(read_ram_value(world.ram, self.stock_field) or 0)
+            except Exception:
+                self._stock_before = 0
+        try:
+            self._money_before = int(read_ram_value(world.ram, "money") or 0)
+        except Exception:
+            self._money_before = 0
         recording = RecordedTask.load(self.recording_name, self.tasks_dir)
         self._frames = recording.frames[self.recording_start:]
 
     def can_start(self, world: WorldState) -> bool:
         return True
+
+    def _purchase_ok(self, world: WorldState) -> bool:
+        if not self.require_purchase:
+            return True
+        from harvest.core.ram_catalog import read_ram_value
+
+        stock = self._stock_before
+        money = self._money_before
+        if self.stock_field:
+            try:
+                stock = int(read_ram_value(world.ram, self.stock_field) or 0)
+            except Exception:
+                stock = self._stock_before
+        try:
+            money = int(read_ram_value(world.ram, "money") or 0)
+        except Exception:
+            money = self._money_before
+        return self._seen_shop and stock > self._stock_before and money < self._money_before
+
+    def _close_replay(self, world: WorldState, reason: str) -> TaskResult:
+        if self.require_purchase and not self._purchase_ok(world):
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"shop miss ({reason}): no 0x1C/stock/wallet delta",
+            )
+        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
@@ -351,6 +394,8 @@ class CrossMapRecordedTask(Task):
             return TaskResult(status=TaskStatus.FAILURE, reason="cross_map timeout")
 
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        if tilemap == 0x1C:
+            self._seen_shop = True
 
         if self._phase == "exit":
             if not tilemaps_match(tilemap, self.origin_tilemap):
@@ -366,10 +411,10 @@ class CrossMapRecordedTask(Task):
                 self._return_frame = self._frame_idx
             # Continue playing recording for extra frames to walk into map
             if self._frame_idx - self._return_frame >= self.continue_after_return:
-                return TaskResult(status=TaskStatus.SUCCESS, reason="returned to origin map")
+                return self._close_replay(world, "returned to origin map")
 
         if self._frame_idx >= len(self._frames):
-            return TaskResult(status=TaskStatus.SUCCESS, reason="recording complete")
+            return self._close_replay(world, "recording complete")
 
         action = np.array(self._frames[self._frame_idx], dtype=np.int32)
         self._frame_idx += 1

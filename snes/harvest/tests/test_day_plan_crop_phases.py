@@ -275,7 +275,8 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
             rich_names.index("MOUNTAIN_BERRY"),
             rich_names.index("BUY_SEEDS"),
         )
-        self.assertNotIn("CLEAR_FIELD", rich_names)
+        self.assertIn("CLEAR_FIELD", rich_names)
+        self.assertLess(rich_names.index("BUY_SEEDS"), rich_names.index("CLEAR_FIELD"))
 
         poor = build_day_phases(
             None,
@@ -390,8 +391,9 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         self.assertIn("SHIP_BERRY_1", names)
         self.assertIn("BUY_SEEDS", names)
         self.assertLess(names.index("SHIP_BERRY_1"), names.index("BUY_SEEDS"))
-        # Empty outdoor morning: no day CLEAR (bushes wait for evening).
-        self.assertNotIn("CLEAR_FIELD", names)
+        # After shop we are back on the farm — morning CLEAR is allowed.
+        self.assertIn("CLEAR_FIELD", names)
+        self.assertLess(names.index("BUY_SEEDS"), names.index("CLEAR_FIELD"))
 
     def test_full_day_priority_order(self) -> None:
         phases = build_day_phases(

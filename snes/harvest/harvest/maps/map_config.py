@@ -350,7 +350,15 @@ MAP_REGISTRY: Dict[int, MapConfig] = {
         walkable_tiles=SHOP_WALKABLE,
         exits=[],
         landmarks=(
-            MapLandmark("seed_counter", (8, 10), "register", face="up", action="press_a", source="buy_potato_replay"),
+            MapLandmark(
+                "seed_counter",
+                (11, 21),
+                "register",
+                face="up",
+                action="press_a",
+                source="buy_potato_seeds_d2",
+                note="Clerk stand (182,342). Old replay (8,10) was not the buy tile.",
+            ),
             # Flower-shop front room on D1 (same tilemap as seed shop in this ROM).
             MapLandmark(
                 "flower_owner_counter",

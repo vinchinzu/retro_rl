@@ -21,8 +21,10 @@ from harvest.tasks.mountain_berry import (
     MountainBerryTask,
     face_toward_grape,
     first_remaining_segment,
+    format_segment_time,
     go_to_town_waypoints,
     is_mountain_forage,
+    mountain_corridor_segments,
     on_grape_pixel,
 )
 from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask, ROUTE_NAME
@@ -174,9 +176,31 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(BERRY_NAV_SEGMENTS[0], "farm_to_path")
         self.assertTrue(MOUNTAIN_BERRY_PHASE.params["ship"])
 
-    def test_grape_return_route_reverses_safe_approach_and_ends_at_real_bin(self) -> None:
+    def test_corridor_segments_ignore_pick_keep_window(self) -> None:
+        samples = [
+            {"frame": 600, "tilemap": 0x0C, "x": 132, "y": 30, "held_item": 0},
+            {"frame": 634, "tilemap": 0x10, "x": 137, "y": 10, "held_item": 0},
+            {"frame": 1650, "tilemap": 0x10, "x": 326, "y": 409, "held_item": 0},
+            {"frame": 1800, "tilemap": 0x10, "x": 326, "y": 409, "held_item": 3},
+            {"frame": 1810, "tilemap": 0x10, "x": 326, "y": 430, "held_item": 3},
+            {"frame": 2200, "tilemap": 0x0C, "x": 314, "y": 740, "held_item": 3},
+        ]
+        segs = mountain_corridor_segments(samples)
+        self.assertEqual(segs["mountain_entry_to_grape"]["frames"], 1016)
+        self.assertEqual(segs["grape_to_mountain_exit"]["frames"], 390)
+        self.assertEqual(segs["pick_keep"]["frames"], 160)
+        clock = format_segment_time(1016)
+        self.assertEqual(clock["seconds"], 16.933)
+        self.assertEqual(clock["clock"], "00:16.93")
+
+    def test_grape_return_route_drops_south_cliff_and_ends_at_real_bin(self) -> None:
         route = ROUTES[ROUTE_NAME]
         self.assertEqual(route[0].target_px, (326, 409))
+        cliff = SEGMENTS["first_berry_to_mountain_exit"]
+        self.assertEqual(cliff[0].target_px, (326, 409))
+        self.assertEqual(cliff[1].run_direction, "down")
+        self.assertTrue(cliff[1].force_run)
+        self.assertEqual(cliff[1].target_px, (328, 568))
         mountain_exit = next(wp for wp in route if wp.is_exit and wp.tilemap == 0x10)
         self.assertEqual(mountain_exit.exit_direction, "down")
         path_exit = next(wp for wp in route if wp.is_exit and wp.tilemap == 0x0C)
@@ -185,6 +209,8 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(route[-1].target_px, (8 * 16 + 8, 28 * 16 + 8))
         self.assertEqual(route[-1].action_on_arrive, "press_a")
         self.assertEqual(route[-1].action_face, "down")
+        # Cliff return is the short south drop, not the 16-hop inbound reverse.
+        self.assertLess(len(cliff), len(SEGMENTS["mountain_entry_to_first_berry"]))
 
     def test_grape_ship_postcondition_requires_empty_hands_and_shipping_delta(self) -> None:
         world = make_transition_world(0x00, current_tile=(61, 60))

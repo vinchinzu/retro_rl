@@ -45,6 +45,7 @@ from harvest.tasks.mountain_berry import (
     at_grape_stand,
     held_forage_name,
     is_mountain_forage,
+    mountain_corridor_segments,
     nearby_tile_scan,
 )
 from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask
@@ -222,6 +223,7 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
     start = _snap(ram, 0, phase=task.phase_text)
     log = [{"event": "start", **start}]
     splits: list[dict] = []
+    corridor_samples: list[dict] = [start]
     last_phase = task.phase_text
     last_map = start["tilemap"]
     frame = 0
@@ -256,6 +258,16 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
                 kept_seen = True
         phase = task.phase_text
         tilemap = int(read_ram_value(ram, "tilemap"))
+        pos = get_pos_from_ram(ram)
+        corridor_samples.append(
+            {
+                "frame": frame,
+                "tilemap": tilemap,
+                "x": int(pos.x),
+                "y": int(pos.y),
+                "held_item": held_now,
+            }
+        )
         if phase != last_phase or tilemap != last_map:
             row = _snap(ram, frame, phase=phase, extra={"reason": reason, "prev_phase": last_phase})
             splits.append(row)
@@ -329,6 +341,16 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
         _save_png(frame_img, args.screenshot)
         shot = str(args.screenshot)
     log.append({"event": "end", **end, "objects": nearby[:12], "tiles": tiles})
+    corridor_samples.append(end)
+    segments = mountain_corridor_segments(corridor_samples)
+    inbound = segments["mountain_entry_to_grape"]
+    outbound = segments["grape_to_mountain_exit"]
+    print(
+        "[BERRY] segments "
+        f"entry→grape={inbound['frames']}f/{inbound['seconds']}s "
+        f"grape→exit={outbound['frames']}f/{outbound['seconds']}s "
+        f"pick={segments['pick_keep']['frames']}f"
+    )
     return {
         "mode": "reactive",
         "success": success,
@@ -345,6 +367,7 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
         "start": start,
         "end": end,
         "splits": splits,
+        "segments": segments,
         "nearby_objects": nearby[:12],
         "nearby_tiles": tiles,
         "screenshot": shot,
