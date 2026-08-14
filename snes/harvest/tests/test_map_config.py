@@ -203,6 +203,10 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertTrue(ROUTES["farm_to_mountain"][-1].is_exit)
         self.assertEqual(ROUTES["farm_to_mountain"][-1].target_px, (132, 30))
         self.assertEqual(ROUTES["farm_to_path"][-1].target_px, (132, 128))
+        self.assertEqual(ROUTES["path_to_mountain"][0].target_px, (132, 128))
+        self.assertEqual(ROUTES["path_to_mountain"][-1].exit_direction, "up")
+        self.assertEqual(ROUTES["path_to_farm"][0].target_px, (132, 128))
+        self.assertEqual(ROUTES["path_to_farm"][-1].exit_direction, "right")
         self.assertEqual(
             ROUTES["farm_to_town"],
             list(ROUTES["farm_to_path"]) + list(ROUTES["path_to_town"]),

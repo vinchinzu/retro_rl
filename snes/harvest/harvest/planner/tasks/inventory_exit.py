@@ -50,6 +50,13 @@ FARM_BUILDING_EXIT_STAND_TILES: Dict[int, Tuple[int, int]] = {
     BARN_TILEMAP: (8, 22),
     COOP_TILEMAP: (8, 12),
 }
+# The shed tilemap flips to farm while coordinates are still settling through
+# y~392.  Starting another shelf trip there selects the upper-farm route, then
+# snaps to the real door at (26,30) behind collision.  Gate shed success on the
+# settled outdoor stand; other buildings retain their existing looser gate.
+FARM_BUILDING_OUTDOOR_STAND_TILES: Dict[int, Tuple[int, int]] = {
+    SHED_TILEMAP: (26, 30),
+}
 FARM_BUILDING_EXIT_DOOR_X = 8 * 16 + 8
 BARN_EXIT_TROUGH_X = 113
 BARN_EXIT_TROUGH_MAX_X = 130
@@ -312,6 +319,8 @@ class ExitToFarmTask(Task):
                 min_frames_before_success=15,
                 stand_tile=FARM_BUILDING_EXIT_STAND_TILES.get(tilemap),
                 stand_tolerance=1,
+                target_stand_tile=FARM_BUILDING_OUTDOOR_STAND_TILES.get(tilemap),
+                target_stand_tolerance=1,
                 door_align_px=FARM_BUILDING_EXIT_DOOR_X,
                 settle_frames=5,
             )
@@ -480,6 +489,14 @@ class ExitToFarmTask(Task):
             # outdoor control (Gate B / power-on D2). Keep pushing south until
             # coordinates settle near the door front (~344).
             if is_farm_tilemap(tilemap):
+                # Building exits own their destination stand.  In particular,
+                # the shed passes through a plausible farm y before snapping
+                # to its real outside door; do not let the generic house gate
+                # finish the transition early.
+                if isinstance(self._task, DirectionalTransitionTask) and (
+                    self._task.origin_tilemap in _BUILDING_EXIT_TILEMAPS
+                ):
+                    return self._task.step(world)
                 pos_y = get_pos_from_ram(world.ram).y
                 if pos_y < 330:
                     return TaskResult(

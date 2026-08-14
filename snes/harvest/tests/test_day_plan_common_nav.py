@@ -58,6 +58,64 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertIsNone(action)
         self.assertEqual(navigator.path, [])
 
+    def test_navigator_stops_leftright_center_after_flips(self) -> None:
+        """In-place L/R centering against a wall must yield to the path dir."""
+        ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+        navigator = Navigator(Pathfinder(TileScanner()))
+        set_player_pos(ram, 13 * 16 + 3, 8 * 16 + 8)  # 5px left of tile center
+        navigator.update(ram)
+        navigator.path = [(13, 9)]  # go down — wants X center first
+
+        first = navigator.follow_path(ram)
+        self.assertIsNotNone(first)
+        self.assertEqual(int(first[7]), 1)  # right toward center
+
+        set_player_pos(ram, 13 * 16 + 13, 8 * 16 + 8)  # overshoot right
+        navigator.update(ram)
+        second = navigator.follow_path(ram)
+        self.assertIsNotNone(second)
+        self.assertEqual(int(second[6]), 1)  # left
+        self.assertGreaterEqual(navigator._center_flips, 1)
+
+        # Keep flipping until the limiter trips, then push the path (down).
+        yielded = False
+        for _ in range(8):
+            x = 13 * 16 + (3 if navigator._center_dir == "left" else 13)
+            set_player_pos(ram, x, 8 * 16 + 8)
+            navigator.update(ram)
+            action = navigator.follow_path(ram)
+            self.assertIsNotNone(action)
+            if int(action[5]) == 1 and int(action[6]) == 0 and int(action[7]) == 0:
+                yielded = True
+                self.assertGreaterEqual(navigator._center_flips, 4)
+                break
+        self.assertTrue(yielded, "centering never yielded after left/right flips")
+
+    def test_multinav_fails_closed_on_pixel_stuck_leftright(self) -> None:
+        ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+        world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
+        task = MultiMapNavTask(
+            waypoints=[
+                Waypoint(
+                    tilemap=0x00,
+                    target_px=(13 * 16 + 8, 20 * 16 + 8),
+                    radius=12,
+                )
+            ],
+            timeout=800,
+            initial_settle_frames=0,
+        )
+        task.reset(world)
+        task._navigator.path = [(13, 9)]
+        task._pixel_stuck = 48
+        task._pixel_replans = 3
+
+        result = task._pixel_stuck_replan()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("pixel_stuck", result.reason or "")
+
     def test_navigator_clears_path_for_known_nonwalkable_tile(self) -> None:
         ram = make_navigation_ram(blocked_tile=(14, 8), blocked_id=0xA6)
         navigator = Navigator(Pathfinder(TileScanner()))
@@ -262,6 +320,43 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(int(result.action.action[7]), 1)
         self.assertEqual(int(result.action.action[4]), 0)
+
+    def test_walk_into_door_aligns_and_pushes_without_b(self) -> None:
+        world = make_transition_world(0x00, current_tile=(26, 30))
+        set_player_pos(world.ram, 433, 496)
+        task = DirectionalTransitionTask(
+            direction="up",
+            origin_tilemap=0x00,
+            target_tilemap=0x26,
+            stand_tile=(26, 30),
+            door_align_px=424,
+            walk_into_door=True,
+        )
+        task.reset(world)
+        task._stand_reached = True
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(int(result.action.action[0]), 0)
+        self.assertEqual(int(result.action.action[6]), 1)
+
+        set_player_pos(world.ram, 424, 489)
+        task._step_count = 0
+        push = task.step(world)
+        self.assertEqual(int(push.action.action[0]), 0)
+        self.assertEqual(int(push.action.action[4]), 1)
+
+        task._step_count = 8
+        idle = task.step(world)
+        self.assertEqual(int(idle.action.action[0]), 0)
+        self.assertEqual(int(idle.action.action[4]), 0)
+
+    def test_shed_enter_transition_walks_into_door(self) -> None:
+        from harvest.planner.tasks.inventory_shed import shed_enter_transition
+
+        task = shed_enter_transition(name="enter_shed_test", timeout=1500)
+        self.assertTrue(task.walk_into_door)
+        self.assertEqual(task.direction, "up")
+        self.assertEqual(task.door_align_px, 424)
 
     def test_nav_task_soft_arrives_when_stuck_near_target(self) -> None:
         world = make_world(0x00)

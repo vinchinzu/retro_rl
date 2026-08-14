@@ -35,11 +35,10 @@ Future work narrative: [plan.md](plan.md).
 
 ## Ready order (agents)
 
-1. **Same-day plant after D2 buy (`rr-20w.1`)** — pocket `CLEAR_PLOT` then hoe→swap→plant→swap→water. Walk-in to `(13,28)` landed (live watch ready at `(13,26)`). Residual: **bush/held-weed pin** at ~(13,27) (~1500f+ toss/timeout; plant never started); then shed bag-into-carry; stump.
+1. **`rr-rzpd`** — D2 same-day clear/hoe/plant is GREEN (`rr-20w.1` closed); sparse one-cell `CROP_WATER` still skips with `dry_crops=1`.
 2. **`rr-3ae8` / `rr-5in`** — Gate B re-soak after CROP_WATER refill exhaust (power-on continuous; money>$100 to Summer).
-3. **`rr-rzpd`** — day-plan ENSURE_CAN/CROP_WATER soft fails after plant (related water path).
-4. `rr-rbk` / `rr-pzw` / `rr-1vc` after Gate B or in parallel if tip blocked on long soak only.
-5. `rr-hheu` M4; P3 (`rr-7js5`, `rr-zcd3`, `rr-buo1`).
+3. `rr-rbk` / `rr-pzw` / `rr-1vc` after Gate B or in parallel if tip blocked on long soak only.
+4. `rr-hheu` M4; P3 (`rr-7js5`, `rr-zcd3`, `rr-buo1`).
 
 ## Explicit non-goals (now)
 
@@ -56,3 +55,4 @@ Future work narrative: [plan.md](plan.md).
 | Power-on partial Gate B | `recordings/power_on_spring_to_summer.json` (~21 ovn, money $400, terminal return_home) |
 | Ship path re-verify | `recordings/rr_9xyy_ship_money_day09.json` (24 ship, $1260→$3180) |
 | Power-on D2 handoff | `recordings/power_on_d1_handoff_d2.json` |
+| D2 grape→shop→plant | `logs/d2_full_watch/watch_20260814_rr_20w_1_1_hoe_target.log` (`CROP_ESTABLISH` complete) |

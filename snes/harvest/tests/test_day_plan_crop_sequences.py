@@ -60,6 +60,7 @@ from harvest.core.tile_catalog import (
     Tool,
 )
 from harvest.maps.map_config import ROUTES
+from harvest.planner.tasks.inventory_shed import shed_farm_route_name
 
 
 class DayPlanSequenceCropTests(unittest.TestCase):
@@ -459,6 +460,13 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("carry thrash", result.reason or "")
 
+    def test_shed_farm_route_skips_field_path_north_of_fence(self) -> None:
+        world = make_world(0x00)
+        set_player_pos(world.ram, 11 * 16 + 8, 30 * 16 + 8)
+        self.assertEqual(shed_farm_route_name(world.ram, "farm_to_shed"), "farm_to_shed")
+        set_player_pos(world.ram, 11 * 16 + 8, 33 * 16 + 8)
+        self.assertEqual(shed_farm_route_name(world.ram, "farm_to_shed"), "field_to_shed")
+
     def test_ensure_crop_seeds_uses_tool_shed_route_when_hoe_ready(self) -> None:
         world = make_world(0x00)
         world.ram[0x0921] = int(Tool.HOE)
@@ -477,7 +485,8 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertEqual(task._task._phase, "route")
         self.assertIsInstance(task._task._task, MultiMapNavTask)
 
-    def test_ensure_crop_seeds_uses_field_route_after_harvest_shipping(self) -> None:
+    def test_ensure_crop_seeds_uses_house_route_from_plant_pocket(self) -> None:
+        """y=30 is still north of the y=31 fence — field_to_shed L/R-thrashes."""
         world = make_world(0x00)
         set_player_pos(world.ram, 11 * 16 + 8, 30 * 16 + 8)
         world.ram[0x0921] = int(Tool.HOE)
@@ -493,7 +502,7 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertIsInstance(task._task, ShedFetchItemTask)
         self.assertEqual(task._task._phase, "route")
         self.assertIsInstance(task._task._task, MultiMapNavTask)
-        self.assertEqual(task._task._task.waypoints, ROUTES["field_to_shed"])
+        self.assertEqual(task._task._task.waypoints, ROUTES["farm_to_shed"])
 
     def test_ensure_crop_seeds_uses_upper_route_from_coop_frontage(self) -> None:
         world = make_world(0x00)
@@ -509,9 +518,23 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertIsInstance(task._task._task, MultiMapNavTask)
         self.assertEqual(task._task._task.waypoints, ROUTES["upper_farm_to_shed"])
 
-    def test_ensure_crop_seeds_uses_field_route_from_lower_farm_edge(self) -> None:
+    def test_ensure_crop_seeds_uses_house_route_from_west_pocket_edge(self) -> None:
         world = make_world(0x00)
         set_player_pos(world.ram, 1 * 16 + 8, 29 * 16 + 8)
+        world.ram[0x0921] = int(Tool.HOE)
+        world.ram[0x0923] = 0x00
+        world.ram[0x092A] = 10
+        task = EnsureCropSeedsTask(seed_type="potato")
+        result = task._start_shed_seed_fetch(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsInstance(task._task, ShedFetchItemTask)
+        self.assertIsInstance(task._task._task, MultiMapNavTask)
+        self.assertEqual(task._task._task.waypoints, ROUTES["farm_to_shed"])
+
+    def test_ensure_crop_seeds_uses_field_route_south_of_fence(self) -> None:
+        world = make_world(0x00)
+        set_player_pos(world.ram, 11 * 16 + 8, 33 * 16 + 8)
         world.ram[0x0921] = int(Tool.HOE)
         world.ram[0x0923] = 0x00
         world.ram[0x092A] = 10
