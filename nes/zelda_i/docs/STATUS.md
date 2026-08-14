@@ -19,6 +19,18 @@
 | Checkpoints | `Level1.state`, `Level1Entrance.state`, `Level1FirstKey.state`, `Level1North.state`, `Level1Cleared63.state`, `Level1Cleared53.state`, `Level1Complete.state` |
 | Evidence | [level1_complete_natural.json](../recordings/level1_complete_natural.json), [level1_complete_isolated.json](../recordings/level1_complete_isolated.json), [Level 1 route notes](LEVEL1_ROUTE.md) |
 
+## Assisted full-game tip (does not change the M5 Clean gate)
+
+| Segment | Result | Evidence |
+|---------|--------|----------|
+| L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
+| L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
+
+Both runs used the Survival health refill and reported zero progression writes
+and zero capacity writes. They are development checkpoints, not Clean or
+power-on STATUS promotions. Current boundary: return `0x66→0x76`, then open
+the east key door to `0x77`; see `docs/plan.md` for the exact next command.
+
 ## Verified segments
 
 | Segment | Entry | Result | Frames (typ.) | Evidence |

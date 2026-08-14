@@ -1,0 +1,6 @@
+interface:
+  display_name: "Zelda Assisted Route"
+  short_description: "Advance Zelda with screenshot-first routing"
+  default_prompt: "Use $zelda-assisted-route to advance the next Zelda I assisted route boundary with deterministic visual evidence."
+policy:
+  allow_implicit_invocation: true

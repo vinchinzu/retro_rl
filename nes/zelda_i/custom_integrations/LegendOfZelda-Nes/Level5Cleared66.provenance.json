@@ -1,18 +1,19 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-08-07T02:06:04.794752+00:00",
+  "captured_at": "2026-08-14T13:27:22.144711+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
-    "natural_entry": false,
+    "predecessor_entry": true,
     "segment": "level5_clear66",
-    "start_state": "Level5Entrance"
+    "start_state": "Level5EntranceFromL4",
+    "track": "assisted"
   },
   "schema_version": 1,
   "selected_trial": {
     "clear_signal_seen": true,
-    "combat_frames": 3642,
-    "frames": 3947,
+    "combat_frames": 949,
+    "frames": 1254,
     "initial_inventory": 0,
     "last_live_enemies": 0,
     "max_live_enemies": 3,
@@ -34,8 +35,8 @@
       "patrol_attack_period": 10
     }
   },
-  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Entrance.state",
-  "source_state_sha256": "48f44e31c1188e2c8c7e8efdf060dc9e231205fd320911143f41e4ee4a561f3f",
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5EntranceFromL4.state",
+  "source_state_sha256": "14318b8f54d2042967b031c5bc034e2b7d8007bd659f6097d001ed8eb1567750",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared66.state",
-  "state_sha256": "c505522a568d6f45962aa230e4cd22294e8ad3daaeab1b504d63d4803425b90f"
+  "state_sha256": "31d47e4b7f66c680e261485fc767bb23ed9bdf08dc73605b1911057a6c9884af"
 }
