@@ -6,7 +6,8 @@ unbuilt. Spectacle Rock is overworld `0x05`, the settled entrance is room
 The preserved endgame states are explicitly composed, route-ineligible
 fixtures—not Clean or Survival route evidence.
 
-**Beads:** `rr-sz8` (Level 9 epic), `rr-sz8.1` (pre-Ganon → credits recon).
+**Beads:** `rr-sz8` (Level 9 epic), `rr-sz8.1` (pre-Ganon → credits),
+`rr-sz8.2` (live final Patra → credits), `rr-sz8.3` (candidate room `0x62`).
 
 Planning sources:
 
@@ -17,10 +18,11 @@ Planning sources:
 All room IDs in the backward-recon section are **live**. Unvisited interior
 route claims remain source planning until reached from their real predecessor.
 
-## Backward endgame recon (live 2026-08-14)
+## Backward endgame recon (live 2/2, 2026-08-14)
 
 ```text
-fixture-cleared final Patra 0x52
+live final Patra 0x52 (body 0x47 + 8 eyes 0x25)
+  ─controller sword clear─► CurOpenedDoors north bit 0x08
   ─UP─► Ganon 0x42 (object 0x3E)
   ─four registered Magical Sword hits─► brown ObjState nonzero
   ─Silver Arrow─► LastBossDefeated $0672 = 1
@@ -33,18 +35,24 @@ Repeatable proof:
 ```bash
 uv run python nes/zelda_i/scripts/run_level9_ganon.py \
   --build-fixture --from-state Level9BeforeGanonReconFixture \
-  --infinite-life --save-state --trials 1 \
-  --tag l9_ganon_credits_recon
+  --infinite-life --save-state --trials 1 --tag l9_ganon_credits_recon
+
+uv run python nes/zelda_i/scripts/run_level9_patra.py \
+  --build-fixture --from-state Level9FinalPatraReconFixture \
+  --infinite-life --save-state --trials 2 --tag l9_patra_credits_recon
 ```
 
-The build begins from live `Level9EntranceReconFixture`, uses the game room
-loader for `0x52`, then explicitly writes the full inventory, removes the
-final Patra, and opens the north door. Its report and every state provenance
-sidecar set `track=recon_fixture`, `fixture_only=true`, and
-`route_eligible=false`. These inventory/room/object/door writes are forbidden
-by `ASSIST_CONTRACT.md`; they exist solely to develop the route backward.
+Both builds begin from live `Level9EntranceReconFixture`, use the game room
+loader for `0x52`, and explicitly write the full inventory. The older
+pre-Ganon fixture additionally removes Patra and opens the north door. The new
+`Level9FinalPatraReconFixture` stops before those forbidden writes: it preserves
+body + eight eyes, `CurOpenedDoors=0`, and `OpenDoorwayMask=0`. Every state is
+still fixture-only and route-ineligible because the inventory/loader setup is
+composed.
 
-Evidence: `recordings/l9_ganon_credits_recon.json`; screenshots
+Patra evidence: `recordings/l9_patra_credits_recon.json`; screenshots
+`l9_patra_credits_recon_t{0,1}_{patra_start,patra_cleared,ganon_start,ganon_arrow_kill,ganon_defeated,zelda_room,ending_start,credits,final_screen}.png`.
+Older Ganon-only evidence: `recordings/l9_ganon_credits_recon.json`; screenshots
 `l9_ganon_credits_recon_t0_{before_ganon,ganon_start,ganon_arrow_kill,ganon_defeated,zelda_room,ending_start,credits,final_screen}.png`.
 
 ---
@@ -123,9 +131,33 @@ Magical Key path for automation (fewer key bottlenecks). Room IDs **unknown**.
 | Backtrack | Magical Key doors | Old Man bomb hint LEFT |
 | Stairs chain | more Wizzrobes / Patra | |
 | Item | stairs → **Silver Arrows** | required for Ganon |
-| Final Patra | clear → door UP | |
+| Final Patra | clear → door UP | live as room `0x52`; see below |
 | **Ganon** | stun then Silver Arrow | see below |
 | Zelda | princess room | ending sequence |
+
+### Final Patra (live 2/2)
+
+| Signal | Live value |
+|--------|------------|
+| Room / body | `0x52` / type `0x47`, slot 1 |
+| Body initial HP | `0xB0`; after eyes: `B0 → 70 → 30 → dead` |
+| Eyes | 8× type `0x25`, slots 2–9, initial HP `0x60` |
+| Eye damage | Magical Sword `60 → 20 → dead` |
+| Natural clear | body + eyes absent; `CurOpenedDoors & 0x08` becomes true |
+| Door micro | clear ends near x≈112; recenter x≈120, then hold UP to `0x42` |
+
+`FinalPatraFightController` follows a point 30 px south of the moving body and
+pulses UP+A every 12 release frames. The orbiting eyes cross that sword line,
+so the policy does not chase them through the block geometry. Both trials were
+frame-exact: eight eyes fell by controller frame 1,465; the body and north-door
+bit completed at frame 1,883. The Patra segment preserved its full start
+inventory and declared zero object/room/door/inventory/progression/capacity
+controller writes.
+
+After 45 door-settle frames, `final_patra_to_ganon_step` corrects the observed
+x≈112 finish to the strict x≈120 north-door band. Holding UP without this
+recenter was the only observed failed composition: Patra cleared, but Link
+stuck at the north wall and never entered Ganon.
 
 ### Ganon (live)
 
@@ -170,15 +202,16 @@ false early match. Require `$0011` (`IsUpdatingMode`) to be nonzero:
 | Rolling staff credits | `mode == 0x13 && is_updating_mode != 0 && submode == 3` |
 | Final “Press Start” page | `mode == 0x13 && is_updating_mode != 0 && submode == 4` |
 
-The verified replay first entered rolling credits at frame 3,395 and the final
-page at frame 4,595 from `Level9BeforeGanonReconFixture` (1/1, Survival health
-refill plus inherited fixture composition). `level9_ending_stop` accepts either
-update-loop endpoint.
+The older Ganon-only replay first entered rolling credits at frame 3,395 and
+the final page at 4,595. The composed live-Patra replay reaches them at total
+frames 5,342 and 6,542, respectively (**2/2 exact**), with no state load after
+the start fixture. `level9_ending_stop` accepts either update-loop endpoint.
 
-The proof preselected Silver Arrows in the fixture and reported
-`selected_item_writes=0` during combat. Survival telemetry restored four
-filled-heart units and reported zero progression/capacity writes; those
-telemetry counters do not legalize the inherited fixture composition.
+Both proofs preselect Silver Arrows in the fixture and report
+`selected_item_writes=0` during combat. Each Patra→ending trial restored four
+filled-heart units—two in `0x52`, two in `0x42`—with zero deaths and zero
+progression/capacity writes. Those counters do not legalize the inherited
+fixture composition.
 
 ---
 
@@ -201,6 +234,8 @@ Death Mountain end is Zelda/credits after Ganon.
 | State | When |
 |-------|------|
 | `Level9EntranceReconFixture` | live `level==9`, room `0x76`; composed full inventory |
+| `Level9FinalPatraReconFixture` | room `0x52`; live body `0x47` + eight eyes `0x25`; north closed |
+| `Level9FinalPatraClearedReconFixture` | Patra naturally dead; `CurOpenedDoors & 0x08`; controller writes 0 |
 | `Level9BeforeGanonReconFixture` | live final-Patra room `0x52`, Patra fixture-cleared, north open; requested start |
 | `Level9GanonReconFixture` | room `0x42`, scene phase 2, Ganon type `0x3E` |
 | `Level9GanonDefeatedReconFixture` | `$0672=1`, Power Triforce collected, north open |
@@ -208,6 +243,7 @@ Death Mountain end is Zelda/credits after Ganon.
 | `Level9EndingStartReconFixture` | ending mode `0x13` entered |
 | `Level9CreditsReconFixture` | update-loop submode 3, visible staff credits |
 | `Level9FinalScreenReconFixture` | update-loop submode 4, final Press Start page |
+| `Level9PatraFinalScreenReconFixture` | same final page after continuous live-Patra suffix |
 | `Level9RedRing` | after Red Ring |
 | `Level9SilverArrows` | after Silver Arrows |
 
@@ -220,20 +256,25 @@ development-only and not a natural-entry checkpoint.
 
 ```bash
 uv run python zelda_i/scripts/probe_level9_entry.py --plan-only
-uv run python zelda_i/scripts/run_level9_ganon.py --build-fixture \
+uv run python nes/zelda_i/scripts/run_level9_ganon.py --build-fixture \
   --infinite-life --save-state --trials 1 --tag l9_ganon_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_patra.py --build-fixture \
+  --infinite-life --save-state --trials 2 --tag l9_patra_credits_recon
 ```
 
-Modules: `zelda_i/level9_overworld.py`, `zelda_i/level9_ganon.py`.
+Modules: `level9_overworld.py`, `level9_ganon.py`, `level9_patra.py`,
+`level9_path.py`.
 
 ---
 
 ## Evidence boundary
 
-- Live: Spectacle Rock `0x05`; entrance `0x76`; final Patra `0x52`; Ganon
-  `0x42`; Zelda `0x32`; combat states; credits and final-screen stops.
-- Fixture-only: full inventory, final-Patra removal, north door opening, and
-  Link/loader composition. These are enumerated in the JSON report.
-- Not live from predecessor: natural Level 9 interior, Red Ring, Silver Arrow,
-  and final Patra acquisition/clear path.
+- Live: Spectacle Rock `0x05`; entrance `0x76`; final Patra `0x52` body/eye
+  types and HP; natural Patra clear + north-door bit; Ganon `0x42`; Zelda
+  `0x32`; combat states; credits and final-screen stops.
+- Fixture-only in both tracks: full inventory and room-loader composition.
+  The older Ganon-only fixture also removes Patra and opens its north door;
+  the accepted Patra runner does neither after its start.
+- Not live from predecessor: natural Level 9 interior, Red Ring/Silver Arrow
+  acquisition, and candidate room `0x62` → final Patra entry.
 - TF bit map: shards 1–8 = bits `0x01`…`0x80`; full = `0xFF`.
