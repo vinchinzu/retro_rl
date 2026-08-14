@@ -265,11 +265,11 @@ class DayPlanTask(Task):
 
     def _splice_plant_after_shop(self, world: WorldState) -> None:
         """rr-20w.1: outdoor plan expands at 06:08 before the bag exists."""
-        from harvest.planner.day_plan_phases import crop_establish_phases
+        from harvest.planner.day_plan_phases import pocket_plant_phases
         from harvest.planner.world_probe import WorldProbe
 
         remaining = [phase.phase for phase in self._schedule.active[self._phase_index + 1 :]]
-        if any(name in remaining for name in ("CROP_ESTABLISH", "ENSURE_CROP_SEEDS")):
+        if any(name in remaining for name in ("CROP_ESTABLISH", "CLEAR_PLOT")):
             return
         if not self.policy.include_planting:
             return
@@ -279,8 +279,6 @@ class DayPlanTask(Task):
             return
         if not probe.has_seasonal_plantable_seeds():
             return
-        # Optional until same-day plant is ROM-green. Required establish
-        # aborted the D2 day after shop when the shed fetch timed out.
         planted = [
             PhaseSpec(
                 phase.phase,
@@ -289,12 +287,19 @@ class DayPlanTask(Task):
                 failure_policy="optional",
                 contract=phase.contract,
             )
-            for phase in crop_establish_phases()
+            for phase in pocket_plant_phases()
         ]
-        insert_at = self._phase_index + 1
-        self._schedule.active[insert_at:insert_at] = planted
+        # Replace the leftover whole-farm CLEAR — pocket clear is the plant path.
+        tail = [
+            phase
+            for phase in self._schedule.active[self._phase_index + 1 :]
+            if phase.phase != "CLEAR_FIELD"
+        ]
+        self._schedule.active = (
+            self._schedule.active[: self._phase_index + 1] + planted + tail
+        )
         names = ", ".join(phase.phase for phase in planted)
-        print(f"[DAY_PLAN] Spliced post-shop plant: {names}")
+        print(f"[DAY_PLAN] Spliced post-shop pocket plant: {names}")
 
     def _advance(self, world: WorldState, reason: str) -> None:
         """Move to next phase after real work success."""
