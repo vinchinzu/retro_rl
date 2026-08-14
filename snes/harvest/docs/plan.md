@@ -8,11 +8,11 @@ Layer ownership: [bot_architecture_plan.md](bot_architecture_plan.md).
 
 ## Bottleneck
 
-**Tip (2026-08-10):** Gate B continuous — power-on → Summer D1 with income
-(`rr-5in`). **`rr-ws8h` CLOSED (unit)** house short-circuit; **`rr-9xyy`
-CLOSED** (CLEAR debris no longer ship_verify thrash). Remaining soak residual:
-ExitToFarm stuck on dialogue tilemap `0x08` (D23 pre-fix soak) + full Clean
-re-soak for Gate B claim.
+**Tip (2026-08-14):** Gate B continuous — power-on → Summer D1 with income
+(`rr-5in`). D2 grape+shop compose **closed** (`rr-zmss`). Return-home /
+ExitToFarm `0x08` / ship kids **closed**. Remaining soak residual:
+`rr-3ae8` CROP_WATER refill exhausted + `rr-yuel` NAV_CROP hang (D23) +
+same-day plant after D2 buy (`rr-20w.1`: splice live; shed fetch + seed `0x07` not in carry).
 
 **Already closed (do not re-open as bottleneck):**
 
@@ -28,16 +28,15 @@ Further MultNav residuals (forage interact, corridor densify) land as helpers,
 not thrash `if`s in the MultNav step machine. Details:
 [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
 
-**Farm-bush residual (`rr-zmss`):** that legacy route still leaves
-`shipping_money=0` (debris field north of the bush seals the interact). Spring
-D2 no longer depends on it: the natural mountain-grape route ships for 150G,
-then reaches BUY_SEEDS and Spring D3 Clean. Keep the bush issue scoped to later
-repeat-forage days. MultNav fail-closed seal ~90 stuck frames instead of
-day-long thrash.
+**Farm-bush residual (P3, not D2):** that legacy `SHIP_BERRY` route still
+leaves `shipping_money=0` (debris field north of the bush seals the interact).
+Spring D2 no longer depends on it: mountain grape + `BuySeedsTask` compose is
+Clean (`rr-zmss`). Keep the bush issue scoped to later repeat-forage days.
 
 ## Product backlog
 
-- Close Gate B (ExitToFarm 0x08 residual → power-on soak `rr-5in` / epic `rr-20w`).
+- Close Gate B (CROP_WATER refill `rr-3ae8` → power-on soak `rr-5in` / epic `rr-20w`).
+- Same-day plant after D2 `BUY_SEEDS` (outdoor plan frozen at morning `has_seeds=False`).
 - Day-plan soft fails ENSURE_CAN / CROP_WATER after plant (if still red post-B).
 - Extract coop feed/collect/ship (`rr-rbk`); cow mono extract (bead).
 - Hot-spring stamina gate in day plan (`rr-pzw`).

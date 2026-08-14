@@ -4,7 +4,7 @@ Short gate board. Verified evidence lives in [STATUS.md](STATUS.md).
 Structural debt: [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).  
 Future work narrative: [plan.md](plan.md).
 
-**Last board sync:** 2026-08-10
+**Last board sync:** 2026-08-14
 
 ## Maturity snapshot
 
@@ -12,7 +12,7 @@ Future work narrative: [plan.md](plan.md).
 |-------|-------|
 | Program maturity | **M3** (calendar multi-day); crop economy past fixture Gate A, short of continuous M4 |
 | Runtime / intervention | Bronze / Clean |
-| Active tip | `rr-5in` (Gate B soak: water/income) → epic `rr-20w` |
+| Active tip | D2 grape+shop closed (`rr-zmss`); Gate B `rr-5in` (water/income) → epic `rr-20w` |
 
 ## Gate table
 
@@ -35,10 +35,11 @@ Future work narrative: [plan.md](plan.md).
 
 ## Ready order (agents)
 
-1. **`rr-5in`** — Gate B re-soak after CROP_WATER refill thrash fix (power-on continuous; money>$100 to Summer).
-2. **`rr-rzpd`** — day-plan ENSURE_CAN/CROP_WATER soft fails after plant (related water path).
-3. `rr-rbk` / `rr-pzw` / `rr-1vc` after Gate B or in parallel if tip blocked on long soak only.
-4. `rr-hheu` M4; P3 (`rr-7js5`, `rr-zcd3`, `rr-buo1`).
+1. **Same-day plant after D2 buy** — outdoor plan expands once at 06:08 with `has_seeds=False`; splice establish after a real shop close.
+2. **`rr-3ae8` / `rr-5in`** — Gate B re-soak after CROP_WATER refill exhaust (power-on continuous; money>$100 to Summer).
+3. **`rr-rzpd`** — day-plan ENSURE_CAN/CROP_WATER soft fails after plant (related water path).
+4. `rr-rbk` / `rr-pzw` / `rr-1vc` after Gate B or in parallel if tip blocked on long soak only.
+5. `rr-hheu` M4; P3 (`rr-7js5`, `rr-zcd3`, `rr-buo1`).
 
 ## Explicit non-goals (now)
 
