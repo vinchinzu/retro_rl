@@ -11,13 +11,8 @@ Stand if feet land near cloud top (by) while descending and X overlaps.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_REPO), str(_NES)]
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.ram import (
@@ -72,7 +67,6 @@ F_APPEAR = 0x10
 MM_H = 24
 CLOUD_TOP_SLACK = 6  # feet near by ± this counts as surface
 
-
 def snap_all_active(ram) -> list[dict[str, Any]]:
     out = []
     for i in range(32):
@@ -102,20 +96,16 @@ def snap_all_active(ram) -> list[dict[str, Any]]:
         )
     return out
 
-
 def snap_ll(ram) -> list[dict[str, Any]]:
     return [o for o in snap_all_active(ram) if o["t"] in LL_TYPES or o["t"] in (LL_MOVE, LL_BODY)]
-
 
 def body_of(objs: list[dict]) -> dict | None:
     bs = [o for o in objs if o["t"] == LL_BODY]
     return bs[0] if bs else None
 
-
 def rider_of(objs: list[dict]) -> dict | None:
     rs = [o for o in objs if o["t"] == LL_MOVE]
     return rs[0] if rs else None
-
 
 def meta(ram) -> dict[str, Any]:
     sy = player_screen_y(ram)
@@ -135,12 +125,10 @@ def meta(ram) -> dict[str, Any]:
         "fallen": is_fallen(ram),
     }
 
-
 def btns(*names: str):
     if not names:
         return nes_idle_action()
     return nes_action(*names)
-
 
 def run_recipe(params: dict[str, Any], out: Path) -> dict[str, Any]:
     """One Clean trial: camp → jump/shoot → postkill land mode."""
@@ -496,7 +484,6 @@ def run_recipe(params: dict[str, Any], out: Path) -> dict[str, Any]:
         ][:12],
     }
 
-
 def postkill_control(
     post: str,
     f: int,
@@ -569,7 +556,6 @@ def postkill_control(
     # keep pulsing B in case rider not fully dead / second LL
     shoot = (f % sp) == 0
     return buttons, shoot
-
 
 def main() -> None:
     configure_headless()
@@ -809,7 +795,6 @@ def main() -> None:
             t.get("best_feet_top"),
             flush=True,
         )
-
 
 if __name__ == "__main__":
     main()

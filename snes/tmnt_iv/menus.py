@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from retro_harness.actions import buttons, idle_action
-from retro_harness.input_script import FrameAction, mash_start
+from retro_harness.input_script import FrameAction, idle_frames, mash_button, mash_start
 
 
 def title_advance_frames(
@@ -25,27 +24,19 @@ def character_confirm_frames(
     pulses: int = 3,
 ) -> list[FrameAction]:
     """Confirm the default turtle (Leonardo) on character select."""
-    out: list[FrameAction] = []
-    for _ in range(pulses):
-        for _ in range(hold):
-            out.append(
-                FrameAction(
-                    action=buttons("START"), reason="char_confirm"
-                )
-            )
-        for _ in range(gap):
-            out.append(
-                FrameAction(action=idle_action(), reason="char_wait")
-            )
-    return out
+    return mash_button(
+        "START",
+        pulses=pulses,
+        hold=hold,
+        gap=gap,
+        hold_reason="char_confirm",
+        wait_reason="char_wait",
+    )
 
 
 def boot_to_stage1_script() -> Iterator[FrameAction]:
     """Yield a conservative title → char-select → stage-open script."""
     yield from title_advance_frames()
-    for _ in range(120):
-        yield FrameAction(action=idle_action(), reason="post_title_idle")
+    yield from idle_frames(120, "post_title_idle")
     yield from character_confirm_frames()
-    # Stage intro / spawn settle.
-    for _ in range(360):
-        yield FrameAction(action=idle_action(), reason="stage_open_wait")
+    yield from idle_frames(360, "stage_open_wait")

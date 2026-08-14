@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 
@@ -26,17 +21,10 @@ from final_fight.ram import (
     read_u8,
     read_u16le,
 )
-from retro_harness.env import get_available_states, make_env
+from retro_harness.env import get_available_states, make_env, reset_obs
 from retro_harness.actions import idle_action
 from retro_harness.ram_state import GameMode, GameState
 from retro_harness.segment_runner import configure_headless, write_json_report
-
-
-def _reset(env: Any) -> None:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return
-    return
 
 
 def _raw_slots(ram: np.ndarray) -> list[dict[str, int]]:
@@ -62,10 +50,8 @@ def _raw_slots(ram: np.ndarray) -> list[dict[str, int]]:
     )
     return slots
 
-
 def _enemy_hp_map(state: GameState) -> dict[int, int]:
     return {e.slot: e.health for e in state.living_enemies}
-
 
 def run_alley_probe(
     *,
@@ -95,7 +81,7 @@ def run_alley_probe(
     right_edge_frames = 0
     hit_window = 8
     try:
-        _reset(env)
+        reset_obs(env)
         ram = env.get_ram()
         state = parse_game_state(ram, frame=0)
         prev_hp = _enemy_hp_map(state)
@@ -332,7 +318,6 @@ def run_alley_probe(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     """CLI for alley combat instrumentation."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -365,7 +350,6 @@ def main(argv: list[str] | None = None) -> int:
     print("reasons: " + ", ".join(f"{k}={v}" for k, v in top))
     print(f"report={report['report_path']}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

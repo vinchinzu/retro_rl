@@ -20,6 +20,7 @@ from typing import Any
 
 __all__ = [
     "Observation",
+    "observation_from_kinematics",
     "observation_from_sim_state",
     "observation_from_trajectory_frame",
 ]
@@ -103,16 +104,14 @@ class Observation:
         return cls(**data_copy)
 
 
-def observation_from_sim_state(state: Any) -> Observation:
-    """Extract Observation from SimState (physics_sim.py).
+def observation_from_kinematics(state: Any) -> Observation:
+    """Map any HasKinematics object (SimState, SuperMetroidState, door snap).
 
-    Args:
-        state: SimState or compatible object with required fields
-
-    Returns:
-        Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
-        sm_rev --load-state hydrates $09C2/$1842/$09DA). Oσ+ fields zero.
+    O† uses ``health`` when present (emulator). Mini/stub have no health → None.
+    Oσ+ uses ``enemy0_hp`` when present; otherwise 0 (unobserved on Mini).
+    Lag counters stay None until SuperMetroidState grows $1842/$09DA.
     """
+    enemy = getattr(state, "enemy0_hp", None)
     return Observation(
         frame=state.frame,
         x=state.samus_x,
@@ -129,43 +128,17 @@ def observation_from_sim_state(state: Any) -> Observation:
         momentum_x_sub=state.momentum_x_sub,
         speed_counter=state.speed_counter,
         speed_flag=state.speed_flag,
-        energy=None,  # Unobserved in SimState (until sm_rev --load-state)
-        frame_counter_1=None,  # Unobserved in SimState
-        frame_counter_2=None,  # Unobserved in SimState
-        enemy_energy=0,  # Not tracked in SimState
-        invulnerability_timer=0,  # Not tracked in SimState
+        energy=getattr(state, "health", None),
+        frame_counter_1=None,
+        frame_counter_2=None,
+        enemy_energy=0 if enemy is None else enemy,
+        invulnerability_timer=0,
     )
+
+
+def observation_from_sim_state(state: Any) -> Observation:
+    return observation_from_kinematics(state)
 
 
 def observation_from_trajectory_frame(frame: Any) -> Observation:
-    """Extract Observation from TrajectoryFrame (physics_sim.py).
-
-    Args:
-        frame: TrajectoryFrame or compatible object with required fields
-
-    Returns:
-        Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
-        sm_rev --load-state). Oσ+ fields zero.
-    """
-    return Observation(
-        frame=frame.frame,
-        x=frame.samus_x,
-        y=frame.samus_y,
-        pose=frame.pose,
-        room=frame.room_id,
-        sub_x=frame.samus_x_sub,
-        sub_y=frame.samus_y_sub,
-        velocity_x=frame.velocity_x,
-        velocity_y=frame.velocity_y,
-        velocity_x_sub=frame.velocity_x_sub,
-        velocity_y_sub=frame.velocity_y_sub,
-        momentum_x=frame.momentum_x,
-        momentum_x_sub=frame.momentum_x_sub,
-        speed_counter=frame.speed_counter,
-        speed_flag=frame.speed_flag,
-        energy=None,  # Unobserved in TrajectoryFrame
-        frame_counter_1=None,  # Unobserved in TrajectoryFrame
-        frame_counter_2=None,  # Unobserved in TrajectoryFrame
-        enemy_energy=0,  # Not tracked in TrajectoryFrame
-        invulnerability_timer=0,  # Not tracked in TrajectoryFrame
-    )
+    return observation_from_kinematics(frame)

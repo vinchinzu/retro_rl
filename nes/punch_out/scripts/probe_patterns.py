@@ -14,14 +14,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from punch_out.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from punch_out.policy import GlassJoePolicy
@@ -45,13 +40,11 @@ from retro_harness.env import make_env
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import configure_headless, write_json_report
 
-
 def _clock_str(ram) -> str:
     m = int(ram[ADDR_CLOCK_MIN])
     s = int(ram[ADDR_CLOCK_SEC])
     t = int(ram[ADDR_CLOCK_TENTHS])
     return f"{m}:{s:01d}{t:01d}"
-
 
 def run_probe(
     *,
@@ -267,7 +260,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--max-frames", type=int, default=15000)
@@ -275,7 +267,6 @@ def main() -> None:
     p.add_argument("--state", default="Match1")
     args = p.parse_args()
     run_probe(max_frames=args.max_frames, out_dir=args.out_dir, state_name=args.state)
-
 
 if __name__ == "__main__":
     main()

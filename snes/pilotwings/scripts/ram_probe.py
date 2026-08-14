@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from pilotwings.paths import GAME, GAME_DIR, LESSON1_PLANE_STATE
 from pilotwings.ram import parse_game_state
 from retro_harness.env import get_available_states, make_env
 from retro_harness.actions import buttons, idle_action
 from retro_harness.segment_runner import configure_headless
-
 
 def _run(keys: tuple[str, ...], *, frames: int) -> tuple[int, int, int, int]:
     env = make_env(GAME, LESSON1_PLANE_STATE, GAME_DIR, render_mode="rgb_array")
@@ -34,7 +27,6 @@ def _run(keys: tuple[str, ...], *, frames: int) -> tuple[int, int, int, int]:
         )
     finally:
         env.close()
-
 
 def run_probe(*, frames: int = 90) -> int:
     """Print altitude, pitch, and turn response for held directions."""
@@ -56,14 +48,12 @@ def run_probe(*, frames: int = 90) -> int:
         )
     return 0
 
-
 def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--frames", type=int, default=90)
     args = parser.parse_args()
     raise SystemExit(run_probe(frames=args.frames))
-
 
 if __name__ == "__main__":
     main()

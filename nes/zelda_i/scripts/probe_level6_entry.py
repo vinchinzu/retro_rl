@@ -17,20 +17,12 @@ Examples::
 Not Clean STATUS — Survival assist only.
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from collections import Counter
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -56,7 +48,6 @@ from zelda_i.ram import PLAY_MODE, read_snapshot
 
 SEGMENT_MAX = 20000
 
-
 def _objs(snap) -> list[dict]:
     out: list[dict] = []
     for o in snap.objects:
@@ -73,7 +64,6 @@ def _objs(snap) -> list[dict]:
             }
         )
     return out
-
 
 def _snapshot_dict(snap) -> dict:
     objs = _objs(snap)
@@ -98,7 +88,6 @@ def _snapshot_dict(snap) -> dict:
         "type_counts": dict(Counter(o["type"] for o in objs)),
     }
 
-
 def run_probe(
     *,
     start_state: str,
@@ -114,8 +103,7 @@ def run_probe(
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     track = "assisted" if infinite_life else "clean"
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -245,7 +233,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -281,7 +268,6 @@ def main() -> None:
         f"final={report.get('final')} path={report.get('report_path')}"
     )
     raise SystemExit(0 if report.get("ok") else 1)
-
 
 if __name__ == "__main__":
     main()

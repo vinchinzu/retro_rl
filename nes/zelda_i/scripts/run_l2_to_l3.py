@@ -25,20 +25,11 @@ Examples::
         --from-state Level2ExitOverworld --door-only
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
 import importlib.util
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = _REPO_ROOT / "nes"
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.env import make_env, save_state
 from retro_harness.nes import nes_idle_action
@@ -76,7 +67,6 @@ _POST_TF_STATES = frozenset(
     }
 )
 
-
 def _load_dodongo_mod():
     path = Path(__file__).resolve().parent / "run_level2_dodongo.py"
     spec = importlib.util.spec_from_file_location("run_level2_dodongo", path)
@@ -84,7 +74,6 @@ def _load_dodongo_mod():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
-
 
 def _snap_dict(snap) -> dict:
     return {
@@ -98,7 +87,6 @@ def _snap_dict(snap) -> dict:
         "sword": snap.sword,
         "health": snap.health,
     }
-
 
 def _ensure_tf_and_settle(
     env,
@@ -191,7 +179,6 @@ def _ensure_tf_and_settle(
         "stages": stages,
         "final": _snap_dict(snap),
     }
-
 
 def run_once(
     *,
@@ -372,7 +359,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -450,7 +436,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {out_path}")
     print(f"summary: {n_ok}/{len(results)} ok")
     return 0 if n_ok == len(results) and n_ok > 0 else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -15,7 +15,6 @@ Usage:
 from __future__ import annotations
 
 import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,7 +23,6 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import stable_retro as retro
@@ -32,7 +30,6 @@ import stable_retro as retro
 from retro_harness.fighters.game_configs import get_game_config
 
 _B, _Y, _SELECT, _START, _UP, _DOWN, _LEFT, _RIGHT, _A, _X, _L, _R = range(12)
-
 
 @dataclass(frozen=True)
 class InputPhase:
@@ -42,7 +39,6 @@ class InputPhase:
     buttons: dict[int, int]
     frames: int = 60
 
-
 def _buttons_array(buttons: dict[int, int], players: int) -> np.ndarray:
     size = 12 * players
     arr = np.zeros(size, dtype=np.int8)
@@ -50,12 +46,10 @@ def _buttons_array(buttons: dict[int, int], players: int) -> np.ndarray:
         arr[btn] = val
     return arr
 
-
 def _settle(env, frames: int = 60, players: int = 1) -> None:
     noop = _buttons_array({}, players)
     for _ in range(frames):
         env.step(noop)
-
 
 def _run_phase(env, phase: InputPhase, players: int) -> tuple[np.ndarray, np.ndarray]:
     before = env.unwrapped.get_ram().copy()
@@ -64,7 +58,6 @@ def _run_phase(env, phase: InputPhase, players: int) -> tuple[np.ndarray, np.nda
         env.step(action)
     after = env.unwrapped.get_ram().copy()
     return before, after
-
 
 def _diff_summary(
     before: np.ndarray,
@@ -81,7 +74,6 @@ def _diff_summary(
     rows.sort(key=lambda row: abs(row[3]), reverse=True)
     return rows[:top_n]
 
-
 def _print_phase(name: str, rows: list[tuple[int, int, int, int]]) -> None:
     print(f"\n{name}:")
     if not rows:
@@ -90,10 +82,8 @@ def _print_phase(name: str, rows: list[tuple[int, int, int, int]]) -> None:
     for addr, old, new, delta in rows:
         print(f"  0x{addr:04X} ({addr:5d}): {old:3d} -> {new:3d} (delta {delta:+4d})")
 
-
 def _read_known(info_keys: dict[str, int], ram: np.ndarray) -> dict[str, int]:
     return {key: int(ram[addr]) for key, addr in info_keys.items() if addr < len(ram)}
-
 
 def scan_fight(state: str, players: int = 1) -> None:
     """Run movement/block/jump RAM diffs on a fight save state."""
@@ -164,7 +154,6 @@ def scan_fight(state: str, players: int = 1) -> None:
         "addresses to data.json + MK1_RAM_FEATURES."
     )
 
-
 def main() -> None:
     import argparse
 
@@ -182,7 +171,6 @@ def main() -> None:
     )
     args = parser.parse_args()
     scan_fight(args.state, players=args.players)
-
 
 if __name__ == "__main__":
     main()

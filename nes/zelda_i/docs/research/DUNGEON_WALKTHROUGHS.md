@@ -125,7 +125,7 @@ From start: up, left 4, down, right 1. Harder dungeon; potion recommended
 Source:
 [Zelda Dungeon L4](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-4-the-snake/).
 Local route plan: [LEVEL4_ROUTE.md](../LEVEL4_ROUTE.md). Scaffold:
-`level4_overworld.py`, `scripts/probe_level4_entry.py --plan-only`.
+`level4_overworld.py`, `scripts/run_level4_entry.py --plan-only`.
 
 ### Overworld prep (source)
 

@@ -122,7 +122,9 @@ keeping `xf` done. Next: SMW using the same observation/residual shape.
 ### C — Optional follow-ons
 
 1. Silver/Gold runtime: natural-entry 4-2 and mushroom-cloud speed
-2. Non-warp all-32-exit route
+2. Non-warp all-32-exit route — recorder is `./play smb` (power-on →
+   `all_exits_v1`, stage pins, archive-on-reuse). Each stage still needs a
+   natural-entry controller before it counts as a Clean route.
 3. Transfer continuous fold patterns to SMB3 / retro_harness.platformer
 
 For all-32, use `ROUTE_ALL_EXITS` contracts and the explicit missing-policy

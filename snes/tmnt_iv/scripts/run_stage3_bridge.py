@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import get_available_states, make_env, save_state
+from retro_harness.env import get_available_states, make_env, reset_obs, save_state
 from retro_harness.actions import buttons, idle_action
 from retro_harness.ram_state import GameMode, GameState
 from retro_harness.segment_runner import (
@@ -33,14 +28,6 @@ from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import parse_game_state
 
 
-def _reset(env: Any) -> tuple[Any, dict[str, Any]]:
-    """Normalize gymnasium vs classic retro reset return."""
-    result = env.reset()
-    if isinstance(result, tuple) and len(result) == 2:
-        return result[0], result[1]
-    return result, {}
-
-
 def _with_stage_progress(
     state: GameState, *, start_stage: int
 ) -> GameState:
@@ -48,7 +35,6 @@ def _with_stage_progress(
     if state.stage > start_stage:
         return replace(state, level_complete=True)
     return state
-
 
 def _is_fight_ready(state: GameState, *, min_stage: int) -> bool:
     """True once Stage 3 HUD is live with at least one enemy."""
@@ -59,7 +45,6 @@ def _is_fight_ready(state: GameState, *, min_stage: int) -> bool:
         and 0 < state.player_x < 512
         and len(state.living_enemies) > 0
     )
-
 
 def run_stage3_bridge(
     *,
@@ -91,7 +76,7 @@ def run_stage3_bridge(
     screenshots: list[str] = []
     saved_states: list[str] = []
     try:
-        obs, _info = _reset(env)
+        obs, _info = reset_obs(env)
         state = parse_game_state(env.get_ram(), frame=0)
         start_stage = state.stage
         # Stage byte 2 = Prehistoric / Stage 3. Confirm ready if already.
@@ -189,7 +174,6 @@ def run_stage3_bridge(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=None)
@@ -203,7 +187,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--out-dir", type=Path, default=None)
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry for the Stage 2→3 bridge."""
@@ -228,7 +211,6 @@ def main(argv: list[str] | None = None) -> int:
     if report.get("saved_states"):
         print("states: " + ", ".join(report["saved_states"]))
     return 0 if report.get("success") else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -7,12 +7,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from metroid.menus import boot_to_level1_script
 from metroid.paths import GAME, GAME_DIR, RECORDINGS_DIR
@@ -45,7 +39,6 @@ DEFAULT_PLAN = (
     ("RIGHT", 150),
 )
 
-
 def _parse_plan(text: str) -> list[tuple]:
     """Parse 'RIGHT:60,RIGHT+A:30,DOWN:40' style plans."""
     plan: list[tuple] = []
@@ -65,7 +58,6 @@ def _parse_plan(text: str) -> list[tuple]:
             plan.append((*names, frames))
     return plan
 
-
 def _boot(env) -> tuple[object, int]:
     frame = 0
     obs = None
@@ -80,7 +72,6 @@ def _boot(env) -> tuple[object, int]:
         else:
             stable = 0
     return obs, frame
-
 
 def run(*, plan_text: str | None = None, max_frames: int = 8000) -> int:
     configure_headless()
@@ -157,7 +148,6 @@ def run(*, plan_text: str | None = None, max_frames: int = 8000) -> int:
     finally:
         env.close()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -169,7 +159,6 @@ def main() -> None:
     parser.add_argument("--max-frames", type=int, default=8000)
     args = parser.parse_args()
     raise SystemExit(run(plan_text=args.plan, max_frames=args.max_frames))
-
 
 if __name__ == "__main__":
     main()

@@ -22,19 +22,11 @@ Examples::
         --route all --infinite-life --tag ig_all
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -53,7 +45,6 @@ from zelda_i.item_gate_hops import (
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 
-
 def run_one(
     *,
     route_name: str,
@@ -69,8 +60,7 @@ def run_one(
     route = route_for(route_name)
 
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -175,7 +165,6 @@ def run_one(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -230,7 +219,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[{args.tag}] summary={summary['routes']}")
 
     return 0 if ok else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

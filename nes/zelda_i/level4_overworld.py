@@ -193,7 +193,7 @@ def planning_report() -> dict[str, Any]:
             "island_or_door": hex(LEVEL4_ISLAND_SCREEN),
             "entry_room": hex(LEVEL4_ENTRY_ROOM),
         },
-        # Legacy key for probe_level4_entry plan-only.
+        # Legacy key for run_level4_entry --plan-only.
         "screens_hypothesized": {
             "dock": hex(LEVEL4_DOCK_SCREEN),
             "island_or_door": hex(LEVEL4_ISLAND_SCREEN),

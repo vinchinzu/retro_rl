@@ -9,12 +9,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 from PIL import Image
@@ -39,12 +33,10 @@ from great_waldo_search.targets import (
 from retro_harness.env import get_available_states, make_env
 from retro_harness.actions import buttons_multi, idle_action, idle_action_multi
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def run_segment(
     *,
@@ -156,7 +148,6 @@ def run_segment(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--x", type=int, default=32)
@@ -174,7 +165,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-fast", action="store_true")
     return parser
 
-
 def main(argv: list[str] | None = None) -> int:
     """CLI for the scene-segment runner."""
     args = _build_parser().parse_args(argv)
@@ -191,7 +181,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(json.dumps(summary, indent=2))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

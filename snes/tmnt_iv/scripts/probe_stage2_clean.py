@@ -23,15 +23,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env  # noqa: E402
+from retro_harness.env import make_env, reset_obs  # noqa: E402
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR  # noqa: E402
@@ -45,7 +40,6 @@ _SUITE_STATES: tuple[str, ...] = (
     "Boss2",
 )
 
-
 def _is_live_alleycat(state: Any) -> bool:
     """True once Alleycat gameplay is live (not transition / despawn)."""
     return (
@@ -55,7 +49,6 @@ def _is_live_alleycat(state: Any) -> bool:
         and 0 < state.player_x < 400
         and int(state.extras.get("event", 0)) >= 0x0A
     )
-
 
 def run_clean_probe(
     *,
@@ -69,9 +62,7 @@ def run_clean_probe(
     start_label = "Stage1_Clear" if from_stage1_clear else state_name
     env = make_env(GAME, start_label, GAME_DIR, render_mode="rgb_array")
     policy = Stage1Policy()
-    result = env.reset()
-    if isinstance(result, tuple):
-        pass
+    reset_obs(env)
 
     in_play = not from_stage1_clear
     play_frame0 = 0
@@ -221,7 +212,6 @@ def run_clean_probe(
         "hits": hits,
     }
 
-
 def run_suite(*, max_frames: int = 25000) -> dict[str, Any]:
     """Run Clean probes across checkpoint entries + Stage1_Clear bridge."""
     results: list[dict[str, Any]] = []
@@ -261,7 +251,6 @@ def run_suite(*, max_frames: int = 25000) -> dict[str, Any]:
         "all_passed": ok == len(results),
         "results": results,
     }
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry for Stage 2 Clean (pizza-only) probes."""
@@ -322,7 +311,6 @@ def main(argv: list[str] | None = None) -> int:
     if top:
         print("reasons: " + ", ".join(f"{k}={v}" for k, v in top[:10]))
     return 0 if report.get("success") else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

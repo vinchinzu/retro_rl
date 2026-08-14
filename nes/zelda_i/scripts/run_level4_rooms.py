@@ -49,22 +49,12 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinite-life --trials 2 --save-state
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 from typing import Any, Callable
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _NES_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -264,7 +254,6 @@ _CHECKPOINT = {
     "map_21": "Level4Map",
 }
 
-
 def _snap_fields(snap) -> dict[str, Any]:
     # snap has no ladder/map fields; callers may enrich from RAM separately.
     return {
@@ -283,7 +272,6 @@ def _snap_fields(snap) -> dict[str, Any]:
         "room_all_dead": snap.room_all_dead,
         "cur_opened_doors": snap.cur_opened_doors,
     }
-
 
 def _run_until(
     env,
@@ -310,10 +298,8 @@ def _run_until(
             break
     return obs, frame
 
-
 def _done_success(controller) -> bool:
     return bool(getattr(controller, "success", False))
-
 
 def _bfs_50_to_north(env, *, assist, frame0: int, hold: int = 6, long_up: int = 220):
     """Live BFS on 0x50 to a north-band cell that admits long-UP into 0x40."""
@@ -419,7 +405,6 @@ def _bfs_50_to_north(env, *, assist, frame0: int, hold: int = 6, long_up: int = 
     }
     return best_path, meta
 
-
 def _follow_50_north_path(env, path: list[str], *, assist, frame0: int):
     """Execute BFS path tokens then long UP into 0x40."""
     from zelda_i.level4_dungeon import MAZE_50_HOLD, MAZE_50_LONG_UP, ROOM_L4_ZOLS_40
@@ -465,7 +450,6 @@ def _follow_50_north_path(env, path: list[str], *, assist, frame0: int):
                     assist.apply_env(env, frame=frame)
             return obs, frame, True
     return obs, frame, False
-
 
 def _bfs_31_to_east(env, *, assist, frame0: int, hold: int | None = None):
     """Live BFS on cleared 0x31 maze to east door band (free RIGHT → 0x32)."""
@@ -569,7 +553,6 @@ def _bfs_31_to_east(env, *, assist, frame0: int, hold: int | None = None):
     }
     return best_path, meta
 
-
 def _follow_31_east_path(env, path: list[str], *, assist, frame0: int):
     """Execute BFS path tokens then long RIGHT into 0x32."""
     frame = frame0
@@ -639,7 +622,6 @@ def _follow_31_east_path(env, path: list[str], *, assist, frame0: int):
                     assist.apply_env(env, frame=frame)
             return obs, frame, True
     return obs, frame, False
-
 
 def _scripted_60_ladder(env, *, assist, frame0: int):
     """Settle NW on 0x60 then follow MAZE_60_TO_LADDER hold4 to pedestal."""
@@ -752,7 +734,6 @@ def _scripted_60_ladder(env, *, assist, frame0: int):
         "segment": "level4_scripted_ladder",
     }
 
-
 def _push_and_enter_60(env, *, assist, frame0: int):
 
     """Clear-room pose → push left block → stairs 0x60 (rr-tib8 live).
@@ -852,7 +833,6 @@ def _push_and_enter_60(env, *, assist, frame0: int):
         "stairs_approach": list(STAIRS_32_APPROACH),
     }
     return obs, frame, ok, meta
-
 
 def _bfs_60_to_ladder(env, *, assist, frame0: int, hold: int | None = None):
 
@@ -1007,8 +987,6 @@ def _bfs_60_to_ladder(env, *, assist, frame0: int, hold: int | None = None):
     }
     return best_path, meta
 
-
-
 def _follow_60_ladder_path(env, path: list[str], *, assist, frame0: int):
     """No-op follow when BFS already restored goal state with ADDR_LADDER.
 
@@ -1046,7 +1024,6 @@ def _follow_60_ladder_path(env, path: list[str], *, assist, frame0: int):
                 return obs, frame, True
     return obs, frame, int(read_u8(env.get_ram(), ADDR_LADDER)) > ladder0
 
-
 def _settle_play(env, *, assist, frame0: int, max_f: int = 400):
     """Idle through scroll modes until play mode 5 (or timeout)."""
     frame = frame0
@@ -1060,7 +1037,6 @@ def _settle_play(env, *, assist, frame0: int, max_f: int = 400):
         if s.mode in (PLAY_MODE, 5, 9) and not s.transitioning:
             return obs, frame, s
     return obs, frame, read_snapshot(env.get_ram())
-
 
 def _follow_exit_path(env, path, *, hold: int, assist, frame0: int, dest_room: int):
     """Replay hold-N path tokens; settle scroll into dest_room play."""
@@ -1084,7 +1060,6 @@ def _follow_exit_path(env, path, *, hold: int, assist, frame0: int, dest_room: i
                 return obs, frame, ok
     obs, frame, s = _settle_play(env, assist=assist, frame0=frame, max_f=80)
     return obs, frame, s.screen == dest_room and s.mode in (PLAY_MODE, 5)
-
 
 def _bfs_60_exit_play(env, *, assist, frame0: int):
     """BFS on mode-9 0x60 to 0x32 play (rr-05fz). Returns (path, meta)."""
@@ -1156,7 +1131,6 @@ def _bfs_60_exit_play(env, *, assist, frame0: int):
             }
     return None, {"success": False, "error": "bfs_miss", "segment": "level4_exit_60_bfs"}
 
-
 def _bfs_room_exit(env, *, dest: int, assist, frame0: int, hold: int = 4):
     """BFS from current play room to dest room. Returns (path, meta)."""
     from collections import deque
@@ -1224,7 +1198,6 @@ def _bfs_room_exit(env, *, dest: int, assist, frame0: int, hold: int = 4):
         "segment": "level4_room_exit_bfs",
     }
 
-
 def run_once(
     *,
     segment: str,
@@ -1242,8 +1215,7 @@ def run_once(
     bead = _BEAD[segment]
     controllers: dict[str, Any] = {}
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         # stepladder dual-green isolation used 5 idle frames pre-clear (RNG).
         # exit_60 needs ~150 idle after item pickup freeze on Level4Stepladder.
         from zelda_i.level4_dungeon import POST_LADDER_ITEM_SETTLE
@@ -2809,7 +2781,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--segment", choices=SEGMENTS, default="entry_up")
@@ -2887,7 +2858,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {out} ok={successes}/{args.trials}")
     return 0 if successes == args.trials else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

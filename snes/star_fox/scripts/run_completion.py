@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 from pathlib import Path
-import sys
 from typing import Any
 
 from PIL import Image
@@ -20,9 +19,6 @@ from PIL import Image
 GAME_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = GAME_DIR.parent.parent  # monorepo root
 _SNES_IMPORT_ROOT = GAME_DIR.parent
-for _p in (REPO_ROOT, _SNES_IMPORT_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.env import make_env, save_state
 from retro_harness.segment_runner import configure_headless, write_json_report
@@ -30,11 +26,9 @@ from retro_harness.segment_runner import configure_headless, write_json_report
 GAME = "StarFox-Snes"
 DEFAULT_STATE = "CorneriaStart"
 
-
 def signed_byte(value: int) -> int:
     """Interpret an unsigned byte as a signed two's-complement value."""
     return value if value < 128 else value - 256
-
 
 def boss_meter_visible(obs: Any) -> bool:
     """Detect the pink ENEMY meter used during boss fights."""
@@ -47,7 +41,6 @@ def boss_meter_visible(obs: Any) -> bool:
         & (region[:, :, 2] <= 144)
     )
     return int(pink.sum()) >= 40
-
 
 def _press_toward(
     action: list[int],
@@ -64,7 +57,6 @@ def _press_toward(
         action[buttons[high_button]] = 1
     elif value > target + deadzone:
         action[buttons[low_button]] = 1
-
 
 def build_action(
     *,
@@ -245,7 +237,6 @@ def build_action(
 
     return action, last_bomb_frame, reason
 
-
 def build_parser() -> argparse.ArgumentParser:
     """Build the completion-run CLI parser."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -257,7 +248,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--screenshot-every", type=int, default=6_000)
     parser.add_argument("--output", type=Path)
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """Run until the step/retry budget is exhausted."""
@@ -400,7 +390,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"REPORT={output / 'report.json'}", flush=True)
 
     return 0 if outcome == "environment_stopped" else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

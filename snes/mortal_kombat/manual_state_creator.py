@@ -5,7 +5,6 @@ Press F1-F7 to save state for each opponent.
 """
 
 import os
-import sys
 import gzip
 from pathlib import Path
 
@@ -14,7 +13,6 @@ if not os.environ.get("SDL_VIDEODRIVER"):
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import pygame

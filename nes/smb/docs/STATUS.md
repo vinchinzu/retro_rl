@@ -351,7 +351,8 @@ Prior reactive (drop-5, pre−97f 1-2): ending **21,643f**. M8 baseline: **21,73
    as published baseline). Re-record Clean power-on MP4 on promote.
 3. **4-2 path audit:** HL glitch/warp vs natural vine — video + RAM before
    treating 4-2 slice as route-canonical.
-4. Optional all-32-exit; transfer reactive gates to SMB3.
+4. Optional all-32-exit: `./play smb` records the tape + stage pins; transfer
+   reactive gates to SMB3.
 
 The route contract layer makes the 32-exit inventory auditable, but only the
 eight warp controllers have source material today. Missing normal-stage

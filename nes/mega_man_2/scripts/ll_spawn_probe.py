@@ -2,12 +2,7 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
-
-_REPO = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_REPO), str(_NES)]
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.policy import AirManPolicy
@@ -57,7 +52,6 @@ TYPE_NAMES = {
     0x41: "goblin_2",
 }
 
-
 def snap_objects(ram):
     objs = []
     types = set()
@@ -78,10 +72,8 @@ def snap_objects(ram):
         })
     return objs, types
 
-
 def enemies_flag_dump(ram, n=40):
     return [int(ram[ADDR_ENEMIES_FLAG + i]) for i in range(n)]
-
 
 def meta(ram):
     return {
@@ -99,7 +91,6 @@ def meta(ram):
         "ren_idx": int(ram[ADDR_RIGHT_EN_IDX]),
         "fallen": is_fallen(ram),
     }
-
 
 def run_probe(state: str, max_frames: int, mode: str, out: Path):
     env = make_env(GAME, state, GAME_DIR)
@@ -243,7 +234,6 @@ def run_probe(state: str, max_frames: int, mode: str, out: Path):
     write_json_report(out / f"probe_{mode}.json", report)
     return report
 
-
 def main():
     configure_headless()
     out = RECORDINGS_DIR / "air_post4_fpd6"
@@ -272,7 +262,6 @@ def main():
 
     write_json_report(out / "summary.json", reports)
     print("DONE", out)
-
 
 if __name__ == "__main__":
     main()

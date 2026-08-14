@@ -13,7 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from super_metroid.physics_sim import FrameInput
+from retro_harness.actions import indexed_action
+from retro_harness.env import read_state_bytes
+
+from super_metroid.physics_sim import FrameInput, position_out_of_range
+from super_metroid.ram import parse_env_state
 
 __all__ = [
     "EmulatorValidationResult",
@@ -22,16 +26,21 @@ __all__ = [
 ]
 
 
-# Check if ROM is available for validation tests
 def _check_rom_available() -> bool:
-    """Check if Super Metroid ROM is available."""
-    # Check common ROM locations
+    """True when a ROM file exists and stable-retro exposes Integrations.CUSTOM."""
     rom_paths = [
         Path("roms/SuperMetroid.sfc"),
         Path("roms/Super Metroid.sfc"),
         Path("../roms/SuperMetroid.sfc"),
     ]
-    return any(p.exists() for p in rom_paths)
+    if not any(p.exists() for p in rom_paths):
+        return False
+    try:
+        import stable_retro as retro
+
+        return hasattr(getattr(retro.data, "Integrations", None), "CUSTOM")
+    except Exception:
+        return False
 
 
 ROM_AVAILABLE = _check_rom_available()
@@ -62,10 +71,13 @@ class EmulatorValidationResult:
     reason: str = ""
     """Failure reason when success=False."""
 
+    checked_room_id: int | None = None
+    """Room id that was explicitly checked and matched. None = no room-clear claim."""
+
     @property
     def room_clear(self) -> bool:
-        """True if trajectory cleared target room (ground truth claim)."""
-        return self.success
+        """True only when an explicit room target was checked and passed."""
+        return self.success and self.checked_room_id is not None
 
 
 def validate_trajectory_on_emulator(
@@ -105,52 +117,24 @@ def validate_trajectory_on_emulator(
             "Place Super Metroid ROM in roms/ directory."
         )
 
-    # Import here to avoid requiring stable-retro for planning-only code
-    try:
-        from retro_harness.snes import SuperMetroidEnv
-    except ImportError as e:
-        raise RuntimeError(
-            "stable-retro not available. Install retro_harness with SNES support."
-        ) from e
-
     start_path = Path(start_state_path)
     if not start_path.exists():
         raise FileNotFoundError(f"Start state not found: {start_path}")
 
-    # Load emulator from state
-    env = SuperMetroidEnv()
-    try:
-        env.load_state(str(start_path))
-    except Exception as e:
-        return EmulatorValidationResult(
-            success=False,
-            final_room_id=None,
-            final_x=None,
-            final_y=None,
-            frames_executed=0,
-            reason=f"Failed to load state: {e}",
-        )
+    from super_metroid.dev.common import make_dev_env
 
-    # Execute input sequence on emulator
+    env = make_dev_env()
     frames_executed = 0
-    for i, frame_input in enumerate(inputs):
-        try:
-            # Step emulator with button mask
-            env.step(frame_input.buttons)
-            frames_executed = i + 1
-        except Exception as e:
-            return EmulatorValidationResult(
-                success=False,
-                final_room_id=None,
-                final_x=None,
-                final_y=None,
-                frames_executed=frames_executed,
-                reason=f"Emulator crash at frame {i}: {e}",
-            )
-
-    # Read final state from emulator
     try:
-        final_state = env.get_state()
+        env.reset()
+        env.em.set_state(read_state_bytes(start_path))
+
+        for i, frame_input in enumerate(inputs):
+            indices = [b for b in range(12) if frame_input.buttons & (1 << b)]
+            env.step(indexed_action(indices, action_size=12))
+            frames_executed = i + 1
+
+        final_state = parse_env_state(env, mode="full")
         final_room = final_state.room_id
         final_x = final_state.samus_x
         final_y = final_state.samus_y
@@ -161,28 +145,22 @@ def validate_trajectory_on_emulator(
             final_x=None,
             final_y=None,
             frames_executed=frames_executed,
-            reason=f"Failed to read final state: {e}",
+            reason=f"Emulator failed: {e}",
         )
+    finally:
+        env.close()
 
-    # Check success criteria
-    success = True
     reason = ""
-
     if target_room_id is not None and final_room != target_room_id:
-        success = False
         reason = f"Room mismatch: expected {target_room_id:04X}, got {final_room:04X}"
-
-    if success and target_x_range is not None:
-        x_lo, x_hi = target_x_range
-        if not (x_lo <= final_x <= x_hi):
-            success = False
-            reason = f"X out of range: {final_x} not in [{x_lo}, {x_hi}]"
-
-    if success and target_y_range is not None:
-        y_lo, y_hi = target_y_range
-        if not (y_lo <= final_y <= y_hi):
-            success = False
-            reason = f"Y out of range: {final_y} not in [{y_lo}, {y_hi}]"
+    if not reason:
+        reason = position_out_of_range(
+            final_x, final_y, x_range=target_x_range, y_range=target_y_range
+        )
+    success = not reason
+    checked_room_id = (
+        final_room if target_room_id is not None and success else None
+    )
 
     return EmulatorValidationResult(
         success=success,
@@ -191,4 +169,5 @@ def validate_trajectory_on_emulator(
         final_y=final_y,
         frames_executed=frames_executed,
         reason=reason,
+        checked_room_id=checked_room_id,
     )

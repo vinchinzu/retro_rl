@@ -4,31 +4,23 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from metroid.menus import boot_to_level1_script
 from metroid.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from metroid.ram import is_level1_ready, parse_game_state, read_snapshot
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
 
 STABLE_FRAMES = 20
 MIN_FRAME = 40
 
-
 def run_probe(*, save_level1: bool = True, walk_frames: int = 40) -> int:
     """Reach Brinstar, verify readiness, walk, and save checkpoint."""
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         frame = 0
         stable = 0
         ready_at = None
@@ -106,7 +98,6 @@ def run_probe(*, save_level1: bool = True, walk_frames: int = 40) -> int:
     finally:
         env.close()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-save", action="store_true")
@@ -115,7 +106,6 @@ def main() -> None:
     raise SystemExit(
         run_probe(save_level1=not args.no_save, walk_frames=args.walk_frames)
     )
-
 
 if __name__ == "__main__":
     main()

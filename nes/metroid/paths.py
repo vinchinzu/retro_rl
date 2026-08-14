@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from retro_harness.game_layout import game_paths
 
-GAME_DIR = Path(__file__).resolve().parent
-REPO_ROOT = GAME_DIR.parent.parent  # monorepo root (game under snes/ or nes/)
-GAME = "Metroid-Nes"
-RECORDINGS_DIR = GAME_DIR / "recordings"
+_paths = game_paths(__file__, "Metroid-Nes")
+GAME_DIR = _paths.game_dir
+REPO_ROOT = _paths.repo_root
+INTEGRATION = _paths.integration
+GAME = INTEGRATION
+INTEGRATION_DIR = _paths.integration_dir
+RECORDINGS_DIR = _paths.recordings_dir
+ROMS_DIR = _paths.roms_dir
+DOCS_DIR = _paths.docs_dir
 SCREEN_TIMINGS_DIR = RECORDINGS_DIR / "screen_timings"
-ROMS_DIR = GAME_DIR / "roms"
-INTEGRATION_DIR = GAME_DIR / "custom_integrations" / GAME
 SHARED_ROM_ZIP = REPO_ROOT / "roms" / "Nintendo" / "NES" / "Metroid.zip"
 LEVEL1_STATE = "Level1"

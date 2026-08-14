@@ -7,12 +7,9 @@ Usage::
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent.parent.resolve()
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from retro_harness.env import make_env
 
@@ -35,7 +32,6 @@ REGISTERED_LEVELS = {
     "MineCartCarnage": 0x2E,
     "BouncyBonanza": 0x07,
 }
-
 
 def probe_state(state_name: str) -> dict | None:
     """Load a state, step a few frames, and read RAM values."""
@@ -60,7 +56,6 @@ def probe_state(state_name: str) -> dict | None:
         return result
     except Exception as e:
         return {"error": str(e)}
-
 
 def main():
     state_files = sorted(STATES_DIR.glob("*.state"))
@@ -101,7 +96,6 @@ def main():
             print(f"  [OK] {name}.state exists (expected level_id=0x{expected_lid:02X})")
         else:
             print(f"  [!!] {name}.state MISSING")
-
 
 if __name__ == "__main__":
     main()

@@ -17,7 +17,7 @@ game/ RAM + maps + policy
 |---|---|
 | New SNES game identity and environment | `retro_harness.snes.GameSpec` |
 | Named controller action | `retro_harness.snes.snes_action` / `retro_harness.actions` |
-| Timed button/menu macro | `InputStep`, `StartupPlan`, `run_startup` (`input_script`) |
+| Timed button/menu macro | `InputStep`, `StartupPlan`, `period_script`, `run_startup` (`input_script`) |
 | Old Gym / Gymnasium compatibility | `retro_harness.runtime` |
 | State path/read/write + ROM wiring | `retro_harness.env` (`GameSpec`, `setup_game_rom`) |
 | Typed RAM schema / discovery / GameState | `retro_harness.ram_state` |
@@ -32,6 +32,10 @@ game/ RAM + maps + policy
 | Fighting-game env / PPO | `retro_harness.fighters` |
 | Adventure route graphs | `retro_harness.adventure` |
 | Wire all ladder ROMs | `uv run python -m retro_harness.setup_all_roms` |
+| One-game `scripts/setup_rom.py` | `retro_harness.setup_rom_cli` |
+| Shared boot-to-checkpoint probe | `retro_harness.boot_probe` |
+| Gymnasium vs classic `env.reset` | `retro_harness.env.reset_obs` |
+| Fighting watch / validate CLIs | `retro_harness.fighters.{watch,validate_states}` |
 
 `retro_harness.snes` is the intentionally small new-game facade. The larger
 package root remains a compatibility barrel for existing code — prefer the
@@ -41,7 +45,8 @@ specific submodule for new imports.
 
 - `actions` owns controller layout and action construction.
 - `input_script` owns fixed-duration inputs, compact script parsing,
-  title/menu plans, and execution until a readiness predicate.
+  title/menu plans, repeating period boot menus, and execution until a
+  readiness predicate.
 - `runtime` owns environment return-value normalization.
 - `env` owns integration/state paths, `GameSpec`, and shared ROM zip setup.
 - `ram_state` owns typed readers, schemas, watchers, normalized `GameState`,

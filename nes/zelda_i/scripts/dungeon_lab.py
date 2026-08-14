@@ -9,18 +9,11 @@ Example::
       --save-state Level1Cleared54
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from zelda_i.dungeon import AliveRule, ensure_default_specs, spec_for_room
 from zelda_i.dungeon_lab import LabRequest, run_lab
@@ -31,14 +24,11 @@ from zelda_i.dungeon_trace import (
     read_jsonl,
 )
 
-
 def _int_auto(value: str) -> int:
     return int(value, 0)
 
-
 def _int_csv(value: str) -> tuple[int, ...]:
     return tuple(_int_auto(part.strip()) for part in value.split(",") if part.strip())
-
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -78,7 +68,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Only report the first divergence between two existing traces",
     )
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
@@ -142,7 +131,6 @@ def main(argv: list[str] | None = None) -> int:
             f"provenance={summary['provenance']}"
         )
     return 0 if summary["successes"] else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

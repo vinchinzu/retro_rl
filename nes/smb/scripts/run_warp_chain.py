@@ -27,17 +27,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
@@ -69,7 +64,6 @@ MIN_BOOT_FRAME = 200
 DEFAULT_MAX_FRAMES_11 = 4000
 DEFAULT_MAX_FRAMES_12 = 4000
 
-
 def _boot_to_ready(env) -> tuple[object, int]:
     frame = 0
     obs = None
@@ -86,7 +80,6 @@ def _boot_to_ready(env) -> tuple[object, int]:
             return obs, frame
     return obs, frame
 
-
 def _idle(env, n: int) -> object:
     obs = None
     action = np.zeros(int(env.action_space.shape[0]), dtype=np.int8)
@@ -94,14 +87,12 @@ def _idle(env, n: int) -> object:
         obs, *_ = env.step(action)
     return obs
 
-
 def _load_warp_mid(env) -> None:
     if not WARP_MID_STATE.exists():
         raise SystemExit(
             f"missing {WARP_MID_STATE}; copy playthrough mid-1-2 state first"
         )
     env.em.set_state(read_state_bytes(WARP_MID_STATE))
-
 
 def run_1_2_warp_segment(
     env,
@@ -155,7 +146,6 @@ def run_1_2_warp_segment(
         "last_obs": obs,
     }
 
-
 def run_warp_chain(
     *,
     mode: str = "chain",
@@ -179,8 +169,7 @@ def run_warp_chain(
         "stages": {},
     }
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         boot_frames = 0
         frames_11 = 0
 
@@ -293,7 +282,6 @@ def run_warp_chain(
     finally:
         env.close()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -325,7 +313,6 @@ def main() -> None:
     if args.trials > 1:
         print(f"trials {ok}/{args.trials} success")
     raise SystemExit(0 if ok == args.trials else 1)
-
 
 if __name__ == "__main__":
     main()

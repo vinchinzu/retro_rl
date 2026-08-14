@@ -4,16 +4,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-GAME_DIR = Path(__file__).resolve().parent
-REPO_ROOT = GAME_DIR.parent.parent
-GAME = "SuperMarioBros2-Nes"
+from retro_harness.game_layout import game_paths
 
-ROMS_DIR = GAME_DIR / "roms"
+_paths = game_paths(__file__, "SuperMarioBros2-Nes")
+GAME_DIR = _paths.game_dir
+REPO_ROOT = _paths.repo_root
+INTEGRATION = _paths.integration
+GAME = INTEGRATION
+INTEGRATION_DIR = _paths.integration_dir
+RECORDINGS_DIR = _paths.recordings_dir
+ROMS_DIR = _paths.roms_dir
+DOCS_DIR = _paths.docs_dir
+
 ROM_FILENAME = "Super Mario Bros. 2.nes"
 ROM_PATH = ROMS_DIR / ROM_FILENAME
-SHARED_ROM_ZIP = REPO_ROOT / "roms" / "Nintendo" / "NES" / ("Super Mario Bros. 2.zip")
+SHARED_ROM_ZIP = REPO_ROOT / "roms" / "Nintendo" / "NES" / "Super Mario Bros. 2.zip"
 
-INTEGRATION_DIR = GAME_DIR / "custom_integrations" / GAME
 ROM_SHA1_PATH = INTEGRATION_DIR / "rom.sha"
 
 MOVIES_DIR = GAME_DIR / "movies"

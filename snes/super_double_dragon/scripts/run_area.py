@@ -1,18 +1,11 @@
 """Run the shared policy from a named save until an internal area advances."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from retro_harness.env import make_env, save_state
 from retro_harness.ram_state import GameMode
@@ -26,16 +19,13 @@ from super_double_dragon.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from super_double_dragon.policy import Stage1Policy
 from super_double_dragon.ram import parse_game_state
 
-
 def _parse_int(value: str) -> int:
     return int(value, 0)
-
 
 def _heal_player(env: Any, player_base: int, health: int = 88) -> None:
     page = player_base >> 8
     env.set_value(f"actor{page:02x}_hp", health)
     env.set_value("player_lives", 2)
-
 
 def run_area(
     *,
@@ -109,7 +99,6 @@ def run_area(
     finally:
         env.close()
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", required=True)
@@ -137,7 +126,6 @@ def main() -> int:
     if report["saved_states"]:
         print("states: " + ", ".join(report["saved_states"]))
     return 0 if report["success"] else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

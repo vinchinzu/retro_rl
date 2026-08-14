@@ -80,7 +80,7 @@ uv run python nes/zelda_i/scripts/run_level4_entry.py --infinite-life --trials 2
 uv run python nes/zelda_i/scripts/run_level4_entry.py --infinite-life --dock-only --save-state
 
 # Plan dry-run
-uv run python nes/zelda_i/scripts/probe_level4_entry.py --plan-only
+uv run python nes/zelda_i/scripts/run_level4_entry.py --plan-only
 ```
 
 Evidence: `recordings/l4_entry_recon.json` (**2/2 assisted**, ~2173f/trial).
@@ -338,7 +338,7 @@ KEY-RIGHT do not open 0x13**; push block 0x68 LEFT first; naive y141 hold-RIGHT
 fails (maze) — use `PATH_12_TO_GLEEOK` hold4; if path sticks at east wall
 y≈149, align y141 + live BFS exit (rr-zavx).
 
-Probe: `scripts/probe_level4_map_gleeok.py --infinite-life --from-state Level4Map`.
+Map → Gleeok compose: `scripts/run_level4_continuous_tf.py` / `run_level4_gleeok.py`.
 
 **Traps (post-ladder live):**
 

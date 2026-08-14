@@ -14,13 +14,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from punch_out.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from punch_out.policy import BoutMode, GlassJoePolicy
@@ -49,10 +44,8 @@ DEFAULT_GOAL = "win"
 DEFAULT_MAX_FRAMES = 25000
 WIN_OUTCOMES = frozenset({"tko_win", "ko_win", "decision_win"})
 
-
 def normalize_goal(goal: str) -> str:
     return "win" if goal == "bout" else goal
-
 
 def classify_bout_outcome(
     *,
@@ -101,7 +94,6 @@ def classify_bout_outcome(
 
     return None
 
-
 def _ensure_match_live(env, obs, max_wait: int = 2000):
     """If loaded pre-clock, idle until the bout clock is live.
 
@@ -114,7 +106,6 @@ def _ensure_match_live(env, obs, max_wait: int = 2000):
         step = env.step(nes_idle_action())
         obs = step[0] if isinstance(step, tuple) else step
     return obs, max_wait
-
 
 def _maybe_open_video(out: Path, *, record: bool, obs):
     """Optionally start a FrameVideoWriter; returns writer or None."""
@@ -148,7 +139,6 @@ def _maybe_open_video(out: Path, *, record: bool, obs):
         print(f"video open failed: {exc}")
         return None
 
-
 def _record_terminal(
     *,
     env,
@@ -178,7 +168,6 @@ def _record_terminal(
     elif outcome in WIN_OUTCOMES:
         path = save_state(env, GAME_DIR, GAME, "GlassJoe_Clear")
         saved.append(path.name)
-
 
 def run_glass_joe(
     *,
@@ -322,7 +311,6 @@ def run_glass_joe(
     )
     return report
 
-
 def run_trials(
     *,
     trials: int,
@@ -371,7 +359,6 @@ def run_trials(
     )
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=DEFAULT_STATE)
@@ -417,7 +404,6 @@ def main() -> None:
         record=args.record,
     )
     raise SystemExit(0 if report["success"] else 1)
-
 
 if __name__ == "__main__":
     main()
