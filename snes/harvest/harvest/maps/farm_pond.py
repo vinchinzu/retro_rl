@@ -116,6 +116,12 @@ def player_in_west_plant_pocket(tile: Tuple[int, int]) -> bool:
     return y <= 30 and x <= 28
 
 
+# Tillable yard north of the y=31 fence (x=11–29) and west of the wall end.
+# House/north-stream y<14 is out: this is the hoe/plant pocket only.
+# Inclusive (x_min, y_min, x_max, y_max).
+WEST_PLANT_POCKET_BOUNDS: Tuple[int, int, int, int] = (3, 14, 28, 30)
+
+
 # Named water pockets: (name, water_tile_id, fills_can, sample_cells)
 FARM_WATER_POCKETS: Tuple[Tuple[str, int, bool, Tuple[Tuple[int, int], ...]], ...] = (
     ("main_pond", 0xF0, True, ((32, 32), (33, 32), (31, 32), (34, 32))),

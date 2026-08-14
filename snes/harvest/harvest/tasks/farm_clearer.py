@@ -13,6 +13,7 @@ import json
 
 import numpy as np
 
+from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_STAMINA,
@@ -97,6 +98,7 @@ class FarmClearer:
         self.tile_attempts: Dict[Tuple[int, int, int], int] = {}
         self.frame_count = 0
         self.farm_bounds: Optional[Tuple[int, int, int, int]] = None
+        self._locked_bounds: Optional[Tuple[int, int, int, int]] = None
 
         self.prefer_lift_for_weeds = True
         self.prefer_lift_for_stones = False
@@ -121,6 +123,7 @@ class FarmClearer:
         self.clearing_start_frame = 0
         self.suppress_move_frames = 0
         self._pending_lift_verify: Optional[Tuple[int, int]] = None
+        self._toss_before_lift = 0
         self._init_no_go()
 
     def _init_no_go(self):
@@ -137,6 +140,8 @@ class FarmClearer:
         for k, v in kwargs.items():
             if hasattr(self, k):
                 setattr(self, k, v)
+        if self.farm_bounds is not None:
+            self._locked_bounds = tuple(self.farm_bounds)
 
     def add_startup_task(self, task_type: str, **kwargs):
         self.startup_tasks.append({"type": task_type, **kwargs})
@@ -190,7 +195,7 @@ class FarmClearer:
         self.prefer_lift_for_stones = True
         # Prefer weeds first: they lift reliably and open crop-field paths.
         self.priority = [DebrisType.WEED, DebrisType.STONE]
-        names = ", ".join(f"0x{tool:02X}" for tool in missing)
+        names = ", ".join(f"0x{tool:02X}" for tool in missing) or "lift-only"
         print(
             f"[CLEARER] Startup missing tools: {names}; "
             "continuing with lift-only weeds/stones"
@@ -454,8 +459,10 @@ class FarmClearer:
             )
             return "complete"
 
+        scan_bounds = self._locked_bounds or self.farm_bounds
+        scan_types = set(self.priority) if self.priority else set(CLEARABLE_DEBRIS_TYPES)
         targets = self.scanner.scan(
-            ram, self.farm_bounds, types=set(CLEARABLE_DEBRIS_TYPES)
+            ram, scan_bounds, types=scan_types
         )
         if not targets:
             return "complete"
@@ -465,14 +472,15 @@ class FarmClearer:
         if opportunity:
             return opportunity
 
-        xs = [t.tile[0] for t in targets]
-        ys = [t.tile[1] for t in targets]
-        self.farm_bounds = (
-            max(2, min(xs)),
-            max(2, min(ys)),
-            min(61, max(xs)),
-            min(61, max(ys)),
-        )
+        if self._locked_bounds is None:
+            xs = [t.tile[0] for t in targets]
+            ys = [t.tile[1] for t in targets]
+            self.farm_bounds = (
+                max(2, min(xs)),
+                max(2, min(ys)),
+                min(61, max(xs)),
+                min(61, max(ys)),
+            )
 
         counts: Dict[DebrisType, int] = {}
         for t in targets:
@@ -717,6 +725,27 @@ class FarmClearer:
 
         # Lift check — cap attempts so unliftable / re-deposited stones stop thrashing.
         if self._should_lift(self.current_target):
+            held = read_held_item(ram)
+            if held:
+                self._toss_before_lift += 1
+                if self._toss_before_lift > 3:
+                    print(
+                        f"[CLEARER] Still held=0x{held:02X}; "
+                        f"skip lift at {target}"
+                    )
+                    self.failed_tiles.add(target)
+                    self.current_target = None
+                    self.clearing_start_frame = 0
+                    self._toss_before_lift = 0
+                    return "scanning"
+                print(f"[CLEARER] Toss held=0x{held:02X} before next lift")
+                face = "down"
+                self.action_queue.extend([make_action(**{face: True}) for _ in range(2)])
+                self.action_queue.extend([make_action() for _ in range(2)])
+                self.action_queue.extend([make_action(a=True) for _ in range(12)])
+                self.action_queue.extend([make_action() for _ in range(12)])
+                return None
+            self._toss_before_lift = 0
             lift_key = (target[0], target[1], int(self.current_target.tile_id))
             attempts = self.tile_attempts.get(lift_key, 0)
             if attempts >= 2 or target in self.failed_tiles:
@@ -844,7 +873,9 @@ class FarmClearer:
 
         if self.tool_manager.cycle_complete() or self.tool_search_frames > 300:
             print(f"[CLEARER] Can't find {self.searching_tool.name}")
-            frames = self._load_task(f"get_{self.searching_tool.name.lower()}")
+            frames = None
+            if not self.tools_missing:
+                frames = self._load_task(f"get_{self.searching_tool.name.lower()}")
             if frames:
                 print(f"[CLEARER] Running get_{self.searching_tool.name.lower()}")
                 self.task_queue.extend(frames)

@@ -277,12 +277,18 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         names = [phase.phase for phase in plan._schedule.active]
         self.assertEqual(
             names[:4],
-            ["BUY_SEEDS", "ENSURE_CROP_SEEDS", "NAV_CROP", "CROP_ESTABLISH"],
+            ["BUY_SEEDS", "CLEAR_PLOT", "ENSURE_CROP_SEEDS", "NAV_CROP"],
         )
-        self.assertLess(names.index("CROP_ESTABLISH"), names.index("CLEAR_FIELD"))
-        self.assertEqual(plan.phase_text, "ENSURE_CROP_SEEDS")
-        spliced = plan._schedule.active[1:4]
-        self.assertTrue(all(phase.failure_policy == "optional" for phase in spliced))
+        self.assertIn("CROP_ESTABLISH", names)
+        self.assertIn("CROP_WATER", names)
+        self.assertNotIn("CLEAR_FIELD", names)
+        self.assertLess(names.index("CLEAR_PLOT"), names.index("CROP_ESTABLISH"))
+        self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
+        self.assertEqual(plan.phase_text, "CLEAR_PLOT")
+        self.assertEqual(plan._schedule.active[1].params.get("farm_bounds"), (3, 14, 28, 30))
+        self.assertTrue(
+            all(phase.failure_policy == "optional" for phase in plan._schedule.active[1:])
+        )
 
     def test_buy_seeds_does_not_splice_plant_without_bag(self) -> None:
         class InstantBuy:
