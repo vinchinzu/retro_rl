@@ -22,10 +22,6 @@ from typing import Any
 
 import numpy as np
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from smz3.boot import make_boot_env  # noqa: E402
 from smz3.outdoor_route import (  # noqa: E402
     FORTUNE_TELLER_SCREEN,
@@ -51,12 +47,10 @@ DEFAULT_VIDEO = RECORDINGS_DIR / "fortune_to_links_house.mp4"
 DEFAULT_PNG = RECORDINGS_DIR / "m3_links_house_ow.png"
 DEFAULT_JSON = RECORDINGS_DIR / "fortune_to_links_house.json"
 
-
 def _make_settled_env(*, state: str, render_mode: str = "rgb_array") -> Any:
     from retro_harness.env import make_env
 
     return make_env(INTEGRATION, state, GAME_DIR, render_mode=render_mode)
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -206,7 +200,6 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"video_frames: {video_frames}")
         if env is not None:
             env.close()
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

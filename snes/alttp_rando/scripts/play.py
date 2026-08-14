@@ -22,17 +22,9 @@ import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-_REPO = Path(__file__).resolve().parents[3]
-_SNES = _REPO / "snes"
-for _p in (_REPO, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ALTTP Rando play / record")
@@ -279,7 +271,6 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"outcome={manifest.outcome} frames={manifest.frames}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

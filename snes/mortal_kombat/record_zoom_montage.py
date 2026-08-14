@@ -24,7 +24,6 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = SCRIPT_DIR.parent
-sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import torch
@@ -63,11 +62,9 @@ MATCH4_OPPONENTS = {
     "SubZero": "LiuKang", "Scorpion": "LiuKang",
 }
 
-
 def get_opponent(char, level):
     mapping = {1: MATCH1_OPPONENTS, 2: MATCH2_OPPONENTS, 3: MATCH3_OPPONENTS, 4: MATCH4_OPPONENTS}
     return mapping.get(level, {}).get(char, "???")
-
 
 def build_raw_env(config, game_dir, state_name):
     retro.data.Integrations.add_custom_path(str(game_dir / "custom_integrations"))
@@ -93,7 +90,6 @@ def build_raw_env(config, game_dir, state_name):
     env = DiscreteAction(env, config.actions)
     env = FrameStack(env, n_frames=4)
     return env, base_env
-
 
 def record_match(model, config, game_dir, state_name, output_path, max_frames=3000):
     env, base_env = build_raw_env(config, game_dir, state_name)
@@ -131,7 +127,6 @@ def record_match(model, config, game_dir, state_name, output_path, max_frames=30
     proc.wait()
     env.close()
     return won, frames
-
 
 def pick_25_matches(state_dir):
     """Pick 25 matches for 5x5 grid with good distribution across all levels."""
@@ -178,7 +173,6 @@ def pick_25_matches(state_dir):
     random.shuffle(pool)
     matches = pool[:12] + [center] + pool[12:24]
     return matches[:25]
-
 
 def build_grid_video(clip_files, results, grid_path, speed=2.0):
     """Tile 25 clips into a 5x5 grid video with tint + labels."""
@@ -228,7 +222,6 @@ def build_grid_video(clip_files, results, grid_path, speed=2.0):
         print(f"  FFmpeg grid error: {r.stderr[-500:]}")
         return False
     return True
-
 
 def apply_zoom_animation(grid_path, output_path, max_mb=None):
     """Read grid video frame-by-frame, apply smooth zoom-out crop animation."""
@@ -361,7 +354,6 @@ def apply_zoom_animation(grid_path, output_path, max_mb=None):
 
     return output_path.exists()
 
-
 def main():
     parser = argparse.ArgumentParser(description="Record MK1 5x5 zoom-out montage")
     parser.add_argument("--model", type=str, default=None, help="Model path")
@@ -457,7 +449,6 @@ def main():
             pass
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

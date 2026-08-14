@@ -39,11 +39,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state  # noqa: E402
+from retro_harness.env import make_env, reset_obs, save_state  # noqa: E402
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.ram_state import GameMode  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
@@ -64,7 +60,6 @@ _RAHZAR = 0xA0
 _SHREDDER_F1 = 0x52
 _TANK_EVENT = 0x18
 
-
 @dataclass
 class CapturePoint:
     """One named dump request."""
@@ -80,15 +75,8 @@ class CapturePoint:
     path: str | None = None
 
 
-def _reset(env: Any) -> None:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return
-
-
 def _has_kind(state: Any, kind: int) -> bool:
     return any(e.kind == kind and e.health > 0 for e in state.living_enemies)
-
 
 def run_capture(
     *,
@@ -99,7 +87,7 @@ def run_capture(
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     policy = Stage1Policy()
-    _reset(env)
+    reset_obs(env)
 
     points = {
         "stage4": CapturePoint(
@@ -270,7 +258,6 @@ def run_capture(
     print(json.dumps(report, indent=2), flush=True)
     return report
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-frames", type=int, default=220_000)
@@ -289,7 +276,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: only {saved} captures", file=sys.stderr)
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

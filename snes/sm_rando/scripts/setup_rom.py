@@ -12,18 +12,11 @@ import os
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _SNES_IMPORT_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from sm_rando.paths import (  # noqa: E402
+from sm_rando.paths import (
     INTEGRATION_DIR,
     SHARED_SM_ROM,
     SM_SHA1,
 )
-
 
 def setup_rom(*, rom: Path | None = None) -> Path:
     """Symlink ``rom.sfc`` and write ``rom.sha`` (SHA1). Return integration link."""
@@ -54,7 +47,6 @@ def setup_rom(*, rom: Path | None = None) -> Path:
     (INTEGRATION_DIR / "rom.sha").write_text(f"{digest}\n", encoding="utf-8")
     return target
 
-
 def main(argv: list[str] | None = None) -> int:
     del argv  # unused; keep CLI shape stable
     try:
@@ -65,7 +57,6 @@ def main(argv: list[str] | None = None) -> int:
     print(f"ROM ready: {target} -> {target.resolve()}")
     print(f"rom.sha = {SM_SHA1}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

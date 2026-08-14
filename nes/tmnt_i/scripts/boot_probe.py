@@ -2,74 +2,32 @@
 
 from __future__ import annotations
 
-import argparse
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
+from retro_harness.boot_probe import BootProbeConfig, main_boot_probe, run_boot_probe
 from tmnt_i.menus import boot_to_level1_script
 from tmnt_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from tmnt_i.ram import is_level1_ready, parse_game_state
-from retro_harness.env import make_env, save_state
-from retro_harness.nes import nes_action, nes_idle_action
-from retro_harness.ram_state import GameMode
-from retro_harness.segment_runner import configure_headless, save_rgb_png
+
+CFG = BootProbeConfig(
+    game=GAME,
+    game_dir=GAME_DIR,
+    recordings_dir=RECORDINGS_DIR,
+    script=boot_to_level1_script,
+    parse_state=parse_game_state,
+    is_ready=is_level1_ready,
+    hold_idle_frames=20,
+    require_playing=True,
+    walk_frames=40,
+)
 
 
 def run_probe(*, save_level1: bool = True, walk_frames: int = 40) -> int:
     """Reach Level 1, verify readiness, optionally walk, and save checkpoint."""
-    configure_headless()
-    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
-    try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
-        frame = 0
-        for scripted in boot_to_level1_script():
-            obs, *_ = env.step(scripted.action)
-            frame += 1
-
-            if is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
-                # require the bright map to hold briefly
-                hold_ok = True
-                for _ in range(20):
-                    obs, *_ = env.step(nes_idle_action())
-                    frame += 1
-                    if not is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
-                        hold_ok = False
-                        break
-                if hold_ok:
-                    break
-
-        # small walk to leave an in-play evidence frame
-        for _ in range(walk_frames):
-            obs, *_ = env.step(nes_action("RIGHT"))
-            frame += 1
-
-        state = parse_game_state(env.get_ram(), frame=frame)
-        ready = is_level1_ready(env.get_ram(), obs_mean=float(obs.mean()))
-        png = save_rgb_png(obs, RECORDINGS_DIR / "boot_level1.png")
-        print(
-            f"LEVEL1 frame={frame} mode={state.mode.name} ready={ready} "
-            f"mean={float(obs.mean()):.1f} screenshot={png}"
-        )
-        if save_level1 and ready:
-            path = save_state(env, GAME_DIR, GAME, "Level1")
-            print(f"saved {path}")
-        return 0 if ready and state.mode is GameMode.PLAYING else 1
-    finally:
-        env.close()
+    return run_boot_probe(CFG, save=save_level1, walk_frames=walk_frames)
 
 
 def main() -> None:
     """CLI entry point."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--no-save", action="store_true")
-    parser.add_argument("--walk-frames", type=int, default=40)
-    args = parser.parse_args()
-    raise SystemExit(run_probe(save_level1=not args.no_save, walk_frames=args.walk_frames))
+    raise SystemExit(main_boot_probe(CFG, walk_default=40))
 
 
 if __name__ == "__main__":

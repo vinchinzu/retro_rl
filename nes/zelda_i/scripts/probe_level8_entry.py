@@ -21,20 +21,12 @@ Examples::
         --infinite-life --save-state --tag l8_shop
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from collections import Counter
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -76,7 +68,6 @@ DOOR_LEFT = 0x02
 DOOR_DOWN = 0x04
 DOOR_UP = 0x08
 
-
 def _objs(snap: ZeldaSnapshot) -> list[dict]:
     out: list[dict] = []
     for o in snap.objects:
@@ -95,7 +86,6 @@ def _objs(snap: ZeldaSnapshot) -> list[dict]:
             }
         )
     return out
-
 
 def _snap_dict(snap: ZeldaSnapshot, ram=None) -> dict:
     candle = read_u8(ram, ADDR_CANDLE) if ram is not None else None
@@ -123,13 +113,11 @@ def _snap_dict(snap: ZeldaSnapshot, ram=None) -> dict:
         "type_counts": dict(Counter(o["type"] for o in _objs(snap))),
     }
 
-
 def _select_path(name: str):
     # Both names resolve to the live-verified 0x5C-maze path (0x6D).
     if name in ("via_6b_east", "via_58", "default"):
         return LEVEL8_BUSH_HOPS if name != "via_58" else LEVEL8_BUSH_HOPS_VIA_58
     return LEVEL8_BUSH_HOPS
-
 
 def _probe_cardinals(env, obs, *, frames_each: int, assist, tag: str) -> dict:
     """Push N/E/S/W briefly from current dungeon room; log screen changes."""
@@ -168,7 +156,6 @@ def _probe_cardinals(env, obs, *, frames_each: int, assist, tag: str) -> dict:
         results[direction] = trail
     return results
 
-
 def run_shop_probe(
     *,
     start_state: str,
@@ -187,8 +174,7 @@ def run_shop_probe(
     hops = CANDLE_SHOP_HOPS
 
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -323,7 +309,6 @@ def run_shop_probe(
     finally:
         env.close()
 
-
 def run_probe(
     *,
     start_state: str,
@@ -350,8 +335,7 @@ def run_probe(
     poke_notes: list[str] = []
 
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if poke_candle:
             # RECON only — not Clean / not ASSIST_CONTRACT progression.
@@ -489,7 +473,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--from-state", default="PostSwordStart")
@@ -591,7 +574,6 @@ def main(argv: list[str] | None = None) -> int:
         tag=args.tag,
     )
     return 0 if report.get("success") else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

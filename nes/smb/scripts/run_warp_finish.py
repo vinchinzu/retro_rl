@@ -30,7 +30,7 @@ from typing import Any
 
 import numpy as np
 
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from smb.full_run import read_state_bytes
 from smb.menus import boot_to_level1_script
 from smb.paths import (
@@ -795,8 +795,7 @@ def run_warp_finish(
     else:
         resolved_peach_hold = max(0, int(peach_hold_frames))
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
 
         if record_path is not None:
             if obs is None:

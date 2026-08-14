@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Human free-record (32-exit). Full NES-9 buttons + RAM trace + stage pins.
+# Default: true power-on (title → 1-1 → 8-4), name all_exits_v1.
+#
+# Usage (from repo root):
+#   ./play smb                         # power-on → all_exits_v1
+#   ./play smb 4-1                     # continue from 4-1 pin
+#   ./play smb 4-1 all_exits_v1        # same, explicit name
+#   ./play smb resume all_exits_v1     # last F5 / pin
+#   ./play smb --list
+#   ./nes/smb/play --route warp        # 8-exit warp practice
+#
+# F5 / F1     save recording + end state + pins + exit
+# F6          mid-run pin (does not stop)
+# SELECT+R2   checkpoint save · SELECT+L2 load
+# ESC / Q     cancel without saving
+#
+# Same --name archives prior take under recordings/human/<name>_segments/sN/.
+set -euo pipefail
+
+GAME="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$GAME/../.." && pwd)"
+cd "$ROOT"
+
+DEFAULT_START="start"
+DEFAULT_NAME="all_exits_v1"
+
+if [[ "${1:-}" == "--list" || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  exec uv run python -m smb.scripts.play "$@"
+fi
+
+START="$DEFAULT_START"
+NAME="$DEFAULT_NAME"
+EXTRA=()
+
+if [[ $# -ge 1 && "${1:0:1}" != "-" ]]; then
+  START="$1"
+  shift
+fi
+if [[ $# -ge 1 && "${1:0:1}" != "-" ]]; then
+  NAME="$1"
+  shift
+fi
+EXTRA=("$@")
+
+echo "[play] --from $START --name $NAME --route all_exits${EXTRA[*]:+ ${EXTRA[*]}}"
+exec uv run python -m smb.scripts.play \
+  --from "$START" \
+  --name "$NAME" \
+  --route all_exits \
+  "${EXTRA[@]}"

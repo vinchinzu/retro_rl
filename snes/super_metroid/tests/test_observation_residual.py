@@ -365,6 +365,20 @@ class TestResidualProfile:
         )
         assert profile.tag_lag_desync() is True
 
+    def test_room_then_lag_still_hard_rejects(self) -> None:
+        """ROOM is not overwritten by later lag; hard-reject still fires."""
+        profile = ResidualProfile(
+            fd_pi=2,
+            fd_sigma=2,
+            fd_sigma_plus=2,
+            fd_dagger=None,
+            cause=DivergenceCause.ROOM,
+            first_diff_field="room",
+            lag=True,
+        )
+        assert profile.should_hard_reject() is True
+        assert profile.tag_lag_desync() is True
+
     def test_no_lag_desync_on_collision(self) -> None:
         profile = ResidualProfile(
             fd_pi=None,
@@ -551,9 +565,11 @@ class TestComputeResidualProfile:
         profile = compute_residual_profile(mini_obs, emu_obs)
         assert profile.fd_pi is None  # Oπ holds (pixels/pose/room agree)
         assert profile.fd_sigma == 3  # Oσ broke (subpixels diverged)
+        assert profile.fd_sigma_plus == 3  # Oσ+ includes Oσ even when lag breaks
         assert profile.cause == DivergenceCause.LAG  # Lag takes priority
         assert profile.first_diff_field == "subpixels"  # Subpixels checked first
         assert profile.tag_lag_desync() is True
+        assert profile.lag is True
 
     def test_pixel_divergence_pi_break(self) -> None:
         """Pixels x/y are part of Oπ — fd_pi set on pixel divergence."""
@@ -825,3 +841,50 @@ class TestComputeResidualProfile:
         assert profile.fd_sigma is None  # Loop broke before frame 5
         assert profile.cause == DivergenceCause.LAG
         assert profile.first_diff_field == "frame_counter"
+
+    def test_room_break_then_lag_keeps_hard_reject(self) -> None:
+        """Same-frame $079B + lag: ROOM stays the cause, lag is orthogonal."""
+        mini_obs = [
+            Observation(
+                frame=i,
+                x=100,
+                y=200,
+                pose=0,
+                room=0x91F8,
+                sub_x=0,
+                sub_y=0,
+                velocity_x=0,
+                velocity_y=0,
+                velocity_x_sub=0,
+                velocity_y_sub=0,
+                momentum_x=0,
+                momentum_x_sub=0,
+                speed_counter=0,
+                speed_flag=0,
+                energy=99,
+                frame_counter_1=i,
+                frame_counter_2=i,
+            )
+            for i in range(6)
+        ]
+        emu_obs = [
+            obs
+            if i < 2
+            else Observation(
+                **{
+                    **obs.to_dict(),
+                    "room": 0xA000,
+                    "frame_counter_1": i + 1,
+                }
+            )
+            for i, obs in enumerate(mini_obs)
+        ]
+        profile = compute_residual_profile(mini_obs, emu_obs)
+        assert profile.fd_pi == 2
+        assert profile.fd_sigma == 2
+        assert profile.fd_sigma_plus == 2
+        assert profile.cause == DivergenceCause.ROOM
+        assert profile.first_diff_field == "room"
+        assert profile.lag is True
+        assert profile.should_hard_reject() is True
+        assert profile.tag_lag_desync() is True

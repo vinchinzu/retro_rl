@@ -16,41 +16,33 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from alttp import primitives  # noqa: E402
-from alttp.opening_route.castle_to_sword import (  # noqa: E402
+from alttp import primitives
+from alttp.opening_route.castle_to_sword import (
     run_from_castle_grounds,
     run_from_state,
     run_natural_chain,
 )
-from alttp.paths import (  # noqa: E402
+from alttp.paths import (
     HYRULE_CASTLE_GROUNDS_STATE,
     RECORDINGS_DIR,
 )
-from alttp.ram import snapshot_to_diag  # noqa: E402
-from alttp.route_report import RoutePhaseResult  # noqa: E402
-from alttp.startup import build_boot_env  # noqa: E402
+from alttp.ram import snapshot_to_diag
+from alttp.route_report import RoutePhaseResult
+from alttp.startup import build_boot_env
 
 DEFAULT_REPORT = RECORDINGS_DIR / "castle_to_sword.json"
 DEFAULT_SCREENSHOT = RECORDINGS_DIR / "castle_to_sword.png"
-
 
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -188,7 +180,6 @@ def main() -> int:
     ):
         return 2
     return 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

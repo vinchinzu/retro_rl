@@ -29,6 +29,7 @@ from typing import Any, Protocol, Sequence
 from super_metroid.ram import SuperMetroidState
 
 __all__ = [
+    "HasKinematics",
     "SimState",
     "FrameInput",
     "TrajectoryFrame",
@@ -39,7 +40,71 @@ __all__ = [
     "load_predictor",
     "encode_frame_mnemonic",
     "decode_frame_mnemonic",
+    "position_out_of_range",
 ]
+
+_KIN_FIELDS = (
+    "frame",
+    "room_id",
+    "samus_x",
+    "samus_y",
+    "samus_x_sub",
+    "samus_y_sub",
+    "velocity_x",
+    "velocity_y",
+    "velocity_x_sub",
+    "velocity_y_sub",
+    "momentum_x",
+    "momentum_x_sub",
+    "pose",
+    "facing",
+    "movement_type",
+    "speed_counter",
+    "speed_flag",
+    "shinespark_timer",
+)
+
+
+class HasKinematics(Protocol):
+    """Shared Samus kinematics surface (RAM, door snap, predictor)."""
+
+    frame: int
+    room_id: int
+    samus_x: int
+    samus_y: int
+    samus_x_sub: int
+    samus_y_sub: int
+    velocity_x: int
+    velocity_y: int
+    velocity_x_sub: int
+    velocity_y_sub: int
+    momentum_x: int
+    momentum_x_sub: int
+    pose: int
+    facing: int
+    movement_type: int
+    speed_counter: int
+    speed_flag: int
+    shinespark_timer: int
+
+
+def position_out_of_range(
+    x: int,
+    y: int,
+    *,
+    x_range: tuple[int, int] | None = None,
+    y_range: tuple[int, int] | None = None,
+) -> str:
+    """Empty string if (x, y) is inside the optional bands; else a reason."""
+    if x_range is not None:
+        lo, hi = x_range
+        if not (lo <= x <= hi):
+            return f"final x={x} outside target [{lo}, {hi}]"
+    if y_range is not None:
+        lo, hi = y_range
+        if not (lo <= y <= hi):
+            return f"final y={y} outside target [{lo}, {hi}]"
+    return ""
 
 # SNES button order for smedit-tas-1 format (matches retro_harness.controls)
 # [B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R]
@@ -100,86 +165,10 @@ def decode_frame_mnemonic(mnemonic: str) -> int:
 
 @dataclass(frozen=True)
 class SimState:
-    """Minimal Super Metroid state for physics prediction.
+    """Samus kinematics snapshot for prediction, residual, and door hops.
 
-    Represents Samus kinematics and relevant RAM state at a point in time.
-    Subset of SuperMetroidState focused on physics-relevant fields.
-    """
-
-    frame: int
-    room_id: int
-    samus_x: int
-    samus_y: int
-    samus_x_sub: int
-    samus_y_sub: int
-    velocity_x: int
-    velocity_y: int
-    velocity_x_sub: int
-    velocity_y_sub: int
-    momentum_x: int
-    momentum_x_sub: int
-    pose: int
-    facing: int
-    movement_type: int
-    speed_counter: int
-    speed_flag: int
-    shinespark_timer: int
-
-    @classmethod
-    def from_sm_state(cls, state: SuperMetroidState) -> SimState:
-        """Extract sim state from full SuperMetroidState."""
-        return cls(
-            frame=state.frame,
-            room_id=state.room_id,
-            samus_x=state.samus_x,
-            samus_y=state.samus_y,
-            samus_x_sub=state.samus_x_sub,
-            samus_y_sub=state.samus_y_sub,
-            velocity_x=state.velocity_x,
-            velocity_y=state.velocity_y,
-            velocity_x_sub=state.velocity_x_sub,
-            velocity_y_sub=state.velocity_y_sub,
-            momentum_x=state.momentum_x,
-            momentum_x_sub=state.momentum_x_sub,
-            pose=state.pose,
-            facing=state.facing,
-            movement_type=state.movement_type,
-            speed_counter=state.speed_counter,
-            speed_flag=state.speed_flag,
-            shinespark_timer=state.shinespark_timer,
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> SimState:
-        return cls(**data)
-
-
-@dataclass(frozen=True)
-class FrameInput:
-    """Controller input for a single frame.
-
-    Buttons are SNES button masks matching retro_harness.controls conventions.
-    """
-
-    buttons: int
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"buttons": self.buttons}
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> FrameInput:
-        return cls(buttons=data["buttons"])
-
-
-@dataclass(frozen=True)
-class TrajectoryFrame:
-    """Samus state at one frame of a predicted trajectory.
-
-    Includes full kinematics plus relevant RAM state for route analysis.
-    Optional enemies list for damage-boost routing and SMEDIT overlay.
+    Shared field set with DoorKinematics / SuperMetroidState. Optional
+    ``enemies`` is only filled on predicted trajectory frames.
     """
 
     frame: int
@@ -202,20 +191,84 @@ class TrajectoryFrame:
     shinespark_timer: int
     enemies: tuple[dict[str, Any], ...] = ()
 
+    @classmethod
+    def from_kinematics(cls, state: HasKinematics) -> SimState:
+        """Copy the shared kinematics fields from any compatible object."""
+        payload = {name: getattr(state, name) for name in _KIN_FIELDS}
+        payload["enemies"] = tuple(getattr(state, "enemies", ()) or ())
+        return cls(**payload)
+
+    @classmethod
+    def from_sm_state(cls, state: SuperMetroidState) -> SimState:
+        return cls.from_kinematics(state)
+
+    @classmethod
+    def grounded(
+        cls,
+        *,
+        samus_x: int,
+        samus_y: int,
+        room_id: int = 0,
+        frame: int = 0,
+        facing: int = 0x08,
+        **overrides: Any,
+    ) -> SimState:
+        """Zero-velocity standing pose; overrides replace any field."""
+        payload: dict[str, Any] = {
+            "frame": frame,
+            "room_id": room_id,
+            "samus_x": samus_x,
+            "samus_y": samus_y,
+            "samus_x_sub": 0,
+            "samus_y_sub": 0,
+            "velocity_x": 0,
+            "velocity_y": 0,
+            "velocity_x_sub": 0,
+            "velocity_y_sub": 0,
+            "momentum_x": 0,
+            "momentum_x_sub": 0,
+            "pose": 0,
+            "facing": facing,
+            "movement_type": 0,
+            "speed_counter": 0,
+            "speed_flag": 0,
+            "shinespark_timer": 0,
+        }
+        payload.update(overrides)
+        return cls(**payload)
+
     def to_dict(self) -> dict[str, Any]:
         result = asdict(self)
-        # Omit enemies when empty (not required)
         if not result["enemies"]:
             del result["enemies"]
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> TrajectoryFrame:
-        # enemies is optional, defaults to empty tuple
-        enemies_data = data.get("enemies", [])
-        data_copy = dict(data)
-        data_copy["enemies"] = tuple(enemies_data)
-        return cls(**data_copy)
+    def from_dict(cls, data: dict[str, Any]) -> SimState:
+        payload = {name: data[name] for name in _KIN_FIELDS if name in data}
+        payload["enemies"] = tuple(data.get("enemies", ()))
+        return cls(**payload)
+
+
+@dataclass(frozen=True)
+class FrameInput:
+    """Controller input for a single frame.
+
+    Buttons are SNES button masks matching retro_harness.controls conventions.
+    """
+
+    buttons: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"buttons": self.buttons}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FrameInput:
+        return cls(buttons=data["buttons"])
+
+
+# Predicted frames are SimState; alias kept for existing imports.
+TrajectoryFrame = SimState
 
 
 @dataclass(frozen=True)

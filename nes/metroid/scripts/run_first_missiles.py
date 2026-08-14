@@ -13,12 +13,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from metroid.first_missiles import (
     SEGMENT_MAX_FRAMES,
@@ -37,14 +31,13 @@ from metroid.screen_timing_session import (
     ScreenTimingSession,
     default_timing_artifact_path,
 )
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
     write_json_report,
 )
-
 
 def _boot_to_ready(env, timing: ScreenTimingSession | None) -> tuple[object, int]:
     frame = 0
@@ -63,7 +56,6 @@ def _boot_to_ready(env, timing: ScreenTimingSession | None) -> tuple[object, int
             stable = 0
     return obs, frame
 
-
 def _step_idle(
     env,
     timing: ScreenTimingSession | None,
@@ -77,7 +69,6 @@ def _step_idle(
         if timing is not None:
             timing.observe_env(env, phase=phase)
     return obs
-
 
 def run_once(
     *,
@@ -116,8 +107,7 @@ def run_once(
     morph_report: dict | None = None
     timing_path: str | None = None
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         boot_frames = 0
         morph_frames = 0
         if natural_entry:
@@ -267,7 +257,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -355,7 +344,6 @@ def main(argv: list[str] | None = None) -> int:
     if any(r.get("error") for r in reports):
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

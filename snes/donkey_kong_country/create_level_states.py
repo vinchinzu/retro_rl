@@ -43,14 +43,11 @@ DKC Levels (SNES):
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 os.environ.setdefault("SDL_VIDEODRIVER", "x11")
 
 ROOT_DIR = Path(__file__).parent.parent.resolve()
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from retro_harness.env import make_env, save_state
 
@@ -120,7 +117,6 @@ RAM_LIVES = 0x0575
 RAM_PLAYER_X = 0x00B4
 RAM_PLAYER_Y = 0x00B6
 
-
 def _read_ram(env):
     ram = env.get_ram()
     level_id = int(ram[RAM_LEVEL_ID])
@@ -129,7 +125,6 @@ def _read_ram(env):
     player_x = int(ram[RAM_PLAYER_X]) | (int(ram[RAM_PLAYER_X + 1]) << 8)
     player_y = int(ram[RAM_PLAYER_Y]) | (int(ram[RAM_PLAYER_Y + 1]) << 8)
     return level_id, camera_x, lives, player_x, player_y
-
 
 def _take_screenshot(env, name: str) -> Path:
     """Capture current frame as PNG."""
@@ -146,7 +141,6 @@ def _take_screenshot(env, name: str) -> Path:
     path = SCREENSHOT_DIR / f"{name}.png"
     img.save(path)
     return path
-
 
 def list_levels():
     """Print all known DKC levels."""
@@ -170,7 +164,6 @@ def list_levels():
     if resume_path.exists():
         print(f"\n  Resume point: [OK]  (--state Resume)")
     print()
-
 
 def main():
     import argparse
@@ -348,7 +341,6 @@ def main():
         print("  2. Register: add level to retro_harness/platformer/levels/dkc.py")
         print("  3. Selftest: uv run python -m retro_harness.platformer --level <alias> selftest")
         print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

@@ -15,17 +15,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from collections import Counter, deque
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env  # noqa: E402
+from retro_harness.env import make_env, reset_obs  # noqa: E402
 from retro_harness.actions import buttons, idle_action  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR  # noqa: E402
@@ -46,7 +41,6 @@ _SLASH_CHAR = 0x50
 _DEFAULT_STATE = "FullHardBoss5"
 _PLAYER_HP_RESTORE = 96
 _PRE_HIT_DEFAULT = 16
-
 
 @dataclass(frozen=True)
 class SlashSnap:
@@ -73,7 +67,6 @@ class SlashSnap:
         d["slash_status_hex"] = f"0x{self.slash_status:02X}"
         return d
 
-
 @dataclass
 class HitEvent:
     """Boss HP drop with pre-hit trajectory."""
@@ -92,7 +85,6 @@ class HitEvent:
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
-
 
 @dataclass
 class PlayerHitEvent:
@@ -115,14 +107,12 @@ class PlayerHitEvent:
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
-
 def _side(player_x: int, slash_x: int) -> str:
     if player_x < slash_x:
         return "left"
     if player_x > slash_x:
         return "right"
     return "overlap"
-
 
 def _read_slash(ram: Any) -> tuple[int, int, int, int, int] | None:
     """Return (x, y, hp, status, char) for living Slash, else None."""
@@ -140,7 +130,6 @@ def _read_slash(ram: Any) -> tuple[int, int, int, int, int] | None:
         status = read_u8(ram, base)  # EnemyState.animation = entity base+0
         return x, y, hp_raw, status, char_id
     return None
-
 
 def _snap(ram: Any, frame: int) -> SlashSnap | None:
     state = parse_game_state(ram, frame=frame)
@@ -168,11 +157,9 @@ def _snap(ram: Any, frame: int) -> SlashSnap | None:
         ady=abs(dy),
     )
 
-
 def _heal_player(env: Any) -> None:
     """Keep Leo alive so the probe can thrash for the full window."""
     env.set_value("player_hp", _PLAYER_HP_RESTORE)
-
 
 def _pick_action(
     *,
@@ -213,7 +200,6 @@ def _pick_action(
         return buttons("LEFT" if dx > 0 else "RIGHT"), "simple_spacing"
     return buttons(toward, "Y"), "simple_y"
 
-
 def _summarize_player_hits(phits: list[PlayerHitEvent]) -> dict[str, Any]:
     if not phits:
         return {"n_player_hits": 0, "dmg_taken": 0}
@@ -241,7 +227,6 @@ def _summarize_player_hits(phits: list[PlayerHitEvent]) -> dict[str, Any]:
         "by_status_damage": dict(dmg_by_status.most_common()),
         "adx_by_status": adx_stats,
     }
-
 
 def _summarize(
     hits: list[HitEvent],
@@ -353,7 +338,6 @@ def _summarize(
         "player_damage": player_summary,
     }
 
-
 def run_probe(
     *,
     state_name: str = _DEFAULT_STATE,
@@ -381,9 +365,7 @@ def run_probe(
     heals = 0
 
     try:
-        result = env.reset()
-        if isinstance(result, tuple):
-            pass
+        reset_obs(env)
         ram = env.get_ram()
         s0 = _snap(ram, 0)
         if s0 is not None:
@@ -519,7 +501,6 @@ def run_probe(
         "player_hits": [h.as_dict() for h in player_hits],
     }
 
-
 def _print_human(report: dict[str, Any]) -> None:
     s = report["summary"]
     print("=== Slash vulnerability probe ===")
@@ -565,7 +546,6 @@ def _print_human(report: dict[str, Any]) -> None:
             f"s=({ah['slash_x']},{ah['slash_y']})"
         )
         print(f"         traj[-12:]: {traj}")
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -629,7 +609,6 @@ def main(argv: list[str] | None = None) -> int:
         _print_human(report)
     print(f"\njson_out={out}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

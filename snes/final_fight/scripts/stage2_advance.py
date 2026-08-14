@@ -9,13 +9,8 @@ runs the natural clear-area → clear-round → open-subway pipeline, then
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from final_fight.policy import Stage1Policy, _living_all_far_behind
@@ -36,7 +31,7 @@ from final_fight.ram import (
     read_u8,
     read_u16le,
 )
-from retro_harness.env import get_available_states, make_env, save_state
+from retro_harness.env import get_available_states, make_env, reset_obs, save_state
 from retro_harness.actions import buttons, idle_action
 from retro_harness.ram_state import GameMode, GameState
 from retro_harness.segment_runner import (
@@ -54,13 +49,6 @@ MIN_SAVE_HP = 25
 ENGAGE_DX = 110
 
 
-def _reset(env: Any) -> Any:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return result[0]
-    return result
-
-
 def _snap_ram(ram: Any) -> dict[str, int]:
     return {
         "game_status": read_u8(ram, ADDR_GAME_STATUS),
@@ -70,7 +58,6 @@ def _snap_ram(ram: Any) -> dict[str, int]:
         "boss_hp": read_u8(ram, BOSS_BASE + OFF_HP),
         "boss_dead_flag": read_u8(ram, ADDR_BOSS_DEAD_FLAG),
     }
-
 
 def _living_brief(ram: Any, cam: int, px: int) -> list[dict[str, int]]:
     out: list[dict[str, int]] = []
@@ -92,7 +79,6 @@ def _living_brief(ram: Any, cam: int, px: int) -> list[dict[str, int]]:
             )
     return out
 
-
 def _is_engage_ready(state: GameState, enemies: list[dict[str, int]]) -> bool:
     if not enemies:
         return False
@@ -105,7 +91,6 @@ def _is_engage_ready(state: GameState, enemies: list[dict[str, int]]) -> bool:
     nearest = min(enemies, key=lambda e: abs(e["dx"]))
     sx = state.player_x - state.camera_x
     return abs(nearest["dx"]) <= ENGAGE_DX and 50 <= sx <= 160
-
 
 def run_stage2_advance(
     *,
@@ -137,7 +122,7 @@ def run_stage2_advance(
     transitions: list[dict[str, Any]] = []
     screenshots: list[str] = []
     saved_states: list[str] = []
-    obs = _reset(env)
+    obs, _ = reset_obs(env)
     ram = env.get_ram()
     state = parse_game_state(ram, frame=0)
     start = {**snapshot_state(state), **_snap_ram(ram)}
@@ -951,7 +936,6 @@ def run_stage2_advance(
     print(f"outcome={outcome} saved={saved_states}")
     return report
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default="Stage1_Clear")
@@ -996,7 +980,6 @@ def main() -> None:
         save_stage2=not args.no_save,
         bridge_clear_area=bridge,
     )
-
 
 if __name__ == "__main__":
     main()

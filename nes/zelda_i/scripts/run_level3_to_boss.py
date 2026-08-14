@@ -25,21 +25,12 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level3_to_boss.py --infinite-life --phase gate5d --tag l3_gate
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = _REPO_ROOT / "nes"
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -58,7 +49,6 @@ from zelda_i.level3_dungeon import (
 from zelda_i.level3_overworld import LEVEL3
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
-
 
 def _provenance(
     path: Path,
@@ -83,7 +73,6 @@ def _provenance(
         natural_entry=False,
     )
 
-
 def _finish(report: dict, tag: str, controller: Level3BossPathController) -> dict:
     report["controller"] = controller.report()
     report["path_log"].extend(
@@ -95,7 +84,6 @@ def _finish(report: dict, tag: str, controller: Level3BossPathController) -> dic
     write_json_report(out, report)
     report["report_path"] = str(out)
     return report
-
 
 def run_once(
     *,
@@ -138,8 +126,7 @@ def run_once(
     }
 
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -311,7 +298,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--from-state", default="Level3Raft")
@@ -424,7 +410,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"rollup_path={out}")
     return 0 if n4d > 0 or nkill > 0 or ntf > 0 else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

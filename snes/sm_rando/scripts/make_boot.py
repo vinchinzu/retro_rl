@@ -12,14 +12,6 @@ import argparse
 import json
 import os
 import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, _SNES_IMPORT_ROOT):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -83,7 +75,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"state: {result.state_path}")
 
     return 0 if result.ok else 2
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

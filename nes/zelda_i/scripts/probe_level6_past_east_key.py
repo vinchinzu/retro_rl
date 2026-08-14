@@ -21,20 +21,13 @@ Examples::
         --infinite-life --try-old-man --max-hops 6
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from collections import Counter
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -64,7 +57,6 @@ DOOR_TARGETS: dict[str, tuple[int, int]] = {
 PUSH_FRAMES = 90
 SETTLE_FRAMES = 80
 
-
 def _objs(snap: ZeldaSnapshot) -> list[dict]:
     out: list[dict] = []
     for o in snap.objects:
@@ -81,7 +73,6 @@ def _objs(snap: ZeldaSnapshot) -> list[dict]:
             }
         )
     return out
-
 
 def _room_fields(snap: ZeldaSnapshot) -> dict:
     types = Counter(
@@ -117,7 +108,6 @@ def _room_fields(snap: ZeldaSnapshot) -> dict:
         "objects": _objs(snap),
     }
 
-
 def _goto(env, assist, total: list[int], tx: int, ty: int, *, tol: int = 4, max_f: int = 400):
     for _ in range(max_f):
         snap = read_snapshot(env.get_ram())
@@ -132,7 +122,6 @@ def _goto(env, assist, total: list[int], tx: int, ty: int, *, tol: int = 4, max_
         if assist is not None:
             assist.apply_env(env, frame=total[0])
     return False
-
 
 def _push_dir(env, assist, total: list[int], direction: str, frames: int = PUSH_FRAMES):
     keys0 = read_snapshot(env.get_ram()).keys
@@ -164,7 +153,6 @@ def _push_dir(env, assist, total: list[int], direction: str, frames: int = PUSH_
         total[0] += 1
         if assist is not None:
             assist.apply_env(env, frame=total[0])
-
 
 def _try_exit(
     env,
@@ -211,14 +199,12 @@ def _try_exit(
         "screenshot": str(png),
     }
 
-
 def _idle(env, assist, total: list[int], frames: int = 30):
     for _ in range(frames):
         env.step(nes_idle_action())
         total[0] += 1
         if assist is not None:
             assist.apply_env(env, frame=total[0])
-
 
 def _fight_clear(
     env,
@@ -354,7 +340,6 @@ def _fight_clear(
         "final": _room_fields(read_snapshot(env.get_ram())),
     }
 
-
 def run_probe(
     *,
     start_state: str,
@@ -370,8 +355,7 @@ def run_probe(
     total = [0]
     track = "assisted" if infinite_life else "clean"
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -408,8 +392,7 @@ def run_probe(
             # reload state for isolation
             env.close()
             env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
-            result = env.reset()
-            obs = result[0] if isinstance(result, tuple) else result
+            obs, _ = reset_obs(env)
             obs, *_ = env.step(nes_idle_action())
             if assist is not None:
                 assist.apply_env(env, frame=0)
@@ -475,8 +458,7 @@ def run_probe(
         # --- Phase B: LEFT 0x7a → 0x79 (free), then probe 0x79 doors ---
         env.close()
         env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -793,8 +775,7 @@ def run_probe(
         if try_old_man:
             env.close()
             env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
-            result = env.reset()
-            obs = result[0] if isinstance(result, tuple) else result
+            obs, _ = reset_obs(env)
             obs, *_ = env.step(nes_idle_action())
             if assist is not None:
                 assist.apply_env(env, frame=0)
@@ -805,8 +786,7 @@ def run_probe(
                 env = make_env(
                     GAME, start_state, GAME_DIR, render_mode="rgb_array"
                 )
-                result = env.reset()
-                obs = result[0] if isinstance(result, tuple) else result
+                obs, _ = reset_obs(env)
                 obs, *_ = env.step(nes_idle_action())
                 if assist is not None:
                     assist.apply_env(env, frame=0)
@@ -853,7 +833,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--from-state", default="Level6EastKey")
@@ -896,7 +875,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {h}")
     print(f"wrote {report.get('report_path')}")
     return 0 if report.get("ok") else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

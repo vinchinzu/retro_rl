@@ -22,12 +22,6 @@ import json
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES = _REPO_ROOT / "snes"
-for _p in (_REPO_ROOT, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
 from alttp_rando.paths import (  # noqa: E402
     GAME_DIR,
     INTEGRATION_DIR,
@@ -54,12 +48,10 @@ _SMZ3_XXH_SEED = 0x534D5A33
 _Z3_SIZE = 0x100000
 _US_TITLE_PREFIX = b"THE LEGEND OF ZELDA"
 
-
 def _strip_smc_header(data: bytes) -> bytes:
     if len(data) % 1024 == 512:
         return data[512:]
     return data
-
 
 def _rom_digest(data: bytes) -> int:
     """samus.link-compatible xxHash32 (seed SMZ3)."""
@@ -79,13 +71,11 @@ def _rom_digest(data: bytes) -> int:
             "Cannot validate JP ROM hash (need smz3.rom_builder or xxhash)"
         ) from exc
 
-
 def _lorom_title(data: bytes) -> bytes:
     body = _strip_smc_header(data)
     if len(body) < 0x7FC0 + 21:
         return b""
     return body[0x7FC0 : 0x7FC0 + 21]
-
 
 def validate_z3_jp(data: bytes, *, path: Path | None = None) -> bytes:
     """Return unheadered JP 1.0 bytes or raise ValueError."""
@@ -108,7 +98,6 @@ def validate_z3_jp(data: bytes, *, path: Path | None = None) -> bytes:
         f"ALttP ROM failed JP 1.0 hash: got 0x{digest:08X}, "
         f"expected 0x{Z3_JP_XXH32:08X} (title={title!r}){label}"
     )
-
 
 def _ensure_shared_jp() -> Path:
     if SHARED_Z3_JP_ROM.is_file() or SHARED_Z3_JP_ROM.is_symlink():
@@ -145,7 +134,6 @@ def _ensure_shared_jp() -> Path:
             msg += f"\n  Note: {SHARED_Z3_US_ROM} exists but is USA-only for alttp/."
     raise FileNotFoundError(msg)
 
-
 def _link(shared: Path, local: Path) -> None:
     ROMS_DIR.mkdir(parents=True, exist_ok=True)
     if local.exists() or local.is_symlink():
@@ -159,7 +147,6 @@ def _link(shared: Path, local: Path) -> None:
     except ValueError:
         local.symlink_to(shared)
     print(f"Linked: {local} -> {shared}")
-
 
 def _wire_integration(shared: Path) -> str:
     INTEGRATION_DIR.mkdir(parents=True, exist_ok=True)
@@ -243,7 +230,6 @@ def _wire_integration(shared: Path) -> str:
 
     return digest
 
-
 def main() -> int:
     try:
         shared = _ensure_shared_jp()
@@ -266,7 +252,6 @@ def main() -> int:
     print(f"Game dir: {GAME_DIR}")
     print("JP 1.0 only — USA zelda3.sfc is not used by this package.")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

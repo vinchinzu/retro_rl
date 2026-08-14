@@ -17,19 +17,12 @@ Examples::
     uv run python nes/zelda_i/scripts/run_level6_west_wizzrobes.py --from-state L6Room_79_keys1 --infinite-life
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -54,7 +47,6 @@ from zelda_i.level6_overworld import (
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
 from retro_harness.nes import nes_action
-
 
 def _run_free_left_to_79(env, *, assist=None, max_frames: int = 800):
     """0x7a west free door → 0x79. Align y≈141, push LEFT."""
@@ -95,7 +87,6 @@ def _run_free_left_to_79(env, *, assist=None, max_frames: int = 800):
     notes.append("timeout")
     return False, notes, max_frames
 
-
 def _run_west_key(env, *, assist=None, max_frames: int = 5000):
     controller = Level6WestKeyDoorController(max_frames=max_frames)
     for frame in range(max_frames):
@@ -106,7 +97,6 @@ def _run_west_key(env, *, assist=None, max_frames: int = 5000):
         if controller.success or controller.phase.name == "FAILED":
             break
     return controller
-
 
 def run_once(
     *,
@@ -122,8 +112,7 @@ def run_once(
     fight_ctl: Level6WestWizzrobeController = make_west_wizzrobe_controller()
     free_left_notes: list[str] = []
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         entry = read_snapshot(env.get_ram())
 
@@ -323,7 +312,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=1)
@@ -390,7 +378,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {output}")
     return 0 if all(report.get("ok") for report in reports) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

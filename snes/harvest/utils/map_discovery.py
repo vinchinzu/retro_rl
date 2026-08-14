@@ -25,9 +25,6 @@ from typing import Dict, List, Optional, Tuple
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HARVEST_DIR = os.path.dirname(SCRIPT_DIR)
 ROOT_DIR = os.path.dirname(HARVEST_DIR)
-for d in (HARVEST_DIR, ROOT_DIR):
-    if d not in sys.path:
-        sys.path.insert(0, d)
 
 import numpy as np
 

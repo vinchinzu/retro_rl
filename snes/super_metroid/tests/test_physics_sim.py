@@ -28,6 +28,14 @@ from super_metroid.physics_sim import (
 class TestSimState:
     """Test SimState dataclass and conversions."""
 
+    def test_grounded_and_from_kinematics(self) -> None:
+        start = SimState.grounded(samus_x=400, samus_y=200, room_id=0x91F8)
+        assert start.velocity_x == 0
+        assert start.movement_type == 0
+        copied = SimState.from_kinematics(start)
+        assert copied.samus_x == 400
+        assert copied.enemies == ()
+
     def test_create_minimal(self) -> None:
         state = SimState(
             frame=100,

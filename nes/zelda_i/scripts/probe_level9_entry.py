@@ -7,18 +7,10 @@ Examples::
     uv run python zelda_i/scripts/probe_level9_entry.py --infinite-life --save-state
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from zelda_i.level9_overworld import (
     FULL_TRIFORCE,
@@ -29,7 +21,6 @@ from zelda_i.level9_overworld import (
 )
 from zelda_i.paths import RECORDINGS_DIR
 from zelda_i.ram import ADDR_ARROWS, ADDR_RING, ADDR_TRIFORCE, read_snapshot, read_u8
-
 
 def _print_plan() -> int:
     report = planning_report()
@@ -44,7 +35,6 @@ def _print_plan() -> int:
     print("Interior Old Man blocks without all 8 shards (no Clean poke).")
     print("Ending/credits stop is an unverified stub.")
     return 0
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -139,7 +129,6 @@ def main() -> int:
     write_json_report(report, RECORDINGS_DIR / f"{args.tag}_stub.json")
     env.close()
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

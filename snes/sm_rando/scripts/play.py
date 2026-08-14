@@ -22,17 +22,9 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-_REPO = Path(__file__).resolve().parents[3]
-if str(_REPO) not in sys.path:
-    sys.path.insert(0, str(_REPO))
-_SNES = _REPO / "snes"
-if str(_SNES) not in sys.path:
-    sys.path.insert(0, str(_SNES))
 
 
 def _configure_display(*, headless: bool) -> None:
@@ -47,7 +39,6 @@ def _configure_display(*, headless: bool) -> None:
             os.environ["SDL_VIDEODRIVER"] = "wayland"
         else:
             os.environ.setdefault("SDL_VIDEODRIVER", "x11")
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -269,7 +260,6 @@ def main(argv: list[str] | None = None) -> int:
         + (f" video={video_path}" if not args.no_record else "")
     )
     return 0 if manifest.outcome in {"session_end", "exit"} else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

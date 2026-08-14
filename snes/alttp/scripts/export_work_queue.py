@@ -5,22 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (ROOT, globals().get('_SNES_IMPORT_ROOT', ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-from alttp.opening_route.work_queue import (  # noqa: E402
+from alttp.opening_route.work_queue import (
     DEFAULT_QUEUE_JSON,
     DEFAULT_QUEUE_MD,
     build_work_queue,
     export_work_queue,
     top_items,
 )
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -99,7 +92,6 @@ def main(argv: list[str] | None = None) -> int:
             note = (row.get("notes") or "")[:70]
             print(f"  - {row.get('state_name')}: {row.get('goal')} [{row.get('status')}] {note}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

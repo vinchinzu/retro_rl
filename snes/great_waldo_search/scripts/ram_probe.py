@@ -10,12 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 from PIL import Image
@@ -36,17 +31,14 @@ from great_waldo_search.ram import (
 from retro_harness.env import get_available_states, make_env
 from retro_harness.actions import buttons, idle_action
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
 
-
 def _save_png(obs: np.ndarray, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(obs).save(path)
-
 
 def _idle(env: object, frames: int) -> np.ndarray:
     obs = None
@@ -55,7 +47,6 @@ def _idle(env: object, frames: int) -> np.ndarray:
     assert obs is not None
     return obs
 
-
 def _hold(env: object, *names: str, frames: int = 8) -> np.ndarray:
     action = buttons(*names)
     obs = None
@@ -63,7 +54,6 @@ def _hold(env: object, *names: str, frames: int = 8) -> np.ndarray:
         obs, *_rest = env.step(action)  # type: ignore[attr-defined]
     assert obs is not None
     return obs
-
 
 def _probe_axis(
     env: object,
@@ -85,7 +75,6 @@ def _probe_axis(
         deltas = [d for d in deltas if 1 <= abs(d.delta) <= 16]
         groups.append(deltas)
     return groups
-
 
 def _render_ram_map_md(report: dict) -> str:
     lines = [
@@ -136,7 +125,6 @@ def _render_ram_map_md(report: dict) -> str:
         ]
     )
     return "\n".join(lines)
-
 
 def run_ram_probe(
     *,
@@ -220,14 +208,12 @@ def run_ram_probe(
     finally:
         env.close()
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=None, help="Save state name or NONE")
     parser.add_argument("--pulses", type=int, default=5)
     parser.add_argument("--no-docs", action="store_true")
     return parser
-
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry for the RAM cursor probe."""
@@ -238,7 +224,6 @@ def main(argv: list[str] | None = None) -> int:
         write_docs=not args.no_docs,
     )
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

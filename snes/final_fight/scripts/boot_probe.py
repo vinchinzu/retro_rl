@@ -4,12 +4,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from final_fight.menus import boot_to_stage1_script
 from final_fight.paths import GAME, GAME_DIR, INTEGRATION_DIR
@@ -23,12 +17,10 @@ from retro_harness.env import make_env, save_state
 from retro_harness.actions import buttons, idle_action
 from retro_harness.ram_state import GameState
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def _is_settled_play(status: int, state: GameState) -> bool:
     return (
@@ -38,7 +30,6 @@ def _is_settled_play(status: int, state: GameState) -> bool:
         and state.player_x > 0
         and state.player_y > 0
     )
-
 
 def run_probe(
     *,
@@ -100,7 +91,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main() -> None:
     """CLI entry for the boot probe."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -114,7 +104,6 @@ def main() -> None:
     raise SystemExit(
         run_probe(max_frames=args.max_frames, save_stage1=not args.no_save)
     )
-
 
 if __name__ == "__main__":
     main()

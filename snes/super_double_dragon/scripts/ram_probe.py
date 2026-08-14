@@ -1,23 +1,14 @@
 """Print the actor pool before and after controlled Mission 1 actions."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from retro_harness.env import get_available_states, make_env
 from retro_harness.actions import buttons
 from retro_harness.segment_runner import configure_headless
 from super_double_dragon.paths import GAME, GAME_DIR, STAGE1_STATE
 from super_double_dragon.ram import parse_game_state
-
 
 def run_probe(*, frames: int = 30) -> int:
     """Replay short directional probes and print normalized state deltas."""
@@ -43,13 +34,11 @@ def run_probe(*, frames: int = 30) -> int:
             env.close()
     return 0
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--frames", type=int, default=30)
     args = parser.parse_args()
     raise SystemExit(run_probe(frames=args.frames))
-
 
 if __name__ == "__main__":
     main()

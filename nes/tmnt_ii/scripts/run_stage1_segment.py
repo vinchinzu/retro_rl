@@ -13,13 +13,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from tmnt_ii.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from tmnt_ii.policy import Stage1Policy
@@ -33,7 +28,6 @@ from retro_harness.segment_runner import (
 
 DEFAULT_STATE = "Level1"
 DEFAULT_TARGET = 5
-
 
 def run_stage1_segment(
     *,
@@ -140,7 +134,6 @@ def run_stage1_segment(
     )
     return report
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", default=DEFAULT_STATE)
@@ -157,7 +150,6 @@ def main() -> None:
         save_clear=not args.no_save,
     )
     raise SystemExit(0 if report["success"] else 1)
-
 
 if __name__ == "__main__":
     main()

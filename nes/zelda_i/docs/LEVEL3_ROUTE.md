@@ -140,8 +140,7 @@ From `Level3Raft` (mode 9, `ADDR_RAFT=1`, room 0x0f):
 Runner: `scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`.
 Evidence: `recordings/level3_to_boss_assisted.json` (**2/2** enter+kill+TF,
 ~21653f/trial). Checkpoints: `Level3Boss`, `Level3Complete`.
-Probe graduated: `scripts/probe_level3_manhandla.py` stubs to `run_level3_to_boss.py`
-(library: `level3_boss_path.Level3BossPathController`).
+Library: `level3_boss_path.Level3BossPathController`.
 
 West door residual (fixed for pure): pure **LEFT** sticks at **x≈32**
 (`open_doorway_mask==0`, solid door tiles). **LEFT+UP** at the west wall
@@ -266,10 +265,8 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
 - `recordings/l3_manhandla_shortcut.json` / `l3_manhandla_map_explore.json` — 0x5c/0x5d/0x4d
 - `recordings/l3_westkey_probe_report.json` — door probes from Level3WestKey
 - `recordings/l3_5b_spawn.png` / `l3_north_up_x120.png` — room visuals
-- Probe: `uv run python nes/zelda_i/scripts/probe_level3_entry.py --infinite-life --from-state OW_66 --save-state`
-- Past Darknuts: `uv run python nes/zelda_i/scripts/probe_level3_past_darknuts.py --infinite-life --tag l3_past_5b`
+- Entry: `uv run python nes/zelda_i/scripts/run_l2_to_l3.py --infinite-life --from-state Level2ExitOverworld`
 - Boss+TF runner: `uv run python nes/zelda_i/scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`
-- (legacy probe name still works as thin stub of the runner above)
 - Map-only: `… --from-state Level3Entrance --map-only --infinite-life`
 - West key: `uv run python nes/zelda_i/scripts/run_level3_west_key.py --trials 2 --save-state`
 - North chain: `uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2 --save-state`

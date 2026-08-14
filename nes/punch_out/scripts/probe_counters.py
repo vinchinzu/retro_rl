@@ -12,14 +12,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 from __future__ import annotations
 
 import argparse
-import sys
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Callable
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from punch_out.paths import GAME, GAME_DIR
 from punch_out.policy import ATTACK_ACTS
@@ -43,14 +37,12 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import configure_headless
 
-
 def _getup(g: int) -> FrameAction:
     if g % 6 in (0, 1):
         return FrameAction(nes_action("A"), "getup_a")
     if g % 6 in (3, 4):
         return FrameAction(nes_action("B"), "getup_b")
     return FrameAction(nes_idle_action(), "getup_idle")
-
 
 @dataclass
 class TrialStats:
@@ -66,9 +58,7 @@ class TrialStats:
     reasons: dict[str, int] = field(default_factory=dict)
     outcome: str = "timeout"
 
-
 PolicyFn = Callable[[Any, int, dict], FrameAction]
-
 
 def run_variant(
     name: str,
@@ -161,9 +151,7 @@ def run_variant(
     finally:
         env.close()
 
-
 # --- Variant policies ---
-
 
 def choose_hold_left(ram, t, st) -> FrameAction:
     """Always hold LEFT dodge."""
@@ -175,7 +163,6 @@ def choose_hold_left(ram, t, st) -> FrameAction:
         return FrameAction(nes_idle_action(), "taunt_rec")
     return FrameAction(nes_action("LEFT"), "hold_left")
 
-
 def choose_hold_right(ram, t, st) -> FrameAction:
     if is_taunt_window(ram):
         if st["phase"] % 5 < 2:
@@ -184,7 +171,6 @@ def choose_hold_right(ram, t, st) -> FrameAction:
         st["phase"] += 1
         return FrameAction(nes_idle_action(), "taunt_rec")
     return FrameAction(nes_action("RIGHT"), "hold_right")
-
 
 def choose_pulse_lr(ram, t, st) -> FrameAction:
     """Baseline 3/3 L/R pulse + taunt."""
@@ -202,7 +188,6 @@ def choose_pulse_lr(ram, t, st) -> FrameAction:
         return FrameAction(nes_action("RIGHT"), "right")
     return FrameAction(nes_idle_action(), "idle")
 
-
 def choose_block_only(ram, t, st) -> FrameAction:
     """Idle (block?) + taunt punch only."""
     if is_taunt_window(ram):
@@ -212,7 +197,6 @@ def choose_block_only(ram, t, st) -> FrameAction:
         st["phase"] += 1
         return FrameAction(nes_idle_action(), "taunt_rec")
     return FrameAction(nes_idle_action(), "block")
-
 
 def choose_timer_dodge(ram, t, st) -> FrameAction:
     """When timer low on attack acts, pulse dodge; else idle. Taunt punch."""
@@ -240,7 +224,6 @@ def choose_timer_dodge(ram, t, st) -> FrameAction:
     if act in ATTACK_ACTS and timer == 0:
         st["counter_t"] = 30
     return FrameAction(nes_idle_action(), "wait")
-
 
 def choose_reactive_counter(ram, t, st) -> FrameAction:
     """Dodge on rising attack acts; counter with A/B after dodge window."""
@@ -288,7 +271,6 @@ def choose_reactive_counter(ram, t, st) -> FrameAction:
 
     return FrameAction(nes_idle_action(), "idle")
 
-
 def choose_body_star_farm(ram, t, st) -> FrameAction:
     """Early left body blows + taunt; try star uppercut if stars available."""
     pset = int(ram[ADDR_OPP_PATTERN_SET])
@@ -333,7 +315,6 @@ def choose_body_star_farm(ram, t, st) -> FrameAction:
         return FrameAction(nes_idle_action(), "body_rec")
 
     return FrameAction(nes_idle_action(), "idle")
-
 
 def choose_always_counter_left_jab(ram, t, st) -> FrameAction:
     """Classic: dodge then left jab spam after any attack; taunt with A."""
@@ -382,7 +363,6 @@ def choose_always_counter_left_jab(ram, t, st) -> FrameAction:
         return FrameAction(nes_action("RIGHT"), "fb_r")
     return FrameAction(nes_idle_action(), "fb_i")
 
-
 VARIANTS: dict[str, PolicyFn] = {
     "pulse_lr": choose_pulse_lr,
     "hold_left": choose_hold_left,
@@ -393,7 +373,6 @@ VARIANTS: dict[str, PolicyFn] = {
     "body_star": choose_body_star_farm,
     "counter_jab": choose_always_counter_left_jab,
 }
-
 
 def main() -> None:
     configure_headless()
@@ -415,7 +394,6 @@ def main() -> None:
         )
         top = sorted(st.reasons.items(), key=lambda kv: -kv[1])[:8]
         print("   reasons:", ", ".join(f"{k}:{v}" for k, v in top))
-
 
 if __name__ == "__main__":
     main()

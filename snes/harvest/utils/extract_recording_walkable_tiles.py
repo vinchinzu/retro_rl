@@ -11,19 +11,14 @@ from pathlib import Path
 from typing import Iterable
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
 
 from harvest.maps.map_config import get_map_name
-
 
 TASKS_DIR = SCRIPT_DIR / "tasks"
 MOVEMENT_BUTTONS = ("Up", "Down", "Left", "Right")
 
-
 def parse_tilemap(value: str) -> int:
     return int(value, 0)
-
 
 def load_task(name_or_path: str) -> dict[str, object]:
     path = Path(name_or_path)
@@ -31,7 +26,6 @@ def load_task(name_or_path: str) -> dict[str, object]:
         path = TASKS_DIR / f"{name_or_path}.json"
     with path.open(encoding="utf-8") as handle:
         return json.load(handle)
-
 
 def button_windows(rows: list[dict[str, object]], button: str) -> list[dict[str, object]]:
     windows: list[dict[str, object]] = []
@@ -57,7 +51,6 @@ def button_windows(rows: list[dict[str, object]], button: str) -> list[dict[str,
         windows.append(window_summary(rows, start_idx, end_idx))
     return windows
 
-
 def last_movement_before(rows: list[dict[str, object]], idx: int, lookback: int = 90) -> str | None:
     start = max(0, idx - lookback)
     for row in reversed(rows[start:idx]):
@@ -68,7 +61,6 @@ def last_movement_before(rows: list[dict[str, object]], idx: int, lookback: int 
             if button in buttons:
                 return button
     return None
-
 
 def window_summary(rows: list[dict[str, object]], start_idx: int, end_idx: int) -> dict[str, object]:
     row = rows[start_idx]
@@ -82,7 +74,6 @@ def window_summary(rows: list[dict[str, object]], start_idx: int, end_idx: int) 
         "last_move": last_movement_before(rows, start_idx),
         "input_lock": int(row.get("input_lock", 0)),
     }
-
 
 def summarize(data: dict[str, object], tilemap: int) -> dict[str, object]:
     trace = data.get("trace", [])
@@ -147,7 +138,6 @@ def summarize(data: dict[str, object], tilemap: int) -> dict[str, object]:
         "transitions": metadata.get("transitions", []),
     }
 
-
 def render_text(summary: dict[str, object]) -> str:
     tiles = summary["observed_player_tiles"]
     tile_lines = ", ".join(f"({tile['tile'][0]},{tile['tile'][1]})" for tile in tiles)
@@ -179,7 +169,6 @@ def render_text(summary: dict[str, object]) -> str:
         lines.append("  (none)")
     return "\n".join(lines) + "\n"
 
-
 def write_text(path: str | None, text: str) -> None:
     if path:
         out = Path(path)
@@ -187,7 +176,6 @@ def write_text(path: str | None, text: str) -> None:
         out.write_text(text, encoding="utf-8")
     else:
         print(text, end="")
-
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Extract observed walkable tiles from a task trace.")
@@ -204,7 +192,6 @@ def main(argv: Iterable[str] | None = None) -> int:
         out.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     write_text(args.text_out, render_text(summary))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

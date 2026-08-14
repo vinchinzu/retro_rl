@@ -1,16 +1,8 @@
 """Headless boot probe: reach Mission 1 and save fight-ready Stage1.state."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from retro_harness.env import make_env, save_state
 from retro_harness.actions import idle_action
@@ -19,7 +11,6 @@ from retro_harness.segment_runner import configure_headless, save_rgb_png
 from super_double_dragon.menus import boot_to_stage1_script
 from super_double_dragon.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from super_double_dragon.ram import parse_game_state
-
 
 def run_probe(*, max_frames: int = 3000, save_stage1: bool = True) -> int:
     """Drive the default 1P menu and optionally save live Mission 1."""
@@ -62,7 +53,6 @@ def run_probe(*, max_frames: int = 3000, save_stage1: bool = True) -> int:
     finally:
         env.close()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-frames", type=int, default=3000)
@@ -71,7 +61,6 @@ def main() -> None:
     raise SystemExit(
         run_probe(max_frames=args.max_frames, save_stage1=not args.no_save)
     )
-
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,7 @@ from typing import Any, Mapping
 import numpy as np
 from PIL import Image
 
-from retro_harness.env import make_env
+from retro_harness.env import make_env, reset_obs
 from retro_harness.actions import idle_action
 from retro_harness.segment_runner import configure_headless
 from tmnt_iv.grind_knobs import override_knobs
@@ -37,7 +37,7 @@ def run_knob_probe(
     with override_knobs(knobs):
         env = make_env(GAME, state_name, GAME_DIR, render_mode="rgb_array")
         policy = Stage1Policy()
-        _reset(env)
+        reset_obs(env)
         start = parse_game_state(env.get_ram(), frame=0)
         prev_hp = start.health if 0 < start.health <= 0x60 else None
         prev_lives = start.lives
@@ -161,12 +161,6 @@ def run_knob_probe(
         "knobs": dict(knobs),
     }
     return metrics, image_paths
-
-
-def _reset(env: Any) -> None:
-    result = env.reset()
-    if isinstance(result, tuple):
-        return
 
 
 def _maybe_snap(

@@ -27,21 +27,11 @@ Not full-game Clean STATUS. Examples::
         --infinite-life --no-key-poke --trials 2
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
 from collections import deque
-from pathlib import Path
 from typing import Any
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_NES = _REPO_ROOT / "nes"
-for _p in (_REPO_ROOT, _NES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from retro_harness.env import make_env, save_state
 from retro_harness.nes import nes_action, nes_idle_action
@@ -86,7 +76,6 @@ from zelda_i.scripts import run_level4_rooms as r4
 ADDR_SELECTED_ITEM = 0x0656
 B_ITEM_BOMB = 0x02
 
-
 def _ensure_bomb_selected(env) -> None:
     try:
         env.unwrapped.em.set_bytes(ADDR_SELECTED_ITEM, bytes([B_ITEM_BOMB]))
@@ -95,7 +84,6 @@ def _ensure_bomb_selected(env) -> None:
             env.unwrapped.data.set_value("selected_item", B_ITEM_BOMB)
         except Exception:
             pass
-
 
 def _thrash_room(env, assist, total: list[int], room: int, max_frames: int = 10000) -> dict:
     patrol = tuple(
@@ -145,7 +133,6 @@ def _thrash_room(env, assist, total: list[int], room: int, max_frames: int = 100
             break
     return {"ok": True, "frames": ctrl.frames, "success": bool(ctrl.success)}
 
-
 def _bfs_to_xy(env, sx: int, sy: int, *, hold: int = 4, quant: int = 4) -> bool:
     em = env.unwrapped.em
     s0 = read_snapshot(env.get_ram())
@@ -187,7 +174,6 @@ def _bfs_to_xy(env, sx: int, sy: int, *, hold: int = 4, quant: int = 4) -> bool:
         return False
     em.set_state(cs[found])
     return True
-
 
 def _bomb_north_21(env, assist, total: list[int]) -> dict[str, Any]:
     """BFS to bomb stand (thrash only if needed) → bomb UP → 0x11.
@@ -263,7 +249,6 @@ def _bomb_north_21(env, assist, total: list[int]) -> dict[str, Any]:
         "xy": [snap.link_x, snap.link_y],
     }
 
-
 def _follow(env, path: list[str] | tuple[str, ...], hold: int, assist, total, dest: int | None = None) -> bool:
     for d in path:
         for _ in range(hold):
@@ -292,7 +277,6 @@ def _follow(env, path: list[str] | tuple[str, ...], hold: int, assist, total, de
             assist.apply_env(env, frame=total[0])
     snap = read_snapshot(env.get_ram())
     return dest is None or snap.screen == dest
-
 
 def _bfs_exit(env, dest: int, assist, total, hold: int = 4, max_exp: int = 12000) -> list[str] | None:
     em = env.unwrapped.em
@@ -343,7 +327,6 @@ def _bfs_exit(env, dest: int, assist, total, hold: int = 4, max_exp: int = 12000
             q.append(nc)
     em.set_state(cs[st])
     return None
-
 
 def _push_block_12(env, assist, total) -> dict[str, Any]:
     """Push block 0x68 LEFT on 0x12: stand~(112,144) via (96,144)→(80,144)."""
@@ -397,7 +380,6 @@ def _push_block_12(env, assist, total) -> dict[str, Any]:
         "xy": [snap.link_x, snap.link_y],
         "error": None if ok else "push_no_right_bit",
     }
-
 
 def run_from_map_to_tf(
     env,
@@ -729,7 +711,6 @@ def run_from_map_to_tf(
     report["final"] = room_fields(read_snapshot(env.get_ram()), env.get_ram())
     return report
 
-
 def run_once(
     *,
     start_state: str,
@@ -828,7 +809,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -890,7 +870,6 @@ def main() -> int:
     write_json_report(path, out)
     print(f"wrote {path} dual={dual} ok={out['ok']}", flush=True)
     return 0 if out["ok"] else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

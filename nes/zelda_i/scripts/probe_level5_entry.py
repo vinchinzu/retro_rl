@@ -16,19 +16,11 @@ From a Lost Hills / door checkpoint::
 Do **not** promote as Clean STATUS. Contract: ``docs/ASSIST_CONTRACT.md``.
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -52,7 +44,6 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
 from zelda_i.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX
 from zelda_i.sword_cave import SwordCaveController
-
 
 def _snapshot_dict(snap, env=None) -> dict:
     objs = [
@@ -87,7 +78,6 @@ def _snapshot_dict(snap, env=None) -> dict:
         "objects": objs,
     }
 
-
 def _probe_dirs(env, obs, assist, tag: str, max_f: int = 450) -> dict:
     """From current dungeon room, try N/E/S/W briefly; restore not done — use saves."""
     rooms: dict = {}
@@ -105,8 +95,7 @@ def _probe_dirs(env, obs, assist, tag: str, max_f: int = 450) -> dict:
             assist_local = UnlimitedHealthAssist(enabled=True)
         else:
             assist_local = None
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist_local is not None:
             assist_local.apply_env(env, frame=0)
@@ -169,7 +158,6 @@ def _probe_dirs(env, obs, assist, tag: str, max_f: int = 450) -> dict:
         rooms[name] = hit
     return rooms, env, obs
 
-
 def run_probe(
     *,
     start_state: str,
@@ -185,8 +173,7 @@ def run_probe(
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     track = "assisted" if infinite_life else "clean"
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -300,7 +287,6 @@ def run_probe(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -359,7 +345,6 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  room {name}: sc={r.get('screen'):#04x} objs={objs}")
     print(f"report={out}")
     return 0 if rep["ok"] else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

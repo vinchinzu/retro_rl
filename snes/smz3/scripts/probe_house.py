@@ -18,10 +18,6 @@ from typing import Any
 
 import numpy as np
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 from smz3.boot import make_boot_env  # noqa: E402
 from smz3.house_route import run_links_house_chest  # noqa: E402
 from smz3.outdoor_route import run_fortune_teller_to_links_house  # noqa: E402
@@ -44,12 +40,10 @@ DEFAULT_VIDEO = RECORDINGS_DIR / "links_house_chest.mp4"
 DEFAULT_PNG = RECORDINGS_DIR / "m3_links_house_chest.png"
 DEFAULT_JSON = RECORDINGS_DIR / "links_house_chest.json"
 
-
 def _make_settled_env(*, state: str, render_mode: str = "rgb_array") -> Any:
     from retro_harness.env import make_env
 
     return make_env(INTEGRATION, state, GAME_DIR, render_mode=render_mode)
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -202,7 +196,6 @@ def main(argv: list[str] | None = None) -> int:
             writer.close()
         if env is not None:
             env.close()
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

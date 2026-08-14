@@ -11,18 +11,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES_IMPORT_ROOT = Path(__file__).resolve().parents[2]
-for _p in (_REPO_ROOT, globals().get('_SNES_IMPORT_ROOT', _REPO_ROOT)):
-    if _p is not None and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 from alttp.paths import (
     FIRST_ACTION_STATE,
     HYRULE_CASTLE_GROUNDS_STATE,
@@ -35,12 +29,10 @@ from alttp.startup import (
     create_castle_grounds_state,
     snapshot_env,
 )
-from retro_harness.env import write_state_bytes
+from retro_harness.env import reset_obs, write_state_bytes
 from retro_harness.video import FrameVideoWriter
 
-
 DEFAULT_VIDEO = RECORDINGS_DIR / "boot_to_castle.mp4"
-
 
 class _RecordingEnv:
     """Proxy that writes every stepped RGB frame to an MP4 sink."""
@@ -59,10 +51,9 @@ class _RecordingEnv:
         self.last_obs: np.ndarray | None = None
 
     def reset(self, *args: Any, **kwargs: Any) -> Any:
-        result = self._env.reset(*args, **kwargs)
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, info = reset_obs(self._env)
         self._maybe_write(obs)
-        return result
+        return obs, info
 
     def step(self, action: Any) -> Any:
         result = self._env.step(action)
@@ -101,12 +92,10 @@ class _RecordingEnv:
             self._writer.write(rgb)
         self.frames_seen += 1
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("SDL_SOFTWARE_RENDERER", "1")
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -245,7 +234,6 @@ def main() -> int:
     if not report["on_castle_grounds"]:
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

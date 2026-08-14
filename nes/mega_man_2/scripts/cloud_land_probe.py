@@ -12,13 +12,8 @@ from __future__ import annotations
 
 import json
 import math
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_REPO), str(_NES)]
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.ram import (
@@ -47,7 +42,6 @@ LL_BODY = 0x3E  # kaminari_goro (cloud body)
 LL_MOVE = 0x3D  # rider / move
 LL_TYPES = {0x3D, 0x3E, 0x3F}
 
-
 def snap_ll(ram) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for i in range(32):
@@ -72,7 +66,6 @@ def snap_ll(ram) -> list[dict[str, Any]]:
         )
     return out
 
-
 def meta(ram) -> dict[str, Any]:
     return {
         "cam_scr": int(ram[ADDR_CAMERA_X_SCREEN]),
@@ -86,7 +79,6 @@ def meta(ram) -> dict[str, Any]:
         "fallen": is_fallen(ram),
     }
 
-
 def body_ll(lls: list[dict[str, Any]]) -> dict[str, Any] | None:
     bodies = [o for o in lls if o["t"] == LL_BODY]
     if bodies:
@@ -94,10 +86,8 @@ def body_ll(lls: list[dict[str, Any]]) -> dict[str, Any] | None:
     moves = [o for o in lls if o["t"] == LL_MOVE]
     return moves[0] if moves else None
 
-
 def dist_xy(sx: int, sy: int, o: dict[str, Any]) -> float:
     return math.hypot(sx - o["x"], sy - o["y"])
-
 
 def action_for(phase: str, f: int, *, jh: int, shoot_mode: str, near_ll: bool) -> Any:
     """Map phase name to buttons."""
@@ -160,7 +150,6 @@ def action_for(phase: str, f: int, *, jh: int, shoot_mode: str, near_ll: bool) -
             btns.append("B")
         return nes_action(*btns)
     return nes_idle_action()
-
 
 def run_recipe(
     *,
@@ -404,7 +393,6 @@ def run_recipe(
     }
     return report
 
-
 def main() -> None:
     configure_headless()
     out = RECORDINGS_DIR / "air_post4_cloud"
@@ -579,7 +567,6 @@ def main() -> None:
             flush=True,
         )
     print("DONE", out)
-
 
 if __name__ == "__main__":
     main()

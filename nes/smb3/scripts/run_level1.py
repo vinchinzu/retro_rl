@@ -11,14 +11,9 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 import numpy as np
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from smb3.menus import boot_to_level1_script
 from smb3.paths import GAME, GAME_DIR, RECORDINGS_DIR
@@ -30,7 +25,7 @@ from smb3.ram import (
     parse_game_state,
     player_progress_x,
 )
-from retro_harness.env import make_env, read_state_bytes, save_state, state_path
+from retro_harness.env import make_env, read_state_bytes, reset_obs, save_state, state_path
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
 
@@ -38,7 +33,6 @@ BOOT_STABLE_FRAMES = 40
 BOOT_MIN_FRAME = 400
 LEVEL_LOAD_MAX = 300
 POST_GOAL_MAX = 800
-
 
 def _boot_to_map(env) -> tuple[object, int]:
     """Reset already done; run title script to World 1 map control."""
@@ -62,7 +56,6 @@ def _boot_to_map(env) -> tuple[object, int]:
         frame += 1
     return obs, frame
 
-
 def _enter_and_wait_level(env, frame: int) -> tuple[object, int]:
     """Walk to 1-1 on the map, press A, wait until in-level."""
     obs = None
@@ -80,7 +73,6 @@ def _enter_and_wait_level(env, frame: int) -> tuple[object, int]:
             return obs, frame
     raise RuntimeError("failed to enter World 1-1 from map")
 
-
 def run_level1(
     *,
     from_state: str | None = None,
@@ -93,8 +85,7 @@ def run_level1(
     state_name = from_state if from_state else "NONE"
     env = make_env(GAME, state_name, GAME_DIR, render_mode="rgb_array")
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         frame = 0
 
         if from_state is None:
@@ -175,7 +166,6 @@ def run_level1(
     finally:
         env.close()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -193,7 +183,6 @@ def main() -> None:
             save_after=not args.no_save,
         )
     )
-
 
 if __name__ == "__main__":
     main()

@@ -20,7 +20,7 @@ Do **not** claim Clean STATUS. Do **not** poke Raft RAM. Do **not** work other b
 | L5 reference | `level5_overworld.py` + `scripts/probe_level5_entry.py` |
 | L3 reference | `level3_overworld.py` + `scripts/run_l2_to_l3.py` |
 | L4 scaffold | `level4_overworld.py` (SOURCE_HYPOTHESIS dock `0x55` island `0x45`) |
-| Plan-only probe | `scripts/probe_level4_entry.py` |
+| Plan-only | `scripts/run_level4_entry.py --plan-only` |
 | Assist | `assist.UnlimitedHealthAssist` / `--infinite-life` |
 | Evidence | `recordings/*.json` + `.state` under `custom_integrations/LegendOfZelda-Nes/` |
 
@@ -31,8 +31,7 @@ Do **not** claim Clean STATUS. Do **not** poke Raft RAM. Do **not** work other b
 3. Recon walk (script or short probe): find live dock screen + island/door screen with real Raft. Override hyp ids only when observed.
 4. Implement `OverworldToLevel4Controller` (or equivalent) in `level4_overworld.py` using hop table + dock walk + door hunt; live constants for door screen + entry room.
 5. Implement/extend runner:
-   `uv run python nes/zelda_i/scripts/probe_level4_entry.py --infinite-life --from-state Level3Complete --trials 2 --save-state`
-   (or new `run_level4_entry.py` if cleaner).
+   `uv run python nes/zelda_i/scripts/run_level4_entry.py --infinite-life --from-state Level3Complete --trials 2 --save-state`
 6. On success: save `OW_L4Dock` + `Level4Entrance`, write `recordings/l4_entry_recon.json` with screens, entry room, frames, 2/2.
 7. Update `docs/LEVEL4_ROUTE.md` live table; unit smoke if you add pure functions.
 8. Tests: `uv run pytest nes/zelda_i/tests -q` (or narrow new tests).

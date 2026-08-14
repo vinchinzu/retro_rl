@@ -55,7 +55,10 @@ nes/new_game/              # package import stays `import new_game`
 ROMs and generated states remain game-local and gitignored. Reusable Python
 behavior belongs in a shared package. Shared library zips live under
 `roms/Nintendo/NES/` or `roms/Nintendo/SNES` (→ Super Nintendo); copy or link
-into the game tree via `scripts/setup_rom.py` / `retro_harness.env`.
+into the game tree via `scripts/setup_rom.py` (`retro_harness.setup_rom_cli`).
+Do not recopy `boot_probe.py` / period menus / `paths.py` layout — use
+`retro_harness.boot_probe`, `input_script.period_script`, and
+`game_layout.game_paths`.
 
 ## 2. Minimal SNES game definition
 

@@ -80,9 +80,9 @@ not on the door route.
 
 ## Interior (walkthrough + live recon)
 
-Assisted recon from `Level2Entrance` (Survival, 2026-08-06):
-`scripts/probe_level2_rooms.py --infinite-life` →
-`recordings/l2_recon_probe.json` + `l2_recon_*.png`. **Not Clean STATUS.**
+Assisted recon from `Level2Entrance` (Survival, 2026-08-06) is recorded in
+`recordings/l2_recon_probe.json` + `l2_recon_*.png`. Durable runners below.
+**Not Clean STATUS.**
 
 ### Verified rooms 0x7d / 0x6d / 0x6c / 0x7e (isolated pure Clean)
 
@@ -253,7 +253,7 @@ solids** block naive east corridors (not classic center-block stairs).
 |------|--------|----------|-------------|------|----------|
 | **0x7d** | **157** (or 149) | `diamond_east_phase`: free → band → wall x≥200 → S2 (LEFT×6, vert door_y, RIGHT×10) → **pure RIGHT** on y=141 | **0x7e** | no | `level2_clear7e_isolated.json`, `l2_east_open.json` |
 | **0x6e** | **113** | same; prefer **WEST** entry via 0x6d | **0x6f** | **yes** | `l2_6e_right_ok.json`, `l2_6e_band_scan.json` |
-| 0x6f | 113 (probe try) | diamond-east RIGHT residual | — | — | `probe_level2_past_6f` `DIAMOND_EAST_ROOMS` |
+| 0x6f | 113 (probe try) | diamond-east RIGHT residual | — | — | `level2_puzzles.DIAMOND_EAST_ROOMS` |
 
 **Door y poke:** east wall opens only for **y≥137** (y≤133 never). Constants:
 `DIAMOND_BAND_7D=157`, `DIAMOND_BAND_6E=113`, `DOOR_Y_MIN_OPEN=137` (also
@@ -262,7 +262,7 @@ solids** block naive east corridors (not classic center-block stairs).
 
 **Push-block probe (negative):** centers
 `(120,141),(136,141),(104,141),(120,125),(120,157)` cardinal pushes on 0x6f did
-not open a new exit (`probe_level2_past_6f` `push_blocks`; `l2_6f_blocks.json`
+not open a new exit (`l2_6f_blocks.json`
 push_log doors stayed closed until other nav).
 
 ### Key doors
@@ -367,8 +367,7 @@ never sets `tf&0x02`). Push/bomb not required.
 | tol | ≈3 |
 | Constants | `L2_TF_COLLECT_WAYPOINTS`, `POST_BOSS_TF_POLICY` (`live=True`) |
 | Checkpoint | `Level2_0D_PostBoss` |
-| Runner | `level2_boss_path` / `level2_boss_tf.collect_and_tf` (hardcoded + JSON override) |
-| Probe | `probe_level2_0d_tf.py --policy-only` |
+| Runner | `level2_boss_path` / `run_level2_dodongo.py` / `run_level2_complete.py` |
 | Evidence | `recordings/l2_0d_tf_reach.json`, `l2_tf02_encode.json` |
 
 | Claim | Live |
@@ -439,8 +438,6 @@ uv run python zelda_i/scripts/run_to_level2_prefix.py --room-timing --trials 1
 uv run python zelda_i/scripts/probe_level2_suffix.py --help
 # Assisted first-pass to Moon entry room (not Clean):
 uv run python zelda_i/scripts/probe_level2_suffix.py --infinite-life --enter-dungeon --save-state --tag l2_entry_assisted
-# Interior recon 0x7d → 0x6d Ropes + doors (Survival):
-uv run python zelda_i/scripts/probe_level2_rooms.py --infinite-life --tag l2_recon
 # Isolated pure key branch (Clean from Level2Entrance / Level2RopesCleared):
 uv run python nes/zelda_i/scripts/run_level2_clear6d.py --trials 2
 uv run python nes/zelda_i/scripts/run_level2_clear6c.py --trials 2
@@ -449,9 +446,9 @@ uv run python nes/zelda_i/scripts/run_level2_clear7e.py --trials 2
 uv run python nes/zelda_i/scripts/run_level2_clear7e.py --save-state --trials 2
 uv run python nes/zelda_i/scripts/run_level2_clear6f.py --trials 2
 uv run python nes/zelda_i/scripts/run_level2_clear6f.py --save-state --trials 2
-# Assisted path recon past west key (not Clean; boom residual past 0x5f):
-uv run python nes/zelda_i/scripts/probe_level2_boomerang_path.py --infinite-life
-uv run python nes/zelda_i/scripts/probe_level2_past_6f.py --infinite-life --poke-bombs 8 --poke-keys 3
+# Assisted Boom → Dodongo → TF (not Clean):
+uv run python nes/zelda_i/scripts/run_level2_magic_boomerang.py --infinite-life
+uv run python nes/zelda_i/scripts/run_level2_complete.py --infinite-life --trials 2
 # Diamond-east: nav_common.diamond_east_phase / ROOM_7E_SPEC.entry.
 # 0x6e RIGHT: WEST entry + key + band≈113 wall-vertical pure push → 0x6f (door y≥137).
 # 0x6f bomb N: stand (120,101) UP+B → 0x5f; LEFT key → 0x5e Goriya.
@@ -509,7 +506,7 @@ From `Level1ExitOverworld` with `LEVEL2_DOOR_HOPS` + `require_level2_screen`
 
 ## Room 0x5f further exits (`rr-cjf`, 2026-08-06)
 
-Probe: `scripts/probe_level2_5f_exits.py` + evidence `recordings/l2_cjf_expand.json`
+Evidence: `recordings/l2_cjf_expand.json`
 from checkpoint **`Level2_5E`** (post-Goriya, Survival + inventory poke).
 
 | Claim | Live result | Evidence |
@@ -538,7 +535,7 @@ Graph/constants: `door_graph` (`L2_BOOM_CANDIDATE` / `L2_ROPES_NORTH` /
 
 ## Room 0x5f policy (`rr-fvt`, 2026-08-06)
 
-Probe: `scripts/probe_level2_5f_policy.py` from checkpoint **`Level2_5F`**
+Evidence from checkpoint **`Level2_5F`**
 (idle 360–600f @ 60f ticks → optional gel clear → door push R/U/L/D).
 
 | Claim | Live result | Evidence |

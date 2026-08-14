@@ -66,6 +66,7 @@ Agents auto-load hierarchical `AGENTS.md`. Every extra section costs tokens on
 | Nested package import roots | **done** — layout discovery in `repo.discover_nested_package_roots` (no slug map) |
 | Artifact gitignore | **done** — `**/probe*.png`, `debug_frames/`, SM/tmnt/FF probe globs |
 | Shared game layout + Clean stems | **done** — `game_layout.game_paths`, `artifacts.clean_artifact_stem` / `recording_artifacts` |
+| Cross-game CLI clones | **done** — `boot_probe`, `setup_rom_cli`, `env.reset_obs`, `input_script.period_script`; fighter `watch`/`validate_*` live in `retro_harness.fighters` |
 
 
 ## Import cheat sheet (scripted completion)

@@ -20,17 +20,11 @@ Examples::
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 from tmnt_iv.local_grind.runner import GrindLoopConfig, run_grind_loop  # noqa: E402
 from tmnt_iv.local_grind.schema import DEFAULT_TARGETS  # noqa: E402
 from tmnt_iv.paths import GAME_DIR  # noqa: E402
-
 
 def main(argv: list[str] | None = None) -> int:
     labels = [t.label for t in DEFAULT_TARGETS]
@@ -94,7 +88,6 @@ def main(argv: list[str] | None = None) -> int:
     print(f"done: {len(records)} trials, {keeps} keep, {errors} error")
     print(f"artifacts: {args.out_dir}")
     return 1 if errors == len(records) and records else 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

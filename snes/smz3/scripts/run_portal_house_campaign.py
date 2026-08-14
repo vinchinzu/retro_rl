@@ -4,14 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SNES = _REPO_ROOT / "snes"
-for _p in (_REPO_ROOT, _SNES):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 from smz3.portal_house_campaign import (  # noqa: E402
     CAMPAIGN_LEDGER,
@@ -20,7 +13,6 @@ from smz3.portal_house_campaign import (  # noqa: E402
     campaign_summary,
     run_portal_house_campaign,
 )
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -112,7 +104,6 @@ def main(argv: list[str] | None = None) -> int:
         f"successes={result.successes}/{result.config.seed_count})"
     )
     return 2
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

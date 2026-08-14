@@ -16,13 +16,8 @@ Disasm notes (lsmmega/mm2 + PRG scan 2026-08-10):
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
-
-_REPO = Path(__file__).resolve().parents[3]
-_NES = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(_REPO), str(_NES)]
 
 from mega_man_2.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from mega_man_2.ram import (
@@ -73,12 +68,10 @@ MM_H = 24
 CLOUD_TOP_OFF = 16
 WRAM_STATE_BASE = 93  # fceumm state blob WRAM0 offset (verified)
 
-
 def btns(*names: str):
     if not names:
         return nes_idle_action()
     return nes_action(*names)
-
 
 def snap_obj(ram, i: int) -> dict[str, Any]:
     flag = int(ram[ADDR_OBJ_FLAG + i])
@@ -106,7 +99,6 @@ def snap_obj(ram, i: int) -> dict[str, Any]:
         "parent": int(ram[ADDR_PARENT + i]),
     }
 
-
 def snap_active(ram) -> list[dict[str, Any]]:
     out = []
     for i in range(32):
@@ -114,16 +106,13 @@ def snap_active(ram) -> list[dict[str, Any]]:
             out.append(snap_obj(ram, i))
     return out
 
-
 def body_of(objs: list[dict]) -> dict | None:
     bs = [o for o in objs if o["t"] == LL_BODY]
     return bs[0] if bs else None
 
-
 def rider_of(objs: list[dict]) -> dict | None:
     rs = [o for o in objs if o["t"] == LL_MOVE]
     return rs[0] if rs else None
-
 
 def meta(ram) -> dict[str, Any]:
     sy = player_screen_y(ram)
@@ -146,14 +135,12 @@ def meta(ram) -> dict[str, Any]:
         "fallen": is_fallen(ram),
     }
 
-
 def poke_wram(env, writes: dict[int, int]) -> None:
     """Diagnostic only: patch WRAM via emulator state blob."""
     st = bytearray(env.em.get_state())
     for addr, val in writes.items():
         st[WRAM_STATE_BASE + addr] = val & 0xFF
     env.em.set_state(bytes(st))
-
 
 def geom(m: dict, b: dict | None) -> dict[str, Any]:
     if not b:
@@ -173,7 +160,6 @@ def geom(m: dict, b: dict | None) -> dict[str, Any]:
         "same_scr": same,
         "b_scr": b["scr"],
     }
-
 
 def run_trial(params: dict[str, Any], out: Path) -> dict[str, Any]:
     env = make_env(GAME, "AirFanPlatform", GAME_DIR, render_mode="rgb_array")
@@ -578,7 +564,6 @@ def run_trial(params: dict[str, Any], out: Path) -> dict[str, Any]:
         "contact_log_n": len(contact_log),
     }
 
-
 def postkill(
     post: str,
     phase_t: int,
@@ -627,7 +612,6 @@ def postkill(
         if phase_t % 2 == 0:
             buttons = steer() + ["A"]
     return buttons, shoot
-
 
 def main() -> None:
     configure_headless()
@@ -857,7 +841,6 @@ def main() -> None:
             ),
             flush=True,
         )
-
 
 if __name__ == "__main__":
     main()

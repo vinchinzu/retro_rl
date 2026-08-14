@@ -9,19 +9,11 @@ Examples::
     uv run python zelda_i/scripts/run_level1_first_key.py --natural-entry
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from retro_harness.env import make_env, save_state
+from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
@@ -39,7 +31,6 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.sword_cave import SwordCaveController
 
-
 def run_once(
     *,
     natural_entry: bool = False,
@@ -54,8 +45,7 @@ def run_once(
     sword: SwordCaveController | None = None
     nav: OverworldToLevel1Controller | None = None
     try:
-        result = env.reset()
-        obs = result[0] if isinstance(result, tuple) else result
+        obs, _ = reset_obs(env)
         boot_frames = 0
         prefix_ok = True
         if natural_entry:
@@ -128,7 +118,6 @@ def run_once(
     finally:
         env.close()
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -176,7 +165,6 @@ def main(argv: list[str] | None = None) -> int:
     write_json_report(out, payload)
     print(f"wrote {out}")
     return 0 if all(report["ok"] for report in reports) else 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

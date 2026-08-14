@@ -22,49 +22,53 @@ from super_metroid.routes.kpdr.room_ids import (
 from super_metroid.routes.runtime import ActionSpan, RouteSession
 
 
-def _ceres_outbound_to_scientist_spans() -> list[ActionSpan]:
-    """Elevator → Scientist open-loop with classic L↔R on every RIGHT+B dash.
+# (buttons, frames, arm_pump on dir+B). Rooms 1–3 slice this table.
+# 0:5 elevator→falling, 5:18 falling→magnet, 18:21 magnet→scientist.
+CERES_OUTBOUND_TO_SCIENTIST_RAW: list[tuple[tuple[str, ...], int, bool]] = [
+    (("RIGHT", "A"), 24, False),
+    (("RIGHT",), 120, False),
+    (("LEFT",), 120, False),
+    (("RIGHT", "B"), 240, True),
+    ((), 60, False),
+    (("RIGHT",), 24, False),
+    (("RIGHT", "B"), 24, True),
+    (("RIGHT", "B", "A"), 24, False),
+    (("RIGHT", "A"), 24, False),
+    (("RIGHT",), 24, False),
+    (("RIGHT",), 24, False),
+    (("RIGHT",), 24, False),
+    (("RIGHT",), 24, False),
+    (("RIGHT", "B"), 24, True),
+    ((), 12, False),
+    (("RIGHT",), 24, False),
+    ((), 140, False),
+    (("RIGHT",), 160, False),
+    (("LEFT",), 120, False),
+    (("RIGHT", "B"), 96, True),
+    # Product had idle 120 here; cut — room-gate finishes Scientist→Ridley.
+    ((), 24, False),
+]
 
-    Elevator shaft + Falling Tile + Magnet Stairs are geometry-heavy (product
-    trace: KB fall, upper-path Falling, magnet y 139→395). Keep that pin but
-    inject classic arm-pump on run holds. Scientist → Ridley is room-gated
-    arm-pump in :func:`play_ceres_outbound_to_ridley` (the real length cut).
-    """
+
+def expand_ceres_outbound_spans(
+    raw: list[tuple[tuple[str, ...], int, bool]] | None = None,
+    *,
+    reason: str = "ceres_outbound",
+) -> list[ActionSpan]:
+    """Expand the scientist-prefix raw table, including arm-pump dashes."""
     out: list[ActionSpan] = []
-    # (buttons, frames, arm_pump on dir+B)
-    raw: list[tuple[tuple[str, ...], int, bool]] = [
-        (("RIGHT", "A"), 24, False),
-        (("RIGHT",), 120, False),
-        (("LEFT",), 120, False),
-        (("RIGHT", "B"), 240, True),
-        ((), 60, False),
-        (("RIGHT",), 24, False),
-        (("RIGHT", "B"), 24, True),
-        (("RIGHT", "B", "A"), 24, False),
-        (("RIGHT", "A"), 24, False),
-        (("RIGHT",), 24, False),
-        (("RIGHT",), 24, False),
-        (("RIGHT",), 24, False),
-        (("RIGHT",), 24, False),
-        (("RIGHT", "B"), 24, True),
-        ((), 12, False),
-        (("RIGHT",), 24, False),
-        ((), 140, False),
-        (("RIGHT",), 160, False),
-        (("LEFT",), 120, False),
-        (("RIGHT", "B"), 96, True),
-        # Product had idle 120 here; cut — room-gate finishes Scientist→Ridley.
-        ((), 24, False),
-    ]
-    for names, frames, pump in raw:
+    for names, frames, pump in raw or CERES_OUTBOUND_TO_SCIENTIST_RAW:
         if pump:
             direction = "LEFT" if "LEFT" in names else "RIGHT"
-            out.extend(
-                _arm_pump_dash_spans(direction, frames, "ceres_outbound")
-            )
+            out.extend(_arm_pump_dash_spans(direction, frames, reason))
         else:
-            out.append(ActionSpan(names, frames, "ceres_outbound"))
+            out.append(ActionSpan(names, frames, reason))
     return out
+
+
+def _ceres_outbound_to_scientist_spans() -> list[ActionSpan]:
+    """Elevator → Scientist open-loop with classic L↔R on every RIGHT+B dash."""
+    return expand_ceres_outbound_spans()
 
 
 def _ceres_escape_spans() -> list[ActionSpan]:
@@ -169,6 +173,8 @@ def play_ceres_escape_to_landing(session: RouteSession) -> None:
 
 
 __all__ = [
+    "CERES_OUTBOUND_TO_SCIENTIST_RAW",
+    "expand_ceres_outbound_spans",
     "_ceres_outbound_to_scientist_spans",
     "_ceres_escape_spans",
     "play_ceres_to_ridley_door",
