@@ -3,13 +3,14 @@
 Isolated pure for early L5 rooms. Imports combat infrastructure from
 ``dungeon`` only — do not edit ``dungeon.py`` from L5 agents.
 
-Live recon (2026-08-06)::
+Live recon (updated 2026-08-14)::
 
     Entry **0x76** (south mouth). North open → **0x66**.
-    East **0x77** Pols Voice (type ``0x16``) + key ``0x19`` — door not natural
-    open from ``Level5Entrance`` (doors=0); mid-room blocks y≈141 at x≈128;
-    approach y≈149–157 reaches wall x≈208. Door open residual (RAM poke or
-    future lock solve). Combat pure from ``L5_Room_77`` is 2/2.
+    Room **0x66** has 3× Gibdo and supplies the first key. Return south to
+    **0x76**, then spend that key at the east door to **0x77** (5× Pols Voice
+    type ``0x16`` + replacement key ``0x19``). Direct east from a zero-key
+    entrance is correctly blocked. Combat pure from ``L5_Room_77`` is 2/2;
+    composed east-door navigation remains the active route boundary.
 
     Cleared **0x66** east → **0x67**: 2× Bubble ``0x40`` (hp240, sword-immune)
     + 1× type ``0x4e`` (hp0). doors=0x02 (LEFT only) → dead-end residual.
@@ -26,7 +27,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_action
+from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon import (
     AliveRule,
     CombatTuning,
@@ -46,7 +47,7 @@ ROOM_L5_ENTRY = 0x76
 ROOM_L5_GIBDO_66 = 0x66
 # East residual of cleared 0x66 (live probe 2026-08-06); Bubble dead-end.
 ROOM_L5_EAST_67 = 0x67
-# East of entry 0x76 — Pols Voice + small key (door open residual).
+# East of entry 0x76 — key door to Pols Voice + replacement small key.
 ROOM_L5_POLS_77 = 0x77
 # West of 0x66 when west door forced (PARTIAL natural).
 ROOM_L5_WEST_65 = 0x65
@@ -60,7 +61,7 @@ POLS_VOICE_OBJECT_TYPE = 0x16
 # Type 0x40 — Bubble (HP=240; sword does not reduce HP; invincible residual).
 BUBBLE_OBJECT_TYPE = 0x40
 # Type 0x4e — non-combat residual on 0x67 (hp0; trap/fire-correlated).
-ROOM_67_TRAP_TYPE = 0x4e
+ROOM_67_TRAP_TYPE = 0x4E
 # Type 0x13 — Zol (same id as L3 west-key room); seen on 0x55.
 ZOL_OBJECT_TYPE = 0x13
 
@@ -171,16 +172,13 @@ ROOM_67_SPEC = DungeonRoomSpec(
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     # Left doorway open on settle (back to 0x66); R/U/D solid.
     required_open_doors=0,
-    exit_routes=(
-        DoorRoute("LEFT", ((120, 141), (32, 141))),
-    ),
+    exit_routes=(DoorRoute("LEFT", ((120, 141), (32, 141))),),
     max_frames=4000,
     level=LEVEL_5,
 )
 
 # East of entry: 5× Pols Voice 0x16 + fixed small key 0x19.
-# Natural door from Level5Entrance is PARTIAL (closed). Spec is pure once
-# room-ready on 0x77 (checkpoint L5_Room_77 or door-open residual).
+# A key from room 0x66 is required. Spec is pure once room-ready on 0x77.
 ROOM_77_SPEC = DungeonRoomSpec(
     spec_id="level5_room77_pols_voice",
     source_room=ROOM_L5_ENTRY,
@@ -219,9 +217,7 @@ ROOM_77_SPEC = DungeonRoomSpec(
         ),
     ),
     room_item_id=ROOM_ITEM_SMALL_KEY,
-    exit_routes=(
-        DoorRoute("LEFT", ((120, 141), (32, 141))),
-    ),
+    exit_routes=(DoorRoute("LEFT", ((120, 141), (32, 141))),),
     max_frames=18000,
     level=LEVEL_5,
 )
@@ -247,9 +243,7 @@ ROOM_65_SPEC = DungeonRoomSpec(
         patrol_attack_hold=3,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    exit_routes=(
-        DoorRoute("RIGHT", ((120, 141), (208, 141))),
-    ),
+    exit_routes=(DoorRoute("RIGHT", ((120, 141), (208, 141))),),
     max_frames=12000,
     level=LEVEL_5,
 )
@@ -316,6 +310,55 @@ def level5_room_77_key_success(ram: np.ndarray) -> bool:
     return inventory_reward_success(ram, ROOM_77_SPEC, min_value=1)
 
 
+def level5_east_key_step(snap: ZeldaSnapshot) -> FrameAction:
+    """Deterministic 0x66→0x76→key door→0x77 navigation policy.
+
+    Room 0x66 supplies the key.  Return through its south door, leave the
+    0x76 north/south mouth, approach the east wall on y≈157, then move to the
+    door channel y≈141 without stepping back into the center statues.
+    """
+    if snap.level != LEVEL_5:
+        return FrameAction(nes_idle_action(), "east_key_wait_level5")
+    if snap.screen == ROOM_L5_POLS_77 and snap.mode == PLAY_MODE:
+        return FrameAction(nes_idle_action(), "east_key_arrived")
+
+    if snap.screen == ROOM_L5_GIBDO_66:
+        if snap.transitioning:
+            return FrameAction(nes_action("DOWN"), "east_key_south_scroll")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), "east_key_wait_66")
+        # The fixed key can be collected while Link is still standing on the
+        # Stepladder across the horizontal river. Finish the crossing before
+        # horizontal alignment; sideways input is locked on the ladder tile.
+        if snap.link_y < 141:
+            return FrameAction(nes_action("DOWN"), "east_key_finish_ladder")
+        if abs(snap.link_x - 120) > 4:
+            direction = "LEFT" if snap.link_x > 120 else "RIGHT"
+            return FrameAction(nes_action(direction), "east_key_align_south_x")
+        return FrameAction(nes_action("DOWN"), "east_key_return_76")
+
+    if snap.screen == ROOM_L5_ENTRY:
+        if snap.transitioning:
+            return FrameAction(nes_action("RIGHT"), "east_key_east_scroll")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), "east_key_wait_76")
+        if snap.link_y > 185:
+            return FrameAction(nes_action("UP"), "east_key_leave_south_mouth")
+        if snap.link_x < EAST_DOOR_WALL_X - 4:
+            if abs(snap.link_y - EAST_DOOR_APPROACH_Y) > 3:
+                direction = "UP" if snap.link_y > EAST_DOOR_APPROACH_Y else "DOWN"
+                return FrameAction(nes_action(direction), "east_key_align_approach_y")
+            return FrameAction(nes_action("RIGHT"), "east_key_approach_wall")
+        if abs(snap.link_y - EAST_DOOR_CHANNEL_Y) > 3:
+            direction = "UP" if snap.link_y > EAST_DOOR_CHANNEL_Y else "DOWN"
+            return FrameAction(nes_action(direction), "east_key_align_channel_y")
+        return FrameAction(nes_action("RIGHT"), "east_key_unlock_77")
+
+    return FrameAction(
+        nes_idle_action(), f"east_key_unexpected_room_0x{snap.screen:02x}"
+    )
+
+
 def level5_in_room_65(ram: np.ndarray) -> bool:
     """Play mode inside L5 west room 0x65 (PARTIAL natural entry)."""
     snap = read_snapshot(ram)
@@ -360,9 +403,7 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             key=lambda obj: abs(obj.x - snap.link_x) + abs(obj.y - snap.link_y),
         )
         dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-        stuck_close = (
-            dist < 18 and (self.frames - self.last_progress_frame) > 80
-        )
+        stuck_close = dist < 18 and (self.frames - self.last_progress_frame) > 80
         if stuck_close or self.backstep_frames > 0:
             if self.backstep_frames <= 0:
                 self.backstep_frames = 28
@@ -498,6 +539,7 @@ __all__ = [
     "level5_room_67_arrived",
     "level5_in_room_77",
     "level5_room_77_key_success",
+    "level5_east_key_step",
     "level5_in_room_65",
     "Level5PolsVoiceController",
     "Level5East67Controller",

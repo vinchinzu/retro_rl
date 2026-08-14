@@ -54,6 +54,24 @@ LEVEL5_PATH_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x1B, "LEFT", align_y=140),
 )
 
+# Natural predecessor splice after L4 Triforce fanfare.  L4 returns Link to
+# island 0x45 with the Raft + Stepladder.  Ride south to dock 0x55, reverse the
+# verified near-candle corridor into 0x58, then join the existing L5 prefix at
+# 0x4A.  This preserves dungeon inventory; the old At4A-derived L5 fixture did
+# not contain the Raft, Stepladder, bombs, or prior Triforce bits.
+POST_L4_TO_LEVEL5_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x55, "DOWN", align_x=128),  # raft island 0x45 -> dock 0x55
+    ScreenHop(0x56, "RIGHT", align_y=133),
+    # From raft return, 0x56 settles just off-screen at x=0,y=133.  Recover
+    # inward, align y=141, then the center channel is open east to 0x57.
+    ScreenHop(0x57, "RIGHT", align_y=141),
+    ScreenHop(0x58, "RIGHT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x59, "RIGHT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x49, "UP", align_x=112),
+    ScreenHop(0x4A, "RIGHT", align_y=141),
+    *LEVEL5_PATH_HOPS,
+)
+
 SEGMENT_MAX_FRAMES = 30000
 LOST_HILLS_MAX_FRAMES = 12000
 SWORD_SWING_PERIOD = 10
@@ -147,6 +165,17 @@ class OverworldToLevel5Controller(OverworldPathController):
             self.notes.append("pocket_already_free")
             self._set_phase(Level5NavPhase.LOST_HILLS, "pocket_free")
             return FrameAction(nes_idle_action(), "pocket_done")
+        if self.stuck > self.stuck_threshold:
+            action, self.stuck = unstick_wiggle(self.stuck, reason="pocket_unstick")
+            return action
+        # The 0x1C west transition settles at x≈240,y≈141, where the ledge
+        # blocks pure DOWN.  Bias left in short bursts until DOWN can enter the
+        # lower corridor.  This is the same live-proven escape used by the
+        # white-sword item-gate navigator.
+        if snap.link_x >= 200 and snap.link_y < POCKET_FREE_Y - 2:
+            if self.phase_frames % 40 < 20:
+                return self._swing("LEFT", "pocket_unwedge")
+            return self._swing("DOWN", "pocket_down")
         if self.pocket_stage == 0:
             if snap.link_y >= POCKET_FREE_Y - 2:
                 self.pocket_stage = 1
@@ -157,9 +186,6 @@ class OverworldToLevel5Controller(OverworldPathController):
             self.notes.append("pocket_free")
             self._set_phase(Level5NavPhase.LOST_HILLS, "pocket_free")
             return FrameAction(nes_idle_action(), "pocket_done")
-        if self.stuck > self.stuck_threshold:
-            action, self.stuck = unstick_wiggle(self.stuck, reason="pocket_unstick")
-            return action
         return self._swing("LEFT", "pocket_left")
 
     def _lost_hills(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -292,9 +318,7 @@ def level5_entrance_success(ram: np.ndarray) -> bool:
 def level5_door_screen_reached(ram: np.ndarray) -> bool:
     snap = read_snapshot(ram)
     return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_LEVEL5_DOOR
+        snap.level == 0 and snap.mode == PLAY_MODE and snap.screen == SCREEN_LEVEL5_DOOR
     )
 
 
@@ -320,6 +344,7 @@ __all__ = [
     "LEVEL5_TRIFORCE_BIT",
     "LEVEL5_LEVEL_ID",
     "LEVEL5_PATH_HOPS",
+    "POST_L4_TO_LEVEL5_HOPS",
     "SEGMENT_MAX_FRAMES",
     "LOST_HILLS_UPS_REQUIRED",
     "Level5NavPhase",
