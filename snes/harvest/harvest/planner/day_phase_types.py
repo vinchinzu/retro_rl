@@ -18,6 +18,7 @@ class PhaseKind(StrEnum):
     RECORDED_SLICE = "recorded_slice"
     RECORDED_TRANSITION = "recorded_transition"
     CROSS_MAP = "cross_map"
+    SHOP_BUY = "shop_buy"
     DIRECTIONAL_TRANSITION = "directional_transition"
     MULTI_NAV = "multi_nav"
     BERRY_SHIP = "berry_ship"
@@ -53,6 +54,7 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.RECORDED_SLICE,
         PhaseKind.RECORDED_TRANSITION,
         PhaseKind.CROSS_MAP,
+        PhaseKind.SHOP_BUY,
         PhaseKind.MULTI_NAV,
         PhaseKind.BERRY_SHIP,
         PhaseKind.MOUNTAIN_BERRY,

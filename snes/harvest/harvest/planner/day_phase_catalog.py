@@ -130,14 +130,13 @@ EXIT_FARM_WEST_PHASE = PhaseSpec(
 
 BUY_SEEDS_PHASE = PhaseSpec(
     "BUY_SEEDS",
-    "cross_map",
+    "shop_buy",
     {
-        "exit_direction": "left",
-        "recording_name": "buy_potato_seeds",
-        "recording_start": 483,
-        "origin_tilemap": 0x00,
-        "timeout": 5000,
-        "continue_after_return": 200,
+        "stock_field": "potato_seeds",
+        "timeout": 14000,
+        "nav_timeout": 6000,
+        # Kept for summer CrossMap fallback / tape analysis — not replayed.
+        "recording_name": "buy_potato_seeds_d2",
     },
     failure_policy="optional",
 )
@@ -152,11 +151,20 @@ def buy_seeds_phase(
     params = dict(BUY_SEEDS_PHASE.params)
     if recording_name:
         params["recording_name"] = recording_name
-        # Summer buy_summer starts on the farm exit approach; spring slice
-        # trims the house-exit preamble from buy_potato_seeds.
+        # Summer still uses the recorded CrossMap until a nav+RAM buy lands.
         if recording_start is None and recording_name == "buy_summer":
             params["recording_start"] = 0
-        elif recording_start is not None:
+            params["exit_direction"] = "left"
+            params["origin_tilemap"] = 0x00
+            params["timeout"] = 5000
+            params["continue_after_return"] = 200
+            return PhaseSpec(
+                BUY_SEEDS_PHASE.phase,
+                "cross_map",
+                params,
+                failure_policy=BUY_SEEDS_PHASE.failure_policy,
+            )
+        if recording_start is not None:
             params["recording_start"] = recording_start
     elif recording_start is not None:
         params["recording_start"] = recording_start

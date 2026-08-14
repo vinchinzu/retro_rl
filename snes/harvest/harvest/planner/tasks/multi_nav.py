@@ -763,6 +763,11 @@ class MultiMapNavTask(Task):
             if overshot:
                 self._advance_waypoint()
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            if wp.force_run:
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(**{d: True, "b": True})),
+                )
             safe = self._safe_walk_action(world.ram, d)
             return TaskResult(
                 status=TaskStatus.RUNNING,
