@@ -6,6 +6,7 @@ Coordinate lists are hand-authored from recordings; do not "simplify" hops.
 from typing import Dict, List, Optional, Sequence
 
 from harvest.core.tile_catalog import TILE_SIZE
+from harvest.maps.farm_pond import FARM_TILEMAP_IDS
 from harvest.maps.map_types import Waypoint
 
 # Path 0x0C is a ~16x10-tile fork. Farm (y~422) and mountain (y~740)
@@ -19,6 +20,20 @@ PATH_ONMAP_MAX_Y = 200
 def path_coords_leaked(px: int, py: int) -> bool:
     """True when (px, py) is not a real path-0x0C stand."""
     return px < 0 or py < 0 or px > PATH_ONMAP_MAX_X or py > PATH_ONMAP_MAX_Y
+
+
+# Path farm-gate stands sit near (232–244, 128). Those pixels are also a
+# valid north-farm stand (shed row). After path→farm the tilemap flips
+# first and BFS treats (244,118) as house-north — wall-hug to the bin.
+_PATH_FARM_GATE_X = (180, 280)
+_PATH_FARM_GATE_Y = (80, 160)
+
+
+def farm_coords_look_like_path(px: int, py: int) -> bool:
+    """True when farm RAM still holds the path farm-gate pixel."""
+    return _PATH_FARM_GATE_X[0] <= px <= _PATH_FARM_GATE_X[1] and (
+        _PATH_FARM_GATE_Y[0] <= py <= _PATH_FARM_GATE_Y[1]
+    )
 
 
 def slice_route_from_position(
@@ -43,6 +58,13 @@ def slice_route_from_position(
     if tilemap == PATH_TILEMAP_ID and path_coords_leaked(px, py):
         for i, wp in enumerate(waypoints):
             if wp.tilemap == PATH_TILEMAP_ID:
+                return list(waypoints[i:])
+        return list(waypoints)
+    if tilemap in FARM_TILEMAP_IDS and farm_coords_look_like_path(px, py):
+        for i, wp in enumerate(waypoints):
+            if wp.tilemap in FARM_TILEMAP_IDS and not farm_coords_look_like_path(
+                wp.target_px[0], wp.target_px[1]
+            ):
                 return list(waypoints[i:])
         return list(waypoints)
     best_i = 0
@@ -373,21 +395,51 @@ _FARM_TO_MOUNTAIN_GATE: List[Waypoint] = list(_FARM_TO_PATH) + list(_PATH_TO_MOU
 _MOUNTAIN_ENTRY_TO_FIRST_BERRY: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(328, 728), radius=20),
     Waypoint(tilemap=0x10, target_px=(424, 712), radius=16),
-    Waypoint(tilemap=0x10, target_px=(520, 712), radius=16),
-    Waypoint(tilemap=0x10, target_px=(520, 632), radius=16),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(520, 712),
+        radius=16,
+        run_direction="right",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(520, 632),
+        radius=16,
+        run_direction="up",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(472, 600), radius=16),
     Waypoint(tilemap=0x10, target_px=(392, 568), radius=16),
-    Waypoint(tilemap=0x10, target_px=(328, 568), radius=16),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(328, 568),
+        radius=16,
+        run_direction="left",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(328, 488), radius=8),
     # Short x=19 wrap is NPC-blocked. Tape's long west loop: (20,30) →
     # (4,22) corridor → east to (19,22) → south to stand.
-    Waypoint(tilemap=0x10, target_px=(240, 488), radius=10),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(240, 488),
+        radius=10,
+        run_direction="left",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(192, 464), radius=10),
     Waypoint(tilemap=0x10, target_px=(144, 448), radius=10),
     Waypoint(tilemap=0x10, target_px=(80, 432), radius=10),
     Waypoint(tilemap=0x10, target_px=(72, 368), radius=10),
     Waypoint(tilemap=0x10, target_px=(168, 360), radius=12),
-    Waypoint(tilemap=0x10, target_px=(312, 360), radius=12),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(312, 360),
+        radius=12,
+        run_direction="right",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(326, 409), radius=10),
 ]
 

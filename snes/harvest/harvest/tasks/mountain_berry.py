@@ -21,6 +21,7 @@ import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.animal_status import read_held_item
+from harvest.core.game_clock import SEGMENT_FPS, format_segment_time
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.scene import SceneMode, classify_scene_from_ram
@@ -121,24 +122,6 @@ GRAPE_STAND_PX = (326, 409)
 GRAPE_STAND_TILE = (20, 25)
 GRAPE_STAND_RADIUS = 16
 GRAPE_STAND_NUDGE = 3
-# Harvest play-session clock. Report frames as source of truth.
-SEGMENT_FPS = 60.0
-
-
-def format_segment_time(frames: int | None) -> dict:
-    """Frame split used by mountain corridor benches."""
-    if frames is None:
-        return {"frames": None, "seconds": None, "clock": None}
-    n = max(0, int(frames))
-    seconds = n / SEGMENT_FPS
-    minutes = int(seconds // 60)
-    return {
-        "frames": n,
-        "seconds": round(seconds, 3),
-        "clock": f"{minutes:02d}:{seconds % 60:05.2f}",
-    }
-
-
 def mountain_corridor_segments(samples: Sequence[dict]) -> dict:
     """Measure mountain land → grape and grape → mountain exit.
 

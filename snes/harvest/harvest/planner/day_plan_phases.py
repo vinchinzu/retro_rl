@@ -204,14 +204,18 @@ def _berry_run_phases(
         should_buy_seeds_for_date,
     )
 
-    if hour >= policy.berry_cutoff_hour and hour > policy.buy_seed_hour:
+    from harvest.core.game_clock import ClockTime
+
+    now = ClockTime(hour, 0)
+    if now.hour >= policy.berry_cutoff_hour and now.hour > policy.buy_seed_hour:
         return []
 
     phases: List[PhaseSpec] = []
 
     # Spring D2 takes the now-verified mountain grape round trip. Later days
     # retain the farm-bush loop until that separate residual is retired.
-    if policy.include_berry_run and hour < policy.berry_cutoff_hour:
+    # Lunch at 12:00 is a location mark, not a skip: ship before 5pm still.
+    if policy.include_berry_run and now.hour < policy.berry_cutoff_hour:
         phases.append(
             PhaseSpec(
                 "BERRY_RUN_WINDOW",

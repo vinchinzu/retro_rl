@@ -40,6 +40,12 @@ class PlanningFacts:
     hour: int
     minute: int = 0
     tilemap: Optional[int] = None
+    player_x: Optional[int] = None
+    player_y: Optional[int] = None
+    lunch_hour: int = 12
+    lunch_minute: int = 0
+    lunch_reached: bool = False
+    minutes_to_lunch: int = 0
     on_farm: bool = False
     in_house: bool = False
     in_barn: bool = False
@@ -60,7 +66,14 @@ class PlanningFacts:
             "weekday": self.weekday,
             "hour": self.hour,
             "minute": self.minute,
+            "clock": f"{self.hour:02d}:{self.minute:02d}",
             "tilemap": self.tilemap,
+            "player_x": self.player_x,
+            "player_y": self.player_y,
+            "lunch_hour": self.lunch_hour,
+            "lunch_minute": self.lunch_minute,
+            "lunch_reached": self.lunch_reached,
+            "minutes_to_lunch": self.minutes_to_lunch,
             "on_farm": self.on_farm,
             "in_house": self.in_house,
             "in_barn": self.in_barn,
@@ -282,23 +295,31 @@ def _planning_facts_from_probe(
 ) -> PlanningFacts:
     from harvest.planner.day_phase_types import day_planner_policy_for_season
 
-    _day, hour, minute = probe.day_time()
+    clock = probe.clock()
     season, _calendar_day = probe.calendar_date()
     policy = day_planner_policy_for_season(season, policy)
     weekday = probe.weekday() or 1
     tilemap = probe.tilemap()
     on_farm = tilemap is not None and is_farm_tilemap(tilemap)
+    pixel = probe.player_pixel() if source == "ram" else None
+    lunch = policy.lunch_clock()
     return PlanningFacts(
         source=source,
         weekday=weekday,
-        hour=hour,
-        minute=minute,
+        hour=clock.hour,
+        minute=clock.minute,
         tilemap=tilemap if source == "ram" else None,
+        player_x=pixel[0] if pixel else None,
+        player_y=pixel[1] if pixel else None,
+        lunch_hour=lunch.hour,
+        lunch_minute=lunch.minute,
+        lunch_reached=clock >= lunch,
+        minutes_to_lunch=max(0, clock.minutes_until(lunch)),
         on_farm=on_farm if source == "ram" else False,
         in_house=tilemap is not None and is_house_tilemap(tilemap) if source == "ram" else False,
         in_barn=tilemap == BARN_TILEMAP if source == "ram" else False,
         in_coop=tilemap == COOP_TILEMAP if source == "ram" else False,
-        late_day=hour >= policy.late_water_hour,
+        late_day=clock.hour >= policy.late_water_hour,
         is_sunday=weekday == SUNDAY_WEEKDAY,
         is_rainy=probe.is_rainy(),
         needs_chickens=probe.needs_chicken_chores(),
@@ -340,6 +361,13 @@ def _planning_notes(facts: PlanningFacts, phases: Sequence[PhaseSpec]) -> tuple[
         notes.append("rainy day suppresses watering work")
     if any(phase.phase in OPTIONAL_MONEY_PHASES for phase in phases):
         notes.append("optional money route is present")
+    if any(phase.phase == "MOUNTAIN_BERRY" for phase in phases):
+        if facts.lunch_reached:
+            notes.append("noon lunch already fired before mountain berry")
+        else:
+            notes.append(
+                f"mountain berry before lunch at {facts.lunch_hour:02d}:{facts.lunch_minute:02d}"
+            )
     return tuple(notes)
 
 
