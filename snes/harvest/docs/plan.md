@@ -12,12 +12,13 @@ Ready work stays in beads — do not recreate a gate board.
 
 ## Bottleneck
 
-**Tip (2026-08-14):** Gate B continuous — power-on → Summer D1 with income
-(`rr-5in`). D2 grape+shop compose **closed** (`rr-zmss`). Return-home /
-ExitToFarm `0x08` / ship kids **closed**. Remaining soak residual:
-`rr-3ae8` CROP_WATER refill exhausted + `rr-yuel` NAV_CROP hang (D23) +
-`rr-rzpd` sparse one-cell CROP_WATER skip after the now-GREEN D2 same-day
-clear/hoe/plant (`rr-20w.1`).
+**Tip (2026-08-15):** D2 spring is **section work**, not a 3–4h soak
+(`rr-20w.2`). Nav is the bust: travel BFS still walks onto WEED `0x03` and
+B-charges while the farmer is pushing a solid. Ready first:
+`rr-20w.2.1` push-facing non-walkable + `rr-20w.2.2` bushes travel-non-walkable,
+then bush-first `CLEAR_PLOT` (`rr-20w.2.3`). Grape+shop+one-cell plant stay
+GREEN (`rr-zmss` / `rr-20w.1`) — do not reopen. Gate B residual remains
+`rr-3ae8` / `rr-yuel` / `rr-rzpd` (water is the D2 water section under 20w.2).
 
 **Already closed (do not re-open as bottleneck):**
 

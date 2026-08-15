@@ -95,6 +95,9 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 
 - Viewport BFS is ~16×14 tiles; hop targets ≤7 tiles or use `densify_waypoints`.
 - Walkable tile IDs come from **recordings**, not static save-state dumps.
+- Travel BFS must not route onto WEED `0x03` (ROM-walkable, pins movement) or
+  a tile the farmer is **pushing**. Clear from a neighbor stand. D2 sections
+  are `rr-20w.2.*` — do not soak the whole 3–4h day as one ticket.
 - Interact: scan an existing tape / UnlinkedText before recording. Face-walk
   is movement. Item box with held forage is Eat/Don't eat, not Gotz. See
   [docs/INTERACT.md](docs/INTERACT.md).
