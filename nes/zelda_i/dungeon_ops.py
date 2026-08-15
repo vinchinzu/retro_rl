@@ -37,6 +37,7 @@ from zelda_i.dungeon_ids import (
 )
 from zelda_i.ram import (
     ADDR_RAFT,
+    ADDR_SELECTED_ITEM,
     ADDR_TRIFORCE,
     PLAY_MODE,
     ZeldaSnapshot,
@@ -50,8 +51,11 @@ from zelda_i.ram import (
 
 PUSH_FRAMES = 110
 SETTLE_FRAMES = 70
-ADDR_SELECTED_ITEM = 0x0656
-B_ITEM_BOMB = 0x02
+# $0656 SelectedItemSlot (Data Crystal / live Ganon recon).
+B_ITEM_BOMB = 1
+B_ITEM_BOMBS = B_ITEM_BOMB  # L9 recon alias
+B_ITEM_ARROWS = 2
+B_ITEM_CANDLE = 4
 
 DOOR_TARGETS: dict[str, tuple[int, int]] = {
     "RIGHT": (208, 141),
@@ -256,11 +260,25 @@ def push_dir(
 
 
 def ensure_bomb(env: Any) -> str:
-    """Select bomb on B button via RAM poke."""
+    """Select bomb on B button via RAM poke.
+
+    Prefer stable-retro ``memory.assign`` (fceumm), then ``set_byte``,
+    then ``data.set_value``. Never invent a second B-item map.
+    """
     try:
         mem = env.unwrapped.data.memory
+        if hasattr(mem, "assign"):
+            mem.assign(ADDR_SELECTED_ITEM, "|u1", B_ITEM_BOMB)
+            return "selected_item=bomb"
         if hasattr(mem, "set_byte"):
             mem.set_byte(ADDR_SELECTED_ITEM, B_ITEM_BOMB)
+            return "selected_item=bomb"
+    except Exception:
+        pass
+    try:
+        em = getattr(env.unwrapped, "em", None)
+        if em is not None and hasattr(em, "set_bytes"):
+            em.set_bytes(ADDR_SELECTED_ITEM, bytes([B_ITEM_BOMB]))
             return "selected_item=bomb"
     except Exception:
         pass
@@ -570,7 +588,10 @@ def fight_clear(
 
 __all__ = [
     "ADDR_SELECTED_ITEM",
+    "B_ITEM_ARROWS",
     "B_ITEM_BOMB",
+    "B_ITEM_BOMBS",
+    "B_ITEM_CANDLE",
     "DARKNUT_OBJECT_TYPE",
     "DOOR_TARGETS",
     "GEL_ALT_OBJECT_TYPE",

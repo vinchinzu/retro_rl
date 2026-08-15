@@ -83,3 +83,23 @@ def test_level3_dungeon_is_sole_raft_shim() -> None:
         assert "Level3RaftPathController" in l3p.__dict__
     except AttributeError:
         pass  # expected: no raft re-export
+
+
+def test_level3_dungeon_enemy_types_come_from_dungeon_ids() -> None:
+    from zelda_i import dungeon_ids as ids
+    from zelda_i import dungeon as eng
+    from zelda_i.level3_dungeon import (
+        DARKNUT_OBJECT_TYPE,
+        INVULN_MOVER_0X2B,
+        KEESE_OBJECT_TYPE,
+        MANHANDLA_OBJECT_TYPE,
+        ZOL_OBJECT_TYPE,
+    )
+
+    assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
+    assert DARKNUT_OBJECT_TYPE is ids.DARKNUT_OBJECT_TYPE
+    assert KEESE_OBJECT_TYPE is ids.KEESE_OBJECT_TYPE
+    assert MANHANDLA_OBJECT_TYPE is ids.MANHANDLA_OBJECT_TYPE
+    assert INVULN_MOVER_0X2B is ids.INVULN_MOVER_OBJECT_TYPE
+    assert eng.KEESE_OBJECT_TYPE is ids.KEESE_OBJECT_TYPE
+    assert eng.GORIYA_OBJECT_TYPE is ids.GORIYA_OBJECT_TYPE

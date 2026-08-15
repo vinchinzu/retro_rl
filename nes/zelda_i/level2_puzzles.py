@@ -50,9 +50,8 @@ DIAMOND_BAND_6E: Final = 113  # 0x6e → 0x6f (key)
 DOOR_Y_MIN_OPEN: Final = 137
 
 # B-item selection notes (fixtures often already select bombs).
-# Live recon sometimes shows selected_item == 0x01 with bombs present;
-# probe scripts also poke 0x02. Prefer "already selected" over menu in lab.
-B_ITEM_BOMB_PROBE: Final = 0x02
+# $0656: 1=bombs, 2=arrows (dungeon_ops.B_ITEM_*). Prefer already-selected.
+B_ITEM_BOMB_PROBE: Final = 1
 
 
 @dataclass(frozen=True)

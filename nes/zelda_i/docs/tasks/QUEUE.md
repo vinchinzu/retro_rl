@@ -15,31 +15,29 @@ parallel isolated pure from checkpoints).
 Infinite life is intentional for first-pass agents. Do not stall L2 tip on
 sword kiting once geometry is known.
 
-## Live tip (post-L3 — assist-first)
+## Live tip (Survival spine — no new room leaf unless claimed)
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| Power-on → L1 Triforce | **Clean green** | M5 |
-| L2 Boom → TF `0x02` | **assisted green 2/2** | `rr-5dk` / `rr-n5i`; `l2_complete_assisted.json` |
-| Post-L2 → L3 enter | **assisted green 2/2** | `rr-rnx`; `l2_to_l3_assisted.json`; epic `rr-ci7` closed |
-| L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | `rr-vpl` / epic `rr-wmv` closed; `level3_to_boss_assisted.json` |
-| Checkpoints | **`Level3Raft`**, **`Level3Boss`**, **`Level3Complete`** (raft=1) | L3 epic closed |
-| L4 OW entry | **assisted green 2/2** | `rr-0fx`; dock **0x55** island **0x45** room **0x71**; `l4_entry_recon.json` |
-| Checkpoints L4 | **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`** | not Clean |
-| **Tip leaf** | **`rr-5lu` Z4.2** L4 interior | from `Level4Entrance` Stepladder path |
-| Parallel free | **`rr-38p`** early OW caps | white sword / candle / bomb bag |
-| Deferred (blocked on tip) | L5/L6 TF residual, Clean L2 heatmaps, bracelet/mag sword | P4; not tip-blocking |
+| Power-on → L1 Triforce | **Clean green** | M5; do not overwrite |
+| Survival spine L1 | **in progress** `rr-4d53.1` | `--infinite-life` from power-on; Wallmaster `0x45` residual |
+| L2 Boom → TF `0x02` | **assisted green 2/2** | parked until `rr-4d53.2` footage |
+| L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | parked until `rr-4d53.3` footage |
+| L4 interior + Clean compose | **partial** | `rr-zavx` / `rr-gjey` health residual; not serial tip |
+| L5 east key → Whistle → TF | **parked** `rr-28p` | assisted tip after spine |
+| L9 backward suffix | **recon only** `rr-sz8.3` | fixture `route_eligible=false` |
+| Hygiene | **extraction leftover** `rr-796` | LOC splits; spent `_probe_*` prune |
 
 ### Architecture (agent monitor)
 
 ```
-tip spine:  L1 Clean → L2 assist TF → L3 assist TF+Raft → L4 entry ✓ → **L4 interior (rr-5lu)**
-parallel:   OW early caps (rr-38p); isolated pure only from green checkpoints
-defer:      combat Clean harden, later-dungeon TF residual until tip arrives
+tip spine:  rr-4d53 Survival power-on → L5 (L1 tape first; include L2/L3)
+parked:     L5 east-key (rr-28p); L9 0x41 pred; L4 Clean health
+parallel:   OW early caps (rr-38p); hygiene extraction children
 process:    path/puzzle first → --infinite-life full clear → damage heatmap Clean
 ```
 
-Claim one tip leaf: `bd update rr-5lu --status in_progress`.
+Claim one tip leaf: `bd update rr-4d53.1 --status in_progress`.
 
 ### All-night wave results (2026-08-06 night)
 
@@ -90,15 +88,16 @@ Door traps burned:
 ## Next beads (tip + ready)
 
 ```bash
-bd ready -l zelda_i   # tip: rr-28p L5 east key; parallel: rr-38p
+bd ready -l zelda_i   # tip: rr-4d53.1 Survival L1; hygiene leftovers under rr-796
 ```
 
 | Bead | Role | Start / notes |
 |------|------|---------------|
-| **`rr-0fx` Z4.1** | ✓ live L4 entry | dock `0x55` island `0x45` room `0x71`; `run_level4_entry.py` |
-| **`rr-28p` Z5.4** | **TIP** assisted L5 east key | `0x66→0x76→0x77`; then Whistle → Digdogger → TF `0x10` |
+| **`rr-4d53.1`** | **TIP** Survival L1 re-record | `run_level1_complete.py --natural-entry --infinite-life --video` |
+| **`rr-4d53.2` / `.3` / `.4`** | next spine | L2 then L3 footage, then L1–L5 reel |
+| **`rr-796` children** | hygiene | remaining LOC splits / probe prune (not a room leaf) |
+| **`rr-28p` Z5.4** | parked assisted L5 | after spine; `0x66→0x76→0x77` then Whistle → TF `0x10` |
 | **`rr-38p` ZOW.1** | parallel free | white sword + candle + bomb bag |
-| **`rr-q3n`** | L4 epic residual | Clean/natural-entry compose; not the serial tip |
 | Later | `rr-d6v` L6 TF, `rr-4oz` Clean residual, `rr-yhr` bracelet/mag sword | after assist tip |
 
 ### Closed wave history (keep for evidence)

@@ -142,7 +142,7 @@ def idle(env: Any, n: int = 1) -> None:
 
 
 def ensure_bomb_selected(env: Any) -> None:
-    """Prefer selected_item = bomb (0x02). Best-effort poke via dungeon_ops."""
+    """Prefer selected_item = bomb (B_ITEM_BOMB=1). Best-effort poke via dungeon_ops."""
     ensure_bomb(env)
 
 
