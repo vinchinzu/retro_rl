@@ -21,22 +21,18 @@ import argparse
 
 from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
-from retro_harness.segment_runner import (
-    configure_headless,
-    save_rgb_png,
-    write_json_report,
-)
+from retro_harness.segment_runner import configure_headless, save_rgb_png
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.dungeon_ops import ADDR_SELECTED_ITEM
 from zelda_i.level2_dungeon import (
     BOMB_N_STAND,
-    BombNorthPhase,
     ROOM_L2_BOMB_N,
     level2_room_5f_ready,
     make_bomb_north_controller,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot, read_u8
+from zelda_i.runner import add_common_args, controller_stopped, write_report
 
 def run_once(
     *,
@@ -57,7 +53,7 @@ def run_once(
         for _ in range(controller.max_frames):
             action = controller.step(read_snapshot(env.get_ram()))
             obs, *_ = env.step(action.action)
-            if controller.success or controller.phase is BombNorthPhase.FAILED:
+            if controller_stopped(controller):
                 break
 
         ram = env.get_ram()
@@ -130,9 +126,12 @@ def run_once(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--trials", type=int, default=1)
-    parser.add_argument("--save-state", action="store_true")
-    parser.add_argument("--from-state", default="Level2Compass")
+    add_common_args(
+        parser,
+        default_state="Level2Compass",
+        default_tag="isolated",
+        default_trials=1,
+    )
     parser.add_argument(
         "--checkpoint-name",
         default="Level2_5F",
@@ -161,9 +160,8 @@ def main(argv: list[str] | None = None) -> int:
             f"bomb={ctrl.get('bombs_before_place')}->{ctrl.get('bombs_after_place')}"
         )
 
-    output = RECORDINGS_DIR / "level2_bomb_north_isolated.json"
-    write_json_report(
-        output,
+    output = write_report(
+        "level2_bomb_north",
         {
             "segment": "level2_bomb_north",
             "bead": "rr-lzk",
@@ -184,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
             "reports": reports,
         },
+        tag=args.tag,
     )
     print(f"wrote {output}")
     return 0 if all(report.get("ok") for report in reports) else 1

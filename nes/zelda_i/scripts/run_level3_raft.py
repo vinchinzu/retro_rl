@@ -18,13 +18,9 @@ import argparse
 
 from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.nes import nes_idle_action
-from retro_harness.segment_runner import (
-    configure_headless,
-    save_rgb_png,
-    write_json_report,
-)
-from zelda_i.assist import UnlimitedHealthAssist
+from retro_harness.segment_runner import configure_headless, save_rgb_png
 from zelda_i.dungeon_trace import write_state_provenance
+from zelda_i.runner import controller_stopped, make_assist, write_report
 from zelda_i.level3_dungeon import (
     DARKNUT_OBJECT_TYPE,
     RAFT_CHANNEL_X,
@@ -35,7 +31,7 @@ from zelda_i.level3_dungeon import (
     level3_has_raft,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from zelda_i.ram import ADDR_RAFT, PLAY_MODE, read_snapshot, read_u8
+from zelda_i.ram import ADDR_RAFT, read_snapshot, read_u8
 
 def run_once(
     *,
@@ -47,7 +43,7 @@ def run_once(
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     controller = Level3RaftPathController()
-    assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
+    assist = make_assist(infinite_life)
     track = "assisted" if infinite_life else "clean"
     intervention = "survival" if infinite_life else "clean"
     max_frames = RAFT_PATH_MAX_FRAMES
@@ -69,7 +65,7 @@ def run_once(
             obs, *_ = env.step(action.action)
             if assist is not None:
                 assist.apply_env(env, frame=frame + 1)
-            if controller.success or controller.failed or controller.phase == "failed":
+            if controller_stopped(controller):
                 break
 
         # Brief settle after success (pickup / mode settle).
@@ -198,9 +194,8 @@ def main(argv: list[str] | None = None) -> int:
     track = "assisted" if infinite_life else "clean"
     intervention = "survival" if infinite_life else "clean"
     successes = sum(1 for report in reports if report["ok"])
-    output = RECORDINGS_DIR / "level3_raft_assisted.json"
-    write_json_report(
-        output,
+    output = write_report(
+        "level3_raft",
         {
             "segment": "level3_raft",
             "natural_entry": False,
@@ -242,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
             "reports": reports,
             "checkpoint_name": "Level3Raft",
         },
+        tag=track,
     )
     print(f"wrote {output} successes={successes}/{args.trials}")
     return 0 if successes == args.trials else 1

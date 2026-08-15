@@ -42,4 +42,4 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 - Raft: prefer `from zelda_i.level3_raft_path import Level3RaftPathController`.
   One shim: `level3_dungeon` (`__getattr__`). **Not** re-exported from `level3_path`.
 - Inventory poke (`ADDR_SELECTED_ITEM` / `B_ITEM_BOMB`) lives in `dungeon_ops`, not
-  `bomb_wall_path`.
+  `bomb_wall_path`. `$0656` is **1=bombs, 2=arrows, 4=candle** — never `bombs=2`.
