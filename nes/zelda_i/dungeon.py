@@ -23,6 +23,9 @@ from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
 CLEAR_SETTLE_ALL_DEAD = 20
+# Inland box for CombatTuning.avoid_walls (door/wall tiles grab).
+_AVOID_WALL_X = (56, 200)
+_AVOID_WALL_Y = (109, 173)
 
 # Enemy type IDs come from dungeon_ids; names below are the engine re-exports.
 AQUAMENTUS_OBJECT_TYPE = _ids.AQUAMENTUS_OBJECT_TYPE
@@ -85,6 +88,11 @@ class CombatTuning:
     # When >0 and enemy closer than this (manhattan), step away one beat
     # before swinging (heart-safe Clean; rr-gjey L4 residual).
     contact_backstep: int = 0
+    # Walk inland before engage/patrol. Wallmasters grab on door/wall tiles.
+    avoid_walls: bool = False
+    # Forced steps in the entry direction after the room is playable, so
+    # Link is off the door before Wallmasters finish spawning.
+    inland_dash: int = 0
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -107,6 +115,8 @@ class RewardSpec:
     waypoints: tuple[tuple[int, int], ...] = ()
     settle_all_dead: int = CLEAR_SETTLE_ALL_DEAD
     y_first: bool = True
+    # Wallmaster key is on the floor from entry; do not wait for all-dead.
+    reward_while_live: bool = False
 
     def __post_init__(self) -> None:
         if self.kind is RewardKind.FIXED_INVENTORY:
@@ -385,6 +395,20 @@ class GenericDungeonRoomController:
         # Walk only: continuous A on patrol looked spasmodic and wasted frames.
         return FrameAction(nes_action(direction), "combat_patrol")
 
+    def _wall_step(self, x: int, y: int, direction: str) -> tuple[int, int]:
+        if direction == "LEFT":
+            return x - 1, y
+        if direction == "RIGHT":
+            return x + 1, y
+        if direction == "UP":
+            return x, y - 1
+        return x, y + 1
+
+    def _on_avoid_wall(self, x: int, y: int) -> bool:
+        lo_x, hi_x = _AVOID_WALL_X
+        lo_y, hi_y = _AVOID_WALL_Y
+        return x < lo_x or x > hi_x or y < lo_y or y > hi_y
+
     def _engage(self, snap: ZeldaSnapshot, target: ZeldaObject) -> FrameAction:
         """Chase target; slash only when sword hitbox can hit or contact-close."""
         dx = target.x - snap.link_x
@@ -404,7 +428,9 @@ class GenericDungeonRoomController:
         else:
             direction = "DOWN" if dy >= 0 else "UP"
         tuning = self.spec.combat
-        if should_swing_at(
+        nx, ny = self._wall_step(int(snap.link_x), int(snap.link_y), direction)
+        hold_inland = tuning.avoid_walls and self._on_avoid_wall(nx, ny)
+        if hold_inland or should_swing_at(
             snap.link_x,
             snap.link_y,
             direction,
@@ -419,8 +445,47 @@ class GenericDungeonRoomController:
         # Approach without slashing until in blade range.
         return FrameAction(nes_action(direction), "combat_engage")
 
+    def _off_wall_step(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Step toward the playable interior when avoid_walls is set."""
+        if not self.spec.combat.avoid_walls:
+            return None
+        x, y = int(snap.link_x), int(snap.link_y)
+        tuning = self.spec.combat
+        if x < _AVOID_WALL_X[0]:
+            # Tunnel x<24 only accepts RIGHT. At the mouth (x≈32) the
+            # door row y≈141 blocks eastbound movement — step off it first.
+            if x >= 24 and 133 <= y <= 149:
+                direction = "DOWN"
+            else:
+                direction = "RIGHT"
+        elif x > _AVOID_WALL_X[1]:
+            direction = "LEFT"
+        elif y < _AVOID_WALL_Y[0]:
+            direction = "DOWN"
+        elif y > _AVOID_WALL_Y[1]:
+            direction = "UP"
+        else:
+            return None
+        return self._swing(
+            direction,
+            "leave_wall",
+            period=tuning.engage_attack_period,
+            hold=tuning.engage_attack_hold,
+        )
+
     def _combat(self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]) -> FrameAction:
         self.combat_frames += 1
+        off_wall = self._off_wall_step(snap)
+        if off_wall is not None:
+            return off_wall
+        dash = self.spec.combat.inland_dash
+        if dash > 0 and self.combat_frames <= dash:
+            return self._swing(
+                self.spec.entry.direction,
+                "inland_dash",
+                period=self.spec.combat.engage_attack_period,
+                hold=self.spec.combat.engage_attack_hold,
+            )
         if live:
             nearest = min(
                 live,
@@ -520,7 +585,7 @@ class GenericDungeonRoomController:
         if (
             self.spec.reward.kind is RewardKind.FIXED_INVENTORY
             and snap.screen == self.spec.room_id
-            and not live
+            and (not live or self.spec.reward.reward_while_live)
             and self.initial_inventory is not None
             and self._inventory_value(snap) > self.initial_inventory
             and (
@@ -547,7 +612,10 @@ class GenericDungeonRoomController:
             if snap.mode == PLAY_MODE:
                 self._set_phase(DungeonPhase.FIGHT, "target_room_playable")
             else:
-                return FrameAction(nes_idle_action(), "settle_target_room")
+                return FrameAction(
+                    nes_action(self.spec.entry.direction),
+                    "settle_target_room",
+                )
 
         if snap.transitioning:
             return FrameAction(
@@ -575,9 +643,17 @@ class GenericDungeonRoomController:
                 "enter_target_room",
             )
 
+        if (
+            self.phase in (DungeonPhase.FIGHT, DungeonPhase.COLLECT_REWARD)
+            and snap.screen != self.spec.room_id
+        ):
+            self._set_phase(DungeonPhase.FAILED, "left_target_room")
+            return FrameAction(nes_idle_action(), "left_target_room")
+
         if self.phase is DungeonPhase.FIGHT:
             if (
-                not live
+                snap.screen == self.spec.room_id
+                and not live
                 and self.max_live_enemies >= self.spec.expected_enemy_count
                 and snap.room_all_dead >= self.spec.reward.settle_all_dead
                 and (

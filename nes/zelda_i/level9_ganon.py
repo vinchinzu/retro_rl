@@ -12,7 +12,6 @@ from typing import Any
 
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import in_sword_hitbox
-from zelda_i.dungeon_ops import B_ITEM_ARROWS, B_ITEM_BOMBS
 from zelda_i.ram import (
     ADDR_SELECTED_ITEM,
     PLAY_MODE,
@@ -22,6 +21,10 @@ from zelda_i.ram import (
 )
 
 LEVEL9 = 9
+
+# $0656 SelectedItemSlot. Local so door_graph L9 exits can import this module.
+B_ITEM_BOMBS = 1
+B_ITEM_ARROWS = 2
 
 ROOM_BEFORE_GANON = 0x52
 ROOM_GANON = 0x42

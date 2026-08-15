@@ -122,14 +122,24 @@ def should_swing_at(
     threat_radius: int = THREAT_RADIUS,
     contact_chebyshev: int = CONTACT_CHEBYSHEV,
     contact_manhattan: int = CONTACT_MANHATTAN,
+    hint: object | None = None,
 ) -> bool:
     """Swing only if some enemy is in the sword hitbox for ``direction``,
     or extremely close so contact damage / softlocks are avoided.
 
     ``threat_radius`` is accepted for API symmetry with approach logic; it does
     not by itself authorize a swing.
+
+    Optional ``hint`` (see ``combat_behaviors.EngagementHint``) may veto:
+    ``swing=False`` or ``retreat=True``. It cannot authorize a swing outside
+    the hitbox / contact guard.
     """
     del threat_radius  # approach threshold only; attack uses hitbox/contact
+    if hint is not None:
+        if hasattr(hint, "swing") and not bool(getattr(hint, "swing")):
+            return False
+        if bool(getattr(hint, "retreat", False)):
+            return False
     enemies = tuple(enemies)
     if not enemies:
         return False

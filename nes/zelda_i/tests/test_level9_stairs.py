@@ -116,10 +116,24 @@ from zelda_i.level9_stairs import (
     ROOM41_ROM_SOUTH,
     ROOM41_ROM_WEST,
     ROOM41_SOUTH_Y,
+    ROOM50,
+    ROOM50_ROM_EAST,
+    ROOM50_ROM_NORTH,
     ROOM51,
+    ROOM51_ROM_EAST,
+    ROOM51_ROM_NORTH,
+    ROOM51_ROM_SECRET,
+    ROOM51_ROM_SOUTH,
+    ROOM51_ROM_WEST,
+    ROOM61,
+    ROOM61_ROM_EAST,
+    ROOM61_ROM_NORTH,
+    ROOM61_ROM_SOUTH,
+    ROOM61_ROM_WEST,
     in_room_21,
     in_room_31,
     in_room_41,
+    in_room_51,
     make_room31_bomb_west_controller,
     room21_is_rom_predecessor_of_31,
     room21_loader_avoids_31,
@@ -770,6 +784,64 @@ def test_room41_rom_north_open_and_loader() -> None:
     assert room21_rom_south_is_shutter() is True
 
 
+def test_room51_rom_north_open_and_loader() -> None:
+    from zelda_i.level9_room51 import (
+        ROOM51_SOUTH_Y,
+        room51_is_rom_predecessor_of_41,
+        room51_loader_avoids_41,
+        room51_rom_north_is_open,
+        room51_to_41_step,
+    )
+
+    assert ROOM51 == 0x51
+    assert ROOM51_ROM_NORTH == 0
+    assert ROOM51_ROM_SOUTH == 0
+    assert ROOM51_ROM_WEST == 7
+    assert ROOM51_ROM_EAST == 1
+    assert ROOM51_ROM_SECRET == 1
+    assert ROOM41_ROM_SOUTH == 7
+    assert ROOM61 == 0x61
+    assert ROOM61_ROM_NORTH == 0
+    assert ROOM61_ROM_SOUTH == 0
+    assert ROOM61_ROM_WEST == 1
+    assert ROOM61_ROM_EAST == 0
+    assert ROOM50 == 0x50
+    assert ROOM50_ROM_NORTH == 5
+    assert ROOM50_ROM_EAST == 7
+    assert room51_rom_north_is_open() is True
+    assert room51_is_rom_predecessor_of_41() is True
+    loader = stair_loader_for(ROOM51)
+    assert loader.from_room == ROOM61
+    assert loader.direction == "UP"
+    assert loader.room == ROOM51
+    assert loader.from_room != ROOM41
+    assert room51_loader_avoids_41() is True
+    assert in_room_51(_snap(screen=0x51))
+    assert not in_room_51(_snap(screen=0x41))
+    spawn = room51_to_41_step(_snap(screen=0x51, link_x=120, link_y=205))
+    assert action_button_names(spawn.action) == ["UP"]
+    assert spawn.reason == "room51_center_to_thread"
+    pocket = room51_to_41_step(_snap(screen=0x51, link_x=136, link_y=108))
+    assert action_button_names(pocket.action) == ["DOWN"]
+    assert pocket.reason == "room51_drop_to_thread"
+    slide = room51_to_41_step(_snap(screen=0x51, link_x=120, link_y=133))
+    assert action_button_names(slide.action) == ["RIGHT"]
+    climb = room51_to_41_step(_snap(screen=0x51, link_x=144, link_y=133))
+    assert action_button_names(climb.action) == ["UP"]
+    assert climb.reason == "room51_climb_thread"
+    door = room51_to_41_step(_snap(screen=0x51, link_x=120, link_y=93))
+    assert action_button_names(door.action) == ["UP"]
+    assert door.reason == "room51_push_north"
+    arrived = room51_to_41_step(_snap(screen=0x41, link_x=120, link_y=205))
+    assert arrived.reason == "room41_arrived"
+    scroll = room51_to_41_step(_snap(screen=0x41, link_x=120, link_y=221, mode=4))
+    assert action_button_names(scroll.action) == ["UP"]
+    assert scroll.reason == "room41_scroll"
+    assert ROOM51_SOUTH_Y == 189
+    # Dirty 0x40 is 0x50's north-key neighbor, not this predecessor chain.
+    assert ROOM50_ROM_NORTH == 5
+
+
 def test_run_level9_stairs_is_thin_cli() -> None:
     from pathlib import Path
 
@@ -830,6 +902,7 @@ def test_level9_stair_library_files_under_1k() -> None:
         "level9_stair_east.py",
         "level9_stair_west.py",
         "level9_stair_north.py",
+        "level9_room51.py",
     ):
         lines = (root / name).read_text().count("\n")
         assert lines < 1000, f"{name} is {lines} LOC"

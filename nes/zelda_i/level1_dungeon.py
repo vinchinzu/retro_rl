@@ -97,10 +97,15 @@ _ROOM_44_PATROL: tuple[tuple[int, int], ...] = (
     (32, 181),
 )
 
+# Stay inland. Dormant Wallmasters at x=0 still grab on the west door
+# (x=32) after TYPE_AND_HP treats them as dead.
 _WALLMASTER_PATROL: tuple[tuple[int, int], ...] = (
+    (32, 117),
+    (80, 117),
+    (120, 117),
+    (160, 117),
+    (80, 117),
     (32, 141),
-    (32, 109),
-    (32, 173),
 )
 
 ROOM_53_SPEC = DungeonRoomSpec(
@@ -340,27 +345,35 @@ ROOM_45_SPEC = DungeonRoomSpec(
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
         patrol=_WALLMASTER_PATROL,
-        # Dormant Wallmasters sit just outside the wall (x=0).  A wider
-        # engage radius makes Link face and slash into the doorway instead of
-        # walking a vertical patrol forever once only those slots remain.
-        engage_distance=80,
+        # 56px from the inland box meets live Wallmasters off the wall.
+        # 80px from x=32 walked into the west-door grab zone.
+        engage_distance=56,
         engage_dominant_axis=True,
         attack_phase=0,
         patrol_attack_period=8,
         patrol_attack_hold=4,
+        contact_backstep=16,
+        avoid_walls=True,
+        inland_dash=48,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        # Single south-wall target X-first rams the center block or a
-        # Wallmaster. Hunt the live stand (152, 189) via the east column.
+        reward_while_live=True,
+        # Block row at y≈145. North half is only via west-wall UP then RIGHT.
         waypoints=(
-            (160, 141),
-            (160, 173),
+            (32, 157),
+            (32, 141),
+            (32, 117),
+            (64, 117),
+            (80, 117),
+            (120, 117),
+            (160, 117),
+            (160, 109),
+            (80, 109),
+            (32, 117),
+            (32, 189),
             (152, 189),
-            (120, 189),
-            (80, 141),
-            (120, 141),
         ),
     ),
     room_item_id=0x19,

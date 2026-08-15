@@ -1,0 +1,42 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T17:15:15.273184+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "route_eligible": false,
+    "segment": "Level5Entered65From77",
+    "selected_item_poke": false,
+    "start_state": "Level5EastKey",
+    "via": "0x77 return 0x66 bomb-west"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 6,
+    "candle_0x065B": 0,
+    "doors": 1,
+    "health": 143,
+    "keys": 2,
+    "map_0x0668": 8,
+    "mode": 5,
+    "room": 101,
+    "room_hex": "0x65",
+    "success": true,
+    "tf_l5_bit": false,
+    "triforce_0x0671": 12,
+    "via": "path_0",
+    "whistle_0x065C": 0,
+    "xy": [
+      208,
+      141
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5EastKey.state",
+  "source_state_sha256": "7378ee5e976654de2bab9066b80243e6d78142a38076a80c50735c67c57d4ec3",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Entered65From77.state",
+  "state_sha256": "5685dede1af6cfda091970e5391aca22f03406dc05f36b338450d303d4f498e5"
+}

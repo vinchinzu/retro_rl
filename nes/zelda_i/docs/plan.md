@@ -37,11 +37,16 @@ Expected: `recordings/level1_complete_natural_assisted.mp4` + `.json`;
 Default Clean paths stay untouched.
 
 Last live Survival trial (no video): prefix through `clear23_key` is green
-(`boot_frames=199`, health `0x2F`, 0 deaths). Fail is `clear45_key`: 8
-Wallmasters report cleared at combat frame 333, then a grab warps Link to
-entrance `0x73` `(160,173)` and the controller times out at 9000f with
-keys=0. Next change: stay off the `0x45` walls after clear (or recover the
-grab) so the south-edge key at ~(152,189) can be collected.
+(`boot_frames=199`, 0 deaths, 0 progression/capacity writes). Fail is still
+`clear45_key` (timeout 9000f, keys=0, still in `0x45`). Grab-to-entrance is
+fixed (fail-fast `left_target_room`; west-door unstick + slash). After
+clear, Link can walk the west-wall column, south edge, and north row
+`y=117` without warping, but keys never increment. A block row at `y≈145`
+blocks interior north from `y=149`. The floor key is still missing after
+those sweeps. Next: find the live key object/stand during FIGHT (IGN: run
+for the key; do not wait for all-dead) and walk that pixel without A.
+Evidence: `recordings/level1_complete_natural_assisted.json`,
+`recordings/level1_complete_t0_natural.png`.
 
 ## Parked L7/L8 boundary (2026-08-14)
 
@@ -88,23 +93,22 @@ route STATUS:
   `recordings/l9_play41_north_patra_credits_recon.json`, and
   `Level9Room41NorthReconFixture`. The start still inherits fixture inventory
   and loader setup, so `route_eligible=false`.
-- Next live question: materialize the real predecessor south of `0x41`
-  (candidate `0x51`) without staging `0x41` doors, then determine how its
-  north shutter is earned. Keep `0x40` out of this predecessor chain.
-
-Exact replay commands from the repository root:
+- `0x51` is the identified south predecessor of `0x41` (6× Like-Like `0x17`;
+  loader `0x61` hold UP, no `0x41` door poke). North dest walk is **NO**:
+  after clear, center-aisle UP sticks at `(120, 117)` on the statue diamond.
+  `rr-sz8.4` closed dest-NO. Next leaf **`rr-yxy6`**: thread the diamond
+  from south-door spawn `(120, 205)`, else materialize `0x61`. Keep `0x40`
+  out. `route_eligible=false`.
 
 ```bash
 uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --dump-41 --tag l9_room41_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-41 --infinite-life --save-state --trials 1 \
-  --tag l9_play41_north_patra_credits_recon
+  --dump-51 --tag l9_room51_dump
 ```
 
-The forward route now has a continuous Whistle basement `0x04` → Digdogger
-`0x24` → L5 Triforce `0x14` reel. Its missing predecessor seam is East Key
-Pols Voice `0x77` → natural Recorder acquisition → Whistle basement.
+The forward East Key `0x77` → natural Recorder → Whistle basement `0x04`
+seam is closed (`rr-4d53.5`, `Level5WhistleFrom77`). Attach that pin to the
+proven `0x04` → Digdogger → L5 TF suffix before claiming a continuous L5
+reel.
 
 ## Strategy (finish easy → then tune)
 
@@ -129,20 +133,21 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Next milestones
 
-1. **L9 backward tip** — real predecessor south of blade-trap/Like-Like room
-   `0x41`; its clear+north → east-bomb `0x31` suffix is accepted.
-2. **Forward route (preserved)** — East Key Pols Voice `0x77` → natural
-   Recorder acquisition → Whistle basement `0x04`; the Digdogger/TF suffix is
-   accepted. Then continue Levels 6–8 under Survival assist.
-3. **M6 route graph** — compose the assisted checkpoint chain into reusable
-   route legs, then run a continuous dry run.
+1. **Survival spine** — finish L1 `0x45` key (`rr-4d53.1`), then L2/L3
+   continuous tapes and power-on → L5 compose (`rr-4d53.2`–`.4`). L6–L8 stay
+   out of this pass.
+2. **L9 backward tip** — thread `0x51` north through the statue diamond
+   (`rr-yxy6`); `0x41` clear+north → credits suffix is accepted but fixture.
+3. **M6 route graph** — L3–L5 NamedRoute / door_graph / composer now exist;
+   use them to sequence the assisted checkpoint chain, then dry-run.
 4. **M7–M8** — verified full-game capture (assisted first, Clean later).
 
 ## Bottleneck
 
-**Real entry into blade-trap/Like-Like room `0x41`** is the active backward
-boundary. Its clear+north → east-bomb `0x31` → block-stairs `0x30` → cellar
-`0x67` → Patra stairs `0x03` → credits suffix is accepted but fixture-started.
+**L1 room `0x45` key collect** blocks the watchable Survival power-on spine.
+Grab-to-entrance is fixed; keys still do not increment. Parallel: `0x6b`
+north hunt blocks L2-exit → L3 TF in one session. Backward: `0x51` north
+walk into `0x41` is dest-NO (statue diamond).
 The forward boundary is East Key Pols Voice `0x77` → Whistle basement `0x04`.
 
 ## Video / watchability (2026-08-06)

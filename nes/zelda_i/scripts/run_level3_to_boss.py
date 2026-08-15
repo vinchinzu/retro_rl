@@ -49,6 +49,7 @@ from zelda_i.level3_dungeon import (
 from zelda_i.level3_overworld import LEVEL3
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.runner import VideoTap, add_video_args, resolve_video
 
 def _provenance(
     path: Path,
@@ -73,13 +74,24 @@ def _provenance(
         natural_entry=False,
     )
 
-def _finish(report: dict, tag: str, controller: Level3BossPathController) -> dict:
+def _finish(
+    report: dict,
+    tag: str,
+    controller: Level3BossPathController,
+    *,
+    assist=None,
+    tap=None,
+) -> dict:
     report["controller"] = controller.report()
     report["path_log"].extend(
         e for e in controller.path_log if e not in report["path_log"]
     )
     report["traps"].extend(t for t in controller.traps if t not in report["traps"])
     report["notes"].extend(n for n in controller.notes if n not in report["notes"])
+    if assist is not None and "assist" not in report:
+        report["assist"] = assist.report()
+    if tap is not None and "video" not in report:
+        report["video"] = tap.close()
     out = RECORDINGS_DIR / f"{tag}_report.json"
     write_json_report(out, report)
     report["report_path"] = str(out)
@@ -95,6 +107,9 @@ def run_once(
     save_checkpoint: bool = False,
     tag: str = "l3_to_boss",
     phase: str = "all",
+    video_path=None,
+    video_config=None,
+    intro_frames: int = 0,
 ) -> dict:
     """One assisted trial from Level3Raft toward boss / TF."""
     configure_headless()
@@ -124,9 +139,18 @@ def run_once(
         "traps": [],
         "notes": [],
     }
+    tap = None
 
     try:
         obs, _ = reset_obs(env)
+        tap = VideoTap(
+            video_path,
+            video_config,
+            tag=tag,
+            intro_summary="Survival Level3Raft -> Manhandla -> TF 0x04",
+            intro_frames=intro_frames,
+        )
+        tap.attach(env, obs)
         obs, *_ = env.step(nes_idle_action())
         if assist is not None:
             assist.apply_env(env, frame=0)
@@ -144,7 +168,7 @@ def run_once(
                 f"expected Level3Raft (raft set); got level={entry['level']} "
                 f"raft={entry.get('raft')} sc={entry['sc']}"
             )
-            return report
+            return _finish(report, tag, controller, assist=assist, tap=tap)
 
         # --- path to 0x5d ---
         if phase in ("all", "to5d", "gate5d", "boss", "kill"):
@@ -175,7 +199,7 @@ def run_once(
                     report["final"] = p5.get("final")
                     report["total_frames"] = total[0]
                     report["error"] = p5.get("error")
-                    return _finish(report, tag, controller)
+                    return _finish(report, tag, controller, assist=assist, tap=tap)
 
         if phase == "to5d":
             report["ok"] = report["reached_5d"]
@@ -183,7 +207,7 @@ def run_once(
                 read_snapshot(env.get_ram()), env.get_ram()
             )
             report["total_frames"] = total[0]
-            return _finish(report, tag, controller)
+            return _finish(report, tag, controller, assist=assist, tap=tap)
 
         # --- gate 0x5d → 0x4d ---
         if (
@@ -217,7 +241,7 @@ def run_once(
                 read_snapshot(env.get_ram()), env.get_ram()
             )
             report["total_frames"] = total[0]
-            return _finish(report, tag, controller)
+            return _finish(report, tag, controller, assist=assist, tap=tap)
 
         # --- Manhandla confirm + optional kill ---
         if report["reached_4d"] or (
@@ -294,8 +318,10 @@ def run_once(
                 else ("enter_4d" if report["reached_4d"] else "partial")
             )
         )
-        return _finish(report, tag, controller)
+        return _finish(report, tag, controller, assist=assist, tap=tap)
     finally:
+        if tap is not None and "video" not in report:
+            report["video"] = tap.close()
         env.close()
 
 def main(argv: list[str] | None = None) -> int:
@@ -333,9 +359,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--save-state", action="store_true")
     p.add_argument("--tag", default="l3_to_boss")
+    add_video_args(p)
     args = p.parse_args(argv)
 
     poke = args.poke_bombs  # None unless flag given
+    video_path, video_config, intro_frames = resolve_video(
+        args,
+        default_path=RECORDINGS_DIR / f"{args.tag}.mp4",
+    )
     kill = args.kill or args.phase in ("kill", "boss", "all")
     if args.phase == "all" and not args.kill and args.to_boss:
         kill = True
@@ -354,6 +385,9 @@ def main(argv: list[str] | None = None) -> int:
             save_checkpoint=args.save_state and i == 0,
             tag=tag,
             phase=args.phase,
+            video_path=video_path,
+            video_config=video_config,
+            intro_frames=intro_frames,
         )
         trials.append(rep)
         print(

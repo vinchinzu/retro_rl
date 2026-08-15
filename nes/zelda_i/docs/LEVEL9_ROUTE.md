@@ -9,7 +9,7 @@ fixtures—not Clean or Survival route evidence.
 **Beads:** `rr-sz8` (Level 9 epic), `rr-sz8.1` (pre-Ganon → credits),
 `rr-sz8.2` (live final Patra → credits), `rr-sz8.3` (room `0x62` disproved;
 play `0x03` stairs → cellar `0x77` → Patra **2/2**; `0x13` north wall, not a
-clean predecessor; play `0x04` bomb-west → `0x03` → Patra **2/2** recon; play `0x30` stairs → cellar `0x67` right → `0x04` → Patra **2/2** recon; play `0x31` bomb-west → `0x30` → Patra **1/1** recon; play `0x21` south shutter sealed after Patra; play `0x41` north → `0x31` dest **YES** → Patra **1/1** recon; play `0x40` key-north → `0x30` dest **YES**, stays dirty).
+clean predecessor; play `0x04` bomb-west → `0x03` → Patra **2/2** recon; play `0x30` stairs → cellar `0x67` right → `0x04` → Patra **2/2** recon; play `0x31` bomb-west → `0x30` → Patra **1/1** recon; play `0x21` south shutter sealed after Patra; play `0x41` north → `0x31` dest **YES** → Patra **1/1** recon; play `0x40` key-north → `0x30` dest **YES**, stays dirty; play `0x51` identified as south pred of `0x41`, north dest walk **NO**).
 
 Planning sources:
 
@@ -363,6 +363,48 @@ Evidence: `recordings/l9_room41_dump.json` +
 `l9_room41_dump_{settle,north_probe,after_clear,cleared_dest,dest}.png`;
 `recordings/l9_play41_north_patra_credits_recon.json`.
 
+### Play room 0x51 north → 0x41 — dest NO (2026-08-15)
+
+**No: 0x51 north walk did not land 0x41.** No InitMode9, no `NEXT_SCREEN`
+poke, no 0x41 door poke. Loader is `0x61` hold UP (stages 0x61, never
+0x41). ROM: 0x51 N **open** / S **open** / W **shutter** / E wall,
+secret **all_dead**; 0x41 S shutter pairs. `route_eligible=false`.
+
+Live 0x51 settle: screen 0x51, Link (120, 205) south doorway. Objects:
+6× Like-Like `0x17` HP `0x90`. Doors raw 0; mask 0. No stair tiles.
+Mouth tiles `0x24` @(120,77) north and @(120,213) south. no-door-poke
+`0x61` hold UP also settles 0x51 (both doors are ROM-open).
+
+Uncleared north: Like-Like sits on the south door; stand (120, 181)
+stays in 0x51. After chase-clear (~1314f) west shutter **opens**
+(doors raw 2, west bit; `RoomAllDead` nonzero). North mouth stays
+visually black / mask north+south. Center-aisle UP sticks at
+**(120, 117)** on the north vertex of the statue diamond. Thread
+columns **x=104** and **x=144** at y=133 also stick. Compose
+`--compose-51` not attached.
+
+`0x51` is still the identified south predecessor (ROM + visual north
+open). The live dest walk is not earned. 0x40 stays dirty — not this
+chain.
+
+Next: thread the statue diamond from the south-door spawn after
+clear, or materialize play **0x61** (ROM N/S open, E open; current
+0x51 loader).
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x51` | **open (0)** | open (0) | shutter (7) after all_dead | wall (1) |
+| `0x41` | open (0) | **shutter (7)** | wall (1) | wall (1) |
+| `0x61` | **open (0)** | open (0) | wall (1) | open (0) |
+| `0x50` | key (5) into dirty 0x40 | wall (1) | wall (1) | shutter (7) |
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-51 --tag l9_room51_dump
+```
+
+Evidence: `recordings/l9_room51_dump.json` +
+`l9_room51_dump_{settle,north_probe,after_clear,cleared_dest,no_door_poke_settle}.png`.
+
 ### Play room 0x40 key-north → 0x30 (2026-08-14 19:56 CT)
 
 **Yes: 0x40 key-north lands play 0x30.** No InitMode9, no `NEXT_SCREEN`
@@ -709,10 +751,12 @@ uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41
 uv run python nes/zelda_i/scripts/run_level9_stairs.py \
   --compose-41 --infinite-life --save-state --trials 1 \
   --tag l9_play41_north_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-51 --tag l9_room51_dump
 ```
 
 Modules: `level9_overworld.py`, `level9_ganon.py`, `level9_patra.py`,
-`level9_path.py`, `level9_room62.py`, `level9_stairs.py`.
+`level9_path.py`, `level9_room62.py`, `level9_stairs.py`,
+`level9_room51.py`.
 
 ---
 
@@ -743,6 +787,11 @@ Modules: `level9_overworld.py`, `level9_ganon.py`, `level9_patra.py`,
   (controller UP; no 0x31 door poke). Compose **1/1** 27148f
   (credits 25858 / final 27058) via 0x31 bomb-west suffix.
   0x41 start is fixture-loaded (`route_eligible=false`).
+  Play **0x51** is the identified south predecessor of 0x41 (ROM N
+  open pairs 0x41 S shutter; 6× Like-Like; west shutter after
+  all_dead). Live north dest walk is **not** earned: statue diamond
+  blocks center (120,117) and thread columns 104/144. 0x51 start is
+  fixture-loaded (`route_eligible=false`).
   Play **0x40** key-north → play `0x30` is live (controller UP from
   south alcove; Magical Key; no 0x30 door poke). 0x40 start is
   fixture-loaded (`route_eligible=false`). Compose suffix through
@@ -752,4 +801,7 @@ Modules: `level9_overworld.py`, `level9_ganon.py`, `level9_patra.py`,
 - Disproved: play room `0x13` as a clean cardinal predecessor of `0x03`
   (ROM north wall / 0x03 south wall; controller UP sticks at y=93;
   0x03 loader door-staging is a fake scroll).
+- Dest-NO: play room `0x51` north walk into uncleared `0x41` (ROM +
+  visual north open; statue diamond blocks the live walk). 0x51 is
+  still the identified south predecessor.
 - TF bit map: shards 1–8 = bits `0x01`…`0x80`; full = `0xFF`.
