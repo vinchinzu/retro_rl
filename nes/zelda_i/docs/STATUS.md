@@ -294,8 +294,9 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** continuous `run_survival_spine.py` through L1
-   `0x45` key (`rr-4d53.1`). No seamed compose. Then keep that same session
-   through L2/L3 (`rr-4d53.2`–`.4`).
-2. **Active backward tip:** thread `0x51` north into `0x41` (`rr-yxy6`).
+1. **Active Survival tip:** continuous `run_survival_spine.py --through level2`
+   from live Moon `0x7d` through Magical Boomerang (`rr-4d53.2.1`). No seamed
+   compose. Then `.2.2` natural bombs and `.2.3` Dodongo TF.
+2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
+   spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

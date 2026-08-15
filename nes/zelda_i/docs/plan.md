@@ -14,18 +14,29 @@ Tracker: **`bd ready -l zelda_i`**. Geometry: `LEVEL*_ROUTE.md`.
 OVERWORLD_DOORS, STITCH_MAP, DUNGEON_LAB, and all `LEVEL*_ROUTE.md`
 geometry notes. Ready work stays in beads.
 
-## Next pass — Survival spine from power-on (2026-08-14)
+## Next pass — Survival spine from power-on (2026-08-15)
 
-The 2026-08-14 honest reel skipped Levels 2 and 3 and reused the old Clean
-Level 1 tape (`boot_frames=1749`, no `--infinite-life`, end health `0x31`).
-Watchable main spine is now **Survival infinite life from power-on**. Do not
-overwrite Clean M5 evidence.
+Watchable main spine is **one continuous Survival session from power-on**.
+Do not overwrite Clean M5. Seamed compose is gone (`rr-cont`). L9 backward
+recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
+**parked**.
 
-Beads: **`rr-4d53`** epic. Active leaf **`rr-4d53.2`** (L2 dungeon → TF `0x02`).
-Seamed viewing compose is **deleted** (`rr-cont`). The only spine product is
-one continuous emulator session. `rr-4d53.4` is that session through L5 TF,
-not a clip concat. Power-on is first file slot / first quest
-(`boot_policy.playthrough=first`; no file-menu SELECT). MP4 is on by default.
+Beads: **`rr-4d53`** epic. Claimed leaf **`rr-4d53.2.1`** (live `0x7d` →
+Magical Boomerang `0x4f`). Do not start a room unless that is the claimed
+bead.
+
+Full spine (do not claim ahead of the tip):
+
+| Bead | Segment | Status |
+|------|---------|--------|
+| `rr-4d53.1` | power-on → L1 TF → L2 `0x7d` | **closed** |
+| `rr-4d53.2.1` | live `0x7d` → Boom `0x4f` | **tip** — live through `clear6e` |
+| `rr-4d53.2.2` | natural bombs (no `--poke-bombs`) | library closed; L2 entry bombs=4 |
+| `rr-4d53.2.3` | Boom → Dodongo → TF `0x02` | blocked on `.2.1`+`.2.2` |
+| `rr-4d53.3` / `.3.1` / `.3.2` | L2 exit → L3 TF (`0x6b` dest + no poke-16) | blocked on `.2` |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | blocked on `.3` |
+| `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
+| `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
 Exact continuous command:
 
@@ -35,19 +46,22 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trial
 
 Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_session=true`;
 `boot_frames` near 200–565; `boot_policy.file_slot=1`; `progression_writes=0`;
-`capacity_writes=0`; `triforce & 0x01`; level 2 room `0x7d`; deaths 0. Default
-Clean paths stay untouched. `--no-video` skips the encode. `--through level1`
-stops after shard 1.
+`capacity_writes=0`; `triforce & 0x01`; **`ADDR_MAGIC_BOOMERANG != 0`** (not merely
+Moon `0x7d`); `final.bombs` + `final.keys` recorded. Default Clean paths stay
+untouched. `--no-video` skips the encode. `--through level1` stops after shard 1.
 
-Last continuous spine trial (`run_survival_spine.py --through level2`):
-`ok=true`, `continuous_emulator_session=true`, boot=199, first-quest slot 1,
-`aquamentus_heart` 877f (`tank_hits`, last boss ~(174,128)), TF `0x01` 376f,
-settle 945f, `enter_level2` 5094f to Moon `0x7d` at (120, 205). End frame
-31828. Deaths 0, progression/capacity writes 0. Evidence:
-`recordings/survival_spine.json` / `.mp4` / `_final.png`.
+Last continuous spine trial (`--through level2 --no-video --tag survival_spine_l2_boom_v8`):
+`ok=false`, `failed_stage=enter_6f_key`, boot=199, L2 entry bombs=4 keys=0,
+west+east keys live (keys=2), `clear6d`/`clear6c_key`/`backtrack_7d`/
+`clear7e_key`/`enter_6e_west`/`clear6e` green. Timeout in 0x6e at (40, 181)
+still in diamond `free` (south-arrival pose). Deaths 0, poke_bombs=false,
+progression/capacity writes 0. Evidence: `recordings/survival_spine_l2_boom_v8.json`.
 
-Next: same session through L2 Boom → Dodongo → TF `0x02` (`rr-4d53.2`). Do
-not `--poke-bombs` on a route claim. Isolated `Level2Boom` tape still used
+Next: same command after a 0x6e south-pose → band y=113 policy on
+`Level2Enter6fKeyController`. Do not `--poke-bombs`. Isolated `Level2Boom`
+tape still used `--poke-bombs`.
+
+Do not `--poke-bombs` on a route claim. Isolated `Level2Boom` tape still used
 `--poke-bombs`.
 
 ## Parked L7/L8 boundary (2026-08-14)
@@ -79,7 +93,7 @@ Candle, the smallest L8 boundary is Red Candle + `Level8BushOW` → burn `0x6D`
 → live entry room; otherwise the residual is natural 60R farm → Blue Candle
 buy → burn. No new L8 checkpoint or claim was made in this pass.
 
-## Next pass — predecessor of blade-trap/Like-Like room 0x41 (2026-08-14)
+## Parked — predecessor of blade-trap/Like-Like room 0x41 (2026-08-14)
 
 Verified backward recon remains an explicit fixture, not Clean or Survival
 route STATUS:
@@ -135,22 +149,21 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Next milestones
 
-1. **Survival spine** — L1 TF + L2 entry are live (`rr-4d53.1` closed). Next
-   is L2 dungeon → TF `0x02` (`rr-4d53.2`), then L3 and power-on → L5
-   (`rr-4d53.3`–`.4`). L6–L8 stay out of this pass.
-2. **L9 backward tip** — thread `0x51` north through the statue diamond
-   (`rr-yxy6`); `0x41` clear+north → credits suffix is accepted but fixture.
+1. **Survival spine** — claimed `rr-4d53.2.1` (live `0x7d` → Boom). Then
+   natural bombs + Boom→TF, then L3 (`0x6b` dest), then new hops `.6` L4
+   and `.7` L5, then `.4` one-session L5 TF. L6–L9 stay out of this pass.
+2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
+   `route_eligible=false`.
 3. **M6 route graph** — L3–L5 NamedRoute / door_graph / composer now exist;
    use them to sequence the assisted checkpoint chain, then dry-run.
 4. **M7–M8** — verified full-game capture (assisted first, Clean later).
 
 ## Bottleneck
 
-**L2 dungeon from the live `0x7d` Survival entry** blocks the watchable
-power-on spine (`rr-4d53.2`). L1 Aquamentus + TF `0x01` are closed. Parallel: `0x6b`
-north hunt blocks L2-exit → L3 TF in one session. Backward: `0x51` north
-walk into `0x41` is dest-NO (statue diamond).
-The forward boundary is East Key Pols Voice `0x77` → Whistle basement `0x04`.
+**L2 live `0x7d` → Magical Boomerang** (`rr-4d53.2.1`) blocks the watchable
+spine. L1 Aquamentus + TF `0x01` + Moon entry are closed. After boom: natural
+bombs (`rr-4d53.2.2`) then Dodongo TF (`rr-4d53.2.3`). Later: `0x6b` north
+hunt (`rr-4d53.3.1`). L9 dest walk is parked.
 
 ## Video / watchability (2026-08-06)
 
