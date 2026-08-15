@@ -23,6 +23,7 @@
 
 | Segment | Result | Evidence |
 |---------|--------|----------|
+| Power-on → L1 TF Survival re-record (`rr-4d53.1`) | **in progress**; `--infinite-life` wired; boot 199f; prefix through Goriya key `0x23` green; fail Wallmaster `0x45` grab → entrance `0x73` | `level1_complete_natural_assisted.json` (not Clean M5) |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | Whistle basement `0x04` → Digdogger `0x24` → L5 Triforce room `0x14` | **1/1 continuous Survival reel**; 10,776 route frames; Triforce `0x0c→0x1c`; zero deaths and zero resource/progression/capacity pokes; 43 damage units logged for later hardening (44 health-counter units restored across 20 writes) | `stitches/l5_whistle04_to_tf_stitch.json`; `stitches/bk2_whistle04_to_tf/`; `Level5Complete` (development-only) |
