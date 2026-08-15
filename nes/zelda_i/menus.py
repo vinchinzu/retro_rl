@@ -16,12 +16,16 @@ BOOT_PERIOD = 50
 # --- Compact first-slot boot (TAS-adapted, chatterbox all-items #4767M) ---
 # Title START after settle, START on empty slot 1 → name entry, one-letter
 # name via SELECT cursor + A, START to confirm, START to begin game.
-# No SELECT on the file-select screen (stays on first option).
+# No SELECT on the file-select screen (stays on first option = first quest).
+# Name is one glyph, never "ZELDA" (that starts second quest).
 # Verified ready at frame ~199–200 on PRG1 / fceumm.
+BOOT_FILE_SLOT = 1
+BOOT_QUEST = 1  # first playthrough; not the post-credits / ZELDA quest
 _TITLE_SETTLE = 37
 _FILE_GAP = 20
 _NAME_PRE_GAP = 9
 _POST_NAME_GAP = 15
+_FIRST_PLAYTHROUGH_LOAD_WAIT = 180
 
 
 def _idle(n: int, reason: str = "boot_wait") -> Iterator[FrameAction]:
@@ -37,9 +41,9 @@ def _press(button: str, frames: int = 1, reason: str = "boot") -> Iterator[Frame
 def boot_compact_first_slot_script() -> Iterator[FrameAction]:
     """Yield the fast power-on path: first file slot + short name + begin.
 
-    Selects the first file option only (no file-menu SELECT cycling). Name
-    entry on this game moves the letter cursor with SELECT (not bare D-pad);
-    we pick one letter then START to confirm.
+    First option on a blank file select is empty slot 1 (register + first
+    quest). No file-menu SELECT cycling. Name entry moves the letter cursor
+    with SELECT (not bare D-pad); we pick one letter then START to confirm.
     """
     yield from _idle(_TITLE_SETTLE)
     yield from _press("START", 1, "boot_title_start")
@@ -74,6 +78,16 @@ def boot_fallback_period_script() -> Iterator[FrameAction]:
             yield FrameAction(nes_idle_action(), "boot_wait")
 
 
+def boot_first_playthrough_script() -> Iterator[FrameAction]:
+    """Power-on → first file option → first quest. No file-menu SELECT.
+
+    The Survival spine uses this path only. Period fallback can press SELECT
+    on the file menu and leave slot 1; that is not a fixed game choice.
+    """
+    yield from boot_compact_first_slot_script()
+    yield from _idle(_FIRST_PLAYTHROUGH_LOAD_WAIT)
+
+
 def boot_to_level1_script() -> Iterator[FrameAction]:
     """Yield title/file inputs toward overworld play (compact, then fallback)."""
     compact = list(boot_compact_first_slot_script())
@@ -84,7 +98,7 @@ def boot_to_level1_script() -> Iterator[FrameAction]:
     if remaining <= 0:
         return
     # Prefer quiet wait first (game is loading); then period fallback.
-    quiet = min(180, remaining)
+    quiet = min(_FIRST_PLAYTHROUGH_LOAD_WAIT, remaining)
     yield from _idle(quiet)
     remaining -= quiet
     for i, fa in enumerate(boot_fallback_period_script()):

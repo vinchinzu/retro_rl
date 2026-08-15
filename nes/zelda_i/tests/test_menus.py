@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from zelda_i.menus import (
+    BOOT_FILE_SLOT,
     BOOT_MAX_FRAMES,
     BOOT_PERIOD,
+    BOOT_QUEST,
     boot_compact_first_slot_script,
+    boot_first_playthrough_script,
     boot_to_level1_script,
 )
 
@@ -47,3 +50,17 @@ def test_full_script_includes_compact_prefix() -> None:
     assert [fa.reason for fa in script[: len(compact)]] == [
         fa.reason for fa in compact
     ]
+
+
+def test_first_playthrough_is_slot1_first_quest_without_file_select() -> None:
+    """Spine boot: first option, first quest; SELECT only on the name grid."""
+    assert BOOT_FILE_SLOT == 1
+    assert BOOT_QUEST == 1
+    script = list(boot_first_playthrough_script())
+    compact = list(boot_compact_first_slot_script())
+    assert [fa.reason for fa in script[: len(compact)]] == [
+        fa.reason for fa in compact
+    ]
+    assert all(fa.reason != "boot_select" for fa in script)
+    assert script[-1].reason == "boot_wait"
+    assert len(script) == len(compact) + 180

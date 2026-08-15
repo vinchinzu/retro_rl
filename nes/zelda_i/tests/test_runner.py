@@ -5,8 +5,15 @@ from __future__ import annotations
 from enum import Enum, auto
 from types import SimpleNamespace
 
-from zelda_i.runner import add_common_args, controller_stopped, write_report
+from zelda_i.runner import (
+    add_common_args,
+    add_video_args,
+    controller_stopped,
+    resolve_video,
+    write_report,
+)
 import argparse
+from pathlib import Path
 
 
 class _Phase(Enum):
@@ -50,3 +57,17 @@ def test_add_common_args_and_write_report(tmp_path, monkeypatch) -> None:
     path = write_report("level2_bomb_north", {"ok": True}, tag="isolated")
     assert path == tmp_path / "level2_bomb_north_isolated.json"
     assert path.is_file()
+
+
+def test_spine_video_args_default_on_and_no_video_wins() -> None:
+    parser = argparse.ArgumentParser()
+    add_video_args(parser, default_on=True)
+    on = parser.parse_args([])
+    assert on.video == "AUTO"
+    assert on.no_video is False
+    off = parser.parse_args(["--no-video"])
+    path, config, _intro = resolve_video(
+        off, default_path=Path("/tmp/survival_spine.mp4")
+    )
+    assert path is None
+    assert config is None

@@ -20,7 +20,7 @@ sword kiting once geometry is known.
 | Gate | Status | Notes |
 |------|--------|-------|
 | Power-on → L1 Triforce | **Clean green** | M5; do not overwrite |
-| Survival spine L1 | **in progress** `rr-4d53.1` | `run_survival_spine.py` one session; `0x45` key residual |
+| Survival spine L1 | **in progress** `rr-4d53.1` | first-quest slot 1 + MP4; `0x45` green; Aquamentus heart residual |
 | L2 Boom → TF `0x02` | **assisted green 2/2** | parked until `rr-4d53.2` footage |
 | L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | parked until `rr-4d53.3` footage |
 | L4 interior + Clean compose | **partial** | `rr-zavx` / `rr-gjey` health residual; not serial tip |

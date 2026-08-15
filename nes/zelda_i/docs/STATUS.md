@@ -23,7 +23,7 @@
 
 | Segment | Result | Evidence |
 |---------|--------|----------|
-| Power-on → L1 TF Survival re-record (`rr-4d53.1`) | **in progress**; grab-to-entrance fixed; still `clear45_key` timeout in `0x45` (keys=0); prefix through `clear23_key` green | `level1_complete_natural_assisted.json` (not Clean M5) |
+| Power-on → L1 TF Survival re-record (`rr-4d53.1`) | **in progress**; first-quest slot 1; `clear45_key` green; fail `aquamentus_heart` 6000f in `0x35` | `survival_spine.json` / `.mp4` (not Clean M5) |
 | L2 Boom → Dodongo → TF `0x02` | **1/1 Survival** from `Level2Boom`; 8013 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs` during Dodongo** (existing runner) | `l2_complete_assisted.json` / `.mp4` |
 | L3 Raft → Manhandla → TF `0x04` | **1/1 Survival suffix** from `Level3Raft`; 14751 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs 16`** (`Level3Raft` starts bombs=0). L2-exit compose fails at `0x6b` north | `level3_to_boss_assisted_report.json` / `.mp4` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
