@@ -14,7 +14,12 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon import GenericDungeonRoomController, RewardKind, RewardSpec
+from zelda_i.dungeon import (
+    DungeonPhase,
+    GenericDungeonRoomController,
+    RewardKind,
+    RewardSpec,
+)
 from zelda_i.level2_bomb_path import (
     make_bomb_north_controller,
     make_boom_bomb_north_controller,
@@ -36,6 +41,8 @@ from zelda_i.level2_dungeon import (
 from zelda_i.nav_common import (
     DIAMOND_BAND_6E,
     DIAMOND_BAND_7D,
+    DIAMOND_WALL_X,
+    DOOR_Y_DEFAULT,
     diamond_east_phase,
     track_stuck,
     unstick_wiggle,
@@ -60,6 +67,16 @@ Hop = tuple[int, str, int]
 # Isolated 7e walks onto the key mid-fight from keys=0. The spine already
 # holds the west key, so Generic idles at |delta|≤5 on target (136,141) and
 # misses a 5px-off floor key (live timeout at (141,141), keys still 1).
+# Isolated 6e fight with engage=64 chases a rope into the north trench
+# (live (80, 93)). Patrol-only mid box keeps the key-door start in band.
+ROOM_6E_SPINE_SPEC = replace(
+    ROOM_6E_SPEC,
+    spec_id="level2_room6e_ropes_spine",
+    combat=replace(
+        ROOM_6E_SPEC.combat,
+        engage_distance=28,
+    ),
+)
 ROOM_7E_SPINE_SPEC = replace(
     ROOM_7E_SPEC,
     spec_id="level2_room7e_east_key_spine",
@@ -214,39 +231,161 @@ class Level2BacktrackTo7dController(Level2RoomWalkController):
     max_frames: int = BACKTRACK_7D_MAX_FRAMES
 
 
-@dataclass
-class Level2WestEnter6eController(Level2RoomWalkController):
-    """0x7e UP → 0x6e. West-via-0x7d timed out in the east diamond alcove.
+# Reverse 0x7d east alcove (isolated 2/2): LEFT on y=141 from the door mouth
+# (x≈224) is solid. LEFT×6, UP×12, LEFT×20 until x≤150, then center + UP.
+_REVERSE_ALCOVE = ("LEFT",) * 6 + ("UP",) * 12 + ("LEFT",) * 20
+_REVERSE_ALCOVE_X = 150
 
-    South mouth of 0x6e can stick ~y=181; keep UP until play y≤175.
+
+@dataclass
+class Level2WestEnter6eController:
+    """0x7e LEFT → 0x7d reverse-diamond → 0x6d RIGHT → 0x6e west mouth.
+
+    Isolated 2/2 (``run_level2_clear6f._nav_east_key_to_6e``). 0x7e UP lands
+    south y≈181; geom ``south_band_y181_then_y141`` sticks at (200, 157).
+    Door-mouth DOWN to band 157 also sticks (live (224, 141)).
     """
 
     dest_room: int = ROOM_L2_EAST_OF_ROPES
-    hops: tuple[Hop, ...] = (
-        (ROOM_L2_EAST_KEY, "UP", ROOM_L2_EAST_OF_ROPES),
-    )
     max_frames: int = ENTER_6E_WEST_MAX_FRAMES
-    diamond_free_room: int | None = None
+    phase: Level2NavPhase = Level2NavPhase.WALK
+    frames: int = 0
+    alcove_cycle: int = 0
+    inland_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    _last_dir: str = "LEFT"
+
+    def _set_phase(self, phase: Level2NavPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(Level2NavPhase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+        if snap.screen == self.dest_room and snap.mode == PLAY_MODE:
+            # Isolated nav holds RIGHT through the west door. Stopping at
+            # (16, 141) leaves Link in the mouth; keep-mid then locks.
+            if snap.link_x < 80 and self.inland_frames < 90:
+                self.inland_frames += 1
+                self._last_dir = "RIGHT"
+                return FrameAction(nes_action("RIGHT"), "west_inland_x")
+            self.success = True
+            self._set_phase(Level2NavPhase.DONE, "arrived")
+            return FrameAction(nes_idle_action(), "done")
+        if snap.mode == 8:
+            return FrameAction(nes_idle_action(), "hurt_freeze")
+        if snap.transitioning:
+            return FrameAction(nes_action(self._last_dir), "room_scroll")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if snap.screen == ROOM_L2_EAST_KEY:
+            self._last_dir = "LEFT"
+            return _align_then_push(snap, "LEFT")
+
+        if snap.screen == ROOM_L2_ENTRY:
+            if snap.link_x > _REVERSE_ALCOVE_X:
+                direction = _REVERSE_ALCOVE[self.alcove_cycle % len(_REVERSE_ALCOVE)]
+                self.alcove_cycle += 1
+                self._last_dir = direction
+                return FrameAction(nes_action(direction), "alcove_cycle")
+            self._last_dir = "UP"
+            return _align_then_push(snap, "UP")
+
+        if snap.screen == ROOM_L2_ROPES:
+            self._last_dir = "RIGHT"
+            return _align_then_push(snap, "RIGHT")
+        return FrameAction(nes_idle_action(), f"wait_room_0x{snap.screen:02x}")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "dest_room": self.dest_room,
+            "alcove_cycle": self.alcove_cycle,
+            "notes": list(self.notes),
+        }
+
+
+@dataclass
+class Level2Clear6eController:
+    """Clear 3 ropes. Isolated ``_clear_6e_keep_mid``: idle, then FIGHT.
+
+    Keep-mid matches the 2/2 script (x<56 / y<105 / y>185) only after the
+    120f settle so west-door knockback does not lock DOWN at (88, 93).
+    """
+
+    inner: GenericDungeonRoomController = field(
+        default_factory=lambda: GenericDungeonRoomController(ROOM_6E_SPINE_SPEC)
+    )
+    settle_frames: int = 0
+    settle_max: int = 120
+
+    def __post_init__(self) -> None:
+        self.inner.phase = DungeonPhase.FIGHT
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.mode == PLAY_MODE and snap.screen == ROOM_L2_EAST_OF_ROPES:
+            if self.settle_frames < self.settle_max:
+                self.settle_frames += 1
+                return FrameAction(nes_idle_action(), "settle_6e")
+            if snap.link_x < 40:
+                return FrameAction(nes_action("RIGHT"), "keep_mid_x")
+            if snap.link_y > 195:
+                return FrameAction(nes_action("UP"), "keep_mid_s")
+        return self.inner.step(snap)
+
+    @property
+    def success(self) -> bool:
+        return self.inner.success
+
+    @property
+    def phase(self):
+        return self.inner.phase
+
+    @property
+    def spec(self):
+        return self.inner.spec
+
+    def report(self) -> dict[str, Any]:
+        return self.inner.report()
 
 
 @dataclass
 class Level2Enter6fKeyController:
-    """0x6e key-RIGHT via diamond-east (band y≈113). No LEFT on the final push.
+    """0x6e key-RIGHT: mid-band y≈113 → wall x≥200 → vertical y=141 → RIGHT.
 
-    Fails honestly when keys==0 (do not poke). Consumes one key.
+    Isolated 2/2 (``run_level2_clear6f._enter_6f_key_door``). Do not LEFT at
+    the wall (re-enters the diamond) and do not climb the east wall from
+    y≈181 (stuck at (200, 157)). Fails honestly when keys==0.
     """
 
     dest_room: int = ROOM_L2_COMPASS
     from_room: int = ROOM_L2_EAST_OF_ROPES
     band_y: int = DIAMOND_BAND_6E
+    door_y: int = DOOR_Y_DEFAULT
+    wall_x: int = DIAMOND_WALL_X
     require_keys: int = 1
     max_frames: int = ENTER_6F_KEY_MAX_FRAMES
     phase: Level2NavPhase = Level2NavPhase.WALK
     frames: int = 0
-    diamond_phase: str = "free"
-    cycle: int = 0
+    door_phase: str = "band"
     success: bool = False
     notes: list[str] = field(default_factory=list)
+    _stuck: int = 0
+    _last_x: int = -1
+    _last_y: int = -1
 
     def _set_phase(self, phase: Level2NavPhase, note: str = "") -> None:
         if phase is not self.phase:
@@ -276,27 +415,85 @@ class Level2Enter6fKeyController:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.screen != self.from_room:
             return FrameAction(nes_idle_action(), f"wait_room_0x{snap.screen:02x}")
-        if snap.keys < self.require_keys:
+        if snap.keys < self.require_keys and self.door_phase != "push":
             return self._fail("no_keys")
 
-        action, nxt = diamond_east_phase(
-            snap,
-            phase=self.diamond_phase,
-            band_y=self.band_y,
-            cycle=self.cycle,
-        )
-        if nxt == self.diamond_phase:
-            self.cycle += 1
+        x, y = snap.link_x, snap.link_y
+        if (x, y) == (self._last_x, self._last_y):
+            self._stuck += 1
         else:
-            self.diamond_phase = nxt
-            self.cycle = 0
-        return action
+            self._stuck = 0
+        self._last_x, self._last_y = x, y
+
+        if self.door_phase == "band":
+            # Live post-clear leftover (64, 93): north corridor RIGHT to
+            # x≥208, DOWN to door y, RIGHT through the key door (1/1).
+            if y < 110 or x >= 200:
+                if x < 208:
+                    return FrameAction(nes_action("RIGHT"), "north_east")
+                if y < 137:
+                    return FrameAction(nes_action("DOWN"), "north_door_y")
+                if y > 160:
+                    return FrameAction(nes_action("UP"), "north_door_y")
+                self.door_phase = "push"
+            elif abs(y - self.band_y) <= 4 and 90 <= x <= 160:
+                self.door_phase = "wall"
+            elif abs(y - self.band_y) > 4:
+                return FrameAction(
+                    nes_action("DOWN" if y < self.band_y else "UP"),
+                    "band_y",
+                )
+            elif x < 90:
+                return FrameAction(nes_action("RIGHT"), "band_x")
+            elif x > 160:
+                return FrameAction(nes_action("LEFT"), "band_x")
+            else:
+                return FrameAction(nes_action("RIGHT"), "band")
+
+        if self.door_phase == "wall":
+            if x >= self.wall_x:
+                self.door_phase = "vert"
+            elif abs(y - self.band_y) > 6 or self._stuck > 16:
+                self._stuck = 0
+                return FrameAction(
+                    nes_action("DOWN" if y < self.band_y else "UP"),
+                    "wall_y",
+                )
+            else:
+                return FrameAction(nes_action("RIGHT"), "wall_r")
+
+        if self.door_phase == "vert":
+            if abs(y - self.door_y) <= 2 and x >= self.wall_x - 5:
+                self.door_phase = "push"
+            elif y < 130:
+                # Live (200, 125)/(200, 117): DOWN to 141 solid; UP to 113
+                # may pinch. Micro-LEFT then retry (isolated door_y cycle).
+                if self._stuck > 16:
+                    self._stuck = 0
+                    return FrameAction(nes_action("LEFT"), "vert_left")
+                if abs(y - self.band_y) > 4:
+                    return FrameAction(nes_action("UP"), "vert_band")
+                return FrameAction(nes_action("DOWN"), "vert_y")
+            elif abs(y - self.door_y) > 2:
+                return FrameAction(
+                    nes_action("UP" if y > self.door_y else "DOWN"),
+                    "vert_y",
+                )
+            else:
+                return FrameAction(nes_action("RIGHT"), "vert_r")
+
+        if abs(y - self.door_y) > 4:
+            return FrameAction(
+                nes_action("UP" if y > self.door_y else "DOWN"),
+                "push_y",
+            )
+        return FrameAction(nes_action("RIGHT"), "push_r")
 
     def report(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "phase": self.phase.name,
-            "diamond_phase": self.diamond_phase,
+            "door_phase": self.door_phase,
             "frames": self.frames,
             "notes": list(self.notes),
         }
@@ -309,7 +506,9 @@ def level2_to_boom_stages():
     ``rr-4d53.2.2`` owns the farm. Do not poke bombs, keys, or doors.
     """
     bomb_6f = make_bomb_north_controller()
-    bomb_5f = make_boom_bomb_north_controller()
+    # Isolated Level2_5F is (120, 189). Gel-clear patrol parks mid-diamond
+    # (v12 stand_timeout (106, 117)). Skip clear; walk south hole UP to stand.
+    bomb_5f = make_boom_bomb_north_controller(clear_gels=False)
     return (
         ("clear6d", GenericDungeonRoomController(ROOM_6D_SPEC), ROOM_6D_SPEC.max_frames),
         (
@@ -332,7 +531,7 @@ def level2_to_boom_stages():
             Level2WestEnter6eController(),
             ENTER_6E_WEST_MAX_FRAMES,
         ),
-        ("clear6e", GenericDungeonRoomController(ROOM_6E_SPEC), ROOM_6E_SPEC.max_frames),
+        ("clear6e", Level2Clear6eController(), ROOM_6E_SPINE_SPEC.max_frames),
         (
             "enter_6f_key",
             Level2Enter6fKeyController(),
@@ -358,10 +557,12 @@ __all__ = [
     "ENTER_6E_WEST_MAX_FRAMES",
     "ENTER_6F_KEY_MAX_FRAMES",
     "Level2BacktrackTo7dController",
+    "Level2Clear6eController",
     "Level2Enter6fKeyController",
     "Level2NavPhase",
     "Level2RoomWalkController",
     "Level2WestEnter6eController",
+    "ROOM_6E_SPINE_SPEC",
     "ROOM_7E_SPINE_SPEC",
     "level2_through_success",
     "level2_to_boom_stages",

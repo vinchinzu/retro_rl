@@ -24,6 +24,7 @@
 | Segment | Result | Evidence |
 |---------|--------|----------|
 | Power-on → L1 TF → L2 entry (`rr-4d53.1` closed) | **1/1 Survival**; first-quest slot 1; `aquamentus_heart` 877f; TF `0x01`; enter L2 `0x7d` at (120, 205); 31828f; deaths 0; progression/capacity writes 0 | `survival_spine.json` / `.mp4` (not Clean M5) |
+| Power-on → L2 Magical Boomerang (`rr-4d53.2.1` closed) | **1/1 Survival**; boom in `0x4f`; 44551f; L2 entry bombs=4 keys=0; final bombs=2 keys=1; deaths 0; poke_bombs=false; progression/capacity writes 0 | `survival_spine.json` / `survival_spine_l2_boom_v14.json` |
 | L2 Boom → Dodongo → TF `0x02` | **1/1 Survival** from `Level2Boom`; 8013 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs` during Dodongo** (existing runner) | `l2_complete_assisted.json` / `.mp4` |
 | L3 Raft → Manhandla → TF `0x04` | **1/1 Survival suffix** from `Level3Raft`; 14751 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs 16`** (`Level3Raft` starts bombs=0). L2-exit compose fails at `0x6b` north | `level3_to_boss_assisted_report.json` / `.mp4` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
@@ -33,7 +34,9 @@
 
 These runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
-power-on STATUS promotions. The East Key → Recorder seam is closed as an
+power-on STATUS promotions. Power-on → L2 Magical Boomerang is on the
+continuous tape (`rr-4d53.2.1`). Boom → Dodongo → TF `0x02` without poke
+(`rr-4d53.2.3`) is the spine tip. The East Key → Recorder seam is closed as an
 assisted pin (`rr-4d53.5`); attaching that pin to the proven `0x04`→TF suffix
 and composing power-on → L5 TF are still open (`rr-4d53.4`). The active
 backward pass is documented below and in `docs/plan.md`.
