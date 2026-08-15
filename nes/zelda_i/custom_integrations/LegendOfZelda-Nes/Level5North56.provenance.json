@@ -1,0 +1,34 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T22:56:02.327454+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "predecessor_entry": true,
+    "segment": "level5_north56",
+    "start_state": "Level5EastKey"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "failed": false,
+    "frames": 995,
+    "notes": [
+      "room_0x77_f1_xy=136,165_k=2",
+      "room_0x76_f136_xy=0,141_k=2",
+      "room_0x77_f139_xy=0,141_k=2",
+      "room_0x76_f164_xy=0,141_k=2",
+      "room_0x66_f503_xy=120,61_k=2",
+      "room_0x76_f506_xy=120,61_k=2",
+      "room_0x66_f537_xy=120,61_k=2",
+      "room_0x56_f808_xy=120,61_k=2",
+      "settling_56",
+      "arrived_56"
+    ],
+    "spec_id": "level5_north56_from_east_key",
+    "success": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5EastKey.state",
+  "source_state_sha256": "7378ee5e976654de2bab9066b80243e6d78142a38076a80c50735c67c57d4ec3",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5North56.state",
+  "state_sha256": "08383935d9a53c4ee6c47ee90709abbb2638ce1c91b8934ef8ce754bce632ea4"
+}

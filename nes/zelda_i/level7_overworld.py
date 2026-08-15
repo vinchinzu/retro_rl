@@ -1,16 +1,22 @@
-"""Level 7 (Demon) overworld scaffold — planning only.
+"""Level 7 (Demon) overworld approach and gated entry helpers.
 
 Gated by Whistle (L5) for pond drain and Bait/Food for hungry Goriya.
-Screen ids are **source hypotheses**; not live-verified.
+The start-to-pond hop table is usable without either item so geometry can be
+verified independently; opening the pond still requires the naturally earned
+Whistle.
 
 See ``docs/LEVEL7_ROUTE.md``.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Any
 
-from zelda_i.overworld import ScreenHop
+from retro_harness.input_script import FrameAction
+from zelda_i.overworld import ScreenHop, path_screens_from_hops
+from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import (
     ADDR_CANDLE,
     ADDR_FOOD,
@@ -31,6 +37,8 @@ LEVEL7 = 7
 # Source / Data Crystal style: candle 1=blue, 2=red (confirm live).
 CANDLE_RED_PLANNED = 2
 
+# Source-only bait-shop arithmetic.  It is not used by the executable pond
+# controller because live 0x67 is a sealed tree pocket (LEVEL3_ROUTE).
 LEVEL7_BAIT_SHOP_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x67, "UP"),
     ScreenHop(0x66, "LEFT"),
@@ -41,6 +49,21 @@ LEVEL7_BAIT_SHOP_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(SCREEN_LEVEL7_BAIT_SHOP_HYP, "UP"),
 )
 
+# Executable pond approach: reuse the live west-forest path through 0x55,
+# join 0x64, then use the source pond suffix directly from 0x54.  Mapping the
+# pond does not require the optional bait-shop detour.
+LEVEL7_POND_APPROACH_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x78, "RIGHT", align_y=140),
+    ScreenHop(0x68, "UP", align_x=48),
+    ScreenHop(0x58, "UP", align_x=48),
+    ScreenHop(0x57, "LEFT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x56, "LEFT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x55, "LEFT", align_y=133),
+    ScreenHop(0x65, "DOWN", align_x=112),
+    ScreenHop(0x64, "LEFT", align_y=141),
+    ScreenHop(0x54, "UP"),
+)
+
 # From bait shop screen to pond (source).
 LEVEL7_POND_FROM_SHOP_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x44, "DOWN"),
@@ -49,6 +72,54 @@ LEVEL7_POND_FROM_SHOP_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x52, "LEFT"),
     ScreenHop(SCREEN_LEVEL7_POND_HYP, "UP"),
 )
+
+LEVEL7_POND_HOPS: tuple[ScreenHop, ...] = LEVEL7_POND_APPROACH_HOPS + (
+    ScreenHop(0x53, "LEFT", align_y=141),
+    # 0x53 west: central y≈141 is tree-blocked; lower gap is y≈189.
+    ScreenHop(0x52, "LEFT", align_y=189),
+    ScreenHop(SCREEN_LEVEL7_POND_HYP, "UP", align_x=112),
+)
+LEVEL7_POND_SCREENS: tuple[int, ...] = path_screens_from_hops(0x77, LEVEL7_POND_HOPS)
+
+
+class Level7NavPhase(Enum):
+    HOP = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class OverworldToLevel7PondController(OverworldPathController):
+    """Walk from the start screen to the Demon pond on screen ``0x42``.
+
+    This controller deliberately stops at the pond.  Whistle selection, pond
+    drain, and dungeon entry belong to the next route boundary so a missing
+    entry capability cannot silently turn a geometry result into an entry
+    claim.
+    """
+
+    phase: Level7NavPhase = Level7NavPhase.HOP
+    hops: tuple[ScreenHop, ...] = LEVEL7_POND_HOPS
+    require_sword: bool = True
+
+    def end_screen(self) -> int:
+        return self.hops[-1].target
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        # 0x65→0x64 arrives on the east ledge at ~(232,109).  UP is blocked
+        # there: descend to the open middle band, cross to the visible left
+        # north gap at x≈48, then climb.  x≈120 is under the central tree isle.
+        if hop.target == 0x54 and snap.screen == 0x64:
+            if snap.link_x > 180 and snap.link_y < 132:
+                return self._swing("DOWN", "64_east_ledge_down")
+            if snap.link_x > 56:
+                return self._swing("LEFT", "64_cross_to_north")
+            if snap.link_x < 40:
+                return self._swing("RIGHT", "64_north_ax")
+            return self._swing("UP", "64_north")
+        return None
 
 
 def has_whistle(ram) -> bool:
@@ -118,15 +189,15 @@ def level7_entry_stop(_snap: ZeldaSnapshot) -> bool:
 
 
 def level7_overworld_stop(_snap: ZeldaSnapshot) -> bool:
-    """Placeholder pond/door stop — False until live."""
-    return False
+    """Exact overworld geometry stop: controllable on the pond screen."""
+    return on_level7_pond_hyp(_snap)
 
 
 def planning_report() -> dict[str, Any]:
     return {
         "level": LEVEL7,
         "name": "The Demon",
-        "status": "planning",
+        "status": "pond_controller_partial",
         "source_hypothesis": SOURCE_HYPOTHESIS,
         "required_entry_caps": sorted(required_caps_for_entry()),
         "required_clear_caps": sorted(required_caps_for_clear()),
@@ -141,12 +212,14 @@ def planning_report() -> dict[str, Any]:
             "pond": hex(SCREEN_LEVEL7_POND_HYP),
         },
         "bait_shop_hops_from_start": [
-            {"target": hex(h.target), "dir": h.direction}
-            for h in LEVEL7_BAIT_SHOP_HOPS
+            {"target": hex(h.target), "dir": h.direction} for h in LEVEL7_BAIT_SHOP_HOPS
         ],
         "pond_hops_from_shop": [
             {"target": hex(h.target), "dir": h.direction}
             for h in LEVEL7_POND_FROM_SHOP_HOPS
+        ],
+        "pond_hops_from_start": [
+            {"target": hex(h.target), "dir": h.direction} for h in LEVEL7_POND_HOPS
         ],
         "live": {
             "pond_screen": None,

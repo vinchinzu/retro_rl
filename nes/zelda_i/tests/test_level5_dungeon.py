@@ -9,21 +9,26 @@ from zelda_i.level5_dungeon import (
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
     POLS_VOICE_OBJECT_TYPE,
+    ROOM_25_SPEC,
     ROOM_66_EAST_DOOR_BIT,
     ROOM_66_SPEC,
     ROOM_67_SPEC,
     ROOM_67_WEST_DOOR_BIT,
     ROOM_77_SPEC,
+    ROOM_ITEM_NONE,
     ROOM_ITEM_SMALL_KEY,
     ROOM_L5_EAST_67,
     ROOM_L5_ENTRY,
     ROOM_L5_GIBDO_66,
     ROOM_L5_POLS_77,
+    ROOM_L5_WEST_25,
     Level5East67Controller,
     Level5PolsVoiceController,
+    level5_in_room_25,
     level5_in_room_66,
     level5_in_room_67,
     level5_in_room_77,
+    level5_room_25_cleared,
     level5_room_66_cleared,
     level5_room_67_arrived,
     level5_room_77_key_success,
@@ -90,6 +95,13 @@ def test_room_ids_and_specs() -> None:
     assert ROOM_77_SPEC.enemy_types == (POLS_VOICE_OBJECT_TYPE,)
     assert ROOM_77_SPEC.expected_enemy_count == 5
     assert ROOM_77_SPEC.room_item_id == ROOM_ITEM_SMALL_KEY
+    assert ROOM_L5_WEST_25 == 0x25
+    assert ROOM_25_SPEC.room_id == 0x25
+    assert ROOM_25_SPEC.level == 5
+    assert ROOM_25_SPEC.enemy_types == (POLS_VOICE_OBJECT_TYPE,)
+    assert ROOM_25_SPEC.expected_enemy_count == 5
+    assert ROOM_25_SPEC.room_item_id == ROOM_ITEM_NONE
+    assert ROOM_25_SPEC.combat.engage_distance == ROOM_77_SPEC.combat.engage_distance
 
 
 def test_room_66_cleared_predicate() -> None:
@@ -109,6 +121,8 @@ def test_in_room_helpers() -> None:
     assert not level5_in_room_66(_ram(room=ROOM_L5_ENTRY))
     assert level5_in_room_67(_ram(room=ROOM_L5_EAST_67))
     assert level5_in_room_77(_ram(room=ROOM_L5_POLS_77))
+    assert level5_in_room_25(_ram(room=ROOM_L5_WEST_25))
+    assert not level5_in_room_25(_ram(room=ROOM_L5_POLS_77))
 
 
 def test_room_67_arrived_needs_west_door() -> None:
@@ -181,3 +195,45 @@ def test_pols_controller_constructs() -> None:
     ctrl = Level5PolsVoiceController(spec=ROOM_77_SPEC)
     assert ctrl.spec.room_id == ROOM_L5_POLS_77
     assert ctrl.spec.enemy_types == (POLS_VOICE_OBJECT_TYPE,)
+    ctrl25 = Level5PolsVoiceController(spec=ROOM_25_SPEC)
+    assert ctrl25.spec.room_id == ROOM_L5_WEST_25
+    assert ctrl25.spec.enemy_types == (POLS_VOICE_OBJECT_TYPE,)
+
+
+def test_room_25_cleared_predicate() -> None:
+    assert level5_room_25_cleared(
+        _ram(room=ROOM_L5_WEST_25, enemies=0, all_dead=20)
+    )
+    assert not level5_room_25_cleared(
+        _ram(
+            room=ROOM_L5_WEST_25,
+            enemies=5,
+            enemy_type=POLS_VOICE_OBJECT_TYPE,
+            hp=160,
+            all_dead=20,
+        )
+    )
+    assert not level5_room_25_cleared(
+        _ram(room=ROOM_L5_POLS_77, enemies=0, all_dead=20)
+    )
+
+
+def test_live_pols_room_25() -> None:
+    snap = read_snapshot(
+        _ram(
+            room=ROOM_L5_WEST_25,
+            enemies=5,
+            enemy_type=POLS_VOICE_OBJECT_TYPE,
+            hp=160,
+        )
+    )
+    assert len(ROOM_25_SPEC.live_enemies(snap)) == 5
+    snap_dead = read_snapshot(
+        _ram(
+            room=ROOM_L5_WEST_25,
+            enemies=5,
+            enemy_type=POLS_VOICE_OBJECT_TYPE,
+            hp=0,
+        )
+    )
+    assert len(ROOM_25_SPEC.live_enemies(snap_dead)) == 0

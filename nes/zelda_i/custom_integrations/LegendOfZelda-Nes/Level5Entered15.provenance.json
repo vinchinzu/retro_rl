@@ -1,0 +1,28 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T00:12:20.782545+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Entered15",
+    "selected_item_poke": false,
+    "start_state": "Level5Cleared25",
+    "via": "0x25 NORTH bomb"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 6,
+    "keys": 4,
+    "room": 21,
+    "success": true,
+    "whistle_0x065C": 0
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared25.state",
+  "source_state_sha256": "97747dca5de82edc2cb75f214a9f6257e35fc21fb532ab603cea6cd87ed3d49c",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Entered15.state",
+  "state_sha256": "3264f4fb2a4eb75fe985edaae47f03f2cb81fa70d482c7f44bdf5cea5c8cade7"
+}

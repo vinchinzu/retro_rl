@@ -81,18 +81,46 @@ def triforce_bit_02(tf_value: int) -> bool:
     return bool(int(tf_value) & LEVEL2_TF_BIT)
 
 
-def mouth_target(dodo: Any) -> tuple[int, int, str]:
+def mouth_target(dodo: Any, offset: int = 12) -> tuple[int, int, str]:
     """Stand in front of Dodongo snout; return (x, y, face_when_placing)."""
     f = int(dodo.facing)
     if f & FACE_E:
-        return dodo.x + 12, dodo.y, "LEFT"
+        return dodo.x + offset, dodo.y, "LEFT"
     if f & FACE_W:
-        return dodo.x - 12, dodo.y, "RIGHT"
+        return dodo.x - offset, dodo.y, "RIGHT"
     if f & FACE_S:
-        return dodo.x, dodo.y + 12, "UP"
+        return dodo.x, dodo.y + offset, "UP"
     if f & FACE_N:
-        return dodo.x, dodo.y - 12, "DOWN"
+        return dodo.x, dodo.y - offset, "DOWN"
     return dodo.x, dodo.y, "UP"
+
+
+def mouth_path_clear(dodo: Any, *, x_lo: int = 56, x_hi: int = 192, y_lo: int = 109, y_hi: int = 181) -> bool:
+    """True if the Dodongo has room to walk onto a bomb in front of it."""
+    f = int(dodo.facing)
+    if f & FACE_E:
+        return dodo.x <= x_hi
+    if f & FACE_W:
+        return dodo.x >= x_lo
+    if f & FACE_S:
+        return dodo.y <= y_hi
+    if f & FACE_N:
+        return dodo.y >= y_lo
+    return False
+
+
+def in_front_of_mouth(link_x: int, link_y: int, dodo: Any, slop: int = 8) -> bool:
+    """Link is on the snout side of the Dodongo."""
+    f = int(dodo.facing)
+    if f & FACE_E:
+        return link_x > dodo.x and abs(link_y - dodo.y) <= slop
+    if f & FACE_W:
+        return link_x < dodo.x and abs(link_y - dodo.y) <= slop
+    if f & FACE_S:
+        return link_y > dodo.y and abs(link_x - dodo.x) <= slop
+    if f & FACE_N:
+        return link_y < dodo.y and abs(link_x - dodo.x) <= slop
+    return False
 
 
 def goto_action(
@@ -139,11 +167,17 @@ def live_objects(
     return out
 
 
-def sample_snapshot(snap: ZeldaSnapshot, ram: Any, *, event: str) -> dict[str, Any]:
+def sample_snapshot(
+    snap: ZeldaSnapshot,
+    ram: Any,
+    *,
+    event: str,
+    dodongo_type: int = DODONGO_TYPE,
+) -> dict[str, Any]:
     live = live_objects(snap)
     types = Counter(o.type_id for o in live)
     dodos = [
-        o for o in snap.objects if o.type_id == DODONGO_TYPE and 1 <= o.slot <= 10
+        o for o in snap.objects if o.type_id == dodongo_type and 1 <= o.slot <= 10
     ]
     return {
         "event": event,
@@ -339,19 +373,35 @@ def fight_dodongo(
     *,
     max_frames: int = DODONGO_FIGHT_MAX_FRAMES,
     apply_assist: Callable[[Any, int], None] | None = None,
+    dodongo_type: int = DODONGO_TYPE,
+    poke: bool = True,
+    check_tf: bool = True,
+    select_bomb: bool = True,
+    approach_mouth: bool = False,
+    clamp_x: tuple[int, int] = (48, 192),
+    clamp_y: tuple[int, int] = (105, 185),
+    mouth_tol: int = 12,
+    mouth_offset: int = 12,
+    strict_mouth: bool = False,
+    stable_face_frames: int = 8,
 ) -> dict[str, Any]:
-    """Bomb-in-mouth policy for type 0x32 Dodongo.
+    """Bomb-in-mouth policy for Dodongo (default type 0x32).
 
     Walkthrough: drop bomb nearly in mouth; 2 successful mouths kill.
-    Assisted bomb top-up OK. Not Clean STATUS.
+    Assisted bomb top-up OK when poke=True. Not Clean STATUS.
+    approach_mouth=True walks to mouth_target (needed for 1-tile type 0x31).
     """
     log: list[dict[str, Any]] = []
     bombs_used = 0
     hits_est = 0
     last_hp = None
+    last_slot = None
     place_cd = 0
-    poke_notes = [poke_bombs(env, 16)]
-    ensure_bomb_selected(env)
+    face_hist: dict[int, int] = {}
+    stable_n: dict[int, int] = {}
+    poke_notes = [poke_bombs(env, 16)] if poke else ["poke=false"]
+    if select_bomb:
+        ensure_bomb_selected(env)
     f = 0
     for f in range(max_frames):
         if assist is not None and f % 15 == 0:
@@ -360,34 +410,63 @@ def fight_dodongo(
             else:
                 assist.apply_env(env, frame=f)
         s = read_snapshot(env.get_ram())
-        if s.bombs < 2 and assist is not None:
+        if s.bombs < 2 and assist is not None and poke:
             poke_bombs(env, 12)
-            ensure_bomb_selected(env)
+            if select_bomb:
+                ensure_bomb_selected(env)
         if s.mode != PLAY_MODE:
             env.step(nes_idle_action())
             continue
-        if triforce_bit_02(read_u8(env.get_ram(), ADDR_TRIFORCE)):
-            log.append(sample_snapshot(s, env.get_ram(), event="tf_mid_fight"))
+        if check_tf and triforce_bit_02(read_u8(env.get_ram(), ADDR_TRIFORCE)):
+            log.append(
+                sample_snapshot(
+                    s, env.get_ram(), event="tf_mid_fight", dodongo_type=dodongo_type
+                )
+            )
             break
         dodos = [
             o
             for o in s.objects
-            if o.type_id == DODONGO_TYPE and 1 <= o.slot <= 10
+            if o.type_id == dodongo_type and 1 <= o.slot <= 10
         ]
         living = [o for o in dodos if o.hp > 0]
         if not living and not dodos and s.room_all_dead >= 20:
-            log.append(sample_snapshot(s, env.get_ram(), event="dodongo_dead"))
+            log.append(sample_snapshot(s, env.get_ram(), event="dodongo_dead", dodongo_type=dodongo_type))
             break
         if not living:
             env.step(nes_action(("UP", "RIGHT", "DOWN", "LEFT")[f // 20 % 4], "A"))
             if f > 200 and s.room_all_dead >= 20 and not dodos:
                 log.append(
-                    sample_snapshot(s, env.get_ram(), event="dodongo_dead_settle")
+                    sample_snapshot(s, env.get_ram(), event="dodongo_dead_settle", dodongo_type=dodongo_type)
                 )
                 break
             continue
 
-        d = living[0]
+        for o in living:
+            if face_hist.get(o.slot) == o.facing:
+                stable_n[o.slot] = stable_n.get(o.slot, 0) + 1
+            else:
+                stable_n[o.slot] = 0
+            face_hist[o.slot] = o.facing
+
+        pool = living
+        if strict_mouth:
+            open_ones = [
+                o
+                for o in living
+                if mouth_path_clear(o)
+                and stable_n.get(o.slot, 0) >= stable_face_frames
+            ]
+            if open_ones:
+                pool = open_ones
+            else:
+                act, _ = goto_action(s, 120, 141, tol=6)
+                env.step(act)
+                continue
+        d = min(pool, key=lambda o: abs(o.x - s.link_x) + abs(o.y - s.link_y))
+        if last_slot != d.slot:
+            last_hp = None
+            last_slot = d.slot
         if last_hp is not None and d.hp < last_hp:
             hits_est += 1
             log.append(
@@ -401,11 +480,16 @@ def fight_dodongo(
             )
         last_hp = d.hp
 
-        tx, ty, face = mouth_target(d)
-        tx = max(48, min(192, tx))
-        ty = max(105, min(185, ty))
+        tx, ty, face = mouth_target(d, mouth_offset)
+        if face in ("LEFT", "RIGHT"):
+            ty = d.y
+            tx = max(clamp_x[0], min(clamp_x[1], tx))
+        else:
+            tx = d.x
+            ty = max(clamp_y[0], min(clamp_y[1], ty))
         dist = abs(s.link_x - d.x) + abs(s.link_y - d.y)
-        at_mouth = abs(s.link_x - tx) <= 12 and abs(s.link_y - ty) <= 12
+        at_mouth = abs(s.link_x - tx) <= mouth_tol and abs(s.link_y - ty) <= mouth_tol
+        front = in_front_of_mouth(s.link_x, s.link_y, d)
 
         if place_cd > 0:
             place_cd -= 1
@@ -423,10 +507,21 @@ def fight_dodongo(
                 env.step(nes_idle_action())
             continue
 
-        if (at_mouth or dist <= 24) and s.bombs > 0:
-            ensure_bomb_selected(env)
-            if dist > 14:
+        if s.bombs <= 0 and place_cd <= 0:
+            log.append({"event": "out_of_bombs", "f": f, "live": len(living)})
+            break
+        ready = at_mouth if (approach_mouth or strict_mouth) else (at_mouth or dist <= 24)
+        if strict_mouth:
+            ready = ready and front and mouth_path_clear(d)
+        if ready and s.bombs > 0:
+            if select_bomb:
+                ensure_bomb_selected(env)
+            if not approach_mouth and dist > 14:
                 act, _ = goto_action(s, d.x, d.y, tol=8)
+                env.step(act)
+                continue
+            if approach_mouth and not at_mouth:
+                act, _ = goto_action(s, tx, ty, tol=4)
                 env.step(act)
                 continue
             env.step(nes_action(face))
@@ -435,7 +530,7 @@ def fight_dodongo(
             place_cd = 95
             if bombs_used <= 8 or bombs_used % 4 == 0:
                 log.append(
-                    sample_snapshot(s, env.get_ram(), event=f"placed_f{f}")
+                    sample_snapshot(s, env.get_ram(), event=f"placed_f{f}", dodongo_type=dodongo_type)
                     | {
                         "face": face,
                         "target": [tx, ty],
@@ -449,14 +544,16 @@ def fight_dodongo(
         env.step(act)
 
     s = read_snapshot(env.get_ram())
-    alive = [o for o in s.objects if o.type_id == DODONGO_TYPE and o.hp > 0]
+    alive = [o for o in s.objects if o.type_id == dodongo_type and o.hp > 0]
     return {
         "success": len(alive) == 0,
         "frames": f + 1,
         "bombs_used_est": bombs_used,
         "hits_est": hits_est,
+        "dodongo_type": dodongo_type,
+        "poke": poke,
         "poke_notes": poke_notes,
-        "final": sample_snapshot(s, env.get_ram(), event="fight_end"),
+        "final": sample_snapshot(s, env.get_ram(), event="fight_end", dodongo_type=dodongo_type),
         "log": log[-40:],
     }
 
@@ -489,6 +586,8 @@ __all__ = [
     "live_objects",
     "make_bomb_north_1e_controller",
     "mouth_target",
+    "mouth_path_clear",
+    "in_front_of_mouth",
     "poke_bombs",
     "sample_snapshot",
     "triforce_bit_02",
