@@ -235,8 +235,8 @@ corridor) stay residual until room IDs are live.
 
 **Open predicate (lab):** transition `0x6f → 0x5f` after B-place facing UP at
 stand; destination often `cur_opened_doors` **DOWN=4**. Inventory: need
-`bombs≥1`; B-item often already selected on fixtures (sel sometimes `0x01` live;
-probe poke uses `0x02`). Constant: `BOMB_WALL_6F_NORTH` / `bomb_wall_open_predicate`.
+`bombs≥1`; B-item often already selected on fixtures (`$0656` **1=bombs**,
+2=arrows). Constant: `BOMB_WALL_6F_NORTH` / `bomb_wall_open_predicate`.
 
 **Place policy (recon):** goto (120,101) → face UP → B+UP → wait ~60–90f → push UP.
 Generic probe `BOMB_STAND["UP"]=(120,109)` is **not** the verified open.
