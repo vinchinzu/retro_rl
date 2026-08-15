@@ -768,3 +768,68 @@ def test_room41_rom_north_open_and_loader() -> None:
     assert ROOM41_SOUTH_Y == 189
     # 0x21 south shutter sealed after Patra is not a clean 0x31 pred.
     assert room21_rom_south_is_shutter() is True
+
+
+def test_run_level9_stairs_is_thin_cli() -> None:
+    from pathlib import Path
+
+    from zelda_i.scripts import run_level9_stairs as cli
+
+    script = Path(cli.__file__)
+    assert script.read_text().count("\n") < 700
+    assert hasattr(cli, "main")
+    assert cli.materialize_stair_room.__module__ == "zelda_i.level9_stair_run"
+    assert cli.take_stairs_from_source.__module__ == "zelda_i.level9_stair_run"
+    assert cli.probe_sources.__module__ == "zelda_i.level9_stair_probe"
+    assert cli.build_winning_fixture.__module__ == "zelda_i.level9_stair_suffix"
+
+
+def test_run_level9_stairs_reexports_probe_helpers() -> None:
+    from zelda_i.scripts import run_level9_stairs as cli
+
+    for name in (
+        "materialize_stair_room",
+        "_apply_loader",
+        "_hold_until_room",
+        "_exit_cellar",
+        "_walk_target",
+        "dump_room_tiles",
+        "take_stairs_from_source",
+    ):
+        assert callable(getattr(cli, name)), name
+
+
+def test_run_level9_stairs_cli_flags() -> None:
+    from zelda_i.scripts.run_level9_stairs import TAG, main
+
+    # Flags used by docs / probes; add_common_args supplies shared ones.
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    from zelda_i.runner import add_common_args
+
+    add_common_args(parser, default_state="", default_tag=TAG, default_trials=1)
+    args = parser.parse_args([])
+    assert args.tag == TAG
+    assert args.trials == 1
+    assert args.infinite_life is False
+    assert args.save_state is False
+    assert callable(main)
+
+
+def test_level9_stair_library_files_under_1k() -> None:
+    from pathlib import Path
+
+    import zelda_i
+
+    root = Path(zelda_i.__file__).resolve().parent
+    for name in (
+        "level9_stair_run.py",
+        "level9_stair_suffix.py",
+        "level9_stair_probe.py",
+        "level9_stair_east.py",
+        "level9_stair_west.py",
+        "level9_stair_north.py",
+    ):
+        lines = (root / name).read_text().count("\n")
+        assert lines < 1000, f"{name} is {lines} LOC"

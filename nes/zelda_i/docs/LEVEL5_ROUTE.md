@@ -174,7 +174,9 @@ uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_0B_L5Door \
 - `recordings/l5_east_key_*.json` / `l5_pols_2of2.json` — Pols Voice key trials
 - `recordings/l5_entrance.png`, `l5_0b_door.png`, `l5_1b_free.png`, `l5_room_66.png`,
   `l5_room67.png`, `l5_room_77.png`, `l5_east_key.png`
-- Modules: `level5_overworld.py`, `level5_dungeon.py`, `level5_path.py`,
+- Modules: `level5_overworld.py`, `level5_dungeon.py`, `level5_path.py`
+  (facade; `level5_west_path`, `level5_whistle_path`, `level5_cellar_path`,
+  `level5_tf_path`),
   `scripts/run_level5_clear66.py`, `scripts/run_level5_east67.py`,
   `scripts/run_level5_east_key.py`, `scripts/probe_level5_entry.py`
 
