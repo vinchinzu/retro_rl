@@ -18,7 +18,7 @@ from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
-from zelda_i.survival_spine import SPINE_THROUGH, run_survival_spine
+from zelda_i.survival_spine import SPINE_THROUGH, run_survival_spine, spine_final_fields
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,16 +62,7 @@ def main(argv: list[str] | None = None) -> int:
             payload = {
                 **run.report(),
                 "trial": trial,
-                "final": {
-                    "mode": snap.mode,
-                    "level": snap.level,
-                    "room": snap.screen,
-                    "x": snap.link_x,
-                    "y": snap.link_y,
-                    "keys": snap.keys,
-                    "health": snap.health,
-                    "triforce": snap.triforce,
-                },
+                "final": spine_final_fields(snap),
                 "screenshot": str(screenshot),
                 "assist": assist.report(),
                 "video": tap.close(),
@@ -84,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"trial{trial}: ok={payload['ok']} failed={payload.get('failed_stage')} "
             f"tf={payload['final']['triforce']} room=0x{payload['final']['room']:02x} "
-            f"keys={payload['final']['keys']} "
+            f"keys={payload['final']['keys']} bombs={payload['final']['bombs']} "
             f"boot={payload.get('boot_policy')} video={video.get('path')}"
         )
     n_ok = sum(1 for row in results if row.get("ok"))
