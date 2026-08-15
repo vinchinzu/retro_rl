@@ -1,0 +1,34 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T23:15:47.191280+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "reused": "zelda_i.level2_boss_combat.fight_dodongo",
+    "segment": "Level5Cleared56",
+    "selected_item_poke": false,
+    "start_state": "Level5North56"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs_in": 7,
+    "bombs_out": 4,
+    "bombs_used_est": 7,
+    "doors_after": 2,
+    "doors_before": 0,
+    "frames": 1561,
+    "hits_est": 0,
+    "kills": 3,
+    "live_31": 0,
+    "room": 86,
+    "success": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5North56.state",
+  "source_state_sha256": "08383935d9a53c4ee6c47ee90709abbb2638ce1c91b8934ef8ce754bce632ea4",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared56.state",
+  "state_sha256": "6f054b0617121110d0555b2c8a33db575ef6e9b7e9b875d08230285bc3c3a729"
+}

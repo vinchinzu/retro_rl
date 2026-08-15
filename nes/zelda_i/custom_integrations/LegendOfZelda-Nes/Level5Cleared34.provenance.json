@@ -1,0 +1,36 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T00:24:36.466230+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "alive_rule": "hp",
+    "bomb_count_poke": false,
+    "controller": "GenericDungeonRoomController",
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Cleared34",
+    "selected_item_poke": false,
+    "spec_base": "level5_room66_gibdos",
+    "start_state": "Level5Cleared25",
+    "via": "0x25 WEST 0x24 SOUTH 0x34 no 0x38 fight"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 7,
+    "doors_after": 8,
+    "doorway_mask": 0,
+    "frames": 10117,
+    "keys": 3,
+    "live_gibdos": 0,
+    "room": 52,
+    "rupees": 27,
+    "success": true,
+    "whistle_0x065C": 0
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared25.state",
+  "source_state_sha256": "97747dca5de82edc2cb75f214a9f6257e35fc21fb532ab603cea6cd87ed3d49c",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared34.state",
+  "state_sha256": "42a6e8b3d465477b908931321d17d05c7219b06e59d38db8460141db7777aa04"
+}

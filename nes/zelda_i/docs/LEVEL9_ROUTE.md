@@ -7,7 +7,9 @@ The preserved endgame states are explicitly composed, route-ineligible
 fixtures—not Clean or Survival route evidence.
 
 **Beads:** `rr-sz8` (Level 9 epic), `rr-sz8.1` (pre-Ganon → credits),
-`rr-sz8.2` (live final Patra → credits), `rr-sz8.3` (candidate room `0x62`).
+`rr-sz8.2` (live final Patra → credits), `rr-sz8.3` (room `0x62` disproved;
+play `0x03` stairs → cellar `0x77` → Patra **2/2**; `0x13` north wall, not a
+clean predecessor; play `0x04` bomb-west → `0x03` → Patra **2/2** recon; play `0x30` stairs → cellar `0x67` right → `0x04` → Patra **2/2** recon; play `0x31` bomb-west → `0x30` → Patra **1/1** recon; play `0x21` south shutter sealed after Patra; play `0x41` north → `0x31` dest **YES** → Patra **1/1** recon; play `0x40` key-north → `0x30` dest **YES**, stays dirty).
 
 Planning sources:
 
@@ -49,6 +51,428 @@ pre-Ganon fixture additionally removes Patra and opens the north door. The new
 body + eight eyes, `CurOpenedDoors=0`, and `OpenDoorwayMask=0`. Every state is
 still fixture-only and route-ineligible because the inventory/loader setup is
 composed.
+
+### Candidate room `0x62` — RETARGET (live + ROM, 2026-08-14)
+
+The `-0x10` south-neighbor hypothesis is **disproved**. The game loader will
+scroll a fake `0x72` → `0x62` (and the older `0x62` → `0x52` Patra load), but
+that is not a natural door.
+
+Live uncleared settle (`Level9Room62ReconFixture`, loader `0x72` hold UP):
+
+| Signal | Live value |
+|--------|------------|
+| Room | `0x62`, play mode, Level 9 |
+| Objects | 8× Keese type `0x1B`, slots 1–8, HP 0 (type-alive) |
+| Door bits | `CurOpenedDoors=0`, `OpenDoorwayMask=0` |
+| Room item | `0x0F` (unknown; appears after clear as a center drop) |
+| Kill-clear | 8 Keese die; door bits stay 0; north push sticks at `(120, 93)` |
+| Bomb north | stands `(120,93/101/109)` consume a bomb; wall stays closed |
+| Sides | west visual open / east keyhole; y=189 walks stay in `0x62` |
+
+First-quest L7–9 ROM door bytes (iNES `0x18A10`/`0x18A90`):
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x62` | wall (1) | wall (1) | open (0) | key (5) |
+| `0x52` | shutter (7) | **wall (1)** | wall (1) | wall (1) |
+
+`0x52` therefore has no south door. The walkthrough predecessor is a stairs /
+underground-passage drop into the Patra room under Ganon.
+
+Evidence: `recordings/l9_room62_patra_credits_recon_probe.json`,
+`l9_room62_door_experiment.json`, `l9_room62_exit_probe.json`,
+`l9_pred_retarget_probe.json`; start PNG
+`l9_room62_patra_credits_recon_probe_start.png`.
+
+### Stair cellar dest table — live `0x77` left → Patra `0x52` (2026-08-14)
+
+First 6 bytes of ROM `0x19C10` (iNES `0x19C20`) are
+`LevelInfo_CellarRoomIdArray`. CheckSubroom (mode 9): Y < `0x40` and UP;
+X < `0x80` reads AttrsA (left mouth), else AttrsB (right). Dest is the
+**current** RoomId's door-attr bytes, not a sequential pair.
+
+Live dests (InitMode9 + mouth stand + controller UP; dest written by
+CheckSubroom, not `NEXT_SCREEN`):
+
+| Cellar RoomId | Left (AttrsA) | Right (AttrsB) | Patra live? |
+|---------------|---------------|----------------|-------------|
+| `0x60` | `0x14` LikeLikes | `0x55` | no |
+| `0x70` | `0x63` Zols | `0x05` Wizzrobes | no |
+| `0x72` | `0x71` empty | `0x74` | no |
+| `0x75` | `0x20` Wizzrobes | `0x61` **other Patra** (body+8 eyes, not `0x52`) | no |
+| `0x67` | `0x30` traps+Wizzrobes | `0x04` traps+Wizzrobes | no |
+| **`0x77`** | **`0x52` body `0x47` + 8 eyes `0x25`, north door 0** | `0x03` Zol+LikeLike | **yes, left** |
+| `0x00` | not in cellar array; InitMode9 stays mode 9 / 4 Keese | same | no |
+| `0x4F` | not in cellar array; InitMode9 stays mode 9 / 4 Keese | same | no |
+
+Play-room **0x03** is the CheckWarps source for cellar **0x77** (right mouth).
+See the walk section below. Other cellar entries remain unfound.
+
+### Play room 0x03 stairs → cellar 0x77 → live Patra (2026-08-14)
+
+CheckWarps source is play room **0x03**, stair tile **0x72** at exact pixel
+**(128, 141)** / `($80, $8D)`. ALIGN_TOL=3 is too loose (139 misses).
+
+The center stairs sit in an 8-block diamond. West object `0x68` rests at
+`(96, 144)`; after kill-clear, stand `(96, 170)` and hold UP until the block
+slides to y=`$80`. Walk the vacated west slot `(96, 133)` then x-first onto
+`(128, 141)`. Mode 16 / SCREEN `0x77` (no InitMode9, no `NEXT_SCREEN` poke).
+
+Natural entry lands on the **right** cellar mouth. Traverse: DOWN the right
+stairwell → pit → left column **x=`$30`** → UP. Stay on `$30` while climbing
+(switching to `$50` at y=`$70` walks off the ladder). CheckSubroom left
+(Y < `$40`, X < `$80`, UP) → live Patra `0x52` (8 eyes, north closed).
+
+Materialize: neighbor-scroll `0x13` hold UP, Link `($78, $58)`, FULL_LOADOUT +
+`Level9EntranceReconFixture`. That `0x13` scroll uses fixture door-staging
+`0x0F/0x0F` — **not** a clean walk (see 0x13 dump below).
+`route_eligible=false` (fixture inventory + room-loader settle). Survival
+`--infinite-life` OK. Continuous **2/2** frame-exact (Patra live on entry →
+credits 15428 → final page 16628; zero forbidden writes).
+
+Stitch pin `Level9Room03StairsReconFixture` is the natural Patra landing
+after this walk (not InitMode9). No `Level9Room13ReconFixture` — 0x13 is
+not a clean predecessor.
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --play-source 03 --infinite-life --save-state --trials 2 \
+  --tag l9_play03_patra_credits_recon
+```
+
+Evidence: `recordings/l9_play03_patra_credits_recon.json`,
+`l9_play03_patra_credits_recon_t{0,1}_0x03_tiles.json`; PNGs
+`t{0,1}_{settle,after_walk,patra_entry,credits,final_screen}.png`.
+
+### Play room 0x04 bomb-west → 0x03 stairs → Patra (2026-08-14 19:28 CT)
+
+**Yes: 0x04 bomb-west lands 0x03.** No door poke. Loader is `0x14` hold UP
+(stages 0x14, not 0x03). ROM + live: 0x04 N/S/E wall, **W bomb**; 0x03 E bomb.
+
+Live 0x04 settle: screen 4, Link (120, 189), doors 0, B=bombs. Objects: 4×
+blade trap `0x49`, 2× blue wizzrobe `0x23`, 2× orange wizzrobe `0x24`,
+pushable `0x68` at (96, 144).
+
+Bomb: south-band approach **(48, 189)** then stand **(48, 141)** face LEFT
+(`BombWallController`). Blast 16→15, ~357–373f, dest **SCREEN=0x03**,
+Link (208, 141) in the east bomb hole, `CurOpenedDoors` east bit 0x01.
+Stair tile 0x72 still at (128, 141).
+
+Compose: kill-clear Zol+LikeLike (ignore invuln 0x2B) → west-block UP from
+(96, 170) → stand (128, 141) → cellar 0x77 left x=`$30` → Patra 0x52 →
+credits. East-open SE detour uses x=176 (not 208). Do not DOWN through the
+unpushed 0x68 from the north. Pause RIGHT×4 reselects Silver Arrows after
+the bomb. **2/2** recon (~13727f). `route_eligible=false`. No InitMode9,
+no `NEXT_SCREEN` poke, no 0x03 door poke.
+
+Stitch pin `Level9Room04BombWestReconFixture` is the live Patra landing
+after this real bomb-west walk (0x04 start is still fixture-loaded).
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-04 --tag l9_room04_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-04 --infinite-life --save-state --trials 2 \
+  --tag l9_play04_bombwest_patra_credits_recon
+```
+
+Evidence: `recordings/l9_room04_dump.json` +
+`l9_room04_dump_{settle,after_bomb,dest}.png`;
+`recordings/l9_play04_bombwest_patra_credits_recon.json`.
+
+### Play room 0x30 stairs → cellar 0x67 right → bomb-west of stairs (2026-08-14 19:45 CT)
+
+**Yes: 0x30 / cellar 0x67 right lands 0x04.** No InitMode9, no `NEXT_SCREEN`
+poke, no 0x04 door poke. Loader is `0x40` hold UP. That scroll writes
+`0x0F/0x0F` on the south key-room so the key-north can start — **not** a
+clean `0x40 → 0x30` walk (same class as the 0x13 door-stage). 0x04 doors
+are not poked. ROM: 0x30 N/W wall, S key, E bomb, secret **block_stairs**.
+
+Live 0x30 settle: screen 0x30, Link (120, 205), south door only. Objects:
+4× blade trap `0x49`, 2× blue wizzrobe `0x23`, 2× orange wizzrobe `0x24`,
+pushable `0x68` at (96, 144). Kill-clear alone does not reveal stairs.
+
+Push: south-band to (96, 170), hold UP (~49f). The 0x68 relocates to the
+engine stand **(208, 96)** / tile `0x72`. CheckWarps needs that exact pixel
+(ALIGN_TOL=3 at (206, 93) stays in play). Mode 16 / SCREEN `0x67`. Natural
+spawn is the right stairwell `(208, 93)`; CheckSubroom right (Y < `$40`,
+X ≥ `$80`, UP) → play **0x04**. 0x04 west bomb is still live.
+
+Compose: 0x30 stairs → cellar 0x67 right → 0x04 → accepted bomb-west →
+0x03 stairs → Patra → credits. **2/2** recon, frame-exact **18492f**
+(credits 17202 / final 18402 both trials). `route_eligible=false`. Zero
+forbidden runtime writes.
+
+Stitch pin `Level9Room30StairsReconFixture` is the live Patra landing
+after this real walk (0x30 start is still fixture-loaded).
+
+Next clean 0x30 entry (ROM only until dumped):
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x30` | wall (1) | key (5) | wall (1) | **bomb (4)** |
+| `0x31` | open (0) | shutter (7) | **bomb (4)** | wall (1) |
+| `0x40` | key (5) | key (5) | wall (1) | wall (1) |
+
+**0x31 bomb-west is live** (see below). **0x40 key-north is also live**
+(controller Magical Key walk; see 0x40 section). The 0x30 *loader*
+`0x40` hold UP still door-stages 0x40 — that fake scroll is not the
+clean walk.
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-30 --tag l9_room30_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-30 --infinite-life --save-state --trials 2 \
+  --tag l9_play30_cellar67_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-31 --tag l9_room31_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-31 --infinite-life --save-state --trials 1 \
+  --tag l9_play31_bombwest_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
+```
+
+Evidence: `recordings/l9_room30_dump.json` +
+`l9_room30_dump_{settle,stairs_enter,cellar,dest}.png`;
+`recordings/l9_play30_cellar67_patra_credits_recon.json`.
+
+### Play room 0x31 bomb-west → 0x30 stairs → cellar 0x67 right (2026-08-14 19:55 CT)
+
+**Yes: 0x31 bomb-west lands 0x30.** No InitMode9, no `NEXT_SCREEN` poke, no
+0x30 door poke. Loader is `0x41` hold UP. That scroll may write `0x0F/0x0F`
+on 0x41 (north is already open; no-door-poke settle also loaded 0x31).
+0x30 doors are not poked. ROM: 0x31 N open, S shutter, W **bomb**, E wall;
+pairs 0x30 E bomb.
+
+Live 0x31 settle: screen 0x31, Link (120, 189), south doorway. Objects:
+3× Like-Like `0x17`, 2× blue wizzrobe `0x23`, 2× orange wizzrobe `0x24`,
+invuln residual `0x2B`. Doors raw 0; mask north open. B=bombs, 16 bombs.
+No stair tiles. Kill-clear the Like-Likes before the west stand — one on
+the west corridor causes stand_timeout.
+
+Bomb-west: stand **(48, 141)** LEFT (`BombWallController`, same as 0x04).
+Blast 16→15, ~328–330f, dest **SCREEN=0x30**. 0x30 still has pushable
+`0x68` @(96,144); block-stairs still work → cellar `0x67` right → `0x04`.
+
+Compose: 0x31 bomb-west → 0x30 stairs → cellar 0x67 right → 0x04 →
+accepted bomb-west → 0x03 stairs → Patra → credits. **1/1** recon,
+**27676f** (credits 26386 / final 27586). `route_eligible=false`. Zero
+forbidden runtime writes.
+
+Stitch pin `Level9Room31BombWestReconFixture` is the live Patra landing
+after this real walk (0x31 start is still fixture-loaded).
+
+Next clean 0x31 entry (ROM only until dumped):
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x31` | **open (0)** | shutter (7) | bomb (4) | wall (1) |
+| `0x21` | open (0) | shutter (7) | wall (1) | bomb (4) |
+| `0x41` | open (0) | shutter (7) | wall (1) | wall (1) |
+
+**0x21 south is not a clean predecessor** (see dump below). Next candidate:
+play **0x41 north** (ROM open; current 0x31 loader). `0x40` key-north is a
+separate live predecessor of 0x30 and stays dirty — do not treat it as the
+next pred.
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-31 --tag l9_room31_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-31 --infinite-life --save-state --trials 1 \
+  --tag l9_play31_bombwest_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
+```
+
+Evidence: `recordings/l9_room31_dump.json` +
+`l9_room31_dump_{settle,dest,stairs_dest,no_door_poke_settle}.png`;
+`recordings/l9_play31_bombwest_patra_credits_recon.json`.
+
+### Play room 0x21 south → 0x31 — RETARGET (2026-08-14 20:10 CT)
+
+**No: 0x21 south does not land 0x31.** No InitMode9, no `NEXT_SCREEN` poke,
+no 0x31 door poke. Loader is `0x11` hold DOWN (stages 0x11, never 0x31).
+ROM: 0x21 N open, S **shutter**, W wall, E bomb; 0x31 N open pairs.
+
+Live 0x21 settle: screen 0x21, Link (120, 77) north doorway. Objects:
+Patra body `0x47` HP `0xB0` + 8 eyes `0x25`. Plus geometry D=`0xA5`.
+Doors raw 0 / mask 0. B=bombs, 16 bombs. No stair tiles.
+
+Uncleared south: stand **(120, 189)** DOWN sticks in 0x21. After
+kill-clear (and a separate `patra_action` south-stand kill **1467f**,
+body dead, eyes 0, `RoomAllDead=18`) the south shutter **stays sealed**
+(doors raw 0). Cleared south probe still SCREEN **0x21**, stuck y=189.
+Compose `--compose-21` not run.
+
+**0x11 south → 0x21 is live.** Load 0x11 from 0x01 hold UP (8× type
+`0x3B`), kill-clear opens 0x11 south shutter (doors raw 4), walk south
+lands play 0x21 at (120, 77). That hop does not open 0x21's south
+shutter.
+
+`route_eligible=false`. 0x40 stays dirty — not the next pred.
+
+Next clean 0x31 entry:
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x31` | open (0) | shutter (7) | bomb (4) | wall (1) |
+| `0x41` | **open (0)** | shutter (7) | wall (1) | wall (1) |
+| `0x21` | open (0) | **shutter sealed after Patra** | wall (1) | bomb (4) |
+
+**0x41 north is live** (see below). 0x40 stays dirty.
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41_dump
+```
+
+Evidence: `recordings/l9_room21_dump.json` +
+`l9_room21_dump_{settle,south_probe,after_clear,cleared_dest,no_door_poke_settle}.png`;
+`recordings/l9_probe11_south_21.json` (0x11 south → 0x21 dest YES).
+
+### Play room 0x41 north → 0x31 bomb-west suffix (2026-08-14 21:10 CT)
+
+**Yes: 0x41 north lands play 0x31.** No InitMode9, no `NEXT_SCREEN` poke,
+no 0x31 door poke. Loader is `0x51` hold UP (stages 0x51, never 0x31).
+ROM: 0x41 N **open**, S shutter, W/E wall; 0x31 S shutter pairs.
+
+Live 0x41 settle: screen 0x41, Link (120, 189) south doorway. Objects:
+4× blade trap `0x49` + 4× Like-Like `0x17`. Doors raw 0; mask north
+open. No stair tiles (north mouth tile `0x24` @(120,77) is the door).
+
+Uncleared north: door-column UP sticks at y=103 (Like-Likes). After
+chase-clear of types `< 0x40` (Like-Likes; traps skipped), north walk
+lands play **0x31** mode 5, Link (120, 189) in the south shutter,
+`CurOpenedDoors` south bit. Dest objects: Like-Likes + wizzrobes +
+invuln `0x2B`. 0x31 west bomb still live.
+
+Compose: 0x41 north → 0x31 bomb-west @(48,141) LEFT → 0x30 stairs
+(south-band chase so the plus does not wedge the 0x68) → cellar
+`0x67` right → 0x04 suffix. **1/1** recon, **27148f** (credits 25858 /
+final 27058). `route_eligible=false`. Zero forbidden runtime writes.
+
+Stitch pin `Level9Room41NorthReconFixture` is the live Patra landing
+after this real walk (0x41 start is still fixture-loaded).
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-41 --infinite-life --save-state --trials 1 \
+  --tag l9_play41_north_patra_credits_recon
+```
+
+Evidence: `recordings/l9_room41_dump.json` +
+`l9_room41_dump_{settle,north_probe,after_clear,cleared_dest,dest}.png`;
+`recordings/l9_play41_north_patra_credits_recon.json`.
+
+### Play room 0x40 key-north → 0x30 (2026-08-14 19:56 CT)
+
+**Yes: 0x40 key-north lands play 0x30.** No InitMode9, no `NEXT_SCREEN`
+poke, no 0x30 door poke. Opening the key door is walking into it with
+Magical Key (FULL_LOADOUT). Loader is `0x50` hold UP (stages 0x50, never
+0x30). ROM: 0x40 N/S key, W/E wall, secret foes_item; 0x30 S key pairs.
+
+Live 0x40 settle: screen 0x40, Link (120, 205), south door only, north
+keyhole closed. Objects: 3× blue wizzrobe `0x23` + 2× orange wizzrobe
+`0x24`. Plus + C-block geometry. No-door-poke `0x50` hold UP also settles
+0x40 (Magical Key opens 0x50 north).
+
+Walk: from the south alcove hold UP on the door column
+(`room40_to_30_step`). Hold UP through mode 4/6/7 scroll. Do **not**
+kill-clear first — chase leaves Link in the plus. Uncleared controller
+UP → play **0x30** mode 5, Link (120, 205) in the south key doorway.
+Dest objects: blade trap + wizzrobes + pushable `0x68` at (96, 144).
+Stair tile at (208,96) is `0x76` until the block push (secret
+block_stairs still works; compose takes it).
+
+Compose: 0x40 key-north → 0x30 stairs → cellar 0x67 right → 0x04 →
+accepted bomb-west → 0x03 stairs (`room03_chase_mode=blocking`) → Patra
+→ credits. **1/1** recon, **17305f** (credits 16015 / final 17215).
+`route_eligible=false`. Zero forbidden runtime writes.
+
+Stitch pin `Level9Room40KeyNorthReconFixture` is the live Patra landing
+after this real walk (0x40 start is still fixture-loaded).
+
+Next clean 0x40 entry (ROM only until dumped):
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x40` | **key (5)** | key (5) | wall (1) | wall (1) |
+| `0x50` | **key (5)** | wall (1) | wall (1) | shutter (7) |
+
+Primary next: play **0x50 key-north** (same Magical Key walk). 0x40 W/E
+are walls.
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-40 --tag l9_room40_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-40 --infinite-life --save-state --trials 1 \
+  --tag l9_play40_keynorth_patra_credits_recon
+```
+
+Evidence: `recordings/l9_room40_dump.json` +
+`l9_room40_dump_{settle,north_probe,dest,after_clear,no_door_poke_settle}.png`;
+`recordings/l9_play40_keynorth_patra_credits_recon.json`.
+
+
+### Play room 0x13 — RETARGET (live + ROM, 2026-08-14)
+
+`0x03` was entered via **0x13 hold UP** only because the loader staged
+`CurOpenedDoors`/`OpenDoorwayMask` `0x0F/0x0F` on the from-room. That is
+fixture-only. Live 0x13 after the game room loader settles (no door poke
+on 0x13 itself):
+
+| Signal | Live value |
+|--------|------------|
+| Room | `0x13`, play mode, Level 9 |
+| Loader | `0x23` hold UP, Link `($78, $58)` |
+| Link start | `(120, 205)` south doorway |
+| Objects | 2× invuln `0x2B` + 2× Zol `0x13` + 2× LikeLike `0x17` |
+| Door bits | `CurOpenedDoors=0x04` south only; `OpenDoorwayMask=0x04`; north 0 |
+| RoomAllDead / RoomObjCount | 0 / 6 |
+| Kill-clear | north bit stays 0; UP sticks at `(120, 93)` |
+| No-door-poke settle | still lands 0x13 (0x23 north is key; Magical Key in fixture) |
+
+First-quest L7–9 ROM door bytes (iNES `0x18A10`/`0x18A90`):
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x13` | **wall (1)** | key (5) | key (5) | wall (1) |
+| `0x03` | wall (1) | **wall (1)** | wall (1) | bomb (4) |
+
+`0x13` therefore has no north door, and `0x03` has no south door. Controller
+UP after a no-0x13-door-poke settle stays in `0x13`. Do not compose
+`0x13 → 0x03` as a clean walk. The 0x03 loader's door-staging scroll is a
+fake transition, same class as the disproved `0x72 → 0x62` load.
+
+`0x03` east is ROM bomb; `0x04` west is ROM bomb — **live** (see 0x04
+section). Clean 0x04 entry is play `0x30` / cellar `0x67` right (see above).
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-13 --tag l9_room13_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-04 --tag l9_room04_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-04 --infinite-life --save-state --trials 2 \
+  --tag l9_play04_bombwest_patra_credits_recon
+```
+
+Evidence: `recordings/l9_room13_dump.json`; PNGs
+`l9_room13_dump_{settle,after_clear,north_probe,north_after_clear,no_door_poke_settle}.png`.
+
+`Level9Stair77PatraEnteredReconFixture` is the earlier InitMode9 CheckSubroom landing
+(fixture-only: FULL_LOADOUT + `0x67` hold DOWN into `0x77` + InitMode9 +
+left mouth `(0x50, 0x3D)` + UP). Suffix from that entry is **2/2**
+(Patra 1652f → credits 9762 → final page 10962).
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dest-table --tag l9_stair77
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --build-fixture --source 77 --infinite-life --save-state --trials 2 \
+  --tag l9_stair77_patra_credits_recon
+```
+
+Evidence: `recordings/l9_stair77_dest_table.json`,
+`l9_stair77_patra_credits_recon.json`; dest PNG
+`l9_stair77_dest_table_0x77_left_dest.png`; stitch pin
+`Level9Stair77PatraEnteredReconFixture`.
 
 Patra evidence: `recordings/l9_patra_credits_recon.json`; screenshots
 `l9_patra_credits_recon_t{0,1}_{patra_start,patra_cleared,ganon_start,ganon_arrow_kill,ganon_defeated,zelda_room,ending_start,credits,final_screen}.png`.
@@ -234,6 +658,12 @@ Death Mountain end is Zelda/credits after Ganon.
 | State | When |
 |-------|------|
 | `Level9EntranceReconFixture` | live `level==9`, room `0x76`; composed full inventory |
+| `Level9Room03StairsReconFixture` | live Patra after play-0x03 stairs walk (fixture start) |
+| `Level9Room04BombWestReconFixture` | live Patra after 0x04 bomb-west → 0x03 stairs (fixture start) |
+| `Level9Room30StairsReconFixture` | live Patra after 0x30 stairs → cellar 0x67 right → 0x04 suffix (fixture start) |
+| `Level9Room31BombWestReconFixture` | live Patra after 0x31 bomb-west → 0x30 stairs suffix (fixture start) |
+| `Level9Room41NorthReconFixture` | live Patra after 0x41 north → 0x31 bomb-west suffix (fixture start) |
+| `Level9Room62ReconFixture` | uncleared `0x62`; 8 Keese; doors 0; loader `0x72` UP; **not** Patra predecessor |
 | `Level9FinalPatraReconFixture` | room `0x52`; live body `0x47` + eight eyes `0x25`; north closed |
 | `Level9FinalPatraClearedReconFixture` | Patra naturally dead; `CurOpenedDoors & 0x08`; controller writes 0 |
 | `Level9BeforeGanonReconFixture` | live final-Patra room `0x52`, Patra fixture-cleared, north open; requested start |
@@ -260,10 +690,29 @@ uv run python nes/zelda_i/scripts/run_level9_ganon.py --build-fixture \
   --infinite-life --save-state --trials 1 --tag l9_ganon_credits_recon
 uv run python nes/zelda_i/scripts/run_level9_patra.py --build-fixture \
   --infinite-life --save-state --trials 2 --tag l9_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_room62.py --probe
+uv run python nes/zelda_i/scripts/run_level9_room62.py --build-fixture
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --play-source 03 --infinite-life --save-state --trials 2 \
+  --tag l9_play03_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-13 --tag l9_room13_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-30 --tag l9_room30_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-30 --infinite-life --save-state --trials 2 \
+  --tag l9_play30_cellar67_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-31 --tag l9_room31_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-31 --infinite-life --save-state --trials 1 \
+  --tag l9_play31_bombwest_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-41 --infinite-life --save-state --trials 1 \
+  --tag l9_play41_north_patra_credits_recon
 ```
 
 Modules: `level9_overworld.py`, `level9_ganon.py`, `level9_patra.py`,
-`level9_path.py`.
+`level9_path.py`, `level9_room62.py`, `level9_stairs.py`.
 
 ---
 
@@ -275,6 +724,32 @@ Modules: `level9_overworld.py`, `level9_ganon.py`, `level9_patra.py`,
 - Fixture-only in both tracks: full inventory and room-loader composition.
   The older Ganon-only fixture also removes Patra and opens its north door;
   the accepted Patra runner does neither after its start.
-- Not live from predecessor: natural Level 9 interior, Red Ring/Silver Arrow
-  acquisition, and candidate room `0x62` → final Patra entry.
+- Not live from predecessor: natural Level 9 interior and Red Ring/Silver
+  Arrow acquisition. Play-room **0x03** tile `0x72` @(128,141) → cellar
+  `0x77` is live CheckWarps, but the start is still fixture-only
+  (`route_eligible=false`).
+  Cellar *exit* dest `0x77` left → `0x52` is live (CheckSubroom).
+  Play-source 03 is now **2/2** (credits 15428 / final 16628, both trials).
+  Play **0x04** bomb-west → 0x03 → Patra → credits is **2/2** recon
+  (~13727f); bomb-west walk is real, 0x04 start is fixture-loaded.
+  Play **0x30** tile `0x72` @(208,96) → cellar `0x67` right → `0x04`
+  is **2/2** recon (18492f both trials); 0x30 start is fixture-loaded.
+  Play **0x31** bomb-west @(48,141) LEFT → `0x30` is **1/1** recon
+  (27676f; credits 26386 / final 27586); 0x31 start is fixture-loaded.
+  Play **0x21** south shutter stays sealed after Patra kill (1467f,
+  RoomAllDead=18, doors raw 0); dest still `0x21` at y=189. Not a
+  clean predecessor of 0x31.
+  Play **0x41** north (after Like-Like clear) → play `0x31` is live
+  (controller UP; no 0x31 door poke). Compose **1/1** 27148f
+  (credits 25858 / final 27058) via 0x31 bomb-west suffix.
+  0x41 start is fixture-loaded (`route_eligible=false`).
+  Play **0x40** key-north → play `0x30` is live (controller UP from
+  south alcove; Magical Key; no 0x30 door poke). 0x40 start is
+  fixture-loaded (`route_eligible=false`). Compose suffix through
+  0x03 stairs was not pinned (0x68 pushed south).
+- Disproved: candidate room `0x62` as cardinal predecessor of `0x52`
+  (north wall / south wall; eight Keese; no live north transition).
+- Disproved: play room `0x13` as a clean cardinal predecessor of `0x03`
+  (ROM north wall / 0x03 south wall; controller UP sticks at y=93;
+  0x03 loader door-staging is a fake scroll).
 - TF bit map: shards 1–8 = bits `0x01`…`0x80`; full = `0xFF`.

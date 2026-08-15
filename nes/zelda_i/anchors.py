@@ -65,6 +65,8 @@ SCREEN_LEVEL7_BAIT_SHOP = 0x34
 SCREEN_LEVEL8_BUSH = 0x6D  # Lion bush — live; needs candle
 SCREEN_LEVEL8_ENTRANCE = 0x6D
 SCREEN_LEVEL9_ENTRANCE = 0x05  # Death Mountain bomb rock (source)
+ROOM_LEVEL9_62 = 0x62  # candidate predecessor of final Patra 0x52
+ROOM_LEVEL9_72 = 0x72  # hypothesized south neighbor / loader source
 SCREEN_CANDLE_SHOP = 0x5E  # Blue Candle O-6 — live assisted
 
 # --- OW capability candidates ---
@@ -204,6 +206,8 @@ __all__ = [
     "SCREEN_LEVEL8_ENTRANCE",
     "SCREEN_LEVEL9_ENTRANCE",
     "SCREEN_LEVEL9_ROCK_HYP",
+    "ROOM_LEVEL9_62",
+    "ROOM_LEVEL9_72",
     "SCREEN_LOST_HILLS",
     "SCREEN_MAGICAL_SWORD_GRAVE",
     "SCREEN_RAFT_HEART_DOCK",

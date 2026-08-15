@@ -1,0 +1,26 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T00:50:51.433881+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Cleared05",
+    "selected_item_poke": false,
+    "start_state": "Level5Cleared65",
+    "via": "0x05 6/6 blue darknuts"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "room": 5,
+    "success": true,
+    "whistle_0x065C": 0
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared65.state",
+  "source_state_sha256": "981bec04748b13fea8aeb7177e69da83e746e522a37fcbfbb7b3bcb63fced6da",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared05.state",
+  "state_sha256": "90773cac496a5df3660f3917ded24d24b6c6cd8693803fb7c656bbf85dd2deeb"
+}

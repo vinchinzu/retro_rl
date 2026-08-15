@@ -8,42 +8,68 @@ route graph.
 
 Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
 
-## Next pass — move backward from final Patra to candidate room 0x62 (2026-08-14)
+## Parked L7/L8 boundary (2026-08-14)
 
-Verified recon endpoint (explicit fixture; not Clean or Survival route STATUS):
+`rr-dnp` now has a deterministic Survival-assisted pond controller from
+`PostSwordStart`. The live walk reaches `0x53` through
+`77→78→68→58→57→56→55→65→64→54→53`. The `0x64` east-ledge escape and
+`0x54→0x53` transition are encoded and unit-tested. The last trial stopped on
+`0x53` at `(224,173)` while trying to align DOWN for the west hop to `0x52`;
+it had zero deaths and zero progression/capacity writes. It did **not** reach
+the pond, so `OW_L7Pond` was not saved.
 
-- `Level9FinalPatraReconFixture` starts with live body type `0x47` HP `0xB0`
-  plus eight orbiting eyes type `0x25` HP `0x60`, and both north-door fields
-  closed. The south-stand controller naturally removes all eyes and the body,
-  then the engine raises `CurOpenedDoors & 0x08`.
-- `0x52` → Ganon `0x42` → Zelda `0x32` → rolling credits → final page is
-  **2/2 exact** in one emulator session: Patra clears at controller frame
-  1,883, credits begin at total frame 5,342, final page at 6,542.
-- The Patra segment preserves the fixture inventory. Runtime controller writes
-  are object/room/door/inventory/progression/capacity = 0; Survival restores
-  four filled-heart units (two in Patra, two in Ganon), with zero deaths.
-- Runner/evidence: `scripts/run_level9_patra.py`,
-  `recordings/l9_patra_credits_recon.json`; checkpoints and screenshot names
-  are listed in `LEVEL9_ROUTE.md`.
-
-Next, inspect the **candidate southern predecessor room `0x62`** under
-`rr-sz8.3`. Use the game room loader to materialize its untouched contents,
-record a room-entry screenshot/RAM snapshot, solve its live door contract with
-controller input, then naturally enter `0x52` and reuse the proven Patra suffix.
-Treat `0x62` as a geometry hypothesis until the live transition confirms it;
-do not clear objects or write room/door state in the accepted run.
-
-Exact handoff command from the repository root:
+Exact continuation command:
 
 ```bash
-bd show rr-sz8.3
-uv run python nes/zelda_i/scripts/run_level9_patra.py \
-  --from-state Level9FinalPatraReconFixture --infinite-life \
-  --save-state --trials 2 --tag l9_patra_credits_recon
+PYTHONPATH=nes uv run python nes/zelda_i/scripts/probe_level7_entry.py \
+  --allow-missing-caps --infinite-life --save-state --max-frames 10000 \
+  --tag l7_dnp_pond_assisted_v10
 ```
 
-The second command replays the accepted suffix while the `0x62` fixture/probe
-is added. The forward L5 boundary remains preserved at `Level5Cleared66`.
+Before rerunning, add one `level7_overworld.py` micro for `0x53`: move LEFT
+inland from the east edge before descending toward the lower west gap, then
+push LEFT to `0x52`. Evidence to compare:
+`recordings/l7_dnp_pond_assisted_v9.json` and its `_final.png`.
+
+Level 8 is parked at the existing `0x6D` bush/candle boundary. Do not reopen
+the old poke-burn result as a route claim. After L7 yields the natural Red
+Candle, the smallest L8 boundary is Red Candle + `Level8BushOW` → burn `0x6D`
+→ live entry room; otherwise the residual is natural 60R farm → Blue Candle
+buy → burn. No new L8 checkpoint or claim was made in this pass.
+
+## Next pass — predecessor of blade-trap/Like-Like room 0x41 (2026-08-14)
+
+Verified backward recon remains an explicit fixture, not Clean or Survival
+route STATUS:
+
+- Blade-trap/Like-Like room `0x41` settles with four traps and four
+  Like-Likes. The north mask is visible, but live enemies block the walk.
+  Controller-only clear followed by north lands east-bomb `0x31`; no door or
+  next-room poke is used.
+- Continuous fixture compose `0x41→0x31→0x30→0x67→0x04→0x03→0x52→credits`
+  is **1/1**: credits 25,858, final page 27,058, total 27,148 frames. Runtime
+  object/room/door/inventory/progression/capacity writes are all zero.
+- Evidence: `recordings/l9_room41_dump.json`,
+  `recordings/l9_play41_north_patra_credits_recon.json`, and
+  `Level9Room41NorthReconFixture`. The start still inherits fixture inventory
+  and loader setup, so `route_eligible=false`.
+- Next live question: materialize the real predecessor south of `0x41`
+  (candidate `0x51`) without staging `0x41` doors, then determine how its
+  north shutter is earned. Keep `0x40` out of this predecessor chain.
+
+Exact replay commands from the repository root:
+
+```bash
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --dump-41 --tag l9_room41_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-41 --infinite-life --save-state --trials 1 \
+  --tag l9_play41_north_patra_credits_recon
+```
+
+The forward route now has a continuous Whistle basement `0x04` → Digdogger
+`0x24` → L5 Triforce `0x14` reel. Its missing predecessor seam is East Key
+Pols Voice `0x77` → natural Recorder acquisition → Whistle basement.
 
 ## Strategy (finish easy → then tune)
 
@@ -68,21 +94,21 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Next milestones
 
-1. **L9 backward tip** — inspect/solve candidate predecessor `0x62`, naturally
-   enter final Patra `0x52`, then reuse the 2/2 Patra→credits suffix.
-2. **Forward route (preserved)** — L5 east key → Whistle → Digdogger →
-   `triforce & 0x10`, then L6–L8 under Survival assist.
+1. **L9 backward tip** — real predecessor south of blade-trap/Like-Like room
+   `0x41`; its clear+north → east-bomb `0x31` suffix is accepted.
+2. **Forward route (preserved)** — East Key Pols Voice `0x77` → natural
+   Recorder acquisition → Whistle basement `0x04`; the Digdogger/TF suffix is
+   accepted. Then continue Levels 6–8 under Survival assist.
 3. **M6 route graph** — compose the assisted checkpoint chain into reusable
    route legs, then run a continuous dry run.
 4. **M7–M8** — verified full-game capture (assisted first, Clean later).
 
 ## Bottleneck
 
-**Candidate predecessor room `0x62`** is the active backward boundary. Final
-Patra `0x52` through the final ending page is verified 2/2 with controller
-input after the disclosed start fixture. The next pass must live-verify 0x62's
-contents and earn its transition into 0x52. The L5 east key is the paused
-forward boundary, not erased or superseded as route evidence.
+**Real entry into blade-trap/Like-Like room `0x41`** is the active backward
+boundary. Its clear+north → east-bomb `0x31` → block-stairs `0x30` → cellar
+`0x67` → Patra stairs `0x03` → credits suffix is accepted but fixture-started.
+The forward boundary is East Key Pols Voice `0x77` → Whistle basement `0x04`.
 
 ## Video / watchability (2026-08-06)
 
