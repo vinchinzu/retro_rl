@@ -161,14 +161,23 @@ def write_report(name: str, payload: dict[str, Any], *, tag: str = "") -> Path:
     return out
 
 
-def add_video_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def add_video_args(
+    parser: argparse.ArgumentParser,
+    *,
+    default_on: bool = False,
+) -> argparse.ArgumentParser:
     """Optional MP4 flags shared by Survival spine runners."""
     parser.add_argument(
         "--video",
         nargs="?",
         const="AUTO",
-        default=None,
+        default="AUTO" if default_on else None,
         help="Record MP4 (ffmpeg). Omit the value for the runner default path.",
+    )
+    parser.add_argument(
+        "--no-video",
+        action="store_true",
+        help="Skip MP4 encode (JSON + final PNG still written)",
     )
     parser.add_argument(
         "--no-audio",
@@ -213,7 +222,7 @@ def resolve_video(
         if getattr(args, "intro_frames", None) is None
         else max(0, int(args.intro_frames))
     )
-    if getattr(args, "video", None) is None:
+    if getattr(args, "no_video", False) or getattr(args, "video", None) is None:
         return None, None, intro
     path = default_path if args.video == "AUTO" else Path(args.video)
     audio = not getattr(args, "no_audio", False)

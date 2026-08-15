@@ -669,8 +669,9 @@ class Level1TriforceController:
 def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
     """Controller table for the L1 west-route suffix through TF 0x01.
 
-    Path geometry stays on the specs. ``survival`` only swaps the Wallmaster
-    room to the off-wall overlay; Clean M5 keeps ``ROOM_45_SPEC``.
+    Path geometry stays on the specs. ``survival`` swaps the Wallmaster room
+    to the off-wall overlay and the x=208 collect; Clean M5 keeps
+    ``ROOM_45_SPEC``.
     """
     from dataclasses import replace
 
