@@ -17,10 +17,12 @@ from zelda_i.level1_finish import (
     Level1TriforceController,
     Room42ExitPhase,
 )
+from zelda_i.combat import FACING_EAST
 from zelda_i.ram import (
     ADDR_CUR_OPENED_DOORS,
     ADDR_HEALTH,
     ADDR_LEVEL,
+    ADDR_LINK_FACING,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
@@ -107,6 +109,19 @@ def test_triforce_controller_collects_shard_bit() -> None:
     assert action.reason == "done"
 
 
+def _place_aquamentus(ram, *, x: int, y: int, hp: int = 0x60) -> None:
+    ram[0x034F + 1] = 0x3D
+    ram[0x0485 + 1] = hp
+    ram[0x0070 + 1] = x
+    ram[0x0084 + 1] = y
+
+
+def _place_fireball(ram, *, x: int, y: int, slot: int = 9) -> None:
+    ram[0x034F + slot] = 0x55
+    ram[0x0070 + slot] = x
+    ram[0x0084 + slot] = y
+
+
 def test_aquamentus_controller_reacts_to_nearby_fireball() -> None:
     controller = Level1AquamentusController(
         phase=AquamentusPhase.ATTACK,
@@ -114,18 +129,66 @@ def test_aquamentus_controller_reacts_to_nearby_fireball() -> None:
         initial_health=0x20,
     )
     ram = _ram(room=0x35, x=128, y=125)
-    ram[0x034F + 1] = 0x3D
-    ram[0x0485 + 1] = 0x60
-    ram[0x0070 + 1] = 160
-    ram[0x0084 + 1] = 128
-    ram[0x034F + 9] = 0x55
-    ram[0x0070 + 9] = 150
-    ram[0x0084 + 9] = 125
+    _place_aquamentus(ram, x=160, y=128)
+    _place_fireball(ram, x=144, y=125)
 
     action = controller.step(read_snapshot(ram))
 
     assert controller.phase is AquamentusPhase.DODGE
     assert action.reason == "dodge_fireball"
+
+
+def test_aquamentus_controller_closes_on_east_parked_boss() -> None:
+    controller = Level1AquamentusController(
+        phase=AquamentusPhase.ATTACK,
+        boss_seen=True,
+        initial_health=0x2F,
+        tank_hits=True,
+    )
+    ram = _ram(room=0x35, x=128, y=140)
+    _place_aquamentus(ram, x=200, y=140)
+
+    action = controller.step(read_snapshot(ram))
+
+    assert action.reason == "align_boss_stance"
+    assert controller.phase is AquamentusPhase.ALIGN
+    assert controller.last_boss == (200, 140)
+
+
+def test_aquamentus_controller_swings_in_wooden_sword_range() -> None:
+    controller = Level1AquamentusController(
+        phase=AquamentusPhase.ATTACK,
+        boss_seen=True,
+        initial_health=0x2F,
+        tank_hits=True,
+    )
+    ram = _ram(room=0x35, x=184, y=140)
+    ram[ADDR_LINK_FACING] = FACING_EAST
+    _place_aquamentus(ram, x=200, y=140)
+
+    action = controller.step(read_snapshot(ram))
+
+    assert action.reason == "attack_aquamentus"
+    assert controller.phase is AquamentusPhase.ATTACK
+    assert controller.attack_frames == 1
+
+
+def test_aquamentus_tank_hits_ignores_fireball() -> None:
+    controller = Level1AquamentusController(
+        phase=AquamentusPhase.ATTACK,
+        boss_seen=True,
+        initial_health=0x2F,
+        tank_hits=True,
+    )
+    ram = _ram(room=0x35, x=184, y=140)
+    ram[ADDR_LINK_FACING] = FACING_EAST
+    _place_aquamentus(ram, x=200, y=140)
+    _place_fireball(ram, x=192, y=140)
+
+    action = controller.step(read_snapshot(ram))
+
+    assert action.reason == "attack_aquamentus"
+    assert controller.phase is AquamentusPhase.ATTACK
 
 
 def test_aquamentus_controller_accepts_heart_container() -> None:
@@ -141,6 +204,20 @@ def test_aquamentus_controller_accepts_heart_container() -> None:
 
     ram = _ram(room=0x35, x=192, y=141)
     ram[ADDR_HEALTH] = 0x31
+    action = controller.step(read_snapshot(ram))
+    assert controller.success is True
+    assert action.reason == "done"
+
+
+def test_aquamentus_heart_detects_container_nibble() -> None:
+    controller = Level1AquamentusController(
+        phase=AquamentusPhase.COLLECT_HEART,
+        boss_seen=True,
+        initial_health=0x2F,
+        initial_containers=3,
+    )
+    ram = _ram(room=0x35, x=192, y=141)
+    ram[ADDR_HEALTH] = 0x3F
     action = controller.step(read_snapshot(ram))
     assert controller.success is True
     assert action.reason == "done"

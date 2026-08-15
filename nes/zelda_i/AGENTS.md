@@ -17,6 +17,7 @@ uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 # Survival spine — one continuous session (does not overwrite Clean M5)
 # First file slot / first quest. Records MP4 unless --no-video.
 uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trials 1
 
 uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 bd ready -l zelda_i
@@ -85,6 +86,6 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. Active leaf `rr-4d53.1`
-(Aquamentus heart in `0x35`). Do not start a new room unless that is the
-claimed bead.
+(`run_survival_spine.py`); no seamed compose. Active leaf `rr-4d53.2`
+(L2 from live `0x7d` entry → TF `0x02`). Do not start a new room unless
+that is the claimed bead.

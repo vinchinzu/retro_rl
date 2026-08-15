@@ -17,8 +17,14 @@ from zelda_i.chain import (
     run_natural_to_milestone,
 )
 from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
+from zelda_i.level2_overworld import (
+    SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
+    SETTLE_MAX_FRAMES,
+    OverworldToLevel2Controller,
+    PostTriforceSettleController,
+)
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
-from zelda_i.ram import read_snapshot
+from zelda_i.ram import PLAY_MODE, read_snapshot
 
 BOOT_POLICY = {
     "file_slot": BOOT_FILE_SLOT,
@@ -27,9 +33,21 @@ BOOT_POLICY = {
     "file_menu_select": False,
 }
 
-Through = Literal["level1"]
+Through = Literal["level1", "level2"]
 
-SPINE_THROUGH: tuple[Through, ...] = ("level1",)
+SPINE_THROUGH: tuple[Through, ...] = ("level1", "level2")
+
+
+def level2_entry_stages():
+    """After L1 TF: idle the fanfare, then walk the Moon door and enter L2."""
+    return (
+        ("settle_l1_tf", PostTriforceSettleController(), SETTLE_MAX_FRAMES),
+        (
+            "enter_level2",
+            OverworldToLevel2Controller(door_path=True, require_dungeon=True),
+            L2_NAV_MAX_FRAMES,
+        ),
+    )
 
 
 @dataclass
@@ -149,4 +167,36 @@ def run_survival_spine(
     run.success = bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
     if not run.success:
         run.failed_stage = "triforce_bit"
+        return run
+    if through == "level1":
+        return run
+
+    for name, controller, max_frames in level2_entry_stages():
+        obs, stage = run_controller_stage(
+            env,
+            run.obs,
+            name=name,
+            controller=controller,
+            max_frames=max_frames,
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+            frame_base=run.end_frame,
+        )
+        run.obs = obs
+        run.stages.append(stage)
+        run.end_frame = stage.end_frame
+        if not stage.success:
+            run.success = False
+            run.failed_stage = name
+            return run
+
+    snap = read_snapshot(env.get_ram())
+    run.success = (
+        snap.level == 2
+        and snap.mode == PLAY_MODE
+        and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
+    )
+    if not run.success:
+        run.failed_stage = "level2_entry"
     return run

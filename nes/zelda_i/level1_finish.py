@@ -12,8 +12,10 @@ from typing import Any
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
+from zelda_i.combat import FACING_EAST, should_swing_at
+from zelda_i.combat_behaviors import projectile_threats
 from zelda_i.dungeon import AQUAMENTUS_OBJECT_TYPE
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, ZeldaObject
 
 ROOM_GEL_SWITCH = 0x42
 ROOM_OLD_MAN = 0x41
@@ -354,13 +356,23 @@ _AQUAMENTUS_ENTRY_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (32, 93),
     (120, 93),
 )
+# Fallback only when the boss slot has no xy yet. Live combat closes to the
+# dragon instead of camping this mid-room tile (wooden sword reach is ~20px).
 _AQUAMENTUS_STANCE = (128, 125)
 _AQUAMENTUS_HEART = (192, 141)
+_AQUAMENTUS_STANCE_OFFSET_X = 16
+_AQUAMENTUS_FLOOR_X = (48, 200)
+_AQUAMENTUS_FLOOR_Y = (109, 173)
 
 
 @dataclass
 class Level1AquamentusController:
-    """Defeat Aquamentus with a fixed stance and reactive fireball dodge."""
+    """Defeat Aquamentus by closing to wooden-sword range.
+
+    Survival (``tank_hits``) ignores fireballs and keeps slashing. Clean still
+    sidesteps an imminent shot, then re-closes on the live boss xy instead of
+    camping the old mid-room stance at (128, 125).
+    """
 
     phase: AquamentusPhase = AquamentusPhase.ROUTE_ENTRY
     frames: int = 0
@@ -372,9 +384,13 @@ class Level1AquamentusController:
     entry_delay_frames: int = 109
     entry_delay_waited: int = 0
     stance: tuple[int, int] = _AQUAMENTUS_STANCE
+    stance_offset_x: int = _AQUAMENTUS_STANCE_OFFSET_X
     threat_radius: int = 20
     dodge_duration: int = 8
+    tank_hits: bool = False
     initial_health: int | None = None
+    initial_containers: int | None = None
+    last_boss: tuple[int, int] | None = None
     boss_seen: bool = False
     success: bool = False
     notes: list[str] = field(default_factory=list)
@@ -421,6 +437,57 @@ class Level1AquamentusController:
             return FrameAction(nes_action(direction), reason)
         return None
 
+    def _live_bosses(self, snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+        return tuple(
+            obj
+            for obj in snap.objects
+            if obj.type_id == AQUAMENTUS_OBJECT_TYPE and obj.hp > 0
+        )
+
+    def _approach_tile(
+        self,
+        snap: ZeldaSnapshot,
+        bosses: tuple[ZeldaObject, ...],
+    ) -> tuple[int, int]:
+        if not bosses:
+            return self.stance
+        boss = min(
+            bosses,
+            key=lambda obj: abs(obj.x - snap.link_x) + abs(obj.y - snap.link_y),
+        )
+        self.last_boss = (int(boss.x), int(boss.y))
+        x = max(
+            _AQUAMENTUS_FLOOR_X[0],
+            min(_AQUAMENTUS_FLOOR_X[1], int(boss.x) - self.stance_offset_x),
+        )
+        y = max(
+            _AQUAMENTUS_FLOOR_Y[0],
+            min(_AQUAMENTUS_FLOOR_Y[1], int(boss.y)),
+        )
+        return (x, y)
+
+    def _heart_collected(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            self.initial_containers is not None
+            and snap.heart_containers > self.initial_containers
+        ):
+            return True
+        return (
+            self.initial_health is not None and snap.health > self.initial_health
+        )
+
+    def _in_sword_range(
+        self,
+        snap: ZeldaSnapshot,
+        bosses: tuple[ZeldaObject, ...],
+    ) -> bool:
+        return bool(bosses) and should_swing_at(
+            snap.link_x,
+            snap.link_y,
+            "RIGHT",
+            bosses,
+        )
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
         self.phase_frames += 1
@@ -432,14 +499,12 @@ class Level1AquamentusController:
             self._set_phase(AquamentusPhase.FAILED, "timeout")
             return FrameAction(nes_idle_action(), "timeout")
 
+        bosses: tuple[ZeldaObject, ...] = ()
         if snap.screen == ROOM_AQUAMENTUS and snap.mode == PLAY_MODE:
             if self.initial_health is None:
                 self.initial_health = snap.health
-            bosses = tuple(
-                obj
-                for obj in snap.objects
-                if obj.type_id == AQUAMENTUS_OBJECT_TYPE and obj.hp > 0
-            )
+                self.initial_containers = snap.heart_containers
+            bosses = self._live_bosses(snap)
             self.boss_seen = self.boss_seen or bool(bosses)
             if (
                 self.boss_seen
@@ -454,10 +519,8 @@ class Level1AquamentusController:
                     AquamentusPhase.COLLECT_HEART,
                     "aquamentus_defeated",
                 )
-            if (
-                self.phase is AquamentusPhase.COLLECT_HEART
-                and self.initial_health is not None
-                and snap.health > self.initial_health
+            if self.phase is AquamentusPhase.COLLECT_HEART and self._heart_collected(
+                snap
             ):
                 self.success = True
                 self._set_phase(
@@ -509,62 +572,75 @@ class Level1AquamentusController:
             )
             return action or FrameAction(nes_idle_action(), "wait_heart_pickup")
 
-        projectiles = tuple(
-            obj for obj in snap.objects if obj.type_id == FIREBALL_OBJECT_TYPE
-        )
-        if self.phase is AquamentusPhase.DODGE:
-            if self.dodge_frames > 0:
-                self.dodge_frames -= 1
+        if not self.tank_hits:
+            projectiles = tuple(
+                obj
+                for obj in snap.objects
+                if obj.type_id == FIREBALL_OBJECT_TYPE
+            )
+            if self.phase is AquamentusPhase.DODGE:
+                if self.dodge_frames > 0:
+                    self.dodge_frames -= 1
+                    return FrameAction(
+                        nes_action(self.dodge_direction),
+                        "dodge_fireball",
+                    )
+                self._set_phase(AquamentusPhase.ALIGN, "fireball_dodged")
+
+            # Imminent-hit band only. The old 48px ahead window kept a mid-room
+            # stance in a dodge loop and would never release a close slash.
+            threatening = projectile_threats(
+                snap.link_x,
+                snap.link_y,
+                projectiles,
+                direction="RIGHT",
+                ahead=20,
+                behind=8,
+                half_width=min(12, self.threat_radius),
+            )
+            if threatening:
+                nearest = min(
+                    threatening,
+                    key=lambda obj: abs(obj.x - snap.link_x)
+                    + abs(obj.y - snap.link_y),
+                )
+                self.dodge_direction = (
+                    "DOWN"
+                    if nearest.y <= snap.link_y and snap.link_y < 173
+                    else "UP"
+                )
+                self.dodge_frames = self.dodge_duration
+                self._set_phase(AquamentusPhase.DODGE, "fireball_threat")
                 return FrameAction(
                     nes_action(self.dodge_direction),
                     "dodge_fireball",
                 )
-            self._set_phase(AquamentusPhase.ALIGN, "fireball_dodged")
 
-        threatening = tuple(
-            obj
-            for obj in projectiles
-            if -8 <= obj.x - snap.link_x <= 48
-            and abs(obj.y - snap.link_y) < self.threat_radius
-        )
-        if threatening:
-            nearest = min(
-                threatening,
-                key=lambda obj: abs(obj.x - snap.link_x)
-                + abs(obj.y - snap.link_y),
-            )
-            self.dodge_direction = (
-                "DOWN"
-                if nearest.y <= snap.link_y and snap.link_y < 173
-                else "UP"
-            )
-            self.dodge_frames = self.dodge_duration
-            self._set_phase(AquamentusPhase.DODGE, "fireball_threat")
-            return FrameAction(
-                nes_action(self.dodge_direction),
-                "dodge_fireball",
-            )
-
-        if self.phase is AquamentusPhase.ALIGN:
-            action = self._move_to(
-                snap,
-                self.stance,
-                "align_boss_stance",
-            )
+        if self.phase in (
+            AquamentusPhase.ALIGN,
+            AquamentusPhase.FACE,
+            AquamentusPhase.ATTACK,
+        ):
+            if self._in_sword_range(snap, bosses):
+                if snap.facing != FACING_EAST:
+                    self._set_phase(AquamentusPhase.FACE, "boss_in_range")
+                    return FrameAction(nes_action("RIGHT"), "face_aquamentus")
+                self._set_phase(AquamentusPhase.ATTACK, "facing_aquamentus")
+                self.attack_frames += 1
+                if self.attack_frames % 6 < 4:
+                    return FrameAction(nes_action("A"), "attack_aquamentus")
+                return FrameAction(nes_idle_action(), "attack_release")
+            tile = self._approach_tile(snap, bosses)
+            action = self._move_to(snap, tile, "align_boss_stance")
             if action is not None:
+                if self.phase is not AquamentusPhase.ALIGN:
+                    self._set_phase(AquamentusPhase.ALIGN, "boss_out_of_range")
                 return action
+            if bosses and snap.link_x < int(bosses[0].x) - 8:
+                self._set_phase(AquamentusPhase.ALIGN, "close_sword_gap")
+                return FrameAction(nes_action("RIGHT"), "close_sword_gap")
             self._set_phase(AquamentusPhase.FACE, "boss_stance_ready")
             return FrameAction(nes_action("RIGHT"), "face_aquamentus")
-
-        if self.phase is AquamentusPhase.FACE:
-            self._set_phase(AquamentusPhase.ATTACK, "facing_aquamentus")
-            return FrameAction(nes_idle_action(), "settle_boss_stance")
-
-        if self.phase is AquamentusPhase.ATTACK:
-            self.attack_frames += 1
-            if self.attack_frames % 6 < 4:
-                return FrameAction(nes_action("A"), "attack_aquamentus")
-            return FrameAction(nes_idle_action(), "attack_release")
 
         return FrameAction(nes_idle_action(), "done_or_failed")
 
@@ -576,8 +652,12 @@ class Level1AquamentusController:
             "attack_frames": self.attack_frames,
             "boss_seen": self.boss_seen,
             "initial_health": self.initial_health,
+            "initial_containers": self.initial_containers,
             "entry_delay_frames": self.entry_delay_frames,
             "stance": list(self.stance),
+            "stance_offset_x": self.stance_offset_x,
+            "last_boss": list(self.last_boss) if self.last_boss else None,
+            "tank_hits": self.tank_hits,
             "threat_radius": self.threat_radius,
             "dodge_duration": self.dodge_duration,
             "notes": list(self.notes),
@@ -735,7 +815,10 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         ),
         (
             "aquamentus_heart",
-            Level1AquamentusController(entry_delay_frames=boss_entry_delay),
+            Level1AquamentusController(
+                entry_delay_frames=boss_entry_delay,
+                tank_hits=survival,
+            ),
             AQUAMENTUS_MAX_FRAMES,
         ),
         (
