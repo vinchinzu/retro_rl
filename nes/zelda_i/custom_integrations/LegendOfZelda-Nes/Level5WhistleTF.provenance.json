@@ -1,0 +1,26 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T01:09:59.502837+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5WhistleTF",
+    "start_state": "Level5Whistle24",
+    "via": "0x24 whistle x2 shrink 0x38->0x18, ROOM_59 sword, north 0x14 TF pickup"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "room": 20,
+    "success": true,
+    "tf_0x0671": 28,
+    "tf_l5_bit": true,
+    "whistle_0x065C": 1
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle24.state",
+  "source_state_sha256": "29f1d4270ae44e83a6f6581455dc64ad7750c5d73bce6f20fa29ab64bc6f49ce",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5WhistleTF.state",
+  "state_sha256": "5f5ad6e0a2180d86e853d119da32bf6a8900334b571563feec4d95b953d5466c"
+}

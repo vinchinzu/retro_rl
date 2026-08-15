@@ -1,0 +1,245 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T00:54:34.926707+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.3",
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1622,
+        "address_hex": "0x0656",
+        "name": "selected_item_silver_arrows",
+        "value": 2
+      },
+      {
+        "address": 1623,
+        "address_hex": "0x0657",
+        "name": "magical_sword",
+        "value": 3
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "name": "bombs",
+        "value": 16
+      },
+      {
+        "address": 1625,
+        "address_hex": "0x0659",
+        "name": "silver_arrows",
+        "value": 2
+      },
+      {
+        "address": 1626,
+        "address_hex": "0x065A",
+        "name": "bow",
+        "value": 1
+      },
+      {
+        "address": 1627,
+        "address_hex": "0x065B",
+        "name": "red_candle",
+        "value": 2
+      },
+      {
+        "address": 1628,
+        "address_hex": "0x065C",
+        "name": "whistle",
+        "value": 1
+      },
+      {
+        "address": 1629,
+        "address_hex": "0x065D",
+        "name": "food",
+        "value": 1
+      },
+      {
+        "address": 1630,
+        "address_hex": "0x065E",
+        "name": "red_potion",
+        "value": 2
+      },
+      {
+        "address": 1631,
+        "address_hex": "0x065F",
+        "name": "magic_rod",
+        "value": 1
+      },
+      {
+        "address": 1632,
+        "address_hex": "0x0660",
+        "name": "raft",
+        "value": 1
+      },
+      {
+        "address": 1633,
+        "address_hex": "0x0661",
+        "name": "book",
+        "value": 1
+      },
+      {
+        "address": 1634,
+        "address_hex": "0x0662",
+        "name": "red_ring",
+        "value": 2
+      },
+      {
+        "address": 1635,
+        "address_hex": "0x0663",
+        "name": "ladder",
+        "value": 1
+      },
+      {
+        "address": 1636,
+        "address_hex": "0x0664",
+        "name": "magic_key",
+        "value": 1
+      },
+      {
+        "address": 1637,
+        "address_hex": "0x0665",
+        "name": "bracelet",
+        "value": 1
+      },
+      {
+        "address": 1638,
+        "address_hex": "0x0666",
+        "name": "letter",
+        "value": 1
+      },
+      {
+        "address": 1645,
+        "address_hex": "0x066D",
+        "name": "rupees",
+        "value": 255
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "name": "keys",
+        "value": 9
+      },
+      {
+        "address": 1647,
+        "address_hex": "0x066F",
+        "name": "health_16_full",
+        "value": 255
+      },
+      {
+        "address": 1649,
+        "address_hex": "0x0671",
+        "name": "triforce_all_8",
+        "value": 255
+      },
+      {
+        "address": 1652,
+        "address_hex": "0x0674",
+        "name": "wood_boomerang",
+        "value": 1
+      },
+      {
+        "address": 1653,
+        "address_hex": "0x0675",
+        "name": "magic_boomerang",
+        "value": 1
+      },
+      {
+        "address": 1654,
+        "address_hex": "0x0676",
+        "name": "magic_shield",
+        "value": 1
+      },
+      {
+        "address": 1660,
+        "address_hex": "0x067C",
+        "name": "max_bombs",
+        "value": 16
+      },
+      {
+        "address": 16,
+        "address_hex": "0x0010",
+        "name": "loader_level",
+        "value": 9
+      },
+      {
+        "address": 18,
+        "address_hex": "0x0012",
+        "name": "loader_mode",
+        "value": 5
+      },
+      {
+        "address": 235,
+        "address_hex": "0x00EB",
+        "name": "loader_current_room",
+        "value": 65
+      },
+      {
+        "address": 236,
+        "address_hex": "0x00EC",
+        "name": "loader_next_room",
+        "value": 49
+      },
+      {
+        "address_hex": [
+          "0x0070",
+          "0x0084"
+        ],
+        "addresses": [
+          112,
+          132
+        ],
+        "name": "loader_link_position",
+        "values": [
+          120,
+          88
+        ]
+      },
+      {
+        "address_hex": [
+          "0x00EE",
+          "0x033F"
+        ],
+        "addresses": [
+          238,
+          831
+        ],
+        "name": "loader_door_staging",
+        "values": [
+          15,
+          15
+        ]
+      },
+      {
+        "from_room": 65,
+        "label": "0x41_hold_up",
+        "name": "loader_hold_direction",
+        "to_room": 49,
+        "value": "UP"
+      },
+      {
+        "address": 1622,
+        "address_hex": "0x0656",
+        "name": "selected_item_bombs",
+        "value": 1
+      }
+    ],
+    "phase": "play_0x31_bomb_west_into_live_patra",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final_patra_live": true,
+    "frames": 15428,
+    "ok": true,
+    "room": 82,
+    "source_room": 49,
+    "via": "bomb_west"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9EntranceReconFixture.state",
+  "source_state_sha256": "54cd17f8f7ef61865db311a03341f646678553689ad3035e85d9f7ca75c45dfe",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Room31BombWestReconFixture.state",
+  "state_sha256": "6236328f7ae326e7263e5796aea4e8f558983b245266c56ea861a220ee30b56e"
+}

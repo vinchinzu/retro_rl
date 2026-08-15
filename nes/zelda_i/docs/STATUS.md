@@ -25,12 +25,13 @@
 |---------|--------|----------|
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
+| Whistle basement `0x04` → Digdogger `0x24` → L5 Triforce room `0x14` | **1/1 continuous Survival reel**; 10,776 route frames; Triforce `0x0c→0x1c`; zero deaths and zero resource/progression/capacity pokes; 43 damage units logged for later hardening (44 health-counter units restored across 20 writes) | `stitches/l5_whistle04_to_tf_stitch.json`; `stitches/bk2_whistle04_to_tf/`; `Level5Complete` (development-only) |
 
-Both runs used the Survival health refill and reported zero progression writes
+These runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
-power-on STATUS promotions. The paused forward boundary is return
-`0x66→0x76`, then open the east key door to `0x77`; the active backward pass
-is documented below and in `docs/plan.md`.
+power-on STATUS promotions. The remaining forward seam is East Key Pols Voice
+`0x77` → natural Recorder acquisition → Whistle basement `0x04`; the active
+backward pass is documented below and in `docs/plan.md`.
 
 ## Backward endgame recon (fixture-only; does not change either gate)
 
@@ -38,17 +39,24 @@ is documented below and in `docs/plan.md`.
 |---------|--------|----------|
 | Fully loaded final-Patra room `0x52` → Ganon `0x42` → Zelda `0x32` → credits/final page | **1/1**; Ganon type `0x3E`, brown ObjState nonzero, Silver Arrow kill sets `$0672=1`; rolling credits at frame 3,395, final page at 4,595 | `l9_ganon_credits_recon.json`; `Level9BeforeGanonReconFixture`; `Level9CreditsReconFixture`; `Level9FinalScreenReconFixture` |
 | Live final Patra `0x52` → naturally earned north door → same Ganon/Zelda/ending suffix | **2/2 exact**; body `0x47` HP `0xB0`, 8 eyes `0x25` HP `0x60`; Patra clear 1,883f, credits 5,342f, final page 6,542f; inventory preserved through Patra, runtime controller writes 0 | `l9_patra_credits_recon.json`; `Level9FinalPatraReconFixture`; `Level9FinalPatraClearedReconFixture`; `Level9PatraFinalScreenReconFixture` |
+| Candidate `0x62` as cardinal predecessor of `0x52` | **RETARGET**; 8 Keese `0x1B`; doors 0; ROM north wall; no live `0x62`→`0x52` | `l9_room62_patra_credits_recon_probe.json`; `Level9Room62ReconFixture` |
+| Play `0x40` key-north → `0x30` → cellar `0x67` right → `0x04` → `0x03` → Patra → credits | **1/1** recon; credits 16015 / final 17215 / total 17305; zero forbidden writes; `route_eligible=false` | `l9_room40_dump.json`; `l9_play40_keynorth_patra_credits_recon.json`; `Level9Room40KeyNorthReconFixture` |
+| Play `0x21` south → `0x31` | **DEST NO**; south shutter sealed at (120,189); still 0x21. 0x11 south → 0x21 is live. `route_eligible=false` | `l9_room21_dump.json`; `l9_probe11_south_21.json` |
+| Blade-trap/Like-Like room `0x41` clear + north → east-bomb `0x31` → block-stairs `0x30` → Patra stairs `0x03` → credits | **1/1** recon; north is blocked by live Like-Likes and opens after controller clear; credits 25858 / final 27058 / total 27148; zero runtime controller writes; `route_eligible=false` | `l9_room41_dump.json`; `l9_play41_north_patra_credits_recon.json`; `Level9Room41NorthReconFixture` |
 
-Both backwards-development proofs compose the full inventory and room-loader
+These backwards-development proofs compose the full inventory and room-loader
 setup before their start state, so they remain `route_eligible=false`. The new
 Patra run does **not** inherit the earlier object-removal or north-door writes:
 after reset it uses controller input only, naturally raises door bit `0x08`,
 and continues without another state load. Survival restores four heart units
 per trial (two in `0x52`, two in `0x42`) with zero deaths and zero progression/
 capacity writes. This proves the final-Patra/Ganon/Zelda/ending suffix, **not**
-a Survival-assisted or Clean Level 9 route. Next backward boundary: inspect
-candidate predecessor room `0x62` under `rr-sz8.3`; see
-[LEVEL9_ROUTE.md](LEVEL9_ROUTE.md).
+a Survival-assisted or Clean Level 9 route.
+
+`rr-sz8.3` materialized uncleared `0x62` (8 Keese `0x1B`, doors 0) via loader
+`0x72`+UP. Live north push after kill-clear/bomb stays in `0x62`. ROM L7–9
+door bytes: `0x62` north = wall, `0x52` south = wall. **Retarget** to the
+stairs-drop into `0x52`. See [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md).
 
 ## Verified segments
 
@@ -279,9 +287,10 @@ is STATUS-promoted yet**. Process: `docs/tasks/PROCESS.md`. Work: `bd ready -l z
 
 ## Next
 
-1. **Active backward tip:** candidate Level 9 room `0x62` → live final Patra
-   `0x52` → proven credits suffix — `rr-sz8.3`; exact command and evidence
-   boundary in `docs/plan.md`.
-2. **Paused forward tip:** L5 east key (`0x66→0x76→0x77`) under Survival
-   assist — `rr-28p`, then Whistle → Digdogger → TF `0x10`.
+1. **Active backward tip:** find the real predecessor of blade-trap/Like-Like
+   room `0x41`; its clear+north → east-bomb `0x31` → credits suffix is proven
+   but remains fixture-started (`rr-sz8.3`).
+2. **Paused forward tip:** East Key Pols Voice `0x77` → natural Recorder
+   acquisition → Whistle basement `0x04` (`rr-28p`). The continuous Whistle
+   basement → Digdogger → L5 Triforce suffix is proven.
 3. Clean residual only after full-game assist pass (`rr-4oz`).

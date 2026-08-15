@@ -1,0 +1,28 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T01:13:37.999832+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Triforce",
+    "selected_item_poke": false,
+    "start_state": "Level5Whistle65",
+    "via": "locked 65e-bomb 66-up 56-57-47-37-27-26-25-24 whistle-shrink TF 0x10"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "room": 20,
+    "success": true,
+    "tf_l5_bit": true,
+    "triforce_0x0671": 28,
+    "whistle_0x065C": 1
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle65.state",
+  "source_state_sha256": "719b5b4a16f8f2fddfa7d043368d2c10b7fae510be2a5f313bfea05249e88b37",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Triforce.state",
+  "state_sha256": "6d7e23f1108a39c9f6aa29e2e6c1ae2e0ee5b077599976495a08c7dd5e3441c5"
+}

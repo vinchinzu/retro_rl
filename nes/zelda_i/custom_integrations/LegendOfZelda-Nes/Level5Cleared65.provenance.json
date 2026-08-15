@@ -1,0 +1,33 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T23:22:59.337349+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "alive_rule": "hp",
+    "bomb_count_poke": false,
+    "controller": "GenericDungeonRoomController",
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Cleared65",
+    "selected_item_poke": false,
+    "spec_base": "level5_room66_gibdos",
+    "start_state": "Level5Cleared55"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 4,
+    "doors_after": 0,
+    "doorway_mask": 0,
+    "frames": 1402,
+    "keys": 3,
+    "live_gibdos": 0,
+    "room": 101,
+    "success": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared55.state",
+  "source_state_sha256": "9ac006cefd62219612c2747fd9cc979a2929ab910c51b6a2d3107f213899844a",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared65.state",
+  "state_sha256": "981bec04748b13fea8aeb7177e69da83e746e522a37fcbfbb7b3bcb63fced6da"
+}

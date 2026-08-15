@@ -1,0 +1,42 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T01:05:50.435358+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5TF",
+    "selected_item_poke": false,
+    "start_state": "Level5Whistle57",
+    "via": "whistle shrink Digdogger, heart, north TF 0x10"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 2,
+    "doors": 0,
+    "health": 207,
+    "heart": false,
+    "item": 27,
+    "keys": 1,
+    "killed": true,
+    "mask": 0,
+    "mode": 18,
+    "room": "0x14",
+    "selected": 5,
+    "success": true,
+    "tf": 28,
+    "tf_l5": true,
+    "whistle": 1,
+    "xy": [
+      120,
+      149
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle57.state",
+  "source_state_sha256": "396ec2c9f3e861f4a81d02294b37cac04d19c137b528ad7e734ddcaa53328a3b",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5TF.state",
+  "state_sha256": "8c966a4095c6f7f444998d8adc877d0940cdf08e05232d59a7be9cad94118616"
+}

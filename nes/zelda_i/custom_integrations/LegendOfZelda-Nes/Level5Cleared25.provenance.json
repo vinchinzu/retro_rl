@@ -1,0 +1,34 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T00:05:54.324693+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "alive_rule": "hp",
+    "bomb_count_poke": false,
+    "combat_base": "level5_room77_pols_voice",
+    "controller": "Level5PolsVoiceController",
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Cleared25",
+    "selected_item_poke": false,
+    "spec_base": "level5_room25_pols_voice",
+    "start_state": "Level5Cleared26"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 7,
+    "doors_after": 0,
+    "doorway_mask": 0,
+    "frames": 2628,
+    "keys": 4,
+    "live_pols": 0,
+    "room": 37,
+    "success": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared26.state",
+  "source_state_sha256": "ad8aca0825c6fea7246d0d3a38ed961b9786e18c292cfbd15971bf56decc7c7d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared25.state",
+  "state_sha256": "97747dca5de82edc2cb75f214a9f6257e35fc21fb532ab603cea6cd87ed3d49c"
+}

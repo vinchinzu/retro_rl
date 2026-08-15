@@ -85,6 +85,19 @@ uv run python zelda_i/scripts/run_level5_east_key.py \
 uv run python nes/zelda_i/scripts/run_level9_patra.py \
   --build-fixture --from-state Level9FinalPatraReconFixture \
   --infinite-life --save-state --trials 2 --tag l9_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --play-source 03 --infinite-life --save-state --trials 2 \
+  --tag l9_play03_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-13 --tag l9_room13_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-30 --tag l9_room30_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-30 --infinite-life --save-state --trials 2 \
+  --tag l9_play30_cellar67_patra_credits_recon
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41_dump
+uv run python nes/zelda_i/scripts/run_level9_stairs.py \
+  --compose-41 --infinite-life --save-state --trials 1 \
+  --tag l9_play41_north_patra_credits_recon
 ```
 
 ## Layout (pointers)
@@ -144,12 +157,16 @@ from damage heatmaps. Do not block tip progress on combat polish.
 - L9 final Patra `0x52`: body `0x47` + 8 eyes `0x25`; follow a stand 30 px
   south of the body and pulse UP+A. Natural clear can leave Link x≈112, which
   sticks at the north wall; recenter x≈120 before UP into Ganon `0x42`.
+- L9 play `0x13` north is a **wall** (ROM + live UP sticks at y=93). The 0x03
+  loader's `0x13` hold UP needs door-staging `0x0F/0x0F` — not a clean walk.
+  `0x03` south is also a wall; east is bomb. Live: **0x04 bomb-west lands 0x03**. Play **0x30** block-stairs @(208,96) → cellar **0x67** right lands **0x04**. Live preds of 0x30: **0x40 key-north** and **0x31 bomb-west**. Play **0x21** is a Patra room; south shutter stays sealed after kill (dest still 0x21 @ y=189) — not a clean 0x31 pred. 0x40 stays dirty.
 
 ## Next
 
 ```bash
 bd ready -l zelda_i
-bd show rr-sz8.3  # candidate room 0x62 → proven Patra/credits suffix
+# next: walk back from 0x41 (0x51 north / 0x41 south shutter). Not 0x40.
+# accepted: 0x41 north→0x31→0x30→…→Patra 1/1; 0x21 south shutter sealed after Patra
 ```
 
 | Order | Bead | Work |
@@ -172,7 +189,7 @@ bd show rr-sz8.3  # candidate room 0x62 → proven Patra/credits suffix
 | ∂ | **`rr-gjey`** | Gleeok post-boss fireball floor 106; natural enter ~98–100 still short of continuous 108 |
 | paused forward | **`rr-28p`** | Assisted L5 east key `0x66→0x76→0x77`, then Whistle → Digdogger → TF `0x10` |
 | ✓ | **`rr-sz8.1` / `rr-sz8.2`** | L9 Ganon suffix + live final Patra `0x52` → final page **2/2 recon** |
-| now | **`rr-sz8.3`** | Inspect candidate predecessor `0x62`, then compose into live Patra/credits suffix |
+| ∂ | **`rr-sz8.3`** | play **0x03** → Patra **2/2**; **0x04** bomb-west; **0x30** stairs→0x67 right; **0x31** bomb-west→0x30 **1/1**; **0x41** north→0x31 **1/1**; **0x21** south shutter sealed after Patra; **0x13** north wall; **0x40** dirty (`route_eligible=false`) |
 | free | **`rr-38p`** | Early OW white sword / candle / bombs (parallel) |
 | later | **`rr-4oz`** | Clean residual after full-game assist pass |
 

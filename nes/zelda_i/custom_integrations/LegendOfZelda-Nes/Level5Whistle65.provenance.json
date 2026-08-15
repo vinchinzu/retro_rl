@@ -1,0 +1,29 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T01:01:23.336386+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Whistle65",
+    "selected_item_poke": false,
+    "start_state": "Level5Whistle64",
+    "via": "0x64 south-gap east"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 3,
+    "keys": 2,
+    "mode": 5,
+    "room": 101,
+    "success": true,
+    "whistle_0x065C": 1
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle64.state",
+  "source_state_sha256": "651d0e7ec5f851dfa46476a7b9c2df977945501fa0d52e306d6ada5822c14b7c",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle65.state",
+  "state_sha256": "719b5b4a16f8f2fddfa7d043368d2c10b7fae510be2a5f313bfea05249e88b37"
+}

@@ -1,0 +1,40 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T01:05:24.617871+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Whistle56",
+    "selected_item_poke": false,
+    "start_state": "Level5Whistle64",
+    "via": "0x66 UP 0x56 after 0x65 N sealed"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 2,
+    "doors": 0,
+    "health": 175,
+    "item": 0,
+    "keys": 2,
+    "mask": 0,
+    "mode": 5,
+    "room": "0x56",
+    "selected": 1,
+    "success": true,
+    "tf": 12,
+    "tf_l5": false,
+    "whistle": 1,
+    "xy": [
+      120,
+      205
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle64.state",
+  "source_state_sha256": "792c64d7d709bfbaf57b3521bfa92a193b080342855f51ea6d2bb75f419cecb1",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle56.state",
+  "state_sha256": "5e6289c02f61a6bf990e7043dd857b27e5428ad2f8fd0e359fc93106d1e74d80"
+}
