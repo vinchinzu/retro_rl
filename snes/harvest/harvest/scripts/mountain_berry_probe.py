@@ -33,6 +33,15 @@ ensure_monorepo_on_path()
 from retro_harness import TaskStatus, WorldState
 
 from harvest.core.animal_status import read_held_item
+from harvest.core.game_clock import (
+    BERRY_SHIP_BENCH,
+    ClockTimeline,
+    LUNCH_TIME,
+    clock_from_ram,
+    compare_frame_benches,
+    format_segment_time,
+    mark_from_mapping,
+)
 from harvest.core.npc_catalog import game_objects
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import task_progress_snapshot
@@ -95,6 +104,11 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=PROJECT_DIR / "recordings" / "mountain_grape_stand.png",
     )
+    p.add_argument(
+        "--until-lunch",
+        action="store_true",
+        help="After the route, idle until 12:00 HaveLunch and mark that stand.",
+    )
     return p.parse_args()
 
 
@@ -118,6 +132,7 @@ def _snap(ram, frame: int, *, phase: str = "", extra: dict | None = None) -> dic
         "shipping_money": int(read_shipping_money(ram)),
         "hour": int(read_ram_value(ram, "hour")),
         "minute": int(read_ram_value(ram, "minute")),
+        "stamina": int(read_ram_value(ram, "stamina")),
         "input_lock": int(read_ram_value(ram, "input_lock")),
         "dialog_text_id": int(read_ram_value(ram, "dialog_text_id", raw=True)),
         "dialog_menu_cursor": int(read_ram_value(ram, "dialog_menu_cursor", raw=True)),
@@ -266,6 +281,10 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
                 "x": int(pos.x),
                 "y": int(pos.y),
                 "held_item": held_now,
+                "hour": int(read_ram_value(ram, "hour")),
+                "minute": int(read_ram_value(ram, "minute")),
+                "stamina": int(read_ram_value(ram, "stamina")),
+                "phase": phase,
             }
         )
         if phase != last_phase or tilemap != last_map:
@@ -342,14 +361,88 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
         shot = str(args.screenshot)
     log.append({"event": "end", **end, "objects": nearby[:12], "tiles": tiles})
     corridor_samples.append(end)
+    route_frames = frame
+    lunch_row = None
+    if args.until_lunch:
+        from harvest.tasks.primitives import dismiss_dialogue_result
+
+        print(f"[BERRY] idle until lunch {LUNCH_TIME}")
+        while frame < args.timeout:
+            ram = env.get_ram()
+            clock = clock_from_ram(ram)
+            lock = int(read_ram_value(ram, "input_lock"))
+            if clock >= LUNCH_TIME and lock == 1:
+                lunch_row = _snap(ram, frame, phase="lunch")
+                corridor_samples.append(lunch_row)
+                log.append({"event": "lunch", **lunch_row})
+                print(
+                    f"[BERRY] lunch f={frame} {clock} map={lunch_row['map']} "
+                    f"pos=({lunch_row['x']},{lunch_row['y']}) stam={lunch_row['stamina']}"
+                )
+                end = lunch_row
+                break
+            action = make_action()
+            if lock != 1:
+                dismissed = dismiss_dialogue_result(frame, buttons=("a", "b"), pulse_every=1)
+                if dismissed.action is not None:
+                    action = getattr(dismissed.action, "action", dismissed.action)
+            step = env.step(action)
+            obs = step[0]
+            if video is not None:
+                video.write(obs)
+            frame += 1
+            pos = get_pos_from_ram(env.get_ram())
+            ram = env.get_ram()
+            corridor_samples.append(
+                {
+                    "frame": frame,
+                    "tilemap": int(read_ram_value(ram, "tilemap")),
+                    "x": int(pos.x),
+                    "y": int(pos.y),
+                    "held_item": int(read_held_item(ram)),
+                    "hour": int(read_ram_value(ram, "hour")),
+                    "minute": int(read_ram_value(ram, "minute")),
+                    "stamina": int(read_ram_value(ram, "stamina")),
+                    "phase": "wait_lunch",
+                }
+            )
+        if lunch_row is None:
+            ram = env.get_ram()
+            end = _snap(ram, frame, phase="lunch_miss", extra={"reason": "lunch not reached"})
+            corridor_samples.append(end)
     segments = mountain_corridor_segments(corridor_samples)
+    timeline = ClockTimeline.from_samples(
+        [row for row in corridor_samples if "hour" in row]
+        or [mark_from_mapping(start), mark_from_mapping(end)]
+    )
     inbound = segments["mountain_entry_to_grape"]
     outbound = segments["grape_to_mountain_exit"]
+    bench = compare_frame_benches(BERRY_SHIP_BENCH["frames"], route_frames)
     print(
         "[BERRY] segments "
         f"entry→grape={inbound['frames']}f/{inbound['seconds']}s "
         f"grape→exit={outbound['frames']}f/{outbound['seconds']}s "
         f"pick={segments['pick_keep']['frames']}f"
+    )
+    for mark in timeline.hour_marks():
+        print(
+            f"[BERRY] hour {mark.clock} f={mark.frame} {mark.map_name} "
+            f"pos=({mark.x},{mark.y})"
+        )
+    lunch = timeline.lunch_mark()
+    if lunch is not None:
+        print(
+            f"[BERRY] lunch {lunch.clock} f={lunch.frame} {lunch.map_name} "
+            f"pos=({lunch.x},{lunch.y}) stam={lunch.stamina}"
+        )
+    waste = timeline.waste()
+    print(
+        f"[BERRY] waste stasis={waste['stasis_frames']}f "
+        f"windows={len(waste['stasis_windows'])} turns={waste['turns']}"
+    )
+    print(
+        f"[BERRY] bench {bench['before']['frames']}f → {bench['after']['frames']}f "
+        f"Δ={bench['delta_frames']}"
     )
     return {
         "mode": "reactive",
@@ -360,14 +453,19 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
         "shipped": shipped,
         "shipping_peak": shipping_peak,
         "pick_verified": bool((args.pick or args.ship) and kept),
-        "frames": frame,
-        "seconds": round(frame / 60.0, 3),
+        "frames": route_frames,
+        "seconds": round(route_frames / 60.0, 3),
+        "play": format_segment_time(route_frames),
+        "total_frames": frame,
+        "bench": bench,
         "status": status.value,
         "reason": reason,
         "start": start,
         "end": end,
         "splits": splits,
         "segments": segments,
+        "clock_timeline": timeline.to_dict(),
+        "lunch": lunch.to_dict() if lunch is not None else None,
         "nearby_objects": nearby[:12],
         "nearby_tiles": tiles,
         "screenshot": shot,

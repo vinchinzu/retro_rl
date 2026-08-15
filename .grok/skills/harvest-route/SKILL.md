@@ -15,8 +15,9 @@ Picks, talks, and keep-menus are [harvest-interact](../harvest-interact/SKILL.md
 This skill is movement only.
 
 Time is money. Every hop is frames at **60 fps** via
-`harvest.tasks.mountain_berry.format_segment_time`. Print **before / after / Δ**.
-Negative Δ is faster. Same enter pin both rows.
+`harvest.core.game_clock.format_segment_time`. Print **before / after / Δ**.
+Negative Δ is faster. Same enter pin both rows. Hour-by-hour stands and the
+12:00 HaveLunch mark come from `ClockTimeline` (RAM `hour`/`minute` + pixel).
 
 ## This turn
 

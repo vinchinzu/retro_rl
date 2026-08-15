@@ -317,6 +317,9 @@ class PhaseSpec:
 class DayPlannerPolicy:
     berry_cutoff_hour: int = 15
     berry_exit_cutoff_hour: int = 14
+    # HaveLunch is a fixed +20 stamina pulse at 12:00 wherever we stand.
+    lunch_hour: int = 12
+    lunch_minute: int = 0
     # Flower-shop seed buy window (planning start hour). Berries ship by 15:00;
     # keep shop open long enough that a morning berry run can still buy after.
     buy_seed_hour: int = 12
@@ -337,6 +340,11 @@ class DayPlannerPolicy:
     chicken_sale_cutoff_hour: int = 10
     # None = derive from calendar season via crop_planner.
     seed_purchase_recording: str | None = None
+
+    def lunch_clock(self):
+        from harvest.core.game_clock import ClockTime
+
+        return ClockTime(self.lunch_hour, self.lunch_minute)
 
 
 def day_planner_policy_for_season(
@@ -363,6 +371,8 @@ def day_planner_policy_for_season(
     return DayPlannerPolicy(
         berry_cutoff_hour=policy.berry_cutoff_hour,
         berry_exit_cutoff_hour=policy.berry_exit_cutoff_hour,
+        lunch_hour=policy.lunch_hour,
+        lunch_minute=policy.lunch_minute,
         buy_seed_hour=policy.buy_seed_hour,
         late_water_hour=policy.late_water_hour,
         include_chickens=policy.include_chickens,
