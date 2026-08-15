@@ -20,7 +20,8 @@ sword kiting once geometry is known.
 | Gate | Status | Notes |
 |------|--------|-------|
 | Power-on → L1 Triforce | **Clean green** | M5; do not overwrite |
-| Survival spine L1 | **in progress** `rr-4d53.1` | first-quest slot 1 + MP4; `0x45` green; Aquamentus heart residual |
+| Survival spine L1 | **green** `rr-4d53.1` | power-on → TF `0x01` → L2 `0x7d`; Aquamentus 877f |
+| Survival spine L2 | **tip** `rr-4d53.2` | live `0x7d` entry; dungeon → Dodongo → TF `0x02` |
 | L2 Boom → TF `0x02` | **assisted green 2/2** | parked until `rr-4d53.2` footage |
 | L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | parked until `rr-4d53.3` footage |
 | L4 interior + Clean compose | **partial** | `rr-zavx` / `rr-gjey` health residual; not serial tip |
@@ -37,7 +38,7 @@ parallel:   OW early caps (rr-38p); hygiene extraction children
 process:    one session until fail → --infinite-life full clear → heatmap Clean
 ```
 
-Claim one tip leaf: `bd update rr-4d53.1 --status in_progress`.
+Claim one tip leaf: `bd update rr-4d53.2 --status in_progress`.
 
 ### All-night wave results (2026-08-06 night)
 

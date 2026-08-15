@@ -21,7 +21,7 @@ Level 1 tape (`boot_frames=1749`, no `--infinite-life`, end health `0x31`).
 Watchable main spine is now **Survival infinite life from power-on**. Do not
 overwrite Clean M5 evidence.
 
-Beads: **`rr-4d53`** epic. Active leaf **`rr-4d53.1`** (Aquamentus heart).
+Beads: **`rr-4d53`** epic. Active leaf **`rr-4d53.2`** (L2 dungeon → TF `0x02`).
 Seamed viewing compose is **deleted** (`rr-cont`). The only spine product is
 one continuous emulator session. `rr-4d53.4` is that session through L5 TF,
 not a clip concat. Power-on is first file slot / first quest
@@ -30,20 +30,25 @@ not a clip concat. Power-on is first file slot / first quest
 Exact continuous command:
 
 ```bash
-uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trials 1
 ```
 
 Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_session=true`;
 `boot_frames` near 200–565; `boot_policy.file_slot=1`; `progression_writes=0`;
-`capacity_writes=0`; `triforce & 0x01`; deaths 0. Default Clean paths stay
-untouched. `--no-video` skips the encode.
+`capacity_writes=0`; `triforce & 0x01`; level 2 room `0x7d`; deaths 0. Default
+Clean paths stay untouched. `--no-video` skips the encode. `--through level1`
+stops after shard 1.
 
-Last continuous spine trial (`run_survival_spine.py`, default MP4):
-`continuous_emulator_session=true`, boot=199, first-quest slot 1,
-`clear45_key` green (1599f, `reward_collected` via x=208). Fail
-`aquamentus_heart` 6000f still in `0x35` at ~(128,140); boss seen, fireball
-dodge loop, no heart. Deaths 0, progression/capacity writes 0. Evidence:
+Last continuous spine trial (`run_survival_spine.py --through level2`):
+`ok=true`, `continuous_emulator_session=true`, boot=199, first-quest slot 1,
+`aquamentus_heart` 877f (`tank_hits`, last boss ~(174,128)), TF `0x01` 376f,
+settle 945f, `enter_level2` 5094f to Moon `0x7d` at (120, 205). End frame
+31828. Deaths 0, progression/capacity writes 0. Evidence:
 `recordings/survival_spine.json` / `.mp4` / `_final.png`.
+
+Next: same session through L2 Boom → Dodongo → TF `0x02` (`rr-4d53.2`). Do
+not `--poke-bombs` on a route claim. Isolated `Level2Boom` tape still used
+`--poke-bombs`.
 
 ## Parked L7/L8 boundary (2026-08-14)
 
@@ -130,9 +135,9 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Next milestones
 
-1. **Survival spine** — finish L1 Aquamentus + TF (`rr-4d53.1`), then L2/L3
-   continuous tapes and power-on → L5 compose (`rr-4d53.2`–`.4`). L6–L8 stay
-   out of this pass.
+1. **Survival spine** — L1 TF + L2 entry are live (`rr-4d53.1` closed). Next
+   is L2 dungeon → TF `0x02` (`rr-4d53.2`), then L3 and power-on → L5
+   (`rr-4d53.3`–`.4`). L6–L8 stay out of this pass.
 2. **L9 backward tip** — thread `0x51` north through the statue diamond
    (`rr-yxy6`); `0x41` clear+north → credits suffix is accepted but fixture.
 3. **M6 route graph** — L3–L5 NamedRoute / door_graph / composer now exist;
@@ -141,9 +146,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Bottleneck
 
-**L1 Aquamentus heart** blocks the watchable Survival power-on spine.
-`0x45` key is collected; boss seen in `0x35` but the 6000f stance/dodge
-loop does not land the kill. Parallel: `0x6b`
+**L2 dungeon from the live `0x7d` Survival entry** blocks the watchable
+power-on spine (`rr-4d53.2`). L1 Aquamentus + TF `0x01` are closed. Parallel: `0x6b`
 north hunt blocks L2-exit → L3 TF in one session. Backward: `0x51` north
 walk into `0x41` is dest-NO (statue diamond).
 The forward boundary is East Key Pols Voice `0x77` → Whistle basement `0x04`.
