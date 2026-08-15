@@ -664,3 +664,82 @@ class Level1TriforceController:
             "frames": self.frames,
             "notes": list(self.notes),
         }
+
+
+def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
+    """Controller table for the L1 west-route suffix through TF 0x01.
+
+    Path geometry stays on the specs. ``survival`` only swaps the Wallmaster
+    room to the off-wall overlay; Clean M5 keeps ``ROOM_45_SPEC``.
+    """
+    from dataclasses import replace
+
+    from zelda_i.dungeon import (
+        GenericDungeonRoomController,
+        ROOM_23_SPEC,
+        ROOM_33_SPEC,
+        ROOM_42_SPEC,
+        ROOM_43_SPEC,
+        ROOM_44_SPEC,
+        ROOM_45_SPEC,
+        ROOM_52_SPEC,
+    )
+    from zelda_i.level1_dungeon import ROOM_45_SURVIVAL_SPEC
+
+    room33 = ROOM_33_SPEC
+    room23 = ROOM_23_SPEC
+    room44 = ROOM_44_SPEC
+    room45 = ROOM_45_SURVIVAL_SPEC if survival else ROOM_45_SPEC
+    boss_entry_delay = 109
+    if not natural_entry:
+        room33 = replace(
+            room33,
+            combat=replace(room33.combat, engage_distance=40, attack_phase=0),
+        )
+        room23 = replace(
+            room23,
+            combat=replace(room23.combat, engage_distance=64, attack_phase=0),
+        )
+        room44 = replace(
+            room44,
+            combat=replace(room44.combat, engage_distance=80, attack_phase=6),
+        )
+        room45 = replace(room45, combat=replace(room45.combat, attack_phase=2))
+        boss_entry_delay = 0
+    return (
+        ("clear52", GenericDungeonRoomController(ROOM_52_SPEC), ROOM_52_SPEC.max_frames),
+        ("clear42", GenericDungeonRoomController(ROOM_42_SPEC), ROOM_42_SPEC.max_frames),
+        ("exit42", Level1Room42ExitController(), ROOM_42_EXIT_MAX_FRAMES),
+        ("clear43", GenericDungeonRoomController(ROOM_43_SPEC), ROOM_43_SPEC.max_frames),
+        (
+            "clear33_key",
+            GenericDungeonRoomController(room33),
+            room33.max_frames,
+        ),
+        (
+            "clear23_key",
+            GenericDungeonRoomController(room23),
+            room23.max_frames,
+        ),
+        (
+            "backtrack44",
+            Level1BacktrackTo44Controller(),
+            BACKTRACK_TO_44_MAX_FRAMES,
+        ),
+        ("clear44", GenericDungeonRoomController(room44), room44.max_frames),
+        (
+            "clear45_key",
+            GenericDungeonRoomController(room45),
+            room45.max_frames,
+        ),
+        (
+            "aquamentus_heart",
+            Level1AquamentusController(entry_delay_frames=boss_entry_delay),
+            AQUAMENTUS_MAX_FRAMES,
+        ),
+        (
+            "triforce_shard_1",
+            Level1TriforceController(),
+            TRIFORCE_MAX_FRAMES,
+        ),
+    )

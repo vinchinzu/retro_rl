@@ -20,7 +20,7 @@ class SegmentEntry:
     status_eligible: bool  # always False unless already M5 L1
 
 
-# Seeded from STATUS / STITCH_MAP. Closing this catalog is not a promote.
+# Seeded from STATUS / LEVELN_ROUTE. Closing this catalog is not a promote.
 SEGMENTS: tuple[SegmentEntry, ...] = (
     SegmentEntry(
         segment_id="l1_complete",

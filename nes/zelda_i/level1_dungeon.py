@@ -6,6 +6,8 @@ themselves on import so ``dungeon.spec_for_room`` can find them.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from zelda_i.dungeon import (
     AQUAMENTUS_OBJECT_TYPE,
     AliveRule,
@@ -345,40 +347,46 @@ ROOM_45_SPEC = DungeonRoomSpec(
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
         patrol=_WALLMASTER_PATROL,
-        # 56px from the inland box meets live Wallmasters off the wall.
-        # 80px from x=32 walked into the west-door grab zone.
-        engage_distance=56,
+        # Dormant Wallmasters sit just outside the wall (x=0).  A wider
+        # engage radius makes Link face and slash into the doorway instead of
+        # walking a vertical patrol forever once only those slots remain.
+        engage_distance=80,
         engage_dominant_axis=True,
         attack_phase=0,
         patrol_attack_period=8,
         patrol_attack_hold=4,
-        contact_backstep=16,
-        avoid_walls=True,
-        inland_dash=48,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        reward_while_live=True,
-        # Block row at y≈145. North half is only via west-wall UP then RIGHT.
+        # Single south-wall target. Hunt the live stand (152, 189) via the
+        # east column. Do not linger on the south wall.
         waypoints=(
-            (32, 157),
-            (32, 141),
-            (32, 117),
-            (64, 117),
-            (80, 117),
-            (120, 117),
-            (160, 117),
-            (160, 109),
-            (80, 109),
-            (32, 117),
-            (32, 189),
+            (160, 141),
+            (160, 173),
             (152, 189),
+            (120, 189),
+            (80, 141),
+            (120, 141),
         ),
     ),
     room_item_id=0x19,
     max_frames=9000,
     level=LEVEL_1,
+)
+
+# Survival overlay only. Clean M5 keeps ROOM_45_SPEC (east-column key hunt).
+# Off-wall fight avoids the grab-to-entrance; collect waypoints stay Clean.
+ROOM_45_SURVIVAL_SPEC = replace(
+    ROOM_45_SPEC,
+    spec_id="level1_room45_survival",
+    combat=replace(
+        ROOM_45_SPEC.combat,
+        engage_distance=56,
+        contact_backstep=16,
+        avoid_walls=True,
+        inland_dash=48,
+    ),
 )
 
 ROOM_35_SPEC = DungeonRoomSpec(
