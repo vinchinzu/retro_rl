@@ -9,6 +9,7 @@ import numpy as np
 from retro_harness.nes import nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.chain import run_controller_stage
+from zelda_i.level1_dungeon import ROOM_45_SURVIVAL_SPEC
 from zelda_i.dungeon import (
     BLUE_GORIYA_OBJECT_TYPE,
     DungeonPhase,
@@ -537,10 +538,10 @@ def test_room_specs_support_hp_and_type_only_liveness() -> None:
     assert ROOM_44_SPEC.combat.engage_distance == 64
     assert ROOM_44_SPEC.combat.attack_phase == 7
     assert ROOM_45_SPEC.enemy_types == (0x27,)
-    assert ROOM_45_SPEC.combat.engage_distance == 56
+    assert ROOM_45_SPEC.combat.engage_distance == 80
     assert ROOM_45_SPEC.combat.engage_dominant_axis is True
     assert ROOM_45_SPEC.combat.attack_phase == 0
-    assert ROOM_45_SPEC.combat.avoid_walls is True
+    assert ROOM_45_SPEC.combat.avoid_walls is False
     assert (32, 117) in ROOM_45_SPEC.combat.patrol
     assert ROOM_35_SPEC.enemy_types == (0x3D,)
 
@@ -590,7 +591,7 @@ def test_generic_controller_collects_fixed_inventory_reward() -> None:
 
 
 def test_settle_in_target_room_holds_entry_direction() -> None:
-    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
     controller.phase = DungeonPhase.ENTER
     ram = _room_ram(room=0x45, x=16, y=141)
     ram[ADDR_MODE] = 7
@@ -598,20 +599,28 @@ def test_settle_in_target_room_holds_entry_direction() -> None:
     assert action.reason == "settle_target_room"
 
 
-def test_room45_collects_key_while_wallmasters_live() -> None:
+def test_room45_collects_key_after_clear() -> None:
     controller = GenericDungeonRoomController(ROOM_45_SPEC)
     controller.phase = DungeonPhase.FIGHT
     controller.initial_inventory = 0
-    ram = _room_ram(
-        room=0x45, x=120, y=117, enemy_type=0x27, enemies=8, hp=0x20, keys=1
+    controller.max_live_enemies = 8
+    live = _room_ram(
+        room=0x45, x=160, y=141, enemy_type=0x27, enemies=8, hp=0x20, keys=0
     )
-    action = controller.step(read_snapshot(ram))
+    controller.step(read_snapshot(live))
+    clear_ram = _room_ram(room=0x45, x=160, y=141, keys=0)
+    clear_ram[ADDR_ROOM_ALL_DEAD] = 24
+    action = controller.step(read_snapshot(clear_ram))
+    assert controller.phase is DungeonPhase.COLLECT_REWARD
+    assert action.reason == "collect_reward"
+    clear_ram[ADDR_KEYS] = 1
+    action = controller.step(read_snapshot(clear_ram))
     assert controller.success is True
     assert action.reason == "done"
 
 
 def test_room45_dashes_inland_from_west_door() -> None:
-    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
     controller.phase = DungeonPhase.FIGHT
     ram = _room_ram(
         room=0x45, x=16, y=141, enemy_type=0x27, enemies=8, hp=0x20
@@ -621,9 +630,9 @@ def test_room45_dashes_inland_from_west_door() -> None:
 
 
 def test_room45_leaves_west_door_before_engage() -> None:
-    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
     controller.phase = DungeonPhase.FIGHT
-    controller.combat_frames = ROOM_45_SPEC.combat.inland_dash
+    controller.combat_frames = ROOM_45_SURVIVAL_SPEC.combat.inland_dash
     ram = _room_ram(
         room=0x45, x=32, y=141, enemy_type=0x27, enemies=8, hp=0x20
     )
@@ -642,9 +651,9 @@ def test_room45_leaves_west_door_before_engage() -> None:
 
 
 def test_room45_engage_does_not_walk_onto_west_wall() -> None:
-    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
     controller.phase = DungeonPhase.FIGHT
-    controller.combat_frames = ROOM_45_SPEC.combat.inland_dash
+    controller.combat_frames = ROOM_45_SURVIVAL_SPEC.combat.inland_dash
     ram = _room_ram(
         room=0x45, x=56, y=141, enemy_type=0x27, enemies=1, hp=0x20
     )

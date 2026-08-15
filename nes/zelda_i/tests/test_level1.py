@@ -240,15 +240,15 @@ def test_clear53_controller_and_predicate_require_collected_key() -> None:
     assert level1_room_53_cleared(ram)
 
 
-def test_room45_collect_starts_interior_and_retreats_off_south_wall() -> None:
-    from zelda_i.level1_dungeon import ROOM_45_SPEC
+def test_room45_clean_collect_uses_east_column() -> None:
+    from zelda_i.level1_dungeon import ROOM_45_SPEC, ROOM_45_SURVIVAL_SPEC
 
     waypoints = ROOM_45_SPEC.reward.waypoints
-    assert waypoints[0] == (32, 157)
-    assert (32, 117) in waypoints
-    assert (80, 117) in waypoints
-    assert (120, 117) in waypoints
-    assert ROOM_45_SPEC.reward.reward_while_live is True
+    assert waypoints[0] == (160, 141)
+    assert (152, 189) in waypoints
+    assert ROOM_45_SPEC.reward.reward_while_live is False
+    assert ROOM_45_SURVIVAL_SPEC.combat.avoid_walls is True
+    assert ROOM_45_SURVIVAL_SPEC.reward.waypoints == waypoints
 
 
 def test_l1_complete_assisted_paths_do_not_clobber_clean() -> None:
