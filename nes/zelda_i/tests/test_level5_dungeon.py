@@ -237,3 +237,22 @@ def test_live_pols_room_25() -> None:
         )
     )
     assert len(ROOM_25_SPEC.live_enemies(snap_dead)) == 0
+
+
+def test_level5_dungeon_enemy_types_come_from_dungeon_ids() -> None:
+    from zelda_i import dungeon_ids as ids
+    from zelda_i.level5_dungeon import (
+        BUBBLE_OBJECT_TYPE,
+        GIBDO_OBJECT_TYPE,
+        POLS_VOICE_OBJECT_TYPE,
+        ZOL_OBJECT_TYPE,
+    )
+
+    assert GIBDO_OBJECT_TYPE is ids.GIBDO_OBJECT_TYPE
+    assert POLS_VOICE_OBJECT_TYPE is ids.POLS_VOICE_OBJECT_TYPE
+    assert BUBBLE_OBJECT_TYPE is ids.BUBBLE_OBJECT_TYPE
+    assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
+    assert GIBDO_OBJECT_TYPE == 0x30
+    assert POLS_VOICE_OBJECT_TYPE == 0x16
+    assert BUBBLE_OBJECT_TYPE == 0x40
+    assert ZOL_OBJECT_TYPE == 0x13

@@ -247,3 +247,20 @@ def test_walk_north_from_57_geometry() -> None:
     assert "key-north" in doc or "key_north" in doc
     assert "0x5f" in doc
     assert "diamond" in doc.lower()
+
+
+def test_level5_path_reexports_split_modules() -> None:
+    """Public names stay on the facade after the rr-fcyg split."""
+    import zelda_i.level5_cellar_path as cellar
+    import zelda_i.level5_path as facade
+    import zelda_i.level5_tf_path as tf
+    import zelda_i.level5_west_path as west
+    import zelda_i.level5_whistle_path as whistle
+
+    assert facade.level5_east_key_step.__module__ == "zelda_i.level5_path"
+    assert facade.make_west65_controller.__module__ == "zelda_i.level5_path"
+    assert facade.walk_west_from_27 is west.walk_west_from_27
+    assert facade.bomb_west_from_65 is whistle.bomb_west_from_65
+    assert facade.take_block_stairs_06 is cellar.take_block_stairs_06
+    assert facade.walk_north_from_57 is tf.walk_north_from_57
+    assert facade.BLUE_DARKNUT_TYPE is whistle.BLUE_DARKNUT_TYPE
