@@ -19,6 +19,10 @@ uv run python zelda_i/scripts/run_to_level1.py --natural-entry
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 uv run python zelda_i/scripts/run_to_level2_prefix.py --from-heart --trials 2
 
+# Survival spine first section (rr-4d53.1). Does not overwrite Clean M5 tape.
+uv run python nes/zelda_i/scripts/run_level1_complete.py \
+  --natural-entry --infinite-life --video --trials 1
+
 # Clean heart-safe door path 0x4A→0x3C (no assist; farm + 0x5A clear)
 uv run python zelda_i/scripts/probe_level2_suffix.py --from-state At4A --tag l2_clean_at4a_t0
 
@@ -165,12 +169,14 @@ from damage heatmaps. Do not block tip progress on combat polish.
 
 ```bash
 bd ready -l zelda_i
-# next: walk back from 0x41 (0x51 north / 0x41 south shutter). Not 0x40.
-# accepted: 0x41 north→0x31→0x30→…→Patra 1/1; 0x21 south shutter sealed after Patra
+# tip: rr-4d53 Survival spine from power-on. L1 first (rr-4d53.1), then L2/L3
+# footage. Main spine is --infinite-life. Do not reuse the Clean L1 MP4.
+# parked: L9 0x41 predecessor; L5 east-key → Recorder seam.
 ```
 
 | Order | Bead | Work |
 |------:|------|------|
+| tip | **`rr-4d53`** / **`rr-4d53.1`** | Survival spine from power-on; L1 TF re-record with `--infinite-life` (then L2/L3 footage) |
 | ✓ | **rr-n5i** / **rr-5dk** | L2 Dodongo + TF `0x02` assisted LIVE |
 | ✓ | **rr-rnx** / **rr-ci7** | Post-L2 OW → L3 enter **2/2 assisted** |
 | ✓ | **L3 Raft runner** | `run_level3_raft.py` **2/2 assisted** → `Level3Raft` |

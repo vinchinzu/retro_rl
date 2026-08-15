@@ -530,6 +530,9 @@ def test_room_specs_support_hp_and_type_only_liveness() -> None:
     assert ROOM_23_SPEC.enemy_types == (0x06,)
     assert ROOM_23_SPEC.combat.engage_distance == 96
     assert ROOM_23_SPEC.combat.attack_phase == 2
+    assert (176, 149) in ROOM_23_SPEC.reward.waypoints
+    assert (114, 117) in ROOM_23_SPEC.reward.waypoints
+    assert (96, 181) in ROOM_23_SPEC.reward.waypoints
     assert ROOM_44_SPEC.room_item_id == 0x1D
     assert ROOM_44_SPEC.combat.engage_distance == 64
     assert ROOM_44_SPEC.combat.attack_phase == 7
@@ -582,6 +585,21 @@ def test_generic_controller_collects_fixed_inventory_reward() -> None:
     action = controller.step(read_snapshot(clear_ram))
     assert controller.success is True
     assert action.reason == "done"
+
+
+def test_collect_reward_skips_waypoint_after_stuck_frames() -> None:
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    ram = _room_ram(room=0x23, x=112, y=93, keys=0)
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    first = controller.waypoint_index
+    last_index = first
+    for _ in range(30):
+        controller.step(read_snapshot(ram))
+        last_index = controller.waypoint_index
+    assert last_index != first
+    assert any(note.startswith("collect_skip_") for note in controller.notes)
 
 
 def test_trace_diff_and_ram_delta_are_symbolic() -> None:

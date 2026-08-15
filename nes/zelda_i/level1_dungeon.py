@@ -278,7 +278,20 @@ ROOM_23_SPEC = DungeonRoomSpec(
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        waypoints=((176, 149), (176, 115), (112, 115)),
+        # Live key stand is (114, 117) on the east-to-west upper channel.
+        # y=149 is the only greedy join from the west pocket; north combat
+        # cannot X-first to (176, 149), so the list continues through the
+        # south U-turn (128,181)→(96,181)→(96,149) after a stuck skip.
+        waypoints=(
+            (176, 149),
+            (176, 117),
+            (114, 117),
+            (128, 133),
+            (128, 173),
+            (128, 181),
+            (96, 181),
+            (96, 149),
+        ),
     ),
     room_item_id=0x19,
     level=LEVEL_1,
@@ -339,7 +352,16 @@ ROOM_45_SPEC = DungeonRoomSpec(
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        target=(160, 189),
+        # Single south-wall target X-first rams the center block or a
+        # Wallmaster. Hunt the live stand (152, 189) via the east column.
+        waypoints=(
+            (160, 141),
+            (160, 173),
+            (152, 189),
+            (120, 189),
+            (80, 141),
+            (120, 141),
+        ),
     ),
     room_item_id=0x19,
     max_frames=9000,

@@ -11,6 +11,11 @@ Examples::
     # Clean tip MP4 (power-on → Triforce shard 1)
     uv run python zelda_i/scripts/run_level1_complete.py \\
       --natural-entry --video --trials 1
+
+    # Survival spine (rr-4d53.1): current boot + infinite life; does not
+    # overwrite the Clean M5 tape.
+    uv run python nes/zelda_i/scripts/run_level1_complete.py \\
+      --natural-entry --infinite-life --video --trials 1
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ from retro_harness.youtube_intro import (
     project_intro_lines,
     render_intro_card,
 )
+from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.chain import run_controller_stage, run_natural_to_milestone
 from zelda_i.dungeon import (
     GenericDungeonRoomController,
@@ -62,10 +68,31 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR, ROOM_TIMINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.room_timer import RoomTimer, bottleneck_visits
 
-def default_video_path(*, natural_entry: bool) -> Path:
-    """Default showcase path for the Clean Level 1 tip."""
+def _track_suffix(*, infinite_life: bool) -> str:
+    return "_assisted" if infinite_life else ""
+
+
+def default_video_path(*, natural_entry: bool, infinite_life: bool = False) -> Path:
+    """Default showcase path. Assisted runs keep a separate filename."""
     label = "natural" if natural_entry else "isolated"
-    return RECORDINGS_DIR / f"level1_complete_{label}.mp4"
+    return RECORDINGS_DIR / (
+        f"level1_complete_{label}{_track_suffix(infinite_life=infinite_life)}.mp4"
+    )
+
+
+def default_report_path(*, natural_entry: bool, infinite_life: bool = False) -> Path:
+    """Default JSON report path. Assisted runs do not clobber Clean evidence."""
+    label = "natural" if natural_entry else "isolated"
+    return RECORDINGS_DIR / (
+        f"level1_complete_{label}{_track_suffix(infinite_life=infinite_life)}.json"
+    )
+
+
+def _intro_summary(*, natural_entry: bool, infinite_life: bool) -> str:
+    track = "Survival" if infinite_life else "Clean"
+    if natural_entry:
+        return f"{track} power-on -> Level 1 Triforce shard 1"
+    return f"{track} isolated Level 1 finish -> Triforce shard 1"
 
 def _write_intro(
     writer: VideoRecorder,
@@ -75,6 +102,7 @@ def _write_intro(
     hold_frames: int,
     natural_entry: bool,
     audio_rate: int | None,
+    infinite_life: bool = False,
 ) -> int:
     """Pipe project intro slide frames (silent audio) before gameplay.
 
@@ -85,10 +113,9 @@ def _write_intro(
         return 0
     lines = project_intro_lines(
         game_title="The Legend of Zelda (NES)",
-        run_summary=(
-            "Clean power-on -> Level 1 Triforce shard 1"
-            if natural_entry
-            else "Clean isolated Level 1 finish -> Triforce shard 1"
+        run_summary=_intro_summary(
+            natural_entry=natural_entry,
+            infinite_life=infinite_life,
         ),
     )
     card = render_intro_card(
@@ -213,6 +240,7 @@ def run_once(
     video_path: Path | None = None,
     video_config: VideoCaptureConfig | None = None,
     intro_frames: int = DEFAULT_INTRO_FRAMES,
+    infinite_life: bool = False,
 ) -> dict:
     configure_headless()
     start_state = "NONE" if natural_entry else "Level1Cleared53"
@@ -220,6 +248,7 @@ def run_once(
     prefix = None
     stages = []
     room_timer = RoomTimer() if room_timing else None
+    assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     frame_base = 0
     writer: VideoRecorder | None = None
     intro_written = 0
@@ -250,6 +279,7 @@ def run_once(
                 hold_frames=intro_frames,
                 natural_entry=natural_entry,
                 audio_rate=audio_rate,
+                infinite_life=infinite_life,
             )
 
             def on_frame(env_, obs_, action, frame: int) -> None:
@@ -266,6 +296,7 @@ def run_once(
                 env,
                 milestone="clear53",
                 room_timer=room_timer,
+                assist=assist,
                 on_frame=on_frame,
                 frame_base=frame_base,
             )
@@ -276,6 +307,8 @@ def run_once(
             idle = nes_idle_action()
             obs, *_ = env.step(idle)
             frame_base = 1
+            if assist is not None:
+                assist.apply_env(env, frame=frame_base)
             if room_timer is not None:
                 room_timer.observe(read_snapshot(env.get_ram()), frame=frame_base)
             if on_frame is not None:
@@ -294,6 +327,7 @@ def run_once(
                 controller=controller,
                 max_frames=max_frames,
                 room_timer=room_timer,
+                assist=assist,
                 on_frame=on_frame,
                 frame_base=frame_base,
             )
@@ -324,6 +358,7 @@ def run_once(
                     request={
                         "segment": "level1_complete",
                         "natural_entry": natural_entry,
+                        "infinite_life": infinite_life,
                     },
                     selected_trial={
                         "success": ok,
@@ -368,6 +403,8 @@ def run_once(
             "screenshot": str(screenshot),
             "end_frame": frame_base,
             "video": video_info,
+            "infinite_life": infinite_life,
+            "assist": assist.report() if assist is not None else None,
         }
         if room_timer is not None:
             room_timer.finalize(frame=frame_base)
@@ -393,6 +430,11 @@ def run_once(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--natural-entry", action="store_true")
+    parser.add_argument(
+        "--infinite-life",
+        action="store_true",
+        help="Survival health refill (rr-4d53 spine). Not a Clean STATUS run.",
+    )
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--save-state", action="store_true")
     parser.add_argument(
@@ -446,7 +488,10 @@ def main(argv: list[str] | None = None) -> int:
     video_config: VideoCaptureConfig | None = None
     if args.video is not None:
         if args.video == "AUTO":
-            video_path = default_video_path(natural_entry=args.natural_entry)
+            video_path = default_video_path(
+                natural_entry=args.natural_entry,
+                infinite_life=args.infinite_life,
+            )
         else:
             video_path = Path(args.video)
         if args.hq:
@@ -475,6 +520,7 @@ def main(argv: list[str] | None = None) -> int:
             video_path=video_path,
             video_config=video_config,
             intro_frames=0 if args.no_intro else max(0, args.intro_frames),
+            infinite_life=args.infinite_life,
         )
         for trial in range(args.trials)
     ]
@@ -509,15 +555,21 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     label = "natural" if args.natural_entry else "isolated"
-    output = RECORDINGS_DIR / f"level1_complete_{label}.json"
+    output = default_report_path(
+        natural_entry=args.natural_entry,
+        infinite_life=args.infinite_life,
+    )
     write_json_report(
         output,
         {
             "segment": "level1_complete",
+            "bead": "rr-4d53.1" if args.infinite_life else None,
             "natural_entry": args.natural_entry,
+            "infinite_life": args.infinite_life,
             "room_timing": args.room_timing,
             "runtime_class": "bronze",
-            "intervention_class": "clean",
+            "intervention_class": "survival" if args.infinite_life else "clean",
+            "status_promote": False,
             "trials": args.trials,
             "successes": sum(report["ok"] for report in reports),
             "stop_predicate": "triforce & 0x01",
