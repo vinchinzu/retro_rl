@@ -248,7 +248,9 @@ def test_room45_clean_collect_uses_east_column() -> None:
     assert (152, 189) in waypoints
     assert ROOM_45_SPEC.reward.reward_while_live is False
     assert ROOM_45_SURVIVAL_SPEC.combat.avoid_walls is True
-    assert ROOM_45_SURVIVAL_SPEC.reward.waypoints == waypoints
+    assert ROOM_45_SURVIVAL_SPEC.reward.waypoints[0] == (208, 157)
+    assert (152, 189) in ROOM_45_SURVIVAL_SPEC.reward.waypoints
+    assert waypoints[0] == (160, 141)
 
 
 def test_l1_complete_assisted_paths_do_not_clobber_clean() -> None:

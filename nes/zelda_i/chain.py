@@ -18,7 +18,7 @@ from zelda_i.level1 import (
     Level1FirstKeyController,
     Level1UnlockNorthController,
 )
-from zelda_i.menus import boot_to_level1_script
+from zelda_i.menus import boot_first_playthrough_script, boot_to_level1_script
 from zelda_i.overworld_nav import (
     SEGMENT_MAX_FRAMES as NAV_MAX_FRAMES,
 )
@@ -77,11 +77,21 @@ def boot_to_ready(
     assist: UnlimitedHealthAssist | None = None,
     on_frame: FrameCallback | None = None,
     frame_base: int = 0,
+    first_playthrough: bool = False,
 ) -> tuple[Any, int]:
-    """Drive the power-on menu script to the first playable overworld frame."""
+    """Drive the power-on menu script to the first playable overworld frame.
+
+    ``first_playthrough`` uses the compact first-slot / first-quest path only
+    (no file-menu SELECT fallback). The Survival spine requires that.
+    """
     obs = None
     frame = 0
-    for scripted in boot_to_level1_script():
+    script = (
+        boot_first_playthrough_script()
+        if first_playthrough
+        else boot_to_level1_script()
+    )
+    for scripted in script:
         action = scripted.action
         obs, *_ = env.step(action)
         frame += 1
@@ -102,6 +112,7 @@ def run_natural_to_level1(
     assist: UnlimitedHealthAssist | None = None,
     on_frame: FrameCallback | None = None,
     frame_base: int = 0,
+    first_playthrough: bool = False,
 ) -> tuple[
     Any,
     int,
@@ -120,6 +131,7 @@ def run_natural_to_level1(
         assist=assist,
         on_frame=on_frame,
         frame_base=frame_base,
+        first_playthrough=first_playthrough,
     )
     global_frame = frame_base + boot_frames
     sword = SwordCaveController()
@@ -259,6 +271,7 @@ def run_natural_to_milestone(
     assist: UnlimitedHealthAssist | None = None,
     on_frame: FrameCallback | None = None,
     frame_base: int = 0,
+    first_playthrough: bool = False,
 ) -> NaturalMilestoneRun:
     """Compose the natural power-on Level 1 prefix through one milestone."""
     if milestone not in _MILESTONE_ORDER:
@@ -272,6 +285,7 @@ def run_natural_to_milestone(
         assist=assist,
         on_frame=on_frame,
         frame_base=frame_base,
+        first_playthrough=first_playthrough,
     )
     run = NaturalMilestoneRun(
         milestone=milestone,

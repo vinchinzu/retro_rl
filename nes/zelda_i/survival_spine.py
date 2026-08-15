@@ -17,7 +17,15 @@ from zelda_i.chain import (
     run_natural_to_milestone,
 )
 from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
+from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import read_snapshot
+
+BOOT_POLICY = {
+    "file_slot": BOOT_FILE_SLOT,
+    "quest": BOOT_QUEST,
+    "playthrough": "first",
+    "file_menu_select": False,
+}
 
 Through = Literal["level1"]
 
@@ -46,6 +54,7 @@ class SpineRun:
             "mid_run_state_load": False,
             "seamed": False,
             "status_claim": False,
+            "boot_policy": dict(BOOT_POLICY),
             "boot_frames": self.boot_frames,
             "end_frame": self.end_frame,
             "failed_stage": self.failed_stage,
@@ -99,6 +108,7 @@ def run_survival_spine(
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
+        first_playthrough=True,
     )
     run = SpineRun(
         through=through,

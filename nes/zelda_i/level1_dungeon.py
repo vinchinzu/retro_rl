@@ -375,8 +375,10 @@ ROOM_45_SPEC = DungeonRoomSpec(
     level=LEVEL_1,
 )
 
-# Survival overlay only. Clean M5 keeps ROOM_45_SPEC (east-column key hunt).
-# Off-wall fight avoids the grab-to-entrance; collect waypoints stay Clean.
+# Survival overlay only. Clean M5 keeps ROOM_45_SPEC (x=160 east-column hunt).
+# Off-wall fight avoids the grab-to-entrance. Continuous combat ends in the
+# y=149–157 band; south of that at x=80/120/160 is solid, so collect first
+# walks the free east column at x=208 (same column the entry route uses).
 ROOM_45_SURVIVAL_SPEC = replace(
     ROOM_45_SPEC,
     spec_id="level1_room45_survival",
@@ -386,6 +388,18 @@ ROOM_45_SURVIVAL_SPEC = replace(
         contact_backstep=16,
         avoid_walls=True,
         inland_dash=48,
+    ),
+    reward=replace(
+        ROOM_45_SPEC.reward,
+        waypoints=(
+            (208, 157),
+            (208, 189),
+            (152, 189),
+            (208, 141),
+            (160, 141),
+            (32, 157),
+            (32, 189),
+        ),
     ),
 )
 

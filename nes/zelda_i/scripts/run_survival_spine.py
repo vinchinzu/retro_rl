@@ -1,9 +1,11 @@
 """Continuous Survival spine: power-on, one emulator session, no stitch.
 
     uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
-    uv run python nes/zelda_i/scripts/run_survival_spine.py --video --trials 1
+    uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 
-Does not overwrite Clean M5. No ``--from-state``. Stop at first failed stage.
+Power-on first file slot / first quest. Records MP4 + room-transition PNGs
+unless ``--no-video``. Does not overwrite Clean M5. No ``--from-state``.
+Stop at first failed stage.
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--through", choices=SPINE_THROUGH, default="level1")
     parser.add_argument("--tag", default="survival_spine")
     parser.add_argument("--trials", type=int, default=1)
-    add_video_args(parser)
+    add_video_args(parser, default_on=True)
     args = parser.parse_args(argv)
 
     configure_headless()
@@ -40,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
             video_path,
             video_config,
             tag=tag,
-            intro_summary="Survival continuous spine (not a stitch)",
+            intro_summary="Survival continuous spine, first quest, first file",
             intro_frames=intro,
         )
         assist = UnlimitedHealthAssist(enabled=True)
@@ -78,10 +80,12 @@ def main(argv: list[str] | None = None) -> int:
             env.close()
         write_json_report(RECORDINGS_DIR / f"{tag}.json", payload)
         results.append(payload)
+        video = payload.get("video") or {}
         print(
             f"trial{trial}: ok={payload['ok']} failed={payload.get('failed_stage')} "
             f"tf={payload['final']['triforce']} room=0x{payload['final']['room']:02x} "
-            f"keys={payload['final']['keys']}"
+            f"keys={payload['final']['keys']} "
+            f"boot={payload.get('boot_policy')} video={video.get('path')}"
         )
     n_ok = sum(1 for row in results if row.get("ok"))
     print(f"summary: {n_ok}/{len(results)} continuous Survival {args.through}")

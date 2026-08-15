@@ -6,7 +6,7 @@ from enum import Enum, auto
 
 import numpy as np
 
-from retro_harness.nes import nes_idle_action
+from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.chain import run_controller_stage
 from zelda_i.level1_dungeon import ROOM_45_SURVIVAL_SPEC
@@ -617,6 +617,21 @@ def test_room45_collects_key_after_clear() -> None:
     action = controller.step(read_snapshot(clear_ram))
     assert controller.success is True
     assert action.reason == "done"
+
+
+def test_room45_survival_collect_leaves_mid_band_via_east_column() -> None:
+    """Continuous combat ends ~(132,157); x=160 south is solid, x=208 is not."""
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.clear_signal_seen = True
+    ram = _room_ram(room=0x45, x=132, y=157, keys=0)
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "collect_reward"
+    assert controller.waypoint_index == 0
+    # First Survival waypoint is (208, 157): walk RIGHT along the mid band.
+    assert np.array_equal(action.action, nes_action("RIGHT"))
 
 
 def test_room45_dashes_inland_from_west_door() -> None:

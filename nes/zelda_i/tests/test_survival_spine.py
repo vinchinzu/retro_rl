@@ -6,7 +6,7 @@ import pytest
 
 from zelda_i.level1_dungeon import ROOM_45_SPEC, ROOM_45_SURVIVAL_SPEC
 from zelda_i.level1_finish import level1_triforce_stages
-from zelda_i.survival_spine import SPINE_THROUGH, validate_l5_endpoint
+from zelda_i.survival_spine import BOOT_POLICY, SPINE_THROUGH, validate_l5_endpoint
 
 
 def test_spine_through_is_continuous_only() -> None:
@@ -25,7 +25,18 @@ def test_level1_stages_survival_uses_off_wall_overlay() -> None:
     assert ROOM_45_SURVIVAL_SPEC.combat.avoid_walls is True
     assert ROOM_45_SPEC.reward.waypoints[0] == (160, 141)
     assert (152, 189) in ROOM_45_SPEC.reward.waypoints
-    assert ROOM_45_SURVIVAL_SPEC.reward.waypoints == ROOM_45_SPEC.reward.waypoints
+    assert ROOM_45_SURVIVAL_SPEC.reward.waypoints[0] == (208, 157)
+    assert (152, 189) in ROOM_45_SURVIVAL_SPEC.reward.waypoints
+    assert (208, 189) in ROOM_45_SURVIVAL_SPEC.reward.waypoints
+
+
+def test_spine_boot_policy_is_first_slot_first_quest() -> None:
+    assert BOOT_POLICY == {
+        "file_slot": 1,
+        "quest": 1,
+        "playthrough": "first",
+        "file_menu_select": False,
+    }
 
 
 def test_validate_l5_endpoint_requires_continuous_session() -> None:
