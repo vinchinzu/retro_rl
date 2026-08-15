@@ -83,6 +83,24 @@ def open_env(
     return env
 
 
+_STOP_PHASES = frozenset({"FAILED", "DONE"})
+
+
+def controller_stopped(controller: Any) -> bool:
+    """True when a controller reports success, fail, or a terminal phase.
+
+    Accepts Enum phases (``.name``) and string phases (L3 raft ``"failed"``).
+    """
+    if getattr(controller, "success", False) or getattr(controller, "failed", False):
+        return True
+    phase = getattr(controller, "phase", None)
+    if phase is None:
+        return False
+    name = getattr(phase, "name", None)
+    token = str(name if name is not None else phase)
+    return token.upper() in _STOP_PHASES
+
+
 def run_controller(
     controller: Any,
     *,
@@ -91,6 +109,7 @@ def run_controller(
     max_frames: int | None = None,
     seed: int = 0,
     on_frame: Callable[[Any, Any, int], None] | None = None,
+    step_kwargs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Step ``controller`` until success/fail/timeout; return report dict.
 
@@ -101,6 +120,7 @@ def run_controller(
 
     assist = make_assist(infinite_life)
     env = open_env(from_state=from_state, seed=seed)
+    extra = step_kwargs or {}
     limit = max_frames
     if limit is None:
         limit = int(getattr(controller, "max_frames", 30000) or 30000)
@@ -108,21 +128,13 @@ def run_controller(
     try:
         for frame in range(limit):
             snap = read_snapshot(env.get_ram())
-            action = controller.step(snap)
+            action = controller.step(snap, **extra)
             env.step(action.action)
             if assist is not None:
                 assist.apply_env(env, frame=frame)
             if on_frame is not None:
                 on_frame(env, controller, frame)
-            if getattr(controller, "success", False):
-                break
-            phase = getattr(controller, "phase", None)
-            if phase is not None and getattr(phase, "name", "") in (
-                "FAILED",
-                "DONE",
-            ):
-                break
-            if getattr(controller, "failed", False):
+            if controller_stopped(controller):
                 break
     finally:
         env.close()
@@ -151,6 +163,7 @@ def write_report(name: str, payload: dict[str, Any], *, tag: str = "") -> Path:
 
 __all__ = [
     "add_common_args",
+    "controller_stopped",
     "ensure_import_paths",
     "make_assist",
     "open_env",

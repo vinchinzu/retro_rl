@@ -12,6 +12,7 @@ from typing import Any
 
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import in_sword_hitbox
+from zelda_i.dungeon_ops import B_ITEM_ARROWS, B_ITEM_BOMBS
 from zelda_i.ram import (
     ADDR_SELECTED_ITEM,
     PLAY_MODE,
@@ -38,9 +39,6 @@ GANON_SCENE_FIGHT = 2
 GANON_HP_START = 0xF0
 GANON_BROWN_STATE = 0xFF
 GANON_DEFEATED_PHASE = 0xFF
-
-B_ITEM_BOMBS = 1
-B_ITEM_ARROWS = 2
 
 MODE_ENDING = 0x13
 ENDING_SUBMODE_CREDITS = 3

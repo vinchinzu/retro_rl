@@ -51,7 +51,7 @@ from zelda_i.dungeon import (
     RewardKind,
     RewardSpec,
 )
-from zelda_i.dungeon_ops import idle, room_fields
+from zelda_i.dungeon_ops import ensure_bomb, idle, room_fields
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level4_boss_combat import Level4GleeokFightController, level4_tf08
 from zelda_i.level4_dungeon import (
@@ -66,24 +66,15 @@ from zelda_i.level4_dungeon import (
     level4_gleeok_enter_success,
     level4_map_success,
     level4_room_12_cleared,
-    make_room_12_clear_controller,
 )
 from zelda_i.level4_overworld import LEVEL4
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_LADDER, PLAY_MODE, read_snapshot, read_u8
 from zelda_i.scripts import run_level4_rooms as r4
 
-ADDR_SELECTED_ITEM = 0x0656
-B_ITEM_BOMB = 0x02
 
 def _ensure_bomb_selected(env) -> None:
-    try:
-        env.unwrapped.em.set_bytes(ADDR_SELECTED_ITEM, bytes([B_ITEM_BOMB]))
-    except Exception:
-        try:
-            env.unwrapped.data.set_value("selected_item", B_ITEM_BOMB)
-        except Exception:
-            pass
+    ensure_bomb(env)
 
 def _thrash_room(env, assist, total: list[int], room: int, max_frames: int = 10000) -> dict:
     patrol = tuple(

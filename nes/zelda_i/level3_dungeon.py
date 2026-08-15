@@ -41,6 +41,7 @@ from zelda_i.dungeon import (
     RewardSpec,
     register_room_spec,
 )
+from zelda_i import dungeon_ids as _ids
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.level3_geometry import (
     KEY_DOOR_Y,
@@ -69,11 +70,12 @@ ROOM_L3_MAP_4C = 0x4C  # east of 0x4b via key; map room item 0x17
 ROOM_L3_BOMB_SHORTCUT = 0x5C  # bomb-RIGHT of 0x5b (boss shortcut residual)
 ROOM_L3_BOSS_PREP = 0x5D  # east of 0x5c after clear; RIGHT@y≈141 (LIVE residual)
 ROOM_L3_BOSS = 0x4D  # Manhandla candidate north of 0x5d (assisted glimpse; not pure)
-ZOL_OBJECT_TYPE = 0x13  # live type on 0x7b/0x6b/0x4b; wooden sword can leave type-0 HP residual
-DARKNUT_OBJECT_TYPE = 0x0B  # live type on 0x5b/0x59/0x69 (red Darknut, HP 64)
-KEESE_OBJECT_TYPE = 0x1B
-MANHANDLA_OBJECT_TYPE = 0x3C  # LIVE candidate on 0x4d (5 slots + 0x56 projectiles); residual
-INVULN_MOVER_0X2B = 0x2B  # 0x49/0x5d HP240 invuln — not Manhandla
+# Enemy types: dungeon_ids (HYGIENE rule 5). Re-exported for L3 consumers.
+ZOL_OBJECT_TYPE = _ids.ZOL_OBJECT_TYPE
+DARKNUT_OBJECT_TYPE = _ids.DARKNUT_OBJECT_TYPE
+KEESE_OBJECT_TYPE = _ids.KEESE_OBJECT_TYPE
+MANHANDLA_OBJECT_TYPE = _ids.MANHANDLA_OBJECT_TYPE
+INVULN_MOVER_0X2B = _ids.INVULN_MOVER_OBJECT_TYPE
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16
 ROOM_ITEM_MAP = 0x17

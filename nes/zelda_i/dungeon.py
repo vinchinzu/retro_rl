@@ -18,24 +18,22 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.combat import should_swing_at
+from zelda_i import dungeon_ids as _ids
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
 CLEAR_SETTLE_ALL_DEAD = 20
 
-# Shared enemy type IDs (used by multiple dungeon levels / finish helpers).
-KEESE_OBJECT_TYPE = 0x1B
-MOLDORM_OBJECT_TYPE = 0x41  # multi-segment worm (L2 0x3e)
-GEL_OBJECT_TYPE = 0x15
-# L2 boom room 0x4f uses type 0x05 (walkthrough blue Goriya; residual label).
-# Red Goriya on 0x5e is 0x06.
-BLUE_GORIYA_OBJECT_TYPE = 0x05
-GORIYA_OBJECT_TYPE = 0x06
-WALLMASTER_OBJECT_TYPE = 0x27
-ROPE_OBJECT_TYPE = 0x28
-AQUAMENTUS_OBJECT_TYPE = 0x3D
-# Statue / fireball projectiles (Aquamentus + L2 0x4f); not room-clear targets.
-FIREBALL_OBJECT_TYPE = 0x55
+# Enemy type IDs come from dungeon_ids; names below are the engine re-exports.
+AQUAMENTUS_OBJECT_TYPE = _ids.AQUAMENTUS_OBJECT_TYPE
+FIREBALL_OBJECT_TYPE = _ids.FIREBALL_OBJECT_TYPE
+GEL_OBJECT_TYPE = _ids.GEL_OBJECT_TYPE
+BLUE_GORIYA_OBJECT_TYPE = _ids.GORIYA_BLUE_OBJECT_TYPE
+GORIYA_OBJECT_TYPE = _ids.GORIYA_OBJECT_TYPE
+KEESE_OBJECT_TYPE = _ids.KEESE_OBJECT_TYPE
+MOLDORM_OBJECT_TYPE = _ids.MOLDORM_OBJECT_TYPE
+ROPE_OBJECT_TYPE = _ids.ROPE_OBJECT_TYPE
+WALLMASTER_OBJECT_TYPE = _ids.WALLMASTER_OBJECT_TYPE
 
 
 class AliveRule(str, Enum):
