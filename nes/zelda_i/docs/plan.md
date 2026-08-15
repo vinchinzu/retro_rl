@@ -8,6 +8,35 @@ route graph.
 
 Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
 
+## Next pass — Survival spine from power-on (2026-08-14)
+
+The 2026-08-14 honest reel skipped Levels 2 and 3 and reused the old Clean
+Level 1 tape (`boot_frames=1749`, no `--infinite-life`, end health `0x31`).
+Watchable main spine is now **Survival infinite life from power-on**. Do not
+overwrite Clean M5 evidence.
+
+Beads: **`rr-4d53`** epic. Active leaf **`rr-4d53.1`** (L1 re-record). Then
+`rr-4d53.2` L2 footage, `rr-4d53.3` L3 footage, `rr-4d53.4` compose.
+
+Exact L1 command:
+
+```bash
+uv run python nes/zelda_i/scripts/run_level1_complete.py \
+  --natural-entry --infinite-life --video --trials 1
+```
+
+Expected: `recordings/level1_complete_natural_assisted.mp4` + `.json`;
+`boot_frames` near 200–565 (`BOOT_PERIOD=50`); `intervention_class=survival`;
+`progression_writes=0`; `capacity_writes=0`; `triforce & 0x01`; deaths 0.
+Default Clean paths stay untouched.
+
+Last live Survival trial (no video): prefix through `clear23_key` is green
+(`boot_frames=199`, health `0x2F`, 0 deaths). Fail is `clear45_key`: 8
+Wallmasters report cleared at combat frame 333, then a grab warps Link to
+entrance `0x73` `(160,173)` and the controller times out at 9000f with
+keys=0. Next change: stay off the `0x45` walls after clear (or recover the
+grab) so the south-edge key at ~(152,189) can be collected.
+
 ## Parked L7/L8 boundary (2026-08-14)
 
 `rr-dnp` now has a deterministic Survival-assisted pond controller from

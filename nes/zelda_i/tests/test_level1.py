@@ -238,3 +238,24 @@ def test_clear53_controller_and_predicate_require_collected_key() -> None:
     assert controller.phase is Level1Clear53Phase.DONE
     assert action.reason == "done"
     assert level1_room_53_cleared(ram)
+
+
+def test_l1_complete_assisted_paths_do_not_clobber_clean() -> None:
+    from zelda_i.scripts.run_level1_complete import (
+        _intro_summary,
+        default_report_path,
+        default_video_path,
+    )
+
+    clean_video = default_video_path(natural_entry=True)
+    assisted_video = default_video_path(natural_entry=True, infinite_life=True)
+    assert clean_video.name == "level1_complete_natural.mp4"
+    assert assisted_video.name == "level1_complete_natural_assisted.mp4"
+    assert default_report_path(natural_entry=True).name == (
+        "level1_complete_natural.json"
+    )
+    assert default_report_path(natural_entry=True, infinite_life=True).name == (
+        "level1_complete_natural_assisted.json"
+    )
+    assert "Clean" in _intro_summary(natural_entry=True, infinite_life=False)
+    assert "Survival" in _intro_summary(natural_entry=True, infinite_life=True)
