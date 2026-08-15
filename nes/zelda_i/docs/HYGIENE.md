@@ -11,7 +11,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | OW geometry | `level*_overworld.py` | Hop tables + thin controller subclasses |
 | Room combat | `dungeon.py` + `level*_dungeon.py` | `DungeonRoomSpec` tables only |
 | Bomb walls | `level2_puzzles.BombWall` + `bomb_wall_path` | Geometry + one traverse controller |
-| Multi-room paths | `level2_bomb_path` (`make_*`), `level3_path`, `level3_raft_path`, `level5_path`, `level*_boss_*` | Path controllers + path timing knobs |
+| Multi-room paths | `level2_bomb_path` (`make_*`), `level3_path`, `level3_raft_path`, `level4_path` / `level4_maze_path` / `level4_stepladder` / `level4_room_nav`, `level5_path` (facade; west/whistle/cellar/tf), `level*_boss_*` | Path controllers + path timing knobs |
 | L3 raft | `level3_raft_path` (canonical) | Raft passage controller; **not** `level3_path` |
 | L3 geometry | `level3_geometry` | Door bands, bomb stands, raft channel ints |
 | Door planner | `door_graph/` | Offline BFS; stands must match `BombWall` |
@@ -34,6 +34,8 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 - STATUS evidence JSON/states: keep under `recordings/` and named checkpoints.
 - Lab probes, PNG dumps, one-off agent logs: prune or gitignore; do not commit bulk PNGs.
 - `recordings/` is local evidence, not product source.
+- L5 `_probe_l5_*` / `_stitch_*` lab one-offs were pruned (rr-cq5z). Durable CLIs
+  are `scripts/run_level5_*.py`; stitch evidence stays in `recordings/`.
 
 ## Backward compatibility
 
