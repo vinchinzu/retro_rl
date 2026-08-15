@@ -20,6 +20,7 @@ import argparse
 
 from retro_harness.segment_runner import write_json_report
 from zelda_i.paths import RECORDINGS_DIR
+from zelda_i.runner import add_video_args, resolve_video
 from zelda_i.scripts.run_level2_dodongo import run_once
 
 def main() -> None:
@@ -30,16 +31,35 @@ def main() -> None:
     p.add_argument("--tag", default="l2_complete_assisted")
     p.add_argument("--trials", type=int, default=2)
     p.add_argument("--save-state", action="store_true")
+    p.add_argument(
+        "--poke-bombs",
+        action="store_true",
+        help="RECON bomb inventory poke (default off)",
+    )
+    add_video_args(p)
     args = p.parse_args()
     inf = not args.no_infinite_life
+    video_path, video_config, intro_frames = resolve_video(
+        args,
+        default_path=RECORDINGS_DIR / f"{args.tag}.mp4",
+    )
     results = []
     for t in range(args.trials):
         tag = args.tag if args.trials == 1 else f"{args.tag}_t{t}"
+        trial_video = video_path
+        if video_path is not None and args.trials > 1:
+            trial_video = video_path.with_name(
+                f"{video_path.stem}_t{t}{video_path.suffix}"
+            )
         r = run_once(
             start_state=args.from_state,
             infinite_life=inf,
             tag=tag,
             save_checkpoint=args.save_state and t == 0,
+            poke=args.poke_bombs,
+            video_path=trial_video,
+            video_config=video_config,
+            intro_frames=intro_frames,
         )
         results.append(r)
         print(
@@ -65,9 +85,12 @@ def main() -> None:
             "compose deferred; use isolated pure runners for earlier rooms."
         ),
         "triforce_bit_0x02": n_ok > 0,
+        "poke": args.poke_bombs,
         "checkpoint": next((r.get("checkpoint") for r in results if r.get("checkpoint")), None),
         "runner": "nes/zelda_i/scripts/run_level2_complete.py",
         "delegate": "run_level2_dodongo.run_once",
+        "assist": next((r.get("assist") for r in results if r.get("assist")), None),
+        "video": next((r.get("video") for r in results if r.get("video")), None),
         "trial_results": [
             {
                 "trial": i,
@@ -77,6 +100,8 @@ def main() -> None:
                 "tf_policy_live": r.get("tf_policy_live"),
                 "final": r.get("final"),
                 "checkpoint": r.get("checkpoint"),
+                "assist": r.get("assist"),
+                "video": r.get("video"),
             }
             for i, r in enumerate(results)
         ],
@@ -86,7 +111,6 @@ def main() -> None:
         ],
     }
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-    write_json_report(RECORDINGS_DIR / f"{args.tag}.json", payload)
     write_json_report(RECORDINGS_DIR / f"{args.tag}_summary.json", payload)
 
 if __name__ == "__main__":

@@ -256,10 +256,12 @@ def run_boss_path(
     assist: Any | None = None,
     timeline: list[dict[str, Any]] | None = None,
     save_0e_checkpoint: Callable[[], None] | None = None,
+    poke: bool = True,
 ) -> dict[str, Any]:
     """Run Dodongo path from ``start`` through TF bit 0x02.
 
     Returns dict with keys: ok, reason (on fail), fight, tf_report, timeline.
+    ``poke`` matches the existing 2/2 assisted green (bomb top-up during fight).
     """
     tl: list[dict[str, Any]] = timeline if timeline is not None else []
     fight: dict[str, Any] = {"success": True, "skipped": True}
@@ -296,7 +298,9 @@ def run_boss_path(
                 read_snapshot(env.get_ram()), env.get_ram(), event="0e_settle"
             )
         )
-        fight = fight_dodongo(env, assist, max_frames=DODONGO_FIGHT_MAX_FRAMES)
+        fight = fight_dodongo(
+            env, assist, max_frames=DODONGO_FIGHT_MAX_FRAMES, poke=poke
+        )
         tl.append(
             {
                 "event": "dodongo_fight",
@@ -355,7 +359,9 @@ def run_boss_path(
         sample_snapshot(read_snapshot(env.get_ram()), env.get_ram(), event="0e_settle")
     )
 
-    fight = fight_dodongo(env, assist, max_frames=DODONGO_FIGHT_MAX_FRAMES)
+    fight = fight_dodongo(
+        env, assist, max_frames=DODONGO_FIGHT_MAX_FRAMES, poke=poke
+    )
     tl.append(
         {"event": "dodongo_fight", **{k: v for k, v in fight.items() if k != "log"}}
     )

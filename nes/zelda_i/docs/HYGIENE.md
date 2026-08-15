@@ -14,7 +14,13 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | Multi-room paths | `level2_bomb_path` (`make_*`), `level3_path`, `level3_raft_path`, `level4_path` / `level4_maze_path` / `level4_stepladder` / `level4_room_nav`, `level5_path` (facade; west/whistle/cellar/tf), `level*_boss_*` | Path controllers + path timing knobs |
 | L3 raft | `level3_raft_path` (canonical) | Raft passage controller; **not** `level3_path` |
 | L3 geometry | `level3_geometry` | Door bands, bomb stands, raft channel ints |
-| Door planner | `door_graph/` | Offline BFS; stands must match `BombWall` |
+| Door planner | `door_graph/` (L2–L5 + L9 fixture) | Offline BFS; stands must match `BombWall` |
+| Route catalog | `routes.py` (L1–L2), `routes_later.py` + `route_legs_later.py` (L3–L5 + L9 fixture) | NamedRoute / RouteLeg; L6–L8 stay stubs |
+| Composer | `route_composer.py` | Bind existing controllers to leg ids; no path geometry |
+| Eligibility | `route_eligible.py`, `natural_entry.py` | Lab-fixture vs route pin; STATUS claim gate |
+| Resource cost | `health_cost.py`, `damage_heatmap.py` | Hop heart costs + Survival heatmap ranker |
+| Item gates | `item_gate_hops.py`, `item_gate_routes.py` | Candle / white sword / bomb shop NamedRoutes |
+| Combat helpers | `combat.py` + `combat_behaviors.py` | Hitbox swing gate + reusable enemy policies |
 | Scripts | thin CLIs + library controllers | Env/assist/report only — **no path logic** |
 
 ## Hard rules

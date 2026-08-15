@@ -23,15 +23,19 @@
 
 | Segment | Result | Evidence |
 |---------|--------|----------|
-| Power-on → L1 TF Survival re-record (`rr-4d53.1`) | **in progress**; `--infinite-life` wired; boot 199f; prefix through Goriya key `0x23` green; fail Wallmaster `0x45` grab → entrance `0x73` | `level1_complete_natural_assisted.json` (not Clean M5) |
+| Power-on → L1 TF Survival re-record (`rr-4d53.1`) | **in progress**; grab-to-entrance fixed; still `clear45_key` timeout in `0x45` (keys=0); prefix through `clear23_key` green | `level1_complete_natural_assisted.json` (not Clean M5) |
+| L2 Boom → Dodongo → TF `0x02` | **1/1 Survival** from `Level2Boom`; 8013 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs` during Dodongo** (existing runner) | `l2_complete_assisted.json` / `.mp4` |
+| L3 Raft → Manhandla → TF `0x04` | **1/1 Survival suffix** from `Level3Raft`; 14751 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs 16`** (`Level3Raft` starts bombs=0). L2-exit compose fails at `0x6b` north | `level3_to_boss_assisted_report.json` / `.mp4` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
+| East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
 | Whistle basement `0x04` → Digdogger `0x24` → L5 Triforce room `0x14` | **1/1 continuous Survival reel**; 10,776 route frames; Triforce `0x0c→0x1c`; zero deaths and zero resource/progression/capacity pokes; 43 damage units logged for later hardening (44 health-counter units restored across 20 writes) | `stitches/l5_whistle04_to_tf_stitch.json`; `stitches/bk2_whistle04_to_tf/`; `Level5Complete` (development-only) |
 
 These runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
-power-on STATUS promotions. The remaining forward seam is East Key Pols Voice
-`0x77` → natural Recorder acquisition → Whistle basement `0x04`; the active
+power-on STATUS promotions. The East Key → Recorder seam is closed as an
+assisted pin (`rr-4d53.5`); attaching that pin to the proven `0x04`→TF suffix
+and composing power-on → L5 TF are still open (`rr-4d53.4`). The active
 backward pass is documented below and in `docs/plan.md`.
 
 ## Backward endgame recon (fixture-only; does not change either gate)
@@ -269,11 +273,13 @@ heart-starvation before the maze, not a single misaligned hop to tweak.
 
 ## Not done
 
-- L5 remainder (Whistle → Digdogger → TF `0x10`) then L6–L9 under assist
+- Survival spine residual: L1 `0x45` Wallmaster key (`rr-4d53.1`); L2/L3
+  continuous Survival tapes (`rr-4d53.2` / `rr-4d53.3`); compose power-on → L5 TF (`rr-4d53.4`)
+- Attach East Key → Recorder pin to the proven `0x04`→TF suffix (not one session yet)
+- L6–L8 under assist (explicitly out of this pass)
 - Clean residual after full-game assist pass
 - Natural-entry continuous power-on chain (deferred under assist-first)
-- Full eight-dungeon/Ganon route graph
-- Broader overworld bomb / white-sword chain
+- Broader overworld bomb / white-sword inventory buys (NamedRoutes exist; shop residual)
 - Continuous multi-dungeon dry run (M6–M8)
 
 ## Dual track (2026-08-06)
@@ -288,10 +294,11 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active backward tip:** find the real predecessor of blade-trap/Like-Like
-   room `0x41`; its clear+north → east-bomb `0x31` → credits suffix is proven
-   but remains fixture-started (`rr-sz8.3`).
-2. **Paused forward tip:** East Key Pols Voice `0x77` → natural Recorder
-   acquisition → Whistle basement `0x04` (`rr-28p`). The continuous Whistle
-   basement → Digdogger → L5 Triforce suffix is proven.
-3. Clean residual only after full-game assist pass (`rr-4oz`).
+1. **Active Survival tip:** L1 `0x45` off-wall key collect (`rr-4d53.1`), then
+   L2/L3 Survival footage and the L1–L5 compose (`rr-4d53.2`–`.4`).
+2. **Active backward tip:** real predecessor south of blade-trap/Like-Like
+   room `0x41` (candidate `0x51` dest-NO so far; `rr-sz8.4`).
+3. **Closed forward seam:** East Key `0x77` → natural Recorder → `0x04`
+   (`rr-4d53.5`). Attach that pin to the proven Whistle basement →
+   Digdogger → L5 Triforce suffix before claiming a continuous L5 TF reel.
+4. Clean residual only after full-game assist pass (`rr-4oz`).

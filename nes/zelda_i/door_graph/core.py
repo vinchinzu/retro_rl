@@ -345,3 +345,26 @@ class DungeonDoorGraph:
                 continue
             return exit_
         return None
+
+
+def copy_exit(exit_: RoomExit) -> RoomExit:
+    """Deep-enough copy of a frozen RoomExit (safe to stash on a new graph)."""
+    return RoomExit(
+        direction=exit_.direction,
+        target_room=exit_.target_room,
+        gate=exit_.gate,
+        bomb_stand=exit_.bomb_stand,
+        approach_xy=exit_.approach_xy,
+        key_cost=exit_.key_cost,
+        notes=exit_.notes,
+        verification=exit_.verification,
+    )
+
+
+def clone_graph(graph: DungeonDoorGraph) -> DungeonDoorGraph:
+    """Return a fresh DungeonDoorGraph with copied exits (safe to mutate rooms)."""
+    raw = {
+        rid: tuple(copy_exit(e) for e in exits)
+        for rid, exits in graph.rooms.items()
+    }
+    return DungeonDoorGraph.from_exits(raw, level=graph.level, name=graph.name)

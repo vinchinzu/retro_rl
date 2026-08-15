@@ -138,6 +138,35 @@ def test_west65_uses_statue_bypass_on_76() -> None:
     assert north.reason == "west65_enter_66"
 
 
+def test_return_66_stops_in_cleared_66() -> None:
+    """East-key return must not take the free UP into Dodongos 0x56."""
+    from zelda_i.level5_path import level5_return_66_step
+
+    south = level5_return_66_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=120, y=205, keys=2))
+    )
+    assert south.reason == "return66_leave_south"
+    ready = level5_return_66_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=120, y=141, keys=2))
+    )
+    assert ready.reason == "return66_arrived"
+    from_77 = level5_return_66_step(
+        read_snapshot(_ram(room=ROOM_L5_POLS_77, x=136, y=165, keys=2))
+    )
+    assert from_77.reason == "west65_align_77_south_y"
+
+
+def test_bomb_west_66_stand() -> None:
+    """0x66 west bomb bricks sit at the west-door column, south of the river lock."""
+    from zelda_i.level5_path import BOMB_WEST_66_STAND, bomb_west_from_66
+
+    assert BOMB_WEST_66_STAND == (32, 141)
+    doc = bomb_west_from_66.__doc__ or ""
+    assert "0x65" in doc
+    assert "189" in doc
+    assert "poke" in doc.lower()
+
+
 def test_west65_goes_north_from_66() -> None:
     south = level5_west65_step(
         read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=120, y=205, keys=2))
@@ -259,8 +288,10 @@ def test_level5_path_reexports_split_modules() -> None:
 
     assert facade.level5_east_key_step.__module__ == "zelda_i.level5_path"
     assert facade.make_west65_controller.__module__ == "zelda_i.level5_path"
+    assert facade.level5_return_66_step.__module__ == "zelda_i.level5_path"
     assert facade.walk_west_from_27 is west.walk_west_from_27
     assert facade.bomb_west_from_65 is whistle.bomb_west_from_65
+    assert facade.bomb_west_from_66 is whistle.bomb_west_from_66
     assert facade.take_block_stairs_06 is cellar.take_block_stairs_06
     assert facade.walk_north_from_57 is tf.walk_north_from_57
     assert facade.BLUE_DARKNUT_TYPE is whistle.BLUE_DARKNUT_TYPE

@@ -29,6 +29,17 @@ from zelda_i.door_graph import (
     L3_ZOL_KEY_4B,
     LEVEL_2_DOOR_GRAPH,
     LEVEL_3_DOOR_GRAPH,
+    LEVEL_4_DOOR_GRAPH,
+    LEVEL_5_DOOR_GRAPH,
+    LEVEL_9_DOOR_GRAPH,
+    L4_ENTRY,
+    L4_STEPLADDER,
+    L4_TRIFORCE,
+    L5_ENTRY,
+    L5_TRIFORCE,
+    L5_WHISTLE_ITEM,
+    L9_ROOM_41,
+    L9_ZELDA,
     DoorDir,
     DungeonDoorGraph,
     GateKind,
@@ -38,6 +49,9 @@ from zelda_i.door_graph import (
     door_dir_from_label,
     level_2_door_graph,
     level_3_door_graph,
+    level_4_door_graph,
+    level_5_door_graph,
+    level_9_door_graph,
 )
 
 
@@ -411,3 +425,75 @@ def test_level3_fresh_copy() -> None:
     assert g.room_ids() == LEVEL_3_DOOR_GRAPH.room_ids()
     g.rooms[L3_ENTRY] = ()
     assert LEVEL_3_DOOR_GRAPH.edges_from(L3_ENTRY)
+
+
+# ---------------------------------------------------------------------------
+# Level 4 / 5 / 9
+# ---------------------------------------------------------------------------
+
+
+def test_level4_bfs_entry_reaches_tf_and_stepladder() -> None:
+    caps = InventoryCaps(keys=2, bombs=2, can_clear=True)
+    reached = LEVEL_4_DOOR_GRAPH.bfs_reachable(L4_ENTRY, caps)
+    assert L4_TRIFORCE in reached
+    assert L4_STEPLADDER in reached
+    path = LEVEL_4_DOOR_GRAPH.bfs_path(L4_ENTRY, L4_TRIFORCE, caps)
+    assert path is not None
+    assert path[-1].target_room == L4_TRIFORCE
+
+
+def test_level4_tf_blocked_without_resources() -> None:
+    assert (
+        LEVEL_4_DOOR_GRAPH.bfs_path(
+            L4_ENTRY, L4_TRIFORCE, InventoryCaps(keys=0, bombs=0, can_clear=True)
+        )
+        is None
+    )
+
+
+def test_level4_fresh_copy() -> None:
+    g = level_4_door_graph()
+    assert g.room_ids() == LEVEL_4_DOOR_GRAPH.room_ids()
+    g.rooms[L4_ENTRY] = ()
+    assert LEVEL_4_DOOR_GRAPH.edges_from(L4_ENTRY)
+
+
+def test_level5_bfs_entry_reaches_tf() -> None:
+    caps = InventoryCaps(keys=2, bombs=2, can_clear=True)
+    reached = LEVEL_5_DOOR_GRAPH.bfs_reachable(L5_ENTRY, caps)
+    assert L5_TRIFORCE in reached
+    path = LEVEL_5_DOOR_GRAPH.bfs_path(L5_ENTRY, L5_TRIFORCE, caps)
+    assert path is not None
+    assert path[-1].target_room == L5_TRIFORCE
+
+
+def test_level5_bfs_can_reach_whistle_with_bombs() -> None:
+    caps = InventoryCaps(keys=3, bombs=2, can_clear=True)
+    reached = LEVEL_5_DOOR_GRAPH.bfs_reachable(L5_ENTRY, caps)
+    assert L5_WHISTLE_ITEM in reached
+
+
+def test_level5_fresh_copy() -> None:
+    g = level_5_door_graph()
+    assert g.room_ids() == LEVEL_5_DOOR_GRAPH.room_ids()
+    g.rooms[L5_ENTRY] = ()
+    assert LEVEL_5_DOOR_GRAPH.edges_from(L5_ENTRY)
+
+
+def test_level9_bfs_41_to_32() -> None:
+    caps = InventoryCaps(keys=0, bombs=2, can_clear=True)
+    reached = LEVEL_9_DOOR_GRAPH.bfs_reachable(L9_ROOM_41, caps)
+    assert L9_ZELDA in reached
+    path = LEVEL_9_DOOR_GRAPH.bfs_path(L9_ROOM_41, L9_ZELDA, caps)
+    assert path is not None
+    rooms = [L9_ROOM_41, *[e.target_room for e in path]]
+    assert rooms[-1] == L9_ZELDA
+    assert all("fixture_only" in (e.notes or "") for e in path)
+    assert all(e.verification == "observed" for e in path)
+
+
+def test_level9_fresh_copy() -> None:
+    g = level_9_door_graph()
+    assert g.room_ids() == LEVEL_9_DOOR_GRAPH.room_ids()
+    g.rooms[L9_ROOM_41] = ()
+    assert LEVEL_9_DOOR_GRAPH.edges_from(L9_ROOM_41)

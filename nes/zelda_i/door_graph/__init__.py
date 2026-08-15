@@ -11,8 +11,15 @@ from zelda_i.door_graph.core import (
     RoomExit,
     InventoryCaps,
     DungeonDoorGraph,
+    clone_graph,
+    copy_exit,
     door_dir_from_label,
     dirs_from_mask,
+)
+from zelda_i.door_graph.bind import (
+    default_cap_for_gate,
+    default_node_id_fn,
+    door_graph_to_edges,
 )
 from zelda_i.door_graph.level2_exits import (
     LEVEL_2_DOOR_GRAPH,
@@ -51,6 +58,29 @@ from zelda_i.door_graph.level3_exits import (
     L3_BOMB_SHORTCUT,
     L3_KEESE_4A,
 )
+from zelda_i.door_graph.level4_exits import (
+    LEVEL_4_DOOR_GRAPH,
+    level_4_door_graph,
+    L4_ENTRY,
+    L4_GLEEOK,
+    L4_STEPLADDER,
+    L4_TRIFORCE,
+)
+from zelda_i.door_graph.level5_exits import (
+    LEVEL_5_DOOR_GRAPH,
+    level_5_door_graph,
+    L5_DIGDOGGER,
+    L5_ENTRY,
+    L5_TRIFORCE,
+    L5_WHISTLE_ITEM,
+)
+from zelda_i.door_graph.level9_exits import (
+    LEVEL_9_DOOR_GRAPH,
+    level_9_door_graph,
+    L9_PATRA,
+    L9_ROOM_41,
+    L9_ZELDA,
+)
 
 __all__ = [
     "DoorDir",
@@ -62,7 +92,18 @@ __all__ = [
     "level_2_door_graph",
     "LEVEL_3_DOOR_GRAPH",
     "level_3_door_graph",
+    "LEVEL_4_DOOR_GRAPH",
+    "level_4_door_graph",
+    "LEVEL_5_DOOR_GRAPH",
+    "level_5_door_graph",
+    "LEVEL_9_DOOR_GRAPH",
+    "level_9_door_graph",
+    "clone_graph",
+    "copy_exit",
+    "default_cap_for_gate",
+    "default_node_id_fn",
     "door_dir_from_label",
+    "door_graph_to_edges",
     "dirs_from_mask",
     "L2_ENTRY",
     "L2_ROPES",
@@ -93,4 +134,15 @@ __all__ = [
     "L3_MAP_4C",
     "L3_BOMB_SHORTCUT",
     "L3_KEESE_4A",
+    "L4_ENTRY",
+    "L4_GLEEOK",
+    "L4_STEPLADDER",
+    "L4_TRIFORCE",
+    "L5_DIGDOGGER",
+    "L5_ENTRY",
+    "L5_TRIFORCE",
+    "L5_WHISTLE_ITEM",
+    "L9_PATRA",
+    "L9_ROOM_41",
+    "L9_ZELDA",
 ]

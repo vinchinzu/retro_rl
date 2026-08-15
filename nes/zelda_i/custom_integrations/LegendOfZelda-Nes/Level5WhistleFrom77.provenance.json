@@ -1,0 +1,41 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T17:15:27.452259+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "route_eligible": false,
+    "segment": "Level5WhistleFrom77",
+    "selected_item_poke": false,
+    "start_state": "Level5EastKey",
+    "via": "0x77 return 0x66 bomb-west 0x65 bomb-west 0x64 stairs 0x07 0x06 0x05 0x04"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 5,
+    "candle_0x065B": 0,
+    "doors": 0,
+    "health": 175,
+    "keys": 1,
+    "map_0x0668": 8,
+    "mode": 9,
+    "room": 4,
+    "room_hex": "0x04",
+    "success": true,
+    "tf_l5_bit": false,
+    "triforce_0x0671": 12,
+    "whistle_0x065C": 1,
+    "xy": [
+      135,
+      141
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5EastKey.state",
+  "source_state_sha256": "7378ee5e976654de2bab9066b80243e6d78142a38076a80c50735c67c57d4ec3",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5WhistleFrom77.state",
+  "state_sha256": "04a6a661e1099780bd65b48e5da2a33557657ac431755a11a24e72fa019f32fe"
+}

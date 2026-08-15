@@ -53,6 +53,7 @@ from zelda_i.level9_stair_suffix import (
     run_room04_bomb_west_to_credits,
     run_suffix_from_fixture,
 )
+from zelda_i.level9_room51 import dump_room_51
 from zelda_i.level9_stair_west import (
     dump_room_31,
     run_room31_bomb_west_to_credits,
@@ -76,6 +77,7 @@ __all__ = [
     "dump_room_31",
     "dump_room_40",
     "dump_room_41",
+    "dump_room_51",
     "dump_room_tiles",
     "main",
     "materialize_stair_room",
@@ -119,6 +121,8 @@ def main() -> int:
     parser.add_argument("--compose-21", action="store_true")
     parser.add_argument("--dump-41", action="store_true")
     parser.add_argument("--compose-41", action="store_true")
+    parser.add_argument("--dump-51", action="store_true")
+    parser.add_argument("--compose-51", action="store_true")
     parser.add_argument("--play-source", default="", help="hex play room, e.g. 03")
     parser.add_argument("--build-fixture", action="store_true")
     parser.add_argument("--source", default="", help="hex stair source, e.g. 60")
@@ -476,6 +480,25 @@ def main() -> int:
         })
         print("REPORT", out)
         return 0 if dumped.get("ok") else 1
+
+    if args.dump_51:
+        dumped = dump_room_51(tag=_dump_tag(args, "l9_room51_dump"))
+        out = _write(_dump_tag(args, "l9_room51_dump"), dumped)
+        print("DUMP_51", {
+            "ok": dumped.get("ok"),
+            "loaded": dumped.get("loaded"),
+            "lands_0x41": dumped.get("lands_0x41"),
+            "dest_screen": dumped.get("dest_screen"),
+            "how_north_opens": dumped.get("how_north_opens"),
+            "next_candidate": dumped.get("next_candidate"),
+            "route_eligible": dumped.get("route_eligible"),
+        })
+        print("REPORT", out)
+        return 0 if dumped.get("ok") else 1
+
+    if args.compose_51:
+        print("COMPOSE51 dest not attached until dump dest-YES is recorded")
+        return 2
 
     if args.dump_play:
         dumped = dump_play_rooms(tag=f"{args.tag}_play_tiles")

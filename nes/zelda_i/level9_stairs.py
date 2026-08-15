@@ -229,6 +229,8 @@ _PREFERRED_LOADERS: dict[int, tuple[int, str, int, int]] = {
     0x21: (0x11, "DOWN", 0x78, 0xDD),
     # Play 0x41: N open / S shutter / W/E wall. Stage 0x51, never 0x31.
     0x41: (0x51, "UP", 0x78, 0x58),
+    # Play 0x51: N/S open, W shutter, E wall. Stage 0x61, never 0x41.
+    0x51: (0x61, "UP", 0x78, 0x58),
     0x13: (0x23, "UP", 0x78, 0x58),
     0x07: (0x17, "UP", 0x78, 0x58),
     0x52: (0x62, "UP", 0x78, 0x58),
@@ -294,7 +296,22 @@ ROOM41_ROM_SOUTH = 7  # shutter
 ROOM41_ROM_WEST = 1  # wall
 ROOM41_ROM_EAST = 1  # wall
 ROOM41_ROM_SECRET = 0  # none
-ROOM51 = 0x51  # south of 0x41; north open. 0x41 loader stages here.
+ROOM51 = 0x51  # south of 0x41; N/S open, W shutter. Loader stages 0x61, never 0x41.
+ROOM51_ROM_NORTH = 0  # open (pairs 0x41 south shutter)
+ROOM51_ROM_SOUTH = 0  # open (pairs 0x61 north open)
+ROOM51_ROM_WEST = 7  # shutter (pairs 0x50 east shutter)
+ROOM51_ROM_EAST = 1  # wall
+ROOM51_ROM_SECRET = 1  # all_dead
+ROOM61 = 0x61  # south of 0x51; N/S open, E open, W wall
+ROOM61_ROM_NORTH = 0  # open
+ROOM61_ROM_SOUTH = 0  # open
+ROOM61_ROM_WEST = 1  # wall
+ROOM61_ROM_EAST = 0  # open
+ROOM50 = 0x50  # west of 0x51; E shutter. Dirty 0x40 is north-key of this room.
+ROOM50_ROM_NORTH = 5  # key (into dirty 0x40)
+ROOM50_ROM_SOUTH = 1  # wall
+ROOM50_ROM_WEST = 1  # wall
+ROOM50_ROM_EAST = 7  # shutter (pairs 0x51 west)
 ROOM21 = 0x21
 ROOM21_ROM_NORTH = 0  # open
 ROOM21_ROM_SOUTH = 7  # shutter (0x31 north is open)
@@ -626,6 +643,10 @@ def room21_to_31_step(snap: ZeldaSnapshot) -> FrameAction:
 
 def in_room_41(snap: ZeldaSnapshot) -> bool:
     return in_stair_source(snap, ROOM41)
+
+
+def in_room_51(snap: ZeldaSnapshot) -> bool:
+    return in_stair_source(snap, ROOM51)
 
 
 def room41_rom_north_is_open() -> bool:
@@ -1282,6 +1303,22 @@ __all__ = [
     "ROOM41_ROM_SECRET",
     "ROOM41_SOUTH_Y",
     "ROOM51",
+    "ROOM51_ROM_NORTH",
+    "ROOM51_ROM_SOUTH",
+    "ROOM51_ROM_WEST",
+    "ROOM51_ROM_EAST",
+    "ROOM51_ROM_SECRET",
+    "ROOM61",
+    "ROOM61_ROM_NORTH",
+    "ROOM61_ROM_SOUTH",
+    "ROOM61_ROM_WEST",
+    "ROOM61_ROM_EAST",
+    "ROOM50",
+    "ROOM50_ROM_NORTH",
+    "ROOM50_ROM_SOUTH",
+    "ROOM50_ROM_WEST",
+    "ROOM50_ROM_EAST",
+    "in_room_51",
     "ROOM21",
     "ROOM21_ROM_NORTH",
     "ROOM21_ROM_SOUTH",

@@ -119,12 +119,30 @@ uv run python nes/zelda_i/scripts/run_level5_east_key.py --trials 2 --infinite-l
 uv run python nes/zelda_i/scripts/run_level5_east_key.py --save-state --infinite-life
 ```
 
-Source route (not all live-mapped yet):
+### Route: 0x77 → bomb-west 0x66 → Recorder 0x04 (bead `rr-4d53.5`)
+
+ROM `0x66` west is a **bomb wall** to **0x65** (Dodongo skip). Policy:
+`level5_return_66_step` then `bomb_west_from_66` (south band y=189, stand
+(32, 141); pause-menu bombs, no poke). Then the proven 0x65 bomb-west
+suffix: 0x64 Blue Darknuts → center stairs 0x07 → 0x06 key-west → 0x05
+block-stairs → cellar **0x04** / `ADDR_WHISTLE`.
+
+Start: **`Level5EastKey`** (keys=2 bombs=7 whistle=0). Survival 1/1:
+whistle `0→1`, room **0x04** mode 9, keys=1 bombs=5, deaths=0,
+progression_writes=0, capacity_writes=0. `route_eligible=false` until
+natural-entry from L4 complete is composed.
+
+```bash
+uv run python nes/zelda_i/scripts/run_level5_east_to_whistle.py \
+    --from-state Level5EastKey --infinite-life --save-state
+```
+
+Source route (live through Recorder; Digdogger/TF is a separate suffix):
 
 - RIGHT Pols Voice + key (live room **0x77**; key door after 0x66)
-- UP Gibdo dark rooms → key; optional bomb skip past Dodongos
-- Map; Zol key; Gibdo bombs; Blue Darknuts → staircase
-- LEFT Darknuts → staircase → **Whistle**
+- Return west, bomb-west 0x66 → 0x65 (skip Dodongos)
+- 0x65 bomb-west → 0x64 Blue Darknuts → staircase
+- Cellar 0x07 other mouth → 0x06 key-west → 0x05 block-stairs → **Whistle**
 - Digdogger: Whistle shrinks, sword/bomb finish → heart → TF shard 5
 
 ## Boss / Triforce
@@ -146,6 +164,8 @@ Source route (not all live-mapped yet):
 | `L5_Room_67.state` | East residual Bubbles; doors=0x02 |
 | `L5_Room_77.state` | Isolated Pols Voice room-ready (keys forced 0 OK for this fixture) |
 | `Level5EastKey.state` | 0x77 cleared + keys≥1 |
+| `Level5Entered65From77.state` | EastKey return + 0x66 bomb-west; room 0x65 |
+| `Level5WhistleFrom77.state` | EastKey → natural Recorder in cellar 0x04; whistle=1; `route_eligible=false` |
 | `L5_Room_65.state` | West of 0x66 via forced doors (PARTIAL) |
 | `L5_Room_55.state` | North of 0x65 via forced doors (PARTIAL) |
 
@@ -172,17 +192,20 @@ uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_0B_L5Door \
 - `recordings/l5_residual_recon.json` — 0x67 / dark-room / entry-east recon
 - `recordings/l5_east67_isolated.json` — graph pure 0x67 arrival
 - `recordings/l5_east_key_*.json` / `l5_pols_2of2.json` — Pols Voice key trials
+- `recordings/l5_e2w_t2.json` / `l5_e2w_t2_final.png` — EastKey → Recorder 0x04
 - `recordings/l5_entrance.png`, `l5_0b_door.png`, `l5_1b_free.png`, `l5_room_66.png`,
   `l5_room67.png`, `l5_room_77.png`, `l5_east_key.png`
 - Modules: `level5_overworld.py`, `level5_dungeon.py`, `level5_path.py`
   (facade; `level5_west_path`, `level5_whistle_path`, `level5_cellar_path`,
   `level5_tf_path`),
   `scripts/run_level5_clear66.py`, `scripts/run_level5_east67.py`,
-  `scripts/run_level5_east_key.py`, `scripts/probe_level5_entry.py`
+  `scripts/run_level5_east_key.py`, `scripts/run_level5_east_to_whistle.py`,
+  `scripts/probe_level5_entry.py`
 
 ## Next
 
-- Assisted tip: east key `0x66→0x76→0x77` (exact command in `docs/plan.md`);
-  then Whistle → Digdogger → TF `0x10`
-- Natural west/north from 0x66 (candle / bomb walls); do not detour 0x67
-- Natural-entry (no assist) after the assisted tip lands
+- Attach proven Whistle basement `0x04` → Digdogger `0x24` → L5 TF `0x14`
+  suffix onto `Level5WhistleFrom77` (still `route_eligible=false`)
+- Natural-entry (no assist) after L4-complete → East Key → Recorder is composed
+- Natural 0x66 north shutter / 0x56 Dodongos remain an alternate, not required
+  for Recorder
