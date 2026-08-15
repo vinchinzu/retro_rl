@@ -81,7 +81,7 @@ MOUNTAIN_BERRY_PHASE = PhaseSpec(
     },
     failure_policy="optional",
     required_maps=(0x15, 0x00, 0x0C, 0x10),
-    estimated_frames=5000,
+    estimated_frames=3300,
     failure_modes=("nav_fail", "no_forage", "hands_full", "ship_unverified"),
 )
 

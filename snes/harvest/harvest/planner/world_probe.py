@@ -76,6 +76,23 @@ class WorldProbe:
             return 0, 6, 0
         return read_world_day_time(ram)
 
+    def clock(self):
+        """In-game ``ClockTime`` from live/save RAM (defaults to 06:00)."""
+        from harvest.core.game_clock import ClockTime
+
+        _day, hour, minute = self.day_time()
+        return ClockTime(hour, minute)
+
+    def player_pixel(self) -> Optional[Tuple[int, int]]:
+        """Player pixel used by nav, or None when RAM is missing."""
+        from harvest.tasks.nav import get_pos_from_ram
+
+        ram = self._require_ram()
+        if ram is None:
+            return None
+        pos = get_pos_from_ram(ram)
+        return (int(pos.x), int(pos.y))
+
     def calendar_date(self) -> Tuple[int, int]:
         """Return ``(season, day)`` from live/save RAM."""
         from harvest.planner.day_plan_status import read_world_date

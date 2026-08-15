@@ -44,6 +44,10 @@ HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
 # Full Spring D2 pick/keep/return/bin route (rr-nn3x)
 HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
   --state Y1_Inside_House --ship --out recordings/mountain_grape_ship.json
+# Hour-by-hour RAM clock + 12:00 lunch stand (frames vs BERRY_SHIP_BENCH)
+HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+  --state Y1_Inside_House --ship --until-lunch \
+  --out recordings/mountain_segments_clock.json
 
 # Classify a pick/talk from an existing tape or a live pin (do not re-record)
 uv run python -m harvest.scripts.interact_scan tape mountain_grape_stand

@@ -15,11 +15,13 @@ from harvest.maps.map_config import (
     ROUTES,
     SEGMENTS,
     compose_routes,
+    farm_coords_look_like_path,
     find_landmark,
     path_coords_leaked,
     segment_waypoints,
     slice_route_from_position,
 )
+from harvest.core.game_clock import ClockTimeline, compare_frame_benches
 from harvest.planner.day_phase_catalog import MOUNTAIN_BERRY_PHASE, PHASE_SEQUENCES
 from harvest.planner.day_phase_types import PhaseKind
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK
@@ -95,6 +97,18 @@ class PathSegmentTests(unittest.TestCase):
         )
         self.assertEqual(ship[0].target_px, (132, 128))
         self.assertEqual(ship[-1].target_px, (136, 456))
+
+    def test_farm_path_gate_pixels_start_at_west_gate_not_north_shed(self) -> None:
+        self.assertTrue(farm_coords_look_like_path(244, 118))
+        self.assertTrue(farm_coords_look_like_path(232, 128))
+        self.assertFalse(farm_coords_look_like_path(80, 424))
+        self.assertFalse(farm_coords_look_like_path(136, 456))
+        ship = slice_route_from_position(
+            list(ROUTES[ROUTE_NAME]), 244, 118, tilemap=0x00
+        )
+        self.assertEqual(ship[0].target_px, (80, 424))
+        self.assertEqual(ship[-1].target_px, (136, 456))
+        self.assertFalse(farm_coords_look_like_path(*ship[0].target_px))
 
     def test_compose_routes_matches_named_full_route(self) -> None:
         composed = compose_routes(
@@ -227,6 +241,22 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(clock["seconds"], 16.933)
         self.assertEqual(clock["clock"], "00:16.93")
 
+    def test_corridor_samples_build_hour_timeline_and_frame_delta(self) -> None:
+        samples = [
+            {"frame": 0, "hour": 6, "minute": 8, "tilemap": 0x15, "x": 128, "y": 200},
+            {"frame": 662, "hour": 7, "minute": 12, "tilemap": 0x10, "x": 137, "y": 10},
+            {"frame": 1650, "hour": 8, "minute": 0, "tilemap": 0x10, "x": 326, "y": 409},
+            {"frame": 2373, "hour": 9, "minute": 4, "tilemap": 0x0C, "x": 314, "y": 740},
+            {"frame": 3224, "hour": 10, "minute": 11, "tilemap": 0x00, "x": 135, "y": 456},
+        ]
+        timeline = ClockTimeline.from_samples(samples)
+        hours = [mark.clock.hour for mark in timeline.hour_marks()]
+        self.assertEqual(hours, [6, 7, 8, 9, 10])
+        self.assertEqual(timeline.end.frame, 3224)
+        faster = compare_frame_benches(3224, 3154)
+        self.assertEqual(faster["delta_frames"], -70)
+        self.assertTrue(faster["faster"])
+
     def test_grape_return_route_drops_south_cliff_and_ends_at_real_bin(self) -> None:
         route = ROUTES[ROUTE_NAME]
         self.assertEqual(route[0].target_px, (326, 409))
@@ -245,6 +275,17 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(route[-1].action_face, "down")
         # Cliff return is the short south drop, not the 16-hop inbound reverse.
         self.assertLess(len(cliff), len(SEGMENTS["mountain_entry_to_first_berry"]))
+        inbound = SEGMENTS["mountain_entry_to_first_berry"]
+        forced = {
+            wp.target_px: wp.run_direction
+            for wp in inbound
+            if wp.force_run
+        }
+        self.assertEqual(forced[(520, 712)], "right")
+        self.assertEqual(forced[(520, 632)], "up")
+        self.assertEqual(forced[(328, 568)], "left")
+        self.assertEqual(forced[(240, 488)], "left")
+        self.assertEqual(forced[(312, 360)], "right")
 
     def test_grape_ship_postcondition_requires_empty_hands_and_shipping_delta(self) -> None:
         world = make_transition_world(0x00, current_tile=(61, 60))

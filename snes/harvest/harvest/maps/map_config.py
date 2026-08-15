@@ -69,6 +69,7 @@ from harvest.maps.map_routes import (
     compose_routes,
     densify_waypoints,
     path_coords_leaked,
+    farm_coords_look_like_path,
     segment_waypoints,
     slice_route_from_position,
 )
@@ -528,5 +529,6 @@ __all__ = [
     "segment_waypoints",
     "slice_route_from_position",
     "path_coords_leaked",
+    "farm_coords_look_like_path",
     "densify_waypoints",
 ]
