@@ -75,6 +75,12 @@ class BombWallController:
     south_band_first: bool = False
     south_band_y: int = 170
     south_band_max_frames: int = 80
+    # After south band, center x on the stand column (0x1e live: x≈120).
+    south_center_max_frames: int = 200
+    # Optional diamond-safe approach (0x1e: south then east column).
+    approach_waypoints: tuple[tuple[int, int], ...] = ()
+    approach_index: int = 0
+    approach_tol: int = 4
     # Face / place / wait tuning.
     face_frames: int = 4
     step_back: int = BOMB_N_STEP_BACK
@@ -131,10 +137,24 @@ class BombWallController:
         ) <= self.stand_tol
 
     def _goto_stand(self, snap: ZeldaSnapshot) -> FrameAction:
-        """Walk to bomb stand. Prefer y-band near stand then x, else dominant axis."""
+        """Walk to bomb stand. Prefer y-band near stand then x, else dominant axis.
+
+        0x1e south-band approach is x-first (live): diamond mid-y blocks UP
+        before the stand column is centered.
+        """
         tx, ty = self.stand
         dx = tx - snap.link_x
         dy = ty - snap.link_y
+        if self.south_band_first:
+            if abs(dx) > self.stand_tol:
+                return FrameAction(
+                    nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_x"
+                )
+            if abs(dy) > self.stand_tol:
+                return FrameAction(
+                    nes_action("UP" if dy < 0 else "DOWN"), "stand_y"
+                )
+            return FrameAction(nes_idle_action(), "stand_ready")
         if abs(snap.link_y - ty) <= 12 and abs(dx) > self.stand_tol:
             if abs(dy) > self.stand_tol:
                 return FrameAction(
@@ -240,7 +260,6 @@ class BombWallController:
                 if snap.bombs <= 0:
                     return self._fail("no_bombs")
                 self._set_phase(BombWallPhase.SOUTH_BAND, "south_band_first")
-                return FrameAction(nes_action("DOWN"), "south_band")
             else:
                 if snap.bombs <= 0:
                     return self._fail("no_bombs")
@@ -254,7 +273,6 @@ class BombWallController:
                     return self._fail("no_bombs_after_clear")
                 if self.south_band_first:
                     self._set_phase(BombWallPhase.SOUTH_BAND, "cleared_south")
-                    return FrameAction(nes_action("DOWN"), "south_band")
                 self._set_phase(BombWallPhase.TO_STAND, "cleared")
                 return FrameAction(nes_idle_action(), "clear_done")
             if self.clear_controller.phase is DungeonPhase.FAILED:
@@ -262,10 +280,58 @@ class BombWallController:
             return action
 
         if self.phase is BombWallPhase.SOUTH_BAND:
-            if snap.link_y >= self.south_band_y or self.phase_frames > self.south_band_max_frames:
-                self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
-                return self._goto_stand(snap)
-            return FrameAction(nes_action("DOWN"), "south_band")
+            if self.approach_waypoints:
+                if self.approach_index >= len(self.approach_waypoints):
+                    self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
+                    return self._goto_stand(snap)
+                wx, wy = self.approach_waypoints[self.approach_index]
+                atol = self.approach_tol
+                if (
+                    abs(snap.link_x - wx) <= atol
+                    and abs(snap.link_y - wy) <= atol
+                ):
+                    self.approach_index += 1
+                    self.notes.append(f"approach_{self.approach_index}")
+                    return FrameAction(nes_idle_action(), "approach_next")
+                # First waypoint is south-band (y-first); later wps keep x locked.
+                y_first = self.approach_index == 0
+                if y_first and abs(snap.link_y - wy) > atol:
+                    return FrameAction(
+                        nes_action("DOWN" if snap.link_y < wy else "UP"),
+                        "approach_y",
+                    )
+                if abs(snap.link_x - wx) > atol:
+                    return FrameAction(
+                        nes_action("RIGHT" if snap.link_x < wx else "LEFT"),
+                        "approach_x",
+                    )
+                if abs(snap.link_y - wy) > atol:
+                    return FrameAction(
+                        nes_action("DOWN" if snap.link_y < wy else "UP"),
+                        "approach_y",
+                    )
+                return FrameAction(nes_idle_action(), "approach_hold")
+            # Only dive south from a north pocket. Mid-y (96,141) is already
+            # walkable; extra DOWN walks into a dead column (live 0x1e).
+            if (
+                snap.link_y < 130
+                and snap.link_y < self.south_band_y
+                and self.phase_frames <= self.south_band_max_frames
+            ):
+                return FrameAction(nes_action("DOWN"), "south_band")
+            tx = self.stand[0]
+            if abs(snap.link_x - tx) > self.stand_tol:
+                if self.phase_frames > (
+                    self.south_band_max_frames + self.south_center_max_frames
+                ):
+                    self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
+                    return self._goto_stand(snap)
+                return FrameAction(
+                    nes_action("RIGHT" if snap.link_x < tx else "LEFT"),
+                    "south_center_x",
+                )
+            self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
+            return self._goto_stand(snap)
 
         if self.phase is BombWallPhase.TO_STAND:
             if snap.bombs <= 0:

@@ -537,9 +537,11 @@ def test_room_specs_support_hp_and_type_only_liveness() -> None:
     assert ROOM_44_SPEC.combat.engage_distance == 64
     assert ROOM_44_SPEC.combat.attack_phase == 7
     assert ROOM_45_SPEC.enemy_types == (0x27,)
-    assert ROOM_45_SPEC.combat.engage_distance == 80
+    assert ROOM_45_SPEC.combat.engage_distance == 56
     assert ROOM_45_SPEC.combat.engage_dominant_axis is True
     assert ROOM_45_SPEC.combat.attack_phase == 0
+    assert ROOM_45_SPEC.combat.avoid_walls is True
+    assert (32, 117) in ROOM_45_SPEC.combat.patrol
     assert ROOM_35_SPEC.enemy_types == (0x3D,)
 
 
@@ -585,6 +587,85 @@ def test_generic_controller_collects_fixed_inventory_reward() -> None:
     action = controller.step(read_snapshot(clear_ram))
     assert controller.success is True
     assert action.reason == "done"
+
+
+def test_settle_in_target_room_holds_entry_direction() -> None:
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.ENTER
+    ram = _room_ram(room=0x45, x=16, y=141)
+    ram[ADDR_MODE] = 7
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "settle_target_room"
+
+
+def test_room45_collects_key_while_wallmasters_live() -> None:
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.initial_inventory = 0
+    ram = _room_ram(
+        room=0x45, x=120, y=117, enemy_type=0x27, enemies=8, hp=0x20, keys=1
+    )
+    action = controller.step(read_snapshot(ram))
+    assert controller.success is True
+    assert action.reason == "done"
+
+
+def test_room45_dashes_inland_from_west_door() -> None:
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x45, x=16, y=141, enemy_type=0x27, enemies=8, hp=0x20
+    )
+    action = controller.step(read_snapshot(ram))
+    assert action.reason.startswith("leave_wall")
+
+
+def test_room45_leaves_west_door_before_engage() -> None:
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.combat_frames = ROOM_45_SPEC.combat.inland_dash
+    ram = _room_ram(
+        room=0x45, x=32, y=141, enemy_type=0x27, enemies=8, hp=0x20
+    )
+    action = controller.step(read_snapshot(ram))
+    assert action.reason.startswith("leave_wall")
+    off_row = _room_ram(
+        room=0x45, x=32, y=157, enemy_type=0x27, enemies=8, hp=0x20
+    )
+    off_row_action = controller.step(read_snapshot(off_row))
+    assert off_row_action.reason.startswith("leave_wall")
+    inland = _room_ram(
+        room=0x45, x=120, y=141, enemy_type=0x27, enemies=8, hp=0x20
+    )
+    inland_action = controller.step(read_snapshot(inland))
+    assert inland_action.reason != "leave_wall"
+
+
+def test_room45_engage_does_not_walk_onto_west_wall() -> None:
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.combat_frames = ROOM_45_SPEC.combat.inland_dash
+    ram = _room_ram(
+        room=0x45, x=56, y=141, enemy_type=0x27, enemies=1, hp=0x20
+    )
+    ram[ADDR_LINK_X + 1] = 32
+    ram[ADDR_LINK_Y + 1] = 141
+    action = controller.step(read_snapshot(ram))
+    assert action.reason != "leave_wall"
+    assert action.reason.startswith("combat_engage")
+
+
+def test_controller_fails_fast_after_leaving_target_room() -> None:
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.clear_signal_seen = True
+    ram = _room_ram(room=0x73, x=160, y=173, keys=0)
+    action = controller.step(read_snapshot(ram))
+    assert controller.success is False
+    assert controller.phase is DungeonPhase.FAILED
+    assert action.reason == "left_target_room"
+    assert "left_target_room" in controller.notes
 
 
 def test_collect_reward_skips_waypoint_after_stuck_frames() -> None:

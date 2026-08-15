@@ -137,6 +137,34 @@ def test_should_swing_in_hitbox_or_contact_only() -> None:
     assert not should_swing_at(lx, ly, "UP", ())
 
 
+def test_should_swing_consumes_engagement_hint_veto() -> None:
+    """Hint can veto; it cannot authorize a swing outside the hitbox."""
+    from zelda_i.combat_behaviors import EngagementHint
+
+    lx, ly = 120, 141
+    front = _obj(1, x=lx + 12, y=ly)
+    allow = EngagementHint(
+        preferred_distance=48, face="RIGHT", swing=True, retreat=False
+    )
+    assert should_swing_at(lx, ly, "RIGHT", (front,), hint=allow)
+
+    no_sword = EngagementHint(
+        preferred_distance=48, face="RIGHT", swing=False, retreat=False
+    )
+    assert not should_swing_at(lx, ly, "RIGHT", (front,), hint=no_sword)
+
+    retreat = EngagementHint(
+        preferred_distance=48, face="RIGHT", swing=True, retreat=True
+    )
+    assert not should_swing_at(lx, ly, "RIGHT", (front,), hint=retreat)
+
+    far = _obj(1, x=lx + 40, y=ly)
+    want = EngagementHint(
+        preferred_distance=48, face="RIGHT", swing=True, retreat=False
+    )
+    assert not should_swing_at(lx, ly, "RIGHT", (far,), hint=want)
+
+
 def test_threat_radius_does_not_authorize_swing() -> None:
     """THREAT_RADIUS is for approach; should_swing stays hitbox/contact only."""
     lx, ly = 120, 141

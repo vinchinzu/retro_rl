@@ -41,6 +41,7 @@ from zelda_i.level2_boss_path import (
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_TRIFORCE, read_snapshot, read_u8
+from zelda_i.runner import VideoTap, add_video_args, resolve_video
 
 def run_once(
     *,
@@ -48,6 +49,10 @@ def run_once(
     infinite_life: bool = True,
     tag: str = "level2_dodongo",
     save_checkpoint: bool = False,
+    poke: bool = False,
+    video_path: Path | None = None,
+    video_config=None,
+    intro_frames: int = 0,
 ) -> dict:
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
@@ -55,10 +60,18 @@ def run_once(
     track = "assisted" if infinite_life else "clean"
     timeline: list = []
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
+    tap = VideoTap(
+        video_path,
+        video_config,
+        tag=tag,
+        intro_summary="Survival Level2Boom -> Dodongo -> TF 0x02",
+        intro_frames=intro_frames,
+    )
 
     try:
         env.reset()
         obs, *_ = env.step(nes_idle_action())
+        tap.attach(env, obs)
         if assist is not None:
             assist.apply_env(env, frame=0)
         boot = sample_snapshot(
@@ -82,13 +95,22 @@ def run_once(
                 "Level2_0D_PostBoss",
             )
             else None,
+            poke=poke,
         )
         fight = path.get("fight") or {}
         tf_report = path.get("tf_report") or {}
         timeline = path.get("timeline") or timeline
 
         if not path.get("ok") and path.get("reason") and path.get("reason") != "tf_fail":
-            return _fail(env, timeline, tag, track, str(path["reason"]))
+            return _fail(
+                env,
+                timeline,
+                tag,
+                track,
+                str(path["reason"]),
+                assist=assist,
+                tap=tap,
+            )
 
         # Screenshots around fight / final when path reached boss.
         if start_state not in ("Level2_0D_PostBoss",) and boot_sc != ROOM_TF:
@@ -184,6 +206,9 @@ def run_once(
             "natural_entry": False,
             "status_promote": False,
             "library": "zelda_i.level2_boss_path",
+            "poke": poke,
+            "assist": assist.report() if assist is not None else None,
+            "video": tap.close(),
             "evidence": [
                 f"recordings/{tag}.json",
                 f"recordings/{tag}_boss_entry.png",
@@ -195,7 +220,7 @@ def run_once(
     finally:
         env.close()
 
-def _fail(env, timeline, tag, track, reason: str) -> dict:
+def _fail(env, timeline, tag, track, reason: str, *, assist=None, tap=None) -> dict:
     s = read_snapshot(env.get_ram())
     out = {
         "bead": "rr-n5i",
@@ -207,6 +232,8 @@ def _fail(env, timeline, tag, track, reason: str) -> dict:
         "final": sample_snapshot(s, env.get_ram(), event="fail"),
         "triforce_bit_0x02": False,
         "library": "zelda_i.level2_boss_path",
+        "assist": assist.report() if assist is not None else None,
+        "video": tap.close() if tap is not None else None,
     }
     write_json_report(RECORDINGS_DIR / f"{tag}.json", out)
     try:
@@ -224,16 +251,35 @@ def main() -> None:
     p.add_argument("--tag", default="level2_dodongo")
     p.add_argument("--trials", type=int, default=1)
     p.add_argument("--save-state", action="store_true")
+    p.add_argument(
+        "--poke-bombs",
+        action="store_true",
+        help="RECON bomb inventory poke (default off; Survival tape uses earned bombs)",
+    )
+    add_video_args(p)
     args = p.parse_args()
     inf = not args.no_infinite_life
+    video_path, video_config, intro_frames = resolve_video(
+        args,
+        default_path=RECORDINGS_DIR / f"{args.tag}.mp4",
+    )
     results = []
     for t in range(args.trials):
         tag = args.tag if args.trials == 1 else f"{args.tag}_t{t}"
+        trial_video = video_path
+        if video_path is not None and args.trials > 1:
+            trial_video = video_path.with_name(
+                f"{video_path.stem}_t{t}{video_path.suffix}"
+            )
         r = run_once(
             start_state=args.from_state,
             infinite_life=inf,
             tag=tag,
             save_checkpoint=args.save_state and t == 0,
+            poke=args.poke_bombs,
+            video_path=trial_video,
+            video_config=video_config,
+            intro_frames=intro_frames,
         )
         results.append(r)
         print(

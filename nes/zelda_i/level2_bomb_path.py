@@ -150,12 +150,22 @@ def make_bomb_north_1e_controller() -> BombWallController:
         level=LEVEL_2,
         clear_spec=None,
         south_band_first=True,
+        south_band_y=170,
+        south_band_max_frames=80,
+        south_center_max_frames=200,
+        stand_tol=12,
+        approach_waypoints=(
+            (96, 189),
+            (176, 189),
+            (176, 93),
+            (120, 93),
+        ),
         face_frames=6,
         step_back=0,
         wait_blast=BOMB_N_WAIT_BLAST,
         require_bomb_consumed=False,
         wait_hold_face=True,
-        max_frames=8000,
+        max_frames=12000,
     )
 
 

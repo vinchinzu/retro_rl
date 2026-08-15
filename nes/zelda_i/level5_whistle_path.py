@@ -23,6 +23,11 @@ ROOM_L5_WHISTLE_05 = 0x05
 ROOM_L5_WHISTLE_ITEM = 0x04
 BLUE_DARKNUT_TYPE = 0x0C
 BOMB_WEST_STAND = (40, 141)
+# Cleared 0x66 west is a ROM bomb wall → 0x65. River locks x-move at y=141;
+# south-band y=189 then the west column reaches the bricks.
+BOMB_WEST_66_STAND = (32, 141)
+# Live bomb-east 0x65 → 0x66 (diamond y=109 then east; stand at east wall).
+BOMB_EAST_STAND = (224, 141)
 CENTER_STAIRS = (120, 141)
 CELLAR_MODES = (9, 10, 11, 16)
 # 0x06 diamond: 0x68 rests (96,144). Push UP → (96,128). Stairs stand (96,133).
@@ -92,6 +97,86 @@ def select_b_item_menu(env, assist, total: list[int], want: int) -> dict:
         "selected_after": int(read_u8(env.get_ram(), ADDR_SELECTED_ITEM)),
         "seen": seen,
         "preferred": chosen,
+    }
+
+
+def bomb_west_from_66(env, assist, total: list[int]) -> dict:
+    """Bomb the west wall of cleared 0x66. One bomb. Dest must become 0x65.
+
+    Horizontal river at y≈141 locks sideways input on the Stepladder. Leave
+    the south mouth, hold the south band y=189 to the west column, then rise
+    to the bomb bricks. North-band y=109 is the fallback if the south pinch
+    stalls. Select bombs from the pause menu — no RAM poke.
+    """
+    from zelda_i.dungeon_ops import goto, idle
+    from zelda_i.ram import read_snapshot as _rs
+
+    snap = _rs(env.get_ram())
+    start = {"xy": [snap.link_x, snap.link_y], "room": snap.screen, "mode": snap.mode}
+    if snap.link_y > 185:
+        walk_axis(env, assist, total, "y", 189, max_f=200)
+    paths = (
+        (("y", 189), ("x", 32), ("y", 141)),
+        (("y", 109), ("x", 32), ("y", 141)),
+        (("x", 56), ("y", 109), ("x", 32), ("y", 141)),
+    )
+    used = None
+    for name, steps in enumerate(paths):
+        snap = _rs(env.get_ram())
+        if snap.screen == ROOM_L5_WEST_65 and snap.mode == PLAY_MODE:
+            used = f"already_65_{name}"
+            break
+        if snap.screen != ROOM_L5_GIBDO_66:
+            break
+        for axis, tgt in steps:
+            walk_axis(env, assist, total, axis, tgt, max_f=400)
+        snap = _rs(env.get_ram())
+        if abs(snap.link_x - BOMB_WEST_66_STAND[0]) <= 8 and abs(snap.link_y - BOMB_WEST_66_STAND[1]) <= 8:
+            used = f"path_{name}"
+            break
+    goto(env, assist, total, BOMB_WEST_66_STAND[0], BOMB_WEST_66_STAND[1], tol=3, max_f=300)
+    for _ in range(8):
+        _step(env, assist, total, nes_action("LEFT"))
+    idle(env, assist, total, 8)
+    menu = select_b_item_menu(env, assist, total, 1)
+    snap = _rs(env.get_ram())
+    bombs0 = int(snap.bombs)
+    _step(env, assist, total, nes_action("LEFT", "B"))
+    for _ in range(16):
+        _step(env, assist, total, nes_action("RIGHT"))
+    idle(env, assist, total, 100)
+    for _ in range(360):
+        snap = _rs(env.get_ram())
+        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_WEST_65:
+            break
+        _step(env, assist, total, nes_action("LEFT"))
+    idle(env, assist, total, 24)
+    for _ in range(240):
+        snap = _rs(env.get_ram())
+        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_WEST_65:
+            break
+        if snap.mode in (6, 7, 4, 16):
+            _step(env, assist, total, nes_action("LEFT"))
+        else:
+            _step(env, assist, total, nes_idle_action())
+    idle(env, assist, total, 16)
+    snap = _rs(env.get_ram())
+    return {
+        "path": "bomb_west_from_66",
+        "via": used,
+        "start": start,
+        "menu": menu,
+        "bombs_in": bombs0,
+        "bombs_out": int(snap.bombs),
+        "bombs_spent": bombs0 - int(snap.bombs),
+        "dest": snap.screen,
+        "xy": [snap.link_x, snap.link_y],
+        "mode": snap.mode,
+        "success": (
+            snap.level == LEVEL_5
+            and snap.screen == ROOM_L5_WEST_65
+            and snap.mode == PLAY_MODE
+        ),
     }
 
 
@@ -168,9 +253,9 @@ def bomb_east_from_65(env, assist, total: list[int]) -> dict:
 
     walk_axis(env, assist, total, "y", 109, max_f=400)
     walk_axis(env, assist, total, "x", 208, max_f=500)
-    walk_axis(env, assist, total, "y", 141, max_f=400)
-    walk_axis(env, assist, total, "x", 224, max_f=200)
-    goto(env, assist, total, 224, 141, tol=3, max_f=300)
+    walk_axis(env, assist, total, "y", BOMB_EAST_STAND[1], max_f=400)
+    walk_axis(env, assist, total, "x", BOMB_EAST_STAND[0], max_f=200)
+    goto(env, assist, total, *BOMB_EAST_STAND, tol=3, max_f=300)
     for _ in range(8):
         _step(env, assist, total, nes_action("RIGHT"))
     idle(env, assist, total, 8)

@@ -178,18 +178,32 @@ def test_hold_face_wait_never_steps_back() -> None:
 def test_1e_south_band_before_stand() -> None:
     ctrl = make_bomb_north_1e_controller()
     assert ctrl.south_band_first is True
-    # From settle in source room with bombs, mid-y → SOUTH_BAND
+    assert ctrl.approach_waypoints[0] == (96, 189)
     wall = ctrl.wall
     act = ctrl.step(
-        _snap(room=wall.room, x=120, y=140, bombs=4, level=2)
+        _snap(room=wall.room, x=96, y=141, bombs=4, level=2)
     )
     assert ctrl.phase is BombWallPhase.SOUTH_BAND
-    assert act.reason == "south_band"
-    # After enough DOWN frames past south_band_y, go to stand
-    for _ in range(ctrl.south_band_max_frames + 1):
-        act = ctrl.step(
-            _snap(room=wall.room, x=120, y=180, bombs=4, level=2)
-        )
-        if ctrl.phase is BombWallPhase.TO_STAND:
-            break
+    assert act.reason == "approach_y"
+
+
+def test_1e_south_band_centers_x_before_stand() -> None:
+    """0x1e live: south y=189 then east column 176, not mid-y laterals."""
+    ctrl = make_bomb_north_1e_controller()
+    wall = ctrl.wall
+    act = ctrl.step(_snap(room=wall.room, x=96, y=141, bombs=4, level=2))
+    assert act.reason == "approach_y"
+    act = ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))
+    assert act.reason == "approach_next"
+    act = ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))
+    assert act.reason == "approach_x"
+
+
+def test_1e_goto_stand_is_x_first() -> None:
+    """From the south band at x=96, walk RIGHT before UP to (120,101)."""
+    ctrl = make_bomb_north_1e_controller()
+    wall = ctrl.wall
+    ctrl.phase = BombWallPhase.TO_STAND
+    act = ctrl.step(_snap(room=wall.room, x=96, y=170, bombs=4, level=2))
     assert ctrl.phase is BombWallPhase.TO_STAND
+    assert act.reason == "stand_x"
