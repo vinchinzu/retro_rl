@@ -320,12 +320,16 @@ class GenericDungeonRoomController:
     clear_signal_seen: bool = False
     success: bool = False
     notes: list[str] = field(default_factory=list)
+    _stuck_frames: int = 0
+    _stuck_xy: tuple[int, int] | None = None
 
     def _set_phase(self, phase: DungeonPhase, note: str = "") -> None:
         if phase is not self.phase:
             self.phase = phase
             self.phase_frames = 0
             self.waypoint_index = 0
+            self._stuck_frames = 0
+            self._stuck_xy = None
             if note:
                 self.notes.append(note)
 
@@ -452,11 +456,24 @@ class GenericDungeonRoomController:
             # off the first pass of a sparse hunt grid).
             if self.waypoint_index >= n:
                 self.waypoint_index = 0
+            xy = (int(snap.link_x), int(snap.link_y))
+            if self._stuck_xy == xy:
+                self._stuck_frames += 1
+            else:
+                self._stuck_xy = xy
+                self._stuck_frames = 0
             tx, ty = self.spec.reward.waypoints[self.waypoint_index]
             dx = tx - snap.link_x
             dy = ty - snap.link_y
-            if abs(dx) <= 2 and abs(dy) <= 2:
+            reached = abs(dx) <= 2 and abs(dy) <= 2
+            stuck = self._stuck_frames >= 24 and not reached
+            if reached or stuck:
+                if stuck:
+                    self.notes.append(
+                        f"collect_skip_{self.waypoint_index}_{xy[0]}_{xy[1]}"
+                    )
                 self.waypoint_index = (self.waypoint_index + 1) % n
+                self._stuck_frames = 0
                 tx, ty = self.spec.reward.waypoints[self.waypoint_index]
                 dx = tx - snap.link_x
                 dy = ty - snap.link_y
