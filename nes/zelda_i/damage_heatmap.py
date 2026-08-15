@@ -3,7 +3,7 @@
 Parses ``UnlimitedHealthAssist`` report dicts (bare telemetry or a runner
 JSON with a nested ``assist`` block). No ROM. Does not write recordings.
 
-Known L5 whistle-suffix heat (STITCH_MAP / ``l5_whistle04_to_tf_stitch``):
+Known L5 whistle-suffix heat (continuous Survival ``0x04``→TF report):
 Digdogger ``0x24``=27, first-key Gibdos ``0x66``=10, west Gibdos ``0x26``=4,
 north Dodongos ``0x56``=1, east Zols ``0x57``=1.
 """
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-# STITCH_MAP L5 suffix totals — fixture tests, not a STATUS claim.
+# L5 suffix totals from the continuous Survival report — not a STATUS claim.
 L5_SUFFIX_HEAT: dict[str, int] = {
     "L5:0x24": 27,
     "L5:0x66": 10,

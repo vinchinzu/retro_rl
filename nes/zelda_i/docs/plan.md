@@ -21,32 +21,27 @@ Level 1 tape (`boot_frames=1749`, no `--infinite-life`, end health `0x31`).
 Watchable main spine is now **Survival infinite life from power-on**. Do not
 overwrite Clean M5 evidence.
 
-Beads: **`rr-4d53`** epic. Active leaf **`rr-4d53.1`** (L1 re-record). Then
-`rr-4d53.2` L2 footage, `rr-4d53.3` L3 footage, `rr-4d53.4` compose.
+Beads: **`rr-4d53`** epic. Active leaf **`rr-4d53.1`** (L1 `0x45` key).
+Seamed viewing compose is **deleted** (`rr-cont`). The only spine product is
+one continuous emulator session. `rr-4d53.4` is that session through L5 TF,
+not a clip concat.
 
-Exact L1 command:
+Exact continuous command:
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level1_complete.py \
-  --natural-entry --infinite-life --video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
 ```
 
-Expected: `recordings/level1_complete_natural_assisted.mp4` + `.json`;
-`boot_frames` near 200–565 (`BOOT_PERIOD=50`); `intervention_class=survival`;
-`progression_writes=0`; `capacity_writes=0`; `triforce & 0x01`; deaths 0.
-Default Clean paths stay untouched.
+Expected: `recordings/survival_spine.json`; `continuous_emulator_session=true`;
+`boot_frames` near 200–565; `progression_writes=0`; `capacity_writes=0`;
+`triforce & 0x01`; deaths 0. Default Clean paths stay untouched.
 
-Last live Survival trial (no video): prefix through `clear23_key` is green
-(`boot_frames=199`, 0 deaths, 0 progression/capacity writes). Fail is still
-`clear45_key` (timeout 9000f, keys=0, still in `0x45`). Grab-to-entrance is
-fixed (fail-fast `left_target_room`; west-door unstick + slash). After
-clear, Link can walk the west-wall column, south edge, and north row
-`y=117` without warping, but keys never increment. A block row at `y≈145`
-blocks interior north from `y=149`. The floor key is still missing after
-those sweeps. Next: find the live key object/stand during FIGHT (IGN: run
-for the key; do not wait for all-dead) and walk that pixel without A.
-Evidence: `recordings/level1_complete_natural_assisted.json`,
-`recordings/level1_complete_t0_natural.png`.
+Last continuous spine trial (`run_survival_spine.py`, no video):
+`continuous_emulator_session=true`, boot=199, prefix through `clear44`
+green, fail `clear45_key` 9000f still in `0x45` keys=0 at ~(132,157).
+East-column hunt skips at y=157 (`collect_skip_*_160_157`) — south of
+that band is solid on this approach. Deaths 0, progression/capacity
+writes 0. Evidence: `recordings/survival_spine.json`.
 
 ## Parked L7/L8 boundary (2026-08-14)
 

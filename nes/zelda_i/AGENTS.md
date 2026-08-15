@@ -14,9 +14,8 @@ uv run python zelda_i/scripts/boot_probe.py
 # Clean M5 (do not overwrite)
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 
-# Survival spine (rr-4d53; does not overwrite Clean M5)
-uv run python nes/zelda_i/scripts/run_level1_complete.py \
-  --natural-entry --infinite-life --video --trials 1
+# Survival spine — one continuous session (does not overwrite Clean M5)
+uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
 
 uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 bd ready -l zelda_i
@@ -84,6 +83,6 @@ from damage heatmaps. Do not block tip progress on combat polish.
 bd ready -l zelda_i
 ```
 
-Tip + parked work live in `docs/plan.md` (Survival spine `rr-4d53.1` L1
-Wallmaster residual; L9 `0x51` dest-NO retarget). Do not start a new room
-or route leaf unless that is the claimed bead.
+Tip + parked work live in `docs/plan.md`. Spine is continuous only
+(`run_survival_spine.py`); no seamed compose. Active leaf `rr-4d53.1`
+(L1 `0x45` key). Do not start a new room unless that is the claimed bead.

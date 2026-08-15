@@ -29,7 +29,7 @@
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
-| Whistle basement `0x04` → Digdogger `0x24` → L5 Triforce room `0x14` | **1/1 continuous Survival reel**; 10,776 route frames; Triforce `0x0c→0x1c`; zero deaths and zero resource/progression/capacity pokes; 43 damage units logged for later hardening (44 health-counter units restored across 20 writes) | `stitches/l5_whistle04_to_tf_stitch.json`; `stitches/bk2_whistle04_to_tf/`; `Level5Complete` (development-only) |
+| Whistle basement `0x04` → Digdogger `0x24` → L5 Triforce room `0x14` | **1/1 continuous Survival session** (not a seamed tape); 10,776 route frames; Triforce `0x0c→0x1c`; zero deaths and zero resource/progression/capacity pokes; 43 damage units logged for later hardening | `Level5Complete` (development-only; attach only via the continuous spine) |
 
 These runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
@@ -294,11 +294,8 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** L1 `0x45` off-wall key collect (`rr-4d53.1`), then
-   L2/L3 Survival footage and the L1–L5 compose (`rr-4d53.2`–`.4`).
-2. **Active backward tip:** real predecessor south of blade-trap/Like-Like
-   room `0x41` (candidate `0x51` dest-NO so far; `rr-sz8.4`).
-3. **Closed forward seam:** East Key `0x77` → natural Recorder → `0x04`
-   (`rr-4d53.5`). Attach that pin to the proven Whistle basement →
-   Digdogger → L5 Triforce suffix before claiming a continuous L5 TF reel.
-4. Clean residual only after full-game assist pass (`rr-4oz`).
+1. **Active Survival tip:** continuous `run_survival_spine.py` through L1
+   `0x45` key (`rr-4d53.1`). No seamed compose. Then keep that same session
+   through L2/L3 (`rr-4d53.2`–`.4`).
+2. **Active backward tip:** thread `0x51` north into `0x41` (`rr-yxy6`).
+3. Clean residual only after a continuous assist pass (`rr-4oz`).

@@ -48,7 +48,7 @@ L5_NORTH_27 = ROOM_L5_NORTH_27
 L5_WEST_26 = ROOM_L5_WEST_26
 L5_WEST_25 = ROOM_L5_WEST_25
 L5_DIGDOGGER = ROOM_L5_WEST_24
-L5_TRIFORCE = 0x14  # STITCH_MAP / LEVEL5_ROUTE TF room
+L5_TRIFORCE = 0x14  # LEVEL5_ROUTE TF room
 L5_CELLAR_07 = ROOM_L5_CELLAR_07
 L5_PASSAGE_06 = ROOM_L5_PASSAGE_06
 L5_WHISTLE_05 = ROOM_L5_WHISTLE_05
@@ -56,7 +56,7 @@ L5_WHISTLE_ITEM = ROOM_L5_WHISTLE_ITEM
 
 
 def _l5_exits() -> dict[int, tuple[RoomExit, ...]]:
-    """L5 edges from LEVEL5_ROUTE.md + STITCH_MAP (assisted / observed)."""
+    """L5 edges from LEVEL5_ROUTE.md (assisted / observed)."""
     return {
         L5_ENTRY: (
             RoomExit(

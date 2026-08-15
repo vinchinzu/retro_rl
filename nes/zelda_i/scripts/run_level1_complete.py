@@ -42,28 +42,8 @@ from retro_harness.youtube_intro import (
 )
 from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.chain import run_controller_stage, run_natural_to_milestone
-from zelda_i.dungeon import (
-    GenericDungeonRoomController,
-    ROOM_23_SPEC,
-    ROOM_33_SPEC,
-    ROOM_42_SPEC,
-    ROOM_43_SPEC,
-    ROOM_44_SPEC,
-    ROOM_45_SPEC,
-    ROOM_52_SPEC,
-)
 from zelda_i.dungeon_trace import write_state_provenance
-from zelda_i.level1_finish import (
-    AQUAMENTUS_MAX_FRAMES,
-    BACKTRACK_TO_44_MAX_FRAMES,
-    LEVEL1_TRIFORCE_BIT,
-    ROOM_42_EXIT_MAX_FRAMES,
-    TRIFORCE_MAX_FRAMES,
-    Level1BacktrackTo44Controller,
-    Level1AquamentusController,
-    Level1Room42ExitController,
-    Level1TriforceController,
-)
+from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR, ROOM_TIMINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.room_timer import RoomTimer, bottleneck_visits
@@ -132,104 +112,6 @@ def _write_intro(
         writer.write(card, audio=silent, frame_index=-(hold_frames - i))
     return hold_frames
 
-def _finish_stages(*, natural_entry: bool):
-    room33 = ROOM_33_SPEC
-    room23 = ROOM_23_SPEC
-    room44 = ROOM_44_SPEC
-    room45 = ROOM_45_SPEC
-    boss_entry_delay = 109
-    if not natural_entry:
-        # Checkpoint-isolated runs start from a different emulator RNG stream.
-        # Preserve the independently verified checkpoint tunings while the
-        # canonical natural-entry chain uses the specs above.
-        room33 = replace(
-            room33,
-            combat=replace(
-                room33.combat,
-                engage_distance=40,
-                attack_phase=0,
-            ),
-        )
-        room23 = replace(
-            room23,
-            combat=replace(
-                room23.combat,
-                engage_distance=64,
-                attack_phase=0,
-            ),
-        )
-        room44 = replace(
-            room44,
-            combat=replace(
-                room44.combat,
-                engage_distance=80,
-                attack_phase=6,
-            ),
-        )
-        room45 = replace(
-            room45,
-            combat=replace(room45.combat, attack_phase=2),
-        )
-        boss_entry_delay = 0
-    return (
-        (
-            "clear52",
-            GenericDungeonRoomController(ROOM_52_SPEC),
-            ROOM_52_SPEC.max_frames,
-        ),
-        (
-            "clear42",
-            GenericDungeonRoomController(ROOM_42_SPEC),
-            ROOM_42_SPEC.max_frames,
-        ),
-        (
-            "exit42",
-            Level1Room42ExitController(),
-            ROOM_42_EXIT_MAX_FRAMES,
-        ),
-        (
-            "clear43",
-            GenericDungeonRoomController(ROOM_43_SPEC),
-            ROOM_43_SPEC.max_frames,
-        ),
-        (
-            "clear33_key",
-            GenericDungeonRoomController(room33),
-            room33.max_frames,
-        ),
-        (
-            "clear23_key",
-            GenericDungeonRoomController(room23),
-            room23.max_frames,
-        ),
-        (
-            "backtrack44",
-            Level1BacktrackTo44Controller(),
-            BACKTRACK_TO_44_MAX_FRAMES,
-        ),
-        (
-            "clear44",
-            GenericDungeonRoomController(room44),
-            room44.max_frames,
-        ),
-        (
-            "clear45_key",
-            GenericDungeonRoomController(room45),
-            room45.max_frames,
-        ),
-        (
-            "aquamentus_heart",
-            Level1AquamentusController(
-                entry_delay_frames=boss_entry_delay,
-            ),
-            AQUAMENTUS_MAX_FRAMES,
-        ),
-        (
-            "triforce_shard_1",
-            Level1TriforceController(),
-            TRIFORCE_MAX_FRAMES,
-        ),
-    )
 
 def run_once(
     *,
@@ -315,8 +197,9 @@ def run_once(
                 on_frame(env, obs, idle, frame_base)
             prefix_ok = True
 
-        for name, controller, max_frames in _finish_stages(
-            natural_entry=natural_entry
+        for name, controller, max_frames in level1_triforce_stages(
+            natural_entry=natural_entry,
+            survival=infinite_life,
         ):
             if not prefix_ok:
                 break

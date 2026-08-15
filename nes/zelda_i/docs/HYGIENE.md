@@ -21,6 +21,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | Resource cost | `health_cost.py`, `damage_heatmap.py` | Hop heart costs + Survival heatmap ranker |
 | Item gates | `item_gate_hops.py`, `item_gate_routes.py` | Candle / white sword / bomb shop NamedRoutes |
 | Combat helpers | `combat.py` + `combat_behaviors.py` | Hitbox swing gate + reusable enemy policies |
+| Continuous spine | `survival_spine.py` + `scripts/run_survival_spine.py` | One env, power-on, stop at first fail |
 | Scripts | thin CLIs + library controllers | Env/assist/report only — **no path logic** |
 
 ## Hard rules
@@ -34,14 +35,18 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 5. **Enemy type IDs** live in `dungeon_ids` (and re-exports in `dungeon.py` for engine types).
 6. **door_graph bomb stands** import from `level2_puzzles` — do not hardcode `(120, 101)` again.
 7. Prefer files under **~600 lines**; never grow a dungeon table past **1k** with controllers.
+8. **No state-seamed viewing tapes.** The spine is one continuous emulator
+   session (`continuous_emulator_session=true`) or it is not a spine tape.
+   Seam cards / clip concat are deleted, not a product.
 
 ## Artifact retention
 
 - STATUS evidence JSON/states: keep under `recordings/` and named checkpoints.
 - Lab probes, PNG dumps, one-off agent logs: prune or gitignore; do not commit bulk PNGs.
 - `recordings/` is local evidence, not product source.
-- L5 `_probe_l5_*` / `_stitch_*` lab one-offs were pruned (rr-cq5z). Durable CLIs
-  are `scripts/run_level5_*.py`; stitch evidence stays in `recordings/`.
+- L5 `_probe_l5_*` / `_stitch_*` lab one-offs were pruned (rr-cq5z). Durable
+  CLIs are `scripts/run_level5_*.py` and `scripts/run_survival_spine.py`.
+  Local `recordings/stitches/` leftovers are not a product.
 
 ## Backward compatibility
 
