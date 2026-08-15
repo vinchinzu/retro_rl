@@ -1,0 +1,29 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T00:44:54.015331+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Entered06",
+    "selected_item_poke": false,
+    "start_state": "Level5Entered07",
+    "via": "0x07 right mouth y165"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 3,
+    "keys": 3,
+    "mode": 5,
+    "room": 6,
+    "success": true,
+    "whistle_0x065C": 0
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Entered07.state",
+  "source_state_sha256": "70bd7e4abe2ecbdd12e55a20efba6d4ee556059e8ec0d2fc58851c9d072d2681",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Entered06.state",
+  "state_sha256": "5fc89a7d2e698ae0c777c5a5562f3feebeb84d860736c9932d82894c3084c4ba"
+}

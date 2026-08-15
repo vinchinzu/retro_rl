@@ -1,10 +1,11 @@
 # Level 7 — The Demon (route notes)
 
-**Status:** planning (gated). No live pond screen, entry room, or Clean
-segment. Requires **Whistle** from Level 5 plus **Bait/Food** for the hungry
-Goriya. Do not claim pure-first until both are real inventory.
+**Status:** PARTIAL assisted overworld approach. The live controller reaches
+`0x53`; the `0x53→0x52→0x42` pond suffix is not yet green. There is no pond
+checkpoint, entry room, or Clean segment. **Whistle** from Level 5 gates pond
+entry; **Bait/Food** is a separate mid-dungeon hungry-Goriya gate.
 
-**Beads:** `rr-7vc` (plan + whistle gate).
+**Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach).
 
 Planning sources:
 
@@ -54,10 +55,29 @@ but is not). Equip Whistle on B, use once → water drains → stairs into L7.
 |----------|------------------------------|-----------------|-------|
 | L7 pond / entrance | D×2 L×2 U | **`0x42`** | no |
 
-From start alone (no shop detour): U L×3 U×3 then D×2 L×2 U → same pond.
+The executable pond controller skips the unverified shop detour. Its live
+prefix is:
 
-**Scaffold:** `level7_overworld.py` — shop + pond hop placeholders,
-`has_whistle()`, `has_food()`, refuse-without-cap helpers.
+```text
+0x77→0x78→0x68→0x58→0x57→0x56→0x55→0x65→0x64→0x54→0x53
+```
+
+Live geometry through `0x53` (Survival, `PostSwordStart`):
+
+- `0x65→0x64` arrives on the east ledge around `(232,109)`; go DOWN to the
+  open band, LEFT to the north gap around `x≈48`, then UP to `0x54`.
+- `0x54→0x53` is LEFT around `y≈141`.
+- Last failure: on `0x53` at `(224,173)`, direct DOWN toward the hypothesized
+  lower west gap `y≈189` remains blocked. The next micro should move LEFT
+  inland before descending, then attempt LEFT into `0x52`.
+
+Evidence: `recordings/l7_dnp_pond_assisted_v9.json` and
+`recordings/l7_dnp_pond_assisted_v9_final.png`. It reports zero deaths and
+`progression_writes=capacity_writes=0`; `success=false`, so no checkpoint was
+saved and this is not a route claim.
+
+**Controller:** `level7_overworld.OverworldToLevel7PondController`; the probe
+refuses missing Whistle unless `--allow-missing-caps` is explicit.
 
 ### Live recon goals
 
@@ -147,5 +167,7 @@ unless `--plan-only` (or explicit `--allow-missing-caps` for dock-only walk).
 
 ## Evidence
 
-- Source walkthrough only.
-- No live pond/entry recordings yet.
+- Live assisted partial through overworld `0x53`:
+  `recordings/l7_dnp_pond_assisted_v9.json`.
+- Final `0x53` frame: `recordings/l7_dnp_pond_assisted_v9_final.png`.
+- Pond `0x42`, drain, and dungeon entry remain source-only.

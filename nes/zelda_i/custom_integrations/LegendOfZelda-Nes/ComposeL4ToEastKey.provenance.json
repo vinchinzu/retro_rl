@@ -1,0 +1,44 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T22:52:54.671022+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "continuous_emulator_session": true,
+    "note": "did_not_overwrite_Level5EastKey",
+    "segment": "compose_l4_to_eastkey",
+    "terminal_name": "ComposeL4ToEastKey",
+    "track": "assisted"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "final": {
+      "bombs": 7,
+      "cur_opened_doors": 0,
+      "health": 127,
+      "keys": 2,
+      "ladder": 1,
+      "level": 5,
+      "mode": 5,
+      "raft": 1,
+      "room_all_dead": 161,
+      "screen": 119,
+      "screen_hex": "0x77",
+      "triforce": 12,
+      "x": 136,
+      "y": 165
+    },
+    "frames": 15051,
+    "ok": true,
+    "seams": [
+      "Level4Complete_to_OW45",
+      "Level5EntranceFromL4",
+      "Level5Cleared66",
+      "Level5EastKey"
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level4Complete.state",
+  "source_state_sha256": "62808e75fb402311602161b0131e066f1d614a261528de7ce0f37980841c31a0",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/ComposeL4ToEastKey.state",
+  "state_sha256": "1379292cd54ab47f912c8a439257bd5e629e2a643722b3bbb0388f855748d5fc"
+}

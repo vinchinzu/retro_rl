@@ -1,0 +1,39 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T23:56:24.686904+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "alive_rule": "hp+type_only_keese",
+    "bomb_count_poke": false,
+    "combat_base": "level5_room77_pols_voice",
+    "controller": "Level5PolsVoiceController",
+    "door_poke": false,
+    "gibdo_combat": "level5_room66_gibdos",
+    "key_poke": false,
+    "predecessor_entry": true,
+    "recentered": "south189_from_x160_pinch",
+    "segment": "Level5Cleared27",
+    "selected_item_poke": false,
+    "spec_base": "level5_room27_mixed",
+    "start_state": "Level5Cleared37"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "doors_after": 0,
+    "keys": 4,
+    "live_gibdo": 0,
+    "live_keese": 0,
+    "live_pols": 0,
+    "room": 39,
+    "success": true,
+    "xy": [
+      120,
+      142
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared37.state",
+  "source_state_sha256": "1d1f317276000e60d91bf87d5c0b2fe5519de46b38834081b15c5009afd3e890",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared27.state",
+  "state_sha256": "f466be57427b1dc302916ed8a634eecd51450a22d0015a17ae22eaa692714802"
+}

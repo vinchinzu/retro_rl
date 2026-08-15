@@ -1,0 +1,138 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T23:21:54.216893+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.3",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "phase": "final_patra_north_door_earned",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "frame": 1697,
+    "ok": true,
+    "state": {
+      "bombs": 16,
+      "cur_opened_doors": 8,
+      "facing": 1,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 119,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 0,
+          "state": 0,
+          "type_id": 1,
+          "type_name": "unknown_object_0x01",
+          "x": 151,
+          "y": 173
+        },
+        {
+          "hp": 128,
+          "slot": 1,
+          "state": 35,
+          "type_id": 96,
+          "type_name": "green_rupee_drop",
+          "x": 159,
+          "y": 135
+        },
+        {
+          "hp": 32,
+          "slot": 2,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 145,
+          "y": 122
+        },
+        {
+          "hp": 32,
+          "slot": 3,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 151,
+          "y": 145
+        },
+        {
+          "hp": 32,
+          "slot": 4,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 133,
+          "y": 145
+        },
+        {
+          "hp": 32,
+          "slot": 5,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 110,
+          "y": 172
+        },
+        {
+          "hp": 32,
+          "slot": 6,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 140,
+          "y": 160
+        },
+        {
+          "hp": 32,
+          "slot": 7,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 128,
+          "y": 176
+        },
+        {
+          "hp": 32,
+          "slot": 8,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 129,
+          "y": 144
+        },
+        {
+          "hp": 32,
+          "slot": 9,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 128,
+          "y": 163
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 82,
+      "room_all_dead": 54,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 1,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 255,
+      "x": 151,
+      "y": 173
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Stair77PatraEnteredReconFixture.state",
+  "source_state_sha256": "71e2954da6fbfdacf9cc20f14049563fb7ff69d3e66a824769d0c078147e69d7",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9StairPatraClearedReconFixture.state",
+  "state_sha256": "9d00008ff9557f0fdaa75b19f4447317e2968deecb77c2aa537a092f2d738b28"
+}

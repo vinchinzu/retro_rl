@@ -1,0 +1,29 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-15T01:03:50.237242+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bomb_count_poke": false,
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Whistle66Cleared",
+    "selected_item_poke": false,
+    "start_state": "Level5Whistle66",
+    "via": "3 gibdo, N shutter"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 2,
+    "keys": 2,
+    "mode": 5,
+    "room": 102,
+    "success": true,
+    "whistle_0x065C": 1
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle66.state",
+  "source_state_sha256": "7f51916a4b169b0a2dd07c6aa68b31f66b391be25c1ab89f3b83943ba14a0a72",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Whistle66Cleared.state",
+  "state_sha256": "cb2439d3bb1440c4be21226e9a78d550be7863ae51c9b291e6a944a872c84e18"
+}

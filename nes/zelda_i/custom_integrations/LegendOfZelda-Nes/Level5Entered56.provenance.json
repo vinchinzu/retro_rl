@@ -1,0 +1,21 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T22:54:24.278967+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "predecessor_entry": true,
+    "segment": "level5_enter_56",
+    "start_state": "Level5EastKey"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "arrived": true,
+    "frames": 1776,
+    "room": 86
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5EastKey.state",
+  "source_state_sha256": "7378ee5e976654de2bab9066b80243e6d78142a38076a80c50735c67c57d4ec3",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Entered56.state",
+  "state_sha256": "093bac5576cec15de235238eaf4404c53a4f6441b0e14cbcc402cabe1369b53c"
+}

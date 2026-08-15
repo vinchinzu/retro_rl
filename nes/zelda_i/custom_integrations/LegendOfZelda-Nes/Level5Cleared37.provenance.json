@@ -1,0 +1,41 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-14T23:49:12.916636+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "alive_rule": "hp",
+    "bomb_count_poke": false,
+    "combat_base": "level3_room59_west_darknuts",
+    "compass_walk": true,
+    "controller": "GenericDungeonRoomController",
+    "door_poke": false,
+    "key_poke": false,
+    "predecessor_entry": true,
+    "segment": "Level5Cleared37",
+    "selected_item_poke": false,
+    "spec_base": "level3_room5b_darknuts",
+    "start_state": "Level5Cleared47"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 7,
+    "compass_grabbed": true,
+    "compass_l5": true,
+    "doors_after": 0,
+    "doorway_mask": 0,
+    "frames": 1862,
+    "keys": 3,
+    "live_darknuts": 0,
+    "room": 55,
+    "success": true,
+    "xy": [
+      120,
+      141
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared47.state",
+  "source_state_sha256": "77de748a400f896832dd23edf726961beeaa9966247458539a83b31d287b63b8",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level5Cleared37.state",
+  "state_sha256": "1d1f317276000e60d91bf87d5c0b2fe5519de46b38834081b15c5009afd3e890"
+}
