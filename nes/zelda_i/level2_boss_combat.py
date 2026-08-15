@@ -374,7 +374,7 @@ def fight_dodongo(
     max_frames: int = DODONGO_FIGHT_MAX_FRAMES,
     apply_assist: Callable[[Any, int], None] | None = None,
     dodongo_type: int = DODONGO_TYPE,
-    poke: bool = True,
+    poke: bool = False,
     check_tf: bool = True,
     select_bomb: bool = True,
     approach_mouth: bool = False,
@@ -388,7 +388,8 @@ def fight_dodongo(
     """Bomb-in-mouth policy for Dodongo (default type 0x32).
 
     Walkthrough: drop bomb nearly in mouth; 2 successful mouths kill.
-    Assisted bomb top-up OK when poke=True. Not Clean STATUS.
+    ``poke`` defaults off (spine / route claim). Recon CLIs pass
+    ``poke=True`` / ``--poke-bombs``. Not Clean STATUS.
     approach_mouth=True walks to mouth_target (needed for 1-tile type 0x31).
     """
     log: list[dict[str, Any]] = []

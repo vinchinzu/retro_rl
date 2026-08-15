@@ -23,8 +23,10 @@ from zelda_i.level2_overworld import (
     OverworldToLevel2Controller,
     PostTriforceSettleController,
 )
+from zelda_i.level2_bombs import spine_bomb_report
+from zelda_i.level2_spine import level2_through_success, level2_to_boom_stages
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
-from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 BOOT_POLICY = {
     "file_slot": BOOT_FILE_SLOT,
@@ -50,6 +52,21 @@ def level2_entry_stages():
     )
 
 
+def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
+    """End-of-run snapshot. Includes bombs so the farm bead can measure inventory."""
+    return {
+        "mode": snap.mode,
+        "level": snap.level,
+        "room": snap.screen,
+        "x": snap.link_x,
+        "y": snap.link_y,
+        "keys": snap.keys,
+        "bombs": snap.bombs,
+        "health": snap.health,
+        "triforce": snap.triforce,
+    }
+
+
 @dataclass
 class SpineRun:
     """One continuous power-on session."""
@@ -62,6 +79,8 @@ class SpineRun:
     end_frame: int = 0
     failed_stage: str | None = None
     obs: Any = None
+    l2_entry: dict[str, Any] | None = None
+    bombs: dict[str, Any] | None = None
 
     def report(self) -> dict[str, Any]:
         return {
@@ -77,6 +96,9 @@ class SpineRun:
             "end_frame": self.end_frame,
             "failed_stage": self.failed_stage,
             "prefix": self.prefix.report() if self.prefix is not None else None,
+            "l2_entry": self.l2_entry,
+            "bombs": self.bombs,
+            "poke_bombs": False,
             "stages": [stage.report() for stage in self.stages],
         }
 
@@ -192,11 +214,51 @@ def run_survival_spine(
             return run
 
     snap = read_snapshot(env.get_ram())
-    run.success = (
+    if not (
         snap.level == 2
         and snap.mode == PLAY_MODE
         and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
-    )
-    if not run.success:
+    ):
+        run.success = False
         run.failed_stage = "level2_entry"
+        return run
+
+    run.l2_entry = spine_final_fields(snap)
+    run.bombs = spine_bomb_report(snap.bombs, through="boom")
+
+    for name, controller, max_frames in level2_to_boom_stages():
+        obs, stage = run_controller_stage(
+            env,
+            run.obs,
+            name=name,
+            controller=controller,
+            max_frames=max_frames,
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+            frame_base=run.end_frame,
+        )
+        run.obs = obs
+        run.stages.append(stage)
+        run.end_frame = stage.end_frame
+        if not stage.success:
+            run.success = False
+            run.failed_stage = name
+            end = read_snapshot(env.get_ram())
+            run.bombs = spine_bomb_report(
+                run.l2_entry.get("bombs") if run.l2_entry else None,
+                through="boom",
+                bombs_out=end.bombs,
+            )
+            return run
+
+    snap = read_snapshot(env.get_ram())
+    run.success = level2_through_success(snap)
+    if not run.success:
+        run.failed_stage = "magic_boomerang"
+    run.bombs = spine_bomb_report(
+        run.l2_entry.get("bombs") if run.l2_entry else None,
+        through="boom",
+        bombs_out=snap.bombs,
+    )
     return run
