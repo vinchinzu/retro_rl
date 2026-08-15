@@ -103,3 +103,67 @@ def test_level3_dungeon_enemy_types_come_from_dungeon_ids() -> None:
     assert INVULN_MOVER_0X2B is ids.INVULN_MOVER_OBJECT_TYPE
     assert eng.KEESE_OBJECT_TYPE is ids.KEESE_OBJECT_TYPE
     assert eng.GORIYA_OBJECT_TYPE is ids.GORIYA_OBJECT_TYPE
+
+
+def test_level4_dungeon_enemy_types_come_from_dungeon_ids() -> None:
+    from zelda_i import dungeon_ids as ids
+    from zelda_i.level4_dungeon import (
+        GEL_OBJECT_TYPE,
+        GLEEOK_OBJECT_TYPE,
+        LIKE_LIKE_OBJECT_TYPE,
+        VIRE_OBJECT_TYPE,
+        ZOL_OBJECT_TYPE,
+    )
+
+    assert VIRE_OBJECT_TYPE is ids.VIRE_OBJECT_TYPE
+    assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
+    assert GEL_OBJECT_TYPE is ids.GEL_OBJECT_TYPE
+    assert LIKE_LIKE_OBJECT_TYPE is ids.LIKE_LIKE_OBJECT_TYPE
+    assert GLEEOK_OBJECT_TYPE is ids.GLEEOK_OBJECT_TYPE
+
+
+def test_level4_dungeon_reexports_path_controllers() -> None:
+    import zelda_i.level4_dungeon as l4d
+    import zelda_i.level4_path as l4p
+
+    assert "make_entry_up_controller" not in l4d.__dict__
+    assert l4d.make_entry_up_controller is l4p.make_entry_up_controller
+    ctl = l4d.make_entry_up_controller()
+    assert isinstance(ctl, l4p.Level4EntryUpController)
+
+
+def test_level5_dungeon_enemy_types_come_from_dungeon_ids() -> None:
+    from zelda_i import dungeon_ids as ids
+    from zelda_i.level5_dungeon import (
+        BUBBLE_OBJECT_TYPE,
+        GIBDO_OBJECT_TYPE,
+        POLS_VOICE_OBJECT_TYPE,
+        ZOL_OBJECT_TYPE,
+    )
+
+    assert GIBDO_OBJECT_TYPE is ids.GIBDO_OBJECT_TYPE
+    assert POLS_VOICE_OBJECT_TYPE is ids.POLS_VOICE_OBJECT_TYPE
+    assert BUBBLE_OBJECT_TYPE is ids.BUBBLE_OBJECT_TYPE
+    assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
+
+
+def test_level4_boss_combat_gleeok_types_come_from_dungeon_ids() -> None:
+    from zelda_i import dungeon_ids as ids
+    from zelda_i.level4_boss_combat import (
+        GLEEOK_FIREBALL_TYPE,
+        GLEEOK_HEAD_OBJECT_TYPE,
+        GLEEOK_OBJECT_TYPE,
+    )
+
+    assert GLEEOK_OBJECT_TYPE is ids.GLEEOK_OBJECT_TYPE
+    assert GLEEOK_HEAD_OBJECT_TYPE is ids.GLEEOK_HEAD_OBJECT_TYPE
+    assert GLEEOK_FIREBALL_TYPE is ids.MANHANDLA_PROJECTILE_TYPE
+
+
+def test_dungeon_ids_has_l4_l5_enemy_types() -> None:
+    from zelda_i import dungeon_ids as ids
+
+    assert ids.LIKE_LIKE_OBJECT_TYPE == 0x17
+    assert ids.POLS_VOICE_OBJECT_TYPE == 0x16
+    assert ids.GIBDO_OBJECT_TYPE == 0x30
+    assert ids.BUBBLE_OBJECT_TYPE == 0x40

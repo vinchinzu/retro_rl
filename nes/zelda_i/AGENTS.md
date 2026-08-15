@@ -35,7 +35,8 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
-| `level*_path.py`, `level*_boss_*` | Path controllers + timing knobs |
+| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` | L4 path controllers (dungeon is specs only) |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |

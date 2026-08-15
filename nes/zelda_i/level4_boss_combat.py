@@ -35,8 +35,8 @@ from zelda_i.dungeon_ops import (
     idle,
     room_fields,
 )
+from zelda_i import dungeon_ids as _ids
 from zelda_i.level4_dungeon import (
-    GLEEOK_OBJECT_TYPE,
     LEVEL4,
     ROOM_L4_GLEEOK_13,
 )
@@ -48,9 +48,11 @@ from zelda_i.ram import (
     read_u8,
 )
 
+# Canonical IDs from dungeon_ids (HYGIENE rule 5). Keep local aliases.
+GLEEOK_OBJECT_TYPE = _ids.GLEEOK_OBJECT_TYPE
 # Live companion head type during Gleeok fight (rr-rvae 2026-08-10).
-GLEEOK_HEAD_OBJECT_TYPE = 0x46
-GLEEOK_FIREBALL_TYPE = 0x56  # dodge when close; ignore for clear
+GLEEOK_HEAD_OBJECT_TYPE = _ids.GLEEOK_HEAD_OBJECT_TYPE
+GLEEOK_FIREBALL_TYPE = _ids.MANHANDLA_PROJECTILE_TYPE  # dodge when close; ignore for clear
 ROOM_L4_TRIFORCE = 0x03  # north of boss 0x13 after clear
 
 # Clean-safe south stand (rr-vdnc): dy=22 UP+A dual-green from GleeokEnter.

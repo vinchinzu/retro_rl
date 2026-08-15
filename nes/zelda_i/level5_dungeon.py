@@ -89,6 +89,7 @@ from zelda_i.dungeon import (
     inventory_reward_success,
     register_room_spec,
 )
+from zelda_i import dungeon_ids as _ids
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 LEVEL_5 = 5
@@ -114,15 +115,15 @@ ROOM_L5_WEST_25 = 0x25
 ROOM_L5_WEST_24 = 0x24
 
 # Type 0x30 — Gibdo-correlated (HP=112 at spawn; TYPE_AND_HP liveness).
-GIBDO_OBJECT_TYPE = 0x30
+GIBDO_OBJECT_TYPE = _ids.GIBDO_OBJECT_TYPE
 # Type 0x16 — Pols Voice (HP=160; sword works with backstep; key 0x19).
-POLS_VOICE_OBJECT_TYPE = 0x16
+POLS_VOICE_OBJECT_TYPE = _ids.POLS_VOICE_OBJECT_TYPE
 # Type 0x40 — Bubble (HP=240; sword does not reduce HP; invincible residual).
-BUBBLE_OBJECT_TYPE = 0x40
+BUBBLE_OBJECT_TYPE = _ids.BUBBLE_OBJECT_TYPE
 # Type 0x4e — non-combat residual on 0x67 (hp0; trap/fire-correlated).
 ROOM_67_TRAP_TYPE = 0x4E
 # Type 0x13 — Zol (same id as L3 west-key room); seen on 0x55.
-ZOL_OBJECT_TYPE = 0x13
+ZOL_OBJECT_TYPE = _ids.ZOL_OBJECT_TYPE
 
 ROOM_ITEM_SMALL_KEY = 0x19
 # Live room-item id 0x03 = no inventory reward (same as L4 ROOM_ITEM_NONE).
