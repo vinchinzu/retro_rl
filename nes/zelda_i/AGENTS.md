@@ -86,6 +86,6 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. Claimed leaf `rr-4d53.2.1`
-(live `0x7d` → Magical Boomerang). L9 / hygiene / isolated L4 are parked.
+(`run_survival_spine.py`); no seamed compose. Next leaf `rr-4d53.2.3`
+(Boom → Dodongo → TF `0x02`). L9 / hygiene / isolated L4 are parked.
 Do not start a room unless that is the claimed bead.
