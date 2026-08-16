@@ -23,6 +23,7 @@ from zelda_i.level2_spine import (
     ROOM_6E_SPINE_SPEC,
     ROOM_7E_SPINE_SPEC,
     _REVERSE_ALCOVE,
+    level2_boom_success,
     level2_through_success,
     level2_to_boom_stages,
 )
@@ -53,6 +54,7 @@ def _snap(
     bombs: int = 0,
     boom: int = 0,
     mode: int = PLAY_MODE,
+    triforce: int = 0x01,
 ):
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = mode
@@ -63,7 +65,7 @@ def _snap(
     ram[ADDR_KEYS] = keys
     ram[ADDR_BOMBS] = bombs
     ram[ADDR_MAGIC_BOOMERANG] = boom
-    ram[ADDR_TRIFORCE] = 0x01
+    ram[ADDR_TRIFORCE] = triforce
     ram[ADDR_HEALTH] = 0x2F
     return read_snapshot(ram)
 
@@ -231,6 +233,8 @@ def test_enter_6f_isolated_band_wall_vert_push() -> None:
     assert act.reason == "north_door_y"
 
 
-def test_through_success_is_boom_inventory() -> None:
-    assert not level2_through_success(_snap(room=0x7D, boom=0))
-    assert level2_through_success(_snap(room=0x4F, boom=1))
+def test_through_success_is_triforce_bit() -> None:
+    assert not level2_through_success(_snap(room=0x4F, boom=1))
+    assert level2_boom_success(_snap(room=0x4F, boom=1))
+    assert not level2_boom_success(_snap(room=0x7D, boom=0))
+    assert level2_through_success(_snap(room=0x0D, boom=1, triforce=0x03))

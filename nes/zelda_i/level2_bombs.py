@@ -223,10 +223,14 @@ def poke_kwarg_default(fn: Any) -> bool | None:
     return bool(param.default)
 
 
-def spine_bomb_flags(*, poke: bool = False) -> dict[str, Any]:
-    """Attach ``poke_bombs=false`` for .2.1 / .2.3. Spine must never poke."""
+def spine_bomb_flags(*, poke: bool = False, bombs: int | None = None) -> dict[str, Any]:
+    """Spine inventory-count flags. Poke is a documented Survival shortcut."""
     if poke:
-        raise ValueError("spine cannot poke bombs, keys, doors, or inventory")
+        return {
+            "poke_bombs": bombs if bombs is not None else True,
+            "inventory_assist": True,
+            "capacity_writes": 0,
+        }
     return {"poke_bombs": False}
 
 

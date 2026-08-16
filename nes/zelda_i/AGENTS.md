@@ -86,6 +86,7 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. Next leaf `rr-4d53.2.3`
-(Boom → Dodongo → TF `0x02`). L9 / hygiene / isolated L4 are parked.
+(`run_survival_spine.py`); no seamed compose. Next leaf `rr-4d53.3`
+(L2 exit → L3 TF). L2 TF `0x02` is on the tape with documented bomb/key
+count pokes (not Clean). L9 / hygiene / isolated L4 are parked.
 Do not start a room unless that is the claimed bead.
