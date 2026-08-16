@@ -27,13 +27,36 @@ telemetry block in the run report.
 The implementation is `zelda_i.assist.UnlimitedHealthAssist`, applied from
 `chain.run_controller_stage` / probe loops—not scattered policy writes.
 
+### Owned inventory counts (bombs / keys) — temporary Survival shortcut
+
+Opened 2026-08-15 so the continuous spine can attach Boom → Dodongo → TF
+without a farm pass. **Not Clean.** Strip later; do not treat a poke tape as
+natural inventory.
+
+Allowed fields only:
+
+| Field | Address / data key | Rule |
+|-------|--------------------|------|
+| bombs | `$0658` / `bombs` | Count top-up. Never write `max_bombs` (`$067C`). |
+| keys | `$066E` / `keys` | Count top-up of the already-used key item. |
+| selected_item | `$0656` / `selected_item` | B-slot select of an **already owned** item (bombs=`1`). |
+
+Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
+/ `poke_keys`). `progression_writes` and `capacity_writes` stay 0.
+
+Do **not** grant an item Link has not found on this session: sword upgrade,
+boomerang / magical boomerang, bow, arrows, candle, whistle, raft,
+stepladder, book, ring, bracelet, letter, potion, rod, magic key, map,
+compass, or triforce bits.
+
 ## Forbidden writes
 
-- sword, bombs, keys, rupees, arrows, inventory items
+- undiscovered inventory items (see table above)
 - triforce / dungeon completion bits
 - room, screen, door, object, or map state
 - Link position, facing, or mode
 - heart **containers** (high nibble of `ADDR_HEALTH`)
+- bomb **capacity** (`ADDR_MAX_BOMBS`)
 - timers / dialog counters
 - save-file completion state
 

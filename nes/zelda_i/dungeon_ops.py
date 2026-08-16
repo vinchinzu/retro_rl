@@ -4,8 +4,9 @@ Pure-ish ops used by thin scripts and library path controllers (goto, door
 exit, bomb stand, patrol clear). Prefer ``DoorDir`` bits from
 ``zelda_i.door_graph`` over redefining door masks.
 
-``poke_bombs`` is RECON-only inventory mutation — durable runners must leave it
-opt-in (default off) and document any poke in the trial report.
+``poke_bombs`` / ``poke_keys`` are Survival inventory-count writes (owned
+bombs/keys only). Document every call in the trial report. Never write
+undiscovered items or ``max_bombs``. Not Clean.
 """
 
 from __future__ import annotations
@@ -36,6 +37,8 @@ from zelda_i.dungeon_ids import (
     room_item_name,
 )
 from zelda_i.ram import (
+    ADDR_BOMBS,
+    ADDR_KEYS,
     ADDR_RAFT,
     ADDR_SELECTED_ITEM,
     ADDR_TRIFORCE,
@@ -290,15 +293,98 @@ def ensure_bomb(env: Any) -> str:
 
 
 def poke_bombs(env: Any, n: int = 16) -> str:
-    """RECON-ONLY inventory poke. Document in report — not Clean.
+    """Top up bomb **count** (``$0658``). Not Clean. Never writes ``max_bombs``.
 
-    Durable runners must keep this opt-in (default off).
+    Survival spine / recon only. Document in the trial report.
     """
     try:
         env.unwrapped.data.set_value("bombs", int(n) & 0xFF)
         return f"bombs={n}"
     except Exception as exc:
         return f"poke_fail={exc!r}"
+
+
+def poke_keys(env: Any, n: int = 4) -> str:
+    """Top up key **count** (``$066E``). Not Clean. Does not grant a new item.
+
+    Survival spine / recon only. Document in the trial report.
+    """
+    try:
+        env.unwrapped.data.set_value("keys", int(n) & 0xFF)
+        return f"keys={n}"
+    except Exception as exc:
+        return f"poke_fail={exc!r}"
+
+
+# Fields this helper may write. Anything else is an undiscovered-item grant.
+OWNED_INVENTORY_FIELDS: frozenset[str] = frozenset(
+    {"bombs", "keys", "selected_item"}
+)
+
+
+def apply_owned_inventory(
+    env: Any,
+    *,
+    bombs: int | None = None,
+    keys: int | None = None,
+    select_bomb: bool = True,
+) -> dict[str, Any]:
+    """Documented Survival top-up of bombs/keys + B-slot select.
+
+    Writes only ``OWNED_INVENTORY_FIELDS``. Does not grant boom, sword,
+    raft, candle, triforce, or bomb capacity.
+    """
+    snap = read_snapshot(env.get_ram())
+    writes: list[dict[str, Any]] = []
+    notes: list[str] = []
+    if bombs is not None and int(snap.bombs) < int(bombs):
+        msg = poke_bombs(env, int(bombs))
+        writes.append(
+            {
+                "field": "bombs",
+                "address": ADDR_BOMBS,
+                "from": int(snap.bombs),
+                "to": int(bombs),
+                "msg": msg,
+            }
+        )
+        notes.append(msg)
+    if keys is not None and int(snap.keys) < int(keys):
+        msg = poke_keys(env, int(keys))
+        writes.append(
+            {
+                "field": "keys",
+                "address": ADDR_KEYS,
+                "from": int(snap.keys),
+                "to": int(keys),
+                "msg": msg,
+            }
+        )
+        notes.append(msg)
+    if select_bomb:
+        msg = ensure_bomb(env)
+        writes.append(
+            {
+                "field": "selected_item",
+                "address": ADDR_SELECTED_ITEM,
+                "to": B_ITEM_BOMB,
+                "msg": msg,
+                "owned_only": True,
+            }
+        )
+        notes.append(msg)
+    unknown = [w["field"] for w in writes if w["field"] not in OWNED_INVENTORY_FIELDS]
+    if unknown:
+        raise ValueError(f"refusing undiscovered inventory write: {unknown}")
+    return {
+        "writes": writes,
+        "notes": notes,
+        "poke_bombs": bombs,
+        "poke_keys": keys,
+        "select_bomb": select_bomb,
+        "progression_writes": 0,
+        "capacity_writes": 0,
+    }
 
 
 def exit_door(
@@ -604,6 +690,7 @@ __all__ = [
     "SETTLE_FRAMES",
     "TRIFORCE_BIT_L3",
     "bomb_stand",
+    "apply_owned_inventory",
     "ensure_bomb",
     "exit_door",
     "fight_clear",
@@ -611,7 +698,9 @@ __all__ = [
     "idle",
     "live_killables",
     "objs",
+    "OWNED_INVENTORY_FIELDS",
     "poke_bombs",
+    "poke_keys",
     "push_dir",
     "room_fields",
 ]

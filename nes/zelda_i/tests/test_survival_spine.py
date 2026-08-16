@@ -9,7 +9,8 @@ import numpy as np
 from zelda_i.level1_dungeon import ROOM_45_SPEC, ROOM_45_SURVIVAL_SPEC
 from zelda_i.level1_finish import level1_triforce_stages
 from zelda_i.level2_overworld import OverworldToLevel2Controller, PostTriforceSettleController
-from zelda_i.level2_spine import level2_through_success
+from zelda_i.level2_spine import level2_boom_success, level2_through_success
+from zelda_i.level2_tf_spine import level2_tf_stages
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_HEALTH,
@@ -38,7 +39,14 @@ def test_spine_through_is_continuous_only() -> None:
     assert SPINE_THROUGH == ("level1", "level2")
 
 
-def _l2_snap(*, room: int = 0x7D, boom: int = 0, bombs: int = 0, keys: int = 0):
+def _l2_snap(
+    *,
+    room: int = 0x7D,
+    boom: int = 0,
+    bombs: int = 0,
+    keys: int = 0,
+    triforce: int = 0x01,
+):
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = PLAY_MODE
     ram[ADDR_LEVEL] = 2
@@ -48,16 +56,34 @@ def _l2_snap(*, room: int = 0x7D, boom: int = 0, bombs: int = 0, keys: int = 0):
     ram[ADDR_KEYS] = keys
     ram[ADDR_BOMBS] = bombs
     ram[ADDR_MAGIC_BOOMERANG] = boom
-    ram[ADDR_TRIFORCE] = 0x01
+    ram[ADDR_TRIFORCE] = triforce
     ram[ADDR_HEALTH] = 0x2F
     return read_snapshot(ram)
 
 
-def test_through_level2_requires_magic_boomerang() -> None:
-    """through=level2 is boom owned, not merely Moon entry 0x7d."""
-    assert not level2_through_success(_l2_snap(room=0x7D, boom=0))
-    assert level2_through_success(_l2_snap(room=0x4F, boom=1))
-    assert level2_through_success(_l2_snap(room=0x7D, boom=1))
+def test_through_level2_requires_triforce_bit() -> None:
+    """through=level2 is TF 0x02, not merely boom or Moon entry."""
+    assert not level2_through_success(_l2_snap(room=0x4F, boom=1, triforce=0x01))
+    assert not level2_boom_success(_l2_snap(room=0x4F, boom=0))
+    assert level2_boom_success(_l2_snap(room=0x4F, boom=1))
+    assert level2_through_success(_l2_snap(room=0x0D, boom=1, triforce=0x03))
+
+
+def test_level2_tf_stages_follow_isolated_boss_path() -> None:
+    names = [name for name, _, _ in level2_tf_stages()]
+    assert names == [
+        "bomb_north_4f",
+        "clear3f",
+        "enter_3e",
+        "clear3e",
+        "enter_2e",
+        "clear2e",
+        "enter_1e",
+        "clear1e",
+        "bomb_north_1e",
+        "fight_dodongo",
+        "collect_tf",
+    ]
 
 
 def test_spine_report_includes_l2_entry_bomb_plan() -> None:
@@ -65,13 +91,21 @@ def test_spine_report_includes_l2_entry_bomb_plan() -> None:
     run.l2_entry = spine_final_fields(_l2_snap(bombs=4, keys=0))
     from zelda_i.level2_bombs import spine_bomb_report
 
-    run.bombs = spine_bomb_report(4, through="boom", bombs_out=1)
+    run.bombs = spine_bomb_report(4, through="tf", bombs_out=1)
+    run.inventory_assist = {
+        "poke_bombs": 16,
+        "poke_keys": 2,
+        "writes": [{"field": "bombs", "from": 2, "to": 16}],
+        "progression_writes": 0,
+        "capacity_writes": 0,
+    }
     report = run.report()
-    assert report["poke_bombs"] is False
+    assert report["poke_bombs"] == 16
+    assert report["poke_keys"] == 2
+    assert report["inventory_assist"]["poke_bombs"] == 16
     assert report["l2_entry"]["bombs"] == 4
     assert report["bombs"]["bombs_in"] == 4
     assert report["bombs"]["bombs_out"] == 1
-    assert report["bombs"]["poke_bombs"] is False
     assert report["bombs"]["action"] == "farm"
 
 

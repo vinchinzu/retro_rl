@@ -141,15 +141,13 @@ def test_natural_plan_carry_at_eight() -> None:
     assert plan.report()["poke_bombs"] is False
 
 
-def test_spine_flags_never_poke() -> None:
+def test_spine_flags_document_optional_poke() -> None:
     flags = spine_bomb_flags()
     assert flags == {"poke_bombs": False}
-    try:
-        spine_bomb_flags(poke=True)
-    except ValueError as exc:
-        assert "cannot poke" in str(exc)
-    else:
-        raise AssertionError("spine_bomb_flags(poke=True) must raise")
+    poked = spine_bomb_flags(poke=True, bombs=16)
+    assert poked["poke_bombs"] == 16
+    assert poked["inventory_assist"] is True
+    assert poked["capacity_writes"] == 0
 
     report = spine_bomb_report(0, through="tf", bombs_out=0)
     assert report["poke_bombs"] is False

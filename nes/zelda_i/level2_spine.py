@@ -104,9 +104,14 @@ class Level2NavPhase(Enum):
     FAILED = auto()
 
 
-def level2_through_success(snap: ZeldaSnapshot) -> bool:
-    """``through=level2`` stop: Magical Boomerang owned, not merely Moon 0x7d."""
+def level2_boom_success(snap: ZeldaSnapshot) -> bool:
+    """Magical Boomerang owned (mid-dungeon gate before the TF suffix)."""
     return int(snap.magical_boomerang) != 0
+
+
+def level2_through_success(snap: ZeldaSnapshot) -> bool:
+    """``through=level2`` stop: Moon triforce shard 0x02, not merely boom."""
+    return (int(snap.triforce) & 0x02) != 0
 
 
 def _in_mid_room(snap: ZeldaSnapshot) -> bool:
@@ -564,6 +569,7 @@ __all__ = [
     "Level2WestEnter6eController",
     "ROOM_6E_SPINE_SPEC",
     "ROOM_7E_SPINE_SPEC",
+    "level2_boom_success",
     "level2_through_success",
     "level2_to_boom_stages",
 ]

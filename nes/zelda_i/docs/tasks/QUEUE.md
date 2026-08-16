@@ -32,13 +32,13 @@ sword kiting once geometry is known.
 ### Architecture (agent monitor)
 
 ```
-tip spine:  rr-4d53.2.1 live 0x7d → Boom (run_survival_spine --through level2)
+tip spine:  rr-4d53.3 L2 exit → L3 TF (run_survival_spine --through level2 is TF 0x02)
 parked:     L9 (rr-yxy6); hygiene rr-ekwl; isolated L4 rr-q3n
-queued:     .2.2 bombs → .2.3 TF → .3 L3 → .6 L4 → .7 L5 → .4 compose
+queued:     .3 L3 → .6 L4 → .7 L5 → .4 compose
 process:    one session until fail → --infinite-life full clear → heatmap Clean
 ```
 
-Claim one tip leaf: `bd update rr-4d53.2.1 --status in_progress`.
+Claim one tip leaf: `bd update rr-4d53.3 --status in_progress`.
 
 ### All-night wave results (2026-08-06 night)
 
@@ -89,14 +89,14 @@ Door traps burned:
 ## Next beads (tip + ready)
 
 ```bash
-bd ready -l zelda_i   # tip: rr-4d53.2.1 live 0x7d → Boom
+bd ready -l zelda_i   # tip: rr-4d53.3 L2 exit → L3 TF
 ```
 
 | Bead | Role | Start / notes |
 |------|------|---------------|
-| **`rr-4d53.2.1`** | **TIP** live L2 `0x7d` → Boom | `run_survival_spine.py --through level2` |
-| **`rr-4d53.2.2` / `.2.3`** | next L2 | natural bombs, then Dodongo TF |
-| **`rr-4d53.3` / `.6` / `.7` / `.4`** | later spine | L3 then L4 then L5 then one-session compose |
+| **`rr-4d53.2.3`** | **closed** Boom → TF `0x02` | `run_survival_spine.py --through level2` |
+| **`rr-4d53.3` / `.3.1`** | **TIP** L2 exit → L3 | `0x6b` dest + Raft suffix |
+| **`rr-4d53.6` / `.7` / `.4`** | later spine | L4 then L5 then one-session compose |
 | **`rr-ekwl` / `rr-yxy6`** | parked | hygiene / L9; do not claim |
 | **`rr-38p` ZOW.1** | parallel free | white sword + candle + bomb bag |
 | Later | `rr-d6v` L6 TF, `rr-4oz` Clean residual, `rr-yhr` bracelet/mag sword | after assist tip |

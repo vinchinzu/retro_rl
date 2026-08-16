@@ -143,7 +143,10 @@ def make_post_boom_bomb_north_controller() -> BombWallController:
     )
 
 
-def make_bomb_north_1e_controller() -> BombWallController:
+def make_bomb_north_1e_controller(
+    *,
+    approach_waypoints: tuple[tuple[int, int], ...] | None = None,
+) -> BombWallController:
     """0x1e cleared Goriya → bomb north → Dodongo 0x0e."""
     return BombWallController(
         wall=BOMB_WALL_1E_NORTH,
@@ -154,7 +157,9 @@ def make_bomb_north_1e_controller() -> BombWallController:
         south_band_max_frames=80,
         south_center_max_frames=200,
         stand_tol=12,
-        approach_waypoints=(
+        approach_waypoints=approach_waypoints
+        if approach_waypoints is not None
+        else (
             (96, 189),
             (176, 189),
             (176, 93),
