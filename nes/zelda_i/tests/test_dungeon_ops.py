@@ -10,7 +10,10 @@ from zelda_i.dungeon_ops import (
     B_ITEM_BOMB,
     B_ITEM_BOMBS,
     B_ITEM_CANDLE,
+    OWNED_INVENTORY_FIELDS,
     ensure_bomb,
+    poke_bombs,
+    poke_keys,
 )
 from zelda_i.level2_puzzles import B_ITEM_BOMB_PROBE
 from zelda_i.level9_ganon import B_ITEM_ARROWS as L9_ARROWS
@@ -58,3 +61,23 @@ def test_ensure_bomb_falls_back_to_set_byte() -> None:
     mem = _SetByteMem()
     assert ensure_bomb(_env_with_mem(mem)) == "selected_item=bomb"
     assert mem.calls == [(ADDR_SELECTED_ITEM, B_ITEM_BOMB)]
+
+
+def test_owned_inventory_fields_are_counts_and_b_slot() -> None:
+    assert OWNED_INVENTORY_FIELDS == frozenset({"bombs", "keys", "selected_item"})
+    assert "magical_boomerang" not in OWNED_INVENTORY_FIELDS
+    assert "triforce" not in OWNED_INVENTORY_FIELDS
+    assert "max_bombs" not in OWNED_INVENTORY_FIELDS
+
+
+def test_poke_bombs_and_keys_use_data_set_value() -> None:
+    values: dict[str, int] = {}
+
+    class _Data:
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(unwrapped=SimpleNamespace(data=_Data()))
+    assert poke_bombs(env, 16) == "bombs=16"
+    assert poke_keys(env, 2) == "keys=2"
+    assert values == {"bombs": 16, "keys": 2}

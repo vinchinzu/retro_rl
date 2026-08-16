@@ -203,10 +203,8 @@ class Level2PostBossTfController:
         if self.frames >= self.max_frames:
             return self._fail("timeout")
 
-        tf = LEVEL2_TF_BIT if tf_value is None else int(tf_value)
-        # When caller passes real tf_value, check bit; when None, rely on
-        # mode 18 / external stop (controller is pure-geometry otherwise).
-        if tf_value is not None and triforce_bit_02(tf):
+        tf = int(snap.triforce) if tf_value is None else int(tf_value)
+        if triforce_bit_02(tf):
             self.success = True
             self._set_phase(PostBossTfPhase.DONE, "tf_got")
             return FrameAction(nes_idle_action(), "done")

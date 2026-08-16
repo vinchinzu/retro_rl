@@ -21,8 +21,8 @@ Do not overwrite Clean M5. Seamed compose is gone (`rr-cont`). L9 backward
 recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
 **parked**.
 
-Beads: **`rr-4d53`** epic. Next leaf **`rr-4d53.2.3`** (Boom → Dodongo →
-TF `0x02`). Do not start a room unless that is the claimed bead.
+Beads: **`rr-4d53`** epic. Next leaf **`rr-4d53.3`** (L2 exit → L3 TF).
+Do not start a room unless that is the claimed bead.
 
 Full spine (do not claim ahead of the tip):
 
@@ -31,8 +31,8 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.1` | power-on → L1 TF → L2 `0x7d` | **closed** |
 | `rr-4d53.2.1` | live `0x7d` → Boom `0x4f` | **closed** — 1/1 Survival, boom owned |
 | `rr-4d53.2.2` | natural bombs (no `--poke-bombs`) | **closed**; L2 entry bombs=4 |
-| `rr-4d53.2.3` | Boom → Dodongo → TF `0x02` | **tip** |
-| `rr-4d53.3` / `.3.1` / `.3.2` | L2 exit → L3 TF (`0x6b` dest + no poke-16) | blocked on `.2` |
+| `rr-4d53.2.3` | Boom → Dodongo → TF `0x02` | **closed** — 1/1 Survival; documented bomb/key top-up |
+| `rr-4d53.3` / `.3.1` / `.3.2` | L2 exit → L3 TF (`0x6b` dest + no poke-16) | **tip** |
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | blocked on `.3` |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
@@ -45,29 +45,30 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trial
 
 Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_session=true`;
 `boot_frames` near 200–565; `boot_policy.file_slot=1`; `progression_writes=0`;
-`capacity_writes=0`; `triforce & 0x01`; **`ADDR_MAGIC_BOOMERANG != 0`** (not merely
-Moon `0x7d`); `final.bombs` + `final.keys` recorded. Default Clean paths stay
+`capacity_writes=0`; **`triforce & 0x02`** in room `0x0d` (not merely boom).
+`inventory_assist` lists bomb/key count pokes. Default Clean paths stay
 untouched. `--no-video` skips the encode. `--through level1` stops after shard 1.
 
-Last continuous spine trial (`--through level2 --no-video --tag survival_spine_l2_boom_v14`):
-**`ok=true`**, `ADDR_MAGIC_BOOMERANG != 0` in room `0x4f`, boot=199, L2 entry
-bombs=4 keys=0, final bombs=2 keys=1, 44551f, deaths 0, poke_bombs=false,
-progression/capacity writes 0. `enter_6f_key` uses the live north-corridor
-path (RIGHT to x≥208, DOWN to door y) after 0x7e LEFT → 0x7d reverse-alcove
-→ 0x6d RIGHT west entry. 0x5f bomb-N skips gel-clear (clear patrol parks
-mid-diamond). Evidence: `recordings/survival_spine.json` /
-`survival_spine_l2_boom_v14.json`.
+Last continuous spine trial (`--through level2 --tag survival_spine`):
+**`ok=true`**, `triforce & 0x02` in room `0x0d` (mode 18, (128, 149)),
+boot=199, L2 entry bombs=4 keys=0, final bombs=10 keys=2, 50529f, deaths 0,
+progression/capacity writes 0. **Documented Survival inventory:** bombs
+2→16 and keys 1→2 after boom, plus B-slot select (owned bombs only). Not
+Clean. TF is WEST of Dodongo. 0x3e/0x2e use a side-aisle north; 0x2e stops
+on the UP door bit; 0x1e bomb-N approaches (120, 93) then the stand.
+Evidence: `recordings/survival_spine.json` / `.mp4` /
+`survival_spine_l2_tf_v10.json`.
 
-Next: attach `level2_tf_stages()` after boom (`rr-4d53.2.3`). TF is WEST of
-Dodongo (`0x0d`). Do not `--poke-bombs`; farm after 0x4f/0x3e if bombs <
-Dodongo budget. Isolated `Level2Boom` tape still used `--poke-bombs`.
+Next: attach L2-exit OW hops + L3 interior (`rr-4d53.3` / `.3.1`). L3
+`0x6b` dest library exists; isolated L3 Raft suffix still uses poke-16.
 
 L2-exit → L3 OW hops are 2/2 assisted from `Level2ExitOverworld`
 (`run_l2_to_l3.py`). L3 interior dest `0x6b` north (`rr-4d53.3.1`) waits
 until L2 TF is on this tape.
 
-Do not `--poke-bombs` on a route claim. Isolated `Level2Boom` tape still used
-`--poke-bombs`.
+Bomb/key **count** pokes are a documented Survival shortcut
+(`docs/ASSIST_CONTRACT.md`). Do not grant undiscovered items or write
+`max_bombs`. Not a Clean claim.
 
 ## Parked L7/L8 boundary (2026-08-14)
 
@@ -154,8 +155,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Next milestones
 
-1. **Survival spine** — `rr-4d53.2.1` boom closed. Next `rr-4d53.2.3`
-   Boom→TF, then L3 (`0x6b` dest), then `.6` L4 and `.7` L5, then `.4`
+1. **Survival spine** — `rr-4d53.2.3` Boom→TF closed (documented bomb/key
+   top-up). Next L3 (`0x6b` dest), then `.6` L4 and `.7` L5, then `.4`
    one-session L5 TF. L6–L9 stay out of this pass.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.
@@ -165,9 +166,9 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Bottleneck
 
-**L2 Boom → Dodongo → TF `0x02`** (`rr-4d53.2.3`) is the watchable tip.
-Power-on → Magical Boomerang is closed. Then L3 `0x6b` north hunt
-(`rr-4d53.3.1`). L9 dest walk is parked.
+**L2 exit → L3 TF** (`rr-4d53.3`) is the watchable tip. Power-on → L2
+TF `0x02` is closed (bomb/key count poke documented). Then L3 `0x6b`
+north hunt (`rr-4d53.3.1`). L9 dest walk is parked.
 
 ## Video / watchability (2026-08-06)
 
