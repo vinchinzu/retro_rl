@@ -57,8 +57,8 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 remains valid history.
 
 ★ Next: K5 Alpha PB pure stack (`rr-dbu.8`) / post-Ice KPDR; optional ice demo
-video. Compose residual: [`tasks/rr-kxge-residual.md`](tasks/rr-kxge-residual.md)
-(**CLOSED** dual continuous). Work: `bd ready -l super_metroid`.
+video. Compose residual **CLOSED** (dual continuous) — see
+[`plan.md`](plan.md). Work: `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
 

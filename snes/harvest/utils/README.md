@@ -12,7 +12,7 @@ Development and debugging utilities. These are not required for normal bot opera
 - `record_l2_house_wife_bed.sh` - Canonical recorder wrapper for tracing House L2, talking to wife, then going to bed
 - `extract_recording_walkable_tiles.py` - Extract observed player tiles and A-press windows from a task trace
 - `merge_tasks.py` - Merge multiple task recordings into one
-- `check_map.py`, `map_dump.py`, `map_analyzer.py`, `map_visualizer.py` - Map data exploration
+- `check_map.py`, `map_analyzer.py`, `map_visualizer.py` - Map data exploration
 
 ## Example
 

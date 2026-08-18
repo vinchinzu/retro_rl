@@ -23,7 +23,7 @@ and continuous promote. Executors take **one bead per session**.
 | Speed Booster (K4.5) | previous tip | **130,388f** ×2 Spazer dual (prefix) |
 | Spazer warehouse dual | prefix green | **89,416 + 90,904f** beams `0x1004` |
 | Clean bombs/Torizo | secondary GREEN | **49,321f** ×2 — [CLEAN_TRACK.md](../CLEAN_TRACK.md) |
-| ★ Product next | Dual continuous **`--to ice`** (Business floor climb) | `rr-kxge` · residual `rr-kxge-residual.md` |
+| ★ Product next | Dual continuous **`--to ice`** (Business floor climb) | `rr-kxge` · [`STATUS.md`](../STATUS.md) |
 | Pure Ice stack | Outbound dual GREEN through PLM | `rr-dbu.11` **CLOSED** · residual `rr-dbu.11-residual.md` |
 | Wave→Business pure | 7/7 dual GREEN | `rr-vqv3` **CLOSED** |
 | Tape | Full Speed→Wave→Ice→Moat human | `rr-dbu.12` **GREEN** 39,711f |

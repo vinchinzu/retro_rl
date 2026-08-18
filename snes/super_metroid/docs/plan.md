@@ -46,7 +46,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | Dual continuous `--to ice` (Business floor→Super climb) | `rr-kxge` · residual `tasks/rr-kxge-residual.md` |
+| **★ Product next** | Dual continuous `--to ice` (Business floor→Super climb) | `rr-kxge` · [`STATUS.md`](STATUS.md) |
 | Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
 | Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
