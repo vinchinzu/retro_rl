@@ -45,17 +45,21 @@ Harvest is a **strong planning trunk with a collapsing hot-path implementation**
 | `harvest/planner/day_plan_orchestrator.py` | **584** | `MultiDayPlannerTask` → `multi_day_planner.py` |
 | `harvest/planner/day_phase_catalog.py` | **654** | + `day_phase_{berry,chicken,cow}` |
 | `harvest/tasks/town_day1_handoff.py` | **139** | + `town_day1_tasks` / `town_day1_build` |
-| `harvest/planner/tasks/multi_nav.py` | **~941** | Soft solids / lift_throw / fail-closed seal |
+| `harvest/planner/tasks/multi_nav.py` | **1054** | **OVER** ~1000 bar; soft solids / lift_throw / fail-closed seal |
 | `harvest/planner/tasks/navigation.py` | **~453** | NavTask + recorded transitions; MultNav re-export |
 | `harvest/runtime/rom_tools.py` | **389** | Facade; `rom_model` / `rom_parse` / `save_state_io` / `map_render` |
 | `harvest/tools/editor_app.py` | **610** | + `editor_canvas` / `editor_panels` / `editor_farm_twin` |
 | `harvest/scripts/town_day1_recon.py` | **213** | + `town_day1_recon_{lib,cmds}` |
-| `harvest/tasks/farm_clearer.py` | **955** | under bar; nav in `nav.py` |
+| `harvest/tasks/farm_clearer.py` | **999** | under bar; nav in `nav.py` |
 | `harvest/runtime/play_session.py` | **997** | under bar (headroom tight) |
+| `harvest/planner/day_plan_phases.py` | **998** | under bar (headroom tight) |
 
-**2026-08-11 structure pass:** all production **and test** modules previously
+**2026-08-11 structure pass:** ~~all production **and test** modules previously
 ≥1000 LOC extracted under soft max. Largest remaining ~997
-(`play_session.py`). Full suite green after extract (~1233 unittest cases).
+(`play_session.py`).~~ **2026-08-18 `wc -l`:** `multi_nav.py` is **1054**
+(over the ~1000 bar). Nearby files: `farm_clearer.py` 999,
+`day_plan_phases.py` 998, `play_session.py` 997. Full suite was green after
+the 2026-08-11 extract (~1233 unittest cases).
 
 **Rule (AGENTS + PLANNING_STACK):** soft max **~1000 LOC / file**. Do not grow
 monofile thrash arms; land residuals as modules or data rules. MultNav travel

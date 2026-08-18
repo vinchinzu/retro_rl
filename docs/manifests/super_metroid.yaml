@@ -14,11 +14,11 @@ transfer_value: very_high
 ending_definition: verified ending/credits after escape
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: snes/super_metroid/recordings/start_to_supers.json
-best_video: snes/super_metroid/recordings/start_to_supers.mp4
+best_manifest: snes/super_metroid/recordings/ice.json
+best_video: null
 assist_contract: snes/super_metroid/docs/ASSIST_CONTRACT.md
 status_doc: snes/super_metroid/docs/STATUS.md
 plan_doc: snes/super_metroid/docs/plan.md
-last_verified: 2026-07-28
-blocker: Super → farming → Big Pink main continuous; pure PB sill approach + maze bridges; then path board hops
-notes: Continuous power-on → Spore Super Missiles verified (M5); not yet ending.
+last_verified: 2026-08-10
+blocker: Ice Beam tip 148,167f ×2; next K5 Alpha PB / post-Ice KPDR
+notes: Continuous power-on → Ice Beam collect 148,167f ×2 (M5); next K5 Alpha PB / post-Ice KPDR. Not yet ending.

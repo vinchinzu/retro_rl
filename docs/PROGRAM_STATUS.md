@@ -1,6 +1,6 @@
 # Program Status
 
-Last updated: 2026-08-06.
+Last updated: 2026-08-18.
 
 Live facts only. Stable rules live in [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md).
 Multi-horizon strategy lives in [ROADMAP.md](ROADMAP.md). Solver layer stack
@@ -20,7 +20,7 @@ cleaner runtime classes.
 |------|-------|--------|----------|
 | TMNT IV | Continuous hard-mode power-on → staff/cast credits in **00:57:19.635** | Bronze / Resource-assisted + Protection-assisted · M8 (4,667 damage; 0 life losses; Stage1 heal=none segment clear) | [dry manifest](../snes/tmnt_iv/recordings/tmnt_iv_full_hard_dry_run.json), [prior video](../snes/tmnt_iv/recordings/tmnt_iv_full_hard_credits.mp4), [Stage1 probes](../snes/tmnt_iv/recordings/stage1_clean_track/stage1_probes.json) |
 | Great Waldo Search | Continuous power-on → five-scrolls ending | Bronze / Clean · M8 | [video](../snes/great_waldo_search/recordings/great_waldo_search_full_credits.mp4) |
-| Super Metroid | Continuous power-on → **Varia Suit** (KPDR K3 tip integrity GREEN 2026-08-01; best published ~101,954f / multi-run 104,382f); post-Varia reverse pure + K4 scaffolds; dual-track room farm Wave-10 closed | Bronze / Resource-assisted · M5 | [manifest](../snes/super_metroid/recordings/start_to_varia.json), [STATUS](../snes/super_metroid/docs/STATUS.md), [plan](../snes/super_metroid/docs/plan.md), [assist contract](../snes/super_metroid/docs/ASSIST_CONTRACT.md) |
+| Super Metroid | Continuous power-on → **Ice Beam** collect (**148,167f** ×2, 2026-08-10; room `0xA890`, beams `0x1007`, items `0x3105`); previous prefixes Wave 136,361f, Speed 130,388f, Varia 101,954 best | Bronze / Resource-assisted · M5 | [STATUS](../snes/super_metroid/docs/STATUS.md) (durable source; machine reports `recordings/ice.json` + `ice_dual.json` are gitignored), [plan](../snes/super_metroid/docs/plan.md), [assist contract](../snes/super_metroid/docs/ASSIST_CONTRACT.md) |
 | Metroid (NES) | Continuous power-on → Maru Mari (Morph Ball); isolated Level1→morph also clear | Bronze / Clean · M5 | [natural](../nes/metroid/recordings/morph_ball_natural.json), [isolated](../nes/metroid/recordings/morph_ball_isolated.json) |
 | SMZ3 | Portal settle → Link's House chest (seed 1337); seed-abstract multi-seed clear **not yet claimed** | Bronze / missile assist on red door · M2→M3 | [STATUS](../snes/smz3/docs/STATUS.md), [plan](../snes/smz3/docs/plan.md) |
 
@@ -38,7 +38,7 @@ clears exist today; seed-robust S/T claims do not yet.
    SolverSession slice, EntryStateCorpus, held-out BC candidate, and fixture
    multi-seed early tip S/T dry-run (ship→morph, 3/3 claimable); shuffled-seed
    live S/T remains open. ALTTP-rando remains at its boot/graph rung.
-3. **Super Metroid** (M5) — Varia tip green; pure reverse + continuous K4 toward ending
+3. **Super Metroid** (M5) — Ice Beam tip green; post-Ice K5 Alpha PB / KPDR toward ending
 4. **ALTTP / Zelda 3** (M1) — open beyond title→castle; dungeon/item capability edges
 5. **SMZ3** (M2→M3) — longer one-bot segments; multi-seed after single-game patterns
 6. **Final Fight** (M3) — generalize the TMNT combat stack toward a continuous clear
@@ -57,12 +57,12 @@ Battle Clash remains `blocked: infrastructure` (no Super Scope injection).
 | Solver | S/T harness + SeedCampaignRunner landed; first consumer sm_rando early tip dry-run; next alttp_rando / SMZ3 multi-seed |
 | sm_rando | Fixture multi-seed ship→morph S/T dry-run published; live/patched generator next |
 | alttp_rando | M1 seed ROM boot; bind house→uncle; `play --vanilla` for opening practice |
-| Super Metroid | Pure reverse post-Varia → Business; continuous K4; dual-track room farm |
+| Super Metroid | Post-Ice K5 Alpha PB (`rr-dbu.8`) / KPDR |
 | ALTTP | Sword/uncle and early dungeon/overworld skills with capability edges |
 | SMZ3 | Longer one-bot SM or Z3 segment + video; multi-seed after single-game rungs |
 | Final Fight | Natural-entry hardening + Stage 3 continuity → chain toward continuous dry-run |
 | Magical Quest / Joe & Mac | First reliable room/segment clears with natural entry |
-| NES | Zelda I Level 2 route; SMB / MM2 / Glass Joe skill work |
+| NES | Zelda I Survival spine (`rr-4d53`); SMB / MM2 / Glass Joe skill work |
 | Hygiene | Regenerate matrix + update local `STATUS.md` after every verified advance |
 | Assists | Explicit `ASSIST_CONTRACT.md` before any assisted published result |
 
@@ -108,7 +108,7 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 | **Single-game rando** | SM-rando M1 vertical slice + held-out BC candidate; ALTTP-rando M1 | Seed ROM integration and S/T early tips |
 | Linear combat | Final Fight M3→M4 | Natural-entry and Stage 3 continuity |
 | Platforming | Magical Quest / Joe & Mac M2→M3 | First room/segment clears |
-| Graph navigation | Super Metroid M5→M6; ALTTP M1; Zelda I M5 | SM: post-Varia pure/K4; ALTTP: beyond opening; Zelda: Level 2 |
+| Graph navigation | Super Metroid M5→M6; ALTTP M1; Zelda I M5 | SM: post-Ice K5 Alpha PB / KPDR; ALTTP: beyond opening; Zelda: Survival spine (`rr-4d53`) |
 | Randomizer proof | SMZ3 M2→M3 | Prefer single-game S/T first; then multi-seed SMZ3 |
 | Continuous control | F-Zero / Pilotwings M2→M3 | First lap / lesson objective |
 | NES top-10 | M1→M3+ | TMNT II M3 + Zelda I M5 + SMB M8 done; remaining skill work |

@@ -51,7 +51,7 @@ Manifest count: **38**.
 | `snes/alttp` / The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | active | M1 | bronze | clean | no | opening route only to castle grounds; sword/uncle segments next |
 | `nes/metroid` / Metroid | metroidvania_navigation, graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | morph return + (5,14) door for first missiles; then bombs |
 | `snes/smz3` / SMZ3 (Super Metroid + ALttP Combined Randomizer) | metroidvania_navigation, top_down_navigation | P4 | scaffolded | M2 | bronze | clean | no | map portal → settled Z3 Link; longer one-bot segment + video; dual-bot race later |
-| `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Super → farming → Big Pink main continuous; pure PB sill approach + maze bridges; then path board hops |
+| `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Ice Beam tip 148,167f ×2; next K5 Alpha PB / post-Ice KPDR |
 | `nes/zelda_i` / The Legend of Zelda | graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | walk 0x4A → Level 2 door 0x3C (overworld health) |
 | `nes/zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
 | `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | Gate B continuous (rr-5in): power-on → Summer D1 + income; tip return_home late-spring timeout (rr-ws8h) + ship-verify residual; crop_planter mono ~4.9k arch tax (rr-ds3)  |
