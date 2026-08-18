@@ -7,7 +7,8 @@ Source-only hex stays labeled until a probe writes `LevelNEntrance.state`.
 
 Primary planning source: [DUNGEON_WALKTHROUGHS.md](research/DUNGEON_WALKTHROUGHS.md).  
 RAM inventory: [ram_map.md](ram_map.md) / `zelda_i.ram`.  
-Wave brief: [tasks/PARALLEL_RECON.md](tasks/PARALLEL_RECON.md).
+Recon table below is the live door map; dungeon geometry lives in
+`LEVEL*_ROUTE.md`.
 
 ---
 

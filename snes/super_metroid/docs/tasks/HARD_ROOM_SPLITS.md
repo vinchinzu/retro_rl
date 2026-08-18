@@ -144,10 +144,10 @@ bubble_lower() → bubble_run_mid(start=launch) → bubble_top_super_door()
 
 Phases A–E green; pure R19 + continuous tip **122,304f** → Bat Cave. Technique
 ref (maintenance only): [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md). Card
-stack deleted after promote. ★ Next serial pure: Bat → Speed Hall ([`QUEUE.md`](QUEUE.md)).
+stack deleted after promote. Next serial: `bd ready -l super_metroid`.
 
 ## See also
 
-- PROCESS pure-first / residual schema: [`PROCESS.md`](PROCESS.md)
-- Live queue: [`QUEUE.md`](QUEUE.md)
+- Pure-first: `AGENTS.md`
+- Live work: `bd ready -l super_metroid`
 - Source catalog: [`../SOURCE_STATES.md`](../SOURCE_STATES.md)

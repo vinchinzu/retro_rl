@@ -51,11 +51,9 @@ Bronze (read-only RAM). Natural pizza pickup is not an assist.
 Clean is a **parallel** privilege-reduction workstream; it does not replace
 this assisted contract or the primary M8 continuous hard clear.
 
-Rules, artifact isolation (`*_clean` stems), tickets, and the full Clean
-ladder: [`CLEAN_TRACK.md`](CLEAN_TRACK.md). Play lessons:
-[`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md). Live queue:
-[`tasks/QUEUE.md`](tasks/QUEUE.md). ★ Product tip ticket:
-[`tasks/T4-CLEAN-FULL.md`](tasks/T4-CLEAN-FULL.md).
+Artifact isolation: Clean runs use `*_clean` stems and must never
+overwrite assisted `tmnt_iv_full_hard_*` baselines. Play lessons:
+[CLEAN_PLAYBOOK.md](CLEAN_PLAYBOOK.md). Ready work: `bd ready -l tmnt_iv`.
 
 Hard constraints:
 

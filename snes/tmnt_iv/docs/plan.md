@@ -1,13 +1,15 @@
 # Plan — TMNT IV: Turtles in Time
 
-Ladder #3 (tier 1). See
-`docs/GAME_SELECTION_NOTES.md` for program context.
+Verified facts: [STATUS.md](STATUS.md). Play lessons:
+[CLEAN_PLAYBOOK.md](CLEAN_PLAYBOOK.md). Assist:
+[ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Tracker: `bd ready -l tmnt_iv`.
 
-**Clean lessons (do not relearn):** [`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md).  
-**Clean dual-track process:** [`CLEAN_TRACK.md`](CLEAN_TRACK.md).  
-**Tickets:** [`tasks/QUEUE.md`](tasks/QUEUE.md) ·
-[`tasks/TRIAGE.md`](tasks/TRIAGE.md) · [`tasks/BACKLOG.md`](tasks/BACKLOG.md).  
-★ Full Clean continuous: [`tasks/T4-CLEAN-FULL.md`](tasks/T4-CLEAN-FULL.md).
+**Doc consolidation (2026-08-18):** deleted the second ticket board
+(`docs/tasks/` — QUEUE / TRIAGE / BACKLOG / PROCESS / CLEAN_LADDER /
+~50 T4-CLEAN and T4-ASSIST cards and residuals) plus `TASK_TEMPLATE.md`
+and `CLEAN_TRACK.md`. Kept STATUS, plan, ASSIST_CONTRACT, CLEAN_PLAYBOOK,
+ram_map, BASELINE_METRICS, and Slash lab notes. In-flight Clean work
+lives here and in beads — do not recreate a QUEUE.
 
 ## Control style
 
@@ -45,23 +47,24 @@ complete; remaining work is **Clean** (zero assists).
 Emergency HP (≤16→80) and form-2 iframe hold are the only production
 assists. Clean means both at **0**, pizza + play only.
 
-Ticketed ladder (infra first, then stages, then ★ full run):
+Stage order (infra first, then stages, then ★ full run):
 
-| Pri | Ticket | Action | Exit criteria |
-|-----|--------|--------|---------------|
-| 0 | `T4-CLEAN-CONTRACT`…`INTEGRITY` | Dual-path docs + `*_clean` paths + `--clean` CLI + zero-assist asserts | Infra green; assisted defaults intact |
-| 1 | `T4-CLEAN-S2` | Alleycat early/mid; Metalhead already Clean | Multi-entry 0 e-heals, 0 lives lost |
-| 2 | `T4-CLEAN-S3` | LiveHard Sewer; residual 0x1C spikes; Rat King | Multi-entry 0 e-heals, 0 lives lost |
-| 3 | `T4-CLEAN-S4` | Technodrome duo + tank | Suite green |
-| 4 | `T4-CLEAN-S5` | Slash spin **52**; no blind spin-40 | Suite green |
-| 5 | `T4-CLEAN-S6` | Skull; **never** global pizza seek | Suite green |
-| 6 | `T4-CLEAN-S7` | Wounded Knee Raph cadence | Suite green |
-| 7 | `T4-CLEAN-S8` | Neon near-band Mode-7 | Suite green |
-| 8 | `T4-CLEAN-S9` | Form-2 dodge **without** iframe write | iframe frames → 0 |
-| 9 | **`T4-CLEAN-FULL`** ★ | Power-on hard dry-run, both assists off | Bronze / Clean publish |
+| Pri | Work | Exit criteria |
+|-----|------|---------------|
+| 0 | Clean infra (`*_clean` stems, `--clean` CLI, zero-assist asserts) | **Done** — assisted defaults intact |
+| 1 | Alleycat Clean (BOSS+LATE done; REACH → CKPT → BRIDGE → suite) | Multi-entry 0 e-heals, 0 lives lost |
+| 2 | LiveHard Sewer; residual 0x1C spikes; Rat King | Multi-entry 0 e-heals, 0 lives lost |
+| 3 | Technodrome duo + tank | Suite green |
+| 4 | Slash spin **52**; no blind spin-40 | Suite green |
+| 5 | Skull; **never** global pizza seek | Suite green |
+| 6 | Wounded Knee Raph cadence | Suite green |
+| 7 | Neon near-band Mode-7 | Suite green |
+| 8 | Form-2 dodge **without** iframe write | iframe frames → 0 |
+| 9 | Power-on hard dry-run, both assists off | Bronze / Clean publish |
 
-Parallel assisted improve (does not block Clean): `T4-ASSIST-TECHNO` /
-`PREHIST` / `STARBASE` / `WK` / `HEALS` / `IFRAME` → `T4-ASSIST-DRYRUN`.
+Parallel assisted polish (does not block Clean): Technodrome 1,022 /
+Prehistoric 861 / Starbase 749 / Wounded Knee 579, then a planner
+dry-run before BASELINE promote.
 
 ### Non-negotiable process (every stage)
 

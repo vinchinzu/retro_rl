@@ -118,4 +118,4 @@ Do **not** without new pin evidence:
 
 - WJ core lives in `controller_common` (Parlor second consumer); promote
   runway/dash skills when a second non-Bubble room needs them.
-- Next spine work is **Bat → Speed Hall** — see [`QUEUE.md`](QUEUE.md).
+- Next spine work: `bd ready -l super_metroid`.

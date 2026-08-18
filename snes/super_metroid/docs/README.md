@@ -1,9 +1,9 @@
 # Super Metroid docs
 
 **Goal:** continuous power-on → ending/credits with unlimited energy + ammo
-only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Current tip: **Speed Booster**
-(`--to speed`, **130,388f** ×2 integrity green, Spazer mainline). Frog Save is
-a side tip only. ★ Next pure: **Speed return → Bubble** (`rr-g4i`).
+only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Current tip: **Ice Beam**
+(`--to ice`, **148,167f** ×2). ★ Next: K5 Alpha PB (`rr-dbu.8`). Tip
+history: [STATUS.md](STATUS.md).
 
 **Parallel Clean track:** Morph Clean green; ★ next bombs/Torizo Clean
 ([CLEAN_TRACK.md](CLEAN_TRACK.md)).
@@ -24,8 +24,7 @@ continuous fold; 100% board scaffold
 | ⬜ | Open |
 | ⏸ | Parked (not KPDR / post-Speed only) |
 
-Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
-[routes/MILESTONES.csv](routes/MILESTONES.csv).
+Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)**.
 
 | | Milestone | Status | Frames / score |
 |--:|-----------|--------|----------------|
@@ -52,28 +51,20 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 
 | File / dir | Role |
 |------------|------|
-| **[STATUS.md](STATUS.md)** | Verified facts + maturity gate (M5: → Speed) |
-| **[plan.md](plan.md)** | Strategy, triage, risks, M6–M8 + structure plan |
-| **[routes/MILESTONES.md](routes/MILESTONES.md)** | **Top-level milestone status** (every tip / rollup) |
-| **[routes/BACKLOG.csv](routes/BACKLOG.csv)** | **~308 atomic tickets** to full clear |
-| [routes/BACKLOG.md](routes/BACKLOG.md) | Backlog epic summary |
-| [routes/KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) | Per-segment KPDR spine (chartable) |
+| **[STATUS.md](STATUS.md)** | Verified facts + maturity gate (M5: → Ice) |
+| **[plan.md](plan.md)** | Future work + structure plan |
+| **[routes/MILESTONES.md](routes/MILESTONES.md)** | Prefix / tip names |
+| [routes/KPDR_TRACKER.csv](routes/KPDR_TRACKER.csv) | Per-segment KPDR spine (code-owned) |
 | [routes/ROUTE_KPDR.md](routes/ROUTE_KPDR.md) | Authoritative continuous any% KPDR plan |
-| [routes/ROOM_WORK_QUEUE.md](routes/ROOM_WORK_QUEUE.md) | Dual-track practice board (262 problems) |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, Segment contracts, tip recipe, debt |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, Segment contracts, tip recipe |
 | [BOSS_PIPELINE.md](BOSS_PIPELINE.md) | Boss catalog → strategy → continuous order |
 | [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md) | Allowed resource assists (primary path) |
-| **[CLEAN_TRACK.md](CLEAN_TRACK.md)** | Parallel Bronze/Clean tips (no energy/ammo); Bomb Torizo target |
-| **[routes/TRACK_100.md](routes/TRACK_100.md)** | Early Spazer / 100% board (walljump detour → tip → fold) |
-| [routes/TRACK_100.md](routes/TRACK_100.md) | 100% checklist (created by `SM-100-TRACK`) |
+| **[CLEAN_TRACK.md](CLEAN_TRACK.md)** | Parallel Bronze/Clean tips (no energy/ammo) |
+| **[routes/TRACK_100.md](routes/TRACK_100.md)** | Early Spazer / 100% notes |
 | [SOURCE_STATES.md](SOURCE_STATES.md) | Continuous-like pure entry states |
-| [TASK_TEMPLATE.md](TASK_TEMPLATE.md) | OpenCode card format |
-| [tasks/QUEUE.md](tasks/QUEUE.md) | Live wave board + ★ tip |
-| [tasks/PROCESS.md](tasks/PROCESS.md) | Pure-first / stabilize / residual + tangible progress / anti-reward-hack |
-| [tasks/HARD_ROOM_SPLITS.md](tasks/HARD_ROOM_SPLITS.md) | Hard in-room geometry: phase ladder, stagnation @ 3, RECON→IMPL |
-| [research/](research/) | Path board, room catalog, boss RL, legacy |
 | [ram_map.md](ram_map.md) | WRAM addresses |
 | [ROOM_TIMER.md](ROOM_TIMER.md) | Stock room timing |
+| `bd ready -l super_metroid` | Ready / in-flight work |
 
 ## Backlog depth
 
@@ -93,8 +84,8 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)** · CSV
 ## Commands (quick)
 
 ```bash
-# Current continuous tip (DEFAULT_CONTINUOUS_TIP = speed)
-uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video
+# Current continuous tip (default = ice)
+uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
 
 # Side tip (Frog Save — not primary)
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video
