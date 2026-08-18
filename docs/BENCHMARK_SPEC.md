@@ -191,7 +191,7 @@ oracle and labels it separately from the runtime solver.
 
 ### Machine-readable seed report
 
-The shared [`retro_harness.benchmark` seed-report API](../retro_harness/benchmark.py)
+The shared [`retro_harness.benchmark` seed-report API](../retro_harness/benchmark/__init__.py)
 provides a deterministic dry-run adapter for existing `BenchmarkCase` policies.
 `SeedRobustnessConfig` publishes the generator, generator version, logic, goal,
 ordered unique seed IDs (**T**), frame budget, success threshold (**S**), the

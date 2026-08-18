@@ -16,6 +16,7 @@ from retro_harness.identity import (
 from retro_harness.solver import (
     SkillOutcomeStatus,
     SolverActionEvent,
+    SolverResultStatus,
     SolverSessionResult,
 )
 
@@ -313,7 +314,7 @@ def trajectory_from_solver_result(
         for index, event in enumerate(result.actions)
     )
     reason = result.status.value
-    if not result.status.value == "completed" and result.outcomes:
+    if result.status is not SolverResultStatus.COMPLETED and result.outcomes:
         reason = result.outcomes[-1].reason or result.outcomes[-1].status.value
     initial = (
         steps[0].observation_before.get("identity_digest")
@@ -327,7 +328,7 @@ def trajectory_from_solver_result(
         contract_bundle_digest=contract_bundle_digest,
         policy_identity_digest=policy_identity_digest,
         steps=steps,
-        succeeded=result.status.value == "completed",
+        succeeded=result.status is SolverResultStatus.COMPLETED,
         terminal_reason=reason,
         milestones=tuple(outcome.to_record() for outcome in result.outcomes),
         provenance={**dict(provenance), "source": "SolverSession"},

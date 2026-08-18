@@ -11,6 +11,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_DIR = ROOT / "docs" / "manifests"
 
+# Auto-loaded agent context. Soft targets are ~45–60; these ceilings stop
+# the 200+ line encyclopedias from coming back.
+ROOT_AGENTS_MAX_LINES = 70
+GAME_AGENTS_MAX_LINES = 80
+
 # Top-level docs that participate in link checks (not vendored trees).
 DOC_GLOBS = (
     "*.md",
@@ -108,9 +113,14 @@ def _resolve_link(source: Path, target: str) -> Path | None:
     resolved = (source.parent / cleaned).resolve()
     # Probe media under recordings/ is gitignored and machine-local; STATUS
     # cites those paths as evidence labels, not durable schema requirements.
-    if "recordings" in resolved.parts:
+    if _is_local_recording(resolved):
         return None
     return resolved
+
+
+def _is_local_recording(path: Path) -> bool:
+    """True for gitignored ``**/recordings/**`` evidence paths."""
+    return "recordings" in path.parts
 
 
 @pytest.fixture(scope="module")
@@ -260,6 +270,8 @@ def test_manifests_reference_existing_paths(
             if rel in (None, "null"):
                 continue
             path = ROOT / str(rel)
+            if key == "best_manifest" and _is_local_recording(path):
+                continue
             if not path.exists():
                 missing.append(f"{data['game']}.{key}={rel}")
         if str(data.get("maturity")) in {"M7", "M8"}:
@@ -277,6 +289,26 @@ def test_manifests_reference_existing_paths(
             elif not (ROOT / str(assist)).exists():
                 missing.append(f"{data['game']}: missing assist contract file")
     assert not missing, "Manifest path problems:\n" + "\n".join(missing)
+
+
+def test_agents_files_stay_under_hygiene_ceiling() -> None:
+    """AGENTS.md is auto-loaded; keep commands + traps + pointers only."""
+    offenders: list[str] = []
+    root_agents = ROOT / "AGENTS.md"
+    root_lines = len(root_agents.read_text(encoding="utf-8").splitlines())
+    if root_lines > ROOT_AGENTS_MAX_LINES:
+        offenders.append(f"AGENTS.md: {root_lines} > {ROOT_AGENTS_MAX_LINES}")
+    for path in sorted(ROOT.glob("*/AGENTS.md")) + sorted(
+        ROOT.glob("*/*/AGENTS.md")
+    ):
+        lines = len(path.read_text(encoding="utf-8").splitlines())
+        if lines > GAME_AGENTS_MAX_LINES:
+            offenders.append(
+                f"{path.relative_to(ROOT)}: {lines} > {GAME_AGENTS_MAX_LINES}"
+            )
+    assert not offenders, "AGENTS.md over hygiene ceiling:\n" + "\n".join(
+        offenders
+    )
 
 
 def test_game_matrix_is_generated() -> None:
