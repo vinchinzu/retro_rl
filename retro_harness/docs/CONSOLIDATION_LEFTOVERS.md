@@ -40,7 +40,7 @@ Live architecture: [TOOLSET.md](TOOLSET.md). Hygiene board: [docs/REPO_HYGIENE.m
 | Item | Status |
 |------|--------|
 | Nested package roots without game-slug literals | **done** — `repo.discover_nested_package_roots()` layout scan; conftest uses `ensure_import_paths`; pyproject pythonpath is only `.`/`snes`/`nes` |
-| Slim harvest + hals_golf `AGENTS.md` | **done** — commands/traps/pointers; facts → STATUS |
+| Slim harvest + hals_golf `AGENTS.md` | **corrected 2026-08-18** — harvest was still 128 (stale “done”); now 41 commands/traps/pointers. hals was already 56 |
 | hals_golf `docs/STATUS.md` | **done** — gate, menu flow, RAM table, acceptance |
 | `get_route` name collision | **done** — `get_platformer_route` / `get_named_route` primary; `get_route` alias |
 | Probe PNG gitignore | **done** — `**/probe*.png`, debug_frames, SM/tmnt/FF probe globs |
@@ -50,7 +50,7 @@ Live architecture: [TOOLSET.md](TOOLSET.md). Hygiene board: [docs/REPO_HYGIENE.m
 
 | Item | Status |
 |------|--------|
-| Slim remaining fat AGENTS | **done** — tmnt_iv, zelda_i, MK, MKII, smb, alttp, smz3 (~40–55 lines) |
+| Slim remaining fat AGENTS | **corrected 2026-08-18** — smb was 145, zelda_i was 90 (stale “~40–55”); now smb 42, zelda_i 59. tmnt_iv/MK/MKII/alttp/smz3 were already 41–50 |
 | MK / MKII `docs/STATUS.md` | **done** — results + RAM moved out of AGENTS |
 | Shared `clean_artifact_stem` / recording paths | **done** — `retro_harness.artifacts`; SM/TMNT re-export |
 | Shared `game_paths` layout | **done** — `retro_harness.game_layout`; migrated FF/Waldo/MQ/Rival/Pilotwings/F-Zero/SDD/TMNT |

@@ -51,10 +51,10 @@ Agents auto-load hierarchical `AGENTS.md`. Every extra section costs tokens on
 
 | Priority | Path | Target | Status |
 |---------:|------|--------|--------|
-| 1 | `snes/super_metroid/AGENTS.md` | ~50–60 lines (commands + traps) | **done** (~58 lines) |
-| 2a | `snes/harvest/AGENTS.md`, `snes/hals_golf/AGENTS.md` | ~50 each | **done** |
-| 2b | Fat game AGENTS (`tmnt_iv`, `zelda_i`, MK, MKII, `smb`, `alttp`, `smz3`) | ~50 each | **done** |
-| 3 | Root AGENTS further trim | ~45–60 | **done** (~59 lines; beads → `docs/BEADS.md`) |
+| 1 | `snes/super_metroid/AGENTS.md` | ~50–60 lines (commands + traps) | **done** (52) |
+| 2a | `snes/harvest/AGENTS.md`, `snes/hals_golf/AGENTS.md` | ~50 each | harvest **done** (41); hals **done** (56) |
+| 2b | Fat game AGENTS (`tmnt_iv`, `zelda_i`, MK, MKII, `smb`, `alttp`, `smz3`) | ~50 each | smb **done** (42); zelda_i **done** (59); others already 41–50 (`tmnt_iv` 50, `alttp` 47, `smz3` 42, MK 42, MKII 41) |
+| 3 | Root AGENTS further trim | ~45–60 | **done** (59; beads → `docs/BEADS.md`) |
 
 ## Engineering backlog (not docs)
 
