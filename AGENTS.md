@@ -57,3 +57,33 @@ Start with `bd ready`; claim one issue; `bd sync` + commit
 2. Run narrowest tests for files you changed
 3. `bd sync` and commit code + `.beads/issues.jsonl` together
 4. Push only if requested; hand off with `bd ready` + one-line next action
+
+## Cursor Cloud specific instructions
+
+Env is prepared by the startup update script (`./setup.sh` + `uv sync
+--all-extras`); `uv` is preinstalled. Run everything through `uv run`.
+
+- **Headless Qt is required.** `PySide6` (pulled in by `retro_harness.editor`)
+  has no display, so export `QT_QPA_PLATFORM=offscreen` for any command that
+  imports it — this includes the bare core gate `uv run pytest`, which collects
+  `retro_harness/tests/test_editor.py`. Without it you get
+  `ImportError: libEGL.so.1` / xcb platform errors. A harmless
+  `pipewire-0.3` warning from Qt multimedia can be ignored.
+- **No emulator ROMs in cloud.** Anything that boots `stable-retro` (game
+  `selftest`, `./play`, `-m rom`/`rom_smoke`, most `snes/super_metroid` route
+  tests) needs legally-supplied ROMs under gitignored `roms/` and will raise
+  `No romfiles found`. The non-ROM tiers still exercise real planning, route-
+  graph, RAM-map, replay, and PPO-wrapper logic. For a ROM-free smoke of core
+  solver logic, use the `retro_harness.adventure` planner (e.g.
+  `inventory_aware_path`).
+- **Expected fresh-clone failures (data, not env):** `tests/test_docs.py`
+  manifest/link checks and many `snes/super_metroid` tests fail because they
+  read gitignored artifacts — `**/recordings/`, `*human*` route data under
+  `**/routes/**/data/`, `**/models/`, and the separately-cloned vendor tree
+  `snes/super_metroid/refs/sm-json-data/`. Everything else passes.
+- **Test tiers** are in `docs/TEST_TIERS.md` / `README.md`; prepend
+  `QT_QPA_PLATFORM=offscreen` to each. The all-game tier has collection errors
+  from the missing `*human*` data above; add `--continue-on-collection-errors`
+  to run the rest.
+- **No linter is configured** (no ruff/flake8/mypy). Closest smoke check is
+  `uv run python -m compileall retro_harness tests`.
