@@ -7,7 +7,7 @@ refill, no ammo refill**, zero resource writes. Orthogonal to the primary
 Benchmark labels: [BENCHMARK_SPEC.md](../../../docs/BENCHMARK_SPEC.md).
 Assisted contract (primary path): [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
 Milestone board: [routes/MILESTONES.md](routes/MILESTONES.md) · Clean section.
-Backlog epic: `CLEAN` in [routes/BACKLOG.csv](routes/BACKLOG.csv).
+Clean work: `bd ready -l super_metroid` (do not demote assisted greens).
 
 ## Why this exists now
 
@@ -149,7 +149,7 @@ affected prefix before claiming either track green.
 | `SM-CLEAN-BT-ECONOMY` | Done — clean kite + hybrid; dual 49,321f |
 | `SM-CLEAN-STAB` / `SM-CLEAN-STATUS` | Dual already green; STATUS secondary promote |
 
-Queue: [tasks/QUEUE.md](tasks/QUEUE.md).
+Ready work: `bd ready -l super_metroid`.
 
 ## Non-goals (for now)
 

@@ -9,7 +9,7 @@ Ranks isolated practice: teleport in, clear, promote. Bosses and large/tough
 rooms stay at the bottom so percent-complete grows from the easy class first.
 
 **Product next-work (continuous tip) is not owned here.** That lives in
-``docs/STATUS.md`` + ``docs/tasks/QUEUE.md`` (+ KPDR tracker). This board is
+``docs/STATUS.md`` + beads ``bd ready -l super_metroid`` (+ KPDR tracker). This board is
 dual-track metrics only.
 """
 
@@ -297,7 +297,7 @@ def build_work_queue(
             "topology hops, not separate practice harness entries. This board "
             "is dual-track practice metrics only — not continuous evidence and "
             "not the product work queue. Product next-work: docs/STATUS.md + "
-            "docs/tasks/QUEUE.md. Continuous segment board: KPDR_TRACKER."
+            "`bd ready -l super_metroid`. Continuous segment board: KPDR_TRACKER."
         ),
         "summary": summary,
         "queuePolicy": (catalog.get("queuePolicy") or []),
@@ -374,7 +374,7 @@ def _summarize(
             "nextOpenEasyProblemIds": [r["problemId"] for r in open_easy],
             "productNextWork": (
                 "Continuous tip order is owned by docs/STATUS.md and "
-                "docs/tasks/QUEUE.md — not this practice board."
+                "beads (`bd ready -l super_metroid`) — not this practice board."
             ),
         },
         "catalogSummary": dict(catalog_summary or {}),
@@ -435,7 +435,7 @@ def work_queue_to_markdown(payload: Mapping[str, Any]) -> str:
         "",
         "Isolated room-clear practice board (teleport → policy → promote).",
         "**Not continuous-run evidence** and **not** the product work queue.",
-        "Product next-work: `docs/STATUS.md` + `docs/tasks/QUEUE.md`.",
+        "Product next-work: `docs/STATUS.md` + `bd ready -l super_metroid`.",
         "Source catalog: `maps/room_problems.json`.",
         "",
         "Regenerate:",
