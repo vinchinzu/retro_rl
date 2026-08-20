@@ -2,7 +2,7 @@
 
 Isolated room-clear practice board (teleport → policy → promote).
 **Not continuous-run evidence** and **not** the product work queue.
-Product next-work: `docs/STATUS.md` + `docs/tasks/QUEUE.md`.
+Product next-work: `docs/STATUS.md` + `bd ready -l super_metroid`.
 Source catalog: `maps/room_problems.json`.
 
 Regenerate:
@@ -13,7 +13,7 @@ uv run python snes/super_metroid/scripts/export/room_work_queue.py
 
 ## Units
 
-Ranked units are the 262 canonical room problems (one per room). The full graph has 583 directed edges; those are topology hops, not separate practice harness entries. This board is dual-track practice metrics only — not continuous evidence and not the product work queue. Product next-work: docs/STATUS.md + docs/tasks/QUEUE.md. Continuous segment board: KPDR_TRACKER.
+Ranked units are the 262 canonical room problems (one per room). The full graph has 583 directed edges; those are topology hops, not separate practice harness entries. This board is dual-track practice metrics only — not continuous evidence and not the product work queue. Product next-work: docs/STATUS.md + `bd ready -l super_metroid`. Continuous segment board: KPDR_TRACKER.
 
 ## Percent complete (practice harness only)
 

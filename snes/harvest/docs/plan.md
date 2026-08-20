@@ -1,10 +1,14 @@
 # Plan — Harvest Moon (SNES)
 
 Future work only. Proven facts live in [STATUS.md](STATUS.md).
-Gate board: [MILESTONES.md](MILESTONES.md).
-Structure debt: [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
 Structure / API direction: [PLANNING_STACK.md](PLANNING_STACK.md).
-Layer ownership: [bot_architecture_plan.md](bot_architecture_plan.md).
+Tracker: `bd ready -l harvest`.
+
+**Doc consolidation (2026-08-18):** deleted `CODE_QUALITY_REVIEW.md`
+(review essay), `bot_architecture_plan.md` (layer ownership folded here
+and in PLANNING_STACK), and `MILESTONES.md` (gate table folded below).
+Kept STATUS, plan, PLANNING_STACK, INTERACT, ram_map, and recon notes.
+Ready work stays in beads — do not recreate a gate board.
 
 ## Bottleneck
 
@@ -27,8 +31,20 @@ clear/hoe/plant (`rr-20w.1`).
 **Architecture tax on the tip path:** keep monofiles under ~1000 LOC (AGENTS).
 `MultiMapNavTask` extracted to `multi_nav.py` (was `navigation.py` 1.3k mono).
 Further MultNav residuals (forage interact, corridor densify) land as helpers,
-not thrash `if`s in the MultNav step machine. Details:
-[CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
+not thrash `if`s in the MultNav step machine. Layer ownership: RAM catalog
+and tile/map model stay in `core` / `maps`; domain tasks compose
+`tasks/skills.py` instead of growing monofile FSMs.
+
+## Gate table (from retired MILESTONES.md)
+
+| Gate | Status | Beads |
+|------|--------|-------|
+| M3 calendar | Met (calendar-only) | historical soak |
+| Gate A economy | Closed (Day09 $1260→$3180) | `rr-y8n` |
+| Empty-can natural | Mostly closed | `rr-3q27` |
+| Gate B continuous | Open (21 ovn partial) | `rr-5in` / `rr-20w` |
+| Gate C calendar richness | Open | `rr-1vc` |
+| M4 natural summer | Open after Gate B | `rr-hheu` |
 
 **Farm-bush residual (P3, not D2):** that legacy `SHIP_BERRY` route still
 leaves `shipping_money=0` (debris field north of the bush seals the interact).

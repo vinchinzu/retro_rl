@@ -6,7 +6,8 @@ the task graph legible and composable for human and agent-assisted rewrites.
 
 Facts and gates: [STATUS.md](STATUS.md). Future work: [plan.md](plan.md).
 Commands and traps: [../AGENTS.md](../AGENTS.md).
-Layer migration history: [bot_architecture_plan.md](bot_architecture_plan.md).
+Layer ownership: RAM catalog + tile/map model in `core` / `maps`;
+domain tasks compose `tasks/skills.py`.
 
 **Last architecture pass:** 2026-08-01 — production `TaskContract`s wired on crop
 / coop / sleep / hot-spring phases; `evaluate_task_contract()` for soft pre-checks;
@@ -34,7 +35,7 @@ DayPlanTask (orchestrator)
 | **Observation** | `WorldSnapshot` + `WorldContext` cache | Prefer batched reads over re-inspecting RAM every sub-step |
 | **Scene / recovery** | `core/scene.py`, `core/recovery.py` | Classifies maps/dialogue/locks/endings; morning stability gate |
 
-**State of the art (see STATUS + MILESTONES, 2026-08-10):** M3 calendar verified;
+**State of the art (see STATUS + plan, 2026-08-10):** M3 calendar verified;
 Gate A economy closed (Day09 multi-day money growth); natural empty-can mostly
 closed; power-on→D2 shed Clean (`rr-bhr`); ship debris residual closed
 (`rr-9xyy`); return_home house short-circuit unit-closed (`rr-ws8h`). Gate B
@@ -45,7 +46,7 @@ navigate extract (mixins: refill/water_ops/establish/navigate + `crop_fsm`
 enums) — line bar met; dual-FSM skill rewrite still optional residual.
 `pond_*` + `crop_geometry` + `home_recover` + inventory split + nav promote
 landed. Skills layer: coop feed/ship nav wired; cow/crop still under-consumed.
-See [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md).
+See [AGENTS.md](../AGENTS.md) structure rule (soft max ~1000 LOC / file).
 
 ## Design principles
 

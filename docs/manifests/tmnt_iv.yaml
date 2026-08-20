@@ -20,14 +20,13 @@ assist_contract: snes/tmnt_iv/docs/ASSIST_CONTRACT.md
 status_doc: snes/tmnt_iv/docs/STATUS.md
 plan_doc: snes/tmnt_iv/docs/plan.md
 last_verified: 2026-07-25
-blocker: Whole-run Bronze/Clean dry-run (ticket T4-CLEAN-FULL; infra + S2–S9 suites first)
+blocker: Whole-run Bronze/Clean dry-run (Alleycat Clean 2/4; S2–S9 suites first)
 notes: >-
   Flagship linear-combat continuous clear (M8). Next publication target is
-  Bronze/Clean unassisted — maturity stays M8. Ticket boards under
-  tmnt_iv/docs/tasks/ (QUEUE/TRIAGE/BACKLOG); Clean track CLEAN_TRACK.md;
-  ★ T4-CLEAN-FULL. Current low-assist dry-run is 00:57:19.635 with 4,667
-  damage and zero life losses; Stage1 Clean suite done; assisted polish
-  via T4-ASSIST-* on Techno/Prehist/Starbase/WK damage buckets.
+  Bronze/Clean unassisted — maturity stays M8. Tracker is beads
+  (`bd ready -l tmnt_iv`); play lessons in CLEAN_PLAYBOOK.md. Current
+  low-assist dry-run is 00:57:19.635 with 4,667 damage and zero life
+  losses; Stage1 Clean suite done; Alleycat Clean BOSS+LATE green.
 setup:
   rom_zip: "Teenage Mutant Ninja Turtles IV - Turtles in Time.zip"
   integration: TMNTIV-Snes

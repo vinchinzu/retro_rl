@@ -143,5 +143,5 @@ deps) — see the note at the bottom of [the logic index](https://maprando.com/l
 
 - Room names: `docs/RUN_TIMING_AND_SKILL_BANK.md`  
 - Skill bank hops: `skill_bank.py`  
-- Process: `docs/tasks/PROCESS.md`  
+- Process: `AGENTS.md` (pure-first)  
 - Library → bank → reactive: beads `rr-nzrg` (skill index `rr-nzrg.4`)

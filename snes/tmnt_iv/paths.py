@@ -17,7 +17,7 @@ RECORDINGS_DIR = _paths.recordings_dir
 ROMS_DIR = _paths.roms_dir
 DOCS_DIR = _paths.docs_dir
 
-# Continuous full-run artifact basenames (see docs/CLEAN_TRACK.md).
+# Continuous full-run artifact basenames (see docs/ASSIST_CONTRACT.md).
 ASSISTED_FULL_RUN_STEM = "tmnt_iv_full_hard_credits"
 ASSISTED_FULL_RUN_DRY_REPORT = "tmnt_iv_full_hard_dry_run.json"
 CLEAN_FULL_RUN_STEM = "tmnt_iv_full_hard_clean"

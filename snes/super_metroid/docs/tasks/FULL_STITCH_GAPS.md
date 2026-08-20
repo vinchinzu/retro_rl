@@ -160,4 +160,4 @@ bd ready -l super_metroid
 
 Detail residuals: `rr-dbu.8-residual.md`, `rr-av5s-residual.md`,
 `rr-7thf.5/6/7-residual.md`. Pipeline: [HUMAN_TAPE_PIPELINE.md](HUMAN_TAPE_PIPELINE.md).
-Process: [PROCESS.md](PROCESS.md).
+Process: `AGENTS.md` (pure-first). Ready work: `bd ready -l super_metroid`.

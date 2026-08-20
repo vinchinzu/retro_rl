@@ -173,7 +173,7 @@ board row
 **Subpixel / door / enemy RNG** are not edited out of tapes. The adapter
 starts from exact live RAM (subpixels, velocity, door kinematics, enemy
 phase) and pulse-searches onto the compiled trajectory. Door bands live in
-`door_kinematics`. Residual: `docs/tasks/rr-4nli-residual.md`.
+`door_kinematics`.
 
 ```bash
 uv run python snes/super_metroid/scripts/tools/build_product_chain_board.py --summary
@@ -305,6 +305,6 @@ bead owns dual-green evidence under game process docs.
 
 - Per-take notes: `SM-POST-MAIN-HALL-HUMAN.md`, `SM-POST-SJ-EXIT-HUMAN.md`,
   `SM-MARIDIA-BOTWOON-HUMAN.md`, `SM-MARIDIA-GRAPPLE-HUMAN.md`
-- Process: [`PROCESS.md`](PROCESS.md)
+- Process: `AGENTS.md` (pure-first)
 - Package: `super_metroid.human_tape` (`anchors` / `hops` / `replay` /
   `midpoints` / `trim`)

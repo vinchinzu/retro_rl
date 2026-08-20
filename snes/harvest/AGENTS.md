@@ -102,9 +102,8 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 
 ## Pointers
 
-[docs/STATUS.md](docs/STATUS.md) · [docs/MILESTONES.md](docs/MILESTONES.md) ·
-[docs/plan.md](docs/plan.md) · [docs/INTERACT.md](docs/INTERACT.md) ·
-[docs/CODE_QUALITY_REVIEW.md](docs/CODE_QUALITY_REVIEW.md) ·
+[docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
+[docs/INTERACT.md](docs/INTERACT.md) ·
 [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md) · [docs/town_day1_recon.md](docs/town_day1_recon.md)
 
 Skills (repo `.grok/skills/`): `harvest-interact` · `harvest-route` · `harvest-shop`
@@ -125,4 +124,4 @@ with residual thrash `if`s — extract a module or data rule first.
 | D1 / ROM / editor | `town_day1_*`, `rom_*` / `save_state_io` / `map_render`, `editor_*` |
 
 Prefer skill composition (`tasks/skills.py`) over new phase machines.
-Gate board: `docs/MILESTONES.md` · structure debt: `docs/CODE_QUALITY_REVIEW.md`.
+Gate board: `docs/plan.md` · `bd ready -l harvest`.

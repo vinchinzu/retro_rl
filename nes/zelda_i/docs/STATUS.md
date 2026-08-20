@@ -284,7 +284,7 @@ heart-starvation before the maze, not a single misaligned hop to tweak.
 | Survival-assisted | `--infinite-life` / `assist.UnlimitedHealthAssist` | first-pass geometry; contract `ASSIST_CONTRACT.md` |
 
 Infinite life is implemented and CLI-wired; **no assisted end-to-end segment
-is STATUS-promoted yet**. Process: `docs/tasks/PROCESS.md`. Work: `bd ready -l zelda_i`.
+is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 

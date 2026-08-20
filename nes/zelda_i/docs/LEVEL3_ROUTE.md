@@ -276,4 +276,4 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
 ## Sources
 
 - [Zelda Dungeon — Level 3: The Manji](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-3-the-manji/)
-- Local: `docs/research/DUNGEON_WALKTHROUGHS.md`, `docs/tasks/PARALLEL_RECON.md`
+- Local: `docs/research/DUNGEON_WALKTHROUGHS.md`

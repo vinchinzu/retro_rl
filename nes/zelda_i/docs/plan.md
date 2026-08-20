@@ -6,7 +6,13 @@ Advance from M5 (Clean power-on → Level 1 Triforce shard 1) toward a verified
 continuous clear of The Legend of Zelda using the shared `retro_harness.adventure`
 route graph.
 
-Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
+Tracker: **`bd ready -l zelda_i`**. Geometry: `LEVEL*_ROUTE.md`.
+
+**Doc consolidation (2026-08-18):** deleted the second ticket board
+(`docs/tasks/` — PROCESS / QUEUE / PARALLEL_RECON / PARALLEL_PURE /
+`agent_runs/`). Kept STATUS, plan, ASSIST_CONTRACT, HYGIENE, ram_map,
+OVERWORLD_DOORS, STITCH_MAP, DUNGEON_LAB, and all `LEVEL*_ROUTE.md`
+geometry notes. Ready work stays in beads.
 
 ## Next pass — Survival spine from power-on (2026-08-14)
 
@@ -151,7 +157,7 @@ Hitbox-gated sword + faster boot landed (not a STATUS promote):
   dialog idle 180f.
 
 Residual room-by-room combat polish only if a clear regresses under hitbox gate.
-See `docs/tasks/QUEUE.md`.
+See `bd ready -l zelda_i`.
 
 ## Notes
 

@@ -123,5 +123,5 @@ clone is pinned locally at
 `d49da689b2620aa1a4223ebf505d4b7791d88662`; update it deliberately when
 regenerating topology. Both generated JSON files are local ROM-derived
 planning artifacts. See
-[the room problem catalog](../docs/research/ROOM_PROBLEM_CATALOG.md) for source
-semantics, teleport commands, queue policy, and the post-Spore route.
+[ROUTE_KPDR.md](../docs/routes/ROUTE_KPDR.md) for the living route and
+[STATUS.md](../docs/STATUS.md) for the verified tip.

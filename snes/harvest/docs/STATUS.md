@@ -9,7 +9,7 @@
 | Last verification | 2026-08-10 (Gate B soak v6: **21 ovn** past prior D23 0x08 hang; sleep outdoor-evening wait; tip **CROP_WATER refill + NAV_CROP freeze**) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Gate board | [MILESTONES.md](MILESTONES.md) · structure debt [CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md) |
+| Gate board | [plan.md](plan.md) · `bd ready -l harvest` |
 
 | Field | Value |
 |-------|-------|
@@ -342,10 +342,8 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 | Frames to money > $100 | Day09 ship soak ~30k frames (harvest+5pm+sleep) | Measure on continuous spring loop |
 | M-gate | M3 | M4 natural-entry summer; M5 domain depth |
 
-Gate board: [MILESTONES.md](MILESTONES.md). Structure debt:
-[CODE_QUALITY_REVIEW.md](CODE_QUALITY_REVIEW.md). Planning-stack direction:
-[PLANNING_STACK.md](PLANNING_STACK.md). Layer ownership:
-[bot_architecture_plan.md](bot_architecture_plan.md). Future work: [plan.md](plan.md).
+Gate board and future work: [plan.md](plan.md). Planning-stack direction:
+[PLANNING_STACK.md](PLANNING_STACK.md). Ready work: `bd ready -l harvest`.
 
 Architecture note (2026-08-01): production `TaskContract`s are declared on
 crop establish/water, harvest, coop, ensure tools, exit/sleep, and hot spring;

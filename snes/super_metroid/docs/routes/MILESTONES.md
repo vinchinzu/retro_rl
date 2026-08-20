@@ -1,6 +1,7 @@
 # Milestones — Super Metroid assisted full clear
 
-Machine source: [`MILESTONES.csv`](MILESTONES.csv) · backlog: [`BACKLOG.csv`](BACKLOG.csv) · spine: [`KPDR_TRACKER.csv`](KPDR_TRACKER.csv).
+Verified tip: [STATUS.md](../STATUS.md). Spine export:
+[`KPDR_TRACKER.csv`](KPDR_TRACKER.csv). Ready work: `bd ready -l super_metroid`.
 
 **Goal:** one continuous power-on → ending/credits run with **only** unlimited energy + ammo ([`ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md)). Target runtime class: **less-than-Bronze** assisted full clear (M8).
 
@@ -102,8 +103,8 @@ Process: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Infra landed — `--clean` uses
 
 ## How to use
 
-1. Pick the ★ tip from this table / `STATUS.md`.
-2. Open the matching **ready** row in `BACKLOG.csv` (or live card under `docs/tasks/`).
+1. Pick the ★ tip from `STATUS.md`.
+2. Claim one bead: `bd ready -l super_metroid`.
 3. Pure → graph → compose → stabilize → STATUS (never skip pure-first).
 4. Dual-track room practice is parallel only — never continuous evidence.
 
