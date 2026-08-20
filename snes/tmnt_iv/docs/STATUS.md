@@ -106,7 +106,6 @@ Next: zero residual 0x1C columns on LiveHard entry so boss entry HP ≥ 70
 Probe: `scripts/probe_stage2_clean.py` (`--suite` / `--state` /
 `--from-stage1-clear`). Evidence dir: `recordings/stage2_clean_track/`.
 
-**Thin rungs** (not one fat suite card): [tasks/CLEAN_LADDER.md](tasks/CLEAN_LADDER.md).
 Pizza-only Clean ≫ emergency-HP assist. Suite-of-record
 `clean_suite.json`: **2/4** (`passed=2`) — BOSS + LATE green; full checkpoint
 + continuous bridge still RED.
@@ -134,8 +133,8 @@ Policy knobs kept for Alleycat Clean work:
   Y-tol=18 + in-range attack lock need PROBE/STAB — do not STATUS as proven.
 
 Bottleneck: post-pizza `0x5E` pack trades on full `Stage2` (24-dmg hits near
-progress ~21k / `player_x≈200+`). Next thin cards: `T4-CLEAN-S2-EDGE` /
-`T4-CLEAN-S2-REACH` → CKPT → BRIDGE → SUITE.
+progress ~21k / `player_x≈200+`). Next: Stage2 REACH metric, then CKPT →
+BRIDGE → suite. Ready work: `bd ready -l tmnt_iv`.
 
 ## Stage 2–3 damage pass (2026-07-25)
 
@@ -425,24 +424,15 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
 
 ## Next
 
-Ticket boards (imported from Super Metroid process learnings):
-
-| Board | Path |
-|-------|------|
-| Live queue | [`tasks/QUEUE.md`](tasks/QUEUE.md) |
-| Critical path | [`tasks/TRIAGE.md`](tasks/TRIAGE.md) |
-| Backlog index | [`tasks/BACKLOG.md`](tasks/BACKLOG.md) |
-| Clean track contract | [`CLEAN_TRACK.md`](CLEAN_TRACK.md) |
-| ★ Clean full continuous | [`tasks/T4-CLEAN-FULL.md`](tasks/T4-CLEAN-FULL.md) |
+Tracker: `bd ready -l tmnt_iv`. Play lessons:
+[CLEAN_PLAYBOOK.md](CLEAN_PLAYBOOK.md).
 
 1. **Clean infra** — done (`--clean` + `*_clean` stems + integrity).
-2. **Clean thin rungs** ([tasks/CLEAN_LADDER.md](tasks/CLEAN_LADDER.md)):
-   Alleycat `S2-EDGE`/`REACH` → `CKPT` → `BRIDGE` → `SUITE`; then Sewer
-   rungs; S4–S8; S9 WAVE+F2 (no iframe); ★ `FULL-ATTEMPT`. Pizza-only ≫
-   assist — never one-card “green whole stage.” Follow
-   [`CLEAN_PLAYBOOK.md`](CLEAN_PLAYBOOK.md).
-3. **Parallel assisted improve:** `T4-ASSIST-TECHNO` PROBE/KNOB (1,022 dmg)
-   → STAB → `T4-ASSIST-DRYRUN` before BASELINE promote.
+2. **Alleycat Clean** — BOSS+LATE done; REACH → CKPT → BRIDGE → suite;
+   then Sewer; S4–S8; S9 form-2 without iframe; then Clean continuous
+   dry-run. Pizza-only ≫ assist — never one-card “green whole stage.”
+3. **Parallel assisted polish:** Technodrome 1,022 dmg first, then a
+   planner dry-run before BASELINE promote.
 4. Publish Bronze / Clean when continuous hard clear has zero HP/iframe
    assists and 0 life losses (STATUS **secondary** until program decision).
 

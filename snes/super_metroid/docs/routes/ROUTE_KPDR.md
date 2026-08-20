@@ -8,7 +8,7 @@ This is the **chosen continuous product route** for assisted full clear.
 Topology door-warps and the older ship-first skip remain development tools only.
 
 Integrity: [ASSIST_CONTRACT.md](../ASSIST_CONTRACT.md). Facts: [STATUS.md](../STATUS.md).
-Plan phases: [plan.md](../plan.md). Room board: [PATH_ROOM_BOARD.md](../research/PATH_ROOM_BOARD.md).
+Plan phases: [plan.md](../plan.md). Verified tip: [STATUS.md](../STATUS.md).
 
 ---
 
@@ -245,7 +245,7 @@ Immediate played-spine queue:
    continuous K1).
 4. Then K5 Alpha PB → K6 ship / Phantoon → … → M8 credits.
 
-**Status board:** [MILESTONES.md](MILESTONES.md) · **Backlog:** [BACKLOG.csv](BACKLOG.csv)  
+**Status board:** [MILESTONES.md](MILESTONES.md) · ready work: `bd ready -l super_metroid`  
 **Tracker (chartable):** [KPDR_TRACKER.csv](KPDR_TRACKER.csv) ·
 [KPDR_TRACKER.md](KPDR_TRACKER.md) · `maps/kpdr_tracker.json`  
 Export: `uv run python snes/super_metroid/scripts/export/kpdr_tracker.py`
@@ -290,8 +290,7 @@ When watching a tutorial that uses **Early Supers mockball**, substitute our **S
 | Doc | Role after this plan |
 |-----|----------------------|
 | [ROUTE_KPDR.md](ROUTE_KPDR.md) (this file) | **Authoritative continuous spine** |
-| [MILESTONES.md](MILESTONES.md) / [MILESTONES.csv](MILESTONES.csv) | Top-level status marks for every tip / practice rollup |
-| [BACKLOG.csv](BACKLOG.csv) | ~308 atomic tickets through M8 credits |
+| [MILESTONES.md](MILESTONES.md) | Prefix / tip names |
 | [KPDR_TRACKER.csv](KPDR_TRACKER.csv) | Per-segment chartable spine (K0–K9 expanded) |
 | [START_TO_*.md](START_TO_SPORE_SPAWN.md) | Verified early continuous segment notes |
 | `maps/full_route_hops.json` | Door topology for Track A warps only |

@@ -20,7 +20,7 @@
 | Video | No-video dual verification (first ice video still open) |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
-| Backlog | [routes/BACKLOG.csv](routes/BACKLOG.csv) |
+| Ready work | `bd ready -l super_metroid` |
 | Clean track (parallel) | Morph prefix clean @ **26,824f**; bombs/Torizo Clean **GREEN 49,321f** ×2 — [CLEAN_TRACK.md](CLEAN_TRACK.md); does **not** change this gate |
 
 ## Current verified tip — Ice Beam (K4 Ice)
@@ -57,8 +57,9 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 remains valid history.
 
 ★ Next: K5 Alpha PB pure stack (`rr-dbu.8`) / post-Ice KPDR; optional ice demo
-video. Compose residual: [`tasks/rr-kxge-residual.md`](tasks/rr-kxge-residual.md)
-(**CLOSED** dual continuous). Work: `bd ready -l super_metroid`.
+video. Open residual: [`tasks/rr-dbu.8-residual.md`](tasks/rr-dbu.8-residual.md)
+(Hellway: `rr-av5s`). Ice dual continuous is closed. Work:
+`bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
 
@@ -140,10 +141,9 @@ uv run python snes/super_metroid/scripts/record/continuous.py --to morph --clean
 
 | Doc | Role |
 |-----|------|
-| [routes/MILESTONES.md](routes/MILESTONES.md) | Full milestone board |
-| [routes/BACKLOG.csv](routes/BACKLOG.csv) | Ticket inventory |
+| [routes/MILESTONES.md](routes/MILESTONES.md) | Prefix / tip names |
 | [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md) | Allowed assists |
 | [CLEAN_TRACK.md](CLEAN_TRACK.md) | Clean intervention track |
 | [plan.md](plan.md) | Future work only |
-| [ARCHITECTURE.md](ARCHITECTURE.md) · [tasks/PROCESS.md](tasks/PROCESS.md) | Layers + pure-first process |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Layers |
 | [routes/ROUTE_KPDR.md](routes/ROUTE_KPDR.md) · [routes/KPDR_TRACKER.md](routes/KPDR_TRACKER.md) | KPDR spine / progress chart |

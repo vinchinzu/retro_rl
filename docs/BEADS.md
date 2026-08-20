@@ -30,7 +30,7 @@ Prefix: `rr-`. Labels: game name (`super_metroid`, `smb`, …), kind
 (`pure`, `graph`, `compose`, `stabilize`, `status`, `meta`).
 
 Game process still applies (e.g. Super Metroid pure-first in
-`snes/super_metroid/docs/tasks/PROCESS.md`).
+`snes/super_metroid/AGENTS.md`).
 
 ## Landing the plane (session end)
 

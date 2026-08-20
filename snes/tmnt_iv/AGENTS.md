@@ -2,8 +2,8 @@
 
 SNES TMNT IV (M8 continuous hard clear). Shared combat helpers:
 `retro_harness.combat` / `segment_runner`. Docs: `docs/STATUS.md`,
-`docs/plan.md`, **`docs/CLEAN_PLAYBOOK.md`**, **`docs/CLEAN_TRACK.md`**,
-`docs/tasks/QUEUE.md`.
+`docs/plan.md`, `docs/ASSIST_CONTRACT.md`, `docs/CLEAN_PLAYBOOK.md`.
+Tracker: `bd ready -l tmnt_iv`.
 
 ## Commands
 
@@ -29,10 +29,10 @@ uv run pytest tmnt_iv/tests -q
 
 ## Immediate goal
 
-**Bronze / Clean** unassisted full run (maturity stays M8). Wave order:
-Clean infra → S2 Alleycat → S3 Sewer (`LiveHardStage3`) → … → S9 form-2 →
-`T4-CLEAN-FULL`. Parallel assisted: `T4-ASSIST-TECHNO`. Do **not** re-open
-Stage 1 hazard jump-dodge, global pizza seek, or sewer dumpster thrash.
+**Bronze / Clean** unassisted full run (maturity stays M8). Alleycat
+Clean suite is 2/4 (BOSS+LATE); next is Stage 2 REACH then Sewer
+`LiveHardStage3`. Do **not** re-open Stage 1 hazard jump-dodge, global
+pizza seek, or sewer dumpster thrash.
 
 ## Traps
 
@@ -47,4 +47,4 @@ Stage 1 hazard jump-dodge, global pizza seek, or sewer dumpster thrash.
 | Mid-run knob w/o full dry-run | Route desync |
 | Clean artifact stems | Use `retro_harness.artifacts.clean_artifact_stem`; never overwrite assisted |
 
-RAM: `docs/ram_map.md`. Tickets: `docs/tasks/QUEUE.md` + `TRIAGE.md`.
+RAM: `docs/ram_map.md`. Ready work: `bd ready -l tmnt_iv`.

@@ -153,7 +153,7 @@ strategies adapt via `combat.protocol.BossSegment`.
 | `rooms/entry_bootstrap.py` | Door-warp fixtures for practice |
 | `progression/` + `routes/kpdr/spine.py` / `early_spine.py` | **continuous** product graph + SpineHop orchestration |
 | `maps/*` | Generated graphs/trackers (mostly gitignored) |
-| `docs/research/PATH_ROOM_BOARD.md` | 107 rooms / 199 hops topology |
+| `docs/routes/ROUTE_KPDR.md` | KPDR hop / tip geometry |
 | `docs/routes/KPDR_TRACKER.*` | Continuous KPDR status board |
 
 **Dual graph (intentional):** sm-json-data practice topology and continuous
@@ -184,7 +184,7 @@ Do not add new imports of legacy vision policies into continuous routes.
 Do **not** add a new `start_to_*.py` script.
 
 Sub-agent process (pure-first, stabilize waves, residual schema):
-[`docs/tasks/PROCESS.md`](tasks/PROCESS.md). Source states:
+`AGENTS.md` (pure-first). Source states:
 [`docs/SOURCE_STATES.md`](SOURCE_STATES.md).
 
 1. Pure controller in `routes/kpdr/` (+ `KPDR_SEGMENTS`).
@@ -314,7 +314,7 @@ gate optional kwargs — no tip-id allowlists.
 ### 3. Source-state & pure-probe diagnostics
 
 Index: [`SOURCE_STATES.md`](SOURCE_STATES.md) + code twin
-`source_states.py`. Process: [`tasks/PROCESS.md`](tasks/PROCESS.md).
+`source_states.py`. Process: `AGENTS.md` (pure-first).
 
 | Work item | Intent | Status |
 |-----------|--------|--------|
@@ -393,7 +393,7 @@ Prioritized for maintainability, not product tip order:
 Product tip (Bat Cave → Speed Hall …; Frog Save remains a side tip) may
 proceed in parallel; structure debt is **planner-serial** when it touches
 `continuous.py` / `progression/` / `catalog.py` hot modules. Todo list:
-[`plan.md`](plan.md) Structure & API + [`tasks/QUEUE.md`](tasks/QUEUE.md)
+[`plan.md`](plan.md) Structure & API + `bd ready -l super_metroid`
 architecture cards.
 
 ### Runtime efficiency checklist (today)
@@ -436,10 +436,10 @@ super_metroid/
 - Local rules: [`../AGENTS.md`](../AGENTS.md)
 - Gate / verified tip: [`STATUS.md`](STATUS.md)
 - Forward work + structure plan: [`plan.md`](plan.md)
-- Executor process: [`tasks/PROCESS.md`](tasks/PROCESS.md)
+- Executor process: `AGENTS.md` (pure-first / one-knob)
 - Assists: [`ASSIST_CONTRACT.md`](ASSIST_CONTRACT.md)
 - KPDR board: [`routes/ROUTE_KPDR.md`](routes/ROUTE_KPDR.md)
-- Path topology: [`research/PATH_ROOM_BOARD.md`](research/PATH_ROOM_BOARD.md)
+- Path topology: [`routes/ROUTE_KPDR.md`](routes/ROUTE_KPDR.md)
 - Boss pipeline: [`BOSS_PIPELINE.md`](BOSS_PIPELINE.md)
 - Full-run process: [`../../docs/FULL_RUN_PROCESS.md`](../../../docs/FULL_RUN_PROCESS.md)
 - Hygiene: [`../../../docs/REPO_HYGIENE.md`](../../../docs/REPO_HYGIENE.md)

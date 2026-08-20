@@ -2,9 +2,7 @@
 
 Authoritative process for every Super Metroid boss fight on Track B
 (played continuous spine). Complements
-[`research/STRUCTURED_BOSS_RL.md`](research/STRUCTURED_BOSS_RL.md)
-(feature vector + optional structured RL) and the Segment contracts in
-[`ARCHITECTURE.md`](ARCHITECTURE.md).
+[`ARCHITECTURE.md`](ARCHITECTURE.md) Segment contracts.
 
 ## Critical rule
 
@@ -29,7 +27,7 @@ Never write boss, event, or item RAM to claim a win.
 | `bomb_torizo.py` | Deterministic Torizo strategy + evidence |
 | `kraid.py` | Kraid fight → rear door → Varia (living closeout template) |
 | `natural_entry.py` | Natural activation capture harness |
-| `docs/research/STRUCTURED_BOSS_RL.md` | RL decision + measured baselines |
+| `docs/ARCHITECTURE.md` | Layer + segment contracts |
 
 **Living templates**
 

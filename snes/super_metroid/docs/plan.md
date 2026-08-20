@@ -1,10 +1,16 @@
 # Plan — Super Metroid assisted full clear
 
-Verified facts: [STATUS.md](STATUS.md). Shared workflow:
-[`docs/FULL_RUN_PROCESS.md`](../../../docs/FULL_RUN_PROCESS.md).
-Assist: [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Layers: [ARCHITECTURE.md](ARCHITECTURE.md).
-Executor: [tasks/PROCESS.md](tasks/PROCESS.md) · `bd ready -l super_metroid`
-([tasks/QUEUE.md](tasks/QUEUE.md) snapshot).
+Verified facts: [STATUS.md](STATUS.md). Assist:
+[ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Layers:
+[ARCHITECTURE.md](ARCHITECTURE.md). Tracker: `bd ready -l super_metroid`.
+
+**Doc consolidation (2026-08-18):** deleted closed/green hop residuals,
+`tasks/QUEUE.md`, `tasks/PROCESS.md`, `TASK_TEMPLATE.md`, `CODE_REVIEW.md`,
+`docs/research/*` essays, and duplicate route CSVs (`BACKLOG`,
+`MILESTONES.csv`, `TRACK_100.csv`). Kept STATUS, plan, ASSIST_CONTRACT,
+ram_map, ROUTE_KPDR, MILESTONES.md, KPDR_TRACKER (code-owned CSV), and
+the two open-tip residuals (`rr-dbu.8`, `rr-av5s`). Do not recreate a
+QUEUE. Do not rewrite the route or claim a new tip.
 
 **Program role:** Super Metroid is **substrate A** of the solver flagship
 triangle (SM + ALTTP + SMZ3). Pure room policies and capability edges are Layer 1
@@ -19,9 +25,8 @@ abilities, boss/event state, backtracking, and stall recovery.
 
 **Clear rooms by play.** Each hop on the completion path must be crossed with a
 controller or room policy (natural door exit). Door-warps are topology
-diagnostics only — never route evidence. Living hop board:
-[research/PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md).
-
+diagnostics only — never route evidence. Living hop geometry:
+[routes/ROUTE_KPDR.md](routes/ROUTE_KPDR.md).
 Grow one hop at a time from the furthest played room. Continuous tip extension
 recipe ([ARCHITECTURE.md](ARCHITECTURE.md)):
 
@@ -35,7 +40,7 @@ zero progression writes. Pipeline: [BOSS_PIPELINE.md](BOSS_PIPELINE.md).
 
 **Agent discipline (non-negotiable):** pure-first, one-knob residual, residual
 schema with next-card ID + one change, dual-track (spine continuous vs room
-practice). Do not relax for scale. See [tasks/PROCESS.md](tasks/PROCESS.md).
+practice). Do not relax for scale. See `AGENTS.md` (pure-first).
 
 **Ticket size:** one pure hop or one residual change per card; prefer 30–90 min
 sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
@@ -46,7 +51,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | Dual continuous `--to ice` (Business floor→Super climb) | `rr-kxge` · residual `tasks/rr-kxge-residual.md` |
+| **★ Product next** | K5 Alpha PB pure (Ice return + Hellway) | `rr-dbu.8` · residual `tasks/rr-dbu.8-residual.md` |
 | Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
 | Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
@@ -56,20 +61,18 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 | Parallel Clean | bombs/Torizo Clean **GREEN** 49,321f ×2 | polish `rr-3z8` |
 | Done | Wave continuous **136,361f** + hygiene Pass A/B essential | |
 
-**Critical path to credits:** human tape (`rr-dbu.12`) → Ice pure package
-(`rr-dbu.11` ✅) → continuous ice compose (`rr-dbu.7` ✅) → Wave→Business
-pure return (`rr-vqv3` ✅) → dual continuous Ice (`rr-kxge` compose landed,
-continuous climb residual) → K5 → Moat natural entry → Wrecked Ship → …
-→ ending.
-**Do not STATUS-promote continuous Ice without dual continuous green.**
+**Critical path to credits:** Ice dual continuous is **GREEN**
+(`rr-kxge` closed). Next: K5 Alpha PB (`rr-dbu.8` / `rr-av5s`) → Moat
+natural entry → Wrecked Ship → … → ending.
+**Do not STATUS-promote past Ice without dual continuous green.**
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);
 spore clean; Pass B.3 deep consolidate.
 
-Default continuous tip is **`wave`** (**136,361f** ×2). Hygiene Pass B does
-**not** block product.
+Default continuous tip is **`ice`** (**148,167f** ×2). Wave / Speed remain
+valid prefixes. Hygiene Pass B does **not** block product.
 
-Live work: `bd ready -l super_metroid` · snapshot [tasks/QUEUE.md](tasks/QUEUE.md).
+Live work: `bd ready -l super_metroid`.
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
 ---
 
@@ -119,7 +122,7 @@ not a Ceres-only hop type and not frame hillclimb. Pin seats 571 / 475 /
 KPDR Ceres Station goal is **1:35** from first elev control. Do not
 STATUS-promote from the pin bench. Probe:
 `scripts/probe/ceres_elev_escape.py`. Residual:
-`docs/tasks/rr-4331-residual.md`.
+`docs/plan.md` § Ceres arm-pump.
 
 ### Elev re-pin findings (`rr-14u`, 2026-08-07)
 
@@ -318,7 +321,7 @@ Kraid → Varia continuous.
   — [routes/TRACK_100.md](routes/TRACK_100.md)
 
 Practice greens ≠ continuous evidence and **not** product next-work
-(`STATUS` + `tasks/QUEUE.md` own that). Own-files only; width ≤ 8.
+(`STATUS` + beads own that). Own-files only; width ≤ 8.
 
 ### CLEAN (parallel)
 
@@ -443,9 +446,8 @@ Parked  Speedway→Farm until post-Speed
 Later   Botwoon → Draygon → Ridley → MB + escape → credits (M8)
 ```
 
-Live dispatch: [tasks/QUEUE.md](tasks/QUEUE.md).
-Milestone board: [routes/MILESTONES.md](routes/MILESTONES.md) ·
-Backlog: [routes/BACKLOG.csv](routes/BACKLOG.csv).
+Live dispatch: `bd ready -l super_metroid`.
+Milestone names: [routes/MILESTONES.md](routes/MILESTONES.md).
 
 ---
 
@@ -454,11 +456,8 @@ Backlog: [routes/BACKLOG.csv](routes/BACKLOG.csv).
 | Doc | Role |
 |-----|------|
 | [STATUS.md](STATUS.md) | Verified tip + prefix frames |
-| [tasks/PROCESS.md](tasks/PROCESS.md) | Pure-first / residual / dual-track |
-| [tasks/QUEUE.md](tasks/QUEUE.md) | Live cards |
-| [routes/BACKLOG.csv](routes/BACKLOG.csv) | Full ticket inventory |
+| `bd ready -l super_metroid` | Ready / in-flight work |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers + structural debt |
 | [BOSS_PIPELINE.md](BOSS_PIPELINE.md) | Boss natural-entry rules |
 | [CLEAN_TRACK.md](CLEAN_TRACK.md) | Clean track process |
 | [routes/ROUTE_KPDR.md](routes/ROUTE_KPDR.md) | KPDR route text |
-| [research/PATH_ROOM_BOARD.md](research/PATH_ROOM_BOARD.md) | Hop topology |

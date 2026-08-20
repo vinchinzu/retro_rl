@@ -3,8 +3,7 @@
 NES Legend of Zelda (graph nav; **M5** Clean power-on → Level 1 Triforce).
 Shared: `retro_harness.adventure`, `retro_harness.nes`.
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/HYGIENE.md`,
-`docs/ASSIST_CONTRACT.md`, `docs/tasks/PROCESS.md`.
-Tracker: **`bd ready -l zelda_i`** (prefix `rr-`).
+`docs/ASSIST_CONTRACT.md`. Tracker: **`bd ready -l zelda_i`** (prefix `rr-`).
 
 ## Commands
 
@@ -23,7 +22,7 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 bd ready -l zelda_i
 ```
 
-Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
+Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
 
 ## Layout
 

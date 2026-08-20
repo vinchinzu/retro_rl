@@ -4,7 +4,7 @@
 **Created:** 2026-08-03 via `SM-100-TRACK`  
 **Seeded by:** Early Spazer epic (this board)
 
-Machine source: [`TRACK_100.csv`](TRACK_100.csv).  
+100% side notes (not the product tip). Tracker: `bd ready -l super_metroid`.  
 Primary product: assisted **any% KPDR** full clear (M8 credits).  
 100% is a **future track** — no continuous integrity contract exists yet.
 
@@ -144,7 +144,7 @@ are not on the KPDR path; they require LN detours.
 
 ### Spazer early (in progress)
 
-**Ladder:** this board → `SM-SPAZER-*` tickets (see [BACKLOG.csv](BACKLOG.csv)).
+**Ladder:** this board → `SM-SPAZER-*` work (`bd ready -l super_metroid`).
 
 - First concrete 100% item insertion: Red Brinstar detour during K2.
 - From continuous `--to below_spazer` (already green), insert:
@@ -198,10 +198,8 @@ designed when the first side-tip (Spazer) lands as a continuous tip.
 |-----|------|
 | [MILESTONES.md](MILESTONES.md) | any% KPDR + Clean milestones; 100% not yet tracked there |
 | [ROUTE_KPDR.md](ROUTE_KPDR.md) | Authoritative any% KPDR spine (stays primary) |
-| [BACKLOG.csv](BACKLOG.csv) | ~308 tickets; SPAZER epic is first 100% ladder |
-| [QUEUE.md](../tasks/QUEUE.md) | Live wave board with SPAZER / 100% parallel track |
-| [KPDR_TRACKER.csv](KPDR_TRACKER.csv) | any% KPDR per-segment status; K2.2 = Spazer open |
-| [`TRACK_100.csv`](TRACK_100.csv) | Machine-readable checklist (optional, same content) |
+| `bd ready -l super_metroid` | Ready / in-flight work |
+| [KPDR_TRACKER.csv](KPDR_TRACKER.csv) | any% KPDR per-segment status |
 
 ## Status legend
 

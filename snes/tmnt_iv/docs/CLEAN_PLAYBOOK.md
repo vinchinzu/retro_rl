@@ -4,12 +4,9 @@ Permanent lessons from Stage 1 pizza-only Clean (2026-07-27). Apply these
 when porting Clean (zero emergency HP, zero form-2 iframe writes) to later
 stages. **Do not re-discover these via thrash.**
 
-**Process / tickets (SM-imported dual track):** see
-[`CLEAN_TRACK.md`](CLEAN_TRACK.md) for artifact isolation, integrity rules,
-and the full Clean ladder. Live cards:
-[`tasks/QUEUE.md`](tasks/QUEUE.md) · ★ full run
-[`tasks/T4-CLEAN-FULL.md`](tasks/T4-CLEAN-FULL.md). This playbook stays the
-source of **play anti-patterns**; CLEAN_TRACK owns **workstream rules**.
+This playbook is the source of **play anti-patterns**. Workstream rules
+live in [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md) (Clean = both assists
+off; `*_clean` stems only). Ready work: `bd ready -l tmnt_iv`.
 
 ## Definition of Clean
 

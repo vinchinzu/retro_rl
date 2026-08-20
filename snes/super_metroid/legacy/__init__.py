@@ -4,7 +4,7 @@
 
 Active product path is scripted continuous KPDR (`routes/`, `combat/` feature
 strategies, hash-pinned early policies). Vision BC is parked until gold; see
-``docs/research/LEGACY_MODEL_REUSE.md`` and ``docs/ARCHITECTURE.md``.
+``docs/ARCHITECTURE.md``.
 
 Import from ``super_metroid.legacy.models`` / ``legacy.visual_models``.
 """
