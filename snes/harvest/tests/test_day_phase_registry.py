@@ -12,6 +12,7 @@ from harvest.planner.day_phase_registry import (
     TaskBuildContext,
     build_phase_task,
 )
+from harvest.planner.day_phase_catalog import HOT_SPRING_STAMINA_PHASE
 from harvest.planner.day_phase_types import PhaseKind, PhaseSpec, SKIP_MAP_LOCK_KINDS
 from harvest.planner.day_plan_orchestrator import DayPlanTask
 from harvest.planner.day_task_factory import DayTaskFactory
@@ -126,6 +127,13 @@ class DayPhaseRegistryTests(unittest.TestCase):
         )
         self.assertEqual(task.__class__.__name__, "HotSpringStaminaTask")
         self.assertEqual(task.min_stamina, 50)
+
+    def test_hot_spring_catalog_fills_to_max(self) -> None:
+        world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
+        task = DayTaskFactory().make_task(HOT_SPRING_STAMINA_PHASE, world)
+        self.assertEqual(task.__class__.__name__, "HotSpringStaminaTask")
+        self.assertIsNone(task.min_stamina)
+        self.assertTrue(task.return_to_farm)
 
 
 if __name__ == "__main__":

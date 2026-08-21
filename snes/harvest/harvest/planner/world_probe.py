@@ -191,5 +191,14 @@ class WorldProbe:
         except Exception:
             return None
 
+    def stamina(self):
+        """RAM stamina object, or None when no RAM is available."""
+        from harvest.core.stamina import Stamina
+
+        ram = self._require_ram()
+        if ram is None:
+            return None
+        return Stamina.from_ram(ram)
+
 
 __all__ = ["StateRamLoader", "WorldProbe"]

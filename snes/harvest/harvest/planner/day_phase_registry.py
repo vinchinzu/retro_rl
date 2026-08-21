@@ -491,6 +491,13 @@ def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Ta
     )
 
 
+def _min_stamina_param(params: dict) -> int | None:
+    raw = params.get("min_stamina", "full")
+    if raw in (None, "full", "max", ""):
+        return None
+    return int(raw)
+
+
 def _build_hot_spring(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -498,7 +505,7 @@ def _build_hot_spring(
 
     return HotSpringStaminaTask(
         name=f"hot_spring_{spec.phase.lower()}",
-        min_stamina=int(spec.params.get("min_stamina", 40)),
+        min_stamina=_min_stamina_param(spec.params),
         return_to_farm=bool(spec.params.get("return_to_farm", True)),
         tasks_dir=ctx.tasks_dir,
         timeout=int(spec.params.get("timeout", 24000)),

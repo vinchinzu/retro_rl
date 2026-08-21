@@ -294,11 +294,15 @@ Test crop fixtures (for growth / ship work):
 7. Optional: `HOT_SPRING_STAMINA` — **ROM natural-entry verified 2026-07-31**:
    farm drain → `farm_to_spa` → upper pond B+A bath (50→110+) → reverse
    `mountain_to_farm` → farm. Corridor debris-free (`mountain_spa_validate`).
+   **2026-08-21 (`rr-pzw` wiring):** `Stamina.from_ram` is the script object
+   (`current`/`maximum`/`tool_hits`). Soak default is **full restore**
+   (current==max). Evening leftover clear inserts spa when stamina cannot
+   finish an 8-swing 2×2. Do not spa on D2 morning.
    ```bash
    HEADLESS=1 uv run python -m harvest.scripts.mountain_spa_validate
    HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \
      --state latest_backup_sunday_go_to_mountain_20260427_152011 \
-     --min-stamina 100 --target-stamina 30 --return-to-farm
+     --min-stamina full --target-stamina 30 --return-to-farm
    ```
 
 ```bash

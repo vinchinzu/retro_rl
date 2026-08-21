@@ -14,6 +14,7 @@ import json
 import numpy as np
 
 from harvest.core.animal_status import read_held_item
+from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_STAMINA,
@@ -73,6 +74,8 @@ DEFAULT_PRIORITY: List[DebrisType] = [
 ]
 
 # Hammer/axe hits cost 2 stamina; stop before a multi-hit cannot finish.
+# Lifts may continue at 1. Multi-hit start budget is Stamina.can_finish_multi_hit
+# (8 swings / 16 stam), not this floor.
 MIN_CLEAR_STAMINA = 4
 
 
@@ -354,14 +357,13 @@ class FarmClearer:
         dx, dy = target[0] - player[0], target[1] - player[1]
         return 'right' if abs(dx) >= abs(dy) and dx > 0 else 'left' if abs(dx) >= abs(dy) else 'down' if dy > 0 else 'up'
 
-    def _stamina(self, ram: np.ndarray) -> int:
-        if ADDR_STAMINA >= len(ram):
-            return 0
-        return int(ram[ADDR_STAMINA])
+    def _stamina(self, ram: np.ndarray) -> Stamina:
+        return Stamina.from_ram(ram)
 
     def _can_afford_target(self, ram: np.ndarray, target: Target) -> bool:
-        return self._stamina(ram) >= target.stamina_to_clear(
-            lifting=self._should_lift(target)
+        stam = self._stamina(ram)
+        return stam.can_afford_clear(
+            target.required_hits, lifting=self._should_lift(target)
         )
 
     def _sort_targets_cluster(
@@ -453,7 +455,10 @@ class FarmClearer:
         if not targets:
             if scanned:
                 self.stamina_exhausted = True
-                print(f"[CLEARER] Stamina low ({stam}); stopping clear")
+                print(
+                    f"[CLEARER] Stamina low ({stam}); skip multi-hit "
+                    f"(need {stam.cost_to_clear(6)} for 8-swing rock)"
+                )
             return "complete"
 
         player_tile = self.navigator.current_tile
@@ -778,11 +783,17 @@ class FarmClearer:
             self.tool_search_frames = 0
             return "tool_switch"
 
-        # Do not start a 6-hit (or any tool swing we cannot finish). Lifts
+        # Do not start a 2×2 unless 8-swing stamina is in the bank. Lifts
         # already returned above and may continue at stamina 1–3.
         if self.target_hits == 0 and not self._can_afford_target(
             ram, self.current_target
         ):
+            stam = self._stamina(ram)
+            print(
+                f"[CLEARER] Skip {self.current_target.debris_type.name} at "
+                f"{target}: need {stam.cost_to_clear(self.current_target.required_hits)} "
+                f"stam for {self.current_target.required_hits}+miss budget, have {stam}"
+            )
             self.stamina_exhausted = True
             self.current_target = None
             self.clearing_start_frame = 0

@@ -7,6 +7,7 @@ from typing import Dict, Optional
 import numpy as np
 
 from harvest.core.ram_catalog import field_spec, read_ram_value
+from harvest.core.stamina import Stamina
 
 SEASON_NAMES = {0: "Spring", 1: "Summer", 2: "Fall", 3: "Winter"}
 DAY_NAMES = {0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat"}
@@ -37,10 +38,10 @@ class GameState:
     _MONEY = field_spec("money").address
 
     def __init__(self, info: Dict, ram: Optional[np.ndarray] = None):
-        self.stamina = info.get('stamina', 0)
         self.item = info.get('item_in_hand', 0)
 
         if ram is not None:
+            self.stamina = Stamina.from_ram(ram)
             self.year = read_ram_value(ram, "year", raw=True)
             self.season = read_ram_value(ram, "season", raw=True)
             self.day_of_week = read_ram_value(ram, "weekday", raw=True)
@@ -49,6 +50,10 @@ class GameState:
             self.minute = read_ram_value(ram, "minute", raw=True)
             self.money = read_ram_value(ram, "money")
         else:
+            self.stamina = Stamina(
+                current=int(info.get("stamina", 0) or 0),
+                maximum=int(info.get("max_stamina", 100) or 100),
+            )
             self.year = info.get('year', 0)
             self.season = info.get('season', 0)
             self.day_of_week = info.get('day_of_week', 0)

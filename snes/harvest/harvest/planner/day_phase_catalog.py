@@ -286,10 +286,11 @@ CROP_WATER_PHASE = PhaseSpec(
 )
 
 # Optional stamina refill at outdoor mountain hot spring (tilemap 0x10 pond).
+# min_stamina "full" = soak until current == max, then return to farm.
 HOT_SPRING_STAMINA_PHASE = PhaseSpec(
     "HOT_SPRING_STAMINA",
     "hot_spring",
-    {"min_stamina": 40, "return_to_farm": True},
+    {"min_stamina": "full", "return_to_farm": True},
     failure_policy="optional",
     required_ram=("stamina", "tilemap"),
     estimated_frames=12000,
