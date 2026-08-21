@@ -20,7 +20,6 @@ from typing import Any
 
 __all__ = [
     "Observation",
-    "observation_from_kinematics",
     "observation_from_sim_state",
     "observation_from_trajectory_frame",
 ]
@@ -81,37 +80,39 @@ class Observation:
     frame_counter_1: int | None
     frame_counter_2: int | None
 
-    # Oσ+ (optional): enemy energy / i-frames
-    enemy_energy: int = 0
-    invulnerability_timer: int = 0
+    # Oσ+ (optional): enemy energy / i-frames — None when unobserved
+    enemy_energy: int | None = None
+    invulnerability_timer: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Export to dict, omitting zero optional fields."""
+        """Export to dict, omitting None/zero optional fields."""
         result = asdict(self)
-        # Omit Oσ+ fields when zero
-        if result["enemy_energy"] == 0:
-            del result["enemy_energy"]
-        if result["invulnerability_timer"] == 0:
-            del result["invulnerability_timer"]
+        # Omit Oσ+ fields when None or zero
+        if result.get("enemy_energy") in (None, 0):
+            result.pop("enemy_energy", None)
+        if result.get("invulnerability_timer") in (None, 0):
+            result.pop("invulnerability_timer", None)
         return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Observation:
         """Restore from dict with optional field defaults."""
         data_copy = dict(data)
-        data_copy.setdefault("enemy_energy", 0)
-        data_copy.setdefault("invulnerability_timer", 0)
+        data_copy.setdefault("enemy_energy", None)
+        data_copy.setdefault("invulnerability_timer", None)
         return cls(**data_copy)
 
 
-def observation_from_kinematics(state: Any) -> Observation:
-    """Map any HasKinematics object (SimState, SuperMetroidState, door snap).
+def observation_from_sim_state(state: Any) -> Observation:
+    """Extract Observation from SimState (physics_sim.py).
 
-    O† uses ``health`` when present (emulator). Mini/stub have no health → None.
-    Oσ+ uses ``enemy0_hp`` when present; otherwise 0 (unobserved on Mini).
-    Lag counters stay None until SuperMetroidState grows $1842/$09DA.
+    Args:
+        state: SimState or compatible object with required fields
+
+    Returns:
+        Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
+        sm_rev --load-state hydrates $09C2/$1842/$09DA). Oσ+ fields None.
     """
-    enemy = getattr(state, "enemy0_hp", None)
     return Observation(
         frame=state.frame,
         x=state.samus_x,
@@ -128,17 +129,43 @@ def observation_from_kinematics(state: Any) -> Observation:
         momentum_x_sub=state.momentum_x_sub,
         speed_counter=state.speed_counter,
         speed_flag=state.speed_flag,
-        energy=getattr(state, "health", None),
-        frame_counter_1=None,
-        frame_counter_2=None,
-        enemy_energy=0 if enemy is None else enemy,
-        invulnerability_timer=0,
+        energy=None,  # Unobserved in SimState (until sm_rev --load-state)
+        frame_counter_1=None,  # Unobserved in SimState
+        frame_counter_2=None,  # Unobserved in SimState
+        enemy_energy=None,  # Not tracked in SimState
+        invulnerability_timer=None,  # Not tracked in SimState
     )
 
 
-def observation_from_sim_state(state: Any) -> Observation:
-    return observation_from_kinematics(state)
-
-
 def observation_from_trajectory_frame(frame: Any) -> Observation:
-    return observation_from_kinematics(frame)
+    """Extract Observation from TrajectoryFrame (physics_sim.py).
+
+    Args:
+        frame: TrajectoryFrame or compatible object with required fields
+
+    Returns:
+        Observation with Oπ/Oσ fields. O†/lag fields None (unobserved until
+        sm_rev --load-state). Oσ+ fields None.
+    """
+    return Observation(
+        frame=frame.frame,
+        x=frame.samus_x,
+        y=frame.samus_y,
+        pose=frame.pose,
+        room=frame.room_id,
+        sub_x=frame.samus_x_sub,
+        sub_y=frame.samus_y_sub,
+        velocity_x=frame.velocity_x,
+        velocity_y=frame.velocity_y,
+        velocity_x_sub=frame.velocity_x_sub,
+        velocity_y_sub=frame.velocity_y_sub,
+        momentum_x=frame.momentum_x,
+        momentum_x_sub=frame.momentum_x_sub,
+        speed_counter=frame.speed_counter,
+        speed_flag=frame.speed_flag,
+        energy=None,  # Unobserved in TrajectoryFrame
+        frame_counter_1=None,  # Unobserved in TrajectoryFrame
+        frame_counter_2=None,  # Unobserved in TrajectoryFrame
+        enemy_energy=None,  # Not tracked in TrajectoryFrame
+        invulnerability_timer=None,  # Not tracked in TrajectoryFrame
+    )

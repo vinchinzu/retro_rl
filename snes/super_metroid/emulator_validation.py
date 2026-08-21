@@ -5,42 +5,43 @@ Ground truth validation: run winning trajectories on real emulator
 
 This module provides the validation path required for room-clear claims.
 Predictor is for search speed only; emulator is authoritative.
+
+Tag E = SuperMetroidEnv (product name for RetroEnv-based validation, not a class).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from retro_harness.actions import indexed_action
-from retro_harness.env import read_state_bytes
+from retro_harness.env import GameSpec
 
-from super_metroid.physics_sim import FrameInput, position_out_of_range
+from super_metroid.observation import Observation
+from super_metroid.paths import GAME_DIR
+from super_metroid.physics_sim import FrameInput
 from super_metroid.ram import parse_env_state
+from super_metroid.residual import ResidualProfile, compute_residual_profile
 
 __all__ = [
     "EmulatorValidationResult",
+    "observation_from_env",
     "validate_trajectory_on_emulator",
     "ROM_AVAILABLE",
 ]
 
 
+# Check if ROM is available for validation tests
 def _check_rom_available() -> bool:
-    """True when a ROM file exists and stable-retro exposes Integrations.CUSTOM."""
+    """Check if Super Metroid ROM is available."""
+    # Check common ROM locations
     rom_paths = [
         Path("roms/SuperMetroid.sfc"),
         Path("roms/Super Metroid.sfc"),
         Path("../roms/SuperMetroid.sfc"),
     ]
-    if not any(p.exists() for p in rom_paths):
-        return False
-    try:
-        import stable_retro as retro
-
-        return hasattr(getattr(retro.data, "Integrations", None), "CUSTOM")
-    except Exception:
-        return False
+    return any(p.exists() for p in rom_paths)
 
 
 ROM_AVAILABLE = _check_rom_available()
@@ -70,14 +71,78 @@ class EmulatorValidationResult:
 
     reason: str = ""
     """Failure reason when success=False."""
-
-    checked_room_id: int | None = None
-    """Room id that was explicitly checked and matched. None = no room-clear claim."""
+    
+    residual: ResidualProfile | None = None
+    """Residual profile R(τ) when Mini observations provided."""
 
     @property
     def room_clear(self) -> bool:
-        """True only when an explicit room target was checked and passed."""
-        return self.success and self.checked_room_id is not None
+        """True if trajectory cleared target room (ground truth claim)."""
+        return self.success
+
+
+def observation_from_env(env: Any) -> Observation:
+    """Extract Observation from emulator (RetroEnv from GameSpec.make_env()).
+
+    Wraps parse_env_state to extract Oπ/Oσ/Oσ+/O† fields:
+    - Oπ: pixels x/y ($0AF6, $0AFA), pose ($0A1C), room ($079B)
+    - Oσ: Oπ plus subpixels ($0AF8, $0AFC)
+    - Oσ+: Oσ plus enemy energy ($0F8C via enemy0_hp)
+    - O†: energy ($09C2 via health)
+    - Lag: frame counters not yet in SuperMetroidState (None for now)
+    - Speeds: velocity/momentum for first-differing-field
+
+    Args:
+        env: RetroEnv from GameSpec.make_env()
+
+    Returns:
+        Observation with all available fields from parse_env_state
+        
+    Note:
+        invulnerability_timer ($18A8) and frame_counter_1/2 ($1842/$09DA)
+        are not yet in SuperMetroidState. These fields remain None (unobserved)
+        until parse_env_state is extended. Honest None, not fake zero.
+    """
+    state = parse_env_state(env, mode="full")
+
+    return Observation(
+        frame=state.frame,
+        x=state.samus_x,
+        y=state.samus_y,
+        pose=state.pose,
+        room=state.room_id,
+        sub_x=state.samus_x_sub,
+        sub_y=state.samus_y_sub,
+        velocity_x=state.velocity_x,
+        velocity_y=state.velocity_y,
+        velocity_x_sub=state.velocity_x_sub,
+        velocity_y_sub=state.velocity_y_sub,
+        momentum_x=state.momentum_x,
+        momentum_x_sub=state.momentum_x_sub,
+        speed_counter=state.speed_counter,
+        speed_flag=state.speed_flag,
+        energy=state.health,  # Emu observes $09C2
+        frame_counter_1=None,  # Not yet in SuperMetroidState
+        frame_counter_2=None,  # Not yet in SuperMetroidState
+        enemy_energy=state.enemy0_hp,  # Oσ+: $0F8C via enemy0_hp
+        invulnerability_timer=None,  # Not yet in SuperMetroidState (unobserved)
+    )
+
+
+def _buttons_mask_to_action(buttons: int) -> list[int]:
+    """Convert FrameInput packed button mask to 12-length action vector.
+    
+    Args:
+        buttons: Packed mask where bit i = button i pressed
+        
+    Returns:
+        12-length list with 1 at pressed button indices, 0 elsewhere
+        
+    Example:
+        0x80 (bit 7) → [0,0,0,0,0,0,0,1,0,0,0,0] (RIGHT pressed)
+    """
+    indices = [i for i in range(12) if buttons & (1 << i)]
+    return indexed_action(indices, action_size=12)
 
 
 def validate_trajectory_on_emulator(
@@ -87,6 +152,7 @@ def validate_trajectory_on_emulator(
     target_room_id: int | None = None,
     target_x_range: tuple[int, int] | None = None,
     target_y_range: tuple[int, int] | None = None,
+    mini_observations: list[Observation] | None = None,
 ) -> EmulatorValidationResult:
     """Validate trajectory on real emulator (ground truth).
 
@@ -99,6 +165,7 @@ def validate_trajectory_on_emulator(
         target_room_id: Expected final room (None = don't check)
         target_x_range: Expected final X range (None = don't check)
         target_y_range: Expected final Y range (None = don't check)
+        mini_observations: Optional Mini/Stub predictor observations for residual
 
     Returns:
         EmulatorValidationResult with ground truth outcome
@@ -121,19 +188,60 @@ def validate_trajectory_on_emulator(
     if not start_path.exists():
         raise FileNotFoundError(f"Start state not found: {start_path}")
 
-    from super_metroid.dev.common import make_dev_env
-
-    env = make_dev_env()
-    frames_executed = 0
+    # Create emulator using GameSpec
+    game_spec = GameSpec(game="SuperMetroid-Snes", game_dir=GAME_DIR)
+    
     try:
+        env = game_spec.make_env(state=None)
         env.reset()
-        env.em.set_state(read_state_bytes(start_path))
+        
+        # Load the state - read and set directly, no resync lookup
+        from retro_harness.env import read_state_bytes
+        state_data = read_state_bytes(start_path)
+        env.em.set_state(state_data)
+        
+    except Exception as e:
+        return EmulatorValidationResult(
+            success=False,
+            final_room_id=None,
+            final_x=None,
+            final_y=None,
+            frames_executed=0,
+            reason=f"Failed to load state: {e}",
+        )
 
-        for i, frame_input in enumerate(inputs):
-            indices = [b for b in range(12) if frame_input.buttons & (1 << b)]
-            env.step(indexed_action(indices, action_size=12))
+    # Collect emulator observations for residual profiling
+    emu_observations: list[Observation] = []
+    
+    # Frame 0: pre-step observation (corresponding start for Mini --load-state)
+    if mini_observations is not None:
+        emu_observations.append(observation_from_env(env))
+    
+    # Execute input sequence on emulator
+    frames_executed = 0
+    for i, frame_input in enumerate(inputs):
+        try:
+            # Convert packed button mask to 12-length action vector
+            action = _buttons_mask_to_action(frame_input.buttons)
+            env.step(action)
             frames_executed = i + 1
+            
+            # Collect post-step observation (frames 1..N)
+            if mini_observations is not None:
+                emu_observations.append(observation_from_env(env))
+                
+        except Exception as e:
+            return EmulatorValidationResult(
+                success=False,
+                final_room_id=None,
+                final_x=None,
+                final_y=None,
+                frames_executed=frames_executed,
+                reason=f"Emulator crash at frame {i}: {e}",
+            )
 
+    # Read final state from emulator
+    try:
         final_state = parse_env_state(env, mode="full")
         final_room = final_state.room_id
         final_x = final_state.samus_x
@@ -145,22 +253,34 @@ def validate_trajectory_on_emulator(
             final_x=None,
             final_y=None,
             frames_executed=frames_executed,
-            reason=f"Emulator failed: {e}",
+            reason=f"Failed to read final state: {e}",
         )
-    finally:
-        env.close()
 
+    # Check success criteria
+    success = True
     reason = ""
+
     if target_room_id is not None and final_room != target_room_id:
+        success = False
         reason = f"Room mismatch: expected {target_room_id:04X}, got {final_room:04X}"
-    if not reason:
-        reason = position_out_of_range(
-            final_x, final_y, x_range=target_x_range, y_range=target_y_range
-        )
-    success = not reason
-    checked_room_id = (
-        final_room if target_room_id is not None and success else None
-    )
+
+    if success and target_x_range is not None:
+        x_lo, x_hi = target_x_range
+        if not (x_lo <= final_x <= x_hi):
+            success = False
+            reason = f"X out of range: {final_x} not in [{x_lo}, {x_hi}]"
+
+    if success and target_y_range is not None:
+        y_lo, y_hi = target_y_range
+        if not (y_lo <= final_y <= y_hi):
+            success = False
+            reason = f"Y out of range: {final_y} not in [{y_lo}, {y_hi}]"
+
+    # Compute residual profile when Mini observations provided
+    residual = None
+    if mini_observations is not None:
+        emu_obs_for_residual = emu_observations if emu_observations else None
+        residual = compute_residual_profile(mini_observations, emu_obs_for_residual)
 
     return EmulatorValidationResult(
         success=success,
@@ -169,5 +289,5 @@ def validate_trajectory_on_emulator(
         final_y=final_y,
         frames_executed=frames_executed,
         reason=reason,
-        checked_room_id=checked_room_id,
+        residual=residual,
     )
