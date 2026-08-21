@@ -39,6 +39,8 @@ from harvest.planner.day_plan_tasks import (
     ExitToFarmTask,
 )
 from harvest.planner.day_task_factory import DayTaskFactory
+from harvest.core.shipping_credit import shipping_scene_needs_dismiss
+from harvest.tasks.primitives import dismiss_dialogue_result
 
 
 @dataclass
@@ -560,6 +562,15 @@ class DayPlanTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+
+        if shipping_scene_needs_dismiss(world.ram):
+            # 5pm shipper box (any phase). Child tasks must not hold A.
+            return dismiss_dialogue_result(
+                self._step_count,
+                buttons=("a",),
+                pulse_every=2,
+                reason="shipping scene",
+            )
 
         if self._recovery_task is not None:
             return self._step_recovery(world)

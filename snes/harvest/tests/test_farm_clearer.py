@@ -6,11 +6,13 @@ import unittest
 
 import numpy as np
 
+from harvest.core.carry import ADDR_TOOL_BACKPACK
 from harvest.core.tile_catalog import (
     ADDR_MAP,
     ADDR_STAMINA,
     LARGE_ROCK_TL,
     MAP_WIDTH,
+    ROCK,
     STONE,
     STUMP_TL,
     TILE_SIZE,
@@ -38,6 +40,7 @@ from harvest.tasks.farm_clearer import (
     FarmClearer,
     Target,
     TileScanner,
+    use_tool,
 )
 
 from retro_harness import TaskStatus, WorldState
@@ -107,6 +110,16 @@ class TestDebrisClassification(unittest.TestCase):
             ],
         )
 
+    def test_required_hits_small_vs_large_rock(self) -> None:
+        small = Target((5, 5), Point(88, 88), DebrisType.ROCK, ROCK)
+        large = Target((5, 5), Point(88, 88), DebrisType.ROCK, LARGE_ROCK_TL)
+        stump = Target((5, 5), Point(88, 88), DebrisType.STUMP, STUMP_TL)
+        damaged = Target((5, 5), Point(88, 88), DebrisType.ROCK, 0x11)
+        self.assertEqual(small.required_hits, 1)
+        self.assertEqual(large.required_hits, 6)
+        self.assertEqual(stump.required_hits, 6)
+        self.assertEqual(damaged.required_hits, 6)
+
 
 class TestTileScanner(unittest.TestCase):
     def test_collapses_2x2_stump_and_rock_to_top_left(self) -> None:
@@ -147,6 +160,23 @@ class TestTileScanner(unittest.TestCase):
         tiles = {t.tile for t in TileScanner().scan(ram, pocket)}
         self.assertIn((16, 20), tiles)
         self.assertNotIn((16, 40), tiles)
+
+    def test_collapses_damage_tiles_to_one_target(self) -> None:
+        ram = _make_farm_ram()
+        _set_tile(ram, 20, 20, 0x11)
+        _set_tile(ram, 21, 20, 0x12)
+        _set_tile(ram, 20, 21, 0x13)
+        _set_tile(ram, 21, 21, 0x14)
+        targets = TileScanner().scan(ram)
+        rocks = [t for t in targets if t.debris_type == DebrisType.ROCK]
+        self.assertEqual(len(rocks), 1)
+        self.assertEqual(rocks[0].tile, (20, 20))
+        self.assertEqual(rocks[0].required_hits, 6)
+
+    def test_use_tool_frames_have_no_dpad(self) -> None:
+        for action in use_tool(frames=20, cooldown=10):
+            if int(action[1]) == 1:
+                self.assertFalse(any(int(action[i]) for i in range(4, 8)))
 
 
 class TestPocketClearTask(unittest.TestCase):
@@ -352,7 +382,7 @@ class TestFarmClearerSelection(unittest.TestCase):
         clearer._enable_lift_only_mode([int(Tool.HAMMER), int(Tool.AXE)])
         clearer.navigator.update(ram)
 
-        self.assertEqual(clearer.priority, [DebrisType.WEED, DebrisType.STONE])
+        self.assertEqual(clearer.priority, [DebrisType.WEED])
         self.assertTrue(clearer.prefer_lift_for_stones)
         nxt = clearer._handle_scanning(ram)
         self.assertIn(nxt, {"navigating", "clearing"})
@@ -437,16 +467,59 @@ class TestFarmClearerSelection(unittest.TestCase):
         self.assertEqual(nxt, "scanning")
         self.assertEqual(clearer.cleared_count, before + 1)
 
-    def test_stamina_stop_completes_clearer(self) -> None:
+    def test_low_stamina_still_lifts_weeds(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10), stamina=2)
-        _set_tile(ram, 12, 12, WEED)
+        _set_tile(ram, 11, 10, WEED)
         clearer = FarmClearer()
         clearer.startup_done = True
         clearer.navigator.update(ram)
         action = clearer.tick(ram)
-        self.assertIsNone(action)
-        self.assertTrue(clearer.stamina_exhausted)
-        self.assertEqual(clearer.state, "complete")
+        self.assertIsNotNone(action)
+        self.assertFalse(clearer.stamina_exhausted)
+        self.assertNotEqual(clearer.state, "complete")
+
+    def test_hammer_in_backpack_still_targets_rock(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=int(Tool.WATERING_CAN))
+        ram[ADDR_TOOL_BACKPACK] = int(Tool.HAMMER)
+        _place_large_rock(ram, 12, 10)
+        clearer = FarmClearer()
+        clearer.startup_done = True
+        clearer.tool_manager.update(ram)
+        clearer._finalize_startup_tools()
+        self.assertIn(DebrisType.ROCK, clearer.priority)
+        self.assertNotIn(DebrisType.STUMP, clearer.priority)
+        clearer.navigator.update(ram)
+        nxt = clearer._handle_scanning(ram)
+        self.assertIn(nxt, {"navigating", "clearing"})
+        assert clearer.current_target is not None
+        self.assertEqual(clearer.current_target.debris_type, DebrisType.ROCK)
+
+    def test_missing_hammer_does_not_target_rock(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _place_large_rock(ram, 12, 10)
+        clearer = FarmClearer()
+        clearer.startup_done = True
+        clearer.tool_manager.update(ram)
+        clearer._finalize_startup_tools()
+        self.assertNotIn(DebrisType.ROCK, clearer.priority)
+        clearer.navigator.update(ram)
+        nxt = clearer._handle_scanning(ram)
+        self.assertEqual(nxt, "complete")
+        self.assertIsNone(clearer.current_target)
+
+    def test_adjacent_snap_collapses_damage_family(self) -> None:
+        ram = _make_farm_ram(player_tile=(12, 10))
+        _set_tile(ram, 10, 10, 0x11)
+        _set_tile(ram, 11, 10, 0x12)
+        _set_tile(ram, 10, 11, 0x13)
+        _set_tile(ram, 11, 11, 0x14)
+        clearer = FarmClearer()
+        clearer.navigator.update(ram)
+        nxt = clearer._try_adjacent_opportunity(ram, (12, 10))
+        self.assertEqual(nxt, "clearing")
+        assert clearer.current_target is not None
+        self.assertEqual(clearer.current_target.tile, (10, 10))
+        self.assertEqual(clearer.current_target.debris_type, DebrisType.ROCK)
 
 
 class TestFarmClearTask(unittest.TestCase):
@@ -464,6 +537,44 @@ class TestFarmClearTask(unittest.TestCase):
         snap = task.progress_snapshot()
         self.assertEqual(snap.task_name, "farm_clear")
         self.assertIn(("cleared", 0), snap.details)
+
+    def test_unbounded_clear_off_farm_does_not_succeed(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        ram[ADDR_TILEMAP] = 0x04
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=False)
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertNotIn("field_clear", result.reason or "")
+
+    def test_unbounded_leftover_debris_is_not_success(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _place_large_rock(ram, 20, 20)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=False)
+        task.reset(world)
+        task.clearer.startup_done = True
+        task.clearer.state = "complete"
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("partial_clear", result.reason or "")
+
+    def test_low_stamina_does_not_start_six_hit_or_succeed(self) -> None:
+        ram = _make_farm_ram(
+            player_tile=(10, 10), stamina=5, tool=int(Tool.HAMMER)
+        )
+        _place_large_rock(ram, 11, 10)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=True)
+        task.reset(world)
+        task.clearer.startup_done = True
+        task.clearer._tool_scan_done = True
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertNotIn("field_clear", result.reason or "")
+        self.assertEqual(ram[ADDR_MAP + 10 * MAP_WIDTH + 11], LARGE_ROCK_TL)
+        self.assertEqual(ram[ADDR_MAP + 10 * MAP_WIDTH + 12], 0x0E)
 
 
 class TestDayPlanClearField(unittest.TestCase):

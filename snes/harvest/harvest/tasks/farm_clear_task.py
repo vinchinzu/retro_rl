@@ -17,6 +17,8 @@ from harvest.core.tile_catalog import (
     CLEARABLE_DEBRIS_TYPES,
     STALE_TILE_IDS,
     TILE_TO_DEBRIS,
+    DebrisType,
+    Tool,
 )
 from harvest.maps.map_config import FARM_POND_ACCESS_FENCE_ROW
 from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
@@ -32,7 +34,6 @@ from harvest.planner.tasks.transitions import (
     toss_held_actions,
 )
 from harvest.tasks.farm_toss import FenceJumpTossSkill, needs_south_fence_drop
-from harvest.core.tile_catalog import DebrisType
 from harvest.tasks.nav import (
     Point,
     TILE_SIZE,
@@ -58,9 +59,12 @@ DEFAULT_TASKS_DIR = os.fspath(PROJECT_TASKS_DIR)
 class FarmClearTask(Task):
     """Clear weeds, stones, rocks, and stumps on the farm map.
 
-    Stops with SUCCESS when the field is clean or stamina is too low to
-    continue safely (day plan can resume tomorrow). Always tries to drop a
-    held weed/rock before finishing so return-home is not blocked.
+    Unbounded (no farm_bounds) SUCCESS only when remaining clearable debris
+    is empty on the farm map. Incomplete stamina/budget/lift-only leftover
+    is FAILURE so the optional day-plan policy can skip/defer. Pocket
+    ``CLEAR_PLOT`` (farm_bounds set) still SUCCESS on the plant notch.
+    Always tries to drop a held weed/rock before finishing so return-home
+    is not blocked.
     """
 
     name: str = "farm_clear"
@@ -86,6 +90,9 @@ class FarmClearTask(Task):
     # shop-return / west-gate pin. Walk into the yard first so (13,28) loads.
     _approach: Optional[Task] = field(default=None, init=False)
     _pocket_arrived: bool = field(default=False, init=False)
+    _pending_finish_status: TaskStatus = field(
+        default=TaskStatus.SUCCESS, init=False
+    )
 
     def __post_init__(self) -> None:
         self._clearer = FarmClearer(priority=self.priority)
@@ -101,11 +108,13 @@ class FarmClearTask(Task):
         if self.fetch_tools:
             self._register_default_tool_startup()
         else:
-            # No shed/tool recordings — lift weeds/stones only.
+            # No shed/tool recordings — cannot smash ROCK/STUMP this pass.
             self._clearer.startup_done = True
             self._clearer._tool_scan_done = True
             self._clearer.tools_missing = True
-            self._clearer._enable_lift_only_mode([])
+            self._clearer._enable_lift_only_mode(
+                [int(Tool.HAMMER), int(Tool.AXE)]
+            )
 
     def _register_default_tool_startup(self) -> None:
         # Position-locked get_hammer/get_axe recordings only work from their
@@ -182,6 +191,7 @@ class FarmClearTask(Task):
         self._drop_queue.clear()
         self._drop_attempts = 0
         self._pending_finish_reason = ""
+        self._pending_finish_status = TaskStatus.SUCCESS
         self._staging_queue.clear()
         self._did_south_staging = False
         self._toss_skill = None
@@ -373,6 +383,21 @@ class FarmClearTask(Task):
         )
         self._exit_nav.reset(world)
 
+    def _on_farm(self, world: WorldState) -> bool:
+        ram = world.ram
+        if ram is None or ADDR_TILEMAP >= len(ram):
+            return False
+        tilemap = int(ram[ADDR_TILEMAP])
+        return is_farm_tilemap(tilemap) or tilemap == FARM_TILEMAP
+
+    def _complete_status(self, world: WorldState, remaining) -> TaskStatus:
+        """Unbounded whole-farm SUCCESS only with empty debris on farm."""
+        if self.farm_bounds is not None:
+            return TaskStatus.SUCCESS
+        if remaining or not self._on_farm(world):
+            return TaskStatus.FAILURE
+        return TaskStatus.SUCCESS
+
     def _step_exit_nav(self, world: WorldState) -> Optional[TaskResult]:
         if self._exit_nav is None:
             return None
@@ -385,13 +410,16 @@ class FarmClearTask(Task):
             )
         self._exit_nav = None
         reason = self._pending_finish_reason or "clear exit-staging south pocket"
+        status = self._pending_finish_status
         self._pending_finish_reason = ""
-        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
+        self._pending_finish_status = TaskStatus.SUCCESS
+        return TaskResult(status=status, reason=reason)
 
     def _maybe_stage_then_success(
         self, world: WorldState, reason: str
     ) -> TaskResult:
-        """After drop, leave the south-of-fence pocket before SUCCESS."""
+        """After drop, leave the south-of-fence pocket before finishing."""
+        status = self._pending_finish_status
         if not self._did_south_staging and is_farm_tilemap(
             int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         ):
@@ -403,9 +431,15 @@ class FarmClearTask(Task):
                 stepped = self._step_exit_nav(world)
                 if stepped is not None:
                     return stepped
-        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
+        return TaskResult(status=status, reason=reason)
 
-    def _finish_or_drop(self, world: WorldState, reason: str) -> TaskResult:
+    def _finish_or_drop(
+        self,
+        world: WorldState,
+        reason: str,
+        *,
+        status: Optional[TaskStatus] = None,
+    ) -> TaskResult:
         """Do not hand a carried weed/rock to the next day-plan phase.
 
         Prefer multi-face stationary A-drop (fence_flow proven). Still SUCCESS
@@ -414,6 +448,8 @@ class FarmClearTask(Task):
         When finishing south of the y=31 fence wall, B-run east first so
         return_home is not born in the SW rock pocket (rr-5in D8).
         """
+        if status is not None:
+            self._pending_finish_status = status
         if self._toss_skill is not None:
             result = self._toss_skill.step(world)
             if result.status == TaskStatus.RUNNING:
@@ -524,19 +560,22 @@ class FarmClearTask(Task):
                     f"clear_budget cleared={self._clearer.cleared_count} "
                     f"remaining={len(remaining)}{lift_note}"
                 ),
+                status=self._complete_status(world, remaining),
             )
 
         action = self._clearer.tick(world.ram)
         if action is None:
-            if self._clearer.stamina_exhausted:
-                return self._finish_or_drop(
-                    world,
-                    f"stamina_low cleared={self._clearer.cleared_count}",
-                )
             remaining = self._remaining_debris(world.ram)
             lift_note = (
                 " lift_only" if self._clearer.tools_missing else ""
             )
+            finish_status = self._complete_status(world, remaining)
+            if self._clearer.stamina_exhausted:
+                return self._finish_or_drop(
+                    world,
+                    f"stamina_low cleared={self._clearer.cleared_count}",
+                    status=finish_status,
+                )
             if remaining:
                 return self._finish_or_drop(
                     world,
@@ -544,14 +583,25 @@ class FarmClearTask(Task):
                         f"partial_clear cleared={self._clearer.cleared_count} "
                         f"remaining={len(remaining)}{lift_note}"
                     ),
+                    status=finish_status,
                 )
             if self.farm_bounds is not None and not self._pocket_arrived:
                 retry = self._step_pocket_approach(world)
                 if retry is not None:
                     return retry
+            if self.farm_bounds is None and not self._on_farm(world):
+                return self._finish_or_drop(
+                    world,
+                    (
+                        f"partial_clear cleared={self._clearer.cleared_count} "
+                        f"remaining={len(remaining)}{lift_note}"
+                    ),
+                    status=TaskStatus.FAILURE,
+                )
             return self._finish_or_drop(
                 world,
                 f"field_clear cleared={self._clearer.cleared_count}{lift_note}",
+                status=finish_status,
             )
 
         return TaskResult(

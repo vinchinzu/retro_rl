@@ -24,6 +24,8 @@ Save-state RAM is direct WRAM; live `env.get_ram()` may be offset by `+0x4000`
 | tilemap | `0x0022` | u8 | live_offset=False; farm `0x00–0x03`, house `0x15–0x17`, path `0x0C`, town `0x04`, sleep `0x0F` |
 | player_x / player_y | `0x00D6` / `0x00D8` | u16 | Pixel coords |
 | player_state | `0x00D2` | u8 | Carry / transition bits |
+| player_action | `0x00D4` | u8 | Live: 0 idle/walk/run/**push** (no distinct push code), 3 jump/water, 4 carry, 9 dialogue |
+| player_direction | `0x00DA` | u8 | Facing: 0 down, 1 up, 2 right, 3 left |
 | input_lock | `0x019A` | u8 | 1 = free; dismiss when not 1 |
 | stamina | `0x0918` | u8 | |
 | dialog_text_id | `0x0183` | u16 | Dialogue / shop menus |

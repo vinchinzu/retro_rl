@@ -8,14 +8,17 @@ import numpy as np
 
 from retro_harness import TaskStatus, WorldState
 
-from harvest.core.ram_catalog import field_spec
+from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
 from harvest.core.shipping_credit import (
+    SHIPPING_DIALOG_TEXT_IDS,
     SHIPPING_SCENE_HOUR,
+    SHIPPING_SCENE_PENDING_FLAG,
     acceptance_ok,
     money_rose_after_shipping_window,
     shipping_credit_journal_row,
+    shipping_scene_needs_dismiss,
 )
-from harvest.planner.tasks.inventory import FarmShippingWaitTask
+from harvest.planner.tasks.inventory import FarmExitTask, FarmShippingWaitTask
 from harvest.scripts.run_to_day2 import _summarize_journal
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
@@ -122,6 +125,91 @@ def _shipping_wait_world(
     return WorldState(frame=0, ram=ram, info={}, obs=None)
 
 
+def _set_dialog_text_id(ram: np.ndarray, text_id: int) -> None:
+    addr = field_spec("dialog_text_id").address
+    ram[addr] = text_id & 0xFF
+    ram[addr + 1] = (text_id >> 8) & 0xFF
+
+
+def _set_event_flags_1f5a(ram: np.ndarray, value: int) -> None:
+    addr = field_spec("event_flags_1f5a").address
+    for base in (0, LIVE_RAM_WRAM_OFFSET):
+        idx = addr + base
+        if idx + 1 < len(ram):
+            ram[idx] = value & 0xFF
+            ram[idx + 1] = (value >> 8) & 0xFF
+
+
+def _a_held(result) -> int:
+    return int(result.action.action[8])
+
+
+class ShippingSceneDismissTests(unittest.TestCase):
+    def test_shipping_text_id_needs_dismiss_while_locked(self) -> None:
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=2)
+        _set_dialog_text_id(world.ram, SHIPPING_DIALOG_TEXT_IDS[0])
+        self.assertTrue(shipping_scene_needs_dismiss(world.ram))
+
+    def test_stale_shipping_text_id_does_not_dismiss_when_unlocked(self) -> None:
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=1)
+        _set_dialog_text_id(world.ram, SHIPPING_DIALOG_TEXT_IDS[0])
+        self.assertFalse(shipping_scene_needs_dismiss(world.ram))
+
+    def test_pending_flag_needs_dismiss_when_locked(self) -> None:
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=0)
+        _set_event_flags_1f5a(world.ram, SHIPPING_SCENE_PENDING_FLAG)
+        self.assertTrue(shipping_scene_needs_dismiss(world.ram))
+
+    def test_farm_5pm_lock_zero_without_text_is_tool_swing(self) -> None:
+        # lock==0 after 17:00 is a hammer/lift/menu, not the shipper box.
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=0)
+        self.assertFalse(shipping_scene_needs_dismiss(world.ram))
+
+    def test_farm_5pm_lock_two_is_shipping_box(self) -> None:
+        # CC inputstate==2 on farm at 17:00 is the box before text is written.
+        # lock==0 is not this exception.
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=2)
+        self.assertTrue(shipping_scene_needs_dismiss(world.ram))
+
+    def test_farm_5pm_lock_two_with_shipping_text_needs_dismiss(self) -> None:
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=2)
+        _set_dialog_text_id(world.ram, 0x031A)
+        self.assertTrue(shipping_scene_needs_dismiss(world.ram))
+
+    def test_free_farm_before_5pm_does_not_need_dismiss(self) -> None:
+        world = _shipping_wait_world(hour=12, tilemap=0x00, input_lock=1)
+        self.assertFalse(shipping_scene_needs_dismiss(world.ram))
+
+    def test_town_lock_is_not_shipping_scene(self) -> None:
+        world = _shipping_wait_world(hour=17, tilemap=0x04, input_lock=2)
+        self.assertFalse(shipping_scene_needs_dismiss(world.ram))
+
+    def test_farm_exit_pulses_a_instead_of_holding(self) -> None:
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=2)
+        _set_dialog_text_id(world.ram, 0x031A)
+        task = FarmExitTask(timeout=100)
+        task.reset(world)
+        held = [_a_held(task.step(world)) for _ in range(4)]
+        # Increment-first: odd=idle (release), even=A. Never [1,1,1,1].
+        self.assertEqual(held, [0, 1, 0, 1])
+        self.assertEqual(task._dismiss_frames, 4)
+
+    def test_day_plan_intercepts_shipping_box_before_child(self) -> None:
+        from harvest.planner.day_phase_catalog import NAV_FARM_EXIT_PHASE
+        from harvest.planner.day_plan_orchestrator import DayPlanTask
+
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=2)
+        _set_dialog_text_id(world.ram, 0x031B)
+        task = DayPlanTask(phase_sequence=[NAV_FARM_EXIT_PHASE])
+        task.reset(world)
+        results = [task.step(world) for _ in range(4)]
+        self.assertTrue(all(r.status == TaskStatus.RUNNING for r in results))
+        self.assertTrue(all((r.reason or "").startswith("shipping scene") for r in results))
+        held = [_a_held(r) for r in results]
+        self.assertEqual(held, [0, 1, 0, 1])
+        self.assertIsNone(task._current_task)
+
+
 class FarmShippingWaitTests(unittest.TestCase):
     def test_wait_runs_before_5pm_on_farm(self) -> None:
         task = FarmShippingWaitTask(timeout=100)
@@ -129,6 +217,25 @@ class FarmShippingWaitTests(unittest.TestCase):
         task.reset(world)
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.RUNNING)
+
+    def test_wait_settles_after_box_without_long_warmup(self) -> None:
+        task = FarmShippingWaitTask(timeout=100)
+        world = _shipping_wait_world(hour=17, minute=0, tilemap=0x00, input_lock=2)
+        _set_dialog_text_id(world.ram, 0x031A)
+        task.reset(world)
+        for _ in range(4):
+            result = task.step(world)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            self.assertEqual(result.reason, "shipping scene")
+        self.assertTrue(task._saw_input_lock)
+        world.ram[ADDR_INPUT_LOCK] = 1
+        last = None
+        for _ in range(12):
+            last = task.step(world)
+            if last.status == TaskStatus.SUCCESS:
+                break
+        self.assertEqual(last.status, TaskStatus.SUCCESS)
+        self.assertIn("settled", last.reason or "")
 
     def test_wait_succeeds_after_5pm_on_farm(self) -> None:
         task = FarmShippingWaitTask(timeout=100)

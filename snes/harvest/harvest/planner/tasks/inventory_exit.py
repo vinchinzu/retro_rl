@@ -18,6 +18,7 @@ from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
 )
 from harvest.maps.map_config import ROUTES, Waypoint
+from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result
 from harvest.planner.day_plan_status import (
     TASKS_DIR,
@@ -598,8 +599,10 @@ class FarmExitTask(Task):
     timeout: int = 10000
 
     _nav: Optional[Task] = field(default=None, init=False, repr=False)
+    _dismiss_frames: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
+        self._dismiss_frames = 0
         pos = get_pos_from_ram(world.ram)
         if pos.y >= 32 * 16:
             # Post-berry return: use the known clear south lane and cross the
@@ -628,8 +631,17 @@ class FarmExitTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
-        if input_lock != 1:
-            return dismiss_dialogue_result(0)
+        shipping = shipping_scene_needs_dismiss(world.ram)
+        if shipping or input_lock != 1:
+            # Must pulse A (press/release). Frame 0 every step *holds* A and
+            # ShippingSceneDialogue never sees an edge (bank_81 $096F=2).
+            self._dismiss_frames += 1
+            return dismiss_dialogue_result(
+                self._dismiss_frames,
+                buttons=("a",),
+                pulse_every=2,
+                reason="shipping scene" if shipping else "input locked",
+            )
 
         if self._nav is None:
             self.reset(world)
