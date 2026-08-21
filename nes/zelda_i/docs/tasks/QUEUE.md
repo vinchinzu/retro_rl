@@ -21,24 +21,25 @@ sword kiting once geometry is known.
 |------|--------|-------|
 | Power-on → L1 Triforce | **Clean green** | M5; do not overwrite |
 | Survival spine L1 | **green** `rr-4d53.1` | power-on → TF `0x01` → L2 `0x7d`; Aquamentus 877f |
-| Survival spine L2 entry | **green** | Moon `0x7d` on continuous tape |
-| Survival spine L2 boom | **tip** `rr-4d53.2.1` | live `0x7d` → Magical Boomerang `0x4f` |
-| L2 natural bombs / TF | ready / blocked | `rr-4d53.2.2` then `.2.3` |
-| L3 Raft → Manhandla → TF `0x04` | **assisted green 2/2** | parked until `rr-4d53.3` footage |
-| L4 / L5 spine hops | **queued** | `rr-4d53.6` / `.7` after L3 |
+| Survival spine L2 TF | **green** `rr-4d53.2.3` | `--through level2` TF `0x02` |
+| Survival spine L3 entry | **green** `rr-4d53.3.0` | Manji `0x7c`; 53918f |
+| Survival spine L3 west key | **tip** `rr-4d53.3.1.1` | live `0x7c` → `0x7b` keys≥1 |
+| L3 dest / Raft / TF | blocked | `.3.1.2` then `.3.3.*` then `.3.4.*`; isolated pins do not close |
+| L4 / L5 spine hops | **queued** | `rr-4d53.6` / `.7` after L3 TF |
 | L9 backward suffix | **parked P4** | `rr-yxy6` blocked on `rr-4d53` |
 | Hygiene | **parked P4** | `rr-ekwl` run_once leftover |
 
 ### Architecture (agent monitor)
 
 ```
-tip spine:  rr-4d53.3 L2 exit → L3 TF (run_survival_spine --through level2 is TF 0x02)
+tip spine:  rr-4d53.3.1.1 west key 0x7b (run_survival_spine --through level3)
 parked:     L9 (rr-yxy6); hygiene rr-ekwl; isolated L4 rr-q3n
-queued:     .3 L3 → .6 L4 → .7 L5 → .4 compose
+queued:     .3.1 dest 0x5b → .3.3 Raft → .3.4 TF → .6 L4 → .7 L5 → .4 compose
 process:    one session until fail → --infinite-life full clear → heatmap Clean
+close rule: LEVEL3_ROUTE.md § Spine attach (isolated Level3* pins are not approval)
 ```
 
-Claim one tip leaf: `bd update rr-4d53.3 --status in_progress`.
+Claim one tip leaf: `bd update rr-4d53.3.1.1 --status in_progress`.
 
 ### All-night wave results (2026-08-06 night)
 
@@ -89,13 +90,15 @@ Door traps burned:
 ## Next beads (tip + ready)
 
 ```bash
-bd ready -l zelda_i   # tip: rr-4d53.3 L2 exit → L3 TF
+bd ready -l zelda_i   # tip: rr-4d53.3.1.1 L3 west key 0x7b
 ```
 
 | Bead | Role | Start / notes |
 |------|------|---------------|
 | **`rr-4d53.2.3`** | **closed** Boom → TF `0x02` | `run_survival_spine.py --through level2` |
-| **`rr-4d53.3` / `.3.1`** | **TIP** L2 exit → L3 | `0x6b` dest + Raft suffix |
+| **`rr-4d53.3.0`** | **closed** Manji entry `0x7c` | `run_survival_spine.py --through level3` (old stop) |
+| **`rr-4d53.3.1.1`** | **TIP** west key `0x7b` | spine-only close; isolated west-key 2/2 is not approval |
+| **`rr-4d53.3.1.2` / `.3.3.*` / `.3.4.*`** | dest → Raft → TF | blocked; see LEVEL3_ROUTE Spine attach |
 | **`rr-4d53.6` / `.7` / `.4`** | later spine | L4 then L5 then one-session compose |
 | **`rr-ekwl` / `rr-yxy6`** | parked | hygiene / L9; do not claim |
 | **`rr-38p` ZOW.1** | parallel free | white sword + candle + bomb bag |

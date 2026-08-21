@@ -34,7 +34,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `ram.py`, `overworld.py`, `overworld_nav.py` | Snapshots + OW graph / L1 path |
 | `ow_path.py` | Shared `OverworldPathController` (L2–L8 hop engine) |
 | `walk_physics.py`, `predict.py` | OccupancyWalker + RAM claims (`retro_harness.predict`) |
-| `level3_spine.py` | `--through level3` entry 0x7c (dest 0x5b library-only) |
+| `level3_spine.py` | `--through level3` west key 0x7b (dest 0x5b library-only) |
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
@@ -95,8 +95,9 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. Claimed `rr-4d53.3`:
-`--through level3` stops at Manji entry 0x7c, not dest 0x5b. Last live:
-`clear6f_compass` green; hitch is `bomb_north_6f` `no_bombs` in 0x6f
-~(200,101). L2 TF `0x02` is on the tape with documented bomb/key count
-pokes (not Clean). L9 / hygiene / isolated L4 are parked.
+(`run_survival_spine.py`); no seamed compose. Claimed `rr-4d53.3.1.1`:
+`--through level3` west key `0x7b` (not dest 0x5b). Entrance `0x7c` is
+`.3.0` closed (53918f `tf=0x03` bombs=8 keys=4; L2 entry bombs=0; Survival
+count top-up `poke_bombs=16` until farm `rr-doua`). Isolated `Level3*`
+pins cannot close spine beads (`docs/LEVEL3_ROUTE.md` § Spine attach).
+L9 / hygiene / isolated L4 are parked.

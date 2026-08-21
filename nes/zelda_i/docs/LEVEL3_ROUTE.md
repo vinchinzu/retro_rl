@@ -77,7 +77,7 @@ not required for assisted entry).
 |---------|---------|----------|-------|--------|
 | **0x7c** entry | Static orange sprites (not live RAM types); `obj_count` residual | — | S mouth (exit OW), **W** (corner residual) | **live** entry |
 | **0x7b** west of entry | **6× Zol type `0x13`** (HP>0; wooden sword can leave type-0 HP residual) | key **RoomItemId `0x19`** | E back to 0x7c; **N** to 0x6b | **live pure Clean** |
-| **0x6b** north of 0x7b | **5× Zol type `0x13`** on **diagonal raised blocks** | RoomItemId `0x19` (key drop **residual** — RoomAllDead often stalls) | S→0x7b; **N→0x5b** after type-0x13 clear | **live pure Clean** (clear + north) |
+| **0x6b** north of 0x7b | **5× Zol type `0x13`** on **diagonal raised blocks** | RoomItemId `0x19` (key drop **residual** — RoomAllDead often stalls) | S→0x7b; **N→0x5b** after type-0x13 clear | occupancy BFS dest (block on miss); isolated north still Clean |
 | **0x5b** north of 0x6b | **3× Darknut type `0x0b` HP64** | bombs drop on clear | S→0x6b; **N→0x4b** open; **W→0x5a** open; E walk sealed; bomb-R→0x5c | **live** (arrival pure; combat residual) |
 | **0x4b** north of 0x5b | **3× Zol type `0x13`** | RoomItemId `0x19` (pickup residual) | S→0x5b; **L KEY→0x4a**; **R KEY→0x4c** map; U blocked | **live** doors; clear spec encoded |
 | **0x5a** west of 0x5b | **4× Keese `0x1b`** + 4× blade traps `0x49` | **Compass RoomItemId `0x16`** (inventory bit L3=4) | R→0x5b; **L KEY→0x59**; U→0x4a; D blocked | **live assisted** Compass |
@@ -121,6 +121,72 @@ not required for assisted entry).
       -- UP --> 0x4c Map
 ```
 
+## Spine attach (`rr-4d53.3`)
+
+Watchable main spine is **one continuous Survival session from power-on**
+(`run_survival_spine.py`). Isolated L3 runners and `Level3*.state` pins are
+geometry libraries. They are **not** spine approvals and cannot close a
+`rr-4d53.3*` bead.
+
+`--through level3` stop name **moves with the claimed tip leaf**. Parent
+`rr-4d53.3` stays open until TF bit `0x04` is on that same tape.
+
+### Approval (required to close any `rr-4d53.3*` leaf)
+
+1. Command (one trial, same env as the predecessor stop):
+   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --trials 1`
+2. Predecessor is the previous spine stop on that session (never a loaded
+   `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft` pin).
+3. Exact RAM stop for the leaf (table below). No timeout bump in place of a miss.
+4. Report: `continuous_emulator_session=true`, `mid_run_state_load=false`,
+   `seamed=false`, `progression_writes=0`, `capacity_writes=0`, `deaths=0`.
+5. Bomb/key **count** top-up listed in `inventory_assist` is the only allowed
+   poke (`docs/ASSIST_CONTRACT.md`). No door poke, no undiscovered items, no
+   `max_bombs` write. `--poke-bombs 16` on `run_level3_to_boss` is recon.
+6. Evidence: `recordings/survival_spine.json` + `_final.png`. Report `stop`
+   field equals the leaf name. Library stages live in `level3_spine.py` (or a
+   `level3_*_spine.py` extract); unit tests cover stage names + stop predicate.
+7. Occupancy / door-graph first (`zelda_i.predict`). Halt at the first
+   unrecoverable miss; do not hunt.
+
+### Not approval
+
+- Isolated `run_level3_west_key.py` / `run_level3_north_chain.py` /
+  `run_level3_raft.py` / `run_level3_to_boss.py` / `run_l2_to_l3.py`
+- Any `Level3*.state` load, door poke, or `--poke-bombs`
+- Seamed compose / clip concat
+- Walkthrough or TAS (hypothesis only)
+
+Room leaves are children of in-progress `rr-4d53.3` so `bd ready -l zelda_i`
+shows only the unblocked tip. Corridor parents (`.3.1` / `.3.3` / `.3.4`) are
+aggregators blocked on their last child — do not claim a parent instead of
+the room leaf.
+
+### DAG (claim one ready leaf)
+
+| Bead | Segment | Spine stop | Library | Isolated (not close) |
+|------|---------|------------|---------|----------------------|
+| `rr-4d53.3.0` | L2 TF → Manji entry | `level3_entrance_0x7c` | `level3_entry_stages` | `run_l2_to_l3` from `Level2ExitOverworld` |
+| `rr-4d53.3.1.1` | **tip** 0x7c west key | `level3_west_key_0x7b` | `level3_west_key_stages` (`Level3WestKeyController`) | `run_level3_west_key.py` |
+| `rr-4d53.3.1.2` | 0x7b occupancy dest | `level3_dest_0x5b` | `level3_dest_6b_stages` north_chain | `run_level3_north_chain.py` |
+| `rr-4d53.3.1` | parent: live dest 0x5b | same as `.1.2` | both dest stages | north-chain Clean 2/2 |
+| `rr-4d53.3.3.1` | 0x5b LEFT → Compass | `level3_compass_0x5a` | raft `left_to_5a` | `Level3Raft` pin |
+| `rr-4d53.3.3.2` | 0x5a KEY-LEFT y=141 | `level3_west_darknuts_0x59` | raft `key_to_59` | key-waste recon |
+| `rr-4d53.3.3.3` | 0x59 kill DOWN | `level3_south_darknuts_0x69` | raft `clear_59`/`down_to_69` | spawn-lag recon |
+| `rr-4d53.3.3.4` | 0x69 stairs → Raft | `level3_raft` (`ADDR_RAFT≠0`) | raft `stairs_to_0f`/`passage_raft` | `run_level3_raft.py` |
+| `rr-4d53.3.3` | parent: 0x5b → Raft | same as `.3.3.4` | `Level3RaftPathController` | Raft 2/2 assisted |
+| `rr-4d53.3.2` | bombs for bomb-R + Manhandla | report `bombs_in` / no poke-16 | carry or 0x5b drop | isolated `--poke-bombs 16` |
+| `rr-4d53.3.4.1` | Raft backtrack bomb-R → 0x5b | `level3_backtrack_0x5b` | boss `exit_passage`/`bomb_59` | walk-RIGHT sealed trap |
+| `rr-4d53.3.4.2` | 0x5b bomb-R → 0x5c doors raw=3 | `level3_shortcut_0x5c` | boss `bomb_5b`/`clear_5c` | map explore recon |
+| `rr-4d53.3.4.3` | 0x5c → 0x5d doors raw=10 | `level3_prep_0x5d` | boss `right_5d`/`clear_prep` | ignore type `0x2b` |
+| `rr-4d53.3.4.4` | Manhandla → TF `0x04` | `level3_triforce_0x04` | boss `manhandla`/`collect_tf` | `run_level3_to_boss.py` |
+| `rr-4d53.3.4` | parent: Raft → TF | same as `.4.4` | `Level3BossPathController` poke default off | Raft poke-16 suffix |
+| `rr-4d53.3` | parent: L2 exit → L3 TF | `level3_triforce_0x04` | full `--through level3` | any seamed L3 tape |
+
+Claim only the ready tip. Do not start dest `0x5b`, Raft, or TF until the
+predecessor spine stop is live. Compass / map rooms that are off the Raft
+route stay optional and do not block TF.
+
 ### Post-Raft → Manhandla → TF (assisted LIVE **2/2**, 2026-08-07)
 
 From `Level3Raft` (mode 9, `ADDR_RAFT=1`, room 0x0f):
@@ -156,7 +222,8 @@ RoomAllDead often stays 0 (type-0 HP leftovers from wooden-sword hits — not
 killable as type 0x13). Pure clear uses **type-0x13 liveness only**
 (`settle_all_dead=0`). Source key drop not yet reliably collected; north
 shutter/door opens for UP once type-0x13 are gone (keys inventory unchanged
-in live trials). North exit needs **grid hunt** (not a single waypoint snake).
+in live trials). North exit is OccupancyWalker (block on miss; stand if no path),
+then UP @ x≈120 on the north band.
 
 ### Source interior (Zelda Dungeon L3)
 
@@ -227,10 +294,13 @@ in live trials). North exit needs **grid hunt** (not a single waypoint snake).
    Checkpoint `Level3Complete.state`. **Not Clean STATUS.**
    - Runner: `uv run python nes/zelda_i/scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`
    - Evidence: `recordings/level3_to_boss_assisted.json` (**2/2** enter 0x4d + kill + TF)
-3. **0x5b Darknut clear pure** — side/back hits; combat residual.
-4. **0x4b Zol clear** — spec `ROOM_4B_SPEC` + `run_level3_clear4b.py` (try 2/2).
+3. **0x5b Darknut clear pure** — side/back hits; combat residual (off the
+   Raft skip; not a spine blocker).
+4. **0x4b Zol clear** — spec `ROOM_4B_SPEC` + `run_level3_clear4b.py` (try 2/2;
+   optional, not on the Raft TF route).
 5. **0x6b key pickup** residual (inventory may not increment).
-6. **Natural-entry** from real predecessor before Clean STATUS promote.
+6. **Natural-entry / Clean STATUS** only after the continuous spine TF `0x04`
+   tape exists. Isolated pins stay development evidence.
 
 ### Traps burned (past-5b + Raft→boss)
 

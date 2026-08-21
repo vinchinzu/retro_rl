@@ -22,8 +22,11 @@ from zelda_i.level3_spine import (
     level3_dest_6b_success,
     level3_entry_stages,
     level3_entry_success,
+    level3_west_key_stages,
+    level3_west_key_success,
 )
 from zelda_i.ram import (
+    ADDR_KEYS,
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -35,13 +38,14 @@ from zelda_i.ram import (
 from zelda_i.survival_spine import SPINE_THROUGH
 
 
-def _ram(*, room: int, x: int, y: int) -> np.ndarray:
+def _ram(*, room: int, x: int, y: int, keys: int = 0) -> np.ndarray:
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = PLAY_MODE
     ram[ADDR_LEVEL] = 3
     ram[ADDR_SCREEN] = room
     ram[ADDR_LINK_X] = x
     ram[ADDR_LINK_Y] = y
+    ram[ADDR_KEYS] = keys
     return ram
 
 
@@ -60,11 +64,13 @@ def test_dest_6b_room_plan_is_kill_clear_north() -> None:
 
 def test_level3_stage_names_and_controllers() -> None:
     entry = [(name, type(ctrl)) for name, ctrl, _ in level3_entry_stages()]
+    west = [(name, type(ctrl)) for name, ctrl, _ in level3_west_key_stages()]
     dest = [(name, type(ctrl)) for name, ctrl, _ in level3_dest_6b_stages()]
     assert entry == [
         ("settle_l2_tf", PostL2TriforceSettleController),
         ("enter_level3", OverworldPostL2ToLevel3Controller),
     ]
+    assert west == [("west_key", Level3WestKeyController)]
     assert dest == [
         ("west_key", Level3WestKeyController),
         ("north_chain", Level3NorthChainController),
@@ -88,6 +94,17 @@ def test_entry_success_is_play_7c() -> None:
     snap = read_snapshot(_ram(room=0x7C, x=120, y=205))
     assert level3_entry_success(snap)
     assert not level3_entry_success(read_snapshot(_ram(room=0x5B, x=120, y=205)))
+    assert not level3_west_key_success(snap)
+
+
+def test_west_key_success_is_play_7b_with_key() -> None:
+    empty = read_snapshot(_ram(room=0x7B, x=120, y=141, keys=0))
+    keyed = read_snapshot(_ram(room=0x7B, x=120, y=141, keys=1))
+    dest = read_snapshot(_ram(room=0x5B, x=120, y=205, keys=1))
+    assert not level3_west_key_success(empty)
+    assert level3_west_key_success(keyed)
+    assert not level3_west_key_success(dest)
+    assert not level3_entry_success(keyed)
 
 
 def test_north_exit_miss_sidesteps_and_still_paths() -> None:
