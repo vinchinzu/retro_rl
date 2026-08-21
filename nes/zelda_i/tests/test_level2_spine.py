@@ -210,7 +210,7 @@ def test_enter_6f_isolated_band_wall_vert_push() -> None:
     """Isolated 2/2: mid-band 113 → wall → vertical 141 → RIGHT. No east-wall climb."""
     ctl = Level2Enter6fKeyController()
     act = ctl.step(_snap(room=0x6E, x=120, y=141, keys=2))
-    assert act.reason == "band_y"
+    assert act.reason == "band_occ"
     assert ctl.door_phase == "band"
     act = ctl.step(_snap(room=0x6E, x=120, y=113, keys=2))
     assert ctl.door_phase == "wall"
@@ -221,16 +221,34 @@ def test_enter_6f_isolated_band_wall_vert_push() -> None:
     act = ctl.step(_snap(room=0x6E, x=200, y=141, keys=2))
     assert ctl.door_phase == "push"
     assert act.reason == "push_r"
-    # Isolated first loop from mid: no east-wall south climb.
-    south = Level2Enter6fKeyController()
-    act = south.step(_snap(room=0x6E, x=40, y=181, keys=2))
-    assert act.reason not in {"south_to_wall", "south_to_band", "wall_r"}
     north = Level2Enter6fKeyController()
     act = north.step(_snap(room=0x6E, x=64, y=93, keys=2))
     assert act.reason == "north_east"
     alcove = Level2Enter6fKeyController()
     act = alcove.step(_snap(room=0x6E, x=208, y=93, keys=2))
     assert act.reason == "north_door_y"
+
+
+def test_enter_6f_south_occupancy_sidesteps_diamonds() -> None:
+    """Live timeout sat at (72, 181) then (112, 181); greedy UP hits diamonds."""
+    from retro_harness.controls import pressed_nes_buttons
+
+    ctl = Level2Enter6fKeyController()
+    snap = _snap(room=0x6E, x=112, y=181, keys=2)
+    first = ctl.step(snap)
+    assert first.reason == "band_occ"
+    first_dir = pressed_nes_buttons(list(first.action))
+    second = ctl.step(snap)
+    assert ctl.walker.misses == 1
+    assert second.reason == "band_occ"
+    assert pressed_nes_buttons(list(second.action)) != first_dir
+    east_south = Level2Enter6fKeyController()
+    east_snap = _snap(room=0x6E, x=200, y=181, keys=2)
+    act = east_south.step(east_snap)
+    assert act.reason == "band_occ"
+    assert "RIGHT" not in pressed_nes_buttons(list(act.action))
+    east_south.step(east_snap)
+    assert east_south.walker.misses == 1
 
 
 def test_through_success_is_triforce_bit() -> None:
