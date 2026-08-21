@@ -19,7 +19,10 @@ from zelda_i.level3_geometry import (
     NORTH_DOOR_X,
     NORTH_DOOR_X_TOL,
     ROOM_6B_BAND_Y,
+    ROOM_6B_COLUMN_LEAVE_DX,
+    ROOM_6B_COLUMN_SOUTH_Y,
     ROOM_6B_DOOR_Y,
+    ROOM_6B_MOUTH_DX,
     WEST_DOOR_APPROACH_Y,
     WEST_DOOR_WALL_X,
 )
@@ -200,6 +203,7 @@ class Level3NorthExit6bController:
     success: bool = False
     failed: bool = False
     notes: list[str] = field(default_factory=list)
+    samples: list[dict[str, Any]] = field(default_factory=list)
     walker: OccupancyWalker = field(default_factory=_room_6b_walker)
 
     @property
@@ -222,7 +226,9 @@ class Level3NorthExit6bController:
         if self.frames >= self.max_frames:
             self.failed = True
             self.notes.append("timeout")
-            return FrameAction(nes_idle_action(), "timeout")
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "timeout"), force=True
+            )
         if snap.mode == 17:
             self.failed = True
             self.notes.append("link_death")
@@ -268,20 +274,72 @@ class Level3NorthExit6bController:
             return FrameAction(nes_action("UP"), "north6b_push")
 
         # South mouth / door plane. Live dest combat ends at (120,181):
-        # UP does not move (v3); LEFT+UP slides west to (48,181) (v4). Walk
-        # LEFT off the door column, then UP inland. Do not occupancy-grade.
+        # all cardinals miss (v2); bare UP no-ops (v3); LEFT+UP slides west
+        # (v4, still y=181). Door-clip LEFT+UP off the column, then UP inland.
+        # Do not occupancy-grade a residual the 1px walker cannot represent.
         if snap.link_y >= 173:
             self.walker.last_dir = None
-            if abs(snap.link_x - NORTH_DOOR_X) <= 16:
-                return FrameAction(nes_action("LEFT"), "north6b_leave_mouth_x")
+            if abs(snap.link_x - NORTH_DOOR_X) <= ROOM_6B_MOUTH_DX:
+                return FrameAction(
+                    nes_action("LEFT", "UP"), "north6b_leave_mouth_clip"
+                )
             return FrameAction(nes_action("UP"), "north6b_leave_mouth")
+
+        # Door-column diamond just south of the band (v6): UP at (120,117)
+        # never reaches y=109. v7 climb-UP at (104,133) is still mid-room —
+        # only clip/climb in this y window. Do not occupancy-grade.
+        if (
+            snap.link_y <= ROOM_6B_COLUMN_SOUTH_Y
+            and abs(snap.link_x - NORTH_DOOR_X) <= ROOM_6B_MOUTH_DX
+        ):
+            self.walker.last_dir = None
+            dx = abs(snap.link_x - NORTH_DOOR_X)
+            if dx <= NORTH_DOOR_X_TOL:
+                return self._emit(
+                    snap,
+                    FrameAction(nes_action("LEFT", "UP"), "north6b_leave_column"),
+                )
+            if dx <= ROOM_6B_COLUMN_LEAVE_DX:
+                # v10: LEFT no-ops at (112,117) for 5500f (LEFT+UP v9 same).
+                # DOWN leaves the north-wall pocket; occupancy resumes y>125.
+                return self._emit(
+                    snap,
+                    FrameAction(nes_action("DOWN"), "north6b_leave_column_y"),
+                )
+            return self._emit(
+                snap, FrameAction(nes_action("UP"), "north6b_climb_band")
+            )
 
         direction = self.walker.next_dir(xy, self._goal())
         if direction is None:
+            # v5: 51 1px misses boxed inland at (96,133); idle never left.
+            # Diamond residual toward the door column (not occupancy-graded).
             if self.frames <= 8 or self.frames % 60 == 0:
-                self.notes.append(f"wait_f{self.frames}_{xy}")
-            return FrameAction(nes_idle_action(), "north6b_wait")
-        return FrameAction(nes_action(direction), "north6b_path")
+                self.notes.append(f"thread_f{self.frames}_{xy}")
+            return self._emit(snap, self._diamond_thread(snap))
+        return self._emit(snap, FrameAction(nes_action(direction), "north6b_path"))
+
+    def _emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        if force or self.frames <= 2 or self.frames % 250 == 0:
+            self.samples.append(
+                {
+                    "frame": self.frames,
+                    "x": int(snap.link_x),
+                    "y": int(snap.link_y),
+                    "reason": action.reason,
+                }
+            )
+        return action
+
+    def _diamond_thread(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.walker.last_dir = None
+        if snap.link_x < NORTH_DOOR_X - NORTH_DOOR_X_TOL:
+            return FrameAction(nes_action("RIGHT", "UP"), "north6b_thread")
+        if snap.link_x > NORTH_DOOR_X + NORTH_DOOR_X_TOL:
+            return FrameAction(nes_action("LEFT", "UP"), "north6b_thread")
+        return FrameAction(nes_action("UP"), "north6b_thread_up")
 
     def report(self) -> dict[str, Any]:
         return {
@@ -291,6 +349,7 @@ class Level3NorthExit6bController:
             "misses": self.misses,
             "blocked": len(self.grid.blocked),
             "notes": list(self.notes),
+            "samples": list(self.samples),
             "policy": "occupancy BFS + UP @ x≈120 on north band",
         }
 
