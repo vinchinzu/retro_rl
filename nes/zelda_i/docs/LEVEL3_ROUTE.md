@@ -167,8 +167,8 @@ the room leaf.
 | Bead | Segment | Spine stop | Library | Isolated (not close) |
 |------|---------|------------|---------|----------------------|
 | `rr-4d53.3.0` | L2 TF → Manji entry | `level3_entrance_0x7c` | `level3_entry_stages` | `run_l2_to_l3` from `Level2ExitOverworld` |
-| `rr-4d53.3.1.1` | **tip** 0x7c west key | `level3_west_key_0x7b` | `level3_west_key_stages` (`Level3WestKeyController`) | `run_level3_west_key.py` |
-| `rr-4d53.3.1.2` | 0x7b occupancy dest | `level3_dest_0x5b` | `level3_dest_6b_stages` north_chain | `run_level3_north_chain.py` |
+| `rr-4d53.3.1.1` | **closed** 0x7c west key | `level3_west_key_0x7b` | `level3_west_key_stages` (`Level3WestKeyController`) | `run_level3_west_key.py` |
+| `rr-4d53.3.1.2` | **tip** 0x7b occupancy dest | `level3_dest_0x5b` | `level3_dest_6b_stages` north_chain | `run_level3_north_chain.py` |
 | `rr-4d53.3.1` | parent: live dest 0x5b | same as `.1.2` | both dest stages | north-chain Clean 2/2 |
 | `rr-4d53.3.3.1` | 0x5b LEFT → Compass | `level3_compass_0x5a` | raft `left_to_5a` | `Level3Raft` pin |
 | `rr-4d53.3.3.2` | 0x5a KEY-LEFT y=141 | `level3_west_darknuts_0x59` | raft `key_to_59` | key-waste recon |
@@ -183,9 +183,30 @@ the room leaf.
 | `rr-4d53.3.4` | parent: Raft → TF | same as `.4.4` | `Level3BossPathController` poke default off | Raft poke-16 suffix |
 | `rr-4d53.3` | parent: L2 exit → L3 TF | `level3_triforce_0x04` | full `--through level3` | any seamed L3 tape |
 
-Claim only the ready tip. Do not start dest `0x5b`, Raft, or TF until the
-predecessor spine stop is live. Compass / map rooms that are off the Raft
-route stay optional and do not block TF.
+Claim only the ready tip. West key `0x7b` is live on the spine; dest `0x5b`
+is the claimed tip. Do not start Raft or TF until dest is live. Compass /
+map rooms that are off the Raft route stay optional and do not block TF.
+
+West-key close (2026-08-21): `l3_west_key_spine.json` 1/1 Survival 54589f,
+room `0x7b` keys=5 (entry keys=4), bombs=8, `tf=0x03`, west_key 671f
+(door 320f LEFT+UP y≈149 + combat 351f 6× Zol last_live=0). `chain.py`
+`controller_stage_done` accepts string-phase L3 path controllers (enum
+`.phase.name` crashed the first attach). Isolated west-key is not this close.
+
+Dest miss (same session, `.3.1.2` open): `l3_dest_0x5b_occ.json` combat 1435f
+occupancy_patrol (was 12000f greedy timeout, 1 Zol). `north_exit` 6000f at
+south mouth `(120,181)`: occupancy-grading walls Link in (v2); UP no-ops (v3);
+LEFT+UP slides to `(48,181)` (v4). Screenshot 16px tile seed over-blocked
+(9735 cells) — seed is strand-only now. Isolated north-chain 2/2 is not dest
+close (`already_0x5b` during combat hunt).
+
+Library `zelda_i.level3_bomb_budget` counts Raft→boss spend: verified bomb-R
+0x59 and bomb-R 0x5b (stands `(192,141)`), plus an **assumed** Manhandla-heads
+estimate (type `0x3c`, 5 heads live; bombs preferred — not TAS-perfect).
+Isolated `Level3Raft` stops at bombs=0 so `run_level3_to_boss --poke-bombs 16`
+is recon only and does **not** close `rr-4d53.3.2`. Spine must carry `.3.0`
+0x7c bombs=8 (keys=4) or farm 0x5b Darknut drops; do not add poke-16 to
+Survival / `SPINE_BOMB_RETOPUP`.
 
 ### Post-Raft → Manhandla → TF (assisted LIVE **2/2**, 2026-08-07)
 

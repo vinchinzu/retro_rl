@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zelda_i.chain import run_controller_stage
+from zelda_i.chain import controller_stage_done, run_controller_stage
 from zelda_i.ram import PLAY_MODE
 from zelda_i.room_timer import RoomTimer, bottleneck_visits
 
@@ -145,3 +145,50 @@ def test_bottleneck_visits_ranks_by_location_frames() -> None:
     assert top[0]["screen"] == 0x37
     assert top[0]["dest_screen"] == 0x38
     assert top[0]["location_frames"] == 20
+
+
+def test_controller_stage_done_accepts_string_phase() -> None:
+    """L3 west-key / north-chain controllers use phase str, not DungeonPhase."""
+    door = SimpleNamespace(success=False, phase="door")
+    assert not controller_stage_done(door)
+    done = SimpleNamespace(success=True, phase="done")
+    assert controller_stage_done(done)
+    failed = SimpleNamespace(success=False, phase="failed")
+    assert controller_stage_done(failed)
+    enum_failed = SimpleNamespace(success=False, phase=SimpleNamespace(name="FAILED"))
+    assert controller_stage_done(enum_failed)
+    flagged = SimpleNamespace(success=False, failed=True, phase="door")
+    assert controller_stage_done(flagged)
+
+
+def test_run_controller_stage_string_phase_does_not_crash() -> None:
+    """Spine --through level3 west_key used to AttributeError on phase.name."""
+    env = _HopEnv()
+    from zelda_i import ram as ram_mod
+
+    env._ram[ram_mod.ADDR_MODE] = PLAY_MODE
+    env._ram[ram_mod.ADDR_SCREEN] = 0x7C
+
+    class _StringPhase:
+        def __init__(self) -> None:
+            self.success = False
+            self.phase = "door"
+            self.frames = 0
+
+        def step(self, _snap):
+            self.frames += 1
+            if self.frames >= 2:
+                self.success = True
+                self.phase = "done"
+            return SimpleNamespace(action=0)
+
+        def report(self) -> dict:
+            return {"success": self.success, "phase": self.phase, "frames": self.frames}
+
+    controller = _StringPhase()
+    _obs, result = run_controller_stage(
+        env, None, name="west_key", controller=controller, max_frames=20
+    )
+    assert result.success is True
+    assert result.frames == 2
+    assert controller.phase == "done"

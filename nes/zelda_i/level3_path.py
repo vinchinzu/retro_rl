@@ -18,9 +18,12 @@ from zelda_i.dungeon import (
 from zelda_i.level3_geometry import (
     NORTH_DOOR_X,
     NORTH_DOOR_X_TOL,
+    ROOM_6B_BAND_Y,
+    ROOM_6B_DOOR_Y,
     WEST_DOOR_APPROACH_Y,
     WEST_DOOR_WALL_X,
 )
+from zelda_i.level3_occupancy import room_6b_grid
 from zelda_i.level3_dungeon import (
     ROOM_6B_SPEC,
     ROOM_7B_SPEC,
@@ -176,8 +179,12 @@ class Level3NorthDoor7bController:
         }
 
 
-_ROOM_6B_DOOR = (NORTH_DOOR_X, 93)
-_ROOM_6B_BAND = (NORTH_DOOR_X, 109)
+_ROOM_6B_DOOR = (NORTH_DOOR_X, ROOM_6B_DOOR_Y)
+_ROOM_6B_BAND = (NORTH_DOOR_X, ROOM_6B_BAND_Y)
+
+
+def _room_6b_walker() -> OccupancyWalker:
+    return OccupancyWalker(grid=room_6b_grid())
 
 
 @dataclass
@@ -193,7 +200,7 @@ class Level3NorthExit6bController:
     success: bool = False
     failed: bool = False
     notes: list[str] = field(default_factory=list)
-    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+    walker: OccupancyWalker = field(default_factory=_room_6b_walker)
 
     @property
     def grid(self) -> OccupancyGrid:
@@ -253,15 +260,26 @@ class Level3NorthExit6bController:
             self.notes.append(f"miss_f{self.frames}_{prev_dir}")
 
         # Traversable north band starts at y=109 (y<=100 stranded on the diamond).
-        if snap.link_y <= 109:
+        if snap.link_y <= ROOM_6B_BAND_Y:
             self.walker.last_dir = None
             if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:
                 direction = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
                 return FrameAction(nes_action(direction), "north6b_align_door")
             return FrameAction(nes_action("UP"), "north6b_push")
 
+        # South mouth / door plane. Live dest combat ends at (120,181):
+        # UP does not move (v3); LEFT+UP slides west to (48,181) (v4). Walk
+        # LEFT off the door column, then UP inland. Do not occupancy-grade.
+        if snap.link_y >= 173:
+            self.walker.last_dir = None
+            if abs(snap.link_x - NORTH_DOOR_X) <= 16:
+                return FrameAction(nes_action("LEFT"), "north6b_leave_mouth_x")
+            return FrameAction(nes_action("UP"), "north6b_leave_mouth")
+
         direction = self.walker.next_dir(xy, self._goal())
         if direction is None:
+            if self.frames <= 8 or self.frames % 60 == 0:
+                self.notes.append(f"wait_f{self.frames}_{xy}")
             return FrameAction(nes_idle_action(), "north6b_wait")
         return FrameAction(nes_action(direction), "north6b_path")
 

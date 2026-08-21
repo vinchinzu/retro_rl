@@ -113,8 +113,8 @@ _ROOM_7B_PATROL: tuple[tuple[int, int], ...] = (
 
 # 0x6b diagonal-block floor: prefer south/mid bands that stay walkable.
 _ROOM_6B_PATROL: tuple[tuple[int, int], ...] = (
-    (100, 181),
-    (140, 181),
+    (100, 173),
+    (140, 173),
     (160, 173),
     (150, 157),
     (120, 157),
@@ -178,6 +178,9 @@ ROOM_6B_SPEC = DungeonRoomSpec(
         patrol_attack_hold=3,
         engage_attack_period=6,
         engage_attack_hold=3,
+        # Diagonal raised blocks: greedy patrol timed out 12000f with 1 Zol
+        # (l3_dest_0x5b north_chain). Occupancy miss-block + replan.
+        occupancy_patrol=True,
     ),
     reward=RewardSpec(
         kind=RewardKind.CLEAR_ONLY,
@@ -492,7 +495,6 @@ for _spec in (
 _PATH_EXPORTS = frozenset({
     "west_door_step",
     "north_door_7b_step",
-    "north_exit_6b_step",
     "Level3WestDoorController",
     "Level3NorthDoor7bController",
     "Level3NorthExit6bController",
@@ -534,6 +536,7 @@ _GEOMETRY_EXPORTS = frozenset({
     "RAFT_PICKUP_Y",
     "RAFT_SOUTH_Y",
     "RAFT_SOUTH_Y_TOL",
+    "WEST_WALL_5B_X",
 })
 
 
