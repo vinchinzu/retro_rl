@@ -27,7 +27,10 @@ Save-state RAM is direct WRAM; live `env.get_ram()` may be offset by `+0x4000`
 | player_action | `0x00D4` | u8 | Live: 0 idle/walk/run/**push** (no distinct push code), 3 jump/water, 4 carry, 9 dialogue |
 | player_direction | `0x00DA` | u8 | Facing: 0 down, 1 up, 2 right, 3 left |
 | input_lock | `0x019A` | u8 | 1 = free; dismiss when not 1 |
-| stamina | `0x0918` | u8 | |
+| stamina | `0x0918` | u8 | Current. Script object: `Stamina.from_ram(ram)` / `WorldSnapshot.player.stamina` |
+| max_stamina | `0x0917` | u8 | Spa restores current to this (often 100–150) |
+| exhaustion_level | `0x096C` | u8 | Decomp `!exaustion_level` |
+| tool_hit_counter | `0x096D` | u8 | Hammer/axe 2×2 hits; breaks at 6 then STZ |
 | dialog_text_id | `0x0183` | u16 | Dialogue / shop menus |
 | dialog_menu_cursor | `0x018A` | u8 | |
 

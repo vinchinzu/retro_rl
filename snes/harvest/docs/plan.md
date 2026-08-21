@@ -59,7 +59,8 @@ Clean (`rr-zmss`). Keep the bush issue scoped to later repeat-forage days.
 - Close Gate B (CROP_WATER refill `rr-3ae8` → power-on soak `rr-5in` / epic `rr-20w`).
 - Day-plan soft fails ENSURE_CAN / CROP_WATER after plant (if still red post-B).
 - Extract coop feed/collect/ship (`rr-rbk`); cow mono extract (bead).
-- Hot-spring stamina gate in day plan (`rr-pzw`).
+- Hot-spring stamina gate in day plan (`rr-pzw`) — evening leftover insert
+  + full restore is wired; live pin still needs a spa soak proof.
 - Festival/Sunday/rain ordering (`rr-1vc` / Gate C).
 - Gift delivery (carry egg to NPC); summer/fall crop rotations.
 - M4 natural-entry summer from `Y1_Summer_D1_Morning`.

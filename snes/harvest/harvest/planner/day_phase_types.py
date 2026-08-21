@@ -335,6 +335,7 @@ class DayPlannerPolicy:
     include_berry_run: bool = True
     include_shop_run: bool = True
     include_end_day: bool = True
+    include_spa: bool = True
     include_chicken_sales: bool = True
     max_adult_chickens: int = 2
     chicken_sale_cutoff_hour: int = 10
@@ -384,6 +385,7 @@ def day_planner_policy_for_season(
         include_berry_run=policy.include_berry_run,
         include_shop_run=policy.include_shop_run,
         include_end_day=policy.include_end_day,
+        include_spa=policy.include_spa,
         include_chicken_sales=policy.include_chicken_sales,
         max_adult_chickens=policy.max_adult_chickens,
         chicken_sale_cutoff_hour=policy.chicken_sale_cutoff_hour,

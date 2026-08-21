@@ -59,6 +59,14 @@ HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
 HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
   --state Y1_Inside_House --out recordings/pocket_clear_probe.json
 
+# Stamina object from a pin (`player.stamina` is current/max/tool_hits)
+uv run python -m harvest.runtime.harvest_bot world --state Y1_Inside_House --compact
+# Drain + outdoor spa until current == max, then return (rr-pzw)
+HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \
+  --state latest_backup_sunday_go_to_mountain_20260427_152011 \
+  --min-stamina full --target-stamina 30 --return-to-farm \
+  --out recordings/hot_spring_full.json
+
 # Harvest + ship + post-5pm wallet credit (rr-53g)
 HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
   --state Y1_Day09_Harvest_Mode_Start \

@@ -36,6 +36,7 @@ from harvest.core.ram_catalog import (
     read_animal_slot_field,
     read_ram_value,
 )
+from harvest.core.stamina import Stamina
 from harvest.runtime.rom_tools import parse_save_state, resolve_state_path
 from harvest.core.tile_catalog import (
     MAP_HEIGHT,
@@ -84,7 +85,7 @@ class PlayerSnapshot:
     tile_category: str
     tilemap: int
     tilemap_name: str
-    stamina: int
+    stamina: Stamina
     held_item: int
     tool_selected: int
     input_lock: int
@@ -100,7 +101,7 @@ class PlayerSnapshot:
             "tilemap": self.tilemap,
             "tilemap_hex": f"0x{self.tilemap:02X}",
             "tilemap_name": self.tilemap_name,
-            "stamina": self.stamina,
+            "stamina": self.stamina.to_dict(),
             "held_item": self.held_item,
             "tool_selected": self.tool_selected,
             "tool_name": TOOL_NAMES.get(self.tool_selected, f"0x{self.tool_selected:02X}"),
@@ -187,7 +188,7 @@ class WorldSnapshot:
             tile_category=tile_category(tile_id),
             tilemap=tilemap,
             tilemap_name=get_map_name(tilemap),
-            stamina=int(scalars.get("stamina", 0)),
+            stamina=Stamina.from_ram(ram),
             held_item=int(scalars.get("held_item", 0)),
             tool_selected=int(scalars.get("tool_selected", 0)),
             input_lock=int(scalars.get("input_lock", 0)),

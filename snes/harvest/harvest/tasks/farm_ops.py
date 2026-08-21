@@ -16,6 +16,7 @@ import numpy as np
 from retro_harness.actions import action_names
 
 from harvest.core.carry import backpack_tool
+from harvest.core.stamina import SWING_STAMINA_COST, stamina_cost_for_hits
 from harvest.core.tile_catalog import (
     ADDR_MAP,
     ADDR_TOOL,
@@ -56,7 +57,6 @@ __all__ = [
 DAMAGE_ROCK_TL = min(LARGE_ROCK_DAMAGE_TILES)
 _TWO_BY_TWO_IDS = STUMP_TILES | LARGE_ROCK_TILES | LARGE_ROCK_DAMAGE_TILES
 _ANCHOR_IDS = frozenset({STUMP_TL, LARGE_ROCK_TL, DAMAGE_ROCK_TL})
-SWING_STAMINA_COST = 2
 
 
 # =============================================================================
@@ -80,7 +80,7 @@ class Target:
 
     @property
     def required_hits(self) -> int:
-        # 2x2 stump / large-rock (incl. mid-hit 0x11-0x14) take 6 swings.
+        # ROM: 2×2 stump/rock breaks at 6 registered hits ($096D CMP #6).
         # Small boulder 0x06 is a single hammer blow.
         if self.debris_type == DebrisType.STUMP:
             return 6
@@ -88,10 +88,10 @@ class Target:
             return 6
         return 1
 
-    def stamina_to_clear(self, *, lifting: bool) -> int:
+    def stamina_to_clear(self, *, lifting: bool, tool_hits: int = 0) -> int:
         if lifting:
             return 1
-        return self.required_hits * SWING_STAMINA_COST
+        return stamina_cost_for_hits(self.required_hits, tool_hits=tool_hits)
 
     @property
     def footprint(self) -> Tuple[Tuple[int, int], ...]:
