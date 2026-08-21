@@ -119,8 +119,8 @@ def test_door_column_leaves_strand_then_climbs() -> None:
     assert ctrl.misses == 0
     wall112 = ctrl.step(read_snapshot(_ram(x=112, y=117)))
     assert abs(112 - NORTH_DOOR_X) <= ROOM_6B_COLUMN_LEAVE_DX
-    assert wall112.reason == "north6b_leave_column_y"
-    assert list(wall112.action) == list(nes_action("DOWN"))
+    assert wall112.reason == "north6b_leave_column_x"
+    assert list(wall112.action) == list(nes_action("RIGHT"))
     off = ctrl.step(
         read_snapshot(_ram(x=NORTH_DOOR_X - ROOM_6B_MOUTH_DX, y=117))
     )

@@ -33,6 +33,10 @@ from zelda_i.level2_tf_spine import (
     level2_through_success,
 )
 from zelda_i.level3_spine import (
+    level3_compass_stages,
+    level3_compass_success,
+    level3_west_darknuts_stages,
+    level3_west_darknuts_success,
     level3_dest_6b_stages,
     level3_dest_6b_success,
     level3_entry_stages,
@@ -135,7 +139,7 @@ class SpineRun:
             "stop": {
                 "level1": "level1_triforce",
                 "level2": "level2_triforce_0x02",
-                "level3": "level3_dest_0x5b",
+                "level3": "level3_west_darknuts_0x59",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -389,7 +393,39 @@ def run_survival_spine(
         return run
 
     snap = read_snapshot(env.get_ram())
-    run.success = level3_dest_6b_success(snap)
-    if not run.success:
+    if not level3_dest_6b_success(snap):
+        run.success = False
         run.failed_stage = "north_chain"
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level3_compass_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+
+    snap = read_snapshot(env.get_ram())
+    run.success = level3_compass_success(snap)
+    if not run.success:
+        run.failed_stage = "compass_0x5a"
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level3_west_darknuts_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+
+    snap = read_snapshot(env.get_ram())
+    run.success = level3_west_darknuts_success(snap)
+    if not run.success:
+        run.failed_stage = "west_darknuts_0x59"
     return run

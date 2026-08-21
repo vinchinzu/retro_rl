@@ -17,8 +17,9 @@ recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
 
 Beads: **`rr-4d53`** epic. Parent **`rr-4d53.3`** (L2 exit → L3 TF `0x04`).
 Entrance `0x7c` is **`rr-4d53.3.0` closed**. West key `0x7b` is
-**`rr-4d53.3.1.1` closed**. Claimed tip **`rr-4d53.3.1.2`** (dest `0x5b`).
-Do not start Raft or TF on this pass.
+Dest `0x5b`, Compass `0x5a`, and long KEY-LEFT to `0x59` are closed on the
+continuous spine. Claimed tip is **`rr-4d53.3.3.3`** (clear `0x59`, DOWN to
+`0x69`).
 
 Full spine (do not claim ahead of the tip):
 
@@ -30,8 +31,10 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.2.3` | Boom → Dodongo → TF `0x02` | **closed** — 1/1 Survival; documented bomb/key top-up |
 | `rr-4d53.3.0` | L2 TF → Manji entry `0x7c` | **closed** — 1/1 Survival 53918f |
 | `rr-4d53.3.1.1` | live `0x7c` west key `0x7b` | **closed** — 1/1 Survival 54589f keys=5 |
-| `rr-4d53.3.1.2` / `.3.1` | occupancy dest `0x5b` | **tip** — wire `level3_dest_6b_stages` |
-| `rr-4d53.3.3.*` | `0x5b` → Compass → Raft | blocked on `.3.1` |
+| `rr-4d53.3.1.2` / `.3.1` | occupancy dest `0x5b` | **closed** — 1/1 Survival 57256f |
+| `rr-4d53.3.3.1` | `0x5b` LEFT → Compass `0x5a` | **closed** — 1/1 Survival 57648f |
+| `rr-4d53.3.3.2` | `0x5a` KEY-LEFT → `0x59` | **closed** — 1/1 Survival, keys 5→4 |
+| `rr-4d53.3.3.3` | clear `0x59`, DOWN → `0x69` | **tip** — reuse raft clear/down phases |
 | `rr-4d53.3.2` | L3 bombs (no poke-16) | blocked on `.3.1` |
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | blocked on `.3.3` + `.3.2` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | in_progress; closes with `.3.4.4` |
@@ -84,19 +87,19 @@ Survival count top-up at L2 entry + `SPINE_BOMB_RETOPUP`.
 `bomb_north_6f` 340f (was 1f `no_bombs`). Boom, Dodongo, L2 TF `0x02`,
 OW hop `enter_level3` 12864f all live. That tape stopped at `0x7c`
 (`.3.0` closed), not dest 0x5b. West key closed 2026-08-21:
-`l3_west_key_spine.json` 54589f room `0x7b` keys=5. Current `--through
-level3` is dest `0x5b` (`.3.1.2`). Last dest tape `l3_dest_0x5b_v10`:
-south mouth is solved; `north_exit` 6000f at `(112,117)` (LEFT no-op).
-Farm is `rr-doua`. Do not grant undiscovered items.
+`l3_west_key_spine.json` 54589f room `0x7b` keys=5. Dest `0x5b`
+(`.3.1.2`) closed in `l3_dest_0x5b_v12`: 57256f, keys=5, bombs=8,
+TF=0x03, deaths/progression/capacity writes 0. Farm is `rr-doua`. Do not
+grant undiscovered items.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level3 --no-video --trials 1 --tag l3_dest_0x5b_v11
+  --through level3 --no-video --trials 1 --tag l3_south_darknuts_0x69_v1
 ```
 
-Dest 0x5b (`rr-4d53.3.1.2`) is the claimed tip. Occupancy 0x6b north is
-`level3_dest_6b_stages`. **Not closed:** `north_exit` still 6000f. Combat
-occupancy_patrol remains 1435f / 5 Zol. Live ladder (do not timeout-bump):
+Dest 0x5b (`rr-4d53.3.1.2`) is closed. Occupancy 0x6b north is
+`level3_dest_6b_stages`; combat occupancy_patrol remains 1435f / 5 Zol.
+Live ladder that closed the boundary (do not regress):
 
 - v5: LEFT+UP south-mouth clip **works** — inland `(96,133)`, then occupancy
   1px-miss boxed in (51 misses, stood).
@@ -106,10 +109,12 @@ occupancy_patrol remains 1435f / 5 Zol. Live ladder (do not timeout-bump):
 - v8/v9: `(112,117)` — UP and LEFT+UP both no-op (x≈112 north-wall stick).
 - v10: cardinal LEFT at `(112,117)` no-ops 5500f (`l3_dest_0x5b_v10` samples
   f250 `(112,125)` then f500–6000 `(112,117)` `leave_column_x`).
+- v11: DOWN oscillates at x=112, y=125–127 for 6000f.
+- v12: RIGHT exits the diagonal pocket; room `0x5b` reached in 945 exit frames.
 
-Policy now: from the `(112,117)` pocket **DOWN** off the north wall (unit-tested,
-live unverified). Isolated north-chain 2/2 used `already_0x5b` during combat,
-not dest occupancy. Isolated L3 Raft suffix still uses poke-16 (`.3.2` / `.3.4`).
+Next tip is south Darknuts room `0x69` (`rr-4d53.3.3.3`): attach the existing
+raft `clear_59` and `down_to_69` phases after the live `0x59` predecessor.
+Isolated L3 Raft suffix still uses poke-16 (`.3.2` / `.3.4`).
 Isolated 0x6b check:
 
 ```bash
@@ -211,7 +216,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 1. **Survival spine** — `rr-4d53.2.3` Boom→TF closed (documented bomb/key
    top-up). L3 entrance `0x7c` closed (`.3.0`). West key `0x7b` closed
-   (`.3.1.1`). Tip is dest `0x5b` (`.3.1.2`), then Raft / TF `0x04`, then `.6` L4 and `.7`
+   (`.3.1.1`). Dest `0x5b`, Compass `0x5a`, and key door `0x59` are closed;
+   tip is clear `0x59` → `0x69` (`.3.3.3`), then Raft / TF `0x04`, then `.6` L4 and `.7`
    L5, then `.4` one-session L5 TF. L6–L9 stay out of this pass.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.
@@ -221,7 +227,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Bottleneck
 
-**L2 exit → L3 dest `0x5b`** (`rr-4d53.3.1.2`) is the watchable tip.
+**L2 exit → L3 west Darknuts `0x59`** (`rr-4d53.3.3.2`) is verified; clear
+`0x59` → `0x69` (`rr-4d53.3.3.3`) is the watchable tip.
 West key `0x7b` (`.3.1.1`) and entrance `0x7c` (`.3.0`) are closed. Then
 Raft (`.3.3.*`), bombs (`.3.2`), TF (`.3.4.*`). L9 dest walk is parked.
 

@@ -17,6 +17,12 @@ from zelda_i.level3_path import (
     Level3WestKeyController,
 )
 from zelda_i.level3_spine import (
+    Level3CompassSpineController,
+    Level3WestDarknutsSpineController,
+    level3_compass_stages,
+    level3_compass_success,
+    level3_west_darknuts_stages,
+    level3_west_darknuts_success,
     dest_6b_room_plan,
     level3_dest_6b_stages,
     level3_dest_6b_success,
@@ -76,6 +82,10 @@ def test_level3_stage_names_and_controllers() -> None:
         ("west_key", Level3WestKeyController),
         ("north_chain", Level3NorthChainController),
     ]
+    compass = [(name, type(ctrl)) for name, ctrl, _ in level3_compass_stages()]
+    assert compass == [("compass_0x5a", Level3CompassSpineController)]
+    west_darknuts = [(name, type(ctrl)) for name, ctrl, _ in level3_west_darknuts_stages()]
+    assert west_darknuts == [("west_darknuts_0x59", Level3WestDarknutsSpineController)]
 
 
 def test_dest_stages_fail_closed_without_graph_path(monkeypatch) -> None:
@@ -89,6 +99,16 @@ def test_dest_stages_fail_closed_without_graph_path(monkeypatch) -> None:
 def test_dest_6b_success_is_play_5b() -> None:
     snap = read_snapshot(_ram(room=0x5B, x=120, y=205))
     assert level3_dest_6b_success(snap)
+
+
+def test_compass_success_is_play_5a() -> None:
+    assert level3_compass_success(read_snapshot(_ram(room=0x5A, x=224, y=141)))
+    assert not level3_compass_success(read_snapshot(_ram(room=0x5B, x=120, y=205)))
+
+
+def test_west_darknuts_success_is_play_59() -> None:
+    assert level3_west_darknuts_success(read_snapshot(_ram(room=0x59, x=224, y=141)))
+    assert not level3_west_darknuts_success(read_snapshot(_ram(room=0x5A, x=224, y=141)))
 
 
 def test_entry_success_is_play_7c() -> None:
