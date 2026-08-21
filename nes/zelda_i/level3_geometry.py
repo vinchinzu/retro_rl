@@ -40,10 +40,18 @@ NORTH_DOOR_X: int = 120
 NORTH_DOOR_X_TOL: int = 4
 
 # 0x6b occupancy: north door is a residual, not a 1px walk. y<=100 @ x≈120
-# strands on the diamond; the traversable band is y=109.
+# strands on the diamond; the traversable band is y=109. Live dest v6: UP
+# at (120,117) never reaches the band — leave the door column first.
 ROOM_6B_DOOR_Y: int = 93
 ROOM_6B_BAND_Y: int = 109
 ROOM_6B_STRAND_Y: int = 100
+ROOM_6B_MOUTH_DX: int = 16
+# v6 UP at (120,117) never reached the band; v7 climb-UP at (104,133) is
+# still mid-diamond. Leave the door column only in this y window.
+# v8 climb-UP at (112,117) is the |dx|=8 north-wall stick; keep clipping
+# until |dx| > this, then climb.
+ROOM_6B_COLUMN_LEAVE_DX: int = 12
+ROOM_6B_COLUMN_SOUTH_Y: int = 125
 # 12×7 dungeon floor tiles (screenshot hypothesis, not live collision).
 ROOM_6B_TILE_ORIGIN: tuple[int, int] = (32, 80)
 ROOM_6B_TILE_SIZE: int = 16
@@ -116,7 +124,10 @@ __all__ = [
     "NORTH_DOOR_X_TOL",
     "ROOM_6B_BAND_Y",
     "ROOM_6B_BLOCK_TILES",
+    "ROOM_6B_COLUMN_LEAVE_DX",
+    "ROOM_6B_COLUMN_SOUTH_Y",
     "ROOM_6B_DOOR_Y",
+    "ROOM_6B_MOUTH_DX",
     "ROOM_6B_STRAND_Y",
     "ROOM_6B_TILE_ORIGIN",
     "ROOM_6B_TILE_SIZE",
