@@ -301,10 +301,11 @@ class Level3NorthExit6bController:
                 )
             if dx <= ROOM_6B_COLUMN_LEAVE_DX:
                 # v10: LEFT no-ops at (112,117) for 5500f (LEFT+UP v9 same).
-                # DOWN leaves the north-wall pocket; occupancy resumes y>125.
+                # v11: DOWN oscillates y=125..127 at x=112. RIGHT is the open
+                # side of this diagonal pocket; occupancy resumes once clear.
                 return self._emit(
                     snap,
-                    FrameAction(nes_action("DOWN"), "north6b_leave_column_y"),
+                    FrameAction(nes_action("RIGHT"), "north6b_leave_column_x"),
                 )
             return self._emit(
                 snap, FrameAction(nes_action("UP"), "north6b_climb_band")

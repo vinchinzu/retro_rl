@@ -1,11 +1,14 @@
-"""Survival-spine L3: post-L2 OW → Manji dest 0x5b (west key then occupancy).
+"""Survival-spine L3: post-L2 OW → Manji Compass room 0x5a.
 
-``--through level3`` this pass stops at dest 0x5b after west key 0x7b
-(rr-4d53.3.1.2). Raft → Manhandla → TF 0x04 stays the parent bead and still
-poke-16 on the isolated suffix.
+``--through level3`` stops at Compass room 0x5a after the verified west-key and
+occupancy-dest chunks (rr-4d53.3.3.1). Raft → Manhandla → TF 0x04 stays the
+parent bead and still poke-16 on the isolated suffix.
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
 
 from zelda_i.door_graph import (
     L3_DARKNUTS,
@@ -31,10 +34,13 @@ from zelda_i.level3_overworld import (
     PostL2TriforceSettleController,
 )
 from zelda_i.level3_path import Level3NorthChainController, Level3WestKeyController
+from zelda_i.level3_raft_path import LEFT_5B_MAX_FRAMES, Level3RaftPathController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 WEST_KEY_SPINE_MAX_FRAMES = 8000
 NORTH_CHAIN_SPINE_MAX_FRAMES = 16000
+COMPASS_SPINE_MAX_FRAMES = LEFT_5B_MAX_FRAMES + 100
+WEST_DARKNUTS_SPINE_MAX_FRAMES = 3000
 _DEST_6B_ROOMS = (L3_ENTRY, L3_WEST_KEY, L3_NORTH_ZOLS, L3_DARKNUTS)
 
 
@@ -126,3 +132,80 @@ def level3_dest_6b_success(snap: ZeldaSnapshot) -> bool:
 
 def level3_dest_6b_success_ram(ram) -> bool:
     return level3_reached_5b(ram)
+
+
+@dataclass
+class Level3CompassSpineController:
+    """Stop the proven Raft path exactly on playable room 0x5a."""
+
+    path: Level3RaftPathController = field(default_factory=Level3RaftPathController)
+    success: bool = False
+    failed: bool = False
+
+    def step(self, snap: ZeldaSnapshot):
+        action = self.path.step(snap)
+        self.success = level3_compass_success(snap)
+        self.failed = self.path.failed and not self.success
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "path": self.path.report(),
+        }
+
+
+def level3_compass_stages():
+    """Live 0x5b predecessor → west door → Compass room 0x5a."""
+    return (
+        ("compass_0x5a", Level3CompassSpineController(), COMPASS_SPINE_MAX_FRAMES),
+    )
+
+
+def level3_compass_success(snap: ZeldaSnapshot) -> bool:
+    """Spine stop for rr-4d53.3.3.1: playable Compass room 0x5a."""
+    return (
+        snap.level == LEVEL3
+        and snap.screen == 0x5A
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+    )
+
+
+@dataclass
+class Level3WestDarknutsSpineController:
+    """Stop the proven Raft path exactly after the 0x5a key door."""
+
+    path: Level3RaftPathController = field(default_factory=Level3RaftPathController)
+    success: bool = False
+    failed: bool = False
+
+    def step(self, snap: ZeldaSnapshot):
+        action = self.path.step(snap)
+        self.success = level3_west_darknuts_success(snap)
+        self.failed = self.path.failed and not self.success
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {"success": self.success, "failed": self.failed, "path": self.path.report()}
+
+
+def level3_west_darknuts_stages():
+    """Live 0x5a predecessor → long KEY-LEFT → playable 0x59."""
+    return (
+        (
+            "west_darknuts_0x59",
+            Level3WestDarknutsSpineController(),
+            WEST_DARKNUTS_SPINE_MAX_FRAMES,
+        ),
+    )
+
+
+def level3_west_darknuts_success(snap: ZeldaSnapshot) -> bool:
+    return (
+        snap.level == LEVEL3
+        and snap.screen == 0x59
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+    )
