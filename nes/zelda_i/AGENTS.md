@@ -98,6 +98,8 @@ Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. Claimed `rr-4d53.3.1.2`:
 `--through level3` dest `0x5b`. West key `0x7b` (`.3.1.1`) closed 1/1
 Survival 54589f keys=5 (l3_west_key_spine). Entrance `0x7c` is `.3.0`
-closed. L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
+closed. Dest not closed: `north_exit` 6000f at `(112,117)` (LEFT no-op;
+v10 samples). Next tag `l3_dest_0x5b_v11` (DOWN off that pocket).
+L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

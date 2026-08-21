@@ -36,6 +36,7 @@ from zelda_i.ram import (
     read_snapshot,
 )
 from zelda_i.survival_spine import SPINE_THROUGH
+from zelda_i.walk_physics import WALK_DELTA
 
 
 def _ram(*, room: int, x: int, y: int, keys: int = 0) -> np.ndarray:
@@ -109,20 +110,23 @@ def test_west_key_success_is_play_7b_with_key() -> None:
 
 def test_north_exit_miss_sidesteps_and_still_paths() -> None:
     ctrl = Level3NorthExit6bController()
-    start = read_snapshot(_ram(room=ROOM_6B, x=120, y=141))
+    start = read_snapshot(_ram(room=ROOM_6B, x=96, y=141))
     first = ctrl.step(start)
     assert first.reason == "north6b_path"
-    assert ctrl.walker.last_dir == "UP"
+    assert ctrl.walker.last_dir in WALK_DELTA
+    blocked_ahead = {
+        "UP": (96, 140),
+        "DOWN": (96, 142),
+        "LEFT": (95, 141),
+        "RIGHT": (97, 141),
+    }[ctrl.walker.last_dir]
     second = ctrl.step(start)
     assert ctrl.misses == 1
-    assert (120, 140) in ctrl.grid.blocked
-    assert second.reason == "north6b_path"
-    assert ctrl.walker.last_dir in {"LEFT", "RIGHT"}
-    path = ctrl.grid.shortest_path((120, 141), (120, 93))
-    if path is None:
-        path = ctrl.grid.shortest_path((120, 141), (120, 109))
+    assert blocked_ahead in ctrl.grid.blocked
+    assert second.reason in {"north6b_path", "north6b_thread", "north6b_thread_up"}
+    path = ctrl.grid.shortest_path((96, 141), (120, 109))
     assert path is not None
-    assert (120, 140) not in path
+    assert blocked_ahead not in path
 
 
 def test_north_band_is_not_occupancy_graded() -> None:

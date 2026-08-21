@@ -85,22 +85,32 @@ Survival count top-up at L2 entry + `SPINE_BOMB_RETOPUP`.
 OW hop `enter_level3` 12864f all live. That tape stopped at `0x7c`
 (`.3.0` closed), not dest 0x5b. West key closed 2026-08-21:
 `l3_west_key_spine.json` 54589f room `0x7b` keys=5. Current `--through
-level3` is dest `0x5b` (`.3.1.2`). Farm is `rr-doua`. Do not grant
-undiscovered items.
+level3` is dest `0x5b` (`.3.1.2`). Last dest tape `l3_dest_0x5b_v10`:
+south mouth is solved; `north_exit` 6000f at `(112,117)` (LEFT no-op).
+Farm is `rr-doua`. Do not grant undiscovered items.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level3 --no-video --trials 1 --tag l3_dest_0x5b
+  --through level3 --no-video --trials 1 --tag l3_dest_0x5b_v11
 ```
 
 Dest 0x5b (`rr-4d53.3.1.2`) is the claimed tip. Occupancy 0x6b north is
-`level3_dest_6b_stages`. **Not closed:** live dest misses are 0x6b south-door
-residual, not combat. `ROOM_6B_SPEC.occupancy_patrol` clears 5 Zols in 1435f.
-`north_exit` then times out 6000f at the south mouth `(120,181)`:
-UP does not move (v3); LEFT+UP slides to `(48,181)` (v4). Policy now walks
-LEFT off x≈120 then UP inland (unverified live). Isolated north-chain 2/2
-used `already_0x5b` during combat, not dest occupancy. Isolated L3 Raft
-suffix still uses poke-16 (`.3.2` / `.3.4`). Isolated 0x6b check:
+`level3_dest_6b_stages`. **Not closed:** `north_exit` still 6000f. Combat
+occupancy_patrol remains 1435f / 5 Zol. Live ladder (do not timeout-bump):
+
+- v5: LEFT+UP south-mouth clip **works** — inland `(96,133)`, then occupancy
+  1px-miss boxed in (51 misses, stood).
+- v6: no-path diamond thread reached door column `(120,117)`; UP never hits
+  band y=109.
+- v7: climb-UP at `(104,133)` still mid-diamond.
+- v8/v9: `(112,117)` — UP and LEFT+UP both no-op (x≈112 north-wall stick).
+- v10: cardinal LEFT at `(112,117)` no-ops 5500f (`l3_dest_0x5b_v10` samples
+  f250 `(112,125)` then f500–6000 `(112,117)` `leave_column_x`).
+
+Policy now: from the `(112,117)` pocket **DOWN** off the north wall (unit-tested,
+live unverified). Isolated north-chain 2/2 used `already_0x5b` during combat,
+not dest occupancy. Isolated L3 Raft suffix still uses poke-16 (`.3.2` / `.3.4`).
+Isolated 0x6b check:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2

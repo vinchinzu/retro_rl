@@ -193,12 +193,13 @@ room `0x7b` keys=5 (entry keys=4), bombs=8, `tf=0x03`, west_key 671f
 `controller_stage_done` accepts string-phase L3 path controllers (enum
 `.phase.name` crashed the first attach). Isolated west-key is not this close.
 
-Dest miss (same session, `.3.1.2` open): `l3_dest_0x5b_occ.json` combat 1435f
-occupancy_patrol (was 12000f greedy timeout, 1 Zol). `north_exit` 6000f at
-south mouth `(120,181)`: occupancy-grading walls Link in (v2); UP no-ops (v3);
-LEFT+UP slides to `(48,181)` (v4). Screenshot 16px tile seed over-blocked
-(9735 cells) — seed is strand-only now. Isolated north-chain 2/2 is not dest
-close (`already_0x5b` during combat hunt).
+Dest miss (`.3.1.2` open): combat occupancy_patrol 1435f / 5 Zol holds.
+South mouth is solved (v5 LEFT+UP clip). `north_exit` still 6000f.
+Live pocket is `(112,117)` on the door-column diamond, 8px south of band
+y=109: UP (v8), LEFT+UP (v9), and LEFT (v10, 5500f) all no-op. Evidence
+`l3_dest_0x5b_v10.json` samples f250 `(112,125)` then f500–6000 LEFT.
+Policy now: DOWN off that pocket (unit-tested, live unverified). Isolated
+north-chain 2/2 is not dest close (`already_0x5b` during combat hunt).
 
 Library `zelda_i.level3_bomb_budget` counts Raft→boss spend: verified bomb-R
 0x59 and bomb-R 0x5b (stands `(192,141)`), plus an **assumed** Manhandla-heads
@@ -243,8 +244,9 @@ RoomAllDead often stays 0 (type-0 HP leftovers from wooden-sword hits — not
 killable as type 0x13). Pure clear uses **type-0x13 liveness only**
 (`settle_all_dead=0`). Source key drop not yet reliably collected; north
 shutter/door opens for UP once type-0x13 are gone (keys inventory unchanged
-in live trials). North exit is OccupancyWalker (block on miss; stand if no path),
-then UP @ x≈120 on the north band.
+in live trials). North exit: south-mouth LEFT+UP clip (v5 live), occupancy BFS
+with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
+`(112,117)` pocket (UP / LEFT+UP / LEFT no-op; next is DOWN).
 
 ### Source interior (Zelda Dungeon L3)
 
