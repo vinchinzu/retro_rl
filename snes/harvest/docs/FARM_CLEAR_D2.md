@@ -12,8 +12,9 @@ it either (`rr-20w.2.2`).
 
 **2026-08-21 landed (unit, no live pin):** travel denylist
 (`TRAVEL_SOLID_TILES` + `Pathfinder.is_walkable`); honest unbounded
-`FarmClearTask` SUCCESS; lift-only drops only unarmed types; 6-hit stamina
-12; shipping dismiss no longer A-pulses `lock==0` after 17:00. Live pocket
+`FarmClearTask` SUCCESS; lift-only drops only unarmed types; 2×2 stamina
+is an 8-swing budget (16); shipping dismiss no longer A-pulses `lock==0`
+after 17:00. Live pocket
 probe is still `rr-20w.2.3`. Do not restore a morning whole-farm wipe.
 
 ## Invariants
@@ -25,7 +26,7 @@ probe is still `rr-20w.2.3`. Do not restore a morning whole-farm wipe.
 | STONE / FENCE | `0x04` / `0x05` | no | no | adjacent |
 | Small ROCK | `0x06` | **no** | **no** | adjacent hammer |
 | Stump 2×2 | `0x09`–`0x0C` | **no** | **no** | adjacent axe |
-| Large rock 2×2 | `0x0D`–`0x10` | **no** | **no** | adjacent hammer, 6 hits |
+| Large rock 2×2 | `0x0D`–`0x10` | **no** | **no** | adjacent hammer, ROM 6 hits / 8-swing stam budget |
 | Rock damage | `0x11`–`0x14` | **no** | **no** | same 2×2, keep swinging |
 
 Push-facing (`player_action==0` + no pixel motion) must not seal the
@@ -89,14 +90,15 @@ needs a real `ENSURE_HAMMER` (shelf coords from recording/ROM, not guessed).
 
 ### P1 — stamina gate cannot finish a large rock (`rr-20w.2.14`; spa is `rr-pzw`)
 
-Hammer/axe is −2/swing; large rock is 6 hits = 12 stamina. `MIN_CLEAR_STAMINA=4`
-starts a rock then `complete`s mid-hit. Damage tiles `0x11`–`0x14` are not
-collapsed to the TL, so one boulder becomes four targets. Scanner stop also
-aborts **lifts**. Hot spring is catalog-only; lunch +20 is unused if the
-phase already SUCCESS-exited. Do not spa on D2 morning.
+Hammer/axe is −2/swing; ROM breaks a 2×2 at **6** registered hits (`$096D`).
+Y-holds miss, so clear will not *start* a rock/stump below an **8-swing**
+budget (16 stamina). `MIN_CLEAR_STAMINA=4` is only the lift floor. Damage
+tiles collapse to the 2×2 TL. Lifts continue at stamina 1–3. Do not spa
+on D2 morning.
 
-**Fix:** do not start a 6-hit rock below 12. Collapse damage IDs to the 2×2
-anchor. Lifts may continue at stamina 1–3. Spa remains `rr-pzw`.
+**Fix:** `Stamina.from_ram` + `can_finish_multi_hit()`. Evening leftover
+clear (`rr-20w.2.8`) inserts `HOT_SPRING_STAMINA` (fill to max) when
+stamina cannot finish the 8-swing budget (`rr-pzw`).
 
 ### P2 — 5pm A-pulse steals tool frames (`rr-20w.2.13`)
 
@@ -116,7 +118,7 @@ helper first.
 | Item | Bead | Note |
 |------|------|------|
 | Whole-farm 800-target wipe | — | Starves hoe; catalog 3500f is keep-alive only |
-| Hot spring | `rr-pzw` | After leftover clear / later days |
+| Hot spring | `rr-pzw` | Evening leftover insert is wired; lip soak **105→130/130** live 2026-08-21. Farm corridor still pixel-stuck (`rr-20w.2.4`). |
 | Farm-bush `SHIP_BERRY` | `rr-r3he` | Not D2 grape |
 | Gate B soak | `rr-5in` | Do not close on one D2 pin |
 

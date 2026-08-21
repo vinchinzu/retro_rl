@@ -40,6 +40,7 @@ from harvest.tasks.farm_ops import (
     use_tool,
     cycle_tool,
 )
+from harvest.core.stamina import Stamina
 from harvest.tasks.hot_spring import (
     HotSpringStaminaTask,
     SPA_TILEMAP,
@@ -72,9 +73,8 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--min-stamina",
-        type=int,
-        default=40,
-        help="HotSpringStaminaTask success threshold",
+        default="full",
+        help="Soak target: 'full' (current==max) or an integer threshold",
     )
     p.add_argument(
         "--target-stamina",
@@ -114,14 +114,23 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _parse_min_stamina(raw: str) -> int | None:
+    text = str(raw).strip().lower()
+    if text in {"full", "max", "all", ""}:
+        return None
+    return int(text, 0)
+
+
 def _snap(ram, frame: int, phase: str = "") -> dict:
+    stam = Stamina.from_ram(ram)
     return {
         "frame": frame,
         "phase": phase,
         "tilemap": int(read_ram_value(ram, "tilemap")),
         "tilemap_hex": f"0x{int(read_ram_value(ram, 'tilemap')):02X}",
-        "stamina": int(read_stamina(ram)),
-        "max_stamina": int(read_max_stamina(ram)),
+        "stamina": stam.to_dict(),
+        "stamina_current": stam.current,
+        "max_stamina": stam.maximum,
         "player_x": int(read_ram_value(ram, "player_x")),
         "player_y": int(read_ram_value(ram, "player_y")),
         "player_action": int(read_player_action(ram)),
@@ -191,8 +200,8 @@ def _ensure_outdoor(env, log: list, max_frames: int = 4000) -> dict:
 def _drain_stamina(env, *, target: int, max_frames: int, log: list) -> dict:
     """Use tools for real stamina cost. Never pokes RAM."""
     ram = env.get_ram()
-    start = read_stamina(ram)
-    print(f"[DRAIN] start stamina={start} target<={target} (no RAM poke)")
+    start = Stamina.from_ram(ram)
+    print(f"[DRAIN] start {start} target<={target} (no RAM poke)")
     log.append({"event": "drain_start", **_snap(ram, 0)})
 
     stalled = 0
@@ -205,7 +214,12 @@ def _drain_stamina(env, *, target: int, max_frames: int, log: list) -> dict:
         stam = read_stamina(ram)
         if stam <= target:
             print(f"[DRAIN] reached stamina={stam} at frame={frame}")
-            out = {"ok": True, "frames": frame, "stamina": stam, "start": start}
+            out = {
+                "ok": True,
+                "frames": frame,
+                "stamina": stam,
+                "start": int(start),
+            }
             log.append({"event": "drain_done", **_snap(ram, frame)})
             return out
 
@@ -242,7 +256,7 @@ def _drain_stamina(env, *, target: int, max_frames: int, log: list) -> dict:
                     "ok": False,
                     "frames": frame,
                     "stamina": stam,
-                    "start": start,
+                    "start": int(start),
                     "reason": "tool use not draining stamina",
                 }
 
@@ -254,7 +268,7 @@ def _drain_stamina(env, *, target: int, max_frames: int, log: list) -> dict:
         "ok": stam <= target,
         "frames": frame,
         "stamina": stam,
-        "start": start,
+        "start": int(start),
         "reason": "drain frame budget",
     }
 
@@ -275,13 +289,13 @@ def _run_task(env, task: HotSpringStaminaTask, log: list) -> dict:
     jump_frames: list[int] = []
     was_jumping = False
     last_phase = ""
-    last_stam = read_stamina(ram)
+    last_stam = int(Stamina.from_ram(ram))
     status = TaskStatus.RUNNING
     reason = ""
     frame = 0
 
     print(
-        f"[SPA] task start stamina={last_stam} min={task.min_stamina} "
+        f"[SPA] task start {last_stam} min={task.min_stamina} "
         f"return_to_farm={task.return_to_farm} max_jump_cycles={task.max_jump_cycles}"
     )
     log.append({"event": "task_start", **_snap(ram, 0, task.phase_text)})
@@ -397,7 +411,7 @@ def _run_task(env, task: HotSpringStaminaTask, log: list) -> dict:
         f"[SPA] DONE status={status.value} reason={reason!r} "
         f"spa_entered={spa_entered} soak={soak_start}→{soak_peak} "
         f"maps={summary['tilemaps_seen']} final_map=0x{final['tilemap']:02X} "
-        f"final_stam={final['stamina']}"
+        f"final_stam={final['stamina_current']}/{final['max_stamina']}"
     )
     return summary
 
@@ -405,11 +419,12 @@ def _run_task(env, task: HotSpringStaminaTask, log: list) -> dict:
 def main() -> int:
     args = _parse_args()
     _configure_headless()
+    min_stamina = _parse_min_stamina(args.min_stamina)
 
-    if args.target_stamina >= args.min_stamina:
+    if min_stamina is not None and args.target_stamina >= min_stamina:
         print(
             f"ERROR: --target-stamina ({args.target_stamina}) must be < "
-            f"--min-stamina ({args.min_stamina}) so the task routes to the spa"
+            f"--min-stamina ({min_stamina}) so the task routes to the spa"
         )
         return 2
 
@@ -422,7 +437,8 @@ def main() -> int:
         boot = _snap(ram, 0)
         print(
             f"BOOT state={args.state} map=0x{boot['tilemap']:02X} "
-            f"stam={boot['stamina']}/{boot['max_stamina']} "
+            f"stam={boot['stamina_current']}/{boot['max_stamina']} "
+            f"object={boot['stamina']} "
             f"tool=0x{boot['tool']:02X} pos=({boot['player_x']},{boot['player_y']})"
         )
         log.append({"event": "boot", "state": args.state, **boot})
@@ -466,7 +482,7 @@ def main() -> int:
             return 1
 
         task = HotSpringStaminaTask(
-            min_stamina=args.min_stamina,
+            min_stamina=min_stamina,
             return_to_farm=args.return_to_farm,
             timeout=args.task_timeout,
             soak_timeout=3600,
@@ -474,10 +490,17 @@ def main() -> int:
             max_jump_cycles=args.max_jump_cycles,
         )
         summary = _run_task(env, task, log)
+        final_stam = Stamina.from_mapping(summary["final"]["stamina"])
+        restored = (
+            final_stam.is_full
+            if min_stamina is None
+            else final_stam.current >= min_stamina
+        )
 
         ok = (
             summary["status"] == TaskStatus.SUCCESS.value
             and summary["spa_entered"]
+            and restored
             and summary["soak_peak"] is not None
             and summary["soak_start"] is not None
             and summary["soak_peak"] > summary["soak_start"]
@@ -494,8 +517,11 @@ def main() -> int:
             "ok": ok,
             "soft_ok": soft_ok,
             "state": args.state,
-            "min_stamina": args.min_stamina,
+            "min_stamina": min_stamina,
+            "min_stamina_arg": args.min_stamina,
             "target_stamina": args.target_stamina,
+            "final_stamina": final_stam.to_dict(),
+            "restored": restored,
             "return_to_farm": args.return_to_farm,
             "poke": False,
             "drain": drain,

@@ -32,6 +32,7 @@ import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.ram_catalog import field_spec
+from harvest.core.stamina import Stamina
 from harvest.core.scene import classify_scene_from_ram
 from harvest.maps.map_config import ROUTES, slice_route_from_position
 from harvest.planner.day_plan_status import TASKS_DIR, is_farm_tilemap
@@ -66,8 +67,9 @@ SPA_OUTDOOR_STAND_PX = (619, 201)
 SPA_WATER_TILE = (39, 12)
 SPA_WATER_TILE_ID = 0xF7
 SPA_EAST_STAND_PX = (644, 201)
-# Begin soak when within this Manhattan px of the lip (nav may stop short).
-SPA_ARRIVAL_RADIUS_PX = 48
+# Begin soak when within this Manhattan px of the lip. 48px let a west
+# stand (x=582) start bathing before it reached 0xF7 at ~(624,201).
+SPA_ARRIVAL_RADIUS_PX = 24
 
 # player_action == 3 is jump / in-water anim (decomp + recording).
 PLAYER_ACTION_JUMP = 3
@@ -98,17 +100,15 @@ def near_outdoor_spa(ram: np.ndarray, radius: int = SPA_ARRIVAL_RADIUS_PX) -> bo
 
 
 def read_stamina(ram: np.ndarray) -> int:
-    if ADDR_STAMINA >= len(ram):
-        return 0
-    return int(ram[ADDR_STAMINA])
+    return Stamina.from_ram(ram).current
 
 
 def read_max_stamina(ram: np.ndarray) -> int:
-    if ADDR_MAX_STAMINA >= len(ram):
-        return 100
-    value = int(ram[ADDR_MAX_STAMINA])
-    # Some early states leave max at 0; treat as 100 floor for comparisons.
-    return value if value > 0 else 100
+    return Stamina.from_ram(ram).maximum
+
+
+def read_stamina_state(ram: np.ndarray) -> Stamina:
+    return Stamina.from_ram(ram)
 
 
 def read_player_action(ram: np.ndarray) -> int:
@@ -157,7 +157,8 @@ class HotSpringStaminaTask(Task):
     """
 
     name: str = "hot_spring_stamina"
-    min_stamina: int = 40
+    # None = soak until current >= max (full restore).
+    min_stamina: int | None = None
     return_to_farm: bool = True
     tasks_dir: str = TASKS_DIR
     timeout: int = 24000
@@ -192,7 +193,7 @@ class HotSpringStaminaTask(Task):
         self._last_stamina = -1
         self._plateau = 0
         self._action_queue.clear()
-        self._stam_before_trip = read_stamina(world.ram)
+        self._stam_before_trip = int(read_stamina(world.ram))
         self._jump_cycles = 0
         self._jumps_seen = 0
         self._was_jumping = False
@@ -201,17 +202,40 @@ class HotSpringStaminaTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return True
 
+    def _stamina_target(self, ram: np.ndarray) -> int:
+        stam = Stamina.from_ram(ram)
+        if self.min_stamina is None:
+            return stam.maximum
+        return min(int(self.min_stamina), stam.maximum)
+
     def _stamina_ok(self, ram: np.ndarray) -> bool:
-        stam = read_stamina(ram)
-        max_stam = read_max_stamina(ram)
-        target = min(int(self.min_stamina), max_stam)
-        return stam >= target
+        stam = Stamina.from_ram(ram)
+        return stam.current >= self._stamina_target(ram)
 
     def _activate(self, phase: str, task: Task, world: WorldState) -> TaskResult:
         self._phase = phase
         self._task = task
         task.reset(world)
         return task.step(world)
+
+    def _queue_lip_approach(self, ram: np.ndarray) -> None:
+        """Run to the recorded lip before the first B+A water pass."""
+        px, py = read_player_xy(ram)
+        sx, sy = SPA_OUTDOOR_STAND_PX
+        dx, dy = sx - px, sy - py
+        # Outdoor run is ~1.5px/frame; pad so we do not start short of 0xF7.
+        if abs(dx) > 8:
+            axis = "right" if dx > 0 else "left"
+            frames = min(90, abs(dx) * 2 // 3 + 12)
+            for _ in range(frames):
+                self._action_queue.append(make_action(**{axis: True, "b": True}))
+        if abs(dy) > 8:
+            axis = "down" if dy > 0 else "up"
+            frames = min(40, abs(dy) * 2 // 3 + 8)
+            for _ in range(frames):
+                self._action_queue.append(make_action(**{axis: True, "b": True}))
+        for _ in range(8):
+            self._action_queue.append(make_action())
 
     def _begin_soak(self, world: WorldState) -> TaskResult:
         self._phase = "soak"
@@ -224,12 +248,15 @@ class HotSpringStaminaTask(Task):
         self._jumps_seen = 0
         self._was_jumping = False
         self._action_queue.clear()
-        for _ in range(15):
+        for _ in range(8):
             self._action_queue.append(make_action())
+        self._queue_lip_approach(world.ram)
+        stam = Stamina.from_ram(world.ram)
+        target = self._stamina_target(world.ram)
         print(
-            f"[SPA] Upper-pond A-bath start stamina={self._soak_start}/"
-            f"{read_max_stamina(world.ram)} target>={self.min_stamina} "
+            f"[SPA] Upper-pond A-bath start {stam} target>={target} "
             f"max_cycles={self.max_jump_cycles} stand~{SPA_OUTDOOR_STAND_PX} "
+            f"pos={read_player_xy(world.ram)} "
             f"water_tile={SPA_WATER_TILE} id=0x{SPA_WATER_TILE_ID:02X}"
         )
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
@@ -480,13 +507,18 @@ class HotSpringStaminaTask(Task):
         return self._start_next(world)
 
     def _finish_soak(self, world: WorldState, reason: str) -> TaskResult:
-        stam = read_stamina(world.ram)
+        stam = Stamina.from_ram(world.ram)
         print(
-            f"[SPA] Soak done ({reason}) stamina={stam} "
+            f"[SPA] Soak done ({reason}) {stam} "
             f"(start={self._soak_start}) frames={self._soak_steps} "
             f"jumps_seen={self._jumps_seen} jump_cycles={self._jump_cycles}"
         )
         self._task = None
+        if not self._stamina_ok(world.ram):
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"soak ended unrestored ({reason}); {stam}",
+            )
         # A caller that does not need to return has reached its contract as
         # soon as stamina is restored.  The east-to-west pond crossing below
         # only prepares a safe starting point for the return navigation.
@@ -552,7 +584,14 @@ class HotSpringStaminaTask(Task):
 
         target_hit = self._stamina_ok(ram)
         gained = stam > self._soak_start
-        plateau_done = gained and self._plateau >= self.soak_plateau_frames
+        fill_to_max = self.min_stamina is None
+        # Partial plateau is not a full restore. Only accept it when the
+        # caller asked for a numeric threshold (or we already hit target).
+        plateau_done = (
+            gained
+            and self._plateau >= self.soak_plateau_frames
+            and (target_hit or not fill_to_max)
+        )
         timed_out = self._soak_steps >= self.soak_timeout
         cycles_done = self._jump_cycles >= self.max_jump_cycles and not self._action_queue
 
@@ -571,11 +610,18 @@ class HotSpringStaminaTask(Task):
 
         if cycles_done and not gained:
             self._action_queue.clear()
-            return self._finish_soak(
-                world,
+            reason = (
                 f"no restore after {self._jump_cycles} A-bath cycles "
-                f"(jumps_seen={self._jumps_seen})",
+                f"(jumps_seen={self._jumps_seen})"
             )
+            if fill_to_max or not target_hit:
+                stam_now = Stamina.from_ram(ram)
+                print(f"[SPA] FAIL {reason}; {stam_now}")
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"{reason}; stamina={stam_now}",
+                )
+            return self._finish_soak(world, reason)
 
         if not self._action_queue and self._jump_cycles < self.max_jump_cycles:
             enter_right = self._jump_cycles % 2 == 0
@@ -616,6 +662,7 @@ __all__ = [
     "PLAYER_ACTION_JUMP",
     "read_stamina",
     "read_max_stamina",
+    "read_stamina_state",
     "read_player_action",
     "read_player_xy",
     "near_outdoor_spa",

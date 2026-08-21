@@ -19,6 +19,8 @@ from harvest.planner.day_plan_status import (
     SUNDAY_WEEKDAY,
 )
 from harvest.core.ram_catalog import read_ram_u8
+from harvest.core.stamina import Stamina
+from harvest.planner.day_phase_stamina import evening_clear_phases
 from harvest.planner.day_phase_catalog import (
     EXIT_HOUSE_PHASE,
     EXIT_TO_FARM_PHASE,
@@ -260,32 +262,6 @@ def _berry_run_phases(
     return phases
 
 
-def _evening_field_clear_phases(
-    *,
-    has_debris: bool,
-    late_day: bool,
-    policy: DayPlannerPolicy,
-) -> List[PhaseSpec]:
-    """Bush/weed/rock clear only after the shipping window (evening).
-
-    Daytime CLEAR thrash was starving berry ship + seed buy on Spring D2.
-    """
-    if not late_day or not policy.include_field_clear or not has_debris:
-        return []
-    # Longer budget than the old 3500f morning slice — evening has no shop race.
-    return [
-        PhaseSpec(
-            "CLEAR_FIELD",
-            "clear_field",
-            {"timeout": 15000},
-            failure_policy="optional",
-            required_maps=(0x00,),
-            estimated_frames=15000,
-            failure_modes=("timeout_budget", "tool_missing", "stamina_low"),
-        )
-    ]
-
-
 def crop_establish_phases() -> List[PhaseSpec]:
     """Hoe + plant pass: ensure seeds/hoe, walk to field, establish plots.
 
@@ -392,6 +368,7 @@ def build_day_phases(
     should_buy_cow: Optional[bool] = None,
     is_rainy: Optional[bool] = None,
     money: Optional[int] = None,
+    stamina: Optional[Stamina | int] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble a day's phase list dynamically from state inspection.
@@ -432,6 +409,8 @@ def build_day_phases(
             is_rainy = probe.is_rainy()
         if money is None:
             money = probe.money()
+        if stamina is None:
+            stamina = probe.stamina()
 
     # Fill remaining defaults
     if weekday is None:
@@ -595,10 +574,11 @@ def build_day_phases(
     # Evening: bush/debris clear after the 5pm shipping window, then sleep.
     if late_day:
         phases.extend(
-            _evening_field_clear_phases(
+            evening_clear_phases(
                 has_debris=has_debris,
                 late_day=True,
                 policy=policy,
+                stamina=stamina,
             )
         )
         if policy.include_end_day:
@@ -620,6 +600,7 @@ def build_outdoor_day_phases(
     season: int = 0,
     day: int = 1,
     money: Optional[int] = None,
+    stamina: Optional[Stamina | int] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble the outdoor portion of the day's work from current farm state."""
@@ -704,10 +685,11 @@ def build_outdoor_day_phases(
 
     if late_day:
         phases.extend(
-            _evening_field_clear_phases(
+            evening_clear_phases(
                 has_debris=has_debris,
                 late_day=True,
                 policy=policy,
+                stamina=stamina,
             )
         )
         if policy.include_end_day:
@@ -738,6 +720,7 @@ def build_outdoor_day_phases_from_ram(
         season=season,
         day=day,
         money=probe.money(),
+        stamina=probe.stamina(),
         policy=policy,
     )
 

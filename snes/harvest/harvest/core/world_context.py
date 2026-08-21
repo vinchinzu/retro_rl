@@ -13,6 +13,7 @@ from typing import Any, Callable, Optional, Tuple
 import numpy as np
 
 from harvest.core.ram_catalog import read_ram_value
+from harvest.core.stamina import Stamina
 from retro_harness import WorldState
 
 CacheLoader = Callable[[np.ndarray], Any]
@@ -72,8 +73,8 @@ class WorldContext:
 
         return self.get("day_time", _load, ram)
 
-    def stamina(self, ram: np.ndarray) -> int:
-        return int(self.get("stamina", lambda r: read_ram_value(r, "stamina", raw=True), ram))
+    def stamina(self, ram: np.ndarray) -> Stamina:
+        return self.get("stamina", Stamina.from_ram, ram)
 
     def money(self, ram: np.ndarray) -> int:
         return int(self.get("money", lambda r: read_ram_value(r, "money", raw=False), ram))
@@ -88,6 +89,7 @@ class WorldContext:
         """Small JSON-friendly policy snapshot for builders / advisors."""
         day, hour, minute = self.day_time(ram)
         px, py = self.player_px(ram)
+        stam = self.stamina(ram)
         return {
             "tilemap": self.tilemap(ram),
             "player_x": px,
@@ -97,7 +99,8 @@ class WorldContext:
             "minute": minute,
             "weekday": self.weekday(ram),
             "season": self.season(ram),
-            "stamina": self.stamina(ram),
+            "stamina": int(stam),
+            "stamina_state": stam.to_dict(),
             "money": self.money(ram),
         }
 
