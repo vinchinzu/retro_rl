@@ -26,6 +26,7 @@
 | Power-on → L1 TF → L2 entry (`rr-4d53.1` closed) | **1/1 Survival**; first-quest slot 1; `aquamentus_heart` 877f; TF `0x01`; enter L2 `0x7d` at (120, 205); 31828f; deaths 0; progression/capacity writes 0 | `survival_spine.json` / `.mp4` (not Clean M5) |
 | Power-on → L2 Magical Boomerang (`rr-4d53.2.1` closed) | **1/1 Survival**; boom in `0x4f`; 44551f; L2 entry bombs=4 keys=0; final bombs=2 keys=1; deaths 0; poke_bombs=false; progression/capacity writes 0 | `survival_spine.json` / `survival_spine_l2_boom_v14.json` |
 | L2 Boom → Dodongo → TF `0x02` | **1/1 Survival** on the continuous spine; 50529f; room `0x0d` mode 18; `tf=0x03`; deaths 0; progression/capacity writes 0; **documented bombs 2→16 + keys 1→2 + B-slot bombs** (owned counts only) | `survival_spine.json` / `.mp4` / `survival_spine_l2_tf_v10.json` |
+| Power-on → L3 entrance `0x7c` (`rr-4d53.3.0` closed) | **1/1 Survival**; 53918f; `tf=0x03`; L2 entry bombs=0; L3 `0x7c` (120,205) bombs=8 keys=4; deaths 0; progression/capacity writes 0; **documented bombs/keys count top-up** (`poke_bombs=16`); dest `0x5b` not on this stop | `l3_entrance_bombtopup.json` / `_final.png` |
 | L3 Raft → Manhandla → TF `0x04` | **1/1 Survival suffix** from `Level3Raft`; 14751 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs 16`** (`Level3Raft` starts bombs=0). L2-exit compose fails at `0x6b` north | `level3_to_boss_assisted_report.json` / `.mp4` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
@@ -34,12 +35,14 @@
 
 These runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
-power-on STATUS promotions. Power-on → L2 TF `0x02` is on the continuous
-tape (`rr-4d53.2.3`) with documented bomb/key count pokes — not Clean.
-Next is L2 exit → L3 (`rr-4d53.3`). The East Key → Recorder seam is closed
-as an assisted pin (`rr-4d53.5`); attaching that pin to the proven `0x04`→TF
-suffix and composing power-on → L5 TF are still open (`rr-4d53.4`). The
-active backward pass is documented below and in `docs/plan.md`.
+power-on STATUS promotions. Power-on → L3 entrance `0x7c` is on the
+continuous tape (`rr-4d53.3.0` closed) with documented bomb/key count pokes —
+not Clean. Next is L3 west key `0x7b` (`rr-4d53.3.1.1`) then dest `0x5b`.
+Isolated `Level3*` pins cannot close spine beads. The East Key
+→ Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
+pin to the proven `0x04`→TF suffix and composing power-on → L5 TF are still
+open (`rr-4d53.4`). The active backward pass is documented below and in
+`docs/plan.md`.
 
 ## Backward endgame recon (fixture-only; does not change either gate)
 
@@ -297,11 +300,11 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level3` stops at Manji entry `0x7c`
-   (`rr-4d53.3`), not dest 0x5b. Last live: `clear6f_compass` green; hitch
-   `bomb_north_6f` `no_bombs` in 0x6f ~(200,101). L2 TF `0x02`
-   (`rr-4d53.2.3`) is closed. No seamed compose. Bomb/key count pokes are
-   documented Survival shortcuts, not Clean.
+1. **Active Survival tip:** `--through level3` west key `0x7b`
+   (`rr-4d53.3.1.1`). Entrance `0x7c` (`rr-4d53.3.0`) is closed. Dest
+   `0x5b` / Raft / TF are later children — isolated `Level3*` pins do not
+   close them. L2 TF `0x02` (`rr-4d53.2.3`) is closed. No seamed compose.
+   Bomb/key count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

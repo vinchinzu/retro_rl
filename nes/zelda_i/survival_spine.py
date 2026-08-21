@@ -32,7 +32,12 @@ from zelda_i.level2_tf_spine import (
     level2_tf_stages,
     level2_through_success,
 )
-from zelda_i.level3_spine import level3_entry_stages, level3_entry_success
+from zelda_i.level3_spine import (
+    level3_entry_stages,
+    level3_entry_success,
+    level3_west_key_stages,
+    level3_west_key_success,
+)
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
@@ -46,6 +51,19 @@ BOOT_POLICY = {
 Through = Literal["level1", "level2", "level3"]
 
 SPINE_THROUGH: tuple[Through, ...] = ("level1", "level2", "level3")
+
+# Bomb-consuming stages. Survival tops up owned bomb/key counts before these
+# (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
+# that power-on L2 entry (bombs=0) otherwise fails in 1f.
+SPINE_BOMB_RETOPUP: frozenset[str] = frozenset(
+    {
+        "bomb_north_6f",
+        "bomb_north_5f",
+        "bomb_north_4f",
+        "bomb_north_1e",
+        "fight_dodongo",
+    }
+)
 
 
 def level2_entry_stages():
@@ -88,6 +106,7 @@ class SpineRun:
     failed_stage: str | None = None
     obs: Any = None
     l2_entry: dict[str, Any] | None = None
+    l3_entry: dict[str, Any] | None = None
     bombs: dict[str, Any] | None = None
     inventory_assist: dict[str, Any] | None = None
 
@@ -106,6 +125,7 @@ class SpineRun:
             "failed_stage": self.failed_stage,
             "prefix": self.prefix.report() if self.prefix is not None else None,
             "l2_entry": self.l2_entry,
+            "l3_entry": self.l3_entry,
             "bombs": self.bombs,
             "inventory_assist": self.inventory_assist,
             "poke_bombs": (
@@ -115,7 +135,7 @@ class SpineRun:
             "stop": {
                 "level1": "level1_triforce",
                 "level2": "level2_triforce_0x02",
-                "level3": "level3_entrance_0x7c",
+                "level3": "level3_west_key_0x7b",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -145,6 +165,44 @@ def validate_l5_endpoint(report: dict[str, object]) -> None:
         raise ValueError("Level 5 report has capacity writes")
 
 
+def merge_inventory_assist(
+    prev: dict[str, Any] | None, extra: dict[str, Any]
+) -> dict[str, Any]:
+    """Append Survival inventory-count writes; keep the latest poke amounts."""
+    if prev is None:
+        return extra
+    merged = dict(prev)
+    merged["writes"] = list(prev.get("writes") or []) + list(
+        extra.get("writes") or []
+    )
+    merged["notes"] = list(prev.get("notes") or []) + list(extra.get("notes") or [])
+    if extra.get("poke_bombs") is not None:
+        merged["poke_bombs"] = extra["poke_bombs"]
+    if extra.get("poke_keys") is not None:
+        merged["poke_keys"] = extra["poke_keys"]
+    return merged
+
+
+def topup_owned_inventory(env, run: SpineRun) -> None:
+    """Documented Survival bomb/key count top-up + B-slot bombs. Not Clean."""
+    extra = apply_owned_inventory(
+        env,
+        bombs=SPINE_TF_BOMB_POKE,
+        keys=SPINE_TF_KEY_POKE,
+        select_bomb=True,
+    )
+    run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
+
+
+def _record_bombs_out(env, run: SpineRun) -> None:
+    end = read_snapshot(env.get_ram())
+    run.bombs = spine_bomb_report(
+        run.l2_entry.get("bombs") if run.l2_entry else None,
+        through="tf",
+        bombs_out=end.bombs,
+    )
+
+
 def _run_stages(
     env,
     run: SpineRun,
@@ -153,9 +211,13 @@ def _run_stages(
     assist: Any,
     on_frame=None,
     room_timer=None,
+    retopup: frozenset[str] = frozenset(),
+    update_bombs: bool = False,
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
     for name, controller, max_frames in stages:
+        if name in retopup:
+            topup_owned_inventory(env, run)
         obs, stage = run_controller_stage(
             env,
             run.obs,
@@ -173,6 +235,8 @@ def _run_stages(
         if not stage.success:
             run.success = False
             run.failed_stage = name
+            if update_bombs:
+                _record_bombs_out(env, run)
             return False
     return True
 
@@ -252,109 +316,48 @@ def run_survival_spine(
 
     run.l2_entry = spine_final_fields(snap)
     run.bombs = spine_bomb_report(snap.bombs, through="tf")
+    # Survival shortcut until a farm pass: power-on L2 entry is bombs=0.
+    # Documented in ASSIST_CONTRACT. Not Clean. No undiscovered items.
+    topup_owned_inventory(env, run)
 
-    for name, controller, max_frames in level2_to_boom_stages():
-        obs, stage = run_controller_stage(
-            env,
-            run.obs,
-            name=name,
-            controller=controller,
-            max_frames=max_frames,
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-            frame_base=run.end_frame,
-        )
-        run.obs = obs
-        run.stages.append(stage)
-        run.end_frame = stage.end_frame
-        if not stage.success:
-            run.success = False
-            run.failed_stage = name
-            end = read_snapshot(env.get_ram())
-            run.bombs = spine_bomb_report(
-                run.l2_entry.get("bombs") if run.l2_entry else None,
-                through="tf",
-                bombs_out=end.bombs,
-            )
-            return run
+    if not _run_stages(
+        env,
+        run,
+        level2_to_boom_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+        retopup=SPINE_BOMB_RETOPUP,
+        update_bombs=True,
+    ):
+        return run
 
     snap = read_snapshot(env.get_ram())
     if not level2_boom_success(snap):
         run.success = False
         run.failed_stage = "magic_boomerang"
-        run.bombs = spine_bomb_report(
-            run.l2_entry.get("bombs") if run.l2_entry else None,
-            through="tf",
-            bombs_out=snap.bombs,
-        )
+        _record_bombs_out(env, run)
         return run
 
-    # Survival shortcut: top up owned bomb/key counts + select B=bombs.
-    # Documented in ASSIST_CONTRACT. Not Clean. No undiscovered items.
-    run.inventory_assist = apply_owned_inventory(
+    if not _run_stages(
         env,
-        bombs=SPINE_TF_BOMB_POKE,
-        keys=SPINE_TF_KEY_POKE,
-        select_bomb=True,
-    )
-    _TF_RETOPUP = frozenset({"bomb_north_1e", "fight_dodongo"})
-    for name, controller, max_frames in level2_tf_stages():
-        if name in _TF_RETOPUP:
-            extra = apply_owned_inventory(
-                env,
-                bombs=SPINE_TF_BOMB_POKE,
-                keys=SPINE_TF_KEY_POKE,
-                select_bomb=True,
-            )
-            prev = run.inventory_assist or {"writes": [], "notes": []}
-            prev["writes"] = list(prev.get("writes") or []) + list(
-                extra.get("writes") or []
-            )
-            prev["notes"] = list(prev.get("notes") or []) + list(
-                extra.get("notes") or []
-            )
-            run.inventory_assist = prev
-        obs, stage = run_controller_stage(
-            env,
-            run.obs,
-            name=name,
-            controller=controller,
-            max_frames=max_frames,
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-            frame_base=run.end_frame,
-        )
-        run.obs = obs
-        run.stages.append(stage)
-        run.end_frame = stage.end_frame
-        if not stage.success:
-            run.success = False
-            run.failed_stage = name
-            end = read_snapshot(env.get_ram())
-            run.bombs = spine_bomb_report(
-                run.l2_entry.get("bombs") if run.l2_entry else None,
-                through="tf",
-                bombs_out=end.bombs,
-            )
-            return run
+        run,
+        level2_tf_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+        retopup=SPINE_BOMB_RETOPUP,
+        update_bombs=True,
+    ):
+        return run
 
     snap = read_snapshot(env.get_ram())
     run.success = level2_through_success(snap)
     if not run.success:
         run.failed_stage = "triforce_bit_02"
-        run.bombs = spine_bomb_report(
-            run.l2_entry.get("bombs") if run.l2_entry else None,
-            through="tf",
-            bombs_out=snap.bombs,
-        )
+        _record_bombs_out(env, run)
         return run
-    run.bombs = spine_bomb_report(
-        run.l2_entry.get("bombs") if run.l2_entry else None,
-        through="tf",
-        bombs_out=snap.bombs,
-    )
+    _record_bombs_out(env, run)
     if through == "level2":
         return run
 
@@ -369,7 +372,24 @@ def run_survival_spine(
         return run
 
     snap = read_snapshot(env.get_ram())
-    run.success = level3_entry_success(snap)
-    if not run.success:
+    if not level3_entry_success(snap):
+        run.success = False
         run.failed_stage = "enter_level3"
+        return run
+    run.l3_entry = spine_final_fields(snap)
+
+    if not _run_stages(
+        env,
+        run,
+        level3_west_key_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+
+    snap = read_snapshot(env.get_ram())
+    run.success = level3_west_key_success(snap)
+    if not run.success:
+        run.failed_stage = "west_key"
     return run
