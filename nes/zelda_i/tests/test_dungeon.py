@@ -198,6 +198,7 @@ def test_level2_room_specs_and_stop_predicates() -> None:
     assert ROOM_6C_SPEC.reward.target == (136, 141)
     assert ROOM_6C_SPEC.combat.engage_distance == 64
     assert ROOM_6C_SPEC.combat.attack_phase == 2
+    assert ROOM_6C_SPEC.entry.y_first is True
     assert ROOM_7E_SPEC.room_id == 0x7E
     assert ROOM_7E_SPEC.source_room == 0x7D
     assert ROOM_7E_SPEC.expected_enemy_count == 5
@@ -544,6 +545,9 @@ def test_room_specs_support_hp_and_type_only_liveness() -> None:
     assert ROOM_44_SPEC.room_item_id == 0x1D
     assert ROOM_44_SPEC.combat.engage_distance == 64
     assert ROOM_44_SPEC.combat.attack_phase == 7
+    assert ROOM_44_SPEC.combat.occupancy_patrol is True
+    assert (80, 93) not in ROOM_44_SPEC.combat.patrol
+    assert all(y == 141 for _, y in ROOM_44_SPEC.combat.patrol)
     assert ROOM_45_SPEC.enemy_types == (0x27,)
     assert ROOM_45_SPEC.combat.engage_distance == 80
     assert ROOM_45_SPEC.combat.engage_dominant_axis is True
@@ -632,6 +636,43 @@ def test_room23_north_pocket_occupancy_sidesteps_water() -> None:
         if "RIGHT" in seen:
             break
     assert "RIGHT" in seen
+
+
+def test_room6c_entry_drops_off_north_statue_band() -> None:
+    """Live timeout sat at 0x6d (48, 109); x-first RIGHT never reached y=141."""
+    from retro_harness.controls import pressed_nes_buttons
+
+    controller = GenericDungeonRoomController(ROOM_6C_SPEC)
+    ram = _room_ram(room=0x6D, x=48, y=109)
+    ram[ADDR_LEVEL] = 2
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "entry_route"
+    pressed = pressed_nes_buttons(list(action.action))
+    assert "DOWN" in pressed
+    assert "RIGHT" not in pressed
+    assert "LEFT" not in pressed
+
+
+def test_room44_open_floor_not_north_statue_band() -> None:
+    """Live timeout sat at (87, 101); (80, 93) never reached Goriyas at y=141."""
+    from retro_harness.controls import pressed_nes_buttons
+
+    controller = GenericDungeonRoomController(ROOM_44_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x44, x=87, y=101, enemy_type=GORIYA_OBJECT_TYPE, enemies=1, hp=0x20
+    )
+    ram[ADDR_LINK_X + 1] = 120
+    ram[ADDR_LINK_Y + 1] = 141
+    snap = read_snapshot(ram)
+    first = controller.step(snap)
+    pressed = pressed_nes_buttons(list(first.action))
+    assert "UP" not in pressed
+    assert "DOWN" in pressed or "RIGHT" in pressed
+    second = controller.step(snap)
+    assert controller.walker.misses == 1
+    assert second.reason == "combat_patrol"
+    assert pressed_nes_buttons(list(second.action)) != pressed
 
 
 def test_room33_collect_closes_last_pixels() -> None:

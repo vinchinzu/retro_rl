@@ -132,7 +132,9 @@ ROOM_6C_SPEC = DungeonRoomSpec(
     spec_id="level2_room6c_west_key",
     source_room=ROOM_L2_ROPES,
     room_id=ROOM_L2_WEST_KEY,
-    entry=DoorRoute("LEFT", ((120, 141), (32, 141))),
+    # y-first: 6d combat parks on the y=109 statue band (live (48, 109));
+    # x-first RIGHT never reaches the west door at y=141.
+    entry=DoorRoute("LEFT", ((120, 141), (32, 141)), y_first=True),
     enemy_types=(ROPE_OBJECT_TYPE,),
     expected_enemy_count=6,
     alive_rule=AliveRule.TYPE_AND_HP,

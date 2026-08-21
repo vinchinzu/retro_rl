@@ -154,9 +154,11 @@ class OccupancyWalker:
                 {"x": xy[0], "y": xy[1]},
             )
             if not grade.ok:
-                if xy == self.last_xy:
-                    self.grid.mark_blocked_ahead(*self.last_xy, self.last_dir)
-                    self.misses += 1
+                # Block the predicted cell even on a 1px slide (live 0x6e
+                # south pocket: UP along diamonds oscillated 72↔73 and never
+                # counted as stuck-in-place).
+                self.grid.mark_blocked_ahead(*self.last_xy, self.last_dir)
+                self.misses += 1
                 self.path = None
         self.last_xy = xy
 

@@ -62,15 +62,19 @@ the current encoding. Two bugs from that video:
    point. Collect stands after one waypoint lap.
 
 **Last live power-on → L3 entrance (Survival, 2026-08-21):** `ok=false`
-`failed=clear44` 6000f, room `0x44` ~(87,101), 3 Goriyas still live
-(north statue band; engage=64 never reaches the center). Prefix through
-`clear23_key` is now live: occupancy patrol (122 misses, 20 blocked cells,
-1626f) walked around the 0x23 plus and collected the key. `accepted_containers=3`,
-`progression_writes=0`, `capacity_writes=0`, deaths 0. `--through level3`
+`failed=bomb_north_6f` 1f `no_bombs`, room `0x6f` ~(200,101), keys=1,
+bombs=0. Prefix through `clear6f_compass` is live. `clear44` 702f
+(occupancy 120 misses / 120 blocked, y=141 patrol). `clear6c_key` 698f
+(`DoorRoute.y_first` off the y=109 statue band). `enter_6f_key` 366f
+(occupancy blocks a predicted cell even on a 1px slide).
+`accepted_containers=4`, `progression_writes=0`, `capacity_writes=0`,
+deaths 0, poke_bombs/keys false. Damage: 1 at L1:0x23. `--through level3`
 stops at Manji `0x7c`, not dest 0x5b. Evidence:
 `recordings/l3_entrance_poweron.json` + `_final.png`. Do not revert idle
-policy. Next hitch is 0x44: walk the open floor (y≈141), not the north
-statue corridor.
+policy. Next hitch is the 0x6f north bomb wall with bombs=0 (power-on L2
+entry is 0; `rr-4d53.2.2` measured 4 off `Level2Entrance.state`). Natural
+farm or documented Survival bomb-count poke — do not grant undiscovered
+items.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \

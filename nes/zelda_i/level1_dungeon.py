@@ -82,21 +82,16 @@ _ROOM_43_PATROL: tuple[tuple[int, int], ...] = (
     (48, 173),
 )
 
+# Open floor at door height. Live timeout sat at (87, 101) on the north
+# statue band: patrol included (80, 93) and engage=64 never reached the
+# Goriyas. Stay on y=141 (west door → east door). Occupancy chase blocks
+# statue cells on a miss and BFS-replans; no path falls back to this line.
 _ROOM_44_PATROL: tuple[tuple[int, int], ...] = (
-    (32, 141),
-    (32, 101),
-    (80, 101),
-    (80, 93),
-    (160, 93),
-    (160, 101),
-    (208, 101),
-    (208, 141),
-    (208, 181),
-    (192, 181),
-    (192, 189),
-    (80, 189),
-    (80, 181),
-    (32, 181),
+    (48, 141),
+    (80, 141),
+    (120, 141),
+    (160, 141),
+    (192, 141),
 )
 
 # Stay inland. Dormant Wallmasters at x=0 still grab on the west door
@@ -345,6 +340,7 @@ ROOM_44_SPEC = DungeonRoomSpec(
         patrol_attack_period=8,
         patrol_attack_hold=4,
         attack_phase=7,
+        occupancy_patrol=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x1D,
