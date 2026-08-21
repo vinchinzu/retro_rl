@@ -168,11 +168,11 @@ the room leaf.
 |------|---------|------------|---------|----------------------|
 | `rr-4d53.3.0` | L2 TF → Manji entry | `level3_entrance_0x7c` | `level3_entry_stages` | `run_l2_to_l3` from `Level2ExitOverworld` |
 | `rr-4d53.3.1.1` | **closed** 0x7c west key | `level3_west_key_0x7b` | `level3_west_key_stages` (`Level3WestKeyController`) | `run_level3_west_key.py` |
-| `rr-4d53.3.1.2` | **tip** 0x7b occupancy dest | `level3_dest_0x5b` | `level3_dest_6b_stages` north_chain | `run_level3_north_chain.py` |
+| `rr-4d53.3.1.2` | **closed** 0x7b occupancy dest | `level3_dest_0x5b` | `level3_dest_6b_stages` north_chain | `run_level3_north_chain.py` |
 | `rr-4d53.3.1` | parent: live dest 0x5b | same as `.1.2` | both dest stages | north-chain Clean 2/2 |
-| `rr-4d53.3.3.1` | 0x5b LEFT → Compass | `level3_compass_0x5a` | raft `left_to_5a` | `Level3Raft` pin |
-| `rr-4d53.3.3.2` | 0x5a KEY-LEFT y=141 | `level3_west_darknuts_0x59` | raft `key_to_59` | key-waste recon |
-| `rr-4d53.3.3.3` | 0x59 kill DOWN | `level3_south_darknuts_0x69` | raft `clear_59`/`down_to_69` | spawn-lag recon |
+| `rr-4d53.3.3.1` | **closed** 0x5b LEFT → Compass | `level3_compass_0x5a` | raft `left_to_5a` | `Level3Raft` pin |
+| `rr-4d53.3.3.2` | **closed** 0x5a KEY-LEFT y=141 | `level3_west_darknuts_0x59` | raft `key_to_59` | key-waste recon |
+| `rr-4d53.3.3.3` | **tip** 0x59 kill DOWN | `level3_south_darknuts_0x69` | raft `clear_59`/`down_to_69` | spawn-lag recon |
 | `rr-4d53.3.3.4` | 0x69 stairs → Raft | `level3_raft` (`ADDR_RAFT≠0`) | raft `stairs_to_0f`/`passage_raft` | `run_level3_raft.py` |
 | `rr-4d53.3.3` | parent: 0x5b → Raft | same as `.3.3.4` | `Level3RaftPathController` | Raft 2/2 assisted |
 | `rr-4d53.3.2` | bombs for bomb-R + Manhandla | report `bombs_in` / no poke-16 | carry or 0x5b drop | isolated `--poke-bombs 16` |
@@ -183,8 +183,9 @@ the room leaf.
 | `rr-4d53.3.4` | parent: Raft → TF | same as `.4.4` | `Level3BossPathController` poke default off | Raft poke-16 suffix |
 | `rr-4d53.3` | parent: L2 exit → L3 TF | `level3_triforce_0x04` | full `--through level3` | any seamed L3 tape |
 
-Claim only the ready tip. West key `0x7b` is live on the spine; dest `0x5b`
-is the claimed tip. Do not start Raft or TF until dest is live. Compass /
+Claim only the ready tip. West key `0x7b`, dest `0x5b`, Compass `0x5a`, and
+the key door into `0x59` are live on the spine; clear `0x59` → `0x69` is the
+claimed tip. Do not start Raft or TF until that leaf is live. Compass /
 map rooms that are off the Raft route stay optional and do not block TF.
 
 West-key close (2026-08-21): `l3_west_key_spine.json` 1/1 Survival 54589f,
@@ -193,13 +194,11 @@ room `0x7b` keys=5 (entry keys=4), bombs=8, `tf=0x03`, west_key 671f
 `controller_stage_done` accepts string-phase L3 path controllers (enum
 `.phase.name` crashed the first attach). Isolated west-key is not this close.
 
-Dest miss (`.3.1.2` open): combat occupancy_patrol 1435f / 5 Zol holds.
-South mouth is solved (v5 LEFT+UP clip). `north_exit` still 6000f.
-Live pocket is `(112,117)` on the door-column diamond, 8px south of band
-y=109: UP (v8), LEFT+UP (v9), and LEFT (v10, 5500f) all no-op. Evidence
-`l3_dest_0x5b_v10.json` samples f250 `(112,125)` then f500–6000 LEFT.
-Policy now: DOWN off that pocket (unit-tested, live unverified). Isolated
-north-chain 2/2 is not dest close (`already_0x5b` during combat hunt).
+Dest close (`.3.1.2`, 2026-08-21): `l3_dest_0x5b_v12.json` is 1/1 continuous
+Survival, 57256f, room `0x5b`, keys=5, bombs=8, TF=0x03, zero deaths and zero
+progression/capacity writes. Combat occupancy_patrol held at 1435f / 5 Zol.
+UP (v8), LEFT+UP (v9), LEFT (v10), and DOWN (v11) all failed at the north
+diagonal pocket; RIGHT escaped it in v12 and reached `0x5b` in 945 exit frames.
 
 Library `zelda_i.level3_bomb_budget` counts Raft→boss spend: verified bomb-R
 0x59 and bomb-R 0x5b (stands `(192,141)`), plus an **assumed** Manhandla-heads
