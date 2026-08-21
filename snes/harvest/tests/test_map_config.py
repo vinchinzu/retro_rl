@@ -7,6 +7,13 @@ import numpy as np
 from harvest.core.tile_catalog import (
     ADDR_MAP,
     ADDR_TILEMAP,
+    FENCE,
+    LARGE_ROCK_DAMAGE_TILES,
+    LARGE_ROCK_TILES,
+    ROCK,
+    STONE,
+    STUMP_TILES,
+    WEED,
 )
 from harvest.tasks.nav import (
     MAP_WIDTH,
@@ -37,6 +44,12 @@ class FarmWalkableTests(unittest.TestCase):
     def test_farm_walkables_are_shared_from_tile_catalog(self) -> None:
         self.assertIs(FARM_WALKABLE, CATALOG_FARM_WALKABLE)
         self.assertIs(WALKABLE_TILES, CATALOG_FARM_WALKABLE)
+
+    def test_farm_walkable_excludes_stumps_rocks_and_solids(self) -> None:
+        """ROM walkable dump: weeds stay; stumps/rocks/damage/stone/fence do not."""
+        self.assertIn(WEED, FARM_WALKABLE)
+        for tid in {STONE, FENCE, ROCK} | STUMP_TILES | LARGE_ROCK_TILES | LARGE_ROCK_DAMAGE_TILES:
+            self.assertNotIn(tid, FARM_WALKABLE)
 
     def test_seasonal_farm_tilemaps_share_farm_metadata(self) -> None:
         for tilemap in (0x00, 0x01, 0x02, 0x03):

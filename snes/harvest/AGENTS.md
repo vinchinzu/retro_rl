@@ -95,12 +95,19 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 
 - Viewport BFS is ~16×14 tiles; hop targets ≤7 tiles or use `densify_waypoints`.
 - Walkable tile IDs come from **recordings**, not static save-state dumps.
-- Travel BFS must not route onto WEED `0x03` (ROM-walkable, pins movement) or
-  a tile the farmer is **pushing**. Clear from a neighbor stand. D2 sections
-  are `rr-20w.2.*` — do not soak the whole 3–4h day as one ticket.
+- Travel BFS must not route onto WEED `0x03` (ROM-walkable, pins movement),
+  stumps `0x09`–`0x0C`, rocks `0x06`/`0x0D`–`0x14`, or a tile the farmer is
+  **pushing**. Live: `player_action` stays **0** for idle/walk/run/push
+  (3=jump, 9=dialogue) — treat 0 + zero pixel motion as push and temp-block
+  the facing neighbor. Clear from a neighbor stand; never BFS onto the
+  debris cell. D2 sections are `rr-20w.2.*` — do not soak the whole 3–4h
+  day as one ticket. Issue list: [docs/FARM_CLEAR_D2.md](docs/FARM_CLEAR_D2.md).
 - Interact: scan an existing tape / UnlinkedText before recording. Face-walk
   is movement. Item box with held forage is Eat/Don't eat, not Gotz. See
   [docs/INTERACT.md](docs/INTERACT.md).
+- 5pm farm ShippingScene: pulse A (press/release). Holding A
+  (`dismiss_dialogue_result(0)`) never closes the shipper box — CC waits
+  while `inputstate==2` for an edge. Text `0x031A`/`0x031B`.
 - Tasks must not import `day_plan` / orchestrator (circular); shared facts live
   in `ram_catalog` / `tile_catalog` / `map_config`.
 - Prefer skill composition (`tasks/skills.py`) over new phase machines.
@@ -110,6 +117,7 @@ Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration
 ## Pointers
 
 [docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
+[docs/FARM_CLEAR_D2.md](docs/FARM_CLEAR_D2.md) ·
 [docs/INTERACT.md](docs/INTERACT.md) ·
 [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md) · [docs/town_day1_recon.md](docs/town_day1_recon.md)
 
@@ -131,4 +139,4 @@ with residual thrash `if`s — extract a module or data rule first.
 | D1 / ROM / editor | `town_day1_*`, `rom_*` / `save_state_io` / `map_render`, `editor_*` |
 
 Prefer skill composition (`tasks/skills.py`) over new phase machines.
-Gate board: `docs/plan.md` · `bd ready -l harvest`.
+Gate board: `docs/MILESTONES.md` · structure debt: `docs/CODE_QUALITY_REVIEW.md`.

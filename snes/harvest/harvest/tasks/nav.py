@@ -28,6 +28,12 @@ from harvest.core.tile_catalog import (
     TILE_SIZE,
     get_tile_at as _catalog_get_tile_at,
 )
+from harvest.tasks.travel_walk import (
+    PUSH_HOLD_FRAMES,
+    block_push_facing,
+    is_travel_solid,
+    read_player_action,
+)
 
 # Re-export map constants used by nav consumers.
 __all__ = [
@@ -150,6 +156,8 @@ class Pathfinder:
         if (tx, ty) in self.no_go_tiles or (tx, ty) in self.base_no_go_tiles(ram) or (tx, ty) in self.temp_blocked:
             return False
         tile_id = get_tile_at(ram, tx, ty)
+        if is_travel_solid(tile_id):
+            return False
         if tile_id in self.base_walkable_tiles(ram):
             return True
         if (tx, ty) in self.extra_walkable:
@@ -157,6 +165,12 @@ class Pathfinder:
         if walkable_override and (tx, ty) in walkable_override:
             return True
         return False
+
+    def block_push_facing(self, ram: np.ndarray, facing: Tuple[int, int], *, pixel_moved: bool = False) -> bool:
+        """Mark a push-facing neighbor non-walkable (shared travel policy)."""
+        return block_push_facing(
+            self.temp_blocked, ram, facing, pixel_moved=pixel_moved
+        )
 
     def find_path(
         self,
@@ -349,6 +363,9 @@ class Navigator:
         self.stasis = 0
         self._center_dir: Optional[str] = None
         self._center_flips: int = 0
+        self._push_tile: Optional[Tuple[int, int]] = None
+        self._push_px: Optional[Tuple[int, int]] = None
+        self._push_hold: int = 0
 
     def update(self, ram: np.ndarray):
         new_pos = get_pos_from_ram(ram)
@@ -362,6 +379,21 @@ class Navigator:
         else:
             self.stasis += 1
         self.current_pos = new_pos
+
+    def note_push_facing(self, ram: np.ndarray, facing: Tuple[int, int]) -> bool:
+        """True when ``facing`` is (now) a push no-go. Call while charging it."""
+        if facing in self.pathfinder.temp_blocked:
+            return True
+        px = (self.current_pos.x, self.current_pos.y)
+        if facing != self._push_tile or px != self._push_px:
+            self._push_tile = facing
+            self._push_px = px
+            self._push_hold = 0
+            return False
+        self._push_hold += 1
+        if self._push_hold < PUSH_HOLD_FRAMES:
+            return False
+        return self.pathfinder.block_push_facing(ram, facing, pixel_moved=False)
 
     @property
     def current_tile(self) -> Tuple[int, int]:
@@ -460,6 +492,14 @@ class Navigator:
             return None
 
         direction = 'right' if dx_next > 0 else 'left' if dx_next < 0 else 'down' if dy_next > 0 else 'up'
+        if self.note_push_facing(ram, next_tile):
+            print(
+                f"[NAVIGATOR] Push-facing block tile={next_tile} "
+                f"action={read_player_action(ram)}"
+            )
+            self.path = []
+            self.stasis = 0
+            return None
         action = make_action(**{direction: True, 'b': True})
 
         if os.getenv("FENCE_DEBUG") == "1" and self.stasis > 0 and self.stasis % 60 == 0:
