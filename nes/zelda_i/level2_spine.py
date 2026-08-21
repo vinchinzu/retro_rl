@@ -48,6 +48,7 @@ from zelda_i.nav_common import (
     unstick_wiggle,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk_physics import OccupancyWalker
 
 DOOR_X = 120
 DOOR_Y = 141
@@ -388,6 +389,7 @@ class Level2Enter6fKeyController:
     door_phase: str = "band"
     success: bool = False
     notes: list[str] = field(default_factory=list)
+    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
     _stuck: int = 0
     _last_x: int = -1
     _last_y: int = -1
@@ -433,7 +435,9 @@ class Level2Enter6fKeyController:
         if self.door_phase == "band":
             # Live post-clear leftover (64, 93): north corridor RIGHT to
             # x≥208, DOWN to door y, RIGHT through the key door (1/1).
-            if y < 110 or x >= 200:
+            # South pocket (y>165) must not use this: x≥200 + UP is the
+            # east-wall climb that sticks at (200, 157).
+            if y < 110 or (x >= 200 and y <= 165):
                 if x < 208:
                     return FrameAction(nes_action("RIGHT"), "north_east")
                 if y < 137:
@@ -443,17 +447,21 @@ class Level2Enter6fKeyController:
                 self.door_phase = "push"
             elif abs(y - self.band_y) <= 4 and 90 <= x <= 160:
                 self.door_phase = "wall"
-            elif abs(y - self.band_y) > 4:
-                return FrameAction(
-                    nes_action("DOWN" if y < self.band_y else "UP"),
-                    "band_y",
-                )
-            elif x < 90:
-                return FrameAction(nes_action("RIGHT"), "band_x")
-            elif x > 160:
-                return FrameAction(nes_action("LEFT"), "band_x")
             else:
-                return FrameAction(nes_action("RIGHT"), "band")
+                # Live spine sat at (72, 181) then (112, 181): greedy UP
+                # into diamonds. Occupancy blocks the cell ahead on a miss
+                # and BFS-replans to the y≈113 band.
+                xy = (int(x), int(y))
+                dest = (120, self.band_y)
+                self.walker.observe(xy)
+                if self.walker.goal != dest:
+                    self.walker.goal = dest
+                    self.walker.path = None
+                direction = self.walker.next_dir(xy, dest)
+                if direction is None:
+                    self.walker.last_dir = None
+                    return FrameAction(nes_idle_action(), "band_wait")
+                return FrameAction(nes_action(direction), "band_occ")
 
         if self.door_phase == "wall":
             if x >= self.wall_x:
@@ -501,6 +509,8 @@ class Level2Enter6fKeyController:
             "door_phase": self.door_phase,
             "frames": self.frames,
             "notes": list(self.notes),
+            "occupancy_misses": self.walker.misses,
+            "occupancy_blocked": len(self.walker.grid.blocked),
         }
 
 

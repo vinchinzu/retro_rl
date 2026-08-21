@@ -67,6 +67,9 @@ class DungeonPhase(Enum):
 class DoorRoute:
     direction: str
     waypoints: tuple[tuple[int, int], ...]
+    # LEFT/RIGHT doors sit at y≈141. x-first along y=109 walks the north
+    # statue band (live 0x6c entry sat at 0x6d (48, 109) for 8000f).
+    y_first: bool = False
 
     def __post_init__(self) -> None:
         direction = self.direction.upper()
@@ -390,7 +393,8 @@ class GenericDungeonRoomController:
             if self.waypoint_index >= len(route.waypoints):
                 return FrameAction(nes_idle_action(), "entry_route_done")
             return FrameAction(nes_idle_action(), "entry_waypoint_idle")
-        if abs(dx) > 2:
+        y_first = route.y_first and abs(dy) > 2
+        if not y_first and abs(dx) > 2:
             direction = "RIGHT" if dx > 0 else "LEFT"
         else:
             direction = "DOWN" if dy > 0 else "UP"

@@ -97,6 +97,6 @@ bd ready -l zelda_i
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. Claimed `rr-4d53.3`:
 `--through level3` stops at Manji entry 0x7c, not dest 0x5b. Last live:
-`clear23_key` green (occupancy around the plus); hitch is `clear44` at
-~(87,101) with 3 Goriyas. L2 TF `0x02` is on the tape with documented
-bomb/key count pokes (not Clean). L9 / hygiene / isolated L4 are parked.
+`clear6f_compass` green; hitch is `bomb_north_6f` `no_bombs` in 0x6f
+~(200,101). L2 TF `0x02` is on the tape with documented bomb/key count
+pokes (not Clean). L9 / hygiene / isolated L4 are parked.

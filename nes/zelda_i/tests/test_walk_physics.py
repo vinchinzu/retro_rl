@@ -63,6 +63,18 @@ def test_walker_miss_blocks_ahead_and_sidesteps() -> None:
     assert (120, 140) not in path
 
 
+def test_walker_slide_still_blocks_predicted_cell() -> None:
+    """UP into a diamond that slides Link 1px sideways must still block UP."""
+    walker = OccupancyWalker(goal=(120, 113))
+    start = (72, 181)
+    walker.observe(start)
+    assert walker.next_dir(start) == "UP"
+    walker.observe((73, 181))
+    assert walker.misses == 1
+    assert (72, 180) in walker.grid.blocked
+    assert walker.next_dir(start) != "UP"
+
+
 def test_walker_stands_when_no_path() -> None:
     grid = OccupancyGrid(xmin=100, xmax=140, ymin=100, ymax=140)
     for x in range(100, 141):
