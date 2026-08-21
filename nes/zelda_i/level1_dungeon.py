@@ -260,6 +260,26 @@ ROOM_33_SPEC = DungeonRoomSpec(
     level=LEVEL_1,
 )
 
+# Water-maze walkable loop. `_STALFOS_PATROL` at y=149 x-first walks into
+# water; engage=96 from (128,149) UP-chases the north Goriya and stalls
+# (live Survival, 2 Goriyas left, 6000f).
+# Adjacent-ish cycle: north of the mid water (y≲133) must go around
+# east/west, never DOWN x=128 into the (136,125) pocket.
+_ROOM_23_MAZE: tuple[tuple[int, int], ...] = (
+    (120, 93),
+    (112, 93),
+    (112, 133),
+    (128, 133),
+    (114, 117),
+    (80, 93),
+    (64, 117),
+    (64, 149),
+    (96, 149),
+    (128, 173),
+    (176, 149),
+    (176, 117),
+)
+
 ROOM_23_SPEC = DungeonRoomSpec(
     spec_id="level1_room23",
     source_room=0x33,
@@ -278,9 +298,13 @@ ROOM_23_SPEC = DungeonRoomSpec(
     expected_enemy_count=3,
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
-        patrol=_STALFOS_PATROL,
-        engage_distance=96,
+        patrol=_ROOM_23_MAZE,
+        engage_distance=24,
         attack_phase=2,
+        # South door y=181 pins Link; leave_wall UP when y>173.
+        avoid_walls=True,
+        split_y=141,
+        occupancy_patrol=True,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,

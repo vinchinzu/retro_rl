@@ -529,8 +529,15 @@ def test_room_specs_support_hp_and_type_only_liveness() -> None:
     assert ROOM_33_SPEC.combat.engage_distance == 24
     assert ROOM_33_SPEC.combat.attack_phase == 4
     assert ROOM_23_SPEC.enemy_types == (0x06,)
-    assert ROOM_23_SPEC.combat.engage_distance == 96
+    assert ROOM_23_SPEC.combat.engage_distance == 24
     assert ROOM_23_SPEC.combat.attack_phase == 2
+    assert ROOM_23_SPEC.combat.split_y == 141
+    assert ROOM_23_SPEC.combat.avoid_walls is True
+    assert ROOM_23_SPEC.combat.occupancy_patrol is True
+    assert (128, 173) in ROOM_23_SPEC.combat.patrol
+    assert (80, 93) in ROOM_23_SPEC.combat.patrol
+    assert (128, 133) in ROOM_23_SPEC.combat.patrol
+    assert all(y < 181 for _, y in ROOM_23_SPEC.combat.patrol)
     assert (176, 149) in ROOM_23_SPEC.reward.waypoints
     assert (114, 117) in ROOM_23_SPEC.reward.waypoints
     assert (96, 181) in ROOM_23_SPEC.reward.waypoints
@@ -564,6 +571,80 @@ def test_generic_controller_routes_and_clears_type_only_room() -> None:
     assert controller.success is True
     assert controller.phase is DungeonPhase.DONE
     assert action.reason == "done"
+
+
+def test_room23_south_door_walks_inland() -> None:
+    """Live timeout sat at (135,181) in the south mouth; avoid_walls lifts UP."""
+    assert ROOM_23_SPEC.combat.avoid_walls is True
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(room=0x23, x=135, y=181, enemy_type=0x06, enemies=1, hp=0x20)
+    ram[ADDR_LINK_X + 1] = 80
+    ram[ADDR_LINK_Y + 1] = 93
+    action = controller.step(read_snapshot(ram))
+    assert action.reason.startswith("leave_wall")
+    from retro_harness.controls import pressed_nes_buttons
+
+    pressed = pressed_nes_buttons(list(action.action))
+    assert "UP" in pressed
+    assert "DOWN" not in pressed
+
+
+def test_room23_center_occupancy_sidesteps_mid_water() -> None:
+    """From (128,149) a north Goriya is UP through water; miss then sidesteps."""
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(room=0x23, x=128, y=149, enemy_type=0x06, enemies=1, hp=0x20)
+    ram[ADDR_LINK_X + 1] = 128
+    ram[ADDR_LINK_Y + 1] = 80
+    snap = read_snapshot(ram)
+    first = controller.step(snap)
+    assert first.reason == "combat_patrol"
+    assert np.array_equal(first.action, nes_action("UP"))
+    second = controller.step(snap)
+    assert controller.walker.misses == 1
+    assert (128, 148) in controller.walker.grid.blocked
+    assert second.reason == "combat_patrol"
+    assert not np.array_equal(second.action, nes_action("UP"))
+
+
+def test_room23_north_pocket_occupancy_sidesteps_water() -> None:
+    """Live timeout sat at (136,125); a miss blocks ahead and BFS tries RIGHT."""
+    from retro_harness.controls import pressed_nes_buttons
+
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(room=0x23, x=136, y=125, enemy_type=0x06, enemies=1, hp=0x20)
+    ram[ADDR_LINK_X + 1] = 80
+    ram[ADDR_LINK_Y + 1] = 93
+    snap = read_snapshot(ram)
+    first = controller.step(snap)
+    assert first.reason == "combat_patrol"
+    first_dir = pressed_nes_buttons(list(first.action))
+    second = controller.step(snap)
+    assert controller.walker.misses == 1
+    assert second.reason == "combat_patrol"
+    assert pressed_nes_buttons(list(second.action)) != first_dir
+    seen: list[str] = []
+    for _ in range(6):
+        act = controller.step(snap)
+        seen.extend(pressed_nes_buttons(list(act.action)))
+        if "RIGHT" in seen:
+            break
+    assert "RIGHT" in seen
+
+
+def test_room33_collect_closes_last_pixels() -> None:
+    """Live spine: clear then idle at (101,173), 5px east of the key target."""
+    controller = GenericDungeonRoomController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.clear_signal_seen = True
+    ram = _room_ram(room=0x33, x=101, y=173, keys=0)
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "collect_reward"
+    assert np.array_equal(action.action, nes_action("LEFT"))
 
 
 def test_generic_controller_collects_fixed_inventory_reward() -> None:
@@ -705,6 +786,55 @@ def test_collect_reward_skips_waypoint_after_stuck_frames() -> None:
         last_index = controller.waypoint_index
     assert last_index != first
     assert any(note.startswith("collect_skip_") for note in controller.notes)
+
+
+def test_collect_reward_stands_after_one_waypoint_lap() -> None:
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    ram = _room_ram(room=0x23, x=112, y=93, keys=0)
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    n = len(ROOM_23_SPEC.reward.waypoints)
+    action = None
+    for _ in range(n * 30):
+        action = controller.step(read_snapshot(ram))
+        if action.reason == "collect_wait":
+            break
+    assert action is not None
+    assert action.reason == "collect_wait"
+    assert np.array_equal(action.action, nes_idle_action())
+    assert controller._collect_skips >= n
+
+
+def test_combat_stands_while_waiting_for_clear() -> None:
+    controller = GenericDungeonRoomController(ROOM_54_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.max_live_enemies = 3
+    ram = _room_ram(room=0x54, x=120, y=141)
+    ram[ADDR_ROOM_ALL_DEAD] = 0
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "combat_wait"
+    assert np.array_equal(action.action, nes_idle_action())
+
+
+def test_combat_skips_patrol_when_stuck_on_live_enemy() -> None:
+    controller = GenericDungeonRoomController(ROOM_54_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _combat_room_ram(
+        room=0x54,
+        link_x=120,
+        link_y=141,
+        enemy_x=120 + 80,
+        enemy_y=141,
+        enemy_type=0x1B,
+        enemies=1,
+        hp=0,
+    )
+    snap = read_snapshot(ram)
+    start = controller.patrol_index
+    for _ in range(30):
+        controller.step(snap)
+    assert controller.patrol_index != start
 
 
 def test_trace_diff_and_ram_delta_are_symbolic() -> None:

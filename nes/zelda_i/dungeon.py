@@ -20,6 +20,7 @@ from retro_harness.input_script import FrameAction
 from zelda_i.combat import should_swing_at
 from zelda_i import dungeon_ids as _ids
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
+from zelda_i.walk_physics import OccupancyWalker
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
 CLEAR_SETTLE_ALL_DEAD = 20
@@ -93,6 +94,11 @@ class CombatTuning:
     # Forced steps in the entry direction after the room is playable, so
     # Link is off the door before Wallmasters finish spawning.
     inland_dash: int = 0
+    # Prefer patrol vertices on the same side of a mid-room gap (0x23 water).
+    split_y: int | None = None
+    # Predicted 1px walks; a miss blocks the cell ahead and BFS replans
+    # around water (0x23 plus). No path → stand / next patrol vertex.
+    occupancy_patrol: bool = False
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -328,8 +334,10 @@ class GenericDungeonRoomController:
     clear_signal_seen: bool = False
     success: bool = False
     notes: list[str] = field(default_factory=list)
+    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
     _stuck_frames: int = 0
     _stuck_xy: tuple[int, int] | None = None
+    _collect_skips: int = 0
 
     def _set_phase(self, phase: DungeonPhase, note: str = "") -> None:
         if phase is not self.phase:
@@ -338,8 +346,36 @@ class GenericDungeonRoomController:
             self.waypoint_index = 0
             self._stuck_frames = 0
             self._stuck_xy = None
+            self._collect_skips = 0
+            if phase is DungeonPhase.FIGHT:
+                self.walker = OccupancyWalker()
             if note:
                 self.notes.append(note)
+
+    def _snap_patrol_nearest(self, snap: ZeldaSnapshot) -> None:
+        patrol = self.spec.combat.patrol
+        x, y = int(snap.link_x), int(snap.link_y)
+        idxs: list[int] | range = range(len(patrol))
+        split = self.spec.combat.split_y
+        if split is not None:
+            south = y >= split
+            same = [
+                i for i, (_, py) in enumerate(patrol) if (py >= split) == south
+            ]
+            if same:
+                idxs = same
+        self.patrol_index = min(
+            idxs,
+            key=lambda i: abs(patrol[i][0] - x) + abs(patrol[i][1] - y),
+        )
+
+    def _update_stuck(self, snap: ZeldaSnapshot) -> None:
+        xy = (int(snap.link_x), int(snap.link_y))
+        if self._stuck_xy == xy:
+            self._stuck_frames += 1
+        else:
+            self._stuck_xy = xy
+            self._stuck_frames = 0
 
     def _inventory_value(self, snap: ZeldaSnapshot) -> int:
         field_name = self.spec.reward.inventory_field
@@ -386,6 +422,17 @@ class GenericDungeonRoomController:
             tx, ty = tuning.patrol[self.patrol_index]
             dx = tx - snap.link_x
             dy = ty - snap.link_y
+        if tuning.occupancy_patrol:
+            xy = (int(snap.link_x), int(snap.link_y))
+            n = len(tuning.patrol)
+            for _ in range(n):
+                direction = self._occupancy_dir(xy, (tx, ty))
+                if direction is not None:
+                    return FrameAction(nes_action(direction), "combat_patrol")
+                self.patrol_index = (self.patrol_index + 1) % n
+                tx, ty = tuning.patrol[self.patrol_index]
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), "combat_wait")
         if abs(dx) > tuning.tolerance and abs(dx) >= abs(dy):
             direction = "RIGHT" if dx > 0 else "LEFT"
         elif abs(dy) > tuning.tolerance:
@@ -409,24 +456,39 @@ class GenericDungeonRoomController:
         lo_y, hi_y = _AVOID_WALL_Y
         return x < lo_x or x > hi_x or y < lo_y or y > hi_y
 
-    def _engage(self, snap: ZeldaSnapshot, target: ZeldaObject) -> FrameAction:
+    def _occupancy_dir(
+        self, xy: tuple[int, int], dest: tuple[int, int]
+    ) -> str | None:
+        dest_i = (int(dest[0]), int(dest[1]))
+        if self.walker.goal != dest_i:
+            self.walker.goal = dest_i
+            self.walker.path = None
+        return self.walker.next_dir(xy, dest_i)
+
+    def _engage(
+        self,
+        snap: ZeldaSnapshot,
+        target: ZeldaObject,
+        direction: str | None = None,
+    ) -> FrameAction:
         """Chase target; slash only when sword hitbox can hit or contact-close."""
-        dx = target.x - snap.link_x
-        dy = target.y - snap.link_y
-        if (
-            self.spec.combat.engage_dominant_axis
-            and abs(dy) > 10
-            and abs(dy) > abs(dx)
-        ):
-            direction = "DOWN" if dy > 0 else "UP"
-        elif abs(dx) > 10:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > 10:
-            direction = "DOWN" if dy > 0 else "UP"
-        elif abs(dx) >= abs(dy):
-            direction = "RIGHT" if dx >= 0 else "LEFT"
-        else:
-            direction = "DOWN" if dy >= 0 else "UP"
+        if direction is None:
+            dx = target.x - snap.link_x
+            dy = target.y - snap.link_y
+            if (
+                self.spec.combat.engage_dominant_axis
+                and abs(dy) > 10
+                and abs(dy) > abs(dx)
+            ):
+                direction = "DOWN" if dy > 0 else "UP"
+            elif abs(dx) > 10:
+                direction = "RIGHT" if dx > 0 else "LEFT"
+            elif abs(dy) > 10:
+                direction = "DOWN" if dy > 0 else "UP"
+            elif abs(dx) >= abs(dy):
+                direction = "RIGHT" if dx >= 0 else "LEFT"
+            else:
+                direction = "DOWN" if dy >= 0 else "UP"
         tuning = self.spec.combat
         nx, ny = self._wall_step(int(snap.link_x), int(snap.link_y), direction)
         hold_inland = tuning.avoid_walls and self._on_avoid_wall(nx, ny)
@@ -466,6 +528,8 @@ class GenericDungeonRoomController:
             direction = "UP"
         else:
             return None
+        if tuning.occupancy_patrol:
+            self.walker.last_dir = direction
         return self._swing(
             direction,
             "leave_wall",
@@ -475,56 +539,80 @@ class GenericDungeonRoomController:
 
     def _combat(self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]) -> FrameAction:
         self.combat_frames += 1
+        occupancy = self.spec.combat.occupancy_patrol
+        # Cleared (or not yet spawned): stand. Do not patrol-wiggle while waiting.
+        if not live:
+            if occupancy:
+                self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), "combat_wait")
+        self._update_stuck(snap)
+        if self.combat_frames == 1:
+            self._snap_patrol_nearest(snap)
+        if not occupancy and self._stuck_frames >= 24:
+            # Blocked mid-fight: hop from the nearest vertex, not a stale
+            # index that greedy-walks through water (0x23 north pocket).
+            n = len(self.spec.combat.patrol)
+            self._snap_patrol_nearest(snap)
+            self.patrol_index = (self.patrol_index + 1) % n
+            self._stuck_frames = 0
         off_wall = self._off_wall_step(snap)
         if off_wall is not None:
             return off_wall
         dash = self.spec.combat.inland_dash
         if dash > 0 and self.combat_frames <= dash:
+            if occupancy:
+                self.walker.last_dir = self.spec.entry.direction
             return self._swing(
                 self.spec.entry.direction,
                 "inland_dash",
                 period=self.spec.combat.engage_attack_period,
                 hold=self.spec.combat.engage_attack_hold,
             )
-        if live:
-            nearest = min(
-                live,
-                key=lambda obj: abs(obj.x - snap.link_x)
-                + abs(obj.y - snap.link_y),
-            )
-            distance = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-            back = self.spec.combat.contact_backstep
-            # Intermittent backstep (2/6 frames) so we still land sword hits
-            # while peeling contact damage (rr-gjey). Always-backstep starves kill.
-            if (
-                back > 0
-                and distance < back
-                and (self.combat_frames % 6) < 2
-            ):
-                dx = nearest.x - snap.link_x
-                dy = nearest.y - snap.link_y
-                if abs(dx) >= abs(dy):
-                    away = "LEFT" if dx > 0 else "RIGHT"
-                else:
-                    away = "UP" if dy > 0 else "DOWN"
-                return FrameAction(nes_action(away), "combat_backstep")
+        nearest = min(
+            live,
+            key=lambda obj: abs(obj.x - snap.link_x)
+            + abs(obj.y - snap.link_y),
+        )
+        distance = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+        back = self.spec.combat.contact_backstep
+        # Intermittent backstep (2/6 frames) so we still land sword hits
+        # while peeling contact damage (rr-gjey). Always-backstep starves kill.
+        if (
+            back > 0
+            and distance < back
+            and (self.combat_frames % 6) < 2
+        ):
+            dx = nearest.x - snap.link_x
+            dy = nearest.y - snap.link_y
+            if abs(dx) >= abs(dy):
+                away = "LEFT" if dx > 0 else "RIGHT"
+            else:
+                away = "UP" if dy > 0 else "DOWN"
+            if occupancy:
+                self.walker.last_dir = away
+            return FrameAction(nes_action(away), "combat_backstep")
+        if occupancy:
+            xy = (int(snap.link_x), int(snap.link_y))
+            self.walker.observe(xy)
+            direction = self._occupancy_dir(xy, (nearest.x, nearest.y))
+            if direction is None and distance >= self.spec.combat.engage_distance:
+                return self._patrol(snap)
             if distance < self.spec.combat.engage_distance:
-                return self._engage(snap, nearest)
+                return self._engage(snap, nearest, direction=direction)
+            return FrameAction(nes_action(direction), "combat_patrol")
+        if distance < self.spec.combat.engage_distance:
+            return self._engage(snap, nearest)
         return self._patrol(snap)
 
     def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.spec.reward.waypoints:
             n = len(self.spec.reward.waypoints)
-            # Loop waypoints until inventory success / timeout (fixed keys can sit
-            # off the first pass of a sparse hunt grid).
+            # One hunt lap, then stand. Looping the grid was thousands of
+            # LEFT/RIGHT/DOWN frames in place on blocked tiles.
             if self.waypoint_index >= n:
                 self.waypoint_index = 0
+            self._update_stuck(snap)
             xy = (int(snap.link_x), int(snap.link_y))
-            if self._stuck_xy == xy:
-                self._stuck_frames += 1
-            else:
-                self._stuck_xy = xy
-                self._stuck_frames = 0
             tx, ty = self.spec.reward.waypoints[self.waypoint_index]
             dx = tx - snap.link_x
             dy = ty - snap.link_y
@@ -535,8 +623,11 @@ class GenericDungeonRoomController:
                     self.notes.append(
                         f"collect_skip_{self.waypoint_index}_{xy[0]}_{xy[1]}"
                     )
+                    self._collect_skips += 1
                 self.waypoint_index = (self.waypoint_index + 1) % n
                 self._stuck_frames = 0
+                if self._collect_skips >= n:
+                    return FrameAction(nes_idle_action(), "collect_wait")
                 tx, ty = self.spec.reward.waypoints[self.waypoint_index]
                 dx = tx - snap.link_x
                 dy = ty - snap.link_y
@@ -555,7 +646,8 @@ class GenericDungeonRoomController:
         if not self.spec.reward.y_first:
             axes = tuple(reversed(axes))
         for delta, positive, negative in axes:
-            if abs(delta) > 5:
+            # 5px idled forever 5px off the 0x33 key (live 101,173 vs 96,173).
+            if abs(delta) > 2:
                 return FrameAction(
                     nes_action(positive if delta > 0 else negative),
                     "collect_reward",
@@ -700,6 +792,9 @@ class GenericDungeonRoomController:
                 "engage_attack_hold": self.spec.combat.engage_attack_hold,
                 "patrol_attack_period": self.spec.combat.patrol_attack_period,
                 "patrol_attack_hold": self.spec.combat.patrol_attack_hold,
+                "occupancy_patrol": self.spec.combat.occupancy_patrol,
+                "occupancy_misses": self.walker.misses,
+                "occupancy_blocked": len(self.walker.grid.blocked),
             },
         }
 
