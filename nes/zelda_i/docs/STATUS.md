@@ -297,10 +297,11 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** continuous `run_survival_spine.py --through level2`
-   now stops on L2 TF `0x02` (`rr-4d53.2.3` closed). Next is L2 exit → L3
-   (`rr-4d53.3` / `0x6b` dest). No seamed compose. Bomb/key count pokes are
-   documented Survival shortcuts, not Clean.
+1. **Active Survival tip:** `--through level3` stops at Manji entry `0x7c`
+   (`rr-4d53.3`), not dest 0x5b. Last live: `clear23_key` green; hitch
+   `clear44` ~(87,101) 3 Goriyas. L2 TF `0x02` (`rr-4d53.2.3`) is closed.
+   No seamed compose. Bomb/key count pokes are documented Survival
+   shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

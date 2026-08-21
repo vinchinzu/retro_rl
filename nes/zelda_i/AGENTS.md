@@ -3,7 +3,8 @@
 NES Legend of Zelda (graph nav; **M5** Clean power-on → Level 1 Triforce).
 Shared: `retro_harness.adventure`, `retro_harness.nes`.
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/HYGIENE.md`,
-`docs/ASSIST_CONTRACT.md`. Tracker: **`bd ready -l zelda_i`** (prefix `rr-`).
+`docs/ASSIST_CONTRACT.md`, `docs/tasks/PROCESS.md`.
+Tracker: **`bd ready -l zelda_i`** (prefix `rr-`).
 
 ## Commands
 
@@ -23,7 +24,7 @@ uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 bd ready -l zelda_i
 ```
 
-Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
+Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 
 ## Layout
 
@@ -32,6 +33,8 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
 | `anchors.py` | Canonical L3–L9 door/entry/TF constants |
 | `ram.py`, `overworld.py`, `overworld_nav.py` | Snapshots + OW graph / L1 path |
 | `ow_path.py` | Shared `OverworldPathController` (L2–L8 hop engine) |
+| `walk_physics.py`, `predict.py` | OccupancyWalker + RAM claims (`retro_harness.predict`) |
+| `level3_spine.py` | `--through level3` entry 0x7c (dest 0x5b library-only) |
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
@@ -43,9 +46,11 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
 
 ## Dual track
 
-- **Clean** (default): STATUS-eligible; no health writes.
-- **Assisted first pass** (`--infinite-life`): infinite hearts + damage heatmap.
+- **Assisted first pass** (segment-script default, `--infinite-life`):
+  infinite hearts + damage heatmap. Opt out with `--no-infinite-life`.
   Do not promote as Clean. Contract: `docs/ASSIST_CONTRACT.md`.
+- **Clean**: STATUS-eligible; no health writes. M5 stays
+  `run_level1_complete` without `--infinite-life`.
 
 **Agent order:** pathfinding + puzzles → assisted full clear → Clean harden
 from damage heatmaps. Do not block tip progress on combat polish.
@@ -60,6 +65,10 @@ from damage heatmaps. Do not block tip progress on combat polish.
   alive (type-only liveness). Room 0x53 key fixed at **(128,109)**.
 - After triforce: idle mode 18 (~704f) → OW 0x37; do not reload
   `Level1Complete` mid-fanfare. L2 prefix: `37→38→48→58→59→49→4A`; never 0x79.
+  `$066F` low nibble is **whole hearts**, not `0xF` full. Writing `0xF`
+  makes `World_FillHearts` `INC` extra containers. Full is `lo==hi`
+  (`0x22`=3/3) plus `$0670=$FF`. After L1 TF expect **5**, after L2 TF **7**.
+- Stuck nav: stand still (`*_wait`). Do not loop LEFT/RIGHT/DOWN wiggle.
 - Lab checkpoints are dev fixtures until natural-entry runner passes same spec.
 - `$0656` B-item: **1=bombs, 2=arrows, 4=candle**. `dungeon_ops.B_ITEM_*`.
 - Old `Level5Entrance` lacks Raft/Stepladder/bombs/TF. Use `Level5EntranceFromL4`.
@@ -86,7 +95,8 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. Next leaf `rr-4d53.3`
-(L2 exit → L3 TF). L2 TF `0x02` is on the tape with documented bomb/key
-count pokes (not Clean). L9 / hygiene / isolated L4 are parked.
-Do not start a room unless that is the claimed bead.
+(`run_survival_spine.py`); no seamed compose. Claimed `rr-4d53.3`:
+`--through level3` stops at Manji entry 0x7c, not dest 0x5b. Last live:
+`clear23_key` green (occupancy around the plus); hitch is `clear44` at
+~(87,101) with 3 Goriyas. L2 TF `0x02` is on the tape with documented
+bomb/key count pokes (not Clean). L9 / hygiene / isolated L4 are parked.
