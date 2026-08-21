@@ -1,9 +1,9 @@
-"""Survival-spine L3: post-L2 OW → Manji entry 0x7c; dest 0x5b is later.
+"""Survival-spine L3: post-L2 OW → Manji west key 0x7b; dest 0x5b is later.
 
-``--through level3`` this pass stops at enter_level3 (room 0x7c). Dest 0x5b
-(``level3_dest_6b_*``, rr-4d53.3.1) stays library-wired, not on the spine.
-Raft → Manhandla → TF 0x04 is still the parent bead and still poke-16 on
-the isolated suffix.
+``--through level3`` this pass stops at west_key (room 0x7b, keys≥1). Dest
+0x5b (``level3_dest_6b_*``, rr-4d53.3.1.2) stays library-wired, not on the
+spine. Raft → Manhandla → TF 0x04 is still the parent bead and still poke-16
+on the isolated suffix.
 """
 
 from __future__ import annotations
@@ -19,8 +19,10 @@ from zelda_i.door_graph import (
 )
 from zelda_i.level3_dungeon import (
     LEVEL3,
+    ROOM_7B_SPEC,
     ROOM_L3_DARKNUTS,
     ROOM_L3_ENTRY,
+    ROOM_L3_WEST_KEY,
     level3_reached_5b,
 )
 from zelda_i.level3_overworld import (
@@ -72,7 +74,7 @@ def level3_entry_stages():
 
 
 def level3_entry_success(snap: ZeldaSnapshot) -> bool:
-    """Spine stop for ``--through level3`` this pass: play mode in 0x7c."""
+    """Play mode in Manji entry 0x7c (predecessor of west key)."""
     return (
         snap.level == LEVEL3
         and snap.screen == ROOM_L3_ENTRY
@@ -81,11 +83,30 @@ def level3_entry_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level3_west_key_stages():
+    """0x7c LEFT+UP → 0x7b Zol clear + key (rr-4d53.3.1.1)."""
+    return (
+        ("west_key", Level3WestKeyController(), WEST_KEY_SPINE_MAX_FRAMES),
+    )
+
+
+def level3_west_key_success(snap: ZeldaSnapshot) -> bool:
+    """Spine stop for ``--through level3`` this pass: 0x7b with keys≥1."""
+    return (
+        snap.level == LEVEL3
+        and snap.screen == ROOM_L3_WEST_KEY
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+        and snap.keys >= 1
+        and not ROOM_7B_SPEC.live_enemies(snap)
+    )
+
+
 def level3_dest_6b_stages():
     """0x7c west key → 0x6b occupancy north dest into 0x5b."""
     dest_6b_room_plan()
     return (
-        ("west_key", Level3WestKeyController(), WEST_KEY_SPINE_MAX_FRAMES),
+        *level3_west_key_stages(),
         (
             "north_chain",
             Level3NorthChainController(),

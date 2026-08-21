@@ -15,8 +15,9 @@ Do not overwrite Clean M5. Seamed compose is gone (`rr-cont`). L9 backward
 recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
 **parked**.
 
-Beads: **`rr-4d53`** epic. Claimed **`rr-4d53.3`** (power-on → L3 entrance 0x7c).
-Dest 0x5b is **`rr-4d53.3.1`** — do not run it on this pass.
+Beads: **`rr-4d53`** epic. Parent **`rr-4d53.3`** (L2 exit → L3 TF `0x04`).
+Entrance `0x7c` is **`rr-4d53.3.0` closed**. Claimed tip **`rr-4d53.3.1.1`**
+(west key `0x7b`). Do not start dest `0x5b`, Raft, or TF on this pass.
 
 Full spine (do not claim ahead of the tip):
 
@@ -26,12 +27,22 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.2.1` | live `0x7d` → Boom `0x4f` | **closed** — 1/1 Survival, boom owned |
 | `rr-4d53.2.2` | natural bombs (no `--poke-bombs`) | **closed**; L2 entry bombs=4 |
 | `rr-4d53.2.3` | Boom → Dodongo → TF `0x02` | **closed** — 1/1 Survival; documented bomb/key top-up |
-| `rr-4d53.3` / `.3.1` / `.3.2` | L2 exit → L3 TF (`0x6b` dest + no poke-16) | **tip** — `.3.1` dest wired |
+| `rr-4d53.3.0` | L2 TF → Manji entry `0x7c` | **closed** — 1/1 Survival 53918f |
+| `rr-4d53.3.1.1` | live `0x7c` west key `0x7b` | **tip** — wire `level3_west_key_stages` |
+| `rr-4d53.3.1.2` / `.3.1` | occupancy dest `0x5b` | blocked on `.3.1.1` |
+| `rr-4d53.3.3.*` | `0x5b` → Compass → Raft | blocked on `.3.1` |
+| `rr-4d53.3.2` | L3 bombs (no poke-16) | blocked on `.3.1` |
+| `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | blocked on `.3.3` + `.3.2` |
+| `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | in_progress; closes with `.3.4.4` |
+| `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | blocked on `.3` |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
-Exact continuous command (L2 TF), then Manji entrance 0x7c (not dest 0x5b):
+Spine-only close contract + room DAG: `docs/LEVEL3_ROUTE.md` § Spine attach.
+Isolated `Level3*` checkpoints cannot close these beads.
+
+Exact continuous command (L2 TF), then Manji west key `0x7b` (not dest 0x5b):
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trials 1
@@ -40,9 +51,11 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --trial
 
 Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_session=true`;
 `boot_frames` near 200–565; `boot_policy.file_slot=1`; `progression_writes=0`;
-`capacity_writes=0`; **`triforce & 0x02`** in room `0x0d` (not merely boom).
-`inventory_assist` lists bomb/key count pokes. Default Clean paths stay
-untouched. `--no-video` skips the encode. `--through level1` stops after shard 1.
+`capacity_writes=0`; **`--through level2`**: `triforce & 0x02` in room `0x0d`;
+**`--through level3`**: room `0x7b` keys≥1 (`stop=level3_west_key_0x7b`).
+`inventory_assist` lists bomb/key count pokes (power-on L2 entry is bombs=0).
+Default Clean paths stay untouched. `--no-video` skips the encode.
+`--through level1` stops after shard 1.
 
 Last watchable L1+L2 tape (`ok=true`, 50529f, 11 HUD hearts) is **not**
 the current encoding. Two bugs from that video:
@@ -61,30 +74,29 @@ the current encoding. Two bugs from that video:
    combat idles when no live enemies; stuck+live skips the next patrol
    point. Collect stands after one waypoint lap.
 
-**Last live power-on → L3 entrance (Survival, 2026-08-21):** `ok=false`
-`failed=bomb_north_6f` 1f `no_bombs`, room `0x6f` ~(200,101), keys=1,
-bombs=0. Prefix through `clear6f_compass` is live. `clear44` 702f
-(occupancy 120 misses / 120 blocked, y=141 patrol). `clear6c_key` 698f
-(`DoorRoute.y_first` off the y=109 statue band). `enter_6f_key` 366f
-(occupancy blocks a predicted cell even on a 1px slide).
-`accepted_containers=4`, `progression_writes=0`, `capacity_writes=0`,
-deaths 0, poke_bombs/keys false. Damage: 1 at L1:0x23. `--through level3`
-stops at Manji `0x7c`, not dest 0x5b. Evidence:
-`recordings/l3_entrance_poweron.json` + `_final.png`. Do not revert idle
-policy. Next hitch is the 0x6f north bomb wall with bombs=0 (power-on L2
-entry is 0; `rr-4d53.2.2` measured 4 off `Level2Entrance.state`). Natural
-farm or documented Survival bomb-count poke — do not grant undiscovered
-items.
+**Last live power-on → L3 entrance (Survival, 2026-08-21):** `ok=true`
+53918f, room `0x7c` (Manji entry), `tf=0x03`, bombs=8 keys=4, deaths 0,
+`poke_bombs=16` `poke_keys=2`, `progression_writes=0`,
+`capacity_writes=0`, `accepted_containers=5` (HUD 5 hearts; L2 TF
+container increment not observed this tape). L2 entry bombs=0 keys=0;
+Survival count top-up at L2 entry + `SPINE_BOMB_RETOPUP`.
+`bomb_north_6f` 340f (was 1f `no_bombs`). Boom, Dodongo, L2 TF `0x02`,
+OW hop `enter_level3` 12864f all live. That tape stopped at `0x7c`
+(`.3.0` closed), not dest 0x5b. Current `--through level3` is west key
+`0x7b`. Evidence:
+`recordings/l3_entrance_bombtopup.json` + `_final.png`. Farm is
+`rr-doua`. Do not grant undiscovered items. Next is west key `0x7b`
+(`rr-4d53.3.1.1`). Dest `0x5b` is `.3.1.2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level3 --no-video --trials 1 --tag l3_entrance_poweron
 ```
 
-Dest 0x5b (`rr-4d53.3.1`) stays library-wired until 0x7c is live. L2-exit
-OW hops + west key + occupancy 0x6b north exist but are not on this spine
-stop. Isolated L3 Raft suffix still uses poke-16 (parent `rr-4d53.3` /
-`.3.2`). Isolated 0x6b check:
+Dest 0x5b (`rr-4d53.3.1.2`) stays library-wired until west key is live on
+the spine. Occupancy 0x6b north + Raft/boss controllers exist as isolated
+libraries; they are not this spine stop. Isolated L3 Raft suffix still uses
+poke-16 (`.3.2` / `.3.4`). Isolated 0x6b check:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2
@@ -184,8 +196,9 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 ## Next milestones
 
 1. **Survival spine** — `rr-4d53.2.3` Boom→TF closed (documented bomb/key
-   top-up). Next L3 (`0x6b` dest), then `.6` L4 and `.7` L5, then `.4`
-   one-session L5 TF. L6–L9 stay out of this pass.
+   top-up). L3 entrance `0x7c` closed (`.3.0`). Tip is west key `0x7b`
+   (`.3.1.1`), then dest `0x5b` / Raft / TF `0x04`, then `.6` L4 and `.7`
+   L5, then `.4` one-session L5 TF. L6–L9 stay out of this pass.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.
 3. **M6 route graph** — L3–L5 NamedRoute / door_graph / composer now exist;
@@ -194,9 +207,10 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Bottleneck
 
-**L2 exit → L3 TF** (`rr-4d53.3`) is the watchable tip. Power-on → L2
-TF `0x02` is closed (bomb/key count poke documented). Then L3 `0x6b`
-north hunt (`rr-4d53.3.1`). L9 dest walk is parked.
+**L2 exit → L3 west key `0x7b`** (`rr-4d53.3.1.1`) is the watchable tip.
+Power-on → L3 entrance `0x7c` is closed (`.3.0`). Then dest `0x5b`
+(`.3.1.2`), Raft (`.3.3.*`), bombs (`.3.2`), TF (`.3.4.*`). L9 dest walk
+is parked.
 
 ## Video / watchability (2026-08-06)
 

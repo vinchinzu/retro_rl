@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 import numpy as np
@@ -9,7 +11,11 @@ import numpy as np
 from zelda_i.level1_dungeon import ROOM_45_SPEC, ROOM_45_SURVIVAL_SPEC
 from zelda_i.level1_finish import level1_triforce_stages
 from zelda_i.level2_overworld import OverworldToLevel2Controller, PostTriforceSettleController
-from zelda_i.level2_spine import level2_boom_success, level2_through_success
+from zelda_i.level2_spine import (
+    level2_boom_success,
+    level2_through_success,
+    level2_to_boom_stages,
+)
 from zelda_i.level2_tf_spine import level2_tf_stages
 from zelda_i.ram import (
     ADDR_BOMBS,
@@ -25,13 +31,20 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
-from zelda_i.level3_spine import level3_dest_6b_stages, level3_entry_stages
+from zelda_i.level3_spine import (
+    level3_dest_6b_stages,
+    level3_entry_stages,
+    level3_west_key_stages,
+)
 from zelda_i.survival_spine import (
     BOOT_POLICY,
+    SPINE_BOMB_RETOPUP,
     SPINE_THROUGH,
     SpineRun,
     level2_entry_stages,
+    merge_inventory_assist,
     spine_final_fields,
+    topup_owned_inventory,
     validate_l5_endpoint,
 )
 
@@ -40,15 +53,19 @@ def test_spine_through_is_continuous_only() -> None:
     assert SPINE_THROUGH == ("level1", "level2", "level3")
 
 
-def test_through_level3_stops_at_manji_entrance() -> None:
-    """Power-on → L3 this pass is 0x7c, not dest 0x5b (rr-4d53.3.1)."""
+def test_through_level3_stops_at_west_key() -> None:
+    """Power-on → L3 this pass is 0x7b keys≥1, not dest 0x5b (rr-4d53.3.1.1)."""
     names = [name for name, _, _ in level3_entry_stages()]
     assert names == ["settle_l2_tf", "enter_level3"]
+    west = [name for name, _, _ in level3_west_key_stages()]
+    assert west == ["west_key"]
     dest_names = [name for name, _, _ in level3_dest_6b_stages()]
-    assert "north_chain" in dest_names
+    assert dest_names == ["west_key", "north_chain"]
     assert "north_chain" not in names
+    assert "north_chain" not in west
     run = SpineRun(through="level3", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level3_entrance_0x7c"
+    assert run.report()["stop"] == "level3_west_key_0x7b"
+    assert "l3_entry" in run.report()
 
 
 def _l2_snap(
@@ -96,6 +113,68 @@ def test_level2_tf_stages_follow_isolated_boss_path() -> None:
         "fight_dodongo",
         "collect_tf",
     ]
+
+
+def test_spine_retopup_covers_first_l2_bomb_wall() -> None:
+    """Power-on L2 entry is bombs=0; 0x6f north must get the Survival top-up."""
+    names = [name for name, _, _ in level2_to_boom_stages()]
+    assert "bomb_north_6f" in names
+    assert "bomb_north_6f" in SPINE_BOMB_RETOPUP
+    assert "bomb_north_5f" in SPINE_BOMB_RETOPUP
+    tf_names = [name for name, _, _ in level2_tf_stages()]
+    assert "bomb_north_4f" in tf_names
+    assert "bomb_north_4f" in SPINE_BOMB_RETOPUP
+    assert "bomb_north_1e" in SPINE_BOMB_RETOPUP
+    assert "fight_dodongo" in SPINE_BOMB_RETOPUP
+
+
+def test_merge_inventory_assist_appends_writes() -> None:
+    first = {
+        "writes": [{"field": "bombs", "from": 0, "to": 16}],
+        "notes": ["bombs=16"],
+        "poke_bombs": 16,
+        "poke_keys": None,
+    }
+    extra = {
+        "writes": [{"field": "keys", "from": 1, "to": 2}],
+        "notes": ["keys=2"],
+        "poke_bombs": 16,
+        "poke_keys": 2,
+    }
+    merged = merge_inventory_assist(first, extra)
+    assert len(merged["writes"]) == 2
+    assert merged["notes"] == ["bombs=16", "keys=2"]
+    assert merged["poke_bombs"] == 16
+    assert merged["poke_keys"] == 2
+    assert merge_inventory_assist(None, extra) is extra
+
+
+def test_topup_owned_inventory_records_poke_on_run() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_BOMBS] = 0
+    ram[ADDR_KEYS] = 1
+    values: dict[str, int] = {}
+
+    class _Data:
+        memory = None
+
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=_Data(), em=None),
+    )
+    run = SpineRun(through="level3", success=True, boot_frames=199)
+    topup_owned_inventory(env, run)
+    assert run.inventory_assist is not None
+    assert run.inventory_assist["poke_bombs"] == 16
+    assert run.inventory_assist["poke_keys"] == 2
+    assert values["bombs"] == 16
+    assert values["keys"] == 2
+    report = run.report()
+    assert report["poke_bombs"] == 16
+    assert report["poke_keys"] == 2
 
 
 def test_spine_report_includes_l2_entry_bomb_plan() -> None:
