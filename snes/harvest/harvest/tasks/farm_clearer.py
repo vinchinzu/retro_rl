@@ -18,11 +18,7 @@ from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_STAMINA,
     CLEARABLE_DEBRIS_TYPES,
-    LARGE_ROCK_TL,
-    LARGE_ROCK_TILES,
     MAP_WIDTH,
-    STUMP_TL,
-    STUMP_TILES,
     TILE_SIZE,
     TILE_TO_DEBRIS,
     DebrisType,
@@ -49,9 +45,11 @@ from harvest.tasks.farm_ops import (  # noqa: F401
     TileScanner,
     ToolManager,
     action_to_names,
+    cycle_tool,
+    drop_unarmed_debris,
+    snap_debris_anchor,
     use_tool,
     use_tool_facing,
-    cycle_tool,
 )
 from harvest.tasks.farm_toss import (
     FenceJumpTossSkill,
@@ -198,32 +196,32 @@ class FarmClearer:
         return wanted
 
     def _enable_lift_only_mode(self, missing: List[int]) -> None:
-        """Continue clearing weeds/stones by hand when hammer/axe are unavailable."""
+        """Drop only debris whose required tool is actually missing."""
         self.prefer_lift_for_weeds = True
-        self.prefer_lift_for_stones = True
-        # Prefer weeds first: they lift reliably and open crop-field paths.
-        self.priority = [DebrisType.WEED, DebrisType.STONE]
+        if int(Tool.HAMMER) in missing:
+            self.prefer_lift_for_stones = True
+        self.priority = drop_unarmed_debris(self.priority, missing)
         names = ", ".join(f"0x{tool:02X}" for tool in missing) or "lift-only"
-        print(
-            f"[CLEARER] Startup missing tools: {names}; "
-            "continuing with lift-only weeds/stones"
-        )
+        kept = ", ".join(dt.name for dt in self.priority)
+        print(f"[CLEARER] Startup missing tools: {names}; priority={kept}")
 
     def _finalize_startup_tools(self) -> None:
-        """Re-scan carry tools after recordings and flag missing gear."""
-        self.tool_manager.start_search()
-        self.tool_manager.record()
-        # Single-frame snapshot is enough: recordings should leave tools selected.
+        """Re-scan carry (selected + backpack) and drop unarmed debris types."""
         have = set(self.tool_manager.seen)
         have.add(self.tool_manager.current)
+        if self.tool_manager.has(int(Tool.HAMMER)):
+            have.add(int(Tool.HAMMER))
+        if self.tool_manager.has(int(Tool.AXE)):
+            have.add(int(Tool.AXE))
         missing = sorted(self._requested_startup_tools() - have)
 
-        # Even without startup recordings, rocks/stumps need hammer/axe.
-        needs_hammer = DebrisType.ROCK in self.priority or DebrisType.STONE in self.priority
-        needs_axe = DebrisType.STUMP in self.priority
-        if needs_hammer and int(Tool.HAMMER) not in have:
+        if DebrisType.ROCK in self.priority and not self.tool_manager.has(
+            int(Tool.HAMMER)
+        ):
             missing = sorted(set(missing) | {int(Tool.HAMMER)})
-        if needs_axe and int(Tool.AXE) not in have:
+        if DebrisType.STUMP in self.priority and not self.tool_manager.has(
+            int(Tool.AXE)
+        ):
             missing = sorted(set(missing) | {int(Tool.AXE)})
 
         if missing:
@@ -282,8 +280,7 @@ class FarmClearer:
                 }
                 required_tool = tool_map.get(task_name)
 
-                # Check if tool was found in inventory scan
-                if required_tool and int(required_tool) in self.tool_manager.seen:
+                if required_tool and self.tool_manager.has(int(required_tool)):
                     print(
                         f"[CLEARER] Skipping {task_name} "
                         f"(already have {required_tool.name})"
@@ -357,10 +354,15 @@ class FarmClearer:
         dx, dy = target[0] - player[0], target[1] - player[1]
         return 'right' if abs(dx) >= abs(dy) and dx > 0 else 'left' if abs(dx) >= abs(dy) else 'down' if dy > 0 else 'up'
 
-    def _stamina_too_low(self, ram: np.ndarray) -> bool:
+    def _stamina(self, ram: np.ndarray) -> int:
         if ADDR_STAMINA >= len(ram):
-            return False
-        return int(ram[ADDR_STAMINA]) < self.min_stamina
+            return 0
+        return int(ram[ADDR_STAMINA])
+
+    def _can_afford_target(self, ram: np.ndarray, target: Target) -> bool:
+        return self._stamina(ram) >= target.stamina_to_clear(
+            lifting=self._should_lift(target)
+        )
 
     def _sort_targets_cluster(
         self, targets: List[Target], player_pos: Point
@@ -402,47 +404,27 @@ class FarmClearer:
             nx, ny = player_tile[0] + dx, player_tile[1] + dy
             if not (0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH):
                 continue
-            if (nx, ny) in self.failed_tiles:
+            snapped = snap_debris_anchor(ram, nx, ny, get_tile_at(ram, nx, ny))
+            if snapped is None:
                 continue
-            tile_id = get_tile_at(ram, nx, ny)
-            debris = TILE_TO_DEBRIS.get(tile_id)
-            if debris is None or debris not in CLEARABLE_DEBRIS_TYPES:
+            nx, ny, tile_id, debris = snapped
+            if debris not in CLEARABLE_DEBRIS_TYPES or (nx, ny) in self.failed_tiles:
                 continue
-            # Prefer multitile anchors; if standing next to a non-TL cell of a
-            # 2x2, snap to that family's TL when present.
-            if tile_id in STUMP_TILES and tile_id != STUMP_TL:
-                for ox, oy in ((0, 0), (-1, 0), (0, -1), (-1, -1)):
-                    ax, ay = nx + ox, ny + oy
-                    if get_tile_at(ram, ax, ay) == STUMP_TL:
-                        nx, ny, tile_id, debris = ax, ay, STUMP_TL, DebrisType.STUMP
-                        break
-                else:
-                    continue
-            if tile_id in LARGE_ROCK_TILES and tile_id != LARGE_ROCK_TL:
-                for ox, oy in ((0, 0), (-1, 0), (0, -1), (-1, -1)):
-                    ax, ay = nx + ox, ny + oy
-                    if get_tile_at(ram, ax, ay) == LARGE_ROCK_TL:
-                        nx, ny, tile_id, debris = (
-                            ax,
-                            ay,
-                            LARGE_ROCK_TL,
-                            DebrisType.ROCK,
-                        )
-                        break
-                else:
-                    continue
             try:
                 rank = self.priority.index(debris)
             except ValueError:
                 continue
+            candidate = Target(
+                tile=(nx, ny),
+                pos=Point(nx * TILE_SIZE + 8, ny * TILE_SIZE + 8),
+                debris_type=debris,
+                tile_id=tile_id,
+            )
+            if not self._can_afford_target(ram, candidate):
+                continue
             if best_rank is None or rank < best_rank:
                 best_rank = rank
-                best = Target(
-                    tile=(nx, ny),
-                    pos=Point(nx * TILE_SIZE + 8, ny * TILE_SIZE + 8),
-                    debris_type=debris,
-                    tile_id=tile_id,
-                )
+                best = candidate
         if best is None:
             return None
         self.current_target = best
@@ -458,21 +440,20 @@ class FarmClearer:
         return "clearing"
 
     def _handle_scanning(self, ram: np.ndarray) -> Optional[str]:
-        if self._stamina_too_low(ram):
+        stam = self._stamina(ram)
+        if stam < 1:
             self.stamina_exhausted = True
-            print(
-                f"[CLEARER] Stamina low "
-                f"({int(ram[ADDR_STAMINA]) if ADDR_STAMINA < len(ram) else '?'});"
-                " stopping clear"
-            )
+            print("[CLEARER] Stamina empty; stopping clear")
             return "complete"
 
         scan_bounds = self._locked_bounds or self.farm_bounds
         scan_types = set(self.priority) if self.priority else set(CLEARABLE_DEBRIS_TYPES)
-        targets = self.scanner.scan(
-            ram, scan_bounds, types=scan_types
-        )
+        scanned = self.scanner.scan(ram, scan_bounds, types=scan_types)
+        targets = [t for t in scanned if self._can_afford_target(ram, t)]
         if not targets:
+            if scanned:
+                self.stamina_exhausted = True
+                print(f"[CLEARER] Stamina low ({stam}); stopping clear")
             return "complete"
 
         player_tile = self.navigator.current_tile
@@ -797,7 +778,16 @@ class FarmClearer:
             self.tool_search_frames = 0
             return "tool_switch"
 
-        if self._stamina_too_low(ram):
+        # Do not start a 6-hit (or any tool swing we cannot finish). Lifts
+        # already returned above and may continue at stamina 1–3.
+        if self.target_hits == 0 and not self._can_afford_target(
+            ram, self.current_target
+        ):
+            self.stamina_exhausted = True
+            self.current_target = None
+            self.clearing_start_frame = 0
+            return "scanning"
+        if self.target_hits > 0 and self._stamina(ram) < 2:
             self.stamina_exhausted = True
             self.current_target = None
             self.clearing_start_frame = 0

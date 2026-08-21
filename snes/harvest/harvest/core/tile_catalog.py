@@ -148,6 +148,13 @@ def is_multitile_debris_anchor(tile_id: int) -> bool:
     return tile_id in (STUMP_TL, LARGE_ROCK_TL)
 
 
+# Travel BFS never enters these IDs, even if a walkable set includes them.
+# WEED stays in FARM_WALKABLE (ROM dump / scanners); stumps/rocks do not.
+TRAVEL_SOLID_TILES = frozenset(
+    {WEED, STONE, FENCE, ROCK} | STUMP_TILES | LARGE_ROCK_TILES | LARGE_ROCK_DAMAGE_TILES
+)
+
+
 # ── Walkability by map ────────────────────────────────────────────────
 
 FARM_WALKABLE = frozenset({

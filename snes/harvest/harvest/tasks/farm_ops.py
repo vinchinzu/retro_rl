@@ -21,28 +21,42 @@ from harvest.core.tile_catalog import (
     ADDR_TOOL,
     CLEARABLE_DEBRIS_TYPES,
     DEBRIS_TOOL,
+    LARGE_ROCK_DAMAGE_TILES,
+    LARGE_ROCK_TL,
     LARGE_ROCK_TILES,
     LIFTABLE_TILES,
     MAP_WIDTH,
+    ROCK as SMALL_ROCK_TILE,
+    STUMP_TL,
     STUMP_TILES,
     TILE_SIZE,
     TILE_TO_DEBRIS,
     DebrisType,
     Tool,
     debris_footprint,
-    is_multitile_debris_anchor,
 )
-from harvest.tasks.nav import Point, make_action
+from harvest.tasks.nav import Point, get_tile_at, make_action
 
 __all__ = [
+    "DAMAGE_ROCK_TL",
+    "SWING_STAMINA_COST",
     "Target",
     "TileScanner",
     "ToolManager",
     "action_to_names",
+    "cycle_tool",
+    "drop_unarmed_debris",
+    "snap_debris_anchor",
     "use_tool",
     "use_tool_facing",
-    "cycle_tool",
 ]
+
+
+# 2x2 damage-rock TL (0x11) matches intact LARGE_ROCK_TL (0x0D).
+DAMAGE_ROCK_TL = min(LARGE_ROCK_DAMAGE_TILES)
+_TWO_BY_TWO_IDS = STUMP_TILES | LARGE_ROCK_TILES | LARGE_ROCK_DAMAGE_TILES
+_ANCHOR_IDS = frozenset({STUMP_TL, LARGE_ROCK_TL, DAMAGE_ROCK_TL})
+SWING_STAMINA_COST = 2
 
 
 # =============================================================================
@@ -66,14 +80,60 @@ class Target:
 
     @property
     def required_hits(self) -> int:
-        # Base tools need 6 consecutive hits on stump / large rock.
-        if self.debris_type == DebrisType.ROCK or self.debris_type == DebrisType.STUMP:
+        # 2x2 stump / large-rock (incl. mid-hit 0x11-0x14) take 6 swings.
+        # Small boulder 0x06 is a single hammer blow.
+        if self.debris_type == DebrisType.STUMP:
+            return 6
+        if self.debris_type == DebrisType.ROCK and self.tile_id != SMALL_ROCK_TILE:
             return 6
         return 1
+
+    def stamina_to_clear(self, *, lifting: bool) -> int:
+        if lifting:
+            return 1
+        return self.required_hits * SWING_STAMINA_COST
 
     @property
     def footprint(self) -> Tuple[Tuple[int, int], ...]:
         return debris_footprint(self.tile, self.tile_id)
+
+
+def drop_unarmed_debris(
+    priority: List[DebrisType], missing: List[int]
+) -> List[DebrisType]:
+    """Drop debris types whose required tool is actually missing.
+
+    Stones stay (lift) when the hammer is gone; ROCK does not.
+    """
+    drop: Set[DebrisType] = set()
+    if int(Tool.HAMMER) in missing:
+        drop.add(DebrisType.ROCK)
+    if int(Tool.AXE) in missing:
+        drop.add(DebrisType.STUMP)
+    kept = [dt for dt in priority if dt not in drop]
+    return kept or [DebrisType.WEED, DebrisType.STONE]
+
+
+def snap_debris_anchor(
+    ram: np.ndarray, tx: int, ty: int, tile_id: int
+) -> Optional[Tuple[int, int, int, DebrisType]]:
+    """Map a 2x2 stump/rock cell to its top-left; None if the family is gone."""
+    debris = TILE_TO_DEBRIS.get(tile_id)
+    if debris is None:
+        return None
+    if tile_id not in _TWO_BY_TWO_IDS:
+        return (tx, ty, tile_id, debris)
+    if tile_id in _ANCHOR_IDS:
+        return (tx, ty, tile_id, debris)
+    want_stump = tile_id in STUMP_TILES
+    for ox, oy in ((0, 0), (-1, 0), (0, -1), (-1, -1)):
+        ax, ay = tx + ox, ty + oy
+        aid = int(get_tile_at(ram, ax, ay))
+        if want_stump and aid == STUMP_TL:
+            return (ax, ay, STUMP_TL, DebrisType.STUMP)
+        if not want_stump and aid in (LARGE_ROCK_TL, DAMAGE_ROCK_TL):
+            return (ax, ay, aid, DebrisType.ROCK)
+    return None
 
 
 # =============================================================================
@@ -170,10 +230,9 @@ class TileScanner:
             ):
                 continue
 
-            # Collapse 2x2 families to their top-left anchor only.
-            if tile_id in STUMP_TILES | LARGE_ROCK_TILES:
-                if not is_multitile_debris_anchor(tile_id):
-                    continue
+            # Collapse 2x2 stump / large-rock / damage families to TL only.
+            if tile_id in _TWO_BY_TWO_IDS and tile_id not in _ANCHOR_IDS:
+                continue
 
             targets.append(
                 Target(

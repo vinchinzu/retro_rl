@@ -12,13 +12,15 @@ Ready work stays in beads — do not recreate a gate board.
 
 ## Bottleneck
 
-**Tip (2026-08-15):** D2 spring is **section work**, not a 3–4h soak
-(`rr-20w.2`). Nav is the bust: travel BFS still walks onto WEED `0x03` and
-B-charges while the farmer is pushing a solid. Ready first:
-`rr-20w.2.1` push-facing non-walkable + `rr-20w.2.2` bushes travel-non-walkable,
-then bush-first `CLEAR_PLOT` (`rr-20w.2.3`). Grape+shop+one-cell plant stay
-GREEN (`rr-zmss` / `rr-20w.1`) — do not reopen. Gate B residual remains
-`rr-3ae8` / `rr-yuel` / `rr-rzpd` (water is the D2 water section under 20w.2).
+**Tip (2026-08-21):** D2 spring is **section work**, not a 3–4h soak
+(`rr-20w.2`). Issue list: [FARM_CLEAR_D2.md](FARM_CLEAR_D2.md). Nav is the
+bust: travel BFS still walks onto WEED `0x03`; stumps/rocks must stay
+non-walkable through the push-facing refactor. Ready first:
+`rr-20w.2.2` bushes travel-non-walkable + rock/stump walk lock, then
+bush-first `CLEAR_PLOT` (`rr-20w.2.3`). Do **not** restore a morning
+whole-farm wipe (shop splice → pocket plant is the D2 path). Grape+shop+
+one-cell plant stay GREEN (`rr-zmss` / `rr-20w.1`). Gate B residual remains
+`rr-3ae8` / `rr-yuel` / `rr-rzpd`.
 
 **Already closed (do not re-open as bottleneck):**
 

@@ -8,6 +8,7 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.tasks.nav import make_action
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP
 from harvest.tasks.primitives import dismiss_dialogue_result
+from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.planner.day_plan_status import (
     read_world_day_time,
     is_farm_tilemap,
@@ -114,6 +115,15 @@ class FarmShippingWaitTask(Task):
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=f"off-farm tilemap=0x{tilemap:02X} hour={hour:02d}",
+            )
+
+        if shipping_scene_needs_dismiss(ram):
+            self._saw_input_lock = True
+            return dismiss_dialogue_result(
+                self._step_count,
+                buttons=("a",),
+                pulse_every=2,
+                reason="shipping scene",
             )
 
         if hour > self.target_hour or (

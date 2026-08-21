@@ -17,10 +17,12 @@ from harvest.tasks.nav import (
     get_tile_at,
     TILE_SIZE,
 )
+from harvest.tasks.travel_walk import facing_tile
 from harvest.core.tile_catalog import ADDR_TILEMAP, ADDR_INPUT_LOCK
 from harvest.tasks.farm_ops import TileScanner
 
 from harvest.core.scene import classify_scene_from_ram
+from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result, drain_action_queue
 from harvest.tasks.recorded_task import RecordedTask
 from harvest.planner.day_plan_status import TASKS_DIR, tilemaps_match
@@ -48,6 +50,13 @@ def _neighbor_tile(tx: int, ty: int, direction: str) -> Tuple[int, int]:
 
 def _nav_needs_menu_dismiss(ram: np.ndarray, step_count: int) -> Optional[TaskResult]:
     """Dismiss dialogue/menu/input-lock so navigation does not walk blind."""
+    if shipping_scene_needs_dismiss(ram):
+        return dismiss_dialogue_result(
+            step_count,
+            buttons=("a",),
+            pulse_every=2,
+            reason="shipping scene",
+        )
     input_lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
     if input_lock != 1:
         return dismiss_dialogue_result(step_count, reason="input locked")
@@ -245,6 +254,9 @@ class NavTask(Task):
             direction = opposites[primary]
         else:
             direction = opposites[secondary]
+        nxt = facing_tile(current_tile, direction)
+        if self._navigator.note_push_facing(ram, nxt):
+            return make_action()
         return make_action(**{direction: True, "b": True})
 
     def step(self, world: WorldState) -> TaskResult:

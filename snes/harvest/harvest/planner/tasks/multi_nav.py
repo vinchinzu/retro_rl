@@ -514,6 +514,8 @@ class MultiMapNavTask(Task):
             nx, ny = _neighbor_tile(cur[0], cur[1], direction)
             if self._tile_blocks_charge(ram, nx, ny):
                 continue
+            if self._navigator.note_push_facing(ram, (nx, ny)):
+                continue
             return make_action(**{direction: True, "b": True})
         return None
 
@@ -538,10 +540,16 @@ class MultiMapNavTask(Task):
         if self._pixel_stuck < 48:
             return None
         cur = self._navigator.current_pos
-        if self._navigator.path:
-            self._pathfinder.temp_blocked.add(self._navigator.path[0])
-            self._navigator.path = []
+        pin = self._navigator.path[0] if self._navigator.path else None
+        self._navigator.path = []
+        # Drop push-facing neighbors from a short charge; keep only the L/R pin.
+        self._pathfinder.temp_blocked.clear()
+        if pin is not None:
+            self._pathfinder.temp_blocked.add(pin)
         self._navigator.stasis = 0
+        self._navigator._push_tile = None
+        self._navigator._push_px = None
+        self._navigator._push_hold = 0
         self._pixel_stuck = 0
         self._pixel_replans += 1
         print(

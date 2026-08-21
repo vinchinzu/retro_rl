@@ -1,0 +1,131 @@
+# D2 farm-clear issues
+
+Facts for Spring D2 section work (`rr-20w.2`). Product path is
+**grape → shop → pocket `CLEAR_PLOT` → hoe/plant/water → evening leftover**,
+not a morning whole-farm wipe. Do not STATUS-promote Gate B from this list.
+
+Walk invariant (must stay true through nav refactors): **BFS never routes
+onto stumps, large rocks, damage tiles, or the small boulder.** Stand on a
+neighbor and swing/lift. Tool-swing frames must not hold the d-pad.
+WEED `0x03` is ROM-walkable but pins travel — travel BFS must not route onto
+it either (`rr-20w.2.2`).
+
+**2026-08-21 landed (unit, no live pin):** travel denylist
+(`TRAVEL_SOLID_TILES` + `Pathfinder.is_walkable`); honest unbounded
+`FarmClearTask` SUCCESS; lift-only drops only unarmed types; 6-hit stamina
+12; shipping dismiss no longer A-pulses `lock==0` after 17:00. Live pocket
+probe is still `rr-20w.2.3`. Do not restore a morning whole-farm wipe.
+
+## Invariants
+
+| Tile | IDs | `FARM_WALKABLE` | Travel BFS | Clear |
+|------|-----|-----------------|------------|-------|
+| Soil / path | `0x00`, `0x01`, `0xA0`–`0xA3`, … | yes | yes | — |
+| WEED | `0x03` | yes (ROM) | **no** | adjacent lift |
+| STONE / FENCE | `0x04` / `0x05` | no | no | adjacent |
+| Small ROCK | `0x06` | **no** | **no** | adjacent hammer |
+| Stump 2×2 | `0x09`–`0x0C` | **no** | **no** | adjacent axe |
+| Large rock 2×2 | `0x0D`–`0x10` | **no** | **no** | adjacent hammer, 6 hits |
+| Rock damage | `0x11`–`0x14` | **no** | **no** | same 2×2, keep swinging |
+
+Push-facing (`player_action==0` + no pixel motion) must not seal the
+**approach cell** next to a rock/stump being cleared.
+
+## Issues
+
+### P0 — travel walks onto weeds (`rr-20w.2.2`)
+
+`FARM_WALKABLE` includes `WEED`. `Pathfinder.is_walkable` / `NavTask` BFS
+onto bushes; MultiNav already no-gos them. FarmClearer rock-first then paths
+**through weeds** to boulders. Live pin on `(13,27)`.
+
+**Fix:** travel BFS denylist (weed + every stump/rock/damage ID) even when
+the ROM walkable set includes the tile. Clear still stands on a walkable
+neighbor. Do not remove `0x03` from scanner dumps.
+
+### P0 — `CLEAR_PLOT` must not stand on bushes (`rr-20w.2.3`)
+
+Pocket clear is weeds/stones, `fetch_tools=False`. Approach is `NavTask`,
+which still walks onto `0x03`. After `rr-20w.2.2`, pocket approach uses the
+same travel denylist.
+
+### P0 — stumps/rocks must stay non-walkable (`rr-20w.2.10`)
+
+Already absent from `FARM_WALKABLE`, but no unit test. Uncommitted
+`Navigator.follow_path` push-facing can `temp_block` the **approach** tile
+after 20f of zero motion (same byte as idle). Hammer swing must stay
+direction-free (`use_tool` is Y-only; do not add d-pad to hit frames).
+
+### P1 — shop success deletes leftover `CLEAR_FIELD`
+
+`_splice_plant_after_shop` drops every remaining `CLEAR_FIELD` and inserts
+pocket plant (`day_plan_orchestrator.py`). **Morning wipe is not the D2
+goal** — keep the splice. Evening leftover is `rr-20w.2.8` and must not
+depend on a 06:08 `late_day` expansion (currently `_evening_field_clear_phases`
+only runs if `hour >= 17` **at plan time**, so a 6am plan never attaches it).
+
+### P1 — unbounded `CLEAR_FIELD` SUCCESS-lies (`rr-20w.2.11`)
+
+`FarmClearTask` returns SUCCESS on `stamina_low`, `partial_clear`,
+`clear_budget`, lift-only leftovers, and **off-farm empty scans**
+(`can_start` is True off-farm for shed recordings that are disabled).
+Orchestrator `_advance`s as real work. Pocket `CLEAR_PLOT` plant-notch
+SUCCESS is still correct.
+
+**Fix:** whole-farm SUCCESS only when remaining clearable debris is empty.
+Incomplete → not `_advance` success. Off-farm unbounded clear must not
+SUCCESS in one tick.
+
+### P1 — hammer never fetched; missing axe drops ROCK (`rr-20w.2.12`)
+
+`FETCH_CLEAR_TOOL_RECORDINGS` is off. `_enable_lift_only_mode` replaces
+priority with `[WEED, STONE]` if **hammer or axe** is missing. D2 carry is
+can+seeds. `SHED_TOOL_SPECS` has no hammer/axe. Finalize ignores
+`ToolManager.has()` / backpack.
+
+**Fix:** drop only the debris types whose tool is actually missing. If
+hammer is in the pair, still smash rocks. Evening leftover (`rr-20w.2.8`)
+needs a real `ENSURE_HAMMER` (shelf coords from recording/ROM, not guessed).
+
+### P1 — stamina gate cannot finish a large rock (`rr-20w.2.14`; spa is `rr-pzw`)
+
+Hammer/axe is −2/swing; large rock is 6 hits = 12 stamina. `MIN_CLEAR_STAMINA=4`
+starts a rock then `complete`s mid-hit. Damage tiles `0x11`–`0x14` are not
+collapsed to the TL, so one boulder becomes four targets. Scanner stop also
+aborts **lifts**. Hot spring is catalog-only; lunch +20 is unused if the
+phase already SUCCESS-exited. Do not spa on D2 morning.
+
+**Fix:** do not start a 6-hit rock below 12. Collapse damage IDs to the 2×2
+anchor. Lifts may continue at stamina 1–3. Spa remains `rr-pzw`.
+
+### P2 — 5pm A-pulse steals tool frames (`rr-20w.2.13`)
+
+`shipping_scene_needs_dismiss` treats farm + `hour>=17` + `lock!=1` as the
+shipper box. Orchestrator intercepts every phase and pulses A. A hammer
+swing after 17:00 looks like a lock. Keep dismiss on text `0x031A`/`0x031B`
+and pending flag `0x0400`, not “any locked farm evening.”
+
+### P2 — file size / spaghetti
+
+`day_plan_phases.py` 1002, `farm_clearer.py` 999, `multi_nav.py` 1062.
+Do not add spa / hammer / evening branches as thrash `if`s. Extract a
+helper first.
+
+## Not D2 morning
+
+| Item | Bead | Note |
+|------|------|------|
+| Whole-farm 800-target wipe | — | Starves hoe; catalog 3500f is keep-alive only |
+| Hot spring | `rr-pzw` | After leftover clear / later days |
+| Farm-bush `SHIP_BERRY` | `rr-r3he` | Not D2 grape |
+| Gate B soak | `rr-5in` | Do not close on one D2 pin |
+
+## Tests that currently hide this
+
+- `_make_farm_ram(..., stamina=100, tool=HAMMER)`
+- `test_stamina_stop_completes_clearer` (low stam → complete SUCCESS)
+- `test_missing_startup_tools_do_not_fail_farm_clear_task` (lift-only SUCCESS)
+- `test_input_lock_zero_is_locked_not_missing` (farm 17:00 lock=0 → shipping)
+- No test: stump/rock/damage IDs not walkable
+- No test: hammer-in-backpack still targets ROCK
+- No test: NavTask BFS must not enter `WEED`

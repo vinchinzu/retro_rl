@@ -16,8 +16,48 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional
 
+from harvest.core.ram_catalog import read_ram_value
+
 
 SHIPPING_SCENE_HOUR = 17
+# bank_82 ShippingScene: tilemap < 4. Text_Daily_Shipping / _Nothing.
+SHIPPING_DIALOG_TEXT_IDS = (0x031A, 0x031B)
+# $7F1F5A bit set when hour hits 17 on farm; UpdateTime freezes until cleared.
+SHIPPING_SCENE_PENDING_FLAG = 0x0400
+
+
+def shipping_scene_on_farm(tilemap: int) -> bool:
+    """ROM: ``CMP.B #$04 / BCS ShippingReturn`` — farm maps only."""
+    return int(tilemap) < 4
+
+
+def shipping_scene_needs_dismiss(ram) -> bool:
+    """True when 5pm ShippingScene is waiting for an A *edge*.
+
+    The CC script (bank_81 ``$096F=2``) idles while ``inputstate==2``. Holding
+    A from before the box opens never counts — StartTextBox needs a press.
+
+    ShippingScene runs at hour 17 on farm, but farm+hour>=17 is not enough:
+    ``input_lock==0`` is a tool swing / lift / menu and must not pulse A.
+    """
+    lock = int(read_ram_value(ram, "input_lock", raw=True))
+    # Text_Daily_Shipping (0x031A) sticks in dialog_text_id after the box
+    # closes. Only pulse while input is actually taken.
+    if lock == 1:
+        return False
+    text = int(read_ram_value(ram, "dialog_text_id", raw=True))
+    if text in SHIPPING_DIALOG_TEXT_IDS:
+        return True
+    flags = int(read_ram_value(ram, "event_flags_1f5a", raw=True))
+    if flags & SHIPPING_SCENE_PENDING_FLAG:
+        return True
+    # CC inputstate==2 can be the box before dialog_text_id is written.
+    # lock==0 is not that state.
+    if lock != 2:
+        return False
+    tilemap = int(read_ram_value(ram, "tilemap", raw=True))
+    hour = int(read_ram_value(ram, "hour"))
+    return shipping_scene_on_farm(tilemap) and hour >= SHIPPING_SCENE_HOUR
 
 
 def money_rose_after_shipping_window(
