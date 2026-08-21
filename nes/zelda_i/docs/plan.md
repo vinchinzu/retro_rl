@@ -6,13 +6,7 @@ Advance from M5 (Clean power-on → Level 1 Triforce shard 1) toward a verified
 continuous clear of The Legend of Zelda using the shared `retro_harness.adventure`
 route graph.
 
-Tracker: **`bd ready -l zelda_i`**. Geometry: `LEVEL*_ROUTE.md`.
-
-**Doc consolidation (2026-08-18):** deleted the second ticket board
-(`docs/tasks/` — PROCESS / QUEUE / PARALLEL_RECON / PARALLEL_PURE /
-`agent_runs/`). Kept STATUS, plan, ASSIST_CONTRACT, HYGIENE, ram_map,
-OVERWORLD_DOORS, STITCH_MAP, DUNGEON_LAB, and all `LEVEL*_ROUTE.md`
-geometry notes. Ready work stays in beads.
+Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
 
 ## Next pass — Survival spine from power-on (2026-08-15)
 
@@ -21,8 +15,8 @@ Do not overwrite Clean M5. Seamed compose is gone (`rr-cont`). L9 backward
 recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
 **parked**.
 
-Beads: **`rr-4d53`** epic. Next leaf **`rr-4d53.3`** (L2 exit → L3 TF).
-Do not start a room unless that is the claimed bead.
+Beads: **`rr-4d53`** epic. Claimed **`rr-4d53.3`** (power-on → L3 entrance 0x7c).
+Dest 0x5b is **`rr-4d53.3.1`** — do not run it on this pass.
 
 Full spine (do not claim ahead of the tip):
 
@@ -32,15 +26,16 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.2.1` | live `0x7d` → Boom `0x4f` | **closed** — 1/1 Survival, boom owned |
 | `rr-4d53.2.2` | natural bombs (no `--poke-bombs`) | **closed**; L2 entry bombs=4 |
 | `rr-4d53.2.3` | Boom → Dodongo → TF `0x02` | **closed** — 1/1 Survival; documented bomb/key top-up |
-| `rr-4d53.3` / `.3.1` / `.3.2` | L2 exit → L3 TF (`0x6b` dest + no poke-16) | **tip** |
+| `rr-4d53.3` / `.3.1` / `.3.2` | L2 exit → L3 TF (`0x6b` dest + no poke-16) | **tip** — `.3.1` dest wired |
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | blocked on `.3` |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
-Exact continuous command:
+Exact continuous command (L2 TF), then Manji entrance 0x7c (not dest 0x5b):
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --trials 1
 ```
 
 Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_session=true`;
@@ -49,22 +44,51 @@ Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_sessio
 `inventory_assist` lists bomb/key count pokes. Default Clean paths stay
 untouched. `--no-video` skips the encode. `--through level1` stops after shard 1.
 
-Last continuous spine trial (`--through level2 --tag survival_spine`):
-**`ok=true`**, `triforce & 0x02` in room `0x0d` (mode 18, (128, 149)),
-boot=199, L2 entry bombs=4 keys=0, final bombs=10 keys=2, 50529f, deaths 0,
-progression/capacity writes 0. **Documented Survival inventory:** bombs
-2→16 and keys 1→2 after boom, plus B-slot select (owned bombs only). Not
-Clean. TF is WEST of Dodongo. 0x3e/0x2e use a side-aisle north; 0x2e stops
-on the UP door bit; 0x1e bomb-N approaches (120, 93) then the stand.
-Evidence: `recordings/survival_spine.json` / `.mp4` /
-`survival_spine_l2_tf_v10.json`.
+Last watchable L1+L2 tape (`ok=true`, 50529f, 11 HUD hearts) is **not**
+the current encoding. Two bugs from that video:
 
-Next: attach L2-exit OW hops + L3 interior (`rr-4d53.3` / `.3.1`). L3
-`0x6b` dest library exists; isolated L3 Raft suffix still uses poke-16.
+1. **Hearts 3→7 after TF1, 11 at L2 TF.** Assist wrote
+   `(health & 0xF0) | 0x0F`. Zelda 1 `HeartValues` (`$066F`) low nibble
+   is whole hearts; full is `lo==hi` (`0x22`=3/3). `World_FillHearts`
+   (`INC HeartValues` until `CompareHeartsToContainers`) then grants a
+   container each fill. Source: aldonunez `zelda1-disassembly` `Z_05.asm`
+   `World_FillHearts` / `CompareHeartsToContainers`, plus `$0670`
+   `HeartPartial=$FF`. Assist now writes `0x22`/`0x44`/`0x66` +
+   `heart_partial=$FF`, and only accepts +1 on HC `0x1A` or leaving
+   mode 18.
+2. **Thousands of LEFT/RIGHT/DOWN frames in place.** `unstick_wiggle`
+   reset and fought forever. Now one 16f cycle then idle. Dungeon
+   combat idles when no live enemies; stuck+live skips the next patrol
+   point. Collect stands after one waypoint lap.
+
+**Last live power-on → L3 entrance (Survival, 2026-08-21):** `ok=false`
+`failed=clear44` 6000f, room `0x44` ~(87,101), 3 Goriyas still live
+(north statue band; engage=64 never reaches the center). Prefix through
+`clear23_key` is now live: occupancy patrol (122 misses, 20 blocked cells,
+1626f) walked around the 0x23 plus and collected the key. `accepted_containers=3`,
+`progression_writes=0`, `capacity_writes=0`, deaths 0. `--through level3`
+stops at Manji `0x7c`, not dest 0x5b. Evidence:
+`recordings/l3_entrance_poweron.json` + `_final.png`. Do not revert idle
+policy. Next hitch is 0x44: walk the open floor (y≈141), not the north
+statue corridor.
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level3 --no-video --trials 1 --tag l3_entrance_poweron
+```
+
+Dest 0x5b (`rr-4d53.3.1`) stays library-wired until 0x7c is live. L2-exit
+OW hops + west key + occupancy 0x6b north exist but are not on this spine
+stop. Isolated L3 Raft suffix still uses poke-16 (parent `rr-4d53.3` /
+`.3.2`). Isolated 0x6b check:
+
+```bash
+uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2
+```
 
 L2-exit → L3 OW hops are 2/2 assisted from `Level2ExitOverworld`
-(`run_l2_to_l3.py`). L3 interior dest `0x6b` north (`rr-4d53.3.1`) waits
-until L2 TF is on this tape.
+(`run_l2_to_l3.py`). L3 dest 0x5b is library-wired (`level3_spine`, occupancy
+0x6b north). Live predecessor dest is not re-taped this pass.
 
 Bomb/key **count** pokes are a documented Survival shortcut
 (`docs/ASSIST_CONTRACT.md`). Do not grant undiscovered items or write
@@ -182,7 +206,7 @@ Hitbox-gated sword + faster boot landed (not a STATUS promote):
   dialog idle 180f.
 
 Residual room-by-room combat polish only if a clear regresses under hitbox gate.
-See `bd ready -l zelda_i`.
+See `docs/tasks/QUEUE.md`.
 
 ## Notes
 

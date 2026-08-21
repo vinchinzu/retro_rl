@@ -32,6 +32,7 @@ from zelda_i.level2_tf_spine import (
     level2_tf_stages,
     level2_through_success,
 )
+from zelda_i.level3_spine import level3_entry_stages, level3_entry_success
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
@@ -42,9 +43,9 @@ BOOT_POLICY = {
     "file_menu_select": False,
 }
 
-Through = Literal["level1", "level2"]
+Through = Literal["level1", "level2", "level3"]
 
-SPINE_THROUGH: tuple[Through, ...] = ("level1", "level2")
+SPINE_THROUGH: tuple[Through, ...] = ("level1", "level2", "level3")
 
 
 def level2_entry_stages():
@@ -111,6 +112,11 @@ class SpineRun:
                 (self.inventory_assist or {}).get("poke_bombs") or False
             ),
             "poke_keys": (self.inventory_assist or {}).get("poke_keys") or False,
+            "stop": {
+                "level1": "level1_triforce",
+                "level2": "level2_triforce_0x02",
+                "level3": "level3_entrance_0x7c",
+            }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
 
@@ -137,6 +143,38 @@ def validate_l5_endpoint(report: dict[str, object]) -> None:
         raise ValueError("Level 5 report has progression writes")
     if int(assist.get("capacity_writes", -1)) != 0:
         raise ValueError("Level 5 report has capacity writes")
+
+
+def _run_stages(
+    env,
+    run: SpineRun,
+    stages,
+    *,
+    assist: Any,
+    on_frame=None,
+    room_timer=None,
+) -> bool:
+    """Run named controller stages onto ``run``. False if a stage failed."""
+    for name, controller, max_frames in stages:
+        obs, stage = run_controller_stage(
+            env,
+            run.obs,
+            name=name,
+            controller=controller,
+            max_frames=max_frames,
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+            frame_base=run.end_frame,
+        )
+        run.obs = obs
+        run.stages.append(stage)
+        run.end_frame = stage.end_frame
+        if not stage.success:
+            run.success = False
+            run.failed_stage = name
+            return False
+    return True
 
 
 def run_survival_spine(
@@ -174,28 +212,15 @@ def run_survival_spine(
     if not run.success:
         return run
 
-    for name, controller, max_frames in level1_triforce_stages(
-        natural_entry=True,
-        survival=True,
+    if not _run_stages(
+        env,
+        run,
+        level1_triforce_stages(natural_entry=True, survival=True),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
     ):
-        obs, stage = run_controller_stage(
-            env,
-            run.obs,
-            name=name,
-            controller=controller,
-            max_frames=max_frames,
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-            frame_base=run.end_frame,
-        )
-        run.obs = obs
-        run.stages.append(stage)
-        run.end_frame = stage.end_frame
-        if not stage.success:
-            run.success = False
-            run.failed_stage = name
-            return run
+        return run
 
     snap = read_snapshot(env.get_ram())
     run.success = bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
@@ -205,25 +230,15 @@ def run_survival_spine(
     if through == "level1":
         return run
 
-    for name, controller, max_frames in level2_entry_stages():
-        obs, stage = run_controller_stage(
-            env,
-            run.obs,
-            name=name,
-            controller=controller,
-            max_frames=max_frames,
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-            frame_base=run.end_frame,
-        )
-        run.obs = obs
-        run.stages.append(stage)
-        run.end_frame = stage.end_frame
-        if not stage.success:
-            run.success = False
-            run.failed_stage = name
-            return run
+    if not _run_stages(
+        env,
+        run,
+        level2_entry_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
 
     snap = read_snapshot(env.get_ram())
     if not (
@@ -329,9 +344,32 @@ def run_survival_spine(
     run.success = level2_through_success(snap)
     if not run.success:
         run.failed_stage = "triforce_bit_02"
+        run.bombs = spine_bomb_report(
+            run.l2_entry.get("bombs") if run.l2_entry else None,
+            through="tf",
+            bombs_out=snap.bombs,
+        )
+        return run
     run.bombs = spine_bomb_report(
         run.l2_entry.get("bombs") if run.l2_entry else None,
         through="tf",
         bombs_out=snap.bombs,
     )
+    if through == "level2":
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level3_entry_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+
+    snap = read_snapshot(env.get_ram())
+    run.success = level3_entry_success(snap)
+    if not run.success:
+        run.failed_stage = "enter_level3"
     return run

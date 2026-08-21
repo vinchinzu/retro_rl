@@ -30,6 +30,7 @@ from zelda_i.level3_dungeon import (
 )
 from zelda_i.level3_overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk_physics import OccupancyGrid, OccupancyWalker
 
 # Path timing knobs (not room-table data).
 WEST_ENTER_MAX_FRAMES = 1200
@@ -83,58 +84,6 @@ def north_door_7b_step(snap: ZeldaSnapshot) -> FrameAction:
         direction = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
         return FrameAction(nes_action(direction), "north_align_x")
     return FrameAction(nes_action("UP"), "north_push")
-
-
-_RIGHT_OF = {"UP": "RIGHT", "RIGHT": "DOWN", "DOWN": "LEFT", "LEFT": "UP"}
-_LEFT_OF = {"UP": "LEFT", "LEFT": "DOWN", "DOWN": "RIGHT", "RIGHT": "UP"}
-
-
-def north_exit_6b_step(
-    snap: ZeldaSnapshot,
-    *,
-    facing: str,
-    prefer_goal: bool,
-) -> tuple[FrameAction, str]:
-    """One frame of 0x6b → 0x5b after Zol clear.
-
-    Live residual: diagonal raised blocks partition the floor. Pure waypoint
-    snakes stall after combat. Right-hand wall-follow reaches the north band
-    (y≈93); once there, center x≈120 and hold UP into 0x5b.
-    """
-    if snap.level != LEVEL3:
-        return FrameAction(nes_idle_action(), "wait_level3"), facing
-    if snap.transitioning:
-        return FrameAction(nes_action("UP"), "north6b_scroll"), facing
-    if snap.mode != PLAY_MODE:
-        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}"), facing
-    if snap.screen == ROOM_L3_DARKNUTS:
-        return FrameAction(nes_idle_action(), "north_arrived_5b"), facing
-    if snap.screen != ROOM_L3_NORTH_ZOLS:
-        return (
-            FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"),
-            facing,
-        )
-
-    # Door plane / north band: center and hold UP.
-    if snap.link_y <= 105:
-        if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:
-            direction = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
-            return FrameAction(nes_action(direction), "north6b_align_door"), direction
-        return FrameAction(nes_action("UP"), "north6b_push"), "UP"
-
-    # Bias: if south of mid, prefer RIGHT then UP corridor (live free-explore).
-    if prefer_goal and snap.link_y > 150:
-        if snap.link_x < 140:
-            return FrameAction(nes_action("RIGHT"), "north6b_bias_right"), "RIGHT"
-        return FrameAction(nes_action("UP"), "north6b_bias_up"), "UP"
-
-    # Right-hand wall follow (facing is last successful move).
-    face = facing if facing in _RIGHT_OF else "UP"
-    # Order: right of face, face, left, back — caller probes via stuck reset.
-    order = (_RIGHT_OF[face], face, _LEFT_OF[face], _RIGHT_OF[_RIGHT_OF[face]])
-    # Emit preferred first; Level3NorthExit6bController may override on stuck.
-    direction = order[0]
-    return FrameAction(nes_action(direction), f"north6b_follow_{direction}"), direction
 
 
 @dataclass
@@ -227,36 +176,37 @@ class Level3NorthDoor7bController:
         }
 
 
-# Free-explore target grid (live 2026-08-06: exits 0x6b→0x5b after combat).
-_ROOM_6B_HUNT: tuple[tuple[int, int], ...] = tuple(
-    (x, y) for y in range(90, 210, 8) for x in range(72, 200, 8)
-) + tuple(
-    (x, y) for y in range(90, 112, 4) for x in range(96, 152, 8)
-) + (
-    (120, 93),
-    (120, 93),
-    (120, 100),
-    (120, 93),
-)
+_ROOM_6B_DOOR = (NORTH_DOOR_X, 93)
+_ROOM_6B_BAND = (NORTH_DOOR_X, 109)
 
 
 @dataclass
 class Level3NorthExit6bController:
-    """Route 0x6b → 0x5b after Zols cleared (free-explore grid + door push).
+    """Route 0x6b → 0x5b after Zols cleared (occupancy BFS + door push).
 
-    Live: after combat, walk a coarse grid; when blocked try alternate
-    directions; on north band hold UP @ x≈120 into 0x5b.
+    Predicted 1px walks; a miss blocks the cell ahead and replans. No path
+    stands. North band UP @ x≈120 is the verified door residual (not a 1px walk).
     """
 
     max_frames: int = NORTH_EXIT_6B_MAX_FRAMES
     frames: int = 0
-    hunt_index: int = 0
-    target_steps: int = 0
-    pending_alt: str | None = None
     success: bool = False
     failed: bool = False
-    last_xy: tuple[int, int] | None = None
     notes: list[str] = field(default_factory=list)
+    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+
+    @property
+    def grid(self) -> OccupancyGrid:
+        return self.walker.grid
+
+    @property
+    def misses(self) -> int:
+        return self.walker.misses
+
+    def _goal(self) -> tuple[int, int]:
+        if self.grid.passable(*_ROOM_6B_DOOR):
+            return _ROOM_6B_DOOR
+        return _ROOM_6B_BAND
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -282,71 +232,48 @@ class Level3NorthExit6bController:
             return FrameAction(nes_idle_action(), "north_arrived_5b")
 
         if snap.transitioning:
+            self.walker.last_dir = None
             return FrameAction(nes_action("UP"), "north6b_scroll")
         if snap.mode != PLAY_MODE:
+            self.walker.last_dir = None
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.screen != ROOM_L3_NORTH_ZOLS:
+            self.walker.last_dir = None
             return FrameAction(
                 nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
             )
 
-        # Consume one-shot alternate direction after a blocked step.
-        if self.pending_alt is not None:
-            direction = self.pending_alt
-            self.pending_alt = None
-            return FrameAction(nes_action(direction), "north6b_alt")
-
         xy = (snap.link_x, snap.link_y)
-        blocked = self.last_xy == xy
-        self.last_xy = xy
+        prev_dir = self.walker.last_dir
+        misses_before = self.walker.misses
+        self.walker.observe(xy)
+        if self.walker.misses > misses_before and (
+            self.walker.misses <= 8 or self.frames % 60 == 0
+        ):
+            self.notes.append(f"miss_f{self.frames}_{prev_dir}")
 
-        # North band: center and push door.
-        if snap.link_y <= 100 and abs(snap.link_x - NORTH_DOOR_X) <= 8:
+        # Traversable north band starts at y=109 (y<=100 stranded on the diamond).
+        if snap.link_y <= 109:
+            self.walker.last_dir = None
             if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:
                 direction = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
                 return FrameAction(nes_action(direction), "north6b_align_door")
             return FrameAction(nes_action("UP"), "north6b_push")
-        if snap.link_y <= 100:
-            if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:
-                direction = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
-                return FrameAction(nes_action(direction), "north6b_align_door")
-            return FrameAction(nes_action("UP"), "north6b_push")
 
-        # Advance hunt target after a short attempt window or arrival.
-        tx, ty = _ROOM_6B_HUNT[self.hunt_index % len(_ROOM_6B_HUNT)]
-        self.target_steps += 1
-        if (
-            abs(snap.link_x - tx) <= 6 and abs(snap.link_y - ty) <= 6
-        ) or self.target_steps >= 45:
-            self.hunt_index = (self.hunt_index + 1) % len(_ROOM_6B_HUNT)
-            self.target_steps = 0
-            tx, ty = _ROOM_6B_HUNT[self.hunt_index % len(_ROOM_6B_HUNT)]
-
-        dx, dy = tx - snap.link_x, ty - snap.link_y
-        if abs(dx) > 3 and abs(dx) >= abs(dy):
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > 3:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
-            direction = "UP"
-
-        # If last frame did not move, queue an alternate direction.
-        if blocked:
-            alts = [d for d in ("UP", "RIGHT", "DOWN", "LEFT") if d != direction]
-            self.pending_alt = alts[self.frames % len(alts)]
-            if self.frames % 60 == 0:
-                self.notes.append(f"block_f{self.frames}_hunt{self.hunt_index}")
-
-        return FrameAction(nes_action(direction), f"north6b_hunt_{self.hunt_index}")
+        direction = self.walker.next_dir(xy, self._goal())
+        if direction is None:
+            return FrameAction(nes_idle_action(), "north6b_wait")
+        return FrameAction(nes_action(direction), "north6b_path")
 
     def report(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "failed": self.failed,
             "frames": self.frames,
-            "hunt_index": self.hunt_index,
+            "misses": self.misses,
+            "blocked": len(self.grid.blocked),
             "notes": list(self.notes),
-            "policy": "free-explore grid hunt + UP @ x≈120 on north band",
+            "policy": "occupancy BFS + UP @ x≈120 on north band",
         }
 
 
