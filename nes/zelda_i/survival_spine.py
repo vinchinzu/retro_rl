@@ -33,10 +33,10 @@ from zelda_i.level2_tf_spine import (
     level2_through_success,
 )
 from zelda_i.level3_spine import (
+    level3_dest_6b_stages,
+    level3_dest_6b_success,
     level3_entry_stages,
     level3_entry_success,
-    level3_west_key_stages,
-    level3_west_key_success,
 )
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
@@ -135,7 +135,7 @@ class SpineRun:
             "stop": {
                 "level1": "level1_triforce",
                 "level2": "level2_triforce_0x02",
-                "level3": "level3_west_key_0x7b",
+                "level3": "level3_dest_0x5b",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -381,7 +381,7 @@ def run_survival_spine(
     if not _run_stages(
         env,
         run,
-        level3_west_key_stages(),
+        level3_dest_6b_stages(),
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
@@ -389,7 +389,7 @@ def run_survival_spine(
         return run
 
     snap = read_snapshot(env.get_ram())
-    run.success = level3_west_key_success(snap)
+    run.success = level3_dest_6b_success(snap)
     if not run.success:
-        run.failed_stage = "west_key"
+        run.failed_stage = "north_chain"
     return run

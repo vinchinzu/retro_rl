@@ -16,8 +16,9 @@ recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
 **parked**.
 
 Beads: **`rr-4d53`** epic. Parent **`rr-4d53.3`** (L2 exit → L3 TF `0x04`).
-Entrance `0x7c` is **`rr-4d53.3.0` closed**. Claimed tip **`rr-4d53.3.1.1`**
-(west key `0x7b`). Do not start dest `0x5b`, Raft, or TF on this pass.
+Entrance `0x7c` is **`rr-4d53.3.0` closed**. West key `0x7b` is
+**`rr-4d53.3.1.1` closed**. Claimed tip **`rr-4d53.3.1.2`** (dest `0x5b`).
+Do not start Raft or TF on this pass.
 
 Full spine (do not claim ahead of the tip):
 
@@ -28,8 +29,8 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.2.2` | natural bombs (no `--poke-bombs`) | **closed**; L2 entry bombs=4 |
 | `rr-4d53.2.3` | Boom → Dodongo → TF `0x02` | **closed** — 1/1 Survival; documented bomb/key top-up |
 | `rr-4d53.3.0` | L2 TF → Manji entry `0x7c` | **closed** — 1/1 Survival 53918f |
-| `rr-4d53.3.1.1` | live `0x7c` west key `0x7b` | **tip** — wire `level3_west_key_stages` |
-| `rr-4d53.3.1.2` / `.3.1` | occupancy dest `0x5b` | blocked on `.3.1.1` |
+| `rr-4d53.3.1.1` | live `0x7c` west key `0x7b` | **closed** — 1/1 Survival 54589f keys=5 |
+| `rr-4d53.3.1.2` / `.3.1` | occupancy dest `0x5b` | **tip** — wire `level3_dest_6b_stages` |
 | `rr-4d53.3.3.*` | `0x5b` → Compass → Raft | blocked on `.3.1` |
 | `rr-4d53.3.2` | L3 bombs (no poke-16) | blocked on `.3.1` |
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | blocked on `.3.3` + `.3.2` |
@@ -42,7 +43,7 @@ Full spine (do not claim ahead of the tip):
 Spine-only close contract + room DAG: `docs/LEVEL3_ROUTE.md` § Spine attach.
 Isolated `Level3*` checkpoints cannot close these beads.
 
-Exact continuous command (L2 TF), then Manji west key `0x7b` (not dest 0x5b):
+Exact continuous command (L2 TF), then Manji dest `0x5b` (after closed west key):
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trials 1
@@ -52,7 +53,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --trial
 Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_session=true`;
 `boot_frames` near 200–565; `boot_policy.file_slot=1`; `progression_writes=0`;
 `capacity_writes=0`; **`--through level2`**: `triforce & 0x02` in room `0x0d`;
-**`--through level3`**: room `0x7b` keys≥1 (`stop=level3_west_key_0x7b`).
+**`--through level3`**: play room `0x5b` (`stop=level3_dest_0x5b`).
 `inventory_assist` lists bomb/key count pokes (power-on L2 entry is bombs=0).
 Default Clean paths stay untouched. `--no-video` skips the encode.
 `--through level1` stops after shard 1.
@@ -82,29 +83,32 @@ container increment not observed this tape). L2 entry bombs=0 keys=0;
 Survival count top-up at L2 entry + `SPINE_BOMB_RETOPUP`.
 `bomb_north_6f` 340f (was 1f `no_bombs`). Boom, Dodongo, L2 TF `0x02`,
 OW hop `enter_level3` 12864f all live. That tape stopped at `0x7c`
-(`.3.0` closed), not dest 0x5b. Current `--through level3` is west key
-`0x7b`. Evidence:
-`recordings/l3_entrance_bombtopup.json` + `_final.png`. Farm is
-`rr-doua`. Do not grant undiscovered items. Next is west key `0x7b`
-(`rr-4d53.3.1.1`). Dest `0x5b` is `.3.1.2`.
+(`.3.0` closed), not dest 0x5b. West key closed 2026-08-21:
+`l3_west_key_spine.json` 54589f room `0x7b` keys=5. Current `--through
+level3` is dest `0x5b` (`.3.1.2`). Farm is `rr-doua`. Do not grant
+undiscovered items.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level3 --no-video --trials 1 --tag l3_entrance_poweron
+  --through level3 --no-video --trials 1 --tag l3_dest_0x5b
 ```
 
-Dest 0x5b (`rr-4d53.3.1.2`) stays library-wired until west key is live on
-the spine. Occupancy 0x6b north + Raft/boss controllers exist as isolated
-libraries; they are not this spine stop. Isolated L3 Raft suffix still uses
-poke-16 (`.3.2` / `.3.4`). Isolated 0x6b check:
+Dest 0x5b (`rr-4d53.3.1.2`) is the claimed tip. Occupancy 0x6b north is
+`level3_dest_6b_stages`. **Not closed:** live dest misses are 0x6b south-door
+residual, not combat. `ROOM_6B_SPEC.occupancy_patrol` clears 5 Zols in 1435f.
+`north_exit` then times out 6000f at the south mouth `(120,181)`:
+UP does not move (v3); LEFT+UP slides to `(48,181)` (v4). Policy now walks
+LEFT off x≈120 then UP inland (unverified live). Isolated north-chain 2/2
+used `already_0x5b` during combat, not dest occupancy. Isolated L3 Raft
+suffix still uses poke-16 (`.3.2` / `.3.4`). Isolated 0x6b check:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2
 ```
 
 L2-exit → L3 OW hops are 2/2 assisted from `Level2ExitOverworld`
-(`run_l2_to_l3.py`). L3 dest 0x5b is library-wired (`level3_spine`, occupancy
-0x6b north). Live predecessor dest is not re-taped this pass.
+(`run_l2_to_l3.py`). L3 dest 0x5b is on `--through level3` (`level3_dest_6b_stages`).
+Isolated north-chain does not close `.3.1.2`.
 
 Bomb/key **count** pokes are a documented Survival shortcut
 (`docs/ASSIST_CONTRACT.md`). Do not grant undiscovered items or write
@@ -196,8 +200,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 ## Next milestones
 
 1. **Survival spine** — `rr-4d53.2.3` Boom→TF closed (documented bomb/key
-   top-up). L3 entrance `0x7c` closed (`.3.0`). Tip is west key `0x7b`
-   (`.3.1.1`), then dest `0x5b` / Raft / TF `0x04`, then `.6` L4 and `.7`
+   top-up). L3 entrance `0x7c` closed (`.3.0`). West key `0x7b` closed
+   (`.3.1.1`). Tip is dest `0x5b` (`.3.1.2`), then Raft / TF `0x04`, then `.6` L4 and `.7`
    L5, then `.4` one-session L5 TF. L6–L9 stay out of this pass.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.
@@ -207,10 +211,9 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Bottleneck
 
-**L2 exit → L3 west key `0x7b`** (`rr-4d53.3.1.1`) is the watchable tip.
-Power-on → L3 entrance `0x7c` is closed (`.3.0`). Then dest `0x5b`
-(`.3.1.2`), Raft (`.3.3.*`), bombs (`.3.2`), TF (`.3.4.*`). L9 dest walk
-is parked.
+**L2 exit → L3 dest `0x5b`** (`rr-4d53.3.1.2`) is the watchable tip.
+West key `0x7b` (`.3.1.1`) and entrance `0x7c` (`.3.0`) are closed. Then
+Raft (`.3.3.*`), bombs (`.3.2`), TF (`.3.4.*`). L9 dest walk is parked.
 
 ## Video / watchability (2026-08-06)
 

@@ -10,7 +10,9 @@ from zelda_i.door_graph.core import (
 )
 from zelda_i.level3_geometry import (
     BOMB_STAND_5B_RIGHT,
+    KEY_DOOR_Y,
     STAIRS_69_RIGHT_Y,
+    WEST_WALL_5B_X,
 )
 
 # Level 3 (Manji) seed — additive LIVE edges (rr-vpl / l3_past_5b 2026-08-07)
@@ -97,8 +99,11 @@ def _l3_exits() -> dict[int, tuple[RoomExit, ...]]:
                 DoorDir.LEFT,
                 L3_COMPASS,
                 GateKind.OPEN,
-                approach_xy=(32, 141),
-                notes="4× Keese + traps + Compass 0x16 — Raft path",
+                approach_xy=(32, KEY_DOOR_Y),
+                notes=(
+                    "4× Keese + traps + Compass 0x16 — Raft path; "
+                    f"west wall x≈{WEST_WALL_5B_X} (not 32); push once x≤48"
+                ),
                 verification="observed",
             ),
             RoomExit(
@@ -147,8 +152,11 @@ def _l3_exits() -> dict[int, tuple[RoomExit, ...]]:
                 DoorDir.LEFT,
                 L3_WEST_DARKNUTS,
                 GateKind.KEY,
-                approach_xy=(32, 141),
-                notes="key door → 5× Darknut; long y=141 push (key-waste trap if misaligned)",
+                approach_xy=(32, KEY_DOOR_Y),
+                notes=(
+                    "key door → 5× Darknut; long y=141 push "
+                    "(key-waste trap if y≠141 / short push)"
+                ),
                 verification="observed",
             ),
             RoomExit(

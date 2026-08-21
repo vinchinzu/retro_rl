@@ -21,11 +21,13 @@ from zelda_i.door_graph import (
     L2_TRAPS_KEESE,
     L2_WEST_KEY,
     L2_WEST_OF_BOSS,
+    L3_BOMB_SHORTCUT,
     L3_COMPASS,
     L3_DARKNUTS,
     L3_ENTRY,
     L3_RAFT_PASSAGE,
     L3_SOUTH_DARKNUTS,
+    L3_WEST_DARKNUTS,
     L3_ZOL_KEY_4B,
     LEVEL_2_DOOR_GRAPH,
     LEVEL_3_DOOR_GRAPH,
@@ -418,6 +420,63 @@ def test_level3_raft_path_with_key_and_clear() -> None:
     assert L3_COMPASS in rooms
     assert rooms[-1] == L3_SOUTH_DARKNUTS
     assert any(e.gate is GateKind.KEY for e in path)
+
+
+def test_level3_raft_bfs_5b_to_passage() -> None:
+    """Compass-west Raft: 0x5b → 0x0f with keys=1 bombs=0 can_clear.
+
+    Bomb-R 0x5b→0x5c is the boss shortcut, not this path. Raft is room 0x0f
+    (mode-9 passage), not a cardinal item pickup.
+    """
+    caps = InventoryCaps(keys=1, bombs=0, can_clear=True)
+    path = LEVEL_3_DOOR_GRAPH.bfs_path(L3_DARKNUTS, L3_RAFT_PASSAGE, caps)
+    assert path is not None
+    rooms = [L3_DARKNUTS, *[e.target_room for e in path]]
+    assert rooms[-1] == L3_RAFT_PASSAGE == 0x0F
+    assert L3_COMPASS in rooms
+    pairs = list(zip(rooms, rooms[1:]))
+    assert (L3_COMPASS, L3_WEST_DARKNUTS) in pairs  # KEY-LEFT 0x5a → 0x59
+    assert (L3_WEST_DARKNUTS, L3_SOUTH_DARKNUTS) in pairs  # KILL_CLEAR 0x59 → 0x69
+    assert (L3_SOUTH_DARKNUTS, L3_RAFT_PASSAGE) in pairs  # KILL_CLEAR 0x69 → 0x0f
+    assert any(
+        e.gate is GateKind.KEY and e.target_room == L3_WEST_DARKNUTS for e in path
+    )
+    assert any(
+        e.gate is GateKind.KILL_CLEAR and e.target_room == L3_SOUTH_DARKNUTS
+        for e in path
+    )
+    assert any(
+        e.gate is GateKind.KILL_CLEAR and e.target_room == L3_RAFT_PASSAGE
+        for e in path
+    )
+    assert all(e.gate is not GateKind.BOMB for e in path)
+
+    reached = LEVEL_3_DOOR_GRAPH.bfs_reachable(L3_DARKNUTS, caps)
+    assert L3_RAFT_PASSAGE in reached
+    assert L3_BOMB_SHORTCUT not in reached  # bomb-R needs a bomb
+
+    pickup = [
+        e
+        for e in LEVEL_3_DOOR_GRAPH.edges_from(L3_RAFT_PASSAGE)
+        if e.target_room is None
+    ]
+    assert pickup
+    assert all(not e.is_pathfinding for e in pickup)
+
+
+def test_level3_raft_bfs_blocked_without_key() -> None:
+    """KEY-LEFT 0x5a → 0x59 spends a key; keys=0 cannot reach Raft."""
+    caps = InventoryCaps(keys=0, bombs=0, can_clear=True)
+    assert (
+        LEVEL_3_DOOR_GRAPH.bfs_path(L3_DARKNUTS, L3_RAFT_PASSAGE, caps) is None
+    )
+    assert (
+        LEVEL_3_DOOR_GRAPH.bfs_path(L3_COMPASS, L3_WEST_DARKNUTS, caps) is None
+    )
+    reached = LEVEL_3_DOOR_GRAPH.bfs_reachable(L3_DARKNUTS, caps)
+    assert L3_COMPASS in reached  # OPEN west
+    assert L3_WEST_DARKNUTS not in reached
+    assert L3_RAFT_PASSAGE not in reached
 
 
 def test_level3_fresh_copy() -> None:
