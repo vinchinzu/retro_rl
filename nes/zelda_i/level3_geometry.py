@@ -30,11 +30,71 @@ KEY_DOOR_Y_TOL: int = 3
 # reaches the wall; y≈141 alone often blocks mid-room at x≈112.
 WEST_DOOR_APPROACH_Y: int = 149
 WEST_DOOR_WALL_X: int = 48
+# 0x5b LEFT (Raft path): wall sits at x≈26, not 32. Hold LEFT once x≤48;
+# occupancy xmin=40 does not model this clip (path policy, not walk_claim).
+WEST_WALL_5B_X: int = 26
 
 # North door residual from 0x7b: UP only works with |x-120|≤4. Threshold 8
 # leaves Link at x≈112 and sticks on the north wall (live probe 2026-08-06).
 NORTH_DOOR_X: int = 120
 NORTH_DOOR_X_TOL: int = 4
+
+# 0x6b occupancy: north door is a residual, not a 1px walk. y<=100 @ x≈120
+# strands on the diamond; the traversable band is y=109.
+ROOM_6B_DOOR_Y: int = 93
+ROOM_6B_BAND_Y: int = 109
+ROOM_6B_STRAND_Y: int = 100
+# 12×7 dungeon floor tiles (screenshot hypothesis, not live collision).
+ROOM_6B_TILE_ORIGIN: tuple[int, int] = (32, 80)
+ROOM_6B_TILE_SIZE: int = 16
+# (col, row) raised-block tiles. Door-column / south-band punches live in
+# level3_occupancy so BFS still reaches the north band.
+ROOM_6B_BLOCK_TILES: tuple[tuple[int, int], ...] = (
+    (0, 1),
+    (3, 1),
+    (4, 1),
+    (6, 1),
+    (7, 1),
+    (8, 1),
+    (9, 1),
+    (0, 2),
+    (2, 2),
+    (3, 2),
+    (6, 2),
+    (7, 2),
+    (8, 2),
+    (11, 2),
+    (0, 3),
+    (1, 3),
+    (2, 3),
+    (5, 3),
+    (6, 3),
+    (7, 3),
+    (10, 3),
+    (11, 3),
+    (0, 4),
+    (1, 4),
+    (4, 4),
+    (5, 4),
+    (6, 4),
+    (9, 4),
+    (10, 4),
+    (11, 4),
+    (0, 5),
+    (3, 5),
+    (4, 5),
+    (5, 5),
+    (8, 5),
+    (9, 5),
+    (11, 5),
+    (2, 6),
+    (3, 6),
+    (4, 6),
+    (5, 6),
+    (7, 6),
+    (8, 6),
+    (11, 6),
+)
 
 # Raft passage geometry (mode 9): enter from 0x69 RIGHT @ y≈141 → spawn ~(48,77).
 # Path: DOWN to y≈189 → RIGHT to x≈176 → UP channel to y≈141 → LEFT to x≈136 touch Raft.
@@ -54,6 +114,12 @@ __all__ = [
     "KEY_DOOR_Y_TOL",
     "NORTH_DOOR_X",
     "NORTH_DOOR_X_TOL",
+    "ROOM_6B_BAND_Y",
+    "ROOM_6B_BLOCK_TILES",
+    "ROOM_6B_DOOR_Y",
+    "ROOM_6B_STRAND_Y",
+    "ROOM_6B_TILE_ORIGIN",
+    "ROOM_6B_TILE_SIZE",
     "PASSAGE_EXIT_WAYPOINTS",
     "RAFT_CHANNEL_X",
     "RAFT_CHANNEL_X_TOL",
@@ -65,4 +131,5 @@ __all__ = [
     "STAIRS_69_RIGHT_Y",
     "WEST_DOOR_APPROACH_Y",
     "WEST_DOOR_WALL_X",
+    "WEST_WALL_5B_X",
 ]

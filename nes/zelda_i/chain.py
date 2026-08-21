@@ -70,6 +70,24 @@ def _notify_frame(
         on_frame(env, obs, action, frame)
 
 
+def controller_stage_done(controller: Any) -> bool:
+    """Stop a stage on success or FAILED, including string-phase L3 path ctrls.
+
+    ``GenericDungeonRoomController.phase`` is a ``DungeonPhase`` enum.
+    ``Level3WestKeyController.phase`` is ``"door"|"combat"|"done"|"failed"``.
+    Isolated L3 runners already check ``phase == "failed"``.
+    """
+    if getattr(controller, "success", False):
+        return True
+    if getattr(controller, "failed", False):
+        return True
+    phase = getattr(controller, "phase", None)
+    if phase is None:
+        return False
+    name = getattr(phase, "name", phase)
+    return isinstance(name, str) and name.upper() == "FAILED"
+
+
 def boot_to_ready(
     env,
     *,
@@ -142,7 +160,7 @@ def run_natural_to_level1(
         _observe_room_timer(room_timer, env, frame=global_frame)
         _apply_assist(assist, env, frame=global_frame)
         _notify_frame(on_frame, env, obs, action, frame=global_frame)
-        if sword.success or sword.phase.name == "FAILED":
+        if controller_stage_done(sword):
             break
 
     # EAST_77 aligns y≈140 then walks right — no fixed post-cave DOWN hold.
@@ -155,7 +173,7 @@ def run_natural_to_level1(
             _observe_room_timer(room_timer, env, frame=global_frame)
             _apply_assist(assist, env, frame=global_frame)
             _notify_frame(on_frame, env, obs, action, frame=global_frame)
-            if nav.success or nav.phase.name == "FAILED":
+            if controller_stage_done(nav):
                 break
     return obs, boot_frames, sword, nav, global_frame
 
@@ -254,7 +272,7 @@ def run_controller_stage(
         _observe_room_timer(room_timer, env, frame=result.end_frame)
         _apply_assist(assist, env, frame=result.end_frame)
         _notify_frame(on_frame, env, obs, action, frame=result.end_frame)
-        if controller.success or controller.phase.name == "FAILED":
+        if controller_stage_done(controller):
             break
     result.success = bool(controller.success)
     return obs, result

@@ -53,8 +53,8 @@ def test_spine_through_is_continuous_only() -> None:
     assert SPINE_THROUGH == ("level1", "level2", "level3")
 
 
-def test_through_level3_stops_at_west_key() -> None:
-    """Power-on → L3 this pass is 0x7b keys≥1, not dest 0x5b (rr-4d53.3.1.1)."""
+def test_through_level3_stops_at_dest_0x5b() -> None:
+    """Power-on → L3 this pass is dest 0x5b (rr-4d53.3.1.2), after west key."""
     names = [name for name, _, _ in level3_entry_stages()]
     assert names == ["settle_l2_tf", "enter_level3"]
     west = [name for name, _, _ in level3_west_key_stages()]
@@ -62,9 +62,8 @@ def test_through_level3_stops_at_west_key() -> None:
     dest_names = [name for name, _, _ in level3_dest_6b_stages()]
     assert dest_names == ["west_key", "north_chain"]
     assert "north_chain" not in names
-    assert "north_chain" not in west
     run = SpineRun(through="level3", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level3_west_key_0x7b"
+    assert run.report()["stop"] == "level3_dest_0x5b"
     assert "l3_entry" in run.report()
 
 

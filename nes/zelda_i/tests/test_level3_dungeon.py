@@ -44,6 +44,7 @@ from zelda_i.level3_dungeon import (
     ZOL_OBJECT_TYPE,
     Level3NorthChainController,
     Level3NorthDoor7bController,
+    Level3NorthExit6bController,
     Level3RaftPathController,
     Level3WestDoorController,
     Level3WestKeyController,
@@ -129,6 +130,7 @@ def test_room_ids_and_spec() -> None:
     assert ROOM_6B_SPEC.room_id == 0x6B
     assert ROOM_6B_SPEC.expected_enemy_count == 5
     assert ROOM_6B_SPEC.reward.settle_all_dead == 0
+    assert ROOM_6B_SPEC.combat.occupancy_patrol is True
     assert ROOM_5B_SPEC.enemy_types == (DARKNUT_OBJECT_TYPE,)
     assert ROOM_5B_SPEC.expected_enemy_count == 3
     assert ROOM_4B_SPEC.room_id == 0x4B
@@ -258,6 +260,20 @@ def test_north_chain_already_in_5b() -> None:
     ctrl.step(read_snapshot(_ram(room=ROOM_L3_DARKNUTS, x=120, y=205)))
     assert ctrl.success
     assert ctrl.phase == "done"
+
+
+def test_north_exit_aligns_from_y109_band() -> None:
+    ctrl = Level3NorthExit6bController()
+    align = ctrl.step(
+        read_snapshot(_ram(room=ROOM_L3_NORTH_ZOLS, x=176, y=109))
+    )
+    assert align.reason == "north6b_align_door"
+
+    ctrl = Level3NorthExit6bController()
+    push = ctrl.step(
+        read_snapshot(_ram(room=ROOM_L3_NORTH_ZOLS, x=NORTH_DOOR_X, y=109))
+    )
+    assert push.reason == "north6b_push"
 
 
 def test_raft_geometry_constants() -> None:

@@ -16,7 +16,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | L3 geometry | `level3_geometry` | Door bands, bomb stands, raft channel ints |
 | Door planner | `door_graph/` (L2–L5 + L9 fixture) | Offline BFS; stands must match `BombWall` |
 | Walk physics | `walk_physics.py`, `predict.py` | OccupancyWalker grades `move`; no path → stand |
-| L3 dest spine | `level3_spine.py` | `--through level3` west key 0x7b; dest 0x5b stays library-wired |
+| L3 dest spine | `level3_spine.py` | `--through level3` dest 0x5b (west key closed) |
 | Route catalog | `routes.py` (L1–L2), `routes_later.py` + `route_legs_later.py` (L3–L5 + L9 fixture) | NamedRoute / RouteLeg; L6–L8 stay stubs |
 | Composer | `route_composer.py` | Bind existing controllers to leg ids; no path geometry |
 | Eligibility | `route_eligible.py`, `natural_entry.py` | Lab-fixture vs route pin; STATUS claim gate |

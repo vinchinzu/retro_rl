@@ -1,9 +1,8 @@
-"""Survival-spine L3: post-L2 OW → Manji west key 0x7b; dest 0x5b is later.
+"""Survival-spine L3: post-L2 OW → Manji dest 0x5b (west key then occupancy).
 
-``--through level3`` this pass stops at west_key (room 0x7b, keys≥1). Dest
-0x5b (``level3_dest_6b_*``, rr-4d53.3.1.2) stays library-wired, not on the
-spine. Raft → Manhandla → TF 0x04 is still the parent bead and still poke-16
-on the isolated suffix.
+``--through level3`` this pass stops at dest 0x5b after west key 0x7b
+(rr-4d53.3.1.2). Raft → Manhandla → TF 0x04 stays the parent bead and still
+poke-16 on the isolated suffix.
 """
 
 from __future__ import annotations
@@ -91,7 +90,7 @@ def level3_west_key_stages():
 
 
 def level3_west_key_success(snap: ZeldaSnapshot) -> bool:
-    """Spine stop for ``--through level3`` this pass: 0x7b with keys≥1."""
+    """Predecessor stop (rr-4d53.3.1.1 closed): 0x7b with keys≥1."""
     return (
         snap.level == LEVEL3
         and snap.screen == ROOM_L3_WEST_KEY
